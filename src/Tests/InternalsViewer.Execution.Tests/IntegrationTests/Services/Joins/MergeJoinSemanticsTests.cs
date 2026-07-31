@@ -1,3 +1,5 @@
+using InternalsViewer.Execution.AccessPaths.Joins;
+using InternalsViewer.Execution.Services.Joins.Definitions;
 using System.Data;
 using InternalsViewer.Execution.AccessPaths.Binding;
 using InternalsViewer.Execution.AccessPaths.Results;
@@ -139,7 +141,7 @@ public class MergeJoinSemanticsTests(ITestOutputHelper testOutput)
         return new Context(database, serviceHost.GetService<MergeJoinStepService>(), unit);
     }
 
-    private static MergeJoinSideInput SideInput(AllocationUnit unit, SeekBounds bounds)
+    private static MergeSideDefinition SideInput(AllocationUnit unit, SeekBounds bounds)
         => new(unit.AllocationUnitId, unit.RootPage, [bounds], ["Id"]);
 
     private static long? Value(IRecord? record)

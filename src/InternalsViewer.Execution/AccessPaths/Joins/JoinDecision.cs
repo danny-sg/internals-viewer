@@ -1,4 +1,4 @@
-namespace InternalsViewer.Execution.AccessPaths.Results.Joins;
+namespace InternalsViewer.Execution.AccessPaths.Joins;
 
 /// <summary>
 /// A join weighing what it has found against what its join type requires

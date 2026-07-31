@@ -4,33 +4,35 @@ using InternalsViewer.Execution.AccessPaths.Results;
 using InternalsViewer.Execution.AccessPaths.Search;
 using InternalsViewer.Execution.AccessPaths.Values;
 using InternalsViewer.Execution.Interfaces;
+using InternalsViewer.Execution.Interfaces.Services.Joins;
 using InternalsViewer.Execution.Services.Indexes;
+using InternalsViewer.Execution.Services.Joins.Definitions;
 using InternalsViewer.Internals.Engine.Database;
 using InternalsViewer.Internals.Interfaces.Engine;
 
-namespace InternalsViewer.Execution.Services.Joins;
+namespace InternalsViewer.Execution.Services.Joins.Inputs;
 
 /// <summary>
-/// An inner side that seeks an index for key values taken from the outer row, as a key lookup does
+/// An input that seeks an index for key values taken from the outer row, as a key lookup does
 /// </summary>
-public sealed class CorrelatedSeekInnerSide(IndexStepService service,
-                                            NestedLoopsInnerInput input,
-                                            EvaluationContext? evaluationContext = null) : ILoopInnerSide
+public sealed class CorrelatedSeek(IndexStepService service,
+                                   SeekDefinition input,
+                                   EvaluationContext? evaluationContext = null) : RebindableInput
 {
-    public IStepService Service => service;
+    public override IStepService Service => service;
 
-    public AccessStrategy? Strategy => service.Strategy;
+    public override AccessStrategy? Strategy => service.Strategy;
 
-    public string StartDescription
+    public override string StartDescription
         => $"on {string.Join(", ", input.Bindings.Select(b => $"{b.SeekColumn} = {b.OuterColumn}"))}. "
            + "Each outer row binds the inner seek";
 
-    public bool FetchesDirectly => false;
+    public override bool FetchesDirectly => false;
 
-    public async Task<AccessStep> RebindAsync(DatabaseSource database,
-                                              IRecord outerRecord,
-                                              int rebindNumber,
-                                              CancellationToken cancellationToken)
+    public override async Task<AccessStep> RebindAsync(DatabaseSource database,
+                                                       IRecord outerRecord,
+                                                       int rebindNumber,
+                                                       CancellationToken cancellationToken)
     {
         var source = new RecordRowValueSource(outerRecord);
 

@@ -1,7 +1,8 @@
+using InternalsViewer.Execution.Services.Joins.Definitions;
 using System.Data;
 using InternalsViewer.Execution.AccessPaths.Binding;
 using InternalsViewer.Execution.AccessPaths.Results;
-using InternalsViewer.Execution.AccessPaths.Results.Joins;
+using InternalsViewer.Execution.AccessPaths.Joins;
 using InternalsViewer.Execution.AccessPaths.Search;
 using InternalsViewer.Execution.AccessPaths.Values;
 using InternalsViewer.Execution.Services.Joins;
@@ -41,9 +42,9 @@ public class MergeJoinBufferTests(ITestOutputHelper testOutput)
 
             pairs++;
 
-            var outerBuffer = Values(context.Service.OuterBuffer);
+            var outerBuffer = Values(context.Service.Outer.Buffer);
 
-            var innerBuffer = Values(context.Service.InnerBuffer);
+            var innerBuffer = Values(context.Service.Inner.Buffer);
 
             var pairedOuter = Value(emit.OuterRecord!);
 
@@ -56,8 +57,8 @@ public class MergeJoinBufferTests(ITestOutputHelper testOutput)
             Assert.Contains(pairedInner, innerBuffer);
 
             // Only the rows taking part in this pairing are flagged, so the read ahead row stays unmatched
-            Assert.Equal([pairedOuter], MatchedValues(context.Service.OuterBuffer));
-            Assert.Equal([pairedInner], MatchedValues(context.Service.InnerBuffer));
+            Assert.Equal([pairedOuter], MatchedValues(context.Service.Outer.Buffer));
+            Assert.Equal([pairedInner], MatchedValues(context.Service.Inner.Buffer));
         }
 
         Assert.Equal(6, pairs);
@@ -78,7 +79,7 @@ public class MergeJoinBufferTests(ITestOutputHelper testOutput)
             if (step is AccessStep.JoinEmit)
             {
                 // 100 to 104 were walked past before the keys met, so only 105 is flagged
-                Assert.Equal([105], MatchedValues(context.Service.OuterBuffer));
+                Assert.Equal([105], MatchedValues(context.Service.Outer.Buffer));
 
                 return;
             }
@@ -103,7 +104,7 @@ public class MergeJoinBufferTests(ITestOutputHelper testOutput)
         {
             if (step is AccessStep.JoinEmit)
             {
-                outerAtFirstPair = Values(context.Service.OuterBuffer);
+                outerAtFirstPair = Values(context.Service.Outer.Buffer);
 
                 break;
             }
@@ -137,8 +138,8 @@ public class MergeJoinBufferTests(ITestOutputHelper testOutput)
             if (seenPair && step is AccessStep.MergeCompare)
             {
                 // The pairing is done, so only the row each side read past it is carried over
-                Assert.Single(context.Service.OuterBuffer);
-                Assert.Single(context.Service.InnerBuffer);
+                Assert.Single(context.Service.Outer.Buffer);
+                Assert.Single(context.Service.Inner.Buffer);
 
                 return;
             }
@@ -162,7 +163,7 @@ public class MergeJoinBufferTests(ITestOutputHelper testOutput)
             if (step is AccessStep.MergeCompare { Comparison: < 0 })
             {
                 // The row is still held until the walk moves on, but the join has finished with it
-                var row = Assert.Single(context.Service.OuterBuffer);
+                var row = Assert.Single(context.Service.Outer.Buffer);
 
                 Assert.False(row.IsMatched);
                 Assert.Equal(JoinRowState.Finished, row.State);
@@ -223,7 +224,7 @@ public class MergeJoinBufferTests(ITestOutputHelper testOutput)
         return new Context(database, serviceHost.GetService<MergeJoinStepService>(), unit);
     }
 
-    private static MergeJoinSideInput SideInput(AllocationUnit unit, SeekBounds bounds)
+    private static MergeSideDefinition SideInput(AllocationUnit unit, SeekBounds bounds)
         => new(unit.AllocationUnitId, unit.RootPage, [bounds], ["Id"]);
 
     private static List<long> Values(IReadOnlyList<JoinBufferRow> buffer)

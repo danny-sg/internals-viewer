@@ -1,3 +1,4 @@
+using InternalsViewer.Execution.Services.Joins.Definitions;
 using System.Data;
 using InternalsViewer.Internals.Connections.File;
 using InternalsViewer.Execution.AccessPaths.Binding;
@@ -131,7 +132,7 @@ public class MergeJoinStepServiceTests(ITestOutputHelper testOutput)
         return new NumberTableContext(database, serviceHost.GetService<MergeJoinStepService>(), unit);
     }
 
-    private static MergeJoinSideInput SideInput(AllocationUnit unit, SeekBounds bounds)
+    private static MergeSideDefinition SideInput(AllocationUnit unit, SeekBounds bounds)
         => new(unit.AllocationUnitId, unit.RootPage, [bounds], ["Id"]);
 
     private static async Task<(List<AccessStep> Steps, List<(long Outer, long Inner)> Pairs)> RunAsync(MergeJoinStepService service)

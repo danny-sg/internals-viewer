@@ -2,12 +2,12 @@ using InternalsViewer.Execution.AccessPaths.Predicates;
 using InternalsViewer.Execution.AccessPaths.Search;
 using InternalsViewer.Internals.Engine.Address;
 
-namespace InternalsViewer.Execution.Services.Joins;
+namespace InternalsViewer.Execution.Services.Joins.Definitions;
 
 /// <summary>
-/// Describes the outer side of a nested loops join, the access path whose rows drive the rebinds
+/// Describes an ordered access path a join reads from, the outer side of a nested loops join or either side of a merge join
 /// </summary>
-public sealed record NestedLoopsOuterInput(long AllocationUnitId, PageAddress RootPage, IReadOnlyList<SeekBounds> Ranges)
+public record ScanDefinition(long AllocationUnitId, PageAddress RootPage, IReadOnlyList<SeekBounds> Ranges)
 {
     public AccessPredicate? Residual { get; init; }
 

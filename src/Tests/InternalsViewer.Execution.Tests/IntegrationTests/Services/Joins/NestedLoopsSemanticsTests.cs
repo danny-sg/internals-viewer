@@ -1,3 +1,5 @@
+using InternalsViewer.Execution.AccessPaths.Joins;
+using InternalsViewer.Execution.Services.Joins.Definitions;
 using System.Data;
 using InternalsViewer.Execution.AccessPaths.Binding;
 using InternalsViewer.Execution.AccessPaths.Predicates;
@@ -111,9 +113,9 @@ public class NestedLoopsSemanticsTests(ITestOutputHelper testOutput)
 
     private static async Task StartAsync(Context context, JoinType joinType)
     {
-        var outerInput = new NestedLoopsOuterInput(context.Unit.AllocationUnitId, context.Unit.RootPage, [Between(100, 109)]);
+        var outerInput = new ScanDefinition(context.Unit.AllocationUnitId, context.Unit.RootPage, [Between(100, 109)]);
 
-        var innerInput = new NestedLoopsInnerInput(context.Unit.AllocationUnitId,
+        var innerInput = new SeekDefinition(context.Unit.AllocationUnitId,
                                                    context.Unit.RootPage,
                                                    [new CorrelationBinding("Id", "Id")])
         {

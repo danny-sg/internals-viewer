@@ -1,3 +1,4 @@
+using InternalsViewer.Execution.Services.Joins.Definitions;
 using System.Data;
 using InternalsViewer.Internals.Connections.File;
 using InternalsViewer.Execution.AccessPaths.Binding;
@@ -132,7 +133,7 @@ public class NestedLoopsStepServiceTests(ITestOutputHelper testOutput)
     {
         var context = await LoadNumberTableAsync();
 
-        var innerInput = new NestedLoopsInnerInput(context.Unit.AllocationUnitId,
+        var innerInput = new SeekDefinition(context.Unit.AllocationUnitId,
                                                    context.Unit.RootPage,
                                                    [new CorrelationBinding("Id", "NoSuchColumn")]);
 
@@ -166,10 +167,10 @@ public class NestedLoopsStepServiceTests(ITestOutputHelper testOutput)
         return new NumberTableContext(database, serviceHost.GetService<NestedLoopsStepService>(), unit);
     }
 
-    private static NestedLoopsOuterInput OuterInput(AllocationUnit unit, SeekBounds bounds)
+    private static ScanDefinition OuterInput(AllocationUnit unit, SeekBounds bounds)
         => new(unit.AllocationUnitId, unit.RootPage, [bounds]);
 
-    private static NestedLoopsInnerInput InnerInput(AllocationUnit unit)
+    private static SeekDefinition InnerInput(AllocationUnit unit)
         => new(unit.AllocationUnitId, unit.RootPage, [new CorrelationBinding("Id", "Id")]);
 
     private static async Task<(List<AccessStep> Steps, List<long> InnerValues)> RunAsync(NestedLoopsStepService service)

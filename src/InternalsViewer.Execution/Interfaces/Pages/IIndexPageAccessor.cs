@@ -1,7 +1,7 @@
 using InternalsViewer.Execution.AccessPaths.Search;
 using InternalsViewer.Internals.Engine.Address;
 
-namespace InternalsViewer.Execution.Interfaces;
+namespace InternalsViewer.Execution.Interfaces.Pages;
 
 /// <summary>
 /// A page belonging to an index, where slots are ordered by key

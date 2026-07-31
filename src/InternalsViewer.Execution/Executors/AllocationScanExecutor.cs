@@ -1,7 +1,7 @@
-using InternalsViewer.Execution.AccessPaths;
 using InternalsViewer.Execution.AccessPaths.Predicates;
 using InternalsViewer.Execution.AccessPaths.Results;
-using InternalsViewer.Execution.Interfaces;
+using InternalsViewer.Execution.Interfaces.Pages;
+using InternalsViewer.Execution.Pages;
 
 namespace InternalsViewer.Execution.Executors;
 

@@ -1,4 +1,4 @@
-using InternalsViewer.Execution.AccessPaths.Results.Joins;
+using InternalsViewer.Execution.AccessPaths.Joins;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Media;

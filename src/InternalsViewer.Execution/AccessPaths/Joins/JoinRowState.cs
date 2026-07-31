@@ -1,4 +1,4 @@
-namespace InternalsViewer.Execution.AccessPaths.Results.Joins;
+namespace InternalsViewer.Execution.AccessPaths.Joins;
 
 /// <summary>
 /// What a join has decided about a row it is holding

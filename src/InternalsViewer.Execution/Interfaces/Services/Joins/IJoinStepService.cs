@@ -1,18 +1,15 @@
-using InternalsViewer.Execution.AccessPaths.Results.Joins;
-using InternalsViewer.Execution.AccessPaths.Search;
+using InternalsViewer.Execution.AccessPaths.Joins;
 
-namespace InternalsViewer.Execution.Interfaces;
+namespace InternalsViewer.Execution.Interfaces.Services.Joins;
 
 /// <summary>
-/// A step service composed of an outer and inner access path, each with its own strategy
+/// A step service that reads two inputs and combines their rows
 /// </summary>
 public interface IJoinStepService : IStepService
 {
-    AccessStrategy? OuterStrategy { get; }
+    IJoinInput Outer { get; }
 
-    AccessStrategy? InnerStrategy { get; }
+    IJoinInput Inner { get; }
 
-    IReadOnlyList<JoinBufferRow> OuterBuffer { get; }
-
-    IReadOnlyList<JoinBufferRow> InnerBuffer { get; }
+    JoinType JoinType { get; }
 }

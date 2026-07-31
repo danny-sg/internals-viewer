@@ -1,6 +1,6 @@
 using InternalsViewer.Internals.Interfaces.Engine;
 
-namespace InternalsViewer.Execution.AccessPaths;
+namespace InternalsViewer.Execution.Pages;
 
 internal static class RecordSnapshot
 {

@@ -1,3 +1,5 @@
+using InternalsViewer.Execution.AccessPaths.Joins;
+using InternalsViewer.Execution.Services.Joins.Definitions;
 using System.Data;
 using InternalsViewer.Execution.AccessPaths.Binding;
 using InternalsViewer.Execution.AccessPaths.Results;
@@ -122,7 +124,7 @@ public class MergeJoinAcrossTablesTests(ITestOutputHelper testOutput)
                                          joinType: joinType);
     }
 
-    private static MergeJoinSideInput SideInput(AllocationUnit unit, int from, int to)
+    private static MergeSideDefinition SideInput(AllocationUnit unit, int from, int to)
         => new(unit.AllocationUnitId, unit.RootPage, [Between(from, to)], ["Id"]);
 
     private static async Task<(List<AccessStep> Steps, List<(long? Outer, long? Inner)> Pairs)> RunAsync(MergeJoinStepService service)

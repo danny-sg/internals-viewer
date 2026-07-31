@@ -1,8 +1,9 @@
 using InternalsViewer.Execution.AccessPaths.Binding;
+using InternalsViewer.Execution.Interfaces.AccessPaths.Binding;
 using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Internals.Interfaces.Engine;
 
-namespace InternalsViewer.Execution.Interfaces;
+namespace InternalsViewer.Execution.Interfaces.Pages;
 
 public interface IRowPageAccessor
 {

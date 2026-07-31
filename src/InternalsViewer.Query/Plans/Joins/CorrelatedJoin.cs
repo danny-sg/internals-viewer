@@ -1,4 +1,4 @@
-using InternalsViewer.Execution.Services.Joins;
+using InternalsViewer.Execution.AccessPaths.Joins;
 using InternalsViewer.Query.Plans.Model;
 
 namespace InternalsViewer.Query.Plans.Joins;

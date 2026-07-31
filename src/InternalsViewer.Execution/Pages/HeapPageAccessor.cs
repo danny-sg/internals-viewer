@@ -1,4 +1,4 @@
-using InternalsViewer.Execution.Interfaces;
+using InternalsViewer.Execution.Interfaces.Pages;
 using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Internals.Engine.Pages;
 using InternalsViewer.Internals.Interfaces.Engine;
@@ -6,7 +6,7 @@ using InternalsViewer.Internals.Interfaces.Services.Records;
 using InternalsViewer.Internals.Metadata.Structures;
 using InternalsViewer.Internals.Providers.Metadata;
 
-namespace InternalsViewer.Execution.AccessPaths;
+namespace InternalsViewer.Execution.Pages;
 
 public sealed class HeapPageAccessor(DataPage page, IRecordService recordService) : IRowPageAccessor
 {

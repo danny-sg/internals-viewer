@@ -1,6 +1,6 @@
-using InternalsViewer.Execution.AccessPaths.Results.Joins;
+using InternalsViewer.Execution.AccessPaths.Joins;
 
-namespace InternalsViewer.Execution.Services.Joins;
+namespace InternalsViewer.Execution.AccessPaths.Joins;
 
 /// <summary>
 /// The logical join a physical join operator is carrying out

@@ -11,7 +11,6 @@ using InternalsViewer.UI.App.Models.Index;
 using InternalsViewer.UI.App.ViewModels.Allocation;
 using Microsoft.UI.Xaml.Data;
 using Microsoft.UI.Xaml.Media;
-using InternalsViewer.Execution.AccessPaths.Results.Joins;
 
 namespace InternalsViewer.UI.App.Controls.Index;
 

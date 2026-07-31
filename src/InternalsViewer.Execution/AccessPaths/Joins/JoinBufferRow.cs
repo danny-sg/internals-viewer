@@ -1,6 +1,6 @@
 using InternalsViewer.Internals.Interfaces.Engine;
 
-namespace InternalsViewer.Execution.AccessPaths.Results.Joins;
+namespace InternalsViewer.Execution.AccessPaths.Joins;
 
 /// <summary>
 /// A row a join is holding, and what it has decided about it

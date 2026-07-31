@@ -3,7 +3,7 @@ using InternalsViewer.Execution.AccessPaths.Values;
 using InternalsViewer.Internals.Interfaces.Engine;
 using InternalsViewer.Internals.Metadata.Structures;
 
-namespace InternalsViewer.Execution.AccessPaths;
+namespace InternalsViewer.Execution.Pages;
 
 internal static class AccessKeyReader
 {

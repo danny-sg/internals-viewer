@@ -1,4 +1,4 @@
-namespace InternalsViewer.Execution.AccessPaths.Results.Joins;
+namespace InternalsViewer.Execution.AccessPaths.Joins;
 
 /// <summary>
 /// What a join requires of one side for a row to reach the output

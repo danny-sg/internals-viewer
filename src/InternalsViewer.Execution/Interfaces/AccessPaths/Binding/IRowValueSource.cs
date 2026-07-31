@@ -1,6 +1,6 @@
 using InternalsViewer.Execution.AccessPaths.Values;
 
-namespace InternalsViewer.Execution.Interfaces;
+namespace InternalsViewer.Execution.Interfaces.AccessPaths.Binding;
 
 /// <summary>
 /// Supplies column values for the row currently being examined

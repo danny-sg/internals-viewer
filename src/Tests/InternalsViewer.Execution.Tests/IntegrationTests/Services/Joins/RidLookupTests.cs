@@ -1,3 +1,5 @@
+using InternalsViewer.Execution.Services.Joins.Definitions;
+using InternalsViewer.Execution.Services.Joins.Inputs;
 using System.Data;
 using InternalsViewer.Execution.AccessPaths.Binding;
 using InternalsViewer.Execution.AccessPaths.Results;
@@ -161,11 +163,11 @@ public class RidLookupTests(ITestOutputHelper testOutput)
 
     private static async Task StartAsync(Context context, SeekBounds outerBounds)
     {
-        var outerInput = new NestedLoopsOuterInput(context.Index.AllocationUnitId, context.Index.RootPage, [outerBounds]);
+        var outerInput = new ScanDefinition(context.Index.AllocationUnitId, context.Index.RootPage, [outerBounds]);
 
         await context.Service.StartAsync(context.Database,
                                          outerInput,
-                                         new RidLookupInnerSide(context.Heap),
+                                         new RidLookup(context.Heap),
                                          CancellationToken.None);
     }
 

@@ -1,3 +1,7 @@
+using InternalsViewer.Execution.AccessPaths.Binding;
+using InternalsViewer.Execution.Interfaces.Services.Joins;
+using InternalsViewer.Execution.Services.Joins.Definitions;
+using InternalsViewer.Execution.Services.Joins.Inputs;
 using System.Collections.Generic;
 using System.Data;
 using System.Collections.ObjectModel;
@@ -35,7 +39,7 @@ using InternalsViewer.UI.App.Views.Query.Tabs.Trace;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Media.Imaging;
 using Microsoft.UI.Xaml.Media;
-using InternalsViewer.Execution.AccessPaths.Results.Joins;
+using InternalsViewer.Execution.AccessPaths.Joins;
 
 namespace InternalsViewer.UI.App.ViewModels.Query;
 
@@ -754,7 +758,7 @@ public sealed partial class TraceTabViewModel : ObservableObject
                 continue;
             }
 
-            var buffer = visual.Source == NestedLoopsStepService.OuterSource ? join.OuterBuffer : join.InnerBuffer;
+            var buffer = visual.Source == NestedLoopsStepService.OuterSource ? join.Outer.Buffer : join.Inner.Buffer;
 
             if (_syncedBuffers.TryGetValue(visual.Source, out var synced) && synced.SequenceEqual(buffer))
             {
@@ -795,7 +799,7 @@ public sealed partial class TraceTabViewModel : ObservableObject
 
     private void UpdateInnerStrategy()
     {
-        if (InnerStrategy is null && StepService is IJoinStepService { InnerStrategy: { } inner })
+        if (InnerStrategy is null && StepService is IJoinStepService { Inner.Strategy: { } inner })
         {
             InnerStrategy = inner;
         }
@@ -826,7 +830,7 @@ public sealed partial class TraceTabViewModel : ObservableObject
                                                   ? ridOuterPredicate.SeekBounds
                                                   : [SeekBounds.All];
 
-            var ridOuterInput = new NestedLoopsOuterInput(ridOuterUnit.AllocationUnitId, ridOuterUnit.RootPage, ridRanges)
+            var ridOuterInput = new ScanDefinition(ridOuterUnit.AllocationUnitId, ridOuterUnit.RootPage, ridRanges)
             {
                 Residual = ridJoin.Outer.HasRedundantResidual() ? null : ridOuterPredicate?.Residual,
                 Direction = SideScanDirection(ridJoin.Outer),
@@ -834,7 +838,7 @@ public sealed partial class TraceTabViewModel : ObservableObject
                 HasUntranslatedResidual = ridOuterPredicate?.HasUntranslatedPredicate == true
             };
 
-            var heapInner = new RidLookupInnerSide(HeapService!, ridJoin.Inner.PredicateInfo?.Residual);
+            var heapInner = new RidLookup(HeapService!, ridJoin.Inner.PredicateInfo?.Residual);
 
             await Task.Run(() => ridService.StartAsync(Database,
                                                        ridOuterInput,
@@ -862,7 +866,7 @@ public sealed partial class TraceTabViewModel : ObservableObject
                                                     ? outerPredicate.SeekBounds
                                                     : [SeekBounds.All];
 
-            var outerInput = new NestedLoopsOuterInput(outerUnit.AllocationUnitId, outerUnit.RootPage, outerRanges)
+            var outerInput = new ScanDefinition(outerUnit.AllocationUnitId, outerUnit.RootPage, outerRanges)
             {
                 Residual = join.Outer.HasRedundantResidual() ? null : outerPredicate?.Residual,
                 Direction = SideScanDirection(join.Outer),
@@ -879,7 +883,7 @@ public sealed partial class TraceTabViewModel : ObservableObject
                 return;
             }
 
-            var innerInput = new NestedLoopsInnerInput(innerUnit.AllocationUnitId, innerUnit.RootPage, bindings)
+            var innerInput = new SeekDefinition(innerUnit.AllocationUnitId, innerUnit.RootPage, bindings)
             {
                 Residual = join.Inner.PredicateInfo?.Residual,
                 RowGoal = join.JoinType is JoinType.LeftSemi or JoinType.LeftAntiSemi ? 1 : null
@@ -955,7 +959,7 @@ public sealed partial class TraceTabViewModel : ObservableObject
         IsStepping = true;
     }
 
-    private static MergeJoinSideInput MergeSideInput(PlanNode side,
+    private static MergeSideDefinition MergeSideInput(PlanNode side,
                                                      AllocationUnit unit,
                                                      List<ColumnReference> keys)
     {
@@ -965,7 +969,7 @@ public sealed partial class TraceTabViewModel : ObservableObject
                                            ? predicateInfo.SeekBounds
                                            : [SeekBounds.All];
 
-        return new MergeJoinSideInput(unit.AllocationUnitId,
+        return new MergeSideDefinition(unit.AllocationUnitId,
                                       unit.RootPage,
                                       ranges,
                                       [.. keys.Select(k => k.Column.Trim('[', ']'))])

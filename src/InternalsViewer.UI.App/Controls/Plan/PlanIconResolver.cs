@@ -1,3 +1,4 @@
+using InternalsViewer.Execution.Services.Joins.Inputs;
 using System.Collections.Generic;
 using System;
 using InternalsViewer.Query.Plans.Model;
