@@ -152,6 +152,22 @@ public abstract record AccessStep(AccessPhase AccessPhase)
     }
 
     /// <summary>
+    /// A run of consecutive merge comparisons that advanced the same side, grouped for display
+    /// </summary>
+    public sealed record MergeCompareRun(int Comparison, int Count) : AccessStep(AccessPhase.Walk)
+    {
+        public AccessKey OuterFrom { get; init; }
+
+        public AccessKey OuterTo { get; init; }
+
+        public AccessKey InnerFrom { get; init; }
+
+        public AccessKey InnerTo { get; init; }
+
+        public string Action { get; init; } = string.Empty;
+    }
+
+    /// <summary>
     /// A matching outer and inner row pair was emitted by a join
     /// </summary>
     public sealed record JoinEmit(int PairNumber) : AccessStep(AccessPhase.Walk)

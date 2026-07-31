@@ -36,6 +36,15 @@ public class MergeJoinStepServiceTests(ITestOutputHelper testOutput)
         Assert.Equal(6, context.Service.PairCount);
         Assert.Equal(Enumerable.Range(105, 6).Select(v => ((long)v, (long)v)), pairs);
 
+        var outerRows = steps.Count(s => s is AccessStep.Row { EmittedRecord: not null }
+                                         && s.Source == MergeJoinStepService.OuterSource);
+
+        var innerRows = steps.Count(s => s is AccessStep.Row { EmittedRecord: not null }
+                                         && s.Source == MergeJoinStepService.InnerSource);
+
+        Assert.Equal(11, outerRows);
+        Assert.Equal(7, innerRows);
+
         var stopped = Assert.IsType<AccessStep.Stopped>(steps[^1]);
 
         Assert.Equal(MergeJoinStepService.JoinSource, stopped.Source);

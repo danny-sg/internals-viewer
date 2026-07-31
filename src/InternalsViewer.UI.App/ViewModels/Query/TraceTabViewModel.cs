@@ -83,13 +83,13 @@ public sealed class TraceTabViewModelFactory(IPageService pageService,
                                      outerUnit,
                                      indexService,
                                      $"Seek: {outerUnit.IndexName}",
-                                     NestedLoopsStepService.OuterSource),
+                                     NestedLoopsStepService.OuterSource) { IsSideStackVisible = true },
             new TraceVisualViewModel(TraceVisualKind.Index,
                                      database,
                                      innerUnit,
                                      indexService,
                                      $"Lookup: {innerUnit.IndexName}",
-                                     NestedLoopsStepService.InnerSource)
+                                     NestedLoopsStepService.InnerSource) { IsSideStackVisible = true }
         };
 
         return new TraceTabViewModel(TraceKind.KeyLookup, service, database, outerUnit, joinNode, queryTime, null, visuals);
@@ -111,13 +111,13 @@ public sealed class TraceTabViewModelFactory(IPageService pageService,
                                      outerUnit,
                                      indexService,
                                      $"Outer: {DisplayName(outerUnit)}",
-                                     MergeJoinStepService.OuterSource),
+                                     MergeJoinStepService.OuterSource) { IsSideStackVisible = true },
             new TraceVisualViewModel(TraceVisualKind.Index,
                                      database,
                                      innerUnit,
                                      indexService,
                                      $"Inner: {DisplayName(innerUnit)}",
-                                     MergeJoinStepService.InnerSource)
+                                     MergeJoinStepService.InnerSource) { IsSideStackVisible = true }
         };
 
         return new TraceTabViewModel(TraceKind.MergeJoin, service, database, outerUnit, joinNode, queryTime, null, visuals);
@@ -180,7 +180,14 @@ public sealed partial class TraceTabViewModel : ObservableObject
 
         var right = new TabGroupNode(steps, description, results, strategy);
 
-        return new DockLayoutViewModel(new SplitNode(Orientation.Horizontal, new TabGroupNode(visualDocuments), right));
+        // Each side of a join gets its own pane so both walks are visible at once, rather than tabs hiding one behind the other
+        LayoutNode visualNode = visualDocuments.Length > 1
+            ? visualDocuments.Skip(1)
+                             .Aggregate((LayoutNode)new TabGroupNode(visualDocuments[0]),
+                                        (left, document) => new SplitNode(Orientation.Horizontal, left, new TabGroupNode(document)))
+            : new TabGroupNode(visualDocuments);
+
+        return new DockLayoutViewModel(new SplitNode(Orientation.Horizontal, visualNode, right));
     }
 
     public TraceKind Kind { get; }
@@ -488,6 +495,8 @@ public sealed partial class TraceTabViewModel : ObservableObject
 
         UpdateInnerStrategy();
 
+        SyncSideBuffers();
+
         GetVisual(step.Source)?.Apply(step);
 
         CurrentStep = step;
@@ -528,6 +537,8 @@ public sealed partial class TraceTabViewModel : ObservableObject
             visual.IsDimmed = Visuals.Count > 1
                               && isSideStep
                               && !IsStepComplete
+                              && !IsRunning
+                              && !IsRunningToEnd
                               && visual.Source != step!.Source;
         }
     }
@@ -600,6 +611,8 @@ public sealed partial class TraceTabViewModel : ObservableObject
                 visual.ApplyReplay(replays[visual]);
             }
 
+            SyncSideBuffers();
+
             CurrentStep = StepService.Current;
             IsStepComplete = StepService.IsComplete;
 
@@ -632,6 +645,8 @@ public sealed partial class TraceTabViewModel : ObservableObject
         Strategy = SeekDescription;
         InnerStrategy = null;
 
+        _syncedBuffers.Clear();
+
         foreach (var visual in Visuals)
         {
             visual.Reset();
@@ -643,6 +658,51 @@ public sealed partial class TraceTabViewModel : ObservableObject
     private TraceVisualViewModel? GetVisual(int source)
     {
         return Visuals.FirstOrDefault(v => v.Source == source);
+    }
+
+    /// <summary>
+    /// Refreshes each side's row pane from the rows the join is currently holding
+    /// </summary>
+    /// <remarks>
+    /// Taken from the join rather than accumulated from the row steps, because only the join knows which rows it still holds - a row it
+    /// has advanced past is gone, and a row read ahead of the current key is not yet in play.
+    /// </remarks>
+    private void SyncSideBuffers()
+    {
+        if (StepService is not IJoinStepService join)
+        {
+            return;
+        }
+
+        foreach (var visual in Visuals)
+        {
+            if (!visual.IsSideStackVisible)
+            {
+                continue;
+            }
+
+            var buffer = visual.Source == NestedLoopsStepService.OuterSource ? join.OuterBuffer : join.InnerBuffer;
+
+            if (_syncedBuffers.TryGetValue(visual.Source, out var synced) && synced.SequenceEqual(buffer))
+            {
+                continue;
+            }
+
+            _syncedBuffers[visual.Source] = [.. buffer];
+
+            visual.SideRecords = new ObservableCollection<IndexRecordModel>(buffer.Select(ToRecordModel));
+        }
+    }
+
+    private readonly Dictionary<int, List<JoinBufferRow>> _syncedBuffers = new();
+
+    private static IndexRecordModel ToRecordModel(JoinBufferRow row)
+    {
+        var model = ToRecordModel(row.Record);
+
+        model.IsMatched = row.IsMatched;
+
+        return model;
     }
 
     private IndexRecordModel? ToResultModel(AccessStep step)
@@ -832,23 +892,49 @@ public sealed partial class TraceTabViewModel : ObservableObject
 
     private static IndexRecordModel ToRecordModel(IRecord record)
     {
-        return new IndexRecordModel
-        {
-            Slot = record.Slot,
-            Fields =
-            [
-                .. record.Fields.Select(f => new IndexRecordFieldModel
-                {
-                    Name = f.Name,
-                    Value = f.Value,
-                    DataType = f.ColumnStructure.DataType
-                })
-            ]
-        };
+        return TraceVisualViewModel.ToRecordModel(record);
     }
 
     private static void Append(AccessStep step, ObservableCollection<AccessStep> history)
     {
+        if (step is AccessStep.MergeCompare { Comparison: not 0 } compare
+            && history.Count > 1
+            && history[0] is AccessStep.Row or AccessStep.RowRun)
+        {
+            if (history[1] is AccessStep.MergeCompare previous
+                && Math.Sign(previous.Comparison) == Math.Sign(compare.Comparison)
+                && StaticKeyMatches(compare.Comparison, previous.OuterKey, previous.InnerKey, compare))
+            {
+                history[1] = new AccessStep.MergeCompareRun(Math.Sign(compare.Comparison), 2)
+                {
+                    OuterFrom = previous.OuterKey,
+                    OuterTo = compare.OuterKey,
+                    InnerFrom = previous.InnerKey,
+                    InnerTo = compare.InnerKey,
+                    Action = compare.Action,
+                    Source = compare.Source,
+                    Counters = compare.Counters
+                };
+
+                return;
+            }
+
+            if (history[1] is AccessStep.MergeCompareRun run
+                && run.Comparison == Math.Sign(compare.Comparison)
+                && StaticKeyMatches(compare.Comparison, run.OuterTo, run.InnerTo, compare))
+            {
+                history[1] = run with
+                {
+                    Count = run.Count + 1,
+                    OuterTo = compare.OuterKey,
+                    InnerTo = compare.InnerKey,
+                    Counters = compare.Counters
+                };
+
+                return;
+            }
+        }
+
         if (step is AccessStep.Probe probe)
         {
             if (history.Count > 0 && history[0] is AccessStep.ProbeRun probeRun && probeRun.Source == probe.Source)
@@ -919,5 +1005,10 @@ public sealed partial class TraceTabViewModel : ObservableObject
     private static int EmitOf(AccessStep.Row row)
     {
         return row.Outcome == RowOutcome.Match ? 1 : 0;
+    }
+
+    private static bool StaticKeyMatches(int comparison, AccessKey previousOuter, AccessKey previousInner, AccessStep.MergeCompare compare)
+    {
+        return comparison < 0 ? previousInner.Equals(compare.InnerKey) : previousOuter.Equals(compare.OuterKey);
     }
 }

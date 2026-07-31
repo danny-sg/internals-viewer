@@ -79,6 +79,8 @@ public sealed partial class AccessStepsControl : UserControl
 
         UpdateEmitBadge(grid, brush as SolidColorBrush, source);
 
+        UpdateCompareBadge(grid, step);
+
         if (grid.FindName("ProbeExpandToggle") is ToggleButton toggle)
         {
             toggle.IsChecked = false;
@@ -95,6 +97,41 @@ public sealed partial class AccessStepsControl : UserControl
         grid.Margin = new Thickness(12, 0, 0, 0);
         grid.BorderBrush = brush;
         grid.BorderThickness = new Thickness(2, 0, 0, 0);
+    }
+
+    /// <summary>
+    /// Tags a merge comparison with the side it advances, in that side's colour
+    /// </summary>
+    private void UpdateCompareBadge(Grid grid, AccessStep step)
+    {
+        if (grid.FindName("CompareBadge") is not Border badge)
+        {
+            return;
+        }
+
+        var comparison = step switch
+        {
+            AccessStep.MergeCompare compare => compare.Comparison,
+            AccessStep.MergeCompareRun run => run.Comparison,
+            _ => 0
+        };
+
+        var brush = comparison < 0 ? OuterAccentBrush : InnerAccentBrush;
+
+        if (comparison == 0 || brush is null)
+        {
+            badge.Visibility = Visibility.Collapsed;
+
+            return;
+        }
+
+        if (grid.FindName("CompareBadgeText") is TextBlock text)
+        {
+            text.Text = comparison < 0 ? "Advance Outer" : "Advance Inner";
+        }
+
+        badge.Background = brush;
+        badge.Visibility = Visibility.Visible;
     }
 
     private static void UpdateEmitBadge(Grid grid, SolidColorBrush? sideBrush, int source)

@@ -10,7 +10,9 @@ using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Internals.Engine.Allocation;
 using InternalsViewer.Internals.Engine.Database;
 using InternalsViewer.Internals.Engine.Indexes;
+using InternalsViewer.Internals.Interfaces.Engine;
 using InternalsViewer.Internals.Services.Indexes;
+using InternalsViewer.UI.App.Models.Index;
 using System.Drawing;
 using AllocationBorder = InternalsViewer.UI.App.Models.AllocationBorder;
 using AllocationBorderScope = InternalsViewer.UI.App.Models.AllocationBorderScope;
@@ -38,6 +40,8 @@ public sealed partial class TraceVisualViewModel(TraceVisualKind kind,
     public string Title { get; } = title;
 
     public int Source { get; } = source;
+
+    public bool IsSideStackVisible { get; init; }
 
     public DatabaseSource Database { get; } = database;
 
@@ -87,6 +91,9 @@ public sealed partial class TraceVisualViewModel(TraceVisualKind kind,
 
     [ObservableProperty]
     private bool _isDimmed;
+
+    [ObservableProperty]
+    private ObservableCollection<IndexRecordModel> _sideRecords = [];
 
     private Color? _objectColour;
 
@@ -335,6 +342,24 @@ public sealed partial class TraceVisualViewModel(TraceVisualKind kind,
         SelectedRowSlotCount = 0;
         TraceBorders = [];
         IsDimmed = false;
+        SideRecords = [];
+    }
+
+    internal static IndexRecordModel ToRecordModel(IRecord record)
+    {
+        return new IndexRecordModel
+        {
+            Slot = record.Slot,
+            Fields =
+            [
+                .. record.Fields.Select(f => new IndexRecordFieldModel
+                {
+                    Name = f.Name,
+                    Value = f.Value,
+                    DataType = f.ColumnStructure.DataType
+                })
+            ]
+        };
     }
 
     private void LightenVisitedPages(List<PageSpan> spans)

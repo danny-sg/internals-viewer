@@ -3,11 +3,11 @@ using InternalsViewer.Execution.AccessPaths.Predicates;
 using InternalsViewer.Execution.AccessPaths.Results;
 using InternalsViewer.Execution.AccessPaths.Search;
 using InternalsViewer.Execution.AccessPaths.Values;
+using InternalsViewer.Execution.Interfaces;
+using InternalsViewer.Execution.Services.Indexes;
 using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Internals.Engine.Database;
 using InternalsViewer.Internals.Interfaces.Engine;
-using InternalsViewer.Execution.Interfaces;
-using InternalsViewer.Execution.Services.Indexes;
 
 namespace InternalsViewer.Execution.Services.Joins;
 
@@ -37,6 +37,21 @@ public sealed class NestedLoopsStepService(IndexStepService outerService, IndexS
     public AccessStrategy? InnerStrategy { get; private set; }
 
     public int RebindCount { get; private set; }
+
+    public IReadOnlyList<JoinBufferRow> OuterBuffer
+        => CurrentOuterRecord is { } record ? [new JoinBufferRow(record, InnerRecords.Count > 0)] : [];
+
+    /// <summary>
+    /// Rows the inner side has returned for the current rebind
+    /// </summary>
+    /// <remarks>
+    /// Every row the inner seek returns satisfies the bound key, so each one is a match for the outer row that bound it.
+    /// </remarks>
+    public IReadOnlyList<JoinBufferRow> InnerBuffer => InnerRecords;
+
+    private IRecord? CurrentOuterRecord { get; set; }
+
+    private List<JoinBufferRow> InnerRecords { get; } = [];
 
     private IndexStepService OuterService { get; } = outerService;
 
@@ -78,7 +93,9 @@ public sealed class NestedLoopsStepService(IndexStepService outerService, IndexS
         RebindCount = 0;
         InnerStrategy = null;
         IsComplete = false;
+        CurrentOuterRecord = null;
 
+        InnerRecords.Clear();
         TakenSteps.Clear();
 
         await OuterService.StartAsync(database,
@@ -106,7 +123,7 @@ public sealed class NestedLoopsStepService(IndexStepService outerService, IndexS
 
             var bindings = string.Join(", ", InnerInput.Bindings.Select(b => $"{b.SeekColumn} = {b.OuterColumn}"));
 
-            var start = new AccessStep.JoinStart($"Nested loops: each outer row binds {bindings} for the inner seek")
+            var start = new AccessStep.JoinStart($"Nested loops on {bindings}. Each outer row binds the inner seek")
             {
                 Source = JoinSource
             };
@@ -129,6 +146,11 @@ public sealed class NestedLoopsStepService(IndexStepService outerService, IndexS
 
             if (innerStep is not (null or AccessStep.Stopped))
             {
+                if (innerStep is AccessStep.Row { EmittedRecord: { } innerRecord })
+                {
+                    InnerRecords.Add(new JoinBufferRow(innerRecord, true));
+                }
+
                 return Take(innerStep, InnerSource, OuterCounters.Add(CompletedInnerCounters).Add(innerStep.Counters));
             }
 
@@ -153,6 +175,9 @@ public sealed class NestedLoopsStepService(IndexStepService outerService, IndexS
         if (step is AccessStep.Row { EmittedRecord: { } emitted })
         {
             PendingOuterRecord = emitted;
+            CurrentOuterRecord = emitted;
+
+            InnerRecords.Clear();
         }
 
         if (step is AccessStep.Stopped)

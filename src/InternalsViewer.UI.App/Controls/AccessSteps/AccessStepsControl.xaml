@@ -29,6 +29,7 @@
             <converters:PfsAllocatedToBrushConverter x:Key="PfsAllocatedToBrushConverter" />
             <converters:BoolToVisibilityConverter x:Key="StepsBoolToVisibilityConverter" />
             <converters:BoolToVisibilityConverter x:Key="StepsInverseBoolToVisibilityConverter" IsInverse="True" />
+            <converters:MergeCompareRunToTextConverter x:Key="MergeCompareRunToTextConverter" />
 
             <Style x:Key="StepLabelStyle" TargetType="TextBlock">
                 <Setter Property="FontSize" Value="12" />
@@ -373,8 +374,38 @@
                                 <TextBlock Text="Inner" Style="{StaticResource StepPropertyStyle}" Margin="8,0,0,0" />
                                 <TextBlock Text="{Binding InnerKey}" Style="{StaticResource StepValueStyle}" />
                             </StackPanel>
-                            <TextBlock Text="{Binding Action}" Style="{StaticResource StepPropertyStyle}" TextWrapping="Wrap" />
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="{Binding Action}" Style="{StaticResource StepPropertyStyle}" TextWrapping="Wrap" />
+                                <Border x:Name="CompareBadge"
+                                        Visibility="Collapsed"
+                                        CornerRadius="4"
+                                        Padding="6,0,6,1"
+                                        Margin="4,0,0,0"
+                                        VerticalAlignment="Center">
+                                    <TextBlock x:Name="CompareBadgeText" Foreground="White" FontSize="11" />
+                                </Border>
+                            </StackPanel>
                         </StackPanel>
+                    </StackPanel>
+                </Grid>
+            </DataTemplate>
+
+            <DataTemplate x:Key="MergeCompareRunTemplate" >
+                <Grid Style="{StaticResource StepRowStyle}">
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="Compare" Style="{StaticResource StepLabelStyle}" Foreground="Navy" />
+                        <TextBlock Text="{Binding Converter={StaticResource MergeCompareRunToTextConverter}}"
+                                   Style="{StaticResource StepValueStyle}"
+                                   VerticalAlignment="Center"
+                                   TextWrapping="Wrap" />
+                        <Border x:Name="CompareBadge"
+                                Visibility="Collapsed"
+                                CornerRadius="4"
+                                Padding="6,0,6,1"
+                                Margin="4,0,0,0"
+                                VerticalAlignment="Center">
+                            <TextBlock x:Name="CompareBadgeText" Foreground="White" FontSize="11" />
+                        </Border>
                     </StackPanel>
                 </Grid>
             </DataTemplate>
@@ -524,6 +555,7 @@
                 RebindTemplate="{StaticResource RebindTemplate}"
                 JoinStartTemplate="{StaticResource JoinStartTemplate}"
                 MergeCompareTemplate="{StaticResource MergeCompareTemplate}"
+                MergeCompareRunTemplate="{StaticResource MergeCompareRunTemplate}"
                 JoinEmitTemplate="{StaticResource JoinEmitTemplate}"
                 StoppedTemplate="{StaticResource StoppedTemplate}"
                 TruncatedTemplate="{StaticResource TruncatedTemplate}"

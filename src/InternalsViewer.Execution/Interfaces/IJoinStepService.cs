@@ -1,3 +1,4 @@
+using InternalsViewer.Execution.AccessPaths.Results;
 using InternalsViewer.Execution.AccessPaths.Search;
 
 namespace InternalsViewer.Execution.Interfaces;
@@ -10,4 +11,8 @@ public interface IJoinStepService : IStepService
     AccessStrategy? OuterStrategy { get; }
 
     AccessStrategy? InnerStrategy { get; }
+
+    IReadOnlyList<JoinBufferRow> OuterBuffer { get; }
+
+    IReadOnlyList<JoinBufferRow> InnerBuffer { get; }
 }

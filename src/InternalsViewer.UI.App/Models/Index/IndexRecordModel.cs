@@ -3,7 +3,7 @@ using InternalsViewer.Internals.Engine.Address;
 
 namespace InternalsViewer.UI.App.Models.Index;
 
-public class IndexRecordModel
+public sealed class IndexRecordModel
 {
     public int Slot { get; set; }
 
@@ -12,4 +12,6 @@ public class IndexRecordModel
     public RowIdentifier? RowIdentifier { get; set; } = RowIdentifier.Empty;
 
     public List<IndexRecordFieldModel> Fields { get; set; } = [];
+
+    public bool IsMatched { get; set; }
 }
