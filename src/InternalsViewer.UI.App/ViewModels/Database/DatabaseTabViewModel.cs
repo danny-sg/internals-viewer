@@ -67,7 +67,6 @@ public sealed partial class DatabaseTabViewModel(ILogger<DatabaseTabViewModel> l
     [ObservableProperty]
     private ObservableCollection<AllocationLayer> _allocationLayers = [];
 
-    // The database view has no lock overlay; lock borders are an events-view (query) concern.
     public IReadOnlyList<AllocationBorder> AllocationBorders => [];
 
     [ObservableProperty]

@@ -144,8 +144,8 @@ public partial class ConnectBackupViewModel : ObservableObject
             _lastMessage = detail.Message;
 
             ProgressLog = ProgressLog.Length == 0
-                ? detail.Message
-                : $"{ProgressLog}{Environment.NewLine}{detail.Message}";
+                          ? detail.Message
+                          : $"{ProgressLog}{Environment.NewLine}{detail.Message}";
         }
 
         IsProgressIndeterminate = detail.IsIndeterminate;

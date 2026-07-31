@@ -40,22 +40,19 @@
                 </Grid.ColumnDefinitions>
                 <TextBlock Grid.Column="0" 
                            Text="{x:Bind Index}" 
-                           Style="{StaticResource ListTextBlock}" 
                            x:Phase="1"/>
                 <TextBlock Grid.Column="1" 
                            Text="{x:Bind Offset}" 
-                           Style="{StaticResource ListTextBlock}"
                            x:Phase="2"/>
                 <TextBlock Grid.Column="2"                  
                            Text="{x:Bind Description}"
-                           Style="{StaticResource ListTextBlock}"
                            x:Phase="3"/>
             </Grid>
         </DataTemplate>
 
         <DataTemplate x:Key="SlotItemTemplate" x:DataType="models:PageSlot">
             <Grid>
-                <TextBlock Text="{x:Bind Description}" Style="{StaticResource ListTextBlock}" Padding="0"/>
+                <TextBlock Text="{x:Bind Description}" Padding="0"/>
             </Grid>
         </DataTemplate>
 

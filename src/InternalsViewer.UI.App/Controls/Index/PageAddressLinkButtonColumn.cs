@@ -15,7 +15,7 @@ public class PageAddressLinkButtonColumn<T> : DataGridBoundColumn
     {
         var button = new HyperlinkButton
         {
-            Style = (Style)Application.Current.Resources["PageAddressHyperlinkButtonStyle"],
+            Style = (Style)Application.Current.Resources["PageAddressStyle"],
         };
 
         if (Binding != null)

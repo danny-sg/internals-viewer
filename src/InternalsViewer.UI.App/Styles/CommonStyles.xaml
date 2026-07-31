@@ -1,19 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
 <ResourceDictionary
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
-    <Style TargetType="TextBox" x:Name="LabelTextBoxStyle">
-        <Setter Property="BorderThickness" Value="0" />
-        <Setter Property="FontSize" Value="12" />
-
-        <Setter Property="MaxHeight" Value="24" />
-        <Setter Property="Padding" Value="5" />
-        <Setter Property="Margin" Value="5" />
-    </Style>
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:toolkitControls="using:CommunityToolkit.WinUI.Controls">
     <Style TargetType="TextBox">
         <Setter Property="FontSize" Value="12" />
- 
     </Style>
+
     <Style TargetType="TextBlock">
         <Setter Property="FontSize" Value="12" />
         <Setter Property="VerticalAlignment" Value="Center" />
@@ -23,20 +16,28 @@
         <Setter Property="FontSize" Value="12" />
     </Style>
 
-    <Style x:Key="ListTextBlock" TargetType="TextBlock">
+    <Style TargetType="toolkitControls:DataColumn">
         <Setter Property="FontSize" Value="12" />
-        <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+
+    <Style TargetType="toolkitControls:HeaderedTreeView">
+        <Setter Property="Background" Value="{ThemeResource LayerOnMicaBaseAltFillColorDefault}" />
+    </Style>
+
+    <Thickness x:Key="TreeViewItemPresenterMargin">0</Thickness>
+    <Thickness x:Key="TreeViewItemPresenterPadding">0</Thickness>
+
+    <Style x:Key="TooltipKeyStyle" TargetType="TextBlock">
+        <Setter Property="FontSize" Value="12" />
+        <Setter Property="Margin" Value="0,0,4,4" />
+    </Style>
+
+    <Style x:Key="TooltipValueStyle" TargetType="TextBlock">
+        <Setter Property="FontSize" Value="12" />
+        <Setter Property="FontWeight" Value="Bold" />
     </Style>
 
     <Style x:Key="PageAddressStyle" TargetType="HyperlinkButton">
-        <Setter Property="Foreground" Value="{ThemeResource AccentTextFillColorSecondaryBrush}"/>
-        <Setter Property="FontSize" Value="12"/>
-        <Setter Property="HorizontalAlignment" Value="Right"/>
-        <Setter Property="Margin" Value="0,0,4,0"/>
-    </Style>
-
-
-    <Style x:Key="PageAddressHyperlinkButtonStyle" TargetType="HyperlinkButton">
         <Setter Property="Foreground" Value="{ThemeResource AccentTextFillColorSecondaryBrush}"/>
         <Setter Property="FontSize" Value="12"/>
         <Setter Property="HorizontalAlignment" Value="Right"/>
@@ -54,8 +55,8 @@
         <ResourceDictionary x:Key="Light">
         </ResourceDictionary>
         <ResourceDictionary x:Key="Dark">
-           
+
         </ResourceDictionary>
     </ResourceDictionary.ThemeDictionaries>
-    
+
 </ResourceDictionary>

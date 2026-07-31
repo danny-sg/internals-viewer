@@ -14,13 +14,6 @@
     xmlns:plan="using:InternalsViewer.UI.App.Helpers.Converters.Plan"
     mc:Ignorable="d">
     <UserControl.Resources>
-        <Style TargetType="controls:DataColumn">
-            <Setter Property="FontSize" Value="12" />
-        </Style>
-
-        <Thickness x:Key="TreeViewItemPresenterMargin">0</Thickness>
-        <Thickness x:Key="TreeViewItemPresenterPadding">0</Thickness>
-
         <Style TargetType="TreeViewItem">
             <Setter Property="Padding" Value="8,4,0,4" />
             <Setter Property="Margin" Value="0" />
@@ -79,10 +72,6 @@
                     </ControlTemplate>
                 </Setter.Value>
             </Setter>
-        </Style>
-
-        <Style TargetType="controls:HeaderedTreeView">
-            <Setter Property="Background" Value="{ThemeResource LayerOnMicaBaseAltFillColorDefault}" />
         </Style>
 
         <converters:BoolToFontFamilyConverter x:Key="BoolToFontFamilyConverter" />

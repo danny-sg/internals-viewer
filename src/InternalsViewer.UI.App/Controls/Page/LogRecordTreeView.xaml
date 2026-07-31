@@ -21,8 +21,6 @@
             <Setter Property="Padding" Value="8,0,0,0" />
             <Setter Property="Margin" Value="0" />
             <Setter Property="Background" Value="{ThemeResource LayerOnMicaBaseAltFillColorDefault}" />
-            <!-- Stretch so annotation rows fill the tree width and their right-aligned Offset/Length columns land
-                 on the right edge. Record rows use a left-aligned DataRow so they are unaffected. -->
             <Setter Property="HorizontalAlignment" Value="Stretch" />
             <Setter Property="HorizontalContentAlignment" Value="Stretch" />
             <Setter Property="ScrollViewer.HorizontalScrollMode" Value="Enabled" />
@@ -156,15 +154,11 @@
                            VerticalAlignment="Center"
                            TextTrimming="WordEllipsis" />
                 <TextBlock Text="{x:Bind ((models:LogRecordItem)Content).Operation}"
-                           Style="{StaticResource ListTextBlock}"
                            TextTrimming="WordEllipsis" />
                 <TextBlock Text="{x:Bind ((models:LogRecordItem)Content).Context}"
-                           Style="{StaticResource ListTextBlock}"
                            TextTrimming="WordEllipsis" />
-                <TextBlock Text="{x:Bind ((models:LogRecordItem)Content).SlotId}"
-                           Style="{StaticResource ListTextBlock}" />
+                <TextBlock Text="{x:Bind ((models:LogRecordItem)Content).SlotId}" />
                 <TextBlock Text="{x:Bind ((models:LogRecordItem)Content).Description}"
-                           Style="{StaticResource ListTextBlock}"
                            TextTrimming="WordEllipsis" />
             </controls:DataRow>
         </DataTemplate>
@@ -206,7 +200,6 @@
                             VerticalAlignment="Center">
                     <TextBlock Text="{x:Bind ((models:LogRecordAnnotation)Content).ItemType,
                                              Converter={StaticResource MarkStyleConverter}, ConverterParameter=Name}"
-                               Style="{StaticResource ListTextBlock}"
                                Visibility="{x:Bind ((models:LogRecordAnnotation)Content).FieldVisibility}"/>
                     <Border CornerRadius="2"
                             Padding="4,1"
@@ -221,7 +214,6 @@
                                                        Converter={StaticResource MarkStyleConverter}, ConverterParameter=Fore}"/>
                     </Border>
                     <TextBlock Text="{x:Bind ((models:LogRecordAnnotation)Content).Description}"
-                               Style="{StaticResource ListTextBlock}"
                                VerticalAlignment="Center"
                                TextTrimming="WordEllipsis"
                                Visibility="{x:Bind ((models:LogRecordAnnotation)Content).DescriptionVisibility}"/>

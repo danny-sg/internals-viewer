@@ -12,13 +12,6 @@
     xmlns:muxc="using:Microsoft.UI.Xaml.Controls"
     mc:Ignorable="d">
     <UserControl.Resources>
-        <Style TargetType="controls:DataColumn">
-            <Setter Property="FontSize" Value="12" />
-        </Style>
-
-        <Thickness x:Key="TreeViewItemPresenterMargin">0</Thickness>
-        <Thickness x:Key="TreeViewItemPresenterPadding">0</Thickness>
-
         <Style TargetType="TreeViewItem">
             <!--
                 The reason why the ControlTemplate is set is that the selection checkbox although not displayed takes 
@@ -160,10 +153,6 @@
             <Setter Property="Margin" Value="0,0,4,0"/>
         </Style>
 
-        <Style TargetType="controls:HeaderedTreeView">
-            <Setter Property="Background" Value="{ThemeResource LayerOnMicaBaseAltFillColorDefault}" />
-        </Style>
-
         <selectors:MarkerTemplateSelector x:Key="ValueTemplateSelector" 
                                           DefaultTemplate="{StaticResource ValueDefaultTemplate}"
                                           PointerTemplate="{StaticResource ValuePointerTemplate}"/>
@@ -185,7 +174,6 @@
 
                 <TextBlock Grid.Column="0" 
                            Text="{x:Bind Value}"
-                           Style="{StaticResource ListTextBlock}"
                            TextTrimming="WordEllipsis"/>
 
                 <controls1:CopyButton Content="&#xE8C8;" 
@@ -243,7 +231,6 @@
                     </Grid>
                     <TextBlock Grid.Column="1"
                                Text="{x:Bind ((models:Marker)Content).Name}"
-                               Style="{StaticResource ListTextBlock}"
                                Margin="4,0,0,0"
                                TextTrimming="WordEllipsis" />
                 </Grid>
