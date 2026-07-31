@@ -6,11 +6,28 @@ namespace InternalsViewer.Internals.Converters;
 
 public static class CompressedDataConverter
 {
+    /// <summary>
+    /// The value a column descriptor of one represents, where the column takes no bytes at all
+    /// </summary>
+    /// <remarks>
+    /// Compression stores zero and the empty string as nothing, which is distinct from null and has to read as the value rather than as
+    /// a blank.
+    /// </remarks>
+    private static string ZeroLengthValue(SqlDbType sqlType)
+        => sqlType switch
+        {
+            SqlDbType.BigInt or SqlDbType.Int or SqlDbType.SmallInt or SqlDbType.TinyInt => "0",
+            SqlDbType.Decimal or SqlDbType.Money or SqlDbType.SmallMoney => "0",
+            SqlDbType.Float or SqlDbType.Real => "0",
+            SqlDbType.Bit => "0",
+            _ => string.Empty
+        };
+
     public static string CompressedBinaryToString(ReadOnlySpan<byte> data, SqlDbType sqlType, byte precision, byte scale)
     {
         if (data.IsEmpty)
         {
-            return string.Empty;
+            return ZeroLengthValue(sqlType);
         }
 
         try

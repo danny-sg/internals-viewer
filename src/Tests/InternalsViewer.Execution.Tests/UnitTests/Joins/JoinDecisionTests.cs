@@ -1,5 +1,6 @@
 using InternalsViewer.Execution.AccessPaths.Results;
 using InternalsViewer.Execution.Services.Joins;
+using InternalsViewer.Execution.AccessPaths.Results.Joins;
 
 namespace InternalsViewer.Execution.Tests.UnitTests.Joins;
 

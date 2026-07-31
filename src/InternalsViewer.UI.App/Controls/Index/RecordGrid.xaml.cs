@@ -11,6 +11,7 @@ using InternalsViewer.UI.App.Models.Index;
 using InternalsViewer.UI.App.ViewModels.Allocation;
 using Microsoft.UI.Xaml.Data;
 using Microsoft.UI.Xaml.Media;
+using InternalsViewer.Execution.AccessPaths.Results.Joins;
 
 namespace InternalsViewer.UI.App.Controls.Index;
 
@@ -210,7 +211,10 @@ public sealed partial class RecordGrid : IDisposable
             DataGrid.Columns.Add(column);
         }
 
-        if (Records?.Any(r => r.RowIdentifier != null && r.RowIdentifier != RowIdentifier.Empty) == true)
+        // A nonclustered index of a heap stores the row identifier as a hidden column, so it is already among the fields
+        var hasRidField = DataGrid.Columns.Any(c => c.Header as string == "RID");
+
+        if (!hasRidField && Records?.Any(r => r.RowIdentifier != null && r.RowIdentifier != RowIdentifier.Empty) == true)
         {
             var column = new DataGridTextColumn
             {

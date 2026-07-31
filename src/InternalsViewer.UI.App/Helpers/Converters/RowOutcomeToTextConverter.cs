@@ -8,17 +8,18 @@ public sealed class RowOutcomeToTextConverter : IValueConverter
 {
     public object Convert(object? value, Type targetType, object parameter, string language)
     {
-        var (outcome, hasResidual, hasRange) = value switch
+        var (outcome, hasResidual, hasRange, isFetched) = value switch
         {
-            AccessStep.Row row => (row.Outcome, row.HasResidual, row.HasRange),
-            AccessStep.RowRun run => (run.Outcome, run.HasResidual, run.HasRange),
-            _ => ((RowOutcome?)null, false, false)
+            AccessStep.Row row => (row.Outcome, row.HasResidual, row.HasRange, row.IsFetched),
+            AccessStep.RowRun run => (run.Outcome, run.HasResidual, run.HasRange, false),
+            _ => ((RowOutcome?)null, false, false, false)
         };
 
         return outcome switch
         {
             RowOutcome.Match when hasResidual => "Predicate Match",
             RowOutcome.Match when hasRange => "In Range",
+            RowOutcome.Match when isFetched => "Fetched",
             RowOutcome.Match => "No Predicate",
             RowOutcome.NoMatch => "No Match",
             RowOutcome.Ghost => "Ghost",

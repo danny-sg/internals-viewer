@@ -27,6 +27,10 @@ internal static class DemoDatabase
 
     public const string HeapIndex = "ix_HeapTable_Id";
 
+    public const string CompressedTable = "CompressedTable";
+
+    public const string CompressedIndex = "pk_CompressedTable";
+
     public const int ClusteredTableRowCount = 100_000;
 
     public static async Task<DatabaseSource> LoadAsync(TestServiceHost serviceHost)

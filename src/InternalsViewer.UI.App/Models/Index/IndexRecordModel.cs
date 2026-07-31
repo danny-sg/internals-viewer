@@ -1,6 +1,7 @@
 ﻿using System.Collections.Generic;
 using InternalsViewer.Execution.AccessPaths.Results;
 using InternalsViewer.Internals.Engine.Address;
+using InternalsViewer.Execution.AccessPaths.Results.Joins;
 
 namespace InternalsViewer.UI.App.Models.Index;
 

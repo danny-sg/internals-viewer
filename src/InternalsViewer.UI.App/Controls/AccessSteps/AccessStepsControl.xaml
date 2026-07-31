@@ -30,6 +30,7 @@
             <converters:BoolToVisibilityConverter x:Key="StepsBoolToVisibilityConverter" />
             <converters:BoolToVisibilityConverter x:Key="StepsInverseBoolToVisibilityConverter" IsInverse="True" />
             <converters:MergeCompareRunToTextConverter x:Key="MergeCompareRunToTextConverter" />
+            <converters:NullToVisibilityConverter x:Key="StepsNullToInverseVisibilityConverter" IsInverse="True" />
 
             <Style x:Key="StepLabelStyle" TargetType="TextBlock">
                 <Setter Property="FontSize" Value="12" />
@@ -346,8 +347,13 @@
                             <StackPanel Orientation="Horizontal">
                                 <TextBlock Text="Outer Row" Style="{StaticResource StepPropertyStyle}" />
                                 <TextBlock Text="{Binding RebindNumber}" Style="{StaticResource StepValueStyle}" />
+                                <TextBlock Text="RID" Style="{StaticResource StepPropertyStyle}" Margin="8,0,0,0"
+                                           Visibility="{Binding RowIdentifier, Converter={StaticResource NullToVisibilityConverter}}" />
+                                <TextBlock Text="{Binding RowIdentifier}" Style="{StaticResource StepValueStyle}"
+                                           Visibility="{Binding RowIdentifier, Converter={StaticResource NullToVisibilityConverter}}" />
                             </StackPanel>
                             <predicates:PredicateTextBox Style="{StaticResource StepDetailStyle}"
+                                                         Visibility="{Binding RowIdentifier, Converter={StaticResource StepsNullToInverseVisibilityConverter}}"
                                                          Text="{Binding Converter={StaticResource AccessStepToPredicateTextConverter}}" />
                         </StackPanel>
                     </StackPanel>
@@ -448,7 +454,7 @@
                 <Grid Background="{ThemeResource AcrylicBackgroundFillColorDefaultBrush}" Style="{StaticResource StepRowStyle}">
                     <StackPanel Orientation="Horizontal" Padding="0,8,0,8">
                         <TextBlock Text="Join" Style="{StaticResource StepLabelStyle}" Foreground="Navy" />
-                        <TextBlock Text="Compare Result:" Style="{StaticResource StepPropertyStyle}" />
+                        <TextBlock Text="Result:" Style="{StaticResource StepPropertyStyle}" />
                         <TextBlock Text="✓"
                                    Foreground="#0F7B0F"
                                    FontSize="12"
@@ -467,6 +473,17 @@
                                    Style="{StaticResource StepPropertyStyle}"
                                    Margin="8,0,0,0"
                                    Visibility="{Binding IsFromBuffer, Converter={StaticResource BoolToVisibilityConverter}}" />
+                    </StackPanel>
+                </Grid>
+            </DataTemplate>
+
+            <DataTemplate x:Key="ForwardedRecordTemplate" >
+                <Grid Style="{StaticResource StepRowStyle}">
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="Forwarded" Style="{StaticResource StepLabelStyle}" Foreground="Navy" />
+                        <TextBlock Text="{Binding From}" Style="{StaticResource StepValueStyle}" />
+                        <TextBlock Text="holds a stub pointing to" Style="{StaticResource StepPropertyStyle}" Margin="4,0,4,0" />
+                        <TextBlock Text="{Binding To}" Style="{StaticResource StepValueStyle}" />
                     </StackPanel>
                 </Grid>
             </DataTemplate>
@@ -594,6 +611,7 @@
                 RebindTemplate="{StaticResource RebindTemplate}"
                 JoinStartTemplate="{StaticResource JoinStartTemplate}"
                 JoinVerdictTemplate="{StaticResource JoinVerdictTemplate}"
+                ForwardedRecordTemplate="{StaticResource ForwardedRecordTemplate}"
                 MergeCompareTemplate="{StaticResource MergeCompareTemplate}"
                 MergeCompareRunTemplate="{StaticResource MergeCompareRunTemplate}"
                 JoinEmitTemplate="{StaticResource JoinEmitTemplate}"

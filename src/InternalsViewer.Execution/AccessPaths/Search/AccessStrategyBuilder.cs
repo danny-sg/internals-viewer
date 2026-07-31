@@ -121,6 +121,52 @@ public static class AccessStrategyBuilder
         };
     }
 
+    /// <summary>
+    /// Builds the strategy for fetching one heap row from its row identifier
+    /// </summary>
+    public static AccessStrategy BuildHeapFetch(AccessPredicate? residual)
+    {
+        var hasResidual = residual is not null and not AccessPredicate.True;
+
+        var phases = ImmutableArray.CreateBuilder<AccessStrategyPhase>();
+
+        phases.Add(new AccessStrategyPhase
+        {
+            Phase = AccessPhase.Descent,
+            Title = "Fetch",
+            Lead = "A heap has no tree to descend. The row identifier names the file, page and slot outright, so the row is reached " +
+                   "with a single page read"
+        });
+
+        phases.Add(new AccessStrategyPhase
+        {
+            Phase = AccessPhase.Walk,
+            Title = "Row",
+            Lead = hasResidual
+                ? "Read the row at the slot, returning it where "
+                : "Read the row at the slot and return it",
+            Condition = hasResidual ? PredicateWriter.Write(residual!) : []
+        });
+
+        phases.Add(new AccessStrategyPhase
+        {
+            Phase = AccessPhase.Complete,
+            Title = "Complete",
+            Lead = "The fetch ends at that row. A slot holding a forwarding stub costs one further read, because the row has outgrown " +
+                   "its page and moved, leaving the stub so the row identifier stays valid"
+        });
+
+        return new AccessStrategy
+        {
+            Phases = phases.ToImmutable(),
+            Bounds = SeekBounds.All,
+            Direction = ScanDirection.Forward,
+            Residual = residual is AccessPredicate.True ? null : residual,
+            RangeCount = 1,
+            Ranges = [SeekBounds.All]
+        };
+    }
+
     public static IReadOnlyList<string> GetKeyColumns(IndexStructure indexStructure)
     {
         return [.. indexStructure.IndexKeyColumns.Select(k => k.IsDescending ? $"{k.ColumnName} DESC" : k.ColumnName)];

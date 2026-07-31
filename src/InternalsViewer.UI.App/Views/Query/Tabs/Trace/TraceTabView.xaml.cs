@@ -1,5 +1,6 @@
 using InternalsViewer.UI.App.ViewModels.Query;
 using Microsoft.UI.Xaml.Controls;
+using InternalsViewer.Execution.AccessPaths.Results.Joins;
 
 namespace InternalsViewer.UI.App.Views.Query.Tabs.Trace;
 

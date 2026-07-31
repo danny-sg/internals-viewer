@@ -388,7 +388,7 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
     {
         if (ResolveCorrelatedJoin(node) is { } join)
         {
-            OpenKeyLookupTrace(join);
+            OpenLookupTrace(join);
 
             return;
         }
@@ -474,7 +474,7 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
             return CorrelatedJoinResolver.Resolve(node);
         }
 
-        if (node.ScanInfo?.IsLookup != true || node.PredicateInfo?.IsCorrelatedSeek != true)
+        if (!OperatorClassifier.IsLookup(node) && node.PredicateInfo?.IsCorrelatedSeek != true)
         {
             return null;
         }
@@ -487,8 +487,13 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
                    .FirstOrDefault(j => j is not null);
     }
 
-    private void OpenKeyLookupTrace(CorrelatedJoin join)
+    /// <summary>
+    /// Opens a lookup trace, which fetches from a heap by row identifier or seeks a clustered index by key
+    /// </summary>
+    private void OpenLookupTrace(CorrelatedJoin join)
     {
+        var isRidLookup = CorrelatedJoinResolver.IsRidLookup(join.Inner);
+
         var outerUnit = FindAllocationUnit(join.Outer);
 
         var innerUnit = FindAllocationUnit(join.Inner);
@@ -502,11 +507,13 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
             return;
         }
 
+        var kind = isRidLookup ? TraceKind.RidLookup : TraceKind.KeyLookup;
+
         var key = $"Trace:{outerUnit.SchemaName}.{outerUnit.TableName}.{outerUnit.IndexName}+{innerUnit.IndexName}:{join.Join.NodeId}";
 
         if (Layout.TryGetDocument(key, out var existing))
         {
-            if (existing.Content is TraceTabViewModel { Kind: TraceKind.KeyLookup })
+            if (existing.Content is TraceTabViewModel current && current.Kind == kind)
             {
                 Layout.Show(existing);
 
@@ -523,15 +530,21 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
             Layout.RemoveDocument(key, out _);
         }
 
-        var traceViewModel = _traceTabViewModelFactory.CreateKeyLookup(Database,
-                                                                       outerUnit,
-                                                                       innerUnit,
-                                                                       join.Join,
-                                                                       Events.FirstOrDefault()?.Timestamp);
+        var traceViewModel = isRidLookup
+            ? _traceTabViewModelFactory.CreateRidLookup(Database,
+                                                        outerUnit,
+                                                        innerUnit,
+                                                        join.Join,
+                                                        Events.FirstOrDefault()?.Timestamp)
+            : _traceTabViewModelFactory.CreateKeyLookup(Database,
+                                                        outerUnit,
+                                                        innerUnit,
+                                                        join.Join,
+                                                        Events.FirstOrDefault()?.Timestamp);
 
         traceViewModel.PageNavigated += OnIndexPageNavigated;
 
-        var document = new DocumentViewModel(title: $"Trace: {innerUnit.TableName} Lookup",
+        var document = new DocumentViewModel(title: $"Trace: {innerUnit.TableName} {(isRidLookup ? "RID" : "Key")} Lookup",
                                              content: traceViewModel,
                                              viewFactory: static () => new TraceTabView(),
                                              canClose: true,
@@ -1067,7 +1080,7 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
         {
             var node = FindTraceOperator(viewModel);
 
-            if (node is not null && viewModel.Kind is TraceKind.KeyLookup or TraceKind.MergeJoin)
+            if (node is not null && viewModel.Kind is TraceKind.KeyLookup or TraceKind.RidLookup or TraceKind.MergeJoin)
             {
                 viewModel.Refresh(node, Events.FirstOrDefault()?.Timestamp, null);
 
@@ -1105,7 +1118,7 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
     private PlanNode? FindTraceOperator(TraceTabViewModel viewModel)
     {
-        if (viewModel.Kind is TraceKind.KeyLookup or TraceKind.MergeJoin)
+        if (viewModel.Kind is TraceKind.KeyLookup or TraceKind.RidLookup or TraceKind.MergeJoin)
         {
             var outerUnit = viewModel.Visuals[0].AllocationUnit;
 
@@ -1140,7 +1153,7 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
     private static (PlanNode Outer, PlanNode Inner)? ResolveJoinSides(TraceKind kind, PlanNode node)
     {
-        if (kind == TraceKind.KeyLookup)
+        if (kind is TraceKind.KeyLookup or TraceKind.RidLookup)
         {
             return CorrelatedJoinResolver.Resolve(node) is { } correlated ? (correlated.Outer, correlated.Inner) : null;
         }

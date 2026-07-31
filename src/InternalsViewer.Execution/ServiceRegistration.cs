@@ -1,5 +1,6 @@
 using System.Diagnostics.CodeAnalysis;
 using InternalsViewer.Execution.Services.Allocations;
+using InternalsViewer.Execution.Services.Heaps;
 using InternalsViewer.Execution.Services.Indexes;
 using InternalsViewer.Execution.Services.Joins;
 using Microsoft.Extensions.DependencyInjection;
@@ -15,5 +16,6 @@ public static class ServiceRegistration
         services.AddTransient<AllocationStepService>();
         services.AddTransient<NestedLoopsStepService>();
         services.AddTransient<MergeJoinStepService>();
+        services.AddTransient<HeapFetchStepService>();
     }
 }

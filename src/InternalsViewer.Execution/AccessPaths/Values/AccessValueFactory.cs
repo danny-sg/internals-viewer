@@ -16,7 +16,10 @@ public static class AccessValueFactory
     {
         var dataType = field.ColumnStructure.DataType;
 
-        if (field.IsNull || field.Data.IsEmpty)
+        // Only the null bitmap or a null column descriptor means null. Compression stores zero and the empty string with no bytes at
+        // all, and a page compressed column can hold nothing because its value equals the anchor, so the field is asked for the value
+        // rather than its length being read as absence.
+        if (field.IsNull)
         {
             return AccessValue.FromNull(dataType);
         }

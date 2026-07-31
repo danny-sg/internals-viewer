@@ -33,6 +33,8 @@ public class AccessStepTemplateSelector : DataTemplateSelector
 
     public DataTemplate JoinVerdictTemplate { get; set; } = null!;
 
+    public DataTemplate ForwardedRecordTemplate { get; set; } = null!;
+
     public DataTemplate MergeCompareTemplate { get; set; } = null!;
 
     public DataTemplate MergeCompareRunTemplate { get; set; } = null!;
@@ -77,6 +79,7 @@ public class AccessStepTemplateSelector : DataTemplateSelector
             AccessStep.Rebind => RebindTemplate,
             AccessStep.JoinStart => JoinStartTemplate,
             AccessStep.JoinVerdict => JoinVerdictTemplate,
+            AccessStep.ForwardedRecord => ForwardedRecordTemplate,
             AccessStep.MergeCompare => MergeCompareTemplate,
             AccessStep.MergeCompareRun => MergeCompareRunTemplate,
             AccessStep.JoinEmit => JoinEmitTemplate,

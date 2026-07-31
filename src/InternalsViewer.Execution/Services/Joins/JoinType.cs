@@ -1,4 +1,4 @@
-using InternalsViewer.Execution.AccessPaths.Results;
+using InternalsViewer.Execution.AccessPaths.Results.Joins;
 
 namespace InternalsViewer.Execution.Services.Joins;
 

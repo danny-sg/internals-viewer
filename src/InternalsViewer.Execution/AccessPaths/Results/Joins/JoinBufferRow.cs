@@ -1,27 +1,6 @@
 using InternalsViewer.Internals.Interfaces.Engine;
 
-namespace InternalsViewer.Execution.AccessPaths.Results;
-
-/// <summary>
-/// What a join has decided about a row it is holding
-/// </summary>
-public enum JoinRowState
-{
-    /// <summary>
-    /// Read, but not yet compared against the other side
-    /// </summary>
-    Pending,
-
-    /// <summary>
-    /// Found a partner and will be paired
-    /// </summary>
-    Matched,
-
-    /// <summary>
-    /// Judged and acted on, so the join no longer holds it
-    /// </summary>
-    Finished
-}
+namespace InternalsViewer.Execution.AccessPaths.Results.Joins;
 
 /// <summary>
 /// A row a join is holding, and what it has decided about it

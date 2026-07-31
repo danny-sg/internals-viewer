@@ -4,11 +4,12 @@ using InternalsViewer.Query.Plans.Operators;
 namespace InternalsViewer.Query.Plans.Joins;
 
 /// <summary>
-/// Identifies nested loops joins whose inner side is a correlated seek, such as a key lookup
+/// Identifies nested loops joins whose inner side is driven by values from the outer row, such as a key or RID lookup
 /// </summary>
 /// <remarks>
-/// A join is only resolved when every correlated seek column can be traced to a column the outer side outputs, since those are the values
-/// the trace binds on each rebind.
+/// A seek is only resolved when every correlated column can be traced to a column the outer side outputs, since those are the values the
+/// trace binds on each rebind. A lookup needs no such check: it takes the bookmark of the row it is fetching from the outer row by
+/// definition, and for a heap that bookmark is a row identifier rather than a column the outer visibly carries.
 /// </remarks>
 public static class CorrelatedJoinResolver
 {
@@ -28,6 +29,12 @@ public static class CorrelatedJoinResolver
             return null;
         }
 
+        // A RID lookup needs no check: its bookmark is a row identifier, not a column the outer visibly carries
+        if (IsRidLookup(inner))
+        {
+            return new CorrelatedJoin(node, outer, inner, JoinTypeParser.Parse(node.LogicalOperator));
+        }
+
         if (inner.PredicateInfo is not { IsCorrelatedSeek: true } predicateInfo)
         {
             return null;
@@ -40,6 +47,13 @@ public static class CorrelatedJoinResolver
 
         return new CorrelatedJoin(node, outer, inner, JoinTypeParser.Parse(node.LogicalOperator));
     }
+
+    /// <summary>
+    /// Whether the inner side fetches from a heap by row identifier rather than seeking an index by key
+    /// </summary>
+    public static bool IsRidLookup(PlanNode inner)
+        => OperatorClassifier.IsLookup(inner)
+           && inner.PhysicalOperator.Contains("RID", StringComparison.OrdinalIgnoreCase);
 
     public static CorrelatedJoin? ResolveFromInner(PlanNode root, PlanNode inner)
     {

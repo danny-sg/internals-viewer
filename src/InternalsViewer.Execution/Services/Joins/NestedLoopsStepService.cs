@@ -1,8 +1,7 @@
-using InternalsViewer.Execution.AccessPaths.Binding;
 using InternalsViewer.Execution.AccessPaths.Predicates;
 using InternalsViewer.Execution.AccessPaths.Results;
+using InternalsViewer.Execution.AccessPaths.Results.Joins;
 using InternalsViewer.Execution.AccessPaths.Search;
-using InternalsViewer.Execution.AccessPaths.Values;
 using InternalsViewer.Execution.Interfaces;
 using InternalsViewer.Execution.Services.Indexes;
 using InternalsViewer.Internals.Engine.Address;
@@ -28,13 +27,13 @@ public sealed class NestedLoopsStepService(IndexStepService outerService, IndexS
 
     public bool IsComplete { get; private set; }
 
-    public PageAddress? CurrentPageAddress => IsInnerActive ? InnerService.CurrentPageAddress : OuterService.CurrentPageAddress;
+    public PageAddress? CurrentPageAddress => IsInnerActive ? Inner.Service.CurrentPageAddress : OuterService.CurrentPageAddress;
 
     public AccessStrategy? Strategy => OuterService.Strategy;
 
     public AccessStrategy? OuterStrategy => OuterService.Strategy;
 
-    public AccessStrategy? InnerStrategy { get; private set; }
+    public AccessStrategy? InnerStrategy => Inner.Strategy;
 
     public int RebindCount { get; private set; }
 
@@ -63,13 +62,9 @@ public sealed class NestedLoopsStepService(IndexStepService outerService, IndexS
 
     private IndexStepService OuterService { get; } = outerService;
 
-    private IndexStepService InnerService { get; } = innerService;
+    private ILoopInnerSide Inner { get; set; } = null!;
 
     private DatabaseSource Database { get; set; } = null!;
-
-    private NestedLoopsInnerInput InnerInput { get; set; } = null!;
-
-    private EvaluationContext? EvaluationContext { get; set; }
 
     private bool IsInnerActive { get; set; }
 
@@ -83,16 +78,28 @@ public sealed class NestedLoopsStepService(IndexStepService outerService, IndexS
 
     private List<AccessStep> TakenSteps { get; } = [];
 
+    public Task StartAsync(DatabaseSource database,
+                           NestedLoopsOuterInput outerInput,
+                           NestedLoopsInnerInput innerInput,
+                           CancellationToken cancellationToken,
+                           EvaluationContext? evaluationContext = null,
+                           JoinType joinType = JoinType.Inner)
+        => StartAsync(database,
+                      outerInput,
+                      new CorrelatedSeekInnerSide(innerService, innerInput, evaluationContext),
+                      cancellationToken,
+                      evaluationContext,
+                      joinType);
+
     public async Task StartAsync(DatabaseSource database,
                                  NestedLoopsOuterInput outerInput,
-                                 NestedLoopsInnerInput innerInput,
+                                 ILoopInnerSide inner,
                                  CancellationToken cancellationToken,
                                  EvaluationContext? evaluationContext = null,
                                  JoinType joinType = JoinType.Inner)
     {
         Database = database;
-        InnerInput = innerInput;
-        EvaluationContext = evaluationContext;
+        Inner = inner;
         JoinType = joinType;
         PairCount = 0;
         PendingEmits.Clear();
@@ -103,7 +110,6 @@ public sealed class NestedLoopsStepService(IndexStepService outerService, IndexS
         OuterCounters = default;
         CompletedInnerCounters = default;
         RebindCount = 0;
-        InnerStrategy = null;
         IsComplete = false;
         CurrentOuterRecord = null;
 
@@ -133,9 +139,7 @@ public sealed class NestedLoopsStepService(IndexStepService outerService, IndexS
         {
             PendingStart = false;
 
-            var bindings = string.Join(", ", InnerInput.Bindings.Select(b => $"{b.SeekColumn} = {b.OuterColumn}"));
-
-            var start = new AccessStep.JoinStart($"{JoinType.ToDisplayName()} on {bindings}. Each outer row binds the inner seek")
+            var start = new AccessStep.JoinStart($"{JoinType.ToDisplayName()} {Inner.StartDescription}")
             {
                 Source = JoinSource
             };
@@ -159,7 +163,7 @@ public sealed class NestedLoopsStepService(IndexStepService outerService, IndexS
 
         if (IsInnerActive)
         {
-            var innerStep = await InnerService.StepNextAsync(cancellationToken);
+            var innerStep = await Inner.Service.StepNextAsync(cancellationToken);
 
             if (innerStep is not (null or AccessStep.Stopped))
             {
@@ -171,7 +175,7 @@ public sealed class NestedLoopsStepService(IndexStepService outerService, IndexS
                 return Take(innerStep, InnerSource, OuterCounters.Add(CompletedInnerCounters).Add(innerStep.Counters));
             }
 
-            var finalCounters = innerStep?.Counters ?? InnerService.Current?.Counters ?? default;
+            var finalCounters = innerStep?.Counters ?? Inner.Service.Current?.Counters ?? default;
 
             CompletedInnerCounters = CompletedInnerCounters.Add(finalCounters);
 
@@ -215,49 +219,21 @@ public sealed class NestedLoopsStepService(IndexStepService outerService, IndexS
 
     private async Task<AccessStep> RebindAsync(IRecord record, CancellationToken cancellationToken)
     {
-        var source = new RecordRowValueSource(record);
-
-        var values = new AccessValue[InnerInput.Bindings.Count];
-
-        for (var index = 0; index < InnerInput.Bindings.Count; index++)
-        {
-            var binding = InnerInput.Bindings[index];
-
-            if (!record.Fields.Any(f => string.Equals(f.ColumnStructure.ColumnName, binding.OuterColumn, StringComparison.OrdinalIgnoreCase)))
-            {
-                throw new InvalidOperationException($"Outer row has no column '{binding.OuterColumn}' to bind seek column '{binding.SeekColumn}'");
-            }
-
-            values[index] = source.GetValue(-1, binding.OuterColumn).WithColumnName(binding.SeekColumn);
-        }
-
-        var key = new AccessKey([.. values]);
-
         RebindCount++;
 
-        await InnerService.StartAsync(Database,
-                                      InnerInput.AllocationUnitId,
-                                      InnerInput.RootPage,
-                                      [SeekBounds.Equality(key)],
-                                      InnerInput.Residual,
-                                      ScanDirection.Forward,
-                                      cancellationToken,
-                                      InnerInput.RowGoal,
-                                      evaluationContext: EvaluationContext);
-
-        InnerStrategy ??= InnerService.Strategy;
+        var rebind = await Inner.RebindAsync(Database, record, RebindCount, cancellationToken);
 
         IsInnerActive = true;
 
-        var rebind = new AccessStep.Rebind(RebindCount, key)
+        var step = rebind with
         {
             Source = InnerSource,
             Counters = OuterCounters.Add(CompletedInnerCounters)
         };
 
-        TakenSteps.Add(rebind);
+        TakenSteps.Add(step);
 
-        return rebind;
+        return step;
     }
 
     /// <summary>
@@ -276,57 +252,65 @@ public sealed class NestedLoopsStepService(IndexStepService outerService, IndexS
 
         var counters = OuterCounters.Add(CompletedInnerCounters);
 
-        OuterRowState = InnerRecords.Count > 0 ? JoinRowState.Matched : JoinRowState.Finished;
+        var hasInner = InnerRecords.Count > 0;
 
-        PendingEmits.Enqueue(new AccessStep.JoinVerdict(JoinType.Decide(true, InnerRecords.Count > 0))
+        OuterRowState = hasInner ? JoinRowState.Matched : JoinRowState.Finished;
+
+        var emits = new List<AccessStep>();
+
+        if (hasInner && JoinType.EmitsPairs())
         {
-            Source = JoinSource,
-            Counters = counters
-        });
-
-        if (InnerRecords.Count > 0)
-        {
-            if (JoinType.EmitsPairs())
-            {
-                foreach (var inner in InnerRecords)
-                {
-                    PairCount++;
-
-                    PendingEmits.Enqueue(new AccessStep.JoinEmit(PairCount)
-                    {
-                        OuterRecord = outerRecord,
-                        InnerRecord = inner.Record,
-                        Source = JoinSource,
-                        Counters = counters
-                    });
-                }
-            }
-            else if (JoinType.EmitsOuterOnMatch())
+            foreach (var inner in InnerRecords)
             {
                 PairCount++;
 
-                PendingEmits.Enqueue(new AccessStep.JoinEmit(PairCount)
+                emits.Add(new AccessStep.JoinEmit(PairCount)
                 {
                     OuterRecord = outerRecord,
+                    InnerRecord = inner.Record,
                     Source = JoinSource,
                     Counters = counters
                 });
             }
-
-            return;
         }
-
-        if (JoinType.PreservesOuter())
+        else if (hasInner && JoinType.EmitsOuterOnMatch())
         {
             PairCount++;
 
-            PendingEmits.Enqueue(new AccessStep.JoinEmit(PairCount)
+            emits.Add(new AccessStep.JoinEmit(PairCount)
+            {
+                OuterRecord = outerRecord,
+                Source = JoinSource,
+                Counters = counters
+            });
+        }
+        else if (!hasInner && JoinType.PreservesOuter())
+        {
+            PairCount++;
+
+            emits.Add(new AccessStep.JoinEmit(PairCount)
             {
                 OuterRecord = outerRecord,
                 IsUnmatched = true,
                 Source = JoinSource,
                 Counters = counters
             });
+        }
+
+        // A direct fetch weighs nothing up: the row was addressed rather than searched for, so stating a verdict beside the row it
+        // produced would only repeat it. The verdict is still stated when it explains why nothing came out.
+        if (!Inner.FetchesDirectly || emits.Count == 0)
+        {
+            PendingEmits.Enqueue(new AccessStep.JoinVerdict(JoinType.Decide(true, hasInner))
+            {
+                Source = JoinSource,
+                Counters = counters
+            });
+        }
+
+        foreach (var emit in emits)
+        {
+            PendingEmits.Enqueue(emit);
         }
     }
 
