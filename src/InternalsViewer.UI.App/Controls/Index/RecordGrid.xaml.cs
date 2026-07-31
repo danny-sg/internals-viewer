@@ -2,6 +2,7 @@ using System;
 using System.Collections.ObjectModel;
 using System.Linq;
 using CommunityToolkit.WinUI.UI.Controls;
+using InternalsViewer.Execution.AccessPaths.Results;
 using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.UI.App.Controls.Allocation;
 using InternalsViewer.UI.App.Helpers.Converters;
@@ -70,7 +71,7 @@ public sealed partial class RecordGrid : IDisposable
 
     private static void OnLoadingRow(object? sender, DataGridRowEventArgs e)
     {
-        // Rows are recycled, so an unmatched row has to be reverted rather than left with the previous row's brushes
+        // Rows are recycled, so a row has to be reverted rather than left with the previous row's brushes
         if (e.Row.DataContext is IndexRecordModel { IsMatched: true })
         {
             e.Row.Background = MatchedBackground;

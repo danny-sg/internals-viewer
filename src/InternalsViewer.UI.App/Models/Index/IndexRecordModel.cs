@@ -1,4 +1,5 @@
 ﻿using System.Collections.Generic;
+using InternalsViewer.Execution.AccessPaths.Results;
 using InternalsViewer.Internals.Engine.Address;
 
 namespace InternalsViewer.UI.App.Models.Index;
@@ -13,5 +14,8 @@ public sealed class IndexRecordModel
 
     public List<IndexRecordFieldModel> Fields { get; set; } = [];
 
+    /// <summary>
+    /// Indicates a join has matched this row against the other side
+    /// </summary>
     public bool IsMatched { get; set; }
 }

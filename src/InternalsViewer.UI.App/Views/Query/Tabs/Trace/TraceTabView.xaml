@@ -6,6 +6,7 @@
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     xmlns:allocation="using:InternalsViewer.UI.App.Controls.Allocation"
+    xmlns:accessSteps="using:InternalsViewer.UI.App.Controls.AccessSteps"
     xmlns:docking="using:InternalsViewer.UI.App.Controls.Docking"
     mc:Ignorable="d">
 
@@ -37,9 +38,12 @@
                            Width="32"
                            Height="32"
                            HorizontalAlignment="Left" />
-                    <TextBlock Text="{x:Bind ViewModel.PlanNode.PhysicalOperator, Mode=OneWay}"
-                               VerticalAlignment="Center"
-                               Padding="4,0,8,0" />
+                    <StackPanel Orientation="Vertical" VerticalAlignment="Center" Padding="4,0,8,0">
+                        <TextBlock Text="{x:Bind ViewModel.PlanNode.PhysicalOperator, Mode=OneWay}" />
+                        <accessSteps:JoinDecisionBadge IsRuleOnly="True"
+                                                       Margin="0,1,0,0"
+                                                       Decision="{x:Bind ViewModel.JoinRule, Mode=OneWay}" />
+                    </StackPanel>
                 </StackPanel>
             </AppBarElementContainer>
             <AppBarSeparator />

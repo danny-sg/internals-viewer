@@ -218,6 +218,7 @@ public sealed partial class TraceTabViewModel : ObservableObject
 
         OnPropertyChanged(nameof(SeekDescription));
         OnPropertyChanged(nameof(IconSource));
+        OnPropertyChanged(nameof(JoinRule));
     }
 
     public event EventHandler<PageNavigatedEventArgs>? PageNavigated;
@@ -407,6 +408,29 @@ public sealed partial class TraceTabViewModel : ObservableObject
     private CorrelatedJoin? ResolveJoin()
     {
         return PlanNode is null ? null : CorrelatedJoinResolver.Resolve(PlanNode);
+    }
+
+    /// <summary>
+    /// What this join requires of each side, for the rule shown alongside the operator
+    /// </summary>
+    public JoinDecision? JoinRule
+    {
+        get
+        {
+            if (PlanNode is null)
+            {
+                return null;
+            }
+
+            JoinType? joinType = Kind switch
+            {
+                TraceKind.KeyLookup => CorrelatedJoinResolver.Resolve(PlanNode)?.JoinType,
+                TraceKind.MergeJoin => MergeJoinResolver.Resolve(PlanNode)?.JoinType,
+                _ => null
+            };
+
+            return joinType?.Decide(true, true);
+        }
     }
 
     private (PlanNode Outer, PlanNode Inner)? ResolveSides()
@@ -707,19 +731,12 @@ public sealed partial class TraceTabViewModel : ObservableObject
 
     private IndexRecordModel? ToResultModel(AccessStep step)
     {
-        if (Kind == TraceKind.MergeJoin)
+        if (Kind is TraceKind.MergeJoin or TraceKind.KeyLookup)
         {
-            return step is AccessStep.JoinEmit { OuterRecord: { } outer, InnerRecord: { } inner }
-                ? ToJoinedModel(outer, inner)
-                : null;
+            return step is AccessStep.JoinEmit emit ? ToJoinedModel(emit) : null;
         }
 
         if (step is not AccessStep.Row { EmittedRecord: { } emitted })
-        {
-            return null;
-        }
-
-        if (Kind == TraceKind.KeyLookup && step.Source != NestedLoopsStepService.InnerSource)
         {
             return null;
         }
@@ -777,25 +794,37 @@ public sealed partial class TraceTabViewModel : ObservableObject
             var innerInput = new NestedLoopsInnerInput(innerUnit.AllocationUnitId, innerUnit.RootPage, bindings)
             {
                 Residual = join.Inner.PredicateInfo?.Residual,
-                RowGoal = 1
+                RowGoal = join.JoinType is JoinType.LeftSemi or JoinType.LeftAntiSemi ? 1 : null
             };
 
-            await Task.Run(() => service.StartAsync(Database, outerInput, innerInput, CancellationToken.None, evaluationContext));
+            await Task.Run(() => service.StartAsync(Database,
+                                                    outerInput,
+                                                    innerInput,
+                                                    CancellationToken.None,
+                                                    evaluationContext,
+                                                    join.JoinType));
         }
         else if (Kind == TraceKind.MergeJoin)
         {
-            if (ResolveSides() is not { } sides || PlanNode?.MergeInfo is not { } mergeInfo)
+            if (PlanNode is null
+                || MergeJoinResolver.Resolve(PlanNode) is not { } merge
+                || PlanNode.MergeInfo is not { } mergeInfo)
             {
                 return;
             }
 
             var service = (MergeJoinStepService)StepService;
 
-            var outerInput = MergeSideInput(sides.Outer, Visuals[0].AllocationUnit, mergeInfo.OuterKeys);
+            var outerInput = MergeSideInput(merge.Outer, Visuals[0].AllocationUnit, mergeInfo.OuterKeys);
 
-            var innerInput = MergeSideInput(sides.Inner, Visuals[1].AllocationUnit, mergeInfo.InnerKeys);
+            var innerInput = MergeSideInput(merge.Inner, Visuals[1].AllocationUnit, mergeInfo.InnerKeys);
 
-            await Task.Run(() => service.StartAsync(Database, outerInput, innerInput, CancellationToken.None, evaluationContext));
+            await Task.Run(() => service.StartAsync(Database,
+                                                    outerInput,
+                                                    innerInput,
+                                                    CancellationToken.None,
+                                                    evaluationContext,
+                                                    merge.JoinType));
         }
         else if (Kind == TraceKind.Allocation)
         {
@@ -859,36 +888,72 @@ public sealed partial class TraceTabViewModel : ObservableObject
         };
     }
 
-    private static IndexRecordModel ToJoinedModel(IRecord outer, IRecord inner)
+    /// <summary>
+    /// Builds the joined output row, filling the side a preserved row found no partner on with nulls
+    /// </summary>
+    /// <remarks>
+    /// The column names of a missing side are remembered from rows already seen, so a null extended row lines up with the pairs around it
+    /// rather than shifting the grid's columns.
+    /// </remarks>
+    private IndexRecordModel ToJoinedModel(AccessStep.JoinEmit emit)
     {
-        var fields = new List<IndexRecordFieldModel>(
-        [
-            .. outer.Fields.Select(f => new IndexRecordFieldModel
-            {
-                Name = f.Name,
-                Value = f.Value,
-                DataType = f.ColumnStructure.DataType
-            })
-        ]);
+        var fields = new List<IndexRecordFieldModel>();
 
-        var names = new HashSet<string>(outer.Fields.Select(f => f.Name), StringComparer.OrdinalIgnoreCase);
+        var names = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
-        foreach (var field in inner.Fields)
-        {
-            fields.Add(new IndexRecordFieldModel
-            {
-                Name = names.Contains(field.Name) ? $"Inner.{field.Name}" : field.Name,
-                Value = field.Value,
-                DataType = field.ColumnStructure.DataType
-            });
-        }
+        AddSide(fields, names, emit.OuterRecord, _outerFieldNames, false);
+        AddSide(fields, names, emit.InnerRecord, _innerFieldNames, true);
 
         return new IndexRecordModel
         {
-            Slot = outer.Slot,
+            Slot = emit.OuterRecord?.Slot ?? emit.InnerRecord?.Slot ?? 0,
             Fields = fields
         };
     }
+
+    private static void AddSide(List<IndexRecordFieldModel> fields,
+                                HashSet<string> names,
+                                IRecord? record,
+                                List<string> knownNames,
+                                bool prefixCollisions)
+    {
+        if (record is not null)
+        {
+            foreach (var field in record.Fields)
+            {
+                if (!knownNames.Contains(field.Name))
+                {
+                    knownNames.Add(field.Name);
+                }
+
+                fields.Add(new IndexRecordFieldModel
+                {
+                    Name = prefixCollisions && names.Contains(field.Name) ? $"Inner.{field.Name}" : field.Name,
+                    Value = field.Value,
+                    DataType = field.ColumnStructure.DataType
+                });
+
+                names.Add(field.Name);
+            }
+
+            return;
+        }
+
+        foreach (var name in knownNames)
+        {
+            fields.Add(new IndexRecordFieldModel
+            {
+                Name = prefixCollisions && names.Contains(name) ? $"Inner.{name}" : name,
+                Value = "NULL"
+            });
+
+            names.Add(name);
+        }
+    }
+
+    private readonly List<string> _outerFieldNames = [];
+
+    private readonly List<string> _innerFieldNames = [];
 
     private static IndexRecordModel ToRecordModel(IRecord record)
     {
@@ -962,6 +1027,7 @@ public sealed partial class TraceTabViewModel : ObservableObject
             if (latest is AccessStep.Row previous
                 && previous.Source == row.Source
                 && previous.Outcome == row.Outcome
+                && previous.IsReadAhead == row.IsReadAhead
                 && Math.Abs(row.Slot - previous.Slot) == 1)
             {
                 history[0] = new AccessStep.RowRun(previous.Slot, row.Slot, row.Outcome)
@@ -980,6 +1046,7 @@ public sealed partial class TraceTabViewModel : ObservableObject
             if (latest is AccessStep.RowRun run
                 && run.Source == row.Source
                 && run.Outcome == row.Outcome
+                && !row.IsReadAhead
                 && Math.Abs(row.Slot - run.ToSlot) == 1)
             {
                 history[0] = run with

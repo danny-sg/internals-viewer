@@ -77,7 +77,7 @@ public sealed partial class AccessStepsControl : UserControl
             _ => null
         };
 
-        UpdateEmitBadge(grid, brush as SolidColorBrush, source);
+        UpdateEmitBadge(grid, brush as SolidColorBrush, source, step is AccessStep.Row { IsReadAhead: true });
 
         UpdateCompareBadge(grid, step);
 
@@ -118,9 +118,16 @@ public sealed partial class AccessStepsControl : UserControl
 
         var brush = comparison < 0 ? OuterAccentBrush : InnerAccentBrush;
 
+        var arrow = grid.FindName("CompareArrow") as TextBlock;
+
         if (comparison == 0 || brush is null)
         {
             badge.Visibility = Visibility.Collapsed;
+
+            if (arrow is not null)
+            {
+                arrow.Visibility = Visibility.Collapsed;
+            }
 
             return;
         }
@@ -132,9 +139,14 @@ public sealed partial class AccessStepsControl : UserControl
 
         badge.Background = brush;
         badge.Visibility = Visibility.Visible;
+
+        if (arrow is not null)
+        {
+            arrow.Visibility = Visibility.Visible;
+        }
     }
 
-    private static void UpdateEmitBadge(Grid grid, SolidColorBrush? sideBrush, int source)
+    private static void UpdateEmitBadge(Grid grid, SolidColorBrush? sideBrush, int source, bool isReadAhead)
     {
         if (grid.FindName("EmitBadge") is not Border badge)
         {
@@ -143,7 +155,9 @@ public sealed partial class AccessStepsControl : UserControl
 
         if (grid.FindName("EmitSideText") is TextBlock sideText)
         {
-            sideText.Text = source == 0 ? "Outer" : "Inner";
+            var side = source == 0 ? "Outer" : "Inner";
+
+            sideText.Text = isReadAhead ? $"{side} (read ahead)" : side;
             sideText.Visibility = sideBrush is null ? Visibility.Collapsed : Visibility.Visible;
         }
 

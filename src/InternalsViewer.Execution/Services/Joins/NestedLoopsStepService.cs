@@ -38,8 +38,12 @@ public sealed class NestedLoopsStepService(IndexStepService outerService, IndexS
 
     public int RebindCount { get; private set; }
 
+    public int PairCount { get; private set; }
+
+    public JoinType JoinType { get; private set; } = JoinType.Inner;
+
     public IReadOnlyList<JoinBufferRow> OuterBuffer
-        => CurrentOuterRecord is { } record ? [new JoinBufferRow(record, InnerRecords.Count > 0)] : [];
+        => CurrentOuterRecord is { } record ? [new JoinBufferRow(record, OuterRowState)] : [];
 
     /// <summary>
     /// Rows the inner side has returned for the current rebind
@@ -51,7 +55,11 @@ public sealed class NestedLoopsStepService(IndexStepService outerService, IndexS
 
     private IRecord? CurrentOuterRecord { get; set; }
 
+    private JoinRowState OuterRowState { get; set; }
+
     private List<JoinBufferRow> InnerRecords { get; } = [];
+
+    private Queue<AccessStep> PendingEmits { get; } = new();
 
     private IndexStepService OuterService { get; } = outerService;
 
@@ -79,11 +87,15 @@ public sealed class NestedLoopsStepService(IndexStepService outerService, IndexS
                                  NestedLoopsOuterInput outerInput,
                                  NestedLoopsInnerInput innerInput,
                                  CancellationToken cancellationToken,
-                                 EvaluationContext? evaluationContext = null)
+                                 EvaluationContext? evaluationContext = null,
+                                 JoinType joinType = JoinType.Inner)
     {
         Database = database;
         InnerInput = innerInput;
         EvaluationContext = evaluationContext;
+        JoinType = joinType;
+        PairCount = 0;
+        PendingEmits.Clear();
 
         IsInnerActive = false;
         PendingStart = true;
@@ -123,7 +135,7 @@ public sealed class NestedLoopsStepService(IndexStepService outerService, IndexS
 
             var bindings = string.Join(", ", InnerInput.Bindings.Select(b => $"{b.SeekColumn} = {b.OuterColumn}"));
 
-            var start = new AccessStep.JoinStart($"Nested loops on {bindings}. Each outer row binds the inner seek")
+            var start = new AccessStep.JoinStart($"{JoinType.ToDisplayName()} on {bindings}. Each outer row binds the inner seek")
             {
                 Source = JoinSource
             };
@@ -131,6 +143,11 @@ public sealed class NestedLoopsStepService(IndexStepService outerService, IndexS
             TakenSteps.Add(start);
 
             return start;
+        }
+
+        if (PendingEmits.Count > 0)
+        {
+            return TakePendingEmit();
         }
 
         if (PendingOuterRecord is { } record)
@@ -148,7 +165,7 @@ public sealed class NestedLoopsStepService(IndexStepService outerService, IndexS
             {
                 if (innerStep is AccessStep.Row { EmittedRecord: { } innerRecord })
                 {
-                    InnerRecords.Add(new JoinBufferRow(innerRecord, true));
+                    InnerRecords.Add(new JoinBufferRow(innerRecord, JoinRowState.Matched));
                 }
 
                 return Take(innerStep, InnerSource, OuterCounters.Add(CompletedInnerCounters).Add(innerStep.Counters));
@@ -159,6 +176,13 @@ public sealed class NestedLoopsStepService(IndexStepService outerService, IndexS
             CompletedInnerCounters = CompletedInnerCounters.Add(finalCounters);
 
             IsInnerActive = false;
+
+            QueueRebindEmits();
+
+            if (PendingEmits.Count > 0)
+            {
+                return TakePendingEmit();
+            }
         }
 
         var step = await OuterService.StepNextAsync(cancellationToken);
@@ -176,6 +200,7 @@ public sealed class NestedLoopsStepService(IndexStepService outerService, IndexS
         {
             PendingOuterRecord = emitted;
             CurrentOuterRecord = emitted;
+            OuterRowState = JoinRowState.Pending;
 
             InnerRecords.Clear();
         }
@@ -233,6 +258,85 @@ public sealed class NestedLoopsStepService(IndexStepService outerService, IndexS
         TakenSteps.Add(rebind);
 
         return rebind;
+    }
+
+    /// <summary>
+    /// Works out what the rebind that just finished contributes to the output
+    /// </summary>
+    /// <remarks>
+    /// A rebind that returned nothing is the loop join's equivalent of a comparison that finds no partner, so it is the point the join
+    /// type decides whether the outer row is dropped or preserved.
+    /// </remarks>
+    private void QueueRebindEmits()
+    {
+        if (CurrentOuterRecord is not { } outerRecord)
+        {
+            return;
+        }
+
+        var counters = OuterCounters.Add(CompletedInnerCounters);
+
+        OuterRowState = InnerRecords.Count > 0 ? JoinRowState.Matched : JoinRowState.Finished;
+
+        PendingEmits.Enqueue(new AccessStep.JoinVerdict(JoinType.Decide(true, InnerRecords.Count > 0))
+        {
+            Source = JoinSource,
+            Counters = counters
+        });
+
+        if (InnerRecords.Count > 0)
+        {
+            if (JoinType.EmitsPairs())
+            {
+                foreach (var inner in InnerRecords)
+                {
+                    PairCount++;
+
+                    PendingEmits.Enqueue(new AccessStep.JoinEmit(PairCount)
+                    {
+                        OuterRecord = outerRecord,
+                        InnerRecord = inner.Record,
+                        Source = JoinSource,
+                        Counters = counters
+                    });
+                }
+            }
+            else if (JoinType.EmitsOuterOnMatch())
+            {
+                PairCount++;
+
+                PendingEmits.Enqueue(new AccessStep.JoinEmit(PairCount)
+                {
+                    OuterRecord = outerRecord,
+                    Source = JoinSource,
+                    Counters = counters
+                });
+            }
+
+            return;
+        }
+
+        if (JoinType.PreservesOuter())
+        {
+            PairCount++;
+
+            PendingEmits.Enqueue(new AccessStep.JoinEmit(PairCount)
+            {
+                OuterRecord = outerRecord,
+                IsUnmatched = true,
+                Source = JoinSource,
+                Counters = counters
+            });
+        }
+    }
+
+    private AccessStep TakePendingEmit()
+    {
+        var step = PendingEmits.Dequeue();
+
+        TakenSteps.Add(step);
+
+        return step;
     }
 
     private AccessStep Take(AccessStep step, int source, AccessCounters counters)

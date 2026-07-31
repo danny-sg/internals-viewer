@@ -89,6 +89,11 @@ public abstract record AccessStep(AccessPhase AccessPhase)
         public bool HasRange { get; init; } = true;
 
         public IRecord? EmittedRecord { get; init; }
+
+        /// <summary>
+        /// The row was read to find where a matched group ended, so it belongs to the next comparison rather than the current one
+        /// </summary>
+        public bool IsReadAhead { get; init; }
     }
 
     public sealed record RowRun(int FromSlot, int ToSlot, RowOutcome Outcome) : AccessStep(AccessPhase.Walk)
@@ -149,7 +154,14 @@ public abstract record AccessStep(AccessPhase AccessPhase)
         public AccessKey InnerKey { get; init; }
 
         public string Action { get; init; } = string.Empty;
+
+        public JoinDecision? Decision { get; init; }
     }
+
+    /// <summary>
+    /// A loop join weighed the rows a rebind returned against what the join type requires
+    /// </summary>
+    public sealed record JoinVerdict(JoinDecision Decision) : AccessStep(AccessPhase.Walk);
 
     /// <summary>
     /// A run of consecutive merge comparisons that advanced the same side, grouped for display
@@ -165,6 +177,8 @@ public abstract record AccessStep(AccessPhase AccessPhase)
         public AccessKey InnerTo { get; init; }
 
         public string Action { get; init; } = string.Empty;
+
+        public JoinDecision? Decision { get; init; }
     }
 
     /// <summary>
@@ -177,6 +191,11 @@ public abstract record AccessStep(AccessPhase AccessPhase)
         public IRecord? InnerRecord { get; init; }
 
         public bool IsFromBuffer { get; init; }
+
+        /// <summary>
+        /// The row found no partner and reaches the output only because the join preserves its side
+        /// </summary>
+        public bool IsUnmatched { get; init; }
     }
 
     public sealed record IamRead(PageAddress PageAddress, int ExtentCount, int SinglePageCount) : AccessStep(AccessPhase.Allocation);

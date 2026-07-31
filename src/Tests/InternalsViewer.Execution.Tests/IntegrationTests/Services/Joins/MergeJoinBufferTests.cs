@@ -87,7 +87,7 @@ public class MergeJoinBufferTests(ITestOutputHelper testOutput)
     }
 
     [RequiresFileFact(MdfPath)]
-    public async Task Buffer_Accumulates_The_Rows_Read_Toward_A_Pairing()
+    public async Task Buffer_Drops_Rows_The_Join_Has_Finished_With()
     {
         var context = await LoadAsync();
 
@@ -108,8 +108,8 @@ public class MergeJoinBufferTests(ITestOutputHelper testOutput)
             }
         }
 
-        // The outer walks 100 to 105 before the keys meet, so every row read on the way is still shown
-        Assert.Equal([100, 101, 102, 103, 104, 105], outerAtFirstPair);
+        // 100 to 104 were passed over on the way, and the join stopped holding each one as the walk moved on
+        Assert.Equal([105], outerAtFirstPair);
     }
 
     [RequiresFileFact(MdfPath)]
@@ -146,6 +146,66 @@ public class MergeJoinBufferTests(ITestOutputHelper testOutput)
         Assert.Fail("No comparison followed the first pairing");
     }
 
+    [RequiresFileFact(MdfPath)]
+    public async Task A_Row_The_Join_Passes_Over_Is_Not_Marked_As_Matched()
+    {
+        var context = await LoadAsync();
+
+        await context.Service.StartAsync(context.Database,
+                                         SideInput(context.Unit, Between(100, 110)),
+                                         SideInput(context.Unit, Between(105, 120)),
+                                         CancellationToken.None);
+
+        while (await context.Service.StepNextAsync(CancellationToken.None) is { } step)
+        {
+            if (step is AccessStep.MergeCompare { Comparison: < 0 })
+            {
+                // The row is still held until the walk moves on, but the join has finished with it
+                var row = Assert.Single(context.Service.OuterBuffer);
+
+                Assert.False(row.IsMatched);
+                Assert.Equal(JoinRowState.Finished, row.State);
+
+                return;
+            }
+        }
+
+        Assert.Fail("No comparison passed over an outer row");
+    }
+
+    [RequiresFileFact(MdfPath)]
+    public async Task The_Row_That_Ends_A_Matched_Group_Is_Marked_As_Read_Ahead()
+    {
+        var context = await LoadAsync();
+
+        await context.Service.StartAsync(context.Database,
+                                         SideInput(context.Unit, Between(500, 505)),
+                                         SideInput(context.Unit, Between(500, 505)),
+                                         CancellationToken.None);
+
+        var seenMatch = false;
+
+        while (await context.Service.StepNextAsync(CancellationToken.None) is { } step)
+        {
+            if (step is AccessStep.MergeCompare { Comparison: 0 })
+            {
+                seenMatch = true;
+
+                continue;
+            }
+
+            if (seenMatch && step is AccessStep.Row { EmittedRecord: not null, Source: MergeJoinStepService.InnerSource } row)
+            {
+                // Reading past the group is what proves it ended, so that row belongs to the next comparison
+                Assert.True(row.IsReadAhead);
+
+                return;
+            }
+        }
+
+        Assert.Fail("No inner row followed a match");
+    }
+
     private sealed record Context(DatabaseSource Database, MergeJoinStepService Service, AllocationUnit Unit);
 
     private static async Task<Context> LoadAsync()
@@ -170,7 +230,7 @@ public class MergeJoinBufferTests(ITestOutputHelper testOutput)
         => [.. buffer.Select(r => Value(r.Record))];
 
     private static List<long> MatchedValues(IReadOnlyList<JoinBufferRow> buffer)
-        => [.. buffer.Where(r => r.IsMatched).Select(r => Value(r.Record))];
+        => [.. buffer.Where(r => r.State == JoinRowState.Matched).Select(r => Value(r.Record))];
 
     private static long Value(IRecord record)
         => new RecordRowValueSource(record).GetValue(-1, "Id").Numeric;

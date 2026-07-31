@@ -374,13 +374,23 @@
                                 <TextBlock Text="Inner" Style="{StaticResource StepPropertyStyle}" Margin="8,0,0,0" />
                                 <TextBlock Text="{Binding InnerKey}" Style="{StaticResource StepValueStyle}" />
                             </StackPanel>
-                            <StackPanel Orientation="Horizontal">
-                                <TextBlock Text="{Binding Action}" Style="{StaticResource StepPropertyStyle}" TextWrapping="Wrap" />
+                            <accessSteps:JoinDecisionBadge Decision="{Binding Decision}" Margin="0,2,0,0" />
+
+                            <StackPanel Orientation="Horizontal" Margin="0,3,0,0">
+                                <TextBlock Text="{Binding Action}"
+                                           Style="{StaticResource StepValueStyle}"
+                                           VerticalAlignment="Center" />
+                                <TextBlock x:Name="CompareArrow"
+                                           Text="→"
+                                           Visibility="Collapsed"
+                                           FontSize="11"
+                                           Opacity="0.6"
+                                           Margin="2,0,6,0"
+                                           VerticalAlignment="Center" />
                                 <Border x:Name="CompareBadge"
                                         Visibility="Collapsed"
                                         CornerRadius="4"
                                         Padding="6,0,6,1"
-                                        Margin="4,0,0,0"
                                         VerticalAlignment="Center">
                                     <TextBlock x:Name="CompareBadgeText" Foreground="White" FontSize="11" />
                                 </Border>
@@ -394,28 +404,57 @@
                 <Grid Style="{StaticResource StepRowStyle}">
                     <StackPanel Orientation="Horizontal">
                         <TextBlock Text="Compare" Style="{StaticResource StepLabelStyle}" Foreground="Navy" />
-                        <TextBlock Text="{Binding Converter={StaticResource MergeCompareRunToTextConverter}}"
-                                   Style="{StaticResource StepValueStyle}"
-                                   VerticalAlignment="Center"
-                                   TextWrapping="Wrap" />
-                        <Border x:Name="CompareBadge"
-                                Visibility="Collapsed"
-                                CornerRadius="4"
-                                Padding="6,0,6,1"
-                                Margin="4,0,0,0"
-                                VerticalAlignment="Center">
-                            <TextBlock x:Name="CompareBadgeText" Foreground="White" FontSize="11" />
-                        </Border>
+                        <StackPanel Orientation="Vertical">
+                            <TextBlock Text="{Binding Converter={StaticResource MergeCompareRunToTextConverter}}"
+                                       Style="{StaticResource StepValueStyle}"
+                                       TextWrapping="Wrap" />
+
+                            <accessSteps:JoinDecisionBadge Decision="{Binding Decision}" Margin="0,2,0,0" />
+
+                            <StackPanel Orientation="Horizontal" Margin="0,3,0,0">
+                                <TextBlock Text="{Binding Action}"
+                                           Style="{StaticResource StepValueStyle}"
+                                           VerticalAlignment="Center" />
+                                <TextBlock x:Name="CompareArrow"
+                                           Text="→"
+                                           Visibility="Collapsed"
+                                           FontSize="11"
+                                           Opacity="0.6"
+                                           Margin="2,0,6,0"
+                                           VerticalAlignment="Center" />
+                                <Border x:Name="CompareBadge"
+                                        Visibility="Collapsed"
+                                        CornerRadius="4"
+                                        Padding="6,0,6,1"
+                                        VerticalAlignment="Center">
+                                    <TextBlock x:Name="CompareBadgeText" Foreground="White" FontSize="11" />
+                                </Border>
+                            </StackPanel>
+                        </StackPanel>
+                    </StackPanel>
+                </Grid>
+            </DataTemplate>
+
+            <DataTemplate x:Key="JoinVerdictTemplate" >
+                <Grid Style="{StaticResource StepRowStyle}">
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="Join" Style="{StaticResource StepLabelStyle}" Foreground="Navy" />
+                        <accessSteps:JoinDecisionBadge Decision="{Binding Decision}" />
                     </StackPanel>
                 </Grid>
             </DataTemplate>
 
             <DataTemplate x:Key="JoinEmitTemplate" >
-                <Grid Style="{StaticResource StepRowStyle}">
-                    <StackPanel Orientation="Horizontal">
-                        <TextBlock Text="Join" Style="{StaticResource StepLabelStyle}" />
-                        <TextBlock Text="Pair" Style="{StaticResource StepPropertyStyle}" />
-                        <TextBlock Text="{Binding PairNumber}" Style="{StaticResource StepValueStyle}" Width="40" />
+                <Grid Background="{ThemeResource AcrylicBackgroundFillColorDefaultBrush}" Style="{StaticResource StepRowStyle}">
+                    <StackPanel Orientation="Horizontal" Padding="0,8,0,8">
+                        <TextBlock Text="Join" Style="{StaticResource StepLabelStyle}" Foreground="Navy" />
+                        <TextBlock Text="Compare Result:" Style="{StaticResource StepPropertyStyle}" />
+                        <TextBlock Text="✓"
+                                   Foreground="#0F7B0F"
+                                   FontSize="12"
+                                   FontWeight="SemiBold"
+                                   VerticalAlignment="Center"
+                                   Margin="0,0,8,0" />
                         <Border Background="{ThemeResource SystemFillColorSuccessBrush}"
                                 CornerRadius="4"
                                 Padding="6,0,6,1"
@@ -554,6 +593,7 @@
                 ReseekTemplate="{StaticResource ReseekTemplate}"
                 RebindTemplate="{StaticResource RebindTemplate}"
                 JoinStartTemplate="{StaticResource JoinStartTemplate}"
+                JoinVerdictTemplate="{StaticResource JoinVerdictTemplate}"
                 MergeCompareTemplate="{StaticResource MergeCompareTemplate}"
                 MergeCompareRunTemplate="{StaticResource MergeCompareRunTemplate}"
                 JoinEmitTemplate="{StaticResource JoinEmitTemplate}"

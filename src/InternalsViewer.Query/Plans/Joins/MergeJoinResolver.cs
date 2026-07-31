@@ -40,7 +40,7 @@ public static class MergeJoinResolver
             return null;
         }
 
-        return new MergeJoin(node, outer, inner);
+        return new MergeJoin(node, outer, inner, JoinTypeParser.Parse(node.LogicalOperator));
     }
 
     private static bool KeysMatchTable(List<ColumnReference> keys, PlanNode side)

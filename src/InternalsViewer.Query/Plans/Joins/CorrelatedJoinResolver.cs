@@ -38,7 +38,7 @@ public static class CorrelatedJoinResolver
             return null;
         }
 
-        return new CorrelatedJoin(node, outer, inner);
+        return new CorrelatedJoin(node, outer, inner, JoinTypeParser.Parse(node.LogicalOperator));
     }
 
     public static CorrelatedJoin? ResolveFromInner(PlanNode root, PlanNode inner)
