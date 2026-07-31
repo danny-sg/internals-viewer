@@ -72,29 +72,6 @@
                 </AppBarButton.Icon>
             </AppBarButton>
         </CommandBar>
-        <CommandBar Grid.Row="0"
-                    Grid.Column="1"
-                    IsOpen="False"
-                    Padding="0,0,0,0"
-                    DefaultLabelPosition="Right"
-                    VerticalAlignment="Center"
-                    HorizontalAlignment="Right"
-                    VerticalContentAlignment="Top"
-                    MinHeight="0"
-                    OverflowButtonVisibility="Collapsed"
-                    BorderThickness="0,0,0,1"
-                    BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
-                    Background="Transparent">
-            <AppBarElementContainer VerticalContentAlignment="Center">
-                <ToggleButton Margin="4,0,4,0"
-                       BorderThickness="0"
-                       Width="140"
-                       IsChecked="{x:Bind ViewModel.IsResultsVisible, Mode=TwoWay}">
-                    <TextBlock Text="{x:Bind ViewModel.ResultsLabel, Mode=OneWay}" VerticalAlignment="Center" />
-                </ToggleButton>
-            </AppBarElementContainer>
-        </CommandBar>
-
         <docking:DockHost Grid.Row="1"
                           Grid.Column="0"
                           Grid.ColumnSpan="2"

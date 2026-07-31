@@ -34,18 +34,18 @@ using System.Threading.Tasks;
 using InternalsViewer.Internals.Interfaces.MetadataProviders;
 using InternalsViewer.Query.CallStack;
 using InternalsViewer.Query.CallStack.Categories;
-using DatabaseFile = InternalsViewer.UI.App.Models.DatabaseFile;
 using InternalsViewer.Query.Events;
 using InternalsViewer.Query.Events.Transactions;
 using InternalsViewer.TransactionLog.LogRecords;
 using InternalsViewer.UI.App.ViewModels.Page;
 using InternalsViewer.UI.App.ViewModels.Query.Settings;
 using InternalsViewer.UI.App.Views.Query.Tabs.Trace;
-using QueryIndexTabView = InternalsViewer.UI.App.Views.Query.Tabs.Index.QueryIndexTabView;
 using InternalsViewer.Query.Plans;
 using InternalsViewer.Query.Plans.Joins;
 using InternalsViewer.Query.Plans.Model;
 using InternalsViewer.Query.Plans.Operators;
+using InternalsViewer.UI.App.Views.Query.Tabs.Index;
+using DatabaseFile = InternalsViewer.UI.App.Models.DatabaseFile;
 
 namespace InternalsViewer.UI.App.ViewModels.Query;
 
@@ -458,7 +458,8 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
                                              canClose: true,
                                              keepAlive: true,
                                              key: key,
-                                             persist: false);
+                                             persist: false,
+                                             commandsFactory: static () => new TraceTabCommands());
 
         Layout.RegisterDocument(key, document);
 
@@ -550,7 +551,8 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
                                              canClose: true,
                                              keepAlive: true,
                                              key: key,
-                                             persist: false);
+                                             persist: false,
+                                             commandsFactory: static () => new TraceTabCommands());
 
         Layout.RegisterDocument(key, document);
 
@@ -609,7 +611,8 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
                                              canClose: true,
                                              keepAlive: true,
                                              key: key,
-                                             persist: false);
+                                             persist: false,
+                                             commandsFactory: static () => new TraceTabCommands());
 
         Layout.RegisterDocument(key, document);
 
@@ -804,6 +807,30 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
     [ObservableProperty]
     private bool _isPlanPropertiesVisible;
 
+    private bool _isFlameGraphVisible = true;
+
+    public bool IsFlameGraphVisible
+    {
+        get => _isFlameGraphVisible;
+        set => SetProperty(ref _isFlameGraphVisible, value);
+    }
+
+    private bool _isSqlResultsVisible;
+
+    public bool IsSqlResultsVisible
+    {
+        get => _isSqlResultsVisible;
+        set => SetProperty(ref _isSqlResultsVisible, value);
+    }
+
+    private bool _isSqlMessagesVisible;
+
+    public bool IsSqlMessagesVisible
+    {
+        get => _isSqlMessagesVisible;
+        set => SetProperty(ref _isSqlMessagesVisible, value);
+    }
+
     public void OpenExecutionPlan(PlanNodeIdentifier identifier)
     {
         Layout.ShowExecutionPlan();
@@ -896,7 +923,8 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
                                              canClose: true,
                                              keepAlive: true,
                                              key: key,
-                                             persist: false);
+                                             persist: false,
+                                             commandsFactory: static () => new QueryIndexTabCommands());
 
         Layout.RegisterDocument(key, document);
 

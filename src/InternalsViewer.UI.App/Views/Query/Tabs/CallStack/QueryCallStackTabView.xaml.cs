@@ -7,16 +7,24 @@ using InternalsViewer.Query.Events.Operators;
 using InternalsViewer.Query.Events;
 using InternalsViewer.Query.Interfaces.Events;
 using InternalsViewer.Query.Plans.Model;
+using InternalsViewer.UI.App.Controls.Docking;
 using InternalsViewer.UI.App.ViewModels.Query;
 using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Controls.Primitives;
 using Microsoft.UI.Xaml.Input;
 using Windows.ApplicationModel.DataTransfer;
 
 namespace InternalsViewer.UI.App.Views.Query.Tabs.CallStack;
 
-public sealed partial class QueryCallStackTabView : UserControl
+public sealed partial class QueryCallStackTabView : UserControl, IDocumentCommands
 {
     private readonly Dictionary<CallStackNode, TreeViewNode> _nodes = new();
+
+    private Button? _backButton;
+
+    private Button? _forwardButton;
+
+    private ToggleButton? _focusToggle;
 
     private HashSet<CallStackNode>? _visible;
 
@@ -71,9 +79,72 @@ public sealed partial class QueryCallStackTabView : UserControl
         DataContextChanged += (_, _) => OnViewModelChanged();
     }
 
+    /// <summary>
+    /// Builds the history and focus controls for a tab strip to host
+    /// </summary>
+    /// <remarks>
+    /// Rebuilt per strip rather than moved between them, so the view keeps hold of the current buttons to drive their
+    /// enabled state as the history moves.
+    /// </remarks>
+    public FrameworkElement CreateCommands()
+    {
+        _backButton = new Button
+        {
+            Style = (Style)Application.Current.Resources["TabCommandButtonStyle"],
+            Content = new FontIcon { Glyph = "", FontSize = 12 },
+            IsEnabled = _historyIndex > 0
+        };
+
+        ToolTipService.SetToolTip(_backButton, "Back");
+
+        _backButton.Click += OnBackClick;
+
+        _forwardButton = new Button
+        {
+            Style = (Style)Application.Current.Resources["TabCommandButtonStyle"],
+            Content = new FontIcon { Glyph = "", FontSize = 12 },
+            IsEnabled = _historyIndex >= 0 && _historyIndex < _history.Count - 1
+        };
+
+        ToolTipService.SetToolTip(_forwardButton, "Forward");
+
+        _forwardButton.Click += OnForwardClick;
+
+        _focusToggle = new ToggleButton
+        {
+            Style = (Style)Application.Current.Resources["TabCommandToggleStyle"],
+            Content = new TextBlock { Text = "Focus", VerticalAlignment = VerticalAlignment.Center },
+            Margin = new Thickness(2, 0, 0, 0),
+            IsChecked = _focus
+        };
+
+        ToolTipService.SetToolTip(_focusToggle,
+                                  "Show the selection's own call tree on its own: an operator from the frame where it "
+                                  + "starts executing down to the ones it hands off to, an event from where its work "
+                                  + "begins. With nothing selected, the plan's operators. Off shows every stack the "
+                                  + "query captured merged into one tree.");
+
+        _focusToggle.Click += OnFocusChanged;
+
+        var commands = new StackPanel
+        {
+            Orientation = Orientation.Horizontal,
+            HorizontalAlignment = HorizontalAlignment.Right,
+            VerticalAlignment = VerticalAlignment.Center,
+            Margin = new Thickness(0, 0, 8, 0),
+            Spacing = 2
+        };
+
+        commands.Children.Add(_backButton);
+        commands.Children.Add(_forwardButton);
+        commands.Children.Add(_focusToggle);
+
+        return commands;
+    }
+
     private void OnFocusChanged(object sender, RoutedEventArgs e)
     {
-        _focus = FocusToggle.IsChecked == true;
+        _focus = _focusToggle?.IsChecked == true;
 
         ApplyFocus(_viewModel?.SelectedEvent);
     }
@@ -144,9 +215,15 @@ public sealed partial class QueryCallStackTabView : UserControl
 
     private void UpdateHistoryButtons()
     {
-        BackButton.IsEnabled = _historyIndex > 0;
+        if (_backButton is not null)
+        {
+            _backButton.IsEnabled = _historyIndex > 0;
+        }
 
-        ForwardButton.IsEnabled = _historyIndex >= 0 && _historyIndex < _history.Count - 1;
+        if (_forwardButton is not null)
+        {
+            _forwardButton.IsEnabled = _historyIndex >= 0 && _historyIndex < _history.Count - 1;
+        }
     }
 
     /// <summary>

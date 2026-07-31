@@ -48,7 +48,7 @@ public sealed partial class EventTimelineControl : Grid, IDisposable
     private bool _showThreads;
 
     private readonly TimelineAudioPlayer _audioPlayer = new();
-    private readonly TimelineTransport _transport;
+    private TimelineTransport _transport;
     private readonly SKXamlCanvas _skCanvas;
     private readonly Canvas _overlay;
     private readonly ScrollBar _scrollBar;
@@ -302,6 +302,49 @@ public sealed partial class EventTimelineControl : Grid, IDisposable
     }
 #pragma warning restore VSTHRD100
 
+    /// <summary>
+    /// Builds a fresh set of play, step, speed, threads and audio controls for the caller to host
+    /// </summary>
+    /// <remarks>
+    /// The transport lives outside this control so the timeline document can put it in its tab strip, and is rebuilt
+    /// rather than moved whenever a strip asks for it. Only the previous instance's subscriptions are dropped: the
+    /// play state is re-applied to the new one, the rest of its state is the defaults.
+    /// </remarks>
+    public FrameworkElement CreateTransport()
+    {
+        UnsubscribeTransport();
+
+        _transport.Dispose();
+
+        _transport = BuildTransport();
+
+        _transport.SetPlaying(_playTimer.IsEnabled);
+
+        return _transport;
+    }
+
+    private TimelineTransport BuildTransport()
+    {
+        var transport = new TimelineTransport();
+
+        transport.PlayPauseRequested += OnPlayPauseRequested;
+        transport.StepRequested += OnStepRequested;
+        transport.PlaySpeedChanged += OnPlaySpeedChanged;
+        transport.ThreadsToggled += OnThreadsToggled;
+        transport.AudioToggled += OnAudioToggled;
+
+        return transport;
+    }
+
+    private void UnsubscribeTransport()
+    {
+        _transport.PlayPauseRequested -= OnPlayPauseRequested;
+        _transport.StepRequested -= OnStepRequested;
+        _transport.PlaySpeedChanged -= OnPlaySpeedChanged;
+        _transport.ThreadsToggled -= OnThreadsToggled;
+        _transport.AudioToggled -= OnAudioToggled;
+    }
+
     public EventTimelineControl()
     {
         _lockRenderer = new LockRenderer(_renderResource, _selection, _hitRegions);
@@ -317,16 +360,7 @@ public sealed partial class EventTimelineControl : Grid, IDisposable
         RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
         RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
 
-        _transport = new TimelineTransport();
-
-        _transport.PlayPauseRequested += OnPlayPauseRequested;
-        _transport.StepRequested += OnStepRequested;
-        _transport.PlaySpeedChanged += OnPlaySpeedChanged;
-        _transport.ThreadsToggled += OnThreadsToggled;
-        _transport.AudioToggled += OnAudioToggled;
-
-        SetRow(_transport, 0);
-        Children.Add(_transport);
+        _transport = BuildTransport();
 
         _skCanvas = new SKXamlCanvas { IgnorePixelScaling = true };
         _skCanvas.PaintSurface += OnPaintSurface;
@@ -387,6 +421,10 @@ public sealed partial class EventTimelineControl : Grid, IDisposable
 
         _playTimer = new DispatcherTimer { Interval = PlayInterval };
         _playTimer.Tick += OnPlayTimerTick;
+
+        // Events usually arrive while the timeline is off screen, where the canvas has no size to paint into and the
+        // invalidate that follows them is dropped. Coming into view is the first chance to draw them.
+        Loaded += (_, _) => _skCanvas.Invalidate();
     }
 
     private void Reset()
@@ -412,11 +450,8 @@ public sealed partial class EventTimelineControl : Grid, IDisposable
         _playTimer.Stop();
         _playTimer.Tick -= OnPlayTimerTick;
 
-        _transport.PlayPauseRequested -= OnPlayPauseRequested;
-        _transport.StepRequested -= OnStepRequested;
-        _transport.PlaySpeedChanged -= OnPlaySpeedChanged;
-        _transport.ThreadsToggled -= OnThreadsToggled;
-        _transport.AudioToggled -= OnAudioToggled;
+        UnsubscribeTransport();
+
         _transport.Dispose();
 
         _skCanvas.PaintSurface -= OnPaintSurface;

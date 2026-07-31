@@ -4,6 +4,9 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using InternalsViewer.UI.App.ViewModels.Docking;
 using InternalsViewer.UI.App.Views.Query.Tabs;
 using InternalsViewer.UI.App.Views.Query.Tabs.CallStack;
+using InternalsViewer.UI.App.Views.Query.Tabs.Timeline;
+using Microsoft.UI.Xaml.Controls;
+using QueryPlanTabCommands = InternalsViewer.UI.App.Views.Query.Tabs.Plan.QueryPlanTabCommands;
 
 namespace InternalsViewer.UI.App.ViewModels.Query;
 
@@ -23,6 +26,7 @@ public sealed partial class QueryLayoutViewModel : ObservableObject, IDisposable
     private const string EventsKey = "Events";
     private const string CallstackKey = "Callstack";
     private const string InstructionsKey = "Instructions";
+    private const string TimelineKey = "Timeline";
 
     private readonly Dictionary<string, DocumentViewModel> _documentsByKey;
 
@@ -43,20 +47,21 @@ public sealed partial class QueryLayoutViewModel : ObservableObject, IDisposable
     {
         _documentsByKey = new Dictionary<string, DocumentViewModel>
         {
-            [SqlKey] = DocumentViewModel.Create<QuerySqlTabView>("SQL",
-                                                                 content,
-                                                                 keepAlive: true,
-                                                                 key: SqlKey),
+            [SqlKey] = DocumentViewModel.Create<QuerySqlTabView, QuerySqlTabCommands>("SQL",
+                                                                                      content,
+                                                                                      keepAlive: true,
+                                                                                      key: SqlKey),
 
-            [AllocationsKey] = DocumentViewModel.Create<QueryAllocationTabView>("Allocations",
+            [AllocationsKey] = DocumentViewModel.Create<QueryAllocationTabView, QueryAllocationTabCommands>(
+                                                                                "Allocations",
                                                                                 content,
                                                                                 keepAlive: true,
                                                                                 key: AllocationsKey),
 
-            [PlanKey] = DocumentViewModel.Create<QueryPlanTabView>("Execution Plan",
-                                                                   content,
-                                                                   keepAlive: true,
-                                                                   key: PlanKey),
+            [PlanKey] = DocumentViewModel.Create<QueryPlanTabView, QueryPlanTabCommands>("Execution Plan",
+                                                                                        content,
+                                                                                        keepAlive: true,
+                                                                                        key: PlanKey),
 
             [EventsKey] = DocumentViewModel.Create<QueryEventsTabView>("Events",
                                                                        content,
@@ -71,10 +76,15 @@ public sealed partial class QueryLayoutViewModel : ObservableObject, IDisposable
             [InstructionsKey] = DocumentViewModel.Create<QueryInstructionsTabView>("Instructions",
                                                                                    content,
                                                                                    keepAlive: true,
-                                                                                   key: InstructionsKey)
+                                                                                   key: InstructionsKey),
+
+            [TimelineKey] = DocumentViewModel.Create<QueryTimelineTabView>("Timeline",
+                                                                           content,
+                                                                           keepAlive: true,
+                                                                           key: TimelineKey)
         };
 
-        Dock = new DockLayoutViewModel(new TabGroupNode(_documentsByKey[SqlKey]));
+        Dock = new DockLayoutViewModel(DefaultRoot());
 
         Dock.LayoutChanged += OnDockLayoutChanged;
         Dock.SelectionChanged += OnDockSelectionChanged;
@@ -99,23 +109,16 @@ public sealed partial class QueryLayoutViewModel : ObservableObject, IDisposable
     private bool _isInstructionsVisible;
 
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(TimelineRowHeight))]
-    [NotifyPropertyChangedFor(nameof(SplitterVisibility))]
     private bool _isTimelineVisible = true;
 
-    [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(DetailsRowHeight))]
-    [NotifyPropertyChangedFor(nameof(SplitterVisibility))]
-    private bool _isDetailsVisible = true;
-
-    public GridLength TimelineRowHeight
-        => IsTimelineVisible ? new GridLength(1, GridUnitType.Star) : new GridLength(0);
-
-    public GridLength DetailsRowHeight
-        => IsDetailsVisible ? new GridLength(1, GridUnitType.Star) : new GridLength(0);
-
-    public Visibility SplitterVisibility
-        => (IsTimelineVisible && IsDetailsVisible) ? Visibility.Visible : Visibility.Collapsed;
+    /// <summary>
+    /// The default layout: the SQL editor above the timeline, which is where the timeline sat when it was a fixed
+    /// row rather than a document
+    /// </summary>
+    private LayoutNode DefaultRoot()
+        => new SplitNode(Orientation.Vertical,
+                         new TabGroupNode(_documentsByKey[SqlKey]),
+                         new TabGroupNode(_documentsByKey[TimelineKey]));
 
     partial void OnIsSqlEditorVisibleChanged(bool value)
         => SetDocumentVisible(_documentsByKey[SqlKey], value);
@@ -136,7 +139,7 @@ public sealed partial class QueryLayoutViewModel : ObservableObject, IDisposable
         => SetDocumentVisible(_documentsByKey[InstructionsKey], value);
 
     partial void OnIsTimelineVisibleChanged(bool value)
-        => Changed?.Invoke();
+        => SetDocumentVisible(_documentsByKey[TimelineKey], value);
 
     /// <summary>
     /// Serialises the current dock tree for persistence
@@ -158,14 +161,9 @@ public sealed partial class QueryLayoutViewModel : ObservableObject, IDisposable
     }
 
     /// <summary>
-    /// Resets to the default single-tab (SQL) layout with the timeline visible
+    /// Resets to the default SQL-over-timeline layout
     /// </summary>
-    public void Reset()
-    {
-        IsTimelineVisible = true;
-
-        Dock.SetRoot(new TabGroupNode(_documentsByKey[SqlKey]));
-    }
+    public void Reset() => Dock.SetRoot(DefaultRoot());
 
     /// <summary>
     /// Look up an already-open document (base tab or index tab) by key
@@ -229,6 +227,7 @@ public sealed partial class QueryLayoutViewModel : ObservableObject, IDisposable
         IsEventsVisible = Dock.Contains(_documentsByKey[EventsKey]);
         IsCallstackVisible = Dock.Contains(_documentsByKey[CallstackKey]);
         IsInstructionsVisible = Dock.Contains(_documentsByKey[InstructionsKey]);
+        IsTimelineVisible = Dock.Contains(_documentsByKey[TimelineKey]);
 
         _suppressVisibilitySync = false;
     }

@@ -50,6 +50,26 @@
         <Setter Property="FontWeight" Value="SemiBold" />
     </Style>
 
+    <Style x:Key="TabCommandToggleStyle" TargetType="ToggleButton">
+        <Setter Property="MinHeight" Value="0" />
+        <Setter Property="Padding" Value="8,2,8,3" />
+        <Setter Property="FontSize" Value="12" />
+        <Setter Property="BorderThickness" Value="0" />
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="CornerRadius" Value="{ThemeResource ControlCornerRadius}" />
+        <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+
+    <Style x:Key="TabCommandButtonStyle" TargetType="Button">
+        <Setter Property="MinHeight" Value="0" />
+        <Setter Property="Padding" Value="8,2,8,3" />
+        <Setter Property="FontSize" Value="12" />
+        <Setter Property="BorderThickness" Value="0" />
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="CornerRadius" Value="{ThemeResource ControlCornerRadius}" />
+        <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+
     <Style x:Key="RowListViewItemStyle" TargetType="ListViewItem"
            BasedOn="{StaticResource DefaultListViewItemStyle}">
         <Setter Property="Height" Value="30" />

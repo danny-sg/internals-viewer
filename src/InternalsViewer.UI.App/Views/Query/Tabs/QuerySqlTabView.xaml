@@ -15,6 +15,8 @@
                                 IsError="{x:Bind ViewModel.IsError, Mode=OneWay}"
                                 Schema="{x:Bind ViewModel.Schema, Mode=OneWay}"
                                 ResultSet="{x:Bind ViewModel.ActiveResultSet, Mode=OneWay}"
+                                IsResultsVisible="{x:Bind ViewModel.IsSqlResultsVisible, Mode=TwoWay}"
+                                IsMessagesVisible="{x:Bind ViewModel.IsSqlMessagesVisible, Mode=TwoWay}"
                                 Theme="vs-light">
 
         <sqlEditor:SqlEditorControl.AdditionalContent>

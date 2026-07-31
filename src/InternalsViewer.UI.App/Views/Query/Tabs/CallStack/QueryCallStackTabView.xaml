@@ -165,82 +165,13 @@
 
     <Grid>
         <Grid.RowDefinitions>
-            <RowDefinition Height="44"/>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="*"/>
         </Grid.RowDefinitions>
 
-        <Grid Grid.Row="0" Padding="0">
-            <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="*"/>
-                <ColumnDefinition Width="Auto"/>
-            </Grid.ColumnDefinitions>
-
-            <!-- Navigation (left): where the operator links have taken you. -->
-            <CommandBar IsOpen="False"
-                        Padding="0"
-                        VerticalAlignment="Center"
-                        DefaultLabelPosition="Right"
-                        Grid.Column="0"
-                        HorizontalAlignment="Left"
-                        VerticalContentAlignment="Top"
-                        MinHeight="0"
-                        OverflowButtonVisibility="Collapsed"
-                        BorderBrush="{ThemeResource ControlStrokeColorDefaultBrush}"
-                        BorderThickness="0,0,0,1"
-                        Background="Transparent">
-                <AppBarElementContainer VerticalContentAlignment="Center" Margin="8,0,0,0">
-                    <StackPanel Orientation="Horizontal" Spacing="2" VerticalAlignment="Center">
-                        <Button x:Name="BackButton"
-                                Background="Transparent"
-                                BorderThickness="0"
-                                Padding="8,4"
-                                IsEnabled="False"
-                                ToolTipService.ToolTip="Back"
-                                Click="OnBackClick">
-                            <FontIcon Glyph="&#xE72B;" FontSize="12"/>
-                        </Button>
-                        <Button x:Name="ForwardButton"
-                                Background="Transparent"
-                                BorderThickness="0"
-                                Padding="8,4"
-                                IsEnabled="False"
-                                ToolTipService.ToolTip="Forward"
-                                Click="OnForwardClick">
-                            <FontIcon Glyph="&#xE72A;" FontSize="12"/>
-                        </Button>
-                    </StackPanel>
-                </AppBarElementContainer>
-            </CommandBar>
-
-            <CommandBar IsOpen="False"
-                        Padding="0"
-                        VerticalAlignment="Center"
-                        DefaultLabelPosition="Right"
-                        Grid.Column="0"
-                        HorizontalAlignment="Right"
-                        VerticalContentAlignment="Top"
-                        MinHeight="0"
-                        OverflowButtonVisibility="Collapsed"
-                        BorderBrush="{ThemeResource ControlStrokeColorDefaultBrush}"
-                        BorderThickness="0,0,0,1"
-                        Background="Transparent">
-                <AppBarElementContainer VerticalContentAlignment="Center" Margin="0,0,8,0">
-                    <StackPanel Orientation="Horizontal" Spacing="4" VerticalAlignment="Center">
-                        <ToggleButton x:Name="FocusToggle"
-                                      IsChecked="True"
-                                      BorderThickness="0"
-                                      ToolTipService.ToolTip="Show the selection's own call tree on its own: an operator from the frame where it starts executing down to the ones it hands off to, an event from where its work begins. With nothing selected, the plan's operators. Off shows every stack the query captured merged into one tree."
-                                      Click="OnFocusChanged">
-                            <TextBlock Text="Focus" VerticalAlignment="Center"/>
-                        </ToggleButton>
-                    </StackPanel>
-                </AppBarElementContainer>
-            </CommandBar>
-        </Grid>
         <AutoSuggestBox x:Name="SearchBox"
-                        Grid.Row="1"
+                        Grid.Row="0"
                         Margin="0,0,0,4"
                         PlaceholderText="Search"
                         QueryIcon="Find"
@@ -250,7 +181,7 @@
                         TextChanged="OnSearchTextChanged"/>
 
         <Grid x:Name="FocusHeader"
-              Grid.Row="2"
+              Grid.Row="1"
               Visibility="Collapsed"
               Padding="8,4,8,6"
               BorderBrush="{ThemeResource ControlStrokeColorDefaultBrush}"
@@ -278,7 +209,7 @@
         </Grid>
 
         <muxc:TreeView x:Name="Tree"
-                       Grid.Row="3"
+                       Grid.Row="2"
                        SelectionMode="Single"
                        ItemInvoked="OnFrameInvoked"
                        CanDragItems="False"

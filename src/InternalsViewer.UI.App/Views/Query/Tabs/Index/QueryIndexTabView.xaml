@@ -17,64 +17,8 @@
     </UserControl.Resources>
     <Grid VerticalAlignment="Stretch"
           HorizontalAlignment="Stretch">
-        <Grid.RowDefinitions>
-            <RowDefinition Height="Auto" />
-            <RowDefinition Height="*" />
-        </Grid.RowDefinitions>
-        <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="*"/>
-            <ColumnDefinition Width="Auto"/>
-        </Grid.ColumnDefinitions>
 
-        <!--Top Command Bar-->
-        <CommandBar Grid.Row="0"
-                    IsOpen="False"
-                    Padding="8,0,0,0"
-                    DefaultLabelPosition="Right"
-                    VerticalAlignment="Center"
-                    HorizontalAlignment="Left"
-                    VerticalContentAlignment="Top"
-                    MinHeight="0"
-                    OverflowButtonVisibility="Collapsed"
-                    BorderThickness="0,0,0,1" 
-                    BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
-                    Background="Transparent">
-            <AppBarElementContainer>
-                <allocation:AllocationUnitSummaryControl AllocationUnit="{x:Bind ViewModel.AllocationUnit, Mode=OneWay}"
-                                                          IsIndex="True" />
-            </AppBarElementContainer>
-        </CommandBar>
-
-        <CommandBar Grid.Row="0"
-                    Grid.Column="1"
-                    IsOpen="False"
-                    VerticalAlignment="Center"
-                    DefaultLabelPosition="Right"
-                    HorizontalAlignment="Right"
-                    VerticalContentAlignment="Top"
-                    MinHeight="0"
-                    BorderBrush="{ThemeResource ControlStrokeColorDefaultBrush}"
-                    Background="Transparent"
-                    BorderThickness="0,0,0,1">
-            <AppBarElementContainer VerticalContentAlignment="Center">
-                <ToggleButton Margin="4,0,12,0"
-                              IsChecked="{x:Bind ViewModel.IsDetailPaneVisible, Mode=TwoWay}"
-                              BorderThickness="0">
-                    <TextBlock Text="Details" VerticalAlignment="Center" />
-                </ToggleButton>
-            </AppBarElementContainer>
-            <CommandBar.SecondaryCommands>
-                <AppBarToggleButton
-                        Label="Zoom to fit"
-                        IsChecked="{x:Bind ViewModel.IsZoomToFit, Mode=TwoWay}" />
-            </CommandBar.SecondaryCommands>
-        </CommandBar>
-
-        <Grid Name="BodyGrid" 
-              
-              Grid.Row="1" 
-              Grid.Column="0" 
-              Grid.ColumnSpan="2" >
+        <Grid Name="BodyGrid">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="{x:Bind ViewModel.BodyColumnWidth, Mode=OneWay}" />
                 <ColumnDefinition Width="Auto" />

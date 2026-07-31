@@ -16,111 +16,77 @@
         </DataTemplate>
     </UserControl.Resources>
     <Grid>
-        <Grid.RowDefinitions>
-            <RowDefinition Height="Auto"/>
-            <RowDefinition Height="*"/>
-        </Grid.RowDefinitions>
-        <CommandBar Grid.Row="0"
-                    IsOpen="False"
-                    Padding="0"
-                    VerticalAlignment="Center"
-                    DefaultLabelPosition="Right"
-                    HorizontalAlignment="Right"
-                    VerticalContentAlignment="Top"
-                    MinHeight="0"
-                    OverflowButtonVisibility="Collapsed"
-                    BorderBrush="{ThemeResource ControlStrokeColorDefaultBrush}"
-                    BorderThickness="0,0,0,1"
-                    Background="Transparent">
-            <AppBarElementContainer VerticalContentAlignment="Center">
-                <StackPanel Orientation="Horizontal">
-                <ToggleButton Margin="12,0,0,0"
-                              BorderThickness="0"
-                              IsChecked="{x:Bind HasFlameGraph, Mode=TwoWay}"
-                              IsEnabled="{x:Bind ViewModel.QueryOptions.IncludeCallStack, Mode=OneWay}">
-                    <TextBlock Text="Flame Graph" VerticalAlignment="Center" />
-                </ToggleButton>
-                    <ToggleButton Margin="12,0,0,0"
-                                  BorderThickness="0"
-                                  IsChecked="{x:Bind IsPropertiesPaneVisible, Mode=TwoWay}">
-                        <TextBlock Text="Properties" VerticalAlignment="Center" />
-                    </ToggleButton>
-                </StackPanel>
-            </AppBarElementContainer>
-        </CommandBar>
-        <Grid Grid.Row="1">
-            <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="{x:Bind BodyColumnWidth, Mode=OneTime}" />
-                <ColumnDefinition Width="Auto" />
-                <ColumnDefinition Width="{x:Bind DetailColumnWidth, Mode=OneTime}" />
-            </Grid.ColumnDefinitions>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="{x:Bind BodyColumnWidth, Mode=OneTime}" />
+            <ColumnDefinition Width="Auto" />
+            <ColumnDefinition Width="{x:Bind DetailColumnWidth, Mode=OneTime}" />
+        </Grid.ColumnDefinitions>
 
-            <ScrollViewer Grid.Column="0"
-                          HorizontalScrollBarVisibility="Auto"
-                          VerticalScrollBarVisibility="Auto"
-                          HorizontalScrollMode="Enabled"
-                          VerticalScrollMode="Enabled"
-                          ZoomMode="Enabled"
-                          MinZoomFactor="0.25"
-                          MaxZoomFactor="2.0"
-                          Background="White"
-                          Padding="8">
-                <ItemsRepeater x:Name="PlanRepeater"
-                               ItemsSource="{x:Bind ViewModel.ExecutionPlans, Mode=OneWay}"
-                               Layout="{StaticResource PlanStackLayout}"
-                               ItemTemplate="{StaticResource ExecutionPlanTemplate}" />
-            </ScrollViewer>
+        <ScrollViewer Grid.Column="0"
+                      HorizontalScrollBarVisibility="Auto"
+                      VerticalScrollBarVisibility="Auto"
+                      HorizontalScrollMode="Enabled"
+                      VerticalScrollMode="Enabled"
+                      ZoomMode="Enabled"
+                      MinZoomFactor="0.25"
+                      MaxZoomFactor="2.0"
+                      Background="White"
+                      Padding="8">
+            <ItemsRepeater x:Name="PlanRepeater"
+                           ItemsSource="{x:Bind ViewModel.ExecutionPlans, Mode=OneWay}"
+                           Layout="{StaticResource PlanStackLayout}"
+                           ItemTemplate="{StaticResource ExecutionPlanTemplate}" />
+        </ScrollViewer>
 
-            <controls:GridSplitter Grid.Column="1"
-                                   Width="4"
-                                   HorizontalAlignment="Stretch"
-                                   VerticalAlignment="Stretch"
-                                   ResizeBehavior="PreviousAndNext"
-                                   ResizeDirection="Columns"
-                                   Visibility="{x:Bind DetailSplitterVisibility, Mode=OneTime}"
-                                   Background="{ThemeResource ControlStrokeColorDefaultBrush}">
-                <controls:GridSplitter.Template>
-                    <ControlTemplate TargetType="controls:GridSplitter">
-                        <Grid Background="{TemplateBinding Background}" />
-                    </ControlTemplate>
-                </controls:GridSplitter.Template>
-            </controls:GridSplitter>
+        <controls:GridSplitter Grid.Column="1"
+                               Width="4"
+                               HorizontalAlignment="Stretch"
+                               VerticalAlignment="Stretch"
+                               ResizeBehavior="PreviousAndNext"
+                               ResizeDirection="Columns"
+                               Visibility="{x:Bind DetailSplitterVisibility, Mode=OneTime}"
+                               Background="{ThemeResource ControlStrokeColorDefaultBrush}">
+            <controls:GridSplitter.Template>
+                <ControlTemplate TargetType="controls:GridSplitter">
+                    <Grid Background="{TemplateBinding Background}" />
+                </ControlTemplate>
+            </controls:GridSplitter.Template>
+        </controls:GridSplitter>
 
-            <Grid Grid.Column="2"
-                  Visibility="{x:Bind DetailSplitterVisibility, Mode=OneTime}"
+        <Grid Grid.Column="2"
+              Visibility="{x:Bind DetailSplitterVisibility, Mode=OneTime}"
+              BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+              BorderThickness="1,0,0,0">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="40" />
+                <RowDefinition Height="*" />
+            </Grid.RowDefinitions>
+            <Grid Grid.Row="0"
+                  Padding="8,4,16,4"
                   BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
-                  BorderThickness="1,0,0,0">
-                <Grid.RowDefinitions>
-                    <RowDefinition Height="40" />
-                    <RowDefinition Height="*" />
-                </Grid.RowDefinitions>
-                <Grid Grid.Row="0"
-                      Padding="8,4,16,4"
-                      BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
-                      BorderThickness="0,0,0,1">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="*" />
-                        <ColumnDefinition Width="Auto" />
-                    </Grid.ColumnDefinitions>
-                    <TextBlock Grid.Column="0"
-                               Margin="4,0,0,1"
-                               VerticalAlignment="Center"
-                               Text="Properties" />
-                    <Button Grid.Column="1"
-                            Click="{x:Bind CloseDetailPane}"
-                            Background="Transparent"
-                            BorderThickness="0"
-                            Padding="0"
-                            VerticalAlignment="Center">
-                        <FontIcon Glyph="&#xE711;" FontSize="12" />
-                    </Button>
-                </Grid>
-                <plan:PlanNodePropertiesView Grid.Row="1"
-                                             Node="{x:Bind ViewModel.SelectedPlanNode, Mode=OneWay}"
-                                             EventStatistics="{x:Bind ViewModel.SelectedPlanNodeEventStatistics, Mode=OneWay}"
-                                             Expressions="{x:Bind ViewModel.SelectedPlanExpressions, Mode=OneWay}"
-                                             ScanMode="{x:Bind ViewModel.SelectedPlanNodeScanMode, Mode=OneWay}" />
+                  BorderThickness="0,0,0,1">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <TextBlock Grid.Column="0"
+                           Margin="4,0,0,1"
+                           VerticalAlignment="Center"
+                           Text="Properties" />
+                <Button Grid.Column="1"
+                        Click="{x:Bind CloseDetailPane}"
+                        Background="Transparent"
+                        BorderThickness="0"
+                        Padding="0"
+                        VerticalAlignment="Center">
+                    <FontIcon Glyph="&#xE711;" FontSize="12" />
+                </Button>
             </Grid>
+            <plan:PlanNodePropertiesView Grid.Row="1"
+                                         Node="{x:Bind ViewModel.SelectedPlanNode, Mode=OneWay}"
+                                         EventStatistics="{x:Bind ViewModel.SelectedPlanNodeEventStatistics, Mode=OneWay}"
+                                         Expressions="{x:Bind ViewModel.SelectedPlanExpressions, Mode=OneWay}"
+                                         ScanMode="{x:Bind ViewModel.SelectedPlanNodeScanMode, Mode=OneWay}" />
         </Grid>
     </Grid>
 
