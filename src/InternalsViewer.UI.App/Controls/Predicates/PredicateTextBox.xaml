@@ -73,7 +73,7 @@
             Style="{StaticResource PredicateTextBoxBorder}"
             Margin="{Binding Margin, ElementName=Root}">
         <RichTextBlock x:Name="TextHost"
-                       FontFamily="Consolas"
+                       FontFamily="{StaticResource MonospaceFontFamily}"
                        FontSize="{Binding FontSize, ElementName=Root}"
                        Padding="{Binding TextPadding, ElementName=Root}"
                        IsTextSelectionEnabled="True"

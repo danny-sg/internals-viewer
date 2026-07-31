@@ -128,29 +128,12 @@
         </Style>
 
         <Style x:Key="RowHeader" TargetType="Border" >
-            <Setter Property="Height" Value="34"/>
+            <Setter Property="Height" Value="32"/>
             <Setter Property="MinHeight" Value="22" />
             <Setter Property="Padding" Value="0,8,8,8" />
-            <Setter Property="Background" Value="{ThemeResource LayerFillColorDefaultBrush }"/>
-            <Setter Property="Opacity" Value="1"/>
+            <Setter Property="Background" Value="{ThemeResource LayerFillColorDefaultBrush}"/>
             <Setter Property="BorderBrush" Value="{ThemeResource CardStrokeColorDefaultBrush}" />
             <Setter Property="BorderThickness" Value="0,0,0,1" />
-        </Style>
-
-        <Style x:Key="HexStyle" TargetType="TextBlock">
-            <Setter Property="FontSize" Value="14" />
-            <Setter Property="FontFamily" Value="Consolas"/>
-        </Style>
-
-        <Style x:Key="TagTextBlockStyle" TargetType="TextBlock">
-            <Setter Property="FontSize" Value="10" />
-            <Setter Property="Foreground" Value="{ThemeResource TextOnAccentFillColorPrimaryBrush}"/>
-        </Style>
-
-        <Style x:Key="PointerStyle" TargetType="HyperlinkButton">
-            <Setter Property="Foreground" Value="{ThemeResource AccentTextFillColorSecondaryBrush}"/>
-            <Setter Property="FontSize" Value="12"/>
-            <Setter Property="Margin" Value="0,0,4,0"/>
         </Style>
 
         <selectors:MarkerTemplateSelector x:Key="ValueTemplateSelector" 
@@ -227,7 +210,7 @@
                                    VerticalAlignment="Center"
                                    Foreground="{x:Bind ((models:Marker)Content).ForeColour,
                                    Converter={StaticResource ColorToSolidColorBrushValueConverter}}"
-                                   Style="{StaticResource HexStyle}"/>
+                                   Style="{StaticResource HexTextBlockStyle}"/>
                     </Grid>
                     <TextBlock Grid.Column="1"
                                Text="{x:Bind ((models:Marker)Content).Name}"

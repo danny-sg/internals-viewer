@@ -51,11 +51,9 @@ public sealed partial class DocumentViewModel : ObservableObject
     /// </summary>
     public bool KeepAlive { get; }
 
-    [ObservableProperty]
-    private string _title;
+    public string Title { get; }
 
-    [ObservableProperty]
-    private bool _canClose;
+    public bool CanClose { get; }
 
     /// <summary>
     /// Returns the element to host as a tab's content, with the view's <c>DataContext</c> set to

@@ -10,7 +10,7 @@ using InternalsViewer.Internals.Services.Loaders.Records.FixedVar;
 
 namespace InternalsViewer.Internals.Readers.Internals;
 
-public sealed class RecordReader(ILogger<RecordReader> logger, 
+public sealed partial class RecordReader(ILogger<RecordReader> logger, 
                                  IPageService pageService, 
                                  FixedVarDataRecordLoader fixedVarDataRecordLoader)
     : IRecordReader
@@ -26,7 +26,7 @@ public sealed class RecordReader(ILogger<RecordReader> logger,
                                              TableStructure structure,
                                              CancellationToken cancellationToken)
     {
-        Logger.LogTrace("Reading records from {StartPage} - {@Structure}", startPage, structure);
+        LogReadingRecords(Logger, startPage, structure);
 
         var page = await PageService.GetPage<DataPage>(database, startPage, cancellationToken, false);
 
@@ -36,10 +36,7 @@ public sealed class RecordReader(ILogger<RecordReader> logger,
         {
             records.AddRange(page.OffsetTable.Select(offset =>
             {
-                Logger.LogTrace("Loading record {FileId}:{PageId}:{Offset}",
-                                page.PageHeader.PageAddress.FileId,
-                                page.PageHeader.PageAddress.PageId,
-                                offset);
+                LogLoadingRecord(Logger, page.PageHeader.PageAddress.FileId, page.PageHeader.PageAddress.PageId, offset);
 
                 return FixedVarDataRecordLoader.Load(page, offset, structure);
             }));
@@ -48,12 +45,10 @@ public sealed class RecordReader(ILogger<RecordReader> logger,
 
             if (nextPage == PageAddress.Empty)
             {
-                Logger.LogTrace("Next page: None. Read complete");
-
                 break;
             }
 
-            Logger.LogTrace("Next page: {NextPage}", nextPage);
+            LogNextPageNextPage(Logger, nextPage);
 
             page = await PageService.GetPage<DataPage>(database, nextPage, cancellationToken, false);
         }

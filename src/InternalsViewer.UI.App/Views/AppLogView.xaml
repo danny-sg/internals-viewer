@@ -87,19 +87,19 @@
                                    Text="{x:Bind TimestampText}"
                                    Foreground="{x:Bind Level, Converter={StaticResource LogLevelToBrushConverter}}"
                                    IsTextSelectionEnabled="True"
-                                   FontFamily="Consolas"
+                                   FontFamily="{StaticResource MonospaceFontFamily}"
                                    FontSize="11"/>
                         <TextBlock Grid.Column="1"
                                    Text="{x:Bind Level}"
                                    Foreground="{x:Bind Level, Converter={StaticResource LogLevelToBrushConverter}}"
                                    IsTextSelectionEnabled="True"
-                                   FontFamily="Consolas"
+                                   FontFamily="{StaticResource MonospaceFontFamily}"
                                    FontSize="11"/>
                         <TextBlock Grid.Column="2"
                                    Text="{x:Bind ShortCategory}"
                                    Foreground="{x:Bind Level, Converter={StaticResource LogLevelToBrushConverter}}"
                                    IsTextSelectionEnabled="True"
-                                   FontFamily="Consolas"
+                                   FontFamily="{StaticResource MonospaceFontFamily}"
                                    FontSize="11"
                                    TextTrimming="CharacterEllipsis"/>
                         <logControls:LogMessageControl Grid.Column="3" Entry="{x:Bind}"/>

@@ -14,7 +14,7 @@ namespace InternalsViewer.Internals.Services.Pages;
 /// <see cref="DatabaseSource"/>. Allocation and system pages (IAM, GAM, SGAM, DCM, BCM, Boot,
 /// FileHeader) are stable for the duration of a session and benefit most from caching.
 /// </summary>
-public sealed class CachingPageService(ILogger<CachingPageService> logger, PageService inner) : IPageService
+public sealed partial class CachingPageService(ILogger<CachingPageService> logger, PageService inner) : IPageService
 {
     private static readonly HashSet<PageType> CacheablePageTypes =
     [
@@ -44,7 +44,7 @@ public sealed class CachingPageService(ILogger<CachingPageService> logger, PageS
 
         if (dbCache.TryGetValue(pageAddress, out var cached))
         {
-            Logger.LogTrace("Cache hit: {PageAddress}", pageAddress);
+            LogCacheHit(Logger, pageAddress);
 
             return cached;
         }
@@ -68,7 +68,7 @@ public sealed class CachingPageService(ILogger<CachingPageService> logger, PageS
 
         if (dbCache.TryGetValue(pageAddress, out var cached))
         {
-            Logger.LogTrace("Cache hit: {PageAddress}", pageAddress);
+            LogCacheHit(Logger, pageAddress);
 
             return cached;
         }
@@ -107,6 +107,6 @@ public sealed class CachingPageService(ILogger<CachingPageService> logger, PageS
     {
         _cache.Remove(database);
 
-        Logger.LogDebug("Page cache reset for database {DatabaseName}", database.Name);
+        LogCacheReset(Logger, database.Name);
     }
 }

@@ -101,7 +101,6 @@ public sealed partial class DatabaseTabViewModel(ILogger<DatabaseTabViewModel> l
     [ObservableProperty]
     private bool _isQueryReplayVisible;
 
-    // Persisted preference (default on), shared across database tabs — see LoadTooltipEnabledAsync / the change handler.
     [ObservableProperty]
     private bool _isTooltipEnabled = true;
 
@@ -167,7 +166,7 @@ public sealed partial class DatabaseTabViewModel(ILogger<DatabaseTabViewModel> l
             }
         }
 
-        AllocationLayers = new ObservableCollection<AllocationLayer>(AllocationLayers);
+        AllocationLayers = [.. AllocationLayers];
 
         if (Overlay == "Buffer Pool")
         {
@@ -193,7 +192,7 @@ public sealed partial class DatabaseTabViewModel(ILogger<DatabaseTabViewModel> l
                         ..bufferPoolPages.Dirty.Select(s => new PageSpan(s, 0, 0, System.Drawing.Color.DarkRed)),
                     ];
 
-                    AllocationLayers = new ObservableCollection<AllocationLayer>(AllocationLayers);
+                    AllocationLayers = [.. AllocationLayers];
                 }
             });
         }
@@ -216,8 +215,11 @@ public sealed partial class DatabaseTabViewModel(ILogger<DatabaseTabViewModel> l
     }
 
     public List<AllocationLayer> GridAllocationLayers
-        => AllocationLayers.Where(w => string.IsNullOrEmpty(Filter)
-                                       || w.Name.Contains(Filter, StringComparison.CurrentCultureIgnoreCase)).ToList();
+        =>
+        [
+            .. AllocationLayers.Where(w => string.IsNullOrEmpty(Filter)
+                                           || w.Name.Contains(Filter, StringComparison.CurrentCultureIgnoreCase))
+        ];
 
     partial void OnSelectedLayersChanged(ObservableCollection<AllocationLayer>? oldValue, ObservableCollection<AllocationLayer> newValue)
     {
@@ -257,17 +259,19 @@ public sealed partial class DatabaseTabViewModel(ILogger<DatabaseTabViewModel> l
 
         Name = name;
 
-        DatabaseFiles = Database.Files
-                                .Select((f, i) => new DatabaseFile(this)
-                                {
-                                    FileId = f.FileId,
-                                    Name = f.Name,
-                                    FileName = f.FileName,
-                                    Size = f.Size,
-                                    IsHeaderVisible = Database.Files.Count > 1,
-                                    IsViewToggleVisible = i == 0 && Database.Files.Count > 1
-                                })
-                                .ToArray();
+        DatabaseFiles =
+        [
+            .. Database.Files
+                       .Select((f, i) => new DatabaseFile(this)
+                       {
+                           FileId = f.FileId,
+                           Name = f.Name,
+                           FileName = f.FileName,
+                           Size = f.Size,
+                           IsHeaderVisible = Database.Files.Count > 1,
+                           IsViewToggleVisible = i == 0 && Database.Files.Count > 1
+                       })
+        ];
 
         IsLoading = true;
 
@@ -299,8 +303,6 @@ public sealed partial class DatabaseTabViewModel(ILogger<DatabaseTabViewModel> l
         {
             var layersStart = Stopwatch.GetTimestamp();
 
-            // Heavy allocation-map walk on a background thread; the bound assignments below run on the UI
-            // continuation (Load is called on the UI thread).
             var (layers, extentCount, pfsChain) = await Task.Run(() =>
             {
                 var generated = AllocationLayerBuilder.GenerateLayers(Database, true);
@@ -313,6 +315,7 @@ public sealed partial class DatabaseTabViewModel(ILogger<DatabaseTabViewModel> l
             Logger.LogDebug("Generated allocation layers in: {Elapsed}", Stopwatch.GetElapsedTime(layersStart));
 
             AllocationLayers = new ObservableCollection<AllocationLayer>(layers);
+
             ExtentCount = extentCount;
             PfsChain = pfsChain;
         }

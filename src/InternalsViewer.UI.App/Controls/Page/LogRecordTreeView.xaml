@@ -121,17 +121,6 @@
             </Setter>
         </Style>
 
-        <Style x:Key="HexStyle" TargetType="TextBlock">
-            <Setter Property="FontSize" Value="12" />
-            <Setter Property="FontFamily" Value="Consolas"/>
-        </Style>
-
-
-
-        <Style TargetType="controls:HeaderedTreeView">
-            <Setter Property="Background" Value="{ThemeResource LayerOnMicaBaseAltFillColorDefault}" />
-        </Style>
-
         <DataTemplate x:Key="RecordTemplate" x:DataType="muxc:TreeViewNode">
             <controls:DataRow HorizontalAlignment="Left">
                 <Viewbox Width="16"
@@ -150,7 +139,7 @@
                               Unchecked="RecordCheckBox_Unchecked"/>
                 </Viewbox>
                 <TextBlock Text="{x:Bind ((models:LogRecordItem)Content).Lsn}"
-                           Style="{StaticResource HexStyle}"
+                           Style="{StaticResource HexTextBlockStyle}"
                            VerticalAlignment="Center"
                            TextTrimming="WordEllipsis" />
                 <TextBlock Text="{x:Bind ((models:LogRecordItem)Content).Operation}"
@@ -180,17 +169,16 @@
                         Background="{x:Bind ((models:LogRecordAnnotation)Content).CategoryColour,
                                             Converter={StaticResource HexColorToBrushConverter}}">
                     <TextBlock Text="{x:Bind ((models:LogRecordAnnotation)Content).Category}"
-                               FontSize="10"
-                               Foreground="{ThemeResource TextOnAccentFillColorPrimaryBrush}"/>
+                               Style="{StaticResource TagTextBlockStyle}"/>
                 </Border>
                 <TextBlock Grid.Column="2"
                            Text="{x:Bind ((models:LogRecordAnnotation)Content).Offset}"
-                           Style="{StaticResource HexStyle}"
+                           Style="{StaticResource HexTextBlockStyle}"
                            HorizontalAlignment="Right"
                            VerticalAlignment="Center" />
                 <TextBlock Grid.Column="3"
                            Text="{x:Bind ((models:LogRecordAnnotation)Content).Length}"
-                           Style="{StaticResource HexStyle}"
+                           Style="{StaticResource HexTextBlockStyle}"
                            HorizontalAlignment="Right"
                            VerticalAlignment="Center" />
                 <StackPanel Grid.Column="1"
@@ -208,8 +196,7 @@
                             Background="{x:Bind ((models:LogRecordAnnotation)Content).ItemType,
                                                 Converter={StaticResource MarkStyleConverter}, ConverterParameter=Back}">
                         <TextBlock Text="{x:Bind ((models:LogRecordAnnotation)Content).Value}"
-                                   FontFamily="Consolas"
-                                   FontSize="12"
+                                   Style="{StaticResource HexTextBlockStyle}"
                                    Foreground="{x:Bind ((models:LogRecordAnnotation)Content).ItemType,
                                                        Converter={StaticResource MarkStyleConverter}, ConverterParameter=Fore}"/>
                     </Border>

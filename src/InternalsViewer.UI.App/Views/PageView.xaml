@@ -17,11 +17,6 @@
         <Style x:Key="TitleStyle" 
                BasedOn="{StaticResource BodyStrongTextBlockStyle}" 
                TargetType="TextBlock" />
-        <Style TargetType="ListViewItem" BasedOn="{StaticResource DefaultListViewItemStyle}" x:Key="ListViewItemSlotStyle">
-            <Setter Property="Height" Value="30" />
-            <Setter Property="MinHeight" Value="30" />
-            <Setter Property="Padding" Value="14,4" />
-        </Style>
         <Style x:Key="SlotHeader" TargetType="Grid" >
             <Setter Property="Height" Value="32"/>
             <Setter Property="MinHeight" Value="22" />
@@ -187,7 +182,7 @@
                           Width="178"
                           IsItemClickEnabled="True"
                           ItemClick="OffsetTableListView_ItemClick"
-                          ItemContainerStyle="{StaticResource ListViewItemSlotStyle}"
+                          ItemContainerStyle="{StaticResource RowListViewItemStyle}"
                           ItemTemplateSelector="{StaticResource SlotTemplateSelector}"
                           HorizontalAlignment="Left">
                 </ListView>
@@ -261,7 +256,8 @@
 
                     <allocation:AllocationControl x:Name="AllocationControl"
                                                   Visibility="{x:Bind GetTabContentVisibility(ViewModel.SelectedTabIndex,
-                                                                      ViewModel.IsAllocationsTabVisible, 1), Mode=OneWay}"
+                                                                      ViewModel.IsAllocationsTabVisible, 1), 
+                                                                      Mode=OneWay}"
                                                   ExtentCount="63903"
                                                   IsTooltipEnabled="True"
                                                   BorderColor="{ThemeResource CardStrokeColorDefault}"
@@ -271,7 +267,8 @@
 
                     <allocation:AllocationControl x:Name="PfsControl"
                                                   Visibility="{x:Bind GetTabContentVisibility(ViewModel.SelectedTabIndex,
-                                                                      ViewModel.IsPfsTabVisible, 2), Mode=OneWay}"
+                                                                      ViewModel.IsPfsTabVisible, 2), 
+                                                                      Mode=OneWay}"
                                                   ExtentCount="1011"
                                                   IsPfsVisible="true"
                                                   Zoom="2"
@@ -310,7 +307,7 @@
                     </Grid.RowDefinitions>
 
                     <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="14,8,14,0" Spacing="14">
-                        <TextBlock FontWeight="Bold">Log Operations</TextBlock>
+                        <TextBlock Style="{StaticResource LabelTextBlockStyle}">Log Operations</TextBlock>
 
                     </StackPanel>
                     <page:LogRecordTreeView x:Name="LogRecordTreeView"

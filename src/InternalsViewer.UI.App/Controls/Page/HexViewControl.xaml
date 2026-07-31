@@ -16,13 +16,13 @@
 
         <Style x:Key="AddressStyle" TargetType="TextBlock">
             <Setter Property="FontSize" Value="14" />
-            <Setter Property="FontFamily" Value="Consolas"/>
+            <Setter Property="FontFamily" Value="{StaticResource MonospaceFontFamily}"/>
             <Setter Property="Foreground" Value="{ThemeResource TextFillColorTertiaryBrush}"/>
         </Style>
 
         <Style x:Key="HexRichTextBlockStyle" TargetType="RichTextBlock">
             <Setter Property="FontSize" Value="14" />
-            <Setter Property="FontFamily" Value="Consolas"/>
+            <Setter Property="FontFamily" Value="{StaticResource MonospaceFontFamily}"/>
         </Style>
 
         <Style TargetType="Border">
@@ -33,9 +33,7 @@
             <Setter Property="LineHeight" Value="16"/>
         </Style>
 
-        <Style TargetType="ListViewItem" BasedOn="{StaticResource DefaultListViewItemStyle}">
-            <Setter Property="Height" Value="30" />
-            <Setter Property="MinHeight" Value="30" />
+        <Style TargetType="ListViewItem" BasedOn="{StaticResource RowListViewItemStyle}">
             <Setter Property="Padding" Value="10,4,0,0" />
         </Style>
 
@@ -148,7 +146,7 @@
                        Margin="0,1,0,0"
                        VerticalAlignment="Center"
                        FontSize="14"
-                       FontFamily="Consolas"
+                       FontFamily="{StaticResource MonospaceFontFamily}"
                        Text="{x:Bind MouseOver.Offset, Mode=OneWay, Converter={StaticResource StringFormatConverter}, ConverterParameter='{}{0:0000}'}"
                       />
             <Border Grid.Column="3" Background="{x:Bind MouseOver.Marker.BackColour,Mode=OneWay,Converter={StaticResource ColorToSolidColorBrushValueConverter}}"

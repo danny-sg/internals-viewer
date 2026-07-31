@@ -36,7 +36,7 @@
                             <TextBlock Foreground="{ThemeResource TextFillColorSecondaryBrush}">
                                 <Run Text="File"/> <Run Text="{x:Bind FileId, Mode=OneWay}"/>
                             </TextBlock>
-                            <TextBlock FontWeight="SemiBold" Text="{x:Bind Name, Mode=OneWay}"/>
+                            <TextBlock Style="{StaticResource LabelTextBlockStyle}" Text="{x:Bind Name, Mode=OneWay}"/>
                             <TextBlock Foreground="{ThemeResource TextFillColorSecondaryBrush}"
                                        Text="{x:Bind FileName, Mode=OneWay}"/>
                         </StackPanel>
@@ -74,7 +74,7 @@
                         <TextBlock Foreground="{ThemeResource TextFillColorSecondaryBrush}">
                             <Run Text="File"/> <Run Text="{x:Bind FileId, Mode=OneWay}"/>
                         </TextBlock>
-                        <TextBlock FontWeight="SemiBold" Text="{x:Bind Name, Mode=OneWay}"/>
+                        <TextBlock Style="{StaticResource LabelTextBlockStyle}" Text="{x:Bind Name, Mode=OneWay}"/>
                     </StackPanel>
                 </TabViewItem.Header>
                 <allocation:AllocationControl IsTooltipEnabled="{x:Bind Parent.IsTooltipEnabled, Mode=OneWay}"

@@ -1,4 +1,6 @@
-﻿namespace InternalsViewer.Internals.Helpers;
+﻿using System.Collections.Generic;
+
+namespace InternalsViewer.UI.App.ViewModels.Page;
 
 public sealed class History<T>
 {

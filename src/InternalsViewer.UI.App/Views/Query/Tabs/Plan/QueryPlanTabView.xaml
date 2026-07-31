@@ -50,9 +50,9 @@
         </CommandBar>
         <Grid Grid.Row="1">
             <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="{x:Bind BodyColumnWidth, Mode=OneWay}" />
+                <ColumnDefinition Width="{x:Bind BodyColumnWidth, Mode=OneTime}" />
                 <ColumnDefinition Width="Auto" />
-                <ColumnDefinition Width="{x:Bind DetailColumnWidth, Mode=OneWay}" />
+                <ColumnDefinition Width="{x:Bind DetailColumnWidth, Mode=OneTime}" />
             </Grid.ColumnDefinitions>
 
             <ScrollViewer Grid.Column="0"
@@ -77,7 +77,7 @@
                                    VerticalAlignment="Stretch"
                                    ResizeBehavior="PreviousAndNext"
                                    ResizeDirection="Columns"
-                                   Visibility="{x:Bind DetailSplitterVisibility, Mode=OneWay}"
+                                   Visibility="{x:Bind DetailSplitterVisibility, Mode=OneTime}"
                                    Background="{ThemeResource ControlStrokeColorDefaultBrush}">
                 <controls:GridSplitter.Template>
                     <ControlTemplate TargetType="controls:GridSplitter">
@@ -87,7 +87,7 @@
             </controls:GridSplitter>
 
             <Grid Grid.Column="2"
-                  Visibility="{x:Bind DetailSplitterVisibility, Mode=OneWay}"
+                  Visibility="{x:Bind DetailSplitterVisibility, Mode=OneTime}"
                   BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
                   BorderThickness="1,0,0,0">
                 <Grid.RowDefinitions>

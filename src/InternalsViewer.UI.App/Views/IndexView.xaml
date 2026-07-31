@@ -115,18 +115,18 @@
                     <StackPanel Grid.Column="0"
                                 Orientation="Horizontal"
                                 VerticalAlignment="Center">
-                        <TextBlock Margin="4,0,0,1" FontWeight="Bold">Page Address</TextBlock>
+                        <TextBlock Margin="4,0,0,1" Style="{StaticResource LabelTextBlockStyle}">Page Address</TextBlock>
                         <HyperlinkButton x:Name="PageAddressLink"
                                          Margin="4,0,0,0"
                                          Style="{StaticResource PageAddressStyle}"
                                          Content="{x:Bind ViewModel.SelectedPageAddress, Mode=OneWay}" />
-                        <TextBlock Margin="4,0,0,1" FontWeight="Bold">Previous Page</TextBlock>
+                        <TextBlock Margin="4,0,0,1" Style="{StaticResource LabelTextBlockStyle}">Previous Page</TextBlock>
                         <HyperlinkButton x:Name="PreviousPageAddressLink"
                                          Margin="4,0,0,0"
                                          Style="{StaticResource PageAddressStyle}"
                                          Content="{x:Bind ViewModel.SelectedPreviousPage, Mode=OneWay, FallbackValue='(0:0)'}" />
 
-                        <TextBlock Margin="4,0,0,1" FontWeight="Bold">Next Page</TextBlock>
+                        <TextBlock Margin="4,0,0,1" Style="{StaticResource LabelTextBlockStyle}">Next Page</TextBlock>
                         <HyperlinkButton x:Name="NextPageAddressLink"
                                          Margin="4,0,0,0"
                                          Style="{StaticResource PageAddressStyle}"

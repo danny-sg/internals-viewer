@@ -128,7 +128,7 @@
                      AcceptsReturn="True"
                      TextWrapping="NoWrap"
                      IsSpellCheckEnabled="False"
-                     FontFamily="Consolas"
+                     FontFamily="{StaticResource MonospaceFontFamily}"
                      FontSize="12"
                      ScrollViewer.VerticalScrollBarVisibility="Auto"
                      ScrollViewer.HorizontalScrollBarVisibility="Auto"

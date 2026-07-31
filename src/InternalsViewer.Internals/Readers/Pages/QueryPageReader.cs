@@ -14,7 +14,7 @@ namespace InternalsViewer.Internals.Readers.Pages;
 /// <summary>
 /// Page Reader for reading a page using an online database with DBCC PAGE
 /// </summary>
-public sealed class QueryPageReader(ILogger<QueryPageReader> logger, string connectionString)
+public sealed partial class QueryPageReader(ILogger<QueryPageReader> logger, string connectionString)
     : PageReader, IPageReader
 {
     private const int ValueIndex = 3;
@@ -72,7 +72,7 @@ public sealed class QueryPageReader(ILogger<QueryPageReader> logger, string conn
     );
 ";
 
-        Logger.LogDebug("Reading page {PageAddress}: {CommandSql}", pageAddress, pageCommand);
+        LogReadingPage(Logger, pageAddress, pageCommand);
 
         var offset = 0;
 
@@ -121,7 +121,7 @@ public sealed class QueryPageReader(ILogger<QueryPageReader> logger, string conn
             throw new Exception($"Error reading page {pageAddress.FileId}:{pageAddress.PageId}", ex);
         }
 
-        Logger.LogDebug("Page loaded in {Duration}", Stopwatch.GetElapsedTime(start));
+        LogPageLoaded(Logger, Stopwatch.GetElapsedTime(start));
     }
 
     public ValueTask DisposeAsync() => ValueTask.CompletedTask;

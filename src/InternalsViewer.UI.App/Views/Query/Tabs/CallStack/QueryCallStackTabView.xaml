@@ -50,7 +50,7 @@
                 </StackPanel>
 
                 <TextBlock Text="{x:Bind ((callstack:CallStackNode)Content).Symbol}"
-                           FontFamily="Consolas"
+                           FontFamily="{StaticResource MonospaceFontFamily}"
                            FontSize="11"
                            VerticalAlignment="Center"/>
 

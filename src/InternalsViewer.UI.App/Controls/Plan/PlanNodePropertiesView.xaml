@@ -127,7 +127,7 @@
                         <DataTemplate x:DataType="x:String">
                             <TextBlock Text="{x:Bind}"
                                        FontSize="12"
-                                       FontFamily="Consolas"
+                                       FontFamily="{StaticResource MonospaceFontFamily}"
                                        TextTrimming="WordEllipsis" />
                         </DataTemplate>
                     </ItemsControl.ItemTemplate>

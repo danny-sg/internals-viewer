@@ -109,9 +109,6 @@ public partial class IndexTabViewModel(ILogger<IndexTabViewModel> logger,
     private const int RecordsSpinnerDelayMs = 100;
 
     [ObservableProperty]
-    private string _objectIndexType = string.Empty;
-    
-    [ObservableProperty]
     private bool _isTooltipEnabled;
 
     [ObservableProperty]
