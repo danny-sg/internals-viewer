@@ -19,9 +19,7 @@ public class NestedLoopsStepServiceTests(ITestOutputHelper testOutput)
 
     private const string MdfPath = "./IntegrationTests/Test Data/TestDatabase.mdf";
 
-    private const string NumberTable = "NumberTable_Clustered";
-
-    [RequiresFileFact(MdfPath)]
+        [RequiresFileFact(MdfPath)]
     public async Task Rebinds_Once_Per_Outer_Row()
     {
         var context = await LoadNumberTableAsync();
@@ -163,8 +161,7 @@ public class NestedLoopsStepServiceTests(ITestOutputHelper testOutput)
 
         var database = await databaseService.LoadAsync("TestDatabase", connection, CancellationToken.None);
 
-        var unit = database.AllocationUnits.Values.Single(a => a.TableName == NumberTable
-                                                               && a.AllocationUnitType == AllocationUnitType.InRowData);
+        var unit = DemoDatabase.Unit(database, DemoDatabase.ClusteredTable, DemoDatabase.ClusteredIndex);
 
         return new NumberTableContext(database, serviceHost.GetService<NestedLoopsStepService>(), unit);
     }

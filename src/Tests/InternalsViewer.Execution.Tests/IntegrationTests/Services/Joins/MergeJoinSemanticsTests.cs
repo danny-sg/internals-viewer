@@ -134,8 +134,7 @@ public class MergeJoinSemanticsTests(ITestOutputHelper testOutput)
         var database = await serviceHost.GetService<IDatabaseService>()
                                         .LoadAsync("TestDatabase", connection, CancellationToken.None);
 
-        var unit = database.AllocationUnits.Values.Single(a => a.TableName == "NumberTable_Clustered"
-                                                               && a.AllocationUnitType == AllocationUnitType.InRowData);
+        var unit = DemoDatabase.Unit(database, DemoDatabase.ClusteredTable, DemoDatabase.ClusteredIndex);
 
         return new Context(database, serviceHost.GetService<MergeJoinStepService>(), unit);
     }

@@ -19,9 +19,7 @@ public class IndexStepServiceTests(ITestOutputHelper testOutput)
 
     private const string MdfPath = "./IntegrationTests/Test Data/TestDatabase.mdf";
 
-    private const string NumberTable = "NumberTable_Clustered";
-
-    private const int NumberTableRowCount = 10_000;
+        private const int NumberTableRowCount = DemoDatabase.ClusteredTableRowCount;
 
     [RequiresFileFact(MdfPath)]
     public async Task Scan_Reads_All_Rows_In_Order()
@@ -203,7 +201,7 @@ public class IndexStepServiceTests(ITestOutputHelper testOutput)
 
         var bounds = new SeekBounds
         {
-            StartValue = Key(9990),
+            StartValue = Key(NumberTableRowCount - 10),
             IsStartInclusive = true,
             CompareWidth = 1
         };
@@ -219,8 +217,8 @@ public class IndexStepServiceTests(ITestOutputHelper testOutput)
         var (steps, values) = await RunAsync(context.Service);
 
         Assert.Equal(11, values.Count);
-        Assert.Equal(9990, values[0]);
-        Assert.Equal(10000, values[^1]);
+        Assert.Equal(NumberTableRowCount - 10, values[0]);
+        Assert.Equal(NumberTableRowCount, values[^1]);
 
         var stopped = Assert.IsType<AccessStep.Stopped>(steps[^1]);
 
@@ -239,8 +237,7 @@ public class IndexStepServiceTests(ITestOutputHelper testOutput)
 
         var database = await databaseService.LoadAsync("TestDatabase", connection, CancellationToken.None);
 
-        var unit = database.AllocationUnits.Values.Single(a => a.TableName == NumberTable
-                                                               && a.AllocationUnitType == AllocationUnitType.InRowData);
+        var unit = DemoDatabase.Unit(database, DemoDatabase.ClusteredTable, DemoDatabase.ClusteredIndex);
 
         return new NumberTableContext(database, serviceHost.GetService<IndexStepService>(), unit);
     }
