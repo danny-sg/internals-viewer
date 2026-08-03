@@ -266,6 +266,48 @@ public static class PlanNodePropertyBuilder
             result.Add(ioGroup);
         }
 
+        if (node.MemoryGrant is { } memoryGrant)
+        {
+            var memoryGroup = new PlanNodeProperty("Memory Grant", string.Empty);
+
+            AddKilobytes(memoryGroup, "Input Memory Grant", memoryGrant.InputKb);
+            AddKilobytes(memoryGroup, "Output Memory Grant", memoryGrant.OutputKb);
+            AddKilobytes(memoryGroup, "Used Memory Grant", memoryGrant.UsedKb);
+
+            if (memoryGroup.Children.Count > 0)
+            {
+                result.Add(memoryGroup);
+            }
+        }
+
+        if (node.QueryMemoryGrant is { } queryMemoryGrant)
+        {
+            var memoryGroup = new PlanNodeProperty("Memory Grant", string.Empty);
+
+            AddKilobytes(memoryGroup, "Serial Required Memory", queryMemoryGrant.SerialRequiredKb);
+            AddKilobytes(memoryGroup, "Serial Desired Memory", queryMemoryGrant.SerialDesiredKb);
+            AddKilobytes(memoryGroup, "Required Memory", queryMemoryGrant.RequiredKb);
+            AddKilobytes(memoryGroup, "Desired Memory", queryMemoryGrant.DesiredKb);
+            AddKilobytes(memoryGroup, "Requested Memory", queryMemoryGrant.RequestedKb);
+            AddKilobytes(memoryGroup, "Granted Memory", queryMemoryGrant.GrantedKb);
+            AddKilobytes(memoryGroup, "Max Used Memory", queryMemoryGrant.MaxUsedKb);
+            AddKilobytes(memoryGroup, "Max Query Memory", queryMemoryGrant.MaxQueryKb);
+
+            if (queryMemoryGrant.GrantWaitTimeSeconds is { } grantWait)
+            {
+                memoryGroup.Children.Add(new PlanNodeProperty("Grant Wait Time",
+                                                              $"{grantWait.ToString("N0", CultureInfo.InvariantCulture)} s")
+                {
+                    IsValueHighlighted = grantWait > 0
+                });
+            }
+
+            if (memoryGroup.Children.Count > 0)
+            {
+                result.Add(memoryGroup);
+            }
+        }
+
         if (eventStatistics is { } eventStats)
         {
             var eventGroup = new PlanNodeProperty("Event Statistics", string.Empty) { IsExpanded = false };
@@ -325,6 +367,16 @@ public static class PlanNodePropertyBuilder
     private static PredicateText Expand(PredicateText text, ExpressionCatalog? expressions)
     {
         return expressions is null ? text : expressions.Expand(text);
+    }
+
+    private static void AddKilobytes(PlanNodeProperty group, string name, long? value)
+    {
+        if (value is not { } kilobytes)
+        {
+            return;
+        }
+
+        group.Children.Add(new PlanNodeProperty(name, $"{kilobytes.ToString("N0", CultureInfo.InvariantCulture)} KB"));
     }
 
     private static PlanNodeProperty BoolProperty(string name, bool value)

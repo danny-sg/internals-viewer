@@ -42,6 +42,10 @@ public sealed class PlanNode
 
     public PlanIoStatistics? IoStats { get; set; }
 
+    public PlanMemoryGrant? MemoryGrant { get; set; }
+
+    public QueryMemoryGrant? QueryMemoryGrant { get; set; }
+
     public long RowsOutput { get; set; }
 
     public long? RowsRead { get; set; }

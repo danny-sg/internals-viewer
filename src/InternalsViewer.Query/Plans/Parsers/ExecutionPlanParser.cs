@@ -34,7 +34,7 @@ public static class ExecutionPlanParser
                                                .Select(e => ParseRelationalOperator(e, parameters, 1))
                                                .ToList();
 
-        var statementNode = BuildStatementNode(queryPlan.Parent, rootRelationalOperators);
+        var statementNode = BuildStatementNode(queryPlan.Parent, queryPlan, rootRelationalOperators);
 
         plan.Root.Add(statementNode);
 
@@ -46,7 +46,7 @@ public static class ExecutionPlanParser
         return plan;
     }
 
-    private static PlanNode BuildStatementNode(XElement? statementElement, List<PlanNode> rootRelOps)
+    private static PlanNode BuildStatementNode(XElement? statementElement, XElement queryPlan, List<PlanNode> rootRelOps)
     {
         var statementType = statementElement is null
             ? string.Empty
@@ -63,7 +63,31 @@ public static class ExecutionPlanParser
             IsStatement = true,
             PhysicalOperator = string.IsNullOrEmpty(statementType) ? "Statement" : statementType,
             EstimatedCost = subtreeCost,
+            QueryMemoryGrant = ParseQueryMemoryGrant(queryPlan),
             Children = rootRelOps
+        };
+    }
+
+    private static QueryMemoryGrant? ParseQueryMemoryGrant(XElement queryPlan)
+    {
+        var info = queryPlan.Elements().FirstOrDefault(e => e.Name.LocalName == "MemoryGrantInfo");
+
+        if (info is null)
+        {
+            return null;
+        }
+
+        return new QueryMemoryGrant
+        {
+            SerialRequiredKb = GetLongAttribute(info, "SerialRequiredMemory"),
+            SerialDesiredKb = GetLongAttribute(info, "SerialDesiredMemory"),
+            RequiredKb = GetLongAttribute(info, "RequiredMemory"),
+            DesiredKb = GetLongAttribute(info, "DesiredMemory"),
+            RequestedKb = GetLongAttribute(info, "RequestedMemory"),
+            GrantedKb = GetLongAttribute(info, "GrantedMemory"),
+            MaxUsedKb = GetLongAttribute(info, "MaxUsedMemory"),
+            MaxQueryKb = GetLongAttribute(info, "MaxQueryMemory"),
+            GrantWaitTimeSeconds = GetLongAttribute(info, "GrantWaitTime")
         };
     }
 
@@ -96,6 +120,8 @@ public static class ExecutionPlanParser
         node.CountersByThread = ExtractThreadCounters(element);
 
         node.IoStats = ParseIoStats(element);
+
+        node.MemoryGrant = ParseMemoryGrant(element);
 
         ParseRowCounts(element, node);
 
@@ -270,6 +296,41 @@ public static class ExecutionPlanParser
             LobPhysicalReads = counters.Sum(c => GetLongAttribute(c, "ActualLobPhysicalReads") ?? 0),
             LobReadAheads = counters.Sum(c => GetLongAttribute(c, "ActualLobReadAheads") ?? 0)
         };
+    }
+
+    private static PlanMemoryGrant? ParseMemoryGrant(XElement relOp)
+    {
+        var runtime = relOp.Elements().FirstOrDefault(e => e.Name.LocalName == "RunTimeInformation");
+
+        if (runtime == null)
+        {
+            return null;
+        }
+
+        var counters = runtime.Elements().Where(e => e.Name.LocalName == "RunTimeCountersPerThread").ToList();
+
+        var input = SumAcrossThreads(counters, "InputMemoryGrant");
+        var output = SumAcrossThreads(counters, "OutputMemoryGrant");
+        var used = SumAcrossThreads(counters, "UsedMemoryGrant");
+
+        if (input is null && output is null && used is null)
+        {
+            return null;
+        }
+
+        return new PlanMemoryGrant
+        {
+            InputKb = input,
+            OutputKb = output,
+            UsedKb = used
+        };
+    }
+
+    private static long? SumAcrossThreads(List<XElement> counters, string attributeName)
+    {
+        return counters.Any(c => c.Attribute(attributeName) is not null)
+            ? counters.Sum(c => GetLongAttribute(c, attributeName) ?? 0)
+            : null;
     }
 
     private static int GetIntAttribute(XElement e, string name)
