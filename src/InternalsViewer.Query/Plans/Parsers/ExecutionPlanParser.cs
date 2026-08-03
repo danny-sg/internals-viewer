@@ -169,14 +169,34 @@ public static class ExecutionPlanParser
             node.Children.Add(ParseRelationalOperator(child, parameters, level + 1));
         }
 
-        if (string.Equals(node.PhysicalOperator, "Top", StringComparison.OrdinalIgnoreCase) &&
-            node.Children.Count == 1 &&
-            node.Children[0].PredicateInfo is { } childPredicateInfo)
+        if (string.Equals(node.PhysicalOperator, "Top", StringComparison.OrdinalIgnoreCase))
         {
-            childPredicateInfo.RowGoal = ParseTopRowCount(element, parameters);
+            node.TopInfo = ParseTopInfo(element, parameters);
+
+            if (node.Children.Count == 1 && node.Children[0].PredicateInfo is { } childPredicateInfo)
+            {
+                childPredicateInfo.RowGoal = ParseTopRowCount(element, parameters);
+            }
         }
 
         return node;
+    }
+
+    private static TopInfo? ParseTopInfo(XElement element, PlanParameters parameters)
+    {
+        var top = element.Elements().FirstOrDefault(e => e.Name.LocalName == "Top");
+
+        if (top is null)
+        {
+            return null;
+        }
+
+        return new TopInfo
+        {
+            RowCount = ParseTopRowCount(element, parameters),
+            IsPercent = IsTrue(top.Attribute("IsPercent")),
+            WithTies = IsTrue(top.Attribute("WithTies"))
+        };
     }
 
     private static long? ParseTopRowCount(XElement element, PlanParameters parameters)

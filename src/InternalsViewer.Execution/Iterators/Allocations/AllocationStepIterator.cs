@@ -14,6 +14,8 @@ using InternalsViewer.Internals.Engine.Pages;
 using InternalsViewer.Internals.Interfaces.Services.Loaders.Pages;
 using InternalsViewer.Internals.Interfaces.Services.Records;
 
+using InternalsViewer.Internals.Interfaces.Engine;
+
 namespace InternalsViewer.Execution.Iterators.Allocations;
 
 /// <summary>
@@ -109,6 +111,12 @@ public sealed class AllocationStepIterator(IPageService pageService, IRecordServ
 
         await LoadIamAsync(scan.FirstIamPage, cancellationToken);
     }
+
+    /// <summary>
+    /// A row this walk read, which it reports as its own only when the step came from here
+    /// </summary>
+    public IRecord? GetOutputRow(AccessStep step)
+        => step.Source == IteratorId && step is AccessStep.Row { EmittedRecord: { } record } ? record : null;
 
     public Task CloseAsync()
     {

@@ -126,6 +126,11 @@ public sealed partial class TraceTabViewModel : ObservableObject
         VisualsBySource = visuals.ToDictionary(v => v.Source);
         DefinitionBySource = TraceSourceCollector.Collect(definition).ToDictionary(s => s.NodeId, s => s.Definition);
 
+        Operators = [.. TraceSourceCollector.CollectOperators(definition)
+                                            .Select(o => new TraceOperatorViewModel(o.NodeId, OperatorTitle(o)))];
+
+        OperatorsBySource = Operators.ToDictionary(o => o.NodeId);
+
         SelectedVisual = visuals[0];
 
         if (Visuals.FirstOrDefault(v => v.IsHashTableVisible) is { } buildVisual)
@@ -140,36 +145,82 @@ public sealed partial class TraceTabViewModel : ObservableObject
         Strategy = SeekDescription;
     }
 
+    private static string OperatorTitle(JoinDefinition definition)
+        => definition switch
+        {
+            HashMatchDefinition => "Hash Match",
+            MergeJoinDefinition => "Merge Join",
+            NestedLoopsDefinition => "Nested Loops",
+            _ => "Results"
+        };
+
     public SvgImageSource? IconSource => PlanNode is null ? null : new SvgImageSource(PlanIconResolver.Resolve(PlanNode));
 
     public DockLayoutViewModel Dock { get; }
 
+    /// <summary>
+    /// Lays the trace out as the operator tree, each operator showing its two inputs above the rows it produced
+    /// </summary>
+    /// <remarks>
+    /// A nested operator gets the same arrangement inside the pane its parent reads it from, so the results one join hands to another are
+    /// visible in between rather than having to be inferred from two separate walks.
+    /// </remarks>
     private DockLayoutViewModel BuildDock()
     {
-        var visualDocuments = Visuals.Select(v => DocumentViewModel.Create<TraceVisualPanelView>(v.Title,
-                                                                                                 v,
-                                                                                                 canClose: false,
-                                                                                                 keepAlive: true,
-                                                                                                 key: $"Visual{v.Source}"))
-                                     .ToArray();
-
         var steps = DocumentViewModel.Create<TraceStepsPanelView>("Trace", this, canClose: false, keepAlive: true, key: "Steps");
         var description = DocumentViewModel.Create<TraceDescriptionPanelView>("Description", this, keepAlive: true, key: "Description");
-        var results = DocumentViewModel.Create<TraceResultsPanelView>("Results", this, keepAlive: true, key: "Results");
         var strategy = DocumentViewModel.Create<TraceStrategyPanelView>("Strategy", this, keepAlive: true, key: "Strategy");
+
+        var results = DocumentViewModel.Create<TraceResultsPanelView>("Results", this, keepAlive: true, key: "Results");
 
         _resultsDocument = results;
 
         var right = new TabGroupNode(steps, description, results, strategy);
 
-        // Each side of a join gets its own pane so both walks are visible at once, rather than tabs hiding one behind the other
-        LayoutNode visualNode = visualDocuments.Length > 1
-            ? visualDocuments.Skip(1)
-                             .Aggregate((LayoutNode)new TabGroupNode(visualDocuments[0]),
-                                        (left, document) => new SplitNode(Orientation.Horizontal, left, new TabGroupNode(document)))
-            : new TabGroupNode(visualDocuments);
+        return new DockLayoutViewModel(new SplitNode(Orientation.Horizontal, BuildOperatorNode(Definition), right));
+    }
 
-        return new DockLayoutViewModel(new SplitNode(Orientation.Horizontal, visualNode, right));
+    private LayoutNode BuildOperatorNode(IteratorDefinition definition)
+        => definition switch
+        {
+            UnaryDefinition unary
+                => BuildOperatorNode(unary.Source),
+            NestedLoopsDefinition loops
+                => Compose(loops.NodeId, loops.Outer, loops.Inner),
+            MergeJoinDefinition merge
+                => Compose(merge.NodeId, merge.Outer.Source, merge.Inner.Source),
+            HashMatchDefinition hash
+                => Compose(hash.NodeId, hash.Build.Source, hash.Probe.Source),
+            _ => new TabGroupNode(VisualDocument(definition.NodeId))
+        };
+
+    private LayoutNode Compose(int nodeId, IteratorDefinition left, IteratorDefinition right)
+    {
+        var inputs = new SplitNode(Orientation.Horizontal, BuildOperatorNode(left), BuildOperatorNode(right));
+
+        if (!OperatorsBySource.TryGetValue(nodeId, out var operatorViewModel))
+        {
+            return inputs;
+        }
+
+        var bottom = DocumentViewModel.Create<TraceOperatorResultsPanelView>(operatorViewModel.Title,
+                                                                            operatorViewModel,
+                                                                            canClose: false,
+                                                                            keepAlive: true,
+                                                                            key: $"Operator{nodeId}");
+
+        return new SplitNode(Orientation.Vertical, inputs, new TabGroupNode(bottom));
+    }
+
+    private DocumentViewModel VisualDocument(int source)
+    {
+        var visual = VisualsBySource[source];
+
+        return DocumentViewModel.Create<TraceVisualPanelView>(visual.Title,
+                                                              visual,
+                                                              canClose: false,
+                                                              keepAlive: true,
+                                                              key: $"Visual{source}");
     }
 
     public IReadOnlyList<TraceVisualViewModel> Visuals { get; }
@@ -185,6 +236,10 @@ public sealed partial class TraceTabViewModel : ObservableObject
     private IStepIterator Iterator { get; }
 
     private Dictionary<int, TraceVisualViewModel> VisualsBySource { get; }
+
+    public IReadOnlyList<TraceOperatorViewModel> Operators { get; }
+
+    private Dictionary<int, TraceOperatorViewModel> OperatorsBySource { get; }
 
     public DatabaseSource Database { get; }
 
@@ -458,6 +513,11 @@ public sealed partial class TraceTabViewModel : ObservableObject
 
         Append(step, StepHistory);
 
+        if (step is AccessStep.JoinEmit pair && OperatorsBySource.TryGetValue(step.Source, out var emitting))
+        {
+            emitting.Add(ToJoinedModel(pair));
+        }
+
         if (ToResultModel(step) is { } resultModel)
         {
             ResultRecords.Add(resultModel);
@@ -617,6 +677,11 @@ public sealed partial class TraceTabViewModel : ObservableObject
 
         StepHistory = [];
         ResultRecords = [];
+
+        foreach (var operatorViewModel in Operators)
+        {
+            operatorViewModel.Clear();
+        }
 
         _hashBucketModels = null;
         _syncedHashRowCount = 0;

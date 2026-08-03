@@ -72,6 +72,12 @@ public sealed class HeapFetchStepIterator(IPageService pageService, IRecordServi
         return Task.CompletedTask;
     }
 
+    /// <summary>
+    /// A row this walk read, which it reports as its own only when the step came from here
+    /// </summary>
+    public IRecord? GetOutputRow(AccessStep step)
+        => step.Source == IteratorId && step is AccessStep.Row { EmittedRecord: { } record } ? record : null;
+
     public Task CloseAsync()
     {
         Steps?.Dispose();

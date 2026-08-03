@@ -2,6 +2,7 @@ using InternalsViewer.Execution.AccessPaths.Definitions;
 using InternalsViewer.Execution.AccessPaths.Results;
 using InternalsViewer.Execution.AccessPaths.Search;
 using InternalsViewer.Internals.Engine.Address;
+using InternalsViewer.Internals.Interfaces.Engine;
 
 namespace InternalsViewer.Execution.Interfaces;
 
@@ -35,6 +36,16 @@ public interface IStepIterator
     /// build error in whatever assembled the tree rather than something to recover from.
     /// </remarks>
     Task OpenAsync(IteratorContext context, IteratorDefinition definition, CancellationToken cancellationToken);
+
+    /// <summary>
+    /// The row this iterator handed upwards in a step, or null when the step is work it did rather than a row it produced
+    /// </summary>
+    /// <remarks>
+    /// Each iterator answers only for its own steps, so an operator reading another gets that operator's results and not the reads that
+    /// went into them. Without the identity test a nested operator's leaf rows would be taken as the parent's input, which is the same row
+    /// stream the operator was there to transform.
+    /// </remarks>
+    IRecord? GetOutputRow(AccessStep step);
 
     Task<AccessStep?> StepNextAsync(CancellationToken cancellationToken);
 

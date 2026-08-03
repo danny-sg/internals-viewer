@@ -5,6 +5,8 @@ using InternalsViewer.Execution.AccessPaths.Search;
 using InternalsViewer.Execution.Interfaces.Iterators.Joins;
 using InternalsViewer.Execution.Interfaces.Iterators.Joins.Inputs;
 using InternalsViewer.Execution.Iterators.Joins.Inputs;
+using InternalsViewer.Execution.Records;
+using InternalsViewer.Internals.Interfaces.Engine;
 using InternalsViewer.Internals.Engine.Address;
 
 namespace InternalsViewer.Execution.Iterators.Joins;
@@ -52,6 +54,14 @@ public abstract class JoinStepIterator : IJoinStepIterator
     protected List<AccessStep> TakenSteps { get; } = [];
 
     public abstract Task OpenAsync(IteratorContext context, IteratorDefinition definition, CancellationToken cancellationToken);
+
+    /// <summary>
+    /// The pair this join emitted, combined into the single row an operator above reads
+    /// </summary>
+    public IRecord? GetOutputRow(AccessStep step)
+        => step.Source == IteratorId && step is AccessStep.JoinEmit emit
+            ? JoinedRecord.Combine(emit.OuterRecord, emit.InnerRecord)
+            : null;
 
     public abstract Task<AccessStep?> StepNextAsync(CancellationToken cancellationToken);
 

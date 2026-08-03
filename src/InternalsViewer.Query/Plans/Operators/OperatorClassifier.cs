@@ -25,6 +25,9 @@ public static class OperatorClassifier
     public static bool IsComputeScalar(PlanNode n) =>
         EqualsOp(n.PhysicalOperator, "Compute Scalar");
 
+    public static bool IsTop(PlanNode n) =>
+        EqualsOp(n.PhysicalOperator, "Top");
+
     public static bool IsSpool(PlanNode n) =>
         Contains(n.PhysicalOperator, "Spool");
 

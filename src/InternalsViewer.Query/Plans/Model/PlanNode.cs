@@ -38,6 +38,8 @@ public sealed class PlanNode
 
     public MergeInfo? MergeInfo { get; set; }
 
+    public TopInfo? TopInfo { get; set; }
+
     public NestedLoopsInfo? NestedLoopsInfo { get; set; }
 
     public List<ColumnReference> GroupByColumns { get; set; } = [];

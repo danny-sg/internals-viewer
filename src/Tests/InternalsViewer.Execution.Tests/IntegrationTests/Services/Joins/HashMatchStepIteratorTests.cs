@@ -466,6 +466,50 @@ public class HashMatchStepIteratorTests(ITestOutputHelper testOutput)
         return new NumberTableContext(database, serviceHost.GetService<HashMatchStepIterator>(), unit);
     }
 
+
+    /// <summary>
+    /// A hash match reading another hash match consumes the pairs it emitted, not the reads that produced them
+    /// </summary>
+    /// <remarks>
+    /// The inner join's own leaves also report rows, so an operator that took any row step as its input would consume the inner join's
+    /// build side instead of its results and pair against the wrong stream entirely.
+    /// </remarks>
+    [RequiresFileFact(MdfPath)]
+    public async Task A_Hash_Match_Reads_The_Results_Of_A_Nested_Hash_Match()
+    {
+        var context = await LoadNumberTableAsync();
+
+        var inner = new HashMatchDefinition(SideInput(context.Unit, Between(100, 110), 1),
+                                            SideInput(context.Unit, Between(105, 120), 2))
+        {
+            NodeId = 3
+        };
+
+        var outer = new HashMatchDefinition(SideInput(context.Unit, Between(100, 130), 4),
+                                            new JoinInputDefinition(inner, ["Id"]))
+        {
+            NodeId = 5
+        };
+
+        context.Service.IteratorId = 5;
+
+        await context.Service.OpenAsync(new IteratorContext(context.Database), outer, CancellationToken.None);
+
+        var (steps, _) = await RunAsync(context.Service);
+
+        // The nested join's own emits pass through this stream too, so only the outer join's count as its output
+        var emits = steps.OfType<AccessStep.JoinEmit>().Where(e => e.Source == 5).ToList();
+
+        var nested = steps.OfType<AccessStep.JoinEmit>().Where(e => e.Source == 3).ToList();
+
+        // The nested join pairs 105 to 110, and every one of those is inside the outer build's range
+        Assert.Equal(6, nested.Count);
+        Assert.Equal(6, emits.Count);
+
+        Assert.Contains(steps, s => s.Source == 1);
+        Assert.Contains(steps, s => s.Source == 2);
+    }
+
     private static JoinInputDefinition SideInput(AllocationUnit unit, SeekBounds bounds, int nodeId)
         => new(new RangeDefinition(unit.AllocationUnitId, unit.RootPage, [bounds]) { NodeId = nodeId }, ["Id"]);
 

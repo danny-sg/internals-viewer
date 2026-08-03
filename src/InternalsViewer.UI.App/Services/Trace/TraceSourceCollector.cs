@@ -56,6 +56,11 @@ public static class TraceSourceCollector
 
                 break;
 
+            case UnaryDefinition unary:
+                Walk(unary.Source, role, operatorNodeId, sources);
+
+                break;
+
             default:
                 sources.Add(new TraceSource(definition.NodeId, definition)
                 {
@@ -69,6 +74,13 @@ public static class TraceSourceCollector
 
     private static void WalkOperators(IteratorDefinition definition, List<JoinDefinition> operators)
     {
+        if (definition is UnaryDefinition unary)
+        {
+            WalkOperators(unary.Source, operators);
+
+            return;
+        }
+
         if (definition is not JoinDefinition join)
         {
             return;

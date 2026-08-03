@@ -827,11 +827,9 @@ public sealed partial class IndexControl : IDisposable
 
     private void DrawSelectedSlot(SKCanvas canvas, IndexNode nodeNode, float renderX, float renderY, int borderWidth)
     {
-        var height = Math.Max(PageHeight / nodeNode.SlotCount, 2F);
-
         var y = renderY + ((PageHeight / nodeNode.SlotCount) * SelectedSlot ?? 0);
 
-        _slotPaint.StrokeWidth = height;
+        _slotPaint.StrokeWidth = 2;
 
         canvas.DrawLine(renderX + borderWidth, y, renderX + borderWidth + PageWidth - (borderWidth * 2), y, _slotPaint);
     }

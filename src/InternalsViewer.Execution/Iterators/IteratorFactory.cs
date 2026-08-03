@@ -4,6 +4,7 @@ using InternalsViewer.Execution.Iterators.Allocations;
 using InternalsViewer.Execution.Iterators.Heaps;
 using InternalsViewer.Execution.Iterators.Indexes;
 using InternalsViewer.Execution.Iterators.Joins;
+using InternalsViewer.Execution.Iterators.Row;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace InternalsViewer.Execution.Iterators;
@@ -31,6 +32,8 @@ public sealed class IteratorFactory(IServiceProvider services) : IIteratorFactor
                 => services.GetRequiredService<MergeJoinStepIterator>(),
             HashMatchDefinition
                 => services.GetRequiredService<HashMatchStepIterator>(),
+            TopDefinition
+                => services.GetRequiredService<TopIterator>(),
             AllocationScanDefinition
                 => services.GetRequiredService<AllocationStepIterator>(),
             HeapFetchDefinition

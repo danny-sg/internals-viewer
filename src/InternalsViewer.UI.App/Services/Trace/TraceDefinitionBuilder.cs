@@ -54,12 +54,42 @@ public sealed class TraceDefinitionBuilder(Func<PlanNode, AllocationUnit?> resol
             return BuildNestedLoops(node);
         }
 
+        if (OperatorClassifier.IsTop(node))
+        {
+            return BuildTop(node);
+        }
+
         if (OperatorClassifier.IsRead(node))
         {
             return BuildAccess(node);
         }
 
         return null;
+    }
+
+    /// <summary>
+    /// Builds a TOP, which is traceable only when the number of rows it asks for is known before the input is read
+    /// </summary>
+    private IteratorDefinition? BuildTop(PlanNode node)
+    {
+        if (node.TopInfo is not { IsPercent: false, WithTies: false, RowCount: { } rowCount }
+            || node.Children.Count != 1)
+        {
+            return null;
+        }
+
+        if (Build(node.Children[0]) is not { } source)
+        {
+            return null;
+        }
+
+        Nodes[node.NodeId] = node;
+
+        return new TopDefinition(source)
+        {
+            NodeId = node.NodeId,
+            RowCount = rowCount
+        };
     }
 
     private IteratorDefinition? BuildHashMatch(PlanNode node)

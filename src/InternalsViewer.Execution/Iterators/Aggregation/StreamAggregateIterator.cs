@@ -3,6 +3,7 @@ using InternalsViewer.Execution.AccessPaths.Results;
 using InternalsViewer.Execution.AccessPaths.Search;
 using InternalsViewer.Execution.Interfaces;
 using InternalsViewer.Internals.Engine.Address;
+using InternalsViewer.Internals.Interfaces.Engine;
 
 namespace InternalsViewer.Execution.Iterators.Aggregation;
 
@@ -21,6 +22,11 @@ public class StreamAggregateIterator : IStepIterator
     public AccessStrategy? Strategy { get; }
 
     public Task OpenAsync(IteratorContext context, IteratorDefinition definition, CancellationToken cancellationToken)
+    {
+        throw new NotImplementedException();
+    }
+
+    public IRecord? GetOutputRow(AccessStep step)
     {
         throw new NotImplementedException();
     }

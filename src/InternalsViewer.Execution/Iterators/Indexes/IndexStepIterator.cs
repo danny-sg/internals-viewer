@@ -14,6 +14,8 @@ using InternalsViewer.Internals.Interfaces.Services.Records;
 using InternalsViewer.Internals.Metadata.Structures;
 using InternalsViewer.Internals.Providers.Metadata;
 
+using InternalsViewer.Internals.Interfaces.Engine;
+
 namespace InternalsViewer.Execution.Iterators.Indexes;
 
 /// <summary>
@@ -139,6 +141,12 @@ public sealed class IndexStepIterator(IPageService pageService, IRecordService r
 
         await LoadPageAsync(range.RootPage, cancellationToken);
     }
+
+    /// <summary>
+    /// A row this walk read, which it reports as its own only when the step came from here
+    /// </summary>
+    public IRecord? GetOutputRow(AccessStep step)
+        => step.Source == IteratorId && step is AccessStep.Row { EmittedRecord: { } record } ? record : null;
 
     public Task CloseAsync()
     {

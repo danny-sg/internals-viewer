@@ -31,14 +31,31 @@ public class MergeJoinResolverTests
         Assert.Null(result);
     }
 
+    /// <summary>
+    /// A side that is itself an operator resolves, because the trace builds that subtree too
+    /// </summary>
     [Fact]
-    public void Resolve_Returns_Null_When_A_Side_Is_Not_A_Read()
+    public void Resolve_Accepts_A_Side_That_Is_Itself_An_Operator()
     {
-        var outer = Scan("TableA");
+        var read = Scan("TableA");
 
-        outer.PhysicalOperator = "Sort";
+        var loops = new PlanNode
+        {
+            NodeId = 2,
+            PhysicalOperator = "Nested Loops",
+            Children = [read]
+        };
 
-        var result = MergeJoinResolver.Resolve(Join(outer, Scan("TableB")));
+        var result = MergeJoinResolver.Resolve(Join(loops, Scan("TableB"), outerTable: "TableA"));
+
+        Assert.NotNull(result);
+        Assert.Same(loops, result!.Outer);
+    }
+
+    [Fact]
+    public void Resolve_Returns_Null_When_A_Key_Names_A_Table_The_Side_Never_Reads()
+    {
+        var result = MergeJoinResolver.Resolve(Join(Scan("TableA"), Scan("TableB"), outerTable: "TableZ"));
 
         Assert.Null(result);
     }
@@ -81,7 +98,7 @@ public class MergeJoinResolverTests
         };
     }
 
-    private static PlanNode Join(PlanNode outer, PlanNode inner)
+    private static PlanNode Join(PlanNode outer, PlanNode inner, string? outerTable = null)
     {
         return new PlanNode
         {
@@ -90,7 +107,7 @@ public class MergeJoinResolverTests
             Children = [outer, inner],
             MergeInfo = new MergeInfo
             {
-                OuterKeys = [new ColumnReference { Table = $"[{outer.Table}]", Column = "Id" }],
+                OuterKeys = [new ColumnReference { Table = $"[{outerTable ?? outer.Table}]", Column = "Id" }],
                 InnerKeys = [new ColumnReference { Table = $"[{inner.Table}]", Column = "Id" }]
             }
         };
