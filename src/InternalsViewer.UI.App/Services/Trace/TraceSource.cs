@@ -1,3 +1,5 @@
+using System;
+using System.Collections.Generic;
 using InternalsViewer.Execution.AccessPaths.Definitions;
 
 namespace InternalsViewer.UI.App.Services.Trace;
@@ -6,7 +8,7 @@ namespace InternalsViewer.UI.App.Services.Trace;
 /// One input a trace reads from, which is one tab
 /// </summary>
 /// <remarks>
-/// <see cref="NodeId"/> is what steps carry as their source, so it is the only thing needed to route a step to the tab that should show it.
+/// <see cref="NodeId"/> is what steps carry as their source, so it is the only thing needed to route a step to the tab that shows it.
 /// </remarks>
 public sealed record TraceSource(int NodeId, IteratorDefinition Definition)
 {
@@ -17,8 +19,10 @@ public sealed record TraceSource(int NodeId, IteratorDefinition Definition)
         _ => TraceSourceKind.Index
     };
 
+    public TraceSourceRole Role { get; init; }
+
     /// <summary>
-    /// The role this input plays in the operator that reads it, used to label the tab
+    /// The operator reading this input, which is what gives the role its meaning
     /// </summary>
-    public string Role { get; init; } = string.Empty;
+    public int OperatorNodeId { get; init; }
 }

@@ -201,7 +201,7 @@ public sealed class NestedLoopsStepIterator(IIteratorFactory factory) : JoinStep
 
         var step = rebind with
         {
-            Source = InnerSource,
+            Source = Inner.Iterator.IteratorId,
             Counters = OuterCounters.Add(CompletedInnerCounters)
         };
 

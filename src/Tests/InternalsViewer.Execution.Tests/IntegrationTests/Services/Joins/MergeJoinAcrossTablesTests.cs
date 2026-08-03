@@ -113,9 +113,9 @@ public class MergeJoinAcrossTablesTests(ITestOutputHelper testOutput)
                                          JoinType joinType = JoinType.Inner,
                                          bool isClusteredOuter = false)
     {
-        var heap = SideInput(context.HeapIndex, from, to);
+        var heap = SideInput(context.HeapIndex, from, to, isClusteredOuter ? 1 : 0);
 
-        var clustered = SideInput(context.Clustered, from, to);
+        var clustered = SideInput(context.Clustered, from, to, isClusteredOuter ? 0 : 1);
 
         await context.Service.OpenAsync(new IteratorContext(context.Database),
                                         new MergeJoinDefinition(isClusteredOuter ? clustered : heap, isClusteredOuter ? heap : clustered)
@@ -125,8 +125,8 @@ public class MergeJoinAcrossTablesTests(ITestOutputHelper testOutput)
                                         CancellationToken.None);
     }
 
-    private static JoinInputDefinition SideInput(AllocationUnit unit, int from, int to)
-        => new(new RangeDefinition(unit.AllocationUnitId, unit.RootPage, [Between(from, to)]), ["Id"]);
+    private static JoinInputDefinition SideInput(AllocationUnit unit, int from, int to, int nodeId)
+        => new(new RangeDefinition(unit.AllocationUnitId, unit.RootPage, [Between(from, to)]) { NodeId = nodeId }, ["Id"]);
 
     private static async Task<(List<AccessStep> Steps, List<(long? Outer, long? Inner)> Pairs)> RunAsync(MergeJoinStepIterator service)
     {

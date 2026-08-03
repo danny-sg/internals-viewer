@@ -164,10 +164,10 @@ public class RidLookupTests(ITestOutputHelper testOutput)
 
     private static async Task StartAsync(Context context, SeekBounds outerBounds)
     {
-        var outerInput = new RangeDefinition(context.Index.AllocationUnitId, context.Index.RootPage, [outerBounds]);
+        var outerInput = new RangeDefinition(context.Index.AllocationUnitId, context.Index.RootPage, [outerBounds]) { NodeId = 0 };
 
         await context.Service.OpenAsync(new IteratorContext(context.Database),
-                                        new NestedLoopsDefinition(outerInput, new HeapFetchDefinition()),
+                                        new NestedLoopsDefinition(outerInput, new HeapFetchDefinition { NodeId = 1 }),
                                         CancellationToken.None);
     }
 

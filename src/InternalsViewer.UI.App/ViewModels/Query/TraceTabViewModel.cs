@@ -1,6 +1,3 @@
-using InternalsViewer.Execution.AccessPaths.Binding;
-using InternalsViewer.Execution.Interfaces.Services.Joins;
-using InternalsViewer.Execution.Services.Joins.Inputs;
 using System.Collections.Generic;
 using System.Data;
 using System.Collections.ObjectModel;
@@ -15,25 +12,20 @@ using InternalsViewer.Execution.AccessPaths.Predicates;
 using InternalsViewer.Execution.AccessPaths.Results;
 using InternalsViewer.Execution.AccessPaths.Search;
 using InternalsViewer.Execution.Interfaces;
-using InternalsViewer.Execution.Services.Allocations;
-using InternalsViewer.Execution.Services.Heaps;
-using InternalsViewer.Execution.Services.Indexes;
-using InternalsViewer.Execution.Services.Joins;
+using InternalsViewer.Execution.Interfaces.Iterators.Joins;
+using InternalsViewer.Execution.Iterators.Joins;
 using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Internals.Engine.Database;
 using InternalsViewer.Internals.Engine.Records;
 using InternalsViewer.Internals.Interfaces.Engine;
-using InternalsViewer.Internals.Interfaces.Services.Loaders.Pages;
-using InternalsViewer.Internals.Interfaces.Services.Records;
 using InternalsViewer.Internals.Providers.Metadata;
 using InternalsViewer.Internals.Services.Indexes;
 using InternalsViewer.Query.Events.Operators;
-using InternalsViewer.Query.Plans;
-using InternalsViewer.Query.Plans.Joins;
 using InternalsViewer.Query.Plans.Model;
 using InternalsViewer.UI.App.Controls.Plan;
 using InternalsViewer.UI.App.Models.Index;
 using InternalsViewer.UI.App.Models.Trace;
+using InternalsViewer.UI.App.Services.Trace;
 using InternalsViewer.UI.App.ViewModels.Docking;
 using InternalsViewer.UI.App.ViewModels.Index;
 using InternalsViewer.UI.App.Views.Query.Tabs.Trace;
@@ -45,170 +37,63 @@ using InternalsViewer.Execution.AccessPaths.Joins.Hash;
 
 namespace InternalsViewer.UI.App.ViewModels.Query;
 
-public enum TraceKind
+public sealed class TraceTabViewModelFactory(IIteratorFactory iteratorFactory, IndexService indexService)
 {
-    Index,
-    Allocation,
-    KeyLookup,
-    RidLookup,
-    MergeJoin,
-    HashMatch
-}
-
-public sealed class TraceTabViewModelFactory(IPageService pageService,
-                                             IRecordService recordService,
-                                             IndexService indexService)
-{
-    public TraceTabViewModel Create(TraceKind kind,
-                                    DatabaseSource database,
-                                    AllocationUnit allocationUnit,
-                                    PlanNode? planNode,
-                                    DateTime? queryTime,
-                                    ScanModeResult? scanMode)
+    /// <summary>
+    /// Builds a trace of an operator and everything below it, or null when some operator in that tree cannot be simulated
+    /// </summary>
+    public TraceTabViewModel? Create(DatabaseSource database,
+                                     PlanNode node,
+                                     Func<PlanNode, AllocationUnit?> resolveUnit,
+                                     DateTime? queryTime,
+                                     ScanModeResult? scanMode)
     {
-        IStepService service = kind == TraceKind.Index
-            ? new IndexStepService(pageService, recordService)
-            : new AllocationStepService(pageService, recordService);
+        var builder = new TraceDefinitionBuilder(resolveUnit);
 
-        var visualKind = kind == TraceKind.Index ? TraceVisualKind.Index : TraceVisualKind.Allocation;
+        if (builder.Build(node) is not { } definition)
+        {
+            return null;
+        }
 
-        var visualTitle = kind == TraceKind.Index ? "Index" : "Allocations";
+        var visuals = TraceSourceCollector.Collect(definition)
+                                          .Select(s => CreateVisual(database, s, builder))
+                                          .OfType<TraceVisualViewModel>()
+                                          .ToList();
 
-        var visuals = new[] { new TraceVisualViewModel(visualKind, database, allocationUnit, indexService, visualTitle) };
+        if (visuals.Count == 0)
+        {
+            return null;
+        }
 
-        return new TraceTabViewModel(kind, service, database, allocationUnit, planNode, queryTime, scanMode, visuals);
+        var iterator = iteratorFactory.Create(definition);
+
+        return new TraceTabViewModel(iterator, definition, database, node, queryTime, scanMode, visuals);
     }
 
-    public TraceTabViewModel CreateKeyLookup(DatabaseSource database,
-                                             AllocationUnit outerUnit,
-                                             AllocationUnit innerUnit,
-                                             PlanNode joinNode,
-                                             DateTime? queryTime)
+    private TraceVisualViewModel? CreateVisual(DatabaseSource database, TraceSource source, TraceDefinitionBuilder builder)
     {
-        var service = new NestedLoopsStepService(new IndexStepService(pageService, recordService),
-                                                 new IndexStepService(pageService, recordService));
-
-        var visuals = new[]
+        if (!builder.Units.TryGetValue(source.NodeId, out var unit))
         {
-            new TraceVisualViewModel(TraceVisualKind.Index,
-                                     database,
-                                     outerUnit,
-                                     indexService,
-                                     $"Seek: {outerUnit.IndexName}",
-                                     NestedLoopsStepService.OuterSource) { IsSideStackVisible = true },
-            new TraceVisualViewModel(TraceVisualKind.Index,
-                                     database,
-                                     innerUnit,
-                                     indexService,
-                                     $"Lookup: {innerUnit.IndexName}",
-                                     NestedLoopsStepService.InnerSource) { IsSideStackVisible = true }
-        };
+            return null;
+        }
 
-        return new TraceTabViewModel(TraceKind.KeyLookup, service, database, outerUnit, joinNode, queryTime, null, visuals);
-    }
+        var kind = source.Kind == TraceSourceKind.Index ? TraceVisualKind.Index : TraceVisualKind.Allocation;
 
-    public TraceTabViewModel CreateRidLookup(DatabaseSource database,
-                                             AllocationUnit outerUnit,
-                                             AllocationUnit heapUnit,
-                                             PlanNode joinNode,
-                                             DateTime? queryTime)
-    {
-        var service = new NestedLoopsStepService(new IndexStepService(pageService, recordService),
-                                                 new IndexStepService(pageService, recordService));
+        var title = source.Role == TraceSourceRole.None ? DisplayName(unit) : $"{source.Role}: {DisplayName(unit)}";
 
-        var visuals = new[]
+        var node = builder.Nodes.GetValueOrDefault(source.NodeId);
+
+        return new TraceVisualViewModel(kind, database, unit, indexService, title, source.NodeId)
         {
-            new TraceVisualViewModel(TraceVisualKind.Index,
-                                     database,
-                                     outerUnit,
-                                     indexService,
-                                     $"Seek: {outerUnit.IndexName}",
-                                     NestedLoopsStepService.OuterSource) { IsSideStackVisible = true },
-            new TraceVisualViewModel(TraceVisualKind.Allocation,
-                                     database,
-                                     heapUnit,
-                                     indexService,
-                                     $"Heap: {heapUnit.TableName}",
-                                     NestedLoopsStepService.InnerSource)
-            {
-                IsSideStackVisible = true,
-                ShowObjectBorderImmediately = true
-            }
+            IsSideStackVisible = source.Role != TraceSourceRole.None,
+            ShowObjectBorderImmediately = source.Kind == TraceSourceKind.Heap,
+            IsHashTableVisible = source.Role == TraceSourceRole.Build,
+            ColumnFilter = RecordColumnFilter.For(node, includesBookmark: source.Role == TraceSourceRole.Lookup)
         };
-
-        return new TraceTabViewModel(TraceKind.RidLookup,
-                                     service,
-                                     database,
-                                     outerUnit,
-                                     joinNode,
-                                     queryTime,
-                                     null,
-                                     visuals,
-                                     new HeapFetchStepService(pageService, recordService));
-    }
-
-    public TraceTabViewModel CreateMergeJoin(DatabaseSource database,
-                                             AllocationUnit outerUnit,
-                                             AllocationUnit innerUnit,
-                                             PlanNode joinNode,
-                                             DateTime? queryTime)
-    {
-        var service = new MergeJoinStepService(new IndexStepService(pageService, recordService),
-                                               new IndexStepService(pageService, recordService));
-
-        var visuals = new[]
-        {
-            new TraceVisualViewModel(TraceVisualKind.Index,
-                                     database,
-                                     outerUnit,
-                                     indexService,
-                                     $"Outer: {DisplayName(outerUnit)}",
-                                     MergeJoinStepService.OuterSource) { IsSideStackVisible = true },
-            new TraceVisualViewModel(TraceVisualKind.Index,
-                                     database,
-                                     innerUnit,
-                                     indexService,
-                                     $"Inner: {DisplayName(innerUnit)}",
-                                     MergeJoinStepService.InnerSource) { IsSideStackVisible = true }
-        };
-
-        return new TraceTabViewModel(TraceKind.MergeJoin, service, database, outerUnit, joinNode, queryTime, null, visuals);
-    }
-
-    public TraceTabViewModel CreateHashMatch(DatabaseSource database,
-                                             AllocationUnit buildUnit,
-                                             AllocationUnit probeUnit,
-                                             PlanNode joinNode,
-                                             DateTime? queryTime)
-    {
-        var service = new HashMatchStepService(new IndexStepService(pageService, recordService),
-                                               new IndexStepService(pageService, recordService));
-
-        var visuals = new[]
-        {
-            new TraceVisualViewModel(TraceVisualKind.Index,
-                                     database,
-                                     buildUnit,
-                                     indexService,
-                                     $"Build: {DisplayName(buildUnit)}",
-                                     HashMatchStepService.BuildSource)
-            {
-                IsSideStackVisible = true,
-                IsHashTableVisible = true
-            },
-            new TraceVisualViewModel(TraceVisualKind.Index,
-                                     database,
-                                     probeUnit,
-                                     indexService,
-                                     $"Probe: {DisplayName(probeUnit)}",
-                                     HashMatchStepService.ProbeSource) { IsSideStackVisible = true }
-        };
-
-        return new TraceTabViewModel(TraceKind.HashMatch, service, database, buildUnit, joinNode, queryTime, null, visuals);
     }
 
     private static string DisplayName(AllocationUnit unit)
-        => string.IsNullOrEmpty(unit.IndexName) ? unit.TableName ?? string.Empty : unit.IndexName;
+        => string.IsNullOrEmpty(unit.IndexName) ? unit.TableName : unit.IndexName;
 }
 
 public sealed partial class TraceTabViewModel : ObservableObject
@@ -217,25 +102,31 @@ public sealed partial class TraceTabViewModel : ObservableObject
 
     private const int HistoryLimit = 1000;
 
-    public TraceTabViewModel(TraceKind kind,
-                             IStepService stepService,
+    private const int BucketColumn = 0;
+
+    private const int HashColumn = 1;
+
+    private const int FirstValueColumn = 2;
+
+    public TraceTabViewModel(IStepIterator iterator,
+                             IteratorDefinition definition,
                              DatabaseSource database,
-                             AllocationUnit allocationUnit,
                              PlanNode? planNode,
                              DateTime? queryTime,
                              ScanModeResult? scanMode,
-                             IReadOnlyList<TraceVisualViewModel> visuals,
-                             HeapFetchStepService? heapService = null)
+                             IReadOnlyList<TraceVisualViewModel> visuals)
     {
-        HeapService = heapService;
-        Kind = kind;
-        StepService = stepService;
+        Iterator = iterator;
+        Definition = definition;
         Database = database;
-        AllocationUnit = allocationUnit;
         PlanNode = planNode;
         QueryTime = queryTime;
         ScanMode = scanMode;
         Visuals = visuals;
+        VisualsBySource = visuals.ToDictionary(v => v.Source);
+        DefinitionBySource = TraceSourceCollector.Collect(definition).ToDictionary(s => s.NodeId, s => s.Definition);
+
+        SelectedVisual = visuals[0];
 
         if (Visuals.FirstOrDefault(v => v.IsHashTableVisible) is { } buildVisual)
         {
@@ -281,17 +172,23 @@ public sealed partial class TraceTabViewModel : ObservableObject
         return new DockLayoutViewModel(new SplitNode(Orientation.Horizontal, visualNode, right));
     }
 
-    public TraceKind Kind { get; }
-
     public IReadOnlyList<TraceVisualViewModel> Visuals { get; }
 
-    private HeapFetchStepService? HeapService { get; }
+    /// <summary>
+    /// The tab whose walk the strategy and description panels describe
+    /// </summary>
+    [ObservableProperty]
+    private TraceVisualViewModel _selectedVisual;
 
-    private IStepService StepService { get; }
+    private IteratorDefinition Definition { get; }
+
+    private IStepIterator Iterator { get; }
+
+    private Dictionary<int, TraceVisualViewModel> VisualsBySource { get; }
 
     public DatabaseSource Database { get; }
 
-    public AllocationUnit AllocationUnit { get; }
+    public AllocationUnit AllocationUnit => SelectedVisual.AllocationUnit;
 
     [ObservableProperty]
     private PlanNode? _planNode;
@@ -311,7 +208,6 @@ public sealed partial class TraceTabViewModel : ObservableObject
 
         OnPropertyChanged(nameof(SeekDescription));
         OnPropertyChanged(nameof(IconSource));
-        OnPropertyChanged(nameof(JoinRule));
     }
 
     public event EventHandler<PageNavigatedEventArgs>? PageNavigated;
@@ -334,13 +230,48 @@ public sealed partial class TraceTabViewModel : ObservableObject
     [ObservableProperty]
     private AccessStrategy? _innerStrategy;
 
-    public string OuterSectionTitle => Visuals.Count > 0 ? Visuals[0].Title : string.Empty;
+    public string SelectedSectionTitle => SelectedVisual.Title;
 
-    public string InnerSectionTitle => Visuals.Count > 1 ? Visuals[1].Title : string.Empty;
+    /// <summary>
+    /// Whether the trace reads from more than one input, which is when a tab needs naming
+    /// </summary>
+    public bool HasMultipleSources => Visuals.Count > 1;
+
+    /// <summary>
+    /// What the join does with a pair that matches on both sides, or null when the trace is not a join
+    /// </summary>
+    public JoinDecision? JoinRule => Definition is JoinDefinition join ? join.JoinType.Decide(true, true) : null;
+
+    public AccessStrategy? SelectedStrategy => StrategyBySource.GetValueOrDefault(SelectedVisual.Source);
+
+    public AccessPhase? SelectedPhase
+        => CurrentStep is { } step && step.Source == SelectedVisual.Source ? step.AccessPhase : null;
+
+    /// <summary>
+    /// True while the selected input is a correlated seek that has not yet been bound, so it has no descent to describe
+    /// </summary>
+    public bool IsSelectedStrategyPending
+        => SelectedStrategy is null && IsStepping;
+
+    private Dictionary<int, AccessStrategy?> StrategyBySource { get; } = [];
+
+    private Dictionary<int, IteratorDefinition> DefinitionBySource { get; }
+
+    /// <summary>
+    /// Restricts a build row to the columns the build side states it outputs
+    /// </summary>
+    private RecordColumnFilter BuildColumnFilter
+        => Visuals.FirstOrDefault(v => v.IsHashTableVisible)?.ColumnFilter ?? RecordColumnFilter.All;
 
     public Brush? OuterAccentBrush => Visuals.Count > 1 ? ToBrush(Visuals[0].ObjectColour) : null;
 
     public Brush? InnerAccentBrush => Visuals.Count > 1 ? ToBrush(Visuals[1].ObjectColour) : null;
+
+    /// <summary>
+    /// The colour a step should be marked with, found from the input that produced it
+    /// </summary>
+    public Brush? AccentFor(int source)
+        => Visuals.Count > 1 && VisualsBySource.TryGetValue(source, out var visual) ? ToBrush(visual.ObjectColour) : null;
 
     private static Brush ToBrush(System.Drawing.Color colour)
     {
@@ -419,78 +350,53 @@ public sealed partial class TraceTabViewModel : ObservableObject
 
     public AccessPhase? CurrentPhase => CurrentStep?.AccessPhase;
 
-    public AccessPhase? OuterPhase
-        => CurrentStep is { } step && step.Source == NestedLoopsStepService.OuterSource ? step.AccessPhase : null;
-
-    public AccessPhase? InnerPhase
-        => CurrentStep is { } step && step.Source == NestedLoopsStepService.InnerSource ? step.AccessPhase : null;
-
     public AccessCounters CurrentCounters => CurrentStep?.Counters ?? default;
 
     public bool IsWalkInProgress => IsStepping && !IsStepComplete;
 
+    /// <summary>
+    /// The strategy the selected input will use, worked out before the walk starts
+    /// </summary>
+    /// <remarks>
+    /// Once opened the iterator publishes what it actually settled on, which supersedes this. Until then the definition already says
+    /// enough to describe the descent, which is what makes the panel useful before anything has been stepped.
+    /// </remarks>
     public AccessStrategy? SeekDescription
     {
         get
         {
-            if (Kind is TraceKind.KeyLookup or TraceKind.RidLookup or TraceKind.MergeJoin or TraceKind.HashMatch)
+            if (!DefinitionBySource.TryGetValue(SelectedVisual.Source, out var definition))
             {
-                if (ResolveSides() is not { } sides)
-                {
-                    return null;
-                }
-
-                var outerPredicate = sides.Outer.PredicateInfo;
-
-                var outerUnit = Visuals[0].AllocationUnit;
-
-                var outerStructure = IndexStructureProvider.GetIndexStructure(Database, outerUnit.AllocationUnitId);
-
-                IReadOnlyList<SeekBounds> outerRanges = outerPredicate is { HasSeekBounds: true }
-                                                        ? outerPredicate.SeekBounds
-                                                        : [SeekBounds.All];
-
-                return AccessStrategyBuilder.Build(outerStructure,
-                                                   outerRanges[0],
-                                                   SideScanDirection(sides.Outer),
-                                                   outerPredicate?.RowGoal,
-                                                   outerPredicate?.Residual,
-                                                   ranges: outerRanges,
-                                                   hasUntranslatedResidual: outerPredicate?.HasUntranslatedPredicate == true) with
-                {
-                    EntryPoint = outerUnit.RootPage,
-                    EntryPointSource = "sys.sysallocunits.pgroot"
-                };
+                return null;
             }
 
-            var predicateInfo = PlanNode?.PredicateInfo;
-
-            if (Kind == TraceKind.Allocation)
+            if (definition is AllocationScanDefinition allocation)
             {
-                return AccessStrategyBuilder.BuildAllocationScan(predicateInfo?.Residual,
-                                                                 predicateInfo?.RowGoal,
-                                                                 hasUntranslatedResidual: predicateInfo?.HasUntranslatedPredicate == true) with
+                return AccessStrategyBuilder.BuildAllocationScan(allocation.Residual,
+                                                                 allocation.RowGoal,
+                                                                 hasUntranslatedResidual: allocation.HasUntranslatedResidual) with
                 {
-                    EntryPoint = AllocationUnit.FirstIamPage,
+                    EntryPoint = allocation.FirstIamPage,
                     EntryPointSource = "sys.sysallocunits.pgfirstiam"
                 };
             }
 
-            var indexStructure = IndexStructureProvider.GetIndexStructure(Database, AllocationUnit.AllocationUnitId);
-
-            IReadOnlyList<SeekBounds> ranges = predicateInfo is { HasSeekBounds: true }
-                                                ? predicateInfo.SeekBounds
-                                                : [SeekBounds.All];
-
-            return AccessStrategyBuilder.Build(indexStructure,
-                                               ranges[0],
-                                               ScanDirection,
-                                               predicateInfo?.RowGoal,
-                                               predicateInfo?.Residual,
-                                               ranges: ranges,
-                                               hasUntranslatedResidual: predicateInfo?.HasUntranslatedPredicate == true) with
+            if (definition is not RangeDefinition range)
             {
-                EntryPoint = AllocationUnit.RootPage,
+                return null;
+            }
+
+            var structure = IndexStructureProvider.GetIndexStructure(Database, range.AllocationUnitId);
+
+            return AccessStrategyBuilder.Build(structure,
+                                               range.Ranges.Count > 0 ? range.Ranges[0] : SeekBounds.All,
+                                               range.Direction,
+                                               range.RowGoal,
+                                               range.Residual,
+                                               ranges: range.Ranges,
+                                               hasUntranslatedResidual: range.HasUntranslatedResidual) with
+            {
+                EntryPoint = range.RootPage,
                 EntryPointSource = "sys.sysallocunits.pgroot"
             };
         }
@@ -499,68 +405,10 @@ public sealed partial class TraceTabViewModel : ObservableObject
     private ScanDirection ScanDirection
         => PlanNode?.ScanInfo?.IsForward == false ? ScanDirection.Backward : ScanDirection.Forward;
 
-    private CorrelatedJoin? ResolveJoin()
-    {
-        return PlanNode is null ? null : CorrelatedJoinResolver.Resolve(PlanNode);
-    }
-
-    /// <summary>
-    /// What this join requires of each side, for the rule shown alongside the operator
-    /// </summary>
-    public JoinDecision? JoinRule
-    {
-        get
-        {
-            if (PlanNode is null)
-            {
-                return null;
-            }
-
-            JoinType? joinType = Kind switch
-            {
-                TraceKind.KeyLookup or TraceKind.RidLookup => CorrelatedJoinResolver.Resolve(PlanNode)?.JoinType,
-                TraceKind.MergeJoin => MergeJoinResolver.Resolve(PlanNode)?.JoinType,
-                TraceKind.HashMatch => HashJoinResolver.Resolve(PlanNode)?.JoinType,
-                _ => null
-            };
-
-            return joinType?.Decide(true, true);
-        }
-    }
-
-    private (PlanNode Outer, PlanNode Inner)? ResolveSides()
-    {
-        if (PlanNode is null)
-        {
-            return null;
-        }
-
-        if (Kind is TraceKind.KeyLookup or TraceKind.RidLookup)
-        {
-            return CorrelatedJoinResolver.Resolve(PlanNode) is { } correlated ? (correlated.Outer, correlated.Inner) : null;
-        }
-
-        if (Kind == TraceKind.MergeJoin)
-        {
-            return MergeJoinResolver.Resolve(PlanNode) is { } merge ? (merge.Outer, merge.Inner) : null;
-        }
-
-        if (Kind == TraceKind.HashMatch)
-        {
-            return HashJoinResolver.Resolve(PlanNode) is { } hash ? (hash.Build, hash.Probe) : null;
-        }
-
-        return null;
-    }
-
-    private static ScanDirection SideScanDirection(PlanNode side)
-        => side.ScanInfo?.IsForward == false ? ScanDirection.Backward : ScanDirection.Forward;
-
     partial void OnCurrentStepChanged(AccessStep? value)
     {
         OnPropertyChanged(nameof(CurrentPhase));
-        OnPropertyChanged(nameof(OuterPhase));
-        OnPropertyChanged(nameof(InnerPhase));
+        OnPropertyChanged(nameof(SelectedPhase));
         OnPropertyChanged(nameof(CurrentCounters));
     }
 
@@ -598,7 +446,7 @@ public sealed partial class TraceTabViewModel : ObservableObject
             await StartAsync();
         }
 
-        var step = await Task.Run(() => StepService.StepNextAsync(CancellationToken.None));
+        var step = await Task.Run(() => Iterator.StepNextAsync(CancellationToken.None));
 
         if (step is null)
         {
@@ -617,7 +465,7 @@ public sealed partial class TraceTabViewModel : ObservableObject
             UpdateResultsTitle();
         }
 
-        UpdateInnerStrategy();
+        UpdateStrategies();
 
         SyncSideBuffers();
 
@@ -639,7 +487,7 @@ public sealed partial class TraceTabViewModel : ObservableObject
         {
             PageNavigated?.Invoke(this, new PageNavigatedEventArgs(pageAddress, !_hasNavigatedSinceReset)
             {
-                Selection = Kind == TraceKind.Allocation ? PageReadSelection.Last : PageReadSelection.Next
+                Selection = SelectedVisual.Kind == TraceVisualKind.Allocation ? PageReadSelection.Last : PageReadSelection.Next
             });
 
             _hasNavigatedSinceReset = true;
@@ -702,7 +550,7 @@ public sealed partial class TraceTabViewModel : ObservableObject
             {
                 try
                 {
-                    while (await StepService.StepNextAsync(cancellationToken) is not null)
+                    while (await Iterator.StepNextAsync(cancellationToken) is not null)
                     {
                     }
                 }
@@ -710,7 +558,7 @@ public sealed partial class TraceTabViewModel : ObservableObject
                 {
                 }
 
-                foreach (var step in StepService.History)
+                foreach (var step in Iterator.History)
                 {
                     Append(step, steps);
 
@@ -722,7 +570,7 @@ public sealed partial class TraceTabViewModel : ObservableObject
 
                 foreach (var visual in Visuals)
                 {
-                    replays[visual] = visual.ComputeReplay(StepService.History);
+                    replays[visual] = visual.ComputeReplay(Iterator.History);
                 }
             }, CancellationToken.None);
 
@@ -730,7 +578,7 @@ public sealed partial class TraceTabViewModel : ObservableObject
             ResultRecords = results;
 
             UpdateResultsTitle();
-            UpdateInnerStrategy();
+            UpdateStrategies();
 
             foreach (var visual in Visuals)
             {
@@ -739,10 +587,10 @@ public sealed partial class TraceTabViewModel : ObservableObject
 
             SyncSideBuffers();
 
-            SyncHashTable(StepService.Current);
+            SyncHashTable(Iterator.Current);
 
-            CurrentStep = StepService.Current;
-            IsStepComplete = StepService.IsComplete;
+            CurrentStep = Iterator.Current;
+            IsStepComplete = Iterator.IsComplete;
 
             UpdateActiveVisual(CurrentStep);
         }
@@ -802,7 +650,7 @@ public sealed partial class TraceTabViewModel : ObservableObject
     /// </remarks>
     private void SyncSideBuffers()
     {
-        if (StepService is not IJoinStepService join)
+        if (Iterator is not IJoinStepIterator join)
         {
             return;
         }
@@ -814,7 +662,7 @@ public sealed partial class TraceTabViewModel : ObservableObject
                 continue;
             }
 
-            var buffer = visual.Source == NestedLoopsStepService.OuterSource ? join.Outer.Buffer : join.Inner.Buffer;
+            var buffer = visual.Source == NestedLoopsStepIterator.OuterSource ? join.Outer.Buffer : join.Inner.Buffer;
 
             if (_syncedBuffers.TryGetValue(visual.Source, out var synced) && synced.SequenceEqual(buffer))
             {
@@ -833,7 +681,7 @@ public sealed partial class TraceTabViewModel : ObservableObject
     {
         if (e.PropertyName != nameof(TraceVisualViewModel.HashBucketCount)
             || sender is not TraceVisualViewModel visual
-            || StepService is not HashMatchStepService hashService)
+            || Iterator is not HashMatchStepIterator hashService)
         {
             return;
         }
@@ -845,7 +693,7 @@ public sealed partial class TraceTabViewModel : ObservableObject
 
     private void SyncHashTable(AccessStep? step)
     {
-        if (StepService is not HashMatchStepService hashService)
+        if (Iterator is not HashMatchStepIterator hashService)
         {
             return;
         }
@@ -864,7 +712,9 @@ public sealed partial class TraceTabViewModel : ObservableObject
             && table.RowCount == _syncedHashRowCount + 1
             && step is AccessStep.HashBuild { IsNullKey: false } build)
         {
-            models[build.Bucket].Entries.Add(ToEntryModel(table.Buckets[build.Bucket].Entries[build.Entry]));
+            models[build.Bucket].Entries.Add(ToEntryModel(table.Buckets[build.Bucket].Entries[build.Entry],
+                                                          build.Bucket,
+                                                          build.Entry));
 
             _syncedHashRowCount = table.RowCount;
         }
@@ -893,10 +743,14 @@ public sealed partial class TraceTabViewModel : ObservableObject
 
     private HashEntryModel? _currentHashEntry;
 
+    private readonly List<HashEntryModel> _matchedHashEntries = [];
+
     private void RebuildHashBuckets(HashTable table)
     {
         _currentHashBucket = null;
         _currentHashEntry = null;
+
+        _matchedHashEntries.Clear();
 
         var models = new List<HashBucketModel>(table.BucketCount);
 
@@ -906,7 +760,7 @@ public sealed partial class TraceTabViewModel : ObservableObject
 
             foreach (var entry in bucket.Entries)
             {
-                model.Entries.Add(ToEntryModel(entry));
+                model.Entries.Add(ToEntryModel(entry, bucket.Index, model.Entries.Count));
             }
 
             models.Add(model);
@@ -918,6 +772,12 @@ public sealed partial class TraceTabViewModel : ObservableObject
 
     private void UpdateHashHighlight(AccessStep? step, HashTable table)
     {
+        // A new probe row starts a fresh verdict, so whatever the last one matched stops being green
+        if (step is AccessStep.HashProbe or AccessStep.HashBuild)
+        {
+            ClearMatchedHashEntries();
+        }
+
         if (_currentHashBucket is not null)
         {
             _currentHashBucket.IsCurrent = false;
@@ -955,17 +815,79 @@ public sealed partial class TraceTabViewModel : ObservableObject
 
         _currentHashEntry = _currentHashBucket.Entries[entryIndex];
         _currentHashEntry.IsCurrent = true;
-        _currentHashEntry.IsMatched = table.Buckets[bucketIndex].Entries[entryIndex].IsMatched;
+
+        // The table's own matched flag stays set for the outer join drain, so the green here follows this comparison alone
+        if (step is AccessStep.HashCompare { IsMatch: true })
+        {
+            _currentHashEntry.IsMatched = true;
+
+            _matchedHashEntries.Add(_currentHashEntry);
+        }
     }
 
-    private static HashEntryModel ToEntryModel(HashEntry entry)
+    private void ClearMatchedHashEntries()
     {
-        return new HashEntryModel
+        foreach (var entry in _matchedHashEntries)
         {
-            Hash = entry.Hash,
-            Record = ToRecordModel(entry.Record),
-            IsMatched = entry.IsMatched
+            entry.IsMatched = false;
+        }
+
+        _matchedHashEntries.Clear();
+    }
+
+    private HashEntryModel ToEntryModel(HashEntry entry, int bucketIndex, int entryIndex)
+    {
+        var record = TraceVisualViewModel.ToRecordModel(entry.Record, BuildColumnFilter);
+
+        var columns = EnsureHashColumns(record);
+
+        var cells = new List<HashCellModel>(columns.Count)
+        {
+            // Only the row that opens a bucket names it, so a chain reads as one bucket rather than the number repeating
+            new() { Value = entryIndex == 0 ? bucketIndex.ToString() : string.Empty, Column = columns[BucketColumn] },
+            new() { Value = $"{entry.Hash:X8}", Column = columns[HashColumn] }
         };
+
+        for (var index = FirstValueColumn; index < columns.Count; index++)
+        {
+            var column = columns[index];
+
+            var field = record.Fields.FirstOrDefault(f => string.Equals(f.Name, column.Header, StringComparison.OrdinalIgnoreCase));
+
+            cells.Add(new HashCellModel { Value = field?.Value ?? string.Empty, Column = column });
+        }
+
+        return new HashEntryModel { Cells = cells };
+    }
+
+    /// <summary>
+    /// Widens the grid to the columns a build row actually carries, which are not known until the first row is read
+    /// </summary>
+    /// <remarks>
+    /// The base columns exist so the header is there before the build starts. Every row of a given build side carries the same columns, so
+    /// this settles on the first row and the rest line up under it.
+    /// </remarks>
+    private IReadOnlyList<HashColumnModel> EnsureHashColumns(IndexRecordModel record)
+    {
+        var visual = Visuals.FirstOrDefault(v => v.IsHashTableVisible);
+
+        if (visual is null)
+        {
+            return HashColumnModel.CreateBaseColumns();
+        }
+
+        if (visual.HashColumns.Count > FirstValueColumn)
+        {
+            return visual.HashColumns;
+        }
+
+        var columns = new List<HashColumnModel>(HashColumnModel.CreateBaseColumns());
+
+        columns.AddRange(record.Fields.Select(f => new HashColumnModel { Header = f.Name }));
+
+        visual.HashColumns = columns;
+
+        return columns;
     }
 
     private static IndexRecordModel ToRecordModel(JoinBufferRow row)
@@ -979,7 +901,7 @@ public sealed partial class TraceTabViewModel : ObservableObject
 
     private IndexRecordModel? ToResultModel(AccessStep step)
     {
-        if (Kind is TraceKind.MergeJoin or TraceKind.KeyLookup or TraceKind.RidLookup or TraceKind.HashMatch)
+        if (Definition is JoinDefinition)
         {
             return step is AccessStep.JoinEmit emit ? ToJoinedModel(emit) : null;
         }
@@ -992,236 +914,60 @@ public sealed partial class TraceTabViewModel : ObservableObject
         return ToRecordModel(emitted);
     }
 
-    private void UpdateInnerStrategy()
+    /// <summary>
+    /// Takes the strategy each input settled on once it was opened, so a tab can show its own rather than the tree's
+    /// </summary>
+    /// <remarks>
+    /// A correlated inner has no strategy until its first rebind plans a descent, so this is called again as the walk proceeds and leaves
+    /// what it already found alone.
+    /// </remarks>
+    private void UpdateStrategies()
     {
-        if (InnerStrategy is null && StepService is IJoinStepService { Inner.Strategy: { } inner })
+        foreach (var (source, strategy) in Collect(Iterator))
         {
-            InnerStrategy = inner;
+            if (strategy is not null && VisualsBySource.ContainsKey(source))
+            {
+                StrategyBySource[source] = strategy;
+            }
+        }
+
+        OnPropertyChanged(nameof(SelectedStrategy));
+
+        IEnumerable<(int Source, AccessStrategy? Strategy)> Collect(IStepIterator iterator)
+        {
+            yield return (iterator.IteratorId, iterator.Strategy);
+
+            if (iterator is not IJoinStepIterator join)
+            {
+                yield break;
+            }
+
+            foreach (var found in Collect(join.Outer.Iterator).Concat(Collect(join.Inner.Iterator)))
+            {
+                yield return found;
+            }
         }
     }
 
     private async Task StartAsync()
     {
-        var predicateInfo = PlanNode?.PredicateInfo;
+        var evaluationContext = QueryTime is { } queryTime ? new EvaluationContext(queryTime) : EvaluationContext.Now;
 
-        var evaluationContext = QueryTime is { } queryTime ? new EvaluationContext(queryTime) : null;
+        var context = new IteratorContext(Database) { EvaluationContext = evaluationContext };
 
-        var hasUntranslated = predicateInfo?.HasUntranslatedPredicate == true;
+        await Task.Run(() => Iterator.OpenAsync(context, Definition, CancellationToken.None));
 
-        if (Kind == TraceKind.RidLookup)
+        Strategy = Iterator.Strategy;
+
+        UpdateStrategies();
+
+        if (Iterator is HashMatchStepIterator hash
+            && Visuals.FirstOrDefault(v => v.IsHashTableVisible) is { } buildVisual)
         {
-            if (ResolveJoin() is not { } ridJoin)
-            {
-                return;
-            }
-
-            var ridService = (NestedLoopsStepService)StepService;
-
-            var ridOuterPredicate = ridJoin.Outer.PredicateInfo;
-
-            var ridOuterUnit = Visuals[0].AllocationUnit;
-
-            IReadOnlyList<SeekBounds> ridRanges = ridOuterPredicate is { HasSeekBounds: true }
-                                                  ? ridOuterPredicate.SeekBounds
-                                                  : [SeekBounds.All];
-
-            var ridOuterInput = new RangeDefinition(ridOuterUnit.AllocationUnitId, ridOuterUnit.RootPage, ridRanges)
-            {
-                Residual = ridJoin.Outer.HasRedundantResidual() ? null : ridOuterPredicate?.Residual,
-                Direction = SideScanDirection(ridJoin.Outer),
-                RowGoal = ridOuterPredicate?.RowGoal,
-                HasUntranslatedResidual = ridOuterPredicate?.HasUntranslatedPredicate == true
-            };
-
-            var heapInner = new RidLookupJoinInput(HeapService!, ridJoin.Inner.PredicateInfo?.Residual);
-
-            await Task.Run(() => ridService.StartAsync(Database,
-                                                       ridOuterInput,
-                                                       heapInner,
-                                                       CancellationToken.None,
-                                                       evaluationContext,
-                                                       ridJoin.JoinType));
+            buildVisual.HashBucketCount = hash.Table.BucketCount;
         }
-        else if (Kind == TraceKind.KeyLookup)
-        {
-            if (ResolveJoin() is not { } join)
-            {
-                return;
-            }
-
-            var service = (NestedLoopsStepService)StepService;
-
-            var outerPredicate = join.Outer.PredicateInfo;
-
-            var outerUnit = Visuals[0].AllocationUnit;
-
-            var innerUnit = Visuals[1].AllocationUnit;
-
-            IReadOnlyList<SeekBounds> outerRanges = outerPredicate is { HasSeekBounds: true }
-                                                    ? outerPredicate.SeekBounds
-                                                    : [SeekBounds.All];
-
-            var outerInput = new RangeDefinition(outerUnit.AllocationUnitId, outerUnit.RootPage, outerRanges)
-            {
-                Residual = join.Outer.HasRedundantResidual() ? null : outerPredicate?.Residual,
-                Direction = SideScanDirection(join.Outer),
-                RowGoal = outerPredicate?.RowGoal,
-                HasUntranslatedResidual = outerPredicate?.HasUntranslatedPredicate == true
-            };
-
-            var bindings = (join.Inner.PredicateInfo?.CorrelatedSeekColumns ?? [])
-                           .Select(c => new CorrelationBinding(c.Column, c.OuterColumn))
-                           .ToList();
-
-            if (bindings.Count == 0)
-            {
-                return;
-            }
-
-            var innerInput = new SeekDefinition(innerUnit.AllocationUnitId, innerUnit.RootPage, bindings)
-            {
-                Residual = join.Inner.PredicateInfo?.Residual,
-                RowGoal = join.JoinType is JoinType.LeftSemi or JoinType.LeftAntiSemi ? 1 : null
-            };
-
-            await Task.Run(() => service.StartAsync(Database,
-                                                    outerInput,
-                                                    innerInput,
-                                                    CancellationToken.None,
-                                                    evaluationContext,
-                                                    join.JoinType));
-        }
-        else if (Kind == TraceKind.MergeJoin)
-        {
-            if (PlanNode is null
-                || MergeJoinResolver.Resolve(PlanNode) is not { } merge
-                || PlanNode.MergeInfo is not { } mergeInfo)
-            {
-                return;
-            }
-
-            var service = (MergeJoinStepService)StepService;
-
-            var outerInput = MergeSideInput(merge.Outer, Visuals[0].AllocationUnit, mergeInfo.OuterKeys);
-
-            var innerInput = MergeSideInput(merge.Inner, Visuals[1].AllocationUnit, mergeInfo.InnerKeys);
-
-            await Task.Run(() => service.StartAsync(Database,
-                                                    outerInput,
-                                                    innerInput,
-                                                    CancellationToken.None,
-                                                    evaluationContext,
-                                                    merge.JoinType));
-        }
-        else if (Kind == TraceKind.HashMatch)
-        {
-            if (PlanNode is null
-                || HashJoinResolver.Resolve(PlanNode) is not { } hash
-                || PlanNode.HashInfo is not { } hashInfo)
-            {
-                return;
-            }
-
-            var service = (HashMatchStepService)StepService;
-
-            var buildInput = HashSideInput(hash.Build, Visuals[0].AllocationUnit, hashInfo.BuildKeys);
-
-            var probeInput = HashSideInput(hash.Probe, Visuals[1].AllocationUnit, hashInfo.ProbeKeys);
-
-            await Task.Run(() => service.StartAsync(Database,
-                                                    buildInput,
-                                                    probeInput,
-                                                    CancellationToken.None,
-                                                    evaluationContext,
-                                                    hash.JoinType));
-
-            if (Visuals.FirstOrDefault(v => v.IsHashTableVisible) is { } buildVisual)
-            {
-                buildVisual.HashBucketCount = service.Table.BucketCount;
-            }
-        }
-        else if (Kind == TraceKind.Allocation)
-        {
-            var service = (AllocationStepService)StepService;
-
-            await Task.Run(() => service.StartAsync(Database,
-                                                    AllocationUnit.FirstIamPage,
-                                                    predicateInfo?.Residual,
-                                                    CancellationToken.None,
-                                                    predicateInfo?.RowGoal,
-                                                    evaluationContext,
-                                                    hasUntranslated));
-        }
-        else
-        {
-            var service = (IndexStepService)StepService;
-
-            IReadOnlyList<SeekBounds> ranges = predicateInfo is { HasSeekBounds: true }
-                ? predicateInfo.SeekBounds
-                : [SeekBounds.All];
-
-            var residual = PlanNode?.HasRedundantResidual() == true ? null : predicateInfo?.Residual;
-
-            await Task.Run(() => service.StartAsync(Database,
-                                                    AllocationUnit.AllocationUnitId,
-                                                    AllocationUnit.RootPage,
-                                                    ranges,
-                                                    residual,
-                                                    ScanDirection,
-                                                    CancellationToken.None,
-                                                    predicateInfo?.RowGoal,
-                                                    hasUntranslated,
-                                                    evaluationContext));
-        }
-
-        Strategy = StepService.Strategy;
-
-        UpdateInnerStrategy();
 
         IsStepping = true;
-    }
-
-    private static HashSideDefinition HashSideInput(PlanNode side,
-                                                    AllocationUnit unit,
-                                                    List<ColumnReference> keys)
-    {
-        var predicateInfo = side.PredicateInfo;
-
-        IReadOnlyList<SeekBounds> ranges = predicateInfo is { HasSeekBounds: true }
-                                           ? predicateInfo.SeekBounds
-                                           : [SeekBounds.All];
-
-        return new HashSideDefinition(unit.AllocationUnitId,
-                                      unit.RootPage,
-                                      ranges,
-                                      [.. keys.Select(k => k.Column.Trim('[', ']'))])
-        {
-            RowEstimate = side.EstimatedRows > 0 ? side.EstimatedRows : side.RowsOutput,
-            Residual = side.HasRedundantResidual() ? null : predicateInfo?.Residual,
-            Direction = SideScanDirection(side),
-            HasUntranslatedResidual = predicateInfo?.HasUntranslatedPredicate == true
-        };
-    }
-
-    private static MergeSideDefinition MergeSideInput(PlanNode side,
-                                                     AllocationUnit unit,
-                                                     List<ColumnReference> keys)
-    {
-        var predicateInfo = side.PredicateInfo;
-
-        IReadOnlyList<SeekBounds> ranges = predicateInfo is { HasSeekBounds: true }
-                                           ? predicateInfo.SeekBounds
-                                           : [SeekBounds.All];
-
-        return new MergeSideDefinition(unit.AllocationUnitId,
-                                      unit.RootPage,
-                                      ranges,
-                                      [.. keys.Select(k => k.Column.Trim('[', ']'))])
-        {
-            Residual = side.HasRedundantResidual() ? null : predicateInfo?.Residual,
-            Direction = SideScanDirection(side),
-            HasUntranslatedResidual = predicateInfo?.HasUntranslatedPredicate == true
-        };
     }
 
     /// <summary>
@@ -1254,12 +1000,10 @@ public sealed partial class TraceTabViewModel : ObservableObject
 
         var table = column.Table.Trim('[', ']');
 
-        var sides = ResolveSides();
-
         // Where both sides carry the column, the output list says which table it came from
-        var preferInner = sides is { } resolved
+        var preferInner = Visuals.Count > 1
                           && !string.IsNullOrEmpty(table)
-                          && string.Equals(table, resolved.Inner.Table?.Trim('[', ']'), StringComparison.OrdinalIgnoreCase);
+                          && string.Equals(table, Visuals[^1].AllocationUnit.TableName, StringComparison.OrdinalIgnoreCase);
 
         var field = preferInner
             ? Find(emit.InnerRecord, name) ?? Find(emit.OuterRecord, name)

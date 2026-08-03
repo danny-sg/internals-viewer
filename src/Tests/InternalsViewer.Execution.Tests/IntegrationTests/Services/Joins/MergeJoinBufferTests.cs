@@ -27,7 +27,7 @@ public class MergeJoinBufferTests(ITestOutputHelper testOutput)
         var context = await LoadAsync();
 
         await context.Service.OpenAsync(new IteratorContext(context.Database),
-                                        new MergeJoinDefinition(SideInput(context.Unit, Between(500, 505)), SideInput(context.Unit, Between(500, 505))),
+                                        new MergeJoinDefinition(SideInput(context.Unit, Between(500, 505), 0), SideInput(context.Unit, Between(500, 505), 1)),
                                         CancellationToken.None);
 
         var pairs = 0;
@@ -69,7 +69,7 @@ public class MergeJoinBufferTests(ITestOutputHelper testOutput)
         var context = await LoadAsync();
 
         await context.Service.OpenAsync(new IteratorContext(context.Database),
-                                        new MergeJoinDefinition(SideInput(context.Unit, Between(100, 110)), SideInput(context.Unit, Between(105, 120))),
+                                        new MergeJoinDefinition(SideInput(context.Unit, Between(100, 110), 0), SideInput(context.Unit, Between(105, 120), 1)),
                                         CancellationToken.None);
 
         while (await context.Service.StepNextAsync(CancellationToken.None) is { } step)
@@ -92,7 +92,7 @@ public class MergeJoinBufferTests(ITestOutputHelper testOutput)
         var context = await LoadAsync();
 
         await context.Service.OpenAsync(new IteratorContext(context.Database),
-                                        new MergeJoinDefinition(SideInput(context.Unit, Between(100, 110)), SideInput(context.Unit, Between(105, 120))),
+                                        new MergeJoinDefinition(SideInput(context.Unit, Between(100, 110), 0), SideInput(context.Unit, Between(105, 120), 1)),
                                         CancellationToken.None);
 
         var outerAtFirstPair = new List<long>();
@@ -117,7 +117,7 @@ public class MergeJoinBufferTests(ITestOutputHelper testOutput)
         var context = await LoadAsync();
 
         await context.Service.OpenAsync(new IteratorContext(context.Database),
-                                        new MergeJoinDefinition(SideInput(context.Unit, Between(500, 505)), SideInput(context.Unit, Between(500, 505))),
+                                        new MergeJoinDefinition(SideInput(context.Unit, Between(500, 505), 0), SideInput(context.Unit, Between(500, 505), 1)),
                                         CancellationToken.None);
 
         var seenPair = false;
@@ -150,7 +150,7 @@ public class MergeJoinBufferTests(ITestOutputHelper testOutput)
         var context = await LoadAsync();
 
         await context.Service.OpenAsync(new IteratorContext(context.Database),
-                                        new MergeJoinDefinition(SideInput(context.Unit, Between(100, 110)), SideInput(context.Unit, Between(105, 120))),
+                                        new MergeJoinDefinition(SideInput(context.Unit, Between(100, 110), 0), SideInput(context.Unit, Between(105, 120), 1)),
                                         CancellationToken.None);
 
         while (await context.Service.StepNextAsync(CancellationToken.None) is { } step)
@@ -176,7 +176,7 @@ public class MergeJoinBufferTests(ITestOutputHelper testOutput)
         var context = await LoadAsync();
 
         await context.Service.OpenAsync(new IteratorContext(context.Database),
-                                        new MergeJoinDefinition(SideInput(context.Unit, Between(500, 505)), SideInput(context.Unit, Between(500, 505))),
+                                        new MergeJoinDefinition(SideInput(context.Unit, Between(500, 505), 0), SideInput(context.Unit, Between(500, 505), 1)),
                                         CancellationToken.None);
 
         var seenMatch = false;
@@ -218,8 +218,8 @@ public class MergeJoinBufferTests(ITestOutputHelper testOutput)
         return new Context(database, serviceHost.GetService<MergeJoinStepIterator>(), unit);
     }
 
-    private static JoinInputDefinition SideInput(AllocationUnit unit, SeekBounds bounds)
-        => new(new RangeDefinition(unit.AllocationUnitId, unit.RootPage, [bounds]), ["Id"]);
+    private static JoinInputDefinition SideInput(AllocationUnit unit, SeekBounds bounds, int nodeId)
+        => new(new RangeDefinition(unit.AllocationUnitId, unit.RootPage, [bounds]) { NodeId = nodeId }, ["Id"]);
 
     private static List<long> Values(IReadOnlyList<JoinBufferRow> buffer)
         => [.. buffer.Select(r => Value(r.Record))];

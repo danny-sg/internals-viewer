@@ -177,11 +177,11 @@ public class NestedLoopsAcrossTablesTests(ITestOutputHelper testOutput)
                                         AccessPredicate? residual = null,
                                         JoinType joinType = JoinType.Inner)
     {
-        var outerInput = new RangeDefinition(context.Outer.AllocationUnitId, context.Outer.RootPage, [outerBounds]);
+        var outerInput = new RangeDefinition(context.Outer.AllocationUnitId, context.Outer.RootPage, [outerBounds]) { NodeId = 0 };
 
         var innerInput = new SeekDefinition(context.Inner.AllocationUnitId,
                                             context.Inner.RootPage,
-                                            [new CorrelationBinding("Id", "Id")]) { Residual = residual };
+                                            [new CorrelationBinding("Id", "Id")]) { NodeId = 1, Residual = residual };
 
         await context.Service.OpenAsync(new IteratorContext(context.Database),
                                         new NestedLoopsDefinition(outerInput, innerInput)

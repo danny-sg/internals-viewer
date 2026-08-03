@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using InternalsViewer.Execution.AccessPaths.Definitions;
 
@@ -7,8 +8,8 @@ namespace InternalsViewer.UI.App.Services.Trace;
 /// Finds the inputs a definition tree reads from, in the order a reader meets them
 /// </summary>
 /// <remarks>
-/// Only the leaves become tabs. An operator that reads other operators has no records of its own to show, so it contributes its visual
-/// (a hash table, say) rather than a source tab. A join reading a join therefore still yields one tab per underlying table.
+/// Only the leaves become tabs. An operator that reads other operators has no records of its own to show, so it contributes its own visual
+/// rather than a source tab. A join reading a join therefore still yields one tab per underlying table.
 /// </remarks>
 public static class TraceSourceCollector
 {
@@ -16,7 +17,7 @@ public static class TraceSourceCollector
     {
         var sources = new List<TraceSource>();
 
-        Walk(definition, string.Empty, sources);
+        Walk(definition, TraceSourceRole.None, 0, sources);
 
         return sources;
     }
@@ -33,30 +34,34 @@ public static class TraceSourceCollector
         return operators;
     }
 
-    private static void Walk(IteratorDefinition definition, string role, List<TraceSource> sources)
+    private static void Walk(IteratorDefinition definition, TraceSourceRole role, int operatorNodeId, List<TraceSource> sources)
     {
         switch (definition)
         {
             case NestedLoopsDefinition loops:
-                Walk(loops.Outer, "Seek", sources);
-                Walk(loops.Inner, loops.Inner is HeapFetchDefinition ? "Heap" : "Lookup", sources);
+                Walk(loops.Outer, TraceSourceRole.Seek, loops.NodeId, sources);
+                Walk(loops.Inner, TraceSourceRole.Lookup, loops.NodeId, sources);
 
                 break;
 
             case MergeJoinDefinition merge:
-                Walk(merge.Outer.Source, "Outer", sources);
-                Walk(merge.Inner.Source, "Inner", sources);
+                Walk(merge.Outer.Source, TraceSourceRole.Outer, merge.NodeId, sources);
+                Walk(merge.Inner.Source, TraceSourceRole.Inner, merge.NodeId, sources);
 
                 break;
 
             case HashMatchDefinition hash:
-                Walk(hash.Build.Source, "Build", sources);
-                Walk(hash.Probe.Source, "Probe", sources);
+                Walk(hash.Build.Source, TraceSourceRole.Build, hash.NodeId, sources);
+                Walk(hash.Probe.Source, TraceSourceRole.Probe, hash.NodeId, sources);
 
                 break;
 
             default:
-                sources.Add(new TraceSource(definition.NodeId, definition) { Role = role });
+                sources.Add(new TraceSource(definition.NodeId, definition)
+                {
+                    Role = role,
+                    OperatorNodeId = operatorNodeId
+                });
 
                 break;
         }

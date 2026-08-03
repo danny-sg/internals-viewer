@@ -99,7 +99,7 @@ public class MergeJoinSemanticsTests(ITestOutputHelper testOutput)
         var context = await LoadAsync();
 
         await context.Service.OpenAsync(new IteratorContext(context.Database),
-                                        new MergeJoinDefinition(SideInput(context.Unit, Between(outer.From, outer.To)), SideInput(context.Unit, Between(inner.From, inner.To)))
+                                        new MergeJoinDefinition(SideInput(context.Unit, Between(outer.From, outer.To), 0), SideInput(context.Unit, Between(inner.From, inner.To), 1))
         {
             JoinType = joinType
         },
@@ -142,8 +142,8 @@ public class MergeJoinSemanticsTests(ITestOutputHelper testOutput)
         return new Context(database, serviceHost.GetService<MergeJoinStepIterator>(), unit);
     }
 
-    private static JoinInputDefinition SideInput(AllocationUnit unit, SeekBounds bounds)
-        => new(new RangeDefinition(unit.AllocationUnitId, unit.RootPage, [bounds]), ["Id"]);
+    private static JoinInputDefinition SideInput(AllocationUnit unit, SeekBounds bounds, int nodeId)
+        => new(new RangeDefinition(unit.AllocationUnitId, unit.RootPage, [bounds]) { NodeId = nodeId }, ["Id"]);
 
     private static long? Value(IRecord? record)
         => record is null ? null : new RecordRowValueSource(record).GetValue(-1, "Id").Numeric;

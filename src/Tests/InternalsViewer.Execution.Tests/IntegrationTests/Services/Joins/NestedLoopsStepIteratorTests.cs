@@ -131,8 +131,8 @@ public class NestedLoopsStepIteratorTests(ITestOutputHelper testOutput)
         var context = await LoadNumberTableAsync();
 
         var innerInput = new SeekDefinition(context.Unit.AllocationUnitId,
-                                                   context.Unit.RootPage,
-                                                   [new CorrelationBinding("Id", "NoSuchColumn")]);
+                                            context.Unit.RootPage,
+                                            [new CorrelationBinding("Id", "NoSuchColumn")]) { NodeId = 1 };
 
         await context.Service.OpenAsync(new IteratorContext(context.Database),
                                         new NestedLoopsDefinition(OuterInput(context.Unit, Between(100, 100)), innerInput),
@@ -164,10 +164,10 @@ public class NestedLoopsStepIteratorTests(ITestOutputHelper testOutput)
     }
 
     private static RangeDefinition OuterInput(AllocationUnit unit, SeekBounds bounds)
-        => new(unit.AllocationUnitId, unit.RootPage, [bounds]);
+        => new(unit.AllocationUnitId, unit.RootPage, [bounds]) { NodeId = 0 };
 
     private static SeekDefinition InnerInput(AllocationUnit unit)
-        => new(unit.AllocationUnitId, unit.RootPage, [new CorrelationBinding("Id", "Id")]);
+        => new(unit.AllocationUnitId, unit.RootPage, [new CorrelationBinding("Id", "Id")]) { NodeId = 1 };
 
     private static async Task<(List<AccessStep> Steps, List<long> InnerValues)> RunAsync(NestedLoopsStepIterator service)
     {

@@ -49,10 +49,6 @@ public abstract class JoinStepIterator : IJoinStepIterator
     /// </summary>
     internal CancellationToken CurrentToken { get; set; }
 
-    protected int OuterIteratorId { get; private set; } = OuterSource;
-
-    protected int InnerIteratorId { get; private set; } = InnerSource;
-
     protected List<AccessStep> TakenSteps { get; } = [];
 
     public abstract Task OpenAsync(IteratorContext context, IteratorDefinition definition, CancellationToken cancellationToken);
@@ -68,20 +64,6 @@ public abstract class JoinStepIterator : IJoinStepIterator
 
         await Outer.Iterator.CloseAsync();
         await Inner.Iterator.CloseAsync();
-    }
-
-    /// <summary>
-    /// Gives each input its own identity, so the steps it produces can be told apart from this join's
-    /// </summary>
-    /// <remarks>
-    /// The defaults only stay unique while a join reads two leaves. Composing joins needs ids unique across the whole tree, which the
-    /// caller supplies from the plan.
-    /// </remarks>
-    public void AssignIteratorIds(int outerIteratorId, int innerIteratorId, int joinIteratorId)
-    {
-        OuterIteratorId = outerIteratorId;
-        InnerIteratorId = innerIteratorId;
-        IteratorId = joinIteratorId;
     }
 
     /// <summary>
@@ -103,15 +85,13 @@ public abstract class JoinStepIterator : IJoinStepIterator
             : step with { Counters = counters };
     }
 
-    protected void ApplyInputIteratorIds()
-    {
-        Outer.Iterator.IteratorId = OuterIteratorId;
-        Inner.Iterator.IteratorId = InnerIteratorId;
-    }
-
     /// <summary>
     /// Clears the state a previous run left behind, before the inputs are started
     /// </summary>
+    /// <remarks>
+    /// Input ids are not touched here. Each iterator is stamped once by the factory that built it, from the plan node it runs, and a join
+    /// restamping its inputs would collapse every tree onto the same two ids no matter how deep it went.
+    /// </remarks>
     protected void ResetJoin(JoinType joinType)
     {
         JoinType = joinType;
@@ -121,8 +101,6 @@ public abstract class JoinStepIterator : IJoinStepIterator
         TakenSteps.Clear();
         Outer.Clear();
         Inner.Clear();
-
-        ApplyInputIteratorIds();
     }
 
     protected AccessStep Take(AccessStep step, int source, AccessCounters counters)
