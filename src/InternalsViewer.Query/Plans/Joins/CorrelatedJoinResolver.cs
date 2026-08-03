@@ -8,8 +8,10 @@ namespace InternalsViewer.Query.Plans.Joins;
 /// </summary>
 /// <remarks>
 /// A seek is only resolved when every correlated column can be traced to a column the outer side outputs, since those are the values the
-/// trace binds on each rebind. A lookup needs no such check: it takes the bookmark of the row it is fetching from the outer row by
-/// definition, and for a heap that bookmark is a row identifier rather than a column the outer visibly carries.
+/// trace binds on each rebind.
+///
+/// A lookup needs no such check as it takes the bookmark of the row it is fetching from the outer row by definition, and for a heap that
+/// bookmark is a row identifier rather than a column the outer visibly carries.
 /// </remarks>
 public static class CorrelatedJoinResolver
 {
@@ -29,7 +31,7 @@ public static class CorrelatedJoinResolver
             return null;
         }
 
-        // A RID lookup needs no check: its bookmark is a row identifier, not a column the outer visibly carries
+        // RID Lookup - no check needed as it is a physical location
         if (IsRidLookup(inner))
         {
             return new CorrelatedJoin(node, outer, inner, JoinTypeParser.Parse(node.LogicalOperator));

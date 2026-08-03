@@ -106,6 +106,53 @@ public class ExecutionPlanParserTests
     }
 
     [Fact]
+    public void ClusteredIndexSeek_Parses_EstimatedRows()
+    {
+        var plan = Parse(ClusteredIndexSeekXml);
+
+        var node = plan.NodesById[0];
+
+        Assert.Equal(5, node.EstimatedRows);
+    }
+
+    [Fact]
+    public void EstimateRows_Is_Rounded_To_The_Nearest_Row()
+    {
+        var plan = Parse(
+            """
+            <?xml version="1.0"?>
+            <ShowPlanXML xmlns="http://schemas.microsoft.com/sqlserver/2004/07/showplan"
+                         Version="1.7" Build="16.0.0">
+              <BatchSequence>
+                <Batch>
+                  <Statements>
+                    <StmtSimple StatementType="SELECT" StatementSubTreeCost="0.1">
+                      <QueryPlan>
+                        <RelOp NodeId="0"
+                               PhysicalOp="Clustered Index Scan"
+                               LogicalOp="Clustered Index Scan"
+                               EstimatedTotalSubtreeCost="0.1"
+                               EstimateRows="9.99999"
+                               Parallel="0">
+                          <IndexScan Ordered="0" ForcedIndex="0" ForceSeek="0" ForceScan="0"
+                                     NoExpandHint="0" Storage="RowStore">
+                            <Object Database="[db]" Schema="[dbo]"
+                                    Table="[ClusteredTable]" Index="[PK_ClusteredTable]"
+                                    TableReferenceId="-1" IndexKind="Clustered"/>
+                          </IndexScan>
+                        </RelOp>
+                      </QueryPlan>
+                    </StmtSimple>
+                  </Statements>
+                </Batch>
+              </BatchSequence>
+            </ShowPlanXML>
+            """);
+
+        Assert.Equal(10, plan.NodesById[0].EstimatedRows);
+    }
+
+    [Fact]
     public void ClusteredIndexSeek_Parses_RunTime_Counters()
     {
         var plan = Parse(ClusteredIndexSeekXml);

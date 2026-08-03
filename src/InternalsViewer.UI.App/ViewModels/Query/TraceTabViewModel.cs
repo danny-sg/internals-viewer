@@ -32,6 +32,7 @@ using InternalsViewer.Query.Plans.Joins;
 using InternalsViewer.Query.Plans.Model;
 using InternalsViewer.UI.App.Controls.Plan;
 using InternalsViewer.UI.App.Models.Index;
+using InternalsViewer.UI.App.Models.Trace;
 using InternalsViewer.UI.App.ViewModels.Docking;
 using InternalsViewer.UI.App.ViewModels.Index;
 using InternalsViewer.UI.App.Views.Query.Tabs.Trace;
@@ -48,7 +49,8 @@ public enum TraceKind
     Allocation,
     KeyLookup,
     RidLookup,
-    MergeJoin
+    MergeJoin,
+    HashMatch
 }
 
 public sealed class TraceTabViewModelFactory(IPageService pageService,
@@ -171,6 +173,38 @@ public sealed class TraceTabViewModelFactory(IPageService pageService,
         return new TraceTabViewModel(TraceKind.MergeJoin, service, database, outerUnit, joinNode, queryTime, null, visuals);
     }
 
+    public TraceTabViewModel CreateHashMatch(DatabaseSource database,
+                                             AllocationUnit buildUnit,
+                                             AllocationUnit probeUnit,
+                                             PlanNode joinNode,
+                                             DateTime? queryTime)
+    {
+        var service = new HashMatchStepService(new IndexStepService(pageService, recordService),
+                                               new IndexStepService(pageService, recordService));
+
+        var visuals = new[]
+        {
+            new TraceVisualViewModel(TraceVisualKind.Index,
+                                     database,
+                                     buildUnit,
+                                     indexService,
+                                     $"Build: {DisplayName(buildUnit)}",
+                                     HashMatchStepService.BuildSource)
+            {
+                IsSideStackVisible = true,
+                IsHashTableVisible = true
+            },
+            new TraceVisualViewModel(TraceVisualKind.Index,
+                                     database,
+                                     probeUnit,
+                                     indexService,
+                                     $"Probe: {DisplayName(probeUnit)}",
+                                     HashMatchStepService.ProbeSource) { IsSideStackVisible = true }
+        };
+
+        return new TraceTabViewModel(TraceKind.HashMatch, service, database, buildUnit, joinNode, queryTime, null, visuals);
+    }
+
     private static string DisplayName(AllocationUnit unit)
         => string.IsNullOrEmpty(unit.IndexName) ? unit.TableName ?? string.Empty : unit.IndexName;
 }
@@ -200,6 +234,11 @@ public sealed partial class TraceTabViewModel : ObservableObject
         QueryTime = queryTime;
         ScanMode = scanMode;
         Visuals = visuals;
+
+        if (Visuals.FirstOrDefault(v => v.IsHashTableVisible) is { } buildVisual)
+        {
+            buildVisual.PropertyChanged += OnBuildVisualPropertyChanged;
+        }
 
         Dock = BuildDock();
 
@@ -282,6 +321,7 @@ public sealed partial class TraceTabViewModel : ObservableObject
 
     [ObservableProperty]
     private ObservableCollection<IndexRecordModel> _resultRecords = [];
+
 
     [ObservableProperty]
     private AccessStep? _currentStep;
@@ -391,7 +431,7 @@ public sealed partial class TraceTabViewModel : ObservableObject
     {
         get
         {
-            if (Kind is TraceKind.KeyLookup or TraceKind.RidLookup or TraceKind.MergeJoin)
+            if (Kind is TraceKind.KeyLookup or TraceKind.RidLookup or TraceKind.MergeJoin or TraceKind.HashMatch)
             {
                 if (ResolveSides() is not { } sides)
                 {
@@ -478,6 +518,7 @@ public sealed partial class TraceTabViewModel : ObservableObject
             {
                 TraceKind.KeyLookup or TraceKind.RidLookup => CorrelatedJoinResolver.Resolve(PlanNode)?.JoinType,
                 TraceKind.MergeJoin => MergeJoinResolver.Resolve(PlanNode)?.JoinType,
+                TraceKind.HashMatch => HashJoinResolver.Resolve(PlanNode)?.JoinType,
                 _ => null
             };
 
@@ -500,6 +541,11 @@ public sealed partial class TraceTabViewModel : ObservableObject
         if (Kind == TraceKind.MergeJoin)
         {
             return MergeJoinResolver.Resolve(PlanNode) is { } merge ? (merge.Outer, merge.Inner) : null;
+        }
+
+        if (Kind == TraceKind.HashMatch)
+        {
+            return HashJoinResolver.Resolve(PlanNode) is { } hash ? (hash.Build, hash.Probe) : null;
         }
 
         return null;
@@ -572,6 +618,8 @@ public sealed partial class TraceTabViewModel : ObservableObject
         UpdateInnerStrategy();
 
         SyncSideBuffers();
+
+        SyncHashTable(step);
 
         GetVisual(step.Source)?.Apply(step);
 
@@ -689,6 +737,8 @@ public sealed partial class TraceTabViewModel : ObservableObject
 
             SyncSideBuffers();
 
+            SyncHashTable(StepService.Current);
+
             CurrentStep = StepService.Current;
             IsStepComplete = StepService.IsComplete;
 
@@ -717,6 +767,14 @@ public sealed partial class TraceTabViewModel : ObservableObject
 
         StepHistory = [];
         ResultRecords = [];
+
+        _hashBucketModels = null;
+        _syncedHashRowCount = 0;
+        _currentHashBucket = null;
+        _currentHashEntry = null;
+        _hashColumns = null;
+
+        _matchedHashEntries.Clear();
         CurrentStep = null;
         Strategy = SeekDescription;
         InnerStrategy = null;
@@ -752,7 +810,7 @@ public sealed partial class TraceTabViewModel : ObservableObject
 
         foreach (var visual in Visuals)
         {
-            if (!visual.IsSideStackVisible)
+            if (!visual.IsSideStackVisible || visual.IsHashTableVisible)
             {
                 continue;
             }
@@ -772,6 +830,228 @@ public sealed partial class TraceTabViewModel : ObservableObject
 
     private readonly Dictionary<int, List<JoinBufferRow>> _syncedBuffers = new();
 
+    private void OnBuildVisualPropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName != nameof(TraceVisualViewModel.HashBucketCount)
+            || sender is not TraceVisualViewModel visual
+            || StepService is not HashMatchStepService hashService)
+        {
+            return;
+        }
+
+        hashService.SetBucketCount(visual.HashBucketCount);
+
+        SyncHashTable(CurrentStep);
+    }
+
+    private void SyncHashTable(AccessStep? step)
+    {
+        if (StepService is not HashMatchStepService hashService)
+        {
+            return;
+        }
+
+        var visual = Visuals.FirstOrDefault(v => v.IsHashTableVisible);
+
+        if (visual is null)
+        {
+            return;
+        }
+
+        var table = hashService.Table;
+
+        if (_hashColumns is null && FirstRecord(table) is { } sample)
+        {
+            _hashColumns = BuildHashColumns(sample);
+
+            visual.HashColumns = _hashColumns;
+
+            _hashBucketModels = null;
+        }
+
+        if (_hashBucketModels is { } models
+            && models.Count == table.BucketCount
+            && table.RowCount == _syncedHashRowCount + 1
+            && step is AccessStep.HashBuild { IsNullKey: false } build)
+        {
+            models[build.Bucket].Entries.Add(ToEntryModel(build.Bucket,
+                                                          build.Entry,
+                                                          table.Buckets[build.Bucket].Entries[build.Entry]));
+
+            _syncedHashRowCount = table.RowCount;
+        }
+        else if (_hashBucketModels is null
+                 || _hashBucketModels.Count != table.BucketCount
+                 || _syncedHashRowCount != table.RowCount)
+        {
+            RebuildHashBuckets(table);
+
+            visual.HashBuckets = _hashBucketModels!;
+        }
+
+        UpdateHashHighlight(step);
+
+        visual.HashTableSummary = hashService.BuildRowEstimate > 0
+            ? $"{table.RowCount:N0} rows, sized for {hashService.BuildRowEstimate:N0}, "
+              + $"{table.BucketCount} buckets, longest chain {table.LongestChain}"
+            : $"{table.RowCount:N0} rows, {table.BucketCount} buckets, longest chain {table.LongestChain}";
+    }
+
+    private List<HashBucketModel>? _hashBucketModels;
+
+    private int _syncedHashRowCount;
+
+    private HashBucketModel? _currentHashBucket;
+
+    private HashEntryModel? _currentHashEntry;
+
+    private IReadOnlyList<HashColumnModel>? _hashColumns;
+
+    private static IRecord? FirstRecord(HashTable table)
+    {
+        foreach (var bucket in table.Buckets)
+        {
+            if (bucket.Count > 0)
+            {
+                return bucket.Entries[0].Record;
+            }
+        }
+
+        return null;
+    }
+
+    /// <summary>
+    /// Builds the grid's columns from the shape of a build row, sizing each to its header and first value
+    /// </summary>
+    private static List<HashColumnModel> BuildHashColumns(IRecord record)
+    {
+        var columns = new List<HashColumnModel>(HashColumnModel.CreateBaseColumns());
+
+        var sample = ToRecordModel(record);
+
+        foreach (var field in sample.Fields)
+        {
+            columns.Add(new HashColumnModel
+            {
+                Header = field.Name,
+                Width = Math.Clamp(Math.Max(field.Name.Length, field.Value.Length) * 7.5 + 18, 70, 240)
+            });
+        }
+
+        return columns;
+    }
+
+    private readonly List<HashEntryModel> _matchedHashEntries = [];
+
+    private void RebuildHashBuckets(HashTable table)
+    {
+        _currentHashBucket = null;
+        _currentHashEntry = null;
+
+        _matchedHashEntries.Clear();
+
+        var models = new List<HashBucketModel>(table.BucketCount);
+
+        foreach (var bucket in table.Buckets)
+        {
+            var model = new HashBucketModel { Index = bucket.Index };
+
+            for (var index = 0; index < bucket.Count; index++)
+            {
+                model.Entries.Add(ToEntryModel(bucket.Index, index, bucket.Entries[index]));
+            }
+
+            models.Add(model);
+        }
+
+        _hashBucketModels = models;
+        _syncedHashRowCount = table.RowCount;
+    }
+
+    private void UpdateHashHighlight(AccessStep? step)
+    {
+        if (step is AccessStep.HashProbe or AccessStep.JoinStart)
+        {
+            foreach (var matched in _matchedHashEntries)
+            {
+                matched.IsMatched = false;
+            }
+
+            _matchedHashEntries.Clear();
+        }
+
+        if (_currentHashBucket is not null)
+        {
+            _currentHashBucket.IsCurrent = false;
+
+            _currentHashBucket = null;
+        }
+
+        if (_currentHashEntry is not null)
+        {
+            _currentHashEntry.IsCurrent = false;
+
+            _currentHashEntry = null;
+        }
+
+        var (bucketIndex, entryIndex) = step switch
+        {
+            AccessStep.HashBuild build => (build.Bucket, build.Entry),
+            AccessStep.HashProbe probe => (probe.Bucket, -1),
+            AccessStep.HashCompare compare => (compare.Bucket, compare.Entry),
+            _ => (-1, -1)
+        };
+
+        if (_hashBucketModels is not { } models || bucketIndex < 0 || bucketIndex >= models.Count)
+        {
+            return;
+        }
+
+        _currentHashBucket = models[bucketIndex];
+        _currentHashBucket.IsCurrent = true;
+
+        if (entryIndex < 0 || entryIndex >= _currentHashBucket.Entries.Count)
+        {
+            return;
+        }
+
+        _currentHashEntry = _currentHashBucket.Entries[entryIndex];
+        _currentHashEntry.IsCurrent = true;
+
+        if (step is AccessStep.HashCompare { IsMatch: true })
+        {
+            _currentHashEntry.IsMatched = true;
+
+            _matchedHashEntries.Add(_currentHashEntry);
+        }
+    }
+
+    /// <summary>
+    /// Builds one grid row, naming its bucket only on the first entry of a chain
+    /// </summary>
+    private HashEntryModel ToEntryModel(int bucketIndex, int entryIndex, HashEntry entry)
+    {
+        var columns = _hashColumns ?? [];
+
+        var record = ToRecordModel(entry.Record);
+
+        var cells = new List<HashCellModel>(columns.Count);
+
+        for (var index = 0; index < columns.Count; index++)
+        {
+            var value = index switch
+            {
+                0 => entryIndex == 0 ? $"0x{bucketIndex:X2}" : string.Empty,
+                1 => $"0x{entry.Hash:X8}",
+                _ => index - 2 < record.Fields.Count ? record.Fields[index - 2].Value : string.Empty
+            };
+
+            cells.Add(new HashCellModel { Value = value, Column = columns[index] });
+        }
+
+        return new HashEntryModel { Cells = cells };
+    }
+
     private static IndexRecordModel ToRecordModel(JoinBufferRow row)
     {
         var model = ToRecordModel(row.Record);
@@ -783,7 +1063,7 @@ public sealed partial class TraceTabViewModel : ObservableObject
 
     private IndexRecordModel? ToResultModel(AccessStep step)
     {
-        if (Kind is TraceKind.MergeJoin or TraceKind.KeyLookup or TraceKind.RidLookup)
+        if (Kind is TraceKind.MergeJoin or TraceKind.KeyLookup or TraceKind.RidLookup or TraceKind.HashMatch)
         {
             return step is AccessStep.JoinEmit emit ? ToJoinedModel(emit) : null;
         }
@@ -917,6 +1197,34 @@ public sealed partial class TraceTabViewModel : ObservableObject
                                                     evaluationContext,
                                                     merge.JoinType));
         }
+        else if (Kind == TraceKind.HashMatch)
+        {
+            if (PlanNode is null
+                || HashJoinResolver.Resolve(PlanNode) is not { } hash
+                || PlanNode.HashInfo is not { } hashInfo)
+            {
+                return;
+            }
+
+            var service = (HashMatchStepService)StepService;
+
+            var buildInput = HashSideInput(hash.Build, Visuals[0].AllocationUnit, hashInfo.BuildKeys);
+
+            var probeInput = HashSideInput(hash.Probe, Visuals[1].AllocationUnit, hashInfo.ProbeKeys);
+
+            await Task.Run(() => service.StartAsync(Database,
+                                                    buildInput,
+                                                    probeInput,
+                                                    CancellationToken.None,
+                                                    evaluationContext,
+                                                    hash.JoinType,
+                                                    residual: hashInfo.Residual));
+
+            if (Visuals.FirstOrDefault(v => v.IsHashTableVisible) is { } buildVisual)
+            {
+                buildVisual.HashBucketCount = service.Table.BucketCount;
+            }
+        }
         else if (Kind == TraceKind.Allocation)
         {
             var service = (AllocationStepService)StepService;
@@ -956,6 +1264,28 @@ public sealed partial class TraceTabViewModel : ObservableObject
         UpdateInnerStrategy();
 
         IsStepping = true;
+    }
+
+    private static HashSideDefinition HashSideInput(PlanNode side,
+                                                    AllocationUnit unit,
+                                                    List<ColumnReference> keys)
+    {
+        var predicateInfo = side.PredicateInfo;
+
+        IReadOnlyList<SeekBounds> ranges = predicateInfo is { HasSeekBounds: true }
+                                           ? predicateInfo.SeekBounds
+                                           : [SeekBounds.All];
+
+        return new HashSideDefinition(unit.AllocationUnitId,
+                                      unit.RootPage,
+                                      ranges,
+                                      [.. keys.Select(k => k.Column.Trim('[', ']'))])
+        {
+            RowEstimate = side.EstimatedRows > 0 ? side.EstimatedRows : side.RowsOutput,
+            Residual = side.HasRedundantResidual() ? null : predicateInfo?.Residual,
+            Direction = SideScanDirection(side),
+            HasUntranslatedResidual = predicateInfo?.HasUntranslatedPredicate == true
+        };
     }
 
     private static MergeSideDefinition MergeSideInput(PlanNode side,

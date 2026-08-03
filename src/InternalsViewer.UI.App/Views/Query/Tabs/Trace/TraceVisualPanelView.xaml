@@ -8,6 +8,7 @@
     xmlns:index="using:InternalsViewer.UI.App.Controls.Index"
     xmlns:allocation="using:InternalsViewer.UI.App.Controls.Allocation"
     xmlns:controls="using:CommunityToolkit.WinUI.Controls"
+    xmlns:trace="using:InternalsViewer.UI.App.Controls.Trace"
     mc:Ignorable="d"
     Loaded="OnLoaded">
 
@@ -87,5 +88,12 @@
                           AutoScrollToEnd="True"
                           Records="{x:Bind ViewModel.SideRecords, Mode=OneWay}"
                           BorderThickness="0" />
+
+        <trace:HashTableGrid x:Name="HashTable"
+                             Grid.Row="2"
+                             Buckets="{x:Bind ViewModel.HashBuckets, Mode=OneWay}"
+                             Columns="{x:Bind ViewModel.HashColumns, Mode=OneWay}"
+                             Summary="{x:Bind ViewModel.HashTableSummary, Mode=OneWay}"
+                             BucketCount="{x:Bind ViewModel.HashBucketCount, Mode=TwoWay}" />
     </Grid>
 </UserControl>

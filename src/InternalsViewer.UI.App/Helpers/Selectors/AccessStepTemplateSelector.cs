@@ -33,6 +33,12 @@ public class AccessStepTemplateSelector : DataTemplateSelector
 
     public DataTemplate JoinVerdictTemplate { get; set; } = null!;
 
+    public DataTemplate HashBuildTemplate { get; set; } = null!;
+
+    public DataTemplate HashProbeTemplate { get; set; } = null!;
+
+    public DataTemplate HashCompareTemplate { get; set; } = null!;
+
     public DataTemplate ForwardedRecordTemplate { get; set; } = null!;
 
     public DataTemplate MergeCompareTemplate { get; set; } = null!;
@@ -79,6 +85,9 @@ public class AccessStepTemplateSelector : DataTemplateSelector
             AccessStep.Rebind => RebindTemplate,
             AccessStep.JoinStart => JoinStartTemplate,
             AccessStep.JoinVerdict => JoinVerdictTemplate,
+            AccessStep.HashBuild => HashBuildTemplate,
+            AccessStep.HashProbe => HashProbeTemplate,
+            AccessStep.HashCompare => HashCompareTemplate,
             AccessStep.ForwardedRecord => ForwardedRecordTemplate,
             AccessStep.MergeCompare => MergeCompareTemplate,
             AccessStep.MergeCompareRun => MergeCompareRunTemplate,

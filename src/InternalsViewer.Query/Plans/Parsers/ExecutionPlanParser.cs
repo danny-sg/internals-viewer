@@ -117,6 +117,8 @@ public static class ExecutionPlanParser
 
         node.EstimatedCost = GetDoubleAttribute(element, "EstimatedTotalSubtreeCost");
 
+        node.EstimatedRows = (long)Math.Round(GetDoubleAttribute(element, "EstimateRows") ?? 0);
+
         node.CountersByThread = ExtractThreadCounters(element);
 
         node.IoStats = ParseIoStats(element);
@@ -139,7 +141,7 @@ public static class ExecutionPlanParser
 
         if (OperatorClassifier.IsHash(node))
         {
-            node.HashInfo = ParseHashInfo(element);
+            node.HashInfo = ParseHashInfo(element, parameters);
         }
 
         if (OperatorClassifier.IsDataAccess(node))
@@ -392,23 +394,43 @@ public static class ExecutionPlanParser
         return ((string?)element.Attribute(attributeName))?.Trim('[', ']');
     }
 
-    private static HashInfo ParseHashInfo(XElement hashElement)
+    /// <summary>
+    /// Parses the hash keys and probe residual of a hash operator
+    /// </summary>
+    /// <remarks>
+    /// Scoped to the operator's own Hash element rather than searching its descendants, because a hash operator's inputs are nested inside
+    /// that element and carry hash elements of their own.
+    /// </remarks>
+    private static HashInfo ParseHashInfo(XElement relOp, PlanParameters parameters)
     {
         var info = new HashInfo();
 
-        var build = hashElement.Descendants().FirstOrDefault(e => e.Name.LocalName == "HashKeysBuild");
+        var hash = relOp.Elements().FirstOrDefault(e => e.Name.LocalName == "Hash");
+
+        if (hash is null)
+        {
+            return info;
+        }
+
+        var build = hash.Elements().FirstOrDefault(e => e.Name.LocalName == "HashKeysBuild");
 
         if (build != null)
         {
             info.BuildKeys = ParseKeys(build);
         }
 
-        var probe = hashElement.Descendants().FirstOrDefault(e => e.Name.LocalName == "HashKeysProbe");
+        var probe = hash.Elements().FirstOrDefault(e => e.Name.LocalName == "HashKeysProbe");
 
         if (probe != null)
         {
             info.ProbeKeys = ParseKeys(probe);
         }
+
+        var residualElement = hash.Elements().FirstOrDefault(e => e.Name.LocalName == "ProbeResidual");
+
+        info.Residual = new PredicateParser(null, parameters.Resolve).ParsePredicateElement(residualElement);
+
+        info.HasUntranslatedResidual = residualElement is not null && info.Residual is null;
 
         return info;
     }

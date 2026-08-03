@@ -33,8 +33,11 @@ public sealed partial class TraceVisualPanelView : UserControl
     {
         var isVisible = ViewModel?.IsSideStackVisible == true;
 
+        var isHashTable = ViewModel?.IsHashTableVisible == true;
+
         StackSplitter.Visibility = isVisible ? Visibility.Visible : Visibility.Collapsed;
-        StackGrid.Visibility = isVisible ? Visibility.Visible : Visibility.Collapsed;
+        StackGrid.Visibility = isVisible && !isHashTable ? Visibility.Visible : Visibility.Collapsed;
+        HashTable.Visibility = isVisible && isHashTable ? Visibility.Visible : Visibility.Collapsed;
 
         SplitterRow.Height = isVisible ? GridLength.Auto : new GridLength(0);
         StackRow.Height = isVisible ? new GridLength(1, GridUnitType.Star) : new GridLength(0);

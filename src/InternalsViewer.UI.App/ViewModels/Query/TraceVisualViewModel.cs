@@ -5,6 +5,7 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
+using InternalsViewer.Execution.AccessPaths.Joins;
 using InternalsViewer.Execution.AccessPaths.Results;
 using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Internals.Engine.Allocation;
@@ -18,6 +19,7 @@ using InternalsViewer.Internals.Interfaces.Engine;
 using InternalsViewer.Internals.Metadata.Structures;
 using InternalsViewer.Internals.Services.Indexes;
 using InternalsViewer.UI.App.Models.Index;
+using InternalsViewer.UI.App.Models.Trace;
 using System.Drawing;
 using AllocationBorder = InternalsViewer.UI.App.Models.AllocationBorder;
 using AllocationBorderScope = InternalsViewer.UI.App.Models.AllocationBorderScope;
@@ -47,6 +49,11 @@ public sealed partial class TraceVisualViewModel(TraceVisualKind kind,
     public int Source { get; } = source;
 
     public bool IsSideStackVisible { get; init; }
+
+    /// <summary>
+    /// Shows the hash table in place of the side record stack, for the build input of a hash match
+    /// </summary>
+    public bool IsHashTableVisible { get; init; }
 
     /// <summary>
     /// Outlines the object as soon as the map loads, for a path that never reads the IAM chain
@@ -104,6 +111,18 @@ public sealed partial class TraceVisualViewModel(TraceVisualKind kind,
 
     [ObservableProperty]
     private ObservableCollection<IndexRecordModel> _sideRecords = [];
+
+    [ObservableProperty]
+    private IReadOnlyList<HashBucketModel> _hashBuckets = [];
+
+    [ObservableProperty]
+    private IReadOnlyList<HashColumnModel> _hashColumns = HashColumnModel.CreateBaseColumns();
+
+    [ObservableProperty]
+    private string _hashTableSummary = string.Empty;
+
+    [ObservableProperty]
+    private int _hashBucketCount = 1 << JoinHash.DefaultBucketBits;
 
     private Color? _objectColour;
 
@@ -360,6 +379,9 @@ public sealed partial class TraceVisualViewModel(TraceVisualKind kind,
         TraceBorders = [];
         IsDimmed = false;
         SideRecords = [];
+        HashBuckets = [];
+        HashColumns = HashColumnModel.CreateBaseColumns();
+        HashTableSummary = string.Empty;
     }
 
     internal static IndexRecordModel ToRecordModel(IRecord record)

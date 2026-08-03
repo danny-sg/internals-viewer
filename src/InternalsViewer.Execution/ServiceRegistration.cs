@@ -16,6 +16,7 @@ public static class ServiceRegistration
         services.AddTransient<AllocationStepService>();
         services.AddTransient<NestedLoopsStepService>();
         services.AddTransient<MergeJoinStepService>();
+        services.AddTransient<HashMatchStepService>();
         services.AddTransient<HeapFetchStepService>();
     }
 }

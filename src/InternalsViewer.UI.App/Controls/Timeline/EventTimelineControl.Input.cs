@@ -197,7 +197,9 @@ public sealed partial class EventTimelineControl
         var canTrace = op is { Category: OperatorCategory.DataAccess, TableName.Length: > 0 }
                        || (op.Category == OperatorCategory.Join
                            && (op.Name.Contains("Nested Loops", StringComparison.OrdinalIgnoreCase)
-                               || op.Name.Contains("Merge Join", StringComparison.OrdinalIgnoreCase)));
+                               || op.Name.Contains("Merge Join", StringComparison.OrdinalIgnoreCase)
+                               || (op.Name.Contains("Hash Match", StringComparison.OrdinalIgnoreCase)
+                                   && op.LogicalOperator.Contains("Join", StringComparison.OrdinalIgnoreCase))));
 
         if (canTrace)
         {

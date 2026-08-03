@@ -400,7 +400,14 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
             return;
         }
 
-        if (OperatorClassifier.IsNestedLoop(node) || OperatorClassifier.IsMergeJoin(node))
+        if (HashJoinResolver.Resolve(node) is { } hashJoin)
+        {
+            OpenHashMatchTrace(hashJoin);
+
+            return;
+        }
+
+        if (OperatorClassifier.IsNestedLoop(node) || OperatorClassifier.IsMergeJoin(node) || OperatorClassifier.IsHashJoin(node))
         {
             return;
         }
@@ -606,6 +613,66 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
         traceViewModel.PageNavigated += OnIndexPageNavigated;
 
         var document = new DocumentViewModel(title: $"Trace: Merge {outerUnit.TableName}/{innerUnit.TableName}",
+                                             content: traceViewModel,
+                                             viewFactory: static () => new TraceTabView(),
+                                             canClose: true,
+                                             keepAlive: true,
+                                             key: key,
+                                             persist: false,
+                                             commandsFactory: static () => new TraceTabCommands());
+
+        Layout.RegisterDocument(key, document);
+
+        _openTraces[key] = traceViewModel;
+
+        Layout.Show(document);
+    }
+
+    private void OpenHashMatchTrace(HashJoin join)
+    {
+        var buildUnit = FindAllocationUnit(join.Build);
+
+        var probeUnit = FindAllocationUnit(join.Probe);
+
+        if (buildUnit is null || probeUnit is null)
+        {
+            Logger.LogWarning("Allocation unit not found for hash match: build {Build}, probe {Probe}",
+                              join.Build.Index,
+                              join.Probe.Index);
+
+            return;
+        }
+
+        var key = $"Trace:{buildUnit.SchemaName}.{buildUnit.TableName}.{buildUnit.IndexName}~{probeUnit.TableName}.{probeUnit.IndexName}:{join.Join.NodeId}";
+
+        if (Layout.TryGetDocument(key, out var existing))
+        {
+            if (existing.Content is TraceTabViewModel { Kind: TraceKind.HashMatch })
+            {
+                Layout.Show(existing);
+
+                return;
+            }
+
+            if (existing.Content is TraceTabViewModel stale)
+            {
+                stale.PageNavigated -= OnIndexPageNavigated;
+            }
+
+            _openTraces.Remove(key);
+
+            Layout.RemoveDocument(key, out _);
+        }
+
+        var traceViewModel = _traceTabViewModelFactory.CreateHashMatch(Database,
+                                                                       buildUnit,
+                                                                       probeUnit,
+                                                                       join.Join,
+                                                                       Events.FirstOrDefault()?.Timestamp);
+
+        traceViewModel.PageNavigated += OnIndexPageNavigated;
+
+        var document = new DocumentViewModel(title: $"Trace: Hash {buildUnit.TableName}/{probeUnit.TableName}",
                                              content: traceViewModel,
                                              viewFactory: static () => new TraceTabView(),
                                              canClose: true,
