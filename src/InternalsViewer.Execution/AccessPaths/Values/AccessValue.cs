@@ -177,11 +177,6 @@ public readonly struct AccessValue : IEquatable<AccessValue>
     /// <summary>
     /// Hashes the three numeric kinds onto a single scale
     /// </summary>
-    /// <remarks>
-    /// Integer, real and exact numeric values compare equal across kinds, so they must hash
-    /// identically. Values are narrowed to <see cref="double"/> because it is the only one of the
-    /// three that every numeric type converts to without overflowing.
-    /// </remarks>
     private int GetNumericHashCode()
     {
         double value = Type switch

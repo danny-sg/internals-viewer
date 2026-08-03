@@ -2,7 +2,7 @@ using InternalsViewer.Execution.AccessPaths.Predicates;
 using InternalsViewer.Execution.AccessPaths.Results;
 using InternalsViewer.Execution.AccessPaths.Search;
 using InternalsViewer.Execution.Interfaces.Pages;
-using InternalsViewer.Execution.Pages;
+using InternalsViewer.Execution.Records;
 
 namespace InternalsViewer.Execution.Executors;
 
@@ -191,8 +191,8 @@ public static class IndexSeekExecutor
                 var useLowerBound = forward ? inclusive : !inclusive;
 
                 var (bound, probes) = useLowerBound
-                    ? AccessPathSearch.LowerBound(page, target, width)
-                    : AccessPathSearch.UpperBound(page, target, width);
+                    ? PageKeySearch.LowerBound(page, target, width)
+                    : PageKeySearch.UpperBound(page, target, width);
 
                 foreach (var probe in probes)
                 {

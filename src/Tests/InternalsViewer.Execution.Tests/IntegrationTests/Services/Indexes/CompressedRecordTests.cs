@@ -3,9 +3,11 @@ using InternalsViewer.Execution.AccessPaths.Predicates;
 using InternalsViewer.Execution.AccessPaths.Results;
 using InternalsViewer.Execution.AccessPaths.Search;
 using InternalsViewer.Execution.AccessPaths.Values;
-using InternalsViewer.Execution.Services.Indexes;
+using InternalsViewer.Execution.Iterators.Indexes;
 using InternalsViewer.Internals.Engine.Database;
 using InternalsViewer.Internals.Tests.Helpers;
+
+using InternalsViewer.Execution.AccessPaths.Definitions;
 
 namespace InternalsViewer.Execution.Tests.IntegrationTests.Services.Indexes;
 
@@ -89,7 +91,7 @@ public class CompressedRecordTests(ITestOutputHelper testOutput)
         Assert.Empty(rows);
     }
 
-    private sealed record Context(DatabaseSource Database, IndexStepService Service, AllocationUnit Unit);
+    private sealed record Context(DatabaseSource Database, IndexStepIterator Service, AllocationUnit Unit);
 
     private static async Task<Context> LoadAsync()
     {
@@ -98,7 +100,7 @@ public class CompressedRecordTests(ITestOutputHelper testOutput)
         var database = await DemoDatabase.LoadAsync(serviceHost);
 
         return new Context(database,
-                           serviceHost.GetService<IndexStepService>(),
+                           serviceHost.GetService<IndexStepIterator>(),
                            DemoDatabase.Unit(database, DemoDatabase.CompressedTable, DemoDatabase.CompressedIndex));
     }
 
@@ -106,16 +108,15 @@ public class CompressedRecordTests(ITestOutputHelper testOutput)
     {
         var key = AccessKey.Create(AccessValue.FromInteger(SqlDbType.BigInt, id).WithColumnName("Id"));
 
-        await context.Service.StartAsync(context.Database,
-                                         context.Unit.AllocationUnitId,
-                                         context.Unit.RootPage,
-                                         [SeekBounds.Equality(key)],
-                                         residual,
-                                         ScanDirection.Forward,
-                                         CancellationToken.None);
+        await context.Service.OpenAsync(new IteratorContext(context.Database),
+                                        new RangeDefinition(context.Unit.AllocationUnitId, context.Unit.RootPage, [SeekBounds.Equality(key)])
+        {
+            Residual = residual
+        },
+                                        CancellationToken.None);
     }
 
-    private async Task<(List<AccessStep> Steps, List<IRecordFields> Rows)> RunAsync(IndexStepService service)
+    private async Task<(List<AccessStep> Steps, List<IRecordFields> Rows)> RunAsync(IndexStepIterator service)
     {
         var steps = new List<AccessStep>();
 

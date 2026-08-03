@@ -1,15 +1,10 @@
 using InternalsViewer.Execution.AccessPaths.Binding;
-using InternalsViewer.Execution.AccessPaths.Predicates;
 using InternalsViewer.Internals.Engine.Address;
 
-namespace InternalsViewer.Execution.AccessPaths.Joins;
+namespace InternalsViewer.Execution.AccessPaths.Definitions;
 
 /// <summary>
-/// Describes the inner side of a nested loops join, the access path re-executed with bound seek values for each outer row
+/// Describes an access path re-executed with seek values bound from another row, the inner side of a nested loops join
 /// </summary>
 public sealed record SeekDefinition(long AllocationUnitId, PageAddress RootPage, IReadOnlyList<CorrelationBinding> Bindings)
-{
-    public AccessPredicate? Residual { get; init; }
-
-    public long? RowGoal { get; init; }
-}
+    : IteratorDefinition;

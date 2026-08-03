@@ -134,13 +134,13 @@ public sealed partial class RecordGrid : IDisposable
             return;
         }
 
-        try
-        {
-            DataGrid.ScrollIntoView(records[^1], null);
-        }
-        catch (InvalidOperationException)
-        {
-        }
+        //try
+        //{
+        //    DataGrid.ScrollIntoView(records[^1], null);
+        //}
+        //catch (InvalidOperationException)
+        //{
+        //}
     }
 
     private void ApplySelectedSlot()

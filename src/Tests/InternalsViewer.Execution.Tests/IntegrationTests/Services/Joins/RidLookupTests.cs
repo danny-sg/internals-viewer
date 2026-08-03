@@ -1,13 +1,14 @@
+using InternalsViewer.Execution.AccessPaths.Definitions;
 using InternalsViewer.Execution.AccessPaths.Joins;
-using InternalsViewer.Execution.Services.Joins.Inputs;
+using InternalsViewer.Execution.Iterators.Joins.Inputs;
 using System.Data;
 using InternalsViewer.Execution.AccessPaths.Binding;
 using InternalsViewer.Execution.AccessPaths.Results;
 using InternalsViewer.Execution.AccessPaths.Search;
 using InternalsViewer.Execution.AccessPaths.Values;
-using InternalsViewer.Execution.Services.Heaps;
-using InternalsViewer.Execution.Services.Indexes;
-using InternalsViewer.Execution.Services.Joins;
+using InternalsViewer.Execution.Iterators.Heaps;
+using InternalsViewer.Execution.Iterators.Indexes;
+using InternalsViewer.Execution.Iterators.Joins;
 using InternalsViewer.Internals.Engine.Database;
 using InternalsViewer.Internals.Interfaces.Engine;
 using InternalsViewer.Internals.Tests.Helpers;
@@ -68,7 +69,7 @@ public class RidLookupTests(ITestOutputHelper testOutput)
 
                 reads = 0;
             }
-            else if (step is AccessStep.ReadPage && step.Source == NestedLoopsStepService.InnerSource)
+            else if (step is AccessStep.ReadPage && step.Source == NestedLoopsStepIterator.InnerSource)
             {
                 reads++;
             }
@@ -119,7 +120,7 @@ public class RidLookupTests(ITestOutputHelper testOutput)
         var (steps, emits) = await RunAsync(context.Service);
 
         var outerRows = steps.Count(s => s is AccessStep.Row { EmittedRecord: not null }
-                                         && s.Source == NestedLoopsStepService.OuterSource);
+                                         && s.Source == NestedLoopsStepIterator.OuterSource);
 
         Assert.Equal(outerRows, emits.Count);
         Assert.Equal(outerRows, context.Service.RebindCount);
@@ -143,8 +144,8 @@ public class RidLookupTests(ITestOutputHelper testOutput)
     }
 
     private sealed record Context(DatabaseSource Database,
-                                  NestedLoopsStepService Service,
-                                  HeapFetchStepService Heap,
+                                  NestedLoopsStepIterator Service,
+                                  HeapFetchStepIterator Heap,
                                   AllocationUnit Index,
                                   AllocationUnit Heap_);
 
@@ -155,8 +156,8 @@ public class RidLookupTests(ITestOutputHelper testOutput)
         var database = await DemoDatabase.LoadAsync(serviceHost);
 
         return new Context(database,
-                           serviceHost.GetService<NestedLoopsStepService>(),
-                           serviceHost.GetService<HeapFetchStepService>(),
+                           serviceHost.GetService<NestedLoopsStepIterator>(),
+                           serviceHost.GetService<HeapFetchStepIterator>(),
                            DemoDatabase.Unit(database, DemoDatabase.HeapTable, DemoDatabase.HeapIndex),
                            DemoDatabase.Unit(database, DemoDatabase.HeapTable));
     }
@@ -165,13 +166,12 @@ public class RidLookupTests(ITestOutputHelper testOutput)
     {
         var outerInput = new RangeDefinition(context.Index.AllocationUnitId, context.Index.RootPage, [outerBounds]);
 
-        await context.Service.StartAsync(context.Database,
-                                         outerInput,
-                                         new RidLookupJoinInput(context.Heap),
-                                         CancellationToken.None);
+        await context.Service.OpenAsync(new IteratorContext(context.Database),
+                                        new NestedLoopsDefinition(outerInput, new HeapFetchDefinition()),
+                                        CancellationToken.None);
     }
 
-    private static async Task<(List<AccessStep> Steps, List<AccessStep.JoinEmit> Emits)> RunAsync(NestedLoopsStepService service)
+    private static async Task<(List<AccessStep> Steps, List<AccessStep.JoinEmit> Emits)> RunAsync(NestedLoopsStepIterator service)
     {
         var steps = new List<AccessStep>();
 

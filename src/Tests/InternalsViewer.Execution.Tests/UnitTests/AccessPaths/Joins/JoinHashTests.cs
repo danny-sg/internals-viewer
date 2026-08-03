@@ -1,5 +1,5 @@
 using System.Data;
-using InternalsViewer.Execution.AccessPaths.Joins;
+using InternalsViewer.Execution.AccessPaths.Joins.Hash;
 using InternalsViewer.Execution.AccessPaths.Search;
 using InternalsViewer.Execution.AccessPaths.Values;
 

@@ -1,10 +1,11 @@
+using InternalsViewer.Execution.AccessPaths.Definitions;
 using InternalsViewer.Execution.AccessPaths.Joins;
 using System.Data;
 using InternalsViewer.Execution.AccessPaths.Binding;
 using InternalsViewer.Execution.AccessPaths.Results;
 using InternalsViewer.Execution.AccessPaths.Search;
 using InternalsViewer.Execution.AccessPaths.Values;
-using InternalsViewer.Execution.Services.Joins;
+using InternalsViewer.Execution.Iterators.Joins;
 using InternalsViewer.Internals.Engine.Database;
 using InternalsViewer.Internals.Interfaces.Engine;
 using InternalsViewer.Internals.Tests.Helpers;
@@ -52,7 +53,7 @@ public class KeyLookupTests(ITestOutputHelper testOutput)
         var (steps, emits) = await RunAsync(context.Service);
 
         var outerRows = steps.Count(s => s is AccessStep.Row { EmittedRecord: not null }
-                                         && s.Source == NestedLoopsStepService.OuterSource);
+                                         && s.Source == NestedLoopsStepIterator.OuterSource);
 
         Assert.True(outerRows > 1, "The range should cover several rows of the nonclustered index");
 
@@ -70,7 +71,7 @@ public class KeyLookupTests(ITestOutputHelper testOutput)
             var read = Assert.IsType<AccessStep.ReadPage>(next);
 
             Assert.Equal(context.Inner.RootPage, read.PageAddress);
-            Assert.Equal(NestedLoopsStepService.InnerSource, read.Source);
+            Assert.Equal(NestedLoopsStepIterator.InnerSource, read.Source);
         }
     }
 
@@ -118,7 +119,7 @@ public class KeyLookupTests(ITestOutputHelper testOutput)
                 reads = 0;
                 leafLinks = 0;
             }
-            else if (step.Source == NestedLoopsStepService.InnerSource)
+            else if (step.Source == NestedLoopsStepIterator.InnerSource)
             {
                 if (step is AccessStep.ReadPage)
                 {
@@ -145,7 +146,7 @@ public class KeyLookupTests(ITestOutputHelper testOutput)
     }
 
     private sealed record Context(DatabaseSource Database,
-                                  NestedLoopsStepService Service,
+                                  NestedLoopsStepIterator Service,
                                   AllocationUnit Outer,
                                   AllocationUnit Inner);
 
@@ -156,7 +157,7 @@ public class KeyLookupTests(ITestOutputHelper testOutput)
         var database = await DemoDatabase.LoadAsync(serviceHost);
 
         return new Context(database,
-                           serviceHost.GetService<NestedLoopsStepService>(),
+                           serviceHost.GetService<NestedLoopsStepIterator>(),
                            DemoDatabase.Unit(database, DemoDatabase.ClusteredTable, DemoDatabase.TextFieldIndex),
                            DemoDatabase.Unit(database, DemoDatabase.ClusteredTable, DemoDatabase.ClusteredIndex));
     }
@@ -169,10 +170,12 @@ public class KeyLookupTests(ITestOutputHelper testOutput)
                                                    context.Inner.RootPage,
                                                    [new CorrelationBinding("Id", "Id")]);
 
-        await context.Service.StartAsync(context.Database, outerInput, innerInput, CancellationToken.None);
+        await context.Service.OpenAsync(new IteratorContext(context.Database),
+                                        new NestedLoopsDefinition(outerInput, innerInput),
+                                        CancellationToken.None);
     }
 
-    private static async Task<(List<AccessStep> Steps, List<AccessStep.JoinEmit> Emits)> RunAsync(NestedLoopsStepService service)
+    private static async Task<(List<AccessStep> Steps, List<AccessStep.JoinEmit> Emits)> RunAsync(NestedLoopsStepIterator service)
     {
         var steps = new List<AccessStep>();
 

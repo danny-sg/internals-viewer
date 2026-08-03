@@ -134,7 +134,8 @@ public static class ExecutionPlanParser
         node.OutputColumns = ParseOutputColumns(element);
         node.DefinedValues = ParseDefinedValues(element, parameters);
         node.SortColumns = ParseSortColumns(element);
-        node.MergeInfo = ParseMergeInfo(element);
+        node.MergeInfo = ParseMergeInfo(element, parameters);
+        node.NestedLoopsInfo = ParseNestedLoopsInfo(element, parameters);
         node.GroupByColumns = ParseGroupBy(element);
 
         var children = GetChildRelationalOperators(element);
@@ -584,7 +585,7 @@ public static class ExecutionPlanParser
         return result;
     }
 
-    private static MergeInfo? ParseMergeInfo(XElement element)
+    private static MergeInfo? ParseMergeInfo(XElement element, PlanParameters parameters)
     {
         var merge = element.Elements().FirstOrDefault(e => e.Name.LocalName == "Merge");
 
@@ -597,16 +598,45 @@ public static class ExecutionPlanParser
 
         var inner = merge.Elements().FirstOrDefault(e => e.Name.LocalName == "InnerSideJoinColumns");
 
-        if (outer is null && inner is null)
+        var residualElement = merge.Elements().FirstOrDefault(e => e.Name.LocalName == "Residual");
+
+        if (outer is null && inner is null && residualElement is null)
         {
             return null;
         }
+
+        var residual = new PredicateParser(null, parameters.Resolve).ParsePredicateElement(residualElement);
 
         return new MergeInfo
         {
             OuterKeys = outer is null ? [] : ParseKeys(outer),
             InnerKeys = inner is null ? [] : ParseKeys(inner),
-            ManyToMany = (bool?)merge.Attribute("ManyToMany") ?? false
+            ManyToMany = (bool?)merge.Attribute("ManyToMany") ?? false,
+            Residual = residual,
+            HasUntranslatedResidual = residualElement is not null && residual is null
+        };
+    }
+
+    /// <summary>
+    /// Parses the predicate a loop join applies to the rows its inner side returned
+    /// </summary>
+    private static NestedLoopsInfo? ParseNestedLoopsInfo(XElement element, PlanParameters parameters)
+    {
+        var loops = element.Elements().FirstOrDefault(e => e.Name.LocalName == "NestedLoops");
+
+        var predicateElement = loops?.Elements().FirstOrDefault(e => e.Name.LocalName == "Predicate");
+
+        if (predicateElement is null)
+        {
+            return null;
+        }
+
+        var predicate = new PredicateParser(null, parameters.Resolve).ParsePredicateElement(predicateElement);
+
+        return new NestedLoopsInfo
+        {
+            Predicate = predicate,
+            HasUntranslatedPredicate = predicate is null
         };
     }
 

@@ -1,8 +1,8 @@
 using System.Diagnostics.CodeAnalysis;
-using InternalsViewer.Execution.Services.Allocations;
-using InternalsViewer.Execution.Services.Heaps;
-using InternalsViewer.Execution.Services.Indexes;
-using InternalsViewer.Execution.Services.Joins;
+using InternalsViewer.Execution.Iterators.Allocations;
+using InternalsViewer.Execution.Iterators.Heaps;
+using InternalsViewer.Execution.Iterators.Indexes;
+using InternalsViewer.Execution.Iterators.Joins;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace InternalsViewer.Execution;
@@ -12,11 +12,11 @@ public static class ServiceRegistration
 {
     public static void RegisterExecutionServices(this IServiceCollection services)
     {
-        services.AddTransient<IndexStepService>();
-        services.AddTransient<AllocationStepService>();
-        services.AddTransient<NestedLoopsStepService>();
-        services.AddTransient<MergeJoinStepService>();
-        services.AddTransient<HashMatchStepService>();
-        services.AddTransient<HeapFetchStepService>();
+        services.AddTransient<IndexStepIterator>();
+        services.AddTransient<AllocationStepIterator>();
+        services.AddTransient<NestedLoopsStepIterator>();
+        services.AddTransient<MergeJoinStepIterator>();
+        services.AddTransient<HashMatchStepIterator>();
+        services.AddTransient<HeapFetchStepIterator>();
     }
 }

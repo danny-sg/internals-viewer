@@ -1,10 +1,11 @@
+using InternalsViewer.Execution.AccessPaths.Definitions;
 using InternalsViewer.Execution.AccessPaths.Joins;
 using System.Data;
 using InternalsViewer.Execution.AccessPaths.Binding;
 using InternalsViewer.Execution.AccessPaths.Results;
 using InternalsViewer.Execution.AccessPaths.Search;
 using InternalsViewer.Execution.AccessPaths.Values;
-using InternalsViewer.Execution.Services.Joins;
+using InternalsViewer.Execution.Iterators.Joins;
 using InternalsViewer.Internals.Engine.Database;
 using InternalsViewer.Internals.Interfaces.Engine;
 using InternalsViewer.Internals.Tests.Helpers;
@@ -44,9 +45,9 @@ public class MergeJoinAcrossTablesTests(ITestOutputHelper testOutput)
 
         var (steps, pairs) = await RunAsync(context.Service);
 
-        var outerRows = CountRows(steps, MergeJoinStepService.OuterSource);
+        var outerRows = CountRows(steps, MergeJoinStepIterator.OuterSource);
 
-        var innerRows = CountRows(steps, MergeJoinStepService.InnerSource);
+        var innerRows = CountRows(steps, MergeJoinStepIterator.InnerSource);
 
         TestOutput.WriteLine($"{pairs.Count} pairs from {outerRows} heap index rows and {innerRows} clustered rows");
 
@@ -90,7 +91,7 @@ public class MergeJoinAcrossTablesTests(ITestOutputHelper testOutput)
         => steps.Count(s => s is AccessStep.Row { EmittedRecord: not null } && s.Source == source);
 
     private sealed record Context(DatabaseSource Database,
-                                  MergeJoinStepService Service,
+                                  MergeJoinStepIterator Service,
                                   AllocationUnit HeapIndex,
                                   AllocationUnit Clustered);
 
@@ -101,7 +102,7 @@ public class MergeJoinAcrossTablesTests(ITestOutputHelper testOutput)
         var database = await DemoDatabase.LoadAsync(serviceHost);
 
         return new Context(database,
-                           serviceHost.GetService<MergeJoinStepService>(),
+                           serviceHost.GetService<MergeJoinStepIterator>(),
                            DemoDatabase.Unit(database, DemoDatabase.HeapTable, DemoDatabase.HeapIndex),
                            DemoDatabase.Unit(database, DemoDatabase.ClusteredTable, DemoDatabase.ClusteredIndex));
     }
@@ -116,17 +117,18 @@ public class MergeJoinAcrossTablesTests(ITestOutputHelper testOutput)
 
         var clustered = SideInput(context.Clustered, from, to);
 
-        await context.Service.StartAsync(context.Database,
-                                         isClusteredOuter ? clustered : heap,
-                                         isClusteredOuter ? heap : clustered,
-                                         CancellationToken.None,
-                                         joinType: joinType);
+        await context.Service.OpenAsync(new IteratorContext(context.Database),
+                                        new MergeJoinDefinition(isClusteredOuter ? clustered : heap, isClusteredOuter ? heap : clustered)
+        {
+            JoinType = joinType
+        },
+                                        CancellationToken.None);
     }
 
     private static MergeSideDefinition SideInput(AllocationUnit unit, int from, int to)
         => new(unit.AllocationUnitId, unit.RootPage, [Between(from, to)], ["Id"]);
 
-    private static async Task<(List<AccessStep> Steps, List<(long? Outer, long? Inner)> Pairs)> RunAsync(MergeJoinStepService service)
+    private static async Task<(List<AccessStep> Steps, List<(long? Outer, long? Inner)> Pairs)> RunAsync(MergeJoinStepIterator service)
     {
         var steps = new List<AccessStep>();
 

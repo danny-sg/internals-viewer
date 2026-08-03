@@ -1,11 +1,12 @@
 using System.Data;
 using InternalsViewer.Execution.AccessPaths.Binding;
+using InternalsViewer.Execution.AccessPaths.Definitions;
 using InternalsViewer.Execution.AccessPaths.Joins;
 using InternalsViewer.Execution.AccessPaths.Predicates;
 using InternalsViewer.Execution.AccessPaths.Results;
 using InternalsViewer.Execution.AccessPaths.Search;
 using InternalsViewer.Execution.AccessPaths.Values;
-using InternalsViewer.Execution.Services.Joins;
+using InternalsViewer.Execution.Iterators.Joins;
 using InternalsViewer.Internals.Engine.Database;
 using InternalsViewer.Internals.Interfaces.Engine;
 
@@ -155,7 +156,7 @@ public class NestedLoopsAcrossTablesTests(ITestOutputHelper testOutput)
     }
 
     private sealed record Context(DatabaseSource Database,
-                                  NestedLoopsStepService Service,
+                                  NestedLoopsStepIterator Service,
                                   AllocationUnit Outer,
                                   AllocationUnit Inner);
 
@@ -166,7 +167,7 @@ public class NestedLoopsAcrossTablesTests(ITestOutputHelper testOutput)
         var database = await DemoDatabase.LoadAsync(serviceHost);
 
         return new Context(database,
-                           serviceHost.GetService<NestedLoopsStepService>(),
+                           serviceHost.GetService<NestedLoopsStepIterator>(),
                            DemoDatabase.Unit(database, DemoDatabase.HeapTable, DemoDatabase.HeapIndex),
                            DemoDatabase.Unit(database, DemoDatabase.ClusteredTable, DemoDatabase.ClusteredIndex));
     }
@@ -182,10 +183,15 @@ public class NestedLoopsAcrossTablesTests(ITestOutputHelper testOutput)
                                             context.Inner.RootPage,
                                             [new CorrelationBinding("Id", "Id")]) { Residual = residual };
 
-        await context.Service.StartAsync(context.Database, outerInput, innerInput, CancellationToken.None, joinType: joinType);
+        await context.Service.OpenAsync(new IteratorContext(context.Database),
+                                        new NestedLoopsDefinition(outerInput, innerInput)
+        {
+            JoinType = joinType
+        },
+                                        CancellationToken.None);
     }
 
-    private static async Task<(List<AccessStep> Steps, List<AccessStep.JoinEmit> Emits)> RunAsync(NestedLoopsStepService service)
+    private static async Task<(List<AccessStep> Steps, List<AccessStep.JoinEmit> Emits)> RunAsync(NestedLoopsStepIterator service)
     {
         var steps = new List<AccessStep>();
 

@@ -1,19 +1,12 @@
-using InternalsViewer.Execution.AccessPaths.Predicates;
 using InternalsViewer.Execution.AccessPaths.Search;
 using InternalsViewer.Internals.Engine.Address;
 
-namespace InternalsViewer.Execution.AccessPaths.Joins;
+namespace InternalsViewer.Execution.AccessPaths.Definitions;
 
 /// <summary>
-/// Describes an ordered access path a join reads from, the outer side of a nested loops join or either side of a merge join
+/// Describes an ordered access path read in key order, an index seek or scan
 /// </summary>
-public record RangeDefinition(long AllocationUnitId, PageAddress RootPage, IReadOnlyList<SeekBounds> Ranges)
+public record RangeDefinition(long AllocationUnitId, PageAddress RootPage, IReadOnlyList<SeekBounds> Ranges) : IteratorDefinition
 {
-    public AccessPredicate? Residual { get; init; }
-
     public ScanDirection Direction { get; init; } = ScanDirection.Forward;
-
-    public long? RowGoal { get; init; }
-
-    public bool HasUntranslatedResidual { get; init; }
 }

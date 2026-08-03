@@ -1,10 +1,11 @@
+using InternalsViewer.Execution.AccessPaths.Definitions;
 using InternalsViewer.Execution.AccessPaths.Joins;
 using System.Data;
 using InternalsViewer.Execution.AccessPaths.Binding;
 using InternalsViewer.Execution.AccessPaths.Results;
 using InternalsViewer.Execution.AccessPaths.Search;
 using InternalsViewer.Execution.AccessPaths.Values;
-using InternalsViewer.Execution.Services.Joins;
+using InternalsViewer.Execution.Iterators.Joins;
 using InternalsViewer.Internals.Connections.File;
 using InternalsViewer.Internals.Engine.Database;
 using InternalsViewer.Internals.Engine.Database.Enums;
@@ -97,11 +98,12 @@ public class MergeJoinSemanticsTests(ITestOutputHelper testOutput)
     {
         var context = await LoadAsync();
 
-        await context.Service.StartAsync(context.Database,
-                                         SideInput(context.Unit, Between(outer.From, outer.To)),
-                                         SideInput(context.Unit, Between(inner.From, inner.To)),
-                                         CancellationToken.None,
-                                         joinType: joinType);
+        await context.Service.OpenAsync(new IteratorContext(context.Database),
+                                        new MergeJoinDefinition(SideInput(context.Unit, Between(outer.From, outer.To)), SideInput(context.Unit, Between(inner.From, inner.To)))
+        {
+            JoinType = joinType
+        },
+                                        CancellationToken.None);
 
         var emits = new List<AccessStep.JoinEmit>();
 
@@ -124,7 +126,7 @@ public class MergeJoinSemanticsTests(ITestOutputHelper testOutput)
         return emits;
     }
 
-    private sealed record Context(DatabaseSource Database, MergeJoinStepService Service, AllocationUnit Unit);
+    private sealed record Context(DatabaseSource Database, MergeJoinStepIterator Service, AllocationUnit Unit);
 
     private static async Task<Context> LoadAsync()
     {
@@ -137,7 +139,7 @@ public class MergeJoinSemanticsTests(ITestOutputHelper testOutput)
 
         var unit = DemoDatabase.Unit(database, DemoDatabase.ClusteredTable, DemoDatabase.ClusteredIndex);
 
-        return new Context(database, serviceHost.GetService<MergeJoinStepService>(), unit);
+        return new Context(database, serviceHost.GetService<MergeJoinStepIterator>(), unit);
     }
 
     private static MergeSideDefinition SideInput(AllocationUnit unit, SeekBounds bounds)

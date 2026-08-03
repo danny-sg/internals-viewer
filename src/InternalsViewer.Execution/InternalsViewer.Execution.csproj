@@ -8,6 +8,11 @@
         <Configurations>Debug;Release;Installer</Configurations>
         <EnforceCodeStyleInBuild>True</EnforceCodeStyleInBuild>
     </PropertyGroup>
+    <ItemGroup>
+      <Compile Remove="Interfaces\Services\**" />
+      <EmbeddedResource Remove="Interfaces\Services\**" />
+      <None Remove="Interfaces\Services\**" />
+    </ItemGroup>
 
     <ItemGroup>
         <None Include="..\.editorconfig" Link=".editorconfig" />
@@ -27,9 +32,5 @@
 
     <ItemGroup>
         <ProjectReference Include="..\InternalsViewer.Internals\InternalsViewer.Internals.csproj" />
-    </ItemGroup>
-
-    <ItemGroup>
-      <Folder Include="Interfaces\Services\" />
     </ItemGroup>
 </Project>

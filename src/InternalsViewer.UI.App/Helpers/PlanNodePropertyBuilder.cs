@@ -206,9 +206,41 @@ public static class PlanNodePropertyBuilder
                 mergeGroup.Children.Add(BoolProperty("Many To Many", true));
             }
 
+            if (mergeInfo.Residual is { } mergeResidual)
+            {
+                var text = Expand(PredicateText.From(mergeResidual), expressions);
+
+                mergeGroup.Children.Add(new PlanNodeProperty("Residual", text.ToString()) { Predicate = text });
+            }
+            else if (mergeInfo.HasUntranslatedResidual)
+            {
+                mergeGroup.Children.Add(new PlanNodeProperty("Residual", "(not translatable)"));
+            }
+
             if (mergeGroup.Children.Count > 0)
             {
                 result.Add(mergeGroup);
+            }
+        }
+
+        if (node.NestedLoopsInfo is { } loopsInfo)
+        {
+            var loopsGroup = new PlanNodeProperty("Nested Loops", string.Empty);
+
+            if (loopsInfo.Predicate is { } loopsPredicate)
+            {
+                var text = Expand(PredicateText.From(loopsPredicate), expressions);
+
+                loopsGroup.Children.Add(new PlanNodeProperty("Predicate", text.ToString()) { Predicate = text });
+            }
+            else if (loopsInfo.HasUntranslatedPredicate)
+            {
+                loopsGroup.Children.Add(new PlanNodeProperty("Predicate", "(not translatable)"));
+            }
+
+            if (loopsGroup.Children.Count > 0)
+            {
+                result.Add(loopsGroup);
             }
         }
 
@@ -233,6 +265,17 @@ public static class PlanNodePropertyBuilder
             if (hashInfo.ProbeKeys.Count > 0)
             {
                 hashGroup.Children.Add(new PlanNodeProperty("Probe Keys", ColumnList(hashInfo.ProbeKeys, expressions)) { IsValueMonospace = true });
+            }
+
+            if (hashInfo.Residual is { } hashResidual)
+            {
+                var text = Expand(PredicateText.From(hashResidual), expressions);
+
+                hashGroup.Children.Add(new PlanNodeProperty("Probe Residual", text.ToString()) { Predicate = text });
+            }
+            else if (hashInfo.HasUntranslatedResidual)
+            {
+                hashGroup.Children.Add(new PlanNodeProperty("Probe Residual", "(not translatable)"));
             }
 
             if (hashGroup.Children.Count > 0)

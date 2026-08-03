@@ -10,6 +10,7 @@ using System.Threading;
 using System;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using InternalsViewer.Execution.AccessPaths.Definitions;
 using InternalsViewer.Execution.AccessPaths.Predicates;
 using InternalsViewer.Execution.AccessPaths.Results;
 using InternalsViewer.Execution.AccessPaths.Search;
@@ -40,6 +41,7 @@ using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Media.Imaging;
 using Microsoft.UI.Xaml.Media;
 using InternalsViewer.Execution.AccessPaths.Joins;
+using InternalsViewer.Execution.AccessPaths.Joins.Hash;
 
 namespace InternalsViewer.UI.App.ViewModels.Query;
 
@@ -772,9 +774,6 @@ public sealed partial class TraceTabViewModel : ObservableObject
         _syncedHashRowCount = 0;
         _currentHashBucket = null;
         _currentHashEntry = null;
-        _hashColumns = null;
-
-        _matchedHashEntries.Clear();
         CurrentStep = null;
         Strategy = SeekDescription;
         InnerStrategy = null;
@@ -860,23 +859,12 @@ public sealed partial class TraceTabViewModel : ObservableObject
 
         var table = hashService.Table;
 
-        if (_hashColumns is null && FirstRecord(table) is { } sample)
-        {
-            _hashColumns = BuildHashColumns(sample);
-
-            visual.HashColumns = _hashColumns;
-
-            _hashBucketModels = null;
-        }
-
         if (_hashBucketModels is { } models
             && models.Count == table.BucketCount
             && table.RowCount == _syncedHashRowCount + 1
             && step is AccessStep.HashBuild { IsNullKey: false } build)
         {
-            models[build.Bucket].Entries.Add(ToEntryModel(build.Bucket,
-                                                          build.Entry,
-                                                          table.Buckets[build.Bucket].Entries[build.Entry]));
+            models[build.Bucket].Entries.Add(ToEntryModel(table.Buckets[build.Bucket].Entries[build.Entry]));
 
             _syncedHashRowCount = table.RowCount;
         }
@@ -889,7 +877,7 @@ public sealed partial class TraceTabViewModel : ObservableObject
             visual.HashBuckets = _hashBucketModels!;
         }
 
-        UpdateHashHighlight(step);
+        UpdateHashHighlight(step, table);
 
         visual.HashTableSummary = hashService.BuildRowEstimate > 0
             ? $"{table.RowCount:N0} rows, sized for {hashService.BuildRowEstimate:N0}, "
@@ -905,50 +893,10 @@ public sealed partial class TraceTabViewModel : ObservableObject
 
     private HashEntryModel? _currentHashEntry;
 
-    private IReadOnlyList<HashColumnModel>? _hashColumns;
-
-    private static IRecord? FirstRecord(HashTable table)
-    {
-        foreach (var bucket in table.Buckets)
-        {
-            if (bucket.Count > 0)
-            {
-                return bucket.Entries[0].Record;
-            }
-        }
-
-        return null;
-    }
-
-    /// <summary>
-    /// Builds the grid's columns from the shape of a build row, sizing each to its header and first value
-    /// </summary>
-    private static List<HashColumnModel> BuildHashColumns(IRecord record)
-    {
-        var columns = new List<HashColumnModel>(HashColumnModel.CreateBaseColumns());
-
-        var sample = ToRecordModel(record);
-
-        foreach (var field in sample.Fields)
-        {
-            columns.Add(new HashColumnModel
-            {
-                Header = field.Name,
-                Width = Math.Clamp(Math.Max(field.Name.Length, field.Value.Length) * 7.5 + 18, 70, 240)
-            });
-        }
-
-        return columns;
-    }
-
-    private readonly List<HashEntryModel> _matchedHashEntries = [];
-
     private void RebuildHashBuckets(HashTable table)
     {
         _currentHashBucket = null;
         _currentHashEntry = null;
-
-        _matchedHashEntries.Clear();
 
         var models = new List<HashBucketModel>(table.BucketCount);
 
@@ -956,9 +904,9 @@ public sealed partial class TraceTabViewModel : ObservableObject
         {
             var model = new HashBucketModel { Index = bucket.Index };
 
-            for (var index = 0; index < bucket.Count; index++)
+            foreach (var entry in bucket.Entries)
             {
-                model.Entries.Add(ToEntryModel(bucket.Index, index, bucket.Entries[index]));
+                model.Entries.Add(ToEntryModel(entry));
             }
 
             models.Add(model);
@@ -968,18 +916,8 @@ public sealed partial class TraceTabViewModel : ObservableObject
         _syncedHashRowCount = table.RowCount;
     }
 
-    private void UpdateHashHighlight(AccessStep? step)
+    private void UpdateHashHighlight(AccessStep? step, HashTable table)
     {
-        if (step is AccessStep.HashProbe or AccessStep.JoinStart)
-        {
-            foreach (var matched in _matchedHashEntries)
-            {
-                matched.IsMatched = false;
-            }
-
-            _matchedHashEntries.Clear();
-        }
-
         if (_currentHashBucket is not null)
         {
             _currentHashBucket.IsCurrent = false;
@@ -1017,39 +955,17 @@ public sealed partial class TraceTabViewModel : ObservableObject
 
         _currentHashEntry = _currentHashBucket.Entries[entryIndex];
         _currentHashEntry.IsCurrent = true;
-
-        if (step is AccessStep.HashCompare { IsMatch: true })
-        {
-            _currentHashEntry.IsMatched = true;
-
-            _matchedHashEntries.Add(_currentHashEntry);
-        }
+        _currentHashEntry.IsMatched = table.Buckets[bucketIndex].Entries[entryIndex].IsMatched;
     }
 
-    /// <summary>
-    /// Builds one grid row, naming its bucket only on the first entry of a chain
-    /// </summary>
-    private HashEntryModel ToEntryModel(int bucketIndex, int entryIndex, HashEntry entry)
+    private static HashEntryModel ToEntryModel(HashEntry entry)
     {
-        var columns = _hashColumns ?? [];
-
-        var record = ToRecordModel(entry.Record);
-
-        var cells = new List<HashCellModel>(columns.Count);
-
-        for (var index = 0; index < columns.Count; index++)
+        return new HashEntryModel
         {
-            var value = index switch
-            {
-                0 => entryIndex == 0 ? $"0x{bucketIndex:X2}" : string.Empty,
-                1 => $"0x{entry.Hash:X8}",
-                _ => index - 2 < record.Fields.Count ? record.Fields[index - 2].Value : string.Empty
-            };
-
-            cells.Add(new HashCellModel { Value = value, Column = columns[index] });
-        }
-
-        return new HashEntryModel { Cells = cells };
+            Hash = entry.Hash,
+            Record = ToRecordModel(entry.Record),
+            IsMatched = entry.IsMatched
+        };
     }
 
     private static IndexRecordModel ToRecordModel(JoinBufferRow row)
@@ -1217,8 +1133,7 @@ public sealed partial class TraceTabViewModel : ObservableObject
                                                     probeInput,
                                                     CancellationToken.None,
                                                     evaluationContext,
-                                                    hash.JoinType,
-                                                    residual: hashInfo.Residual));
+                                                    hash.JoinType));
 
             if (Visuals.FirstOrDefault(v => v.IsHashTableVisible) is { } buildVisual)
             {

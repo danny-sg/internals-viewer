@@ -1,3 +1,4 @@
+using InternalsViewer.Execution.AccessPaths.Definitions;
 using InternalsViewer.Execution.AccessPaths.Joins;
 using System.Data;
 using InternalsViewer.Execution.AccessPaths.Binding;
@@ -5,7 +6,7 @@ using InternalsViewer.Execution.AccessPaths.Predicates;
 using InternalsViewer.Execution.AccessPaths.Results;
 using InternalsViewer.Execution.AccessPaths.Search;
 using InternalsViewer.Execution.AccessPaths.Values;
-using InternalsViewer.Execution.Services.Joins;
+using InternalsViewer.Execution.Iterators.Joins;
 using InternalsViewer.Internals.Connections.File;
 using InternalsViewer.Internals.Engine.Database;
 using InternalsViewer.Internals.Engine.Database.Enums;
@@ -121,11 +122,12 @@ public class NestedLoopsSemanticsTests(ITestOutputHelper testOutput)
             Residual = EvenKeysOnly()
         };
 
-        await context.Service.StartAsync(context.Database,
-                                         outerInput,
-                                         innerInput,
-                                         CancellationToken.None,
-                                         joinType: joinType);
+        await context.Service.OpenAsync(new IteratorContext(context.Database),
+                                        new NestedLoopsDefinition(outerInput, innerInput)
+        {
+            JoinType = joinType
+        },
+                                        CancellationToken.None);
     }
 
     private static AccessPredicate EvenKeysOnly()
@@ -136,7 +138,7 @@ public class NestedLoopsSemanticsTests(ITestOutputHelper testOutput)
             ComparisonOperator.Equal,
             new AccessExpression.Constant(AccessValue.FromInteger(SqlDbType.Int, 0)));
 
-    private sealed record Context(DatabaseSource Database, NestedLoopsStepService Service, AllocationUnit Unit);
+    private sealed record Context(DatabaseSource Database, NestedLoopsStepIterator Service, AllocationUnit Unit);
 
     private static async Task<Context> LoadAsync()
     {
@@ -149,7 +151,7 @@ public class NestedLoopsSemanticsTests(ITestOutputHelper testOutput)
 
         var unit = DemoDatabase.Unit(database, DemoDatabase.ClusteredTable, DemoDatabase.ClusteredIndex);
 
-        return new Context(database, serviceHost.GetService<NestedLoopsStepService>(), unit);
+        return new Context(database, serviceHost.GetService<NestedLoopsStepIterator>(), unit);
     }
 
     private static long? Value(IRecord? record)

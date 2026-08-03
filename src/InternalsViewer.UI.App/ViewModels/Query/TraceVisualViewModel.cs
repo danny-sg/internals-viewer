@@ -5,7 +5,6 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
-using InternalsViewer.Execution.AccessPaths.Joins;
 using InternalsViewer.Execution.AccessPaths.Results;
 using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Internals.Engine.Allocation;
@@ -26,6 +25,7 @@ using AllocationBorderScope = InternalsViewer.UI.App.Models.AllocationBorderScop
 using AllocationLayer = InternalsViewer.UI.App.Models.AllocationLayer;
 using TimedRange = InternalsViewer.UI.App.Models.TimedRange;
 using InternalsViewer.UI.App.ViewModels.Allocation;
+using InternalsViewer.Execution.AccessPaths.Joins.Hash;
 
 namespace InternalsViewer.UI.App.ViewModels.Query;
 
@@ -54,6 +54,19 @@ public sealed partial class TraceVisualViewModel(TraceVisualKind kind,
     /// Shows the hash table in place of the side record stack, for the build input of a hash match
     /// </summary>
     public bool IsHashTableVisible { get; init; }
+
+    /// <summary>
+    /// Which input of the join this side is, 0 for outer or build and 1 for inner or probe
+    /// </summary>
+    /// <remarks>
+    /// Source identifies the operator and comes from the plan, so it can no longer say which side of its parent an input sits on.
+    /// </remarks>
+    public int InputIndex { get; init; } = -1;
+
+    /// <summary>
+    /// The columns this side's records show, taken from what its operator outputs
+    /// </summary>
+    public RecordColumnFilter ColumnFilter { get; init; } = RecordColumnFilter.All;
 
     /// <summary>
     /// Outlines the object as soon as the map loads, for a path that never reads the IAM chain
@@ -384,9 +397,11 @@ public sealed partial class TraceVisualViewModel(TraceVisualKind kind,
         HashTableSummary = string.Empty;
     }
 
-    internal static IndexRecordModel ToRecordModel(IRecord record)
+    internal static IndexRecordModel ToRecordModel(IRecord record, RecordColumnFilter? columns = null)
     {
         var rowIdentifier = GetRowIdentifier(record);
+
+        var fields = (columns ?? RecordColumnFilter.All).Apply(record.Fields);
 
         return new IndexRecordModel
         {
@@ -394,7 +409,7 @@ public sealed partial class TraceVisualViewModel(TraceVisualKind kind,
             RowIdentifier = rowIdentifier,
             Fields =
             [
-                .. record.Fields.Select(f => new IndexRecordFieldModel
+                .. fields.Select(f => new IndexRecordFieldModel
                 {
                     Name = f.Name,
                     Value = ValueOf(f, rowIdentifier),
