@@ -1,7 +1,7 @@
-using InternalsViewer.Execution.AccessPaths.Search;
-using InternalsViewer.Execution.Interfaces.Pages;
 using System.Collections.Immutable;
 using InternalsViewer.Execution.AccessPaths.Results;
+using InternalsViewer.Execution.AccessPaths.Search;
+using InternalsViewer.Execution.Interfaces.Pages;
 
 namespace InternalsViewer.Execution.Executors;
 

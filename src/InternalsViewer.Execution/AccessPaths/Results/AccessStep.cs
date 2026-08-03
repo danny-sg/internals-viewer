@@ -194,7 +194,7 @@ public abstract record AccessStep(AccessPhase AccessPhase)
     }
 
     /// <summary>
-    /// A matching outer and inner row pair was emitted by a join
+    /// A matching outer and inner row pair result was emitted by a join
     /// </summary>
     public sealed record JoinEmit(int PairNumber) : AccessStep(AccessPhase.Walk)
     {
