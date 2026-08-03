@@ -13,7 +13,7 @@ namespace InternalsViewer.Execution.Interfaces.Iterators.Joins.Inputs;
 /// </remarks>
 public interface IJoinInput
 {
-    IStepIterator Service { get; }
+    IStepIterator Iterator { get; }
 
     AccessStrategy? Strategy { get; }
 

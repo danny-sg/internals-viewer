@@ -15,11 +15,11 @@ namespace InternalsViewer.Execution.Iterators.Joins.Inputs;
 /// <summary>
 /// An input that seeks an index for key values taken from the outer row, as a key lookup does
 /// </summary>
-public sealed class CorrelatedSeekJoinInput(IndexStepIterator service, SeekDefinition input) : RebindableJoinInput
+public sealed class CorrelatedSeekJoinInput(IStepIterator iterator, SeekDefinition input) : RebindableJoinInput
 {
-    public override IStepIterator Service => service;
+    public override IStepIterator Iterator => iterator;
 
-    public override AccessStrategy? Strategy => service.Strategy;
+    public override AccessStrategy? Strategy => iterator.Strategy;
 
     public override bool FetchesDirectly => false;
 
@@ -57,7 +57,7 @@ public sealed class CorrelatedSeekJoinInput(IndexStepIterator service, SeekDefin
             RowGoal = input.RowGoal
         };
 
-        await service.OpenAsync(context, definition, cancellationToken);
+        await iterator.OpenAsync(context, definition, cancellationToken);
 
         return new AccessStep.Rebind(rebindNumber, key);
     }

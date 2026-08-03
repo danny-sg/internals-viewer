@@ -129,8 +129,8 @@ public class MergeJoinStepIteratorTests(ITestOutputHelper testOutput)
         return new NumberTableContext(database, serviceHost.GetService<MergeJoinStepIterator>(), unit);
     }
 
-    private static MergeSideDefinition SideInput(AllocationUnit unit, SeekBounds bounds)
-        => new(unit.AllocationUnitId, unit.RootPage, [bounds], ["Id"]);
+    private static JoinInputDefinition SideInput(AllocationUnit unit, SeekBounds bounds)
+        => new(new RangeDefinition(unit.AllocationUnitId, unit.RootPage, [bounds]), ["Id"]);
 
     private static async Task<(List<AccessStep> Steps, List<(long Outer, long Inner)> Pairs)> RunAsync(MergeJoinStepIterator service)
     {

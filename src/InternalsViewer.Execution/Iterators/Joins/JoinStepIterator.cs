@@ -66,8 +66,8 @@ public abstract class JoinStepIterator : IJoinStepIterator
     {
         IsComplete = true;
 
-        await Outer.Service.CloseAsync();
-        await Inner.Service.CloseAsync();
+        await Outer.Iterator.CloseAsync();
+        await Inner.Iterator.CloseAsync();
     }
 
     /// <summary>
@@ -105,8 +105,8 @@ public abstract class JoinStepIterator : IJoinStepIterator
 
     protected void ApplyInputIteratorIds()
     {
-        Outer.Service.IteratorId = OuterIteratorId;
-        Inner.Service.IteratorId = InnerIteratorId;
+        Outer.Iterator.IteratorId = OuterIteratorId;
+        Inner.Iterator.IteratorId = InnerIteratorId;
     }
 
     /// <summary>

@@ -307,7 +307,8 @@ public class HashMatchStepIteratorTests(ITestOutputHelper testOutput)
 
         var service = serviceHost.GetService<HashMatchStepIterator>();
 
-        var side = new HashSideDefinition(unit.AllocationUnitId, unit.RootPage, [BigIntBetween(1, 20)], ["NumberField2"]);
+        var side = new JoinInputDefinition(new RangeDefinition(unit.AllocationUnitId, unit.RootPage, [BigIntBetween(1, 20)]),
+                                          ["NumberField2"]);
 
         await service.OpenAsync(new IteratorContext(database),
                                 new HashMatchDefinition(side, side)
@@ -461,8 +462,8 @@ public class HashMatchStepIteratorTests(ITestOutputHelper testOutput)
         return new NumberTableContext(database, serviceHost.GetService<HashMatchStepIterator>(), unit);
     }
 
-    private static HashSideDefinition SideInput(AllocationUnit unit, SeekBounds bounds)
-        => new(unit.AllocationUnitId, unit.RootPage, [bounds], ["Id"]);
+    private static JoinInputDefinition SideInput(AllocationUnit unit, SeekBounds bounds)
+        => new(new RangeDefinition(unit.AllocationUnitId, unit.RootPage, [bounds]), ["Id"]);
 
     private static async Task<(List<AccessStep> Steps, List<(long Build, long Probe)> Pairs)> RunAsync(HashMatchStepIterator service)
     {

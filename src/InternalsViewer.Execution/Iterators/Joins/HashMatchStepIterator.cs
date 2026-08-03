@@ -7,7 +7,7 @@ using InternalsViewer.Execution.AccessPaths.Predicates;
 using InternalsViewer.Execution.AccessPaths.Results;
 using InternalsViewer.Execution.AccessPaths.Search;
 using InternalsViewer.Execution.AccessPaths.Values;
-using InternalsViewer.Execution.Iterators.Indexes;
+using InternalsViewer.Execution.Interfaces;
 using InternalsViewer.Execution.Iterators.Joins.Inputs;
 using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Internals.Engine.Database;
@@ -48,14 +48,14 @@ namespace InternalsViewer.Execution.Iterators.Joins;
 ///
 /// Partitioning and spilling are not simulated, so the table is built entirely in memory at one recursion level.
 /// </remarks>
-public sealed class HashMatchStepIterator(IndexStepIterator buildIterator, IndexStepIterator probeIterator) : JoinStepIterator
+public sealed class HashMatchStepIterator(IIteratorFactory factory) : JoinStepIterator
 {
     public const int BuildSource = OuterSource;
 
     public const int ProbeSource = InnerSource;
 
     public override PageAddress? CurrentPageAddress
-        => Current?.Source == ProbeSource ? Inner.Service.CurrentPageAddress : Outer.Service.CurrentPageAddress;
+        => Current?.Source == ProbeSource ? Inner.Iterator.CurrentPageAddress : Outer.Iterator.CurrentPageAddress;
 
     public HashTable Table { get; private set; } = new(JoinHash.DefaultBucketBits);
 
@@ -120,9 +120,9 @@ public sealed class HashMatchStepIterator(IndexStepIterator buildIterator, Index
             await CloseAsync();
         }
 
-        var build = new IndexRangeJoinInput(buildIterator, join.Build);
+        var build = new IteratorJoinInput(factory.Create(join.Build.Source), join.Build.Source);
 
-        var probe = new IndexRangeJoinInput(probeIterator, join.Probe);
+        var probe = new IteratorJoinInput(factory.Create(join.Probe.Source), join.Probe.Source);
 
         Outer = build;
         Inner = probe;
@@ -143,7 +143,7 @@ public sealed class HashMatchStepIterator(IndexStepIterator buildIterator, Index
 
         CurrentEvaluationContext = context.EvaluationContext;
 
-        Table = new HashTable(join.BucketBits ?? JoinHash.BucketBitsFor(join.Build.RowEstimate));
+        Table = new HashTable(join.BucketBits ?? JoinHash.BucketBitsFor(BuildRowEstimate));
 
         PendingBucketBits = null;
 

@@ -18,11 +18,11 @@ namespace InternalsViewer.Execution.Iterators.Joins.Inputs;
 /// The nonclustered index of a heap stores a row identifier in place of the clustered key, so the outer row already names the page and
 /// slot and nothing has to be searched for.
 /// </remarks>
-public sealed class RidLookupJoinInput(HeapFetchStepIterator service, AccessPredicate? residual = null) : RebindableJoinInput
+public sealed class RidLookupJoinInput(IStepIterator iterator, AccessPredicate? residual = null) : RebindableJoinInput
 {
-    public override IStepIterator Service => service;
+    public override IStepIterator Iterator => iterator;
 
-    public override AccessStrategy? Strategy => service.Strategy;
+    public override AccessStrategy? Strategy => iterator.Strategy;
     
     public override bool FetchesDirectly => true;
 
@@ -35,7 +35,7 @@ public sealed class RidLookupJoinInput(HeapFetchStepIterator service, AccessPred
 
         var definition = new HeapFetchDefinition { RowIdentifier = rowIdentifier, Residual = residual };
 
-        await service.OpenAsync(context, definition, cancellationToken);
+        await iterator.OpenAsync(context, definition, cancellationToken);
 
         return new AccessStep.Rebind(rebindNumber, default) { RowIdentifier = rowIdentifier };
     }

@@ -11,7 +11,7 @@ namespace InternalsViewer.Execution.Iterators.Joins.Inputs;
 /// </summary>
 public abstract class JoinInput : IJoinInput
 {
-    public abstract IStepIterator Service { get; }
+    public abstract IStepIterator Iterator { get; }
 
     public abstract AccessStrategy? Strategy { get; }
 

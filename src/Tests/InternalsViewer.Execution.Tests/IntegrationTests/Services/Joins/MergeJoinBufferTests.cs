@@ -218,8 +218,8 @@ public class MergeJoinBufferTests(ITestOutputHelper testOutput)
         return new Context(database, serviceHost.GetService<MergeJoinStepIterator>(), unit);
     }
 
-    private static MergeSideDefinition SideInput(AllocationUnit unit, SeekBounds bounds)
-        => new(unit.AllocationUnitId, unit.RootPage, [bounds], ["Id"]);
+    private static JoinInputDefinition SideInput(AllocationUnit unit, SeekBounds bounds)
+        => new(new RangeDefinition(unit.AllocationUnitId, unit.RootPage, [bounds]), ["Id"]);
 
     private static List<long> Values(IReadOnlyList<JoinBufferRow> buffer)
         => [.. buffer.Select(r => Value(r.Record))];

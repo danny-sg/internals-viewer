@@ -125,8 +125,8 @@ public class MergeJoinAcrossTablesTests(ITestOutputHelper testOutput)
                                         CancellationToken.None);
     }
 
-    private static MergeSideDefinition SideInput(AllocationUnit unit, int from, int to)
-        => new(unit.AllocationUnitId, unit.RootPage, [Between(from, to)], ["Id"]);
+    private static JoinInputDefinition SideInput(AllocationUnit unit, int from, int to)
+        => new(new RangeDefinition(unit.AllocationUnitId, unit.RootPage, [Between(from, to)]), ["Id"]);
 
     private static async Task<(List<AccessStep> Steps, List<(long? Outer, long? Inner)> Pairs)> RunAsync(MergeJoinStepIterator service)
     {

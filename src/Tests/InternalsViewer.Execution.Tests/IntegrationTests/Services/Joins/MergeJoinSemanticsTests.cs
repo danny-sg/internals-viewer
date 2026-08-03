@@ -142,8 +142,8 @@ public class MergeJoinSemanticsTests(ITestOutputHelper testOutput)
         return new Context(database, serviceHost.GetService<MergeJoinStepIterator>(), unit);
     }
 
-    private static MergeSideDefinition SideInput(AllocationUnit unit, SeekBounds bounds)
-        => new(unit.AllocationUnitId, unit.RootPage, [bounds], ["Id"]);
+    private static JoinInputDefinition SideInput(AllocationUnit unit, SeekBounds bounds)
+        => new(new RangeDefinition(unit.AllocationUnitId, unit.RootPage, [bounds]), ["Id"]);
 
     private static long? Value(IRecord? record)
         => record is null ? null : new RecordRowValueSource(record).GetValue(-1, "Id").Numeric;

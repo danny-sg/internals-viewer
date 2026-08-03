@@ -29,7 +29,7 @@ public sealed class InputCursor(JoinInput input, int side, JoinStepIterator owne
 
         while (true)
         {
-            var step = await input.Service.StepNextAsync(owner.CurrentToken);
+            var step = await input.Iterator.StepNextAsync(owner.CurrentToken);
 
             if (step is null)
             {

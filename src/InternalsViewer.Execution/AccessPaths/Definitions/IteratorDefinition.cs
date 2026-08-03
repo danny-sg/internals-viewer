@@ -13,6 +13,11 @@ namespace InternalsViewer.Execution.AccessPaths.Definitions;
 public abstract record IteratorDefinition
 {
     /// <summary>
+    /// Identifies the operator this describes, taken from the plan so that ids stay unique across the whole tree
+    /// </summary>
+    public int NodeId { get; init; }
+
+    /// <summary>
     /// A predicate applied to rows the iterator produces, after whatever access path it uses has found them
     /// </summary>
     public AccessPredicate? Residual { get; init; }

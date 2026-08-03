@@ -5,7 +5,7 @@ using InternalsViewer.Execution.AccessPaths.Predicates;
 using InternalsViewer.Execution.AccessPaths.Results;
 using InternalsViewer.Execution.AccessPaths.Search;
 using InternalsViewer.Execution.AccessPaths.Values;
-using InternalsViewer.Execution.Iterators.Indexes;
+using InternalsViewer.Execution.Interfaces;
 using InternalsViewer.Execution.Iterators.Joins.Inputs;
 using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Internals.Engine.Database;
@@ -75,10 +75,10 @@ namespace InternalsViewer.Execution.Iterators.Joins;
 /// on they are drained from the buffer.
 /// 
 /// </remarks>
-public sealed class MergeJoinStepIterator(IndexStepIterator outerIterator, IndexStepIterator innerIterator) : JoinStepIterator
+public sealed class MergeJoinStepIterator(IIteratorFactory factory) : JoinStepIterator
 {
     public override PageAddress? CurrentPageAddress
-        => Current?.Source == InnerSource ? Inner.Service.CurrentPageAddress : Outer.Service.CurrentPageAddress;
+        => Current?.Source == InnerSource ? Inner.Iterator.CurrentPageAddress : Outer.Iterator.CurrentPageAddress;
 
     private InputCursor? OuterCursor { get; set; }
 
@@ -109,9 +109,9 @@ public sealed class MergeJoinStepIterator(IndexStepIterator outerIterator, Index
             await CloseAsync();
         }
 
-        var outer = new IndexRangeJoinInput(outerIterator, join.Outer);
+        var outer = new IteratorJoinInput(factory.Create(join.Outer.Source), join.Outer.Source);
 
-        var inner = new IndexRangeJoinInput(innerIterator, join.Inner);
+        var inner = new IteratorJoinInput(factory.Create(join.Inner.Source), join.Inner.Source);
 
         Outer = outer;
         Inner = inner;
@@ -122,7 +122,9 @@ public sealed class MergeJoinStepIterator(IndexStepIterator outerIterator, Index
         InnerColumns = join.Inner.JoinColumns;
 
         CompareWidth = Math.Min(OuterColumns.Count, InnerColumns.Count);
-        ComparisonSign = join.Outer.Direction == ScanDirection.Backward ? -1 : 1;
+
+        // Only an access path has a direction, so an input that is itself an operator is taken to preserve ascending key order
+        ComparisonSign = join.Outer.Source is RangeDefinition { Direction: ScanDirection.Backward } ? -1 : 1;
 
         OuterCounters = default;
         InnerCounters = default;

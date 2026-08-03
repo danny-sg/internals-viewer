@@ -1,8 +1,7 @@
 using InternalsViewer.Execution.AccessPaths.Definitions;
 using InternalsViewer.Execution.AccessPaths.Joins;
 using InternalsViewer.Execution.AccessPaths.Results;
-using InternalsViewer.Execution.Iterators.Heaps;
-using InternalsViewer.Execution.Iterators.Indexes;
+using InternalsViewer.Execution.Interfaces;
 using InternalsViewer.Execution.Iterators.Joins.Inputs;
 using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Internals.Interfaces.Engine;
@@ -21,28 +20,26 @@ namespace InternalsViewer.Execution.Iterators.Joins;
 /// This service requires an outer input that can be scanned in key order, and an inner input that can be rebound for each outer row.
 /// The inner input may be a seek or a scan, but it must be rebindable.
 /// 
-/// +------------------+---------------------+-------------------------+
-/// | Join Type        | Outer Input         | Inner Input             |
-/// +------------------+---------------------+-------------------------+
-/// | Loop join        | IndexRangeJoinInput | CorrelatedSeekJoinInput |
-/// | Key lookup       | IndexRangeJoinInput | CorrelatedSeekJoinInput |
-/// | RID lookup       | IndexRangeJoinInput | RidLookupJoinInput      |
-/// +------------------+---------------------+-------------------------+
+/// +------------------+-------------------+-------------------------+
+/// | Join Type        | Outer Input       | Inner Input             |
+/// +------------------+-------------------+-------------------------+
+/// | Loop join        | IteratorJoinInput | CorrelatedSeekJoinInput |
+/// | Key lookup       | IteratorJoinInput | CorrelatedSeekJoinInput |
+/// | RID lookup       | IteratorJoinInput | RidLookupJoinInput      |
+/// +------------------+-------------------+-------------------------+
 ///
 /// Note: from the perspective of the join there is no difference between a loop join and a key lookup.
 /// </remarks>
-public sealed class NestedLoopsStepIterator(IndexStepIterator outerIterator,
-                                            IndexStepIterator innerIterator,
-                                            HeapFetchStepIterator heapIterator) : JoinStepIterator
+public sealed class NestedLoopsStepIterator(IIteratorFactory factory) : JoinStepIterator
 {
     public override PageAddress? CurrentPageAddress
-        => IsInnerActive ? Inner.Service.CurrentPageAddress : Outer.Service.CurrentPageAddress;
+        => IsInnerActive ? Inner.Iterator.CurrentPageAddress : Outer.Iterator.CurrentPageAddress;
 
     public int RebindCount { get; private set; }
 
     private RebindableJoinInput InnerInput { get; set; } = null!;
 
-    private IndexRangeJoinInput OuterInput => (IndexRangeJoinInput)Outer;
+    private IteratorJoinInput OuterInput => (IteratorJoinInput)Outer;
 
     private IRecord? CurrentOuterRecord { get; set; }
 
@@ -67,7 +64,7 @@ public sealed class NestedLoopsStepIterator(IndexStepIterator outerIterator,
         var inner = CreateInner(join.Inner);
 
         Context = context;
-        Outer = new IndexRangeJoinInput(outerIterator, join.Outer);
+        Outer = new IteratorJoinInput(factory.Create(join.Outer), join.Outer);
         Inner = inner;
         InnerInput = inner;
 
@@ -121,7 +118,7 @@ public sealed class NestedLoopsStepIterator(IndexStepIterator outerIterator,
 
         if (IsInnerActive)
         {
-            var innerStep = await Inner.Service.StepNextAsync(cancellationToken);
+            var innerStep = await Inner.Iterator.StepNextAsync(cancellationToken);
 
             if (innerStep is not (null or AccessStep.Stopped))
             {
@@ -133,7 +130,7 @@ public sealed class NestedLoopsStepIterator(IndexStepIterator outerIterator,
                 return Take(innerStep, InnerSource, OuterCounters.Add(CompletedInnerCounters).Add(innerStep.Counters));
             }
 
-            var finalCounters = innerStep?.Counters ?? Inner.Service.Current?.Counters ?? default;
+            var finalCounters = innerStep?.Counters ?? Inner.Iterator.Current?.Counters ?? default;
 
             CompletedInnerCounters = CompletedInnerCounters.Add(finalCounters);
 
@@ -147,7 +144,7 @@ public sealed class NestedLoopsStepIterator(IndexStepIterator outerIterator,
             }
         }
 
-        var step = await outerIterator.StepNextAsync(cancellationToken);
+        var step = await Outer.Iterator.StepNextAsync(cancellationToken);
 
         if (step is null)
         {
@@ -187,9 +184,9 @@ public sealed class NestedLoopsStepIterator(IndexStepIterator outerIterator,
         => definition switch
         {
             SeekDefinition seek
-                => new CorrelatedSeekJoinInput(innerIterator, seek),
+                => new CorrelatedSeekJoinInput(factory.Create(seek), seek),
             HeapFetchDefinition fetch
-                => new RidLookupJoinInput(heapIterator, fetch.Residual),
+                => new RidLookupJoinInput(factory.Create(fetch), fetch.Residual),
             _ => throw new ArgumentException($"A nested loops join drives its inner side by rebinding, which a {definition.GetType().Name} "
                                              + "does not support")
         };
