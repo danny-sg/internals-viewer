@@ -15,8 +15,6 @@ public abstract class JoinInput : IJoinInput
 
     public abstract AccessStrategy? Strategy { get; }
 
-    public abstract string StartDescription { get; }
-
     public IReadOnlyList<JoinBufferRow> Buffer => Rows;
 
     private List<JoinBufferRow> Rows { get; } = [];

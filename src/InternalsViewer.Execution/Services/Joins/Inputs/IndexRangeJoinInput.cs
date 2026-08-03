@@ -16,8 +16,6 @@ public sealed class IndexRangeJoinInput(IndexStepService service, RangeDefinitio
 
     public override AccessStrategy? Strategy => service.Strategy;
 
-    public override string StartDescription => "in key order";
-
     public Task StartAsync(DatabaseSource database, CancellationToken cancellationToken, EvaluationContext? evaluationContext = null)
         => service.StartAsync(database,
                               definition.AllocationUnitId,

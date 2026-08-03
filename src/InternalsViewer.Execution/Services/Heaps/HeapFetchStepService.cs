@@ -191,8 +191,10 @@ public sealed class HeapFetchStepService(IPageService pageService, IRecordServic
     private static RowIdentifier? GetForwardingTarget(IRecord record)
         => record switch
         {
-            DataRecord { RecordType: RecordType.ForwardingStub } data => data.ForwardingStub,
-            CdRecord { RecordType: CompressedRecordType.Forwarding } compressed => compressed.RowIdentifier,
+            DataRecord { RecordType: RecordType.ForwardingStub } data 
+                => data.ForwardingStub,
+            CdRecord { RecordType: CompressedRecordType.Forwarding } compressed 
+                => compressed.RowIdentifier,
             _ => null
         };
 

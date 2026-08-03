@@ -7,8 +7,8 @@ using InternalsViewer.Execution.AccessPaths.Values;
 using InternalsViewer.Execution.Interfaces;
 using InternalsViewer.Execution.Services.Indexes;
 using InternalsViewer.Internals.Engine.Database;
-using InternalsViewer.Internals.Providers.Metadata;
 using InternalsViewer.Internals.Interfaces.Engine;
+using InternalsViewer.Internals.Providers.Metadata;
 
 namespace InternalsViewer.Execution.Services.Joins.Inputs;
 
@@ -22,10 +22,6 @@ public sealed class CorrelatedSeekJoinInput(IndexStepService service,
     public override IStepService Service => service;
 
     public override AccessStrategy? Strategy => service.Strategy;
-
-    public override string StartDescription
-        => $"on {string.Join(", ", input.Bindings.Select(b => $"{b.SeekColumn} = {b.OuterColumn}"))}. "
-           + "Each outer row binds the inner seek";
 
     public override bool FetchesDirectly => false;
 

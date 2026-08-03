@@ -23,10 +23,7 @@ public sealed class RidLookupJoinInput(HeapFetchStepService service, AccessPredi
     public override IStepService Service => service;
 
     public override AccessStrategy? Strategy => service.Strategy;
-
-    public override string StartDescription
-        => "on the row identifier each index row carries. Each outer row names a heap page and slot outright";
-
+    
     public override bool FetchesDirectly => true;
 
     public override async Task<AccessStep> RebindAsync(DatabaseSource database,

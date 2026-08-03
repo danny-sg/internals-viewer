@@ -109,7 +109,7 @@ public sealed class NestedLoopsStepService(IndexStepService outerService, IndexS
         {
             PendingStart = false;
 
-            var start = new AccessStep.JoinStart($"{JoinType.ToDisplayName()} {Inner.StartDescription}")
+            var start = new AccessStep.JoinStart($"Starting Nested Loops Join ({JoinType.ToDisplayName()})")
             {
                 Source = JoinSource
             };

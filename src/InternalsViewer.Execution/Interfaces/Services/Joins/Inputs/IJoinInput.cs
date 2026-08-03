@@ -18,11 +18,6 @@ public interface IJoinInput
     AccessStrategy? Strategy { get; }
 
     /// <summary>
-    /// How this input finds its rows, for the announcement the join opens with
-    /// </summary>
-    string StartDescription { get; }
-
-    /// <summary>
     /// Rows this input has returned that the join is still holding
     /// </summary>
     IReadOnlyList<JoinBufferRow> Buffer { get; }
