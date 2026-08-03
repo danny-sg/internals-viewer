@@ -12,11 +12,16 @@ namespace InternalsViewer.UI.App.ViewModels.Query;
 /// Rows are matched to it by the id its steps carry, because a nested operator's results flow up through its parent's step stream and
 /// filtering on the kind of step alone would attribute them to whichever operator was being watched.
 /// </remarks>
-public sealed partial class TraceOperatorViewModel(int nodeId, string title) : ObservableObject
+public sealed partial class TraceOperatorViewModel(int nodeId, string title, string description) : ObservableObject
 {
     public int NodeId { get; } = nodeId;
 
     public string Title { get; } = title;
+
+    /// <summary>
+    /// What the operator matches on, which is the one thing about it that is not visible in its inputs
+    /// </summary>
+    public string Description { get; } = description;
 
     public ObservableCollection<IndexRecordModel> Results { get; } = [];
 

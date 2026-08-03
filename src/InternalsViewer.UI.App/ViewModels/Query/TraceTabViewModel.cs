@@ -127,7 +127,7 @@ public sealed partial class TraceTabViewModel : ObservableObject
         DefinitionBySource = TraceSourceCollector.Collect(definition).ToDictionary(s => s.NodeId, s => s.Definition);
 
         Operators = [.. TraceSourceCollector.CollectOperators(definition)
-                                            .Select(o => new TraceOperatorViewModel(o.NodeId, OperatorTitle(o)))];
+                                            .Select(o => new TraceOperatorViewModel(o.NodeId, OperatorTitle(o), OperatorDescription(o)))];
 
         OperatorsBySource = Operators.ToDictionary(o => o.NodeId);
 
@@ -153,6 +153,25 @@ public sealed partial class TraceTabViewModel : ObservableObject
             NestedLoopsDefinition => "Nested Loops",
             _ => "Results"
         };
+
+    /// <summary>
+    /// The join type and the columns matched on, stated the way the operator states them
+    /// </summary>
+    private static string OperatorDescription(JoinDefinition definition)
+    {
+        var keys = definition switch
+        {
+            HashMatchDefinition hash => hash.Build.JoinColumns,
+            MergeJoinDefinition merge => merge.Outer.JoinColumns,
+            _ => []
+        };
+
+        var on = keys.Count > 0 ? $" on {string.Join(", ", keys)}" : string.Empty;
+
+        var residual = definition.Residual is null ? string.Empty : " with residual";
+
+        return $"{definition.JoinType.ToDisplayName()}{on}{residual}";
+    }
 
     public SvgImageSource? IconSource => PlanNode is null ? null : new SvgImageSource(PlanIconResolver.Resolve(PlanNode));
 
@@ -203,13 +222,37 @@ public sealed partial class TraceTabViewModel : ObservableObject
             return inputs;
         }
 
-        var bottom = DocumentViewModel.Create<TraceOperatorResultsPanelView>(operatorViewModel.Title,
-                                                                            operatorViewModel,
-                                                                            canClose: false,
-                                                                            keepAlive: true,
-                                                                            key: $"Operator{nodeId}");
+        var results = DocumentViewModel.Create<TraceOperatorResultsPanelView>("Results",
+                                                                             operatorViewModel,
+                                                                             canClose: false,
+                                                                             keepAlive: true,
+                                                                             key: $"Operator{nodeId}");
 
-        return new SplitNode(Orientation.Vertical, inputs, new TabGroupNode(bottom));
+        // A hash match keeps its table beside its results, because the table is what produced them
+        var bottom = HashTableDocument(left, nodeId) is { } hashTable
+            ? new TabGroupNode(hashTable, results)
+            : new TabGroupNode(results);
+
+        return new SplitNode(Orientation.Vertical, inputs, bottom);
+    }
+
+    /// <summary>
+    /// The hash table of a hash match, taken from the build side that fills it
+    /// </summary>
+    private DocumentViewModel? HashTableDocument(IteratorDefinition build, int nodeId)
+    {
+        var source = TraceSourceCollector.Collect(build).FirstOrDefault();
+
+        if (source is null || !VisualsBySource.TryGetValue(source.NodeId, out var visual) || !visual.IsHashTableVisible)
+        {
+            return null;
+        }
+
+        return DocumentViewModel.Create<TraceHashTablePanelView>("Hash Table",
+                                                                 visual,
+                                                                 canClose: false,
+                                                                 keepAlive: true,
+                                                                 key: $"HashTable{nodeId}");
     }
 
     private DocumentViewModel VisualDocument(int source)
