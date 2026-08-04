@@ -34,13 +34,14 @@ public sealed partial class AccessStepsControl : UserControl
         DependencyProperty.Register(nameof(ShowDetail),
                                     typeof(bool),
                                     typeof(AccessStepsControl),
-                                    new PropertyMetadata(false));
+                                    new PropertyMetadata(false, OnShowDetailChanged));
 
     public AccessStepsControl()
     {
         InitializeComponent();
 
         StepsList.ElementPrepared += OnElementPrepared;
+        StepsList.ElementIndexChanged += OnElementIndexChanged;
     }
 
     /// <summary>
@@ -58,14 +59,93 @@ public sealed partial class AccessStepsControl : UserControl
         set => SetValue(ShowDetailProperty, value);
     }
 
-    public Visibility DetailVisibility(bool showDetail, AccessStep? currentStep)
-        => showDetail && currentStep is not null ? Visibility.Visible : Visibility.Collapsed;
+    private static void OnShowDetailChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
+    {
+        ((AccessStepsControl)d).UpdateDetailLayout();
+    }
+
+    private bool _isDetailVisible;
+
+    private GridLength _detailHeight = new(180);
+
+    private void UpdateDetailLayout()
+    {
+        var isVisible = ShowDetail && CurrentStep is not null;
+
+        if (isVisible == _isDetailVisible)
+        {
+            return;
+        }
+
+        _isDetailVisible = isVisible;
+
+        if (isVisible)
+        {
+            DetailArea.Visibility = Visibility.Visible;
+            DetailSplitter.Visibility = Visibility.Visible;
+
+            DetailRow.Height = _detailHeight;
+
+            return;
+        }
+
+        if (DetailRow.Height.IsAbsolute && DetailRow.Height.Value > 0)
+        {
+            _detailHeight = DetailRow.Height;
+        }
+
+        DetailArea.Visibility = Visibility.Collapsed;
+        DetailSplitter.Visibility = Visibility.Collapsed;
+
+        DetailRow.Height = new GridLength(0);
+    }
 
     private readonly Dictionary<int, SolidColorBrush> _brushes = [];
 
+    private readonly Dictionary<int, SolidColorBrush?> _levelBrushes = [];
+
+    private int _maxDepth;
+
     private static void OnNodesChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
     {
-        ((AccessStepsControl)d)._brushes.Clear();
+        var control = (AccessStepsControl)d;
+
+        control._brushes.Clear();
+        control._levelBrushes.Clear();
+
+        control._maxDepth = 0;
+
+        if (control.Nodes is { } nodes)
+        {
+            foreach (var node in nodes.Values)
+            {
+                if (node.Depth > control._maxDepth)
+                {
+                    control._maxDepth = node.Depth;
+                }
+            }
+        }
+    }
+
+    private SolidColorBrush? LevelBrushFor(int depth)
+    {
+        var levelsAboveLeaf = _maxDepth - depth;
+
+        if (levelsAboveLeaf <= 0)
+        {
+            return null;
+        }
+
+        if (!_levelBrushes.TryGetValue(levelsAboveLeaf, out var brush))
+        {
+            var alpha = (byte)System.Math.Min(levelsAboveLeaf * 6, 24);
+
+            brush = new SolidColorBrush(Windows.UI.Color.FromArgb(alpha, 0, 0, 0));
+
+            _levelBrushes[levelsAboveLeaf] = brush;
+        }
+
+        return brush;
     }
 
     private SolidColorBrush? BrushFor(int nodeId)
@@ -86,16 +166,30 @@ public sealed partial class AccessStepsControl : UserControl
     }
 
     private void OnElementPrepared(ItemsRepeater sender, ItemsRepeaterElementPreparedEventArgs args)
+        => StyleRow(args.Element as Grid, args.Index);
+
+    private void OnElementIndexChanged(ItemsRepeater sender, ItemsRepeaterElementIndexChangedEventArgs args)
+        => StyleRow(args.Element as Grid, args.NewIndex);
+
+    private void StyleRow(Grid? grid, int index)
     {
-        if (args.Element is not Grid grid || sender.ItemsSourceView?.GetAt(args.Index) is not AccessStep step)
+        if (grid is null
+            || StepsList.ItemsSourceView is not { } view
+            || index < 0
+            || index >= view.Count
+            || view.GetAt(index) is not AccessStep step)
         {
             return;
         }
 
-        ApplyNodeStyling(grid, step, applyIndent: true);
+        var showName = index == 0
+                       || view.GetAt(index - 1) is not AccessStep newer
+                       || newer.NodeId != step.NodeId;
+
+        ApplyNodeStyling(grid, step, applyIndent: true, showName: showName);
     }
 
-    private void ApplyNodeStyling(Grid grid, AccessStep step, bool applyIndent)
+    private void ApplyNodeStyling(Grid grid, AccessStep step, bool applyIndent, bool showName)
     {
         var node = Nodes?.GetValueOrDefault(step.NodeId);
 
@@ -103,14 +197,14 @@ public sealed partial class AccessStepsControl : UserControl
 
         if (grid.FindName("SourceName") is TextBlock sourceName)
         {
-            sourceName.Text = node?.Name ?? string.Empty;
+            sourceName.Text = showName ? node?.Name ?? string.Empty : string.Empty;
         }
 
         if (grid.FindName("SourceBlob") is Border blob)
         {
             blob.Background = brush;
 
-            blob.Visibility = brush is null ? Visibility.Collapsed : Visibility.Visible;
+            blob.Visibility = showName && brush is not null ? Visibility.Visible : Visibility.Collapsed;
         }
 
         UpdateEmitBadge(grid, brush, step is AccessStep.Row { IsReadAhead: true });
@@ -125,6 +219,8 @@ public sealed partial class AccessStepsControl : UserControl
         if (applyIndent)
         {
             grid.Margin = new Thickness(IndentWidth * (node?.Depth ?? 0), 0, 0, 0);
+
+            grid.Background = LevelBrushFor(node?.Depth ?? _maxDepth);
         }
 
         if (brush is null)
@@ -242,13 +338,31 @@ public sealed partial class AccessStepsControl : UserControl
 
             control.DispatcherQueue.TryEnqueue(control.StyleDetail);
         }
+
+        control.UpdateDetailLayout();
     }
 
     private void StyleDetail()
     {
-        if (CurrentStep is { } step && DetailHost.ContentTemplateRoot is Grid grid)
+        if (CurrentStep is not { } step)
         {
-            ApplyNodeStyling(grid, step, applyIndent: false);
+            return;
+        }
+
+        var node = Nodes?.GetValueOrDefault(step.NodeId);
+
+        DetailName.Text = node?.Name ?? string.Empty;
+
+        DetailSubtitle.Text = node?.Subtitle ?? string.Empty;
+        DetailSubtitle.Visibility = DetailSubtitle.Text.Length > 0 ? Visibility.Visible : Visibility.Collapsed;
+
+        DetailBlob.Background = BrushFor(step.NodeId);
+
+        DetailDescription.Text = TraceStepDescriber.Describe(step, Nodes);
+
+        if (DetailHost.ContentTemplateRoot is Grid grid)
+        {
+            ApplyNodeStyling(grid, step, applyIndent: false, showName: false);
         }
     }
 }

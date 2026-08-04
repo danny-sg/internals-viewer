@@ -361,7 +361,11 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
     private readonly TraceTabViewModelFactory _traceTabViewModelFactory;
 
+    private const string TraceDocumentKey = "Trace";
+
     private readonly Dictionary<string, TraceTabViewModel> _openTraces = new();
+
+    private int? _traceTargetNodeId;
 
     private Internals.Engine.Database.AllocationUnit? FindAllocationUnit(PlanNode node)
     {
@@ -394,11 +398,31 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
     /// anything here. An operator with something below it that cannot be simulated builds no definition and opens nothing, which is the
     /// same test the context menu uses to decide whether to offer the command.
     /// </remarks>
-    public void OpenTrace(PlanNode node)
-    {
-        var key = $"Trace:{node.NodeId}";
+    public void OpenTrace(PlanNode node) => OpenTraceCore(node, wrapInSelect: false);
 
-        if (Layout.TryGetDocument(key, out var existing))
+    [RelayCommand]
+    public void OpenTrace()
+    {
+        if (SelectedPlanNode is { } node && CanTrace(node))
+        {
+            OpenTraceCore(node, wrapInSelect: false);
+
+            return;
+        }
+
+        var root = ExecutionPlans.FirstOrDefault(p => !p.IsInternalPlan)?.Root.FirstOrDefault();
+
+        if (root is not null)
+        {
+            OpenTraceCore(root, wrapInSelect: true);
+        }
+    }
+
+    private void OpenTraceCore(PlanNode node, bool wrapInSelect)
+    {
+        var targetNodeId = wrapInSelect ? -1 : node.NodeId;
+
+        if (_traceTargetNodeId == targetNodeId && Layout.TryGetDocument(TraceDocumentKey, out var existing))
         {
             Layout.Show(existing);
 
@@ -411,7 +435,8 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
                                                               node,
                                                               FindAllocationUnit,
                                                               Events.FirstOrDefault()?.Timestamp,
-                                                              scanMode);
+                                                              scanMode,
+                                                              wrapInSelect);
 
         if (traceViewModel is null)
         {
@@ -420,22 +445,43 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
             return;
         }
 
+        CloseTraceDocument();
+
         traceViewModel.PageNavigated += OnIndexPageNavigated;
 
-        var document = new DocumentViewModel(title: $"Trace: {TraceTitle(node, traceViewModel)}",
+        var title = wrapInSelect ? "Trace: SELECT" : $"Trace: {TraceTitle(node, traceViewModel)}";
+
+        var document = new DocumentViewModel(title: title,
                                              content: traceViewModel,
                                              viewFactory: static () => new TraceTabView(),
                                              canClose: true,
                                              keepAlive: true,
-                                             key: key,
+                                             key: TraceDocumentKey,
                                              persist: false,
                                              commandsFactory: static () => new TraceTabCommands());
 
-        Layout.RegisterDocument(key, document);
+        Layout.RegisterDocument(TraceDocumentKey, document);
 
-        _openTraces[key] = traceViewModel;
+        _openTraces[TraceDocumentKey] = traceViewModel;
+
+        _traceTargetNodeId = targetNodeId;
 
         Layout.Show(document);
+    }
+
+    private void CloseTraceDocument()
+    {
+        if (_openTraces.Remove(TraceDocumentKey, out var viewModel))
+        {
+            viewModel.PageNavigated -= OnIndexPageNavigated;
+        }
+
+        if (Layout.RemoveDocument(TraceDocumentKey, out var document))
+        {
+            document.DisposeView();
+        }
+
+        _traceTargetNodeId = null;
     }
 
     /// <summary>
@@ -924,6 +970,8 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
             _openTraces.Remove(key);
 
+            _traceTargetNodeId = null;
+
             if (Layout.RemoveDocument(key, out var document))
             {
                 document.DisposeView();
@@ -951,6 +999,8 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
             viewModel.PageNavigated -= OnIndexPageNavigated;
 
             _openTraces.Remove(key);
+
+            _traceTargetNodeId = null;
 
             if (Layout.RemoveDocument(key, out var document))
             {

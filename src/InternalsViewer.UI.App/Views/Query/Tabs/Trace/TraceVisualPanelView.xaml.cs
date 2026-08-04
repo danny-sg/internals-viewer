@@ -22,9 +22,6 @@ public sealed partial class TraceVisualPanelView : UserControl
         }
     }
 
-    public double DimOpacity(bool isDimmed)
-        => isDimmed ? 0.35 : 1.0;
-
     public Windows.UI.Color ToWindowsColor(System.Drawing.Color colour)
         => Windows.UI.Color.FromArgb(colour.A, colour.R, colour.G, colour.B);
 

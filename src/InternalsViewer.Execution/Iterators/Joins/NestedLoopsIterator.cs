@@ -98,11 +98,16 @@ public sealed class NestedLoopsIterator(IIteratorFactory factory) : JoinIterator
                 {
                     PairCount++;
 
+                    if (!FetchesDirectly)
+                    {
+                        await EmitAsync(new AccessStep.JoinVerdict(JoinType.Decide(true, true)), CurrentToken);
+                    }
+
                     await EmitAsync(new AccessStep.JoinEmit(PairCount)
                                     {
                                         OuterRecord = outerRow,
                                         InnerRecord = innerRow
-                                    }, 
+                                    },
                                     CurrentToken);
 
                     yield return MakeRow(outerRow, innerRow);
@@ -119,7 +124,7 @@ public sealed class NestedLoopsIterator(IIteratorFactory factory) : JoinIterator
 
             var emitsBeyondPairs = (hasInner && JoinType.EmitsOuterOnMatch()) || (!hasInner && JoinType.PreservesOuter());
 
-            if (!FetchesDirectly || (PairCount == pairsBefore && !emitsBeyondPairs))
+            if (PairCount == pairsBefore && (!FetchesDirectly || !emitsBeyondPairs))
             {
                 await EmitAsync(new AccessStep.JoinVerdict(JoinType.Decide(true, hasInner)), CurrentToken);
             }

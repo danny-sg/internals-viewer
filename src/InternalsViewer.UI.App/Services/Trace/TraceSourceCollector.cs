@@ -61,6 +61,11 @@ public static class TraceSourceCollector
 
                 break;
 
+            case SelectDefinition select:
+                Walk(select.Source, TraceSourceRole.None, select.NodeId, sources);
+
+                break;
+
             case UnaryDefinition unary:
                 Walk(unary.Source, role, operatorNodeId, sources);
 
@@ -84,6 +89,15 @@ public static class TraceSourceCollector
             operators.Add(top);
 
             WalkOperators(top.Source, operators);
+
+            return;
+        }
+
+        if (definition is SelectDefinition select)
+        {
+            operators.Add(select);
+
+            WalkOperators(select.Source, operators);
 
             return;
         }

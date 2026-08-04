@@ -1,3 +1,6 @@
+using System;
+using InternalsViewer.Execution.AccessPaths.Joins;
+
 namespace InternalsViewer.UI.App.ViewModels.Query.Trace;
 
 public enum TracePaneKind
@@ -19,4 +22,14 @@ public enum TracePaneKind
 public sealed record TracePane(TracePaneKind Kind, object? Content, string Title = "")
 {
     public static readonly TracePane Empty = new(TracePaneKind.Empty, null);
+
+    public Windows.UI.Color? AccentColour { get; init; }
+
+    public Uri? Icon { get; init; }
+
+    public string Heading { get; init; } = "";
+
+    public string Subheading { get; init; } = "";
+
+    public JoinDecision? JoinRule { get; init; }
 }

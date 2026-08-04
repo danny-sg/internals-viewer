@@ -136,7 +136,10 @@ public sealed class IteratorStepper : IAsyncDisposable
 
     private AccessStep Record(AccessStep step)
     {
-        _countersByNode[step.NodeId] = step.Counters;
+        if (step.Counters != default(AccessCounters))
+        {
+            _countersByNode[step.NodeId] = step.Counters;
+        }
 
         var totals = default(AccessCounters);
 
@@ -162,7 +165,7 @@ public sealed class IteratorStepper : IAsyncDisposable
 
             owner._delivered.Release();
 
-            await owner._resume.WaitAsync(cancellationToken);
+            await owner._resume.WaitAsync(owner._engineCancellation.Token);
         }
     }
 }

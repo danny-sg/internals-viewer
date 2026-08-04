@@ -33,7 +33,8 @@ public class AllocationScanIteratorTests(ITestOutputHelper testOutput)
         Assert.Equal(NumberTableRowCount, values.Count);
         Assert.Equal(Enumerable.Range(1, NumberTableRowCount).Select(v => (long)v), values.Order());
 
-        Assert.IsType<AccessStep.IamRead>(steps[0]);
+        Assert.IsType<AccessStep.Open>(steps[0]);
+        Assert.IsType<AccessStep.IamRead>(steps[1]);
         Assert.Contains(steps, s => s is AccessStep.PfsRead);
         Assert.Contains(steps, s => s is AccessStep.ExtentStart);
 
@@ -44,7 +45,7 @@ public class AllocationScanIteratorTests(ITestOutputHelper testOutput)
 
         Assert.Equal(pagesVisited, pfsChecks);
 
-        var stopped = Assert.IsType<AccessStep.Stopped>(steps[^1]);
+        var stopped = steps.OfType<AccessStep.Stopped>().Last();
 
         Assert.Equal(StopReason.AllocationExhausted, stopped.Reason);
         Assert.Equal(NumberTableRowCount, stopped.Counters.RowsOutput);
@@ -96,7 +97,7 @@ public class AllocationScanIteratorTests(ITestOutputHelper testOutput)
         Assert.Equal(NumberTableRowCount / 2, values.Count);
         Assert.All(values, v => Assert.Equal(0, v % 2));
 
-        var stopped = Assert.IsType<AccessStep.Stopped>(steps[^1]);
+        var stopped = steps.OfType<AccessStep.Stopped>().Last();
 
         Assert.Equal(NumberTableRowCount, stopped.Counters.RowsRead);
         Assert.Equal(NumberTableRowCount / 2, stopped.Counters.RowsOutput);
@@ -114,7 +115,7 @@ public class AllocationScanIteratorTests(ITestOutputHelper testOutput)
 
         Assert.Equal(25, values.Count);
 
-        var stopped = Assert.IsType<AccessStep.Stopped>(steps[^1]);
+        var stopped = steps.OfType<AccessStep.Stopped>().Last();
 
         Assert.Equal(StopReason.RowGoalMet, stopped.Reason);
         Assert.Equal(25, stopped.Counters.RowsOutput);

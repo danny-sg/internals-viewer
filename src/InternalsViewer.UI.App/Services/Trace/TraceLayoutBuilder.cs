@@ -4,6 +4,7 @@ using System.Drawing;
 using InternalsViewer.Execution.AccessPaths.Definitions;
 using InternalsViewer.Execution.AccessPaths.Joins;
 using InternalsViewer.Query.Plans.Model;
+using InternalsViewer.UI.App.Controls.Plan;
 using InternalsViewer.UI.App.Models.Trace;
 using InternalsViewer.UI.App.ViewModels.Query.Trace;
 
@@ -46,6 +47,8 @@ public static class TraceLayoutBuilder
 
         Index(definition, definitions, depths, ordered, 0);
 
+        var colours = BuildColours(ordered, visuals);
+
         var operators = TraceSourceCollector.CollectOperators(definition);
 
         var tabs = new List<TraceOperatorViewModel>();
@@ -64,9 +67,16 @@ public static class TraceLayoutBuilder
         {
             var visual = visuals[definition.NodeId];
 
+            var leafNode = nodeFor(definition.NodeId);
+
             var leafTab = new TraceOperatorViewModel(definition.NodeId, visual.Title, string.Empty)
             {
-                OuterTop = new TracePane(TracePaneKind.Visual, visual, visual.Title)
+                OuterTop = new TracePane(TracePaneKind.Visual, visual)
+                {
+                    AccentColour = Accent(colours, definition.NodeId),
+                    Icon = leafNode is null ? null : PlanIconResolver.Resolve(leafNode),
+                    Heading = visual.Title
+                }
             };
 
             tabs.Add(leafTab);
@@ -76,7 +86,9 @@ public static class TraceLayoutBuilder
 
         foreach (var op in operators)
         {
-            var tab = new TraceOperatorViewModel(op.NodeId, $"{OperatorTitle(op)} ({op.NodeId})", OperatorDescription(op));
+            var title = op.NodeId < 0 ? OperatorTitle(op) : $"{OperatorTitle(op)} ({op.NodeId})";
+
+            var tab = new TraceOperatorViewModel(op.NodeId, title, OperatorDescription(op));
 
             tabs.Add(tab);
 
@@ -93,8 +105,8 @@ public static class TraceLayoutBuilder
 
             var (outerLabel, innerLabel) = InputLabels(op);
 
-            tab.OuterTop = InputPane(outer, outerLabel, tabsByNode, visuals);
-            tab.InnerTop = InputPane(inner, innerLabel, tabsByNode, visuals);
+            tab.OuterTop = InputPane(outer, outerLabel, tabsByNode, visuals, colours, nodeFor);
+            tab.InnerTop = InputPane(inner, innerLabel, tabsByNode, visuals, colours, nodeFor);
 
             switch (op)
             {
@@ -156,7 +168,7 @@ public static class TraceLayoutBuilder
             Sides = sides,
             VisualByOperator = visualByOperator,
             Depths = depths,
-            Colours = BuildColours(ordered, visuals),
+            Colours = colours,
             InputNodes = inputNodes
         };
     }
@@ -243,6 +255,7 @@ public static class TraceLayoutBuilder
             MergeJoinDefinition => "Merge Join",
             NestedLoopsDefinition => "Nested Loops",
             TopDefinition => "Top",
+            SelectDefinition => "SELECT",
             SeekDefinition => "Index Seek",
             RangeDefinition => "Index Scan",
             HeapFetchDefinition => "RID Lookup",
@@ -287,6 +300,7 @@ public static class TraceLayoutBuilder
         {
             HashMatchDefinition => ("Build Input", "Probe Input"),
             TopDefinition => ("Input", string.Empty),
+            SelectDefinition => ("Input", string.Empty),
             _ => ("Outer Input", "Inner Input")
         };
 
@@ -297,31 +311,69 @@ public static class TraceLayoutBuilder
             MergeJoinDefinition merge => (merge.Outer.Source, merge.Inner.Source),
             HashMatchDefinition hash => (hash.Build.Source, hash.Probe.Source),
             TopDefinition top => (top.Source, null),
+            SelectDefinition select => (select.Source, null),
             _ => (null, null)
         };
 
     private static TracePane InputPane(IteratorDefinition? input,
                                        string label,
                                        IReadOnlyDictionary<int, TraceOperatorViewModel> tabsByNode,
-                                       IReadOnlyDictionary<int, TraceVisualViewModel> visuals)
+                                       IReadOnlyDictionary<int, TraceVisualViewModel> visuals,
+                                       IReadOnlyDictionary<int, Color> colours,
+                                       Func<int, PlanNode?> nodeFor)
     {
         if (input is null)
         {
             return TracePane.Empty;
         }
 
+        var node = nodeFor(input.NodeId);
+
+        var physical = node?.PhysicalOperator is { Length: > 0 } name ? name : DisplayName(input);
+
+        var heading = input.NodeId < 0 ? physical : $"{physical} ({input.NodeId})";
+
+        var icon = node is null ? null : PlanIconResolver.Resolve(node);
+
         if (tabsByNode.TryGetValue(input.NodeId, out var tab))
         {
-            return new TracePane(TracePaneKind.RowStream, tab.Output, $"{label} ({input.NodeId})");
+            var joinRule = (input as JoinDefinition)?.JoinType.Decide(true, true);
+
+            var logical = node?.LogicalOperator ?? string.Empty;
+
+            return new TracePane(TracePaneKind.RowStream, tab.Output, label)
+            {
+                AccentColour = Accent(colours, input.NodeId),
+                Icon = icon,
+                Heading = heading,
+                Subheading = joinRule is null && logical.Length > 0 && logical != physical ? logical : string.Empty,
+                JoinRule = joinRule
+            };
         }
 
         if (visuals.TryGetValue(input.NodeId, out var visual))
         {
-            return new TracePane(TracePaneKind.Visual, visual, visual.Title);
+            return new TracePane(TracePaneKind.Visual, visual, label)
+            {
+                AccentColour = Accent(colours, input.NodeId),
+                Icon = icon,
+                Heading = heading,
+                Subheading = ObjectName(visual)
+            };
         }
 
         return TracePane.Empty;
     }
+
+    private static Windows.UI.Color? Accent(IReadOnlyDictionary<int, Color> colours, int nodeId)
+        => colours.TryGetValue(nodeId, out var colour)
+            ? Windows.UI.Color.FromArgb(colour.A, colour.R, colour.G, colour.B)
+            : null;
+
+    private static string ObjectName(TraceVisualViewModel visual)
+        => string.IsNullOrEmpty(visual.AllocationUnit.IndexName)
+            ? visual.AllocationUnit.TableName ?? string.Empty
+            : visual.AllocationUnit.IndexName;
 
     private static TracePane HeldPane(Dictionary<(int NodeId, int InputIndex), TraceHeldRowsViewModel> heldRows,
                                       int nodeId,

@@ -98,9 +98,6 @@ public sealed partial class TraceVisualViewModel(TraceVisualKind kind,
     [ObservableProperty]
     private int _selectedRowSlotCount;
 
-    [ObservableProperty]
-    private bool _isDimmed;
-
     private Color? _objectColour;
 
     public Color ObjectColour => _objectColour ??= AllocationLayerBuilder.GetObjectColour(Database, AllocationUnit);
@@ -374,7 +371,6 @@ public sealed partial class TraceVisualViewModel(TraceVisualKind kind,
         SelectedRowIdentifier = null;
         SelectedRowSlotCount = 0;
         TraceBorders = [];
-        IsDimmed = false;
     }
 
     internal static IndexRecordModel ToRecordModel(IRecord record, RecordColumnFilter? columns = null)

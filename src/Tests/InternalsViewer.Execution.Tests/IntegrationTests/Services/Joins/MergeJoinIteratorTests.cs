@@ -42,7 +42,7 @@ public class MergeJoinIteratorTests(ITestOutputHelper testOutput)
         Assert.Equal(11, outerRows);
         Assert.Equal(7, innerRows);
 
-        var stopped = Assert.IsType<AccessStep.Stopped>(steps[^1]);
+        var stopped = steps.OfType<AccessStep.Stopped>().Last();
 
         Assert.Equal(2, stopped.NodeId);
         Assert.True(context.Service.IsComplete);
@@ -65,7 +65,7 @@ public class MergeJoinIteratorTests(ITestOutputHelper testOutput)
         Assert.NotEmpty(compares);
         Assert.All(compares, c => Assert.True(c.Comparison < 0));
 
-        Assert.IsType<AccessStep.Stopped>(steps[^1]);
+        Assert.Contains(steps, s => s is AccessStep.Stopped);
     }
 
     [RequiresFileFact(MdfPath)]

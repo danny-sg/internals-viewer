@@ -26,6 +26,11 @@ public abstract partial record AccessStep
         public bool IsFetched { get; init; }
     }
 
+    public sealed record Output(long Number) : AccessStep(AccessPhase.Walk)
+    {
+        public IRecord? EmittedRecord { get; init; }
+    }
+
     public sealed record RowRun(int FromSlot, int ToSlot, RowOutcome Outcome) : AccessStep(AccessPhase.Walk)
     {
         public int Count { get; init; }

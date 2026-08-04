@@ -34,7 +34,7 @@ public class HashMatchIteratorTests(ITestOutputHelper testOutput)
         Assert.Equal(6, context.Service.PairCount);
         Assert.Equal(Enumerable.Range(105, 6).Select(v => ((long)v, (long)v)), pairs.OrderBy(p => p.Build));
 
-        var stopped = Assert.IsType<AccessStep.Stopped>(steps[^1]);
+        var stopped = steps.OfType<AccessStep.Stopped>().Last();
 
         Assert.Equal(2, stopped.NodeId);
         Assert.True(context.Service.IsComplete);

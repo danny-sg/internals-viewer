@@ -52,40 +52,40 @@
                     <FontIcon Glyph="&#xE8B5;" />
                 </AppBarButton.Icon>
             </AppBarButton>
-            <AppBarButton Label="{x:Bind RunLabel(ViewModel.IsRunning), Mode=OneWay}"
-                          Command="{x:Bind ViewModel.RunCommand}">
-                <AppBarButton.Icon>
-                    <FontIcon Glyph="{x:Bind RunGlyph(ViewModel.IsRunning), Mode=OneWay}" />
-                </AppBarButton.Icon>
-            </AppBarButton>
-    
-            <AppBarButton Label="{x:Bind RunToEndLabel(ViewModel.IsRunningToEnd), Mode=OneWay}"
-                          Command="{x:Bind ViewModel.RunToEndCommand}">
-                <AppBarButton.Icon>
-                    <FontIcon Glyph="&#xE893;" />
-                </AppBarButton.Icon>
-            </AppBarButton>
-            <AppBarButton Label="Run To">
-                <AppBarButton.Icon>
-                    <FontIcon Glyph="&#xE81C;" />
-                </AppBarButton.Icon>
-                <AppBarButton.Flyout>
-                    <MenuFlyout>
-                        <MenuFlyoutItem Text="Next emit"
-                                        Command="{x:Bind ViewModel.RunToCommand}"
-                                        CommandParameter="Emit" />
-                        <MenuFlyoutItem Text="Next rebind"
-                                        Command="{x:Bind ViewModel.RunToCommand}"
-                                        CommandParameter="Rebind" />
-                        <MenuFlyoutItem Text="Next phase"
-                                        Command="{x:Bind ViewModel.RunToCommand}"
-                                        CommandParameter="Phase" />
-                        <MenuFlyoutItem Text="Next page read"
-                                        Command="{x:Bind ViewModel.RunToCommand}"
-                                        CommandParameter="PageRead" />
-                    </MenuFlyout>
-                </AppBarButton.Flyout>
-            </AppBarButton>
+            <AppBarElementContainer VerticalContentAlignment="Center">
+                <SplitButton Command="{x:Bind ViewModel.RunCommand}"
+                             Margin="4,0,4,0"
+                             Background="Transparent"
+                             BorderThickness="0">
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <FontIcon Glyph="{x:Bind RunGlyph(ViewModel.IsRunning), Mode=OneWay}" FontSize="16" />
+                        <TextBlock Text="{x:Bind RunLabel(ViewModel.IsRunning), Mode=OneWay}" />
+                    </StackPanel>
+                    <SplitButton.Flyout>
+                        <MenuFlyout Placement="BottomEdgeAlignedLeft">
+                            <MenuFlyoutItem Text="{x:Bind RunToEndLabel(ViewModel.IsRunningToEnd), Mode=OneWay}"
+                                            Command="{x:Bind ViewModel.RunToEndCommand}">
+                                <MenuFlyoutItem.Icon>
+                                    <FontIcon Glyph="&#xE893;" />
+                                </MenuFlyoutItem.Icon>
+                            </MenuFlyoutItem>
+                            <MenuFlyoutSeparator />
+                            <MenuFlyoutItem Text="Run to next emit"
+                                            Command="{x:Bind ViewModel.RunToCommand}"
+                                            CommandParameter="Emit" />
+                            <MenuFlyoutItem Text="Run to next rebind"
+                                            Command="{x:Bind ViewModel.RunToCommand}"
+                                            CommandParameter="Rebind" />
+                            <MenuFlyoutItem Text="Run to next phase"
+                                            Command="{x:Bind ViewModel.RunToCommand}"
+                                            CommandParameter="Phase" />
+                            <MenuFlyoutItem Text="Run to next page read"
+                                            Command="{x:Bind ViewModel.RunToCommand}"
+                                            CommandParameter="PageRead" />
+                        </MenuFlyout>
+                    </SplitButton.Flyout>
+                </SplitButton>
+            </AppBarElementContainer>
             <AppBarSeparator />
             <AppBarButton Label="Reset" Command="{x:Bind ViewModel.ResetStepCommand}">
                 <AppBarButton.Icon>

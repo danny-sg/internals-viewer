@@ -27,7 +27,7 @@ public class TopIteratorTests(ITestOutputHelper testOutput)
         Assert.Equal(5, rows.Count);
         Assert.Equal([1, 2, 3, 4, 5], rows.Select(r => r.Number));
 
-        var stopped = Assert.IsType<AccessStep.Stopped>(steps[^1]);
+        var stopped = steps.OfType<AccessStep.Stopped>().Last();
 
         Assert.Equal(StopReason.RowGoalMet, stopped.Reason);
         Assert.True(context.Service.IsComplete);
@@ -62,7 +62,7 @@ public class TopIteratorTests(ITestOutputHelper testOutput)
 
         Assert.Equal(10, rows.Count);
 
-        var stopped = Assert.IsType<AccessStep.Stopped>(steps[^1]);
+        var stopped = steps.OfType<AccessStep.Stopped>().Last();
 
         Assert.NotEqual(StopReason.RowGoalMet, stopped.Reason);
     }

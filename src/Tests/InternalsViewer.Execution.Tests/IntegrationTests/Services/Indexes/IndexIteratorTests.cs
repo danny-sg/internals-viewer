@@ -38,7 +38,7 @@ public class IndexIteratorTests(ITestOutputHelper testOutput)
         Assert.Equal(NumberTableRowCount, values[^1]);
         Assert.True(values.Zip(values.Skip(1)).All(p => p.Second == p.First + 1));
 
-        var stopped = Assert.IsType<AccessStep.Stopped>(steps[^1]);
+        var stopped = steps.OfType<AccessStep.Stopped>().Last();
 
         Assert.Equal(StopReason.PageExhausted, stopped.Reason);
         Assert.Equal(NumberTableRowCount, stopped.Counters.RowsOutput);
@@ -59,7 +59,7 @@ public class IndexIteratorTests(ITestOutputHelper testOutput)
         Assert.Equal(1000, values[0]);
         Assert.Equal(1200, values[^1]);
 
-        var stopped = Assert.IsType<AccessStep.Stopped>(steps[^1]);
+        var stopped = steps.OfType<AccessStep.Stopped>().Last();
 
         Assert.Equal(StopReason.RangeEnded, stopped.Reason);
         Assert.Equal(201, stopped.Counters.RowsOutput);
@@ -84,7 +84,7 @@ public class IndexIteratorTests(ITestOutputHelper testOutput)
 
         Assert.Contains(steps, s => s is AccessStep.LeafLink { Direction: ScanDirection.Backward });
 
-        var stopped = Assert.IsType<AccessStep.Stopped>(steps[^1]);
+        var stopped = steps.OfType<AccessStep.Stopped>().Last();
 
         Assert.Equal(StopReason.RangeEnded, stopped.Reason);
     }
@@ -144,7 +144,7 @@ public class IndexIteratorTests(ITestOutputHelper testOutput)
         Assert.Equal(50, values.Count);
         Assert.All(values, v => Assert.Equal(0, v % 2));
 
-        var stopped = Assert.IsType<AccessStep.Stopped>(steps[^1]);
+        var stopped = steps.OfType<AccessStep.Stopped>().Last();
 
         Assert.Equal(100, stopped.Counters.RowsRead);
         Assert.Equal(50, stopped.Counters.RowsOutput);
@@ -166,7 +166,7 @@ public class IndexIteratorTests(ITestOutputHelper testOutput)
         Assert.Equal(500, values[0]);
         Assert.Equal(524, values[^1]);
 
-        var stopped = Assert.IsType<AccessStep.Stopped>(steps[^1]);
+        var stopped = steps.OfType<AccessStep.Stopped>().Last();
 
         Assert.Equal(StopReason.RowGoalMet, stopped.Reason);
     }
@@ -191,7 +191,7 @@ public class IndexIteratorTests(ITestOutputHelper testOutput)
         Assert.Equal(NumberTableRowCount - 10, values[0]);
         Assert.Equal(NumberTableRowCount, values[^1]);
 
-        var stopped = Assert.IsType<AccessStep.Stopped>(steps[^1]);
+        var stopped = steps.OfType<AccessStep.Stopped>().Last();
 
         Assert.Equal(StopReason.PageExhausted, stopped.Reason);
     }

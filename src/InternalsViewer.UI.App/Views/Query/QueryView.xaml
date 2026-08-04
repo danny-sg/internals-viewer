@@ -43,6 +43,8 @@
                             <MenuFlyoutSeparator/>
                             <ToggleMenuFlyoutItem Text="Timeline"
                                                   IsChecked="{x:Bind ViewModel.Layout.IsTimelineVisible, Mode=TwoWay}"/>
+                            <MenuFlyoutItem Text="Trace"
+                                            Command="{x:Bind ViewModel.OpenTraceCommand}"/>
                             <MenuFlyoutSeparator/>
                             <MenuFlyoutItem Text="Reset Layout"
                                             Command="{x:Bind ViewModel.ResetLayoutCommand}"/>

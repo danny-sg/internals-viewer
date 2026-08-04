@@ -114,7 +114,7 @@ public class NestedLoopsIteratorTests(ITestOutputHelper testOutput)
 
         Assert.Equal(pagesRead.OrderBy(p => p), pagesRead);
 
-        var stopped = Assert.IsType<AccessStep.Stopped>(steps[^1]);
+        var stopped = steps.OfType<AccessStep.Stopped>().Last();
 
         Assert.Equal(JoinNodeId, stopped.NodeId);
         Assert.Equal(StopReason.RangeEnded, stopped.Reason);

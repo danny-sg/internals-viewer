@@ -19,6 +19,6 @@
                   Padding="8">
         <plan:ExecutionPlanControl HasFlameGraph="False"
                                    Plan="{x:Bind ViewModel.TracePlan, Mode=OneWay}"
-                                   ActiveNodes="{x:Bind ViewModel.ActivePlanNodes, Mode=OneWay}" />
+                                   SelectedNode="{x:Bind ViewModel.ActivePlanNode, Mode=OneWay}" />
     </ScrollViewer>
 </UserControl>

@@ -14,7 +14,6 @@
         <Grid>
             <index:IndexControl x:Name="IndexControl"
                                 SelectChildPath="False"
-                                Opacity="{x:Bind DimOpacity(ViewModel.IsDimmed), Mode=OneWay}"
                                 Visibility="{x:Bind IndexVisibility(ViewModel.Kind, ViewModel.IsVisualInitialized), Mode=OneWay}"
                                 Nodes="{x:Bind ViewModel.Nodes, Mode=OneWay}"
                                 Zoom="{x:Bind ViewModel.Zoom, Mode=TwoWay}"
@@ -45,8 +44,7 @@
                            Text="{x:Bind ViewModel.ProgressText, Mode=OneWay}" />
             </StackPanel>
 
-            <allocation:AllocationControl Opacity="{x:Bind DimOpacity(ViewModel.IsDimmed), Mode=OneWay}"
-                                          Visibility="{x:Bind AllocationVisibility(ViewModel.Kind, ViewModel.IsVisualInitialized), Mode=OneWay}"
+            <allocation:AllocationControl Visibility="{x:Bind AllocationVisibility(ViewModel.Kind, ViewModel.IsVisualInitialized), Mode=OneWay}"
                                           ExtentCount="{x:Bind ViewModel.ExtentCount, Mode=OneWay}"
                                           Layers="{x:Bind ViewModel.AllocationLayers, Mode=OneWay}"
                                           Borders="{x:Bind ViewModel.TraceBorders, Mode=OneWay}"

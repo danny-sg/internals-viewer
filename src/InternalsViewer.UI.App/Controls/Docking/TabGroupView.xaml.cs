@@ -146,13 +146,35 @@ public sealed partial class TabGroupView : UserControl
 
     private static TabViewItem CreateTab(DocumentViewModel document)
     {
+        var title = new TextBlock
+        {
+            Text = document.Title,
+            Margin = new Thickness(4, 0, 4, 0)
+        };
+
+        object header = title;
+
+        if (document.Accent is { } accent)
+        {
+            var panel = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 3 };
+
+            panel.Children.Add(new Border
+            {
+                Width = 9,
+                Height = 9,
+                CornerRadius = new CornerRadius(2),
+                VerticalAlignment = VerticalAlignment.Center,
+                Background = new SolidColorBrush(accent)
+            });
+
+            panel.Children.Add(title);
+
+            header = panel;
+        }
+
         var item = new TabViewItem
         {
-            Header = new TextBlock
-            {
-                Text = document.Title,
-                Margin = new Thickness(4, 0, 4, 0)
-            },
+            Header = header,
             IsClosable = document.CanClose,
             Tag = document,
             HorizontalContentAlignment = HorizontalAlignment.Stretch,

@@ -113,12 +113,19 @@ public static class TraceStepRuns
         {
             compareSpan.Progress.Apply(hashCompare);
 
+            if (hashCompare.IsMatch)
+            {
+                MatchSpan(history, hashCompare).Progress.Apply(hashCompare);
+            }
+
             return;
         }
 
         if (step is AccessStep.JoinEmit joinEmit && FindProbeSpan(history, joinEmit.NodeId, relocate: false) is { } emitSpan)
         {
             emitSpan.Progress.Apply(joinEmit);
+
+            MatchSpan(history, joinEmit).Progress.Apply(joinEmit);
 
             return;
         }
@@ -190,6 +197,39 @@ public static class TraceStepRuns
         {
             history.RemoveAt(history.Count - 1);
         }
+    }
+
+    private static HashMatchSpan MatchSpan(ObservableCollection<AccessStep> history, AccessStep step)
+    {
+        if (history.Count > 1 && history[1] is HashMatchSpan fast && fast.NodeId == step.NodeId)
+        {
+            return fast;
+        }
+
+        for (var index = 0; index < history.Count; index++)
+        {
+            if (history[index] is HashMatchSpan span && span.NodeId == step.NodeId)
+            {
+                if (index > 1)
+                {
+                    history.RemoveAt(index);
+
+                    history.Insert(1, span);
+                }
+
+                return span;
+            }
+        }
+
+        var created = new HashMatchSpan
+        {
+            NodeId = step.NodeId,
+            Counters = step.Counters
+        };
+
+        history.Insert(0, created);
+
+        return created;
     }
 
     private static HashProbeSpan? FindProbeSpan(ObservableCollection<AccessStep> history, int nodeId, bool relocate)

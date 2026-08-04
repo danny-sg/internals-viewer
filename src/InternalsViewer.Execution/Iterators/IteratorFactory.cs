@@ -20,6 +20,8 @@ public sealed class IteratorFactory(IServiceProvider services) : IIteratorFactor
                 => services.GetRequiredService<HashMatchIterator>(),
             TopDefinition
                 => services.GetRequiredService<TopIterator>(),
+            SelectDefinition
+                => services.GetRequiredService<SelectIterator>(),
             AllocationScanDefinition
                 => services.GetRequiredService<AllocationScanIterator>(),
             HeapFetchDefinition

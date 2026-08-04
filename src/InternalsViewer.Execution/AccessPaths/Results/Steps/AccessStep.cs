@@ -12,6 +12,10 @@ public abstract partial record AccessStep(AccessPhase AccessPhase)
 
     public int NodeId { get; init; }
 
+    public sealed record Open() : AccessStep(AccessPhase.Ranges);
+
+    public sealed record Close() : AccessStep(AccessPhase.Complete);
+
     /// <summary>
     /// The access path stopped producing rows
     /// </summary>

@@ -1,5 +1,7 @@
+using InternalsViewer.UI.App.Controls.Docking;
 using InternalsViewer.UI.App.ViewModels.Query.Trace;
 using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Controls.Primitives;
 
 namespace InternalsViewer.UI.App.Views.Query.Tabs.Trace;
 
@@ -11,9 +13,84 @@ namespace InternalsViewer.UI.App.Views.Query.Tabs.Trace;
 /// moved or closed on their own. An input that is another operator shows that operator's results alone, its own inputs being a tab of
 /// their own.
 /// </remarks>
-public sealed partial class TraceOperatorPanelView : UserControl
+public sealed partial class TraceOperatorPanelView : UserControl, IDocumentCommands
 {
     public TraceOperatorViewModel? ViewModel => DataContext as TraceOperatorViewModel;
+
+    private bool _isOutputVisible = true;
+
+    private bool _isHashTableVisible = true;
+
+    public FrameworkElement? CreateCommands()
+    {
+        var panel = new StackPanel
+        {
+            Orientation = Orientation.Horizontal,
+            HorizontalAlignment = HorizontalAlignment.Right,
+            VerticalAlignment = VerticalAlignment.Center,
+            Margin = new Thickness(0, 0, 8, 0),
+            Spacing = 2
+        };
+
+        if (ViewModel?.OuterBottom.Kind == TracePaneKind.HashTable)
+        {
+            var hashTableToggle = new ToggleButton
+            {
+                Style = (Style)Application.Current.Resources["TabCommandToggleStyle"],
+                Content = new TextBlock { Text = "Hash Table", VerticalAlignment = VerticalAlignment.Center },
+                IsChecked = _isHashTableVisible
+            };
+
+            hashTableToggle.Click += (_, _) =>
+            {
+                _isHashTableVisible = hashTableToggle.IsChecked == true;
+
+                ApplyHashTableVisibility();
+            };
+
+            panel.Children.Add(hashTableToggle);
+        }
+
+        var outputToggle = new ToggleButton
+        {
+            Style = (Style)Application.Current.Resources["TabCommandToggleStyle"],
+            Content = new TextBlock { Text = "Output", VerticalAlignment = VerticalAlignment.Center },
+            IsChecked = _isOutputVisible
+        };
+
+        outputToggle.Click += (_, _) =>
+        {
+            _isOutputVisible = outputToggle.IsChecked == true;
+
+            ApplyOutputVisibility();
+        };
+
+        panel.Children.Add(outputToggle);
+
+        return panel;
+    }
+
+    private void ApplyOutputVisibility()
+    {
+        var visibility = _isOutputVisible ? Visibility.Visible : Visibility.Collapsed;
+
+        OutputHeader.Visibility = visibility;
+        OutputHost.Visibility = visibility;
+    }
+
+    private void ApplyHashTableVisibility()
+    {
+        if (_appliedViewModel?.OuterBottom.Kind != TracePaneKind.HashTable)
+        {
+            return;
+        }
+
+        var isVisible = _isHashTableVisible;
+
+        OuterBottomRow.Height = isVisible ? new GridLength(1, GridUnitType.Star) : new GridLength(0);
+
+        OuterSplitter.Visibility = isVisible ? Visibility.Visible : Visibility.Collapsed;
+    }
 
     public TraceOperatorPanelView()
     {
@@ -58,6 +135,9 @@ public sealed partial class TraceOperatorPanelView : UserControl
 
         InnerColumn.Width = hasInner ? new GridLength(1, GridUnitType.Star) : new GridLength(0);
         InputSplitter.Visibility = hasInner ? Visibility.Visible : Visibility.Collapsed;
+
+        ApplyOutputVisibility();
+        ApplyHashTableVisibility();
     }
 
     private static void Fill(ContentControl host, TextBlock? header, TracePane pane)

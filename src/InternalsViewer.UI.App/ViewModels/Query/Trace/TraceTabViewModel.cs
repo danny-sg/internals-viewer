@@ -45,14 +45,19 @@ public sealed class TraceTabViewModelFactory(IIteratorFactory iteratorFactory, I
                                      PlanNode node,
                                      Func<PlanNode, AllocationUnit?> resolveUnit,
                                      DateTime? queryTime,
-                                     ScanModeResult? scanMode)
+                                     ScanModeResult? scanMode,
+                                     bool wrapInSelect = false)
     {
         var builder = new TraceDefinitionBuilder(resolveUnit, database);
 
-        if (builder.Build(node) is not { } definition)
+        if (builder.Build(node) is not { } built)
         {
             return null;
         }
+
+        var definition = wrapInSelect
+            ? new SelectDefinition(built) { NodeId = -1, OutputList = built.OutputList }
+            : built;
 
         var visuals = TraceSourceCollector.Collect(definition)
                                           .Select(s => CreateVisual(database, s, builder))
@@ -171,11 +176,21 @@ public sealed partial class TraceTabViewModel : ObservableObject
     }
 
     private IEnumerable<DocumentViewModel> OperatorDocuments()
-        => Operators.Select(o => DocumentViewModel.Create<TraceOperatorPanelView>(o.Title,
-                                                                                  o,
-                                                                                  canClose: false,
-                                                                                  keepAlive: true,
-                                                                                  key: $"Operator{o.NodeId}"));
+        => Operators.Select(o =>
+        {
+            var document = DocumentViewModel.Create<TraceOperatorPanelView>(o.Title,
+                                                                            o,
+                                                                            canClose: false,
+                                                                            keepAlive: true,
+                                                                            key: $"Operator{o.NodeId}");
+
+            if (Layout.Colours.TryGetValue(o.NodeId, out var colour))
+            {
+                document.Accent = ToColour(colour);
+            }
+
+            return document;
+        });
 
     public IReadOnlyList<TraceVisualViewModel> Visuals { get; }
 
@@ -221,6 +236,10 @@ public sealed partial class TraceTabViewModel : ObservableObject
     /// </summary>
     [ObservableProperty]
     private IReadOnlyList<PlanNode> _activePlanNodes = [];
+
+    public PlanNode? ActivePlanNode => ActivePlanNodes.Count > 0 ? ActivePlanNodes[0] : null;
+
+    partial void OnActivePlanNodesChanged(IReadOnlyList<PlanNode> value) => OnPropertyChanged(nameof(ActivePlanNode));
 
     private Dictionary<int, PlanNode> _planNodesById = [];
 
@@ -351,23 +370,87 @@ public sealed partial class TraceTabViewModel : ObservableObject
 
     private IReadOnlyDictionary<int, TraceStepNode> BuildStepNodes()
     {
-        var nodes = new Dictionary<int, TraceStepNode>();
+        var names = new Dictionary<int, string>();
 
         foreach (var (nodeId, definition) in Layout.Definitions)
         {
             var name = _planNodesById.GetValueOrDefault(nodeId)?.PhysicalOperator
                        ?? TraceLayoutBuilder.DisplayName(definition);
 
+            names[nodeId] = nodeId < 0 ? name : $"{name} ({nodeId})";
+        }
+
+        var nodes = new Dictionary<int, TraceStepNode>();
+
+        foreach (var (nodeId, definition) in Layout.Definitions)
+        {
             var (outerInput, innerInput) = Layout.InputNodes.GetValueOrDefault(nodeId, (-1, -1));
 
-            nodes[nodeId] = new TraceStepNode($"{name} ({nodeId})",
+            nodes[nodeId] = new TraceStepNode(names[nodeId],
                                               Layout.Depths.GetValueOrDefault(nodeId),
                                               ToColour(Layout.Colours.GetValueOrDefault(nodeId, System.Drawing.Color.Gray)),
                                               outerInput,
-                                              innerInput);
+                                              innerInput,
+                                              NodeSummary(nodeId, definition, names),
+                                              NodeSubtitle(nodeId));
         }
 
         return nodes;
+    }
+
+    private string NodeSubtitle(int nodeId)
+    {
+        if (VisualsByNode.GetValueOrDefault(nodeId)?.AllocationUnit is not { } unit)
+        {
+            return string.Empty;
+        }
+
+        return string.IsNullOrEmpty(unit.IndexName) || unit.IndexName == unit.TableName
+            ? unit.TableName
+            : $"{unit.TableName} ({unit.IndexName})";
+    }
+
+    private string NodeSummary(int nodeId, IteratorDefinition definition, IReadOnlyDictionary<int, string> names)
+    {
+        if (definition is TopDefinition top)
+        {
+            return $"The operator returns the first {top.RowCount:N0} rows from its input, then closes it.";
+        }
+
+        if (definition is not JoinDefinition join)
+        {
+            return string.Empty;
+        }
+
+        var (outerId, innerId) = Layout.InputNodes.GetValueOrDefault(nodeId, (-1, -1));
+
+        var outer = names.GetValueOrDefault(outerId, "outer");
+
+        var inner = names.GetValueOrDefault(innerId, "inner");
+
+        var rule = join.JoinType switch
+        {
+            JoinType.Inner
+                => $"A row is output when the outer ({outer}) and inner ({inner}) rows match.",
+            JoinType.LeftOuter
+                => $"Every outer ({outer}) row is output, joined to each matching inner ({inner}) row, or to NULLs where none match.",
+            JoinType.RightOuter
+                => $"Every inner ({inner}) row is output, joined to each matching outer ({outer}) row, or to NULLs where none match.",
+            JoinType.FullOuter
+                => $"Matched rows from the outer ({outer}) and inner ({inner}) join, and unmatched rows from either side are "
+                   + "output with NULLs.",
+            JoinType.LeftSemi
+                => $"An outer ({outer}) row is output once if any inner ({inner}) row matches. Inner rows are never output.",
+            JoinType.RightSemi
+                => $"An inner ({inner}) row is output once if any outer ({outer}) row matches. Outer rows are never output.",
+            JoinType.LeftAntiSemi
+                => $"An outer ({outer}) row is output only when no inner ({inner}) row matches.",
+            JoinType.RightAntiSemi
+                => $"An inner ({inner}) row is output only when no outer ({outer}) row matches.",
+            _ => string.Empty
+        };
+
+        return $"The logical operator is {join.JoinType.ToDisplayName()}. {rule}";
     }
 
     private static Windows.UI.Color ToColour(System.Drawing.Color colour)
@@ -592,23 +675,6 @@ public sealed partial class TraceTabViewModel : ObservableObject
             IsStepComplete = true;
             IsRunning = false;
         }
-
-        UpdateActiveVisual(step);
-    }
-
-    private void UpdateActiveVisual(AccessStep? step)
-    {
-        var isSideStep = step is not null && Visuals.Any(v => v.NodeId == step.NodeId);
-
-        foreach (var visual in Visuals)
-        {
-            visual.IsDimmed = Visuals.Count > 1
-                              && isSideStep
-                              && !IsStepComplete
-                              && !IsRunning
-                              && !IsRunningToEnd
-                              && visual.NodeId != step!.NodeId;
-        }
     }
 
     [RelayCommand(AllowConcurrentExecutions = true)]
@@ -623,6 +689,7 @@ public sealed partial class TraceTabViewModel : ObservableObject
             "Emit" => step => step.NodeId == Definition.NodeId
                               && step is AccessStep.JoinEmit
                                       or AccessStep.TopRow { EmittedRecord: not null }
+                                      or AccessStep.Output { EmittedRecord: not null }
                                       or AccessStep.Row { EmittedRecord: not null },
             "Rebind" => step => step is AccessStep.Rebind,
             "Phase" => step => step is AccessStep.JoinStart or AccessStep.Reseek,
@@ -732,8 +799,6 @@ public sealed partial class TraceTabViewModel : ObservableObject
 
             CurrentStep = stepper.Current;
             IsStepComplete = stepper.IsComplete;
-
-            UpdateActiveVisual(CurrentStep);
         }
         finally
         {
@@ -819,6 +884,7 @@ public sealed partial class TraceTabViewModel : ObservableObject
         {
             AccessStep.JoinEmit emit => RowBuilder.ToJoinedModel(emit),
             AccessStep.TopRow { EmittedRecord: { } emitted } => ToRecordModel(emitted),
+            AccessStep.Output { EmittedRecord: { } emitted } => ToRecordModel(emitted),
             AccessStep.Row { EmittedRecord: { } emitted } => ToRecordModel(emitted),
             _ => null
         };

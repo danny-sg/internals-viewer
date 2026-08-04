@@ -22,5 +22,6 @@ public static class ServiceRegistration
         services.AddTransient<HashMatchIterator>();
         services.AddTransient<HeapFetchIterator>();
         services.AddTransient<TopIterator>();
+        services.AddTransient<SelectIterator>();
     }
 }

@@ -65,6 +65,10 @@ public sealed partial class HashGrid : SKXamlCanvas
 
     private SKPaint? _paint;
 
+    private SKColor? _probeColour;
+
+    private SKColor? _matchColour;
+
     public HashGrid()
     {
         IgnorePixelScaling = true;
@@ -73,6 +77,14 @@ public sealed partial class HashGrid : SKXamlCanvas
 
         DataContextChanged += (_, _) => Invalidate();
 
+        ActualThemeChanged += (_, _) =>
+        {
+            _probeColour = null;
+            _matchColour = null;
+
+            Invalidate();
+        };
+
         Unloaded += (_, _) =>
         {
             _throttle?.Stop();
@@ -80,6 +92,16 @@ public sealed partial class HashGrid : SKXamlCanvas
             _paint?.Dispose();
             _paint = null;
         };
+    }
+
+    private static SKColor ResolveColour(string key, SKColor fallback)
+    {
+        if (Application.Current.Resources.TryGetValue(key, out var value) && value is Windows.UI.Color colour)
+        {
+            return new SKColor(colour.R, colour.G, colour.B, colour.A);
+        }
+
+        return fallback;
     }
 
     private static void OnFillChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
@@ -180,7 +202,9 @@ public sealed partial class HashGrid : SKXamlCanvas
 
             if (index == HighlightBucket)
             {
-                paint.Color = IsHighlightMatch ? new SKColor(15, 123, 15) : new SKColor(0, 0, 64);
+                paint.Color = IsHighlightMatch
+                    ? _matchColour ??= ResolveColour("SystemFillColorSuccessBackground", new SKColor(15, 123, 15))
+                    : _probeColour ??= ResolveColour("SystemListAccentMediumColor", new SKColor(0, 0, 64));
             }
             else
             {

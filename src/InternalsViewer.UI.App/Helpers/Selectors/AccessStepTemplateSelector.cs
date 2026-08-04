@@ -6,6 +6,12 @@ namespace InternalsViewer.UI.App.Helpers.Selectors;
 
 public class AccessStepTemplateSelector : DataTemplateSelector
 {
+    public DataTemplate OpenTemplate { get; set; } = null!;
+
+    public DataTemplate CloseTemplate { get; set; } = null!;
+
+    public DataTemplate OutputTemplate { get; set; } = null!;
+
     public DataTemplate ReadPageTemplate { get; set; } = null!;
 
     public DataTemplate ProbeStartTemplate { get; set; } = null!;
@@ -39,6 +45,8 @@ public class AccessStepTemplateSelector : DataTemplateSelector
     public DataTemplate HashBuildRunTemplate { get; set; } = null!;
 
     public DataTemplate HashProbeSpanTemplate { get; set; } = null!;
+
+    public DataTemplate HashMatchSpanTemplate { get; set; } = null!;
 
     public DataTemplate HashProbeTemplate { get; set; } = null!;
 
@@ -78,6 +86,9 @@ public class AccessStepTemplateSelector : DataTemplateSelector
     {
         return item switch
         {
+            AccessStep.Open => OpenTemplate,
+            AccessStep.Close => CloseTemplate,
+            AccessStep.Output => OutputTemplate,
             AccessStep.ReadPage => ReadPageTemplate,
             AccessStep.ProbeStart => ProbeStartTemplate,
             AccessStep.Probe => ProbeTemplate,
@@ -95,6 +106,7 @@ public class AccessStepTemplateSelector : DataTemplateSelector
             AccessStep.HashBuild => HashBuildTemplate,
             HashBuildSpan => HashBuildRunTemplate,
             HashProbeSpan => HashProbeSpanTemplate,
+            HashMatchSpan => HashMatchSpanTemplate,
             AccessStep.HashProbe => HashProbeTemplate,
             AccessStep.HashProbeRun => HashProbeRunTemplate,
             AccessStep.HashCompare => HashCompareTemplate,
