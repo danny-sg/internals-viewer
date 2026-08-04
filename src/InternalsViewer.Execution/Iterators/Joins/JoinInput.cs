@@ -1,19 +1,13 @@
 using InternalsViewer.Execution.AccessPaths.Joins;
-using InternalsViewer.Execution.AccessPaths.Search;
 using InternalsViewer.Execution.Interfaces;
-using InternalsViewer.Execution.Interfaces.Iterators.Joins.Inputs;
+using InternalsViewer.Execution.Interfaces.Iterators.Joins;
 using InternalsViewer.Internals.Interfaces.Engine;
 
-namespace InternalsViewer.Execution.Iterators.Joins.Inputs;
+namespace InternalsViewer.Execution.Iterators.Joins;
 
-/// <summary>
-/// Base for a join input, holding the rows the join is still working with
-/// </summary>
-public abstract class JoinInput : IJoinInput
+public sealed class JoinInput(IIterator iterator) : IJoinInput
 {
-    public abstract IStepIterator Iterator { get; }
-
-    public abstract AccessStrategy? Strategy { get; }
+    public IIterator Iterator { get; } = iterator;
 
     public IReadOnlyList<JoinBufferRow> Buffer => Rows;
 

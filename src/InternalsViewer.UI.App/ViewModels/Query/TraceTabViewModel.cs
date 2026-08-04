@@ -14,8 +14,7 @@ using InternalsViewer.Execution.AccessPaths.Search;
 using InternalsViewer.Execution.Interfaces;
 using InternalsViewer.Execution.Interfaces.Iterators;
 using InternalsViewer.Execution.Interfaces.Iterators.Joins;
-using InternalsViewer.Execution.Interfaces.Iterators.Joins.Inputs;
-using InternalsViewer.Execution.Iterators.Joins;
+using InternalsViewer.Execution.Iterators.Stepping;
 using InternalsViewer.Execution.Records;
 using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Internals.Engine.Database;
@@ -52,7 +51,7 @@ public sealed class TraceTabViewModelFactory(IIteratorFactory iteratorFactory, I
                                      DateTime? queryTime,
                                      ScanModeResult? scanMode)
     {
-        var builder = new TraceDefinitionBuilder(resolveUnit);
+        var builder = new TraceDefinitionBuilder(resolveUnit, database);
 
         if (builder.Build(node) is not { } definition)
         {
@@ -69,9 +68,7 @@ public sealed class TraceTabViewModelFactory(IIteratorFactory iteratorFactory, I
             return null;
         }
 
-        var iterator = iteratorFactory.Create(definition);
-
-        return new TraceTabViewModel(iterator, definition, database, node, queryTime, scanMode, visuals);
+        return new TraceTabViewModel(iteratorFactory, definition, database, node, queryTime, scanMode, visuals);
     }
 
     private TraceVisualViewModel? CreateVisual(DatabaseSource database, TraceSource source, TraceDefinitionBuilder builder)
@@ -104,8 +101,8 @@ public sealed class TraceTabViewModelFactory(IIteratorFactory iteratorFactory, I
     private static int InputIndexOf(TraceSourceRole role)
         => role switch
         {
-            TraceSourceRole.Outer or TraceSourceRole.Build or TraceSourceRole.Seek => JoinStepIterator.OuterSource,
-            TraceSourceRole.Inner or TraceSourceRole.Probe or TraceSourceRole.Lookup => JoinStepIterator.InnerSource,
+            TraceSourceRole.Outer or TraceSourceRole.Build or TraceSourceRole.Seek => 0,
+            TraceSourceRole.Inner or TraceSourceRole.Probe or TraceSourceRole.Lookup => 1,
             _ => -1
         };
 
@@ -119,7 +116,7 @@ public sealed partial class TraceTabViewModel : ObservableObject
 
     private const int HistoryLimit = 1000;
 
-    public TraceTabViewModel(IStepIterator iterator,
+    public TraceTabViewModel(IIteratorFactory iteratorFactory,
                              IteratorDefinition definition,
                              DatabaseSource database,
                              PlanNode? planNode,
@@ -127,7 +124,7 @@ public sealed partial class TraceTabViewModel : ObservableObject
                              ScanModeResult? scanMode,
                              IReadOnlyList<TraceVisualViewModel> visuals)
     {
-        Iterator = iterator;
+        IteratorFactory = iteratorFactory;
         Definition = definition;
         Database = database;
         PlanNode = planNode;
@@ -402,7 +399,9 @@ public sealed partial class TraceTabViewModel : ObservableObject
 
     private IteratorDefinition Definition { get; }
 
-    private IStepIterator Iterator { get; }
+    private IIteratorFactory IteratorFactory { get; }
+
+    private IteratorStepper? Stepper { get; set; }
 
     private Dictionary<int, TraceVisualViewModel> VisualsBySource { get; }
 
@@ -529,7 +528,7 @@ public sealed partial class TraceTabViewModel : ObservableObject
     public AccessStrategy? SelectedStrategy => StrategyBySource.GetValueOrDefault(SelectedVisual.Source);
 
     public AccessPhase? SelectedPhase
-        => CurrentStep is { } step && step.Source == SelectedVisual.Source ? step.AccessPhase : null;
+        => CurrentStep is { } step && step.NodeId == SelectedVisual.Source ? step.AccessPhase : null;
 
     /// <summary>
     /// True while the selected input is a correlated seek that has not yet been bound, so it has no descent to describe
@@ -736,7 +735,12 @@ public sealed partial class TraceTabViewModel : ObservableObject
             await StartAsync();
         }
 
-        var step = await Task.Run(() => Iterator.StepNextAsync(CancellationToken.None));
+        if (Stepper is not { } stepper)
+        {
+            return;
+        }
+
+        var step = await Task.Run(() => stepper.StepNextAsync(CancellationToken.None));
 
         if (step is null)
         {
@@ -748,7 +752,7 @@ public sealed partial class TraceTabViewModel : ObservableObject
 
         Append(step, StepHistory);
 
-        if (step is AccessStep.JoinEmit pair && OperatorsBySource.TryGetValue(step.Source, out var emitting))
+        if (step is AccessStep.JoinEmit pair && OperatorsBySource.TryGetValue(step.NodeId, out var emitting))
         {
             emitting.Add(ToJoinedModel(pair));
         }
@@ -766,7 +770,7 @@ public sealed partial class TraceTabViewModel : ObservableObject
 
         SyncHashTables(step);
 
-        GetVisual(step.Source)?.Apply(step);
+        GetVisual(step.NodeId)?.Apply(step);
 
         CurrentStep = step;
 
@@ -799,7 +803,7 @@ public sealed partial class TraceTabViewModel : ObservableObject
 
     private void UpdateActiveVisual(AccessStep? step)
     {
-        var isSideStep = step is not null && Visuals.Any(v => v.Source == step.Source);
+        var isSideStep = step is not null && Visuals.Any(v => v.Source == step.NodeId);
 
         foreach (var visual in Visuals)
         {
@@ -808,7 +812,7 @@ public sealed partial class TraceTabViewModel : ObservableObject
                               && !IsStepComplete
                               && !IsRunning
                               && !IsRunningToEnd
-                              && visual.Source != step!.Source;
+                              && visual.Source != step!.NodeId;
         }
     }
 
@@ -835,6 +839,8 @@ public sealed partial class TraceTabViewModel : ObservableObject
                 await StartAsync();
             }
 
+            var stepper = Stepper!;
+
             var steps = new ObservableCollection<AccessStep>();
 
             var results = new ObservableCollection<IndexRecordModel>();
@@ -845,7 +851,8 @@ public sealed partial class TraceTabViewModel : ObservableObject
             {
                 try
                 {
-                    while (await Iterator.StepNextAsync(cancellationToken) is not null)
+                    while (!cancellationToken.IsCancellationRequested
+                           && await stepper.StepNextAsync(CancellationToken.None) is not null)
                     {
                     }
                 }
@@ -853,7 +860,7 @@ public sealed partial class TraceTabViewModel : ObservableObject
                 {
                 }
 
-                foreach (var step in Iterator.History)
+                foreach (var step in stepper.History)
                 {
                     Append(step, steps);
 
@@ -865,7 +872,7 @@ public sealed partial class TraceTabViewModel : ObservableObject
 
                 foreach (var visual in Visuals)
                 {
-                    replays[visual] = visual.ComputeReplay(Iterator.History);
+                    replays[visual] = visual.ComputeReplay(stepper.History);
                 }
             }, CancellationToken.None);
 
@@ -882,10 +889,10 @@ public sealed partial class TraceTabViewModel : ObservableObject
 
             SyncSideBuffers();
 
-            SyncHashTables(Iterator.Current);
+            SyncHashTables(stepper.Current);
 
-            CurrentStep = Iterator.Current;
-            IsStepComplete = Iterator.IsComplete;
+            CurrentStep = stepper.Current;
+            IsStepComplete = stepper.IsComplete;
 
             UpdateActiveVisual(CurrentStep);
         }
@@ -902,6 +909,13 @@ public sealed partial class TraceTabViewModel : ObservableObject
     public void ResetStep()
     {
         _runToEndCancellation?.Cancel();
+
+        if (Stepper is { } stepper)
+        {
+            Stepper = null;
+
+            _ = stepper.DisposeAsync();
+        }
 
         IsRunning = false;
         IsRunningToEnd = false;
@@ -952,10 +966,15 @@ public sealed partial class TraceTabViewModel : ObservableObject
     /// </remarks>
     private void SyncSideBuffers()
     {
-        foreach (var join in Iterators(Iterator).OfType<IJoinStepIterator>())
+        if (Stepper is not { } stepper)
         {
-            SyncSideBuffer(join.IteratorId, JoinStepIterator.OuterSource, join.Outer);
-            SyncSideBuffer(join.IteratorId, JoinStepIterator.InnerSource, join.Inner);
+            return;
+        }
+
+        foreach (var join in Iterators(stepper.Root).OfType<IJoinIterator>())
+        {
+            SyncSideBuffer(join.NodeId, 0, join.Outer);
+            SyncSideBuffer(join.NodeId, 1, join.Inner);
         }
     }
 
@@ -1017,9 +1036,14 @@ public sealed partial class TraceTabViewModel : ObservableObject
     /// </summary>
     private void AttachHashTables()
     {
-        foreach (var iterator in Iterators(Iterator).OfType<HashMatchStepIterator>())
+        if (Stepper is not { } stepper)
         {
-            if (HashTables.TryGetValue(iterator.IteratorId, out var hashTable))
+            return;
+        }
+
+        foreach (var iterator in Iterators(stepper.Root).OfType<IHashTableIterator>())
+        {
+            if (HashTables.TryGetValue(iterator.NodeId, out var hashTable))
             {
                 hashTable.Attach(iterator);
             }
@@ -1029,13 +1053,13 @@ public sealed partial class TraceTabViewModel : ObservableObject
     /// <summary>
     /// The running operators, the whole tree rather than the one at the top of it
     /// </summary>
-    private static IEnumerable<IStepIterator> Iterators(IStepIterator iterator)
+    private static IEnumerable<IIterator> Iterators(IIterator iterator)
     {
         yield return iterator;
 
         switch (iterator)
         {
-            case IJoinStepIterator join:
+            case IJoinIterator join:
                 foreach (var found in Iterators(join.Outer.Iterator).Concat(Iterators(join.Inner.Iterator)))
                 {
                     yield return found;
@@ -1043,7 +1067,7 @@ public sealed partial class TraceTabViewModel : ObservableObject
 
                 break;
 
-            case IUnaryStepIterator { Input: { } input }:
+            case IUnaryIterator { Input: { } input }:
                 foreach (var found in Iterators(input))
                 {
                     yield return found;
@@ -1071,7 +1095,7 @@ public sealed partial class TraceTabViewModel : ObservableObject
     /// </remarks>
     private IndexRecordModel? ToResultModel(AccessStep step)
     {
-        if (step.Source != Definition.NodeId)
+        if (step.NodeId != Definition.NodeId)
         {
             return null;
         }
@@ -1094,11 +1118,16 @@ public sealed partial class TraceTabViewModel : ObservableObject
     /// </remarks>
     private void UpdateStrategies()
     {
-        foreach (var iterator in Iterators(Iterator))
+        if (Stepper is not { } stepper)
         {
-            if (iterator.Strategy is { } strategy && VisualsBySource.ContainsKey(iterator.IteratorId))
+            return;
+        }
+
+        foreach (var iterator in Iterators(stepper.Root))
+        {
+            if (iterator.Strategy is { } strategy && VisualsBySource.ContainsKey(iterator.NodeId))
             {
-                StrategyBySource[iterator.IteratorId] = strategy;
+                StrategyBySource[iterator.NodeId] = strategy;
             }
         }
 
@@ -1111,9 +1140,13 @@ public sealed partial class TraceTabViewModel : ObservableObject
 
         var context = new IteratorContext(Database) { EvaluationContext = evaluationContext };
 
-        await Task.Run(() => Iterator.OpenAsync(context, Definition, CancellationToken.None));
+        var stepper = new IteratorStepper(IteratorFactory.Create(Definition), Definition, context);
 
-        Strategy = Iterator.Strategy;
+        Stepper = stepper;
+
+        await Task.Run(() => stepper.StartAsync(CancellationToken.None));
+
+        Strategy = stepper.Root.Strategy;
 
         UpdateStrategies();
 
@@ -1132,7 +1165,7 @@ public sealed partial class TraceTabViewModel : ObservableObject
     /// </remarks>
     private IndexRecordModel ToJoinedModel(AccessStep.JoinEmit emit)
     {
-        var outputColumns = (_planNodesById.GetValueOrDefault(emit.Source) ?? PlanNode)?.OutputColumns ?? [];
+        var outputColumns = (_planNodesById.GetValueOrDefault(emit.NodeId) ?? PlanNode)?.OutputColumns ?? [];
 
         var fields = outputColumns.Count > 0
             ? [.. outputColumns.Select(c => ToField(emit, c))]
@@ -1150,7 +1183,7 @@ public sealed partial class TraceTabViewModel : ObservableObject
     {
         var name = column.Column.Trim('[', ']');
 
-        var field = FindColumn(emit.OuterRecord, emit.InnerRecord, emit.Source, column.Table.Trim('[', ']'), name);
+        var field = FindColumn(emit.OuterRecord, emit.InnerRecord, emit.NodeId, column.Table.Trim('[', ']'), name);
 
         return new IndexRecordFieldModel
         {
@@ -1247,7 +1280,7 @@ public sealed partial class TraceTabViewModel : ObservableObject
                 _ => (AccessKey?)null
             };
 
-            return key is { } previousKey && previous.Source == probe.Source && previousKey.Equals(probe.Key) ? index : null;
+            return key is { } previousKey && previous.NodeId == probe.NodeId && previousKey.Equals(probe.Key) ? index : null;
         }
 
         return null;
@@ -1270,7 +1303,7 @@ public sealed partial class TraceTabViewModel : ObservableObject
                     InnerFrom = previous.InnerKey,
                     InnerTo = compare.InnerKey,
                     Action = compare.Action,
-                    Source = compare.Source,
+                    NodeId = compare.NodeId,
                     Counters = compare.Counters
                 };
 
@@ -1306,7 +1339,7 @@ public sealed partial class TraceTabViewModel : ObservableObject
                     Key = hashProbe.Key,
                     ChainLength = hashProbe.ChainLength,
                     IsNullKey = hashProbe.IsNullKey,
-                    Source = hashProbe.Source,
+                    NodeId = hashProbe.NodeId,
                     Counters = hashProbe.Counters
                 };
 
@@ -1315,11 +1348,11 @@ public sealed partial class TraceTabViewModel : ObservableObject
 
         if (step is AccessStep.Probe probe)
         {
-            if (history.Count > 0 && history[0] is AccessStep.ProbeRun probeRun && probeRun.Source == probe.Source)
+            if (history.Count > 0 && history[0] is AccessStep.ProbeRun probeRun && probeRun.NodeId == probe.NodeId)
             {
                 history[0] = new AccessStep.ProbeRun([probe, .. probeRun.Probes])
                 {
-                    Source = probe.Source,
+                    NodeId = probe.NodeId,
                     Counters = probe.Counters
                 };
 
@@ -1328,7 +1361,7 @@ public sealed partial class TraceTabViewModel : ObservableObject
 
             step = new AccessStep.ProbeRun([probe])
             {
-                Source = probe.Source,
+                NodeId = probe.NodeId,
                 Counters = probe.Counters
             };
         }
@@ -1338,7 +1371,7 @@ public sealed partial class TraceTabViewModel : ObservableObject
             var latest = history[0];
 
             if (latest is AccessStep.Row previous
-                && previous.Source == row.Source
+                && previous.NodeId == row.NodeId
                 && previous.Outcome == row.Outcome
                 && previous.IsReadAhead == row.IsReadAhead
                 && Math.Abs(row.Slot - previous.Slot) == 1)
@@ -1350,14 +1383,14 @@ public sealed partial class TraceTabViewModel : ObservableObject
                     HasRange = row.HasRange,
                     EmitCount = EmitOf(previous) + EmitOf(row),
                     Counters = row.Counters,
-                    Source = row.Source
+                    NodeId = row.NodeId
                 };
 
                 return;
             }
 
             if (latest is AccessStep.RowRun run
-                && run.Source == row.Source
+                && run.NodeId == row.NodeId
                 && run.Outcome == row.Outcome
                 && !row.IsReadAhead
                 && Math.Abs(row.Slot - run.ToSlot) == 1)

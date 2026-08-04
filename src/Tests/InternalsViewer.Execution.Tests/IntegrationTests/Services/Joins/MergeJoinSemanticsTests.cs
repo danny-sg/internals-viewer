@@ -6,6 +6,7 @@ using InternalsViewer.Execution.AccessPaths.Results;
 using InternalsViewer.Execution.AccessPaths.Search;
 using InternalsViewer.Execution.AccessPaths.Values;
 using InternalsViewer.Execution.Iterators.Joins;
+using InternalsViewer.Execution.Iterators.Stepping;
 using InternalsViewer.Internals.Connections.File;
 using InternalsViewer.Internals.Engine.Database;
 using InternalsViewer.Internals.Engine.Database.Enums;
@@ -98,16 +99,18 @@ public class MergeJoinSemanticsTests(ITestOutputHelper testOutput)
     {
         var context = await LoadAsync();
 
-        await context.Service.OpenAsync(new IteratorContext(context.Database),
-                                        new MergeJoinDefinition(SideInput(context.Unit, Between(outer.From, outer.To), 0), SideInput(context.Unit, Between(inner.From, inner.To), 1))
+        var definition = new MergeJoinDefinition(SideInput(context.Unit, Between(outer.From, outer.To), 0),
+                                                 SideInput(context.Unit, Between(inner.From, inner.To), 1))
         {
+            NodeId = 2,
             JoinType = joinType
-        },
-                                        CancellationToken.None);
+        };
+
+        await using var stepper = new IteratorStepper(context.Service, definition, new IteratorContext(context.Database));
 
         var emits = new List<AccessStep.JoinEmit>();
 
-        while (await context.Service.StepNextAsync(CancellationToken.None) is { } step)
+        while (await stepper.StepNextAsync(CancellationToken.None) is { } step)
         {
             if (step is AccessStep.JoinEmit emit)
             {
@@ -126,7 +129,7 @@ public class MergeJoinSemanticsTests(ITestOutputHelper testOutput)
         return emits;
     }
 
-    private sealed record Context(DatabaseSource Database, MergeJoinStepIterator Service, AllocationUnit Unit);
+    private sealed record Context(DatabaseSource Database, MergeJoinIterator Service, AllocationUnit Unit);
 
     private static async Task<Context> LoadAsync()
     {
@@ -139,7 +142,7 @@ public class MergeJoinSemanticsTests(ITestOutputHelper testOutput)
 
         var unit = DemoDatabase.Unit(database, DemoDatabase.ClusteredTable, DemoDatabase.ClusteredIndex);
 
-        return new Context(database, serviceHost.GetService<MergeJoinStepIterator>(), unit);
+        return new Context(database, serviceHost.GetService<MergeJoinIterator>(), unit);
     }
 
     private static JoinInputDefinition SideInput(AllocationUnit unit, SeekBounds bounds, int nodeId)

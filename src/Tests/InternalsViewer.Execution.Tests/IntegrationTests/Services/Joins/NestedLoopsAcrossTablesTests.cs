@@ -7,6 +7,7 @@ using InternalsViewer.Execution.AccessPaths.Results;
 using InternalsViewer.Execution.AccessPaths.Search;
 using InternalsViewer.Execution.AccessPaths.Values;
 using InternalsViewer.Execution.Iterators.Joins;
+using InternalsViewer.Execution.Iterators.Stepping;
 using InternalsViewer.Internals.Engine.Database;
 using InternalsViewer.Internals.Interfaces.Engine;
 
@@ -29,9 +30,7 @@ public class NestedLoopsAcrossTablesTests(ITestOutputHelper testOutput)
     {
         var context = await LoadAsync();
 
-        await StartAsync(context, Between(500, 600));
-
-        var (_, emits) = await RunAsync(context.Service);
+        var (_, emits) = await RunAsync(context, Definition(context, Between(500, 600)));
 
         Assert.NotEmpty(emits);
 
@@ -50,9 +49,7 @@ public class NestedLoopsAcrossTablesTests(ITestOutputHelper testOutput)
         var context = await LoadAsync();
 
         // 500 is the only multiple of twenty in this range, so the heap contributes exactly one row
-        await StartAsync(context, Between(500, 510));
-
-        var (_, emits) = await RunAsync(context.Service);
+        var (_, emits) = await RunAsync(context, Definition(context, Between(500, 510)));
 
         var emit = Assert.Single(emits);
 
@@ -69,9 +66,7 @@ public class NestedLoopsAcrossTablesTests(ITestOutputHelper testOutput)
     {
         var context = await LoadAsync();
 
-        await StartAsync(context, Between(500, 600));
-
-        var (steps, emits) = await RunAsync(context.Service);
+        var (steps, emits) = await RunAsync(context, Definition(context, Between(500, 600)));
 
         var rebinds = steps.OfType<AccessStep.Rebind>().ToList();
 
@@ -95,9 +90,7 @@ public class NestedLoopsAcrossTablesTests(ITestOutputHelper testOutput)
         var context = await LoadAsync();
 
         // ClusteredTable stops at 100,000, so the last heap rows still match and nothing is dropped on an inner join
-        await StartAsync(context, Between(99_960, 100_000), joinType: JoinType.Inner);
-
-        var (steps, emits) = await RunAsync(context.Service);
+        var (steps, emits) = await RunAsync(context, Definition(context, Between(99_960, 100_000), joinType: JoinType.Inner));
 
         Assert.Equal(emits.Count, steps.OfType<AccessStep.Rebind>().Count());
         Assert.All(emits, e => Assert.False(e.IsUnmatched));
@@ -111,9 +104,8 @@ public class NestedLoopsAcrossTablesTests(ITestOutputHelper testOutput)
         // RID is the row identifier the heap's index carries in place of a clustered key, so ClusteredTable has no such column to read
         var residual = new AccessPredicate.IsNull(new AccessExpression.Column(-1, "RID"));
 
-        await StartAsync(context, Between(500, 600), residual);
-
-        var error = await Assert.ThrowsAsync<InvalidOperationException>(async () => await RunAsync(context.Service));
+        var error = await Assert.ThrowsAsync<InvalidOperationException>(
+            async () => await RunAsync(context, Definition(context, Between(500, 600), residual)));
 
         Assert.Contains("'RID'", error.Message);
 
@@ -132,9 +124,7 @@ public class NestedLoopsAcrossTablesTests(ITestOutputHelper testOutput)
                                                       ComparisonOperator.Equal,
                                                       Constant(0));
 
-        await StartAsync(context, Between(500, 600), residual);
-
-        var (_, emits) = await RunAsync(context.Service);
+        var (_, emits) = await RunAsync(context, Definition(context, Between(500, 600), residual));
 
         // The heap holds 500 to 600 in twenties, so only those also dividing by forty survive the inner seek's residual
         Assert.Equal([520L, 560L, 600L], emits.Select(e => Value(e.InnerRecord, "Id")));
@@ -148,15 +138,13 @@ public class NestedLoopsAcrossTablesTests(ITestOutputHelper testOutput)
         // CreatedDate belongs to ClusteredTable alone, so the inner row resolves it and the guard has nothing to object to
         var residual = new AccessPredicate.Not(new AccessPredicate.IsNull(new AccessExpression.Column(-1, "CreatedDate")));
 
-        await StartAsync(context, Between(500, 600), residual);
-
-        var (_, emits) = await RunAsync(context.Service);
+        var (_, emits) = await RunAsync(context, Definition(context, Between(500, 600), residual));
 
         Assert.NotEmpty(emits);
     }
 
     private sealed record Context(DatabaseSource Database,
-                                  NestedLoopsStepIterator Service,
+                                  NestedLoopsIterator Service,
                                   AllocationUnit Outer,
                                   AllocationUnit Inner);
 
@@ -167,15 +155,15 @@ public class NestedLoopsAcrossTablesTests(ITestOutputHelper testOutput)
         var database = await DemoDatabase.LoadAsync(serviceHost);
 
         return new Context(database,
-                           serviceHost.GetService<NestedLoopsStepIterator>(),
+                           serviceHost.GetService<NestedLoopsIterator>(),
                            DemoDatabase.Unit(database, DemoDatabase.HeapTable, DemoDatabase.HeapIndex),
                            DemoDatabase.Unit(database, DemoDatabase.ClusteredTable, DemoDatabase.ClusteredIndex));
     }
 
-    private static async Task StartAsync(Context context,
-                                        SeekBounds outerBounds,
-                                        AccessPredicate? residual = null,
-                                        JoinType joinType = JoinType.Inner)
+    private static NestedLoopsDefinition Definition(Context context,
+                                                    SeekBounds outerBounds,
+                                                    AccessPredicate? residual = null,
+                                                    JoinType joinType = JoinType.Inner)
     {
         var outerInput = new RangeDefinition(context.Outer.AllocationUnitId, context.Outer.RootPage, [outerBounds]) { NodeId = 0 };
 
@@ -183,21 +171,23 @@ public class NestedLoopsAcrossTablesTests(ITestOutputHelper testOutput)
                                             context.Inner.RootPage,
                                             [new CorrelationBinding("Id", "Id")]) { NodeId = 1, Residual = residual };
 
-        await context.Service.OpenAsync(new IteratorContext(context.Database),
-                                        new NestedLoopsDefinition(outerInput, innerInput)
+        return new NestedLoopsDefinition(outerInput, innerInput)
         {
+            NodeId = 2,
             JoinType = joinType
-        },
-                                        CancellationToken.None);
+        };
     }
 
-    private static async Task<(List<AccessStep> Steps, List<AccessStep.JoinEmit> Emits)> RunAsync(NestedLoopsStepIterator service)
+    private static async Task<(List<AccessStep> Steps, List<AccessStep.JoinEmit> Emits)> RunAsync(Context context,
+                                                                                                  IteratorDefinition definition)
     {
+        await using var stepper = new IteratorStepper(context.Service, definition, new IteratorContext(context.Database));
+
         var steps = new List<AccessStep>();
 
         var emits = new List<AccessStep.JoinEmit>();
 
-        while (await service.StepNextAsync(CancellationToken.None) is { } step)
+        while (await stepper.StepNextAsync(CancellationToken.None) is { } step)
         {
             steps.Add(step);
 

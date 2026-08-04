@@ -1,13 +1,12 @@
 using InternalsViewer.Execution.AccessPaths.Definitions;
 using InternalsViewer.Execution.AccessPaths.Joins;
-using InternalsViewer.Execution.Iterators.Joins.Inputs;
 using System.Data;
 using InternalsViewer.Execution.AccessPaths.Binding;
 using InternalsViewer.Execution.AccessPaths.Results;
 using InternalsViewer.Execution.AccessPaths.Search;
 using InternalsViewer.Execution.AccessPaths.Values;
-using InternalsViewer.Execution.Iterators.Indexes;
 using InternalsViewer.Execution.Iterators.Joins;
+using InternalsViewer.Execution.Iterators.Stepping;
 using InternalsViewer.Internals.Engine.Database;
 using InternalsViewer.Internals.Interfaces.Engine;
 using InternalsViewer.Internals.Tests.Helpers;
@@ -28,9 +27,7 @@ public class RidLookupTests(ITestOutputHelper testOutput)
     {
         var context = await LoadAsync();
 
-        await StartAsync(context, Between(500, 500));
-
-        var (steps, emits) = await RunAsync(context.Service);
+        var (steps, emits) = await RunAsync(context, Definition(context, Between(500, 500)));
 
         var emit = Assert.Single(emits);
 
@@ -40,7 +37,7 @@ public class RidLookupTests(ITestOutputHelper testOutput)
         // The heap row holds the columns the index does not
         Assert.Contains(emit.InnerRecord!.Fields, f => f.Name == "TextField");
 
-        TestOutput.WriteLine(string.Join("\n", steps.Select(s => $"  [{s.Source}] {s}")));
+        TestOutput.WriteLine(string.Join("\n", steps.Select(s => $"  [{s.NodeId}] {s}")));
     }
 
     [RequiresFileFact(DemoDatabase.MdfPath)]
@@ -48,9 +45,7 @@ public class RidLookupTests(ITestOutputHelper testOutput)
     {
         var context = await LoadAsync();
 
-        await StartAsync(context, Between(500, 900));
-
-        var (steps, emits) = await RunAsync(context.Service);
+        var (steps, emits) = await RunAsync(context, Definition(context, Between(500, 900)));
 
         Assert.NotEmpty(emits);
 
@@ -69,7 +64,7 @@ public class RidLookupTests(ITestOutputHelper testOutput)
 
                 reads = 0;
             }
-            else if (step is AccessStep.ReadPage && step.Source == NestedLoopsStepIterator.InnerSource)
+            else if (step is AccessStep.ReadPage { NodeId: 1 })
             {
                 reads++;
             }
@@ -88,9 +83,7 @@ public class RidLookupTests(ITestOutputHelper testOutput)
     {
         var context = await LoadAsync();
 
-        await StartAsync(context, Between(500, 700));
-
-        var (steps, _) = await RunAsync(context.Service);
+        var (steps, _) = await RunAsync(context, Definition(context, Between(500, 700)));
 
         var rebinds = steps.OfType<AccessStep.Rebind>().ToList();
 
@@ -115,12 +108,9 @@ public class RidLookupTests(ITestOutputHelper testOutput)
         var context = await LoadAsync();
 
         // The heap holds every twentieth Id, so this range covers five rows
-        await StartAsync(context, Between(500, 600));
+        var (steps, emits) = await RunAsync(context, Definition(context, Between(500, 600)));
 
-        var (steps, emits) = await RunAsync(context.Service);
-
-        var outerRows = steps.Count(s => s is AccessStep.Row { EmittedRecord: not null }
-                                         && s.Source == NestedLoopsStepIterator.OuterSource);
+        var outerRows = steps.Count(s => s is AccessStep.Row { EmittedRecord: not null, NodeId: 0 });
 
         Assert.Equal(outerRows, emits.Count);
         Assert.Equal(outerRows, context.Service.RebindCount);
@@ -133,9 +123,7 @@ public class RidLookupTests(ITestOutputHelper testOutput)
     {
         var context = await LoadAsync();
 
-        await StartAsync(context, Between(500, 600));
-
-        var (steps, emits) = await RunAsync(context.Service);
+        var (steps, emits) = await RunAsync(context, Definition(context, Between(500, 600)));
 
         Assert.NotEmpty(emits);
 
@@ -144,8 +132,8 @@ public class RidLookupTests(ITestOutputHelper testOutput)
     }
 
     private sealed record Context(DatabaseSource Database,
-                                  NestedLoopsStepIterator Service,
-                                  HeapFetchStepIterator Heap,
+                                  NestedLoopsIterator Service,
+                                  HeapFetchIterator Heap,
                                   AllocationUnit Index,
                                   AllocationUnit Heap_);
 
@@ -156,28 +144,29 @@ public class RidLookupTests(ITestOutputHelper testOutput)
         var database = await DemoDatabase.LoadAsync(serviceHost);
 
         return new Context(database,
-                           serviceHost.GetService<NestedLoopsStepIterator>(),
-                           serviceHost.GetService<HeapFetchStepIterator>(),
+                           serviceHost.GetService<NestedLoopsIterator>(),
+                           serviceHost.GetService<HeapFetchIterator>(),
                            DemoDatabase.Unit(database, DemoDatabase.HeapTable, DemoDatabase.HeapIndex),
                            DemoDatabase.Unit(database, DemoDatabase.HeapTable));
     }
 
-    private static async Task StartAsync(Context context, SeekBounds outerBounds)
+    private static NestedLoopsDefinition Definition(Context context, SeekBounds outerBounds)
     {
         var outerInput = new RangeDefinition(context.Index.AllocationUnitId, context.Index.RootPage, [outerBounds]) { NodeId = 0 };
 
-        await context.Service.OpenAsync(new IteratorContext(context.Database),
-                                        new NestedLoopsDefinition(outerInput, new HeapFetchDefinition { NodeId = 1 }),
-                                        CancellationToken.None);
+        return new NestedLoopsDefinition(outerInput, new HeapFetchDefinition { NodeId = 1 }) { NodeId = 2 };
     }
 
-    private static async Task<(List<AccessStep> Steps, List<AccessStep.JoinEmit> Emits)> RunAsync(NestedLoopsStepIterator service)
+    private static async Task<(List<AccessStep> Steps, List<AccessStep.JoinEmit> Emits)> RunAsync(Context context,
+                                                                                                  IteratorDefinition definition)
     {
+        await using var stepper = new IteratorStepper(context.Service, definition, new IteratorContext(context.Database));
+
         var steps = new List<AccessStep>();
 
         var emits = new List<AccessStep.JoinEmit>();
 
-        while (await service.StepNextAsync(CancellationToken.None) is { } step)
+        while (await stepper.StepNextAsync(CancellationToken.None) is { } step)
         {
             steps.Add(step);
 

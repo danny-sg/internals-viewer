@@ -1,11 +1,14 @@
 using System;
 using System.Collections.Generic;
+using System.Data;
 using System.Linq;
 using InternalsViewer.Execution.AccessPaths.Binding;
 using InternalsViewer.Execution.AccessPaths.Definitions;
 using InternalsViewer.Execution.AccessPaths.Predicates;
 using InternalsViewer.Execution.AccessPaths.Search;
 using InternalsViewer.Internals.Engine.Database;
+using InternalsViewer.Internals.Metadata.Structures;
+using InternalsViewer.Internals.Providers.Metadata;
 using InternalsViewer.Query.Plans;
 using InternalsViewer.Query.Plans.Joins;
 using InternalsViewer.Query.Plans.Model;
@@ -22,8 +25,12 @@ namespace InternalsViewer.UI.App.Services.Trace;
 /// it is. A node with no case returns null and takes its whole tree with it, so a trace is offered only when every operator below it can
 /// be simulated.
 /// </remarks>
-public sealed class TraceDefinitionBuilder(Func<PlanNode, AllocationUnit?> resolveUnit)
+public sealed class TraceDefinitionBuilder(Func<PlanNode, AllocationUnit?> resolveUnit, DatabaseSource? database = null)
 {
+    private readonly Dictionary<string, SqlDbType> _typesByTableColumn = new(StringComparer.OrdinalIgnoreCase);
+
+    private readonly Dictionary<string, SqlDbType?> _typesByColumn = new(StringComparer.OrdinalIgnoreCase);
+
     /// <summary>
     /// The plan operator behind each definition, by node id
     /// </summary>
@@ -35,7 +42,7 @@ public sealed class TraceDefinitionBuilder(Func<PlanNode, AllocationUnit?> resol
 
     public Dictionary<int, AllocationUnit> Units { get; } = [];
 
-    public bool CanBuild(PlanNode node) => new TraceDefinitionBuilder(resolveUnit).Build(node) is not null;
+    public bool CanBuild(PlanNode node) => new TraceDefinitionBuilder(resolveUnit, database).Build(node) is not null;
 
     public IteratorDefinition? Build(PlanNode node)
     {
@@ -88,6 +95,7 @@ public sealed class TraceDefinitionBuilder(Func<PlanNode, AllocationUnit?> resol
         return new TopDefinition(source)
         {
             NodeId = node.NodeId,
+            OutputList = OutputList(node),
             RowCount = rowCount
         };
     }
@@ -108,6 +116,7 @@ public sealed class TraceDefinitionBuilder(Func<PlanNode, AllocationUnit?> resol
         return new HashMatchDefinition(build, probe)
         {
             NodeId = node.NodeId,
+            OutputList = OutputList(node),
             JoinType = hash.JoinType,
             Residual = info.Residual,
             HasUntranslatedResidual = info.HasUntranslatedResidual
@@ -130,6 +139,7 @@ public sealed class TraceDefinitionBuilder(Func<PlanNode, AllocationUnit?> resol
         return new MergeJoinDefinition(outer, inner)
         {
             NodeId = node.NodeId,
+            OutputList = OutputList(node),
             JoinType = merge.JoinType,
             Residual = info.Residual,
             HasUntranslatedResidual = info.HasUntranslatedResidual
@@ -151,6 +161,7 @@ public sealed class TraceDefinitionBuilder(Func<PlanNode, AllocationUnit?> resol
         return new NestedLoopsDefinition(outer, inner)
         {
             NodeId = node.NodeId,
+            OutputList = OutputList(node),
             JoinType = join.JoinType,
             Residual = node.PredicateInfo?.Residual
         };
@@ -168,6 +179,7 @@ public sealed class TraceDefinitionBuilder(Func<PlanNode, AllocationUnit?> resol
             return new HeapFetchDefinition
             {
                 NodeId = node.NodeId,
+                OutputList = OutputList(node),
                 Residual = node.PredicateInfo?.Residual
             };
         }
@@ -189,6 +201,7 @@ public sealed class TraceDefinitionBuilder(Func<PlanNode, AllocationUnit?> resol
         return new SeekDefinition(unit.AllocationUnitId, unit.RootPage, bindings)
         {
             NodeId = node.NodeId,
+            OutputList = OutputList(node),
             Residual = node.PredicateInfo?.Residual
         };
     }
@@ -210,6 +223,7 @@ public sealed class TraceDefinitionBuilder(Func<PlanNode, AllocationUnit?> resol
             return new AllocationScanDefinition(unit.FirstIamPage)
             {
                 NodeId = node.NodeId,
+                OutputList = OutputList(node),
                 Residual = Residual(node),
                 RowGoal = node.PredicateInfo?.RowGoal,
                 HasUntranslatedResidual = node.PredicateInfo?.HasUntranslatedPredicate == true
@@ -229,6 +243,7 @@ public sealed class TraceDefinitionBuilder(Func<PlanNode, AllocationUnit?> resol
         return new RangeDefinition(unit.AllocationUnitId, unit.RootPage, Ranges(node))
         {
             NodeId = node.NodeId,
+            OutputList = OutputList(node),
             Residual = Residual(node),
             Direction = Direction(node),
             RowGoal = node.PredicateInfo?.RowGoal,
@@ -248,7 +263,8 @@ public sealed class TraceDefinitionBuilder(Func<PlanNode, AllocationUnit?> resol
 
         return new JoinInputDefinition(source, KeyColumns(keys))
         {
-            RowEstimate = node.EstimatedRows > 0 ? node.EstimatedRows : node.RowsOutput
+            RowEstimate = node.EstimatedRows > 0 ? node.EstimatedRows : node.RowsOutput,
+            Direction = source is RangeDefinition range ? range.Direction : ScanDirection.Forward
         };
     }
 
@@ -266,7 +282,69 @@ public sealed class TraceDefinitionBuilder(Func<PlanNode, AllocationUnit?> resol
 
         Units[node.NodeId] = unit;
 
+        RegisterColumnTypes(unit);
+
         return unit;
+    }
+
+    private void RegisterColumnTypes(AllocationUnit unit)
+    {
+        if (database is null)
+        {
+            return;
+        }
+
+        if (unit.IndexId == 0)
+        {
+            Register(unit.TableName, TableStructureProvider.GetTableStructure(database, unit.AllocationUnitId).Columns);
+
+            return;
+        }
+
+        var structure = IndexStructureProvider.GetIndexStructure(database, unit.AllocationUnitId);
+
+        Register(unit.TableName, structure.Columns);
+
+        if (structure.TableStructure is { } table)
+        {
+            Register(unit.TableName, table.Columns);
+        }
+    }
+
+    private void Register(string? table, IEnumerable<ColumnStructure> columns)
+    {
+        foreach (var column in columns)
+        {
+            if (string.IsNullOrEmpty(column.ColumnName))
+            {
+                continue;
+            }
+
+            if (!string.IsNullOrEmpty(table))
+            {
+                _typesByTableColumn[$"{table}.{column.ColumnName}"] = column.DataType;
+            }
+
+            _typesByColumn[column.ColumnName] = !_typesByColumn.TryGetValue(column.ColumnName, out var existing)
+                ? column.DataType
+                : existing == column.DataType ? existing : null;
+        }
+    }
+
+    private IReadOnlyList<OutputColumn> OutputList(PlanNode node)
+        => [.. node.OutputColumns.Select(ToOutputColumn)];
+
+    private OutputColumn ToOutputColumn(ColumnReference column)
+    {
+        var name = column.Column.Trim('[', ']');
+
+        var table = column.Table.Trim('[', ']');
+
+        var type = table.Length > 0 && _typesByTableColumn.TryGetValue($"{table}.{name}", out var qualified)
+            ? qualified
+            : _typesByColumn.GetValueOrDefault(name);
+
+        return new OutputColumn(name, table.Length > 0 ? table : null, type);
     }
 
     private static IReadOnlyList<SeekBounds> Ranges(PlanNode node)

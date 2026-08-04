@@ -12,27 +12,26 @@ using InternalsViewer.Internals.Tests.Helpers;
 
 using InternalsViewer.Execution.AccessPaths.Definitions;
 using InternalsViewer.Execution.Iterators.DataAccess;
+using InternalsViewer.Execution.Iterators.Stepping;
 
 namespace InternalsViewer.Execution.Tests.IntegrationTests.Services.Indexes;
 
-public class IndexStepIteratorTests(ITestOutputHelper testOutput)
+public class IndexIteratorTests(ITestOutputHelper testOutput)
 {
     public ITestOutputHelper TestOutput { get; } = testOutput;
 
     private const string MdfPath = "./IntegrationTests/Test Data/TestDatabase.mdf";
 
-        private const int NumberTableRowCount = DemoDatabase.ClusteredTableRowCount;
+    private const int NumberTableRowCount = DemoDatabase.ClusteredTableRowCount;
 
     [RequiresFileFact(MdfPath)]
     public async Task Scan_Reads_All_Rows_In_Order()
     {
         var context = await LoadNumberTableAsync();
 
-        await context.Service.OpenAsync(new IteratorContext(context.Database),
-                                        new RangeDefinition(context.Unit.AllocationUnitId, context.Unit.RootPage, [SeekBounds.All]),
-                                        CancellationToken.None);
+        var definition = new RangeDefinition(context.Unit.AllocationUnitId, context.Unit.RootPage, [SeekBounds.All]);
 
-        var (steps, values) = await RunAsync(context.Service);
+        var (steps, values) = await RunAsync(context, definition);
 
         Assert.Equal(NumberTableRowCount, values.Count);
         Assert.Equal(1, values[0]);
@@ -52,11 +51,9 @@ public class IndexStepIteratorTests(ITestOutputHelper testOutput)
     {
         var context = await LoadNumberTableAsync();
 
-        await context.Service.OpenAsync(new IteratorContext(context.Database),
-                                        new RangeDefinition(context.Unit.AllocationUnitId, context.Unit.RootPage, [Between(1000, 1200)]),
-                                        CancellationToken.None);
+        var definition = new RangeDefinition(context.Unit.AllocationUnitId, context.Unit.RootPage, [Between(1000, 1200)]);
 
-        var (steps, values) = await RunAsync(context.Service);
+        var (steps, values) = await RunAsync(context, definition);
 
         Assert.Equal(201, values.Count);
         Assert.Equal(1000, values[0]);
@@ -73,14 +70,12 @@ public class IndexStepIteratorTests(ITestOutputHelper testOutput)
     {
         var context = await LoadNumberTableAsync();
 
-        await context.Service.OpenAsync(new IteratorContext(context.Database),
-                                        new RangeDefinition(context.Unit.AllocationUnitId, context.Unit.RootPage, [Between(1000, 1200)])
+        var definition = new RangeDefinition(context.Unit.AllocationUnitId, context.Unit.RootPage, [Between(1000, 1200)])
         {
             Direction = ScanDirection.Backward
-        },
-                                        CancellationToken.None);
+        };
 
-        var (steps, values) = await RunAsync(context.Service);
+        var (steps, values) = await RunAsync(context, definition);
 
         Assert.Equal(201, values.Count);
         Assert.Equal(1200, values[0]);
@@ -99,11 +94,11 @@ public class IndexStepIteratorTests(ITestOutputHelper testOutput)
     {
         var context = await LoadNumberTableAsync();
 
-        await context.Service.OpenAsync(new IteratorContext(context.Database),
-                                        new RangeDefinition(context.Unit.AllocationUnitId, context.Unit.RootPage, [Between(100, 110), Between(5000, 5010), Between(9990, 10000)]),
-                                        CancellationToken.None);
+        var definition = new RangeDefinition(context.Unit.AllocationUnitId,
+                                             context.Unit.RootPage,
+                                             [Between(100, 110), Between(5000, 5010), Between(9990, 10000)]);
 
-        var (steps, values) = await RunAsync(context.Service);
+        var (steps, values) = await RunAsync(context, definition);
 
         var expected = Enumerable.Range(100, 11)
                                  .Concat(Enumerable.Range(5000, 11))
@@ -139,14 +134,12 @@ public class IndexStepIteratorTests(ITestOutputHelper testOutput)
             ComparisonOperator.Equal,
             new AccessExpression.Constant(AccessValue.FromInteger(SqlDbType.Int, 0)));
 
-        await context.Service.OpenAsync(new IteratorContext(context.Database),
-                                        new RangeDefinition(context.Unit.AllocationUnitId, context.Unit.RootPage, [Between(1, 100)])
+        var definition = new RangeDefinition(context.Unit.AllocationUnitId, context.Unit.RootPage, [Between(1, 100)])
         {
             Residual = residual
-        },
-                                        CancellationToken.None);
+        };
 
-        var (steps, values) = await RunAsync(context.Service);
+        var (steps, values) = await RunAsync(context, definition);
 
         Assert.Equal(50, values.Count);
         Assert.All(values, v => Assert.Equal(0, v % 2));
@@ -162,14 +155,12 @@ public class IndexStepIteratorTests(ITestOutputHelper testOutput)
     {
         var context = await LoadNumberTableAsync();
 
-        await context.Service.OpenAsync(new IteratorContext(context.Database),
-                                        new RangeDefinition(context.Unit.AllocationUnitId, context.Unit.RootPage, [Between(500, 9000)])
+        var definition = new RangeDefinition(context.Unit.AllocationUnitId, context.Unit.RootPage, [Between(500, 9000)])
         {
             RowGoal = 25
-        },
-                                        CancellationToken.None);
+        };
 
-        var (steps, values) = await RunAsync(context.Service);
+        var (steps, values) = await RunAsync(context, definition);
 
         Assert.Equal(25, values.Count);
         Assert.Equal(500, values[0]);
@@ -192,11 +183,9 @@ public class IndexStepIteratorTests(ITestOutputHelper testOutput)
             CompareWidth = 1
         };
 
-        await context.Service.OpenAsync(new IteratorContext(context.Database),
-                                        new RangeDefinition(context.Unit.AllocationUnitId, context.Unit.RootPage, [bounds]),
-                                        CancellationToken.None);
+        var definition = new RangeDefinition(context.Unit.AllocationUnitId, context.Unit.RootPage, [bounds]);
 
-        var (steps, values) = await RunAsync(context.Service);
+        var (steps, values) = await RunAsync(context, definition);
 
         Assert.Equal(11, values.Count);
         Assert.Equal(NumberTableRowCount - 10, values[0]);
@@ -207,7 +196,7 @@ public class IndexStepIteratorTests(ITestOutputHelper testOutput)
         Assert.Equal(StopReason.PageExhausted, stopped.Reason);
     }
 
-    private sealed record NumberTableContext(DatabaseSource Database, IndexStepIterator Service, AllocationUnit Unit);
+    private sealed record NumberTableContext(DatabaseSource Database, IndexIterator Service, AllocationUnit Unit);
 
     private async Task<NumberTableContext> LoadNumberTableAsync()
     {
@@ -221,16 +210,19 @@ public class IndexStepIteratorTests(ITestOutputHelper testOutput)
 
         var unit = DemoDatabase.Unit(database, DemoDatabase.ClusteredTable, DemoDatabase.ClusteredIndex);
 
-        return new NumberTableContext(database, serviceHost.GetService<IndexStepIterator>(), unit);
+        return new NumberTableContext(database, serviceHost.GetService<IndexIterator>(), unit);
     }
 
-    private static async Task<(List<AccessStep> Steps, List<long> Values)> RunAsync(IndexStepIterator service)
+    private static async Task<(List<AccessStep> Steps, List<long> Values)> RunAsync(NumberTableContext context,
+                                                                                    IteratorDefinition definition)
     {
+        await using var stepper = new IteratorStepper(context.Service, definition, new IteratorContext(context.Database));
+
         var steps = new List<AccessStep>();
 
         var values = new List<long>();
 
-        while (await service.StepNextAsync(CancellationToken.None) is { } step)
+        while (await stepper.StepNextAsync(CancellationToken.None) is { } step)
         {
             steps.Add(step);
 

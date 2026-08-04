@@ -11,12 +11,13 @@ using InternalsViewer.Internals.Engine.Database;
 using InternalsViewer.Internals.Engine.Database.Enums;
 using InternalsViewer.Internals.Interfaces.Services.Loaders.Engine;
 using InternalsViewer.Execution.Iterators.Joins;
+using InternalsViewer.Execution.Iterators.Stepping;
 using InternalsViewer.Internals.Tests.Helpers;
 using InternalsViewer.Execution.AccessPaths.Joins.Hash;
 
 namespace InternalsViewer.Execution.Tests.IntegrationTests.Services.Joins;
 
-public class HashMatchStepIteratorTests(ITestOutputHelper testOutput)
+public class HashMatchIteratorTests(ITestOutputHelper testOutput)
 {
     public ITestOutputHelper TestOutput { get; } = testOutput;
 
@@ -27,11 +28,7 @@ public class HashMatchStepIteratorTests(ITestOutputHelper testOutput)
     {
         var context = await LoadNumberTableAsync();
 
-        await context.Service.OpenAsync(new IteratorContext(context.Database),
-                                        new HashMatchDefinition(SideInput(context.Unit, Between(100, 110), 0), SideInput(context.Unit, Between(105, 120), 1)),
-                                        CancellationToken.None);
-
-        var (steps, pairs) = await RunAsync(context.Service);
+        var (steps, pairs) = await RunAsync(context, Definition(context));
 
         Assert.Equal(6, pairs.Count);
         Assert.Equal(6, context.Service.PairCount);
@@ -39,7 +36,7 @@ public class HashMatchStepIteratorTests(ITestOutputHelper testOutput)
 
         var stopped = Assert.IsType<AccessStep.Stopped>(steps[^1]);
 
-        Assert.Equal(HashMatchStepIterator.JoinSource, stopped.Source);
+        Assert.Equal(2, stopped.NodeId);
         Assert.True(context.Service.IsComplete);
     }
 
@@ -48,11 +45,10 @@ public class HashMatchStepIteratorTests(ITestOutputHelper testOutput)
     {
         var context = await LoadNumberTableAsync();
 
-        await context.Service.OpenAsync(new IteratorContext(context.Database),
-                                        new HashMatchDefinition(SideInput(context.Unit, Between(100, 105), 0), SideInput(context.Unit, Between(200, 205), 1)),
-                                        CancellationToken.None);
+        var definition = new HashMatchDefinition(SideInput(context.Unit, Between(100, 105), 0),
+                                                 SideInput(context.Unit, Between(200, 205), 1)) { NodeId = 2 };
 
-        var (steps, pairs) = await RunAsync(context.Service);
+        var (steps, pairs) = await RunAsync(context, definition);
 
         Assert.Empty(pairs);
 
@@ -65,11 +61,10 @@ public class HashMatchStepIteratorTests(ITestOutputHelper testOutput)
     {
         var context = await LoadNumberTableAsync();
 
-        await context.Service.OpenAsync(new IteratorContext(context.Database),
-                                        new HashMatchDefinition(SideInput(context.Unit, Between(500, 520), 0), SideInput(context.Unit, Between(500, 520), 1)),
-                                        CancellationToken.None);
+        var definition = new HashMatchDefinition(SideInput(context.Unit, Between(500, 520), 0),
+                                                 SideInput(context.Unit, Between(500, 520), 1)) { NodeId = 2 };
 
-        var (steps, pairs) = await RunAsync(context.Service);
+        var (steps, pairs) = await RunAsync(context, definition);
 
         Assert.Equal(21, pairs.Count);
         Assert.All(pairs, p => Assert.Equal(p.Build, p.Probe));
@@ -82,11 +77,7 @@ public class HashMatchStepIteratorTests(ITestOutputHelper testOutput)
     {
         var context = await LoadNumberTableAsync();
 
-        await context.Service.OpenAsync(new IteratorContext(context.Database),
-                                        new HashMatchDefinition(SideInput(context.Unit, Between(100, 110), 0), SideInput(context.Unit, Between(105, 120), 1)),
-                                        CancellationToken.None);
-
-        var (steps, _) = await RunAsync(context.Service);
+        var (steps, _) = await RunAsync(context, Definition(context));
 
         var lastBuild = steps.FindLastIndex(s => s is AccessStep.HashBuild);
 
@@ -96,8 +87,7 @@ public class HashMatchStepIteratorTests(ITestOutputHelper testOutput)
         Assert.True(lastBuild < firstProbe, "every build row should be hashed before the first probe");
 
         var buildRowsAfterProbe = steps.Skip(firstProbe)
-                                       .Count(s => s is AccessStep.Row { EmittedRecord: not null }
-                                                   && s.Source == HashMatchStepIterator.BuildSource);
+                                       .Count(s => s is AccessStep.Row { EmittedRecord: not null, NodeId: 0 });
 
         Assert.Equal(0, buildRowsAfterProbe);
     }
@@ -107,11 +97,7 @@ public class HashMatchStepIteratorTests(ITestOutputHelper testOutput)
     {
         var context = await LoadNumberTableAsync();
 
-        await context.Service.OpenAsync(new IteratorContext(context.Database),
-                                        new HashMatchDefinition(SideInput(context.Unit, Between(100, 110), 0), SideInput(context.Unit, Between(105, 120), 1)),
-                                        CancellationToken.None);
-
-        var (steps, _) = await RunAsync(context.Service);
+        var (steps, _) = await RunAsync(context, Definition(context));
 
         var builds = steps.OfType<AccessStep.HashBuild>().ToList();
 
@@ -129,11 +115,7 @@ public class HashMatchStepIteratorTests(ITestOutputHelper testOutput)
     {
         var context = await LoadNumberTableAsync();
 
-        await context.Service.OpenAsync(new IteratorContext(context.Database),
-                                        new HashMatchDefinition(SideInput(context.Unit, Between(100, 110), 0), SideInput(context.Unit, Between(105, 120), 1)),
-                                        CancellationToken.None);
-
-        var (steps, _) = await RunAsync(context.Service);
+        var (steps, _) = await RunAsync(context, Definition(context));
 
         var bucket = -1;
 
@@ -169,14 +151,7 @@ public class HashMatchStepIteratorTests(ITestOutputHelper testOutput)
     {
         var context = await LoadNumberTableAsync();
 
-        await context.Service.OpenAsync(new IteratorContext(context.Database),
-                                        new HashMatchDefinition(SideInput(context.Unit, Between(100, 110), 0), SideInput(context.Unit, Between(105, 120), 1))
-        {
-            JoinType = JoinType.LeftOuter
-        },
-                                        CancellationToken.None);
-
-        var (steps, _) = await RunAsync(context.Service);
+        var (steps, _) = await RunAsync(context, Definition(context) with { JoinType = JoinType.LeftOuter });
 
         var unmatched = steps.OfType<AccessStep.JoinEmit>()
                              .Where(e => e.IsUnmatched)
@@ -192,11 +167,10 @@ public class HashMatchStepIteratorTests(ITestOutputHelper testOutput)
     {
         var context = await LoadNumberTableAsync();
 
-        await context.Service.OpenAsync(new IteratorContext(context.Database),
-                                        new HashMatchDefinition(SideInput(context.Unit, Between(100, 160), 0), SideInput(context.Unit, Between(105, 120), 1)),
-                                        CancellationToken.None);
+        var definition = new HashMatchDefinition(SideInput(context.Unit, Between(100, 160), 0),
+                                                 SideInput(context.Unit, Between(105, 120), 1)) { NodeId = 2 };
 
-        await RunAsync(context.Service);
+        await RunAsync(context, definition);
 
         var table = context.Service.Table;
 
@@ -228,11 +202,7 @@ public class HashMatchStepIteratorTests(ITestOutputHelper testOutput)
     {
         var context = await LoadNumberTableAsync();
 
-        await context.Service.OpenAsync(new IteratorContext(context.Database),
-                                        new HashMatchDefinition(SideInput(context.Unit, Between(100, 110), 0), SideInput(context.Unit, Between(105, 120), 1)),
-                                        CancellationToken.None);
-
-        await RunAsync(context.Service);
+        await RunAsync(context, Definition(context));
 
         var table = context.Service.Table;
 
@@ -305,19 +275,18 @@ public class HashMatchStepIteratorTests(ITestOutputHelper testOutput)
 
         var unit = DemoDatabase.Unit(database, DemoDatabase.CompressedTable, DemoDatabase.CompressedIndex);
 
-        var service = serviceHost.GetService<HashMatchStepIterator>();
+        var service = serviceHost.GetService<HashMatchIterator>();
 
         var side = new JoinInputDefinition(new RangeDefinition(unit.AllocationUnitId, unit.RootPage, [BigIntBetween(1, 20)]),
                                           ["NumberField2"]);
 
-        await service.OpenAsync(new IteratorContext(database),
-                                new HashMatchDefinition(side, side)
+        var definition = new HashMatchDefinition(side, side)
         {
+            NodeId = 2,
             JoinType = JoinType.LeftSemi
-        },
-                                CancellationToken.None);
+        };
 
-        var (steps, _) = await RunAsync(service);
+        var (steps, _) = await RunAsync(new IteratorStepper(service, definition, new IteratorContext(database)));
 
         Assert.Equal(20, service.Table.RowCount);
 
@@ -329,14 +298,7 @@ public class HashMatchStepIteratorTests(ITestOutputHelper testOutput)
     {
         var context = await LoadNumberTableAsync();
 
-        await context.Service.OpenAsync(new IteratorContext(context.Database),
-                                        new HashMatchDefinition(SideInput(context.Unit, Between(100, 110), 0), SideInput(context.Unit, Between(105, 120), 1))
-        {
-            Residual = IdAtLeast(108)
-        },
-                                        CancellationToken.None);
-
-        var (steps, pairs) = await RunAsync(context.Service);
+        var (steps, pairs) = await RunAsync(context, Definition(context) with { Residual = IdAtLeast(108) });
 
         Assert.Equal(3, pairs.Count);
         Assert.Equal(Enumerable.Range(108, 3).Select(v => ((long)v, (long)v)), pairs.OrderBy(p => p.Build));
@@ -356,14 +318,7 @@ public class HashMatchStepIteratorTests(ITestOutputHelper testOutput)
     {
         var context = await LoadNumberTableAsync();
 
-        await context.Service.OpenAsync(new IteratorContext(context.Database),
-                                        new HashMatchDefinition(SideInput(context.Unit, Between(100, 110), 0), SideInput(context.Unit, Between(105, 120), 1))
-        {
-            Residual = IdAtLeast(108)
-        },
-                                        CancellationToken.None);
-
-        var (steps, _) = await RunAsync(context.Service);
+        var (steps, _) = await RunAsync(context, Definition(context) with { Residual = IdAtLeast(108) });
 
         var discarded = steps.OfType<AccessStep.HashCompare>().Where(c => c.IsResidualFail).ToList();
 
@@ -380,11 +335,7 @@ public class HashMatchStepIteratorTests(ITestOutputHelper testOutput)
     {
         var context = await LoadNumberTableAsync();
 
-        await context.Service.OpenAsync(new IteratorContext(context.Database),
-                                        new HashMatchDefinition(SideInput(context.Unit, Between(100, 110), 0), SideInput(context.Unit, Between(105, 120), 1)),
-                                        CancellationToken.None);
-
-        var (steps, _) = await RunAsync(context.Service);
+        var (steps, _) = await RunAsync(context, Definition(context));
 
         Assert.All(steps.OfType<AccessStep.HashCompare>(), c => Assert.False(c.HasResidual));
         Assert.All(steps.OfType<AccessStep.HashCompare>(), c => Assert.False(c.ShowsResidual));
@@ -408,25 +359,19 @@ public class HashMatchStepIteratorTests(ITestOutputHelper testOutput)
 
         var probe = SideInput(context.Unit, Between(105, 120), nodeId: 22);
 
-        context.Service.IteratorId = 33;
+        var (steps, _) = await RunAsync(context, new HashMatchDefinition(build, probe) { NodeId = 33 });
 
-        await context.Service.OpenAsync(new IteratorContext(context.Database),
-                                        new HashMatchDefinition(build, probe) { NodeId = 33 },
-                                        CancellationToken.None);
+        Assert.Equal([11, 22, 33], steps.Select(s => s.NodeId).Distinct().Order());
 
-        var (steps, _) = await RunAsync(context.Service);
+        Assert.All(steps.OfType<AccessStep.HashBuild>(), s => Assert.Equal(33, s.NodeId));
+        Assert.All(steps.OfType<AccessStep.HashProbe>(), s => Assert.Equal(33, s.NodeId));
+        Assert.All(steps.OfType<AccessStep.HashCompare>(), s => Assert.Equal(33, s.NodeId));
+        Assert.All(steps.OfType<AccessStep.JoinEmit>(), s => Assert.Equal(33, s.NodeId));
 
-        Assert.Equal([11, 22, 33], steps.Select(s => s.Source).Distinct().Order());
+        Assert.Contains(steps, s => s is AccessStep.Row { EmittedRecord: not null, NodeId: 11 });
+        Assert.Contains(steps, s => s is AccessStep.Row { EmittedRecord: not null, NodeId: 22 });
 
-        Assert.All(steps.OfType<AccessStep.HashBuild>(), s => Assert.Equal(33, s.Source));
-        Assert.All(steps.OfType<AccessStep.HashProbe>(), s => Assert.Equal(33, s.Source));
-        Assert.All(steps.OfType<AccessStep.HashCompare>(), s => Assert.Equal(33, s.Source));
-        Assert.All(steps.OfType<AccessStep.JoinEmit>(), s => Assert.Equal(33, s.Source));
-
-        Assert.Contains(steps, s => s is AccessStep.Row { EmittedRecord: not null } && s.Source == 11);
-        Assert.Contains(steps, s => s is AccessStep.Row { EmittedRecord: not null } && s.Source == 22);
-
-        Assert.DoesNotContain(steps, s => s is AccessStep.Row && s.Source == 33);
+        Assert.DoesNotContain(steps, s => s is AccessStep.Row && s.NodeId == 33);
     }
 
     [RequiresFileFact(MdfPath)]
@@ -434,22 +379,18 @@ public class HashMatchStepIteratorTests(ITestOutputHelper testOutput)
     {
         var context = await LoadNumberTableAsync();
 
-        await context.Service.OpenAsync(new IteratorContext(context.Database),
-                                        new HashMatchDefinition(SideInput(context.Unit, Between(100, 110), 0), SideInput(context.Unit, Between(105, 120), 1)),
-                                        CancellationToken.None);
+        var (steps, _) = await RunAsync(context, Definition(context));
 
-        var (steps, _) = await RunAsync(context.Service);
-
-        Assert.Contains(steps, s => s.Source == HashMatchStepIterator.BuildSource);
-        Assert.Contains(steps, s => s.Source == HashMatchStepIterator.ProbeSource);
-        Assert.Contains(steps, s => s.Source == HashMatchStepIterator.JoinSource);
+        Assert.Contains(steps, s => s.NodeId == 0);
+        Assert.Contains(steps, s => s.NodeId == 1);
+        Assert.Contains(steps, s => s.NodeId == 2);
 
         var pagesRead = steps.Select(s => s.Counters.PagesRead).ToList();
 
         Assert.Equal(pagesRead.OrderBy(p => p), pagesRead);
     }
 
-    private sealed record NumberTableContext(DatabaseSource Database, HashMatchStepIterator Service, AllocationUnit Unit);
+    private sealed record NumberTableContext(DatabaseSource Database, HashMatchIterator Service, AllocationUnit Unit);
 
     private async Task<NumberTableContext> LoadNumberTableAsync()
     {
@@ -463,7 +404,7 @@ public class HashMatchStepIteratorTests(ITestOutputHelper testOutput)
 
         var unit = DemoDatabase.Unit(database, DemoDatabase.ClusteredTable, DemoDatabase.ClusteredIndex);
 
-        return new NumberTableContext(database, serviceHost.GetService<HashMatchStepIterator>(), unit);
+        return new NumberTableContext(database, serviceHost.GetService<HashMatchIterator>(), unit);
     }
 
 
@@ -491,35 +432,40 @@ public class HashMatchStepIteratorTests(ITestOutputHelper testOutput)
             NodeId = 5
         };
 
-        context.Service.IteratorId = 5;
-
-        await context.Service.OpenAsync(new IteratorContext(context.Database), outer, CancellationToken.None);
-
-        var (steps, _) = await RunAsync(context.Service);
+        var (steps, _) = await RunAsync(context, outer);
 
         // The nested join's own emits pass through this stream too, so only the outer join's count as its output
-        var emits = steps.OfType<AccessStep.JoinEmit>().Where(e => e.Source == 5).ToList();
+        var emits = steps.OfType<AccessStep.JoinEmit>().Where(e => e.NodeId == 5).ToList();
 
-        var nested = steps.OfType<AccessStep.JoinEmit>().Where(e => e.Source == 3).ToList();
+        var nested = steps.OfType<AccessStep.JoinEmit>().Where(e => e.NodeId == 3).ToList();
 
         // The nested join pairs 105 to 110, and every one of those is inside the outer build's range
         Assert.Equal(6, nested.Count);
         Assert.Equal(6, emits.Count);
 
-        Assert.Contains(steps, s => s.Source == 1);
-        Assert.Contains(steps, s => s.Source == 2);
+        Assert.Contains(steps, s => s.NodeId == 1);
+        Assert.Contains(steps, s => s.NodeId == 2);
     }
 
     private static JoinInputDefinition SideInput(AllocationUnit unit, SeekBounds bounds, int nodeId)
         => new(new RangeDefinition(unit.AllocationUnitId, unit.RootPage, [bounds]) { NodeId = nodeId }, ["Id"]);
 
-    private static async Task<(List<AccessStep> Steps, List<(long Build, long Probe)> Pairs)> RunAsync(HashMatchStepIterator service)
+    private static HashMatchDefinition Definition(NumberTableContext context)
+        => new(SideInput(context.Unit, Between(100, 110), 0), SideInput(context.Unit, Between(105, 120), 1)) { NodeId = 2 };
+
+    private static Task<(List<AccessStep> Steps, List<(long Build, long Probe)> Pairs)> RunAsync(NumberTableContext context,
+                                                                                                 IteratorDefinition definition)
+        => RunAsync(new IteratorStepper(context.Service, definition, new IteratorContext(context.Database)));
+
+    private static async Task<(List<AccessStep> Steps, List<(long Build, long Probe)> Pairs)> RunAsync(IteratorStepper stepper)
     {
+        await using var _ = stepper;
+
         var steps = new List<AccessStep>();
 
         var pairs = new List<(long Build, long Probe)>();
 
-        while (await service.StepNextAsync(CancellationToken.None) is { } step)
+        while (await stepper.StepNextAsync(CancellationToken.None) is { } step)
         {
             steps.Add(step);
 
@@ -543,14 +489,7 @@ public class HashMatchStepIteratorTests(ITestOutputHelper testOutput)
     {
         var context = await LoadNumberTableAsync();
 
-        await context.Service.OpenAsync(new IteratorContext(context.Database),
-                                        new HashMatchDefinition(SideInput(context.Unit, Between(100, 110), 0), SideInput(context.Unit, Between(105, 120), 1))
-        {
-            JoinType = joinType
-        },
-                                        CancellationToken.None);
-
-        var (steps, _) = await RunAsync(context.Service);
+        var (steps, _) = await RunAsync(context, Definition(context) with { JoinType = joinType });
 
         return [.. steps.OfType<AccessStep.JoinEmit>()];
     }

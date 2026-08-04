@@ -10,5 +10,5 @@ namespace InternalsViewer.Execution.Interfaces;
 /// </remarks>
 public interface IIteratorFactory
 {
-    IStepIterator Create(IteratorDefinition definition);
+    IIterator Create(IteratorDefinition definition);
 }

@@ -17,6 +17,8 @@ public abstract record IteratorDefinition
     /// </summary>
     public int NodeId { get; init; }
 
+    public IReadOnlyList<OutputColumn> OutputList { get; init; } = [];
+
     /// <summary>
     /// A predicate applied to rows the iterator produces, after whatever access path it uses has found them
     /// </summary>

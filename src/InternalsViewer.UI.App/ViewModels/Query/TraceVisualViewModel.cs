@@ -232,7 +232,7 @@ public sealed partial class TraceVisualViewModel(TraceVisualKind kind,
 
     public void Apply(AccessStep step)
     {
-        if (step.Source != Source)
+        if (step.NodeId != Source)
         {
             return;
         }
@@ -320,7 +320,7 @@ public sealed partial class TraceVisualViewModel(TraceVisualKind kind,
 
         foreach (var step in steps)
         {
-            if (step.Source != Source)
+            if (step.NodeId != Source)
             {
                 continue;
             }

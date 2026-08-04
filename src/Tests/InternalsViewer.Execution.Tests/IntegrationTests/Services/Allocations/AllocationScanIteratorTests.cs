@@ -11,10 +11,11 @@ using InternalsViewer.Internals.Tests.Helpers;
 
 using InternalsViewer.Execution.AccessPaths.Definitions;
 using InternalsViewer.Execution.Iterators.DataAccess;
+using InternalsViewer.Execution.Iterators.Stepping;
 
 namespace InternalsViewer.Execution.Tests.IntegrationTests.Services.Allocations;
 
-public class AllocationStepIteratorTests(ITestOutputHelper testOutput)
+public class AllocationScanIteratorTests(ITestOutputHelper testOutput)
 {
     public ITestOutputHelper TestOutput { get; } = testOutput;
 
@@ -27,11 +28,7 @@ public class AllocationStepIteratorTests(ITestOutputHelper testOutput)
     {
         var context = await LoadNumberTableAsync();
 
-        await context.Service.OpenAsync(new IteratorContext(context.Database),
-                                        new AllocationScanDefinition(context.Unit.FirstIamPage),
-                                        CancellationToken.None);
-
-        var (steps, values) = await RunAsync(context.Service);
+        var (steps, values) = await RunAsync(context, new AllocationScanDefinition(context.Unit.FirstIamPage));
 
         Assert.Equal(NumberTableRowCount, values.Count);
         Assert.Equal(Enumerable.Range(1, NumberTableRowCount).Select(v => (long)v), values.Order());
@@ -61,11 +58,7 @@ public class AllocationStepIteratorTests(ITestOutputHelper testOutput)
     {
         var context = await LoadNumberTableAsync();
 
-        await context.Service.OpenAsync(new IteratorContext(context.Database),
-                                        new AllocationScanDefinition(context.Unit.FirstIamPage),
-                                        CancellationToken.None);
-
-        var (steps, _) = await RunAsync(context.Service);
+        var (steps, _) = await RunAsync(context, new AllocationScanDefinition(context.Unit.FirstIamPage));
 
         var skipped = steps.OfType<AccessStep.PageSkipped>().ToList();
 
@@ -95,14 +88,10 @@ public class AllocationStepIteratorTests(ITestOutputHelper testOutput)
             ComparisonOperator.Equal,
             new AccessExpression.Constant(AccessValue.FromInteger(SqlDbType.Int, 0)));
 
-        await context.Service.OpenAsync(new IteratorContext(context.Database),
-                                        new AllocationScanDefinition(context.Unit.FirstIamPage)
+        var (steps, values) = await RunAsync(context, new AllocationScanDefinition(context.Unit.FirstIamPage)
         {
             Residual = residual
-        },
-                                        CancellationToken.None);
-
-        var (steps, values) = await RunAsync(context.Service);
+        });
 
         Assert.Equal(NumberTableRowCount / 2, values.Count);
         Assert.All(values, v => Assert.Equal(0, v % 2));
@@ -118,14 +107,10 @@ public class AllocationStepIteratorTests(ITestOutputHelper testOutput)
     {
         var context = await LoadNumberTableAsync();
 
-        await context.Service.OpenAsync(new IteratorContext(context.Database),
-                                        new AllocationScanDefinition(context.Unit.FirstIamPage)
+        var (steps, values) = await RunAsync(context, new AllocationScanDefinition(context.Unit.FirstIamPage)
         {
             RowGoal = 25
-        },
-                                        CancellationToken.None);
-
-        var (steps, values) = await RunAsync(context.Service);
+        });
 
         Assert.Equal(25, values.Count);
 
@@ -135,7 +120,7 @@ public class AllocationStepIteratorTests(ITestOutputHelper testOutput)
         Assert.Equal(25, stopped.Counters.RowsOutput);
     }
 
-    private sealed record NumberTableContext(DatabaseSource Database, AllocationStepIterator Service, AllocationUnit Unit);
+    private sealed record NumberTableContext(DatabaseSource Database, AllocationScanIterator Service, AllocationUnit Unit);
 
     private async Task<NumberTableContext> LoadNumberTableAsync()
     {
@@ -149,16 +134,19 @@ public class AllocationStepIteratorTests(ITestOutputHelper testOutput)
 
         var unit = DemoDatabase.Unit(database, DemoDatabase.ClusteredTable, DemoDatabase.ClusteredIndex);
 
-        return new NumberTableContext(database, serviceHost.GetService<AllocationStepIterator>(), unit);
+        return new NumberTableContext(database, serviceHost.GetService<AllocationScanIterator>(), unit);
     }
 
-    private static async Task<(List<AccessStep> Steps, List<long> Values)> RunAsync(AllocationStepIterator service)
+    private static async Task<(List<AccessStep> Steps, List<long> Values)> RunAsync(NumberTableContext context,
+                                                                                    IteratorDefinition definition)
     {
+        await using var stepper = new IteratorStepper(context.Service, definition, new IteratorContext(context.Database));
+
         var steps = new List<AccessStep>();
 
         var values = new List<long>();
 
-        while (await service.StepNextAsync(CancellationToken.None) is { } step)
+        while (await stepper.StepNextAsync(CancellationToken.None) is { } step)
         {
             steps.Add(step);
 

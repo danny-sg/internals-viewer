@@ -3,12 +3,11 @@ using InternalsViewer.Execution.AccessPaths.Predicates;
 using InternalsViewer.Execution.AccessPaths.Results;
 using InternalsViewer.Execution.AccessPaths.Search;
 using InternalsViewer.Execution.Executors;
-using InternalsViewer.Execution.Interfaces;
 using InternalsViewer.Execution.Interfaces.Pages;
 using InternalsViewer.Execution.Pages;
+using InternalsViewer.Execution.Records;
 using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Internals.Engine.Allocation.Enums;
-using InternalsViewer.Internals.Engine.Database;
 using InternalsViewer.Internals.Engine.Database.Enums;
 using InternalsViewer.Internals.Engine.Pages;
 using InternalsViewer.Internals.Interfaces.Engine;
@@ -20,7 +19,7 @@ namespace InternalsViewer.Execution.Iterators.DataAccess;
 /// <summary>
 /// Drives an allocation order scan, following the IAM chain and reading allocated pages
 /// </summary>
-public sealed class AllocationStepIterator(IPageService pageService, IRecordService recordService) : IStepIterator
+public sealed class AllocationScanIterator(IPageService pageService, IRecordService recordService) : IteratorBase
 {
     private readonly byte[] _pageBuffer = new byte[PageData.Size];
 
@@ -40,29 +39,15 @@ public sealed class AllocationStepIterator(IPageService pageService, IRecordServ
 
     private int _pfsInterval;
 
-    public int IteratorId { get; set; }
+    public override PageAddress? CurrentPageAddress => CurrentPage?.PageAddress;
 
-    public IReadOnlyList<AccessStep> History => TakenSteps;
+    public override AccessStrategy? Strategy => CurrentStrategy;
 
-    public AccessStep? Current => TakenSteps.Count == 0 ? null : TakenSteps[^1];
-
-    public bool IsComplete { get; private set; }
-
-    public PageAddress? CurrentPageAddress => CurrentPage?.PageAddress;
-
-    public AccessStrategy? Strategy { get; private set; }
-
-    private IPageService PageService { get; } = pageService;
-
-    private IRecordService RecordService { get; } = recordService;
-
-    private DatabaseSource Database { get; set; } = null!;
+    private AccessStrategy? CurrentStrategy { get; set; }
 
     private AccessPredicate? Residual { get; set; }
 
     private long? RowGoal { get; set; }
-
-    private EvaluationContext EvaluationContext { get; set; } = EvaluationContext.Now;
 
     private IamPage? CurrentIam { get; set; }
 
@@ -72,62 +57,42 @@ public sealed class AllocationStepIterator(IPageService pageService, IRecordServ
 
     private AccessCounters Counters { get; set; }
 
-    private List<AccessStep> TakenSteps { get; } = [];
-
-    public async Task OpenAsync(IteratorContext context, IteratorDefinition definition, CancellationToken cancellationToken)
+    public override async Task OpenAsync(IteratorContext context, IteratorDefinition definition, CancellationToken cancellationToken)
     {
         var scan = definition.Expect<AllocationScanDefinition>();
 
-        Database = context.Database;
-        Residual = scan.Residual;
-        RowGoal = scan.RowGoal;
-        EvaluationContext = context.EvaluationContext;
+        Prepare(context, definition);
 
-        var rowGoalReason = scan.RowGoal is { } goal
-            ? $"A TOP above this operator stops requesting rows once {goal:N0} have been returned, " +
+        Residual = scan.Residual;
+        RowGoal = scan.RowGoal is { } goal ? Counters.RowsOutput + goal : null;
+
+        var rowGoalReason = scan.RowGoal is { } planGoal
+            ? $"A TOP above this operator stops requesting rows once {planGoal:N0} have been returned, " +
               "so the scan ends after that many rows have been output."
             : null;
 
-        Strategy = AccessStrategyBuilder.BuildAllocationScan(scan.Residual,
-                                                             scan.RowGoal,
-                                                             rowGoalReason,
-                                                             scan.HasUntranslatedResidual) with
+        CurrentStrategy = AccessStrategyBuilder.BuildAllocationScan(scan.Residual,
+                                                                    scan.RowGoal,
+                                                                    rowGoalReason,
+                                                                    scan.HasUntranslatedResidual) with
         {
             EntryPoint = scan.FirstIamPage,
             EntryPointSource = "sys.sysallocunits.pgfirstiam"
         };
 
-        Counters = default;
-        IsComplete = false;
         CurrentPage = null;
+        CurrentPageSteps?.Dispose();
         CurrentPageSteps = null;
 
         _pfsFileId = -1;
         _pfsInterval = -1;
 
         _pending.Clear();
-        TakenSteps.Clear();
 
         await LoadIamAsync(scan.FirstIamPage, cancellationToken);
     }
 
-    /// <summary>
-    /// A row this walk read, which it reports as its own only when the step came from here
-    /// </summary>
-    public IRecord? GetRow(AccessStep step)
-        => step.Source == IteratorId && step is AccessStep.Row { EmittedRecord: { } record } ? record : null;
-
-    public Task CloseAsync()
-    {
-        CurrentPageSteps?.Dispose();
-        CurrentPageSteps = null;
-
-        IsComplete = true;
-
-        return Task.CompletedTask;
-    }
-
-    public async Task<AccessStep?> StepNextAsync(CancellationToken cancellationToken)
+    public override async Task<IRecord?> GetRowAsync(CancellationToken cancellationToken)
     {
         if (IsComplete)
         {
@@ -140,16 +105,37 @@ public sealed class AllocationStepIterator(IPageService pageService, IRecordServ
 
             if (_pending.Count > 0)
             {
-                return Take(_pending.Dequeue());
+                if (await TakeAsync(_pending.Dequeue(), cancellationToken) is { } row)
+                {
+                    return row;
+                }
+
+                if (IsComplete)
+                {
+                    return null;
+                }
+
+                continue;
             }
 
             if (CurrentPageSteps is not null)
             {
                 if (CurrentPageSteps.MoveNext())
                 {
-                    return Take(CurrentPageSteps.Current);
+                    if (await TakeAsync(CurrentPageSteps.Current, cancellationToken) is { } row)
+                    {
+                        return row;
+                    }
+
+                    if (IsComplete)
+                    {
+                        return null;
+                    }
+
+                    continue;
                 }
 
+                CurrentPageSteps.Dispose();
                 CurrentPageSteps = null;
                 CurrentPage = null;
             }
@@ -158,20 +144,33 @@ public sealed class AllocationStepIterator(IPageService pageService, IRecordServ
         }
     }
 
-    private AccessStep Take(AccessStep accessStep)
+    public override Task CloseAsync()
     {
-        var step = accessStep with { Source = IteratorId };
+        CurrentPageSteps?.Dispose();
+        CurrentPageSteps = null;
 
-        TakenSteps.Add(step);
+        return base.CloseAsync();
+    }
 
+    private async ValueTask<IRecord?> TakeAsync(AccessStep step, CancellationToken cancellationToken)
+    {
         Counters = step.Counters;
+
+        await EmitAsync(step, cancellationToken);
+
+        if (step is AccessStep.Row { EmittedRecord: { } record })
+        {
+            CurrentRow = ProjectedRecord.Project(record, OutputList);
+
+            return CurrentRow;
+        }
 
         if (step is AccessStep.Stopped)
         {
-            IsComplete = true;
+            CurrentRow = null;
         }
 
-        return step;
+        return null;
     }
 
     private async Task AdvanceAsync(CancellationToken cancellationToken)
@@ -273,7 +272,7 @@ public sealed class AllocationStepIterator(IPageService pageService, IRecordServ
 
         if (next == PageAddress.Empty)
         {
-            _pending.Enqueue(new AccessStep.Stopped(StopReason.AllocationExhausted) { Counters = Counters });
+            _pending.Enqueue(new AccessStep.Stopped(AccessPaths.Results.StopReason.AllocationExhausted) { Counters = Counters });
 
             return;
         }
@@ -302,7 +301,9 @@ public sealed class AllocationStepIterator(IPageService pageService, IRecordServ
             });
         }
 
-        var status = Database.Pfs.TryGetValue(address.FileId, out var pfs) ? pfs.GetPageStatus(address.PageId) : PfsByte.Unknown;
+        var status = Context.Database.Pfs.TryGetValue(address.FileId, out var pfs)
+            ? pfs.GetPageStatus(address.PageId)
+            : PfsByte.Unknown;
 
         _pending.Enqueue(new AccessStep.PfsCheck(address, status.IsAllocated)
         {
@@ -317,18 +318,18 @@ public sealed class AllocationStepIterator(IPageService pageService, IRecordServ
             return;
         }
 
-        var page = await PageService.GetPage(Database, address, _pageBuffer, cancellationToken);
+        var page = await pageService.GetPage(Context.Database, address, _pageBuffer, cancellationToken);
 
         switch (page)
         {
             case DataPage dataPage:
-                CurrentPage = new HeapPageAccessor(dataPage, RecordService);
+                CurrentPage = new HeapPageAccessor(dataPage, recordService);
 
                 CurrentPageSteps = AllocationScanExecutor.Execute(CurrentPage,
                                                                   Residual,
                                                                   RowGoal,
                                                                   Counters,
-                                                                  evaluationContext: EvaluationContext,
+                                                                  evaluationContext: Context.EvaluationContext,
                                                                   isHeap: dataPage.AllocationUnit.IndexType == IndexType.Heap)
                                                          .GetEnumerator();
                 break;
@@ -370,7 +371,7 @@ public sealed class AllocationStepIterator(IPageService pageService, IRecordServ
 
     private async Task LoadIamAsync(PageAddress address, CancellationToken cancellationToken)
     {
-        var page = await PageService.GetPage(Database, address, _pageBuffer, cancellationToken);
+        var page = await pageService.GetPage(Context.Database, address, _pageBuffer, cancellationToken);
 
         if (page is not IamPage iam)
         {
@@ -396,7 +397,7 @@ public sealed class AllocationStepIterator(IPageService pageService, IRecordServ
 
     private static PageAddress GetExtentPage(IamPage iam, int extent, int pageInExtent)
     {
-        return new PageAddress(iam.StartPage.FileId, iam.StartPage.PageId + extent * 8 + pageInExtent);
+        return new PageAddress(iam.StartPage.FileId, iam.StartPage.PageId + (extent * 8) + pageInExtent);
     }
 
     private static bool IsExtentAllocated(IamPage iam, int extent)

@@ -37,8 +37,4 @@
     <ItemGroup>
         <InternalsVisibleTo Include="$(AssemblyName).Tests" />
     </ItemGroup>
-
-    <ItemGroup>
-      <Folder Include="Iterators\Allocations\" />
-    </ItemGroup>
 </Project>

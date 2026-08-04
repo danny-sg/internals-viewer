@@ -6,6 +6,7 @@ using InternalsViewer.Execution.AccessPaths.Joins;
 using InternalsViewer.Execution.AccessPaths.Search;
 using InternalsViewer.Execution.AccessPaths.Values;
 using InternalsViewer.Execution.Iterators.Joins;
+using InternalsViewer.Execution.Iterators.Stepping;
 using InternalsViewer.Internals.Connections.File;
 using InternalsViewer.Internals.Engine.Database;
 using InternalsViewer.Internals.Engine.Database.Enums;
@@ -26,13 +27,11 @@ public class MergeJoinBufferTests(ITestOutputHelper testOutput)
     {
         var context = await LoadAsync();
 
-        await context.Service.OpenAsync(new IteratorContext(context.Database),
-                                        new MergeJoinDefinition(SideInput(context.Unit, Between(500, 505), 0), SideInput(context.Unit, Between(500, 505), 1)),
-                                        CancellationToken.None);
+        await using var stepper = Start(context, Between(500, 505), Between(500, 505));
 
         var pairs = 0;
 
-        while (await context.Service.StepNextAsync(CancellationToken.None) is { } step)
+        while (await stepper.StepNextAsync(CancellationToken.None) is { } step)
         {
             if (step is not AccessStep.JoinEmit emit)
             {
@@ -68,11 +67,9 @@ public class MergeJoinBufferTests(ITestOutputHelper testOutput)
     {
         var context = await LoadAsync();
 
-        await context.Service.OpenAsync(new IteratorContext(context.Database),
-                                        new MergeJoinDefinition(SideInput(context.Unit, Between(100, 110), 0), SideInput(context.Unit, Between(105, 120), 1)),
-                                        CancellationToken.None);
+        await using var stepper = Start(context, Between(100, 110), Between(105, 120));
 
-        while (await context.Service.StepNextAsync(CancellationToken.None) is { } step)
+        while (await stepper.StepNextAsync(CancellationToken.None) is { } step)
         {
             if (step is AccessStep.JoinEmit)
             {
@@ -91,13 +88,11 @@ public class MergeJoinBufferTests(ITestOutputHelper testOutput)
     {
         var context = await LoadAsync();
 
-        await context.Service.OpenAsync(new IteratorContext(context.Database),
-                                        new MergeJoinDefinition(SideInput(context.Unit, Between(100, 110), 0), SideInput(context.Unit, Between(105, 120), 1)),
-                                        CancellationToken.None);
+        await using var stepper = Start(context, Between(100, 110), Between(105, 120));
 
         var outerAtFirstPair = new List<long>();
 
-        while (await context.Service.StepNextAsync(CancellationToken.None) is { } step)
+        while (await stepper.StepNextAsync(CancellationToken.None) is { } step)
         {
             if (step is AccessStep.JoinEmit)
             {
@@ -116,13 +111,11 @@ public class MergeJoinBufferTests(ITestOutputHelper testOutput)
     {
         var context = await LoadAsync();
 
-        await context.Service.OpenAsync(new IteratorContext(context.Database),
-                                        new MergeJoinDefinition(SideInput(context.Unit, Between(500, 505), 0), SideInput(context.Unit, Between(500, 505), 1)),
-                                        CancellationToken.None);
+        await using var stepper = Start(context, Between(500, 505), Between(500, 505));
 
         var seenPair = false;
 
-        while (await context.Service.StepNextAsync(CancellationToken.None) is { } step)
+        while (await stepper.StepNextAsync(CancellationToken.None) is { } step)
         {
             if (step is AccessStep.JoinEmit)
             {
@@ -149,11 +142,9 @@ public class MergeJoinBufferTests(ITestOutputHelper testOutput)
     {
         var context = await LoadAsync();
 
-        await context.Service.OpenAsync(new IteratorContext(context.Database),
-                                        new MergeJoinDefinition(SideInput(context.Unit, Between(100, 110), 0), SideInput(context.Unit, Between(105, 120), 1)),
-                                        CancellationToken.None);
+        await using var stepper = Start(context, Between(100, 110), Between(105, 120));
 
-        while (await context.Service.StepNextAsync(CancellationToken.None) is { } step)
+        while (await stepper.StepNextAsync(CancellationToken.None) is { } step)
         {
             if (step is AccessStep.MergeCompare { Comparison: < 0 })
             {
@@ -171,38 +162,26 @@ public class MergeJoinBufferTests(ITestOutputHelper testOutput)
     }
 
     [RequiresFileFact(MdfPath)]
-    public async Task The_Row_That_Ends_A_Matched_Group_Is_Marked_As_Read_Ahead()
+    public async Task The_Row_That_Ends_A_Matched_Group_Is_Left_Pending()
     {
         var context = await LoadAsync();
 
-        await context.Service.OpenAsync(new IteratorContext(context.Database),
-                                        new MergeJoinDefinition(SideInput(context.Unit, Between(500, 505), 0), SideInput(context.Unit, Between(500, 505), 1)),
-                                        CancellationToken.None);
+        await using var stepper = Start(context, Between(500, 505), Between(500, 505));
 
-        var seenMatch = false;
-
-        while (await context.Service.StepNextAsync(CancellationToken.None) is { } step)
+        while (await stepper.StepNextAsync(CancellationToken.None) is { } step)
         {
-            if (step is AccessStep.MergeCompare { Comparison: 0 })
+            if (step is AccessStep.JoinEmit)
             {
-                seenMatch = true;
-
-                continue;
-            }
-
-            if (seenMatch && step is AccessStep.Row { EmittedRecord: not null, Source: MergeJoinStepIterator.InnerSource } row)
-            {
-                // Reading past the group is what proves it ended, so that row belongs to the next comparison
-                Assert.True(row.IsReadAhead);
+                Assert.Single(context.Service.Inner.Buffer, r => r.State == JoinRowState.Pending);
 
                 return;
             }
         }
 
-        Assert.Fail("No inner row followed a match");
+        Assert.Fail("No pairing was made");
     }
 
-    private sealed record Context(DatabaseSource Database, MergeJoinStepIterator Service, AllocationUnit Unit);
+    private sealed record Context(DatabaseSource Database, MergeJoinIterator Service, AllocationUnit Unit);
 
     private static async Task<Context> LoadAsync()
     {
@@ -215,7 +194,14 @@ public class MergeJoinBufferTests(ITestOutputHelper testOutput)
 
         var unit = DemoDatabase.Unit(database, DemoDatabase.ClusteredTable, DemoDatabase.ClusteredIndex);
 
-        return new Context(database, serviceHost.GetService<MergeJoinStepIterator>(), unit);
+        return new Context(database, serviceHost.GetService<MergeJoinIterator>(), unit);
+    }
+
+    private static IteratorStepper Start(Context context, SeekBounds outer, SeekBounds inner)
+    {
+        var definition = new MergeJoinDefinition(SideInput(context.Unit, outer, 0), SideInput(context.Unit, inner, 1)) { NodeId = 2 };
+
+        return new IteratorStepper(context.Service, definition, new IteratorContext(context.Database));
     }
 
     private static JoinInputDefinition SideInput(AllocationUnit unit, SeekBounds bounds, int nodeId)

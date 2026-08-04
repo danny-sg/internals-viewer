@@ -10,11 +10,12 @@ using InternalsViewer.Internals.Engine.Database;
 using InternalsViewer.Internals.Engine.Database.Enums;
 using InternalsViewer.Internals.Interfaces.Services.Loaders.Engine;
 using InternalsViewer.Execution.Iterators.Joins;
+using InternalsViewer.Execution.Iterators.Stepping;
 using InternalsViewer.Internals.Tests.Helpers;
 
 namespace InternalsViewer.Execution.Tests.IntegrationTests.Services.Joins;
 
-public class MergeJoinStepIteratorTests(ITestOutputHelper testOutput)
+public class MergeJoinIteratorTests(ITestOutputHelper testOutput)
 {
     public ITestOutputHelper TestOutput { get; } = testOutput;
 
@@ -25,28 +26,25 @@ public class MergeJoinStepIteratorTests(ITestOutputHelper testOutput)
     {
         var context = await LoadNumberTableAsync();
 
-        await context.Service.OpenAsync(new IteratorContext(context.Database),
-                                        new MergeJoinDefinition(SideInput(context.Unit, Between(100, 110), 0), SideInput(context.Unit, Between(105, 120), 1)),
-                                        CancellationToken.None);
+        var definition = new MergeJoinDefinition(SideInput(context.Unit, Between(100, 110), 0),
+                                                 SideInput(context.Unit, Between(105, 120), 1)) { NodeId = 2 };
 
-        var (steps, pairs) = await RunAsync(context.Service);
+        var (steps, pairs) = await RunAsync(context, definition);
 
         Assert.Equal(6, pairs.Count);
         Assert.Equal(6, context.Service.PairCount);
         Assert.Equal(Enumerable.Range(105, 6).Select(v => ((long)v, (long)v)), pairs);
 
-        var outerRows = steps.Count(s => s is AccessStep.Row { EmittedRecord: not null }
-                                         && s.Source == MergeJoinStepIterator.OuterSource);
+        var outerRows = steps.Count(s => s is AccessStep.Row { EmittedRecord: not null, NodeId: 0 });
 
-        var innerRows = steps.Count(s => s is AccessStep.Row { EmittedRecord: not null }
-                                         && s.Source == MergeJoinStepIterator.InnerSource);
+        var innerRows = steps.Count(s => s is AccessStep.Row { EmittedRecord: not null, NodeId: 1 });
 
         Assert.Equal(11, outerRows);
         Assert.Equal(7, innerRows);
 
         var stopped = Assert.IsType<AccessStep.Stopped>(steps[^1]);
 
-        Assert.Equal(MergeJoinStepIterator.JoinSource, stopped.Source);
+        Assert.Equal(2, stopped.NodeId);
         Assert.True(context.Service.IsComplete);
     }
 
@@ -55,11 +53,10 @@ public class MergeJoinStepIteratorTests(ITestOutputHelper testOutput)
     {
         var context = await LoadNumberTableAsync();
 
-        await context.Service.OpenAsync(new IteratorContext(context.Database),
-                                        new MergeJoinDefinition(SideInput(context.Unit, Between(100, 105), 0), SideInput(context.Unit, Between(200, 205), 1)),
-                                        CancellationToken.None);
+        var definition = new MergeJoinDefinition(SideInput(context.Unit, Between(100, 105), 0),
+                                                 SideInput(context.Unit, Between(200, 205), 1)) { NodeId = 2 };
 
-        var (steps, pairs) = await RunAsync(context.Service);
+        var (steps, pairs) = await RunAsync(context, definition);
 
         Assert.Empty(pairs);
 
@@ -76,11 +73,10 @@ public class MergeJoinStepIteratorTests(ITestOutputHelper testOutput)
     {
         var context = await LoadNumberTableAsync();
 
-        await context.Service.OpenAsync(new IteratorContext(context.Database),
-                                        new MergeJoinDefinition(SideInput(context.Unit, Between(500, 520), 0), SideInput(context.Unit, Between(500, 520), 1)),
-                                        CancellationToken.None);
+        var definition = new MergeJoinDefinition(SideInput(context.Unit, Between(500, 520), 0),
+                                                 SideInput(context.Unit, Between(500, 520), 1)) { NodeId = 2 };
 
-        var (steps, pairs) = await RunAsync(context.Service);
+        var (steps, pairs) = await RunAsync(context, definition);
 
         Assert.Equal(21, pairs.Count);
         Assert.All(pairs, p => Assert.Equal(p.Outer, p.Inner));
@@ -95,15 +91,14 @@ public class MergeJoinStepIteratorTests(ITestOutputHelper testOutput)
     {
         var context = await LoadNumberTableAsync();
 
-        await context.Service.OpenAsync(new IteratorContext(context.Database),
-                                        new MergeJoinDefinition(SideInput(context.Unit, Between(100, 110), 0), SideInput(context.Unit, Between(105, 120), 1)),
-                                        CancellationToken.None);
+        var definition = new MergeJoinDefinition(SideInput(context.Unit, Between(100, 110), 0),
+                                                 SideInput(context.Unit, Between(105, 120), 1)) { NodeId = 2 };
 
-        var (steps, _) = await RunAsync(context.Service);
+        var (steps, _) = await RunAsync(context, definition);
 
-        Assert.Contains(steps, s => s.Source == MergeJoinStepIterator.OuterSource);
-        Assert.Contains(steps, s => s.Source == MergeJoinStepIterator.InnerSource);
-        Assert.Contains(steps, s => s.Source == MergeJoinStepIterator.JoinSource);
+        Assert.Contains(steps, s => s.NodeId == 0);
+        Assert.Contains(steps, s => s.NodeId == 1);
+        Assert.Contains(steps, s => s.NodeId == 2);
 
         var pagesRead = steps.Select(s => s.Counters.PagesRead).ToList();
 
@@ -112,7 +107,7 @@ public class MergeJoinStepIteratorTests(ITestOutputHelper testOutput)
         Assert.Equal(steps[^1].Counters.RowsOutput, steps.Max(s => s.Counters.RowsOutput));
     }
 
-    private sealed record NumberTableContext(DatabaseSource Database, MergeJoinStepIterator Service, AllocationUnit Unit);
+    private sealed record NumberTableContext(DatabaseSource Database, MergeJoinIterator Service, AllocationUnit Unit);
 
     private async Task<NumberTableContext> LoadNumberTableAsync()
     {
@@ -126,19 +121,22 @@ public class MergeJoinStepIteratorTests(ITestOutputHelper testOutput)
 
         var unit = DemoDatabase.Unit(database, DemoDatabase.ClusteredTable, DemoDatabase.ClusteredIndex);
 
-        return new NumberTableContext(database, serviceHost.GetService<MergeJoinStepIterator>(), unit);
+        return new NumberTableContext(database, serviceHost.GetService<MergeJoinIterator>(), unit);
     }
 
     private static JoinInputDefinition SideInput(AllocationUnit unit, SeekBounds bounds, int nodeId)
         => new(new RangeDefinition(unit.AllocationUnitId, unit.RootPage, [bounds]) { NodeId = nodeId }, ["Id"]);
 
-    private static async Task<(List<AccessStep> Steps, List<(long Outer, long Inner)> Pairs)> RunAsync(MergeJoinStepIterator service)
+    private static async Task<(List<AccessStep> Steps, List<(long Outer, long Inner)> Pairs)> RunAsync(NumberTableContext context,
+                                                                                                       IteratorDefinition definition)
     {
+        await using var stepper = new IteratorStepper(context.Service, definition, new IteratorContext(context.Database));
+
         var steps = new List<AccessStep>();
 
         var pairs = new List<(long Outer, long Inner)>();
 
-        while (await service.StepNextAsync(CancellationToken.None) is { } step)
+        while (await stepper.StepNextAsync(CancellationToken.None) is { } step)
         {
             steps.Add(step);
 

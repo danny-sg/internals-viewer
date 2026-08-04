@@ -68,7 +68,7 @@ public sealed partial class AccessStepsControl : UserControl
             return;
         }
 
-        var source = step is AccessStep.Rebind ? -1 : step.Source;
+        var source = step is AccessStep.Rebind ? -1 : step.NodeId;
 
         var brush = source switch
         {

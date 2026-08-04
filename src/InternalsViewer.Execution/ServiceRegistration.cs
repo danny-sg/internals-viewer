@@ -15,12 +15,12 @@ public static class ServiceRegistration
     {
         services.AddSingleton<IIteratorFactory, IteratorFactory>();
 
-        services.AddTransient<IndexStepIterator>();
-        services.AddTransient<AllocationStepIterator>();
-        services.AddTransient<NestedLoopsStepIterator>();
-        services.AddTransient<MergeJoinStepIterator>();
-        services.AddTransient<HashMatchStepIterator>();
-        services.AddTransient<HeapFetchStepIterator>();
+        services.AddTransient<IndexIterator>();
+        services.AddTransient<AllocationScanIterator>();
+        services.AddTransient<NestedLoopsIterator>();
+        services.AddTransient<MergeJoinIterator>();
+        services.AddTransient<HashMatchIterator>();
+        services.AddTransient<HeapFetchIterator>();
         services.AddTransient<TopIterator>();
     }
 }

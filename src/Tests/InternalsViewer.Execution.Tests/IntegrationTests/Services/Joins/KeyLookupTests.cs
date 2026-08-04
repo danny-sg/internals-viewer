@@ -6,6 +6,7 @@ using InternalsViewer.Execution.AccessPaths.Results;
 using InternalsViewer.Execution.AccessPaths.Search;
 using InternalsViewer.Execution.AccessPaths.Values;
 using InternalsViewer.Execution.Iterators.Joins;
+using InternalsViewer.Execution.Iterators.Stepping;
 using InternalsViewer.Internals.Engine.Database;
 using InternalsViewer.Internals.Interfaces.Engine;
 using InternalsViewer.Internals.Tests.Helpers;
@@ -25,9 +26,7 @@ public class KeyLookupTests(ITestOutputHelper testOutput)
     {
         var context = await LoadAsync();
 
-        await StartAsync(context, TextFieldEquals("Clustered table row 500"));
-
-        var (steps, emits) = await RunAsync(context.Service);
+        var (steps, emits) = await RunAsync(context, Definition(context, TextFieldEquals("Clustered table row 500")));
 
         var emit = Assert.Single(emits);
 
@@ -48,12 +47,9 @@ public class KeyLookupTests(ITestOutputHelper testOutput)
     {
         var context = await LoadAsync();
 
-        await StartAsync(context, TextFieldBetween("Clustered table row 5000", "Clustered table row 5099"));
+        var (steps, emits) = await RunAsync(context, Definition(context, TextFieldBetween("Clustered table row 5000", "Clustered table row 5099")));
 
-        var (steps, emits) = await RunAsync(context.Service);
-
-        var outerRows = steps.Count(s => s is AccessStep.Row { EmittedRecord: not null }
-                                         && s.Source == NestedLoopsStepIterator.OuterSource);
+        var outerRows = steps.Count(s => s is AccessStep.Row { EmittedRecord: not null, NodeId: 0 });
 
         Assert.True(outerRows > 1, "The range should cover several rows of the nonclustered index");
 
@@ -71,7 +67,7 @@ public class KeyLookupTests(ITestOutputHelper testOutput)
             var read = Assert.IsType<AccessStep.ReadPage>(next);
 
             Assert.Equal(context.Inner.RootPage, read.PageAddress);
-            Assert.Equal(NestedLoopsStepIterator.InnerSource, read.Source);
+            Assert.Equal(1, read.NodeId);
         }
     }
 
@@ -80,9 +76,7 @@ public class KeyLookupTests(ITestOutputHelper testOutput)
     {
         var context = await LoadAsync();
 
-        await StartAsync(context, TextFieldBetween("Clustered table row 700", "Clustered table row 7099"));
-
-        var (_, emits) = await RunAsync(context.Service);
+        var (_, emits) = await RunAsync(context, Definition(context, TextFieldBetween("Clustered table row 700", "Clustered table row 7099")));
 
         Assert.NotEmpty(emits);
 
@@ -97,9 +91,7 @@ public class KeyLookupTests(ITestOutputHelper testOutput)
     {
         var context = await LoadAsync();
 
-        await StartAsync(context, TextFieldBetween("Clustered table row 900", "Clustered table row 9099"));
-
-        var (steps, emits) = await RunAsync(context.Service);
+        var (steps, emits) = await RunAsync(context, Definition(context, TextFieldBetween("Clustered table row 900", "Clustered table row 9099")));
 
         var lookups = new List<(int Reads, int LeafLinks)>();
 
@@ -119,7 +111,7 @@ public class KeyLookupTests(ITestOutputHelper testOutput)
                 reads = 0;
                 leafLinks = 0;
             }
-            else if (step.Source == NestedLoopsStepIterator.InnerSource)
+            else if (step.NodeId == 1)
             {
                 if (step is AccessStep.ReadPage)
                 {
@@ -146,7 +138,7 @@ public class KeyLookupTests(ITestOutputHelper testOutput)
     }
 
     private sealed record Context(DatabaseSource Database,
-                                  NestedLoopsStepIterator Service,
+                                  NestedLoopsIterator Service,
                                   AllocationUnit Outer,
                                   AllocationUnit Inner);
 
@@ -157,31 +149,32 @@ public class KeyLookupTests(ITestOutputHelper testOutput)
         var database = await DemoDatabase.LoadAsync(serviceHost);
 
         return new Context(database,
-                           serviceHost.GetService<NestedLoopsStepIterator>(),
+                           serviceHost.GetService<NestedLoopsIterator>(),
                            DemoDatabase.Unit(database, DemoDatabase.ClusteredTable, DemoDatabase.TextFieldIndex),
                            DemoDatabase.Unit(database, DemoDatabase.ClusteredTable, DemoDatabase.ClusteredIndex));
     }
 
-    private static async Task StartAsync(Context context, SeekBounds outerBounds)
+    private static NestedLoopsDefinition Definition(Context context, SeekBounds outerBounds)
     {
         var outerInput = new RangeDefinition(context.Outer.AllocationUnitId, context.Outer.RootPage, [outerBounds]) { NodeId = 0 };
 
         var innerInput = new SeekDefinition(context.Inner.AllocationUnitId,
-                                                   context.Inner.RootPage,
-                                                   [new CorrelationBinding("Id", "Id")]) { NodeId = 1 };
+                                            context.Inner.RootPage,
+                                            [new CorrelationBinding("Id", "Id")]) { NodeId = 1 };
 
-        await context.Service.OpenAsync(new IteratorContext(context.Database),
-                                        new NestedLoopsDefinition(outerInput, innerInput),
-                                        CancellationToken.None);
+        return new NestedLoopsDefinition(outerInput, innerInput) { NodeId = 2 };
     }
 
-    private static async Task<(List<AccessStep> Steps, List<AccessStep.JoinEmit> Emits)> RunAsync(NestedLoopsStepIterator service)
+    private static async Task<(List<AccessStep> Steps, List<AccessStep.JoinEmit> Emits)> RunAsync(Context context,
+                                                                                                  IteratorDefinition definition)
     {
+        await using var stepper = new IteratorStepper(context.Service, definition, new IteratorContext(context.Database));
+
         var steps = new List<AccessStep>();
 
         var emits = new List<AccessStep.JoinEmit>();
 
-        while (await service.StepNextAsync(CancellationToken.None) is { } step)
+        while (await stepper.StepNextAsync(CancellationToken.None) is { } step)
         {
             steps.Add(step);
 

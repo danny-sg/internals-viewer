@@ -6,6 +6,8 @@ using InternalsViewer.Execution.AccessPaths.Results;
 using InternalsViewer.Execution.AccessPaths.Search;
 using InternalsViewer.Execution.AccessPaths.Values;
 using InternalsViewer.Execution.Iterators.Joins;
+using InternalsViewer.Execution.Iterators.Stepping;
+using InternalsViewer.Internals.Engine.Database;
 using InternalsViewer.Execution.Tests.Helpers;
 using InternalsViewer.Internals.Tests.Helpers;
 
@@ -28,7 +30,7 @@ public class HashMatchAcrossTablesTests
 
         var database = await DemoDatabase.LoadAsync(serviceHost);
 
-        var service = serviceHost.GetService<HashMatchStepIterator>();
+        var service = serviceHost.GetService<HashMatchIterator>();
 
         var heap = DemoDatabase.Unit(database, DemoDatabase.HeapTable);
 
@@ -44,11 +46,9 @@ public class HashMatchAcrossTablesTests
         },
                                             ["Id"]);
 
-        await service.OpenAsync(new IteratorContext(database),
-                                new HashMatchDefinition(build, probe) { Residual = TextFieldsMatch() },
-                                CancellationToken.None);
+        var definition = new HashMatchDefinition(build, probe) { NodeId = 2, Residual = TextFieldsMatch() };
 
-        var (steps, pairs) = await RunAsync(service);
+        var (steps, pairs) = await RunAsync(service, definition, database);
 
         var keyMatches = steps.OfType<AccessStep.HashCompare>().Where(c => c.IsKeyMatch).ToList();
 
@@ -66,7 +66,7 @@ public class HashMatchAcrossTablesTests
 
         var database = await DemoDatabase.LoadAsync(serviceHost);
 
-        var service = serviceHost.GetService<HashMatchStepIterator>();
+        var service = serviceHost.GetService<HashMatchIterator>();
 
         var heap = DemoDatabase.Unit(database, DemoDatabase.HeapTable);
 
@@ -82,11 +82,7 @@ public class HashMatchAcrossTablesTests
         },
                                             ["Id"]);
 
-        await service.OpenAsync(new IteratorContext(database),
-                                new HashMatchDefinition(build, probe),
-                                CancellationToken.None);
-
-        var (_, pairs) = await RunAsync(service);
+        var (_, pairs) = await RunAsync(service, new HashMatchDefinition(build, probe) { NodeId = 2 }, database);
 
         Assert.Equal(6, pairs.Count);
 
@@ -104,13 +100,17 @@ public class HashMatchAcrossTablesTests
     private static AccessKey Key(int value)
         => AccessKey.Create(AccessValue.FromInteger(SqlDbType.Int, value).WithColumnName("Id"));
 
-    private static async Task<(List<AccessStep> Steps, List<(long Build, long Probe)> Pairs)> RunAsync(HashMatchStepIterator service)
+    private static async Task<(List<AccessStep> Steps, List<(long Build, long Probe)> Pairs)> RunAsync(HashMatchIterator service,
+                                                                                                       IteratorDefinition definition,
+                                                                                                       DatabaseSource database)
     {
+        await using var stepper = new IteratorStepper(service, definition, new IteratorContext(database));
+
         var steps = new List<AccessStep>();
 
         var pairs = new List<(long Build, long Probe)>();
 
-        while (await service.StepNextAsync(CancellationToken.None) is { } step)
+        while (await stepper.StepNextAsync(CancellationToken.None) is { } step)
         {
             steps.Add(step);
 

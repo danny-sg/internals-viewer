@@ -1,3 +1,5 @@
+using InternalsViewer.Execution.AccessPaths.Search;
+
 namespace InternalsViewer.Execution.AccessPaths.Definitions;
 
 /// <summary>
@@ -13,4 +15,6 @@ public sealed record JoinInputDefinition(IteratorDefinition Source, IReadOnlyLis
     /// Rows this side is expected to produce, used to size a hash table before the build reads anything
     /// </summary>
     public long RowEstimate { get; init; }
+
+    public ScanDirection Direction { get; init; } = ScanDirection.Forward;
 }

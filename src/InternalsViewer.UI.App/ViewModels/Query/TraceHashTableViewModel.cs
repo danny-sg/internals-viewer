@@ -4,7 +4,7 @@ using System.Linq;
 using CommunityToolkit.Mvvm.ComponentModel;
 using InternalsViewer.Execution.AccessPaths.Joins.Hash;
 using InternalsViewer.Execution.AccessPaths.Results;
-using InternalsViewer.Execution.Iterators.Joins;
+using InternalsViewer.Execution.Interfaces.Iterators.Joins;
 using InternalsViewer.UI.App.Models.Index;
 using InternalsViewer.UI.App.Models.Trace;
 
@@ -37,7 +37,7 @@ public sealed partial class TraceHashTableViewModel(RecordColumnFilter columnFil
     [ObservableProperty]
     private int _bucketCount = 1 << JoinHash.DefaultBucketBits;
 
-    private HashMatchStepIterator? Iterator { get; set; }
+    private IHashTableIterator? Iterator { get; set; }
 
     private List<HashBucketModel>? _bucketModels;
 
@@ -54,7 +54,7 @@ public sealed partial class TraceHashTableViewModel(RecordColumnFilter columnFil
     /// <summary>
     /// Binds to the iterator that fills this table, which is a new one each time the trace is opened
     /// </summary>
-    public void Attach(HashMatchStepIterator iterator)
+    public void Attach(IHashTableIterator iterator)
     {
         Iterator = iterator;
 
@@ -76,7 +76,7 @@ public sealed partial class TraceHashTableViewModel(RecordColumnFilter columnFil
 
         iterator.SetBucketCount(value);
 
-        Sync(iterator.Current);
+        Sync(null);
     }
 
     /// <summary>
@@ -95,7 +95,7 @@ public sealed partial class TraceHashTableViewModel(RecordColumnFilter columnFil
 
         var table = iterator.Table;
 
-        var isOwnStep = step is not null && step.Source == iterator.IteratorId;
+        var isOwnStep = step is not null && step.NodeId == iterator.NodeId;
 
         if (isOwnStep
             && _bucketModels is { } models

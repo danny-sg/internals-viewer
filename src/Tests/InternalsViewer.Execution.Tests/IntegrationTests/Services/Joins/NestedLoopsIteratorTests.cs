@@ -11,26 +11,31 @@ using InternalsViewer.Internals.Engine.Database.Enums;
 using InternalsViewer.Internals.Interfaces.Services.Loaders.Engine;
 using InternalsViewer.Internals.Services.Indexes;
 using InternalsViewer.Execution.Iterators.Joins;
+using InternalsViewer.Execution.Iterators.Stepping;
 using InternalsViewer.Internals.Tests.Helpers;
 
 namespace InternalsViewer.Execution.Tests.IntegrationTests.Services.Joins;
 
-public class NestedLoopsStepIteratorTests(ITestOutputHelper testOutput)
+public class NestedLoopsIteratorTests(ITestOutputHelper testOutput)
 {
     public ITestOutputHelper TestOutput { get; } = testOutput;
 
     private const string MdfPath = "./IntegrationTests/Test Data/TestDatabase.mdf";
 
-        [RequiresFileFact(MdfPath)]
+    private const int OuterNodeId = 0;
+
+    private const int InnerNodeId = 1;
+
+    private const int JoinNodeId = 2;
+
+    [RequiresFileFact(MdfPath)]
     public async Task Rebinds_Once_Per_Outer_Row()
     {
         var context = await LoadNumberTableAsync();
 
-        await context.Service.OpenAsync(new IteratorContext(context.Database),
-                                        new NestedLoopsDefinition(OuterInput(context.Unit, Between(100, 110)), InnerInput(context.Unit)),
-                                        CancellationToken.None);
+        var definition = Join(OuterInput(context.Unit, Between(100, 110)), InnerInput(context.Unit));
 
-        var (steps, innerValues) = await RunAsync(context.Service);
+        var (steps, innerValues) = await RunAsync(context, definition);
 
         var rebinds = steps.OfType<AccessStep.Rebind>().ToList();
 
@@ -46,11 +51,9 @@ public class NestedLoopsStepIteratorTests(ITestOutputHelper testOutput)
     {
         var context = await LoadNumberTableAsync();
 
-        await context.Service.OpenAsync(new IteratorContext(context.Database),
-                                        new NestedLoopsDefinition(OuterInput(context.Unit, Between(100, 105)), InnerInput(context.Unit)),
-                                        CancellationToken.None);
+        var definition = Join(OuterInput(context.Unit, Between(100, 105)), InnerInput(context.Unit));
 
-        var (steps, _) = await RunAsync(context.Service);
+        var (steps, _) = await RunAsync(context, definition);
 
         foreach (var rebind in steps.OfType<AccessStep.Rebind>())
         {
@@ -59,7 +62,7 @@ public class NestedLoopsStepIteratorTests(ITestOutputHelper testOutput)
             var readPage = Assert.IsType<AccessStep.ReadPage>(next);
 
             Assert.Equal(context.Unit.RootPage, readPage.PageAddress);
-            Assert.Equal(NestedLoopsStepIterator.InnerSource, readPage.Source);
+            Assert.Equal(InnerNodeId, readPage.NodeId);
         }
     }
 
@@ -68,11 +71,9 @@ public class NestedLoopsStepIteratorTests(ITestOutputHelper testOutput)
     {
         var context = await LoadNumberTableAsync();
 
-        await context.Service.OpenAsync(new IteratorContext(context.Database),
-                                        new NestedLoopsDefinition(OuterInput(context.Unit, Between(500, 520)), InnerInput(context.Unit)),
-                                        CancellationToken.None);
+        var definition = Join(OuterInput(context.Unit, Between(500, 520)), InnerInput(context.Unit));
 
-        var (steps, innerValues) = await RunAsync(context.Service);
+        var (steps, innerValues) = await RunAsync(context, definition);
 
         Assert.Equal(21, innerValues.Count);
 
@@ -87,7 +88,7 @@ public class NestedLoopsStepIteratorTests(ITestOutputHelper testOutput)
                 perRebind.Add(0);
                 current = perRebind.Count - 1;
             }
-            else if (step is AccessStep.Row { EmittedRecord: not null, Source: NestedLoopsStepIterator.InnerSource })
+            else if (step is AccessStep.Row { EmittedRecord: not null, NodeId: InnerNodeId })
             {
                 perRebind[current]++;
             }
@@ -98,18 +99,16 @@ public class NestedLoopsStepIteratorTests(ITestOutputHelper testOutput)
     }
 
     [RequiresFileFact(MdfPath)]
-    public async Task Steps_Are_Attributed_To_Sides_And_Counters_Are_Combined()
+    public async Task Steps_Are_Attributed_To_Nodes_And_Counters_Are_Combined()
     {
         var context = await LoadNumberTableAsync();
 
-        await context.Service.OpenAsync(new IteratorContext(context.Database),
-                                        new NestedLoopsDefinition(OuterInput(context.Unit, Between(100, 110)), InnerInput(context.Unit)),
-                                        CancellationToken.None);
+        var definition = Join(OuterInput(context.Unit, Between(100, 110)), InnerInput(context.Unit));
 
-        var (steps, _) = await RunAsync(context.Service);
+        var (steps, _) = await RunAsync(context, definition);
 
-        Assert.Contains(steps, s => s.Source == NestedLoopsStepIterator.OuterSource);
-        Assert.Contains(steps, s => s.Source == NestedLoopsStepIterator.InnerSource);
+        Assert.Contains(steps, s => s.NodeId == OuterNodeId);
+        Assert.Contains(steps, s => s.NodeId == InnerNodeId);
 
         var pagesRead = steps.Select(s => s.Counters.PagesRead).ToList();
 
@@ -117,7 +116,7 @@ public class NestedLoopsStepIteratorTests(ITestOutputHelper testOutput)
 
         var stopped = Assert.IsType<AccessStep.Stopped>(steps[^1]);
 
-        Assert.Equal(NestedLoopsStepIterator.OuterSource, stopped.Source);
+        Assert.Equal(JoinNodeId, stopped.NodeId);
         Assert.Equal(StopReason.RangeEnded, stopped.Reason);
         Assert.True(context.Service.IsComplete);
 
@@ -132,21 +131,21 @@ public class NestedLoopsStepIteratorTests(ITestOutputHelper testOutput)
 
         var innerInput = new SeekDefinition(context.Unit.AllocationUnitId,
                                             context.Unit.RootPage,
-                                            [new CorrelationBinding("Id", "NoSuchColumn")]) { NodeId = 1 };
+                                            [new CorrelationBinding("Id", "NoSuchColumn")]) { NodeId = InnerNodeId };
 
-        await context.Service.OpenAsync(new IteratorContext(context.Database),
-                                        new NestedLoopsDefinition(OuterInput(context.Unit, Between(100, 100)), innerInput),
-                                        CancellationToken.None);
+        var definition = Join(OuterInput(context.Unit, Between(100, 100)), innerInput);
+
+        await using var stepper = new IteratorStepper(context.Service, definition, new IteratorContext(context.Database));
 
         await Assert.ThrowsAsync<InvalidOperationException>(async () =>
         {
-            while (await context.Service.StepNextAsync(CancellationToken.None) is not null)
+            while (await stepper.StepNextAsync(CancellationToken.None) is not null)
             {
             }
         });
     }
 
-    private sealed record NumberTableContext(DatabaseSource Database, NestedLoopsStepIterator Service, AllocationUnit Unit);
+    private sealed record NumberTableContext(DatabaseSource Database, NestedLoopsIterator Service, AllocationUnit Unit);
 
     private async Task<NumberTableContext> LoadNumberTableAsync()
     {
@@ -160,26 +159,32 @@ public class NestedLoopsStepIteratorTests(ITestOutputHelper testOutput)
 
         var unit = DemoDatabase.Unit(database, DemoDatabase.ClusteredTable, DemoDatabase.ClusteredIndex);
 
-        return new NumberTableContext(database, serviceHost.GetService<NestedLoopsStepIterator>(), unit);
+        return new NumberTableContext(database, serviceHost.GetService<NestedLoopsIterator>(), unit);
     }
 
+    private static NestedLoopsDefinition Join(IteratorDefinition outer, IteratorDefinition inner)
+        => new(outer, inner) { NodeId = JoinNodeId };
+
     private static RangeDefinition OuterInput(AllocationUnit unit, SeekBounds bounds)
-        => new(unit.AllocationUnitId, unit.RootPage, [bounds]) { NodeId = 0 };
+        => new(unit.AllocationUnitId, unit.RootPage, [bounds]) { NodeId = OuterNodeId };
 
     private static SeekDefinition InnerInput(AllocationUnit unit)
-        => new(unit.AllocationUnitId, unit.RootPage, [new CorrelationBinding("Id", "Id")]) { NodeId = 1 };
+        => new(unit.AllocationUnitId, unit.RootPage, [new CorrelationBinding("Id", "Id")]) { NodeId = InnerNodeId };
 
-    private static async Task<(List<AccessStep> Steps, List<long> InnerValues)> RunAsync(NestedLoopsStepIterator service)
+    private static async Task<(List<AccessStep> Steps, List<long> InnerValues)> RunAsync(NumberTableContext context,
+                                                                                         IteratorDefinition definition)
     {
+        await using var stepper = new IteratorStepper(context.Service, definition, new IteratorContext(context.Database));
+
         var steps = new List<AccessStep>();
 
         var innerValues = new List<long>();
 
-        while (await service.StepNextAsync(CancellationToken.None) is { } step)
+        while (await stepper.StepNextAsync(CancellationToken.None) is { } step)
         {
             steps.Add(step);
 
-            if (step is AccessStep.Row { EmittedRecord: { } record, Source: NestedLoopsStepIterator.InnerSource })
+            if (step is AccessStep.Row { EmittedRecord: { } record, NodeId: InnerNodeId })
             {
                 innerValues.Add(new RecordRowValueSource(record).GetValue(-1, "Id").Numeric);
             }

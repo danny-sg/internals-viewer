@@ -3,6 +3,7 @@ using InternalsViewer.Execution.AccessPaths.Results;
 using InternalsViewer.Execution.AccessPaths.Search;
 using InternalsViewer.Execution.AccessPaths.Values;
 using InternalsViewer.Execution.Iterators.Row;
+using InternalsViewer.Execution.Iterators.Stepping;
 using InternalsViewer.Internals.Connections.File;
 using InternalsViewer.Internals.Engine.Database;
 using InternalsViewer.Internals.Interfaces.Services.Loaders.Engine;
@@ -21,9 +22,7 @@ public class TopIteratorTests(ITestOutputHelper testOutput)
     {
         var context = await LoadAsync();
 
-        await OpenAsync(context, rowCount: 5);
-
-        var (steps, rows) = await RunAsync(context.Service);
+        var (steps, rows) = await RunAsync(context, Definition(context, rowCount: 5));
 
         Assert.Equal(5, rows.Count);
         Assert.Equal([1, 2, 3, 4, 5], rows.Select(r => r.Number));
@@ -44,9 +43,7 @@ public class TopIteratorTests(ITestOutputHelper testOutput)
     {
         var context = await LoadAsync();
 
-        await OpenAsync(context, rowCount: 3);
-
-        var (steps, _) = await RunAsync(context.Service);
+        var (steps, _) = await RunAsync(context, Definition(context, rowCount: 3));
 
         var readRows = steps.Count(s => s is AccessStep.Row { EmittedRecord: not null });
 
@@ -61,9 +58,7 @@ public class TopIteratorTests(ITestOutputHelper testOutput)
     {
         var context = await LoadAsync();
 
-        await OpenAsync(context, rowCount: long.MaxValue, bounds: Between(1, 10));
-
-        var (steps, rows) = await RunAsync(context.Service);
+        var (steps, rows) = await RunAsync(context, Definition(context, rowCount: long.MaxValue, bounds: Between(1, 10)));
 
         Assert.Equal(10, rows.Count);
 
@@ -80,14 +75,10 @@ public class TopIteratorTests(ITestOutputHelper testOutput)
     {
         var context = await LoadAsync();
 
-        context.Service.IteratorId = 7;
+        var (steps, rows) = await RunAsync(context, Definition(context, rowCount: 4, sourceNodeId: 9) with { NodeId = 7 });
 
-        await OpenAsync(context, rowCount: 4, sourceNodeId: 9);
-
-        var (steps, rows) = await RunAsync(context.Service);
-
-        Assert.All(rows, r => Assert.Equal(7, r.Source));
-        Assert.All(steps.OfType<AccessStep.Row>(), s => Assert.Equal(9, s.Source));
+        Assert.All(rows, r => Assert.Equal(7, r.NodeId));
+        Assert.All(steps.OfType<AccessStep.Row>(), s => Assert.Equal(9, s.NodeId));
     }
 
     [RequiresFileFact(MdfPath)]
@@ -97,22 +88,19 @@ public class TopIteratorTests(ITestOutputHelper testOutput)
 
         var definition = new TopDefinition(Range(context.Unit, SeekBounds.All)) { RowCount = 10, IsPercent = true };
 
-        await Assert.ThrowsAsync<ArgumentException>(
-            () => context.Service.OpenAsync(new IteratorContext(context.Database), definition, CancellationToken.None));
+        await using var stepper = new IteratorStepper(context.Service, definition, new IteratorContext(context.Database));
+
+        await Assert.ThrowsAsync<ArgumentException>(() => stepper.StartAsync(CancellationToken.None));
     }
 
-    private static Task OpenAsync(Context context,
-                                  long rowCount,
-                                  SeekBounds? bounds = null,
-                                  int sourceNodeId = 0)
-    {
-        var definition = new TopDefinition(Range(context.Unit, bounds ?? SeekBounds.All, sourceNodeId))
+    private static TopDefinition Definition(Context context,
+                                            long rowCount,
+                                            SeekBounds? bounds = null,
+                                            int sourceNodeId = 0)
+        => new(Range(context.Unit, bounds ?? SeekBounds.All, sourceNodeId))
         {
             RowCount = rowCount
         };
-
-        return context.Service.OpenAsync(new IteratorContext(context.Database), definition, CancellationToken.None);
-    }
 
     private static RangeDefinition Range(AllocationUnit unit, SeekBounds bounds, int nodeId = 0)
         => new(unit.AllocationUnitId, unit.RootPage, [bounds]) { NodeId = nodeId };
@@ -138,13 +126,16 @@ public class TopIteratorTests(ITestOutputHelper testOutput)
         return new Context(database, serviceHost.GetService<TopIterator>(), unit);
     }
 
-    private static async Task<(List<AccessStep> Steps, List<AccessStep.TopRow> Rows)> RunAsync(TopIterator service)
+    private static async Task<(List<AccessStep> Steps, List<AccessStep.TopRow> Rows)> RunAsync(Context context,
+                                                                                               IteratorDefinition definition)
     {
+        await using var stepper = new IteratorStepper(context.Service, definition, new IteratorContext(context.Database));
+
         var steps = new List<AccessStep>();
 
         var rows = new List<AccessStep.TopRow>();
 
-        while (await service.StepNextAsync(CancellationToken.None) is { } step)
+        while (await stepper.StepNextAsync(CancellationToken.None) is { } step)
         {
             steps.Add(step);
 

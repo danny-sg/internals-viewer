@@ -10,10 +10,7 @@ public abstract partial record AccessStep(AccessPhase AccessPhase)
     /// </summary>
     public AccessCounters Counters { get; init; }
 
-    /// <summary>
-    /// Identifies which access path produced the step when paths are composed, 0 for a single path
-    /// </summary>
-    public int Source { get; init; }
+    public int NodeId { get; init; }
 
     /// <summary>
     /// The access path stopped producing rows
