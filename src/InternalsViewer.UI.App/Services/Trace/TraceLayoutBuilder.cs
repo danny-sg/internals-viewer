@@ -73,11 +73,13 @@ public static class TraceLayoutBuilder
             {
                 OuterTop = new TracePane(TracePaneKind.Visual, visual)
                 {
+                    SourceNodeId = definition.NodeId,
                     AccentColour = Accent(colours, definition.NodeId),
-                    Icon = leafNode is null ? null : PlanIconResolver.Resolve(leafNode),
                     Heading = visual.Title
                 }
             };
+
+            ApplyHeader(leafTab, definition, leafNode);
 
             tabs.Add(leafTab);
 
@@ -89,6 +91,8 @@ public static class TraceLayoutBuilder
             var title = op.NodeId < 0 ? OperatorTitle(op) : $"{OperatorTitle(op)} ({op.NodeId})";
 
             var tab = new TraceOperatorViewModel(op.NodeId, title, OperatorDescription(op));
+
+            ApplyHeader(tab, op, nodeFor(op.NodeId));
 
             tabs.Add(tab);
 
@@ -337,17 +341,15 @@ public static class TraceLayoutBuilder
 
         if (tabsByNode.TryGetValue(input.NodeId, out var tab))
         {
-            var joinRule = (input as JoinDefinition)?.JoinType.Decide(true, true);
-
             var logical = node?.LogicalOperator ?? string.Empty;
 
             return new TracePane(TracePaneKind.RowStream, tab.Output, label)
             {
+                SourceNodeId = input.NodeId,
                 AccentColour = Accent(colours, input.NodeId),
                 Icon = icon,
                 Heading = heading,
-                Subheading = joinRule is null && logical.Length > 0 && logical != physical ? logical : string.Empty,
-                JoinRule = joinRule
+                Subheading = logical.Length > 0 && logical != physical ? logical : string.Empty
             };
         }
 
@@ -355,6 +357,7 @@ public static class TraceLayoutBuilder
         {
             return new TracePane(TracePaneKind.Visual, visual, label)
             {
+                SourceNodeId = input.NodeId,
                 AccentColour = Accent(colours, input.NodeId),
                 Icon = icon,
                 Heading = heading,
@@ -363,6 +366,26 @@ public static class TraceLayoutBuilder
         }
 
         return TracePane.Empty;
+    }
+
+    private static void ApplyHeader(TraceOperatorViewModel tab, IteratorDefinition definition, PlanNode? node)
+    {
+        if (node is null && definition is SelectDefinition)
+        {
+            node = new PlanNode { PhysicalOperator = "SELECT" };
+        }
+
+        var physical = node?.PhysicalOperator is { Length: > 0 } name ? name : DisplayName(definition);
+
+        tab.Heading = definition.NodeId < 0 ? physical : $"{physical} ({definition.NodeId})";
+
+        tab.Icon = node is null ? null : PlanIconResolver.Resolve(node);
+
+        var logical = node?.LogicalOperator ?? string.Empty;
+
+        tab.Subheading = logical.Length > 0 && logical != physical ? logical : string.Empty;
+
+        tab.JoinRule = (definition as JoinDefinition)?.JoinType.Decide(true, true);
     }
 
     private static Windows.UI.Color? Accent(IReadOnlyDictionary<int, Color> colours, int nodeId)

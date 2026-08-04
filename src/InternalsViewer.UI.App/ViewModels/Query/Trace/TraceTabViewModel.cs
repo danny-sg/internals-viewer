@@ -124,7 +124,20 @@ public sealed partial class TraceTabViewModel : ObservableObject
 
         VisualsByNode = visuals.ToDictionary(v => v.NodeId);
 
+        foreach (var visual in visuals)
+        {
+            if (layout.Colours.TryGetValue(visual.NodeId, out var colour))
+            {
+                visual.OperatorColour = colour;
+            }
+        }
+
         Operators = layout.Tabs;
+
+        foreach (var op in Operators)
+        {
+            op.ActivationRequested += ActivateOperator;
+        }
 
         RowBuilder = new TraceRowBuilder(layout.Definitions, layout.Sides);
 
@@ -291,12 +304,89 @@ public sealed partial class TraceTabViewModel : ObservableObject
             return;
         }
 
-        ActivePlanNodes = _planNodesById.TryGetValue(operatorViewModel.NodeId, out var node) ? [node] : [];
+        ActivePlanNodes = _planNodesById.TryGetValue(operatorViewModel.NodeId, out var node)
+            ? [node]
+            : operatorViewModel.NodeId < 0 && PlanNode is { } root ? [root] : [];
 
         if (Layout.VisualByOperator.TryGetValue(operatorViewModel.NodeId, out var visual))
         {
             SelectedVisual = visual;
         }
+    }
+
+    public void ActivateOperator(PlanNode? node)
+    {
+        if (node is null || _operatorGroup is null)
+        {
+            return;
+        }
+
+        var operatorIds = Operators.Select(o => o.NodeId).ToHashSet();
+
+        var target = node;
+
+        while (target is not null && !operatorIds.Contains(target.NodeId))
+        {
+            target = FindParent(PlanNode, target);
+        }
+
+        var targetId = target?.NodeId ?? (operatorIds.Contains(-1) ? -1 : (int?)null);
+
+        if (targetId is not null)
+        {
+            SelectDocumentFor(targetId.Value);
+        }
+    }
+
+    public void ActivateOperator(int nodeId)
+    {
+        if (SelectDocumentFor(nodeId))
+        {
+            return;
+        }
+
+        if (_planNodesById.TryGetValue(nodeId, out var node))
+        {
+            ActivateOperator(node);
+        }
+    }
+
+    private bool SelectDocumentFor(int nodeId)
+    {
+        var document = _operatorGroup?.Documents
+                                      .FirstOrDefault(d => d.Content is TraceOperatorViewModel op && op.NodeId == nodeId);
+
+        if (document is null)
+        {
+            return false;
+        }
+
+        _operatorGroup!.SelectedDocument = document;
+
+        return true;
+    }
+
+    private static PlanNode? FindParent(PlanNode? root, PlanNode target)
+    {
+        if (root is null)
+        {
+            return null;
+        }
+
+        foreach (var child in root.Children)
+        {
+            if (ReferenceEquals(child, target))
+            {
+                return root;
+            }
+
+            if (FindParent(child, target) is { } found)
+            {
+                return found;
+            }
+        }
+
+        return null;
     }
 
     partial void OnSelectedVisualChanged(TraceVisualViewModel value)
@@ -644,6 +734,8 @@ public sealed partial class TraceTabViewModel : ObservableObject
 
         UpdateStrategies();
 
+        AttachHashTables();
+
         SyncHeldRows();
 
         SyncHashTables(step);
@@ -792,6 +884,8 @@ public sealed partial class TraceTabViewModel : ObservableObject
             {
                 visual.ApplyReplay(replays[visual]);
             }
+
+            AttachHashTables();
 
             SyncHeldRows();
 
@@ -948,9 +1042,20 @@ public sealed partial class TraceTabViewModel : ObservableObject
         switch (iterator)
         {
             case IJoinIterator join:
-                foreach (var found in Iterators(join.Outer.Iterator).Concat(Iterators(join.Inner.Iterator)))
+                if (join.Outer?.Iterator is { } outer)
                 {
-                    yield return found;
+                    foreach (var found in Iterators(outer))
+                    {
+                        yield return found;
+                    }
+                }
+
+                if (join.Inner?.Iterator is { } inner)
+                {
+                    foreach (var found in Iterators(inner))
+                    {
+                        yield return found;
+                    }
                 }
 
                 break;

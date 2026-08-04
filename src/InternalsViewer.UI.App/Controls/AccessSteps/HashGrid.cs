@@ -210,7 +210,7 @@ public sealed partial class HashGrid : SKXamlCanvas
             {
                 paint.Color = count == 0
                     ? new SKColor(128, 128, 128, 24)
-                    : new SKColor(0, 0, 128, (byte)(70 + (185 * Math.Min(count, max) / max)));
+                    : new SKColor(96, 96, 96, (byte)(70 + (185 * Math.Min(count, max) / max)));
             }
 
             canvas.DrawRect(x, y, cell - gap, cell - gap, paint);

@@ -66,7 +66,7 @@ public sealed class IndexIterator(IPageService pageService, IRecordService recor
         CurrentPageSteps?.Dispose();
         CurrentPageSteps = null;
 
-        Prepare(context, definition);
+        await PrepareAsync(context, definition, cancellationToken);
 
         OpenCount++;
 

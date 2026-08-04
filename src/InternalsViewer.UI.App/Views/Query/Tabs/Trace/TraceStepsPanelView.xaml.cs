@@ -16,4 +16,6 @@ public sealed partial class TraceStepsPanelView : UserControl
 
     public Visibility EmptyStepsVisibility(int count, bool isRunningToEnd)
         => count == 0 && !isRunningToEnd ? Visibility.Visible : Visibility.Collapsed;
+
+    private void OnNodeActivated(object? sender, int nodeId) => ViewModel?.ActivateOperator(nodeId);
 }

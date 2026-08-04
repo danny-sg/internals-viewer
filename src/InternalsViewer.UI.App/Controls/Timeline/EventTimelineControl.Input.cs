@@ -194,7 +194,9 @@ public sealed partial class EventTimelineControl
             flyout.Items.Add(openIndex);
         }
 
-        var canTrace = op is { Category: OperatorCategory.DataAccess, TableName.Length: > 0 }
+        var canTrace = op.PlanNodeIdentifier.NodeId < 0
+                       || op.Name.Equals("Top", StringComparison.OrdinalIgnoreCase)
+                       || op is { Category: OperatorCategory.DataAccess, TableName.Length: > 0 }
                        || (op.Category == OperatorCategory.Join
                            && (op.Name.Contains("Nested Loops", StringComparison.OrdinalIgnoreCase)
                                || op.Name.Contains("Merge Join", StringComparison.OrdinalIgnoreCase)

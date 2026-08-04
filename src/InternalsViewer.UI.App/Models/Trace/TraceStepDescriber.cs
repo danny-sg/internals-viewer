@@ -191,6 +191,11 @@ public static class TraceStepDescriber
                 + $"The latest match compared entry {span.Progress.Entry} of bucket {span.Progress.Bucket} and output "
                 + $"pair {span.Progress.PairNumber}.",
 
+            RowCountSpan span =>
+                span.Progress.Limit > 0
+                    ? $"Get Row - Passed through row {span.Progress.Rows:N0} of {span.Progress.Limit:N0}."
+                    : $"Get Row - Returned row {span.Progress.Rows:N0} to the client.",
+
             _ => step.GetType().Name
         };
 

@@ -61,7 +61,7 @@ public sealed class AllocationScanIterator(IPageService pageService, IRecordServ
     {
         var scan = definition.Expect<AllocationScanDefinition>();
 
-        Prepare(context, definition);
+        await PrepareAsync(context, definition, cancellationToken);
 
         Residual = scan.Residual;
         RowGoal = scan.RowGoal is { } goal ? Counters.RowsOutput + goal : null;

@@ -1,5 +1,4 @@
 using System;
-using InternalsViewer.Execution.AccessPaths.Joins;
 
 namespace InternalsViewer.UI.App.ViewModels.Query.Trace;
 
@@ -23,6 +22,8 @@ public sealed record TracePane(TracePaneKind Kind, object? Content, string Title
 {
     public static readonly TracePane Empty = new(TracePaneKind.Empty, null);
 
+    public int? SourceNodeId { get; init; }
+
     public Windows.UI.Color? AccentColour { get; init; }
 
     public Uri? Icon { get; init; }
@@ -30,6 +31,4 @@ public sealed record TracePane(TracePaneKind Kind, object? Content, string Title
     public string Heading { get; init; } = "";
 
     public string Subheading { get; init; } = "";
-
-    public JoinDecision? JoinRule { get; init; }
 }

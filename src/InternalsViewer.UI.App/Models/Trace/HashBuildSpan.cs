@@ -4,9 +4,11 @@ using InternalsViewer.Execution.AccessPaths.Results;
 
 namespace InternalsViewer.UI.App.Models.Trace;
 
-public sealed record HashBuildSpan() : AccessStep(AccessPhase.Walk)
+public sealed record HashBuildSpan() : AccessStep(AccessPhase.Walk), ITraceSpan
 {
     public HashBuildProgress Progress { get; } = new();
+
+    public bool IsComplete { get; set; }
 }
 
 public sealed partial class HashBuildProgress : ObservableObject

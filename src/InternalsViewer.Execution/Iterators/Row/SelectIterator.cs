@@ -28,7 +28,7 @@ public sealed class SelectIterator(IIteratorFactory factory) : IteratorBase, IUn
             await CloseAsync();
         }
 
-        Prepare(context, definition);
+        await PrepareAsync(context, definition, cancellationToken);
 
         Input = factory.Create(select.Source);
         RowCount = 0;

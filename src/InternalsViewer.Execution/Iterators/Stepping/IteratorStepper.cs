@@ -20,6 +20,8 @@ public sealed class IteratorStepper : IAsyncDisposable
 
     private readonly TaskCompletionSource _opened = new(TaskCreationOptions.RunContinuationsAsynchronously);
 
+    private readonly TaskCompletionSource _started = new(TaskCreationOptions.RunContinuationsAsynchronously);
+
     private readonly List<AccessStep> _history = [];
 
     private readonly Dictionary<int, AccessCounters> _countersByNode = [];
@@ -51,7 +53,7 @@ public sealed class IteratorStepper : IAsyncDisposable
     {
         EnsureEngine();
 
-        var completed = await Task.WhenAny(_opened.Task, _engine!).WaitAsync(cancellationToken);
+        var completed = await Task.WhenAny(_started.Task, _opened.Task, _engine!).WaitAsync(cancellationToken);
 
         await completed;
     }
@@ -125,8 +127,6 @@ public sealed class IteratorStepper : IAsyncDisposable
 
         _opened.TrySetResult();
 
-        await _resume.WaitAsync(cancellationToken);
-
         while (await Root.GetRowAsync(cancellationToken) is not null)
         {
         }
@@ -161,11 +161,13 @@ public sealed class IteratorStepper : IAsyncDisposable
     {
         public async ValueTask EmitAsync(AccessStep step, CancellationToken cancellationToken)
         {
+            owner._started.TrySetResult();
+
+            await owner._resume.WaitAsync(owner._engineCancellation.Token);
+
             owner._pending = owner.Record(step);
 
             owner._delivered.Release();
-
-            await owner._resume.WaitAsync(owner._engineCancellation.Token);
         }
     }
 }

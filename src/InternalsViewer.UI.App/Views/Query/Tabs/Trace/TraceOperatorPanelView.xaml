@@ -6,6 +6,7 @@
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     xmlns:controls="using:CommunityToolkit.WinUI.Controls"
+    xmlns:accessSteps="using:InternalsViewer.UI.App.Controls.AccessSteps"
     mc:Ignorable="d">
 
     <UserControl.Resources>
@@ -30,12 +31,33 @@
 
     <Grid Background="{ThemeResource LayerOnMicaBaseAltFillColorDefault}">
         <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />
             <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
 
-        <Grid Grid.Row="0">
+        <StackPanel Grid.Row="0"
+                    Orientation="Horizontal"
+                    Spacing="8"
+                    Padding="8,6,8,4"
+                    BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                    BorderThickness="0,0,0,1">
+            <Image x:Name="OperatorIcon" Width="32" Height="32" VerticalAlignment="Center" />
+            <StackPanel VerticalAlignment="Center">
+                <TextBlock x:Name="OperatorName" FontSize="13" FontWeight="Bold" />
+                <TextBlock x:Name="OperatorSubname"
+                           FontSize="12"
+                           Visibility="Collapsed"
+                           Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+            </StackPanel>
+            <accessSteps:JoinDecisionBadge x:Name="OperatorBadge"
+                                           IsRuleOnly="True"
+                                           Visibility="Collapsed"
+                                           VerticalAlignment="Center" />
+        </StackPanel>
+
+        <Grid Grid.Row="1">
         <Grid.ColumnDefinitions>
             <ColumnDefinition Width="*" />
             <ColumnDefinition Width="Auto" />
@@ -50,7 +72,7 @@
                 <RowDefinition x:Name="OuterBottomRow" Height="*" />
             </Grid.RowDefinitions>
 
-            <TextBlock x:Name="OuterHeader" Style="{StaticResource TracePaneHeaderStyle}" />
+            <StackPanel x:Name="OuterHeader" Orientation="Horizontal" Spacing="6" Padding="8,6,8,4" />
 
             <ContentControl x:Name="OuterTopHost"
                             Grid.Row="1"
@@ -91,7 +113,7 @@
                 <RowDefinition x:Name="InnerBottomRow" Height="*" />
             </Grid.RowDefinitions>
 
-            <TextBlock x:Name="InnerHeader" Style="{StaticResource TracePaneHeaderStyle}" />
+            <StackPanel x:Name="InnerHeader" Orientation="Horizontal" Spacing="6" Padding="8,6,8,4" />
 
             <ContentControl x:Name="InnerTopHost"
                             Grid.Row="1"
@@ -118,11 +140,11 @@
         </Grid>
 
         <TextBlock x:Name="OutputHeader"
-                   Grid.Row="1"
+                   Grid.Row="2"
                    Style="{StaticResource TracePaneHeaderStyle}" />
 
         <ContentControl x:Name="OutputHost"
-                        Grid.Row="2"
+                        Grid.Row="3"
                         MinHeight="64"
                         HorizontalAlignment="Stretch"
                         VerticalAlignment="Stretch"

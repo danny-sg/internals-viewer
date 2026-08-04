@@ -48,7 +48,7 @@ public sealed class NestedLoopsIterator(IIteratorFactory factory) : JoinIterator
             await CloseAsync();
         }
 
-        Prepare(context, definition);
+        await PrepareAsync(context, definition, cancellationToken);
 
         ResetJoin(join.JoinType);
 

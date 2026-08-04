@@ -38,8 +38,6 @@ public abstract class IteratorBase : IIterator
 
     private bool _hasEverOpened;
 
-    private bool _isOpenPending;
-
     private bool _isCloseEmitted;
 
     protected void Prepare(IteratorContext context, IteratorDefinition definition)
@@ -50,23 +48,24 @@ public abstract class IteratorBase : IIterator
         CurrentRow = null;
         IsComplete = false;
         StopReason = null;
+    }
+
+    protected async ValueTask PrepareAsync(IteratorContext context,
+                                           IteratorDefinition definition,
+                                           CancellationToken cancellationToken)
+    {
+        Prepare(context, definition);
 
         if (!_hasEverOpened)
         {
             _hasEverOpened = true;
-            _isOpenPending = true;
+
+            await Context.Steps.EmitAsync(new AccessStep.Open { NodeId = NodeId }, cancellationToken);
         }
     }
 
     protected async ValueTask<AccessStep> EmitAsync(AccessStep step, CancellationToken cancellationToken)
     {
-        if (_isOpenPending)
-        {
-            _isOpenPending = false;
-
-            await Context.Steps.EmitAsync(new AccessStep.Open { NodeId = NodeId }, cancellationToken);
-        }
-
         var stamped = step.NodeId == NodeId ? step : step with { NodeId = NodeId };
 
         if (stamped is AccessStep.Stopped stopped)
@@ -88,7 +87,6 @@ public abstract class IteratorBase : IIterator
         }
 
         _isCloseEmitted = true;
-        _isOpenPending = false;
 
         await Context.Steps.EmitAsync(new AccessStep.Close { NodeId = NodeId }, CancellationToken.None);
     }

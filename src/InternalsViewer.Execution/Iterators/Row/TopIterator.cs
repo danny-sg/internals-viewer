@@ -43,7 +43,7 @@ public sealed class TopIterator(IIteratorFactory factory) : IteratorBase, IUnary
             await CloseAsync();
         }
 
-        Prepare(context, definition);
+        await PrepareAsync(context, definition, cancellationToken);
 
         Input = factory.Create(top.Source);
         Limit = top.RowCount;

@@ -1,4 +1,6 @@
+using System;
 using CommunityToolkit.Mvvm.ComponentModel;
+using InternalsViewer.Execution.AccessPaths.Joins;
 
 namespace InternalsViewer.UI.App.ViewModels.Query.Trace;
 
@@ -13,6 +15,14 @@ public sealed partial class TraceOperatorViewModel(int nodeId, string title, str
     /// </summary>
     public string Description { get; } = description;
 
+    public Uri? Icon { get; set; }
+
+    public string Heading { get; set; } = "";
+
+    public string Subheading { get; set; } = "";
+
+    public JoinDecision? JoinRule { get; set; }
+
     public TracePane OuterTop { get; set; } = TracePane.Empty;
 
     public TracePane OuterBottom { get; set; } = TracePane.Empty;
@@ -22,4 +32,8 @@ public sealed partial class TraceOperatorViewModel(int nodeId, string title, str
     public TracePane InnerBottom { get; set; } = TracePane.Empty;
 
     public TraceRowStreamViewModel Output { get; } = new();
+
+    public event Action<int>? ActivationRequested;
+
+    public void RequestActivation(int targetNodeId) => ActivationRequested?.Invoke(targetNodeId);
 }

@@ -25,7 +25,8 @@
                                         StepHistory="{x:Bind ViewModel.StepHistory, Mode=OneWay}"
                                         CurrentStep="{x:Bind ViewModel.CurrentStep, Mode=OneWay}"
                                         Nodes="{x:Bind ViewModel.StepNodes, Mode=OneWay}"
-                                        ShowDetail="{x:Bind ViewModel.IsStepDetailVisible, Mode=OneWay}" />
+                                        ShowDetail="{x:Bind ViewModel.IsStepDetailVisible, Mode=OneWay}"
+                                        NodeActivated="OnNodeActivated" />
 
         <TextBlock Grid.Row="0"
                    HorizontalAlignment="Center"

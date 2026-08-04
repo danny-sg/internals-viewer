@@ -1,3 +1,4 @@
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using InternalsViewer.Execution.AccessPaths.Results;
@@ -205,6 +206,14 @@ public sealed partial class AccessStepsControl : UserControl
             blob.Background = brush;
 
             blob.Visibility = showName && brush is not null ? Visibility.Visible : Visibility.Collapsed;
+
+            if (blob.Parent is StackPanel gutter)
+            {
+                gutter.Tag = step.NodeId;
+
+                gutter.Tapped -= OnGutterTapped;
+                gutter.Tapped += OnGutterTapped;
+            }
         }
 
         UpdateEmitBadge(grid, brush, step is AccessStep.Row { IsReadAhead: true });
@@ -232,6 +241,16 @@ public sealed partial class AccessStepsControl : UserControl
 
         grid.BorderBrush = brush;
         grid.BorderThickness = new Thickness(3, 0, 0, 0);
+    }
+
+    public event EventHandler<int>? NodeActivated;
+
+    private void OnGutterTapped(object sender, Microsoft.UI.Xaml.Input.TappedRoutedEventArgs e)
+    {
+        if (sender is StackPanel { Tag: int nodeId })
+        {
+            NodeActivated?.Invoke(this, nodeId);
+        }
     }
 
     /// <summary>

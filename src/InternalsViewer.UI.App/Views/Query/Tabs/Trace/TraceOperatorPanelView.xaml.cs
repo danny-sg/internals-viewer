@@ -1,7 +1,10 @@
+using InternalsViewer.UI.App.Controls.AccessSteps;
 using InternalsViewer.UI.App.Controls.Docking;
 using InternalsViewer.UI.App.ViewModels.Query.Trace;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Controls.Primitives;
+using Microsoft.UI.Xaml.Media;
+using Microsoft.UI.Xaml.Media.Imaging;
 
 namespace InternalsViewer.UI.App.Views.Query.Tabs.Trace;
 
@@ -118,6 +121,17 @@ public sealed partial class TraceOperatorPanelView : UserControl, IDocumentComma
 
         _appliedViewModel = viewModel;
 
+        OperatorIcon.Source = viewModel.Icon is { } operatorIcon ? new SvgImageSource(operatorIcon) : null;
+        OperatorIcon.Visibility = viewModel.Icon is null ? Visibility.Collapsed : Visibility.Visible;
+
+        OperatorName.Text = viewModel.Heading.Length > 0 ? viewModel.Heading : viewModel.Title;
+
+        OperatorSubname.Text = viewModel.Subheading;
+        OperatorSubname.Visibility = viewModel.Subheading.Length > 0 ? Visibility.Visible : Visibility.Collapsed;
+
+        OperatorBadge.Decision = viewModel.JoinRule;
+        OperatorBadge.Visibility = viewModel.JoinRule is null ? Visibility.Collapsed : Visibility.Visible;
+
         Fill(OuterTopHost, OuterHeader, viewModel.OuterTop);
         Fill(InnerTopHost, InnerHeader, viewModel.InnerTop);
 
@@ -140,7 +154,7 @@ public sealed partial class TraceOperatorPanelView : UserControl, IDocumentComma
         ApplyHashTableVisibility();
     }
 
-    private static void Fill(ContentControl host, TextBlock? header, TracePane pane)
+    private void Fill(ContentControl host, StackPanel? header, TracePane pane)
     {
         host.Content = CreateView(pane);
 
@@ -149,8 +163,89 @@ public sealed partial class TraceOperatorPanelView : UserControl, IDocumentComma
             return;
         }
 
-        header.Text = pane.Title;
-        header.Visibility = string.IsNullOrEmpty(header.Text) ? Visibility.Collapsed : Visibility.Visible;
+        header.Children.Clear();
+
+        header.Tag = pane;
+
+        header.Tapped -= OnHeaderTapped;
+        header.Tapped += OnHeaderTapped;
+
+        if (pane.Title.Length == 0 && pane.Heading.Length == 0)
+        {
+            header.Visibility = Visibility.Collapsed;
+
+            return;
+        }
+
+        header.Visibility = Visibility.Visible;
+
+        if (pane.Title.Length > 0)
+        {
+            header.Children.Add(HeaderText(pane.Title, isSecondary: true));
+        }
+
+        if (pane.AccentColour is { } accent)
+        {
+            header.Children.Add(new Border
+            {
+                Width = 9,
+                Height = 9,
+                CornerRadius = new CornerRadius(2),
+                VerticalAlignment = VerticalAlignment.Center,
+                Background = new SolidColorBrush(accent)
+            });
+        }
+
+        if (pane.Icon is { } icon)
+        {
+            header.Children.Add(new Image
+            {
+                Width = 24,
+                Height = 24,
+                VerticalAlignment = VerticalAlignment.Center,
+                Source = new SvgImageSource(icon)
+            });
+        }
+
+        if (pane.Heading.Length > 0)
+        {
+            header.Children.Add(HeaderText(pane.Heading, isSecondary: false));
+        }
+
+        if (pane.Subheading.Length > 0)
+        {
+            header.Children.Add(HeaderText(pane.Subheading, isSecondary: true));
+        }
+    }
+
+    private void OnHeaderTapped(object sender, Microsoft.UI.Xaml.Input.TappedRoutedEventArgs e)
+    {
+        if (sender is StackPanel { Tag: TracePane { SourceNodeId: { } sourceNodeId } })
+        {
+            _appliedViewModel?.RequestActivation(sourceNodeId);
+        }
+    }
+
+    private static TextBlock HeaderText(string text, bool isSecondary)
+    {
+        var block = new TextBlock
+        {
+            Text = text,
+            FontSize = 12,
+            VerticalAlignment = VerticalAlignment.Center,
+            TextTrimming = TextTrimming.CharacterEllipsis
+        };
+
+        if (isSecondary)
+        {
+            block.Foreground = (Brush)Application.Current.Resources["TextFillColorSecondaryBrush"];
+        }
+        else
+        {
+            block.FontWeight = Microsoft.UI.Text.FontWeights.SemiBold;
+        }
+
+        return block;
     }
 
     private static void Collapse(RowDefinition row, FrameworkElement splitter, TracePane pane)

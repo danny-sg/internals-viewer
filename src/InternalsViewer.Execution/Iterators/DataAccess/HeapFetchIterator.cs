@@ -50,11 +50,11 @@ public sealed class HeapFetchIterator(IPageService pageService, IRecordService r
 
     private AccessCounters Counters { get; set; }
 
-    public override Task OpenAsync(IteratorContext context, IteratorDefinition definition, CancellationToken cancellationToken)
+    public override async Task OpenAsync(IteratorContext context, IteratorDefinition definition, CancellationToken cancellationToken)
     {
         var fetch = definition.Expect<HeapFetchDefinition>();
 
-        Prepare(context, definition);
+        await PrepareAsync(context, definition, cancellationToken);
 
         OpenCount++;
 
@@ -75,8 +75,6 @@ public sealed class HeapFetchIterator(IPageService pageService, IRecordService r
         }
 
         CurrentStrategy = AccessStrategyBuilder.BuildHeapFetch(fetch.Residual);
-
-        return Task.CompletedTask;
     }
 
     public override async Task<IRecord?> GetRowAsync(CancellationToken cancellationToken)

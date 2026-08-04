@@ -100,7 +100,9 @@ public sealed partial class TraceVisualViewModel(TraceVisualKind kind,
 
     private Color? _objectColour;
 
-    public Color ObjectColour => _objectColour ??= AllocationLayerBuilder.GetObjectColour(Database, AllocationUnit);
+    public Color? OperatorColour { get; set; }
+
+    public Color ObjectColour => OperatorColour ?? (_objectColour ??= AllocationLayerBuilder.GetObjectColour(Database, AllocationUnit));
 
     private Color LightObjectColour => Lighten(ObjectColour);
 

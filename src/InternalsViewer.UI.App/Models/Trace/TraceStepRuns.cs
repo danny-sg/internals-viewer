@@ -10,15 +10,22 @@ public static class TraceStepRuns
 {
     public static void Append(AccessStep step, ObservableCollection<AccessStep> history, int historyLimit)
     {
-        if (step is AccessStep.MergeCompare { Comparison: not 0 } compare
-            && history.Count > 1
-            && history[0] is AccessStep.Row or AccessStep.RowRun)
+        if (step is AccessStep.Stopped or AccessStep.Close)
         {
-            if (history[1] is AccessStep.MergeCompare previous
+            RetireSpans(history, step.NodeId);
+        }
+
+        var top = LeadingSpans(history);
+
+        if (step is AccessStep.MergeCompare { Comparison: not 0 } compare
+            && history.Count > top + 1
+            && history[top] is AccessStep.Row or AccessStep.RowRun)
+        {
+            if (history[top + 1] is AccessStep.MergeCompare previous
                 && Math.Sign(previous.Comparison) == Math.Sign(compare.Comparison)
                 && StaticKeyMatches(compare.Comparison, previous.OuterKey, previous.InnerKey, compare))
             {
-                history[1] = new AccessStep.MergeCompareRun(Math.Sign(compare.Comparison), 2)
+                history[top + 1] = new AccessStep.MergeCompareRun(Math.Sign(compare.Comparison), 2)
                 {
                     OuterFrom = previous.OuterKey,
                     OuterTo = compare.OuterKey,
@@ -32,11 +39,11 @@ public static class TraceStepRuns
                 return;
             }
 
-            if (history[1] is AccessStep.MergeCompareRun run
+            if (history[top + 1] is AccessStep.MergeCompareRun run
                 && run.Comparison == Math.Sign(compare.Comparison)
                 && StaticKeyMatches(compare.Comparison, run.OuterTo, run.InnerTo, compare))
             {
-                history[1] = run with
+                history[top + 1] = run with
                 {
                     Count = run.Count + 1,
                     OuterTo = compare.OuterKey,
@@ -50,28 +57,11 @@ public static class TraceStepRuns
 
         if (step is AccessStep.HashBuild hashBuild)
         {
-            if (history.Count > 1 && history[1] is HashBuildSpan span && span.NodeId == hashBuild.NodeId)
+            if (FindSpan<HashBuildSpan>(history, top, hashBuild.NodeId) is { } buildSpan)
             {
-                span.Progress.Apply(hashBuild);
+                buildSpan.Progress.Apply(hashBuild);
 
                 return;
-            }
-
-            for (var index = 0; index < history.Count; index++)
-            {
-                if (history[index] is HashBuildSpan found && found.NodeId == hashBuild.NodeId)
-                {
-                    found.Progress.Apply(hashBuild);
-
-                    if (index > 1)
-                    {
-                        history.RemoveAt(index);
-
-                        history.Insert(1, found);
-                    }
-
-                    return;
-                }
             }
 
             var created = new HashBuildSpan
@@ -82,14 +72,14 @@ public static class TraceStepRuns
 
             created.Progress.Apply(hashBuild);
 
-            history.Insert(0, created);
+            InsertSpan(history, created);
 
             return;
         }
 
         if (step is AccessStep.HashProbe hashProbe)
         {
-            var span = FindProbeSpan(history, hashProbe.NodeId, relocate: true);
+            var span = FindSpan<HashProbeSpan>(history, top, hashProbe.NodeId);
 
             if (span is null)
             {
@@ -99,9 +89,14 @@ public static class TraceStepRuns
                     Counters = hashProbe.Counters
                 };
 
-                span.Progress.Fill = FindBuildFill(history, hashProbe.NodeId);
+                if (FindSpan<HashBuildSpan>(history, top, hashProbe.NodeId) is { } buildSpan)
+                {
+                    span.Progress.Fill = buildSpan.Progress.Fill;
 
-                history.Insert(0, span);
+                    buildSpan.IsComplete = true;
+                }
+
+                InsertSpan(history, span);
             }
 
             span.Progress.Apply(hashProbe);
@@ -109,32 +104,74 @@ public static class TraceStepRuns
             return;
         }
 
-        if (step is AccessStep.HashCompare hashCompare && FindProbeSpan(history, hashCompare.NodeId, relocate: false) is { } compareSpan)
+        if (step is AccessStep.HashCompare hashCompare && FindSpan<HashProbeSpan>(history, top, hashCompare.NodeId) is { } compareSpan)
         {
             compareSpan.Progress.Apply(hashCompare);
 
             if (hashCompare.IsMatch)
             {
-                MatchSpan(history, hashCompare).Progress.Apply(hashCompare);
+                MatchSpan(history, top, hashCompare).Progress.Apply(hashCompare);
             }
 
             return;
         }
 
-        if (step is AccessStep.JoinEmit joinEmit && FindProbeSpan(history, joinEmit.NodeId, relocate: false) is { } emitSpan)
+        if (step is AccessStep.JoinEmit joinEmit && FindSpan<HashProbeSpan>(history, top, joinEmit.NodeId) is { } emitSpan)
         {
             emitSpan.Progress.Apply(joinEmit);
 
-            MatchSpan(history, joinEmit).Progress.Apply(joinEmit);
+            MatchSpan(history, top, joinEmit).Progress.Apply(joinEmit);
+
+            return;
+        }
+
+        if (step is AccessStep.TopRow topRow)
+        {
+            var span = FindSpan<RowCountSpan>(history, top, topRow.NodeId);
+
+            if (span is null)
+            {
+                span = new RowCountSpan
+                {
+                    NodeId = topRow.NodeId,
+                    Counters = topRow.Counters,
+                    Badge = "→ Emit"
+                };
+
+                InsertSpan(history, span);
+            }
+
+            span.Progress.Apply(topRow.Number, topRow.RowCount);
+
+            return;
+        }
+
+        if (step is AccessStep.Output output)
+        {
+            var span = FindSpan<RowCountSpan>(history, top, output.NodeId);
+
+            if (span is null)
+            {
+                span = new RowCountSpan
+                {
+                    NodeId = output.NodeId,
+                    Counters = output.Counters,
+                    Badge = "→ Client"
+                };
+
+                InsertSpan(history, span);
+            }
+
+            span.Progress.Apply(output.Number, 0);
 
             return;
         }
 
         if (step is AccessStep.Probe probe)
         {
-            if (history.Count > 0 && history[0] is AccessStep.ProbeRun probeRun && probeRun.NodeId == probe.NodeId)
+            if (history.Count > top && history[top] is AccessStep.ProbeRun probeRun && probeRun.NodeId == probe.NodeId)
             {
-                history[0] = new AccessStep.ProbeRun([probe, .. probeRun.Probes])
+                history[top] = new AccessStep.ProbeRun([probe, .. probeRun.Probes])
                 {
                     NodeId = probe.NodeId,
                     Counters = probe.Counters
@@ -150,9 +187,9 @@ public static class TraceStepRuns
             };
         }
 
-        if (step is AccessStep.Row row && history.Count > 0)
+        if (step is AccessStep.Row row && history.Count > top)
         {
-            var latest = history[0];
+            var latest = history[top];
 
             if (latest is AccessStep.Row previous
                 && previous.NodeId == row.NodeId
@@ -160,7 +197,7 @@ public static class TraceStepRuns
                 && previous.IsReadAhead == row.IsReadAhead
                 && Math.Abs(row.Slot - previous.Slot) == 1)
             {
-                history[0] = new AccessStep.RowRun(previous.Slot, row.Slot, row.Outcome)
+                history[top] = new AccessStep.RowRun(previous.Slot, row.Slot, row.Outcome)
                 {
                     Count = 2,
                     HasResidual = row.HasResidual,
@@ -179,7 +216,7 @@ public static class TraceStepRuns
                 && !row.IsReadAhead
                 && Math.Abs(row.Slot - run.ToSlot) == 1)
             {
-                history[0] = run with
+                history[top] = run with
                 {
                     ToSlot = row.Slot,
                     Count = run.Count + 1,
@@ -191,7 +228,7 @@ public static class TraceStepRuns
             }
         }
 
-        history.Insert(0, step);
+        history.Insert(top, step);
 
         if (history.Count > historyLimit)
         {
@@ -199,26 +236,71 @@ public static class TraceStepRuns
         }
     }
 
-    private static HashMatchSpan MatchSpan(ObservableCollection<AccessStep> history, AccessStep step)
+    private static bool IsSpan(AccessStep step) => step is ITraceSpan { IsComplete: false };
+
+    private static int Rank(AccessStep step) => step switch
     {
-        if (history.Count > 1 && history[1] is HashMatchSpan fast && fast.NodeId == step.NodeId)
+        HashMatchSpan => 0,
+        HashProbeSpan => 1,
+        _ => 2
+    };
+
+    private static void RetireSpans(ObservableCollection<AccessStep> history, int nodeId)
+    {
+        for (var index = 0; index < history.Count && history[index] is ITraceSpan; index++)
         {
-            return fast;
+            if (history[index].NodeId == nodeId && history[index] is ITraceSpan span)
+            {
+                span.IsComplete = true;
+            }
+        }
+    }
+
+    private static int LeadingSpans(ObservableCollection<AccessStep> history)
+    {
+        var count = 0;
+
+        while (count < history.Count && IsSpan(history[count]))
+        {
+            count++;
         }
 
-        for (var index = 0; index < history.Count; index++)
+        return count;
+    }
+
+    private static T? FindSpan<T>(ObservableCollection<AccessStep> history, int top, int nodeId) where T : AccessStep
+    {
+        for (var index = 0; index < top; index++)
         {
-            if (history[index] is HashMatchSpan span && span.NodeId == step.NodeId)
+            if (history[index] is T span && span.NodeId == nodeId)
             {
-                if (index > 1)
-                {
-                    history.RemoveAt(index);
-
-                    history.Insert(1, span);
-                }
-
                 return span;
             }
+        }
+
+        return null;
+    }
+
+    private static void InsertSpan(ObservableCollection<AccessStep> history, AccessStep span)
+    {
+        var index = 0;
+
+        while (index < history.Count
+               && IsSpan(history[index])
+               && (history[index].NodeId < span.NodeId
+                   || (history[index].NodeId == span.NodeId && Rank(history[index]) < Rank(span))))
+        {
+            index++;
+        }
+
+        history.Insert(index, span);
+    }
+
+    private static HashMatchSpan MatchSpan(ObservableCollection<AccessStep> history, int top, AccessStep step)
+    {
+        if (FindSpan<HashMatchSpan>(history, top, step.NodeId) is { } span)
+        {
+            return span;
         }
 
         var created = new HashMatchSpan
@@ -227,47 +309,9 @@ public static class TraceStepRuns
             Counters = step.Counters
         };
 
-        history.Insert(0, created);
+        InsertSpan(history, created);
 
         return created;
-    }
-
-    private static HashProbeSpan? FindProbeSpan(ObservableCollection<AccessStep> history, int nodeId, bool relocate)
-    {
-        if (history.Count > 1 && history[1] is HashProbeSpan fast && fast.NodeId == nodeId)
-        {
-            return fast;
-        }
-
-        for (var index = 0; index < history.Count; index++)
-        {
-            if (history[index] is HashProbeSpan span && span.NodeId == nodeId)
-            {
-                if (relocate && index > 1)
-                {
-                    history.RemoveAt(index);
-
-                    history.Insert(1, span);
-                }
-
-                return span;
-            }
-        }
-
-        return null;
-    }
-
-    private static IReadOnlyList<int>? FindBuildFill(ObservableCollection<AccessStep> history, int nodeId)
-    {
-        for (var index = 0; index < history.Count; index++)
-        {
-            if (history[index] is HashBuildSpan build && build.NodeId == nodeId)
-            {
-                return build.Progress.Fill;
-            }
-        }
-
-        return null;
     }
 
     private static int EmitOf(AccessStep.Row row)

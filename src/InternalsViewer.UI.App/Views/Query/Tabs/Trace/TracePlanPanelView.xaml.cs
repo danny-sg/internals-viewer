@@ -1,3 +1,4 @@
+using InternalsViewer.Query.Plans.Model;
 using InternalsViewer.UI.App.ViewModels.Query.Trace;
 using Microsoft.UI.Xaml.Controls;
 
@@ -16,4 +17,6 @@ public sealed partial class TracePlanPanelView : UserControl
 
         DataContextChanged += (_, _) => Bindings.Update();
     }
+
+    private void OnNodeSelected(object? sender, PlanNode? node) => ViewModel?.ActivateOperator(node);
 }

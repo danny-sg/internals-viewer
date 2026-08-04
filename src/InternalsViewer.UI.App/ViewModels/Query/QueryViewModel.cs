@@ -398,14 +398,27 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
     /// anything here. An operator with something below it that cannot be simulated builds no definition and opens nothing, which is the
     /// same test the context menu uses to decide whether to offer the command.
     /// </remarks>
-    public void OpenTrace(PlanNode node) => OpenTraceCore(node, wrapInSelect: false);
+    public void OpenTrace(PlanNode node)
+    {
+        if (node.IsStatement)
+        {
+            if (node.Children.FirstOrDefault() is { } child)
+            {
+                OpenTraceCore(child, wrapInSelect: true);
+            }
+
+            return;
+        }
+
+        OpenTraceCore(node, wrapInSelect: false);
+    }
 
     [RelayCommand]
     public void OpenTrace()
     {
         if (SelectedPlanNode is { } node && CanTrace(node))
         {
-            OpenTraceCore(node, wrapInSelect: false);
+            OpenTrace(node);
 
             return;
         }
@@ -414,7 +427,7 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
         if (root is not null)
         {
-            OpenTraceCore(root, wrapInSelect: true);
+            OpenTrace(root);
         }
     }
 
@@ -487,7 +500,10 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
     /// <summary>
     /// Whether a trace can be offered for an operator, which needs every operator below it to be one we simulate
     /// </summary>
-    public bool CanTrace(PlanNode node) => new TraceDefinitionBuilder(FindAllocationUnit).CanBuild(node);
+    public bool CanTrace(PlanNode node)
+        => node.IsStatement
+            ? node.Children.FirstOrDefault() is { } child && new TraceDefinitionBuilder(FindAllocationUnit).CanBuild(child)
+            : new TraceDefinitionBuilder(FindAllocationUnit).CanBuild(node);
 
     private static string TraceTitle(PlanNode node, TraceTabViewModel viewModel)
     {
