@@ -9,14 +9,13 @@ using InternalsViewer.Execution.Pages;
 using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Internals.Engine.Database;
 using InternalsViewer.Internals.Engine.Pages;
+using InternalsViewer.Internals.Interfaces.Engine;
 using InternalsViewer.Internals.Interfaces.Services.Loaders.Pages;
 using InternalsViewer.Internals.Interfaces.Services.Records;
 using InternalsViewer.Internals.Metadata.Structures;
 using InternalsViewer.Internals.Providers.Metadata;
 
-using InternalsViewer.Internals.Interfaces.Engine;
-
-namespace InternalsViewer.Execution.Iterators.Indexes;
+namespace InternalsViewer.Execution.Iterators.DataAccess;
 
 /// <summary>
 /// Drives a seek across page boundaries, loading pages as the walk descends or follows leaf links

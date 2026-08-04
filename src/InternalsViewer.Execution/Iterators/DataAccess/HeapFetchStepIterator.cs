@@ -16,7 +16,7 @@ using InternalsViewer.Internals.Interfaces.Engine;
 using InternalsViewer.Internals.Interfaces.Services.Loaders.Pages;
 using InternalsViewer.Internals.Interfaces.Services.Records;
 
-namespace InternalsViewer.Execution.Iterators.Heaps;
+namespace InternalsViewer.Execution.Iterators.DataAccess;
 
 /// <summary>
 /// Fetches a single heap row from its row identifier, the access path a RID lookup uses

@@ -8,10 +8,10 @@ using InternalsViewer.Execution.AccessPaths.Values;
 using InternalsViewer.Internals.Engine.Database;
 using InternalsViewer.Internals.Engine.Database.Enums;
 using InternalsViewer.Internals.Interfaces.Services.Loaders.Engine;
-using InternalsViewer.Execution.Iterators.Indexes;
 using InternalsViewer.Internals.Tests.Helpers;
 
 using InternalsViewer.Execution.AccessPaths.Definitions;
+using InternalsViewer.Execution.Iterators.DataAccess;
 
 namespace InternalsViewer.Execution.Tests.IntegrationTests.Services.Indexes;
 

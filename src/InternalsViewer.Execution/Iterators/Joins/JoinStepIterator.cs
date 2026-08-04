@@ -6,8 +6,8 @@ using InternalsViewer.Execution.Interfaces.Iterators.Joins;
 using InternalsViewer.Execution.Interfaces.Iterators.Joins.Inputs;
 using InternalsViewer.Execution.Iterators.Joins.Inputs;
 using InternalsViewer.Execution.Records;
-using InternalsViewer.Internals.Interfaces.Engine;
 using InternalsViewer.Internals.Engine.Address;
+using InternalsViewer.Internals.Interfaces.Engine;
 
 namespace InternalsViewer.Execution.Iterators.Joins;
 
@@ -30,9 +30,9 @@ public abstract class JoinStepIterator : IJoinStepIterator
 
     public JoinInput Inner { get; protected set; } = null!;
 
-    public IReadOnlyList<AccessStep> History => TakenSteps;
+    public IReadOnlyList<AccessStep> History => StepHistory;
 
-    public AccessStep? Current => TakenSteps.Count == 0 ? null : TakenSteps[^1];
+    public AccessStep? Current => StepHistory.Count == 0 ? null : StepHistory[^1];
 
     public bool IsComplete { get; protected set; }
 
@@ -51,7 +51,7 @@ public abstract class JoinStepIterator : IJoinStepIterator
     /// </summary>
     internal CancellationToken CurrentToken { get; set; }
 
-    protected List<AccessStep> TakenSteps { get; } = [];
+    protected List<AccessStep> StepHistory { get; } = [];
 
     public abstract Task OpenAsync(IteratorContext context, IteratorDefinition definition, CancellationToken cancellationToken);
 
@@ -108,7 +108,7 @@ public abstract class JoinStepIterator : IJoinStepIterator
         PairCount = 0;
         IsComplete = false;
 
-        TakenSteps.Clear();
+        StepHistory.Clear();
         Outer.Clear();
         Inner.Clear();
     }
@@ -117,7 +117,7 @@ public abstract class JoinStepIterator : IJoinStepIterator
     {
         var taken = Attribute(step, source, counters);
 
-        TakenSteps.Add(taken);
+        StepHistory.Add(taken);
 
         return taken;
     }

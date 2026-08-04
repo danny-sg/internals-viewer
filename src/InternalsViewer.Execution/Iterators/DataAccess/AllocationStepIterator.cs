@@ -15,7 +15,7 @@ using InternalsViewer.Internals.Interfaces.Engine;
 using InternalsViewer.Internals.Interfaces.Services.Loaders.Pages;
 using InternalsViewer.Internals.Interfaces.Services.Records;
 
-namespace InternalsViewer.Execution.Iterators.Allocations;
+namespace InternalsViewer.Execution.Iterators.DataAccess;
 
 /// <summary>
 /// Drives an allocation order scan, following the IAM chain and reading allocated pages

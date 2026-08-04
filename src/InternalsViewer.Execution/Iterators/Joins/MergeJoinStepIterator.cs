@@ -171,7 +171,7 @@ public sealed class MergeJoinStepIterator(IIteratorFactory factory) : JoinStepIt
 
         var step = Steps.Current;
 
-        TakenSteps.Add(step);
+        StepHistory.Add(step);
 
         if (step is AccessStep.Stopped)
         {

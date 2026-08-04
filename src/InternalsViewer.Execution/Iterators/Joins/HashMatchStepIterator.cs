@@ -183,7 +183,7 @@ public sealed class HashMatchStepIterator(IIteratorFactory factory) : JoinStepIt
 
         var step = Steps.Current;
 
-        TakenSteps.Add(step);
+        StepHistory.Add(step);
 
         if (step is AccessStep.Stopped)
         {

@@ -1,9 +1,7 @@
 using System.Diagnostics.CodeAnalysis;
 using InternalsViewer.Execution.Interfaces;
 using InternalsViewer.Execution.Iterators;
-using InternalsViewer.Execution.Iterators.Allocations;
-using InternalsViewer.Execution.Iterators.Heaps;
-using InternalsViewer.Execution.Iterators.Indexes;
+using InternalsViewer.Execution.Iterators.DataAccess;
 using InternalsViewer.Execution.Iterators.Joins;
 using InternalsViewer.Execution.Iterators.Row;
 using Microsoft.Extensions.DependencyInjection;

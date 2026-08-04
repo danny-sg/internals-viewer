@@ -99,7 +99,7 @@ public sealed class NestedLoopsStepIterator(IIteratorFactory factory) : JoinStep
                 Source = IteratorId
             };
 
-            TakenSteps.Add(start);
+            StepHistory.Add(start);
 
             return start;
         }
@@ -205,7 +205,7 @@ public sealed class NestedLoopsStepIterator(IIteratorFactory factory) : JoinStep
             Counters = OuterCounters.Add(CompletedInnerCounters)
         };
 
-        TakenSteps.Add(step);
+        StepHistory.Add(step);
 
         return step;
     }
@@ -294,7 +294,7 @@ public sealed class NestedLoopsStepIterator(IIteratorFactory factory) : JoinStep
     {
         var step = PendingEmits.Dequeue();
 
-        TakenSteps.Add(step);
+        StepHistory.Add(step);
 
         return step;
     }
