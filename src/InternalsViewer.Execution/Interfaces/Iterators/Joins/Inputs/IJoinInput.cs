@@ -1,6 +1,5 @@
 using InternalsViewer.Execution.AccessPaths.Joins;
 using InternalsViewer.Execution.AccessPaths.Search;
-using InternalsViewer.Execution.Interfaces;
 
 namespace InternalsViewer.Execution.Interfaces.Iterators.Joins.Inputs;
 

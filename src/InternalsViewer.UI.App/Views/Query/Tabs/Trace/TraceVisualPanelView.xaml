@@ -7,19 +7,11 @@
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     xmlns:index="using:InternalsViewer.UI.App.Controls.Index"
     xmlns:allocation="using:InternalsViewer.UI.App.Controls.Allocation"
-    xmlns:controls="using:CommunityToolkit.WinUI.Controls"
-    xmlns:trace="using:InternalsViewer.UI.App.Controls.Trace"
     mc:Ignorable="d"
     Loaded="OnLoaded">
 
     <Grid Background="{ThemeResource LayerOnMicaBaseAltFillColorDefault}">
-        <Grid.RowDefinitions>
-            <RowDefinition Height="2*" />
-            <RowDefinition x:Name="SplitterRow" Height="Auto" />
-            <RowDefinition x:Name="StackRow" Height="*" />
-        </Grid.RowDefinitions>
-
-        <Grid Grid.Row="0">
+        <Grid>
             <index:IndexControl x:Name="IndexControl"
                                 SelectChildPath="False"
                                 Opacity="{x:Bind DimOpacity(ViewModel.IsDimmed), Mode=OneWay}"
@@ -69,31 +61,5 @@
                                           VerticalAlignment="Stretch"
                                           HorizontalAlignment="Stretch" />
         </Grid>
-
-        <controls:GridSplitter x:Name="StackSplitter"
-                               Grid.Row="1"
-                               Height="2"
-                               Background="{ThemeResource ControlStrokeColorDefaultBrush}"
-                               VerticalAlignment="Stretch">
-            <controls:GridSplitter.Template>
-                <ControlTemplate TargetType="controls:GridSplitter">
-                    <Grid Background="{TemplateBinding Background}" />
-                </ControlTemplate>
-            </controls:GridSplitter.Template>
-        </controls:GridSplitter>
-
-        <index:RecordGrid x:Name="StackGrid"
-                          Grid.Row="2"
-                          HideSlotColumn="True"
-                          AutoScrollToEnd="True"
-                          Records="{x:Bind ViewModel.SideRecords, Mode=OneWay}"
-                          BorderThickness="0" />
-
-        <trace:HashTableGrid x:Name="HashTable"
-                             Grid.Row="2"
-                             Buckets="{x:Bind ViewModel.HashBuckets, Mode=OneWay}"
-                             Columns="{x:Bind ViewModel.HashColumns, Mode=OneWay}"
-                             Summary="{x:Bind ViewModel.HashTableSummary, Mode=OneWay}"
-                             BucketCount="{x:Bind ViewModel.HashBucketCount, Mode=TwoWay}" />
     </Grid>
 </UserControl>

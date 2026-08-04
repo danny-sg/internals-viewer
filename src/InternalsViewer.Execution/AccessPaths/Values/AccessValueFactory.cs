@@ -10,7 +10,7 @@ namespace InternalsViewer.Execution.AccessPaths.Values;
 /// <remarks>
 /// Text is always stored as UTF-16 regardless of the column type so that values from different string types compare consistently.
 /// </remarks>
-public static class AccessValueFactory
+internal static class AccessValueFactory
 {
     public static AccessValue FromField(RecordField field)
     {

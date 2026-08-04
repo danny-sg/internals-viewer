@@ -1,5 +1,6 @@
-using System;
+﻿using System;
 using System.Collections.ObjectModel;
+using System.Data;
 using System.Linq;
 using CommunityToolkit.WinUI.UI.Controls;
 using InternalsViewer.Internals.Engine.Address;
@@ -95,8 +96,6 @@ public sealed partial class RecordGrid : IDisposable
         {
             control.SubscribeRecords();
             control.AddColumns();
-
-            control.DispatcherQueue.TryEnqueue(control.ScrollToEnd);
         }
 
         control.DispatcherQueue.TryEnqueue(control.ApplySelectedSlot);
@@ -123,24 +122,6 @@ public sealed partial class RecordGrid : IDisposable
         {
             AddColumns();
         }
-
-        DispatcherQueue.TryEnqueue(ScrollToEnd);
-    }
-
-    private void ScrollToEnd()
-    {
-        if (!AutoScrollToEnd || Records is not { Count: > 0 } records)
-        {
-            return;
-        }
-
-        //try
-        //{
-        //    DataGrid.ScrollIntoView(records[^1], null);
-        //}
-        //catch (InvalidOperationException)
-        //{
-        //}
     }
 
     private void ApplySelectedSlot()
@@ -171,6 +152,7 @@ public sealed partial class RecordGrid : IDisposable
             {
                 Binding = new Binding { Path = new PropertyPath("Slot") },
                 Header = "Slot",
+                Width = new DataGridLength(60),
                 ElementStyle = (Style) Resources["SlotCellStyle"],
             };
 
@@ -183,12 +165,14 @@ public sealed partial class RecordGrid : IDisposable
         {
             var record = Records.First();
 
-            foreach (var t in record.Fields)
+            // Bound by position, because a row a join produced can carry the same column name more than once
+            for (var index = 0; index < record.Fields.Count; index++)
             {
                 var column = new DataGridTextColumn
                 {
-                    Binding = new Binding { Converter = converter, ConverterParameter = t.Name },
-                    Header = t.Name,
+                    Binding = new Binding { Converter = converter, ConverterParameter = index },
+                    Header = record.Fields[index].Name,
+                    Width = GetColumnWidth(record.Fields[index])
                 };
 
                 DataGrid.Columns.Add(column);
@@ -200,7 +184,8 @@ public sealed partial class RecordGrid : IDisposable
             var column = new PageAddressLinkButtonColumn<IndexRecordModel>
             {
                 Binding = new Binding { Path = new PropertyPath("DownPagePointer") },
-                Header = "Down Page Pointer"
+                Header = "Down Page Pointer",
+                Width = new DataGridLength(150)
             };
 
             column.PageClicked += OnPageClicked;
@@ -217,11 +202,35 @@ public sealed partial class RecordGrid : IDisposable
             var column = new DataGridTextColumn
             {
                 Binding = new Binding { Path = new PropertyPath("RowIdentifier") },
-                Header = "RID"
+                Header = "RID",
+                Width = new DataGridLength(140)
             };
 
             DataGrid.Columns.Add(column);
         }
+    }
+
+    /// <summary>
+    /// The width a column is fixed at, from what the field holds and how long its name is
+    /// </summary>
+    /// <remarks>
+    /// A column left to size itself is measured against every row as it is realised, and one row wider than the rest widens the column and
+    /// sends the whole grid back through layout. A trace adds rows a step at a time, so that measure is paid over and over.
+    /// </remarks>
+    private static DataGridLength GetColumnWidth(IndexRecordFieldModel field)
+    {
+        var width = field.DataType switch
+        {
+            SqlDbType.Bit or SqlDbType.TinyInt or SqlDbType.SmallInt => 60,
+            SqlDbType.Int or SqlDbType.BigInt => 90,
+            SqlDbType.Real or SqlDbType.Float or SqlDbType.Decimal or SqlDbType.Money or SqlDbType.SmallMoney => 100,
+            SqlDbType.Date or SqlDbType.Time or SqlDbType.SmallDateTime => 120,
+            SqlDbType.DateTime or SqlDbType.DateTime2 or SqlDbType.DateTimeOffset => 160,
+            SqlDbType.UniqueIdentifier => 240,
+            _ => 140
+        };
+
+        return new DataGridLength(Math.Max(width, field.Name.Length * 7 + 24));
     }
 
     /// <summary>

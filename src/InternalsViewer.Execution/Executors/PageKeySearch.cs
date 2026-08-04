@@ -8,7 +8,7 @@ namespace InternalsViewer.Execution.Executors;
 /// <summary>
 /// Binary search over the slots of a page
 /// </summary>
-public static class PageKeySearch
+internal static class PageKeySearch
 {
     /// <summary>
     /// Finds the first slot whose key is greater than or equal to the target

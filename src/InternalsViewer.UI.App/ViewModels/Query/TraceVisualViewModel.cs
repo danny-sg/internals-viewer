@@ -64,6 +64,11 @@ public sealed partial class TraceVisualViewModel(TraceVisualKind kind,
     public int InputIndex { get; init; } = -1;
 
     /// <summary>
+    /// The operator this input feeds, which with <see cref="InputIndex"/> names the buffer holding its rows
+    /// </summary>
+    public int OperatorNodeId { get; init; }
+
+    /// <summary>
     /// The columns this side's records show, taken from what its operator outputs
     /// </summary>
     public RecordColumnFilter ColumnFilter { get; init; } = RecordColumnFilter.All;
@@ -125,18 +130,6 @@ public sealed partial class TraceVisualViewModel(TraceVisualKind kind,
     [ObservableProperty]
     private ObservableCollection<IndexRecordModel> _sideRecords = [];
 
-    [ObservableProperty]
-    private IReadOnlyList<HashBucketModel> _hashBuckets = [];
-
-    [ObservableProperty]
-    private IReadOnlyList<HashColumnModel> _hashColumns = HashColumnModel.CreateBaseColumns();
-
-    [ObservableProperty]
-    private string _hashTableSummary = string.Empty;
-
-    [ObservableProperty]
-    private int _hashBucketCount = 1 << JoinHash.DefaultBucketBits;
-
     private Color? _objectColour;
 
     public Color ObjectColour => _objectColour ??= AllocationLayerBuilder.GetObjectColour(Database, AllocationUnit);
@@ -150,6 +143,16 @@ public sealed partial class TraceVisualViewModel(TraceVisualKind kind,
     private bool _objectBorderVisible;
 
     private readonly List<PageSpan> _visitedPages = [];
+
+    /// <summary>
+    /// The span already held for a page, so a page read again is recoloured rather than added a second time
+    /// </summary>
+    /// <remarks>
+    /// A walk rereads the same pages endlessly - every descent of a correlated seek starts at the root - and a span per read would grow
+    /// without limit while showing nothing a single span for that page does not. The whole list is copied on each read and walked again on
+    /// each repaint, so the duplicates cost time quadratic in the length of the walk.
+    /// </remarks>
+    private readonly Dictionary<PageAddress, PageSpan> _visitedByAddress = [];
 
     public long TotalPageCount => AllocationUnit.UsedPages;
 
@@ -248,7 +251,7 @@ public sealed partial class TraceVisualViewModel(TraceVisualKind kind,
 
                 SelectedSlot = null;
 
-                _visitedPages.Add(new PageSpan(read.PageAddress, 0, long.MaxValue, ObjectColour));
+                Visit(_visitedPages, _visitedByAddress, read.PageAddress);
 
                 PageSpans = [.. _visitedPages];
             }
@@ -305,6 +308,8 @@ public sealed partial class TraceVisualViewModel(TraceVisualKind kind,
     {
         var visited = new List<PageSpan>();
 
+        var visitedByAddress = new Dictionary<PageAddress, PageSpan>();
+
         PageAddress? lastPage = null;
 
         PageAddress? lastDataPage = null;
@@ -327,7 +332,7 @@ public sealed partial class TraceVisualViewModel(TraceVisualKind kind,
                     break;
 
                 case AccessStep.ReadPage read:
-                    visited.Add(new PageSpan(read.PageAddress, 0, long.MaxValue, ObjectColour));
+                    Visit(visited, visitedByAddress, read.PageAddress);
                     lastPage = read.PageAddress;
                     lastDataPage = read.PageAddress;
                     lastSlotCount = read.SlotCount;
@@ -358,6 +363,13 @@ public sealed partial class TraceVisualViewModel(TraceVisualKind kind,
             _visitedPages.Clear();
             _visitedPages.AddRange(replay.Visited);
 
+            _visitedByAddress.Clear();
+
+            foreach (var span in _visitedPages)
+            {
+                _visitedByAddress[span.Address] = span;
+            }
+
             PageSpans = [.. _visitedPages];
             SelectedPageAddress = replay.LastPage;
             SelectedSlot = replay.LastSlot;
@@ -382,6 +394,7 @@ public sealed partial class TraceVisualViewModel(TraceVisualKind kind,
     public void Reset()
     {
         _visitedPages.Clear();
+        _visitedByAddress.Clear();
         _currentTracePage = null;
         _objectBorderVisible = false;
         PageSpans = [];
@@ -392,9 +405,6 @@ public sealed partial class TraceVisualViewModel(TraceVisualKind kind,
         TraceBorders = [];
         IsDimmed = false;
         SideRecords = [];
-        HashBuckets = [];
-        HashColumns = HashColumnModel.CreateBaseColumns();
-        HashTableSummary = string.Empty;
     }
 
     internal static IndexRecordModel ToRecordModel(IRecord record, RecordColumnFilter? columns = null)
@@ -430,6 +440,25 @@ public sealed partial class TraceVisualViewModel(TraceVisualKind kind,
         => field.ColumnStructure is IndexColumnStructure { IsRowIdentifier: true }
             ? rowIdentifier?.ToString() ?? field.Value
             : field.Value;
+
+    /// <summary>
+    /// Records a page as visited, or brings back to full colour one already held
+    /// </summary>
+    private void Visit(List<PageSpan> spans, Dictionary<PageAddress, PageSpan> byAddress, PageAddress page)
+    {
+        if (byAddress.TryGetValue(page, out var visited))
+        {
+            visited.DisplayColour = ObjectColour;
+
+            return;
+        }
+
+        var span = new PageSpan(page, 0, long.MaxValue, ObjectColour);
+
+        spans.Add(span);
+
+        byAddress[page] = span;
+    }
 
     private void LightenVisitedPages(List<PageSpan> spans)
     {

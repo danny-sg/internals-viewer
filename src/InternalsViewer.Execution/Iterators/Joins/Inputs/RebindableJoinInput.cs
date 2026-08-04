@@ -28,7 +28,7 @@ public abstract class RebindableJoinInput : JoinInput, IRebindableJoinInput
     /// inner does not have resolves to null, every comparison against it is unknown and the join quietly returns nothing rather than
     /// failing. A name both sides carry is left alone, because it resolves against the inner row and that is what a residual means.
     /// </remarks>
-    protected void GuardResidual(AccessPredicate? residual, IRecord outerRecord, IReadOnlySet<string> innerColumns)
+    protected void CheckResidual(AccessPredicate? residual, IRecord outerRecord, IReadOnlySet<string> innerColumns)
     {
         if (IsResidualChecked || residual is null || innerColumns.Count == 0)
         {

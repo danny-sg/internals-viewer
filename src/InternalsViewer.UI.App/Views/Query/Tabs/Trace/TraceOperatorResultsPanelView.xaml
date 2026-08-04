@@ -14,7 +14,7 @@
             <RowDefinition Height="*" />
         </Grid.RowDefinitions>
 
-        <TextBlock Text="{x:Bind ViewModel.ResultsLabel, Mode=OneWay}"
+        <TextBlock Text="{x:Bind ViewModel.InputStreamLabel, Mode=OneWay}"
                    FontSize="12"
                    FontWeight="SemiBold"
                    Padding="8,8,8,4" />

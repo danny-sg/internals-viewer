@@ -10,7 +10,6 @@ using InternalsViewer.Execution.AccessPaths.Values;
 using InternalsViewer.Execution.Interfaces;
 using InternalsViewer.Execution.Iterators.Joins.Inputs;
 using InternalsViewer.Internals.Engine.Address;
-using InternalsViewer.Internals.Engine.Database;
 using InternalsViewer.Internals.Interfaces.Engine;
 
 namespace InternalsViewer.Execution.Iterators.Joins;

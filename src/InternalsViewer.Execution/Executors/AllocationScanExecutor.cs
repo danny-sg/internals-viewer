@@ -5,7 +5,7 @@ using InternalsViewer.Execution.Records;
 
 namespace InternalsViewer.Execution.Executors;
 
-public static class AllocationScanExecutor
+internal static class AllocationScanExecutor
 {
     public static IEnumerable<AccessStep> Execute(IRowPageAccessor page,
                                                   AccessPredicate? residual = null,

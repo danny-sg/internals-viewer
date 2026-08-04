@@ -8,8 +8,8 @@
     xmlns:trace="using:InternalsViewer.UI.App.Controls.Trace"
     mc:Ignorable="d">
 
-    <trace:HashTableGrid Buckets="{x:Bind ViewModel.HashBuckets, Mode=OneWay}"
-                         Columns="{x:Bind ViewModel.HashColumns, Mode=OneWay}"
-                         Summary="{x:Bind ViewModel.HashTableSummary, Mode=OneWay}"
-                         BucketCount="{x:Bind ViewModel.HashBucketCount, Mode=TwoWay}" />
+    <trace:HashTableGrid Buckets="{x:Bind ViewModel.Buckets, Mode=OneWay}"
+                         Columns="{x:Bind ViewModel.Columns, Mode=OneWay}"
+                         Summary="{x:Bind ViewModel.Summary, Mode=OneWay}"
+                         BucketCount="{x:Bind ViewModel.BucketCount, Mode=TwoWay}" />
 </UserControl>

@@ -1,4 +1,4 @@
-using System.Collections.ObjectModel;
+﻿using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using InternalsViewer.UI.App.Models.Index;
 
@@ -23,21 +23,38 @@ public sealed partial class TraceOperatorViewModel(int nodeId, string title, str
     /// </summary>
     public string Description { get; } = description;
 
+    /// <summary>
+    /// The input the operator reads first, either the object it scans or the results of the operator below it
+    /// </summary>
+    public TracePane OuterTop { get; set; } = TracePane.Empty;
+
+    /// <summary>
+    /// What the outer input holds, which is the hash table where the operator is a hash match and its rows otherwise
+    /// </summary>
+    public TracePane OuterBottom { get; set; } = TracePane.Empty;
+
+    public TracePane InnerTop { get; set; } = TracePane.Empty;
+
+    public TracePane InnerBottom { get; set; } = TracePane.Empty;
+
     public ObservableCollection<IndexRecordModel> Results { get; } = [];
 
-    public string ResultsLabel => Results.Count > 0 ? $"Results ({Results.Count:N0})" : "Results";
+    /// <summary>
+    /// Names the pane these rows fill, which is the operator above reading them rather than this one producing them
+    /// </summary>
+    public string InputStreamLabel => Results.Count > 0 ? $"Input Stream ({Results.Count:N0})" : "Input Stream";
 
     public void Clear()
     {
         Results.Clear();
 
-        OnPropertyChanged(nameof(ResultsLabel));
+        OnPropertyChanged(nameof(InputStreamLabel));
     }
 
     public void Add(IndexRecordModel row)
     {
         Results.Add(row);
 
-        OnPropertyChanged(nameof(ResultsLabel));
+        OnPropertyChanged(nameof(InputStreamLabel));
     }
 }

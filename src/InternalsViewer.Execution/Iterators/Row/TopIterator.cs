@@ -2,6 +2,7 @@ using InternalsViewer.Execution.AccessPaths.Definitions;
 using InternalsViewer.Execution.AccessPaths.Results;
 using InternalsViewer.Execution.AccessPaths.Search;
 using InternalsViewer.Execution.Interfaces;
+using InternalsViewer.Execution.Interfaces.Iterators;
 using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Internals.Interfaces.Engine;
 
@@ -15,7 +16,7 @@ namespace InternalsViewer.Execution.Iterators.Row;
 /// passed on with the identity they arrived with, so the reads still belong to whatever performed them, and this operator adds only the
 /// count and the point the walk was stopped.
 /// </remarks>
-public sealed class TopIterator(IIteratorFactory factory) : IStepIterator
+public sealed class TopIterator(IIteratorFactory factory) : IUnaryStepIterator
 {
     public int IteratorId { get; set; }
 
@@ -34,7 +35,7 @@ public sealed class TopIterator(IIteratorFactory factory) : IStepIterator
     /// </summary>
     public long RowCount { get; private set; }
 
-    private IStepIterator? Input { get; set; }
+    public IStepIterator? Input { get; private set; }
 
     private long Limit { get; set; }
 

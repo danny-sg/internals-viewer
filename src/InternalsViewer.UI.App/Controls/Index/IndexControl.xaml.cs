@@ -765,6 +765,8 @@ public sealed partial class IndexControl : IDisposable
             // Only draw the page if it is visible
             if (clip.Contains(renderX, renderY))
             {
+                var headerHeight = 0F;
+
                 var isHighlighted = highlightedAddresses?.Contains(node.Node.PageAddress) ?? false;
                 var isSelected = node.Node.PageAddress == selectedAddress;
                 var hasSpanColour = _activeSpanColours.TryGetValue(node.Node.PageAddress, out var spanColour);
@@ -791,7 +793,7 @@ public sealed partial class IndexControl : IDisposable
                     }
                     else
                     {
-                        var headerHeight = DrawFullPageDetail(canvas, node.Node, renderX, renderY);
+                        headerHeight = DrawFullPageDetail(canvas, node.Node, renderX, renderY);
 
                         if (node.Node is { PageType: PageType.Data })
                         {
@@ -806,7 +808,7 @@ public sealed partial class IndexControl : IDisposable
 
                 if (SelectedPageAddress == node.Node.PageAddress && SelectedSlot != null)
                 {
-                    DrawSelectedSlot(canvas, node.Node, renderX, renderY, 1);
+                    DrawSelectedSlot(canvas, node.Node, renderX, renderY, 1, headerHeight);
                 }
             }
 
@@ -825,9 +827,16 @@ public sealed partial class IndexControl : IDisposable
         }
     }
 
-    private void DrawSelectedSlot(SKCanvas canvas, IndexNode nodeNode, float renderX, float renderY, int borderWidth)
+    private void DrawSelectedSlot(SKCanvas canvas, 
+                                  IndexNode nodeNode, 
+                                  float renderX, 
+                                  float renderY, 
+                                  int borderWidth,
+                                  float headerHeight)
     {
-        var y = renderY + ((PageHeight / nodeNode.SlotCount) * SelectedSlot ?? 0);
+        var height = PageHeight - headerHeight;
+
+        var y = renderY + headerHeight + ((height / nodeNode.SlotCount) * SelectedSlot ?? 0);
 
         _slotPaint.StrokeWidth = 2;
 

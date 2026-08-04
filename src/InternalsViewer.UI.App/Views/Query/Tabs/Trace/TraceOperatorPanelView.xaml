@@ -1,0 +1,112 @@
+<?xml version="1.0" encoding="utf-8"?>
+<UserControl
+    x:Class="InternalsViewer.UI.App.Views.Query.Tabs.Trace.TraceOperatorPanelView"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    xmlns:controls="using:CommunityToolkit.WinUI.Controls"
+    mc:Ignorable="d">
+
+    <UserControl.Resources>
+        <Style x:Key="TracePaneSplitterStyle" TargetType="controls:GridSplitter">
+            <Setter Property="Background" Value="{ThemeResource ControlStrokeColorDefaultBrush}" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="controls:GridSplitter">
+                        <Grid Background="{TemplateBinding Background}" />
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style x:Key="TracePaneHeaderStyle" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="12" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="Padding" Value="8,8,8,4" />
+            <Setter Property="TextTrimming" Value="CharacterEllipsis" />
+        </Style>
+    </UserControl.Resources>
+
+    <Grid Background="{ThemeResource LayerOnMicaBaseAltFillColorDefault}">
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="*" />
+            <ColumnDefinition Width="Auto" />
+            <ColumnDefinition x:Name="InnerColumn" Width="*" />
+        </Grid.ColumnDefinitions>
+
+        <Grid Grid.Column="0">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="2*" />
+                <RowDefinition Height="Auto" />
+                <RowDefinition x:Name="OuterBottomRow" Height="*" />
+            </Grid.RowDefinitions>
+
+            <TextBlock x:Name="OuterHeader" Style="{StaticResource TracePaneHeaderStyle}" />
+
+            <ContentControl x:Name="OuterTopHost"
+                            Grid.Row="1"
+                            HorizontalAlignment="Stretch"
+                            VerticalAlignment="Stretch"
+                            HorizontalContentAlignment="Stretch"
+                            VerticalContentAlignment="Stretch" />
+
+            <controls:GridSplitter x:Name="OuterSplitter"
+                                   Grid.Row="2"
+                                   Height="2"
+                                   ResizeBehavior="PreviousAndNext"
+                                   ResizeDirection="Rows"
+                                   HorizontalAlignment="Stretch"
+                                   Style="{StaticResource TracePaneSplitterStyle}" />
+
+            <ContentControl x:Name="OuterBottomHost"
+                            Grid.Row="3"
+                            HorizontalAlignment="Stretch"
+                            VerticalAlignment="Stretch"
+                            HorizontalContentAlignment="Stretch"
+                            VerticalContentAlignment="Stretch" />
+        </Grid>
+
+        <controls:GridSplitter x:Name="InputSplitter"
+                               Grid.Column="1"
+                               Width="2"
+                               ResizeBehavior="PreviousAndNext"
+                               ResizeDirection="Columns"
+                               VerticalAlignment="Stretch"
+                               Style="{StaticResource TracePaneSplitterStyle}" />
+
+        <Grid Grid.Column="2">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="2*" />
+                <RowDefinition Height="Auto" />
+                <RowDefinition x:Name="InnerBottomRow" Height="*" />
+            </Grid.RowDefinitions>
+
+            <TextBlock x:Name="InnerHeader" Style="{StaticResource TracePaneHeaderStyle}" />
+
+            <ContentControl x:Name="InnerTopHost"
+                            Grid.Row="1"
+                            HorizontalAlignment="Stretch"
+                            VerticalAlignment="Stretch"
+                            HorizontalContentAlignment="Stretch"
+                            VerticalContentAlignment="Stretch" />
+
+            <controls:GridSplitter x:Name="InnerSplitter"
+                                   Grid.Row="2"
+                                   Height="2"
+                                   ResizeBehavior="PreviousAndNext"
+                                   ResizeDirection="Rows"
+                                   HorizontalAlignment="Stretch"
+                                   Style="{StaticResource TracePaneSplitterStyle}" />
+
+            <ContentControl x:Name="InnerBottomHost"
+                            Grid.Row="3"
+                            HorizontalAlignment="Stretch"
+                            VerticalAlignment="Stretch"
+                            HorizontalContentAlignment="Stretch"
+                            VerticalContentAlignment="Stretch" />
+        </Grid>
+    </Grid>
+</UserControl>

@@ -12,7 +12,7 @@ namespace InternalsViewer.Execution.AccessPaths.Text;
 /// A value keeps its payload in the form the storage engine uses, so the data type decides how the bytes should be read back. A character
 /// type is decoded to text and quoted, anything else falls back to a binary literal.
 /// </remarks>
-public static class AccessValueFormatter
+internal static class AccessValueFormatter
 {
     /// <summary>
     /// Formats a value as a literal, returning the token role the literal takes

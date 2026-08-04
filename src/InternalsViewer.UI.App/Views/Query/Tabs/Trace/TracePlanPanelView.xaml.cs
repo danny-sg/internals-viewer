@@ -4,13 +4,13 @@ using Microsoft.UI.Xaml.Controls;
 namespace InternalsViewer.UI.App.Views.Query.Tabs.Trace;
 
 /// <summary>
-/// The hash table of one hash match, shown under the build side that fills it
+/// The operators the trace runs, with the one whose tab is open marked
 /// </summary>
-public sealed partial class TraceHashTablePanelView : UserControl
+public sealed partial class TracePlanPanelView : UserControl
 {
-    public TraceHashTableViewModel? ViewModel => DataContext as TraceHashTableViewModel;
+    public TraceTabViewModel? ViewModel => DataContext as TraceTabViewModel;
 
-    public TraceHashTablePanelView()
+    public TracePlanPanelView()
     {
         InitializeComponent();
 

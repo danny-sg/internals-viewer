@@ -9,14 +9,25 @@ namespace InternalsViewer.Execution.Records;
 /// </summary>
 /// <remarks>
 /// An operator reading a join has to see one row, not a pair, because it hashes or compares columns without caring which side they came
-/// from. Where both sides carry the same column name the outer one wins, matching the order a join states its output in.
+/// from. Both sides are kept whole rather than merged by name, because a column each side carries is two different columns and dropping
+/// one loses it for everything above - a join of two tables that both have a Name can still be asked for either. A consumer resolving a
+/// column by name takes the first it finds, which is the outer one, so a name that is ambiguous resolves as it always did.
 /// </remarks>
 public sealed class JoinedRecord : IRecord
 {
-    private JoinedRecord(List<RecordField> fields)
+    private JoinedRecord(IRecord outer, IRecord inner, List<RecordField> fields)
     {
+        Outer = outer;
+        Inner = inner;
         Fields = fields;
     }
+
+    /// <summary>
+    /// The row this side of the join contributed, kept so that two columns of the same name can be told apart
+    /// </summary>
+    public IRecord Outer { get; }
+
+    public IRecord Inner { get; }
 
     public int Slot => -1;
 
@@ -45,14 +56,6 @@ public sealed class JoinedRecord : IRecord
             return outer;
         }
 
-        var fields = new List<RecordField>(outer.Fields);
-
-        var names = outer.Fields
-                         .Select(f => f.ColumnStructure.ColumnName)
-                         .ToHashSet(StringComparer.OrdinalIgnoreCase);
-
-        fields.AddRange(inner.Fields.Where(f => names.Add(f.ColumnStructure.ColumnName)));
-
-        return new JoinedRecord(fields);
+        return new JoinedRecord(outer, inner, [.. outer.Fields, .. inner.Fields]);
     }
 }

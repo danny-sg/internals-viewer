@@ -14,6 +14,11 @@ internal sealed class RecordValueConverter: IValueConverter
             return string.Empty;
         }
 
+        if (parameter is int index)
+        {
+            return index >= 0 && index < record.Fields.Count ? record.Fields[index].Value : string.Empty;
+        }
+
         var field = record.Fields.FirstOrDefault(f => f.Name == parameter.ToString());
 
         return field?.Value ?? $"{parameter} not found";

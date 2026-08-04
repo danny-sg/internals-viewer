@@ -12,7 +12,7 @@ namespace InternalsViewer.Execution.AccessPaths.Values;
 /// NULL sorts lower than any other value, matching SQL Server index ordering. Variable length values are compared ordinally, which matches
 /// binary collations but not linguistic ones.
 /// </remarks>
-public static class AccessValueComparer
+internal static class AccessValueComparer
 {
     private static readonly CompareInfo TextComparer = CultureInfo.InvariantCulture.CompareInfo;
 
