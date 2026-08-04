@@ -12,6 +12,8 @@ public abstract record AccessPredicate
     /// </summary>
     public sealed record True : AccessPredicate;
 
+    public sealed record NoTranslation : AccessPredicate;
+
     /// <summary>
     /// A comparison between two scalar expressions
     /// </summary>

@@ -341,6 +341,12 @@ public static class PredicateWriter
                 
                 break;
 
+            case AccessPredicate.NoTranslation:
+                tokens.Add(new PredicateToken(PredicateTokenType.Unknown,
+                                              "<untranslated>",
+                                              nameof(AccessPredicate.NoTranslation)));
+                break;
+
             default:
                 tokens.Add(new PredicateToken(PredicateTokenType.Unknown,
                                               "<unsupported>",

@@ -71,10 +71,7 @@ public sealed class AllocationScanIterator(IPageService pageService, IRecordServ
               "so the scan ends after that many rows have been output."
             : null;
 
-        CurrentStrategy = AccessStrategyBuilder.BuildAllocationScan(scan.Residual,
-                                                                    scan.RowGoal,
-                                                                    rowGoalReason,
-                                                                    scan.HasUntranslatedResidual) with
+        CurrentStrategy = AccessStrategyBuilder.BuildAllocationScan(scan.Residual, scan.RowGoal, rowGoalReason) with
         {
             EntryPoint = scan.FirstIamPage,
             EntryPointSource = "sys.sysallocunits.pgfirstiam"

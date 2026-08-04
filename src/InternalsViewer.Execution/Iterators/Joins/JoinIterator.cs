@@ -26,6 +26,8 @@ public abstract class JoinIterator : IteratorBase, IJoinIterator
 
     protected CancellationToken CurrentToken { get; private set; }
 
+    protected bool IsOpen => Rows is not null;
+
     private IAsyncEnumerator<IRecord>? Rows { get; set; }
 
     public override async Task<IRecord?> GetRowAsync(CancellationToken cancellationToken)
@@ -73,8 +75,6 @@ public abstract class JoinIterator : IteratorBase, IJoinIterator
     }
 
     protected abstract IAsyncEnumerable<IRecord> RunAsync();
-
-    protected bool IsOpen => Rows is not null;
 
     protected void StartRows()
     {

@@ -129,8 +129,7 @@ public sealed class IndexIterator(IPageService pageService, IRecordService recor
                                                       RowGoal is { } goal ? goal - baseRows : null,
                                                       range.Residual,
                                                       rowGoalReason,
-                                                      Ranges,
-                                                      range.HasUntranslatedResidual) with
+                                                      Ranges) with
         {
             EntryPoint = range.RootPage,
             EntryPointSource = "sys.sysallocunits.pgroot"

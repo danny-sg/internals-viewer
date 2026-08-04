@@ -28,19 +28,19 @@ public sealed class HeapFetchIterator(IPageService pageService, IRecordService r
 {
     private readonly byte[] _pageBuffer = new byte[PageData.Size];
 
+    private PageAddress? _currentPageAddress;
+
     public override PageAddress? CurrentPageAddress => _currentPageAddress;
 
     public override AccessStrategy? Strategy => CurrentStrategy;
 
     public int OpenCount { get; private set; }
 
-    private PageAddress? _currentPageAddress;
-
     private AccessStrategy? CurrentStrategy { get; set; }
 
     private AccessPredicate? Residual { get; set; }
 
-    private RowIdentifier Target { get; set; }
+    private RowIdentifier? Target { get; set; }
 
     private AccessStep? PendingRebind { get; set; }
 
@@ -125,7 +125,9 @@ public sealed class HeapFetchIterator(IPageService pageService, IRecordService r
 
     private async Task FetchAsync(CancellationToken cancellationToken)
     {
-        var target = Target;
+        var target = Target
+                     ?? throw new InvalidOperationException("A heap fetch has no row identifier, from its definition or a correlated "
+                                                            + "outer row");
 
         // A forwarded row is only ever one hop away, because the stub is updated rather than chained
         for (var hop = 0; hop < 2; hop++)
@@ -169,7 +171,7 @@ public sealed class HeapFetchIterator(IPageService pageService, IRecordService r
 
     private async Task ReadAsync(HeapPageAccessor accessor, int slot, IRecord record, CancellationToken cancellationToken)
     {
-        var hasResidual = Residual is not (null or AccessPredicate.True);
+        var hasResidual = Residual is not (null or AccessPredicate.True or AccessPredicate.NoTranslation);
 
         if (record.IsGhost)
         {
@@ -245,7 +247,7 @@ public sealed class HeapFetchIterator(IPageService pageService, IRecordService r
 
     private bool? Evaluate(IRecord record)
     {
-        if (Residual is null or AccessPredicate.True)
+        if (Residual is null or AccessPredicate.True or AccessPredicate.NoTranslation)
         {
             return true;
         }

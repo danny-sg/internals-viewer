@@ -1,3 +1,5 @@
+#pragma warning disable VSTHRD003
+
 using InternalsViewer.Execution.AccessPaths.Definitions;
 using InternalsViewer.Execution.AccessPaths.Results;
 using InternalsViewer.Execution.Interfaces;
@@ -92,7 +94,7 @@ public sealed class IteratorStepper : IAsyncDisposable
 
     public async ValueTask DisposeAsync()
     {
-        _engineCancellation.Cancel();
+        await _engineCancellation.CancelAsync();
 
         if (_engine is not null)
         {

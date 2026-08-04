@@ -661,9 +661,7 @@ public sealed partial class TraceTabViewModel : ObservableObject
 
             if (definition is AllocationScanDefinition allocation)
             {
-                return AccessStrategyBuilder.BuildAllocationScan(allocation.Residual,
-                                                                 allocation.RowGoal,
-                                                                 hasUntranslatedResidual: allocation.HasUntranslatedResidual) with
+                return AccessStrategyBuilder.BuildAllocationScan(allocation.Residual, allocation.RowGoal) with
                 {
                     EntryPoint = allocation.FirstIamPage,
                     EntryPointSource = "sys.sysallocunits.pgfirstiam"
@@ -682,8 +680,7 @@ public sealed partial class TraceTabViewModel : ObservableObject
                                                range.Direction,
                                                range.RowGoal,
                                                range.Residual,
-                                               ranges: range.Ranges,
-                                               hasUntranslatedResidual: range.HasUntranslatedResidual) with
+                                               ranges: range.Ranges) with
             {
                 EntryPoint = range.RootPage,
                 EntryPointSource = "sys.sysallocunits.pgroot"
@@ -792,7 +789,7 @@ public sealed partial class TraceTabViewModel : ObservableObject
             _hasNavigatedSinceReset = true;
         }
 
-        if (step is AccessStep.Stopped)
+        if (step is AccessStep.Stopped && step.NodeId == Definition.NodeId)
         {
             IsStepComplete = true;
             IsRunning = false;

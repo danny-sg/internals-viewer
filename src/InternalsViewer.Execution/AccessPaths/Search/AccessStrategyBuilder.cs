@@ -14,8 +14,7 @@ public static class AccessStrategyBuilder
                                        long? rowGoal,
                                        AccessPredicate? residual = null,
                                        string? rowGoalReason = null,
-                                       IReadOnlyList<SeekBounds>? ranges = null,
-                                       bool hasUntranslatedResidual = false)
+                                       IReadOnlyList<SeekBounds>? ranges = null)
     {
         var forward = direction == ScanDirection.Forward;
 
@@ -25,7 +24,7 @@ public static class AccessStrategyBuilder
         var exitTarget = forward ? bounds.EndValue : bounds.StartValue;
         var exitInclusive = forward ? bounds.IsEndInclusive : bounds.IsStartInclusive;
 
-        var hasResidual = residual is not null and not AccessPredicate.True;
+        var hasResidual = residual is not (null or AccessPredicate.True or AccessPredicate.NoTranslation);
 
         var rangeCount = ranges?.Count ?? 1;
 
@@ -53,8 +52,8 @@ public static class AccessStrategyBuilder
             RowGoalReason = rowGoalReason,
             Bounds = bounds,
             Direction = direction,
-            Residual = residual is AccessPredicate.True ? null : residual,
-            HasUntranslatedResidual = hasUntranslatedResidual,
+            Residual = residual is AccessPredicate.True or AccessPredicate.NoTranslation ? null : residual,
+            HasUntranslatedResidual = HasNoTranslation(residual),
             RangeCount = rangeCount,
             Ranges = ranges ?? [bounds],
             KeyColumns = GetKeyColumns(indexStructure),
@@ -64,10 +63,9 @@ public static class AccessStrategyBuilder
 
     public static AccessStrategy BuildAllocationScan(AccessPredicate? residual,
                                                      long? rowGoal,
-                                                     string? rowGoalReason = null,
-                                                     bool hasUntranslatedResidual = false)
+                                                     string? rowGoalReason = null)
     {
-        var hasResidual = residual is not null and not AccessPredicate.True;
+        var hasResidual = residual is not (null or AccessPredicate.True or AccessPredicate.NoTranslation);
 
         var phases = ImmutableArray.CreateBuilder<AccessStrategyPhase>();
 
@@ -114,8 +112,8 @@ public static class AccessStrategyBuilder
             RowGoalReason = rowGoalReason,
             Bounds = SeekBounds.All,
             Direction = ScanDirection.Forward,
-            Residual = residual is AccessPredicate.True ? null : residual,
-            HasUntranslatedResidual = hasUntranslatedResidual,
+            Residual = residual is AccessPredicate.True or AccessPredicate.NoTranslation ? null : residual,
+            HasUntranslatedResidual = HasNoTranslation(residual),
             RangeCount = 1,
             Ranges = [SeekBounds.All]
         };
@@ -126,7 +124,7 @@ public static class AccessStrategyBuilder
     /// </summary>
     public static AccessStrategy BuildHeapFetch(AccessPredicate? residual)
     {
-        var hasResidual = residual is not null and not AccessPredicate.True;
+        var hasResidual = residual is not (null or AccessPredicate.True or AccessPredicate.NoTranslation);
 
         var phases = ImmutableArray.CreateBuilder<AccessStrategyPhase>();
 
@@ -161,7 +159,8 @@ public static class AccessStrategyBuilder
             Phases = phases.ToImmutable(),
             Bounds = SeekBounds.All,
             Direction = ScanDirection.Forward,
-            Residual = residual is AccessPredicate.True ? null : residual,
+            Residual = residual is AccessPredicate.True or AccessPredicate.NoTranslation ? null : residual,
+            HasUntranslatedResidual = HasNoTranslation(residual),
             RangeCount = 1,
             Ranges = [SeekBounds.All]
         };
@@ -369,4 +368,14 @@ public static class AccessStrategyBuilder
     {
         return bounds.CompareWidth == int.MaxValue ? target.Count : bounds.CompareWidth;
     }
+    private static bool HasNoTranslation(AccessPredicate? predicate)
+        => predicate switch
+        {
+            null => false,
+            AccessPredicate.NoTranslation => true,
+            AccessPredicate.And and => and.Predicates.Any(HasNoTranslation),
+            AccessPredicate.Or or => or.Predicates.Any(HasNoTranslation),
+            AccessPredicate.Not not => HasNoTranslation(not.Predicate),
+            _ => false
+        };
 }

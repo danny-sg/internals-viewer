@@ -4,11 +4,11 @@ namespace InternalsViewer.Execution.AccessPaths.Results;
 
 public sealed class NullStepSink : IStepSink
 {
-    public static NullStepSink Instance { get; } = new();
-
     private NullStepSink()
     {
     }
+
+    public static NullStepSink Instance { get; } = new();
 
     public ValueTask EmitAsync(AccessStep step, CancellationToken cancellationToken) => ValueTask.CompletedTask;
 }

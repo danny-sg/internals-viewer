@@ -30,11 +30,6 @@ public abstract record IteratorDefinition
     public long? RowGoal { get; init; }
 
     /// <summary>
-    /// Part of the plan's predicate could not be translated, so the residual applied here is weaker than the real one
-    /// </summary>
-    public bool HasUntranslatedResidual { get; init; }
-
-    /// <summary>
     /// Narrows this definition to the shape an iterator opens, failing loudly when it was given the wrong one
     /// </summary>
     public T Expect<T>()

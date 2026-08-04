@@ -10,5 +10,5 @@ namespace InternalsViewer.Execution.AccessPaths.Definitions;
 /// </remarks>
 public sealed record HeapFetchDefinition : IteratorDefinition
 {
-    public RowIdentifier RowIdentifier { get; init; }
+    public RowIdentifier? RowIdentifier { get; init; }
 }

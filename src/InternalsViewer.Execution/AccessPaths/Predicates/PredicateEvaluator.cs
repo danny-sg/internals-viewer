@@ -21,7 +21,7 @@ public static class PredicateEvaluator
 
         return predicate switch
         {
-            AccessPredicate.True
+            AccessPredicate.True or AccessPredicate.NoTranslation
                 => true,
             AccessPredicate.Comparison comparison
                 => EvaluateComparison(comparison, row, context),

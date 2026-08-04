@@ -121,7 +121,7 @@ public sealed class HashMatchIterator(IIteratorFactory factory) : JoinIterator, 
 
         BuildRowEstimate = join.Build.RowEstimate;
 
-        Residual = join.Residual;
+        Residual = join.Residual is AccessPredicate.NoTranslation ? null : join.Residual;
 
         Table = new HashTable(join.BucketBits ?? JoinHash.BucketBitsFor(BuildRowEstimate));
 

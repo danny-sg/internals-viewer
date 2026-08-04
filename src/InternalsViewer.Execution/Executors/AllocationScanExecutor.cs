@@ -26,7 +26,7 @@ internal static class AllocationScanExecutor
                                                 EvaluationContext evaluationContext,
                                                 bool isHeap)
     {
-        var hasResidual = residual is not (null or AccessPredicate.True);
+        var hasResidual = residual is not (null or AccessPredicate.True or AccessPredicate.NoTranslation);
 
         totals = Publish(totals.AddPageRead(), onCountersChanged);
 
@@ -87,7 +87,7 @@ internal static class AllocationScanExecutor
 
     private static bool? EvaluateResidual(IRowPageAccessor page, int slot, AccessPredicate? residual, EvaluationContext evaluationContext)
     {
-        if (residual is null or AccessPredicate.True)
+        if (residual is null or AccessPredicate.True or AccessPredicate.NoTranslation)
         {
             return true;
         }

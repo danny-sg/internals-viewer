@@ -143,7 +143,7 @@ internal static class IndexSeekExecutor
     {
         var forward = direction == ScanDirection.Forward;
 
-        var hasResidual = residual is not (null or AccessPredicate.True);
+        var hasResidual = residual is not (null or AccessPredicate.True or AccessPredicate.NoTranslation);
 
         totals = Publish(totals.AddPageRead(), onCountersChanged);
 
@@ -361,7 +361,7 @@ internal static class IndexSeekExecutor
                                           AccessPredicate? residual, 
                                           EvaluationContext evaluationContext)
     {
-        if (residual is null or AccessPredicate.True)
+        if (residual is null or AccessPredicate.True or AccessPredicate.NoTranslation)
         {
             return true;
         }

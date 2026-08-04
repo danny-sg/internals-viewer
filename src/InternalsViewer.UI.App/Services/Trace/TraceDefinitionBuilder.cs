@@ -118,8 +118,7 @@ public sealed class TraceDefinitionBuilder(Func<PlanNode, AllocationUnit?> resol
             NodeId = node.NodeId,
             OutputList = OutputList(node),
             JoinType = hash.JoinType,
-            Residual = info.Residual,
-            HasUntranslatedResidual = info.HasUntranslatedResidual
+            Residual = Translated(info.Residual, info.HasUntranslatedResidual)
         };
     }
 
@@ -141,8 +140,7 @@ public sealed class TraceDefinitionBuilder(Func<PlanNode, AllocationUnit?> resol
             NodeId = node.NodeId,
             OutputList = OutputList(node),
             JoinType = merge.JoinType,
-            Residual = info.Residual,
-            HasUntranslatedResidual = info.HasUntranslatedResidual
+            Residual = Translated(info.Residual, info.HasUntranslatedResidual)
         };
     }
 
@@ -224,9 +222,8 @@ public sealed class TraceDefinitionBuilder(Func<PlanNode, AllocationUnit?> resol
             {
                 NodeId = node.NodeId,
                 OutputList = OutputList(node),
-                Residual = Residual(node),
-                RowGoal = node.PredicateInfo?.RowGoal,
-                HasUntranslatedResidual = node.PredicateInfo?.HasUntranslatedPredicate == true
+                Residual = Translated(Residual(node), node.PredicateInfo?.HasUntranslatedPredicate == true),
+                RowGoal = node.PredicateInfo?.RowGoal
             };
         }
 
@@ -244,10 +241,9 @@ public sealed class TraceDefinitionBuilder(Func<PlanNode, AllocationUnit?> resol
         {
             NodeId = node.NodeId,
             OutputList = OutputList(node),
-            Residual = Residual(node),
+            Residual = Translated(Residual(node), node.PredicateInfo?.HasUntranslatedPredicate == true),
             Direction = Direction(node),
-            RowGoal = node.PredicateInfo?.RowGoal,
-            HasUntranslatedResidual = node.PredicateInfo?.HasUntranslatedPredicate == true
+            RowGoal = node.PredicateInfo?.RowGoal
         };
     }
 
@@ -352,6 +348,18 @@ public sealed class TraceDefinitionBuilder(Func<PlanNode, AllocationUnit?> resol
 
     private static AccessPredicate? Residual(PlanNode node)
         => node.HasRedundantResidual() ? null : node.PredicateInfo?.Residual;
+
+    private static AccessPredicate? Translated(AccessPredicate? residual, bool isUntranslated)
+    {
+        if (!isUntranslated)
+        {
+            return residual;
+        }
+
+        return residual is null
+            ? new AccessPredicate.NoTranslation()
+            : new AccessPredicate.And([residual, new AccessPredicate.NoTranslation()]);
+    }
 
     private static ScanDirection Direction(PlanNode node)
         => node.ScanInfo?.IsForward == false ? ScanDirection.Backward : ScanDirection.Forward;
