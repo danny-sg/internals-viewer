@@ -58,7 +58,7 @@ public abstract class JoinStepIterator : IJoinStepIterator
     /// <summary>
     /// The pair this join emitted, combined into the single row an operator above reads
     /// </summary>
-    public IRecord? GetOutputRow(AccessStep step)
+    public IRecord? GetRow(AccessStep step)
         => step.Source == IteratorId && step is AccessStep.JoinEmit emit
             ? JoinedRecord.Combine(emit.OuterRecord, emit.InnerRecord)
             : null;

@@ -106,7 +106,7 @@ public sealed class TopIterator(IIteratorFactory factory) : IUnaryStepIterator
             return null;
         }
 
-        if (Input.GetOutputRow(step) is not { } record)
+        if (Input.GetRow(step) is not { } record)
         {
             return Take(step);
         }
@@ -147,7 +147,7 @@ public sealed class TopIterator(IIteratorFactory factory) : IUnaryStepIterator
     /// <summary>
     /// A row this TOP let through, which is its input's row counted and passed on
     /// </summary>
-    public IRecord? GetOutputRow(AccessStep step)
+    public IRecord? GetRow(AccessStep step)
         => step.Source == IteratorId && step is AccessStep.TopRow { EmittedRecord: { } record } ? record : null;
 
     private AccessStep Take(AccessStep step)

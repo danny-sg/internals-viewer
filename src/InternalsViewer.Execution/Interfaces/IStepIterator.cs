@@ -45,7 +45,7 @@ public interface IStepIterator
     /// went into them. Without the identity test a nested operator's leaf rows would be taken as the parent's input, which is the same row
     /// stream the operator was there to transform.
     /// </remarks>
-    IRecord? GetOutputRow(AccessStep step);
+    IRecord? GetRow(AccessStep step);
 
     Task<AccessStep?> StepNextAsync(CancellationToken cancellationToken);
 

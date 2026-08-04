@@ -43,7 +43,7 @@ public sealed class InputCursor(JoinInput input, int side, JoinStepIterator owne
                 yield break;
             }
 
-            if (input.Iterator.GetOutputRow(step) is { } record)
+            if (input.Iterator.GetRow(step) is { } record)
             {
                 CurrentRecord = record;
 

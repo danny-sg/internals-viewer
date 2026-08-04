@@ -26,7 +26,7 @@ public class TopNSortIterator : IStepIterator
         throw new NotImplementedException();
     }
 
-    public IRecord? GetOutputRow(AccessStep step)
+    public IRecord? GetRow(AccessStep step)
     {
         throw new NotImplementedException();
     }

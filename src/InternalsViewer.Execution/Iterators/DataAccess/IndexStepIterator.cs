@@ -144,7 +144,7 @@ public sealed class IndexStepIterator(IPageService pageService, IRecordService r
     /// <summary>
     /// A row this walk read, which it reports as its own only when the step came from here
     /// </summary>
-    public IRecord? GetOutputRow(AccessStep step)
+    public IRecord? GetRow(AccessStep step)
         => step.Source == IteratorId && step is AccessStep.Row { EmittedRecord: { } record } ? record : null;
 
     public Task CloseAsync()
