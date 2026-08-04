@@ -3,9 +3,12 @@ using InternalsViewer.Execution.AccessPaths.Predicates;
 using InternalsViewer.Execution.AccessPaths.Results;
 using InternalsViewer.Execution.AccessPaths.Search;
 using InternalsViewer.Execution.AccessPaths.Values;
-using InternalsViewer.Execution.Services.Indexes;
 using InternalsViewer.Internals.Engine.Database;
 using InternalsViewer.Internals.Tests.Helpers;
+
+using InternalsViewer.Execution.AccessPaths.Definitions;
+using InternalsViewer.Execution.Iterators.DataAccess;
+using InternalsViewer.Execution.Iterators.Stepping;
 
 namespace InternalsViewer.Execution.Tests.IntegrationTests.Services.Indexes;
 
@@ -21,9 +24,7 @@ public class CompressedRecordTests(ITestOutputHelper testOutput)
     {
         var context = await LoadAsync();
 
-        await StartAsync(context, 5000, null);
-
-        var (_, rows) = await RunAsync(context.Service);
+        var (_, rows) = await RunAsync(context, Definition(context, 5000, null));
 
         var row = Assert.Single(rows);
 
@@ -39,9 +40,7 @@ public class CompressedRecordTests(ITestOutputHelper testOutput)
         var context = await LoadAsync();
 
         // Row 5000 divides exactly by 100, 10 and 1000, so those columns are all zero
-        await StartAsync(context, 5000, null);
-
-        var (_, rows) = await RunAsync(context.Service);
+        var (_, rows) = await RunAsync(context, Definition(context, 5000, null));
 
         var row = Assert.Single(rows);
 
@@ -64,9 +63,7 @@ public class CompressedRecordTests(ITestOutputHelper testOutput)
                                                       ComparisonOperator.Equal,
                                                       new AccessExpression.Constant(AccessValue.FromInteger(SqlDbType.Int, 0)));
 
-        await StartAsync(context, 5000, residual);
-
-        var (steps, rows) = await RunAsync(context.Service);
+        var (steps, rows) = await RunAsync(context, Definition(context, 5000, residual));
 
         // A column of no length is the value zero, so this has to match rather than evaluate as unknown against a null
         Assert.Single(rows);
@@ -82,14 +79,12 @@ public class CompressedRecordTests(ITestOutputHelper testOutput)
                                                       ComparisonOperator.Equal,
                                                       new AccessExpression.Constant(AccessValue.FromInteger(SqlDbType.Int, 1)));
 
-        await StartAsync(context, 5000, residual);
-
-        var (_, rows) = await RunAsync(context.Service);
+        var (_, rows) = await RunAsync(context, Definition(context, 5000, residual));
 
         Assert.Empty(rows);
     }
 
-    private sealed record Context(DatabaseSource Database, IndexStepService Service, AllocationUnit Unit);
+    private sealed record Context(DatabaseSource Database, IndexIterator Service, AllocationUnit Unit);
 
     private static async Task<Context> LoadAsync()
     {
@@ -98,30 +93,29 @@ public class CompressedRecordTests(ITestOutputHelper testOutput)
         var database = await DemoDatabase.LoadAsync(serviceHost);
 
         return new Context(database,
-                           serviceHost.GetService<IndexStepService>(),
+                           serviceHost.GetService<IndexIterator>(),
                            DemoDatabase.Unit(database, DemoDatabase.CompressedTable, DemoDatabase.CompressedIndex));
     }
 
-    private static async Task StartAsync(Context context, int id, AccessPredicate? residual)
+    private static RangeDefinition Definition(Context context, int id, AccessPredicate? residual)
     {
         var key = AccessKey.Create(AccessValue.FromInteger(SqlDbType.BigInt, id).WithColumnName("Id"));
 
-        await context.Service.StartAsync(context.Database,
-                                         context.Unit.AllocationUnitId,
-                                         context.Unit.RootPage,
-                                         [SeekBounds.Equality(key)],
-                                         residual,
-                                         ScanDirection.Forward,
-                                         CancellationToken.None);
+        return new RangeDefinition(context.Unit.AllocationUnitId, context.Unit.RootPage, [SeekBounds.Equality(key)])
+        {
+            Residual = residual
+        };
     }
 
-    private async Task<(List<AccessStep> Steps, List<IRecordFields> Rows)> RunAsync(IndexStepService service)
+    private async Task<(List<AccessStep> Steps, List<IRecordFields> Rows)> RunAsync(Context context, IteratorDefinition definition)
     {
+        await using var stepper = new IteratorStepper(context.Service, definition, new IteratorContext(context.Database));
+
         var steps = new List<AccessStep>();
 
         var rows = new List<IRecordFields>();
 
-        while (await service.StepNextAsync(CancellationToken.None) is { } step)
+        while (await stepper.StepNextAsync(CancellationToken.None) is { } step)
         {
             steps.Add(step);
 

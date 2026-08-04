@@ -58,7 +58,7 @@ public abstract record AccessExpression
 
         public override int GetHashCode()
         {
-            var hash = new HashCode();
+            var hash = default(HashCode);
 
             hash.Add(Name, StringComparer.OrdinalIgnoreCase);
             hash.Add(IsDistinct);

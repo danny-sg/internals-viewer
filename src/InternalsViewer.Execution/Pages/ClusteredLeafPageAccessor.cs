@@ -1,5 +1,6 @@
 using InternalsViewer.Execution.AccessPaths.Search;
 using InternalsViewer.Execution.Interfaces.Pages;
+using InternalsViewer.Execution.Records;
 using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Internals.Engine.Pages;
 using InternalsViewer.Internals.Interfaces.Engine;
@@ -10,7 +11,7 @@ using InternalsViewer.Internals.Providers.Metadata;
 namespace InternalsViewer.Execution.Pages;
 
 /// <summary>
-/// Adapts a decoded clustered index leaf <see cref="DataPage"/> and its records to the seek executor page contract
+/// Adapts a decoded clustered index leaf <see cref="DataPage"/> and its records to the accessor interface
 /// </summary>
 public sealed class ClusteredLeafPageAccessor(DataPage page, IRecordService recordService, IndexStructure indexStructure)
     : IIndexPageAccessor
@@ -36,17 +37,17 @@ public sealed class ClusteredLeafPageAccessor(DataPage page, IRecordService reco
 
     public IRecord GetRecord(int slot) => _records[slot] ??= recordService.GetDataRecord(page, slot, _tableStructure);
 
-    public AccessKey GetKey(int slot) => AccessKeyReader.GetKey(GetRecord(slot), indexStructure);
+    public AccessKey GetKey(int slot) => RecordKeyReader.GetKey(GetRecord(slot), indexStructure);
 
     public int CompareKeyPrefix(int slot, in AccessKey target, int width)
     {
         var key = GetKey(slot);
 
-        return AccessKeyReader.ComparePrefix(key, target, width, indexStructure);
+        return RecordKeyReader.ComparePrefix(key, target, width, indexStructure);
     }
 
     public PageAddress GetChildPage(int slot)
     {
-        throw new NotSupportedException("The page is a leaf.");
+        throw new NotSupportedException("The page is a leaf");
     }
 }

@@ -1,7 +1,8 @@
-using InternalsViewer.Execution.Interfaces.AccessPaths.Binding;
 using System.Data;
 using System.Text.RegularExpressions;
+using InternalsViewer.Execution.AccessPaths.Binding;
 using InternalsViewer.Execution.AccessPaths.Values;
+using InternalsViewer.Execution.Interfaces.AccessPaths.Binding;
 
 namespace InternalsViewer.Execution.AccessPaths.Predicates;
 
@@ -20,7 +21,7 @@ public static class PredicateEvaluator
 
         return predicate switch
         {
-            AccessPredicate.True
+            AccessPredicate.True or AccessPredicate.NoTranslation
                 => true,
             AccessPredicate.Comparison comparison
                 => EvaluateComparison(comparison, row, context),
@@ -183,8 +184,11 @@ public static class PredicateEvaluator
 
     private static bool? EvaluateComparison(AccessPredicate.Comparison comparison, IRowValueSource row, EvaluationContext context)
     {
-        var left = Resolve(comparison.Left, row, context);
-        var right = Resolve(comparison.Right, row, context);
+        // A join residual relates the two rows it is judging, so each operand is read from its own side of the pair
+        var (leftRow, rightRow) = row is JoinRowValueSource pair ? (pair.FromOuter, pair.FromInner) : (row, row);
+
+        var left = Resolve(comparison.Left, leftRow, context);
+        var right = Resolve(comparison.Right, rightRow, context);
 
         if (left.IsNull || right.IsNull)
         {

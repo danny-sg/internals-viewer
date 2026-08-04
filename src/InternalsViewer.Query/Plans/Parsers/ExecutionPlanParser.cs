@@ -34,7 +34,7 @@ public static class ExecutionPlanParser
                                                .Select(e => ParseRelationalOperator(e, parameters, 1))
                                                .ToList();
 
-        var statementNode = BuildStatementNode(queryPlan.Parent, rootRelationalOperators);
+        var statementNode = BuildStatementNode(queryPlan.Parent, queryPlan, rootRelationalOperators);
 
         plan.Root.Add(statementNode);
 
@@ -46,7 +46,7 @@ public static class ExecutionPlanParser
         return plan;
     }
 
-    private static PlanNode BuildStatementNode(XElement? statementElement, List<PlanNode> rootRelOps)
+    private static PlanNode BuildStatementNode(XElement? statementElement, XElement queryPlan, List<PlanNode> rootRelOps)
     {
         var statementType = statementElement is null
             ? string.Empty
@@ -63,7 +63,31 @@ public static class ExecutionPlanParser
             IsStatement = true,
             PhysicalOperator = string.IsNullOrEmpty(statementType) ? "Statement" : statementType,
             EstimatedCost = subtreeCost,
+            QueryMemoryGrant = ParseQueryMemoryGrant(queryPlan),
             Children = rootRelOps
+        };
+    }
+
+    private static QueryMemoryGrant? ParseQueryMemoryGrant(XElement queryPlan)
+    {
+        var info = queryPlan.Elements().FirstOrDefault(e => e.Name.LocalName == "MemoryGrantInfo");
+
+        if (info is null)
+        {
+            return null;
+        }
+
+        return new QueryMemoryGrant
+        {
+            SerialRequiredKb = GetLongAttribute(info, "SerialRequiredMemory"),
+            SerialDesiredKb = GetLongAttribute(info, "SerialDesiredMemory"),
+            RequiredKb = GetLongAttribute(info, "RequiredMemory"),
+            DesiredKb = GetLongAttribute(info, "DesiredMemory"),
+            RequestedKb = GetLongAttribute(info, "RequestedMemory"),
+            GrantedKb = GetLongAttribute(info, "GrantedMemory"),
+            MaxUsedKb = GetLongAttribute(info, "MaxUsedMemory"),
+            MaxQueryKb = GetLongAttribute(info, "MaxQueryMemory"),
+            GrantWaitTimeSeconds = GetLongAttribute(info, "GrantWaitTime")
         };
     }
 
@@ -93,9 +117,13 @@ public static class ExecutionPlanParser
 
         node.EstimatedCost = GetDoubleAttribute(element, "EstimatedTotalSubtreeCost");
 
+        node.EstimatedRows = (long)Math.Round(GetDoubleAttribute(element, "EstimateRows") ?? 0);
+
         node.CountersByThread = ExtractThreadCounters(element);
 
         node.IoStats = ParseIoStats(element);
+
+        node.MemoryGrant = ParseMemoryGrant(element);
 
         ParseRowCounts(element, node);
 
@@ -106,14 +134,15 @@ public static class ExecutionPlanParser
         node.OutputColumns = ParseOutputColumns(element);
         node.DefinedValues = ParseDefinedValues(element, parameters);
         node.SortColumns = ParseSortColumns(element);
-        node.MergeInfo = ParseMergeInfo(element);
+        node.MergeInfo = ParseMergeInfo(element, parameters);
+        node.NestedLoopsInfo = ParseNestedLoopsInfo(element, parameters);
         node.GroupByColumns = ParseGroupBy(element);
 
         var children = GetChildRelationalOperators(element);
 
         if (OperatorClassifier.IsHash(node))
         {
-            node.HashInfo = ParseHashInfo(element);
+            node.HashInfo = ParseHashInfo(element, parameters);
         }
 
         if (OperatorClassifier.IsDataAccess(node))
@@ -140,14 +169,34 @@ public static class ExecutionPlanParser
             node.Children.Add(ParseRelationalOperator(child, parameters, level + 1));
         }
 
-        if (string.Equals(node.PhysicalOperator, "Top", StringComparison.OrdinalIgnoreCase) &&
-            node.Children.Count == 1 &&
-            node.Children[0].PredicateInfo is { } childPredicateInfo)
+        if (string.Equals(node.PhysicalOperator, "Top", StringComparison.OrdinalIgnoreCase))
         {
-            childPredicateInfo.RowGoal = ParseTopRowCount(element, parameters);
+            node.TopInfo = ParseTopInfo(element, parameters);
+
+            if (node.Children.Count == 1 && node.Children[0].PredicateInfo is { } childPredicateInfo)
+            {
+                childPredicateInfo.RowGoal = ParseTopRowCount(element, parameters);
+            }
         }
 
         return node;
+    }
+
+    private static TopInfo? ParseTopInfo(XElement element, PlanParameters parameters)
+    {
+        var top = element.Elements().FirstOrDefault(e => e.Name.LocalName == "Top");
+
+        if (top is null)
+        {
+            return null;
+        }
+
+        return new TopInfo
+        {
+            RowCount = ParseTopRowCount(element, parameters),
+            IsPercent = IsTrue(top.Attribute("IsPercent")),
+            WithTies = IsTrue(top.Attribute("WithTies"))
+        };
     }
 
     private static long? ParseTopRowCount(XElement element, PlanParameters parameters)
@@ -272,6 +321,41 @@ public static class ExecutionPlanParser
         };
     }
 
+    private static PlanMemoryGrant? ParseMemoryGrant(XElement relOp)
+    {
+        var runtime = relOp.Elements().FirstOrDefault(e => e.Name.LocalName == "RunTimeInformation");
+
+        if (runtime == null)
+        {
+            return null;
+        }
+
+        var counters = runtime.Elements().Where(e => e.Name.LocalName == "RunTimeCountersPerThread").ToList();
+
+        var input = SumAcrossThreads(counters, "InputMemoryGrant");
+        var output = SumAcrossThreads(counters, "OutputMemoryGrant");
+        var used = SumAcrossThreads(counters, "UsedMemoryGrant");
+
+        if (input is null && output is null && used is null)
+        {
+            return null;
+        }
+
+        return new PlanMemoryGrant
+        {
+            InputKb = input,
+            OutputKb = output,
+            UsedKb = used
+        };
+    }
+
+    private static long? SumAcrossThreads(List<XElement> counters, string attributeName)
+    {
+        return counters.Any(c => c.Attribute(attributeName) is not null)
+            ? counters.Sum(c => GetLongAttribute(c, attributeName) ?? 0)
+            : null;
+    }
+
     private static int GetIntAttribute(XElement e, string name)
         => (int?)e.Attribute(name) ?? 0;
 
@@ -331,23 +415,43 @@ public static class ExecutionPlanParser
         return ((string?)element.Attribute(attributeName))?.Trim('[', ']');
     }
 
-    private static HashInfo ParseHashInfo(XElement hashElement)
+    /// <summary>
+    /// Parses the hash keys and probe residual of a hash operator
+    /// </summary>
+    /// <remarks>
+    /// Scoped to the operator's own Hash element rather than searching its descendants, because a hash operator's inputs are nested inside
+    /// that element and carry hash elements of their own.
+    /// </remarks>
+    private static HashInfo ParseHashInfo(XElement relOp, PlanParameters parameters)
     {
         var info = new HashInfo();
 
-        var build = hashElement.Descendants().FirstOrDefault(e => e.Name.LocalName == "HashKeysBuild");
+        var hash = relOp.Elements().FirstOrDefault(e => e.Name.LocalName == "Hash");
+
+        if (hash is null)
+        {
+            return info;
+        }
+
+        var build = hash.Elements().FirstOrDefault(e => e.Name.LocalName == "HashKeysBuild");
 
         if (build != null)
         {
             info.BuildKeys = ParseKeys(build);
         }
 
-        var probe = hashElement.Descendants().FirstOrDefault(e => e.Name.LocalName == "HashKeysProbe");
+        var probe = hash.Elements().FirstOrDefault(e => e.Name.LocalName == "HashKeysProbe");
 
         if (probe != null)
         {
             info.ProbeKeys = ParseKeys(probe);
         }
+
+        var residualElement = hash.Elements().FirstOrDefault(e => e.Name.LocalName == "ProbeResidual");
+
+        info.Residual = new PredicateParser(null, parameters.Resolve).ParsePredicateElement(residualElement);
+
+        info.HasUntranslatedResidual = residualElement is not null && info.Residual is null;
 
         return info;
     }
@@ -501,7 +605,7 @@ public static class ExecutionPlanParser
         return result;
     }
 
-    private static MergeInfo? ParseMergeInfo(XElement element)
+    private static MergeInfo? ParseMergeInfo(XElement element, PlanParameters parameters)
     {
         var merge = element.Elements().FirstOrDefault(e => e.Name.LocalName == "Merge");
 
@@ -514,16 +618,45 @@ public static class ExecutionPlanParser
 
         var inner = merge.Elements().FirstOrDefault(e => e.Name.LocalName == "InnerSideJoinColumns");
 
-        if (outer is null && inner is null)
+        var residualElement = merge.Elements().FirstOrDefault(e => e.Name.LocalName == "Residual");
+
+        if (outer is null && inner is null && residualElement is null)
         {
             return null;
         }
+
+        var residual = new PredicateParser(null, parameters.Resolve).ParsePredicateElement(residualElement);
 
         return new MergeInfo
         {
             OuterKeys = outer is null ? [] : ParseKeys(outer),
             InnerKeys = inner is null ? [] : ParseKeys(inner),
-            ManyToMany = (bool?)merge.Attribute("ManyToMany") ?? false
+            ManyToMany = (bool?)merge.Attribute("ManyToMany") ?? false,
+            Residual = residual,
+            HasUntranslatedResidual = residualElement is not null && residual is null
+        };
+    }
+
+    /// <summary>
+    /// Parses the predicate a loop join applies to the rows its inner side returned
+    /// </summary>
+    private static NestedLoopsInfo? ParseNestedLoopsInfo(XElement element, PlanParameters parameters)
+    {
+        var loops = element.Elements().FirstOrDefault(e => e.Name.LocalName == "NestedLoops");
+
+        var predicateElement = loops?.Elements().FirstOrDefault(e => e.Name.LocalName == "Predicate");
+
+        if (predicateElement is null)
+        {
+            return null;
+        }
+
+        var predicate = new PredicateParser(null, parameters.Resolve).ParsePredicateElement(predicateElement);
+
+        return new NestedLoopsInfo
+        {
+            Predicate = predicate,
+            HasUntranslatedPredicate = predicate is null
         };
     }
 

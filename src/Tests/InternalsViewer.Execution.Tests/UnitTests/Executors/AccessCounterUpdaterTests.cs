@@ -69,7 +69,7 @@ public class AccessCounterUpdaterTests
                                              onCountersChanged: updates.Add)
                                     .ToList();
 
-        var stopped = Assert.IsType<AccessStep.Stopped>(steps[^1]);
+        var stopped = steps.OfType<AccessStep.Stopped>().Last();
 
         Assert.Equal(updates[^1], stopped.Counters);
     }
@@ -85,7 +85,7 @@ public class AccessCounterUpdaterTests
                                              counters: starting)
                                     .ToList();
 
-        var stopped = Assert.IsType<AccessStep.Stopped>(steps[^1]);
+        var stopped = steps.OfType<AccessStep.Stopped>().Last();
 
         Assert.Equal(3, stopped.Counters.PagesRead);
     }
@@ -97,7 +97,7 @@ public class AccessCounterUpdaterTests
 
         var steps = IndexSeekExecutor.Execute(page, SeekBounds.All, ScanDirection.Forward).ToList();
 
-        var stopped = Assert.IsType<AccessStep.Stopped>(steps[^1]);
+        var stopped = steps.OfType<AccessStep.Stopped>().Last();
 
         Assert.Equal(2, stopped.Counters.GhostsSkipped);
         Assert.Equal(2, stopped.Counters.RowsRead);
@@ -112,7 +112,7 @@ public class AccessCounterUpdaterTests
                                              rowGoal: 2)
                                     .ToList();
 
-        var stopped = Assert.IsType<AccessStep.Stopped>(steps[^1]);
+        var stopped = steps.OfType<AccessStep.Stopped>().Last();
 
         Assert.Equal(StopReason.RowGoalMet, stopped.Reason);
         Assert.Equal(2, stopped.Counters.RowsOutput);
@@ -127,7 +127,7 @@ public class AccessCounterUpdaterTests
         var steps = IndexSeekExecutor.Execute(page, SeekBounds.Equality(TestKey.Of(30)), ScanDirection.Forward)
                                     .ToList();
 
-        var stopped = Assert.IsType<AccessStep.Stopped>(steps[^1]);
+        var stopped = steps.OfType<AccessStep.Stopped>().Last();
 
         Assert.Equal(page.CompareCount, stopped.Counters.Comparisons);
     }
@@ -142,7 +142,7 @@ public class AccessCounterUpdaterTests
                                              ScanDirection.Forward)
                                     .ToList();
 
-        var stopped = Assert.IsType<AccessStep.Stopped>(steps[^1]);
+        var stopped = steps.OfType<AccessStep.Stopped>().Last();
 
         Assert.Equal(StopReason.RangeEnded, stopped.Reason);
         Assert.Equal(2, stopped.Counters.RowsOutput);

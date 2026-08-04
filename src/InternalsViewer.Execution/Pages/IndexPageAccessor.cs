@@ -1,5 +1,6 @@
 using InternalsViewer.Execution.AccessPaths.Search;
 using InternalsViewer.Execution.Interfaces.Pages;
+using InternalsViewer.Execution.Records;
 using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Internals.Engine.Pages;
 using InternalsViewer.Internals.Interfaces.Engine;
@@ -32,20 +33,20 @@ public sealed class IndexPageAccessor(IndexPage page, IRecordService recordServi
 
     public IRecord GetRecord(int slot) => GetIndexRecord(slot);
 
-    public AccessKey GetKey(int slot) => AccessKeyReader.GetKey(GetIndexRecord(slot), indexStructure);
+    public AccessKey GetKey(int slot) => RecordKeyReader.GetKey(GetIndexRecord(slot), indexStructure);
 
     public int CompareKeyPrefix(int slot, in AccessKey target, int width)
     {
         var key = GetKey(slot);
 
-        return AccessKeyReader.ComparePrefix(key, target, width, indexStructure);
+        return RecordKeyReader.ComparePrefix(key, target, width, indexStructure);
     }
 
     public PageAddress GetChildPage(int slot)
     {
         if (IsLeaf)
         {
-            throw new NotSupportedException("The page is a leaf.");
+            throw new NotSupportedException("The page is a leaf");
         }
 
         return GetIndexRecord(slot).DownPagePointer;

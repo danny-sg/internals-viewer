@@ -7,7 +7,7 @@ namespace InternalsViewer.Execution.AccessPaths.Binding;
 /// <summary>
 /// Exposes the fields of a record as access path values
 /// </summary>
-public sealed class RecordRowValueSource(IRecord record) : IRowValueSource
+internal sealed class RecordRowValueSource(IRecord record) : IRowValueSource
 {
     private IRecord Record { get; } = record;
 

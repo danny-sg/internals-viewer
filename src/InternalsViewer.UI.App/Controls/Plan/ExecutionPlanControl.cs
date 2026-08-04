@@ -503,9 +503,12 @@ public sealed class ExecutionPlanControl : Canvas
                 flyout.Items.Add(openIndex);
             }
 
-            var canTrace = (!string.IsNullOrEmpty(node.Table) && OperatorClassifier.GetCategory(node) == OperatorCategory.DataAccess)
+            var canTrace = node.IsStatement
+                           || OperatorClassifier.IsTop(node)
+                           || (!string.IsNullOrEmpty(node.Table) && OperatorClassifier.GetCategory(node) == OperatorCategory.DataAccess)
                            || CorrelatedJoinResolver.Resolve(node) is not null
-                           || MergeJoinResolver.Resolve(node) is not null;
+                           || MergeJoinResolver.Resolve(node) is not null
+                           || HashJoinResolver.Resolve(node) is not null;
 
             if (canTrace)
             {

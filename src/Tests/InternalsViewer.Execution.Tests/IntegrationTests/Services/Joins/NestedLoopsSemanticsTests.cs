@@ -1,3 +1,4 @@
+using InternalsViewer.Execution.AccessPaths.Definitions;
 using InternalsViewer.Execution.AccessPaths.Joins;
 using System.Data;
 using InternalsViewer.Execution.AccessPaths.Binding;
@@ -5,7 +6,8 @@ using InternalsViewer.Execution.AccessPaths.Predicates;
 using InternalsViewer.Execution.AccessPaths.Results;
 using InternalsViewer.Execution.AccessPaths.Search;
 using InternalsViewer.Execution.AccessPaths.Values;
-using InternalsViewer.Execution.Services.Joins;
+using InternalsViewer.Execution.Iterators.Joins;
+using InternalsViewer.Execution.Iterators.Stepping;
 using InternalsViewer.Internals.Connections.File;
 using InternalsViewer.Internals.Engine.Database;
 using InternalsViewer.Internals.Engine.Database.Enums;
@@ -74,9 +76,11 @@ public class NestedLoopsSemanticsTests(ITestOutputHelper testOutput)
     {
         var context = await LoadAsync();
 
-        await StartAsync(context, JoinType.LeftAntiSemi);
+        await using var stepper = new IteratorStepper(context.Service,
+                                                      Definition(context, JoinType.LeftAntiSemi),
+                                                      new IteratorContext(context.Database));
 
-        while (await context.Service.StepNextAsync(CancellationToken.None) is not null)
+        while (await stepper.StepNextAsync(CancellationToken.None) is not null)
         {
         }
 
@@ -87,11 +91,13 @@ public class NestedLoopsSemanticsTests(ITestOutputHelper testOutput)
     {
         var context = await LoadAsync();
 
-        await StartAsync(context, joinType);
+        await using var stepper = new IteratorStepper(context.Service,
+                                                      Definition(context, joinType),
+                                                      new IteratorContext(context.Database));
 
         var emits = new List<AccessStep.JoinEmit>();
 
-        while (await context.Service.StepNextAsync(CancellationToken.None) is { } step)
+        while (await stepper.StepNextAsync(CancellationToken.None) is { } step)
         {
             if (step is AccessStep.JoinEmit emit)
             {
@@ -110,22 +116,23 @@ public class NestedLoopsSemanticsTests(ITestOutputHelper testOutput)
         return emits;
     }
 
-    private static async Task StartAsync(Context context, JoinType joinType)
+    private static NestedLoopsDefinition Definition(Context context, JoinType joinType)
     {
-        var outerInput = new RangeDefinition(context.Unit.AllocationUnitId, context.Unit.RootPage, [Between(100, 109)]);
+        var outerInput = new RangeDefinition(context.Unit.AllocationUnitId, context.Unit.RootPage, [Between(100, 109)]) { NodeId = 0 };
 
         var innerInput = new SeekDefinition(context.Unit.AllocationUnitId,
-                                                   context.Unit.RootPage,
-                                                   [new CorrelationBinding("Id", "Id")])
+                                            context.Unit.RootPage,
+                                            [new CorrelationBinding("Id", "Id")])
         {
+            NodeId = 1,
             Residual = EvenKeysOnly()
         };
 
-        await context.Service.StartAsync(context.Database,
-                                         outerInput,
-                                         innerInput,
-                                         CancellationToken.None,
-                                         joinType: joinType);
+        return new NestedLoopsDefinition(outerInput, innerInput)
+        {
+            NodeId = 2,
+            JoinType = joinType
+        };
     }
 
     private static AccessPredicate EvenKeysOnly()
@@ -136,7 +143,7 @@ public class NestedLoopsSemanticsTests(ITestOutputHelper testOutput)
             ComparisonOperator.Equal,
             new AccessExpression.Constant(AccessValue.FromInteger(SqlDbType.Int, 0)));
 
-    private sealed record Context(DatabaseSource Database, NestedLoopsStepService Service, AllocationUnit Unit);
+    private sealed record Context(DatabaseSource Database, NestedLoopsIterator Service, AllocationUnit Unit);
 
     private static async Task<Context> LoadAsync()
     {
@@ -149,7 +156,7 @@ public class NestedLoopsSemanticsTests(ITestOutputHelper testOutput)
 
         var unit = DemoDatabase.Unit(database, DemoDatabase.ClusteredTable, DemoDatabase.ClusteredIndex);
 
-        return new Context(database, serviceHost.GetService<NestedLoopsStepService>(), unit);
+        return new Context(database, serviceHost.GetService<NestedLoopsIterator>(), unit);
     }
 
     private static long? Value(IRecord? record)

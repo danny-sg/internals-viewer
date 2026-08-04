@@ -1,10 +1,12 @@
+using InternalsViewer.Execution.AccessPaths.Definitions;
 using InternalsViewer.Execution.AccessPaths.Joins;
 using System.Data;
 using InternalsViewer.Execution.AccessPaths.Binding;
 using InternalsViewer.Execution.AccessPaths.Results;
 using InternalsViewer.Execution.AccessPaths.Search;
 using InternalsViewer.Execution.AccessPaths.Values;
-using InternalsViewer.Execution.Services.Joins;
+using InternalsViewer.Execution.Iterators.Joins;
+using InternalsViewer.Execution.Iterators.Stepping;
 using InternalsViewer.Internals.Connections.File;
 using InternalsViewer.Internals.Engine.Database;
 using InternalsViewer.Internals.Engine.Database.Enums;
@@ -97,15 +99,18 @@ public class MergeJoinSemanticsTests(ITestOutputHelper testOutput)
     {
         var context = await LoadAsync();
 
-        await context.Service.StartAsync(context.Database,
-                                         SideInput(context.Unit, Between(outer.From, outer.To)),
-                                         SideInput(context.Unit, Between(inner.From, inner.To)),
-                                         CancellationToken.None,
-                                         joinType: joinType);
+        var definition = new MergeJoinDefinition(SideInput(context.Unit, Between(outer.From, outer.To), 0),
+                                                 SideInput(context.Unit, Between(inner.From, inner.To), 1))
+        {
+            NodeId = 2,
+            JoinType = joinType
+        };
+
+        await using var stepper = new IteratorStepper(context.Service, definition, new IteratorContext(context.Database));
 
         var emits = new List<AccessStep.JoinEmit>();
 
-        while (await context.Service.StepNextAsync(CancellationToken.None) is { } step)
+        while (await stepper.StepNextAsync(CancellationToken.None) is { } step)
         {
             if (step is AccessStep.JoinEmit emit)
             {
@@ -124,7 +129,7 @@ public class MergeJoinSemanticsTests(ITestOutputHelper testOutput)
         return emits;
     }
 
-    private sealed record Context(DatabaseSource Database, MergeJoinStepService Service, AllocationUnit Unit);
+    private sealed record Context(DatabaseSource Database, MergeJoinIterator Service, AllocationUnit Unit);
 
     private static async Task<Context> LoadAsync()
     {
@@ -137,11 +142,11 @@ public class MergeJoinSemanticsTests(ITestOutputHelper testOutput)
 
         var unit = DemoDatabase.Unit(database, DemoDatabase.ClusteredTable, DemoDatabase.ClusteredIndex);
 
-        return new Context(database, serviceHost.GetService<MergeJoinStepService>(), unit);
+        return new Context(database, serviceHost.GetService<MergeJoinIterator>(), unit);
     }
 
-    private static MergeSideDefinition SideInput(AllocationUnit unit, SeekBounds bounds)
-        => new(unit.AllocationUnitId, unit.RootPage, [bounds], ["Id"]);
+    private static JoinInputDefinition SideInput(AllocationUnit unit, SeekBounds bounds, int nodeId)
+        => new(new RangeDefinition(unit.AllocationUnitId, unit.RootPage, [bounds]) { NodeId = nodeId }, ["Id"]);
 
     private static long? Value(IRecord? record)
         => record is null ? null : new RecordRowValueSource(record).GetValue(-1, "Id").Numeric;

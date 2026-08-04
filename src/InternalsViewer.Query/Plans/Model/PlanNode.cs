@@ -38,9 +38,17 @@ public sealed class PlanNode
 
     public MergeInfo? MergeInfo { get; set; }
 
+    public TopInfo? TopInfo { get; set; }
+
+    public NestedLoopsInfo? NestedLoopsInfo { get; set; }
+
     public List<ColumnReference> GroupByColumns { get; set; } = [];
 
     public PlanIoStatistics? IoStats { get; set; }
+
+    public PlanMemoryGrant? MemoryGrant { get; set; }
+
+    public QueryMemoryGrant? QueryMemoryGrant { get; set; }
 
     public long RowsOutput { get; set; }
 

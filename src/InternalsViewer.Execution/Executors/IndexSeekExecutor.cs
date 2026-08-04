@@ -2,14 +2,14 @@ using InternalsViewer.Execution.AccessPaths.Predicates;
 using InternalsViewer.Execution.AccessPaths.Results;
 using InternalsViewer.Execution.AccessPaths.Search;
 using InternalsViewer.Execution.Interfaces.Pages;
-using InternalsViewer.Execution.Pages;
+using InternalsViewer.Execution.Records;
 
 namespace InternalsViewer.Execution.Executors;
 
 /// <summary>
 /// Executes a seek against a single page, locating an entry point then walking the range
 /// </summary>
-public static class IndexSeekExecutor
+internal static class IndexSeekExecutor
 {
     public static IEnumerable<AccessStep> Execute(IIndexPageAccessor page,
                                                   SeekBounds bounds,
@@ -143,7 +143,7 @@ public static class IndexSeekExecutor
     {
         var forward = direction == ScanDirection.Forward;
 
-        var hasResidual = residual is not (null or AccessPredicate.True);
+        var hasResidual = residual is not (null or AccessPredicate.True or AccessPredicate.NoTranslation);
 
         totals = Publish(totals.AddPageRead(), onCountersChanged);
 
@@ -191,8 +191,8 @@ public static class IndexSeekExecutor
                 var useLowerBound = forward ? inclusive : !inclusive;
 
                 var (bound, probes) = useLowerBound
-                    ? AccessPathSearch.LowerBound(page, target, width)
-                    : AccessPathSearch.UpperBound(page, target, width);
+                    ? PageKeySearch.LowerBound(page, target, width)
+                    : PageKeySearch.UpperBound(page, target, width);
 
                 foreach (var probe in probes)
                 {
@@ -361,7 +361,7 @@ public static class IndexSeekExecutor
                                           AccessPredicate? residual, 
                                           EvaluationContext evaluationContext)
     {
-        if (residual is null or AccessPredicate.True)
+        if (residual is null or AccessPredicate.True or AccessPredicate.NoTranslation)
         {
             return true;
         }

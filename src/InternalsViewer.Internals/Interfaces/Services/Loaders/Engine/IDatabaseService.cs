@@ -1,7 +1,7 @@
 ﻿using System.Threading;
 using InternalsViewer.Internals.Engine.Database;
-using InternalsViewer.Internals.Interfaces.Connections;
 using InternalsViewer.Internals.Engine.Loading;
+using InternalsViewer.Internals.Interfaces.Connections;
 
 namespace InternalsViewer.Internals.Interfaces.Services.Loaders.Engine;
 

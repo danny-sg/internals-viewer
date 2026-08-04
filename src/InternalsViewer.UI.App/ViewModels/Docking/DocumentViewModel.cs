@@ -63,6 +63,8 @@ public sealed partial class DocumentViewModel : ObservableObject
 
     public bool CanClose { get; }
 
+    public Windows.UI.Color? Accent { get; set; }
+
     /// <summary>
     /// Returns the element to host as a tab's content, with the view's <c>DataContext</c> set to
     /// <see cref="Content"/>. For keep-alive documents the cached view is reused: it lives inside a

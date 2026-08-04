@@ -1,11 +1,11 @@
 using InternalsViewer.Execution.AccessPaths.Predicates;
 using InternalsViewer.Execution.AccessPaths.Results;
 using InternalsViewer.Execution.Interfaces.Pages;
-using InternalsViewer.Execution.Pages;
+using InternalsViewer.Execution.Records;
 
 namespace InternalsViewer.Execution.Executors;
 
-public static class AllocationScanExecutor
+internal static class AllocationScanExecutor
 {
     public static IEnumerable<AccessStep> Execute(IRowPageAccessor page,
                                                   AccessPredicate? residual = null,
@@ -26,7 +26,7 @@ public static class AllocationScanExecutor
                                                 EvaluationContext evaluationContext,
                                                 bool isHeap)
     {
-        var hasResidual = residual is not (null or AccessPredicate.True);
+        var hasResidual = residual is not (null or AccessPredicate.True or AccessPredicate.NoTranslation);
 
         totals = Publish(totals.AddPageRead(), onCountersChanged);
 
@@ -87,7 +87,7 @@ public static class AllocationScanExecutor
 
     private static bool? EvaluateResidual(IRowPageAccessor page, int slot, AccessPredicate? residual, EvaluationContext evaluationContext)
     {
-        if (residual is null or AccessPredicate.True)
+        if (residual is null or AccessPredicate.True or AccessPredicate.NoTranslation)
         {
             return true;
         }

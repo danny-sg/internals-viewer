@@ -106,6 +106,53 @@ public class ExecutionPlanParserTests
     }
 
     [Fact]
+    public void ClusteredIndexSeek_Parses_EstimatedRows()
+    {
+        var plan = Parse(ClusteredIndexSeekXml);
+
+        var node = plan.NodesById[0];
+
+        Assert.Equal(5, node.EstimatedRows);
+    }
+
+    [Fact]
+    public void EstimateRows_Is_Rounded_To_The_Nearest_Row()
+    {
+        var plan = Parse(
+            """
+            <?xml version="1.0"?>
+            <ShowPlanXML xmlns="http://schemas.microsoft.com/sqlserver/2004/07/showplan"
+                         Version="1.7" Build="16.0.0">
+              <BatchSequence>
+                <Batch>
+                  <Statements>
+                    <StmtSimple StatementType="SELECT" StatementSubTreeCost="0.1">
+                      <QueryPlan>
+                        <RelOp NodeId="0"
+                               PhysicalOp="Clustered Index Scan"
+                               LogicalOp="Clustered Index Scan"
+                               EstimatedTotalSubtreeCost="0.1"
+                               EstimateRows="9.99999"
+                               Parallel="0">
+                          <IndexScan Ordered="0" ForcedIndex="0" ForceSeek="0" ForceScan="0"
+                                     NoExpandHint="0" Storage="RowStore">
+                            <Object Database="[db]" Schema="[dbo]"
+                                    Table="[ClusteredTable]" Index="[PK_ClusteredTable]"
+                                    TableReferenceId="-1" IndexKind="Clustered"/>
+                          </IndexScan>
+                        </RelOp>
+                      </QueryPlan>
+                    </StmtSimple>
+                  </Statements>
+                </Batch>
+              </BatchSequence>
+            </ShowPlanXML>
+            """);
+
+        Assert.Equal(10, plan.NodesById[0].EstimatedRows);
+    }
+
+    [Fact]
     public void ClusteredIndexSeek_Parses_RunTime_Counters()
     {
         var plan = Parse(ClusteredIndexSeekXml);
@@ -652,5 +699,105 @@ public class ExecutionPlanParserTests
         Assert.False(bounds.IsEndInclusive);
         Assert.Equal(100, bounds.StartValue.Values[0].Numeric);
         Assert.Equal(500, bounds.EndValue.Values[0].Numeric);
+    }
+
+    // ------------------------------------------------------------------
+    // Memory grants — query level MemoryGrantInfo and per thread operator grants
+    // ------------------------------------------------------------------
+
+    private const string MemoryGrantXml =
+        """
+        <?xml version="1.0"?>
+        <ShowPlanXML xmlns="http://schemas.microsoft.com/sqlserver/2004/07/showplan"
+                     Version="1.7" Build="16.0.0">
+          <BatchSequence>
+            <Batch>
+              <Statements>
+                <StmtSimple StatementType="SELECT" StatementSubTreeCost="1.5">
+                  <QueryPlan MemoryGrant="1408">
+                    <MemoryGrantInfo SerialRequiredMemory="512"
+                                     SerialDesiredMemory="1408"
+                                     RequiredMemory="1024"
+                                     DesiredMemory="1920"
+                                     RequestedMemory="1920"
+                                     GrantWaitTime="3"
+                                     GrantedMemory="1920"
+                                     MaxUsedMemory="704"
+                                     MaxQueryMemory="828184"/>
+                    <RelOp NodeId="0"
+                           PhysicalOp="Sort"
+                           LogicalOp="Sort"
+                           EstimatedTotalSubtreeCost="1.5"
+                           EstimateRows="1000"
+                           Parallel="1">
+                      <RunTimeInformation>
+                        <RunTimeCountersPerThread Thread="1"
+                                                  ActualRows="500"
+                                                  ActualElapsedms="12"
+                                                  InputMemoryGrant="640"
+                                                  OutputMemoryGrant="576"
+                                                  UsedMemoryGrant="192"/>
+                        <RunTimeCountersPerThread Thread="2"
+                                                  ActualRows="500"
+                                                  ActualElapsedms="14"
+                                                  InputMemoryGrant="640"
+                                                  OutputMemoryGrant="576"
+                                                  UsedMemoryGrant="160"/>
+                      </RunTimeInformation>
+                    </RelOp>
+                  </QueryPlan>
+                </StmtSimple>
+              </Statements>
+            </Batch>
+          </BatchSequence>
+        </ShowPlanXML>
+        """;
+
+    [Fact]
+    public void Operator_Memory_Grants_Are_Summed_Across_Threads()
+    {
+        var plan = Parse(MemoryGrantXml);
+
+        var node = plan.NodesById[0];
+
+        Assert.NotNull(node.MemoryGrant);
+        Assert.Equal(1280, node.MemoryGrant!.InputKb);
+        Assert.Equal(1152, node.MemoryGrant.OutputKb);
+        Assert.Equal(352, node.MemoryGrant.UsedKb);
+    }
+
+    [Fact]
+    public void Query_Memory_Grant_Is_Parsed_Onto_The_Statement_Node()
+    {
+        var plan = Parse(MemoryGrantXml);
+
+        var grant = plan.Root[0].QueryMemoryGrant;
+
+        Assert.NotNull(grant);
+        Assert.Equal(512, grant!.SerialRequiredKb);
+        Assert.Equal(1408, grant.SerialDesiredKb);
+        Assert.Equal(1024, grant.RequiredKb);
+        Assert.Equal(1920, grant.DesiredKb);
+        Assert.Equal(1920, grant.RequestedKb);
+        Assert.Equal(1920, grant.GrantedKb);
+        Assert.Equal(704, grant.MaxUsedKb);
+        Assert.Equal(828184, grant.MaxQueryKb);
+        Assert.Equal(3, grant.GrantWaitTimeSeconds);
+    }
+
+    [Fact]
+    public void An_Operator_Without_Memory_Grant_Counters_Has_No_Memory_Grant()
+    {
+        var plan = Parse(ClusteredIndexSeekXml);
+
+        Assert.Null(plan.NodesById[0].MemoryGrant);
+    }
+
+    [Fact]
+    public void A_Plan_Without_MemoryGrantInfo_Has_No_Query_Memory_Grant()
+    {
+        var plan = Parse(ClusteredIndexSeekXml);
+
+        Assert.Null(plan.Root[0].QueryMemoryGrant);
     }
 }

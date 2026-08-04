@@ -1,3 +1,4 @@
+using InternalsViewer.UI.App.Services.Trace;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using CommunityToolkit.Mvvm.Messaging;
@@ -19,6 +20,7 @@ using InternalsViewer.UI.App.Models.Schema;
 using InternalsViewer.UI.App.Services;
 using InternalsViewer.UI.App.ViewModels.Allocation;
 using InternalsViewer.UI.App.ViewModels.Docking;
+using InternalsViewer.UI.App.ViewModels.Query.Trace;
 using InternalsViewer.UI.App.ViewModels.Index;
 using InternalsViewer.UI.App.ViewModels.Query.Events;
 using InternalsViewer.UI.App.ViewModels.Tabs;
@@ -359,7 +361,11 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
     private readonly TraceTabViewModelFactory _traceTabViewModelFactory;
 
+    private const string TraceDocumentKey = "Trace";
+
     private readonly Dictionary<string, TraceTabViewModel> _openTraces = new();
+
+    private int? _traceTargetNodeId;
 
     private Internals.Engine.Database.AllocationUnit? FindAllocationUnit(PlanNode node)
     {
@@ -384,241 +390,126 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
         }
     }
 
+    /// <summary>
+    /// Opens a trace of an operator and everything below it
+    /// </summary>
+    /// <remarks>
+    /// The plan node is the whole identity of a trace, so one document is kept per operator and the kind of operator no longer decides
+    /// anything here. An operator with something below it that cannot be simulated builds no definition and opens nothing, which is the
+    /// same test the context menu uses to decide whether to offer the command.
+    /// </remarks>
     public void OpenTrace(PlanNode node)
     {
-        if (ResolveCorrelatedJoin(node) is { } join)
+        if (node.IsStatement)
         {
-            OpenLookupTrace(join);
-
-            return;
-        }
-
-        if (MergeJoinResolver.Resolve(node) is { } mergeJoin)
-        {
-            OpenMergeJoinTrace(mergeJoin);
-
-            return;
-        }
-
-        if (OperatorClassifier.IsNestedLoop(node) || OperatorClassifier.IsMergeJoin(node))
-        {
-            return;
-        }
-
-        var allocationUnit = FindAllocationUnit(node);
-
-        if (allocationUnit is null)
-        {
-            Logger.LogWarning("Allocation unit not found: {Schema}.{Table}.{Index}", node.Schema, node.Table, node.Index);
-
-            return;
-        }
-
-        var key = $"Trace:{allocationUnit.SchemaName}.{allocationUnit.TableName}.{allocationUnit.IndexName}:{node.NodeId}";
-
-        var scanMode = ScanModeDetector.Detect(node, allocationUnit, Events);
-
-        var kind = allocationUnit.IndexId == 0 || scanMode?.Mode == ScanMode.AllocationOrdered
-            ? TraceKind.Allocation
-            : TraceKind.Index;
-
-        if (Layout.TryGetDocument(key, out var existing))
-        {
-            if (existing.Content is TraceTabViewModel { } current && current.Kind == kind)
+            if (node.Children.FirstOrDefault() is { } child)
             {
-                Layout.Show(existing);
-
-                return;
+                OpenTraceCore(child, wrapInSelect: true);
             }
 
-            if (existing.Content is TraceTabViewModel stale)
-            {
-                stale.PageNavigated -= OnIndexPageNavigated;
-            }
-
-            _openTraces.Remove(key);
-
-            Layout.RemoveDocument(key, out _);
+            return;
         }
 
-        var traceViewModel = _traceTabViewModelFactory.Create(kind,
-                                                              Database,
-                                                              allocationUnit,
+        OpenTraceCore(node, wrapInSelect: false);
+    }
+
+    [RelayCommand]
+    public void OpenTrace()
+    {
+        if (SelectedPlanNode is { } node && CanTrace(node))
+        {
+            OpenTrace(node);
+
+            return;
+        }
+
+        var root = ExecutionPlans.FirstOrDefault(p => !p.IsInternalPlan)?.Root.FirstOrDefault();
+
+        if (root is not null)
+        {
+            OpenTrace(root);
+        }
+    }
+
+    private void OpenTraceCore(PlanNode node, bool wrapInSelect)
+    {
+        var targetNodeId = wrapInSelect ? -1 : node.NodeId;
+
+        if (_traceTargetNodeId == targetNodeId && Layout.TryGetDocument(TraceDocumentKey, out var existing))
+        {
+            Layout.Show(existing);
+
+            return;
+        }
+
+        var scanMode = FindAllocationUnit(node) is { } unit ? ScanModeDetector.Detect(node, unit, Events) : null;
+
+        var traceViewModel = _traceTabViewModelFactory.Create(Database,
                                                               node,
+                                                              FindAllocationUnit,
                                                               Events.FirstOrDefault()?.Timestamp,
-                                                              scanMode);
+                                                              scanMode,
+                                                              wrapInSelect);
+
+        if (traceViewModel is null)
+        {
+            Logger.LogWarning("Operator {NodeId} ({Operator}) cannot be traced", node.NodeId, node.PhysicalOperator);
+
+            return;
+        }
+
+        CloseTraceDocument();
 
         traceViewModel.PageNavigated += OnIndexPageNavigated;
 
-        var objectName = string.IsNullOrEmpty(allocationUnit.IndexName) ? allocationUnit.TableName : allocationUnit.IndexName;
+        var title = wrapInSelect ? "Trace: SELECT" : $"Trace: {TraceTitle(node, traceViewModel)}";
 
-        var document = new DocumentViewModel(title: $"Trace: {objectName}",
+        var document = new DocumentViewModel(title: title,
                                              content: traceViewModel,
                                              viewFactory: static () => new TraceTabView(),
                                              canClose: true,
                                              keepAlive: true,
-                                             key: key,
+                                             key: TraceDocumentKey,
                                              persist: false,
                                              commandsFactory: static () => new TraceTabCommands());
 
-        Layout.RegisterDocument(key, document);
+        Layout.RegisterDocument(TraceDocumentKey, document);
 
-        _openTraces[key] = traceViewModel;
+        _openTraces[TraceDocumentKey] = traceViewModel;
+
+        _traceTargetNodeId = targetNodeId;
 
         Layout.Show(document);
     }
 
-    private CorrelatedJoin? ResolveCorrelatedJoin(PlanNode node)
+    private void CloseTraceDocument()
     {
-        if (OperatorClassifier.IsNestedLoop(node))
+        if (_openTraces.Remove(TraceDocumentKey, out var viewModel))
         {
-            return CorrelatedJoinResolver.Resolve(node);
+            viewModel.PageNavigated -= OnIndexPageNavigated;
         }
 
-        if (!OperatorClassifier.IsLookup(node) && node.PredicateInfo?.IsCorrelatedSeek != true)
+        if (Layout.RemoveDocument(TraceDocumentKey, out var document))
         {
-            return null;
+            document.DisposeView();
         }
 
-        var plan = ExecutionPlans.FirstOrDefault(p => p.NodesById.TryGetValue(node.NodeId, out var candidate)
-                                                      && ReferenceEquals(candidate, node));
-
-        return plan?.Root
-                   .Select(root => CorrelatedJoinResolver.ResolveFromInner(root, node))
-                   .FirstOrDefault(j => j is not null);
+        _traceTargetNodeId = null;
     }
 
     /// <summary>
-    /// Opens a lookup trace, which fetches from a heap by row identifier or seeks a clustered index by key
+    /// Whether a trace can be offered for an operator, which needs every operator below it to be one we simulate
     /// </summary>
-    private void OpenLookupTrace(CorrelatedJoin join)
+    public bool CanTrace(PlanNode node)
+        => node.IsStatement
+            ? node.Children.FirstOrDefault() is { } child && new TraceDefinitionBuilder(FindAllocationUnit).CanBuild(child)
+            : new TraceDefinitionBuilder(FindAllocationUnit).CanBuild(node);
+
+    private static string TraceTitle(PlanNode node, TraceTabViewModel viewModel)
     {
-        var isRidLookup = CorrelatedJoinResolver.IsRidLookup(join.Inner);
+        var objects = viewModel.Visuals.Select(v => v.AllocationUnit.TableName).Distinct().ToList();
 
-        var outerUnit = FindAllocationUnit(join.Outer);
-
-        var innerUnit = FindAllocationUnit(join.Inner);
-
-        if (outerUnit is null || innerUnit is null)
-        {
-            Logger.LogWarning("Allocation unit not found for key lookup: outer {Outer}, inner {Inner}",
-                              join.Outer.Index,
-                              join.Inner.Index);
-
-            return;
-        }
-
-        var kind = isRidLookup ? TraceKind.RidLookup : TraceKind.KeyLookup;
-
-        var key = $"Trace:{outerUnit.SchemaName}.{outerUnit.TableName}.{outerUnit.IndexName}+{innerUnit.IndexName}:{join.Join.NodeId}";
-
-        if (Layout.TryGetDocument(key, out var existing))
-        {
-            if (existing.Content is TraceTabViewModel current && current.Kind == kind)
-            {
-                Layout.Show(existing);
-
-                return;
-            }
-
-            if (existing.Content is TraceTabViewModel stale)
-            {
-                stale.PageNavigated -= OnIndexPageNavigated;
-            }
-
-            _openTraces.Remove(key);
-
-            Layout.RemoveDocument(key, out _);
-        }
-
-        var traceViewModel = isRidLookup
-            ? _traceTabViewModelFactory.CreateRidLookup(Database,
-                                                        outerUnit,
-                                                        innerUnit,
-                                                        join.Join,
-                                                        Events.FirstOrDefault()?.Timestamp)
-            : _traceTabViewModelFactory.CreateKeyLookup(Database,
-                                                        outerUnit,
-                                                        innerUnit,
-                                                        join.Join,
-                                                        Events.FirstOrDefault()?.Timestamp);
-
-        traceViewModel.PageNavigated += OnIndexPageNavigated;
-
-        var document = new DocumentViewModel(title: $"Trace: {innerUnit.TableName} {(isRidLookup ? "RID" : "Key")} Lookup",
-                                             content: traceViewModel,
-                                             viewFactory: static () => new TraceTabView(),
-                                             canClose: true,
-                                             keepAlive: true,
-                                             key: key,
-                                             persist: false,
-                                             commandsFactory: static () => new TraceTabCommands());
-
-        Layout.RegisterDocument(key, document);
-
-        _openTraces[key] = traceViewModel;
-
-        Layout.Show(document);
-    }
-
-    private void OpenMergeJoinTrace(MergeJoin join)
-    {
-        var outerUnit = FindAllocationUnit(join.Outer);
-
-        var innerUnit = FindAllocationUnit(join.Inner);
-
-        if (outerUnit is null || innerUnit is null)
-        {
-            Logger.LogWarning("Allocation unit not found for merge join: outer {Outer}, inner {Inner}",
-                              join.Outer.Index,
-                              join.Inner.Index);
-
-            return;
-        }
-
-        var key = $"Trace:{outerUnit.SchemaName}.{outerUnit.TableName}.{outerUnit.IndexName}~{innerUnit.TableName}.{innerUnit.IndexName}:{join.Join.NodeId}";
-
-        if (Layout.TryGetDocument(key, out var existing))
-        {
-            if (existing.Content is TraceTabViewModel { Kind: TraceKind.MergeJoin })
-            {
-                Layout.Show(existing);
-
-                return;
-            }
-
-            if (existing.Content is TraceTabViewModel stale)
-            {
-                stale.PageNavigated -= OnIndexPageNavigated;
-            }
-
-            _openTraces.Remove(key);
-
-            Layout.RemoveDocument(key, out _);
-        }
-
-        var traceViewModel = _traceTabViewModelFactory.CreateMergeJoin(Database,
-                                                                       outerUnit,
-                                                                       innerUnit,
-                                                                       join.Join,
-                                                                       Events.FirstOrDefault()?.Timestamp);
-
-        traceViewModel.PageNavigated += OnIndexPageNavigated;
-
-        var document = new DocumentViewModel(title: $"Trace: Merge {outerUnit.TableName}/{innerUnit.TableName}",
-                                             content: traceViewModel,
-                                             viewFactory: static () => new TraceTabView(),
-                                             canClose: true,
-                                             keepAlive: true,
-                                             key: key,
-                                             persist: false,
-                                             commandsFactory: static () => new TraceTabCommands());
-
-        Layout.RegisterDocument(key, document);
-
-        _openTraces[key] = traceViewModel;
-
-        Layout.Show(document);
+        return objects.Count == 1 ? objects[0] ?? node.PhysicalOperator : $"{node.PhysicalOperator} {string.Join("/", objects)}";
     }
 
     public ExpressionCatalog? SelectedPlanExpressions
@@ -1095,6 +986,8 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
             _openTraces.Remove(key);
 
+            _traceTargetNodeId = null;
+
             if (Layout.RemoveDocument(key, out var document))
             {
                 document.DisposeView();
@@ -1104,89 +997,27 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
     private void RefreshTraceDocuments()
     {
-        foreach (var (key, viewModel) in _openTraces.ToList())
+        if (_openTraces.Count == 0 || _traceTargetNodeId is not { } target)
         {
-            var node = FindTraceOperator(viewModel);
-
-            if (node is not null && viewModel.Kind is TraceKind.KeyLookup or TraceKind.RidLookup or TraceKind.MergeJoin)
-            {
-                viewModel.Refresh(node, Events.FirstOrDefault()?.Timestamp, null);
-
-                continue;
-            }
-
-            if (node is not null)
-            {
-                var allocationUnit = viewModel.AllocationUnit;
-
-                var scanMode = ScanModeDetector.Detect(node, allocationUnit, Events);
-
-                var kind = allocationUnit.IndexId == 0 || scanMode?.Mode == ScanMode.AllocationOrdered
-                    ? TraceKind.Allocation
-                    : TraceKind.Index;
-
-                if (kind == viewModel.Kind)
-                {
-                    viewModel.Refresh(node, Events.FirstOrDefault()?.Timestamp, scanMode);
-
-                    continue;
-                }
-            }
-
-            viewModel.PageNavigated -= OnIndexPageNavigated;
-
-            _openTraces.Remove(key);
-
-            if (Layout.RemoveDocument(key, out var document))
-            {
-                document.DisposeView();
-            }
-        }
-    }
-
-    private PlanNode? FindTraceOperator(TraceTabViewModel viewModel)
-    {
-        if (viewModel.Kind is TraceKind.KeyLookup or TraceKind.RidLookup or TraceKind.MergeJoin)
-        {
-            var outerUnit = viewModel.Visuals[0].AllocationUnit;
-
-            var innerUnit = viewModel.Visuals[1].AllocationUnit;
-
-            var joins = ExecutionPlans.Where(p => !p.IsInternalPlan)
-                                      .SelectMany(p => p.NodesById.Values)
-                                      .Where(n => ResolveJoinSides(viewModel.Kind, n) is { } sides
-                                                  && MatchesUnit(sides.Outer, outerUnit)
-                                                  && MatchesUnit(sides.Inner, innerUnit))
-                                      .ToList();
-
-            return joins.FirstOrDefault(n => n.NodeId == viewModel.PlanNode?.NodeId) ?? joins.FirstOrDefault();
+            return;
         }
 
-        var unit = viewModel.AllocationUnit;
+        var node = target < 0
+            ? ExecutionPlans.FirstOrDefault(p => !p.IsInternalPlan)?.Root.FirstOrDefault()
+            : ExecutionPlans.Where(p => !p.IsInternalPlan)
+                            .Select(p => p.NodesById.GetValueOrDefault(target))
+                            .FirstOrDefault(n => n is not null);
 
-        var candidates = ExecutionPlans.Where(p => !p.IsInternalPlan)
-                                       .SelectMany(p => p.NodesById.Values)
-                                       .Where(n => n.ScanInfo is not null && MatchesUnit(n, unit))
-                                       .ToList();
-
-        return candidates.FirstOrDefault(n => n.NodeId == viewModel.PlanNode?.NodeId) ?? candidates.FirstOrDefault();
-    }
-
-    private static bool MatchesUnit(PlanNode node, Internals.Engine.Database.AllocationUnit unit)
-    {
-        return NameMatches(node.Table, unit.TableName)
-               && NameMatches(node.Index ?? string.Empty, unit.IndexName)
-               && (string.IsNullOrEmpty(node.Schema) || NameMatches(node.Schema, unit.SchemaName));
-    }
-
-    private static (PlanNode Outer, PlanNode Inner)? ResolveJoinSides(TraceKind kind, PlanNode node)
-    {
-        if (kind is TraceKind.KeyLookup or TraceKind.RidLookup)
+        if (node is null || !CanTrace(node))
         {
-            return CorrelatedJoinResolver.Resolve(node) is { } correlated ? (correlated.Outer, correlated.Inner) : null;
+            CloseTraceDocument();
+
+            return;
         }
 
-        return MergeJoinResolver.Resolve(node) is { } merge ? (merge.Outer, merge.Inner) : null;
+        _traceTargetNodeId = null;
+
+        OpenTrace(node);
     }
 
     public event Action<long>? PlayheadMoveRequested;

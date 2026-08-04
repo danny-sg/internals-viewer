@@ -24,8 +24,9 @@
                                                 Converter={StaticResource StepsInverseBoolToVisibilityConverter}}"
                                         StepHistory="{x:Bind ViewModel.StepHistory, Mode=OneWay}"
                                         CurrentStep="{x:Bind ViewModel.CurrentStep, Mode=OneWay}"
-                                        OuterAccentBrush="{x:Bind ViewModel.OuterAccentBrush, Mode=OneWay}"
-                                        InnerAccentBrush="{x:Bind ViewModel.InnerAccentBrush, Mode=OneWay}" />
+                                        Nodes="{x:Bind ViewModel.StepNodes, Mode=OneWay}"
+                                        ShowDetail="{x:Bind ViewModel.IsStepDetailVisible, Mode=OneWay}"
+                                        NodeActivated="OnNodeActivated" />
 
         <TextBlock Grid.Row="0"
                    HorizontalAlignment="Center"

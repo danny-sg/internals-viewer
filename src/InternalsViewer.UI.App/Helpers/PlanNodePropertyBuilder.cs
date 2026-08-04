@@ -206,9 +206,41 @@ public static class PlanNodePropertyBuilder
                 mergeGroup.Children.Add(BoolProperty("Many To Many", true));
             }
 
+            if (mergeInfo.Residual is { } mergeResidual)
+            {
+                var text = Expand(PredicateText.From(mergeResidual), expressions);
+
+                mergeGroup.Children.Add(new PlanNodeProperty("Residual", text.ToString()) { Predicate = text });
+            }
+            else if (mergeInfo.HasUntranslatedResidual)
+            {
+                mergeGroup.Children.Add(new PlanNodeProperty("Residual", "(not translatable)"));
+            }
+
             if (mergeGroup.Children.Count > 0)
             {
                 result.Add(mergeGroup);
+            }
+        }
+
+        if (node.NestedLoopsInfo is { } loopsInfo)
+        {
+            var loopsGroup = new PlanNodeProperty("Nested Loops", string.Empty);
+
+            if (loopsInfo.Predicate is { } loopsPredicate)
+            {
+                var text = Expand(PredicateText.From(loopsPredicate), expressions);
+
+                loopsGroup.Children.Add(new PlanNodeProperty("Predicate", text.ToString()) { Predicate = text });
+            }
+            else if (loopsInfo.HasUntranslatedPredicate)
+            {
+                loopsGroup.Children.Add(new PlanNodeProperty("Predicate", "(not translatable)"));
+            }
+
+            if (loopsGroup.Children.Count > 0)
+            {
+                result.Add(loopsGroup);
             }
         }
 
@@ -233,6 +265,17 @@ public static class PlanNodePropertyBuilder
             if (hashInfo.ProbeKeys.Count > 0)
             {
                 hashGroup.Children.Add(new PlanNodeProperty("Probe Keys", ColumnList(hashInfo.ProbeKeys, expressions)) { IsValueMonospace = true });
+            }
+
+            if (hashInfo.Residual is { } hashResidual)
+            {
+                var text = Expand(PredicateText.From(hashResidual), expressions);
+
+                hashGroup.Children.Add(new PlanNodeProperty("Probe Residual", text.ToString()) { Predicate = text });
+            }
+            else if (hashInfo.HasUntranslatedResidual)
+            {
+                hashGroup.Children.Add(new PlanNodeProperty("Probe Residual", "(not translatable)"));
             }
 
             if (hashGroup.Children.Count > 0)
@@ -264,6 +307,48 @@ public static class PlanNodePropertyBuilder
             }
 
             result.Add(ioGroup);
+        }
+
+        if (node.MemoryGrant is { } memoryGrant)
+        {
+            var memoryGroup = new PlanNodeProperty("Memory Grant", string.Empty);
+
+            AddKilobytes(memoryGroup, "Input Memory Grant", memoryGrant.InputKb);
+            AddKilobytes(memoryGroup, "Output Memory Grant", memoryGrant.OutputKb);
+            AddKilobytes(memoryGroup, "Used Memory Grant", memoryGrant.UsedKb);
+
+            if (memoryGroup.Children.Count > 0)
+            {
+                result.Add(memoryGroup);
+            }
+        }
+
+        if (node.QueryMemoryGrant is { } queryMemoryGrant)
+        {
+            var memoryGroup = new PlanNodeProperty("Memory Grant", string.Empty);
+
+            AddKilobytes(memoryGroup, "Serial Required Memory", queryMemoryGrant.SerialRequiredKb);
+            AddKilobytes(memoryGroup, "Serial Desired Memory", queryMemoryGrant.SerialDesiredKb);
+            AddKilobytes(memoryGroup, "Required Memory", queryMemoryGrant.RequiredKb);
+            AddKilobytes(memoryGroup, "Desired Memory", queryMemoryGrant.DesiredKb);
+            AddKilobytes(memoryGroup, "Requested Memory", queryMemoryGrant.RequestedKb);
+            AddKilobytes(memoryGroup, "Granted Memory", queryMemoryGrant.GrantedKb);
+            AddKilobytes(memoryGroup, "Max Used Memory", queryMemoryGrant.MaxUsedKb);
+            AddKilobytes(memoryGroup, "Max Query Memory", queryMemoryGrant.MaxQueryKb);
+
+            if (queryMemoryGrant.GrantWaitTimeSeconds is { } grantWait)
+            {
+                memoryGroup.Children.Add(new PlanNodeProperty("Grant Wait Time",
+                                                              $"{grantWait.ToString("N0", CultureInfo.InvariantCulture)} s")
+                {
+                    IsValueHighlighted = grantWait > 0
+                });
+            }
+
+            if (memoryGroup.Children.Count > 0)
+            {
+                result.Add(memoryGroup);
+            }
         }
 
         if (eventStatistics is { } eventStats)
@@ -325,6 +410,16 @@ public static class PlanNodePropertyBuilder
     private static PredicateText Expand(PredicateText text, ExpressionCatalog? expressions)
     {
         return expressions is null ? text : expressions.Expand(text);
+    }
+
+    private static void AddKilobytes(PlanNodeProperty group, string name, long? value)
+    {
+        if (value is not { } kilobytes)
+        {
+            return;
+        }
+
+        group.Children.Add(new PlanNodeProperty(name, $"{kilobytes.ToString("N0", CultureInfo.InvariantCulture)} KB"));
     }
 
     private static PlanNodeProperty BoolProperty(string name, bool value)

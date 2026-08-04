@@ -11,6 +11,10 @@ public readonly struct AccessValue : IEquatable<AccessValue>
 {
     public static readonly AccessValue Null = new(SqlDbType.Variant, AccessValueType.Null, 0, 0, default, null);
 
+    private const uint FnvOffsetBasis = 2166136261;
+
+    private const uint FnvPrime = 16777619;
+
     private AccessValue(SqlDbType dataType,
                         AccessValueType type,
                         long numeric,
@@ -173,11 +177,6 @@ public readonly struct AccessValue : IEquatable<AccessValue>
     /// <summary>
     /// Hashes the three numeric kinds onto a single scale
     /// </summary>
-    /// <remarks>
-    /// Integer, real and exact numeric values compare equal across kinds, so they must hash
-    /// identically. Values are narrowed to <see cref="double"/> because it is the only one of the
-    /// three that every numeric type converts to without overflowing.
-    /// </remarks>
     private int GetNumericHashCode()
     {
         double value = Type switch
@@ -194,7 +193,7 @@ public readonly struct AccessValue : IEquatable<AccessValue>
 
     private int GetBytesHashCode()
     {
-        HashCode hash = default;
+        var hash = FnvOffsetBasis;
 
         if (AccessValueComparer.IsCharacterType(DataType))
         {
@@ -202,7 +201,7 @@ public readonly struct AccessValue : IEquatable<AccessValue>
             {
                 foreach (var character in MemoryMarshal.Cast<byte, char>(Data.Span).TrimEnd(' '))
                 {
-                    hash.Add(char.ToUpperInvariant(character));
+                    hash = AddCharacter(hash, char.ToUpperInvariant(character));
                 }
             }
             else
@@ -218,15 +217,28 @@ public readonly struct AccessValue : IEquatable<AccessValue>
 
                 for (var index = 0; index < length; index++)
                 {
-                    hash.Add(char.ToUpperInvariant((char)span[index]));
+                    hash = AddCharacter(hash, char.ToUpperInvariant((char)span[index]));
                 }
             }
 
-            return hash.ToHashCode();
+            return unchecked((int)hash);
         }
 
-        hash.AddBytes(Data.Span);
+        foreach (var value in Data.Span)
+        {
+            hash = AddByte(hash, value);
+        }
 
-        return hash.ToHashCode();
+        return unchecked((int)hash);
+    }
+
+    private static uint AddCharacter(uint hash, char value)
+    {
+        return AddByte(AddByte(hash, (byte)value), (byte)(value >> 8));
+    }
+
+    private static uint AddByte(uint hash, byte value)
+    {
+        return unchecked((hash ^ value) * FnvPrime);
     }
 }

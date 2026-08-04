@@ -12,16 +12,20 @@ namespace InternalsViewer.Execution.AccessPaths.Values;
 /// NULL sorts lower than any other value, matching SQL Server index ordering. Variable length values are compared ordinally, which matches
 /// binary collations but not linguistic ones.
 /// </remarks>
-public static class AccessValueComparer
+internal static class AccessValueComparer
 {
+    private static readonly CompareInfo TextComparer = CultureInfo.InvariantCulture.CompareInfo;
+
     public static int Compare(in AccessValue left, in AccessValue right)
     {
         if (left.IsNull || right.IsNull)
         {
             return (left.IsNull, right.IsNull) switch
             {
-                (true, true) => 0,
-                (true, false) => -1,
+                (true, true) 
+                    => 0,
+                (true, false) 
+                    => -1,
                 _ => 1
             };
         }
@@ -32,6 +36,17 @@ public static class AccessValueComparer
         }
 
         return CompareMixedType(left, right);
+    }
+
+    internal static bool IsCharacterType(SqlDbType dataType)
+    {
+        return dataType is SqlDbType.Char or SqlDbType.VarChar or SqlDbType.Text
+                        or SqlDbType.NChar or SqlDbType.NVarChar or SqlDbType.NText;
+    }
+
+    internal static bool IsWideCharacterType(SqlDbType dataType)
+    {
+        return dataType is SqlDbType.NChar or SqlDbType.NVarChar or SqlDbType.NText;
     }
 
     private static int CompareSameType(in AccessValue left, in AccessValue right)
@@ -57,8 +72,6 @@ public static class AccessValueComparer
         }
     }
 
-    private static readonly CompareInfo TextComparer = CultureInfo.InvariantCulture.CompareInfo;
-
     private static int CompareText(in AccessValue left, in AccessValue right)
     {
         var leftChars = IsWideCharacterType(left.DataType)
@@ -70,17 +83,6 @@ public static class AccessValueComparer
             : Encoding.Latin1.GetString(right.Data.Span).AsSpan();
 
         return TextComparer.Compare(leftChars.TrimEnd(' '), rightChars.TrimEnd(' '), CompareOptions.IgnoreCase);
-    }
-
-    internal static bool IsCharacterType(SqlDbType dataType)
-    {
-        return dataType is SqlDbType.Char or SqlDbType.VarChar or SqlDbType.Text
-                        or SqlDbType.NChar or SqlDbType.NVarChar or SqlDbType.NText;
-    }
-
-    internal static bool IsWideCharacterType(SqlDbType dataType)
-    {
-        return dataType is SqlDbType.NChar or SqlDbType.NVarChar or SqlDbType.NText;
     }
 
     private static int CompareMixedType(in AccessValue left, in AccessValue right)

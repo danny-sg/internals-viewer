@@ -16,14 +16,14 @@ FROM   dbo.ClusteredTable
 SELECT Id
       ,TextField
 FROM   dbo.ClusteredTable
-WHERE  TextField LIKE 'This is row 123%' OR Id = 1000
+WHERE  TextField LIKE 'Clustered table row 400%' OR Id = 1000
 GO
 
 -- Index scan
 SELECT Id
       ,TextField
 FROM   dbo.ClusteredTable
-WHERE  TextField LIKE '%row 123%'
+WHERE  TextField LIKE '%Clustered table row 400%'
 GO
 
 -- RID Lookup
@@ -74,6 +74,7 @@ SELECT c.Id
 FROM   dbo.HeapTable h
        INNER JOIN dbo.ClusteredTable c
          ON c.Id = h.Id
+WHERE  h.Id = 100
 GO
 
 SELECT c.Id
@@ -94,9 +95,20 @@ FROM dbo.ClusteredTable
 WITH (TABLOCKX)
 
 -- Modification Queries
+-- Heap Insert
+INSERT INTO dbo.HeapTable VALUES (999222, 'Inserted Row', 'New Row 1')
 
+-- Clustered Index Insert
 INSERT INTO dbo.ClusteredTable VALUES ('New Row', GETDATE())
 
+-- Heap Delete
+DELETE FROM dbo.HeapTable WHERE Id = 1000
+
+SELECT * FROM dbo.HeapTable
+INSERT INTO dbo.HeapTable VALUES (100, 'New Row', 'New Row')
+
+-- Clustered Index Delete
+DELETE FROM dbo.ClusteredTable WHERE Id = 9999
 -- 
 -- Cleanup
 -- 
