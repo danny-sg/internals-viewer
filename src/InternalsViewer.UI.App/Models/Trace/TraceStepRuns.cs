@@ -2,7 +2,6 @@ using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using InternalsViewer.Execution.AccessPaths.Results;
-using InternalsViewer.Execution.AccessPaths.Search;
 
 namespace InternalsViewer.UI.App.Models.Trace;
 
@@ -17,42 +16,43 @@ public static class TraceStepRuns
 
         var top = LeadingSpans(history);
 
-        if (step is AccessStep.MergeCompare { Comparison: not 0 } compare
-            && history.Count > top + 1
-            && history[top] is AccessStep.Row or AccessStep.RowRun)
+        if (step is AccessStep.MergeCompare compare)
         {
-            if (history[top + 1] is AccessStep.MergeCompare previous
-                && Math.Sign(previous.Comparison) == Math.Sign(compare.Comparison)
-                && StaticKeyMatches(compare.Comparison, previous.OuterKey, previous.InnerKey, compare))
+            var span = FindSpan<MergeCompareSpan>(history, top, compare.NodeId);
+
+            if (compare.Comparison == 0)
             {
-                history[top + 1] = new AccessStep.MergeCompareRun(Math.Sign(compare.Comparison), 2)
+                if (span is not null)
                 {
-                    OuterFrom = previous.OuterKey,
-                    OuterTo = compare.OuterKey,
-                    InnerFrom = previous.InnerKey,
-                    InnerTo = compare.InnerKey,
-                    Action = compare.Action,
+                    span.IsComplete = true;
+                }
+
+                MergeMatch(history, compare).Progress.Apply(compare);
+
+                return;
+            }
+
+            if (span is not null && span.Progress.Direction != Math.Sign(compare.Comparison))
+            {
+                span.IsComplete = true;
+
+                span = null;
+            }
+
+            if (span is null)
+            {
+                span = new MergeCompareSpan
+                {
                     NodeId = compare.NodeId,
                     Counters = compare.Counters
                 };
 
-                return;
+                InsertSpan(history, span);
             }
 
-            if (history[top + 1] is AccessStep.MergeCompareRun run
-                && run.Comparison == Math.Sign(compare.Comparison)
-                && StaticKeyMatches(compare.Comparison, run.OuterTo, run.InnerTo, compare))
-            {
-                history[top + 1] = run with
-                {
-                    Count = run.Count + 1,
-                    OuterTo = compare.OuterKey,
-                    InnerTo = compare.InnerKey,
-                    Counters = compare.Counters
-                };
+            span.Progress.Apply(compare);
 
-                return;
-            }
+            return;
         }
 
         if (step is AccessStep.HashBuild hashBuild)
@@ -116,13 +116,30 @@ public static class TraceStepRuns
             return;
         }
 
-        if (step is AccessStep.JoinEmit joinEmit && FindSpan<HashProbeSpan>(history, top, joinEmit.NodeId) is { } emitSpan)
+        if (step is AccessStep.JoinEmit joinEmit)
         {
-            emitSpan.Progress.Apply(joinEmit);
+            if (FindSpan<HashProbeSpan>(history, top, joinEmit.NodeId) is { } emitSpan)
+            {
+                emitSpan.Progress.Apply(joinEmit);
 
-            MatchSpan(history, top, joinEmit).Progress.Apply(joinEmit);
+                MatchSpan(history, top, joinEmit).Progress.Apply(joinEmit);
 
-            return;
+                return;
+            }
+
+            if (FindSpan<MergeMatchSpan>(history, top, joinEmit.NodeId) is { } mergeMatch)
+            {
+                mergeMatch.Progress.Apply(joinEmit);
+
+                return;
+            }
+
+            if (FindSpan<MergeCompareSpan>(history, top, joinEmit.NodeId) is not null)
+            {
+                MergeMatch(history, joinEmit).Progress.Apply(joinEmit);
+
+                return;
+            }
         }
 
         if (step is AccessStep.TopRow topRow)
@@ -240,8 +257,8 @@ public static class TraceStepRuns
 
     private static int Rank(AccessStep step) => step switch
     {
-        HashMatchSpan => 0,
-        HashProbeSpan => 1,
+        HashMatchSpan or MergeMatchSpan => 0,
+        HashProbeSpan or MergeCompareSpan => 1,
         _ => 2
     };
 
@@ -296,6 +313,26 @@ public static class TraceStepRuns
         history.Insert(index, span);
     }
 
+    private static MergeMatchSpan MergeMatch(ObservableCollection<AccessStep> history, AccessStep step)
+    {
+        var top = LeadingSpans(history);
+
+        if (FindSpan<MergeMatchSpan>(history, top, step.NodeId) is { } span)
+        {
+            return span;
+        }
+
+        var created = new MergeMatchSpan
+        {
+            NodeId = step.NodeId,
+            Counters = step.Counters
+        };
+
+        InsertSpan(history, created);
+
+        return created;
+    }
+
     private static HashMatchSpan MatchSpan(ObservableCollection<AccessStep> history, int top, AccessStep step)
     {
         if (FindSpan<HashMatchSpan>(history, top, step.NodeId) is { } span)
@@ -317,10 +354,5 @@ public static class TraceStepRuns
     private static int EmitOf(AccessStep.Row row)
     {
         return row.Outcome == RowOutcome.Match ? 1 : 0;
-    }
-
-    private static bool StaticKeyMatches(int comparison, AccessKey previousOuter, AccessKey previousInner, AccessStep.MergeCompare compare)
-    {
-        return comparison < 0 ? previousInner.Equals(compare.InnerKey) : previousOuter.Equals(compare.OuterKey);
     }
 }

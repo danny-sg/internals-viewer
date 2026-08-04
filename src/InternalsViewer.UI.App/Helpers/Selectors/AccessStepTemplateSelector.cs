@@ -66,6 +66,10 @@ public class AccessStepTemplateSelector : DataTemplateSelector
 
     public DataTemplate MergeCompareRunTemplate { get; set; } = null!;
 
+    public DataTemplate MergeCompareSpanTemplate { get; set; } = null!;
+
+    public DataTemplate MergeMatchSpanTemplate { get; set; } = null!;
+
     public DataTemplate JoinEmitTemplate { get; set; } = null!;
 
     public DataTemplate StoppedTemplate { get; set; } = null!;
@@ -122,6 +126,8 @@ public class AccessStepTemplateSelector : DataTemplateSelector
             AccessStep.ForwardedRecord => ForwardedRecordTemplate,
             AccessStep.MergeCompare => MergeCompareTemplate,
             AccessStep.MergeCompareRun => MergeCompareRunTemplate,
+            MergeCompareSpan => MergeCompareSpanTemplate,
+            MergeMatchSpan => MergeMatchSpanTemplate,
             AccessStep.JoinEmit => JoinEmitTemplate,
             AccessStep.Stopped => StoppedTemplate,
             AccessStep.Truncated => TruncatedTemplate,

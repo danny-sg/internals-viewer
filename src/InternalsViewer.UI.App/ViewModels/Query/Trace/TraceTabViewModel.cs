@@ -403,18 +403,6 @@ public sealed partial class TraceTabViewModel : ObservableObject
     [ObservableProperty]
     private ScanModeResult? _scanMode;
 
-    public void Refresh(PlanNode planNode, DateTime? queryTime, ScanModeResult? scanMode)
-    {
-        PlanNode = planNode;
-        QueryTime = queryTime;
-        ScanMode = scanMode;
-
-        ResetStep();
-
-        OnPropertyChanged(nameof(SeekDescription));
-        OnPropertyChanged(nameof(IconSource));
-    }
-
     public event EventHandler<PageNavigatedEventArgs>? PageNavigated;
 
     private bool _hasNavigatedSinceReset;

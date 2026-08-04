@@ -113,6 +113,8 @@ public sealed class TraceDefinitionBuilder(Func<PlanNode, AllocationUnit?> resol
             return null;
         }
 
+        Nodes[node.NodeId] = node;
+
         return new HashMatchDefinition(build, probe)
         {
             NodeId = node.NodeId,
@@ -135,6 +137,8 @@ public sealed class TraceDefinitionBuilder(Func<PlanNode, AllocationUnit?> resol
             return null;
         }
 
+        Nodes[node.NodeId] = node;
+
         return new MergeJoinDefinition(outer, inner)
         {
             NodeId = node.NodeId,
@@ -155,6 +159,8 @@ public sealed class TraceDefinitionBuilder(Func<PlanNode, AllocationUnit?> resol
         {
             return null;
         }
+
+        Nodes[node.NodeId] = node;
 
         return new NestedLoopsDefinition(outer, inner)
         {

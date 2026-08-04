@@ -29,7 +29,7 @@
         </Style>
     </UserControl.Resources>
 
-    <Grid Background="{ThemeResource LayerOnMicaBaseAltFillColorDefault}">
+    <Grid >
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />
@@ -37,51 +37,66 @@
             <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
 
-        <StackPanel Grid.Row="0"
-                    Orientation="Horizontal"
-                    Spacing="8"
-                    Padding="8,6,8,4"
+        <CommandBar Grid.Row="0"
+                    IsOpen="False"
+                    Padding="8,0,0,0"
+                    DefaultLabelPosition="Right"
+                    VerticalAlignment="Center"
+                    HorizontalAlignment="Left"
+                    VerticalContentAlignment="Top"
+                    MinHeight="0"
+                    OverflowButtonVisibility="Collapsed"
+                    BorderThickness="0,0,0,1"
                     BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
-                    BorderThickness="0,0,0,1">
-            <Image x:Name="OperatorIcon" Width="32" Height="32" VerticalAlignment="Center" />
-            <StackPanel VerticalAlignment="Center">
-                <TextBlock x:Name="OperatorName" FontSize="13" FontWeight="Bold" />
-                <TextBlock x:Name="OperatorSubname"
-                           FontSize="12"
-                           Visibility="Collapsed"
-                           Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
-            </StackPanel>
-            <accessSteps:JoinDecisionBadge x:Name="OperatorBadge"
-                                           IsRuleOnly="True"
-                                           Visibility="Collapsed"
-                                           VerticalAlignment="Center" />
-        </StackPanel>
+                    Background="Transparent">
+            <AppBarElementContainer VerticalContentAlignment="Center">
+
+                <StackPanel Orientation="Horizontal">
+                    <Image x:Name="OperatorIcon"
+                           Width="32"
+                           Height="32"
+                           Margin="0,0,2,0"
+                           HorizontalAlignment="Left" />
+                    <StackPanel Orientation="Vertical" VerticalAlignment="Center" Padding="4,0,8,0">
+                        <TextBlock x:Name="OperatorName" />
+                        <!--<TextBlock x:Name="OperatorSubname"
+                                   FontSize="12"
+                                   Visibility="Collapsed"
+                                   Foreground="{ThemeResource TextFillColorSecondaryBrush}" />-->
+                        <accessSteps:JoinDecisionBadge x:Name="OperatorBadge"
+                                                       IsRuleOnly="True"
+                                                       Margin="0,1,0,0"
+                                                       Visibility="Collapsed" />
+                    </StackPanel>
+                </StackPanel>
+            </AppBarElementContainer>
+        </CommandBar>
 
         <Grid Grid.Row="1">
-        <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="*" />
-            <ColumnDefinition Width="Auto" />
-            <ColumnDefinition x:Name="InnerColumn" Width="*" />
-        </Grid.ColumnDefinitions>
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition x:Name="InnerColumn" Width="*" />
+            </Grid.ColumnDefinitions>
 
-        <Grid Grid.Column="0">
-            <Grid.RowDefinitions>
-                <RowDefinition Height="Auto" />
-                <RowDefinition Height="2*" />
-                <RowDefinition Height="Auto" />
-                <RowDefinition x:Name="OuterBottomRow" Height="*" />
-            </Grid.RowDefinitions>
+            <Grid Grid.Column="0">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="2*" />
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition x:Name="OuterBottomRow" Height="*" />
+                </Grid.RowDefinitions>
 
-            <StackPanel x:Name="OuterHeader" Orientation="Horizontal" Spacing="6" Padding="8,6,8,4" />
+                <StackPanel x:Name="OuterHeader" Orientation="Horizontal" Spacing="6" Padding="8,6,8,4" />
 
-            <ContentControl x:Name="OuterTopHost"
+                <ContentControl x:Name="OuterTopHost"
                             Grid.Row="1"
                             HorizontalAlignment="Stretch"
                             VerticalAlignment="Stretch"
                             HorizontalContentAlignment="Stretch"
                             VerticalContentAlignment="Stretch" />
 
-            <controls:GridSplitter x:Name="OuterSplitter"
+                <controls:GridSplitter x:Name="OuterSplitter"
                                    Grid.Row="2"
                                    Height="2"
                                    ResizeBehavior="PreviousAndNext"
@@ -89,15 +104,15 @@
                                    HorizontalAlignment="Stretch"
                                    Style="{StaticResource TracePaneSplitterStyle}" />
 
-            <ContentControl x:Name="OuterBottomHost"
+                <ContentControl x:Name="OuterBottomHost"
                             Grid.Row="3"
                             HorizontalAlignment="Stretch"
                             VerticalAlignment="Stretch"
                             HorizontalContentAlignment="Stretch"
                             VerticalContentAlignment="Stretch" />
-        </Grid>
+            </Grid>
 
-        <controls:GridSplitter x:Name="InputSplitter"
+            <controls:GridSplitter x:Name="InputSplitter"
                                Grid.Column="1"
                                Width="2"
                                ResizeBehavior="PreviousAndNext"
@@ -105,24 +120,24 @@
                                VerticalAlignment="Stretch"
                                Style="{StaticResource TracePaneSplitterStyle}" />
 
-        <Grid Grid.Column="2">
-            <Grid.RowDefinitions>
-                <RowDefinition Height="Auto" />
-                <RowDefinition Height="2*" />
-                <RowDefinition Height="Auto" />
-                <RowDefinition x:Name="InnerBottomRow" Height="*" />
-            </Grid.RowDefinitions>
+            <Grid Grid.Column="2">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="2*" />
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition x:Name="InnerBottomRow" Height="*" />
+                </Grid.RowDefinitions>
 
-            <StackPanel x:Name="InnerHeader" Orientation="Horizontal" Spacing="6" Padding="8,6,8,4" />
+                <StackPanel x:Name="InnerHeader" Orientation="Horizontal" Spacing="6" Padding="8,6,8,4" />
 
-            <ContentControl x:Name="InnerTopHost"
+                <ContentControl x:Name="InnerTopHost"
                             Grid.Row="1"
                             HorizontalAlignment="Stretch"
                             VerticalAlignment="Stretch"
                             HorizontalContentAlignment="Stretch"
                             VerticalContentAlignment="Stretch" />
 
-            <controls:GridSplitter x:Name="InnerSplitter"
+                <controls:GridSplitter x:Name="InnerSplitter"
                                    Grid.Row="2"
                                    Height="2"
                                    ResizeBehavior="PreviousAndNext"
@@ -130,13 +145,13 @@
                                    HorizontalAlignment="Stretch"
                                    Style="{StaticResource TracePaneSplitterStyle}" />
 
-            <ContentControl x:Name="InnerBottomHost"
+                <ContentControl x:Name="InnerBottomHost"
                             Grid.Row="3"
                             HorizontalAlignment="Stretch"
                             VerticalAlignment="Stretch"
                             HorizontalContentAlignment="Stretch"
                             VerticalContentAlignment="Stretch" />
-        </Grid>
+            </Grid>
         </Grid>
 
         <TextBlock x:Name="OutputHeader"

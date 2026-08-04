@@ -372,7 +372,7 @@ public static class TraceLayoutBuilder
     {
         if (node is null && definition is SelectDefinition)
         {
-            node = new PlanNode { PhysicalOperator = "SELECT" };
+            node = new PlanNode { PhysicalOperator = "SELECT", IsStatement = true };
         }
 
         var physical = node?.PhysicalOperator is { Length: > 0 } name ? name : DisplayName(definition);

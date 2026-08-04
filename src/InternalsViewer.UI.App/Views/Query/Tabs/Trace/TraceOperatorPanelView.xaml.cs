@@ -126,9 +126,6 @@ public sealed partial class TraceOperatorPanelView : UserControl, IDocumentComma
 
         OperatorName.Text = viewModel.Heading.Length > 0 ? viewModel.Heading : viewModel.Title;
 
-        OperatorSubname.Text = viewModel.Subheading;
-        OperatorSubname.Visibility = viewModel.Subheading.Length > 0 ? Visibility.Visible : Visibility.Collapsed;
-
         OperatorBadge.Decision = viewModel.JoinRule;
         OperatorBadge.Visibility = viewModel.JoinRule is null ? Visibility.Collapsed : Visibility.Visible;
 

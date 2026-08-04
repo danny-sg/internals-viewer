@@ -918,6 +918,74 @@
                 </Grid>
             </DataTemplate>
 
+            <DataTemplate x:Key="MergeCompareSpanTemplate" >
+                <Grid Style="{StaticResource StepRowStyle}">
+                    <StackPanel Orientation="Horizontal" Grid.ColumnSpan="9" HorizontalAlignment="Left" VerticalAlignment="Top" Spacing="5" Width="140" Margin="-150,0,0,0"><Border x:Name="SourceBlob" Width="9" Height="9" CornerRadius="2" Margin="0,4,0,0" VerticalAlignment="Top" /><TextBlock x:Name="SourceName" Style="{StaticResource StepNodeStyle}" /></StackPanel>
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="Compare" Style="{StaticResource StepLabelStyle}" />
+                        <Border x:Name="CompareBadge"
+                                Visibility="Collapsed"
+                                CornerRadius="4"
+                                Padding="6,0,6,1"
+                                Margin="0,0,8,0"
+                                VerticalAlignment="Center">
+                            <TextBlock x:Name="CompareBadgeText" Foreground="White" FontSize="11" />
+                        </Border>
+                        <TextBlock Text="from" Style="{StaticResource StepPropertyStyle}" />
+                        <TextBlock Text="{Binding Progress.MovedFrom}" Style="{StaticResource StepValueStyle}" />
+                        <TextBlock Text="to" Style="{StaticResource StepPropertyStyle}" />
+                        <TextBlock Text="{Binding Progress.MovedTo}" Style="{StaticResource StepValueStyle}" />
+                        <TextBlock Text="against" Style="{StaticResource StepPropertyStyle}" Margin="8,0,0,0" />
+                        <TextBlock Text="{Binding Progress.StaticKey}" Style="{StaticResource StepValueStyle}" />
+                        <Border Background="{ThemeResource SubtleFillColorSecondaryBrush}"
+                                CornerRadius="4"
+                                Padding="6,0,6,1"
+                                Margin="8,0,0,0"
+                                VerticalAlignment="Center">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="×" FontSize="11" Opacity="0.6" Margin="0,0,2,0" />
+                                <TextBlock Text="{Binding Progress.Count}" FontSize="11" />
+                                <TextBlock Text="compares" FontSize="11" Opacity="0.6" Margin="4,0,0,0" />
+                            </StackPanel>
+                        </Border>
+                    </StackPanel>
+                </Grid>
+            </DataTemplate>
+
+            <DataTemplate x:Key="MergeMatchSpanTemplate" >
+                <Grid Style="{StaticResource StepRowStyle}">
+                    <StackPanel Orientation="Horizontal" Grid.ColumnSpan="9" HorizontalAlignment="Left" VerticalAlignment="Top" Spacing="5" Width="140" Margin="-150,0,0,0"><Border x:Name="SourceBlob" Width="9" Height="9" CornerRadius="2" Margin="0,4,0,0" VerticalAlignment="Top" /><TextBlock x:Name="SourceName" Style="{StaticResource StepNodeStyle}" /></StackPanel>
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="Match" Style="{StaticResource StepLabelStyle}" />
+                        <TextBlock Text="Key" Style="{StaticResource StepPropertyStyle}" />
+                        <TextBlock Text="{Binding Progress.Key}" Style="{StaticResource StepValueStyle}" />
+                        <TextBlock Text="Pair" Style="{StaticResource StepPropertyStyle}" Margin="8,0,0,0" />
+                        <TextBlock Text="{Binding Progress.PairNumber}" Style="{StaticResource StepValueStyle}" />
+                        <Border x:Name="EmitBadge"
+                                Background="{ThemeResource SystemFillColorSuccessBrush}"
+                                CornerRadius="4"
+                                Padding="6,0,6,1"
+                                Margin="8,0,0,0"
+                                VerticalAlignment="Center">
+                            <TextBlock Text="→ Emit"
+                                       Foreground="White"
+                                       FontSize="11" />
+                        </Border>
+                        <Border Background="{ThemeResource SubtleFillColorSecondaryBrush}"
+                                CornerRadius="4"
+                                Padding="6,0,6,1"
+                                Margin="8,0,0,0"
+                                VerticalAlignment="Center">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="×" FontSize="11" Opacity="0.6" Margin="0,0,2,0" />
+                                <TextBlock Text="{Binding Progress.Emits}" FontSize="11" />
+                                <TextBlock Text="rows" FontSize="11" Opacity="0.6" Margin="4,0,0,0" />
+                            </StackPanel>
+                        </Border>
+                    </StackPanel>
+                </Grid>
+            </DataTemplate>
+
             <DataTemplate x:Key="TopStartTemplate" >
                 <Grid Style="{StaticResource StepRowStyle}">
                     <StackPanel Orientation="Horizontal" Grid.ColumnSpan="9" HorizontalAlignment="Left" VerticalAlignment="Top" Spacing="5" Width="140" Margin="-150,0,0,0"><Border x:Name="SourceBlob" Width="9" Height="9" CornerRadius="2" Margin="0,4,0,0" VerticalAlignment="Top" /><TextBlock x:Name="SourceName" Style="{StaticResource StepNodeStyle}" /></StackPanel>
@@ -1123,6 +1191,8 @@
                 ForwardedRecordTemplate="{StaticResource ForwardedRecordTemplate}"
                 MergeCompareTemplate="{StaticResource MergeCompareTemplate}"
                 MergeCompareRunTemplate="{StaticResource MergeCompareRunTemplate}"
+                MergeCompareSpanTemplate="{StaticResource MergeCompareSpanTemplate}"
+                MergeMatchSpanTemplate="{StaticResource MergeMatchSpanTemplate}"
                 JoinEmitTemplate="{StaticResource JoinEmitTemplate}"
                 StoppedTemplate="{StaticResource StoppedTemplate}"
                 TruncatedTemplate="{StaticResource TruncatedTemplate}"

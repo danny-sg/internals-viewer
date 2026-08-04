@@ -196,6 +196,16 @@ public static class TraceStepDescriber
                     ? $"Get Row - Passed through row {span.Progress.Rows:N0} of {span.Progress.Limit:N0}."
                     : $"Get Row - Returned row {span.Progress.Rows:N0} to the client.",
 
+            MergeCompareSpan span =>
+                $"Compare - {span.Progress.Count:N0} comparisons advanced the same side.\n\n"
+                + $"The {(span.Progress.Direction < 0 ? "outer" : "inner")} moved from {span.Progress.MovedFrom} to "
+                + $"{span.Progress.MovedTo} against {span.Progress.StaticKey}. One side held a key ahead of the other, so the walk "
+                + "caught up without a match.",
+
+            MergeMatchSpan span =>
+                $"Match - {span.Progress.Matches:N0} matching keys, {span.Progress.Emits:N0} rows output.\n\n"
+                + $"The latest match paired the keys at {span.Progress.Key} and output pair {span.Progress.PairNumber}.",
+
             _ => step.GetType().Name
         };
 

@@ -267,6 +267,7 @@ public sealed partial class AccessStepsControl : UserControl
         {
             AccessStep.MergeCompare compare => compare.Comparison,
             AccessStep.MergeCompareRun run => run.Comparison,
+            MergeCompareSpan span => span.Progress.Direction,
             _ => 0
         };
 

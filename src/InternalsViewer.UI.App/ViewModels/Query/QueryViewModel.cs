@@ -997,32 +997,27 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
     private void RefreshTraceDocuments()
     {
-        foreach (var (key, viewModel) in _openTraces.ToList())
+        if (_openTraces.Count == 0 || _traceTargetNodeId is not { } target)
         {
-            var node = ExecutionPlans.Where(p => !p.IsInternalPlan)
-                                     .Select(p => p.NodesById.GetValueOrDefault(viewModel.PlanNode?.NodeId ?? -1))
-                                     .FirstOrDefault(n => n is not null);
-
-            if (node is not null)
-            {
-                var unit = viewModel.Visuals[0].AllocationUnit;
-
-                viewModel.Refresh(node, Events.FirstOrDefault()?.Timestamp, ScanModeDetector.Detect(node, unit, Events));
-
-                continue;
-            }
-
-            viewModel.PageNavigated -= OnIndexPageNavigated;
-
-            _openTraces.Remove(key);
-
-            _traceTargetNodeId = null;
-
-            if (Layout.RemoveDocument(key, out var document))
-            {
-                document.DisposeView();
-            }
+            return;
         }
+
+        var node = target < 0
+            ? ExecutionPlans.FirstOrDefault(p => !p.IsInternalPlan)?.Root.FirstOrDefault()
+            : ExecutionPlans.Where(p => !p.IsInternalPlan)
+                            .Select(p => p.NodesById.GetValueOrDefault(target))
+                            .FirstOrDefault(n => n is not null);
+
+        if (node is null || !CanTrace(node))
+        {
+            CloseTraceDocument();
+
+            return;
+        }
+
+        _traceTargetNodeId = null;
+
+        OpenTrace(node);
     }
 
     public event Action<long>? PlayheadMoveRequested;
