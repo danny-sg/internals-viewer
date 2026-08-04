@@ -2,13 +2,14 @@ using InternalsViewer.Execution.AccessPaths.Binding;
 using InternalsViewer.Execution.AccessPaths.Joins;
 using InternalsViewer.Execution.AccessPaths.Search;
 using InternalsViewer.Execution.AccessPaths.Values;
+using InternalsViewer.Execution.Interfaces.Iterators;
 using InternalsViewer.Execution.Interfaces.Iterators.Joins;
 using InternalsViewer.Execution.Records;
 using InternalsViewer.Internals.Interfaces.Engine;
 
 namespace InternalsViewer.Execution.Iterators.Joins;
 
-public abstract class JoinIterator : IteratorBase, IJoinIterator
+public abstract class JoinIterator : IteratorBase, IJoinIterator, IRowBufferIterator
 {
     public JoinInput Outer { get; protected set; } = null!;
 
@@ -17,6 +18,15 @@ public abstract class JoinIterator : IteratorBase, IJoinIterator
     public JoinType JoinType { get; protected set; } = JoinType.Inner;
 
     public int PairCount { get; protected set; }
+
+    public virtual IReadOnlyList<RowBuffer> Buffers
+        => Outer is null || Inner is null
+            ? []
+            :
+            [
+                new RowBuffer("Outer", 0, Outer.Buffer),
+                new RowBuffer("Inner", 1, Inner.Buffer)
+            ];
 
     public override AccessStrategy? Strategy => Outer?.Iterator.Strategy;
 

@@ -25,9 +25,8 @@ using AllocationBorderScope = InternalsViewer.UI.App.Models.AllocationBorderScop
 using AllocationLayer = InternalsViewer.UI.App.Models.AllocationLayer;
 using TimedRange = InternalsViewer.UI.App.Models.TimedRange;
 using InternalsViewer.UI.App.ViewModels.Allocation;
-using InternalsViewer.Execution.AccessPaths.Joins.Hash;
 
-namespace InternalsViewer.UI.App.ViewModels.Query;
+namespace InternalsViewer.UI.App.ViewModels.Query.Trace;
 
 public enum TraceVisualKind
 {
@@ -40,38 +39,13 @@ public sealed partial class TraceVisualViewModel(TraceVisualKind kind,
                                                  AllocationUnit allocationUnit,
                                                  IndexService indexService,
                                                  string title,
-                                                 int source = 0) : ObservableObject
+                                                 int nodeId = 0) : ObservableObject
 {
     public TraceVisualKind Kind { get; } = kind;
 
     public string Title { get; } = title;
 
-    public int Source { get; } = source;
-
-    public bool IsSideStackVisible { get; init; }
-
-    /// <summary>
-    /// Shows the hash table in place of the side record stack, for the build input of a hash match
-    /// </summary>
-    public bool IsHashTableVisible { get; init; }
-
-    /// <summary>
-    /// Which input of the join this side is, 0 for outer or build and 1 for inner or probe
-    /// </summary>
-    /// <remarks>
-    /// Source identifies the operator and comes from the plan, so it can no longer say which side of its parent an input sits on.
-    /// </remarks>
-    public int InputIndex { get; init; } = -1;
-
-    /// <summary>
-    /// The operator this input feeds, which with <see cref="InputIndex"/> names the buffer holding its rows
-    /// </summary>
-    public int OperatorNodeId { get; init; }
-
-    /// <summary>
-    /// The columns this side's records show, taken from what its operator outputs
-    /// </summary>
-    public RecordColumnFilter ColumnFilter { get; init; } = RecordColumnFilter.All;
+    public int NodeId { get; } = nodeId;
 
     /// <summary>
     /// Outlines the object as soon as the map loads, for a path that never reads the IAM chain
@@ -126,9 +100,6 @@ public sealed partial class TraceVisualViewModel(TraceVisualKind kind,
 
     [ObservableProperty]
     private bool _isDimmed;
-
-    [ObservableProperty]
-    private ObservableCollection<IndexRecordModel> _sideRecords = [];
 
     private Color? _objectColour;
 
@@ -232,7 +203,7 @@ public sealed partial class TraceVisualViewModel(TraceVisualKind kind,
 
     public void Apply(AccessStep step)
     {
-        if (step.NodeId != Source)
+        if (step.NodeId != NodeId)
         {
             return;
         }
@@ -320,7 +291,7 @@ public sealed partial class TraceVisualViewModel(TraceVisualKind kind,
 
         foreach (var step in steps)
         {
-            if (step.NodeId != Source)
+            if (step.NodeId != NodeId)
             {
                 continue;
             }
@@ -404,7 +375,6 @@ public sealed partial class TraceVisualViewModel(TraceVisualKind kind,
         SelectedRowSlotCount = 0;
         TraceBorders = [];
         IsDimmed = false;
-        SideRecords = [];
     }
 
     internal static IndexRecordModel ToRecordModel(IRecord record, RecordColumnFilter? columns = null)

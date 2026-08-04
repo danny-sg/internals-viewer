@@ -1,11 +1,11 @@
-namespace InternalsViewer.UI.App.ViewModels.Query;
+namespace InternalsViewer.UI.App.ViewModels.Query.Trace;
 
 public enum TracePaneKind
 {
     Empty,
     Visual,
-    OperatorResults,
-    Records,
+    RowStream,
+    HeldRows,
     HashTable
 }
 

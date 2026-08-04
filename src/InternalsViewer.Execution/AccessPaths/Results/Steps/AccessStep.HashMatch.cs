@@ -15,10 +15,25 @@ public abstract partial record AccessStep
 
         public int ChainLength { get; init; }
 
+        public int BucketCount { get; init; }
+
         /// <summary>
         /// The key held a NULL, so the row occupies a bucket but can never match a probe row
         /// </summary>
         public bool IsNullKey { get; init; }
+    }
+
+    public sealed record HashBuildRun(int Bucket, uint Hash, int Count) : AccessStep(AccessPhase.Walk)
+    {
+        public AccessKey Key { get; init; }
+
+        public int ChainLength { get; init; }
+
+        public bool IsNullKey { get; init; }
+
+        public int BucketCount { get; init; }
+
+        public IReadOnlyList<int> BucketFill { get; init; } = [];
     }
 
     /// <summary>

@@ -1,13 +1,13 @@
-﻿using System.Collections.Generic;
-using System.Data;
+using System;
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
-using System.Threading.Tasks;
 using System.Threading;
-using System;
+using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using InternalsViewer.Execution.AccessPaths.Definitions;
+using InternalsViewer.Execution.AccessPaths.Joins;
 using InternalsViewer.Execution.AccessPaths.Predicates;
 using InternalsViewer.Execution.AccessPaths.Results;
 using InternalsViewer.Execution.AccessPaths.Search;
@@ -15,10 +15,8 @@ using InternalsViewer.Execution.Interfaces;
 using InternalsViewer.Execution.Interfaces.Iterators;
 using InternalsViewer.Execution.Interfaces.Iterators.Joins;
 using InternalsViewer.Execution.Iterators.Stepping;
-using InternalsViewer.Execution.Records;
 using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Internals.Engine.Database;
-using InternalsViewer.Internals.Engine.Records;
 using InternalsViewer.Internals.Interfaces.Engine;
 using InternalsViewer.Internals.Providers.Metadata;
 using InternalsViewer.Internals.Services.Indexes;
@@ -33,12 +31,10 @@ using InternalsViewer.UI.App.ViewModels.Docking;
 using InternalsViewer.UI.App.ViewModels.Index;
 using InternalsViewer.UI.App.Views.Query.Tabs.Trace;
 using Microsoft.UI.Xaml.Controls;
-using Microsoft.UI.Xaml.Media.Imaging;
 using Microsoft.UI.Xaml.Media;
-using InternalsViewer.Execution.AccessPaths.Joins;
-using InternalsViewer.Execution.AccessPaths.Joins.Hash;
+using Microsoft.UI.Xaml.Media.Imaging;
 
-namespace InternalsViewer.UI.App.ViewModels.Query;
+namespace InternalsViewer.UI.App.ViewModels.Query.Trace;
 
 public sealed class TraceTabViewModelFactory(IIteratorFactory iteratorFactory, IndexService indexService)
 {
@@ -68,7 +64,11 @@ public sealed class TraceTabViewModelFactory(IIteratorFactory iteratorFactory, I
             return null;
         }
 
-        return new TraceTabViewModel(iteratorFactory, definition, database, node, queryTime, scanMode, visuals);
+        var layout = TraceLayoutBuilder.Build(definition,
+                                              visuals.ToDictionary(v => v.NodeId),
+                                              id => builder.Nodes.GetValueOrDefault(id));
+
+        return new TraceTabViewModel(iteratorFactory, definition, database, node, queryTime, scanMode, visuals, layout);
     }
 
     private TraceVisualViewModel? CreateVisual(DatabaseSource database, TraceSource source, TraceDefinitionBuilder builder)
@@ -82,29 +82,11 @@ public sealed class TraceTabViewModelFactory(IIteratorFactory iteratorFactory, I
 
         var title = source.Role == TraceSourceRole.None ? DisplayName(unit) : $"{source.Role}: {DisplayName(unit)}";
 
-        var node = builder.Nodes.GetValueOrDefault(source.NodeId);
-
         return new TraceVisualViewModel(kind, database, unit, indexService, title, source.NodeId)
         {
-            IsSideStackVisible = source.Role != TraceSourceRole.None,
-            ShowObjectBorderImmediately = source.Kind == TraceSourceKind.Heap,
-            IsHashTableVisible = source.Role == TraceSourceRole.Build,
-            OperatorNodeId = source.OperatorNodeId,
-            InputIndex = InputIndexOf(source.Role),
-            ColumnFilter = RecordColumnFilter.For(node, includesBookmark: source.Role == TraceSourceRole.Lookup)
+            ShowObjectBorderImmediately = source.Kind == TraceSourceKind.Heap
         };
     }
-
-    /// <summary>
-    /// Which of its operator's two inputs a role is, the rows a join holds being kept per input
-    /// </summary>
-    private static int InputIndexOf(TraceSourceRole role)
-        => role switch
-        {
-            TraceSourceRole.Outer or TraceSourceRole.Build or TraceSourceRole.Seek => 0,
-            TraceSourceRole.Inner or TraceSourceRole.Probe or TraceSourceRole.Lookup => 1,
-            _ => -1
-        };
 
     private static string DisplayName(AllocationUnit unit)
         => string.IsNullOrEmpty(unit.IndexName) ? unit.TableName : unit.IndexName;
@@ -122,7 +104,8 @@ public sealed partial class TraceTabViewModel : ObservableObject
                              PlanNode? planNode,
                              DateTime? queryTime,
                              ScanModeResult? scanMode,
-                             IReadOnlyList<TraceVisualViewModel> visuals)
+                             IReadOnlyList<TraceVisualViewModel> visuals,
+                             TraceLayout layout)
     {
         IteratorFactory = iteratorFactory;
         Definition = definition;
@@ -131,51 +114,23 @@ public sealed partial class TraceTabViewModel : ObservableObject
         QueryTime = queryTime;
         ScanMode = scanMode;
         Visuals = visuals;
-        VisualsBySource = visuals.ToDictionary(v => v.Source);
-        DefinitionBySource = TraceSourceCollector.Collect(definition).ToDictionary(s => s.NodeId, s => s.Definition);
+        Layout = layout;
 
-        Operators = [.. TraceSourceCollector.CollectOperators(definition)
-                                            .Select(o => new TraceOperatorViewModel(o.NodeId, OperatorTitle(o), OperatorDescription(o)))];
+        VisualsByNode = visuals.ToDictionary(v => v.NodeId);
 
-        OperatorsBySource = Operators.ToDictionary(o => o.NodeId);
+        Operators = layout.Tabs;
 
-        BuildOperatorPanes();
+        RowBuilder = new TraceRowBuilder(layout.Definitions, layout.Sides);
+
+        RootOutput = layout.Streams[definition.NodeId];
+
+        RootOutput.PropertyChanged += (_, _) => OnPropertyChanged(nameof(ResultsLabel));
 
         SelectedVisual = visuals[0];
 
         Dock = BuildDock();
 
         Dock.LayoutChanged += (_, _) => OnDockLayoutChanged();
-
-        Strategy = SeekDescription;
-    }
-
-    private static string OperatorTitle(JoinDefinition definition)
-        => definition switch
-        {
-            HashMatchDefinition => "Hash Match",
-            MergeJoinDefinition => "Merge Join",
-            NestedLoopsDefinition => "Nested Loops",
-            _ => "Results"
-        };
-
-    /// <summary>
-    /// The join type and the columns matched on, stated the way the operator states them
-    /// </summary>
-    private static string OperatorDescription(JoinDefinition definition)
-    {
-        var keys = definition switch
-        {
-            HashMatchDefinition hash => hash.Build.JoinColumns,
-            MergeJoinDefinition merge => merge.Outer.JoinColumns,
-            _ => []
-        };
-
-        var on = keys.Count > 0 ? $" on {string.Join(", ", keys)}" : string.Empty;
-
-        var residual = definition.Residual is null ? string.Empty : " with residual";
-
-        return $"{definition.JoinType.ToDisplayName()}{on}{residual}";
     }
 
     public SvgImageSource? IconSource => PlanNode is null ? null : new SvgImageSource(PlanIconResolver.Resolve(PlanNode));
@@ -214,22 +169,12 @@ public sealed partial class TraceTabViewModel : ObservableObject
         return new DockLayoutViewModel(new SplitNode(Orientation.Horizontal, left, right));
     }
 
-    /// <summary>
-    /// One document per operator, or the input itself when the trace is of a single access path
-    /// </summary>
     private IEnumerable<DocumentViewModel> OperatorDocuments()
-    {
-        if (Operators.Count == 0)
-        {
-            return Visuals.Select(v => VisualDocument(v.Source));
-        }
-
-        return Operators.Select(o => DocumentViewModel.Create<TraceOperatorPanelView>(OperatorTabTitle(o),
-                                                                                      o,
-                                                                                      canClose: false,
-                                                                                      keepAlive: true,
-                                                                                      key: $"Operator{o.NodeId}"));
-    }
+        => Operators.Select(o => DocumentViewModel.Create<TraceOperatorPanelView>(OperatorTabTitle(o),
+                                                                                  o,
+                                                                                  canClose: false,
+                                                                                  keepAlive: true,
+                                                                                  key: $"Operator{o.NodeId}"));
 
     /// <summary>
     /// Names an operator's tab, adding its node id only where the plan has more than one operator of that kind
@@ -238,156 +183,6 @@ public sealed partial class TraceTabViewModel : ObservableObject
         => Operators.Count(o => o.Title == operatorViewModel.Title) > 1
             ? $"{operatorViewModel.Title} ({operatorViewModel.NodeId})"
             : operatorViewModel.Title;
-
-    /// <summary>
-    /// Fills each operator's panes from the definition tree, which is the only thing that says what an input is
-    /// </summary>
-    private void BuildOperatorPanes()
-    {
-        foreach (var join in TraceSourceCollector.CollectOperators(Definition))
-        {
-            if (!OperatorsBySource.TryGetValue(join.NodeId, out var operatorViewModel))
-            {
-                continue;
-            }
-
-            var (outer, inner) = Inputs(join);
-
-            SidesByOperator[join.NodeId] = new OperatorSides(OperatorNodeIdOf(outer),
-                                                             OperatorNodeIdOf(inner),
-                                                             TablesUnder(outer),
-                                                             TablesUnder(inner));
-
-            var hashTable = join is HashMatchDefinition ? CreateHashTable(join.NodeId, outer) : null;
-
-            operatorViewModel.OuterTop = InputPane(outer);
-            operatorViewModel.OuterBottom = HeldPane(outer, hashTable);
-
-            operatorViewModel.InnerTop = InputPane(inner);
-            operatorViewModel.InnerBottom = HeldPane(inner, hashTable: null);
-        }
-    }
-
-    /// <summary>
-    /// Gives a hash match a table of its own, showing the build rows as the columns that side states it outputs
-    /// </summary>
-    /// <remarks>
-    /// A build side that is another operator hands up a row carrying every column both of its own sides read, so the columns come from
-    /// that operator's output list. Taking the record as it stands would show the workings of the whole subtree.
-    /// </remarks>
-    private TraceHashTableViewModel CreateHashTable(int nodeId, IteratorDefinition? build)
-    {
-        var input = Unwrap(build);
-
-        var filter = input switch
-        {
-            JoinDefinition join => RecordColumnFilter.For(_planNodesById.GetValueOrDefault(join.NodeId)),
-            not null when VisualsBySource.TryGetValue(input.NodeId, out var visual) => visual.ColumnFilter,
-            _ => RecordColumnFilter.All
-        };
-
-        var hashTable = new TraceHashTableViewModel(filter);
-
-        HashTables[nodeId] = hashTable;
-
-        return hashTable;
-    }
-
-    /// <summary>
-    /// The operator on one side of a join, or -1 where that side reads an object directly
-    /// </summary>
-    private int OperatorNodeIdOf(IteratorDefinition? side)
-        => Unwrap(side) is JoinDefinition join ? join.NodeId : -1;
-
-    /// <summary>
-    /// The objects read anywhere below one side of a join, which is what says whose column an operator is asked for
-    /// </summary>
-    private HashSet<string> TablesUnder(IteratorDefinition? side)
-    {
-        var tables = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-
-        if (side is null)
-        {
-            return tables;
-        }
-
-        foreach (var source in TraceSourceCollector.Collect(side))
-        {
-            if (VisualsBySource.TryGetValue(source.NodeId, out var visual) && visual.AllocationUnit.TableName is { } table)
-            {
-                tables.Add(table);
-            }
-        }
-
-        return tables;
-    }
-
-    private static (IteratorDefinition? Outer, IteratorDefinition? Inner) Inputs(JoinDefinition join)
-        => join switch
-        {
-            NestedLoopsDefinition loops => (loops.Outer, loops.Inner),
-            MergeJoinDefinition merge => (merge.Outer.Source, merge.Inner.Source),
-            HashMatchDefinition hash => (hash.Build.Source, hash.Probe.Source),
-            _ => (null, null)
-        };
-
-    /// <summary>
-    /// What one side of an operator shows, which is its object when it reads one and otherwise the results of the operator below
-    /// </summary>
-    private TracePane InputPane(IteratorDefinition? definition)
-    {
-        var input = Unwrap(definition);
-
-        if (input is JoinDefinition join && OperatorsBySource.TryGetValue(join.NodeId, out var operatorViewModel))
-        {
-            return new TracePane(TracePaneKind.OperatorResults, operatorViewModel);
-        }
-
-        if (input is not null && VisualsBySource.TryGetValue(input.NodeId, out var visual))
-        {
-            return new TracePane(TracePaneKind.Visual, visual, visual.Title);
-        }
-
-        return TracePane.Empty;
-    }
-
-    /// <summary>
-    /// What one side holds of what it has read, which for the build side of a hash match is the table it filled
-    /// </summary>
-    /// <remarks>
-    /// The table is the operator's, so a hash match shows one whether its build side read an object or another operator. Any other side
-    /// reading an operator holds nothing of its own, its rows being that operator's results, which the pane above already shows.
-    /// </remarks>
-    private TracePane HeldPane(IteratorDefinition? definition, TraceHashTableViewModel? hashTable)
-    {
-        if (hashTable is not null)
-        {
-            return new TracePane(TracePaneKind.HashTable, hashTable);
-        }
-
-        var input = Unwrap(definition);
-
-        if (input is null or JoinDefinition || !VisualsBySource.TryGetValue(input.NodeId, out var visual))
-        {
-            return TracePane.Empty;
-        }
-
-        return visual.IsSideStackVisible ? new TracePane(TracePaneKind.Records, visual) : TracePane.Empty;
-    }
-
-    private static IteratorDefinition? Unwrap(IteratorDefinition? definition)
-        => definition is UnaryDefinition unary ? Unwrap(unary.Source) : definition;
-
-    private DocumentViewModel VisualDocument(int source)
-    {
-        var visual = VisualsBySource[source];
-
-        return DocumentViewModel.Create<TraceVisualPanelView>(visual.Title,
-                                                              visual,
-                                                              canClose: false,
-                                                              keepAlive: true,
-                                                              key: $"Visual{source}");
-    }
 
     public IReadOnlyList<TraceVisualViewModel> Visuals { get; }
 
@@ -403,11 +198,15 @@ public sealed partial class TraceTabViewModel : ObservableObject
 
     private IteratorStepper? Stepper { get; set; }
 
-    private Dictionary<int, TraceVisualViewModel> VisualsBySource { get; }
+    private TraceLayout Layout { get; }
+
+    private TraceRowBuilder RowBuilder { get; }
+
+    public TraceRowStreamViewModel RootOutput { get; }
+
+    private Dictionary<int, TraceVisualViewModel> VisualsByNode { get; }
 
     public IReadOnlyList<TraceOperatorViewModel> Operators { get; }
-
-    private Dictionary<int, TraceOperatorViewModel> OperatorsBySource { get; }
 
     public DatabaseSource Database { get; }
 
@@ -470,10 +269,28 @@ public sealed partial class TraceTabViewModel : ObservableObject
 
     private void UpdateActivePlanNodes()
     {
-        ActivePlanNodes = _operatorGroup?.SelectedDocument?.Content is TraceOperatorViewModel operatorViewModel
-                          && _planNodesById.TryGetValue(operatorViewModel.NodeId, out var node)
-            ? [node]
-            : [];
+        if (_operatorGroup?.SelectedDocument?.Content is not TraceOperatorViewModel operatorViewModel)
+        {
+            ActivePlanNodes = [];
+
+            return;
+        }
+
+        ActivePlanNodes = _planNodesById.TryGetValue(operatorViewModel.NodeId, out var node) ? [node] : [];
+
+        if (Layout.VisualByOperator.TryGetValue(operatorViewModel.NodeId, out var visual))
+        {
+            SelectedVisual = visual;
+        }
+    }
+
+    partial void OnSelectedVisualChanged(TraceVisualViewModel value)
+    {
+        OnPropertyChanged(nameof(SelectedStrategy));
+        OnPropertyChanged(nameof(SelectedPhase));
+        OnPropertyChanged(nameof(SeekDescription));
+        OnPropertyChanged(nameof(SelectedSectionTitle));
+        OnPropertyChanged(nameof(AllocationUnit));
     }
 
     private DateTime? QueryTime { get; set; }
@@ -501,17 +318,7 @@ public sealed partial class TraceTabViewModel : ObservableObject
     private ObservableCollection<AccessStep> _stepHistory = [];
 
     [ObservableProperty]
-    private ObservableCollection<IndexRecordModel> _resultRecords = [];
-
-
-    [ObservableProperty]
     private AccessStep? _currentStep;
-
-    [ObservableProperty]
-    private AccessStrategy? _strategy;
-
-    [ObservableProperty]
-    private AccessStrategy? _innerStrategy;
 
     public string SelectedSectionTitle => SelectedVisual.Title;
 
@@ -525,10 +332,10 @@ public sealed partial class TraceTabViewModel : ObservableObject
     /// </summary>
     public JoinDecision? JoinRule => Definition is JoinDefinition join ? join.JoinType.Decide(true, true) : null;
 
-    public AccessStrategy? SelectedStrategy => StrategyBySource.GetValueOrDefault(SelectedVisual.Source);
+    public AccessStrategy? SelectedStrategy => StrategyBySource.GetValueOrDefault(SelectedVisual.NodeId);
 
     public AccessPhase? SelectedPhase
-        => CurrentStep is { } step && step.NodeId == SelectedVisual.Source ? step.AccessPhase : null;
+        => CurrentStep is { } step && step.NodeId == SelectedVisual.NodeId ? step.AccessPhase : null;
 
     /// <summary>
     /// True while the selected input is a correlated seek that has not yet been bound, so it has no descent to describe
@@ -538,20 +345,6 @@ public sealed partial class TraceTabViewModel : ObservableObject
 
     private Dictionary<int, AccessStrategy?> StrategyBySource { get; } = [];
 
-    private Dictionary<int, IteratorDefinition> DefinitionBySource { get; }
-
-    /// <summary>
-    /// The table each hash match of the trace fills, by the node id of the operator that owns it
-    /// </summary>
-    private Dictionary<int, TraceHashTableViewModel> HashTables { get; } = [];
-
-    /// <summary>
-    /// What sits on each side of every operator, which is how a column an operator outputs is traced back to the row holding it
-    /// </summary>
-    private Dictionary<int, OperatorSides> SidesByOperator { get; } = [];
-
-    private sealed record OperatorSides(int OuterNodeId, int InnerNodeId, HashSet<string> OuterTables, HashSet<string> InnerTables);
-
     public Brush? OuterAccentBrush => Visuals.Count > 1 ? ToBrush(Visuals[0].ObjectColour) : null;
 
     public Brush? InnerAccentBrush => Visuals.Count > 1 ? ToBrush(Visuals[1].ObjectColour) : null;
@@ -560,7 +353,7 @@ public sealed partial class TraceTabViewModel : ObservableObject
     /// The colour a step should be marked with, found from the input that produced it
     /// </summary>
     public Brush? AccentFor(int source)
-        => Visuals.Count > 1 && VisualsBySource.TryGetValue(source, out var visual) ? ToBrush(visual.ObjectColour) : null;
+        => Visuals.Count > 1 && VisualsByNode.TryGetValue(source, out var visual) ? ToBrush(visual.ObjectColour) : null;
 
     private static Brush ToBrush(System.Drawing.Color colour)
     {
@@ -599,7 +392,7 @@ public sealed partial class TraceTabViewModel : ObservableObject
 
     private bool _suppressResultsSync;
 
-    public string ResultsLabel => ResultRecords.Count > 0 ? $"Results ({ResultRecords.Count:N0})" : "Results";
+    public string ResultsLabel => RootOutput.Rows.Count > 0 ? $"Results ({RootOutput.Rows.Count:N0})" : "Results";
 
     partial void OnIsResultsVisibleChanged(bool value)
     {
@@ -632,11 +425,6 @@ public sealed partial class TraceTabViewModel : ObservableObject
         _suppressResultsSync = false;
     }
 
-    private void UpdateResultsTitle()
-    {
-        OnPropertyChanged(nameof(ResultsLabel));
-    }
-
     public AccessPhase? CurrentPhase => CurrentStep?.AccessPhase;
 
     public AccessCounters CurrentCounters => CurrentStep?.Counters ?? default;
@@ -654,7 +442,7 @@ public sealed partial class TraceTabViewModel : ObservableObject
     {
         get
         {
-            if (!DefinitionBySource.TryGetValue(SelectedVisual.Source, out var definition))
+            if (!Layout.Definitions.TryGetValue(SelectedVisual.NodeId, out var definition))
             {
                 return null;
             }
@@ -687,9 +475,6 @@ public sealed partial class TraceTabViewModel : ObservableObject
             };
         }
     }
-
-    private ScanDirection ScanDirection
-        => PlanNode?.ScanInfo?.IsForward == false ? ScanDirection.Backward : ScanDirection.Forward;
 
     partial void OnCurrentStepChanged(AccessStep? value)
     {
@@ -747,23 +532,13 @@ public sealed partial class TraceTabViewModel : ObservableObject
             return;
         }
 
-        Append(step, StepHistory);
+        TraceStepRuns.Append(step, StepHistory, HistoryLimit);
 
-        if (step is AccessStep.JoinEmit pair && OperatorsBySource.TryGetValue(step.NodeId, out var emitting))
-        {
-            emitting.Add(ToJoinedModel(pair));
-        }
-
-        if (ToResultModel(step) is { } resultModel)
-        {
-            ResultRecords.Add(resultModel);
-
-            UpdateResultsTitle();
-        }
+        RouteRow(step);
 
         UpdateStrategies();
 
-        SyncSideBuffers();
+        SyncHeldRows();
 
         SyncHashTables(step);
 
@@ -800,7 +575,7 @@ public sealed partial class TraceTabViewModel : ObservableObject
 
     private void UpdateActiveVisual(AccessStep? step)
     {
-        var isSideStep = step is not null && Visuals.Any(v => v.Source == step.NodeId);
+        var isSideStep = step is not null && Visuals.Any(v => v.NodeId == step.NodeId);
 
         foreach (var visual in Visuals)
         {
@@ -809,7 +584,7 @@ public sealed partial class TraceTabViewModel : ObservableObject
                               && !IsStepComplete
                               && !IsRunning
                               && !IsRunningToEnd
-                              && visual.Source != step!.NodeId;
+                              && visual.NodeId != step!.NodeId;
         }
     }
 
@@ -836,11 +611,14 @@ public sealed partial class TraceTabViewModel : ObservableObject
                 await StartAsync();
             }
 
-            var stepper = Stepper!;
+            if (Stepper is not { } stepper)
+            {
+                return;
+            }
 
             var steps = new ObservableCollection<AccessStep>();
 
-            var results = new ObservableCollection<IndexRecordModel>();
+            var streamRows = Layout.Streams.Keys.ToDictionary(k => k, _ => new List<IndexRecordModel>());
 
             var replays = new Dictionary<TraceVisualViewModel, TraceVisualReplay>();
 
@@ -859,11 +637,11 @@ public sealed partial class TraceTabViewModel : ObservableObject
 
                 foreach (var step in stepper.History)
                 {
-                    Append(step, steps);
+                    TraceStepRuns.Append(step, steps, HistoryLimit);
 
-                    if (ToResultModel(step) is { } resultModel)
+                    if (streamRows.TryGetValue(step.NodeId, out var rows) && ToStreamModel(step) is { } model)
                     {
-                        results.Add(resultModel);
+                        rows.Add(model);
                     }
                 }
 
@@ -874,9 +652,12 @@ public sealed partial class TraceTabViewModel : ObservableObject
             }, CancellationToken.None);
 
             StepHistory = steps;
-            ResultRecords = results;
 
-            UpdateResultsTitle();
+            foreach (var (nodeId, rows) in streamRows)
+            {
+                Layout.Streams[nodeId].Replace(rows);
+            }
+
             UpdateStrategies();
 
             foreach (var visual in Visuals)
@@ -884,7 +665,7 @@ public sealed partial class TraceTabViewModel : ObservableObject
                 visual.ApplyReplay(replays[visual]);
             }
 
-            SyncSideBuffers();
+            SyncHeldRows();
 
             SyncHashTables(stepper.Current);
 
@@ -922,107 +703,80 @@ public sealed partial class TraceTabViewModel : ObservableObject
         _hasNavigatedSinceReset = false;
 
         StepHistory = [];
-        ResultRecords = [];
 
-        foreach (var operatorViewModel in Operators)
+        foreach (var stream in Layout.Streams.Values)
         {
-            operatorViewModel.Clear();
+            stream.Clear();
         }
 
-        foreach (var hashTable in HashTables.Values)
+        foreach (var held in Layout.HeldRows.Values)
+        {
+            held.Reset();
+        }
+
+        foreach (var hashTable in Layout.HashTables.Values)
         {
             hashTable.Reset();
         }
 
         CurrentStep = null;
-        Strategy = SeekDescription;
-        InnerStrategy = null;
 
-        _syncedBuffers.Clear();
+        StrategyBySource.Clear();
 
         foreach (var visual in Visuals)
         {
             visual.Reset();
         }
 
-        UpdateResultsTitle();
+        OnPropertyChanged(nameof(SelectedStrategy));
+        OnPropertyChanged(nameof(ResultsLabel));
     }
 
-    private TraceVisualViewModel? GetVisual(int source)
+    private TraceVisualViewModel? GetVisual(int nodeId)
+        => VisualsByNode.GetValueOrDefault(nodeId);
+
+    private void RouteRow(AccessStep step)
     {
-        return Visuals.FirstOrDefault(v => v.Source == source);
+        if (Layout.Streams.TryGetValue(step.NodeId, out var stream) && ToStreamModel(step) is { } model)
+        {
+            stream.Add(model);
+        }
     }
 
-    /// <summary>
-    /// Refreshes each side's row pane from the rows the join reading it is currently holding
-    /// </summary>
-    /// <remarks>
-    /// Taken from the join rather than accumulated from the row steps, because only the join knows which rows it still holds - a row it
-    /// has advanced past is gone, and a row read ahead of the current key is not yet in play. Which buffer a side reads from is settled by
-    /// the operator it feeds and which of that operator's two inputs it is, so a trace holding more than one join keeps them apart.
-    /// </remarks>
-    private void SyncSideBuffers()
+    private IndexRecordModel? ToStreamModel(AccessStep step)
+        => step switch
+        {
+            AccessStep.JoinEmit emit => RowBuilder.ToJoinedModel(emit),
+            AccessStep.TopRow { EmittedRecord: { } emitted } => ToRecordModel(emitted),
+            AccessStep.Row { EmittedRecord: { } emitted } => ToRecordModel(emitted),
+            _ => null
+        };
+
+    private void SyncHeldRows()
     {
         if (Stepper is not { } stepper)
         {
             return;
         }
 
-        foreach (var join in Iterators(stepper.Root).OfType<IJoinIterator>())
+        foreach (var iterator in Iterators(stepper.Root).OfType<IRowBufferIterator>())
         {
-            SyncSideBuffer(join.NodeId, 0, join.Outer);
-            SyncSideBuffer(join.NodeId, 1, join.Inner);
+            foreach (var buffer in iterator.Buffers)
+            {
+                if (Layout.HeldRows.TryGetValue((iterator.NodeId, buffer.InputIndex), out var held))
+                {
+                    held.Sync(buffer.Rows);
+                }
+            }
         }
     }
-
-    private void SyncSideBuffer(int operatorNodeId, int inputIndex, IJoinInput input)
-    {
-        var visual = Visuals.FirstOrDefault(v => v.OperatorNodeId == operatorNodeId && v.InputIndex == inputIndex);
-
-        if (visual is null || !visual.IsSideStackVisible || visual.IsHashTableVisible)
-        {
-            return;
-        }
-
-        var buffer = input.Buffer;
-
-        if (_syncedBuffers.TryGetValue(visual.Source, out var synced) && synced.SequenceEqual(buffer))
-        {
-            return;
-        }
-
-        _syncedBuffers[visual.Source] = [.. buffer];
-
-        Refill(visual.SideRecords, buffer);
-    }
-
-    /// <summary>
-    /// Rebuilds a row pane from the buffer, in the collection the grid is already bound to
-    /// </summary>
-    /// <remarks>
-    /// Handing the grid a new collection rebinds it, which rebuilds its columns and every row container it had realised - the whole pane
-    /// rebuilt for a step that moved one row, paid on every step of the walk. Refilling the collection it holds costs none of that. The
-    /// rows are rebuilt rather than the changed ones picked out because the grid's collection view does not track an item replaced in
-    /// place, and a buffer holds only what a join is working with, which is a row or two.
-    /// </remarks>
-    private static void Refill(ObservableCollection<IndexRecordModel> records, IReadOnlyList<JoinBufferRow> buffer)
-    {
-        records.Clear();
-
-        foreach (var row in buffer)
-        {
-            records.Add(ToRecordModel(row));
-        }
-    }
-
-    private readonly Dictionary<int, List<JoinBufferRow>> _syncedBuffers = new();
 
     /// <summary>
     /// Brings every hash match's table up to date with the step just taken
     /// </summary>
     private void SyncHashTables(AccessStep? step)
     {
-        foreach (var hashTable in HashTables.Values)
+        foreach (var hashTable in Layout.HashTables.Values)
         {
             hashTable.Sync(step);
         }
@@ -1040,7 +794,7 @@ public sealed partial class TraceTabViewModel : ObservableObject
 
         foreach (var iterator in Iterators(stepper.Root).OfType<IHashTableIterator>())
         {
-            if (HashTables.TryGetValue(iterator.NodeId, out var hashTable))
+            if (Layout.HashTables.TryGetValue(iterator.NodeId, out var hashTable))
             {
                 hashTable.Attach(iterator);
             }
@@ -1074,38 +828,6 @@ public sealed partial class TraceTabViewModel : ObservableObject
         }
     }
 
-    private static IndexRecordModel ToRecordModel(JoinBufferRow row)
-    {
-        var model = ToRecordModel(row.Record);
-
-        model.IsMatched = row.IsMatched;
-
-        return model;
-    }
-
-    /// <summary>
-    /// The row a step contributes to the trace's results, or null for a step that produced none
-    /// </summary>
-    /// <remarks>
-    /// Only the operator at the top of the tree produces the trace's results. An operator below it feeds the one above rather than the
-    /// output, and its rows travel up through the same stream, so a step is matched on the operator that stamped it and never on its kind.
-    /// </remarks>
-    private IndexRecordModel? ToResultModel(AccessStep step)
-    {
-        if (step.NodeId != Definition.NodeId)
-        {
-            return null;
-        }
-
-        return step switch
-        {
-            AccessStep.JoinEmit emit => ToJoinedModel(emit),
-            AccessStep.Row { EmittedRecord: { } emitted } => ToRecordModel(emitted),
-            AccessStep.TopRow { EmittedRecord: { } emitted } => ToRecordModel(emitted),
-            _ => null
-        };
-    }
-
     /// <summary>
     /// Takes the strategy each input settled on once it was opened, so a tab can show its own rather than the tree's
     /// </summary>
@@ -1122,7 +844,7 @@ public sealed partial class TraceTabViewModel : ObservableObject
 
         foreach (var iterator in Iterators(stepper.Root))
         {
-            if (iterator.Strategy is { } strategy && VisualsBySource.ContainsKey(iterator.NodeId))
+            if (iterator.Strategy is { } strategy && VisualsByNode.ContainsKey(iterator.NodeId))
             {
                 StrategyBySource[iterator.NodeId] = strategy;
             }
@@ -1143,8 +865,6 @@ public sealed partial class TraceTabViewModel : ObservableObject
 
         await Task.Run(() => stepper.StartAsync(CancellationToken.None));
 
-        Strategy = stepper.Root.Strategy;
-
         UpdateStrategies();
 
         AttachHashTables();
@@ -1152,273 +872,8 @@ public sealed partial class TraceTabViewModel : ObservableObject
         IsStepping = true;
     }
 
-    /// <summary>
-    /// Builds the joined output row from the columns the join operator states it returns
-    /// </summary>
-    /// <remarks>
-    /// The operator's output list is what the join actually hands upwards, so it fixes both the columns and their order. Anything a side
-    /// read only to do its own work, a bookmark most of all, is left out. A column the preserved side of an outer join has no row for
-    /// reads as NULL, which also keeps the grid's columns steady from row to row.
-    /// </remarks>
-    private IndexRecordModel ToJoinedModel(AccessStep.JoinEmit emit)
-    {
-        var outputColumns = (_planNodesById.GetValueOrDefault(emit.NodeId) ?? PlanNode)?.OutputColumns ?? [];
-
-        var fields = outputColumns.Count > 0
-            ? [.. outputColumns.Select(c => ToField(emit, c))]
-            : Combine(emit);
-
-        return new IndexRecordModel
-        {
-            Slot = emit.OuterRecord?.Slot ?? emit.InnerRecord?.Slot ?? 0,
-            RowIdentifier = null,
-            Fields = fields
-        };
-    }
-
-    private IndexRecordFieldModel ToField(AccessStep.JoinEmit emit, ColumnReference column)
-    {
-        var name = column.Column.Trim('[', ']');
-
-        var field = FindColumn(emit.OuterRecord, emit.InnerRecord, emit.NodeId, column.Table.Trim('[', ']'), name);
-
-        return new IndexRecordFieldModel
-        {
-            Name = name,
-            Value = field?.Value ?? "NULL",
-            DataType = field?.ColumnStructure.DataType ?? SqlDbType.Variant
-        };
-    }
-
-    /// <summary>
-    /// Finds the column an operator states it outputs, following the side of the tree the table it belongs to sits on
-    /// </summary>
-    /// <remarks>
-    /// A name alone cannot say which column is meant once an operator reads another - a join of two tables that both have a Name hands up
-    /// a row carrying both, and the operator above states which of them it wants by naming the table. The tables under each side are known
-    /// from the definition tree, so the side is settled first and the name resolved within it.
-    /// </remarks>
-    private RecordField? FindColumn(IRecord? outer, IRecord? inner, int operatorNodeId, string table, string name)
-    {
-        if (table.Length > 0 && SidesByOperator.TryGetValue(operatorNodeId, out var sides))
-        {
-            if (sides.OuterTables.Contains(table))
-            {
-                return Descend(outer, sides.OuterNodeId, table, name) ?? Descend(inner, sides.InnerNodeId, table, name);
-            }
-
-            if (sides.InnerTables.Contains(table))
-            {
-                return Descend(inner, sides.InnerNodeId, table, name) ?? Descend(outer, sides.OuterNodeId, table, name);
-            }
-        }
-
-        return Find(outer, name) ?? Find(inner, name);
-    }
-
-    private RecordField? Descend(IRecord? record, int operatorNodeId, string table, string name)
-        => record is JoinedRecord joined
-            ? FindColumn(joined.Outer, joined.Inner, operatorNodeId, table, name)
-            : Find(record, name);
-
-    private static List<IndexRecordFieldModel> Combine(AccessStep.JoinEmit emit)
-    {
-        var names = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-
-        var fields = new List<IndexRecordFieldModel>();
-
-        foreach (var record in new[] { emit.OuterRecord, emit.InnerRecord })
-        {
-            foreach (var field in record?.Fields ?? [])
-            {
-                fields.Add(new IndexRecordFieldModel
-                {
-                    Name = names.Add(field.Name) ? field.Name : $"Inner.{field.Name}",
-                    Value = field.Value,
-                    DataType = field.ColumnStructure.DataType
-                });
-            }
-        }
-
-        return fields;
-    }
-
-    private static RecordField? Find(IRecord? record, string name)
-        => record?.Fields.FirstOrDefault(f => string.Equals(f.Name, name, StringComparison.OrdinalIgnoreCase));
-
     private static IndexRecordModel ToRecordModel(IRecord record)
     {
         return TraceVisualViewModel.ToRecordModel(record);
-    }
-
-    /// <summary>
-    /// Finds the probe of the same key that this one repeats, or null where the last probe was of something else
-    /// </summary>
-    /// <remarks>
-    /// A probe row that found candidates leaves its comparisons and whatever it emitted behind it, and the row that carried the next key
-    /// lands on top of those, so the probe before is not the entry beneath. Anything other than that work ends the search, a probe of a
-    /// different key most of all, so a run only ever gathers probes that ran one after another.
-    /// </remarks>
-    private static int? FindProbeRun(ObservableCollection<AccessStep> history, AccessStep.HashProbe probe)
-    {
-        for (var index = 0; index < history.Count; index++)
-        {
-            var previous = history[index];
-
-            if (previous is AccessStep.Row or AccessStep.RowRun or AccessStep.HashCompare or AccessStep.JoinEmit)
-            {
-                continue;
-            }
-
-            var key = previous switch
-            {
-                AccessStep.HashProbe found => found.Key,
-                AccessStep.HashProbeRun run => run.Key,
-                _ => (AccessKey?)null
-            };
-
-            return key is { } previousKey && previous.NodeId == probe.NodeId && previousKey.Equals(probe.Key) ? index : null;
-        }
-
-        return null;
-    }
-
-    private static void Append(AccessStep step, ObservableCollection<AccessStep> history)
-    {
-        if (step is AccessStep.MergeCompare { Comparison: not 0 } compare
-            && history.Count > 1
-            && history[0] is AccessStep.Row or AccessStep.RowRun)
-        {
-            if (history[1] is AccessStep.MergeCompare previous
-                && Math.Sign(previous.Comparison) == Math.Sign(compare.Comparison)
-                && StaticKeyMatches(compare.Comparison, previous.OuterKey, previous.InnerKey, compare))
-            {
-                history[1] = new AccessStep.MergeCompareRun(Math.Sign(compare.Comparison), 2)
-                {
-                    OuterFrom = previous.OuterKey,
-                    OuterTo = compare.OuterKey,
-                    InnerFrom = previous.InnerKey,
-                    InnerTo = compare.InnerKey,
-                    Action = compare.Action,
-                    NodeId = compare.NodeId,
-                    Counters = compare.Counters
-                };
-
-                return;
-            }
-
-            if (history[1] is AccessStep.MergeCompareRun run
-                && run.Comparison == Math.Sign(compare.Comparison)
-                && StaticKeyMatches(compare.Comparison, run.OuterTo, run.InnerTo, compare))
-            {
-                history[1] = run with
-                {
-                    Count = run.Count + 1,
-                    OuterTo = compare.OuterKey,
-                    InnerTo = compare.InnerKey,
-                    Counters = compare.Counters
-                };
-
-                return;
-            }
-        }
-
-        if (step is AccessStep.HashProbe hashProbe && FindProbeRun(history, hashProbe) is { } probeIndex)
-        {
-            history[probeIndex] = history[probeIndex] is AccessStep.HashProbeRun hashProbeRun
-                ? hashProbeRun with
-                {
-                    Count = hashProbeRun.Count + 1,
-                    Counters = hashProbe.Counters
-                }
-                : new AccessStep.HashProbeRun(hashProbe.Bucket, hashProbe.Hash, 2)
-                {
-                    Key = hashProbe.Key,
-                    ChainLength = hashProbe.ChainLength,
-                    IsNullKey = hashProbe.IsNullKey,
-                    NodeId = hashProbe.NodeId,
-                    Counters = hashProbe.Counters
-                };
-
-            return;
-        }
-
-        if (step is AccessStep.Probe probe)
-        {
-            if (history.Count > 0 && history[0] is AccessStep.ProbeRun probeRun && probeRun.NodeId == probe.NodeId)
-            {
-                history[0] = new AccessStep.ProbeRun([probe, .. probeRun.Probes])
-                {
-                    NodeId = probe.NodeId,
-                    Counters = probe.Counters
-                };
-
-                return;
-            }
-
-            step = new AccessStep.ProbeRun([probe])
-            {
-                NodeId = probe.NodeId,
-                Counters = probe.Counters
-            };
-        }
-
-        if (step is AccessStep.Row row && history.Count > 0)
-        {
-            var latest = history[0];
-
-            if (latest is AccessStep.Row previous
-                && previous.NodeId == row.NodeId
-                && previous.Outcome == row.Outcome
-                && previous.IsReadAhead == row.IsReadAhead
-                && Math.Abs(row.Slot - previous.Slot) == 1)
-            {
-                history[0] = new AccessStep.RowRun(previous.Slot, row.Slot, row.Outcome)
-                {
-                    Count = 2,
-                    HasResidual = row.HasResidual,
-                    HasRange = row.HasRange,
-                    EmitCount = EmitOf(previous) + EmitOf(row),
-                    Counters = row.Counters,
-                    NodeId = row.NodeId
-                };
-
-                return;
-            }
-
-            if (latest is AccessStep.RowRun run
-                && run.NodeId == row.NodeId
-                && run.Outcome == row.Outcome
-                && !row.IsReadAhead
-                && Math.Abs(row.Slot - run.ToSlot) == 1)
-            {
-                history[0] = run with
-                {
-                    ToSlot = row.Slot,
-                    Count = run.Count + 1,
-                    EmitCount = run.EmitCount + EmitOf(row),
-                    Counters = row.Counters
-                };
-
-                return;
-            }
-        }
-
-        history.Insert(0, step);
-
-        if (history.Count > HistoryLimit)
-        {
-            history.RemoveAt(history.Count - 1);
-        }
-    }
-
-    private static int EmitOf(AccessStep.Row row)
-    {
-        return row.Outcome == RowOutcome.Match ? 1 : 0;
-    }
-
-    private static bool StaticKeyMatches(int comparison, AccessKey previousOuter, AccessKey previousInner, AccessStep.MergeCompare compare)
-    {
-        return comparison < 0 ? previousInner.Equals(compare.InnerKey) : previousOuter.Equals(compare.OuterKey);
     }
 }

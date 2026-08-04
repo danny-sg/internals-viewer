@@ -8,7 +8,7 @@ using InternalsViewer.Execution.Interfaces.Iterators.Joins;
 using InternalsViewer.UI.App.Models.Index;
 using InternalsViewer.UI.App.Models.Trace;
 
-namespace InternalsViewer.UI.App.ViewModels.Query;
+namespace InternalsViewer.UI.App.ViewModels.Query.Trace;
 
 /// <summary>
 /// The hash table one hash match fills, and what its walk is currently doing to it

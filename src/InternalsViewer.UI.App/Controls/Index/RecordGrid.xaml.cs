@@ -30,8 +30,8 @@ public sealed partial class RecordGrid : IDisposable
 
     public static readonly DependencyProperty RecordsProperty
         = DependencyProperty.Register(nameof(Records),
-            typeof(ObservableCollection<AllocationLayer>),
-            typeof(AllocationLayerGrid),
+            typeof(ObservableCollection<IndexRecordModel>),
+            typeof(RecordGrid),
             new PropertyMetadata(null, OnPropertyChanged));
 
     public int? SelectedSlot
@@ -49,12 +49,6 @@ public sealed partial class RecordGrid : IDisposable
     public bool HideSlotColumn { get; set; }
 
     public bool AutoScrollToEnd { get; set; }
-
-    public static readonly DependencyProperty HideSlotColumnProperty
-        = DependencyProperty.Register(nameof(HideSlotColumn),
-            typeof(bool),
-            typeof(RecordGrid),
-            new PropertyMetadata(false, OnPropertyChanged));
 
     private static readonly SolidColorBrush MatchedBackground
         = new(Windows.UI.Color.FromArgb(255, 223, 244, 223));
@@ -88,6 +82,8 @@ public sealed partial class RecordGrid : IDisposable
 
     private bool _hasFieldColumns;
 
+    private bool _isRebindQueued;
+
     private static void OnPropertyChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
     {
         var control = (RecordGrid)d;
@@ -95,7 +91,7 @@ public sealed partial class RecordGrid : IDisposable
         if (e.Property == RecordsProperty)
         {
             control.SubscribeRecords();
-            control.AddColumns();
+            control.Rebind();
         }
 
         control.DispatcherQueue.TryEnqueue(control.ApplySelectedSlot);
@@ -116,12 +112,27 @@ public sealed partial class RecordGrid : IDisposable
         }
     }
 
+    private void Rebind()
+    {
+        _isRebindQueued = false;
+
+        DataGrid.ItemsSource = null;
+
+        AddColumns();
+
+        DataGrid.ItemsSource = Records;
+    }
+
     private void OnRecordsCollectionChanged(object? sender, System.Collections.Specialized.NotifyCollectionChangedEventArgs e)
     {
-        if (!_hasFieldColumns && Records?.Count > 0)
+        if (_hasFieldColumns || _isRebindQueued || Records is not { Count: > 0 })
         {
-            AddColumns();
+            return;
         }
+
+        _isRebindQueued = true;
+
+        DispatcherQueue.TryEnqueue(Rebind);
     }
 
     private void ApplySelectedSlot()

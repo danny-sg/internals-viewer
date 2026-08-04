@@ -52,6 +52,8 @@ public sealed class HashMatchIterator(IIteratorFactory factory) : JoinIterator, 
 
     public HashTable Table { get; private set; } = new(JoinHash.DefaultBucketBits);
 
+    public override IReadOnlyList<RowBuffer> Buffers => Inner is null ? [] : [new RowBuffer("Probe", 1, Inner.Buffer)];
+
     /// <summary>
     /// Rows the build side was expected to produce, which is what the table was sized for
     /// </summary>
@@ -158,7 +160,8 @@ public sealed class HashMatchIterator(IIteratorFactory factory) : JoinIterator, 
                                 Key = key,
                                 Entry = entry,
                                 ChainLength = Table.Buckets[bucket].Count,
-                                IsNullKey = hasNullKey
+                                IsNullKey = hasNullKey,
+                                BucketCount = Table.BucketCount
                             }, 
                             CurrentToken);
 

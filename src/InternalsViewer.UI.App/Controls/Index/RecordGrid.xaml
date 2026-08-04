@@ -22,8 +22,7 @@
                           SelectionMode="Single"
                           IsReadOnly="True"
                           GridLinesVisibility="Vertical"
-                          Background="{ThemeResource LayerFillColorDefaultBrush}"
-                          ItemsSource="{x:Bind Records, Mode=OneWay}">
+                          Background="{ThemeResource LayerFillColorDefaultBrush}">
             <toolkit:DataGrid.Resources>
                 <StaticResource
                         x:Key="DataGridRowSelectedHoveredUnfocusedBackgroundColor"

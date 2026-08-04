@@ -1,4 +1,4 @@
-using InternalsViewer.UI.App.ViewModels.Query;
+using InternalsViewer.UI.App.ViewModels.Query.Trace;
 using Microsoft.UI.Xaml.Controls;
 
 namespace InternalsViewer.UI.App.Views.Query.Tabs.Trace;
@@ -47,6 +47,8 @@ public sealed partial class TraceOperatorPanelView : UserControl
         Fill(OuterBottomHost, header: null, viewModel.OuterBottom);
         Fill(InnerBottomHost, header: null, viewModel.InnerBottom);
 
+        OutputHost.Content = new TraceRowStreamPanelView { DataContext = viewModel.Output };
+
         Collapse(OuterBottomRow, OuterSplitter, viewModel.OuterBottom);
         Collapse(InnerBottomRow, InnerSplitter, viewModel.InnerBottom);
 
@@ -83,8 +85,8 @@ public sealed partial class TraceOperatorPanelView : UserControl
         FrameworkElement? view = pane.Kind switch
         {
             TracePaneKind.Visual => new TraceVisualPanelView(),
-            TracePaneKind.OperatorResults => new TraceOperatorResultsPanelView(),
-            TracePaneKind.Records => new TraceSideRecordsPanelView(),
+            TracePaneKind.RowStream => new TraceRowStreamPanelView(),
+            TracePaneKind.HeldRows => new TraceHeldRowsPanelView(),
             TracePaneKind.HashTable => new TraceHashTablePanelView(),
             _ => null
         };

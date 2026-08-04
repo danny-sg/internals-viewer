@@ -3,11 +3,11 @@ using Microsoft.UI.Xaml.Controls;
 
 namespace InternalsViewer.UI.App.Views.Query.Tabs.Trace;
 
-public sealed partial class TraceResultsPanelView : UserControl
+public sealed partial class TraceHeldRowsPanelView : UserControl
 {
-    public TraceTabViewModel? ViewModel => DataContext as TraceTabViewModel;
+    public TraceHeldRowsViewModel? ViewModel => DataContext as TraceHeldRowsViewModel;
 
-    public TraceResultsPanelView()
+    public TraceHeldRowsPanelView()
     {
         InitializeComponent();
 

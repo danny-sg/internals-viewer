@@ -25,9 +25,9 @@ public static class TraceSourceCollector
     /// <summary>
     /// Finds the operators that show a visual of their own rather than a set of records
     /// </summary>
-    public static IReadOnlyList<JoinDefinition> CollectOperators(IteratorDefinition definition)
+    public static IReadOnlyList<IteratorDefinition> CollectOperators(IteratorDefinition definition)
     {
-        var operators = new List<JoinDefinition>();
+        var operators = new List<IteratorDefinition>();
 
         WalkOperators(definition, operators);
 
@@ -56,6 +56,11 @@ public static class TraceSourceCollector
 
                 break;
 
+            case TopDefinition top:
+                Walk(top.Source, TraceSourceRole.None, top.NodeId, sources);
+
+                break;
+
             case UnaryDefinition unary:
                 Walk(unary.Source, role, operatorNodeId, sources);
 
@@ -72,8 +77,17 @@ public static class TraceSourceCollector
         }
     }
 
-    private static void WalkOperators(IteratorDefinition definition, List<JoinDefinition> operators)
+    private static void WalkOperators(IteratorDefinition definition, List<IteratorDefinition> operators)
     {
+        if (definition is TopDefinition top)
+        {
+            operators.Add(top);
+
+            WalkOperators(top.Source, operators);
+
+            return;
+        }
+
         if (definition is UnaryDefinition unary)
         {
             WalkOperators(unary.Source, operators);

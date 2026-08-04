@@ -79,7 +79,7 @@
 
             <DataTemplate x:Key="ReadPageTemplate" >
                 <Grid Background="{ThemeResource AcrylicBackgroundFillColorDefaultBrush}" Style="{StaticResource StepRowStyle}">
-                    <TextBlock Text="{Binding Path=Source, Converter={StaticResource NodeIdToTextConverter}}" Grid.ColumnSpan="9" Style="{StaticResource StepNodeStyle}" />
+                    <TextBlock Text="{Binding Path=NodeId, Converter={StaticResource NodeIdToTextConverter}}" Grid.ColumnSpan="9" Style="{StaticResource StepNodeStyle}" />
                     <StackPanel Orientation="Horizontal" Padding="0,8,0,8">
                         <TextBlock Text="Read Page" Style="{StaticResource StepLabelStyle}" Foreground="Navy" />
                         <TextBlock Text="{Binding PageAddress}" Style="{StaticResource StepValueStyle}" />
@@ -92,7 +92,7 @@
 
             <DataTemplate x:Key="ProbeStartTemplate" >
                 <Grid Style="{StaticResource StepRowStyle}">
-                    <TextBlock Text="{Binding Path=Source, Converter={StaticResource NodeIdToTextConverter}}" Grid.ColumnSpan="9" Style="{StaticResource StepNodeStyle}" />
+                    <TextBlock Text="{Binding Path=NodeId, Converter={StaticResource NodeIdToTextConverter}}" Grid.ColumnSpan="9" Style="{StaticResource StepNodeStyle}" />
                     <StackPanel Orientation="Horizontal">
                         <TextBlock Text="Probe Start" Style="{StaticResource StepLabelStyle}" />
                         <StackPanel Orientation="Vertical">
@@ -120,7 +120,7 @@
                         <ColumnDefinition Width="Auto" />
                         <ColumnDefinition Width="*" />
                     </Grid.ColumnDefinitions>
-                    <TextBlock Text="{Binding Path=Source, Converter={StaticResource NodeIdToTextConverter}}" Grid.ColumnSpan="9" Style="{StaticResource StepNodeStyle}" />
+                    <TextBlock Text="{Binding Path=NodeId, Converter={StaticResource NodeIdToTextConverter}}" Grid.ColumnSpan="9" Style="{StaticResource StepNodeStyle}" />
                     <TextBlock Text="Probe" Style="{StaticResource StepLabelStyle}" />
                     <StackPanel Grid.Column="1" Orientation="Vertical">
                         <StackPanel Orientation="Horizontal">
@@ -152,7 +152,7 @@
                         <ColumnDefinition Width="Auto" />
                         <ColumnDefinition Width="*" />
                     </Grid.ColumnDefinitions>
-                    <TextBlock Text="{Binding Path=Source, Converter={StaticResource NodeIdToTextConverter}}" Grid.ColumnSpan="9" Style="{StaticResource StepNodeStyle}" />
+                    <TextBlock Text="{Binding Path=NodeId, Converter={StaticResource NodeIdToTextConverter}}" Grid.ColumnSpan="9" Style="{StaticResource StepNodeStyle}" />
                     <TextBlock Text="Probes" Style="{StaticResource StepLabelStyle}" />
                     <ToggleButton x:Name="ProbeExpandToggle"
                                   Grid.Column="1"
@@ -208,7 +208,7 @@
 
             <DataTemplate x:Key="DescendTemplate" >
                 <Grid Style="{StaticResource StepRowStyle}">
-                    <TextBlock Text="{Binding Path=Source, Converter={StaticResource NodeIdToTextConverter}}" Grid.ColumnSpan="9" Style="{StaticResource StepNodeStyle}" />
+                    <TextBlock Text="{Binding Path=NodeId, Converter={StaticResource NodeIdToTextConverter}}" Grid.ColumnSpan="9" Style="{StaticResource StepNodeStyle}" />
                     <StackPanel Orientation="Horizontal">
                         <TextBlock Text="Descend" Style="{StaticResource StepLabelStyle}" />
                         <TextBlock Text="Slot" Style="{StaticResource StepPropertyStyle}" Width="34" />
@@ -221,7 +221,7 @@
 
             <DataTemplate x:Key="ProbeResultTemplate" >
                 <Grid Style="{StaticResource StepRowStyle}">
-                    <TextBlock Text="{Binding Path=Source, Converter={StaticResource NodeIdToTextConverter}}" Grid.ColumnSpan="9" Style="{StaticResource StepNodeStyle}" />
+                    <TextBlock Text="{Binding Path=NodeId, Converter={StaticResource NodeIdToTextConverter}}" Grid.ColumnSpan="9" Style="{StaticResource StepNodeStyle}" />
                     <StackPanel Orientation="Horizontal">
                         <TextBlock Text="Probe Result" Style="{StaticResource StepLabelStyle}" />
                         <StackPanel Orientation="Vertical">
@@ -242,7 +242,7 @@
 
             <DataTemplate x:Key="RowTemplate" >
                 <Grid Style="{StaticResource StepRowStyle}">
-                    <TextBlock Text="{Binding Path=Source, Converter={StaticResource NodeIdToTextConverter}}" Grid.ColumnSpan="9" Style="{StaticResource StepNodeStyle}" />
+                    <TextBlock Text="{Binding Path=NodeId, Converter={StaticResource NodeIdToTextConverter}}" Grid.ColumnSpan="9" Style="{StaticResource StepNodeStyle}" />
                     <StackPanel Orientation="Horizontal">
                         <TextBlock Text="GetRow()" Style="{StaticResource StepLabelStyle}" />
                         <TextBlock Text="Slot" Style="{StaticResource StepPropertyStyle}"/>
@@ -273,7 +273,7 @@
 
             <DataTemplate x:Key="RowRunTemplate" >
                 <Grid Style="{StaticResource StepRowStyle}">
-                    <TextBlock Text="{Binding Path=Source, Converter={StaticResource NodeIdToTextConverter}}" Grid.ColumnSpan="9" Style="{StaticResource StepNodeStyle}" />
+                    <TextBlock Text="{Binding Path=NodeId, Converter={StaticResource NodeIdToTextConverter}}" Grid.ColumnSpan="9" Style="{StaticResource StepNodeStyle}" />
                     <StackPanel Orientation="Horizontal">
                         <TextBlock Text="GetRow()" Style="{StaticResource StepLabelStyle}" />
                         <TextBlock Text="Slots" Style="{StaticResource StepPropertyStyle}" />
@@ -309,7 +309,7 @@
 
             <DataTemplate x:Key="RangeEndTemplate" >
                 <Grid Style="{StaticResource StepRowStyle}">
-                    <TextBlock Text="{Binding Path=Source, Converter={StaticResource NodeIdToTextConverter}}" Grid.ColumnSpan="9" Style="{StaticResource StepNodeStyle}" />
+                    <TextBlock Text="{Binding Path=NodeId, Converter={StaticResource NodeIdToTextConverter}}" Grid.ColumnSpan="9" Style="{StaticResource StepNodeStyle}" />
                     <StackPanel Orientation="Horizontal">
                         <TextBlock Text="Range End" Style="{StaticResource StepLabelStyle}" />
                         <StackPanel Orientation="Vertical">
@@ -331,7 +331,7 @@
 
             <DataTemplate x:Key="LeafLinkTemplate" >
                 <Grid Style="{StaticResource StepRowStyle}">
-                    <TextBlock Text="{Binding Path=Source, Converter={StaticResource NodeIdToTextConverter}}" Grid.ColumnSpan="9" Style="{StaticResource StepNodeStyle}" />
+                    <TextBlock Text="{Binding Path=NodeId, Converter={StaticResource NodeIdToTextConverter}}" Grid.ColumnSpan="9" Style="{StaticResource StepNodeStyle}" />
                     <StackPanel Orientation="Horizontal">
                         <TextBlock Text="Leaf Link" Style="{StaticResource StepLabelStyle}" />
                         <TextBlock Text="From" Style="{StaticResource StepPropertyStyle}" />
@@ -346,7 +346,7 @@
 
             <DataTemplate x:Key="ReseekTemplate" >
                 <Grid Style="{StaticResource StepRowStyle}">
-                    <TextBlock Text="{Binding Path=Source, Converter={StaticResource NodeIdToTextConverter}}" Grid.ColumnSpan="9" Style="{StaticResource StepNodeStyle}" />
+                    <TextBlock Text="{Binding Path=NodeId, Converter={StaticResource NodeIdToTextConverter}}" Grid.ColumnSpan="9" Style="{StaticResource StepNodeStyle}" />
                     <StackPanel Orientation="Horizontal">
                         <TextBlock Text="Reseek" Style="{StaticResource StepLabelStyle}" Foreground="Navy" />
                         <StackPanel Orientation="Vertical">
@@ -365,7 +365,7 @@
 
             <DataTemplate x:Key="RebindTemplate" >
                 <Grid Style="{StaticResource StepRowStyle}">
-                    <TextBlock Text="{Binding Path=Source, Converter={StaticResource NodeIdToTextConverter}}" Grid.ColumnSpan="9" Style="{StaticResource StepNodeStyle}" />
+                    <TextBlock Text="{Binding Path=NodeId, Converter={StaticResource NodeIdToTextConverter}}" Grid.ColumnSpan="9" Style="{StaticResource StepNodeStyle}" />
                     <StackPanel Orientation="Horizontal">
                         <TextBlock Text="Rebind" Style="{StaticResource StepLabelStyle}" Foreground="Navy" />
                         <StackPanel Orientation="Vertical">
@@ -387,7 +387,7 @@
 
             <DataTemplate x:Key="JoinStartTemplate" >
                 <Grid Background="{ThemeResource AcrylicBackgroundFillColorDefaultBrush}" Style="{StaticResource StepRowStyle}">
-                    <TextBlock Text="{Binding Path=Source, Converter={StaticResource NodeIdToTextConverter}}" Grid.ColumnSpan="9" Style="{StaticResource StepNodeStyle}" />
+                    <TextBlock Text="{Binding Path=NodeId, Converter={StaticResource NodeIdToTextConverter}}" Grid.ColumnSpan="9" Style="{StaticResource StepNodeStyle}" />
                     <StackPanel Orientation="Horizontal" Padding="0,8,0,8">
                         <TextBlock Text="Join" Style="{StaticResource StepLabelStyle}" Foreground="Navy" />
                         <TextBlock Text="{Binding Description}" Style="{StaticResource StepValueStyle}" TextWrapping="Wrap" />
@@ -397,7 +397,7 @@
 
             <DataTemplate x:Key="MergeCompareTemplate" >
                 <Grid Style="{StaticResource StepRowStyle}">
-                    <TextBlock Text="{Binding Path=Source, Converter={StaticResource NodeIdToTextConverter}}" Grid.ColumnSpan="9" Style="{StaticResource StepNodeStyle}" />
+                    <TextBlock Text="{Binding Path=NodeId, Converter={StaticResource NodeIdToTextConverter}}" Grid.ColumnSpan="9" Style="{StaticResource StepNodeStyle}" />
                     <StackPanel Orientation="Horizontal">
                         <TextBlock Text="Compare" Style="{StaticResource StepLabelStyle}" Foreground="Navy" />
                         <StackPanel Orientation="Vertical">
@@ -435,7 +435,7 @@
 
             <DataTemplate x:Key="MergeCompareRunTemplate" >
                 <Grid Style="{StaticResource StepRowStyle}">
-                    <TextBlock Text="{Binding Path=Source, Converter={StaticResource NodeIdToTextConverter}}" Grid.ColumnSpan="9" Style="{StaticResource StepNodeStyle}" />
+                    <TextBlock Text="{Binding Path=NodeId, Converter={StaticResource NodeIdToTextConverter}}" Grid.ColumnSpan="9" Style="{StaticResource StepNodeStyle}" />
                     <StackPanel Orientation="Horizontal">
                         <TextBlock Text="Compare" Style="{StaticResource StepLabelStyle}" Foreground="Navy" />
                         <StackPanel Orientation="Vertical">
@@ -471,7 +471,7 @@
 
             <DataTemplate x:Key="HashBuildTemplate" >
                 <Grid Style="{StaticResource StepRowStyle}">
-                    <TextBlock Text="{Binding Path=Source, Converter={StaticResource NodeIdToTextConverter}}" Grid.ColumnSpan="9" Style="{StaticResource StepNodeStyle}" />
+                    <TextBlock Text="{Binding Path=NodeId, Converter={StaticResource NodeIdToTextConverter}}" Grid.ColumnSpan="9" Style="{StaticResource StepNodeStyle}" />
                     <StackPanel Orientation="Horizontal">
                         <TextBlock Text="Hash Build" Style="{StaticResource StepLabelStyle}" Foreground="Navy" />
                         <StackPanel Orientation="Vertical">
@@ -498,9 +498,46 @@
                 </Grid>
             </DataTemplate>
 
+            <DataTemplate x:Key="HashBuildRunTemplate" >
+                <Grid Style="{StaticResource StepRowStyle}">
+                    <TextBlock Text="{Binding Path=NodeId, Converter={StaticResource NodeIdToTextConverter}}" Grid.ColumnSpan="9" Style="{StaticResource StepNodeStyle}" />
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="Hash Build" Style="{StaticResource StepLabelStyle}" Foreground="Navy" />
+                        <StackPanel Orientation="Vertical">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="Bucket" Style="{StaticResource StepPropertyStyle}" />
+                                <TextBlock Text="{Binding Bucket}" Style="{StaticResource StepValueStyle}" />
+                                <TextBlock Text="Hash" Style="{StaticResource StepPropertyStyle}" Margin="8,0,0,0" />
+                                <TextBlock Text="{Binding Hash, Converter={StaticResource HashValueToTextConverter}}"
+                                           FontFamily="Consolas"
+                                           Style="{StaticResource StepValueStyle}" />
+                                <TextBlock Text="Chain Entry Item" Style="{StaticResource StepPropertyStyle}" Margin="8,0,0,0" />
+                                <TextBlock Text="{Binding ChainLength}" Style="{StaticResource StepValueStyle}" />
+                                <Border Background="{ThemeResource SubtleFillColorSecondaryBrush}"
+                                        CornerRadius="4"
+                                        Padding="6,0,6,1"
+                                        Margin="8,0,0,0"
+                                        VerticalAlignment="Center">
+                                    <StackPanel Orientation="Horizontal">
+                                        <TextBlock Text="×" FontSize="11" Opacity="0.6" Margin="0,0,2,0" />
+                                        <TextBlock Text="{Binding Count}" FontSize="11" />
+                                        <TextBlock Text="rows" FontSize="11" Opacity="0.6" Margin="4,0,0,0" />
+                                    </StackPanel>
+                                </Border>
+                            </StackPanel>
+                            <accessSteps:HashFillGrid Fill="{Binding BucketFill}"
+                                                      Width="320"
+                                                      Height="28"
+                                                      HorizontalAlignment="Left"
+                                                      Margin="0,4,0,2" />
+                        </StackPanel>
+                    </StackPanel>
+                </Grid>
+            </DataTemplate>
+
             <DataTemplate x:Key="HashProbeTemplate" >
                 <Grid Style="{StaticResource StepRowStyle}">
-                    <TextBlock Text="{Binding Path=Source, Converter={StaticResource NodeIdToTextConverter}}" Grid.ColumnSpan="9" Style="{StaticResource StepNodeStyle}" />
+                    <TextBlock Text="{Binding Path=NodeId, Converter={StaticResource NodeIdToTextConverter}}" Grid.ColumnSpan="9" Style="{StaticResource StepNodeStyle}" />
                     <StackPanel Orientation="Horizontal">
                         <TextBlock Text="Hash Probe" Style="{StaticResource StepLabelStyle}" Foreground="Navy" />
 
@@ -547,7 +584,7 @@
 
             <DataTemplate x:Key="HashProbeRunTemplate" >
                 <Grid Style="{StaticResource StepRowStyle}">
-                    <TextBlock Text="{Binding Path=Source, Converter={StaticResource NodeIdToTextConverter}}" Grid.ColumnSpan="9" Style="{StaticResource StepNodeStyle}" />
+                    <TextBlock Text="{Binding Path=NodeId, Converter={StaticResource NodeIdToTextConverter}}" Grid.ColumnSpan="9" Style="{StaticResource StepNodeStyle}" />
                     <StackPanel Orientation="Horizontal">
                         <TextBlock Text="Hash Probe" Style="{StaticResource StepLabelStyle}" Foreground="Navy" />
 
@@ -604,7 +641,7 @@
 
             <DataTemplate x:Key="HashCompareTemplate" >
                 <Grid Style="{StaticResource StepRowStyle}">
-                    <TextBlock Text="{Binding Path=Source, Converter={StaticResource NodeIdToTextConverter}}" Grid.ColumnSpan="9" Style="{StaticResource StepNodeStyle}" />
+                    <TextBlock Text="{Binding Path=NodeId, Converter={StaticResource NodeIdToTextConverter}}" Grid.ColumnSpan="9" Style="{StaticResource StepNodeStyle}" />
                     <StackPanel Orientation="Horizontal">
                         <TextBlock Text="Compare" Style="{StaticResource StepLabelStyle}" Foreground="Navy" />
                         <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,10,0">
@@ -702,7 +739,7 @@
 
             <DataTemplate x:Key="JoinVerdictTemplate" >
                 <Grid Style="{StaticResource StepRowStyle}">
-                    <TextBlock Text="{Binding Path=Source, Converter={StaticResource NodeIdToTextConverter}}" Grid.ColumnSpan="9" Style="{StaticResource StepNodeStyle}" />
+                    <TextBlock Text="{Binding Path=NodeId, Converter={StaticResource NodeIdToTextConverter}}" Grid.ColumnSpan="9" Style="{StaticResource StepNodeStyle}" />
                     <StackPanel Orientation="Horizontal">
                         <TextBlock Text="Join" Style="{StaticResource StepLabelStyle}" Foreground="Navy" />
                         <accessSteps:JoinDecisionBadge Decision="{Binding Decision}" />
@@ -712,7 +749,7 @@
 
             <DataTemplate x:Key="JoinEmitTemplate" >
                 <Grid Background="{ThemeResource AcrylicBackgroundFillColorDefaultBrush}" Style="{StaticResource StepRowStyle}">
-                    <TextBlock Text="{Binding Path=Source, Converter={StaticResource NodeIdToTextConverter}}" Grid.ColumnSpan="9" Style="{StaticResource StepNodeStyle}" />
+                    <TextBlock Text="{Binding Path=NodeId, Converter={StaticResource NodeIdToTextConverter}}" Grid.ColumnSpan="9" Style="{StaticResource StepNodeStyle}" />
                     <StackPanel Orientation="Horizontal" Padding="0,8,0,8">
                         <TextBlock Text="Join" Style="{StaticResource StepLabelStyle}" Foreground="Navy" />
                         <TextBlock Text="Result:" Style="{StaticResource StepPropertyStyle}" />
@@ -740,7 +777,7 @@
 
             <DataTemplate x:Key="ForwardedRecordTemplate" >
                 <Grid Style="{StaticResource StepRowStyle}">
-                    <TextBlock Text="{Binding Path=Source, Converter={StaticResource NodeIdToTextConverter}}" Grid.ColumnSpan="9" Style="{StaticResource StepNodeStyle}" />
+                    <TextBlock Text="{Binding Path=NodeId, Converter={StaticResource NodeIdToTextConverter}}" Grid.ColumnSpan="9" Style="{StaticResource StepNodeStyle}" />
                     <StackPanel Orientation="Horizontal">
                         <TextBlock Text="Forwarded" Style="{StaticResource StepLabelStyle}" Foreground="Navy" />
                         <TextBlock Text="{Binding From}" Style="{StaticResource StepValueStyle}" />
@@ -752,7 +789,7 @@
 
             <DataTemplate x:Key="StoppedTemplate" >
                 <Grid Style="{StaticResource StepRowStyle}">
-                    <TextBlock Text="{Binding Path=Source, Converter={StaticResource NodeIdToTextConverter}}" Grid.ColumnSpan="9" Style="{StaticResource StepNodeStyle}" />
+                    <TextBlock Text="{Binding Path=NodeId, Converter={StaticResource NodeIdToTextConverter}}" Grid.ColumnSpan="9" Style="{StaticResource StepNodeStyle}" />
                     <StackPanel Orientation="Horizontal">
                         <TextBlock Text="Stopped" Style="{StaticResource StepLabelStyle}" />
                         <TextBlock Text="{Binding Reason, Converter={StaticResource EnumToTextConverter}}"
@@ -763,7 +800,7 @@
 
             <DataTemplate x:Key="TruncatedTemplate" >
                 <Grid Style="{StaticResource StepRowStyle}">
-                    <TextBlock Text="{Binding Path=Source, Converter={StaticResource NodeIdToTextConverter}}" Grid.ColumnSpan="9" Style="{StaticResource StepNodeStyle}" />
+                    <TextBlock Text="{Binding Path=NodeId, Converter={StaticResource NodeIdToTextConverter}}" Grid.ColumnSpan="9" Style="{StaticResource StepNodeStyle}" />
                     <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Opacity="0.6">
                         <TextBlock Text="{Binding Count}" FontSize="12" />
                         <TextBlock Text=" steps omitted" FontSize="12" />
@@ -773,7 +810,7 @@
 
             <DataTemplate x:Key="IamReadTemplate" >
                 <Grid Background="{ThemeResource AcrylicBackgroundFillColorDefaultBrush}" Style="{StaticResource StepRowStyle}">
-                    <TextBlock Text="{Binding Path=Source, Converter={StaticResource NodeIdToTextConverter}}" Grid.ColumnSpan="9" Style="{StaticResource StepNodeStyle}" />
+                    <TextBlock Text="{Binding Path=NodeId, Converter={StaticResource NodeIdToTextConverter}}" Grid.ColumnSpan="9" Style="{StaticResource StepNodeStyle}" />
                     <StackPanel Orientation="Horizontal" Padding="0,8,0,8">
                         <TextBlock Text="Read IAM" Style="{StaticResource StepLabelStyle}" Foreground="Navy" />
                         <TextBlock Text="{Binding PageAddress}" Style="{StaticResource StepValueStyle}" />
@@ -787,7 +824,7 @@
 
             <DataTemplate x:Key="IamLinkTemplate" >
                 <Grid Style="{StaticResource StepRowStyle}">
-                    <TextBlock Text="{Binding Path=Source, Converter={StaticResource NodeIdToTextConverter}}" Grid.ColumnSpan="9" Style="{StaticResource StepNodeStyle}" />
+                    <TextBlock Text="{Binding Path=NodeId, Converter={StaticResource NodeIdToTextConverter}}" Grid.ColumnSpan="9" Style="{StaticResource StepNodeStyle}" />
                     <StackPanel Orientation="Horizontal">
                         <TextBlock Text="IAM Link" Style="{StaticResource StepLabelStyle}" />
                         <TextBlock Text="From" Style="{StaticResource StepPropertyStyle}" />
@@ -800,7 +837,7 @@
 
             <DataTemplate x:Key="PfsReadTemplate" >
                 <Grid Style="{StaticResource StepRowStyle}">
-                    <TextBlock Text="{Binding Path=Source, Converter={StaticResource NodeIdToTextConverter}}" Grid.ColumnSpan="9" Style="{StaticResource StepNodeStyle}" />
+                    <TextBlock Text="{Binding Path=NodeId, Converter={StaticResource NodeIdToTextConverter}}" Grid.ColumnSpan="9" Style="{StaticResource StepNodeStyle}" />
                     <StackPanel Orientation="Horizontal">
                         <TextBlock Text="Read PFS" Style="{StaticResource StepLabelStyle}" Foreground="Navy" />
                         <TextBlock Text="{Binding PageAddress}" Style="{StaticResource StepValueStyle}" />
@@ -812,7 +849,7 @@
 
             <DataTemplate x:Key="PfsCheckTemplate" >
                 <Grid Style="{StaticResource StepRowStyle}">
-                    <TextBlock Text="{Binding Path=Source, Converter={StaticResource NodeIdToTextConverter}}" Grid.ColumnSpan="9" Style="{StaticResource StepNodeStyle}" />
+                    <TextBlock Text="{Binding Path=NodeId, Converter={StaticResource NodeIdToTextConverter}}" Grid.ColumnSpan="9" Style="{StaticResource StepNodeStyle}" />
                     <StackPanel Orientation="Horizontal">
                         <TextBlock Text="PFS Check" Style="{StaticResource StepLabelStyle}" />
                         <TextBlock Text="{Binding PageAddress}" Style="{StaticResource StepValueStyle}" />
@@ -826,7 +863,7 @@
 
             <DataTemplate x:Key="AdvanceTemplate" >
                 <Grid Style="{StaticResource StepRowStyle}">
-                    <TextBlock Text="{Binding Path=Source, Converter={StaticResource NodeIdToTextConverter}}" Grid.ColumnSpan="9" Style="{StaticResource StepNodeStyle}" />
+                    <TextBlock Text="{Binding Path=NodeId, Converter={StaticResource NodeIdToTextConverter}}" Grid.ColumnSpan="9" Style="{StaticResource StepNodeStyle}" />
                     <StackPanel Orientation="Horizontal">
                         <TextBlock Text="Advance" Style="{StaticResource StepLabelStyle}" />
                         <TextBlock Text="{Binding Description}" Style="{StaticResource StepValueStyle}" TextWrapping="Wrap" />
@@ -836,7 +873,7 @@
 
             <DataTemplate x:Key="ExtentStartTemplate" >
                 <Grid Style="{StaticResource StepRowStyle}">
-                    <TextBlock Text="{Binding Path=Source, Converter={StaticResource NodeIdToTextConverter}}" Grid.ColumnSpan="9" Style="{StaticResource StepNodeStyle}" />
+                    <TextBlock Text="{Binding Path=NodeId, Converter={StaticResource NodeIdToTextConverter}}" Grid.ColumnSpan="9" Style="{StaticResource StepNodeStyle}" />
                     <StackPanel Orientation="Horizontal">
                         <TextBlock Text="Extent" Style="{StaticResource StepLabelStyle}" />
                         <TextBlock Text="First Page" Style="{StaticResource StepPropertyStyle}" />
@@ -849,7 +886,7 @@
 
             <DataTemplate x:Key="PageSkippedTemplate" >
                 <Grid Style="{StaticResource StepRowStyle}">
-                    <TextBlock Text="{Binding Path=Source, Converter={StaticResource NodeIdToTextConverter}}" Grid.ColumnSpan="9" Style="{StaticResource StepNodeStyle}" />
+                    <TextBlock Text="{Binding Path=NodeId, Converter={StaticResource NodeIdToTextConverter}}" Grid.ColumnSpan="9" Style="{StaticResource StepNodeStyle}" />
                     <StackPanel Orientation="Horizontal">
                         <TextBlock Text="Skip Page" Style="{StaticResource StepLabelStyle}" />
                         <TextBlock Text="{Binding PageAddress}" Style="{StaticResource StepValueStyle}" />
@@ -862,7 +899,7 @@
 
             <DataTemplate x:Key="DefaultTemplate" >
                 <Grid Style="{StaticResource StepRowStyle}">
-                    <TextBlock Text="{Binding Path=Source, Converter={StaticResource NodeIdToTextConverter}}" Grid.ColumnSpan="9" Style="{StaticResource StepNodeStyle}" />
+                    <TextBlock Text="{Binding Path=NodeId, Converter={StaticResource NodeIdToTextConverter}}" Grid.ColumnSpan="9" Style="{StaticResource StepNodeStyle}" />
                     <TextBlock Text="{Binding}" Style="{StaticResource StepValueStyle}" />
                 </Grid>
             </DataTemplate>
@@ -884,6 +921,7 @@
                 JoinStartTemplate="{StaticResource JoinStartTemplate}"
                 JoinVerdictTemplate="{StaticResource JoinVerdictTemplate}"
                 HashBuildTemplate="{StaticResource HashBuildTemplate}"
+                HashBuildRunTemplate="{StaticResource HashBuildRunTemplate}"
                 HashProbeTemplate="{StaticResource HashProbeTemplate}"
                 HashProbeRunTemplate="{StaticResource HashProbeRunTemplate}"
                 HashCompareTemplate="{StaticResource HashCompareTemplate}"
