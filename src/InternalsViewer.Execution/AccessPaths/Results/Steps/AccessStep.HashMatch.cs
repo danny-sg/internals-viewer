@@ -23,19 +23,6 @@ public abstract partial record AccessStep
         public bool IsNullKey { get; init; }
     }
 
-    public sealed record HashBuildRun(int Bucket, uint Hash, int Count) : AccessStep(AccessPhase.Walk)
-    {
-        public AccessKey Key { get; init; }
-
-        public int ChainLength { get; init; }
-
-        public bool IsNullKey { get; init; }
-
-        public int BucketCount { get; init; }
-
-        public IReadOnlyList<int> BucketFill { get; init; } = [];
-    }
-
     /// <summary>
     /// A probe row was hashed and the bucket it selected is about to be walked
     /// </summary>

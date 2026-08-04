@@ -65,6 +65,27 @@
                     <FontIcon Glyph="&#xE893;" />
                 </AppBarButton.Icon>
             </AppBarButton>
+            <AppBarButton Label="Run To">
+                <AppBarButton.Icon>
+                    <FontIcon Glyph="&#xE81C;" />
+                </AppBarButton.Icon>
+                <AppBarButton.Flyout>
+                    <MenuFlyout>
+                        <MenuFlyoutItem Text="Next emit"
+                                        Command="{x:Bind ViewModel.RunToCommand}"
+                                        CommandParameter="Emit" />
+                        <MenuFlyoutItem Text="Next rebind"
+                                        Command="{x:Bind ViewModel.RunToCommand}"
+                                        CommandParameter="Rebind" />
+                        <MenuFlyoutItem Text="Next phase"
+                                        Command="{x:Bind ViewModel.RunToCommand}"
+                                        CommandParameter="Phase" />
+                        <MenuFlyoutItem Text="Next page read"
+                                        Command="{x:Bind ViewModel.RunToCommand}"
+                                        CommandParameter="PageRead" />
+                    </MenuFlyout>
+                </AppBarButton.Flyout>
+            </AppBarButton>
             <AppBarSeparator />
             <AppBarButton Label="Reset" Command="{x:Bind ViewModel.ResetStepCommand}">
                 <AppBarButton.Icon>

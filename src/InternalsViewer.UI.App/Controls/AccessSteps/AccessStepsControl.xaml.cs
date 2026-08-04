@@ -1,5 +1,7 @@
 using System.Collections;
+using System.Collections.Generic;
 using InternalsViewer.Execution.AccessPaths.Results;
+using InternalsViewer.UI.App.Models.Trace;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Controls.Primitives;
 using Microsoft.UI.Xaml.Media;
@@ -8,6 +10,8 @@ namespace InternalsViewer.UI.App.Controls.AccessSteps;
 
 public sealed partial class AccessStepsControl : UserControl
 {
+    private const int IndentWidth = 16;
+
     public static readonly DependencyProperty StepHistoryProperty =
         DependencyProperty.Register(nameof(StepHistory),
                                     typeof(IEnumerable),
@@ -20,17 +24,17 @@ public sealed partial class AccessStepsControl : UserControl
                                     typeof(AccessStepsControl),
                                     new PropertyMetadata(null, OnCurrentStepChanged));
 
-    public static readonly DependencyProperty OuterAccentBrushProperty =
-        DependencyProperty.Register(nameof(OuterAccentBrush),
-                                    typeof(Brush),
+    public static readonly DependencyProperty NodesProperty =
+        DependencyProperty.Register(nameof(Nodes),
+                                    typeof(object),
                                     typeof(AccessStepsControl),
-                                    new PropertyMetadata(null));
+                                    new PropertyMetadata(null, OnNodesChanged));
 
-    public static readonly DependencyProperty InnerAccentBrushProperty =
-        DependencyProperty.Register(nameof(InnerAccentBrush),
-                                    typeof(Brush),
+    public static readonly DependencyProperty ShowDetailProperty =
+        DependencyProperty.Register(nameof(ShowDetail),
+                                    typeof(bool),
                                     typeof(AccessStepsControl),
-                                    new PropertyMetadata(null));
+                                    new PropertyMetadata(false));
 
     public AccessStepsControl()
     {
@@ -40,25 +44,45 @@ public sealed partial class AccessStepsControl : UserControl
     }
 
     /// <summary>
-    /// Colour of the accent bar drawn against steps from a composed access path's outer side
+    /// What each plan node shows as in the timeline - its name, its colour and how deep it sits in the operator tree
     /// </summary>
-    /// <remarks>
-    /// When set, side steps are indented under the join's own steps to show rows flowing into the join, with the join's compare and emit
-    /// steps at the root level.
-    /// </remarks>
-    public Brush? OuterAccentBrush
+    public IReadOnlyDictionary<int, TraceStepNode>? Nodes
     {
-        get => (Brush?)GetValue(OuterAccentBrushProperty);
-        set => SetValue(OuterAccentBrushProperty, value);
+        get => (IReadOnlyDictionary<int, TraceStepNode>?)GetValue(NodesProperty);
+        set => SetValue(NodesProperty, value);
     }
 
-    /// <summary>
-    /// Colour of the accent bar drawn against steps from a composed access path's inner side
-    /// </summary>
-    public Brush? InnerAccentBrush
+    public bool ShowDetail
     {
-        get => (Brush?)GetValue(InnerAccentBrushProperty);
-        set => SetValue(InnerAccentBrushProperty, value);
+        get => (bool)GetValue(ShowDetailProperty);
+        set => SetValue(ShowDetailProperty, value);
+    }
+
+    public Visibility DetailVisibility(bool showDetail, AccessStep? currentStep)
+        => showDetail && currentStep is not null ? Visibility.Visible : Visibility.Collapsed;
+
+    private readonly Dictionary<int, SolidColorBrush> _brushes = [];
+
+    private static void OnNodesChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
+    {
+        ((AccessStepsControl)d)._brushes.Clear();
+    }
+
+    private SolidColorBrush? BrushFor(int nodeId)
+    {
+        if (Nodes is null || !Nodes.TryGetValue(nodeId, out var node))
+        {
+            return null;
+        }
+
+        if (!_brushes.TryGetValue(nodeId, out var brush))
+        {
+            brush = new SolidColorBrush(node.Colour);
+
+            _brushes[nodeId] = brush;
+        }
+
+        return brush;
     }
 
     private void OnElementPrepared(ItemsRepeater sender, ItemsRepeaterElementPreparedEventArgs args)
@@ -68,41 +92,56 @@ public sealed partial class AccessStepsControl : UserControl
             return;
         }
 
-        var source = step is AccessStep.Rebind ? -1 : step.NodeId;
+        ApplyNodeStyling(grid, step, applyIndent: true);
+    }
 
-        var brush = source switch
+    private void ApplyNodeStyling(Grid grid, AccessStep step, bool applyIndent)
+    {
+        var node = Nodes?.GetValueOrDefault(step.NodeId);
+
+        var brush = BrushFor(step.NodeId);
+
+        if (grid.FindName("SourceName") is TextBlock sourceName)
         {
-            0 => OuterAccentBrush,
-            1 => InnerAccentBrush,
-            _ => null
-        };
+            sourceName.Text = node?.Name ?? string.Empty;
+        }
 
-        UpdateEmitBadge(grid, brush as SolidColorBrush, source, step is AccessStep.Row { IsReadAhead: true });
+        if (grid.FindName("SourceBlob") is Border blob)
+        {
+            blob.Background = brush;
 
-        UpdateCompareBadge(grid, step);
+            blob.Visibility = brush is null ? Visibility.Collapsed : Visibility.Visible;
+        }
+
+        UpdateEmitBadge(grid, brush, step is AccessStep.Row { IsReadAhead: true });
+
+        UpdateCompareBadge(grid, step, node);
 
         if (grid.FindName("ProbeExpandToggle") is ToggleButton toggle)
         {
             toggle.IsChecked = false;
         }
 
+        if (applyIndent)
+        {
+            grid.Margin = new Thickness(IndentWidth * (node?.Depth ?? 0), 0, 0, 0);
+        }
+
         if (brush is null)
         {
-            grid.Margin = new Thickness(0);
             grid.BorderThickness = new Thickness(0);
 
             return;
         }
 
-        grid.Margin = new Thickness(12, 0, 0, 0);
         grid.BorderBrush = brush;
-        grid.BorderThickness = new Thickness(2, 0, 0, 0);
+        grid.BorderThickness = new Thickness(3, 0, 0, 0);
     }
 
     /// <summary>
     /// Tags a merge comparison with the side it advances, in that side's colour
     /// </summary>
-    private void UpdateCompareBadge(Grid grid, AccessStep step)
+    private void UpdateCompareBadge(Grid grid, AccessStep step, TraceStepNode? node)
     {
         if (grid.FindName("CompareBadge") is not Border badge)
         {
@@ -116,7 +155,9 @@ public sealed partial class AccessStepsControl : UserControl
             _ => 0
         };
 
-        var brush = comparison < 0 ? OuterAccentBrush : InnerAccentBrush;
+        var sideNodeId = comparison < 0 ? node?.OuterInputNodeId ?? -1 : node?.InnerInputNodeId ?? -1;
+
+        var brush = sideNodeId >= 0 ? BrushFor(sideNodeId) : null;
 
         var arrow = grid.FindName("CompareArrow") as TextBlock;
 
@@ -146,7 +187,7 @@ public sealed partial class AccessStepsControl : UserControl
         }
     }
 
-    private static void UpdateEmitBadge(Grid grid, SolidColorBrush? sideBrush, int source, bool isReadAhead)
+    private static void UpdateEmitBadge(Grid grid, SolidColorBrush? sideBrush, bool isReadAhead)
     {
         if (grid.FindName("EmitBadge") is not Border badge)
         {
@@ -155,10 +196,8 @@ public sealed partial class AccessStepsControl : UserControl
 
         if (grid.FindName("EmitSideText") is TextBlock sideText)
         {
-            var side = source == 0 ? "Outer" : "Inner";
-
-            sideText.Text = isReadAhead ? $"{side} (read ahead)" : side;
-            sideText.Visibility = sideBrush is null ? Visibility.Collapsed : Visibility.Visible;
+            sideText.Text = isReadAhead ? "(read ahead)" : string.Empty;
+            sideText.Visibility = isReadAhead ? Visibility.Visible : Visibility.Collapsed;
         }
 
         if (sideBrush is not null)
@@ -200,6 +239,16 @@ public sealed partial class AccessStepsControl : UserControl
         if (e.NewValue is not null)
         {
             control.StepsScroller.ChangeView(null, 0, null, true);
+
+            control.DispatcherQueue.TryEnqueue(control.StyleDetail);
+        }
+    }
+
+    private void StyleDetail()
+    {
+        if (CurrentStep is { } step && DetailHost.ContentTemplateRoot is Grid grid)
+        {
+            ApplyNodeStyling(grid, step, applyIndent: false);
         }
     }
 }

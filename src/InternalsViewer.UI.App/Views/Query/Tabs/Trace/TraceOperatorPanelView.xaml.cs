@@ -47,6 +47,8 @@ public sealed partial class TraceOperatorPanelView : UserControl
         Fill(OuterBottomHost, header: null, viewModel.OuterBottom);
         Fill(InnerBottomHost, header: null, viewModel.InnerBottom);
 
+        OutputHeader.Text = $"Output ({viewModel.NodeId})";
+
         OutputHost.Content = new TraceRowStreamPanelView { DataContext = viewModel.Output };
 
         Collapse(OuterBottomRow, OuterSplitter, viewModel.OuterBottom);

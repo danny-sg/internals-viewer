@@ -368,6 +368,7 @@ public static class AccessStrategyBuilder
     {
         return bounds.CompareWidth == int.MaxValue ? target.Count : bounds.CompareWidth;
     }
+
     private static bool HasNoTranslation(AccessPredicate? predicate)
         => predicate switch
         {

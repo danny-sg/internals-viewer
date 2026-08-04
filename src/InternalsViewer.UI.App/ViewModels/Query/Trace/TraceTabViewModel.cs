@@ -80,7 +80,9 @@ public sealed class TraceTabViewModelFactory(IIteratorFactory iteratorFactory, I
 
         var kind = source.Kind == TraceSourceKind.Index ? TraceVisualKind.Index : TraceVisualKind.Allocation;
 
-        var title = source.Role == TraceSourceRole.None ? DisplayName(unit) : $"{source.Role}: {DisplayName(unit)}";
+        var title = source.Role == TraceSourceRole.None
+            ? $"{DisplayName(unit)} ({source.NodeId})"
+            : $"{source.Role}: {DisplayName(unit)} ({source.NodeId})";
 
         return new TraceVisualViewModel(kind, database, unit, indexService, title, source.NodeId)
         {
@@ -110,7 +112,6 @@ public sealed partial class TraceTabViewModel : ObservableObject
         IteratorFactory = iteratorFactory;
         Definition = definition;
         Database = database;
-        PlanNode = planNode;
         QueryTime = queryTime;
         ScanMode = scanMode;
         Visuals = visuals;
@@ -122,11 +123,11 @@ public sealed partial class TraceTabViewModel : ObservableObject
 
         RowBuilder = new TraceRowBuilder(layout.Definitions, layout.Sides);
 
-        RootOutput = layout.Streams[definition.NodeId];
-
-        RootOutput.PropertyChanged += (_, _) => OnPropertyChanged(nameof(ResultsLabel));
-
         SelectedVisual = visuals[0];
+
+        PlanNode = planNode;
+
+        StepNodes = BuildStepNodes();
 
         Dock = BuildDock();
 
@@ -170,19 +171,11 @@ public sealed partial class TraceTabViewModel : ObservableObject
     }
 
     private IEnumerable<DocumentViewModel> OperatorDocuments()
-        => Operators.Select(o => DocumentViewModel.Create<TraceOperatorPanelView>(OperatorTabTitle(o),
+        => Operators.Select(o => DocumentViewModel.Create<TraceOperatorPanelView>(o.Title,
                                                                                   o,
                                                                                   canClose: false,
                                                                                   keepAlive: true,
                                                                                   key: $"Operator{o.NodeId}"));
-
-    /// <summary>
-    /// Names an operator's tab, adding its node id only where the plan has more than one operator of that kind
-    /// </summary>
-    private string OperatorTabTitle(TraceOperatorViewModel operatorViewModel)
-        => Operators.Count(o => o.Title == operatorViewModel.Title) > 1
-            ? $"{operatorViewModel.Title} ({operatorViewModel.NodeId})"
-            : operatorViewModel.Title;
 
     public IReadOnlyList<TraceVisualViewModel> Visuals { get; }
 
@@ -201,8 +194,6 @@ public sealed partial class TraceTabViewModel : ObservableObject
     private TraceLayout Layout { get; }
 
     private TraceRowBuilder RowBuilder { get; }
-
-    public TraceRowStreamViewModel RootOutput { get; }
 
     private Dictionary<int, TraceVisualViewModel> VisualsByNode { get; }
 
@@ -244,6 +235,11 @@ public sealed partial class TraceTabViewModel : ObservableObject
         if (value is not null)
         {
             IndexPlanNodes(value);
+        }
+
+        if (Layout is not null)
+        {
+            StepNodes = BuildStepNodes();
         }
 
         UpdateActivePlanNodes();
@@ -318,6 +314,11 @@ public sealed partial class TraceTabViewModel : ObservableObject
     private ObservableCollection<AccessStep> _stepHistory = [];
 
     [ObservableProperty]
+    private ObservableCollection<IndexRecordModel> _resultRecords = [];
+
+    partial void OnResultRecordsChanged(ObservableCollection<IndexRecordModel> value) => OnPropertyChanged(nameof(ResultsLabel));
+
+    [ObservableProperty]
     private AccessStep? _currentStep;
 
     public string SelectedSectionTitle => SelectedVisual.Title;
@@ -345,20 +346,32 @@ public sealed partial class TraceTabViewModel : ObservableObject
 
     private Dictionary<int, AccessStrategy?> StrategyBySource { get; } = [];
 
-    public Brush? OuterAccentBrush => Visuals.Count > 1 ? ToBrush(Visuals[0].ObjectColour) : null;
+    [ObservableProperty]
+    private IReadOnlyDictionary<int, TraceStepNode>? _stepNodes;
 
-    public Brush? InnerAccentBrush => Visuals.Count > 1 ? ToBrush(Visuals[1].ObjectColour) : null;
-
-    /// <summary>
-    /// The colour a step should be marked with, found from the input that produced it
-    /// </summary>
-    public Brush? AccentFor(int source)
-        => Visuals.Count > 1 && VisualsByNode.TryGetValue(source, out var visual) ? ToBrush(visual.ObjectColour) : null;
-
-    private static Brush ToBrush(System.Drawing.Color colour)
+    private IReadOnlyDictionary<int, TraceStepNode> BuildStepNodes()
     {
-        return new SolidColorBrush(Windows.UI.Color.FromArgb(colour.A, colour.R, colour.G, colour.B));
+        var nodes = new Dictionary<int, TraceStepNode>();
+
+        foreach (var (nodeId, definition) in Layout.Definitions)
+        {
+            var name = _planNodesById.GetValueOrDefault(nodeId)?.PhysicalOperator
+                       ?? TraceLayoutBuilder.DisplayName(definition);
+
+            var (outerInput, innerInput) = Layout.InputNodes.GetValueOrDefault(nodeId, (-1, -1));
+
+            nodes[nodeId] = new TraceStepNode($"{name} ({nodeId})",
+                                              Layout.Depths.GetValueOrDefault(nodeId),
+                                              ToColour(Layout.Colours.GetValueOrDefault(nodeId, System.Drawing.Color.Gray)),
+                                              outerInput,
+                                              innerInput);
+        }
+
+        return nodes;
     }
+
+    private static Windows.UI.Color ToColour(System.Drawing.Color colour)
+        => Windows.UI.Color.FromArgb(colour.A, colour.R, colour.G, colour.B);
 
     [ObservableProperty]
     private bool _isStepping;
@@ -392,7 +405,7 @@ public sealed partial class TraceTabViewModel : ObservableObject
 
     private bool _suppressResultsSync;
 
-    public string ResultsLabel => RootOutput.Rows.Count > 0 ? $"Results ({RootOutput.Rows.Count:N0})" : "Results";
+    public string ResultsLabel => ResultRecords.Count > 0 ? $"Results ({ResultRecords.Count:N0})" : "Results";
 
     partial void OnIsResultsVisibleChanged(bool value)
     {
@@ -483,9 +496,19 @@ public sealed partial class TraceTabViewModel : ObservableObject
         OnPropertyChanged(nameof(CurrentCounters));
     }
 
-    partial void OnIsSteppingChanged(bool value) => OnPropertyChanged(nameof(IsWalkInProgress));
+    public bool IsStepDetailVisible => IsStepping && !IsRunning && !IsRunningToEnd;
+
+    partial void OnIsSteppingChanged(bool value)
+    {
+        OnPropertyChanged(nameof(IsWalkInProgress));
+        OnPropertyChanged(nameof(IsStepDetailVisible));
+    }
 
     partial void OnIsStepCompleteChanged(bool value) => OnPropertyChanged(nameof(IsWalkInProgress));
+
+    partial void OnIsRunningChanged(bool value) => OnPropertyChanged(nameof(IsStepDetailVisible));
+
+    partial void OnIsRunningToEndChanged(bool value) => OnPropertyChanged(nameof(IsStepDetailVisible));
 
     [RelayCommand(AllowConcurrentExecutions = true)]
     public async Task Run()
@@ -589,7 +612,25 @@ public sealed partial class TraceTabViewModel : ObservableObject
     }
 
     [RelayCommand(AllowConcurrentExecutions = true)]
-    public async Task RunToEnd()
+    public Task RunToEnd() => RunUntilAsync(null);
+
+    [RelayCommand(AllowConcurrentExecutions = true)]
+    public Task RunTo(string target) => RunUntilAsync(StopCondition(target));
+
+    private Func<AccessStep, bool>? StopCondition(string target)
+        => target switch
+        {
+            "Emit" => step => step.NodeId == Definition.NodeId
+                              && step is AccessStep.JoinEmit
+                                      or AccessStep.TopRow { EmittedRecord: not null }
+                                      or AccessStep.Row { EmittedRecord: not null },
+            "Rebind" => step => step is AccessStep.Rebind,
+            "Phase" => step => step is AccessStep.JoinStart or AccessStep.Reseek,
+            "PageRead" => step => step is AccessStep.ReadPage,
+            _ => null
+        };
+
+    private async Task RunUntilAsync(Func<AccessStep, bool>? stopAfter)
     {
         if (IsRunningToEnd)
         {
@@ -618,7 +659,9 @@ public sealed partial class TraceTabViewModel : ObservableObject
 
             var steps = new ObservableCollection<AccessStep>();
 
-            var streamRows = Layout.Streams.Keys.ToDictionary(k => k, _ => new List<IndexRecordModel>());
+            var lastRows = new Dictionary<int, IndexRecordModel>();
+
+            var results = new List<IndexRecordModel>();
 
             var replays = new Dictionary<TraceVisualViewModel, TraceVisualReplay>();
 
@@ -627,8 +670,12 @@ public sealed partial class TraceTabViewModel : ObservableObject
                 try
                 {
                     while (!cancellationToken.IsCancellationRequested
-                           && await stepper.StepNextAsync(CancellationToken.None) is not null)
+                           && await stepper.StepNextAsync(CancellationToken.None) is { } step)
                     {
+                        if (stopAfter?.Invoke(step) == true)
+                        {
+                            break;
+                        }
                     }
                 }
                 catch (OperationCanceledException)
@@ -639,9 +686,14 @@ public sealed partial class TraceTabViewModel : ObservableObject
                 {
                     TraceStepRuns.Append(step, steps, HistoryLimit);
 
-                    if (streamRows.TryGetValue(step.NodeId, out var rows) && ToStreamModel(step) is { } model)
+                    if (Layout.Streams.ContainsKey(step.NodeId) && ToStreamModel(step) is { } model)
                     {
-                        rows.Add(model);
+                        lastRows[step.NodeId] = model;
+
+                        if (step.NodeId == Definition.NodeId)
+                        {
+                            results.Add(model);
+                        }
                     }
                 }
 
@@ -653,10 +705,19 @@ public sealed partial class TraceTabViewModel : ObservableObject
 
             StepHistory = steps;
 
-            foreach (var (nodeId, rows) in streamRows)
+            foreach (var (nodeId, stream) in Layout.Streams)
             {
-                Layout.Streams[nodeId].Replace(rows);
+                if (lastRows.TryGetValue(nodeId, out var last))
+                {
+                    stream.Show(last);
+                }
+                else
+                {
+                    stream.Clear();
+                }
             }
+
+            ResultRecords = new ObservableCollection<IndexRecordModel>(results);
 
             UpdateStrategies();
 
@@ -721,6 +782,8 @@ public sealed partial class TraceTabViewModel : ObservableObject
 
         CurrentStep = null;
 
+        ResultRecords = [];
+
         StrategyBySource.Clear();
 
         foreach (var visual in Visuals)
@@ -729,7 +792,6 @@ public sealed partial class TraceTabViewModel : ObservableObject
         }
 
         OnPropertyChanged(nameof(SelectedStrategy));
-        OnPropertyChanged(nameof(ResultsLabel));
     }
 
     private TraceVisualViewModel? GetVisual(int nodeId)
@@ -737,9 +799,18 @@ public sealed partial class TraceTabViewModel : ObservableObject
 
     private void RouteRow(AccessStep step)
     {
-        if (Layout.Streams.TryGetValue(step.NodeId, out var stream) && ToStreamModel(step) is { } model)
+        if (!Layout.Streams.TryGetValue(step.NodeId, out var stream) || ToStreamModel(step) is not { } model)
         {
-            stream.Add(model);
+            return;
+        }
+
+        stream.Show(model);
+
+        if (step.NodeId == Definition.NodeId)
+        {
+            ResultRecords.Add(model);
+
+            OnPropertyChanged(nameof(ResultsLabel));
         }
     }
 

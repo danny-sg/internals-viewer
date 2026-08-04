@@ -69,7 +69,6 @@ public static class ServiceRegistration
     {
         services.AddTransient<IConnectionTypeFactory, ServerConnectionFactory>();
         services.AddTransient<IConnectionTypeFactory, FileConnectionFactory>();
-        //services.AddTransient<IConnectionTypeFactory, BackupConnectionFactory>();
     }
 
     private static void RegisterPageParsers(IServiceCollection services)

@@ -21,5 +21,5 @@ public sealed partial class TraceOperatorViewModel(int nodeId, string title, str
 
     public TracePane InnerBottom { get; set; } = TracePane.Empty;
 
-    public TraceRowStreamViewModel Output { get; } = new("Output");
+    public TraceRowStreamViewModel Output { get; } = new();
 }

@@ -1,22 +1,14 @@
 namespace InternalsViewer.Query.Results;
 
-public sealed class ResultRow<T>
+public sealed class ResultRow<T>(object?[] values)
 {
-    public T Id { get; set; }
+    public T? Id { get; set; }
 
-    private readonly object?[] _values;
-
-    public ResultRow(object?[] values)
+    public ResultRow() : this([])
     {
-        _values = values;
     }
 
-    public ResultRow()
-    {
-        _values = [];
-    }
+    public object? this[int ordinal] => values[ordinal];
 
-    public object? this[int ordinal] => _values[ordinal];
-
-    public int FieldCount => _values.Length;
+    public int FieldCount => values.Length;
 }

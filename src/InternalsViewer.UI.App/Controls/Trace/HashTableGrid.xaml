@@ -96,8 +96,8 @@
         <ScrollViewer Grid.Row="2"
                       VerticalScrollBarVisibility="Auto"
                       HorizontalScrollBarVisibility="Auto">
-            <ItemsControl ItemsSource="{x:Bind Buckets, Mode=OneWay}" Padding="0,0,0,8">
-                <ItemsControl.ItemTemplate>
+            <ItemsRepeater ItemsSource="{x:Bind Buckets, Mode=OneWay}" Margin="0,0,0,8">
+                <ItemsRepeater.ItemTemplate>
                     <DataTemplate x:DataType="trace:HashBucketModel">
                         <Grid>
                             <Border Background="{StaticResource HashBucketCurrentBrush}"
@@ -141,8 +141,8 @@
                             </ItemsControl>
                         </Grid>
                     </DataTemplate>
-                </ItemsControl.ItemTemplate>
-            </ItemsControl>
+                </ItemsRepeater.ItemTemplate>
+            </ItemsRepeater>
         </ScrollViewer>
     </Grid>
 </UserControl>

@@ -9,19 +9,7 @@
     mc:Ignorable="d">
 
     <Grid Background="{ThemeResource LayerOnMicaBaseAltFillColorDefault}">
-        <Grid.RowDefinitions>
-            <RowDefinition Height="Auto" />
-            <RowDefinition Height="*" />
-        </Grid.RowDefinitions>
-
-        <TextBlock Text="{x:Bind ViewModel.Title, Mode=OneWay}"
-                   FontSize="12"
-                   FontWeight="SemiBold"
-                   Padding="8,8,8,4" />
-
-        <index:RecordGrid Grid.Row="1"
-                          HideSlotColumn="True"
-                          AutoScrollToEnd="True"
+        <index:RecordGrid HideSlotColumn="True"
                           Records="{x:Bind ViewModel.Rows, Mode=OneWay}"
                           BorderThickness="0" />
     </Grid>

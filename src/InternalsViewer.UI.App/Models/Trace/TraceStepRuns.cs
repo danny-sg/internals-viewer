@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using InternalsViewer.Execution.AccessPaths.Results;
 using InternalsViewer.Execution.AccessPaths.Search;
@@ -47,72 +48,77 @@ public static class TraceStepRuns
             }
         }
 
-        if (step is AccessStep.HashBuild hashBuild
-            && history.Count > 1
-            && history[0] is AccessStep.Row or AccessStep.RowRun)
+        if (step is AccessStep.HashBuild hashBuild)
         {
-            if (history[1] is AccessStep.HashBuild previousBuild && previousBuild.NodeId == hashBuild.NodeId)
+            if (history.Count > 1 && history[1] is HashBuildSpan span && span.NodeId == hashBuild.NodeId)
             {
-                var fill = SeedFill(history, hashBuild);
-
-                Mark(fill, previousBuild.BucketCount, previousBuild.Bucket, previousBuild.ChainLength, hashBuild.BucketCount);
-                Mark(fill, hashBuild.BucketCount, hashBuild.Bucket, hashBuild.ChainLength, hashBuild.BucketCount);
-
-                history[1] = new AccessStep.HashBuildRun(hashBuild.Bucket, hashBuild.Hash, 2)
-                {
-                    Key = hashBuild.Key,
-                    ChainLength = hashBuild.ChainLength,
-                    IsNullKey = hashBuild.IsNullKey,
-                    BucketCount = hashBuild.BucketCount,
-                    BucketFill = fill,
-                    NodeId = hashBuild.NodeId,
-                    Counters = hashBuild.Counters
-                };
+                span.Progress.Apply(hashBuild);
 
                 return;
             }
 
-            if (history[1] is AccessStep.HashBuildRun buildRun && buildRun.NodeId == hashBuild.NodeId)
+            for (var index = 0; index < history.Count; index++)
             {
-                var fill = buildRun.BucketCount == hashBuild.BucketCount && buildRun.BucketFill is int[] existing
-                    ? existing
-                    : new int[hashBuild.BucketCount];
-
-                Mark(fill, hashBuild.BucketCount, hashBuild.Bucket, hashBuild.ChainLength, hashBuild.BucketCount);
-
-                history[1] = buildRun with
+                if (history[index] is HashBuildSpan found && found.NodeId == hashBuild.NodeId)
                 {
-                    Bucket = hashBuild.Bucket,
-                    Hash = hashBuild.Hash,
-                    Count = buildRun.Count + 1,
-                    Key = hashBuild.Key,
-                    ChainLength = hashBuild.ChainLength,
-                    IsNullKey = hashBuild.IsNullKey,
-                    BucketCount = hashBuild.BucketCount,
-                    BucketFill = fill,
-                    Counters = hashBuild.Counters
-                };
+                    found.Progress.Apply(hashBuild);
 
-                return;
+                    if (index > 1)
+                    {
+                        history.RemoveAt(index);
+
+                        history.Insert(1, found);
+                    }
+
+                    return;
+                }
             }
+
+            var created = new HashBuildSpan
+            {
+                NodeId = hashBuild.NodeId,
+                Counters = hashBuild.Counters
+            };
+
+            created.Progress.Apply(hashBuild);
+
+            history.Insert(0, created);
+
+            return;
         }
 
-        if (step is AccessStep.HashProbe hashProbe && FindProbeRun(history, hashProbe) is { } probeIndex)
+        if (step is AccessStep.HashProbe hashProbe)
         {
-            history[probeIndex] = history[probeIndex] is AccessStep.HashProbeRun hashProbeRun
-                ? hashProbeRun with
+            var span = FindProbeSpan(history, hashProbe.NodeId, relocate: true);
+
+            if (span is null)
+            {
+                span = new HashProbeSpan
                 {
-                    Count = hashProbeRun.Count + 1,
-                    Counters = hashProbe.Counters
-                }
-                : new AccessStep.HashProbeRun(hashProbe.Bucket, hashProbe.Hash, 2)
-                {
-                    Key = hashProbe.Key,
-                    ChainLength = hashProbe.ChainLength,
-                    IsNullKey = hashProbe.IsNullKey,
                     NodeId = hashProbe.NodeId,
                     Counters = hashProbe.Counters
                 };
+
+                span.Progress.Fill = FindBuildFill(history, hashProbe.NodeId);
+
+                history.Insert(0, span);
+            }
+
+            span.Progress.Apply(hashProbe);
+
+            return;
+        }
+
+        if (step is AccessStep.HashCompare hashCompare && FindProbeSpan(history, hashCompare.NodeId, relocate: false) is { } compareSpan)
+        {
+            compareSpan.Progress.Apply(hashCompare);
+
+            return;
+        }
+
+        if (step is AccessStep.JoinEmit joinEmit && FindProbeSpan(history, joinEmit.NodeId, relocate: false) is { } emitSpan)
+        {
+            emitSpan.Progress.Apply(joinEmit);
 
             return;
         }
@@ -186,59 +192,42 @@ public static class TraceStepRuns
         }
     }
 
-    /// <summary>
-    /// Finds the probe of the same key that this one repeats, or null where the last probe was of something else
-    /// </summary>
-    /// <remarks>
-    /// A probe row that found candidates leaves its comparisons and whatever it emitted behind it, and the row that carried the next key
-    /// lands on top of those, so the probe before is not the entry beneath. Anything other than that work ends the search, a probe of a
-    /// different key most of all, so a run only ever gathers probes that ran one after another.
-    /// </remarks>
-    private static int? FindProbeRun(ObservableCollection<AccessStep> history, AccessStep.HashProbe probe)
+    private static HashProbeSpan? FindProbeSpan(ObservableCollection<AccessStep> history, int nodeId, bool relocate)
     {
+        if (history.Count > 1 && history[1] is HashProbeSpan fast && fast.NodeId == nodeId)
+        {
+            return fast;
+        }
+
         for (var index = 0; index < history.Count; index++)
         {
-            var previous = history[index];
-
-            if (previous is AccessStep.Row or AccessStep.RowRun or AccessStep.HashCompare or AccessStep.JoinEmit)
+            if (history[index] is HashProbeSpan span && span.NodeId == nodeId)
             {
-                continue;
+                if (relocate && index > 1)
+                {
+                    history.RemoveAt(index);
+
+                    history.Insert(1, span);
+                }
+
+                return span;
             }
-
-            var key = previous switch
-            {
-                AccessStep.HashProbe found => found.Key,
-                AccessStep.HashProbeRun run => run.Key,
-                _ => (AccessKey?)null
-            };
-
-            return key is { } previousKey && previous.NodeId == probe.NodeId && previousKey.Equals(probe.Key) ? index : null;
         }
 
         return null;
     }
 
-    private static int[] SeedFill(ObservableCollection<AccessStep> history, AccessStep.HashBuild build)
+    private static IReadOnlyList<int>? FindBuildFill(ObservableCollection<AccessStep> history, int nodeId)
     {
-        for (var index = 2; index < history.Count; index++)
+        for (var index = 0; index < history.Count; index++)
         {
-            if (history[index] is AccessStep.HashBuildRun run && run.NodeId == build.NodeId)
+            if (history[index] is HashBuildSpan build && build.NodeId == nodeId)
             {
-                return run.BucketCount == build.BucketCount && run.BucketFill is int[] fill
-                    ? (int[])fill.Clone()
-                    : new int[build.BucketCount];
+                return build.Progress.Fill;
             }
         }
 
-        return new int[build.BucketCount];
-    }
-
-    private static void Mark(int[] fill, int bucketCount, int bucket, int chainLength, int currentBucketCount)
-    {
-        if (bucketCount == currentBucketCount && bucket >= 0 && bucket < fill.Length)
-        {
-            fill[bucket] = chainLength;
-        }
+        return null;
     }
 
     private static int EmitOf(AccessStep.Row row)

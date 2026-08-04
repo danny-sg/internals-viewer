@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Drawing;
 using InternalsViewer.Execution.AccessPaths.Definitions;
 using InternalsViewer.Execution.AccessPaths.Joins;
 using InternalsViewer.Query.Plans.Model;
@@ -23,6 +24,12 @@ public sealed class TraceLayout
     public required IReadOnlyDictionary<int, OperatorSides> Sides { get; init; }
 
     public required IReadOnlyDictionary<int, TraceVisualViewModel> VisualByOperator { get; init; }
+
+    public required IReadOnlyDictionary<int, int> Depths { get; init; }
+
+    public required IReadOnlyDictionary<int, Color> Colours { get; init; }
+
+    public required IReadOnlyDictionary<int, (int Outer, int Inner)> InputNodes { get; init; }
 }
 
 public static class TraceLayoutBuilder
@@ -33,7 +40,11 @@ public static class TraceLayoutBuilder
     {
         var definitions = new Dictionary<int, IteratorDefinition>();
 
-        Index(definition, definitions);
+        var depths = new Dictionary<int, int>();
+
+        var ordered = new List<int>();
+
+        Index(definition, definitions, depths, ordered, 0);
 
         var operators = TraceSourceCollector.CollectOperators(definition);
 
@@ -65,7 +76,7 @@ public static class TraceLayoutBuilder
 
         foreach (var op in operators)
         {
-            var tab = new TraceOperatorViewModel(op.NodeId, OperatorTitle(op), OperatorDescription(op));
+            var tab = new TraceOperatorViewModel(op.NodeId, $"{OperatorTitle(op)} ({op.NodeId})", OperatorDescription(op));
 
             tabs.Add(tab);
 
@@ -80,8 +91,10 @@ public static class TraceLayoutBuilder
 
             var (outer, inner) = Inputs(op);
 
-            tab.OuterTop = InputPane(outer, tabsByNode, visuals);
-            tab.InnerTop = InputPane(inner, tabsByNode, visuals);
+            var (outerLabel, innerLabel) = InputLabels(op);
+
+            tab.OuterTop = InputPane(outer, outerLabel, tabsByNode, visuals);
+            tab.InnerTop = InputPane(inner, innerLabel, tabsByNode, visuals);
 
             switch (op)
             {
@@ -109,6 +122,15 @@ public static class TraceLayoutBuilder
             }
         }
 
+        var inputNodes = new Dictionary<int, (int Outer, int Inner)>();
+
+        foreach (var op in operators)
+        {
+            var (outerInput, innerInput) = Inputs(op);
+
+            inputNodes[op.NodeId] = (outerInput?.NodeId ?? -1, innerInput?.NodeId ?? -1);
+        }
+
         var visualByOperator = new Dictionary<int, TraceVisualViewModel>();
 
         foreach (var source in TraceSourceCollector.Collect(definition))
@@ -132,46 +154,104 @@ public static class TraceLayoutBuilder
             HashTables = hashTables,
             Definitions = definitions,
             Sides = sides,
-            VisualByOperator = visualByOperator
+            VisualByOperator = visualByOperator,
+            Depths = depths,
+            Colours = BuildColours(ordered, visuals),
+            InputNodes = inputNodes
         };
     }
 
-    private static void Index(IteratorDefinition definition, Dictionary<int, IteratorDefinition> definitions)
+    private static Dictionary<int, Color> BuildColours(IReadOnlyList<int> ordered,
+                                                       IReadOnlyDictionary<int, TraceVisualViewModel> visuals)
+    {
+        var colours = new Dictionary<int, Color>();
+
+        var used = new HashSet<int>();
+
+        var paletteIndex = 0;
+
+        foreach (var nodeId in ordered)
+        {
+            var colour = visuals.TryGetValue(nodeId, out var visual) && used.Add(visual.ObjectColour.ToArgb())
+                ? visual.ObjectColour
+                : NextColour(used, ref paletteIndex);
+
+            colours[nodeId] = colour;
+        }
+
+        return colours;
+    }
+
+    private static Color NextColour(HashSet<int> used, ref int paletteIndex)
+    {
+        for (var attempt = 0; attempt < 64; attempt++)
+        {
+            var hue = 24 + ((paletteIndex * 79) % 208);
+
+            paletteIndex++;
+
+            var colour = Helpers.ColourHelpers.HsvToColor(hue, 150, 220);
+
+            if (used.Add(colour.ToArgb()))
+            {
+                return colour;
+            }
+        }
+
+        return Color.Gray;
+    }
+
+    private static void Index(IteratorDefinition definition,
+                              Dictionary<int, IteratorDefinition> definitions,
+                              Dictionary<int, int> depths,
+                              List<int> ordered,
+                              int depth)
     {
         definitions[definition.NodeId] = definition;
+
+        depths[definition.NodeId] = depth;
+
+        ordered.Add(definition.NodeId);
 
         switch (definition)
         {
             case NestedLoopsDefinition loops:
-                Index(loops.Outer, definitions);
-                Index(loops.Inner, definitions);
+                Index(loops.Outer, definitions, depths, ordered, depth + 1);
+                Index(loops.Inner, definitions, depths, ordered, depth + 1);
                 break;
 
             case MergeJoinDefinition merge:
-                Index(merge.Outer.Source, definitions);
-                Index(merge.Inner.Source, definitions);
+                Index(merge.Outer.Source, definitions, depths, ordered, depth + 1);
+                Index(merge.Inner.Source, definitions, depths, ordered, depth + 1);
                 break;
 
             case HashMatchDefinition hash:
-                Index(hash.Build.Source, definitions);
-                Index(hash.Probe.Source, definitions);
+                Index(hash.Build.Source, definitions, depths, ordered, depth + 1);
+                Index(hash.Probe.Source, definitions, depths, ordered, depth + 1);
                 break;
 
             case UnaryDefinition unary:
-                Index(unary.Source, definitions);
+                Index(unary.Source, definitions, depths, ordered, depth + 1);
                 break;
         }
     }
 
-    private static string OperatorTitle(IteratorDefinition definition)
+    public static string DisplayName(IteratorDefinition definition)
         => definition switch
         {
             HashMatchDefinition => "Hash Match",
             MergeJoinDefinition => "Merge Join",
             NestedLoopsDefinition => "Nested Loops",
             TopDefinition => "Top",
-            _ => "Results"
+            SeekDefinition => "Index Seek",
+            RangeDefinition => "Index Scan",
+            HeapFetchDefinition => "RID Lookup",
+            AllocationScanDefinition => "Table Scan",
+            _ => "Operator"
         };
+
+    private static string OperatorTitle(IteratorDefinition definition)
+        => DisplayName(definition);
 
     /// <summary>
     /// The join type and the columns matched on, stated the way the operator states them
@@ -202,6 +282,14 @@ public static class TraceLayoutBuilder
         return $"{join.JoinType.ToDisplayName()}{on}{residual}";
     }
 
+    private static (string Outer, string Inner) InputLabels(IteratorDefinition definition)
+        => definition switch
+        {
+            HashMatchDefinition => ("Build Input", "Probe Input"),
+            TopDefinition => ("Input", string.Empty),
+            _ => ("Outer Input", "Inner Input")
+        };
+
     private static (IteratorDefinition? Outer, IteratorDefinition? Inner) Inputs(IteratorDefinition definition)
         => definition switch
         {
@@ -213,6 +301,7 @@ public static class TraceLayoutBuilder
         };
 
     private static TracePane InputPane(IteratorDefinition? input,
+                                       string label,
                                        IReadOnlyDictionary<int, TraceOperatorViewModel> tabsByNode,
                                        IReadOnlyDictionary<int, TraceVisualViewModel> visuals)
     {
@@ -223,7 +312,7 @@ public static class TraceLayoutBuilder
 
         if (tabsByNode.TryGetValue(input.NodeId, out var tab))
         {
-            return new TracePane(TracePaneKind.RowStream, tab.Output, tab.Title);
+            return new TracePane(TracePaneKind.RowStream, tab.Output, $"{label} ({input.NodeId})");
         }
 
         if (visuals.TryGetValue(input.NodeId, out var visual))

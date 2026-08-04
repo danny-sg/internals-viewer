@@ -1,4 +1,5 @@
 using InternalsViewer.Execution.AccessPaths.Results;
+using InternalsViewer.UI.App.Models.Trace;
 using Microsoft.UI.Xaml.Controls;
 
 namespace InternalsViewer.UI.App.Helpers.Selectors;
@@ -36,6 +37,8 @@ public class AccessStepTemplateSelector : DataTemplateSelector
     public DataTemplate HashBuildTemplate { get; set; } = null!;
 
     public DataTemplate HashBuildRunTemplate { get; set; } = null!;
+
+    public DataTemplate HashProbeSpanTemplate { get; set; } = null!;
 
     public DataTemplate HashProbeTemplate { get; set; } = null!;
 
@@ -90,7 +93,8 @@ public class AccessStepTemplateSelector : DataTemplateSelector
             AccessStep.JoinStart => JoinStartTemplate,
             AccessStep.JoinVerdict => JoinVerdictTemplate,
             AccessStep.HashBuild => HashBuildTemplate,
-            AccessStep.HashBuildRun => HashBuildRunTemplate,
+            HashBuildSpan => HashBuildRunTemplate,
+            HashProbeSpan => HashProbeSpanTemplate,
             AccessStep.HashProbe => HashProbeTemplate,
             AccessStep.HashProbeRun => HashProbeRunTemplate,
             AccessStep.HashCompare => HashCompareTemplate,

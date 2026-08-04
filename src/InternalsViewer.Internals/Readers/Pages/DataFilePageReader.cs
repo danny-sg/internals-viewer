@@ -3,12 +3,12 @@ using System.IO;
 using System.Threading;
 using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Internals.Engine.Database;
+using InternalsViewer.Internals.Engine.Loading;
 using InternalsViewer.Internals.Engine.Pages;
 using InternalsViewer.Internals.Engine.Pages.Enums;
 using InternalsViewer.Internals.Interfaces.Readers;
 using InternalsViewer.Internals.Services.Pages.Parsers;
 using Microsoft.Win32.SafeHandles;
-using InternalsViewer.Internals.Engine.Loading;
 
 namespace InternalsViewer.Internals.Readers.Pages;
 
