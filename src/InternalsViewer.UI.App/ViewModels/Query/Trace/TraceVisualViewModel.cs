@@ -20,6 +20,7 @@ using InternalsViewer.Internals.Services.Indexes;
 using InternalsViewer.UI.App.Models.Index;
 using InternalsViewer.UI.App.Models.Trace;
 using System.Drawing;
+using InternalsViewer.Execution.AccessPaths.Results.Steps;
 using AllocationBorder = InternalsViewer.UI.App.Models.AllocationBorder;
 using AllocationBorderScope = InternalsViewer.UI.App.Models.AllocationBorderScope;
 using AllocationLayer = InternalsViewer.UI.App.Models.AllocationLayer;

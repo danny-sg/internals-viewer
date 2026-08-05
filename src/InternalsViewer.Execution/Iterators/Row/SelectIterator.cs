@@ -1,5 +1,6 @@
 using InternalsViewer.Execution.AccessPaths.Definitions;
 using InternalsViewer.Execution.AccessPaths.Results;
+using InternalsViewer.Execution.AccessPaths.Results.Steps;
 using InternalsViewer.Execution.AccessPaths.Search;
 using InternalsViewer.Execution.Interfaces;
 using InternalsViewer.Execution.Interfaces.Iterators;
@@ -9,6 +10,12 @@ using InternalsViewer.Internals.Interfaces.Engine;
 
 namespace InternalsViewer.Execution.Iterators.Row;
 
+/// <summary>
+/// Select Iterator
+/// </summary>
+/// <remarks>
+/// Pass through iterator to project input into the final output
+/// </remarks>
 public sealed class SelectIterator(IIteratorFactory factory) : IteratorBase, IUnaryIterator
 {
     public override PageAddress? CurrentPageAddress => Input?.CurrentPageAddress;
@@ -19,7 +26,9 @@ public sealed class SelectIterator(IIteratorFactory factory) : IteratorBase, IUn
 
     public IIterator? Input { get; private set; }
 
-    public override async Task OpenAsync(IteratorContext context, IteratorDefinition definition, CancellationToken cancellationToken)
+    public override async Task OpenAsync(IteratorDefinition definition,
+                                         IteratorContext context,
+                                         CancellationToken cancellationToken)
     {
         var select = definition.Expect<SelectDefinition>();
 
@@ -28,12 +37,12 @@ public sealed class SelectIterator(IIteratorFactory factory) : IteratorBase, IUn
             await CloseAsync();
         }
 
-        await PrepareAsync(context, definition, cancellationToken);
+        await PrepareAsync(definition, context, cancellationToken);
 
         Input = factory.Create(select.Source);
         RowCount = 0;
 
-        await Input.OpenAsync(context, select.Source, cancellationToken);
+        await Input.OpenAsync(select.Source, context, cancellationToken);
     }
 
     public override async Task<IRecord?> GetRowAsync(CancellationToken cancellationToken)
@@ -49,7 +58,8 @@ public sealed class SelectIterator(IIteratorFactory factory) : IteratorBase, IUn
         {
             CurrentRow = null;
 
-            await EmitAsync(new AccessStep.Stopped(Input.StopReason ?? AccessPaths.Results.StopReason.PageExhausted), cancellationToken);
+            await EmitAsync(new AccessStep.Stopped(Input.StopReason ?? AccessPaths.Results.StopReason.PageExhausted), 
+                            cancellationToken);
 
             return null;
         }

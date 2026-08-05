@@ -11,7 +11,8 @@ public class StreamAggregateIterator : IteratorBase
 
     public override AccessStrategy? Strategy => null;
 
-    public override Task OpenAsync(IteratorContext context, IteratorDefinition definition, CancellationToken cancellationToken)
+    public override Task OpenAsync(IteratorDefinition definition, IteratorContext context,
+        CancellationToken cancellationToken)
     {
         throw new NotImplementedException();
     }

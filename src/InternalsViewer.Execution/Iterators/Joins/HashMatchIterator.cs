@@ -5,6 +5,7 @@ using InternalsViewer.Execution.AccessPaths.Joins;
 using InternalsViewer.Execution.AccessPaths.Joins.Hash;
 using InternalsViewer.Execution.AccessPaths.Predicates;
 using InternalsViewer.Execution.AccessPaths.Results;
+using InternalsViewer.Execution.AccessPaths.Results.Steps;
 using InternalsViewer.Execution.Interfaces;
 using InternalsViewer.Execution.Interfaces.Iterators.Joins;
 using InternalsViewer.Internals.Engine.Address;
@@ -100,7 +101,9 @@ public sealed class HashMatchIterator(IIteratorFactory factory) : JoinIterator, 
         PendingBucketBits = bucketBits;
     }
 
-    public override async Task OpenAsync(IteratorContext context, IteratorDefinition definition, CancellationToken cancellationToken)
+    public override async Task OpenAsync(IteratorDefinition definition, 
+                                         IteratorContext context,
+                                         CancellationToken cancellationToken)
     {
         var join = definition.Expect<HashMatchDefinition>();
 
@@ -109,7 +112,7 @@ public sealed class HashMatchIterator(IIteratorFactory factory) : JoinIterator, 
             await CloseAsync();
         }
 
-        await PrepareAsync(context, definition, cancellationToken);
+        await PrepareAsync(definition, context, cancellationToken);
 
         ResetJoin(join.JoinType);
 
@@ -130,9 +133,9 @@ public sealed class HashMatchIterator(IIteratorFactory factory) : JoinIterator, 
         PendingBucketBits = null;
         IsProbePhase = false;
 
-        await Outer.Iterator.OpenAsync(context, join.Build.Source, cancellationToken);
+        await Outer.Iterator.OpenAsync(join.Build.Source, context, cancellationToken);
 
-        await Inner.Iterator.OpenAsync(context, join.Probe.Source, cancellationToken);
+        await Inner.Iterator.OpenAsync(join.Probe.Source, context, cancellationToken);
 
         StartRows();
     }

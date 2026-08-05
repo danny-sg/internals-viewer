@@ -5,8 +5,6 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-    xmlns:allocation="using:InternalsViewer.UI.App.Controls.Allocation"
-    xmlns:accessSteps="using:InternalsViewer.UI.App.Controls.AccessSteps"
     xmlns:docking="using:InternalsViewer.UI.App.Controls.Docking"
     mc:Ignorable="d">
 

@@ -10,6 +10,7 @@ using InternalsViewer.Execution.AccessPaths.Definitions;
 using InternalsViewer.Execution.AccessPaths.Joins;
 using InternalsViewer.Execution.AccessPaths.Predicates;
 using InternalsViewer.Execution.AccessPaths.Results;
+using InternalsViewer.Execution.AccessPaths.Results.Steps;
 using InternalsViewer.Execution.AccessPaths.Search;
 using InternalsViewer.Execution.Interfaces;
 using InternalsViewer.Execution.Interfaces.Iterators;
@@ -164,8 +165,6 @@ public sealed partial class TraceTabViewModel : ObservableObject
 
         Dock = BuildDock();
     }
-
-    public SvgImageSource? IconSource => PlanNode is null ? null : new SvgImageSource(PlanIconResolver.Resolve(PlanNode));
 
     public DockLayoutViewModel Dock { get; }
 
@@ -405,10 +404,7 @@ public sealed partial class TraceTabViewModel : ObservableObject
             IndexPlanNodes(value);
         }
 
-        if (Layout is not null)
-        {
-            StepNodes = BuildStepNodes();
-        }
+        StepNodes = BuildStepNodes();
 
         UpdateActivePlanNodes();
     }
@@ -579,7 +575,7 @@ public sealed partial class TraceTabViewModel : ObservableObject
     [ObservableProperty]
     private IReadOnlyDictionary<int, TraceStepNode>? _stepNodes;
 
-    private IReadOnlyDictionary<int, TraceStepNode> BuildStepNodes()
+    private Dictionary<int, TraceStepNode> BuildStepNodes()
     {
         var names = new Dictionary<int, string>();
 
@@ -588,7 +584,7 @@ public sealed partial class TraceTabViewModel : ObservableObject
             var name = _planNodesById.GetValueOrDefault(nodeId)?.PhysicalOperator
                        ?? TraceLayoutBuilder.DisplayName(definition);
 
-            names[nodeId] = nodeId < 0 ? name : $"{name} ({nodeId})";
+            names[nodeId] = nodeId < 0 ? name : $"{name} (Node {nodeId})";
         }
 
         var nodes = new Dictionary<int, TraceStepNode>();
@@ -784,7 +780,7 @@ public sealed partial class TraceTabViewModel : ObservableObject
         }
     }
 
-    private IReadOnlyCollection<int> PathTo(int nodeId)
+    private List<int> PathTo(int nodeId)
     {
         var path = new List<int> { nodeId };
 

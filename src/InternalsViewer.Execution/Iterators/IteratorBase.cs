@@ -1,5 +1,6 @@
 using InternalsViewer.Execution.AccessPaths.Definitions;
 using InternalsViewer.Execution.AccessPaths.Results;
+using InternalsViewer.Execution.AccessPaths.Results.Steps;
 using InternalsViewer.Execution.AccessPaths.Search;
 using InternalsViewer.Execution.Interfaces;
 using InternalsViewer.Internals.Engine.Address;
@@ -25,7 +26,13 @@ public abstract class IteratorBase : IIterator
 
     protected IReadOnlyList<OutputColumn> OutputList { get; private set; } = [];
 
-    public abstract Task OpenAsync(IteratorContext context, IteratorDefinition definition, CancellationToken cancellationToken);
+    private bool HasOpened { get; set; }
+
+    private bool IsCloseEmitted { get; set; }
+
+    public abstract Task OpenAsync(IteratorDefinition definition, 
+                                   IteratorContext context,
+                                   CancellationToken cancellationToken);
 
     public abstract Task<IRecord?> GetRowAsync(CancellationToken cancellationToken);
 
@@ -36,11 +43,7 @@ public abstract class IteratorBase : IIterator
         IsComplete = true;
     }
 
-    private bool _hasEverOpened;
-
-    private bool _isCloseEmitted;
-
-    protected void Prepare(IteratorContext context, IteratorDefinition definition)
+    protected void Prepare(IteratorDefinition definition, IteratorContext context)
     {
         Context = context;
         NodeId = definition.NodeId;
@@ -50,15 +53,15 @@ public abstract class IteratorBase : IIterator
         StopReason = null;
     }
 
-    protected async ValueTask PrepareAsync(IteratorContext context,
-                                           IteratorDefinition definition,
+    protected async ValueTask PrepareAsync(IteratorDefinition definition,
+                                           IteratorContext context,
                                            CancellationToken cancellationToken)
     {
-        Prepare(context, definition);
+        Prepare(definition, context);
 
-        if (!_hasEverOpened)
+        if (!HasOpened)
         {
-            _hasEverOpened = true;
+            HasOpened = true;
 
             await Context.Steps.EmitAsync(new AccessStep.Open { NodeId = NodeId }, cancellationToken);
         }
@@ -81,12 +84,12 @@ public abstract class IteratorBase : IIterator
 
     protected async ValueTask EmitCloseAsync()
     {
-        if (!_hasEverOpened || _isCloseEmitted)
+        if (!HasOpened || IsCloseEmitted)
         {
             return;
         }
 
-        _isCloseEmitted = true;
+        IsCloseEmitted = true;
 
         await Context.Steps.EmitAsync(new AccessStep.Close { NodeId = NodeId }, CancellationToken.None);
     }

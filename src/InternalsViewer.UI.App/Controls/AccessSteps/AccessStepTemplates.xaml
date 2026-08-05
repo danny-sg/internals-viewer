@@ -70,7 +70,12 @@
 
     <DataTemplate x:Key="ReadPageTemplate" >
         <Grid Background="{ThemeResource AcrylicBackgroundFillColorDefaultBrush}" Style="{StaticResource StepRowStyle}">
-            <StackPanel Orientation="Horizontal" Grid.ColumnSpan="9" HorizontalAlignment="Left" VerticalAlignment="Top" Spacing="5" Width="140" Margin="-150,0,0,0">
+            <StackPanel Orientation="Horizontal" 
+                        Grid.ColumnSpan="9" 
+                        HorizontalAlignment="Left" 
+                        VerticalAlignment="Top" 
+                        Spacing="5" Width="140" 
+                        Margin="-150,0,0,0">
                 <Border x:Name="SourceBlob" Width="9" Height="9" CornerRadius="2" Margin="0,4,0,0" VerticalAlignment="Top" />
                 <TextBlock x:Name="SourceName" Style="{StaticResource StepNodeStyle}" />
             </StackPanel>
@@ -86,7 +91,12 @@
 
     <DataTemplate x:Key="ProbeStartTemplate" >
         <Grid Style="{StaticResource StepRowStyle}">
-            <StackPanel Orientation="Horizontal" Grid.ColumnSpan="9" HorizontalAlignment="Left" VerticalAlignment="Top" Spacing="5" Width="140" Margin="-150,0,0,0">
+            <StackPanel Orientation="Horizontal" 
+                        Grid.ColumnSpan="9" 
+                        HorizontalAlignment="Left" 
+                        VerticalAlignment="Top" 
+                        Spacing="5" Width="140" 
+                        Margin="-150,0,0,0">
                 <Border x:Name="SourceBlob" Width="9" Height="9" CornerRadius="2" Margin="0,4,0,0" VerticalAlignment="Top" />
                 <TextBlock x:Name="SourceName" Style="{StaticResource StepNodeStyle}" />
             </StackPanel>
@@ -117,7 +127,12 @@
                 <ColumnDefinition Width="Auto" />
                 <ColumnDefinition Width="*" />
             </Grid.ColumnDefinitions>
-            <StackPanel Orientation="Horizontal" Grid.ColumnSpan="9" HorizontalAlignment="Left" VerticalAlignment="Top" Spacing="5" Width="140" Margin="-150,0,0,0">
+            <StackPanel Orientation="Horizontal" 
+                        Grid.ColumnSpan="9" 
+                        HorizontalAlignment="Left" 
+                        VerticalAlignment="Top" 
+                        Spacing="5" Width="140" 
+                        Margin="-150,0,0,0">
                 <Border x:Name="SourceBlob" Width="9" Height="9" CornerRadius="2" Margin="0,4,0,0" VerticalAlignment="Top" />
                 <TextBlock x:Name="SourceName" Style="{StaticResource StepNodeStyle}" />
             </StackPanel>
@@ -152,7 +167,12 @@
                 <ColumnDefinition Width="Auto" />
                 <ColumnDefinition Width="*" />
             </Grid.ColumnDefinitions>
-            <StackPanel Orientation="Horizontal" Grid.ColumnSpan="9" HorizontalAlignment="Left" VerticalAlignment="Top" Spacing="5" Width="140" Margin="-150,0,0,0">
+            <StackPanel Orientation="Horizontal" 
+                        Grid.ColumnSpan="9" 
+                        HorizontalAlignment="Left" 
+                        VerticalAlignment="Top" 
+                        Spacing="5" Width="140" 
+                        Margin="-150,0,0,0">
                 <Border x:Name="SourceBlob" Width="9" Height="9" CornerRadius="2" Margin="0,4,0,0" VerticalAlignment="Top" />
                 <TextBlock x:Name="SourceName" Style="{StaticResource StepNodeStyle}" />
             </StackPanel>
@@ -195,8 +215,9 @@
                                 <TextBlock Text="{Binding High}" Style="{StaticResource StepValueStyle}" />
                             </StackPanel>
                             <StackPanel Orientation="Horizontal">
-                                <predicates:PredicateTextBox Style="{StaticResource StepDetailStyle}"
-                                                             Text="{Binding Converter={StaticResource AccessStepToPredicateTextConverter}}" />
+                                <predicates:PredicateTextBox 
+                                    Style="{StaticResource StepDetailStyle}"
+                                    Text="{Binding Converter={StaticResource AccessStepToPredicateTextConverter}}" />
                                 <TextBlock Text="{Binding SearchRight, Converter={StaticResource ProbeDirectionToTextConverter}}"
                                            Style="{StaticResource StepValueStyle}"
                                            Margin="8,0,0,0" />
@@ -211,7 +232,12 @@
 
     <DataTemplate x:Key="DescendTemplate" >
         <Grid Style="{StaticResource StepRowStyle}">
-            <StackPanel Orientation="Horizontal" Grid.ColumnSpan="9" HorizontalAlignment="Left" VerticalAlignment="Top" Spacing="5" Width="140" Margin="-150,0,0,0">
+            <StackPanel Orientation="Horizontal" 
+                        Grid.ColumnSpan="9" 
+                        HorizontalAlignment="Left" 
+                        VerticalAlignment="Top" 
+                        Spacing="5" Width="140" 
+                        Margin="-150,0,0,0">
                 <Border x:Name="SourceBlob" Width="9" Height="9" CornerRadius="2" Margin="0,4,0,0" VerticalAlignment="Top" />
                 <TextBlock x:Name="SourceName" Style="{StaticResource StepNodeStyle}" />
             </StackPanel>
@@ -227,7 +253,12 @@
 
     <DataTemplate x:Key="ProbeResultTemplate" >
         <Grid Style="{StaticResource StepRowStyle}">
-            <StackPanel Orientation="Horizontal" Grid.ColumnSpan="9" HorizontalAlignment="Left" VerticalAlignment="Top" Spacing="5" Width="140" Margin="-150,0,0,0">
+            <StackPanel Orientation="Horizontal" 
+                        Grid.ColumnSpan="9" 
+                        HorizontalAlignment="Left" 
+                        VerticalAlignment="Top" 
+                        Spacing="5" Width="140" 
+                        Margin="-150,0,0,0">
                 <Border x:Name="SourceBlob" Width="9" Height="9" CornerRadius="2" Margin="0,4,0,0" VerticalAlignment="Top" />
                 <TextBlock x:Name="SourceName" Style="{StaticResource StepNodeStyle}" />
             </StackPanel>
@@ -251,7 +282,12 @@
 
     <DataTemplate x:Key="RowTemplate" >
         <Grid Style="{StaticResource StepRowStyle}">
-            <StackPanel Orientation="Horizontal" Grid.ColumnSpan="9" HorizontalAlignment="Left" VerticalAlignment="Top" Spacing="5" Width="140" Margin="-150,0,0,0">
+            <StackPanel Orientation="Horizontal" 
+                        Grid.ColumnSpan="9" 
+                        HorizontalAlignment="Left" 
+                        VerticalAlignment="Top" 
+                        Spacing="5" Width="140" 
+                        Margin="-150,0,0,0">
                 <Border x:Name="SourceBlob" Width="9" Height="9" CornerRadius="2" Margin="0,4,0,0" VerticalAlignment="Top" />
                 <TextBlock x:Name="SourceName" Style="{StaticResource StepNodeStyle}" />
             </StackPanel>
@@ -285,7 +321,12 @@
 
     <DataTemplate x:Key="RowRunTemplate" >
         <Grid Style="{StaticResource StepRowStyle}">
-            <StackPanel Orientation="Horizontal" Grid.ColumnSpan="9" HorizontalAlignment="Left" VerticalAlignment="Top" Spacing="5" Width="140" Margin="-150,0,0,0">
+            <StackPanel Orientation="Horizontal" 
+                        Grid.ColumnSpan="9" 
+                        HorizontalAlignment="Left" 
+                        VerticalAlignment="Top" 
+                        Spacing="5" Width="140" 
+                        Margin="-150,0,0,0">
                 <Border x:Name="SourceBlob" Width="9" Height="9" CornerRadius="2" Margin="0,4,0,0" VerticalAlignment="Top" />
                 <TextBlock x:Name="SourceName" Style="{StaticResource StepNodeStyle}" />
             </StackPanel>
@@ -324,7 +365,12 @@
 
     <DataTemplate x:Key="RangeEndTemplate" >
         <Grid Style="{StaticResource StepRowStyle}">
-            <StackPanel Orientation="Horizontal" Grid.ColumnSpan="9" HorizontalAlignment="Left" VerticalAlignment="Top" Spacing="5" Width="140" Margin="-150,0,0,0">
+            <StackPanel Orientation="Horizontal"
+                        Grid.ColumnSpan="9"
+                        HorizontalAlignment="Left"
+                        VerticalAlignment="Top"
+                        Spacing="5" Width="140"
+                        Margin="-150,0,0,0">
                 <Border x:Name="SourceBlob" Width="9" Height="9" CornerRadius="2" Margin="0,4,0,0" VerticalAlignment="Top" />
                 <TextBlock x:Name="SourceName" Style="{StaticResource StepNodeStyle}" />
             </StackPanel>
@@ -349,7 +395,12 @@
 
     <DataTemplate x:Key="LeafLinkTemplate" >
         <Grid Style="{StaticResource StepRowStyle}">
-            <StackPanel Orientation="Horizontal" Grid.ColumnSpan="9" HorizontalAlignment="Left" VerticalAlignment="Top" Spacing="5" Width="140" Margin="-150,0,0,0">
+            <StackPanel Orientation="Horizontal" 
+                        Grid.ColumnSpan="9" 
+                        HorizontalAlignment="Left" 
+                        VerticalAlignment="Top" 
+                        Spacing="5" Width="140" 
+                        Margin="-150,0,0,0">
                 <Border x:Name="SourceBlob" Width="9" Height="9" CornerRadius="2" Margin="0,4,0,0" VerticalAlignment="Top" />
                 <TextBlock x:Name="SourceName" Style="{StaticResource StepNodeStyle}" />
             </StackPanel>
@@ -367,7 +418,12 @@
 
     <DataTemplate x:Key="ReseekTemplate" >
         <Grid Style="{StaticResource StepRowStyle}">
-            <StackPanel Orientation="Horizontal" Grid.ColumnSpan="9" HorizontalAlignment="Left" VerticalAlignment="Top" Spacing="5" Width="140" Margin="-150,0,0,0">
+            <StackPanel Orientation="Horizontal" 
+                        Grid.ColumnSpan="9" 
+                        HorizontalAlignment="Left" 
+                        VerticalAlignment="Top" 
+                        Spacing="5" Width="140" 
+                        Margin="-150,0,0,0">
                 <Border x:Name="SourceBlob" Width="9" Height="9" CornerRadius="2" Margin="0,4,0,0" VerticalAlignment="Top" />
                 <TextBlock x:Name="SourceName" Style="{StaticResource StepNodeStyle}" />
             </StackPanel>
@@ -389,7 +445,12 @@
 
     <DataTemplate x:Key="RebindTemplate" >
         <Grid Style="{StaticResource StepRowStyle}">
-            <StackPanel Orientation="Horizontal" Grid.ColumnSpan="9" HorizontalAlignment="Left" VerticalAlignment="Top" Spacing="5" Width="140" Margin="-150,0,0,0">
+            <StackPanel Orientation="Horizontal" 
+                        Grid.ColumnSpan="9" 
+                        HorizontalAlignment="Left" 
+                        VerticalAlignment="Top" 
+                        Spacing="5" Width="140" 
+                        Margin="-150,0,0,0">
                 <Border x:Name="SourceBlob" Width="9" Height="9" CornerRadius="2" Margin="0,4,0,0" VerticalAlignment="Top" />
                 <TextBlock x:Name="SourceName" Style="{StaticResource StepNodeStyle}" />
             </StackPanel>
@@ -405,7 +466,8 @@
                                    Visibility="{Binding RowIdentifier, Converter={StaticResource NullToVisibilityConverter}}" />
                     </StackPanel>
                     <predicates:PredicateTextBox Style="{StaticResource StepDetailStyle}"
-                                                 Visibility="{Binding RowIdentifier, Converter={StaticResource StepsNullToInverseVisibilityConverter}}"
+                                                 Visibility="{Binding RowIdentifier, 
+                                                              Converter={StaticResource StepsNullToInverseVisibilityConverter}}"
                                                  Text="{Binding Converter={StaticResource AccessStepToPredicateTextConverter}}" />
                 </StackPanel>
             </StackPanel>
@@ -414,7 +476,12 @@
 
     <DataTemplate x:Key="JoinStartTemplate" >
         <Grid Style="{StaticResource StepRowStyle}">
-            <StackPanel Orientation="Horizontal" Grid.ColumnSpan="9" HorizontalAlignment="Left" VerticalAlignment="Top" Spacing="5" Width="140" Margin="-150,0,0,0">
+            <StackPanel Orientation="Horizontal"
+                        Grid.ColumnSpan="9"
+                        HorizontalAlignment="Left"
+                        VerticalAlignment="Top"
+                        Spacing="5" Width="140"
+                        Margin="-150,0,0,0">
                 <Border x:Name="SourceBlob" Width="9" Height="9" CornerRadius="2" Margin="0,4,0,0" VerticalAlignment="Top" />
                 <TextBlock x:Name="SourceName" Style="{StaticResource StepNodeStyle}" />
             </StackPanel>
@@ -427,7 +494,12 @@
 
     <DataTemplate x:Key="MergeCompareTemplate" >
         <Grid Style="{StaticResource StepRowStyle}">
-            <StackPanel Orientation="Horizontal" Grid.ColumnSpan="9" HorizontalAlignment="Left" VerticalAlignment="Top" Spacing="5" Width="140" Margin="-150,0,0,0">
+            <StackPanel Orientation="Horizontal" 
+                        Grid.ColumnSpan="9" 
+                        HorizontalAlignment="Left" 
+                        VerticalAlignment="Top" 
+                        Spacing="5" Width="140" 
+                        Margin="-150,0,0,0">
                 <Border x:Name="SourceBlob" Width="9" Height="9" CornerRadius="2" Margin="0,4,0,0" VerticalAlignment="Top" />
                 <TextBlock x:Name="SourceName" Style="{StaticResource StepNodeStyle}" />
             </StackPanel>
@@ -468,7 +540,12 @@
 
     <DataTemplate x:Key="MergeCompareRunTemplate" >
         <Grid Style="{StaticResource StepRowStyle}">
-            <StackPanel Orientation="Horizontal" Grid.ColumnSpan="9" HorizontalAlignment="Left" VerticalAlignment="Top" Spacing="5" Width="140" Margin="-150,0,0,0">
+            <StackPanel Orientation="Horizontal" 
+                        Grid.ColumnSpan="9" 
+                        HorizontalAlignment="Left" 
+                        VerticalAlignment="Top" 
+                        Spacing="5" Width="140" 
+                        Margin="-150,0,0,0">
                 <Border x:Name="SourceBlob" Width="9" Height="9" CornerRadius="2" Margin="0,4,0,0" VerticalAlignment="Top" />
                 <TextBlock x:Name="SourceName" Style="{StaticResource StepNodeStyle}" />
             </StackPanel>
@@ -507,7 +584,12 @@
 
     <DataTemplate x:Key="HashBuildTemplate" >
         <Grid Style="{StaticResource StepRowStyle}">
-            <StackPanel Orientation="Horizontal" Grid.ColumnSpan="9" HorizontalAlignment="Left" VerticalAlignment="Top" Spacing="5" Width="140" Margin="-150,0,0,0">
+            <StackPanel Orientation="Horizontal" 
+                        Grid.ColumnSpan="9" 
+                        HorizontalAlignment="Left" 
+                        VerticalAlignment="Top" 
+                        Spacing="5" Width="140" 
+                        Margin="-150,0,0,0">
                 <Border x:Name="SourceBlob" Width="9" Height="9" CornerRadius="2" Margin="0,4,0,0" VerticalAlignment="Top" />
                 <TextBlock x:Name="SourceName" Style="{StaticResource StepNodeStyle}" />
             </StackPanel>
@@ -539,7 +621,12 @@
 
     <DataTemplate x:Key="HashBuildRunTemplate" >
         <Grid Style="{StaticResource StepRowStyle}">
-            <StackPanel Orientation="Horizontal" Grid.ColumnSpan="9" HorizontalAlignment="Left" VerticalAlignment="Top" Spacing="5" Width="140" Margin="-150,0,0,0">
+            <StackPanel Orientation="Horizontal" 
+                        Grid.ColumnSpan="9" 
+                        HorizontalAlignment="Left" 
+                        VerticalAlignment="Top" 
+                        Spacing="5" Width="140" 
+                        Margin="-150,0,0,0">
                 <Border x:Name="SourceBlob" Width="9" Height="9" CornerRadius="2" Margin="0,4,0,0" VerticalAlignment="Top" />
                 <TextBlock x:Name="SourceName" Style="{StaticResource StepNodeStyle}" />
             </StackPanel>
@@ -580,7 +667,12 @@
 
     <DataTemplate x:Key="HashProbeSpanTemplate" >
         <Grid Style="{StaticResource StepRowStyle}">
-            <StackPanel Orientation="Horizontal" Grid.ColumnSpan="9" HorizontalAlignment="Left" VerticalAlignment="Top" Spacing="5" Width="140" Margin="-150,0,0,0">
+            <StackPanel Orientation="Horizontal"
+                        Grid.ColumnSpan="9"
+                        HorizontalAlignment="Left"
+                        VerticalAlignment="Top"
+                        Spacing="5" Width="140"
+                        Margin="-150,0,0,0">
                 <Border x:Name="SourceBlob" Width="9" Height="9" CornerRadius="2" Margin="0,4,0,0" VerticalAlignment="Top" />
                 <TextBlock x:Name="SourceName" Style="{StaticResource StepNodeStyle}" />
             </StackPanel>
@@ -627,7 +719,12 @@
 
     <DataTemplate x:Key="HashMatchSpanTemplate" >
         <Grid Style="{StaticResource StepRowStyle}">
-            <StackPanel Orientation="Horizontal" Grid.ColumnSpan="9" HorizontalAlignment="Left" VerticalAlignment="Top" Spacing="5" Width="140" Margin="-150,0,0,0">
+            <StackPanel Orientation="Horizontal" 
+                        Grid.ColumnSpan="9" 
+                        HorizontalAlignment="Left" 
+                        VerticalAlignment="Top" 
+                        Spacing="5" Width="140" 
+                        Margin="-150,0,0,0">
                 <Border x:Name="SourceBlob" Width="9" Height="9" CornerRadius="2" Margin="0,4,0,0" VerticalAlignment="Top" />
                 <TextBlock x:Name="SourceName" Style="{StaticResource StepNodeStyle}" />
             </StackPanel>
@@ -666,7 +763,12 @@
 
     <DataTemplate x:Key="HashProbeTemplate" >
         <Grid Style="{StaticResource StepRowStyle}">
-            <StackPanel Orientation="Horizontal" Grid.ColumnSpan="9" HorizontalAlignment="Left" VerticalAlignment="Top" Spacing="5" Width="140" Margin="-150,0,0,0">
+            <StackPanel Orientation="Horizontal" 
+                        Grid.ColumnSpan="9" 
+                        HorizontalAlignment="Left" 
+                        VerticalAlignment="Top" 
+                        Spacing="5" Width="140" 
+                        Margin="-150,0,0,0">
                 <Border x:Name="SourceBlob" Width="9" Height="9" CornerRadius="2" Margin="0,4,0,0" VerticalAlignment="Top" />
                 <TextBlock x:Name="SourceName" Style="{StaticResource StepNodeStyle}" />
             </StackPanel>
@@ -716,7 +818,12 @@
 
     <DataTemplate x:Key="HashProbeRunTemplate" >
         <Grid Style="{StaticResource StepRowStyle}">
-            <StackPanel Orientation="Horizontal" Grid.ColumnSpan="9" HorizontalAlignment="Left" VerticalAlignment="Top" Spacing="5" Width="140" Margin="-150,0,0,0">
+            <StackPanel Orientation="Horizontal" 
+                        Grid.ColumnSpan="9" 
+                        HorizontalAlignment="Left" 
+                        VerticalAlignment="Top" 
+                        Spacing="5" Width="140" 
+                        Margin="-150,0,0,0">
                 <Border x:Name="SourceBlob" Width="9" Height="9" CornerRadius="2" Margin="0,4,0,0" VerticalAlignment="Top" />
                 <TextBlock x:Name="SourceName" Style="{StaticResource StepNodeStyle}" />
             </StackPanel>
@@ -776,7 +883,12 @@
 
     <DataTemplate x:Key="HashCompareTemplate" >
         <Grid Style="{StaticResource StepRowStyle}">
-            <StackPanel Orientation="Horizontal" Grid.ColumnSpan="9" HorizontalAlignment="Left" VerticalAlignment="Top" Spacing="5" Width="140" Margin="-150,0,0,0">
+            <StackPanel Orientation="Horizontal"
+                        Grid.ColumnSpan="9"
+                        HorizontalAlignment="Left"
+                        VerticalAlignment="Top"
+                        Spacing="5" Width="140"
+                        Margin="-150,0,0,0">
                 <Border x:Name="SourceBlob" Width="9" Height="9" CornerRadius="2" Margin="0,4,0,0" VerticalAlignment="Top" />
                 <TextBlock x:Name="SourceName" Style="{StaticResource StepNodeStyle}" />
             </StackPanel>
@@ -877,7 +989,12 @@
 
     <DataTemplate x:Key="JoinVerdictTemplate" >
         <Grid Style="{StaticResource StepRowStyle}">
-            <StackPanel Orientation="Horizontal" Grid.ColumnSpan="9" HorizontalAlignment="Left" VerticalAlignment="Top" Spacing="5" Width="140" Margin="-150,0,0,0">
+            <StackPanel Orientation="Horizontal" 
+                        Grid.ColumnSpan="9" 
+                        HorizontalAlignment="Left" 
+                        VerticalAlignment="Top" 
+                        Spacing="5" Width="140" 
+                        Margin="-150,0,0,0">
                 <Border x:Name="SourceBlob" Width="9" Height="9" CornerRadius="2" Margin="0,4,0,0" VerticalAlignment="Top" />
                 <TextBlock x:Name="SourceName" Style="{StaticResource StepNodeStyle}" />
             </StackPanel>
@@ -890,7 +1007,12 @@
 
     <DataTemplate x:Key="JoinEmitTemplate" >
         <Grid Style="{StaticResource StepRowStyle}">
-            <StackPanel Orientation="Horizontal" Grid.ColumnSpan="9" HorizontalAlignment="Left" VerticalAlignment="Top" Spacing="5" Width="140" Margin="-150,0,0,0">
+            <StackPanel Orientation="Horizontal" 
+                        Grid.ColumnSpan="9" 
+                        HorizontalAlignment="Left" 
+                        VerticalAlignment="Top" 
+                        Spacing="5" Width="140" 
+                        Margin="-150,0,0,0">
                 <Border x:Name="SourceBlob" Width="9" Height="9" CornerRadius="2" Margin="0,4,0,0" VerticalAlignment="Top" />
                 <TextBlock x:Name="SourceName" Style="{StaticResource StepNodeStyle}" />
             </StackPanel>
@@ -921,7 +1043,12 @@
 
     <DataTemplate x:Key="ForwardedRecordTemplate" >
         <Grid Style="{StaticResource StepRowStyle}">
-            <StackPanel Orientation="Horizontal" Grid.ColumnSpan="9" HorizontalAlignment="Left" VerticalAlignment="Top" Spacing="5" Width="140" Margin="-150,0,0,0">
+            <StackPanel Orientation="Horizontal" 
+                        Grid.ColumnSpan="9" 
+                        HorizontalAlignment="Left" 
+                        VerticalAlignment="Top" 
+                        Spacing="5" Width="140" 
+                        Margin="-150,0,0,0">
                 <Border x:Name="SourceBlob" Width="9" Height="9" CornerRadius="2" Margin="0,4,0,0" VerticalAlignment="Top" />
                 <TextBlock x:Name="SourceName" Style="{StaticResource StepNodeStyle}" />
             </StackPanel>
@@ -936,7 +1063,12 @@
 
     <DataTemplate x:Key="OpenTemplate" >
         <Grid Style="{StaticResource StepRowStyle}">
-            <StackPanel Orientation="Horizontal" Grid.ColumnSpan="9" HorizontalAlignment="Left" VerticalAlignment="Top" Spacing="5" Width="140" Margin="-150,0,0,0">
+            <StackPanel Orientation="Horizontal" 
+                        Grid.ColumnSpan="9" 
+                        HorizontalAlignment="Left" 
+                        VerticalAlignment="Top" 
+                        Spacing="5" Width="140" 
+                        Margin="-150,0,0,0">
                 <Border x:Name="SourceBlob" Width="9" Height="9" CornerRadius="2" Margin="0,4,0,0" VerticalAlignment="Top" />
                 <TextBlock x:Name="SourceName" Style="{StaticResource StepNodeStyle}" />
             </StackPanel>
@@ -949,7 +1081,12 @@
 
     <DataTemplate x:Key="CloseTemplate" >
         <Grid Style="{StaticResource StepRowStyle}">
-            <StackPanel Orientation="Horizontal" Grid.ColumnSpan="9" HorizontalAlignment="Left" VerticalAlignment="Top" Spacing="5" Width="140" Margin="-150,0,0,0">
+            <StackPanel Orientation="Horizontal" 
+                        Grid.ColumnSpan="9" 
+                        HorizontalAlignment="Left" 
+                        VerticalAlignment="Top" 
+                        Spacing="5" Width="140" 
+                        Margin="-150,0,0,0">
                 <Border x:Name="SourceBlob" Width="9" Height="9" CornerRadius="2" Margin="0,4,0,0" VerticalAlignment="Top" />
                 <TextBlock x:Name="SourceName" Style="{StaticResource StepNodeStyle}" />
             </StackPanel>
@@ -962,7 +1099,12 @@
 
     <DataTemplate x:Key="OutputTemplate" >
         <Grid Style="{StaticResource StepRowStyle}">
-            <StackPanel Orientation="Horizontal" Grid.ColumnSpan="9" HorizontalAlignment="Left" VerticalAlignment="Top" Spacing="5" Width="140" Margin="-150,0,0,0">
+            <StackPanel Orientation="Horizontal" 
+                        Grid.ColumnSpan="9" 
+                        HorizontalAlignment="Left" 
+                        VerticalAlignment="Top" 
+                        Spacing="5" Width="140" 
+                        Margin="-150,0,0,0">
                 <Border x:Name="SourceBlob" Width="9" Height="9" CornerRadius="2" Margin="0,4,0,0" VerticalAlignment="Top" />
                 <TextBlock x:Name="SourceName" Style="{StaticResource StepNodeStyle}" />
             </StackPanel>
@@ -985,7 +1127,12 @@
 
     <DataTemplate x:Key="MergeCompareSpanTemplate" >
         <Grid Style="{StaticResource StepRowStyle}">
-            <StackPanel Orientation="Horizontal" Grid.ColumnSpan="9" HorizontalAlignment="Left" VerticalAlignment="Top" Spacing="5" Width="140" Margin="-150,0,0,0">
+            <StackPanel Orientation="Horizontal" 
+                        Grid.ColumnSpan="9" 
+                        HorizontalAlignment="Left" 
+                        VerticalAlignment="Top" 
+                        Spacing="5" Width="140" 
+                        Margin="-150,0,0,0">
                 <Border x:Name="SourceBlob" Width="9" Height="9" CornerRadius="2" Margin="0,4,0,0" VerticalAlignment="Top" />
                 <TextBlock x:Name="SourceName" Style="{StaticResource StepNodeStyle}" />
             </StackPanel>
@@ -1022,7 +1169,12 @@
 
     <DataTemplate x:Key="MergeMatchSpanTemplate" >
         <Grid Style="{StaticResource StepRowStyle}">
-            <StackPanel Orientation="Horizontal" Grid.ColumnSpan="9" HorizontalAlignment="Left" VerticalAlignment="Top" Spacing="5" Width="140" Margin="-150,0,0,0">
+            <StackPanel Orientation="Horizontal" 
+                        Grid.ColumnSpan="9" 
+                        HorizontalAlignment="Left" 
+                        VerticalAlignment="Top" 
+                        Spacing="5" Width="140" 
+                        Margin="-150,0,0,0">
                 <Border x:Name="SourceBlob" Width="9" Height="9" CornerRadius="2" Margin="0,4,0,0" VerticalAlignment="Top" />
                 <TextBlock x:Name="SourceName" Style="{StaticResource StepNodeStyle}" />
             </StackPanel>
@@ -1059,7 +1211,15 @@
 
     <DataTemplate x:Key="SortCollectSpanTemplate" >
         <Grid Style="{StaticResource StepRowStyle}">
-            <StackPanel Orientation="Horizontal" Grid.ColumnSpan="9" HorizontalAlignment="Left" VerticalAlignment="Top" Spacing="5" Width="140" Margin="-150,0,0,0"><Border x:Name="SourceBlob" Width="9" Height="9" CornerRadius="2" Margin="0,4,0,0" VerticalAlignment="Top" /><TextBlock x:Name="SourceName" Style="{StaticResource StepNodeStyle}" /></StackPanel>
+            <StackPanel Orientation="Horizontal" 
+                        Grid.ColumnSpan="9" 
+                        HorizontalAlignment="Left" 
+                        VerticalAlignment="Top" 
+                        Spacing="5" Width="140" 
+                        Margin="-150,0,0,0">
+                <Border x:Name="SourceBlob" Width="9" Height="9" CornerRadius="2" Margin="0,4,0,0" VerticalAlignment="Top" />
+                <TextBlock x:Name="SourceName" Style="{StaticResource StepNodeStyle}" />
+            </StackPanel>
             <StackPanel Orientation="Horizontal">
                 <TextBlock Text="Collect" Style="{StaticResource StepLabelStyle}" />
                 <TextBlock Text="Row" Style="{StaticResource StepPropertyStyle}" />
@@ -1077,7 +1237,15 @@
 
     <DataTemplate x:Key="SortCollectTemplate" >
         <Grid Style="{StaticResource StepRowStyle}">
-            <StackPanel Orientation="Horizontal" Grid.ColumnSpan="9" HorizontalAlignment="Left" VerticalAlignment="Top" Spacing="5" Width="140" Margin="-150,0,0,0"><Border x:Name="SourceBlob" Width="9" Height="9" CornerRadius="2" Margin="0,4,0,0" VerticalAlignment="Top" /><TextBlock x:Name="SourceName" Style="{StaticResource StepNodeStyle}" /></StackPanel>
+            <StackPanel Orientation="Horizontal" 
+                        Grid.ColumnSpan="9" 
+                        HorizontalAlignment="Left" 
+                        VerticalAlignment="Top" 
+                        Spacing="5" Width="140" 
+                        Margin="-150,0,0,0">
+                <Border x:Name="SourceBlob" Width="9" Height="9" CornerRadius="2" Margin="0,4,0,0" VerticalAlignment="Top" />
+                <TextBlock x:Name="SourceName" Style="{StaticResource StepNodeStyle}" />
+            </StackPanel>
             <StackPanel Orientation="Horizontal">
                 <TextBlock Text="Collect" Style="{StaticResource StepLabelStyle}" />
                 <TextBlock Text="Row" Style="{StaticResource StepPropertyStyle}" />
@@ -1092,7 +1260,15 @@
 
     <DataTemplate x:Key="SortedTemplate" >
         <Grid Background="{ThemeResource AcrylicBackgroundFillColorDefaultBrush}" Style="{StaticResource StepRowStyle}">
-            <StackPanel Orientation="Horizontal" Grid.ColumnSpan="9" HorizontalAlignment="Left" VerticalAlignment="Top" Spacing="5" Width="140" Margin="-150,0,0,0"><Border x:Name="SourceBlob" Width="9" Height="9" CornerRadius="2" Margin="0,4,0,0" VerticalAlignment="Top" /><TextBlock x:Name="SourceName" Style="{StaticResource StepNodeStyle}" /></StackPanel>
+            <StackPanel Orientation="Horizontal" 
+                        Grid.ColumnSpan="9" 
+                        HorizontalAlignment="Left" 
+                        VerticalAlignment="Top" 
+                        Spacing="5" Width="140" 
+                        Margin="-150,0,0,0">
+                <Border x:Name="SourceBlob" Width="9" Height="9" CornerRadius="2" Margin="0,4,0,0" VerticalAlignment="Top" />
+                <TextBlock x:Name="SourceName" Style="{StaticResource StepNodeStyle}" />
+            </StackPanel>
             <StackPanel Orientation="Horizontal" Padding="0,8,0,8">
                 <TextBlock Text="Sort" Style="{StaticResource StepLabelStyle}" />
                 <TextBlock Text="Sorted" Style="{StaticResource StepPropertyStyle}" />
@@ -1104,7 +1280,15 @@
 
     <DataTemplate x:Key="SortRowTemplate" >
         <Grid Style="{StaticResource StepRowStyle}">
-            <StackPanel Orientation="Horizontal" Grid.ColumnSpan="9" HorizontalAlignment="Left" VerticalAlignment="Top" Spacing="5" Width="140" Margin="-150,0,0,0"><Border x:Name="SourceBlob" Width="9" Height="9" CornerRadius="2" Margin="0,4,0,0" VerticalAlignment="Top" /><TextBlock x:Name="SourceName" Style="{StaticResource StepNodeStyle}" /></StackPanel>
+            <StackPanel Orientation="Horizontal" 
+                        Grid.ColumnSpan="9" 
+                        HorizontalAlignment="Left" 
+                        VerticalAlignment="Top" 
+                        Spacing="5" Width="140" 
+                        Margin="-150,0,0,0">
+                <Border x:Name="SourceBlob" Width="9" Height="9" CornerRadius="2" Margin="0,4,0,0" VerticalAlignment="Top" />
+                <TextBlock x:Name="SourceName" Style="{StaticResource StepNodeStyle}" />
+            </StackPanel>
             <StackPanel Orientation="Horizontal">
                 <TextBlock Text="Get Row" Style="{StaticResource StepLabelStyle}" />
                 <TextBlock Text="Row" Style="{StaticResource StepPropertyStyle}" />
@@ -1125,7 +1309,15 @@
 
     <DataTemplate x:Key="SortDuplicateTemplate" >
         <Grid Style="{StaticResource StepRowStyle}">
-            <StackPanel Orientation="Horizontal" Grid.ColumnSpan="9" HorizontalAlignment="Left" VerticalAlignment="Top" Spacing="5" Width="140" Margin="-150,0,0,0"><Border x:Name="SourceBlob" Width="9" Height="9" CornerRadius="2" Margin="0,4,0,0" VerticalAlignment="Top" /><TextBlock x:Name="SourceName" Style="{StaticResource StepNodeStyle}" /></StackPanel>
+            <StackPanel Orientation="Horizontal" 
+                        Grid.ColumnSpan="9" 
+                        HorizontalAlignment="Left" 
+                        VerticalAlignment="Top" 
+                        Spacing="5" Width="140" 
+                        Margin="-150,0,0,0">
+                <Border x:Name="SourceBlob" Width="9" Height="9" CornerRadius="2" Margin="0,4,0,0" VerticalAlignment="Top" />
+                <TextBlock x:Name="SourceName" Style="{StaticResource StepNodeStyle}" />
+            </StackPanel>
             <StackPanel Orientation="Horizontal">
                 <TextBlock Text="Duplicate" Style="{StaticResource StepLabelStyle}" />
                 <TextBlock Text="skipped" Style="{StaticResource StepPropertyStyle}" />
@@ -1146,7 +1338,15 @@
 
     <DataTemplate x:Key="InputStartTemplate" >
         <Grid Style="{StaticResource StepRowStyle}">
-            <StackPanel Orientation="Horizontal" Grid.ColumnSpan="9" HorizontalAlignment="Left" VerticalAlignment="Top" Spacing="5" Width="140" Margin="-150,0,0,0"><Border x:Name="SourceBlob" Width="9" Height="9" CornerRadius="2" Margin="0,4,0,0" VerticalAlignment="Top" /><TextBlock x:Name="SourceName" Style="{StaticResource StepNodeStyle}" /></StackPanel>
+            <StackPanel Orientation="Horizontal" 
+                        Grid.ColumnSpan="9" 
+                        HorizontalAlignment="Left" 
+                        VerticalAlignment="Top" 
+                        Spacing="5" Width="140" 
+                        Margin="-150,0,0,0">
+                <Border x:Name="SourceBlob" Width="9" Height="9" CornerRadius="2" Margin="0,4,0,0" VerticalAlignment="Top" />
+                <TextBlock x:Name="SourceName" Style="{StaticResource StepNodeStyle}" />
+            </StackPanel>
             <StackPanel Orientation="Horizontal">
                 <TextBlock Text="Input" Style="{StaticResource StepLabelStyle}" />
                 <TextBlock Text="{Binding Number}" Style="{StaticResource StepValueStyle}" />
@@ -1158,7 +1358,15 @@
 
     <DataTemplate x:Key="ConcatRowTemplate" >
         <Grid Style="{StaticResource StepRowStyle}">
-            <StackPanel Orientation="Horizontal" Grid.ColumnSpan="9" HorizontalAlignment="Left" VerticalAlignment="Top" Spacing="5" Width="140" Margin="-150,0,0,0"><Border x:Name="SourceBlob" Width="9" Height="9" CornerRadius="2" Margin="0,4,0,0" VerticalAlignment="Top" /><TextBlock x:Name="SourceName" Style="{StaticResource StepNodeStyle}" /></StackPanel>
+            <StackPanel Orientation="Horizontal" 
+                        Grid.ColumnSpan="9" 
+                        HorizontalAlignment="Left" 
+                        VerticalAlignment="Top" 
+                        Spacing="5" Width="140" 
+                        Margin="-150,0,0,0">
+                <Border x:Name="SourceBlob" Width="9" Height="9" CornerRadius="2" Margin="0,4,0,0" VerticalAlignment="Top" />
+                <TextBlock x:Name="SourceName" Style="{StaticResource StepNodeStyle}" />
+            </StackPanel>
             <StackPanel Orientation="Horizontal">
                 <TextBlock Text="Get Row" Style="{StaticResource StepLabelStyle}" />
                 <TextBlock Text="Row" Style="{StaticResource StepPropertyStyle}" />
@@ -1181,7 +1389,12 @@
 
     <DataTemplate x:Key="TopStartTemplate" >
         <Grid Style="{StaticResource StepRowStyle}">
-            <StackPanel Orientation="Horizontal" Grid.ColumnSpan="9" HorizontalAlignment="Left" VerticalAlignment="Top" Spacing="5" Width="140" Margin="-150,0,0,0">
+            <StackPanel Orientation="Horizontal" 
+                        Grid.ColumnSpan="9" 
+                        HorizontalAlignment="Left" 
+                        VerticalAlignment="Top" 
+                        Spacing="5" Width="140" 
+                        Margin="-150,0,0,0">
                 <Border x:Name="SourceBlob" Width="9" Height="9" CornerRadius="2" Margin="0,4,0,0" VerticalAlignment="Top" />
                 <TextBlock x:Name="SourceName" Style="{StaticResource StepNodeStyle}" />
             </StackPanel>
@@ -1195,7 +1408,12 @@
 
     <DataTemplate x:Key="TopRowTemplate" >
         <Grid Style="{StaticResource StepRowStyle}">
-            <StackPanel Orientation="Horizontal" Grid.ColumnSpan="9" HorizontalAlignment="Left" VerticalAlignment="Top" Spacing="5" Width="140" Margin="-150,0,0,0">
+            <StackPanel Orientation="Horizontal" 
+                        Grid.ColumnSpan="9" 
+                        HorizontalAlignment="Left" 
+                        VerticalAlignment="Top" 
+                        Spacing="5" Width="140" 
+                        Margin="-150,0,0,0">
                 <Border x:Name="SourceBlob" Width="9" Height="9" CornerRadius="2" Margin="0,4,0,0" VerticalAlignment="Top" />
                 <TextBlock x:Name="SourceName" Style="{StaticResource StepNodeStyle}" />
             </StackPanel>
@@ -1221,7 +1439,12 @@
 
     <DataTemplate x:Key="RowCountSpanTemplate" >
         <Grid Style="{StaticResource StepRowStyle}">
-            <StackPanel Orientation="Horizontal" Grid.ColumnSpan="9" HorizontalAlignment="Left" VerticalAlignment="Top" Spacing="5" Width="140" Margin="-150,0,0,0">
+            <StackPanel Orientation="Horizontal" 
+                        Grid.ColumnSpan="9" 
+                        HorizontalAlignment="Left" 
+                        VerticalAlignment="Top" 
+                        Spacing="5" Width="140" 
+                        Margin="-150,0,0,0">
                 <Border x:Name="SourceBlob" Width="9" Height="9" CornerRadius="2" Margin="0,4,0,0" VerticalAlignment="Top" />
                 <TextBlock x:Name="SourceName" Style="{StaticResource StepNodeStyle}" />
             </StackPanel>
@@ -1246,7 +1469,12 @@
 
     <DataTemplate x:Key="StoppedTemplate" >
         <Grid Style="{StaticResource StepRowStyle}">
-            <StackPanel Orientation="Horizontal" Grid.ColumnSpan="9" HorizontalAlignment="Left" VerticalAlignment="Top" Spacing="5" Width="140" Margin="-150,0,0,0">
+            <StackPanel Orientation="Horizontal" 
+                        Grid.ColumnSpan="9" 
+                        HorizontalAlignment="Left" 
+                        VerticalAlignment="Top" 
+                        Spacing="5" Width="140" 
+                        Margin="-150,0,0,0">
                 <Border x:Name="SourceBlob" Width="9" Height="9" CornerRadius="2" Margin="0,4,0,0" VerticalAlignment="Top" />
                 <TextBlock x:Name="SourceName" Style="{StaticResource StepNodeStyle}" />
             </StackPanel>
@@ -1260,7 +1488,12 @@
 
     <DataTemplate x:Key="TruncatedTemplate" >
         <Grid Style="{StaticResource StepRowStyle}">
-            <StackPanel Orientation="Horizontal" Grid.ColumnSpan="9" HorizontalAlignment="Left" VerticalAlignment="Top" Spacing="5" Width="140" Margin="-150,0,0,0">
+            <StackPanel Orientation="Horizontal" 
+                        Grid.ColumnSpan="9" 
+                        HorizontalAlignment="Left" 
+                        VerticalAlignment="Top" 
+                        Spacing="5" Width="140" 
+                        Margin="-150,0,0,0">
                 <Border x:Name="SourceBlob" Width="9" Height="9" CornerRadius="2" Margin="0,4,0,0" VerticalAlignment="Top" />
                 <TextBlock x:Name="SourceName" Style="{StaticResource StepNodeStyle}" />
             </StackPanel>
@@ -1273,7 +1506,12 @@
 
     <DataTemplate x:Key="IamReadTemplate" >
         <Grid Background="{ThemeResource AcrylicBackgroundFillColorDefaultBrush}" Style="{StaticResource StepRowStyle}">
-            <StackPanel Orientation="Horizontal" Grid.ColumnSpan="9" HorizontalAlignment="Left" VerticalAlignment="Top" Spacing="5" Width="140" Margin="-150,0,0,0">
+            <StackPanel Orientation="Horizontal" 
+                        Grid.ColumnSpan="9" 
+                        HorizontalAlignment="Left" 
+                        VerticalAlignment="Top" 
+                        Spacing="5" Width="140" 
+                        Margin="-150,0,0,0">
                 <Border x:Name="SourceBlob" Width="9" Height="9" CornerRadius="2" Margin="0,4,0,0" VerticalAlignment="Top" />
                 <TextBlock x:Name="SourceName" Style="{StaticResource StepNodeStyle}" />
             </StackPanel>
@@ -1290,7 +1528,12 @@
 
     <DataTemplate x:Key="IamLinkTemplate" >
         <Grid Style="{StaticResource StepRowStyle}">
-            <StackPanel Orientation="Horizontal" Grid.ColumnSpan="9" HorizontalAlignment="Left" VerticalAlignment="Top" Spacing="5" Width="140" Margin="-150,0,0,0">
+            <StackPanel Orientation="Horizontal" 
+                        Grid.ColumnSpan="9" 
+                        HorizontalAlignment="Left" 
+                        VerticalAlignment="Top" 
+                        Spacing="5" Width="140" 
+                        Margin="-150,0,0,0">
                 <Border x:Name="SourceBlob" Width="9" Height="9" CornerRadius="2" Margin="0,4,0,0" VerticalAlignment="Top" />
                 <TextBlock x:Name="SourceName" Style="{StaticResource StepNodeStyle}" />
             </StackPanel>
@@ -1306,7 +1549,12 @@
 
     <DataTemplate x:Key="PfsReadTemplate" >
         <Grid Style="{StaticResource StepRowStyle}">
-            <StackPanel Orientation="Horizontal" Grid.ColumnSpan="9" HorizontalAlignment="Left" VerticalAlignment="Top" Spacing="5" Width="140" Margin="-150,0,0,0">
+            <StackPanel Orientation="Horizontal" 
+                        Grid.ColumnSpan="9" 
+                        HorizontalAlignment="Left" 
+                        VerticalAlignment="Top" 
+                        Spacing="5" Width="140" 
+                        Margin="-150,0,0,0">
                 <Border x:Name="SourceBlob" Width="9" Height="9" CornerRadius="2" Margin="0,4,0,0" VerticalAlignment="Top" />
                 <TextBlock x:Name="SourceName" Style="{StaticResource StepNodeStyle}" />
             </StackPanel>
@@ -1321,7 +1569,12 @@
 
     <DataTemplate x:Key="PfsCheckTemplate" >
         <Grid Style="{StaticResource StepRowStyle}">
-            <StackPanel Orientation="Horizontal" Grid.ColumnSpan="9" HorizontalAlignment="Left" VerticalAlignment="Top" Spacing="5" Width="140" Margin="-150,0,0,0">
+            <StackPanel Orientation="Horizontal" 
+                        Grid.ColumnSpan="9" 
+                        HorizontalAlignment="Left" 
+                        VerticalAlignment="Top" 
+                        Spacing="5" Width="140" 
+                        Margin="-150,0,0,0">
                 <Border x:Name="SourceBlob" Width="9" Height="9" CornerRadius="2" Margin="0,4,0,0" VerticalAlignment="Top" />
                 <TextBlock x:Name="SourceName" Style="{StaticResource StepNodeStyle}" />
             </StackPanel>
@@ -1338,7 +1591,12 @@
 
     <DataTemplate x:Key="AdvanceTemplate" >
         <Grid Style="{StaticResource StepRowStyle}">
-            <StackPanel Orientation="Horizontal" Grid.ColumnSpan="9" HorizontalAlignment="Left" VerticalAlignment="Top" Spacing="5" Width="140" Margin="-150,0,0,0">
+            <StackPanel Orientation="Horizontal" 
+                        Grid.ColumnSpan="9" 
+                        HorizontalAlignment="Left" 
+                        VerticalAlignment="Top" 
+                        Spacing="5" Width="140" 
+                        Margin="-150,0,0,0">
                 <Border x:Name="SourceBlob" Width="9" Height="9" CornerRadius="2" Margin="0,4,0,0" VerticalAlignment="Top" />
                 <TextBlock x:Name="SourceName" Style="{StaticResource StepNodeStyle}" />
             </StackPanel>
@@ -1351,7 +1609,12 @@
 
     <DataTemplate x:Key="ExtentStartTemplate" >
         <Grid Style="{StaticResource StepRowStyle}">
-            <StackPanel Orientation="Horizontal" Grid.ColumnSpan="9" HorizontalAlignment="Left" VerticalAlignment="Top" Spacing="5" Width="140" Margin="-150,0,0,0">
+            <StackPanel Orientation="Horizontal" 
+                        Grid.ColumnSpan="9" 
+                        HorizontalAlignment="Left" 
+                        VerticalAlignment="Top" 
+                        Spacing="5" Width="140" 
+                        Margin="-150,0,0,0">
                 <Border x:Name="SourceBlob" Width="9" Height="9" CornerRadius="2" Margin="0,4,0,0" VerticalAlignment="Top" />
                 <TextBlock x:Name="SourceName" Style="{StaticResource StepNodeStyle}" />
             </StackPanel>
@@ -1367,7 +1630,12 @@
 
     <DataTemplate x:Key="PageSkippedTemplate" >
         <Grid Style="{StaticResource StepRowStyle}">
-            <StackPanel Orientation="Horizontal" Grid.ColumnSpan="9" HorizontalAlignment="Left" VerticalAlignment="Top" Spacing="5" Width="140" Margin="-150,0,0,0">
+            <StackPanel Orientation="Horizontal" 
+                        Grid.ColumnSpan="9" 
+                        HorizontalAlignment="Left" 
+                        VerticalAlignment="Top" 
+                        Spacing="5" Width="140" 
+                        Margin="-150,0,0,0">
                 <Border x:Name="SourceBlob" Width="9" Height="9" CornerRadius="2" Margin="0,4,0,0" VerticalAlignment="Top" />
                 <TextBlock x:Name="SourceName" Style="{StaticResource StepNodeStyle}" />
             </StackPanel>
@@ -1383,7 +1651,12 @@
 
     <DataTemplate x:Key="DefaultTemplate" >
         <Grid Style="{StaticResource StepRowStyle}">
-            <StackPanel Orientation="Horizontal" Grid.ColumnSpan="9" HorizontalAlignment="Left" VerticalAlignment="Top" Spacing="5" Width="140" Margin="-150,0,0,0">
+            <StackPanel Orientation="Horizontal" 
+                        Grid.ColumnSpan="9" 
+                        HorizontalAlignment="Left" 
+                        VerticalAlignment="Top" 
+                        Spacing="5" Width="140" 
+                        Margin="-150,0,0,0">
                 <Border x:Name="SourceBlob" Width="9" Height="9" CornerRadius="2" Margin="0,4,0,0" VerticalAlignment="Top" />
                 <TextBlock x:Name="SourceName" Style="{StaticResource StepNodeStyle}" />
             </StackPanel>

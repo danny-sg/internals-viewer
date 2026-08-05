@@ -1,5 +1,6 @@
 using InternalsViewer.Execution.AccessPaths.Definitions;
 using InternalsViewer.Execution.AccessPaths.Results;
+using InternalsViewer.Execution.AccessPaths.Results.Steps;
 using InternalsViewer.Execution.AccessPaths.Search;
 using InternalsViewer.Execution.Interfaces;
 using InternalsViewer.Execution.Interfaces.Iterators;
@@ -10,8 +11,11 @@ using InternalsViewer.Internals.Interfaces.Engine;
 namespace InternalsViewer.Execution.Iterators.Row;
 
 /// <summary>
-/// Stops reading its input once the requested number of rows has passed through
+/// Top Operator iterator
 /// </summary>
+/// <remarks>
+/// Streaming operator that will read and pass through rows, counting them as it goes and will stop when it his the limit set.
+/// </remarks>
 public sealed class TopIterator(IIteratorFactory factory) : IteratorBase, IUnaryIterator
 {
     public override PageAddress? CurrentPageAddress => Input?.CurrentPageAddress;
@@ -27,9 +31,11 @@ public sealed class TopIterator(IIteratorFactory factory) : IteratorBase, IUnary
 
     public long Limit { get; private set; }
 
-    private bool PendingStart { get; set; }
+    private bool IsPendingStart { get; set; }
 
-    public override async Task OpenAsync(IteratorContext context, IteratorDefinition definition, CancellationToken cancellationToken)
+    public override async Task OpenAsync(IteratorDefinition definition, 
+                                         IteratorContext context,
+                                         CancellationToken cancellationToken)
     {
         var top = definition.Expect<TopDefinition>();
 
@@ -43,14 +49,14 @@ public sealed class TopIterator(IIteratorFactory factory) : IteratorBase, IUnary
             await CloseAsync();
         }
 
-        await PrepareAsync(context, definition, cancellationToken);
+        await PrepareAsync(definition, context, cancellationToken);
 
         Input = factory.Create(top.Source);
         Limit = top.RowCount;
         RowCount = 0;
-        PendingStart = true;
+        IsPendingStart = true;
 
-        await Input.OpenAsync(context, top.Source, cancellationToken);
+        await Input.OpenAsync(top.Source, context, cancellationToken);
     }
 
     public override async Task<IRecord?> GetRowAsync(CancellationToken cancellationToken)
@@ -60,9 +66,9 @@ public sealed class TopIterator(IIteratorFactory factory) : IteratorBase, IUnary
             return null;
         }
 
-        if (PendingStart)
+        if (IsPendingStart)
         {
-            PendingStart = false;
+            IsPendingStart = false;
 
             await EmitAsync(new AccessStep.TopStart(Limit), cancellationToken);
         }

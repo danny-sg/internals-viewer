@@ -1,6 +1,6 @@
 using InternalsViewer.Execution.AccessPaths.Search;
 
-namespace InternalsViewer.Execution.AccessPaths.Results;
+namespace InternalsViewer.Execution.AccessPaths.Results.Steps;
 
 public abstract partial record AccessStep
 {

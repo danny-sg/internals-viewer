@@ -1,5 +1,6 @@
 using InternalsViewer.Execution.AccessPaths.Definitions;
 using InternalsViewer.Execution.AccessPaths.Results;
+using InternalsViewer.Execution.AccessPaths.Results.Steps;
 using InternalsViewer.Execution.AccessPaths.Search;
 using InternalsViewer.Execution.Interfaces;
 using InternalsViewer.Execution.Interfaces.Iterators;
@@ -9,31 +10,41 @@ using InternalsViewer.Internals.Interfaces.Engine;
 
 namespace InternalsViewer.Execution.Iterators.Row;
 
+/// <summary>
+/// Concatenation Operator
+/// </summary>
+/// <remarks>
+/// Concatenation combines multiple inputs into a single output.
+///
+/// Inputs are read sequentially and outputted in read order.
+/// </remarks>
 public sealed class ConcatenationIterator(IIteratorFactory factory) : IteratorBase, IMultiInputIterator
 {
+    private readonly List<IIterator> _inputs = [];
+
     public override PageAddress? CurrentPageAddress => Current?.CurrentPageAddress;
 
     public override AccessStrategy? Strategy => Current?.Strategy;
 
     public long RowCount { get; private set; }
 
-    public int InputNumber => Definitions.Count == 0 ? 0 : Math.Min(_index + 1, Definitions.Count);
+    public int InputNumber => Definitions.Count == 0 ? 0 : Math.Min(Index + 1, Definitions.Count);
 
     public int InputCount => Definitions.Count;
 
     public IReadOnlyList<IIterator> Inputs => _inputs;
 
-    private readonly List<IIterator> _inputs = [];
-
     private IReadOnlyList<IteratorDefinition> Definitions { get; set; } = [];
 
-    private int _index;
+    private int Index { get; set; }
 
-    private bool _pendingStart;
+    private bool IsStartPending { get; set; }
 
-    private IIterator? Current => _index < _inputs.Count ? _inputs[_index] : null;
+    private IIterator? Current => Index < _inputs.Count ? _inputs[Index] : null;
 
-    public override async Task OpenAsync(IteratorContext context, IteratorDefinition definition, CancellationToken cancellationToken)
+    public override async Task OpenAsync(IteratorDefinition definition, 
+                                         IteratorContext context,
+                                         CancellationToken cancellationToken)
     {
         var concatenation = definition.Expect<ConcatenationDefinition>();
 
@@ -49,19 +60,19 @@ public sealed class ConcatenationIterator(IIteratorFactory factory) : IteratorBa
             _inputs.Clear();
         }
 
-        await PrepareAsync(context, definition, cancellationToken);
+        await PrepareAsync(definition, context, cancellationToken);
 
         Definitions = concatenation.Inputs;
 
-        _index = 0;
+        Index = 0;
         RowCount = 0;
-        _pendingStart = true;
+        IsStartPending = true;
 
         var first = factory.Create(Definitions[0]);
 
         _inputs.Add(first);
 
-        await first.OpenAsync(context, Definitions[0], cancellationToken);
+        await first.OpenAsync(Definitions[0], context, cancellationToken);
     }
 
     public override async Task<IRecord?> GetRowAsync(CancellationToken cancellationToken)
@@ -71,9 +82,9 @@ public sealed class ConcatenationIterator(IIteratorFactory factory) : IteratorBa
             return null;
         }
 
-        if (_pendingStart)
+        if (IsStartPending)
         {
-            _pendingStart = false;
+            IsStartPending = false;
 
             await EmitAsync(new AccessStep.InputStart(1, Definitions.Count), cancellationToken);
         }
@@ -86,7 +97,7 @@ public sealed class ConcatenationIterator(IIteratorFactory factory) : IteratorBa
             {
                 RowCount++;
 
-                await EmitAsync(new AccessStep.ConcatRow(RowCount, _index + 1) { EmittedRecord = row }, cancellationToken);
+                await EmitAsync(new AccessStep.ConcatRow(RowCount, Index + 1) { EmittedRecord = row }, cancellationToken);
 
                 CurrentRow = ProjectedRecord.Project(row, OutputList);
 
@@ -95,20 +106,20 @@ public sealed class ConcatenationIterator(IIteratorFactory factory) : IteratorBa
 
             await current.CloseAsync();
 
-            _index++;
+            Index++;
 
-            if (_index >= Definitions.Count)
+            if (Index >= Definitions.Count)
             {
                 break;
             }
 
-            await EmitAsync(new AccessStep.InputStart(_index + 1, Definitions.Count), cancellationToken);
+            await EmitAsync(new AccessStep.InputStart(Index + 1, Definitions.Count), cancellationToken);
 
-            var next = factory.Create(Definitions[_index]);
+            var next = factory.Create(Definitions[Index]);
 
             _inputs.Add(next);
 
-            await next.OpenAsync(Context, Definitions[_index], cancellationToken);
+            await next.OpenAsync(Definitions[Index], Context, cancellationToken);
         }
 
         CurrentRow = null;

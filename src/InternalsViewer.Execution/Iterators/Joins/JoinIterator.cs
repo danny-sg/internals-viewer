@@ -99,7 +99,7 @@ public abstract class JoinIterator : IteratorBase, IJoinIterator, IRowBufferIter
 
     protected IRecord MakeRow(IRecord? outer, IRecord? inner)
     {
-        var combined = JoinedRecord.Combine(outer, inner)
+        var combined = JoinRecord.Combine(outer, inner)
                        ?? throw new InvalidOperationException("A join pair needs at least one side to make a row from");
 
         return ProjectedRecord.Project(combined, OutputList);

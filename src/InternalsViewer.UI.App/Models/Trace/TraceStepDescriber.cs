@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using InternalsViewer.Execution.AccessPaths.Results;
+using InternalsViewer.Execution.AccessPaths.Results.Steps;
 
 namespace InternalsViewer.UI.App.Models.Trace;
 

@@ -6,6 +6,7 @@ using Microsoft.UI.Xaml.Media;
 using Microsoft.UI.Xaml.Shapes;
 using Windows.Foundation;
 using Windows.UI;
+using InternalsViewer.Execution.AccessPaths.Results.Steps;
 
 namespace InternalsViewer.UI.App.Controls.AccessSteps;
 

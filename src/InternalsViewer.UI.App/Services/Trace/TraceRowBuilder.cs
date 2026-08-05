@@ -4,6 +4,7 @@ using System.Data;
 using System.Linq;
 using InternalsViewer.Execution.AccessPaths.Definitions;
 using InternalsViewer.Execution.AccessPaths.Results;
+using InternalsViewer.Execution.AccessPaths.Results.Steps;
 using InternalsViewer.Execution.Records;
 using InternalsViewer.Internals.Engine.Records;
 using InternalsViewer.Internals.Interfaces.Engine;
@@ -81,7 +82,7 @@ public sealed class TraceRowBuilder(IReadOnlyDictionary<int, IteratorDefinition>
     }
 
     private RecordField? Descend(IRecord? record, int operatorNodeId, string table, string name)
-        => record is JoinedRecord joined
+        => record is JoinRecord joined
             ? FindColumn(joined.Outer, joined.Inner, operatorNodeId, table, name)
             : Find(record, name);
 

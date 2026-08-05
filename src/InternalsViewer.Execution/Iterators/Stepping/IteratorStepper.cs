@@ -2,6 +2,7 @@
 
 using InternalsViewer.Execution.AccessPaths.Definitions;
 using InternalsViewer.Execution.AccessPaths.Results;
+using InternalsViewer.Execution.AccessPaths.Results.Steps;
 using InternalsViewer.Execution.Interfaces;
 
 namespace InternalsViewer.Execution.Iterators.Stepping;
@@ -15,6 +16,8 @@ public sealed class IteratorStepper : IAsyncDisposable
     private readonly SemaphoreSlim _delivered = new(0);
 
     private readonly SemaphoreSlim _resume = new(0);
+
+    private readonly SemaphoreSlim _continue = new(0);
 
     private readonly CancellationTokenSource _engineCancellation = new();
 
@@ -31,6 +34,8 @@ public sealed class IteratorStepper : IAsyncDisposable
     private AccessStep? _pending;
 
     private bool _isRequestOutstanding;
+
+    private bool _hasDelivered;
 
     public IteratorStepper(IIterator root, IteratorDefinition definition, IteratorContext context)
     {
@@ -73,6 +78,11 @@ public sealed class IteratorStepper : IAsyncDisposable
         {
             _isRequestOutstanding = true;
 
+            if (_hasDelivered)
+            {
+                _continue.Release();
+            }
+
             _resume.Release();
         }
 
@@ -93,6 +103,8 @@ public sealed class IteratorStepper : IAsyncDisposable
 
         _isRequestOutstanding = false;
 
+        _hasDelivered = true;
+
         return _pending;
     }
 
@@ -108,12 +120,14 @@ public sealed class IteratorStepper : IAsyncDisposable
             }
             catch
             {
+                // No-op
             }
         }
 
         _engineCancellation.Dispose();
         _delivered.Dispose();
         _resume.Dispose();
+        _continue.Dispose();
     }
 
     private void EnsureEngine()
@@ -125,7 +139,7 @@ public sealed class IteratorStepper : IAsyncDisposable
     {
         var cancellationToken = _engineCancellation.Token;
 
-        await Root.OpenAsync(_context, _definition, cancellationToken);
+        await Root.OpenAsync(_definition, _context, cancellationToken);
 
         _opened.TrySetResult();
 
@@ -138,7 +152,7 @@ public sealed class IteratorStepper : IAsyncDisposable
 
     private AccessStep Record(AccessStep step)
     {
-        if (step.Counters != default(AccessCounters))
+        if (step.Counters != default)
         {
             _countersByNode[step.NodeId] = step.Counters;
         }
@@ -170,6 +184,8 @@ public sealed class IteratorStepper : IAsyncDisposable
             owner._pending = owner.Record(step);
 
             owner._delivered.Release();
+
+            await owner._continue.WaitAsync(owner._engineCancellation.Token);
         }
     }
 }

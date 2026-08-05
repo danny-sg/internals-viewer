@@ -1,7 +1,9 @@
+using System.Runtime.InteropServices;
 using InternalsViewer.Execution.AccessPaths.Binding;
 using InternalsViewer.Execution.AccessPaths.Definitions;
 using InternalsViewer.Execution.AccessPaths.Joins;
 using InternalsViewer.Execution.AccessPaths.Results;
+using InternalsViewer.Execution.AccessPaths.Results.Steps;
 using InternalsViewer.Execution.AccessPaths.Search;
 using InternalsViewer.Execution.AccessPaths.Values;
 using InternalsViewer.Execution.Interfaces;
@@ -12,6 +14,22 @@ using InternalsViewer.Internals.Interfaces.Engine;
 
 namespace InternalsViewer.Execution.Iterators.Row;
 
+/// <summary>
+/// Sort Operator
+/// </summary>
+/// <remarks>
+/// Sort is a blocking operator. It collects all rows into a sort buffer, then sorts and returns rows in order.
+///
+/// Sort has several options:
+///
+/// Is Distinct - Removes duplicates
+///
+///     Tracked at the ouput point - as rows are sorted the previous row values are referenced so only the first instance is output
+///
+/// Top Count - If the sort is for the top N rows
+///
+///     Uses a priority queue to retain only the top N rows, and then sorts those rows for output
+/// </remarks>
 public sealed class SortIterator(IIteratorFactory factory) : IteratorBase, IUnaryIterator, IRowBufferIterator
 {
     private readonly List<JoinBufferRow> _table = [];
@@ -19,14 +37,6 @@ public sealed class SortIterator(IIteratorFactory factory) : IteratorBase, IUnar
     private readonly List<AccessKey> _keys = [];
 
     private PriorityQueue<IRecord, AccessKey>? _queue;
-
-    private bool _isSorted;
-
-    private long _collected;
-
-    private int _outputIndex;
-
-    private AccessKey? _lastOutputKey;
 
     public override PageAddress? CurrentPageAddress => Input?.CurrentPageAddress;
 
@@ -36,9 +46,15 @@ public sealed class SortIterator(IIteratorFactory factory) : IteratorBase, IUnar
 
     public long RowCount { get; private set; }
 
-    public long CollectedCount => _collected;
+    public long CollectedCount { get; private set; }
 
-    public IReadOnlyList<RowBuffer> Buffers => [new RowBuffer("Sort Table", 0, _table)];
+    public IReadOnlyList<RowBuffer> Buffers => [new("Sort Table", 0, _table)];
+
+    private int OutputIndex { get; set; }
+
+    private AccessKey? LastOutputKey { get; set; }
+
+    private bool IsSorted { get; set; }
 
     private bool IsDistinct { get; set; }
 
@@ -46,7 +62,9 @@ public sealed class SortIterator(IIteratorFactory factory) : IteratorBase, IUnar
 
     private IReadOnlyList<SortKey> Keys { get; set; } = [];
 
-    public override async Task OpenAsync(IteratorContext context, IteratorDefinition definition, CancellationToken cancellationToken)
+    public override async Task OpenAsync(IteratorDefinition definition,
+                                         IteratorContext context,
+                                         CancellationToken cancellationToken)
     {
         var sort = definition.Expect<SortDefinition>();
 
@@ -60,7 +78,7 @@ public sealed class SortIterator(IIteratorFactory factory) : IteratorBase, IUnar
             await CloseAsync();
         }
 
-        await PrepareAsync(context, definition, cancellationToken);
+        await PrepareAsync(definition, context, cancellationToken);
 
         Keys = sort.Keys;
         IsDistinct = sort.IsDistinct;
@@ -70,18 +88,19 @@ public sealed class SortIterator(IIteratorFactory factory) : IteratorBase, IUnar
         _keys.Clear();
 
         _queue = sort.TopCount is { } topCount
-            ? new PriorityQueue<IRecord, AccessKey>((int)topCount, Comparer<AccessKey>.Create((left, right) => Compare(right, left)))
-            : null;
+                 ? new PriorityQueue<IRecord, AccessKey>((int)topCount, Comparer<AccessKey>.Create((left, right) => Compare(right, left)))
+                 : null;
 
-        _isSorted = false;
-        _collected = 0;
-        _outputIndex = 0;
-        _lastOutputKey = null;
+        IsSorted = false;
+        CollectedCount = 0;
+        OutputIndex = 0;
+        LastOutputKey = null;
+
         RowCount = 0;
 
         Input = factory.Create(sort.Source);
 
-        await Input.OpenAsync(context, sort.Source, cancellationToken);
+        await Input.OpenAsync(sort.Source, context, cancellationToken);
     }
 
     public override async Task<IRecord?> GetRowAsync(CancellationToken cancellationToken)
@@ -91,24 +110,24 @@ public sealed class SortIterator(IIteratorFactory factory) : IteratorBase, IUnar
             return null;
         }
 
-        if (!_isSorted)
+        if (!IsSorted)
         {
             await CollectAsync(cancellationToken);
 
             Sort();
 
-            _isSorted = true;
+            IsSorted = true;
 
             await EmitAsync(new AccessStep.Sorted(_table.Count), cancellationToken);
         }
 
-        while (_outputIndex < _table.Count)
+        while (OutputIndex < _table.Count)
         {
-            var index = _outputIndex++;
+            var index = OutputIndex++;
 
             var key = _keys[index];
 
-            if (IsDistinct && _lastOutputKey is { } last && Compare(key, last) == 0)
+            if (IsDistinct && LastOutputKey is { } last && Compare(key, last) == 0)
             {
                 _table[index] = _table[index] with { State = JoinRowState.Finished };
 
@@ -117,7 +136,7 @@ public sealed class SortIterator(IIteratorFactory factory) : IteratorBase, IUnar
                 continue;
             }
 
-            _lastOutputKey = key;
+            LastOutputKey = key;
 
             RowCount++;
 
@@ -149,11 +168,14 @@ public sealed class SortIterator(IIteratorFactory factory) : IteratorBase, IUnar
         await base.CloseAsync();
     }
 
+    /// <summary>
+    /// Collect rows from input and build the sort table/priority queue
+    /// </summary>
     private async Task CollectAsync(CancellationToken cancellationToken)
     {
         while (await Input!.GetRowAsync(cancellationToken) is { } row)
         {
-            _collected++;
+            CollectedCount++;
 
             var key = GetKey(row);
 
@@ -169,16 +191,20 @@ public sealed class SortIterator(IIteratorFactory factory) : IteratorBase, IUnar
                 {
                     isRetained = !ReferenceEquals(queue.EnqueueDequeue(row, key), row);
                 }
-
-                RebuildFromQueue();
             }
             else
             {
                 _table.Add(new JoinBufferRow(row, JoinRowState.Pending));
+
                 _keys.Add(key);
             }
 
-            await EmitAsync(new AccessStep.SortCollect(_collected) { IsRetained = isRetained }, cancellationToken);
+            if (_queue is not null)
+            {
+                RebuildFromQueue();
+            }
+
+            await EmitAsync(new AccessStep.SortCollect(CollectedCount) { IsRetained = isRetained }, cancellationToken);
         }
 
         await Input.CloseAsync();
@@ -257,6 +283,6 @@ public sealed class SortIterator(IIteratorFactory factory) : IteratorBase, IUnar
             values[index] = source.GetValue(-1, column).WithColumnName(column);
         }
 
-        return new AccessKey([.. values]);
+        return new AccessKey(ImmutableCollectionsMarshal.AsImmutableArray(values));
     }
 }

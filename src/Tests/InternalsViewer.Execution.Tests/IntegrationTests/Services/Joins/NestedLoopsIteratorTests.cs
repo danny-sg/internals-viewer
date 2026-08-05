@@ -4,6 +4,7 @@ using System.Data;
 using InternalsViewer.Internals.Connections.File;
 using InternalsViewer.Execution.AccessPaths.Binding;
 using InternalsViewer.Execution.AccessPaths.Results;
+using InternalsViewer.Execution.AccessPaths.Results.Steps;
 using InternalsViewer.Execution.AccessPaths.Search;
 using InternalsViewer.Execution.AccessPaths.Values;
 using InternalsViewer.Internals.Engine.Database;

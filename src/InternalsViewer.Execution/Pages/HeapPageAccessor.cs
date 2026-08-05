@@ -23,5 +23,6 @@ public sealed class HeapPageAccessor(DataPage page, IRecordService recordService
 
     public int SlotCount => _records.Length;
 
-    public IRecord GetRecord(int slot) => _records[slot] ??= recordService.GetDataRecord(page, slot, _tableStructure);
+    public IRecord GetRecord(int slot) 
+        => _records[slot] ??= recordService.GetDataRecord(page, slot, _tableStructure);
 }

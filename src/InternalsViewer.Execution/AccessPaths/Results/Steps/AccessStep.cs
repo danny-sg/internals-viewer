@@ -1,4 +1,4 @@
-namespace InternalsViewer.Execution.AccessPaths.Results;
+namespace InternalsViewer.Execution.AccessPaths.Results.Steps;
 
 /// <summary>
 /// A single observable action taken by an access path

@@ -20,7 +20,7 @@ public interface IIterator
 
     AccessStrategy? Strategy { get; }
 
-    Task OpenAsync(IteratorContext context, IteratorDefinition definition, CancellationToken cancellationToken);
+    Task OpenAsync(IteratorDefinition definition, IteratorContext context, CancellationToken cancellationToken);
 
     Task<IRecord?> GetRowAsync(CancellationToken cancellationToken);
 

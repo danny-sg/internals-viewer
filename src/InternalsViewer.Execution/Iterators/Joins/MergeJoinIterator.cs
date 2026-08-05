@@ -1,6 +1,7 @@
 using InternalsViewer.Execution.AccessPaths.Definitions;
 using InternalsViewer.Execution.AccessPaths.Joins;
 using InternalsViewer.Execution.AccessPaths.Results;
+using InternalsViewer.Execution.AccessPaths.Results.Steps;
 using InternalsViewer.Execution.AccessPaths.Search;
 using InternalsViewer.Execution.Interfaces;
 using InternalsViewer.Internals.Engine.Address;
@@ -87,7 +88,9 @@ public sealed class MergeJoinIterator(IIteratorFactory factory) : JoinIterator
 
     private int ComparisonSign { get; set; } = 1;
 
-    public override async Task OpenAsync(IteratorContext context, IteratorDefinition definition, CancellationToken cancellationToken)
+    public override async Task OpenAsync(IteratorDefinition definition, 
+                                         IteratorContext context,
+                                         CancellationToken cancellationToken)
     {
         var join = definition.Expect<MergeJoinDefinition>();
 
@@ -96,7 +99,7 @@ public sealed class MergeJoinIterator(IIteratorFactory factory) : JoinIterator
             await CloseAsync();
         }
 
-        await PrepareAsync(context, definition, cancellationToken);
+        await PrepareAsync(definition, context, cancellationToken);
 
         ResetJoin(join.JoinType);
 
@@ -114,9 +117,9 @@ public sealed class MergeJoinIterator(IIteratorFactory factory) : JoinIterator
 
         InnerBuffer.Clear();
 
-        await Outer.Iterator.OpenAsync(context, join.Outer.Source, cancellationToken);
+        await Outer.Iterator.OpenAsync(join.Outer.Source, context, cancellationToken);
 
-        await Inner.Iterator.OpenAsync(context, join.Inner.Source, cancellationToken);
+        await Inner.Iterator.OpenAsync(join.Inner.Source, context, cancellationToken);
 
         StartRows();
     }

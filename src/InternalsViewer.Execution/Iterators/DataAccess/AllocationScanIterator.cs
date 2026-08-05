@@ -1,6 +1,7 @@
 using InternalsViewer.Execution.AccessPaths.Definitions;
 using InternalsViewer.Execution.AccessPaths.Predicates;
 using InternalsViewer.Execution.AccessPaths.Results;
+using InternalsViewer.Execution.AccessPaths.Results.Steps;
 using InternalsViewer.Execution.AccessPaths.Search;
 using InternalsViewer.Execution.Executors;
 using InternalsViewer.Execution.Interfaces.Pages;
@@ -57,11 +58,12 @@ public sealed class AllocationScanIterator(IPageService pageService, IRecordServ
 
     private AccessCounters Counters { get; set; }
 
-    public override async Task OpenAsync(IteratorContext context, IteratorDefinition definition, CancellationToken cancellationToken)
+    public override async Task OpenAsync(IteratorDefinition definition, IteratorContext context,
+        CancellationToken cancellationToken)
     {
         var scan = definition.Expect<AllocationScanDefinition>();
 
-        await PrepareAsync(context, definition, cancellationToken);
+        await PrepareAsync(definition, context, cancellationToken);
 
         Residual = scan.Residual;
         RowGoal = scan.RowGoal is { } goal ? Counters.RowsOutput + goal : null;

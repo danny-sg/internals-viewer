@@ -2,6 +2,7 @@ using InternalsViewer.Execution.AccessPaths.Binding;
 using InternalsViewer.Execution.AccessPaths.Definitions;
 using InternalsViewer.Execution.AccessPaths.Predicates;
 using InternalsViewer.Execution.AccessPaths.Results;
+using InternalsViewer.Execution.AccessPaths.Results.Steps;
 using InternalsViewer.Execution.AccessPaths.Search;
 using InternalsViewer.Execution.AccessPaths.Values;
 using InternalsViewer.Execution.Executors;
@@ -61,12 +62,13 @@ public sealed class IndexIterator(IPageService pageService, IRecordService recor
 
     private AccessCounters Counters { get; set; }
 
-    public override async Task OpenAsync(IteratorContext context, IteratorDefinition definition, CancellationToken cancellationToken)
+    public override async Task OpenAsync(IteratorDefinition definition, IteratorContext context,
+        CancellationToken cancellationToken)
     {
         CurrentPageSteps?.Dispose();
         CurrentPageSteps = null;
 
-        await PrepareAsync(context, definition, cancellationToken);
+        await PrepareAsync(definition, context, cancellationToken);
 
         OpenCount++;
 

@@ -1,6 +1,7 @@
 using InternalsViewer.Execution.AccessPaths.Definitions;
 using InternalsViewer.Execution.AccessPaths.Joins;
 using InternalsViewer.Execution.AccessPaths.Results;
+using InternalsViewer.Execution.AccessPaths.Results.Steps;
 using InternalsViewer.Execution.Interfaces;
 using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Internals.Interfaces.Engine;
@@ -33,7 +34,9 @@ public sealed class NestedLoopsIterator(IIteratorFactory factory) : JoinIterator
 
     private bool IsInnerActive { get; set; }
 
-    public override async Task OpenAsync(IteratorContext context, IteratorDefinition definition, CancellationToken cancellationToken)
+    public override async Task OpenAsync(IteratorDefinition definition, 
+                                         IteratorContext context,
+                                         CancellationToken cancellationToken)
     {
         var join = definition.Expect<NestedLoopsDefinition>();
 
@@ -48,7 +51,7 @@ public sealed class NestedLoopsIterator(IIteratorFactory factory) : JoinIterator
             await CloseAsync();
         }
 
-        await PrepareAsync(context, definition, cancellationToken);
+        await PrepareAsync(definition, context, cancellationToken);
 
         ResetJoin(join.JoinType);
 
@@ -62,7 +65,7 @@ public sealed class NestedLoopsIterator(IIteratorFactory factory) : JoinIterator
         RebindCount = 0;
         IsInnerActive = false;
 
-        await Outer.Iterator.OpenAsync(context, join.Outer, cancellationToken);
+        await Outer.Iterator.OpenAsync(join.Outer, context, cancellationToken);
 
         StartRows();
     }
@@ -80,7 +83,7 @@ public sealed class NestedLoopsIterator(IIteratorFactory factory) : JoinIterator
 
             RebindCount++;
 
-            await Inner.Iterator.OpenAsync(Context with { CorrelatedRow = outerRow }, InnerDefinition, CurrentToken);
+            await Inner.Iterator.OpenAsync(InnerDefinition, Context with { CorrelatedRow = outerRow }, CurrentToken);
 
             IsInnerActive = true;
 
