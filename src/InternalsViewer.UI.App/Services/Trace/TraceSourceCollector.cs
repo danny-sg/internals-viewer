@@ -17,7 +17,7 @@ public static class TraceSourceCollector
     {
         var sources = new List<TraceSource>();
 
-        Walk(definition, TraceSourceRole.None, 0, sources);
+        Walk(definition, TraceSourceRole.None, null, sources);
 
         return sources;
     }
@@ -34,7 +34,7 @@ public static class TraceSourceCollector
         return operators;
     }
 
-    private static void Walk(IteratorDefinition definition, TraceSourceRole role, int operatorNodeId, List<TraceSource> sources)
+    private static void Walk(IteratorDefinition definition, TraceSourceRole role, int? operatorNodeId, List<TraceSource> sources)
     {
         switch (definition)
         {
@@ -56,26 +56,16 @@ public static class TraceSourceCollector
 
                 break;
 
-            case TopDefinition top:
-                Walk(top.Source, TraceSourceRole.None, top.NodeId, sources);
-
-                break;
-
-            case SelectDefinition select:
-                Walk(select.Source, TraceSourceRole.None, select.NodeId, sources);
-
-                break;
-
             case ConcatenationDefinition concatenation:
                 foreach (var input in concatenation.Inputs)
                 {
-                    Walk(input, TraceSourceRole.None, concatenation.NodeId, sources);
+                    Walk(input, TraceSourceRole.None, null, sources);
                 }
 
                 break;
 
             case UnaryDefinition unary:
-                Walk(unary.Source, role, operatorNodeId, sources);
+                Walk(unary.Source, TraceSourceRole.None, null, sources);
 
                 break;
 
@@ -83,7 +73,7 @@ public static class TraceSourceCollector
                 sources.Add(new TraceSource(definition.NodeId, definition)
                 {
                     Role = role,
-                    OperatorNodeId = operatorNodeId
+                    OperatorNodeId = operatorNodeId ?? definition.NodeId
                 });
 
                 break;
@@ -92,69 +82,51 @@ public static class TraceSourceCollector
 
     private static void WalkOperators(IteratorDefinition definition, List<IteratorDefinition> operators)
     {
-        if (definition is TopDefinition top)
-        {
-            operators.Add(top);
+        operators.Add(definition);
 
-            WalkOperators(top.Source, operators);
-
-            return;
-        }
-
-        if (definition is SelectDefinition select)
-        {
-            operators.Add(select);
-
-            WalkOperators(select.Source, operators);
-
-            return;
-        }
-
-        if (definition is ConcatenationDefinition concatenation)
-        {
-            operators.Add(concatenation);
-
-            foreach (var input in concatenation.Inputs)
-            {
-                WalkOperators(input, operators);
-            }
-
-            return;
-        }
-
-        if (definition is UnaryDefinition unary)
-        {
-            WalkOperators(unary.Source, operators);
-
-            return;
-        }
-
-        if (definition is not JoinDefinition join)
-        {
-            return;
-        }
-
-        operators.Add(join);
-
-        switch (join)
+        switch (definition)
         {
             case NestedLoopsDefinition loops:
-                WalkOperators(loops.Outer, operators);
-                WalkOperators(loops.Inner, operators);
+                WalkJoinSide(loops.Outer, operators);
+                WalkJoinSide(loops.Inner, operators);
 
                 break;
 
             case MergeJoinDefinition merge:
-                WalkOperators(merge.Outer.Source, operators);
-                WalkOperators(merge.Inner.Source, operators);
+                WalkJoinSide(merge.Outer.Source, operators);
+                WalkJoinSide(merge.Inner.Source, operators);
 
                 break;
 
             case HashMatchDefinition hash:
-                WalkOperators(hash.Build.Source, operators);
-                WalkOperators(hash.Probe.Source, operators);
+                WalkJoinSide(hash.Build.Source, operators);
+                WalkJoinSide(hash.Probe.Source, operators);
+
+                break;
+
+            case ConcatenationDefinition concatenation:
+                foreach (var input in concatenation.Inputs)
+                {
+                    WalkOperators(input, operators);
+                }
+
+                break;
+
+            case UnaryDefinition unary:
+                WalkOperators(unary.Source, operators);
 
                 break;
         }
     }
+
+    private static void WalkJoinSide(IteratorDefinition side, List<IteratorDefinition> operators)
+    {
+        if (!IsLeaf(side))
+        {
+            WalkOperators(side, operators);
+        }
+    }
+
+    public static bool IsLeaf(IteratorDefinition definition)
+        => definition is not (JoinDefinition or UnaryDefinition or ConcatenationDefinition);
 }

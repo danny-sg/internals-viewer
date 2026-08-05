@@ -49,6 +49,8 @@ public sealed class IteratorStepper : IAsyncDisposable
 
     public AccessCounters Counters { get; private set; }
 
+    public AccessCounters CountersFor(int nodeId) => _countersByNode.GetValueOrDefault(nodeId);
+
     public async Task StartAsync(CancellationToken cancellationToken)
     {
         EnsureEngine();

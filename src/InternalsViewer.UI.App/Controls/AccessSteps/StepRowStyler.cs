@@ -24,6 +24,11 @@ public sealed class StepRowStyler
 
     public Action<int>? NodeActivated { get; set; }
 
+    public TraceBlobPalette? Palette { get; set; }
+
+    public Brush? BlobBrushFor(int nodeId)
+        => NodeFor(nodeId) is { } node && Palette is { } palette ? palette.For(nodeId, node.Colour) : BrushFor(nodeId);
+
     public void SetNodes(IReadOnlyDictionary<int, TraceStepNode>? nodes)
     {
         _nodes = nodes;
@@ -98,7 +103,7 @@ public sealed class StepRowStyler
 
         if (grid.FindName("SourceBlob") is Border blob)
         {
-            blob.Background = brush;
+            blob.Background = BlobBrushFor(step.NodeId);
 
             blob.Visibility = showName && brush is not null ? Visibility.Visible : Visibility.Collapsed;
 

@@ -63,7 +63,7 @@ public sealed partial class DocumentViewModel : ObservableObject
 
     public bool CanClose { get; }
 
-    public Windows.UI.Color? Accent { get; set; }
+    public Microsoft.UI.Xaml.Media.Brush? Accent { get; set; }
 
     /// <summary>
     /// Returns the element to host as a tab's content, with the view's <c>DataContext</c> set to

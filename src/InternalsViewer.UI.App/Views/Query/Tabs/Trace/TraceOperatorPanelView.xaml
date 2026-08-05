@@ -27,10 +27,95 @@
             <Setter Property="Padding" Value="8,8,8,4" />
             <Setter Property="TextTrimming" Value="CharacterEllipsis" />
         </Style>
+
+        <DataTemplate x:Key="InputRowTemplate">
+            <Grid Padding="8,4" ColumnSpacing="6" Background="Transparent" Tapped="OnInputRowTapped">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="60" />
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="60" />
+                </Grid.ColumnDefinitions>
+
+                <TextBlock Text="{Binding Label}"
+                           FontSize="12"
+                           VerticalAlignment="Center"
+                           Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+
+                <Border Grid.Column="1"
+                        Width="9"
+                        Height="9"
+                        CornerRadius="2"
+                        VerticalAlignment="Center"
+                        Background="{Binding Blob}" />
+
+                <Image Grid.Column="2"
+                       Width="20"
+                       Height="20"
+                       VerticalAlignment="Center"
+                       Source="{Binding Icon}" />
+
+                <TextBlock Grid.Column="3"
+                           Text="{Binding Name}"
+                           FontSize="12"
+                           FontWeight="SemiBold"
+                           VerticalAlignment="Center"
+                           TextTrimming="CharacterEllipsis" />
+
+                <TextBlock Grid.Column="4"
+                           Text="Rows"
+                           FontSize="12"
+                           VerticalAlignment="Center"
+                           Visibility="{Binding HasRowCount, Converter={StaticResource BoolToVisibilityConverter}}"
+                           Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+
+                <TextBlock Grid.Column="5"
+                           Text="{Binding RowCount}"
+                           FontSize="12"
+                           Margin="6,0,8,0"
+                           VerticalAlignment="Center"
+                           Visibility="{Binding HasRowCount, Converter={StaticResource BoolToVisibilityConverter}}"
+                           TextAlignment="Right" />
+            </Grid>
+        </DataTemplate>
+
+        <DataTemplate x:Key="StateItemTemplate">
+            <Grid Padding="8,4">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="140" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+
+                <TextBlock Text="{Binding Name}"
+                           FontSize="12"
+                           Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+
+                <StackPanel Grid.Column="1" Orientation="Horizontal">
+                    <TextBlock Text="{Binding Value}"
+                               FontSize="12"
+                               Visibility="{Binding ValueVisibility}" />
+                    <TextBlock Text="&#xE73E;"
+                               FontFamily="{ThemeResource SymbolThemeFontFamily}"
+                               FontSize="12"
+                               Foreground="#0F7B0F"
+                               Visibility="{Binding TickVisibility}" />
+                    <TextBlock Text="&#xE711;"
+                               FontFamily="{ThemeResource SymbolThemeFontFamily}"
+                               FontSize="12"
+                               Padding="0,2,0,0"
+                               Foreground="#C42B1C"
+                               Visibility="{Binding CrossVisibility}" />
+                </StackPanel>
+            </Grid>
+        </DataTemplate>
     </UserControl.Resources>
 
     <Grid >
         <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />
             <RowDefinition Height="Auto" />
@@ -72,7 +157,29 @@
             </AppBarElementContainer>
         </CommandBar>
 
-        <Grid Grid.Row="1">
+        <ItemsControl x:Name="InputsList"
+                      Grid.Row="1"
+                      Visibility="Collapsed"
+                      ItemTemplate="{StaticResource InputRowTemplate}"
+                      BorderThickness="0,0,0,1"
+                      BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" />
+
+        <ItemsControl x:Name="StateList"
+                      Grid.Row="2"
+                      Visibility="Collapsed"
+                      ItemTemplate="{StaticResource StateItemTemplate}"
+                      BorderThickness="0,0,0,1"
+                      BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" />
+
+        <ContentControl x:Name="MainHost"
+                        Grid.Row="3"
+                        Visibility="Collapsed"
+                        HorizontalAlignment="Stretch"
+                        VerticalAlignment="Stretch"
+                        HorizontalContentAlignment="Stretch"
+                        VerticalContentAlignment="Stretch" />
+
+        <Grid x:Name="JoinGrid" Grid.Row="3">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="*" />
                 <ColumnDefinition Width="Auto" />
@@ -155,11 +262,11 @@
         </Grid>
 
         <TextBlock x:Name="OutputHeader"
-                   Grid.Row="2"
+                   Grid.Row="4"
                    Style="{StaticResource TracePaneHeaderStyle}" />
 
         <ContentControl x:Name="OutputHost"
-                        Grid.Row="3"
+                        Grid.Row="5"
                         MinHeight="64"
                         HorizontalAlignment="Stretch"
                         VerticalAlignment="Stretch"

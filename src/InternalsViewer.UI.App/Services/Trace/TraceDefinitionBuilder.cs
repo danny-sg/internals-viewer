@@ -71,12 +71,41 @@ public sealed class TraceDefinitionBuilder(Func<PlanNode, AllocationUnit?> resol
             return BuildConcatenation(node);
         }
 
+        if (OperatorClassifier.IsSort(node))
+        {
+            return BuildSort(node);
+        }
+
         if (OperatorClassifier.IsRead(node))
         {
             return BuildAccess(node);
         }
 
         return null;
+    }
+
+    private IteratorDefinition? BuildSort(PlanNode node)
+    {
+        if (node.Children.Count != 1 || node.SortColumns.Count == 0 || node.SortInfo is { WithTies: true })
+        {
+            return null;
+        }
+
+        if (Build(node.Children[0]) is not { } source)
+        {
+            return null;
+        }
+
+        Nodes[node.NodeId] = node;
+
+        return new SortDefinition(source)
+        {
+            NodeId = node.NodeId,
+            OutputList = OutputList(node),
+            Keys = node.SortColumns.Select(c => new SortKey(ResolveColumnName(c.Column.Column), !c.Ascending)).ToList(),
+            IsDistinct = node.SortInfo?.Distinct ?? false,
+            TopCount = node.SortInfo?.TopRows
+        };
     }
 
     private IteratorDefinition? BuildConcatenation(PlanNode node)
@@ -96,6 +125,14 @@ public sealed class TraceDefinitionBuilder(Func<PlanNode, AllocationUnit?> resol
             }
 
             inputs.Add(input);
+        }
+
+        foreach (var definedValue in node.DefinedValues)
+        {
+            if (definedValue.Columns.Count >= 2)
+            {
+                _columnAliases[definedValue.Columns[0].Column.Trim('[', ']')] = ResolveColumn(definedValue.Columns[1]);
+            }
         }
 
         Nodes[node.NodeId] = node;
@@ -366,11 +403,25 @@ public sealed class TraceDefinitionBuilder(Func<PlanNode, AllocationUnit?> resol
         }
     }
 
+    private readonly Dictionary<string, ColumnReference> _columnAliases = new(StringComparer.OrdinalIgnoreCase);
+
+    private ColumnReference ResolveColumn(ColumnReference column)
+        => _columnAliases.TryGetValue(column.Column.Trim('[', ']'), out var resolved) ? resolved : column;
+
+    private string ResolveColumnName(string name)
+    {
+        var trimmed = name.Trim('[', ']');
+
+        return _columnAliases.TryGetValue(trimmed, out var resolved) ? resolved.Column.Trim('[', ']') : trimmed;
+    }
+
     private IReadOnlyList<OutputColumn> OutputList(PlanNode node)
         => [.. node.OutputColumns.Select(ToOutputColumn)];
 
     private OutputColumn ToOutputColumn(ColumnReference column)
     {
+        column = ResolveColumn(column);
+
         var name = column.Column.Trim('[', ']');
 
         var table = column.Table.Trim('[', ']');

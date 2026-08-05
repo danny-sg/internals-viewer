@@ -470,8 +470,7 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
                                              canClose: true,
                                              keepAlive: true,
                                              key: TraceDocumentKey,
-                                             persist: false,
-                                             commandsFactory: static () => new TraceTabCommands());
+                                             persist: false);
 
         Layout.RegisterDocument(TraceDocumentKey, document);
 

@@ -164,7 +164,7 @@ public sealed partial class TabGroupView : UserControl
                 Height = 9,
                 CornerRadius = new CornerRadius(2),
                 VerticalAlignment = VerticalAlignment.Center,
-                Background = new SolidColorBrush(accent)
+                Background = accent
             });
 
             panel.Children.Add(title);

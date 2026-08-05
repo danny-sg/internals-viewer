@@ -143,6 +143,29 @@ public static class TraceStepDescriber
             AccessStep.ConcatRow concatRow =>
                 $"Get Row - Passes through row {concatRow.Number:N0} from input {concatRow.InputNumber}.",
 
+            AccessStep.SortCollect collect =>
+                $"Collect - Reads row {collect.Number:N0} from the input into the sort table.\n\n"
+                + (collect.IsRetained
+                    ? "A sort is blocking: every input row has to be collected before the first row can be output, because the "
+                      + "smallest row might be the last one read."
+                    : "The sort keeps only the top rows, and this row sorts after all of them, so it is dropped rather than held."),
+
+            AccessStep.Sorted sortedStep =>
+                $"Sort - Sorted {sortedStep.Rows:N0} rows.\n\n"
+                + "The input is exhausted, so the collected rows are ordered by the sort keys in one pass. From here rows are "
+                + "output from the sort table in order.",
+
+            AccessStep.SortRow sortRow =>
+                $"Get Row - Outputs row {sortRow.Number:N0} from the sort table.",
+
+            AccessStep.SortDuplicate sortDuplicate =>
+                $"Duplicate - Skips a row whose sort key equals the one just output.\n\n"
+                + "A distinct sort removes duplicates as it outputs: the rows are already in key order, so equal rows sit next to "
+                + "each other and only the first of each group is returned.",
+
+            SortCollectSpan span =>
+                $"Collect - {span.Progress.Rows:N0} rows read into the sort table so far.",
+
             AccessStep.TopRow topRow =>
                 $"Get Row - Passes through row {topRow.Number:N0} of {topRow.RowCount:N0}."
                 + (topRow.IsLast ? "\n\nThe limit is reached, so the input is closed rather than read any further." : string.Empty),

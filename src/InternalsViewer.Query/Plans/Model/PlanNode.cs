@@ -36,6 +36,8 @@ public sealed class PlanNode
 
     public List<SortColumnInfo> SortColumns { get; set; } = [];
 
+    public SortInfo? SortInfo { get; set; }
+
     public MergeInfo? MergeInfo { get; set; }
 
     public TopInfo? TopInfo { get; set; }

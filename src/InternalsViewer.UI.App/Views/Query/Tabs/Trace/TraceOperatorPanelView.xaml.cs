@@ -1,5 +1,6 @@
 using InternalsViewer.UI.App.Controls.AccessSteps;
 using InternalsViewer.UI.App.Controls.Docking;
+using InternalsViewer.UI.App.Models.Trace;
 using InternalsViewer.UI.App.ViewModels.Query.Trace;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Controls.Primitives;
@@ -54,28 +55,33 @@ public sealed partial class TraceOperatorPanelView : UserControl, IDocumentComma
             panel.Children.Add(hashTableToggle);
         }
 
-        var outputToggle = new ToggleButton
+        if (ViewModel?.HasOutputPane != false)
         {
-            Style = (Style)Application.Current.Resources["TabCommandToggleStyle"],
-            Content = new TextBlock { Text = "Output", VerticalAlignment = VerticalAlignment.Center },
-            IsChecked = _isOutputVisible
-        };
+            var outputToggle = new ToggleButton
+            {
+                Style = (Style)Application.Current.Resources["TabCommandToggleStyle"],
+                Content = new TextBlock { Text = "Output", VerticalAlignment = VerticalAlignment.Center },
+                IsChecked = _isOutputVisible
+            };
 
-        outputToggle.Click += (_, _) =>
-        {
-            _isOutputVisible = outputToggle.IsChecked == true;
+            outputToggle.Click += (_, _) =>
+            {
+                _isOutputVisible = outputToggle.IsChecked == true;
 
-            ApplyOutputVisibility();
-        };
+                ApplyOutputVisibility();
+            };
 
-        panel.Children.Add(outputToggle);
+            panel.Children.Add(outputToggle);
+        }
 
         return panel;
     }
 
     private void ApplyOutputVisibility()
     {
-        var visibility = _isOutputVisible ? Visibility.Visible : Visibility.Collapsed;
+        var visibility = _isOutputVisible && _appliedViewModel?.HasOutputPane != false
+            ? Visibility.Visible
+            : Visibility.Collapsed;
 
         OutputHeader.Visibility = visibility;
         OutputHost.Visibility = visibility;
@@ -121,6 +127,8 @@ public sealed partial class TraceOperatorPanelView : UserControl, IDocumentComma
 
         _appliedViewModel = viewModel;
 
+        _isOutputVisible = viewModel.IsOutputDefaultVisible;
+
         OperatorIcon.Source = viewModel.Icon is { } operatorIcon ? new SvgImageSource(operatorIcon) : null;
         OperatorIcon.Visibility = viewModel.Icon is null ? Visibility.Collapsed : Visibility.Visible;
 
@@ -129,26 +137,56 @@ public sealed partial class TraceOperatorPanelView : UserControl, IDocumentComma
         OperatorBadge.Decision = viewModel.JoinRule;
         OperatorBadge.Visibility = viewModel.JoinRule is null ? Visibility.Collapsed : Visibility.Visible;
 
-        Fill(OuterTopHost, OuterHeader, viewModel.OuterTop);
-        Fill(InnerTopHost, InnerHeader, viewModel.InnerTop);
-
-        Fill(OuterBottomHost, header: null, viewModel.OuterBottom);
-        Fill(InnerBottomHost, header: null, viewModel.InnerBottom);
-
         OutputHeader.Text = $"Output ({viewModel.NodeId})";
 
         OutputHost.Content = new TraceRowStreamPanelView { DataContext = viewModel.Output };
 
-        Collapse(OuterBottomRow, OuterSplitter, viewModel.OuterBottom);
-        Collapse(InnerBottomRow, InnerSplitter, viewModel.InnerBottom);
+        if (viewModel.IsJoinLayout)
+        {
+            JoinGrid.Visibility = Visibility.Visible;
+            MainHost.Visibility = Visibility.Collapsed;
+            InputsList.Visibility = Visibility.Collapsed;
+            StateList.Visibility = Visibility.Collapsed;
 
-        var hasInner = viewModel.InnerTop.Kind != TracePaneKind.Empty;
+            Fill(OuterTopHost, OuterHeader, viewModel.OuterTop);
+            Fill(InnerTopHost, InnerHeader, viewModel.InnerTop);
 
-        InnerColumn.Width = hasInner ? new GridLength(1, GridUnitType.Star) : new GridLength(0);
-        InputSplitter.Visibility = hasInner ? Visibility.Visible : Visibility.Collapsed;
+            Fill(OuterBottomHost, header: null, viewModel.OuterBottom);
+            Fill(InnerBottomHost, header: null, viewModel.InnerBottom);
+
+            Collapse(OuterBottomRow, OuterSplitter, viewModel.OuterBottom);
+            Collapse(InnerBottomRow, InnerSplitter, viewModel.InnerBottom);
+
+            var hasInner = viewModel.InnerTop.Kind != TracePaneKind.Empty;
+
+            InnerColumn.Width = hasInner ? new GridLength(1, GridUnitType.Star) : new GridLength(0);
+            InputSplitter.Visibility = hasInner ? Visibility.Visible : Visibility.Collapsed;
+        }
+        else
+        {
+            JoinGrid.Visibility = Visibility.Collapsed;
+
+            InputsList.ItemsSource = viewModel.InputRows;
+            InputsList.Visibility = viewModel.InputRows.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
+
+            StateList.ItemsSource = viewModel.StateItems;
+            StateList.Visibility = viewModel.StateItems.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
+
+            MainHost.Visibility = viewModel.MainPane.Kind == TracePaneKind.Empty ? Visibility.Collapsed : Visibility.Visible;
+
+            Fill(MainHost, header: null, viewModel.MainPane);
+        }
 
         ApplyOutputVisibility();
         ApplyHashTableVisibility();
+    }
+
+    private void OnInputRowTapped(object sender, Microsoft.UI.Xaml.Input.TappedRoutedEventArgs e)
+    {
+        if (sender is FrameworkElement { DataContext: TraceInputRow row })
+        {
+            _appliedViewModel?.RequestActivation(row.SourceNodeId);
+        }
     }
 
     private void Fill(ContentControl host, StackPanel? header, TracePane pane)
@@ -183,13 +221,17 @@ public sealed partial class TraceOperatorPanelView : UserControl, IDocumentComma
 
         if (pane.AccentColour is { } accent)
         {
+            var blob = pane.SourceNodeId is { } sourceNodeId && _appliedViewModel?.BlobPalette is { } palette
+                ? palette.For(sourceNodeId, accent)
+                : (Brush)new SolidColorBrush(accent);
+
             header.Children.Add(new Border
             {
                 Width = 9,
                 Height = 9,
                 CornerRadius = new CornerRadius(2),
                 VerticalAlignment = VerticalAlignment.Center,
-                Background = new SolidColorBrush(accent)
+                Background = blob
             });
         }
 

@@ -197,6 +197,7 @@ public sealed partial class EventTimelineControl
         var canTrace = op.PlanNodeIdentifier.NodeId < 0
                        || op.Name.Equals("Top", StringComparison.OrdinalIgnoreCase)
                        || op.Name.Equals("Concatenation", StringComparison.OrdinalIgnoreCase)
+                       || op.Name.Equals("Sort", StringComparison.OrdinalIgnoreCase)
                        || op is { Category: OperatorCategory.DataAccess, TableName.Length: > 0 }
                        || (op.Category == OperatorCategory.Join
                            && (op.Name.Contains("Nested Loops", StringComparison.OrdinalIgnoreCase)

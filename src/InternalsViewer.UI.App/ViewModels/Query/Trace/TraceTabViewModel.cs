@@ -14,6 +14,8 @@ using InternalsViewer.Execution.AccessPaths.Search;
 using InternalsViewer.Execution.Interfaces;
 using InternalsViewer.Execution.Interfaces.Iterators;
 using InternalsViewer.Execution.Interfaces.Iterators.Joins;
+using InternalsViewer.Execution.Iterators.Joins;
+using InternalsViewer.Execution.Iterators.Row;
 using InternalsViewer.Execution.Iterators.Stepping;
 using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Internals.Engine.Database;
@@ -134,9 +136,13 @@ public sealed partial class TraceTabViewModel : ObservableObject
 
         Operators = layout.Tabs;
 
+        OperatorsByNode = Operators.ToDictionary(o => o.NodeId);
+
         foreach (var op in Operators)
         {
             op.ActivationRequested += ActivateOperator;
+
+            BuildStateItems(op);
         }
 
         RowBuilder = new TraceRowBuilder(layout.Definitions, layout.Sides);
@@ -148,8 +154,6 @@ public sealed partial class TraceTabViewModel : ObservableObject
         StepNodes = BuildStepNodes();
 
         Dock = BuildDock();
-
-        Dock.LayoutChanged += (_, _) => OnDockLayoutChanged();
     }
 
     public SvgImageSource? IconSource => PlanNode is null ? null : new SvgImageSource(PlanIconResolver.Resolve(PlanNode));
@@ -171,11 +175,7 @@ public sealed partial class TraceTabViewModel : ObservableObject
         var strategy = DocumentViewModel.Create<TraceStrategyPanelView>("Strategy", this, keepAlive: true, key: "Strategy");
         var plan = DocumentViewModel.Create<TracePlanPanelView>("Plan", this, keepAlive: true, key: "Plan");
 
-        var results = DocumentViewModel.Create<TraceResultsPanelView>("Results", this, keepAlive: true, key: "Results");
-
-        _resultsDocument = results;
-
-        var right = new TabGroupNode(steps, description, results, strategy, plan);
+        var right = new TabGroupNode(steps, description, strategy, plan);
 
         var left = new TabGroupNode([.. OperatorDocuments()]);
 
@@ -199,7 +199,7 @@ public sealed partial class TraceTabViewModel : ObservableObject
 
             if (Layout.Colours.TryGetValue(o.NodeId, out var colour))
             {
-                document.Accent = ToColour(colour);
+                document.Accent = Layout.Palette.For(o.NodeId, ToColour(colour));
             }
 
             return document;
@@ -226,6 +226,8 @@ public sealed partial class TraceTabViewModel : ObservableObject
     private Dictionary<int, TraceVisualViewModel> VisualsByNode { get; }
 
     public IReadOnlyList<TraceOperatorViewModel> Operators { get; }
+
+    private Dictionary<int, TraceOperatorViewModel> OperatorsByNode { get; }
 
     public DatabaseSource Database { get; }
 
@@ -411,11 +413,6 @@ public sealed partial class TraceTabViewModel : ObservableObject
     private ObservableCollection<AccessStep> _stepHistory = [];
 
     [ObservableProperty]
-    private ObservableCollection<IndexRecordModel> _resultRecords = [];
-
-    partial void OnResultRecordsChanged(ObservableCollection<IndexRecordModel> value) => OnPropertyChanged(nameof(ResultsLabel));
-
-    [ObservableProperty]
     private AccessStep? _currentStep;
 
     public string SelectedSectionTitle => SelectedVisual.Title;
@@ -495,6 +492,15 @@ public sealed partial class TraceTabViewModel : ObservableObject
             return $"The operator returns the first {top.RowCount:N0} rows from its input, then closes it.";
         }
 
+        if (definition is SortDefinition sort)
+        {
+            return sort.TopCount is { } topCount
+                ? $"The operator collects its input, keeps the top {topCount:N0} rows by the sort keys and outputs them in order."
+                : sort.IsDistinct
+                    ? "The operator collects its whole input, sorts it and outputs each distinct key once."
+                    : "The operator collects its whole input before returning anything, then outputs the rows in sorted order.";
+        }
+
         if (definition is not JoinDefinition join)
         {
             return string.Empty;
@@ -557,47 +563,7 @@ public sealed partial class TraceTabViewModel : ObservableObject
         }
     }
 
-    private DocumentViewModel? _resultsDocument;
-
     private CancellationTokenSource? _runToEndCancellation;
-
-    [ObservableProperty]
-    private bool _isResultsVisible = true;
-
-    private bool _suppressResultsSync;
-
-    public string ResultsLabel => ResultRecords.Count > 0 ? $"Results ({ResultRecords.Count:N0})" : "Results";
-
-    partial void OnIsResultsVisibleChanged(bool value)
-    {
-        if (_suppressResultsSync || _resultsDocument is not { } document)
-        {
-            return;
-        }
-
-        if (value)
-        {
-            Dock.Show(document);
-        }
-        else
-        {
-            Dock.Close(document);
-        }
-    }
-
-    private void OnDockLayoutChanged()
-    {
-        if (_resultsDocument is not { } document)
-        {
-            return;
-        }
-
-        _suppressResultsSync = true;
-
-        IsResultsVisible = Dock.Contains(document);
-
-        _suppressResultsSync = false;
-    }
 
     public AccessPhase? CurrentPhase => CurrentStep?.AccessPhase;
 
@@ -655,21 +621,47 @@ public sealed partial class TraceTabViewModel : ObservableObject
         OnPropertyChanged(nameof(CurrentPhase));
         OnPropertyChanged(nameof(SelectedPhase));
         OnPropertyChanged(nameof(CurrentCounters));
+
+        UpdateBlobDimming();
     }
 
     public bool IsStepDetailVisible => IsStepping && !IsRunning && !IsRunningToEnd;
+
+    public TraceBlobPalette BlobPalette => Layout.Palette;
+
+    private void UpdateBlobDimming()
+    {
+        Layout.Palette.SetActive(IsStepDetailVisible && !IsStepComplete && CurrentStep is { } step ? step.NodeId : null);
+    }
 
     partial void OnIsSteppingChanged(bool value)
     {
         OnPropertyChanged(nameof(IsWalkInProgress));
         OnPropertyChanged(nameof(IsStepDetailVisible));
+
+        UpdateBlobDimming();
     }
 
-    partial void OnIsStepCompleteChanged(bool value) => OnPropertyChanged(nameof(IsWalkInProgress));
+    partial void OnIsStepCompleteChanged(bool value)
+    {
+        OnPropertyChanged(nameof(IsWalkInProgress));
 
-    partial void OnIsRunningChanged(bool value) => OnPropertyChanged(nameof(IsStepDetailVisible));
+        UpdateBlobDimming();
+    }
 
-    partial void OnIsRunningToEndChanged(bool value) => OnPropertyChanged(nameof(IsStepDetailVisible));
+    partial void OnIsRunningChanged(bool value)
+    {
+        OnPropertyChanged(nameof(IsStepDetailVisible));
+
+        UpdateBlobDimming();
+    }
+
+    partial void OnIsRunningToEndChanged(bool value)
+    {
+        OnPropertyChanged(nameof(IsStepDetailVisible));
+
+        UpdateBlobDimming();
+    }
 
     [RelayCommand(AllowConcurrentExecutions = true)]
     public async Task Run()
@@ -722,6 +714,8 @@ public sealed partial class TraceTabViewModel : ObservableObject
 
         UpdateStrategies();
 
+        UpdateOperatorStates();
+
         AttachHashTables();
 
         SyncHeldRows();
@@ -771,6 +765,7 @@ public sealed partial class TraceTabViewModel : ObservableObject
                                       or AccessStep.TopRow { EmittedRecord: not null }
                                       or AccessStep.Output { EmittedRecord: not null }
                                       or AccessStep.ConcatRow { EmittedRecord: not null }
+                                      or AccessStep.SortRow { EmittedRecord: not null }
                                       or AccessStep.Row { EmittedRecord: not null },
             "Rebind" => step => step is AccessStep.Rebind,
             "Phase" => step => step is AccessStep.JoinStart or AccessStep.Reseek,
@@ -809,7 +804,7 @@ public sealed partial class TraceTabViewModel : ObservableObject
 
             var lastRows = new Dictionary<int, IndexRecordModel>();
 
-            var results = new List<IndexRecordModel>();
+            var accumulated = new Dictionary<int, List<IndexRecordModel>>();
 
             var replays = new Dictionary<TraceVisualViewModel, TraceVisualReplay>();
 
@@ -834,13 +829,22 @@ public sealed partial class TraceTabViewModel : ObservableObject
                 {
                     TraceStepRuns.Append(step, steps, HistoryLimit);
 
-                    if (Layout.Streams.ContainsKey(step.NodeId) && ToStreamModel(step) is { } model)
+                    if (Layout.Streams.TryGetValue(step.NodeId, out var stream) && ToStreamModel(step) is { } model)
                     {
-                        lastRows[step.NodeId] = model;
-
-                        if (step.NodeId == Definition.NodeId)
+                        if (stream.IsAccumulating)
                         {
-                            results.Add(model);
+                            if (!accumulated.TryGetValue(step.NodeId, out var rows))
+                            {
+                                rows = [];
+
+                                accumulated[step.NodeId] = rows;
+                            }
+
+                            rows.Add(model);
+                        }
+                        else
+                        {
+                            lastRows[step.NodeId] = model;
                         }
                     }
                 }
@@ -855,7 +859,11 @@ public sealed partial class TraceTabViewModel : ObservableObject
 
             foreach (var (nodeId, stream) in Layout.Streams)
             {
-                if (lastRows.TryGetValue(nodeId, out var last))
+                if (stream.IsAccumulating)
+                {
+                    stream.Load(accumulated.GetValueOrDefault(nodeId) ?? []);
+                }
+                else if (lastRows.TryGetValue(nodeId, out var last))
                 {
                     stream.Show(last);
                 }
@@ -865,9 +873,9 @@ public sealed partial class TraceTabViewModel : ObservableObject
                 }
             }
 
-            ResultRecords = new ObservableCollection<IndexRecordModel>(results);
-
             UpdateStrategies();
+
+            UpdateOperatorStates();
 
             foreach (var visual in Visuals)
             {
@@ -930,7 +938,17 @@ public sealed partial class TraceTabViewModel : ObservableObject
 
         CurrentStep = null;
 
-        ResultRecords = [];
+        foreach (var op in Operators)
+        {
+            op.StateItems.Clear();
+
+            BuildStateItems(op);
+
+            foreach (var row in op.InputRows)
+            {
+                row.RowCount = "0";
+            }
+        }
 
         StrategyBySource.Clear();
 
@@ -953,13 +971,6 @@ public sealed partial class TraceTabViewModel : ObservableObject
         }
 
         stream.Show(model);
-
-        if (step.NodeId == Definition.NodeId)
-        {
-            ResultRecords.Add(model);
-
-            OnPropertyChanged(nameof(ResultsLabel));
-        }
     }
 
     private IndexRecordModel? ToStreamModel(AccessStep step)
@@ -969,9 +980,83 @@ public sealed partial class TraceTabViewModel : ObservableObject
             AccessStep.TopRow { EmittedRecord: { } emitted } => ToRecordModel(emitted),
             AccessStep.Output { EmittedRecord: { } emitted } => ToRecordModel(emitted),
             AccessStep.ConcatRow { EmittedRecord: { } emitted } => ToRecordModel(emitted),
+            AccessStep.SortRow { EmittedRecord: { } emitted } => ToRecordModel(emitted),
             AccessStep.Row { EmittedRecord: { } emitted } => ToRecordModel(emitted),
             _ => null
         };
+
+    private void BuildStateItems(TraceOperatorViewModel tab)
+    {
+        if (!Layout.Definitions.TryGetValue(tab.NodeId, out var definition))
+        {
+            return;
+        }
+
+        switch (definition)
+        {
+            case SortDefinition sort:
+                if (sort.TopCount is { } sortTarget)
+                {
+                    tab.StateItems.Add(new TraceStateItem("Target") { Value = sortTarget.ToString("N0") });
+                }
+
+                tab.StateItems.Add(new TraceStateItem("Distinct") { Flag = sort.IsDistinct });
+                tab.StateItems.Add(new TraceStateItem("Collected") { Value = "0" });
+                tab.StateItems.Add(new TraceStateItem("Output") { Value = "0" });
+                break;
+
+            case TopDefinition top:
+                tab.StateItems.Add(new TraceStateItem("Target") { Value = top.RowCount.ToString("N0") });
+                tab.StateItems.Add(new TraceStateItem("Row Count") { Value = "0" });
+                break;
+
+            case ConcatenationDefinition concatenation:
+                tab.StateItems.Add(new TraceStateItem("Input") { Value = $"1 of {concatenation.Inputs.Count}" });
+                tab.StateItems.Add(new TraceStateItem("Rows") { Value = "0" });
+                break;
+        }
+    }
+
+    private void UpdateOperatorStates()
+    {
+        if (Stepper is not { } stepper)
+        {
+            return;
+        }
+
+        foreach (var iterator in Iterators(stepper.Root))
+        {
+            if (!OperatorsByNode.TryGetValue(iterator.NodeId, out var tab))
+            {
+                continue;
+            }
+
+            switch (iterator)
+            {
+                case TopIterator top:
+                    tab.SetState("Row Count", top.RowCount.ToString("N0"));
+                    break;
+
+                case SortIterator sort:
+                    tab.SetState("Collected", sort.CollectedCount.ToString("N0"));
+                    tab.SetState("Output", sort.RowCount.ToString("N0"));
+                    break;
+
+                case ConcatenationIterator concatenation:
+                    tab.SetState("Input", $"{concatenation.InputNumber} of {concatenation.InputCount}");
+                    tab.SetState("Rows", concatenation.RowCount.ToString("N0"));
+                    break;
+            }
+        }
+
+        foreach (var tab in Operators)
+        {
+            foreach (var row in tab.InputRows)
+            {
+                row.RowCount = stepper.CountersFor(row.SourceNodeId).RowsOutput.ToString("N0");
+            }
+        }
+    }
 
     private void SyncHeldRows()
     {

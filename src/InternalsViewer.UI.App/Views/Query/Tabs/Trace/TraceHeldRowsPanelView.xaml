@@ -8,8 +8,26 @@
     xmlns:index="using:InternalsViewer.UI.App.Controls.Index"
     mc:Ignorable="d">
 
-    <index:RecordGrid HideSlotColumn="True"
-                      AutoScrollToEnd="True"
-                      Records="{x:Bind ViewModel.Rows, Mode=OneWay}"
-                      BorderThickness="0" />
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <index:RecordGrid Grid.Row="0"
+                          HideSlotColumn="True"
+                          AutoScrollToEnd="True"
+                          Records="{x:Bind ViewModel.Rows, Mode=OneWay}"
+                          BorderThickness="0" />
+
+        <Border Grid.Row="1"
+                Padding="8,4"
+                BorderThickness="0,1,0,0"
+                BorderBrush="{ThemeResource ControlStrokeColorDefaultBrush}">
+            <TextBlock x:Name="StatusText"
+                       FontSize="12"
+                       TextAlignment="Right"
+                       Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+        </Border>
+    </Grid>
 </UserControl>

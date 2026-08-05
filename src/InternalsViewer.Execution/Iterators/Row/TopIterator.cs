@@ -25,7 +25,7 @@ public sealed class TopIterator(IIteratorFactory factory) : IteratorBase, IUnary
 
     public IIterator? Input { get; private set; }
 
-    private long Limit { get; set; }
+    public long Limit { get; private set; }
 
     private bool PendingStart { get; set; }
 

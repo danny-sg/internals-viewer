@@ -54,6 +54,16 @@ public class AccessStepTemplateSelector : DataTemplateSelector
 
     public DataTemplate ConcatRowTemplate { get; set; } = null!;
 
+    public DataTemplate SortCollectSpanTemplate { get; set; } = null!;
+
+    public DataTemplate SortCollectTemplate { get; set; } = null!;
+
+    public DataTemplate SortedTemplate { get; set; } = null!;
+
+    public DataTemplate SortRowTemplate { get; set; } = null!;
+
+    public DataTemplate SortDuplicateTemplate { get; set; } = null!;
+
     public DataTemplate TopRowTemplate { get; set; } = null!;
 
     public DataTemplate RowCountSpanTemplate { get; set; } = null!;
@@ -124,6 +134,11 @@ public class AccessStepTemplateSelector : DataTemplateSelector
             AccessStep.TopStart => TopStartTemplate,
             AccessStep.InputStart => InputStartTemplate,
             AccessStep.ConcatRow => ConcatRowTemplate,
+            SortCollectSpan => SortCollectSpanTemplate,
+            AccessStep.SortCollect => SortCollectTemplate,
+            AccessStep.Sorted => SortedTemplate,
+            AccessStep.SortRow => SortRowTemplate,
+            AccessStep.SortDuplicate => SortDuplicateTemplate,
             AccessStep.TopRow => TopRowTemplate,
             RowCountSpan => RowCountSpanTemplate,
             AccessStep.HashProbe => HashProbeTemplate,

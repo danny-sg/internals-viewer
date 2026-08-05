@@ -9,7 +9,7 @@ public static class TraceStepRuns
 {
     public static void Append(AccessStep step, ObservableCollection<AccessStep> history, int historyLimit)
     {
-        if (step is AccessStep.Stopped or AccessStep.Close)
+        if (step is AccessStep.Stopped or AccessStep.Close or AccessStep.Sorted)
         {
             RetireSpans(history, step.NodeId);
         }
@@ -180,6 +180,57 @@ public static class TraceStepRuns
             }
 
             span.Progress.Apply(output.Number, 0);
+
+            return;
+        }
+
+        if (step is AccessStep.SortCollect sortCollect)
+        {
+            var span = FindSpan<SortCollectSpan>(history, top, sortCollect.NodeId);
+
+            if (span is null)
+            {
+                span = new SortCollectSpan
+                {
+                    NodeId = sortCollect.NodeId,
+                    Counters = sortCollect.Counters
+                };
+
+                InsertSpan(history, span);
+            }
+
+            span.Progress.Apply(sortCollect.Number, 0);
+
+            return;
+        }
+
+        if (step is AccessStep.SortRow sortRow)
+        {
+            var span = FindSpan<RowCountSpan>(history, top, sortRow.NodeId);
+
+            if (span is null)
+            {
+                span = new RowCountSpan
+                {
+                    NodeId = sortRow.NodeId,
+                    Counters = sortRow.Counters,
+                    Badge = "→ Emit"
+                };
+
+                InsertSpan(history, span);
+            }
+
+            span.Progress.Apply(sortRow.Number, 0);
+
+            return;
+        }
+
+        if (step is AccessStep.SortDuplicate sortDuplicate
+            && history.Count > top
+            && history[top] is AccessStep.SortDuplicate previousDuplicate
+            && previousDuplicate.NodeId == sortDuplicate.NodeId)
+        {
+            history[top] = sortDuplicate with { Count = previousDuplicate.Count + 1 };
 
             return;
         }

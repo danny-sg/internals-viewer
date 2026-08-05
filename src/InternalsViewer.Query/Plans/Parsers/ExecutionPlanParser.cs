@@ -134,6 +134,7 @@ public static class ExecutionPlanParser
         node.OutputColumns = ParseOutputColumns(element);
         node.DefinedValues = ParseDefinedValues(element, parameters);
         node.SortColumns = ParseSortColumns(element);
+        node.SortInfo = ParseSortInfo(element);
         node.MergeInfo = ParseMergeInfo(element, parameters);
         node.NestedLoopsInfo = ParseNestedLoopsInfo(element, parameters);
         node.GroupByColumns = ParseGroupBy(element);
@@ -572,6 +573,25 @@ public static class ExecutionPlanParser
         }
 
         return result;
+    }
+
+    private static SortInfo? ParseSortInfo(XElement element)
+    {
+        var sort = element.Elements().FirstOrDefault(e => e.Name.LocalName is "Sort" or "TopSort");
+
+        if (sort is null)
+        {
+            return null;
+        }
+
+        long? rows = null;
+
+        if (sort.Name.LocalName == "TopSort" && long.TryParse(sort.Attribute("Rows")?.Value, out var parsed))
+        {
+            rows = parsed;
+        }
+
+        return new SortInfo(IsTrue(sort.Attribute("Distinct")), rows, IsTrue(sort.Attribute("WithTies")));
     }
 
     private static List<SortColumnInfo> ParseSortColumns(XElement element)

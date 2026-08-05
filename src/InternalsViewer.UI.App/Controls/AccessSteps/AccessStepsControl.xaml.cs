@@ -33,6 +33,25 @@ public sealed partial class AccessStepsControl : UserControl
                                     typeof(AccessStepsControl),
                                     new PropertyMetadata(false, OnShowDetailChanged));
 
+    public static readonly DependencyProperty BlobPaletteProperty =
+        DependencyProperty.Register(nameof(BlobPalette),
+                                    typeof(TraceBlobPalette),
+                                    typeof(AccessStepsControl),
+                                    new PropertyMetadata(null, OnBlobPaletteChanged));
+
+    public TraceBlobPalette? BlobPalette
+    {
+        get => (TraceBlobPalette?)GetValue(BlobPaletteProperty);
+        set => SetValue(BlobPaletteProperty, value);
+    }
+
+    private static void OnBlobPaletteChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
+    {
+        var control = (AccessStepsControl)d;
+
+        control._styler.Palette = control.BlobPalette;
+    }
+
     private readonly StepRowStyler _styler = new();
 
     public AccessStepsControl()
@@ -180,7 +199,7 @@ public sealed partial class AccessStepsControl : UserControl
         DetailSubtitle.Text = node?.Subtitle ?? string.Empty;
         DetailSubtitle.Visibility = DetailSubtitle.Text.Length > 0 ? Visibility.Visible : Visibility.Collapsed;
 
-        DetailBlob.Background = _styler.BrushFor(step.NodeId);
+        DetailBlob.Background = _styler.BlobBrushFor(step.NodeId);
 
         DetailDescription.Text = TraceStepDescriber.Describe(step, Nodes);
 

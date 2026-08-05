@@ -17,6 +17,10 @@ public sealed class ConcatenationIterator(IIteratorFactory factory) : IteratorBa
 
     public long RowCount { get; private set; }
 
+    public int InputNumber => Definitions.Count == 0 ? 0 : Math.Min(_index + 1, Definitions.Count);
+
+    public int InputCount => Definitions.Count;
+
     public IReadOnlyList<IIterator> Inputs => _inputs;
 
     private readonly List<IIterator> _inputs = [];

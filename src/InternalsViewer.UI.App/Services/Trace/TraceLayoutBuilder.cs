@@ -1,12 +1,14 @@
 using System;
 using System.Collections.Generic;
 using System.Drawing;
+using System.Linq;
 using InternalsViewer.Execution.AccessPaths.Definitions;
 using InternalsViewer.Execution.AccessPaths.Joins;
 using InternalsViewer.Query.Plans.Model;
 using InternalsViewer.UI.App.Controls.Plan;
 using InternalsViewer.UI.App.Models.Trace;
 using InternalsViewer.UI.App.ViewModels.Query.Trace;
+using Microsoft.UI.Xaml.Media.Imaging;
 
 namespace InternalsViewer.UI.App.Services.Trace;
 
@@ -31,6 +33,8 @@ public sealed class TraceLayout
     public required IReadOnlyDictionary<int, Color> Colours { get; init; }
 
     public required IReadOnlyDictionary<int, (int Outer, int Inner)> InputNodes { get; init; }
+
+    public required TraceBlobPalette Palette { get; init; }
 }
 
 public static class TraceLayoutBuilder
@@ -49,6 +53,8 @@ public static class TraceLayoutBuilder
 
         var colours = BuildColours(ordered, visuals);
 
+        var palette = new TraceBlobPalette();
+
         var operators = TraceSourceCollector.CollectOperators(definition);
 
         var tabs = new List<TraceOperatorViewModel>();
@@ -63,29 +69,6 @@ public static class TraceLayoutBuilder
 
         var sides = new Dictionary<int, OperatorSides>();
 
-        if (operators.Count == 0)
-        {
-            var visual = visuals[definition.NodeId];
-
-            var leafNode = nodeFor(definition.NodeId);
-
-            var leafTab = new TraceOperatorViewModel(definition.NodeId, visual.Title, string.Empty)
-            {
-                OuterTop = new TracePane(TracePaneKind.Visual, visual)
-                {
-                    SourceNodeId = definition.NodeId,
-                    AccentColour = Accent(colours, definition.NodeId),
-                    Heading = visual.Title
-                }
-            };
-
-            ApplyHeader(leafTab, definition, leafNode);
-
-            tabs.Add(leafTab);
-
-            streams[definition.NodeId] = leafTab.Output;
-        }
-
         foreach (var op in operators)
         {
             var title = op.NodeId < 0 ? OperatorTitle(op) : $"{OperatorTitle(op)} ({op.NodeId})";
@@ -93,6 +76,8 @@ public static class TraceLayoutBuilder
             var tab = new TraceOperatorViewModel(op.NodeId, title, OperatorDescription(op));
 
             ApplyHeader(tab, op, nodeFor(op.NodeId));
+
+            tab.BlobPalette = palette;
 
             tabs.Add(tab);
 
@@ -105,36 +90,67 @@ public static class TraceLayoutBuilder
         {
             var tab = tabsByNode[op.NodeId];
 
-            var (outer, inner) = Inputs(op);
-
-            var (outerLabel, innerLabel) = InputLabels(op);
-
-            tab.OuterTop = InputPane(outer, outerLabel, tabsByNode, visuals, colours, nodeFor);
-            tab.InnerTop = InputPane(inner, innerLabel, tabsByNode, visuals, colours, nodeFor);
-
-            switch (op)
-            {
-                case HashMatchDefinition hash:
-                    var hashTable = new TraceHashTableViewModel(HashTableFilter(hash.Build.Source, nodeFor));
-
-                    hashTables[op.NodeId] = hashTable;
-
-                    tab.OuterBottom = new TracePane(TracePaneKind.HashTable, hashTable);
-                    tab.InnerBottom = HeldPane(heldRows, op.NodeId, 1);
-                    break;
-
-                case MergeJoinDefinition or NestedLoopsDefinition:
-                    tab.OuterBottom = HeldPane(heldRows, op.NodeId, 0);
-                    tab.InnerBottom = HeldPane(heldRows, op.NodeId, 1);
-                    break;
-            }
-
             if (op is JoinDefinition)
             {
+                tab.IsJoinLayout = true;
+
+                var (outer, inner) = Inputs(op);
+
+                var (outerLabel, innerLabel) = InputLabels(op);
+
+                tab.OuterTop = InputPane(outer, outerLabel, tabsByNode, visuals, colours, nodeFor);
+                tab.InnerTop = InputPane(inner, innerLabel, tabsByNode, visuals, colours, nodeFor);
+
+                switch (op)
+                {
+                    case HashMatchDefinition hash:
+                        var hashTable = new TraceHashTableViewModel(HashTableFilter(hash.Build.Source, nodeFor));
+
+                        hashTables[op.NodeId] = hashTable;
+
+                        tab.OuterBottom = new TracePane(TracePaneKind.HashTable, hashTable);
+                        tab.InnerBottom = HeldPane(heldRows, op.NodeId, 1);
+                        break;
+
+                    case MergeJoinDefinition or NestedLoopsDefinition:
+                        tab.OuterBottom = HeldPane(heldRows, op.NodeId, 0);
+                        tab.InnerBottom = HeldPane(heldRows, op.NodeId, 1);
+                        break;
+                }
+
                 sides[op.NodeId] = new OperatorSides(OperatorNodeIdOf(outer),
                                                     OperatorNodeIdOf(inner),
                                                     TablesUnder(outer, visuals),
                                                     TablesUnder(inner, visuals));
+
+                continue;
+            }
+
+            foreach (var row in InputRowsOf(op, colours, nodeFor, palette))
+            {
+                tab.InputRows.Add(row);
+            }
+
+            tab.MainPane = op switch
+            {
+                SortDefinition => HeldPane(heldRows, op.NodeId, 0),
+                SelectDefinition => new TracePane(TracePaneKind.RowStream, tab.Output, "Results"),
+                _ when visuals.TryGetValue(op.NodeId, out var visual) => new TracePane(TracePaneKind.Visual, visual),
+                _ => TracePane.Empty
+            };
+        }
+
+        if (tabsByNode.TryGetValue(definition.NodeId, out var rootTab))
+        {
+            rootTab.Output.IsAccumulating = true;
+
+            if (definition is SelectDefinition)
+            {
+                rootTab.HasOutputPane = false;
+            }
+            else
+            {
+                rootTab.IsOutputDefaultVisible = true;
             }
         }
 
@@ -157,11 +173,6 @@ public static class TraceLayoutBuilder
             }
         }
 
-        if (operators.Count == 0 && visuals.TryGetValue(definition.NodeId, out var rootVisual))
-        {
-            visualByOperator[definition.NodeId] = rootVisual;
-        }
-
         return new TraceLayout
         {
             Tabs = tabs,
@@ -173,7 +184,62 @@ public static class TraceLayoutBuilder
             VisualByOperator = visualByOperator,
             Depths = depths,
             Colours = colours,
-            InputNodes = inputNodes
+            InputNodes = inputNodes,
+            Palette = palette
+        };
+    }
+
+    private static IEnumerable<TraceInputRow> InputRowsOf(IteratorDefinition definition,
+                                                          IReadOnlyDictionary<int, Color> colours,
+                                                          Func<int, PlanNode?> nodeFor,
+                                                          TraceBlobPalette palette)
+    {
+        switch (definition)
+        {
+            case ConcatenationDefinition concatenation:
+                for (var index = 0; index < concatenation.Inputs.Count; index++)
+                {
+                    yield return InputRow(concatenation.Inputs[index], $"Input {index + 1}", colours, nodeFor, palette);
+                }
+
+                break;
+
+            case SelectDefinition select:
+                yield return InputRow(select.Source, "Input", colours, nodeFor, palette, hasRowCount: false);
+
+                break;
+
+            case SortDefinition sort:
+                yield return InputRow(sort.Source, "Input", colours, nodeFor, palette, hasRowCount: false);
+
+                break;
+
+            case UnaryDefinition unary:
+                yield return InputRow(unary.Source, "Input", colours, nodeFor, palette);
+
+                break;
+        }
+    }
+
+    private static TraceInputRow InputRow(IteratorDefinition input,
+                                          string label,
+                                          IReadOnlyDictionary<int, Color> colours,
+                                          Func<int, PlanNode?> nodeFor,
+                                          TraceBlobPalette palette,
+                                          bool hasRowCount = true)
+    {
+        var node = nodeFor(input.NodeId);
+
+        var physical = node?.PhysicalOperator is { Length: > 0 } name ? name : DisplayName(input);
+
+        var heading = input.NodeId < 0 ? physical : $"{physical} ({input.NodeId})";
+
+        return new TraceInputRow(input.NodeId, heading)
+        {
+            Label = label,
+            Blob = Accent(colours, input.NodeId) is { } accent ? palette.For(input.NodeId, accent) : null,
+            Icon = node is null ? null : new SvgImageSource(PlanIconResolver.Resolve(node)),
+            HasRowCount = hasRowCount
         };
     }
 
@@ -269,6 +335,7 @@ public static class TraceLayoutBuilder
             TopDefinition => "Top",
             SelectDefinition => "SELECT",
             ConcatenationDefinition => "Concatenation",
+            SortDefinition => "Sort",
             SeekDefinition => "Index Seek",
             RangeDefinition => "Index Scan",
             HeapFetchDefinition => "RID Lookup",
@@ -287,6 +354,17 @@ public static class TraceLayoutBuilder
         if (definition is TopDefinition top)
         {
             return $"TOP {top.RowCount:N0}";
+        }
+
+        if (definition is SortDefinition sort)
+        {
+            var orderBy = string.Join(", ", sort.Keys.Select(k => k.Descending ? $"{k.Column} DESC" : k.Column));
+
+            var prefix = sort.TopCount is { } topCount
+                ? $"TOP {topCount:N0} "
+                : sort.IsDistinct ? "DISTINCT " : string.Empty;
+
+            return $"{prefix}ORDER BY {orderBy}";
         }
 
         if (definition is not JoinDefinition join)
@@ -315,6 +393,7 @@ public static class TraceLayoutBuilder
             TopDefinition => ("Input", string.Empty),
             SelectDefinition => ("Input", string.Empty),
             ConcatenationDefinition => ("Input 1", "Input 2"),
+            SortDefinition => ("Input", string.Empty),
             _ => ("Outer Input", "Inner Input")
         };
 
@@ -326,6 +405,7 @@ public static class TraceLayoutBuilder
             HashMatchDefinition hash => (hash.Build.Source, hash.Probe.Source),
             TopDefinition top => (top.Source, null),
             SelectDefinition select => (select.Source, null),
+            SortDefinition sort => (sort.Source, null),
             ConcatenationDefinition concatenation
                 => (concatenation.Inputs.Count > 0 ? concatenation.Inputs[0] : null,
                     concatenation.Inputs.Count > 1 ? concatenation.Inputs[1] : null),
