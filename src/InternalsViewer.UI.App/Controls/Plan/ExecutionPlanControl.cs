@@ -505,6 +505,7 @@ public sealed class ExecutionPlanControl : Canvas
 
             var canTrace = node.IsStatement
                            || OperatorClassifier.IsTop(node)
+                           || OperatorClassifier.IsConcatenation(node)
                            || (!string.IsNullOrEmpty(node.Table) && OperatorClassifier.GetCategory(node) == OperatorCategory.DataAccess)
                            || CorrelatedJoinResolver.Resolve(node) is not null
                            || MergeJoinResolver.Resolve(node) is not null

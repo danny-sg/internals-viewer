@@ -22,6 +22,8 @@ public sealed class IteratorFactory(IServiceProvider services) : IIteratorFactor
                 => services.GetRequiredService<TopIterator>(),
             SelectDefinition
                 => services.GetRequiredService<SelectIterator>(),
+            ConcatenationDefinition
+                => services.GetRequiredService<ConcatenationIterator>(),
             AllocationScanDefinition
                 => services.GetRequiredService<AllocationScanIterator>(),
             HeapFetchDefinition

@@ -770,6 +770,7 @@ public sealed partial class TraceTabViewModel : ObservableObject
                               && step is AccessStep.JoinEmit
                                       or AccessStep.TopRow { EmittedRecord: not null }
                                       or AccessStep.Output { EmittedRecord: not null }
+                                      or AccessStep.ConcatRow { EmittedRecord: not null }
                                       or AccessStep.Row { EmittedRecord: not null },
             "Rebind" => step => step is AccessStep.Rebind,
             "Phase" => step => step is AccessStep.JoinStart or AccessStep.Reseek,
@@ -967,6 +968,7 @@ public sealed partial class TraceTabViewModel : ObservableObject
             AccessStep.JoinEmit emit => RowBuilder.ToJoinedModel(emit),
             AccessStep.TopRow { EmittedRecord: { } emitted } => ToRecordModel(emitted),
             AccessStep.Output { EmittedRecord: { } emitted } => ToRecordModel(emitted),
+            AccessStep.ConcatRow { EmittedRecord: { } emitted } => ToRecordModel(emitted),
             AccessStep.Row { EmittedRecord: { } emitted } => ToRecordModel(emitted),
             _ => null
         };
@@ -1041,6 +1043,17 @@ public sealed partial class TraceTabViewModel : ObservableObject
                 if (join.Inner?.Iterator is { } inner)
                 {
                     foreach (var found in Iterators(inner))
+                    {
+                        yield return found;
+                    }
+                }
+
+                break;
+
+            case IMultiInputIterator multi:
+                foreach (var input in multi.Inputs)
+                {
+                    foreach (var found in Iterators(input))
                     {
                         yield return found;
                     }

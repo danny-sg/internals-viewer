@@ -246,6 +246,14 @@ public static class TraceLayoutBuilder
                 Index(hash.Probe.Source, definitions, depths, ordered, depth + 1);
                 break;
 
+            case ConcatenationDefinition concatenation:
+                foreach (var input in concatenation.Inputs)
+                {
+                    Index(input, definitions, depths, ordered, depth + 1);
+                }
+
+                break;
+
             case UnaryDefinition unary:
                 Index(unary.Source, definitions, depths, ordered, depth + 1);
                 break;
@@ -260,6 +268,7 @@ public static class TraceLayoutBuilder
             NestedLoopsDefinition => "Nested Loops",
             TopDefinition => "Top",
             SelectDefinition => "SELECT",
+            ConcatenationDefinition => "Concatenation",
             SeekDefinition => "Index Seek",
             RangeDefinition => "Index Scan",
             HeapFetchDefinition => "RID Lookup",
@@ -305,6 +314,7 @@ public static class TraceLayoutBuilder
             HashMatchDefinition => ("Build Input", "Probe Input"),
             TopDefinition => ("Input", string.Empty),
             SelectDefinition => ("Input", string.Empty),
+            ConcatenationDefinition => ("Input 1", "Input 2"),
             _ => ("Outer Input", "Inner Input")
         };
 
@@ -316,6 +326,9 @@ public static class TraceLayoutBuilder
             HashMatchDefinition hash => (hash.Build.Source, hash.Probe.Source),
             TopDefinition top => (top.Source, null),
             SelectDefinition select => (select.Source, null),
+            ConcatenationDefinition concatenation
+                => (concatenation.Inputs.Count > 0 ? concatenation.Inputs[0] : null,
+                    concatenation.Inputs.Count > 1 ? concatenation.Inputs[1] : null),
             _ => (null, null)
         };
 

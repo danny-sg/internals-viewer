@@ -66,6 +66,14 @@ public static class TraceSourceCollector
 
                 break;
 
+            case ConcatenationDefinition concatenation:
+                foreach (var input in concatenation.Inputs)
+                {
+                    Walk(input, TraceSourceRole.None, concatenation.NodeId, sources);
+                }
+
+                break;
+
             case UnaryDefinition unary:
                 Walk(unary.Source, role, operatorNodeId, sources);
 
@@ -98,6 +106,18 @@ public static class TraceSourceCollector
             operators.Add(select);
 
             WalkOperators(select.Source, operators);
+
+            return;
+        }
+
+        if (definition is ConcatenationDefinition concatenation)
+        {
+            operators.Add(concatenation);
+
+            foreach (var input in concatenation.Inputs)
+            {
+                WalkOperators(input, operators);
+            }
 
             return;
         }

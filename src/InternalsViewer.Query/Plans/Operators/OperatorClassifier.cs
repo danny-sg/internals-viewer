@@ -28,6 +28,9 @@ public static class OperatorClassifier
     public static bool IsTop(PlanNode n) =>
         EqualsOp(n.PhysicalOperator, "Top");
 
+    public static bool IsConcatenation(PlanNode n) =>
+        EqualsOp(n.PhysicalOperator, "Concatenation");
+
     public static bool IsSpool(PlanNode n) =>
         Contains(n.PhysicalOperator, "Spool");
 

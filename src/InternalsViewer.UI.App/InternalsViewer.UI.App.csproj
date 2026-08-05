@@ -131,6 +131,7 @@
         <None Remove="Images\Wide310x150Logo.scale-150.png" />
         <None Remove="Images\Wide310x150Logo.scale-200.png" />
         <None Remove="Images\Wide310x150Logo.scale-400.png" />
+        <None Remove="Controls\AccessSteps\AccessStepTemplates.xaml" />
         <None Remove="Styles\CommonStyles.xaml" />
         <None Remove="Styles\Markers\MarkerStylesDark.xaml" />
         <None Remove="Styles\Markers\MarkerStylesLight.xaml" />
@@ -463,6 +464,9 @@
     </ItemGroup>
 
     <ItemGroup>
+        <Page Update="Controls\AccessSteps\AccessStepTemplates.xaml">
+            <Generator>MSBuild:Compile</Generator>
+        </Page>
         <Page Update="Styles\CommonStyles.xaml">
             <Generator>MSBuild:Compile</Generator>
         </Page>

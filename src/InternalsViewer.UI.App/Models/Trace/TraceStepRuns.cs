@@ -184,6 +184,27 @@ public static class TraceStepRuns
             return;
         }
 
+        if (step is AccessStep.ConcatRow concatRow)
+        {
+            var span = FindSpan<RowCountSpan>(history, top, concatRow.NodeId);
+
+            if (span is null)
+            {
+                span = new RowCountSpan
+                {
+                    NodeId = concatRow.NodeId,
+                    Counters = concatRow.Counters,
+                    Badge = "→ Emit"
+                };
+
+                InsertSpan(history, span);
+            }
+
+            span.Progress.Apply(concatRow.Number, 0);
+
+            return;
+        }
+
         if (step is AccessStep.Probe probe)
         {
             if (history.Count > top && history[top] is AccessStep.ProbeRun probeRun && probeRun.NodeId == probe.NodeId)

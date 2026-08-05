@@ -135,6 +135,14 @@ public static class TraceStepDescriber
             AccessStep.TopStart topStart =>
                 $"Open - The TOP will stop its input after {topStart.RowCount:N0} rows.",
 
+            AccessStep.InputStart inputStart =>
+                $"Input - Starts reading input {inputStart.Number} of {inputStart.Count}.\n\n"
+                + "A concatenation reads its inputs one after another, so each input is opened only once the one before it has run "
+                + "out of rows.",
+
+            AccessStep.ConcatRow concatRow =>
+                $"Get Row - Passes through row {concatRow.Number:N0} from input {concatRow.InputNumber}.",
+
             AccessStep.TopRow topRow =>
                 $"Get Row - Passes through row {topRow.Number:N0} of {topRow.RowCount:N0}."
                 + (topRow.IsLast ? "\n\nThe limit is reached, so the input is closed rather than read any further." : string.Empty),

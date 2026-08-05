@@ -50,6 +50,10 @@ public class AccessStepTemplateSelector : DataTemplateSelector
 
     public DataTemplate TopStartTemplate { get; set; } = null!;
 
+    public DataTemplate InputStartTemplate { get; set; } = null!;
+
+    public DataTemplate ConcatRowTemplate { get; set; } = null!;
+
     public DataTemplate TopRowTemplate { get; set; } = null!;
 
     public DataTemplate RowCountSpanTemplate { get; set; } = null!;
@@ -118,6 +122,8 @@ public class AccessStepTemplateSelector : DataTemplateSelector
             HashProbeSpan => HashProbeSpanTemplate,
             HashMatchSpan => HashMatchSpanTemplate,
             AccessStep.TopStart => TopStartTemplate,
+            AccessStep.InputStart => InputStartTemplate,
+            AccessStep.ConcatRow => ConcatRowTemplate,
             AccessStep.TopRow => TopRowTemplate,
             RowCountSpan => RowCountSpanTemplate,
             AccessStep.HashProbe => HashProbeTemplate,

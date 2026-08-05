@@ -23,5 +23,6 @@ public static class ServiceRegistration
         services.AddTransient<HeapFetchIterator>();
         services.AddTransient<TopIterator>();
         services.AddTransient<SelectIterator>();
+        services.AddTransient<ConcatenationIterator>();
     }
 }

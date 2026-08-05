@@ -66,12 +66,45 @@ public sealed class TraceDefinitionBuilder(Func<PlanNode, AllocationUnit?> resol
             return BuildTop(node);
         }
 
+        if (OperatorClassifier.IsConcatenation(node))
+        {
+            return BuildConcatenation(node);
+        }
+
         if (OperatorClassifier.IsRead(node))
         {
             return BuildAccess(node);
         }
 
         return null;
+    }
+
+    private IteratorDefinition? BuildConcatenation(PlanNode node)
+    {
+        if (node.Children.Count < 2)
+        {
+            return null;
+        }
+
+        var inputs = new List<IteratorDefinition>();
+
+        foreach (var child in node.Children)
+        {
+            if (Build(child) is not { } input)
+            {
+                return null;
+            }
+
+            inputs.Add(input);
+        }
+
+        Nodes[node.NodeId] = node;
+
+        return new ConcatenationDefinition(inputs)
+        {
+            NodeId = node.NodeId,
+            OutputList = OutputList(node)
+        };
     }
 
     /// <summary>
