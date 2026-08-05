@@ -16,6 +16,7 @@ public partial class SettingsViewModel(SettingsService settingsService, TraceDir
     private const string TraceDirectoryKey = "TraceDirectory";
     private const string MaxTraceSizeKey = "MaxTraceSizeMb";
     private const string AutoDeleteTraceKey = "AutoDeleteTrace";
+    private const string TraceNestedLayoutKey = "TraceNestedLayout";
 
     private const double DefaultMaxTraceSizeMb = 150;
 
@@ -40,6 +41,9 @@ public partial class SettingsViewModel(SettingsService settingsService, TraceDir
 
     [ObservableProperty]
     private bool _autoDeleteTrace = true;
+
+    [ObservableProperty]
+    private bool _traceNestedLayout = true;
 
     public string? ActiveTraceDirectory =>
         UseCustomTraceDirectory && !string.IsNullOrWhiteSpace(TraceDirectory) ? TraceDirectory : null;
@@ -77,6 +81,10 @@ public partial class SettingsViewModel(SettingsService settingsService, TraceDir
         var savedAutoDelete = await SettingsService.ReadSettingAsync<bool?>(AutoDeleteTraceKey);
 
         AutoDeleteTrace = savedAutoDelete ?? true;
+
+        var savedNestedLayout = await SettingsService.ReadSettingAsync<bool?>(TraceNestedLayoutKey);
+
+        TraceNestedLayout = savedNestedLayout ?? true;
     }
 
     /// <summary>
@@ -113,5 +121,10 @@ public partial class SettingsViewModel(SettingsService settingsService, TraceDir
     partial void OnAutoDeleteTraceChanged(bool value)
     {
         _ = SettingsService.SaveSettingAsync(AutoDeleteTraceKey, value);
+    }
+
+    partial void OnTraceNestedLayoutChanged(bool value)
+    {
+        _ = SettingsService.SaveSettingAsync(TraceNestedLayoutKey, value);
     }
 }

@@ -7,7 +7,7 @@ public sealed class TraceBlobPalette
 {
     private readonly Dictionary<int, (SolidColorBrush Brush, Windows.UI.Color Colour)> _brushes = [];
 
-    private int? _activeNodeId;
+    private HashSet<int>? _active;
 
     public SolidColorBrush For(int nodeId, Windows.UI.Color colour)
     {
@@ -21,14 +21,21 @@ public sealed class TraceBlobPalette
         return entry.Brush;
     }
 
-    public void SetActive(int? nodeId)
+    public void SetActive(int? nodeId) => SetActiveSet(nodeId is { } id ? [id] : null);
+
+    public void SetActiveSet(IReadOnlyCollection<int>? nodeIds)
     {
-        if (_activeNodeId == nodeId)
+        if (nodeIds is null && _active is null)
         {
             return;
         }
 
-        _activeNodeId = nodeId;
+        if (nodeIds is not null && _active is not null && _active.Count == nodeIds.Count && _active.IsSupersetOf(nodeIds))
+        {
+            return;
+        }
+
+        _active = nodeIds is null ? null : [.. nodeIds];
 
         foreach (var (brushNodeId, entry) in _brushes)
         {
@@ -37,7 +44,7 @@ public sealed class TraceBlobPalette
     }
 
     private Windows.UI.Color ColourFor(int nodeId, Windows.UI.Color colour)
-        => _activeNodeId is null || _activeNodeId == nodeId
+        => _active is null || _active.Contains(nodeId)
             ? colour
             : Windows.UI.Color.FromArgb((byte)(colour.A * 0.3), colour.R, colour.G, colour.B);
 }

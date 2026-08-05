@@ -103,9 +103,16 @@ public sealed class TraceTabViewModelFactory(IIteratorFactory iteratorFactory, I
 
 public sealed partial class TraceTabViewModel : ObservableObject
 {
-    private const int RunStepDelayMs = 150;
-
     private const int HistoryLimit = 1000;
+
+    private const double FastRunThresholdMs = 1000;
+
+    private const double RunToEndDelayMs = -100;
+
+    [ObservableProperty]
+    private double _runDelayMs = 150;
+
+    partial void OnRunDelayMsChanged(double value) => UpdateBlobDimming();
 
     public TraceTabViewModel(IIteratorFactory iteratorFactory,
                              IteratorDefinition definition,
@@ -138,6 +145,8 @@ public sealed partial class TraceTabViewModel : ObservableObject
 
         OperatorsByNode = Operators.ToDictionary(o => o.NodeId);
 
+        IndexParents(definition);
+
         foreach (var op in Operators)
         {
             op.ActivationRequested += ActivateOperator;
@@ -168,42 +177,167 @@ public sealed partial class TraceTabViewModel : ObservableObject
     /// that operator's results in the pane it reads them from, while the operator itself is a tab of its own. Nesting the layout instead
     /// buries the inner operators, and the deeper the tree the less of either is left to see.
     /// </remarks>
-    private DockLayoutViewModel BuildDock()
+    private DockLayoutViewModel BuildDock() => new(BuildRoot());
+
+    private LayoutNode BuildRoot()
     {
-        var steps = DocumentViewModel.Create<TraceStepsPanelView>("Trace", this, canClose: false, keepAlive: true, key: "Steps");
-        var description = DocumentViewModel.Create<TraceDescriptionPanelView>("Description", this, keepAlive: true, key: "Description");
-        var strategy = DocumentViewModel.Create<TraceStrategyPanelView>("Strategy", this, keepAlive: true, key: "Strategy");
-        var plan = DocumentViewModel.Create<TracePlanPanelView>("Plan", this, keepAlive: true, key: "Plan");
+        _stepsDocument ??= DocumentViewModel.Create<TraceStepsPanelView>("Trace", this, canClose: false, keepAlive: true, key: "Steps");
+        _descriptionDocument ??= DocumentViewModel.Create<TraceDescriptionPanelView>("Description", this, keepAlive: true, key: "Description");
+        _strategyDocument ??= DocumentViewModel.Create<TraceStrategyPanelView>("Strategy", this, keepAlive: true, key: "Strategy");
+        _planDocument ??= DocumentViewModel.Create<TracePlanPanelView>("Plan", this, keepAlive: true, key: "Plan");
 
-        var right = new TabGroupNode(steps, description, strategy, plan);
+        _operatorDocumentsByNode ??= Operators.ToDictionary(o => o.NodeId, OperatorDocument);
 
-        var left = new TabGroupNode([.. OperatorDocuments()]);
+        var right = new TabGroupNode(_stepsDocument, _descriptionDocument, _strategyDocument, _planDocument);
 
-        _operatorGroup = left;
+        LayoutNode left;
 
-        left.PropertyChanged += OnOperatorGroupPropertyChanged;
+        if (IsNestedLayout && BuildNestedNode(Definition) is { } nested)
+        {
+            _operatorGroup = null;
+
+            left = nested;
+        }
+        else
+        {
+            var group = new TabGroupNode([.. Operators.Select(o => _operatorDocumentsByNode[o.NodeId])]);
+
+            _operatorGroup = group;
+
+            group.PropertyChanged += OnOperatorGroupPropertyChanged;
+
+            left = group;
+        }
 
         UpdateActivePlanNodes();
 
-        return new DockLayoutViewModel(new SplitNode(Orientation.Horizontal, left, right));
+        return new SplitNode(Orientation.Horizontal, left, right);
     }
 
-    private IEnumerable<DocumentViewModel> OperatorDocuments()
-        => Operators.Select(o =>
+    private DocumentViewModel? _stepsDocument;
+
+    private DocumentViewModel? _descriptionDocument;
+
+    private DocumentViewModel? _strategyDocument;
+
+    private DocumentViewModel? _planDocument;
+
+    private Dictionary<int, DocumentViewModel>? _operatorDocumentsByNode;
+
+    [ObservableProperty]
+    private bool _isNestedLayout;
+
+    partial void OnIsNestedLayoutChanged(bool value)
+    {
+        if (_operatorGroup is { } group)
         {
-            var document = DocumentViewModel.Create<TraceOperatorPanelView>(o.Title,
-                                                                            o,
-                                                                            canClose: false,
-                                                                            keepAlive: true,
-                                                                            key: $"Operator{o.NodeId}");
+            group.PropertyChanged -= OnOperatorGroupPropertyChanged;
 
-            if (Layout.Colours.TryGetValue(o.NodeId, out var colour))
+            _operatorGroup = null;
+        }
+
+        Dock.SetRoot(BuildRoot());
+    }
+
+    private LayoutNode? BuildNestedNode(IteratorDefinition definition)
+    {
+        var document = _operatorDocumentsByNode?.GetValueOrDefault(definition.NodeId);
+
+        var children = OperatorChildren(definition)
+                       .Select(BuildNestedNode)
+                       .OfType<LayoutNode>()
+                       .ToList();
+
+        var childArea = Combine(children);
+
+        LayoutNode? self = document is null ? null : new TabGroupNode(document);
+
+        if (self is null)
+        {
+            return childArea;
+        }
+
+        if (childArea is null)
+        {
+            return self;
+        }
+
+        var isFixedHeight = OperatorsByNode.GetValueOrDefault(definition.NodeId)
+            is { IsJoinLayout: false, MainPane.Kind: TracePaneKind.Empty };
+
+        return new SplitNode(Orientation.Vertical, self, childArea)
+        {
+            FirstStar = 1,
+            SecondStar = isFixedHeight ? 3 : 1,
+            FirstPixels = definition is SelectDefinition ? 280 : null
+        };
+    }
+
+    private static LayoutNode? Combine(IReadOnlyList<LayoutNode> nodes)
+    {
+        if (nodes.Count == 0)
+        {
+            return null;
+        }
+
+        var result = nodes[^1];
+
+        for (var index = nodes.Count - 2; index >= 0; index--)
+        {
+            result = new SplitNode(Orientation.Horizontal, nodes[index], result)
             {
-                document.Accent = Layout.Palette.For(o.NodeId, ToColour(colour));
-            }
+                FirstStar = 1,
+                SecondStar = nodes.Count - 1 - index
+            };
+        }
 
-            return document;
-        });
+        return result;
+    }
+
+    private IEnumerable<IteratorDefinition> OperatorChildren(IteratorDefinition definition)
+        => ChildrenOf(definition).Where(HasDocument);
+
+    private static IEnumerable<IteratorDefinition> ChildrenOf(IteratorDefinition definition)
+        => definition switch
+        {
+            NestedLoopsDefinition loops => [loops.Outer, loops.Inner],
+            MergeJoinDefinition merge => [merge.Outer.Source, merge.Inner.Source],
+            HashMatchDefinition hash => [hash.Build.Source, hash.Probe.Source],
+            ConcatenationDefinition concatenation => concatenation.Inputs,
+            UnaryDefinition unary => [unary.Source],
+            _ => []
+        };
+
+    private readonly Dictionary<int, int> _parentByNode = [];
+
+    private void IndexParents(IteratorDefinition definition)
+    {
+        foreach (var child in ChildrenOf(definition))
+        {
+            _parentByNode[child.NodeId] = definition.NodeId;
+
+            IndexParents(child);
+        }
+    }
+
+    private bool HasDocument(IteratorDefinition definition)
+        => _operatorDocumentsByNode?.ContainsKey(definition.NodeId) == true;
+
+    private DocumentViewModel OperatorDocument(TraceOperatorViewModel op)
+    {
+        var document = DocumentViewModel.Create<TraceOperatorPanelView>(op.Title,
+                                                                        op,
+                                                                        canClose: false,
+                                                                        keepAlive: true,
+                                                                        key: $"Operator{op.NodeId}");
+
+        if (Layout.Colours.TryGetValue(op.NodeId, out var colour))
+        {
+            document.Accent = Layout.Palette.For(op.NodeId, ToColour(colour));
+        }
+
+        return document;
+    }
 
     public IReadOnlyList<TraceVisualViewModel> Visuals { get; }
 
@@ -318,7 +452,7 @@ public sealed partial class TraceTabViewModel : ObservableObject
 
     public void ActivateOperator(PlanNode? node)
     {
-        if (node is null || _operatorGroup is null)
+        if (node is null)
         {
             return;
         }
@@ -355,15 +489,17 @@ public sealed partial class TraceTabViewModel : ObservableObject
 
     private bool SelectDocumentFor(int nodeId)
     {
-        var document = _operatorGroup?.Documents
-                                      .FirstOrDefault(d => d.Content is TraceOperatorViewModel op && op.NodeId == nodeId);
-
-        if (document is null)
+        if (_operatorDocumentsByNode?.GetValueOrDefault(nodeId) is not { } document)
         {
             return false;
         }
 
-        _operatorGroup!.SelectedDocument = document;
+        if (Dock.FindGroup(document) is not { } group)
+        {
+            return false;
+        }
+
+        group.SelectedDocument = document;
 
         return true;
     }
@@ -631,7 +767,35 @@ public sealed partial class TraceTabViewModel : ObservableObject
 
     private void UpdateBlobDimming()
     {
-        Layout.Palette.SetActive(IsStepDetailVisible && !IsStepComplete && CurrentStep is { } step ? step.NodeId : null);
+        if (!IsStepping || IsRunningToEnd || IsStepComplete || CurrentStep is not { } step)
+        {
+            Layout.Palette.SetActiveSet(null);
+
+            return;
+        }
+
+        if (IsRunning && RunDelayMs < FastRunThresholdMs)
+        {
+            Layout.Palette.SetActiveSet(PathTo(step.NodeId));
+        }
+        else
+        {
+            Layout.Palette.SetActive(step.NodeId);
+        }
+    }
+
+    private IReadOnlyCollection<int> PathTo(int nodeId)
+    {
+        var path = new List<int> { nodeId };
+
+        while (_parentByNode.TryGetValue(nodeId, out var parent))
+        {
+            path.Add(parent);
+
+            nodeId = parent;
+        }
+
+        return path;
     }
 
     partial void OnIsSteppingChanged(bool value)
@@ -677,9 +841,18 @@ public sealed partial class TraceTabViewModel : ObservableObject
 
         while (IsRunning && !IsStepComplete)
         {
+            if (RunDelayMs < 0)
+            {
+                IsRunning = false;
+
+                await RunToEnd();
+
+                return;
+            }
+
             await StepNext();
 
-            await Task.Delay(CurrentStep?.AccessPhase == AccessPhase.Walk ? RunStepDelayMs / 10 : RunStepDelayMs);
+            await Task.Delay(TimeSpan.FromMilliseconds(Math.Max(1, RunDelayMs)));
         }
 
         IsRunning = false;

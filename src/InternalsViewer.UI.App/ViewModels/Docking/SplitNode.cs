@@ -36,6 +36,9 @@ public sealed partial class SplitNode : LayoutNode
     [ObservableProperty]
     private double _secondStar = 1;
 
+    [ObservableProperty]
+    private double? _firstPixels;
+
     partial void OnFirstChanged(LayoutNode value) => value.Parent = this;
 
     partial void OnSecondChanged(LayoutNode value) => value.Parent = this;

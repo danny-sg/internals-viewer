@@ -112,6 +112,11 @@
         </DataTemplate>
     </UserControl.Resources>
 
+    <ScrollViewer x:Name="PanelScroller"
+                  VerticalScrollMode="Disabled"
+                  VerticalScrollBarVisibility="Disabled"
+                  HorizontalScrollMode="Disabled"
+                  HorizontalScrollBarVisibility="Disabled">
     <Grid >
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
@@ -273,4 +278,5 @@
                         HorizontalContentAlignment="Stretch"
                         VerticalContentAlignment="Stretch" />
     </Grid>
+    </ScrollViewer>
 </UserControl>

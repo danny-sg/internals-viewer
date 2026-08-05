@@ -460,6 +460,16 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
         CloseTraceDocument();
 
+        traceViewModel.IsNestedLayout = _settingsViewModel.TraceNestedLayout;
+
+        traceViewModel.PropertyChanged += (_, e) =>
+        {
+            if (e.PropertyName == nameof(TraceTabViewModel.IsNestedLayout))
+            {
+                _settingsViewModel.TraceNestedLayout = traceViewModel.IsNestedLayout;
+            }
+        };
+
         traceViewModel.PageNavigated += OnIndexPageNavigated;
 
         var title = wrapInSelect ? "Trace: SELECT" : $"Trace: {TraceTitle(node, traceViewModel)}";
@@ -470,7 +480,8 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
                                              canClose: true,
                                              keepAlive: true,
                                              key: TraceDocumentKey,
-                                             persist: false);
+                                             persist: false,
+                                             commandsFactory: static () => new TraceTabCommands());
 
         Layout.RegisterDocument(TraceDocumentKey, document);
 

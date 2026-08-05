@@ -125,6 +125,11 @@ public sealed partial class RecordGrid : IDisposable
 
     private void OnRecordsCollectionChanged(object? sender, System.Collections.Specialized.NotifyCollectionChangedEventArgs e)
     {
+        if (AutoScrollToEnd && Records is { Count: > 0 })
+        {
+            RequestScrollToEnd();
+        }
+
         if (_hasFieldColumns || _isRebindQueued || Records is not { Count: > 0 })
         {
             return;
@@ -133,6 +138,54 @@ public sealed partial class RecordGrid : IDisposable
         _isRebindQueued = true;
 
         DispatcherQueue.TryEnqueue(Rebind);
+    }
+
+    private const int ScrollIntervalMs = 150;
+
+    private Microsoft.UI.Dispatching.DispatcherQueueTimer? _scrollTimer;
+
+    private long _lastScroll;
+
+    private void RequestScrollToEnd()
+    {
+        var now = Environment.TickCount64;
+
+        if (now - _lastScroll >= ScrollIntervalMs)
+        {
+            _lastScroll = now;
+
+            ScrollToEnd();
+
+            return;
+        }
+
+        if (_scrollTimer is null)
+        {
+            _scrollTimer = DispatcherQueue.CreateTimer();
+
+            _scrollTimer.Interval = TimeSpan.FromMilliseconds(ScrollIntervalMs);
+            _scrollTimer.IsRepeating = false;
+
+            _scrollTimer.Tick += (_, _) =>
+            {
+                _lastScroll = Environment.TickCount64;
+
+                ScrollToEnd();
+            };
+        }
+
+        if (!_scrollTimer.IsRunning)
+        {
+            _scrollTimer.Start();
+        }
+    }
+
+    private void ScrollToEnd()
+    {
+        if (Records is { Count: > 0 } records)
+        {
+            DataGrid.ScrollIntoView(records[^1], null);
+        }
     }
 
     private void ApplySelectedSlot()
@@ -272,6 +325,9 @@ public sealed partial class RecordGrid : IDisposable
     public void Dispose()
     {
         RemoveEventHandlers();
+
+        _scrollTimer?.Stop();
+        _scrollTimer = null;
 
         if (_subscribedRecords is not null)
         {

@@ -177,6 +177,11 @@ public sealed partial class TraceOperatorPanelView : UserControl, IDocumentComma
             Fill(MainHost, header: null, viewModel.MainPane);
         }
 
+        var isFixedHeight = !viewModel.IsJoinLayout && viewModel.MainPane.Kind == TracePaneKind.Empty;
+
+        PanelScroller.VerticalScrollMode = isFixedHeight ? ScrollMode.Auto : ScrollMode.Disabled;
+        PanelScroller.VerticalScrollBarVisibility = isFixedHeight ? ScrollBarVisibility.Auto : ScrollBarVisibility.Disabled;
+
         ApplyOutputVisibility();
         ApplyHashTableVisibility();
     }

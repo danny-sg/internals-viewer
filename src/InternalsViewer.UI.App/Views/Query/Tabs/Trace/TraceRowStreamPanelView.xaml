@@ -16,6 +16,7 @@
 
         <index:RecordGrid Grid.Row="0"
                           HideSlotColumn="True"
+                          AutoScrollToEnd="True"
                           Records="{x:Bind ViewModel.Rows, Mode=OneWay}"
                           BorderThickness="0" />
 

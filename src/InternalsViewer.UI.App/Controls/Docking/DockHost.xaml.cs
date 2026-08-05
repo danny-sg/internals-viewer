@@ -86,9 +86,13 @@ public sealed partial class DockHost : UserControl
             ResizeBehavior = GridSplitter.GridResizeBehavior.PreviousAndNext
         };
 
+        var firstLength = split.FirstPixels is { } pixels
+            ? new GridLength(pixels)
+            : new GridLength(split.FirstStar, GridUnitType.Star);
+
         if (horizontal)
         {
-            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(split.FirstStar, GridUnitType.Star) });
+            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = firstLength });
             grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
             grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(split.SecondStar, GridUnitType.Star) });
 
@@ -103,7 +107,7 @@ public sealed partial class DockHost : UserControl
         }
         else
         {
-            grid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(split.FirstStar, GridUnitType.Star) });
+            grid.RowDefinitions.Add(new RowDefinition { Height = firstLength });
             grid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
             grid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(split.SecondStar, GridUnitType.Star) });
 

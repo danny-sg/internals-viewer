@@ -32,21 +32,6 @@
                     BorderThickness="0,0,0,1"
                     BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
                     Background="Transparent">
-            <AppBarElementContainer VerticalContentAlignment="Center">
-                <StackPanel Orientation="Horizontal">
-                    <Image Source="{x:Bind ViewModel.IconSource, Mode=OneWay}"
-                           Width="32"
-                           Height="32"
-                           HorizontalAlignment="Left" />
-                    <StackPanel Orientation="Vertical" VerticalAlignment="Center" Padding="4,0,8,0">
-                        <TextBlock Text="{x:Bind ViewModel.PlanNode.PhysicalOperator, Mode=OneWay}" />
-                        <accessSteps:JoinDecisionBadge IsRuleOnly="True"
-                                                       Margin="0,1,0,0"
-                                                       Decision="{x:Bind ViewModel.JoinRule, Mode=OneWay}" />
-                    </StackPanel>
-                </StackPanel>
-            </AppBarElementContainer>
-            <AppBarSeparator />
             <AppBarButton Label="Step" Command="{x:Bind ViewModel.StepNextCommand}">
                 <AppBarButton.Icon>
                     <FontIcon Glyph="&#xE8B5;" />
@@ -92,6 +77,24 @@
                     <FontIcon Glyph="&#xE72C;" />
                 </AppBarButton.Icon>
             </AppBarButton>
+            <AppBarSeparator />
+            <AppBarElementContainer VerticalContentAlignment="Center">
+                <StackPanel Orientation="Horizontal"
+                            Spacing="6"
+                            Margin="8,0,8,0"
+                            VerticalAlignment="Center"
+                            ToolTipService.ToolTip="Run speed">
+                    <TextBlock Text="Speed" />
+                    <Slider Width="120"
+                            Minimum="-100"
+                            Maximum="1000"
+                            StepFrequency="100"
+                            IsDirectionReversed="True"
+                            VerticalAlignment="Center"
+                            IsThumbToolTipEnabled="False"
+                            Value="{x:Bind ViewModel.RunDelayMs, Mode=TwoWay}" />
+                </StackPanel>
+            </AppBarElementContainer>
         </CommandBar>
         <docking:DockHost Grid.Row="1"
                           Grid.Column="0"
