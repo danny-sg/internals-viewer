@@ -1,5 +1,5 @@
 using InternalsViewer.UI.App.Controls.Docking;
-using InternalsViewer.UI.App.Models.Trace;
+using InternalsViewer.UI.App.Models.Query.Trace;
 using InternalsViewer.UI.App.ViewModels.Query.Trace;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Controls.Primitives;

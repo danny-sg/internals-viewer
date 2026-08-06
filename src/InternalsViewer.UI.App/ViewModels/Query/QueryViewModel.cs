@@ -1,4 +1,4 @@
-using InternalsViewer.UI.App.Services.Trace;
+using InternalsViewer.UI.App.Services.Query.Trace;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using CommunityToolkit.Mvvm.Messaging;
@@ -18,6 +18,7 @@ using InternalsViewer.UI.App.Messages;
 using InternalsViewer.UI.App.Models;
 using InternalsViewer.UI.App.Models.Schema;
 using InternalsViewer.UI.App.Services;
+using InternalsViewer.UI.App.Services.XEvents;
 using InternalsViewer.UI.App.ViewModels.Allocation;
 using InternalsViewer.UI.App.ViewModels.Docking;
 using InternalsViewer.UI.App.ViewModels.Query.Trace;

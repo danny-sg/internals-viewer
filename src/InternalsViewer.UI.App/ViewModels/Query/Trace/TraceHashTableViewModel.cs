@@ -5,7 +5,8 @@ using InternalsViewer.Execution.AccessPaths.Joins.Hash;
 using InternalsViewer.Execution.AccessPaths.Results.Steps;
 using InternalsViewer.Execution.Interfaces.Iterators.Joins;
 using InternalsViewer.UI.App.Models.Index;
-using InternalsViewer.UI.App.Models.Trace;
+using InternalsViewer.UI.App.Models.Query.Trace;
+using InternalsViewer.UI.App.Models.Query.Trace.Hash;
 
 namespace InternalsViewer.UI.App.ViewModels.Query.Trace;
 

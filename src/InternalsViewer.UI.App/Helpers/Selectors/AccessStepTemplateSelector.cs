@@ -1,5 +1,5 @@
 using InternalsViewer.Execution.AccessPaths.Results.Steps;
-using InternalsViewer.UI.App.Models.Trace;
+using InternalsViewer.UI.App.Models.Query.Trace.Steps;
 using Microsoft.UI.Xaml.Controls;
 
 namespace InternalsViewer.UI.App.Helpers.Selectors;

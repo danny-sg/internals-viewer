@@ -131,7 +131,7 @@
         <None Remove="Images\Wide310x150Logo.scale-150.png" />
         <None Remove="Images\Wide310x150Logo.scale-200.png" />
         <None Remove="Images\Wide310x150Logo.scale-400.png" />
-        <None Remove="Controls\AccessSteps\AccessStepTemplates.xaml" />
+        <None Remove="Controls\Trace\Steps\AccessStepTemplates.xaml" />
         <None Remove="Styles\CommonStyles.xaml" />
         <None Remove="Styles\Markers\MarkerStylesDark.xaml" />
         <None Remove="Styles\Markers\MarkerStylesLight.xaml" />
@@ -322,7 +322,7 @@
       <Page Update="Controls\Results\ResultsGridControl.xaml">
         <Generator>MSBuild:Compile</Generator>
       </Page>
-      <Page Update="Controls\AccessSteps\AccessStepsControl.xaml">
+      <Page Update="Controls\Trace\Steps\AccessStepsControl.xaml">
         <Generator>MSBuild:Compile</Generator>
       </Page>
       <Page Update="Views\Query\Tabs\CallstackDocumentView.xaml">
@@ -464,7 +464,7 @@
     </ItemGroup>
 
     <ItemGroup>
-        <Page Update="Controls\AccessSteps\AccessStepTemplates.xaml">
+        <Page Update="Controls\Trace\Steps\AccessStepTemplates.xaml">
             <Generator>MSBuild:Compile</Generator>
         </Page>
         <Page Update="Styles\CommonStyles.xaml">
@@ -544,7 +544,6 @@
     <ItemGroup>
       <Folder Include="Assets\Help\images\" />
       <Folder Include="Controls\Logging\" />
-      <Folder Include="ViewModels\Query\Trace\" />
       <Folder Include="Views\Query\Tabs\Index\" />
       <Folder Include="Views\Query\Tabs\Plan\" />
     </ItemGroup>

@@ -25,12 +25,12 @@ public sealed partial class TraceVisualPanelView : UserControl
     public Windows.UI.Color ToWindowsColor(System.Drawing.Color colour)
         => Windows.UI.Color.FromArgb(colour.A, colour.R, colour.G, colour.B);
 
-    public Visibility IndexVisibility(TraceVisualKind kind, bool isInitialized)
-        => kind == TraceVisualKind.Index && isInitialized ? Visibility.Visible : Visibility.Collapsed;
+    public Visibility IndexVisibility(TraceVisualType visualType, bool isInitialized)
+        => visualType == TraceVisualType.Index && isInitialized ? Visibility.Visible : Visibility.Collapsed;
 
-    public Visibility LoadingVisibility(TraceVisualKind kind, bool isInitialized)
-        => kind == TraceVisualKind.Index && !isInitialized ? Visibility.Visible : Visibility.Collapsed;
+    public Visibility LoadingVisibility(TraceVisualType visualType, bool isInitialized)
+        => visualType == TraceVisualType.Index && !isInitialized ? Visibility.Visible : Visibility.Collapsed;
 
-    public Visibility AllocationVisibility(TraceVisualKind kind, bool isInitialized)
-        => kind == TraceVisualKind.Allocation && isInitialized ? Visibility.Visible : Visibility.Collapsed;
+    public Visibility AllocationVisibility(TraceVisualType visualType, bool isInitialized)
+        => visualType == TraceVisualType.Allocation && isInitialized ? Visibility.Visible : Visibility.Collapsed;
 }

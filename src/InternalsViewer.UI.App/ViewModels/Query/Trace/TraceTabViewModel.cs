@@ -13,90 +13,19 @@ using InternalsViewer.Execution.AccessPaths.Results;
 using InternalsViewer.Execution.AccessPaths.Results.Steps;
 using InternalsViewer.Execution.AccessPaths.Search;
 using InternalsViewer.Execution.Interfaces;
-using InternalsViewer.Execution.Interfaces.Iterators;
-using InternalsViewer.Execution.Interfaces.Iterators.Joins;
-using InternalsViewer.Execution.Iterators.Row;
 using InternalsViewer.Execution.Iterators.Stepping;
 using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Internals.Engine.Database;
-using InternalsViewer.Internals.Interfaces.Engine;
 using InternalsViewer.Internals.Providers.Metadata;
-using InternalsViewer.Internals.Services.Indexes;
 using InternalsViewer.Query.Events.Operators;
 using InternalsViewer.Query.Plans;
 using InternalsViewer.Query.Plans.Model;
-using InternalsViewer.UI.App.Models.Index;
-using InternalsViewer.UI.App.Models.Trace;
-using InternalsViewer.UI.App.Services.Trace;
-using InternalsViewer.UI.App.ViewModels.Docking;
+using InternalsViewer.UI.App.Models.Query.Trace;
+using InternalsViewer.UI.App.Services.Query.Trace;
+using InternalsViewer.UI.App.Services.Query.Trace.Steps;
 using InternalsViewer.UI.App.ViewModels.Index;
-using InternalsViewer.UI.App.Views.Query.Tabs.Trace;
-using Microsoft.UI.Xaml.Controls;
 
 namespace InternalsViewer.UI.App.ViewModels.Query.Trace;
-
-public sealed class TraceTabViewModelFactory(IIteratorFactory iteratorFactory, IndexService indexService)
-{
-    /// <summary>
-    /// Builds a trace of an operator and everything below it, or null when some operator in that tree cannot be simulated
-    /// </summary>
-    public TraceTabViewModel? Create(DatabaseSource database,
-                                     PlanNode node,
-                                     Func<PlanNode, AllocationUnit?> resolveUnit,
-                                     DateTime? queryTime,
-                                     ScanModeResult? scanMode,
-                                     bool wrapInSelect = false)
-    {
-        var builder = new TraceDefinitionBuilder(resolveUnit, database);
-
-        if (builder.Build(node) is not { } built)
-        {
-            return null;
-        }
-
-        var definition = wrapInSelect
-            ? new SelectDefinition(built) { NodeId = -1, OutputList = built.OutputList }
-            : built;
-
-        var visuals = TraceSourceCollector.Collect(definition)
-                                          .Select(s => CreateVisual(database, s, builder))
-                                          .OfType<TraceVisualViewModel>()
-                                          .ToList();
-
-        if (visuals.Count == 0)
-        {
-            return null;
-        }
-
-        var layout = TraceLayoutBuilder.Build(definition,
-                                              visuals.ToDictionary(v => v.NodeId),
-                                              id => builder.Nodes.GetValueOrDefault(id));
-
-        return new TraceTabViewModel(iteratorFactory, definition, database, node, queryTime, scanMode, visuals, layout);
-    }
-
-    private TraceVisualViewModel? CreateVisual(DatabaseSource database, TraceSource source, TraceDefinitionBuilder builder)
-    {
-        if (!builder.Units.TryGetValue(source.NodeId, out var unit))
-        {
-            return null;
-        }
-
-        var kind = source.Kind == TraceSourceKind.Index ? TraceVisualKind.Index : TraceVisualKind.Allocation;
-
-        var title = source.Role == TraceSourceRole.None
-            ? $"{DisplayName(unit)} ({source.NodeId})"
-            : $"{source.Role}: {DisplayName(unit)} ({source.NodeId})";
-
-        return new TraceVisualViewModel(kind, database, unit, indexService, title, source.NodeId)
-        {
-            ShowObjectBorderImmediately = source.Kind == TraceSourceKind.Heap
-        };
-    }
-
-    private static string DisplayName(AllocationUnit unit)
-        => string.IsNullOrEmpty(unit.IndexName) ? unit.TableName : unit.IndexName;
-}
 
 public sealed partial class TraceTabViewModel : ObservableObject
 {
@@ -144,14 +73,17 @@ public sealed partial class TraceTabViewModel : ObservableObject
 
         IndexParents(definition);
 
+        Applier = new TraceStepApplier(layout,
+                                       new TraceRowBuilder(layout.Definitions, layout.Sides),
+                                       VisualsByNode,
+                                       OperatorsByNode);
+
         foreach (var op in Operators)
         {
             op.ActivationRequested += ActivateOperator;
 
-            BuildStateItems(op);
+            Applier.BuildStateItems(op);
         }
-
-        RowBuilder = new TraceRowBuilder(layout.Definitions, layout.Sides);
 
         SelectedVisual = visuals[0];
 
@@ -160,178 +92,6 @@ public sealed partial class TraceTabViewModel : ObservableObject
         StepNodes = BuildStepNodes();
 
         Dock = BuildDock();
-    }
-
-    public DockLayoutViewModel Dock { get; }
-
-    /// <summary>
-    /// Lays the trace out flat, one tab per operator beside the panels that describe the walk
-    /// </summary>
-    /// <remarks>
-    /// The definition tree says which operators there are and what each one reads, and nothing more - an operator that reads another shows
-    /// that operator's results in the pane it reads them from, while the operator itself is a tab of its own. Nesting the layout instead
-    /// buries the inner operators, and the deeper the tree the less of either is left to see.
-    /// </remarks>
-    private DockLayoutViewModel BuildDock() => new(BuildRoot());
-
-    private LayoutNode BuildRoot()
-    {
-        _stepsDocument ??= DocumentViewModel.Create<TraceStepsPanelView>("Trace", this, canClose: false, keepAlive: true, key: "Steps");
-        _descriptionDocument ??= DocumentViewModel.Create<TraceDescriptionPanelView>("Description", this, keepAlive: true, key: "Description");
-        _strategyDocument ??= DocumentViewModel.Create<TraceStrategyPanelView>("Strategy", this, keepAlive: true, key: "Strategy");
-        _planDocument ??= DocumentViewModel.Create<TracePlanPanelView>("Plan", this, keepAlive: true, key: "Plan");
-
-        _operatorDocumentsByNode ??= Operators.ToDictionary(o => o.NodeId, OperatorDocument);
-
-        var right = new TabGroupNode(_stepsDocument, _descriptionDocument, _strategyDocument, _planDocument);
-
-        LayoutNode left;
-
-        if (IsNestedLayout && BuildNestedNode(Definition) is { } nested)
-        {
-            _operatorGroup = null;
-
-            left = nested;
-        }
-        else
-        {
-            var group = new TabGroupNode([.. Operators.Select(o => _operatorDocumentsByNode[o.NodeId])]);
-
-            _operatorGroup = group;
-
-            group.PropertyChanged += OnOperatorGroupPropertyChanged;
-
-            left = group;
-        }
-
-        UpdateActivePlanNodes();
-
-        return new SplitNode(Orientation.Horizontal, left, right);
-    }
-
-    private DocumentViewModel? _stepsDocument;
-
-    private DocumentViewModel? _descriptionDocument;
-
-    private DocumentViewModel? _strategyDocument;
-
-    private DocumentViewModel? _planDocument;
-
-    private Dictionary<int, DocumentViewModel>? _operatorDocumentsByNode;
-
-    [ObservableProperty]
-    private bool _isNestedLayout;
-
-    partial void OnIsNestedLayoutChanged(bool value)
-    {
-        if (_operatorGroup is { } group)
-        {
-            group.PropertyChanged -= OnOperatorGroupPropertyChanged;
-
-            _operatorGroup = null;
-        }
-
-        Dock.SetRoot(BuildRoot());
-    }
-
-    private LayoutNode? BuildNestedNode(IteratorDefinition definition)
-    {
-        var document = _operatorDocumentsByNode?.GetValueOrDefault(definition.NodeId);
-
-        var children = OperatorChildren(definition)
-                       .Select(BuildNestedNode)
-                       .OfType<LayoutNode>()
-                       .ToList();
-
-        var childArea = Combine(children);
-
-        LayoutNode? self = document is null ? null : new TabGroupNode(document);
-
-        if (self is null)
-        {
-            return childArea;
-        }
-
-        if (childArea is null)
-        {
-            return self;
-        }
-
-        var isFixedHeight = OperatorsByNode.GetValueOrDefault(definition.NodeId)
-            is { IsJoinLayout: false, MainPane.Kind: TracePaneKind.Empty };
-
-        return new SplitNode(Orientation.Vertical, self, childArea)
-        {
-            FirstStar = 1,
-            SecondStar = isFixedHeight ? 3 : 1,
-            FirstPixels = definition is SelectDefinition ? 280 : null
-        };
-    }
-
-    private static LayoutNode? Combine(List<LayoutNode> nodes)
-    {
-        if (nodes.Count == 0)
-        {
-            return null;
-        }
-
-        var result = nodes[^1];
-
-        for (var index = nodes.Count - 2; index >= 0; index--)
-        {
-            result = new SplitNode(Orientation.Horizontal, nodes[index], result)
-            {
-                FirstStar = 1,
-                SecondStar = nodes.Count - 1 - index
-            };
-        }
-
-        return result;
-    }
-
-    private IEnumerable<IteratorDefinition> OperatorChildren(IteratorDefinition definition)
-        => ChildrenOf(definition).Where(HasDocument);
-
-    private static IEnumerable<IteratorDefinition> ChildrenOf(IteratorDefinition definition)
-        => definition switch
-        {
-            NestedLoopsDefinition loops => [loops.Outer, loops.Inner],
-            MergeJoinDefinition merge => [merge.Outer.Source, merge.Inner.Source],
-            HashMatchDefinition hash => [hash.Build.Source, hash.Probe.Source],
-            ConcatenationDefinition concatenation => concatenation.Inputs,
-            UnaryDefinition unary => [unary.Source],
-            _ => []
-        };
-
-    private readonly Dictionary<int, int> _parentByNode = [];
-
-    private void IndexParents(IteratorDefinition definition)
-    {
-        foreach (var child in ChildrenOf(definition))
-        {
-            _parentByNode[child.NodeId] = definition.NodeId;
-
-            IndexParents(child);
-        }
-    }
-
-    private bool HasDocument(IteratorDefinition definition)
-        => _operatorDocumentsByNode?.ContainsKey(definition.NodeId) == true;
-
-    private DocumentViewModel OperatorDocument(TraceOperatorViewModel op)
-    {
-        var document = DocumentViewModel.Create<TraceOperatorPanelView>(op.Title,
-                                                                        op,
-                                                                        canClose: false,
-                                                                        keepAlive: true,
-                                                                        key: $"Operator{op.NodeId}");
-
-        if (Layout.Colours.TryGetValue(op.NodeId, out var colour))
-        {
-            document.Accent = Layout.Palette.For(op.NodeId, ToColour(colour));
-        }
-
-        return document;
     }
 
     public IReadOnlyList<TraceVisualViewModel> Visuals { get; }
@@ -350,7 +110,7 @@ public sealed partial class TraceTabViewModel : ObservableObject
 
     private TraceLayout Layout { get; }
 
-    private TraceRowBuilder RowBuilder { get; }
+    private TraceStepApplier Applier { get; }
 
     private Dictionary<int, TraceVisualViewModel> VisualsByNode { get; }
 
@@ -375,19 +135,7 @@ public sealed partial class TraceTabViewModel : ObservableObject
     [ObservableProperty]
     private ExecutionPlan? _tracePlan;
 
-    /// <summary>
-    /// The operator whose tab is open, marked in the plan so a tab can be placed in the tree it came from
-    /// </summary>
-    [ObservableProperty]
-    private IReadOnlyList<PlanNode> _activePlanNodes = [];
-
-    public PlanNode? ActivePlanNode => ActivePlanNodes.Count > 0 ? ActivePlanNodes[0] : null;
-
-    partial void OnActivePlanNodesChanged(IReadOnlyList<PlanNode> value) => OnPropertyChanged(nameof(ActivePlanNode));
-
     private Dictionary<int, PlanNode> _planNodesById = [];
-
-    private TabGroupNode? _operatorGroup;
 
     partial void OnPlanNodeChanged(PlanNode? value)
     {
@@ -413,110 +161,6 @@ public sealed partial class TraceTabViewModel : ObservableObject
         {
             IndexPlanNodes(child);
         }
-    }
-
-    private void OnOperatorGroupPropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
-    {
-        if (e.PropertyName == nameof(TabGroupNode.SelectedDocument))
-        {
-            UpdateActivePlanNodes();
-        }
-    }
-
-    private void UpdateActivePlanNodes()
-    {
-        if (_operatorGroup?.SelectedDocument?.Content is not TraceOperatorViewModel operatorViewModel)
-        {
-            ActivePlanNodes = [];
-
-            return;
-        }
-
-        ActivePlanNodes = _planNodesById.TryGetValue(operatorViewModel.NodeId, out var node)
-            ? [node]
-            : operatorViewModel.NodeId < 0 && PlanNode is { } root ? [root] : [];
-
-        if (Layout.VisualByOperator.TryGetValue(operatorViewModel.NodeId, out var visual))
-        {
-            SelectedVisual = visual;
-        }
-    }
-
-    public void ActivateOperator(PlanNode? node)
-    {
-        if (node is null)
-        {
-            return;
-        }
-
-        var operatorIds = Operators.Select(o => o.NodeId).ToHashSet();
-
-        var target = node;
-
-        while (target is not null && !operatorIds.Contains(target.NodeId))
-        {
-            target = FindParent(PlanNode, target);
-        }
-
-        var targetId = target?.NodeId ?? (operatorIds.Contains(-1) ? -1 : (int?)null);
-
-        if (targetId is not null)
-        {
-            SelectDocumentFor(targetId.Value);
-        }
-    }
-
-    public void ActivateOperator(int nodeId)
-    {
-        if (SelectDocumentFor(nodeId))
-        {
-            return;
-        }
-
-        if (_planNodesById.TryGetValue(nodeId, out var node))
-        {
-            ActivateOperator(node);
-        }
-    }
-
-    private bool SelectDocumentFor(int nodeId)
-    {
-        if (_operatorDocumentsByNode?.GetValueOrDefault(nodeId) is not { } document)
-        {
-            return false;
-        }
-
-        if (Dock.FindGroup(document) is not { } group)
-        {
-            return false;
-        }
-
-        group.SelectedDocument = document;
-
-        return true;
-    }
-
-    private static PlanNode? FindParent(PlanNode? root, PlanNode target)
-    {
-        if (root is null)
-        {
-            return null;
-        }
-
-        foreach (var child in root.Children)
-        {
-            if (ReferenceEquals(child, target))
-            {
-                return root;
-            }
-
-            if (FindParent(child, target) is { } found)
-            {
-                return found;
-            }
-        }
-
-        return null;
     }
 
     partial void OnSelectedVisualChanged(TraceVisualViewModel value)
@@ -555,7 +199,7 @@ public sealed partial class TraceTabViewModel : ObservableObject
     /// </summary>
     public JoinDecision? JoinRule => Definition is JoinDefinition join ? join.JoinType.Decide(true, true) : null;
 
-    public AccessStrategy? SelectedStrategy => StrategyBySource.GetValueOrDefault(SelectedVisual.NodeId);
+    public AccessStrategy? SelectedStrategy => Applier.StrategyFor(SelectedVisual.NodeId);
 
     public AccessPhase? SelectedPhase
         => CurrentStep is { } step && step.NodeId == SelectedVisual.NodeId ? step.AccessPhase : null;
@@ -565,8 +209,6 @@ public sealed partial class TraceTabViewModel : ObservableObject
     /// </summary>
     public bool IsSelectedStrategyPending
         => SelectedStrategy is null && IsStepping;
-
-    private Dictionary<int, AccessStrategy?> StrategyBySource { get; } = [];
 
     [ObservableProperty]
     private IReadOnlyDictionary<int, TraceStepNode>? _stepNodes;
@@ -594,75 +236,11 @@ public sealed partial class TraceTabViewModel : ObservableObject
                                               ToColour(Layout.Colours.GetValueOrDefault(nodeId, System.Drawing.Color.Gray)),
                                               outerInput,
                                               innerInput,
-                                              NodeSummary(nodeId, definition, names),
-                                              NodeSubtitle(nodeId));
+                                              TraceStepDescriber.NodeSummary(definition, (outerInput, innerInput), names),
+                                              TraceStepDescriber.NodeSubtitle(VisualsByNode.GetValueOrDefault(nodeId)?.AllocationUnit));
         }
 
         return nodes;
-    }
-
-    private string NodeSubtitle(int nodeId)
-    {
-        if (VisualsByNode.GetValueOrDefault(nodeId)?.AllocationUnit is not { } unit)
-        {
-            return string.Empty;
-        }
-
-        return string.IsNullOrEmpty(unit.IndexName) || unit.IndexName == unit.TableName
-            ? unit.TableName
-            : $"{unit.TableName} ({unit.IndexName})";
-    }
-
-    private string NodeSummary(int nodeId, IteratorDefinition definition, IReadOnlyDictionary<int, string> names)
-    {
-        if (definition is TopDefinition top)
-        {
-            return $"The operator returns the first {top.RowCount:N0} rows from its input, then closes it.";
-        }
-
-        if (definition is SortDefinition sort)
-        {
-            return sort.TopCount is { } topCount
-                ? $"The operator collects its input, keeps the top {topCount:N0} rows by the sort keys and outputs them in order."
-                : sort.IsDistinct
-                    ? "The operator collects its whole input, sorts it and outputs each distinct key once."
-                    : "The operator collects its whole input before returning anything, then outputs the rows in sorted order.";
-        }
-
-        if (definition is not JoinDefinition join)
-        {
-            return string.Empty;
-        }
-
-        var (outerId, innerId) = Layout.InputNodes.GetValueOrDefault(nodeId, (-1, -1));
-
-        var outer = names.GetValueOrDefault(outerId, "outer");
-
-        var inner = names.GetValueOrDefault(innerId, "inner");
-
-        var rule = join.JoinType switch
-        {
-            JoinType.Inner
-                => $"A row is output when the outer ({outer}) and inner ({inner}) rows match.",
-            JoinType.LeftOuter
-                => $"Every outer ({outer}) row is output, joined to each matching inner ({inner}) row, or to NULLs where none match.",
-            JoinType.RightOuter
-                => $"Every inner ({inner}) row is output, joined to each matching outer ({outer}) row, or to NULLs where none match.",
-            JoinType.FullOuter
-                => $"Matched rows from the outer ({outer}) and inner ({inner}) join, and unmatched rows from either side are "
-                   + "output with NULLs.",
-            JoinType.LeftSemi
-                => $"An outer ({outer}) row is output once if any inner ({inner}) row matches. Inner rows are never output.",
-            JoinType.RightSemi
-                => $"An inner ({inner}) row is output once if any outer ({outer}) row matches. Outer rows are never output.",
-            JoinType.LeftAntiSemi
-                => $"An outer ({outer}) row is output only when no inner ({inner}) row matches.",
-            JoinType.RightAntiSemi
-                => $"An inner ({inner}) row is output only when no outer ({outer}) row matches.",
-            _ => string.Empty
-        };
-
-        return $"The logical operator is {join.JoinType.ToDisplayName()}. {rule}";
     }
 
     private static Windows.UI.Color ToColour(System.Drawing.Color colour)
@@ -776,6 +354,18 @@ public sealed partial class TraceTabViewModel : ObservableObject
         }
     }
 
+    private readonly Dictionary<int, int> _parentByNode = [];
+
+    private void IndexParents(IteratorDefinition definition)
+    {
+        foreach (var child in DefinitionTreeWalker.ChildrenOf(definition))
+        {
+            _parentByNode[child.NodeId] = definition.NodeId;
+
+            IndexParents(child);
+        }
+    }
+
     private List<int> PathTo(int nodeId)
     {
         var path = new List<int> { nodeId };
@@ -875,19 +465,9 @@ public sealed partial class TraceTabViewModel : ObservableObject
 
         TraceStepRuns.Append(step, StepHistory, HistoryLimit);
 
-        RouteRow(step);
+        Applier.ApplyStep(stepper, step);
 
-        UpdateStrategies();
-
-        UpdateOperatorStates();
-
-        AttachHashTables();
-
-        SyncHeldRows();
-
-        SyncHashTables(step);
-
-        GetVisual(step.NodeId)?.Apply(step);
+        OnPropertyChanged(nameof(SelectedStrategy));
 
         CurrentStep = step;
 
@@ -903,7 +483,7 @@ public sealed partial class TraceTabViewModel : ObservableObject
         {
             PageNavigated?.Invoke(this, new PageNavigatedEventArgs(pageAddress, !_hasNavigatedSinceReset)
             {
-                Selection = SelectedVisual.Kind == TraceVisualKind.Allocation ? PageReadSelection.Last : PageReadSelection.Next
+                Selection = SelectedVisual.VisualType == TraceVisualType.Allocation ? PageReadSelection.Last : PageReadSelection.Next
             });
 
             _hasNavigatedSinceReset = true;
@@ -967,11 +547,9 @@ public sealed partial class TraceTabViewModel : ObservableObject
 
             var steps = new ObservableCollection<AccessStep>();
 
-            var lastRows = new Dictionary<int, IndexRecordModel>();
-
-            var accumulated = new Dictionary<int, List<IndexRecordModel>>();
-
             var replays = new Dictionary<TraceVisualViewModel, TraceVisualReplay>();
+
+            TraceStreamUpdate? streamUpdate = null;
 
             await Task.Run(async () =>
             {
@@ -993,26 +571,9 @@ public sealed partial class TraceTabViewModel : ObservableObject
                 foreach (var step in stepper.History)
                 {
                     TraceStepRuns.Append(step, steps, HistoryLimit);
-
-                    if (Layout.Streams.TryGetValue(step.NodeId, out var stream) && ToStreamModel(step) is { } model)
-                    {
-                        if (stream.IsAccumulating)
-                        {
-                            if (!accumulated.TryGetValue(step.NodeId, out var rows))
-                            {
-                                rows = [];
-
-                                accumulated[step.NodeId] = rows;
-                            }
-
-                            rows.Add(model);
-                        }
-                        else
-                        {
-                            lastRows[step.NodeId] = model;
-                        }
-                    }
                 }
+
+                streamUpdate = Applier.ComputeStreamUpdate(stepper.History);
 
                 foreach (var visual in Visuals)
                 {
@@ -1022,36 +583,27 @@ public sealed partial class TraceTabViewModel : ObservableObject
 
             StepHistory = steps;
 
-            foreach (var (nodeId, stream) in Layout.Streams)
+            if (streamUpdate is { } update)
             {
-                if (stream.IsAccumulating)
-                {
-                    stream.Load(accumulated.GetValueOrDefault(nodeId) ?? []);
-                }
-                else if (lastRows.TryGetValue(nodeId, out var last))
-                {
-                    stream.Show(last);
-                }
-                else
-                {
-                    stream.Clear();
-                }
+                Applier.ApplyStreamUpdate(update);
             }
 
-            UpdateStrategies();
+            Applier.UpdateStrategies(stepper);
 
-            UpdateOperatorStates();
+            Applier.UpdateOperatorStates(stepper);
 
             foreach (var visual in Visuals)
             {
                 visual.ApplyReplay(replays[visual]);
             }
 
-            AttachHashTables();
+            Applier.AttachHashTables(stepper);
 
-            SyncHeldRows();
+            Applier.SyncHeldRows(stepper);
 
-            SyncHashTables(stepper.Current);
+            Applier.SyncHashTables(stepper.Current);
+
+            OnPropertyChanged(nameof(SelectedStrategy));
 
             CurrentStep = stepper.Current;
             IsStepComplete = stepper.IsComplete;
@@ -1086,261 +638,13 @@ public sealed partial class TraceTabViewModel : ObservableObject
 
         StepHistory = [];
 
-        foreach (var stream in Layout.Streams.Values)
-        {
-            stream.Clear();
-        }
-
-        foreach (var held in Layout.HeldRows.Values)
-        {
-            held.Reset();
-        }
-
-        foreach (var hashTable in Layout.HashTables.Values)
-        {
-            hashTable.Reset();
-        }
+        Applier.Reset();
 
         CurrentStep = null;
-
-        foreach (var op in Operators)
-        {
-            op.StateItems.Clear();
-
-            BuildStateItems(op);
-
-            foreach (var row in op.InputRows)
-            {
-                row.RowCount = "0";
-            }
-        }
-
-        StrategyBySource.Clear();
 
         foreach (var visual in Visuals)
         {
             visual.Reset();
-        }
-
-        OnPropertyChanged(nameof(SelectedStrategy));
-    }
-
-    private TraceVisualViewModel? GetVisual(int nodeId)
-        => VisualsByNode.GetValueOrDefault(nodeId);
-
-    private void RouteRow(AccessStep step)
-    {
-        if (!Layout.Streams.TryGetValue(step.NodeId, out var stream) || ToStreamModel(step) is not { } model)
-        {
-            return;
-        }
-
-        stream.Show(model);
-    }
-
-    private IndexRecordModel? ToStreamModel(AccessStep step)
-        => step switch
-        {
-            AccessStep.JoinEmit emit => RowBuilder.ToJoinedModel(emit),
-            AccessStep.TopRow { EmittedRecord: { } emitted } => ToRecordModel(emitted),
-            AccessStep.Output { EmittedRecord: { } emitted } => ToRecordModel(emitted),
-            AccessStep.ConcatRow { EmittedRecord: { } emitted } => ToRecordModel(emitted),
-            AccessStep.SortRow { EmittedRecord: { } emitted } => ToRecordModel(emitted),
-            AccessStep.Row { EmittedRecord: { } emitted } => ToRecordModel(emitted),
-            _ => null
-        };
-
-    private void BuildStateItems(TraceOperatorViewModel tab)
-    {
-        if (!Layout.Definitions.TryGetValue(tab.NodeId, out var definition))
-        {
-            return;
-        }
-
-        switch (definition)
-        {
-            case SortDefinition sort:
-                if (sort.TopCount is { } sortTarget)
-                {
-                    tab.StateItems.Add(new TraceStateItem("Target") { Value = sortTarget.ToString("N0") });
-                }
-
-                tab.StateItems.Add(new TraceStateItem("Distinct") { Flag = sort.IsDistinct });
-                tab.StateItems.Add(new TraceStateItem("Collected") { Value = "0" });
-                tab.StateItems.Add(new TraceStateItem("Output") { Value = "0" });
-                break;
-
-            case TopDefinition top:
-                tab.StateItems.Add(new TraceStateItem("Target") { Value = top.RowCount.ToString("N0") });
-                tab.StateItems.Add(new TraceStateItem("Row Count") { Value = "0" });
-                break;
-
-            case ConcatenationDefinition concatenation:
-                tab.StateItems.Add(new TraceStateItem("Input") { Value = $"1 of {concatenation.Inputs.Count}" });
-                tab.StateItems.Add(new TraceStateItem("Rows") { Value = "0" });
-                break;
-        }
-    }
-
-    private void UpdateOperatorStates()
-    {
-        if (Stepper is not { } stepper)
-        {
-            return;
-        }
-
-        foreach (var iterator in Iterators(stepper.Root))
-        {
-            if (!OperatorsByNode.TryGetValue(iterator.NodeId, out var tab))
-            {
-                continue;
-            }
-
-            switch (iterator)
-            {
-                case TopIterator top:
-                    tab.SetState("Row Count", top.RowCount.ToString("N0"));
-                    break;
-
-                case SortIterator sort:
-                    tab.SetState("Collected", sort.CollectedCount.ToString("N0"));
-                    tab.SetState("Output", sort.RowCount.ToString("N0"));
-                    break;
-
-                case ConcatenationIterator concatenation:
-                    tab.SetState("Input", $"{concatenation.InputNumber} of {concatenation.InputCount}");
-                    tab.SetState("Rows", concatenation.RowCount.ToString("N0"));
-                    break;
-            }
-        }
-
-        foreach (var tab in Operators)
-        {
-            foreach (var row in tab.InputRows)
-            {
-                row.RowCount = stepper.CountersFor(row.SourceNodeId).RowsOutput.ToString("N0");
-            }
-        }
-    }
-
-    private void SyncHeldRows()
-    {
-        if (Stepper is not { } stepper)
-        {
-            return;
-        }
-
-        foreach (var iterator in Iterators(stepper.Root).OfType<IRowBufferIterator>())
-        {
-            foreach (var buffer in iterator.Buffers)
-            {
-                if (Layout.HeldRows.TryGetValue((iterator.NodeId, buffer.InputIndex), out var held))
-                {
-                    held.Sync(buffer.Rows);
-                }
-            }
-        }
-    }
-
-    /// <summary>
-    /// Brings every hash match's table up to date with the step just taken
-    /// </summary>
-    private void SyncHashTables(AccessStep? step)
-    {
-        foreach (var hashTable in Layout.HashTables.Values)
-        {
-            hashTable.Sync(step);
-        }
-    }
-
-    /// <summary>
-    /// Binds each hash match's table to the iterator filling it, which the factory builds fresh on every open
-    /// </summary>
-    private void AttachHashTables()
-    {
-        if (Stepper is not { } stepper)
-        {
-            return;
-        }
-
-        foreach (var iterator in Iterators(stepper.Root).OfType<IHashTableIterator>())
-        {
-            if (Layout.HashTables.TryGetValue(iterator.NodeId, out var hashTable))
-            {
-                hashTable.Attach(iterator);
-            }
-        }
-    }
-
-    /// <summary>
-    /// The running operators, the whole tree rather than the one at the top of it
-    /// </summary>
-    private static IEnumerable<IIterator> Iterators(IIterator iterator)
-    {
-        yield return iterator;
-
-        switch (iterator)
-        {
-            case IJoinIterator join:
-                if (join.Outer?.Iterator is { } outer)
-                {
-                    foreach (var found in Iterators(outer))
-                    {
-                        yield return found;
-                    }
-                }
-
-                if (join.Inner?.Iterator is { } inner)
-                {
-                    foreach (var found in Iterators(inner))
-                    {
-                        yield return found;
-                    }
-                }
-
-                break;
-
-            case IMultiInputIterator multi:
-                foreach (var input in multi.Inputs)
-                {
-                    foreach (var found in Iterators(input))
-                    {
-                        yield return found;
-                    }
-                }
-
-                break;
-
-            case IUnaryIterator { Input: { } input }:
-                foreach (var found in Iterators(input))
-                {
-                    yield return found;
-                }
-
-                break;
-        }
-    }
-
-    /// <summary>
-    /// Takes the strategy each input settled on once it was opened, so a tab can show its own rather than the tree's
-    /// </summary>
-    /// <remarks>
-    /// A correlated inner has no strategy until its first rebind plans a descent, so this is called again as the walk proceeds and leaves
-    /// what it already found alone.
-    /// </remarks>
-    private void UpdateStrategies()
-    {
-        if (Stepper is not { } stepper)
-        {
-            return;
-        }
-
-        foreach (var iterator in Iterators(stepper.Root))
-        {
-            if (iterator.Strategy is { } strategy && VisualsByNode.ContainsKey(iterator.NodeId))
-            {
-                StrategyBySource[iterator.NodeId] = strategy;
-            }
         }
 
         OnPropertyChanged(nameof(SelectedStrategy));
@@ -1358,15 +662,12 @@ public sealed partial class TraceTabViewModel : ObservableObject
 
         await Task.Run(() => stepper.StartAsync(CancellationToken.None));
 
-        UpdateStrategies();
+        Applier.UpdateStrategies(stepper);
 
-        AttachHashTables();
+        OnPropertyChanged(nameof(SelectedStrategy));
+
+        Applier.AttachHashTables(stepper);
 
         IsStepping = true;
-    }
-
-    private static IndexRecordModel ToRecordModel(IRecord record)
-    {
-        return TraceVisualViewModel.ToRecordModel(record);
     }
 }

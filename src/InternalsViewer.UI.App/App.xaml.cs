@@ -12,6 +12,7 @@ using InternalsViewer.UI.App.Activation;
 using InternalsViewer.UI.App.Messages;
 using InternalsViewer.UI.App.Models;
 using InternalsViewer.UI.App.Services;
+using InternalsViewer.UI.App.Services.XEvents;
 using InternalsViewer.UI.App.ViewModels;
 using InternalsViewer.UI.App.ViewModels.Connections;
 using InternalsViewer.UI.App.ViewModels.Database;

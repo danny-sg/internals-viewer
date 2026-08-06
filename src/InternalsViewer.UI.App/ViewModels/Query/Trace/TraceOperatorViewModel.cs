@@ -2,7 +2,7 @@ using System;
 using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using InternalsViewer.Execution.AccessPaths.Joins;
-using InternalsViewer.UI.App.Models.Trace;
+using InternalsViewer.UI.App.Models.Query.Trace;
 
 namespace InternalsViewer.UI.App.ViewModels.Query.Trace;
 

@@ -3,6 +3,7 @@ using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using InternalsViewer.UI.App.Services;
+using InternalsViewer.UI.App.Services.XEvents;
 
 namespace InternalsViewer.UI.App.ViewModels;
 

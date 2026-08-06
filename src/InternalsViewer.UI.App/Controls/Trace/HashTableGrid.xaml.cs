@@ -1,5 +1,5 @@
 using System.Collections.Generic;
-using InternalsViewer.UI.App.Models.Trace;
+using InternalsViewer.UI.App.Models.Query.Trace.Hash;
 using Microsoft.UI.Xaml.Controls;
 
 namespace InternalsViewer.UI.App.Controls.Trace;

@@ -17,7 +17,7 @@ using InternalsViewer.Internals.Interfaces.Engine;
 using InternalsViewer.Internals.Metadata.Structures;
 using InternalsViewer.Internals.Services.Indexes;
 using InternalsViewer.UI.App.Models.Index;
-using InternalsViewer.UI.App.Models.Trace;
+using InternalsViewer.UI.App.Models.Query.Trace;
 using System.Drawing;
 using InternalsViewer.Execution.AccessPaths.Results.Steps;
 using AllocationBorder = InternalsViewer.UI.App.Models.AllocationBorder;
@@ -28,20 +28,14 @@ using InternalsViewer.UI.App.ViewModels.Allocation;
 
 namespace InternalsViewer.UI.App.ViewModels.Query.Trace;
 
-public enum TraceVisualKind
-{
-    Index,
-    Allocation
-}
-
-public sealed partial class TraceVisualViewModel(TraceVisualKind kind,
+public sealed partial class TraceVisualViewModel(TraceVisualType visualType,
                                                  DatabaseSource database,
                                                  AllocationUnit allocationUnit,
                                                  IndexService indexService,
                                                  string title,
                                                  int nodeId = 0) : ObservableObject
 {
-    public TraceVisualKind Kind { get; } = kind;
+    public TraceVisualType VisualType { get; } = visualType;
 
     public string Title { get; } = title;
 
@@ -143,7 +137,7 @@ public sealed partial class TraceVisualViewModel(TraceVisualKind kind,
             return;
         }
 
-        if (Kind == TraceVisualKind.Allocation)
+        if (VisualType == TraceVisualType.Allocation)
         {
             var layers = await Task.Run(() => AllocationLayerBuilder.GenerateLayers(Database, true, 20));
 
@@ -204,7 +198,7 @@ public sealed partial class TraceVisualViewModel(TraceVisualKind kind,
             return;
         }
 
-        if (Kind == TraceVisualKind.Index)
+        if (VisualType == TraceVisualType.Index)
         {
             if (step is AccessStep.Reseek or AccessStep.Rebind)
             {
@@ -294,7 +288,7 @@ public sealed partial class TraceVisualViewModel(TraceVisualKind kind,
 
             switch (step)
             {
-                case AccessStep.Reseek or AccessStep.Rebind when Kind == TraceVisualKind.Index:
+                case AccessStep.Reseek or AccessStep.Rebind when VisualType == TraceVisualType.Index:
                     LightenVisitedPages(visited);
                     break;
 
@@ -306,11 +300,11 @@ public sealed partial class TraceVisualViewModel(TraceVisualKind kind,
                     lastSlot = null;
                     break;
 
-                case AccessStep.PageSkipped skipped when Kind == TraceVisualKind.Allocation:
+                case AccessStep.PageSkipped skipped when VisualType == TraceVisualType.Allocation:
                     lastPage = skipped.PageAddress;
                     break;
 
-                case AccessStep.PfsRead pfsRead when Kind == TraceVisualKind.Allocation:
+                case AccessStep.PfsRead pfsRead when VisualType == TraceVisualType.Allocation:
                     lastPage = pfsRead.PageAddress;
                     break;
 
@@ -325,7 +319,7 @@ public sealed partial class TraceVisualViewModel(TraceVisualKind kind,
 
     public void ApplyReplay(TraceVisualReplay replay)
     {
-        if (Kind == TraceVisualKind.Index)
+        if (VisualType == TraceVisualType.Index)
         {
             _visitedPages.Clear();
             _visitedPages.AddRange(replay.Visited);
@@ -485,9 +479,3 @@ public sealed partial class TraceVisualViewModel(TraceVisualKind kind,
         TraceBorders = _objectBorderVisible && _objectBorder is { } border ? [border, currentBorder] : [currentBorder];
     }
 }
-
-public sealed record TraceVisualReplay(List<PageSpan> Visited,
-                                       PageAddress? LastPage,
-                                       PageAddress? LastDataPage,
-                                       int? LastSlot,
-                                       int LastSlotCount);

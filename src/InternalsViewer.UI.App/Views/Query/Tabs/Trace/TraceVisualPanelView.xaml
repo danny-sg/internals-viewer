@@ -14,7 +14,7 @@
         <Grid>
             <index:IndexControl x:Name="IndexControl"
                                 SelectChildPath="False"
-                                Visibility="{x:Bind IndexVisibility(ViewModel.Kind, ViewModel.IsVisualInitialized), Mode=OneWay}"
+                                Visibility="{x:Bind IndexVisibility(ViewModel.VisualType, ViewModel.IsVisualInitialized), Mode=OneWay}"
                                 Nodes="{x:Bind ViewModel.Nodes, Mode=OneWay}"
                                 Zoom="{x:Bind ViewModel.Zoom, Mode=TwoWay}"
                                 IsZoomToFit="{x:Bind ViewModel.IsZoomToFit, Mode=TwoWay}"
@@ -30,7 +30,7 @@
                         HorizontalAlignment="Center"
                         VerticalAlignment="Center"
                         Orientation="Vertical"
-                        Visibility="{x:Bind LoadingVisibility(ViewModel.Kind, ViewModel.IsVisualInitialized), Mode=OneWay}">
+                        Visibility="{x:Bind LoadingVisibility(ViewModel.VisualType, ViewModel.IsVisualInitialized), Mode=OneWay}">
                 <TextBlock HorizontalAlignment="Center" Text="Loading..." />
                 <ProgressBar Width="300"
                              Margin="0,10,0,0"
@@ -44,7 +44,7 @@
                            Text="{x:Bind ViewModel.ProgressText, Mode=OneWay}" />
             </StackPanel>
 
-            <allocation:AllocationControl Visibility="{x:Bind AllocationVisibility(ViewModel.Kind, ViewModel.IsVisualInitialized), Mode=OneWay}"
+            <allocation:AllocationControl Visibility="{x:Bind AllocationVisibility(ViewModel.VisualType, ViewModel.IsVisualInitialized), Mode=OneWay}"
                                           ExtentCount="{x:Bind ViewModel.ExtentCount, Mode=OneWay}"
                                           Layers="{x:Bind ViewModel.AllocationLayers, Mode=OneWay}"
                                           Borders="{x:Bind ViewModel.TraceBorders, Mode=OneWay}"
