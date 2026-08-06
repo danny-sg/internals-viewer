@@ -7,6 +7,7 @@ using InternalsViewer.Internals.Engine.Database;
 using InternalsViewer.Internals.Services.Indexes;
 using InternalsViewer.Query.Events.Operators;
 using InternalsViewer.Query.Plans.Model;
+using InternalsViewer.UI.App.Helpers;
 using InternalsViewer.UI.App.Services.Query.Trace;
 
 namespace InternalsViewer.UI.App.ViewModels.Query.Trace;
@@ -61,15 +62,12 @@ public sealed class TraceTabViewModelFactory(IIteratorFactory iteratorFactory, I
         var visualType = source.VisualType == TraceSourceKind.Index ? TraceVisualType.Index : TraceVisualType.Allocation;
 
         var title = source.Role == TraceSourceRole.None
-            ? $"{DisplayName(unit)} ({source.NodeId})"
-            : $"{source.Role}: {DisplayName(unit)} ({source.NodeId})";
+            ? $"{unit.DisplayName()} ({source.NodeId})"
+            : $"{source.Role}: {unit.DisplayName()} ({source.NodeId})";
 
         return new TraceVisualViewModel(visualType, database, unit, indexService, title, source.NodeId)
         {
             ShowObjectBorderImmediately = source.VisualType == TraceSourceKind.Heap
         };
     }
-
-    private static string DisplayName(AllocationUnit unit)
-        => string.IsNullOrEmpty(unit.IndexName) ? unit.TableName : unit.IndexName;
 }

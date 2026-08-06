@@ -17,253 +17,20 @@ public static class TraceStepRuns
 
         var top = LeadingSpans(history);
 
-        if (step is AccessStep.MergeCompare compare)
+        if (TryFoldIntoSpan(step, history, top))
         {
-            var span = FindSpan<MergeCompareSpan>(history, top, compare.NodeId);
-
-            if (compare.Comparison == 0)
-            {
-                span?.IsComplete = true;
-
-                MergeMatch(history, compare).Progress.Apply(compare);
-
-                return;
-            }
-
-            if (span is not null && span.Progress.Direction != Math.Sign(compare.Comparison))
-            {
-                span.IsComplete = true;
-
-                span = null;
-            }
-
-            if (span is null)
-            {
-                span = new MergeCompareSpan
-                {
-                    NodeId = compare.NodeId,
-                    Counters = compare.Counters
-                };
-
-                InsertSpan(history, span);
-            }
-
-            span.Progress.Apply(compare);
-
             return;
         }
 
-        if (step is AccessStep.HashBuild hashBuild)
+        if (step is AccessStep.SortDuplicate sortDuplicate && TryExtendSortDuplicate(sortDuplicate, history, top))
         {
-            if (FindSpan<HashBuildSpan>(history, top, hashBuild.NodeId) is { } buildSpan)
-            {
-                buildSpan.Progress.Apply(hashBuild);
-
-                return;
-            }
-
-            var created = new HashBuildSpan
-            {
-                NodeId = hashBuild.NodeId,
-                Counters = hashBuild.Counters
-            };
-
-            created.Progress.Apply(hashBuild);
-
-            InsertSpan(history, created);
-
-            return;
-        }
-
-        if (step is AccessStep.HashProbe hashProbe)
-        {
-            var span = FindSpan<HashProbeSpan>(history, top, hashProbe.NodeId);
-
-            if (span is null)
-            {
-                span = new HashProbeSpan
-                {
-                    NodeId = hashProbe.NodeId,
-                    Counters = hashProbe.Counters
-                };
-
-                if (FindSpan<HashBuildSpan>(history, top, hashProbe.NodeId) is { } buildSpan)
-                {
-                    span.Progress.Fill = buildSpan.Progress.Fill;
-
-                    buildSpan.IsComplete = true;
-                }
-
-                InsertSpan(history, span);
-            }
-
-            span.Progress.Apply(hashProbe);
-
-            return;
-        }
-
-        if (step is AccessStep.HashCompare hashCompare && FindSpan<HashProbeSpan>(history, top, hashCompare.NodeId) is { } compareSpan)
-        {
-            compareSpan.Progress.Apply(hashCompare);
-
-            if (hashCompare.IsMatch)
-            {
-                MatchSpan(history, top, hashCompare).Progress.Apply(hashCompare);
-            }
-
-            return;
-        }
-
-        if (step is AccessStep.JoinEmit joinEmit)
-        {
-            if (FindSpan<HashProbeSpan>(history, top, joinEmit.NodeId) is { } emitSpan)
-            {
-                emitSpan.Progress.Apply(joinEmit);
-
-                MatchSpan(history, top, joinEmit).Progress.Apply(joinEmit);
-
-                return;
-            }
-
-            if (FindSpan<MergeMatchSpan>(history, top, joinEmit.NodeId) is { } mergeMatch)
-            {
-                mergeMatch.Progress.Apply(joinEmit);
-
-                return;
-            }
-
-            if (FindSpan<MergeCompareSpan>(history, top, joinEmit.NodeId) is not null)
-            {
-                MergeMatch(history, joinEmit).Progress.Apply(joinEmit);
-
-                return;
-            }
-        }
-
-        if (step is AccessStep.TopRow topRow)
-        {
-            var span = FindSpan<RowCountSpan>(history, top, topRow.NodeId);
-
-            if (span is null)
-            {
-                span = new RowCountSpan
-                {
-                    NodeId = topRow.NodeId,
-                    Counters = topRow.Counters,
-                    Badge = "→ Emit"
-                };
-
-                InsertSpan(history, span);
-            }
-
-            span.Progress.Apply(topRow.Number, topRow.RowCount);
-
-            return;
-        }
-
-        if (step is AccessStep.Output output)
-        {
-            var span = FindSpan<RowCountSpan>(history, top, output.NodeId);
-
-            if (span is null)
-            {
-                span = new RowCountSpan
-                {
-                    NodeId = output.NodeId,
-                    Counters = output.Counters,
-                    Badge = "→ Client"
-                };
-
-                InsertSpan(history, span);
-            }
-
-            span.Progress.Apply(output.Number, 0);
-
-            return;
-        }
-
-        if (step is AccessStep.SortCollect sortCollect)
-        {
-            var span = FindSpan<SortCollectSpan>(history, top, sortCollect.NodeId);
-
-            if (span is null)
-            {
-                span = new SortCollectSpan
-                {
-                    NodeId = sortCollect.NodeId,
-                    Counters = sortCollect.Counters
-                };
-
-                InsertSpan(history, span);
-            }
-
-            span.Progress.Apply(sortCollect.Number, 0);
-
-            return;
-        }
-
-        if (step is AccessStep.SortRow sortRow)
-        {
-            var span = FindSpan<RowCountSpan>(history, top, sortRow.NodeId);
-
-            if (span is null)
-            {
-                span = new RowCountSpan
-                {
-                    NodeId = sortRow.NodeId,
-                    Counters = sortRow.Counters,
-                    Badge = "→ Emit"
-                };
-
-                InsertSpan(history, span);
-            }
-
-            span.Progress.Apply(sortRow.Number, 0);
-
-            return;
-        }
-
-        if (step is AccessStep.SortDuplicate sortDuplicate
-            && history.Count > top
-            && history[top] is AccessStep.SortDuplicate previousDuplicate
-            && previousDuplicate.NodeId == sortDuplicate.NodeId)
-        {
-            history[top] = sortDuplicate with { Count = previousDuplicate.Count + 1 };
-
-            return;
-        }
-
-        if (step is AccessStep.ConcatRow concatRow)
-        {
-            var span = FindSpan<RowCountSpan>(history, top, concatRow.NodeId);
-
-            if (span is null)
-            {
-                span = new RowCountSpan
-                {
-                    NodeId = concatRow.NodeId,
-                    Counters = concatRow.Counters,
-                    Badge = "→ Emit"
-                };
-
-                InsertSpan(history, span);
-            }
-
-            span.Progress.Apply(concatRow.Number, 0);
-
             return;
         }
 
         if (step is AccessStep.Probe probe)
         {
-            if (history.Count > top && history[top] is AccessStep.ProbeRun probeRun && probeRun.NodeId == probe.NodeId)
+            if (TryExtendProbeRun(probe, history, top))
             {
-                history[top] = new AccessStep.ProbeRun([probe, .. probeRun.Probes])
-                {
-                    NodeId = probe.NodeId,
-                    Counters = probe.Counters
-                };
-
                 return;
             }
 
@@ -274,45 +41,9 @@ public static class TraceStepRuns
             };
         }
 
-        if (step is AccessStep.Row row && history.Count > top)
+        if (step is AccessStep.Row row && TryExtendRowRun(row, history, top))
         {
-            var latest = history[top];
-
-            if (latest is AccessStep.Row previous
-                && previous.NodeId == row.NodeId
-                && previous.Outcome == row.Outcome
-                && previous.IsReadAhead == row.IsReadAhead
-                && Math.Abs(row.Slot - previous.Slot) == 1)
-            {
-                history[top] = new AccessStep.RowRun(previous.Slot, row.Slot, row.Outcome)
-                {
-                    Count = 2,
-                    HasResidual = row.HasResidual,
-                    HasRange = row.HasRange,
-                    EmitCount = EmitOf(previous) + EmitOf(row),
-                    Counters = row.Counters,
-                    NodeId = row.NodeId
-                };
-
-                return;
-            }
-
-            if (latest is AccessStep.RowRun run
-                && run.NodeId == row.NodeId
-                && run.Outcome == row.Outcome
-                && !row.IsReadAhead
-                && Math.Abs(row.Slot - run.ToSlot) == 1)
-            {
-                history[top] = run with
-                {
-                    ToSlot = row.Slot,
-                    Count = run.Count + 1,
-                    EmitCount = run.EmitCount + EmitOf(row),
-                    Counters = row.Counters
-                };
-
-                return;
-            }
+            return;
         }
 
         history.Insert(top, step);
@@ -321,6 +52,295 @@ public static class TraceStepRuns
         {
             history.RemoveAt(history.Count - 1);
         }
+    }
+
+    private static bool TryFoldIntoSpan(AccessStep step, ObservableCollection<AccessStep> history, int top)
+    {
+        switch (step)
+        {
+            case AccessStep.MergeCompare compare:
+                return FoldMergeCompare(compare, history, top);
+
+            case AccessStep.HashBuild hashBuild:
+                return FoldHashBuild(hashBuild, history, top);
+
+            case AccessStep.HashProbe hashProbe:
+                return FoldHashProbe(hashProbe, history, top);
+
+            case AccessStep.HashCompare hashCompare:
+                return FoldHashCompare(hashCompare, history, top);
+
+            case AccessStep.JoinEmit joinEmit:
+                return FoldJoinEmit(joinEmit, history, top);
+
+            case AccessStep.TopRow topRow:
+                RowCountSpanFor(topRow, "→ Emit", history, top).Progress.Apply(topRow.Number, topRow.RowCount);
+                return true;
+
+            case AccessStep.Output output:
+                RowCountSpanFor(output, "→ Client", history, top).Progress.Apply(output.Number, 0);
+                return true;
+
+            case AccessStep.SortCollect sortCollect:
+                SortCollectSpanFor(sortCollect, history, top).Progress.Apply(sortCollect.Number, 0);
+                return true;
+
+            case AccessStep.SortRow sortRow:
+                RowCountSpanFor(sortRow, "→ Emit", history, top).Progress.Apply(sortRow.Number, 0);
+                return true;
+
+            case AccessStep.ConcatRow concatRow:
+                RowCountSpanFor(concatRow, "→ Emit", history, top).Progress.Apply(concatRow.Number, 0);
+                return true;
+
+            default:
+                return false;
+        }
+    }
+
+    private static bool FoldMergeCompare(AccessStep.MergeCompare compare, ObservableCollection<AccessStep> history, int top)
+    {
+        var span = FindSpan<MergeCompareSpan>(history, top, compare.NodeId);
+
+        if (compare.Comparison == 0)
+        {
+            span?.IsComplete = true;
+
+            MergeMatch(history, compare).Progress.Apply(compare);
+
+            return true;
+        }
+
+        if (span is not null && span.Progress.Direction != Math.Sign(compare.Comparison))
+        {
+            span.IsComplete = true;
+
+            span = null;
+        }
+
+        if (span is null)
+        {
+            span = new MergeCompareSpan
+            {
+                NodeId = compare.NodeId,
+                Counters = compare.Counters
+            };
+
+            InsertSpan(history, span);
+        }
+
+        span.Progress.Apply(compare);
+
+        return true;
+    }
+
+    private static bool FoldHashBuild(AccessStep.HashBuild hashBuild, ObservableCollection<AccessStep> history, int top)
+    {
+        if (FindSpan<HashBuildSpan>(history, top, hashBuild.NodeId) is { } buildSpan)
+        {
+            buildSpan.Progress.Apply(hashBuild);
+
+            return true;
+        }
+
+        var created = new HashBuildSpan
+        {
+            NodeId = hashBuild.NodeId,
+            Counters = hashBuild.Counters
+        };
+
+        created.Progress.Apply(hashBuild);
+
+        InsertSpan(history, created);
+
+        return true;
+    }
+
+    private static bool FoldHashProbe(AccessStep.HashProbe hashProbe, ObservableCollection<AccessStep> history, int top)
+    {
+        var span = FindSpan<HashProbeSpan>(history, top, hashProbe.NodeId);
+
+        if (span is null)
+        {
+            span = new HashProbeSpan
+            {
+                NodeId = hashProbe.NodeId,
+                Counters = hashProbe.Counters
+            };
+
+            if (FindSpan<HashBuildSpan>(history, top, hashProbe.NodeId) is { } buildSpan)
+            {
+                span.Progress.Fill = buildSpan.Progress.Fill;
+
+                buildSpan.IsComplete = true;
+            }
+
+            InsertSpan(history, span);
+        }
+
+        span.Progress.Apply(hashProbe);
+
+        return true;
+    }
+
+    private static bool FoldHashCompare(AccessStep.HashCompare hashCompare, ObservableCollection<AccessStep> history, int top)
+    {
+        if (FindSpan<HashProbeSpan>(history, top, hashCompare.NodeId) is not { } span)
+        {
+            return false;
+        }
+
+        span.Progress.Apply(hashCompare);
+
+        if (hashCompare.IsMatch)
+        {
+            MatchSpan(history, top, hashCompare).Progress.Apply(hashCompare);
+        }
+
+        return true;
+    }
+
+    private static bool FoldJoinEmit(AccessStep.JoinEmit joinEmit, ObservableCollection<AccessStep> history, int top)
+    {
+        if (FindSpan<HashProbeSpan>(history, top, joinEmit.NodeId) is { } emitSpan)
+        {
+            emitSpan.Progress.Apply(joinEmit);
+
+            MatchSpan(history, top, joinEmit).Progress.Apply(joinEmit);
+
+            return true;
+        }
+
+        if (FindSpan<MergeMatchSpan>(history, top, joinEmit.NodeId) is { } mergeMatch)
+        {
+            mergeMatch.Progress.Apply(joinEmit);
+
+            return true;
+        }
+
+        if (FindSpan<MergeCompareSpan>(history, top, joinEmit.NodeId) is not null)
+        {
+            MergeMatch(history, joinEmit).Progress.Apply(joinEmit);
+
+            return true;
+        }
+
+        return false;
+    }
+
+    private static RowCountSpan RowCountSpanFor(AccessStep step, string badge, ObservableCollection<AccessStep> history, int top)
+    {
+        if (FindSpan<RowCountSpan>(history, top, step.NodeId) is { } span)
+        {
+            return span;
+        }
+
+        var created = new RowCountSpan
+        {
+            NodeId = step.NodeId,
+            Counters = step.Counters,
+            Badge = badge
+        };
+
+        InsertSpan(history, created);
+
+        return created;
+    }
+
+    private static SortCollectSpan SortCollectSpanFor(AccessStep step, ObservableCollection<AccessStep> history, int top)
+    {
+        if (FindSpan<SortCollectSpan>(history, top, step.NodeId) is { } span)
+        {
+            return span;
+        }
+
+        var created = new SortCollectSpan
+        {
+            NodeId = step.NodeId,
+            Counters = step.Counters
+        };
+
+        InsertSpan(history, created);
+
+        return created;
+    }
+
+    private static bool TryExtendSortDuplicate(AccessStep.SortDuplicate sortDuplicate, ObservableCollection<AccessStep> history, int top)
+    {
+        if (history.Count > top
+            && history[top] is AccessStep.SortDuplicate previousDuplicate
+            && previousDuplicate.NodeId == sortDuplicate.NodeId)
+        {
+            history[top] = sortDuplicate with { Count = previousDuplicate.Count + 1 };
+
+            return true;
+        }
+
+        return false;
+    }
+
+    private static bool TryExtendProbeRun(AccessStep.Probe probe, ObservableCollection<AccessStep> history, int top)
+    {
+        if (history.Count > top && history[top] is AccessStep.ProbeRun probeRun && probeRun.NodeId == probe.NodeId)
+        {
+            history[top] = new AccessStep.ProbeRun([probe, .. probeRun.Probes])
+            {
+                NodeId = probe.NodeId,
+                Counters = probe.Counters
+            };
+
+            return true;
+        }
+
+        return false;
+    }
+
+    private static bool TryExtendRowRun(AccessStep.Row row, ObservableCollection<AccessStep> history, int top)
+    {
+        if (history.Count <= top)
+        {
+            return false;
+        }
+
+        var latest = history[top];
+
+        if (latest is AccessStep.Row previous
+            && previous.NodeId == row.NodeId
+            && previous.Outcome == row.Outcome
+            && previous.IsReadAhead == row.IsReadAhead
+            && Math.Abs(row.Slot - previous.Slot) == 1)
+        {
+            history[top] = new AccessStep.RowRun(previous.Slot, row.Slot, row.Outcome)
+            {
+                Count = 2,
+                HasResidual = row.HasResidual,
+                HasRange = row.HasRange,
+                EmitCount = EmitOf(previous) + EmitOf(row),
+                Counters = row.Counters,
+                NodeId = row.NodeId
+            };
+
+            return true;
+        }
+
+        if (latest is AccessStep.RowRun run
+            && run.NodeId == row.NodeId
+            && run.Outcome == row.Outcome
+            && !row.IsReadAhead
+            && Math.Abs(row.Slot - run.ToSlot) == 1)
+        {
+            history[top] = run with
+            {
+                ToSlot = row.Slot,
+                Count = run.Count + 1,
+                EmitCount = run.EmitCount + EmitOf(row),
+                Counters = row.Counters
+            };
+
+            return true;
+        }
+
+        return false;
     }
 
     private static bool IsSpan(AccessStep step) => step is ITraceSpan { IsComplete: false };

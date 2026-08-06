@@ -5,7 +5,7 @@ using System.Linq;
 using InternalsViewer.Execution.AccessPaths.Definitions;
 using InternalsViewer.Execution.AccessPaths.Joins;
 using InternalsViewer.Query.Plans.Model;
-using InternalsViewer.UI.App.Controls.Plan;
+using InternalsViewer.UI.App.Helpers;
 using InternalsViewer.UI.App.Models.Query.Trace;
 using InternalsViewer.UI.App.Services.Query.Trace;
 using Microsoft.UI.Xaml.Media.Imaging;
@@ -32,17 +32,35 @@ public static class TraceLayoutBuilder
 
         var operators = TraceSourceCollector.CollectOperators(definition);
 
-        var tabs = new List<TraceOperatorViewModel>();
-
-        var tabsByNode = new Dictionary<int, TraceOperatorViewModel>();
-
-        var streams = new Dictionary<int, TraceRowStreamViewModel>();
+        var tabsByNode = CreateTabs(operators, palette, nodeFor);
 
         var heldRows = new Dictionary<(int NodeId, int InputIndex), TraceHeldRowsViewModel>();
 
         var hashTables = new Dictionary<int, TraceHashTableViewModel>();
 
         var sides = new Dictionary<int, OperatorSides>();
+
+        WirePanes(operators, tabsByNode, visuals, colours, nodeFor, palette, heldRows, hashTables, sides);
+
+        ConfigureRootTab(definition, tabsByNode);
+
+        var sourceVisuals = MapSourceVisuals(definition, visuals);
+
+        var nodes = BuildContexts(ordered, definitions, depths, colours, tabsByNode, visuals, sourceVisuals, hashTables, heldRows, sides);
+
+        return new TraceLayout
+        {
+            Tabs = [.. operators.Select(o => tabsByNode[o.NodeId])],
+            Nodes = nodes,
+            Palette = palette
+        };
+    }
+
+    private static Dictionary<int, TraceOperatorViewModel> CreateTabs(IReadOnlyList<IteratorDefinition> operators,
+                                                                      TraceBlobPalette palette,
+                                                                      Func<int, PlanNode?> nodeFor)
+    {
+        var tabsByNode = new Dictionary<int, TraceOperatorViewModel>();
 
         foreach (var op in operators)
         {
@@ -54,13 +72,22 @@ public static class TraceLayoutBuilder
 
             tab.BlobPalette = palette;
 
-            tabs.Add(tab);
-
             tabsByNode[op.NodeId] = tab;
-
-            streams[op.NodeId] = tab.Output;
         }
 
+        return tabsByNode;
+    }
+
+    private static void WirePanes(IReadOnlyList<IteratorDefinition> operators,
+                                  IReadOnlyDictionary<int, TraceOperatorViewModel> tabsByNode,
+                                  IReadOnlyDictionary<int, TraceVisualViewModel> visuals,
+                                  IReadOnlyDictionary<int, Color> colours,
+                                  Func<int, PlanNode?> nodeFor,
+                                  TraceBlobPalette palette,
+                                  Dictionary<(int NodeId, int InputIndex), TraceHeldRowsViewModel> heldRows,
+                                  Dictionary<int, TraceHashTableViewModel> hashTables,
+                                  Dictionary<int, OperatorSides> sides)
+    {
         foreach (var op in operators)
         {
             var tab = tabsByNode[op.NodeId];
@@ -69,7 +96,7 @@ public static class TraceLayoutBuilder
             {
                 tab.IsJoinLayout = true;
 
-                var (outer, inner) = Inputs(op);
+                var (outer, inner) = DefinitionTreeWalker.Inputs(op);
 
                 var (outerLabel, innerLabel) = InputLabels(op);
 
@@ -114,54 +141,79 @@ public static class TraceLayoutBuilder
                 _ => TracePane.Empty
             };
         }
+    }
 
-        if (tabsByNode.TryGetValue(definition.NodeId, out var rootTab))
+    private static void ConfigureRootTab(IteratorDefinition definition, IReadOnlyDictionary<int, TraceOperatorViewModel> tabsByNode)
+    {
+        if (!tabsByNode.TryGetValue(definition.NodeId, out var rootTab))
         {
-            rootTab.Output.IsAccumulating = true;
-
-            if (definition is SelectDefinition)
-            {
-                rootTab.HasOutputPane = false;
-            }
-            else
-            {
-                rootTab.IsOutputDefaultVisible = true;
-            }
+            return;
         }
 
-        var inputNodes = new Dictionary<int, (int Outer, int Inner)>();
+        rootTab.Output.IsAccumulating = true;
 
-        foreach (var op in operators)
+        if (definition is SelectDefinition)
         {
-            var (outerInput, innerInput) = Inputs(op);
-
-            inputNodes[op.NodeId] = (outerInput?.NodeId ?? -1, innerInput?.NodeId ?? -1);
+            rootTab.HasOutputPane = false;
         }
+        else
+        {
+            rootTab.IsOutputDefaultVisible = true;
+        }
+    }
 
-        var visualByOperator = new Dictionary<int, TraceVisualViewModel>();
+    private static Dictionary<int, TraceVisualViewModel> MapSourceVisuals(IteratorDefinition definition,
+                                                                          IReadOnlyDictionary<int, TraceVisualViewModel> visuals)
+    {
+        var sourceVisuals = new Dictionary<int, TraceVisualViewModel>();
 
         foreach (var source in TraceSourceCollector.Collect(definition))
         {
-            if (!visualByOperator.ContainsKey(source.OperatorNodeId) && visuals.TryGetValue(source.NodeId, out var visual))
+            if (!sourceVisuals.ContainsKey(source.OperatorNodeId) && visuals.TryGetValue(source.NodeId, out var visual))
             {
-                visualByOperator[source.OperatorNodeId] = visual;
+                sourceVisuals[source.OperatorNodeId] = visual;
             }
         }
 
-        return new TraceLayout
+        return sourceVisuals;
+    }
+
+    private static Dictionary<int, TraceNodeContext> BuildContexts(IReadOnlyList<int> ordered,
+                                                                   IReadOnlyDictionary<int, IteratorDefinition> definitions,
+                                                                   IReadOnlyDictionary<int, int> depths,
+                                                                   IReadOnlyDictionary<int, Color> colours,
+                                                                   IReadOnlyDictionary<int, TraceOperatorViewModel> tabsByNode,
+                                                                   IReadOnlyDictionary<int, TraceVisualViewModel> visuals,
+                                                                   IReadOnlyDictionary<int, TraceVisualViewModel> sourceVisuals,
+                                                                   IReadOnlyDictionary<int, TraceHashTableViewModel> hashTables,
+                                                                   IReadOnlyDictionary<(int NodeId, int InputIndex), TraceHeldRowsViewModel> heldRows,
+                                                                   IReadOnlyDictionary<int, OperatorSides> sides)
+    {
+        var nodes = new Dictionary<int, TraceNodeContext>();
+
+        foreach (var nodeId in ordered)
         {
-            Tabs = tabs,
-            Streams = streams,
-            HeldRows = heldRows,
-            HashTables = hashTables,
-            Definitions = definitions,
-            Sides = sides,
-            VisualByOperator = visualByOperator,
-            Depths = depths,
-            Colours = colours,
-            InputNodes = inputNodes,
-            Palette = palette
-        };
+            var (outer, inner) = DefinitionTreeWalker.Inputs(definitions[nodeId]);
+
+            var held = heldRows.Where(h => h.Key.NodeId == nodeId)
+                               .ToDictionary(h => h.Key.InputIndex, h => h.Value);
+
+            nodes[nodeId] = new TraceNodeContext
+            {
+                Definition = definitions[nodeId],
+                Depth = depths[nodeId],
+                Colour = colours[nodeId],
+                InputNodes = (outer?.NodeId ?? -1, inner?.NodeId ?? -1),
+                Tab = tabsByNode.GetValueOrDefault(nodeId),
+                Visual = visuals.GetValueOrDefault(nodeId),
+                SourceVisual = sourceVisuals.GetValueOrDefault(nodeId),
+                HashTable = hashTables.GetValueOrDefault(nodeId),
+                HeldRows = held,
+                Sides = sides.GetValueOrDefault(nodeId)
+            };
+        }
+
+        return nodes;
     }
 
     private static IEnumerable<TraceInputRow> InputRowsOf(IteratorDefinition definition,
@@ -203,17 +255,13 @@ public static class TraceLayoutBuilder
                                           TraceBlobPalette palette,
                                           bool hasRowCount = true)
     {
-        var node = nodeFor(input.NodeId);
+        var header = OperatorHeader.For(input, nodeFor(input.NodeId));
 
-        var physical = node?.PhysicalOperator is { Length: > 0 } name ? name : DisplayName(input);
-
-        var heading = input.NodeId < 0 ? physical : $"{physical} ({input.NodeId})";
-
-        return new TraceInputRow(input.NodeId, heading)
+        return new TraceInputRow(input.NodeId, header.Heading)
         {
             Label = label,
             Blob = Accent(colours, input.NodeId) is { } accent ? palette.For(input.NodeId, accent) : null,
-            Icon = node is null ? null : new SvgImageSource(PlanIconResolver.Resolve(node)),
+            Icon = header.Icon is { } icon ? new SvgImageSource(icon) : null,
             HasRowCount = hasRowCount
         };
     }
@@ -247,7 +295,7 @@ public static class TraceLayoutBuilder
 
             paletteIndex++;
 
-            var colour = Helpers.ColourHelpers.HsvToColor(hue, 150, 220);
+            var colour = ColourHelpers.HsvToColor(hue, 150, 220);
 
             if (used.Add(colour.ToArgb()))
             {
@@ -347,9 +395,6 @@ public static class TraceLayoutBuilder
             _ => ("Outer Input", "Inner Input")
         };
 
-    private static (IteratorDefinition? Outer, IteratorDefinition? Inner) Inputs(IteratorDefinition definition)
-        => DefinitionTreeWalker.Inputs(definition);
-
     private static TracePane InputPane(IteratorDefinition? input,
                                        string label,
                                        IReadOnlyDictionary<int, TraceOperatorViewModel> tabsByNode,
@@ -362,25 +407,17 @@ public static class TraceLayoutBuilder
             return TracePane.Empty;
         }
 
-        var node = nodeFor(input.NodeId);
-
-        var physical = node?.PhysicalOperator is { Length: > 0 } name ? name : DisplayName(input);
-
-        var heading = input.NodeId < 0 ? physical : $"{physical} ({input.NodeId})";
-
-        var icon = node is null ? null : PlanIconResolver.Resolve(node);
+        var header = OperatorHeader.For(input, nodeFor(input.NodeId));
 
         if (tabsByNode.TryGetValue(input.NodeId, out var tab))
         {
-            var logical = node?.LogicalOperator ?? string.Empty;
-
             return new TracePane(TracePaneKind.RowStream, tab.Output, label)
             {
                 SourceNodeId = input.NodeId,
                 AccentColour = Accent(colours, input.NodeId),
-                Icon = icon,
-                Heading = heading,
-                Subheading = logical.Length > 0 && logical != physical ? logical : string.Empty
+                Icon = header.Icon,
+                Heading = header.Heading,
+                Subheading = header.Subheading
             };
         }
 
@@ -390,9 +427,9 @@ public static class TraceLayoutBuilder
             {
                 SourceNodeId = input.NodeId,
                 AccentColour = Accent(colours, input.NodeId),
-                Icon = icon,
-                Heading = heading,
-                Subheading = ObjectName(visual)
+                Icon = header.Icon,
+                Heading = header.Heading,
+                Subheading = visual.AllocationUnit.DisplayName()
             };
         }
 
@@ -406,28 +443,19 @@ public static class TraceLayoutBuilder
             node = new PlanNode { PhysicalOperator = "SELECT", IsStatement = true };
         }
 
-        var physical = node?.PhysicalOperator is { Length: > 0 } name ? name : DisplayName(definition);
+        var header = OperatorHeader.For(definition, node);
 
-        tab.Heading = definition.NodeId < 0 ? physical : $"{physical} ({definition.NodeId})";
+        tab.Heading = header.Heading;
 
-        tab.Icon = node is null ? null : PlanIconResolver.Resolve(node);
+        tab.Icon = header.Icon;
 
-        var logical = node?.LogicalOperator ?? string.Empty;
-
-        tab.Subheading = logical.Length > 0 && logical != physical ? logical : string.Empty;
+        tab.Subheading = header.Subheading;
 
         tab.JoinRule = (definition as JoinDefinition)?.JoinType.Decide(true, true);
     }
 
     private static Windows.UI.Color? Accent(IReadOnlyDictionary<int, Color> colours, int nodeId)
-        => colours.TryGetValue(nodeId, out var colour)
-            ? Windows.UI.Color.FromArgb(colour.A, colour.R, colour.G, colour.B)
-            : null;
-
-    private static string ObjectName(TraceVisualViewModel visual)
-        => string.IsNullOrEmpty(visual.AllocationUnit.IndexName)
-            ? visual.AllocationUnit.TableName ?? string.Empty
-            : visual.AllocationUnit.IndexName;
+        => colours.TryGetValue(nodeId, out var colour) ? colour.ToWindowsColor() : null;
 
     private static TracePane HeldPane(Dictionary<(int NodeId, int InputIndex), TraceHeldRowsViewModel> heldRows,
                                       int nodeId,

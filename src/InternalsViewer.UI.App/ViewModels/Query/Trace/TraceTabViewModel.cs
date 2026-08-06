@@ -20,6 +20,7 @@ using InternalsViewer.Internals.Providers.Metadata;
 using InternalsViewer.Query.Events.Operators;
 using InternalsViewer.Query.Plans;
 using InternalsViewer.Query.Plans.Model;
+using InternalsViewer.UI.App.Helpers;
 using InternalsViewer.UI.App.Models.Query.Trace;
 using InternalsViewer.UI.App.Services.Query.Trace;
 using InternalsViewer.UI.App.Services.Query.Trace.Steps;
@@ -61,9 +62,9 @@ public sealed partial class TraceTabViewModel : ObservableObject
 
         foreach (var visual in visuals)
         {
-            if (layout.Colours.TryGetValue(visual.NodeId, out var colour))
+            if (layout.Nodes.TryGetValue(visual.NodeId, out var node))
             {
-                visual.OperatorColour = colour;
+                visual.OperatorColour = node.Colour;
             }
         }
 
@@ -73,10 +74,12 @@ public sealed partial class TraceTabViewModel : ObservableObject
 
         IndexParents(definition);
 
-        Applier = new TraceStepApplier(layout,
-                                       new TraceRowBuilder(layout.Definitions, layout.Sides),
-                                       VisualsByNode,
-                                       OperatorsByNode);
+        var definitions = layout.Nodes.ToDictionary(n => n.Key, n => n.Value.Definition);
+
+        var sides = layout.Nodes.Where(n => n.Value.Sides is not null)
+                                .ToDictionary(n => n.Key, n => n.Value.Sides!);
+
+        Applier = new TraceStepApplier(layout, new TraceRowBuilder(definitions, sides), VisualsByNode, OperatorsByNode);
 
         foreach (var op in Operators)
         {
@@ -217,34 +220,29 @@ public sealed partial class TraceTabViewModel : ObservableObject
     {
         var names = new Dictionary<int, string>();
 
-        foreach (var (nodeId, definition) in Layout.Definitions)
+        foreach (var (nodeId, node) in Layout.Nodes)
         {
             var name = _planNodesById.GetValueOrDefault(nodeId)?.PhysicalOperator
-                       ?? TraceLayoutBuilder.DisplayName(definition);
+                       ?? TraceLayoutBuilder.DisplayName(node.Definition);
 
             names[nodeId] = nodeId < 0 ? name : $"{name} (Node {nodeId})";
         }
 
         var nodes = new Dictionary<int, TraceStepNode>();
 
-        foreach (var (nodeId, definition) in Layout.Definitions)
+        foreach (var (nodeId, node) in Layout.Nodes)
         {
-            var (outerInput, innerInput) = Layout.InputNodes.GetValueOrDefault(nodeId, (-1, -1));
-
             nodes[nodeId] = new TraceStepNode(names[nodeId],
-                                              Layout.Depths.GetValueOrDefault(nodeId),
-                                              ToColour(Layout.Colours.GetValueOrDefault(nodeId, System.Drawing.Color.Gray)),
-                                              outerInput,
-                                              innerInput,
-                                              TraceStepDescriber.NodeSummary(definition, (outerInput, innerInput), names),
-                                              TraceStepDescriber.NodeSubtitle(VisualsByNode.GetValueOrDefault(nodeId)?.AllocationUnit));
+                                              node.Depth,
+                                              node.Colour.ToWindowsColor(),
+                                              node.InputNodes.Outer,
+                                              node.InputNodes.Inner,
+                                              TraceStepDescriber.NodeSummary(node.Definition, node.InputNodes, names),
+                                              TraceStepDescriber.NodeSubtitle(node.Visual?.AllocationUnit));
         }
 
         return nodes;
     }
-
-    private static Windows.UI.Color ToColour(System.Drawing.Color colour)
-        => Windows.UI.Color.FromArgb(colour.A, colour.R, colour.G, colour.B);
 
     [ObservableProperty]
     private bool _isStepping;
@@ -288,7 +286,7 @@ public sealed partial class TraceTabViewModel : ObservableObject
     {
         get
         {
-            if (!Layout.Definitions.TryGetValue(SelectedVisual.NodeId, out var definition))
+            if (Layout.Nodes.GetValueOrDefault(SelectedVisual.NodeId)?.Definition is not { } definition)
             {
                 return null;
             }
@@ -502,21 +500,33 @@ public sealed partial class TraceTabViewModel : ObservableObject
     [RelayCommand(AllowConcurrentExecutions = true)]
     public Task RunTo(string target) => RunUntilAsync(StopCondition(target));
 
+    public const string EmitTarget = "Emit";
+
+    public const string RebindTarget = "Rebind";
+
+    public const string PhaseTarget = "Phase";
+
+    public const string PageReadTarget = "PageRead";
+
     private Func<AccessStep, bool>? StopCondition(string target)
         => target switch
         {
-            "Emit" => step => step.NodeId == Definition.NodeId
-                              && step is AccessStep.JoinEmit
-                                      or AccessStep.TopRow { EmittedRecord: not null }
-                                      or AccessStep.Output { EmittedRecord: not null }
-                                      or AccessStep.ConcatRow { EmittedRecord: not null }
-                                      or AccessStep.SortRow { EmittedRecord: not null }
-                                      or AccessStep.Row { EmittedRecord: not null },
-            "Rebind" => step => step is AccessStep.Rebind,
-            "Phase" => step => step is AccessStep.JoinStart or AccessStep.Reseek,
-            "PageRead" => step => step is AccessStep.ReadPage,
+            EmitTarget => step => step.NodeId == Definition.NodeId
+                                  && step is AccessStep.JoinEmit
+                                          or AccessStep.TopRow { EmittedRecord: not null }
+                                          or AccessStep.Output { EmittedRecord: not null }
+                                          or AccessStep.ConcatRow { EmittedRecord: not null }
+                                          or AccessStep.SortRow { EmittedRecord: not null }
+                                          or AccessStep.Row { EmittedRecord: not null },
+            RebindTarget => step => step is AccessStep.Rebind,
+            PhaseTarget => step => step is AccessStep.JoinStart or AccessStep.Reseek,
+            PageReadTarget => step => step is AccessStep.ReadPage,
             _ => null
         };
+
+    private sealed record RunResult(ObservableCollection<AccessStep> Steps,
+                                    TraceStreamUpdate StreamUpdate,
+                                    Dictionary<TraceVisualViewModel, TraceVisualReplay> Replays);
 
     private async Task RunUntilAsync(Func<AccessStep, bool>? stopAfter)
     {
@@ -545,68 +555,9 @@ public sealed partial class TraceTabViewModel : ObservableObject
                 return;
             }
 
-            var steps = new ObservableCollection<AccessStep>();
+            var result = await Task.Run(() => RunLoopAsync(stepper, stopAfter, cancellationToken), CancellationToken.None);
 
-            var replays = new Dictionary<TraceVisualViewModel, TraceVisualReplay>();
-
-            TraceStreamUpdate? streamUpdate = null;
-
-            await Task.Run(async () =>
-            {
-                try
-                {
-                    while (!cancellationToken.IsCancellationRequested
-                           && await stepper.StepNextAsync(CancellationToken.None) is { } step)
-                    {
-                        if (stopAfter?.Invoke(step) == true)
-                        {
-                            break;
-                        }
-                    }
-                }
-                catch (OperationCanceledException)
-                {
-                }
-
-                foreach (var step in stepper.History)
-                {
-                    TraceStepRuns.Append(step, steps, HistoryLimit);
-                }
-
-                streamUpdate = Applier.ComputeStreamUpdate(stepper.History);
-
-                foreach (var visual in Visuals)
-                {
-                    replays[visual] = visual.ComputeReplay(stepper.History);
-                }
-            }, CancellationToken.None);
-
-            StepHistory = steps;
-
-            if (streamUpdate is { } update)
-            {
-                Applier.ApplyStreamUpdate(update);
-            }
-
-            Applier.UpdateStrategies(stepper);
-
-            Applier.UpdateOperatorStates(stepper);
-
-            foreach (var visual in Visuals)
-            {
-                visual.ApplyReplay(replays[visual]);
-            }
-
-            Applier.AttachHashTables(stepper);
-
-            Applier.SyncHeldRows(stepper);
-
-            Applier.SyncHashTables(stepper.Current);
-
-            OnPropertyChanged(nameof(SelectedStrategy));
-
-            CurrentStep = stepper.Current;
-            IsStepComplete = stepper.IsComplete;
+            ApplyRunResult(stepper, result);
         }
         finally
         {
@@ -615,6 +566,62 @@ public sealed partial class TraceTabViewModel : ObservableObject
             _runToEndCancellation.Dispose();
             _runToEndCancellation = null;
         }
+    }
+
+    private async Task<RunResult> RunLoopAsync(IteratorStepper stepper, Func<AccessStep, bool>? stopAfter, CancellationToken cancellationToken)
+    {
+        try
+        {
+            while (!cancellationToken.IsCancellationRequested
+                   && await stepper.StepNextAsync(CancellationToken.None) is { } step)
+            {
+                if (stopAfter?.Invoke(step) == true)
+                {
+                    break;
+                }
+            }
+        }
+        catch (OperationCanceledException)
+        {
+        }
+
+        var steps = new ObservableCollection<AccessStep>();
+
+        foreach (var step in stepper.History)
+        {
+            TraceStepRuns.Append(step, steps, HistoryLimit);
+        }
+
+        var replays = Visuals.ToDictionary(v => v, v => v.ComputeReplay(stepper.History));
+
+        return new RunResult(steps, Applier.ComputeStreamUpdate(stepper.History), replays);
+    }
+
+    private void ApplyRunResult(IteratorStepper stepper, RunResult result)
+    {
+        StepHistory = result.Steps;
+
+        Applier.ApplyStreamUpdate(result.StreamUpdate);
+
+        Applier.UpdateStrategies(stepper);
+
+        Applier.UpdateOperatorStates(stepper);
+
+        foreach (var visual in Visuals)
+        {
+            visual.ApplyReplay(result.Replays[visual]);
+        }
+
+        Applier.AttachHashTables(stepper);
+
+        Applier.SyncHeldRows(stepper);
+
+        Applier.SyncHashTables(stepper.Current);
+
+        OnPropertyChanged(nameof(SelectedStrategy));
+
+        CurrentStep = stepper.Current;
+        IsStepComplete = stepper.IsComplete;
     }
 
     [RelayCommand]

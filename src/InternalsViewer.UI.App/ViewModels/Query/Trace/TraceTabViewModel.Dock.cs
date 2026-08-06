@@ -3,6 +3,7 @@ using System.Linq;
 using CommunityToolkit.Mvvm.ComponentModel;
 using InternalsViewer.Execution.AccessPaths.Definitions;
 using InternalsViewer.Query.Plans.Model;
+using InternalsViewer.UI.App.Helpers;
 using InternalsViewer.UI.App.Models.Query.Trace;
 using InternalsViewer.UI.App.Services.Query.Trace;
 using InternalsViewer.UI.App.ViewModels.Docking;
@@ -25,7 +26,7 @@ public sealed partial class TraceTabViewModel
     /// </remarks>
     private DockLayoutViewModel BuildDock() => new(BuildRoot());
 
-    private LayoutNode BuildRoot()
+    private SplitNode BuildRoot()
     {
         _stepsDocument ??= DocumentViewModel.Create<TraceStepsPanelView>("Trace", this, canClose: false, keepAlive: true, key: "Steps");
         _descriptionDocument ??= DocumentViewModel.Create<TraceDescriptionPanelView>("Description", this, keepAlive: true, key: "Description");
@@ -89,10 +90,9 @@ public sealed partial class TraceTabViewModel
     {
         var document = _operatorDocumentsByNode?.GetValueOrDefault(definition.NodeId);
 
-        var children = OperatorChildren(definition)
-                       .Select(BuildNestedNode)
-                       .OfType<LayoutNode>()
-                       .ToList();
+        var children = OperatorChildren(definition).Select(BuildNestedNode)
+                                                   .OfType<LayoutNode>()
+                                                   .ToList();
 
         var childArea = Combine(children);
 
@@ -154,9 +154,9 @@ public sealed partial class TraceTabViewModel
                                                                         keepAlive: true,
                                                                         key: $"Operator{op.NodeId}");
 
-        if (Layout.Colours.TryGetValue(op.NodeId, out var colour))
+        if (Layout.Nodes.TryGetValue(op.NodeId, out var node))
         {
-            document.Accent = Layout.Palette.For(op.NodeId, ToColour(colour));
+            document.Accent = Layout.Palette.For(op.NodeId, node.Colour.ToWindowsColor());
         }
 
         return document;
@@ -170,7 +170,8 @@ public sealed partial class TraceTabViewModel
 
     public PlanNode? ActivePlanNode => ActivePlanNodes.Count > 0 ? ActivePlanNodes[0] : null;
 
-    partial void OnActivePlanNodesChanged(IReadOnlyList<PlanNode> value) => OnPropertyChanged(nameof(ActivePlanNode));
+    partial void OnActivePlanNodesChanged(IReadOnlyList<PlanNode> value) 
+        => OnPropertyChanged(nameof(ActivePlanNode));
 
     private TabGroupNode? _operatorGroup;
 
@@ -195,7 +196,7 @@ public sealed partial class TraceTabViewModel
             ? [node]
             : operatorViewModel.NodeId < 0 && PlanNode is { } root ? [root] : [];
 
-        if (Layout.VisualByOperator.TryGetValue(operatorViewModel.NodeId, out var visual))
+        if (Layout.Nodes.GetValueOrDefault(operatorViewModel.NodeId)?.SourceVisual is { } visual)
         {
             SelectedVisual = visual;
         }

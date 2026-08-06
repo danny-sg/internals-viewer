@@ -44,19 +44,16 @@ public sealed class TraceStepApplier(TraceLayout layout,
 
     public void Reset()
     {
-        foreach (var stream in layout.Streams.Values)
+        foreach (var node in layout.Nodes.Values)
         {
-            stream.Clear();
-        }
+            node.Stream?.Clear();
 
-        foreach (var held in layout.HeldRows.Values)
-        {
-            held.Reset();
-        }
+            foreach (var held in node.HeldRows.Values)
+            {
+                held.Reset();
+            }
 
-        foreach (var hashTable in layout.HashTables.Values)
-        {
-            hashTable.Reset();
+            node.HashTable?.Reset();
         }
 
         foreach (var op in operatorsByNode.Values)
@@ -82,7 +79,7 @@ public sealed class TraceStepApplier(TraceLayout layout,
 
         foreach (var step in history)
         {
-            if (!layout.Streams.TryGetValue(step.NodeId, out var stream) || ToStreamModel(step) is not { } model)
+            if (layout.Nodes.GetValueOrDefault(step.NodeId)?.Stream is not { } stream || ToStreamModel(step) is not { } model)
             {
                 continue;
             }
@@ -109,8 +106,13 @@ public sealed class TraceStepApplier(TraceLayout layout,
 
     public void ApplyStreamUpdate(TraceStreamUpdate update)
     {
-        foreach (var (nodeId, stream) in layout.Streams)
+        foreach (var (nodeId, node) in layout.Nodes)
         {
+            if (node.Stream is not { } stream)
+            {
+                continue;
+            }
+
             if (stream.IsAccumulating)
             {
                 stream.Load(update.Accumulated.GetValueOrDefault(nodeId) ?? []);
@@ -128,7 +130,7 @@ public sealed class TraceStepApplier(TraceLayout layout,
 
     private void RouteRow(AccessStep step)
     {
-        if (!layout.Streams.TryGetValue(step.NodeId, out var stream) || ToStreamModel(step) is not { } model)
+        if (layout.Nodes.GetValueOrDefault(step.NodeId)?.Stream is not { } stream || ToStreamModel(step) is not { } model)
         {
             return;
         }
@@ -150,7 +152,7 @@ public sealed class TraceStepApplier(TraceLayout layout,
 
     public void BuildStateItems(TraceOperatorViewModel tab)
     {
-        if (!layout.Definitions.TryGetValue(tab.NodeId, out var definition))
+        if (layout.Nodes.GetValueOrDefault(tab.NodeId)?.Definition is not { } definition)
         {
             return;
         }
@@ -220,9 +222,14 @@ public sealed class TraceStepApplier(TraceLayout layout,
     {
         foreach (var iterator in Iterators(stepper.Root).OfType<IRowBufferIterator>())
         {
+            if (layout.Nodes.GetValueOrDefault(iterator.NodeId)?.HeldRows is not { } heldRows)
+            {
+                continue;
+            }
+
             foreach (var buffer in iterator.Buffers)
             {
-                if (layout.HeldRows.TryGetValue((iterator.NodeId, buffer.InputIndex), out var held))
+                if (heldRows.TryGetValue(buffer.InputIndex, out var held))
                 {
                     held.Sync(buffer.Rows);
                 }
@@ -235,9 +242,9 @@ public sealed class TraceStepApplier(TraceLayout layout,
     /// </summary>
     public void SyncHashTables(AccessStep? step)
     {
-        foreach (var hashTable in layout.HashTables.Values)
+        foreach (var node in layout.Nodes.Values)
         {
-            hashTable.Sync(step);
+            node.HashTable?.Sync(step);
         }
     }
 
@@ -248,7 +255,7 @@ public sealed class TraceStepApplier(TraceLayout layout,
     {
         foreach (var iterator in Iterators(stepper.Root).OfType<IHashTableIterator>())
         {
-            if (layout.HashTables.TryGetValue(iterator.NodeId, out var hashTable))
+            if (layout.Nodes.GetValueOrDefault(iterator.NodeId)?.HashTable is { } hashTable)
             {
                 hashTable.Attach(iterator);
             }
