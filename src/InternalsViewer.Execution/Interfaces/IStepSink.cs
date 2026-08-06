@@ -1,4 +1,3 @@
-using InternalsViewer.Execution.AccessPaths.Results;
 using InternalsViewer.Execution.AccessPaths.Results.Steps;
 
 namespace InternalsViewer.Execution.Interfaces;

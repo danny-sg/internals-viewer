@@ -1,9 +1,7 @@
 using System;
 using System.Collections.Generic;
-using InternalsViewer.Execution.AccessPaths.Results;
 using InternalsViewer.Execution.AccessPaths.Results.Steps;
 using InternalsViewer.UI.App.Models.Trace;
-using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Controls.Primitives;
 using Microsoft.UI.Xaml.Input;
@@ -180,10 +178,7 @@ public sealed class StepRowStyler
         {
             badge.Visibility = Visibility.Collapsed;
 
-            if (arrow is not null)
-            {
-                arrow.Visibility = Visibility.Collapsed;
-            }
+            arrow?.Visibility = Visibility.Collapsed;
 
             return;
         }
@@ -196,10 +191,7 @@ public sealed class StepRowStyler
         badge.Background = brush;
         badge.Visibility = Visibility.Visible;
 
-        if (arrow is not null)
-        {
-            arrow.Visibility = Visibility.Visible;
-        }
+        arrow?.Visibility = Visibility.Visible;
     }
 
     private static void UpdateEmitBadge(Grid grid, SolidColorBrush? sideBrush, bool isReadAhead)

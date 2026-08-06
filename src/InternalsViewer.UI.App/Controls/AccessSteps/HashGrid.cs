@@ -1,7 +1,5 @@
 using System;
 using System.Collections.Generic;
-using Microsoft.UI.Dispatching;
-using Microsoft.UI.Xaml;
 using SkiaSharp;
 using SkiaSharp.Views.Windows;
 
@@ -57,12 +55,6 @@ public sealed partial class HashGrid : SKXamlCanvas
         set => SetValue(IsHighlightMatchProperty, value);
     }
 
-    private const int PaintIntervalMs = 100;
-
-    private DispatcherQueueTimer? _throttle;
-
-    private long _lastPaint;
-
     private SKPaint? _paint;
 
     private SKColor? _probeColour;
@@ -87,8 +79,6 @@ public sealed partial class HashGrid : SKXamlCanvas
 
         Unloaded += (_, _) =>
         {
-            _throttle?.Stop();
-
             _paint?.Dispose();
             _paint = null;
         };
@@ -106,41 +96,7 @@ public sealed partial class HashGrid : SKXamlCanvas
 
     private static void OnFillChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
     {
-        ((HashGrid)d).RequestInvalidate();
-    }
-
-    private void RequestInvalidate()
-    {
-        var now = Environment.TickCount64;
-
-        if (now - _lastPaint >= PaintIntervalMs)
-        {
-            _lastPaint = now;
-
-            Invalidate();
-
-            return;
-        }
-
-        if (_throttle is null)
-        {
-            _throttle = DispatcherQueue.CreateTimer();
-
-            _throttle.Interval = TimeSpan.FromMilliseconds(PaintIntervalMs);
-            _throttle.IsRepeating = false;
-
-            _throttle.Tick += (_, _) =>
-            {
-                _lastPaint = Environment.TickCount64;
-
-                Invalidate();
-            };
-        }
-
-        if (!_throttle.IsRunning)
-        {
-            _throttle.Start();
-        }
+        ((HashGrid)d).Invalidate();
     }
 
     private void OnPaintSurface(object? sender, SKPaintSurfaceEventArgs e)
@@ -203,8 +159,8 @@ public sealed partial class HashGrid : SKXamlCanvas
             if (index == HighlightBucket)
             {
                 paint.Color = IsHighlightMatch
-                    ? _matchColour ??= ResolveColour("SystemFillColorSuccessBackground", new SKColor(15, 123, 15))
-                    : _probeColour ??= ResolveColour("SystemListAccentMediumColor", new SKColor(0, 0, 64));
+                    ? _matchColour ??= new SKColor(15, 240, 15)
+                    : _probeColour ??= new SKColor(0, 0, 240);
             }
             else
             {

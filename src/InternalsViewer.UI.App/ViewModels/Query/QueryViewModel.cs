@@ -43,9 +43,7 @@ using InternalsViewer.UI.App.ViewModels.Page;
 using InternalsViewer.UI.App.ViewModels.Query.Settings;
 using InternalsViewer.UI.App.Views.Query.Tabs.Trace;
 using InternalsViewer.Query.Plans;
-using InternalsViewer.Query.Plans.Joins;
 using InternalsViewer.Query.Plans.Model;
-using InternalsViewer.Query.Plans.Operators;
 using InternalsViewer.UI.App.Views.Query.Tabs.Index;
 using DatabaseFile = InternalsViewer.UI.App.Models.DatabaseFile;
 
@@ -1537,14 +1535,14 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
         try
         {
-            var bufferPoolPages = await BufferPoolInfoProvider.GetBufferPoolEntries(Database);
+            var (clean, dirty) = await BufferPoolInfoProvider.GetBufferPoolEntries(Database);
 
             DispatcherQueue.TryEnqueue(() =>
             {
                 if (layer != null)
                 {
                     layer.Opacity = 80;
-                    layer.SinglePages = [.. bufferPoolPages.Dirty, .. bufferPoolPages.Clean];
+                    layer.SinglePages = [.. dirty, .. clean];
 
                     AllocationLayers = [.. AllocationLayers];
                 }

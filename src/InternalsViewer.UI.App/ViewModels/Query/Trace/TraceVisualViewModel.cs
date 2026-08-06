@@ -5,7 +5,6 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
-using InternalsViewer.Execution.AccessPaths.Results;
 using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Internals.Engine.Allocation;
 using InternalsViewer.Internals.Engine.Database;
@@ -48,9 +47,6 @@ public sealed partial class TraceVisualViewModel(TraceVisualKind kind,
 
     public int NodeId { get; } = nodeId;
 
-    /// <summary>
-    /// Outlines the object as soon as the map loads, for a path that never reads the IAM chain
-    /// </summary>
     public bool ShowObjectBorderImmediately { get; init; }
 
     public DatabaseSource Database { get; } = database;

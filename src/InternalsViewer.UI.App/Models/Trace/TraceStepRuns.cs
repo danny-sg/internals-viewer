@@ -1,5 +1,4 @@
 using System;
-using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using InternalsViewer.Execution.AccessPaths.Results;
 using InternalsViewer.Execution.AccessPaths.Results.Steps;
@@ -23,10 +22,7 @@ public static class TraceStepRuns
 
             if (compare.Comparison == 0)
             {
-                if (span is not null)
-                {
-                    span.IsComplete = true;
-                }
+                span?.IsComplete = true;
 
                 MergeMatch(history, compare).Progress.Apply(compare);
 

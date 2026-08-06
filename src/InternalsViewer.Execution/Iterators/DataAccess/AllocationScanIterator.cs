@@ -58,8 +58,9 @@ public sealed class AllocationScanIterator(IPageService pageService, IRecordServ
 
     private AccessCounters Counters { get; set; }
 
-    public override async Task OpenAsync(IteratorDefinition definition, IteratorContext context,
-        CancellationToken cancellationToken)
+    public override async Task OpenAsync(IteratorDefinition definition, 
+                                         IteratorContext context,
+                                         CancellationToken cancellationToken)
     {
         var scan = definition.Expect<AllocationScanDefinition>();
 

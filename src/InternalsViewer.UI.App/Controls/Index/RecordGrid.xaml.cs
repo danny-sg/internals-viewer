@@ -4,9 +4,7 @@ using System.Data;
 using System.Linq;
 using CommunityToolkit.WinUI.UI.Controls;
 using InternalsViewer.Internals.Engine.Address;
-using InternalsViewer.UI.App.Controls.Allocation;
 using InternalsViewer.UI.App.Helpers.Converters;
-using InternalsViewer.UI.App.Models;
 using InternalsViewer.UI.App.Models.Index;
 using InternalsViewer.UI.App.ViewModels.Allocation;
 using Microsoft.UI.Xaml.Data;
@@ -99,17 +97,11 @@ public sealed partial class RecordGrid : IDisposable
 
     private void SubscribeRecords()
     {
-        if (_subscribedRecords is not null)
-        {
-            _subscribedRecords.CollectionChanged -= OnRecordsCollectionChanged;
-        }
+        _subscribedRecords?.CollectionChanged -= OnRecordsCollectionChanged;
 
         _subscribedRecords = Records;
 
-        if (_subscribedRecords is not null)
-        {
-            _subscribedRecords.CollectionChanged += OnRecordsCollectionChanged;
-        }
+        _subscribedRecords?.CollectionChanged += OnRecordsCollectionChanged;
     }
 
     private void Rebind()
@@ -329,10 +321,7 @@ public sealed partial class RecordGrid : IDisposable
         _scrollTimer?.Stop();
         _scrollTimer = null;
 
-        if (_subscribedRecords is not null)
-        {
-            _subscribedRecords.CollectionChanged -= OnRecordsCollectionChanged;
-            _subscribedRecords = null;
-        }
+        _subscribedRecords?.CollectionChanged -= OnRecordsCollectionChanged;
+        _subscribedRecords = null;
     }
 }

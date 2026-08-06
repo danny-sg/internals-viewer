@@ -62,8 +62,9 @@ public sealed class IndexIterator(IPageService pageService, IRecordService recor
 
     private AccessCounters Counters { get; set; }
 
-    public override async Task OpenAsync(IteratorDefinition definition, IteratorContext context,
-        CancellationToken cancellationToken)
+    public override async Task OpenAsync(IteratorDefinition definition, 
+                                         IteratorContext context,
+                                         CancellationToken cancellationToken)
     {
         CurrentPageSteps?.Dispose();
         CurrentPageSteps = null;

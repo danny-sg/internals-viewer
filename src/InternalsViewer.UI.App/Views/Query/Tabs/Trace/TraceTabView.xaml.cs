@@ -14,9 +14,12 @@ public sealed partial class TraceTabView : UserControl
         DataContextChanged += (_, _) => Bindings.Update();
     }
 
-    public string RunLabel(bool isRunning) => isRunning ? "Stop" : "Run";
+#pragma warning disable CA1822
+    public string RunLabel(bool isRunning) => isRunning ? "Pause" : "Run";
+
 
     public string RunToEndLabel(bool isRunningToEnd) => isRunningToEnd ? "Stop" : "Run to end";
 
-    public string RunGlyph(bool isRunning) => isRunning ? "" : "";
+    public string RunGlyph(bool isRunning) => isRunning ? "\uE769" : "\uE768";
+#pragma warning restore CA1822
 }

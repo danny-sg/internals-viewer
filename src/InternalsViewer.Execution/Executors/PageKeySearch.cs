@@ -1,5 +1,4 @@
 using System.Collections.Immutable;
-using InternalsViewer.Execution.AccessPaths.Results;
 using InternalsViewer.Execution.AccessPaths.Results.Steps;
 using InternalsViewer.Execution.AccessPaths.Search;
 using InternalsViewer.Execution.Interfaces.Pages;
@@ -15,7 +14,7 @@ internal static class PageKeySearch
     /// Finds the first slot whose key is greater than or equal to the target
     /// </summary>
     /// <remarks>
-    /// Returns the slot count when no key qualifies.
+    /// Returns the slot count when no key qualifies
     /// </remarks>
     public static (int Slot, ImmutableArray<AccessStep.Probe> Probes) LowerBound(IIndexPageAccessor page,
                                                                                  in AccessKey target,

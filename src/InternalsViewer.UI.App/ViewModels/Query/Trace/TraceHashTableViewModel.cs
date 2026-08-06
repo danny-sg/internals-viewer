@@ -1,9 +1,7 @@
-using System;
 using System.Collections.Generic;
 using System.Linq;
 using CommunityToolkit.Mvvm.ComponentModel;
 using InternalsViewer.Execution.AccessPaths.Joins.Hash;
-using InternalsViewer.Execution.AccessPaths.Results;
 using InternalsViewer.Execution.AccessPaths.Results.Steps;
 using InternalsViewer.Execution.Interfaces.Iterators.Joins;
 using InternalsViewer.UI.App.Models.Index;
@@ -121,7 +119,7 @@ public sealed partial class TraceHashTableViewModel(RecordColumnFilter columnFil
 
         if (isOwnStep)
         {
-            UpdateHighlight(step, table);
+            UpdateHighlight(step);
         }
 
         Summary = iterator.BuildRowEstimate > 0
@@ -171,7 +169,7 @@ public sealed partial class TraceHashTableViewModel(RecordColumnFilter columnFil
         _syncedRowCount = table.RowCount;
     }
 
-    private void UpdateHighlight(AccessStep? step, HashTable table)
+    private void UpdateHighlight(AccessStep? step)
     {
         // A new probe row starts a fresh verdict, so whatever the last one matched stops being green
         if (step is AccessStep.HashProbe or AccessStep.HashBuild)
@@ -179,19 +177,11 @@ public sealed partial class TraceHashTableViewModel(RecordColumnFilter columnFil
             ClearMatchedEntries();
         }
 
-        if (_currentBucket is not null)
-        {
-            _currentBucket.IsCurrent = false;
+        _currentBucket?.IsCurrent = false;
+        _currentBucket = null;
 
-            _currentBucket = null;
-        }
-
-        if (_currentEntry is not null)
-        {
-            _currentEntry.IsCurrent = false;
-
-            _currentEntry = null;
-        }
+        _currentEntry?.IsCurrent = false;
+        _currentEntry = null;
 
         var (bucketIndex, entryIndex) = step switch
         {

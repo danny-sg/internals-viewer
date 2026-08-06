@@ -1,4 +1,3 @@
-using InternalsViewer.UI.App.Controls.AccessSteps;
 using InternalsViewer.UI.App.Controls.Docking;
 using InternalsViewer.UI.App.Models.Trace;
 using InternalsViewer.UI.App.ViewModels.Query.Trace;
@@ -312,10 +311,7 @@ public sealed partial class TraceOperatorPanelView : UserControl, IDocumentComma
             _ => null
         };
 
-        if (view is not null)
-        {
-            view.DataContext = pane.Content;
-        }
+        view?.DataContext = pane.Content;
 
         return view;
     }

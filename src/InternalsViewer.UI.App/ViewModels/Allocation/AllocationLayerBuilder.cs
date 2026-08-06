@@ -7,7 +7,6 @@ using InternalsViewer.Internals.Engine.Allocation;
 using InternalsViewer.Internals.Engine.Database;
 using InternalsViewer.Internals.Engine.Database.Enums;
 using InternalsViewer.Internals.Engine.Pages;
-using InternalsViewer.Internals.Interfaces.Engine;
 using InternalsViewer.UI.App.Helpers;
 using InternalsViewer.UI.App.Models;
 using AllocationUnit = InternalsViewer.Internals.Engine.Database.AllocationUnit;

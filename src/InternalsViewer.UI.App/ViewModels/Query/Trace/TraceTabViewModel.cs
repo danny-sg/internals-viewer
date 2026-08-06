@@ -15,7 +15,6 @@ using InternalsViewer.Execution.AccessPaths.Search;
 using InternalsViewer.Execution.Interfaces;
 using InternalsViewer.Execution.Interfaces.Iterators;
 using InternalsViewer.Execution.Interfaces.Iterators.Joins;
-using InternalsViewer.Execution.Iterators.Joins;
 using InternalsViewer.Execution.Iterators.Row;
 using InternalsViewer.Execution.Iterators.Stepping;
 using InternalsViewer.Internals.Engine.Address;
@@ -26,7 +25,6 @@ using InternalsViewer.Internals.Services.Indexes;
 using InternalsViewer.Query.Events.Operators;
 using InternalsViewer.Query.Plans;
 using InternalsViewer.Query.Plans.Model;
-using InternalsViewer.UI.App.Controls.Plan;
 using InternalsViewer.UI.App.Models.Index;
 using InternalsViewer.UI.App.Models.Trace;
 using InternalsViewer.UI.App.Services.Trace;
@@ -34,8 +32,6 @@ using InternalsViewer.UI.App.ViewModels.Docking;
 using InternalsViewer.UI.App.ViewModels.Index;
 using InternalsViewer.UI.App.Views.Query.Tabs.Trace;
 using Microsoft.UI.Xaml.Controls;
-using Microsoft.UI.Xaml.Media;
-using Microsoft.UI.Xaml.Media.Imaging;
 
 namespace InternalsViewer.UI.App.ViewModels.Query.Trace;
 
@@ -272,7 +268,7 @@ public sealed partial class TraceTabViewModel : ObservableObject
         };
     }
 
-    private static LayoutNode? Combine(IReadOnlyList<LayoutNode> nodes)
+    private static LayoutNode? Combine(List<LayoutNode> nodes)
     {
         if (nodes.Count == 0)
         {

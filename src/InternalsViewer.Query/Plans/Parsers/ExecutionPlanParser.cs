@@ -16,12 +16,8 @@ public static class ExecutionPlanParser
         var doc = XDocument.Parse(xml);
 
         var queryPlan = doc.Descendants()
-                           .FirstOrDefault(e => e.Name.LocalName == "QueryPlan");
-
-        if (queryPlan == null)
-        {
-            throw new InvalidOperationException("QueryPlan element not found.");
-        }
+                           .FirstOrDefault(e => e.Name.LocalName == "QueryPlan") 
+                        ?? throw new InvalidOperationException("QueryPlan element not found.");
 
         var planHandleId = planHandles.GetOrAdd(GetPlanHandle(doc));
 
@@ -112,18 +108,13 @@ public static class ExecutionPlanParser
             NodeId = GetIntAttribute(element, "NodeId"),
             PhysicalOperator = GetStringAttribute(element, "PhysicalOp"),
             LogicalOperator = GetStringAttribute(element, "LogicalOp"),
-            NodeLevel = level
+            NodeLevel = level,
+            EstimatedCost = GetDoubleAttribute(element, "EstimatedTotalSubtreeCost"),
+            EstimatedRows = (long)Math.Round(GetDoubleAttribute(element, "EstimateRows") ?? 0),
+            CountersByThread = ExtractThreadCounters(element),
+            IoStats = ParseIoStats(element),
+            MemoryGrant = ParseMemoryGrant(element)
         };
-
-        node.EstimatedCost = GetDoubleAttribute(element, "EstimatedTotalSubtreeCost");
-
-        node.EstimatedRows = (long)Math.Round(GetDoubleAttribute(element, "EstimateRows") ?? 0);
-
-        node.CountersByThread = ExtractThreadCounters(element);
-
-        node.IoStats = ParseIoStats(element);
-
-        node.MemoryGrant = ParseMemoryGrant(element);
 
         ParseRowCounts(element, node);
 
@@ -174,7 +165,7 @@ public static class ExecutionPlanParser
         {
             node.TopInfo = ParseTopInfo(element, parameters);
 
-            if (node.Children.Count == 1 && node.Children[0].PredicateInfo is { } childPredicateInfo)
+            if (node.Children is [{ PredicateInfo: { } childPredicateInfo }])
             {
                 childPredicateInfo.RowGoal = ParseTopRowCount(element, parameters);
             }

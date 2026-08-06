@@ -51,8 +51,9 @@ public sealed class HeapFetchIterator(IPageService pageService, IRecordService r
 
     private AccessCounters Counters { get; set; }
 
-    public override async Task OpenAsync(IteratorDefinition definition, IteratorContext context,
-        CancellationToken cancellationToken)
+    public override async Task OpenAsync(IteratorDefinition definition,
+                                         IteratorContext context,
+                                         CancellationToken cancellationToken)
     {
         var fetch = definition.Expect<HeapFetchDefinition>();
 
@@ -163,13 +164,13 @@ public sealed class HeapFetchIterator(IPageService pageService, IRecordService r
                 continue;
             }
 
-            await ReadAsync(accessor, target.SlotId, record, cancellationToken);
+            await ReadAsync(target.SlotId, record, cancellationToken);
 
             return;
         }
     }
 
-    private async Task ReadAsync(HeapPageAccessor accessor, int slot, IRecord record, CancellationToken cancellationToken)
+    private async Task ReadAsync(int slot, IRecord record, CancellationToken cancellationToken)
     {
         var hasResidual = Residual is not (null or AccessPredicate.True or AccessPredicate.NoTranslation);
 
