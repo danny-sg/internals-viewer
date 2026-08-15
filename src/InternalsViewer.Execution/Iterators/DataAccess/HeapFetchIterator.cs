@@ -230,7 +230,7 @@ public sealed class HeapFetchIterator(IPageService pageService, IRecordService r
             return compressedRid;
         }
 
-        throw new InvalidOperationException("The outer row carries no row identifier, so it cannot drive a RID lookup");
+        throw new InvalidOperationException("The outer row carries no row identifier, so it cannot be used for a RID lookup");
     }
 
     /// <summary>
@@ -246,6 +246,9 @@ public sealed class HeapFetchIterator(IPageService pageService, IRecordService r
             _ => null
         };
 
+    /// <summary>
+    /// Evaluate the record against the residsual predicate
+    /// </summary>
     private bool? Evaluate(IRecord record)
     {
         if (Residual is null or AccessPredicate.True or AccessPredicate.NoTranslation)

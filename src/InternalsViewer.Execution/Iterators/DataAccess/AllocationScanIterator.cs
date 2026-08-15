@@ -302,8 +302,8 @@ public sealed class AllocationScanIterator(IPageService pageService, IRecordServ
         }
 
         var status = Context.Database.Pfs.TryGetValue(address.FileId, out var pfs)
-            ? pfs.GetPageStatus(address.PageId)
-            : PfsByte.Unknown;
+                     ? pfs.GetPageStatus(address.PageId)
+                     : PfsByte.Unknown;
 
         _pending.Enqueue(new AccessStep.PfsCheck(address, status.IsAllocated)
         {
@@ -361,10 +361,10 @@ public sealed class AllocationScanIterator(IPageService pageService, IRecordServ
 
         var header = page.PageHeader;
 
-        _pending.Enqueue(new AccessStep.ReadPage(header.PageAddress, (byte)header.Level, false, header.Level == 0, header.SlotCount)
-        {
-            Counters = Counters
-        });
+        _pending.Enqueue(new AccessStep.ReadPage(header.PageAddress, header.Level, false, header.Level == 0, header.SlotCount)
+                         {
+                             Counters = Counters
+                         });
 
         Skip(header.PageAddress, reason);
     }

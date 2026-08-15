@@ -7,6 +7,7 @@ using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using InternalsViewer.Execution.AccessPaths.Definitions;
+using InternalsViewer.Execution.AccessPaths.Descriptions;
 using InternalsViewer.Execution.AccessPaths.Joins;
 using InternalsViewer.Execution.AccessPaths.Predicates;
 using InternalsViewer.Execution.AccessPaths.Results;
@@ -85,10 +86,14 @@ public sealed partial class TraceTabViewModel : ObservableObject
         {
             op.ActivationRequested += ActivateOperator;
 
+            op.PageOpenRequested += address => PageOpenRequested?.Invoke(this, address);
+
             Applier.BuildStateItems(op);
         }
 
         SelectedVisual = visuals[0];
+
+        SelectedNodeId = Operators.Count > 0 ? Operators[0].NodeId : definition.NodeId;
 
         PlanNode = planNode;
 
@@ -154,6 +159,10 @@ public sealed partial class TraceTabViewModel : ObservableObject
         StepNodes = BuildStepNodes();
 
         UpdateActivePlanNodes();
+
+        OnPropertyChanged(nameof(SelectedPlanNode));
+
+        NotifyDescriptionChanged();
     }
 
     private void IndexPlanNodes(PlanNode node)
@@ -168,11 +177,42 @@ public sealed partial class TraceTabViewModel : ObservableObject
 
     partial void OnSelectedVisualChanged(TraceVisualViewModel value)
     {
-        OnPropertyChanged(nameof(SelectedStrategy));
-        OnPropertyChanged(nameof(SelectedPhase));
-        OnPropertyChanged(nameof(SeekDescription));
-        OnPropertyChanged(nameof(SelectedSectionTitle));
         OnPropertyChanged(nameof(AllocationUnit));
+    }
+
+    /// <summary>
+    /// The operator whose tab was last clicked, which is the one the description describes
+    /// </summary>
+    [ObservableProperty]
+    private int _selectedNodeId;
+
+    partial void OnSelectedNodeIdChanged(int value)
+    {
+        MarkSelectedDocument();
+
+        UpdateActivePlanNodes();
+
+        if (Layout.Nodes.GetValueOrDefault(value) is { } node && (node.Visual ?? node.SourceVisual) is { } visual)
+        {
+            SelectedVisual = visual;
+        }
+
+        NotifyDescriptionChanged();
+    }
+
+    private void NotifyDescriptionChanged()
+    {
+        OnPropertyChanged(nameof(SelectedDefinition));
+        OnPropertyChanged(nameof(SelectedOperatorIcon));
+        OnPropertyChanged(nameof(SelectedOperatorName));
+        OnPropertyChanged(nameof(SelectedPlanNode));
+        OnPropertyChanged(nameof(SelectedStrategy));
+        OnPropertyChanged(nameof(SelectedDescription));
+        OnPropertyChanged(nameof(SelectedPhase));
+        OnPropertyChanged(nameof(IsSelectedStrategyPending));
+        OnPropertyChanged(nameof(SelectedPhysicalOperator));
+        OnPropertyChanged(nameof(SelectedLogicalOperator));
+        OnPropertyChanged(nameof(SelectedIsOrdered));
     }
 
     private DateTime? QueryTime { get; set; }
@@ -182,6 +222,11 @@ public sealed partial class TraceTabViewModel : ObservableObject
 
     public event EventHandler<PageNavigatedEventArgs>? PageNavigated;
 
+    /// <summary>
+    /// Raised when the page an operator stands on is clicked, which opens it as a tab of the query it was traced from
+    /// </summary>
+    public event EventHandler<PageAddress>? PageOpenRequested;
+
     private bool _hasNavigatedSinceReset;
 
     [ObservableProperty]
@@ -190,28 +235,119 @@ public sealed partial class TraceTabViewModel : ObservableObject
     [ObservableProperty]
     private AccessStep? _currentStep;
 
-    public string SelectedSectionTitle => SelectedVisual.Title;
-
-    /// <summary>
-    /// Whether the trace reads from more than one input, which is when a tab needs naming
-    /// </summary>
-    public bool HasMultipleSources => Visuals.Count > 1;
-
     /// <summary>
     /// What the join does with a pair that matches on both sides, or null when the trace is not a join
     /// </summary>
     public JoinDecision? JoinRule => Definition is JoinDefinition join ? join.JoinType.Decide(true, true) : null;
 
-    public AccessStrategy? SelectedStrategy => Applier.StrategyFor(SelectedVisual.NodeId);
+    public IteratorDefinition? SelectedDefinition => Layout.Nodes.GetValueOrDefault(SelectedNodeId)?.Definition;
+
+    /// <summary>
+    /// Names the selected operator, which is built here rather than taken from its tab because a join's inputs have no tab of their own
+    /// </summary>
+    private OperatorHeader? SelectedHeader
+    {
+        get
+        {
+            if (SelectedDefinition is not { } definition)
+            {
+                return null;
+            }
+
+            var node = SelectedPlanNode ?? (definition is SelectDefinition
+                ? new PlanNode { PhysicalOperator = "SELECT", IsStatement = true }
+                : null);
+
+            return OperatorHeader.For(definition, node);
+        }
+    }
+
+    public Uri? SelectedOperatorIcon => SelectedHeader?.Icon;
+
+    public string SelectedOperatorName => SelectedHeader?.Heading ?? string.Empty;
+
+    /// <summary>
+    /// The access path the selected operator settled on, or the one its definition already describes before the walk starts
+    /// </summary>
+    public AccessStrategy? SelectedStrategy => Applier.StrategyFor(SelectedNodeId) ?? PlannedStrategyFor(SelectedNodeId);
+
+    /// <summary>
+    /// Describes the selected operator, holding on to what was built until the strategy it describes is replaced
+    /// </summary>
+    /// <remarks>
+    /// The description panel rebuilds itself whenever this changes, which is every step of a run if a fresh description is handed back
+    /// each time it is read. Nothing about it changes between strategies, so the one built for a strategy is kept and returned again.
+    /// </remarks>
+    public OperatorDescription? SelectedDescription
+    {
+        get
+        {
+            if (SelectedDefinition is not { } definition)
+            {
+                return null;
+            }
+
+            var strategy = SelectedStrategy;
+
+            if (_descriptions.TryGetValue(SelectedNodeId, out var cached) && ReferenceEquals(cached.Strategy, strategy))
+            {
+                return cached.Description;
+            }
+
+            var description = OperatorDescriptionBuilder.Build(definition, strategy);
+
+            _descriptions[SelectedNodeId] = (strategy, description);
+
+            return description;
+        }
+    }
+
+    private readonly Dictionary<int, (AccessStrategy? Strategy, OperatorDescription Description)> _descriptions = [];
+
+    private readonly Dictionary<int, AccessStrategy?> _plannedStrategies = [];
+
+    private AccessStrategy? PlannedStrategyFor(int nodeId)
+    {
+        if (_plannedStrategies.TryGetValue(nodeId, out var cached))
+        {
+            return cached;
+        }
+
+        var strategy = PlannedStrategy(Layout.Nodes.GetValueOrDefault(nodeId)?.Definition);
+
+        _plannedStrategies[nodeId] = strategy;
+
+        return strategy;
+    }
 
     public AccessPhase? SelectedPhase
-        => CurrentStep is { } step && step.NodeId == SelectedVisual.NodeId ? step.AccessPhase : null;
+    {
+        get
+        {
+            if (CurrentStep is not { } step || SelectedDefinition is not { } definition)
+            {
+                return null;
+            }
+
+            return OperatorPhases.Resolve(definition, step, step.NodeId == SelectedNodeId);
+        }
+    }
+
+    public PlanNode? SelectedPlanNode => _planNodesById.GetValueOrDefault(SelectedNodeId);
+
+    public string? SelectedPhysicalOperator => SelectedDefinition is SelectDefinition ? null : SelectedPlanNode?.PhysicalOperator;
+
+    public string? SelectedLogicalOperator => SelectedDefinition is SelectDefinition ? null : SelectedPlanNode?.LogicalOperator;
+
+    public bool? SelectedIsOrdered => SelectedDefinition is RangeDefinition or SeekDefinition
+        ? SelectedPlanNode?.ScanInfo?.IsOutputOrdered
+        : null;
 
     /// <summary>
     /// True while the selected input is a correlated seek that has not yet been bound, so it has no descent to describe
     /// </summary>
     public bool IsSelectedStrategyPending
-        => SelectedStrategy is null && IsStepping;
+        => SelectedStrategy is null && IsStepping && SelectedDefinition is SeekDefinition or HeapFetchDefinition;
 
     [ObservableProperty]
     private IReadOnlyDictionary<int, TraceStepNode>? _stepNodes;
@@ -269,60 +405,49 @@ public sealed partial class TraceTabViewModel : ObservableObject
 
     private CancellationTokenSource? _runToEndCancellation;
 
-    public AccessPhase? CurrentPhase => CurrentStep?.AccessPhase;
-
     public AccessCounters CurrentCounters => CurrentStep?.Counters ?? default;
 
     public bool IsWalkInProgress => IsStepping && !IsStepComplete;
 
     /// <summary>
-    /// The strategy the selected input will use, worked out before the walk starts
+    /// The strategy the selected operator will use, worked out before the walk starts
     /// </summary>
     /// <remarks>
     /// Once opened the iterator publishes what it actually settled on, which supersedes this. Until then the definition already says
     /// enough to describe the descent, which is what makes the panel useful before anything has been stepped.
     /// </remarks>
-    public AccessStrategy? SeekDescription
+    private AccessStrategy? PlannedStrategy(IteratorDefinition? definition)
     {
-        get
+        if (definition is AllocationScanDefinition allocation)
         {
-            if (Layout.Nodes.GetValueOrDefault(SelectedVisual.NodeId)?.Definition is not { } definition)
+            return AccessStrategyBuilder.BuildAllocationScan(allocation.Residual, allocation.RowGoal) with
             {
-                return null;
-            }
-
-            if (definition is AllocationScanDefinition allocation)
-            {
-                return AccessStrategyBuilder.BuildAllocationScan(allocation.Residual, allocation.RowGoal) with
-                {
-                    EntryPoint = allocation.FirstIamPage,
-                    EntryPointSource = "sys.sysallocunits.pgfirstiam"
-                };
-            }
-
-            if (definition is not RangeDefinition range)
-            {
-                return null;
-            }
-
-            var structure = IndexStructureProvider.GetIndexStructure(Database, range.AllocationUnitId);
-
-            return AccessStrategyBuilder.Build(structure,
-                                               range.Ranges.Count > 0 ? range.Ranges[0] : SeekBounds.All,
-                                               range.Direction,
-                                               range.RowGoal,
-                                               range.Residual,
-                                               ranges: range.Ranges) with
-            {
-                EntryPoint = range.RootPage,
-                EntryPointSource = "sys.sysallocunits.pgroot"
+                EntryPoint = allocation.FirstIamPage,
+                EntryPointSource = "sys.sysallocunits.pgfirstiam"
             };
         }
+
+        if (definition is not RangeDefinition range)
+        {
+            return null;
+        }
+
+        var structure = IndexStructureProvider.GetIndexStructure(Database, range.AllocationUnitId);
+
+        return AccessStrategyBuilder.Build(structure,
+                                           range.Ranges.Count > 0 ? range.Ranges[0] : SeekBounds.All,
+                                           range.Direction,
+                                           range.RowGoal,
+                                           range.Residual,
+                                           ranges: range.Ranges) with
+        {
+            EntryPoint = range.RootPage,
+            EntryPointSource = "sys.sysallocunits.pgroot"
+        };
     }
 
     partial void OnCurrentStepChanged(AccessStep? value)
     {
-        OnPropertyChanged(nameof(CurrentPhase));
         OnPropertyChanged(nameof(SelectedPhase));
         OnPropertyChanged(nameof(CurrentCounters));
 
@@ -382,6 +507,7 @@ public sealed partial class TraceTabViewModel : ObservableObject
     {
         OnPropertyChanged(nameof(IsWalkInProgress));
         OnPropertyChanged(nameof(IsStepDetailVisible));
+        OnPropertyChanged(nameof(IsSelectedStrategyPending));
 
         UpdateBlobDimming();
     }
@@ -465,7 +591,7 @@ public sealed partial class TraceTabViewModel : ObservableObject
 
         Applier.ApplyStep(stepper, step);
 
-        OnPropertyChanged(nameof(SelectedStrategy));
+        NotifyDescriptionChanged();
 
         CurrentStep = step;
 
@@ -499,6 +625,18 @@ public sealed partial class TraceTabViewModel : ObservableObject
 
     [RelayCommand(AllowConcurrentExecutions = true)]
     public Task RunTo(string target) => RunUntilAsync(StopCondition(target));
+
+    /// <summary>
+    /// Runs on to the next step the selected operator takes in a phase, which is what a phase's run button asks for
+    /// </summary>
+    [RelayCommand(AllowConcurrentExecutions = true)]
+    public Task RunToPhase(AccessPhase phase) => RunUntilAsync(PhaseStopCondition(phase, SelectedDefinition, SelectedNodeId));
+
+    private static Func<AccessStep, bool> PhaseStopCondition(AccessPhase phase, IteratorDefinition? definition, int nodeId)
+    {
+        return step => definition is not null
+                       && OperatorPhases.Resolve(definition, step, step.NodeId == nodeId) == phase;
+    }
 
     public const string EmitTarget = "Emit";
 
@@ -607,6 +745,8 @@ public sealed partial class TraceTabViewModel : ObservableObject
 
         Applier.UpdateOperatorStates(stepper);
 
+        Applier.SyncPositions(stepper.History);
+
         foreach (var visual in Visuals)
         {
             visual.ApplyReplay(result.Replays[visual]);
@@ -618,7 +758,7 @@ public sealed partial class TraceTabViewModel : ObservableObject
 
         Applier.SyncHashTables(stepper.Current);
 
-        OnPropertyChanged(nameof(SelectedStrategy));
+        NotifyDescriptionChanged();
 
         CurrentStep = stepper.Current;
         IsStepComplete = stepper.IsComplete;
@@ -654,7 +794,7 @@ public sealed partial class TraceTabViewModel : ObservableObject
             visual.Reset();
         }
 
-        OnPropertyChanged(nameof(SelectedStrategy));
+        NotifyDescriptionChanged();
     }
 
     private async Task StartAsync()
@@ -671,7 +811,7 @@ public sealed partial class TraceTabViewModel : ObservableObject
 
         Applier.UpdateStrategies(stepper);
 
-        OnPropertyChanged(nameof(SelectedStrategy));
+        NotifyDescriptionChanged();
 
         Applier.AttachHashTables(stepper);
 

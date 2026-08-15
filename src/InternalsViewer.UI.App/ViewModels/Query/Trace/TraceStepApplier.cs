@@ -9,6 +9,7 @@ using InternalsViewer.Execution.Interfaces.Iterators;
 using InternalsViewer.Execution.Interfaces.Iterators.Joins;
 using InternalsViewer.Execution.Iterators.Row;
 using InternalsViewer.Execution.Iterators.Stepping;
+using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Internals.Interfaces.Engine;
 using InternalsViewer.UI.App.Models.Index;
 using InternalsViewer.UI.App.Models.Query.Trace;
@@ -23,11 +24,15 @@ public sealed class TraceStepApplier(TraceLayout layout,
 {
     private Dictionary<int, AccessStrategy?> StrategyBySource { get; } = [];
 
+    private Dictionary<int, (PageAddress? Page, int? Slot)> PositionByNode { get; } = [];
+
     public AccessStrategy? StrategyFor(int nodeId) => StrategyBySource.GetValueOrDefault(nodeId);
 
     public void ApplyStep(IteratorStepper stepper, AccessStep step)
     {
         RouteRow(step);
+
+        ApplyPosition(step);
 
         UpdateStrategies(stepper);
 
@@ -69,6 +74,8 @@ public sealed class TraceStepApplier(TraceLayout layout,
         }
 
         StrategyBySource.Clear();
+
+        ResetPositions();
     }
 
     public TraceStreamUpdate ComputeStreamUpdate(IEnumerable<AccessStep> history)
@@ -179,6 +186,77 @@ public sealed class TraceStepApplier(TraceLayout layout,
                 tab.StateItems.Add(new TraceStateItem("Input") { Value = $"1 of {concatenation.Inputs.Count}" });
                 tab.StateItems.Add(new TraceStateItem("Rows") { Value = "0" });
                 break;
+        }
+    }
+
+    /// <summary>
+    /// Follows where an access path stands, which is the page it is reading and the slot it reached on it
+    /// </summary>
+    /// <remarks>
+    /// The iterators publish the page but not the slot, because the slot is a position within a walk rather than state an iterator keeps.
+    /// It is read off the steps instead, which is also what makes a page read reset it.
+    /// </remarks>
+    private void ApplyPosition(AccessStep step)
+    {
+        if (!operatorsByNode.TryGetValue(step.NodeId, out var tab))
+        {
+            return;
+        }
+
+        var position = PositionByNode.GetValueOrDefault(step.NodeId);
+
+        switch (step)
+        {
+            case AccessStep.Open:
+                tab.IsOpen = true;
+                break;
+
+            case AccessStep.Close:
+                tab.IsOpen = false;
+                position = default;
+                break;
+
+            case AccessStep.ReadPage read:
+                position = (read.PageAddress, null);
+                break;
+
+            case AccessStep.Row row:
+                position = (position.Page, row.Slot);
+                break;
+
+            case AccessStep.RowRun run:
+                position = (position.Page, run.ToSlot);
+                break;
+        }
+
+        PositionByNode[step.NodeId] = position;
+
+        tab.CurrentPage = position.Page;
+        tab.CurrentSlot = position.Slot;
+    }
+
+    /// <summary>
+    /// Replays the positions of a run that was taken in one go rather than step by step
+    /// </summary>
+    public void SyncPositions(IEnumerable<AccessStep> history)
+    {
+        ResetPositions();
+
+        foreach (var step in history)
+        {
+            ApplyPosition(step);
+        }
+    }
+
+    private void ResetPositions()
+    {
+        PositionByNode.Clear();
+
+        foreach (var tab in operatorsByNode.Values)
+        {
+            tab.IsOpen = false;
+            tab.CurrentPage = null;
+            tab.CurrentSlot = null;
         }
     }
 

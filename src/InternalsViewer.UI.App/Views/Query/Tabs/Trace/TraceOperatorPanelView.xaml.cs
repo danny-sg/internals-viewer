@@ -1,3 +1,4 @@
+using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.UI.App.Controls.Docking;
 using InternalsViewer.UI.App.Models.Query.Trace;
 using InternalsViewer.UI.App.ViewModels.Query.Trace;
@@ -183,6 +184,19 @@ public sealed partial class TraceOperatorPanelView : UserControl, IDocumentComma
 
         ApplyOutputVisibility();
         ApplyHashTableVisibility();
+    }
+
+    private void OnCurrentPageClicked(object sender, RoutedEventArgs e)
+    {
+        _appliedViewModel?.RequestPageOpen();
+    }
+
+    private void OnOperatorBarTapped(object sender, Microsoft.UI.Xaml.Input.TappedRoutedEventArgs e)
+    {
+        if (_appliedViewModel is { } viewModel)
+        {
+            viewModel.RequestActivation(viewModel.NodeId);
+        }
     }
 
     private void OnInputRowTapped(object sender, Microsoft.UI.Xaml.Input.TappedRoutedEventArgs e)

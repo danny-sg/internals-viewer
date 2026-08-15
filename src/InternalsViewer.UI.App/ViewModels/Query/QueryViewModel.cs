@@ -471,6 +471,8 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
         traceViewModel.PageNavigated += OnIndexPageNavigated;
 
+        traceViewModel.PageOpenRequested += OnTracePageOpenRequested;
+
         var title = wrapInSelect ? "Trace: SELECT" : $"Trace: {TraceTitle(node, traceViewModel)}";
 
         var document = new DocumentViewModel(title: title,
@@ -496,6 +498,7 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
         if (_openTraces.Remove(TraceDocumentKey, out var viewModel))
         {
             viewModel.PageNavigated -= OnIndexPageNavigated;
+            viewModel.PageOpenRequested -= OnTracePageOpenRequested;
         }
 
         if (Layout.RemoveDocument(TraceDocumentKey, out var document))
@@ -992,6 +995,7 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
         foreach (var key in closed)
         {
             _openTraces[key].PageNavigated -= OnIndexPageNavigated;
+            _openTraces[key].PageOpenRequested -= OnTracePageOpenRequested;
 
             _openTraces.Remove(key);
 
@@ -1030,6 +1034,8 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
     }
 
     public event Action<long>? PlayheadMoveRequested;
+
+    private void OnTracePageOpenRequested(object? sender, PageAddress pageAddress) => OpenPage(pageAddress);
 
     private void OnIndexPageNavigated(object? sender, PageNavigatedEventArgs e)
     {

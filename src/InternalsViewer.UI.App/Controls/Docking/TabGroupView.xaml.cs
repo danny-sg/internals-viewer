@@ -5,6 +5,7 @@ using System.ComponentModel;
 using Windows.ApplicationModel.DataTransfer;
 using Windows.Foundation;
 using InternalsViewer.UI.App.ViewModels.Docking;
+using Microsoft.UI.Text;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Media;
 
@@ -19,6 +20,7 @@ public sealed partial class TabGroupView : UserControl
 
     private readonly Dictionary<DocumentViewModel, TabViewItem> _items = new();
 
+    private readonly List<(DocumentViewModel Document, PropertyChangedEventHandler Handler)> _headerSubscriptions = [];
 
     private bool _syncing;
 
@@ -68,6 +70,8 @@ public sealed partial class TabGroupView : UserControl
     {
         DockDragState.ActiveChanged -= OnDragActiveChanged;
 
+        ClearHeaderSubscriptions();
+
         if (Group is not null)
         {
             Group.Documents.CollectionChanged -= OnDocumentsChanged;
@@ -83,6 +87,8 @@ public sealed partial class TabGroupView : UserControl
         }
 
         _syncing = true;
+
+        ClearHeaderSubscriptions();
 
         Tabs.TabItems.Clear();
         _items.Clear();
@@ -144,13 +150,26 @@ public sealed partial class TabGroupView : UserControl
         Tabs.TabStripFooter = host;
     }
 
-    private static TabViewItem CreateTab(DocumentViewModel document)
+    private TabViewItem CreateTab(DocumentViewModel document)
     {
         var title = new TextBlock
         {
             Text = document.Title,
-            Margin = new Thickness(4, 0, 4, 0)
+            Margin = new Thickness(4, 0, 4, 0),
+            FontWeight = HeaderWeight(document)
         };
+
+        void OnDocumentPropertyChanged(object? sender, PropertyChangedEventArgs e)
+        {
+            if (e.PropertyName == nameof(DocumentViewModel.IsSelected))
+            {
+                title.FontWeight = HeaderWeight(document);
+            }
+        }
+
+        document.PropertyChanged += OnDocumentPropertyChanged;
+
+        _headerSubscriptions.Add((document, OnDocumentPropertyChanged));
 
         object header = title;
 
@@ -183,7 +202,22 @@ public sealed partial class TabGroupView : UserControl
 
         item.Content = document.CreateView();
 
+        item.Tapped += (_, _) => Dock?.NotifyActivated(document);
+
         return item;
+    }
+
+    private static Windows.UI.Text.FontWeight HeaderWeight(DocumentViewModel document)
+        => document.IsSelected ? FontWeights.SemiBold : FontWeights.Normal;
+
+    private void ClearHeaderSubscriptions()
+    {
+        foreach (var (document, handler) in _headerSubscriptions)
+        {
+            document.PropertyChanged -= handler;
+        }
+
+        _headerSubscriptions.Clear();
     }
 
     private void OnDocumentsChanged(object? sender, NotifyCollectionChangedEventArgs e) => BuildTabs();
@@ -254,6 +288,8 @@ public sealed partial class TabGroupView : UserControl
             UpdateCommands();
 
             Dock?.NotifySelectionChanged();
+
+            Dock?.NotifyActivated(document);
         }
     }
 

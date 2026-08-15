@@ -21,6 +21,11 @@ public sealed partial class DockLayoutViewModel : ObservableObject
 
     public event EventHandler? SelectionChanged;
 
+    /// <summary>
+    /// Raised when a tab is clicked, including one that was already the selected tab of its group
+    /// </summary>
+    public event EventHandler<DocumentViewModel?>? DocumentActivated;
+
     public DockLayoutViewModel(LayoutNode root)
     {
         _root = root;
@@ -29,6 +34,8 @@ public sealed partial class DockLayoutViewModel : ObservableObject
     private void OnLayoutChanged() => LayoutChanged?.Invoke(this, EventArgs.Empty);
 
     public void NotifySelectionChanged() => SelectionChanged?.Invoke(this, EventArgs.Empty);
+
+    public void NotifyActivated(DocumentViewModel document) => DocumentActivated?.Invoke(this, document);
 
     /// <summary>Replaces the entire layout tree (e.g. when restoring a persisted layout) and rebuilds.</summary>
     public void SetRoot(LayoutNode root)

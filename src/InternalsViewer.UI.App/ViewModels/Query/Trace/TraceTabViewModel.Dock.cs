@@ -24,18 +24,26 @@ public sealed partial class TraceTabViewModel
     /// that operator's results in the pane it reads them from, while the operator itself is a tab of its own. Nesting the layout instead
     /// buries the inner operators, and the deeper the tree the less of either is left to see.
     /// </remarks>
-    private DockLayoutViewModel BuildDock() => new(BuildRoot());
+    private DockLayoutViewModel BuildDock()
+    {
+        var dock = new DockLayoutViewModel(BuildRoot());
+
+        dock.DocumentActivated += OnDocumentActivated;
+
+        return dock;
+    }
 
     private SplitNode BuildRoot()
     {
         _stepsDocument ??= DocumentViewModel.Create<TraceStepsPanelView>("Trace", this, canClose: false, keepAlive: true, key: "Steps");
         _descriptionDocument ??= DocumentViewModel.Create<TraceDescriptionPanelView>("Description", this, keepAlive: true, key: "Description");
-        _strategyDocument ??= DocumentViewModel.Create<TraceStrategyPanelView>("Strategy", this, keepAlive: true, key: "Strategy");
         _planDocument ??= DocumentViewModel.Create<TracePlanPanelView>("Plan", this, keepAlive: true, key: "Plan");
 
         _operatorDocumentsByNode ??= Operators.ToDictionary(o => o.NodeId, OperatorDocument);
 
-        var right = new TabGroupNode(_stepsDocument, _descriptionDocument, _strategyDocument, _planDocument);
+        MarkSelectedDocument();
+
+        var right = new TabGroupNode(_stepsDocument, _descriptionDocument, _planDocument);
 
         LayoutNode left;
 
@@ -64,8 +72,6 @@ public sealed partial class TraceTabViewModel
     private DocumentViewModel? _stepsDocument;
 
     private DocumentViewModel? _descriptionDocument;
-
-    private DocumentViewModel? _strategyDocument;
 
     private DocumentViewModel? _planDocument;
 
@@ -179,27 +185,58 @@ public sealed partial class TraceTabViewModel
     {
         if (e.PropertyName == nameof(TabGroupNode.SelectedDocument))
         {
-            UpdateActivePlanNodes();
+            OnDocumentActivated(this, _operatorGroup?.SelectedDocument);
         }
+    }
+
+    /// <summary>
+    /// Follows the tab a click landed on, which is what the description panel describes
+    /// </summary>
+    /// <remarks>
+    /// Selection has to be tracked across every group rather than within one, because a nested layout gives each operator a group of its
+    /// own and the tab already selected there is still the one being clicked.
+    /// </remarks>
+    private void OnDocumentActivated(object? sender, DocumentViewModel? document)
+    {
+        if (document?.Content is TraceOperatorViewModel operatorViewModel)
+        {
+            SelectedNodeId = operatorViewModel.NodeId;
+        }
+    }
+
+    private void MarkSelectedDocument()
+    {
+        if (_operatorDocumentsByNode is not { } documents)
+        {
+            return;
+        }
+
+        var owner = OwningNodeId(SelectedNodeId);
+
+        foreach (var (nodeId, document) in documents)
+        {
+            document.IsSelected = nodeId == owner;
+        }
+    }
+
+    /// <summary>
+    /// The tab an operator is shown in, which is its own where it has one and an ancestor's where it is a pane of a join
+    /// </summary>
+    private int OwningNodeId(int nodeId)
+    {
+        while (_operatorDocumentsByNode?.ContainsKey(nodeId) == false && _parentByNode.TryGetValue(nodeId, out var parent))
+        {
+            nodeId = parent;
+        }
+
+        return nodeId;
     }
 
     private void UpdateActivePlanNodes()
     {
-        if (_operatorGroup?.SelectedDocument?.Content is not TraceOperatorViewModel operatorViewModel)
-        {
-            ActivePlanNodes = [];
-
-            return;
-        }
-
-        ActivePlanNodes = _planNodesById.TryGetValue(operatorViewModel.NodeId, out var node)
+        ActivePlanNodes = _planNodesById.TryGetValue(SelectedNodeId, out var node)
             ? [node]
-            : operatorViewModel.NodeId < 0 && PlanNode is { } root ? [root] : [];
-
-        if (Layout.Nodes.GetValueOrDefault(operatorViewModel.NodeId)?.SourceVisual is { } visual)
-        {
-            SelectedVisual = visual;
-        }
+            : SelectedNodeId < 0 && PlanNode is { } root ? [root] : [];
     }
 
     public void ActivateOperator(PlanNode? node)
@@ -222,14 +259,23 @@ public sealed partial class TraceTabViewModel
 
         if (targetId is not null)
         {
-            SelectDocumentFor(targetId.Value);
+            SelectOperator(targetId.Value);
         }
     }
 
+    /// <summary>
+    /// Selects the operator a click asked for, which is not always one with a tab of its own
+    /// </summary>
+    /// <remarks>
+    /// A join shows its inputs as panes rather than as tabs, so an input clicked there is described in place: the operator selected is the
+    /// pane's, while the tab brought forward is the join it sits in.
+    /// </remarks>
     public void ActivateOperator(int nodeId)
     {
-        if (SelectDocumentFor(nodeId))
+        if (Layout.Nodes.ContainsKey(nodeId))
         {
+            SelectOperator(nodeId);
+
             return;
         }
 
@@ -239,21 +285,24 @@ public sealed partial class TraceTabViewModel
         }
     }
 
-    private bool SelectDocumentFor(int nodeId)
+    private void SelectOperator(int nodeId)
+    {
+        ShowDocumentFor(OwningNodeId(nodeId));
+
+        SelectedNodeId = nodeId;
+    }
+
+    private void ShowDocumentFor(int nodeId)
     {
         if (_operatorDocumentsByNode?.GetValueOrDefault(nodeId) is not { } document)
         {
-            return false;
+            return;
         }
 
-        if (Dock.FindGroup(document) is not { } group)
+        if (Dock.FindGroup(document) is { } group)
         {
-            return false;
+            group.SelectedDocument = document;
         }
-
-        group.SelectedDocument = document;
-
-        return true;
     }
 
     private static PlanNode? FindParent(PlanNode? root, PlanNode target)

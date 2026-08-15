@@ -66,6 +66,16 @@ public sealed partial class DocumentViewModel : ObservableObject
     public Microsoft.UI.Xaml.Media.Brush? Accent { get; set; }
 
     /// <summary>
+    /// The document a click last landed on, which its tab header shows in bold
+    /// </summary>
+    /// <remarks>
+    /// Selection within a group is the tab view's own, and says nothing across groups. This is the owner's notion of which of its
+    /// documents is the current one, so a layout that spreads them over several groups still has one.
+    /// </remarks>
+    [ObservableProperty]
+    private bool _isSelected;
+
+    /// <summary>
     /// Returns the element to host as a tab's content, with the view's <c>DataContext</c> set to
     /// <see cref="Content"/>. For keep-alive documents the cached view is reused: it lives inside a
     /// plain <see cref="ContentControl"/> holder we control, and is moved to a fresh holder on each

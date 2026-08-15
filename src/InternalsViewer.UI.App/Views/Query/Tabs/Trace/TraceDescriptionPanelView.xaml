@@ -6,19 +6,21 @@
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     xmlns:accessSteps="using:InternalsViewer.UI.App.Controls.Trace.Steps"
-    xmlns:allocation="using:InternalsViewer.UI.App.Controls.Allocation"
     mc:Ignorable="d">
 
-    <StackPanel 
-        Background="{ThemeResource LayerOnMicaBaseAltFillColorDefault}">
-        <!--<allocation:AllocationUnitSummaryControl AllocationUnit="{x:Bind ViewModel.AllocationUnit, Mode=OneWay}"
-                                                 IsIndex="True" />-->
-
-    <accessSteps:SeekDescriptionPanel FontSize="12"
-                                      Strategy="{x:Bind ViewModel.SeekDescription, Mode=OneWay}"
-                                      PhysicalOperator="{x:Bind ViewModel.PlanNode.PhysicalOperator, Mode=OneWay}"
-                                      LogicalOperator="{x:Bind ViewModel.PlanNode.LogicalOperator, Mode=OneWay}"
-                                      IsOrdered="{x:Bind ViewModel.PlanNode.ScanInfo.IsOutputOrdered, Mode=OneWay}"
-                                      Background="{ThemeResource LayerOnMicaBaseAltFillColorDefault}" />
-    </StackPanel>
+    <accessSteps:OperatorDescriptionPanel FontSize="12"
+                                          Icon="{x:Bind ViewModel.SelectedOperatorIcon, Mode=OneWay}"
+                                          OperatorName="{x:Bind ViewModel.SelectedOperatorName, Mode=OneWay}"
+                                          Description="{x:Bind ViewModel.SelectedDescription, Mode=OneWay}"
+                                          Definition="{x:Bind ViewModel.SelectedDefinition, Mode=OneWay}"
+                                          Strategy="{x:Bind ViewModel.SelectedStrategy, Mode=OneWay}"
+                                          PhysicalOperator="{x:Bind ViewModel.SelectedPhysicalOperator, Mode=OneWay}"
+                                          LogicalOperator="{x:Bind ViewModel.SelectedLogicalOperator, Mode=OneWay}"
+                                          IsOrdered="{x:Bind ViewModel.SelectedIsOrdered, Mode=OneWay}"
+                                          IsPending="{x:Bind ViewModel.IsSelectedStrategyPending, Mode=OneWay}"
+                                          CurrentPhase="{x:Bind ViewModel.SelectedPhase, Mode=OneWay}"
+                                          Counters="{x:Bind ViewModel.CurrentCounters, Mode=OneWay}"
+                                          IsWalkActive="{x:Bind ViewModel.IsWalkInProgress, Mode=OneWay}"
+                                          RunToPhaseCommand="{x:Bind ViewModel.RunToPhaseCommand, Mode=OneWay}"
+                                          Background="{ThemeResource LayerOnMicaBaseAltFillColorDefault}" />
 </UserControl>

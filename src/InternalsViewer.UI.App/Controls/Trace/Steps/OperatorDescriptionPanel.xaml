@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <UserControl
-    x:Class="InternalsViewer.UI.App.Controls.Trace.Steps.SeekDescriptionPanel"
+    x:Class="InternalsViewer.UI.App.Controls.Trace.Steps.OperatorDescriptionPanel"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
@@ -10,6 +10,10 @@
                   VerticalScrollBarVisibility="Auto"
                   HorizontalScrollBarVisibility="Disabled">
         <Grid Padding="12,8,12,8">
+            <TextBlock x:Name="PlaceholderText"
+                       Text="Select an operator to show what it does"
+                       Opacity="0.6"
+                       VerticalAlignment="Center" />
             <StackPanel x:Name="RowsPanel" Orientation="Vertical" />
         </Grid>
     </ScrollViewer>

@@ -2,6 +2,7 @@ using System;
 using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using InternalsViewer.Execution.AccessPaths.Joins;
+using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.UI.App.Models.Query.Trace;
 
 namespace InternalsViewer.UI.App.ViewModels.Query.Trace;
@@ -18,6 +19,31 @@ public sealed partial class TraceOperatorViewModel(int nodeId, string title, str
     public string Description { get; } = description;
 
     public Uri? Icon { get; set; }
+
+    /// <summary>
+    /// The iterator has been opened and not yet closed, which is while it has a position to show
+    /// </summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsPositionVisible))]
+    private bool _isOpen;
+
+    /// <summary>
+    /// The page the access path is reading, which with <see cref="CurrentSlot"/> is where it stands
+    /// </summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsPositionVisible))]
+    [NotifyPropertyChangedFor(nameof(CurrentRowIdentifier))]
+    private PageAddress? _currentPage;
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(CurrentRowIdentifier))]
+    private int? _currentSlot;
+
+    public bool IsPositionVisible => IsOpen && CurrentPage is not null;
+
+    public string CurrentRowIdentifier => CurrentPage is { } page
+        ? CurrentSlot is { } slot ? new RowIdentifier(page, (ushort)slot).ToString() : page.ToString()
+        : string.Empty;
 
     public string Heading { get; set; } = "";
 
@@ -52,6 +78,16 @@ public sealed partial class TraceOperatorViewModel(int nodeId, string title, str
     public event Action<int>? ActivationRequested;
 
     public void RequestActivation(int targetNodeId) => ActivationRequested?.Invoke(targetNodeId);
+
+    public event Action<PageAddress>? PageOpenRequested;
+
+    public void RequestPageOpen()
+    {
+        if (CurrentPage is { } pageAddress)
+        {
+            PageOpenRequested?.Invoke(pageAddress);
+        }
+    }
 
     public void SetState(string name, string value)
     {
