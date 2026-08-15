@@ -84,7 +84,7 @@
         <DataTemplate x:Key="StateItemTemplate">
             <Grid Padding="8,4">
                 <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="140" />
+                    <ColumnDefinition Width="80" />
                     <ColumnDefinition Width="*" />
                 </Grid.ColumnDefinitions>
 
@@ -169,12 +169,20 @@
                       BorderThickness="0,0,0,1"
                       BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" />
 
-        <ItemsControl x:Name="StateList"
-                      Grid.Row="2"
-                      Visibility="Collapsed"
-                      ItemTemplate="{StaticResource StateItemTemplate}"
-                      BorderThickness="0,0,0,1"
-                      BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" />
+        <Border x:Name="StateArea"
+                Grid.Row="2"
+                Visibility="Collapsed"
+                BorderThickness="0,0,0,1"
+                BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}">
+            <ItemsRepeater x:Name="StateList"
+                           ItemTemplate="{StaticResource StateItemTemplate}">
+                <ItemsRepeater.Layout>
+                    <UniformGridLayout Orientation="Horizontal"
+                                       MinItemWidth="200"
+                                       MinItemHeight="28" />
+                </ItemsRepeater.Layout>
+            </ItemsRepeater>
+        </Border>
 
         <ContentControl x:Name="MainHost"
                         Grid.Row="3"
@@ -202,11 +210,11 @@
                 <StackPanel x:Name="OuterHeader" Orientation="Horizontal" Spacing="6" Padding="8,6,8,4" />
 
                 <ContentControl x:Name="OuterTopHost"
-                            Grid.Row="1"
-                            HorizontalAlignment="Stretch"
-                            VerticalAlignment="Stretch"
-                            HorizontalContentAlignment="Stretch"
-                            VerticalContentAlignment="Stretch" />
+                                Grid.Row="1"
+                                HorizontalAlignment="Stretch"
+                                VerticalAlignment="Stretch"
+                                HorizontalContentAlignment="Stretch"
+                                VerticalContentAlignment="Stretch" />
 
                 <controls:GridSplitter x:Name="OuterSplitter"
                                    Grid.Row="2"
@@ -225,12 +233,12 @@
             </Grid>
 
             <controls:GridSplitter x:Name="InputSplitter"
-                               Grid.Column="1"
-                               Width="2"
-                               ResizeBehavior="PreviousAndNext"
-                               ResizeDirection="Columns"
-                               VerticalAlignment="Stretch"
-                               Style="{StaticResource TracePaneSplitterStyle}" />
+                                   Grid.Column="1"
+                                   Width="2"
+                                   ResizeBehavior="PreviousAndNext"
+                                   ResizeDirection="Columns"
+                                   VerticalAlignment="Stretch"
+                                   Style="{StaticResource TracePaneSplitterStyle}" />
 
             <Grid Grid.Column="2">
                 <Grid.RowDefinitions>

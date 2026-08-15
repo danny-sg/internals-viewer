@@ -145,7 +145,7 @@ public sealed partial class TraceOperatorPanelView : UserControl, IDocumentComma
             JoinGrid.Visibility = Visibility.Visible;
             MainHost.Visibility = Visibility.Collapsed;
             InputsList.Visibility = Visibility.Collapsed;
-            StateList.Visibility = Visibility.Collapsed;
+            StateArea.Visibility = Visibility.Collapsed;
 
             Fill(OuterTopHost, OuterHeader, viewModel.OuterTop);
             Fill(InnerTopHost, InnerHeader, viewModel.InnerTop);
@@ -169,7 +169,7 @@ public sealed partial class TraceOperatorPanelView : UserControl, IDocumentComma
             InputsList.Visibility = viewModel.InputRows.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
 
             StateList.ItemsSource = viewModel.StateItems;
-            StateList.Visibility = viewModel.StateItems.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
+            StateArea.Visibility = viewModel.StateItems.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
 
             MainHost.Visibility = viewModel.MainPane.Kind == TracePaneKind.Empty ? Visibility.Collapsed : Visibility.Visible;
 

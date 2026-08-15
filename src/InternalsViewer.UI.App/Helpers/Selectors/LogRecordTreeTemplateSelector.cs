@@ -15,8 +15,10 @@ public class LogRecordTreeTemplateSelector : DataTemplateSelector
     {
         return item switch
         {
-            TreeViewNode { Content: AnnotationHeader } => AnnotationHeaderTemplate,
-            TreeViewNode { Content: LogRecordAnnotation } => AnnotationTemplate,
+            TreeViewNode { Content: AnnotationHeader } 
+                => AnnotationHeaderTemplate,
+            TreeViewNode { Content: LogRecordAnnotation } 
+                => AnnotationTemplate,
             _ => RecordTemplate
         };
     }

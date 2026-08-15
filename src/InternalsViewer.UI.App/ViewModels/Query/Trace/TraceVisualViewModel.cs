@@ -1,30 +1,29 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.Drawing;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
+using InternalsViewer.Execution.AccessPaths.Results.Steps;
 using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Internals.Engine.Allocation;
 using InternalsViewer.Internals.Engine.Database;
 using InternalsViewer.Internals.Engine.Indexes;
-using InternalsViewer.Internals.Engine.Records.CdRecordType;
 using InternalsViewer.Internals.Engine.Records;
+using InternalsViewer.Internals.Engine.Records.CdRecordType;
 using InternalsViewer.Internals.Engine.Records.Data;
 using InternalsViewer.Internals.Engine.Records.Index;
 using InternalsViewer.Internals.Interfaces.Engine;
 using InternalsViewer.Internals.Metadata.Structures;
 using InternalsViewer.Internals.Services.Indexes;
+using InternalsViewer.UI.App.Helpers;
+using InternalsViewer.UI.App.Models;
 using InternalsViewer.UI.App.Models.Index;
 using InternalsViewer.UI.App.Models.Query.Trace;
-using System.Drawing;
-using InternalsViewer.Execution.AccessPaths.Results.Steps;
-using AllocationBorder = InternalsViewer.UI.App.Models.AllocationBorder;
-using AllocationBorderScope = InternalsViewer.UI.App.Models.AllocationBorderScope;
-using AllocationLayer = InternalsViewer.UI.App.Models.AllocationLayer;
-using TimedRange = InternalsViewer.UI.App.Models.TimedRange;
 using InternalsViewer.UI.App.ViewModels.Allocation;
+using AllocationUnit = InternalsViewer.Internals.Engine.Database.AllocationUnit;
 
 namespace InternalsViewer.UI.App.ViewModels.Query.Trace;
 
@@ -95,7 +94,7 @@ public sealed partial class TraceVisualViewModel(TraceVisualType visualType,
 
     public Color ObjectColour => OperatorColour ?? (_objectColour ??= AllocationLayerBuilder.GetObjectColour(Database, AllocationUnit));
 
-    private Color LightObjectColour => Lighten(ObjectColour);
+    private Color LightObjectColour => ColourHelpers.Lighten(ObjectColour);
 
     private PageAddress? _currentTracePage;
 
@@ -346,9 +345,9 @@ public sealed partial class TraceVisualViewModel(TraceVisualType visualType,
 
             _currentTracePage = replay.LastDataPage;
             SelectedRowSlotCount = replay.LastSlotCount;
-            SelectedRowIdentifier = replay.LastDataPage is { } dataPage && replay.LastSlot is { } slot
-                ? new RowIdentifier(dataPage, (ushort)slot)
-                : null;
+            SelectedRowIdentifier = replay is { LastDataPage: { } dataPage, LastSlot: { } slot }
+                                    ? new RowIdentifier(dataPage, (ushort)slot)
+                                    : null;
         }
     }
 
@@ -427,14 +426,6 @@ public sealed partial class TraceVisualViewModel(TraceVisualType visualType,
         {
             span.DisplayColour = light;
         }
-    }
-
-    private static Color Lighten(Color colour)
-    {
-        return Color.FromArgb(255,
-                              colour.R + (255 - colour.R) * 3 / 4,
-                              colour.G + (255 - colour.G) * 3 / 4,
-                              colour.B + (255 - colour.B) * 3 / 4);
     }
 
     /// <summary>

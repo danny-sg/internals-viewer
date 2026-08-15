@@ -20,8 +20,10 @@ public class PlanPropertyTemplateSelector : DataTemplateSelector
     {
         return item switch
         {
-            TreeViewNode { Content: PlanNodeProperty { Predicate: not null } } => PredicateTemplate,
-            TreeViewNode { Content: PlanNodeProperty { Items.Count: > 0 } } => ListItemTemplate,
+            TreeViewNode { Content: PlanNodeProperty { Predicate: not null } } 
+                => PredicateTemplate,
+            TreeViewNode { Content: PlanNodeProperty { Items.Count: > 0 } }
+                => ListItemTemplate,
             _ => DefaultTemplate
         };
     }
