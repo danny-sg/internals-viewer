@@ -1,4 +1,5 @@
 using InternalsViewer.Execution.AccessPaths.Definitions;
+using InternalsViewer.Execution.AccessPaths.Descriptions.Aggregation;
 using InternalsViewer.Execution.AccessPaths.Descriptions.DataAccess;
 using InternalsViewer.Execution.AccessPaths.Descriptions.Joins;
 using InternalsViewer.Execution.AccessPaths.Descriptions.Row;
@@ -23,6 +24,9 @@ public static class OperatorDescriptionBuilder
             HashMatchDefinition hash => HashMatchDescriber.Describe(hash),
             TopDefinition top => TopDescriber.Describe(top),
             SortDefinition sort => SortDescriber.Describe(sort),
+            StreamAggregateDefinition aggregate => StreamAggregateDescriber.Describe(aggregate),
+            HashAggregateDefinition hashAggregate => HashAggregateDescriber.Describe(hashAggregate),
+            ComputeScalarDefinition compute => ComputeScalarDescriber.Describe(compute),
             ConcatenationDefinition concatenation => ConcatenationDescriber.Describe(concatenation),
             SelectDefinition => SelectDescriber.Describe(),
             SeekDefinition => CorrelatedSeekDescriber.Describe(strategy),

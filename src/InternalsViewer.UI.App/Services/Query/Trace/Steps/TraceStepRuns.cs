@@ -10,7 +10,7 @@ public static class TraceStepRuns
 {
     public static void Append(AccessStep step, ObservableCollection<AccessStep> history, int historyLimit)
     {
-        if (step is AccessStep.Stopped or AccessStep.Close or AccessStep.Sorted)
+        if (step is AccessStep.Stopped or AccessStep.Close or AccessStep.Sorted or AccessStep.AggregateEmit)
         {
             RetireSpans(history, step.NodeId);
         }
@@ -91,6 +91,22 @@ public static class TraceStepRuns
 
             case AccessStep.ConcatRow concatRow:
                 RowCountSpanFor(concatRow, "→ Emit", history, top).Progress.Apply(concatRow.Number, 0);
+                return true;
+
+            case AccessStep.AggregateRow aggregateRow:
+                StreamAggregateSpanFor(aggregateRow, history, top).Progress.Apply(aggregateRow);
+                return true;
+
+            case AccessStep.HashAggregate { IsNewGroup: false } folded:
+                StreamAggregateSpanFor(folded, history, top).Progress.Apply(folded);
+                return true;
+
+            case AccessStep.HashAggregate opened:
+                StreamAggregateSpanFor(opened, history, top).Progress.Apply(opened);
+                return false;
+
+            case AccessStep.ComputeRow computeRow:
+                RowCountSpanFor(computeRow, "→ Emit", history, top).Progress.Apply(computeRow.Number, 0);
                 return true;
 
             default:
@@ -255,6 +271,24 @@ public static class TraceStepRuns
         }
 
         var created = new SortCollectSpan
+        {
+            NodeId = step.NodeId,
+            Counters = step.Counters
+        };
+
+        InsertSpan(history, created);
+
+        return created;
+    }
+
+    private static StreamAggregateSpan StreamAggregateSpanFor(AccessStep step, ObservableCollection<AccessStep> history, int top)
+    {
+        if (FindSpan<StreamAggregateSpan>(history, top, step.NodeId) is { } span)
+        {
+            return span;
+        }
+
+        var created = new StreamAggregateSpan
         {
             NodeId = step.NodeId,
             Counters = step.Counters

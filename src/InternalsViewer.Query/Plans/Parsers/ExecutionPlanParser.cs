@@ -1,5 +1,7 @@
 using InternalsViewer.Execution.AccessPaths.Search;
+using System.Data;
 using System.Xml.Linq;
+using InternalsViewer.Execution.AccessPaths.Aggregation;
 using InternalsViewer.Execution.AccessPaths.Predicates;
 using InternalsViewer.Execution.AccessPaths.Values;
 using InternalsViewer.Query.Plans.Model;
@@ -135,6 +137,11 @@ public static class ExecutionPlanParser
         if (OperatorClassifier.IsHash(node))
         {
             node.HashInfo = ParseHashInfo(element, parameters);
+        }
+
+        if (OperatorClassifier.IsAggregate(node))
+        {
+            node.AggregateInfo = ParseAggregateInfo(element, node);
         }
 
         if (OperatorClassifier.IsDataAccess(node))
@@ -516,17 +523,14 @@ public static class ExecutionPlanParser
 
     private static List<DefinedValueInfo> ParseDefinedValues(XElement element, PlanParameters parameters)
     {
-        var definedValues = element.Elements().FirstOrDefault(e => e.Name.LocalName == "DefinedValues")
-                            ?? element.Elements()
-                                      .SelectMany(e => e.Elements())
-                                      .FirstOrDefault(e => e.Name.LocalName == "DefinedValues");
+        var definedValues = FindDefinedValues(element);
 
         if (definedValues is null)
         {
             return [];
         }
 
-        var expressionParser = new PredicateParser(resolveParameter: parameters.Resolve);
+        var expressionParser = new PredicateParser(_ => -1, parameters.Resolve);
 
         var result = new List<DefinedValueInfo>();
 
@@ -559,12 +563,67 @@ public static class ExecutionPlanParser
             {
                 Columns = columns,
                 Expression = scalar?.Attribute("ScalarString")?.Value,
-                ParsedExpression = expressionParser.ParseExpression(scalar)
+                ParsedExpression = expressionParser.ParseExpression(scalar),
+                DataType = ParseConvertDataType(scalar)
             });
         }
 
         return result;
     }
+
+    private static SqlDbType? ParseConvertDataType(XElement? scalar)
+    {
+        var convert = scalar?.Elements().FirstOrDefault();
+
+        return convert?.Name.LocalName == "Convert" ? ShowplanDataType.Parse(convert.Attribute("DataType")?.Value) : null;
+    }
+
+    private static AggregateInfo ParseAggregateInfo(XElement element, PlanNode node)
+    {
+        var columns = new List<AggregateColumn>();
+
+        foreach (var definedValue in node.DefinedValues)
+        {
+            if (definedValue.Columns.Count != 1
+                || definedValue.ParsedExpression is not AccessExpression.Aggregate aggregate
+                || AggregateFunctions.Parse(aggregate.Name) is not { } function)
+            {
+                continue;
+            }
+
+            columns.Add(new AggregateColumn(definedValue.Columns[0].Column.Trim('[', ']'), function)
+            {
+                Argument = aggregate.Arguments.Length > 0 ? aggregate.Arguments[0] : null,
+                IsDistinct = aggregate.IsDistinct
+            });
+        }
+
+        return new AggregateInfo
+        {
+            GroupBy = GroupingColumns(node),
+            Columns = columns,
+            HasUntranslatedAggregate = columns.Count < CountAggregates(element)
+        };
+    }
+
+    private static List<ColumnReference> GroupingColumns(PlanNode node)
+    {
+        if (node.GroupByColumns.Count > 0)
+        {
+            return node.GroupByColumns;
+        }
+
+        return OperatorClassifier.IsHash(node) ? node.HashInfo?.BuildKeys ?? [] : [];
+    }
+
+    private static int CountAggregates(XElement element)
+        => FindDefinedValues(element)?.Descendants().Count(e => e.Name.LocalName == "Aggregate") ?? 0;
+
+    private static XElement? FindDefinedValues(XElement element)
+        => element.Elements().FirstOrDefault(e => e.Name.LocalName == "DefinedValues")
+           ?? element.Elements()
+                     .SelectMany(e => e.Elements())
+                     .FirstOrDefault(e => e.Name.LocalName == "DefinedValues");
 
     private static SortInfo? ParseSortInfo(XElement element)
     {

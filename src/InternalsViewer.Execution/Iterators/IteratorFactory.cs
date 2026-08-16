@@ -1,5 +1,6 @@
 using InternalsViewer.Execution.AccessPaths.Definitions;
 using InternalsViewer.Execution.Interfaces;
+using InternalsViewer.Execution.Iterators.Aggregation;
 using InternalsViewer.Execution.Iterators.DataAccess;
 using InternalsViewer.Execution.Iterators.Joins;
 using InternalsViewer.Execution.Iterators.Row;
@@ -26,6 +27,12 @@ public sealed class IteratorFactory(IServiceProvider services) : IIteratorFactor
                 => services.GetRequiredService<ConcatenationIterator>(),
             SortDefinition
                 => services.GetRequiredService<SortIterator>(),
+            StreamAggregateDefinition
+                => services.GetRequiredService<StreamAggregateIterator>(),
+            HashAggregateDefinition
+                => services.GetRequiredService<HashAggregateIterator>(),
+            ComputeScalarDefinition
+                => services.GetRequiredService<ComputeScalarIterator>(),
             AllocationScanDefinition
                 => services.GetRequiredService<AllocationScanIterator>(),
             HeapFetchDefinition

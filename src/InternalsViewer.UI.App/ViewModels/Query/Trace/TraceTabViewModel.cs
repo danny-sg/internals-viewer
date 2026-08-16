@@ -786,6 +786,8 @@ public sealed partial class TraceTabViewModel : ObservableObject
 
         Applier.SyncHeldRows(stepper);
 
+        Applier.SyncAggregates(stepper);
+
         Applier.SyncHashTables(stepper.Current);
 
         NotifyDescriptionChanged();

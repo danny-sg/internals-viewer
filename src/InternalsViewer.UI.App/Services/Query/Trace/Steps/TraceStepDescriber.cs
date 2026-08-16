@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Linq;
 using InternalsViewer.Execution.AccessPaths.Definitions;
 using InternalsViewer.Execution.AccessPaths.Joins;
 using InternalsViewer.Execution.AccessPaths.Results;
@@ -169,8 +170,61 @@ public static class TraceStepDescriber
                 + "A distinct sort removes duplicates as it outputs: the rows are already in key order, so equal rows sit next to "
                 + "each other and only the first of each group is returned.",
 
+            StreamAggregateSpan span =>
+                $"Accumulate - {span.Progress.GroupRows:N0} rows folded into the totals, {span.Progress.Rows:N0} read in all.\n\n"
+                + $"The totals now read {span.Progress.Running}. The rows themselves are not kept, so this is the whole of what "
+                + "the operator is holding.",
+
             SortCollectSpan span =>
                 $"Collect - {span.Progress.Rows:N0} rows read into the sort table so far.",
+
+            AccessStep.AggregateStart aggregateStart =>
+                (aggregateStart.IsScalar
+                    ? $"Open - Aggregates the whole input into one row: {aggregateStart.Aggregates}.\n\n"
+                      + "There is no grouping, so a row is returned even when the input has none: COUNT is zero and every other "
+                      + "aggregate is NULL."
+                    : $"Open - Aggregates {aggregateStart.Aggregates} per group of {aggregateStart.GroupBy}.\n\n"
+                      + "A stream aggregate relies on its input arriving in group order, which is why a sort or an ordered index "
+                      + "sits below it.")
+                + "\n\nOnly the running totals are held, never the rows they were built from.",
+
+            AccessStep.AggregateGroup group =>
+                group.Key.Length > 0
+                    ? $"Group - Starts group {group.Number} at {group.Key}.\n\n"
+                      + "The running totals are reset, because everything collected so far belonged to the group that just ended."
+                    : $"Group - Starts the single group covering the whole input.\n\n"
+                      + "With no grouping columns there is one group, so the totals are reset once and never again.",
+
+            AccessStep.AggregateRow aggregateRow =>
+                $"Accumulate - Folds row {aggregateRow.Number:N0} into the totals, the {aggregateRow.GroupRows:N0} row of this group.\n\n"
+                + $"The totals now read {aggregateRow.Running}. The row itself is not kept: an aggregate holds one set of running "
+                + "values regardless of how many rows it reads.",
+
+            AccessStep.HashAggregate { IsNewGroup: true } opened =>
+                $"Group - Row {opened.Number:N0} opens a new group for {opened.Key} in bucket {opened.Bucket}.\n\n"
+                + $"The key hashes to 0x{opened.Hash:X8}. No entry in that bucket held this key, so a group is added carrying its own "
+                + $"running totals, now {opened.Running}. The table holds one entry per group, not per row."
+                + (opened.ChainLength > 1
+                    ? $"\n\nThe bucket now holds {opened.ChainLength} groups, which every later row hashing here has to walk."
+                    : string.Empty),
+
+            AccessStep.HashAggregate folded =>
+                $"Accumulate - Row {folded.Number:N0} folds into the group for {folded.Key} at entry {folded.Entry} of "
+                + $"bucket {folded.Bucket}.\n\n"
+                + $"The group has now taken {folded.GroupRows:N0} rows and reads {folded.Running}. The row itself is not kept, which "
+                + "is why a hash aggregate holds only as much as it has groups.",
+
+            AccessStep.AggregateEmit aggregateEmit =>
+                $"Emit - Outputs row {aggregateEmit.Number:N0} for "
+                + (aggregateEmit.Key.Length > 0 ? $"group {aggregateEmit.Key}" : "the whole input")
+                + $", built from {aggregateEmit.GroupRows:N0} rows.\n\n"
+                + $"The group is complete, so the totals become the output row: {aggregateEmit.Values}.",
+
+            AccessStep.ComputeRow compute =>
+                $"Compute - Evaluates the operator's expressions for row {compute.Number:N0}.\n\n"
+                + (compute.Values.Length > 0
+                    ? $"The row is passed on carrying {compute.Values}."
+                    : "The row is passed on unchanged."),
 
             AccessStep.TopRow topRow =>
                 $"Get Row - Passes through row {topRow.Number:N0} of {topRow.RowCount:N0}."
@@ -275,6 +329,29 @@ public static class TraceStepDescriber
                 : sort.IsDistinct
                     ? "The operator collects its whole input, sorts it and outputs each distinct key once."
                     : "The operator collects its whole input before returning anything, then outputs the rows in sorted order.";
+        }
+
+        if (definition is StreamAggregateDefinition aggregate)
+        {
+            var aggregates = string.Join(", ", aggregate.Aggregates.Select(a => a.ToText()));
+
+            return aggregate.IsScalar
+                ? $"The operator reads its whole input and returns one row of {aggregates}."
+                : $"The operator returns one row of {aggregates} each time {string.Join(", ", aggregate.GroupBy)} changes, which "
+                  + "works only because the input arrives in that order.";
+        }
+
+        if (definition is HashAggregateDefinition hashAggregate)
+        {
+            var hashed = string.Join(", ", hashAggregate.Aggregates.Select(a => a.ToText()));
+
+            return $"The operator groups on {string.Join(", ", hashAggregate.GroupBy)} through a hash table, so its input can arrive in "
+                   + $"any order, and returns one row of {hashed} per group once that input has been read to its end.";
+        }
+
+        if (definition is ComputeScalarDefinition compute)
+        {
+            return $"The operator adds {string.Join(", ", compute.Columns.Select(c => c.Name))} to each row and passes it straight on.";
         }
 
         if (definition is not JoinDefinition join)

@@ -25,6 +25,8 @@ public sealed class TraceNodeContext
 
     public TraceHashTableViewModel? HashTable { get; init; }
 
+    public TraceAggregateViewModel? Aggregates { get; init; }
+
     public IReadOnlyDictionary<int, TraceHeldRowsViewModel> HeldRows { get; init; } = EmptyHeldRows;
 
     public OperatorSides? Sides { get; init; }

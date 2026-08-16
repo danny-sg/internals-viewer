@@ -1,3 +1,5 @@
+using System.Data;
+using InternalsViewer.Execution.AccessPaths.Aggregation;
 using InternalsViewer.Execution.AccessPaths.Definitions;
 using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Internals.Engine.Database;
@@ -234,6 +236,257 @@ public class TraceDefinitionBuilderTests
         Assert.Equal([TraceSourceRole.Build, TraceSourceRole.Build, TraceSourceRole.Probe],
                      sources.Select(s => s.Role));
     }
+
+    /// <summary>
+    /// A scalar aggregate over a heap, with the compute scalar that converts the count back to an int
+    /// </summary>
+    private const string StreamAggregateXml =
+        """
+        <?xml version="1.0"?>
+        <ShowPlanXML xmlns="http://schemas.microsoft.com/sqlserver/2004/07/showplan" Version="1.599" Build="17.0.4065.4">
+          <BatchSequence>
+            <Batch>
+              <Statements>
+                <StmtSimple StatementType="SELECT" StatementSubTreeCost="0.0265598">
+                  <QueryPlan>
+                    <RelOp NodeId="0" PhysicalOp="Compute Scalar" LogicalOp="Compute Scalar"
+                           EstimatedTotalSubtreeCost="0.0265598" EstimateRows="1" Parallel="0">
+                      <OutputList>
+                        <ColumnReference Column="Expr1003" />
+                        <ColumnReference Column="Expr1004" />
+                        <ColumnReference Column="Expr1005" />
+                      </OutputList>
+                      <ComputeScalar>
+                        <DefinedValues>
+                          <DefinedValue>
+                            <ColumnReference Column="Expr1005" />
+                            <ScalarOperator ScalarString="CONVERT_IMPLICIT(int,[Expr1010],0)">
+                              <Convert DataType="int" Style="0" Implicit="1">
+                                <ScalarOperator>
+                                  <Identifier>
+                                    <ColumnReference Column="Expr1010" />
+                                  </Identifier>
+                                </ScalarOperator>
+                              </Convert>
+                            </ScalarOperator>
+                          </DefinedValue>
+                        </DefinedValues>
+                        <RelOp NodeId="1" PhysicalOp="Stream Aggregate" LogicalOp="Aggregate"
+                               EstimatedTotalSubtreeCost="0.0265598" EstimateRows="1" Parallel="0">
+                          <OutputList>
+                            <ColumnReference Column="Expr1003" />
+                            <ColumnReference Column="Expr1004" />
+                            <ColumnReference Column="Expr1010" />
+                          </OutputList>
+                          <StreamAggregate>
+                            <DefinedValues>
+                              <DefinedValue>
+                                <ColumnReference Column="Expr1010" />
+                                <ScalarOperator ScalarString="Count(*)">
+                                  <Aggregate AggType="countstar" Distinct="false" />
+                                </ScalarOperator>
+                              </DefinedValue>
+                              <DefinedValue>
+                                <ColumnReference Column="Expr1003" />
+                                <ScalarOperator ScalarString="MIN([Demo].[dbo].[HeapTable].[Id])">
+                                  <Aggregate AggType="MIN" Distinct="false">
+                                    <ScalarOperator>
+                                      <Identifier>
+                                        <ColumnReference Database="[Demo]" Schema="[dbo]" Table="[HeapTable]" Column="Id" />
+                                      </Identifier>
+                                    </ScalarOperator>
+                                  </Aggregate>
+                                </ScalarOperator>
+                              </DefinedValue>
+                              <DefinedValue>
+                                <ColumnReference Column="Expr1004" />
+                                <ScalarOperator ScalarString="MAX([Demo].[dbo].[HeapTable].[Id])">
+                                  <Aggregate AggType="MAX" Distinct="false">
+                                    <ScalarOperator>
+                                      <Identifier>
+                                        <ColumnReference Database="[Demo]" Schema="[dbo]" Table="[HeapTable]" Column="Id" />
+                                      </Identifier>
+                                    </ScalarOperator>
+                                  </Aggregate>
+                                </ScalarOperator>
+                              </DefinedValue>
+                            </DefinedValues>
+                            <RelOp NodeId="2" PhysicalOp="Table Scan" LogicalOp="Table Scan"
+                                   EstimatedTotalSubtreeCost="0.0265598" EstimateRows="5000" Parallel="0">
+                              <OutputList>
+                                <ColumnReference Database="[Demo]" Schema="[dbo]" Table="[HeapTable]" Column="Id" />
+                              </OutputList>
+                              <TableScan Ordered="false" ForcedIndex="false" ForceScan="false" NoExpandHint="false" Storage="RowStore">
+                                <DefinedValues>
+                                  <DefinedValue>
+                                    <ColumnReference Database="[Demo]" Schema="[dbo]" Table="[HeapTable]" Column="Id" />
+                                  </DefinedValue>
+                                </DefinedValues>
+                                <Object Database="[Demo]" Schema="[dbo]" Table="[HeapTable]" IndexKind="Heap" Storage="RowStore" />
+                              </TableScan>
+                            </RelOp>
+                          </StreamAggregate>
+                        </RelOp>
+                      </ComputeScalar>
+                    </RelOp>
+                  </QueryPlan>
+                </StmtSimple>
+              </Statements>
+            </Batch>
+          </BatchSequence>
+        </ShowPlanXML>
+        """;
+
+    [Fact]
+    public void A_Compute_Scalar_Reads_A_Stream_Aggregate_Which_Reads_The_Table()
+    {
+        var compute = Assert.IsType<ComputeScalarDefinition>(Build(AggregateNode(0)));
+
+        var aggregate = Assert.IsType<StreamAggregateDefinition>(compute.Source);
+
+        Assert.True(aggregate.IsScalar);
+
+        Assert.Equal([0, 1, 2], new[] { compute.NodeId, aggregate.NodeId, aggregate.Source.NodeId });
+
+        Assert.Equal(["Expr1010", "Expr1003", "Expr1004"], aggregate.Aggregates.Select(a => a.Column));
+    }
+
+    [Fact]
+    public void A_Count_Output_Column_Is_Typed_As_The_Bigint_The_Aggregate_Produces()
+    {
+        var compute = Assert.IsType<ComputeScalarDefinition>(Build(AggregateNode(0)));
+
+        var aggregate = Assert.IsType<StreamAggregateDefinition>(compute.Source);
+
+        Assert.Equal(SqlDbType.BigInt, aggregate.OutputList.Single(c => c.Name == "Expr1010").DataType);
+    }
+
+    [Fact]
+    public void A_Converted_Column_Is_Typed_As_The_Convert_Names_It()
+    {
+        var compute = Assert.IsType<ComputeScalarDefinition>(Build(AggregateNode(0)));
+
+        var column = Assert.Single(compute.Columns);
+
+        Assert.Equal("Expr1005", column.Name);
+        Assert.Equal(SqlDbType.Int, column.DataType);
+
+        Assert.Equal(SqlDbType.Int, compute.OutputList.Single(c => c.Name == "Expr1005").DataType);
+    }
+
+    /// <summary>
+    /// A hash aggregate, which states the columns it groups on as its hash build keys rather than as a GroupBy
+    /// </summary>
+    private const string HashAggregateXml =
+        """
+        <?xml version="1.0"?>
+        <ShowPlanXML xmlns="http://schemas.microsoft.com/sqlserver/2004/07/showplan" Version="1.599" Build="17.0.4065.4">
+          <BatchSequence>
+            <Batch>
+              <Statements>
+                <StmtSimple StatementType="SELECT" StatementSubTreeCost="0.04">
+                  <QueryPlan>
+                    <RelOp NodeId="0" PhysicalOp="Hash Match" LogicalOp="Aggregate"
+                           EstimatedTotalSubtreeCost="0.04" EstimateRows="10" Parallel="0">
+                      <OutputList>
+                        <ColumnReference Database="[Demo]" Schema="[dbo]" Table="[DuplicateKeyTable]" Column="Category" />
+                        <ColumnReference Column="Expr1002" />
+                      </OutputList>
+                      <Hash>
+                        <DefinedValues>
+                          <DefinedValue>
+                            <ColumnReference Column="Expr1002" />
+                            <ScalarOperator ScalarString="COUNT(*)">
+                              <Aggregate AggType="COUNT*" Distinct="false" />
+                            </ScalarOperator>
+                          </DefinedValue>
+                        </DefinedValues>
+                        <HashKeysBuild>
+                          <ColumnReference Database="[Demo]" Schema="[dbo]" Table="[DuplicateKeyTable]" Column="Category" />
+                        </HashKeysBuild>
+                        <BuildResidual>
+                          <ScalarOperator ScalarString="[Demo].[dbo].[DuplicateKeyTable].[Category] = [Demo].[dbo].[DuplicateKeyTable].[Category]">
+                            <Compare CompareOp="IS">
+                              <ScalarOperator>
+                                <Identifier>
+                                  <ColumnReference Database="[Demo]" Schema="[dbo]" Table="[DuplicateKeyTable]" Column="Category" />
+                                </Identifier>
+                              </ScalarOperator>
+                              <ScalarOperator>
+                                <Identifier>
+                                  <ColumnReference Database="[Demo]" Schema="[dbo]" Table="[DuplicateKeyTable]" Column="Category" />
+                                </Identifier>
+                              </ScalarOperator>
+                            </Compare>
+                          </ScalarOperator>
+                        </BuildResidual>
+                        <RelOp NodeId="1" PhysicalOp="Clustered Index Scan" LogicalOp="Clustered Index Scan"
+                               EstimatedTotalSubtreeCost="0.01" EstimateRows="200" Parallel="0">
+                          <OutputList>
+                            <ColumnReference Database="[Demo]" Schema="[dbo]" Table="[DuplicateKeyTable]" Column="Category" />
+                          </OutputList>
+                          <IndexScan Ordered="false" ScanDirection="FORWARD">
+                            <DefinedValues />
+                            <Object Database="[Demo]" Schema="[dbo]" Table="[DuplicateKeyTable]"
+                                    Index="[ix_DuplicateKeyTable_Category]" IndexKind="Clustered" />
+                          </IndexScan>
+                        </RelOp>
+                      </Hash>
+                    </RelOp>
+                  </QueryPlan>
+                </StmtSimple>
+              </Statements>
+            </Batch>
+          </BatchSequence>
+        </ShowPlanXML>
+        """;
+
+    [Fact]
+    public void A_Hash_Aggregate_Groups_On_Its_Hash_Build_Keys()
+    {
+        var node = ExecutionPlanParser.Parse(HashAggregateXml, new PlanHandleRegistry()).NodesById[0];
+
+        Assert.NotNull(node.AggregateInfo);
+        Assert.Equal(["Category"], node.AggregateInfo!.GroupBy.Select(c => c.Column));
+
+        var aggregate = Assert.IsType<HashAggregateDefinition>(Build(node));
+
+        Assert.Equal(["Category"], aggregate.GroupBy);
+        Assert.Equal(["Expr1002"], aggregate.Aggregates.Select(a => a.Column));
+
+        Assert.IsType<RangeDefinition>(aggregate.Source);
+    }
+
+    [Fact]
+    public void A_Hash_Aggregate_Translates_Its_Count()
+    {
+        var node = ExecutionPlanParser.Parse(HashAggregateXml, new PlanHandleRegistry()).NodesById[0];
+
+        Assert.False(node.AggregateInfo!.HasUntranslatedAggregate);
+
+        Assert.Equal(AggregateFunction.CountStar, Assert.Single(node.AggregateInfo.Columns).Function);
+    }
+
+    [Fact]
+    public void A_Hash_Aggregate_Is_Not_Built_As_A_Hash_Join()
+    {
+        var node = ExecutionPlanParser.Parse(HashAggregateXml, new PlanHandleRegistry()).NodesById[0];
+
+        Assert.False(Build(node) is HashMatchDefinition);
+    }
+
+    [Fact]
+    public void A_Count_From_A_Hash_Aggregate_Is_Typed_As_A_Bigint()
+    {
+        var node = ExecutionPlanParser.Parse(HashAggregateXml, new PlanHandleRegistry()).NodesById[0];
+
+        var aggregate = Assert.IsType<HashAggregateDefinition>(Build(node));
+
+        Assert.Equal(SqlDbType.BigInt, aggregate.OutputList.Single(c => c.Name == "Expr1002").DataType);
+    }
+
+    private static PlanNode AggregateNode(int nodeId)
+        => ExecutionPlanParser.Parse(StreamAggregateXml, new PlanHandleRegistry()).NodesById[nodeId];
 
     private static IteratorDefinition? Build(PlanNode node)
         => new TraceDefinitionBuilder(ResolveUnit).Build(node);

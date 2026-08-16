@@ -1336,6 +1336,178 @@
         </Grid>
     </DataTemplate>
 
+    <DataTemplate x:Key="AggregateStartTemplate" >
+        <Grid Style="{StaticResource StepRowStyle}">
+            <StackPanel Orientation="Horizontal"
+                        Grid.ColumnSpan="9"
+                        HorizontalAlignment="Left"
+                        VerticalAlignment="Top"
+                        Spacing="5" Width="140"
+                        Margin="-150,0,0,0">
+                <Border x:Name="SourceBlob" Width="9" Height="9" CornerRadius="2" Margin="0,4,0,0" VerticalAlignment="Top" />
+                <TextBlock x:Name="SourceName" Style="{StaticResource StepNodeStyle}" />
+            </StackPanel>
+            <StackPanel Orientation="Horizontal">
+                <TextBlock Text="Aggregate" Style="{StaticResource StepLabelStyle}" />
+                <TextBlock Text="{Binding Aggregates}" Style="{StaticResource StepValueStyle}" />
+            </StackPanel>
+        </Grid>
+    </DataTemplate>
+
+    <DataTemplate x:Key="AggregateGroupTemplate" >
+        <Grid Background="{ThemeResource AcrylicBackgroundFillColorDefaultBrush}" Style="{StaticResource StepRowStyle}">
+            <StackPanel Orientation="Horizontal"
+                        Grid.ColumnSpan="9"
+                        HorizontalAlignment="Left"
+                        VerticalAlignment="Top"
+                        Spacing="5" Width="140"
+                        Margin="-150,0,0,0">
+                <Border x:Name="SourceBlob" Width="9" Height="9" CornerRadius="2" Margin="0,4,0,0" VerticalAlignment="Top" />
+                <TextBlock x:Name="SourceName" Style="{StaticResource StepNodeStyle}" />
+            </StackPanel>
+            <StackPanel Orientation="Horizontal" Padding="0,8,0,8">
+                <TextBlock Text="Group" Style="{StaticResource StepLabelStyle}" />
+                <TextBlock Text="{Binding Number}" Style="{StaticResource StepValueStyle}" />
+                <TextBlock Text="{Binding Key}" Style="{StaticResource StepValueStyle}" Margin="8,0,0,0" />
+            </StackPanel>
+        </Grid>
+    </DataTemplate>
+
+    <DataTemplate x:Key="StreamAggregateSpanTemplate" >
+        <Grid Style="{StaticResource StepRowStyle}">
+            <StackPanel Orientation="Horizontal"
+                        Grid.ColumnSpan="9"
+                        HorizontalAlignment="Left"
+                        VerticalAlignment="Top"
+                        Spacing="5" Width="140"
+                        Margin="-150,0,0,0">
+                <Border x:Name="SourceBlob" Width="9" Height="9" CornerRadius="2" Margin="0,4,0,0" VerticalAlignment="Top" />
+                <TextBlock x:Name="SourceName" Style="{StaticResource StepNodeStyle}" />
+            </StackPanel>
+            <StackPanel Orientation="Horizontal">
+                <TextBlock Text="Accumulate" Style="{StaticResource StepLabelStyle}" />
+                <TextBlock Text="{Binding Progress.GroupRows}" Style="{StaticResource StepValueStyle}" />
+                <TextBlock Text="rows" Style="{StaticResource StepPropertyStyle}" />
+                <Border Background="{ThemeResource SubtleFillColorSecondaryBrush}"
+                        CornerRadius="4"
+                        Padding="6,0,6,1"
+                        Margin="8,0,0,0"
+                        VerticalAlignment="Center">
+                    <TextBlock Text="{Binding Progress.Running}" FontSize="11" />
+                </Border>
+            </StackPanel>
+        </Grid>
+    </DataTemplate>
+
+    <DataTemplate x:Key="AggregateRowTemplate" >
+        <Grid Style="{StaticResource StepRowStyle}">
+            <StackPanel Orientation="Horizontal"
+                        Grid.ColumnSpan="9"
+                        HorizontalAlignment="Left"
+                        VerticalAlignment="Top"
+                        Spacing="5" Width="140"
+                        Margin="-150,0,0,0">
+                <Border x:Name="SourceBlob" Width="9" Height="9" CornerRadius="2" Margin="0,4,0,0" VerticalAlignment="Top" />
+                <TextBlock x:Name="SourceName" Style="{StaticResource StepNodeStyle}" />
+            </StackPanel>
+            <StackPanel Orientation="Horizontal">
+                <TextBlock Text="Accumulate" Style="{StaticResource StepLabelStyle}" />
+                <TextBlock Text="Row" Style="{StaticResource StepPropertyStyle}" />
+                <TextBlock Text="{Binding Number}" Style="{StaticResource StepValueStyle}" />
+                <Border Background="{ThemeResource SubtleFillColorSecondaryBrush}"
+                        CornerRadius="4"
+                        Padding="6,0,6,1"
+                        Margin="8,0,0,0"
+                        VerticalAlignment="Center">
+                    <TextBlock Text="{Binding Running}" FontSize="11" />
+                </Border>
+            </StackPanel>
+        </Grid>
+    </DataTemplate>
+
+    <DataTemplate x:Key="HashAggregateTemplate" >
+        <Grid Style="{StaticResource StepRowStyle}">
+            <StackPanel Orientation="Horizontal"
+                        Grid.ColumnSpan="9"
+                        HorizontalAlignment="Left"
+                        VerticalAlignment="Top"
+                        Spacing="5" Width="140"
+                        Margin="-150,0,0,0">
+                <Border x:Name="SourceBlob" Width="9" Height="9" CornerRadius="2" Margin="0,4,0,0" VerticalAlignment="Top" />
+                <TextBlock x:Name="SourceName" Style="{StaticResource StepNodeStyle}" />
+            </StackPanel>
+            <StackPanel Orientation="Horizontal">
+                <TextBlock Text="Group" Style="{StaticResource StepLabelStyle}" />
+                <TextBlock Text="{Binding Key}" Style="{StaticResource StepValueStyle}" />
+                <TextBlock Text="bucket" Style="{StaticResource StepPropertyStyle}" Margin="8,0,0,0" />
+                <TextBlock Text="{Binding Bucket}" Style="{StaticResource StepValueStyle}" />
+                <Border Background="{ThemeResource SystemFillColorSuccessBrush}"
+                        CornerRadius="4"
+                        Padding="6,0,6,1"
+                        Margin="8,0,0,0"
+                        VerticalAlignment="Center">
+                    <TextBlock Text="→ New Group"
+                               Foreground="White"
+                               FontSize="11" />
+                </Border>
+            </StackPanel>
+        </Grid>
+    </DataTemplate>
+
+    <DataTemplate x:Key="AggregateEmitTemplate" >
+        <Grid Style="{StaticResource StepRowStyle}">
+            <StackPanel Orientation="Horizontal"
+                        Grid.ColumnSpan="9"
+                        HorizontalAlignment="Left"
+                        VerticalAlignment="Top"
+                        Spacing="5" Width="140"
+                        Margin="-150,0,0,0">
+                <Border x:Name="SourceBlob" Width="9" Height="9" CornerRadius="2" Margin="0,4,0,0" VerticalAlignment="Top" />
+                <TextBlock x:Name="SourceName" Style="{StaticResource StepNodeStyle}" />
+            </StackPanel>
+            <StackPanel Orientation="Horizontal">
+                <TextBlock Text="Get Row" Style="{StaticResource StepLabelStyle}" />
+                <TextBlock Text="{Binding Values}" Style="{StaticResource StepValueStyle}" />
+                <Border x:Name="EmitBadge"
+                        Background="{ThemeResource SystemFillColorSuccessBrush}"
+                        CornerRadius="4"
+                        Padding="6,0,6,1"
+                        Margin="8,0,0,0"
+                        VerticalAlignment="Center">
+                    <TextBlock Text="→ Emit"
+                               Foreground="White"
+                               FontSize="11" />
+                </Border>
+            </StackPanel>
+        </Grid>
+    </DataTemplate>
+
+    <DataTemplate x:Key="ComputeRowTemplate" >
+        <Grid Style="{StaticResource StepRowStyle}">
+            <StackPanel Orientation="Horizontal"
+                        Grid.ColumnSpan="9"
+                        HorizontalAlignment="Left"
+                        VerticalAlignment="Top"
+                        Spacing="5" Width="140"
+                        Margin="-150,0,0,0">
+                <Border x:Name="SourceBlob" Width="9" Height="9" CornerRadius="2" Margin="0,4,0,0" VerticalAlignment="Top" />
+                <TextBlock x:Name="SourceName" Style="{StaticResource StepNodeStyle}" />
+            </StackPanel>
+            <StackPanel Orientation="Horizontal">
+                <TextBlock Text="Compute" Style="{StaticResource StepLabelStyle}" />
+                <TextBlock Text="Row" Style="{StaticResource StepPropertyStyle}" />
+                <TextBlock Text="{Binding Number}" Style="{StaticResource StepValueStyle}" />
+                <Border Background="{ThemeResource SubtleFillColorSecondaryBrush}"
+                        CornerRadius="4"
+                        Padding="6,0,6,1"
+                        Margin="8,0,0,0"
+                        VerticalAlignment="Center">
+                    <TextBlock Text="{Binding Values}" FontSize="11" />
+                </Border>
+            </StackPanel>
+        </Grid>
+    </DataTemplate>
+
     <DataTemplate x:Key="InputStartTemplate" >
         <Grid Style="{StaticResource StepRowStyle}">
             <StackPanel Orientation="Horizontal" 
@@ -1695,6 +1867,13 @@
         SortedTemplate="{StaticResource SortedTemplate}"
         SortRowTemplate="{StaticResource SortRowTemplate}"
         SortDuplicateTemplate="{StaticResource SortDuplicateTemplate}"
+        AggregateStartTemplate="{StaticResource AggregateStartTemplate}"
+        AggregateGroupTemplate="{StaticResource AggregateGroupTemplate}"
+        AggregateRowTemplate="{StaticResource AggregateRowTemplate}"
+        StreamAggregateSpanTemplate="{StaticResource StreamAggregateSpanTemplate}"
+        AggregateEmitTemplate="{StaticResource AggregateEmitTemplate}"
+        HashAggregateTemplate="{StaticResource HashAggregateTemplate}"
+        ComputeRowTemplate="{StaticResource ComputeRowTemplate}"
         TopRowTemplate="{StaticResource TopRowTemplate}"
         RowCountSpanTemplate="{StaticResource RowCountSpanTemplate}"
         HashProbeTemplate="{StaticResource HashProbeTemplate}"

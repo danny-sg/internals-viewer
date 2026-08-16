@@ -31,6 +31,12 @@ public static class OperatorClassifier
     public static bool IsConcatenation(PlanNode n) =>
         EqualsOp(n.PhysicalOperator, "Concatenation");
 
+    public static bool IsStreamAggregate(PlanNode n) =>
+        EqualsOp(n.PhysicalOperator, "Stream Aggregate");
+
+    public static bool IsAggregate(PlanNode n) =>
+        Contains(n.LogicalOperator, "Aggregate") || IsStreamAggregate(n);
+
     public static bool IsSpool(PlanNode n) =>
         Contains(n.PhysicalOperator, "Spool");
 
@@ -70,23 +76,15 @@ public static class OperatorClassifier
     public static bool IsLeaf(PlanNode n) =>
         IsScan(n) || IsSeek(n) || IsLookup(n);
 
-    // A partial (local) aggregate sits below an exchange and aggregates each thread's stream into a
-    // bounded hash table, flushing as it fills - so, unlike a full aggregate, it does not block.
     public static bool IsPartialAggregate(PlanNode n) =>
         Contains(n.LogicalOperator, "Partial");
 
-    // A full hash aggregate consumes all input before producing groups (the non-blocking partial
-    // aggregate, which shares the "Hash Match" physical operator, is excluded).
     public static bool IsHashAggregate(PlanNode n) =>
         IsHash(n) && Contains(n.LogicalOperator, "Aggregate") && !IsPartialAggregate(n);
 
-    // An eager spool materialises its whole input before emitting; a lazy spool streams.
     public static bool IsEagerSpool(PlanNode n) =>
         IsSpool(n) && Contains(n.LogicalOperator, "Eager");
 
-    // Blocking operators must consume all input before producing output. This excludes the hybrid hash
-    // join (handled per-input by RoleOf) and the non-blocking partial aggregate, flow distinct and lazy
-    // spool, which all stream.
     public static bool IsBlocking(PlanNode n) =>
         IsSort(n) || IsHashAggregate(n) || IsEagerSpool(n);
 
@@ -102,8 +100,6 @@ public static class OperatorClassifier
     public static bool IsLoopDriven(PlanNode n) =>
         IsNestedLoop(n);
 
-    // A hash JOIN has two inputs (build is blocking, probe streams); a hash AGGREGATE shares the "Hash
-    // Match" physical operator but has a single, blocking input - so the child count distinguishes them.
     public static bool IsHashJoin(PlanNode n) =>
         IsHash(n) && n.Children.Count >= 2;
 

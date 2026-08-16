@@ -34,6 +34,11 @@ public sealed class HashTable
     /// </summary>
     public long RowBytes { get; private set; }
 
+    /// <summary>
+    /// What the table takes up, its rows alongside the workspace holding them
+    /// </summary>
+    public BufferMemory Memory => RowMemory.ForHashTable(RowBytes, RowCount);
+
     private HashBucket[] Slots { get; set; }
 
     /// <summary>
@@ -77,11 +82,6 @@ public sealed class HashTable
         LongestChain = 0;
         RowBytes = 0;
     }
-
-    /// <summary>
-    /// What the table takes up, its rows alongside the workspace holding them
-    /// </summary>
-    public BufferMemory Memory => RowMemory.ForHashTable(RowBytes, RowCount);
 
     /// <summary>
     /// Rebuilds the table at a different bucket count, redistributing the rows it already holds

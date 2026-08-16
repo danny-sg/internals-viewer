@@ -244,7 +244,44 @@ public static class PlanNodePropertyBuilder
             }
         }
 
-        if (node.GroupByColumns.Count > 0)
+        if (node.AggregateInfo is { } aggregateInfo)
+        {
+            var aggregateGroup = new PlanNodeProperty("Aggregate", string.Empty);
+
+            aggregateGroup.Children.Add(new PlanNodeProperty("Scope", aggregateInfo.IsScalar ? "Scalar" : "Grouped")
+            {
+                Tooltip = aggregateInfo.IsScalar
+                    ? "The whole input is one group, so a single row is returned even when no rows arrive"
+                    : "One row is returned each time the grouping columns change, which needs the input in that order"
+            });
+
+            if (aggregateInfo.GroupBy.Count > 0)
+            {
+                aggregateGroup.Children.Add(new PlanNodeProperty("Group By", ColumnList(aggregateInfo.GroupBy, expressions))
+                {
+                    IsValueMonospace = true
+                });
+            }
+
+            foreach (var column in aggregateInfo.Columns)
+            {
+                var name = expressions?.Find(column.Column)?.Alias ?? column.Column;
+
+                aggregateGroup.Children.Add(new PlanNodeProperty(name, column.ToText())
+                {
+                    IsNameMonospace = true,
+                    IsValueMonospace = true
+                });
+            }
+
+            if (aggregateInfo.HasUntranslatedAggregate)
+            {
+                aggregateGroup.Children.Add(new PlanNodeProperty("Aggregates", "(not all translatable)"));
+            }
+
+            result.Add(aggregateGroup);
+        }
+        else if (node.GroupByColumns.Count > 0)
         {
             var aggregateGroup = new PlanNodeProperty("Aggregate", string.Empty);
 

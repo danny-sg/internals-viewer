@@ -2,12 +2,12 @@ using System.Collections.Generic;
 using System.Linq;
 using InternalsViewer.Execution.AccessPaths.Definitions;
 using InternalsViewer.Execution.AccessPaths.Memory;
-using InternalsViewer.Execution.AccessPaths.Results;
 using InternalsViewer.Execution.AccessPaths.Results.Steps;
 using InternalsViewer.Execution.AccessPaths.Search;
 using InternalsViewer.Execution.Interfaces;
 using InternalsViewer.Execution.Interfaces.Iterators;
 using InternalsViewer.Execution.Interfaces.Iterators.Joins;
+using InternalsViewer.Execution.Iterators.Aggregation;
 using InternalsViewer.Execution.Iterators.Row;
 using InternalsViewer.Execution.Iterators.Stepping;
 using InternalsViewer.Internals.Engine.Address;
@@ -43,6 +43,8 @@ public sealed class TraceStepApplier(TraceLayout layout,
 
         SyncHeldRows(stepper);
 
+        SyncAggregates(stepper);
+
         SyncHashTables(step);
 
         visualsByNode.GetValueOrDefault(step.NodeId)?.Apply(step);
@@ -60,6 +62,8 @@ public sealed class TraceStepApplier(TraceLayout layout,
             }
 
             node.HashTable?.Reset();
+
+            node.Aggregates?.Reset();
         }
 
         foreach (var op in operatorsByNode.Values)
@@ -154,6 +158,8 @@ public sealed class TraceStepApplier(TraceLayout layout,
             AccessStep.Output { EmittedRecord: { } emitted } => ToRecordModel(emitted),
             AccessStep.ConcatRow { EmittedRecord: { } emitted } => ToRecordModel(emitted),
             AccessStep.SortRow { EmittedRecord: { } emitted } => ToRecordModel(emitted),
+            AccessStep.AggregateEmit { EmittedRecord: { } emitted } => ToRecordModel(emitted),
+            AccessStep.ComputeRow { EmittedRecord: { } emitted } => ToRecordModel(emitted),
             AccessStep.Row { EmittedRecord: { } emitted } => ToRecordModel(emitted),
             _ => null
         };
@@ -190,6 +196,24 @@ public sealed class TraceStepApplier(TraceLayout layout,
 
             case ConcatenationDefinition concatenation:
                 tab.StateItems.Add(new TraceStateItem("Input") { Value = $"1 of {concatenation.Inputs.Count}" });
+                tab.StateItems.Add(new TraceStateItem("Rows") { Value = "0" });
+                break;
+
+            case StreamAggregateDefinition aggregate:
+                if (!aggregate.IsScalar)
+                {
+                    tab.StateItems.Add(new TraceStateItem("Groups") { Value = "0" });
+                }
+
+                break;
+
+            case HashAggregateDefinition:
+                tab.StateItems.Add(new TraceStateItem("Groups") { Value = "0" });
+                tab.StateItems.Add(new TraceStateItem("Rows") { Value = "0" });
+                tab.StateItems.Add(new TraceStateItem("Memory") { Value = "0 KB" });
+                break;
+
+            case ComputeScalarDefinition:
                 tab.StateItems.Add(new TraceStateItem("Rows") { Value = "0" });
                 break;
         }
@@ -336,6 +360,19 @@ public sealed class TraceStepApplier(TraceLayout layout,
                     tab.SetState("Input", $"{concatenation.InputNumber} of {concatenation.InputCount}");
                     tab.SetState("Rows", concatenation.RowCount.ToString("N0"));
                     break;
+
+                case StreamAggregateIterator aggregate:
+                    tab.SetState("Groups", aggregate.RowCount.ToString("N0"));
+                    break;
+
+                case HashAggregateIterator hashAggregate:
+                    tab.SetState("Groups", hashAggregate.GroupCount.ToString("N0"));
+                    tab.SetState("Rows", hashAggregate.InputRowCount.ToString("N0"));
+                    break;
+
+                case ComputeScalarIterator compute:
+                    tab.SetState("Rows", compute.RowCount.ToString("N0"));
+                    break;
             }
 
             if (iterator is IMemoryBufferIterator buffer)
@@ -375,6 +412,18 @@ public sealed class TraceStepApplier(TraceLayout layout,
                     held.Sync(buffer.Rows);
                 }
             }
+        }
+    }
+
+    public void SyncAggregates(IteratorStepper stepper)
+    {
+        foreach (var iterator in Iterators(stepper.Root).OfType<StreamAggregateIterator>())
+        {
+            layout.Nodes.GetValueOrDefault(iterator.NodeId)?.Aggregates?.Sync(iterator.GroupValues,
+                                                                             iterator.Running,
+                                                                             iterator.CurrentKey,
+                                                                             iterator.GroupRowCount,
+                                                                             iterator.RowCount);
         }
     }
 

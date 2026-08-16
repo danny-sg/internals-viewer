@@ -8,7 +8,8 @@ public enum TracePaneKind
     Visual,
     RowStream,
     HeldRows,
-    HashTable
+    HashTable,
+    Aggregates
 }
 
 /// <summary>

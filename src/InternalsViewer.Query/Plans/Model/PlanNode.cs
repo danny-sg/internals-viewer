@@ -46,6 +46,8 @@ public sealed class PlanNode
 
     public List<ColumnReference> GroupByColumns { get; set; } = [];
 
+    public AggregateInfo? AggregateInfo { get; set; }
+
     public PlanIoStatistics? IoStats { get; set; }
 
     public PlanMemoryGrant? MemoryGrant { get; set; }

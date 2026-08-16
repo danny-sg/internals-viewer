@@ -1,4 +1,3 @@
-using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.UI.App.Controls.Docking;
 using InternalsViewer.UI.App.Models.Query.Trace;
 using InternalsViewer.UI.App.ViewModels.Query.Trace;
@@ -320,10 +319,16 @@ public sealed partial class TraceOperatorPanelView : UserControl, IDocumentComma
     {
         FrameworkElement? view = pane.Kind switch
         {
-            TracePaneKind.Visual => new TraceVisualPanelView(),
-            TracePaneKind.RowStream => new TraceRowStreamPanelView(),
-            TracePaneKind.HeldRows => new TraceHeldRowsPanelView(),
-            TracePaneKind.HashTable => new TraceHashTablePanelView(),
+            TracePaneKind.Visual 
+                => new TraceVisualPanelView(),
+            TracePaneKind.RowStream 
+                => new TraceRowStreamPanelView(),
+            TracePaneKind.HeldRows 
+                => new TraceHeldRowsPanelView(),
+            TracePaneKind.HashTable 
+                => new TraceHashTablePanelView(),
+            TracePaneKind.Aggregates 
+                => new TraceAggregatePanelView(),
             _ => null
         };
 

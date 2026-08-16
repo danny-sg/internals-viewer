@@ -1,6 +1,7 @@
 using System.Diagnostics.CodeAnalysis;
 using InternalsViewer.Execution.Interfaces;
 using InternalsViewer.Execution.Iterators;
+using InternalsViewer.Execution.Iterators.Aggregation;
 using InternalsViewer.Execution.Iterators.DataAccess;
 using InternalsViewer.Execution.Iterators.Joins;
 using InternalsViewer.Execution.Iterators.Row;
@@ -25,5 +26,8 @@ public static class ServiceRegistration
         services.AddTransient<SelectIterator>();
         services.AddTransient<ConcatenationIterator>();
         services.AddTransient<SortIterator>();
+        services.AddTransient<StreamAggregateIterator>();
+        services.AddTransient<HashAggregateIterator>();
+        services.AddTransient<ComputeScalarIterator>();
     }
 }

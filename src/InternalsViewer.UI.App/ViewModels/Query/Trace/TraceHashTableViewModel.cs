@@ -101,11 +101,12 @@ public sealed partial class TraceHashTableViewModel(RecordColumnFilter columnFil
             && _bucketModels is { } models
             && models.Count == table.BucketCount
             && table.RowCount == _syncedRowCount + 1
-            && step is AccessStep.HashBuild { IsNullKey: false } build)
+            && step != null
+            && Added(step) is { } added)
         {
-            models[build.Bucket].Entries.Add(ToEntryModel(table.Buckets[build.Bucket].Entries[build.Entry],
-                                                          build.Bucket,
-                                                          build.Entry));
+            models[added.Bucket].Entries.Add(ToEntryModel(table.Buckets[added.Bucket].Entries[added.Entry],
+                                                          added.Bucket,
+                                                          added.Entry));
 
             _syncedRowCount = table.RowCount;
         }
@@ -116,6 +117,11 @@ public sealed partial class TraceHashTableViewModel(RecordColumnFilter columnFil
             RebuildBuckets(table);
 
             Buckets = _bucketModels!;
+        }
+
+        if (isOwnStep && step is AccessStep.HashAggregate { IsNewGroup: false } folded)
+        {
+            RefreshEntry(table, folded.Bucket, folded.Entry);
         }
 
         if (isOwnStep)
@@ -143,6 +149,29 @@ public sealed partial class TraceHashTableViewModel(RecordColumnFilter columnFil
         Buckets = [];
         Columns = HashColumnModel.CreateBaseColumns();
         Summary = string.Empty;
+    }
+
+    private static (int Bucket, int Entry)? Added(AccessStep step)
+        => step switch
+        {
+            AccessStep.HashBuild { IsNullKey: false } build => (build.Bucket, build.Entry),
+            AccessStep.HashAggregate { IsNewGroup: true } group => (group.Bucket, group.Entry),
+            _ => null
+        };
+
+    private void RefreshEntry(HashTable table, int bucket, int entry)
+    {
+        if (_bucketModels is not { } models
+            || bucket < 0
+            || bucket >= models.Count
+            || entry < 0
+            || entry >= models[bucket].Entries.Count
+            || entry >= table.Buckets[bucket].Count)
+        {
+            return;
+        }
+
+        models[bucket].Entries[entry] = ToEntryModel(table.Buckets[bucket].Entries[entry], bucket, entry);
     }
 
     private void RebuildBuckets(HashTable table)
@@ -173,7 +202,7 @@ public sealed partial class TraceHashTableViewModel(RecordColumnFilter columnFil
     private void UpdateHighlight(AccessStep? step)
     {
         // A new probe row starts a fresh verdict, so whatever the last one matched stops being green
-        if (step is AccessStep.HashProbe or AccessStep.HashBuild)
+        if (step is AccessStep.HashProbe or AccessStep.HashBuild or AccessStep.HashAggregate)
         {
             ClearMatchedEntries();
         }
@@ -189,6 +218,7 @@ public sealed partial class TraceHashTableViewModel(RecordColumnFilter columnFil
             AccessStep.HashBuild build => (build.Bucket, build.Entry),
             AccessStep.HashProbe probe => (probe.Bucket, -1),
             AccessStep.HashCompare compare => (compare.Bucket, compare.Entry),
+            AccessStep.HashAggregate group => (group.Bucket, group.Entry),
             _ => (-1, -1)
         };
 

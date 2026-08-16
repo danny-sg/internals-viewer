@@ -1,0 +1,125 @@
+<?xml version="1.0" encoding="utf-8"?>
+<UserControl
+    x:Class="InternalsViewer.UI.App.Views.Query.Tabs.Trace.TraceAggregatePanelView"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    xmlns:trace="using:InternalsViewer.UI.App.Models.Query.Trace"
+    mc:Ignorable="d">
+
+    <UserControl.Resources>
+        <Style x:Key="AggregateCellStyle" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="12" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+            <Setter Property="Padding" Value="6,7,4,2" />
+            <Setter Property="Height" Value="30" />
+            <Setter Property="TextTrimming" Value="CharacterEllipsis" />
+        </Style>
+
+        <Style x:Key="AggregateGridLineStyle" TargetType="Border">
+            <Setter Property="BorderThickness" Value="0,0,1,1" />
+            <Setter Property="BorderBrush" Value="{ThemeResource ControlStrokeColorDefaultBrush}" />
+        </Style>
+
+        <Style x:Key="AggregateHeaderStyle" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="12" />
+            <Setter Property="Height" Value="30" />
+            <Setter Property="Padding" Value="6,7,4,4" />
+            <Setter Property="TextTrimming" Value="CharacterEllipsis" />
+            <Setter Property="Foreground" Value="{ThemeResource TextFillColorSecondaryBrush}" />
+        </Style>
+    </UserControl.Resources>
+
+    <Grid Background="{ThemeResource LayerFillColorDefaultBrush}">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+
+        <Border Grid.Row="0"
+                Padding="8,3"
+                BorderThickness="0,1,0,0"
+                BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+
+                <TextBlock VerticalAlignment="Center"
+                           Margin="0,0,6,0"
+                           Text="Aggregates"
+                           Style="{ThemeResource CaptionTextBlockStyle}"
+                           Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+
+                <StackPanel Grid.Column="1" Orientation="Horizontal">
+                    <TextBlock x:Name="GroupHeadingText"
+                               VerticalAlignment="Center"
+                               Margin="0,0,6,0"
+                               Style="{ThemeResource CaptionTextBlockStyle}"
+                               Foreground="{ThemeResource TextFillColorTertiaryBrush}" />
+                    <TextBlock x:Name="GroupKeyText"
+                               VerticalAlignment="Center"
+                               Margin="0,0,12,0"
+                               FontSize="12"
+                               FontFamily="Consolas"
+                               Style="{ThemeResource CaptionTextBlockStyle}" />
+                    <TextBlock x:Name="StatusText"
+                               VerticalAlignment="Center"
+                               Style="{ThemeResource CaptionTextBlockStyle}"
+                               Foreground="{ThemeResource TextFillColorTertiaryBrush}" />
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <Border Grid.Row="1"
+                BorderThickness="0,1,0,0"
+                BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}">
+            <StackPanel Orientation="Horizontal">
+                <Border Style="{StaticResource AggregateGridLineStyle}" Height="30" Width="160" VerticalAlignment="Stretch">
+                    <TextBlock Text="Column" Style="{StaticResource AggregateHeaderStyle}" />
+                </Border>
+                <Border Style="{StaticResource AggregateGridLineStyle}" Height="30" Width="240" VerticalAlignment="Stretch">
+                    <TextBlock Text="Aggregate" Style="{StaticResource AggregateHeaderStyle}" />
+                </Border>
+                <Border Style="{StaticResource AggregateGridLineStyle}" Height="30" Width="160" VerticalAlignment="Stretch">
+                    <TextBlock Text="Value" Style="{StaticResource AggregateHeaderStyle}" />
+                </Border>
+            </StackPanel>
+        </Border>
+
+        <ScrollViewer Grid.Row="2"
+                      VerticalScrollBarVisibility="Auto"
+                      HorizontalScrollBarVisibility="Auto">
+            <ItemsRepeater ItemsSource="{x:Bind ViewModel.Rows, Mode=OneWay}" Margin="0,0,0,8">
+                <ItemsRepeater.ItemTemplate>
+                    <DataTemplate x:DataType="trace:TraceAggregateRow">
+                        <StackPanel Orientation="Horizontal">
+                            <Border Style="{StaticResource AggregateGridLineStyle}" Width="160">
+                                <TextBlock Text="{x:Bind Column}"
+                                           Height="30"
+                                           FontFamily="Consolas"
+                                           Style="{StaticResource AggregateCellStyle}" />
+                            </Border>
+                            <Border Style="{StaticResource AggregateGridLineStyle}" Width="240">
+                                <TextBlock Text="{x:Bind Expression}"
+                                           Height="30"
+                                           FontFamily="Consolas"
+                                           Style="{StaticResource AggregateCellStyle}"
+                                           Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                            </Border>
+                            <Border Style="{StaticResource AggregateGridLineStyle}" Width="160">
+                                <TextBlock Text="{x:Bind Value, Mode=OneWay}"
+                                           Height="30"
+                                           FontFamily="Consolas"
+                                           Style="{StaticResource AggregateCellStyle}" />
+                            </Border>
+                        </StackPanel>
+                    </DataTemplate>
+                </ItemsRepeater.ItemTemplate>
+            </ItemsRepeater>
+        </ScrollViewer>
+    </Grid>
+</UserControl>

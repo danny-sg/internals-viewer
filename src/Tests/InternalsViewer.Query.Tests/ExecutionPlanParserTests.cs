@@ -1,4 +1,7 @@
 
+using System.Data;
+using InternalsViewer.Execution.AccessPaths.Aggregation;
+using InternalsViewer.Execution.AccessPaths.Predicates;
 using InternalsViewer.Execution.AccessPaths.Search;
 using InternalsViewer.Query.Plans.Model;
 using InternalsViewer.Query.Plans.Parsers;
@@ -799,5 +802,166 @@ public class ExecutionPlanParserTests
         var plan = Parse(ClusteredIndexSeekXml);
 
         Assert.Null(plan.Root[0].QueryMemoryGrant);
+    }
+
+    // ------------------------------------------------------------------
+    // Stream Aggregate under a Compute Scalar
+    // ------------------------------------------------------------------
+
+    private const string StreamAggregateXml =
+        """
+        <?xml version="1.0"?>
+        <ShowPlanXML xmlns="http://schemas.microsoft.com/sqlserver/2004/07/showplan"
+                     Version="1.7" Build="16.0.0">
+          <BatchSequence>
+            <Batch>
+              <Statements>
+                <StmtSimple StatementType="SELECT" StatementSubTreeCost="0.0265598">
+                  <QueryPlan>
+                    <RelOp NodeId="0" PhysicalOp="Compute Scalar" LogicalOp="Compute Scalar"
+                           EstimateRows="1" EstimatedTotalSubtreeCost="0.0265598">
+                      <OutputList>
+                        <ColumnReference Column="Expr1003" />
+                        <ColumnReference Column="Expr1004" />
+                        <ColumnReference Column="Expr1005" />
+                      </OutputList>
+                      <ComputeScalar>
+                        <DefinedValues>
+                          <DefinedValue>
+                            <ColumnReference Column="Expr1005" />
+                            <ScalarOperator ScalarString="CONVERT_IMPLICIT(int,[Expr1010],0)">
+                              <Convert DataType="int" Style="0" Implicit="1">
+                                <ScalarOperator>
+                                  <Identifier>
+                                    <ColumnReference Column="Expr1010" />
+                                  </Identifier>
+                                </ScalarOperator>
+                              </Convert>
+                            </ScalarOperator>
+                          </DefinedValue>
+                        </DefinedValues>
+                        <RelOp NodeId="1" PhysicalOp="Stream Aggregate" LogicalOp="Aggregate"
+                               EstimateRows="1" EstimatedTotalSubtreeCost="0.0265598">
+                          <OutputList>
+                            <ColumnReference Column="Expr1003" />
+                            <ColumnReference Column="Expr1004" />
+                            <ColumnReference Column="Expr1010" />
+                          </OutputList>
+                          <StreamAggregate>
+                            <DefinedValues>
+                              <DefinedValue>
+                                <ColumnReference Column="Expr1010" />
+                                <ScalarOperator ScalarString="Count(*)">
+                                  <Aggregate AggType="countstar" Distinct="false" />
+                                </ScalarOperator>
+                              </DefinedValue>
+                              <DefinedValue>
+                                <ColumnReference Column="Expr1003" />
+                                <ScalarOperator ScalarString="MIN([InternalsViewerDemo].[dbo].[HeapTable].[Id])">
+                                  <Aggregate AggType="MIN" Distinct="false">
+                                    <ScalarOperator>
+                                      <Identifier>
+                                        <ColumnReference Database="[InternalsViewerDemo]" Schema="[dbo]"
+                                                         Table="[HeapTable]" Column="Id" />
+                                      </Identifier>
+                                    </ScalarOperator>
+                                  </Aggregate>
+                                </ScalarOperator>
+                              </DefinedValue>
+                              <DefinedValue>
+                                <ColumnReference Column="Expr1004" />
+                                <ScalarOperator ScalarString="MAX([InternalsViewerDemo].[dbo].[HeapTable].[Id])">
+                                  <Aggregate AggType="MAX" Distinct="false">
+                                    <ScalarOperator>
+                                      <Identifier>
+                                        <ColumnReference Database="[InternalsViewerDemo]" Schema="[dbo]"
+                                                         Table="[HeapTable]" Column="Id" />
+                                      </Identifier>
+                                    </ScalarOperator>
+                                  </Aggregate>
+                                </ScalarOperator>
+                              </DefinedValue>
+                            </DefinedValues>
+                            <RelOp NodeId="2" PhysicalOp="Table Scan" LogicalOp="Table Scan"
+                                   EstimateRows="5000" EstimatedTotalSubtreeCost="0.0265598"
+                                   TableCardinality="5000">
+                              <OutputList>
+                                <ColumnReference Database="[InternalsViewerDemo]" Schema="[dbo]"
+                                                 Table="[HeapTable]" Column="Id" />
+                              </OutputList>
+                              <TableScan Ordered="false" ForcedIndex="false" ForceScan="false"
+                                         NoExpandHint="false" Storage="RowStore">
+                                <DefinedValues>
+                                  <DefinedValue>
+                                    <ColumnReference Database="[InternalsViewerDemo]" Schema="[dbo]"
+                                                     Table="[HeapTable]" Column="Id" />
+                                  </DefinedValue>
+                                </DefinedValues>
+                                <Object Database="[InternalsViewerDemo]" Schema="[dbo]" Table="[HeapTable]"
+                                        IndexKind="Heap" Storage="RowStore" />
+                              </TableScan>
+                            </RelOp>
+                          </StreamAggregate>
+                        </RelOp>
+                      </ComputeScalar>
+                    </RelOp>
+                  </QueryPlan>
+                </StmtSimple>
+              </Statements>
+            </Batch>
+          </BatchSequence>
+        </ShowPlanXML>
+        """;
+
+    [Fact]
+    public void Stream_Aggregate_Parses_Every_Aggregate_It_Defines()
+    {
+        var plan = Parse(StreamAggregateXml);
+
+        var info = plan.NodesById[1].AggregateInfo;
+
+        Assert.NotNull(info);
+        Assert.True(info!.IsScalar);
+        Assert.False(info.HasUntranslatedAggregate);
+
+        Assert.Equal(["Expr1010", "Expr1003", "Expr1004"], info.Columns.Select(c => c.Column));
+
+        Assert.Equal([AggregateFunction.CountStar, AggregateFunction.Min, AggregateFunction.Max],
+                     info.Columns.Select(c => c.Function));
+
+        Assert.All(info.Columns, column => Assert.False(column.IsDistinct));
+    }
+
+    [Fact]
+    public void An_Aggregate_Argument_Is_Parsed_As_The_Column_It_Reads()
+    {
+        var plan = Parse(StreamAggregateXml);
+
+        var minimum = plan.NodesById[1].AggregateInfo!.Columns.Single(c => c.Function == AggregateFunction.Min);
+
+        Assert.Equal("Id", Assert.IsType<AccessExpression.Column>(minimum.Argument).Name);
+
+        Assert.Null(plan.NodesById[1].AggregateInfo!.Columns.Single(c => c.Function == AggregateFunction.CountStar).Argument);
+    }
+
+    [Fact]
+    public void A_Compute_Scalar_Keeps_The_Type_Its_Convert_Names()
+    {
+        var plan = Parse(StreamAggregateXml);
+
+        var definedValue = Assert.Single(plan.NodesById[0].DefinedValues);
+
+        Assert.Equal(SqlDbType.Int, definedValue.DataType);
+
+        Assert.Equal("Expr1010", Assert.IsType<AccessExpression.Column>(definedValue.ParsedExpression).Name);
+    }
+
+    [Fact]
+    public void An_Operator_That_Is_Not_An_Aggregate_Has_No_Aggregate_Info()
+    {
+        var plan = Parse(StreamAggregateXml);
+
+        Assert.Null(plan.NodesById[0].AggregateInfo);
+        Assert.Null(plan.NodesById[2].AggregateInfo);
     }
 }

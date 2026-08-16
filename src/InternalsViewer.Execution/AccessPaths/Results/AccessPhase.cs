@@ -28,5 +28,8 @@ public enum AccessPhase
     Duplicate,
     Inputs,
     Open,
-    GetRow
+    GetRow,
+    Group,
+    Accumulate,
+    Compute
 }

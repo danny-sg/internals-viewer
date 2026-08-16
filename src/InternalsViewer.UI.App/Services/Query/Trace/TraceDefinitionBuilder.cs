@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Data;
 using System.Linq;
+using InternalsViewer.Execution.AccessPaths.Aggregation;
 using InternalsViewer.Execution.AccessPaths.Binding;
 using InternalsViewer.Execution.AccessPaths.Definitions;
 using InternalsViewer.Execution.AccessPaths.Predicates;
@@ -46,6 +47,11 @@ public sealed class TraceDefinitionBuilder(Func<PlanNode, AllocationUnit?> resol
 
     public IteratorDefinition? Build(PlanNode node)
     {
+        if (OperatorClassifier.IsHashAggregate(node))
+        {
+            return BuildHashAggregate(node);
+        }
+
         if (OperatorClassifier.IsHash(node))
         {
             return BuildHashMatch(node);
@@ -74,6 +80,16 @@ public sealed class TraceDefinitionBuilder(Func<PlanNode, AllocationUnit?> resol
         if (OperatorClassifier.IsSort(node))
         {
             return BuildSort(node);
+        }
+
+        if (OperatorClassifier.IsStreamAggregate(node))
+        {
+            return BuildStreamAggregate(node);
+        }
+
+        if (OperatorClassifier.IsComputeScalar(node))
+        {
+            return BuildComputeScalar(node);
         }
 
         if (OperatorClassifier.IsRead(node))
@@ -107,6 +123,122 @@ public sealed class TraceDefinitionBuilder(Func<PlanNode, AllocationUnit?> resol
             TopCount = node.SortInfo?.TopRows
         };
     }
+
+    private IteratorDefinition? BuildStreamAggregate(PlanNode node)
+    {
+        if (node.AggregateInfo is not { HasUntranslatedAggregate: false } info || node.Children.Count != 1)
+        {
+            return null;
+        }
+
+        if (info.Columns.Count == 0 && info.GroupBy.Count == 0)
+        {
+            return null;
+        }
+
+        if (Build(node.Children[0]) is not { } source)
+        {
+            return null;
+        }
+
+        RegisterAggregateTypes(info);
+
+        Nodes[node.NodeId] = node;
+
+        return new StreamAggregateDefinition(source)
+        {
+            NodeId = node.NodeId,
+            OutputList = OutputList(node),
+            GroupBy = [.. info.GroupBy.Select(c => ResolveColumnName(c.Column))],
+            Aggregates = info.Columns
+        };
+    }
+
+    private IteratorDefinition? BuildHashAggregate(PlanNode node)
+    {
+        if (node.AggregateInfo is not { HasUntranslatedAggregate: false, GroupBy.Count: > 0 } info || node.Children.Count != 1)
+        {
+            return null;
+        }
+
+        if (Build(node.Children[0]) is not { } source)
+        {
+            return null;
+        }
+
+        RegisterAggregateTypes(info);
+
+        Nodes[node.NodeId] = node;
+
+        return new HashAggregateDefinition(source)
+        {
+            NodeId = node.NodeId,
+            OutputList = OutputList(node),
+            GroupBy = [.. info.GroupBy.Select(c => ResolveColumnName(c.Column))],
+            Aggregates = info.Columns,
+            RowEstimate = node.EstimatedRows > 0 ? node.EstimatedRows : node.RowsOutput
+        };
+    }
+
+    private IteratorDefinition? BuildComputeScalar(PlanNode node)
+    {
+        if (node.Children.Count != 1)
+        {
+            return null;
+        }
+
+        if (Build(node.Children[0]) is not { } source)
+        {
+            return null;
+        }
+
+        var columns = new List<ComputedColumn>();
+
+        foreach (var definedValue in node.DefinedValues)
+        {
+            if (definedValue.Columns.Count != 1 || definedValue.ParsedExpression is not { } expression)
+            {
+                return null;
+            }
+
+            var name = definedValue.Columns[0].Column.Trim('[', ']');
+
+            columns.Add(new ComputedColumn(name, expression)
+            {
+                DataType = definedValue.DataType,
+                Text = definedValue.Expression ?? string.Empty
+            });
+
+            _typesByColumn[name] = definedValue.DataType ?? TypeOf(expression);
+        }
+
+        Nodes[node.NodeId] = node;
+
+        return new ComputeScalarDefinition(source)
+        {
+            NodeId = node.NodeId,
+            OutputList = OutputList(node),
+            Columns = columns
+        };
+    }
+
+    private void RegisterAggregateTypes(AggregateInfo info)
+    {
+        foreach (var column in info.Columns)
+        {
+            var argumentType = column.Argument is null ? null : TypeOf(column.Argument);
+
+            _typesByColumn[column.Column] = AggregateFunctions.ResultType(column.Function, argumentType);
+        }
+    }
+
+    private SqlDbType? TypeOf(AccessExpression expression)
+        => expression switch
+        {
+            AccessExpression.Column column => _typesByColumn.GetValueOrDefault(column.Name.Trim('[', ']')),
+            AccessExpression.Constant constant => constant.Value.DataType,
+            _ => null
+        };
 
     private IteratorDefinition? BuildConcatenation(PlanNode node)
     {

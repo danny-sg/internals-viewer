@@ -64,6 +64,20 @@ public class AccessStepTemplateSelector : DataTemplateSelector
 
     public DataTemplate SortDuplicateTemplate { get; set; } = null!;
 
+    public DataTemplate AggregateStartTemplate { get; set; } = null!;
+
+    public DataTemplate AggregateGroupTemplate { get; set; } = null!;
+
+    public DataTemplate AggregateRowTemplate { get; set; } = null!;
+
+    public DataTemplate StreamAggregateSpanTemplate { get; set; } = null!;
+
+    public DataTemplate AggregateEmitTemplate { get; set; } = null!;
+
+    public DataTemplate HashAggregateTemplate { get; set; } = null!;
+
+    public DataTemplate ComputeRowTemplate { get; set; } = null!;
+
     public DataTemplate TopRowTemplate { get; set; } = null!;
 
     public DataTemplate RowCountSpanTemplate { get; set; } = null!;
@@ -139,6 +153,13 @@ public class AccessStepTemplateSelector : DataTemplateSelector
             AccessStep.Sorted => SortedTemplate,
             AccessStep.SortRow => SortRowTemplate,
             AccessStep.SortDuplicate => SortDuplicateTemplate,
+            AccessStep.AggregateStart => AggregateStartTemplate,
+            AccessStep.AggregateGroup => AggregateGroupTemplate,
+            StreamAggregateSpan => StreamAggregateSpanTemplate,
+            AccessStep.AggregateRow => AggregateRowTemplate,
+            AccessStep.AggregateEmit => AggregateEmitTemplate,
+            AccessStep.HashAggregate => HashAggregateTemplate,
+            AccessStep.ComputeRow => ComputeRowTemplate,
             AccessStep.TopRow => TopRowTemplate,
             RowCountSpan => RowCountSpanTemplate,
             AccessStep.HashProbe => HashProbeTemplate,

@@ -1,3 +1,4 @@
+using System.Data;
 using InternalsViewer.Execution.AccessPaths.Predicates;
 
 namespace InternalsViewer.Query.Plans.Model;
@@ -9,4 +10,6 @@ public sealed record DefinedValueInfo
     public string? Expression { get; init; }
 
     public AccessExpression? ParsedExpression { get; init; }
+
+    public SqlDbType? DataType { get; init; }
 }

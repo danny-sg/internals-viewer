@@ -28,6 +28,9 @@ public static class OperatorPhases
             HashMatchDefinition => HashMatch(step),
             TopDefinition => Top(step),
             SortDefinition => Sort(step),
+            StreamAggregateDefinition => StreamAggregate(step),
+            HashAggregateDefinition => HashAggregate(step),
+            ComputeScalarDefinition => ComputeScalar(step),
             ConcatenationDefinition => Concatenation(step),
             SelectDefinition => Select(step),
             SeekDefinition => step is AccessStep.Rebind ? AccessPhase.Rebind : step.AccessPhase,
@@ -89,6 +92,34 @@ public static class OperatorPhases
             AccessStep.Sorted => AccessPhase.Sort,
             AccessStep.SortRow => AccessPhase.Emit,
             AccessStep.SortDuplicate => AccessPhase.Duplicate,
+            AccessStep.Stopped or AccessStep.Close => AccessPhase.Complete,
+            _ => null
+        };
+
+    private static AccessPhase? StreamAggregate(AccessStep step)
+        => step switch
+        {
+            AccessStep.Open or AccessStep.AggregateStart or AccessStep.AggregateGroup => AccessPhase.Group,
+            AccessStep.AggregateRow => AccessPhase.Accumulate,
+            AccessStep.AggregateEmit => AccessPhase.Emit,
+            AccessStep.Stopped or AccessStep.Close => AccessPhase.Complete,
+            _ => null
+        };
+
+    private static AccessPhase? HashAggregate(AccessStep step)
+        => step switch
+        {
+            AccessStep.Open or AccessStep.AggregateStart => AccessPhase.Buckets,
+            AccessStep.HashAggregate => AccessPhase.Accumulate,
+            AccessStep.AggregateEmit => AccessPhase.Emit,
+            AccessStep.Stopped or AccessStep.Close => AccessPhase.Complete,
+            _ => null
+        };
+
+    private static AccessPhase? ComputeScalar(AccessStep step)
+        => step switch
+        {
+            AccessStep.Open or AccessStep.ComputeRow => AccessPhase.Compute,
             AccessStep.Stopped or AccessStep.Close => AccessPhase.Complete,
             _ => null
         };
