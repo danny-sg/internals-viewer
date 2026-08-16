@@ -44,6 +44,19 @@ public abstract class FixedVarRecord : Record
     [DataStructureItem(ItemType.VariableLengthColumnOffsetArray)]
     public ushort[] VariableLengthColumnOffsetArray { get; set; } = [];
 
+    /// <summary>
+    /// Length of the record in bytes, as it is stored
+    /// </summary>
+    /// <remarks>
+    /// A record with variable length columns ends where its last column ends, which the offset array's last entry gives, masking the bit
+    /// that marks a complex column. Without them it ends after the column count and the null bitmap, the column count offset being where
+    /// the fixed length data stops.
+    /// </remarks>
+    public int RecordLength
+        => HasVariableLengthColumns && VariableLengthColumnOffsetArray.Length > 0
+            ? VariableLengthColumnOffsetArray[^1] & 0x7FFF
+            : ColumnCountOffset + sizeof(short) + (HasNullBitmap ? NullBitmapSize : 0);
+
     public bool IsNullBitmapSet(ColumnStructure columnStructure, int offset)
     {
         var bitIndex = columnStructure.NullBitIndex - 1 + offset;

@@ -234,6 +234,8 @@ public sealed class IndexIterator(IPageService pageService, IRecordService recor
         CurrentPageSteps?.Dispose();
         CurrentPageSteps = null;
 
+        CurrentPage = null;
+
         return base.CloseAsync();
     }
 

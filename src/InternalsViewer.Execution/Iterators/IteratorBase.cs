@@ -88,7 +88,7 @@ public abstract class IteratorBase : IIterator
         {
             return;
         }
-
+        
         IsCloseEmitted = true;
 
         await Context.Steps.EmitAsync(new AccessStep.Close { NodeId = NodeId }, CancellationToken.None);

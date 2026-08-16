@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using InternalsViewer.Execution.AccessPaths.Definitions;
+using InternalsViewer.Execution.AccessPaths.Memory;
 using InternalsViewer.Execution.AccessPaths.Results;
 using InternalsViewer.Execution.AccessPaths.Results.Steps;
 using InternalsViewer.Execution.AccessPaths.Search;
@@ -175,11 +176,16 @@ public sealed class TraceStepApplier(TraceLayout layout,
                 tab.StateItems.Add(new TraceStateItem("Distinct") { Flag = sort.IsDistinct });
                 tab.StateItems.Add(new TraceStateItem("Collected") { Value = "0" });
                 tab.StateItems.Add(new TraceStateItem("Output") { Value = "0" });
+                tab.StateItems.Add(new TraceStateItem("Memory") { Value = "0 KB" });
                 break;
 
             case TopDefinition top:
                 tab.StateItems.Add(new TraceStateItem("Target") { Value = top.RowCount.ToString("N0") });
                 tab.StateItems.Add(new TraceStateItem("Row Count") { Value = "0" });
+                break;
+
+            case HashMatchDefinition:
+                tab.StateItems.Add(new TraceStateItem("Memory") { Value = "0 KB" });
                 break;
 
             case ConcatenationDefinition concatenation:
@@ -238,13 +244,59 @@ public sealed class TraceStepApplier(TraceLayout layout,
     /// <summary>
     /// Replays the positions of a run that was taken in one go rather than step by step
     /// </summary>
+    /// <remarks>
+    /// The fold is done over the raw positions and only the last of each is handed to a tab. Walking the history through the step by step
+    /// path instead would raise a change for every position an operator passed through, which the bindings would each follow.
+    /// </remarks>
     public void SyncPositions(IEnumerable<AccessStep> history)
     {
         ResetPositions();
 
+        var open = new HashSet<int>();
+
         foreach (var step in history)
         {
-            ApplyPosition(step);
+            if (!operatorsByNode.ContainsKey(step.NodeId))
+            {
+                continue;
+            }
+
+            var position = PositionByNode.GetValueOrDefault(step.NodeId);
+
+            switch (step)
+            {
+                case AccessStep.Open:
+                    open.Add(step.NodeId);
+                    break;
+
+                case AccessStep.Close:
+                    open.Remove(step.NodeId);
+                    position = default;
+                    break;
+
+                case AccessStep.ReadPage read:
+                    position = (read.PageAddress, null);
+                    break;
+
+                case AccessStep.Row row:
+                    position = (position.Page, row.Slot);
+                    break;
+
+                case AccessStep.RowRun run:
+                    position = (position.Page, run.ToSlot);
+                    break;
+            }
+
+            PositionByNode[step.NodeId] = position;
+        }
+
+        foreach (var (nodeId, position) in PositionByNode)
+        {
+            var tab = operatorsByNode[nodeId];
+
+            tab.IsOpen = open.Contains(nodeId);
+            tab.CurrentPage = position.Page;
+            tab.CurrentSlot = position.Slot;
         }
     }
 
@@ -285,6 +337,11 @@ public sealed class TraceStepApplier(TraceLayout layout,
                     tab.SetState("Rows", concatenation.RowCount.ToString("N0"));
                     break;
             }
+
+            if (iterator is IMemoryBufferIterator buffer)
+            {
+                tab.SetState("Memory", FormatMemory(buffer.Memory));
+            }
         }
 
         foreach (var tab in operatorsByNode.Values)
@@ -295,6 +352,12 @@ public sealed class TraceStepApplier(TraceLayout layout,
             }
         }
     }
+
+    /// <summary>
+    /// What a buffer is holding, to the page the engine would allocate it in rather than to the byte the model reached
+    /// </summary>
+    private static string FormatMemory(BufferMemory memory)
+        => $"{memory.PagedKb:N0} KB";
 
     public void SyncHeldRows(IteratorStepper stepper)
     {

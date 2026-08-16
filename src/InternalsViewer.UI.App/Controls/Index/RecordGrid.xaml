@@ -6,7 +6,7 @@
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     xmlns:toolkit="using:CommunityToolkit.WinUI.UI.Controls"
-    xmlns:ui="using:Windows.UI"
+    xmlns:primitives="using:CommunityToolkit.WinUI.UI.Controls.Primitives"
     x:Name="Root"
     mc:Ignorable="d">
     <UserControl.Resources>
@@ -21,9 +21,22 @@
                           CanUserSortColumns="True"
                           SelectionMode="Single"
                           IsReadOnly="True"
-                          GridLinesVisibility="Vertical"
+                          GridLinesVisibility="All"
+                          HorizontalGridLinesBrush="{ThemeResource ControlStrokeColorDefaultBrush}"
+                          VerticalGridLinesBrush="{ThemeResource ControlStrokeColorDefaultBrush}"
                           Background="{ThemeResource LayerFillColorDefaultBrush}">
+            <toolkit:DataGrid.ColumnHeaderStyle>
+                <Style TargetType="primitives:DataGridColumnHeader">
+                    <Setter Property="SeparatorBrush" Value="{ThemeResource ControlStrokeColorDefaultBrush}" />
+                    <Setter Property="SeparatorVisibility" Value="Visible" />
+                </Style>
+            </toolkit:DataGrid.ColumnHeaderStyle>
             <toolkit:DataGrid.Resources>
+                <!-- Fills the header and rows separator, a rectangle of the grid's own template rather than anything the header owns -->
+                <StaticResource x:Key="GridLinesBrush" ResourceKey="ControlStrokeColorDefaultBrush" />
+
+                <StaticResource x:Key="DataGridFillerColumnGridLinesBrush" ResourceKey="ControlStrokeColorDefaultBrush" />
+
                 <StaticResource
                         x:Key="DataGridRowSelectedHoveredUnfocusedBackgroundColor"
                         ResourceKey="SystemListAccentMediumColor" />

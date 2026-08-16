@@ -3,9 +3,11 @@ using InternalsViewer.Execution.AccessPaths.Binding;
 using InternalsViewer.Execution.AccessPaths.Definitions;
 using InternalsViewer.Execution.AccessPaths.Joins;
 using InternalsViewer.Execution.AccessPaths.Joins.Hash;
+using InternalsViewer.Execution.AccessPaths.Memory;
 using InternalsViewer.Execution.AccessPaths.Predicates;
 using InternalsViewer.Execution.AccessPaths.Results.Steps;
 using InternalsViewer.Execution.Interfaces;
+using InternalsViewer.Execution.Interfaces.Iterators;
 using InternalsViewer.Execution.Interfaces.Iterators.Joins;
 using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Internals.Interfaces.Engine;
@@ -45,12 +47,14 @@ namespace InternalsViewer.Execution.Iterators.Joins;
 ///
 /// Partitioning and spilling are not simulated, so the table is built entirely in memory at one recursion level.
 /// </remarks>
-public sealed class HashMatchIterator(IIteratorFactory factory) : JoinIterator, IHashTableIterator
+public sealed class HashMatchIterator(IIteratorFactory factory) : JoinIterator, IHashTableIterator, IMemoryBufferIterator
 {
     public override PageAddress? CurrentPageAddress
         => IsProbePhase ? Inner.Iterator.CurrentPageAddress : Outer.Iterator.CurrentPageAddress;
 
     public HashTable Table { get; private set; } = new(JoinHash.DefaultBucketBits);
+
+    public BufferMemory Memory => Table.Memory;
 
     public override IReadOnlyList<RowBuffer> Buffers => Inner is null ? [] : [new RowBuffer("Probe", 1, Inner.Buffer)];
 

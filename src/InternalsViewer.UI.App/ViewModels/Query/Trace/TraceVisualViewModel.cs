@@ -197,6 +197,13 @@ public sealed partial class TraceVisualViewModel(TraceVisualType visualType,
             return;
         }
 
+        if (step is AccessStep.Close)
+        {
+            ClearSelection();
+
+            return;
+        }
+
         if (VisualType == TraceVisualType.Index)
         {
             if (step is AccessStep.Reseek or AccessStep.Rebind)
@@ -264,6 +271,22 @@ public sealed partial class TraceVisualViewModel(TraceVisualType visualType,
         }
     }
 
+    /// <summary>
+    /// Drops what the walk was pointing at, keeping the pages it visited
+    /// </summary>
+    /// <remarks>
+    /// A closed operator holds no position, so nothing should be lit as current. What it read on the way is history rather than a
+    /// position, so the visited pages stay.
+    /// </remarks>
+    private void ClearSelection()
+    {
+        SelectedPageAddress = null;
+        SelectedSlot = null;
+        SelectedRowIdentifier = null;
+
+        _currentTracePage = null;
+    }
+
     public TraceVisualReplay ComputeReplay(IReadOnlyList<AccessStep> steps)
     {
         var visited = new List<PageSpan>();
@@ -305,6 +328,13 @@ public sealed partial class TraceVisualViewModel(TraceVisualType visualType,
 
                 case AccessStep.PfsRead pfsRead when VisualType == TraceVisualType.Allocation:
                     lastPage = pfsRead.PageAddress;
+                    break;
+
+                case AccessStep.Close:
+                    lastPage = null;
+                    lastDataPage = null;
+                    lastSlot = null;
+                    lastSlotCount = 0;
                     break;
 
                 default:

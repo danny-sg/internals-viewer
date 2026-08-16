@@ -17,6 +17,7 @@
                                           PhysicalOperator="{x:Bind ViewModel.SelectedPhysicalOperator, Mode=OneWay}"
                                           LogicalOperator="{x:Bind ViewModel.SelectedLogicalOperator, Mode=OneWay}"
                                           IsOrdered="{x:Bind ViewModel.SelectedIsOrdered, Mode=OneWay}"
+                                          MemoryGrant="{x:Bind ViewModel.SelectedMemoryGrant, Mode=OneWay}"
                                           IsPending="{x:Bind ViewModel.IsSelectedStrategyPending, Mode=OneWay}"
                                           CurrentPhase="{x:Bind ViewModel.SelectedPhase, Mode=OneWay}"
                                           Counters="{x:Bind ViewModel.CurrentCounters, Mode=OneWay}"

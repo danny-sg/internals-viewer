@@ -132,6 +132,20 @@ public class RidLookupTests(ITestOutputHelper testOutput)
         Assert.Empty(steps.OfType<AccessStep.JoinVerdict>());
     }
 
+    [RequiresFileFact(DemoDatabase.MdfPath)]
+    public async Task Closing_Reaches_Every_Operator()
+    {
+        var context = await LoadAsync();
+
+        var (steps, _) = await RunAsync(context, Definition(context, Between(500, 560)));
+
+        var closed = steps.OfType<AccessStep.Close>().Select(s => s.NodeId).OrderBy(n => n).ToList();
+
+        TestOutput.WriteLine($"Closed nodes: {string.Join(", ", closed)}");
+
+        Assert.Equal([0, 1, 2], closed);
+    }
+
     private sealed record Context(DatabaseSource Database,
                                   NestedLoopsIterator Service,
                                   HeapFetchIterator Heap,

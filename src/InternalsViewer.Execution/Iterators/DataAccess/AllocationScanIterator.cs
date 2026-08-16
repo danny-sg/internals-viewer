@@ -149,6 +149,8 @@ public sealed class AllocationScanIterator(IPageService pageService, IRecordServ
         CurrentPageSteps?.Dispose();
         CurrentPageSteps = null;
 
+        CurrentPage = null;
+
         return base.CloseAsync();
     }
 

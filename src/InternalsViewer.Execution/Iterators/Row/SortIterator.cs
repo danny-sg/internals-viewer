@@ -2,6 +2,7 @@ using System.Runtime.InteropServices;
 using InternalsViewer.Execution.AccessPaths.Binding;
 using InternalsViewer.Execution.AccessPaths.Definitions;
 using InternalsViewer.Execution.AccessPaths.Joins;
+using InternalsViewer.Execution.AccessPaths.Memory;
 using InternalsViewer.Execution.AccessPaths.Results.Steps;
 using InternalsViewer.Execution.AccessPaths.Search;
 using InternalsViewer.Execution.AccessPaths.Values;
@@ -29,13 +30,15 @@ namespace InternalsViewer.Execution.Iterators.Row;
 ///
 ///     Uses a priority queue to retain only the top N rows, and then sorts those rows for output
 /// </remarks>
-public sealed class SortIterator(IIteratorFactory factory) : IteratorBase, IUnaryIterator, IRowBufferIterator
+public sealed class SortIterator(IIteratorFactory factory) : IteratorBase, IUnaryIterator, IRowBufferIterator, IMemoryBufferIterator
 {
     private readonly List<JoinBufferRow> _table = [];
 
     private readonly List<AccessKey> _keys = [];
 
     private PriorityQueue<IRecord, AccessKey>? _queue;
+
+    private long _rowBytes;
 
     public override PageAddress? CurrentPageAddress => Input?.CurrentPageAddress;
 
@@ -48,6 +51,8 @@ public sealed class SortIterator(IIteratorFactory factory) : IteratorBase, IUnar
     public long CollectedCount { get; private set; }
 
     public IReadOnlyList<RowBuffer> Buffers => [new("Sort Table", 0, _table)];
+
+    public BufferMemory Memory { get; private set; }
 
     private int OutputIndex { get; set; }
 
@@ -94,6 +99,10 @@ public sealed class SortIterator(IIteratorFactory factory) : IteratorBase, IUnar
         CollectedCount = 0;
         OutputIndex = 0;
         LastOutputKey = null;
+
+        _rowBytes = 0;
+
+        Memory = default;
 
         RowCount = 0;
 
@@ -185,10 +194,19 @@ public sealed class SortIterator(IIteratorFactory factory) : IteratorBase, IUnar
                 if (queue.Count < topCount)
                 {
                     queue.Enqueue(row, key);
+
+                    _rowBytes += RowMemory.SizeOf(row);
                 }
                 else
                 {
-                    isRetained = !ReferenceEquals(queue.EnqueueDequeue(row, key), row);
+                    var dropped = queue.EnqueueDequeue(row, key);
+
+                    isRetained = !ReferenceEquals(dropped, row);
+
+                    if (isRetained)
+                    {
+                        _rowBytes += RowMemory.SizeOf(row) - RowMemory.SizeOf(dropped);
+                    }
                 }
             }
             else
@@ -196,6 +214,8 @@ public sealed class SortIterator(IIteratorFactory factory) : IteratorBase, IUnar
                 _table.Add(new JoinBufferRow(row, JoinRowState.Pending));
 
                 _keys.Add(key);
+
+                _rowBytes += RowMemory.SizeOf(row);
             }
 
             if (_queue is not null)
@@ -203,10 +223,20 @@ public sealed class SortIterator(IIteratorFactory factory) : IteratorBase, IUnar
                 RebuildFromQueue();
             }
 
+            UpdateMemory();
+
             await EmitAsync(new AccessStep.SortCollect(CollectedCount) { IsRetained = isRetained }, cancellationToken);
         }
 
         await Input.CloseAsync();
+    }
+
+    /// <summary>
+    /// Totals what the sort is holding, which a top N sort tracks through what it dropped rather than by recounting the rows it kept
+    /// </summary>
+    private void UpdateMemory()
+    {
+        Memory = RowMemory.ForSort(_rowBytes, _table.Count);
     }
 
     private void RebuildFromQueue()

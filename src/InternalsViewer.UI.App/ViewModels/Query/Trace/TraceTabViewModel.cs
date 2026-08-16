@@ -200,8 +200,24 @@ public sealed partial class TraceTabViewModel : ObservableObject
         NotifyDescriptionChanged();
     }
 
+    /// <summary>
+    /// Tells the description panel what the selected operator now is, holding it back while a run is in flight
+    /// </summary>
+    /// <remarks>
+    /// The panel is built from these, and a run passes through a phase per step. Nothing is read off the panel while the steps are going
+    /// by, so the notification is held to the end of the run and raised once, rather than rebuilding the panel for every step taken.
+    /// </remarks>
     private void NotifyDescriptionChanged()
     {
+        if (IsRunning || IsRunningToEnd)
+        {
+            _isDescriptionStale = true;
+
+            return;
+        }
+
+        _isDescriptionStale = false;
+
         OnPropertyChanged(nameof(SelectedDefinition));
         OnPropertyChanged(nameof(SelectedOperatorIcon));
         OnPropertyChanged(nameof(SelectedOperatorName));
@@ -213,6 +229,17 @@ public sealed partial class TraceTabViewModel : ObservableObject
         OnPropertyChanged(nameof(SelectedPhysicalOperator));
         OnPropertyChanged(nameof(SelectedLogicalOperator));
         OnPropertyChanged(nameof(SelectedIsOrdered));
+        OnPropertyChanged(nameof(SelectedMemoryGrant));
+    }
+
+    private bool _isDescriptionStale;
+
+    private void FlushDescriptionIfStale()
+    {
+        if (_isDescriptionStale && !IsRunning && !IsRunningToEnd)
+        {
+            NotifyDescriptionChanged();
+        }
     }
 
     private DateTime? QueryTime { get; set; }
@@ -338,6 +365,11 @@ public sealed partial class TraceTabViewModel : ObservableObject
     public string? SelectedPhysicalOperator => SelectedDefinition is SelectDefinition ? null : SelectedPlanNode?.PhysicalOperator;
 
     public string? SelectedLogicalOperator => SelectedDefinition is SelectDefinition ? null : SelectedPlanNode?.LogicalOperator;
+
+    /// <summary>
+    /// What the plan recorded for the selected operator's memory grant, which the trace shows beside the memory it modelled
+    /// </summary>
+    public PlanMemoryGrant? SelectedMemoryGrant => SelectedPlanNode?.MemoryGrant;
 
     public bool? SelectedIsOrdered => SelectedDefinition is RangeDefinition or SeekDefinition
         ? SelectedPlanNode?.ScanInfo?.IsOutputOrdered
@@ -524,6 +556,8 @@ public sealed partial class TraceTabViewModel : ObservableObject
         OnPropertyChanged(nameof(IsStepDetailVisible));
 
         UpdateBlobDimming();
+
+        FlushDescriptionIfStale();
     }
 
     partial void OnIsRunningToEndChanged(bool value)
@@ -531,6 +565,8 @@ public sealed partial class TraceTabViewModel : ObservableObject
         OnPropertyChanged(nameof(IsStepDetailVisible));
 
         UpdateBlobDimming();
+
+        FlushDescriptionIfStale();
     }
 
     [RelayCommand(AllowConcurrentExecutions = true)]
@@ -611,12 +647,6 @@ public sealed partial class TraceTabViewModel : ObservableObject
             });
 
             _hasNavigatedSinceReset = true;
-        }
-
-        if (step is AccessStep.Stopped && step.NodeId == Definition.NodeId)
-        {
-            IsStepComplete = true;
-            IsRunning = false;
         }
     }
 

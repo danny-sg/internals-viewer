@@ -9,6 +9,7 @@
         <IsTestProject>true</IsTestProject>
         <RunAnalyzersDuringBuild>False</RunAnalyzersDuringBuild>
         <AnalysisLevel>none</AnalysisLevel>
+        <UserSecretsId>6981374f-9d8f-4e07-80c6-d02214dcef3d</UserSecretsId>
     </PropertyGroup>
 
     <ItemGroup>

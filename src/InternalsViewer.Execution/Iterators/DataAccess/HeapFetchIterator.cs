@@ -80,6 +80,14 @@ public sealed class HeapFetchIterator(IPageService pageService, IRecordService r
         CurrentStrategy = AccessStrategyBuilder.BuildHeapFetch(fetch.Residual);
     }
 
+    public override Task CloseAsync()
+    {
+        _currentPageAddress = null;
+        CurrentRow = null;
+
+        return base.CloseAsync();
+    }
+
     public override async Task<IRecord?> GetRowAsync(CancellationToken cancellationToken)
     {
         if (IsComplete)

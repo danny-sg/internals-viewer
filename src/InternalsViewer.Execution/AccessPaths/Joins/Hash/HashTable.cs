@@ -1,3 +1,4 @@
+using InternalsViewer.Execution.AccessPaths.Memory;
 using InternalsViewer.Execution.AccessPaths.Search;
 using InternalsViewer.Internals.Interfaces.Engine;
 
@@ -28,6 +29,11 @@ public sealed class HashTable
 
     public int LongestChain { get; private set; }
 
+    /// <summary>
+    /// What the rows it holds take up, which a resize leaves alone because it moves the same rows between buckets
+    /// </summary>
+    public long RowBytes { get; private set; }
+
     private HashBucket[] Slots { get; set; }
 
     /// <summary>
@@ -42,6 +48,8 @@ public sealed class HashTable
         var entry = bucket.Add(new HashEntry(hash, record) { Key = key, HasNullKey = hasNullKey });
 
         RowCount++;
+
+        RowBytes += RowMemory.SizeOf(record);
 
         if (bucket.Count > LongestChain)
         {
@@ -67,7 +75,13 @@ public sealed class HashTable
 
         RowCount = 0;
         LongestChain = 0;
+        RowBytes = 0;
     }
+
+    /// <summary>
+    /// What the table takes up, its rows alongside the workspace holding them
+    /// </summary>
+    public BufferMemory Memory => RowMemory.ForHashTable(RowBytes, RowCount);
 
     /// <summary>
     /// Rebuilds the table at a different bucket count, redistributing the rows it already holds

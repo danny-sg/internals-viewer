@@ -1,5 +1,6 @@
 using System.Collections.Immutable;
 using InternalsViewer.Execution.AccessPaths.Search;
+using InternalsViewer.Execution.AccessPaths.Text;
 
 namespace InternalsViewer.Execution.AccessPaths.Descriptions;
 
@@ -24,4 +25,79 @@ public sealed record OperatorDescription
     public bool IsBlocking { get; init; }
 
     public ImmutableArray<AccessStrategyPhase> Phases { get; init; } = [];
+
+    /// <summary>
+    /// Compares what a description says rather than the arrays it says it in
+    /// </summary>
+    /// <remarks>
+    /// A description is rebuilt whenever the strategy behind it is replaced, which a correlated seek does on every rebind. The record
+    /// equality a phase array gives compares the array itself, so each rebuild would look like a change and the panel showing it would be
+    /// built again. Two descriptions reading the same are the same as far as anything watching one is concerned.
+    /// </remarks>
+    public bool Equals(OperatorDescription? other)
+    {
+        if (other is null)
+        {
+            return false;
+        }
+
+        if (ReferenceEquals(this, other))
+        {
+            return true;
+        }
+
+        if (Summary != other.Summary || IsStreaming != other.IsStreaming || IsBlocking != other.IsBlocking)
+        {
+            return false;
+        }
+
+        if (Phases.Length != other.Phases.Length)
+        {
+            return false;
+        }
+
+        for (var index = 0; index < Phases.Length; index++)
+        {
+            if (!SamePhase(Phases[index], other.Phases[index]))
+            {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    public override int GetHashCode() => HashCode.Combine(Summary, IsStreaming, IsBlocking, Phases.Length);
+
+    private static bool SamePhase(AccessStrategyPhase left, AccessStrategyPhase right)
+        => left.Phase == right.Phase
+           && left.Title == right.Title
+           && left.Lead == right.Lead
+           && left.Middle == right.Middle
+           && left.Trail == right.Trail
+           && SameTokens(left.LeadCondition, right.LeadCondition)
+           && SameTokens(left.Condition, right.Condition);
+
+    private static bool SameTokens(ImmutableArray<PredicateToken> left, ImmutableArray<PredicateToken> right)
+    {
+        if (left.IsDefaultOrEmpty && right.IsDefaultOrEmpty)
+        {
+            return true;
+        }
+
+        if (left.IsDefaultOrEmpty || right.IsDefaultOrEmpty || left.Length != right.Length)
+        {
+            return false;
+        }
+
+        for (var index = 0; index < left.Length; index++)
+        {
+            if (left[index] != right[index])
+            {
+                return false;
+            }
+        }
+
+        return true;
+    }
 }

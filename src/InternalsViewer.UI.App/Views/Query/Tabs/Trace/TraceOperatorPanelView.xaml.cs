@@ -146,7 +146,9 @@ public sealed partial class TraceOperatorPanelView : UserControl, IDocumentComma
             JoinGrid.Visibility = Visibility.Visible;
             MainHost.Visibility = Visibility.Collapsed;
             InputsList.Visibility = Visibility.Collapsed;
-            StateArea.Visibility = Visibility.Collapsed;
+
+            StateList.ItemsSource = viewModel.StateItems;
+            StateArea.Visibility = viewModel.StateItems.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
 
             Fill(OuterTopHost, OuterHeader, viewModel.OuterTop);
             Fill(InnerTopHost, InnerHeader, viewModel.InnerTop);

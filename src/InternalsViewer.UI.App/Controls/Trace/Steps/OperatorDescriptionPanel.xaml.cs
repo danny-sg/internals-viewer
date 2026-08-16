@@ -10,6 +10,7 @@ using InternalsViewer.Execution.AccessPaths.Predicates;
 using InternalsViewer.Execution.AccessPaths.Results;
 using InternalsViewer.Execution.AccessPaths.Search;
 using InternalsViewer.Execution.AccessPaths.Text;
+using InternalsViewer.Query.Plans.Model;
 using InternalsViewer.UI.App.Controls.Predicates;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Documents;
@@ -81,6 +82,12 @@ public sealed partial class OperatorDescriptionPanel : UserControl
                                     typeof(OperatorDescriptionPanel),
                                     new PropertyMetadata(null, OnDescriptionChanged));
 
+    public static readonly DependencyProperty MemoryGrantProperty =
+        DependencyProperty.Register(nameof(MemoryGrant),
+                                    typeof(PlanMemoryGrant),
+                                    typeof(OperatorDescriptionPanel),
+                                    new PropertyMetadata(null, OnDescriptionChanged));
+
     public static readonly DependencyProperty IsPendingProperty =
         DependencyProperty.Register(nameof(IsPending),
                                     typeof(bool),
@@ -114,6 +121,10 @@ public sealed partial class OperatorDescriptionPanel : UserControl
     private readonly List<(AccessPhase Phase, Grid Row)> _phaseRows = [];
 
     private readonly List<(TextBlock Value, Func<AccessCounters, string> Get)> _counterValues = [];
+
+    private SvgImageSource? _iconSource;
+
+    private Uri? _iconUri;
 
     public OperatorDescription? Description
     {
@@ -161,6 +172,15 @@ public sealed partial class OperatorDescriptionPanel : UserControl
     {
         get => (bool?)GetValue(IsOrderedProperty);
         set => SetValue(IsOrderedProperty, value);
+    }
+
+    /// <summary>
+    /// What the plan says the operator was granted and used, which is what the memory a buffer is modelled at is measured against
+    /// </summary>
+    public PlanMemoryGrant? MemoryGrant
+    {
+        get => (PlanMemoryGrant?)GetValue(MemoryGrantProperty);
+        set => SetValue(MemoryGrantProperty, value);
     }
 
     /// <summary>
@@ -269,12 +289,18 @@ public sealed partial class OperatorDescriptionPanel : UserControl
 
         if (Icon is { } icon)
         {
+            if (_iconSource is null || _iconUri != icon)
+            {
+                _iconSource = new SvgImageSource(icon);
+                _iconUri = icon;
+            }
+
             header.Children.Add(new Image
             {
                 Width = 24,
                 Height = 24,
                 VerticalAlignment = VerticalAlignment.Center,
-                Source = new SvgImageSource(icon)
+                Source = _iconSource
             });
         }
 
@@ -364,7 +390,32 @@ public sealed partial class OperatorDescriptionPanel : UserControl
                 break;
         }
 
+        AddMemoryGrant();
+
         AddAccessPathProperties();
+    }
+
+    private void AddMemoryGrant()
+    {
+        if (MemoryGrant is not { } grant)
+        {
+            return;
+        }
+
+        if (grant.InputKb is { } input)
+        {
+            AddTextRow("Input Memory", $"{input:N0} KB");
+        }
+
+        if (grant.OutputKb is { } output)
+        {
+            AddTextRow("Output Memory", $"{output:N0} KB");
+        }
+
+        if (grant.UsedKb is { } used)
+        {
+            AddTextRow("Used Memory", $"{used:N0} KB");
+        }
     }
 
     private void AddJoinProperties(JoinDefinition join)
