@@ -197,8 +197,13 @@ public sealed partial class QueryLayoutViewModel : ObservableObject, IDisposable
     /// <summary>
     /// Drops a transient document from tracking, returning it so the caller can dispose its view
     /// </summary>
-    public bool RemoveDocument(string key, out DocumentViewModel document) 
+    public bool RemoveDocument(string key, out DocumentViewModel document)
         => _documentsByKey.Remove(key, out document!);
+
+    /// <summary>
+    /// Takes a document out of the dock, which tracking it by key does not do on its own
+    /// </summary>
+    public void Close(DocumentViewModel document) => Dock.Close(document);
 
     private void SetDocumentVisible(DocumentViewModel document, bool show)
     {

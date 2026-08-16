@@ -20,8 +20,8 @@ public static class SelectDescriber
 
         phases.Add(new AccessStrategyPhase
         {
-            Phase = AccessPhase.Fetch,
-            Title = "Fetch",
+            Phase = AccessPhase.GetRow,
+            Title = "Get Row",
             Lead = "Each request pulls a single row up through the tree. The tree is demand driven, so nothing below runs further than " +
                    "the row asked for needs"
         });

@@ -14,8 +14,8 @@ public static class HashMatchDescriber
 
         phases.Add(new AccessStrategyPhase
         {
-            Phase = AccessPhase.Size,
-            Title = "Size",
+            Phase = AccessPhase.Buckets,
+            Title = "Buckets",
             Lead = $"The bucket count is chosen from the {definition.Build.RowEstimate:N0} rows the build side is estimated to return, " +
                    "before a row is read. An estimate that is too low leaves long chains to walk and one that is too high leaves buckets " +
                    "empty"

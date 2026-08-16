@@ -11,7 +11,7 @@ internal static class SeekPanelRows
             Text = text,
             FontSize = 12,
             FontWeight = Microsoft.UI.Text.FontWeights.SemiBold,
-            Margin = new Thickness(0, topMargin, 0, 4)
+            Margin = new Thickness(0, topMargin, 0, 8)
         };
     }
 

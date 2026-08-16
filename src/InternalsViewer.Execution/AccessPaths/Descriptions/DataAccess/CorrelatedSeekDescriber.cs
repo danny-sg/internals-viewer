@@ -12,8 +12,8 @@ public static class CorrelatedSeekDescriber
     {
         var bind = new AccessStrategyPhase
         {
-            Phase = AccessPhase.Bind,
-            Title = "Bind",
+            Phase = AccessPhase.Rebind,
+            Title = "Rebind",
             Lead = "The seek values are taken from the outer row, so there is no range to descend for until the first rebind arrives. " +
                    "Each rebind reopens this path with the values that row carried"
         };

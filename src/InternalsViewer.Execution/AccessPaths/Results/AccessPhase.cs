@@ -8,7 +8,7 @@ public enum AccessPhase
     Position,
     Walk,
     Complete,
-    Bind,
+    Rebind,
     Outer,
     Inner,
     Verdict,
@@ -16,10 +16,10 @@ public enum AccessPhase
     Compare,
     Match,
     Preserve,
-    Size,
+    Buckets,
     Build,
     Probe,
-    Limit,
+    RowCount,
     Pass,
     Stop,
     Collect,
@@ -28,5 +28,5 @@ public enum AccessPhase
     Duplicate,
     Inputs,
     Open,
-    Fetch
+    GetRow
 }

@@ -18,7 +18,7 @@ public static class OperatorPhases
     {
         if (!isOwnStep)
         {
-            return definition is NestedLoopsDefinition && step is AccessStep.Rebind ? AccessPhase.Bind : null;
+            return definition is NestedLoopsDefinition && step is AccessStep.Rebind ? AccessPhase.Rebind : null;
         }
 
         return definition switch
@@ -30,7 +30,7 @@ public static class OperatorPhases
             SortDefinition => Sort(step),
             ConcatenationDefinition => Concatenation(step),
             SelectDefinition => Select(step),
-            SeekDefinition => step is AccessStep.Rebind ? AccessPhase.Bind : step.AccessPhase,
+            SeekDefinition => step is AccessStep.Rebind ? AccessPhase.Rebind : step.AccessPhase,
             _ => step.AccessPhase
         };
     }
@@ -39,7 +39,7 @@ public static class OperatorPhases
         => step switch
         {
             AccessStep.Open or AccessStep.JoinStart => AccessPhase.Outer,
-            AccessStep.Rebind => AccessPhase.Bind,
+            AccessStep.Rebind => AccessPhase.Rebind,
             AccessStep.JoinVerdict => AccessPhase.Verdict,
             AccessStep.JoinEmit => AccessPhase.Inner,
             AccessStep.Stopped or AccessStep.Close => AccessPhase.Complete,
@@ -61,7 +61,7 @@ public static class OperatorPhases
     private static AccessPhase? HashMatch(AccessStep step)
         => step switch
         {
-            AccessStep.Open => AccessPhase.Size,
+            AccessStep.Open => AccessPhase.Buckets,
             AccessStep.HashBuild => AccessPhase.Build,
             AccessStep.HashProbe or AccessStep.HashProbeRun => AccessPhase.Probe,
             AccessStep.HashCompare => AccessPhase.Compare,
@@ -74,7 +74,7 @@ public static class OperatorPhases
     private static AccessPhase? Top(AccessStep step)
         => step switch
         {
-            AccessStep.Open or AccessStep.TopStart => AccessPhase.Limit,
+            AccessStep.Open or AccessStep.TopStart => AccessPhase.RowCount,
             AccessStep.TopRow { IsLast: true } => AccessPhase.Stop,
             AccessStep.TopRow => AccessPhase.Pass,
             AccessStep.Stopped { Reason: StopReason.RowGoalMet } => AccessPhase.Stop,
@@ -106,7 +106,7 @@ public static class OperatorPhases
         => step switch
         {
             AccessStep.Open => AccessPhase.Open,
-            AccessStep.Output => AccessPhase.Fetch,
+            AccessStep.Output => AccessPhase.GetRow,
             AccessStep.Stopped or AccessStep.Close => AccessPhase.Complete,
             _ => null
         };

@@ -20,8 +20,8 @@ public static class NestedLoopsDescriber
 
         phases.Add(new AccessStrategyPhase
         {
-            Phase = AccessPhase.Bind,
-            Title = "Bind",
+            Phase = AccessPhase.Rebind,
+            Title = "Rebind",
             Lead = "Copy the join columns out of the outer row and reopen the inner input, so the inner side starts a fresh descent for " +
                    "those values"
         });

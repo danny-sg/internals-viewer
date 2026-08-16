@@ -397,19 +397,14 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
     /// anything here. An operator with something below it that cannot be simulated builds no definition and opens nothing, which is the
     /// same test the context menu uses to decide whether to offer the command.
     /// </remarks>
-    public void OpenTrace(PlanNode node)
+    public bool OpenTrace(PlanNode node)
     {
         if (node.IsStatement)
         {
-            if (node.Children.FirstOrDefault() is { } child)
-            {
-                OpenTraceCore(child, wrapInSelect: true);
-            }
-
-            return;
+            return node.Children.FirstOrDefault() is { } child && OpenTraceCore(child, wrapInSelect: true);
         }
 
-        OpenTraceCore(node, wrapInSelect: false);
+        return OpenTraceCore(node, wrapInSelect: false);
     }
 
     [RelayCommand]
@@ -430,7 +425,7 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
         }
     }
 
-    private void OpenTraceCore(PlanNode node, bool wrapInSelect)
+    private bool OpenTraceCore(PlanNode node, bool wrapInSelect)
     {
         var targetNodeId = wrapInSelect ? -1 : node.NodeId;
 
@@ -438,7 +433,7 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
         {
             Layout.Show(existing);
 
-            return;
+            return true;
         }
 
         var scanMode = FindAllocationUnit(node) is { } unit ? ScanModeDetector.Detect(node, unit, Events) : null;
@@ -454,7 +449,7 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
         {
             Logger.LogWarning("Operator {NodeId} ({Operator}) cannot be traced", node.NodeId, node.PhysicalOperator);
 
-            return;
+            return false;
         }
 
         CloseTraceDocument();
@@ -491,8 +486,19 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
         _traceTargetNodeId = targetNodeId;
 
         Layout.Show(document);
+
+        OnPropertyChanged(nameof(IsTraceVisible));
+
+        return true;
     }
 
+    /// <summary>
+    /// Closes the trace, which is one document per query rather than one per operator traced
+    /// </summary>
+    /// <remarks>
+    /// Dropping the document from tracking leaves it in the dock, so the tab has to be closed as well. Tracking is cleared first, which
+    /// is what stops the layout change that closing raises from pruning a trace that is about to be replaced.
+    /// </remarks>
     private void CloseTraceDocument()
     {
         if (_openTraces.Remove(TraceDocumentKey, out var viewModel))
@@ -501,12 +507,37 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
             viewModel.PageOpenRequested -= OnTracePageOpenRequested;
         }
 
+        _traceTargetNodeId = null;
+
         if (Layout.RemoveDocument(TraceDocumentKey, out var document))
         {
+            Layout.Close(document);
+
             document.DisposeView();
         }
 
-        _traceTargetNodeId = null;
+        OnPropertyChanged(nameof(IsTraceVisible));
+    }
+
+    /// <summary>
+    /// Whether the trace is open, which the View menu shows and toggles
+    /// </summary>
+    public bool IsTraceVisible
+    {
+        get => Layout.IsShown(TraceDocumentKey);
+        set
+        {
+            if (value)
+            {
+                OpenTrace();
+            }
+            else
+            {
+                CloseTraceDocument();
+            }
+
+            OnPropertyChanged();
+        }
     }
 
     /// <summary>
@@ -1005,9 +1036,18 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
             {
                 document.DisposeView();
             }
+
+            OnPropertyChanged(nameof(IsTraceVisible));
         }
     }
 
+    /// <summary>
+    /// Points the open trace at the plan the query just produced, so one trace follows the query rather than outliving it
+    /// </summary>
+    /// <remarks>
+    /// A rerun of the same statement still has the operator that was being traced, so the trace is rebuilt on it. A different query has
+    /// its own plan and the node traced may be gone from it, which falls back to the root rather than leaving the old plan's trace open.
+    /// </remarks>
     private void RefreshTraceDocuments()
     {
         if (_openTraces.Count == 0 || _traceTargetNodeId is not { } target)
@@ -1015,11 +1055,13 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
             return;
         }
 
+        var root = ExecutionPlans.FirstOrDefault(p => !p.IsInternalPlan)?.Root.FirstOrDefault();
+
         var node = target < 0
-            ? ExecutionPlans.FirstOrDefault(p => !p.IsInternalPlan)?.Root.FirstOrDefault()
+            ? root
             : ExecutionPlans.Where(p => !p.IsInternalPlan)
                             .Select(p => p.NodesById.GetValueOrDefault(target))
-                            .FirstOrDefault(n => n is not null);
+                            .FirstOrDefault(n => n is not null) ?? root;
 
         if (node is null || !CanTrace(node))
         {
@@ -1030,7 +1072,10 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
         _traceTargetNodeId = null;
 
-        OpenTrace(node);
+        if (!OpenTrace(node))
+        {
+            CloseTraceDocument();
+        }
     }
 
     public event Action<long>? PlayheadMoveRequested;

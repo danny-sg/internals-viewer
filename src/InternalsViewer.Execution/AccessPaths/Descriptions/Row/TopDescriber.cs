@@ -13,9 +13,9 @@ public static class TopDescriber
 
         phases.Add(new AccessStrategyPhase
         {
-            Phase = AccessPhase.Limit,
-            Title = "Limit",
-            Lead = $"The limit of {definition.RowCount:N0} rows is fixed when the operator opens, and is pushed down as a row goal so the " +
+            Phase = AccessPhase.RowCount,
+            Title = "Row Count",
+            Lead = $"The count of {definition.RowCount:N0} rows is fixed when the operator opens, and is pushed down as a row goal so the " +
                    "access path below can stop on its own"
         });
 
