@@ -8,8 +8,7 @@ public static class AllocationScanDescriber
     {
         return new OperatorDescription
         {
-            Summary = "Access path that follows the allocation unit's IAM chain and reads its pages in allocation order, which is the " +
-                      "order they sit in the file rather than any key order",
+            Summary = "Data access that follows the allocation unit IAM chain and reads pages then record slots in allocation order.",
             IsStreaming = true,
             Phases = strategy?.Phases ?? []
         };

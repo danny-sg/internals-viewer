@@ -8,7 +8,7 @@ public static class HeapFetchDescriber
     {
         return new OperatorDescription
         {
-            Summary = "Access path that reads one heap row from the file, page and slot a row identifier names, with no tree to descend",
+            Summary = "Data access that reads a row via page address and slot.",
             IsStreaming = true,
             Phases = strategy?.Phases ?? []
         };

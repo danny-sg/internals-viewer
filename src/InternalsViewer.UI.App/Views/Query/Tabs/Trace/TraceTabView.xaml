@@ -70,11 +70,7 @@
                 </SplitButton>
             </AppBarElementContainer>
             <AppBarSeparator />
-            <AppBarButton Label="Reset" Command="{x:Bind ViewModel.ResetStepCommand}">
-                <AppBarButton.Icon>
-                    <FontIcon Glyph="&#xE72C;" />
-                </AppBarButton.Icon>
-            </AppBarButton>
+            <AppBarButton Label="Reset" Command="{x:Bind ViewModel.ResetStepCommand}"/>
             <AppBarSeparator />
             <AppBarElementContainer VerticalContentAlignment="Center">
                 <StackPanel Orientation="Horizontal"

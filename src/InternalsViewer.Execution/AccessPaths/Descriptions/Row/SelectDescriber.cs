@@ -14,30 +14,26 @@ public static class SelectDescriber
         {
             Phase = AccessPhase.Open,
             Title = "Open",
-            Lead = "Opening cascades down the tree, each operator opening its inputs before any row is read. A blocking operator does " +
-                   "its work on the first row asked for, not here"
+            Lead = "Open child operators that will cascade through the plan operator tree."
         });
 
         phases.Add(new AccessStrategyPhase
         {
             Phase = AccessPhase.GetRow,
             Title = "Get Row",
-            Lead = "Each request pulls a single row up through the tree. The tree is demand driven, so nothing below runs further than " +
-                   "the row asked for needs"
+            Lead = "Row request to child operators that will cascade through the plan operator tree."
         });
 
         phases.Add(new AccessStrategyPhase
         {
             Phase = AccessPhase.Complete,
             Title = "Complete",
-            Lead = "Closing cascades down. A client that stops reading early closes the tree mid-walk, which is why a cancelled query " +
-                   "can leave a scan part read"
+            Lead = "Close child operators that will cascade through the plan operator tree."
         });
 
         return new OperatorDescription
         {
-            Summary = "The root of the plan, which pulls one row at a time from the operator below and hands it to the client. Every " +
-                      "operator in the tree runs because this one asked for a row",
+            Summary = "Results projection to return rows from the operators.",
             IsStreaming = true,
             Phases = phases.ToImmutable()
         };

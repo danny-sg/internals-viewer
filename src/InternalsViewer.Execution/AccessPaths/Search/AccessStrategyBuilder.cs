@@ -74,7 +74,7 @@ public static class AccessStrategyBuilder
             Phase = AccessPhase.Allocation,
             Title = "IAM",
             Lead = "Read the first IAM page for the allocation unit. Each IAM page maps which extents in a 4GB interval of one file " +
-                   "belong to the allocation unit, with eight single page slots for pages allocated from mixed extents"
+                   "belong to the allocation unit, with eight single page slots for pages allocated from mixed extents."
         });
 
         phases.Add(new AccessStrategyPhase
@@ -83,7 +83,7 @@ public static class AccessStrategyBuilder
             Title = "Allocation",
             Lead = "Visit the single page slots, then each allocated extent in page number order. The PFS byte for a page is checked " +
                    "before the page is read, skipping pages that sit in an allocated extent but are not themselves in use. Index and " +
-                   "IAM pages sharing the allocation unit's extents are identified by their page header and skipped"
+                   "IAM pages sharing the allocation unit's extents are identified by their page header and skipped."
         });
 
         phases.Add(new AccessStrategyPhase
@@ -92,8 +92,9 @@ public static class AccessStrategyBuilder
             Title = "Walk",
             Lead = hasResidual
                 ? "Read every row on each data page, emitting rows where "
-                : "Read every row on each data page, emitting all rows",
-            Condition = hasResidual ? PredicateWriter.Write(residual!) : []
+                : "Read every row on each data page, emitting all rows.",
+            Condition = hasResidual ? PredicateWriter.Write(residual!) : [],
+            Trail = hasResidual ? "." : string.Empty
         });
 
         phases.Add(new AccessStrategyPhase
@@ -101,8 +102,8 @@ public static class AccessStrategyBuilder
             Phase = AccessPhase.Complete,
             Title = "Complete",
             Lead = rowGoal is { } goal
-                ? $"The scan ends when {goal:N0} rows have been output or the end of the IAM chain is reached"
-                : "The scan ends when the end of the IAM chain is reached, following the chain across intervals and files"
+                ? $"The scan ends when {goal:N0} rows have been output or the end of the IAM chain is reached."
+                : "The scan ends when the end of the IAM chain is reached, following the chain across intervals and files."
         });
 
         return new AccessStrategy
@@ -133,7 +134,7 @@ public static class AccessStrategyBuilder
             Phase = AccessPhase.Descent,
             Title = "Fetch",
             Lead = "A heap has no tree to descend. The row identifier names the file, page and slot outright, so the row is reached " +
-                   "with a single page read"
+                   "with a single page read."
         });
 
         phases.Add(new AccessStrategyPhase
@@ -142,8 +143,9 @@ public static class AccessStrategyBuilder
             Title = "Row",
             Lead = hasResidual
                 ? "Read the row at the slot, returning it where "
-                : "Read the row at the slot and return it",
-            Condition = hasResidual ? PredicateWriter.Write(residual!) : []
+                : "Read the row at the slot and return it.",
+            Condition = hasResidual ? PredicateWriter.Write(residual!) : [],
+            Trail = hasResidual ? "." : string.Empty
         });
 
         phases.Add(new AccessStrategyPhase
@@ -151,7 +153,7 @@ public static class AccessStrategyBuilder
             Phase = AccessPhase.Complete,
             Title = "Complete",
             Lead = "The fetch ends at that row. A slot holding a forwarding stub costs one further read, because the row has outgrown " +
-                   "its page and moved, leaving the stub so the row identifier stays valid"
+                   "its page and moved, leaving the stub so the row identifier stays valid."
         });
 
         return new AccessStrategy
@@ -197,7 +199,7 @@ public static class AccessStrategyBuilder
             Title = "Ranges",
             Lead = $"The seek makes {ranges.Count} passes, one per range: ",
             Condition = tokens.ToImmutable(),
-            Trail = ". Each pass repeats the steps below with its own range"
+            Trail = ". Each pass repeats the steps below with its own range."
         };
     }
 
@@ -210,8 +212,8 @@ public static class AccessStrategyBuilder
                 Phase = AccessPhase.Descent,
                 Title = "Descent",
                 Lead = forward
-                    ? "From the root, follow the first down page pointer on each level down to the leaf"
-                    : "From the root, follow the last down page pointer on each level down to the leaf"
+                    ? "From the root, follow the first down page pointer on each level down to the leaf."
+                    : "From the root, follow the last down page pointer on each level down to the leaf."
             };
         }
 
@@ -225,7 +227,7 @@ public static class AccessStrategyBuilder
             Title = "Descent",
             Lead = "From the root, binary search for the child with the highest separator where ",
             Condition = Comparison(symbol, target, GetWidth(bounds, target)),
-            Trail = " and follow its down page pointer, repeating on each level down to the leaf"
+            Trail = " and follow its down page pointer, repeating on each level down to the leaf."
         };
     }
 
@@ -238,8 +240,8 @@ public static class AccessStrategyBuilder
                 Phase = AccessPhase.Position,
                 Title = "Position",
                 Lead = forward
-                    ? "Start at the first slot on the leaf page"
-                    : "Start at the last slot on the leaf page"
+                    ? "Start at the first slot on the leaf page."
+                    : "Start at the last slot on the leaf page."
             };
         }
 
@@ -254,7 +256,8 @@ public static class AccessStrategyBuilder
             Lead = forward
                 ? "Binary search the leaf page for the lowest key where "
                 : "Binary search the leaf page for the highest key where ",
-            Condition = Comparison(symbol, target, GetWidth(bounds, target))
+            Condition = Comparison(symbol, target, GetWidth(bounds, target)),
+            Trail = "."
         };
     }
 
@@ -276,7 +279,7 @@ public static class AccessStrategyBuilder
                     ? $"Read forward to the end of the index, {output}"
                     : $"Read backward to the start of the index, {output}",
                 LeadCondition = residualTokens,
-                Middle = forward ? " and following leaf page links" : string.Empty
+                Middle = forward ? " and following leaf page links." : "."
             };
         }
 
@@ -295,8 +298,8 @@ public static class AccessStrategyBuilder
             Middle = ", until a row with ",
             Condition = Comparison(symbol, target, GetWidth(bounds, target)),
             Trail = forward
-                ? " ends the range, following leaf page links across pages"
-                : " ends the range"
+                ? " ends the range, following leaf page links across pages."
+                : " ends the range."
         };
     }
 
@@ -304,13 +307,13 @@ public static class AccessStrategyBuilder
     {
         var lead = rowGoal switch
         {
-            1 => "Stop after the first matching row (row goal 1)",
-            not null => $"Stop after {rowGoal:N0} matching rows (row goal {rowGoal:N0})",
+            1 => "Stop after the first matching row (row goal 1).",
+            not null => $"Stop after {rowGoal:N0} matching rows (row goal {rowGoal:N0}).",
             _ => exitTarget.IsUnbounded
-                ? "Stop at the end of the index"
+                ? "Stop at the end of the index."
                 : rangeCount > 1
-                    ? $"Stop when a key leaves the range, then seek again from the root for the next of the {rangeCount} ranges"
-                    : "Stop when a key leaves the range"
+                    ? $"Stop when a key leaves the range, then seek again from the root for the next of the {rangeCount} ranges."
+                    : "Stop when a key leaves the range."
         };
 
         return new AccessStrategyPhase

@@ -390,7 +390,7 @@ public sealed partial class OperatorDescriptionPanel : UserControl
             {
                 RowsPanel.Children.Add(new TextBlock
                 {
-                    Text = "The range is bound from each outer row, so the descent is planned when the first rebind arrives",
+                    Text = "The range is bound from each outer row, so the descent is planned when the first rebind arrives.",
                     FontSize = FontSize,
                     Opacity = 0.7,
                     TextWrapping = TextWrapping.Wrap,

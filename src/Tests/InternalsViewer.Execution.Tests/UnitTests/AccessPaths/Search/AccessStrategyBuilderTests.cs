@@ -37,7 +37,7 @@ public class AccessStrategyBuilderTests
         Assert.Equal("Id <= 100", Text(strategy.Phases[0]));
         Assert.Equal("Id > 100", Text(strategy.Phases[1]));
         Assert.Equal("Id >= 500", Text(strategy.Phases[2]));
-        Assert.Equal("Stop when a key leaves the range", strategy.Phases[3].Lead);
+        Assert.Equal("Stop when a key leaves the range.", strategy.Phases[3].Lead);
 
         Assert.Same(bounds, strategy.Bounds);
         Assert.Equal(ScanDirection.Forward, strategy.Direction);
@@ -70,7 +70,7 @@ public class AccessStrategyBuilderTests
         Assert.Contains("first down page pointer", strategy.Phases[0].Lead);
         Assert.Contains("first slot", strategy.Phases[1].Lead);
         Assert.Contains("end of the index", strategy.Phases[2].Lead);
-        Assert.Equal("Stop at the end of the index", strategy.Phases[3].Lead);
+        Assert.Equal("Stop at the end of the index.", strategy.Phases[3].Lead);
 
         Assert.Same(residual, strategy.Residual);
     }

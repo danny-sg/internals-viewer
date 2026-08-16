@@ -14,13 +14,12 @@ public static class CorrelatedSeekDescriber
         {
             Phase = AccessPhase.Rebind,
             Title = "Rebind",
-            Lead = "The seek values are taken from the outer row, so there is no range to descend for until the first rebind arrives. " +
-                   "Each rebind reopens this path with the values that row carried"
+            Lead = "Seek values are set from the outer row. Every rebind resets the seek to the new correlated seek bounds."
         };
 
         return new OperatorDescription
         {
-            Summary = "Access path re-run once per outer row, descending the index again for the key values bound from that row",
+            Summary = "Access path re-run once per outer row, descending the index again for the key values bound from that row.",
             IsStreaming = true,
             Phases = [bind, .. strategy?.Phases ?? []]
         };

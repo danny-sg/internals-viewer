@@ -15,9 +15,10 @@ public static class IndexDescriber
         return new OperatorDescription
         {
             Summary = isSeek
-                ? "Access path that descends the index to the first key in range, then walks the leaf level in key order reading only " +
-                  "the rows the range covers"
-                : "Access path that reads the whole leaf level of an index in key order, with no bounds to stop it early",
+                ? "Data access that descends from the index root to the first key in range, then walks the leaf level in key order " +
+                  "reading only the rows the range covers."
+                : "Data access that reads the whole leaf level of an index in key order. The read is unbound, so it runs to the end of " +
+                  "the leaf level unless a row goal above stops it early.",
             IsStreaming = true,
             Phases = strategy?.Phases ?? []
         };
