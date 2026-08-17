@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.ObjectModel;
 using InternalsViewer.Execution.AccessPaths.Results;
 using InternalsViewer.Execution.AccessPaths.Results.Steps;
@@ -10,9 +10,14 @@ public static class TraceStepRuns
 {
     public static void Append(AccessStep step, ObservableCollection<AccessStep> history, int historyLimit)
     {
-        if (step is AccessStep.Stopped or AccessStep.Close or AccessStep.Sorted or AccessStep.AggregateEmit)
+        if (step is AccessStep.Stopped or AccessStep.Close or AccessStep.Sorted)
         {
             RetireSpans(history, step.NodeId);
+        }
+
+        if (step is AccessStep.AggregateEmit)
+        {
+            RetireSpan<StreamAggregateSpan>(history, step.NodeId);
         }
 
         var top = LeadingSpans(history);
@@ -97,16 +102,29 @@ public static class TraceStepRuns
                 StreamAggregateSpanFor(aggregateRow, history, top).Progress.Apply(aggregateRow);
                 return true;
 
-            case AccessStep.HashAggregate { IsNewGroup: false } folded:
-                StreamAggregateSpanFor(folded, history, top).Progress.Apply(folded);
+            case AccessStep.HashAggregate hashAggregate:
+                StreamAggregateSpanFor(hashAggregate, history, top).Progress.Apply(hashAggregate);
                 return true;
 
-            case AccessStep.HashAggregate opened:
-                StreamAggregateSpanFor(opened, history, top).Progress.Apply(opened);
-                return false;
+            case AccessStep.AggregateEmit aggregateEmit:
+                RowCountSpanFor(aggregateEmit, "→ Emit", history, top).Progress.Apply(aggregateEmit.Number, 0);
+                return true;
 
             case AccessStep.ComputeRow computeRow:
                 RowCountSpanFor(computeRow, "→ Emit", history, top).Progress.Apply(computeRow.Number, 0);
+                return true;
+
+            case AccessStep.SegmentRow segmentRow:
+                SegmentSpanFor(segmentRow, history).Progress.Apply(segmentRow);
+                return true;
+
+            case AccessStep.RankRow rankRow:
+                RankSpanFor(rankRow, history).Progress.Apply(rankRow);
+                return true;
+
+            case AccessStep.FilterRow filterRow:
+                RowCountSpanFor(filterRow, RowCountSpan.PassBadge, history, top)
+                    .Progress.Apply(filterRow.PassedCount, filterRow.Number);
                 return true;
 
             default:
@@ -246,7 +264,7 @@ public static class TraceStepRuns
 
     private static RowCountSpan RowCountSpanFor(AccessStep step, string badge, ObservableCollection<AccessStep> history, int top)
     {
-        if (FindSpan<RowCountSpan>(history, top, step.NodeId) is { } span)
+        if (FindOpenSpan<RowCountSpan>(history, step.NodeId) is { } span)
         {
             return span;
         }
@@ -256,6 +274,42 @@ public static class TraceStepRuns
             NodeId = step.NodeId,
             Counters = step.Counters,
             Badge = badge
+        };
+
+        InsertSpan(history, created);
+
+        return created;
+    }
+
+    private static SegmentSpan SegmentSpanFor(AccessStep step, ObservableCollection<AccessStep> history)
+    {
+        if (FindOpenSpan<SegmentSpan>(history, step.NodeId) is { } span)
+        {
+            return span;
+        }
+
+        var created = new SegmentSpan
+        {
+            NodeId = step.NodeId,
+            Counters = step.Counters
+        };
+
+        InsertSpan(history, created);
+
+        return created;
+    }
+
+    private static RankSpan RankSpanFor(AccessStep step, ObservableCollection<AccessStep> history)
+    {
+        if (FindOpenSpan<RankSpan>(history, step.NodeId) is { } span)
+        {
+            return span;
+        }
+
+        var created = new RankSpan
+        {
+            NodeId = step.NodeId,
+            Counters = step.Counters
         };
 
         InsertSpan(history, created);
@@ -283,7 +337,7 @@ public static class TraceStepRuns
 
     private static StreamAggregateSpan StreamAggregateSpanFor(AccessStep step, ObservableCollection<AccessStep> history, int top)
     {
-        if (FindSpan<StreamAggregateSpan>(history, top, step.NodeId) is { } span)
+        if (FindOpenSpan<StreamAggregateSpan>(history, step.NodeId) is { } span)
         {
             return span;
         }
@@ -386,6 +440,18 @@ public static class TraceStepRuns
         _ => 2
     };
 
+    private static void RetireSpan<T>(ObservableCollection<AccessStep> history, int nodeId)
+        where T : AccessStep, ITraceSpan
+    {
+        for (var index = 0; index < history.Count && history[index] is ITraceSpan; index++)
+        {
+            if (history[index] is T span && span.NodeId == nodeId)
+            {
+                span.IsComplete = true;
+            }
+        }
+    }
+
     private static void RetireSpans(ObservableCollection<AccessStep> history, int nodeId)
     {
         for (var index = 0; index < history.Count && history[index] is ITraceSpan; index++)
@@ -407,6 +473,20 @@ public static class TraceStepRuns
         }
 
         return count;
+    }
+
+    private static T? FindOpenSpan<T>(ObservableCollection<AccessStep> history, int nodeId)
+        where T : AccessStep, ITraceSpan
+    {
+        for (var index = 0; index < history.Count && history[index] is ITraceSpan; index++)
+        {
+            if (history[index] is T { IsComplete: false } span && span.NodeId == nodeId)
+            {
+                return span;
+            }
+        }
+
+        return null;
     }
 
     private static T? FindSpan<T>(ObservableCollection<AccessStep> history, int top, int nodeId) where T : AccessStep

@@ -51,6 +51,8 @@ public sealed partial class TraceHashTableViewModel(RecordColumnFilter columnFil
 
     private bool _suppressResize;
 
+    private IReadOnlyList<HashColumnModel>? _placeholderColumns;
+
     /// <summary>
     /// Binds to the iterator that fills this table, which is a new one each time the trace is opened
     /// </summary>
@@ -104,9 +106,18 @@ public sealed partial class TraceHashTableViewModel(RecordColumnFilter columnFil
             && step != null
             && Added(step) is { } added)
         {
-            models[added.Bucket].Entries.Add(ToEntryModel(table.Buckets[added.Bucket].Entries[added.Entry],
-                                                          added.Bucket,
-                                                          added.Entry));
+            var entries = models[added.Bucket].Entries;
+
+            var entry = ToEntryModel(table.Buckets[added.Bucket].Entries[added.Entry], added.Bucket, added.Entry);
+
+            if (entries is [{ IsPlaceholder: true }])
+            {
+                entries.Reset([entry]);
+            }
+            else
+            {
+                entries.Add(entry);
+            }
 
             _syncedRowCount = table.RowCount;
         }
@@ -117,6 +128,13 @@ public sealed partial class TraceHashTableViewModel(RecordColumnFilter columnFil
             RebuildBuckets(table);
 
             Buckets = _bucketModels!;
+        }
+
+        if (!ReferenceEquals(_placeholderColumns, Columns))
+        {
+            _placeholderColumns = Columns;
+
+            RefreshEmptyBuckets();
         }
 
         if (isOwnStep && step is AccessStep.HashAggregate { IsNewGroup: false } folded)
@@ -141,6 +159,7 @@ public sealed partial class TraceHashTableViewModel(RecordColumnFilter columnFil
 
         _bucketModels = null;
         _syncedRowCount = 0;
+        _placeholderColumns = null;
         _currentBucket = null;
         _currentEntry = null;
 
@@ -187,10 +206,19 @@ public sealed partial class TraceHashTableViewModel(RecordColumnFilter columnFil
         {
             var model = new HashBucketModel { Index = bucket.Index };
 
+            var entries = new List<HashEntryModel>(bucket.Count);
+
             foreach (var entry in bucket.Entries)
             {
-                model.Entries.Add(ToEntryModel(entry, bucket.Index, model.Entries.Count));
+                entries.Add(ToEntryModel(entry, bucket.Index, entries.Count));
             }
+
+            if (entries.Count == 0)
+            {
+                entries.Add(EmptyEntryModel(bucket.Index));
+            }
+
+            model.Entries.Reset(entries);
 
             models.Add(model);
         }
@@ -255,6 +283,39 @@ public sealed partial class TraceHashTableViewModel(RecordColumnFilter columnFil
         }
 
         _matchedEntries.Clear();
+    }
+
+    private HashEntryModel EmptyEntryModel(int bucketIndex)
+    {
+        var columns = Columns;
+
+        var cells = new List<HashCellModel>(columns.Count)
+        {
+            new() { Value = bucketIndex.ToString(), Column = columns[BucketColumn] }
+        };
+
+        for (var index = BucketColumn + 1; index < columns.Count; index++)
+        {
+            cells.Add(new HashCellModel { Column = columns[index] });
+        }
+
+        return new HashEntryModel { IsPlaceholder = true, Cells = cells };
+    }
+
+    private void RefreshEmptyBuckets()
+    {
+        if (_bucketModels is not { } models)
+        {
+            return;
+        }
+
+        foreach (var model in models)
+        {
+            if (model.Entries is [{ IsPlaceholder: true }])
+            {
+                model.Entries[0] = EmptyEntryModel(model.Index);
+            }
+        }
     }
 
     private HashEntryModel ToEntryModel(HashEntry entry, int bucketIndex, int entryIndex)

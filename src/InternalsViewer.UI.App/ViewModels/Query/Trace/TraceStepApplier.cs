@@ -1,4 +1,4 @@
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Linq;
 using InternalsViewer.Execution.AccessPaths.Definitions;
 using InternalsViewer.Execution.AccessPaths.Memory;
@@ -10,6 +10,7 @@ using InternalsViewer.Execution.Interfaces.Iterators.Joins;
 using InternalsViewer.Execution.Iterators.Aggregation;
 using InternalsViewer.Execution.Iterators.Row;
 using InternalsViewer.Execution.Iterators.Stepping;
+using InternalsViewer.Execution.Iterators.Windowing;
 using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Internals.Interfaces.Engine;
 using InternalsViewer.UI.App.Models.Index;
@@ -45,6 +46,8 @@ public sealed class TraceStepApplier(TraceLayout layout,
 
         SyncAggregates(stepper);
 
+        SyncSegments(stepper);
+
         SyncHashTables(step);
 
         visualsByNode.GetValueOrDefault(step.NodeId)?.Apply(step);
@@ -64,6 +67,8 @@ public sealed class TraceStepApplier(TraceLayout layout,
             node.HashTable?.Reset();
 
             node.Aggregates?.Reset();
+
+            node.Segment?.Reset();
         }
 
         foreach (var op in operatorsByNode.Values)
@@ -153,14 +158,22 @@ public sealed class TraceStepApplier(TraceLayout layout,
     private IndexRecordModel? ToStreamModel(AccessStep step)
         => step switch
         {
-            AccessStep.JoinEmit emit => rowBuilder.ToJoinedModel(emit),
-            AccessStep.TopRow { EmittedRecord: { } emitted } => ToRecordModel(emitted),
-            AccessStep.Output { EmittedRecord: { } emitted } => ToRecordModel(emitted),
-            AccessStep.ConcatRow { EmittedRecord: { } emitted } => ToRecordModel(emitted),
-            AccessStep.SortRow { EmittedRecord: { } emitted } => ToRecordModel(emitted),
-            AccessStep.AggregateEmit { EmittedRecord: { } emitted } => ToRecordModel(emitted),
-            AccessStep.ComputeRow { EmittedRecord: { } emitted } => ToRecordModel(emitted),
-            AccessStep.Row { EmittedRecord: { } emitted } => ToRecordModel(emitted),
+            AccessStep.JoinEmit emit
+                => rowBuilder.ToJoinedModel(emit),
+            AccessStep.TopRow { EmittedRecord: { } emitted }
+                => ToRecordModel(emitted),
+            AccessStep.Output { EmittedRecord: { } emitted }
+                => ToRecordModel(emitted),
+            AccessStep.ConcatRow { EmittedRecord: { } emitted }
+                => ToRecordModel(emitted),
+            AccessStep.SortRow { EmittedRecord: { } emitted }
+                => ToRecordModel(emitted),
+            AccessStep.AggregateEmit { EmittedRecord: { } emitted }
+                => ToRecordModel(emitted),
+            AccessStep.ComputeRow { EmittedRecord: { } emitted }
+                => ToRecordModel(emitted),
+            AccessStep.Row { EmittedRecord: { } emitted }
+                => ToRecordModel(emitted),
             _ => null
         };
 
@@ -187,7 +200,6 @@ public sealed class TraceStepApplier(TraceLayout layout,
 
             case TopDefinition top:
                 tab.StateItems.Add(new TraceStateItem("Target") { Value = top.RowCount.ToString("N0") });
-                tab.StateItems.Add(new TraceStateItem("Row Count") { Value = "0" });
                 break;
 
             case HashMatchDefinition:
@@ -209,12 +221,16 @@ public sealed class TraceStepApplier(TraceLayout layout,
 
             case HashAggregateDefinition:
                 tab.StateItems.Add(new TraceStateItem("Groups") { Value = "0" });
-                tab.StateItems.Add(new TraceStateItem("Rows") { Value = "0" });
                 tab.StateItems.Add(new TraceStateItem("Memory") { Value = "0 KB" });
                 break;
 
+            case FilterDefinition:
+                tab.StateItems.Add(new TraceStateItem("Rows Read") { Value = "0" });
+                tab.StateItems.Add(new TraceStateItem("Rows Output") { Value = "0" });
+                tab.StateItems.Add(new TraceStateItem("Rows Filtered") { Value = "0" });
+                break;
+
             case ComputeScalarDefinition:
-                tab.StateItems.Add(new TraceStateItem("Rows") { Value = "0" });
                 break;
         }
     }
@@ -272,9 +288,9 @@ public sealed class TraceStepApplier(TraceLayout layout,
     /// The fold is done over the raw positions and only the last of each is handed to a tab. Walking the history through the step by step
     /// path instead would raise a change for every position an operator passed through, which the bindings would each follow.
     /// </remarks>
-    public void SyncPositions(IEnumerable<AccessStep> history)
+    public TracePositionUpdate ComputePositions(IEnumerable<AccessStep> history)
     {
-        ResetPositions();
+        var positions = new Dictionary<int, (PageAddress? Page, int? Slot)>();
 
         var open = new HashSet<int>();
 
@@ -285,7 +301,7 @@ public sealed class TraceStepApplier(TraceLayout layout,
                 continue;
             }
 
-            var position = PositionByNode.GetValueOrDefault(step.NodeId);
+            var position = positions.GetValueOrDefault(step.NodeId);
 
             switch (step)
             {
@@ -311,14 +327,23 @@ public sealed class TraceStepApplier(TraceLayout layout,
                     break;
             }
 
-            PositionByNode[step.NodeId] = position;
+            positions[step.NodeId] = position;
         }
 
-        foreach (var (nodeId, position) in PositionByNode)
+        return new TracePositionUpdate(positions, open);
+    }
+
+    public void ApplyPositionUpdate(TracePositionUpdate update)
+    {
+        ResetPositions();
+
+        foreach (var (nodeId, position) in update.Positions)
         {
+            PositionByNode[nodeId] = position;
+
             var tab = operatorsByNode[nodeId];
 
-            tab.IsOpen = open.Contains(nodeId);
+            tab.IsOpen = update.Open.Contains(nodeId);
             tab.CurrentPage = position.Page;
             tab.CurrentSlot = position.Slot;
         }
@@ -373,6 +398,11 @@ public sealed class TraceStepApplier(TraceLayout layout,
                 case ComputeScalarIterator compute:
                     tab.SetState("Rows", compute.RowCount.ToString("N0"));
                     break;
+                case FilterIterator filter:
+                    tab.SetState("Rows Read", filter.RowCount.ToString("N0"));
+                    tab.SetState("Rows Output", filter.PassedCount.ToString("N0"));
+                    tab.SetState("Rows Filtered", (filter.RowCount - filter.PassedCount).ToString("N0"));
+                    break;
             }
 
             if (iterator is IMemoryBufferIterator buffer)
@@ -415,6 +445,40 @@ public sealed class TraceStepApplier(TraceLayout layout,
         }
     }
 
+    public Dictionary<(int NodeId, int InputIndex), HeldRowsSnapshot> ComputeHeldRows(IteratorStepper stepper)
+    {
+        var snapshots = new Dictionary<(int NodeId, int InputIndex), HeldRowsSnapshot>();
+
+        foreach (var iterator in Iterators(stepper.Root).OfType<IRowBufferIterator>())
+        {
+            if (layout.Nodes.GetValueOrDefault(iterator.NodeId)?.HeldRows is not { } heldRows)
+            {
+                continue;
+            }
+
+            foreach (var buffer in iterator.Buffers)
+            {
+                if (heldRows.ContainsKey(buffer.InputIndex))
+                {
+                    snapshots[(iterator.NodeId, buffer.InputIndex)] = TraceHeldRowsViewModel.Capture(buffer.Rows);
+                }
+            }
+        }
+
+        return snapshots;
+    }
+
+    public void ApplyHeldRows(IReadOnlyDictionary<(int NodeId, int InputIndex), HeldRowsSnapshot> snapshots)
+    {
+        foreach (var (key, snapshot) in snapshots)
+        {
+            if (layout.Nodes.GetValueOrDefault(key.NodeId)?.HeldRows.GetValueOrDefault(key.InputIndex) is { } held)
+            {
+                held.Apply(snapshot);
+            }
+        }
+    }
+
     public void SyncAggregates(IteratorStepper stepper)
     {
         foreach (var iterator in Iterators(stepper.Root).OfType<StreamAggregateIterator>())
@@ -424,6 +488,16 @@ public sealed class TraceStepApplier(TraceLayout layout,
                                                                              iterator.CurrentKey,
                                                                              iterator.GroupRowCount,
                                                                              iterator.RowCount);
+        }
+    }
+
+    public void SyncSegments(IteratorStepper stepper)
+    {
+        foreach (var iterator in Iterators(stepper.Root).OfType<SegmentIterator>())
+        {
+            layout.Nodes.GetValueOrDefault(iterator.NodeId)?.Segment?.Sync(iterator.CurrentKeyValues,
+                                                                          iterator.RowKeyValues,
+                                                                          iterator.SegmentCount);
         }
     }
 

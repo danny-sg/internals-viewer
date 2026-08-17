@@ -1,4 +1,4 @@
-using InternalsViewer.Execution.AccessPaths.Definitions;
+﻿using InternalsViewer.Execution.AccessPaths.Definitions;
 using InternalsViewer.Execution.AccessPaths.Results;
 using InternalsViewer.Execution.AccessPaths.Results.Steps;
 
@@ -23,17 +23,34 @@ public static class OperatorPhases
 
         return definition switch
         {
-            NestedLoopsDefinition => NestedLoops(step),
-            MergeJoinDefinition => MergeJoin(step),
-            HashMatchDefinition => HashMatch(step),
-            TopDefinition => Top(step),
-            SortDefinition => Sort(step),
-            StreamAggregateDefinition => StreamAggregate(step),
-            HashAggregateDefinition => HashAggregate(step),
-            ComputeScalarDefinition => ComputeScalar(step),
-            ConcatenationDefinition => Concatenation(step),
-            SelectDefinition => Select(step),
-            SeekDefinition => step is AccessStep.Rebind ? AccessPhase.Rebind : step.AccessPhase,
+            NestedLoopsDefinition 
+                => NestedLoops(step),
+            MergeJoinDefinition 
+                => MergeJoin(step),
+            HashMatchDefinition 
+                => HashMatch(step),
+            TopDefinition 
+                => Top(step),
+            SortDefinition 
+                => Sort(step),
+            StreamAggregateDefinition 
+                => StreamAggregate(step),
+            HashAggregateDefinition 
+                => HashAggregate(step),
+            ComputeScalarDefinition 
+                => ComputeScalar(step),
+            FilterDefinition 
+                => Filter(step),
+            SegmentDefinition 
+                => Segment(step),
+            SequenceProjectDefinition 
+                => SequenceProject(step),
+            ConcatenationDefinition 
+                => Concatenation(step),
+            SelectDefinition 
+                => Select(step),
+            SeekDefinition 
+                => step is AccessStep.Rebind ? AccessPhase.Rebind : step.AccessPhase,
             _ => step.AccessPhase
         };
     }
@@ -41,47 +58,70 @@ public static class OperatorPhases
     private static AccessPhase? NestedLoops(AccessStep step)
         => step switch
         {
-            AccessStep.Open or AccessStep.JoinStart => AccessPhase.Outer,
-            AccessStep.Rebind => AccessPhase.Rebind,
-            AccessStep.JoinVerdict => AccessPhase.Verdict,
-            AccessStep.JoinEmit => AccessPhase.Inner,
-            AccessStep.Stopped or AccessStep.Close => AccessPhase.Complete,
+            AccessStep.Open or AccessStep.JoinStart 
+                => AccessPhase.Outer,
+            AccessStep.Rebind 
+                => AccessPhase.Rebind,
+            AccessStep.JoinVerdict
+                => AccessPhase.Verdict,
+            AccessStep.JoinEmit 
+                => AccessPhase.Inner,
+            AccessStep.Stopped or AccessStep.Close 
+                => AccessPhase.Complete,
             _ => null
         };
 
     private static AccessPhase? MergeJoin(AccessStep step)
         => step switch
         {
-            AccessStep.Open or AccessStep.JoinStart => AccessPhase.Order,
-            AccessStep.MergeCompare { Comparison: 0 } or AccessStep.MergeCompareRun { Comparison: 0 } => AccessPhase.Match,
-            AccessStep.MergeCompare or AccessStep.MergeCompareRun => AccessPhase.Compare,
-            AccessStep.JoinEmit { IsUnmatched: true } => AccessPhase.Preserve,
-            AccessStep.JoinEmit => AccessPhase.Match,
-            AccessStep.Stopped or AccessStep.Close => AccessPhase.Complete,
+            AccessStep.Open or AccessStep.JoinStart 
+                => AccessPhase.Order,
+            AccessStep.MergeCompare { Comparison: 0 } or AccessStep.MergeCompareRun { Comparison: 0 } 
+                => AccessPhase.Match,
+            AccessStep.MergeCompare or AccessStep.MergeCompareRun 
+                => AccessPhase.Compare,
+            AccessStep.JoinEmit { IsUnmatched: true } 
+                => AccessPhase.Preserve,
+            AccessStep.JoinEmit 
+                => AccessPhase.Match,
+            AccessStep.Stopped or AccessStep.Close 
+                => AccessPhase.Complete,
             _ => null
         };
 
     private static AccessPhase? HashMatch(AccessStep step)
         => step switch
         {
-            AccessStep.Open => AccessPhase.Buckets,
-            AccessStep.HashBuild => AccessPhase.Build,
-            AccessStep.HashProbe or AccessStep.HashProbeRun => AccessPhase.Probe,
-            AccessStep.HashCompare => AccessPhase.Compare,
-            AccessStep.JoinEmit { OuterRecord: not null, InnerRecord: null } => AccessPhase.Complete,
-            AccessStep.JoinEmit => AccessPhase.Probe,
-            AccessStep.Stopped or AccessStep.Close => AccessPhase.Complete,
+            AccessStep.Open 
+                => AccessPhase.Buckets,
+            AccessStep.HashBuild 
+                => AccessPhase.Build,
+            AccessStep.HashProbe or AccessStep.HashProbeRun 
+                => AccessPhase.Probe,
+            AccessStep.HashCompare 
+                => AccessPhase.Compare,
+            AccessStep.JoinEmit { OuterRecord: not null, InnerRecord: null } 
+                => AccessPhase.Complete,
+            AccessStep.JoinEmit 
+                => AccessPhase.Probe,
+            AccessStep.Stopped or AccessStep.Close 
+                => AccessPhase.Complete,
             _ => null
         };
 
     private static AccessPhase? Top(AccessStep step)
         => step switch
         {
-            AccessStep.Open or AccessStep.TopStart => AccessPhase.RowCount,
-            AccessStep.TopRow { IsLast: true } => AccessPhase.Stop,
-            AccessStep.TopRow => AccessPhase.Pass,
-            AccessStep.Stopped { Reason: StopReason.RowGoalMet } => AccessPhase.Stop,
-            AccessStep.Stopped or AccessStep.Close => AccessPhase.Complete,
+            AccessStep.Open or AccessStep.TopStart 
+                => AccessPhase.RowCount,
+            AccessStep.TopRow { IsLast: true } 
+                => AccessPhase.Stop,
+            AccessStep.TopRow 
+                => AccessPhase.Pass,
+            AccessStep.Stopped { Reason: StopReason.RowGoalMet } 
+                => AccessPhase.Stop,
+            AccessStep.Stopped or AccessStep.Close 
+                => AccessPhase.Complete,
             _ => null
         };
 
@@ -120,6 +160,30 @@ public static class OperatorPhases
         => step switch
         {
             AccessStep.Open or AccessStep.ComputeRow => AccessPhase.Compute,
+            AccessStep.Stopped or AccessStep.Close => AccessPhase.Complete,
+            _ => null
+        };
+
+    private static AccessPhase? Filter(AccessStep step)
+        => step switch
+        {
+            AccessStep.Open or AccessStep.FilterRow => AccessPhase.Filter,
+            AccessStep.Stopped or AccessStep.Close => AccessPhase.Complete,
+            _ => null
+        };
+
+    private static AccessPhase? Segment(AccessStep step)
+        => step switch
+        {
+            AccessStep.Open or AccessStep.SegmentRow => AccessPhase.Segment,
+            AccessStep.Stopped or AccessStep.Close => AccessPhase.Complete,
+            _ => null
+        };
+
+    private static AccessPhase? SequenceProject(AccessStep step)
+        => step switch
+        {
+            AccessStep.Open or AccessStep.RankRow => AccessPhase.Rank,
             AccessStep.Stopped or AccessStep.Close => AccessPhase.Complete,
             _ => null
         };

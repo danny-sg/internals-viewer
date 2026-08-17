@@ -1,39 +1,34 @@
-using InternalsViewer.Execution.AccessPaths.Predicates;
-using InternalsViewer.Execution.AccessPaths.Results;
 using InternalsViewer.Execution.AccessPaths.Results.Steps;
 using InternalsViewer.Execution.Interfaces.Pages;
-using InternalsViewer.Execution.Records;
+using InternalsViewer.Internals.Metadata.Structures;
 
 namespace InternalsViewer.Execution.Executors;
 
+/// <summary>
+/// Executes an allocation scan record read on a page
+/// </summary>
 internal static class AllocationScanExecutor
 {
-    public static IEnumerable<AccessStep> Execute(IRowPageAccessor page,
-                                                  AccessPredicate? residual = null,
-                                                  long? rowGoal = null,
-                                                  AccessCounters counters = default,
-                                                  Action<AccessCounters>? onCountersChanged = null,
-                                                  EvaluationContext? evaluationContext = null,
-                                                  bool isHeap = false)
+    public static IEnumerable<AccessStep> Execute(IRowPageAccessor page, PageWalk walk)
     {
-        return Walk(page, residual, rowGoal, counters, onCountersChanged, evaluationContext ?? EvaluationContext.Now, isHeap);
+        return Walk(page, walk);
     }
 
-    private static IEnumerable<AccessStep> Walk(IRowPageAccessor page,
-                                                AccessPredicate? residual,
-                                                long? rowGoal,
-                                                AccessCounters totals,
-                                                Action<AccessCounters>? onCountersChanged,
-                                                EvaluationContext evaluationContext,
-                                                bool isHeap)
+    /// <summary>
+    /// Reads a page, iterating through the slots
+    /// </summary>
+    /// <remarks>
+    /// Checks if a record is a ghost record (marked as deleted)
+    ///
+    /// Outputs the row Access Steps using RowStepBuilder.
+    /// </remarks>
+    private static IEnumerable<AccessStep> Walk(IRowPageAccessor page, PageWalk walk)
     {
-        var hasResidual = residual is not (null or AccessPredicate.True or AccessPredicate.NoTranslation);
-
-        totals = Publish(totals.AddPageRead(), onCountersChanged);
+        var totals = walk.Counters.AddPageRead();
 
         yield return new AccessStep.ReadPage(page.PageAddress, page.Level, false, page.IsLeaf, page.SlotCount)
         {
-            IsHeap = isHeap,
+            IsHeap = page.Structure == StructureType.Heap,
             Counters = totals
         };
 
@@ -41,58 +36,26 @@ internal static class AllocationScanExecutor
         {
             if (page.GetRecord(slot).IsGhost)
             {
-                totals = Publish(totals.AddGhostSkipped(), onCountersChanged);
+                var ghost = RowStepBuilder.Ghost(walk, slot, totals, hasRange: false);
 
-                yield return new AccessStep.Row(slot, RowOutcome.Ghost) { HasResidual = hasResidual, HasRange = false, Counters = totals };
+                totals = ghost.Counters;
+
+                yield return ghost;
 
                 continue;
             }
 
-            totals = Publish(totals.AddRowRead(), onCountersChanged);
-
-            var outcome = EvaluateResidual(page, slot, residual, evaluationContext) switch
+            foreach (var step in RowStepBuilder.Examine(page, walk, slot, totals, hasRange: false))
             {
-                true => RowOutcome.Match,
-                false => RowOutcome.NoMatch,
-                _ => RowOutcome.Unknown
-            };
+                totals = step.Counters;
 
-            if (outcome == RowOutcome.Match)
-            {
-                totals = Publish(totals.AddRowOutput(), onCountersChanged);
-            }
+                yield return step;
 
-            yield return new AccessStep.Row(slot, outcome)
-            {
-                HasResidual = hasResidual,
-                HasRange = false,
-                EmittedRecord = outcome == RowOutcome.Match ? RecordSnapshot.Detach(page.GetRecord(slot)) : null,
-                Counters = totals
-            };
-
-            if (outcome == RowOutcome.Match && totals.RowsOutput == rowGoal)
-            {
-                yield return new AccessStep.Stopped(StopReason.RowGoalMet) { Counters = totals };
-
-                yield break;
+                if (step is AccessStep.Stopped)
+                {
+                    yield break;
+                }
             }
         }
-    }
-
-    private static AccessCounters Publish(AccessCounters counters, Action<AccessCounters>? onCountersChanged)
-    {
-        onCountersChanged?.Invoke(counters);
-
-        return counters;
-    }
-
-    private static bool? EvaluateResidual(IRowPageAccessor page, int slot, AccessPredicate? residual, EvaluationContext evaluationContext)
-    {
-        if (residual is null or AccessPredicate.True or AccessPredicate.NoTranslation)
-        {
-            return true;
-        }
-
-        return PredicateEvaluator.Evaluate(residual, page.BindRow(slot), evaluationContext);
     }
 }

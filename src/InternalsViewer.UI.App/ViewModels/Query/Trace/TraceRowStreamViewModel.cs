@@ -1,13 +1,13 @@
 using System.Collections.Generic;
-using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using InternalsViewer.UI.App.Models.Index;
+using InternalsViewer.UI.App.Models.Query.Trace;
 
 namespace InternalsViewer.UI.App.ViewModels.Query.Trace;
 
 public sealed partial class TraceRowStreamViewModel : ObservableObject
 {
-    public ObservableCollection<IndexRecordModel> Rows { get; } = [];
+    public BulkObservableCollection<IndexRecordModel> Rows { get; } = [];
 
     public bool IsAccumulating { get; set; }
 
@@ -23,12 +23,7 @@ public sealed partial class TraceRowStreamViewModel : ObservableObject
 
     public void Load(IReadOnlyList<IndexRecordModel> rows)
     {
-        Rows.Clear();
-
-        foreach (var row in rows)
-        {
-            Rows.Add(row);
-        }
+        Rows.Reset(rows);
     }
 
     public void Clear()

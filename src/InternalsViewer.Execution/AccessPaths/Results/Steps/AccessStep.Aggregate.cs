@@ -1,11 +1,11 @@
-using InternalsViewer.Execution.AccessPaths.Search;
+﻿using InternalsViewer.Execution.AccessPaths.Search;
 using InternalsViewer.Internals.Interfaces.Engine;
 
 namespace InternalsViewer.Execution.AccessPaths.Results.Steps;
 
 public abstract partial record AccessStep
 {
-    public sealed record AggregateStart(bool IsScalar, int AggregateCount) : AccessStep(AccessPhase.Group)
+    public sealed record AggregateStart(bool IsScalar) : AccessStep(AccessPhase.Group)
     {
         public string Aggregates { get; init; } = string.Empty;
 

@@ -1,5 +1,6 @@
 using InternalsViewer.Execution.Interfaces.Pages;
 using InternalsViewer.Internals.Engine.Address;
+using InternalsViewer.Internals.Engine.Database.Enums;
 using InternalsViewer.Internals.Engine.Pages;
 using InternalsViewer.Internals.Interfaces.Engine;
 using InternalsViewer.Internals.Interfaces.Services.Records;
@@ -22,6 +23,8 @@ public sealed class HeapPageAccessor(DataPage page, IRecordService recordService
     public bool IsLeaf => true;
 
     public int SlotCount => _records.Length;
+
+    public StructureType Structure => page.AllocationUnit.IndexType == IndexType.Heap ? StructureType.Heap : StructureType.BTree;
 
     public IRecord GetRecord(int slot) 
         => _records[slot] ??= recordService.GetDataRecord(page, slot, _tableStructure);

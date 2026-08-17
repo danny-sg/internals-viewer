@@ -8,7 +8,7 @@ using InternalsViewer.Internals.Interfaces.Engine;
 namespace InternalsViewer.Execution.Iterators.Joins;
 
 /// <summary>
-/// Nested Loops Stepping
+/// Nested Loops Operator
 /// </summary>
 /// <remarks>
 /// Nested loops join two tables by iterating over the rows of the outer table and for each row iterating over the rows of the inner table,
@@ -16,7 +16,7 @@ namespace InternalsViewer.Execution.Iterators.Joins;
 ///
 /// A rebind is performed at the start of each inner loop iteration, re-opening the inner iterator with the outer row on the context.
 ///
-/// This service requires an outer input that can be scanned in key order, and an inner input that can be rebound for each outer row.
+/// Neither input has to be ordered. The outer is read a row at a time and the inner only has to be able to be rebound for each of them.
 ///
 /// Note: from the perspective of the join there is no difference between a loop join and a key lookup.
 /// </remarks>

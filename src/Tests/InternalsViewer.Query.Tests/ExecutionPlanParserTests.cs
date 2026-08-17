@@ -1,8 +1,9 @@
-
+﻿
 using System.Data;
 using InternalsViewer.Execution.AccessPaths.Aggregation;
 using InternalsViewer.Execution.AccessPaths.Predicates;
 using InternalsViewer.Execution.AccessPaths.Search;
+using InternalsViewer.Execution.AccessPaths.Windowing;
 using InternalsViewer.Query.Plans.Model;
 using InternalsViewer.Query.Plans.Parsers;
 using InternalsViewer.Query.Plans;
@@ -954,6 +955,208 @@ public class ExecutionPlanParserTests
         Assert.Equal(SqlDbType.Int, definedValue.DataType);
 
         Assert.Equal("Expr1010", Assert.IsType<AccessExpression.Column>(definedValue.ParsedExpression).Name);
+    }
+
+    // ------------------------------------------------------------------
+    // Filter over an aggregate, which is the shape HAVING takes
+    // ------------------------------------------------------------------
+
+    private const string FilterOverAggregateXml =
+        """
+        <?xml version="1.0"?>
+        <ShowPlanXML xmlns="http://schemas.microsoft.com/sqlserver/2004/07/showplan"
+                     Version="1.7" Build="16.0.0">
+          <BatchSequence>
+            <Batch>
+              <Statements>
+                <StmtSimple StatementType="SELECT" StatementSubTreeCost="0.01">
+                  <QueryPlan>
+                    <RelOp NodeId="0" PhysicalOp="Filter" LogicalOp="Filter" EstimateRows="10"
+                           EstimatedTotalSubtreeCost="0.01">
+                      <OutputList>
+                        <ColumnReference Database="[Demo]" Schema="[dbo]" Table="[DuplicateKeyTable]" Column="Category" />
+                        <ColumnReference Column="Expr1003" />
+                      </OutputList>
+                      <Filter StartupExpression="false">
+                        <RelOp NodeId="1" PhysicalOp="Stream Aggregate" LogicalOp="Aggregate" EstimateRows="20"
+                               EstimatedTotalSubtreeCost="0.01">
+                          <OutputList>
+                            <ColumnReference Database="[Demo]" Schema="[dbo]" Table="[DuplicateKeyTable]" Column="Category" />
+                            <ColumnReference Column="Expr1003" />
+                          </OutputList>
+                          <StreamAggregate>
+                            <DefinedValues>
+                              <DefinedValue>
+                                <ColumnReference Column="Expr1003" />
+                                <ScalarOperator ScalarString="COUNT(*)">
+                                  <Aggregate AggType="COUNT*" Distinct="false" />
+                                </ScalarOperator>
+                              </DefinedValue>
+                            </DefinedValues>
+                            <GroupBy>
+                              <ColumnReference Database="[Demo]" Schema="[dbo]" Table="[DuplicateKeyTable]" Column="Category" />
+                            </GroupBy>
+                            <RelOp NodeId="2" PhysicalOp="Clustered Index Scan" LogicalOp="Clustered Index Scan"
+                                   EstimateRows="2000" EstimatedTotalSubtreeCost="0.01">
+                              <OutputList>
+                                <ColumnReference Database="[Demo]" Schema="[dbo]" Table="[DuplicateKeyTable]" Column="Category" />
+                              </OutputList>
+                              <IndexScan Ordered="true" ScanDirection="FORWARD">
+                                <DefinedValues />
+                                <Object Database="[Demo]" Schema="[dbo]" Table="[DuplicateKeyTable]"
+                                        Index="[ix_DuplicateKeyTable_Category]" IndexKind="Clustered" />
+                              </IndexScan>
+                            </RelOp>
+                          </StreamAggregate>
+                        </RelOp>
+                        <Predicate>
+                          <ScalarOperator ScalarString="[Expr1003]&gt;(50)">
+                            <Compare CompareOp="GT">
+                              <ScalarOperator>
+                                <Identifier>
+                                  <ColumnReference Column="Expr1003" />
+                                </Identifier>
+                              </ScalarOperator>
+                              <ScalarOperator>
+                                <Const ConstValue="(50)" />
+                              </ScalarOperator>
+                            </Compare>
+                          </ScalarOperator>
+                        </Predicate>
+                      </Filter>
+                    </RelOp>
+                  </QueryPlan>
+                </StmtSimple>
+              </Statements>
+            </Batch>
+          </BatchSequence>
+        </ShowPlanXML>
+        """;
+
+    [Fact]
+    public void A_Filter_Translates_A_Predicate_Over_A_Column_The_Plan_Invented()
+    {
+        var plan = Parse(FilterOverAggregateXml);
+
+        var predicateInfo = plan.NodesById[0].PredicateInfo;
+
+        Assert.NotNull(predicateInfo);
+        Assert.False(predicateInfo!.HasUntranslatedPredicate);
+
+        var comparison = Assert.IsType<AccessPredicate.Comparison>(predicateInfo.Residual);
+
+        var column = Assert.IsType<AccessExpression.Column>(comparison.Left);
+
+        Assert.Equal("Expr1003", column.Name);
+        Assert.Equal(-1, column.Ordinal);
+    }
+
+    // ------------------------------------------------------------------
+    // Sequence Project over Segment, from ROW_NUMBER() OVER (ORDER BY Id)
+    // ------------------------------------------------------------------
+    private const string RowNumberXml =
+        """
+        <?xml version="1.0" encoding="utf-16"?>
+        <ShowPlanXML xmlns="http://schemas.microsoft.com/sqlserver/2004/07/showplan">
+          <BatchSequence>
+            <Batch>
+              <Statements>
+                <StmtSimple StatementText="SELECT ROW_NUMBER() OVER (ORDER BY Id) FROM dbo.ClusteredTable" StatementType="SELECT">
+                  <QueryPlan>
+                    <RelOp NodeId="0" PhysicalOp="Sequence Project" LogicalOp="Compute Scalar" EstimateRows="100">
+                      <OutputList>
+                        <ColumnReference Database="[InternalsViewerDemo]" Schema="[dbo]" Table="[ClusteredTable]" Column="Id" />
+                        <ColumnReference Column="Expr1002" />
+                      </OutputList>
+                      <SequenceProject>
+                        <DefinedValues>
+                          <DefinedValue>
+                            <ColumnReference Column="Expr1002" />
+                            <ScalarOperator ScalarString="row_number">
+                              <Sequence FunctionName="row_number" />
+                            </ScalarOperator>
+                          </DefinedValue>
+                        </DefinedValues>
+                        <RelOp NodeId="1" PhysicalOp="Segment" LogicalOp="Segment" EstimateRows="100">
+                          <OutputList>
+                            <ColumnReference Database="[InternalsViewerDemo]" Schema="[dbo]" Table="[ClusteredTable]" Column="Id" />
+                            <ColumnReference Column="Segment1003" />
+                          </OutputList>
+                          <Segment>
+                            <GroupBy />
+                            <SegmentColumn>
+                              <ColumnReference Column="Segment1003" />
+                            </SegmentColumn>
+                            <RelOp NodeId="2" PhysicalOp="Clustered Index Seek" LogicalOp="Clustered Index Seek" EstimateRows="100">
+                              <OutputList>
+                                <ColumnReference Database="[InternalsViewerDemo]" Schema="[dbo]" Table="[ClusteredTable]" Column="Id" />
+                              </OutputList>
+                              <IndexScan Ordered="true" ScanDirection="FORWARD">
+                                <Object Database="[InternalsViewerDemo]" Schema="[dbo]" Table="[ClusteredTable]" Index="[pk_ClusteredTable]" IndexKind="Clustered" />
+                              </IndexScan>
+                            </RelOp>
+                          </Segment>
+                        </RelOp>
+                      </SequenceProject>
+                    </RelOp>
+                  </QueryPlan>
+                </StmtSimple>
+              </Statements>
+            </Batch>
+          </BatchSequence>
+        </ShowPlanXML>
+        """;
+
+    [Fact]
+    public void A_Segment_Reads_Its_Flag_Column_And_Its_Grouping_Columns()
+    {
+        var plan = Parse(RowNumberXml);
+
+        var segment = plan.NodesById[1].SegmentInfo;
+
+        Assert.NotNull(segment);
+        Assert.Equal("Segment1003", segment!.SegmentColumn?.Column);
+
+        // OVER (ORDER BY Id) has no PARTITION BY, so showplan writes an empty GroupBy and the whole input is one segment
+        Assert.Empty(segment.GroupBy);
+    }
+
+    [Fact]
+    public void A_Sequence_Project_Reads_The_Ranking_Function_It_Defines()
+    {
+        var plan = Parse(RowNumberXml);
+
+        var sequence = plan.NodesById[0].SequenceProjectInfo;
+
+        Assert.NotNull(sequence);
+        Assert.False(sequence!.HasUntranslatedFunction);
+
+        var column = Assert.Single(sequence.Columns);
+
+        Assert.Equal("Expr1002", column.Column);
+        Assert.Equal(RankingFunction.RowNumber, column.Function);
+    }
+
+    [Fact]
+    public void A_Ranking_Function_That_Is_Not_Recognised_Leaves_The_Operator_Untranslated()
+    {
+        var plan = Parse(RowNumberXml.Replace("row_number", "ntile"));
+
+        var sequence = plan.NodesById[0].SequenceProjectInfo;
+
+        Assert.NotNull(sequence);
+        Assert.True(sequence!.HasUntranslatedFunction);
+        Assert.Empty(sequence.Columns);
+    }
+
+    [Fact]
+    public void An_Operator_That_Is_Not_A_Window_Operator_Has_No_Window_Info()
+    {
+        var plan = Parse(RowNumberXml);
+
+        Assert.Null(plan.NodesById[0].SegmentInfo);
+        Assert.Null(plan.NodesById[1].SequenceProjectInfo);
+        Assert.Null(plan.NodesById[2].SegmentInfo);
     }
 
     [Fact]

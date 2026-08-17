@@ -1,9 +1,7 @@
-using InternalsViewer.Execution.AccessPaths.Predicates;
-using InternalsViewer.Execution.AccessPaths.Results;
+﻿using InternalsViewer.Execution.AccessPaths.Results;
 using InternalsViewer.Execution.AccessPaths.Results.Steps;
 using InternalsViewer.Execution.AccessPaths.Search;
 using InternalsViewer.Execution.Interfaces.Pages;
-using InternalsViewer.Execution.Records;
 
 namespace InternalsViewer.Execution.Executors;
 
@@ -12,25 +10,9 @@ namespace InternalsViewer.Execution.Executors;
 /// </summary>
 internal static class IndexSeekExecutor
 {
-    public static IEnumerable<AccessStep> Execute(IIndexPageAccessor page,
-                                                  SeekBounds bounds,
-                                                  ScanDirection direction,
-                                                  AccessPredicate? residual = null,
-                                                  long? rowGoal = null,
-                                                  bool isContinuation = false,
-                                                  AccessCounters counters = default,
-                                                  Action<AccessCounters>? onCountersChanged = null,
-                                                  EvaluationContext? evaluationContext = null)
+    public static IEnumerable<AccessStep> Execute(IIndexPageAccessor page, IndexPageWalk walk)
     {
-        return Walk(page, 
-                    bounds, 
-                    direction, 
-                    residual, 
-                    rowGoal, 
-                    isContinuation, 
-                    counters, 
-                    onCountersChanged,
-                    evaluationContext ?? EvaluationContext.Now);
+        return Walk(page, walk);
     }
 
     /// <summary>
@@ -132,21 +114,13 @@ internal static class IndexSeekExecutor
     ///                      |                                                  v
     ///                      +------------------------------ loop back to 'slot cursor within slot range?'
     /// </remarks>
-    private static IEnumerable<AccessStep> Walk(IIndexPageAccessor page,
-                                                SeekBounds bounds,
-                                                ScanDirection direction,
-                                                AccessPredicate? residual,
-                                                long? rowGoal,
-                                                bool isContinuation,
-                                                AccessCounters totals,
-                                                Action<AccessCounters>? onCountersChanged,
-                                                EvaluationContext evaluationContext)
+    private static IEnumerable<AccessStep> Walk(IIndexPageAccessor page, IndexPageWalk walk)
     {
-        var forward = direction == ScanDirection.Forward;
+        var forward = walk.IsForward;
 
-        var hasResidual = residual is not (null or AccessPredicate.True or AccessPredicate.NoTranslation);
+        var bounds = walk.Bounds;
 
-        totals = Publish(totals.AddPageRead(), onCountersChanged);
+        var totals = walk.Counters.AddPageRead();
 
         yield return new AccessStep.ReadPage(page.PageAddress, page.Level, page.IsRoot, page.IsLeaf, page.SlotCount)
         {
@@ -155,7 +129,7 @@ internal static class IndexSeekExecutor
 
         var cursor = forward ? 0 : page.SlotCount - 1;
 
-        if (!isContinuation)
+        if (!walk.IsContinuation)
         {
             var target = forward ? bounds.StartValue : bounds.EndValue;
             var inclusive = forward ? bounds.IsStartInclusive : bounds.IsEndInclusive;
@@ -182,7 +156,7 @@ internal static class IndexSeekExecutor
                 Rule = rule,
                 Target = target,
                 Width = width,
-                Direction = direction,
+                Direction = walk.Direction,
                 IsLeaf = page.IsLeaf,
                 Counters = totals
             };
@@ -192,12 +166,12 @@ internal static class IndexSeekExecutor
                 var useLowerBound = forward ? inclusive : !inclusive;
 
                 var (bound, probes) = useLowerBound
-                    ? PageKeySearch.LowerBound(page, target, width)
-                    : PageKeySearch.UpperBound(page, target, width);
+                    ? PageKeyBinarySearch.LowerBound(page, target, width)
+                    : PageKeyBinarySearch.UpperBound(page, target, width);
 
                 foreach (var probe in probes)
                 {
-                    totals = Publish(totals.AddComparisons(1), onCountersChanged);
+                    totals = totals.AddComparisons(1);
 
                     yield return probe with { Counters = totals };
                 }
@@ -207,7 +181,7 @@ internal static class IndexSeekExecutor
 
             cursor = forward ? entry : entry - 1;
 
-            yield return new AccessStep.ProbeResult(cursor, cursor >= page.SlotCount || cursor < 0)
+            yield return new AccessStep.ProbeResult(cursor)
             {
                 Rule = rule,
                 Target = target,
@@ -234,9 +208,11 @@ internal static class IndexSeekExecutor
         {
             if (page.GetRecord(cursor).IsGhost)
             {
-                totals = Publish(totals.AddGhostSkipped(), onCountersChanged);
+                var ghost = RowStepBuilder.Ghost(walk, cursor, totals, hasRange: true);
 
-                yield return new AccessStep.Row(cursor, RowOutcome.Ghost) { HasResidual = hasResidual, Counters = totals };
+                totals = ghost.Counters;
+
+                yield return ghost;
 
                 cursor += forward ? 1 : -1;
 
@@ -247,7 +223,7 @@ internal static class IndexSeekExecutor
 
             if (compared)
             {
-                totals = Publish(totals.AddComparisons(1), onCountersChanged);
+                totals = totals.AddComparisons(1);
             }
 
             if (!within)
@@ -268,45 +244,22 @@ internal static class IndexSeekExecutor
                 yield break;
             }
 
-            totals = Publish(totals.AddRowRead(), onCountersChanged);
-
-            var outcome = EvaluateResidual(page, cursor, residual, evaluationContext) switch
+            foreach (var step in RowStepBuilder.Examine(page, walk, cursor, totals, hasRange: true))
             {
-                true => RowOutcome.Match,
-                false => RowOutcome.NoMatch,
-                _ => RowOutcome.Unknown
-            };
+                totals = step.Counters;
 
-            if (outcome == RowOutcome.Match)
-            {
-                totals = Publish(totals.AddRowOutput(), onCountersChanged);
-            }
+                yield return step;
 
-            yield return new AccessStep.Row(cursor, outcome)
-            {
-                HasResidual = hasResidual,
-                EmittedRecord = outcome == RowOutcome.Match ? RecordSnapshot.Detach(page.GetRecord(cursor)) : null,
-                Counters = totals
-            };
-
-            if (outcome == RowOutcome.Match && totals.RowsOutput == rowGoal)
-            {
-                yield return new AccessStep.Stopped(StopReason.RowGoalMet) { Counters = totals };
-
-                yield break;
+                if (step is AccessStep.Stopped)
+                {
+                    yield break;
+                }
             }
 
             cursor += forward ? 1 : -1;
         }
 
         yield return new AccessStep.Stopped(StopReason.PageExhausted) { Counters = totals };
-    }
-
-    private static AccessCounters Publish(AccessCounters counters, Action<AccessCounters>? onCountersChanged)
-    {
-        onCountersChanged?.Invoke(counters);
-
-        return counters;
     }
 
     private static int GetWidth(SeekBounds bounds, in AccessKey target)
@@ -322,7 +275,6 @@ internal static class IndexSeekExecutor
     ///
     /// Forward  -> End Value
     /// Backward -> Start Value
-    ///     
     /// </remarks>
     private static bool WithinTrailingBound(IIndexPageAccessor page,
                                             int slot,
@@ -355,18 +307,5 @@ internal static class IndexSeekExecutor
         }
 
         return forward ? comparison < 0 : comparison > 0;
-    }
-
-    private static bool? EvaluateResidual(IIndexPageAccessor page, 
-                                          int slot, 
-                                          AccessPredicate? residual, 
-                                          EvaluationContext evaluationContext)
-    {
-        if (residual is null or AccessPredicate.True or AccessPredicate.NoTranslation)
-        {
-            return true;
-        }
-
-        return PredicateEvaluator.Evaluate(residual, page.BindRow(slot), evaluationContext);
     }
 }

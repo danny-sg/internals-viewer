@@ -214,23 +214,23 @@
           <PrivateAssets>all</PrivateAssets>
           <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
         </PackageReference>
-        <PackageReference Include="Microsoft.WindowsAppSDK" Version="2.2.0" />
-        <PackageReference Include="System.ServiceProcess.ServiceController" Version="10.0.10" />
+        <PackageReference Include="Microsoft.WindowsAppSDK" Version="2.4.0" />
+        <PackageReference Include="System.ServiceProcess.ServiceController" Version="10.0.11" />
         <PackageReference Include="CommunityToolkit.WinUI.Controls.HeaderedControls" Version="8.2.251219" />
         <PackageReference Include="CommunityToolkit.WinUI.Converters" Version="8.2.251219" />
-        <PackageReference Include="CommunityToolkit.WinUI.UI.Controls.DataGrid" Version="7.1.2" />
         <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.2" />
         <PackageReference Include="CommunityToolkit.WinUI.Behaviors" Version="8.2.251219" />
         <PackageReference Include="CommunityToolkit.WinUI.Controls.SettingsControls" Version="8.2.251219" />
         <PackageReference Include="CommunityToolkit.WinUI.Controls.Sizers" Version="8.2.251219" />
 
-        <PackageReference Include="Microsoft.Extensions.Configuration.UserSecrets" Version="10.0.10" />
-        <PackageReference Include="Microsoft.Extensions.Hosting" Version="10.0.10" />
-        <PackageReference Include="Microsoft.Windows.SDK.BuildTools" Version="10.0.28000.2270" />
+        <PackageReference Include="Microsoft.Extensions.Configuration.UserSecrets" Version="10.0.11" />
+        <PackageReference Include="Microsoft.Extensions.Hosting" Version="10.0.11" />
+        <PackageReference Include="Microsoft.Windows.SDK.BuildTools" Version="10.0.28000.2526" />
 
-        <PackageReference Include="SkiaSharp" Version="4.150.1" />
-        <PackageReference Include="SkiaSharp.Views.WinUI" Version="4.150.1" />
-        <PackageReference Include="WinUIEx" Version="2.9.2" />
+        <PackageReference Include="SkiaSharp" Version="4.151.1" />
+        <PackageReference Include="SkiaSharp.Views.WinUI" Version="4.151.1" />
+        <PackageReference Include="WinUI.TableView" Version="1.4.1" />
+        <PackageReference Include="WinUIEx" Version="2.9.3" />
         <Manifest Include="$(ApplicationManifest)" />
     </ItemGroup>
 
@@ -546,6 +546,7 @@
       <Folder Include="Controls\Logging\" />
       <Folder Include="Views\Query\Tabs\Index\" />
       <Folder Include="Views\Query\Tabs\Plan\" />
+      <Folder Include="Views\Query\Tabs\Trace\Panels\" />
     </ItemGroup>
 
 

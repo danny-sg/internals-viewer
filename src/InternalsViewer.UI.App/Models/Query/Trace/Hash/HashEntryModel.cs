@@ -10,6 +10,8 @@ public sealed partial class HashEntryModel : ObservableObject
 {
     public IReadOnlyList<HashCellModel> Cells { get; init; } = [];
 
+    public bool IsPlaceholder { get; init; }
+
     [ObservableProperty]
     private bool _isMatched;
 

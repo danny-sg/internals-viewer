@@ -1,9 +1,10 @@
-using InternalsViewer.Execution.AccessPaths.Search;
+﻿using InternalsViewer.Execution.AccessPaths.Search;
 using System.Data;
 using System.Xml.Linq;
 using InternalsViewer.Execution.AccessPaths.Aggregation;
 using InternalsViewer.Execution.AccessPaths.Predicates;
 using InternalsViewer.Execution.AccessPaths.Values;
+using InternalsViewer.Execution.AccessPaths.Windowing;
 using InternalsViewer.Query.Plans.Model;
 using InternalsViewer.Query.Plans.Operators;
 using InternalsViewer.Query.Plans.Parsers.Predicates;
@@ -144,6 +145,16 @@ public static class ExecutionPlanParser
             node.AggregateInfo = ParseAggregateInfo(element, node);
         }
 
+        if (OperatorClassifier.IsSegment(node))
+        {
+            node.SegmentInfo = ParseSegmentInfo(element, node);
+        }
+
+        if (OperatorClassifier.IsSequenceProject(node))
+        {
+            node.SequenceProjectInfo = ParseSequenceProjectInfo(element);
+        }
+
         if (OperatorClassifier.IsDataAccess(node))
         {
             node.ScanInfo = ParseScanInfo(element);
@@ -160,7 +171,7 @@ public static class ExecutionPlanParser
         }
         else if (string.Equals(node.PhysicalOperator, "Filter", StringComparison.OrdinalIgnoreCase))
         {
-            node.PredicateInfo = ParsePredicateInfo(element, parameters);
+            node.PredicateInfo = ParsePredicateInfo(element, parameters, _ => -1);
         }
 
         foreach (var child in children)
@@ -603,6 +614,62 @@ public static class ExecutionPlanParser
             GroupBy = GroupingColumns(node),
             Columns = columns,
             HasUntranslatedAggregate = columns.Count < CountAggregates(element)
+        };
+    }
+
+    private static SegmentInfo ParseSegmentInfo(XElement element, PlanNode node)
+    {
+        var column = element.Elements()
+                            .FirstOrDefault(e => e.Name.LocalName == "Segment")?
+                            .Elements()
+                            .FirstOrDefault(e => e.Name.LocalName == "SegmentColumn")?
+                            .Elements()
+                            .FirstOrDefault(e => e.Name.LocalName == "ColumnReference");
+
+        return new SegmentInfo
+        {
+            GroupBy = node.GroupByColumns,
+            SegmentColumn = column is null ? null : ReadColumn(column)
+        };
+    }
+
+    /// <summary>
+    /// Reads the ranking functions a Sequence Project defines
+    /// </summary>
+    /// <remarks>
+    /// A ranking function is a running count rather than an expression over one row, so it is read straight from the Sequence element
+    /// instead of going through the scalar parser, which has nothing it could evaluate it to. Any defined value that does not resolve to
+    /// a known function leaves the operator untranslated rather than being dropped, which would return the wrong row.
+    /// </remarks>
+    private static SequenceProjectInfo ParseSequenceProjectInfo(XElement element)
+    {
+        var definedValues = FindDefinedValues(element)?
+                            .Elements()
+                            .Where(e => e.Name.LocalName == "DefinedValue")
+                            .ToList() ?? [];
+
+        var columns = new List<RankingColumn>();
+
+        foreach (var definedValue in definedValues)
+        {
+            var column = definedValue.Elements().FirstOrDefault(e => e.Name.LocalName == "ColumnReference");
+
+            var sequence = definedValue.Descendants().FirstOrDefault(e => e.Name.LocalName == "Sequence");
+
+            if (column is null
+                || sequence is null
+                || RankingFunctions.Parse(sequence.Attribute("FunctionName")?.Value) is not { } function)
+            {
+                continue;
+            }
+
+            columns.Add(new RankingColumn(ReadColumn(column).Column.Trim('[', ']'), function));
+        }
+
+        return new SequenceProjectInfo
+        {
+            Columns = columns,
+            HasUntranslatedFunction = columns.Count < definedValues.Count
         };
     }
 

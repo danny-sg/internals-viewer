@@ -1,4 +1,4 @@
-using System.Data;
+﻿using System.Data;
 using InternalsViewer.Execution.AccessPaths.Predicates;
 using InternalsViewer.Execution.AccessPaths.Results;
 using InternalsViewer.Execution.AccessPaths.Results.Steps;
@@ -154,7 +154,7 @@ public class PredicateWriterTests
     [Fact]
     public void Probe_Result_Is_Written_As_Its_Condition()
     {
-        var probeResult = new AccessStep.ProbeResult(29, false)
+        var probeResult = new AccessStep.ProbeResult(29)
         {
             Rule = SeekRule.LowestGreaterOrEqual,
             Target = TestKey.Of(5000),
@@ -167,7 +167,7 @@ public class PredicateWriterTests
     [Fact]
     public void Node_Page_Probe_Result_Is_Written_With_The_Below_Target_Operator()
     {
-        var probeResult = new AccessStep.ProbeResult(30, false)
+        var probeResult = new AccessStep.ProbeResult(30)
         {
             Rule = SeekRule.HighestLess,
             Target = TestKey.Of(5000),
@@ -180,7 +180,7 @@ public class PredicateWriterTests
     [Fact]
     public void Probe_Result_Without_A_Rule_Writes_Nothing()
     {
-        var probeResult = new AccessStep.ProbeResult(0, false);
+        var probeResult = new AccessStep.ProbeResult(0);
 
         Assert.Equal(string.Empty, Text(probeResult));
     }

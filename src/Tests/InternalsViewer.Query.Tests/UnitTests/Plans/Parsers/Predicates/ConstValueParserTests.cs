@@ -51,6 +51,37 @@ public class ConstValueParserTests
         Assert.Equal(19.99m, value.ToDecimal());
     }
 
+    [Theory]
+    [InlineData("($500.0000)", 500)]
+    [InlineData("$19.99", 19.99)]
+    [InlineData("(-$12.50)", -12.5)]
+    [InlineData("($-12.50)", -12.5)]
+    [InlineData("$500", 500)]
+    public void Money_Literal_Keeps_Its_Value_Despite_The_Currency_Symbol(string literal, double expected)
+    {
+        var value = ConstValueParser.Parse(literal);
+
+        Assert.Equal(AccessValueType.Decimal, value.Type);
+        Assert.Equal(SqlDbType.Money, value.DataType);
+        Assert.Equal((decimal)expected, value.ToDecimal());
+    }
+
+    [Fact]
+    public void Money_Literal_Compares_Equal_To_The_Same_Amount_Read_From_A_Record()
+    {
+        var literal = ConstValueParser.Parse("($500.0000)");
+
+        Assert.Equal(AccessValue.FromDecimal(SqlDbType.Money, 500m), literal);
+    }
+
+    [Theory]
+    [InlineData("4$2")]
+    [InlineData("$$5")]
+    public void A_Currency_Symbol_Anywhere_Else_Is_Not_A_Money_Literal(string literal)
+    {
+        Assert.Equal(AccessValueType.Null, ConstValueParser.Parse(literal).Type);
+    }
+
     [Fact]
     public void Exponent_Literal_Is_Real()
     {

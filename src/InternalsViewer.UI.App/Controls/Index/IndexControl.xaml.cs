@@ -467,6 +467,10 @@ public sealed partial class IndexControl : IDisposable
         _singleSelectedColour = SingleSelectedColour.ToSkColor();
         _rangeSelectedColour = RangeSelectedColour.ToSkColor();
 
+        _slotPaint.Color = SelectedSlotColour.ToColor()
+                                             .ContrastingWith(SingleSelectedColour.ToColor())
+                                             .ToSkColor();
+
         _activeSpanColours.Clear();
 
         CollectActiveSpanColours(PageSpans, PlayheadTimeUs, _rangeSelectedColour, _activeSpanColours);

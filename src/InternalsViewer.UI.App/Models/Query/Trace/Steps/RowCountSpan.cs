@@ -6,6 +6,11 @@ namespace InternalsViewer.UI.App.Models.Query.Trace.Steps;
 
 public sealed record RowCountSpan() : AccessStep(AccessPhase.Walk), ITraceSpan
 {
+    /// <summary>
+    /// Badge a filter's span carries, where the count is rows that passed out of rows tested rather than a position in a run
+    /// </summary>
+    public const string PassBadge = "→ Pass";
+
     public RowCountProgress Progress { get; } = new();
 
     public string Badge { get; init; } = "";

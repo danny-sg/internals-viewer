@@ -153,18 +153,24 @@ public sealed class AggregateAccumulator(AggregateColumn column)
     private AccessValue Total()
         => _sumType switch
         {
-            AccessValueType.Integer => AccessValue.FromInteger(TotalType, _sumInteger),
-            AccessValueType.Decimal => AccessValue.FromDecimal(TotalType, _sumDecimal),
-            AccessValueType.Real => AccessValue.FromReal(SqlDbType.Float, _sumReal),
+            AccessValueType.Integer 
+                => AccessValue.FromInteger(TotalType, _sumInteger),
+            AccessValueType.Decimal 
+                => AccessValue.FromDecimal(TotalType, _sumDecimal),
+            AccessValueType.Real 
+                => AccessValue.FromReal(SqlDbType.Float, _sumReal),
             _ => AccessValue.Null
         };
 
     private AccessValue Mean()
         => _sumType switch
         {
-            AccessValueType.Integer => AccessValue.FromInteger(TotalType, _sumInteger / _count),
-            AccessValueType.Decimal => AccessValue.FromDecimal(TotalType, _sumDecimal / _count),
-            AccessValueType.Real => AccessValue.FromReal(SqlDbType.Float, _sumReal / _count),
+            AccessValueType.Integer 
+                => AccessValue.FromInteger(TotalType, _sumInteger / _count),
+            AccessValueType.Decimal 
+                => AccessValue.FromDecimal(TotalType, _sumDecimal / _count),
+            AccessValueType.Real 
+                => AccessValue.FromReal(SqlDbType.Float, _sumReal / _count),
             _ => AccessValue.Null
         };
 }

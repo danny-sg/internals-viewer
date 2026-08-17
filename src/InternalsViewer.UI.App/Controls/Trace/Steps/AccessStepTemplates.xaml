@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <ResourceDictionary
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
@@ -597,8 +597,8 @@
                 <TextBlock Text="Build" Style="{StaticResource StepLabelStyle}" />
                 <StackPanel Orientation="Vertical">
                     <StackPanel Orientation="Horizontal">
-                        <TextBlock Text="Bucket" Style="{StaticResource StepPropertyStyle}" />
-                        <TextBlock Text="{Binding Bucket}" Style="{StaticResource StepValueStyle}" />
+                        <TextBlock Text="Bucket"  Style="{StaticResource StepPropertyStyle}" />
+                        <TextBlock Text="{Binding Bucket}" Width="80" Style="{StaticResource StepValueStyle}" />
                         <TextBlock Text="Hash" Style="{StaticResource StepPropertyStyle}" Margin="8,0,0,0" />
                         <TextBlock Text="{Binding Hash, Converter={StaticResource HashValueToTextConverter}}"
                                    FontFamily="Consolas"
@@ -625,7 +625,8 @@
                         Grid.ColumnSpan="9" 
                         HorizontalAlignment="Left" 
                         VerticalAlignment="Top" 
-                        Spacing="5" Width="140" 
+                        Spacing="5" 
+                        Width="140" 
                         Margin="-150,0,0,0">
                 <Border x:Name="SourceBlob" Width="9" Height="9" CornerRadius="2" Margin="0,4,0,0" VerticalAlignment="Top" />
                 <TextBlock x:Name="SourceName" Style="{StaticResource StepNodeStyle}" />
@@ -635,7 +636,7 @@
                 <StackPanel Orientation="Vertical">
                     <StackPanel Orientation="Horizontal">
                         <TextBlock Text="Bucket" Style="{StaticResource StepPropertyStyle}" />
-                        <TextBlock Text="{Binding Progress.Bucket}" Style="{StaticResource StepValueStyle}" />
+                        <TextBlock Text="{Binding Progress.Bucket}" Width="80" Style="{StaticResource StepValueStyle}" />
                         <TextBlock Text="Hash" Style="{StaticResource StepPropertyStyle}" Margin="8,0,0,0" />
                         <TextBlock Text="{Binding Progress.Hash, Converter={StaticResource HashValueToTextConverter}}"
                                    FontFamily="Consolas"
@@ -681,7 +682,7 @@
                 <StackPanel Orientation="Vertical">
                     <StackPanel Orientation="Horizontal">
                         <TextBlock Text="Bucket" Style="{StaticResource StepPropertyStyle}" />
-                        <TextBlock Text="{Binding Progress.Bucket}" Style="{StaticResource StepValueStyle}" />
+                        <TextBlock Text="{Binding Progress.Bucket}"  Style="{StaticResource StepValueStyle}" Width="80"/>
                         <TextBlock Text="Hash" Style="{StaticResource StepPropertyStyle}" Margin="8,0,0,0" />
                         <TextBlock Text="{Binding Progress.Hash, Converter={StaticResource HashValueToTextConverter}}"
                                    FontFamily="Consolas"
@@ -1074,7 +1075,6 @@
             </StackPanel>
             <StackPanel Orientation="Horizontal">
                 <TextBlock Text="Open" Style="{StaticResource StepLabelStyle}" />
-                <TextBlock Text="Prepares the operator and its inputs" Style="{StaticResource StepPropertyStyle}" />
             </StackPanel>
         </Grid>
     </DataTemplate>
@@ -1092,7 +1092,6 @@
             </StackPanel>
             <StackPanel Orientation="Horizontal">
                 <TextBlock Text="Close" Style="{StaticResource StepLabelStyle}" />
-                <TextBlock Text="No more rows will be requested" Style="{StaticResource StepPropertyStyle}" />
             </StackPanel>
         </Grid>
     </DataTemplate>
@@ -1386,15 +1385,37 @@
             </StackPanel>
             <StackPanel Orientation="Horizontal">
                 <TextBlock Text="Accumulate" Style="{StaticResource StepLabelStyle}" />
-                <TextBlock Text="{Binding Progress.GroupRows}" Style="{StaticResource StepValueStyle}" />
-                <TextBlock Text="rows" Style="{StaticResource StepPropertyStyle}" />
-                <Border Background="{ThemeResource SubtleFillColorSecondaryBrush}"
-                        CornerRadius="4"
-                        Padding="6,0,6,1"
-                        Margin="8,0,0,0"
-                        VerticalAlignment="Center">
-                    <TextBlock Text="{Binding Progress.Running}" FontSize="11" />
-                </Border>
+                <StackPanel Orientation="Vertical">
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="{Binding Progress.Rows}" Style="{StaticResource StepValueStyle}" />
+                        <TextBlock Text="rows" Style="{StaticResource StepPropertyStyle}" />
+                        <TextBlock Text="Bucket"
+                                   Style="{StaticResource StepPropertyStyle}"
+                                   Margin="8,0,0,0"
+                                   Visibility="{Binding Progress.IsHashed,
+                                           Converter={StaticResource StepsBoolToVisibilityConverter}}" />
+                        <TextBlock Text="{Binding Progress.Bucket}"
+                                   Style="{StaticResource StepValueStyle}"
+                                   Visibility="{Binding Progress.IsHashed,
+                                           Converter={StaticResource StepsBoolToVisibilityConverter}}" />
+                        <Border Background="{ThemeResource SubtleFillColorSecondaryBrush}"
+                                CornerRadius="4"
+                                Padding="6,0,6,1"
+                                Margin="8,0,0,0"
+                                VerticalAlignment="Center">
+                            <TextBlock Text="{Binding Progress.Detail}" FontSize="11" />
+                        </Border>
+                    </StackPanel>
+                    <accessSteps:HashGrid Fill="{Binding Progress.Fill}"
+                                          Version="{Binding Progress.FillVersion}"
+                                          HighlightBucket="{Binding Progress.Bucket}"
+                                          Width="320"
+                                          Height="28"
+                                          HorizontalAlignment="Left"
+                                          Margin="0,4,0,2"
+                                          Visibility="{Binding Progress.IsHashed,
+                                                  Converter={StaticResource StepsBoolToVisibilityConverter}}" />
+                </StackPanel>
             </StackPanel>
         </Grid>
     </DataTemplate>
@@ -1477,6 +1498,94 @@
                     <TextBlock Text="→ Emit"
                                Foreground="White"
                                FontSize="11" />
+                </Border>
+            </StackPanel>
+        </Grid>
+    </DataTemplate>
+
+    <DataTemplate x:Key="FilterRowTemplate" >
+        <Grid Style="{StaticResource StepRowStyle}">
+            <StackPanel Orientation="Horizontal"
+                        Grid.ColumnSpan="9"
+                        HorizontalAlignment="Left"
+                        VerticalAlignment="Top"
+                        Spacing="5" Width="140"
+                        Margin="-150,0,0,0">
+                <Border x:Name="SourceBlob" Width="9" Height="9" CornerRadius="2" Margin="0,4,0,0" VerticalAlignment="Top" />
+                <TextBlock x:Name="SourceName" Style="{StaticResource StepNodeStyle}" />
+            </StackPanel>
+            <StackPanel Orientation="Horizontal">
+                <TextBlock Text="Filter" Style="{StaticResource StepLabelStyle}" />
+                <TextBlock Text="Row" Style="{StaticResource StepPropertyStyle}" />
+                <TextBlock Text="{Binding Number}" Style="{StaticResource StepValueStyle}" />
+                <TextBlock Text="{Binding Outcome, Converter={StaticResource RowOutcomeToTextConverter}}"
+                           Style="{StaticResource StepPropertyStyle}"
+                           Margin="8,0,0,0" />
+                <Border x:Name="EmitBadge"
+                        Background="{ThemeResource SystemFillColorSuccessBrush}"
+                        CornerRadius="4"
+                        Padding="6,0,6,1"
+                        Margin="8,0,0,0"
+                        VerticalAlignment="Center"
+                        Visibility="{Binding EmittedRecord, Converter={StaticResource StepsNullToInverseVisibilityConverter}}">
+                    <TextBlock Text="→ Pass"
+                               Foreground="White"
+                               FontSize="11" />
+                </Border>
+            </StackPanel>
+        </Grid>
+    </DataTemplate>
+
+    <DataTemplate x:Key="SegmentSpanTemplate" >
+        <Grid Style="{StaticResource StepRowStyle}">
+            <StackPanel Orientation="Horizontal"
+                        Grid.ColumnSpan="9"
+                        HorizontalAlignment="Left"
+                        VerticalAlignment="Top"
+                        Spacing="5" Width="140"
+                        Margin="-150,0,0,0">
+                <Border x:Name="SourceBlob" Width="9" Height="9" CornerRadius="2" Margin="0,4,0,0" VerticalAlignment="Top" />
+                <TextBlock x:Name="SourceName" Style="{StaticResource StepNodeStyle}" />
+            </StackPanel>
+            <StackPanel Orientation="Horizontal">
+                <TextBlock Text="Segment" Style="{StaticResource StepLabelStyle}" />
+                <TextBlock Text="{Binding Progress.Rows}" Style="{StaticResource StepValueStyle}" />
+                <TextBlock Text="rows" Style="{StaticResource StepPropertyStyle}" />
+                <TextBlock Text="{Binding Progress.Segments}" Style="{StaticResource StepValueStyle}" Margin="8,0,0,0" />
+                <TextBlock Text="segments" Style="{StaticResource StepPropertyStyle}" />
+                <Border Background="{ThemeResource SubtleFillColorSecondaryBrush}"
+                        CornerRadius="4"
+                        Padding="6,0,6,1"
+                        Margin="8,0,0,0"
+                        VerticalAlignment="Center"
+                        Visibility="{Binding Progress.HasKey, Converter={StaticResource StepsBoolToVisibilityConverter}}">
+                    <TextBlock Text="{Binding Progress.Key}" FontSize="11" />
+                </Border>
+            </StackPanel>
+        </Grid>
+    </DataTemplate>
+
+    <DataTemplate x:Key="RankSpanTemplate" >
+        <Grid Style="{StaticResource StepRowStyle}">
+            <StackPanel Orientation="Horizontal"
+                        Grid.ColumnSpan="9"
+                        HorizontalAlignment="Left"
+                        VerticalAlignment="Top"
+                        Spacing="5" Width="140"
+                        Margin="-150,0,0,0">
+                <Border x:Name="SourceBlob" Width="9" Height="9" CornerRadius="2" Margin="0,4,0,0" VerticalAlignment="Top" />
+                <TextBlock x:Name="SourceName" Style="{StaticResource StepNodeStyle}" />
+            </StackPanel>
+            <StackPanel Orientation="Horizontal">
+                <TextBlock Text="Rank" Style="{StaticResource StepLabelStyle}" />
+                <TextBlock Text="Row" Style="{StaticResource StepPropertyStyle}" />
+                <TextBlock Text="{Binding Progress.Rows}" Style="{StaticResource StepValueStyle}" />
+                <Border Background="{ThemeResource SubtleFillColorSecondaryBrush}"
+                        CornerRadius="4"
+                        Padding="6,0,6,1"
+                        Margin="8,0,0,0"
+                        VerticalAlignment="Center">
+                    <TextBlock Text="{Binding Progress.Values}" FontSize="11" />
                 </Border>
             </StackPanel>
         </Grid>
@@ -1874,6 +1983,9 @@
         AggregateEmitTemplate="{StaticResource AggregateEmitTemplate}"
         HashAggregateTemplate="{StaticResource HashAggregateTemplate}"
         ComputeRowTemplate="{StaticResource ComputeRowTemplate}"
+        FilterRowTemplate="{StaticResource FilterRowTemplate}"
+        SegmentSpanTemplate="{StaticResource SegmentSpanTemplate}"
+        RankSpanTemplate="{StaticResource RankSpanTemplate}"
         TopRowTemplate="{StaticResource TopRowTemplate}"
         RowCountSpanTemplate="{StaticResource RowCountSpanTemplate}"
         HashProbeTemplate="{StaticResource HashProbeTemplate}"

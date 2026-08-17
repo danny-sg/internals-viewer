@@ -5,7 +5,6 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-    xmlns:toolkitControls="using:CommunityToolkit.WinUI.Controls"
     x:Name="Root"
     mc:Ignorable="d">
 
@@ -14,81 +13,15 @@
             <ResourceDictionary.MergedDictionaries>
                 <ResourceDictionary Source="ms-appx:///Controls/Trace/Steps/AccessStepTemplates.xaml" />
             </ResourceDictionary.MergedDictionaries>
-
-            <Style x:Key="StepsSplitterStyle" TargetType="toolkitControls:GridSplitter">
-                <Setter Property="Background" Value="{ThemeResource ControlStrokeColorDefaultBrush}" />
-                <Setter Property="Template">
-                    <Setter.Value>
-                        <ControlTemplate TargetType="toolkitControls:GridSplitter">
-                            <Grid Background="{TemplateBinding Background}" />
-                        </ControlTemplate>
-                    </Setter.Value>
-                </Setter>
-            </Style>
         </ResourceDictionary>
     </UserControl.Resources>
 
-    <Grid>
-        <Grid.RowDefinitions>
-            <RowDefinition Height="*" />
-            <RowDefinition Height="Auto" />
-            <RowDefinition x:Name="DetailRow" Height="0" />
-        </Grid.RowDefinitions>
-
-        <ScrollViewer x:Name="StepsScroller"
-                      Background="{x:Bind Background, Mode=OneWay}"
-                      VerticalScrollBarVisibility="Auto"
-                      HorizontalScrollBarVisibility="Disabled">
-            <ItemsRepeater x:Name="StepsList"
-                           ItemsSource="{x:Bind StepHistory, Mode=OneWay}"
-                           ItemTemplate="{StaticResource AccessStepTemplateSelector}" />
-        </ScrollViewer>
-
-        <toolkitControls:GridSplitter x:Name="DetailSplitter"
-                                      Grid.Row="1"
-                                      Height="2"
-                                      Visibility="Collapsed"
-                                      ResizeBehavior="PreviousAndNext"
-                                      ResizeDirection="Rows"
-                                      HorizontalAlignment="Stretch"
-                                      Style="{StaticResource StepsSplitterStyle}" />
-
-        <Border x:Name="DetailArea"
-                Grid.Row="2"
-                Background="{ThemeResource LayerFillColorAltBrush}"
-                Visibility="Collapsed">
-            <Grid>
-                <Grid.RowDefinitions>
-                    <RowDefinition Height="Auto" />
-                    <RowDefinition Height="*" />
-                </Grid.RowDefinitions>
-
-                <StackPanel Padding="8,6,8,0">
-                    <StackPanel Orientation="Horizontal" Spacing="6">
-                        <Border x:Name="DetailBlob" Width="10" Height="10" CornerRadius="2" VerticalAlignment="Center" />
-                        <TextBlock x:Name="DetailName" FontSize="13" FontWeight="Bold" />
-                    </StackPanel>
-                    <TextBlock x:Name="DetailSubtitle"
-                               FontSize="12"
-                               Margin="16,1,0,0"
-                               Visibility="Collapsed"
-                               Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
-                    <TextBlock x:Name="DetailDescription"
-                               FontSize="12"
-                               TextWrapping="Wrap"
-                               Margin="0,4,0,4"
-                               Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
-                </StackPanel>
-
-                <ScrollViewer Grid.Row="1"
-                              VerticalScrollBarVisibility="Auto"
-                              HorizontalScrollBarVisibility="Disabled">
-                    <ContentControl x:Name="DetailHost"
-                                    Content="{x:Bind CurrentStep, Mode=OneWay}"
-                                    ContentTemplateSelector="{StaticResource AccessStepTemplateSelector}"
-                                    HorizontalContentAlignment="Stretch" />
-                </ScrollViewer>
-            </Grid>
-        </Border>
-    </Grid>
+    <ScrollViewer x:Name="StepsScroller"
+                  Background="{x:Bind Background, Mode=OneWay}"
+                  VerticalScrollBarVisibility="Auto"
+                  HorizontalScrollBarVisibility="Disabled">
+        <ItemsRepeater x:Name="StepsList"
+                       ItemsSource="{x:Bind StepHistory, Mode=OneWay}"
+                       ItemTemplate="{StaticResource AccessStepTemplateSelector}" />
+    </ScrollViewer>
 </UserControl>

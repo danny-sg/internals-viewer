@@ -5,7 +5,7 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-    xmlns:toolkit="using:CommunityToolkit.WinUI.UI.Controls"
+    xmlns:tableView="using:WinUI.TableView"
 
     xmlns:eventGrid="using:InternalsViewer.UI.App.Controls.EventGrid"
     x:Name="Root"
@@ -27,19 +27,33 @@
                         BorderThickness="0"
                         TextChanged="OnSearchTextChanged"/>
 
-        <toolkit:DataGrid x:Name="DataGrid"
-                          Grid.Row="1"
-                          AutoGenerateColumns="False"
-                          CanUserSortColumns="True"
-                          Sorting="OnSorting"
-                          SelectionMode="Single"
-                          IsReadOnly="True"
-                          GridLinesVisibility="Vertical"
-                          Background="{ThemeResource LayerFillColorDefaultBrush}">
-            <toolkit:DataGrid.Columns>
+        <tableView:TableView x:Name="EventTable"
+                             Grid.Row="1"
+                             AutoGenerateColumns="False"
+                             CanSortColumns="True"
+                             CanFilterColumns="False"
+                             CornerButtonMode="None"
+                             HeadersVisibility="Columns"
+                             ColumnHeaderStyle="{StaticResource TableViewColumnHeaderStyle}"
+                             CellStyle="{StaticResource TableViewCellStyle}"
+                             ItemContainerStyle="{StaticResource TableViewRowStyle}"
+                             RowHeight="32"
+                             Sorting="OnSorting"
+                             SelectionMode="Single"
+                             SelectionUnit="Row"
+                             IsReadOnly="True"
+                             GridLinesVisibility="Vertical"
+                             Background="{ThemeResource LayerFillColorDefaultBrush}">
+            <tableView:TableView.Resources>
+                <x:Double x:Key="ListViewItemMinHeight">0</x:Double>
+            </tableView:TableView.Resources>
+            <tableView:TableView.ItemContainerTransitions>
+                <TransitionCollection />
+            </tableView:TableView.ItemContainerTransitions>
+            <tableView:TableView.Columns>
 
-                <toolkit:DataGridTemplateColumn Header="Event" Tag="Event">
-                    <toolkit:DataGridTemplateColumn.CellTemplate>
+                <tableView:TableViewTemplateColumn Header="Event" Tag="Event">
+                    <tableView:TableViewTemplateColumn.CellTemplate>
                         <DataTemplate x:DataType="eventGrid:EventGridRow">
                             <StackPanel Orientation="Horizontal" Margin="{x:Bind Indent, Mode=OneTime}" VerticalAlignment="Center">
                                 <Button Click="OnExpanderClick"
@@ -56,66 +70,66 @@
                                            VerticalAlignment="Center"/>
                             </StackPanel>
                         </DataTemplate>
-                    </toolkit:DataGridTemplateColumn.CellTemplate>
-                </toolkit:DataGridTemplateColumn>
+                    </tableView:TableViewTemplateColumn.CellTemplate>
+                </tableView:TableViewTemplateColumn>
 
-                <toolkit:DataGridTemplateColumn Header="Type" Tag="Type">
-                    <toolkit:DataGridTemplateColumn.CellTemplate>
+                <tableView:TableViewTemplateColumn Header="Type" Tag="Type">
+                    <tableView:TableViewTemplateColumn.CellTemplate>
                         <DataTemplate x:DataType="eventGrid:EventGridRow">
                             <TextBlock Text="{x:Bind Event.Description, Mode=OneTime}"
                                        Margin="4,0"
                                        VerticalAlignment="Center"/>
                         </DataTemplate>
-                    </toolkit:DataGridTemplateColumn.CellTemplate>
-                </toolkit:DataGridTemplateColumn>
+                    </tableView:TableViewTemplateColumn.CellTemplate>
+                </tableView:TableViewTemplateColumn>
 
-                <toolkit:DataGridTemplateColumn Header="Time (ms)" Tag="TimeUs">
-                    <toolkit:DataGridTemplateColumn.CellTemplate>
+                <tableView:TableViewTemplateColumn Header="Time (ms)" Tag="TimeUs">
+                    <tableView:TableViewTemplateColumn.CellTemplate>
                         <DataTemplate x:DataType="eventGrid:EventGridRow">
                             <TextBlock Text="{x:Bind eventGrid:EventGridFormat.TimeMs(Event.TimeUs), Mode=OneTime}"
                                        Margin="4,0,10,0"
                                        TextAlignment="Right"
                                        VerticalAlignment="Center"/>
                         </DataTemplate>
-                    </toolkit:DataGridTemplateColumn.CellTemplate>
-                </toolkit:DataGridTemplateColumn>
+                    </tableView:TableViewTemplateColumn.CellTemplate>
+                </tableView:TableViewTemplateColumn>
 
-                <toolkit:DataGridTemplateColumn Header="Duration (ms)" Tag="DurationUs">
-                    <toolkit:DataGridTemplateColumn.CellTemplate>
+                <tableView:TableViewTemplateColumn Header="Duration (ms)" Tag="DurationUs">
+                    <tableView:TableViewTemplateColumn.CellTemplate>
                         <DataTemplate x:DataType="eventGrid:EventGridRow">
                             <TextBlock Text="{x:Bind eventGrid:EventGridFormat.TimeMs(Event.DurationUs), Mode=OneTime}"
                                        Margin="4,0,10,0"
                                        TextAlignment="Right"
                                        VerticalAlignment="Center"/>
                         </DataTemplate>
-                    </toolkit:DataGridTemplateColumn.CellTemplate>
-                </toolkit:DataGridTemplateColumn>
+                    </tableView:TableViewTemplateColumn.CellTemplate>
+                </tableView:TableViewTemplateColumn>
 
-                <toolkit:DataGridTemplateColumn Header="Page" Tag="PageAddress">
-                    <toolkit:DataGridTemplateColumn.CellTemplate>
+                <tableView:TableViewTemplateColumn Header="Page" Tag="PageAddress">
+                    <tableView:TableViewTemplateColumn.CellTemplate>
                         <DataTemplate x:DataType="eventGrid:EventGridRow">
                             <Grid>
                                 <HyperlinkButton Content="{Binding PageAddress}"
-                                                 Style="{StaticResource PageAddressStyle}"
+                                                 Style="{StaticResource CellPageAddressStyle}"
                                                  Tag="{Binding PageAddress}"
                                                  Click="HyperlinkButton_Click"/>
                             </Grid>
                         </DataTemplate>
-                    </toolkit:DataGridTemplateColumn.CellTemplate>
-                </toolkit:DataGridTemplateColumn>
+                    </tableView:TableViewTemplateColumn.CellTemplate>
+                </tableView:TableViewTemplateColumn>
 
-                <toolkit:DataGridTemplateColumn Header="Object" Tag="Object">
-                    <toolkit:DataGridTemplateColumn.CellTemplate>
+                <tableView:TableViewTemplateColumn Header="Object" Tag="Object">
+                    <tableView:TableViewTemplateColumn.CellTemplate>
                         <DataTemplate x:DataType="eventGrid:EventGridRow">
                             <TextBlock Text="{x:Bind Event.ObjectName, Mode=OneTime}"
                                        Margin="4,0"
                                        VerticalAlignment="Center"/>
                         </DataTemplate>
-                    </toolkit:DataGridTemplateColumn.CellTemplate>
-                </toolkit:DataGridTemplateColumn>
+                    </tableView:TableViewTemplateColumn.CellTemplate>
+                </tableView:TableViewTemplateColumn>
 
-            </toolkit:DataGrid.Columns>
-        </toolkit:DataGrid>
+            </tableView:TableView.Columns>
+        </tableView:TableView>
 
         <Border Grid.Row="2"
                 BorderBrush="{ThemeResource ControlStrokeColorDefaultBrush}"

@@ -1,4 +1,4 @@
-using InternalsViewer.UI.App.Controls.Docking;
+﻿using InternalsViewer.UI.App.Controls.Docking;
 using InternalsViewer.UI.App.Models.Query.Trace;
 using InternalsViewer.UI.App.ViewModels.Query.Trace;
 using Microsoft.UI.Xaml.Controls;
@@ -329,6 +329,8 @@ public sealed partial class TraceOperatorPanelView : UserControl, IDocumentComma
                 => new TraceHashTablePanelView(),
             TracePaneKind.Aggregates 
                 => new TraceAggregatePanelView(),
+            TracePaneKind.Segment 
+                => new TraceSegmentPanelView(),
             _ => null
         };
 

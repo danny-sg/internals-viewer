@@ -1,4 +1,4 @@
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Drawing;
 using InternalsViewer.Execution.AccessPaths.Definitions;
 using InternalsViewer.UI.App.Models.Query.Trace;
@@ -26,6 +26,8 @@ public sealed class TraceNodeContext
     public TraceHashTableViewModel? HashTable { get; init; }
 
     public TraceAggregateViewModel? Aggregates { get; init; }
+
+    public TraceSegmentViewModel? Segment { get; init; }
 
     public IReadOnlyDictionary<int, TraceHeldRowsViewModel> HeldRows { get; init; } = EmptyHeldRows;
 

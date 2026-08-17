@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
@@ -393,7 +393,7 @@ public sealed partial class TraceTabViewModel : ObservableObject
             var name = _planNodesById.GetValueOrDefault(nodeId)?.PhysicalOperator
                        ?? TraceLayoutBuilder.DisplayName(node.Definition);
 
-            names[nodeId] = nodeId < 0 ? name : $"{name} (Node {nodeId})";
+            names[nodeId] = nodeId < 0 ? name : $"{name} ({nodeId})";
         }
 
         var nodes = new Dictionary<int, TraceStepNode>();
@@ -404,9 +404,7 @@ public sealed partial class TraceTabViewModel : ObservableObject
                                               node.Depth,
                                               node.Colour.ToWindowsColor(),
                                               node.InputNodes.Outer,
-                                              node.InputNodes.Inner,
-                                              TraceStepDescriber.NodeSummary(node.Definition, node.InputNodes, names),
-                                              TraceStepDescriber.NodeSubtitle(node.Visual?.AllocationUnit));
+                                              node.InputNodes.Inner);
         }
 
         return nodes;
@@ -436,6 +434,10 @@ public sealed partial class TraceTabViewModel : ObservableObject
     }
 
     private CancellationTokenSource? _runToEndCancellation;
+
+    private CancellationTokenSource? _interactiveCancellation;
+
+    private Task? _interactiveRun;
 
     public AccessCounters CurrentCounters => CurrentStep?.Counters ?? default;
 
@@ -485,8 +487,6 @@ public sealed partial class TraceTabViewModel : ObservableObject
 
         UpdateBlobDimming();
     }
-
-    public bool IsStepDetailVisible => IsStepping && !IsRunning && !IsRunningToEnd;
 
     public TraceBlobPalette BlobPalette => Layout.Palette;
 
@@ -538,7 +538,6 @@ public sealed partial class TraceTabViewModel : ObservableObject
     partial void OnIsSteppingChanged(bool value)
     {
         OnPropertyChanged(nameof(IsWalkInProgress));
-        OnPropertyChanged(nameof(IsStepDetailVisible));
         OnPropertyChanged(nameof(IsSelectedStrategyPending));
 
         UpdateBlobDimming();
@@ -553,8 +552,6 @@ public sealed partial class TraceTabViewModel : ObservableObject
 
     partial void OnIsRunningChanged(bool value)
     {
-        OnPropertyChanged(nameof(IsStepDetailVisible));
-
         UpdateBlobDimming();
 
         FlushDescriptionIfStale();
@@ -562,8 +559,6 @@ public sealed partial class TraceTabViewModel : ObservableObject
 
     partial void OnIsRunningToEndChanged(bool value)
     {
-        OnPropertyChanged(nameof(IsStepDetailVisible));
-
         UpdateBlobDimming();
 
         FlushDescriptionIfStale();
@@ -579,25 +574,64 @@ public sealed partial class TraceTabViewModel : ObservableObject
             return;
         }
 
+        _interactiveRun = RunInteractiveAsync();
+
+        await _interactiveRun;
+    }
+
+    private async Task RunInteractiveAsync()
+    {
         IsRunning = true;
 
-        while (IsRunning && !IsStepComplete)
+        _interactiveCancellation = new CancellationTokenSource();
+
+        var cancellationToken = _interactiveCancellation.Token;
+
+        try
         {
-            if (RunDelayMs < 0)
+            while (IsRunning && !IsStepComplete)
             {
-                IsRunning = false;
+                if (RunDelayMs < 0)
+                {
+                    IsRunning = false;
 
-                await RunToEnd();
+                    await RunToEnd();
 
-                return;
+                    return;
+                }
+
+                await StepNext();
+
+                await Task.Delay(TimeSpan.FromMilliseconds(Math.Max(1, RunDelayMs)), cancellationToken);
             }
+        }
+        catch (OperationCanceledException)
+        {
+        }
+        finally
+        {
+            IsRunning = false;
 
-            await StepNext();
+            _interactiveCancellation?.Dispose();
+            _interactiveCancellation = null;
+        }
+    }
 
-            await Task.Delay(TimeSpan.FromMilliseconds(Math.Max(1, RunDelayMs)));
+    private async Task StopInteractiveRunAsync()
+    {
+        if (!IsRunning)
+        {
+            return;
         }
 
         IsRunning = false;
+
+        _interactiveCancellation?.Cancel();
+
+        if (_interactiveRun is { } interactive)
+        {
+            await interactive;
+        }
     }
 
     [RelayCommand]
@@ -694,6 +728,8 @@ public sealed partial class TraceTabViewModel : ObservableObject
 
     private sealed record RunResult(ObservableCollection<AccessStep> Steps,
                                     TraceStreamUpdate StreamUpdate,
+                                    TracePositionUpdate PositionUpdate,
+                                    Dictionary<(int NodeId, int InputIndex), HeldRowsSnapshot> HeldRows,
                                     Dictionary<TraceVisualViewModel, TraceVisualReplay> Replays);
 
     private async Task RunUntilAsync(Func<AccessStep, bool>? stopAfter)
@@ -704,6 +740,8 @@ public sealed partial class TraceTabViewModel : ObservableObject
 
             return;
         }
+
+        await StopInteractiveRunAsync();
 
         IsRunningToEnd = true;
 
@@ -762,7 +800,11 @@ public sealed partial class TraceTabViewModel : ObservableObject
 
         var replays = Visuals.ToDictionary(v => v, v => v.ComputeReplay(stepper.History));
 
-        return new RunResult(steps, Applier.ComputeStreamUpdate(stepper.History), replays);
+        return new RunResult(steps,
+                             Applier.ComputeStreamUpdate(stepper.History),
+                             Applier.ComputePositions(stepper.History),
+                             Applier.ComputeHeldRows(stepper),
+                             replays);
     }
 
     private void ApplyRunResult(IteratorStepper stepper, RunResult result)
@@ -775,7 +817,7 @@ public sealed partial class TraceTabViewModel : ObservableObject
 
         Applier.UpdateOperatorStates(stepper);
 
-        Applier.SyncPositions(stepper.History);
+        Applier.ApplyPositionUpdate(result.PositionUpdate);
 
         foreach (var visual in Visuals)
         {
@@ -784,9 +826,11 @@ public sealed partial class TraceTabViewModel : ObservableObject
 
         Applier.AttachHashTables(stepper);
 
-        Applier.SyncHeldRows(stepper);
+        Applier.ApplyHeldRows(result.HeldRows);
 
         Applier.SyncAggregates(stepper);
+
+        Applier.SyncSegments(stepper);
 
         Applier.SyncHashTables(stepper.Current);
 
@@ -800,6 +844,7 @@ public sealed partial class TraceTabViewModel : ObservableObject
     public void ResetStep()
     {
         _runToEndCancellation?.Cancel();
+        _interactiveCancellation?.Cancel();
 
         if (Stepper is { } stepper)
         {

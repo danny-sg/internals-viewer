@@ -20,15 +20,15 @@ public abstract class JoinIterator : IteratorBase, IJoinIterator, IRowBufferIter
     public int PairCount { get; protected set; }
 
     public virtual IReadOnlyList<RowBuffer> Buffers
-        => Outer is null || Inner is null
-            ? []
-            :
+        => IsOpen
+            ?
             [
                 new RowBuffer("Outer", 0, Outer.Buffer),
                 new RowBuffer("Inner", 1, Inner.Buffer)
-            ];
+            ]
+            : [];
 
-    public override AccessStrategy? Strategy => Outer?.Iterator.Strategy;
+    public override AccessStrategy? Strategy => IsOpen ? Outer.Iterator.Strategy : null;
 
     IJoinInput IJoinIterator.Outer => Outer;
 

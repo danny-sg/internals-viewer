@@ -1,10 +1,11 @@
-using System.Diagnostics.CodeAnalysis;
+﻿using System.Diagnostics.CodeAnalysis;
 using InternalsViewer.Execution.Interfaces;
 using InternalsViewer.Execution.Iterators;
 using InternalsViewer.Execution.Iterators.Aggregation;
 using InternalsViewer.Execution.Iterators.DataAccess;
 using InternalsViewer.Execution.Iterators.Joins;
 using InternalsViewer.Execution.Iterators.Row;
+using InternalsViewer.Execution.Iterators.Windowing;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace InternalsViewer.Execution;
@@ -29,5 +30,8 @@ public static class ServiceRegistration
         services.AddTransient<StreamAggregateIterator>();
         services.AddTransient<HashAggregateIterator>();
         services.AddTransient<ComputeScalarIterator>();
+        services.AddTransient<FilterIterator>();
+        services.AddTransient<SegmentIterator>();
+        services.AddTransient<SequenceProjectIterator>();
     }
 }

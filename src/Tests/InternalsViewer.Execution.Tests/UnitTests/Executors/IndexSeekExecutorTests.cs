@@ -167,7 +167,7 @@ public class IndexSeekExecutorTests
 
         var bounds = SeekBounds.Between(TestKey.Of(50), TestKey.Of(75));
 
-        var steps = IndexSeekExecutor.Execute(page, bounds, ScanDirection.Forward, isContinuation: true).ToList();
+        var steps = IndexSeekExecutor.Execute(page, new IndexPageWalk { Bounds = bounds, IsContinuation = true }).ToList();
 
         Assert.DoesNotContain(steps, s => s is AccessStep.ProbeStart or AccessStep.Probe or AccessStep.ProbeResult);
 
@@ -195,7 +195,7 @@ public class IndexSeekExecutorTests
             ComparisonOperator.GreaterThanOrEqual,
             new AccessExpression.Constant(AccessValue.FromInteger(SqlDbType.Int, 20)));
 
-        var steps = IndexSeekExecutor.Execute(page, SeekBounds.All, ScanDirection.Forward, residual).ToList();
+        var steps = IndexSeekExecutor.Execute(page, new IndexPageWalk { Residual = residual }).ToList();
 
         var rows = steps.OfType<AccessStep.Row>().ToList();
 
@@ -215,7 +215,8 @@ public class IndexSeekExecutorTests
     {
         var page = TestIndexPage.Create(10, 20, 30, 40, 50);
 
-        var steps = IndexSeekExecutor.Execute(page, SeekBounds.Equality(TestKey.Of(30)), ScanDirection.Forward, rowGoal: 1).ToList();
+        var steps = IndexSeekExecutor.Execute(page, new IndexPageWalk { Bounds = SeekBounds.Equality(TestKey.Of(30)), RowGoal = 1 })
+                                     .ToList();
 
         Assert.Equal(StopReason.RowGoalMet, steps.OfType<AccessStep.Stopped>().Single().Reason);
         Assert.DoesNotContain(steps, s => s is AccessStep.RangeEnd);
@@ -291,6 +292,6 @@ public class IndexSeekExecutorTests
 
     private static List<AccessStep> Execute(TestIndexPage page, SeekBounds bounds, ScanDirection direction)
     {
-        return [.. IndexSeekExecutor.Execute(page, bounds, direction)];
+        return [.. IndexSeekExecutor.Execute(page, new IndexPageWalk { Bounds = bounds, Direction = direction })];
     }
 }

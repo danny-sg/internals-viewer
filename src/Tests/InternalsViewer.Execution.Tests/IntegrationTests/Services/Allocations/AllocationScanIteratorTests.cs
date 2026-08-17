@@ -122,6 +122,32 @@ public class AllocationScanIteratorTests(ITestOutputHelper testOutput)
         Assert.Equal(25, stopped.Counters.RowsOutput);
     }
 
+    [RequiresFileFact(MdfPath)]
+    public async Task A_Clustered_Table_Reads_Pages_That_Are_Not_Tagged_As_A_Heap()
+    {
+        var context = await LoadNumberTableAsync();
+
+        var (steps, _) = await RunAsync(context, new AllocationScanDefinition(context.Unit.FirstIamPage) { RowGoal = 1 });
+
+        Assert.All(steps.OfType<AccessStep.ReadPage>(), read => Assert.False(read.IsHeap));
+    }
+
+    [RequiresFileFact(MdfPath)]
+    public async Task A_Heap_Reads_Pages_Tagged_As_A_Heap()
+    {
+        var serviceHost = new TestServiceHost();
+
+        var database = await DemoDatabase.LoadAsync(serviceHost);
+
+        var unit = DemoDatabase.Unit(database, DemoDatabase.HeapTable);
+
+        var context = new NumberTableContext(database, serviceHost.GetService<AllocationScanIterator>(), unit);
+
+        var (steps, _) = await RunAsync(context, new AllocationScanDefinition(unit.FirstIamPage) { RowGoal = 1 });
+
+        Assert.All(steps.OfType<AccessStep.ReadPage>(), read => Assert.True(read.IsHeap));
+    }
+
     private sealed record NumberTableContext(DatabaseSource Database, AllocationScanIterator Service, AllocationUnit Unit);
 
     private async Task<NumberTableContext> LoadNumberTableAsync()

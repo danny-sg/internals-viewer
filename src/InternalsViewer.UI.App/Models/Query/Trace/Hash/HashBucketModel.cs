@@ -1,4 +1,3 @@
-using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 
 namespace InternalsViewer.UI.App.Models.Query.Trace.Hash;
@@ -12,7 +11,7 @@ public sealed partial class HashBucketModel : ObservableObject
 
     public string IndexText => $"0x{Index:X2}";
 
-    public ObservableCollection<HashEntryModel> Entries { get; } = [];
+    public BulkObservableCollection<HashEntryModel> Entries { get; } = [];
 
     [ObservableProperty]
     private bool _isCurrent;

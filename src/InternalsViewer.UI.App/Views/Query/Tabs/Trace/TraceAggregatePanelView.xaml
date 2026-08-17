@@ -38,46 +38,7 @@
             <RowDefinition Height="*" />
         </Grid.RowDefinitions>
 
-        <Border Grid.Row="0"
-                Padding="8,3"
-                BorderThickness="0,1,0,0"
-                BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}">
-            <Grid>
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="*" />
-                    <ColumnDefinition Width="Auto" />
-                </Grid.ColumnDefinitions>
-
-                <TextBlock VerticalAlignment="Center"
-                           Margin="0,0,6,0"
-                           Text="Aggregates"
-                           Style="{ThemeResource CaptionTextBlockStyle}"
-                           Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
-
-                <StackPanel Grid.Column="1" Orientation="Horizontal">
-                    <TextBlock x:Name="GroupHeadingText"
-                               VerticalAlignment="Center"
-                               Margin="0,0,6,0"
-                               Style="{ThemeResource CaptionTextBlockStyle}"
-                               Foreground="{ThemeResource TextFillColorTertiaryBrush}" />
-                    <TextBlock x:Name="GroupKeyText"
-                               VerticalAlignment="Center"
-                               Margin="0,0,12,0"
-                               FontSize="12"
-                               FontFamily="Consolas"
-                               Style="{ThemeResource CaptionTextBlockStyle}" />
-                    <TextBlock x:Name="StatusText"
-                               VerticalAlignment="Center"
-                               Style="{ThemeResource CaptionTextBlockStyle}"
-                               Foreground="{ThemeResource TextFillColorTertiaryBrush}" />
-                </StackPanel>
-            </Grid>
-        </Border>
-
-        <Border Grid.Row="1"
-                BorderThickness="0,1,0,0"
-                BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}">
-            <StackPanel Orientation="Horizontal">
+        <StackPanel Orientation="Horizontal" Grid.Row="1">
                 <Border Style="{StaticResource AggregateGridLineStyle}" Height="30" Width="160" VerticalAlignment="Stretch">
                     <TextBlock Text="Column" Style="{StaticResource AggregateHeaderStyle}" />
                 </Border>
@@ -88,8 +49,7 @@
                     <TextBlock Text="Value" Style="{StaticResource AggregateHeaderStyle}" />
                 </Border>
             </StackPanel>
-        </Border>
-
+   
         <ScrollViewer Grid.Row="2"
                       VerticalScrollBarVisibility="Auto"
                       HorizontalScrollBarVisibility="Auto">

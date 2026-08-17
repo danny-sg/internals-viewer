@@ -1,9 +1,8 @@
-using System;
+﻿using System;
 using System.Collections;
 using System.Collections.Generic;
 using InternalsViewer.Execution.AccessPaths.Results.Steps;
 using InternalsViewer.UI.App.Models.Query.Trace;
-using InternalsViewer.UI.App.Services.Query.Trace.Steps;
 using Microsoft.UI.Xaml.Controls;
 
 namespace InternalsViewer.UI.App.Controls.Trace.Steps;
@@ -27,12 +26,6 @@ public sealed partial class AccessStepsControl : UserControl
                                     typeof(object),
                                     typeof(AccessStepsControl),
                                     new PropertyMetadata(null, OnNodesChanged));
-
-    public static readonly DependencyProperty ShowDetailProperty =
-        DependencyProperty.Register(nameof(ShowDetail),
-                                    typeof(bool),
-                                    typeof(AccessStepsControl),
-                                    new PropertyMetadata(false, OnShowDetailChanged));
 
     public static readonly DependencyProperty BlobPaletteProperty =
         DependencyProperty.Register(nameof(BlobPalette),
@@ -76,53 +69,6 @@ public sealed partial class AccessStepsControl : UserControl
         set => SetValue(NodesProperty, value);
     }
 
-    public bool ShowDetail
-    {
-        get => (bool)GetValue(ShowDetailProperty);
-        set => SetValue(ShowDetailProperty, value);
-    }
-
-    private static void OnShowDetailChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
-    {
-        ((AccessStepsControl)d).UpdateDetailLayout();
-    }
-
-    private bool _isDetailVisible;
-
-    private GridLength _detailHeight = new(180);
-
-    private void UpdateDetailLayout()
-    {
-        var isVisible = ShowDetail && CurrentStep is not null;
-
-        if (isVisible == _isDetailVisible)
-        {
-            return;
-        }
-
-        _isDetailVisible = isVisible;
-
-        if (isVisible)
-        {
-            DetailArea.Visibility = Visibility.Visible;
-            DetailSplitter.Visibility = Visibility.Visible;
-
-            DetailRow.Height = _detailHeight;
-
-            return;
-        }
-
-        if (DetailRow.Height.IsAbsolute && DetailRow.Height.Value > 0)
-        {
-            _detailHeight = DetailRow.Height;
-        }
-
-        DetailArea.Visibility = Visibility.Collapsed;
-        DetailSplitter.Visibility = Visibility.Collapsed;
-
-        DetailRow.Height = new GridLength(0);
-    }
-
     private static void OnNodesChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
     {
         var control = (AccessStepsControl)d;
@@ -151,7 +97,7 @@ public sealed partial class AccessStepsControl : UserControl
                        || view.GetAt(index - 1) is not AccessStep newer
                        || newer.NodeId != step.NodeId;
 
-        _styler.ApplyNodeStyling(grid, step, applyIndent: true, showName: showName);
+        _styler.ApplyNodeStyling(grid, step, showName);
     }
 
     /// <summary>
@@ -174,39 +120,11 @@ public sealed partial class AccessStepsControl : UserControl
 
     private static void OnCurrentStepChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
     {
-        var control = (AccessStepsControl)d;
-
-        if (e.NewValue is not null)
-        {
-            control.StepsScroller.ChangeView(null, 0, null, true);
-
-            control.DispatcherQueue.TryEnqueue(control.StyleDetail);
-        }
-
-        control.UpdateDetailLayout();
-    }
-
-    private void StyleDetail()
-    {
-        if (CurrentStep is not { } step)
+        if (e.NewValue is null)
         {
             return;
         }
 
-        var node = _styler.NodeFor(step.NodeId);
-
-        DetailName.Text = node?.Name ?? string.Empty;
-
-        DetailSubtitle.Text = node?.Subtitle ?? string.Empty;
-        DetailSubtitle.Visibility = DetailSubtitle.Text.Length > 0 ? Visibility.Visible : Visibility.Collapsed;
-
-        DetailBlob.Background = _styler.BlobBrushFor(step.NodeId);
-
-        DetailDescription.Text = TraceStepDescriber.Describe(step, Nodes);
-
-        if (DetailHost.ContentTemplateRoot is Grid grid)
-        {
-            _styler.ApplyNodeStyling(grid, step, applyIndent: false, showName: false);
-        }
+        ((AccessStepsControl)d).StepsScroller.ChangeView(null, 0, null, true);
     }
 }

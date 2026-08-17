@@ -141,7 +141,6 @@
                     BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
                     Background="Transparent">
             <AppBarElementContainer VerticalContentAlignment="Center">
-
                 <StackPanel Orientation="Horizontal">
                     <Image x:Name="OperatorIcon"
                            Width="32"
@@ -150,10 +149,6 @@
                            HorizontalAlignment="Left" />
                     <StackPanel Orientation="Vertical" VerticalAlignment="Center" Padding="4,0,8,0">
                         <TextBlock x:Name="OperatorName" />
-                        <!--<TextBlock x:Name="OperatorSubname"
-                                   FontSize="12"
-                                   Visibility="Collapsed"
-                                   Foreground="{ThemeResource TextFillColorSecondaryBrush}" />-->
                         <accessSteps:JoinDecisionBadge x:Name="OperatorBadge"
                                                        IsRuleOnly="True"
                                                        Margin="0,1,0,0"

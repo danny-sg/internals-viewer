@@ -1,5 +1,6 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.Data;
 using System.Linq;
 using InternalsViewer.Execution.AccessPaths.Aggregation;
@@ -7,6 +8,7 @@ using InternalsViewer.Execution.AccessPaths.Binding;
 using InternalsViewer.Execution.AccessPaths.Definitions;
 using InternalsViewer.Execution.AccessPaths.Predicates;
 using InternalsViewer.Execution.AccessPaths.Search;
+using InternalsViewer.Execution.AccessPaths.Windowing;
 using InternalsViewer.Internals.Engine.Database;
 using InternalsViewer.Internals.Metadata.Structures;
 using InternalsViewer.Internals.Providers.Metadata;
@@ -92,6 +94,21 @@ public sealed class TraceDefinitionBuilder(Func<PlanNode, AllocationUnit?> resol
             return BuildComputeScalar(node);
         }
 
+        if (OperatorClassifier.IsFilter(node))
+        {
+            return BuildFilter(node);
+        }
+
+        if (OperatorClassifier.IsSegment(node))
+        {
+            return BuildSegment(node);
+        }
+
+        if (OperatorClassifier.IsSequenceProject(node))
+        {
+            return BuildSequenceProject(node);
+        }
+
         if (OperatorClassifier.IsRead(node))
         {
             return BuildAccess(node);
@@ -100,7 +117,7 @@ public sealed class TraceDefinitionBuilder(Func<PlanNode, AllocationUnit?> resol
         return null;
     }
 
-    private IteratorDefinition? BuildSort(PlanNode node)
+    private SortDefinition? BuildSort(PlanNode node)
     {
         if (node.Children.Count != 1 || node.SortColumns.Count == 0 || node.SortInfo is { WithTies: true })
         {
@@ -124,7 +141,7 @@ public sealed class TraceDefinitionBuilder(Func<PlanNode, AllocationUnit?> resol
         };
     }
 
-    private IteratorDefinition? BuildStreamAggregate(PlanNode node)
+    private StreamAggregateDefinition? BuildStreamAggregate(PlanNode node)
     {
         if (node.AggregateInfo is not { HasUntranslatedAggregate: false } info || node.Children.Count != 1)
         {
@@ -154,7 +171,7 @@ public sealed class TraceDefinitionBuilder(Func<PlanNode, AllocationUnit?> resol
         };
     }
 
-    private IteratorDefinition? BuildHashAggregate(PlanNode node)
+    private HashAggregateDefinition? BuildHashAggregate(PlanNode node)
     {
         if (node.AggregateInfo is not { HasUntranslatedAggregate: false, GroupBy.Count: > 0 } info || node.Children.Count != 1)
         {
@@ -180,7 +197,29 @@ public sealed class TraceDefinitionBuilder(Func<PlanNode, AllocationUnit?> resol
         };
     }
 
-    private IteratorDefinition? BuildComputeScalar(PlanNode node)
+    private FilterDefinition? BuildFilter(PlanNode node)
+    {
+        if (node.PredicateInfo is not { HasUntranslatedPredicate: false, Residual: { } predicate } || node.Children.Count != 1)
+        {
+            return null;
+        }
+
+        if (Build(node.Children[0]) is not { } source)
+        {
+            return null;
+        }
+
+        Nodes[node.NodeId] = node;
+
+        return new FilterDefinition(source)
+        {
+            NodeId = node.NodeId,
+            OutputList = OutputList(node),
+            Residual = predicate
+        };
+    }
+
+    private ComputeScalarDefinition? BuildComputeScalar(PlanNode node)
     {
         if (node.Children.Count != 1)
         {
@@ -222,6 +261,97 @@ public sealed class TraceDefinitionBuilder(Func<PlanNode, AllocationUnit?> resol
         };
     }
 
+    private SegmentDefinition? BuildSegment(PlanNode node)
+    {
+        if (node.Children.Count != 1 || node.SegmentInfo is not { SegmentColumn: { } segmentColumn } info)
+        {
+            return null;
+        }
+
+        if (Build(node.Children[0]) is not { } source)
+        {
+            return null;
+        }
+
+        var name = segmentColumn.Column.Trim('[', ']');
+
+        _typesByColumn[name] = SqlDbType.Bit;
+
+        Nodes[node.NodeId] = node;
+
+        return new SegmentDefinition(source, name)
+        {
+            NodeId = node.NodeId,
+            OutputList = OutputList(node),
+            GroupBy = [.. info.GroupBy.Select(c => ResolveColumnName(c.Column))]
+        };
+    }
+
+    private SequenceProjectDefinition? BuildSequenceProject(PlanNode node)
+    {
+        if (node.Children.Count != 1
+            || node.SequenceProjectInfo is not { HasUntranslatedFunction: false } info
+            || info.Columns.Count == 0)
+        {
+            return null;
+        }
+
+        var segments = SegmentColumns(node.Children[0]);
+
+        if (segments.Count == 0)
+        {
+            return null;
+        }
+
+        if (Build(node.Children[0]) is not { } source)
+        {
+            return null;
+        }
+
+        foreach (var column in info.Columns)
+        {
+            _typesByColumn[column.Column] = RankingFunctions.ResultType;
+        }
+
+        Nodes[node.NodeId] = node;
+
+        return new SequenceProjectDefinition(source)
+        {
+            NodeId = node.NodeId,
+            OutputList = OutputList(node),
+            Columns = info.Columns,
+            ValueColumn = segments[0],
+            PartitionColumn = segments[^1]
+        };
+    }
+
+    /// <summary>
+    /// The flag columns of the Segments feeding a Sequence Project, nearest first
+    /// </summary>
+    /// <remarks>
+    /// Showplan never links a ranking function to the flag that drives it, so the link is made structurally. A plan segments once per
+    /// distinct grouping the function needs, coarsest lowest, which for RANK and DENSE_RANK means the partition below and the ordering
+    /// columns above it.
+    /// </remarks>
+    private static List<string> SegmentColumns(PlanNode node)
+    {
+        var columns = new List<string>();
+
+        while (OperatorClassifier.IsSegment(node) && node.SegmentInfo?.SegmentColumn is { } column)
+        {
+            columns.Add(column.Column.Trim('[', ']'));
+
+            if (node.Children.Count != 1)
+            {
+                break;
+            }
+
+            node = node.Children[0];
+        }
+
+        return columns;
+    }
+
     private void RegisterAggregateTypes(AggregateInfo info)
     {
         foreach (var column in info.Columns)
@@ -240,7 +370,7 @@ public sealed class TraceDefinitionBuilder(Func<PlanNode, AllocationUnit?> resol
             _ => null
         };
 
-    private IteratorDefinition? BuildConcatenation(PlanNode node)
+    private ConcatenationDefinition? BuildConcatenation(PlanNode node)
     {
         if (node.Children.Count < 2)
         {
@@ -276,10 +406,7 @@ public sealed class TraceDefinitionBuilder(Func<PlanNode, AllocationUnit?> resol
         };
     }
 
-    /// <summary>
-    /// Builds a TOP, which is traceable only when the number of rows it asks for is known before the input is read
-    /// </summary>
-    private IteratorDefinition? BuildTop(PlanNode node)
+    private TopDefinition? BuildTop(PlanNode node)
     {
         if (node.TopInfo is not { IsPercent: false, WithTies: false, RowCount: { } rowCount }
             || node.Children.Count != 1)
@@ -302,7 +429,7 @@ public sealed class TraceDefinitionBuilder(Func<PlanNode, AllocationUnit?> resol
         };
     }
 
-    private IteratorDefinition? BuildHashMatch(PlanNode node)
+    private HashMatchDefinition? BuildHashMatch(PlanNode node)
     {
         if (HashJoinResolver.Resolve(node) is not { } hash || node.HashInfo is not { } info)
         {
@@ -326,7 +453,7 @@ public sealed class TraceDefinitionBuilder(Func<PlanNode, AllocationUnit?> resol
         };
     }
 
-    private IteratorDefinition? BuildMergeJoin(PlanNode node)
+    private MergeJoinDefinition? BuildMergeJoin(PlanNode node)
     {
         if (MergeJoinResolver.Resolve(node) is not { } merge || node.MergeInfo is not { } info)
         {
@@ -350,7 +477,7 @@ public sealed class TraceDefinitionBuilder(Func<PlanNode, AllocationUnit?> resol
         };
     }
 
-    private IteratorDefinition? BuildNestedLoops(PlanNode node)
+    private NestedLoopsDefinition? BuildNestedLoops(PlanNode node)
     {
         if (CorrelatedJoinResolver.Resolve(node) is not { } join)
         {
@@ -565,7 +692,7 @@ public sealed class TraceDefinitionBuilder(Func<PlanNode, AllocationUnit?> resol
         return new OutputColumn(name, table.Length > 0 ? table : null, type);
     }
 
-    private static IReadOnlyList<SeekBounds> Ranges(PlanNode node)
+    private static ImmutableArray<SeekBounds> Ranges(PlanNode node)
         => node.PredicateInfo is { HasSeekBounds: true } predicate ? predicate.SeekBounds : [SeekBounds.All];
 
     private static AccessPredicate? Residual(PlanNode node)

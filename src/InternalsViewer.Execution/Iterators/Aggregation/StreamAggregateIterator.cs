@@ -1,4 +1,4 @@
-using System.Runtime.InteropServices;
+﻿using System.Runtime.InteropServices;
 using InternalsViewer.Execution.AccessPaths.Aggregation;
 using InternalsViewer.Execution.AccessPaths.Binding;
 using InternalsViewer.Execution.AccessPaths.Definitions;
@@ -16,6 +16,19 @@ using InternalsViewer.Internals.Interfaces.Engine;
 
 namespace InternalsViewer.Execution.Iterators.Aggregation;
 
+/// <summary>
+/// Stream Aggregate Operator
+/// </summary>
+/// <remarks>
+/// Stream Aggregate relies on the input being sorted by the key columns.
+///
+/// The current key is tracked. If the key changes, the current group is emitted and a new group is started. If the key doesn't change the
+/// row is accumulated into the current group.
+///
+/// It provides a memory efficient aggregation as unlike the hash aggregate it only needs to hold one group in memory and can emit results
+/// as soon as the group is complete. The signal for completion is implicit as the operators can rely on the fact that the sorted input
+/// means it will not see any more rows for the current group in any future row.
+/// </remarks>
 public sealed class StreamAggregateIterator(IIteratorFactory factory) : IteratorBase, IUnaryIterator
 {
     private readonly List<AggregateAccumulator> _accumulators = [];
@@ -107,7 +120,7 @@ public sealed class StreamAggregateIterator(IIteratorFactory factory) : Iterator
         {
             IsPendingStart = false;
 
-            var start = new AccessStep.AggregateStart(GroupBy.Count == 0, Aggregates.Count)
+            var start = new AccessStep.AggregateStart(GroupBy.Count == 0)
             {
                 Aggregates = string.Join(", ", Aggregates.Select(a => a.ToText())),
                 GroupBy = string.Join(", ", GroupBy)
@@ -239,7 +252,7 @@ public sealed class StreamAggregateIterator(IIteratorFactory factory) : Iterator
         return CurrentRow;
     }
 
-    private IRecord BuildRecord()
+    private ComputedRecord BuildRecord()
     {
         var fields = new List<RecordField>(GroupBy.Count + _accumulators.Count);
 
@@ -271,8 +284,8 @@ public sealed class StreamAggregateIterator(IIteratorFactory factory) : Iterator
         foreach (var accumulator in _accumulators)
         {
             var value = accumulator.Column.Argument is { } argument
-                ? PredicateEvaluator.Resolve(argument, source, Context.EvaluationContext)
-                : AccessValue.Null;
+                        ? PredicateEvaluator.Resolve(argument, source, Context.EvaluationContext)
+                        : AccessValue.Null;
 
             accumulator.Add(value);
         }

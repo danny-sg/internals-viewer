@@ -19,11 +19,15 @@ using InternalsViewer.Internals.Interfaces.Services.Records;
 namespace InternalsViewer.Execution.Iterators.DataAccess;
 
 /// <summary>
-/// Fetches a single heap row from its row identifier, the access path a RID lookup uses
+/// RID Lookup Operator
 /// </summary>
 /// <remarks>
-/// A heap has no tree to descend, so the row identifier names the page and slot outright and the fetch is one page read. The exception is
-/// a forwarded row, where the slot holds a stub pointing at the page the row moved to, costing a second read.
+/// Returns a row from a heap based on a row identifier (RID). RID is defined as File Id:Page Id:Slot Id.
+///
+/// A RID Lookup will always be used by a Nested Loops join operator that will define the RID as a correlated Seek Predicate that is set
+/// per row.
+///
+/// If there is a residual predicate this will be checked before the row is returned.
 /// </remarks>
 public sealed class HeapFetchIterator(IPageService pageService, IRecordService recordService) : IteratorBase
 {
