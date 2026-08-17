@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.ObjectModel;
 using InternalsViewer.Execution.AccessPaths.Results;
 using InternalsViewer.Execution.AccessPaths.Results.Steps;
@@ -112,6 +112,14 @@ public static class TraceStepRuns
 
             case AccessStep.ComputeRow computeRow:
                 RowCountSpanFor(computeRow, "→ Emit", history, top).Progress.Apply(computeRow.Number, 0);
+                return true;
+
+            case AccessStep.SegmentRow segmentRow:
+                SegmentSpanFor(segmentRow, history).Progress.Apply(segmentRow);
+                return true;
+
+            case AccessStep.RankRow rankRow:
+                RankSpanFor(rankRow, history).Progress.Apply(rankRow);
                 return true;
 
             case AccessStep.FilterRow filterRow:
@@ -266,6 +274,42 @@ public static class TraceStepRuns
             NodeId = step.NodeId,
             Counters = step.Counters,
             Badge = badge
+        };
+
+        InsertSpan(history, created);
+
+        return created;
+    }
+
+    private static SegmentSpan SegmentSpanFor(AccessStep step, ObservableCollection<AccessStep> history)
+    {
+        if (FindOpenSpan<SegmentSpan>(history, step.NodeId) is { } span)
+        {
+            return span;
+        }
+
+        var created = new SegmentSpan
+        {
+            NodeId = step.NodeId,
+            Counters = step.Counters
+        };
+
+        InsertSpan(history, created);
+
+        return created;
+    }
+
+    private static RankSpan RankSpanFor(AccessStep step, ObservableCollection<AccessStep> history)
+    {
+        if (FindOpenSpan<RankSpan>(history, step.NodeId) is { } span)
+        {
+            return span;
+        }
+
+        var created = new RankSpan
+        {
+            NodeId = step.NodeId,
+            Counters = step.Counters
         };
 
         InsertSpan(history, created);

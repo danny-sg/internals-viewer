@@ -1,4 +1,4 @@
-/*
+﻿/*
 -----------------------------------------------------------------------------------------------------------------------
     Internals Viewer
 -----------------------------------------------------------------------------------------------------------------------
@@ -370,7 +370,6 @@ GO
     - Parallelism / Exchange      - any parallel plan. This is why every query above sets MAXDOP 1.
     - Spool                       - eager and lazy, common in some subquery and outer join shapes.
     - Partial Aggregate           - the per thread aggregate under an exchange in a parallel plan.
-    - Segment / Sequence Project  - window functions, ROW_NUMBER and friends.
     - Insert / Update / Delete    - data modification is not simulated.
     - Nested Loops over a scan    - the inner side has to be a seek or a lookup. A loop join whose inner is a scan has
                                     no correlated seek columns to bind, so it cannot be re-opened per outer row.
@@ -378,14 +377,17 @@ GO
     - Aggregates the model does not implement - STDEV, VAR, CHECKSUM_AGG, STRING_AGG. COUNT, COUNT_BIG, MIN, MAX, SUM,
                                     AVG and ANY all translate.
 
+    - NTILE and window aggregates - anything needing a frame puts a Window Spool in the plan. The ranking functions
+                                    ROW_NUMBER, RANK and DENSE_RANK do not, so they trace.
+
     One worth trying, to see an untraceable operator stop the whole tree:
 */
 
--- Untraceable - the window function adds a Segment and a Sequence Project
+-- Untraceable - NTILE has to know how big the partition is, so the plan spools it
 
 SELECT Id
       ,TextField
-      ,ROW_NUMBER() OVER (ORDER BY Id) AS RowNumber
+      ,NTILE(4) OVER (ORDER BY Id) AS Quartile
 FROM   dbo.ClusteredTable
 WHERE  Id BETWEEN 1 AND 100
 OPTION (MAXDOP 1)
@@ -420,5 +422,62 @@ SELECT Id
       ,TextField
 FROM   dbo.ClusteredTable
 WHERE  Id BETWEEN 500 AND 520
+OPTION (MAXDOP 1)
+GO
+
+/*
+-----------------------------------------------------------------------------------------------------------------------
+    Part 5 - Segment and Sequence Project
+-----------------------------------------------------------------------------------------------------------------------
+
+    A ranking function is not an expression over one row, it is a running count, so it takes two operators. Segment passes
+    every row on with one extra column set when the row starts a new group, and Sequence Project reads that flag to know
+    when to restart the count. Watch the flag column appear in the row stream below the Sequence Project - that column IS
+    the channel between them.
+*/
+
+-- 5.1 ROW_NUMBER with no PARTITION BY
+--     The Segment has no grouping columns, so the whole input is one segment and only the first row is flagged. The seek
+--     already returns Id in order, so no Sort is needed.
+
+SELECT Id
+      ,TextField
+      ,ROW_NUMBER() OVER (ORDER BY Id) AS RowNumber
+FROM   dbo.ClusteredTable
+WHERE  Id BETWEEN 1 AND 100
+OPTION (MAXDOP 1)
+GO
+
+-- 5.2 ROW_NUMBER partitioned
+--     Now the Segment groups on Category and flags every row that starts a new one. Step through and watch the count in
+--     the Sequence Project restart on exactly those rows.
+
+SELECT Category
+      ,Id
+      ,ROW_NUMBER() OVER (PARTITION BY Category ORDER BY Id) AS RowInCategory
+FROM   dbo.DuplicateKeyTable
+OPTION (MAXDOP 1)
+GO
+
+-- 5.3 RANK and DENSE_RANK over the same window
+--     These need to know where the ordering value changes as well as where the partition does, so the plan builds TWO
+--     Segments, the outer one on the ordering columns. RANK takes the row's position within the partition, which is what
+--     leaves the gap after a tie that DENSE_RANK does not have.
+
+SELECT Category
+      ,RANK()       OVER (ORDER BY Category) AS CategoryRank
+      ,DENSE_RANK() OVER (ORDER BY Category) AS CategoryDenseRank
+      ,ROW_NUMBER() OVER (ORDER BY Category) AS RowNumber
+FROM   dbo.DuplicateKeyTable
+OPTION (MAXDOP 1)
+GO
+
+-- 5.4 A window function over an unordered input
+--     Nothing indexes Category in that order, so a Sort appears below the Segment to put the rows in the order the window
+--     needs. The Sort is blocking, so the first ranked row cannot come out until the last input row has gone in.
+
+SELECT TextField
+      ,ROW_NUMBER() OVER (PARTITION BY Category ORDER BY TextField DESC) AS RowNumber
+FROM   dbo.DuplicateKeyTable
 OPTION (MAXDOP 1)
 GO

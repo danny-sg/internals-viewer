@@ -32,5 +32,7 @@ public enum AccessPhase
     Group,
     Accumulate,
     Compute,
-    Filter
+    Filter,
+    Segment,
+    Rank
 }

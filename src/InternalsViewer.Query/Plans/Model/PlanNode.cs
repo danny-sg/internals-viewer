@@ -1,4 +1,4 @@
-namespace InternalsViewer.Query.Plans.Model;
+﻿namespace InternalsViewer.Query.Plans.Model;
 
 public sealed class PlanNode
 {
@@ -47,6 +47,10 @@ public sealed class PlanNode
     public List<ColumnReference> GroupByColumns { get; set; } = [];
 
     public AggregateInfo? AggregateInfo { get; set; }
+
+    public SegmentInfo? SegmentInfo { get; set; }
+
+    public SequenceProjectInfo? SequenceProjectInfo { get; set; }
 
     public PlanIoStatistics? IoStats { get; set; }
 

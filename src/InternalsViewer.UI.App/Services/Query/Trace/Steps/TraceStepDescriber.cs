@@ -1,4 +1,4 @@
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Linq;
 using InternalsViewer.Execution.AccessPaths.Definitions;
 using InternalsViewer.Execution.AccessPaths.Joins;
@@ -300,6 +300,18 @@ public static class TraceStepDescriber
                 + $"The latest match compared entry {span.Progress.Entry} of bucket {span.Progress.Bucket} and output "
                 + $"pair {span.Progress.PairNumber}.",
 
+            SegmentSpan span =>
+                span.Progress.HasKey
+                    ? $"Segment - {span.Progress.Rows:N0} rows read, {span.Progress.Segments:N0} segments so far.\n\n"
+                      + $"The current segment is {span.Progress.Key}. A row is flagged when its grouping values differ from the row "
+                      + "before it, so the input has to already be ordered on those columns."
+                    : $"Segment - {span.Progress.Rows:N0} rows read, all in one segment.\n\n"
+                      + "There are no grouping columns, so only the first row is flagged.",
+
+            RankSpan span =>
+                $"Rank - {span.Progress.Rows:N0} rows numbered across {span.Progress.Partitions:N0} partitions.\n\n"
+                + $"The latest row was given {span.Progress.Values}.",
+
             RowCountSpan { Badge: RowCountSpan.PassBadge } span =>
                 $"Filter - {span.Progress.Rows:N0} rows passed the predicate, of {span.Progress.Limit:N0} tested.",
 
@@ -373,6 +385,21 @@ public static class TraceStepDescriber
         if (definition is ComputeScalarDefinition compute)
         {
             return $"The operator adds {string.Join(", ", compute.Columns.Select(c => c.Name))} to each row and passes it straight on.";
+        }
+
+        if (definition is SegmentDefinition segment)
+        {
+            return segment.GroupBy.Count == 0
+                ? "The operator flags the first row and passes every row straight on, so the whole input reads as one segment. That is "
+                  + "what an OVER clause with no PARTITION BY asks for."
+                : $"The operator compares each row with the one before it on {string.Join(", ", segment.GroupBy)} and flags the row "
+                  + $"in {segment.SegmentColumn} when they differ, which is how the operator above knows where a group starts.";
+        }
+
+        if (definition is SequenceProjectDefinition sequence)
+        {
+            return $"The operator numbers each row with {string.Join(", ", sequence.Columns.Select(c => c.ToText()))}, using the flags "
+                   + "the Segment below set to know where to restart the count.";
         }
 
         if (definition is FilterDefinition)

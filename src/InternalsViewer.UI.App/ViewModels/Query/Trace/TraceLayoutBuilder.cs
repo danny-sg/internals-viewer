@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Drawing;
 using System.Linq;
@@ -356,6 +356,8 @@ public static class TraceLayoutBuilder
             HashAggregateDefinition => "Hash Match",
             ComputeScalarDefinition => "Compute Scalar",
             FilterDefinition => "Filter",
+            SegmentDefinition => "Segment",
+            SequenceProjectDefinition => "Sequence Project",
             SeekDefinition => "Index Seek",
             RangeDefinition => "Index Scan",
             HeapFetchDefinition => "RID Lookup",
@@ -411,6 +413,16 @@ public static class TraceLayoutBuilder
             return filter.Residual is null ? string.Empty : PredicateText.From(filter.Residual).ToString();
         }
 
+        if (definition is SegmentDefinition segment)
+        {
+            return segment.GroupBy.Count == 0 ? "one segment" : $"GROUP BY {string.Join(", ", segment.GroupBy)}";
+        }
+
+        if (definition is SequenceProjectDefinition sequence)
+        {
+            return string.Join(", ", sequence.Columns.Select(c => c.ToText()));
+        }
+
         if (definition is not JoinDefinition join)
         {
             return string.Empty;
@@ -442,6 +454,8 @@ public static class TraceLayoutBuilder
             HashAggregateDefinition => ("Input", string.Empty),
             ComputeScalarDefinition => ("Input", string.Empty),
             FilterDefinition => ("Input", string.Empty),
+            SegmentDefinition => ("Input", string.Empty),
+            SequenceProjectDefinition => ("Input", string.Empty),
             _ => ("Outer Input", "Inner Input")
         };
 

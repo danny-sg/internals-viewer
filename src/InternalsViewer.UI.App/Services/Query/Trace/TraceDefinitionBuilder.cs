@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Data;
@@ -8,6 +8,7 @@ using InternalsViewer.Execution.AccessPaths.Binding;
 using InternalsViewer.Execution.AccessPaths.Definitions;
 using InternalsViewer.Execution.AccessPaths.Predicates;
 using InternalsViewer.Execution.AccessPaths.Search;
+using InternalsViewer.Execution.AccessPaths.Windowing;
 using InternalsViewer.Internals.Engine.Database;
 using InternalsViewer.Internals.Metadata.Structures;
 using InternalsViewer.Internals.Providers.Metadata;
@@ -96,6 +97,16 @@ public sealed class TraceDefinitionBuilder(Func<PlanNode, AllocationUnit?> resol
         if (OperatorClassifier.IsFilter(node))
         {
             return BuildFilter(node);
+        }
+
+        if (OperatorClassifier.IsSegment(node))
+        {
+            return BuildSegment(node);
+        }
+
+        if (OperatorClassifier.IsSequenceProject(node))
+        {
+            return BuildSequenceProject(node);
         }
 
         if (OperatorClassifier.IsRead(node))
@@ -248,6 +259,97 @@ public sealed class TraceDefinitionBuilder(Func<PlanNode, AllocationUnit?> resol
             OutputList = OutputList(node),
             Columns = columns
         };
+    }
+
+    private SegmentDefinition? BuildSegment(PlanNode node)
+    {
+        if (node.Children.Count != 1 || node.SegmentInfo is not { SegmentColumn: { } segmentColumn } info)
+        {
+            return null;
+        }
+
+        if (Build(node.Children[0]) is not { } source)
+        {
+            return null;
+        }
+
+        var name = segmentColumn.Column.Trim('[', ']');
+
+        _typesByColumn[name] = SqlDbType.Bit;
+
+        Nodes[node.NodeId] = node;
+
+        return new SegmentDefinition(source, name)
+        {
+            NodeId = node.NodeId,
+            OutputList = OutputList(node),
+            GroupBy = [.. info.GroupBy.Select(c => ResolveColumnName(c.Column))]
+        };
+    }
+
+    private SequenceProjectDefinition? BuildSequenceProject(PlanNode node)
+    {
+        if (node.Children.Count != 1
+            || node.SequenceProjectInfo is not { HasUntranslatedFunction: false } info
+            || info.Columns.Count == 0)
+        {
+            return null;
+        }
+
+        var segments = SegmentColumns(node.Children[0]);
+
+        if (segments.Count == 0)
+        {
+            return null;
+        }
+
+        if (Build(node.Children[0]) is not { } source)
+        {
+            return null;
+        }
+
+        foreach (var column in info.Columns)
+        {
+            _typesByColumn[column.Column] = RankingFunctions.ResultType;
+        }
+
+        Nodes[node.NodeId] = node;
+
+        return new SequenceProjectDefinition(source)
+        {
+            NodeId = node.NodeId,
+            OutputList = OutputList(node),
+            Columns = info.Columns,
+            ValueColumn = segments[0],
+            PartitionColumn = segments[^1]
+        };
+    }
+
+    /// <summary>
+    /// The flag columns of the Segments feeding a Sequence Project, nearest first
+    /// </summary>
+    /// <remarks>
+    /// Showplan never links a ranking function to the flag that drives it, so the link is made structurally. A plan segments once per
+    /// distinct grouping the function needs, coarsest lowest, which for RANK and DENSE_RANK means the partition below and the ordering
+    /// columns above it.
+    /// </remarks>
+    private static List<string> SegmentColumns(PlanNode node)
+    {
+        var columns = new List<string>();
+
+        while (OperatorClassifier.IsSegment(node) && node.SegmentInfo?.SegmentColumn is { } column)
+        {
+            columns.Add(column.Column.Trim('[', ']'));
+
+            if (node.Children.Count != 1)
+            {
+                break;
+            }
+
+            node = node.Children[0];
+        }
+
+        return columns;
     }
 
     private void RegisterAggregateTypes(AggregateInfo info)

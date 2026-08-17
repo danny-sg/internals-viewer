@@ -1,9 +1,10 @@
-using InternalsViewer.Execution.AccessPaths.Definitions;
+﻿using InternalsViewer.Execution.AccessPaths.Definitions;
 using InternalsViewer.Execution.Interfaces;
 using InternalsViewer.Execution.Iterators.Aggregation;
 using InternalsViewer.Execution.Iterators.DataAccess;
 using InternalsViewer.Execution.Iterators.Joins;
 using InternalsViewer.Execution.Iterators.Row;
+using InternalsViewer.Execution.Iterators.Windowing;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace InternalsViewer.Execution.Iterators;
@@ -35,6 +36,10 @@ public sealed class IteratorFactory(IServiceProvider services) : IIteratorFactor
                 => services.GetRequiredService<ComputeScalarIterator>(),
             FilterDefinition
                 => services.GetRequiredService<FilterIterator>(),
+            SegmentDefinition
+                => services.GetRequiredService<SegmentIterator>(),
+            SequenceProjectDefinition
+                => services.GetRequiredService<SequenceProjectIterator>(),
             AllocationScanDefinition
                 => services.GetRequiredService<AllocationScanIterator>(),
             HeapFetchDefinition

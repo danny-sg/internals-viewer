@@ -37,4 +37,11 @@
     <Using Include="Xunit" />
   </ItemGroup>
 
+  <ItemGroup>
+    <None Include="..\..\InternalsViewer.UI.App\Controls\Trace\Steps\AccessStepTemplates.xaml">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+      <Link>Helpers\Selectors\AccessStepTemplates.xaml</Link>
+    </None>
+  </ItemGroup>
+
 </Project>

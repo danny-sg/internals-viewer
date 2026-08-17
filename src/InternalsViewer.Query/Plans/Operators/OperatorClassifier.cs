@@ -1,4 +1,4 @@
-using InternalsViewer.Query.Plans.Model;
+﻿using InternalsViewer.Query.Plans.Model;
 
 namespace InternalsViewer.Query.Plans.Operators;
 
@@ -36,6 +36,12 @@ public static class OperatorClassifier
 
     public static bool IsAggregate(PlanNode n) =>
         Contains(n.LogicalOperator, "Aggregate") || IsStreamAggregate(n);
+
+    public static bool IsSegment(PlanNode n) =>
+        EqualsOp(n.PhysicalOperator, "Segment");
+
+    public static bool IsSequenceProject(PlanNode n) =>
+        EqualsOp(n.PhysicalOperator, "Sequence Project");
 
     public static bool IsSpool(PlanNode n) =>
         Contains(n.PhysicalOperator, "Spool");

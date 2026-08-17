@@ -1,4 +1,4 @@
-using InternalsViewer.Execution.AccessPaths.Results.Steps;
+﻿using InternalsViewer.Execution.AccessPaths.Results.Steps;
 using InternalsViewer.UI.App.Models.Query.Trace.Steps;
 using Microsoft.UI.Xaml.Controls;
 
@@ -79,6 +79,10 @@ public class AccessStepTemplateSelector : DataTemplateSelector
     public DataTemplate ComputeRowTemplate { get; set; } = null!;
 
     public DataTemplate FilterRowTemplate { get; set; } = null!;
+
+    public DataTemplate SegmentSpanTemplate { get; set; } = null!;
+
+    public DataTemplate RankSpanTemplate { get; set; } = null!;
 
     public DataTemplate TopRowTemplate { get; set; } = null!;
 
@@ -163,6 +167,8 @@ public class AccessStepTemplateSelector : DataTemplateSelector
             AccessStep.HashAggregate => HashAggregateTemplate,
             AccessStep.ComputeRow => ComputeRowTemplate,
             AccessStep.FilterRow => FilterRowTemplate,
+            SegmentSpan => SegmentSpanTemplate,
+            RankSpan => RankSpanTemplate,
             AccessStep.TopRow => TopRowTemplate,
             RowCountSpan => RowCountSpanTemplate,
             AccessStep.HashProbe => HashProbeTemplate,
