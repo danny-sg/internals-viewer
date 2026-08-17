@@ -23,7 +23,6 @@
 
     <Style x:Key="TableViewRowStyle" TargetType="tableView:TableViewRow">
         <Setter Property="MinHeight" Value="0" />
-        <Setter Property="Height" Value="32" />
         <Setter Property="ContentTransitions">
             <Setter.Value>
                 <TransitionCollection />

@@ -37,7 +37,7 @@
                                  ColumnHeaderStyle="{StaticResource TableViewColumnHeaderStyle}"
                                  CellStyle="{StaticResource TableViewCellStyle}"
                                  ItemContainerStyle="{StaticResource TableViewRowStyle}"
-                                 RowHeight="22"
+                                 RowHeight="32"
                                  SelectionMode="Extended"
                                  SelectionUnit="Row"
                                  IsReadOnly="True"
@@ -48,7 +48,7 @@
                                  ItemsSource="{x:Bind ViewModel.DataSource, Mode=OneWay}">
 
                 <tableView:TableView.Resources>
-                    <x:Double x:Key="ListViewItemMinHeight">20</x:Double>
+                    <x:Double x:Key="ListViewItemMinHeight">0</x:Double>
                 </tableView:TableView.Resources>
 
                 <tableView:TableView.ItemContainerTransitions>
