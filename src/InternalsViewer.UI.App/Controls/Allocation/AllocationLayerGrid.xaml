@@ -42,7 +42,7 @@
                                  SelectionUnit="Row"
                                  IsReadOnly="True"
                                  GridLinesVisibility="Vertical"
-                                 PointerPressed="LayerTable_OnPointerPressed"
+                                 BorderThickness="0"
                                  Sorting="LayerTable_OnSorting"
                                  Background="{ThemeResource LayerFillColorDefaultBrush}"
                                  ItemsSource="{x:Bind ViewModel.DataSource, Mode=OneWay}">

@@ -47,6 +47,11 @@ public sealed partial class AllocationLayerGrid
     public AllocationLayerGrid()
     {
         InitializeComponent();
+
+        // handledEventsToo so the press still reaches us after the row has handled it for its own selection.
+        LayerTable.AddHandler(UIElement.PointerPressedEvent,
+                              new PointerEventHandler(LayerTable_OnPointerPressed),
+                              handledEventsToo: true);
     }
 
     private static void OnPropertyChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
