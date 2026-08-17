@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Collections.Specialized;
 using System.ComponentModel;
+using System.Linq;
 using Windows.ApplicationModel.DataTransfer;
 using Windows.Foundation;
 using InternalsViewer.UI.App.ViewModels.Docking;
@@ -19,6 +20,8 @@ public sealed partial class TabGroupView : UserControl
     private const double TabStripReserve = 44;
 
     private readonly Dictionary<DocumentViewModel, TabViewItem> _items = new();
+
+    private readonly Dictionary<DocumentViewModel, FrameworkElement> _views = new();
 
     private readonly List<(DocumentViewModel Document, PropertyChangedEventHandler Handler)> _headerSubscriptions = [];
 
@@ -100,6 +103,8 @@ public sealed partial class TabGroupView : UserControl
             Tabs.TabItems.Add(item);
         }
 
+        SyncViews();
+
         Tabs.SelectedItem = Group.SelectedDocument is { } selected
                             && _items.TryGetValue(selected, out var selectedItem)
             ? selectedItem
@@ -107,7 +112,43 @@ public sealed partial class TabGroupView : UserControl
 
         _syncing = false;
 
+        ShowSelectedView();
+
         UpdateCommands();
+    }
+
+    private void SyncViews()
+    {
+        if (Group is null)
+        {
+            return;
+        }
+
+        foreach (var document in _views.Keys.Where(d => !Group.Documents.Contains(d)).ToList())
+        {
+            ContentHost.Children.Remove(_views[document]);
+
+            _views.Remove(document);
+        }
+    }
+
+    private void ShowSelectedView()
+    {
+        var selected = (Tabs.SelectedItem as TabViewItem)?.Tag as DocumentViewModel ?? Group?.SelectedDocument;
+
+        if (selected is not null && !_views.ContainsKey(selected) && Group?.Documents.Contains(selected) is true)
+        {
+            var view = selected.CreateView();
+
+            _views[selected] = view;
+
+            ContentHost.Children.Add(view);
+        }
+
+        foreach (var (document, view) in _views)
+        {
+            view.Visibility = ReferenceEquals(document, selected) ? Visibility.Visible : Visibility.Collapsed;
+        }
     }
 
     /// <summary>
@@ -200,7 +241,7 @@ public sealed partial class TabGroupView : UserControl
             VerticalContentAlignment = VerticalAlignment.Stretch
         };
 
-        item.Content = document.CreateView();
+        item.Content = new Grid();
 
         item.Tapped += (_, _) => Dock?.NotifyActivated(document);
 
@@ -234,6 +275,8 @@ public sealed partial class TabGroupView : UserControl
             _syncing = true;
             Tabs.SelectedItem = item;
             _syncing = false;
+
+            ShowSelectedView();
 
             UpdateCommands();
         }
@@ -285,6 +328,8 @@ public sealed partial class TabGroupView : UserControl
         {
             Group.SelectedDocument = document;
 
+            ShowSelectedView();
+
             UpdateCommands();
 
             Dock?.NotifySelectionChanged();
@@ -295,7 +340,7 @@ public sealed partial class TabGroupView : UserControl
 
     private void OnTabDragStarting(TabView sender, TabViewTabDragStartingEventArgs args)
     {
-        if (args.Tab.Tag is not DocumentViewModel document)
+        if (((args.Item as TabViewItem) ?? args.Tab)?.Tag is not DocumentViewModel document)
         {
             return;
         }
@@ -374,7 +419,7 @@ public sealed partial class TabGroupView : UserControl
         }
 
         // Over the tab strip: treat as a move into this group, leaving the strip free to reorder/accept tabs.
-        if (point.Y < TabStripReserve)
+        if (point.Y < (Tabs.ActualHeight > 0 ? Tabs.ActualHeight : TabStripReserve))
         {
             return DropZone.Center;
         }

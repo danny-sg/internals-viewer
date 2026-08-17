@@ -12,9 +12,15 @@
           DragOver="OnDropOver"
           DragLeave="OnDropLeave"
           Drop="OnDrop">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+
         <TabView x:Name="Tabs"
+                 Grid.Row="0"
                  HorizontalAlignment="Stretch"
-                 VerticalAlignment="Stretch"
+                 VerticalAlignment="Top"
                  CanDragTabs="True"
                  CanReorderTabs="True"
                  IsAddTabButtonVisible="False"
@@ -25,8 +31,11 @@
                  TabDragCompleted="OnTabDragCompleted"
                  TabCloseRequested="OnTabCloseRequested"/>
 
+        <Grid x:Name="ContentHost" Grid.Row="1" />
+
         <!-- Landing-zone indicator drawn over the content while a tab is dragged here. -->
         <Border x:Name="DropHighlight"
+                Grid.RowSpan="2"
                 Visibility="Collapsed"
                 IsHitTestVisible="False"
                 Background="{ThemeResource AccentFillColorSecondaryBrush}"
