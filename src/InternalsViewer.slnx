@@ -1,0 +1,79 @@
+<Solution>
+  <Configurations>
+    <Platform Name="Any CPU" />
+    <Platform Name="ARM64" />
+    <Platform Name="x64" />
+    <Platform Name="x86" />
+  </Configurations>
+  <Folder Name="/Solution Items/">
+    <File Path=".editorconfig" />
+  </Folder>
+  <Folder Name="/Tests/">
+    <Project Path="Tests/InternalsViewer.Connection.BackupFile.Tests/InternalsViewer.Connection.BackupFile.Tests.csproj">
+      <Build Solution="*|x64" Project="false" />
+      <Build Solution="*|x86" Project="false" />
+    </Project>
+    <Project Path="Tests/InternalsViewer.Execution.Tests/InternalsViewer.Execution.Tests.csproj">
+      <Build Solution="*|x64" Project="false" />
+      <Build Solution="*|x86" Project="false" />
+    </Project>
+    <Project Path="Tests/InternalsViewer.Internals.Tests.VerificationTool/InternalsViewer.Internals.Tests.VerificationTool.csproj">
+      <Build Solution="*|x64" Project="false" />
+      <Build Solution="*|x86" Project="false" />
+    </Project>
+    <Project Path="Tests/InternalsViewer.Internals.Tests/InternalsViewer.Internals.Tests.csproj">
+      <Build Solution="*|x64" Project="false" />
+      <Build Solution="*|x86" Project="false" />
+    </Project>
+    <Project Path="Tests/InternalsViewer.Query.Tests/InternalsViewer.Query.Tests.csproj">
+      <Build Solution="*|x64" Project="false" />
+      <Build Solution="*|x86" Project="false" />
+    </Project>
+    <Project Path="Tests/InternalsViewer.UI.App.Tests/InternalsViewer.UI.App.Tests.csproj">
+      <Platform Solution="*|Any CPU" Project="x86" />
+      <Platform Solution="*|ARM64" Project="x86" />
+      <Platform Solution="*|x64" Project="x64" />
+      <Platform Solution="*|x86" Project="x86" />
+      <Build Solution="*|x64" Project="false" />
+      <Build Solution="*|x86" Project="false" />
+    </Project>
+  </Folder>
+  <Project Path="InternalsViewer.Connection.BackupFile/InternalsViewer.Connection.BackupFile.csproj">
+    <Build Solution="Debug|x86" Project="false" />
+  </Project>
+  <Project Path="InternalsViewer.Connection.Sandbox/InternalsViewer.Connection.Sandbox.csproj">
+    <Build Solution="*|x86" Project="false" />
+  </Project>
+  <Project Path="InternalsViewer.Execution/InternalsViewer.Execution.csproj">
+    <Build Solution="Debug|x86" Project="false" />
+  </Project>
+  <Project Path="InternalsViewer.Internals.Metadata.SourceGenerators/InternalsViewer.Internals.Metadata.SourceGenerators.csproj">
+    <Build Solution="Debug|x86" Project="false" />
+  </Project>
+  <Project Path="InternalsViewer.Internals/InternalsViewer.Internals.csproj">
+    <Build Solution="Debug|x86" Project="false" />
+  </Project>
+  <Project Path="InternalsViewer.Query.DiaBridge/InternalsViewer.Query.DiaBridge.vcxproj">
+    <BuildType Solution="Debug|x64" Project="Release" />
+    <Platform Solution="*|ARM64" Project="x64" />
+    <Build Solution="*|x86" Project="false" />
+    <Build Solution="Release|x64" Project="false" />
+  </Project>
+  <Project Path="InternalsViewer.Query/InternalsViewer.Query.csproj">
+    <Build Solution="Debug|x86" Project="false" />
+  </Project>
+  <Project Path="InternalsViewer.TransactionLog/InternalsViewer.TransactionLog.csproj">
+    <Build Solution="Debug|x86" Project="false" />
+  </Project>
+  <Project Path="InternalsViewer.UI.App/InternalsViewer.UI.App.csproj">
+    <Platform Solution="*|Any CPU" Project="x64" />
+    <Platform Solution="*|ARM64" Project="x64" />
+    <Platform Solution="*|x64" Project="x64" />
+    <Platform Solution="*|x86" Project="x86" />
+    <Build Solution="Debug|x86" Project="false" />
+    <Deploy />
+  </Project>
+  <Properties Name="ExtensibilityGlobals" Scope="PostLoad">
+    <Property Name="VisualSVNWorkingCopyRoot" />
+  </Properties>
+</Solution>

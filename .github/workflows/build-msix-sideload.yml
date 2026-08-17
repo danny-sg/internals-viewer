@@ -16,7 +16,7 @@ jobs:
     runs-on: windows-latest
 
     env:
-      Solution_Name: src\InternalsViewer.sln
+      Solution_Name: src\InternalsViewer.slnx
 
     steps:
     - name: Checkout
