@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using InternalsViewer.Execution.AccessPaths.Results.Steps;
 using InternalsViewer.UI.App.Models.Query.Trace;
@@ -26,7 +26,7 @@ public sealed class StepRowStyler
 
     public TraceBlobPalette? Palette { get; set; }
 
-    public Brush? BlobBrushFor(int nodeId)
+    private Brush? BlobBrushFor(int nodeId)
         => NodeFor(nodeId) is { } node && Palette is { } palette ? palette.For(nodeId, node.Colour) : BrushFor(nodeId);
 
     public void SetNodes(IReadOnlyDictionary<int, TraceStepNode>? nodes)
@@ -50,7 +50,7 @@ public sealed class StepRowStyler
         }
     }
 
-    public TraceStepNode? NodeFor(int nodeId) => _nodes?.GetValueOrDefault(nodeId);
+    private TraceStepNode? NodeFor(int nodeId) => _nodes?.GetValueOrDefault(nodeId);
 
     public SolidColorBrush? BrushFor(int nodeId)
     {
@@ -90,7 +90,7 @@ public sealed class StepRowStyler
         return brush;
     }
 
-    public void ApplyNodeStyling(Grid grid, AccessStep step, bool applyIndent, bool showName)
+    public void ApplyNodeStyling(Grid grid, AccessStep step, bool showName)
     {
         var node = NodeFor(step.NodeId);
 
@@ -125,12 +125,9 @@ public sealed class StepRowStyler
             toggle.IsChecked = false;
         }
 
-        if (applyIndent)
-        {
-            grid.Margin = new Thickness(IndentWidth * (node?.Depth ?? 0), 0, 0, 0);
+        grid.Margin = new Thickness(IndentWidth * (node?.Depth ?? 0), 0, 0, 0);
 
-            grid.Background = LevelBrushFor(node?.Depth ?? _maxDepth);
-        }
+        grid.Background = LevelBrushFor(node?.Depth ?? _maxDepth);
 
         if (brush is null)
         {

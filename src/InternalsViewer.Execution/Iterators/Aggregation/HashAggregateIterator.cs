@@ -1,4 +1,4 @@
-using System.Numerics;
+﻿using System.Numerics;
 using System.Runtime.InteropServices;
 using InternalsViewer.Execution.AccessPaths.Aggregation;
 using InternalsViewer.Execution.AccessPaths.Binding;
@@ -156,7 +156,7 @@ public sealed class HashAggregateIterator(IIteratorFactory factory)
         {
             IsPendingStart = false;
 
-            var start = new AccessStep.AggregateStart(false, Aggregates.Count)
+            var start = new AccessStep.AggregateStart(false)
             {
                 Aggregates = string.Join(", ", Aggregates.Select(a => a.ToText())),
                 GroupBy = string.Join(", ", GroupBy)

@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
@@ -404,9 +404,7 @@ public sealed partial class TraceTabViewModel : ObservableObject
                                               node.Depth,
                                               node.Colour.ToWindowsColor(),
                                               node.InputNodes.Outer,
-                                              node.InputNodes.Inner,
-                                              TraceStepDescriber.NodeSummary(node.Definition, node.InputNodes, names),
-                                              TraceStepDescriber.NodeSubtitle(node.Visual?.AllocationUnit));
+                                              node.InputNodes.Inner);
         }
 
         return nodes;
@@ -490,8 +488,6 @@ public sealed partial class TraceTabViewModel : ObservableObject
         UpdateBlobDimming();
     }
 
-    public bool IsStepDetailVisible => IsStepping && !IsRunning && !IsRunningToEnd;
-
     public TraceBlobPalette BlobPalette => Layout.Palette;
 
     private void UpdateBlobDimming()
@@ -542,7 +538,6 @@ public sealed partial class TraceTabViewModel : ObservableObject
     partial void OnIsSteppingChanged(bool value)
     {
         OnPropertyChanged(nameof(IsWalkInProgress));
-        OnPropertyChanged(nameof(IsStepDetailVisible));
         OnPropertyChanged(nameof(IsSelectedStrategyPending));
 
         UpdateBlobDimming();
@@ -557,8 +552,6 @@ public sealed partial class TraceTabViewModel : ObservableObject
 
     partial void OnIsRunningChanged(bool value)
     {
-        OnPropertyChanged(nameof(IsStepDetailVisible));
-
         UpdateBlobDimming();
 
         FlushDescriptionIfStale();
@@ -566,8 +559,6 @@ public sealed partial class TraceTabViewModel : ObservableObject
 
     partial void OnIsRunningToEndChanged(bool value)
     {
-        OnPropertyChanged(nameof(IsStepDetailVisible));
-
         UpdateBlobDimming();
 
         FlushDescriptionIfStale();

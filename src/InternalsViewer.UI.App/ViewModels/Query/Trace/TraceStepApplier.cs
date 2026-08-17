@@ -1,4 +1,4 @@
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Linq;
 using InternalsViewer.Execution.AccessPaths.Definitions;
 using InternalsViewer.Execution.AccessPaths.Memory;
@@ -342,11 +342,6 @@ public sealed class TraceStepApplier(TraceLayout layout,
             tab.CurrentPage = position.Page;
             tab.CurrentSlot = position.Slot;
         }
-    }
-
-    public void SyncPositions(IEnumerable<AccessStep> history)
-    {
-        ApplyPositionUpdate(ComputePositions(history));
     }
 
     private void ResetPositions()

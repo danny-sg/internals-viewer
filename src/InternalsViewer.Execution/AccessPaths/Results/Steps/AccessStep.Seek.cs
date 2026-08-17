@@ -1,4 +1,4 @@
-using InternalsViewer.Execution.AccessPaths.Search;
+﻿using InternalsViewer.Execution.AccessPaths.Search;
 
 namespace InternalsViewer.Execution.AccessPaths.Results.Steps;
 
@@ -41,7 +41,7 @@ public abstract partial record AccessStep
     /// <summary>
     /// The slot the walk begins from once the leaf has been located
     /// </summary>
-    public sealed record ProbeResult(int Slot, bool PastEnd) : AccessStep(AccessPhase.Position)
+    public sealed record ProbeResult(int Slot) : AccessStep(AccessPhase.Position)
     {
         public SeekRule? Rule { get; init; }
 

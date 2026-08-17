@@ -1,4 +1,4 @@
-using InternalsViewer.Execution.AccessPaths.Results;
+﻿using InternalsViewer.Execution.AccessPaths.Results;
 using InternalsViewer.Execution.AccessPaths.Results.Steps;
 using InternalsViewer.Execution.AccessPaths.Search;
 using InternalsViewer.Execution.Interfaces.Pages;
@@ -181,7 +181,7 @@ internal static class IndexSeekExecutor
 
             cursor = forward ? entry : entry - 1;
 
-            yield return new AccessStep.ProbeResult(cursor, cursor >= page.SlotCount || cursor < 0)
+            yield return new AccessStep.ProbeResult(cursor)
             {
                 Rule = rule,
                 Target = target,

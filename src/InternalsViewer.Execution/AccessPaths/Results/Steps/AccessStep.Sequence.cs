@@ -1,4 +1,4 @@
-using InternalsViewer.Internals.Interfaces.Engine;
+﻿using InternalsViewer.Internals.Interfaces.Engine;
 
 namespace InternalsViewer.Execution.AccessPaths.Results.Steps;
 
@@ -11,8 +11,6 @@ public abstract partial record AccessStep
         public string Values { get; init; } = string.Empty;
 
         public bool IsNewPartition { get; init; }
-
-        public bool IsNewValue { get; init; }
 
         public long PartitionRow { get; init; }
     }

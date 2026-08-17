@@ -1,4 +1,4 @@
-using System.Runtime.InteropServices;
+﻿using System.Runtime.InteropServices;
 using InternalsViewer.Execution.AccessPaths.Aggregation;
 using InternalsViewer.Execution.AccessPaths.Binding;
 using InternalsViewer.Execution.AccessPaths.Definitions;
@@ -120,7 +120,7 @@ public sealed class StreamAggregateIterator(IIteratorFactory factory) : Iterator
         {
             IsPendingStart = false;
 
-            var start = new AccessStep.AggregateStart(GroupBy.Count == 0, Aggregates.Count)
+            var start = new AccessStep.AggregateStart(GroupBy.Count == 0)
             {
                 Aggregates = string.Join(", ", Aggregates.Select(a => a.ToText())),
                 GroupBy = string.Join(", ", GroupBy)

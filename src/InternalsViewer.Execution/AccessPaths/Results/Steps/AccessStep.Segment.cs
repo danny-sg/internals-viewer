@@ -1,4 +1,4 @@
-using InternalsViewer.Internals.Interfaces.Engine;
+﻿using InternalsViewer.Internals.Interfaces.Engine;
 
 namespace InternalsViewer.Execution.AccessPaths.Results.Steps;
 
@@ -11,7 +11,5 @@ public abstract partial record AccessStep
         public long SegmentCount { get; init; }
 
         public string Key { get; init; } = string.Empty;
-
-        public string Column { get; init; } = string.Empty;
     }
 }

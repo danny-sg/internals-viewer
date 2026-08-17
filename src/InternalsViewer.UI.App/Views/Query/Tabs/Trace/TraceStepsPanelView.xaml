@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <UserControl
     x:Class="InternalsViewer.UI.App.Views.Query.Tabs.Trace.TraceStepsPanelView"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
@@ -25,7 +25,6 @@
                                         StepHistory="{x:Bind ViewModel.StepHistory, Mode=OneWay}"
                                         CurrentStep="{x:Bind ViewModel.CurrentStep, Mode=OneWay}"
                                         Nodes="{x:Bind ViewModel.StepNodes, Mode=OneWay}"
-                                        ShowDetail="{x:Bind ViewModel.IsStepDetailVisible, Mode=OneWay}"
                                         BlobPalette="{x:Bind ViewModel.BlobPalette, Mode=OneWay}"
                                         NodeActivated="OnNodeActivated" />
 

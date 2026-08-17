@@ -1,5 +1,4 @@
-using System.Collections.Immutable;
-using System.Data;
+﻿using System.Data;
 using System.Runtime.InteropServices;
 using InternalsViewer.Execution.AccessPaths.Binding;
 using InternalsViewer.Execution.AccessPaths.Definitions;
@@ -17,12 +16,16 @@ using InternalsViewer.Internals.Interfaces.Engine;
 namespace InternalsViewer.Execution.Iterators.Windowing;
 
 /// <summary>
-/// Segment operator
+/// Segment Operator
 /// </summary>
 /// <remarks>
-/// Every row is passed straight on carrying one extra column, set when the row is the first of a group. Only the previous row's key is
-/// held, so the input has to already be ordered on the grouping columns for the groups to come out whole. An empty grouping list makes
-/// the whole input one segment, which is what an OVER clause with no PARTITION BY produces.
+/// Segment is a pass through operator that includes an additional field that contains 1 or 0 that flags if the segment grouping key value
+/// has changed. Sequence Project uses this flag to determine partition boundaries.
+///
+/// The name of the additional field is defined by SegmentColumn and is a property of the operator.
+///
+/// Segment changes are detected by comparing the current key value to the previous key value. The operator relies on a sorted input for
+/// this.
 /// </remarks>
 public sealed class SegmentIterator(IIteratorFactory factory) : IteratorBase, IUnaryIterator
 {
@@ -117,8 +120,7 @@ public sealed class SegmentIterator(IIteratorFactory factory) : IteratorBase, IU
         {
             EmittedRecord = record,
             SegmentCount = SegmentCount,
-            Key = KeyText(CurrentKey),
-            Column = SegmentColumn
+            Key = KeyText(CurrentKey)
         };
 
         await EmitAsync(step, cancellationToken);

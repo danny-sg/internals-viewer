@@ -1,4 +1,4 @@
-using InternalsViewer.Execution.AccessPaths.Binding;
+﻿using InternalsViewer.Execution.AccessPaths.Binding;
 using InternalsViewer.Execution.AccessPaths.Definitions;
 using InternalsViewer.Execution.AccessPaths.Results.Steps;
 using InternalsViewer.Execution.AccessPaths.Search;
@@ -17,6 +17,9 @@ namespace InternalsViewer.Execution.Iterators.Windowing;
 /// Sequence Project operator
 /// </summary>
 /// <remarks>
+/// Sequence Project is always input by a Segment operator that appends a field with a value of 1 or 0 to flag if the partition grouping
+/// has changed.
+/// 
 /// Ranking is not an expression over one row, it is a running count that the segment flags restart, which is why this cannot be folded
 /// into a Compute Scalar. Three counters cover all three functions and every ranking column in the operator reads whichever it needs, so
 /// a query ranking the same window more than once still makes a single pass.
@@ -123,7 +126,6 @@ public sealed class SequenceProjectIterator(IIteratorFactory factory) : Iterator
             EmittedRecord = record,
             Values = Text(values),
             IsNewPartition = isNewPartition,
-            IsNewValue = isNewValue,
             PartitionRow = PartitionRow
         };
 
@@ -145,7 +147,7 @@ public sealed class SequenceProjectIterator(IIteratorFactory factory) : Iterator
     }
 
     /// <summary>
-    /// Moves the three counters on for a row
+    /// Moves the row/rank/dense rank counters on for a row
     /// </summary>
     /// <remarks>
     /// Rank takes the row's position within the partition rather than counting up, which is what leaves the gap after a tie that dense
@@ -176,8 +178,10 @@ public sealed class SequenceProjectIterator(IIteratorFactory factory) : Iterator
     private long Value(RankingColumn column)
         => column.Function switch
         {
-            RankingFunction.RowNumber => PartitionRow,
-            RankingFunction.Rank => Rank,
+            RankingFunction.RowNumber 
+                => PartitionRow,
+            RankingFunction.Rank 
+                => Rank,
             _ => DenseRank
         };
 
