@@ -20,8 +20,20 @@ using InternalsViewer.Internals.Providers.Metadata;
 namespace InternalsViewer.Execution.Iterators.DataAccess;
 
 /// <summary>
-/// Drives a seek across page boundaries, loading pages as the walk descends or follows leaf links
+/// Index Seek and Index Scan Operator
 /// </summary>
+/// <remarks>
+/// Walks a B-Tree index structure based on given Seek Bounds. Bounded seek bounds descend to the rows they cover, unbounded seek bounds
+/// read the whole leaf level, which is the difference between the Index Seek and Index Scan the plan shows.
+///
+/// A descent starts at the root page and follows a downlink per level until it reaches a leaf. From there rows are read in key order,
+/// following the leaf level page links to continue onto the next page.
+///
+/// Where the plan gives several ranges each one is a fresh descent from the root rather than a continuation of the walk.
+///
+/// Opened with a Seek Definition the seek key is bound from the outer row on the context, which is how a Nested Loops join re-opens this
+/// operator for each of its outer rows.
+/// </remarks>
 public sealed class IndexIterator(IPageService pageService, IRecordService recordService) : IteratorBase
 {
     private readonly byte[] _pageBuffer = new byte[PageData.Size];
@@ -61,6 +73,8 @@ public sealed class IndexIterator(IPageService pageService, IRecordService recor
     private IEnumerator<AccessStep>? CurrentPageSteps { get; set; }
 
     private AccessCounters Counters { get; set; }
+
+    private IndexPageWalk PageWalk { get; set; } = new();
 
     public override async Task OpenAsync(IteratorDefinition definition, 
                                          IteratorContext context,
@@ -140,6 +154,13 @@ public sealed class IndexIterator(IPageService pageService, IRecordService recor
 
         Direction = range.Direction;
         Counters = Counters.AddRangeSeek();
+
+        PageWalk = new IndexPageWalk
+        {
+            Direction = range.Direction,
+            Residual = range.Residual,
+            EvaluationContext = context.EvaluationContext
+        };
 
         await LoadPageAsync(range.RootPage, cancellationToken);
     }
@@ -379,15 +400,15 @@ public sealed class IndexIterator(IPageService pageService, IRecordService recor
                 throw new InvalidOperationException($"Unexpected page type {page.GetType()} at {pageAddress}")
         };
 
-        CurrentPageSteps = IndexSeekExecutor.Execute(CurrentPage,
-                                                     Bounds,
-                                                     Direction,
-                                                     Residual,
-                                                     RowGoal,
-                                                     isContinuation,
-                                                     counters: Counters,
-                                                     evaluationContext: Context.EvaluationContext)
-                                            .GetEnumerator();
+        var walk = PageWalk with
+        {
+            Bounds = Bounds,
+            RowGoal = RowGoal,
+            IsContinuation = isContinuation,
+            Counters = Counters
+        };
+
+        CurrentPageSteps = IndexSeekExecutor.Execute(CurrentPage, walk).GetEnumerator();
     }
 
     private static long? GetRowGoal(IndexStructure indexStructure, SeekBounds bounds)

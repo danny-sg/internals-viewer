@@ -9,7 +9,6 @@ using InternalsViewer.Execution.Pages;
 using InternalsViewer.Execution.Records;
 using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Internals.Engine.Allocation.Enums;
-using InternalsViewer.Internals.Engine.Database.Enums;
 using InternalsViewer.Internals.Engine.Pages;
 using InternalsViewer.Internals.Interfaces.Engine;
 using InternalsViewer.Internals.Interfaces.Services.Loaders.Pages;
@@ -18,8 +17,20 @@ using InternalsViewer.Internals.Interfaces.Services.Records;
 namespace InternalsViewer.Execution.Iterators.DataAccess;
 
 /// <summary>
-/// Drives an allocation order scan, following the IAM chain and reading allocated pages
+/// Allocation ordered scan
 /// </summary>
+/// <remarks>
+/// Reads a table or index using allocation information provided by the IAM (Index Allocation Map) chain.
+///
+/// An IAM tracks which pages/extents are allocated to the object. This iterator reads the IAM page then returns rows by progressively
+/// reading first pages defined in the Single Page Slots, then extents defined in the Allocation Map. If the allocation spans multiple IAM
+/// pages, the iterator will follow the IAM chain. The start point is always the First IAM page for the allocation unit.
+///
+/// The PFS (Page Free Space) is used to determine if a page is allocated as extents cover 8 pages but individual allocations need to be
+/// checked to see if they are in use.
+///
+/// The scan is in allocation order, page/extent, then slot.
+/// </remarks>
 public sealed class AllocationScanIterator(IPageService pageService, IRecordService recordService) : IteratorBase
 {
     private readonly byte[] _pageBuffer = new byte[PageData.Size];
@@ -175,6 +186,9 @@ public sealed class AllocationScanIterator(IPageService pageService, IRecordServ
         return null;
     }
 
+    /// <summary>
+    /// Advance through pages in the allocation
+    /// </summary>
     private async Task AdvanceAsync(CancellationToken cancellationToken)
     {
         var iam = CurrentIam!;
@@ -284,6 +298,9 @@ public sealed class AllocationScanIterator(IPageService pageService, IRecordServ
         await LoadIamAsync(next, cancellationToken);
     }
 
+    /// <summary>
+    /// Visit a page in the allocation including checking the PFS to determine if the page is allocated
+    /// </summary>
     private async Task VisitPageAsync(PageAddress address, CancellationToken cancellationToken)
     {
         var interval = address.PageId / PfsPage.PfsInterval;
@@ -327,13 +344,15 @@ public sealed class AllocationScanIterator(IPageService pageService, IRecordServ
             case DataPage dataPage:
                 CurrentPage = new HeapPageAccessor(dataPage, recordService);
 
-                CurrentPageSteps = AllocationScanExecutor.Execute(CurrentPage,
-                                                                  Residual,
-                                                                  RowGoal,
-                                                                  Counters,
-                                                                  evaluationContext: Context.EvaluationContext,
-                                                                  isHeap: dataPage.AllocationUnit.IndexType == IndexType.Heap)
-                                                         .GetEnumerator();
+                var walk = new PageWalk
+                {
+                    Residual = Residual,
+                    RowGoal = RowGoal,
+                    Counters = Counters,
+                    EvaluationContext = Context.EvaluationContext
+                };
+
+                CurrentPageSteps = AllocationScanExecutor.Execute(CurrentPage, walk).GetEnumerator();
                 break;
 
             case IndexPage:

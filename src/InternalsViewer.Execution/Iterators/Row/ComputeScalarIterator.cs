@@ -14,6 +14,11 @@ using InternalsViewer.Internals.Interfaces.Engine;
 
 namespace InternalsViewer.Execution.Iterators.Row;
 
+/// <summary>
+/// Compute Scalar operator
+/// </summary>
+/// <remarks>
+/// </remarks>
 public sealed class ComputeScalarIterator(IIteratorFactory factory) : IteratorBase, IUnaryIterator
 {
     public override PageAddress? CurrentPageAddress => Input?.CurrentPageAddress;

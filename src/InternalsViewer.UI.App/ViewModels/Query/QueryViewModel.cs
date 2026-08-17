@@ -362,7 +362,7 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
     private const string TraceDocumentKey = "Trace";
 
-    private readonly Dictionary<string, TraceTabViewModel> _openTraces = new();
+    private readonly Dictionary<string, TraceTabViewModel> _openTraces = [];
 
     private int? _traceTargetNodeId;
 
@@ -774,7 +774,7 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
         IsPlanPropertiesVisible = true;
     }
 
-    private readonly Dictionary<string, IndexTabViewModel> _openIndexes = new();
+    private readonly Dictionary<string, IndexTabViewModel> _openIndexes = [];
 
 
     [RelayCommand]
@@ -873,7 +873,7 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
         SyncIndexPage(PlayheadTimeUs);
     }
 
-    private readonly Dictionary<string, PageTabViewModel> _openPages = new();
+    private readonly Dictionary<string, PageTabViewModel> _openPages = [];
 
     /// <summary>
     /// The captured log records for a page, matched from the query's transaction log events

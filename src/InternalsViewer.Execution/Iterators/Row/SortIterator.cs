@@ -24,7 +24,7 @@ namespace InternalsViewer.Execution.Iterators.Row;
 ///
 /// Is Distinct - Removes duplicates
 ///
-///     Tracked at the ouput point - as rows are sorted the previous row values are referenced so only the first instance is output
+///     Tracked at the output point - as rows are sorted the previous row values are referenced so only the first instance is output
 ///
 /// Top Count - If the sort is for the top N rows
 ///

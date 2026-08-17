@@ -39,7 +39,7 @@
 
         <Border Grid.Row="0"
                 Padding="8,3"
-                BorderThickness="0,1,0,0"
+                BorderThickness="0,0,0,0"
                 BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}">
             <Grid>
                 <Grid.ColumnDefinitions>
@@ -72,34 +72,44 @@
         <Border Grid.Row="1"
                 BorderThickness="0,1,0,0"
                 BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}">
-            <ItemsControl ItemsSource="{x:Bind Columns, Mode=OneWay}">
-                <ItemsControl.ItemsPanel>
-                    <ItemsPanelTemplate>
-                        <StackPanel Orientation="Horizontal" />
-                    </ItemsPanelTemplate>
-                </ItemsControl.ItemsPanel>
-                <ItemsControl.ItemTemplate>
-                    <DataTemplate x:DataType="trace:HashColumnModel">
-                        <Border Style="{StaticResource HashGridLineStyle}" Height="30" Width="{x:Bind Width, Mode=OneWay}" VerticalAlignment="Stretch">
-                            <TextBlock Text="{x:Bind Header}"
-                                       FontSize="12"
-                                       Height="30"
-                                       Padding="6,7,4,4"
-                                       TextTrimming="CharacterEllipsis"
-                                       Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
-                        </Border>
-                    </DataTemplate>
-                </ItemsControl.ItemTemplate>
-            </ItemsControl>
+            <Grid x:Name="HeaderClip" SizeChanged="OnHeaderClipSizeChanged">
+                <ItemsControl ItemsSource="{x:Bind Columns, Mode=OneWay}" HorizontalAlignment="Left">
+                    <ItemsControl.RenderTransform>
+                        <TranslateTransform x:Name="HeaderOffset" />
+                    </ItemsControl.RenderTransform>
+                    <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate>
+                            <StackPanel Orientation="Horizontal" />
+                        </ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate x:DataType="trace:HashColumnModel">
+                            <Border Style="{StaticResource HashGridLineStyle}" Height="30" Width="{x:Bind Width, Mode=OneWay}" VerticalAlignment="Stretch">
+                                <TextBlock Text="{x:Bind Header}"
+                                           FontSize="12"
+                                           Height="30"
+                                           Padding="6,7,4,4"
+                                           TextTrimming="CharacterEllipsis"
+                                           Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                            </Border>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </Grid>
         </Border>
 
-        <ScrollViewer Grid.Row="2"
+        <ScrollViewer x:Name="BodyScroller"
+                      Grid.Row="2"
                       VerticalScrollBarVisibility="Auto"
-                      HorizontalScrollBarVisibility="Auto">
-            <ItemsRepeater ItemsSource="{x:Bind Buckets, Mode=OneWay}" Margin="0,0,0,8">
+                      VerticalScrollMode="Enabled"
+                      HorizontalScrollBarVisibility="Auto"
+                      HorizontalScrollMode="Enabled"
+                      ZoomMode="Disabled"
+                      ViewChanged="OnBodyViewChanged">
+            <ItemsRepeater ItemsSource="{x:Bind Buckets, Mode=OneWay}" Margin="0,0,0,8" HorizontalAlignment="Left">
                 <ItemsRepeater.ItemTemplate>
                     <DataTemplate x:DataType="trace:HashBucketModel">
-                        <Grid>
+                        <Grid MinHeight="30">
                             <Border Background="{StaticResource HashBucketCurrentBrush}"
                                     Visibility="{x:Bind IsCurrent, Mode=OneWay,
                                             Converter={StaticResource BoolToVisibilityConverter}}" />
@@ -108,6 +118,10 @@
                                 <ItemsControl.ItemTemplate>
                                     <DataTemplate x:DataType="trace:HashEntryModel">
                                         <Grid>
+                                            <Border Background="{ThemeResource LayerFillColorDefaultBrush}"
+                                                    Visibility="{x:Bind IsPlaceholder,
+                                                            Converter={StaticResource BoolToVisibilityConverter}}" />
+
                                             <Border Background="{StaticResource HashRowMatchedBrush}"
                                                     Visibility="{x:Bind IsMatched, Mode=OneWay,
                                                             Converter={StaticResource BoolToVisibilityConverter}}" />

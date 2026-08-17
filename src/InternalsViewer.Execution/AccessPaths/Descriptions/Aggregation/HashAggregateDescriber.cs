@@ -48,8 +48,9 @@ public static class HashAggregateDescriber
 
         return new OperatorDescription
         {
-            Summary = $"Operator that groups on {groupBy} through a hash table, so it takes its input in any order, and returns one row "
-                      + "per group once that input has been read to its end.",
+            Summary = $"Groups on {groupBy} by taking unordered input and accumulating aggregations. Reads the build input in full into an " +
+                      $"in-memory hash table with an entry per group key. Groups are progressively added or updated with a calculated " +
+                      $"hash bucket and hash value, and key value.",
             IsBlocking = true,
             Phases = phases.ToImmutable()
         };

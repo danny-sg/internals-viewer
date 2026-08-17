@@ -170,6 +170,11 @@ public static class TraceStepDescriber
                 + "A distinct sort removes duplicates as it outputs: the rows are already in key order, so equal rows sit next to "
                 + "each other and only the first of each group is returned.",
 
+            StreamAggregateSpan { Progress.Groups: > 0 } span =>
+                $"Accumulate - {span.Progress.Rows:N0} rows hashed into {span.Progress.Groups:N0} groups.\n\n"
+                + $"The group the last row landed in now reads {span.Progress.Running}. A hash aggregate holds one entry per group "
+                + "rather than one per row, so what it is carrying grows with the number of distinct keys, not with the input.",
+
             StreamAggregateSpan span =>
                 $"Accumulate - {span.Progress.GroupRows:N0} rows folded into the totals, {span.Progress.Rows:N0} read in all.\n\n"
                 + $"The totals now read {span.Progress.Running}. The rows themselves are not kept, so this is the whole of what "

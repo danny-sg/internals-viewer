@@ -7,7 +7,6 @@
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     xmlns:accessSteps="using:InternalsViewer.UI.App.Controls.Trace.Steps"
     mc:Ignorable="d">
-
     <accessSteps:OperatorDescriptionPanel FontSize="12"
                                           Icon="{x:Bind ViewModel.SelectedOperatorIcon, Mode=OneWay}"
                                           OperatorName="{x:Bind ViewModel.SelectedOperatorName, Mode=OneWay}"

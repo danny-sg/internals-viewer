@@ -1,6 +1,8 @@
 using System.Collections.Generic;
 using InternalsViewer.UI.App.Models.Query.Trace.Hash;
 using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Media;
+using Windows.Foundation;
 
 namespace InternalsViewer.UI.App.Controls.Trace;
 
@@ -59,5 +61,15 @@ public sealed partial class HashTableGrid : UserControl
     {
         get => (string)GetValue(SummaryProperty);
         set => SetValue(SummaryProperty, value);
+    }
+
+    private void OnBodyViewChanged(object? sender, ScrollViewerViewChangedEventArgs e)
+    {
+        HeaderOffset.X = -BodyScroller.HorizontalOffset;
+    }
+
+    private void OnHeaderClipSizeChanged(object sender, SizeChangedEventArgs e)
+    {
+        HeaderClip.Clip = new RectangleGeometry { Rect = new Rect(0, 0, e.NewSize.Width, e.NewSize.Height) };
     }
 }

@@ -209,12 +209,10 @@ public sealed class TraceStepApplier(TraceLayout layout,
 
             case HashAggregateDefinition:
                 tab.StateItems.Add(new TraceStateItem("Groups") { Value = "0" });
-                tab.StateItems.Add(new TraceStateItem("Rows") { Value = "0" });
                 tab.StateItems.Add(new TraceStateItem("Memory") { Value = "0 KB" });
                 break;
 
             case ComputeScalarDefinition:
-                tab.StateItems.Add(new TraceStateItem("Rows") { Value = "0" });
                 break;
         }
     }

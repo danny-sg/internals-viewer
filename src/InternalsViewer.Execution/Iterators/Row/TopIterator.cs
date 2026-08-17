@@ -13,7 +13,7 @@ namespace InternalsViewer.Execution.Iterators.Row;
 /// Top Operator iterator
 /// </summary>
 /// <remarks>
-/// Streaming operator that will read and pass through rows, counting them as it goes and will stop when it his the limit set.
+/// Streaming operator that will read and pass through rows, counting them as it goes and will stop when it hits the limit set.
 /// </remarks>
 public sealed class TopIterator(IIteratorFactory factory) : IteratorBase, IUnaryIterator
 {
@@ -22,7 +22,7 @@ public sealed class TopIterator(IIteratorFactory factory) : IteratorBase, IUnary
     public override AccessStrategy? Strategy => Input?.Strategy;
 
     /// <summary>
-    /// Rows counted so far, which is what the limit is tested against
+    /// Current row count
     /// </summary>
     public long RowCount { get; private set; }
 

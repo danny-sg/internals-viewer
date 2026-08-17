@@ -9,7 +9,7 @@ using InternalsViewer.Internals.Interfaces.Engine;
 namespace InternalsViewer.Execution.Iterators.Joins;
 
 /// <summary>
-/// Merge Join Steps
+/// Merge Join Operator
 /// </summary>
 /// <remarks>
 /// Merge joins rely on two ordered inputs, Outer and Inner.

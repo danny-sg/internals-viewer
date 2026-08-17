@@ -19,6 +19,20 @@ using InternalsViewer.Internals.Interfaces.Engine;
 
 namespace InternalsViewer.Execution.Iterators.Aggregation;
 
+/// <summary>
+/// Hash Aggregate Operator
+/// </summary>
+/// <remarks>
+/// Hash Aggregate is used for grouping and aggregation. It builds the data in a hash table that provides a fast way to locate keys based
+/// on a calculated hash bucket and hash key.
+///
+/// The operator is used on un-sorted input. It is a blocking operator that will read all input rows and build the hash table before
+/// returning any output rows.
+///
+/// Keys are hashed, then put in buckets, with each bucket containing chained entries with the hash, key, and aggregates for the GROUP BY
+/// columns. The advantage of this approach is that it is very fast to locate a key in the hash table, so as it reads the un-sorted input
+/// it can create or locate groups and update the aggregate values as the input provides rows.
+/// </remarks>
 public sealed class HashAggregateIterator(IIteratorFactory factory)
     : IteratorBase, IUnaryIterator, IHashTableIterator, IMemoryBufferIterator
 {

@@ -2,6 +2,7 @@ using InternalsViewer.Execution.AccessPaths.Binding;
 using InternalsViewer.Execution.Interfaces.AccessPaths.Binding;
 using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Internals.Interfaces.Engine;
+using InternalsViewer.Internals.Metadata.Structures;
 
 namespace InternalsViewer.Execution.Interfaces.Pages;
 
@@ -17,6 +18,8 @@ public interface IRowPageAccessor
     bool IsLeaf { get; }
 
     int SlotCount { get; }
+
+    StructureType Structure => StructureType.BTree;
 
     /// <summary>
     /// Gets the underlying record for a slot, used when evaluating residual predicates

@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.Data;
 using System.Linq;
 using InternalsViewer.Execution.AccessPaths.Aggregation;
@@ -100,7 +101,7 @@ public sealed class TraceDefinitionBuilder(Func<PlanNode, AllocationUnit?> resol
         return null;
     }
 
-    private IteratorDefinition? BuildSort(PlanNode node)
+    private SortDefinition? BuildSort(PlanNode node)
     {
         if (node.Children.Count != 1 || node.SortColumns.Count == 0 || node.SortInfo is { WithTies: true })
         {
@@ -124,7 +125,7 @@ public sealed class TraceDefinitionBuilder(Func<PlanNode, AllocationUnit?> resol
         };
     }
 
-    private IteratorDefinition? BuildStreamAggregate(PlanNode node)
+    private StreamAggregateDefinition? BuildStreamAggregate(PlanNode node)
     {
         if (node.AggregateInfo is not { HasUntranslatedAggregate: false } info || node.Children.Count != 1)
         {
@@ -154,7 +155,7 @@ public sealed class TraceDefinitionBuilder(Func<PlanNode, AllocationUnit?> resol
         };
     }
 
-    private IteratorDefinition? BuildHashAggregate(PlanNode node)
+    private HashAggregateDefinition? BuildHashAggregate(PlanNode node)
     {
         if (node.AggregateInfo is not { HasUntranslatedAggregate: false, GroupBy.Count: > 0 } info || node.Children.Count != 1)
         {
@@ -180,7 +181,7 @@ public sealed class TraceDefinitionBuilder(Func<PlanNode, AllocationUnit?> resol
         };
     }
 
-    private IteratorDefinition? BuildComputeScalar(PlanNode node)
+    private ComputeScalarDefinition? BuildComputeScalar(PlanNode node)
     {
         if (node.Children.Count != 1)
         {
@@ -240,7 +241,7 @@ public sealed class TraceDefinitionBuilder(Func<PlanNode, AllocationUnit?> resol
             _ => null
         };
 
-    private IteratorDefinition? BuildConcatenation(PlanNode node)
+    private ConcatenationDefinition? BuildConcatenation(PlanNode node)
     {
         if (node.Children.Count < 2)
         {
@@ -276,10 +277,7 @@ public sealed class TraceDefinitionBuilder(Func<PlanNode, AllocationUnit?> resol
         };
     }
 
-    /// <summary>
-    /// Builds a TOP, which is traceable only when the number of rows it asks for is known before the input is read
-    /// </summary>
-    private IteratorDefinition? BuildTop(PlanNode node)
+    private TopDefinition? BuildTop(PlanNode node)
     {
         if (node.TopInfo is not { IsPercent: false, WithTies: false, RowCount: { } rowCount }
             || node.Children.Count != 1)
@@ -302,7 +300,7 @@ public sealed class TraceDefinitionBuilder(Func<PlanNode, AllocationUnit?> resol
         };
     }
 
-    private IteratorDefinition? BuildHashMatch(PlanNode node)
+    private HashMatchDefinition? BuildHashMatch(PlanNode node)
     {
         if (HashJoinResolver.Resolve(node) is not { } hash || node.HashInfo is not { } info)
         {
@@ -326,7 +324,7 @@ public sealed class TraceDefinitionBuilder(Func<PlanNode, AllocationUnit?> resol
         };
     }
 
-    private IteratorDefinition? BuildMergeJoin(PlanNode node)
+    private MergeJoinDefinition? BuildMergeJoin(PlanNode node)
     {
         if (MergeJoinResolver.Resolve(node) is not { } merge || node.MergeInfo is not { } info)
         {
@@ -350,7 +348,7 @@ public sealed class TraceDefinitionBuilder(Func<PlanNode, AllocationUnit?> resol
         };
     }
 
-    private IteratorDefinition? BuildNestedLoops(PlanNode node)
+    private NestedLoopsDefinition? BuildNestedLoops(PlanNode node)
     {
         if (CorrelatedJoinResolver.Resolve(node) is not { } join)
         {
@@ -565,7 +563,7 @@ public sealed class TraceDefinitionBuilder(Func<PlanNode, AllocationUnit?> resol
         return new OutputColumn(name, table.Length > 0 ? table : null, type);
     }
 
-    private static IReadOnlyList<SeekBounds> Ranges(PlanNode node)
+    private static ImmutableArray<SeekBounds> Ranges(PlanNode node)
         => node.PredicateInfo is { HasSeekBounds: true } predicate ? predicate.SeekBounds : [SeekBounds.All];
 
     private static AccessPredicate? Residual(PlanNode node)

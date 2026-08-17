@@ -393,7 +393,7 @@ public sealed partial class TraceTabViewModel : ObservableObject
             var name = _planNodesById.GetValueOrDefault(nodeId)?.PhysicalOperator
                        ?? TraceLayoutBuilder.DisplayName(node.Definition);
 
-            names[nodeId] = nodeId < 0 ? name : $"{name} (Node {nodeId})";
+            names[nodeId] = nodeId < 0 ? name : $"{name} ({nodeId})";
         }
 
         var nodes = new Dictionary<int, TraceStepNode>();
@@ -436,6 +436,10 @@ public sealed partial class TraceTabViewModel : ObservableObject
     }
 
     private CancellationTokenSource? _runToEndCancellation;
+
+    private CancellationTokenSource? _interactiveCancellation;
+
+    private Task? _interactiveRun;
 
     public AccessCounters CurrentCounters => CurrentStep?.Counters ?? default;
 
@@ -579,25 +583,64 @@ public sealed partial class TraceTabViewModel : ObservableObject
             return;
         }
 
+        _interactiveRun = RunInteractiveAsync();
+
+        await _interactiveRun;
+    }
+
+    private async Task RunInteractiveAsync()
+    {
         IsRunning = true;
 
-        while (IsRunning && !IsStepComplete)
+        _interactiveCancellation = new CancellationTokenSource();
+
+        var cancellationToken = _interactiveCancellation.Token;
+
+        try
         {
-            if (RunDelayMs < 0)
+            while (IsRunning && !IsStepComplete)
             {
-                IsRunning = false;
+                if (RunDelayMs < 0)
+                {
+                    IsRunning = false;
 
-                await RunToEnd();
+                    await RunToEnd();
 
-                return;
+                    return;
+                }
+
+                await StepNext();
+
+                await Task.Delay(TimeSpan.FromMilliseconds(Math.Max(1, RunDelayMs)), cancellationToken);
             }
+        }
+        catch (OperationCanceledException)
+        {
+        }
+        finally
+        {
+            IsRunning = false;
 
-            await StepNext();
+            _interactiveCancellation?.Dispose();
+            _interactiveCancellation = null;
+        }
+    }
 
-            await Task.Delay(TimeSpan.FromMilliseconds(Math.Max(1, RunDelayMs)));
+    private async Task StopInteractiveRunAsync()
+    {
+        if (!IsRunning)
+        {
+            return;
         }
 
         IsRunning = false;
+
+        _interactiveCancellation?.Cancel();
+
+        if (_interactiveRun is { } interactive)
+        {
+            await interactive;
+        }
     }
 
     [RelayCommand]
@@ -705,6 +748,8 @@ public sealed partial class TraceTabViewModel : ObservableObject
             return;
         }
 
+        await StopInteractiveRunAsync();
+
         IsRunningToEnd = true;
 
         _runToEndCancellation = new CancellationTokenSource();
@@ -800,6 +845,7 @@ public sealed partial class TraceTabViewModel : ObservableObject
     public void ResetStep()
     {
         _runToEndCancellation?.Cancel();
+        _interactiveCancellation?.Cancel();
 
         if (Stepper is { } stepper)
         {

@@ -15,7 +15,7 @@ using InternalsViewer.Internals.Interfaces.Engine;
 namespace InternalsViewer.Execution.Iterators.Joins;
 
 /// <summary>
-/// Hash Match Steps
+/// Hash Match Operator
 /// </summary>
 /// <remarks>
 /// A hash match reads its two inputs in separate phases, Build and Probe.
@@ -56,7 +56,7 @@ public sealed class HashMatchIterator(IIteratorFactory factory) : JoinIterator, 
 
     public BufferMemory Memory => Table.Memory;
 
-    public override IReadOnlyList<RowBuffer> Buffers => Inner is null ? [] : [new RowBuffer("Probe", 1, Inner.Buffer)];
+    public override IReadOnlyList<RowBuffer> Buffers => IsOpen ? [new RowBuffer("Probe", 1, Inner.Buffer)] : [];
 
     /// <summary>
     /// Rows the build side was expected to produce, which is what the table was sized for
