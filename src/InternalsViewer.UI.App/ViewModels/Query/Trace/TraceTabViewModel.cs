@@ -737,6 +737,8 @@ public sealed partial class TraceTabViewModel : ObservableObject
 
     private sealed record RunResult(ObservableCollection<AccessStep> Steps,
                                     TraceStreamUpdate StreamUpdate,
+                                    TracePositionUpdate PositionUpdate,
+                                    Dictionary<(int NodeId, int InputIndex), HeldRowsSnapshot> HeldRows,
                                     Dictionary<TraceVisualViewModel, TraceVisualReplay> Replays);
 
     private async Task RunUntilAsync(Func<AccessStep, bool>? stopAfter)
@@ -807,7 +809,11 @@ public sealed partial class TraceTabViewModel : ObservableObject
 
         var replays = Visuals.ToDictionary(v => v, v => v.ComputeReplay(stepper.History));
 
-        return new RunResult(steps, Applier.ComputeStreamUpdate(stepper.History), replays);
+        return new RunResult(steps,
+                             Applier.ComputeStreamUpdate(stepper.History),
+                             Applier.ComputePositions(stepper.History),
+                             Applier.ComputeHeldRows(stepper),
+                             replays);
     }
 
     private void ApplyRunResult(IteratorStepper stepper, RunResult result)
@@ -820,7 +826,7 @@ public sealed partial class TraceTabViewModel : ObservableObject
 
         Applier.UpdateOperatorStates(stepper);
 
-        Applier.SyncPositions(stepper.History);
+        Applier.ApplyPositionUpdate(result.PositionUpdate);
 
         foreach (var visual in Visuals)
         {
@@ -829,7 +835,7 @@ public sealed partial class TraceTabViewModel : ObservableObject
 
         Applier.AttachHashTables(stepper);
 
-        Applier.SyncHeldRows(stepper);
+        Applier.ApplyHeldRows(result.HeldRows);
 
         Applier.SyncAggregates(stepper);
 

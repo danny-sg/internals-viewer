@@ -93,6 +93,11 @@ public sealed class TraceDefinitionBuilder(Func<PlanNode, AllocationUnit?> resol
             return BuildComputeScalar(node);
         }
 
+        if (OperatorClassifier.IsFilter(node))
+        {
+            return BuildFilter(node);
+        }
+
         if (OperatorClassifier.IsRead(node))
         {
             return BuildAccess(node);
@@ -178,6 +183,28 @@ public sealed class TraceDefinitionBuilder(Func<PlanNode, AllocationUnit?> resol
             GroupBy = [.. info.GroupBy.Select(c => ResolveColumnName(c.Column))],
             Aggregates = info.Columns,
             RowEstimate = node.EstimatedRows > 0 ? node.EstimatedRows : node.RowsOutput
+        };
+    }
+
+    private FilterDefinition? BuildFilter(PlanNode node)
+    {
+        if (node.PredicateInfo is not { HasUntranslatedPredicate: false, Residual: { } predicate } || node.Children.Count != 1)
+        {
+            return null;
+        }
+
+        if (Build(node.Children[0]) is not { } source)
+        {
+            return null;
+        }
+
+        Nodes[node.NodeId] = node;
+
+        return new FilterDefinition(source)
+        {
+            NodeId = node.NodeId,
+            OutputList = OutputList(node),
+            Residual = predicate
         };
     }
 

@@ -4,6 +4,7 @@ using System.Drawing;
 using System.Linq;
 using InternalsViewer.Execution.AccessPaths.Definitions;
 using InternalsViewer.Execution.AccessPaths.Joins;
+using InternalsViewer.Execution.AccessPaths.Text;
 using InternalsViewer.Query.Plans.Model;
 using InternalsViewer.UI.App.Helpers;
 using InternalsViewer.UI.App.Models.Query.Trace;
@@ -354,6 +355,7 @@ public static class TraceLayoutBuilder
             StreamAggregateDefinition => "Stream Aggregate",
             HashAggregateDefinition => "Hash Match",
             ComputeScalarDefinition => "Compute Scalar",
+            FilterDefinition => "Filter",
             SeekDefinition => "Index Seek",
             RangeDefinition => "Index Scan",
             HeapFetchDefinition => "RID Lookup",
@@ -404,6 +406,11 @@ public static class TraceLayoutBuilder
             return string.Join(", ", compute.Columns.Select(c => c.Name));
         }
 
+        if (definition is FilterDefinition filter)
+        {
+            return filter.Residual is null ? string.Empty : PredicateText.From(filter.Residual).ToString();
+        }
+
         if (definition is not JoinDefinition join)
         {
             return string.Empty;
@@ -434,6 +441,7 @@ public static class TraceLayoutBuilder
             StreamAggregateDefinition => ("Input", string.Empty),
             HashAggregateDefinition => ("Input", string.Empty),
             ComputeScalarDefinition => ("Input", string.Empty),
+            FilterDefinition => ("Input", string.Empty),
             _ => ("Outer Input", "Inner Input")
         };
 

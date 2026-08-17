@@ -108,12 +108,16 @@ public sealed partial class TraceHashTableViewModel(RecordColumnFilter columnFil
         {
             var entries = models[added.Bucket].Entries;
 
+            var entry = ToEntryModel(table.Buckets[added.Bucket].Entries[added.Entry], added.Bucket, added.Entry);
+
             if (entries is [{ IsPlaceholder: true }])
             {
-                entries.Clear();
+                entries.Reset([entry]);
             }
-
-            entries.Add(ToEntryModel(table.Buckets[added.Bucket].Entries[added.Entry], added.Bucket, added.Entry));
+            else
+            {
+                entries.Add(entry);
+            }
 
             _syncedRowCount = table.RowCount;
         }
@@ -202,15 +206,19 @@ public sealed partial class TraceHashTableViewModel(RecordColumnFilter columnFil
         {
             var model = new HashBucketModel { Index = bucket.Index };
 
+            var entries = new List<HashEntryModel>(bucket.Count);
+
             foreach (var entry in bucket.Entries)
             {
-                model.Entries.Add(ToEntryModel(entry, bucket.Index, model.Entries.Count));
+                entries.Add(ToEntryModel(entry, bucket.Index, entries.Count));
             }
 
-            if (model.Entries.Count == 0)
+            if (entries.Count == 0)
             {
-                model.Entries.Add(EmptyEntryModel(bucket.Index));
+                entries.Add(EmptyEntryModel(bucket.Index));
             }
+
+            model.Entries.Reset(entries);
 
             models.Add(model);
         }

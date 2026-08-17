@@ -114,6 +114,11 @@ public static class TraceStepRuns
                 RowCountSpanFor(computeRow, "→ Emit", history, top).Progress.Apply(computeRow.Number, 0);
                 return true;
 
+            case AccessStep.FilterRow filterRow:
+                RowCountSpanFor(filterRow, RowCountSpan.PassBadge, history, top)
+                    .Progress.Apply(filterRow.PassedCount, filterRow.Number);
+                return true;
+
             default:
                 return false;
         }

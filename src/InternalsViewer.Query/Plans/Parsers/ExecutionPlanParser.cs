@@ -160,7 +160,7 @@ public static class ExecutionPlanParser
         }
         else if (string.Equals(node.PhysicalOperator, "Filter", StringComparison.OrdinalIgnoreCase))
         {
-            node.PredicateInfo = ParsePredicateInfo(element, parameters);
+            node.PredicateInfo = ParsePredicateInfo(element, parameters, _ => -1);
         }
 
         foreach (var child in children)

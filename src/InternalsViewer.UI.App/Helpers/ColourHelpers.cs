@@ -153,6 +153,47 @@ internal static class ColourHelpers
         return LchColorScale.LchToRgbSafe(l, baseC, baseH);
     }
 
+    /// <summary>
+    /// The preferred colour, or one that stands out, when the preferred colour is too close to what it is drawn on
+    /// </summary>
+    /// <remarks>
+    /// A marker drawn over a page takes the object's colour as its background, and an object can be given any colour of the palette,
+    /// including the marker's own. Falling back to black or white rather than to another hue keeps the marker readable whatever the
+    /// object turned out to be.
+    /// </remarks>
+    public static Color ContrastingWith(this Color colour, Color background)
+    {
+        return Distance(colour, background) < MinimumContrastDistance ? HighContrast(background) : colour;
+    }
+
+    private const double MinimumContrastDistance = 200;
+
+    /// <summary>
+    /// Weighted distance between two colours, the weights approximating how strongly the eye reads each channel
+    /// </summary>
+    private static double Distance(Color left, Color right)
+    {
+        var redMean = (left.R + right.R) / 2.0;
+
+        double red = left.R - right.R;
+        double green = left.G - right.G;
+        double blue = left.B - right.B;
+
+        return Math.Sqrt((((512 + redMean) * red * red) / 256)
+                         + (4 * green * green)
+                         + (((767 - redMean) * blue * blue) / 256));
+    }
+
+    private static Color HighContrast(Color background)
+    {
+        return Luminance(background) > 0.5 ? Color.FromArgb(255, 0, 0, 0) : Color.FromArgb(255, 255, 255, 255);
+    }
+
+    private static double Luminance(Color colour)
+    {
+        return ((0.299 * colour.R) + (0.587 * colour.G) + (0.114 * colour.B)) / 255;
+    }
+
     public static Color Lighten(Color colour)
     {
         return Color.FromArgb(255,

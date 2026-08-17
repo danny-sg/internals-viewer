@@ -1503,6 +1503,39 @@
         </Grid>
     </DataTemplate>
 
+    <DataTemplate x:Key="FilterRowTemplate" >
+        <Grid Style="{StaticResource StepRowStyle}">
+            <StackPanel Orientation="Horizontal"
+                        Grid.ColumnSpan="9"
+                        HorizontalAlignment="Left"
+                        VerticalAlignment="Top"
+                        Spacing="5" Width="140"
+                        Margin="-150,0,0,0">
+                <Border x:Name="SourceBlob" Width="9" Height="9" CornerRadius="2" Margin="0,4,0,0" VerticalAlignment="Top" />
+                <TextBlock x:Name="SourceName" Style="{StaticResource StepNodeStyle}" />
+            </StackPanel>
+            <StackPanel Orientation="Horizontal">
+                <TextBlock Text="Filter" Style="{StaticResource StepLabelStyle}" />
+                <TextBlock Text="Row" Style="{StaticResource StepPropertyStyle}" />
+                <TextBlock Text="{Binding Number}" Style="{StaticResource StepValueStyle}" />
+                <TextBlock Text="{Binding Outcome, Converter={StaticResource RowOutcomeToTextConverter}}"
+                           Style="{StaticResource StepPropertyStyle}"
+                           Margin="8,0,0,0" />
+                <Border x:Name="EmitBadge"
+                        Background="{ThemeResource SystemFillColorSuccessBrush}"
+                        CornerRadius="4"
+                        Padding="6,0,6,1"
+                        Margin="8,0,0,0"
+                        VerticalAlignment="Center"
+                        Visibility="{Binding EmittedRecord, Converter={StaticResource StepsNullToInverseVisibilityConverter}}">
+                    <TextBlock Text="→ Pass"
+                               Foreground="White"
+                               FontSize="11" />
+                </Border>
+            </StackPanel>
+        </Grid>
+    </DataTemplate>
+
     <DataTemplate x:Key="ComputeRowTemplate" >
         <Grid Style="{StaticResource StepRowStyle}">
             <StackPanel Orientation="Horizontal"
@@ -1895,6 +1928,7 @@
         AggregateEmitTemplate="{StaticResource AggregateEmitTemplate}"
         HashAggregateTemplate="{StaticResource HashAggregateTemplate}"
         ComputeRowTemplate="{StaticResource ComputeRowTemplate}"
+        FilterRowTemplate="{StaticResource FilterRowTemplate}"
         TopRowTemplate="{StaticResource TopRowTemplate}"
         RowCountSpanTemplate="{StaticResource RowCountSpanTemplate}"
         HashProbeTemplate="{StaticResource HashProbeTemplate}"

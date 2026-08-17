@@ -31,6 +31,7 @@ public static class OperatorPhases
             StreamAggregateDefinition => StreamAggregate(step),
             HashAggregateDefinition => HashAggregate(step),
             ComputeScalarDefinition => ComputeScalar(step),
+            FilterDefinition => Filter(step),
             ConcatenationDefinition => Concatenation(step),
             SelectDefinition => Select(step),
             SeekDefinition => step is AccessStep.Rebind ? AccessPhase.Rebind : step.AccessPhase,
@@ -120,6 +121,14 @@ public static class OperatorPhases
         => step switch
         {
             AccessStep.Open or AccessStep.ComputeRow => AccessPhase.Compute,
+            AccessStep.Stopped or AccessStep.Close => AccessPhase.Complete,
+            _ => null
+        };
+
+    private static AccessPhase? Filter(AccessStep step)
+        => step switch
+        {
+            AccessStep.Open or AccessStep.FilterRow => AccessPhase.Filter,
             AccessStep.Stopped or AccessStep.Close => AccessPhase.Complete,
             _ => null
         };

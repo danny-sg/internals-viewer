@@ -956,6 +956,100 @@ public class ExecutionPlanParserTests
         Assert.Equal("Expr1010", Assert.IsType<AccessExpression.Column>(definedValue.ParsedExpression).Name);
     }
 
+    // ------------------------------------------------------------------
+    // Filter over an aggregate, which is the shape HAVING takes
+    // ------------------------------------------------------------------
+
+    private const string FilterOverAggregateXml =
+        """
+        <?xml version="1.0"?>
+        <ShowPlanXML xmlns="http://schemas.microsoft.com/sqlserver/2004/07/showplan"
+                     Version="1.7" Build="16.0.0">
+          <BatchSequence>
+            <Batch>
+              <Statements>
+                <StmtSimple StatementType="SELECT" StatementSubTreeCost="0.01">
+                  <QueryPlan>
+                    <RelOp NodeId="0" PhysicalOp="Filter" LogicalOp="Filter" EstimateRows="10"
+                           EstimatedTotalSubtreeCost="0.01">
+                      <OutputList>
+                        <ColumnReference Database="[Demo]" Schema="[dbo]" Table="[DuplicateKeyTable]" Column="Category" />
+                        <ColumnReference Column="Expr1003" />
+                      </OutputList>
+                      <Filter StartupExpression="false">
+                        <RelOp NodeId="1" PhysicalOp="Stream Aggregate" LogicalOp="Aggregate" EstimateRows="20"
+                               EstimatedTotalSubtreeCost="0.01">
+                          <OutputList>
+                            <ColumnReference Database="[Demo]" Schema="[dbo]" Table="[DuplicateKeyTable]" Column="Category" />
+                            <ColumnReference Column="Expr1003" />
+                          </OutputList>
+                          <StreamAggregate>
+                            <DefinedValues>
+                              <DefinedValue>
+                                <ColumnReference Column="Expr1003" />
+                                <ScalarOperator ScalarString="COUNT(*)">
+                                  <Aggregate AggType="COUNT*" Distinct="false" />
+                                </ScalarOperator>
+                              </DefinedValue>
+                            </DefinedValues>
+                            <GroupBy>
+                              <ColumnReference Database="[Demo]" Schema="[dbo]" Table="[DuplicateKeyTable]" Column="Category" />
+                            </GroupBy>
+                            <RelOp NodeId="2" PhysicalOp="Clustered Index Scan" LogicalOp="Clustered Index Scan"
+                                   EstimateRows="2000" EstimatedTotalSubtreeCost="0.01">
+                              <OutputList>
+                                <ColumnReference Database="[Demo]" Schema="[dbo]" Table="[DuplicateKeyTable]" Column="Category" />
+                              </OutputList>
+                              <IndexScan Ordered="true" ScanDirection="FORWARD">
+                                <DefinedValues />
+                                <Object Database="[Demo]" Schema="[dbo]" Table="[DuplicateKeyTable]"
+                                        Index="[ix_DuplicateKeyTable_Category]" IndexKind="Clustered" />
+                              </IndexScan>
+                            </RelOp>
+                          </StreamAggregate>
+                        </RelOp>
+                        <Predicate>
+                          <ScalarOperator ScalarString="[Expr1003]&gt;(50)">
+                            <Compare CompareOp="GT">
+                              <ScalarOperator>
+                                <Identifier>
+                                  <ColumnReference Column="Expr1003" />
+                                </Identifier>
+                              </ScalarOperator>
+                              <ScalarOperator>
+                                <Const ConstValue="(50)" />
+                              </ScalarOperator>
+                            </Compare>
+                          </ScalarOperator>
+                        </Predicate>
+                      </Filter>
+                    </RelOp>
+                  </QueryPlan>
+                </StmtSimple>
+              </Statements>
+            </Batch>
+          </BatchSequence>
+        </ShowPlanXML>
+        """;
+
+    [Fact]
+    public void A_Filter_Translates_A_Predicate_Over_A_Column_The_Plan_Invented()
+    {
+        var plan = Parse(FilterOverAggregateXml);
+
+        var predicateInfo = plan.NodesById[0].PredicateInfo;
+
+        Assert.NotNull(predicateInfo);
+        Assert.False(predicateInfo!.HasUntranslatedPredicate);
+
+        var comparison = Assert.IsType<AccessPredicate.Comparison>(predicateInfo.Residual);
+
+        var column = Assert.IsType<AccessExpression.Column>(comparison.Left);
+
+        Assert.Equal("Expr1003", column.Name);
+        Assert.Equal(-1, column.Ordinal);
+    }
+
     [Fact]
     public void An_Operator_That_Is_Not_An_Aggregate_Has_No_Aggregate_Info()
     {

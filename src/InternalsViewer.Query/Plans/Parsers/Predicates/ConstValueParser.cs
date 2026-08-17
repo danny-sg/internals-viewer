@@ -10,8 +10,8 @@ namespace InternalsViewer.Query.Plans.Parsers.Predicates;
 /// </summary>
 /// <remarks>
 /// Showplan renders a constant the way it would appear in Transact-SQL rather than as a typed value, so the type has to be recovered from
-/// the way the literal is written. Strings arrive quoted with doubled inner quotes, unicode strings carry an N prefix, and binary arrives
-/// with a 0x prefix.
+/// the way the literal is written. Strings arrive quoted with doubled inner quotes, unicode strings carry an N prefix, binary arrives
+/// with a 0x prefix, and money carries a currency symbol.
 /// </remarks>
 public static class ConstValueParser
 {
@@ -116,11 +116,14 @@ public static class ConstValueParser
     /// </summary>
     /// <remarks>
     /// A literal without a decimal point is an integer, one with a decimal point but no exponent is treated as decimal rather than float,
-    /// matching how the engine types a numeric literal.
+    /// matching how the engine types a numeric literal. A currency symbol makes the literal money, which is exact whether or not it was
+    /// written with a decimal point.
     /// </remarks>
     private static AccessValue ParseNumeric(string text)
     {
-        if (long.TryParse(text, NumberStyles.Integer, CultureInfo.InvariantCulture, out var integer))
+        var isMoney = TryRemoveCurrencySymbol(ref text);
+
+        if (!isMoney && long.TryParse(text, NumberStyles.Integer, CultureInfo.InvariantCulture, out var integer))
         {
             return AccessValue.FromInteger(SqlDbType.BigInt, integer);
         }
@@ -130,14 +133,35 @@ public static class ConstValueParser
         if (!hasExponent &&
             decimal.TryParse(text, NumberStyles.Number, CultureInfo.InvariantCulture, out var exact))
         {
-            return AccessValue.FromDecimal(SqlDbType.Decimal, exact);
+            return AccessValue.FromDecimal(isMoney ? SqlDbType.Money : SqlDbType.Decimal, exact);
         }
 
-        if (double.TryParse(text, NumberStyles.Float, CultureInfo.InvariantCulture, out var real))
+        if (!isMoney && double.TryParse(text, NumberStyles.Float, CultureInfo.InvariantCulture, out var real))
         {
             return AccessValue.FromReal(SqlDbType.Float, real);
         }
 
         return AccessValue.Null;
+    }
+
+    /// <summary>
+    /// Removes the currency symbol a money literal is written with, reporting whether one was there
+    /// </summary>
+    /// <remarks>
+    /// Transact-SQL allows the symbol on either side of the sign, so a negative amount can arrive as -$12.50 or $-12.50. Anywhere else the
+    /// symbol is not a currency marker and the literal is left alone to fail the numeric parse.
+    /// </remarks>
+    private static bool TryRemoveCurrencySymbol(ref string text)
+    {
+        var index = text.IndexOf('$');
+
+        if (index < 0 || index > 1 || (index == 1 && text[0] is not ('-' or '+')))
+        {
+            return false;
+        }
+
+        text = text.Remove(index, 1);
+
+        return true;
     }
 }

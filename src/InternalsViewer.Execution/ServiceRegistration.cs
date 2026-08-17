@@ -29,5 +29,6 @@ public static class ServiceRegistration
         services.AddTransient<StreamAggregateIterator>();
         services.AddTransient<HashAggregateIterator>();
         services.AddTransient<ComputeScalarIterator>();
+        services.AddTransient<FilterIterator>();
     }
 }

@@ -33,6 +33,8 @@ public sealed class IteratorFactory(IServiceProvider services) : IIteratorFactor
                 => services.GetRequiredService<HashAggregateIterator>(),
             ComputeScalarDefinition
                 => services.GetRequiredService<ComputeScalarIterator>(),
+            FilterDefinition
+                => services.GetRequiredService<FilterIterator>(),
             AllocationScanDefinition
                 => services.GetRequiredService<AllocationScanIterator>(),
             HeapFetchDefinition

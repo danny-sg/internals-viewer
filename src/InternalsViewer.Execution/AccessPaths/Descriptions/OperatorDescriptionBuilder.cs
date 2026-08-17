@@ -27,6 +27,7 @@ public static class OperatorDescriptionBuilder
             StreamAggregateDefinition aggregate => StreamAggregateDescriber.Describe(aggregate),
             HashAggregateDefinition hashAggregate => HashAggregateDescriber.Describe(hashAggregate),
             ComputeScalarDefinition compute => ComputeScalarDescriber.Describe(compute),
+            FilterDefinition filter => FilterDescriber.Describe(filter),
             ConcatenationDefinition concatenation => ConcatenationDescriber.Describe(concatenation),
             SelectDefinition => SelectDescriber.Describe(),
             SeekDefinition => CorrelatedSeekDescriber.Describe(strategy),

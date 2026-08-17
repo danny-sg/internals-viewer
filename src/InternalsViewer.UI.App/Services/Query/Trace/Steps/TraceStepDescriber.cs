@@ -225,6 +225,19 @@ public static class TraceStepDescriber
                 + $", built from {aggregateEmit.GroupRows:N0} rows.\n\n"
                 + $"The group is complete, so the totals become the output row: {aggregateEmit.Values}.",
 
+            AccessStep.FilterRow { Outcome: RowOutcome.Match } passed =>
+                $"Filter - Row {passed.Number:N0} passed the predicate and is handed up, the {passed.PassedCount:N0} to do so.\n\n"
+                + "A filter is where a predicate lands when it could not be pushed into the access path below, so every row has already "
+                + "been read from a page before it is tested here.",
+
+            AccessStep.FilterRow filtered =>
+                $"Filter - Row {filtered.Number:N0} was dropped.\n\n"
+                + (filtered.Outcome == RowOutcome.Unknown
+                    ? "The predicate could not be decided for this row, which SQL three valued logic treats as not matching, so the "
+                      + "row is dropped as though it had failed."
+                    : "The row failed the predicate. The work of reading it has already been done, which is why a predicate the access "
+                      + "path could have used is worth more than one applied here."),
+
             AccessStep.ComputeRow compute =>
                 $"Compute - Evaluates the operator's expressions for row {compute.Number:N0}.\n\n"
                 + (compute.Values.Length > 0
@@ -286,6 +299,9 @@ public static class TraceStepDescriber
                 $"Match - {span.Progress.Matches:N0} matching pairs, {span.Progress.Emits:N0} rows output.\n\n"
                 + $"The latest match compared entry {span.Progress.Entry} of bucket {span.Progress.Bucket} and output "
                 + $"pair {span.Progress.PairNumber}.",
+
+            RowCountSpan { Badge: RowCountSpan.PassBadge } span =>
+                $"Filter - {span.Progress.Rows:N0} rows passed the predicate, of {span.Progress.Limit:N0} tested.",
 
             RowCountSpan span =>
                 span.Progress.Limit > 0
@@ -357,6 +373,12 @@ public static class TraceStepDescriber
         if (definition is ComputeScalarDefinition compute)
         {
             return $"The operator adds {string.Join(", ", compute.Columns.Select(c => c.Name))} to each row and passes it straight on.";
+        }
+
+        if (definition is FilterDefinition)
+        {
+            return "The operator tests every row its input returns and passes on only those that match, which is where a predicate "
+                   + "ends up when the access path below could not use it.";
         }
 
         if (definition is not JoinDefinition join)

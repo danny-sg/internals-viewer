@@ -31,5 +31,6 @@ public enum AccessPhase
     GetRow,
     Group,
     Accumulate,
-    Compute
+    Compute,
+    Filter
 }

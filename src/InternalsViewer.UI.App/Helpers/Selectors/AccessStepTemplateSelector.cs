@@ -78,6 +78,8 @@ public class AccessStepTemplateSelector : DataTemplateSelector
 
     public DataTemplate ComputeRowTemplate { get; set; } = null!;
 
+    public DataTemplate FilterRowTemplate { get; set; } = null!;
+
     public DataTemplate TopRowTemplate { get; set; } = null!;
 
     public DataTemplate RowCountSpanTemplate { get; set; } = null!;
@@ -160,6 +162,7 @@ public class AccessStepTemplateSelector : DataTemplateSelector
             AccessStep.AggregateEmit => AggregateEmitTemplate,
             AccessStep.HashAggregate => HashAggregateTemplate,
             AccessStep.ComputeRow => ComputeRowTemplate,
+            AccessStep.FilterRow => FilterRowTemplate,
             AccessStep.TopRow => TopRowTemplate,
             RowCountSpan => RowCountSpanTemplate,
             AccessStep.HashProbe => HashProbeTemplate,
