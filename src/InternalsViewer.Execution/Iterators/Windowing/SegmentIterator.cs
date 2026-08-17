@@ -43,7 +43,19 @@ public sealed class SegmentIterator(IIteratorFactory factory) : IteratorBase, IU
 
     public string SegmentColumn { get; private set; } = string.Empty;
 
-    private AccessKey CurrentKey { get; set; }
+    /// <summary>
+    /// The key of the segment already open, which the next row is compared against, one value per grouping column
+    /// </summary>
+    public IReadOnlyList<string> CurrentKeyValues { get; private set; } = [];
+
+    /// <summary>
+    /// The key of the row just read, one value per grouping column
+    /// </summary>
+    public IReadOnlyList<string> RowKeyValues { get; private set; } = [];
+
+    public string RowKey { get; private set; } = string.Empty;
+
+    private AccessKey SegmentKey { get; set; }
 
     private bool HasSegment { get; set; }
 
@@ -71,8 +83,13 @@ public sealed class SegmentIterator(IIteratorFactory factory) : IteratorBase, IU
         RowCount = 0;
         SegmentCount = 0;
 
-        CurrentKey = AccessKey.Unbounded;
+        SegmentKey = AccessKey.Unbounded;
         HasSegment = false;
+
+        CurrentKeyValues = [];
+        RowKeyValues = [];
+
+        RowKey = string.Empty;
 
         Input = factory.Create(segment.Source);
 
@@ -102,13 +119,13 @@ public sealed class SegmentIterator(IIteratorFactory factory) : IteratorBase, IU
 
         var key = GetKey(row);
 
-        var isNewSegment = !HasSegment || (GroupBy.Count > 0 && !key.Equals(CurrentKey));
+        RowKey = KeyText(key);
+        RowKeyValues = KeyValues(key);
+
+        var isNewSegment = !HasSegment || (GroupBy.Count > 0 && !key.Equals(SegmentKey));
 
         if (isNewSegment)
         {
-            CurrentKey = key;
-            HasSegment = true;
-
             SegmentCount++;
         }
 
@@ -120,10 +137,12 @@ public sealed class SegmentIterator(IIteratorFactory factory) : IteratorBase, IU
         {
             EmittedRecord = record,
             SegmentCount = SegmentCount,
-            Key = KeyText(CurrentKey)
+            Key = RowKey
         };
 
         await EmitAsync(step, cancellationToken);
+
+        AdoptSegment(key, isNewSegment);
 
         CurrentRow = ProjectedRecord.Project(record, OutputList);
 
@@ -137,7 +156,35 @@ public sealed class SegmentIterator(IIteratorFactory factory) : IteratorBase, IU
             await Input.CloseAsync();
         }
 
+        SegmentKey = AccessKey.Unbounded;
+        HasSegment = false;
+
+        CurrentKeyValues = [];
+        RowKeyValues = [];
+
+        RowKey = string.Empty;
+
         await base.CloseAsync();
+    }
+
+    /// <summary>
+    /// Takes the row's key as the open segment's, once the step carrying the comparison has been delivered
+    /// </summary>
+    /// <remarks>
+    /// A trace parks inside the step, so taking the key any earlier would leave the two reading equal on exactly the rows where they
+    /// differed, which are the only rows worth watching.
+    /// </remarks>
+    private void AdoptSegment(AccessKey key, bool isNewSegment)
+    {
+        HasSegment = true;
+
+        if (!isNewSegment)
+        {
+            return;
+        }
+
+        SegmentKey = key;
+        CurrentKeyValues = RowKeyValues;
     }
 
     private AccessKey GetKey(IRecord record)
@@ -165,6 +212,9 @@ public sealed class SegmentIterator(IIteratorFactory factory) : IteratorBase, IU
 
         return new AccessKey(ImmutableCollectionsMarshal.AsImmutableArray(values));
     }
+
+    private static IReadOnlyList<string> KeyValues(AccessKey key)
+        => key.IsUnbounded ? [] : [.. key.Values.Select(AccessValueFormatter.ToText)];
 
     private static string KeyText(AccessKey key)
         => key.IsUnbounded ? string.Empty : string.Join(", ", key.Values.Select(AccessValueFormatter.ToText));

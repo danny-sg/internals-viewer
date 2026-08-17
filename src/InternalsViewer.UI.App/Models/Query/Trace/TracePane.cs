@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 
 namespace InternalsViewer.UI.App.Models.Query.Trace;
 
@@ -9,7 +9,8 @@ public enum TracePaneKind
     RowStream,
     HeldRows,
     HashTable,
-    Aggregates
+    Aggregates,
+    Segment
 }
 
 /// <summary>

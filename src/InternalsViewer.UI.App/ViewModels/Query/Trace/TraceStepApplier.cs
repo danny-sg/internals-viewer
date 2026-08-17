@@ -10,6 +10,7 @@ using InternalsViewer.Execution.Interfaces.Iterators.Joins;
 using InternalsViewer.Execution.Iterators.Aggregation;
 using InternalsViewer.Execution.Iterators.Row;
 using InternalsViewer.Execution.Iterators.Stepping;
+using InternalsViewer.Execution.Iterators.Windowing;
 using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Internals.Interfaces.Engine;
 using InternalsViewer.UI.App.Models.Index;
@@ -45,6 +46,8 @@ public sealed class TraceStepApplier(TraceLayout layout,
 
         SyncAggregates(stepper);
 
+        SyncSegments(stepper);
+
         SyncHashTables(step);
 
         visualsByNode.GetValueOrDefault(step.NodeId)?.Apply(step);
@@ -64,6 +67,8 @@ public sealed class TraceStepApplier(TraceLayout layout,
             node.HashTable?.Reset();
 
             node.Aggregates?.Reset();
+
+            node.Segment?.Reset();
         }
 
         foreach (var op in operatorsByNode.Values)
@@ -483,6 +488,16 @@ public sealed class TraceStepApplier(TraceLayout layout,
                                                                              iterator.CurrentKey,
                                                                              iterator.GroupRowCount,
                                                                              iterator.RowCount);
+        }
+    }
+
+    public void SyncSegments(IteratorStepper stepper)
+    {
+        foreach (var iterator in Iterators(stepper.Root).OfType<SegmentIterator>())
+        {
+            layout.Nodes.GetValueOrDefault(iterator.NodeId)?.Segment?.Sync(iterator.CurrentKeyValues,
+                                                                          iterator.RowKeyValues,
+                                                                          iterator.SegmentCount);
         }
     }
 

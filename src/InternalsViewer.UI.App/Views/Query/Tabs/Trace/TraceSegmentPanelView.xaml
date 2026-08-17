@@ -1,0 +1,108 @@
+<?xml version="1.0" encoding="utf-8"?>
+<UserControl
+    x:Class="InternalsViewer.UI.App.Views.Query.Tabs.Trace.TraceSegmentPanelView"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    xmlns:converters="using:InternalsViewer.UI.App.Helpers.Converters"
+    xmlns:trace="using:InternalsViewer.UI.App.Models.Query.Trace"
+    mc:Ignorable="d">
+
+    <UserControl.Resources>
+        <converters:BoolToVisibilityConverter x:Key="SegmentBoolToVisibilityConverter" />
+
+        <SolidColorBrush x:Key="SegmentRowDifferentBrush" Color="{ThemeResource SystemListAccentMediumColor}" />
+
+        <Style x:Key="SegmentCellStyle" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="12" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+            <Setter Property="Padding" Value="6,7,4,2" />
+            <Setter Property="Height" Value="30" />
+            <Setter Property="TextTrimming" Value="CharacterEllipsis" />
+        </Style>
+
+        <Style x:Key="SegmentGridLineStyle" TargetType="Border">
+            <Setter Property="BorderThickness" Value="0,0,1,1" />
+            <Setter Property="BorderBrush" Value="{ThemeResource ControlStrokeColorDefaultBrush}" />
+        </Style>
+
+        <Style x:Key="SegmentHeaderStyle" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="12" />
+            <Setter Property="Height" Value="30" />
+            <Setter Property="Padding" Value="6,7,4,4" />
+            <Setter Property="TextTrimming" Value="CharacterEllipsis" />
+            <Setter Property="Foreground" Value="{ThemeResource TextFillColorSecondaryBrush}" />
+        </Style>
+    </UserControl.Resources>
+
+    <Grid Background="{ThemeResource LayerFillColorDefaultBrush}">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+
+        <StackPanel Orientation="Horizontal" Grid.Row="1">
+            <Border Style="{StaticResource SegmentGridLineStyle}" Height="30" Width="120" VerticalAlignment="Stretch">
+                <TextBlock Text="Key" Style="{StaticResource SegmentHeaderStyle}" />
+            </Border>
+            <ItemsControl ItemsSource="{x:Bind ViewModel.Columns, Mode=OneWay}">
+                <ItemsControl.ItemsPanel>
+                    <ItemsPanelTemplate>
+                        <StackPanel Orientation="Horizontal" />
+                    </ItemsPanelTemplate>
+                </ItemsControl.ItemsPanel>
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate x:DataType="x:String">
+                        <Border Style="{StaticResource SegmentGridLineStyle}" Height="30" Width="160" VerticalAlignment="Stretch">
+                            <TextBlock Text="{x:Bind}" Style="{StaticResource SegmentHeaderStyle}" />
+                        </Border>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+        </StackPanel>
+
+        <ScrollViewer Grid.Row="2"
+                      VerticalScrollBarVisibility="Auto"
+                      HorizontalScrollBarVisibility="Auto">
+            <ItemsRepeater ItemsSource="{x:Bind ViewModel.Rows, Mode=OneWay}" Margin="0,0,0,8" HorizontalAlignment="Left">
+                <ItemsRepeater.ItemTemplate>
+                    <DataTemplate x:DataType="trace:TraceSegmentRow">
+                        <Grid MinHeight="30">
+                            <Border Background="{StaticResource SegmentRowDifferentBrush}"
+                                    Visibility="{x:Bind IsDifferent, Mode=OneWay,
+                                            Converter={StaticResource SegmentBoolToVisibilityConverter}}" />
+
+                            <StackPanel Orientation="Horizontal">
+                                <Border Style="{StaticResource SegmentGridLineStyle}" Width="120">
+                                    <TextBlock Text="{x:Bind Name}"
+                                               Height="30"
+                                               Style="{StaticResource SegmentCellStyle}"
+                                               Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                                </Border>
+                                <ItemsControl ItemsSource="{x:Bind Cells}">
+                                    <ItemsControl.ItemsPanel>
+                                        <ItemsPanelTemplate>
+                                            <StackPanel Orientation="Horizontal" />
+                                        </ItemsPanelTemplate>
+                                    </ItemsControl.ItemsPanel>
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate x:DataType="trace:TraceSegmentCell">
+                                            <Border Style="{StaticResource SegmentGridLineStyle}" Width="160">
+                                                <TextBlock Text="{x:Bind Value, Mode=OneWay}"
+                                                           Height="30"
+                                                           FontFamily="Consolas"
+                                                           Style="{StaticResource SegmentCellStyle}" />
+                                            </Border>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </StackPanel>
+                        </Grid>
+                    </DataTemplate>
+                </ItemsRepeater.ItemTemplate>
+            </ItemsRepeater>
+        </ScrollViewer>
+    </Grid>
+</UserControl>

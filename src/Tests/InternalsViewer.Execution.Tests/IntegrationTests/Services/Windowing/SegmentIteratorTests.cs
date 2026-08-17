@@ -1,4 +1,4 @@
-using System.Data;
+﻿using System.Data;
 using InternalsViewer.Execution.AccessPaths.Binding;
 using InternalsViewer.Execution.AccessPaths.Definitions;
 using InternalsViewer.Execution.AccessPaths.Predicates;
@@ -94,6 +94,102 @@ public class SegmentIteratorTests(ITestOutputHelper testOutput)
         };
 
         await Assert.ThrowsAsync<InvalidOperationException>(() => RunAsync(context, definition));
+    }
+
+    [RequiresFileFact(DemoDatabase.MdfPath)]
+    public async Task The_Two_Keys_Still_Differ_While_The_Step_That_Broke_The_Segment_Is_Delivered()
+    {
+        var context = await LoadAsync();
+
+        var definition = new SegmentDefinition(Bucketed(context.Unit, 100, 114), "Segment1003")
+        {
+            NodeId = 2,
+            GroupBy = ["Bucket"]
+        };
+
+        var pairs = new List<(string Current, string Row, bool IsNew)>();
+
+        await using var stepper = new IteratorStepper(context.Service, definition, new IteratorContext(context.Database));
+
+        while (await stepper.StepNextAsync(CancellationToken.None) is { } step)
+        {
+            if (step is AccessStep.SegmentRow segmentRow)
+            {
+                pairs.Add((string.Join(",", context.Service.CurrentKeyValues),
+                           string.Join(",", context.Service.RowKeyValues),
+                           segmentRow.IsNewSegment));
+            }
+        }
+
+        Assert.All(pairs.Where(p => !p.IsNew), p => Assert.Equal(p.Current, p.Row));
+
+        Assert.All(pairs.Where(p => p.IsNew), p => Assert.NotEqual(p.Current, p.Row));
+
+        Assert.Equal([("", "20"), ("20", "21"), ("21", "22")],
+                     pairs.Where(p => p.IsNew).Select(p => (p.Current, p.Row)));
+    }
+
+    [RequiresFileFact(DemoDatabase.MdfPath)]
+    public async Task Each_Grouping_Column_Is_Given_Its_Own_Key_Value()
+    {
+        var context = await LoadAsync();
+
+        var definition = new SegmentDefinition(Bucketed(context.Unit, 100, 114), "Segment1003")
+        {
+            NodeId = 2,
+            GroupBy = ["Bucket", "Id"]
+        };
+
+        await using var stepper = new IteratorStepper(context.Service, definition, new IteratorContext(context.Database));
+
+        while (await stepper.StepNextAsync(CancellationToken.None) is { } step)
+        {
+            if (step is AccessStep.SegmentRow { Number: 6 })
+            {
+                Assert.Equal(["21", "105"], context.Service.RowKeyValues);
+                Assert.Equal(["20", "104"], context.Service.CurrentKeyValues);
+
+                return;
+            }
+        }
+
+        Assert.Fail("The sixth row was never read");
+    }
+
+    [RequiresFileFact(DemoDatabase.MdfPath)]
+    public async Task A_Window_With_No_Grouping_Columns_Has_No_Key_Values()
+    {
+        var context = await LoadAsync();
+
+        var definition = new SegmentDefinition(Bucketed(context.Unit, 100, 104), "Segment1003") { NodeId = 2 };
+
+        await using var stepper = new IteratorStepper(context.Service, definition, new IteratorContext(context.Database));
+
+        while (await stepper.StepNextAsync(CancellationToken.None) is { } step)
+        {
+            if (step is AccessStep.SegmentRow)
+            {
+                Assert.Empty(context.Service.RowKeyValues);
+                Assert.Empty(context.Service.CurrentKeyValues);
+            }
+        }
+    }
+
+    [RequiresFileFact(DemoDatabase.MdfPath)]
+    public async Task Closing_The_Operator_Clears_Both_Keys()
+    {
+        var context = await LoadAsync();
+
+        var definition = new SegmentDefinition(Bucketed(context.Unit, 100, 104), "Segment1003")
+        {
+            NodeId = 2,
+            GroupBy = ["Bucket"]
+        };
+
+        await RunAsync(context, definition);
+
+        Assert.Empty(context.Service.CurrentKeyValues);
+        Assert.Empty(context.Service.RowKeyValues);
     }
 
     private static ComputeScalarDefinition Bucketed(AllocationUnit unit, int from, int to)

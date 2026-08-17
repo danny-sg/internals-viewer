@@ -29,6 +29,7 @@
                 <Style TargetType="primitives:DataGridColumnHeader">
                     <Setter Property="SeparatorBrush" Value="{ThemeResource ControlStrokeColorDefaultBrush}" />
                     <Setter Property="SeparatorVisibility" Value="Visible" />
+                    <Setter Property="Padding" Value="6,0,0,0" />
                 </Style>
             </toolkit:DataGrid.ColumnHeaderStyle>
             <toolkit:DataGrid.Resources>

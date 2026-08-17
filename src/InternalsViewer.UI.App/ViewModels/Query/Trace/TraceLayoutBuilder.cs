@@ -43,7 +43,9 @@ public static class TraceLayoutBuilder
 
         var aggregates = new Dictionary<int, TraceAggregateViewModel>();
 
-        WirePanes(operators, tabsByNode, visuals, colours, nodeFor, palette, heldRows, hashTables, sides, aggregates);
+        var segments = new Dictionary<int, TraceSegmentViewModel>();
+
+        WirePanes(operators, tabsByNode, visuals, colours, nodeFor, palette, heldRows, hashTables, sides, aggregates, segments);
 
         ConfigureRootTab(definition, tabsByNode);
 
@@ -59,7 +61,8 @@ public static class TraceLayoutBuilder
                                   hashTables,
                                   heldRows,
                                   sides,
-                                  aggregates);
+                                  aggregates,
+                                  segments);
 
         return new TraceLayout
         {
@@ -100,7 +103,8 @@ public static class TraceLayoutBuilder
                                   Dictionary<(int NodeId, int InputIndex), TraceHeldRowsViewModel> heldRows,
                                   Dictionary<int, TraceHashTableViewModel> hashTables,
                                   Dictionary<int, OperatorSides> sides,
-                                  Dictionary<int, TraceAggregateViewModel> aggregates)
+                                  Dictionary<int, TraceAggregateViewModel> aggregates,
+                                  Dictionary<int, TraceSegmentViewModel> segments)
     {
         foreach (var op in operators)
         {
@@ -152,6 +156,7 @@ public static class TraceLayoutBuilder
                 SortDefinition => HeldPane(heldRows, op.NodeId, 0),
                 SelectDefinition => new TracePane(TracePaneKind.RowStream, tab.Output, "Results"),
                 StreamAggregateDefinition aggregate => AggregatePane(aggregates, aggregate),
+                SegmentDefinition segment => SegmentPane(segments, segment),
                 HashAggregateDefinition => HashAggregatePane(hashTables, op.NodeId),
                 _ when visuals.TryGetValue(op.NodeId, out var visual) => new TracePane(TracePaneKind.Visual, visual),
                 _ => TracePane.Empty
@@ -204,7 +209,8 @@ public static class TraceLayoutBuilder
                                                                    IReadOnlyDictionary<int, TraceHashTableViewModel> hashTables,
                                                                    IReadOnlyDictionary<(int NodeId, int InputIndex), TraceHeldRowsViewModel> heldRows,
                                                                    IReadOnlyDictionary<int, OperatorSides> sides,
-                                                                   IReadOnlyDictionary<int, TraceAggregateViewModel> aggregates)
+                                                                   IReadOnlyDictionary<int, TraceAggregateViewModel> aggregates,
+                                                                   IReadOnlyDictionary<int, TraceSegmentViewModel> segments)
     {
         var nodes = new Dictionary<int, TraceNodeContext>();
 
@@ -226,6 +232,7 @@ public static class TraceLayoutBuilder
                 SourceVisual = sourceVisuals.GetValueOrDefault(nodeId),
                 HashTable = hashTables.GetValueOrDefault(nodeId),
                 Aggregates = aggregates.GetValueOrDefault(nodeId),
+                Segment = segments.GetValueOrDefault(nodeId),
                 HeldRows = held,
                 Sides = sides.GetValueOrDefault(nodeId)
             };
@@ -537,6 +544,15 @@ public static class TraceLayoutBuilder
         aggregates[definition.NodeId] = viewModel;
 
         return new TracePane(TracePaneKind.Aggregates, viewModel, "Aggregates");
+    }
+
+    private static TracePane SegmentPane(Dictionary<int, TraceSegmentViewModel> segments, SegmentDefinition definition)
+    {
+        var viewModel = new TraceSegmentViewModel(definition.GroupBy);
+
+        segments[definition.NodeId] = viewModel;
+
+        return new TracePane(TracePaneKind.Segment, viewModel, "Segment");
     }
 
     private static TracePane HeldPane(Dictionary<(int NodeId, int InputIndex), TraceHeldRowsViewModel> heldRows,
