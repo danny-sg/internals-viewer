@@ -1,21 +1,21 @@
 using System;
-using CommunityToolkit.WinUI.UI.Controls;
 using InternalsViewer.Internals.Engine.Address;
 using Microsoft.UI.Xaml.Controls;
+using WinUI.TableView;
 
 namespace InternalsViewer.UI.App.Controls.Index;
 
-public class PageAddressLinkButtonColumn<T> : DataGridBoundColumn
+public sealed class PageAddressLinkButtonColumn<T> : TableViewBoundColumn
 {
     public event EventHandler<PageAddressEventArgs>? PageClicked;
 
     public event EventHandler<PageAddressEventArgs>? PageOver;
 
-    protected override FrameworkElement GenerateElement(DataGridCell cell, object dataItem)
+    public override FrameworkElement GenerateElement(TableViewCell cell, object? dataItem)
     {
         var button = new HyperlinkButton
         {
-            Style = (Style)Application.Current.Resources["PageAddressStyle"],
+            Style = (Style)Application.Current.Resources["CellPageAddressStyle"],
         };
 
         if (Binding != null)
@@ -34,12 +34,12 @@ public class PageAddressLinkButtonColumn<T> : DataGridBoundColumn
     private static PageAddress GetPageAddress(object sender)
         => ((HyperlinkButton)sender).Content is PageAddress pageAddress ? pageAddress : PageAddress.Empty;
 
-    protected override object PrepareCellForEdit(FrameworkElement editingElement, RoutedEventArgs editingEventArgs)
+    protected override object PrepareCellForEdit(TableViewCell cell, RoutedEventArgs editingEventArgs)
     {
         return null!;
     }
 
-    protected override FrameworkElement GenerateEditingElement(DataGridCell cell, object dataItem)
+    public override FrameworkElement GenerateEditingElement(TableViewCell cell, object? dataItem)
     {
         return null!;
     }

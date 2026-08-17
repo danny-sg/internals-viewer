@@ -1,7 +1,6 @@
 using System;
 using System.Collections.ObjectModel;
 using System.Linq;
-using CommunityToolkit.WinUI.UI.Controls;
 using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.UI.App.Helpers;
 using InternalsViewer.UI.App.Models;
@@ -9,6 +8,7 @@ using InternalsViewer.UI.App.ViewModels.Allocation;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Controls.Primitives;
 using Microsoft.UI.Xaml.Input;
+using WinUI.TableView;
 
 namespace InternalsViewer.UI.App.Controls.Allocation;
 
@@ -66,7 +66,7 @@ public sealed partial class AllocationLayerGrid
         }
     }
 
-    private void DataGrid_OnPointerPressed(object sender, PointerRoutedEventArgs e)
+    private void LayerTable_OnPointerPressed(object sender, PointerRoutedEventArgs e)
     {
         var layers = SelectedLayers.ToList();
 
@@ -78,16 +78,16 @@ public sealed partial class AllocationLayerGrid
             return;
         }
 
-        var row = LayoutHelpers.FindParent<DataGridRow>(source);
+        var row = LayoutHelpers.FindParent<TableViewRow>(source);
 
         if (row == null)
         {
             return;
         }
 
-        var layer = (AllocationLayer)row.DataContext;
+        var layer = (AllocationLayer)row.Content;
 
-        // Snapshot selection state before the DataGrid's own handler changes anything
+        // Snapshot selection state before the table's own handler changes anything
         var wasSelected = layers.Contains(layer);
 
         var isShiftHeld = (e.KeyModifiers & Windows.System.VirtualKeyModifiers.Shift) != 0;
@@ -114,7 +114,7 @@ public sealed partial class AllocationLayerGrid
         }
         SelectedLayers = new ObservableCollection<AllocationLayer>(layers);
 
-        DataGrid.SelectedItem = SelectedLayers.Count == 1 ? (object)SelectedLayers[0] : null;
+        LayerTable.SelectedItem = SelectedLayers.Count == 1 ? (object)SelectedLayers[0] : null;
 
         e.Handled = true;
     }
@@ -133,7 +133,7 @@ public sealed partial class AllocationLayerGrid
         ViewIndexClicked?.Invoke(this, new PageAddressEventArgs(pageAddress.FileId, pageAddress.PageId));
     }
 
-    private void DataGrid_OnSorting(object sender, DataGridColumnEventArgs e)
+    private void LayerTable_OnSorting(object sender, TableViewSortingEventArgs e)
     {
         var tag = e.Column.Tag as string;
 
@@ -142,14 +142,16 @@ public sealed partial class AllocationLayerGrid
             return;
         }
 
-        var ascending = e.Column.SortDirection != DataGridSortDirection.Ascending;
+        e.Handled = true;
 
-        foreach (var column in DataGrid.Columns)
+        var ascending = e.Column.SortDirection != SortDirection.Ascending;
+
+        foreach (var column in LayerTable.Columns)
         {
             column.SortDirection = null;
         }
 
-        e.Column.SortDirection = ascending ? DataGridSortDirection.Ascending : DataGridSortDirection.Descending;
+        e.Column.SortDirection = ascending ? SortDirection.Ascending : SortDirection.Descending;
 
         ViewModel.Sort(tag, ascending);
     }

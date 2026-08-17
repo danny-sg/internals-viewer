@@ -1,15 +1,15 @@
 using System;
 using System.Drawing;
-using CommunityToolkit.WinUI.UI.Controls;
 using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Query.Results;
 using InternalsViewer.UI.App.Helpers.Converters.Results;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Media;
+using WinUI.TableView;
 
 namespace InternalsViewer.UI.App.Controls.Results;
 
-internal sealed class ResultCellColumn(int ordinal) : DataGridBoundColumn
+internal sealed class ResultCellColumn(int ordinal) : TableViewColumn
 {
     public Color? BackgroundColour { get; init; }
 
@@ -26,7 +26,7 @@ internal sealed class ResultCellColumn(int ordinal) : DataGridBoundColumn
         ? BackgroundBrushField ??= CreateBrush(BackgroundColour.Value)
         : null;
 
-    protected override FrameworkElement GenerateElement(DataGridCell cell, object dataItem)
+    public override FrameworkElement GenerateElement(TableViewCell cell, object? dataItem)
     {
         var host = new ContentControl
         {
@@ -41,14 +41,20 @@ internal sealed class ResultCellColumn(int ordinal) : DataGridBoundColumn
             cell.Background = columnBrush;
         }
 
-        host.DataContextChanged += (sender, args) => Apply((ContentControl)sender, cell, args.NewValue);
-
         Apply(host, cell, dataItem);
 
         return host;
     }
 
-    private void Apply(ContentControl host, DataGridCell cell, object? dataItem)
+    public override void RefreshElement(TableViewCell cell, object? dataItem)
+    {
+        if (cell.Content is ContentControl host)
+        {
+            Apply(host, cell, dataItem);
+        }
+    }
+
+    private void Apply(ContentControl host, TableViewCell cell, object? dataItem)
     {
         if (dataItem is not ResultRow<long> row || ordinal < 0 || ordinal >= row.FieldCount)
         {
@@ -62,10 +68,12 @@ internal sealed class ResultCellColumn(int ordinal) : DataGridBoundColumn
 
         host.Content = value switch
         {
-            PageAddress pageAddress => CreateLink(pageAddress.ToString(), pageAddress, null),
-            RowIdentifier rowIdentifier => CreateLink(rowIdentifier.ToString(),
-                rowIdentifier.PageAddress,
-                rowIdentifier.SlotId),
+            PageAddress pageAddress 
+                => CreateLink(pageAddress.ToString(), pageAddress, null),
+            RowIdentifier rowIdentifier 
+                => CreateLink(rowIdentifier.ToString(),
+                              rowIdentifier.PageAddress,
+                              rowIdentifier.SlotId),
             _ => CreateText(ResultRowConverter.FormatValue(value))
         };
 
@@ -75,8 +83,7 @@ internal sealed class ResultCellColumn(int ordinal) : DataGridBoundColumn
     private static TextBlock CreateText(string text) => new()
     {
         Text = text,
-        FontSize = 11,
-        Padding = new Thickness(4),
+        Padding = new Thickness(8, 0, 4, 0),
         VerticalAlignment = VerticalAlignment.Center
     };
 
@@ -96,7 +103,7 @@ internal sealed class ResultCellColumn(int ordinal) : DataGridBoundColumn
         return button;
     }
 
-    private void SetNullBackground(DataGridCell cell, bool isNull)
+    private void SetNullBackground(TableViewCell cell, bool isNull)
     {
         if (BackgroundColour.HasValue)
         {
@@ -116,12 +123,12 @@ internal sealed class ResultCellColumn(int ordinal) : DataGridBoundColumn
         _ => HorizontalAlignment.Left
     };
 
-    protected override FrameworkElement GenerateEditingElement(DataGridCell cell, object dataItem)
+    public override FrameworkElement GenerateEditingElement(TableViewCell cell, object? dataItem)
     {
         return GenerateElement(cell, dataItem);
     }
 
-    protected override object PrepareCellForEdit(FrameworkElement editingElement, RoutedEventArgs editingEventArgs)
+    protected override object PrepareCellForEdit(TableViewCell cell, RoutedEventArgs editingEventArgs)
     {
         return null!;
     }

@@ -2,13 +2,14 @@
 using System.Collections.ObjectModel;
 using System.Data;
 using System.Linq;
-using CommunityToolkit.WinUI.UI.Controls;
 using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.UI.App.Helpers.Converters;
 using InternalsViewer.UI.App.Models.Index;
 using InternalsViewer.UI.App.ViewModels.Allocation;
+using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Data;
 using Microsoft.UI.Xaml.Media;
+using WinUI.TableView;
 
 namespace InternalsViewer.UI.App.Controls.Index;
 
@@ -58,22 +59,27 @@ public sealed partial class RecordGrid : IDisposable
     {
         InitializeComponent();
 
-        DataGrid.LoadingRow += OnLoadingRow;
+        RecordTable.ContainerContentChanging += OnContainerContentChanging;
     }
 
-    private static void OnLoadingRow(object? sender, DataGridRowEventArgs e)
+    private static void OnContainerContentChanging(ListViewBase sender, ContainerContentChangingEventArgs args)
     {
-        // Rows are recycled, so a row has to be reverted rather than left with the previous row's brushes
-        if (e.Row.DataContext is IndexRecordModel { IsMatched: true })
+        if (args.InRecycleQueue || args.ItemContainer is not TableViewRow row)
         {
-            e.Row.Background = MatchedBackground;
-            e.Row.Foreground = MatchedForeground;
+            return;
+        }
+
+        // Rows are recycled, so a row has to be reverted rather than left with the previous row's brushes
+        if (args.Item is IndexRecordModel { IsMatched: true })
+        {
+            row.Background = MatchedBackground;
+            row.Foreground = MatchedForeground;
 
             return;
         }
 
-        e.Row.ClearValue(BackgroundProperty);
-        e.Row.ClearValue(ForegroundProperty);
+        row.ClearValue(BackgroundProperty);
+        row.ClearValue(ForegroundProperty);
     }
 
     private ObservableCollection<IndexRecordModel>? _subscribedRecords;
@@ -108,11 +114,11 @@ public sealed partial class RecordGrid : IDisposable
     {
         _isRebindQueued = false;
 
-        DataGrid.ItemsSource = null;
+        RecordTable.ItemsSource = null;
 
         AddColumns();
 
-        DataGrid.ItemsSource = Records;
+        RecordTable.ItemsSource = Records;
     }
 
     private void OnRecordsCollectionChanged(object? sender, System.Collections.Specialized.NotifyCollectionChangedEventArgs e)
@@ -176,7 +182,7 @@ public sealed partial class RecordGrid : IDisposable
     {
         if (Records is { Count: > 0 } records)
         {
-            DataGrid.ScrollIntoView(records[^1], null);
+            RecordTable.ScrollIntoView(records[^1]);
         }
     }
 
@@ -186,11 +192,11 @@ public sealed partial class RecordGrid : IDisposable
             ? null
             : Records?.FirstOrDefault(r => r.Slot == SelectedSlot);
 
-        DataGrid.SelectedItem = record;
+        RecordTable.SelectedItem = record;
 
         if (record is not null)
         {
-            DataGrid.ScrollIntoView(record, null);
+            RecordTable.ScrollIntoView(record);
         }
     }
 
@@ -198,21 +204,21 @@ public sealed partial class RecordGrid : IDisposable
     {
         RemoveEventHandlers();
 
-        DataGrid.Columns.Clear();
+        RecordTable.Columns.Clear();
 
         _hasFieldColumns = Records?.Count > 0;
 
         if (!HideSlotColumn)
         {
-            var slotColumn = new DataGridTextColumn
+            var slotColumn = new TableViewTextColumn
             {
                 Binding = new Binding { Path = new PropertyPath("Slot") },
                 Header = "Slot",
-                Width = new DataGridLength(60),
+                Width = new GridLength(60),
                 ElementStyle = (Style) Resources["SlotCellStyle"],
             };
 
-            DataGrid.Columns.Add(slotColumn);
+            RecordTable.Columns.Add(slotColumn);
         }
 
         var converter = new RecordValueConverter();
@@ -224,14 +230,15 @@ public sealed partial class RecordGrid : IDisposable
             // Bound by position, because a row a join produced can carry the same column name more than once
             for (var index = 0; index < record.Fields.Count; index++)
             {
-                var column = new DataGridTextColumn
+                var column = new TableViewTextColumn
                 {
                     Binding = new Binding { Converter = converter, ConverterParameter = index },
                     Header = record.Fields[index].Name,
-                    Width = GetColumnWidth(record.Fields[index])
+                    Width = GetColumnWidth(record.Fields[index]),
+                    CanSort = false
                 };
 
-                DataGrid.Columns.Add(column);
+                RecordTable.Columns.Add(column);
             }
         }
 
@@ -241,28 +248,28 @@ public sealed partial class RecordGrid : IDisposable
             {
                 Binding = new Binding { Path = new PropertyPath("DownPagePointer") },
                 Header = "Down Page Pointer",
-                Width = new DataGridLength(150)
+                Width = new GridLength(150)
             };
 
             column.PageClicked += OnPageClicked;
             column.PageOver += OnPageOver;
 
-            DataGrid.Columns.Add(column);
+            RecordTable.Columns.Add(column);
         }
 
         // A nonclustered index of a heap stores the row identifier as a hidden column, so it is already among the fields
-        var hasRidField = DataGrid.Columns.Any(c => c.Header as string == "RID");
+        var hasRidField = RecordTable.Columns.Any(c => c.Header as string == "RID");
 
         if (!hasRidField && Records?.Any(r => r.RowIdentifier != null && r.RowIdentifier != RowIdentifier.Empty) == true)
         {
-            var column = new DataGridTextColumn
+            var column = new TableViewTextColumn
             {
                 Binding = new Binding { Path = new PropertyPath("RowIdentifier") },
                 Header = "RID",
-                Width = new DataGridLength(140)
+                Width = new GridLength(140)
             };
 
-            DataGrid.Columns.Add(column);
+            RecordTable.Columns.Add(column);
         }
     }
 
@@ -273,7 +280,7 @@ public sealed partial class RecordGrid : IDisposable
     /// A column left to size itself is measured against every row as it is realised, and one row wider than the rest widens the column and
     /// sends the whole grid back through layout. A trace adds rows a step at a time, so that measure is paid over and over.
     /// </remarks>
-    private static DataGridLength GetColumnWidth(IndexRecordFieldModel field)
+    private static GridLength GetColumnWidth(IndexRecordFieldModel field)
     {
         var width = field.DataType switch
         {
@@ -286,7 +293,7 @@ public sealed partial class RecordGrid : IDisposable
             _ => 140
         };
 
-        return new DataGridLength(Math.Max(width, field.Name.Length * 7 + 24));
+        return new GridLength(Math.Max(width, field.Name.Length * 7 + 24));
     }
 
     /// <summary>
@@ -294,7 +301,7 @@ public sealed partial class RecordGrid : IDisposable
     /// </summary>
     private void RemoveEventHandlers()
     {
-        foreach (var column in DataGrid.Columns)
+        foreach (var column in RecordTable.Columns)
         {
             if (column is PageAddressLinkButtonColumn<IndexRecordModel> linkButtonColumn)
             {
@@ -316,6 +323,8 @@ public sealed partial class RecordGrid : IDisposable
 
     public void Dispose()
     {
+        RecordTable.ContainerContentChanging -= OnContainerContentChanging;
+
         RemoveEventHandlers();
 
         _scrollTimer?.Stop();

@@ -1,5 +1,4 @@
-﻿using CommunityToolkit.WinUI.UI.Controls;
-using InternalsViewer.Query.Results;
+﻿using InternalsViewer.Query.Results;
 using Microsoft.UI.Dispatching;
 using Microsoft.UI.Xaml.Controls;
 using System;
@@ -62,8 +61,8 @@ public sealed partial class ResultsGridControl : UserControl
 
     private void Rebuild()
     {
-        ResultsDataGrid.Columns.Clear();
-        ResultsDataGrid.ItemsSource = null;
+        ResultsTable.Columns.Clear();
+        ResultsTable.ItemsSource = null;
 
         if (ResultSet is not { Columns: var columns, Rows: var rows })
         {
@@ -79,13 +78,13 @@ public sealed partial class ResultsGridControl : UserControl
                 BackgroundColour = column.BackgroundColour,
                 Width = GetColumnWidth(column),
                 Alignment = column.Alignment,
-                PageClicked = OnPageClicked
+                PageClicked = OnPageClicked,
             };
 
-            ResultsDataGrid.Columns.Add(resultCellColumn);
+            ResultsTable.Columns.Add(resultCellColumn);
         }
 
-        ResultsDataGrid.ItemsSource = rows;
+        ResultsTable.ItemsSource = rows;
 
         StatusText.Text = rows.Count == 1 ? "1 row" : $"{rows.Count:N0} rows";
 
@@ -107,7 +106,7 @@ public sealed partial class ResultsGridControl : UserControl
             return;
         }
 
-        ResultsDataGrid.Measure(GetWarmSize());
+        ResultsTable.Measure(GetWarmSize());
     }
 
     /// <summary>
@@ -128,7 +127,7 @@ public sealed partial class ResultsGridControl : UserControl
         return _lastKnownSize;
     }
 
-    private static DataGridLength GetColumnWidth(ResultColumn column)
+    private static GridLength GetColumnWidth(ResultColumn column)
     {
         var width = Type.GetTypeCode(column.ClrType) switch
         {
@@ -139,7 +138,7 @@ public sealed partial class ResultsGridControl : UserControl
             _ => 140
         };
 
-        return new DataGridLength(column.Width ?? Math.Max(width, column.Name.Length * 7 + 24));
+        return new GridLength(column.Width ?? Math.Max(width, column.Name.Length * 7 + 24));
     }
 
     private void OnPageClicked(PageAddressEventArgs e)
