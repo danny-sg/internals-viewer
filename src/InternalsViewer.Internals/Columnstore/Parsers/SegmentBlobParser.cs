@@ -7,10 +7,12 @@ using InternalsViewer.Internals.Columnstore.Segments;
 namespace InternalsViewer.Internals.Columnstore.Parsers;
 
 /// <summary>
-/// Parses the blob a column segment data pointer resolves to
+/// Parses a Segment Blob from a raw byte array
 /// </summary>
 public static class SegmentBlobParser
 {
+    public const int SupportedVersion = 1;
+
     public static SegmentBlob Parse(ReadOnlyMemory<byte> data, bool isMarkEnabled = false)
     {
         if (data.Length < SegmentBlob.HeaderSize)
@@ -26,21 +28,32 @@ public static class SegmentBlobParser
             IsMarkEnabled = isMarkEnabled,
             Data = data,
             Version = ReadInt32(span, 0x00),
-            Unknown04 = ReadInt32(span, 0x04),
-            Unknown08 = ReadInt32(span, 0x08),
+            LobType = (ColumnstoreLobType)ReadInt32(span, 0x04),
+            Reserved = ReadInt32(span, 0x08),
             Unknown0C = ReadInt32(span, 0x0C),
-            LobType = (ColumnstoreLobType)ReadInt32(span, 0x10),
+            StructureType = (SegmentStructureType)ReadInt32(span, 0x10),
             BookmarkCount = ReadInt32(span, 0x14),
             BookmarkDistance = ReadInt32(span, 0x18),
             RleArrayCount = ReadInt32(span, 0x1C),
             RleEntrySize = ReadInt16(span, 0x20),
             BitpackEntrySize = ReadInt16(span, 0x22),
             BitpackUnitCount = ReadInt32(span, 0x24),
-            BitpackMinId = ReadInt32(span, 0x28),
-            Unknown2C = ReadInt32(span, 0x2C)
+            BitpackMinId = ReadInt64(span, 0x28)
         };
 
         MarkHeader(blob);
+
+        if (blob.Version != SupportedVersion)
+        {
+            throw new InvalidDataException($"Segment blob version {blob.Version} is not supported. "
+                                           + "Archive compressed segments wrap the blob and have to be expanded first.");
+        }
+
+        if (blob.StructureType != SegmentStructureType.RunLength)
+        {
+            throw new InvalidDataException($"Segment structure type {(int)blob.StructureType} is not supported. "
+                                           + "The store by value encodings hold their values outside the RLE array.");
+        }
 
         if (blob.ExpectedSize != data.Length)
         {
@@ -91,18 +104,17 @@ public static class SegmentBlobParser
     private static void MarkHeader(SegmentBlob blob)
     {
         blob.MarkProperty(nameof(SegmentBlob.Version), 0x00, 4);
-        blob.MarkProperty(nameof(SegmentBlob.Unknown04), 0x04, 4);
-        blob.MarkProperty(nameof(SegmentBlob.Unknown08), 0x08, 4);
+        blob.MarkProperty(nameof(SegmentBlob.LobType), 0x04, 4);
+        blob.MarkProperty(nameof(SegmentBlob.Reserved), 0x08, 4);
         blob.MarkProperty(nameof(SegmentBlob.Unknown0C), 0x0C, 4);
-        blob.MarkProperty(nameof(SegmentBlob.LobType), 0x10, 4);
+        blob.MarkProperty(nameof(SegmentBlob.StructureType), 0x10, 4);
         blob.MarkProperty(nameof(SegmentBlob.BookmarkCount), 0x14, 4);
         blob.MarkProperty(nameof(SegmentBlob.BookmarkDistance), 0x18, 4);
         blob.MarkProperty(nameof(SegmentBlob.RleArrayCount), 0x1C, 4);
         blob.MarkProperty(nameof(SegmentBlob.RleEntrySize), 0x20, 2);
         blob.MarkProperty(nameof(SegmentBlob.BitpackEntrySize), 0x22, 2);
         blob.MarkProperty(nameof(SegmentBlob.BitpackUnitCount), 0x24, 4);
-        blob.MarkProperty(nameof(SegmentBlob.BitpackMinId), 0x28, 4);
-        blob.MarkProperty(nameof(SegmentBlob.Unknown2C), 0x2C, 4);
+        blob.MarkProperty(nameof(SegmentBlob.BitpackMinId), 0x28, 8);
     }
 
     private static void MarkRegions(SegmentBlob blob)
@@ -133,6 +145,9 @@ public static class SegmentBlobParser
 
     private static int ReadInt32(ReadOnlySpan<byte> span, int offset)
         => BinaryPrimitives.ReadInt32LittleEndian(span.Slice(offset, 4));
+
+    private static long ReadInt64(ReadOnlySpan<byte> span, int offset)
+        => BinaryPrimitives.ReadInt64LittleEndian(span.Slice(offset, 8));
 
     private static short ReadInt16(ReadOnlySpan<byte> span, int offset)
         => BinaryPrimitives.ReadInt16LittleEndian(span.Slice(offset, 2));

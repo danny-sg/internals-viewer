@@ -131,6 +131,7 @@ public enum ItemType
     // Columnstore
     SegmentVersion,
     SegmentLobType,
+    SegmentStructureType,
     SegmentUnknown,
     BookmarkCount,
     BookmarkDistance,

@@ -56,9 +56,22 @@ public sealed class ColumnstoreServiceTests(ITestOutputHelper testOutput) : Prov
 
         Directory.CreateDirectory(DumpPath);
 
-        await DumpTable(service, database, "Sales", 0);
+        foreach (var table in new[] { "Sales", "SegConstant", "SegSequential", "SegDictionary", "SegTypes", "SegNulls", "SegArchive", "SegWide", "SegManyRuns", "SegTiny" })
+        {
+            var allocationUnit = database.AllocationUnits.Values.FirstOrDefault(a => a.TableName == table);
 
-        await DumpTable(service, database, "Sales", 1);
+            if (allocationUnit is null)
+            {
+                continue;
+            }
+
+            var index = await service.GetIndex(allocationUnit, database, CancellationToken.None);
+
+            foreach (var rowGroup in index.CompressedRowGroups)
+            {
+                await DumpTable(service, database, table, rowGroup.RowGroupId);
+            }
+        }
 
         await DumpTable(service, database, "SegDictionary", 1);
     }

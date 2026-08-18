@@ -1,7 +1,7 @@
 namespace InternalsViewer.Internals.Columnstore.Blobs;
 
 /// <summary>
-/// Kind of sub structure within a columnstore blob
+/// Columnstore LOB sub-type
 /// </summary>
 public enum SubLobType
 {

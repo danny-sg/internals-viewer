@@ -5,7 +5,7 @@ namespace InternalsViewer.Internals.Columnstore.Segments;
 /// <summary>
 /// Fixed width values packed into sixty four bit units, filled from the least significant bit upward
 /// </summary>
-public readonly struct BitpackArray(ReadOnlyMemory<byte> data, int entrySizeBits, int unitCount, int minId)
+public readonly struct BitpackArray(ReadOnlyMemory<byte> data, int entrySizeBits, int unitCount, long minId)
 {
     public const int UnitBits = 64;
 
@@ -20,7 +20,7 @@ public readonly struct BitpackArray(ReadOnlyMemory<byte> data, int entrySizeBits
     /// <summary>
     /// Reserved data id floor added back to every packed value
     /// </summary>
-    public int MinId { get; } = minId;
+    public long MinId { get; } = minId;
 
     public int ValuesPerUnit => EntrySizeBits > 0 ? UnitBits / EntrySizeBits : 0;
 

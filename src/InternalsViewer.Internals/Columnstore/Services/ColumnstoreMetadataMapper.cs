@@ -1,6 +1,6 @@
 ﻿using System.Buffers.Binary;
-using InternalsViewer.Internals.Columnstore.Metadata.Enums;
 using InternalsViewer.Internals.Columnstore.Metadata;
+using InternalsViewer.Internals.Columnstore.Metadata.Enums;
 using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Internals.Engine.Database;
 using InternalsViewer.Internals.Engine.Records.Data;
@@ -17,6 +17,11 @@ public static class ColumnstoreMetadataMapper
     /// has_nulls is derived from bit 0 of the segment status field.
     /// </summary>
     private const int StatusHasNullsFlag = 1;
+
+    /// <summary>
+    /// Columnstore column ids are offset from the table column ids they map to
+    /// </summary>
+    private const int ColumnIdOffset = 1;
     
     public static ColumnStoreIndex Map(AllocationUnit allocationUnit,
                                        IReadOnlyList<DataRecord> rowGroupRecords,
@@ -122,7 +127,7 @@ public static class ColumnstoreMetadataMapper
         {
             ColumnStructure? structure = null;
 
-            columnStructures?.TryGetValue(columnId, out structure);
+            columnStructures?.TryGetValue(columnId - ColumnIdOffset, out structure);
 
             var column = new ColumnStoreColumn
             {

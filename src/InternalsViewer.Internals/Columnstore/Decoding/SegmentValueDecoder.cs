@@ -33,7 +33,7 @@ public sealed class SegmentValueDecoder(ColumnSegment segment, DictionaryBlob? d
 
         if (Segment.Magnitude > 0 && Math.Abs(Segment.Magnitude - 1) > double.Epsilon)
         {
-            return value / (decimal)Segment.Magnitude;
+            return value * (decimal)Segment.Magnitude;
         }
 
         return value;

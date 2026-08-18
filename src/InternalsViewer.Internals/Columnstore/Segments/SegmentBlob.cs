@@ -17,17 +17,20 @@ public sealed class SegmentBlob : DataStructure
     [DataStructureItem(ItemType.SegmentVersion)]
     public int Version { get; set; }
 
-    [DataStructureItem(ItemType.SegmentUnknown)]
-    public int Unknown04 { get; set; }
+    [DataStructureItem(ItemType.SegmentLobType)]
+    public ColumnstoreLobType LobType { get; set; }
 
     [DataStructureItem(ItemType.SegmentUnknown)]
-    public int Unknown08 { get; set; }
+    public int Reserved { get; set; }
 
     [DataStructureItem(ItemType.SegmentUnknown)]
     public int Unknown0C { get; set; }
 
-    [DataStructureItem(ItemType.SegmentLobType)]
-    public ColumnstoreLobType LobType { get; set; }
+    /// <summary>
+    /// Layout of the value stream, which is not the RLE and bit pack pair for every encoding
+    /// </summary>
+    [DataStructureItem(ItemType.SegmentStructureType)]
+    public SegmentStructureType StructureType { get; set; }
 
     [DataStructureItem(ItemType.BookmarkCount)]
     public int BookmarkCount { get; set; }
@@ -47,11 +50,11 @@ public sealed class SegmentBlob : DataStructure
     [DataStructureItem(ItemType.BitpackUnitCount)]
     public int BitpackUnitCount { get; set; }
 
+    /// <summary>
+    /// Lowest data id in the segment, subtracted from every packed value
+    /// </summary>
     [DataStructureItem(ItemType.BitpackMinId)]
-    public int BitpackMinId { get; set; }
-
-    [DataStructureItem(ItemType.SegmentUnknown)]
-    public int Unknown2C { get; set; }
+    public long BitpackMinId { get; set; }
 
     public SegmentBookmark[] Bookmarks { get; set; } = [];
 
@@ -77,5 +80,5 @@ public sealed class SegmentBlob : DataStructure
 
     public int BitpackRowCount => RleEntries.Where(e => e.IsBitpacked).Sum(e => e.Count);
 
-    public int LiteralRunCount => RleEntries.Count(e => !e.IsBitpacked && e.Count > 0);
+    public int LiteralRunCount => RleEntries.Count(e => e is { IsBitpacked: false, Count: > 0 });
 }

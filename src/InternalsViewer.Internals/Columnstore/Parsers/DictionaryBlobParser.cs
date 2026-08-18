@@ -20,8 +20,10 @@ public static class DictionaryBlobParser
 
         return lobType switch
         {
-            ColumnstoreLobType.NumericDictionary => ParseNumeric(data, entryCount, firstId, isMarkEnabled),
-            ColumnstoreLobType.Segment => ParseString(data, entryCount, firstId, isMarkEnabled),
+            ColumnstoreLobType.NumericDictionary 
+                => ParseNumeric(data, entryCount, firstId, isMarkEnabled),
+            ColumnstoreLobType.Segment 
+                => ParseString(data, entryCount, firstId, isMarkEnabled),
             _ => throw new InvalidDataException($"Unsupported dictionary lob type {(int)lobType}.")
         };
     }
@@ -127,19 +129,21 @@ public static class DictionaryBlobParser
 
         return subLobType switch
         {
-            SubLobType.StringPage => new UncompressedStringPage
-            {
-                SubLobType = subLobType,
-                Offset = offset,
-                Size = size,
-                PageFlags = ReadInt32(span, offset + 0x04),
-                StringCount = ReadInt32(span, offset + 0x08),
-                FreeSpace = ReadInt32(span, offset + 0x0C),
-                FreeSpaceOffset = ReadInt32(span, offset + 0x10),
-                UncompressedDataSize = ReadInt32(span, offset + 0x14),
-                Content = data.Slice(offset + UncompressedStringPage.HeaderSize, size - UncompressedStringPage.HeaderSize)
-            },
-            SubLobType.CompressedStringPage => BuildHuffmanPage(data, offset, size),
+            SubLobType.StringPage 
+                => new UncompressedStringPage
+                {
+                    SubLobType = subLobType,
+                    Offset = offset,
+                    Size = size,
+                    PageFlags = ReadInt32(span, offset + 0x04),
+                    StringCount = ReadInt32(span, offset + 0x08),
+                    FreeSpace = ReadInt32(span, offset + 0x0C),
+                    FreeSpaceOffset = ReadInt32(span, offset + 0x10),
+                    UncompressedDataSize = ReadInt32(span, offset + 0x14),
+                    Content = data.Slice(offset + UncompressedStringPage.HeaderSize, size - UncompressedStringPage.HeaderSize)
+                },
+            SubLobType.CompressedStringPage 
+                => BuildHuffmanPage(data, offset, size),
             _ => throw new InvalidDataException($"Unsupported string page sub lob type {(int)subLobType}.")
         };
     }
