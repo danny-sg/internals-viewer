@@ -32,18 +32,20 @@ public sealed class ColumnstoreService(IRecordReader recordReader, ILobDataServi
 
         var columnMap = structure.Columns.ToDictionary(c => (int)c.ColumnId);
 
-        return ColumnstoreMetadataMapper.Map(allocationUnit, 
-                                             rowGroupRecords, 
-                                             columnSegmentRecords, 
-                                             dictionaryRecords, 
+        return ColumnstoreMetadataMapper.Map(allocationUnit,
+                                             rowGroupRecords,
+                                             columnSegmentRecords,
+                                             dictionaryRecords,
                                              columnMap);
     }
 
-    public async Task<byte[]> GetSegmentData(DatabaseSource database, 
+    public async Task<byte[]> GetSegmentData(DatabaseSource database,
                                              LobPointer lobPointer,
                                              CancellationToken cancellationToken)
     {
-        return await LobDataService.GetData(database, new RowIdentifier(lobPointer.PageAddress, (ushort)lobPointer.Slot), cancellationToken);
+        return await LobDataService.GetData(database,
+                                            new RowIdentifier(lobPointer.PageAddress, (ushort)lobPointer.Slot),
+                                            cancellationToken);
     }
 
     public async Task<SegmentBlob> GetSegmentBlob(DatabaseSource database,
@@ -65,14 +67,14 @@ public sealed class ColumnstoreService(IRecordReader recordReader, ILobDataServi
     }
 
     public async Task<SegmentReader> GetSegmentReader(DatabaseSource database,
-                                                     ColumnSegment segment,
-                                                     CancellationToken cancellationToken)
+                                                      ColumnSegment segment,
+                                                      CancellationToken cancellationToken)
     {
         var blob = await GetSegmentBlob(database, segment, cancellationToken);
 
         var source = segment.SecondaryDictionaryId >= 0
-            ? segment.LocalDictionary
-            : segment.Column?.GlobalDictionary;
+                     ? segment.LocalDictionary
+                     : segment.Column?.GlobalDictionary;
 
         var dictionary = source is null ? null : await GetDictionaryBlob(database, source, cancellationToken);
 

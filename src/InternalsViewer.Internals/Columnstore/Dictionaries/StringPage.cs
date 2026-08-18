@@ -18,7 +18,7 @@ public abstract class StringPage
 
     public int Size { get; set; }
 
-    public abstract ReadOnlySpan<byte> GetBytes(int handleOffset);
-
     public string GetValue(int handleOffset, Encoding encoding) => encoding.GetString(GetBytes(handleOffset));
+
+    protected abstract ReadOnlySpan<byte> GetBytes(int handleOffset);
 }

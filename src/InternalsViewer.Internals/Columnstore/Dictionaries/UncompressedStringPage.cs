@@ -15,7 +15,7 @@ public sealed class UncompressedStringPage : StringPage
 
     public ReadOnlyMemory<byte> Content { get; set; }
 
-    public override ReadOnlySpan<byte> GetBytes(int handleOffset)
+    protected override ReadOnlySpan<byte> GetBytes(int handleOffset)
     {
         var span = Content.Span;
 

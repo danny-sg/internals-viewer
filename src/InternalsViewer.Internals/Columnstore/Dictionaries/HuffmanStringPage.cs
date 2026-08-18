@@ -19,11 +19,11 @@ public sealed class HuffmanStringPage : StringPage
     /// </summary>
     public const int DataOffset = (HeaderSize + CodeLengthTableSize + 3) & ~3;
 
-    private readonly CanonicalHuffmanTable table = new(SymbolCount);
+    private readonly CanonicalHuffmanTable _table = new(SymbolCount);
 
-    private readonly HuffmanBitReader reader = new();
+    private readonly HuffmanBitReader _reader = new();
 
-    private readonly byte[] buffer = new byte[byte.MaxValue];
+    private readonly byte[] _buffer = new byte[byte.MaxValue];
 
     public int HuffmanBlobType { get; set; }
 
@@ -41,35 +41,35 @@ public sealed class HuffmanStringPage : StringPage
 
     public void Build()
     {
-        table.Build(CodeLengths.Span);
+        _table.Build(CodeLengths.Span);
 
-        reader.Reset(Content);
+        _reader.Reset(Content);
     }
 
-    public override ReadOnlySpan<byte> GetBytes(int handleOffset)
+    protected override ReadOnlySpan<byte> GetBytes(int handleOffset)
     {
-        reader.SeekBits(handleOffset);
+        _reader.SeekBits(handleOffset);
 
         var length = ReadSymbol();
 
         for (var i = 0; i < length; i++)
         {
-            buffer[i] = (byte)ReadSymbol();
+            _buffer[i] = (byte)ReadSymbol();
         }
 
-        return buffer.AsSpan(0, length);
+        return _buffer.AsSpan(0, length);
     }
 
     private int ReadSymbol()
     {
-        var symbol = table.Lookup(reader.Peek(CanonicalHuffmanTable.MaxCodeBits));
+        var symbol = _table.Lookup(_reader.Peek(CanonicalHuffmanTable.MaxCodeBits));
 
         if (symbol == CanonicalHuffmanTable.InvalidSymbol)
         {
             throw new InvalidDataException($"Invalid Huffman code at bit position in string page at offset {Offset}.");
         }
 
-        reader.Skip(table.GetCodeLength(symbol));
+        _reader.Skip(_table.GetCodeLength(symbol));
 
         return symbol;
     }

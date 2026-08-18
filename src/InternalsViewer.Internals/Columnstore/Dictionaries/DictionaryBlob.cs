@@ -21,5 +21,5 @@ public abstract class DictionaryBlob : DataStructure
     /// </summary>
     public int FirstId { get; set; }
 
-    public int GetIndex(long dataId) => (int)(dataId - FirstId);
+    protected int GetIndex(long dataId) => (int)(dataId - FirstId);
 }
