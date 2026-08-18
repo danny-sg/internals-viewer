@@ -22,8 +22,8 @@
       <Build Solution="*|x86" Project="false" />
     </Project>
     <Project Path="Tests/InternalsViewer.Internals.Tests/InternalsViewer.Internals.Tests.csproj">
-      <Build Solution="*|x64" Project="false" />
       <Build Solution="*|x86" Project="false" />
+      <Build Solution="Release|x64" Project="false" />
     </Project>
     <Project Path="Tests/InternalsViewer.Query.Tests/InternalsViewer.Query.Tests.csproj">
       <Build Solution="*|x64" Project="false" />

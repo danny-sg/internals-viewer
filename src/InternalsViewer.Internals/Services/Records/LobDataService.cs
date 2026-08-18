@@ -33,8 +33,10 @@ public sealed class LobDataService(IPageService pageService) : ILobDataService
     {
         return record.BlobType switch
         {
-            BlobType.SmallRoot => record.Size,
-            BlobType.Data => record.Length,
+            BlobType.SmallRoot
+                => record.Size,
+            BlobType.Data 
+                => record.Length,
             BlobType.LargeRoot or BlobType.Internal
                 => record.BlobChildren.Count > 0 ? record.BlobChildren.Max(c => c.Offset) : 0,
             _ => throw new InvalidOperationException($"Unsupported blob type: {record.BlobType}")

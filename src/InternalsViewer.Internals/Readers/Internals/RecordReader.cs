@@ -11,8 +11,8 @@ using InternalsViewer.Internals.Services.Loaders.Records.FixedVar;
 namespace InternalsViewer.Internals.Readers.Internals;
 
 public sealed partial class RecordReader(ILogger<RecordReader> logger, 
-                                 IPageService pageService, 
-                                 FixedVarDataRecordLoader fixedVarDataRecordLoader)
+                                         IPageService pageService, 
+                                         FixedVarDataRecordLoader fixedVarDataRecordLoader)
     : IRecordReader
 {
     private ILogger<RecordReader> Logger { get; } = logger;
