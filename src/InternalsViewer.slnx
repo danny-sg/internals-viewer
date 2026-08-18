@@ -53,7 +53,7 @@
   <Project Path="InternalsViewer.Internals/InternalsViewer.Internals.csproj">
     <Build Solution="Debug|x86" Project="false" />
   </Project>
-  <Project Path="InternalsViewer.Query.DiaBridge/InternalsViewer.Query.DiaBridge.vcxproj">
+  <Project Path="InternalsViewer.Query.DiaBridge/InternalsViewer.Query.DiaBridge.vcxproj" Id="5ff52e36-d4c2-48d2-acd4-7d0cd1361c5d">
     <BuildType Solution="Debug|x64" Project="Release" />
     <Platform Solution="*|ARM64" Project="x64" />
     <Build Solution="*|x86" Project="false" />

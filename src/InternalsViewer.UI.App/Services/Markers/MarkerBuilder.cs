@@ -47,7 +47,7 @@ public static class MarkerBuilder
             }
         }
 
-        return markers.OrderBy(o => o.Ordinal).ThenBy(o => o.StartPosition).ToList();
+        return [.. markers.OrderBy(o => o.Ordinal).ThenBy(o => o.StartPosition)];
     }
 
     /// <summary>

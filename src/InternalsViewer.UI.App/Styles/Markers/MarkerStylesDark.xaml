@@ -101,4 +101,71 @@
     <models:MarkStyle x:Key="DictionaryValueMarkerStyle" ForeColour="Black" BackColour="#FFA500" Name="Dictionary Value"/>
     <models:MarkStyle x:Key="DictionarySymbolMarkerStyle" ForeColour="Black" BackColour="#ECECEC" Name="Dictionary Symbol"/>
     <models:MarkStyle x:Key="CompressionDictionaryMarkerStyle" ForeColour="Black" BackColour="#ECECEC" Name="Compression Dictionary"/>
+    <!--Boot Page Info-->
+    <models:MarkStyle x:Key="DatabaseNameMarkerStyle" ForeColour="#0D47A1" BackColour="#E3F2FD" Name="Database Name"/>
+    <models:MarkStyle x:Key="DatabaseNameLengthMarkerStyle" ForeColour="#1565C0" BackColour="#E3F2FD" Name="Database Name Length"/>
+    <models:MarkStyle x:Key="DatabaseIdMarkerStyle" ForeColour="#1976D2" BackColour="#E3F2FD" Name="Database Id"/>
+
+    <models:MarkStyle x:Key="CurrentVersionMarkerStyle" ForeColour="#4527A0" BackColour="#EDE7F6" Name="Current Version"/>
+    <models:MarkStyle x:Key="CreatedVersionMarkerStyle" ForeColour="#5E35B1" BackColour="#EDE7F6" Name="Created Version"/>
+    <models:MarkStyle x:Key="CompatabilityLevelMarkerStyle" ForeColour="#7E57C2" BackColour="#EDE7F6" Name="Compatibility Level"/>
+    <models:MarkStyle x:Key="ResourceDatabaseVersionMarkerStyle" ForeColour="#9575CD" BackColour="#EDE7F6" Name="Resource Database Version"/>
+
+    <models:MarkStyle x:Key="CreatedDateTimeMarkerStyle" ForeColour="#00695C" BackColour="#E0F2F1" Name="Created Date"/>
+    <models:MarkStyle x:Key="ModifiedDateTimeMarkerStyle" ForeColour="#00897B" BackColour="#E0F2F1" Name="Modified Date"/>
+
+    <models:MarkStyle x:Key="StatusMarkerStyle" ForeColour="#E65100" BackColour="#FFF3E0" Name="Status"/>
+    <models:MarkStyle x:Key="ReleaseStatusMarkerStyle" ForeColour="#EF6C00" BackColour="#FFF3E0" Name="Release Status"/>
+    <models:MarkStyle x:Key="DbccFlagsMarkerStyle" ForeColour="#F57C00" BackColour="#FFF3E0" Name="DBCC Flags"/>
+
+    <models:MarkStyle x:Key="CheckpointLsnMarkerStyle" ForeColour="#263238" BackColour="#ECEFF1" Name="Checkpoint LSN"/>
+    <models:MarkStyle x:Key="DirtyPageLsnMarkerStyle" ForeColour="#37474F" BackColour="#ECEFF1" Name="Dirty Page LSN"/>
+    <models:MarkStyle x:Key="LatestVersioningUpgradeLsnMarkerStyle" ForeColour="#546E7A" BackColour="#ECEFF1" Name="Latest Versioning Upgrade LSN"/>
+
+    <models:MarkStyle x:Key="MaxLogSpaceUsedMarkerStyle" ForeColour="#1B5E20" BackColour="#E8F5E9" Name="Max Log Space Used"/>
+    <models:MarkStyle x:Key="MaxDatabaseTimestampMarkerStyle" ForeColour="#2E7D32" BackColour="#E8F5E9" Name="Max Database Timestamp"/>
+    <models:MarkStyle x:Key="LastTransactionIdMarkerStyle" ForeColour="#388E3C" BackColour="#E8F5E9" Name="Last Transaction Id"/>
+
+    <models:MarkStyle x:Key="FirstAllocationUnitsPageMarkerStyle" ForeColour="#B71C1C" BackColour="#FCE4EC" Name="First Allocation Units Page"/>
+    <models:MarkStyle x:Key="NextAllocationUnitIdMarkerStyle" ForeColour="#C62828" BackColour="#FCE4EC" Name="Next Allocation Unit Id"/>
+    <models:MarkStyle x:Key="PersistentVersionStoreRowsetIdMarkerStyle" ForeColour="#AD1457" BackColour="#FCE4EC" Name="Persistent Version Store Rowset Id"/>
+    <models:MarkStyle x:Key="PersistentVersionStoreLongTermRowsetIdMarkerStyle" ForeColour="#D81B60" BackColour="#FCE4EC" Name="Persistent Version Store Long Term Rowset Id"/>
+
+    <models:MarkStyle x:Key="FamilyGuidMarkerStyle" ForeColour="#4E342E" BackColour="#EFEBE9" Name="Family GUID"/>
+    <models:MarkStyle x:Key="RecoveryForkGuidMarkerStyle" ForeColour="#5D4037" BackColour="#EFEBE9" Name="Recovery Fork GUID"/>
+    <models:MarkStyle x:Key="ServiceBrokerGuidMarkerStyle" ForeColour="#6D4C41" BackColour="#EFEBE9" Name="Service Broker GUID"/>
+    <models:MarkStyle x:Key="ServiceBrokerOptionsMarkerStyle" ForeColour="#8D6E63" BackColour="#EFEBE9" Name="Service Broker Options"/>
+
+    <models:MarkStyle x:Key="CollationMarkerStyle" ForeColour="#283593" BackColour="#E8EAF6" Name="Collation"/>
+
+
+    <!--File Header Page-->
+    <models:MarkStyle x:Key="LogicalNameMarkerStyle" ForeColour="#0D47A1" BackColour="#E3F2FD" Name="Logical Name"/>
+    <models:MarkStyle x:Key="FileIdMarkerStyle" ForeColour="#1565C0" BackColour="#E3F2FD" Name="File Id"/>
+    <models:MarkStyle x:Key="FileGroupIdMarkerStyle" ForeColour="#1976D2" BackColour="#E3F2FD" Name="File Group Id"/>
+
+    <models:MarkStyle x:Key="BindingIdMarkerStyle" ForeColour="#4E342E" BackColour="#EFEBE9" Name="Binding Id"/>
+    <models:MarkStyle x:Key="FileIdGuidMarkerStyle" ForeColour="#5D4037" BackColour="#EFEBE9" Name="File Id GUID"/>
+    <models:MarkStyle x:Key="DifferentialBaseGuidMarkerStyle" ForeColour="#6D4C41" BackColour="#EFEBE9" Name="Differential Base GUID"/>
+
+    <models:MarkStyle x:Key="FileSizeMarkerStyle" ForeColour="#1B5E20" BackColour="#E8F5E9" Name="Size"/>
+    <models:MarkStyle x:Key="MaxSizeMarkerStyle" ForeColour="#2E7D32" BackColour="#E8F5E9" Name="Max Size"/>
+    <models:MarkStyle x:Key="MinSizeMarkerStyle" ForeColour="#388E3C" BackColour="#E8F5E9" Name="Min Size"/>
+    <models:MarkStyle x:Key="UserShrinkSizeMarkerStyle" ForeColour="#43A047" BackColour="#E8F5E9" Name="User Shrink Size"/>
+    <models:MarkStyle x:Key="GrowthMarkerStyle" ForeColour="#558B2F" BackColour="#E8F5E9" Name="Growth"/>
+
+    <models:MarkStyle x:Key="FileStatusMarkerStyle" ForeColour="#E65100" BackColour="#FFF3E0" Name="File Status"/>
+    <models:MarkStyle x:Key="RestoreStatusMarkerStyle" ForeColour="#EF6C00" BackColour="#FFF3E0" Name="Restore Status"/>
+    <models:MarkStyle x:Key="PerfMarkerStyle" ForeColour="#F57C00" BackColour="#FFF3E0" Name="Perf"/>
+    <models:MarkStyle x:Key="SectorSizeMarkerStyle" ForeColour="#FB8C00" BackColour="#FFF3E0" Name="Sector Size"/>
+
+    <models:MarkStyle x:Key="CreateLsnMarkerStyle" ForeColour="#263238" BackColour="#ECEFF1" Name="Create LSN"/>
+    <models:MarkStyle x:Key="FirstLsnMarkerStyle" ForeColour="#2E3B43" BackColour="#ECEFF1" Name="First LSN"/>
+    <models:MarkStyle x:Key="MaxLsnMarkerStyle" ForeColour="#37474F" BackColour="#ECEFF1" Name="Max LSN"/>
+    <models:MarkStyle x:Key="FirstUpdateLsnMarkerStyle" ForeColour="#455A64" BackColour="#ECEFF1" Name="First Update LSN"/>
+    <models:MarkStyle x:Key="BackupLsnMarkerStyle" ForeColour="#4E6470" BackColour="#ECEFF1" Name="Backup LSN"/>
+    <models:MarkStyle x:Key="DifferentialBaseLsnMarkerStyle" ForeColour="#546E7A" BackColour="#ECEFF1" Name="Differential Base LSN"/>
+    <models:MarkStyle x:Key="OldestRestoredLsnMarkerStyle" ForeColour="#607D8B" BackColour="#ECEFF1" Name="Oldest Restored LSN"/>
+    <models:MarkStyle x:Key="RestoreRedoStartLsnMarkerStyle" ForeColour="#6A8794" BackColour="#ECEFF1" Name="Restore Redo Start LSN"/>
+    <models:MarkStyle x:Key="FileOfflineLsnMarkerStyle" ForeColour="#78909C" BackColour="#ECEFF1" Name="File Offline LSN"/>
 </ResourceDictionary>

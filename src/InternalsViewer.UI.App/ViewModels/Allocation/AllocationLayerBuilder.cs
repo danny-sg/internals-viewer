@@ -31,9 +31,6 @@ internal static class AllocationLayerBuilder
 
         var allocationUnits = database.AllocationUnits;
 
-        // One colour slot per layer, keyed by the SAME name the layers are grouped on below — so the spacing divisor
-        // matches the number of colours actually assigned (DisplayName can differ from the layer key under
-        // separateIndexes, which is what left neighbouring objects sharing near-identical hues).
         var colourSlotCount = allocationUnits.Values
                                              .Where(u => !u.IsSystem)
                                              .Select(u => GetCurrentObjectName(u, separateIndexes))
@@ -115,6 +112,8 @@ internal static class AllocationLayerBuilder
 
         layers.Add(systemLayer);
 
+        layers.Add(CreateDatabaseLayer(database));
+
         layers.AddRange(GenerateAllocationLayers("GAM", database.Gam, Color.Green, true));
         layers.AddRange(GenerateAllocationLayers("SGAM", database.SGam, Color.OrangeRed, false));
         layers.AddRange(GenerateAllocationLayers("DCM", database.Dcm, Color.CornflowerBlue, true));
@@ -134,6 +133,33 @@ internal static class AllocationLayerBuilder
         layers.Add(bufferPoolLayer);
 
         return layers;
+    }
+
+    private static AllocationLayer CreateDatabaseLayer(DatabaseSource database)
+    {
+        var databaseLayer = new AllocationLayer
+        {
+            Name = "Database Pages",
+            ObjectName = "Database Pages",
+            Colour = Color.FromArgb(120, 100, 100, 205),
+            IsSystemObject = true,
+            IsAllocationLayer = true,
+            IsVisible = true
+        };
+
+        foreach (var databaseFile in database.Files)
+        {
+            if (databaseFile.FileId == 1)
+            {
+                databaseLayer.SinglePages.Add(BootPage.BootPageAddress);
+            }
+
+            // File header
+            databaseLayer.SinglePages.Add(new PageAddress(databaseFile.FileId, 0));
+
+        }
+
+        return databaseLayer;
     }
 
     private static List<AllocationLayer> GenerateAllocationLayers(string name,

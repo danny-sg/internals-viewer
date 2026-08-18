@@ -212,20 +212,20 @@
                     </TabView.Resources>
 
                     <TabViewItem IsClosable="False"
-                             x:Name="RowDataTabViewItem"
-                             Visibility="{x:Bind ViewModel.IsRowDataTabVisible,
-                                                 Converter={StaticResource BoolToVisibilityConverter},
-                                                 Mode=OneWay}">
+                                 x:Name="RowDataTabViewItem"
+                                 Visibility="{x:Bind ViewModel.IsRowDataTabVisible,
+                                                     Converter={StaticResource BoolToVisibilityConverter},
+                                                     Mode=OneWay}">
                         <TabViewItem.Header>
                             <TextBlock Text="{x:Bind ViewModel.MarkerTabName, Mode=OneWay}"/>
                         </TabViewItem.Header>
                     </TabViewItem>
 
                     <TabViewItem IsClosable="False"
-                             x:Name="AllocationTabViewItem"
-                             Visibility="{x:Bind ViewModel.IsAllocationsTabVisible,
-                                                 Converter={StaticResource BoolToVisibilityConverter},
-                                                 Mode=OneWay}">
+                                 x:Name="AllocationTabViewItem"
+                                 Visibility="{x:Bind ViewModel.IsAllocationsTabVisible,
+                                                     Converter={StaticResource BoolToVisibilityConverter},
+                                                     Mode=OneWay}">
                         <TabViewItem.Header>
                             Allocations
                         </TabViewItem.Header>

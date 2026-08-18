@@ -149,7 +149,7 @@ public sealed partial class PageTabViewModel(ILogger<PageTabViewModel> logger,
     [ObservableProperty]
     private int? _scrollToOffset;
 
-    [ObservableProperty] 
+    [ObservableProperty]
     private QueryResultSet _recordsResultSet = new();
 
     [ObservableProperty]
@@ -157,10 +157,9 @@ public sealed partial class PageTabViewModel(ILogger<PageTabViewModel> logger,
 
     private const int HeaderTab = 0;
 
-    private const short PageHeaderSlot = PageDisplayBuilder.PageHeaderSlot;
-    private const short IamHeaderSlot = PageDisplayBuilder.IamHeaderSlot;
-    private const short PfsHeaderSlot = -10;
-    private const short CompressionInfoSlot = PageDisplayBuilder.CompressionInfoSlot;
+    //private const short PageHeaderSlot = PageDisplayBuilder.PageHeaderSlot;
+    //private const short IamHeaderSlot = PageDisplayBuilder.IamHeaderSlot;
+    //private const short CompressionInfoSlot = PageDisplayBuilder.CompressionInfoSlot;
 
     private PageDisplayBuilder DisplayBuilder { get; } = new(logger, recordService);
 
@@ -214,14 +213,20 @@ public sealed partial class PageTabViewModel(ILogger<PageTabViewModel> logger,
 
         switch (value.Index)
         {
-            case PageHeaderSlot:
+            case PageDisplayBuilder.PageHeaderSlot:
                 AddPageHeaderMarkers();
                 break;
-            case CompressionInfoSlot:
+            case PageDisplayBuilder.CompressionInfoSlot:
                 AddCompressionInfoMarkers();
                 break;
-            case IamHeaderSlot:
-                AddHeaderMarkers();
+            case PageDisplayBuilder.IamHeaderSlot:
+                AddPageMarkers(" Header");
+                break;
+            case PageDisplayBuilder.BootPageSlot:
+                AddPageMarkers(string.Empty);
+                break;
+            case PageDisplayBuilder.FileHeaderSlot:
+                AddPageMarkers(string.Empty);
                 break;
             default:
                 AddRecordMarkers(value);
@@ -407,9 +412,8 @@ public sealed partial class PageTabViewModel(ILogger<PageTabViewModel> logger,
     /// <summary>
     /// Builds the border outlining the PFS map cells whose bytes the replayed records changed
     /// </summary>
-    private static List<AllocationBorder> BuildPfsChangeBorders(
-        IEnumerable<List<LogRecordAnnotation>> annotations,
-        PageAddress pageAddress)
+    private static List<AllocationBorder> BuildPfsChangeBorders(IEnumerable<List<LogRecordAnnotation>> annotations,
+                                                                PageAddress pageAddress)
     {
         var cells = new SortedSet<int>();
 
@@ -513,7 +517,7 @@ public sealed partial class PageTabViewModel(ILogger<PageTabViewModel> logger,
     {
         if (offset < 96)
         {
-            return PageSlots.FirstOrDefault(s => s.Index == PageHeaderSlot);
+            return PageSlots.FirstOrDefault(s => s.Index == PageDisplayBuilder.PageHeaderSlot);
         }
 
         var offsetTableStart = PageData.Size - Page.PageHeader.SlotCount * 2;
@@ -621,8 +625,7 @@ public sealed partial class PageTabViewModel(ILogger<PageTabViewModel> logger,
                     ChangeSpans = new ObservableCollection<LogRecordAnnotation>(
                         target is not null ? annotations.GetValueOrDefault(target, []) : []);
 
-                    // Reassigned so the log record tree rebuilds with the new annotation children
-                    LogRecords = new ObservableCollection<LogRecordItem>(LogRecords);
+                    LogRecords = [.. LogRecords];
 
                     ApplyPageDisplay(display);
 
@@ -639,7 +642,6 @@ public sealed partial class PageTabViewModel(ILogger<PageTabViewModel> logger,
             ReplayStatus = $"Replay failed: {ex.Message}";
         }
     }
-
 
     [RelayCommand(CanExecute = nameof(CanGoBack))]
     private async Task PageBack()
@@ -691,6 +693,7 @@ public sealed partial class PageTabViewModel(ILogger<PageTabViewModel> logger,
     private void AddPageHeaderMarkers()
     {
         MarkerTabName = "Page Header";
+
         var headerMarkers = MarkerBuilder.BuildMarkers(Page.PageHeader);
 
         headerMarkers.Add(new Marker
@@ -706,9 +709,9 @@ public sealed partial class PageTabViewModel(ILogger<PageTabViewModel> logger,
         Markers = new ObservableCollection<Marker>(headerMarkers);
     }
 
-    private void AddHeaderMarkers()
+    private void AddPageMarkers(string suffix)
     {
-        MarkerTabName = $"{Page.PageHeader.PageTypeName} Header";
+        MarkerTabName = $"{Page.PageHeader.PageTypeName}{suffix}";
 
         var m = MarkerBuilder.BuildMarkers(Page);
 
@@ -748,7 +751,7 @@ public sealed partial class PageTabViewModel(ILogger<PageTabViewModel> logger,
 
         var recordMarkers = MarkerBuilder.BuildMarkers(source);
 
-        Markers = new ObservableCollection<Marker>(pageMarkers.Concat(recordMarkers).OrderBy(o => o.StartPosition));
+        Markers = [.. pageMarkers.Concat(recordMarkers).OrderBy(o => o.StartPosition)];
     }
 
     private static List<Marker> GetPageMarkers(PageData p)
@@ -774,8 +777,8 @@ public sealed partial class PageTabViewModel(ILogger<PageTabViewModel> logger,
             StartPosition = offsetTableStart,
             EndPosition = PageData.Size,
             ForeColour = Colors.Green,
-            BackColour = Color.FromArgb(1, 245, 250, 245),
-            IsVisible = false
+            BackColour = Color.FromArgb(50, 205, 250, 205),
+            IsVisible = true
         });
 
         return m;

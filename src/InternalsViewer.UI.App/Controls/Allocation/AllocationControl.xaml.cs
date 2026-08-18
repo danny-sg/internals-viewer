@@ -790,9 +790,9 @@ public sealed partial class AllocationControl : IDisposable
             {
                 if (page.FileId == FileId)
                 {
-                    renderer.DrawPageMarker(canvas, 
-                                            GetPagePosition(page.PageId - (ScrollPosition * 8), layout), 
-                                            layer, 
+                    renderer.DrawPageMarker(canvas,
+                                            GetPagePosition(page.PageId - (ScrollPosition * 8), layout),
+                                            layer,
                                             layer.RendererColour);
                 }
             }
@@ -1190,38 +1190,17 @@ public sealed partial class AllocationControl : IDisposable
             l => l.AllocationChains.Any(a => a.IsExtentAllocated(extentId, FileId, l.IsInverted))
                  || l.SinglePages.Any(p => p.PageId == pageId && p.FileId == FileId));
 
-        string layerName;
-
-        switch (pageId)
+        var layerName = (pageId, FileId) switch
         {
-            case 0:
-                layerName = "File Header";
-                break;
-            case 1:
-                layerName = "PFS";
-                break;
-            case 2:
-                layerName = "GAM";
-                break;
-            case 3:
-                layerName = "SGAM";
-                break;
-            case 4:
-                layerName = "DCM";
-                break;
-            case 5:
-                layerName = "BCM";
-                break;
-            case 6:
-                layerName = "Differential Change Map";
-                break;
-            case 7:
-                layerName = "Bulk Change Map";
-                break;
-            default:
-                layerName = $"{layer?.Name ?? string.Empty}";
-                break;
-        }
+            (0, _) => "File Header",
+            (1, _) => "PFS",
+            (2, _) => "GAM",
+            (3, _) => "SGAM",
+            (6, _) => "DCM",
+            (7, _) => "BCM",
+            (9, 1) => "Boot Page",
+            _ => $"{layer?.Name ?? string.Empty}",
+        };
 
         if (StartPage > 0)
         {

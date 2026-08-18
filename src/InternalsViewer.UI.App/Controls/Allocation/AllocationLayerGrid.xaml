@@ -57,6 +57,7 @@
 
                 <tableView:TableView.Columns>
                     <tableView:TableViewTemplateColumn Header="Key"
+                                                       Width="48"
                                                        CanSort="False">
                         <tableView:TableViewTemplateColumn.CellTemplate>
                             <DataTemplate x:DataType="models:AllocationLayer">
@@ -70,16 +71,21 @@
                     </tableView:TableViewTemplateColumn>
 
                     <tableView:TableViewTextColumn Header="Object Name"
+                                                   Width="200"
                                                    Tag="ObjectName"
                                                    Binding="{Binding ObjectName}"/>
                     <tableView:TableViewTextColumn Header="Index Name"
+                                                   Width="240"
                                                    Tag="IndexName"
                                                    Binding="{Binding IndexName}"/>
                     <tableView:TableViewTextColumn Header="Index Type"
+                                                   Width="120"
                                                    Tag="IndexTypeDescription"
                                                    Binding="{Binding IndexTypeDescription}"/>
                     <tableView:TableViewTemplateColumn Header="Page Count"
-                                                       Tag="TotalPages">
+                                                       Width="100"
+                                                       Tag="TotalPages"
+                                                       SortMemberPath="TotalPages">
                         <tableView:TableViewTemplateColumn.CellTemplate>
                             <DataTemplate x:DataType="models:AllocationLayer">
                                 <Grid>
@@ -91,6 +97,7 @@
                         </tableView:TableViewTemplateColumn.CellTemplate>
                     </tableView:TableViewTemplateColumn>
                     <tableView:TableViewTemplateColumn Header="Root Page"
+                                                       Width="100"
                                                        CanSort="False">
                         <tableView:TableViewTemplateColumn.CellTemplate>
                             <DataTemplate x:DataType="models:AllocationLayer">
@@ -104,6 +111,7 @@
                         </tableView:TableViewTemplateColumn.CellTemplate>
                     </tableView:TableViewTemplateColumn>
                     <tableView:TableViewTemplateColumn Header="First Page"
+                                                       Width="100"
                                                        CanSort="False">
                         <tableView:TableViewTemplateColumn.CellTemplate>
                             <DataTemplate x:DataType="models:AllocationLayer">
@@ -117,6 +125,7 @@
                         </tableView:TableViewTemplateColumn.CellTemplate>
                     </tableView:TableViewTemplateColumn>
                     <tableView:TableViewTemplateColumn Header="First IAM Page"
+                                                       Width="120"
                                                        CanSort="False">
                         <tableView:TableViewTemplateColumn.CellTemplate>
                             <DataTemplate x:DataType="models:AllocationLayer">
@@ -131,6 +140,7 @@
                     </tableView:TableViewTemplateColumn>
 
                     <tableView:TableViewTemplateColumn Header="Index"
+                                                       Width="70"
                                                        CanSort="False">
                         <tableView:TableViewTemplateColumn.CellTemplate>
                             <DataTemplate x:DataType="models:AllocationLayer">

@@ -52,7 +52,7 @@
             </tableView:TableView.ItemContainerTransitions>
             <tableView:TableView.Columns>
 
-                <tableView:TableViewTemplateColumn Header="Event" Tag="Event">
+                <tableView:TableViewTemplateColumn Header="Event" Tag="Event" Width="180">
                     <tableView:TableViewTemplateColumn.CellTemplate>
                         <DataTemplate x:DataType="eventGrid:EventGridRow">
                             <StackPanel Orientation="Horizontal" Margin="{x:Bind Indent, Mode=OneTime}" VerticalAlignment="Center">
@@ -73,7 +73,7 @@
                     </tableView:TableViewTemplateColumn.CellTemplate>
                 </tableView:TableViewTemplateColumn>
 
-                <tableView:TableViewTemplateColumn Header="Type" Tag="Type">
+                <tableView:TableViewTemplateColumn Header="Type" Tag="Type" Width="320">
                     <tableView:TableViewTemplateColumn.CellTemplate>
                         <DataTemplate x:DataType="eventGrid:EventGridRow">
                             <TextBlock Text="{x:Bind Event.Description, Mode=OneTime}"
@@ -83,7 +83,7 @@
                     </tableView:TableViewTemplateColumn.CellTemplate>
                 </tableView:TableViewTemplateColumn>
 
-                <tableView:TableViewTemplateColumn Header="Time (ms)" Tag="TimeUs">
+                <tableView:TableViewTemplateColumn Header="Time (ms)" Tag="TimeUs" Width="100">
                     <tableView:TableViewTemplateColumn.CellTemplate>
                         <DataTemplate x:DataType="eventGrid:EventGridRow">
                             <TextBlock Text="{x:Bind eventGrid:EventGridFormat.TimeMs(Event.TimeUs), Mode=OneTime}"
@@ -94,7 +94,7 @@
                     </tableView:TableViewTemplateColumn.CellTemplate>
                 </tableView:TableViewTemplateColumn>
 
-                <tableView:TableViewTemplateColumn Header="Duration (ms)" Tag="DurationUs">
+                <tableView:TableViewTemplateColumn Header="Duration (ms)" Tag="DurationUs" Width="110">
                     <tableView:TableViewTemplateColumn.CellTemplate>
                         <DataTemplate x:DataType="eventGrid:EventGridRow">
                             <TextBlock Text="{x:Bind eventGrid:EventGridFormat.TimeMs(Event.DurationUs), Mode=OneTime}"
@@ -105,7 +105,7 @@
                     </tableView:TableViewTemplateColumn.CellTemplate>
                 </tableView:TableViewTemplateColumn>
 
-                <tableView:TableViewTemplateColumn Header="Page" Tag="PageAddress">
+                <tableView:TableViewTemplateColumn Header="Page" Tag="PageAddress" Width="90">
                     <tableView:TableViewTemplateColumn.CellTemplate>
                         <DataTemplate x:DataType="eventGrid:EventGridRow">
                             <Grid>
@@ -118,7 +118,7 @@
                     </tableView:TableViewTemplateColumn.CellTemplate>
                 </tableView:TableViewTemplateColumn>
 
-                <tableView:TableViewTemplateColumn Header="Object" Tag="Object">
+                <tableView:TableViewTemplateColumn Header="Object" Tag="Object" Width="220">
                     <tableView:TableViewTemplateColumn.CellTemplate>
                         <DataTemplate x:DataType="eventGrid:EventGridRow">
                             <TextBlock Text="{x:Bind Event.ObjectName, Mode=OneTime}"

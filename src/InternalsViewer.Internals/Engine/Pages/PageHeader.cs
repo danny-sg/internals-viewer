@@ -69,7 +69,7 @@ public sealed class PageHeader : DataStructure
     /// Level of the index in the B-Tree
     /// 
     /// Leaf level = 0
-    /// Root level = > 0
+    /// Root/Intermediate level = > 0
     /// </remarks>
     [DataStructureItem(ItemType.IndexLevel)]
     public byte Level { get; set; }
