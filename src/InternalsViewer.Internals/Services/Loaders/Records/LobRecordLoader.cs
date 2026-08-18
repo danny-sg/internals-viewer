@@ -130,15 +130,17 @@ public sealed class LobRecordLoader : FixedVarRecordLoader
 
     private static void LoadData(LobRecord lobRecord, byte[] data)
     {
-        lobRecord.MarkProperty(nameof(LobRecord.Data), lobRecord.Offset + LobRecord.DataOffset, lobRecord.Length);
+        var dataLength = lobRecord.Length - LobRecord.DataOffset;
 
-        lobRecord.Data = new byte[lobRecord.Length];
+        lobRecord.MarkProperty(nameof(LobRecord.Data), lobRecord.Offset + LobRecord.DataOffset, dataLength);
+
+        lobRecord.Data = new byte[dataLength];
 
         Array.Copy(data,
                    lobRecord.Offset + LobRecord.DataOffset,
                    lobRecord.Data,
                    0,
-                   lobRecord.Length);
+                   dataLength);
     }
 
     private static (BlobChildLink Link, int Offset, int Length) LoadInternalBlobChild(LobRecord lobRecord, int index, byte[] data)

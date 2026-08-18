@@ -36,7 +36,7 @@ public sealed class LobDataService(IPageService pageService) : ILobDataService
             BlobType.SmallRoot
                 => record.Size,
             BlobType.Data 
-                => record.Length,
+                => record.Length - LobRecord.DataOffset,
             BlobType.LargeRoot or BlobType.Internal
                 => record.BlobChildren.Count > 0 ? record.BlobChildren.Max(c => c.Offset) : 0,
             _ => throw new InvalidOperationException($"Unsupported blob type: {record.BlobType}")
@@ -47,7 +47,7 @@ public sealed class LobDataService(IPageService pageService) : ILobDataService
     {
         var (sourceOffset, length) = record.BlobType == BlobType.SmallRoot
             ? (record.Offset + LobRecord.SmallDataOffset, (int)record.Size)
-            : (record.Offset + LobRecord.DataOffset, (int)record.Length);
+            : (record.Offset + LobRecord.DataOffset, record.Length - LobRecord.DataOffset);
 
         page.Data
             .AsSpan(sourceOffset, length)

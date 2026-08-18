@@ -5,13 +5,16 @@ using InternalsViewer.Internals.Engine.Database;
 using InternalsViewer.Internals.Engine.Database.Enums;
 using InternalsViewer.Internals.Engine.Records.Data;
 using InternalsViewer.Internals.Interfaces.Readers.Internals;
+using InternalsViewer.Internals.Interfaces.Services.Records;
 using InternalsViewer.Internals.Providers.Metadata;
 
 namespace InternalsViewer.Internals.Services.Columnstore;
 
-public sealed class ColumnstoreService(IRecordReader recordReader)
+public sealed class ColumnstoreService(IRecordReader recordReader, ILobDataService lobDataService)
 {
-    public IRecordReader RecordReader { get; } = recordReader;
+    private IRecordReader RecordReader { get; } = recordReader;
+
+    private ILobDataService LobDataService { get; } = lobDataService;
 
     public async Task<ColumnStoreIndex> GetIndex(AllocationUnit allocationUnit,
                                                  DatabaseSource database,
@@ -30,6 +33,13 @@ public sealed class ColumnstoreService(IRecordReader recordReader)
                                              columnSegmentRecords, 
                                              dictionaryRecords, 
                                              columnMap);
+    }
+
+    public async Task<byte[]> GetSegmentData(DatabaseSource database, 
+                                             LobPointer lobPointer,
+                                             CancellationToken cancellationToken)
+    {
+        return await LobDataService.GetData(database, new RowIdentifier(lobPointer.PageAddress, (ushort)lobPointer.Slot), cancellationToken);
     }
 
     private async Task<List<DataRecord>> GetRecords(string name,
