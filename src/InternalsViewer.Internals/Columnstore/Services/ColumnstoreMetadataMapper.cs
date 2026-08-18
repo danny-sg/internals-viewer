@@ -1,12 +1,12 @@
 ﻿using System.Buffers.Binary;
+using InternalsViewer.Internals.Columnstore.Metadata.Enums;
+using InternalsViewer.Internals.Columnstore.Metadata;
 using InternalsViewer.Internals.Engine.Address;
-using InternalsViewer.Internals.Engine.Columnstore;
-using InternalsViewer.Internals.Engine.Columnstore.Enums;
 using InternalsViewer.Internals.Engine.Database;
 using InternalsViewer.Internals.Engine.Records.Data;
 using InternalsViewer.Internals.Metadata.Structures;
 
-namespace InternalsViewer.Internals.Services.Columnstore;
+namespace InternalsViewer.Internals.Columnstore.Services;
 
 /// <summary>
 /// Maps raw system table records to the columnstore object model
@@ -222,6 +222,8 @@ public static class ColumnstoreMetadataMapper
             HobtId = record.GetValue<long>(DictionaryColumns.HobtId),
             ColumnId = record.GetValue<int>(DictionaryColumns.ColumnId),
             DictionaryId = record.GetValue<int>(DictionaryColumns.DictionaryId),
+            Type = record.GetValue<int>(DictionaryColumns.Type),
+            LastId = record.GetValue<int>(DictionaryColumns.LastId),
             EntryCount = record.GetValue<long>(DictionaryColumns.EntryCount),
             OnDiskSize = record.GetValue<long>(DictionaryColumns.OnDiskSize),
             DataPointer = DecodeLobPointer(record.GetValue<byte[]?>(DictionaryColumns.DataPtr))

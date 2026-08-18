@@ -1,6 +1,10 @@
 ﻿using System.Threading;
+using InternalsViewer.Internals.Columnstore.Decoding;
+using InternalsViewer.Internals.Columnstore.Dictionaries;
+using InternalsViewer.Internals.Columnstore.Metadata;
+using InternalsViewer.Internals.Columnstore.Parsers;
+using InternalsViewer.Internals.Columnstore.Segments;
 using InternalsViewer.Internals.Engine.Address;
-using InternalsViewer.Internals.Engine.Columnstore;
 using InternalsViewer.Internals.Engine.Database;
 using InternalsViewer.Internals.Engine.Database.Enums;
 using InternalsViewer.Internals.Engine.Records.Data;
@@ -8,7 +12,7 @@ using InternalsViewer.Internals.Interfaces.Readers.Internals;
 using InternalsViewer.Internals.Interfaces.Services.Records;
 using InternalsViewer.Internals.Providers.Metadata;
 
-namespace InternalsViewer.Internals.Services.Columnstore;
+namespace InternalsViewer.Internals.Columnstore.Services;
 
 public sealed class ColumnstoreService(IRecordReader recordReader, ILobDataService lobDataService)
 {
@@ -40,6 +44,39 @@ public sealed class ColumnstoreService(IRecordReader recordReader, ILobDataServi
                                              CancellationToken cancellationToken)
     {
         return await LobDataService.GetData(database, new RowIdentifier(lobPointer.PageAddress, (ushort)lobPointer.Slot), cancellationToken);
+    }
+
+    public async Task<SegmentBlob> GetSegmentBlob(DatabaseSource database,
+                                                 ColumnSegment segment,
+                                                 CancellationToken cancellationToken)
+    {
+        var data = await GetSegmentData(database, segment.DataPointer, cancellationToken);
+
+        return SegmentBlobParser.Parse(data);
+    }
+
+    public async Task<DictionaryBlob> GetDictionaryBlob(DatabaseSource database,
+                                                       SegmentDictionary dictionary,
+                                                       CancellationToken cancellationToken)
+    {
+        var data = await GetSegmentData(database, dictionary.DataPointer, cancellationToken);
+
+        return DictionaryBlobParser.Parse(data, (int)dictionary.EntryCount, dictionary.LastId);
+    }
+
+    public async Task<SegmentReader> GetSegmentReader(DatabaseSource database,
+                                                     ColumnSegment segment,
+                                                     CancellationToken cancellationToken)
+    {
+        var blob = await GetSegmentBlob(database, segment, cancellationToken);
+
+        var source = segment.SecondaryDictionaryId >= 0
+            ? segment.LocalDictionary
+            : segment.Column?.GlobalDictionary;
+
+        var dictionary = source is null ? null : await GetDictionaryBlob(database, source, cancellationToken);
+
+        return new SegmentReader(segment, blob, dictionary);
     }
 
     private async Task<List<DataRecord>> GetRecords(string name,

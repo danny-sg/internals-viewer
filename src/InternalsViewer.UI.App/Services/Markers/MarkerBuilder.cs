@@ -163,6 +163,8 @@ public static class MarkerBuilder
     private static void SetMarkerPosition(DataStructureItem item, Marker marker)
     {
         marker.StartPosition = item.Offset;
+        marker.BitOffset = item.BitOffset;
+        marker.BitLength = item.BitLength;
 
         if (item.Length > 0)
         {

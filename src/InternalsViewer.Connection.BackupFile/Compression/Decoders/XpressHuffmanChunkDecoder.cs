@@ -1,4 +1,5 @@
 ﻿using InternalsViewer.Connection.BackupFile.Interfaces.Compression;
+using InternalsViewer.Internals.Compression;
 
 namespace InternalsViewer.Connection.BackupFile.Compression.Decoders;
 
@@ -25,21 +26,11 @@ internal sealed class XpressHuffmanChunkDecoder : IChunkDecoder
 
     private const int SymbolCount = 512;
 
-    private const int MaxCodeBits = 15;
+    private const int MinimumTableSymbols = 8;
 
-    private const ushort InvalidSymbol = ushort.MaxValue;
+    private readonly CanonicalHuffmanTable _table = new(SymbolCount);
 
-    private readonly byte[] _codeLengths = new byte[SymbolCount];
-
-    private readonly ushort[] _decodeTable = new ushort[1 << MaxCodeBits];
-
-    private ReadOnlyMemory<byte> _payload;
-
-    private uint _mask;
-
-    private int _bits;
-
-    private int _position;
+    private readonly HuffmanBitReader _reader = new();
 
     /// <summary>
     /// Xpress match offsets are at most 15 bits plus the implied bit, so 64 KB
@@ -54,39 +45,7 @@ internal sealed class XpressHuffmanChunkDecoder : IChunkDecoder
     /// bytes effectively never do.
     /// </remarks>
     public bool CanDecode(ReadOnlySpan<byte> payload)
-    {
-        if (payload.Length < TableLength)
-        {
-            return false;
-        }
-
-        var total = 0;
-
-        var used = 0;
-
-        foreach (var packed in payload[..TableLength])
-        {
-            var low = packed & 0x0F;
-
-            var high = packed >> 4;
-
-            if (low > 0)
-            {
-                total += 1 << (MaxCodeBits - low);
-
-                used++;
-            }
-
-            if (high > 0)
-            {
-                total += 1 << (MaxCodeBits - high);
-
-                used++;
-            }
-        }
-
-        return used >= 8 && total == 1 << MaxCodeBits;
-    }
+        => payload.Length >= TableLength && CanonicalHuffmanTable.IsComplete(payload[..TableLength], MinimumTableSymbols);
 
     public void Decode(ReadOnlyMemory<byte> blockPayload, int uncompressedSize, SlidingWindowWriter output)
     {
@@ -95,15 +54,9 @@ internal sealed class XpressHuffmanChunkDecoder : IChunkDecoder
             return;
         }
 
-        _payload = blockPayload;
+        _table.Build(blockPayload.Span[..TableLength]);
 
-        BuildDecodeTable(blockPayload.Span[..TableLength]);
-
-        _position = TableLength;
-
-        _mask = (uint)ReadWord() << 16;
-        _mask |= (uint)ReadWord();
-        _bits = 16;
+        _reader.Reset(blockPayload, TableLength);
 
         var produced = 0L;
 
@@ -111,14 +64,14 @@ internal sealed class XpressHuffmanChunkDecoder : IChunkDecoder
 
         while (produced < uncompressedSize)
         {
-            var symbol = _decodeTable[_mask >> (32 - MaxCodeBits)];
+            var symbol = _table.Lookup(_reader.Peek(CanonicalHuffmanTable.MaxCodeBits));
 
-            if (symbol == InvalidSymbol || _codeLengths[symbol] == 0)
+            if (symbol == CanonicalHuffmanTable.InvalidSymbol)
             {
-                throw new InvalidDataException($"Invalid Huffman code at payload offset {_position}.");
+                throw new InvalidDataException($"Invalid Huffman code at payload offset {_reader.BytePosition}.");
             }
 
-            Skip(_codeLengths[symbol]);
+            _reader.Skip(_table.GetCodeLength(symbol));
 
             if (symbol < 256)
             {
@@ -137,11 +90,11 @@ internal sealed class XpressHuffmanChunkDecoder : IChunkDecoder
 
             if (length == 15)
             {
-                length = ReadRawByte();
+                length = _reader.ReadRawByte();
 
                 if (length == 255)
                 {
-                    length = ReadRawUInt16();
+                    length = _reader.ReadRawUInt16();
 
                     if (length < 15)
                     {
@@ -156,110 +109,12 @@ internal sealed class XpressHuffmanChunkDecoder : IChunkDecoder
 
             length += 3;
 
-            var offset = (1 << offsetBits) + ReadBits(offsetBits);
+            var offset = (1 << offsetBits) + _reader.ReadBits(offsetBits);
 
             output.WriteMatch(offset, length);
 
             produced = output.Length - start;
         }
-    }
-
-    private void BuildDecodeTable(ReadOnlySpan<byte> table)
-    {
-        for (var i = 0; i < TableLength; i++)
-        {
-            _codeLengths[2 * i] = (byte)(table[i] & 0x0F);
-            _codeLengths[2 * i + 1] = (byte)(table[i] >> 4);
-        }
-
-        _decodeTable.AsSpan().Fill(InvalidSymbol);
-
-        var code = 0;
-
-        for (var bitLength = 1; bitLength <= MaxCodeBits; bitLength++)
-        {
-            for (var symbol = 0; symbol < SymbolCount; symbol++)
-            {
-                if (_codeLengths[symbol] != bitLength)
-                {
-                    continue;
-                }
-
-                var start = code << (MaxCodeBits - bitLength);
-
-                var end = start + (1 << (MaxCodeBits - bitLength));
-
-                if (end > _decodeTable.Length)
-                {
-                    throw new InvalidDataException("Over-subscribed Huffman table.");
-                }
-
-                _decodeTable.AsSpan(start, end - start).Fill((ushort)symbol);
-
-                code++;
-            }
-
-            code <<= 1;
-        }
-    }
-
-    private int ReadWord()
-    {
-        var span = _payload.Span;
-
-        var value = 0;
-
-        if (_position + 1 < span.Length)
-        {
-            value = span[_position] | (span[_position + 1] << 8);
-        }
-        else if (_position < span.Length)
-        {
-            value = span[_position];
-        }
-
-        _position += 2;
-
-        return value;
-    }
-
-    private byte ReadRawByte()
-    {
-        var span = _payload.Span;
-
-        var value = _position < span.Length ? span[_position] : (byte)0;
-
-        _position++;
-
-        return value;
-    }
-
-    private int ReadRawUInt16() => ReadRawByte() | (ReadRawByte() << 8);
-
-    private void Skip(int count)
-    {
-        _mask <<= count;
-        _bits -= count;
-
-        if (_bits < 0)
-        {
-            _mask |= (uint)ReadWord() << -_bits;
-            _bits += 16;
-        }
-    }
-
-    private int ReadBits(int count)
-    {
-        if (count == 0)
-        {
-            return 0;
-        }
-
-        var value = (int)(_mask >> (32 - count));
-
-        Skip(count);
-
-        return value;
     }
 
     public void Dispose()

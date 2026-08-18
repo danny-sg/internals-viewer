@@ -1,6 +1,6 @@
-﻿using InternalsViewer.Internals.Engine.Columnstore.Enums;
+﻿using InternalsViewer.Internals.Columnstore.Metadata.Enums;
 
-namespace InternalsViewer.Internals.Engine.Columnstore;
+namespace InternalsViewer.Internals.Columnstore.Metadata;
 
 public class ColumnStoreIndex
 {

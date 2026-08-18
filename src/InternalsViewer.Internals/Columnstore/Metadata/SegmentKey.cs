@@ -1,4 +1,4 @@
-﻿namespace InternalsViewer.Internals.Engine.Columnstore;
+﻿namespace InternalsViewer.Internals.Columnstore.Metadata;
 
 public readonly record struct SegmentKey(long HobtId,
                                          long PartitionId,

@@ -1,4 +1,4 @@
-﻿namespace InternalsViewer.Internals.Engine.Columnstore;
+﻿namespace InternalsViewer.Internals.Columnstore.Metadata;
 
 public sealed class SegmentDictionary
 {
@@ -8,6 +8,13 @@ public sealed class SegmentDictionary
     
     public int DictionaryId { get; set; }
     
+    public int Type { get; set; }
+
+    /// <summary>
+    /// Highest data id the dictionary holds, which with the entry count gives the id of the first entry
+    /// </summary>
+    public int LastId { get; set; }
+
     public long EntryCount { get; set; }
     
     public long OnDiskSize { get; set; }

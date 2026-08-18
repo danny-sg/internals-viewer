@@ -1,6 +1,6 @@
 ﻿using InternalsViewer.Internals.Engine.Address;
 
-namespace InternalsViewer.Internals.Engine.Columnstore;
+namespace InternalsViewer.Internals.Columnstore.Metadata;
 
 /// <summary>
 /// 16-byte LOB locator from syscscolsegments.data_ptr.

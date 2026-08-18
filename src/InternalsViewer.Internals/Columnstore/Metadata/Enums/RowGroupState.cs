@@ -1,4 +1,4 @@
-﻿namespace InternalsViewer.Internals.Engine.Columnstore.Enums;
+﻿namespace InternalsViewer.Internals.Columnstore.Metadata.Enums;
 
 public enum RowGroupState
 {

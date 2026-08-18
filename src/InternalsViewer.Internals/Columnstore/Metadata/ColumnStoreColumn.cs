@@ -1,6 +1,6 @@
 ﻿using InternalsViewer.Internals.Metadata.Structures;
 
-namespace InternalsViewer.Internals.Engine.Columnstore;
+namespace InternalsViewer.Internals.Columnstore.Metadata;
 
 public sealed class ColumnStoreColumn
 {

@@ -78,6 +78,31 @@ public class DataStructure : IDataStructure
         MarkItems.Add(dataStructureItem);
     }
 
+    /// <summary>
+    /// Adds a marker for a value that is not byte aligned, covering the bytes the bits fall within
+    /// </summary>
+    public void MarkBits(ItemType type, string name, object value, int bitOffset, int bitLength, string[]? tags = null)
+    {
+        if (!IsMarkEnabled)
+        {
+            return;
+        }
+
+        var dataStructureItem = new ValueItem
+        {
+            ItemType = type,
+            Name = name,
+            Value = value,
+            Offset = bitOffset >> 3,
+            Length = ((bitOffset & 7) + bitLength + 7) >> 3,
+            BitOffset = bitOffset,
+            BitLength = bitLength,
+            Tags = tags ?? []
+        };
+
+        MarkItems.Add(dataStructureItem);
+    }
+
     public void MarkValue(ItemType type, string name, object value, int offset, int length, string[]? tags = null)
     {
         if (!IsMarkEnabled)
