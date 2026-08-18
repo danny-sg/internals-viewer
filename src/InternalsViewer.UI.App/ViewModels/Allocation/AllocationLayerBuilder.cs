@@ -10,6 +10,7 @@ using InternalsViewer.Internals.Engine.Pages;
 using InternalsViewer.UI.App.Helpers;
 using InternalsViewer.UI.App.Models;
 using AllocationUnit = InternalsViewer.Internals.Engine.Database.AllocationUnit;
+using DatabaseFile = InternalsViewer.Internals.Engine.Database.DatabaseFile;
 
 namespace InternalsViewer.UI.App.ViewModels.Allocation;
 
@@ -23,6 +24,7 @@ internal static class AllocationLayerBuilder
 
     public static List<AllocationLayer> GenerateLayers(DatabaseSource database,
                                                        bool separateIndexes,
+                                                       bool isDisplaySystemObjects,
                                                        byte opacity = 100)
     {
         var layers = new List<AllocationLayer>();
@@ -32,7 +34,7 @@ internal static class AllocationLayerBuilder
         var allocationUnits = database.AllocationUnits;
 
         var colourSlotCount = allocationUnits.Values
-                                             .Where(u => !u.IsSystem)
+                                             .Where(u => !u.IsSystem || isDisplaySystemObjects)
                                              .Select(u => GetCurrentObjectName(u, separateIndexes))
                                              .Distinct()
                                              .Count();
@@ -40,8 +42,8 @@ internal static class AllocationLayerBuilder
         foreach (var allocationUnit in allocationUnits.Values
                                                       .OrderBy(o => o.TableName)
                                                       .ThenBy(o => o.IndexName)
-                                                      .ThenBy(o => o.AllocationUnitType == AllocationUnitType.InRowData ? 1 : 2)
-                                                      .Where(o => !o.IsSystem))
+                                                      .ThenBy(o => ScoreAllocationUnit(o))
+                                                      .Where(o => !o.IsSystem || isDisplaySystemObjects))
         {
             var currentObjectName = GetCurrentObjectName(allocationUnit, separateIndexes);
 
@@ -87,30 +89,33 @@ internal static class AllocationLayerBuilder
             IsVisible = true
         };
 
-        foreach (var systemAllocationUnit in allocationUnits.Values.Where(a => a.IsSystem))
+        if (!isDisplaySystemObjects)
         {
-            systemLayer.AllocationChains.Add(systemAllocationUnit.IamChain);
-
-            foreach (var page in systemAllocationUnit.IamChain.Pages)
+            foreach (var systemAllocationUnit in allocationUnits.Values.Where(a => a.IsSystem))
             {
-                foreach (var slot in page.SinglePageSlots)
+                systemLayer.AllocationChains.Add(systemAllocationUnit.IamChain);
+
+                foreach (var page in systemAllocationUnit.IamChain.Pages)
                 {
-                    if (slot != PageAddress.Empty)
+                    foreach (var slot in page.SinglePageSlots)
                     {
-                        systemLayer.SinglePages.Add(slot);
+                        if (slot != PageAddress.Empty)
+                        {
+                            systemLayer.SinglePages.Add(slot);
+                        }
+                    }
+
+                    if (page.PageAddress != PageAddress.Empty)
+                    {
+                        systemLayer.SinglePages.Add(page.PageAddress);
                     }
                 }
 
-                if (page.PageAddress != PageAddress.Empty)
-                {
-                    systemLayer.SinglePages.Add(page.PageAddress);
-                }
+                systemLayer.TotalPages += systemAllocationUnit.TotalPages;
             }
 
-            systemLayer.TotalPages += systemAllocationUnit.TotalPages;
+            layers.Add(systemLayer);
         }
-
-        layers.Add(systemLayer);
 
         layers.Add(CreateDatabaseLayer(database));
 
@@ -135,6 +140,16 @@ internal static class AllocationLayerBuilder
         return layers;
     }
 
+    private static int ScoreAllocationUnit(AllocationUnit allocationUnit)
+    {
+        if (allocationUnit.IndexType is IndexType.ClusteredColumnStore or IndexType.NonClusteredColumnStore)
+        {
+            return allocationUnit.AllocationUnitType == AllocationUnitType.LargeObjectData ? 1 : 2;
+        }
+
+        return allocationUnit.AllocationUnitType == AllocationUnitType.InRowData ? 1 : 2;
+    }
+
     private static AllocationLayer CreateDatabaseLayer(DatabaseSource database)
     {
         var databaseLayer = new AllocationLayer
@@ -157,9 +172,55 @@ internal static class AllocationLayerBuilder
             // File header
             databaseLayer.SinglePages.Add(new PageAddress(databaseFile.FileId, 0));
 
+            if (databaseFile.FileType == FileType.Rows)
+            {
+                AddAllocationPages(databaseLayer, databaseFile);
+            }
         }
 
         return databaseLayer;
+    }
+
+    private static void AddAllocationPages(AllocationLayer layer, DatabaseFile databaseFile)
+    {
+        var pageCount = databaseFile.Size;
+
+        if (pageCount <= 0)
+        {
+            return;
+        }
+
+        var fileId = databaseFile.FileId;
+
+        var extentCount = pageCount / 8;
+
+        var allocationPageCount = Math.Max(1, (int)Math.Ceiling(extentCount / (decimal)AllocationPage.AllocationExtentInterval));
+
+        int[] firstAllocationPages =
+        [
+            AllocationPage.FirstGamPage,
+            AllocationPage.FirstSgamPage,
+            AllocationPage.FirstDcmPage,
+            AllocationPage.FirstBcmPage
+        ];
+
+        foreach (var firstPage in firstAllocationPages)
+        {
+            for (var i = 0; i < allocationPageCount; i++)
+            {
+                layer.SinglePages.Add(new PageAddress(fileId, firstPage + (i * AllocationPage.AllocationPageCount)));
+            }
+        }
+
+        var pfsPageCount = Math.Max(1, (int)Math.Ceiling(pageCount / (decimal)PfsPage.PfsInterval));
+
+        layer.SinglePages.Add(new PageAddress(fileId, PfsPage.FirstPfsPage));
+
+        // The first PFS page is page 1, subsequent ones are the first page of their interval
+        for (var i = 1; i < pfsPageCount; i++)
+        {
+            layer.SinglePages.Add(new PageAddress(fileId, i * PfsPage.PfsInterval));
+        }
     }
 
     private static List<AllocationLayer> GenerateAllocationLayers(string name,
@@ -274,11 +335,6 @@ internal static class AllocationLayerBuilder
 
     private static Color GetLayerColour(AllocationUnit allocationUnit, int colourSlotCount, ref int colourIndex)
     {
-        if (allocationUnit.IsSystem)
-        {
-            return Color.FromArgb(255, 190, 190, 205);
-        }
-
         var hue = colourIndex * HueWheel / Math.Max(colourSlotCount, 1) % HueWheel;
 
         colourIndex++;

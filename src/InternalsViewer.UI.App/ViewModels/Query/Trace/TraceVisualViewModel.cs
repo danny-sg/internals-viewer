@@ -138,7 +138,7 @@ public sealed partial class TraceVisualViewModel(TraceVisualType visualType,
 
         if (VisualType == TraceVisualType.Allocation)
         {
-            var layers = await Task.Run(() => AllocationLayerBuilder.GenerateLayers(Database, true, 20));
+            var layers = await Task.Run(() => AllocationLayerBuilder.GenerateLayers(Database, true, false, 20));
 
             var traceName = string.IsNullOrEmpty(AllocationUnit.IndexName)
                 ? $"{AllocationUnit.SchemaName}.{AllocationUnit.TableName}"

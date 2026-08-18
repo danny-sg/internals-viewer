@@ -15,18 +15,21 @@
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="*"/>
         </Grid.RowDefinitions>
-        <CommandBar Grid.Row="0"
-                    Margin="0"
-                    IsOpen="True"
-                    IsSticky="True"
-                    Background="Transparent"
-                    DefaultLabelPosition="Right">
-            <AppBarElementContainer>
-                <TextBox Width="200" Margin="0 8 10 0"
-                         PlaceholderText="Filter"
-                         Text="{x:Bind ViewModel.Filter, Mode=TwoWay,UpdateSourceTrigger=PropertyChanged}"/>
-            </AppBarElementContainer>
-        </CommandBar>
+        <StackPanel Grid.Row="0">
+            <Border BorderThickness="0,1,0,1"   
+                    BorderBrush="{ThemeResource ControlStrokeColorDefaultBrush}">
+            <AutoSuggestBox x:Name="SearchBox"
+                            Margin="0"
+                            PlaceholderText="Search"
+                            QueryIcon="Find"
+                            BorderThickness="0"
+                            FontSize="12"
+                            Padding="0,4,0,0"
+                            Height="32"
+                            Text="{x:Bind ViewModel.Filter, Mode=TwoWay}"/>
+            </Border>
+        </StackPanel>
+       
         <Grid Grid.Row="1">
             <tableView:TableView x:Name="LayerTable"
                                  AutoGenerateColumns="False"

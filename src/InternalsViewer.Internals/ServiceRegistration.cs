@@ -48,6 +48,8 @@ public static class ServiceRegistration
 
         services.AddTransient<IRecordService, RecordService>();
 
+        services.AddTransient<ILobDataService, LobDataService>();
+
         services.AddTransient<PageService>();
         services.AddTransient<IPageService, CachingPageService>();
 

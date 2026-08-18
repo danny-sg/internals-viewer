@@ -1239,7 +1239,7 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
     {
         try
         {
-            var layers = await Task.Run(() => AllocationLayerBuilder.GenerateLayers(database, true, 20));
+            var layers = await Task.Run(() => AllocationLayerBuilder.GenerateLayers(database, true, false, 20));
 
             ObjectLayers = layers;
 

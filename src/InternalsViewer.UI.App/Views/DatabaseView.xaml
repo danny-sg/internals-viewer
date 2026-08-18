@@ -94,7 +94,9 @@
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="*"/>
-            <RowDefinition Height="*" x:Name="AllocationLayerGridRow"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
 
         <Grid Grid.Row="0"
@@ -108,16 +110,8 @@
                         DefaultLabelPosition="Right"
                         Grid.Column="0"
                         HorizontalAlignment="Left"
+                        VerticalContentAlignment="Center"
                         Background="Transparent">
-                <AppBarToggleButton Label="Tooltip" IsChecked="{x:Bind TabViewModel.IsTooltipEnabled, Mode=TwoWay}" >
-                    <AppBarToggleButton.Icon>
-                        <FontIcon Glyph="&#xE759;"/>
-                    </AppBarToggleButton.Icon>
-                </AppBarToggleButton>
-                <AppBarToggleButton x:Name="AllocationInfoAppBarToggleButton"
-                                    Icon="DockBottom"
-                                    Label="Allocations"
-                                    IsChecked="{x:Bind TabViewModel.IsDetailVisible, Mode=TwoWay}" />
                 <AppBarElementContainer>
                     <ToggleSplitButton Content="{x:Bind TabViewModel.Overlay, Mode=OneWay}"
                                        IsChecked="{x:Bind TabViewModel.HasOverlay, Mode=TwoWay}"
@@ -204,19 +198,47 @@
                 </Button>
             </TabView.TabStripFooter>
         </TabView>
-
+    
         <allocation:AllocationLayerGrid Grid.Row="2"
                                         x:Name="AllocationLayerGrid"
                                         SelectedLayers="{x:Bind TabViewModel.SelectedLayers, Mode=TwoWay}"
                                         Layers="{x:Bind TabViewModel.AllocationLayers, Mode=OneWay}"/>
-
         <toolkit:GridSplitter Grid.Row="2"
-                              Grid.ColumnSpan="1"
-                              Height="16"
+                              Height="4"
                               VerticalAlignment="Top">
             <toolkit:GridSplitter.RenderTransform>
-                <TranslateTransform Y="-7" />
+                <TranslateTransform Y="-2" />
             </toolkit:GridSplitter.RenderTransform>
         </toolkit:GridSplitter>
+        <Border Grid.Row="4"   
+                BorderThickness="0,1,0,1" 
+                BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}">
+            <StackPanel Padding="6" Orientation="Horizontal"  HorizontalAlignment="Right">
+                <ToggleButton Height="24" VerticalAlignment="Center"
+                              Margin="0,0,4,0"
+                              Padding="12,0,12,0"
+                              BorderThickness="0"
+                              IsChecked="{x:Bind TabViewModel.IsDisplaySystemObjects, Mode=TwoWay}" >
+                    <TextBlock>System Objects</TextBlock>
+                </ToggleButton>
+                <ToggleButton Height="24" VerticalAlignment="Center"
+                              Margin="0,0,4,0"
+                              Padding="12,0,12,0"
+                              BorderThickness="0"
+                              IsChecked="{x:Bind TabViewModel.IsTooltipEnabled, Mode=TwoWay}" >
+                    <TextBlock>Tooltip</TextBlock>
+                </ToggleButton>
+                <ToggleButton Height="24" 
+                          Margin="0,0,4,0"
+                          Padding="12,0,12,0"
+                          BorderThickness="0"
+                          x:Name="AllocationInfoAppBarToggleButton"
+                          IsChecked="{x:Bind TabViewModel.IsDetailVisible, Mode=TwoWay}">
+                    <TextBlock>Details</TextBlock>
+                </ToggleButton>
+            </StackPanel>
+        </Border>
+
+     
     </Grid>
 </UserControl>

@@ -73,7 +73,7 @@ public sealed partial class DatabaseView : IDisposable
     {
         var isChecked = sender is AppBarToggleButton { IsChecked: true };
 
-        AllocationLayerGridRow.Height = isChecked ? new GridLength(1, GridUnitType.Star) : new GridLength(0);
+        //AllocationLayerGridRow.Height = isChecked ? new GridLength(1, GridUnitType.Star) : new GridLength(0);
 
         if (isChecked)
         {

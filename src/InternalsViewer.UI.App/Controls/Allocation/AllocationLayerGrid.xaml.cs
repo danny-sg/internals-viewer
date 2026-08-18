@@ -62,7 +62,7 @@ public sealed partial class AllocationLayerGrid
         {
             var layers = (ObservableCollection<AllocationLayer>)e.NewValue;
 
-            control.ViewModel.SetLayers(layers.Where(l => !l.IsAllocationLayer).ToList());
+            control.ViewModel.SetLayers([.. layers.Where(l => !l.IsAllocationLayer)]);
         }
 
         if (e.Property == SelectedLayersProperty)

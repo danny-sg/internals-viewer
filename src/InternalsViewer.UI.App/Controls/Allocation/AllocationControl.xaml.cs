@@ -28,6 +28,8 @@ public sealed partial class AllocationControl : IDisposable
 
     private const double MinimumZoomForLines = 0.4;
 
+    private const int ScrollBufferRows = 2;
+
     private Size ExtentSize => new((int)(80 * Zoom), (int)(10 * Zoom));
 
     private ExtentLayout Layout { get; set; } = new();
@@ -407,12 +409,7 @@ public sealed partial class AllocationControl : IDisposable
         // The static map depends on the data/layout that Refresh reacts to, so invalidate the cached picture.
         _staticVersion++;
 
-        Layout = GetExtentLayout(ExtentCount,
-                                 ExtentSize,
-                                 (int)AllocationCanvas.ActualWidth,
-                                 (int)AllocationCanvas.ActualHeight);
-
-        SetScrollBarValues();
+        RebuildLayout((int)AllocationCanvas.ActualWidth, (int)AllocationCanvas.ActualHeight);
 
         if (AutoScroll)
         {
@@ -515,30 +512,74 @@ public sealed partial class AllocationControl : IDisposable
         }
         else if (ScrollBar.IsEnabled)
         {
-            ScrollBar.Value -= e.GetCurrentPoint(this).Properties.MouseWheelDelta;
+            var notches = e.GetCurrentPoint(this).Properties.MouseWheelDelta / 120D;
+
+            ScrollBar.Value -= notches * ScrollBar.SmallChange * 3;
         }
     }
 
     private void AllocationCanvas_SizeChanged(object sender, SizeChangedEventArgs e)
     {
-        Layout = GetExtentLayout(ExtentCount, ExtentSize, (int)e.NewSize.Width, (int)e.NewSize.Height);
+        RebuildLayout((int)e.NewSize.Width, (int)e.NewSize.Height);
+
+        AllocationCanvas.Invalidate();
+    }
+
+    private void RebuildLayout(int width, int height)
+    {
+        Layout = GetExtentLayout(ExtentCount, ExtentSize, width, height);
 
         SetScrollBarValues();
 
-        AllocationCanvas.Invalidate();
+        AlignScrollPosition();
     }
 
     private void SetScrollBarValues()
     {
         if (Layout.HorizontalCount == 0)
         {
+            ScrollBar.IsEnabled = false;
+
             return;
         }
 
+        var maxStart = Math.Max(0, ExtentCount - Layout.VisibleCount);
+
+        maxStart -= maxStart % Layout.HorizontalCount;
+
+        var lastRowStart = Math.Max(0, ExtentCount - 1) / Layout.HorizontalCount * Layout.HorizontalCount;
+
         ScrollBar.IsEnabled = ExtentCount > Layout.VisibleCount;
         ScrollBar.SmallChange = Layout.HorizontalCount;
-        ScrollBar.LargeChange = (Layout.VerticalCount - 1) * Layout.HorizontalCount;
-        ScrollBar.Maximum = ExtentCount + ExtentCount % Layout.HorizontalCount;
+        ScrollBar.LargeChange = Math.Max(1, Layout.VerticalCount - 1) * Layout.HorizontalCount;
+        ScrollBar.Maximum = Math.Min(maxStart + ScrollBufferRows * Layout.HorizontalCount, lastRowStart);
+        ScrollBar.ViewportSize = Layout.VisibleCount;
+    }
+
+    /// <summary>
+    /// Re-align the scroll position to a row boundary of the current layout
+    /// </summary>
+    /// <remarks>
+    /// The scroll position is held in extents but every position calculation assumes it starts a row, so a resize that
+    /// changes the number of extents per row leaves it pointing part way into one.
+    /// </remarks>
+    private void AlignScrollPosition()
+    {
+        if (Layout.HorizontalCount == 0)
+        {
+            return;
+        }
+
+        var position = Math.Clamp((int)ScrollBar.Value, 0, (int)ScrollBar.Maximum);
+
+        position -= position % Layout.HorizontalCount;
+
+        ScrollPosition = position;
+
+        if ((int)ScrollBar.Value != position)
+        {
+            ScrollBar.Value = position;
+        }
     }
 
     private void AllocationCanvas_PaintSurface(object? sender, SKPaintSurfaceEventArgs e)
@@ -1136,7 +1177,7 @@ public sealed partial class AllocationControl : IDisposable
         var extentsHorizontal = (int)Math.Floor(width / extentSize.Width);
         var rowsVisible = (int)Math.Ceiling(height / extentSize.Height);
 
-        if (extentsHorizontal == 0 || rowsVisible == 0 || extentCount == 0)
+        if (extentsHorizontal == 0 || rowsVisible == 0 || extentCount <= 0)
         {
             return new ExtentLayout();
         }
@@ -1168,7 +1209,9 @@ public sealed partial class AllocationControl : IDisposable
     /// </summary>
     private int GetExtentAtPosition(int x, int y)
     {
-        return y / ExtentSize.Height * Layout.HorizontalCount + x / ExtentSize.Width + ScrollPosition;
+        var column = GetColumnAtPosition(x, ExtentSize.Width, Layout.HorizontalCount);
+
+        return y / ExtentSize.Height * Layout.HorizontalCount + column + ScrollPosition;
     }
 
     /// <summary>
@@ -1176,15 +1219,35 @@ public sealed partial class AllocationControl : IDisposable
     /// </summary>
     private int GetPageAtPosition(int x, int y)
     {
-        return y / ExtentSize.Height * Layout.HorizontalCount * 8 + x / (ExtentSize.Width / 8) + ScrollPosition * 8;
+        var column = GetColumnAtPosition(x, ExtentSize.Width / 8F, Layout.HorizontalCount * 8);
+
+        return y / ExtentSize.Height * Layout.HorizontalCount * 8 + column + ScrollPosition * 8;
+    }
+
+    /// <summary>
+    /// Get the column at a particular x position, clamped to the last column of the row
+    /// </summary>
+    /// <remarks>
+    /// The column width has to match the fractional width the map is drawn at, otherwise the error against the drawn
+    /// position accumulates across the row
+    /// </remarks>
+    private static int GetColumnAtPosition(int x, float columnWidth, int columnCount)
+    {
+        if (columnWidth <= 0 || columnCount <= 0)
+        {
+            return 0;
+        }
+
+        return Math.Clamp((int)(x / columnWidth), 0, columnCount - 1);
     }
 
     private void AllocationCanvas_PointerMoved(object sender, PointerRoutedEventArgs e)
     {
         var position = e.GetCurrentPoint(this).Position;
+        var canvasPosition = e.GetCurrentPoint(AllocationCanvas).Position;
 
-        var pageId = GetPageAtPosition((int)position.X, (int)position.Y);
-        var extentId = GetExtentAtPosition((int)position.X, (int)position.Y);
+        var pageId = GetPageAtPosition((int)canvasPosition.X, (int)canvasPosition.Y);
+        var extentId = GetExtentAtPosition((int)canvasPosition.X, (int)canvasPosition.Y);
 
         var layer = Layers.FirstOrDefault(
             l => l.AllocationChains.Any(a => a.IsExtentAllocated(extentId, FileId, l.IsInverted))
@@ -1232,6 +1295,11 @@ public sealed partial class AllocationControl : IDisposable
 
     private void ScrollBar_ValueChanged(object sender, RangeBaseValueChangedEventArgs e)
     {
+        if (Layout.HorizontalCount == 0)
+        {
+            return;
+        }
+
         var scrollExtent = (int)ScrollBar.Value;
 
         ScrollPosition = scrollExtent - scrollExtent % Layout.HorizontalCount;
@@ -1241,7 +1309,7 @@ public sealed partial class AllocationControl : IDisposable
 
     private void AllocationCanvas_PointerPressed(object sender, PointerRoutedEventArgs e)
     {
-        var position = e.GetCurrentPoint(this).Position;
+        var position = e.GetCurrentPoint(AllocationCanvas).Position;
 
         var pageId = GetPageAtPosition((int)position.X, (int)position.Y);
 

@@ -109,15 +109,18 @@
                         </AppBarButton.Icon>
                     </AppBarButton>
 
-                    <AppBarSeparator />
                 </CommandBar>
 
                 <CommandBar Grid.Column="1"         
                             Background="Transparent" 
                             IsOpen="False"       
+                            Name="AllocationUnitSummaryCommandBar"
+                            Visibility="{x:Bind ViewModel.AllocationUnit,
+                                                Converter={StaticResource NullToVisibilityConverter},
+                                                Mode=OneWay}"
                             DefaultLabelPosition="Right" 
                             HorizontalAlignment="Left">
-
+                    <AppBarSeparator />
                     <AppBarElementContainer>
                         <allocation:AllocationUnitSummaryControl
                             AllocationUnit="{x:Bind ViewModel.AllocationUnit, Mode=OneWay}" />
@@ -126,7 +129,6 @@
                 <CommandBar Grid.Column="2"         
                             Background="Transparent" 
                             IsOpen="False"       
-                   
                             DefaultLabelPosition="Right" 
                             HorizontalAlignment="Right">
                     <AppBarElementContainer VerticalAlignment="Center">

@@ -43,7 +43,7 @@ public sealed partial class AllocationLayer : ObservableObject
 
     public bool IsIndex => IndexType is IndexType.Clustered or IndexType.NonClustered && TotalPages > 0;
 
-    public string IndexTypeDescription => IsSystemObject ? string.Empty : IndexType.ToString().SplitCamelCase("-");
+    public string IndexTypeDescription => IndexType.ToString().SplitCamelCase();
 
     [ObservableProperty]
     private bool _isSystemObject;
