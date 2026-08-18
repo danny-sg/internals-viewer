@@ -62,7 +62,17 @@ public sealed class SegmentBlob : DataStructure
 
     public BitpackArray Bitpack { get; set; }
 
-    public int BookmarkArrayOffset => HeaderSize;
+    /// <summary>
+    /// Width of one RLE entry, which doubles when a data id no longer fits in four bytes
+    /// </summary>
+    public int RleEntryBytes => BitpackEntrySize > 32 ? EntrySize * 2 : EntrySize;
+
+    /// <summary>
+    /// RleArrayCount is held in eight byte units rather than entries
+    /// </summary>
+    public int RleEntryCount => RleArrayCount * EntrySize / RleEntryBytes;
+
+    public static int BookmarkArrayOffset => HeaderSize;
 
     public int RleArrayOffset => BookmarkArrayOffset + (BookmarkCount * EntrySize);
 

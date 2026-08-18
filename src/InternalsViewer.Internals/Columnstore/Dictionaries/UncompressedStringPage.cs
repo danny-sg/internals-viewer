@@ -1,4 +1,4 @@
-namespace InternalsViewer.Internals.Columnstore.Dictionaries;
+﻿namespace InternalsViewer.Internals.Columnstore.Dictionaries;
 
 /// <summary>
 /// String page holding length prefixed values back to back
@@ -19,8 +19,19 @@ public sealed class UncompressedStringPage : StringPage
     {
         var span = Content.Span;
 
-        var length = span[handleOffset];
+        var position = handleOffset;
 
-        return span.Slice(handleOffset + 1, length);
+        var first = span[position++];
+
+        int length = first;
+
+        if ((first & ContinuationFlag) != 0)
+        {
+            var second = span[position++];
+
+            length = DecodeLength(first, second);
+        }
+
+        return span.Slice(position, length);
     }
 }

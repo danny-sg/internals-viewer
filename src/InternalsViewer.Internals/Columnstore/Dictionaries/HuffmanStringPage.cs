@@ -8,6 +8,13 @@ namespace InternalsViewer.Internals.Columnstore.Dictionaries;
 /// </summary>
 public sealed class HuffmanStringPage : StringPage
 {
+    /// <summary>
+    /// Variant of the Huffman layout, of which only the canonical table form is understood
+    /// </summary>
+    public const int SupportedBlobType = 2;
+
+    public const int MaximumStringSize = 8192;
+
     public const int HeaderSize = 29;
 
     public const int CodeLengthTableSize = 128;
@@ -23,7 +30,7 @@ public sealed class HuffmanStringPage : StringPage
 
     private readonly HuffmanBitReader _reader = new();
 
-    private readonly byte[] _buffer = new byte[byte.MaxValue];
+    private readonly byte[] _buffer = new byte[MaximumStringSize];
 
     public int HuffmanBlobType { get; set; }
 
@@ -41,6 +48,11 @@ public sealed class HuffmanStringPage : StringPage
 
     public void Build()
     {
+        if (HuffmanBlobType != SupportedBlobType)
+        {
+            throw new InvalidDataException($"Huffman string page blob type {HuffmanBlobType} is not supported.");
+        }
+
         _table.Build(CodeLengths.Span);
 
         _reader.Reset(Content);
@@ -50,7 +62,7 @@ public sealed class HuffmanStringPage : StringPage
     {
         _reader.SeekBits(handleOffset);
 
-        var length = ReadSymbol();
+        var length = ReadLength();
 
         for (var i = 0; i < length; i++)
         {
@@ -58,6 +70,13 @@ public sealed class HuffmanStringPage : StringPage
         }
 
         return _buffer.AsSpan(0, length);
+    }
+
+    private int ReadLength()
+    {
+        var first = ReadSymbol();
+
+        return (first & ContinuationFlag) == 0 ? first : DecodeLength(first, ReadSymbol());
     }
 
     private int ReadSymbol()

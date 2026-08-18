@@ -25,6 +25,16 @@ public sealed class StringDictionary : DictionaryBlob
 
     public string GetValue(long dataId) => GetValueAt(GetIndex(dataId));
 
+    /// <summary>
+    /// Raw entry bytes, which the column type rather than the dictionary decides how to read
+    /// </summary>
+    public byte[] GetValueBytes(long dataId)
+    {
+        var handle = Handles[GetIndex(dataId)];
+
+        return Pages[handle.Page].GetValueBytes(handle.Offset);
+    }
+
     public string GetValueAt(int index)
     {
         var handle = Handles[index];

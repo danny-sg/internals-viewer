@@ -19,7 +19,16 @@ public sealed class SegmentReader(ColumnSegment segment, SegmentBlob blob, Dicti
 
     private SegmentValueDecoder Decoder { get; } = new(segment, dictionary);
 
-    public object? GetValue(int rowOrdinal) => Decoder.Decode(DataIds.GetDataId(rowOrdinal));
+    /// <summary>
+    /// Value in the segment domain, being the storage integer or the raw dictionary entry
+    /// </summary>
+    public object? GetRawValue(int rowOrdinal) => Decoder.Decode(DataIds.GetDataId(rowOrdinal));
 
-    public IEnumerable<object?> ReadAll() => DataIds.ReadAll().Select(Decoder.Decode);
+    public object? GetValue(int rowOrdinal)
+        => ColumnstoreValueConverter.Convert(GetRawValue(rowOrdinal), Segment.Column?.Structure);
+
+    public IEnumerable<object?> ReadAll()
+        => DataIds.ReadAll()
+                  .Select(Decoder.Decode)
+                  .Select(v => ColumnstoreValueConverter.Convert(v, Segment.Column?.Structure));
 }

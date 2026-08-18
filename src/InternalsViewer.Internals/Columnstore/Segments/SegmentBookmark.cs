@@ -1,4 +1,4 @@
-namespace InternalsViewer.Internals.Columnstore.Segments;
+﻿namespace InternalsViewer.Internals.Columnstore.Segments;
 
 /// <summary>
 /// Entry point into the RLE array for one bookmark interval
@@ -6,7 +6,7 @@ namespace InternalsViewer.Internals.Columnstore.Segments;
 public readonly record struct SegmentBookmark(int Position, int EndRow)
 {
     /// <summary>
-    /// Position is held in four byte units and RLE entries are eight bytes
+    /// Position is held in four byte units, so the entry it lands on depends on the entry width
     /// </summary>
-    public int RleEntryIndex => Position / 2;
+    public int GetRleEntryIndex(int entryBytes) => Position * 4 / entryBytes;
 }

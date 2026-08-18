@@ -21,8 +21,10 @@ public sealed class SegmentValueDecoder(ColumnSegment segment, DictionaryBlob? d
 
         return Dictionary switch
         {
-            StringDictionary strings => strings.GetValue(dataId),
-            NumericDictionary numbers => numbers.GetValue(dataId),
+            StringDictionary strings 
+                => strings.GetValueBytes(dataId),
+            NumericDictionary numbers 
+                => numbers.GetValue(dataId),
             _ => DecodeValueBased(dataId)
         };
     }

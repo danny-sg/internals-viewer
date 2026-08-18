@@ -79,7 +79,7 @@ public static class SegmentBlobParser
 
         for (var i = 0; i < bookmarks.Length; i++)
         {
-            var offset = blob.BookmarkArrayOffset + (i * SegmentBlob.EntrySize);
+            var offset = SegmentBlob.BookmarkArrayOffset + (i * SegmentBlob.EntrySize);
 
             bookmarks[i] = new SegmentBookmark(ReadInt32(span, offset), ReadInt32(span, offset + 4));
         }
@@ -89,13 +89,17 @@ public static class SegmentBlobParser
 
     private static RleEntry[] ReadRleEntries(ReadOnlySpan<byte> span, SegmentBlob blob)
     {
-        var entries = new RleEntry[blob.RleArrayCount];
+        var entries = new RleEntry[blob.RleEntryCount];
+
+        var wide = blob.RleEntryBytes > SegmentBlob.EntrySize;
 
         for (var i = 0; i < entries.Length; i++)
         {
-            var offset = blob.RleArrayOffset + (i * SegmentBlob.EntrySize);
+            var offset = blob.RleArrayOffset + (i * blob.RleEntryBytes);
 
-            entries[i] = new RleEntry(ReadInt32(span, offset), ReadInt32(span, offset + 4));
+            entries[i] = wide
+                ? new RleEntry(ReadInt64(span, offset), ReadInt32(span, offset + 8))
+                : new RleEntry(ReadInt32(span, offset), ReadInt32(span, offset + 4));
         }
 
         return entries;
@@ -127,7 +131,7 @@ public static class SegmentBlobParser
         blob.MarkValue(ItemType.BookmarkCount,
                        "Bookmark Array",
                        blob.BookmarkCount,
-                       blob.BookmarkArrayOffset,
+                       SegmentBlob.BookmarkArrayOffset,
                        blob.BookmarkCount * SegmentBlob.EntrySize);
 
         blob.MarkValue(ItemType.RleArrayCount,

@@ -1,4 +1,5 @@
-﻿using System.Threading;
+﻿using System.IO;
+using System.Threading;
 using InternalsViewer.Internals.Columnstore.Decoding;
 using InternalsViewer.Internals.Columnstore.Dictionaries;
 using InternalsViewer.Internals.Columnstore.Metadata;
@@ -79,6 +80,29 @@ public sealed class ColumnstoreService(IRecordReader recordReader, ILobDataServi
         var dictionary = source is null ? null : await GetDictionaryBlob(database, source, cancellationToken);
 
         return new SegmentReader(segment, blob, dictionary);
+    }
+
+    public async Task<RowGroupReader> GetRowGroupReader(DatabaseSource database,
+                                                       RowGroup rowGroup,
+                                                       CancellationToken cancellationToken)
+    {
+        var readers = new List<SegmentReader>();
+
+        var skipped = new List<ColumnSegment>();
+
+        foreach (var segment in rowGroup.Segments)
+        {
+            try
+            {
+                readers.Add(await GetSegmentReader(database, segment, cancellationToken));
+            }
+            catch (InvalidDataException)
+            {
+                skipped.Add(segment);
+            }
+        }
+
+        return new RowGroupReader(rowGroup, readers, skipped);
     }
 
     private async Task<List<DataRecord>> GetRecords(string name,
