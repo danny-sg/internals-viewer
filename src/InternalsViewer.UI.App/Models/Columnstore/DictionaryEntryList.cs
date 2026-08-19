@@ -25,9 +25,20 @@ public sealed class DictionaryEntryDetail(DictionaryBlob blob, int index, bool s
     public string PageDescription => blob is StringDictionary strings ? $"{strings.Handles[Index].Page}" : string.Empty;
 
     /// <summary>
+    /// Where the value sits in the blob, a numeric dictionary holding its values in a flat array after the header
+    /// </summary>
+    public int ValueOffset => blob is NumericDictionary numbers
+        ? NumericDictionary.HeaderSize + (Index * numbers.ElementSize)
+        : -1;
+
+    public int ValueSize => blob is NumericDictionary numbers ? numbers.ElementSize : 0;
+
+    /// <summary>
     /// Where in its page the entry starts, counted in bits on a Huffman coded page and bytes on a plain one
     /// </summary>
-    public string OffsetDescription => blob is StringDictionary strings ? $"{strings.Handles[Index].Offset}" : string.Empty;
+    public string OffsetDescription => blob is StringDictionary strings
+        ? $"{strings.Handles[Index].Offset}"
+        : $"0x{ValueOffset:X}";
 
     public string Value => _value ??= Decode();
 

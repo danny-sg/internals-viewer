@@ -108,6 +108,65 @@
                     </tableView:TableView>
                 </TabViewItem>
 
+                <TabViewItem Header="Values" IsClosable="False"
+                             Visibility="{x:Bind ViewModel.HasValues, Mode=OneWay,
+                                     Converter={StaticResource BoolToVisibilityConverter}}">
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="*"/>
+                            <RowDefinition Height="Auto"/>
+                        </Grid.RowDefinitions>
+
+                        <tableView:TableView Grid.Row="0"
+                                             AutoGenerateColumns="False"
+                                             CanSortColumns="False"
+                                             CanFilterColumns="False"
+                                             CornerButtonMode="None"
+                                             HeadersVisibility="Columns"
+                                             ColumnHeaderStyle="{StaticResource TableViewColumnHeaderStyle}"
+                                             CellStyle="{StaticResource TableViewCellStyle}"
+                                             ItemContainerStyle="{StaticResource TableViewRowStyle}"
+                                             RowHeight="28"
+                                             SelectionMode="Single"
+                                             SelectionUnit="Row"
+                                             IsReadOnly="True"
+                                             GridLinesVisibility="All"
+                                             BorderThickness="0"
+                                             Background="{ThemeResource LayerFillColorDefaultBrush}"
+                                             SelectionChanged="PageEntries_OnSelectionChanged"
+                                             ItemsSource="{x:Bind ViewModel.Entries, Mode=OneWay}">
+                            <tableView:TableView.Resources>
+                                <x:Double x:Key="ListViewItemMinHeight">0</x:Double>
+                            </tableView:TableView.Resources>
+                            <tableView:TableView.Columns>
+                                <tableView:TableViewTextColumn Header="Data Id" Width="100"
+                                                               Binding="{Binding DataId}"
+                                                               CellStyle="{StaticResource TableViewCellRightStyle}"/>
+                                <tableView:TableViewTemplateColumn Header="Index" Width="320">
+                                    <tableView:TableViewTemplateColumn.CellTemplate>
+                                        <DataTemplate>
+                                            <controls:ValueDerivationControl Derivation="{Binding Derivation}"
+                                                                             ShowSteps="{Binding ShowDerivation}"/>
+                                        </DataTemplate>
+                                    </tableView:TableViewTemplateColumn.CellTemplate>
+                                </tableView:TableViewTemplateColumn>
+                                <tableView:TableViewTextColumn Header="Offset" Width="100"
+                                                               Binding="{Binding OffsetDescription}"
+                                                               CellStyle="{StaticResource TableViewCellRightStyle}"/>
+                                <tableView:TableViewTextColumn Header="Value" Width="200"
+                                                               Binding="{Binding Value}"
+                                                               CellStyle="{StaticResource TableViewCellRightStyle}"/>
+                            </tableView:TableView.Columns>
+                        </tableView:TableView>
+
+                        <page:MarkerTreeView Grid.Row="1"
+                                             MaxHeight="120"
+                                             Opacity="{x:Bind ViewModel.Hex.MarkerOpacity, Mode=OneWay}"
+                                             Markers="{x:Bind ViewModel.PageMarkers, Mode=OneWay}"
+                                             SelectedMarker="{x:Bind ViewModel.Hex.SelectedMarker, Mode=TwoWay}"/>
+                    </Grid>
+                </TabViewItem>
+
                 <TabViewItem Header="Pages" IsClosable="False"
                              Visibility="{x:Bind ViewModel.HasPages, Mode=OneWay,
                                      Converter={StaticResource BoolToVisibilityConverter}}">

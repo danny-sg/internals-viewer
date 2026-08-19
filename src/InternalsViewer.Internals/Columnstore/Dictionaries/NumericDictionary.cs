@@ -1,4 +1,5 @@
 ﻿using InternalsViewer.Internals.Annotations;
+using InternalsViewer.Internals.Columnstore.Blobs;
 
 namespace InternalsViewer.Internals.Columnstore.Dictionaries;
 
@@ -8,6 +9,12 @@ namespace InternalsViewer.Internals.Columnstore.Dictionaries;
 public sealed class NumericDictionary : DictionaryBlob
 {
     public const int HeaderSize = 56;
+
+    /// <summary>
+    /// Opens the hash table header, the fields down to the bucket index mask belonging to it
+    /// </summary>
+    [DataStructureItem(ItemType.DictionarySubLobType)]
+    public SubLobType SubLobType { get; set; }
 
     [DataStructureItem(ItemType.DictionaryBucketSize)]
     public int BucketSize { get; set; }
@@ -29,6 +36,12 @@ public sealed class NumericDictionary : DictionaryBlob
 
     [DataStructureItem(ItemType.DictionaryBucketIndexMask)]
     public uint BucketIndexMask { get; set; }
+
+    /// <summary>
+    /// Opens the values header, the array of values being a store of its own after the hash table
+    /// </summary>
+    [DataStructureItem(ItemType.DictionarySubLobType)]
+    public SubLobType ValueSubLobType { get; set; }
 
     [DataStructureItem(ItemType.DictionaryElementSize)]
     public int ElementSize { get; set; }

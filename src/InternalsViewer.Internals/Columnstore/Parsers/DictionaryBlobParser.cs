@@ -47,6 +47,7 @@ public static class DictionaryBlobParser
             Reserved = ReadInt32(span, 0x08),
             EntryCount = entryCount,
             FirstId = firstId,
+            SubLobType = (SubLobType)ReadInt32(span, 0x0C),
             BucketSize = ReadInt32(span, 0x10),
             BucketCount = ReadInt32(span, 0x14),
             MaxLocalEntryCount = ReadInt32(span, 0x18),
@@ -54,6 +55,7 @@ public static class DictionaryBlobParser
             HashEntryCount = ReadInt32(span, 0x20),
             CollisionCount = ReadInt32(span, 0x24),
             BucketIndexMask = (uint)ReadInt32(span, 0x28),
+            ValueSubLobType = (SubLobType)ReadInt32(span, 0x2C),
             ElementSize = ReadInt32(span, 0x30),
             ValueCount = ReadInt32(span, 0x34)
         };
@@ -228,6 +230,7 @@ public static class DictionaryBlobParser
         dictionary.MarkProperty(nameof(NumericDictionary.Version), 0x00, 4);
         dictionary.MarkProperty(nameof(NumericDictionary.LobType), 0x04, 4);
         dictionary.MarkProperty(nameof(NumericDictionary.Reserved), 0x08, 4);
+        dictionary.MarkProperty(nameof(NumericDictionary.SubLobType), 0x0C, 4);
         dictionary.MarkProperty(nameof(NumericDictionary.BucketSize), 0x10, 4);
         dictionary.MarkProperty(nameof(NumericDictionary.BucketCount), 0x14, 4);
         dictionary.MarkProperty(nameof(NumericDictionary.MaxLocalEntryCount), 0x18, 4);
@@ -235,6 +238,7 @@ public static class DictionaryBlobParser
         dictionary.MarkProperty(nameof(NumericDictionary.HashEntryCount), 0x20, 4);
         dictionary.MarkProperty(nameof(NumericDictionary.CollisionCount), 0x24, 4);
         dictionary.MarkProperty(nameof(NumericDictionary.BucketIndexMask), 0x28, 4);
+        dictionary.MarkProperty(nameof(NumericDictionary.ValueSubLobType), 0x2C, 4);
         dictionary.MarkProperty(nameof(NumericDictionary.ElementSize), 0x30, 4);
         dictionary.MarkProperty(nameof(NumericDictionary.ValueCount), 0x34, 4);
     }

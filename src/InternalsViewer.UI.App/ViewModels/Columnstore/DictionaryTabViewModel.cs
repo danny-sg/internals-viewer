@@ -79,6 +79,11 @@ public sealed partial class DictionaryTabViewModel(ColumnstoreService columnstor
     public bool HasPages => Blob is StringDictionary;
 
     /// <summary>
+    /// Whether the values sit in a flat array rather than in pages, which is what a numeric dictionary holds
+    /// </summary>
+    public bool HasValues => Blob is NumericDictionary;
+
+    /// <summary>
     /// Entries living on the selected page, which is the list the decode walks through
     /// </summary>
     [ObservableProperty]
@@ -268,7 +273,7 @@ public sealed partial class DictionaryTabViewModel(ColumnstoreService columnstor
 
             var page = SelectedPage is { } selected
                 ? Window([.. MarkerBuilder.BuildMarkers(selected.Page), .. EntryMarkers()], start, length)
-                : [];
+                : Window([.. EntryMarkers()], start, length);
 
             HeaderMarkers = new ObservableCollection<Marker>(header);
 
@@ -324,7 +329,23 @@ public sealed partial class DictionaryTabViewModel(ColumnstoreService columnstor
     /// </remarks>
     private IEnumerable<Marker> EntryMarkers()
     {
-        if (SelectedEntry is not { } entry || SelectedPage is not { } page || Blob is not StringDictionary strings)
+        if (SelectedEntry is not { } entry)
+        {
+            yield break;
+        }
+
+        if (Blob is NumericDictionary)
+        {
+            yield return MarkerBuilder.CreateMarker("Value",
+                                                    ItemType.DictionaryValue,
+                                                    entry.ValueOffset,
+                                                    entry.ValueSize,
+                                                    entry.Value);
+
+            yield break;
+        }
+
+        if (SelectedPage is not { } page || Blob is not StringDictionary strings)
         {
             yield break;
         }
@@ -395,6 +416,8 @@ public sealed partial class DictionaryTabViewModel(ColumnstoreService columnstor
             Blob = blob;
 
             OnPropertyChanged(nameof(HasPages));
+
+            OnPropertyChanged(nameof(HasValues));
 
             Hex.MarkerFactory = (start, length) => BuildMarkers(blob, start, length);
 
