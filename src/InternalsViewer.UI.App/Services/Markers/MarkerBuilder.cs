@@ -243,6 +243,9 @@ public static class MarkerBuilder
                 case (byte[] bytes, _):
                     marker.Value = "0x" + bytes.ToHexString();
                     break;
+                case (ReadOnlyMemory<byte> memory, _):
+                    marker.Value = "0x" + memory.ToArray().ToHexString();
+                    break;
                 case (BitArray bitArray, _):
                     marker.Value = StringHelpers.GetBitArrayString(bitArray);
                     break;

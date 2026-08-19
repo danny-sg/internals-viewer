@@ -25,9 +25,12 @@ internal static class HexTextBuilder
 
         var position = 0;
 
-        for (var line = 0; line < data.Count / bytesPerLine; line++)
+        // A page divides into whole lines but a blob is any length, so the last line is rounded up rather than lost
+        var lineCount = (data.Count + bytesPerLine - 1) / bytesPerLine;
+
+        for (var line = 0; line < lineCount; line++)
         {
-            for (var byteIndex = 0; byteIndex < bytesPerLine; byteIndex++)
+            for (var byteIndex = 0; byteIndex < bytesPerLine && position < data.Count; byteIndex++)
             {
                 if (position == selectionStart)
                 {
@@ -50,7 +53,11 @@ internal static class HexTextBuilder
                 position++;
             }
 
-            stringBuilder.Append(Environment.NewLine);
+            // The newline separates lines rather than ending them, so the block does not run on past its last byte
+            if (line < lineCount - 1)
+            {
+                stringBuilder.Append(Environment.NewLine);
+            }
         }
 
         runs.Add(Flush(stringBuilder, false));

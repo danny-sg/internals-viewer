@@ -157,6 +157,40 @@ public sealed class CanonicalHuffmanTable(int maximumSymbolCount)
     public int GetCodeLength(int symbol) => _codeLengths[symbol];
 
     /// <summary>
+    /// The code every symbol carrying one was assigned, in the order the canonical assignment hands them out
+    /// </summary>
+    /// <remarks>
+    /// The assignment is the same walk <see cref="Build"/> makes, repeated rather than recorded because a decode
+    /// only ever needs the reverse mapping. Ordering by length then symbol is what makes the codes reconstructable
+    /// from the lengths alone, so the sequence returned here is also the order the codes appear in.
+    /// </remarks>
+    public IReadOnlyList<HuffmanCode> GetCodes()
+    {
+        var codes = new List<HuffmanCode>();
+
+        var code = 0;
+
+        for (var bitLength = 1; bitLength <= MaxCodeBits; bitLength++)
+        {
+            for (var symbol = 0; symbol < SymbolCount; symbol++)
+            {
+                if (_codeLengths[symbol] != bitLength)
+                {
+                    continue;
+                }
+
+                codes.Add(new HuffmanCode(symbol, bitLength, code));
+
+                code++;
+            }
+
+            code <<= 1;
+        }
+
+        return codes;
+    }
+
+    /// <summary>
     /// Resolves code to symbol
     /// </summary>
     public int Lookup(int codePrefix)

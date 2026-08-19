@@ -29,7 +29,19 @@ public sealed partial class SegmentTabViewModel(ColumnstoreService columnstoreSe
     public SegmentSummary Segment { get; } = segment;
 
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasBookmarks))]
+    [NotifyPropertyChangedFor(nameof(HasRleArray))]
+    [NotifyPropertyChangedFor(nameof(HasBitpackArray))]
     private SegmentBlob? _blob;
+
+    public bool HasBookmarks => Blob is { BookmarkCount: > 0 };
+
+    /// <summary>
+    /// Whether the region exists at all, a store by value segment holding neither of the run length pair
+    /// </summary>
+    public bool HasRleArray => Blob?.Header.HasRleArray ?? false;
+
+    public bool HasBitpackArray => Blob?.Header.HasBitpackArray ?? false;
 
     /// <summary>
     /// Resolves data ids to values, which the dictionary the segment reads has to be fetched for

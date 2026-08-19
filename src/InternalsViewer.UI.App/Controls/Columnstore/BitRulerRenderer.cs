@@ -230,7 +230,7 @@ public sealed class BitRulerRenderer
 
             canvas.DrawRect(bounds, _stroke);
 
-            var label = $"{(byte)(unit.Bits >> (i * BitsPerByte)):X2}";
+            var label = $"0x{(byte)(unit.Bits >> (i * BitsPerByte)):X2}";
 
             var textWidth = _monoFont.MeasureText(label);
 

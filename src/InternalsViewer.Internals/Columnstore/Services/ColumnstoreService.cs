@@ -100,11 +100,12 @@ public sealed class ColumnstoreService(IRecordReader recordReader, ILobDataServi
 
     public async Task<DictionaryBlob> GetDictionaryBlob(DatabaseSource database,
                                                        SegmentDictionary dictionary,
-                                                       CancellationToken cancellationToken)
+                                                       CancellationToken cancellationToken,
+                                                       bool isMarkEnabled = false)
     {
         var data = await GetSegmentData(database, dictionary.DataPointer, cancellationToken);
 
-        return DictionaryBlobParser.Parse(data, (int)dictionary.EntryCount, dictionary.LastId);
+        return DictionaryBlobParser.Parse(data, (int)dictionary.EntryCount, dictionary.LastId, isMarkEnabled);
     }
 
     public async Task<SegmentReader> GetSegmentReader(DatabaseSource database,

@@ -32,10 +32,37 @@
             <tableView:TableView.Columns>
                 <tableView:TableViewTextColumn Header="Row Group" Width="90"
                                                Binding="{Binding RowGroupId}"/>
-                <tableView:TableViewTextColumn Header="Column" Width="60"
+                <tableView:TableViewTextColumn Header="Column" Width="80"
                                                Binding="{Binding ColumnId}"/>
                 <tableView:TableViewTextColumn Header="Name" Width="150"
                                                Binding="{Binding ColumnName}"/>
+                <tableView:TableViewTemplateColumn Header="Segment" Width="80" CanSort="False">
+                    <tableView:TableViewTemplateColumn.CellTemplate>
+                        <DataTemplate x:DataType="columnstore:SegmentSummary">
+                            <Grid HorizontalAlignment="Center">
+                                <HyperlinkButton Content="View"
+                                                 Click="ViewSegmentButton_Click"
+                                                 Style="{StaticResource CellPageAddressStyle}"
+                                                 Tag="{x:Bind}"/>
+                            </Grid>
+                        </DataTemplate>
+                    </tableView:TableViewTemplateColumn.CellTemplate>
+                </tableView:TableViewTemplateColumn>
+                <tableView:TableViewTemplateColumn Header="Dictionary" Width="90" CanSort="False">
+                    <tableView:TableViewTemplateColumn.CellTemplate>
+                        <DataTemplate x:DataType="columnstore:SegmentSummary">
+                            <Grid>
+                                <HyperlinkButton Content="{x:Bind DictionaryScope}"
+                                                 Visibility="{x:Bind HasDictionary, Converter={StaticResource BoolToVisibilityConverter}}"
+                                                 Click="ViewDictionaryButton_Click"
+                                                 HorizontalAlignment="Center"
+                                                 Style="{StaticResource CellPageAddressStyle}"
+                                                 Tag="{x:Bind}"/>
+                            </Grid>
+                        </DataTemplate>
+                    </tableView:TableViewTemplateColumn.CellTemplate>
+                </tableView:TableViewTemplateColumn>
+ 
                 <tableView:TableViewTextColumn Header="Encoding" Width="180"
                                                Binding="{Binding EncodingDescription}"/>
                 <tableView:TableViewTextColumn Header="Structure" Width="110"
@@ -58,20 +85,7 @@
                 <tableView:TableViewTextColumn Header="Bytes Per Row" Width="110"
                                                Binding="{Binding BytesPerRow}"
                                                CellStyle="{StaticResource TableViewCellRightStyle}"/>
-                <tableView:TableViewTemplateColumn Header="Dictionary" Width="90" CanSort="False">
-                    <tableView:TableViewTemplateColumn.CellTemplate>
-                        <DataTemplate x:DataType="columnstore:SegmentSummary">
-                            <Grid>
-                                <HyperlinkButton Content="{x:Bind DictionaryScope}"
-                                                 Visibility="{x:Bind HasDictionary, Converter={StaticResource BoolToVisibilityConverter}}"
-                                                 Click="ViewDictionaryButton_Click"
-                                                 HorizontalAlignment="Center"
-                                                 Style="{StaticResource CellPageAddressStyle}"
-                                                 Tag="{x:Bind}"/>
-                            </Grid>
-                        </DataTemplate>
-                    </tableView:TableViewTemplateColumn.CellTemplate>
-                </tableView:TableViewTemplateColumn>
+               
                 <tableView:TableViewTemplateColumn Header="Nulls" Width="70" CanSort="False">
                     <tableView:TableViewTemplateColumn.CellTemplate>
                         <DataTemplate x:DataType="columnstore:SegmentSummary">
@@ -114,18 +128,7 @@
                         </DataTemplate>
                     </tableView:TableViewTemplateColumn.CellTemplate>
                 </tableView:TableViewTemplateColumn>
-                <tableView:TableViewTemplateColumn Header="Segment" Width="80" CanSort="False">
-                    <tableView:TableViewTemplateColumn.CellTemplate>
-                        <DataTemplate x:DataType="columnstore:SegmentSummary">
-                            <Grid HorizontalAlignment="Center">
-                                <HyperlinkButton Content="View"
-                                                 Click="ViewSegmentButton_Click"
-                                                 Style="{StaticResource CellPageAddressStyle}"
-                                                 Tag="{x:Bind}"/>
-                            </Grid>
-                        </DataTemplate>
-                    </tableView:TableViewTemplateColumn.CellTemplate>
-                </tableView:TableViewTemplateColumn>
+               
             </tableView:TableView.Columns>
         </tableView:TableView>
     </Grid>

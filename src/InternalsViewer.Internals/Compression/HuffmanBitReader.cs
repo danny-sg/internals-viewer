@@ -1,4 +1,4 @@
-namespace InternalsViewer.Internals.Compression;
+﻿namespace InternalsViewer.Internals.Compression;
 
 /// <summary>
 /// Bit reader over a payload written as sixteen bit little endian words consumed most significant bit first
@@ -14,9 +14,19 @@ public sealed class HuffmanBitReader
     private int _position;
 
     /// <summary>
+    /// Bytes the reader pulls in before any bit is consumed, being the two words the mask is filled from
+    /// </summary>
+    private const int PrefetchBytes = 4;
+
+    /// <summary>
     /// Byte cursor the word reader has reached, which runs ahead of the consumed bits
     /// </summary>
     public int BytePosition => _position;
+
+    /// <summary>
+    /// Bits consumed from the payload, which is the cursor behind the prefetched words rather than the byte one
+    /// </summary>
+    public int BitPosition => ((_position - PrefetchBytes) * 8) + (16 - _bits);
 
     public void Reset(ReadOnlyMemory<byte> value, int byteOffset = 0)
     {

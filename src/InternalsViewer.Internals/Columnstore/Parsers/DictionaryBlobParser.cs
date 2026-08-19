@@ -44,6 +44,7 @@ public static class DictionaryBlobParser
             Data = data,
             Version = ReadInt32(span, 0x00),
             LobType = (ColumnstoreLobType)ReadInt32(span, 0x04),
+            Reserved = ReadInt32(span, 0x08),
             EntryCount = entryCount,
             FirstId = firstId,
             BucketSize = ReadInt32(span, 0x10),
@@ -53,10 +54,13 @@ public static class DictionaryBlobParser
             HashEntryCount = ReadInt32(span, 0x20),
             CollisionCount = ReadInt32(span, 0x24),
             BucketIndexMask = (uint)ReadInt32(span, 0x28),
-            ElementSize = ReadInt32(span, 0x30)
+            ElementSize = ReadInt32(span, 0x30),
+            ValueCount = ReadInt32(span, 0x34)
         };
 
-        var count = ReadInt32(span, 0x34);
+        MarkNumericHeader(dictionary);
+
+        var count = dictionary.ValueCount;
 
         var values = new long[count];
 
@@ -82,14 +86,23 @@ public static class DictionaryBlobParser
             LobType = (ColumnstoreLobType)ReadInt32(span, 0x04),
             EntryCount = entryCount,
             FirstId = firstId,
-            LastStringIndex = ReadInt32(span, 0x10),
+            Reserved = ReadInt32(span, 0x08),
+            SubLobType = (SubLobType)ReadInt32(span, 0x0C),
+            StringCount = ReadInt32(span, 0x10),
             MaxStringSize = ReadInt32(span, 0x14),
-            HandleSize = ReadInt32(span, 0x3C)
+            Reserved18 = data.Slice(0x18, 0x24).ToArray(),
+            Unknown44 = ReadInt32(span, 0x44),
+            Unknown48 = ReadInt32(span, 0x48),
+            HandleSize = ReadInt32(span, 0x3C),
+            HandleCount = ReadInt32(span, 0x40),
+            PageCount = ReadInt32(span, 0x4C)
         };
 
-        var handleCount = ReadInt32(span, 0x40);
+        MarkStringHeader(dictionary);
 
-        var pageCount = ReadInt32(span, 0x4C);
+        var handleCount = dictionary.HandleCount;
+
+        var pageCount = dictionary.PageCount;
 
         var offset = StringDictionary.HandleArrayOffset;
 
@@ -116,6 +129,10 @@ public static class DictionaryBlobParser
         for (var i = 0; i < pageCount; i++)
         {
             pages[i] = ParsePage(data, offset, pageSizes[i]);
+
+            pages[i].IsMarkEnabled = dictionary.IsMarkEnabled;
+
+            pages[i].Mark();
 
             offset += pageSizes[i];
         }
@@ -171,6 +188,8 @@ public static class DictionaryBlobParser
             CompressedDataSize = ReadInt32(span, offset + 0x18),
             CharacterSetCode = span[offset + 0x1C],
             CodeLengths = data.Slice(offset + HuffmanStringPage.HeaderSize, HuffmanStringPage.CodeLengthTableSize),
+            Alignment = data.Slice(offset + HuffmanStringPage.HeaderSize + HuffmanStringPage.CodeLengthTableSize,
+                                   HuffmanStringPage.DataOffset - HuffmanStringPage.HeaderSize - HuffmanStringPage.CodeLengthTableSize),
             Content = data.Slice(offset + HuffmanStringPage.DataOffset, size - HuffmanStringPage.DataOffset)
         };
 
@@ -187,6 +206,38 @@ public static class DictionaryBlobParser
         8 => BinaryPrimitives.ReadInt64LittleEndian(span.Slice(offset, 8)),
         _ => throw new InvalidDataException($"Unsupported dictionary element size {elementSize}.")
     };
+
+    private static void MarkStringHeader(StringDictionary dictionary)
+    {
+        dictionary.MarkProperty(nameof(StringDictionary.Version), 0x00, 4);
+        dictionary.MarkProperty(nameof(StringDictionary.LobType), 0x04, 4);
+        dictionary.MarkProperty(nameof(StringDictionary.Reserved), 0x08, 4);
+        dictionary.MarkProperty(nameof(StringDictionary.SubLobType), 0x0C, 4);
+        dictionary.MarkProperty(nameof(StringDictionary.StringCount), 0x10, 4);
+        dictionary.MarkProperty(nameof(StringDictionary.MaxStringSize), 0x14, 4);
+        dictionary.MarkProperty(nameof(StringDictionary.HandleSize), 0x3C, 4);
+        dictionary.MarkProperty(nameof(StringDictionary.HandleCount), 0x40, 4);
+        dictionary.MarkProperty(nameof(StringDictionary.Reserved18), 0x18, 0x24);
+        dictionary.MarkProperty(nameof(StringDictionary.Unknown44), 0x44, 4);
+        dictionary.MarkProperty(nameof(StringDictionary.Unknown48), 0x48, 4);
+        dictionary.MarkProperty(nameof(StringDictionary.PageCount), 0x4C, 4);
+    }
+
+    private static void MarkNumericHeader(NumericDictionary dictionary)
+    {
+        dictionary.MarkProperty(nameof(NumericDictionary.Version), 0x00, 4);
+        dictionary.MarkProperty(nameof(NumericDictionary.LobType), 0x04, 4);
+        dictionary.MarkProperty(nameof(NumericDictionary.Reserved), 0x08, 4);
+        dictionary.MarkProperty(nameof(NumericDictionary.BucketSize), 0x10, 4);
+        dictionary.MarkProperty(nameof(NumericDictionary.BucketCount), 0x14, 4);
+        dictionary.MarkProperty(nameof(NumericDictionary.MaxLocalEntryCount), 0x18, 4);
+        dictionary.MarkProperty(nameof(NumericDictionary.HashEntrySize), 0x1C, 4);
+        dictionary.MarkProperty(nameof(NumericDictionary.HashEntryCount), 0x20, 4);
+        dictionary.MarkProperty(nameof(NumericDictionary.CollisionCount), 0x24, 4);
+        dictionary.MarkProperty(nameof(NumericDictionary.BucketIndexMask), 0x28, 4);
+        dictionary.MarkProperty(nameof(NumericDictionary.ElementSize), 0x30, 4);
+        dictionary.MarkProperty(nameof(NumericDictionary.ValueCount), 0x34, 4);
+    }
 
     private static int ReadInt32(ReadOnlySpan<byte> span, int offset)
         => BinaryPrimitives.ReadInt32LittleEndian(span.Slice(offset, 4));

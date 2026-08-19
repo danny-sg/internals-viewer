@@ -60,17 +60,23 @@
                                                 Markers="{x:Bind ViewModel.Markers, Mode=OneWay}"
                                                 SelectedMarker="{x:Bind ViewModel.SelectedMarker, Mode=TwoWay}"/>
             </TabViewItem>
-            <TabViewItem Header="Bookmarks" IsClosable="False" Tag="Bookmarks">
+            <TabViewItem Header="Bookmarks" IsClosable="False" Tag="Bookmarks"
+                         Visibility="{x:Bind ViewModel.HasBookmarks, Mode=OneWay,
+                                 Converter={StaticResource BoolToVisibilityConverter}}">
                 <columnstore:SegmentRegionPanel MarkerOpacity="{x:Bind ViewModel.MarkerOpacity, Mode=OneWay}"
                                                 Markers="{x:Bind ViewModel.Markers, Mode=OneWay}"
                                                 SelectedMarker="{x:Bind ViewModel.SelectedMarker, Mode=TwoWay}"/>
             </TabViewItem>
-            <TabViewItem Header="RLE Array" IsClosable="False" Tag="RleArray">
+            <TabViewItem Header="RLE Array" IsClosable="False" Tag="RleArray"
+                         Visibility="{x:Bind ViewModel.HasRleArray, Mode=OneWay,
+                                 Converter={StaticResource BoolToVisibilityConverter}}">
                 <columnstore:SegmentRegionPanel MarkerOpacity="{x:Bind ViewModel.MarkerOpacity, Mode=OneWay}"
                                                 Markers="{x:Bind ViewModel.Markers, Mode=OneWay}"
                                                 SelectedMarker="{x:Bind ViewModel.SelectedMarker, Mode=TwoWay}"/>
             </TabViewItem>
-            <TabViewItem Header="Bit Pack" IsClosable="False" Tag="BitpackArray">
+            <TabViewItem Header="Bit Pack" IsClosable="False" Tag="BitpackArray"
+                         Visibility="{x:Bind ViewModel.HasBitpackArray, Mode=OneWay,
+                                 Converter={StaticResource BoolToVisibilityConverter}}">
                 <columnstore:SegmentRegionPanel MarkerOpacity="{x:Bind ViewModel.MarkerOpacity, Mode=OneWay}"
                                                 Markers="{x:Bind ViewModel.Markers, Mode=OneWay}"
                                                 SelectedMarker="{x:Bind ViewModel.SelectedMarker, Mode=TwoWay}">

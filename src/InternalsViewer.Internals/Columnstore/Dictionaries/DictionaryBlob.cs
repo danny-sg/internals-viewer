@@ -4,15 +4,20 @@ using InternalsViewer.Internals.Columnstore.Blobs;
 namespace InternalsViewer.Internals.Columnstore.Dictionaries;
 
 /// <summary>
-/// Parsed dictionary blob
+/// Base Dictionary
 /// </summary>
 public abstract class DictionaryBlob : DataStructure
 {
     public ReadOnlyMemory<byte> Data { get; set; }
 
+    [DataStructureItem(ItemType.DictionaryVersion)]
     public int Version { get; set; }
 
+    [DataStructureItem(ItemType.DictionaryLobType)]
     public ColumnstoreLobType LobType { get; set; }
+
+    [DataStructureItem(ItemType.DictionaryReserved)]
+    public int Reserved { get; set; }
 
     public int EntryCount { get; set; }
 

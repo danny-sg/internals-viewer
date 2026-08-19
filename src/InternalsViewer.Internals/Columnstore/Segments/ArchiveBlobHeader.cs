@@ -39,9 +39,7 @@ public readonly record struct ArchiveBlobHeader(int Reserved, int UncompressedSi
 
         var header = Read(data);
 
-        return header.Reserved == 0
-               && header.UncompressedSize > 0
-               && header.CompressedSize > 0
+        return header is { Reserved: 0, UncompressedSize: > 0, CompressedSize: > 0 }
                && header.ExpectedSize == blobLength;
     }
 }

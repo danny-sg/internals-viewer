@@ -201,4 +201,42 @@
     <models:MarkStyle x:Key="HuffmanCharacterSetMarkerStyle" ForeColour="#827717" BackColour="#F0F4C3" Name="Character Set" Ordinal="254"/>
     <models:MarkStyle x:Key="HuffmanCodeLengthsMarkerStyle" ForeColour="#BF360C" BackColour="#FFCCBC" Name="Code Lengths" Ordinal="255"/>
 
+
+    <!--Columnstore dictionary header-->
+    <models:MarkStyle x:Key="DictionaryVersionMarkerStyle" ForeColour="#4527A0" BackColour="#EDE7F6" Name="Version" Ordinal="260"/>
+    <models:MarkStyle x:Key="DictionaryLobTypeMarkerStyle" ForeColour="#0D47A1" BackColour="#E3F2FD" Name="Lob Type" Ordinal="261"/>
+    <models:MarkStyle x:Key="DictionaryStringCountMarkerStyle" ForeColour="#00695C" BackColour="#E0F2F1" Name="String Count" Ordinal="262"/>
+    <models:MarkStyle x:Key="DictionarySubLobTypeMarkerStyle" ForeColour="#AD1457" BackColour="#FCE4EC" Name="Sub Lob Type" Ordinal="263"/>
+    <models:MarkStyle x:Key="DictionaryReservedMarkerStyle" ForeColour="#616161" BackColour="#F5F5F5" Name="Reserved" Ordinal="264"/>
+    <models:MarkStyle x:Key="DictionaryUnknownMarkerStyle" ForeColour="#B71C1C" BackColour="#FFEBEE" Name="Unknown" Ordinal="265"/>
+    <models:MarkStyle x:Key="DictionaryMaxStringSizeMarkerStyle" ForeColour="#2E7D32" BackColour="#E8F5E9" Name="Max String Size" Ordinal="263"/>
+    <models:MarkStyle x:Key="DictionaryHandleSizeMarkerStyle" ForeColour="#AD1457" BackColour="#FCE4EC" Name="Handle Size" Ordinal="264"/>
+    <models:MarkStyle x:Key="DictionaryHandleCountMarkerStyle" ForeColour="#6A1B9A" BackColour="#F3E5F5" Name="Handle Count" Ordinal="265"/>
+    <models:MarkStyle x:Key="DictionaryPageCountMarkerStyle" ForeColour="#E65100" BackColour="#FFF3E0" Name="Page Count" Ordinal="266"/>
+    <models:MarkStyle x:Key="DictionaryBucketSizeMarkerStyle" ForeColour="#01579B" BackColour="#E1F5FE" Name="Bucket Size" Ordinal="267"/>
+    <models:MarkStyle x:Key="DictionaryBucketCountMarkerStyle" ForeColour="#006064" BackColour="#E0F7FA" Name="Bucket Count" Ordinal="268"/>
+    <models:MarkStyle x:Key="DictionaryMaxLocalEntryCountMarkerStyle" ForeColour="#33691E" BackColour="#F1F8E9" Name="Max Local Entry Count" Ordinal="269"/>
+    <models:MarkStyle x:Key="DictionaryHashEntrySizeMarkerStyle" ForeColour="#BF360C" BackColour="#FBE9E7" Name="Hash Entry Size" Ordinal="270"/>
+    <models:MarkStyle x:Key="DictionaryHashEntryCountMarkerStyle" ForeColour="#4E342E" BackColour="#EFEBE9" Name="Hash Entry Count" Ordinal="271"/>
+    <models:MarkStyle x:Key="DictionaryCollisionCountMarkerStyle" ForeColour="#B71C1C" BackColour="#FFEBEE" Name="Collision Count" Ordinal="272"/>
+    <models:MarkStyle x:Key="DictionaryBucketIndexMaskMarkerStyle" ForeColour="#283593" BackColour="#E8EAF6" Name="Bucket Index Mask" Ordinal="273"/>
+    <models:MarkStyle x:Key="DictionaryElementSizeMarkerStyle" ForeColour="#827717" BackColour="#F0F4C3" Name="Element Size" Ordinal="274"/>
+    <models:MarkStyle x:Key="DictionaryValueCountMarkerStyle" ForeColour="#FF6F00" BackColour="#FFECB3" Name="Value Count" Ordinal="275"/>
+
+
+    <!--Columnstore dictionary string page-->
+    <models:MarkStyle x:Key="StringPageSubLobTypeMarkerStyle" ForeColour="#AD1457" BackColour="#FCE4EC" Name="Sub Lob Type" Ordinal="280"/>
+    <models:MarkStyle x:Key="StringPageFlagsMarkerStyle" ForeColour="#4527A0" BackColour="#EDE7F6" Name="Page Flags" Ordinal="281"/>
+    <models:MarkStyle x:Key="StringPageStringCountMarkerStyle" ForeColour="#00695C" BackColour="#E0F2F1" Name="String Count" Ordinal="282"/>
+    <models:MarkStyle x:Key="StringPageFreeSpaceMarkerStyle" ForeColour="#2E7D32" BackColour="#E8F5E9" Name="Free Space" Ordinal="283"/>
+    <models:MarkStyle x:Key="StringPageFreeSpaceOffsetMarkerStyle" ForeColour="#E65100" BackColour="#FFF3E0" Name="Free Space Offset" Ordinal="284"/>
+    <models:MarkStyle x:Key="StringPageUncompressedSizeMarkerStyle" ForeColour="#0D47A1" BackColour="#E3F2FD" Name="Uncompressed Size" Ordinal="285"/>
+    <models:MarkStyle x:Key="StringPageAlignmentMarkerStyle" ForeColour="#616161" BackColour="#F5F5F5" Name="Alignment" Ordinal="286"/>
+
+
+    <!--Columnstore dictionary entry-->
+    <models:MarkStyle x:Key="StringEntryLengthMarkerStyle" ForeColour="#E65100" BackColour="#FFE0B2" Name="Entry Length" Ordinal="290"/>
+    <models:MarkStyle x:Key="StringEntryValueMarkerStyle" ForeColour="#0D47A1" BackColour="#BBDEFB" Name="Entry Value" Ordinal="291"/>
+    <models:MarkStyle x:Key="StringEntryCodeMarkerStyle" ForeColour="#33691E" BackColour="#DCEDC8" Name="Coded Entry" Ordinal="292"/>
+
 </ResourceDictionary>

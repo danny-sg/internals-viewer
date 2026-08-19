@@ -45,7 +45,8 @@ public sealed partial class ColumnstoreSegmentTabView : UserControl, IDocumentCo
     {
         foreach (var item in RegionTabView.TabItems)
         {
-            if (item is TabViewItem { Tag: string tag } tab && tag == region.ToString())
+            // A region with nothing in it has no tab, so a scroll that lands in one leaves the selection alone
+            if (item is TabViewItem { Tag: string tag, Visibility: Visibility.Visible } tab && tag == region.ToString())
             {
                 RegionTabView.SelectedItem = tab;
 

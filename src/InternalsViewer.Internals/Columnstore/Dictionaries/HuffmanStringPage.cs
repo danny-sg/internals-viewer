@@ -1,4 +1,5 @@
 ﻿using System.IO;
+using InternalsViewer.Internals.Annotations;
 using InternalsViewer.Internals.Compression;
 
 namespace InternalsViewer.Internals.Columnstore.Dictionaries;
@@ -40,19 +41,134 @@ public sealed class HuffmanStringPage : StringPage
 
     private readonly byte[] _buffer = new byte[MaximumStringSize];
 
+    [DataStructureItem(ItemType.HuffmanBlobType)]
     public int HuffmanBlobType { get; set; }
 
+    [DataStructureItem(ItemType.HuffmanBitCount)]
     public int BitCount { get; set; }
 
+    [DataStructureItem(ItemType.HuffmanDecoderBitSize)]
     public int DecoderBitSize { get; set; }
 
+    [DataStructureItem(ItemType.HuffmanCompressedSize)]
     public int CompressedDataSize { get; set; }
 
+    [DataStructureItem(ItemType.HuffmanCharacterSet)]
     public byte CharacterSetCode { get; set; }
 
+    /// <summary>
+    /// Four bit code lengths packed two per byte, from which the codes themselves are reconstructed
+    /// </summary>
+    /// <remarks>
+    /// This is the whole of the stored table. Canonical coding assigns codes from the lengths alone, so nothing else
+    /// has to be written down.
+    /// </remarks>
     public ReadOnlyMemory<byte> CodeLengths { get; set; }
 
+    /// <summary>
+    /// Stands in for the packed table in a marker, a hundred and twenty eight bytes of nibbles reading as noise
+    /// </summary>
+    [DataStructureItem(ItemType.HuffmanCodeLengths)]
+    public string CodeLengthTable => "[Huffman Table]";
+
+    /// <summary>
+    /// Bytes between the code lengths and the stream, the stream starting on a four byte boundary
+    /// </summary>
+    [DataStructureItem(ItemType.StringPageAlignment)]
+    public ReadOnlyMemory<byte> Alignment { get; set; }
+
     public ReadOnlyMemory<byte> Content { get; set; }
+
+    /// <summary>
+    /// The code assigned to each symbol the page uses, available once the table has been built
+    /// </summary>
+    public IReadOnlyList<HuffmanCode> GetCodes() => _table.GetCodes();
+
+    /// <summary>
+    /// What one symbol stands for, a narrow page coding characters where a byte page codes raw bytes
+    /// </summary>
+    public string DescribeSymbol(int symbol)
+        => symbol is >= 0x20 and < 0x7F ? ((char)symbol).ToString() : string.Empty;
+
+    public override void Mark()
+    {
+        base.Mark();
+
+        MarkProperty(nameof(HuffmanBlobType), Offset + 0x0C, 4);
+        MarkProperty(nameof(BitCount), Offset + 0x10, 4);
+        MarkProperty(nameof(DecoderBitSize), Offset + 0x14, 4);
+        MarkProperty(nameof(CompressedDataSize), Offset + 0x18, 4);
+        MarkProperty(nameof(CharacterSetCode), Offset + 0x1C, 1);
+        MarkProperty(nameof(CodeLengthTable), Offset + HeaderSize, CodeLengthTableSize);
+
+        if (DataOffset > HeaderSize + CodeLengthTableSize)
+        {
+            MarkProperty(nameof(Alignment),
+                         Offset + HeaderSize + CodeLengthTableSize,
+                         DataOffset - HeaderSize - CodeLengthTableSize);
+        }
+    }
+
+    /// <summary>
+    /// The symbols read while decoding an entry, with the bits each one came from
+    /// </summary>
+    /// <remarks>
+    /// Materialised rather than streamed because the page decodes through one shared reader and buffer, so the next
+    /// read moves the position out from under anything still holding it.
+    /// </remarks>
+    public IReadOnlyList<HuffmanDecodeStep> Trace(int handleOffset)
+    {
+        var steps = new List<HuffmanDecodeStep>();
+
+        _reader.SeekBits(handleOffset);
+
+        var first = ReadStep(steps, isLength: true);
+
+        var length = first;
+
+        if ((first & ContinuationFlag) != 0)
+        {
+            length = DecodeLength(first, ReadStep(steps, isLength: true));
+        }
+
+        var symbols = HuffmanBlobType == NarrowBlobType ? length / 2 : length;
+
+        for (var i = 0; i < symbols; i++)
+        {
+            ReadStep(steps, isLength: false);
+        }
+
+        return steps;
+    }
+
+    private int ReadStep(List<HuffmanDecodeStep> steps, bool isLength)
+    {
+        var bitOffset = _reader.BitPosition;
+
+        var symbol = ReadSymbol();
+
+        var bitLength = _table.GetCodeLength(symbol);
+
+        steps.Add(new HuffmanDecodeStep(bitOffset, bitLength, symbol, ReadCode(bitOffset, bitLength), isLength));
+
+        return symbol;
+    }
+
+    /// <summary>
+    /// The code as it sits in the stream, read back from the bits the symbol was taken from
+    /// </summary>
+    private int ReadCode(int bitOffset, int bitLength)
+    {
+        var position = _reader.BitPosition;
+
+        _reader.SeekBits(bitOffset);
+
+        var code = _reader.Peek(CanonicalHuffmanTable.MaxCodeBits) >> (CanonicalHuffmanTable.MaxCodeBits - bitLength);
+
+        _reader.SeekBits(position);
+
+        return code;
+    }
 
     public void Build()
     {

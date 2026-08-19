@@ -54,7 +54,7 @@ public sealed partial class ColumnstoreTabViewModel
         => Open($"Dictionary {dictionary.ColumnId}:{dictionary.DictionaryId}",
                 $"Dictionary:{dictionary.ColumnId}:{dictionary.DictionaryId}",
                 () => new ColumnstoreDictionaryTabView(),
-                dictionary);
+                new DictionaryTabViewModel(ColumnstoreService, Database, dictionary));
 
     public void OpenDeleteBitmap()
         => Open("Delete bitmap", "DeleteBitmap", () => new ColumnstoreDeleteBitmapTabView(), this);
