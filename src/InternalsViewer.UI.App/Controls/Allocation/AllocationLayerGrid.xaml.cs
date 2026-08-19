@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.ObjectModel;
 using System.Linq;
 using InternalsViewer.Internals.Engine.Address;
@@ -17,6 +17,8 @@ public sealed partial class AllocationLayerGrid
     public event EventHandler<PageAddressEventArgs>? PageClicked;
 
     public event EventHandler<PageAddressEventArgs>? ViewIndexClicked;
+
+    public event EventHandler<long>? ViewColumnstoreClicked;
 
     public AllocationLayerGridViewModel ViewModel { get; } = new();
 
@@ -136,6 +138,13 @@ public sealed partial class AllocationLayerGrid
         var pageAddress = (PageAddress)((HyperlinkButton)sender).Tag;
 
         ViewIndexClicked?.Invoke(this, new PageAddressEventArgs(pageAddress.FileId, pageAddress.PageId));
+    }
+
+    private void ViewColumnstoreButton_Click(object sender, RoutedEventArgs e)
+    {
+        var allocationUnitId = (long)((HyperlinkButton)sender).Tag;
+
+        ViewColumnstoreClicked?.Invoke(this, allocationUnitId);
     }
 
     private void LayerTable_OnSorting(object sender, TableViewSortingEventArgs e)

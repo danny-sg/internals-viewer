@@ -1,3 +1,4 @@
+using System;
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
 using InternalsViewer.Internals.Engine.Database;
@@ -50,9 +51,18 @@ public sealed partial class AllocationUnitSummaryControl : UserControl, INotifyP
         ? "Non-Clustered"
         : string.Empty;
 
-    public string ObjectIndexType => AllocationUnit?.ParentIndexType == IndexTypeEnum.Clustered
-        ? "Clustered"
-        : "Heap";
+    public string ObjectIndexType => AllocationUnit?.ParentIndexType switch
+    {
+        IndexTypeEnum.Clustered => "Clustered",
+        IndexTypeEnum.Heap => "Heap",
+        IndexTypeEnum.NonClustered => "Non-Clustered",
+        IndexTypeEnum.Xml => "XML",
+        IndexTypeEnum.ClusteredColumnStore => "Clustered Columnstore",
+        IndexTypeEnum.NonClusteredColumnStore => "Non-Clustered Columnstore",
+        IndexTypeEnum.NonClusteredHash => "Heap",
+        _ => "Unknown"
+    };
+
 
     public FontWeight ObjectNameFontWeight => IsIndex ? FontWeights.Normal : FontWeights.Bold;
 

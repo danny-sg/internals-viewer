@@ -37,6 +37,38 @@ public static class ColumnstoreValueConverter
         return ConvertStorage(storage, structure);
     }
 
+    /// <summary>
+    /// Length prefix on the deep data fields, which hold a value rather than a data id
+    /// </summary>
+    public const int DeepDataPrefixSize = 2;
+
+    /// <summary>
+    /// Converts the min or max deep data a segment carries into the value it stands for
+    /// </summary>
+    /// <remarks>
+    /// Only the dictionary encoded string and binary columns populate these - everywhere else the catalog min and max
+    /// data ids are the values already, so there is nothing deeper to record.
+    /// </remarks>
+    public static object? ConvertDeepData(byte[]? deepData, ColumnStructure? structure)
+    {
+        if (deepData is null || deepData.Length < DeepDataPrefixSize || structure is null)
+        {
+            return null;
+        }
+
+        var length = BinaryPrimitives.ReadUInt16LittleEndian(deepData);
+
+        if (length == 0 || DeepDataPrefixSize + length > deepData.Length)
+        {
+            return null;
+        }
+
+        return DataConverter.GetValue(deepData.AsSpan(DeepDataPrefixSize, length),
+                                      structure.DataType,
+                                      structure.Precision,
+                                      structure.Scale);
+    }
+
     private static object? ConvertStorage(long storage, ColumnStructure structure)
     {
         switch (structure.DataType)

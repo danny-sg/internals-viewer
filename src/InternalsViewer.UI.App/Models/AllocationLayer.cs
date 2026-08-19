@@ -36,12 +36,20 @@ public sealed partial class AllocationLayer : ObservableObject
     [ObservableProperty]
     private string _indexName = string.Empty;
 
+    /// <summary>
+    /// Identifies the allocation unit a viewer opened from this layer should load
+    /// </summary>
+    [ObservableProperty]
+    private long _allocationUnitId;
+
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(IndexTypeDescription))]
     [NotifyPropertyChangedFor(nameof(IsIndex))]
     private IndexType _indexType;
 
     public bool IsIndex => IndexType is IndexType.Clustered or IndexType.NonClustered && TotalPages > 0;
+
+    public bool IsColumnstore => IndexType is IndexType.ClusteredColumnStore or IndexType.NonClusteredColumnStore && TotalPages > 0;
 
     public string IndexTypeDescription => IndexType.ToString().SplitCamelCase();
 

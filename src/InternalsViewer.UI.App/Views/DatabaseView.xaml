@@ -112,6 +112,13 @@
                         HorizontalAlignment="Left"
                         VerticalContentAlignment="Center"
                         Background="Transparent">
+                <AppBarElementContainer VerticalAlignment="Stretch">
+                    <StackPanel VerticalAlignment="Stretch" Margin="12,8,18,0">
+                        <TextBlock>Allocations</TextBlock>
+                        <TextBlock FontWeight="SemiBold" Text="{x:Bind TabViewModel.Database.Name, Mode=OneWay}"/>
+                    </StackPanel>
+                </AppBarElementContainer>
+                <AppBarSeparator/>
                 <AppBarElementContainer>
                     <ToggleSplitButton Content="{x:Bind TabViewModel.Overlay, Mode=OneWay}"
                                        IsChecked="{x:Bind TabViewModel.HasOverlay, Mode=TwoWay}"
@@ -198,7 +205,7 @@
                 </Button>
             </TabView.TabStripFooter>
         </TabView>
-    
+
         <allocation:AllocationLayerGrid Grid.Row="2"
                                         x:Name="AllocationLayerGrid"
                                         SelectedLayers="{x:Bind TabViewModel.SelectedLayers, Mode=TwoWay}"
@@ -239,6 +246,6 @@
             </StackPanel>
         </Border>
 
-     
+
     </Grid>
 </UserControl>

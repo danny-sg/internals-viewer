@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <UserControl
     x:Class="InternalsViewer.UI.App.Controls.Allocation.AllocationLayerGrid"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
@@ -82,7 +82,7 @@
                                                    Tag="IndexName"
                                                    Binding="{Binding IndexName}"/>
                     <tableView:TableViewTextColumn Header="Index Type"
-                                                   Width="120"
+                                                   Width="140"
                                                    Tag="IndexTypeDescription"
                                                    Binding="{Binding IndexTypeDescription}"/>
                     <tableView:TableViewTemplateColumn Header="Page Count"
@@ -143,7 +143,7 @@
                     </tableView:TableViewTemplateColumn>
 
                     <tableView:TableViewTemplateColumn Header="Index"
-                                                       Width="70"
+                                                       Width="100"
                                                        CanSort="False">
                         <tableView:TableViewTemplateColumn.CellTemplate>
                             <DataTemplate x:DataType="models:AllocationLayer">
@@ -153,6 +153,22 @@
                                                      Click="ViewIndexButton_Click"
                                                      Style="{StaticResource CellPageAddressStyle}"
                                                      Tag="{x:Bind RootPage}"/>
+                                </Grid>
+                            </DataTemplate>
+                        </tableView:TableViewTemplateColumn.CellTemplate>
+                    </tableView:TableViewTemplateColumn>
+
+                    <tableView:TableViewTemplateColumn Header="Columnstore"
+                                                       Width="100"
+                                                       CanSort="False">
+                        <tableView:TableViewTemplateColumn.CellTemplate>
+                            <DataTemplate x:DataType="models:AllocationLayer">
+                                <Grid HorizontalAlignment="Center">
+                                    <HyperlinkButton Content="View"
+                                                     Visibility="{x:Bind IsColumnstore, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}"
+                                                     Click="ViewColumnstoreButton_Click"
+                                                     Style="{StaticResource CellPageAddressStyle}"
+                                                     Tag="{x:Bind AllocationUnitId}"/>
                                 </Grid>
                             </DataTemplate>
                         </tableView:TableViewTemplateColumn.CellTemplate>

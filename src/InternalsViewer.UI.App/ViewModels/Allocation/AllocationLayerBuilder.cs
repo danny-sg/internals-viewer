@@ -17,7 +17,9 @@ namespace InternalsViewer.UI.App.ViewModels.Allocation;
 internal static class AllocationLayerBuilder
 {
     private const int UserSaturation = 150;
+    private const int SystemSaturation = 100;
     private const int UserValue = 220;
+    private const int SystemValue = 220;
 
     // HsvToColor treats 256 hue steps as one revolution; we place objects across the wheel, so this is the wheel size.
     private const int HueWheel = 256;
@@ -30,6 +32,7 @@ internal static class AllocationLayerBuilder
         var layers = new List<AllocationLayer>();
 
         var colourIndex = 0;
+        var systemColourIndex = 0;
 
         var allocationUnits = database.AllocationUnits;
 
@@ -53,7 +56,8 @@ internal static class AllocationLayerBuilder
                                            currentObjectName,
                                            colourSlotCount,
                                            opacity,
-                                           ref colourIndex);
+                                           ref colourIndex,
+                                           ref systemColourIndex);
 
                 layers.Add(layer);
             }
@@ -253,12 +257,14 @@ internal static class AllocationLayerBuilder
                                                   string currentObjectName,
                                                   int colourSlotCount,
                                                   byte opacity,
-                                                  ref int colourIndex)
+                                                  ref int colourIndex,
+                                                  ref int systemColourIndex)
     {
         var layer = new AllocationLayer
         {
             Name = currentObjectName,
             ObjectName = $"{allocationUnit.SchemaName}.{allocationUnit.TableName}",
+            AllocationUnitId = allocationUnit.AllocationUnitId,
             FirstPage = allocationUnit.FirstPage,
             RootPage = allocationUnit.RootPage,
             FirstIamPage = allocationUnit.FirstIamPage,
@@ -268,7 +274,7 @@ internal static class AllocationLayerBuilder
             IndexType = allocationUnit.IndexType,
             IsSystemObject = allocationUnit.IsSystem,
             IsAllocationLayer = false,
-            Colour = GetLayerColour(allocationUnit, colourSlotCount, ref colourIndex),
+            Colour = GetLayerColour(allocationUnit, colourSlotCount, ref colourIndex, ref systemColourIndex),
             IsVisible = true,
             Opacity = opacity
         };
@@ -333,8 +339,17 @@ internal static class AllocationLayerBuilder
         return ColourHelpers.HsvToColor(hue, UserSaturation, UserValue);
     }
 
-    private static Color GetLayerColour(AllocationUnit allocationUnit, int colourSlotCount, ref int colourIndex)
+    private static Color GetLayerColour(AllocationUnit allocationUnit, int colourSlotCount, ref int colourIndex, ref int systemColourIndex)
     {
+        if (allocationUnit.IsSystem)
+        {
+            var systemHue = systemColourIndex * HueWheel / Math.Max(colourSlotCount, 1) % HueWheel;
+
+            systemColourIndex++;
+
+            return ColourHelpers.HsvToColor(systemHue, SystemSaturation, SystemValue);
+        }
+    
         var hue = colourIndex * HueWheel / Math.Max(colourSlotCount, 1) % HueWheel;
 
         colourIndex++;

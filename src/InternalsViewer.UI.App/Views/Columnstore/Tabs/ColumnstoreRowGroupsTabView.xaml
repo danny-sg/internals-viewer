@@ -1,0 +1,118 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<UserControl
+    x:Class="InternalsViewer.UI.App.Views.Columnstore.Tabs.ColumnstoreRowGroupsTabView"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    xmlns:tableView="using:WinUI.TableView"
+    xmlns:columnstore="using:InternalsViewer.UI.App.Models.Columnstore"
+    mc:Ignorable="d">
+    <Grid>
+        <tableView:TableView x:Name="SegmentTable"
+                             AutoGenerateColumns="False"
+                             CanSortColumns="True"
+                             CanFilterColumns="False"
+                             CornerButtonMode="None"
+                             HeadersVisibility="Columns"
+                             ColumnHeaderStyle="{StaticResource TableViewColumnHeaderStyle}"
+                             CellStyle="{StaticResource TableViewCellStyle}"
+                             ItemContainerStyle="{StaticResource TableViewRowStyle}"
+                             RowHeight="32"
+                             SelectionMode="Single"
+                             SelectionUnit="Row"
+                             IsReadOnly="True"
+                             GridLinesVisibility="All"
+                             BorderThickness="0"
+                             Background="{ThemeResource LayerFillColorDefaultBrush}"
+                             ItemsSource="{x:Bind ViewModel.Segments, Mode=OneWay}">
+            <tableView:TableView.Columns>
+                <tableView:TableViewTextColumn Header="Row group" Width="90"
+                                               Binding="{Binding RowGroupId}"/>
+                <tableView:TableViewTextColumn Header="Column" Width="60"
+                                               Binding="{Binding ColumnId}"/>
+                <tableView:TableViewTextColumn Header="Name" Width="150"
+                                               Binding="{Binding ColumnName}"/>
+                <tableView:TableViewTextColumn Header="Encoding" Width="180"
+                                               Binding="{Binding EncodingDescription}"/>
+                <tableView:TableViewTextColumn Header="Rows" Width="100"
+                                               Binding="{Binding RowCount}"
+                                               CellStyle="{StaticResource TableViewCellRightStyle}"/>
+                <tableView:TableViewTextColumn Header="Size" Width="100"
+                                               Binding="{Binding OnDiskSize}"
+                                               CellStyle="{StaticResource TableViewCellRightStyle}"/>
+                <tableView:TableViewTextColumn Header="Bytes per row" Width="110"
+                                               Binding="{Binding BytesPerRow}"
+                                               CellStyle="{StaticResource TableViewCellRightStyle}"/>
+                <tableView:TableViewTemplateColumn Header="Dictionary" Width="90" CanSort="False">
+                    <tableView:TableViewTemplateColumn.CellTemplate>
+                        <DataTemplate x:DataType="columnstore:SegmentSummary">
+                            <Grid>
+                                <HyperlinkButton Content="{x:Bind DictionaryScope}"
+                                                 Visibility="{x:Bind HasDictionary, Converter={StaticResource BoolToVisibilityConverter}}"
+                                                 Click="ViewDictionaryButton_Click"
+                                                 HorizontalAlignment="Center"
+                                                 Style="{StaticResource CellPageAddressStyle}"
+                                                 Tag="{x:Bind}"/>
+                            </Grid>
+                        </DataTemplate>
+                    </tableView:TableViewTemplateColumn.CellTemplate>
+                </tableView:TableViewTemplateColumn>
+                <tableView:TableViewTemplateColumn Header="Nulls" Width="70" CanSort="False">
+                    <tableView:TableViewTemplateColumn.CellTemplate>
+                        <DataTemplate x:DataType="columnstore:SegmentSummary">
+                            <Grid HorizontalAlignment="Center">
+                                <FontIcon Glyph="&#xE73E;"
+                                          FontSize="12"
+                                          Foreground="{ThemeResource SystemFillColorSuccessBrush}"
+                                          Visibility="{x:Bind HasNulls,
+                                              Converter={StaticResource BoolToVisibilityConverter}}"/>
+                                <FontIcon Glyph="&#xE711;"
+                                          FontSize="12"
+                                          Foreground="{ThemeResource SystemFillColorCriticalBrush}"
+                                          Visibility="{x:Bind HasNulls,
+                                              Converter={StaticResource BoolToVisibilityConverter},
+                                              ConverterParameter=True}"/>
+                            </Grid>
+                        </DataTemplate>
+                    </tableView:TableViewTemplateColumn.CellTemplate>
+                </tableView:TableViewTemplateColumn>
+                <tableView:TableViewTextColumn Header="Min data id" Width="110"
+                                               Binding="{Binding MinDataId}"
+                                               CellStyle="{StaticResource TableViewCellRightStyle}"/>
+                <tableView:TableViewTextColumn Header="Max data id" Width="110"
+                                               Binding="{Binding MaxDataId}"
+                                               CellStyle="{StaticResource TableViewCellRightStyle}"/>
+                <tableView:TableViewTextColumn Header="Min value" Width="120"
+                                               Binding="{Binding MinValueDescription}"/>
+                <tableView:TableViewTextColumn Header="Max value" Width="120"
+                                               Binding="{Binding MaxValueDescription}"/>
+                <tableView:TableViewTemplateColumn Header="Data pointer" Width="130" CanSort="False">
+                    <tableView:TableViewTemplateColumn.CellTemplate>
+                        <DataTemplate x:DataType="columnstore:SegmentSummary">
+                            <Grid>
+                                <HyperlinkButton Content="{x:Bind DataPointerDescription}"
+                                                 Visibility="{x:Bind HasDataPointer, Converter={StaticResource BoolToVisibilityConverter}}"
+                                                 Click="DataPointerButton_Click"
+                                                 Style="{StaticResource CellPageAddressStyle}"
+                                                 Tag="{x:Bind}"/>
+                            </Grid>
+                        </DataTemplate>
+                    </tableView:TableViewTemplateColumn.CellTemplate>
+                </tableView:TableViewTemplateColumn>
+                <tableView:TableViewTemplateColumn Header="Segment" Width="80" CanSort="False">
+                    <tableView:TableViewTemplateColumn.CellTemplate>
+                        <DataTemplate x:DataType="columnstore:SegmentSummary">
+                            <Grid HorizontalAlignment="Center">
+                                <HyperlinkButton Content="View"
+                                                 Click="ViewSegmentButton_Click"
+                                                 Style="{StaticResource CellPageAddressStyle}"
+                                                 Tag="{x:Bind}"/>
+                            </Grid>
+                        </DataTemplate>
+                    </tableView:TableViewTemplateColumn.CellTemplate>
+                </tableView:TableViewTemplateColumn>
+            </tableView:TableView.Columns>
+        </tableView:TableView>
+    </Grid>
+</UserControl>
