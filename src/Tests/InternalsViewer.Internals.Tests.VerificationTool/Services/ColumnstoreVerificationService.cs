@@ -1,4 +1,6 @@
 ﻿using System.Collections;
+using System.Data.SqlTypes;
+using System.Globalization;
 using InternalsViewer.Internals.Columnstore.Decoding;
 using InternalsViewer.Internals.Columnstore.Metadata;
 using InternalsViewer.Internals.Columnstore.Services;
@@ -187,11 +189,18 @@ internal class ColumnstoreVerificationService(ColumnstoreService columnstoreServ
         bool flag => flag ? 1M : 0M,
         float single => Math.Round((decimal)single, 4),
         double @double => Math.Round((decimal)@double, 4),
-        decimal @decimal => Math.Round(@decimal, 4),
+        SqlDecimal sqlDecimal => TrimScale(sqlDecimal.ToString()),
+        decimal @decimal => TrimScale(@decimal.ToString(CultureInfo.InvariantCulture)),
         byte or short or int or long => System.Convert.ToDecimal(value),
         string text => text.TrimEnd(),
         _ => value
     };
+
+    /// <summary>
+    /// Drops trailing zeros so the same number compares equal whichever scale it was rendered at
+    /// </summary>
+    private static string TrimScale(string value)
+        => value.Contains('.') ? value.TrimEnd('0').TrimEnd('.') : value;
 
     private static string Describe(object? value) => value switch
     {

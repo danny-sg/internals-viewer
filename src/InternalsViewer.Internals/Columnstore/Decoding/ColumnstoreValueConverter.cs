@@ -1,5 +1,6 @@
 ﻿using System.Buffers.Binary;
 using System.Data;
+using System.Data.SqlTypes;
 using InternalsViewer.Internals.Converters;
 using InternalsViewer.Internals.Metadata.Structures;
 
@@ -49,7 +50,7 @@ public static class ColumnstoreValueConverter
 
             // The scaled integer arrives whole rather than in the sign and magnitude layout a record holds
             case SqlDbType.Decimal:
-                return storage / Power10(structure.Scale);
+                return ToSqlDecimal(storage, structure);
         }
 
         Span<byte> buffer = stackalloc byte[8];
@@ -61,16 +62,22 @@ public static class ColumnstoreValueConverter
         return DataConverter.GetValue(buffer[..length], structure.DataType, structure.Precision, structure.Scale);
     }
 
-    private static decimal Power10(byte scale)
+    /// <summary>
+    /// Rebuilds the sign and magnitude form so both encodings of a decimal column produce the same type
+    /// </summary>
+    private static SqlDecimal ToSqlDecimal(long storage, ColumnStructure structure)
     {
-        var value = 1M;
+        var isPositive = storage >= 0;
 
-        for (var i = 0; i < scale; i++)
-        {
-            value *= 10;
-        }
+        var magnitude = isPositive ? (ulong)storage : (ulong)(-storage);
 
-        return value;
+        return new SqlDecimal(structure.Precision,
+                              structure.Scale,
+                              isPositive,
+                              (int)(magnitude & 0xFFFFFFFF),
+                              (int)(magnitude >> 32),
+                              0,
+                              0);
     }
 
     private static int GetStorageLength(ColumnStructure structure) => structure.DataType switch

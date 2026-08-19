@@ -116,7 +116,7 @@ internal static class ColumnstoreStructureDumper
         builder.AppendLine($"  +0x28 BitpackMinId         {blob.BitpackMinId}");
 
         builder.AppendLine();
-        builder.AppendLine($"Layout   header 0..48   bookmarks {SegmentBlob.BookmarkArrayOffset:N0}..{blob.RleArrayOffset:N0}   "
+        builder.AppendLine($"Layout   header 0..48   bookmarks {blob.BookmarkArrayOffset:N0}..{blob.RleArrayOffset:N0}   "
                            + $"rle {blob.RleArrayOffset:N0}..{blob.BitpackArrayOffset:N0}   "
                            + $"bitpack {blob.BitpackArrayOffset:N0}..{blob.ExpectedSize:N0}");
 

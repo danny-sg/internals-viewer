@@ -22,20 +22,14 @@ namespace InternalsViewer.Connection.BackupFile.Compression.Decoders;
 /// </remarks>
 internal sealed class XpressHuffmanChunkDecoder : IChunkDecoder
 {
-    private const int TableLength = 256;
-
-    private const int SymbolCount = 512;
-
     private const int MinimumTableSymbols = 8;
 
-    private readonly CanonicalHuffmanTable _table = new(SymbolCount);
-
-    private readonly HuffmanBitReader _reader = new();
+    private readonly XpressHuffmanDecoder _decoder = new();
 
     /// <summary>
     /// Xpress match offsets are at most 15 bits plus the implied bit, so 64 KB
     /// </summary>
-    public int MaximumMatchOffset => 65535;
+    public int MaximumMatchOffset => XpressHuffmanDecoder.MaximumMatchOffset;
 
     /// <summary>
     /// Tests whether a payload begins with a canonical Huffman code length table
@@ -44,78 +38,10 @@ internal sealed class XpressHuffmanChunkDecoder : IChunkDecoder
     /// Code lengths of a canonical Huffman table satisfy Kraft equality - sum(2^-length) == 1 - which arbitrary
     /// bytes effectively never do.
     /// </remarks>
-    public bool CanDecode(ReadOnlySpan<byte> payload)
-        => payload.Length >= TableLength && CanonicalHuffmanTable.IsComplete(payload[..TableLength], MinimumTableSymbols);
+    public bool CanDecode(ReadOnlySpan<byte> payload) => XpressHuffmanDecoder.CanDecode(payload, MinimumTableSymbols);
 
     public void Decode(ReadOnlyMemory<byte> blockPayload, int uncompressedSize, SlidingWindowWriter output)
-    {
-        if (blockPayload.Length <= TableLength)
-        {
-            return;
-        }
-
-        _table.Build(blockPayload.Span[..TableLength]);
-
-        _reader.Reset(blockPayload, TableLength);
-
-        var produced = 0L;
-
-        var start = output.Length;
-
-        while (produced < uncompressedSize)
-        {
-            var symbol = _table.Lookup(_reader.Peek(CanonicalHuffmanTable.MaxCodeBits));
-
-            if (symbol == CanonicalHuffmanTable.InvalidSymbol)
-            {
-                throw new InvalidDataException($"Invalid Huffman code at payload offset {_reader.BytePosition}.");
-            }
-
-            _reader.Skip(_table.GetCodeLength(symbol));
-
-            if (symbol < 256)
-            {
-                output.WriteLiteral((byte)symbol);
-
-                produced = output.Length - start;
-
-                continue;
-            }
-
-            var match = symbol - 256;
-
-            var length = match & 0x0F;
-
-            var offsetBits = match >> 4;
-
-            if (length == 15)
-            {
-                length = _reader.ReadRawByte();
-
-                if (length == 255)
-                {
-                    length = _reader.ReadRawUInt16();
-
-                    if (length < 15)
-                    {
-                        throw new InvalidDataException("Malformed extended match length.");
-                    }
-
-                    length -= 15;
-                }
-
-                length += 15;
-            }
-
-            length += 3;
-
-            var offset = (1 << offsetBits) + _reader.ReadBits(offsetBits);
-
-            output.WriteMatch(offset, length);
-
-            produced = output.Length - start;
-        }
-    }
+        => _decoder.Decode(blockPayload, uncompressedSize, output);
 
     public void Dispose()
     {

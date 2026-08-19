@@ -1,4 +1,5 @@
-﻿namespace InternalsViewer.Connection.BackupFile.Compression;
+﻿﻿using InternalsViewer.Internals.Compression;
+namespace InternalsViewer.Connection.BackupFile.Compression;
 
 /// <summary>
 /// Output sink for the decompressor that retains the back reference window while streaming to a destination
@@ -12,7 +13,7 @@
 internal sealed class SlidingWindowWriter(Stream destination,
                                           int maximumMatchOffset,
                                           int bufferSize = 4 * 1024 * 1024,
-                                          int retain = 0)
+                                          int retain = 0) : IXpressOutput
 {
     private readonly byte[] _buffer = new byte[Math.Max(bufferSize, maximumMatchOffset * 4)];
 

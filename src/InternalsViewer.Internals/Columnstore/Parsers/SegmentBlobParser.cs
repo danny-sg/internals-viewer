@@ -15,6 +15,11 @@ public static class SegmentBlobParser
 
     public static SegmentBlob Parse(ReadOnlyMemory<byte> data, bool isMarkEnabled = false)
     {
+        if (ArchiveBlobHeader.IsArchive(data.Span))
+        {
+            data = ArchiveBlobExpander.Expand(data);
+        }
+
         if (data.Length < SegmentBlob.HeaderSize)
         {
             throw new ArgumentException($"Segment blob is {data.Length} bytes, shorter than the {SegmentBlob.HeaderSize} byte header.",
@@ -45,14 +50,23 @@ public static class SegmentBlobParser
 
         if (blob.Version != SupportedVersion)
         {
-            throw new InvalidDataException($"Segment blob version {blob.Version} is not supported. "
-                                           + "Archive compressed segments wrap the blob and have to be expanded first.");
+            throw new InvalidDataException($"Segment blob version {blob.Version} is not supported.");
+        }
+
+        blob.Bookmarks = ReadBookmarks(span, blob);
+
+        if (blob.IsStoreByValue)
+        {
+            blob.ValueStore = ReadValueStore(data, blob);
+
+            MarkRegions(blob);
+
+            return blob;
         }
 
         if (blob.StructureType != SegmentStructureType.RunLength)
         {
-            throw new InvalidDataException($"Segment structure type {(int)blob.StructureType} is not supported. "
-                                           + "The store by value encodings hold their values outside the RLE array.");
+            throw new InvalidDataException($"Segment structure type {(int)blob.StructureType} is not supported.");
         }
 
         if (blob.ExpectedSize != data.Length)
@@ -60,7 +74,6 @@ public static class SegmentBlobParser
             throw new InvalidDataException($"Segment blob is {data.Length} bytes, header implies {blob.ExpectedSize}.");
         }
 
-        blob.Bookmarks = ReadBookmarks(span, blob);
         blob.RleEntries = ReadRleEntries(span, blob);
 
         blob.Bitpack = new BitpackArray(data[blob.BitpackArrayOffset..],
@@ -79,12 +92,77 @@ public static class SegmentBlobParser
 
         for (var i = 0; i < bookmarks.Length; i++)
         {
-            var offset = SegmentBlob.BookmarkArrayOffset + (i * SegmentBlob.EntrySize);
+            var offset = blob.BookmarkArrayOffset + (i * SegmentBlob.EntrySize);
 
             bookmarks[i] = new SegmentBookmark(ReadInt32(span, offset), ReadInt32(span, offset + 4));
         }
 
         return bookmarks;
+    }
+
+    private static SegmentValueStore ReadValueStore(ReadOnlyMemory<byte> data, SegmentBlob blob)
+    {
+        var span = data.Span;
+
+        var offset = blob.ValueStoreOffset;
+
+        var store = new SegmentValueStore
+        {
+            Unknown00 = ReadInt32(span, offset),
+            ValueCount = ReadInt32(span, offset + 0x04),
+            MaxStringSize = ReadInt32(span, offset + 0x08),
+            SubLobType = (SubLobType)ReadInt32(span, offset + 0x0C),
+            ElementSize = ReadInt32(span, offset + 0x10)
+        };
+
+        var pageCount = ReadInt32(span, offset + 0x14);
+
+        offset += SegmentValueStore.HeaderSize;
+
+        var sizes = new int[pageCount];
+
+        for (var i = 0; i < pageCount; i++)
+        {
+            sizes[i] = ReadInt32(span, offset + (i * store.ElementSize));
+        }
+
+        offset += pageCount * store.ElementSize;
+
+        var pages = new SegmentValuePage[pageCount];
+
+        for (var i = 0; i < pageCount; i++)
+        {
+            pages[i] = ReadValuePage(data, offset, sizes[i]);
+
+            offset += sizes[i];
+        }
+
+        if (offset != data.Length)
+        {
+            throw new InvalidDataException($"Store by value pages end at {offset}, blob is {data.Length} bytes.");
+        }
+
+        store.PageSizes = sizes;
+        store.Pages = pages;
+
+        return store;
+    }
+
+    private static SegmentValuePage ReadValuePage(ReadOnlyMemory<byte> data, int offset, int size)
+    {
+        var span = data.Span;
+
+        return new SegmentValuePage
+        {
+            SubLobType = (SubLobType)ReadInt32(span, offset),
+            Unknown04 = ReadInt16(span, offset + 0x04),
+            ValueSize = ReadInt16(span, offset + 0x06),
+            ValueCount = ReadInt32(span, offset + 0x08),
+            PayloadSize = (ushort)ReadInt16(span, offset + 0x0C),
+            Offset = offset,
+            Size = size,
+            Compressed = data.Slice(offset + SegmentValuePage.HeaderSize, size - SegmentValuePage.HeaderSize)
+        };
     }
 
     private static RleEntry[] ReadRleEntries(ReadOnlySpan<byte> span, SegmentBlob blob)
@@ -131,8 +209,19 @@ public static class SegmentBlobParser
         blob.MarkValue(ItemType.BookmarkCount,
                        "Bookmark Array",
                        blob.BookmarkCount,
-                       SegmentBlob.BookmarkArrayOffset,
+                       blob.BookmarkArrayOffset,
                        blob.BookmarkCount * SegmentBlob.EntrySize);
+
+        if (blob.IsStoreByValue)
+        {
+            blob.MarkValue(ItemType.SegmentStructureType,
+                           "Value Store",
+                           blob.ValueStore?.ValueCount ?? 0,
+                           blob.ValueStoreOffset,
+                           blob.Data.Length - blob.ValueStoreOffset);
+
+            return;
+        }
 
         blob.MarkValue(ItemType.RleArrayCount,
                        "RLE Array",

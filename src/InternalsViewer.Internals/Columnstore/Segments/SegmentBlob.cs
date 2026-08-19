@@ -72,7 +72,18 @@ public sealed class SegmentBlob : DataStructure
     /// </summary>
     public int RleEntryCount => RleArrayCount * EntrySize / RleEntryBytes;
 
-    public static int BookmarkArrayOffset => HeaderSize;
+    public SegmentValueStore? ValueStore { get; set; }
+
+    public bool IsStoreByValue => StructureType == SegmentStructureType.StoreByValue;
+
+    /// <summary>
+    /// Bytes before the bookmark array, the store by value layout carrying two more than the run length one
+    /// </summary>
+    public int PrologueSize => IsStoreByValue ? HeaderSize + 2 : HeaderSize;
+
+    public int BookmarkArrayOffset => PrologueSize;
+
+    public int ValueStoreOffset => BookmarkArrayOffset + (BookmarkCount * EntrySize);
 
     public int RleArrayOffset => BookmarkArrayOffset + (BookmarkCount * EntrySize);
 
@@ -86,7 +97,7 @@ public sealed class SegmentBlob : DataStructure
     /// <summary>
     /// Rows the RLE runs cover, excluding the terminator
     /// </summary>
-    public int RowCount => RleEntries.Sum(e => e.Count);
+    public int RowCount => ValueStore?.ValueCount ?? RleEntries.Sum(e => e.Count);
 
     public int BitpackRowCount => RleEntries.Where(e => e.IsBitpacked).Sum(e => e.Count);
 

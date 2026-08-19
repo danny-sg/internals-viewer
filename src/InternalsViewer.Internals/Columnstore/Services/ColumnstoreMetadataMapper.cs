@@ -313,7 +313,7 @@ public static class ColumnstoreMetadataMapper
             HobtId, SegmentId, ColumnId, Version, EncodingType, RowCount, Status,
             BaseId, Magnitude, PrimaryDictionaryId, SecondaryDictionaryId,
             MinDataId, MaxDataId, NullValue, OnDiskSize, CollationId,
-            MinDeepData, MaxDeepData, DataPtr
+            MinDeepData, MaxDeepData, DataPtr, ContainerId, BloomFilterMetadata, BloomFilterDataPtr
         ];
     }
 

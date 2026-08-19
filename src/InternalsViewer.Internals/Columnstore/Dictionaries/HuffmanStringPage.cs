@@ -9,9 +9,17 @@ namespace InternalsViewer.Internals.Columnstore.Dictionaries;
 public sealed class HuffmanStringPage : StringPage
 {
     /// <summary>
-    /// Variant of the Huffman layout, of which only the canonical table form is understood
+    /// Each symbol is one character, the entry length still counting bytes
     /// </summary>
-    public const int SupportedBlobType = 2;
+    /// <remarks>
+    /// Chosen for a wide column whose characters all fit in a byte, halving the symbols the stream has to carry.
+    /// </remarks>
+    public const int NarrowBlobType = 1;
+
+    /// <summary>
+    /// Each symbol is one byte of the value
+    /// </summary>
+    public const int ByteBlobType = 2;
 
     public const int MaximumStringSize = 8192;
 
@@ -48,7 +56,7 @@ public sealed class HuffmanStringPage : StringPage
 
     public void Build()
     {
-        if (HuffmanBlobType != SupportedBlobType)
+        if (HuffmanBlobType is not (NarrowBlobType or ByteBlobType))
         {
             throw new InvalidDataException($"Huffman string page blob type {HuffmanBlobType} is not supported.");
         }
@@ -64,9 +72,25 @@ public sealed class HuffmanStringPage : StringPage
 
         var length = ReadLength();
 
-        for (var i = 0; i < length; i++)
+        if (HuffmanBlobType == NarrowBlobType)
         {
-            _buffer[i] = (byte)ReadSymbol();
+            if ((length & 1) != 0)
+            {
+                throw new InvalidDataException($"Narrow Huffman entry length {length} is not a whole number of characters.");
+            }
+
+            for (var i = 0; i < length; i += 2)
+            {
+                _buffer[i] = (byte)ReadSymbol();
+                _buffer[i + 1] = 0;
+            }
+        }
+        else
+        {
+            for (var i = 0; i < length; i++)
+            {
+                _buffer[i] = (byte)ReadSymbol();
+            }
         }
 
         return _buffer.AsSpan(0, length);

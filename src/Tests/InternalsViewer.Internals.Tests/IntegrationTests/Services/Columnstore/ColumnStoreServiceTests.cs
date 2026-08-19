@@ -56,7 +56,7 @@ public sealed class ColumnstoreServiceTests(ITestOutputHelper testOutput) : Prov
 
         Directory.CreateDirectory(DumpPath);
 
-        foreach (var table in new[] { "Sales", "SegConstant", "SegSequential", "SegDictionary", "SegTypes", "SegNulls", "SegArchive", "SegWide", "SegManyRuns", "SegTiny", "SegVeryWide", "SegKeyedNulls", "SegLen400" })
+        foreach (var table in new[] { "Sales", "SegConstant", "SegSequential", "SegDictionary", "SegTypes", "SegNulls", "SegArchive", "SegWide", "SegManyRuns", "SegTiny", "SegVeryWide", "SegKeyedNulls", "SegLen400", "SegUnicode", "SegDecSeq", "SegDecTiny", "SegDecNeg", "SegDecScale" })
         {
             var allocationUnit = database.AllocationUnits.Values.FirstOrDefault(a => a.TableName == table);
 

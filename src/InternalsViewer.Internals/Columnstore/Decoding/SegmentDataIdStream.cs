@@ -19,6 +19,11 @@ public sealed class SegmentDataIdStream(SegmentBlob blob)
             throw new ArgumentOutOfRangeException(nameof(rowOrdinal));
         }
 
+        if (Blob.ValueStore is { } store)
+        {
+            return store.GetValue(rowOrdinal);
+        }
+
         var (entryIndex, endRow) = Seek(rowOrdinal);
 
         var entry = Blob.RleEntries[entryIndex];
@@ -36,6 +41,11 @@ public sealed class SegmentDataIdStream(SegmentBlob blob)
     /// </summary>
     public BitSpan GetSpan(int rowOrdinal)
     {
+        if (Blob.ValueStore is not null)
+        {
+            return BitSpan.FromBytes(Blob.ValueStoreOffset, Blob.Data.Length - Blob.ValueStoreOffset);
+        }
+
         var (entryIndex, endRow) = Seek(rowOrdinal);
 
         var entry = Blob.RleEntries[entryIndex];
@@ -52,6 +62,16 @@ public sealed class SegmentDataIdStream(SegmentBlob blob)
 
     public IEnumerable<long> ReadAll()
     {
+        if (Blob.ValueStore is { } store)
+        {
+            for (var i = 0; i < store.ValueCount; i++)
+            {
+                yield return store.GetValue(i);
+            }
+
+            yield break;
+        }
+
         foreach (var entry in Blob.RleEntries)
         {
             if (entry.Count == 0)

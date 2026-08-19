@@ -2,6 +2,7 @@
 using System.IO;
 using InternalsViewer.Internals.Columnstore.Blobs;
 using InternalsViewer.Internals.Columnstore.Dictionaries;
+using InternalsViewer.Internals.Columnstore.Segments;
 
 namespace InternalsViewer.Internals.Columnstore.Parsers;
 
@@ -12,6 +13,11 @@ public static class DictionaryBlobParser
 {
     public static DictionaryBlob Parse(ReadOnlyMemory<byte> data, int entryCount, int lastId, bool isMarkEnabled = false)
     {
+        if (ArchiveBlobHeader.IsArchive(data.Span))
+        {
+            data = ArchiveBlobExpander.Expand(data);
+        }
+
         var span = data.Span;
 
         var lobType = (ColumnstoreLobType)ReadInt32(span, 0x04);
