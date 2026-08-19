@@ -1,25 +1,83 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <UserControl
     x:Class="InternalsViewer.UI.App.Views.Columnstore.Tabs.ColumnstoreSegmentTabView"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    xmlns:page="using:InternalsViewer.UI.App.Controls.Page"
+    xmlns:columnstore="using:InternalsViewer.UI.App.Controls.Columnstore"
     mc:Ignorable="d">
-    <StackPanel VerticalAlignment="Center"
-                HorizontalAlignment="Center"
-                Spacing="6"
-                Padding="24">
-        <TextBlock Text="Column segment"
-                   HorizontalAlignment="Center"
-                   Style="{ThemeResource SubtitleTextBlockStyle}"/>
-        <TextBlock Text="A segment viewer showing the blob structure, RLE runs, bit packing and decoded values."
-                   HorizontalAlignment="Center"
-                   TextWrapping="Wrap"
-                   MaxWidth="420"
-                   Opacity="0.7"/>
-        <TextBlock x:Name="SubjectText"
-                   HorizontalAlignment="Center"
-                   Opacity="0.55"/>
-    </StackPanel>
+    <Grid>
+        <StackPanel Padding="10"
+                    Spacing="12"
+                    Canvas.ZIndex="10"
+                    VerticalAlignment="Center"
+                    HorizontalAlignment="Center"
+                    Visibility="{x:Bind ViewModel.IsLoaded, Mode=OneWay,
+                            Converter={StaticResource BoolToVisibilityConverter},
+                            ConverterParameter=True}">
+            <ProgressRing HorizontalAlignment="Center"
+                          IsActive="{x:Bind ViewModel.IsSegmentLoading, Mode=OneWay}"
+                          Visibility="{x:Bind ViewModel.IsSegmentLoading, Mode=OneWay,
+                                  Converter={StaticResource BoolToVisibilityConverter}}"/>
+            <TextBlock HorizontalAlignment="Center"
+                       Text="{x:Bind ViewModel.StatusText, Mode=OneWay}"/>
+        </StackPanel>
+
+        <Grid Visibility="{x:Bind ViewModel.IsLoaded, Mode=OneWay,
+                      Converter={StaticResource BoolToVisibilityConverter}}">
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="Auto"/>
+            <ColumnDefinition Width="*"/>
+        </Grid.ColumnDefinitions>
+
+        <page:HexViewControl x:Name="HexView"
+                             Grid.Column="0"
+                             Width="455" 
+                             VerticalAlignment="Stretch"
+                             Visibility="{x:Bind ViewModel.IsHexViewVisible, Mode=OneWay,
+                             Converter={StaticResource BoolToVisibilityConverter}}"
+                             IsVirtualized="True"
+                             TotalLength="{x:Bind ViewModel.TotalLength, Mode=OneWay}"
+                             WindowOffset="{x:Bind ViewModel.WindowOffset, Mode=TwoWay}"
+                             WindowLength="{x:Bind ViewModel.WindowLength, Mode=TwoWay}"
+                             Data="{x:Bind ViewModel.HexData, Mode=OneWay}"
+                             BaseAddress="{x:Bind ViewModel.HexBaseAddress, Mode=OneWay}"
+                             Markers="{x:Bind ViewModel.Markers, Mode=OneWay}"
+                             SelectedMarker="{x:Bind ViewModel.SelectedMarker, Mode=TwoWay}"/>
+
+        <TabView Grid.Column="1"
+                 x:Name="RegionTabView"
+                 IsAddTabButtonVisible="False"
+                 TabWidthMode="SizeToContent"
+                 VerticalAlignment="Stretch"
+                 SelectionChanged="TabView_OnSelectionChanged">
+            <TabViewItem Header="Header" IsClosable="False" Tag="Header">
+                <columnstore:SegmentRegionPanel MarkerOpacity="{x:Bind ViewModel.MarkerOpacity, Mode=OneWay}"
+                                                Markers="{x:Bind ViewModel.Markers, Mode=OneWay}"
+                                                SelectedMarker="{x:Bind ViewModel.SelectedMarker, Mode=TwoWay}"/>
+            </TabViewItem>
+            <TabViewItem Header="Bookmarks" IsClosable="False" Tag="Bookmarks">
+                <columnstore:SegmentRegionPanel MarkerOpacity="{x:Bind ViewModel.MarkerOpacity, Mode=OneWay}"
+                                                Markers="{x:Bind ViewModel.Markers, Mode=OneWay}"
+                                                SelectedMarker="{x:Bind ViewModel.SelectedMarker, Mode=TwoWay}"/>
+            </TabViewItem>
+            <TabViewItem Header="RLE Array" IsClosable="False" Tag="RleArray">
+                <columnstore:SegmentRegionPanel MarkerOpacity="{x:Bind ViewModel.MarkerOpacity, Mode=OneWay}"
+                                                Markers="{x:Bind ViewModel.Markers, Mode=OneWay}"
+                                                SelectedMarker="{x:Bind ViewModel.SelectedMarker, Mode=TwoWay}"/>
+            </TabViewItem>
+            <TabViewItem Header="Bit Pack" IsClosable="False" Tag="BitpackArray">
+                <columnstore:SegmentRegionPanel MarkerOpacity="{x:Bind ViewModel.MarkerOpacity, Mode=OneWay}"
+                                                Markers="{x:Bind ViewModel.Markers, Mode=OneWay}"
+                                                SelectedMarker="{x:Bind ViewModel.SelectedMarker, Mode=TwoWay}">
+                    <columnstore:SegmentRegionPanel.Detail>
+                        <columnstore:BitPackDetailControl Unit="{x:Bind ViewModel.BitpackUnit, Mode=OneWay}"/>
+                    </columnstore:SegmentRegionPanel.Detail>
+                </columnstore:SegmentRegionPanel>
+            </TabViewItem>
+        </TabView>
+        </Grid>
+    </Grid>
 </UserControl>

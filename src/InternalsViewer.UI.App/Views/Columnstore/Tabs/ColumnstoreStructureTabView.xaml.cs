@@ -17,6 +17,9 @@ public sealed partial class ColumnstoreStructureTabView : IDisposable
         StructureControl.ElementClicked += OnElementClicked;
 
         BuildLegend();
+
+        // x:Bind resolves against the view, and the dock sets DataContext after the view is built
+        DataContextChanged += (_, _) => Bindings.Update();
     }
 
     public ColumnstoreTabViewModel ViewModel => (ColumnstoreTabViewModel)DataContext;

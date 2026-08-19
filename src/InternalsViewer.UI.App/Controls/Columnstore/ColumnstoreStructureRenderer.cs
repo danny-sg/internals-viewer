@@ -256,7 +256,7 @@ public sealed class ColumnstoreStructureRenderer
                                 _text);
 
                 _text.Color = MutedColour;
-                canvas.DrawText(Fit($"{dictionary.EntryCount:N0} entries", bounds.Width - 8, _labelFont),
+                canvas.DrawText(Fit($"{dictionary.EntryCount} entries", bounds.Width - 8, _labelFont),
                                 bounds.Left + 4,
                                 bounds.Top + 27,
                                 SKTextAlign.Left,
@@ -269,7 +269,7 @@ public sealed class ColumnstoreStructureRenderer
                     ElementType = ColumnstoreElementType.Dictionary,
                     Dictionary = dictionary,
                     Label = $"{column.Name} global dictionary",
-                    Detail = $"{dictionary.EntryCount:N0} entries",
+                    Detail = $"{dictionary.EntryCount} entries",
                     Details = BuildDictionaryDetails(dictionary, true, column.Name)
                 });
             }
@@ -305,7 +305,7 @@ public sealed class ColumnstoreStructureRenderer
             Details =
             [
                 new ColumnstoreDetail("State", rowGroup.State.ToString()),
-                new ColumnstoreDetail("Rows", $"{rowGroup.TotalRows:N0}"),
+                new ColumnstoreDetail("Rows", $"{rowGroup.TotalRows}"),
                 new ColumnstoreDetail("Size", FormatSize(rowGroup.SizeInBytes)),
                 new ColumnstoreDetail("Segments", $"{rowGroup.Segments.Count}"),
                 new ColumnstoreDetail("Delta Store", rowGroup.DeltaStoreHobtId == 0
@@ -364,7 +364,7 @@ public sealed class ColumnstoreStructureRenderer
         DrawStateBadge(canvas, rowGroup.State, x, rowBounds.Top + 19 + ColumnstoreLayout.BadgeMargin);
 
         _text.Color = MutedColour;
-        canvas.DrawText($"{rowGroup.TotalRows:N0} rows", x, rowBounds.Top + 51, SKTextAlign.Left, _labelFont, _text);
+        canvas.DrawText($"{rowGroup.TotalRows} rows", x, rowBounds.Top + 51, SKTextAlign.Left, _labelFont, _text);
         canvas.DrawText(FormatSize(rowGroup.SizeInBytes), x, rowBounds.Top + 65, SKTextAlign.Left, _labelFont, _text);
     }
 
@@ -427,7 +427,7 @@ public sealed class ColumnstoreStructureRenderer
                 bounds,
                 ColumnstoreLayout.DeltaStoreColour,
                 "Delta Store",
-                $"{rowGroup.TotalRows:N0} rows, hobt {rowGroup.DeltaStoreHobtId}");
+                $"{rowGroup.TotalRows} rows, hobt {rowGroup.DeltaStoreHobtId}");
 
         regions.Add(new ColumnstoreRegion
         {
@@ -435,12 +435,12 @@ public sealed class ColumnstoreStructureRenderer
             ElementType = ColumnstoreElementType.DeltaStore,
             RowGroup = rowGroup,
             Label = $"Delta Store, Row Group {rowGroup.RowGroupId}",
-            Detail = $"{rowGroup.TotalRows:N0} rows",
+            Detail = $"{rowGroup.TotalRows} rows",
             Details =
             [
                 new ColumnstoreDetail("Row Group", rowGroup.RowGroupId.ToString()),
                 new ColumnstoreDetail("State", rowGroup.State.ToString()),
-                new ColumnstoreDetail("Rows", $"{rowGroup.TotalRows:N0}"),
+                new ColumnstoreDetail("Rows", $"{rowGroup.TotalRows}"),
                 new ColumnstoreDetail("Hobt", rowGroup.DeltaStoreHobtId.ToString())
             ]
         });
@@ -488,17 +488,18 @@ public sealed class ColumnstoreStructureRenderer
                 new ColumnstoreDetail("Row Group", segment.RowGroupId.ToString()),
                 new ColumnstoreDetail("Column", $"{segment.ColumnId}"),
                 new ColumnstoreDetail("Encoding", segment.EncodingDescription),
-                new ColumnstoreDetail("Rows", $"{segment.RowCount:N0}"),
+                new ColumnstoreDetail("Rows", $"{segment.RowCount}"),
                 new ColumnstoreDetail("Size", FormatSize(segment.OnDiskSize)),
                 new ColumnstoreDetail("Bytes per row", $"{segment.BytesPerRow:N2}"),
-                new ColumnstoreDetail("Min data id", $"{segment.MinDataId:N0}"),
-                new ColumnstoreDetail("Max data id", $"{segment.MaxDataId:N0}"),
+                new ColumnstoreDetail("Min data id", $"{segment.MinDataId}"),
+                new ColumnstoreDetail("Max data id", $"{segment.MaxDataId}"),
                 new ColumnstoreDetail("Min value", segment.MinValueDescription),
                 new ColumnstoreDetail("Max value", segment.MaxValueDescription),
                 new ColumnstoreDetail("Dictionary", segment.DictionaryDescription.Length > 0
                                                         ? segment.DictionaryDescription
                                                         : "none"),
-                new ColumnstoreDetail("Data Pointer", segment.DataPointerDescription)
+                new ColumnstoreDetail("Data Pointer", segment.DataPointerDescription),
+                .. GetHeaderDetails(segment)
             ]
         });
 
@@ -532,6 +533,22 @@ public sealed class ColumnstoreStructureRenderer
     /// <summary>
     /// The dictionary a segment reads, drawn inside it, with a dotted border when it is the global one
     /// </summary>
+    /// <summary>
+    /// What the segment blob's prologue adds, which is nothing until the background read reaches this segment
+    /// </summary>
+    private static IEnumerable<ColumnstoreDetail> GetHeaderDetails(SegmentSummary segment)
+    {
+        if (segment.Header is null)
+        {
+            yield break;
+        }
+
+        yield return new ColumnstoreDetail("Structure", segment.StructureDescription);
+        yield return new ColumnstoreDetail("RLE entries", segment.RleDescription);
+        yield return new ColumnstoreDetail("Bit packed", segment.BitPackDescription);
+        yield return new ColumnstoreDetail("Bookmarks", segment.BookmarkDescription);
+    }
+
     private void DrawSegmentDictionary(SKCanvas canvas,
                                        SegmentSummary segment,
                                        SKRect segmentBounds,
@@ -568,7 +585,7 @@ public sealed class ColumnstoreStructureRenderer
 
         _text.Color = isGlobal ? TextColour : SKColors.White;
 
-        var label = isGlobal ? "Global" : $"Dict {dictionary.EntryCount:N0}";
+        var label = isGlobal ? "Global" : $"Dict {dictionary.EntryCount}";
 
         canvas.DrawText(Fit(label, bounds.Width - 6, _labelFont),
                         bounds.MidX,
@@ -584,7 +601,7 @@ public sealed class ColumnstoreStructureRenderer
             Segment = segment,
             Dictionary = dictionary,
             Label = isGlobal ? "Global Dictionary" : "Local Dictionary",
-            Detail = $"{dictionary.EntryCount:N0} entries",
+            Detail = $"{dictionary.EntryCount} entries",
             Details = BuildDictionaryDetails(dictionary, isGlobal, segment.ColumnName)
         });
     }
@@ -597,7 +614,7 @@ public sealed class ColumnstoreStructureRenderer
         new("Type", ColumnstoreLayout.GetDictionaryTypeDescription(dictionary.Type)),
         new("Column", columnName),
         new("Dictionary", dictionary.DictionaryId.ToString()),
-        new("Entries", $"{dictionary.EntryCount:N0}"),
+        new("Entries", $"{dictionary.EntryCount}"),
         new("First Data Id", $"{dictionary.LastId - dictionary.EntryCount + 1}"),
         new("Size", FormatSize(dictionary.OnDiskSize))
     ];
@@ -647,7 +664,7 @@ public sealed class ColumnstoreStructureRenderer
     {
         >= 1024 * 1024 => $"{bytes / 1024d / 1024d:N1} MB",
         >= 1024 => $"{bytes / 1024d:N1} KB",
-        _ => $"{bytes:N0} B"
+        _ => $"{bytes} B"
     };
 
     public void Dispose()

@@ -1,0 +1,71 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<UserControl
+    x:Class="InternalsViewer.UI.App.Controls.ValueDerivationControl"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    xmlns:models="using:InternalsViewer.UI.App.Models"
+    mc:Ignorable="d">
+    <UserControl.Resources>
+        <DataTemplate x:Key="DerivationStepTemplate" x:DataType="models:DerivationStep">
+            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                <TextBlock Text="{x:Bind Operator}"
+                           Margin="4,0,4,0"
+                           VerticalAlignment="Center"
+                           FontFamily="{StaticResource MonospaceFontFamily}"
+                           Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
+
+                <!--Split badge, the variable named on the left and the value it held on the right-->
+                <Border Background="{ThemeResource ControlStrongFillColorDefaultBrush}"
+                        Padding="4,1"
+                        VerticalAlignment="Center">
+                    <TextBlock Text="{x:Bind Name}"
+                               FontSize="11"
+                               FontFamily="{StaticResource MonospaceFontFamily}"
+                               Foreground="{ThemeResource TextOnAccentFillColorPrimaryBrush}"/>
+                </Border>
+                <Border Background="{ThemeResource AccentFillColorDefaultBrush}"
+                        Padding="4,1"
+                        VerticalAlignment="Center">
+                    <TextBlock Text="{x:Bind Value}"
+                               FontSize="11"
+                               FontFamily="{StaticResource MonospaceFontFamily}"
+                               Foreground="{ThemeResource TextOnAccentFillColorPrimaryBrush}"/>
+                </Border>
+            </StackPanel>
+        </DataTemplate>
+    </UserControl.Resources>
+
+    <StackPanel x:Name="Root"
+                Orientation="Horizontal"
+                VerticalAlignment="Center">
+        <TextBlock x:Name="SourceText"
+                   VerticalAlignment="Center"
+                   FontFamily="{StaticResource MonospaceFontFamily}"/>
+
+        <Border x:Name="StepsPanel"
+                Margin="4,0,0,0"
+                Padding="2,1,3,1"
+                VerticalAlignment="Center">
+            <ItemsControl x:Name="StepItems"
+                          ItemTemplate="{StaticResource DerivationStepTemplate}">
+                <ItemsControl.ItemsPanel>
+                    <ItemsPanelTemplate>
+                        <StackPanel Orientation="Horizontal"/>
+                    </ItemsPanelTemplate>
+                </ItemsControl.ItemsPanel>
+            </ItemsControl>
+        </Border>
+
+        <TextBlock Text="="
+                   Margin="6,0,6,0"
+                   VerticalAlignment="Center"
+                   FontFamily="{StaticResource MonospaceFontFamily}"
+                   Foreground="{ThemeResource TextFillColorTertiaryBrush}"/>
+
+        <TextBlock x:Name="ResultText"
+                   VerticalAlignment="Center"
+                   FontFamily="{StaticResource MonospaceFontFamily}"/>
+    </StackPanel>
+</UserControl>

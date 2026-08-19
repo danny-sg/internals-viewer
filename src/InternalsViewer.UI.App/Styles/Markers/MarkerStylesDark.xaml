@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <ResourceDictionary
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
@@ -168,4 +168,36 @@
     <models:MarkStyle x:Key="OldestRestoredLsnMarkerStyle" ForeColour="#607D8B" BackColour="#ECEFF1" Name="Oldest Restored LSN"/>
     <models:MarkStyle x:Key="RestoreRedoStartLsnMarkerStyle" ForeColour="#6A8794" BackColour="#ECEFF1" Name="Restore Redo Start LSN"/>
     <models:MarkStyle x:Key="FileOfflineLsnMarkerStyle" ForeColour="#78909C" BackColour="#ECEFF1" Name="File Offline LSN"/>
+
+
+    <!--Columnstore: adjacent fields alternate hue so a run of markers stays readable in hex-->
+    <models:MarkStyle x:Key="SegmentVersionMarkerStyle" ForeColour="#D1C4E9" BackColour="#2A1A5E" Name="Version" Ordinal="200"/>
+    <models:MarkStyle x:Key="SegmentLobTypeMarkerStyle" ForeColour="#90CAF9" BackColour="#0A2A52" Name="Lob Type" Ordinal="201"/>
+    <models:MarkStyle x:Key="SegmentReservedMarkerStyle" ForeColour="#BDBDBD" BackColour="#3A3A38" Name="Reserved" Ordinal="202"/>
+    <models:MarkStyle x:Key="SegmentUnknownMarkerStyle" ForeColour="#EF9A9A" BackColour="#4A1212" Name="Unknown" Ordinal="203"/>
+    <models:MarkStyle x:Key="SegmentStructureTypeMarkerStyle" ForeColour="#CE93D8" BackColour="#3A1145" Name="Structure Type" Ordinal="204"/>
+    <models:MarkStyle x:Key="BookmarkCountMarkerStyle" ForeColour="#80CBC4" BackColour="#00332E" Name="Bookmark Count" Ordinal="210"/>
+    <models:MarkStyle x:Key="BookmarkDistanceMarkerStyle" ForeColour="#A5D6A7" BackColour="#14361A" Name="Bookmark Distance" Ordinal="211"/>
+    <models:MarkStyle x:Key="BookmarkPositionMarkerStyle" ForeColour="#4DB6AC" BackColour="#003B33" Name="Bookmark Position" Ordinal="212"/>
+    <models:MarkStyle x:Key="BookmarkEndRowMarkerStyle" ForeColour="#FFF176" BackColour="#3E3606" Name="Bookmark End Row" Ordinal="213"/>
+    <models:MarkStyle x:Key="RleArrayCountMarkerStyle" ForeColour="#FFCC80" BackColour="#3E2205" Name="RLE Array Count" Ordinal="220"/>
+    <models:MarkStyle x:Key="RleEntrySizeMarkerStyle" ForeColour="#FFAB91" BackColour="#3E1005" Name="RLE Entry Size" Ordinal="221"/>
+    <models:MarkStyle x:Key="RleValueMarkerStyle" ForeColour="#FFB74D" BackColour="#4A2A05" Name="RLE Value" Ordinal="222"/>
+    <models:MarkStyle x:Key="RleCountMarkerStyle" ForeColour="#81C784" BackColour="#123D16" Name="RLE Count" Ordinal="223"/>
+    <models:MarkStyle x:Key="RleBitpackIndexMarkerStyle" ForeColour="#F06292" BackColour="#3D0A22" Name="Bit Pack Index" Ordinal="224"/>
+    <models:MarkStyle x:Key="BitpackEntrySizeMarkerStyle" ForeColour="#9FA8DA" BackColour="#161C4A" Name="Bit Pack Entry Size" Ordinal="230"/>
+    <models:MarkStyle x:Key="BitpackUnitCountMarkerStyle" ForeColour="#81D4FA" BackColour="#052F52" Name="Bit Pack Unit Count" Ordinal="231"/>
+    <models:MarkStyle x:Key="BitpackMinIdMarkerStyle" ForeColour="#4DD0E1" BackColour="#00363A" Name="Bit Pack Min Id" Ordinal="232"/>
+    <models:MarkStyle x:Key="BitpackUnitMarkerStyle" ForeColour="#64B5F6" BackColour="#0A2A52" Name="Bit Pack Unit" Ordinal="233"/>
+    <models:MarkStyle x:Key="BitpackValueMarkerStyle" ForeColour="#64B5F6" BackColour="#0A2A52" Name="Bit Pack Value" Ordinal="233"/>
+    <models:MarkStyle x:Key="StringHandleOffsetMarkerStyle" ForeColour="#F06292" BackColour="#3D0A22" Name="Handle Offset" Ordinal="240"/>
+    <models:MarkStyle x:Key="StringHandlePageMarkerStyle" ForeColour="#B39DDB" BackColour="#2A1A5E" Name="Handle Page" Ordinal="241"/>
+    <models:MarkStyle x:Key="StringPageSizeMarkerStyle" ForeColour="#FFD54F" BackColour="#4A3005" Name="Page Size" Ordinal="242"/>
+    <models:MarkStyle x:Key="HuffmanBlobTypeMarkerStyle" ForeColour="#BCAAA4" BackColour="#2B211D" Name="Huffman Blob Type" Ordinal="250"/>
+    <models:MarkStyle x:Key="HuffmanBitCountMarkerStyle" ForeColour="#9FA8DA" BackColour="#161C4A" Name="Huffman Bit Count" Ordinal="251"/>
+    <models:MarkStyle x:Key="HuffmanDecoderBitSizeMarkerStyle" ForeColour="#4DD0E1" BackColour="#00363A" Name="Decoder Bit Size" Ordinal="252"/>
+    <models:MarkStyle x:Key="HuffmanCompressedSizeMarkerStyle" ForeColour="#AED581" BackColour="#1B3810" Name="Compressed Size" Ordinal="253"/>
+    <models:MarkStyle x:Key="HuffmanCharacterSetMarkerStyle" ForeColour="#DCE775" BackColour="#3E3A08" Name="Character Set" Ordinal="254"/>
+    <models:MarkStyle x:Key="HuffmanCodeLengthsMarkerStyle" ForeColour="#FF8A65" BackColour="#3E1005" Name="Code Lengths" Ordinal="255"/>
+
 </ResourceDictionary>

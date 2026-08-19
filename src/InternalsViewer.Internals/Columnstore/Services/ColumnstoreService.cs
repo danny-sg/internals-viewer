@@ -55,13 +55,47 @@ public sealed class ColumnstoreService(IRecordReader recordReader, ILobDataServi
                                             cancellationToken);
     }
 
+    /// <summary>
+    /// Reads a segment's prologue alone, which is enough to describe its layout without pulling the whole blob
+    /// </summary>
+    /// <remarks>
+    /// An archive compressed segment has to be expanded before any of it can be read, so it falls back to the full
+    /// blob. Everything else costs the root page plus the page holding the first chunk.
+    /// </remarks>
+    public async Task<SegmentBlobHeader> GetSegmentHeader(DatabaseSource database,
+                                                          ColumnSegment segment,
+                                                          CancellationToken cancellationToken)
+    {
+        var pointer = segment.DataPointer;
+
+        var prefix = await LobDataService.GetDataPrefix(database,
+                                                        new RowIdentifier(pointer.PageAddress, (ushort)pointer.Slot),
+                                                        SegmentBlobHeader.Size + PrologueSlack,
+                                                        cancellationToken);
+
+        if (!ArchiveBlobHeader.IsArchive(prefix.Data, prefix.TotalLength))
+        {
+            return SegmentBlobParser.ParseHeader(prefix.Data);
+        }
+
+        var blob = await GetSegmentBlob(database, segment, cancellationToken);
+
+        return blob.Header;
+    }
+
+    /// <summary>
+    /// Bytes read past the header, covering the two the store by value prologue carries beyond it
+    /// </summary>
+    private const int PrologueSlack = 16;
+
     public async Task<SegmentBlob> GetSegmentBlob(DatabaseSource database,
                                                  ColumnSegment segment,
-                                                 CancellationToken cancellationToken)
+                                                 CancellationToken cancellationToken,
+                                                 bool isMarkEnabled = false)
     {
         var data = await GetSegmentData(database, segment.DataPointer, cancellationToken);
 
-        return SegmentBlobParser.Parse(data);
+        return SegmentBlobParser.Parse(data, isMarkEnabled);
     }
 
     public async Task<DictionaryBlob> GetDictionaryBlob(DatabaseSource database,
@@ -79,13 +113,29 @@ public sealed class ColumnstoreService(IRecordReader recordReader, ILobDataServi
     {
         var blob = await GetSegmentBlob(database, segment, cancellationToken);
 
+        return new SegmentReader(segment, blob, await GetSegmentDictionary(database, segment, cancellationToken));
+    }
+
+    /// <summary>
+    /// Resolves a segment's data ids to values, for a caller holding a blob it has already read
+    /// </summary>
+    public async Task<SegmentValueDecoder> GetSegmentDecoder(DatabaseSource database,
+                                                             ColumnSegment segment,
+                                                             CancellationToken cancellationToken)
+        => new(segment, await GetSegmentDictionary(database, segment, cancellationToken));
+
+    /// <summary>
+    /// The dictionary the segment's ids index, a local one taking precedence over the column's global one
+    /// </summary>
+    private async Task<DictionaryBlob?> GetSegmentDictionary(DatabaseSource database,
+                                                             ColumnSegment segment,
+                                                             CancellationToken cancellationToken)
+    {
         var source = segment.SecondaryDictionaryId >= 0
                      ? segment.LocalDictionary
                      : segment.Column?.GlobalDictionary;
 
-        var dictionary = source is null ? null : await GetDictionaryBlob(database, source, cancellationToken);
-
-        return new SegmentReader(segment, blob, dictionary);
+        return source is null ? null : await GetDictionaryBlob(database, source, cancellationToken);
     }
 
     public async Task<RowGroupReader> GetRowGroupReader(DatabaseSource database,

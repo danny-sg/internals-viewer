@@ -148,6 +148,33 @@ public static class MarkerBuilder
         return marker;
     }
 
+    /// <summary>
+    /// Builds a marker for something generated rather than declared, applying the style its item type carries
+    /// </summary>
+    /// <remarks>
+    /// The array regions of a columnstore blob hold far too many entries to mark as they are parsed, so their
+    /// markers are built for the window on screen instead of coming from a data structure's mark items.
+    /// </remarks>
+    public static Marker CreateMarker(string name, ItemType type, int offset, int size, string value)
+    {
+        var style = new MarkStyleProvider().GetMarkStyle(type);
+
+        var marker = new Marker
+        {
+            Name = name,
+            Type = type,
+            StartPosition = offset,
+            EndPosition = offset + size - 1,
+            Value = value,
+            HasKey = true,
+            Ordinal = style.Ordinal
+        };
+
+        SetStyle(marker, style);
+
+        return marker;
+    }
+
     private static void SetStyle(Marker marker, MarkStyle style)
     {
         marker.ForeColour = style.ForeColour.Color;

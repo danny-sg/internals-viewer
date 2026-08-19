@@ -1,4 +1,4 @@
-using System.Threading;
+﻿using System.Threading;
 using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Internals.Engine.Database;
 using InternalsViewer.Internals.Engine.Pages;
@@ -29,6 +29,22 @@ public sealed class LobDataService(IPageService pageService) : ILobDataService
         return result;
     }
 
+    public async Task<LobDataPrefix> GetDataPrefix(DatabaseSource database,
+                                                   RowIdentifier rowIdentifier,
+                                                   int maxLength,
+                                                   CancellationToken cancellationToken)
+    {
+        var (page, record) = await GetLobRecord(database, rowIdentifier, cancellationToken);
+
+        var totalLength = GetTotalLength(record);
+
+        var result = new byte[Math.Min(totalLength, Math.Max(0, maxLength))];
+
+        await WriteRecordData(database, page, record, result, 0, cancellationToken);
+
+        return new LobDataPrefix(result, totalLength);
+    }
+
     private static int GetTotalLength(LobRecord record)
     {
         return record.BlobType switch
@@ -43,11 +59,25 @@ public sealed class LobDataService(IPageService pageService) : ILobDataService
         };
     }
 
+    /// <summary>
+    /// Copies a leaf chunk, taking only as much of it as the destination still has room for
+    /// </summary>
+    /// <remarks>
+    /// The destination is short of the blob when only a prefix was asked for, so the chunk that straddles the end of
+    /// it is truncated rather than overrunning.
+    /// </remarks>
     private static int CopyLeafData(LobPage page, LobRecord record, byte[] destination, int position)
     {
         var (sourceOffset, length) = record.BlobType == BlobType.SmallRoot
             ? (record.Offset + LobRecord.SmallDataOffset, (int)record.Size)
             : (record.Offset + LobRecord.DataOffset, record.Length - LobRecord.DataOffset);
+
+        length = Math.Min(length, destination.Length - position);
+
+        if (length <= 0)
+        {
+            return position;
+        }
 
         page.Data
             .AsSpan(sourceOffset, length)
@@ -75,6 +105,11 @@ public sealed class LobDataService(IPageService pageService) : ILobDataService
 
                 foreach (var child in record.BlobChildren)
                 {
+                    if (position >= destination.Length)
+                    {
+                        return position;
+                    }
+
                     if (child.RowIdentifier is null)
                     {
                         continue;

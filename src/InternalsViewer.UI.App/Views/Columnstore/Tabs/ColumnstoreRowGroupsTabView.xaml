@@ -35,6 +35,14 @@
                                                Binding="{Binding ColumnName}"/>
                 <tableView:TableViewTextColumn Header="Encoding" Width="180"
                                                Binding="{Binding EncodingDescription}"/>
+                <tableView:TableViewTextColumn Header="Structure" Width="110"
+                                               Binding="{Binding StructureDescription}"/>
+                <tableView:TableViewTextColumn Header="RLE entries" Width="100"
+                                               Binding="{Binding RleDescription}"
+                                               CellStyle="{StaticResource TableViewCellRightStyle}"/>
+                <tableView:TableViewTextColumn Header="Bit packed" Width="130"
+                                               Binding="{Binding BitPackDescription}"
+                                               CellStyle="{StaticResource TableViewCellRightStyle}"/>
                 <tableView:TableViewTextColumn Header="Rows" Width="100"
                                                Binding="{Binding RowCount}"
                                                CellStyle="{StaticResource TableViewCellRightStyle}"/>
@@ -77,17 +85,17 @@
                         </DataTemplate>
                     </tableView:TableViewTemplateColumn.CellTemplate>
                 </tableView:TableViewTemplateColumn>
-                <tableView:TableViewTextColumn Header="Min data id" Width="110"
+                <tableView:TableViewTextColumn Header="Min Data Id" Width="110"
                                                Binding="{Binding MinDataId}"
                                                CellStyle="{StaticResource TableViewCellRightStyle}"/>
-                <tableView:TableViewTextColumn Header="Max data id" Width="110"
+                <tableView:TableViewTextColumn Header="Max Data Id" Width="110"
                                                Binding="{Binding MaxDataId}"
                                                CellStyle="{StaticResource TableViewCellRightStyle}"/>
-                <tableView:TableViewTextColumn Header="Min value" Width="120"
+                <tableView:TableViewTextColumn Header="Min Value" Width="120"
                                                Binding="{Binding MinValueDescription}"/>
-                <tableView:TableViewTextColumn Header="Max value" Width="120"
+                <tableView:TableViewTextColumn Header="Max Value" Width="120"
                                                Binding="{Binding MaxValueDescription}"/>
-                <tableView:TableViewTemplateColumn Header="Data pointer" Width="130" CanSort="False">
+                <tableView:TableViewTemplateColumn Header="Data Pointer" Width="130" CanSort="False">
                     <tableView:TableViewTemplateColumn.CellTemplate>
                         <DataTemplate x:DataType="columnstore:SegmentSummary">
                             <Grid>

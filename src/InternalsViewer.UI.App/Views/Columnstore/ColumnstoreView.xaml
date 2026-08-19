@@ -47,12 +47,18 @@
 
         <StackPanel Grid.Row="1"
                     Padding="10"
+                    Spacing="12"
                     VerticalAlignment="Center"
                     HorizontalAlignment="Center"
                     Visibility="{x:Bind ViewModel.IsInitialized,
                             Mode=OneWay,
                             Converter={StaticResource BoolToVisibilityConverter},
                             ConverterParameter=True}">
+            <ProgressRing HorizontalAlignment="Center"
+                          IsActive="{x:Bind ViewModel.IsStructureLoading, Mode=OneWay}"
+                          Visibility="{x:Bind ViewModel.IsStructureLoading,
+                                  Mode=OneWay,
+                                  Converter={StaticResource BoolToVisibilityConverter}}"/>
             <TextBlock HorizontalAlignment="Center"
                        Text="{x:Bind ViewModel.LoadingText, Mode=OneWay}"/>
         </StackPanel>

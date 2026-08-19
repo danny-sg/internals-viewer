@@ -38,7 +38,7 @@ public sealed partial class ColumnstoreTabViewModel
         => Open($"Segment {segment.RowGroupId}:{segment.ColumnId}",
                 $"Segment:{segment.RowGroupId}:{segment.ColumnId}",
                 () => new ColumnstoreSegmentTabView(),
-                segment);
+                new SegmentTabViewModel(ColumnstoreService, Database, segment));
 
     public void OpenDictionary(SegmentSummary segment)
     {

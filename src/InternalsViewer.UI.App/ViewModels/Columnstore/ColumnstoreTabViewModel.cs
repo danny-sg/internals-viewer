@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
@@ -38,7 +39,7 @@ public sealed partial class ColumnstoreTabViewModel : TabViewModel
 
     private ILogger<ColumnstoreTabViewModel> Logger { get; }
 
-    private ColumnstoreService ColumnstoreService { get; }
+    internal ColumnstoreService ColumnstoreService { get; }
 
     public DatabaseSource Database { get; }
 
@@ -50,6 +51,14 @@ public sealed partial class ColumnstoreTabViewModel : TabViewModel
     [ObservableProperty]
     private bool _isInitialized;
 
+    /// <summary>
+    /// Whether the spinner is up, which a load only long enough to notice turns on
+    /// </summary>
+    [ObservableProperty]
+    private bool _isStructureLoading;
+
+    private const int SpinnerDelayMs = 100;
+
     [ObservableProperty]
     private string _loadingText = "Loading columnstore index...";
 
@@ -60,7 +69,7 @@ public sealed partial class ColumnstoreTabViewModel : TabViewModel
     [NotifyPropertyChangedFor(nameof(RowGroupCountDescription))]
     private int _rowGroupCount;
 
-    public string RowGroupCountDescription => RowGroupCount == 1 ? "1 row group" : $"{RowGroupCount:N0} row groups";
+    public string RowGroupCountDescription => RowGroupCount == 1 ? "1 row group" : $"{RowGroupCount} row groups";
 
     public ObservableCollection<RowGroupSummary> RowGroups { get; } = [];
 
@@ -73,6 +82,10 @@ public sealed partial class ColumnstoreTabViewModel : TabViewModel
     {
         IsLoading = true;
         IsInitialized = false;
+
+        using var spinnerDelay = new CancellationTokenSource();
+
+        _ = ShowSpinnerAfterDelay(spinnerDelay.Token);
 
         try
         {
@@ -92,14 +105,19 @@ public sealed partial class ColumnstoreTabViewModel : TabViewModel
                 ? allocationUnit.TableName
                 : allocationUnit.IndexName;
 
-            var index = await ColumnstoreService.GetIndex(allocationUnit, Database, CancellationToken);
+            var index = await Task.Run(() => ColumnstoreService.GetIndex(allocationUnit, Database, CancellationToken),
+                                       CancellationToken);
+
+            var summaries = await Task.Run(() => RowGroupSummary.Build(index), CancellationToken);
+
+            await spinnerDelay.CancelAsync();
 
             Index = index;
 
             RowGroups.Clear();
             Segments.Clear();
 
-            foreach (var summary in RowGroupSummary.Build(index))
+            foreach (var summary in summaries)
             {
                 RowGroups.Add(summary);
 
@@ -116,6 +134,8 @@ public sealed partial class ColumnstoreTabViewModel : TabViewModel
             RowGroupCount = RowGroups.Count;
 
             IsInitialized = true;
+
+            _ = LoadSegmentHeaders();
         }
         catch (Exception exception)
         {
@@ -125,7 +145,72 @@ public sealed partial class ColumnstoreTabViewModel : TabViewModel
         }
         finally
         {
+            await spinnerDelay.CancelAsync();
+
+            IsStructureLoading = false;
+
             IsLoading = false;
+        }
+    }
+
+    /// <summary>
+    /// Reads the prologue of every segment blob, which the metadata does not carry
+    /// </summary>
+    /// <remarks>
+    /// The structure type and the RLE and bit pack counts only exist inside the blob, and a prologue costs a couple
+    /// of page reads against the whole blob's many. It still runs after the index is on screen rather than holding
+    /// it up, the drawing standing on its own without them.
+    /// </remarks>
+    private async Task LoadSegmentHeaders()
+    {
+        var segments = Segments.Where(s => s.HasDataPointer).ToList();
+
+        foreach (var segment in segments)
+        {
+            if (CancellationToken.IsCancellationRequested)
+            {
+                return;
+            }
+
+            try
+            {
+                var header = await Task.Run(
+                    () => ColumnstoreService.GetSegmentHeader(Database, segment.Segment, CancellationToken),
+                    CancellationToken);
+
+                segment.Header = header;
+            }
+            catch (OperationCanceledException)
+            {
+                return;
+            }
+            catch (Exception exception)
+            {
+                Logger.LogDebug(exception,
+                                "Could not read the segment header for row group {RowGroup} column {Column}",
+                                segment.RowGroupId,
+                                segment.ColumnId);
+            }
+        }
+    }
+
+    /// <summary>
+    /// Holds the spinner back so a load that returns straight away does not flash one up
+    /// </summary>
+    private async Task ShowSpinnerAfterDelay(CancellationToken token)
+    {
+        try
+        {
+            await Task.Delay(SpinnerDelayMs, token);
+
+            if (!token.IsCancellationRequested)
+            {
+                IsStructureLoading = true;
+            }
+        }
+        catch (TaskCanceledException)
+        {
+            // The load finished inside the delay, so no spinner is wanted
         }
     }
 

@@ -8,53 +8,52 @@ namespace InternalsViewer.Internals.Columnstore.Segments;
 /// </summary>
 public sealed class SegmentBlob : DataStructure
 {
-    public const int HeaderSize = 48;
+    public const int HeaderSize = SegmentBlobHeader.Size;
 
-    public const int EntrySize = 8;
+    public const int EntrySize = SegmentBlobHeader.EntrySize;
 
     public ReadOnlyMemory<byte> Data { get; set; }
 
+    /// <summary>
+    /// The prologue the rest of the blob is laid out from, which a header only read produces on its own
+    /// </summary>
+    public SegmentBlobHeader Header { get; set; } = new();
+
     [DataStructureItem(ItemType.SegmentVersion)]
-    public int Version { get; set; }
+    public int Version { get => Header.Version; set => Header.Version = value; }
 
     [DataStructureItem(ItemType.SegmentLobType)]
-    public ColumnstoreLobType LobType { get; set; }
+    public ColumnstoreLobType LobType { get => Header.LobType; set => Header.LobType = value; }
+
+    [DataStructureItem(ItemType.SegmentReserved)]
+    public int Reserved { get => Header.Reserved; set => Header.Reserved = value; }
 
     [DataStructureItem(ItemType.SegmentUnknown)]
-    public int Reserved { get; set; }
+    public int Unknown0C { get => Header.Unknown0C; set => Header.Unknown0C = value; }
 
-    [DataStructureItem(ItemType.SegmentUnknown)]
-    public int Unknown0C { get; set; }
-
-    /// <summary>
-    /// Layout of the value stream, which is not the RLE and bit pack pair for every encoding
-    /// </summary>
     [DataStructureItem(ItemType.SegmentStructureType)]
-    public SegmentStructureType StructureType { get; set; }
+    public SegmentStructureType StructureType { get => Header.StructureType; set => Header.StructureType = value; }
 
     [DataStructureItem(ItemType.BookmarkCount)]
-    public int BookmarkCount { get; set; }
+    public int BookmarkCount { get => Header.BookmarkCount; set => Header.BookmarkCount = value; }
 
     [DataStructureItem(ItemType.BookmarkDistance)]
-    public int BookmarkDistance { get; set; }
+    public int BookmarkDistance { get => Header.BookmarkDistance; set => Header.BookmarkDistance = value; }
 
     [DataStructureItem(ItemType.RleArrayCount)]
-    public int RleArrayCount { get; set; }
+    public int RleArrayCount { get => Header.RleArrayCount; set => Header.RleArrayCount = value; }
 
     [DataStructureItem(ItemType.RleEntrySize)]
-    public short RleEntrySize { get; set; }
+    public short RleEntrySize { get => Header.RleEntrySize; set => Header.RleEntrySize = value; }
 
     [DataStructureItem(ItemType.BitpackEntrySize)]
-    public short BitpackEntrySize { get; set; }
+    public short BitpackEntrySize { get => Header.BitpackEntrySize; set => Header.BitpackEntrySize = value; }
 
     [DataStructureItem(ItemType.BitpackUnitCount)]
-    public int BitpackUnitCount { get; set; }
+    public int BitpackUnitCount { get => Header.BitpackUnitCount; set => Header.BitpackUnitCount = value; }
 
-    /// <summary>
-    /// Lowest data id in the segment, subtracted from every packed value
-    /// </summary>
     [DataStructureItem(ItemType.BitpackMinId)]
-    public long BitpackMinId { get; set; }
+    public long BitpackMinId { get => Header.BitpackMinId; set => Header.BitpackMinId = value; }
 
     public SegmentBookmark[] Bookmarks { get; set; } = [];
 
@@ -62,37 +61,25 @@ public sealed class SegmentBlob : DataStructure
 
     public BitpackArray Bitpack { get; set; }
 
-    /// <summary>
-    /// Width of one RLE entry, which doubles when a data id no longer fits in four bytes
-    /// </summary>
-    public int RleEntryBytes => BitpackEntrySize > 32 ? EntrySize * 2 : EntrySize;
+    public int RleEntryBytes => Header.RleEntryBytes;
 
-    /// <summary>
-    /// RleArrayCount is held in eight byte units rather than entries
-    /// </summary>
-    public int RleEntryCount => RleArrayCount * EntrySize / RleEntryBytes;
+    public int RleEntryCount => Header.RleEntryCount;
 
     public SegmentValueStore? ValueStore { get; set; }
 
-    public bool IsStoreByValue => StructureType == SegmentStructureType.StoreByValue;
+    public bool IsStoreByValue => Header.IsStoreByValue;
 
-    /// <summary>
-    /// Bytes before the bookmark array, the store by value layout carrying two more than the run length one
-    /// </summary>
-    public int PrologueSize => IsStoreByValue ? HeaderSize + 2 : HeaderSize;
+    public int PrologueSize => Header.PrologueSize;
 
-    public int BookmarkArrayOffset => PrologueSize;
+    public int BookmarkArrayOffset => Header.BookmarkArrayOffset;
 
-    public int ValueStoreOffset => BookmarkArrayOffset + (BookmarkCount * EntrySize);
+    public int ValueStoreOffset => Header.ValueStoreOffset;
 
-    public int RleArrayOffset => BookmarkArrayOffset + (BookmarkCount * EntrySize);
+    public int RleArrayOffset => Header.RleArrayOffset;
 
-    public int BitpackArrayOffset => RleArrayOffset + (RleArrayCount * EntrySize);
+    public int BitpackArrayOffset => Header.BitpackArrayOffset;
 
-    /// <summary>
-    /// Size the header fields imply, which must equal on_disk_size and the blob length
-    /// </summary>
-    public int ExpectedSize => HeaderSize + (EntrySize * (RleArrayCount + BookmarkCount + BitpackUnitCount));
+    public int ExpectedSize => Header.ExpectedSize;
 
     /// <summary>
     /// Rows the RLE runs cover, excluding the terminator

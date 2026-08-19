@@ -3,16 +3,49 @@ using InternalsViewer.Internals.Columnstore.Metadata;
 using InternalsViewer.Internals.Columnstore.Decoding;
 using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Internals.Columnstore.Metadata.Enums;
+using InternalsViewer.Internals.Columnstore.Segments;
 using InternalsViewer.Internals.Helpers;
+using CommunityToolkit.Mvvm.ComponentModel;
 
 namespace InternalsViewer.UI.App.Models.Columnstore;
 
 /// <summary>
 /// One column segment as the viewer presents it
 /// </summary>
-public sealed class SegmentSummary
+public sealed partial class SegmentSummary : ObservableObject
 {
     public required ColumnSegment Segment { get; init; }
+
+    /// <summary>
+    /// The segment blob's prologue, read separately from the metadata and applied once it arrives
+    /// </summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(StructureDescription))]
+    [NotifyPropertyChangedFor(nameof(RleDescription))]
+    [NotifyPropertyChangedFor(nameof(BitPackDescription))]
+    [NotifyPropertyChangedFor(nameof(BookmarkDescription))]
+    private SegmentBlobHeader? _header;
+
+    public string StructureDescription
+        => Header is null ? string.Empty : Header.StructureType.ToString().SplitCamelCase();
+
+    public string RleDescription => Header is null
+        ? string.Empty
+        : Header.HasRleArray
+            ? $"{Header.RleEntryCount}"
+            : "None";
+
+    public string BitPackDescription => Header is null
+        ? string.Empty
+        : Header.HasBitpackArray
+            ? $"{Header.BitpackValueCount} at {Header.BitpackEntrySize} bit"
+            : "None";
+
+    public string BookmarkDescription => Header is null
+        ? string.Empty
+        : Header.BookmarkCount == 0
+            ? "None"
+            : $"{Header.BookmarkCount} every {Header.BookmarkDistance}";
 
     public required long LargestSegmentSize { get; init; }
 

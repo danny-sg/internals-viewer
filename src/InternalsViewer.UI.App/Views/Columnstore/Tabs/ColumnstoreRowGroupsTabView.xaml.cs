@@ -12,6 +12,9 @@ public sealed partial class ColumnstoreRowGroupsTabView
     public ColumnstoreRowGroupsTabView()
     {
         InitializeComponent();
+
+        // x:Bind resolves against the view, and the dock sets DataContext after the view is built
+        DataContextChanged += (_, _) => Bindings.Update();
     }
 
     public ColumnstoreTabViewModel ViewModel => (ColumnstoreTabViewModel)DataContext;

@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using InternalsViewer.UI.App.ViewModels.Columnstore;
 using Microsoft.UI.Xaml;
 
@@ -11,6 +11,9 @@ public sealed partial class ColumnstoreView : IDisposable
         InitializeComponent();
 
         Loaded += OnLoaded;
+
+        // x:Bind resolves against the view, and the dock sets DataContext after the view is built
+        DataContextChanged += (_, _) => Bindings.Update();
     }
 
     public ColumnstoreTabViewModel ViewModel => (ColumnstoreTabViewModel)DataContext;

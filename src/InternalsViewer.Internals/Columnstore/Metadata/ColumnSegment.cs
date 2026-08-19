@@ -67,12 +67,21 @@ public sealed class ColumnSegment
     /// </summary>
     public SegmentDictionary? LocalDictionary { get; set; }
 
+    /// <summary>
+    /// Pointer (Row Identifer) to the LOB containing the data
+    /// </summary>
     public LobPointer DataPointer { get; set; }
 
     public Dictionary<string, byte[]>? UnmappedFields { get; set; }
-
+    
+    /// <summary>
+    /// Global Dictionary Id
+    /// </summary>
     public int PrimaryDictionaryId { get; set; }
 
+    /// <summary>
+    /// Local Dictionary Id
+    /// </summary>
     public int SecondaryDictionaryId { get; set; }
 
     public int Status { get; set; }

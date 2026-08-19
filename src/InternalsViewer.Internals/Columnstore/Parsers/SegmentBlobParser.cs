@@ -1,6 +1,5 @@
 ﻿using System.Buffers.Binary;
 using System.IO;
-using InternalsViewer.Internals.Annotations;
 using InternalsViewer.Internals.Columnstore.Blobs;
 using InternalsViewer.Internals.Columnstore.Segments;
 
@@ -32,18 +31,7 @@ public static class SegmentBlobParser
         {
             IsMarkEnabled = isMarkEnabled,
             Data = data,
-            Version = ReadInt32(span, 0x00),
-            LobType = (ColumnstoreLobType)ReadInt32(span, 0x04),
-            Reserved = ReadInt32(span, 0x08),
-            Unknown0C = ReadInt32(span, 0x0C),
-            StructureType = (SegmentStructureType)ReadInt32(span, 0x10),
-            BookmarkCount = ReadInt32(span, 0x14),
-            BookmarkDistance = ReadInt32(span, 0x18),
-            RleArrayCount = ReadInt32(span, 0x1C),
-            RleEntrySize = ReadInt16(span, 0x20),
-            BitpackEntrySize = ReadInt16(span, 0x22),
-            BitpackUnitCount = ReadInt32(span, 0x24),
-            BitpackMinId = ReadInt64(span, 0x28)
+            Header = ParseHeader(span)
         };
 
         MarkHeader(blob);
@@ -58,8 +46,6 @@ public static class SegmentBlobParser
         if (blob.IsStoreByValue)
         {
             blob.ValueStore = ReadValueStore(data, blob);
-
-            MarkRegions(blob);
 
             return blob;
         }
@@ -81,9 +67,35 @@ public static class SegmentBlobParser
                                         blob.BitpackUnitCount,
                                         blob.BitpackMinId);
 
-        MarkRegions(blob);
-
         return blob;
+    }
+
+    /// <summary>
+    /// Reads the prologue on its own, which describes the layout without any of the arrays being present
+    /// </summary>
+    public static SegmentBlobHeader ParseHeader(ReadOnlySpan<byte> span)
+    {
+        if (span.Length < SegmentBlobHeader.Size)
+        {
+            throw new ArgumentException($"Segment blob header needs {SegmentBlobHeader.Size} bytes, {span.Length} given.",
+                                        nameof(span));
+        }
+
+        return new SegmentBlobHeader
+        {
+            Version = ReadInt32(span, 0x00),
+            LobType = (ColumnstoreLobType)ReadInt32(span, 0x04),
+            Reserved = ReadInt32(span, 0x08),
+            Unknown0C = ReadInt32(span, 0x0C),
+            StructureType = (SegmentStructureType)ReadInt32(span, 0x10),
+            BookmarkCount = ReadInt32(span, 0x14),
+            BookmarkDistance = ReadInt32(span, 0x18),
+            RleArrayCount = ReadInt32(span, 0x1C),
+            RleEntrySize = ReadInt16(span, 0x20),
+            BitpackEntrySize = ReadInt16(span, 0x22),
+            BitpackUnitCount = ReadInt32(span, 0x24),
+            BitpackMinId = ReadInt64(span, 0x28)
+        };
     }
 
     private static SegmentBookmark[] ReadBookmarks(ReadOnlySpan<byte> span, SegmentBlob blob)
@@ -197,43 +209,6 @@ public static class SegmentBlobParser
         blob.MarkProperty(nameof(SegmentBlob.BitpackEntrySize), 0x22, 2);
         blob.MarkProperty(nameof(SegmentBlob.BitpackUnitCount), 0x24, 4);
         blob.MarkProperty(nameof(SegmentBlob.BitpackMinId), 0x28, 8);
-    }
-
-    private static void MarkRegions(SegmentBlob blob)
-    {
-        if (!blob.IsMarkEnabled)
-        {
-            return;
-        }
-
-        blob.MarkValue(ItemType.BookmarkCount,
-                       "Bookmark Array",
-                       blob.BookmarkCount,
-                       blob.BookmarkArrayOffset,
-                       blob.BookmarkCount * SegmentBlob.EntrySize);
-
-        if (blob.IsStoreByValue)
-        {
-            blob.MarkValue(ItemType.SegmentStructureType,
-                           "Value Store",
-                           blob.ValueStore?.ValueCount ?? 0,
-                           blob.ValueStoreOffset,
-                           blob.Data.Length - blob.ValueStoreOffset);
-
-            return;
-        }
-
-        blob.MarkValue(ItemType.RleArrayCount,
-                       "RLE Array",
-                       blob.RleArrayCount,
-                       blob.RleArrayOffset,
-                       blob.RleArrayCount * SegmentBlob.EntrySize);
-
-        blob.MarkValue(ItemType.BitpackUnitCount,
-                       "Bit Pack Array",
-                       blob.BitpackUnitCount,
-                       blob.BitpackArrayOffset,
-                       blob.BitpackUnitCount * SegmentBlob.EntrySize);
     }
 
     private static int ReadInt32(ReadOnlySpan<byte> span, int offset)

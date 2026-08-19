@@ -1,4 +1,4 @@
-using System.Buffers.Binary;
+﻿using System.Buffers.Binary;
 
 namespace InternalsViewer.Internals.Columnstore.Segments;
 
@@ -25,7 +25,12 @@ public readonly record struct ArchiveBlobHeader(int Reserved, int UncompressedSi
     /// A plain blob starts with a version of 1, so a leading zero plus sizes that account for the whole blob separates the two without
     /// having to trust either alone.
     /// </remarks>
-    public static bool IsArchive(ReadOnlySpan<byte> data)
+    public static bool IsArchive(ReadOnlySpan<byte> data) => IsArchive(data, data.Length);
+
+    /// <summary>
+    /// Tests a blob whose length is known separately, such as one only its opening bytes have been read from
+    /// </summary>
+    public static bool IsArchive(ReadOnlySpan<byte> data, int blobLength)
     {
         if (data.Length < HeaderSize)
         {
@@ -37,6 +42,6 @@ public readonly record struct ArchiveBlobHeader(int Reserved, int UncompressedSi
         return header.Reserved == 0
                && header.UncompressedSize > 0
                && header.CompressedSize > 0
-               && header.ExpectedSize == data.Length;
+               && header.ExpectedSize == blobLength;
     }
 }
