@@ -39,20 +39,20 @@ public static class TableStructureProvider
             throw new ArgumentException($"Allocation unit {allocationUnitId} not found");
         }
 
-        if (!metadata.RowSets.TryGetValue(allocationUnit.ContainerId, out var rowSet))
+        if (!metadata.Rowsets.TryGetValue(allocationUnit.ContainerId, out var rowset))
         {
             throw new ArgumentException($"Row set {allocationUnit.ContainerId} not found");
         }
 
-        structure.IndexType = rowSet.IndexId == 0 ? IndexType.Heap : IndexType.Clustered;
+        structure.IndexType = rowset.IndexId == 0 ? IndexType.Heap : IndexType.Clustered;
 
-        structure.CompressionType = rowSet.CompressionType;
+        structure.CompressionType = rowset.CompressionType;
 
-        var columnLayouts = metadata.ColumnLayouts[rowSet.RowSetId].ToList();
+        var columnLayouts = metadata.ColumnLayouts[rowset.RowsetId].ToList();
 
-        var columns = metadata.Columns[rowSet.ObjectId].ToDictionary(c => c.ColumnId);
+        var columns = metadata.Columns[rowset.ObjectId].ToDictionary(c => c.ColumnId);
 
-        var indexColumnIds = metadata.IndexColumns[(rowSet.ObjectId, rowSet.IndexId)]
+        var indexColumnIds = metadata.IndexColumns[(rowset.ObjectId, rowset.IndexId)]
                                      .Select(c => c.ColumnId)
                                      .ToHashSet();
 
@@ -64,9 +64,9 @@ public static class TableStructureProvider
             var isUniqueifer = Convert.ToBoolean(s.Status & 16);
             var isKey = indexColumnIds.Contains(s.ColumnId);
 
-            structure.ObjectId = rowSet.ObjectId;
-            structure.IndexId = rowSet.IndexId;
-            structure.PartitionId = rowSet.RowSetId;
+            structure.ObjectId = rowset.ObjectId;
+            structure.IndexId = rowset.IndexId;
+            structure.PartitionId = rowset.RowsetId;
 
             /*
                 The Offset field is a 4 byte integer, the first 2 bytes represent the leaf offset (offset in a leaf index page), the second

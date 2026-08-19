@@ -78,7 +78,7 @@ public class RecordReaderTests(ITestOutputHelper testOutput)
     }
 
     [RequiresFileFact(MdfPath)]
-    public async Task Can_Read_RowSet_Table()
+    public async Task Can_Read_Rowset_Table()
     {
         var service = ServiceHelper.CreatePageService(TestOutput);
 
@@ -88,11 +88,11 @@ public class RecordReaderTests(ITestOutputHelper testOutput)
 
         var database = new DatabaseSource(Connection) { Name = "TestDatabase" };
 
-        var tableStructure = InternalRowSetStructure.GetStructure(72057594040549376);
+        var tableStructure = InternalRowsetStructure.GetStructure(72057594040549376);
 
         var records = await dataReader.Read(database, new PageAddress(1, 19), tableStructure, CancellationToken.None);
 
-        var result = records.Select(InternalRowSetLoader.Load).ToList();
+        var result = records.Select(InternalRowsetLoader.Load).ToList();
 
         Assert.NotEmpty(result);
     }

@@ -11,10 +11,10 @@ namespace InternalsViewer.Internals.Metadata.Internals.Tables;
 /// Contains a row for each partition row set for an index or a heap.
 /// </summary>
 [InternalsMetadata]
-public sealed record InternalRowSet
+public sealed record InternalRowset
 {
     [InternalsMetadataColumn("rowsetid", 1, SqlDbType.BigInt, 8, 4, 1)]
-    public long RowSetId { get; set; }
+    public long RowsetId { get; set; }
 
     [InternalsMetadataColumn("ownertype", 2, SqlDbType.TinyInt, 1, 12, 2)]
     public byte OwnerType { get; set; }

@@ -33,7 +33,7 @@ public class MetadataLoaderTests(ITestOutputHelper testOutputHelper)
         var results = await service.Load(database, CancellationToken.None);
 
         Assert.NotEmpty(results.AllocationUnits);
-        Assert.NotEmpty(results.RowSets);
+        Assert.NotEmpty(results.Rowsets);
         Assert.NotEmpty(results.Indexes);
         Assert.NotEmpty(results.IndexColumns);
         Assert.NotEmpty(results.ColumnLayouts);

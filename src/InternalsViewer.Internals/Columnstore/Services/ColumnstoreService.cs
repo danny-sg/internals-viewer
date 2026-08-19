@@ -33,11 +33,17 @@ public sealed class ColumnstoreService(IRecordReader recordReader, ILobDataServi
 
         var columnMap = structure.Columns.ToDictionary(c => (int)c.ColumnId);
 
+        var related = database.AllocationUnits
+                              .Values
+                              .Where(a => a.ObjectId == allocationUnit.ObjectId && a.IndexId == allocationUnit.IndexId)
+                              .ToList();
+
         return ColumnstoreMetadataMapper.Map(allocationUnit,
                                              rowGroupRecords,
                                              columnSegmentRecords,
                                              dictionaryRecords,
-                                             columnMap);
+                                             columnMap,
+                                             related);
     }
 
     public async Task<byte[]> GetSegmentData(DatabaseSource database,

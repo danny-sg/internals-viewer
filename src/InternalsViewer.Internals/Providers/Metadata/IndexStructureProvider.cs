@@ -71,20 +71,20 @@ public static class IndexStructureProvider
             throw new ArgumentException($"Allocation unit {allocationUnitId} not found");
         }
 
-        if (!metadata.RowSets.TryGetValue(allocationUnit.ContainerId, out var rowSet))
+        if (!metadata.Rowsets.TryGetValue(allocationUnit.ContainerId, out var rowset))
         {
             throw new ArgumentException($"Row set {allocationUnit.ContainerId} not found");
         }
 
-        var index = metadata.Indexes[rowSet.ObjectId]
-                            .FirstOrDefault(i => i.IndexId == rowSet.IndexId);
+        var index = metadata.Indexes[rowset.ObjectId]
+                            .FirstOrDefault(i => i.IndexId == rowset.IndexId);
 
         if (index == null)
         {
-            throw new ArgumentException($"Index - Object Id: {rowSet.ObjectId}/ Index Id: {rowSet.IndexId} not found");
+            throw new ArgumentException($"Index - Object Id: {rowset.ObjectId}/ Index Id: {rowset.IndexId} not found");
         }
 
-        var parentAllocationUnitId = GetParentAllocationUnitId(rowSet.ObjectId, rowSet.PartitionNumber, metadata);
+        var parentAllocationUnitId = GetParentAllocationUnitId(rowset.ObjectId, rowset.PartitionNumber, metadata);
 
         if (parentAllocationUnitId.HasValue)
         {
@@ -97,8 +97,8 @@ public static class IndexStructureProvider
         }
 
         structure.IndexId = index.IndexId;
-        structure.ObjectId = rowSet.ObjectId;
-        structure.PartitionId = rowSet.RowSetId;
+        structure.ObjectId = rowset.ObjectId;
+        structure.PartitionId = rowset.RowsetId;
 
         structure.IsUnique = Convert.ToBoolean(index.Status & 0x8);
         structure.HasFilter = Convert.ToBoolean(index.Status & 0x20000);
@@ -299,13 +299,13 @@ public static class IndexStructureProvider
     /// </summary>
     private static long? GetParentAllocationUnitId(int objectId, int partitionNumber, InternalMetadata metadata)
     {
-        var rowSet = metadata.RowSets.Values
+        var rowset = metadata.Rowsets.Values
                              .FirstOrDefault(p => p.ObjectId == objectId
                                              && p.PartitionNumber == partitionNumber
                                              && p.IndexId <= 1);
 
         var allocationUnit = metadata.AllocationUnits.Values
-                                     .FirstOrDefault(a => a.ContainerId == rowSet?.RowSetId);
+                                     .FirstOrDefault(a => a.ContainerId == rowset?.RowsetId);
 
         return allocationUnit?.AllocationUnitId;
     }

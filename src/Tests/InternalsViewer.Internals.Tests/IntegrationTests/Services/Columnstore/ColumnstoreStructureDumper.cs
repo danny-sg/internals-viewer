@@ -10,6 +10,59 @@ internal static class ColumnstoreStructureDumper
 {
     private const int SampleSize = 12;
 
+    public static string DumpIndex(ColumnStoreIndex index)
+    {
+        var builder = new StringBuilder();
+
+        builder.AppendLine($"Columnstore Index   {index.SchemaName}.{index.TableName}.{index.IndexName}");
+        builder.AppendLine($"  objectId {index.ObjectId}   indexId {index.IndexId}   "
+                           + $"{(index.IsClustered ? "clustered" : "nonclustered")}   hobt {index.HobtId}");
+        builder.AppendLine($"  {index.Columns.Count} column(s)   {index.RowGroups.Count} row group(s)   "
+                           + $"{index.TotalRows:N0} rows   {index.TotalSize:N0} bytes");
+
+        builder.AppendLine();
+        builder.AppendLine("Row Sets");
+
+        foreach (var columnstoreRowset in index.Rowsets)
+        {
+            builder.AppendLine($"  {columnstoreRowset.RowsetType,-13} hobt {columnstoreRowset.HobtId}"
+                               + $"{(columnstoreRowset.IsAllocated ? string.Empty : "   (not allocated)")}");
+
+            foreach (var unit in columnstoreRowset.AllocationUnits)
+            {
+                builder.AppendLine($"    {unit.AllocationUnitType,-16} au {unit.AllocationUnitId,-20} "
+                                   + $"first {unit.FirstPage,-12} root {unit.RootPage,-12} iam {unit.FirstIamPage,-12} "
+                                   + $"used {unit.UsedPages,8:N0} total {unit.TotalPages,8:N0}");
+            }
+        }
+
+        builder.AppendLine();
+        builder.AppendLine("Entry Points");
+        builder.AppendLine($"  Segment data     au {index.BlobAllocationUnit?.AllocationUnitId}   "
+                           + $"first {index.FirstPage}   root {index.RootPage}   iam {index.FirstIamPage}");
+        builder.AppendLine($"  Delete bitmap    au {index.DeleteBitmapAllocationUnit?.AllocationUnitId}   "
+                           + $"first {index.DeleteBitmap?.FirstPage}   root {index.DeleteBitmap?.RootPage}   "
+                           + $"iam {index.DeleteBitmap?.FirstIamPage}");
+        builder.AppendLine($"  Delta stores     {index.DeltaStores.Count()}");
+
+        foreach (var delta in index.DeltaStores)
+        {
+            builder.AppendLine($"    hobt {delta.HobtId}   au {delta.DataAllocationUnit?.AllocationUnitId}   "
+                               + $"first {delta.FirstPage}   root {delta.RootPage}   iam {delta.FirstIamPage}");
+        }
+
+        builder.AppendLine();
+
+        foreach (var rowGroup in index.RowGroups)
+        {
+            builder.AppendLine($"  Row group {rowGroup.RowGroupId,4}   {rowGroup.State,-11}   "
+                               + $"rows {rowGroup.TotalRows,10:N0}   size {rowGroup.SizeInBytes,12:N0}   "
+                               + $"deltaStore {rowGroup.DeltaStoreHobtId}");
+        }
+
+        return builder.ToString();
+    }
+
     public static string DumpRowGroup(RowGroup rowGroup)
     {
         var builder = new StringBuilder();

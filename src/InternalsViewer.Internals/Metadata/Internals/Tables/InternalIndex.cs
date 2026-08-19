@@ -42,5 +42,5 @@ public sealed record InternalIndex
     public int Lobds { get; set; }
 
     [InternalsMetadataColumn("rowset", 11, SqlDbType.BigInt, 8, 31, 11)]
-    public long RowSet { get; set; }
+    public long Rowset { get; set; }
 }

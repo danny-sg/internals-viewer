@@ -1,6 +1,7 @@
 ﻿using System.Buffers.Binary;
 using InternalsViewer.Internals.Columnstore.Metadata;
 using InternalsViewer.Internals.Columnstore.Metadata.Enums;
+using InternalsViewer.Internals.Engine.Database.Enums;
 using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Internals.Engine.Database;
 using InternalsViewer.Internals.Engine.Records.Data;
@@ -27,14 +28,21 @@ public static class ColumnstoreMetadataMapper
                                        IReadOnlyList<DataRecord> rowGroupRecords,
                                        IReadOnlyList<DataRecord> segmentRecords,
                                        IReadOnlyList<DataRecord> dictionaryRecords,
-                                       IReadOnlyDictionary<int, ColumnStructure>? columnMap = null)
+                                       IReadOnlyDictionary<int, ColumnStructure>? columnMap = null,
+                                       IEnumerable<AllocationUnit>? relatedAllocationUnits = null)
     {
         var index = new ColumnStoreIndex
         {
             HobtId = allocationUnit.PartitionId,
             ObjectId = allocationUnit.ObjectId,
-            IndexId = allocationUnit.IndexId
+            IndexId = allocationUnit.IndexId,
+            IndexName = allocationUnit.IndexName,
+            SchemaName = allocationUnit.SchemaName,
+            TableName = allocationUnit.TableName,
+            IsClustered = allocationUnit.IndexType == IndexType.ClusteredColumnStore
         };
+
+        index.Rowsets.AddRange(BuildRowsets(relatedAllocationUnits ?? [allocationUnit]));
 
         var dictionaries = dictionaryRecords.Select(MapDictionary).ToList();
 
@@ -115,6 +123,28 @@ public static class ColumnstoreMetadataMapper
         var slot = BinaryPrimitives.ReadInt16LittleEndian(span.Slice(14, 2));
 
         return new LobPointer(blobId, new PageAddress(fileId, pageId), slot);
+    }
+
+    /// <summary>
+    /// Groups the allocation units of an index by the row set they belong to
+    /// </summary>
+    private static IEnumerable<ColumnstoreRowset> BuildRowsets(IEnumerable<AllocationUnit> allocationUnits)
+    {
+        var grouped = allocationUnits.GroupBy(a => a.PartitionId)
+                                     .OrderBy(g => g.Key);
+
+        foreach (var group in grouped)
+        {
+            var columnstoreRowset = new ColumnstoreRowset
+            {
+                HobtId = group.Key,
+                RowsetType = (ColumnstoreRowsetType)group.First().OwnerType
+            };
+
+            columnstoreRowset.AllocationUnits.AddRange(group.OrderBy(a => a.AllocationUnitType));
+
+            yield return columnstoreRowset;
+        }
     }
 
     private static IEnumerable<ColumnStoreColumn> BuildColumns(IEnumerable<ColumnSegment> segments,

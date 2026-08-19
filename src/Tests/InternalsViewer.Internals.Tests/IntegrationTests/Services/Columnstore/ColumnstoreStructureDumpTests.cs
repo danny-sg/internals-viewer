@@ -1,4 +1,4 @@
-using InternalsViewer.Internals.Columnstore.Metadata;
+﻿using InternalsViewer.Internals.Columnstore.Metadata;
 using InternalsViewer.Internals.Tests.Helpers;
 using InternalsViewer.Internals.Columnstore.Services;
 using InternalsViewer.Internals.Engine.Database;
@@ -12,6 +12,19 @@ namespace InternalsViewer.Internals.Tests.IntegrationTests.Services.Columnstore;
 public sealed class ColumnstoreStructureDumpTests(ITestOutputHelper testOutput) : ProviderTestBase(testOutput)
 {
     private const string DumpPath = @"C:\ColumnstoreDump\Structures";
+
+    [Theory]
+    [InlineData("Sales")]
+    [InlineData("SegDeletes")]
+    [InlineData("SegDelta")]
+    public async Task Dump_Index_Structure(string tableName)
+    {
+        var (service, database) = await CreateService();
+
+        var index = await GetIndex(service, database, tableName);
+
+        Write($"{tableName}_index.txt", ColumnstoreStructureDumper.DumpIndex(index));
+    }
 
     [Theory]
     [InlineData("Sales", 0)]

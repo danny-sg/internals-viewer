@@ -19,14 +19,14 @@ public static class AllocationUnitProvider
 
     public static AllocationUnit GetAllocationUnit(InternalMetadata metadata, InternalAllocationUnit source)
     {
-        var rowSet = metadata.RowSets[source.ContainerId];
+        var rowset = metadata.Rowsets[source.ContainerId];
 
-        var internalObject = metadata.Objects[rowSet.ObjectId];
+        var internalObject = metadata.Objects[rowset.ObjectId];
 
         var schema = metadata.Entities[(internalObject.SchemaId, (byte)MetadataConstants.SchemaClassId)];
 
-        var index = metadata.Indexes[rowSet.ObjectId]
-                            .FirstOrDefault(i => i.IndexId == rowSet.IndexId);
+        var index = metadata.Indexes[rowset.ObjectId]
+                            .FirstOrDefault(i => i.IndexId == rowset.IndexId);
 
         var parentIndex = metadata.Indexes[internalObject.ObjectId]
                                   .FirstOrDefault(i => i.IndexId <= 1);
@@ -39,21 +39,22 @@ public static class AllocationUnitProvider
         {
             AllocationUnitId = source.AllocationUnitId,
             AllocationUnitType = (AllocationUnitType)source.Type,
-            ObjectId = rowSet.ObjectId,
-            IndexId = rowSet.IndexId,
+            ObjectId = rowset.ObjectId,
+            IndexId = rowset.IndexId,
             SchemaName = schema.Name,
             TableName = internalObject.Name,
             IndexName = index?.Name ?? string.Empty,
             IndexType = index?.IndexType ?? 0,
             IsSystem = (internalObject.Status & 1) != 0,
             PartitionId = source.ContainerId,
+            OwnerType = rowset.OwnerType,
             FirstPage = PageAddressParser.Parse(source.FirstPage!),
             RootPage = PageAddressParser.Parse(source.RootPage!),
             FirstIamPage = PageAddressParser.Parse(source.FirstIamPage!),
             UsedPages = source.UsedPages,
             TotalPages = source.TotalPages,
             DisplayName = displayName,
-            CompressionType = (CompressionType)rowSet.CompressionType,
+            CompressionType = (CompressionType)rowset.CompressionType,
             ParentIndexType = parentIndex?.IndexType
         };
 
