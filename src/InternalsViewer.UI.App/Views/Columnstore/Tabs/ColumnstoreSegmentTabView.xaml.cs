@@ -2,6 +2,7 @@
 using System.ComponentModel;
 using System.Threading;
 using InternalsViewer.UI.App.Controls.Docking;
+using InternalsViewer.UI.App.Models;
 using InternalsViewer.UI.App.Models.Columnstore;
 using InternalsViewer.UI.App.ViewModels.Columnstore;
 using Microsoft.UI.Xaml;
@@ -79,6 +80,18 @@ public sealed partial class ColumnstoreSegmentTabView : UserControl, IDocumentCo
         toggle.Checked += (_, _) => ViewModel.IsHexViewVisible = true;
         toggle.Unchecked += (_, _) => ViewModel.IsHexViewVisible = false;
 
+        var derivation = new ToggleButton
+        {
+            Style = (Style)Application.Current.Resources["TabCommandToggleStyle"],
+            Content = "Show Derivation",
+            IsChecked = ViewModel.IsDerivationVisible
+        };
+
+        ToolTipService.SetToolTip(derivation, "Show the working behind a value rather than the value alone");
+
+        derivation.Checked += (_, _) => ViewModel.IsDerivationVisible = true;
+        derivation.Unchecked += (_, _) => ViewModel.IsDerivationVisible = false;
+
         var auto = new ToggleButton
         {
             Style = (Style)Application.Current.Resources["TabCommandToggleStyle"],
@@ -91,10 +104,22 @@ public sealed partial class ColumnstoreSegmentTabView : UserControl, IDocumentCo
         auto.Checked += (_, _) => ViewModel.IsAutoRegion = true;
         auto.Unchecked += (_, _) => ViewModel.IsAutoRegion = false;
 
+        panel.Children.Add(derivation);
         panel.Children.Add(auto);
         panel.Children.Add(toggle);
 
         return panel;
+    }
+
+    /// <summary>
+    /// Takes an operand back to where it was read from, which puts its region on show with the item selected
+    /// </summary>
+    private void Derivation_OnStepInvoked(object? sender, DerivationStep step)
+    {
+        if (step.Target is SegmentNavigationTarget target)
+        {
+            ViewModel.GoToTarget(target);
+        }
     }
 
     private void TabView_OnSelectionChanged(object sender, SelectionChangedEventArgs e)

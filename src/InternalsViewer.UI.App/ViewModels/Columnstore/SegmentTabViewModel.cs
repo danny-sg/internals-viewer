@@ -77,6 +77,35 @@ public sealed partial class SegmentTabViewModel(ColumnstoreService columnstoreSe
     public ObservableCollection<SegmentElement> Elements { get; } = [];
 
     /// <summary>
+    /// Every row of the segment, indexed rather than materialised so the grid only ever builds what it shows
+    /// </summary>
+    [ObservableProperty]
+    private SegmentRowList? _rows;
+
+    [ObservableProperty]
+    private string _rowCountDescription = string.Empty;
+
+    /// <summary>
+    /// Whether the grids show the working behind a value, or only the value itself
+    /// </summary>
+    /// <remarks>
+    /// The flag reaches a cell through the row it is bound to, so the rows are rebuilt to take a change. Both lists
+    /// are cheap to rebuild, one being an index over the segment and the other a single packed unit.
+    /// </remarks>
+    [ObservableProperty]
+    private bool _isDerivationVisible = true;
+
+    partial void OnIsDerivationVisibleChanged(bool value)
+    {
+        if (Blob is { } blob)
+        {
+            BuildRows(blob);
+        }
+
+        BitpackUnit = GetBitpackUnit(SelectedMarker);
+    }
+
+    /// <summary>
     /// Region the window sits on, set by picking a tab and reported back when a scroll leaves the region
     /// </summary>
     [ObservableProperty]
@@ -138,6 +167,20 @@ public sealed partial class SegmentTabViewModel(ColumnstoreService columnstoreSe
 
     partial void OnSelectedMarkerChanged(Marker? value) => BitpackUnit = GetBitpackUnit(value);
 
+    /// <summary>
+    /// Hands the grid an indexed view over the segment, the rows themselves being worked out on demand
+    /// </summary>
+    private void BuildRows(SegmentBlob blob)
+    {
+        var stream = new SegmentDataIdStream(blob);
+
+        var context = new SegmentRowContext(blob, stream, DeriveValue, IsDerivationVisible);
+
+        Rows = new SegmentRowList(context, stream.RowCount);
+
+        RowCountDescription = stream.RowCount == 1 ? "1 row" : $"{stream.RowCount} rows";
+    }
+
     private ValueDerivation? DeriveValue(long dataId)
         => Decoder is { } decoder ? SegmentValueDerivation.Build(Segment.Segment, decoder, dataId) : null;
 
@@ -160,7 +203,7 @@ public sealed partial class SegmentTabViewModel(ColumnstoreService columnstoreSe
             return null;
         }
 
-        return BitpackUnitDetail.Build(blob, index, DeriveValue);
+        return BitpackUnitDetail.Build(blob, index, DeriveValue, IsDerivationVisible);
     }
 
     /// <summary>
@@ -229,6 +272,8 @@ public sealed partial class SegmentTabViewModel(ColumnstoreService columnstoreSe
             }
 
             OnPropertyChanged(nameof(TotalLength));
+
+            BuildRows(blob);
 
             GoToRegion(Region);
 
@@ -340,7 +385,17 @@ public sealed partial class SegmentTabViewModel(ColumnstoreService columnstoreSe
             return;
         }
 
-        if (token.IsCancellationRequested || Blob is not { } blob || HexData.Length == 0)
+        if (token.IsCancellationRequested)
+        {
+            return;
+        }
+
+        BuildMarkers();
+    }
+
+    private void BuildMarkers()
+    {
+        if (Blob is not { } blob || HexData.Length == 0)
         {
             return;
         }
@@ -349,6 +404,44 @@ public sealed partial class SegmentTabViewModel(ColumnstoreService columnstoreSe
             SegmentRegionMarkerBuilder.Build(blob, Region, HexBaseAddress, HexData.Length));
 
         AreMarkersStale = false;
+    }
+
+    /// <summary>
+    /// Moves to the item the target names, showing its region and selecting the marker over it
+    /// </summary>
+    /// <remarks>
+    /// The markers are built rather than left to the debounce, there being nothing to select until they exist.
+    /// </remarks>
+    public void GoToTarget(SegmentNavigationTarget target)
+    {
+        if (Blob is not { } blob)
+        {
+            return;
+        }
+
+        _isFollowingWindow = true;
+
+        Region = target.Region;
+
+        _isFollowingWindow = false;
+
+        var start = Math.Clamp(target.Offset, 0, Math.Max(0, blob.Data.Length - 1)) / 16 * 16;
+
+        if (WindowOffset == start)
+        {
+            SetHexWindow(start);
+        }
+        else
+        {
+            WindowOffset = start;
+        }
+
+        // Moving the window scheduled a rebuild, which would replace the collection and drop the selection with it
+        _markerDebounce?.Cancel();
+
+        BuildMarkers();
+
+        SelectedMarker = Markers.FirstOrDefault(m => m.StartPosition == target.Offset - HexBaseAddress);
     }
 
     /// <summary>

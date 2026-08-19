@@ -26,8 +26,11 @@
                              BorderThickness="0"
                              Background="{ThemeResource LayerFillColorDefaultBrush}"
                              ItemsSource="{x:Bind ViewModel.Segments, Mode=OneWay}">
+            <tableView:TableView.Resources>
+                <x:Double x:Key="ListViewItemMinHeight">0</x:Double>
+            </tableView:TableView.Resources>
             <tableView:TableView.Columns>
-                <tableView:TableViewTextColumn Header="Row group" Width="90"
+                <tableView:TableViewTextColumn Header="Row Group" Width="90"
                                                Binding="{Binding RowGroupId}"/>
                 <tableView:TableViewTextColumn Header="Column" Width="60"
                                                Binding="{Binding ColumnId}"/>
@@ -37,11 +40,14 @@
                                                Binding="{Binding EncodingDescription}"/>
                 <tableView:TableViewTextColumn Header="Structure" Width="110"
                                                Binding="{Binding StructureDescription}"/>
-                <tableView:TableViewTextColumn Header="RLE entries" Width="100"
+                <tableView:TableViewTextColumn Header="RLE Entries" Width="100"
                                                Binding="{Binding RleDescription}"
                                                CellStyle="{StaticResource TableViewCellRightStyle}"/>
-                <tableView:TableViewTextColumn Header="Bit packed" Width="130"
-                                               Binding="{Binding BitPackDescription}"
+                <tableView:TableViewTextColumn Header="Bit Pack Entries" Width="120"
+                                               Binding="{Binding BitPackEntriesDescription}"
+                                               CellStyle="{StaticResource TableViewCellRightStyle}"/>
+                <tableView:TableViewTextColumn Header="Bit Pack Size" Width="110"
+                                               Binding="{Binding BitPackSizeDescription}"
                                                CellStyle="{StaticResource TableViewCellRightStyle}"/>
                 <tableView:TableViewTextColumn Header="Rows" Width="100"
                                                Binding="{Binding RowCount}"
@@ -49,7 +55,7 @@
                 <tableView:TableViewTextColumn Header="Size" Width="100"
                                                Binding="{Binding OnDiskSize}"
                                                CellStyle="{StaticResource TableViewCellRightStyle}"/>
-                <tableView:TableViewTextColumn Header="Bytes per row" Width="110"
+                <tableView:TableViewTextColumn Header="Bytes Per Row" Width="110"
                                                Binding="{Binding BytesPerRow}"
                                                CellStyle="{StaticResource TableViewCellRightStyle}"/>
                 <tableView:TableViewTemplateColumn Header="Dictionary" Width="90" CanSort="False">

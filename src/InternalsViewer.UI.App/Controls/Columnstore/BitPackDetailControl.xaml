@@ -24,10 +24,10 @@
                    Foreground="{ThemeResource TextFillColorTertiaryBrush}"
                    Text="Select a unit to see the values packed into it"/>
 
-        <StackPanel Grid.Row="0" Grid.RowSpan="3">
+        <StackPanel Grid.Row="0" Grid.RowSpan="3"  Visibility="Collapsed">
             <TextBlock x:Name="UnitText"
                        Margin="12,8,12,4"
-                       Visibility="Collapsed"/>
+                      />
         </StackPanel>
 
         <skiaSharp:SKXamlCanvas x:Name="RulerCanvas"
@@ -60,6 +60,7 @@
                              CanFilterColumns="False"
                              CornerButtonMode="None"
                              HeadersVisibility="Columns"
+                             BorderBrush="{ThemeResource ControlStrokeColorDefaultBrush}"
                              ColumnHeaderStyle="{StaticResource TableViewColumnHeaderStyle}"
                              CellStyle="{StaticResource TableViewCellStyle}"
                              ItemContainerStyle="{StaticResource TableViewRowStyle}"
@@ -68,9 +69,17 @@
                              SelectionUnit="Row"
                              IsReadOnly="True"
                              GridLinesVisibility="All"
-                             BorderThickness="0"
+                             BorderThickness="1"
+                             CornerRadius="0"
+                             Margin="8"
                              SelectionChanged="ValueTable_OnSelectionChanged"
                              Background="{ThemeResource LayerFillColorDefaultBrush}">
+            <tableView:TableView.ItemContainerTransitions>
+                <TransitionCollection />
+            </tableView:TableView.ItemContainerTransitions>
+            <tableView:TableView.Resources>
+                <x:Double x:Key="ListViewItemMinHeight">0</x:Double>
+            </tableView:TableView.Resources>
             <tableView:TableView.Columns>
                 <tableView:TableViewTextColumn Header="Index" Width="90"
                                                Binding="{Binding Index}"
@@ -83,14 +92,16 @@
                 <tableView:TableViewTemplateColumn Header="Data Id" Width="340">
                     <tableView:TableViewTemplateColumn.CellTemplate>
                         <DataTemplate>
-                            <controls:ValueDerivationControl Derivation="{Binding Derivation}"/>
+                            <controls:ValueDerivationControl Derivation="{Binding Derivation}"
+                                                             ShowSteps="{Binding ShowDerivation}"/>
                         </DataTemplate>
                     </tableView:TableViewTemplateColumn.CellTemplate>
                 </tableView:TableViewTemplateColumn>
                 <tableView:TableViewTemplateColumn Header="Value" Width="340">
                     <tableView:TableViewTemplateColumn.CellTemplate>
                         <DataTemplate>
-                            <controls:ValueDerivationControl Derivation="{Binding ValueDerivation}"/>
+                            <controls:ValueDerivationControl Derivation="{Binding ValueDerivation}"
+                                                             ShowSteps="{Binding ShowDerivation}"/>
                         </DataTemplate>
                     </tableView:TableViewTemplateColumn.CellTemplate>
                 </tableView:TableViewTemplateColumn>

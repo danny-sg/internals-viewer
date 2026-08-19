@@ -28,7 +28,7 @@ public static class SegmentElementBuilder
 
         elements.Add(new SegmentElement
         {
-            Name = "Bookmark array",
+            Name = "Bookmark Array",
             Offset = blob.BookmarkArrayOffset,
             Size = blob.BookmarkCount * SegmentBlob.EntrySize
         });
@@ -37,7 +37,7 @@ public static class SegmentElementBuilder
         {
             elements.Add(new SegmentElement
             {
-                Name = "Value store",
+                Name = "Value Store",
                 Offset = blob.ValueStoreOffset,
                 Size = blob.Data.Length - blob.ValueStoreOffset
             });
@@ -47,14 +47,14 @@ public static class SegmentElementBuilder
 
         elements.Add(new SegmentElement
         {
-            Name = "RLE array",
+            Name = "RLE Array",
             Offset = blob.RleArrayOffset,
             Size = blob.RleArrayCount * SegmentBlob.EntrySize
         });
 
         elements.Add(new SegmentElement
         {
-            Name = "Bit pack array",
+            Name = "Bit Pack Array",
             Offset = blob.BitpackArrayOffset,
             Size = blob.BitpackUnitCount * SegmentBlob.EntrySize
         });

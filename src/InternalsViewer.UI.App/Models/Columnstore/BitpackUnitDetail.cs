@@ -31,7 +31,8 @@ public sealed class BitpackUnitDetail
 
     public string OffsetDescription => $"0x{Offset:X}";
 
-    public static BitpackUnitDetail Build(SegmentBlob blob, int unitIndex, Func<long, ValueDerivation?>? valueDerivation = null)
+    public static BitpackUnitDetail Build(SegmentBlob blob, int unitIndex, Func<long, ValueDerivation?>? valueDerivation = null,
+                                          bool showDerivation = true)
     {
         var array = blob.Bitpack;
 
@@ -52,7 +53,8 @@ public sealed class BitpackUnitDetail
                 BitLength = span.BitLength,
                 DataId = array[index],
                 MinId = array.MinId,
-                ValueDerivation = valueDerivation?.Invoke(array[index])
+                ValueDerivation = valueDerivation?.Invoke(array[index]),
+                ShowDerivation = showDerivation
             });
         }
 

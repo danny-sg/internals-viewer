@@ -22,7 +22,8 @@ public sealed partial class SegmentSummary : ObservableObject
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(StructureDescription))]
     [NotifyPropertyChangedFor(nameof(RleDescription))]
-    [NotifyPropertyChangedFor(nameof(BitPackDescription))]
+    [NotifyPropertyChangedFor(nameof(BitPackEntriesDescription))]
+    [NotifyPropertyChangedFor(nameof(BitPackSizeDescription))]
     [NotifyPropertyChangedFor(nameof(BookmarkDescription))]
     private SegmentBlobHeader? _header;
 
@@ -35,10 +36,16 @@ public sealed partial class SegmentSummary : ObservableObject
             ? $"{Header.RleEntryCount}"
             : "None";
 
-    public string BitPackDescription => Header is null
+    public string BitPackEntriesDescription => Header is null
         ? string.Empty
         : Header.HasBitpackArray
-            ? $"{Header.BitpackValueCount} at {Header.BitpackEntrySize} bit"
+            ? $"{Header.BitpackValueCount}"
+            : "None";
+
+    public string BitPackSizeDescription => Header is null
+        ? string.Empty
+        : Header.HasBitpackArray
+            ? $"{Header.BitpackEntrySize} bits"
             : "None";
 
     public string BookmarkDescription => Header is null

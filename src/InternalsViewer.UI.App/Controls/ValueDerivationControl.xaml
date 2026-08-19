@@ -8,6 +8,16 @@
     xmlns:models="using:InternalsViewer.UI.App.Models"
     mc:Ignorable="d">
     <UserControl.Resources>
+        <!--A badge carries its own hover and click, so the button around it brings no chrome of its own-->
+        <Style x:Key="DerivationBadgeButtonStyle" TargetType="Button">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Padding" Value="0"/>
+            <Setter Property="MinWidth" Value="0"/>
+            <Setter Property="MinHeight" Value="0"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+        </Style>
+
         <DataTemplate x:Key="DerivationStepTemplate" x:DataType="models:DerivationStep">
             <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
                 <TextBlock Text="{x:Bind Operator}"
@@ -17,22 +27,29 @@
                            Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
 
                 <!--Split badge, the variable named on the left and the value it held on the right-->
-                <Border Background="{ThemeResource ControlStrongFillColorDefaultBrush}"
-                        Padding="4,1"
-                        VerticalAlignment="Center">
-                    <TextBlock Text="{x:Bind Name}"
-                               FontSize="11"
-                               FontFamily="{StaticResource MonospaceFontFamily}"
-                               Foreground="{ThemeResource TextOnAccentFillColorPrimaryBrush}"/>
-                </Border>
-                <Border Background="{ThemeResource AccentFillColorDefaultBrush}"
-                        Padding="4,1"
-                        VerticalAlignment="Center">
-                    <TextBlock Text="{x:Bind Value}"
-                               FontSize="11"
-                               FontFamily="{StaticResource MonospaceFontFamily}"
-                               Foreground="{ThemeResource TextOnAccentFillColorPrimaryBrush}"/>
-                </Border>
+                <Button Style="{StaticResource DerivationBadgeButtonStyle}"
+                        IsTabStop="{x:Bind IsNavigable}"
+                        IsHitTestVisible="{x:Bind IsNavigable}"
+                        Click="Badge_OnClick">
+                    <StackPanel Orientation="Horizontal">
+                        <Border Background="{ThemeResource ControlStrongFillColorDefaultBrush}"
+                                Padding="4,1"
+                                VerticalAlignment="Center">
+                            <TextBlock Text="{x:Bind Name}"
+                                       FontSize="11"
+                                       FontFamily="{StaticResource MonospaceFontFamily}"
+                                       Foreground="{ThemeResource TextOnAccentFillColorPrimaryBrush}"/>
+                        </Border>
+                        <Border Background="{ThemeResource AccentFillColorDefaultBrush}"
+                                Padding="4,1"
+                                VerticalAlignment="Center">
+                            <TextBlock Text="{x:Bind Value}"
+                                       FontSize="11"
+                                       FontFamily="{StaticResource MonospaceFontFamily}"
+                                       Foreground="{ThemeResource TextOnAccentFillColorPrimaryBrush}"/>
+                        </Border>
+                    </StackPanel>
+                </Button>
             </StackPanel>
         </DataTemplate>
     </UserControl.Resources>
@@ -58,7 +75,8 @@
             </ItemsControl>
         </Border>
 
-        <TextBlock Text="="
+        <TextBlock x:Name="EqualsText"
+                   Text="="
                    Margin="6,0,6,0"
                    VerticalAlignment="Center"
                    FontFamily="{StaticResource MonospaceFontFamily}"

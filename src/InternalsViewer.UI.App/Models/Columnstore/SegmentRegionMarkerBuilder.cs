@@ -52,7 +52,7 @@ public static class SegmentRegionMarkerBuilder
     private static IEnumerable<Marker> BitpackHeader(SegmentBlob blob)
     {
         yield return ContextMarker("Bit Pack Entry Size", ItemType.BitpackEntrySize, $"{blob.BitpackEntrySize} bits");
-        yield return ContextMarker("Values per Unit", ItemType.BitpackEntrySize, $"{blob.Bitpack.ValuesPerUnit}");
+        yield return ContextMarker("Values Per Unit", ItemType.BitpackEntrySize, $"{blob.Bitpack.ValuesPerUnit}");
         yield return ContextMarker("Bit Pack Unit Count", ItemType.BitpackUnitCount, $"{blob.BitpackUnitCount}");
         yield return ContextMarker("Bit Pack Min Id", ItemType.BitpackMinId, $"{blob.BitpackMinId}");
     }

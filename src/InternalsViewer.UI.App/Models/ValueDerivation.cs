@@ -33,5 +33,16 @@ public sealed class DerivationStep
 
     public string Value { get; init; } = string.Empty;
 
+    /// <summary>
+    /// Where the operand came from, for a caller that can navigate to it
+    /// </summary>
+    /// <remarks>
+    /// Untyped because a derivation says nothing about what it is describing, and whatever raised it knows how to
+    /// read its own target back.
+    /// </remarks>
+    public object? Target { get; init; }
+
     public bool HasOperator => Operator.Length > 0;
+
+    public bool IsNavigable => Target is not null;
 }

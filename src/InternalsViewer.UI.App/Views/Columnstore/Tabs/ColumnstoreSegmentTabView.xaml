@@ -7,6 +7,8 @@
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     xmlns:page="using:InternalsViewer.UI.App.Controls.Page"
     xmlns:columnstore="using:InternalsViewer.UI.App.Controls.Columnstore"
+    xmlns:controls="using:InternalsViewer.UI.App.Controls"
+    xmlns:tableView="using:WinUI.TableView"
     mc:Ignorable="d">
     <Grid>
         <StackPanel Padding="10"
@@ -76,6 +78,68 @@
                         <columnstore:BitPackDetailControl Unit="{x:Bind ViewModel.BitpackUnit, Mode=OneWay}"/>
                     </columnstore:SegmentRegionPanel.Detail>
                 </columnstore:SegmentRegionPanel>
+            </TabViewItem>
+            <TabViewItem Header="Data" IsClosable="False" Tag="Data">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="*"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+
+                    <tableView:TableView Grid.Row="0"
+                                         AutoGenerateColumns="False"
+                                         CanSortColumns="False"
+                                         CanFilterColumns="False"
+                                         CornerButtonMode="None"
+                                         HeadersVisibility="Columns"
+                                         ColumnHeaderStyle="{StaticResource TableViewColumnHeaderStyle}"
+                                         CellStyle="{StaticResource TableViewCellStyle}"
+                                         ItemContainerStyle="{StaticResource TableViewRowStyle}"
+                                         RowHeight="28"
+                                         SelectionMode="Single"
+                                         SelectionUnit="Row"
+                                         IsReadOnly="True"
+                                         GridLinesVisibility="All"
+                                         BorderThickness="0"
+                                         Background="{ThemeResource LayerFillColorDefaultBrush}"
+                                         ItemsSource="{x:Bind ViewModel.Rows, Mode=OneWay}">
+                        <tableView:TableView.Resources>
+                            <x:Double x:Key="ListViewItemMinHeight">0</x:Double>
+                        </tableView:TableView.Resources>
+                            <tableView:TableView.Columns>
+                            <tableView:TableViewTextColumn Header="Row" Width="90"
+                                                           Binding="{Binding Ordinal}"
+                                                           CellStyle="{StaticResource TableViewCellRightStyle}"/>
+                            <tableView:TableViewTextColumn Header="Storage" Width="100"
+                                                           Binding="{Binding OriginDescription}"/>
+                            <tableView:TableViewTemplateColumn Header="Data Id" Width="340">
+                                <tableView:TableViewTemplateColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <controls:ValueDerivationControl Derivation="{Binding DataIdDerivation}"
+                                                                         ShowSteps="{Binding ShowDerivation}"
+                                                                         StepInvoked="Derivation_OnStepInvoked"/>
+                                    </DataTemplate>
+                                </tableView:TableViewTemplateColumn.CellTemplate>
+                            </tableView:TableViewTemplateColumn>
+                            <tableView:TableViewTemplateColumn Header="Value" Width="360">
+                                <tableView:TableViewTemplateColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <controls:ValueDerivationControl Derivation="{Binding ValueDerivation}"
+                                                                         ShowSteps="{Binding ShowDerivation}"
+                                                                         StepInvoked="Derivation_OnStepInvoked"/>
+                                    </DataTemplate>
+                                </tableView:TableViewTemplateColumn.CellTemplate>
+                            </tableView:TableViewTemplateColumn>
+                        </tableView:TableView.Columns>
+                    </tableView:TableView>
+
+                    <TextBlock Grid.Row="1"
+                               Padding="8,4"
+                               FontSize="12"
+                               Opacity="0.7"
+                               HorizontalAlignment="Right"
+                               Text="{x:Bind ViewModel.RowCountDescription, Mode=OneWay}"/>
+                </Grid>
             </TabViewItem>
         </TabView>
         </Grid>

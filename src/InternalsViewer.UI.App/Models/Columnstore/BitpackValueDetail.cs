@@ -1,4 +1,4 @@
-using InternalsViewer.UI.App.Models;
+﻿using InternalsViewer.UI.App.Models;
 
 namespace InternalsViewer.UI.App.Models.Columnstore;
 
@@ -24,6 +24,8 @@ public sealed class BitpackValueDetail
     /// Working from the data id to the value it stands for, which only a decoded segment can supply
     /// </summary>
     public ValueDerivation? ValueDerivation { get; init; }
+
+    public bool ShowDerivation { get; init; } = true;
 
     /// <summary>
     /// The value held in the bits, before the reserved floor the segment subtracted is added back

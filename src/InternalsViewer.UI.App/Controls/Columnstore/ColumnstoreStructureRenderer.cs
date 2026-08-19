@@ -490,11 +490,11 @@ public sealed class ColumnstoreStructureRenderer
                 new ColumnstoreDetail("Encoding", segment.EncodingDescription),
                 new ColumnstoreDetail("Rows", $"{segment.RowCount}"),
                 new ColumnstoreDetail("Size", FormatSize(segment.OnDiskSize)),
-                new ColumnstoreDetail("Bytes per row", $"{segment.BytesPerRow:N2}"),
-                new ColumnstoreDetail("Min data id", $"{segment.MinDataId}"),
-                new ColumnstoreDetail("Max data id", $"{segment.MaxDataId}"),
-                new ColumnstoreDetail("Min value", segment.MinValueDescription),
-                new ColumnstoreDetail("Max value", segment.MaxValueDescription),
+                new ColumnstoreDetail("Bytes Per Row", $"{segment.BytesPerRow:N2}"),
+                new ColumnstoreDetail("Min Data Id", $"{segment.MinDataId}"),
+                new ColumnstoreDetail("Max Data Id", $"{segment.MaxDataId}"),
+                new ColumnstoreDetail("Min Value", segment.MinValueDescription),
+                new ColumnstoreDetail("Max Value", segment.MaxValueDescription),
                 new ColumnstoreDetail("Dictionary", segment.DictionaryDescription.Length > 0
                                                         ? segment.DictionaryDescription
                                                         : "none"),
@@ -544,8 +544,9 @@ public sealed class ColumnstoreStructureRenderer
         }
 
         yield return new ColumnstoreDetail("Structure", segment.StructureDescription);
-        yield return new ColumnstoreDetail("RLE entries", segment.RleDescription);
-        yield return new ColumnstoreDetail("Bit packed", segment.BitPackDescription);
+        yield return new ColumnstoreDetail("RLE Entries", segment.RleDescription);
+        yield return new ColumnstoreDetail("Bit Pack Entries", segment.BitPackEntriesDescription);
+        yield return new ColumnstoreDetail("Bit Pack Size", segment.BitPackSizeDescription);
         yield return new ColumnstoreDetail("Bookmarks", segment.BookmarkDescription);
     }
 

@@ -12,7 +12,12 @@ public sealed class SegmentDataIdStream(SegmentBlob blob)
 
     private SegmentBlob Blob { get; } = blob;
 
-    public long GetDataId(int rowOrdinal)
+    public long GetDataId(int rowOrdinal) => GetSource(rowOrdinal).DataId;
+
+    /// <summary>
+    /// Reads a row's data id along with the store it came from
+    /// </summary>
+    public SegmentDataIdSource GetSource(int rowOrdinal)
     {
         if ((uint)rowOrdinal >= (uint)RowCount)
         {
@@ -21,7 +26,7 @@ public sealed class SegmentDataIdStream(SegmentBlob blob)
 
         if (Blob.ValueStore is { } store)
         {
-            return store.GetValue(rowOrdinal);
+            return new SegmentDataIdSource(store.GetValue(rowOrdinal), SegmentValueOrigin.ValueStore, -1, -1);
         }
 
         var (entryIndex, endRow) = Seek(rowOrdinal);
@@ -30,10 +35,12 @@ public sealed class SegmentDataIdStream(SegmentBlob blob)
 
         if (!entry.IsBitpacked)
         {
-            return entry.Value;
+            return new SegmentDataIdSource(entry.Value, SegmentValueOrigin.RleRun, entryIndex, -1);
         }
 
-        return Blob.Bitpack[entry.BitpackIndex + (rowOrdinal - (endRow - entry.Count))];
+        var bitpackIndex = entry.BitpackIndex + (rowOrdinal - (endRow - entry.Count));
+
+        return new SegmentDataIdSource(Blob.Bitpack[bitpackIndex], SegmentValueOrigin.BitPack, entryIndex, bitpackIndex);
     }
 
     /// <summary>

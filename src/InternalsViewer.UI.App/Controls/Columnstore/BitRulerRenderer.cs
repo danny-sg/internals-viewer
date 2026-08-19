@@ -67,7 +67,7 @@ public sealed class BitRulerRenderer
 
     public SKColor ValueBoxColour { get; set; } = new(0xFA, 0xF9, 0xF6);
 
-    public SKColor ByteBoxColour { get; set; } = new(0xF0, 0xF0, 0xF0);
+    public SKColor ByteBoxColour { get; set; } = SKColors.White;
 
     /// <summary>
     /// Rule down each byte boundary, which the value bands underneath it do not line up with
