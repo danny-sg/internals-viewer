@@ -81,31 +81,32 @@
 
             <AppBarSeparator/>
 
+            <!--How the column was compressed, which the metadata decides before the blob is read-->
             <AppBarElementContainer VerticalContentAlignment="Center">
-                <StackPanel VerticalAlignment="Center" Margin="4,0,4,0">
-                    <!--How the column was compressed, which the metadata decides before the blob is read-->
-                    <ItemsControl ItemsSource="{x:Bind ViewModel.EncodingBadges, Mode=OneWay}"
-                                  ItemTemplate="{StaticResource SegmentBadgeTemplate}"
-                                  HorizontalAlignment="Left">
-                        <ItemsControl.ItemsPanel>
-                            <ItemsPanelTemplate>
-                                <StackPanel Orientation="Horizontal" Spacing="4"/>
-                            </ItemsPanelTemplate>
-                        </ItemsControl.ItemsPanel>
-                    </ItemsControl>
+                <ItemsControl ItemsSource="{x:Bind ViewModel.EncodingBadges, Mode=OneWay}"
+                              ItemTemplate="{StaticResource SegmentBadgeTemplate}"
+                              VerticalAlignment="Center"
+                              Margin="4,0,4,0">
+                    <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate>
+                            <StackPanel Orientation="Horizontal" Spacing="4"/>
+                        </ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                </ItemsControl>
+            </AppBarElementContainer>
 
-                    <!--What the blob turned out to hold, which is not always what the encoding implies-->
-                    <ItemsControl ItemsSource="{x:Bind ViewModel.FlagBadges, Mode=OneWay}"
-                                  ItemTemplate="{StaticResource SegmentBadgeTemplate}"
-                                  HorizontalAlignment="Left"
-                                  Margin="0,2,0,0">
-                        <ItemsControl.ItemsPanel>
-                            <ItemsPanelTemplate>
-                                <StackPanel Orientation="Horizontal" Spacing="0"/>
-                            </ItemsPanelTemplate>
-                        </ItemsControl.ItemsPanel>
-                    </ItemsControl>
-                </StackPanel>
+            <!--What the blob turned out to hold, which is not always what the encoding implies-->
+            <AppBarElementContainer VerticalContentAlignment="Center">
+                <ItemsControl ItemsSource="{x:Bind ViewModel.FlagBadges, Mode=OneWay}"
+                              ItemTemplate="{StaticResource SegmentBadgeTemplate}"
+                              VerticalAlignment="Center"
+                              Margin="4,0,4,0">
+                    <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate>
+                            <StackPanel Orientation="Horizontal" Spacing="0"/>
+                        </ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                </ItemsControl>
             </AppBarElementContainer>
 
             <AppBarSeparator Visibility="{x:Bind ViewModel.HasDictionary, Mode=OneWay,

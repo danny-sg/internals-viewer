@@ -77,7 +77,7 @@
                         <ItemsControl ItemsSource="{x:Bind ViewModel.ScopeBadges, Mode=OneWay}"
                                       ItemTemplate="{StaticResource DictionaryBadgeTemplate}"
                                       HorizontalAlignment="Left"
-                                      Margin="0,2,0,0">
+                                      Margin="0,2,0,2">
                             <ItemsControl.ItemsPanel>
                                 <ItemsPanelTemplate>
                                     <StackPanel Orientation="Horizontal" Spacing="4"/>
@@ -90,28 +90,29 @@
                 <AppBarSeparator/>
 
                 <AppBarElementContainer VerticalContentAlignment="Center">
-                    <StackPanel VerticalAlignment="Center" Margin="4,0,4,0">
-                        <ItemsControl ItemsSource="{x:Bind ViewModel.TypeBadges, Mode=OneWay}"
-                                      ItemTemplate="{StaticResource DictionaryBadgeTemplate}"
-                                      HorizontalAlignment="Left">
-                            <ItemsControl.ItemsPanel>
-                                <ItemsPanelTemplate>
-                                    <StackPanel Orientation="Horizontal" Spacing="0"/>
-                                </ItemsPanelTemplate>
-                            </ItemsControl.ItemsPanel>
-                        </ItemsControl>
+                    <ItemsControl ItemsSource="{x:Bind ViewModel.TypeBadges, Mode=OneWay}"
+                                  ItemTemplate="{StaticResource DictionaryBadgeTemplate}"
+                                  VerticalAlignment="Center"
+                                  Margin="4,0,4,0">
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <StackPanel Orientation="Horizontal" Spacing="0"/>
+                            </ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                    </ItemsControl>
+                </AppBarElementContainer>
 
-                        <ItemsControl ItemsSource="{x:Bind ViewModel.FlagBadges, Mode=OneWay}"
-                                      ItemTemplate="{StaticResource DictionaryBadgeTemplate}"
-                                      HorizontalAlignment="Left"
-                                      Margin="0,2,0,0">
-                            <ItemsControl.ItemsPanel>
-                                <ItemsPanelTemplate>
-                                    <StackPanel Orientation="Horizontal" Spacing="0"/>
-                                </ItemsPanelTemplate>
-                            </ItemsControl.ItemsPanel>
-                        </ItemsControl>
-                    </StackPanel>
+                <AppBarElementContainer VerticalContentAlignment="Center">
+                    <ItemsControl ItemsSource="{x:Bind ViewModel.FlagBadges, Mode=OneWay}"
+                                  ItemTemplate="{StaticResource DictionaryBadgeTemplate}"
+                                  VerticalAlignment="Center"
+                                  Margin="4,0,4,0">
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <StackPanel Orientation="Horizontal" Spacing="0"/>
+                            </ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                    </ItemsControl>
                 </AppBarElementContainer>
             </CommandBar>
 
