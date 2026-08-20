@@ -124,6 +124,10 @@ public sealed partial class QueryIndexTabView : UserControl, IDisposable
 
     public void Dispose()
     {
+        // x:Bind listens to the view model, which outlives the view, so the view stays rooted until
+        // tracking stops
+        Bindings.StopTracking();
+
         IndexControl.PageClicked -= OnPageClicked;
         IndexControl.Dispose();
 

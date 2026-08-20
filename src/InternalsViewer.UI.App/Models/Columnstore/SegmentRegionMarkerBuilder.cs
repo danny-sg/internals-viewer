@@ -221,22 +221,74 @@ public static class SegmentRegionMarkerBuilder
         return (first, last);
     }
 
+    /// <summary>
+    /// Rebases a structure's fields onto the window, keeping the ones it does not reach
+    /// </summary>
+    /// <remarks>
+    /// A field outside the window keeps its place in the tree and loses its position, the same as a field marked for
+    /// context. Dropping it instead empties a tree the moment the window moves elsewhere, which is what the entries
+    /// of an array want but never what a fixed set of fields wants.
+    /// </remarks>
     public static List<Marker> Window(IEnumerable<Marker> markers, int windowStart, int windowLength)
-        => Windowed(markers, windowStart, windowLength);
+    {
+        var windowed = new List<Marker>();
 
+        var windowEnd = windowStart + windowLength - 1;
+
+        foreach (var marker in markers)
+        {
+            var start = Math.Max(marker.StartPosition, windowStart);
+
+            var end = Math.Min(marker.EndPosition, windowEnd);
+
+            if (marker.StartPosition < 0 || end < start)
+            {
+                marker.StartPosition = -1;
+                marker.EndPosition = -1;
+            }
+            else
+            {
+                marker.StartPosition = start - windowStart;
+                marker.EndPosition = end - windowStart;
+            }
+
+            windowed.Add(marker);
+        }
+
+        return windowed;
+    }
+
+    /// <summary>
+    /// Rebases the fields onto the window, clipped to the part of each the window actually holds
+    /// </summary>
+    /// <remarks>
+    /// Clipped rather than dropped because a field can be longer than the window - a page payload runs to thousands
+    /// of bytes - and dropping it would leave the largest regions the only ones never marked.
+    /// </remarks>
     private static List<Marker> Windowed(IEnumerable<Marker> markers, int windowStart, int windowLength)
     {
         var windowed = new List<Marker>();
 
+        var windowEnd = windowStart + windowLength - 1;
+
         foreach (var marker in markers)
         {
-            if (marker.StartPosition < windowStart || marker.EndPosition >= windowStart + windowLength)
+            if (marker.StartPosition < 0)
             {
                 continue;
             }
 
-            marker.StartPosition -= windowStart;
-            marker.EndPosition -= windowStart;
+            var start = Math.Max(marker.StartPosition, windowStart);
+
+            var end = Math.Min(marker.EndPosition, windowEnd);
+
+            if (end < start)
+            {
+                continue;
+            }
+
+            marker.StartPosition = start - windowStart;
+            marker.EndPosition = end - windowStart;
 
             windowed.Add(marker);
         }

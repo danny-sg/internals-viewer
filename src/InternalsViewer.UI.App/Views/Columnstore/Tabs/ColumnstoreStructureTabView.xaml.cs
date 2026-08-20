@@ -19,10 +19,12 @@ public sealed partial class ColumnstoreStructureTabView : IDisposable
         BuildLegend();
 
         // x:Bind resolves against the view, and the dock sets DataContext after the view is built
-        DataContextChanged += (_, _) => Bindings.Update();
+        DataContextChanged += OnDataContextChanged;
     }
 
     public ColumnstoreTabViewModel ViewModel => (ColumnstoreTabViewModel)DataContext;
+
+    private void OnDataContextChanged(FrameworkElement sender, DataContextChangedEventArgs args) => Bindings.Update();
 
     private void BuildLegend()
     {
@@ -79,7 +81,13 @@ public sealed partial class ColumnstoreStructureTabView : IDisposable
 
     public void Dispose()
     {
+        DataContextChanged -= OnDataContextChanged;
+
         StructureControl.ElementClicked -= OnElementClicked;
+
+        // x:Bind listens to the view model, which outlives the view, so the view stays rooted until tracking stops
+        Bindings.StopTracking();
+
         StructureControl.Dispose();
     }
 }

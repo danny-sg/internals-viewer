@@ -5,6 +5,7 @@ using System.Threading;
 using InternalsViewer.UI.App.Models.Columnstore;
 using InternalsViewer.UI.App.ViewModels.Columnstore;
 using InternalsViewer.UI.App.Controls.Docking;
+using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Controls.Primitives;
 using WinUI.TableView;
@@ -15,6 +16,8 @@ public sealed partial class ColumnstoreDictionaryTabView : UserControl, IDocumen
 {
     private readonly CancellationTokenSource _cts = new();
 
+    private DictionaryTabViewModel? _tracked;
+
     public ColumnstoreDictionaryTabView()
     {
         InitializeComponent();
@@ -22,12 +25,31 @@ public sealed partial class ColumnstoreDictionaryTabView : UserControl, IDocumen
         Loaded += OnLoaded;
 
         // x:Bind resolves against the view, and the dock sets DataContext after the view is built
-        DataContextChanged += (_, _) =>
-        {
-            Bindings.Update();
+        DataContextChanged += OnDataContextChanged;
+    }
 
-            ViewModel.PropertyChanged += OnViewModelPropertyChanged;
-        };
+    /// <summary>
+    /// Follows the view model the dock hands over, letting go of the one before it
+    /// </summary>
+    /// <remarks>
+    /// The event fires more than once over the life of a view, so subscribing without releasing the previous one
+    /// leaves handlers stacked up on the view model and every change doing its work several times over.
+    /// </remarks>
+    private void OnDataContextChanged(FrameworkElement sender, DataContextChangedEventArgs args)
+    {
+        Bindings.Update();
+
+        if (_tracked is not null)
+        {
+            _tracked.PropertyChanged -= OnViewModelPropertyChanged;
+        }
+
+        _tracked = DataContext as DictionaryTabViewModel;
+
+        if (_tracked is not null)
+        {
+            _tracked.PropertyChanged += OnViewModelPropertyChanged;
+        }
     }
 
     public DictionaryTabViewModel ViewModel => (DictionaryTabViewModel)DataContext;
@@ -113,9 +135,21 @@ public sealed partial class ColumnstoreDictionaryTabView : UserControl, IDocumen
 
     public void Dispose()
     {
-        ViewModel.PropertyChanged -= OnViewModelPropertyChanged;
+        Loaded -= OnLoaded;
 
-        ViewModel.Dispose();
+        DataContextChanged -= OnDataContextChanged;
+
+        if (_tracked is not null)
+        {
+            _tracked.PropertyChanged -= OnViewModelPropertyChanged;
+
+            _tracked.Dispose();
+
+            _tracked = null;
+        }
+
+        // x:Bind listens to the view model, which outlives the view, so the view stays rooted until tracking stops
+        Bindings.StopTracking();
 
         DecodeControl.Dispose();
 

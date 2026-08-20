@@ -1,4 +1,4 @@
-namespace InternalsViewer.Internals.Columnstore.Blobs;
+﻿namespace InternalsViewer.Internals.Columnstore.Blobs;
 
 /// <summary>
 /// Columnstore LOB sub-type
@@ -10,5 +10,10 @@ public enum SubLobType
     HashTable = 2,
     StringStore = 4,
     StringPage = 5,
-    CompressedStringPage = 6
+    CompressedStringPage = 6,
+
+    /// <summary>
+    /// Page of a store by value segment, holding its values under Xpress Huffman
+    /// </summary>
+    CompressedValuePage = 9
 }

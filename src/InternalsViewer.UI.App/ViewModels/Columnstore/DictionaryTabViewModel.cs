@@ -327,17 +327,24 @@ public sealed partial class DictionaryTabViewModel(ColumnstoreService columnstor
     {
         var windowed = new List<Marker>();
 
+        var end = start + length - 1;
+
         foreach (var marker in markers)
         {
-            if (marker.StartPosition < start || marker.EndPosition >= start + length)
+            // Clipped rather than dropped, a coded entry running well past whatever the window happens to hold
+            var from = Math.Max(marker.StartPosition, start);
+
+            var to = Math.Min(marker.EndPosition, end);
+
+            if (marker.StartPosition < 0 || to < from)
             {
                 marker.StartPosition = -1;
                 marker.EndPosition = -1;
             }
             else
             {
-                marker.StartPosition -= start;
-                marker.EndPosition -= start;
+                marker.StartPosition = from - start;
+                marker.EndPosition = to - start;
             }
 
             windowed.Add(marker);

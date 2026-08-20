@@ -249,6 +249,9 @@ public static class MarkerBuilder
                 case (BitArray bitArray, _):
                     marker.Value = StringHelpers.GetBitArrayString(bitArray);
                     break;
+                case (int[] intArray, _):
+                    marker.Value = StringHelpers.GetArrayString(intArray);
+                    break;
                 case (short[] shortArray, _):
                     marker.Value = StringHelpers.GetArrayString(shortArray);
                     break;
@@ -257,6 +260,10 @@ public static class MarkerBuilder
                     break;
                 case (ColumnDescriptor[] columnDescriptors, _):
                     marker.Value = StringHelpers.GetArrayString(columnDescriptors);
+                    break;
+                // An enum name reads as one run-together word, which is not how the rest of the interface writes it
+                case (Enum enumValue, _):
+                    marker.Value = enumValue.ToString().SplitCamelCase();
                     break;
                 case (byte byteValue, _):
                     marker.Value = $"{byteValue} (0x{byteValue:X})";

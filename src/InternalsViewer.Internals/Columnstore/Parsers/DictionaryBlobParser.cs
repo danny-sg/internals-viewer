@@ -28,7 +28,7 @@ public static class DictionaryBlobParser
         {
             ColumnstoreLobType.NumericDictionary 
                 => ParseNumeric(data, entryCount, firstId, isMarkEnabled),
-            ColumnstoreLobType.Segment 
+            ColumnstoreLobType.StringDictionary 
                 => ParseString(data, entryCount, firstId, isMarkEnabled),
             _ => throw new InvalidDataException($"Unsupported dictionary lob type {(int)lobType}.")
         };

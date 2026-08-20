@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using Windows.System;
 using Windows.UI.Core;
 using CommunityToolkit.Mvvm.Messaging;
@@ -67,6 +67,10 @@ public sealed partial class QueryEventsTabView : UserControl, IDisposable
     /// <summary>Disposed by <see cref="DocumentViewModel.DisposeView"/> when the query tab closes.</summary>
     public void Dispose()
     {
+        // x:Bind listens to the view model, which outlives the view, so the view stays rooted until
+        // tracking stops
+        Bindings.StopTracking();
+
         Unsubscribe();
 
         EventGrid.Dispose();

@@ -44,13 +44,13 @@ internal static class HexTextBuilder
                     runs.Add(Flush(stringBuilder, true));
                 }
 
-                // Add a space between bytes, but not for the last byte of the line
-                if (byteIndex != bytesPerLine - 1)
+                position++;
+
+                // A space separates bytes, so the last of a line has none, nor does the last of a short final line
+                if (byteIndex != bytesPerLine - 1 && position < data.Count)
                 {
                     stringBuilder.Append(' ');
                 }
-
-                position++;
             }
 
             // The newline separates lines rather than ending them, so the block does not run on past its last byte

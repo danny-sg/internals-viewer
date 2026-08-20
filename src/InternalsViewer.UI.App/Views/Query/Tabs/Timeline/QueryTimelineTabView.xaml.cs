@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using InternalsViewer.Query.Events;
 using InternalsViewer.Query.Events.Operators;
 using InternalsViewer.Query.Plans.Model;
@@ -91,6 +91,10 @@ public sealed partial class QueryTimelineTabView : UserControl, IDocumentCommand
 
     public void Dispose()
     {
+        // x:Bind listens to the view model, which outlives the view, so the view stays rooted until
+        // tracking stops
+        Bindings.StopTracking();
+
         EventTimeline.ScopeChanged -= OnScopeChanged;
         EventTimeline.PlayheadTimeChanged -= OnPlayheadTimeChanged;
         EventTimeline.PlanNodeSelected -= OnPlanNodeSelected;

@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.ComponentModel;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -33,6 +34,7 @@ public sealed partial class SegmentTabViewModel(ColumnstoreService columnstoreSe
     [NotifyPropertyChangedFor(nameof(HasBookmarks))]
     [NotifyPropertyChangedFor(nameof(HasRleArray))]
     [NotifyPropertyChangedFor(nameof(HasBitpackArray))]
+    [NotifyPropertyChangedFor(nameof(HasValueStore))]
     private SegmentBlob? _blob;
 
     public bool HasBookmarks => Blob is { BookmarkCount: > 0 };
@@ -64,7 +66,11 @@ public sealed partial class SegmentTabViewModel(ColumnstoreService columnstoreSe
 
     partial void OnSelectedValuePageChanged(ValuePageSummary? value)
     {
-        Values = value is null ? null : new ValueList(value.Page);
+        SelectedValue = null;
+
+        Values = value is { } summary ? new ValueList(summary.Page) : null;
+
+        SetPayload(value?.Page);
 
         if (value is not null)
         {
@@ -73,21 +79,95 @@ public sealed partial class SegmentTabViewModel(ColumnstoreService columnstoreSe
     }
 
     /// <summary>
+    /// Hands the payload window the bytes the page expands to, and marks a value per row of it
+    /// </summary>
+    private void SetPayload(SegmentValuePage? page)
+    {
+        if (page is null)
+        {
+            PayloadHex.MarkerFactory = null;
+
+            PayloadHex.SetData(default);
+
+            return;
+        }
+
+        PayloadHex.MarkerFactory = (start, length) => BuildPayloadMarkers(page, start, length);
+
+        PayloadHex.SetData(page.Values);
+
+        PayloadHex.GoToOffset(0);
+    }
+
+    /// <summary>
+    /// The selected value alone, a value being a fixed width slot of the expanded payload
+    /// </summary>
+    /// <remarks>
+    /// One marker rather than one per value on show. A page runs to thousands of identical looking slots, so marking
+    /// them all says nothing the fixed width does not already, and buries the one that was asked for.
+    /// </remarks>
+    private List<Marker> BuildPayloadMarkers(SegmentValuePage page, int start, int length)
+    {
+        if (SelectedValue is not { } value || page.ValueSize <= 0)
+        {
+            return [];
+        }
+
+        var offset = (value.Index * page.ValueSize) - start;
+
+        if (offset < 0 || offset + page.ValueSize > length)
+        {
+            return [];
+        }
+
+        return
+        [
+            MarkerBuilder.CreateMarker($"Value {value.Index}",
+                                       ItemType.DictionaryValue,
+                                       offset,
+                                       page.ValueSize,
+                                       $"{value.Value}")
+        ];
+    }
+
+    /// <summary>
+    /// The expanded payload of the selected page, which is where a value has a place of its own
+    /// </summary>
+    /// <remarks>
+    /// A second window over a different run of bytes entirely - the blob hex above shows the page compressed, this
+    /// shows what it decompresses to, so their offsets have nothing to do with one another.
+    /// </remarks>
+    public BlobHexViewModel PayloadHex { get; } = new();
+
+    [ObservableProperty]
+    private ValueDetail? _selectedValue;
+
+    /// <summary>
+    /// Picks out the page a value came from, that being as close as the hex can get to the value itself
+    /// </summary>
+    /// <remarks>
+    /// The values sit inside a compressed payload, so an index has no range of the blob of its own. Selecting the
+    /// page marker is what shows where it was read from.
+    /// </remarks>
+    public void SelectValue(ValueDetail? value)
+    {
+        SelectedValue = value;
+
+        if (value is null || SelectedValuePage is not { } page)
+        {
+            return;
+        }
+
+        // The value has a place of its own in the expanded payload, which is the one window that can show it
+        PayloadHex.GoToOffset(value.Index * page.ValueSize);
+
+        SelectPayloadMarker();
+    }
+
+    /// <summary>
     /// Moves the window onto an offset without changing which region tab is on show
     /// </summary>
-    private void GoToOffset(int offset)
-    {
-        var start = Math.Clamp(offset, 0, Math.Max(0, TotalLength - 1)) / 16 * 16;
-
-        if (WindowOffset == start)
-        {
-            SetHexWindow(start);
-        }
-        else
-        {
-            WindowOffset = start;
-        }
-    }
+    private void GoToOffset(int offset) => Hex.GoToOffset(offset);
 
     /// <summary>
     /// Resolves data ids to values, which the dictionary the segment reads has to be fetched for
@@ -108,29 +188,10 @@ public sealed partial class SegmentTabViewModel(ColumnstoreService columnstoreSe
     [ObservableProperty]
     private string _statusText = "Loading Segment...";
 
-    [ObservableProperty]
-    private byte[] _hexData = [];
-
-    [ObservableProperty]
-    private int _hexBaseAddress;
-
-    [ObservableProperty]
-    private bool _isHexViewVisible = true;
-
-    public int TotalLength => Blob?.Data.Length ?? 0;
-
     /// <summary>
-    /// Window the hex control asks for, which it sizes to the lines it can show and moves as it is scrolled
+    /// The whole segment blob, the regions being ranges within it rather than blobs of their own
     /// </summary>
-    [ObservableProperty]
-    private int _windowOffset;
-
-    [ObservableProperty]
-    private int _windowLength;
-
-    partial void OnWindowOffsetChanged(int value) => SetHexWindow(value);
-
-    partial void OnWindowLengthChanged(int value) => SetHexWindow(WindowOffset);
+    public BlobHexViewModel Hex { get; } = new();
 
     public ObservableCollection<SegmentElement> Elements { get; } = [];
 
@@ -159,7 +220,7 @@ public sealed partial class SegmentTabViewModel(ColumnstoreService columnstoreSe
 
         if (row is null || Blob is null)
         {
-            SetHexWindow(WindowOffset);
+            Hex.BuildMarkers();
 
             return;
         }
@@ -246,21 +307,9 @@ public sealed partial class SegmentTabViewModel(ColumnstoreService columnstoreSe
         if (Blob is { } blob)
         {
             BuildRows(blob);
-
-            ValuePages.Clear();
-
-            if (blob.ValueStore is { } store)
-            {
-                for (var i = 0; i < store.Pages.Length; i++)
-                {
-                    ValuePages.Add(new ValuePageSummary { Index = i, Page = store.Pages[i] });
-                }
-            }
-
-            OnPropertyChanged(nameof(HasValueStore));
         }
 
-        BitpackUnit = GetBitpackUnit(SelectedMarker);
+        BitpackUnit = GetBitpackUnit(Hex.SelectedMarker);
     }
 
     /// <summary>
@@ -296,34 +345,10 @@ public sealed partial class SegmentTabViewModel(ColumnstoreService columnstoreSe
     private bool _isJumpingToRegion;
 
     /// <summary>
-    /// Replaced rather than mutated, the marker controls rebuilding only when the property itself changes
-    /// </summary>
-    [ObservableProperty]
-    private ObservableCollection<Marker> _markers = [];
-
-    /// <summary>
-    /// Whether the markers are behind the window, which dims them until the rebuild catches up
-    /// </summary>
-    [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(MarkerOpacity))]
-    private bool _areMarkersStale;
-
-    public double MarkerOpacity => AreMarkersStale ? 0.35 : 1.0;
-
-    private const int MarkerDelayMs = 120;
-
-    private CancellationTokenSource? _markerDebounce;
-
-    [ObservableProperty]
-    private Marker? _selectedMarker;
-
-    /// <summary>
     /// Unit the bit ruler breaks apart, found from the marker selected in the bit pack region
     /// </summary>
     [ObservableProperty]
     private BitpackUnitDetail? _bitpackUnit;
-
-    partial void OnSelectedMarkerChanged(Marker? value) => BitpackUnit = GetBitpackUnit(value);
 
     /// <summary>
     /// Hands the grid an indexed view over the segment, the rows themselves being worked out on demand
@@ -339,6 +364,32 @@ public sealed partial class SegmentTabViewModel(ColumnstoreService columnstoreSe
         RowCountDescription = stream.RowCount == 1 ? "1 row" : $"{stream.RowCount} rows";
     }
 
+    /// <summary>
+    /// The pages of a store by value segment, there being none for any other layout
+    /// </summary>
+    private void BuildValuePages(SegmentBlob blob)
+    {
+        ValuePages.Clear();
+
+        if (blob.ValueStore is not { } store)
+        {
+            return;
+        }
+
+        for (var i = 0; i < store.Pages.Length; i++)
+        {
+            ValuePages.Add(new ValuePageSummary
+            {
+                Index = i,
+                Page = store.Pages[i],
+                Offset = store.Pages[i].Offset,
+                Size = store.Pages[i].Size
+            });
+        }
+
+        SelectedValuePage = ValuePages.FirstOrDefault();
+    }
+
     private ValueDerivation? DeriveValue(long dataId)
         => Decoder is { } decoder ? SegmentValueDerivation.Build(Segment.Segment, decoder, dataId) : null;
 
@@ -352,7 +403,7 @@ public sealed partial class SegmentTabViewModel(ColumnstoreService columnstoreSe
             return null;
         }
 
-        var offset = HexBaseAddress + marker.StartPosition - blob.BitpackArrayOffset;
+        var offset = Hex.HexBaseAddress + marker.StartPosition - blob.BitpackArrayOffset;
 
         var index = offset / BitpackArray.UnitBytes;
 
@@ -375,14 +426,7 @@ public sealed partial class SegmentTabViewModel(ColumnstoreService columnstoreSe
         {
             var offset = GetRegionOffset(region);
 
-            if (WindowOffset == offset)
-            {
-                SetHexWindow(offset);
-
-                return;
-            }
-
-            WindowOffset = offset;
+            Hex.GoToOffset(offset);
         }
         finally
         {
@@ -395,9 +439,54 @@ public sealed partial class SegmentTabViewModel(ColumnstoreService columnstoreSe
 
     public void Dispose()
     {
-        _markerDebounce?.Cancel();
-        _markerDebounce?.Dispose();
-        _markerDebounce = null;
+        Hex.WindowMoved -= OnWindowMoved;
+
+        Hex.PropertyChanged -= OnHexPropertyChanged;
+
+        Hex.Dispose();
+
+        PayloadHex.Dispose();
+    }
+
+    /// <summary>
+    /// Brings the region into line with the window, so a scroll past a boundary moves on to the tab it landed in
+    /// </summary>
+    /// <remarks>
+    /// A jump is skipped because the region is what moved the window, and following it back would only fight the
+    /// line alignment - a region starting part way into a line resolves to the region before it.
+    /// </remarks>
+    private void OnWindowMoved(object? sender, int start)
+    {
+        if (Blob is not { } blob || !IsAutoRegion || _isJumpingToRegion)
+        {
+            return;
+        }
+
+        var region = SegmentRegions.GetRegion(blob, start);
+
+        if (region == Region)
+        {
+            return;
+        }
+
+        _isFollowingWindow = true;
+
+        Region = region;
+
+        _isFollowingWindow = false;
+
+        Hex.BuildMarkers();
+    }
+
+    /// <summary>
+    /// The bit ruler follows whatever the marker tree has picked, the marker now living on the hex view model
+    /// </summary>
+    private void OnHexPropertyChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName == nameof(BlobHexViewModel.SelectedMarker))
+        {
+            BitpackUnit = GetBitpackUnit(Hex.SelectedMarker);
+        }
     }
 
     public async Task Load(CancellationToken cancellationToken)
@@ -422,6 +511,16 @@ public sealed partial class SegmentTabViewModel(ColumnstoreService columnstoreSe
 
             Blob = blob;
 
+            Hex.WindowMoved -= OnWindowMoved;
+            Hex.PropertyChanged -= OnHexPropertyChanged;
+
+            Hex.MarkerFactory = (start, length) => BuildMarkers(blob, start, length);
+
+            Hex.WindowMoved += OnWindowMoved;
+            Hex.PropertyChanged += OnHexPropertyChanged;
+
+            Hex.SetData(blob.Data);
+
             Elements.Clear();
 
             foreach (var element in SegmentElementBuilder.Build(blob))
@@ -429,9 +528,9 @@ public sealed partial class SegmentTabViewModel(ColumnstoreService columnstoreSe
                 Elements.Add(element);
             }
 
-            OnPropertyChanged(nameof(TotalLength));
-
             BuildRows(blob);
+
+            BuildValuePages(blob);
 
             GoToRegion(Region);
 
@@ -472,96 +571,59 @@ public sealed partial class SegmentTabViewModel(ColumnstoreService columnstoreSe
     }
 
     /// <summary>
-    /// Moves the window so it starts on the line the offset falls in, the markers following once scrolling settles
+    /// Everything the window holds, being the region on show plus the row picked in the data grid
+    /// </summary>
+    private List<Marker> BuildMarkers(SegmentBlob blob, int start, int length)
+    {
+        var rows = SegmentRegionMarkerBuilder.Window(RowMarkers(), start, length);
+
+        if (Region != SegmentRegion.ValueStore || blob.ValueStore is not { } store)
+        {
+            return [.. SegmentRegionMarkerBuilder.Build(blob, Region, start, length), .. rows];
+        }
+
+        // Split so the store and the page picked in the list each have a tree of their own
+        var header = SegmentRegionMarkerBuilder.Window(MarkerBuilder.BuildMarkers(store), start, length);
+
+        var page = SelectedValuePage is { } selected
+            ? SegmentRegionMarkerBuilder.Window(MarkerBuilder.BuildMarkers(selected.Page), start, length)
+            : [];
+
+        ValueStoreHeaderMarkers = new ObservableCollection<Marker>(header);
+
+        ValuePageMarkers = new ObservableCollection<Marker>(page);
+
+        return [.. header, .. page, .. rows];
+    }
+
+    /// <summary>
+    /// Fields of the store itself, which the page list above the tabs does not stand for
+    /// </summary>
+    [ObservableProperty]
+    private ObservableCollection<Marker> _valueStoreHeaderMarkers = [];
+
+    [ObservableProperty]
+    private ObservableCollection<Marker> _valuePageMarkers = [];
+
+    /// <summary>
+    /// Picks out the compressed payload on the blob hex, that being where the decode reads from
     /// </summary>
     /// <remarks>
-    /// Only the hex slice is done here. Marker rebuilding walks the region and the marker tree rebuilds its nodes
-    /// from what comes back, which is far too much to repeat on every wheel notch, so it is left to the debounce.
+    /// Matched on what the marker is rather than where it starts, the page header sharing its first byte with the
+    /// page itself so an offset alone would find the sub lob type instead.
     /// </remarks>
-    private void SetHexWindow(int offset)
-    {
-        if (Blob is not { } blob || blob.Data.Length == 0 || WindowLength <= 0)
-        {
-            HexData = [];
-
-            Markers = [];
-
-            return;
-        }
-
-        var start = Math.Clamp(offset, 0, Math.Max(0, blob.Data.Length - 1)) / 16 * 16;
-
-        var length = Math.Min(WindowLength, blob.Data.Length - start);
-
-        HexBaseAddress = start;
-
-        HexData = blob.Data.Slice(start, length).ToArray();
-
-        SelectedMarker = null;
-
-        ClearMarkers();
-
-        ScheduleMarkers();
-
-        FollowWindow(blob, start);
-    }
+    public void SelectPayloadMarker()
+        => Hex.SelectedMarker = Hex.Markers.FirstOrDefault(m => m.Type == ItemType.ValuePagePayload);
 
     /// <summary>
-    /// Drops the markers the moment the window moves, their positions being relative to the window they were built for
+    /// Moves the window onto the store header, which the tab showing its fields asks for
     /// </summary>
-    private void ClearMarkers()
+    public void GoToValueStoreHeader()
     {
-        AreMarkersStale = true;
-
-        if (Markers.Count > 0)
+        if (Blob?.ValueStore is { } store)
         {
-            Markers = [];
+            Hex.GoToOffset(store.Offset);
         }
-    }
-
-    private void ScheduleMarkers()
-    {
-        _markerDebounce?.Cancel();
-        _markerDebounce?.Dispose();
-
-        _markerDebounce = new CancellationTokenSource();
-
-        _ = BuildMarkersAfterDelay(_markerDebounce.Token);
-    }
-
-    /// <summary>
-    /// Waits for the window to settle, so a run of scroll steps costs one marker build rather than one each
-    /// </summary>
-    private async Task BuildMarkersAfterDelay(CancellationToken token)
-    {
-        try
-        {
-            await Task.Delay(MarkerDelayMs, token);
-        }
-        catch (TaskCanceledException)
-        {
-            return;
-        }
-
-        if (token.IsCancellationRequested)
-        {
-            return;
-        }
-
-        BuildMarkers();
-    }
-
-    private void BuildMarkers()
-    {
-        if (Blob is not { } blob || HexData.Length == 0)
-        {
-            return;
-        }
-
-        Markers = new ObservableCollection<Marker>(
-            SegmentRegionMarkerBuilder.Build(blob, Region, HexBaseAddress, HexData.Length));
-
-        AreMarkersStale = false;
     }
 
     /// <summary>
@@ -572,7 +634,7 @@ public sealed partial class SegmentTabViewModel(ColumnstoreService columnstoreSe
     /// </remarks>
     public void GoToTarget(SegmentNavigationTarget target)
     {
-        if (Blob is not { } blob)
+        if (Blob is null)
         {
             return;
         }
@@ -583,52 +645,8 @@ public sealed partial class SegmentTabViewModel(ColumnstoreService columnstoreSe
 
         _isFollowingWindow = false;
 
-        var start = Math.Clamp(target.Offset, 0, Math.Max(0, blob.Data.Length - 1)) / 16 * 16;
+        Hex.GoToOffset(target.Offset);
 
-        if (WindowOffset == start)
-        {
-            SetHexWindow(start);
-        }
-        else
-        {
-            WindowOffset = start;
-        }
-
-        // Moving the window scheduled a rebuild, which would replace the collection and drop the selection with it
-        _markerDebounce?.Cancel();
-
-        BuildMarkers();
-
-        SelectedMarker = Markers.FirstOrDefault(m => m.StartPosition == target.Offset - HexBaseAddress);
-    }
-
-    /// <summary>
-    /// Brings the region into line with the window, so a scroll past a boundary moves on to the tab it landed in
-    /// </summary>
-    /// <remarks>
-    /// A jump is skipped because the region is what moved the window, and following it back would only fight the
-    /// line alignment - a region starting part way into a line resolves to the region before it.
-    /// </remarks>
-    private void FollowWindow(SegmentBlob blob, int start)
-    {
-        if (!IsAutoRegion || _isJumpingToRegion)
-        {
-            return;
-        }
-
-        var region = SegmentRegions.GetRegion(blob, start);
-
-        if (region == Region)
-        {
-            return;
-        }
-
-        _isFollowingWindow = true;
-
-        Region = region;
-
-        _isFollowingWindow = false;
-
-        SetHexWindow(start);
+        Hex.SelectedMarker = Hex.Markers.FirstOrDefault(m => m.StartPosition == target.Offset - Hex.HexBaseAddress);
     }
 }

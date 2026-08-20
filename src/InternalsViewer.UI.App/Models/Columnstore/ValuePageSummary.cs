@@ -13,15 +13,15 @@ public sealed class ValuePageSummary
 
     public required SegmentValuePage Page { get; init; }
 
+    public required int Offset { get; init; }
+
+    public required int Size { get; init; }
+
     public string SubLobTypeDescription => Page.SubLobType.ToString().SplitCamelCase();
 
     public int ValueCount => Page.ValueCount;
 
     public int ValueSize => Page.ValueSize;
-
-    public int Offset => Page.Offset;
-
-    public int Size => Page.Size;
 
     public string OffsetDescription => $"0x{Offset:X}";
 

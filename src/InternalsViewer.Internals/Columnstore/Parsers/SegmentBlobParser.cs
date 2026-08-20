@@ -173,9 +173,18 @@ public static class SegmentBlobParser
     {
         var span = data.Span;
 
+        var subLobType = (SubLobType)ReadInt32(span, offset);
+
+        // The payload is read as Xpress Huffman whatever the type says, so an unknown one has to stop here rather
+        // than decompress into nonsense the way it would if the type were simply ignored
+        if (subLobType != SubLobType.CompressedValuePage)
+        {
+            throw new InvalidDataException($"Store by value page sub lob type {(int)subLobType} is not supported.");
+        }
+
         return new SegmentValuePage
         {
-            SubLobType = (SubLobType)ReadInt32(span, offset),
+            SubLobType = subLobType,
             Unknown04 = ReadInt16(span, offset + 0x04),
             ValueSize = ReadInt16(span, offset + 0x06),
             ValueCount = ReadInt32(span, offset + 0x08),

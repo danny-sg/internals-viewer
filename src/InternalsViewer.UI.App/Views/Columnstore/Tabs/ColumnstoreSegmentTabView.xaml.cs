@@ -16,6 +16,8 @@ public sealed partial class ColumnstoreSegmentTabView : UserControl, IDocumentCo
 {
     private readonly CancellationTokenSource _cts = new();
 
+    private SegmentTabViewModel? _tracked;
+
     public ColumnstoreSegmentTabView()
     {
         InitializeComponent();
@@ -23,12 +25,31 @@ public sealed partial class ColumnstoreSegmentTabView : UserControl, IDocumentCo
         Loaded += OnLoaded;
 
         // x:Bind resolves against the view, and the dock sets DataContext after the view is built
-        DataContextChanged += (_, _) =>
-        {
-            Bindings.Update();
+        DataContextChanged += OnDataContextChanged;
+    }
 
-            ViewModel.PropertyChanged += OnViewModelPropertyChanged;
-        };
+    /// <summary>
+    /// Follows the view model the dock hands over, letting go of the one before it
+    /// </summary>
+    /// <remarks>
+    /// The event fires more than once over the life of a view, so subscribing without releasing the previous one
+    /// leaves handlers stacked up on the view model and every change doing its work several times over.
+    /// </remarks>
+    private void OnDataContextChanged(FrameworkElement sender, DataContextChangedEventArgs args)
+    {
+        Bindings.Update();
+
+        if (_tracked is not null)
+        {
+            _tracked.PropertyChanged -= OnViewModelPropertyChanged;
+        }
+
+        _tracked = DataContext as SegmentTabViewModel;
+
+        if (_tracked is not null)
+        {
+            _tracked.PropertyChanged += OnViewModelPropertyChanged;
+        }
     }
 
     private void OnViewModelPropertyChanged(object? sender, PropertyChangedEventArgs e)
@@ -76,11 +97,11 @@ public sealed partial class ColumnstoreSegmentTabView : UserControl, IDocumentCo
         {
             Style = (Style)Application.Current.Resources["TabCommandToggleStyle"],
             Content = "Hex",
-            IsChecked = ViewModel.IsHexViewVisible
+            IsChecked = ViewModel.Hex.IsVisible
         };
 
-        toggle.Checked += (_, _) => ViewModel.IsHexViewVisible = true;
-        toggle.Unchecked += (_, _) => ViewModel.IsHexViewVisible = false;
+        toggle.Checked += (_, _) => ViewModel.Hex.IsVisible = true;
+        toggle.Unchecked += (_, _) => ViewModel.Hex.IsVisible = false;
 
         var derivation = new ToggleButton
         {
@@ -124,6 +145,31 @@ public sealed partial class ColumnstoreSegmentTabView : UserControl, IDocumentCo
         }
     }
 
+    private void Values_OnSelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        ViewModel.SelectValue(((TableView)sender).SelectedItem as ValueDetail);
+    }
+
+    /// <summary>
+    /// The store header is not a row of the page list, so its tab is what brings the window back to it
+    /// </summary>
+    private void ValueStoreTabs_OnSelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (((TabView)sender).SelectedItem is not TabViewItem { Tag: string tag })
+        {
+            return;
+        }
+
+        if (tag == "StoreHeader")
+        {
+            ViewModel.GoToValueStoreHeader();
+        }
+        else if (tag == "Decode")
+        {
+            ViewModel.SelectPayloadMarker();
+        }
+    }
+
     private void DataRows_OnSelectionChanged(object sender, SelectionChangedEventArgs e)
     {
         ViewModel.SelectRow(((TableView)sender).SelectedItem as SegmentRowDetail);
@@ -147,9 +193,21 @@ public sealed partial class ColumnstoreSegmentTabView : UserControl, IDocumentCo
 
     public void Dispose()
     {
-        ViewModel.PropertyChanged -= OnViewModelPropertyChanged;
+        Loaded -= OnLoaded;
 
-        ViewModel.Dispose();
+        DataContextChanged -= OnDataContextChanged;
+
+        if (_tracked is not null)
+        {
+            _tracked.PropertyChanged -= OnViewModelPropertyChanged;
+
+            _tracked.Dispose();
+
+            _tracked = null;
+        }
+
+        // x:Bind listens to the view model, which outlives the view, so the view stays rooted until tracking stops
+        Bindings.StopTracking();
 
         BitPackDetail.Dispose();
 

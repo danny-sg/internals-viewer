@@ -44,6 +44,12 @@ public sealed class SegmentValuePage : DataStructure
 
     public ReadOnlyMemory<byte> Compressed { get; set; }
 
+    /// <summary>
+    /// Stands in for the payload in a marker, the compressed bytes saying nothing a reader can use
+    /// </summary>
+    [DataStructureItem(ItemType.ValuePagePayload)]
+    public string Payload => "[Compressed Payload]";
+
     public void Mark()
     {
         MarkProperty(nameof(SubLobType), Offset, 4);
@@ -51,6 +57,11 @@ public sealed class SegmentValuePage : DataStructure
         MarkProperty(nameof(ValueSize), Offset + 0x06, 2);
         MarkProperty(nameof(ValueCount), Offset + 0x08, 4);
         MarkProperty(nameof(PayloadSize), Offset + 0x0C, 2);
+
+        if (Size > HeaderSize)
+        {
+            MarkProperty(nameof(Payload), Offset + HeaderSize, Size - HeaderSize);
+        }
     }
 
     public int ExpandedSize => ValueCount * ValueSize;
