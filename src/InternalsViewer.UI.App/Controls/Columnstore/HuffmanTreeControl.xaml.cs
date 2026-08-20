@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Linq;
 using InternalsViewer.UI.App.Models.Columnstore;
-using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls.Primitives;
 using Microsoft.UI.Xaml.Input;
 using SkiaSharp;

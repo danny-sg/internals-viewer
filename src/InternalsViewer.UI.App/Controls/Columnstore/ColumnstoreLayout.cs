@@ -154,7 +154,7 @@ public static class ColumnstoreLayout
     /// </remarks>
     public static SKColor GetDictionaryColour(int dictionaryType) => dictionaryType switch
     {
-        1 => ColumnstoreColours.IntegerDictionary,
+        1 => ColumnstoreColours.NumericDictionary,
         3 => ColumnstoreColours.StringDictionary,
         4 => ColumnstoreColours.FloatDictionary,
         _ => ColumnstoreColours.UnknownDictionary
@@ -162,7 +162,7 @@ public static class ColumnstoreLayout
 
     public static string GetDictionaryTypeDescription(int dictionaryType) => dictionaryType switch
     {
-        1 => "Integer",
+        1 => "Numeric",
         3 => "String",
         4 => "Float",
         _ => $"Type {dictionaryType}"
@@ -179,7 +179,7 @@ public static class ColumnstoreLayout
         ("String hash", GetEncodingColour(SegmentEncoding.StringHashBased)),
         ("Store by value", GetEncodingColour(SegmentEncoding.StoreByValueBased)),
         ("String store", GetEncodingColour(SegmentEncoding.StringStoreByValueBased)),
-        ("Integer dictionary", GetDictionaryColour(1)),
+        ("Numeric dictionary", GetDictionaryColour(1)),
         ("String dictionary", GetDictionaryColour(3)),
         ("Delete bitmap", DeleteBitmapColour),
         ("Delta store", DeltaStoreColour)

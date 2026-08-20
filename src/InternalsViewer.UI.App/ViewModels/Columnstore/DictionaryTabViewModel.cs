@@ -1,18 +1,20 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.Data;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
 using InternalsViewer.Internals.Annotations;
+using InternalsViewer.Internals.Columnstore.Blobs;
 using InternalsViewer.Internals.Columnstore.Dictionaries;
 using InternalsViewer.Internals.Columnstore.Metadata;
+using InternalsViewer.Internals.Helpers;
 using InternalsViewer.Internals.Columnstore.Services;
 using InternalsViewer.Internals.Engine.Database;
-using InternalsViewer.Internals.Interfaces.Annotations;
-using InternalsViewer.Internals.Helpers;
 using InternalsViewer.UI.App.Models;
+using InternalsViewer.UI.App.Controls.Columnstore;
 using InternalsViewer.UI.App.Models.Columnstore;
 using InternalsViewer.UI.App.Services.Markers;
 
@@ -23,9 +25,12 @@ namespace InternalsViewer.UI.App.ViewModels.Columnstore;
 /// </summary>
 public sealed partial class DictionaryTabViewModel(ColumnstoreService columnstoreService,
                                                    DatabaseSource database,
-                                                   SegmentDictionary dictionary) : ObservableObject, IDisposable
+                                                   SegmentDictionary dictionary,
+                                                   ColumnStoreColumn? column) : ObservableObject, IDisposable
 {
     private const int SpinnerDelayMs = 100;
+
+    private const float ShadeFactor = 0.72f;
 
     private ColumnstoreService ColumnstoreService { get; } = columnstoreService;
 
@@ -33,7 +38,92 @@ public sealed partial class DictionaryTabViewModel(ColumnstoreService columnstor
 
     public SegmentDictionary Dictionary { get; } = dictionary;
 
+    public ColumnStoreColumn? Column { get; } = column;
+
+    public string ColumnName => Column?.Name ?? $"Column {Dictionary.ColumnId}";
+
+    /// <summary>
+    /// The type the column was declared as, which the header shows beside its name
+    /// </summary>
+    /// <remarks>
+    /// Surfaced a field at a time because a data type is drawn from four of them, and x:Bind cannot reach through a
+    /// structure that may not be there.
+    /// </remarks>
+    public SqlDbType? DataType => Column?.Structure?.DataType;
+
+    public int Precision => Column?.Structure?.Precision ?? 0;
+
+    public int Scale => Column?.Structure?.Scale ?? 0;
+
+    public int DataLength => Column?.Structure?.DataLength ?? 0;
+
+    /// <summary>
+    /// Whether the dictionary covers the whole index or the one row group, which the header shows under the column
+    /// </summary>
+    public IReadOnlyList<SegmentBadge> ScopeBadges =>
+    [
+        Dictionary.IsGlobal
+            ? SegmentBadge.Create("Global", ColumnstoreColours.GlobalScope)
+            : SegmentBadge.Create($"Local {Dictionary.DictionaryId}", ColumnstoreColours.LocalScope)
+    ];
+
+    /// <summary>
+    /// The lob type and the store it opens, the store being the element that tells one dictionary kind from the other
+    /// </summary>
+    public IReadOnlyList<SegmentBadge> TypeBadges
+    {
+        get
+        {
+            var colour = ColumnstoreLayout.GetDictionaryColour(Dictionary.Type);
+
+            var badges = new List<SegmentBadge>
+            {
+                SegmentBadge.Create($"{ColumnstoreLayout.GetDictionaryTypeDescription(Dictionary.Type)} Dictionary",
+                                    colour)
+            };
+
+            if (StoreSubLobType is { } store)
+            {
+                badges.Add(SegmentBadge.Create(store.ToString().SplitCamelCase(),
+                                               ColumnstoreColours.Shade(colour, ShadeFactor)));
+            }
+
+            return SegmentBadge.Compound(badges);
+        }
+    }
+
+    private SubLobType? StoreSubLobType => Blob switch
+    {
+        NumericDictionary numeric => numeric.HashTable.SubLobType,
+        StringDictionary strings => strings.Store.SubLobType,
+        _ => null
+    };
+
+    /// <summary>
+    /// What the blob turned out to hold, which is only known once it is read
+    /// </summary>
+    public IReadOnlyList<SegmentBadge> FlagBadges => SegmentBadge.Compound([.. BuildFlagBadges()]);
+
+    private IEnumerable<SegmentBadge> BuildFlagBadges()
+    {
+        if (Blob is not StringDictionary strings || strings.Pages.Length == 0)
+        {
+            yield break;
+        }
+
+        var huffman = strings.Pages.Count(p => p is HuffmanStringPage);
+
+        yield return huffman switch
+        {
+            0 => SegmentBadge.Create("Uncompressed", ColumnstoreColours.UncompressedFlag),
+            _ when huffman == strings.Pages.Length => SegmentBadge.Create("Huffman", ColumnstoreColours.HuffmanFlag),
+            _ => SegmentBadge.Create($"Huffman {huffman}/{strings.Pages.Length}", ColumnstoreColours.HuffmanFlag)
+        };
+    }
+
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(FlagBadges))]
+    [NotifyPropertyChangedFor(nameof(TypeBadges))]
     private DictionaryBlob? _blob;
 
     /// <summary>
@@ -510,12 +600,10 @@ public sealed partial class DictionaryTabViewModel(ColumnstoreService columnstor
 
     private static string Describe(DictionaryBlob blob)
     {
-        var kind = blob is StringDictionary ? "String" : "Numeric";
-
         var pages = blob is StringDictionary strings ? $", {strings.Pages.Length} pages" : string.Empty;
 
-        return $"{kind}, {blob.EntryCount} entries from Data Id {blob.FirstId}{pages}, "
-               + $"{blob.LobType.ToString().SplitCamelCase()}";
+        return $"{blob.EntryCount} entries, Data Id {blob.FirstId} to {blob.FirstId + blob.EntryCount - 1}"
+               + $"{pages}, {blob.Data.Length} bytes";
     }
 
     private async Task ShowSpinnerAfterDelay(CancellationToken token)

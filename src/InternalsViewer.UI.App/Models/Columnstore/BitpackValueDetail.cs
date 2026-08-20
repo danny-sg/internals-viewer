@@ -1,6 +1,4 @@
-﻿using InternalsViewer.UI.App.Models;
-
-namespace InternalsViewer.UI.App.Models.Columnstore;
+﻿namespace InternalsViewer.UI.App.Models.Columnstore;
 
 /// <summary>
 /// One packed value, positioned by its bits within the unit rather than by a byte offset

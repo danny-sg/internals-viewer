@@ -99,15 +99,18 @@ public sealed partial class BlobHexViewModel : ObservableObject, IDisposable
     /// </summary>
     public void GoToOffset(int offset)
     {
-        var start = Align(offset);
+        if (!IsOffsetVisible(offset))
+        {
+            var start = Align(offset);
 
-        if (WindowOffset == start)
-        {
-            SetWindow(start);
-        }
-        else
-        {
-            WindowOffset = start;
+            if (WindowOffset == start)
+            {
+                SetWindow(start);
+            }
+            else
+            {
+                WindowOffset = start;
+            }
         }
 
         // Moving the window scheduled a rebuild, which would replace the collection and drop any selection with it
@@ -115,6 +118,12 @@ public sealed partial class BlobHexViewModel : ObservableObject, IDisposable
 
         BuildMarkers();
     }
+
+    /// <summary>
+    /// Whether the offset is one the window is already showing, which is what makes moving to it unnecessary
+    /// </summary>
+    public bool IsOffsetVisible(int offset)
+        => HexData.Length > 0 && offset >= HexBaseAddress && offset < HexBaseAddress + HexData.Length;
 
     public void BuildMarkers()
     {

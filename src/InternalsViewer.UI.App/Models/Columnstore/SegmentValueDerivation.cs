@@ -2,7 +2,6 @@
 using System.Collections.Generic;
 using InternalsViewer.Internals.Columnstore.Decoding;
 using InternalsViewer.Internals.Columnstore.Metadata;
-using InternalsViewer.UI.App.Models;
 
 namespace InternalsViewer.UI.App.Models.Columnstore;
 

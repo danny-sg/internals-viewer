@@ -178,10 +178,12 @@
     <models:MarkStyle x:Key="SegmentStructureTypeMarkerStyle" ForeColour="#CE93D8" BackColour="#3A1145" Name="Structure Type" Ordinal="204"/>
     <models:MarkStyle x:Key="BookmarkCountMarkerStyle" ForeColour="#80CBC4" BackColour="#00332E" Name="Bookmark Count" Ordinal="210"/>
     <models:MarkStyle x:Key="BookmarkDistanceMarkerStyle" ForeColour="#A5D6A7" BackColour="#14361A" Name="Bookmark Distance" Ordinal="211"/>
+    <models:MarkStyle x:Key="BookmarkEntryMarkerStyle" ForeColour="#B0BEC5" BackColour="#1C2A30" Name="Bookmark Entry" Ordinal="211"/>
     <models:MarkStyle x:Key="BookmarkPositionMarkerStyle" ForeColour="#4DB6AC" BackColour="#003B33" Name="Bookmark Position" Ordinal="212"/>
     <models:MarkStyle x:Key="BookmarkEndRowMarkerStyle" ForeColour="#FFF176" BackColour="#3E3606" Name="Bookmark End Row" Ordinal="213"/>
     <models:MarkStyle x:Key="RleArrayCountMarkerStyle" ForeColour="#FFCC80" BackColour="#3E2205" Name="RLE Array Count" Ordinal="220"/>
     <models:MarkStyle x:Key="RleEntrySizeMarkerStyle" ForeColour="#FFAB91" BackColour="#3E1005" Name="RLE Entry Size" Ordinal="221"/>
+    <models:MarkStyle x:Key="RleEntryMarkerStyle" ForeColour="#B0BEC5" BackColour="#1C2A30" Name="RLE Entry" Ordinal="221"/>
     <models:MarkStyle x:Key="RleValueMarkerStyle" ForeColour="#FFB74D" BackColour="#4A2A05" Name="RLE Value" Ordinal="222"/>
     <models:MarkStyle x:Key="RleCountMarkerStyle" ForeColour="#81C784" BackColour="#123D16" Name="RLE Count" Ordinal="223"/>
     <models:MarkStyle x:Key="RleBitpackIndexMarkerStyle" ForeColour="#F06292" BackColour="#3D0A22" Name="Bit Pack Index" Ordinal="224"/>
@@ -212,6 +214,12 @@
     <models:MarkStyle x:Key="DictionaryHandleSizeMarkerStyle" ForeColour="#F48FB1" BackColour="#3D0A22" Name="Handle Size" Ordinal="264"/>
     <models:MarkStyle x:Key="DictionaryHandleCountMarkerStyle" ForeColour="#CE93D8" BackColour="#3A1145" Name="Handle Count" Ordinal="265"/>
     <models:MarkStyle x:Key="DictionaryPageCountMarkerStyle" ForeColour="#FFCC80" BackColour="#3E2205" Name="Page Count" Ordinal="266"/>
+    <models:MarkStyle x:Key="DictionaryStringStoreMarkerStyle" ForeColour="#B0BEC5" BackColour="#1C2A30" Name="String Store Header" Ordinal="262"/>
+    <models:MarkStyle x:Key="DictionaryHandleArrayMarkerStyle" ForeColour="#B0BEC5" BackColour="#1C2A30" Name="Handle Array Header" Ordinal="264"/>
+    <models:MarkStyle x:Key="DictionaryPageSizeArrayMarkerStyle" ForeColour="#B0BEC5" BackColour="#1C2A30" Name="Page Size Array Header" Ordinal="265"/>
+    <models:MarkStyle x:Key="DictionaryElementCountMarkerStyle" ForeColour="#FFD54F" BackColour="#4A3005" Name="Element Count" Ordinal="275"/>
+    <models:MarkStyle x:Key="DictionaryHashTableMarkerStyle" ForeColour="#B0BEC5" BackColour="#1C2A30" Name="Hash Table Header" Ordinal="266"/>
+    <models:MarkStyle x:Key="DictionaryValueArrayMarkerStyle" ForeColour="#B0BEC5" BackColour="#1C2A30" Name="Array Header" Ordinal="273"/>
     <models:MarkStyle x:Key="DictionaryBucketSizeMarkerStyle" ForeColour="#81D4FA" BackColour="#052F52" Name="Bucket Size" Ordinal="267"/>
     <models:MarkStyle x:Key="DictionaryBucketCountMarkerStyle" ForeColour="#4DD0E1" BackColour="#00363A" Name="Bucket Count" Ordinal="268"/>
     <models:MarkStyle x:Key="DictionaryMaxLocalEntryCountMarkerStyle" ForeColour="#AED581" BackColour="#1B3810" Name="Max Local Entry Count" Ordinal="269"/>

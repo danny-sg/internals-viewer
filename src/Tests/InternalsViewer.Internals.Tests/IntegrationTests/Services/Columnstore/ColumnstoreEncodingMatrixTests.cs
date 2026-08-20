@@ -85,7 +85,7 @@ public sealed class ColumnstoreEncodingMatrixTests(ITestOutputHelper testOutput)
                     => $"{parsed.LobType}/{strings.SubLobType}/"
                        + $"{string.Join("+", strings.Pages.Select(p => p.SubLobType.ToString()).Distinct())}",
                 NumericDictionary numeric
-                    => $"{parsed.LobType}/{numeric.SubLobType}+{numeric.ValueSubLobType}",
+                    => $"{parsed.LobType}/{numeric.HashTable.SubLobType}+{numeric.ValueArray.SubLobType}",
                 _ => $"{parsed.LobType}"
             };
         }

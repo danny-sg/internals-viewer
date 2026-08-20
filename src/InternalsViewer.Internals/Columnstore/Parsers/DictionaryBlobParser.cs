@@ -47,17 +47,25 @@ public static class DictionaryBlobParser
             Reserved = ReadInt32(span, 0x08),
             EntryCount = entryCount,
             FirstId = firstId,
-            SubLobType = (SubLobType)ReadInt32(span, 0x0C),
-            BucketSize = ReadInt32(span, 0x10),
-            BucketCount = ReadInt32(span, 0x14),
-            MaxLocalEntryCount = ReadInt32(span, 0x18),
-            HashEntrySize = ReadInt32(span, 0x1C),
-            HashEntryCount = ReadInt32(span, 0x20),
-            CollisionCount = ReadInt32(span, 0x24),
-            BucketIndexMask = (uint)ReadInt32(span, 0x28),
-            ValueSubLobType = (SubLobType)ReadInt32(span, 0x2C),
-            ElementSize = ReadInt32(span, 0x30),
-            ValueCount = ReadInt32(span, 0x34)
+            HashTable = new NumericDictionaryHashTable
+            {
+                IsMarkEnabled = isMarkEnabled,
+                SubLobType = (SubLobType)ReadInt32(span, 0x0C),
+                BucketSize = ReadInt32(span, 0x10),
+                BucketCount = ReadInt32(span, 0x14),
+                MaxLocalEntryCount = ReadInt32(span, 0x18),
+                EntrySize = ReadInt32(span, 0x1C),
+                EntryCount = ReadInt32(span, 0x20),
+                CollisionCount = ReadInt32(span, 0x24),
+                BucketIndexMask = (uint)ReadInt32(span, 0x28)
+            },
+            ValueArray = new NumericDictionaryValueArray
+            {
+                IsMarkEnabled = isMarkEnabled,
+                SubLobType = (SubLobType)ReadInt32(span, 0x2C),
+                ElementSize = ReadInt32(span, 0x30),
+                ValueCount = ReadInt32(span, 0x34)
+            }
         };
 
         MarkNumericHeader(dictionary);
@@ -89,15 +97,31 @@ public static class DictionaryBlobParser
             EntryCount = entryCount,
             FirstId = firstId,
             Reserved = ReadInt32(span, 0x08),
-            SubLobType = (SubLobType)ReadInt32(span, 0x0C),
-            StringCount = ReadInt32(span, 0x10),
-            MaxStringSize = ReadInt32(span, 0x14),
-            Reserved18 = data.Slice(0x18, 0x24).ToArray(),
-            Unknown44 = ReadInt32(span, 0x44),
-            Unknown48 = ReadInt32(span, 0x48),
-            HandleSize = ReadInt32(span, 0x3C),
-            HandleCount = ReadInt32(span, 0x40),
-            PageCount = ReadInt32(span, 0x4C)
+            Store = new StringDictionaryStore
+            {
+                IsMarkEnabled = isMarkEnabled,
+                SubLobType = (SubLobType)ReadInt32(span, StringDictionaryStore.Offset),
+                StringCount = ReadInt32(span, StringDictionaryStore.Offset + 0x04),
+                MaxStringSize = ReadInt32(span, StringDictionaryStore.Offset + 0x08),
+                Reserved = data.Slice(StringDictionaryStore.Offset + 0x0C,
+                                      StringDictionaryStore.Size - 0x0C).ToArray()
+            },
+            HandleArray = new StringDictionaryArray
+            {
+                IsMarkEnabled = isMarkEnabled,
+                Offset = StringDictionary.HandleArrayHeaderOffset,
+                SubLobType = (SubLobType)ReadInt32(span, StringDictionary.HandleArrayHeaderOffset),
+                ElementSize = ReadInt32(span, StringDictionary.HandleArrayHeaderOffset + 0x04),
+                ElementCount = ReadInt32(span, StringDictionary.HandleArrayHeaderOffset + 0x08)
+            },
+            PageSizeArray = new StringDictionaryArray
+            {
+                IsMarkEnabled = isMarkEnabled,
+                Offset = StringDictionary.PageSizeArrayHeaderOffset,
+                SubLobType = (SubLobType)ReadInt32(span, StringDictionary.PageSizeArrayHeaderOffset),
+                ElementSize = ReadInt32(span, StringDictionary.PageSizeArrayHeaderOffset + 0x04),
+                ElementCount = ReadInt32(span, StringDictionary.PageSizeArrayHeaderOffset + 0x08)
+            }
         };
 
         MarkStringHeader(dictionary);
@@ -214,15 +238,23 @@ public static class DictionaryBlobParser
         dictionary.MarkProperty(nameof(StringDictionary.Version), 0x00, 4);
         dictionary.MarkProperty(nameof(StringDictionary.LobType), 0x04, 4);
         dictionary.MarkProperty(nameof(StringDictionary.Reserved), 0x08, 4);
-        dictionary.MarkProperty(nameof(StringDictionary.SubLobType), 0x0C, 4);
-        dictionary.MarkProperty(nameof(StringDictionary.StringCount), 0x10, 4);
-        dictionary.MarkProperty(nameof(StringDictionary.MaxStringSize), 0x14, 4);
-        dictionary.MarkProperty(nameof(StringDictionary.HandleSize), 0x3C, 4);
-        dictionary.MarkProperty(nameof(StringDictionary.HandleCount), 0x40, 4);
-        dictionary.MarkProperty(nameof(StringDictionary.Reserved18), 0x18, 0x24);
-        dictionary.MarkProperty(nameof(StringDictionary.Unknown44), 0x44, 4);
-        dictionary.MarkProperty(nameof(StringDictionary.Unknown48), 0x48, 4);
-        dictionary.MarkProperty(nameof(StringDictionary.PageCount), 0x4C, 4);
+        dictionary.MarkProperty(nameof(StringDictionary.Store),
+                                StringDictionaryStore.Offset,
+                                StringDictionaryStore.Size);
+
+        dictionary.MarkProperty(nameof(StringDictionary.HandleArray),
+                                StringDictionary.HandleArrayHeaderOffset,
+                                StringDictionaryArray.Size);
+
+        dictionary.MarkProperty(nameof(StringDictionary.PageSizeArray),
+                                StringDictionary.PageSizeArrayHeaderOffset,
+                                StringDictionaryArray.Size);
+
+        dictionary.Store.Mark();
+
+        dictionary.HandleArray.Mark();
+
+        dictionary.PageSizeArray.Mark();
     }
 
     private static void MarkNumericHeader(NumericDictionary dictionary)
@@ -230,17 +262,17 @@ public static class DictionaryBlobParser
         dictionary.MarkProperty(nameof(NumericDictionary.Version), 0x00, 4);
         dictionary.MarkProperty(nameof(NumericDictionary.LobType), 0x04, 4);
         dictionary.MarkProperty(nameof(NumericDictionary.Reserved), 0x08, 4);
-        dictionary.MarkProperty(nameof(NumericDictionary.SubLobType), 0x0C, 4);
-        dictionary.MarkProperty(nameof(NumericDictionary.BucketSize), 0x10, 4);
-        dictionary.MarkProperty(nameof(NumericDictionary.BucketCount), 0x14, 4);
-        dictionary.MarkProperty(nameof(NumericDictionary.MaxLocalEntryCount), 0x18, 4);
-        dictionary.MarkProperty(nameof(NumericDictionary.HashEntrySize), 0x1C, 4);
-        dictionary.MarkProperty(nameof(NumericDictionary.HashEntryCount), 0x20, 4);
-        dictionary.MarkProperty(nameof(NumericDictionary.CollisionCount), 0x24, 4);
-        dictionary.MarkProperty(nameof(NumericDictionary.BucketIndexMask), 0x28, 4);
-        dictionary.MarkProperty(nameof(NumericDictionary.ValueSubLobType), 0x2C, 4);
-        dictionary.MarkProperty(nameof(NumericDictionary.ElementSize), 0x30, 4);
-        dictionary.MarkProperty(nameof(NumericDictionary.ValueCount), 0x34, 4);
+        dictionary.MarkProperty(nameof(NumericDictionary.HashTable),
+                                NumericDictionaryHashTable.Offset,
+                                NumericDictionaryHashTable.Size);
+
+        dictionary.MarkProperty(nameof(NumericDictionary.ValueArray),
+                                NumericDictionaryValueArray.Offset,
+                                NumericDictionaryValueArray.Size);
+
+        dictionary.HashTable.Mark();
+
+        dictionary.ValueArray.Mark();
     }
 
     private static int ReadInt32(ReadOnlySpan<byte> span, int offset)

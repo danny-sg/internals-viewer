@@ -163,8 +163,8 @@ internal static class ColumnstoreStructureDumper
         switch (blob)
         {
             case NumericDictionary numeric:
-                builder.AppendLine($"  Numeric   elementSize {numeric.ElementSize}   bucketSize {numeric.BucketSize}   "
-                                   + $"bucketCount {numeric.BucketCount}   collisions {numeric.CollisionCount}");
+                builder.AppendLine($"  Numeric   elementSize {numeric.ElementSize}   bucketSize {numeric.HashTable.BucketSize}   "
+                                   + $"bucketCount {numeric.HashTable.BucketCount}   collisions {numeric.HashTable.CollisionCount}");
 
                 builder.AppendLine();
 

@@ -1,7 +1,6 @@
 ﻿using System;
 using InternalsViewer.UI.App.Controls.Columnstore;
 using InternalsViewer.UI.App.ViewModels.Columnstore;
-using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Media;
 using Windows.UI;

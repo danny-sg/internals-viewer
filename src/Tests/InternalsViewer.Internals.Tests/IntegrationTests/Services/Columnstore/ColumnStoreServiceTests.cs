@@ -40,7 +40,7 @@ public sealed class ColumnstoreServiceTests(ITestOutputHelper testOutput) : Prov
 
         var pointer = index.RowGroups[0].Segments[0].DataPointer;
 
-        var data = await service.GetSegmentData(database, pointer, CancellationToken.None);
+        var data = await service.GetData(database, pointer, CancellationToken.None);
     }
 
     [Fact]
@@ -93,7 +93,7 @@ public sealed class ColumnstoreServiceTests(ITestOutputHelper testOutput) : Prov
 
         foreach (var segment in rowGroup.Segments)
         {
-            var data = await service.GetSegmentData(database, segment.DataPointer, CancellationToken.None);
+            var data = await service.GetData(database, segment.DataPointer, CancellationToken.None);
 
             TestOutput.WriteLine($"{tableName} rg {rowGroupId} col {segment.Key.ColumnId} "
                                  + $"enc {segment.Encoding} rows {segment.RowCount} "
@@ -120,7 +120,7 @@ public sealed class ColumnstoreServiceTests(ITestOutputHelper testOutput) : Prov
                                       SegmentDictionary dictionary,
                                       string scope)
     {
-        var data = await service.GetSegmentData(database, dictionary.DataPointer, CancellationToken.None);
+        var data = await service.GetData(database, dictionary.DataPointer, CancellationToken.None);
 
         TestOutput.WriteLine($"{tableName} col {columnId} {scope} dictionary {dictionary.DictionaryId} "
                              + $"entries {dictionary.EntryCount} onDiskSize {dictionary.OnDiskSize} length {data.Length}");

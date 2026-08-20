@@ -87,13 +87,24 @@ public static class ColumnstoreColours
 
     // Dictionaries, which stay within one family being variants of the same thing
 
-    public static readonly SKColor IntegerDictionary = FromHex(0x854F0B);
+    public static readonly SKColor NumericDictionary = FromHex(0x854F0B);
 
     public static readonly SKColor StringDictionary = FromHex(0xEF9F27);
 
     public static readonly SKColor FloatDictionary = FromHex(0xBA7517);
 
     public static readonly SKColor UnknownDictionary = FromHex(0x888780);
+
+    public static readonly SKColor GlobalScope = FromHex(0x2E7D6E);
+
+    public static readonly SKColor LocalScope = FromHex(0x9C5BB8);
+
+    public static readonly SKColor HuffmanFlag = FromHex(0xB5462F);
+
+    public static readonly SKColor UncompressedFlag = FromHex(0x6B6A63);
+
+    public static SKColor Shade(SKColor colour, float factor)
+        => new((byte)(colour.Red * factor), (byte)(colour.Green * factor), (byte)(colour.Blue * factor));
 
     // Structure types, a scheme of their own so the layout is not read as an encoding
 

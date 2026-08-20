@@ -77,9 +77,9 @@ public sealed class NumericDictionaryHashProbeTests(ITestOutputHelper testOutput
 
             TestOutput.WriteLine($"  column {metadata!.ColumnId} dictionary {metadata.DictionaryId} "
                                  + $"{(metadata.IsGlobal ? "global" : "local")} entries {numeric.EntryCount} "
-                                 + $"| buckets {numeric.BucketCount} size {numeric.BucketSize} "
-                                 + $"| hash entries {numeric.HashEntryCount} size {numeric.HashEntrySize} "
-                                 + $"| collisions {numeric.CollisionCount} mask {numeric.BucketIndexMask}");
+                                 + $"| buckets {numeric.HashTable.BucketCount} size {numeric.HashTable.BucketSize} "
+                                 + $"| hash entries {numeric.HashTable.EntryCount} size {numeric.HashTable.EntrySize} "
+                                 + $"| collisions {numeric.HashTable.CollisionCount} mask {numeric.HashTable.BucketIndexMask}");
         }
     }
 

@@ -18,6 +18,11 @@ namespace InternalsViewer.Internals.Columnstore.Services;
 
 public sealed class ColumnstoreService(IRecordReader recordReader, ILobDataService lobDataService)
 {
+    /// <summary>
+    /// Bytes read past the header, covering the two the store by value prologue carries beyond it
+    /// </summary>
+    private const int PrologueSlack = 16;
+
     private IRecordReader RecordReader { get; } = recordReader;
 
     private ILobDataService LobDataService { get; } = lobDataService;
@@ -47,7 +52,7 @@ public sealed class ColumnstoreService(IRecordReader recordReader, ILobDataServi
                                              related);
     }
 
-    public async Task<byte[]> GetSegmentData(DatabaseSource database,
+    public async Task<byte[]> GetData(DatabaseSource database,
                                              LobPointer lobPointer,
                                              CancellationToken cancellationToken)
     {
@@ -84,17 +89,12 @@ public sealed class ColumnstoreService(IRecordReader recordReader, ILobDataServi
         return blob.Header;
     }
 
-    /// <summary>
-    /// Bytes read past the header, covering the two the store by value prologue carries beyond it
-    /// </summary>
-    private const int PrologueSlack = 16;
-
     public async Task<SegmentBlob> GetSegmentBlob(DatabaseSource database,
                                                  ColumnSegment segment,
                                                  CancellationToken cancellationToken,
                                                  bool isMarkEnabled = false)
     {
-        var data = await GetSegmentData(database, segment.DataPointer, cancellationToken);
+        var data = await GetData(database, segment.DataPointer, cancellationToken);
 
         return SegmentBlobParser.Parse(data, isMarkEnabled);
     }
@@ -104,7 +104,7 @@ public sealed class ColumnstoreService(IRecordReader recordReader, ILobDataServi
                                                        CancellationToken cancellationToken,
                                                        bool isMarkEnabled = false)
     {
-        var data = await GetSegmentData(database, dictionary.DataPointer, cancellationToken);
+        var data = await GetData(database, dictionary.DataPointer, cancellationToken);
 
         return DictionaryBlobParser.Parse(data, (int)dictionary.EntryCount, dictionary.LastId, isMarkEnabled);
     }
@@ -125,20 +125,6 @@ public sealed class ColumnstoreService(IRecordReader recordReader, ILobDataServi
                                                              ColumnSegment segment,
                                                              CancellationToken cancellationToken)
         => new(segment, await GetSegmentDictionary(database, segment, cancellationToken));
-
-    /// <summary>
-    /// The dictionary the segment's ids index, a local one taking precedence over the column's global one
-    /// </summary>
-    private async Task<DictionaryBlob?> GetSegmentDictionary(DatabaseSource database,
-                                                             ColumnSegment segment,
-                                                             CancellationToken cancellationToken)
-    {
-        var source = segment.SecondaryDictionaryId >= 0
-                     ? segment.LocalDictionary
-                     : segment.Column?.GlobalDictionary;
-
-        return source is null ? null : await GetDictionaryBlob(database, source, cancellationToken);
-    }
 
     public async Task<RowGroupReader> GetRowGroupReader(DatabaseSource database,
                                                        RowGroup rowGroup,
@@ -161,6 +147,20 @@ public sealed class ColumnstoreService(IRecordReader recordReader, ILobDataServi
         }
 
         return new RowGroupReader(rowGroup, readers, skipped);
+    }
+    
+    /// <summary>
+    /// The dictionary the segment's ids index, a local one taking precedence over the column's global one
+    /// </summary>
+    private async Task<DictionaryBlob?> GetSegmentDictionary(DatabaseSource database,
+        ColumnSegment segment,
+        CancellationToken cancellationToken)
+    {
+        var source = segment.SecondaryDictionaryId >= 0
+            ? segment.LocalDictionary
+            : segment.Column?.GlobalDictionary;
+
+        return source is null ? null : await GetDictionaryBlob(database, source, cancellationToken);
     }
 
     private async Task<List<Record>> GetRecords(string name,

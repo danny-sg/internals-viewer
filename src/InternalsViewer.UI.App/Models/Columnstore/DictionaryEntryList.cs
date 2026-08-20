@@ -2,7 +2,6 @@
 using System.Collections;
 using System.Collections.Generic;
 using InternalsViewer.Internals.Columnstore.Dictionaries;
-using InternalsViewer.UI.App.Models;
 
 namespace InternalsViewer.UI.App.Models.Columnstore;
 
@@ -12,10 +11,6 @@ namespace InternalsViewer.UI.App.Models.Columnstore;
 public sealed class DictionaryEntryDetail(DictionaryBlob blob, int index, bool showDerivation)
     : IEquatable<DictionaryEntryDetail>
 {
-    private string? _value;
-
-    private ValueDerivation? _derivation;
-
     public int Index { get; } = index;
 
     public bool ShowDerivation { get; } = showDerivation;
@@ -40,12 +35,12 @@ public sealed class DictionaryEntryDetail(DictionaryBlob blob, int index, bool s
         ? $"{strings.Handles[Index].Offset}"
         : $"0x{ValueOffset:X}";
 
-    public string Value => _value ??= Decode();
+    public string Value => field ??= Decode();
 
     /// <summary>
     /// Working from the data id to the entry it addresses, the ids not starting at zero
     /// </summary>
-    public ValueDerivation Derivation => _derivation ??= new ValueDerivation
+    public ValueDerivation Derivation => field ??= new ValueDerivation
     {
         Steps =
         [

@@ -1,11 +1,11 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using InternalsViewer.Internals.Annotations;
 using InternalsViewer.Internals.Columnstore.Segments;
 using InternalsViewer.Internals.Helpers;
 using InternalsViewer.Internals.Interfaces.Annotations;
 using System.Linq;
-using InternalsViewer.UI.App.Models;
 using InternalsViewer.UI.App.Services.Markers;
 
 namespace InternalsViewer.UI.App.Models.Columnstore;
@@ -103,17 +103,18 @@ public static class SegmentRegionMarkerBuilder
 
             var bookmark = blob.Bookmarks[i];
 
-            markers.Add(Create($"Bookmark Index {i} Position",
-                               ItemType.BookmarkPosition,
-                               offset,
-                               4,
-                               $"{bookmark.Position} (entry {bookmark.GetRleEntryIndex(blob.RleEntryBytes)})"));
-
-            markers.Add(Create($"Bookmark Index {i} End Row",
-                               ItemType.BookmarkEndRow,
-                               offset + 4,
-                               4,
-                               $"{bookmark.EndRow}"));
+            markers.Add(Entry($"Bookmark Index {i}",
+                              ItemType.BookmarkEntry,
+                              offset,
+                              SegmentBlob.EntrySize,
+                              [
+                                  Create("Position",
+                                         ItemType.BookmarkPosition,
+                                         offset,
+                                         4,
+                                         $"{bookmark.Position} (entry {bookmark.GetRleEntryIndex(blob.RleEntryBytes)})"),
+                                  Create("End Row", ItemType.BookmarkEndRow, offset + 4, 4, $"{bookmark.EndRow}")
+                              ]));
         }
 
         return markers;
@@ -139,24 +140,22 @@ public static class SegmentRegionMarkerBuilder
 
             var entry = blob.RleEntries[i];
 
-            if (entry.IsBitpacked)
-            {
-                markers.Add(Create($"RLE Index {i} Bit Pack Index",
-                                   ItemType.RleBitpackIndex,
-                                   offset,
-                                   valueSize,
-                                   $"{entry.BitpackIndex}"));
-            }
-            else
-            {
-                markers.Add(Create($"RLE Index {i} Value",
-                                   ItemType.RleValue,
-                                   offset,
-                                   valueSize,
-                                   entry.IsTerminator ? "Terminator" : $"{entry.Value}"));
-            }
+            var value = entry.IsBitpacked
+                ? Create("Bit Pack Index", ItemType.RleBitpackIndex, offset, valueSize, $"{entry.BitpackIndex}")
+                : Create("Value",
+                         ItemType.RleValue,
+                         offset,
+                         valueSize,
+                         entry.IsTerminator ? "Terminator" : $"{entry.Value}");
 
-            markers.Add(Create($"RLE Index {i} Count", ItemType.RleCount, offset + valueSize, 4, $"{entry.Count}"));
+            markers.Add(Entry($"RLE Index {i}",
+                              ItemType.RleEntry,
+                              offset,
+                              entryBytes,
+                              [
+                                  value,
+                                  Create("Count", ItemType.RleCount, offset + valueSize, 4, $"{entry.Count}")
+                              ]));
         }
 
         return markers;
@@ -298,4 +297,13 @@ public static class SegmentRegionMarkerBuilder
 
     private static Marker Create(string name, ItemType type, int offset, int size, string value)
         => MarkerBuilder.CreateMarker(name, type, offset, size, value);
+
+    private static Marker Entry(string name, ItemType type, int offset, int size, IEnumerable<Marker> children)
+    {
+        var marker = Create(name, type, offset, size, string.Empty);
+
+        marker.Children = new ObservableCollection<Marker>(children);
+
+        return marker;
+    }
 }

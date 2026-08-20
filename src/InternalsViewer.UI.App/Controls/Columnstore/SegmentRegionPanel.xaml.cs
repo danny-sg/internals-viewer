@@ -1,6 +1,5 @@
 ﻿using System.Collections.ObjectModel;
 using InternalsViewer.UI.App.Models;
-using Microsoft.UI.Xaml;
 
 namespace InternalsViewer.UI.App.Controls.Columnstore;
 

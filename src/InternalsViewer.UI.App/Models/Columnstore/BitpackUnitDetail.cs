@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using InternalsViewer.UI.App.Models;
 using InternalsViewer.Internals.Columnstore.Segments;
 
 namespace InternalsViewer.UI.App.Models.Columnstore;

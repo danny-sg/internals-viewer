@@ -5,7 +5,6 @@ using System.Threading;
 using InternalsViewer.UI.App.Models.Columnstore;
 using InternalsViewer.UI.App.ViewModels.Columnstore;
 using InternalsViewer.UI.App.Controls.Docking;
-using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Controls.Primitives;
 using WinUI.TableView;
