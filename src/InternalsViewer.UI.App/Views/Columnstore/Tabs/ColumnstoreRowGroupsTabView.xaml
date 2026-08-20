@@ -39,26 +39,23 @@
                 <tableView:TableViewTemplateColumn Header="Segment" Width="80" CanSort="False">
                     <tableView:TableViewTemplateColumn.CellTemplate>
                         <DataTemplate x:DataType="columnstore:SegmentSummary">
-                            <Grid HorizontalAlignment="Center">
-                                <HyperlinkButton Content="View"
-                                                 Click="ViewSegmentButton_Click"
-                                                 Style="{StaticResource CellPageAddressStyle}"
-                                                 Tag="{x:Bind}"/>
-                            </Grid>
+                            <HyperlinkButton Content="View"
+                                             HorizontalAlignment="Center"
+                                             Click="ViewSegmentButton_Click"
+                                             Style="{StaticResource CellPageAddressStyle}"
+                                             Tag="{x:Bind}"/>
                         </DataTemplate>
                     </tableView:TableViewTemplateColumn.CellTemplate>
                 </tableView:TableViewTemplateColumn>
                 <tableView:TableViewTemplateColumn Header="Dictionary" Width="90" CanSort="False">
                     <tableView:TableViewTemplateColumn.CellTemplate>
                         <DataTemplate x:DataType="columnstore:SegmentSummary">
-                            <Grid>
-                                <HyperlinkButton Content="{x:Bind DictionaryScope}"
-                                                 Visibility="{x:Bind HasDictionary, Converter={StaticResource BoolToVisibilityConverter}}"
-                                                 Click="ViewDictionaryButton_Click"
-                                                 HorizontalAlignment="Center"
-                                                 Style="{StaticResource CellPageAddressStyle}"
-                                                 Tag="{x:Bind}"/>
-                            </Grid>
+                            <HyperlinkButton Content="{x:Bind DictionaryScope}"
+                                             Visibility="{x:Bind HasDictionary, Converter={StaticResource BoolToVisibilityConverter}}"
+                                             Click="ViewDictionaryButton_Click"
+                                             HorizontalAlignment="Center"
+                                             Style="{StaticResource CellPageAddressStyle}"
+                                             Tag="{x:Bind}"/>
                         </DataTemplate>
                     </tableView:TableViewTemplateColumn.CellTemplate>
                 </tableView:TableViewTemplateColumn>
@@ -118,13 +115,11 @@
                 <tableView:TableViewTemplateColumn Header="Data Pointer" Width="130" CanSort="False">
                     <tableView:TableViewTemplateColumn.CellTemplate>
                         <DataTemplate x:DataType="columnstore:SegmentSummary">
-                            <Grid>
-                                <HyperlinkButton Content="{x:Bind DataPointerDescription}"
-                                                 Visibility="{x:Bind HasDataPointer, Converter={StaticResource BoolToVisibilityConverter}}"
-                                                 Click="DataPointerButton_Click"
-                                                 Style="{StaticResource CellPageAddressStyle}"
-                                                 Tag="{x:Bind}"/>
-                            </Grid>
+                            <HyperlinkButton Content="{x:Bind DataPointerDescription}"
+                                             Visibility="{x:Bind HasDataPointer, Converter={StaticResource BoolToVisibilityConverter}}"
+                                             Click="DataPointerButton_Click"
+                                             Style="{StaticResource CellPageAddressStyle}"
+                                             Tag="{x:Bind}"/>
                         </DataTemplate>
                     </tableView:TableViewTemplateColumn.CellTemplate>
                 </tableView:TableViewTemplateColumn>

@@ -108,12 +108,10 @@
                 <tableView:TableViewTemplateColumn Header="Page" Tag="PageAddress" Width="90">
                     <tableView:TableViewTemplateColumn.CellTemplate>
                         <DataTemplate x:DataType="eventGrid:EventGridRow">
-                            <Grid>
-                                <HyperlinkButton Content="{Binding PageAddress}"
-                                                 Style="{StaticResource CellPageAddressStyle}"
-                                                 Tag="{Binding PageAddress}"
-                                                 Click="HyperlinkButton_Click"/>
-                            </Grid>
+                            <HyperlinkButton Content="{x:Bind PageAddress, Mode=OneTime}"
+                                             Style="{StaticResource CellPageAddressStyle}"
+                                             Tag="{x:Bind PageAddress, Mode=OneTime}"
+                                             Click="HyperlinkButton_Click"/>
                         </DataTemplate>
                     </tableView:TableViewTemplateColumn.CellTemplate>
                 </tableView:TableViewTemplateColumn>

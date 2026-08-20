@@ -7,6 +7,7 @@
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     xmlns:tableView="using:WinUI.TableView"
     xmlns:controls="using:InternalsViewer.UI.App.Controls"
+    xmlns:models="using:InternalsViewer.UI.App.Models.Columnstore"
     xmlns:columnstore="using:InternalsViewer.UI.App.Controls.Columnstore"
     xmlns:page="using:InternalsViewer.UI.App.Controls.Page"
     xmlns:toolkit="using:CommunityToolkit.WinUI.Controls"
@@ -90,9 +91,9 @@
                                                            CellStyle="{StaticResource TableViewCellRightStyle}"/>
                             <tableView:TableViewTemplateColumn Header="Index" Width="320">
                                 <tableView:TableViewTemplateColumn.CellTemplate>
-                                    <DataTemplate>
-                                        <controls:ValueDerivationControl Derivation="{Binding Derivation}"
-                                                                         ShowSteps="{Binding ShowDerivation}"/>
+                                    <DataTemplate x:DataType="models:DictionaryEntryDetail">
+                                        <controls:ValueDerivationControl Derivation="{x:Bind Derivation, Mode=OneTime}"
+                                                                         ShowSteps="{x:Bind ShowDerivation, Mode=OneTime}"/>
                                     </DataTemplate>
                                 </tableView:TableViewTemplateColumn.CellTemplate>
                             </tableView:TableViewTemplateColumn>
@@ -144,9 +145,9 @@
                                                                CellStyle="{StaticResource TableViewCellRightStyle}"/>
                                 <tableView:TableViewTemplateColumn Header="Index" Width="320">
                                     <tableView:TableViewTemplateColumn.CellTemplate>
-                                        <DataTemplate>
-                                            <controls:ValueDerivationControl Derivation="{Binding Derivation}"
-                                                                             ShowSteps="{Binding ShowDerivation}"/>
+                                        <DataTemplate x:DataType="models:DictionaryEntryDetail">
+                                            <controls:ValueDerivationControl Derivation="{x:Bind Derivation, Mode=OneTime}"
+                                                                             ShowSteps="{x:Bind ShowDerivation, Mode=OneTime}"/>
                                         </DataTemplate>
                                     </tableView:TableViewTemplateColumn.CellTemplate>
                                 </tableView:TableViewTemplateColumn>

@@ -8,6 +8,7 @@
     xmlns:skiaSharp="using:SkiaSharp.Views.Windows"
     xmlns:tableView="using:WinUI.TableView"
     xmlns:controls="using:InternalsViewer.UI.App.Controls"
+    xmlns:models="using:InternalsViewer.UI.App.Models.Columnstore"
     mc:Ignorable="d">
     <Grid>
         <Grid.RowDefinitions>
@@ -91,17 +92,17 @@
                                                CellStyle="{StaticResource TableViewCellRightStyle}"/>
                 <tableView:TableViewTemplateColumn Header="Data Id" Width="340">
                     <tableView:TableViewTemplateColumn.CellTemplate>
-                        <DataTemplate>
-                            <controls:ValueDerivationControl Derivation="{Binding Derivation}"
-                                                             ShowSteps="{Binding ShowDerivation}"/>
+                        <DataTemplate x:DataType="models:BitpackValueDetail">
+                            <controls:ValueDerivationControl Derivation="{x:Bind Derivation, Mode=OneTime}"
+                                                             ShowSteps="{x:Bind ShowDerivation, Mode=OneTime}"/>
                         </DataTemplate>
                     </tableView:TableViewTemplateColumn.CellTemplate>
                 </tableView:TableViewTemplateColumn>
                 <tableView:TableViewTemplateColumn Header="Value" Width="340">
                     <tableView:TableViewTemplateColumn.CellTemplate>
-                        <DataTemplate>
-                            <controls:ValueDerivationControl Derivation="{Binding ValueDerivation}"
-                                                             ShowSteps="{Binding ShowDerivation}"/>
+                        <DataTemplate x:DataType="models:BitpackValueDetail">
+                            <controls:ValueDerivationControl Derivation="{x:Bind ValueDerivation, Mode=OneTime}"
+                                                             ShowSteps="{x:Bind ShowDerivation, Mode=OneTime}"/>
                         </DataTemplate>
                     </tableView:TableViewTemplateColumn.CellTemplate>
                 </tableView:TableViewTemplateColumn>

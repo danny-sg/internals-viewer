@@ -8,6 +8,7 @@ using InternalsViewer.UI.App.ViewModels.Columnstore;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Controls.Primitives;
+using WinUI.TableView;
 
 namespace InternalsViewer.UI.App.Views.Columnstore.Tabs;
 
@@ -121,6 +122,11 @@ public sealed partial class ColumnstoreSegmentTabView : UserControl, IDocumentCo
         {
             ViewModel.GoToTarget(target);
         }
+    }
+
+    private void DataRows_OnSelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        ViewModel.SelectRow(((TableView)sender).SelectedItem as SegmentRowDetail);
     }
 
     private void TabView_OnSelectionChanged(object sender, SelectionChangedEventArgs e)

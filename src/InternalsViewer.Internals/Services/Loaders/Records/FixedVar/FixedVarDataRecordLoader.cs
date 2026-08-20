@@ -126,7 +126,7 @@ public sealed class FixedVarDataRecordLoader(ILogger<FixedVarDataRecordLoader> l
             short offsetStart;
 
             if (structure.HasSparseColumns
-                && structure.Columns.Count(column => !column.IsSparse) == 0)
+                && structure.Columns.All(column => column.IsSparse))
             {
                 dataRecord.VariableLengthColumnCount = 1;
 

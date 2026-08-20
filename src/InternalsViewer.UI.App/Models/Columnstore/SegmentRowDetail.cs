@@ -1,6 +1,5 @@
 ﻿using System;
 using InternalsViewer.Internals.Columnstore.Decoding;
-using InternalsViewer.Internals.Columnstore.Segments;
 
 namespace InternalsViewer.UI.App.Models.Columnstore;
 
@@ -14,15 +13,24 @@ namespace InternalsViewer.UI.App.Models.Columnstore;
 /// </remarks>
 public sealed class SegmentRowDetail(SegmentRowContext context, int ordinal) : IEquatable<SegmentRowDetail>
 {
-    private SegmentDataIdSource? _source;
+    private bool _sourceResolved;
 
-    private ValueDerivation? _dataIdDerivation;
+    private SegmentDataIdSource Source
+    {
+        get
+        {
+            if (!_sourceResolved)
+            {
+                field = context.DataIds.GetSource(Ordinal);
 
-    private ValueDerivation? _valueDerivation;
+                _sourceResolved = true;
+            }
+
+            return field;
+        }
+    }
 
     public int Ordinal { get; } = ordinal;
-
-    private SegmentDataIdSource Source => _source ??= context.DataIds.GetSource(Ordinal);
 
     public long DataId => Source.DataId;
 
@@ -38,11 +46,13 @@ public sealed class SegmentRowDetail(SegmentRowContext context, int ordinal) : I
     /// The bits as they were stored, which only a bit packed row holds separately from its data id
     /// </summary>
     public string PackedDescription
-        => Source.Origin == SegmentValueOrigin.BitPack ? $"{DataId - context.MinId}" : string.Empty;
+        => field ??= Source.Origin == SegmentValueOrigin.BitPack
+                     ? (DataId - context.MinId).ToString()
+                     : string.Empty;
 
-    public ValueDerivation DataIdDerivation => _dataIdDerivation ??= BuildDataIdDerivation();
+    public ValueDerivation DataIdDerivation => field ??= BuildDataIdDerivation();
 
-    public ValueDerivation? ValueDerivation => _valueDerivation ??= context.DeriveValue(DataId);
+    public ValueDerivation? ValueDerivation => field ??= context.DeriveValue(DataId);
 
     public bool ShowDerivation => context.ShowDerivation;
 
@@ -59,7 +69,7 @@ public sealed class SegmentRowDetail(SegmentRowContext context, int ordinal) : I
     {
         var source = Source;
 
-        var result = $"{source.DataId}";
+        var result = source.DataId.ToString();
 
         return source.Origin switch
         {
@@ -97,47 +107,4 @@ public sealed class SegmentRowDetail(SegmentRowContext context, int ordinal) : I
             }
         };
     }
-}
-
-/// <summary>
-/// What every row of a segment reads through, held once rather than on each row
-/// </summary>
-public sealed class SegmentRowContext(SegmentBlob blob,
-                                      SegmentDataIdStream dataIds,
-                                      Func<long, ValueDerivation?> deriveValue,
-                                      bool showDerivation)
-{
-    public SegmentDataIdStream DataIds { get; } = dataIds;
-
-    public long MinId { get; } = blob.BitpackMinId;
-
-    /// <summary>
-    /// The unit the packed value sits in, a unit being what the bit pack region is marked and navigated by
-    /// </summary>
-    public SegmentNavigationTarget? GetBitpackUnitTarget(int bitpackIndex)
-    {
-        var perUnit = blob.Bitpack.ValuesPerUnit;
-
-        if (perUnit <= 0 || bitpackIndex < 0)
-        {
-            return null;
-        }
-
-        var offset = blob.BitpackArrayOffset + (bitpackIndex / perUnit * BitpackArray.UnitBytes);
-
-        return new SegmentNavigationTarget(SegmentRegion.BitpackArray, offset);
-    }
-
-    public SegmentNavigationTarget? GetRleEntryTarget(int entryIndex)
-        => entryIndex < 0
-            ? null
-            : new SegmentNavigationTarget(SegmentRegion.RleArray,
-                                          blob.RleArrayOffset + (entryIndex * blob.RleEntryBytes));
-
-    public Func<long, ValueDerivation?> DeriveValue { get; } = deriveValue;
-
-    /// <summary>
-    /// Carried on the context rather than bound from the view, a cell template only reaching its own row
-    /// </summary>
-    public bool ShowDerivation { get; } = showDerivation;
 }

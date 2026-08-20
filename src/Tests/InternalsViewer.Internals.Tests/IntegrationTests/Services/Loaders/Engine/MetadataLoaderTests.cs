@@ -2,6 +2,7 @@
 using InternalsViewer.Internals.Engine.Database;
 using InternalsViewer.Internals.Readers.Internals;
 using InternalsViewer.Internals.Services.Loaders.Engine;
+using InternalsViewer.Internals.Services.Loaders.Records.Cd;
 using InternalsViewer.Internals.Services.Loaders.Records.FixedVar;
 using InternalsViewer.Internals.Tests.Helpers;
 
@@ -26,7 +27,10 @@ public class MetadataLoaderTests(ITestOutputHelper testOutputHelper)
 
         var loader = new FixedVarDataRecordLoader(TestLogger.GetLogger<FixedVarDataRecordLoader>(TestOutput));
 
-        var dataReader = new RecordReader(TestLogger.GetLogger<RecordReader>(TestOutput), pageService, loader);
+        var dataReader = new RecordReader(TestLogger.GetLogger<RecordReader>(TestOutput),
+                                          pageService,
+                                          loader,
+                                          new CdDataRecordLoader(TestLogger.GetLogger<CdDataRecordLoader>(TestOutput)));
 
         var service = new MetadataLoader(TestLogger.GetLogger<MetadataLoader>(TestOutput), dataReader);
 

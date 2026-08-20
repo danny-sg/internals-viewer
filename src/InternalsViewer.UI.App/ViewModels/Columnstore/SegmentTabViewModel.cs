@@ -5,6 +5,7 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
+using InternalsViewer.Internals.Annotations;
 using InternalsViewer.Internals.Columnstore.Decoding;
 using InternalsViewer.Internals.Columnstore.Segments;
 using InternalsViewer.Internals.Columnstore.Services;
@@ -141,6 +142,94 @@ public sealed partial class SegmentTabViewModel(ColumnstoreService columnstoreSe
 
     [ObservableProperty]
     private string _rowCountDescription = string.Empty;
+
+    [ObservableProperty]
+    private SegmentRowDetail? _selectedRow;
+
+    /// <summary>
+    /// Takes the row the grid picked, moves the window onto where its value was read from and marks it
+    /// </summary>
+    /// <remarks>
+    /// A row stands for its ordinal, so the grid handing back an equal instance leaves the property unchanged and
+    /// nothing would rebuild. The marker is for what is selected now, so it is built either way.
+    /// </remarks>
+    public void SelectRow(SegmentRowDetail? row)
+    {
+        SelectedRow = row;
+
+        if (row is null || Blob is null)
+        {
+            SetHexWindow(WindowOffset);
+
+            return;
+        }
+
+        if (GetRowSource(row.Ordinal) is { } source)
+        {
+            GoToOffset(source.Offset);
+        }
+    }
+
+    /// <summary>
+    /// Where in the blob a row's value was read from, which differs by the store the segment uses
+    /// </summary>
+    /// <remarks>
+    /// A store by value row can only be pointed at its page. The values there sit inside a compressed payload, so an
+    /// individual one has no range of the blob to mark until the page has been expanded.
+    /// </remarks>
+    private (int Offset, int Length, string Name)? GetRowSource(int ordinal)
+    {
+        if (Blob is not { } blob || Rows is null)
+        {
+            return null;
+        }
+
+        if (blob.ValueStore is { } store)
+        {
+            var page = store.Pages[store.GetPageIndex(ordinal)];
+
+            return (page.Offset, page.Size, $"Value Store Page {store.GetPageIndex(ordinal)}");
+        }
+
+        var source = new SegmentDataIdStream(blob).GetSource(ordinal);
+
+        if (source.Origin == SegmentValueOrigin.BitPack)
+        {
+            var perUnit = blob.Bitpack.ValuesPerUnit;
+
+            if (perUnit <= 0)
+            {
+                return null;
+            }
+
+            var unit = source.BitpackIndex / perUnit;
+
+            return (blob.BitpackArrayOffset + (unit * BitpackArray.UnitBytes),
+                    BitpackArray.UnitBytes,
+                    $"Bit Pack Unit {unit}");
+        }
+
+        return (blob.RleArrayOffset + (source.EntryIndex * blob.RleEntryBytes),
+                blob.RleEntryBytes,
+                $"RLE Entry {source.EntryIndex}");
+    }
+
+    /// <summary>
+    /// The row on show, marked wherever the region markers put the window
+    /// </summary>
+    private IEnumerable<Marker> RowMarkers()
+    {
+        if (SelectedRow is not { } row || GetRowSource(row.Ordinal) is not { } source)
+        {
+            yield break;
+        }
+
+        yield return MarkerBuilder.CreateMarker(source.Name,
+                                                ItemType.SegmentRowSource,
+                                                source.Offset,
+                                                source.Length,
+                                                $"Row {row.Ordinal}");
+    }
 
     /// <summary>
     /// Whether the grids show the working behind a value, or only the value itself

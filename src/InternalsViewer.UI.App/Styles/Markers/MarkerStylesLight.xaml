@@ -253,5 +253,6 @@
     <models:MarkStyle x:Key="ValuePageValueSizeMarkerStyle" ForeColour="#0D47A1" BackColour="#E3F2FD" Name="Value Size" Ordinal="309"/>
     <models:MarkStyle x:Key="ValuePageValueCountMarkerStyle" ForeColour="#00695C" BackColour="#E0F2F1" Name="Value Count" Ordinal="310"/>
     <models:MarkStyle x:Key="ValuePagePayloadSizeMarkerStyle" ForeColour="#BF360C" BackColour="#FBE9E7" Name="Payload Size" Ordinal="311"/>
+    <models:MarkStyle x:Key="SegmentRowSourceMarkerStyle" ForeColour="#4A148C" BackColour="#E1BEE7" Name="Row Source" Ordinal="312"/>
 
 </ResourceDictionary>

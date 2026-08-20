@@ -221,6 +221,9 @@ public static class SegmentRegionMarkerBuilder
         return (first, last);
     }
 
+    public static List<Marker> Window(IEnumerable<Marker> markers, int windowStart, int windowLength)
+        => Windowed(markers, windowStart, windowLength);
+
     private static List<Marker> Windowed(IEnumerable<Marker> markers, int windowStart, int windowLength)
     {
         var windowed = new List<Marker>();

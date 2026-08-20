@@ -76,6 +76,15 @@ public sealed class SegmentValueStore : DataStructure
     /// </summary>
     public long GetValue(int ordinal) => GetRawValue(ordinal) >> ReservedBits;
 
+    /// <summary>
+    /// The page an ordinal falls on, which is the closest a stored value comes to having a place in the blob
+    /// </summary>
+    /// <remarks>
+    /// A value is not addressable on its own. The page holds a compressed payload and the value only exists once
+    /// that has been expanded, so the page is the tightest range of the blob a row can be pointed at.
+    /// </remarks>
+    public int GetPageIndex(int ordinal) => Locate(ordinal).Page;
+
     private (int Page, int Index) Locate(int ordinal)
     {
         if ((uint)ordinal >= (uint)ValueCount)

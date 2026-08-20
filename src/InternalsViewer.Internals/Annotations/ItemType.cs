@@ -81,6 +81,7 @@ public enum ItemType
     ValuePageValueSize,
     ValuePageValueCount,
     ValuePagePayloadSize,
+    SegmentRowSource,
     DictionaryEntries,
     DictionarySymbol,
 

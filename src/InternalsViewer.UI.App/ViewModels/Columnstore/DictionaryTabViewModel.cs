@@ -99,10 +99,16 @@ public sealed partial class DictionaryTabViewModel(ColumnstoreService columnstor
     [ObservableProperty]
     private int _selectedStep = -1;
 
+    private IReadOnlyList<HuffmanDecodeStep>? _decodeSteps;
+
+    private IReadOnlyList<DecodeStepDetail>? _decodeStepDetails;
+
+    private IReadOnlyList<HuffmanCodeDetail>? _codes;
+
     /// <summary>
     /// The bit walk the selected entry decodes through, which only a Huffman coded page has
     /// </summary>
-    public IReadOnlyList<HuffmanDecodeStep> DecodeSteps => Trace();
+    public IReadOnlyList<HuffmanDecodeStep> DecodeSteps => _decodeSteps ??= Trace();
 
     /// <summary>
     /// The coded stream the walk reads from, which the drawing shows the words and bits of
@@ -115,7 +121,7 @@ public sealed partial class DictionaryTabViewModel(ColumnstoreService columnstor
     public void SelectSymbol(int symbol) => SelectedSymbol = symbol;
 
     public IReadOnlyList<DecodeStepDetail> DecodeStepDetails
-        => [.. DecodeSteps.Select((s, i) => new DecodeStepDetail { Step = s, Ordinal = i })];
+        => _decodeStepDetails ??= [.. DecodeSteps.Select((s, i) => new DecodeStepDetail { Step = s, Ordinal = i })];
 
     /// <summary>
     /// What the entry cost, being the bits it occupies against the bytes it decodes to
@@ -163,14 +169,34 @@ public sealed partial class DictionaryTabViewModel(ColumnstoreService columnstor
     /// Codes of the selected page, which only a Huffman coded page carries
     /// </summary>
     public IReadOnlyList<HuffmanCodeDetail> Codes
-        => SelectedPage?.Codes.Select(c => new HuffmanCodeDetail { Code = c }).ToList() ?? [];
+        => _codes ??= SelectedPage?.Codes.Select(c => new HuffmanCodeDetail { Code = c }).ToList() ?? [];
 
     [ObservableProperty]
     private int _selectedSymbol = -1;
 
+    partial void OnSelectedEntryChanged(DictionaryEntryDetail? value) => ClearDecodeCache();
+
+    partial void OnBlobChanged(DictionaryBlob? value)
+    {
+        _codes = null;
+
+        ClearDecodeCache();
+    }
+
+    private void ClearDecodeCache()
+    {
+        _decodeSteps = null;
+
+        _decodeStepDetails = null;
+    }
+
     partial void OnSelectedPageChanged(DictionaryPageSummary? value)
     {
         SelectedSymbol = -1;
+
+        _codes = null;
+
+        ClearDecodeCache();
 
         OnPropertyChanged(nameof(Codes));
 

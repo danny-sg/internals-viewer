@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using InternalsViewer.UI.App.Models;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
@@ -10,23 +10,24 @@ namespace InternalsViewer.UI.App.Controls;
 /// </summary>
 public sealed partial class ValueDerivationControl
 {
+    private readonly StepSlot[] _slots;
+
     public ValueDerivationControl()
     {
         InitializeComponent();
+
+        _slots =
+        [
+            new StepSlot(Step0, Step0Operator, Step0Badge, Step0Name, Step0Value),
+            new StepSlot(Step1, Step1Operator, Step1Badge, Step1Name, Step1Value),
+            new StepSlot(Step2, Step2Operator, Step2Badge, Step2Name, Step2Value)
+        ];
     }
 
     /// <summary>
     /// Raised when an operand that knows where it came from is clicked
     /// </summary>
     public event EventHandler<DerivationStep>? StepInvoked;
-
-    private void Badge_OnClick(object sender, RoutedEventArgs e)
-    {
-        if (((Button)sender).DataContext is DerivationStep { IsNavigable: true } step)
-        {
-            StepInvoked?.Invoke(this, step);
-        }
-    }
 
     public ValueDerivation? Derivation
     {
@@ -58,15 +59,30 @@ public sealed partial class ValueDerivationControl
     private static void OnShowStepsChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
         => ((ValueDerivationControl)d).ApplySteps();
 
+    private void Badge_OnClick(object sender, RoutedEventArgs e)
+    {
+        if (((Button)sender).Tag is DerivationStep { IsNavigable: true } step)
+        {
+            StepInvoked?.Invoke(this, step);
+        }
+    }
+
     /// <summary>
     /// A value stored as it is read back has nothing applied to it, so the working collapses to the value itself
     /// </summary>
     private void ApplySteps()
     {
-        var hasSteps = ShowSteps && Derivation is { Steps.Count: > 0 };
+        var steps = Derivation?.Steps ?? [];
+
+        var hasSteps = ShowSteps && steps.Count > 0;
 
         StepsPanel.Visibility = hasSteps ? Visibility.Visible : Visibility.Collapsed;
         EqualsText.Visibility = hasSteps ? Visibility.Visible : Visibility.Collapsed;
+
+        for (var index = 0; index < _slots.Length; index++)
+        {
+            _slots[index].Apply(hasSteps && index < steps.Count ? steps[index] : null);
+        }
     }
 
     private static void OnDerivationChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
@@ -84,8 +100,33 @@ public sealed partial class ValueDerivationControl
 
         control.ResultText.Text = derivation.Result;
 
-        control.StepItems.ItemsSource = derivation.Steps;
-
         control.ApplySteps();
+    }
+
+    private sealed class StepSlot(StackPanel root, TextBlock op, Button badge, TextBlock name, TextBlock value)
+    {
+        public void Apply(DerivationStep? step)
+        {
+            if (step is null)
+            {
+                root.Visibility = Visibility.Collapsed;
+
+                badge.Tag = null;
+
+                return;
+            }
+
+            op.Text = step.Operator;
+
+            name.Text = step.Name;
+
+            value.Text = step.Value;
+
+            badge.Tag = step;
+            badge.IsTabStop = step.IsNavigable;
+            badge.IsHitTestVisible = step.IsNavigable;
+
+            root.Visibility = Visibility.Visible;
+        }
     }
 }
