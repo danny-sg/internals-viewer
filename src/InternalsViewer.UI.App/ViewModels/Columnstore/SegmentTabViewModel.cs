@@ -44,6 +44,51 @@ public sealed partial class SegmentTabViewModel(ColumnstoreService columnstoreSe
     public bool HasBitpackArray => Blob?.Header.HasBitpackArray ?? false;
 
     /// <summary>
+    /// Whether the segment holds a paged value store in place of the run length and bit pack pair
+    /// </summary>
+    public bool HasValueStore => Blob?.ValueStore is not null;
+
+    public ObservableCollection<ValuePageSummary> ValuePages { get; } = [];
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(ValuePageDescription))]
+    private ValuePageSummary? _selectedValuePage;
+
+    [ObservableProperty]
+    private ValueList? _values;
+
+    public string ValuePageDescription => SelectedValuePage is not { } page
+        ? string.Empty
+        : $"{page.ValueCount} values of {page.ValueSize} bytes, {page.CompressionDescription} bytes compressed";
+
+    partial void OnSelectedValuePageChanged(ValuePageSummary? value)
+    {
+        Values = value is null ? null : new ValueList(value.Page);
+
+        if (value is not null)
+        {
+            GoToOffset(value.Offset);
+        }
+    }
+
+    /// <summary>
+    /// Moves the window onto an offset without changing which region tab is on show
+    /// </summary>
+    private void GoToOffset(int offset)
+    {
+        var start = Math.Clamp(offset, 0, Math.Max(0, TotalLength - 1)) / 16 * 16;
+
+        if (WindowOffset == start)
+        {
+            SetHexWindow(start);
+        }
+        else
+        {
+            WindowOffset = start;
+        }
+    }
+
+    /// <summary>
     /// Resolves data ids to values, which the dictionary the segment reads has to be fetched for
     /// </summary>
     private SegmentValueDecoder? Decoder { get; set; }
@@ -112,6 +157,18 @@ public sealed partial class SegmentTabViewModel(ColumnstoreService columnstoreSe
         if (Blob is { } blob)
         {
             BuildRows(blob);
+
+            ValuePages.Clear();
+
+            if (blob.ValueStore is { } store)
+            {
+                for (var i = 0; i < store.Pages.Length; i++)
+                {
+                    ValuePages.Add(new ValuePageSummary { Index = i, Page = store.Pages[i] });
+                }
+            }
+
+            OnPropertyChanged(nameof(HasValueStore));
         }
 
         BitpackUnit = GetBitpackUnit(SelectedMarker);

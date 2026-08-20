@@ -93,11 +93,11 @@ public sealed partial class ColumnstoreStructureControl : IDisposable
     {
         var isDark = ActualTheme == ElementTheme.Dark;
 
-        _renderer.HoverColour = isDark ? new SKColor(0x85, 0xB7, 0xEB) : new SKColor(0x18, 0x5F, 0xA5);
-        _renderer.TextColour = isDark ? new SKColor(0xEC, 0xEB, 0xE6) : new SKColor(0x20, 0x20, 0x20);
-        _renderer.MutedColour = isDark ? new SKColor(0x9A, 0x98, 0x92) : new SKColor(0x70, 0x70, 0x70);
-        _renderer.PanelColour = isDark ? new SKColor(0x2A, 0x2A, 0x28) : new SKColor(0xF4, 0xF3, 0xEF);
-        _renderer.BorderColour = isDark ? new SKColor(0x44, 0x44, 0x41) : new SKColor(0xD0, 0xCE, 0xC6);
+        _renderer.HoverColour = isDark ? ColumnstoreColours.DarkHover : ColumnstoreColours.Selection;
+        _renderer.TextColour = isDark ? ColumnstoreColours.DarkText : ColumnstoreColours.Text;
+        _renderer.MutedColour = isDark ? ColumnstoreColours.DarkMuted : ColumnstoreColours.Muted;
+        _renderer.PanelColour = isDark ? ColumnstoreColours.DarkPanel : ColumnstoreColours.Panel;
+        _renderer.BorderColour = isDark ? ColumnstoreColours.DarkBorder : ColumnstoreColours.Border;
     }
 
     private void OnPointerPressed(object sender, PointerRoutedEventArgs e)

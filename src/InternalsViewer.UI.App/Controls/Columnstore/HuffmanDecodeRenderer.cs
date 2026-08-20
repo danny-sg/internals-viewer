@@ -15,7 +15,7 @@ namespace InternalsViewer.UI.App.Controls.Columnstore;
 /// boxes are spread out beneath them, joined by a leader. The codes vary in width because that is the whole point of the coding - a common
 /// character costs fewer bits than a rare one.
 /// </remarks>
-public sealed class HuffmanDecodeRenderer
+public sealed class HuffmanDecodeRenderer : IDisposable
 {
     private const int BitsPerWord = 16;
 
@@ -423,5 +423,16 @@ public sealed class HuffmanDecodeRenderer
         isSet = (word & (1 << (BitsPerWord - 1 - (bitOffset % BitsPerWord)))) != 0;
 
         return true;
+    }
+    /// <summary>
+    /// Releases the paints and fonts, which hold native Skia handles rather than managed memory
+    /// </summary>
+    public void Dispose()
+    {
+        _fill.Dispose();
+        _stroke.Dispose();
+        _leader.Dispose();
+        _text.Dispose();
+        _font.Dispose();
     }
 }

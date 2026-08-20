@@ -1,5 +1,6 @@
-using System.Buffers.Binary;
+﻿using System.Buffers.Binary;
 using System.IO;
+using InternalsViewer.Internals.Annotations;
 using InternalsViewer.Internals.Columnstore.Blobs;
 using InternalsViewer.Internals.Compression;
 
@@ -8,7 +9,7 @@ namespace InternalsViewer.Internals.Columnstore.Segments;
 /// <summary>
 /// Page of a store by value segment, holding a fixed width value array under Xpress Huffman
 /// </summary>
-public sealed class SegmentValuePage
+public sealed class SegmentValuePage : DataStructure
 {
     public const int HeaderSize = 14;
 
@@ -16,17 +17,22 @@ public sealed class SegmentValuePage
 
     private ReadOnlyMemory<byte>? _values;
 
+    [DataStructureItem(ItemType.ValuePageSubLobType)]
     public SubLobType SubLobType { get; set; }
 
+    [DataStructureItem(ItemType.ValuePageUnknown)]
     public short Unknown04 { get; set; }
 
     /// <summary>
     /// Bytes one value occupies once expanded
     /// </summary>
+    [DataStructureItem(ItemType.ValuePageValueSize)]
     public short ValueSize { get; set; }
 
+    [DataStructureItem(ItemType.ValuePageValueCount)]
     public int ValueCount { get; set; }
 
+    [DataStructureItem(ItemType.ValuePagePayloadSize)]
     public ushort PayloadSize { get; set; }
 
     /// <summary>
@@ -37,6 +43,15 @@ public sealed class SegmentValuePage
     public int Size { get; set; }
 
     public ReadOnlyMemory<byte> Compressed { get; set; }
+
+    public void Mark()
+    {
+        MarkProperty(nameof(SubLobType), Offset, 4);
+        MarkProperty(nameof(Unknown04), Offset + 0x04, 2);
+        MarkProperty(nameof(ValueSize), Offset + 0x06, 2);
+        MarkProperty(nameof(ValueCount), Offset + 0x08, 4);
+        MarkProperty(nameof(PayloadSize), Offset + 0x0C, 2);
+    }
 
     public int ExpandedSize => ValueCount * ValueSize;
 

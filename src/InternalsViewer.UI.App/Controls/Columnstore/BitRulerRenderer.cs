@@ -12,7 +12,7 @@ namespace InternalsViewer.UI.App.Controls.Columnstore;
 /// Bit zero is drawn on the left because values fill a unit from the least significant bit upward, so left to right
 /// runs in value order. That is the reverse of how the same bytes read in the hex view, hence the labelled ends.
 /// </remarks>
-public sealed class BitRulerRenderer
+public sealed class BitRulerRenderer : IDisposable
 {
     public const int UnitBits = 64;
 
@@ -326,5 +326,17 @@ public sealed class BitRulerRenderer
                         SKTextAlign.Left,
                         _labelFont,
                         _text);
+    }
+    /// <summary>
+    /// Releases the paints and fonts, which hold native Skia handles rather than managed memory
+    /// </summary>
+    public void Dispose()
+    {
+        _fill.Dispose();
+        _stroke.Dispose();
+        _text.Dispose();
+        _bitFont.Dispose();
+        _labelFont.Dispose();
+        _monoFont.Dispose();
     }
 }

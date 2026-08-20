@@ -13,7 +13,7 @@ namespace InternalsViewer.UI.App.Controls.Columnstore;
 /// <summary>
 /// The bit walk one entry decodes through, wrapped across lines
 /// </summary>
-public sealed partial class HuffmanDecodeControl
+public sealed partial class HuffmanDecodeControl : IDisposable
 {
     private readonly HuffmanDecodeRenderer _renderer = new();
 
@@ -207,4 +207,8 @@ public sealed partial class HuffmanDecodeControl
 
         SetScroll(_scrollOffset);
     }
+    /// <summary>
+    /// Releases the renderer, whose paints and fonts are native Skia handles the collector will not reclaim
+    /// </summary>
+    public void Dispose() => _renderer.Dispose();
 }

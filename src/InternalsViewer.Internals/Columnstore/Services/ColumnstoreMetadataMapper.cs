@@ -1,9 +1,10 @@
 ﻿using System.Buffers.Binary;
 using InternalsViewer.Internals.Columnstore.Metadata;
 using InternalsViewer.Internals.Columnstore.Metadata.Enums;
-using InternalsViewer.Internals.Engine.Database.Enums;
 using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Internals.Engine.Database;
+using InternalsViewer.Internals.Engine.Database.Enums;
+using InternalsViewer.Internals.Engine.Records;
 using InternalsViewer.Internals.Engine.Records.Data;
 using InternalsViewer.Internals.Metadata.Structures;
 
@@ -23,11 +24,11 @@ public static class ColumnstoreMetadataMapper
     /// Columnstore column ids are offset from the table column ids they map to
     /// </summary>
     private const int ColumnIdOffset = 1;
-    
+
     public static ColumnStoreIndex Map(AllocationUnit allocationUnit,
-                                       IReadOnlyList<DataRecord> rowGroupRecords,
-                                       IReadOnlyList<DataRecord> segmentRecords,
-                                       IReadOnlyList<DataRecord> dictionaryRecords,
+                                       IReadOnlyList<Record> rowGroupRecords,
+                                       IReadOnlyList<Record> segmentRecords,
+                                       IReadOnlyList<Record> dictionaryRecords,
                                        IReadOnlyDictionary<int, ColumnStructure>? columnMap = null,
                                        IEnumerable<AllocationUnit>? relatedAllocationUnits = null)
     {
@@ -172,11 +173,11 @@ public static class ColumnstoreMetadataMapper
 
     private const int RowGroupStateMask = 0x7;
 
-    private static RowGroup MapRowGroup(DataRecord record, long hobtId)
+    private static RowGroup MapRowGroup(Record record, long hobtId)
     {
         var rawStatus = record.GetValue<int>(RowGroupColumns.Status);
 
-        var state = (RowGroupState) (rawStatus & RowGroupStateMask);
+        var state = (RowGroupState)(rawStatus & RowGroupStateMask);
 
         return new RowGroup
         {
@@ -201,7 +202,7 @@ public static class ColumnstoreMetadataMapper
         };
     }
 
-    private static ColumnSegment MapSegment(DataRecord record)
+    private static ColumnSegment MapSegment(Record record)
     {
         var hobtId = record.GetValue<long>(SegmentColumns.HobtId);
         var status = record.GetValue<int>(SegmentColumns.Status);
@@ -250,7 +251,7 @@ public static class ColumnstoreMetadataMapper
         return segment;
     }
 
-    private static SegmentDictionary MapDictionary(DataRecord record)
+    private static SegmentDictionary MapDictionary(Record record)
     {
         return new SegmentDictionary
         {
@@ -261,11 +262,16 @@ public static class ColumnstoreMetadataMapper
             LastId = record.GetValue<int>(DictionaryColumns.LastId),
             EntryCount = record.GetValue<long>(DictionaryColumns.EntryCount),
             OnDiskSize = record.GetValue<long>(DictionaryColumns.OnDiskSize),
-            DataPointer = DecodeLobPointer(record.GetValue<byte[]?>(DictionaryColumns.DataPtr))
+            Flags = record.GetValue<long>(DictionaryColumns.Flags),
+            ContainerId = record.GetValue<short>(DictionaryColumns.ContainerId),
+
+            DataPointer = DecodeLobPointer(record.GetValue<byte[]?>(DictionaryColumns.DataPtr)),
+
+            UnmappedFields = CollectUnmapped(record, DictionaryColumns.Known)
         };
     }
 
-    private static Dictionary<string, byte[]>? CollectUnmapped(DataRecord record, HashSet<string> known)
+    private static Dictionary<string, byte[]>? CollectUnmapped(Record record, HashSet<string> known)
     {
         Dictionary<string, byte[]>? unmapped = null;
 
@@ -346,5 +352,13 @@ public static class ColumnstoreMetadataMapper
         public const string EntryCount = "entry_count";
         public const string OnDiskSize = "on_disk_size";
         public const string DataPtr = "data_ptr";
+        public const string Flags = "flags";
+        public const string ContainerId = "container_id";
+
+        public static readonly HashSet<string> Known =
+        [
+            HobtId, ColumnId, DictionaryId, Version, Type, LastId, EntryCount, OnDiskSize, DataPtr,
+            Flags, ContainerId
+        ];
     }
 }

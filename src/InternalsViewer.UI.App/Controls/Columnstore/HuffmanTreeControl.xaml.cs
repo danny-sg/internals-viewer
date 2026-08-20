@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Linq;
 using InternalsViewer.UI.App.Models.Columnstore;
 using Microsoft.UI.Xaml;
@@ -12,7 +12,7 @@ namespace InternalsViewer.UI.App.Controls.Columnstore;
 /// <summary>
 /// The tree a page's Huffman codes describe, scrolled a symbol at a time
 /// </summary>
-public sealed partial class HuffmanTreeControl
+public sealed partial class HuffmanTreeControl : IDisposable
 {
     private readonly HuffmanTreeRenderer _renderer = new();
 
@@ -156,4 +156,8 @@ public sealed partial class HuffmanTreeControl
 
         SetScroll(_scrollOffset);
     }
+    /// <summary>
+    /// Releases the renderer, whose paints and fonts are native Skia handles the collector will not reclaim
+    /// </summary>
+    public void Dispose() => _renderer.Dispose();
 }

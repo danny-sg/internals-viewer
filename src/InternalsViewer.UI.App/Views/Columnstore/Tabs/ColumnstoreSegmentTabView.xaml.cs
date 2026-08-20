@@ -145,6 +145,8 @@ public sealed partial class ColumnstoreSegmentTabView : UserControl, IDocumentCo
 
         ViewModel.Dispose();
 
+        BitPackDetail.Dispose();
+
         _cts.Cancel();
         _cts.Dispose();
     }

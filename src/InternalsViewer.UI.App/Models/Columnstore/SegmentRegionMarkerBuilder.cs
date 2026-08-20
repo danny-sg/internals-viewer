@@ -3,6 +3,8 @@ using System.Collections.Generic;
 using InternalsViewer.Internals.Annotations;
 using InternalsViewer.Internals.Columnstore.Segments;
 using InternalsViewer.Internals.Helpers;
+using InternalsViewer.Internals.Interfaces.Annotations;
+using System.Linq;
 using InternalsViewer.UI.App.Models;
 using InternalsViewer.UI.App.Services.Markers;
 
@@ -26,8 +28,26 @@ public static class SegmentRegionMarkerBuilder
             SegmentRegion.RleArray => [.. RleHeader(blob), .. BuildRleEntries(blob, windowStart, windowLength)],
             SegmentRegion.BitpackArray => [.. BitpackHeader(blob),
                                            .. BuildBitpackUnits(blob, windowStart, windowLength)],
+            SegmentRegion.ValueStore => ValueStoreMarkers(blob, windowStart, windowLength),
             _ => []
         };
+
+    /// <summary>
+    /// The store header and page size array, with the header of every page the window holds
+    /// </summary>
+    private static List<Marker> ValueStoreMarkers(SegmentBlob blob, int windowStart, int windowLength)
+    {
+        if (blob.ValueStore is not { } store)
+        {
+            return [];
+        }
+
+        var sources = new List<IDataStructure> { store };
+
+        sources.AddRange(store.Pages);
+
+        return Windowed(sources.SelectMany(MarkerBuilder.BuildMarkers), windowStart, windowLength);
+    }
 
     /// <summary>
     /// Header fields describing the region, shown for context above its entries

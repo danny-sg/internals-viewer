@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.Linq;
 using InternalsViewer.UI.App.Models.Columnstore;
 using Microsoft.UI.Xaml;
@@ -12,7 +13,7 @@ namespace InternalsViewer.UI.App.Controls.Columnstore;
 /// <summary>
 /// The bits of one packed unit over the values read out of them
 /// </summary>
-public sealed partial class BitPackDetailControl
+public sealed partial class BitPackDetailControl : IDisposable
 {
     private readonly BitRulerRenderer _renderer = new();
 
@@ -149,4 +150,8 @@ public sealed partial class BitPackDetailControl
 
         RulerCanvas.Invalidate();
     }
+    /// <summary>
+    /// Releases the renderer, whose paints and fonts are native Skia handles the collector will not reclaim
+    /// </summary>
+    public void Dispose() => _renderer.Dispose();
 }

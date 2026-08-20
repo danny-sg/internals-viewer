@@ -1,4 +1,4 @@
-using InternalsViewer.Internals.Columnstore.Metadata;
+﻿using InternalsViewer.Internals.Columnstore.Metadata;
 using InternalsViewer.Internals.Tests.Helpers;
 using InternalsViewer.Internals.Columnstore.Services;
 using InternalsViewer.Internals.Engine.Database;
@@ -60,6 +60,13 @@ public sealed class ColumnstoreDictionaryScopeTests(ITestOutputHelper testOutput
 
             TestOutput.WriteLine($"{allocationUnit.TableName}: {segments.Count} segments, "
                                  + $"{global} global dictionaries, {local.Count} segments with a local dictionary");
+
+            foreach (var dictionary in index.Columns.Select(c => c.GlobalDictionary).Where(d => d is not null))
+            {
+                TestOutput.WriteLine($"    dictionary {dictionary!.DictionaryId} type {dictionary.Type} "
+                                     + $"flags {dictionary.Flags} "
+                                     + $"unmapped [{string.Join(", ", (dictionary.UnmappedFields ?? []).Select(f => $"{f.Key}={f.Value.Length}b:0x{Convert.ToHexString(f.Value)}"))}]");
+            }
 
             foreach (var segment in local)
             {

@@ -39,10 +39,10 @@ public static class CompressedDataConverter
                     return DecodeInt(data, unsigned);
 
                 case SqlDbType.Money:
-                    return DataConverter.BinaryToString(DecodeInt(data, unsigned, 4), sqlType, precision, scale);
+                    return DataConverter.BinaryToString(DecodeInt(data, unsigned, 8), sqlType, precision, scale);
 
                 case SqlDbType.SmallMoney:
-                    return DataConverter.BinaryToString(DecodeInt(data, unsigned, 8), sqlType, precision, scale);
+                    return DataConverter.BinaryToString(DecodeInt(data, unsigned, 4), sqlType, precision, scale);
 
                 case SqlDbType.NChar:
                 case SqlDbType.NVarChar:
@@ -53,6 +53,13 @@ public static class CompressedDataConverter
 
                 case SqlDbType.SmallDateTime:
                     return DecodeSmallDateTime(data);
+
+                case SqlDbType.Real:
+                    return DataConverter.BinaryToString(ExpandFloat(data, 4), sqlType, precision, scale);
+
+                case SqlDbType.Float:
+                    return DataConverter.BinaryToString(ExpandFloat(data, 8), sqlType, precision, scale);
+
                 default:
                     return DataConverter.BinaryToString(data, sqlType, precision, scale);
             }
@@ -86,11 +93,13 @@ public static class CompressedDataConverter
             SqlDbType.BigInt => ([.. DecodeInt(data, unsigned, 8)], sqlType),
             SqlDbType.SmallInt => ([.. DecodeInt(data, unsigned, 2)], sqlType),
             SqlDbType.Int => ([.. DecodeInt(data, unsigned, 4)], sqlType),
-            SqlDbType.Money => ([.. DecodeInt(data, unsigned, 4)], sqlType),
-            SqlDbType.SmallMoney => ([.. DecodeInt(data, unsigned, 8)], sqlType),
+            SqlDbType.Money => ([.. DecodeInt(data, unsigned, 8)], sqlType),
+            SqlDbType.SmallMoney => ([.. DecodeInt(data, unsigned, 4)], sqlType),
             SqlDbType.NChar or SqlDbType.NVarChar => ([.. data], SqlDbType.VarChar),
             SqlDbType.DateTime => (ExpandDateTime(data, unsigned), SqlDbType.DateTime),
             SqlDbType.SmallDateTime => (ExpandSmallDateTime(data), SqlDbType.SmallDateTime),
+            SqlDbType.Real => (ExpandFloat(data, 4), sqlType),
+            SqlDbType.Float => (ExpandFloat(data, 8), sqlType),
             _ => ([.. data], sqlType)
         };
     }
@@ -161,6 +170,20 @@ public static class CompressedDataConverter
         return [.. data];
     }
 
+    private static byte[] ExpandFloat(ReadOnlySpan<byte> data, int size)
+    {
+        if (data.Length >= size)
+        {
+            return [.. data];
+        }
+
+        var expanded = new byte[size];
+
+        data.CopyTo(expanded.AsSpan(size - data.Length));
+
+        return expanded;
+    }
+
     private static string DecodeDateTime(ReadOnlySpan<byte> data, bool unsigned)
     {
         return DataConverter.BinaryToString(ExpandDateTime(data, unsigned), SqlDbType.DateTime);
@@ -218,11 +241,7 @@ public static class CompressedDataConverter
             returnData[data.Length - 1 - i] = data[i];
         }
 
-        if (unsigned)
-        {
-            // XOR was originally on data[0] (MSB); after reversal that byte is at index data.Length-1
-            returnData[data.Length - 1] ^= 0x80;
-        }
+        returnData[data.Length - 1] ^= 0x80;
 
         return returnData;
     }

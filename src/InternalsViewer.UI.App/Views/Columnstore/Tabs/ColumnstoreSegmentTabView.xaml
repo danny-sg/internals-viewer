@@ -9,6 +9,7 @@
     xmlns:columnstore="using:InternalsViewer.UI.App.Controls.Columnstore"
     xmlns:controls="using:InternalsViewer.UI.App.Controls"
     xmlns:tableView="using:WinUI.TableView"
+    xmlns:toolkit="using:CommunityToolkit.WinUI.Controls"
     mc:Ignorable="d">
     <Grid>
         <StackPanel Padding="10"
@@ -81,10 +82,108 @@
                                                 Markers="{x:Bind ViewModel.Markers, Mode=OneWay}"
                                                 SelectedMarker="{x:Bind ViewModel.SelectedMarker, Mode=TwoWay}">
                     <columnstore:SegmentRegionPanel.Detail>
-                        <columnstore:BitPackDetailControl Unit="{x:Bind ViewModel.BitpackUnit, Mode=OneWay}"/>
+                        <columnstore:BitPackDetailControl x:Name="BitPackDetail" Unit="{x:Bind ViewModel.BitpackUnit, Mode=OneWay}"/>
                     </columnstore:SegmentRegionPanel.Detail>
                 </columnstore:SegmentRegionPanel>
             </TabViewItem>
+            <TabViewItem Header="Value Store" IsClosable="False" Tag="ValueStore"
+                         Visibility="{x:Bind ViewModel.HasValueStore, Mode=OneWay,
+                                 Converter={StaticResource BoolToVisibilityConverter}}">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="*" MinHeight="80"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="2*" MinHeight="80"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+
+                    <tableView:TableView Grid.Row="0"
+                                         AutoGenerateColumns="False"
+                                         CanSortColumns="False"
+                                         CanFilterColumns="False"
+                                         CornerButtonMode="None"
+                                         HeadersVisibility="Columns"
+                                         ColumnHeaderStyle="{StaticResource TableViewColumnHeaderStyle}"
+                                         CellStyle="{StaticResource TableViewCellStyle}"
+                                         ItemContainerStyle="{StaticResource TableViewRowStyle}"
+                                         RowHeight="28"
+                                         SelectionMode="Single"
+                                         SelectionUnit="Row"
+                                         IsReadOnly="True"
+                                         GridLinesVisibility="All"
+                                         BorderThickness="0"
+                                         Background="{ThemeResource LayerFillColorDefaultBrush}"
+                                         ItemsSource="{x:Bind ViewModel.ValuePages, Mode=OneWay}"
+                                         SelectedItem="{x:Bind ViewModel.SelectedValuePage, Mode=TwoWay}">
+                        <tableView:TableView.Columns>
+                            <tableView:TableViewTextColumn Header="Page" Width="70"
+                                                           Binding="{Binding Index}"
+                                                           CellStyle="{StaticResource TableViewCellRightStyle}"/>
+                            <tableView:TableViewTextColumn Header="Sub Lob Type" Width="150"
+                                                           Binding="{Binding SubLobTypeDescription}"/>
+                            <tableView:TableViewTextColumn Header="Values" Width="90"
+                                                           Binding="{Binding ValueCount}"
+                                                           CellStyle="{StaticResource TableViewCellRightStyle}"/>
+                            <tableView:TableViewTextColumn Header="Value Size" Width="90"
+                                                           Binding="{Binding ValueSize}"
+                                                           CellStyle="{StaticResource TableViewCellRightStyle}"/>
+                            <tableView:TableViewTextColumn Header="Offset" Width="90"
+                                                           Binding="{Binding OffsetDescription}"
+                                                           CellStyle="{StaticResource TableViewCellRightStyle}"/>
+                            <tableView:TableViewTextColumn Header="Size" Width="90"
+                                                           Binding="{Binding Size}"
+                                                           CellStyle="{StaticResource TableViewCellRightStyle}"/>
+                        </tableView:TableView.Columns>
+                    </tableView:TableView>
+
+                    <toolkit:GridSplitter Grid.Row="1"
+                                          Height="8"
+                                          HorizontalAlignment="Stretch"
+                                          ResizeBehavior="BasedOnAlignment"/>
+
+                    <tableView:TableView Grid.Row="2"
+                                         AutoGenerateColumns="False"
+                                         CanSortColumns="False"
+                                         CanFilterColumns="False"
+                                         CornerButtonMode="None"
+                                         HeadersVisibility="Columns"
+                                         ColumnHeaderStyle="{StaticResource TableViewColumnHeaderStyle}"
+                                         CellStyle="{StaticResource TableViewCellStyle}"
+                                         ItemContainerStyle="{StaticResource TableViewRowStyle}"
+                                         RowHeight="28"
+                                         SelectionMode="Single"
+                                         SelectionUnit="Row"
+                                         IsReadOnly="True"
+                                         GridLinesVisibility="All"
+                                         BorderThickness="0"
+                                         Background="{ThemeResource LayerFillColorDefaultBrush}"
+                                         ItemsSource="{x:Bind ViewModel.Values, Mode=OneWay}">
+                        <tableView:TableView.Columns>
+                            <tableView:TableViewTextColumn Header="Index" Width="90"
+                                                           Binding="{Binding Index}"
+                                                           CellStyle="{StaticResource TableViewCellRightStyle}"/>
+                            <tableView:TableViewTextColumn Header="Stored" Width="140"
+                                                           Binding="{Binding Raw}"
+                                                           CellStyle="{StaticResource TableViewCellRightStyle}"/>
+                            <tableView:TableViewTemplateColumn Header="Value" Width="360">
+                                <tableView:TableViewTemplateColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <controls:ValueDerivationControl Derivation="{Binding Derivation}"/>
+                                    </DataTemplate>
+                                </tableView:TableViewTemplateColumn.CellTemplate>
+                            </tableView:TableViewTemplateColumn>
+                        </tableView:TableView.Columns>
+                    </tableView:TableView>
+
+                    <TextBlock Grid.Row="3"
+                               Padding="8,4"
+                               FontSize="12"
+                               Opacity="0.7"
+                               HorizontalAlignment="Right"
+                               Text="{x:Bind ViewModel.ValuePageDescription, Mode=OneWay}"/>
+                </Grid>
+            </TabViewItem>
+
             <TabViewItem Header="Data" IsClosable="False" Tag="Data">
                 <Grid>
                     <Grid.RowDefinitions>

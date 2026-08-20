@@ -45,17 +45,17 @@ public sealed class ColumnstoreStructureRenderer
 
     private const string InterfaceFontFamily = "Segoe UI Variable Text";
 
-    public SKColor TextColour { get; set; } = new(0x20, 0x20, 0x20);
+    public SKColor TextColour { get; set; } = ColumnstoreColours.Text;
 
-    public SKColor MutedColour { get; set; } = new(0x70, 0x70, 0x70);
+    public SKColor MutedColour { get; set; } = ColumnstoreColours.Muted;
 
-    public SKColor PanelColour { get; set; } = new(0xF4, 0xF3, 0xEF);
+    public SKColor PanelColour { get; set; } = ColumnstoreColours.Panel;
 
-    public SKColor BorderColour { get; set; } = new(0xD0, 0xCE, 0xC6);
+    public SKColor BorderColour { get; set; } = ColumnstoreColours.Border;
 
-    public SKColor SelectionColour { get; set; } = new(0x18, 0x5F, 0xA5);
+    public SKColor SelectionColour { get; set; } = ColumnstoreColours.Selection;
 
-    public SKColor HoverColour { get; set; } = new(0x85, 0xB7, 0xEB);
+    public SKColor HoverColour { get; set; } = ColumnstoreColours.Hover;
 
     public ColumnstoreRegion? Selected { get; set; }
 
@@ -376,7 +376,7 @@ public sealed class ColumnstoreStructureRenderer
 
         var metrics = _labelFont.Metrics;
 
-        var height = metrics.Descent - metrics.Ascent + (ColumnstoreLayout.BadgePadding * 2);
+        var height = metrics.Descent - metrics.Ascent + (ColumnstoreLayout.BadgeVerticalPadding * 2);
 
         var width = _labelFont.MeasureText(label) + (ColumnstoreLayout.BadgePadding * 2);
 
@@ -391,7 +391,7 @@ public sealed class ColumnstoreStructureRenderer
         _text.Color = foreground;
         canvas.DrawText(label,
                         bounds.MidX,
-                        bounds.Bottom - ColumnstoreLayout.BadgePadding - metrics.Descent,
+                        bounds.Bottom - ColumnstoreLayout.BadgeVerticalPadding - metrics.Descent,
                         SKTextAlign.Center,
                         _labelFont,
                         _text);

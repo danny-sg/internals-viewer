@@ -58,6 +58,7 @@ public class InternalRecordLoadGenerator : ISourceGenerator
         loaderBuilder.AppendLine("using System.Data;");
         loaderBuilder.AppendLine("using System.Collections.Generic;");
         loaderBuilder.AppendLine("using InternalsViewer.Internals.Metadata.Structures;");
+        loaderBuilder.AppendLine("using InternalsViewer.Internals.Engine.Records;");
         loaderBuilder.AppendLine("using InternalsViewer.Internals.Engine.Records.Data;");
         loaderBuilder.AppendLine("using InternalsViewer.Internals.Engine.Database.Enums;");
         loaderBuilder.AppendLine("using InternalsViewer.Internals.Engine.Records.CdRecordType;");
@@ -74,7 +75,7 @@ public class InternalRecordLoadGenerator : ISourceGenerator
         loaderBuilder.AppendLine();
         loaderBuilder.AppendLine($"public static class {source.Identifier.ValueText}Loader");
         loaderBuilder.AppendLine("{");
-        loaderBuilder.AppendLine($"    public static {source.Identifier.ValueText} Load(DataRecord record)");
+        loaderBuilder.AppendLine($"    public static {source.Identifier.ValueText} Load(Record record)");
         loaderBuilder.AppendLine("    {");
         loaderBuilder.AppendLine($"        var result = new {source.Identifier.ValueText}();");
         loaderBuilder.AppendLine();

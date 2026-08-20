@@ -8,6 +8,7 @@ using InternalsViewer.Internals.Columnstore.Segments;
 using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Internals.Engine.Database;
 using InternalsViewer.Internals.Engine.Database.Enums;
+using InternalsViewer.Internals.Engine.Records;
 using InternalsViewer.Internals.Engine.Records.Data;
 using InternalsViewer.Internals.Interfaces.Readers.Internals;
 using InternalsViewer.Internals.Interfaces.Services.Records;
@@ -162,10 +163,10 @@ public sealed class ColumnstoreService(IRecordReader recordReader, ILobDataServi
         return new RowGroupReader(rowGroup, readers, skipped);
     }
 
-    private async Task<List<DataRecord>> GetRecords(string name,
-                                                    long partitionId,
-                                                    DatabaseSource database,
-                                                    CancellationToken cancellationToken)
+    private async Task<List<Record>> GetRecords(string name,
+                                                long partitionId,
+                                                DatabaseSource database,
+                                                CancellationToken cancellationToken)
     {
         var allocationUnit = database.AllocationUnits
                                      .Values

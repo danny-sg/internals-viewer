@@ -117,6 +117,10 @@ public sealed partial class ColumnstoreDictionaryTabView : UserControl, IDocumen
 
         ViewModel.Dispose();
 
+        DecodeControl.Dispose();
+
+        TreeControl.Dispose();
+
         _cts.Cancel();
         _cts.Dispose();
     }

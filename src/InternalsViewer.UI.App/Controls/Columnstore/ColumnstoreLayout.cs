@@ -51,7 +51,7 @@ public static class ColumnstoreLayout
 
     public const float ContainerHeaderHeight = 20f;
 
-    public const float ContainerPadding = 6f;
+    public const float ContainerPadding = 8f;
 
     public const float SectionLabelBottomPadding = 6f;
 
@@ -63,11 +63,11 @@ public static class ColumnstoreLayout
 
     public const float RowGroupHeight = 74f;
 
-    public const float RowGroupGap = 8f;
+    public const float RowGroupGap = 12f;
 
     public const float MetadataWidth = 150f;
 
-    public const float SegmentGap = 6f;
+    public const float SegmentGap = 10f;
 
     /// <summary>
     /// Segments always share the width available, shrinking rather than overflowing a narrow pane
@@ -93,20 +93,30 @@ public static class ColumnstoreLayout
     /// </summary>
     public static SKColor GetEncodingColour(SegmentEncoding encoding) => encoding switch
     {
-        SegmentEncoding.ValueBased => new SKColor(0x7F, 0x77, 0xDD),
-        SegmentEncoding.ValueHashBased => new SKColor(0x1D, 0x9E, 0x75),
-        SegmentEncoding.StringHashBased => new SKColor(0xD8, 0x5A, 0x30),
-        SegmentEncoding.StoreByValueBased => new SKColor(0x37, 0x8A, 0xDD),
-        SegmentEncoding.StringStoreByValueBased => new SKColor(0xD4, 0x53, 0x7E),
-        _ => new SKColor(0x88, 0x87, 0x80)
+        SegmentEncoding.ValueBased => ColumnstoreColours.ValueBased,
+        SegmentEncoding.ValueHashBased => ColumnstoreColours.ValueHashBased,
+        SegmentEncoding.StringHashBased => ColumnstoreColours.StringHashBased,
+        SegmentEncoding.StoreByValueBased => ColumnstoreColours.StoreByValueBased,
+        SegmentEncoding.StringStoreByValueBased => ColumnstoreColours.StringStoreByValueBased,
+        _ => ColumnstoreColours.UnknownEncoding
     };
 
     public const float BadgePadding = 3f;
 
     /// <summary>
+    /// Padding above and below a badge label, which sits tighter than the padding either side of it
+    /// </summary>
+    public const float BadgeVerticalPadding = 1f;
+
+    /// <summary>
     /// Space kept above and below the badge, the padding staying tight to the text
     /// </summary>
     public const float BadgeMargin = 2f;
+
+    /// <summary>
+    /// Room under a badge, which takes what the vertical padding gave up so the row below is not crowded
+    /// </summary>
+    public const float BadgeBottomMargin = BadgeMargin + 4f;
 
     public const float BadgeCornerRadius = 3f;
 
@@ -115,15 +125,15 @@ public static class ColumnstoreLayout
     /// </summary>
     public static (SKColor Background, SKColor Text) GetStateColours(RowGroupState state) => state switch
     {
-        RowGroupState.Invisible => (new SKColor(0xFF, 0xFF, 0xFF), new SKColor(0x5F, 0x5E, 0x5A)),
-        RowGroupState.Open => (new SKColor(0xFA, 0xC7, 0x75), new SKColor(0x85, 0x4F, 0x0B)),
-        RowGroupState.Closed => (new SKColor(0xB5, 0xD4, 0xF4), new SKColor(0x0C, 0x44, 0x7C)),
-        RowGroupState.Compressed => (new SKColor(0xC0, 0xDD, 0x97), new SKColor(0x3B, 0x6D, 0x11)),
-        RowGroupState.Tombstone => (new SKColor(0x44, 0x44, 0x41), new SKColor(0xFF, 0xFF, 0xFF)),
-        _ => (new SKColor(0xD3, 0xD1, 0xC7), new SKColor(0x2C, 0x2C, 0x2A))
+        RowGroupState.Invisible => (ColumnstoreColours.InvisibleState, ColumnstoreColours.InvisibleStateText),
+        RowGroupState.Open => (ColumnstoreColours.OpenState, ColumnstoreColours.OpenStateText),
+        RowGroupState.Closed => (ColumnstoreColours.ClosedState, ColumnstoreColours.ClosedStateText),
+        RowGroupState.Compressed => (ColumnstoreColours.CompressedState, ColumnstoreColours.CompressedStateText),
+        RowGroupState.Tombstone => (ColumnstoreColours.TombstoneState, ColumnstoreColours.TombstoneStateText),
+        _ => (ColumnstoreColours.UnknownState, ColumnstoreColours.UnknownStateText)
     };
 
-    public static SKColor DictionaryColour => new(0xBA, 0x75, 0x17);
+    public static SKColor DictionaryColour => ColumnstoreColours.FloatDictionary;
 
     /// <summary>
     /// Dictionary sub types stay within one colour family, being variants of the same thing
@@ -133,10 +143,10 @@ public static class ColumnstoreLayout
     /// </remarks>
     public static SKColor GetDictionaryColour(int dictionaryType) => dictionaryType switch
     {
-        1 => new SKColor(0x85, 0x4F, 0x0B),
-        3 => new SKColor(0xEF, 0x9F, 0x27),
-        4 => new SKColor(0xBA, 0x75, 0x17),
-        _ => new SKColor(0x88, 0x87, 0x80)
+        1 => ColumnstoreColours.IntegerDictionary,
+        3 => ColumnstoreColours.StringDictionary,
+        4 => ColumnstoreColours.FloatDictionary,
+        _ => ColumnstoreColours.UnknownDictionary
     };
 
     public static string GetDictionaryTypeDescription(int dictionaryType) => dictionaryType switch
@@ -147,9 +157,9 @@ public static class ColumnstoreLayout
         _ => $"Type {dictionaryType}"
     };
 
-    public static SKColor DeleteBitmapColour => new(0xE2, 0x4B, 0x4A);
+    public static SKColor DeleteBitmapColour => ColumnstoreColours.DeleteBitmap;
 
-    public static SKColor DeltaStoreColour => new(0x63, 0x99, 0x22);
+    public static SKColor DeltaStoreColour => ColumnstoreColours.DeltaStore;
 
     public static IReadOnlyList<(string Name, SKColor Colour)> Legend =>
     [

@@ -339,7 +339,7 @@
                                         </tableView:TableView.Columns>
                                     </tableView:TableView>
 
-                                        <columnstore:HuffmanTreeControl Grid.Column="1"
+                                        <columnstore:HuffmanTreeControl x:Name="TreeControl" Grid.Column="1"
                                                                         Grid.Row="1"
                                                                         Tree="{x:Bind ViewModel.Tree, Mode=OneWay}"
                                                                         SelectedSymbol="{x:Bind ViewModel.SelectedSymbol, Mode=TwoWay}"/>
@@ -350,7 +350,7 @@
                                                 Visibility="{x:Bind ViewModel.HasHuffmanPage, Mode=OneWay,
                                                 Converter={StaticResource BoolToVisibilityConverter}}">
                                         <TextBlock Padding="16,8,0,0" FontWeight="SemiBold">Huffman Decoding</TextBlock>
-                                        <columnstore:HuffmanDecodeControl 
+                                        <columnstore:HuffmanDecodeControl x:Name="DecodeControl" 
                                             Height="145"
                                             VerticalAlignment="Top"
                                             Margin="0"

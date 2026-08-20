@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using InternalsViewer.UI.App.Models.Columnstore;
 using SkiaSharp;
@@ -13,7 +13,7 @@ namespace InternalsViewer.UI.App.Controls.Columnstore;
 ///
 /// A short row is a common symbol.
 /// </remarks>
-public sealed class HuffmanTreeRenderer
+public sealed class HuffmanTreeRenderer : IDisposable
 {
     public const float RowHeight = 18f;
 
@@ -158,5 +158,15 @@ public sealed class HuffmanTreeRenderer
         }
 
         return regions;
+    }
+    /// <summary>
+    /// Releases the paints and fonts, which hold native Skia handles rather than managed memory
+    /// </summary>
+    public void Dispose()
+    {
+        _line.Dispose();
+        _dot.Dispose();
+        _text.Dispose();
+        _font.Dispose();
     }
 }
