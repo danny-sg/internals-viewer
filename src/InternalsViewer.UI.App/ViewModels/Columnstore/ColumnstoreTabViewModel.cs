@@ -51,9 +51,6 @@ public sealed partial class ColumnstoreTabViewModel : TabViewModel
     [ObservableProperty]
     private bool _isInitialized;
 
-    /// <summary>
-    /// Whether the spinner is up, which a load only long enough to notice turns on
-    /// </summary>
     [ObservableProperty]
     private bool _isStructureLoading;
 
@@ -73,9 +70,6 @@ public sealed partial class ColumnstoreTabViewModel : TabViewModel
 
     public ObservableCollection<RowGroupSummary> RowGroups { get; } = [];
 
-    /// <summary>
-    /// Every segment across every row group, which is the grain the row groups table shows
-    /// </summary>
     public ObservableCollection<SegmentSummary> Segments { get; } = [];
 
     public async Task Load()

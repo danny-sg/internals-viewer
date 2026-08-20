@@ -1,0 +1,45 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Sql's SQL token colours, so text rendered outside the editor reads the same as text inside it.
+    Shared rather than defined per control, one palette being the whole point of matching the editor.
+-->
+<ResourceDictionary
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <ResourceDictionary.ThemeDictionaries>
+
+        <!--Sql vs-->
+        <ResourceDictionary x:Key="Light">
+            <SolidColorBrush x:Key="SqlKeywordBrush" Color="#0000FF" />
+            <SolidColorBrush x:Key="SqlIdentifierBrush" Color="#001080" />
+            <SolidColorBrush x:Key="SqlOperatorBrush" Color="#000000" />
+            <SolidColorBrush x:Key="SqlNumberBrush" Color="#098658" />
+            <SolidColorBrush x:Key="SqlLiteralBrush" Color="#A31515" />
+            <SolidColorBrush x:Key="SqlPunctuationBrush" Color="#000000" />
+            <SolidColorBrush x:Key="SqlUnknownBrush" Color="#CD3131" />
+        </ResourceDictionary>
+
+        <!--Sql vs-dark-->
+        <ResourceDictionary x:Key="Dark">
+            <SolidColorBrush x:Key="SqlKeywordBrush" Color="#569CD6" />
+            <SolidColorBrush x:Key="SqlIdentifierBrush" Color="#9CDCFE" />
+            <SolidColorBrush x:Key="SqlOperatorBrush" Color="#D4D4D4" />
+            <SolidColorBrush x:Key="SqlNumberBrush" Color="#B5CEA8" />
+            <SolidColorBrush x:Key="SqlLiteralBrush" Color="#CE9178" />
+            <SolidColorBrush x:Key="SqlPunctuationBrush" Color="#D4D4D4" />
+            <SolidColorBrush x:Key="SqlUnknownBrush" Color="#F48771" />
+        </ResourceDictionary>
+
+        <ResourceDictionary x:Key="HighContrast">
+            <SolidColorBrush x:Key="SqlKeywordBrush" Color="{ThemeResource SystemColorWindowTextColor}" />
+            <SolidColorBrush x:Key="SqlIdentifierBrush" Color="{ThemeResource SystemColorWindowTextColor}" />
+            <SolidColorBrush x:Key="SqlOperatorBrush" Color="{ThemeResource SystemColorWindowTextColor}" />
+            <SolidColorBrush x:Key="SqlNumberBrush" Color="{ThemeResource SystemColorWindowTextColor}" />
+            <SolidColorBrush x:Key="SqlLiteralBrush" Color="{ThemeResource SystemColorWindowTextColor}" />
+            <SolidColorBrush x:Key="SqlPunctuationBrush" Color="{ThemeResource SystemColorWindowTextColor}" />
+            <SolidColorBrush x:Key="SqlUnknownBrush" Color="{ThemeResource SystemColorWindowTextColor}" />
+        </ResourceDictionary>
+
+    </ResourceDictionary.ThemeDictionaries>
+</ResourceDictionary>

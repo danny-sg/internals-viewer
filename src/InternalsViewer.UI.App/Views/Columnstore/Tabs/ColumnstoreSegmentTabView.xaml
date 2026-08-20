@@ -12,9 +12,30 @@
     xmlns:tableView="using:WinUI.TableView"
     xmlns:toolkit="using:CommunityToolkit.WinUI.Controls"
     mc:Ignorable="d">
+    <UserControl.Resources>
+        <!--A chip carrying its own colour, white text reading on every one of the palettes they come from-->
+        <DataTemplate x:Key="SegmentBadgeTemplate" x:DataType="models:SegmentBadge">
+            <Border CornerRadius="{x:Bind CornerRadius}"
+                    Padding="6,1"
+                    VerticalAlignment="Center">
+                <Border.Background>
+                    <SolidColorBrush Color="{x:Bind Background}"/>
+                </Border.Background>
+                <TextBlock Text="{x:Bind Label}"
+                           FontSize="11"
+                           Foreground="White"/>
+            </Border>
+        </DataTemplate>
+    </UserControl.Resources>
+
     <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
         <StackPanel Padding="10"
                     Spacing="12"
+                    Grid.Row="1"
                     Canvas.ZIndex="10"
                     VerticalAlignment="Center"
                     HorizontalAlignment="Center"
@@ -29,8 +50,76 @@
                        Text="{x:Bind ViewModel.StatusText, Mode=OneWay}"/>
         </StackPanel>
 
-        <Grid Visibility="{x:Bind ViewModel.IsLoaded, Mode=OneWay,
-                      Converter={StaticResource BoolToVisibilityConverter}}">
+        <CommandBar IsOpen="False"
+                    DefaultLabelPosition="Right"
+                    Grid.Row="0"
+                    HorizontalAlignment="Left"
+                    Background="Transparent"
+                    Visibility="{x:Bind ViewModel.IsLoaded, Mode=OneWay,
+                           Converter={StaticResource BoolToVisibilityConverter}}">
+
+            <AppBarElementContainer VerticalContentAlignment="Center">
+                <AppBarElementContainer VerticalAlignment="Center">
+                    <StackPanel VerticalAlignment="Stretch" Margin="12,0,18,0">
+                        <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                            <TextBlock Text="{x:Bind ViewModel.Segment.ColumnName, Mode=OneWay}"
+                                       VerticalAlignment="Center"
+                                       FontWeight="SemiBold"
+                                       FontSize="12"/>
+                            <controls:DataTypeTextBlock DataType="{x:Bind ViewModel.DataType, Mode=OneWay}"
+                                                        Precision="{x:Bind ViewModel.Precision, Mode=OneWay}"
+                                                        DataScale="{x:Bind ViewModel.Scale, Mode=OneWay}"
+                                                        Length="{x:Bind ViewModel.DataLength, Mode=OneWay}"
+                                                        VerticalAlignment="Center"/>
+                        </StackPanel>
+                        <TextBlock Text="{x:Bind ViewModel.Segment.SegmentDescription, Mode=OneWay}"
+                                   VerticalAlignment="Center" />
+                    </StackPanel>
+                </AppBarElementContainer>
+
+            </AppBarElementContainer>
+
+            <AppBarSeparator/>
+
+            <!--How the column was compressed, which the metadata decides before the blob is read-->
+            <AppBarElementContainer VerticalContentAlignment="Center">
+                <ItemsControl ItemsSource="{x:Bind ViewModel.EncodingBadges, Mode=OneWay}"
+                              ItemTemplate="{StaticResource SegmentBadgeTemplate}"
+                              VerticalAlignment="Center"
+                              Margin="4,0,4,0">
+                    <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate>
+                            <StackPanel Orientation="Horizontal" Spacing="4"/>
+                        </ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                </ItemsControl>
+            </AppBarElementContainer>
+
+            <!--What the blob turned out to hold, which is not always what the encoding implies-->
+            <AppBarElementContainer VerticalContentAlignment="Center">
+                <ItemsControl ItemsSource="{x:Bind ViewModel.FlagBadges, Mode=OneWay}"
+                              ItemTemplate="{StaticResource SegmentBadgeTemplate}"
+                              VerticalAlignment="Center"
+                              Margin="4,0,4,0">
+                    <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate>
+                            <StackPanel Orientation="Horizontal" Spacing="0"/>
+                        </ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                </ItemsControl>
+            </AppBarElementContainer>
+
+            <AppBarSeparator Visibility="{x:Bind ViewModel.HasDictionary, Mode=OneWay,
+                                     Converter={StaticResource BoolToVisibilityConverter}}"/>
+
+                <AppBarButton Label="Dictionary"  
+                              Visibility="{x:Bind ViewModel.HasDictionary, Mode=OneWay,
+                               Converter={StaticResource BoolToVisibilityConverter}}"
+                              Click="Dictionary_OnClick"/>
+        </CommandBar>
+        <Grid Grid.Row="1"
+              Visibility="{x:Bind ViewModel.IsLoaded, Mode=OneWay,
+                           Converter={StaticResource BoolToVisibilityConverter}}">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="Auto"/>
                 <ColumnDefinition Width="*"/>

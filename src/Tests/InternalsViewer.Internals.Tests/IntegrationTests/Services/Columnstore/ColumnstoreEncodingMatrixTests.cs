@@ -1,4 +1,4 @@
-using InternalsViewer.Internals.Columnstore.Dictionaries;
+﻿using InternalsViewer.Internals.Columnstore.Dictionaries;
 using InternalsViewer.Internals.Columnstore.Metadata;
 using InternalsViewer.Internals.Tests.Helpers;
 using InternalsViewer.Internals.Columnstore.Services;
@@ -90,7 +90,9 @@ public sealed class ColumnstoreEncodingMatrixTests(ITestOutputHelper testOutput)
             };
         }
 
-        return $"{(int)segment.Encoding} {segment.Encoding,-24} | blob {blob.LobType} | {blob.StructureType,-12} "
+        return $"{(int)segment.Encoding} {segment.Encoding,-24} | {blob.StructureType,-12} "
+               + $"| rle {(blob.Header.HasRleArray ? "yes" : "NO "),-4} entries {blob.RleEntryCount,-7} "
+               + $"| bitpack {(blob.Header.HasBitpackArray ? "yes" : "NO "),-4} units {blob.BitpackUnitCount,-7} "
                + $"| store {store,-28} | dict {dictionary}";
     }
 }

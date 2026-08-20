@@ -1,6 +1,7 @@
 ﻿using System;
 using System.ComponentModel;
 using System.Threading;
+using InternalsViewer.UI.App.Controls;
 using InternalsViewer.UI.App.Controls.Docking;
 using InternalsViewer.UI.App.Models;
 using InternalsViewer.UI.App.Models.Columnstore;
@@ -169,6 +170,8 @@ public sealed partial class ColumnstoreSegmentTabView : UserControl, IDocumentCo
             ViewModel.SelectPayloadMarker();
         }
     }
+
+    private void Dictionary_OnClick(object sender, RoutedEventArgs e) => ViewModel.OpenDictionary();
 
     private void DataRows_OnSelectionChanged(object sender, SelectionChangedEventArgs e)
     {

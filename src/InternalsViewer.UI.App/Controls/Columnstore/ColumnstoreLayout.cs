@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using InternalsViewer.Internals.Columnstore.Metadata;
+using InternalsViewer.Internals.Columnstore.Segments;
 using InternalsViewer.Internals.Columnstore.Metadata.Enums;
 using InternalsViewer.UI.App.Models.Columnstore;
 using SkiaSharp;
@@ -131,6 +132,16 @@ public static class ColumnstoreLayout
         RowGroupState.Compressed => (ColumnstoreColours.CompressedState, ColumnstoreColours.CompressedStateText),
         RowGroupState.Tombstone => (ColumnstoreColours.TombstoneState, ColumnstoreColours.TombstoneStateText),
         _ => (ColumnstoreColours.UnknownState, ColumnstoreColours.UnknownStateText)
+    };
+
+    /// <summary>
+    /// One colour per structure type, a scheme apart from the encodings so the two are not confused
+    /// </summary>
+    public static SKColor GetStructureColour(SegmentStructureType structureType) => structureType switch
+    {
+        SegmentStructureType.RunLength => ColumnstoreColours.RunLengthStructure,
+        SegmentStructureType.StoreByValue => ColumnstoreColours.StoreByValueStructure,
+        _ => ColumnstoreColours.UnknownStructure
     };
 
     public static SKColor DictionaryColour => ColumnstoreColours.FloatDictionary;

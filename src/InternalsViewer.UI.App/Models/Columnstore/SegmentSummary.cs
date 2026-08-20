@@ -5,6 +5,7 @@ using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Internals.Columnstore.Metadata.Enums;
 using InternalsViewer.Internals.Columnstore.Segments;
 using InternalsViewer.Internals.Helpers;
+using InternalsViewer.Internals.Metadata.Structures;
 using CommunityToolkit.Mvvm.ComponentModel;
 
 namespace InternalsViewer.UI.App.Models.Columnstore;
@@ -60,7 +61,14 @@ public sealed partial class SegmentSummary : ObservableObject
 
     public int RowGroupId => Segment.Key.RowGroupId;
 
+    public string SegmentDescription => $"Row Group {RowGroupId} Segment {Segment.ContainerId}";
+
     public string ColumnName => Segment.Column?.Name ?? $"Column {ColumnId}";
+
+    /// <summary>
+    /// The column the segment holds, which carries the type the values were declared as
+    /// </summary>
+    public ColumnStructure? Structure => Segment.Column?.Structure;
 
     public SegmentEncoding Encoding => Segment.Encoding;
 

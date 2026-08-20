@@ -95,6 +95,22 @@ public static class ColumnstoreColours
 
     public static readonly SKColor UnknownDictionary = FromHex(0x888780);
 
+    // Structure types, a scheme of their own so the layout is not read as an encoding
+
+    public static readonly SKColor RunLengthStructure = FromHex(0x5E5CE6);
+
+    public static readonly SKColor StoreByValueStructure = FromHex(0x0F7B6C);
+
+    public static readonly SKColor UnknownStructure = FromHex(0x888780);
+
+    // What a segment carries, one colour per flag
+
+    public static readonly SKColor RleFlag = FromHex(0xD8720F);
+
+    public static readonly SKColor BitPackFlag = FromHex(0x2C6FBB);
+
+    public static readonly SKColor ValueStoreFlag = FromHex(0x8A4FBE);
+
     // The row sets a row group is built on
 
     public static readonly SKColor DeleteBitmap = FromHex(0xE24B4A);

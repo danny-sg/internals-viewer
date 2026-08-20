@@ -35,10 +35,10 @@ public sealed partial class ColumnstoreTabViewModel
     private DocumentViewModel? _rowGroupsDocument;
 
     public void OpenSegment(SegmentSummary segment)
-        => Open($"Segment {segment.RowGroupId}:{segment.ColumnId}",
+        => Open($"Segment {segment.RowGroupId}:{segment.ColumnId} ({segment.ColumnName})",
                 $"Segment:{segment.RowGroupId}:{segment.ColumnId}",
                 () => new ColumnstoreSegmentTabView(),
-                new SegmentTabViewModel(ColumnstoreService, Database, segment));
+                new SegmentTabViewModel(ColumnstoreService, Database, segment, OpenDictionary));
 
     public void OpenDictionary(SegmentSummary segment)
     {

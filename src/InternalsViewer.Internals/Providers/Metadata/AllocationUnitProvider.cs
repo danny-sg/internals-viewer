@@ -12,9 +12,19 @@ namespace InternalsViewer.Internals.Providers.Metadata;
 /// </summary>
 public static class AllocationUnitProvider
 {
+    /// <summary>
+    /// Builds the allocation units the metadata describes, leaving out any whose rowset it no longer holds
+    /// </summary>
+    /// <remarks>
+    /// An allocation unit outlives its rowset while a drop is being cleaned up in the background, and its container id
+    /// reads as zero for as long as that takes. There is nothing left to name it after, so it is left out rather than
+    /// the whole of the metadata failing to load over it.
+    /// </remarks>
     public static List<AllocationUnit> GetAllocationUnits(InternalMetadata metadata)
     {
-        return [.. metadata.AllocationUnits.Values.Select(a => GetAllocationUnit(metadata, a))];
+        return [.. metadata.AllocationUnits.Values
+                           .Where(a => metadata.Rowsets.ContainsKey(a.ContainerId))
+                           .Select(a => GetAllocationUnit(metadata, a))];
     }
 
     public static AllocationUnit GetAllocationUnit(InternalMetadata metadata, InternalAllocationUnit source)

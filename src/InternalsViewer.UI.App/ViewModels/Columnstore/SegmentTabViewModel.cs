@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Data;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Linq;
@@ -11,6 +12,8 @@ using InternalsViewer.Internals.Columnstore.Decoding;
 using InternalsViewer.Internals.Columnstore.Segments;
 using InternalsViewer.Internals.Columnstore.Services;
 using InternalsViewer.Internals.Engine.Database;
+using InternalsViewer.Internals.Helpers;
+using InternalsViewer.UI.App.Controls.Columnstore;
 using InternalsViewer.UI.App.Models;
 using InternalsViewer.UI.App.Models.Columnstore;
 using InternalsViewer.UI.App.Services.Markers;
@@ -22,22 +25,86 @@ namespace InternalsViewer.UI.App.ViewModels.Columnstore;
 /// </summary>
 public sealed partial class SegmentTabViewModel(ColumnstoreService columnstoreService,
                                                 DatabaseSource database,
-                                                SegmentSummary segment) : ObservableObject, IDisposable
+                                                SegmentSummary segment,
+                                                Action<SegmentSummary>? openDictionary = null) : ObservableObject, IDisposable
 {
+    /// <summary>
+    /// Opens the dictionary the segment reads, which only the dock above this tab knows how to do
+    /// </summary>
+    private Action<SegmentSummary>? OpenDictionaryAction { get; } = openDictionary;
+
+    public bool HasDictionary => Segment.HasDictionary;
+
+    /// <summary>
+    /// Whether the dictionary is the column's own or one built for this row group, as a chip beside the button
+    /// </summary>
+    public IReadOnlyList<SegmentBadge> DictionaryBadges => Segment.Dictionary is not { } dictionary
+        ? []
+        : [SegmentBadge.Create(Segment.DictionaryScope, ColumnstoreLayout.GetDictionaryColour(dictionary.Type))];
+
+    public void OpenDictionary() => OpenDictionaryAction?.Invoke(Segment);
     private ColumnstoreService ColumnstoreService { get; } = columnstoreService;
 
     private DatabaseSource Database { get; } = database;
 
     public SegmentSummary Segment { get; } = segment;
 
+    /// <summary>
+    /// The type the column was declared as, which the header shows beside its name
+    /// </summary>
+    /// <remarks>
+    /// Surfaced a field at a time because a data type is drawn from four of them, and x:Bind cannot reach through a
+    /// structure that may not be there.
+    /// </remarks>
+    public SqlDbType? DataType => Segment.Structure?.DataType;
+
+    public int Precision => Segment.Structure?.Precision ?? 0;
+
+    public int Scale => Segment.Structure?.Scale ?? 0;
+
+    public int DataLength => Segment.Structure?.DataLength ?? 0;
+
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(HasBookmarks))]
     [NotifyPropertyChangedFor(nameof(HasRleArray))]
     [NotifyPropertyChangedFor(nameof(HasBitpackArray))]
     [NotifyPropertyChangedFor(nameof(HasValueStore))]
+    [NotifyPropertyChangedFor(nameof(FlagBadges))]
     private SegmentBlob? _blob;
 
     public bool HasBookmarks => Blob is { BookmarkCount: > 0 };
+
+    /// <summary>
+    /// How the column was compressed, which the metadata decides before the blob is ever read
+    /// </summary>
+    public IReadOnlyList<SegmentBadge> EncodingBadges =>
+    [
+        SegmentBadge.Create(Segment.EncodingDescription, ColumnstoreLayout.GetEncodingColour(Segment.Encoding))
+    ];
+
+    /// <summary>
+    /// What the blob turned out to hold, which is not always what the encoding implies
+    /// </summary>
+    public IReadOnlyList<SegmentBadge> FlagBadges
+        => Blob is not { } blob ? [] : SegmentBadge.Compound([.. BuildFlagBadges(blob)]);
+
+    private IEnumerable<SegmentBadge> BuildFlagBadges(SegmentBlob blob)
+    {
+        // No RLE badge - a run length segment always has one, so it would only repeat the structure type
+        yield return SegmentBadge.Create(blob.StructureType.ToString().SplitCamelCase(),
+                                         ColumnstoreLayout.GetStructureColour(blob.StructureType));
+
+        if (blob.Header.HasBitpackArray)
+        {
+            yield return SegmentBadge.Create("Bit Pack", ColumnstoreColours.BitPackFlag);
+        }
+
+        if (blob.ValueStore is not null)
+        {
+            yield return SegmentBadge.Create("Value Store", ColumnstoreColours.ValueStoreFlag);
+        }
+
+    }
 
     /// <summary>
     /// Whether the region exists at all, a store by value segment holding neither of the run length pair
