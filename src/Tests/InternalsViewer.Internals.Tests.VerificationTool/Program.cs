@@ -1,4 +1,5 @@
-﻿using InternalsViewer.Internals.Tests.VerificationTool.Services;
+﻿using InternalsViewer.Internals.Columnstore.Services;
+using InternalsViewer.Internals.Tests.VerificationTool.Services;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
@@ -16,6 +17,8 @@ internal static class Program
         builder.Services.AddTransient<IndexVerificationService>();
         builder.Services.AddTransient<TableVerificationService>();
         builder.Services.AddTransient<IamVerificationService>();
+        builder.Services.AddTransient<ColumnstoreVerificationService>();
+        builder.Services.AddTransient<ColumnstoreService>();
 
         builder.Services.RegisterServices();
 
@@ -35,18 +38,20 @@ internal static class Program
         var tableService = services.GetRequiredService<TableVerificationService>();
         var indexService = services.GetRequiredService<IndexVerificationService>();
         var iamService = services.GetRequiredService<IamVerificationService>();
+        var columnstoreService = services.GetRequiredService<ColumnstoreVerificationService>();
 
         var logFilename = $"C:\\Temp\\VerificationTool_{DateTime.Now:yyyyMMddHHmm}.log";
 
         tableService.LogFilename = logFilename;
         indexService.LogFilename = logFilename;
         iamService.LogFilename = logFilename;
+        columnstoreService.LogFilename = logFilename;
 
         Console.WriteLine("Database?");
 
         var databaseName = Console.ReadLine() ?? string.Empty;
 
-        Console.WriteLine("Verify Type: Tables (T), Indexes (I) or Allocation/IAM (A)?");
+        Console.WriteLine("Verify Type: Tables (T), Indexes (I), Allocation/IAM (A) or Columnstore (C)?");
 
         var verifyType = Console.ReadLine()?.ToLower();
 
@@ -84,6 +89,25 @@ internal static class Program
                         Console.WriteLine(e.ToString());
                     }
                 }
+            }
+        }
+        else if (verifyType == "c" || verifyType == "columnstore")
+        {
+            Console.WriteLine("Table name or * for all?");
+
+            var tableName = Console.ReadLine() ?? string.Empty;
+
+            Console.WriteLine("Key column (a column holding unique values)?");
+
+            var keyColumn = Console.ReadLine() ?? string.Empty;
+
+            try
+            {
+                await columnstoreService.VerifyColumnstore(databaseName, tableName, keyColumn);
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine(e.ToString());
             }
         }
         else if (verifyType == "t" || verifyType == "table")

@@ -10,32 +10,34 @@ using InternalsViewer.Internals.Engine.Pages;
 using InternalsViewer.UI.App.Helpers;
 using InternalsViewer.UI.App.Models;
 using AllocationUnit = InternalsViewer.Internals.Engine.Database.AllocationUnit;
+using DatabaseFile = InternalsViewer.Internals.Engine.Database.DatabaseFile;
 
 namespace InternalsViewer.UI.App.ViewModels.Allocation;
 
 internal static class AllocationLayerBuilder
 {
     private const int UserSaturation = 150;
+    private const int SystemSaturation = 100;
     private const int UserValue = 220;
+    private const int SystemValue = 220;
 
     // HsvToColor treats 256 hue steps as one revolution; we place objects across the wheel, so this is the wheel size.
     private const int HueWheel = 256;
 
     public static List<AllocationLayer> GenerateLayers(DatabaseSource database,
                                                        bool separateIndexes,
+                                                       bool isDisplaySystemObjects,
                                                        byte opacity = 100)
     {
         var layers = new List<AllocationLayer>();
 
         var colourIndex = 0;
+        var systemColourIndex = 0;
 
         var allocationUnits = database.AllocationUnits;
 
-        // One colour slot per layer, keyed by the SAME name the layers are grouped on below — so the spacing divisor
-        // matches the number of colours actually assigned (DisplayName can differ from the layer key under
-        // separateIndexes, which is what left neighbouring objects sharing near-identical hues).
         var colourSlotCount = allocationUnits.Values
-                                             .Where(u => !u.IsSystem)
+                                             .Where(u => !u.IsSystem || isDisplaySystemObjects)
                                              .Select(u => GetCurrentObjectName(u, separateIndexes))
                                              .Distinct()
                                              .Count();
@@ -43,8 +45,8 @@ internal static class AllocationLayerBuilder
         foreach (var allocationUnit in allocationUnits.Values
                                                       .OrderBy(o => o.TableName)
                                                       .ThenBy(o => o.IndexName)
-                                                      .ThenBy(o => o.AllocationUnitType == AllocationUnitType.InRowData ? 1 : 2)
-                                                      .Where(o => !o.IsSystem))
+                                                      .ThenBy(o => ScoreAllocationUnit(o))
+                                                      .Where(o => !o.IsSystem || isDisplaySystemObjects))
         {
             var currentObjectName = GetCurrentObjectName(allocationUnit, separateIndexes);
 
@@ -54,7 +56,8 @@ internal static class AllocationLayerBuilder
                                            currentObjectName,
                                            colourSlotCount,
                                            opacity,
-                                           ref colourIndex);
+                                           ref colourIndex,
+                                           ref systemColourIndex);
 
                 layers.Add(layer);
             }
@@ -90,30 +93,35 @@ internal static class AllocationLayerBuilder
             IsVisible = true
         };
 
-        foreach (var systemAllocationUnit in allocationUnits.Values.Where(a => a.IsSystem))
+        if (!isDisplaySystemObjects)
         {
-            systemLayer.AllocationChains.Add(systemAllocationUnit.IamChain);
-
-            foreach (var page in systemAllocationUnit.IamChain.Pages)
+            foreach (var systemAllocationUnit in allocationUnits.Values.Where(a => a.IsSystem))
             {
-                foreach (var slot in page.SinglePageSlots)
+                systemLayer.AllocationChains.Add(systemAllocationUnit.IamChain);
+
+                foreach (var page in systemAllocationUnit.IamChain.Pages)
                 {
-                    if (slot != PageAddress.Empty)
+                    foreach (var slot in page.SinglePageSlots)
                     {
-                        systemLayer.SinglePages.Add(slot);
+                        if (slot != PageAddress.Empty)
+                        {
+                            systemLayer.SinglePages.Add(slot);
+                        }
+                    }
+
+                    if (page.PageAddress != PageAddress.Empty)
+                    {
+                        systemLayer.SinglePages.Add(page.PageAddress);
                     }
                 }
 
-                if (page.PageAddress != PageAddress.Empty)
-                {
-                    systemLayer.SinglePages.Add(page.PageAddress);
-                }
+                systemLayer.TotalPages += systemAllocationUnit.TotalPages;
             }
 
-            systemLayer.TotalPages += systemAllocationUnit.TotalPages;
+            layers.Add(systemLayer);
         }
 
-        layers.Add(systemLayer);
+        layers.Add(CreateDatabaseLayer(database));
 
         layers.AddRange(GenerateAllocationLayers("GAM", database.Gam, Color.Green, true));
         layers.AddRange(GenerateAllocationLayers("SGAM", database.SGam, Color.OrangeRed, false));
@@ -134,6 +142,89 @@ internal static class AllocationLayerBuilder
         layers.Add(bufferPoolLayer);
 
         return layers;
+    }
+
+    private static int ScoreAllocationUnit(AllocationUnit allocationUnit)
+    {
+        if (allocationUnit.IndexType is IndexType.ClusteredColumnStore or IndexType.NonClusteredColumnStore)
+        {
+            return allocationUnit.AllocationUnitType == AllocationUnitType.LargeObjectData ? 1 : 2;
+        }
+
+        return allocationUnit.AllocationUnitType == AllocationUnitType.InRowData ? 1 : 2;
+    }
+
+    private static AllocationLayer CreateDatabaseLayer(DatabaseSource database)
+    {
+        var databaseLayer = new AllocationLayer
+        {
+            Name = "Database Pages",
+            ObjectName = "Database Pages",
+            Colour = Color.FromArgb(120, 100, 100, 205),
+            IsSystemObject = true,
+            IsAllocationLayer = true,
+            IsVisible = true
+        };
+
+        foreach (var databaseFile in database.Files)
+        {
+            if (databaseFile.FileId == 1)
+            {
+                databaseLayer.SinglePages.Add(BootPage.BootPageAddress);
+            }
+
+            // File header
+            databaseLayer.SinglePages.Add(new PageAddress(databaseFile.FileId, 0));
+
+            if (databaseFile.FileType == FileType.Rows)
+            {
+                AddAllocationPages(databaseLayer, databaseFile);
+            }
+        }
+
+        return databaseLayer;
+    }
+
+    private static void AddAllocationPages(AllocationLayer layer, DatabaseFile databaseFile)
+    {
+        var pageCount = databaseFile.Size;
+
+        if (pageCount <= 0)
+        {
+            return;
+        }
+
+        var fileId = databaseFile.FileId;
+
+        var extentCount = pageCount / 8;
+
+        var allocationPageCount = Math.Max(1, (int)Math.Ceiling(extentCount / (decimal)AllocationPage.AllocationExtentInterval));
+
+        int[] firstAllocationPages =
+        [
+            AllocationPage.FirstGamPage,
+            AllocationPage.FirstSgamPage,
+            AllocationPage.FirstDcmPage,
+            AllocationPage.FirstBcmPage
+        ];
+
+        foreach (var firstPage in firstAllocationPages)
+        {
+            for (var i = 0; i < allocationPageCount; i++)
+            {
+                layer.SinglePages.Add(new PageAddress(fileId, firstPage + (i * AllocationPage.AllocationPageCount)));
+            }
+        }
+
+        var pfsPageCount = Math.Max(1, (int)Math.Ceiling(pageCount / (decimal)PfsPage.PfsInterval));
+
+        layer.SinglePages.Add(new PageAddress(fileId, PfsPage.FirstPfsPage));
+
+        // The first PFS page is page 1, subsequent ones are the first page of their interval
+        for (var i = 1; i < pfsPageCount; i++)
+        {
+            layer.SinglePages.Add(new PageAddress(fileId, i * PfsPage.PfsInterval));
+        }
     }
 
     private static List<AllocationLayer> GenerateAllocationLayers(string name,
@@ -166,12 +257,14 @@ internal static class AllocationLayerBuilder
                                                   string currentObjectName,
                                                   int colourSlotCount,
                                                   byte opacity,
-                                                  ref int colourIndex)
+                                                  ref int colourIndex,
+                                                  ref int systemColourIndex)
     {
         var layer = new AllocationLayer
         {
             Name = currentObjectName,
             ObjectName = $"{allocationUnit.SchemaName}.{allocationUnit.TableName}",
+            AllocationUnitId = allocationUnit.AllocationUnitId,
             FirstPage = allocationUnit.FirstPage,
             RootPage = allocationUnit.RootPage,
             FirstIamPage = allocationUnit.FirstIamPage,
@@ -181,7 +274,7 @@ internal static class AllocationLayerBuilder
             IndexType = allocationUnit.IndexType,
             IsSystemObject = allocationUnit.IsSystem,
             IsAllocationLayer = false,
-            Colour = GetLayerColour(allocationUnit, colourSlotCount, ref colourIndex),
+            Colour = GetLayerColour(allocationUnit, colourSlotCount, ref colourIndex, ref systemColourIndex),
             IsVisible = true,
             Opacity = opacity
         };
@@ -246,13 +339,17 @@ internal static class AllocationLayerBuilder
         return ColourHelpers.HsvToColor(hue, UserSaturation, UserValue);
     }
 
-    private static Color GetLayerColour(AllocationUnit allocationUnit, int colourSlotCount, ref int colourIndex)
+    private static Color GetLayerColour(AllocationUnit allocationUnit, int colourSlotCount, ref int colourIndex, ref int systemColourIndex)
     {
         if (allocationUnit.IsSystem)
         {
-            return Color.FromArgb(255, 190, 190, 205);
-        }
+            var systemHue = systemColourIndex * HueWheel / Math.Max(colourSlotCount, 1) % HueWheel;
 
+            systemColourIndex++;
+
+            return ColourHelpers.HsvToColor(systemHue, SystemSaturation, SystemValue);
+        }
+    
         var hue = colourIndex * HueWheel / Math.Max(colourSlotCount, 1) % HueWheel;
 
         colourIndex++;

@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <UserControl
     x:Class="InternalsViewer.UI.App.Controls.Predicates.PredicateTextBox"
     x:Name="Root"
@@ -19,53 +19,6 @@
                 <Setter Property="CornerRadius" Value="{ThemeResource ControlCornerRadius}" />
             </Style>
 
-            <ResourceDictionary.ThemeDictionaries>
-
-                <!--Monaco vs (light) SQL token colours-->
-                <ResourceDictionary x:Key="Light">
-                    <SolidColorBrush x:Key="PredicateKeywordBrush" Color="#0000FF" />
-                    <SolidColorBrush x:Key="PredicateColumnBrush" Color="#001080" />
-                    <SolidColorBrush x:Key="PredicateOperatorBrush" Color="#000000" />
-                    <SolidColorBrush x:Key="PredicateNumberBrush" Color="#098658" />
-                    <SolidColorBrush x:Key="PredicateLiteralBrush" Color="#A31515" />
-                    <SolidColorBrush x:Key="PredicateNullBrush" Color="#0000FF" />
-                    <SolidColorBrush x:Key="PredicatePunctuationBrush" Color="#000000" />
-                    <SolidColorBrush x:Key="PredicateUnknownBrush" Color="#CD3131" />
-                </ResourceDictionary>
-
-                <!--Monaco vs-dark SQL token colours-->
-                <ResourceDictionary x:Key="Dark">
-                    <SolidColorBrush x:Key="PredicateKeywordBrush" Color="#569CD6" />
-                    <SolidColorBrush x:Key="PredicateColumnBrush" Color="#9CDCFE" />
-                    <SolidColorBrush x:Key="PredicateOperatorBrush" Color="#D4D4D4" />
-                    <SolidColorBrush x:Key="PredicateNumberBrush" Color="#B5CEA8" />
-                    <SolidColorBrush x:Key="PredicateLiteralBrush" Color="#CE9178" />
-                    <SolidColorBrush x:Key="PredicateNullBrush" Color="#569CD6" />
-                    <SolidColorBrush x:Key="PredicatePunctuationBrush" Color="#D4D4D4" />
-                    <SolidColorBrush x:Key="PredicateUnknownBrush" Color="#F48771" />
-                </ResourceDictionary>
-
-                <ResourceDictionary x:Key="HighContrast">
-                    <SolidColorBrush x:Key="PredicateKeywordBrush"
-                                 Color="{ThemeResource SystemColorWindowTextColor}" />
-                    <SolidColorBrush x:Key="PredicateColumnBrush"
-                                 Color="{ThemeResource SystemColorWindowTextColor}" />
-                    <SolidColorBrush x:Key="PredicateOperatorBrush"
-                                 Color="{ThemeResource SystemColorWindowTextColor}" />
-                    <SolidColorBrush x:Key="PredicateNumberBrush"
-                                 Color="{ThemeResource SystemColorWindowTextColor}" />
-                    <SolidColorBrush x:Key="PredicateLiteralBrush"
-                                 Color="{ThemeResource SystemColorWindowTextColor}" />
-                    <SolidColorBrush x:Key="PredicateNullBrush"
-                                 Color="{ThemeResource SystemColorWindowTextColor}" />
-                    <SolidColorBrush x:Key="PredicatePunctuationBrush"
-                                 Color="{ThemeResource SystemColorWindowTextColor}" />
-                    <SolidColorBrush x:Key="PredicateUnknownBrush"
-                                 Color="{ThemeResource SystemColorWindowTextColor}" />
-
-
-                </ResourceDictionary>
-            </ResourceDictionary.ThemeDictionaries>
         </ResourceDictionary>
     </UserControl.Resources>
 

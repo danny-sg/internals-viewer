@@ -1,4 +1,4 @@
-using InternalsViewer.Execution.AccessPaths.Text;
+﻿using InternalsViewer.Execution.AccessPaths.Text;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Documents;
 using Microsoft.UI.Xaml.Media;
@@ -163,25 +163,25 @@ public sealed partial class PredicateTextBox : UserControl
         var key = type switch
         {
             PredicateTokenType.Keyword
-                => "PredicateKeywordBrush",
+                => "SqlKeywordBrush",
             PredicateTokenType.Column 
-                => "PredicateColumnBrush",
+                => "SqlIdentifierBrush",
             PredicateTokenType.Operator 
-                => "PredicateOperatorBrush",
+                => "SqlOperatorBrush",
             PredicateTokenType.Number 
-                => "PredicateNumberBrush",
+                => "SqlNumberBrush",
             PredicateTokenType.Literal 
-                => "PredicateLiteralBrush",
+                => "SqlLiteralBrush",
             PredicateTokenType.Null 
-                => "PredicateNullBrush",
+                => "SqlKeywordBrush",
             PredicateTokenType.Punctuation 
-                => "PredicatePunctuationBrush",
+                => "SqlPunctuationBrush",
             PredicateTokenType.Unknown 
-                => "PredicateUnknownBrush",
+                => "SqlUnknownBrush",
             _ => null
         };
 
-        if (key is not null && Resources.TryGetValue(key, out var resource) && resource is Brush brush)
+        if (key is not null && Application.Current.Resources.TryGetValue(key, out var resource) && resource is Brush brush)
         {
             return brush;
         }

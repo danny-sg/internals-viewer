@@ -17,6 +17,18 @@ public class Marker: DependencyObject
 
     public int Length => EndPosition - StartPosition;   
 
+    /// <summary>
+    /// Bit offset from the start of the structure, or -1 when the marker is byte aligned
+    /// </summary>
+    public int BitOffset { get; set; } = -1;
+
+    /// <summary>
+    /// Length in bits, or -1 when the marker is byte aligned
+    /// </summary>
+    public int BitLength { get; set; } = -1;
+
+    public bool IsBitAligned => BitOffset >= 0;
+
     public Color BackColour { get; set; }
 
     public Color AlternateBackColour { get; set; }

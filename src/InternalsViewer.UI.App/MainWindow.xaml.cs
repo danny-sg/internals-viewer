@@ -19,7 +19,9 @@ using InternalsViewer.UI.App.ViewModels.Index;
 using InternalsViewer.UI.App.ViewModels.Page;
 using InternalsViewer.UI.App.ViewModels.Query;
 using InternalsViewer.UI.App.ViewModels.Tabs;
+using InternalsViewer.UI.App.ViewModels.Columnstore;
 using InternalsViewer.UI.App.Views;
+using InternalsViewer.UI.App.Views.Columnstore;
 using InternalsViewer.UI.App.Views.Connect;
 using Microsoft.UI.Composition.SystemBackdrops;
 using Microsoft.UI.Xaml.Controls;
@@ -60,6 +62,8 @@ public sealed partial class MainWindow
 
     private IndexTabViewModelFactory IndexTabViewModelFactory { get; }
 
+    private ColumnstoreTabViewModelFactory ColumnstoreTabViewModelFactory { get; }
+
     private QueryViewModelFactory QueryViewModelFactory { get;  }
    
     private ConnectServerViewModelFactory ConnectServerViewModelFactory { get; }
@@ -74,6 +78,7 @@ public sealed partial class MainWindow
                       DatabaseTabViewModelFactory databaseTabViewModelFactory,
                       ConnectServerViewModelFactory connectServerViewModelFactory,
                       IndexTabViewModelFactory indexTabViewModelFactory,
+                      ColumnstoreTabViewModelFactory columnstoreTabViewModelFactory,
                       QueryViewModelFactory queryViewModelFactory)
     {
         Title = "Internals Viewer";
@@ -87,6 +92,7 @@ public sealed partial class MainWindow
         DatabaseTabViewModelFactory = databaseTabViewModelFactory;
         ConnectServerViewModelFactory = connectServerViewModelFactory;
         IndexTabViewModelFactory = indexTabViewModelFactory;
+        ColumnstoreTabViewModelFactory = columnstoreTabViewModelFactory;
         QueryViewModelFactory = queryViewModelFactory;
 
         ExtendsContentIntoTitleBar = true;
@@ -117,6 +123,9 @@ public sealed partial class MainWindow
 
         WeakReferenceMessenger.Default.Register<OpenIndexMessage>(this, (_, m)
             => m.Reply(OpenIndex(m.Request.Database, m.Request.RootPageAddress)));
+
+        WeakReferenceMessenger.Default.Register<OpenColumnstoreMessage>(this, (_, m)
+            => m.Reply(OpenColumnstore(m.Request.Database, m.Request.AllocationUnitId)));
 
         WeakReferenceMessenger.Default.Register<ExceptionMessage>(this, (_, m)
                        => m.Reply(ShowExceptionDialog(m.Exception)));
@@ -318,6 +327,38 @@ public sealed partial class MainWindow
         WindowTabView.SelectedItem = tab;
 
         return true;
+    }
+
+    private bool OpenColumnstore(DatabaseSource database, long allocationUnitId)
+    {
+        try
+        {
+            var viewModel = ColumnstoreTabViewModelFactory.Create(database, allocationUnitId);
+
+            var content = new ColumnstoreView { DataContext = viewModel };
+
+            var svg = new SvgImageSource(new Uri("ms-appx:///Assets/TabIcons/IndexTabIcon.svg"));
+
+            var tab = new TabViewItem
+            {
+                Name = "Columnstore",
+                Content = content,
+                IconSource = new ImageIconSource { ImageSource = svg }
+            };
+
+            BindTabTitle(viewModel, tab);
+
+            WindowTabView.TabItems.Add(tab);
+            WindowTabView.SelectedItem = tab;
+
+            return true;
+        }
+        catch (Exception exception)
+        {
+            System.Diagnostics.Debug.WriteLine(exception);
+
+            return false;
+        }
     }
 
     private bool OpenIndex(DatabaseSource database, PageAddress rootPageAddress)

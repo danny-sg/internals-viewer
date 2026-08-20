@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections;
 using CommunityToolkit.Mvvm.Messaging;
 using CommunityToolkit.WinUI;
@@ -22,6 +22,7 @@ public sealed partial class DatabaseView : IDisposable
 
         AllocationItemRepeater.SizeChanged += OnParentSizeChanged;
         AllocationLayerGrid.ViewIndexClicked += OnViewIndexClicked;
+        AllocationLayerGrid.ViewColumnstoreClicked += OnViewColumnstoreClicked;
         PageAddressTextBox.AddressChanged += OnPageSelected;
         AllocationLayerGrid.PageClicked += OnPageSelected;
 
@@ -73,7 +74,7 @@ public sealed partial class DatabaseView : IDisposable
     {
         var isChecked = sender is AppBarToggleButton { IsChecked: true };
 
-        AllocationLayerGridRow.Height = isChecked ? new GridLength(1, GridUnitType.Star) : new GridLength(0);
+        //AllocationLayerGridRow.Height = isChecked ? new GridLength(1, GridUnitType.Star) : new GridLength(0);
 
         if (isChecked)
         {
@@ -105,6 +106,13 @@ public sealed partial class DatabaseView : IDisposable
                                         new OpenIndexRequest(TabViewModel.Database, pageAddress)));
     }
 
+    private async void OnViewColumnstoreClicked(object? sender, long allocationUnitId)
+    {
+        await WeakReferenceMessenger.Default
+                                    .Send(new OpenColumnstoreMessage(
+                                        new OpenColumnstoreRequest(TabViewModel.Database, allocationUnitId)));
+    }
+
     public void Dispose()
     {
         foreach(var child in AllocationItemRepeater.FindChildren())
@@ -126,6 +134,7 @@ public sealed partial class DatabaseView : IDisposable
         AllocationItemRepeater.SizeChanged -= OnParentSizeChanged;
         AllocationLayerGrid.PageClicked -= OnPageSelected;
         AllocationLayerGrid.ViewIndexClicked -= OnViewIndexClicked;
+        AllocationLayerGrid.ViewColumnstoreClicked -= OnViewColumnstoreClicked;
         PageAddressTextBox.AddressChanged -= OnPageSelected;
         AllocationInfoAppBarToggleButton.Checked -= AppBarToggleButton_Changed;
         AllocationInfoAppBarToggleButton.Unchecked -= AppBarToggleButton_Changed;

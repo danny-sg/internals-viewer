@@ -89,6 +89,9 @@ public sealed partial class DatabaseTabViewModel(ILogger<DatabaseTabViewModel> l
     private bool _isDetailVisible = true;
 
     [ObservableProperty]
+    private bool _isDisplaySystemObjects = false;
+
+    [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(IsPfsVisible))]
     private string _overlay = "Overlay";
 
@@ -297,6 +300,11 @@ public sealed partial class DatabaseTabViewModel(ILogger<DatabaseTabViewModel> l
         _ = SettingsService.SaveSettingAsync(TooltipEnabledKey, value);
     }
 
+    partial void OnIsDisplaySystemObjectsChanged(bool value)
+    {
+        _ = LoadAllocationLayersAsync();
+    }
+
     private async Task LoadAllocationLayersAsync()
     {
         try
@@ -305,7 +313,7 @@ public sealed partial class DatabaseTabViewModel(ILogger<DatabaseTabViewModel> l
 
             var (layers, extentCount, pfsChain) = await Task.Run(() =>
             {
-                var generated = AllocationLayerBuilder.GenerateLayers(Database, true);
+                var generated = AllocationLayerBuilder.GenerateLayers(Database, true, IsDisplaySystemObjects);
                 var extents = Database.GetFilePageCount(1) / 8;
                 var pfs = Database.Pfs.First().Value;
 

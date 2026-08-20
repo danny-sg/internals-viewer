@@ -37,10 +37,10 @@ public sealed class PfsChainService(ILogger<PfsChainService> logger, IPageServic
 
         var pfsChain = new PfsChain();
 
-        var firstPage = new PageAddress(fileId, 1);
+        var firstPage = new PageAddress(fileId, PfsPage.FirstPfsPage);
 
         // The first PFS page is always page 1
-        var page = await PageService.GetPage<PfsPage>(databaseDetail, new PageAddress(fileId, 1), cancellationToken);
+        var page = await PageService.GetPage<PfsPage>(databaseDetail, new PageAddress(fileId, PfsPage.FirstPfsPage), cancellationToken);
 
         Logger.LogDebug("Page {Index}: {PageAddress}", 0, firstPage);
 

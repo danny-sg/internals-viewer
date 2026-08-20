@@ -1,0 +1,76 @@
+<?xml version="1.0" encoding="utf-8"?>
+<UserControl
+    x:Class="InternalsViewer.UI.App.Controls.ValueDerivationControl"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    mc:Ignorable="d">
+    <StackPanel x:Name="Root"
+                Orientation="Horizontal"
+                VerticalAlignment="Center">
+        <TextBlock x:Name="SourceText"
+                   VerticalAlignment="Center"
+                   FontFamily="{StaticResource MonospaceFontFamily}"/>
+
+        <Border x:Name="StepsPanel"
+                Margin="4,0,0,0"
+                Padding="2,1,3,1"
+                VerticalAlignment="Center">
+            <StackPanel Orientation="Horizontal">
+                <StackPanel x:Name="Step0" Orientation="Horizontal" VerticalAlignment="Center">
+                    <TextBlock x:Name="Step0Operator" Style="{StaticResource DerivationOperatorStyle}"/>
+                    <Button x:Name="Step0Badge" Style="{StaticResource DerivationBadgeButtonStyle}" Click="Badge_OnClick">
+                        <StackPanel Orientation="Horizontal">
+                            <Border Style="{StaticResource DerivationNameBadgeStyle}">
+                                <TextBlock x:Name="Step0Name" Style="{StaticResource DerivationBadgeTextStyle}"/>
+                            </Border>
+                            <Border Style="{StaticResource DerivationValueBadgeStyle}">
+                                <TextBlock x:Name="Step0Value" Style="{StaticResource DerivationBadgeTextStyle}"/>
+                            </Border>
+                        </StackPanel>
+                    </Button>
+                </StackPanel>
+
+                <StackPanel x:Name="Step1" Orientation="Horizontal" VerticalAlignment="Center">
+                    <TextBlock x:Name="Step1Operator" Style="{StaticResource DerivationOperatorStyle}"/>
+                    <Button x:Name="Step1Badge" Style="{StaticResource DerivationBadgeButtonStyle}" Click="Badge_OnClick">
+                        <StackPanel Orientation="Horizontal">
+                            <Border Style="{StaticResource DerivationNameBadgeStyle}">
+                                <TextBlock x:Name="Step1Name" Style="{StaticResource DerivationBadgeTextStyle}"/>
+                            </Border>
+                            <Border Style="{StaticResource DerivationValueBadgeStyle}">
+                                <TextBlock x:Name="Step1Value" Style="{StaticResource DerivationBadgeTextStyle}"/>
+                            </Border>
+                        </StackPanel>
+                    </Button>
+                </StackPanel>
+
+                <StackPanel x:Name="Step2" Orientation="Horizontal" VerticalAlignment="Center">
+                    <TextBlock x:Name="Step2Operator" Style="{StaticResource DerivationOperatorStyle}"/>
+                    <Button x:Name="Step2Badge" Style="{StaticResource DerivationBadgeButtonStyle}" Click="Badge_OnClick">
+                        <StackPanel Orientation="Horizontal">
+                            <Border Style="{StaticResource DerivationNameBadgeStyle}">
+                                <TextBlock x:Name="Step2Name" Style="{StaticResource DerivationBadgeTextStyle}"/>
+                            </Border>
+                            <Border Style="{StaticResource DerivationValueBadgeStyle}">
+                                <TextBlock x:Name="Step2Value" Style="{StaticResource DerivationBadgeTextStyle}"/>
+                            </Border>
+                        </StackPanel>
+                    </Button>
+                </StackPanel>
+            </StackPanel>
+        </Border>
+
+        <TextBlock x:Name="EqualsText"
+                   Text="="
+                   Margin="6,0,6,0"
+                   VerticalAlignment="Center"
+                   FontFamily="{StaticResource MonospaceFontFamily}"
+                   Foreground="{ThemeResource TextFillColorTertiaryBrush}"/>
+
+        <TextBlock x:Name="ResultText"
+                   VerticalAlignment="Center"
+                   FontFamily="{StaticResource MonospaceFontFamily}"/>
+    </StackPanel>
+</UserControl>

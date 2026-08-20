@@ -75,7 +75,7 @@ internal sealed class CdRecordField(ColumnStructure columnStructure, CdRecord pa
             ReadOnlyMemory<byte> dictionaryValue =
                 Record.CompressionInfo.CompressionDictionary?.DictionaryEntries[dictionaryEntry].Data ?? [];
 
-            if (AnchorField is not null && Data is { IsEmpty: false, Length: > 0 })
+            if (AnchorField is { IsNull: false, Data.IsEmpty: false })
             {
                 return ExpandAnchor(dictionaryValue.Span);
             }
@@ -116,7 +116,9 @@ internal sealed class CdRecordField(ColumnStructure columnStructure, CdRecord pa
 
         Debug.Assert(AnchorField != null, nameof(AnchorField) + " != null");
 
-        AnchorField.Data.Span[..AnchorLength].CopyTo(compositeData);
+        var anchorCopyLength = Math.Min(AnchorLength, AnchorField.Data.Length);
+
+        AnchorField.Data.Span[..anchorCopyLength].CopyTo(compositeData);
 
         fieldData[dataOffset..].CopyTo(compositeData.AsSpan(AnchorLength));
 
@@ -149,7 +151,7 @@ internal sealed class CdRecordField(ColumnStructure columnStructure, CdRecord pa
 
         string value;
 
-        if (AnchorField is not null && Data is { IsEmpty: false, Length: > 0 })
+        if (AnchorField is { IsNull: false, Data.IsEmpty: false })
         {
             var compositeData = ExpandAnchor(dictionaryValue);
 

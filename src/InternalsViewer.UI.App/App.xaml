@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <Application
     x:Class="InternalsViewer.UI.App.App"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
@@ -14,6 +14,8 @@
                 <XamlControlsResources xmlns="using:Microsoft.UI.Xaml.Controls" />
                 <ResourceDictionary Source="ms-appx:///Styles/CommonStyles.xaml" />
                 <ResourceDictionary Source="/Controls/CopyButton.xaml"/>
+                <ResourceDictionary Source="/Controls/ValueDerivationResources.xaml"/>
+                <ResourceDictionary Source="ms-appx:///Styles/SqlTokenBrushes.xaml"/>
             </ResourceDictionary.MergedDictionaries>
             <SolidColorBrush x:Key="WindowCaptionBackground">Transparent</SolidColorBrush>
             <SolidColorBrush x:Key="WindowCaptionBackgroundDisabled">Transparent</SolidColorBrush>

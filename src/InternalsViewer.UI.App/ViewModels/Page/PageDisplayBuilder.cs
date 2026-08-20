@@ -1,4 +1,4 @@
-using InternalsViewer.Internals.Engine.Address;
+﻿using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Internals.Engine.Allocation;
 using InternalsViewer.Internals.Engine.Pages;
 using InternalsViewer.Internals.Interfaces.Engine;
@@ -25,6 +25,8 @@ internal sealed class PageDisplayBuilder(ILogger logger, IRecordService recordSe
 
     public const short PageHeaderSlot = -100;
     public const short IamHeaderSlot = -10;
+    public const short BootPageSlot = -9;
+    public const short FileHeaderSlot = -8;
     public const short CompressionInfoSlot = -90;
 
     private ILogger Logger { get; } = logger;
@@ -39,22 +41,36 @@ internal sealed class PageDisplayBuilder(ILogger logger, IRecordService recordSe
             Description = "Page Header"
         };
 
-        var slots = resultPage.OffsetTable.Select((s, i) => new PageSlot
+        var slots = new List<PageSlot> { headerSlot };
+
+        if (resultPage is not AllocationPage and not BootPage)
         {
-            Index = (short)i,
-            Offset = s,
-            Description = $"0x{s:X}"
-        }).ToList();
-
-        slots.Insert(0, headerSlot);
-
-        Logger.LogDebug("Building Offset Table");
+            slots.AddRange(resultPage.OffsetTable.Select((s, i) => new PageSlot
+            {
+                Index = (short)i,
+                Offset = s,
+                Description = $"0x{s:X}"
+            }).ToList());
+        }
 
         var display = new PageDisplay(resultPage, slots, slot);
 
         switch (resultPage)
         {
             case FileHeaderPage:
+                slots.Add(new PageSlot
+                {
+                    Index = FileHeaderSlot,
+                    Description = "File Header"
+                });
+
+                display = display with
+                {
+                    IsAllocationsTabVisible = false,
+                    IsRowDataTabVisible = true,
+                    IsPfsTabVisible = false,
+                    TabSwitch = (RowDataTabIndex, RowDataTabIndex)
+                };
                 break;
             case AllocationUnitPage allocationUnitPage:
                 var records = LoadRecords(allocationUnitPage);
@@ -80,7 +96,7 @@ internal sealed class PageDisplayBuilder(ILogger logger, IRecordService recordSe
                 };
                 break;
             case IamPage iamPage:
-                slots.Insert(1, new PageSlot
+                slots.Add(new PageSlot
                 {
                     Index = IamHeaderSlot,
                     Description = "IAM Header"
@@ -104,9 +120,23 @@ internal sealed class PageDisplayBuilder(ILogger logger, IRecordService recordSe
                     AllocationLayer = BuildAllocationLayer(allocationPage),
                     AllocationFileId = allocationPage.PageAddress.FileId,
                     IsAllocationsTabVisible = true,
-                    IsRowDataTabVisible = false,
+                    IsRowDataTabVisible = true,
                     IsPfsTabVisible = false,
                     TabSwitch = (RowDataTabIndex, AllocationsTabIndex)
+                };
+                break;
+            case BootPage:
+                slots.Add(new PageSlot
+                {
+                    Index = BootPageSlot,
+                    Description = "Boot Page"
+                });
+                display = display with
+                {
+                    IsAllocationsTabVisible = false,
+                    IsRowDataTabVisible = true,
+                    IsPfsTabVisible = false,
+                    TabSwitch = (RowDataTabIndex, RowDataTabIndex)
                 };
                 break;
             case PfsPage pfsPage:

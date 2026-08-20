@@ -1,4 +1,4 @@
-using InternalsViewer.UI.App.Controls.Page;
+﻿using InternalsViewer.UI.App.Controls.Page;
 
 namespace InternalsViewer.UI.App.Tests.Controls.Page;
 
@@ -15,7 +15,7 @@ public class HexTextBuilderTests
 
         Assert.Single(runs);
         Assert.False(runs[0].IsSelected);
-        Assert.Equal("00 01 02 03 04 05 06 07 08 09 0A 0B 0C 0D 0E 0F" + Environment.NewLine, runs[0].Text);
+        Assert.Equal("00 01 02 03 04 05 06 07 08 09 0A 0B 0C 0D 0E 0F", runs[0].Text);
     }
 
     [Fact]
@@ -58,12 +58,30 @@ public class HexTextBuilderTests
         Assert.Equal(plain, selected);
     }
 
+    /// <remarks>
+    /// A page divides into whole lines, however a columnstore blob is any length, so the bytes of a short last line
+    /// have to be shown rather than dropped.
+    /// </remarks>
     [Fact]
-    public void Build_Ignores_A_Trailing_Partial_Line()
+    public void Build_Keeps_A_Trailing_Partial_Line()
     {
         var runs = HexTextBuilder.Build(Bytes(20), 16, null, null);
 
-        Assert.Single(Text(runs).Split(Environment.NewLine, StringSplitOptions.RemoveEmptyEntries));
+        var lines = Text(runs).Split(Environment.NewLine);
+
+        Assert.Equal(2, lines.Length);
+        Assert.Equal("10 11 12 13", lines[1]);
+    }
+
+    /// <remarks>
+    /// The newline separates lines rather than ending them, so the text does not run on past its last byte.
+    /// </remarks>
+    [Fact]
+    public void Build_Does_Not_End_The_Text_With_A_Newline()
+    {
+        var runs = HexTextBuilder.Build(Bytes(32), 16, null, null);
+
+        Assert.False(Text(runs).EndsWith(Environment.NewLine));
     }
 
     [Fact]

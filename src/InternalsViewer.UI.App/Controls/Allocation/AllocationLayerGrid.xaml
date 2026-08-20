@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <UserControl
     x:Class="InternalsViewer.UI.App.Controls.Allocation.AllocationLayerGrid"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
@@ -15,18 +15,21 @@
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="*"/>
         </Grid.RowDefinitions>
-        <CommandBar Grid.Row="0"
-                    Margin="0"
-                    IsOpen="True"
-                    IsSticky="True"
-                    Background="Transparent"
-                    DefaultLabelPosition="Right">
-            <AppBarElementContainer>
-                <TextBox Width="200" Margin="0 8 10 0"
-                         PlaceholderText="Filter"
-                         Text="{x:Bind ViewModel.Filter, Mode=TwoWay,UpdateSourceTrigger=PropertyChanged}"/>
-            </AppBarElementContainer>
-        </CommandBar>
+        <StackPanel Grid.Row="0">
+            <Border BorderThickness="0,1,0,1"   
+                    BorderBrush="{ThemeResource ControlStrokeColorDefaultBrush}">
+            <AutoSuggestBox x:Name="SearchBox"
+                            Margin="0"
+                            PlaceholderText="Search"
+                            QueryIcon="Find"
+                            BorderThickness="0"
+                            FontSize="12"
+                            Padding="0,4,0,0"
+                            Height="32"
+                            Text="{x:Bind ViewModel.Filter, Mode=TwoWay}"/>
+            </Border>
+        </StackPanel>
+       
         <Grid Grid.Row="1">
             <tableView:TableView x:Name="LayerTable"
                                  AutoGenerateColumns="False"
@@ -41,6 +44,7 @@
                                  SelectionMode="Extended"
                                  SelectionUnit="Row"
                                  IsReadOnly="True"
+                                 AllowLiveShaping="False"
                                  GridLinesVisibility="Vertical"
                                  BorderThickness="0"
                                  Sorting="LayerTable_OnSorting"
@@ -57,80 +61,80 @@
 
                 <tableView:TableView.Columns>
                     <tableView:TableViewTemplateColumn Header="Key"
+                                                       Width="48"
                                                        CanSort="False">
                         <tableView:TableViewTemplateColumn.CellTemplate>
                             <DataTemplate x:DataType="models:AllocationLayer">
-                                <Grid>
-                                    <Rectangle Width="16"
-                                               Height="16"
-                                               Fill="{x:Bind Colour, Mode=OneWay, Converter={StaticResource ColorToSolidColorBrushValueConverter}}" />
-                                </Grid>
+                                <Rectangle Width="16"
+                                           Height="16"
+                                           Fill="{x:Bind Colour, Mode=OneWay, Converter={StaticResource ColorToSolidColorBrushValueConverter}}" />
                             </DataTemplate>
                         </tableView:TableViewTemplateColumn.CellTemplate>
                     </tableView:TableViewTemplateColumn>
 
                     <tableView:TableViewTextColumn Header="Object Name"
+                                                   Width="200"
                                                    Tag="ObjectName"
                                                    Binding="{Binding ObjectName}"/>
                     <tableView:TableViewTextColumn Header="Index Name"
+                                                   Width="240"
                                                    Tag="IndexName"
                                                    Binding="{Binding IndexName}"/>
                     <tableView:TableViewTextColumn Header="Index Type"
+                                                   Width="160"
                                                    Tag="IndexTypeDescription"
                                                    Binding="{Binding IndexTypeDescription}"/>
                     <tableView:TableViewTemplateColumn Header="Page Count"
-                                                       Tag="TotalPages">
+                                                       Width="100"
+                                                       Tag="TotalPages"
+                                                       SortMemberPath="TotalPages">
                         <tableView:TableViewTemplateColumn.CellTemplate>
                             <DataTemplate x:DataType="models:AllocationLayer">
-                                <Grid>
-                                    <TextBlock Text="{x:Bind TotalPages, Mode=OneWay}"
-                                               Margin="0,0,10,0"
-                                               TextAlignment="Right"/>
-                                </Grid>
+                                <TextBlock Text="{x:Bind TotalPages, Mode=OneWay}"
+                                           Margin="0,0,10,0"
+                                           TextAlignment="Right"/>
                             </DataTemplate>
                         </tableView:TableViewTemplateColumn.CellTemplate>
                     </tableView:TableViewTemplateColumn>
                     <tableView:TableViewTemplateColumn Header="Root Page"
+                                                       Width="100"
                                                        CanSort="False">
                         <tableView:TableViewTemplateColumn.CellTemplate>
                             <DataTemplate x:DataType="models:AllocationLayer">
-                                <Grid>
-                                    <HyperlinkButton Content="{x:Bind RootPage, Mode=OneWay}"
-                                                     Click="HyperlinkButton_Click"
-                                                     Style="{StaticResource CellPageAddressStyle}"
-                                                     Tag="{x:Bind RootPage}"/>
-                                </Grid>
+                                <HyperlinkButton Content="{x:Bind RootPage, Mode=OneWay}"
+                                                 Click="HyperlinkButton_Click"
+                                                 Style="{StaticResource CellPageAddressStyle}"
+                                                 Tag="{x:Bind RootPage}"/>
                             </DataTemplate>
                         </tableView:TableViewTemplateColumn.CellTemplate>
                     </tableView:TableViewTemplateColumn>
                     <tableView:TableViewTemplateColumn Header="First Page"
+                                                       Width="100"
                                                        CanSort="False">
                         <tableView:TableViewTemplateColumn.CellTemplate>
                             <DataTemplate x:DataType="models:AllocationLayer">
-                                <Grid>
-                                    <HyperlinkButton Content="{x:Bind FirstPage, Mode=OneWay}"
-                                                     Click="HyperlinkButton_Click"
-                                                     Style="{StaticResource CellPageAddressStyle}"
-                                                     Tag="{x:Bind FirstPage}"/>
-                                </Grid>
+                                <HyperlinkButton Content="{x:Bind FirstPage, Mode=OneWay}"
+                                                 Click="HyperlinkButton_Click"
+                                                 Style="{StaticResource CellPageAddressStyle}"
+                                                 Tag="{x:Bind FirstPage}"/>
                             </DataTemplate>
                         </tableView:TableViewTemplateColumn.CellTemplate>
                     </tableView:TableViewTemplateColumn>
                     <tableView:TableViewTemplateColumn Header="First IAM Page"
+                                                       Width="120"
                                                        CanSort="False">
                         <tableView:TableViewTemplateColumn.CellTemplate>
                             <DataTemplate x:DataType="models:AllocationLayer">
-                                <Grid>
-                                    <HyperlinkButton Content="{x:Bind FirstIamPage, Mode=OneWay}"
-                                                     Click="HyperlinkButton_Click"
-                                                     Style="{StaticResource CellPageAddressStyle}"
-                                                     Tag="{x:Bind FirstIamPage}"/>
-                                </Grid>
+                                <HyperlinkButton Content="{x:Bind FirstIamPage, Mode=OneWay}"
+                                                 Click="HyperlinkButton_Click"
+                                                 Style="{StaticResource CellPageAddressStyle}"
+                                                 Tag="{x:Bind FirstIamPage}"/>
                             </DataTemplate>
                         </tableView:TableViewTemplateColumn.CellTemplate>
                     </tableView:TableViewTemplateColumn>
 
                     <tableView:TableViewTemplateColumn Header="Index"
+                                                       Width="100"
                                                        CanSort="False">
                         <tableView:TableViewTemplateColumn.CellTemplate>
                             <DataTemplate x:DataType="models:AllocationLayer">
@@ -140,6 +144,22 @@
                                                      Click="ViewIndexButton_Click"
                                                      Style="{StaticResource CellPageAddressStyle}"
                                                      Tag="{x:Bind RootPage}"/>
+                                </Grid>
+                            </DataTemplate>
+                        </tableView:TableViewTemplateColumn.CellTemplate>
+                    </tableView:TableViewTemplateColumn>
+
+                    <tableView:TableViewTemplateColumn Header="Columnstore"
+                                                       Width="100"
+                                                       CanSort="False">
+                        <tableView:TableViewTemplateColumn.CellTemplate>
+                            <DataTemplate x:DataType="models:AllocationLayer">
+                                <Grid HorizontalAlignment="Center">
+                                    <HyperlinkButton Content="View"
+                                                     Visibility="{x:Bind IsColumnstore, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}"
+                                                     Click="ViewColumnstoreButton_Click"
+                                                     Style="{StaticResource CellPageAddressStyle}"
+                                                     Tag="{x:Bind AllocationUnitId}"/>
                                 </Grid>
                             </DataTemplate>
                         </tableView:TableViewTemplateColumn.CellTemplate>

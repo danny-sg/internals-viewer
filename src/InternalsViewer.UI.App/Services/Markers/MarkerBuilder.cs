@@ -47,7 +47,7 @@ public static class MarkerBuilder
             }
         }
 
-        return markers.OrderBy(o => o.Ordinal).ThenBy(o => o.StartPosition).ToList();
+        return [.. markers.OrderBy(o => o.Ordinal).ThenBy(o => o.StartPosition)];
     }
 
     /// <summary>
@@ -148,6 +148,33 @@ public static class MarkerBuilder
         return marker;
     }
 
+    /// <summary>
+    /// Builds a marker for something generated rather than declared, applying the style its item type carries
+    /// </summary>
+    /// <remarks>
+    /// The array regions of a columnstore blob hold far too many entries to mark as they are parsed, so their
+    /// markers are built for the window on screen instead of coming from a data structure's mark items.
+    /// </remarks>
+    public static Marker CreateMarker(string name, ItemType type, int offset, int size, string value)
+    {
+        var style = new MarkStyleProvider().GetMarkStyle(type);
+
+        var marker = new Marker
+        {
+            Name = name,
+            Type = type,
+            StartPosition = offset,
+            EndPosition = offset + size - 1,
+            Value = value,
+            HasKey = true,
+            Ordinal = style.Ordinal
+        };
+
+        SetStyle(marker, style);
+
+        return marker;
+    }
+
     private static void SetStyle(Marker marker, MarkStyle style)
     {
         marker.ForeColour = style.ForeColour.Color;
@@ -163,6 +190,8 @@ public static class MarkerBuilder
     private static void SetMarkerPosition(DataStructureItem item, Marker marker)
     {
         marker.StartPosition = item.Offset;
+        marker.BitOffset = item.BitOffset;
+        marker.BitLength = item.BitLength;
 
         if (item.Length > 0)
         {
@@ -214,8 +243,14 @@ public static class MarkerBuilder
                 case (byte[] bytes, _):
                     marker.Value = "0x" + bytes.ToHexString();
                     break;
+                case (ReadOnlyMemory<byte> memory, _):
+                    marker.Value = "0x" + memory.ToArray().ToHexString();
+                    break;
                 case (BitArray bitArray, _):
                     marker.Value = StringHelpers.GetBitArrayString(bitArray);
+                    break;
+                case (int[] intArray, _):
+                    marker.Value = StringHelpers.GetArrayString(intArray);
                     break;
                 case (short[] shortArray, _):
                     marker.Value = StringHelpers.GetArrayString(shortArray);
@@ -225,6 +260,10 @@ public static class MarkerBuilder
                     break;
                 case (ColumnDescriptor[] columnDescriptors, _):
                     marker.Value = StringHelpers.GetArrayString(columnDescriptors);
+                    break;
+                // An enum name reads as one run-together word, which is not how the rest of the interface writes it
+                case (Enum enumValue, _):
+                    marker.Value = enumValue.ToString().SplitCamelCase();
                     break;
                 case (byte byteValue, _):
                     marker.Value = $"{byteValue} (0x{byteValue:X})";

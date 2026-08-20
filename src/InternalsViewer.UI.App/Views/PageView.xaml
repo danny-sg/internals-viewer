@@ -109,15 +109,18 @@
                         </AppBarButton.Icon>
                     </AppBarButton>
 
-                    <AppBarSeparator />
                 </CommandBar>
 
                 <CommandBar Grid.Column="1"         
                             Background="Transparent" 
                             IsOpen="False"       
+                            Name="AllocationUnitSummaryCommandBar"
+                            Visibility="{x:Bind ViewModel.AllocationUnit,
+                                                Converter={StaticResource NullToVisibilityConverter},
+                                                Mode=OneWay}"
                             DefaultLabelPosition="Right" 
                             HorizontalAlignment="Left">
-
+                    <AppBarSeparator />
                     <AppBarElementContainer>
                         <allocation:AllocationUnitSummaryControl
                             AllocationUnit="{x:Bind ViewModel.AllocationUnit, Mode=OneWay}" />
@@ -126,7 +129,6 @@
                 <CommandBar Grid.Column="2"         
                             Background="Transparent" 
                             IsOpen="False"       
-                   
                             DefaultLabelPosition="Right" 
                             HorizontalAlignment="Right">
                     <AppBarElementContainer VerticalAlignment="Center">
@@ -212,20 +214,20 @@
                     </TabView.Resources>
 
                     <TabViewItem IsClosable="False"
-                             x:Name="RowDataTabViewItem"
-                             Visibility="{x:Bind ViewModel.IsRowDataTabVisible,
-                                                 Converter={StaticResource BoolToVisibilityConverter},
-                                                 Mode=OneWay}">
+                                 x:Name="RowDataTabViewItem"
+                                 Visibility="{x:Bind ViewModel.IsRowDataTabVisible,
+                                                     Converter={StaticResource BoolToVisibilityConverter},
+                                                     Mode=OneWay}">
                         <TabViewItem.Header>
                             <TextBlock Text="{x:Bind ViewModel.MarkerTabName, Mode=OneWay}"/>
                         </TabViewItem.Header>
                     </TabViewItem>
 
                     <TabViewItem IsClosable="False"
-                             x:Name="AllocationTabViewItem"
-                             Visibility="{x:Bind ViewModel.IsAllocationsTabVisible,
-                                                 Converter={StaticResource BoolToVisibilityConverter},
-                                                 Mode=OneWay}">
+                                 x:Name="AllocationTabViewItem"
+                                 Visibility="{x:Bind ViewModel.IsAllocationsTabVisible,
+                                                     Converter={StaticResource BoolToVisibilityConverter},
+                                                     Mode=OneWay}">
                         <TabViewItem.Header>
                             Allocations
                         </TabViewItem.Header>

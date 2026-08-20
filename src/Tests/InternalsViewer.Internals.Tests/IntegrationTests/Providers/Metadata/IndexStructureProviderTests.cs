@@ -6,7 +6,7 @@ namespace InternalsViewer.Internals.Tests.IntegrationTests.Providers.Metadata;
 
 public class IndexStructureProviderTests(ITestOutputHelper testOutput) : ProviderTestBase(testOutput)
 {
-    [RequiresConnectionStringTheory("local")]
+    [RequiresConnectionStringTheory("Local")]
     [InlineData(72057594054049792)]
     [InlineData(72057594054115328)]
     //[InlineData(72057594054049792)]

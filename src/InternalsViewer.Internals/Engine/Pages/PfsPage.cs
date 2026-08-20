@@ -17,6 +17,11 @@ public sealed class PfsPage : Page
     public const int PfsInterval = 8088;
 
     /// <summary>
+    /// The first PFS page in a file is always page 1
+    /// </summary>
+    public const int FirstPfsPage = 1;
+
+    /// <summary>
     /// PFS bytes collection (as raw byte value)
     /// </summary>
     public byte[] PfsBytes { get; set; } = [];

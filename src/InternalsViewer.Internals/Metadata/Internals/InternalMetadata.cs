@@ -13,8 +13,8 @@ public sealed class InternalMetadata
     /// <summary>
     /// Row Sets table - sys.sysrowsets
     /// </summary>
-    /// <remarks>Keyed by RowSetId (rowsetid).</remarks>
-    public Dictionary<long, InternalRowSet> RowSets { get; set; } = [];
+    /// <remarks>Keyed by RowsetId (rowsetid).</remarks>
+    public Dictionary<long, InternalRowset> Rowsets { get; set; } = [];
 
     /// <summary>
     /// Object table - sys.sysschobjs

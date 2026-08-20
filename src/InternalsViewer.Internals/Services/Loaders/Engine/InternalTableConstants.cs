@@ -6,7 +6,7 @@ public static class InternalTableConstants
 
     public static readonly (int ObjectId, int IndexId) ColumnsId = (41, 1);
 
-    public static readonly (int ObjectId, int IndexId) RowSetId = (5, 0);
+    public static readonly (int ObjectId, int IndexId) RowsetId = (5, 0);
 
     public static readonly (int ObjectId, int IndexId) AllocationUnitsId = (7, 0);
 

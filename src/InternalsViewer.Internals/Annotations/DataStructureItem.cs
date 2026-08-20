@@ -11,6 +11,18 @@ public class DataStructureItem
 
     public int Length { get; set; } = -1;
 
+    /// <summary>
+    /// Bit offset from the start of the structure, or -1 when the item is byte aligned
+    /// </summary>
+    public int BitOffset { get; set; } = -1;
+
+    /// <summary>
+    /// Length in bits, or -1 when the item is byte aligned
+    /// </summary>
+    public int BitLength { get; set; } = -1;
+
+    public bool IsBitAligned => BitOffset >= 0;
+
     public string Name { get; set; } = string.Empty;
 
     public int Index { get; set; } = -1;

@@ -28,6 +28,7 @@
                              SelectionMode="Single"
                              SelectionUnit="Row"
                              IsReadOnly="True"
+                             AllowLiveShaping="False"
                              GridLinesVisibility="All"
                              HeaderGridLinesVisibility="All"
                              HorizontalGridLinesStroke="{ThemeResource ControlStrokeColorDefaultBrush}"

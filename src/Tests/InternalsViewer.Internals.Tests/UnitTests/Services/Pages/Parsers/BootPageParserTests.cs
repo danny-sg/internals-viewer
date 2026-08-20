@@ -44,5 +44,37 @@ public class BootPageParserTests(ITestOutputHelper testOutput)
         Assert.Equal(new PageAddress(1, 20), page.FirstAllocationUnitsPage);
 
         Assert.Equal(1099511628357, page.NextAllocationUnitId);
+
+        Assert.Equal(36, page.DatabaseNameLength);
+
+        Assert.Equal(64000, page.MaxDatabaseTimestamp);
+
+        Assert.Equal(new LogSequenceNumber(53, 31269, 37), page.CheckpointLsn);
+
+        Assert.Equal(new LogSequenceNumber(53, 31269, 37), page.DirtyPageLsn);
+
+        Assert.Equal(new LogSequenceNumber(18, 65, 69), page.LatestVersioningUpgradeLsn);
+
+        Assert.Equal(2, page.DbccFlags);
+
+        Assert.Equal(0x1948, page.LastTransactionId);
+
+        Assert.Equal(0x75813000, page.ReleaseStatus);
+
+        Assert.Equal(new DateTime(2023, 5, 8, 12, 7, 29, 53), page.ModifiedDateTime);
+
+        Assert.Equal(0x10000451, page.ResourceDatabaseVersion);
+
+        Assert.Equal(Guid.Parse("3e94febd-98ca-424f-8787-5dd24a6e3976"), page.FamilyGuid);
+
+        Assert.Equal(Guid.Parse("c351c5a4-7c86-4046-bbcd-ee049c76d65a"), page.RecoveryForkGuid);
+
+        Assert.Equal(Guid.Parse("104bd1e5-5729-481c-818b-04c0e3216e68"), page.ServiceBrokerGuid);
+
+        Assert.Equal(0, page.ServiceBrokerOptions);
+
+        Assert.Equal(72057594042908672, page.PersistentVersionStoreRowsetId);
+
+        Assert.Equal(72057594042974208, page.PersistentVersionStoreLongTermRowsetId);
     }
 }

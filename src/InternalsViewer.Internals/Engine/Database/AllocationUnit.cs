@@ -27,6 +27,11 @@ public sealed record AllocationUnit
 
     public long PartitionId { get; set; }
 
+    /// <summary>
+    /// sys.sysrowsets ownertype, which separates an index from the internal objects that support it
+    /// </summary>
+    public byte OwnerType { get; set; }
+
     public PageAddress FirstIamPage { get; set; }
 
     public PageAddress RootPage { get; set; }

@@ -3,6 +3,7 @@ using InternalsViewer.Internals.Engine.Database;
 using InternalsViewer.Internals.Interfaces.Connections;
 using InternalsViewer.Internals.Metadata.Internals.Tables;
 using InternalsViewer.Internals.Readers.Internals;
+using InternalsViewer.Internals.Services.Loaders.Records.Cd;
 using InternalsViewer.Internals.Services.Loaders.Records.FixedVar;
 using InternalsViewer.Internals.Tests.Helpers;
 
@@ -24,7 +25,10 @@ public class RecordReaderTests(ITestOutputHelper testOutput)
       
         var loader = new FixedVarDataRecordLoader(TestLogger.GetLogger<FixedVarDataRecordLoader>(TestOutput));
 
-        var dataReader = new RecordReader(TestLogger.GetLogger<RecordReader>(testOutput), service, loader);
+        var dataReader = new RecordReader(TestLogger.GetLogger<RecordReader>(testOutput),
+                                          service,
+                                          loader,
+                                          new CdDataRecordLoader(TestLogger.GetLogger<CdDataRecordLoader>(TestOutput)));
 
         var database = new DatabaseSource(Connection) { Name = "TestDatabase" };
 
@@ -44,7 +48,10 @@ public class RecordReaderTests(ITestOutputHelper testOutput)
 
         var loader = new FixedVarDataRecordLoader(TestLogger.GetLogger<FixedVarDataRecordLoader>(TestOutput));
 
-        var dataReader = new RecordReader(TestLogger.GetLogger<RecordReader>(testOutput), service, loader);
+        var dataReader = new RecordReader(TestLogger.GetLogger<RecordReader>(testOutput),
+                                          service,
+                                          loader,
+                                          new CdDataRecordLoader(TestLogger.GetLogger<CdDataRecordLoader>(TestOutput)));
 
         var database = new DatabaseSource(Connection) { Name = "TestDatabase" };
 
@@ -64,7 +71,10 @@ public class RecordReaderTests(ITestOutputHelper testOutput)
 
         var loader = new FixedVarDataRecordLoader(TestLogger.GetLogger<FixedVarDataRecordLoader>(TestOutput));
 
-        var dataReader = new RecordReader(TestLogger.GetLogger<RecordReader>(testOutput), service, loader);
+        var dataReader = new RecordReader(TestLogger.GetLogger<RecordReader>(testOutput),
+                                          service,
+                                          loader,
+                                          new CdDataRecordLoader(TestLogger.GetLogger<CdDataRecordLoader>(TestOutput)));
 
         var database = new DatabaseSource(Connection) { Name = "TestDatabase" };
 
@@ -78,21 +88,24 @@ public class RecordReaderTests(ITestOutputHelper testOutput)
     }
 
     [RequiresFileFact(MdfPath)]
-    public async Task Can_Read_RowSet_Table()
+    public async Task Can_Read_Rowset_Table()
     {
         var service = ServiceHelper.CreatePageService(TestOutput);
 
         var loader = new FixedVarDataRecordLoader(TestLogger.GetLogger<FixedVarDataRecordLoader>(TestOutput));
 
-        var dataReader = new RecordReader(TestLogger.GetLogger<RecordReader>(testOutput), service, loader);
+        var dataReader = new RecordReader(TestLogger.GetLogger<RecordReader>(testOutput),
+                                          service,
+                                          loader,
+                                          new CdDataRecordLoader(TestLogger.GetLogger<CdDataRecordLoader>(TestOutput)));
 
         var database = new DatabaseSource(Connection) { Name = "TestDatabase" };
 
-        var tableStructure = InternalRowSetStructure.GetStructure(72057594040549376);
+        var tableStructure = InternalRowsetStructure.GetStructure(72057594040549376);
 
         var records = await dataReader.Read(database, new PageAddress(1, 19), tableStructure, CancellationToken.None);
 
-        var result = records.Select(InternalRowSetLoader.Load).ToList();
+        var result = records.Select(InternalRowsetLoader.Load).ToList();
 
         Assert.NotEmpty(result);
     }

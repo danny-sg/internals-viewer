@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
@@ -12,7 +12,9 @@ using Microsoft.UI;
 using Microsoft.UI.Input;
 using Microsoft.UI.Text;
 using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Controls.Primitives;
 using Microsoft.UI.Xaml.Documents;
+using Microsoft.UI.Xaml.Input;
 using Microsoft.UI.Xaml.Media;
 using Microsoft.UI.Xaml.Shapes;
 
@@ -35,6 +37,13 @@ public sealed partial class HexViewControl
     // Bytes are represented by 2 characters and a space
     const int CharactersPerByte = 2;
 
+    // Matches the RichTextBlock LineHeight the hex is laid out with
+    private const double LineHeight = 16;
+
+    private const int WheelDeltaPerNotch = 120;
+
+    private const int LinesPerNotch = 3;
+
     public HexControlViewModel ViewModel { get; } = new();
 
     public HexViewControl()
@@ -47,18 +56,225 @@ public sealed partial class HexViewControl
 
         // Border positions depend on the rendered text layout, so a resize/re-layout invalidates them
         HexRichTextBlock.SizeChanged += (_, _) => DrawChangeSpans();
+
+        ScrollViewer.SizeChanged += (_, _) => UpdateVirtualization();
+
+        // The virtualized window holds only the lines on screen, so the ScrollViewer has nothing of its own to scroll
+        ScrollViewer.AddHandler(PointerWheelChangedEvent, new PointerEventHandler(OnPointerWheelChanged), true);
     }
 
+    private void OnPointerWheelChanged(object sender, PointerRoutedEventArgs e)
+    {
+        if (!IsVirtualized)
+        {
+            return;
+        }
+
+        var delta = e.GetCurrentPoint(this).Properties.MouseWheelDelta;
+
+        ScrollWindowByLines(-delta / WheelDeltaPerNotch * LinesPerNotch);
+
+        e.Handled = true;
+    }
+
+    /// <summary>
+    /// Moves the window by whole lines, keeping it inside the structure the scroll bar was sized for
+    /// </summary>
+    private void ScrollWindowByLines(int lines)
+    {
+        var line = (WindowOffset / BytesPerLine) + lines;
+
+        WindowOffset = Math.Clamp(line, 0, (int)VirtualScrollBar.Maximum) * BytesPerLine;
+    }
+
+    /// <summary>
+    /// Builds the address column for whatever length of data is shown, offset by <see cref="BaseAddress"/>
+    /// </summary>
+    /// <remarks>
+    /// A page is always the same size, however a columnstore blob region is not, and starts part way into the blob it
+    /// was taken from, so the address has to say where in that blob a line sits rather than where in the slice.
+    /// </remarks>
     private void SetAddress()
     {
+        var length = Data is { Length: > 0 } ? Data.Length : PageData.Size;
+
+        var lineCount = (length + BytesPerLine - 1) / BytesPerLine;
+
         var stringBuilder = new StringBuilder();
 
-        for (var i = 0; i < PageData.Size / BytesPerLine; i++)
+        for (var i = 0; i < lineCount; i++)
         {
-            stringBuilder.AppendLine($"{i * BytesPerLine:X8}");
+            // Separator rather than terminator - a trailing newline renders as an extra blank address line
+            if (i > 0)
+            {
+                stringBuilder.AppendLine();
+            }
+
+            stringBuilder.Append($"{BaseAddress + (i * BytesPerLine):X8}");
         }
 
         AddressTextBlock.Text = stringBuilder.ToString();
+    }
+
+    /// <summary>
+    /// Shows only as many lines as fit, scrolling by moving the window rather than the content
+    /// </summary>
+    /// <remarks>
+    /// A page fits in one layout pass, a columnstore blob does not - megabytes of runs will not lay out at all. When
+    /// virtualised the owner supplies just the window the control asks for, which keeps the rendered run count to
+    /// whatever is on screen however large the structure behind it is.
+    /// </remarks>
+    public bool IsVirtualized
+    {
+        get => (bool)GetValue(IsVirtualizedProperty);
+        set => SetValue(IsVirtualizedProperty, value);
+    }
+
+    public static readonly DependencyProperty IsVirtualizedProperty
+        = DependencyProperty.Register(nameof(IsVirtualized),
+            typeof(bool),
+            typeof(HexViewControl),
+            new PropertyMetadata(false, OnVirtualizationChanged));
+
+    /// <summary>
+    /// Total bytes of the structure being windowed, which sizes the scroll bar
+    /// </summary>
+    public int TotalLength
+    {
+        get => (int)GetValue(TotalLengthProperty);
+        set => SetValue(TotalLengthProperty, value);
+    }
+
+    public static readonly DependencyProperty TotalLengthProperty
+        = DependencyProperty.Register(nameof(TotalLength),
+            typeof(int),
+            typeof(HexViewControl),
+            new PropertyMetadata(0, OnVirtualizationChanged));
+
+    /// <summary>
+    /// Byte offset of the window the owner should supply, always on a line boundary
+    /// </summary>
+    public int WindowOffset
+    {
+        get => (int)GetValue(WindowOffsetProperty);
+        set => SetValue(WindowOffsetProperty, value);
+    }
+
+    public static readonly DependencyProperty WindowOffsetProperty
+        = DependencyProperty.Register(nameof(WindowOffset),
+            typeof(int),
+            typeof(HexViewControl),
+            new PropertyMetadata(0, OnWindowOffsetChanged));
+
+    /// <summary>
+    /// Follows the window when something other than the scroll bar moves it, such as jumping to a region
+    /// </summary>
+    private static void OnWindowOffsetChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
+    {
+        var control = (HexViewControl)d;
+
+        if (!control.IsVirtualized)
+        {
+            return;
+        }
+
+        var line = (int)e.NewValue / BytesPerLine;
+
+        control.VirtualScrollBar.Value = Math.Clamp(line, 0, (int)control.VirtualScrollBar.Maximum);
+    }
+
+    /// <summary>
+    /// Bytes the window should hold, being the lines that fit plus one so scrolling does not reveal a gap
+    /// </summary>
+    public int WindowLength
+    {
+        get => (int)GetValue(WindowLengthProperty);
+        set => SetValue(WindowLengthProperty, value);
+    }
+
+    public static readonly DependencyProperty WindowLengthProperty
+        = DependencyProperty.Register(nameof(WindowLength),
+            typeof(int),
+            typeof(HexViewControl),
+            new PropertyMetadata(0));
+
+    private static void OnVirtualizationChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
+        => ((HexViewControl)d).UpdateVirtualization();
+
+    private void UpdateVirtualization()
+    {
+        if (!IsVirtualized)
+        {
+            VirtualScrollBar.Visibility = Visibility.Collapsed;
+
+            ScrollViewer.VerticalScrollBarVisibility = ScrollBarVisibility.Visible;
+
+            return;
+        }
+
+        VirtualScrollBar.Visibility = Visibility.Visible;
+
+        ScrollViewer.VerticalScrollBarVisibility = ScrollBarVisibility.Hidden;
+
+        var visibleLines = Math.Max(1, (int)(ScrollViewer.ActualHeight / LineHeight));
+
+        WindowLength = (visibleLines + 1) * BytesPerLine;
+
+        var totalLines = (TotalLength + BytesPerLine - 1) / BytesPerLine;
+
+        VirtualScrollBar.Maximum = Math.Max(0, totalLines - visibleLines);
+        VirtualScrollBar.ViewportSize = visibleLines;
+        VirtualScrollBar.SmallChange = 1;
+        VirtualScrollBar.LargeChange = visibleLines;
+    }
+
+    private void VirtualScrollBar_OnScroll(object sender, ScrollEventArgs e)
+        => WindowOffset = (int)e.NewValue * BytesPerLine;
+
+    /// <summary>
+    /// Offset the address column counts from, so a slice of a larger structure shows its true offsets
+    /// </summary>
+    public int BaseAddress
+    {
+        get => (int)GetValue(BaseAddressProperty);
+        set => SetValue(BaseAddressProperty, value);
+    }
+
+    public static readonly DependencyProperty BaseAddressProperty
+        = DependencyProperty.Register(nameof(BaseAddress),
+            typeof(int),
+            typeof(HexViewControl),
+            new PropertyMetadata(0, OnBaseAddressChanged));
+
+    private static void OnBaseAddressChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
+        => ((HexViewControl)d).InvalidateHexData();
+
+    private bool _isHexRebuildPending;
+
+    /// <summary>
+    /// Asks for one rebuild of the hex text at the end of the current pass, however many properties moved
+    /// </summary>
+    /// <remarks>
+    /// Moving the window sets the base address, the data and the selected marker, and each of those on its own used
+    /// to rebuild the whole run list. Coalescing them leaves one rebuild per window move rather than three.
+    /// </remarks>
+    private void InvalidateHexData()
+    {
+        if (_isHexRebuildPending)
+        {
+            return;
+        }
+
+        _isHexRebuildPending = true;
+
+        DispatcherQueue.TryEnqueue(() =>
+        {
+            _isHexRebuildPending = false;
+
+            SetHexData(Data ?? [], this);
+
+            SetAddress();
+        });
     }
 
     public byte[] Data
@@ -80,7 +296,7 @@ public sealed partial class HexViewControl
     }
 
     public static readonly DependencyProperty MarkersProperty = DependencyProperty
-        .Register(nameof(Data),
+        .Register(nameof(Markers),
             typeof(ObservableCollection<Marker>),
             typeof(HexViewControl),
             new PropertyMetadata(default, OnMarkersChanged));
@@ -366,7 +582,7 @@ public sealed partial class HexViewControl
             return;
         }
 
-        SetHexData(control.Data, control);
+        control.InvalidateHexData();
     }
 
     private static (int Start, int End)? SelectionRange(Marker? marker)
@@ -375,13 +591,19 @@ public sealed partial class HexViewControl
     }
 
     private static void OnDataChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
-    {
-        SetHexData(e.NewValue as byte[] ?? [], (HexViewControl)d);
-    }
+        => ((HexViewControl)d).InvalidateHexData();
 
     private static void OnMarkersChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
     {
-        HighlightMarkers((HexViewControl)d, (ObservableCollection<Marker>)e.NewValue);
+        var control = (HexViewControl)d;
+
+        // A pending rebuild highlights from the new markers itself, so highlighting them twice is only wasted work
+        if (control._isHexRebuildPending)
+        {
+            return;
+        }
+
+        HighlightMarkers(control, (ObservableCollection<Marker>)e.NewValue);
     }
 
     private static void SetHexData(IReadOnlyList<byte> data, HexViewControl target)
@@ -450,6 +672,12 @@ public sealed partial class HexViewControl
 
         void Highlight(Marker source)
         {
+            // A marker can be shown for context without being in the data on screen, and has nothing to highlight
+            if (source.StartPosition < 0 || source.EndPosition < source.StartPosition)
+            {
+                return;
+            }
+
             var start = ToRunPosition(source.StartPosition);
             var end = ToRunPosition(source.EndPosition + 1) - 1;
 
@@ -497,6 +725,12 @@ public sealed partial class HexViewControl
     /// </remarks>
     private static void ScrollToPosition(HexViewControl target, int position)
     {
+        // A virtualized control holds only the lines already on screen, and a marker outside the window has no position
+        if (target.IsVirtualized || position < 0)
+        {
+            return;
+        }
+
         const int totalLines = PageData.Size / BytesPerLine;
 
         var positionLineNumber = (position / BytesPerLine) - 1;

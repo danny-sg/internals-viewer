@@ -1,0 +1,213 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Collections.ObjectModel;
+using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
+using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.Input;
+using InternalsViewer.Internals.Columnstore.Metadata;
+using InternalsViewer.Internals.Columnstore.Services;
+using InternalsViewer.Internals.Engine.Database;
+using InternalsViewer.UI.App.Models.Columnstore;
+using InternalsViewer.UI.App.ViewModels.Tabs;
+using Microsoft.Extensions.Logging;
+
+namespace InternalsViewer.UI.App.ViewModels.Columnstore;
+
+public sealed class ColumnstoreTabViewModelFactory(ILogger<ColumnstoreTabViewModel> logger,
+                                                   ColumnstoreService columnstoreService)
+{
+    public ColumnstoreTabViewModel Create(DatabaseSource database, long allocationUnitId)
+        => new(logger, columnstoreService, database, allocationUnitId);
+}
+
+public sealed partial class ColumnstoreTabViewModel : TabViewModel
+{
+    public ColumnstoreTabViewModel(ILogger<ColumnstoreTabViewModel> logger,
+                                   ColumnstoreService columnstoreService,
+                                   DatabaseSource database,
+                                   long allocationUnitId)
+    {
+        Logger = logger;
+        ColumnstoreService = columnstoreService;
+        Database = database;
+        AllocationUnitId = allocationUnitId;
+
+        Dock = BuildDock();
+    }
+
+    private ILogger<ColumnstoreTabViewModel> Logger { get; }
+
+    internal ColumnstoreService ColumnstoreService { get; }
+
+    public DatabaseSource Database { get; }
+
+    public long AllocationUnitId { get; }
+
+    [ObservableProperty]
+    private ColumnStoreIndex? _index;
+
+    [ObservableProperty]
+    private bool _isInitialized;
+
+    [ObservableProperty]
+    private bool _isStructureLoading;
+
+    private const int SpinnerDelayMs = 100;
+
+    [ObservableProperty]
+    private string _loadingText = "Loading columnstore index...";
+
+    [ObservableProperty]
+    private string _indexDescription = string.Empty;
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(RowGroupCountDescription))]
+    private int _rowGroupCount;
+
+    public string RowGroupCountDescription => RowGroupCount == 1 ? "1 row group" : $"{RowGroupCount} row groups";
+
+    public ObservableCollection<RowGroupSummary> RowGroups { get; } = [];
+
+    public ObservableCollection<SegmentSummary> Segments { get; } = [];
+
+    public async Task Load()
+    {
+        IsLoading = true;
+        IsInitialized = false;
+
+        using var spinnerDelay = new CancellationTokenSource();
+
+        _ = ShowSpinnerAfterDelay(spinnerDelay.Token);
+
+        try
+        {
+            var allocationUnit = Database.AllocationUnits.GetValueOrDefault(AllocationUnitId)
+                                 ?? Database.AllocationUnits
+                                            .Values
+                                            .FirstOrDefault(a => a.AllocationUnitId == AllocationUnitId);
+
+            if (allocationUnit is null)
+            {
+                LoadingText = $"Allocation unit {AllocationUnitId} was not found";
+
+                return;
+            }
+
+            Name = string.IsNullOrEmpty(allocationUnit.IndexName)
+                ? allocationUnit.TableName
+                : allocationUnit.IndexName;
+
+            var index = await Task.Run(() => ColumnstoreService.GetIndex(allocationUnit, Database, CancellationToken),
+                                       CancellationToken);
+
+            var summaries = await Task.Run(() => RowGroupSummary.Build(index), CancellationToken);
+
+            await spinnerDelay.CancelAsync();
+
+            Index = index;
+
+            RowGroups.Clear();
+            Segments.Clear();
+
+            foreach (var summary in summaries)
+            {
+                RowGroups.Add(summary);
+
+                foreach (var segment in summary.Segments)
+                {
+                    Segments.Add(segment);
+                }
+            }
+
+            IndexDescription = string.IsNullOrEmpty(index.IndexName)
+                ? $"{index.SchemaName}.{index.TableName}"
+                : $"{index.SchemaName}.{index.TableName}.{index.IndexName}";
+
+            RowGroupCount = RowGroups.Count;
+
+            IsInitialized = true;
+
+            _ = LoadSegmentHeaders();
+        }
+        catch (Exception exception)
+        {
+            Logger.LogError(exception, "Failed to load columnstore index {AllocationUnitId}", AllocationUnitId);
+
+            LoadingText = exception.Message;
+        }
+        finally
+        {
+            await spinnerDelay.CancelAsync();
+
+            IsStructureLoading = false;
+
+            IsLoading = false;
+        }
+    }
+
+    /// <summary>
+    /// Reads the prologue of every segment blob, which the metadata does not carry
+    /// </summary>
+    /// <remarks>
+    /// The structure type and the RLE and bit pack counts only exist inside the blob, and a prologue costs a couple
+    /// of page reads against the whole blob's many. It still runs after the index is on screen rather than holding
+    /// it up, the drawing standing on its own without them.
+    /// </remarks>
+    private async Task LoadSegmentHeaders()
+    {
+        var segments = Segments.Where(s => s.HasDataPointer).ToList();
+
+        foreach (var segment in segments)
+        {
+            if (CancellationToken.IsCancellationRequested)
+            {
+                return;
+            }
+
+            try
+            {
+                var header = await Task.Run(
+                    () => ColumnstoreService.GetSegmentHeader(Database, segment.Segment, CancellationToken),
+                    CancellationToken);
+
+                segment.Header = header;
+            }
+            catch (OperationCanceledException)
+            {
+                return;
+            }
+            catch (Exception exception)
+            {
+                Logger.LogDebug(exception,
+                                "Could not read the segment header for row group {RowGroup} column {Column}",
+                                segment.RowGroupId,
+                                segment.ColumnId);
+            }
+        }
+    }
+
+    /// <summary>
+    /// Holds the spinner back so a load that returns straight away does not flash one up
+    /// </summary>
+    private async Task ShowSpinnerAfterDelay(CancellationToken token)
+    {
+        try
+        {
+            await Task.Delay(SpinnerDelayMs, token);
+
+            if (!token.IsCancellationRequested)
+            {
+                IsStructureLoading = true;
+            }
+        }
+        catch (TaskCanceledException)
+        {
+            // The load finished inside the delay, so no spinner is wanted
+        }
+    }
+
+    [RelayCommand]
+    private async Task Refresh() => await Load();
+}

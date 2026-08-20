@@ -46,7 +46,7 @@ public sealed class MetadataLoader(ILogger<MetadataLoader> logger, IRecordReader
     /// 
     /// sys.sysallocunits  - <see cref="InternalAllocationUnit"/>
     ///
-    ///     --> sys.sysrowsets  - <see cref="InternalRowSet"/>
+    ///     --> sys.sysrowsets  - <see cref="InternalRowset"/>
     ///                         
     ///     --> sys.sysschobjs  - <see cref="InternalObject"/>
     ///                         
@@ -79,9 +79,9 @@ public sealed class MetadataLoader(ILogger<MetadataLoader> logger, IRecordReader
             await multiFileReader.RegisterFiles(FileProvider.GetFiles(result), cancellationToken);
         }
 
-        var rowSetsFirstPage = GetFirstPage(InternalTableConstants.RowSetId, result.AllocationUnits);
+        var rowsetsFirstPage = GetFirstPage(InternalTableConstants.RowsetId, result.AllocationUnits);
 
-        result.RowSets = await GetRowSets(rowSetsFirstPage, database, cancellationToken);
+        result.Rowsets = await GetRowsets(rowsetsFirstPage, database, cancellationToken);
 
         var objectsFirstPage = GetFirstPage(InternalTableConstants.ObjectsId, result.AllocationUnits);
 
@@ -210,20 +210,20 @@ public sealed class MetadataLoader(ILogger<MetadataLoader> logger, IRecordReader
         return rows;
     }
 
-    private async Task<Dictionary<long, InternalRowSet>> 
-        GetRowSets(PageAddress pageAddress, DatabaseSource database, CancellationToken cancellationToken)
+    private async Task<Dictionary<long, InternalRowset>> 
+        GetRowsets(PageAddress pageAddress, DatabaseSource database, CancellationToken cancellationToken)
     {
         Logger.LogTrace("Getting Row Sets (sys.sysrowsets) using fixed Object Id/Index Id");
 
         var records = await RecordReader.Read(database,
                                               pageAddress,
-                                              InternalRowSetStructure.GetStructure(-1),
+                                              InternalRowsetStructure.GetStructure(-1),
                                               cancellationToken);
 
         Logger.LogTrace("Row Sets (sys.sysrowsets): {Count} records found. Parsing records...", records.Count);
 
-        var rows = records.Select(InternalRowSetLoader.Load)
-                          .ToDictionary(r => r.RowSetId);
+        var rows = records.Select(InternalRowsetLoader.Load)
+                          .ToDictionary(r => r.RowsetId);
 
         Logger.LogDebug("Row Sets (sys.sysrowsets): {Count} records parsed.", rows.Count);
 

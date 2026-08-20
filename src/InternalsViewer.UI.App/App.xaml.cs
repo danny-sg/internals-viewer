@@ -13,7 +13,9 @@ using InternalsViewer.UI.App.Messages;
 using InternalsViewer.UI.App.Models;
 using InternalsViewer.UI.App.Services;
 using InternalsViewer.UI.App.Services.XEvents;
+using InternalsViewer.Internals.Columnstore.Services;
 using InternalsViewer.UI.App.ViewModels;
+using InternalsViewer.UI.App.ViewModels.Columnstore;
 using InternalsViewer.UI.App.ViewModels.Connections;
 using InternalsViewer.UI.App.ViewModels.Database;
 using InternalsViewer.UI.App.ViewModels.Index;
@@ -82,6 +84,8 @@ public partial class App
             services.AddTransient<DatabaseTabViewModelFactory>();
             services.AddTransient<PageTabViewModelFactory>();
             services.AddTransient<IndexTabViewModelFactory>();
+            services.AddTransient<ColumnstoreTabViewModelFactory>();
+            services.AddTransient<ColumnstoreService>();
             services.AddTransient<TraceTabViewModelFactory>();
             services.AddTransient<QueryViewModelFactory>();
 

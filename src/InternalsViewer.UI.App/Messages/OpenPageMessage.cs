@@ -33,3 +33,15 @@ public sealed class OpenIndexMessage(OpenIndexRequest request) : AsyncRequestMes
 {
     public OpenIndexRequest Request { get; } = request;
 }
+
+public sealed class OpenColumnstoreRequest(DatabaseSource database, long allocationUnitId)
+{
+    public DatabaseSource Database { get; } = database;
+
+    public long AllocationUnitId { get; } = allocationUnitId;
+}
+
+public sealed class OpenColumnstoreMessage(OpenColumnstoreRequest request) : AsyncRequestMessage<bool>
+{
+    public OpenColumnstoreRequest Request { get; } = request;
+}

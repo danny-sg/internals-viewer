@@ -1,0 +1,449 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<UserControl
+    x:Class="InternalsViewer.UI.App.Views.Columnstore.Tabs.ColumnstoreDictionaryTabView"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    xmlns:tableView="using:WinUI.TableView"
+    xmlns:controls="using:InternalsViewer.UI.App.Controls"
+    xmlns:models="using:InternalsViewer.UI.App.Models.Columnstore"
+    xmlns:columnstore="using:InternalsViewer.UI.App.Controls.Columnstore"
+    xmlns:page="using:InternalsViewer.UI.App.Controls.Page"
+    xmlns:toolkit="using:CommunityToolkit.WinUI.Controls"
+    mc:Ignorable="d">
+    <UserControl.Resources>
+        <DataTemplate x:Key="DictionaryBadgeTemplate" x:DataType="models:SegmentBadge">
+            <Border CornerRadius="{x:Bind CornerRadius}"
+                    Padding="6,1"
+                    VerticalAlignment="Center">
+                <Border.Background>
+                    <SolidColorBrush Color="{x:Bind Background}"/>
+                </Border.Background>
+                <TextBlock Text="{x:Bind Label}"
+                           FontSize="11"
+                           Foreground="White"/>
+            </Border>
+        </DataTemplate>
+    </UserControl.Resources>
+
+    <Grid>
+        <StackPanel Padding="10"
+                    Spacing="12"
+                    VerticalAlignment="Center"
+                    HorizontalAlignment="Center"
+                    Visibility="{x:Bind ViewModel.IsLoaded, Mode=OneWay,
+                            Converter={StaticResource BoolToVisibilityConverter},
+                            ConverterParameter=True}">
+            <ProgressRing HorizontalAlignment="Center"
+                          IsActive="{x:Bind ViewModel.IsDictionaryLoading, Mode=OneWay}"
+                          Visibility="{x:Bind ViewModel.IsDictionaryLoading, Mode=OneWay,
+                                  Converter={StaticResource BoolToVisibilityConverter}}"/>
+            <TextBlock HorizontalAlignment="Center"
+                       Text="{x:Bind ViewModel.StatusText, Mode=OneWay}"/>
+        </StackPanel>
+
+        <Grid Visibility="{x:Bind ViewModel.IsLoaded, Mode=OneWay,
+                      Converter={StaticResource BoolToVisibilityConverter}}">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="*"/>
+            </Grid.RowDefinitions>
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
+
+            <CommandBar IsOpen="False"
+                        DefaultLabelPosition="Right"
+                        Grid.Row="0"
+                        Grid.ColumnSpan="2"
+                        HorizontalAlignment="Left"
+                        Background="Transparent">
+
+                <AppBarElementContainer VerticalContentAlignment="Center">
+                    <StackPanel VerticalAlignment="Stretch" Margin="12,0,18,0">
+                        <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                            <TextBlock Text="{x:Bind ViewModel.ColumnName, Mode=OneWay}"
+                                       VerticalAlignment="Center"
+                                       FontWeight="SemiBold"
+                                       FontSize="12"/>
+                            <controls:DataTypeTextBlock DataType="{x:Bind ViewModel.DataType, Mode=OneWay}"
+                                                        Precision="{x:Bind ViewModel.Precision, Mode=OneWay}"
+                                                        DataScale="{x:Bind ViewModel.Scale, Mode=OneWay}"
+                                                        Length="{x:Bind ViewModel.DataLength, Mode=OneWay}"
+                                                        VerticalAlignment="Center"/>
+                        </StackPanel>
+                        <ItemsControl ItemsSource="{x:Bind ViewModel.ScopeBadges, Mode=OneWay}"
+                                      ItemTemplate="{StaticResource DictionaryBadgeTemplate}"
+                                      HorizontalAlignment="Left"
+                                      Margin="0,2,0,0">
+                            <ItemsControl.ItemsPanel>
+                                <ItemsPanelTemplate>
+                                    <StackPanel Orientation="Horizontal" Spacing="4"/>
+                                </ItemsPanelTemplate>
+                            </ItemsControl.ItemsPanel>
+                        </ItemsControl>
+                    </StackPanel>
+                </AppBarElementContainer>
+
+                <AppBarSeparator/>
+
+                <AppBarElementContainer VerticalContentAlignment="Center">
+                    <StackPanel VerticalAlignment="Center" Margin="4,0,4,0">
+                        <ItemsControl ItemsSource="{x:Bind ViewModel.TypeBadges, Mode=OneWay}"
+                                      ItemTemplate="{StaticResource DictionaryBadgeTemplate}"
+                                      HorizontalAlignment="Left">
+                            <ItemsControl.ItemsPanel>
+                                <ItemsPanelTemplate>
+                                    <StackPanel Orientation="Horizontal" Spacing="0"/>
+                                </ItemsPanelTemplate>
+                            </ItemsControl.ItemsPanel>
+                        </ItemsControl>
+
+                        <ItemsControl ItemsSource="{x:Bind ViewModel.FlagBadges, Mode=OneWay}"
+                                      ItemTemplate="{StaticResource DictionaryBadgeTemplate}"
+                                      HorizontalAlignment="Left"
+                                      Margin="0,2,0,0">
+                            <ItemsControl.ItemsPanel>
+                                <ItemsPanelTemplate>
+                                    <StackPanel Orientation="Horizontal" Spacing="0"/>
+                                </ItemsPanelTemplate>
+                            </ItemsControl.ItemsPanel>
+                        </ItemsControl>
+                    </StackPanel>
+                </AppBarElementContainer>
+            </CommandBar>
+
+            <page:HexViewControl Grid.Row="1"
+                                 Grid.Column="0"
+                                 Width="455"
+                                 VerticalAlignment="Stretch"
+                                 Visibility="{x:Bind ViewModel.Hex.IsVisible, Mode=OneWay,
+                                         Converter={StaticResource BoolToVisibilityConverter}}"
+                                 IsVirtualized="True"
+                                 TotalLength="{x:Bind ViewModel.Hex.TotalLength, Mode=OneWay}"
+                                 WindowOffset="{x:Bind ViewModel.Hex.WindowOffset, Mode=TwoWay}"
+                                 WindowLength="{x:Bind ViewModel.Hex.WindowLength, Mode=TwoWay}"
+                                 Data="{x:Bind ViewModel.Hex.HexData, Mode=OneWay}"
+                                 BaseAddress="{x:Bind ViewModel.Hex.HexBaseAddress, Mode=OneWay}"
+                                 Markers="{x:Bind ViewModel.Hex.Markers, Mode=OneWay}"
+                                 SelectedMarker="{x:Bind ViewModel.Hex.SelectedMarker, Mode=TwoWay}"/>
+
+            <TabView Grid.Row="1"
+                     Grid.Column="1"
+                     IsAddTabButtonVisible="False"
+                     TabWidthMode="SizeToContent"
+                     VerticalAlignment="Stretch">
+                <TabViewItem Header="Header" IsClosable="False">
+                    <page:MarkerTreeView Opacity="{x:Bind ViewModel.Hex.MarkerOpacity, Mode=OneWay}"
+                                         Markers="{x:Bind ViewModel.HeaderMarkers, Mode=OneWay}"
+                                         SelectedMarker="{x:Bind ViewModel.Hex.SelectedMarker, Mode=TwoWay}"/>
+                </TabViewItem>
+
+                <TabViewItem Header="Entries" IsClosable="False">
+                    <tableView:TableView AutoGenerateColumns="False"
+                                         CanSortColumns="False"
+                                         CanFilterColumns="False"
+                                         CornerButtonMode="None"
+                                         HeadersVisibility="Columns"
+                                         ColumnHeaderStyle="{StaticResource TableViewColumnHeaderStyle}"
+                                         CellStyle="{StaticResource TableViewCellStyle}"
+                                         ItemContainerStyle="{StaticResource TableViewRowStyle}"
+                                         RowHeight="28"
+                                         SelectionMode="Single"
+                                         SelectionUnit="Row"
+                                         IsReadOnly="True"
+                                         GridLinesVisibility="All"
+                                         BorderThickness="0"
+                                         Background="{ThemeResource LayerFillColorDefaultBrush}"
+                                         ItemsSource="{x:Bind ViewModel.Entries, Mode=OneWay}">
+                        <tableView:TableView.Resources>
+                            <x:Double x:Key="ListViewItemMinHeight">0</x:Double>
+                        </tableView:TableView.Resources>
+                        <tableView:TableView.Columns>
+                            <tableView:TableViewTextColumn Header="Data Id" Width="100"
+                                                           Binding="{Binding DataId}"
+                                                           CellStyle="{StaticResource TableViewCellRightStyle}"/>
+                            <tableView:TableViewTemplateColumn Header="Index" Width="320">
+                                <tableView:TableViewTemplateColumn.CellTemplate>
+                                    <DataTemplate x:DataType="models:DictionaryEntryDetail">
+                                        <controls:ValueDerivationControl Derivation="{x:Bind Derivation, Mode=OneTime}"
+                                                                         ShowSteps="{x:Bind ShowDerivation, Mode=OneTime}"/>
+                                    </DataTemplate>
+                                </tableView:TableViewTemplateColumn.CellTemplate>
+                            </tableView:TableViewTemplateColumn>
+                            <tableView:TableViewTextColumn Header="Page" Width="70"
+                                                           Binding="{Binding PageDescription}"
+                                                           CellStyle="{StaticResource TableViewCellRightStyle}"/>
+                            <tableView:TableViewTextColumn Header="Offset" Width="90"
+                                                           Binding="{Binding OffsetDescription}"
+                                                           CellStyle="{StaticResource TableViewCellRightStyle}"/>
+                            <tableView:TableViewTextColumn Header="Value" Width="360"
+                                                           Binding="{Binding Value}"/>
+                        </tableView:TableView.Columns>
+                    </tableView:TableView>
+                </TabViewItem>
+
+                <TabViewItem Header="Values" IsClosable="False"
+                             Visibility="{x:Bind ViewModel.HasValues, Mode=OneWay,
+                                     Converter={StaticResource BoolToVisibilityConverter}}">
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="*"/>
+                            <RowDefinition Height="Auto"/>
+                        </Grid.RowDefinitions>
+
+                        <tableView:TableView Grid.Row="0"
+                                             AutoGenerateColumns="False"
+                                             CanSortColumns="False"
+                                             CanFilterColumns="False"
+                                             CornerButtonMode="None"
+                                             HeadersVisibility="Columns"
+                                             ColumnHeaderStyle="{StaticResource TableViewColumnHeaderStyle}"
+                                             CellStyle="{StaticResource TableViewCellStyle}"
+                                             ItemContainerStyle="{StaticResource TableViewRowStyle}"
+                                             RowHeight="28"
+                                             SelectionMode="Single"
+                                             SelectionUnit="Row"
+                                             IsReadOnly="True"
+                                             GridLinesVisibility="All"
+                                             BorderThickness="0"
+                                             Background="{ThemeResource LayerFillColorDefaultBrush}"
+                                             SelectionChanged="PageEntries_OnSelectionChanged"
+                                             ItemsSource="{x:Bind ViewModel.Entries, Mode=OneWay}">
+                            <tableView:TableView.Resources>
+                                <x:Double x:Key="ListViewItemMinHeight">0</x:Double>
+                            </tableView:TableView.Resources>
+                            <tableView:TableView.Columns>
+                                <tableView:TableViewTextColumn Header="Data Id" Width="100"
+                                                               Binding="{Binding DataId}"
+                                                               CellStyle="{StaticResource TableViewCellRightStyle}"/>
+                                <tableView:TableViewTemplateColumn Header="Index" Width="320">
+                                    <tableView:TableViewTemplateColumn.CellTemplate>
+                                        <DataTemplate x:DataType="models:DictionaryEntryDetail">
+                                            <controls:ValueDerivationControl Derivation="{x:Bind Derivation, Mode=OneTime}"
+                                                                             ShowSteps="{x:Bind ShowDerivation, Mode=OneTime}"/>
+                                        </DataTemplate>
+                                    </tableView:TableViewTemplateColumn.CellTemplate>
+                                </tableView:TableViewTemplateColumn>
+                                <tableView:TableViewTextColumn Header="Offset" Width="100"
+                                                               Binding="{Binding OffsetDescription}"
+                                                               CellStyle="{StaticResource TableViewCellRightStyle}"/>
+                                <tableView:TableViewTextColumn Header="Value" Width="200"
+                                                               Binding="{Binding Value}"
+                                                               CellStyle="{StaticResource TableViewCellRightStyle}"/>
+                            </tableView:TableView.Columns>
+                        </tableView:TableView>
+
+                        <page:MarkerTreeView Grid.Row="1"
+                                             MaxHeight="120"
+                                             Opacity="{x:Bind ViewModel.Hex.MarkerOpacity, Mode=OneWay}"
+                                             Markers="{x:Bind ViewModel.PageMarkers, Mode=OneWay}"
+                                             SelectedMarker="{x:Bind ViewModel.Hex.SelectedMarker, Mode=TwoWay}"/>
+                    </Grid>
+                </TabViewItem>
+
+                <TabViewItem Header="Pages" IsClosable="False"
+                             Visibility="{x:Bind ViewModel.HasPages, Mode=OneWay,
+                                     Converter={StaticResource BoolToVisibilityConverter}}">
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="*" MinHeight="80"/>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="2*" MinHeight="80"/>
+                        </Grid.RowDefinitions>
+
+                        <tableView:TableView Grid.Row="0" AutoGenerateColumns="False"
+                                             CanSortColumns="False"
+                                             CanFilterColumns="False"
+                                             CornerButtonMode="None"
+                                             HeadersVisibility="Columns"
+                                             ColumnHeaderStyle="{StaticResource TableViewColumnHeaderStyle}"
+                                             CellStyle="{StaticResource TableViewCellStyle}"
+                                             ItemContainerStyle="{StaticResource TableViewRowStyle}"
+                                             RowHeight="28"
+                                             SelectionMode="Single"
+                                             SelectionUnit="Row"
+                                             IsReadOnly="True"
+                                             GridLinesVisibility="All"
+                                             BorderThickness="0"
+                                             Background="{ThemeResource LayerFillColorDefaultBrush}"
+                                             ItemsSource="{x:Bind ViewModel.Pages, Mode=OneWay}"
+                                             SelectedItem="{x:Bind ViewModel.SelectedPage, Mode=TwoWay}">
+                            <tableView:TableView.Resources>
+                                <x:Double x:Key="ListViewItemMinHeight">0</x:Double>
+                            </tableView:TableView.Resources>
+                            <tableView:TableView.Columns>
+                                <tableView:TableViewTextColumn Header="Page" Width="70"
+                                                               Binding="{Binding Index}"
+                                                               CellStyle="{StaticResource TableViewCellRightStyle}"/>
+                                <tableView:TableViewTextColumn Header="Coding" Width="120"
+                                                               Binding="{Binding Coding}"/>
+                                <tableView:TableViewTextColumn Header="Symbols" Width="100"
+                                                               Binding="{Binding SymbolDescription}"/>
+                                <tableView:TableViewTextColumn Header="Type" Width="180"
+                                                               Binding="{Binding SubLobTypeDescription}"/>
+                                <tableView:TableViewTextColumn Header="String Count" Width="100"
+                                                               Binding="{Binding StringCount}"
+                                                               CellStyle="{StaticResource TableViewCellRightStyle}"/>
+                                <tableView:TableViewTextColumn Header="Offset" Width="90"
+                                                               Binding="{Binding OffsetDescription}"
+                                                               CellStyle="{StaticResource TableViewCellRightStyle}"/>
+                                <tableView:TableViewTextColumn Header="Size" Width="90"
+                                                               Binding="{Binding Size}"
+                                                               CellStyle="{StaticResource TableViewCellRightStyle}"/>
+                                <tableView:TableViewTextColumn Header="Compressed Size" Width="130"
+                                                               Binding="{Binding CompressedSizeDescription}"
+                                                               CellStyle="{StaticResource TableViewCellRightStyle}"/>
+                            </tableView:TableView.Columns>
+                        </tableView:TableView>
+
+                        <toolkit:GridSplitter Grid.Row="1"
+                                              Height="8"
+                                              HorizontalAlignment="Stretch"
+                                              ResizeBehavior="BasedOnAlignment"/>
+
+                        <!--The detail belongs to the selected page, so it sits under the list rather than beside it-->
+                        <TabView Grid.Row="2"
+                                 IsAddTabButtonVisible="False"
+                                 TabWidthMode="SizeToContent"
+                                 VerticalAlignment="Stretch">
+                            <TabViewItem Header="Page" IsClosable="False">
+                                <page:MarkerTreeView Opacity="{x:Bind ViewModel.Hex.MarkerOpacity, Mode=OneWay}"
+                                                     Markers="{x:Bind ViewModel.PageMarkers, Mode=OneWay}"
+                                                     SelectedMarker="{x:Bind ViewModel.Hex.SelectedMarker, Mode=TwoWay}"/>
+                            </TabViewItem>
+
+                            <TabViewItem Header="Decode" IsClosable="False">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="300"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition Height="160"/>
+                                        <RowDefinition Height="*"/>
+                                        <RowDefinition Height="Auto"/>
+                                    </Grid.RowDefinitions>
+
+                                    <tableView:TableView Grid.Row="0"
+                                                         Grid.RowSpan="2"
+                                                         Grid.Column="0"
+                                                         AutoGenerateColumns="False"
+                                                         CanSortColumns="False"
+                                                         CanFilterColumns="False"
+                                                         CornerButtonMode="None"
+                                                         HeadersVisibility="Columns"
+                                                         ColumnHeaderStyle="{StaticResource TableViewColumnHeaderStyle}"
+                                                         CellStyle="{StaticResource TableViewCellStyle}"
+                                                         ItemContainerStyle="{StaticResource TableViewRowStyle}"
+                                                         RowHeight="28"
+                                                         SelectionMode="Single"
+                                                         SelectionUnit="Row"
+                                                         IsReadOnly="True"
+                                                         GridLinesVisibility="All"
+                                                         BorderThickness="1"
+                                                         CornerRadius="0"
+                                                         Margin="8,8,0,0"
+                                                         Background="{ThemeResource LayerFillColorDefaultBrush}"
+                                                         SelectionChanged="PageEntries_OnSelectionChanged"
+                                                         ItemsSource="{x:Bind ViewModel.PageEntries, Mode=OneWay}">
+                                        <tableView:TableView.Resources>
+                                            <x:Double x:Key="ListViewItemMinHeight">0</x:Double>
+                                        </tableView:TableView.Resources>
+                                        <tableView:TableView.Columns>
+                                            <tableView:TableViewTextColumn Header="Data Id" Width="90"
+                                                                           Binding="{Binding DataId}"
+                                                                           CellStyle="{StaticResource TableViewCellRightStyle}"/>
+                                            <tableView:TableViewTextColumn Header="Offset" Width="80"
+                                                                           Binding="{Binding OffsetDescription}"
+                                                                           CellStyle="{StaticResource TableViewCellRightStyle}"/>
+                                            <tableView:TableViewTextColumn Header="Value" Width="180"
+                                                                           Binding="{Binding Value}"/>
+                                        </tableView:TableView.Columns>
+                                    </tableView:TableView>
+
+                                    <!--The coding sits under the walk, both of them describing the same page-->
+                                    <Grid Grid.Row="1"
+                                          Grid.Column="1"
+                                          Visibility="{x:Bind ViewModel.HasHuffmanPage, Mode=OneWay,
+                                                        Converter={StaticResource BoolToVisibilityConverter}}">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="330"/>
+                                            <ColumnDefinition Width="*"/>
+                                        </Grid.ColumnDefinitions>
+                                        <Grid.RowDefinitions>
+                                            <RowDefinition Height="Auto"/>
+                                            <RowDefinition Height="*"/>
+                                        </Grid.RowDefinitions>
+                                    <TextBlock Padding="16,8,8,8" FontWeight="SemiBold">Huffman Table</TextBlock>
+                                    <tableView:TableView x:Name="CodeTable"
+                                                         Grid.Column="0"
+                                                         Grid.Row="1"
+                                                         AutoGenerateColumns="False"
+                                                         CanSortColumns="False"
+                                                         CanFilterColumns="False"
+                                                         CornerButtonMode="None"
+                                                         HeadersVisibility="Columns"
+                                                         ColumnHeaderStyle="{StaticResource TableViewColumnHeaderStyle}"
+                                                         CellStyle="{StaticResource TableViewCellStyle}"
+                                                         ItemContainerStyle="{StaticResource TableViewRowStyle}"
+                                                         RowHeight="28"
+                                                         Margin="16,0,0,0"
+                                                         SelectionMode="Single"
+                                                         SelectionUnit="Row"
+                                                         IsReadOnly="True"
+                                                         GridLinesVisibility="All"
+                                                         BorderThickness="1"
+                                                         CornerRadius="0"
+                                                         Background="{ThemeResource LayerFillColorDefaultBrush}"
+                                                         SelectionChanged="CodeTable_OnSelectionChanged"
+                                                         ItemsSource="{x:Bind ViewModel.Codes, Mode=OneWay}">
+                                        <tableView:TableView.Resources>
+                                            <x:Double x:Key="ListViewItemMinHeight">0</x:Double>
+                                        </tableView:TableView.Resources>
+                                        <tableView:TableView.Columns>
+                                            <tableView:TableViewTextColumn Header="Symbol" Width="70"
+                                                                           Binding="{Binding HexValue}"/>
+                                            <tableView:TableViewTextColumn Header="Character" Width="80"
+                                                                           Binding="{Binding Character}"/>
+                                            <tableView:TableViewTextColumn Header="Bits" Width="50"
+                                                                           Binding="{Binding BitLength}"
+                                                                           CellStyle="{StaticResource TableViewCellRightStyle}"/>
+                                            <tableView:TableViewTextColumn Header="Code" Width="100"
+                                                                           Binding="{Binding Bits}"/>
+                                        </tableView:TableView.Columns>
+                                    </tableView:TableView>
+
+                                        <columnstore:HuffmanTreeControl x:Name="TreeControl" Grid.Column="1"
+                                                                        Grid.Row="1"
+                                                                        Tree="{x:Bind ViewModel.Tree, Mode=OneWay}"
+                                                                        SelectedSymbol="{x:Bind ViewModel.SelectedSymbol, Mode=TwoWay}"/>
+                                    </Grid>
+
+                                    <StackPanel Grid.Row="0"
+                                                Grid.Column="1"
+                                                Visibility="{x:Bind ViewModel.HasHuffmanPage, Mode=OneWay,
+                                                Converter={StaticResource BoolToVisibilityConverter}}">
+                                        <TextBlock Padding="16,8,0,0" FontWeight="SemiBold">Huffman Decoding</TextBlock>
+                                        <columnstore:HuffmanDecodeControl x:Name="DecodeControl" 
+                                            Height="145"
+                                            VerticalAlignment="Top"
+                                            Margin="0"
+                                            Padding="0"
+                                            Steps="{x:Bind ViewModel.DecodeSteps, Mode=OneWay}"
+                                            CodedContent="{x:Bind ViewModel.DecodeContent, Mode=OneWay}"
+                                            SymbolInvoked="Decode_OnSymbolInvoked"
+                                            SelectedStep="{x:Bind ViewModel.SelectedStep, Mode=TwoWay}"/>
+                                    </StackPanel>
+                                </Grid>
+                            </TabViewItem>
+
+                        </TabView>
+                    </Grid>
+                </TabViewItem>
+            </TabView>
+        </Grid>
+    </Grid>
+</UserControl>
