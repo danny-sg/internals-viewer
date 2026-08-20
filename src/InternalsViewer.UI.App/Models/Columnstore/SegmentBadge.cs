@@ -22,7 +22,7 @@ public sealed class SegmentBadge
     /// </summary>
     public CornerRadius CornerRadius { get; set; } = new(Radius);
 
-    public static SegmentBadge  Create(string label, SKColor colour)
+    public static SegmentBadge Create(string label, SKColor colour)
         => new() { Label = label, Background = Color.FromArgb(255, colour.Red, colour.Green, colour.Blue) };
 
     /// <summary>
