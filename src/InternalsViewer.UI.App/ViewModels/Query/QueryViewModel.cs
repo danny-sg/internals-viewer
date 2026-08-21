@@ -1637,6 +1637,14 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
         _openIndexes.Clear();
 
+        foreach (var trace in _openTraces.Values)
+        {
+            trace.PageNavigated -= OnIndexPageNavigated;
+            trace.PageOpenRequested -= OnTracePageOpenRequested;
+        }
+
+        _openTraces.Clear();
+
         _pageSpans = [];
 
         Layout.Dispose();

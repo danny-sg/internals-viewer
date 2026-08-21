@@ -147,6 +147,7 @@ public sealed partial class ColumnstoreStructureControl : IDisposable
         _renderer.MutedColour = isDark ? ColumnstoreColours.DarkMuted : ColumnstoreColours.Muted;
         _renderer.PanelColour = ProbeColour(PanelProbe, isDark ? ColumnstoreColours.DarkPanel : ColumnstoreColours.Panel);
         _renderer.BandColour = ProbeColour(BandProbe, _renderer.PanelColour);
+        _renderer.LocatorBandColour = isDark ? ColumnstoreColours.DarkLocatorBand : ColumnstoreColours.LocatorBand;
         _renderer.HoverBandColour = ProbeColour(HoverBandProbe, _renderer.BandColour);
         _renderer.KeywordColour = ProbeColour(KeywordProbe, _renderer.TextColour);
         _renderer.NumberColour = ProbeColour(NumberProbe, _renderer.TextColour);

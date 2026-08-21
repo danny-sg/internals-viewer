@@ -36,9 +36,13 @@ public sealed class ColumnstoreService(IRecordReader recordReader, ILobDataServi
         var columnSegmentRecords = await GetRecords("syscscolsegments", allocationUnit.PartitionId, database, cancellationToken);
         var dictionaryRecords = await GetRecords("syscsdictionaries", allocationUnit.PartitionId, database, cancellationToken);
 
-        var structure = TableStructureProvider.GetTableStructure(database, allocationUnit.AllocationUnitId);
+        // Keyed on the index's own column numbering rather than the table's, the two differing on a nonclustered index
+        var structure = IndexStructureProvider.GetIndexStructure(database, allocationUnit.AllocationUnitId);
 
-        var columnMap = structure.Columns.ToDictionary(c => (int)c.ColumnId);
+        var columnMap = structure.Columns
+                                 .Where(c => c.IndexColumnId > 0)
+                                 .GroupBy(c => c.IndexColumnId)
+                                 .ToDictionary(g => g.Key, global::InternalsViewer.Internals.Metadata.Structures.ColumnStructure (g) => g.First());
 
         var related = database.AllocationUnits
                               .Values
@@ -50,7 +54,48 @@ public sealed class ColumnstoreService(IRecordReader recordReader, ILobDataServi
                                              columnSegmentRecords,
                                              dictionaryRecords,
                                              columnMap,
-                                             related);
+                                             related,
+                                             GetLocatorNames(database, allocationUnit, structure));
+    }
+
+    /// <summary>
+    /// The clustered key columns a nonclustered index has to keep, being the ones it does not already hold
+    /// </summary>
+    /// <remarks>
+    /// Confirmed against four shapes: the key columns come in key order regardless of the order the index lists its
+    /// own, a key column the index already carries is not repeated, and a non unique clustered index adds its
+    /// uniqueifier. A heap has no key, so its locator is the row id and is named as such.
+    /// </remarks>
+    private static List<string> GetLocatorNames(DatabaseSource database,
+                                                AllocationUnit allocationUnit,
+                                                global::InternalsViewer.Internals.Metadata.Structures.IndexStructure indexStructure)
+    {
+        if (allocationUnit.IndexType != IndexType.NonClusteredColumnStore)
+        {
+            return [];
+        }
+
+        if (allocationUnit.ParentIndexType != IndexType.Clustered)
+        {
+            return ["RID"];
+        }
+
+        var clustered = database.AllocationUnits
+                                .Values
+                                .FirstOrDefault(a => a.ObjectId == allocationUnit.ObjectId && a.IndexId == 1);
+
+        if (clustered is null)
+        {
+            return [];
+        }
+
+        var held = indexStructure.Columns.Select(c => (int)c.ColumnId).ToHashSet();
+
+        return IndexStructureProvider.GetIndexStructure(database, clustered.AllocationUnitId)
+                                     .Columns
+                                     .Where(c => (c.IsIndexKey && !held.Contains(c.ColumnId)) || c.IsUniqueifier)
+                                     .Select(c => c.ColumnName)
+                                     .ToList();
     }
 
     public async Task<byte[]> GetData(DatabaseSource database,

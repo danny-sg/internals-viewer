@@ -1344,7 +1344,16 @@ public sealed partial class AllocationControl : IDisposable
         AllocationCanvas.PointerPressed -= AllocationCanvas_PointerPressed;
         AllocationCanvas.PointerExited -= AllocationCanvas_PointerExited;
         AllocationCanvas.PointerEntered -= AllocationCanvas_PointerEntered;
-        AllocationCanvas.SizeChanged -= AllocationCanvas_SizeChanged;
+
+        if (Layers is { } layers)
+        {
+            layers.CollectionChanged -= OnLayersChanged;
+        }
+
+        if (SelectedLayers is { } selectedLayers)
+        {
+            selectedLayers.CollectionChanged -= OnSelectedLayersChanged;
+        }
     }
 }
 

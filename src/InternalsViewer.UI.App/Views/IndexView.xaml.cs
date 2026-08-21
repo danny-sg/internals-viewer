@@ -201,5 +201,7 @@ public sealed partial class IndexView: IDisposable
 
         RecordGrid.Dispose();
         IndexControl.Dispose();
+
+        (DataContext as IndexTabViewModel)?.Dispose();
     }
 }

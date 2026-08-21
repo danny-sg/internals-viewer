@@ -110,5 +110,10 @@ public sealed partial class PageView : IDisposable
         AllocationControl.PageClicked -= Control_PageClicked;
         LogRecordTreeView.RecordClicked -= OnLogRecordClicked;
         ResultsGrid.PageClicked -= Control_PageClicked;
+
+        AllocationControl.Dispose();
+        PfsControl.Dispose();
+
+        (DataContext as PageTabViewModel)?.Dispose();
     }
 }

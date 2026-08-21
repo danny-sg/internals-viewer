@@ -1,9 +1,10 @@
+using System;
 using InternalsViewer.UI.App.ViewModels.Query;
 using Microsoft.UI.Xaml.Controls;
 
 namespace InternalsViewer.UI.App.Views.Query.Tabs;
 
-public sealed partial class QuerySqlTabView : UserControl
+public sealed partial class QuerySqlTabView : UserControl, IDisposable
 {
     public QueryViewModel? ViewModel => DataContext as QueryViewModel;
 
@@ -11,7 +12,18 @@ public sealed partial class QuerySqlTabView : UserControl
     {
         InitializeComponent();
 
-        DataContextChanged += (_, _) => Bindings.Update();
+        DataContextChanged += OnDataContextChanged;
+    }
+
+    private void OnDataContextChanged(FrameworkElement sender, DataContextChangedEventArgs args) => Bindings.Update();
+
+    public void Dispose()
+    {
+        DataContextChanged -= OnDataContextChanged;
+
+        Bindings.StopTracking();
+
+        SqlEditor.Dispose();
     }
 
     private void OnOpenAllocations(object sender, RoutedEventArgs e)

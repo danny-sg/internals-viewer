@@ -29,7 +29,7 @@ using InternalsViewer.UI.App.ViewModels.Index;
 
 namespace InternalsViewer.UI.App.ViewModels.Query.Trace;
 
-public sealed partial class TraceTabViewModel : ObservableObject
+public sealed partial class TraceTabViewModel : ObservableObject, IDisposable
 {
     private const int HistoryLimit = 1000;
 
@@ -893,5 +893,18 @@ public sealed partial class TraceTabViewModel : ObservableObject
         Applier.AttachHashTables(stepper);
 
         IsStepping = true;
+    }
+
+    public void Dispose()
+    {
+        _runToEndCancellation?.Cancel();
+        _interactiveCancellation?.Cancel();
+
+        if (Stepper is { } stepper)
+        {
+            Stepper = null;
+
+            _ = stepper.DisposeAsync();
+        }
     }
 }

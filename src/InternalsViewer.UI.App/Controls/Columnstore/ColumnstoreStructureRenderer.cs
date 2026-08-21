@@ -13,7 +13,7 @@ namespace InternalsViewer.UI.App.Controls.Columnstore;
 /// <summary>
 /// Draws a row per row group with its segments inside, above the row sets that support them
 /// </summary>
-public sealed class ColumnstoreStructureRenderer
+public sealed class ColumnstoreStructureRenderer : IDisposable
 {
     private readonly SKPaint _fill = new() { IsAntialias = false, Style = SKPaintStyle.Fill };
 
@@ -31,18 +31,18 @@ public sealed class ColumnstoreStructureRenderer
 
     private readonly SKPaint _stroke = new() { IsAntialias = false, Style = SKPaintStyle.Stroke, StrokeWidth = 0 };
 
-    private readonly SKFont _labelFont = new(GetInterfaceTypeface(SKFontStyleWeight.Normal), 12F)
+    private readonly SKFont _labelFont = new(InterfaceTypeface, 12F)
     {
         Edging = SKFontEdging.SubpixelAntialias,
         Subpixel = true
     };
 
-    private readonly SKFont _titleFont = new(GetInterfaceTypeface(SKFontStyleWeight.SemiBold), 12F);
+    private readonly SKFont _titleFont = new(InterfaceSemiBoldTypeface, 12F);
 
     /// <summary>
     /// Badges in the drawing sit below the size the command bars use, having far less room to take
     /// </summary>
-    private readonly SKFont _badgeFont = new(GetInterfaceTypeface(SKFontStyleWeight.Normal), 9F)
+    private readonly SKFont _badgeFont = new(InterfaceTypeface, 9F)
     {
         Edging = SKFontEdging.SubpixelAntialias,
         Subpixel = true
@@ -51,7 +51,7 @@ public sealed class ColumnstoreStructureRenderer
     /// <summary>
     /// Types read as code, so they are set in the same face the editor uses rather than the interface one
     /// </summary>
-    private readonly SKFont _monoFont = new(SKTypeface.FromFamilyName("Cascadia Mono") ?? SKTypeface.Default, 12F)
+    private readonly SKFont _monoFont = new(MonoTypeface, 12F)
     {
         Edging = SKFontEdging.SubpixelAntialias,
         Subpixel = true
@@ -65,6 +65,12 @@ public sealed class ColumnstoreStructureRenderer
     private static SKTypeface GetInterfaceTypeface(SKFontStyleWeight weight)
         => SKTypeface.FromFamilyName(InterfaceFontFamily, weight, SKFontStyleWidth.Normal, SKFontStyleSlant.Upright)
            ?? SKTypeface.Default;
+
+    private static readonly SKTypeface InterfaceTypeface = GetInterfaceTypeface(SKFontStyleWeight.Normal);
+
+    private static readonly SKTypeface InterfaceSemiBoldTypeface = GetInterfaceTypeface(SKFontStyleWeight.SemiBold);
+
+    private static readonly SKTypeface MonoTypeface = SKTypeface.FromFamilyName("Cascadia Mono") ?? SKTypeface.Default;
 
     private const string InterfaceFontFamily = "Segoe UI Variable Text";
 
@@ -80,6 +86,11 @@ public sealed class ColumnstoreStructureRenderer
     public SKColor BandColour { get; set; } = ColumnstoreColours.Panel;
 
     public SKColor HoverBandColour { get; set; } = ColumnstoreColours.Hover;
+
+    /// <summary>
+    /// Band behind a locator column, set apart so the clustered key it holds is not read as data of its own
+    /// </summary>
+    public SKColor LocatorBandColour { get; set; } = ColumnstoreColours.LocatorBand;
 
     public SKColor SelectionColour { get; set; } = ColumnstoreColours.Selection;
 
@@ -232,7 +243,11 @@ public sealed class ColumnstoreStructureRenderer
 
         foreach (var column in index.Columns)
         {
-            _fill.Color = HoveredColumnId == column.ColumnStoreColumnId ? HoverBandColour : BandColour;
+            _fill.Color = HoveredColumnId == column.ColumnStoreColumnId
+                ? HoverBandColour
+                : column.IsLocator
+                    ? LocatorBandColour
+                    : BandColour;
 
             canvas.DrawRect(new SKRect(x, top, x + columnWidth, bottom), _fill);
 
@@ -309,6 +324,19 @@ public sealed class ColumnstoreStructureRenderer
     {
         if (column.Structure is not { } structure)
         {
+            // A locator has no declared type, so what it holds is written where the type would be
+            if (column.IsLocator && column.LocatorDescription.Length > 0)
+            {
+                _text.Color = MutedColour;
+
+                canvas.DrawText(Fit(column.LocatorDescription, available, _monoFont),
+                                x,
+                                y,
+                                SKTextAlign.Left,
+                                _monoFont,
+                                _text);
+            }
+
             return;
         }
 

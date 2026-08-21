@@ -26,6 +26,8 @@ public sealed partial class DockLayoutViewModel : ObservableObject
     /// </summary>
     public event EventHandler<DocumentViewModel?>? DocumentActivated;
 
+    public event EventHandler<DocumentViewModel>? DocumentClosed;
+
     public DockLayoutViewModel(LayoutNode root)
     {
         _root = root;
@@ -225,6 +227,8 @@ public sealed partial class DockLayoutViewModel : ObservableObject
         {
             _ = disposable.DisposeAsync().AsTask();
         }
+
+        DocumentClosed?.Invoke(this, document);
 
         CollapseIfEmpty(group);
         OnLayoutChanged();

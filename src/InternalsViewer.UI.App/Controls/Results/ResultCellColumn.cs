@@ -66,41 +66,76 @@ internal sealed class ResultCellColumn(int ordinal) : TableViewColumn
 
         var value = row[ordinal];
 
-        host.Content = value switch
+        switch (value)
         {
-            PageAddress pageAddress 
-                => CreateLink(pageAddress.ToString(), pageAddress, null),
-            RowIdentifier rowIdentifier 
-                => CreateLink(rowIdentifier.ToString(),
-                              rowIdentifier.PageAddress,
-                              rowIdentifier.SlotId),
-            _ => CreateText(ResultRowConverter.FormatValue(value))
-        };
+            case PageAddress pageAddress:
+                ApplyLink(host, pageAddress.ToString(), pageAddress, null);
+                break;
+
+            case RowIdentifier rowIdentifier:
+                ApplyLink(host, rowIdentifier.ToString(), rowIdentifier.PageAddress, rowIdentifier.SlotId);
+                break;
+
+            default:
+                ApplyText(host, ResultRowConverter.FormatValue(value));
+                break;
+        }
 
         SetNullBackground(cell, value is null);
     }
 
-    private static TextBlock CreateText(string text) => new()
+    private static void ApplyText(ContentControl host, string text)
     {
-        Text = text,
-        Padding = new Thickness(8, 0, 4, 0),
-        VerticalAlignment = VerticalAlignment.Center
-    };
+        if (host.Content is TextBlock textBlock)
+        {
+            if (textBlock.Text != text)
+            {
+                textBlock.Text = text;
+            }
 
-    private HyperlinkButton CreateLink(string text, PageAddress pageAddress, ushort? slot)
+            return;
+        }
+
+        host.Content = new TextBlock
+        {
+            Text = text,
+            Padding = new Thickness(8, 0, 4, 0),
+            VerticalAlignment = VerticalAlignment.Center
+        };
+    }
+
+    private void ApplyLink(ContentControl host, string text, PageAddress pageAddress, ushort? slot)
     {
+        var target = new PageAddressEventArgs(pageAddress.FileId, pageAddress.PageId) { Slot = slot ?? 0 };
+
+        if (host.Content is HyperlinkButton existing)
+        {
+            existing.Content = text;
+            existing.Tag = target;
+
+            return;
+        }
+
         var button = new HyperlinkButton
         {
             Content = text,
+            Tag = target,
             Style = (Style)Application.Current.Resources["ResultPointerStyle"]
         };
 
         ToolTipService.SetToolTip(button, "Open Page");
 
-        button.Click += (_, _) => PageClicked?.Invoke(
-            new PageAddressEventArgs(pageAddress.FileId, pageAddress.PageId) { Slot = slot ?? 0 });
+        button.Click += OnLinkClick;
 
-        return button;
+        host.Content = button;
+    }
+
+    private void OnLinkClick(object sender, RoutedEventArgs e)
+    {
+        if (sender is HyperlinkButton { Tag: PageAddressEventArgs target })
+        {
+            PageClicked?.Invoke(target);
+        }
     }
 
     private void SetNullBackground(TableViewCell cell, bool isNull)

@@ -54,7 +54,9 @@ public sealed class HuffmanDecodeRenderer : IDisposable
 
     private readonly SKPaint _text = new() { IsAntialias = true, Style = SKPaintStyle.Fill };
 
-    private readonly SKFont _font = new(SKTypeface.FromFamilyName("Cascadia Mono") ?? SKTypeface.Default, 11f)
+    private static readonly SKTypeface MonoTypeface = SKTypeface.FromFamilyName("Cascadia Mono") ?? SKTypeface.Default;
+
+    private readonly SKFont _font = new(MonoTypeface, 11f)
     {
         Edging = SKFontEdging.SubpixelAntialias,
         Subpixel = true

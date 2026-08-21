@@ -1,6 +1,8 @@
+using System;
 using Windows.System;
 using Windows.UI.Core;
 using CommunityToolkit.Mvvm.Messaging;
+using CommunityToolkit.WinUI;
 using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.UI.App.Messages;
 using InternalsViewer.UI.App.ViewModels.Query;
@@ -10,7 +12,7 @@ using InternalsViewer.UI.App.Controls;
 
 namespace InternalsViewer.UI.App.Views.Query.Tabs;
 
-public sealed partial class QueryAllocationTabView : UserControl
+public sealed partial class QueryAllocationTabView : UserControl, IDisposable
 {
     public QueryViewModel? ViewModel => DataContext as QueryViewModel;
 
@@ -18,8 +20,26 @@ public sealed partial class QueryAllocationTabView : UserControl
     {
         InitializeComponent();
 
-        DataContextChanged += (_, _) => Bindings.Update();
+        DataContextChanged += OnDataContextChanged;
         AllocationItemRepeater.SizeChanged += OnParentSizeChanged;
+    }
+
+    private void OnDataContextChanged(FrameworkElement sender, DataContextChangedEventArgs args) => Bindings.Update();
+
+    public void Dispose()
+    {
+        DataContextChanged -= OnDataContextChanged;
+        AllocationItemRepeater.SizeChanged -= OnParentSizeChanged;
+
+        Bindings.StopTracking();
+
+        foreach (var child in AllocationItemRepeater.FindChildren())
+        {
+            if (child is IDisposable disposable)
+            {
+                disposable.Dispose();
+            }
+        }
     }
 
     private void OnParentSizeChanged(object sender, SizeChangedEventArgs e)

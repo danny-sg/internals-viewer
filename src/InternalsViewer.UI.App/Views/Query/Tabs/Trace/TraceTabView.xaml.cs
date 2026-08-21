@@ -1,9 +1,11 @@
+using System;
+using CommunityToolkit.WinUI;
 using InternalsViewer.UI.App.ViewModels.Query.Trace;
 using Microsoft.UI.Xaml.Controls;
 
 namespace InternalsViewer.UI.App.Views.Query.Tabs.Trace;
 
-public sealed partial class TraceTabView : UserControl
+public sealed partial class TraceTabView : UserControl, IDisposable
 {
     public TraceTabViewModel? ViewModel => DataContext as TraceTabViewModel;
 
@@ -11,7 +13,26 @@ public sealed partial class TraceTabView : UserControl
     {
         InitializeComponent();
 
-        DataContextChanged += (_, _) => Bindings.Update();
+        DataContextChanged += OnDataContextChanged;
+    }
+
+    private void OnDataContextChanged(FrameworkElement sender, DataContextChangedEventArgs args) => Bindings.Update();
+
+    public void Dispose()
+    {
+        DataContextChanged -= OnDataContextChanged;
+
+        Bindings.StopTracking();
+
+        foreach (var child in this.FindChildren())
+        {
+            if (child is IDisposable disposable)
+            {
+                disposable.Dispose();
+            }
+        }
+
+        (DataContext as TraceTabViewModel)?.Dispose();
     }
 
 #pragma warning disable CA1822

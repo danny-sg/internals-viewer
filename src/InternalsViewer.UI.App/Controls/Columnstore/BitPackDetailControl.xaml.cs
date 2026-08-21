@@ -152,5 +152,12 @@ public sealed partial class BitPackDetailControl : IDisposable
     /// <summary>
     /// Releases the renderer, whose paints and fonts are native Skia handles the collector will not reclaim
     /// </summary>
-    public void Dispose() => _renderer.Dispose();
+    public void Dispose()
+    {
+        RulerCanvas.PaintSurface -= OnPaintSurface;
+        RulerCanvas.PointerPressed -= OnPointerPressed;
+        RulerCanvas.PointerMoved -= OnPointerMoved;
+
+        _renderer.Dispose();
+    }
 }

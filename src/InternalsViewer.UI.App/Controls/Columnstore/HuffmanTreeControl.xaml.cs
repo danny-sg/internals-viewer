@@ -158,5 +158,12 @@ public sealed partial class HuffmanTreeControl : IDisposable
     /// <summary>
     /// Releases the renderer, whose paints and fonts are native Skia handles the collector will not reclaim
     /// </summary>
-    public void Dispose() => _renderer.Dispose();
+    public void Dispose()
+    {
+        TreeCanvas.PaintSurface -= OnPaintSurface;
+        TreeCanvas.PointerPressed -= OnPointerPressed;
+        TreeCanvas.PointerWheelChanged -= OnPointerWheelChanged;
+
+        _renderer.Dispose();
+    }
 }

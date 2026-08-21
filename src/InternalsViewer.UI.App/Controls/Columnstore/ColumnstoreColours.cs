@@ -95,6 +95,10 @@ public static class ColumnstoreColours
 
     public static readonly SKColor UnknownDictionary = FromHex(0x888780);
 
+    public static readonly SKColor LocatorBand = FromHex(0xE4EAF1);
+
+    public static readonly SKColor DarkLocatorBand = FromHex(0x252C34);
+
     public static readonly SKColor GlobalScope = FromHex(0x2E7D6E);
 
     public static readonly SKColor LocalScope = FromHex(0x9C5BB8);

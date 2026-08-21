@@ -123,6 +123,8 @@ public sealed partial class ColumnstoreTabViewModel : TabViewModel
                 }
             }
 
+            IndexTypeDescription = index.IsClustered ? "Clustered" : "Non Clustered";
+
             IndexDescription = string.IsNullOrEmpty(index.IndexName)
                 ? $"{index.SchemaName}.{index.TableName}"
                 : $"{index.SchemaName}.{index.TableName}.{index.IndexName}";
@@ -244,6 +246,12 @@ public sealed partial class ColumnstoreTabViewModel : TabViewModel
 
         DrawingRevision++;
     }
+
+    /// <summary>
+    /// Whether the index is the table or an index over it, which decides whether it carries a row locator
+    /// </summary>
+    [ObservableProperty]
+    private string _indexTypeDescription = string.Empty;
 
     [ObservableProperty]
     private IReadOnlyDictionary<long, SubLobType> _dictionaryCoding = new Dictionary<long, SubLobType>();

@@ -74,6 +74,7 @@ public sealed class AllocationRenderer : IDisposable
                                                          null,
                                                          SKShaderTileMode.Repeat);
 
+        AllocationPaint.Shader?.Dispose();
         AllocationPaint.Shader = extentShader;
 
         var pageRect = new SKRect(0, 0, ExtentSize.Width / 8F, ExtentSize.Height);
@@ -84,6 +85,7 @@ public sealed class AllocationRenderer : IDisposable
                                                        null,
                                                        SKShaderTileMode.Repeat);
 
+        PagePaint.Shader?.Dispose();
         PagePaint.Shader = pageShader;
     }
 
@@ -266,6 +268,10 @@ public sealed class AllocationRenderer : IDisposable
 
     public void Dispose()
     {
+        AllocationPaint.Shader?.Dispose();
+        PagePaint.Shader?.Dispose();
+        BackgroundPaint.Shader?.Dispose();
+
         AllocationPaint.Dispose();
         BorderPaint.Dispose();
         BackgroundPaint.Dispose();

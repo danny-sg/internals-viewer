@@ -49,8 +49,10 @@ internal sealed class OperatorRenderer(RenderResource resources, CurrentSelectio
     private readonly SKPaint _flowConnector = new() { Style = SKPaintStyle.Fill, IsAntialias = true };
     private readonly SKPaint _outline = new() { Style = SKPaintStyle.Stroke, IsAntialias = true };
 
+    private static readonly SKTypeface BoldTypeface = SKTypeface.FromFamilyName(SKTypeface.Default.FamilyName, SKFontStyle.Bold);
+
     private readonly SKFont _font = new(SKTypeface.Default, 12f);
-    private readonly SKFont _boldFont = new(SKTypeface.FromFamilyName(SKTypeface.Default.FamilyName, SKFontStyle.Bold), 10f);
+    private readonly SKFont _boldFont = new(BoldTypeface, 10f);
 
     public void Draw(SKCanvas canvas, TimelineFrame frame, IReadOnlyList<OperatorBar> bars)
     {

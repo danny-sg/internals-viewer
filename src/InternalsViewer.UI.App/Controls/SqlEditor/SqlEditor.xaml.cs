@@ -19,7 +19,7 @@ using System.Windows.Input;
 
 namespace InternalsViewer.UI.App.Controls.SqlEditor;
 
-public sealed partial class SqlEditorControl : UserControl
+public sealed partial class SqlEditorControl : UserControl, IDisposable
 {
     public static readonly DependencyProperty ExecuteCommandProperty =
         DependencyProperty.Register(
@@ -507,6 +507,18 @@ public sealed partial class SqlEditorControl : UserControl
             var theme = JsonSerializer.Serialize((string)(e.NewValue ?? "vs-dark"));
             _ = control.WebView.ExecuteScriptAsync($"monaco.editor.setTheme({theme})");
         }
+    }
+
+    public void Dispose()
+    {
+        Loaded -= OnLoaded;
+
+        if (WebView.CoreWebView2 is { } core)
+        {
+            core.WebMessageReceived -= OnWebMessageReceived;
+        }
+
+        WebView.Close();
     }
 
     private sealed record EditorMessage([property: JsonPropertyName("type")] string Type,

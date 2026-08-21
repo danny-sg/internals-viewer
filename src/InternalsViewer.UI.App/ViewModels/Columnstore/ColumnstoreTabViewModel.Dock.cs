@@ -1,4 +1,5 @@
-﻿using System.Linq;
+﻿using System;
+using System.Linq;
 using InternalsViewer.Internals.Columnstore.Metadata;
 using InternalsViewer.UI.App.Models.Columnstore;
 using InternalsViewer.UI.App.ViewModels.Docking;
@@ -27,7 +28,35 @@ public sealed partial class ColumnstoreTabViewModel
                                                                                    keepAlive: true,
                                                                                    key: "RowGroups");
 
-        return new DockLayoutViewModel(new TabGroupNode(_structureDocument, _rowGroupsDocument));
+        var dock = new DockLayoutViewModel(new TabGroupNode(_structureDocument, _rowGroupsDocument));
+
+        dock.DocumentClosed += OnDocumentClosed;
+
+        return dock;
+    }
+
+    private void OnDocumentClosed(object? sender, DocumentViewModel document) => DisposeDocument(document);
+
+    private void DisposeDocument(DocumentViewModel document)
+    {
+        document.DisposeView();
+
+        if (document.Content is IDisposable disposable && !ReferenceEquals(document.Content, this))
+        {
+            disposable.Dispose();
+        }
+    }
+
+    public override void Dispose()
+    {
+        Dock.DocumentClosed -= OnDocumentClosed;
+
+        foreach (var document in Dock.Groups().SelectMany(g => g.Documents).ToList())
+        {
+            DisposeDocument(document);
+        }
+
+        base.Dispose();
     }
 
     private DocumentViewModel? _structureDocument;

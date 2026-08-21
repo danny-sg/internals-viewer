@@ -23,14 +23,51 @@ public static class ColumnstoreMetadataMapper
     /// <summary>
     /// Columnstore column ids are offset from the table column ids they map to
     /// </summary>
-    private const int ColumnIdOffset = 1;
+    /// <summary>
+    /// A locator named after the key column it holds, falling back to a number when the key cannot be read
+    /// </summary>
+    private static string NameLocator(bool isLocator, int ordinal, int count, IReadOnlyList<string> names)
+    {
+        if (!isLocator)
+        {
+            return string.Empty;
+        }
+
+        if (ordinal <= names.Count)
+        {
+            return names[ordinal - 1];
+        }
+
+        return count > 1 ? $"Row Locator {ordinal}" : "Row Locator";
+    }
+
+    /// <summary>
+    /// What a nonclustered index has to keep to find its way back, which is the RID over a heap and the key otherwise
+    /// </summary>
+    private static string DescribeLocator(IndexType? parentIndexType) => parentIndexType switch
+    {
+        IndexType.Heap => "RID",
+        IndexType.Clustered => "Clustered Key",
+        _ => string.Empty
+    };
+
+    /// <summary>
+    /// How far the columnstore's own column numbering runs ahead of the index column it stands for
+    /// </summary>
+    /// <remarks>
+    /// A clustered columnstore numbers from two, leaving its first slot unused. A nonclustered one numbers from one
+    /// and puts its locator one past its last index column, which is the column that resolves to no structure.
+    /// </remarks>
+    public static int GetColumnIdOffset(IndexType indexType)
+        => indexType == IndexType.NonClusteredColumnStore ? 0 : 1;
 
     public static ColumnStoreIndex Map(AllocationUnit allocationUnit,
                                        IReadOnlyList<Record> rowGroupRecords,
                                        IReadOnlyList<Record> segmentRecords,
                                        IReadOnlyList<Record> dictionaryRecords,
                                        IReadOnlyDictionary<int, ColumnStructure>? columnMap = null,
-                                       IEnumerable<AllocationUnit>? relatedAllocationUnits = null)
+                                       IEnumerable<AllocationUnit>? relatedAllocationUnits = null,
+                                       IReadOnlyList<string>? locatorNames = null)
     {
         var index = new ColumnStoreIndex
         {
@@ -56,7 +93,12 @@ public static class ColumnstoreMetadataMapper
 
         var segments = segmentRecords.Select(MapSegment).ToList();
 
-        index.Columns.AddRange(BuildColumns(segments, globalDictionaries, columnMap));
+        index.Columns.AddRange(BuildColumns(segments,
+                                            globalDictionaries,
+                                            columnMap,
+                                            allocationUnit.IndexType,
+                                            allocationUnit.ParentIndexType,
+                                            locatorNames ?? []));
 
         var columnsById = index.Columns.ToDictionary(c => c.ColumnStoreColumnId);
 
@@ -150,20 +192,44 @@ public static class ColumnstoreMetadataMapper
 
     private static IEnumerable<ColumnStoreColumn> BuildColumns(IEnumerable<ColumnSegment> segments,
                                                                IReadOnlyDictionary<int, SegmentDictionary> globalDictionaries,
-                                                               IReadOnlyDictionary<int, ColumnStructure>? columnStructures)
+                                                               IReadOnlyDictionary<int, ColumnStructure>? columnStructures,
+                                                               IndexType indexType,
+                                                               IndexType? parentIndexType,
+                                                               IReadOnlyList<string> locatorNames)
     {
-        var columnIds = segments.Select(s => s.Key.ColumnId).Distinct().OrderBy(id => id);
+        var offset = GetColumnIdOffset(indexType);
+
+        var columnIds = segments.Select(s => s.Key.ColumnId).Distinct().OrderBy(id => id).ToList();
+
+        bool IsLocator(int columnId)
+            => indexType == IndexType.NonClusteredColumnStore
+               && !(columnStructures?.ContainsKey(columnId - offset) ?? false);
+
+        // A composite clustered key is kept a column at a time, so there is one locator per key column
+        var locatorCount = columnIds.Count(IsLocator);
+
+        var locatorOrdinal = 0;
 
         foreach (var columnId in columnIds)
         {
             ColumnStructure? structure = null;
 
-            columnStructures?.TryGetValue(columnId - ColumnIdOffset, out structure);
+            columnStructures?.TryGetValue(columnId - offset, out structure);
+
+            var isLocator = IsLocator(columnId);
+
+            if (isLocator)
+            {
+                locatorOrdinal++;
+            }
 
             var column = new ColumnStoreColumn
             {
                 ColumnStoreColumnId = columnId,
                 Structure = structure,
+                IsLocator = isLocator,
+                LocatorName = NameLocator(isLocator, locatorOrdinal, locatorCount, locatorNames),
+                LocatorDescription = DescribeLocator(parentIndexType),
                 GlobalDictionary = globalDictionaries.GetValueOrDefault(columnId)
             };
 

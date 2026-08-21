@@ -115,15 +115,7 @@ public sealed partial class DatabaseView : IDisposable
 
     public void Dispose()
     {
-        foreach(var child in AllocationItemRepeater.FindChildren())
-        {
-            if (child is IDisposable disposable)
-            {
-                disposable.Dispose();
-            }
-        }
-
-        foreach (var child in AllocationTabView.FindChildren())
+        foreach (var child in this.FindChildren())
         {
             if (child is IDisposable disposable)
             {

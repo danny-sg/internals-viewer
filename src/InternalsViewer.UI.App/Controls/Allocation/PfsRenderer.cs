@@ -42,19 +42,19 @@ public sealed class PfsRenderer : IDisposable
 
     private static readonly Color GhostColour = Color.FromArgb(140, 0, 200, 0);
 
+    private static readonly SKTypeface IamFlagTypeface = SKTypeface.FromFamilyName(
+        familyName: "Consolas",
+        weight: SKFontStyleWeight.SemiBold,
+        width: SKFontStyleWidth.Normal,
+        slant: SKFontStyleSlant.Upright);
+
     public PfsRenderer(Size pageSize)
     {
         PageSize = pageSize;
         SpaceFreePaint = GetPagePaint(SpaceColour.ToSkColor());
         AllocatedPaint = GetPagePaint(AllocatedColour.ToSkColor());
 
-        IamFlagFont = new SKFont(
-            SKTypeface.FromFamilyName(
-                familyName: "Consolas",
-                weight: SKFontStyleWeight.SemiBold,
-                width: SKFontStyleWidth.Normal,
-                slant: SKFontStyleSlant.Upright),
-            size: pageSize.Height);
+        IamFlagFont = new SKFont(IamFlagTypeface, size: pageSize.Height);
 
         IamFlagPaint = new()
         {

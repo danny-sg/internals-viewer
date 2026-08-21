@@ -11,6 +11,35 @@ namespace InternalsViewer.Internals.Tests.IntegrationTests.Services.Columnstore;
 public sealed class ColumnstoreSqlProbeTests(ITestOutputHelper testOutput) : ProviderTestBase(testOutput)
 {
     [RequiresConnectionStringFact("local")]
+    public async Task Dump_Hidden_Columns()
+    {
+        await Dump("""
+                   SELECT t.name AS TableName, i.type_desc AS IndexType,
+                          COUNT(DISTINCT s.column_id) AS SegmentColumns,
+                          (SELECT COUNT(*) FROM sys.columns c WHERE c.object_id = t.object_id) AS TableColumns,
+                          MIN(s.column_id) AS MinColumnId, MAX(s.column_id) AS MaxColumnId
+                   FROM sys.column_store_segments s
+                   JOIN sys.partitions p ON p.partition_id = s.hobt_id
+                   JOIN sys.tables t ON t.object_id = p.object_id
+                   JOIN sys.indexes i ON i.object_id = p.object_id AND i.index_id = p.index_id
+                   GROUP BY t.name, t.object_id, i.type_desc
+                   ORDER BY t.name
+                   """);
+
+        await Dump("""
+                   SELECT TOP 20 t.name AS TableName, s.column_id AS SegmentColumnId,
+                          c.name AS MatchedColumn, ty.name AS TypeName, s.encoding_type AS Encoding
+                   FROM sys.column_store_segments s
+                   JOIN sys.partitions p ON p.partition_id = s.hobt_id
+                   JOIN sys.tables t ON t.object_id = p.object_id
+                   LEFT JOIN sys.columns c ON c.object_id = t.object_id AND c.column_id = s.column_id
+                   LEFT JOIN sys.types ty ON ty.user_type_id = c.user_type_id
+                   WHERE s.segment_id = 0 AND t.name IN ('Sales', 'SegLocalDict')
+                   ORDER BY t.name, s.column_id
+                   """);
+    }
+
+    [RequiresConnectionStringFact("local")]
     public async Task Dump_Encodings_And_Dictionaries()
     {
         await Dump("""

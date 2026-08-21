@@ -36,13 +36,17 @@ public sealed class BitRulerRenderer : IDisposable
 
     private readonly SKPaint _text = new() { IsAntialias = true, Style = SKPaintStyle.Fill };
 
-    private readonly SKFont _bitFont = new(SKTypeface.FromFamilyName("Cascadia Mono") ?? SKTypeface.Default, 11f)
+    private static readonly SKTypeface MonoTypeface = SKTypeface.FromFamilyName("Cascadia Mono") ?? SKTypeface.Default;
+
+    private static readonly SKTypeface LabelTypeface = SKTypeface.FromFamilyName("Segoe UI Variable Text") ?? SKTypeface.Default;
+
+    private readonly SKFont _bitFont = new(MonoTypeface, 11f)
     {
         Edging = SKFontEdging.SubpixelAntialias,
         Subpixel = true
     };
 
-    private readonly SKFont _labelFont = new(SKTypeface.FromFamilyName("Segoe UI Variable Text") ?? SKTypeface.Default, 10f)
+    private readonly SKFont _labelFont = new(LabelTypeface, 10f)
     {
         Edging = SKFontEdging.SubpixelAntialias,
         Subpixel = true
@@ -51,7 +55,7 @@ public sealed class BitRulerRenderer : IDisposable
     /// <summary>
     /// Bit positions and decoded values are monospaced, lining them up with the hex the ruler sits beside
     /// </summary>
-    private readonly SKFont _monoFont = new(SKTypeface.FromFamilyName("Cascadia Mono") ?? SKTypeface.Default, 10f)
+    private readonly SKFont _monoFont = new(MonoTypeface, 10f)
     {
         Edging = SKFontEdging.SubpixelAntialias,
         Subpixel = true

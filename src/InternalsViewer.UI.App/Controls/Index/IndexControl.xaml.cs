@@ -248,8 +248,10 @@ public sealed partial class IndexControl : IDisposable
     private readonly SKPaint _detailTextPaint;
     private readonly SKPaint _slotPaint;
 
+    private static readonly SKTypeface DetailBoldTypeface = SKTypeface.FromFamilyName(SKTypeface.Default.FamilyName, SKFontStyle.Bold);
+
     private readonly SKFont _detailFont = new(SKTypeface.Default, 10f);
-    private readonly SKFont _detailBoldFont = new(SKTypeface.FromFamilyName(SKTypeface.Default.FamilyName, SKFontStyle.Bold), 10f);
+    private readonly SKFont _detailBoldFont = new(DetailBoldTypeface, 10f);
 
     private readonly SKColor _borderColour = SKColors.Gray;
     private readonly SKColor _highlightedBorderColour = SKColors.Green;

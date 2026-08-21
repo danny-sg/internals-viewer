@@ -358,5 +358,10 @@ public sealed partial class DatabaseTabViewModel(ILogger<DatabaseTabViewModel> l
         }, CancellationToken);
     }
 
-    public ValueTask DisposeAsync() => Database.Connection.DisposeAsync();
+    public ValueTask DisposeAsync()
+    {
+        base.Dispose();
+
+        return Database.Connection.DisposeAsync();
+    }
 }
