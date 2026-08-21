@@ -22,6 +22,8 @@ public sealed partial class DecodeTabView : UserControl, IDisposable
     /// </remarks>
     private GridLength _huffmanWidth = new(2, GridUnitType.Star);
 
+    private const double ValuesMinWidth = 240;
+
     public DecodeTabView()
     {
         InitializeComponent();
@@ -51,29 +53,39 @@ public sealed partial class DecodeTabView : UserControl, IDisposable
             _tracked.PropertyChanged += OnViewModelPropertyChanged;
         }
 
-        ApplyHuffmanColumn();
+        ApplyPanes();
     }
 
     /// <summary>
-    /// Takes the coding side away when there is no coding to show, keeping the width it had for when there is
+    /// Sizes the two halves to what is wanted and what there is, keeping a dragged width for when it is wanted again
     /// </summary>
-    private void ApplyHuffmanColumn()
+    private void ApplyPanes()
     {
-        var hasHuffman = _tracked?.HasHuffmanPage ?? false;
+        var showDetails = (_tracked?.HasHuffmanPage ?? false) && (_tracked?.IsDecodeDetailsVisible ?? true);
 
-        if (hasHuffman)
+        var showValues = _tracked?.IsDecodeValuesVisible ?? true;
+
+        if (showDetails)
         {
-            HuffmanColumn.Width = _huffmanWidth;
+            HuffmanColumn.Width = showValues ? _huffmanWidth : new GridLength(1, GridUnitType.Star);
+        }
+        else
+        {
+            if (showValues && HuffmanColumn.Width.IsStar && HuffmanColumn.Width.Value > 0)
+            {
+                _huffmanWidth = HuffmanColumn.Width;
+            }
 
-            return;
+            HuffmanColumn.Width = new GridLength(0);
         }
 
-        if (HuffmanColumn.Width.Value > 0)
-        {
-            _huffmanWidth = HuffmanColumn.Width;
-        }
+        ValuesColumn.Width = showValues ? new GridLength(1, GridUnitType.Star) : new GridLength(0);
 
-        HuffmanColumn.Width = new GridLength(0);
+        ValuesColumn.MinWidth = showValues ? ValuesMinWidth : 0;
+
+        PageEntries.Visibility = showValues ? Visibility.Visible : Visibility.Collapsed;
+
+        Splitter.Visibility = showValues && showDetails ? Visibility.Visible : Visibility.Collapsed;
     }
 
     /// <summary>
@@ -81,9 +93,11 @@ public sealed partial class DecodeTabView : UserControl, IDisposable
     /// </summary>
     private void OnViewModelPropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
-        if (e.PropertyName == nameof(DictionaryTabViewModel.HasHuffmanPage))
+        if (e.PropertyName is nameof(DictionaryTabViewModel.HasHuffmanPage)
+                              or nameof(DictionaryTabViewModel.IsDecodeValuesVisible)
+                              or nameof(DictionaryTabViewModel.IsDecodeDetailsVisible))
         {
-            ApplyHuffmanColumn();
+            ApplyPanes();
 
             return;
         }

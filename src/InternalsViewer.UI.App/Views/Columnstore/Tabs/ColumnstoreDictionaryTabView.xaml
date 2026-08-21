@@ -283,6 +283,24 @@
                                      SelectedIndex="{x:Bind ViewModel.SelectedPageTabIndex, Mode=TwoWay}">
                                 <TabViewItem Header="Page" IsClosable="False"/>
                                 <TabViewItem Header="Decode" IsClosable="False"/>
+
+                                <TabView.TabStripFooter>
+                                    <StackPanel Orientation="Horizontal"
+                                                HorizontalAlignment="Right"
+                                                VerticalAlignment="Center"
+                                                Margin="0,0,8,0"
+                                                Spacing="4"
+                                                Visibility="{x:Bind GetTabContentVisibility(ViewModel.SelectedPageTabIndex, 1), Mode=OneWay}">
+                                        <ToggleButton Style="{StaticResource TabCommandToggleStyle}"
+                                                      IsChecked="{x:Bind ViewModel.IsDecodeValuesVisible, Mode=TwoWay}">
+                                            <TextBlock Text="Values" VerticalAlignment="Center"/>
+                                        </ToggleButton>
+                                        <ToggleButton Style="{StaticResource TabCommandToggleStyle}"
+                                                      IsChecked="{x:Bind ViewModel.IsDecodeDetailsVisible, Mode=TwoWay}">
+                                            <TextBlock Text="Details" VerticalAlignment="Center"/>
+                                        </ToggleButton>
+                                    </StackPanel>
+                                </TabView.TabStripFooter>
                             </TabView>
 
                             <Grid Grid.Row="1">

@@ -175,6 +175,34 @@ public sealed partial class DictionaryTabViewModel(ColumnstoreService columnstor
     /// </summary>
     public bool HasHuffmanPage => SelectedPage?.Huffman is not null;
 
+    /// <summary>
+    /// Which halves of the decode the reader wants, the entries read out and the coding that produced them
+    /// </summary>
+    /// <remarks>
+    /// Turning the last one off would leave the tab blank, so the other comes back on rather than being refused.
+    /// </remarks>
+    [ObservableProperty]
+    private bool _isDecodeValuesVisible = true;
+
+    [ObservableProperty]
+    private bool _isDecodeDetailsVisible = true;
+
+    partial void OnIsDecodeValuesVisibleChanged(bool value)
+    {
+        if (!value && !IsDecodeDetailsVisible)
+        {
+            IsDecodeDetailsVisible = true;
+        }
+    }
+
+    partial void OnIsDecodeDetailsVisibleChanged(bool value)
+    {
+        if (!value && !IsDecodeValuesVisible)
+        {
+            IsDecodeValuesVisible = true;
+        }
+    }
+
     public HuffmanTreeNode? Tree => SelectedPage?.Tree;
 
     /// <summary>

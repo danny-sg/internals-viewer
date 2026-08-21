@@ -65,7 +65,8 @@
   
         </Grid>
 
-        <ListView Grid.Row="1"
+        <ListView x:Name="LogEntriesList"
+                  Grid.Row="1"
                   ItemsSource="{x:Bind ViewModel.LogEntries, Mode=OneWay}"
                   SelectionMode="None">
             <ListView.ItemContainerStyle>

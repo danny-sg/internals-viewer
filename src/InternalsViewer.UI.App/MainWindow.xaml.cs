@@ -280,14 +280,12 @@ public sealed partial class MainWindow
             var tab = new TabViewItem
             {
                 Name = title,
-                Content = content,
                 IconSource = new ImageIconSource { ImageSource = svg },
             };
 
             BindTabTitle(viewModel, tab);
 
-            WindowTabView.TabItems.Add(tab);
-            WindowTabView.SelectedItem = tab;
+            AddWindowTab(tab, content);
         }
         catch (Exception ex)
         {
@@ -317,14 +315,12 @@ public sealed partial class MainWindow
         var tab = new TabViewItem
         {
             Name = title,
-            Content = content,
             IconSource = new ImageIconSource { ImageSource = svg },
         };
 
         BindTabTitle(viewModel, tab);
 
-        WindowTabView.TabItems.Add(tab);
-        WindowTabView.SelectedItem = tab;
+        AddWindowTab(tab, content);
 
         return true;
     }
@@ -342,14 +338,12 @@ public sealed partial class MainWindow
             var tab = new TabViewItem
             {
                 Name = "Columnstore",
-                Content = content,
                 IconSource = new ImageIconSource { ImageSource = svg }
             };
 
             BindTabTitle(viewModel, tab);
 
-            WindowTabView.TabItems.Add(tab);
-            WindowTabView.SelectedItem = tab;
+            AddWindowTab(tab, content);
 
             return true;
         }
@@ -380,15 +374,13 @@ public sealed partial class MainWindow
             var tab = new TabViewItem
             {
                 Name = title,
-                Content = content,
                 IconSource = new ImageIconSource { ImageSource = svg },
             };
 
 
             BindTabTitle(viewModel, tab);
 
-            WindowTabView.TabItems.Add(tab);
-            WindowTabView.SelectedItem = tab;
+            AddWindowTab(tab, content);
         }
         catch (Exception ex)
         {
@@ -407,6 +399,28 @@ public sealed partial class MainWindow
         tab.Style = RootGrid.Resources["MainWindowTabStyle"] as Style;
 
         tab.SetBinding(TabViewItem.HeaderProperty, titleBinding);
+    }
+
+    private void AddWindowTab(TabViewItem tab, FrameworkElement content)
+    {
+        tab.Tag = content;
+
+        content.Visibility = Visibility.Collapsed;
+
+        TabContentHost.Children.Add(content);
+
+        WindowTabView.TabItems.Add(tab);
+        WindowTabView.SelectedItem = tab;
+    }
+
+    private void TabView_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        var selected = (WindowTabView.SelectedItem as TabViewItem)?.Tag;
+
+        foreach (var child in TabContentHost.Children)
+        {
+            child.Visibility = ReferenceEquals(child, selected) ? Visibility.Visible : Visibility.Collapsed;
+        }
     }
 
     private async Task<bool> AddConnection(IConnectionType connection)
@@ -449,14 +463,12 @@ public sealed partial class MainWindow
                 var tab = new TabViewItem
                 {
                     Name = connection.Name,
-                    IconSource = new ImageIconSource { ImageSource = svg },
-                    Content = content
+                    IconSource = new ImageIconSource { ImageSource = svg }
                 };
 
                 BindTabTitle(viewModel, tab);
 
-                WindowTabView.TabItems.Add(tab);
-                WindowTabView.SelectedItem = tab;
+                AddWindowTab(tab, content);
             });
 
             return null;
@@ -475,9 +487,14 @@ public sealed partial class MainWindow
             // Dispose here rather than on Unloaded: TabView fires Unloaded on every tab switch
             // (the non-selected tab's content leaves the visual tree), which would tear down the
             // tab's content while it is still open. Disposing on actual close avoids that.
-            if (args.Tab.Content is IDisposable disposable)
+            if (args.Tab.Tag is FrameworkElement content)
             {
-                disposable.Dispose();
+                TabContentHost.Children.Remove(content);
+
+                if (content is IDisposable disposable)
+                {
+                    disposable.Dispose();
+                }
             }
 
             sender.TabItems.Remove(args.Tab);
@@ -490,12 +507,12 @@ public sealed partial class MainWindow
 
         if (tabView != null)
         {
-            ConnectTab = AddConnectTab(tabView);
+            ConnectTab = AddConnectTab();
             ConnectTab.IsClosable = false;
         }
     }
 
-    private TabViewItem AddConnectTab(TabView tabView)
+    private TabViewItem AddConnectTab()
     {
         var content = new ConnectView(ConnectServerViewModelFactory);
 
@@ -507,14 +524,13 @@ public sealed partial class MainWindow
 
         var connectTab = new TabViewItem
         {
-            Content = content,
             IconSource = icon,
             IsClosable = false
         };
 
         BindTabTitle(ViewModel, connectTab);
 
-        tabView.TabItems.Add(connectTab);
+        AddWindowTab(connectTab, content);
 
         return connectTab;
     }
@@ -535,12 +551,10 @@ public sealed partial class MainWindow
         {
             Header = "Log",
             IconSource = new ImageIconSource { ImageSource = svg },
-            Content = content,
             IsClosable = true
         };
 
-        WindowTabView.TabItems.Add(LogTab);
-        WindowTabView.SelectedItem = LogTab;
+        AddWindowTab(LogTab, content);
 
         return Task.FromResult(true);
     }

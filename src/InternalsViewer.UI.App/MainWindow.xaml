@@ -24,22 +24,28 @@
             </Style>
         </Grid.Resources>
 
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+
         <TabView x:Name="WindowTabView"
-                 HorizontalAlignment="Stretch" 
-                 VerticalAlignment="Stretch" 
-                 Background="Transparent" 
+                 Grid.Row="0"
+                 HorizontalAlignment="Stretch"
+                 Background="Transparent"
                  IsAddTabButtonVisible="False"
                  Margin="0,4,0,0"
                  TabWidthMode="SizeToContent"
                  TabCloseRequested="TabView_OnTabCloseRequested"
+                 SelectionChanged="TabView_SelectionChanged"
                  Loaded="TabView_Loaded">
             <TabView.Resources>
-                <SolidColorBrush x:Key="TabViewItemHeaderBackgroundSelected" 
+                <SolidColorBrush x:Key="TabViewItemHeaderBackgroundSelected"
                                  Color="{ThemeResource LayerFillColorDefault}"/>
             </TabView.Resources>
 
             <TabView.TabStripHeader>
-                <Grid x:Name="ShellTitlebarInset"  
+                <Grid x:Name="ShellTitlebarInset"
                       MinHeight="32"
                       Height="32">
                     <Grid.ColumnDefinitions>
@@ -51,10 +57,14 @@
             </TabView.TabStripHeader>
 
             <TabView.TabStripFooter>
-                <Grid x:Name="CustomDragRegion" 
-                      Background="Transparent" 
+                <Grid x:Name="CustomDragRegion"
+                      Background="Transparent"
                       MinWidth="200" />
             </TabView.TabStripFooter>
         </TabView>
+
+        <Grid x:Name="TabContentHost"
+              Grid.Row="1"
+              Background="{ThemeResource LayerFillColorDefaultBrush}"/>
     </Grid>
 </winUiEx:WindowEx>
