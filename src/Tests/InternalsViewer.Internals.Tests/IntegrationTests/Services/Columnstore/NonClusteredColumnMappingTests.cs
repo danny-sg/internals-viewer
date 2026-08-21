@@ -25,22 +25,12 @@ public sealed class NonClusteredColumnMappingTests(ITestOutputHelper testOutput)
         var service = new ColumnstoreService(reader, new LobDataService(pageService));
 
         foreach (var allocationUnit in database.AllocationUnits.Values
-                                               .Where(a => a.TableName.StartsWith("SegLocKey"))
+                                               .Where(a => a.TableName.StartsWith("SegNci"))
                                                .GroupBy(a => (a.TableName, a.IndexName))
                                                .Select(g => g.First()))
         {
             TestOutput.WriteLine($"=== {allocationUnit.TableName} / {allocationUnit.IndexName} "
                                  + $"({allocationUnit.IndexType}) parent {allocationUnit.ParentIndexType} ===");
-
-            var indexStructure = InternalsViewer.Internals.Providers.Metadata.IndexStructureProvider
-                                             .GetIndexStructure(database, allocationUnit.AllocationUnitId);
-
-            foreach (var c in indexStructure.Columns)
-            {
-                TestOutput.WriteLine($"  [index] indexColumnId {c.IndexColumnId} columnId {c.ColumnId} "
-                                     + $"'{c.ColumnName}' key {c.IsIndexKey} include {c.IsIncludeColumn} "
-                                     + $"uniqueifier {c.IsUniqueifier} rowId {c.IsRowIdentifier}");
-            }
 
             try
             {

@@ -41,6 +41,9 @@ public sealed partial class ColumnstoreDictionaryTabView : UserControl, IDocumen
 
     public DictionaryTabViewModel ViewModel => (DictionaryTabViewModel)DataContext;
 
+    public Visibility GetTabContentVisibility(int selectedIndex, int index)
+        => selectedIndex == index ? Visibility.Visible : Visibility.Collapsed;
+
     /// <summary>
     /// The hex view is either at its set width or hidden, a splitter being of no use to a fixed width column
     /// </summary>

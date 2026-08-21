@@ -158,9 +158,17 @@ public sealed partial class DictionaryTabViewModel(ColumnstoreService columnstor
     public ObservableCollection<DictionaryPageSummary> Pages { get; } = [];
 
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(Tree))]
     [NotifyPropertyChangedFor(nameof(HasHuffmanPage))]
     private DictionaryPageSummary? _selectedPage;
+
+    [ObservableProperty]
+    private int _selectedTabIndex;
+
+    [ObservableProperty]
+    private int _selectedPageTabIndex;
+
+    [ObservableProperty]
+    private bool _isPageLoading;
 
     /// <summary>
     /// Whether the selected page carries a coding, an uncompressed page having no table or tree to show
@@ -294,15 +302,78 @@ public sealed partial class DictionaryTabViewModel(ColumnstoreService columnstor
 
         ClearDecodeCache();
 
-        OnPropertyChanged(nameof(Codes));
-
         SelectedEntry = null;
 
-        PageEntries = BuildPageEntries(value);
+        _ = ApplySelectedPageAsync(value);
 
         if (value is not null && !_isLoading)
         {
             Hex.GoToOffset(value.Offset);
+        }
+    }
+
+    private async Task ApplySelectedPageAsync(DictionaryPageSummary? page)
+    {
+        using var spinnerDelay = new CancellationTokenSource();
+
+        _ = ShowPageSpinnerAfterDelay(spinnerDelay.Token);
+
+        try
+        {
+            var detail = await Task.Run(() => LoadPageDetail(page));
+
+            if (!ReferenceEquals(SelectedPage, page))
+            {
+                return;
+            }
+
+            PageEntries = detail.Entries;
+
+            _codes = detail.Codes;
+
+            OnPropertyChanged(nameof(Codes));
+
+            OnPropertyChanged(nameof(Tree));
+        }
+        catch (Exception exception)
+        {
+            SummaryText = $"Page load failed: {exception.Message}";
+        }
+        finally
+        {
+            await spinnerDelay.CancelAsync();
+
+            IsPageLoading = false;
+        }
+    }
+
+    private (DictionaryEntryList? Entries, IReadOnlyList<HuffmanCodeDetail> Codes) LoadPageDetail(DictionaryPageSummary? page)
+    {
+        if (page is null)
+        {
+            return (null, []);
+        }
+
+        var codes = page.Codes.Select(c => new HuffmanCodeDetail { Code = c }).ToList();
+
+        _ = page.Tree;
+
+        return (BuildPageEntries(page), codes);
+    }
+
+    private async Task ShowPageSpinnerAfterDelay(CancellationToken token)
+    {
+        try
+        {
+            await Task.Delay(SpinnerDelayMs, token);
+
+            if (!token.IsCancellationRequested)
+            {
+                IsPageLoading = true;
+            }
+        }
+        catch (TaskCanceledException)
+        {
         }
     }
 

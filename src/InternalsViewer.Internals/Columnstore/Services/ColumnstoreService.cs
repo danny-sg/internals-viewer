@@ -89,13 +89,22 @@ public sealed class ColumnstoreService(IRecordReader recordReader, ILobDataServi
             return [];
         }
 
-        var held = indexStructure.Columns.Select(c => (int)c.ColumnId).ToHashSet();
+        // Matched on name, the column ids of one index structure not meaning the same thing in another
+        var held = indexStructure.Columns
+                                 .Where(c => c.IsIncludeColumn)
+                                 .Select(c => c.ColumnName)
+                                 .ToHashSet();
 
-        return IndexStructureProvider.GetIndexStructure(database, clustered.AllocationUnitId)
-                                     .Columns
-                                     .Where(c => (c.IsIndexKey && !held.Contains(c.ColumnId)) || c.IsUniqueifier)
-                                     .Select(c => c.ColumnName)
-                                     .ToList();
+        var key = IndexStructureProvider.GetIndexStructure(database, clustered.AllocationUnitId).Columns;
+
+        var names = key.Where(c => c.IsIndexKey && !held.Contains(c.ColumnName))
+                       .Select(c => c.ColumnName)
+                       .ToList();
+
+        // The uniqueifier a non unique clustered index adds comes after its key, whatever order it is listed in
+        names.AddRange(key.Where(c => c.IsUniqueifier).Select(c => c.ColumnName));
+
+        return names;
     }
 
     public async Task<byte[]> GetData(DatabaseSource database,

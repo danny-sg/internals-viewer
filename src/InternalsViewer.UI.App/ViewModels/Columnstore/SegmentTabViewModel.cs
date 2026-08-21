@@ -374,6 +374,12 @@ public sealed partial class SegmentTabViewModel(ColumnstoreService columnstoreSe
         BitpackUnit = GetBitpackUnit(Hex.SelectedMarker);
     }
 
+    [ObservableProperty]
+    private int _selectedRegionTabIndex;
+
+    [ObservableProperty]
+    private int _selectedValueStoreTabIndex;
+
     /// <summary>
     /// Region the window sits on, set by picking a tab and reported back when a scroll leaves the region
     /// </summary>

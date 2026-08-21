@@ -329,11 +329,11 @@ public sealed class ColumnstoreStructureRenderer : IDisposable
             {
                 _text.Color = MutedColour;
 
-                canvas.DrawText(Fit(column.LocatorDescription, available, _monoFont),
+                canvas.DrawText(Fit(column.LocatorDescription, available, _labelFont),
                                 x,
                                 y,
                                 SKTextAlign.Left,
-                                _monoFont,
+                                _labelFont,
                                 _text);
             }
 

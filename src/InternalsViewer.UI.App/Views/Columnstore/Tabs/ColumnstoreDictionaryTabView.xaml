@@ -131,23 +131,34 @@
                                  Markers="{x:Bind ViewModel.Hex.Markers, Mode=OneWay}"
                                  SelectedMarker="{x:Bind ViewModel.Hex.SelectedMarker, Mode=TwoWay}"/>
 
-            <TabView Grid.Row="1"
-                     Grid.Column="1"
-                     IsAddTabButtonVisible="False"
-                     TabWidthMode="SizeToContent"
-                     VerticalAlignment="Stretch">
-                <TabViewItem Header="Header" IsClosable="False">
-                    <page:MarkerTreeView Opacity="{x:Bind ViewModel.Hex.MarkerOpacity, Mode=OneWay}"
+            <Grid Grid.Row="1"
+                  Grid.Column="1">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
+                </Grid.RowDefinitions>
+
+                <TabView Grid.Row="0"
+                         IsAddTabButtonVisible="False"
+                         TabWidthMode="SizeToContent"
+                         SelectedIndex="{x:Bind ViewModel.SelectedTabIndex, Mode=TwoWay}">
+                    <TabViewItem Header="Header" IsClosable="False"/>
+                    <TabViewItem Header="Values" IsClosable="False"
+                                 Visibility="{x:Bind ViewModel.HasValues, Mode=OneWay,
+                                         Converter={StaticResource BoolToVisibilityConverter}}"/>
+                    <TabViewItem Header="Pages" IsClosable="False"
+                                 Visibility="{x:Bind ViewModel.HasPages, Mode=OneWay,
+                                         Converter={StaticResource BoolToVisibilityConverter}}"/>
+                    <TabViewItem Header="Dictionary Entries" IsClosable="False"/>
+                </TabView>
+
+                <Grid Grid.Row="1">
+                    <page:MarkerTreeView Visibility="{x:Bind GetTabContentVisibility(ViewModel.SelectedTabIndex, 0), Mode=OneWay}"
+                                         Opacity="{x:Bind ViewModel.Hex.MarkerOpacity, Mode=OneWay}"
                                          Markers="{x:Bind ViewModel.HeaderMarkers, Mode=OneWay}"
                                          SelectedMarker="{x:Bind ViewModel.Hex.SelectedMarker, Mode=TwoWay}"/>
-                </TabViewItem>
 
-
-
-                <TabViewItem Header="Values" IsClosable="False"
-                             Visibility="{x:Bind ViewModel.HasValues, Mode=OneWay,
-                                     Converter={StaticResource BoolToVisibilityConverter}}">
-                    <Grid>
+                    <Grid Visibility="{x:Bind GetTabContentVisibility(ViewModel.SelectedTabIndex, 1), Mode=OneWay}">
                         <Grid.RowDefinitions>
                             <RowDefinition Height="*"/>
                             <RowDefinition Height="Auto"/>
@@ -201,12 +212,8 @@
                                              Markers="{x:Bind ViewModel.PageMarkers, Mode=OneWay}"
                                              SelectedMarker="{x:Bind ViewModel.Hex.SelectedMarker, Mode=TwoWay}"/>
                     </Grid>
-                </TabViewItem>
 
-                <TabViewItem Header="Pages" IsClosable="False"
-                             Visibility="{x:Bind ViewModel.HasPages, Mode=OneWay,
-                                                 Converter={StaticResource BoolToVisibilityConverter}}">
-                    <Grid>
+                    <Grid Visibility="{x:Bind GetTabContentVisibility(ViewModel.SelectedTabIndex, 2), Mode=OneWay}">
                         <Grid.RowDefinitions>
                             <RowDefinition Height="*" MinHeight="80"/>
                             <RowDefinition Height="Auto"/>
@@ -264,26 +271,41 @@
                                               ResizeBehavior="BasedOnAlignment"/>
 
                         <!--The detail belongs to the selected page, so it sits under the list rather than beside it-->
-                        <TabView Grid.Row="2"
-                                 IsAddTabButtonVisible="False"
-                                 TabWidthMode="SizeToContent"
-                                 VerticalAlignment="Stretch">
-                            <TabViewItem Header="Page" IsClosable="False">
-                                <page:MarkerTreeView Opacity="{x:Bind ViewModel.Hex.MarkerOpacity, Mode=OneWay}"
+                        <Grid Grid.Row="2">
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="*"/>
+                            </Grid.RowDefinitions>
+
+                            <TabView Grid.Row="0"
+                                     IsAddTabButtonVisible="False"
+                                     TabWidthMode="SizeToContent"
+                                     SelectedIndex="{x:Bind ViewModel.SelectedPageTabIndex, Mode=TwoWay}">
+                                <TabViewItem Header="Page" IsClosable="False"/>
+                                <TabViewItem Header="Decode" IsClosable="False"/>
+                            </TabView>
+
+                            <Grid Grid.Row="1">
+                                <page:MarkerTreeView Visibility="{x:Bind GetTabContentVisibility(ViewModel.SelectedPageTabIndex, 0), Mode=OneWay}"
+                                                     Opacity="{x:Bind ViewModel.Hex.MarkerOpacity, Mode=OneWay}"
                                                      Markers="{x:Bind ViewModel.PageMarkers, Mode=OneWay}"
                                                      SelectedMarker="{x:Bind ViewModel.Hex.SelectedMarker, Mode=TwoWay}"/>
-                            </TabViewItem>
 
-                            <TabViewItem Header="Decode" IsClosable="False">
-                                <dictionary:DecodeTabView x:Name="DecodeTab"/>
-                            </TabViewItem>
+                                <dictionary:DecodeTabView x:Name="DecodeTab"
+                                                          Visibility="{x:Bind GetTabContentVisibility(ViewModel.SelectedPageTabIndex, 1), Mode=OneWay}"/>
 
-                        </TabView>
+                                <ProgressRing Canvas.ZIndex="10"
+                                              HorizontalAlignment="Center"
+                                              VerticalAlignment="Center"
+                                              IsActive="{x:Bind ViewModel.IsPageLoading, Mode=OneWay}"
+                                              Visibility="{x:Bind ViewModel.IsPageLoading, Mode=OneWay,
+                                                      Converter={StaticResource BoolToVisibilityConverter}}"/>
+                            </Grid>
+                        </Grid>
                     </Grid>
-                </TabViewItem>
 
-                <TabViewItem Header="Dictionary Entries" IsClosable="False">
-                    <tableView:TableView AutoGenerateColumns="False"
+                    <tableView:TableView Visibility="{x:Bind GetTabContentVisibility(ViewModel.SelectedTabIndex, 3), Mode=OneWay}"
+                                         AutoGenerateColumns="False"
                                          CanSortColumns="False"
                                          CanFilterColumns="False"
                                          CornerButtonMode="None"
@@ -324,8 +346,8 @@
                                                            Binding="{Binding Value}"/>
                         </tableView:TableView.Columns>
                     </tableView:TableView>
-                </TabViewItem>
-            </TabView>
+                </Grid>
+            </Grid>
         </Grid>
     </Grid>
 </UserControl>

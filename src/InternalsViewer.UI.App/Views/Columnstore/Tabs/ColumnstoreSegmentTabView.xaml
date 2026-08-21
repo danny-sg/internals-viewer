@@ -141,46 +141,60 @@
                              Markers="{x:Bind ViewModel.Hex.Markers, Mode=OneWay}"
                              SelectedMarker="{x:Bind ViewModel.Hex.SelectedMarker, Mode=TwoWay}"/>
 
-            <TabView Grid.Column="1"
-                 x:Name="RegionTabView"
-                 IsAddTabButtonVisible="False"
-                 TabWidthMode="SizeToContent"
-                 VerticalAlignment="Stretch"
-                 SelectionChanged="TabView_OnSelectionChanged">
-                <TabViewItem Header="Header" IsClosable="False" Tag="Header">
-                    <columnstore:SegmentRegionPanel MarkerOpacity="{x:Bind ViewModel.Hex.MarkerOpacity, Mode=OneWay}"
+            <Grid Grid.Column="1">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
+                </Grid.RowDefinitions>
+
+                <TabView Grid.Row="0"
+                     x:Name="RegionTabView"
+                     IsAddTabButtonVisible="False"
+                     TabWidthMode="SizeToContent"
+                     SelectedIndex="{x:Bind ViewModel.SelectedRegionTabIndex, Mode=TwoWay}"
+                     SelectionChanged="TabView_OnSelectionChanged">
+                    <TabViewItem Header="Header" IsClosable="False" Tag="Header"/>
+                    <TabViewItem Header="Bookmarks" IsClosable="False" Tag="Bookmarks"
+                             Visibility="{x:Bind ViewModel.HasBookmarks, Mode=OneWay,
+                                     Converter={StaticResource BoolToVisibilityConverter}}"/>
+                    <TabViewItem Header="RLE Array" IsClosable="False" Tag="RleArray"
+                             Visibility="{x:Bind ViewModel.HasRleArray, Mode=OneWay,
+                                     Converter={StaticResource BoolToVisibilityConverter}}"/>
+                    <TabViewItem Header="Bit Pack" IsClosable="False" Tag="BitpackArray"
+                             Visibility="{x:Bind ViewModel.HasBitpackArray, Mode=OneWay,
+                                     Converter={StaticResource BoolToVisibilityConverter}}"/>
+                    <TabViewItem Header="Value Store" IsClosable="False" Tag="ValueStore"
+                             Visibility="{x:Bind ViewModel.HasValueStore, Mode=OneWay,
+                                     Converter={StaticResource BoolToVisibilityConverter}}"/>
+                    <TabViewItem Header="Data" IsClosable="False" Tag="Data"/>
+                </TabView>
+
+                <Grid Grid.Row="1">
+                    <columnstore:SegmentRegionPanel Visibility="{x:Bind GetTabContentVisibility(ViewModel.SelectedRegionTabIndex, 0), Mode=OneWay}"
+                                                MarkerOpacity="{x:Bind ViewModel.Hex.MarkerOpacity, Mode=OneWay}"
                                                 Markers="{x:Bind ViewModel.Hex.Markers, Mode=OneWay}"
                                                 SelectedMarker="{x:Bind ViewModel.Hex.SelectedMarker, Mode=TwoWay}"/>
-                </TabViewItem>
-                <TabViewItem Header="Bookmarks" IsClosable="False" Tag="Bookmarks"
-                         Visibility="{x:Bind ViewModel.HasBookmarks, Mode=OneWay,
-                                 Converter={StaticResource BoolToVisibilityConverter}}">
-                    <columnstore:SegmentRegionPanel MarkerOpacity="{x:Bind ViewModel.Hex.MarkerOpacity, Mode=OneWay}"
+
+                    <columnstore:SegmentRegionPanel Visibility="{x:Bind GetTabContentVisibility(ViewModel.SelectedRegionTabIndex, 1), Mode=OneWay}"
+                                                MarkerOpacity="{x:Bind ViewModel.Hex.MarkerOpacity, Mode=OneWay}"
                                                 Markers="{x:Bind ViewModel.Hex.Markers, Mode=OneWay}"
                                                 SelectedMarker="{x:Bind ViewModel.Hex.SelectedMarker, Mode=TwoWay}"/>
-                </TabViewItem>
-                <TabViewItem Header="RLE Array" IsClosable="False" Tag="RleArray"
-                         Visibility="{x:Bind ViewModel.HasRleArray, Mode=OneWay,
-                                 Converter={StaticResource BoolToVisibilityConverter}}">
-                    <columnstore:SegmentRegionPanel MarkerOpacity="{x:Bind ViewModel.Hex.MarkerOpacity, Mode=OneWay}"
+
+                    <columnstore:SegmentRegionPanel Visibility="{x:Bind GetTabContentVisibility(ViewModel.SelectedRegionTabIndex, 2), Mode=OneWay}"
+                                                MarkerOpacity="{x:Bind ViewModel.Hex.MarkerOpacity, Mode=OneWay}"
                                                 Markers="{x:Bind ViewModel.Hex.Markers, Mode=OneWay}"
                                                 SelectedMarker="{x:Bind ViewModel.Hex.SelectedMarker, Mode=TwoWay}"/>
-                </TabViewItem>
-                <TabViewItem Header="Bit Pack" IsClosable="False" Tag="BitpackArray"
-                         Visibility="{x:Bind ViewModel.HasBitpackArray, Mode=OneWay,
-                                 Converter={StaticResource BoolToVisibilityConverter}}">
-                    <columnstore:SegmentRegionPanel MarkerOpacity="{x:Bind ViewModel.Hex.MarkerOpacity, Mode=OneWay}"
+
+                    <columnstore:SegmentRegionPanel Visibility="{x:Bind GetTabContentVisibility(ViewModel.SelectedRegionTabIndex, 3), Mode=OneWay}"
+                                                MarkerOpacity="{x:Bind ViewModel.Hex.MarkerOpacity, Mode=OneWay}"
                                                 Markers="{x:Bind ViewModel.Hex.Markers, Mode=OneWay}"
                                                 SelectedMarker="{x:Bind ViewModel.Hex.SelectedMarker, Mode=TwoWay}">
                         <columnstore:SegmentRegionPanel.Detail>
                             <columnstore:BitPackDetailControl x:Name="BitPackDetail" Unit="{x:Bind ViewModel.BitpackUnit, Mode=OneWay}"/>
                         </columnstore:SegmentRegionPanel.Detail>
                     </columnstore:SegmentRegionPanel>
-                </TabViewItem>
-                <TabViewItem Header="Value Store" IsClosable="False" Tag="ValueStore"
-                         Visibility="{x:Bind ViewModel.HasValueStore, Mode=OneWay,
-                                 Converter={StaticResource BoolToVisibilityConverter}}">
-                    <Grid>
+
+                    <Grid Visibility="{x:Bind GetTabContentVisibility(ViewModel.SelectedRegionTabIndex, 4), Mode=OneWay}">
                         <Grid.RowDefinitions>
                             <RowDefinition Height="1*" MinHeight="60"/>
                             <RowDefinition Height="Auto"/>
@@ -241,32 +255,40 @@
                                           ResizeBehavior="BasedOnAlignment"/>
 
                         <!--The detail belongs to the page picked above, so it sits under the list rather than beside it-->
-                        <TabView Grid.Row="2"
-                             IsAddTabButtonVisible="False"
-                             TabWidthMode="SizeToContent"
-                             VerticalAlignment="Stretch"
-                             SelectionChanged="ValueStoreTabs_OnSelectionChanged">
-                            <TabViewItem Header="Value Store Header" IsClosable="False" Tag="StoreHeader">
-                                <page:MarkerTreeView Opacity="{x:Bind ViewModel.Hex.MarkerOpacity, Mode=OneWay}"
+                        <Grid Grid.Row="2">
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="*"/>
+                            </Grid.RowDefinitions>
+
+                            <TabView Grid.Row="0"
+                                 IsAddTabButtonVisible="False"
+                                 TabWidthMode="SizeToContent"
+                                 SelectedIndex="{x:Bind ViewModel.SelectedValueStoreTabIndex, Mode=TwoWay}"
+                                 SelectionChanged="ValueStoreTabs_OnSelectionChanged">
+                                <TabViewItem Header="Value Store Header" IsClosable="False" Tag="StoreHeader"/>
+                                <TabViewItem Header="Page" IsClosable="False"/>
+                                <TabViewItem Header="Decode" IsClosable="False" Tag="Decode"/>
+                            </TabView>
+
+                            <Grid Grid.Row="1">
+                                <page:MarkerTreeView Visibility="{x:Bind GetTabContentVisibility(ViewModel.SelectedValueStoreTabIndex, 0), Mode=OneWay}"
+                                                 Opacity="{x:Bind ViewModel.Hex.MarkerOpacity, Mode=OneWay}"
                                                  Markers="{x:Bind ViewModel.ValueStoreHeaderMarkers, Mode=OneWay}"
                                                  SelectedMarker="{x:Bind ViewModel.Hex.SelectedMarker, Mode=TwoWay}"/>
-                            </TabViewItem>
 
-                            <TabViewItem Header="Page" IsClosable="False">
-                                <page:MarkerTreeView Opacity="{x:Bind ViewModel.Hex.MarkerOpacity, Mode=OneWay}"
+                                <page:MarkerTreeView Visibility="{x:Bind GetTabContentVisibility(ViewModel.SelectedValueStoreTabIndex, 1), Mode=OneWay}"
+                                                 Opacity="{x:Bind ViewModel.Hex.MarkerOpacity, Mode=OneWay}"
                                                  Markers="{x:Bind ViewModel.ValuePageMarkers, Mode=OneWay}"
                                                  SelectedMarker="{x:Bind ViewModel.Hex.SelectedMarker, Mode=TwoWay}"/>
-                            </TabViewItem>
 
-                            <TabViewItem Header="Decode" IsClosable="False" Tag="Decode">
-                                <segment:DecodeTabView x:Name="DecodeTab"/>
-                            </TabViewItem>
-                        </TabView>
+                                <segment:DecodeTabView x:Name="DecodeTab"
+                                                 Visibility="{x:Bind GetTabContentVisibility(ViewModel.SelectedValueStoreTabIndex, 2), Mode=OneWay}"/>
+                            </Grid>
+                        </Grid>
                     </Grid>
-                </TabViewItem>
 
-                <TabViewItem Header="Data" IsClosable="False" Tag="Data">
-                    <Grid>
+                    <Grid Visibility="{x:Bind GetTabContentVisibility(ViewModel.SelectedRegionTabIndex, 5), Mode=OneWay}">
                         <Grid.RowDefinitions>
                             <RowDefinition Height="*"/>
                             <RowDefinition Height="Auto"/>
@@ -327,8 +349,8 @@
                                    HorizontalAlignment="Right"
                                    Text="{x:Bind ViewModel.RowCountDescription, Mode=OneWay}"/>
                     </Grid>
-                </TabViewItem>
-            </TabView>
+                </Grid>
+            </Grid>
         </Grid>
     </Grid>
 </UserControl>
