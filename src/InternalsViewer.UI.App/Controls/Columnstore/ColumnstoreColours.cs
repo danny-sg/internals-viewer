@@ -31,7 +31,7 @@ public static class ColumnstoreColours
 
     public static readonly SKColor DarkMuted = FromHex(0x9A9892);
 
-    public static readonly SKColor Panel = FromHex(0xF4F3EF);
+    public static readonly SKColor Panel = FromHex(0xf5f2f2);
 
     public static readonly SKColor DarkPanel = FromHex(0x2A2A28);
 

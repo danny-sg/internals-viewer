@@ -15,13 +15,17 @@ namespace InternalsViewer.UI.App.Controls.Columnstore;
 /// </remarks>
 public sealed class HuffmanTreeRenderer : IDisposable
 {
-    public const float RowHeight = 18f;
+    public const float RowHeight = 29f;
 
-    private const float LevelWidth = 22f;
+    private const float LevelWidth = 30f;
 
     private const float LeafGap = 8f;
 
     private const float NodeRadius = 2.5f;
+
+    private const float BitGap = 4f;
+
+    private const float SelectedStrokeWidth = 2f;
     
     private readonly SKPaint _line = new() { IsAntialias = false, Style = SKPaintStyle.Stroke, StrokeWidth = 1 };
 
@@ -47,10 +51,14 @@ public sealed class HuffmanTreeRenderer : IDisposable
 
     public int SelectedSymbol { get; set; } = -1;
 
+    private readonly HashSet<HuffmanTreeNode> _path = [];
+
     public static float GetHeight(HuffmanTreeNode root) => (root.LeafCount * RowHeight) + (ColumnstoreLayout.Margin * 2);
 
     public void Draw(SKCanvas canvas, HuffmanTreeNode root, float scrollOffset, float height)
     {
+        BuildPath(root);
+
         var top = ColumnstoreLayout.Margin - scrollOffset;
 
         foreach (var node in root.Descend())
@@ -66,6 +74,48 @@ public sealed class HuffmanTreeRenderer : IDisposable
         }
     }
 
+    /// <summary>
+    /// Collects the nodes between the root and the selected symbol, which are drawn as the route its bits take
+    /// </summary>
+    private void BuildPath(HuffmanTreeNode root)
+    {
+        _path.Clear();
+
+        if (SelectedSymbol < 0)
+        {
+            return;
+        }
+
+        Follow(root);
+    }
+
+    private bool Follow(HuffmanTreeNode node)
+    {
+        _path.Add(node);
+
+        if (node.IsLeaf)
+        {
+            if (node.Code!.Value.Symbol == SelectedSymbol)
+            {
+                return true;
+            }
+        }
+        else
+        {
+            foreach (var child in new[] { node.Zero, node.One })
+            {
+                if (child is not null && Follow(child))
+                {
+                    return true;
+                }
+            }
+        }
+
+        _path.Remove(node);
+
+        return false;
+    }
+
     private void DrawNode(SKCanvas canvas, HuffmanTreeNode node, float top, float y)
     {
         var x = ColumnstoreLayout.Margin + (node.Depth * LevelWidth);
@@ -79,7 +129,7 @@ public sealed class HuffmanTreeRenderer : IDisposable
             return;
         }
 
-        _dot.Color = BranchColour;
+        _dot.Color = _path.Contains(node) ? SelectionColour : BranchColour;
 
         canvas.DrawCircle(x, y, NodeRadius, _dot);
     }
@@ -89,12 +139,14 @@ public sealed class HuffmanTreeRenderer : IDisposable
     /// </summary>
     private void DrawEdges(SKCanvas canvas, HuffmanTreeNode node, float top, float x, float y)
     {
-        _line.Color = BranchColour;
+        var bit = 0;
 
         foreach (var child in new[] { node.Zero, node.One })
         {
             if (child is null)
             {
+                bit++;
+
                 continue;
             }
 
@@ -102,9 +154,27 @@ public sealed class HuffmanTreeRenderer : IDisposable
 
             var childX = ColumnstoreLayout.Margin + (child.Depth * LevelWidth);
 
+            var isOnPath = _path.Contains(node) && _path.Contains(child);
+
+            _line.Color = isOnPath ? SelectionColour : BranchColour;
+            _line.StrokeWidth = isOnPath ? SelectedStrokeWidth : 1;
+
             canvas.DrawLine(x, y, x, childY, _line);
             canvas.DrawLine(x, childY, childX, childY, _line);
+
+            _text.Color = isOnPath ? SelectionColour : MutedColour;
+
+            canvas.DrawText($"{bit}",
+                            childX - BitGap,
+                            childY - BitGap,
+                            SKTextAlign.Right,
+                            _font,
+                            _text);
+
+            bit++;
         }
+
+        _line.StrokeWidth = 1;
     }
 
     private void DrawLeaf(SKCanvas canvas, HuffmanTreeNode node, float x, float y)

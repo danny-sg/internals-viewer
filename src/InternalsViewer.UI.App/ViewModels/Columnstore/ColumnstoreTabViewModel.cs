@@ -6,6 +6,8 @@ using System.Threading;
 using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using InternalsViewer.Internals.Columnstore.Blobs;
+using InternalsViewer.UI.App.Controls.Columnstore;
 using InternalsViewer.Internals.Columnstore.Metadata;
 using InternalsViewer.Internals.Columnstore.Services;
 using InternalsViewer.Internals.Engine.Database;
@@ -157,6 +159,8 @@ public sealed partial class ColumnstoreTabViewModel : TabViewModel
     /// </remarks>
     private async Task LoadSegmentHeaders()
     {
+        await LoadDictionaryCoding();
+
         var segments = Segments.Where(s => s.HasDataPointer).ToList();
 
         foreach (var segment in segments)
@@ -173,6 +177,8 @@ public sealed partial class ColumnstoreTabViewModel : TabViewModel
                     CancellationToken);
 
                 segment.Header = header;
+
+                DrawingRevision++;
             }
             catch (OperationCanceledException)
             {
@@ -187,6 +193,70 @@ public sealed partial class ColumnstoreTabViewModel : TabViewModel
             }
         }
     }
+
+    /// <summary>
+    /// How each dictionary's pages are coded, which the drawing shows as a badge once it arrives
+    /// </summary>
+    private async Task LoadDictionaryCoding()
+    {
+        var dictionaries = Index?.Columns
+                                .Select(c => c.GlobalDictionary)
+                                .Concat(Segments.Select(s => s.LocalDictionary))
+                                .Where(d => d is not null)
+                                .GroupBy(d => (d!.ColumnId, d.DictionaryId))
+                                .Select(g => g.First()!)
+                                .ToList() ?? [];
+
+        var coding = new Dictionary<long, SubLobType>();
+
+        foreach (var dictionary in dictionaries)
+        {
+            if (CancellationToken.IsCancellationRequested)
+            {
+                return;
+            }
+
+            try
+            {
+                var pageCoding = await Task.Run(
+                    () => ColumnstoreService.GetDictionaryCoding(Database, dictionary, CancellationToken),
+                    CancellationToken);
+
+                if (pageCoding is { } value)
+                {
+                    coding[ColumnstoreStructureRenderer.CodingKey(dictionary.ColumnId, dictionary.DictionaryId)] = value;
+                }
+            }
+            catch (OperationCanceledException)
+            {
+                return;
+            }
+            catch (Exception exception)
+            {
+                Logger.LogDebug(exception,
+                                "Could not read the coding for column {Column} dictionary {Dictionary}",
+                                dictionary.ColumnId,
+                                dictionary.DictionaryId);
+            }
+        }
+
+        DictionaryCoding = coding;
+
+        DrawingRevision++;
+    }
+
+    [ObservableProperty]
+    private IReadOnlyDictionary<long, SubLobType> _dictionaryCoding = new Dictionary<long, SubLobType>();
+
+    /// <summary>
+    /// Bumped as headers and coding arrive, which is what tells the drawing there is something new to paint
+    /// </summary>
+    /// <remarks>
+    /// The drawing reads the summaries rather than binding to them, so a header landing changes what it would draw
+    /// without anything asking it to draw again. One read at a time means the repaints are spaced by the reads.
+    /// </remarks>
+    [ObservableProperty]
+    private int _drawingRevision;
 
     /// <summary>
     /// Holds the spinner back so a load that returns straight away does not flash one up

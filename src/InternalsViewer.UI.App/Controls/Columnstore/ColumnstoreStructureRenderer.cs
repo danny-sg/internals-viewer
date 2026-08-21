@@ -1,7 +1,9 @@
 ﻿using System;
 using System.Collections.Generic;
 using InternalsViewer.Internals.Columnstore.Metadata;
+using InternalsViewer.Internals.Columnstore.Blobs;
 using InternalsViewer.Internals.Columnstore.Metadata.Enums;
+using InternalsViewer.Internals.Helpers;
 using InternalsViewer.UI.App.Models.Columnstore;
 using SkiaSharp;
 
@@ -26,15 +28,26 @@ public sealed class ColumnstoreStructureRenderer
     /// </summary>
     private readonly SKPaint _badge = new() { IsAntialias = true, Style = SKPaintStyle.Fill };
 
-    private readonly SKPaint _stroke = new() { IsAntialias = false, Style = SKPaintStyle.Stroke, StrokeWidth = 1 };
+    private readonly SKPaint _stroke = new() { IsAntialias = false, Style = SKPaintStyle.Stroke, StrokeWidth = 0 };
 
-    private readonly SKFont _labelFont = new(GetInterfaceTypeface(SKFontStyleWeight.Normal), 11F)
+    private readonly SKFont _labelFont = new(GetInterfaceTypeface(SKFontStyleWeight.Normal), 12F)
     {
         Edging = SKFontEdging.SubpixelAntialias,
         Subpixel = true
     };
 
     private readonly SKFont _titleFont = new(GetInterfaceTypeface(SKFontStyleWeight.SemiBold), 12F);
+
+    /// <summary>
+    /// Badges in the drawing sit below the size the command bars use, having far less room to take
+    /// </summary>
+    private readonly SKFont _badgeFont = new(GetInterfaceTypeface(SKFontStyleWeight.Normal), 9F)
+    {
+        Edging = SKFontEdging.SubpixelAntialias,
+        Subpixel = true
+    };
+
+    private readonly SKRoundRect _roundRect = new();
 
     /// <summary>
     /// Matches the font the rest of the interface uses, the drawing sitting alongside XAML text
@@ -60,6 +73,13 @@ public sealed class ColumnstoreStructureRenderer
     public ColumnstoreRegion? Selected { get; set; }
 
     public ColumnstoreRegion? Hover { get; set; }
+
+    /// <summary>
+    /// Coding of each dictionary's pages, which arrives after the drawing is first painted
+    /// </summary>
+    public IReadOnlyDictionary<long, SubLobType> DictionaryCoding { get; set; } = new Dictionary<long, SubLobType>();
+
+    public static long CodingKey(int columnId, int dictionaryId) => ((long)columnId << 32) | (uint)dictionaryId;
 
     public List<ColumnstoreRegion> Draw(SKCanvas canvas,
                                         ColumnStoreIndex index,
@@ -153,7 +173,7 @@ public sealed class ColumnstoreStructureRenderer
         {
             var bounds = new SKRect(x, y, x + boxWidth, y + ColumnstoreLayout.RowSetBoxHeight);
 
-            var detail = deleteBitmap.IsAllocated ? $"{deleteBitmap.FirstPage}" : "not allocated";
+            var detail = deleteBitmap.IsAllocated ? $"{deleteBitmap.FirstPage}" : "(Not allocated)";
 
             DrawBox(canvas, bounds, ColumnstoreLayout.DeleteBitmapColour, "Delete Bitmap", detail);
 
@@ -191,17 +211,14 @@ public sealed class ColumnstoreStructureRenderer
                                          float y,
                                          List<ColumnstoreRegion> regions)
     {
-        var columns = new List<ColumnStoreColumn>();
+        var hasDictionary = false;
 
         foreach (var column in index.Columns)
         {
-            if (column.GlobalDictionary is not null)
-            {
-                columns.Add(column);
-            }
+            hasDictionary |= column.GlobalDictionary is not null;
         }
 
-        if (columns.Count == 0)
+        if (!hasDictionary)
         {
             return y;
         }
@@ -214,29 +231,32 @@ public sealed class ColumnstoreStructureRenderer
         _fill.Color = PanelColour;
         canvas.DrawRect(container, _fill);
 
-        DrawBorder(canvas, container, BorderColour);
-
         _text.Color = MutedColour;
         canvas.DrawText("Global Dictionaries",
                         container.Left + ColumnstoreLayout.ContainerPadding,
-                        container.Top + 15,
+                        container.MidY + 4,
                         SKTextAlign.Left,
                         _titleFont,
                         _text);
 
-        var available = container.Width - (ColumnstoreLayout.ContainerPadding * 2);
+        // Laid out on the segment grid rather than packed up, so a dictionary sits over the column it belongs to
+        var blockWidth = ColumnstoreLayout.GetSegmentWidth(ColumnstoreLayout.GetSegmentsAvailable(width),
+                                                           index.Columns.Count);
 
-        var blockWidth = ColumnstoreLayout.GetSegmentWidth(available, columns.Count);
+        var x = ColumnstoreLayout.GetSegmentsLeft();
 
-        var x = container.Left + ColumnstoreLayout.ContainerPadding;
+        y = container.Top + ColumnstoreLayout.ContainerPadding;
 
-        y = container.Top + ColumnstoreLayout.ContainerHeaderHeight + ColumnstoreLayout.ContainerPadding;
-
-        foreach (var column in columns)
+        foreach (var column in index.Columns)
         {
-            var dictionary = column.GlobalDictionary!;
-
             var bounds = new SKRect(x, y, x + blockWidth, y + ColumnstoreLayout.GlobalDictionaryHeight);
+
+            x += blockWidth + ColumnstoreLayout.SegmentGap;
+
+            if (column.GlobalDictionary is not { } dictionary)
+            {
+                continue;
+            }
 
             if (bounds.Right <= container.Right - ColumnstoreLayout.ContainerPadding)
             {
@@ -248,6 +268,7 @@ public sealed class ColumnstoreStructureRenderer
                 DrawBorder(canvas, bounds, dictionaryColour);
 
                 _text.Color = TextColour;
+
                 canvas.DrawText(Fit(column.Name, bounds.Width - 8, _titleFont),
                                 bounds.Left + 4,
                                 bounds.Top + 14,
@@ -255,26 +276,36 @@ public sealed class ColumnstoreStructureRenderer
                                 _titleFont,
                                 _text);
 
+                var entries = $"{dictionary.EntryCount} entries";
+
+                var entriesWidth = _labelFont.MeasureText(entries);
+
                 _text.Color = MutedColour;
-                canvas.DrawText(Fit($"{dictionary.EntryCount} entries", bounds.Width - 8, _labelFont),
+
+                canvas.DrawText(Fit(entries, bounds.Width - 8, _labelFont),
                                 bounds.Left + 4,
                                 bounds.Top + 27,
                                 SKTextAlign.Left,
                                 _labelFont,
                                 _text);
 
+                DrawBadges(canvas,
+                           DictionaryBadges(dictionary),
+                           bounds.Left + 8 + entriesWidth,
+                           bounds.Top + 27 - BadgeHeight + _labelFont.Metrics.Descent,
+                           bounds.Width - 12 - entriesWidth,
+                           0);
+
                 regions.Add(new ColumnstoreRegion
                 {
                     Bounds = bounds,
                     ElementType = ColumnstoreElementType.Dictionary,
                     Dictionary = dictionary,
-                    Label = $"{column.Name} global dictionary",
+                    Label = $"{column.Name} Global Dictionary",
                     Detail = $"{dictionary.EntryCount} entries",
                     Details = BuildDictionaryDetails(dictionary, true, column.Name)
                 });
             }
-
-            x += blockWidth + ColumnstoreLayout.SegmentGap;
         }
 
         return container.Bottom + ColumnstoreLayout.Margin;
@@ -294,14 +325,12 @@ public sealed class ColumnstoreStructureRenderer
         _fill.Color = PanelColour;
         canvas.DrawRect(rowBounds, _fill);
 
-        DrawBorder(canvas, rowBounds, BorderColour);
-
         regions.Add(new ColumnstoreRegion
         {
             Bounds = rowBounds,
             ElementType = ColumnstoreElementType.RowGroup,
             RowGroup = rowGroup,
-            Label = $"Row group {rowGroup.RowGroupId}",
+            Label = $"Row Group {rowGroup.RowGroupId}",
             Details =
             [
                 new ColumnstoreDetail("State", rowGroup.State.ToString()),
@@ -316,9 +345,9 @@ public sealed class ColumnstoreStructureRenderer
 
         DrawRowGroupMetadata(canvas, rowGroup, rowBounds);
 
-        var segmentsLeft = rowBounds.Left + ColumnstoreLayout.MetadataWidth;
+        var segmentsLeft = ColumnstoreLayout.GetSegmentsLeft();
 
-        var available = rowBounds.Right - segmentsLeft - ColumnstoreLayout.SegmentGap;
+        var available = ColumnstoreLayout.GetSegmentsAvailable(width);
 
         if (available <= 0)
         {
@@ -354,18 +383,19 @@ public sealed class ColumnstoreStructureRenderer
         var x = rowBounds.Left + 10;
 
         _text.Color = TextColour;
+
         canvas.DrawText($"Row Group {rowGroup.RowGroupId}",
                         x,
-                        rowBounds.Top + 14,
+                        rowBounds.Top + 18,
                         SKTextAlign.Left,
                         _titleFont,
                         _text);
 
-        DrawStateBadge(canvas, rowGroup.State, x, rowBounds.Top + 19 + ColumnstoreLayout.BadgeMargin);
+        DrawStateBadge(canvas, rowGroup.State, x, rowBounds.Top + 24 + ColumnstoreLayout.BadgeMargin);
 
         _text.Color = MutedColour;
-        canvas.DrawText($"{rowGroup.TotalRows} rows", x, rowBounds.Top + 51, SKTextAlign.Left, _labelFont, _text);
-        canvas.DrawText(FormatSize(rowGroup.SizeInBytes), x, rowBounds.Top + 65, SKTextAlign.Left, _labelFont, _text);
+
+        canvas.DrawText($"{rowGroup.TotalRows} rows", x, rowBounds.Bottom - 8, SKTextAlign.Left, _labelFont, _text);
     }
 
     private void DrawStateBadge(SKCanvas canvas, RowGroupState state, float left, float top)
@@ -383,12 +413,14 @@ public sealed class ColumnstoreStructureRenderer
         var bounds = new SKRect(left, top, left + width, top + height);
 
         _badge.Color = background;
+        
         canvas.DrawRoundRect(bounds,
                              ColumnstoreLayout.BadgeCornerRadius,
                              ColumnstoreLayout.BadgeCornerRadius,
                              _badge);
 
         _text.Color = foreground;
+
         canvas.DrawText(label,
                         bounds.MidX,
                         bounds.Bottom - ColumnstoreLayout.BadgeVerticalPadding - metrics.Descent,
@@ -411,7 +443,7 @@ public sealed class ColumnstoreStructureRenderer
         {
             _text.Color = MutedColour;
 
-            canvas.DrawText(Fit("no segments", available, _labelFont),
+            canvas.DrawText(Fit("No segments", available, _labelFont),
                             left + 4,
                             rowBounds.MidY + 4,
                             SKTextAlign.Left,
@@ -453,32 +485,42 @@ public sealed class ColumnstoreStructureRenderer
     {
         var colour = ColumnstoreLayout.GetEncodingColour(segment.Encoding);
 
-        _fill.Color = colour.WithAlpha(40);
+        _fill.Color = colour.WithAlpha(20);
+
         canvas.DrawRect(bounds, _fill);
 
-        DrawSizeBar(canvas, segment, bounds, colour);
+        DrawSizeBar(canvas, segment, bounds, colour, regions);
 
         DrawBorder(canvas, bounds, colour);
 
+        var contentLeft = bounds.Left + ColumnstoreLayout.SizeBarWidth;
+
+        var available = bounds.Right - contentLeft - 8;
+
+        // The name is what identifies the segment, so it takes the room it needs and the badge takes what is left
+        var name = Fit(segment.ColumnName, available, _titleFont);
+
         _text.Color = TextColour;
-        canvas.DrawText(Fit(segment.ColumnName, bounds.Width - 8, _labelFont),
-                        bounds.Left + 4,
-                        bounds.Top + 13,
+
+        canvas.DrawText(name,
+                        contentLeft + 4,
+                        bounds.Top + 15,
                         SKTextAlign.Left,
-                        _labelFont,
+                        _titleFont,
                         _text);
 
-        _text.Color = MutedColour;
-        canvas.DrawText(Fit(FormatSize(segment.OnDiskSize), bounds.Width - 8, _labelFont),
-                        bounds.Left + 4,
-                        bounds.Top + 26,
-                        SKTextAlign.Left,
-                        _labelFont,
-                        _text);
+        var nameWidth = name.Length == 0 ? 0 : _titleFont.MeasureText(name) + TitleBadgeGap;
+
+        DrawSegmentBadges(canvas, segment, bounds, contentLeft, available - nameWidth);
+
+        var regionBounds = new SKRect(contentLeft,
+                                      bounds.Top,
+                                      bounds.Right,
+                                      bounds.Bottom);
 
         regions.Add(new ColumnstoreRegion
         {
-            Bounds = bounds,
+            Bounds = regionBounds,
             ElementType = ColumnstoreElementType.Segment,
             Segment = segment,
             Label = segment.ColumnName,
@@ -489,70 +531,203 @@ public sealed class ColumnstoreStructureRenderer
                 new ColumnstoreDetail("Column", $"{segment.ColumnId}"),
                 new ColumnstoreDetail("Encoding", segment.EncodingDescription),
                 new ColumnstoreDetail("Rows", $"{segment.RowCount}"),
-                new ColumnstoreDetail("Size", FormatSize(segment.OnDiskSize)),
-                new ColumnstoreDetail("Bytes Per Row", $"{segment.BytesPerRow:N2}"),
-                new ColumnstoreDetail("Min Data Id", $"{segment.MinDataId}"),
-                new ColumnstoreDetail("Max Data Id", $"{segment.MaxDataId}"),
-                new ColumnstoreDetail("Min Value", segment.MinValueDescription),
-                new ColumnstoreDetail("Max Value", segment.MaxValueDescription),
-                new ColumnstoreDetail("Dictionary", segment.DictionaryDescription.Length > 0
-                                                        ? segment.DictionaryDescription
-                                                        : "none"),
                 new ColumnstoreDetail("Data Pointer", segment.DataPointerDescription),
-                .. GetHeaderDetails(segment)
             ]
         });
 
-        DrawSegmentDictionary(canvas, segment, bounds, regions);
+        DrawSegmentDictionary(canvas, segment, bounds, contentLeft, regions);
     }
 
     /// <summary>
-    /// A bar along the bottom whose width is the segment's share of the largest segment in the index
+    /// A bar down the left whose height is the segment's share of the largest segment in the index
     /// </summary>
-    private void DrawSizeBar(SKCanvas canvas, SegmentSummary segment, SKRect bounds, SKColor colour)
+    private void DrawSizeBar(SKCanvas canvas, SegmentSummary segment, SKRect bounds, SKColor colour, List<ColumnstoreRegion> regions)
     {
         var track = new SKRect(bounds.Left,
-                               bounds.Bottom - ColumnstoreLayout.SizeBarHeight,
-                               bounds.Right,
+                               bounds.Top,
+                               bounds.Left + ColumnstoreLayout.SizeBarWidth,
                                bounds.Bottom);
 
         _fill.Color = colour.WithAlpha(30);
+
         canvas.DrawRect(track, _fill);
 
-        var width = (float)(track.Width * segment.SizeFraction);
+        var height = (float)(track.Height * segment.SizeFraction);
 
-        if (width <= 0)
+        if (height <= 0)
         {
             return;
         }
 
         _fill.Color = colour.WithAlpha(190);
-        canvas.DrawRect(new SKRect(track.Left, track.Top, track.Left + width, track.Bottom), _fill);
+
+        canvas.DrawRect(new SKRect(track.Left, track.Bottom - height, track.Right, track.Bottom), _fill);
+
+        regions.Add(new ColumnstoreRegion
+        {
+            Bounds = bounds,
+            ElementType = ColumnstoreElementType.Segment,
+            Segment = segment,
+            Label = segment.ColumnName,
+            Detail = $"{segment.EncodingDescription}, {FormatSize(segment.OnDiskSize)}",
+            Details =
+            [
+                new ColumnstoreDetail("Size", FormatSize(segment.OnDiskSize)),
+                new ColumnstoreDetail("Compression", (1D - segment.SizeFraction).ToString("P2")),
+            ]
+        });
+
+    }
+
+
+    /// <summary>
+    /// Width a run of badges needs, which decides whether it is drawn at all
+    /// </summary>
+    private float MeasureBadges(IReadOnlyList<(string Label, SKColor Colour)> badges, float gap)
+    {
+        var width = gap * (badges.Count - 1);
+
+        foreach (var badge in badges)
+        {
+            width += _badgeFont.MeasureText(badge.Label) + (ColumnstoreLayout.BadgePadding * 2);
+        }
+
+        return width;
+    }
+
+    private float BadgeHeight
+        => _badgeFont.Metrics.Descent - _badgeFont.Metrics.Ascent + (ColumnstoreLayout.BadgeVerticalPadding * 2);
+
+    /// <summary>
+    /// Draws a run of badges, or none of it when the run will not fit
+    /// </summary>
+    /// <remarks>
+    /// A flag badge means the segment carries that thing, so a run cut short reads as flags the segment does not
+    /// have. The whole run is dropped rather than trimmed, the same as a label that will not fit.
+    /// </remarks>
+    private bool DrawBadges(SKCanvas canvas,
+                            IReadOnlyList<(string Label, SKColor Colour)> badges,
+                            float left,
+                            float top,
+                            float available,
+                            float gap)
+    {
+        if (badges.Count == 0 || MeasureBadges(badges, gap) > available)
+        {
+            return false;
+        }
+
+        var x = left;
+
+        for (var i = 0; i < badges.Count; i++)
+        {
+            var width = _badgeFont.MeasureText(badges[i].Label) + (ColumnstoreLayout.BadgePadding * 2);
+
+            var isCompound = gap <= 0;
+
+            DrawBadge(canvas,
+                      new SKRect(x, top, x + width, top + BadgeHeight),
+                      badges[i].Label,
+                      badges[i].Colour,
+                      !isCompound || i == 0,
+                      !isCompound || i == badges.Count - 1);
+
+            x += width + gap;
+        }
+
+        return true;
     }
 
     /// <summary>
-    /// The dictionary a segment reads, drawn inside it, with a dotted border when it is the global one
+    /// Rounded on the outer edges only, so a run drawn without gaps reads as one compound chip
     /// </summary>
-    /// <summary>
-    /// What the segment blob's prologue adds, which is nothing until the background read reaches this segment
-    /// </summary>
-    private static IEnumerable<ColumnstoreDetail> GetHeaderDetails(SegmentSummary segment)
+    private void DrawBadge(SKCanvas canvas, SKRect bounds, string label, SKColor colour, bool roundStart, bool roundEnd)
     {
-        if (segment.Header is null)
+        var start = roundStart ? ColumnstoreLayout.BadgeCornerRadius : 0;
+
+        var end = roundEnd ? ColumnstoreLayout.BadgeCornerRadius : 0;
+
+        _roundRect.SetRectRadii(bounds,
+        [
+            new SKPoint(start, start),
+            new SKPoint(end, end),
+            new SKPoint(end, end),
+            new SKPoint(start, start)
+        ]);
+
+        _badge.Color = colour;
+
+        canvas.DrawRoundRect(_roundRect, _badge);
+
+        _text.Color = SKColors.White;
+
+        canvas.DrawText(label,
+                        bounds.MidX,
+                        bounds.Bottom - ColumnstoreLayout.BadgeVerticalPadding - _badgeFont.Metrics.Descent,
+                        SKTextAlign.Center,
+                        _badgeFont,
+                        _text);
+    }
+
+    /// <summary>
+    /// How the column was compressed, and what the prologue turned out to hold once it had been read
+    /// </summary>
+    private void DrawSegmentBadges(SKCanvas canvas,
+                                   SegmentSummary segment,
+                                   SKRect bounds,
+                                   float contentLeft,
+                                   float encodingAvailable)
+    {
+        var left = contentLeft + 4;
+
+        var available = bounds.Right - left - 4;
+
+        var encoding = new[] { (segment.EncodingDescription, ColumnstoreLayout.GetEncodingColour(segment.Encoding)) };
+
+        var encodingWidth = MeasureBadges(encoding, 0);
+
+        if (encodingWidth <= encodingAvailable)
         {
-            yield break;
+            DrawBadges(canvas,
+                       encoding,
+                       bounds.Right - 4 - encodingWidth,
+                       bounds.Top + BadgeTopMargin,
+                       encodingWidth,
+                       0);
         }
 
-        yield return new ColumnstoreDetail("Structure", segment.StructureDescription);
-        yield return new ColumnstoreDetail("RLE Entries", segment.RleDescription);
-        yield return new ColumnstoreDetail("Bit Pack Entries", segment.BitPackEntriesDescription);
-        yield return new ColumnstoreDetail("Bit Pack Size", segment.BitPackSizeDescription);
-        yield return new ColumnstoreDetail("Bookmarks", segment.BookmarkDescription);
+        var top = bounds.Top + ColumnstoreLayout.LabelHeight + ColumnstoreLayout.BadgeMargin + BadgeTopMargin;
+
+        if (segment.Header is not { } header)
+        {
+            return;
+        }
+
+        var flags = new List<(string, SKColor)>
+        {
+            (header.StructureType.ToString().SplitCamelCase(), ColumnstoreLayout.GetStructureColour(header.StructureType))
+        };
+
+        if (header.HasBitpackArray)
+        {
+            flags.Add(("Bit Pack", ColumnstoreColours.BitPackFlag));
+        }
+
+        if (header.IsStoreByValue)
+        {
+            flags.Add(("Value Store", ColumnstoreColours.ValueStoreFlag));
+        }
+
+        if (top + BadgeHeight <= bounds.Bottom - ColumnstoreLayout.DictionaryHeight)
+        {
+            DrawBadges(canvas, flags, left, top, available, 0);
+        }
     }
 
     private void DrawSegmentDictionary(SKCanvas canvas,
                                        SegmentSummary segment,
                                        SKRect segmentBounds,
+                                       float contentLeft,
                                        List<ColumnstoreRegion> regions)
     {
         var dictionary = segment.LocalDictionary ?? segment.GlobalDictionary;
@@ -564,15 +739,7 @@ public sealed class ColumnstoreStructureRenderer
 
         var isGlobal = segment.LocalDictionary is null;
 
-        var bottom = segmentBounds.Bottom - ColumnstoreLayout.SizeBarHeight - 2;
-
-        var right = segmentBounds.Right - 4;
-
-        var left = Math.Max(segmentBounds.Left + 4, right - ColumnstoreLayout.SegmentDictionaryWidth);
-
-        var bounds = new SKRect(left, bottom - ColumnstoreLayout.DictionaryHeight, right, bottom);
-
-        if (bounds.Width <= 0)
+        if (GetDictionaryBounds(segmentBounds, contentLeft) is not { } bounds)
         {
             return;
         }
@@ -586,13 +753,13 @@ public sealed class ColumnstoreStructureRenderer
 
         _text.Color = isGlobal ? TextColour : SKColors.White;
 
-        var label = isGlobal ? "Global" : $"Dict {dictionary.EntryCount}";
+        var label = isGlobal ? "Global" : $"Dictionary {dictionary.EntryCount}";
 
-        canvas.DrawText(Fit(label, bounds.Width - 6, _labelFont),
+        canvas.DrawText(Fit(label, bounds.Width - 6, _badgeFont),
                         bounds.MidX,
-                        bounds.Bottom - 3,
+                        bounds.Bottom - ColumnstoreLayout.BadgeVerticalPadding - _badgeFont.Metrics.Descent,
                         SKTextAlign.Center,
-                        _labelFont,
+                        _badgeFont,
                         _text);
 
         regions.Add(new ColumnstoreRegion
@@ -607,30 +774,72 @@ public sealed class ColumnstoreStructureRenderer
         });
     }
 
+    /// <summary>
+    /// What the metadata says the dictionary is, which is all that is known without reading its blob
+    /// </summary>
+    private IReadOnlyList<(string Label, SKColor Colour)> DictionaryBadges(SegmentDictionary dictionary)
+    {
+        var badges = new List<(string, SKColor)>
+        {
+            (ColumnstoreLayout.GetDictionaryTypeDescription(dictionary.Type),
+             ColumnstoreLayout.GetDictionaryColour(dictionary.Type))
+        };
+
+        if (DictionaryCoding.TryGetValue(CodingKey(dictionary.ColumnId, dictionary.DictionaryId), out var coding)
+            && coding == SubLobType.CompressedStringPage)
+        {
+            badges.Add(("Huffman", ColumnstoreColours.HuffmanFlag));
+        }
+
+        return badges;
+    }
+
+    private const float BadgeTopMargin = 6f;
+
+    private const float TitleBadgeGap = 6f;
+
+    /// <summary>
+    /// The dictionary block, which sits at the bottom right of the segment, clear of its size bar
+    /// </summary>
+    private static SKRect? GetDictionaryBounds(SKRect segmentBounds, float contentLeft)
+    {
+        var right = segmentBounds.Right - 4;
+
+        var left = Math.Max(contentLeft + 4, right - ColumnstoreLayout.SegmentDictionaryWidth);
+
+        var bottom = segmentBounds.Bottom - 3;
+
+        var bounds = new SKRect(left, bottom - ColumnstoreLayout.DictionaryHeight, right, bottom);
+
+        return bounds.Width > 0 ? bounds : null;
+    }
+
     private static List<ColumnstoreDetail> BuildDictionaryDetails(SegmentDictionary dictionary,
                                                                   bool isGlobal,
                                                                   string columnName) =>
     [
-        new("Scope", isGlobal ? "Global, one per column" : "Local to this segment"),
+        new("Scope", isGlobal ? "Global" : "Local"),
         new("Type", ColumnstoreLayout.GetDictionaryTypeDescription(dictionary.Type)),
         new("Column", columnName),
         new("Dictionary", dictionary.DictionaryId.ToString()),
         new("Entries", $"{dictionary.EntryCount}"),
-        new("First Data Id", $"{dictionary.LastId - dictionary.EntryCount + 1}"),
         new("Size", FormatSize(dictionary.OnDiskSize))
     ];
 
     private void DrawBox(SKCanvas canvas, SKRect bounds, SKColor colour, string title, string detail)
     {
         _fill.Color = colour.WithAlpha(40);
+        
         canvas.DrawRect(bounds, _fill);
 
         DrawBorder(canvas, bounds, colour);
 
         _text.Color = TextColour;
+        
         canvas.DrawText(title, bounds.Left + 8, bounds.Top + 18, SKTextAlign.Left, _titleFont, _text);
 
         _text.Color = MutedColour;
+
         canvas.DrawText(Fit(detail, bounds.Width - 16, _labelFont),
                         bounds.Left + 8,
                         bounds.Top + 33,
@@ -658,7 +867,7 @@ public sealed class ColumnstoreStructureRenderer
     /// <remarks>
     /// What is dropped is still on the hover tooltip, so the drawing stays legible without losing detail.
     /// </remarks>
-    private string Fit(string text, float width, SKFont font)
+    private static string Fit(string text, float width, SKFont font)
         => width > 0 && font.MeasureText(text) <= width ? text : string.Empty;
 
     public static string FormatSize(long bytes) => bytes switch
@@ -675,6 +884,8 @@ public sealed class ColumnstoreStructureRenderer
         _badge.Dispose();
         _stroke.Dispose();
         _labelFont.Dispose();
+        _badgeFont.Dispose();
+        _roundRect.Dispose();
         _dots.Dispose();
         _titleFont.Dispose();
     }

@@ -32,6 +32,12 @@ public sealed partial class DictionaryTabViewModel(ColumnstoreService columnstor
 
     private const float ShadeFactor = 0.72f;
 
+    private const int MaxMarkedEntries = 10;
+
+    private const int HandleFieldBytes = 4;
+
+    private const int PageSizeBytes = 4;
+
     private ColumnstoreService ColumnstoreService { get; } = columnstoreService;
 
     private DatabaseSource Database { get; } = database;
@@ -385,7 +391,7 @@ public sealed partial class DictionaryTabViewModel(ColumnstoreService columnstor
     {
         try
         {
-            var header = Window(MarkerBuilder.BuildMarkers(blob), start, length);
+            var header = Window([.. MarkerBuilder.BuildMarkers(blob), .. ArrayMarkers()], start, length);
 
             var page = SelectedPage is { } selected
                 ? Window([.. MarkerBuilder.BuildMarkers(selected.Page), .. EntryMarkers()], start, length)
@@ -441,6 +447,125 @@ public sealed partial class DictionaryTabViewModel(ColumnstoreService columnstor
         }
 
         return windowed;
+    }
+
+    /// <summary>
+    /// The arrays the headers describe, which are data rather than fields and so are not marked as the blob is parsed
+    /// </summary>
+    /// <remarks>
+    /// A dictionary runs to tens of thousands of entries, so past a handful the run is marked as one region instead.
+    /// Marking every entry would flood the tree, and the entry a reader wants is the one they select in the grid.
+    /// </remarks>
+    private IEnumerable<Marker> ArrayMarkers()
+    {
+        switch (Blob)
+        {
+            case NumericDictionary numeric:
+                foreach (var marker in Region("Value",
+                                              ItemType.DictionaryValue,
+                                              NumericDictionary.HeaderSize,
+                                              numeric.ValueCount,
+                                              numeric.ElementSize,
+                                              i => $"{numeric.Values[i]}"))
+                {
+                    yield return marker;
+                }
+
+                break;
+
+            case StringDictionary strings:
+                foreach (var marker in HandleMarkers(strings))
+                {
+                    yield return marker;
+                }
+
+                foreach (var marker in Region("Page Size",
+                                              ItemType.DictionaryPageSize,
+                                              StringDictionary.HandleArrayOffset + (strings.HandleCount * strings.HandleSize),
+                                              strings.PageCount,
+                                              PageSizeBytes,
+                                              i => $"{strings.PageSizes[i]} bytes"))
+                {
+                    yield return marker;
+                }
+
+                break;
+        }
+    }
+
+    /// <summary>
+    /// Handles carry two fields, so each one that is marked on its own opens to show them
+    /// </summary>
+    private IEnumerable<Marker> HandleMarkers(StringDictionary strings)
+    {
+        var markers = Region("Handle",
+                             ItemType.DictionaryHandle,
+                             StringDictionary.HandleArrayOffset,
+                             strings.HandleCount,
+                             strings.HandleSize,
+                             _ => string.Empty);
+
+        if (strings.HandleCount > MaxMarkedEntries)
+        {
+            return markers;
+        }
+
+        return markers.Select((marker, index) =>
+        {
+            var handle = strings.Handles[index];
+
+            marker.Children =
+            [
+                MarkerBuilder.CreateMarker("Offset",
+                                           ItemType.DictionaryHandleOffset,
+                                           marker.StartPosition,
+                                           HandleFieldBytes,
+                                           $"{handle.Offset}"),
+                MarkerBuilder.CreateMarker("Page",
+                                           ItemType.DictionaryHandlePage,
+                                           marker.StartPosition + HandleFieldBytes,
+                                           HandleFieldBytes,
+                                           $"{handle.Page}")
+            ];
+
+            return marker;
+        });
+    }
+
+    /// <summary>
+    /// One marker per entry while there are few enough to read, and one over the whole run once there are not
+    /// </summary>
+    private static IEnumerable<Marker> Region(string name,
+                                              ItemType type,
+                                              int offset,
+                                              int count,
+                                              int elementSize,
+                                              Func<int, string> describe)
+    {
+        if (count <= 0 || elementSize <= 0)
+        {
+            yield break;
+        }
+
+        if (count > MaxMarkedEntries)
+        {
+            yield return MarkerBuilder.CreateMarker($"{name} Array",
+                                                    type,
+                                                    offset,
+                                                    count * elementSize,
+                                                    $"({count} Entries)");
+
+            yield break;
+        }
+
+        for (var i = 0; i < count; i++)
+        {
+            yield return MarkerBuilder.CreateMarker($"{name} {i}",
+                                                    type,
+                                                    offset + (i * elementSize),
+                                                    elementSize,
+                                                    describe(i));
+        }
     }
 
     /// <summary>

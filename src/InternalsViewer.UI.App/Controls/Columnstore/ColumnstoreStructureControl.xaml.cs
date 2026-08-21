@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using InternalsViewer.Internals.Columnstore.Blobs;
 using InternalsViewer.Internals.Columnstore.Metadata;
 using InternalsViewer.UI.App.Models.Columnstore;
 using Microsoft.UI.Xaml.Controls.Primitives;
@@ -57,12 +58,61 @@ public sealed partial class ColumnstoreStructureControl : IDisposable
                                       typeof(ColumnstoreStructureControl),
                                       new PropertyMetadata(null, OnSourceChanged));
 
+    /// <summary>
+    /// Coding of each dictionary's pages, which lands after the drawing has already been painted
+    /// </summary>
+    /// <remarks>
+    /// Held as object because the dependency property system carries it into the XAML type table, which a generic
+    /// dictionary of its own is awkward in. It changes the drawing without moving it, so the scroll is left alone.
+    /// </remarks>
+    public object? DictionaryCoding
+    {
+        get => GetValue(DictionaryCodingProperty);
+        set => SetValue(DictionaryCodingProperty, value);
+    }
+
+    public static readonly DependencyProperty DictionaryCodingProperty
+        = DependencyProperty.Register(nameof(DictionaryCoding),
+                                      typeof(object),
+                                      typeof(ColumnstoreStructureControl),
+                                      new PropertyMetadata(null, OnCodingChanged));
+
+    /// <summary>
+    /// Repaints without moving, for detail that arrives after the drawing was laid out
+    /// </summary>
+    public int Revision
+    {
+        get => (int)GetValue(RevisionProperty);
+        set => SetValue(RevisionProperty, value);
+    }
+
+    public static readonly DependencyProperty RevisionProperty
+        = DependencyProperty.Register(nameof(Revision),
+                                      typeof(int),
+                                      typeof(ColumnstoreStructureControl),
+                                      new PropertyMetadata(0, OnRevisionChanged));
+
+    private static void OnRevisionChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
+        => ((ColumnstoreStructureControl)d).StructureCanvas.Invalidate();
+
+    private static void OnCodingChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
+    {
+        var control = (ColumnstoreStructureControl)d;
+
+        control._renderer.DictionaryCoding = e.NewValue as IReadOnlyDictionary<long, SubLobType>
+                                             ?? new Dictionary<long, SubLobType>();
+
+        control.StructureCanvas.Invalidate();
+    }
+
     private static void OnSourceChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
     {
         var control = (ColumnstoreStructureControl)d;
 
         control._scrollOffset = 0;
+
         control.UpdateScrollBar();
+        
         control.StructureCanvas.Invalidate();
     }
 

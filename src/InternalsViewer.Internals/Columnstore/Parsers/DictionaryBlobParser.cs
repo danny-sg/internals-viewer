@@ -34,6 +34,46 @@ public static class DictionaryBlobParser
         };
     }
 
+    /// <summary>
+    /// Reads the sub lob type of the first page from a prefix, which is how a dictionary's coding is known cheaply
+    /// </summary>
+    /// <remarks>
+    /// Pages sit after the handle and page size arrays, so how far in the first one starts depends on how many
+    /// entries the dictionary holds. The caller reads the header, asks for the offset, then reads that far.
+    /// </remarks>
+    public static int? GetFirstPageOffset(ReadOnlyMemory<byte> data)
+    {
+        var span = data.Span;
+
+        if (span.Length < StringDictionary.HandleArrayOffset
+            || (ColumnstoreLobType)ReadInt32(span, 0x04) != ColumnstoreLobType.StringDictionary)
+        {
+            return null;
+        }
+
+        var handleSize = ReadInt32(span, StringDictionary.HandleArrayHeaderOffset + 0x04);
+
+        var handleCount = ReadInt32(span, StringDictionary.HandleArrayHeaderOffset + 0x08);
+
+        var pageCount = ReadInt32(span, StringDictionary.PageSizeArrayHeaderOffset + 0x08);
+
+        if (handleSize <= 0 || handleCount < 0 || pageCount <= 0)
+        {
+            return null;
+        }
+
+        return StringDictionary.HandleArrayOffset + (handleCount * handleSize) + (pageCount * PageSizeBytes);
+    }
+
+    public static SubLobType? ParsePageCoding(ReadOnlyMemory<byte> data, int offset)
+    {
+        var span = data.Span;
+
+        return span.Length < offset + 4 ? null : (SubLobType)ReadInt32(span, offset);
+    }
+
+    private const int PageSizeBytes = 4;
+
     private static NumericDictionary ParseNumeric(ReadOnlyMemory<byte> data, int entryCount, int firstId, bool isMarkEnabled)
     {
         var span = data.Span;

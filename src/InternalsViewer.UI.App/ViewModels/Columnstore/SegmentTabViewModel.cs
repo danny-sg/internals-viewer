@@ -121,15 +121,10 @@ public sealed partial class SegmentTabViewModel(ColumnstoreService columnstoreSe
     public ObservableCollection<ValuePageSummary> ValuePages { get; } = [];
 
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(ValuePageDescription))]
     private ValuePageSummary? _selectedValuePage;
 
     [ObservableProperty]
     private ValueList? _values;
-
-    public string ValuePageDescription => SelectedValuePage is not { } page
-        ? string.Empty
-        : $"{page.ValueCount} values of {page.ValueSize} bytes, {page.CompressionDescription} bytes compressed";
 
     partial void OnSelectedValuePageChanged(ValuePageSummary? value)
     {

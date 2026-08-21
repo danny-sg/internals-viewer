@@ -91,13 +91,13 @@
                                           FontSize="12"
                                           Foreground="{ThemeResource SystemFillColorSuccessBrush}"
                                           Visibility="{x:Bind HasNulls,
-                                              Converter={StaticResource BoolToVisibilityConverter}}"/>
+                                                              Converter={StaticResource BoolToVisibilityConverter}}"/>
                                 <FontIcon Glyph="&#xE711;"
                                           FontSize="12"
                                           Foreground="{ThemeResource SystemFillColorCriticalBrush}"
                                           Visibility="{x:Bind HasNulls,
-                                              Converter={StaticResource BoolToVisibilityConverter},
-                                              ConverterParameter=True}"/>
+                                                              Converter={StaticResource BoolToVisibilityConverter},
+                                                              ConverterParameter=True}"/>
                             </Grid>
                         </DataTemplate>
                     </tableView:TableViewTemplateColumn.CellTemplate>

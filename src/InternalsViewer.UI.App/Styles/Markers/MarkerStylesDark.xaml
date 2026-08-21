@@ -229,6 +229,10 @@
     <models:MarkStyle x:Key="DictionaryBucketIndexMaskMarkerStyle" ForeColour="#9FA8DA" BackColour="#161C4A" Name="Bucket Index Mask" Ordinal="273"/>
     <models:MarkStyle x:Key="DictionaryElementSizeMarkerStyle" ForeColour="#DCE775" BackColour="#3E3A08" Name="Element Size" Ordinal="274"/>
     <models:MarkStyle x:Key="DictionaryValueCountMarkerStyle" ForeColour="#FFD54F" BackColour="#4A3005" Name="Value Count" Ordinal="275"/>
+    <models:MarkStyle x:Key="DictionaryHandleMarkerStyle" ForeColour="#B0BEC5" BackColour="#1C2A30" Name="Handle" Ordinal="276"/>
+    <models:MarkStyle x:Key="DictionaryHandleOffsetMarkerStyle" ForeColour="#4DB6AC" BackColour="#003B33" Name="Offset" Ordinal="277"/>
+    <models:MarkStyle x:Key="DictionaryHandlePageMarkerStyle" ForeColour="#FFF176" BackColour="#3E3606" Name="Page" Ordinal="278"/>
+    <models:MarkStyle x:Key="DictionaryPageSizeMarkerStyle" ForeColour="#CE93D8" BackColour="#3A1145" Name="Page Size" Ordinal="279"/>
 
 
     <!--Columnstore dictionary string page-->

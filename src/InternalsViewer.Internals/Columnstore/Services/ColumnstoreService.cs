@@ -1,6 +1,7 @@
 ﻿using System.IO;
 using System.Threading;
 using InternalsViewer.Internals.Columnstore.Decoding;
+using InternalsViewer.Internals.Columnstore.Blobs;
 using InternalsViewer.Internals.Columnstore.Dictionaries;
 using InternalsViewer.Internals.Columnstore.Metadata;
 using InternalsViewer.Internals.Columnstore.Parsers;
@@ -97,6 +98,41 @@ public sealed class ColumnstoreService(IRecordReader recordReader, ILobDataServi
         var data = await GetData(database, segment.DataPointer, cancellationToken);
 
         return SegmentBlobParser.Parse(data, isMarkEnabled);
+    }
+
+    /// <summary>
+    /// How a string dictionary's pages are coded, read without pulling the whole dictionary in
+    /// </summary>
+    /// <remarks>
+    /// Two reads rather than one, the first being what says how far in the pages start. A numeric dictionary has no
+    /// pages and answers null, as does an archive compressed one whose bytes cannot be read a prefix at a time.
+    /// </remarks>
+    public async Task<SubLobType?> GetDictionaryCoding(DatabaseSource database,
+                                                       SegmentDictionary dictionary,
+                                                       CancellationToken cancellationToken)
+    {
+        var pointer = dictionary.DataPointer;
+
+        var identifier = new RowIdentifier(pointer.PageAddress, (ushort)pointer.Slot);
+
+        var header = await LobDataService.GetDataPrefix(database,
+                                                        identifier,
+                                                        StringDictionary.HandleArrayOffset,
+                                                        cancellationToken);
+
+        if (ArchiveBlobHeader.IsArchive(header.Data, header.TotalLength))
+        {
+            return null;
+        }
+
+        if (DictionaryBlobParser.GetFirstPageOffset(header.Data) is not { } offset)
+        {
+            return null;
+        }
+
+        var pages = await LobDataService.GetDataPrefix(database, identifier, offset + 4, cancellationToken);
+
+        return DictionaryBlobParser.ParsePageCoding(pages.Data, offset);
     }
 
     public async Task<DictionaryBlob> GetDictionaryBlob(DatabaseSource database,

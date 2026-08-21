@@ -1,13 +1,11 @@
 ﻿using System;
-using System.ComponentModel;
-using System.Linq;
 using System.Threading;
 using InternalsViewer.UI.App.Models.Columnstore;
 using InternalsViewer.UI.App.ViewModels.Columnstore;
 using InternalsViewer.UI.App.Controls.Docking;
 using Microsoft.UI.Xaml.Controls;
-using Microsoft.UI.Xaml.Controls.Primitives;
 using WinUI.TableView;
+using Microsoft.UI.Xaml.Controls.Primitives;
 
 namespace InternalsViewer.UI.App.Views.Columnstore.Tabs;
 
@@ -38,17 +36,7 @@ public sealed partial class ColumnstoreDictionaryTabView : UserControl, IDocumen
     {
         Bindings.Update();
 
-        if (_tracked is not null)
-        {
-            _tracked.PropertyChanged -= OnViewModelPropertyChanged;
-        }
-
         _tracked = DataContext as DictionaryTabViewModel;
-
-        if (_tracked is not null)
-        {
-            _tracked.PropertyChanged += OnViewModelPropertyChanged;
-        }
     }
 
     public DictionaryTabViewModel ViewModel => (DictionaryTabViewModel)DataContext;
@@ -95,34 +83,9 @@ public sealed partial class ColumnstoreDictionaryTabView : UserControl, IDocumen
         return panel;
     }
 
-    private void PageEntries_OnSelectionChanged(object sender, SelectionChangedEventArgs e)
+    private void Entries_OnSelectionChanged(object sender, SelectionChangedEventArgs e)
     {
         ViewModel.SelectEntry(((TableView)sender).SelectedItem as DictionaryEntryDetail);
-    }
-
-    private void Decode_OnSymbolInvoked(object? sender, int symbol) => ViewModel.SelectSymbol(symbol);
-
-    /// <summary>
-    /// Brings the code table onto the symbol, the drawing and the tree both being able to move it
-    /// </summary>
-    private void OnViewModelPropertyChanged(object? sender, PropertyChangedEventArgs e)
-    {
-        if (e.PropertyName != nameof(DictionaryTabViewModel.SelectedSymbol))
-        {
-            return;
-        }
-
-        var selected = ViewModel.Codes.FirstOrDefault(c => c.Symbol == ViewModel.SelectedSymbol);
-
-        if (!Equals(CodeTable.SelectedItem, selected))
-        {
-            CodeTable.SelectedItem = selected;
-        }
-    }
-
-    private void CodeTable_OnSelectionChanged(object sender, SelectionChangedEventArgs e)
-    {
-        ViewModel.SelectedSymbol = ((TableView)sender).SelectedItem is HuffmanCodeDetail code ? code.Symbol : -1;
     }
 
     private async void OnLoaded(object sender, RoutedEventArgs e)
@@ -140,8 +103,6 @@ public sealed partial class ColumnstoreDictionaryTabView : UserControl, IDocumen
 
         if (_tracked is not null)
         {
-            _tracked.PropertyChanged -= OnViewModelPropertyChanged;
-
             _tracked.Dispose();
 
             _tracked = null;
@@ -150,9 +111,7 @@ public sealed partial class ColumnstoreDictionaryTabView : UserControl, IDocumen
         // x:Bind listens to the view model, which outlives the view, so the view stays rooted until tracking stops
         Bindings.StopTracking();
 
-        DecodeControl.Dispose();
-
-        TreeControl.Dispose();
+        DecodeTab.Dispose();
 
         _cts.Cancel();
         _cts.Dispose();

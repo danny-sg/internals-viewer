@@ -72,7 +72,7 @@ public sealed partial class SegmentSummary : ObservableObject
 
     public SegmentEncoding Encoding => Segment.Encoding;
 
-    public string EncodingDescription => Encoding.ToString().SplitCamelCase();
+    public string EncodingDescription => Encoding.ToString().SplitCamelCase().Replace(" Based", string.Empty);
 
     public long OnDiskSize => Segment.OnDiskSize;
 

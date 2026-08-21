@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <UserControl
     x:Class="InternalsViewer.UI.App.Views.Columnstore.Tabs.ColumnstoreStructureTabView"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
@@ -16,7 +16,9 @@
         <columnstore:ColumnstoreStructureControl x:Name="StructureControl"
                                                  Grid.Row="0"
                                                  Index="{x:Bind ViewModel.Index, Mode=OneWay}"
-                                                 RowGroups="{x:Bind ViewModel.RowGroups, Mode=OneWay}"/>
+                                                 RowGroups="{x:Bind ViewModel.RowGroups, Mode=OneWay}"
+                                                 DictionaryCoding="{x:Bind ViewModel.DictionaryCoding, Mode=OneWay}"
+                                                 Revision="{x:Bind ViewModel.DrawingRevision, Mode=OneWay}"/>
 
         <ItemsControl x:Name="LegendItems"
                       Grid.Row="1">

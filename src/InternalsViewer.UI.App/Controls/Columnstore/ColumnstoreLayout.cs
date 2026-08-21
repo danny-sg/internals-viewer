@@ -60,15 +60,25 @@ public static class ColumnstoreLayout
     /// The dictionaries container, being its header over one row of blocks
     /// </summary>
     public static float GlobalDictionaryContainerHeight
-        => ContainerHeaderHeight + GlobalDictionaryHeight + (ContainerPadding * 2);
+        => GlobalDictionaryHeight + (ContainerPadding * 2);
 
-    public const float RowGroupHeight = 74f;
+    public const float RowGroupHeight = 82f;
 
     public const float RowGroupGap = 12f;
 
     public const float MetadataWidth = 150f;
 
     public const float SegmentGap = 10f;
+
+    /// <summary>
+    /// Where a row of segments begins, the metadata for the row group taking the gutter to its left
+    /// </summary>
+    public static float GetSegmentsLeft() => Margin + MetadataWidth;
+
+    /// <summary>
+    /// Width a row of segments has to share, which the global dictionaries match so the two line up
+    /// </summary>
+    public static float GetSegmentsAvailable(float width) => width - Margin - GetSegmentsLeft() - SegmentGap;
 
     /// <summary>
     /// Segments always share the width available, shrinking rather than overflowing a narrow pane
@@ -80,12 +90,14 @@ public static class ColumnstoreLayout
 
     public const float DictionaryHeight = 14f;
 
-    public const float SegmentDictionaryWidth = 80f;
+    public const float SegmentDictionaryWidth = 60f;
 
     /// <summary>
     /// Height of the bar along the bottom of a segment whose width shows its share of the largest segment
     /// </summary>
     public const float SizeBarHeight = 8f;
+
+    public const float SizeBarWidth = 8f;
 
     public const float LabelHeight = 16f;
 

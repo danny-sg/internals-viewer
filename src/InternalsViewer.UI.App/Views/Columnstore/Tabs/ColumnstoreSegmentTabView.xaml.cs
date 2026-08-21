@@ -144,11 +144,6 @@ public sealed partial class ColumnstoreSegmentTabView : UserControl, IDocumentCo
         }
     }
 
-    private void Values_OnSelectionChanged(object sender, SelectionChangedEventArgs e)
-    {
-        ViewModel.SelectValue(((TableView)sender).SelectedItem as ValueDetail);
-    }
-
     /// <summary>
     /// The store header is not a row of the page list, so its tab is what brings the window back to it
     /// </summary>
@@ -211,6 +206,8 @@ public sealed partial class ColumnstoreSegmentTabView : UserControl, IDocumentCo
         Bindings.StopTracking();
 
         BitPackDetail.Dispose();
+
+        DecodeTab.Dispose();
 
         _cts.Cancel();
         _cts.Dispose();

@@ -98,7 +98,7 @@
     <models:MarkStyle x:Key="DictionaryEntryCountMarkerStyle" ForeColour="Black" BackColour="#ECECEC" Name="Dictionary Entry Count"/>
     <models:MarkStyle x:Key="DictionaryColumnOffsetsMarkerStyle" ForeColour="White" BackColour="#BC8F8F" Name="Dictionary Column Offsets"/>
     <models:MarkStyle x:Key="DictionaryEntriesMarkerStyle" ForeColour="Black" BackColour="#ECECEC" Name="Dictionary Entries"/>
-    <models:MarkStyle x:Key="DictionaryValueMarkerStyle" ForeColour="Black" BackColour="#FFA500" Name="Dictionary Value"/>
+    <models:MarkStyle x:Key="DictionaryValueMarkerStyle" ForeColour="Black" BackColour="#f0fcfc" Name="Dictionary Value"/>
     <models:MarkStyle x:Key="DictionarySymbolMarkerStyle" ForeColour="Black" BackColour="#ECECEC" Name="Dictionary Symbol"/>
     <models:MarkStyle x:Key="CompressionDictionaryMarkerStyle" ForeColour="Black" BackColour="#ECECEC" Name="Compression Dictionary"/>
     
@@ -230,6 +230,10 @@
     <models:MarkStyle x:Key="DictionaryBucketIndexMaskMarkerStyle" ForeColour="#283593" BackColour="#E8EAF6" Name="Bucket Index Mask" Ordinal="273"/>
     <models:MarkStyle x:Key="DictionaryElementSizeMarkerStyle" ForeColour="#827717" BackColour="#F0F4C3" Name="Element Size" Ordinal="274"/>
     <models:MarkStyle x:Key="DictionaryValueCountMarkerStyle" ForeColour="#FF6F00" BackColour="#FFECB3" Name="Value Count" Ordinal="275"/>
+    <models:MarkStyle x:Key="DictionaryHandleMarkerStyle" ForeColour="#37474F" BackColour="#ECEFF1" Name="Handle" Ordinal="276"/>
+    <models:MarkStyle x:Key="DictionaryHandleOffsetMarkerStyle" ForeColour="#00695C" BackColour="#E0F2F1" Name="Offset" Ordinal="277"/>
+    <models:MarkStyle x:Key="DictionaryHandlePageMarkerStyle" ForeColour="#827717" BackColour="#F9FBE7" Name="Page" Ordinal="278"/>
+    <models:MarkStyle x:Key="DictionaryPageSizeMarkerStyle" ForeColour="#6A1B9A" BackColour="#F3E5F5" Name="Page Size" Ordinal="279"/>
 
 
     <!--Columnstore dictionary string page-->
