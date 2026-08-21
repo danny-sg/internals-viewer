@@ -49,12 +49,38 @@ public static class ColumnstoreLayout
     public const float RowSetBoxHeight = 44f;
 
     public const float GlobalDictionaryHeight = 34f;
-
-    public const float ContainerHeaderHeight = 20f;
-
+    
     public const float ContainerPadding = 8f;
 
     public const float SectionLabelBottomPadding = 6f;
+
+    /// <summary>
+    /// Space kept either side of the rule that separates the row sets from the columns below them
+    /// </summary>
+    public const float SeparatorGap = 10f;
+
+    /// <summary>
+    /// Strip above the row groups carrying each column's name and type, which its segments no longer repeat
+    /// </summary>
+    public const float ColumnHeaderHeight = 34f;
+
+    /// <summary>
+    /// Height the header takes once its names are turned on their side, which they need far more of
+    /// </summary>
+    public const float VerticalColumnHeaderHeight = 96f;
+
+    /// <summary>
+    /// Width below which a column has no room for a name across it, nor for a segment to spare any to a size bar
+    /// </summary>
+    public const float NarrowColumnWidth = 20f;
+
+    public static bool IsNarrow(float columnWidth) => columnWidth < NarrowColumnWidth;
+
+    public static float GetColumnHeaderHeight(float columnWidth)
+        => IsNarrow(columnWidth) ? VerticalColumnHeaderHeight : ColumnHeaderHeight;
+
+    public static float GetColumnWidth(float width, int columnCount)
+        => GetSegmentWidth(GetSegmentsAvailable(width), columnCount);
 
     /// <summary>
     /// The dictionaries container, being its header over one row of blocks
@@ -62,13 +88,57 @@ public static class ColumnstoreLayout
     public static float GlobalDictionaryContainerHeight
         => GlobalDictionaryHeight + (ContainerPadding * 2);
 
-    public const float RowGroupHeight = 82f;
+    public const float RowGroupHeight = 62f;
+
+    /// <summary>
+    /// Room a row group gives its local dictionaries, taken only when the index has any to show
+    /// </summary>
+    public const float LocalDictionaryRowHeight = GlobalDictionaryHeight + (LocalDictionaryGap * 2);
+
+    public const float LocalDictionaryGap = 5f;
+
+    public static float GetRowGroupHeight(bool hasLocalDictionaries)
+        => RowGroupHeight + (hasLocalDictionaries ? LocalDictionaryRowHeight : 0);
 
     public const float RowGroupGap = 12f;
 
     public const float MetadataWidth = 150f;
 
     public const float SegmentGap = 10f;
+
+    /// <summary>
+    /// How far a column band runs past the last row group, so it reads as a column rather than as a backing
+    /// </summary>
+    public const float BandOverhang = 24f;
+
+    /// <summary>
+    /// The column a point falls in, or -1 for the gutter and the gaps between columns
+    /// </summary>
+    public static int GetColumnIndex(float x, float width, int columnCount)
+    {
+        if (columnCount <= 0)
+        {
+            return -1;
+        }
+
+        var columnWidth = GetSegmentWidth(GetSegmentsAvailable(width), columnCount);
+
+        var offset = x - GetSegmentsLeft();
+
+        if (offset < 0)
+        {
+            return -1;
+        }
+
+        var index = (int)(offset / (columnWidth + SegmentGap));
+
+        if (index >= columnCount)
+        {
+            return -1;
+        }
+
+        return offset - (index * (columnWidth + SegmentGap)) <= columnWidth ? index : -1;
+    }
 
     /// <summary>
     /// Where a row of segments begins, the metadata for the row group taking the gutter to its left
@@ -91,16 +161,9 @@ public static class ColumnstoreLayout
     public const float DictionaryHeight = 14f;
 
     public const float SegmentDictionaryWidth = 60f;
-
-    /// <summary>
-    /// Height of the bar along the bottom of a segment whose width shows its share of the largest segment
-    /// </summary>
-    public const float SizeBarHeight = 8f;
-
+    
     public const float SizeBarWidth = 8f;
-
-    public const float LabelHeight = 16f;
-
+    
     /// <summary>
     /// One colour per encoding so the drawing reads as a map of compression techniques
     /// </summary>
@@ -125,12 +188,7 @@ public static class ColumnstoreLayout
     /// Space kept above and below the badge, the padding staying tight to the text
     /// </summary>
     public const float BadgeMargin = 2f;
-
-    /// <summary>
-    /// Room under a badge, which takes what the vertical padding gave up so the row below is not crowded
-    /// </summary>
-    public const float BadgeBottomMargin = BadgeMargin + 4f;
-
+    
     public const float BadgeCornerRadius = 3f;
 
     /// <summary>
@@ -201,14 +259,17 @@ public static class ColumnstoreLayout
     /// Height of the band above the row groups, which only carries the rows sets that are actually present
     /// </summary>
     public static float GetHeaderHeight(bool hasRowSets, int globalDictionaryCount)
-        => (hasRowSets ? RowSetBoxHeight + Margin : 0)
+        => (hasRowSets ? RowSetBoxHeight + (SeparatorGap * 2) : 0)
            + (globalDictionaryCount > 0 ? GlobalDictionaryContainerHeight + Margin : 0);
 
-    public static float GetContentHeight(int rowGroupCount, float headerHeight)
+    public static float GetContentHeight(int rowGroupCount,
+                                        float headerHeight,
+                                        bool hasLocalDictionaries,
+                                        float columnWidth)
         => headerHeight
-           + (rowGroupCount > 0 ? ContainerHeaderHeight + SectionLabelBottomPadding : 0)
+           + (rowGroupCount > 0 ? GetColumnHeaderHeight(columnWidth) + SectionLabelBottomPadding : 0)
            + (Margin * 2)
-           + (rowGroupCount * (RowGroupHeight + RowGroupGap));
+           + (rowGroupCount * (GetRowGroupHeight(hasLocalDictionaries) + RowGroupGap));
 
     /// <summary>
     /// Segments share the width evenly, the size difference showing as fill rather than as width

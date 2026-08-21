@@ -1,5 +1,5 @@
-﻿using System.Collections.Generic;
-using System.Data;
+﻿using System.Data;
+using InternalsViewer.UI.App.Helpers;
 using Microsoft.UI.Xaml.Documents;
 using Microsoft.UI.Xaml.Media;
 
@@ -15,27 +15,6 @@ namespace InternalsViewer.UI.App.Controls;
 /// </remarks>
 public sealed partial class DataTypeTextBlock
 {
-    /// <summary>
-    /// Types whose length is declared in characters, the metadata holding it in bytes
-    /// </summary>
-    private static readonly HashSet<SqlDbType> WideTypes = [SqlDbType.NChar, SqlDbType.NVarChar, SqlDbType.NText];
-
-    private static readonly HashSet<SqlDbType> LengthTypes =
-    [
-        SqlDbType.Char, 
-        SqlDbType.VarChar, 
-        SqlDbType.NChar,
-        SqlDbType.NVarChar,
-        SqlDbType.Binary, 
-        SqlDbType.VarBinary
-    ];
-
-    private static readonly HashSet<SqlDbType> ScaleTypes =
-    [
-        SqlDbType.DateTime2, 
-        SqlDbType.Time, SqlDbType.DateTimeOffset
-    ];
-
     public DataTypeTextBlock()
     {
         InitializeComponent();
@@ -108,9 +87,9 @@ public sealed partial class DataTypeTextBlock
             return;
         }
 
-        TextHost.Inlines.Add(Run(GetName(type), "SqlKeywordBrush"));
+        TextHost.Inlines.Add(Run(SqlDataTypeFormat.GetName(type), "SqlKeywordBrush"));
 
-        var arguments = GetArguments(type);
+        var arguments = SqlDataTypeFormat.GetArguments(type, Precision, DataScale, Length);
 
         if (arguments.Count == 0)
         {
@@ -132,45 +111,6 @@ public sealed partial class DataTypeTextBlock
 
         TextHost.Inlines.Add(Run(")", "SqlPunctuationBrush"));
     }
-
-    /// <summary>
-    /// The arguments the type declares, which is none for most of them
-    /// </summary>
-    private List<string> GetArguments(SqlDbType type)
-    {
-        if (type is SqlDbType.Decimal)
-        {
-            return [$"{Precision}", $"{DataScale}"];
-        }
-
-        if (ScaleTypes.Contains(type))
-        {
-            return [$"{DataScale}"];
-        }
-
-        if (!LengthTypes.Contains(type))
-        {
-            return [];
-        }
-
-        if (Length < 0)
-        {
-            return ["max"];
-        }
-
-        return Length == 0 ? [] : [$"{(WideTypes.Contains(type) ? Length / 2 : Length)}"];
-    }
-
-    /// <summary>
-    /// The name as it is written in a declaration, which is the enum name lowered but for a couple of exceptions
-    /// </summary>
-    private static string GetName(SqlDbType type) => type switch
-    {
-        SqlDbType.Variant => "SQL_VARIANT",
-        SqlDbType.UniqueIdentifier => "UNIQUEIDENTIFIER",
-        SqlDbType.DateTimeOffset => "DATETIMEOFFSET",
-        _ => type.ToString().ToUpperInvariant()
-    };
 
     private Run Run(string text, string brush) => new()
     {

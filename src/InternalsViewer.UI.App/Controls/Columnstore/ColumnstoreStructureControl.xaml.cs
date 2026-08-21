@@ -4,7 +4,9 @@ using System.Linq;
 using InternalsViewer.Internals.Columnstore.Blobs;
 using InternalsViewer.Internals.Columnstore.Metadata;
 using InternalsViewer.UI.App.Models.Columnstore;
+using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Controls.Primitives;
+using Microsoft.UI.Xaml.Media;
 using Microsoft.UI.Xaml.Input;
 using SkiaSharp;
 using SkiaSharp.Views.Windows;
@@ -143,9 +145,25 @@ public sealed partial class ColumnstoreStructureControl : IDisposable
         _renderer.HoverColour = isDark ? ColumnstoreColours.DarkHover : ColumnstoreColours.Selection;
         _renderer.TextColour = isDark ? ColumnstoreColours.DarkText : ColumnstoreColours.Text;
         _renderer.MutedColour = isDark ? ColumnstoreColours.DarkMuted : ColumnstoreColours.Muted;
-        _renderer.PanelColour = isDark ? ColumnstoreColours.DarkPanel : ColumnstoreColours.Panel;
-        _renderer.BorderColour = isDark ? ColumnstoreColours.DarkBorder : ColumnstoreColours.Border;
+        _renderer.PanelColour = ProbeColour(PanelProbe, isDark ? ColumnstoreColours.DarkPanel : ColumnstoreColours.Panel);
+        _renderer.BandColour = ProbeColour(BandProbe, _renderer.PanelColour);
+        _renderer.HoverBandColour = ProbeColour(HoverBandProbe, _renderer.BandColour);
+        _renderer.KeywordColour = ProbeColour(KeywordProbe, _renderer.TextColour);
+        _renderer.NumberColour = ProbeColour(NumberProbe, _renderer.TextColour);
+        _renderer.PunctuationColour = ProbeColour(PunctuationProbe, _renderer.MutedColour);
     }
+
+    /// <summary>
+    /// Reads a theme brush off a zero sized element, which is what keeps the drawing in step with the theme
+    /// </summary>
+    /// <remarks>
+    /// Resolved through an element rather than the application resources so it follows this control's actual theme,
+    /// which is what changes when the theme is switched under it.
+    /// </remarks>
+    private static SKColor ProbeColour(Border probe, SKColor fallback)
+        => probe.Background is SolidColorBrush brush
+            ? new SKColor(brush.Color.R, brush.Color.G, brush.Color.B, brush.Color.A)
+            : fallback;
 
     private void OnPointerPressed(object sender, PointerRoutedEventArgs e)
     {
@@ -172,12 +190,18 @@ public sealed partial class ColumnstoreStructureControl : IDisposable
 
         var region = FindRegion((float)point.X, (float)point.Y);
 
-        if (ReferenceEquals(region, _renderer.Hover))
+        var columnId = ColumnAt((float)point.X, (float)point.Y);
+
+        var changed = !ReferenceEquals(region, _renderer.Hover) || columnId != _renderer.HoveredColumnId;
+
+        _renderer.Hover = region;
+
+        _renderer.HoveredColumnId = columnId;
+
+        if (!changed)
         {
             return;
         }
-
-        _renderer.Hover = region;
 
         StructureCanvas.Invalidate();
 
@@ -205,9 +229,40 @@ public sealed partial class ColumnstoreStructureControl : IDisposable
         TooltipPopup.IsOpen = true;
     }
 
+    /// <summary>
+    /// Whether any row group carries a local dictionary, which is what the row of them costs its height for
+    /// </summary>
+    private bool HasLocalDictionaries()
+        => Index?.RowGroups.Any(r => r.Segments.Any(s => s.LocalDictionary is not null)) ?? false;
+
+    /// <summary>
+    /// Column under the pointer, which the bands take from the pointer rather than from what it is over
+    /// </summary>
+    private int ColumnAt(float x, float y)
+    {
+        if (Index is not { } index)
+        {
+            return -1;
+        }
+
+        // The bands are drawn scrolled, so the pointer is put back into the coordinates they were laid out in
+        var canvasY = y + _scrollOffset;
+
+        if (canvasY < _renderer.BandTop || canvasY > _renderer.BandBottom)
+        {
+            return -1;
+        }
+
+        var slot = ColumnstoreLayout.GetColumnIndex(x, (float)StructureCanvas.ActualWidth, index.Columns.Count);
+
+        return slot < 0 ? -1 : index.Columns[slot].ColumnStoreColumnId;
+    }
+
     private void OnPointerExited(object sender, PointerRoutedEventArgs e)
     {
         _renderer.Hover = null;
+
+        _renderer.HoveredColumnId = -1;
 
         TooltipPopup.IsOpen = false;
 
@@ -275,7 +330,14 @@ public sealed partial class ColumnstoreStructureControl : IDisposable
                                                 index.Columns.Count(c => c.GlobalDictionary is not null))
             : 0;
 
-        var content = ColumnstoreLayout.GetContentHeight(RowGroups?.Count ?? 0, headerHeight);
+        var columnWidth = Index is { } columns
+            ? ColumnstoreLayout.GetColumnWidth((float)StructureCanvas.ActualWidth, columns.Columns.Count)
+            : 0;
+
+        var content = ColumnstoreLayout.GetContentHeight(RowGroups?.Count ?? 0,
+                                                         headerHeight,
+                                                         HasLocalDictionaries(),
+                                                         columnWidth);
 
         var viewport = (float)StructureCanvas.ActualHeight;
 

@@ -15,6 +15,19 @@
             <ColumnDefinition Width="*"/>
             <ColumnDefinition Width="Auto"/>
         </Grid.ColumnDefinitions>
+        <!--Zero sized so the drawing can read theme brushes that resolve against this control's actual theme-->
+        <StackPanel IsHitTestVisible="False">
+            <Border x:Name="PanelProbe"
+                    Width="0"
+                    Height="0"
+                    Background="{ThemeResource SolidBackgroundFillColorSecondaryBrush}"/>
+            <Border x:Name="BandProbe" Width="0" Height="0" Background="{ThemeResource SolidBackgroundFillColorTertiaryBrush}"/>
+            <Border x:Name="HoverBandProbe" Width="0" Height="0" Background="{ThemeResource SolidBackgroundFillColorQuarternaryBrush}"/>
+            <Border x:Name="KeywordProbe" Width="0" Height="0" Background="{ThemeResource SqlKeywordBrush}"/>
+            <Border x:Name="NumberProbe" Width="0" Height="0" Background="{ThemeResource SqlNumberBrush}"/>
+            <Border x:Name="PunctuationProbe" Width="0" Height="0" Background="{ThemeResource SqlPunctuationBrush}"/>
+        </StackPanel>
+
         <skiaSharp:SKXamlCanvas x:Name="StructureCanvas"
                                 Grid.Column="0"
                                 IgnorePixelScaling="True"

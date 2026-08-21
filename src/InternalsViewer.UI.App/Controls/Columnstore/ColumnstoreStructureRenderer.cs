@@ -4,6 +4,7 @@ using InternalsViewer.Internals.Columnstore.Metadata;
 using InternalsViewer.Internals.Columnstore.Blobs;
 using InternalsViewer.Internals.Columnstore.Metadata.Enums;
 using InternalsViewer.Internals.Helpers;
+using InternalsViewer.UI.App.Helpers;
 using InternalsViewer.UI.App.Models.Columnstore;
 using SkiaSharp;
 
@@ -47,6 +48,15 @@ public sealed class ColumnstoreStructureRenderer
         Subpixel = true
     };
 
+    /// <summary>
+    /// Types read as code, so they are set in the same face the editor uses rather than the interface one
+    /// </summary>
+    private readonly SKFont _monoFont = new(SKTypeface.FromFamilyName("Cascadia Mono") ?? SKTypeface.Default, 12F)
+    {
+        Edging = SKFontEdging.SubpixelAntialias,
+        Subpixel = true
+    };
+
     private readonly SKRoundRect _roundRect = new();
 
     /// <summary>
@@ -62,13 +72,24 @@ public sealed class ColumnstoreStructureRenderer
 
     public SKColor MutedColour { get; set; } = ColumnstoreColours.Muted;
 
+    /// <summary>
+    /// The three greys the drawing is built from - the column bands, the rows over them, and a hovered column
+    /// </summary>
     public SKColor PanelColour { get; set; } = ColumnstoreColours.Panel;
 
-    public SKColor BorderColour { get; set; } = ColumnstoreColours.Border;
+    public SKColor BandColour { get; set; } = ColumnstoreColours.Panel;
+
+    public SKColor HoverBandColour { get; set; } = ColumnstoreColours.Hover;
 
     public SKColor SelectionColour { get; set; } = ColumnstoreColours.Selection;
 
     public SKColor HoverColour { get; set; } = ColumnstoreColours.Hover;
+
+    public SKColor KeywordColour { get; set; } = ColumnstoreColours.Text;
+
+    public SKColor NumberColour { get; set; } = ColumnstoreColours.Text;
+
+    public SKColor PunctuationColour { get; set; } = ColumnstoreColours.Muted;
 
     public ColumnstoreRegion? Selected { get; set; }
 
@@ -94,27 +115,53 @@ public sealed class ColumnstoreStructureRenderer
 
         var y = ColumnstoreLayout.Margin;
 
-        y = DrawHeader(canvas, index, width, y, regions);
+        var afterRowSets = DrawRowSets(canvas, index, width, y, regions);
 
-        if (rowGroups.Count > 0)
-        {
-            _text.Color = MutedColour;
+        // The row sets belong to the index rather than to any column, so a rule sets them apart from the grid
+        y = afterRowSets > y
+            ? DrawSeparator(canvas, width, afterRowSets - ColumnstoreLayout.Margin)
+            : afterRowSets;
 
-            canvas.DrawText("Row Groups",
-                            ColumnstoreLayout.Margin + ColumnstoreLayout.ContainerPadding,
-                            y + 15,
-                            SKTextAlign.Left,
-                            _titleFont,
-                            _text);
+        var hasLocalDictionaries = false;
 
-            y += ColumnstoreLayout.ContainerHeaderHeight + ColumnstoreLayout.SectionLabelBottomPadding;
-        }
+        var hasGlobalDictionaries = false;
 
         foreach (var rowGroup in rowGroups)
         {
-            DrawRowGroup(canvas, rowGroup, width, y, regions);
+            foreach (var segment in rowGroup.Segments)
+            {
+                hasLocalDictionaries |= segment.LocalDictionary is not null;
+            }
+        }
 
-            y += ColumnstoreLayout.RowGroupHeight + ColumnstoreLayout.RowGroupGap;
+        foreach (var column in index.Columns)
+        {
+            hasGlobalDictionaries |= column.GlobalDictionary is not null;
+        }
+
+        DrawColumnBands(canvas,
+                        index,
+                        rowGroups,
+                        width,
+                        y,
+                        hasGlobalDictionaries,
+                        hasLocalDictionaries);
+
+        if (index.Columns.Count > 0)
+        {
+            DrawColumnHeaders(canvas, index, width, y);
+
+            y += ColumnstoreLayout.GetColumnHeaderHeight(ColumnstoreLayout.GetColumnWidth(width, index.Columns.Count))
+                 + ColumnstoreLayout.SectionLabelBottomPadding;
+        }
+
+        y = DrawGlobalDictionaries(canvas, index, width, y, regions);
+
+        foreach (var rowGroup in rowGroups)
+        {
+            DrawRowGroup(canvas, rowGroup, width, y, hasLocalDictionaries, regions);
+
+            y += ColumnstoreLayout.GetRowGroupHeight(hasLocalDictionaries) + ColumnstoreLayout.RowGroupGap;
         }
 
         DrawEmphasis(canvas, regions);
@@ -123,6 +170,212 @@ public sealed class ColumnstoreStructureRenderer
 
         return regions;
     }
+
+    private float DrawSeparator(SKCanvas canvas, float width, float y)
+    {
+        _stroke.Color = MutedColour.WithAlpha(60);
+
+        var lineY = y + ColumnstoreLayout.SeparatorGap + 0.5f;
+
+        canvas.DrawLine(ColumnstoreLayout.Margin, lineY, width - ColumnstoreLayout.Margin, lineY, _stroke);
+
+        return y + (ColumnstoreLayout.SeparatorGap * 2);
+    }
+
+    /// <summary>
+    /// One band per column running the whole way down, which is what ties a column together across the row groups
+    /// </summary>
+    /// <remarks>
+    /// Drawn in one pass before anything else on the grid rather than per row group, so neither the header nor the
+    /// gaps between row groups break it up. Everything after it paints on top, panels covering only the gutter.
+    /// </remarks>
+    private void DrawColumnBands(SKCanvas canvas,
+                                 ColumnStoreIndex index,
+                                 IReadOnlyList<RowGroupSummary> rowGroups,
+                                 float width,
+                                 float top,
+                                 bool hasGlobalDictionaries,
+                                 bool hasLocalDictionaries)
+    {
+        if (index.Columns.Count == 0)
+        {
+            return;
+        }
+
+        var bottom = ColumnstoreLayout.BandOverhang
+                     + top
+                     + ColumnstoreLayout.GetColumnHeaderHeight(ColumnstoreLayout.GetColumnWidth(width,
+                                                                                                index.Columns.Count))
+                     + ColumnstoreLayout.SectionLabelBottomPadding
+                     + (hasGlobalDictionaries
+                            ? ColumnstoreLayout.GlobalDictionaryContainerHeight + ColumnstoreLayout.Margin
+                            : 0)
+                     + (rowGroups.Count > 0
+                            ? (rowGroups.Count
+                               * (ColumnstoreLayout.GetRowGroupHeight(hasLocalDictionaries)
+                                  + ColumnstoreLayout.RowGroupGap))
+                              - ColumnstoreLayout.RowGroupGap
+                            : 0);
+
+        if (bottom <= top)
+        {
+            return;
+        }
+
+        var columnWidth = ColumnstoreLayout.GetColumnWidth(width, index.Columns.Count);
+
+        var x = ColumnstoreLayout.GetSegmentsLeft();
+
+        BandTop = top;
+
+        BandBottom = bottom;
+
+        foreach (var column in index.Columns)
+        {
+            _fill.Color = HoveredColumnId == column.ColumnStoreColumnId ? HoverBandColour : BandColour;
+
+            canvas.DrawRect(new SKRect(x, top, x + columnWidth, bottom), _fill);
+
+            x += columnWidth + ColumnstoreLayout.SegmentGap;
+        }
+    }
+
+    /// <summary>
+    /// Names the columns once above the row groups, the segments below carrying only what differs between them
+    /// </summary>
+    private void DrawColumnHeaders(SKCanvas canvas, ColumnStoreIndex index, float width, float y)
+    {
+        _text.Color = MutedColour;
+
+        canvas.DrawText("Columns",
+                        ColumnstoreLayout.Margin + ColumnstoreLayout.ContainerPadding,
+                        y + 15,
+                        SKTextAlign.Left,
+                        _titleFont,
+                        _text);
+
+        var columnWidth = ColumnstoreLayout.GetColumnWidth(width, index.Columns.Count);
+
+        var isNarrow = ColumnstoreLayout.IsNarrow(columnWidth);
+
+        var x = ColumnstoreLayout.GetSegmentsLeft();
+
+        foreach (var column in index.Columns)
+        {
+            _text.Color = TextColour;
+
+            if (isNarrow)
+            {
+                DrawVertical(canvas,
+                             column.Name,
+                             x + columnWidth,
+                             y + ColumnstoreLayout.VerticalColumnHeaderHeight - 4,
+                             ColumnstoreLayout.VerticalColumnHeaderHeight - 8,
+                             _titleFont);
+            }
+            else
+            {
+                DrawClipped(canvas, column.Name, x + 4, y + 14, columnWidth - 8, _titleFont);
+
+                DrawTypeRuns(canvas, column, x + 4, y + 29, columnWidth - 8);
+            }
+
+            x += columnWidth + ColumnstoreLayout.SegmentGap;
+        }
+    }
+
+    /// <summary>
+    /// A name turned to read bottom to top, which is the only way one fits a column narrower than it is
+    /// </summary>
+    private void DrawVertical(SKCanvas canvas, string text, float x, float y, float height, SKFont font)
+    {
+        canvas.Save();
+
+        canvas.Translate(x, y);
+
+        canvas.RotateDegrees(-90);
+
+        canvas.ClipRect(new SKRect(0, font.Metrics.Ascent, height, font.Metrics.Descent));
+
+        canvas.DrawText(text, 0, 0, SKTextAlign.Left, font, _text);
+
+        canvas.Restore();
+    }
+
+    /// <summary>
+    /// The column as it was declared, coloured the way the editor colours it
+    /// </summary>
+    private void DrawTypeRuns(SKCanvas canvas, ColumnStoreColumn column, float x, float y, float available)
+    {
+        if (column.Structure is not { } structure)
+        {
+            return;
+        }
+
+        var runs = new List<(string Text, SKColor Colour)>
+        {
+            (SqlDataTypeFormat.GetName(structure.DataType), KeywordColour)
+        };
+
+        var arguments = SqlDataTypeFormat.GetArguments(structure.DataType,
+                                                       structure.Precision,
+                                                       structure.Scale,
+                                                       structure.DataLength);
+
+        if (arguments.Count > 0)
+        {
+            runs.Add(("(", PunctuationColour));
+
+            for (var i = 0; i < arguments.Count; i++)
+            {
+                if (i > 0)
+                {
+                    runs.Add((", ", PunctuationColour));
+                }
+
+                runs.Add((arguments[i], arguments[i] == "max" ? KeywordColour : NumberColour));
+            }
+
+            runs.Add((")", PunctuationColour));
+        }
+
+        var total = 0f;
+
+        foreach (var run in runs)
+        {
+            total += _monoFont.MeasureText(run.Text);
+        }
+
+        if (total > available)
+        {
+            return;
+        }
+
+        foreach (var run in runs)
+        {
+            _text.Color = run.Colour;
+
+            canvas.DrawText(run.Text, x, y, SKTextAlign.Left, _monoFont, _text);
+
+            x += _monoFont.MeasureText(run.Text);
+        }
+    }
+
+    /// <summary>
+    /// Column the pointer is over, which lights its band the whole way down rather than only what is under it
+    /// </summary>
+    /// <remarks>
+    /// Set from where the pointer is rather than from the region under it, so the band lights from anywhere in the
+    /// column - the header, the gaps between row groups, and the parts of a row group no box covers.
+    /// </remarks>
+    public int HoveredColumnId { get; set; } = -1;
+
+    /// <summary>
+    /// Where the bands start and stop, which is how far down the pointer still counts as being in a column
+    /// </summary>
+    public float BandTop { get; private set; }
+
+    public float BandBottom { get; private set; }
 
     /// <summary>
     /// Draws the hover and selection outlines last, so neither is painted over by a later region
@@ -144,17 +397,6 @@ public sealed class ColumnstoreStructureRenderer
 
             _stroke.StrokeWidth = 1;
         }
-    }
-
-    private float DrawHeader(SKCanvas canvas,
-                             ColumnStoreIndex index,
-                             float width,
-                             float y,
-                             List<ColumnstoreRegion> regions)
-    {
-        y = DrawRowSets(canvas, index, width, y, regions);
-
-        return DrawGlobalDictionaries(canvas, index, width, y, regions);
     }
 
     private float DrawRowSets(SKCanvas canvas,
@@ -231,7 +473,7 @@ public sealed class ColumnstoreStructureRenderer
         _fill.Color = PanelColour;
         canvas.DrawRect(container, _fill);
 
-        _text.Color = MutedColour;
+        _text.Color = TextColour;
         canvas.DrawText("Global Dictionaries",
                         container.Left + ColumnstoreLayout.ContainerPadding,
                         container.MidY + 4,
@@ -260,67 +502,66 @@ public sealed class ColumnstoreStructureRenderer
 
             if (bounds.Right <= container.Right - ColumnstoreLayout.ContainerPadding)
             {
-                var dictionaryColour = ColumnstoreLayout.GetDictionaryColour(dictionary.Type);
-
-                _fill.Color = dictionaryColour.WithAlpha(40);
-                canvas.DrawRect(bounds, _fill);
-
-                DrawBorder(canvas, bounds, dictionaryColour);
-
-                _text.Color = TextColour;
-
-                canvas.DrawText(Fit(column.Name, bounds.Width - 8, _titleFont),
-                                bounds.Left + 4,
-                                bounds.Top + 14,
-                                SKTextAlign.Left,
-                                _titleFont,
-                                _text);
-
-                var entries = $"{dictionary.EntryCount} entries";
-
-                var entriesWidth = _labelFont.MeasureText(entries);
-
-                _text.Color = MutedColour;
-
-                canvas.DrawText(Fit(entries, bounds.Width - 8, _labelFont),
-                                bounds.Left + 4,
-                                bounds.Top + 27,
-                                SKTextAlign.Left,
-                                _labelFont,
-                                _text);
-
-                DrawBadges(canvas,
-                           DictionaryBadges(dictionary),
-                           bounds.Left + 8 + entriesWidth,
-                           bounds.Top + 27 - BadgeHeight + _labelFont.Metrics.Descent,
-                           bounds.Width - 12 - entriesWidth,
-                           0);
-
-                regions.Add(new ColumnstoreRegion
-                {
-                    Bounds = bounds,
-                    ElementType = ColumnstoreElementType.Dictionary,
-                    Dictionary = dictionary,
-                    Label = $"{column.Name} Global Dictionary",
-                    Detail = $"{dictionary.EntryCount} entries",
-                    Details = BuildDictionaryDetails(dictionary, true, column.Name)
-                });
+                DrawDictionaryBox(canvas, bounds, dictionary, column.Name, true, null, regions);
             }
         }
 
         return container.Bottom + ColumnstoreLayout.Margin;
     }
 
+    /// <summary>
+    /// A dictionary as a box of its own, which a global one and a local one are both drawn as
+    /// </summary>
+    private void DrawDictionaryBox(SKCanvas canvas,
+                                   SKRect bounds,
+                                   SegmentDictionary dictionary,
+                                   string columnName,
+                                   bool isGlobal,
+                                   SegmentSummary? segment,
+                                   List<ColumnstoreRegion> regions)
+    {
+        var colour = ColumnstoreLayout.GetDictionaryColour(dictionary.Type);
+
+        _fill.Color = colour.WithAlpha(40);
+        canvas.DrawRect(bounds, _fill);
+
+        DrawBorder(canvas, bounds, colour);
+
+        // The column is named in the header above and the band it sits in, so the badges take that place
+        DrawBadges(canvas, DictionaryBadges(dictionary), bounds.Left + 4, bounds.Top + 4, bounds.Width - 8, 0);
+
+        _text.Color = MutedColour;
+
+        canvas.DrawText(Fit($"{dictionary.EntryCount} entries", bounds.Width - 8, _labelFont),
+                        bounds.Left + 4,
+                        bounds.Top + 27,
+                        SKTextAlign.Left,
+                        _labelFont,
+                        _text);
+
+        regions.Add(new ColumnstoreRegion
+        {
+            Bounds = bounds,
+            ElementType = ColumnstoreElementType.Dictionary,
+            Segment = segment,
+            Dictionary = dictionary,
+            Label = $"{columnName} {(isGlobal ? "Global" : "Local")} Dictionary",
+            Detail = $"{dictionary.EntryCount} entries",
+            Details = BuildDictionaryDetails(dictionary, isGlobal, columnName)
+        });
+    }
+
     private void DrawRowGroup(SKCanvas canvas,
                               RowGroupSummary rowGroup,
                               float width,
                               float y,
+                              bool hasLocalDictionaries,
                               List<ColumnstoreRegion> regions)
     {
         var rowBounds = new SKRect(ColumnstoreLayout.Margin,
                                    y,
                                    width - ColumnstoreLayout.Margin,
-                                   y + ColumnstoreLayout.RowGroupHeight);
+                                   y + ColumnstoreLayout.GetRowGroupHeight(hasLocalDictionaries));
 
         _fill.Color = PanelColour;
         canvas.DrawRect(rowBounds, _fill);
@@ -367,10 +608,15 @@ public sealed class ColumnstoreStructureRenderer
 
         foreach (var segment in rowGroup.Segments)
         {
-            var bounds = new SKRect(x,
-                                    rowBounds.Top + 8,
-                                    x + segmentWidth,
-                                    rowBounds.Bottom - 8);
+            var segmentTop = rowBounds.Top + 8
+                             + (hasLocalDictionaries ? ColumnstoreLayout.LocalDictionaryRowHeight : 0);
+
+            if (hasLocalDictionaries)
+            {
+                DrawLocalDictionary(canvas, segment, x, rowBounds.Top, segmentWidth, regions);
+            }
+
+            var bounds = new SKRect(x, segmentTop, x + segmentWidth, rowBounds.Bottom - 8);
 
             DrawSegment(canvas, segment, bounds, regions);
 
@@ -404,11 +650,11 @@ public sealed class ColumnstoreStructureRenderer
 
         var label = state.ToString();
 
-        var metrics = _labelFont.Metrics;
+        var metrics = _badgeFont.Metrics;
 
         var height = metrics.Descent - metrics.Ascent + (ColumnstoreLayout.BadgeVerticalPadding * 2);
 
-        var width = _labelFont.MeasureText(label) + (ColumnstoreLayout.BadgePadding * 2);
+        var width = _badgeFont.MeasureText(label) + (ColumnstoreLayout.BadgePadding * 2);
 
         var bounds = new SKRect(left, top, left + width, top + height);
 
@@ -425,7 +671,7 @@ public sealed class ColumnstoreStructureRenderer
                         bounds.MidX,
                         bounds.Bottom - ColumnstoreLayout.BadgeVerticalPadding - metrics.Descent,
                         SKTextAlign.Center,
-                        _labelFont,
+                        _badgeFont,
                         _text);
     }
 
@@ -493,25 +739,10 @@ public sealed class ColumnstoreStructureRenderer
 
         DrawBorder(canvas, bounds, colour);
 
-        var contentLeft = bounds.Left + ColumnstoreLayout.SizeBarWidth;
+        var contentLeft = bounds.Left
+                          + (ColumnstoreLayout.IsNarrow(bounds.Width) ? 0 : ColumnstoreLayout.SizeBarWidth);
 
-        var available = bounds.Right - contentLeft - 8;
-
-        // The name is what identifies the segment, so it takes the room it needs and the badge takes what is left
-        var name = Fit(segment.ColumnName, available, _titleFont);
-
-        _text.Color = TextColour;
-
-        canvas.DrawText(name,
-                        contentLeft + 4,
-                        bounds.Top + 15,
-                        SKTextAlign.Left,
-                        _titleFont,
-                        _text);
-
-        var nameWidth = name.Length == 0 ? 0 : _titleFont.MeasureText(name) + TitleBadgeGap;
-
-        DrawSegmentBadges(canvas, segment, bounds, contentLeft, available - nameWidth);
+        DrawSegmentBadges(canvas, segment, bounds, contentLeft);
 
         var regionBounds = new SKRect(contentLeft,
                                       bounds.Top,
@@ -543,6 +774,11 @@ public sealed class ColumnstoreStructureRenderer
     /// </summary>
     private void DrawSizeBar(SKCanvas canvas, SegmentSummary segment, SKRect bounds, SKColor colour, List<ColumnstoreRegion> regions)
     {
+        if (ColumnstoreLayout.IsNarrow(bounds.Width))
+        {
+            return;
+        }
+
         var track = new SKRect(bounds.Left,
                                bounds.Top,
                                bounds.Left + ColumnstoreLayout.SizeBarWidth,
@@ -660,6 +896,7 @@ public sealed class ColumnstoreStructureRenderer
         canvas.DrawRoundRect(_roundRect, _badge);
 
         _text.Color = SKColors.White;
+        _text.Color = SKColors.White;
 
         canvas.DrawText(label,
                         bounds.MidX,
@@ -672,11 +909,7 @@ public sealed class ColumnstoreStructureRenderer
     /// <summary>
     /// How the column was compressed, and what the prologue turned out to hold once it had been read
     /// </summary>
-    private void DrawSegmentBadges(SKCanvas canvas,
-                                   SegmentSummary segment,
-                                   SKRect bounds,
-                                   float contentLeft,
-                                   float encodingAvailable)
+    private void DrawSegmentBadges(SKCanvas canvas, SegmentSummary segment, SKRect bounds, float contentLeft)
     {
         var left = contentLeft + 4;
 
@@ -684,19 +917,9 @@ public sealed class ColumnstoreStructureRenderer
 
         var encoding = new[] { (segment.EncodingDescription, ColumnstoreLayout.GetEncodingColour(segment.Encoding)) };
 
-        var encodingWidth = MeasureBadges(encoding, 0);
+        DrawBadges(canvas, encoding, left, bounds.Top + BadgeTopMargin, available, 0);
 
-        if (encodingWidth <= encodingAvailable)
-        {
-            DrawBadges(canvas,
-                       encoding,
-                       bounds.Right - 4 - encodingWidth,
-                       bounds.Top + BadgeTopMargin,
-                       encodingWidth,
-                       0);
-        }
-
-        var top = bounds.Top + ColumnstoreLayout.LabelHeight + ColumnstoreLayout.BadgeMargin + BadgeTopMargin;
+        var top = bounds.Top + BadgeTopMargin + BadgeHeight + ColumnstoreLayout.BadgeMargin;
 
         if (segment.Header is not { } header)
         {
@@ -724,15 +947,36 @@ public sealed class ColumnstoreStructureRenderer
         }
     }
 
+    /// <summary>
+    /// A local dictionary belongs to the one row group, so it sits in a row of its own above the segments
+    /// </summary>
+    private void DrawLocalDictionary(SKCanvas canvas,
+                                     SegmentSummary segment,
+                                     float left,
+                                     float rowGroupTop,
+                                     float width,
+                                     List<ColumnstoreRegion> regions)
+    {
+        if (segment.LocalDictionary is not { } dictionary)
+        {
+            return;
+        }
+
+        var top = rowGroupTop + ColumnstoreLayout.LocalDictionaryGap;
+
+        var bounds = new SKRect(left, top, left + width, top + ColumnstoreLayout.GlobalDictionaryHeight);
+
+        DrawDictionaryBox(canvas, bounds, dictionary, segment.ColumnName, false, segment, regions);
+    }
+
     private void DrawSegmentDictionary(SKCanvas canvas,
                                        SegmentSummary segment,
                                        SKRect segmentBounds,
                                        float contentLeft,
                                        List<ColumnstoreRegion> regions)
     {
-        var dictionary = segment.LocalDictionary ?? segment.GlobalDictionary;
-
-        if (dictionary is null)
+        // The box itself is drawn elsewhere, so this is only the marker saying which one the segment reads
+        if (segment.Dictionary is not { } dictionary)
         {
             return;
         }
@@ -753,7 +997,7 @@ public sealed class ColumnstoreStructureRenderer
 
         _text.Color = isGlobal ? TextColour : SKColors.White;
 
-        var label = isGlobal ? "Global" : $"Dictionary {dictionary.EntryCount}";
+        var label = isGlobal ? "Global" : "Local";
 
         canvas.DrawText(Fit(label, bounds.Width - 6, _badgeFont),
                         bounds.MidX,
@@ -795,8 +1039,6 @@ public sealed class ColumnstoreStructureRenderer
     }
 
     private const float BadgeTopMargin = 6f;
-
-    private const float TitleBadgeGap = 6f;
 
     /// <summary>
     /// The dictionary block, which sits at the bottom right of the segment, clear of its size bar
@@ -862,6 +1104,26 @@ public sealed class ColumnstoreStructureRenderer
     }
 
     /// <summary>
+    /// Text cut off at the space it has rather than dropped, the column header always naming its column
+    /// </summary>
+    /// <remarks>
+    /// The rule elsewhere is that a label which will not fit is left out, a shortened value reading as a different
+    /// one. A column name is not a value, and the column has nothing else to identify it, so this one is cut.
+    /// </remarks>
+    private void DrawClipped(SKCanvas canvas, string text, float x, float y, float width, SKFont font)
+    {
+        var metrics = font.Metrics;
+
+        canvas.Save();
+
+        canvas.ClipRect(new SKRect(x, y + metrics.Ascent, x + width, y + metrics.Descent));
+
+        canvas.DrawText(text, x, y, SKTextAlign.Left, font, _text);
+
+        canvas.Restore();
+    }
+
+    /// <summary>
     /// Text that fits the space, or nothing at all - a truncated label reads as a different value
     /// </summary>
     /// <remarks>
@@ -884,6 +1146,7 @@ public sealed class ColumnstoreStructureRenderer
         _badge.Dispose();
         _stroke.Dispose();
         _labelFont.Dispose();
+        _monoFont.Dispose();
         _badgeFont.Dispose();
         _roundRect.Dispose();
         _dots.Dispose();
