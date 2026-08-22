@@ -4,6 +4,7 @@ using System.Linq;
 using InternalsViewer.Internals.Columnstore.Blobs;
 using InternalsViewer.Internals.Columnstore.Metadata;
 using InternalsViewer.UI.App.Models.Columnstore;
+using Windows.ApplicationModel.DataTransfer;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Controls.Primitives;
 using Microsoft.UI.Xaml.Media;
@@ -32,6 +33,7 @@ public sealed partial class ColumnstoreStructureControl : IDisposable
         StructureCanvas.PointerMoved += OnPointerMoved;
         StructureCanvas.PointerWheelChanged += OnPointerWheelChanged;
         StructureCanvas.PointerExited += OnPointerExited;
+        StructureCanvas.RightTapped += OnRightTapped;
 
         ActualThemeChanged += OnActualThemeChanged;
     }
@@ -60,13 +62,6 @@ public sealed partial class ColumnstoreStructureControl : IDisposable
                                       typeof(ColumnstoreStructureControl),
                                       new PropertyMetadata(null, OnSourceChanged));
 
-    /// <summary>
-    /// Coding of each dictionary's pages, which lands after the drawing has already been painted
-    /// </summary>
-    /// <remarks>
-    /// Held as object because the dependency property system carries it into the XAML type table, which a generic
-    /// dictionary of its own is awkward in. It changes the drawing without moving it, so the scroll is left alone.
-    /// </remarks>
     public object? DictionaryCoding
     {
         get => GetValue(DictionaryCodingProperty);
@@ -168,16 +163,20 @@ public sealed partial class ColumnstoreStructureControl : IDisposable
 
     private void OnPointerPressed(object sender, PointerRoutedEventArgs e)
     {
-        var point = e.GetCurrentPoint(StructureCanvas).Position;
+        var pointer = e.GetCurrentPoint(StructureCanvas);
+
+        // Selecting is the left button's job, the right one opening the menu instead of moving the selection
+        if (pointer.Properties.IsRightButtonPressed)
+        {
+            return;
+        }
+
+        var point = pointer.Position;
 
         if (FindRegion((float)point.X, (float)point.Y) is not { } region)
         {
             return;
         }
-
-        _renderer.Selected = region;
-
-        StructureCanvas.Invalidate();
 
         if (region.ElementType != ColumnstoreElementType.RowGroup)
         {
@@ -258,6 +257,80 @@ public sealed partial class ColumnstoreStructureControl : IDisposable
 
         return slot < 0 ? -1 : index.Columns[slot].ColumnStoreColumnId;
     }
+
+    /// <summary>
+    /// Offers the CSINDEX command for whatever was right clicked, so what the drawing shows can be checked against
+    /// what the engine reports
+    /// </summary>
+    private void OnRightTapped(object sender, RightTappedRoutedEventArgs e)
+    {
+        var point = e.GetPosition(StructureCanvas);
+
+        if (FindRegion((float)point.X, (float)point.Y) is not { } region
+            || !CsIndexCommand.CanBuild(region)
+            || Index is not { } index)
+        {
+            return;
+        }
+
+        var submenu = new MenuFlyoutSubItem { Text = $"Copy DBCC CSINDEX command to clipboard ({region.Label})" };
+
+        foreach (var (mode, label) in PrintModes)
+        {
+            if (CsIndexCommand.Build(region, DatabaseId, index.HobtId, mode) is not { } command)
+            {
+                continue;
+            }
+
+            var item = new MenuFlyoutItem { Text = label };
+
+            item.Click += (_, _) =>
+            {
+                var package = new DataPackage();
+
+                package.SetText(command);
+
+                Clipboard.SetContent(package);
+            };
+
+            submenu.Items.Add(item);
+        }
+
+        if (submenu.Items.Count == 0)
+        {
+            return;
+        }
+
+        var flyout = new MenuFlyout();
+
+        flyout.Items.Add(submenu);
+
+        flyout.ShowAt(StructureCanvas, point);
+    }
+
+    /// <summary>
+    /// Print modes the last argument takes, 0 to 2 all giving the parsed structure and 3 a raw memory dump
+    /// </summary>
+    private static readonly (int Mode, string Label)[] PrintModes =
+    [
+        (0, "Option 0 - Parsed structure"),
+        (3, "Option 3 - Raw memory dump")
+    ];
+
+    /// <summary>
+    /// The database the drawing is of, which CSINDEX needs as a literal
+    /// </summary>
+    public short DatabaseId
+    {
+        get => (short)GetValue(DatabaseIdProperty);
+        set => SetValue(DatabaseIdProperty, value);
+    }
+
+    public static readonly DependencyProperty DatabaseIdProperty
+        = DependencyProperty.Register(nameof(DatabaseId),
+                                      typeof(short),
+                                      typeof(ColumnstoreStructureControl),
+                                      new PropertyMetadata((short)0));
 
     private void OnPointerExited(object sender, PointerRoutedEventArgs e)
     {

@@ -30,6 +30,50 @@ public sealed class CsIndexDumpTests(ITestOutputHelper testOutput) : ProviderTes
     private const int GlobalDictionaryKind = 2;
 
     [RequiresConnectionStringFact("local")]
+    public async Task Sweep_Last_Argument()
+    {
+        var messages = new List<string>();
+
+        await using var connection = await Connect(messages);
+
+        var databaseId = await GetDatabaseId(connection);
+
+        var target = (await GetDictionaries(connection))[0];
+
+        foreach (var (label, kind, fourth) in new[] { ("segment", SegmentKind, target.Dictionary - 1),
+                                                      ("dictionary", LocalDictionaryKind, target.Dictionary) })
+        {
+            foreach (var last in new[] { 0, 1, 2, 3, 4 })
+            {
+                messages.Clear();
+
+                try
+                {
+                    await Execute(connection,
+                                  $"DBCC CSINDEX({databaseId}, {target.Hobt}, {target.Column + 1}, {fourth}, {kind}, {last})");
+                }
+                catch (SqlException exception)
+                {
+                    TestOutput.WriteLine($"{label} last {last} [failed] {exception.Message}");
+
+                    continue;
+                }
+
+                var text = string.Join("|", messages);
+
+                var headings = messages.Select(m => m.Trim())
+                                       .Where(m => m.Length > 0 && !m.StartsWith("Index ") && !m.StartsWith("Position ")
+                                                   && !m.StartsWith("Handle ") && !m.Contains("=") && !m.StartsWith("   "))
+                                       .Distinct()
+                                       .Take(12);
+
+                TestOutput.WriteLine($"{label,-11} last {last} -> {messages.Count,6} messages | "
+                                     + string.Join(", ", headings));
+            }
+        }
+    }
+
+    [RequiresConnectionStringFact("local")]
     public async Task Dump_String_Dictionary_Sub_Lobs()
     {
         var messages = new List<string>();

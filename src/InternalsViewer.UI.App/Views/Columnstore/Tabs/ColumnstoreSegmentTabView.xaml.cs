@@ -167,6 +167,8 @@ public sealed partial class ColumnstoreSegmentTabView : UserControl, IDocumentCo
         }
     }
 
+    private void RleRunMap_OnRunInvoked(object? sender, SegmentNavigationTarget target) => ViewModel.GoToTarget(target);
+
     private void Dictionary_OnClick(object sender, RoutedEventArgs e) => ViewModel.OpenDictionary();
 
     private void DataRows_OnSelectionChanged(object sender, SelectionChangedEventArgs e)
@@ -209,6 +211,8 @@ public sealed partial class ColumnstoreSegmentTabView : UserControl, IDocumentCo
         Bindings.StopTracking();
 
         BitPackDetail.Dispose();
+
+        RleRunMap.Dispose();
 
         DecodeTab.Dispose();
 

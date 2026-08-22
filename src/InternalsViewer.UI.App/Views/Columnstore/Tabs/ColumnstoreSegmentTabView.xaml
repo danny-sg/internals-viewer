@@ -183,7 +183,17 @@
                     <columnstore:SegmentRegionPanel Visibility="{x:Bind GetTabContentVisibility(ViewModel.SelectedRegionTabIndex, 2), Mode=OneWay}"
                                                 MarkerOpacity="{x:Bind ViewModel.Hex.MarkerOpacity, Mode=OneWay}"
                                                 Markers="{x:Bind ViewModel.Hex.Markers, Mode=OneWay}"
-                                                SelectedMarker="{x:Bind ViewModel.Hex.SelectedMarker, Mode=TwoWay}"/>
+                                                SelectedMarker="{x:Bind ViewModel.Hex.SelectedMarker, Mode=TwoWay}"
+                                                DetailSize="130">
+                        <columnstore:SegmentRegionPanel.Detail>
+                            <StackPanel>
+                                <TextBlock Padding="16,8,8,8" FontWeight="SemiBold">RLE Runs</TextBlock>
+                                <columnstore:RleRunMapControl x:Name="RleRunMap"
+                                                              Runs="{x:Bind ViewModel.RleRuns, Mode=OneWay}"
+                                                              RunInvoked="RleRunMap_OnRunInvoked"/>
+                            </StackPanel>
+                        </columnstore:SegmentRegionPanel.Detail>
+                    </columnstore:SegmentRegionPanel>
 
                     <columnstore:SegmentRegionPanel Visibility="{x:Bind GetTabContentVisibility(ViewModel.SelectedRegionTabIndex, 3), Mode=OneWay}"
                                                 MarkerOpacity="{x:Bind ViewModel.Hex.MarkerOpacity, Mode=OneWay}"

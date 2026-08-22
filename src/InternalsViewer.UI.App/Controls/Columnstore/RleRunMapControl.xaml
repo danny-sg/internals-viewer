@@ -1,0 +1,46 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<UserControl
+    x:Class="InternalsViewer.UI.App.Controls.Columnstore.RleRunMapControl"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    xmlns:skiaSharp="using:SkiaSharp.Views.Windows"
+    mc:Ignorable="d">
+    <Grid Padding="8,6">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <skiaSharp:SKXamlCanvas x:Name="MapCanvas"
+                                Grid.Row="0"
+                                Height="56"
+                                IgnorePixelScaling="True"
+                                VerticalAlignment="Top"
+                                HorizontalAlignment="Stretch"/>
+
+        <ScrollBar x:Name="HorizontalScrollBar"
+                   Grid.Row="1"
+                   Orientation="Horizontal"
+                   Margin="58,0,0,0"
+                   Minimum="0"
+                   Maximum="0"
+                   Value="0"
+                   IndicatorMode="MouseIndicator"
+                   Visibility="Collapsed"
+                   Scroll="ScrollBar_OnScroll"/>
+
+        <Popup x:Name="TooltipPopup" ShouldConstrainToRootBounds="False">
+            <Border CornerRadius="1"
+                    BorderThickness="1"
+                    Padding="6,4"
+                    BorderBrush="{ThemeResource ControlStrokeColorDefaultBrush}">
+                <Border.Background>
+                    <SolidColorBrush Color="{ThemeResource SolidBackgroundFillColorBase}" Opacity="0.95"/>
+                </Border.Background>
+                <TextBlock x:Name="TooltipText" FontSize="12"/>
+            </Border>
+        </Popup>
+    </Grid>
+</UserControl>

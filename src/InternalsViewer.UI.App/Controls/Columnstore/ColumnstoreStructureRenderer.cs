@@ -101,9 +101,7 @@ public sealed class ColumnstoreStructureRenderer : IDisposable
     public SKColor NumberColour { get; set; } = ColumnstoreColours.Text;
 
     public SKColor PunctuationColour { get; set; } = ColumnstoreColours.Muted;
-
-    public ColumnstoreRegion? Selected { get; set; }
-
+    
     public ColumnstoreRegion? Hover { get; set; }
 
     /// <summary>
@@ -410,21 +408,34 @@ public sealed class ColumnstoreStructureRenderer : IDisposable
     /// </summary>
     private void DrawEmphasis(SKCanvas canvas, List<ColumnstoreRegion> regions)
     {
-        if (Hover is { } hover && regions.Contains(hover))
+        if (FindMatch(regions, Hover) is { } hover)
         {
             _stroke.StrokeWidth = 1;
 
             DrawBorder(canvas, SKRect.Inflate(hover.Bounds, 1, 1), HoverColour);
         }
+    }
 
-        if (Selected is { } selected && regions.Contains(selected))
+    private static ColumnstoreRegion? FindMatch(List<ColumnstoreRegion> regions, ColumnstoreRegion? target)
+    {
+        if (target is null)
         {
-            _stroke.StrokeWidth = 2;
-
-            DrawBorder(canvas, SKRect.Inflate(selected.Bounds, 1, 1), SelectionColour);
-
-            _stroke.StrokeWidth = 1;
+            return null;
         }
+
+        foreach (var region in regions)
+        {
+            if (region.ElementType == target.ElementType
+                && ReferenceEquals(region.Segment, target.Segment)
+                && ReferenceEquals(region.Dictionary, target.Dictionary)
+                && ReferenceEquals(region.RowGroup, target.RowGroup)
+                && region.Bounds == target.Bounds)
+            {
+                return region;
+            }
+        }
+
+        return null;
     }
 
     private float DrawRowSets(SKCanvas canvas,
@@ -592,6 +603,7 @@ public sealed class ColumnstoreStructureRenderer : IDisposable
                                    y + ColumnstoreLayout.GetRowGroupHeight(hasLocalDictionaries));
 
         _fill.Color = PanelColour;
+
         canvas.DrawRect(rowBounds, _fill);
 
         regions.Add(new ColumnstoreRegion
@@ -945,7 +957,9 @@ public sealed class ColumnstoreStructureRenderer : IDisposable
 
         var encoding = new[] { (segment.EncodingDescription, ColumnstoreLayout.GetEncodingColour(segment.Encoding)) };
 
-        DrawBadges(canvas, encoding, left, bounds.Top + BadgeTopMargin, available, 0);
+        var encodingWidth = MeasureBadges(encoding, 0);
+
+        var drewEncoding = DrawBadges(canvas, encoding, left, bounds.Top + BadgeTopMargin, available, 0);
 
         var top = bounds.Top + BadgeTopMargin + BadgeHeight + ColumnstoreLayout.BadgeMargin;
 
@@ -969,10 +983,30 @@ public sealed class ColumnstoreStructureRenderer : IDisposable
             flags.Add(("Value Store", ColumnstoreColours.ValueStoreFlag));
         }
 
-        if (top + BadgeHeight <= bounds.Bottom - ColumnstoreLayout.DictionaryHeight)
+        // Only a segment that has one keeps the room for it, a short segment having none to spare
+        var reserved = segment.HasDictionary ? ColumnstoreLayout.DictionaryHeight + BadgeTopMargin : 0;
+
+        if (top + BadgeHeight <= bounds.Bottom - reserved)
         {
             DrawBadges(canvas, flags, left, top, available, 0);
+
+            return;
         }
+
+        // Too short for a row of their own, so they follow the encoding rather than being dropped
+        if (!drewEncoding)
+        {
+            return;
+        }
+
+        var gap = ColumnstoreLayout.BadgeMargin * 2;
+
+        DrawBadges(canvas,
+                   flags,
+                   left + encodingWidth + gap,
+                   bounds.Top + BadgeTopMargin,
+                   available - encodingWidth - gap,
+                   0);
     }
 
     /// <summary>

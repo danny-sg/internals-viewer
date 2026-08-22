@@ -55,7 +55,6 @@ public sealed partial class DatabaseService(ILogger<DatabaseService> logger,
 
         var database = new DatabaseSource(connection)
         {
-            DatabaseId = 1,
             Name = name
         };
 
@@ -68,6 +67,12 @@ public sealed partial class DatabaseService(ILogger<DatabaseService> logger,
         Logger.LogDebug("Loading Boot Page: {BootPageAddress}", BootPage.BootPageAddress);
 
         database.BootPage = await PageService.GetPage<BootPage>(database, BootPage.BootPageAddress, cancellationToken);
+
+        // The boot page carries the id the server knows the database by, which a file read has no other way to learn
+        if (database.BootPage is { } bootPage)
+        {
+            database.DatabaseId = (short)bootPage.DatabaseId;
+        }
 
         progress?.Report(new ProgressDetail("Loading metadata"));
 

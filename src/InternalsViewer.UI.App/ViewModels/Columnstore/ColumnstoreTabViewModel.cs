@@ -125,6 +125,8 @@ public sealed partial class ColumnstoreTabViewModel : TabViewModel
 
             IndexTypeDescription = index.IsClustered ? "Clustered" : "Non Clustered";
 
+            BuildDictionaries(index);
+
             IndexDescription = string.IsNullOrEmpty(index.IndexName)
                 ? $"{index.SchemaName}.{index.TableName}"
                 : $"{index.SchemaName}.{index.TableName}.{index.IndexName}";
@@ -224,9 +226,17 @@ public sealed partial class ColumnstoreTabViewModel : TabViewModel
                     () => ColumnstoreService.GetDictionaryCoding(Database, dictionary, CancellationToken),
                     CancellationToken);
 
-                if (pageCoding is { } value)
+                if (pageCoding.Coding is { } value)
                 {
                     coding[ColumnstoreStructureRenderer.CodingKey(dictionary.ColumnId, dictionary.DictionaryId)] = value;
+                }
+
+                var summary = Dictionaries.FirstOrDefault(d => d.ColumnId == dictionary.ColumnId
+                                                               && d.DictionaryId == dictionary.DictionaryId);
+
+                if (summary is not null)
+                {
+                    summary.PageCount = pageCoding.PageCount;
                 }
             }
             catch (OperationCanceledException)
@@ -252,6 +262,38 @@ public sealed partial class ColumnstoreTabViewModel : TabViewModel
     /// </summary>
     [ObservableProperty]
     private string _indexTypeDescription = string.Empty;
+
+    public short DatabaseId => Database.DatabaseId;
+
+    /// <summary>
+    /// Every dictionary the index holds, global ones once and local ones per row group
+    /// </summary>
+    public ObservableCollection<DictionarySummary> Dictionaries { get; } = [];
+
+    private void BuildDictionaries(ColumnStoreIndex index)
+    {
+        Dictionaries.Clear();
+
+        foreach (var column in index.Columns)
+        {
+            if (column.GlobalDictionary is { } global)
+            {
+                Dictionaries.Add(new DictionarySummary { Dictionary = global, ColumnName = column.Name });
+            }
+        }
+
+        foreach (var segment in index.RowGroups.SelectMany(r => r.Segments))
+        {
+            if (segment.LocalDictionary is { } local)
+            {
+                Dictionaries.Add(new DictionarySummary
+                {
+                    Dictionary = local,
+                    ColumnName = segment.Column?.Name ?? $"Column {local.ColumnId}"
+                });
+            }
+        }
+    }
 
     [ObservableProperty]
     private IReadOnlyDictionary<long, SubLobType> _dictionaryCoding = new Dictionary<long, SubLobType>();

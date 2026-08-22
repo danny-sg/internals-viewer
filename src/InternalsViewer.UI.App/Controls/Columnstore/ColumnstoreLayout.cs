@@ -46,7 +46,7 @@ public static class ColumnstoreLayout
 {
     public const float Margin = 12f;
 
-    public const float RowSetBoxHeight = 44f;
+    public const float RowSetBoxHeight = 54f;
 
     public const float GlobalDictionaryHeight = 34f;
     

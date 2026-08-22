@@ -7,9 +7,9 @@ using Microsoft.UI.Xaml.Controls;
 
 namespace InternalsViewer.UI.App.Views.Columnstore.Tabs;
 
-public sealed partial class ColumnstoreRowGroupsTabView : IDisposable
+public sealed partial class ColumnstoreMetadataTabView : IDisposable
 {
-    public ColumnstoreRowGroupsTabView()
+    public ColumnstoreMetadataTabView()
     {
         InitializeComponent();
 
@@ -20,6 +20,35 @@ public sealed partial class ColumnstoreRowGroupsTabView : IDisposable
     public ColumnstoreTabViewModel ViewModel => (ColumnstoreTabViewModel)DataContext;
 
     private void OnDataContextChanged(FrameworkElement sender, DataContextChangedEventArgs args) => Bindings.Update();
+
+    /// <summary>
+    /// Which grid is on show, the strip carrying the tabs and the grids sharing the space below it
+    /// </summary>
+    /// <remarks>
+    /// A tab holding its own content is rebuilt every time it is selected, so the strip is separated from what it
+    /// picks and the grids are shown and hidden instead.
+    /// </remarks>
+    public int SelectedTabIndex
+    {
+        get;
+        set
+        {
+            field = value;
+
+            Bindings.Update();
+        }
+    }
+
+    private Visibility GetTabContentVisibility(int selected, int index)
+        => selected == index ? Visibility.Visible : Visibility.Collapsed;
+
+    private void Dictionary_OnClick(object sender, RoutedEventArgs e)
+    {
+        if ((sender as FrameworkElement)?.Tag is DictionarySummary summary)
+        {
+            ViewModel.OpenDictionary(summary.Dictionary);
+        }
+    }
 
     public void Dispose()
     {

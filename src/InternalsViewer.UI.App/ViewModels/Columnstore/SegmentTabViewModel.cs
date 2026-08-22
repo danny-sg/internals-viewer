@@ -67,6 +67,7 @@ public sealed partial class SegmentTabViewModel(ColumnstoreService columnstoreSe
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(HasBookmarks))]
     [NotifyPropertyChangedFor(nameof(HasRleArray))]
+    [NotifyPropertyChangedFor(nameof(RleRuns))]
     [NotifyPropertyChangedFor(nameof(HasBitpackArray))]
     [NotifyPropertyChangedFor(nameof(HasValueStore))]
     [NotifyPropertyChangedFor(nameof(FlagBadges))]
@@ -109,6 +110,40 @@ public sealed partial class SegmentTabViewModel(ColumnstoreService columnstoreSe
     /// <summary>
     /// Whether the region exists at all, a store by value segment holding neither of the run length pair
     /// </summary>
+    /// <summary>
+    /// The RLE array as a run of rows each entry covers, which the map draws to show the shape of the array
+    /// </summary>
+    public IReadOnlyList<RleRunDetail> RleRuns
+    {
+        get
+        {
+            if (Blob is not { } blob || !blob.Header.HasRleArray)
+            {
+                return [];
+            }
+
+            var runs = new List<RleRunDetail>(blob.RleEntries.Length);
+
+            var row = 0;
+
+            for (var i = 0; i < blob.RleEntries.Length; i++)
+            {
+                var entry = blob.RleEntries[i];
+
+                runs.Add(new RleRunDetail(i,
+                                          row,
+                                          entry.Count,
+                                          entry.IsBitpacked,
+                                          entry.IsBitpacked ? entry.BitpackIndex : entry.Value,
+                                          blob.Header.RleArrayOffset + (i * blob.Header.RleEntryBytes)));
+
+                row += entry.Count;
+            }
+
+            return runs;
+        }
+    }
+
     public bool HasRleArray => Blob?.Header.HasRleArray ?? false;
 
     public bool HasBitpackArray => Blob?.Header.HasBitpackArray ?? false;

@@ -67,13 +67,41 @@ public sealed partial class SegmentRegionPanel
                                       typeof(SegmentRegionPanel),
                                       new PropertyMetadata(null, OnDetailChanged));
 
+    /// <summary>
+    /// Height the detail asks for, or none to take whatever the markers leave
+    /// </summary>
+    /// <remarks>
+    /// A detail that draws a fixed amount, like the run map, wants the markers to keep the rest rather than the two
+    /// splitting the panel evenly. The splitter still moves it, this only being where it starts.
+    /// </remarks>
+    public double DetailSize
+    {
+        get => (double)GetValue(DetailSizeProperty);
+        set => SetValue(DetailSizeProperty, value);
+    }
+
+    public static readonly DependencyProperty DetailSizeProperty
+        = DependencyProperty.Register(nameof(DetailSize),
+                                      typeof(double),
+                                      typeof(SegmentRegionPanel),
+                                      new PropertyMetadata(0d, OnDetailChanged));
+
     private static void OnDetailChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
     {
         var panel = (SegmentRegionPanel)d;
 
-        panel.HasDetail = e.NewValue is null ? Visibility.Collapsed : Visibility.Visible;
+        panel.Apply();
+    }
 
-        panel.DetailHeight = e.NewValue is null ? new GridLength(0) : new GridLength(1, GridUnitType.Star);
+    private void Apply()
+    {
+        HasDetail = Detail is null ? Visibility.Collapsed : Visibility.Visible;
+
+        DetailHeight = Detail is null
+            ? new GridLength(0)
+            : DetailSize > 0
+                ? new GridLength(DetailSize)
+                : new GridLength(1, GridUnitType.Star);
     }
 
     public Visibility HasDetail

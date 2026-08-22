@@ -22,7 +22,7 @@ public sealed partial class ColumnstoreTabViewModel
                                                                                    keepAlive: true,
                                                                                    key: "Structure");
 
-        _rowGroupsDocument = DocumentViewModel.Create<ColumnstoreRowGroupsTabView>("Row Groups",
+        _rowGroupsDocument = DocumentViewModel.Create<ColumnstoreMetadataTabView>("Metadata",
                                                                                    this,
                                                                                    canClose: false,
                                                                                    keepAlive: true,

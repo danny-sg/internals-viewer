@@ -161,9 +161,9 @@ public sealed class ColumnstoreService(IRecordReader recordReader, ILobDataServi
     /// Two reads rather than one, the first being what says how far in the pages start. A numeric dictionary has no
     /// pages and answers null, as does an archive compressed one whose bytes cannot be read a prefix at a time.
     /// </remarks>
-    public async Task<SubLobType?> GetDictionaryCoding(DatabaseSource database,
-                                                       SegmentDictionary dictionary,
-                                                       CancellationToken cancellationToken)
+    public async Task<DictionaryHeaderInfo> GetDictionaryCoding(DatabaseSource database,
+                                                                SegmentDictionary dictionary,
+                                                                CancellationToken cancellationToken)
     {
         var pointer = dictionary.DataPointer;
 
@@ -176,17 +176,19 @@ public sealed class ColumnstoreService(IRecordReader recordReader, ILobDataServi
 
         if (ArchiveBlobHeader.IsArchive(header.Data, header.TotalLength))
         {
-            return null;
+            return new DictionaryHeaderInfo(null, 0);
         }
+
+        var pageCount = DictionaryBlobParser.GetPageCount(header.Data);
 
         if (DictionaryBlobParser.GetFirstPageOffset(header.Data) is not { } offset)
         {
-            return null;
+            return new DictionaryHeaderInfo(null, pageCount);
         }
 
         var pages = await LobDataService.GetDataPrefix(database, identifier, offset + 4, cancellationToken);
 
-        return DictionaryBlobParser.ParsePageCoding(pages.Data, offset);
+        return new DictionaryHeaderInfo(DictionaryBlobParser.ParsePageCoding(pages.Data, offset), pageCount);
     }
 
     public async Task<DictionaryBlob> GetDictionaryBlob(DatabaseSource database,

@@ -19,7 +19,8 @@
                                                  Index="{x:Bind ViewModel.Index, Mode=OneWay}"
                                                  RowGroups="{x:Bind ViewModel.RowGroups, Mode=OneWay}"
                                                  DictionaryCoding="{x:Bind ViewModel.DictionaryCoding, Mode=OneWay}"
-                                                 Revision="{x:Bind ViewModel.DrawingRevision, Mode=OneWay}"/>
+                                                 Revision="{x:Bind ViewModel.DrawingRevision, Mode=OneWay}"
+                                                 DatabaseId="{x:Bind ViewModel.DatabaseId, Mode=OneWay}"/>
 
         <ItemsControl x:Name="LegendItems"
                       Grid.Row="1">

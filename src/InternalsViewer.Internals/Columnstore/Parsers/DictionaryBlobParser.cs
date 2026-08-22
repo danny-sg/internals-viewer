@@ -65,6 +65,16 @@ public static class DictionaryBlobParser
         return StringDictionary.HandleArrayOffset + (handleCount * handleSize) + (pageCount * PageSizeBytes);
     }
 
+    public static int GetPageCount(ReadOnlyMemory<byte> data)
+    {
+        var span = data.Span;
+
+        return span.Length < StringDictionary.HandleArrayOffset
+               || (ColumnstoreLobType)ReadInt32(span, 0x04) != ColumnstoreLobType.StringDictionary
+            ? 0
+            : ReadInt32(span, StringDictionary.PageSizeArrayHeaderOffset + 0x08);
+    }
+
     public static SubLobType? ParsePageCoding(ReadOnlyMemory<byte> data, int offset)
     {
         var span = data.Span;
