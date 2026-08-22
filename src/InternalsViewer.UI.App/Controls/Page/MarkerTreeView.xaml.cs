@@ -82,11 +82,6 @@ public sealed partial class MarkerTreeView
             typeof(MarkerTreeView),
             new PropertyMetadata(null, OnSelectedMarkerChanged));
 
-    // TreeView.SelectedItem only round-trips the underlying data item when bound via ItemsSource;
-    // since Markers is now driven off RootNodes (see OnMarkersChanged), selection has to be
-    // synced manually between our own Marker-typed SelectedMarker and the TreeView's TreeViewNode.
-    // Looked up via the _nodesByMarker dictionary rather than walking the node tree, since a
-    // recursive search here re-runs on every echoed selection change (see _isSyncingSelection).
     private static void OnSelectedMarkerChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
     {
         if (d is not MarkerTreeView control || control._isSyncingSelection)
@@ -94,14 +89,22 @@ public sealed partial class MarkerTreeView
             return;
         }
 
-        control._isSyncingSelection = true;
+        var newNode = e.NewValue is Marker marker
+                      && control._nodesByMarker.TryGetValue(marker, out var node)
+                      ? node
+                      : null;
 
-        control.TreeView.SelectedNode = e.NewValue is Marker marker
-                                         && control._nodesByMarker.TryGetValue(marker, out var node)
-            ? node
-            : null;
+        if (ReferenceEquals(control.TreeView.SelectedNode, newNode))
+        {
+            return;
+        }
 
-        control._isSyncingSelection = false;
+        control.DispatcherQueue.TryEnqueue(() =>
+        {
+            control._isSyncingSelection = true;
+            control.TreeView.SelectedNode = newNode;
+            control._isSyncingSelection = false;
+        });
     }
 
     private void TreeView_SelectionChanged(TreeView sender, TreeViewSelectionChangedEventArgs args)

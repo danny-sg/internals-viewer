@@ -745,7 +745,7 @@ public sealed class ColumnstoreStructureRenderer : IDisposable
                 bounds,
                 ColumnstoreLayout.DeltaStoreColour,
                 "Delta Store",
-                $"{rowGroup.TotalRows} rows, hobt {rowGroup.DeltaStoreHobtId}");
+                $"{rowGroup.TotalRows} rows, HoBT {rowGroup.DeltaStoreHobtId}");
 
         regions.Add(new ColumnstoreRegion
         {

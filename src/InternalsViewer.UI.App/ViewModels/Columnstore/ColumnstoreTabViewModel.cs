@@ -11,6 +11,9 @@ using InternalsViewer.UI.App.Controls.Columnstore;
 using InternalsViewer.Internals.Columnstore.Metadata;
 using InternalsViewer.Internals.Columnstore.Services;
 using InternalsViewer.Internals.Engine.Database;
+using InternalsViewer.Internals.Interfaces.Services.Loaders.Chains;
+using InternalsViewer.Internals.Interfaces.Services.Loaders.Pages;
+using InternalsViewer.Internals.Interfaces.Services.Records;
 using InternalsViewer.UI.App.Models.Columnstore;
 using InternalsViewer.UI.App.ViewModels.Tabs;
 using Microsoft.Extensions.Logging;
@@ -18,21 +21,30 @@ using Microsoft.Extensions.Logging;
 namespace InternalsViewer.UI.App.ViewModels.Columnstore;
 
 public sealed class ColumnstoreTabViewModelFactory(ILogger<ColumnstoreTabViewModel> logger,
-                                                   ColumnstoreService columnstoreService)
+                                                   ColumnstoreService columnstoreService,
+                                                   IPageService pageService,
+                                                   IIamChainService iamChainService,
+                                                   IRecordService recordService)
 {
     public ColumnstoreTabViewModel Create(DatabaseSource database, long allocationUnitId)
-        => new(logger, columnstoreService, database, allocationUnitId);
+        => new(logger, columnstoreService, pageService, iamChainService, recordService, database, allocationUnitId);
 }
 
 public sealed partial class ColumnstoreTabViewModel : TabViewModel
 {
     public ColumnstoreTabViewModel(ILogger<ColumnstoreTabViewModel> logger,
                                    ColumnstoreService columnstoreService,
+                                   IPageService pageService,
+                                   IIamChainService iamChainService,
+                                   IRecordService recordService,
                                    DatabaseSource database,
                                    long allocationUnitId)
     {
         Logger = logger;
         ColumnstoreService = columnstoreService;
+        PageService = pageService;
+        IamChainService = iamChainService;
+        RecordService = recordService;
         Database = database;
         AllocationUnitId = allocationUnitId;
 
@@ -42,6 +54,12 @@ public sealed partial class ColumnstoreTabViewModel : TabViewModel
     private ILogger<ColumnstoreTabViewModel> Logger { get; }
 
     internal ColumnstoreService ColumnstoreService { get; }
+
+    internal IPageService PageService { get; }
+
+    internal IIamChainService IamChainService { get; }
+
+    internal IRecordService RecordService { get; }
 
     public DatabaseSource Database { get; }
 

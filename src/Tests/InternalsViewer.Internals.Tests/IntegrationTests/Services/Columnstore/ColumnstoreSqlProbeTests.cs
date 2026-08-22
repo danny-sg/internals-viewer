@@ -40,6 +40,18 @@ public sealed class ColumnstoreSqlProbeTests(ITestOutputHelper testOutput) : Pro
     }
 
     [RequiresConnectionStringFact("local")]
+    public async Task Dump_Delta_Stores()
+    {
+        await Dump("""
+                   SELECT t.name AS TableName, rg.row_group_id, rg.state_desc, rg.total_rows, rg.deleted_rows
+                   FROM sys.dm_db_column_store_row_group_physical_stats rg
+                   JOIN sys.tables t ON t.object_id = rg.object_id
+                   WHERE rg.state_desc <> 'COMPRESSED'
+                   ORDER BY t.name, rg.row_group_id
+                   """);
+    }
+
+    [RequiresConnectionStringFact("local")]
     public async Task Dump_Encodings_And_Dictionaries()
     {
         await Dump("""

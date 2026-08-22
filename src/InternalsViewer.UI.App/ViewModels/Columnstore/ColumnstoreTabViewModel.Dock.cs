@@ -95,7 +95,7 @@ public sealed partial class ColumnstoreTabViewModel
         => Open($"Delta store {rowGroup.RowGroupId}",
                 $"DeltaStore:{rowGroup.RowGroupId}",
                 () => new ColumnstoreDeltaStoreTabView(),
-                rowGroup);
+                new DeltaStoreTabViewModel(PageService, IamChainService, Database, rowGroup));
 
     /// <summary>
     /// Adds a document to the group the structure drawing sits in, or selects it if it is already open

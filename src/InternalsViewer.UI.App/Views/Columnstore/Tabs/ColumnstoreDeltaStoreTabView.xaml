@@ -5,21 +5,154 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    xmlns:tableView="using:WinUI.TableView"
+    xmlns:columnstore="using:InternalsViewer.UI.App.Models.Columnstore"
     mc:Ignorable="d">
-    <StackPanel VerticalAlignment="Center"
-                HorizontalAlignment="Center"
-                Spacing="6"
-                Padding="24">
-        <TextBlock Text="Delta store"
-                   HorizontalAlignment="Center"
-                   Style="{ThemeResource SubtitleTextBlockStyle}"/>
-        <TextBlock Text="A delta store viewer showing the uncompressed rows waiting to be compressed."
-                   HorizontalAlignment="Center"
-                   TextWrapping="Wrap"
-                   MaxWidth="420"
-                   Opacity="0.7"/>
-        <TextBlock x:Name="SubjectText"
-                   HorizontalAlignment="Center"
-                   Opacity="0.55"/>
-    </StackPanel>
+    <UserControl.Resources>
+        <Style x:Key="PropertyLabelStyle" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+            <Setter Property="Margin" Value="0,0,8,0"/>
+            <Setter Property="Foreground" Value="{ThemeResource TextFillColorTertiaryBrush}"/>
+        </Style>
+        <Style x:Key="PropertyValueStyle" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+        </Style>
+    </UserControl.Resources>
+
+    <Grid>
+        <StackPanel Padding="10"
+                    Spacing="12"
+                    VerticalAlignment="Center"
+                    HorizontalAlignment="Center"
+                    Visibility="{x:Bind ViewModel.IsLoaded, Mode=OneWay,
+                            Converter={StaticResource BoolToVisibilityConverter},
+                            ConverterParameter=True}">
+            <TextBlock HorizontalAlignment="Center" Text="{x:Bind ViewModel.StatusText, Mode=OneWay}"/>
+        </StackPanel>
+
+        <Grid Visibility="{x:Bind ViewModel.IsLoaded, Mode=OneWay,
+                      Converter={StaticResource BoolToVisibilityConverter}}">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="*"/>
+            </Grid.RowDefinitions>
+
+            <CommandBar IsOpen="False"
+                        DefaultLabelPosition="Right"
+                        Grid.Row="0"
+                        HorizontalAlignment="Left"
+                        Background="Transparent">
+
+                <AppBarElementContainer VerticalContentAlignment="Center">
+                    <StackPanel VerticalAlignment="Center" Margin="12,0,18,0">
+                        <TextBlock Text="{x:Bind ViewModel.Title, Mode=OneWay}"
+                                   FontWeight="SemiBold"
+                                   FontSize="12"/>
+                        <TextBlock Text="{x:Bind ViewModel.StatusText, Mode=OneWay}"
+                                   FontSize="12"
+                                   Foreground="{ThemeResource TextFillColorTertiaryBrush}"/>
+                    </StackPanel>
+                </AppBarElementContainer>
+
+                <AppBarSeparator/>
+
+                <AppBarElementContainer VerticalContentAlignment="Center">
+                    <Grid Margin="4,0,18,0" VerticalAlignment="Center" RowSpacing="2" ColumnSpacing="6">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                        </Grid.RowDefinitions>
+
+                        <TextBlock Grid.Row="0" Grid.Column="0" Text="HoBT Id"
+                                   Style="{StaticResource PropertyLabelStyle}"/>
+                        <TextBlock Grid.Row="0" Grid.Column="1"
+                                   Text="{x:Bind ViewModel.HobtDescription, Mode=OneWay}"
+                                   Style="{StaticResource PropertyValueStyle}"/>
+
+                        <TextBlock Grid.Row="1" Grid.Column="0" Text="Allocation Unit"
+                                   Style="{StaticResource PropertyLabelStyle}"/>
+                        <TextBlock Grid.Row="1" Grid.Column="1"
+                                   Text="{x:Bind ViewModel.AllocationUnitDescription, Mode=OneWay}"
+                                   Style="{StaticResource PropertyValueStyle}"/>
+                    </Grid>
+                </AppBarElementContainer>
+
+                <AppBarElementContainer VerticalContentAlignment="Center">
+                    <Grid Margin="4,0,18,0" VerticalAlignment="Center" RowSpacing="2" ColumnSpacing="6">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                        </Grid.RowDefinitions>
+
+                        <TextBlock Grid.Row="0" Grid.Column="0" Text="First Page"
+                                   Style="{StaticResource PropertyLabelStyle}"/>
+                        <HyperlinkButton Grid.Row="0" Grid.Column="1"
+                                         Content="{x:Bind ViewModel.FirstPage, Mode=OneWay}"
+                                         Style="{StaticResource CellPageAddressStyle}"
+                                         Click="FirstPage_OnClick"/>
+
+                        <TextBlock Grid.Row="1" Grid.Column="0" Text="First IAM Page"
+                                   Style="{StaticResource PropertyLabelStyle}"/>
+                        <HyperlinkButton Grid.Row="1" Grid.Column="1"
+                                         Content="{x:Bind ViewModel.FirstIamPage, Mode=OneWay}"
+                                         Style="{StaticResource CellPageAddressStyle}"
+                                         Click="FirstIamPage_OnClick"/>
+                    </Grid>
+                </AppBarElementContainer>
+            </CommandBar>
+
+            <tableView:TableView x:Name="PageTable"
+                                 Grid.Row="1"
+                                 AutoGenerateColumns="False"
+                                 CanSortColumns="False"
+                                 CanFilterColumns="False"
+                                 CornerButtonMode="None"
+                                 HeadersVisibility="Columns"
+                                 ColumnHeaderStyle="{StaticResource TableViewColumnHeaderStyle}"
+                                 CellStyle="{StaticResource TableViewCellStyle}"
+                                 ItemContainerStyle="{StaticResource TableViewRowStyle}"
+                                 RowHeight="28"
+                                 SelectionMode="Single"
+                                 SelectionUnit="Row"
+                                 IsReadOnly="True"
+                                 GridLinesVisibility="All"
+                                 BorderThickness="0"
+                                 Background="{ThemeResource LayerFillColorDefaultBrush}"
+                                 ItemsSource="{x:Bind ViewModel.Pages, Mode=OneWay}">
+                <tableView:TableView.Resources>
+                    <x:Double x:Key="ListViewItemMinHeight">0</x:Double>
+                </tableView:TableView.Resources>
+                <tableView:TableView.Columns>
+                    <tableView:TableViewTemplateColumn Header="Page" Width="120" CanSort="False">
+                        <tableView:TableViewTemplateColumn.CellTemplate>
+                            <DataTemplate x:DataType="columnstore:DeltaStorePageSummary">
+                                <HyperlinkButton Content="{x:Bind PageAddressDescription}"
+                                                 Click="Page_OnClick"
+                                                 Style="{StaticResource CellPageAddressStyle}"
+                                                 Tag="{x:Bind}"/>
+                            </DataTemplate>
+                        </tableView:TableViewTemplateColumn.CellTemplate>
+                    </tableView:TableViewTemplateColumn>
+                    <tableView:TableViewTextColumn Header="Type" Width="110"
+                                                   Binding="{Binding PageType}"/>
+                    <tableView:TableViewTextColumn Header="Slots" Width="90"
+                                                   Binding="{Binding SlotCount}"
+                                                   CellStyle="{StaticResource TableViewCellRightStyle}"/>
+                    <tableView:TableViewTextColumn Header="Free Bytes" Width="110"
+                                                   Binding="{Binding FreeBytes}"
+                                                   CellStyle="{StaticResource TableViewCellRightStyle}"/>
+                </tableView:TableView.Columns>
+            </tableView:TableView>
+        </Grid>
+    </Grid>
 </UserControl>

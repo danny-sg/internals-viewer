@@ -7,18 +7,8 @@ using SkiaSharp;
 namespace InternalsViewer.UI.App.Controls.Columnstore;
 
 /// <summary>
-/// Draws the RLE array as two tracks of runs, each as wide as the share of rows it covers and coloured by its value
+/// Draws the RLE array as two tracks of runs for value runs and BitPack runs
 /// </summary>
-/// <remarks>
-/// The marker tree lists the entries, which says nothing about their shape - whether a handful of long runs carry
-/// the segment or thousands of short ones do. An array runs to hundreds of thousands of entries, so a track is
-/// built a pixel at a time rather than a rectangle per entry, which would be one draw call per entry per paint.
-///
-/// Literal runs take the whole hue wheel across the values they hold, the same wheel the allocation map places
-/// objects on. Bit packed runs take the wheel too but darker and less saturated, which is how a system object is
-/// told from a user one there - a hue on its own would collide with a value. They sit on tracks of their own so a
-/// gap in one is not read as data in the other.
-/// </remarks>
 public sealed class RleRunMapRenderer : IDisposable
 {
     public const float TrackHeight = 20f;
@@ -49,7 +39,9 @@ public sealed class RleRunMapRenderer : IDisposable
 
     private readonly SKPaint _text = new() { IsAntialias = true, Style = SKPaintStyle.Fill };
 
-    private readonly SKFont _font = new(SKTypeface.FromFamilyName("Segoe UI Variable Text") ?? SKTypeface.Default, 11f)
+    private static readonly SKTypeface LabelTypeface = SKTypeface.FromFamilyName("Segoe UI Variable Text") ?? SKTypeface.Default;
+
+    private readonly SKFont _font = new(LabelTypeface, 11f)
     {
         Edging = SKFontEdging.SubpixelAntialias,
         Subpixel = true

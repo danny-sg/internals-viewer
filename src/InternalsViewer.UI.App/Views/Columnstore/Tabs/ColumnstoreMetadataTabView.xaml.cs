@@ -21,9 +21,6 @@ public sealed partial class ColumnstoreMetadataTabView : IDisposable
 
     private void OnDataContextChanged(FrameworkElement sender, DataContextChangedEventArgs args) => Bindings.Update();
 
-    /// <summary>
-    /// Which grid is on show, the strip carrying the tabs and the grids sharing the space below it
-    /// </summary>
     /// <remarks>
     /// A tab holding its own content is rebuilt every time it is selected, so the strip is separated from what it
     /// picks and the grids are shown and hidden instead.

@@ -50,6 +50,10 @@ public sealed class SegmentValuePage : DataStructure
     [DataStructureItem(ItemType.ValuePagePayload)]
     public string Payload => "[Compressed Payload]";
 
+    public int ExpandedSize => ValueCount * ValueSize;
+
+    public ReadOnlyMemory<byte> Values => _values ??= _decoder.Decode(Compressed, ExpandedSize);
+
     public void Mark()
     {
         MarkProperty(nameof(SubLobType), Offset, 4);
@@ -63,10 +67,6 @@ public sealed class SegmentValuePage : DataStructure
             MarkProperty(nameof(Payload), Offset + HeaderSize, Size - HeaderSize);
         }
     }
-
-    public int ExpandedSize => ValueCount * ValueSize;
-
-    public ReadOnlyMemory<byte> Values => _values ??= _decoder.Decode(Compressed, ExpandedSize);
 
     /// <summary>
     /// Value as stored, being the scaled integer before the reserved low bit is removed
