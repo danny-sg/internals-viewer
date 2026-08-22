@@ -89,7 +89,12 @@ public sealed partial class ColumnstoreTabViewModel
                                            Index?.Columns.FirstOrDefault(c => c.ColumnStoreColumnId == dictionary.ColumnId)));
 
     public void OpenDeleteBitmap()
-        => Open("Delete bitmap", "DeleteBitmap", () => new ColumnstoreDeleteBitmapTabView(), this);
+        => Open("Delete Bitmap",
+                "DeleteBitmap",
+                () => new ColumnstoreDeleteBitmapTabView(),
+                Index is { } index
+                    ? new DeleteBitmapTabViewModel(PageService, IamChainService, RecordService, Database, index)
+                    : this);
 
     public void OpenDeltaStore(RowGroupSummary rowGroup)
         => Open($"Delta store {rowGroup.RowGroupId}",

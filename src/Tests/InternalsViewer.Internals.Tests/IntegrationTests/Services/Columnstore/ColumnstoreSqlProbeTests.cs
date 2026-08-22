@@ -40,6 +40,29 @@ public sealed class ColumnstoreSqlProbeTests(ITestOutputHelper testOutput) : Pro
     }
 
     [RequiresConnectionStringFact("local")]
+    public async Task Dump_Delete_Bitmaps()
+    {
+        await Dump("""
+                   SELECT t.name AS TableName, rg.row_group_id, rg.state_desc, rg.total_rows, rg.deleted_rows
+                   FROM sys.dm_db_column_store_row_group_physical_stats rg
+                   JOIN sys.tables t ON t.object_id = rg.object_id
+                   WHERE rg.deleted_rows > 0
+                   ORDER BY t.name, rg.row_group_id
+                   """);
+
+        await Dump("""
+                   SELECT t.name AS TableName, it.name AS InternalName, it.internal_type_desc,
+                          p.hobt_id, au.allocation_unit_id, au.type_desc, au.total_pages
+                   FROM sys.internal_tables it
+                   JOIN sys.tables t ON t.object_id = it.parent_object_id
+                   JOIN sys.partitions p ON p.object_id = it.object_id
+                   JOIN sys.allocation_units au ON au.container_id = p.partition_id
+                   WHERE it.internal_type_desc LIKE '%COLUMNSTORE%'
+                   ORDER BY t.name, it.internal_type_desc
+                   """);
+    }
+
+    [RequiresConnectionStringFact("local")]
     public async Task Dump_Delta_Stores()
     {
         await Dump("""

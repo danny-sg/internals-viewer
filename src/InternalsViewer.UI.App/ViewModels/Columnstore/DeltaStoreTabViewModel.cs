@@ -97,8 +97,9 @@ public sealed partial class DeltaStoreTabViewModel(IPageService pageService,
                 // Markers are not wanted for a page only being listed, and building them is most of the cost
                 var page = await PageService.GetPage(Database, address, cancellationToken, isMarkEnabled: false);
 
-                // The IAM covers whole extents, so pages allocated to nothing yet are skipped rather than shown empty
-                if (page.PageHeader.PageType is not (PageType.Data or PageType.Index))
+                // A mixed extent holds pages of other objects, so the IAM's ranges are not the rowset on their own
+                if (page.PageHeader.AllocationUnitId != allocationUnit.AllocationUnitId
+                    || page.PageHeader.PageType is not (PageType.Data or PageType.Index))
                 {
                     continue;
                 }
