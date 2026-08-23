@@ -204,6 +204,17 @@
                 <tableView:TableViewTextColumn Header="Page Count" Width="100"
                                                Binding="{Binding PageCount}"
                                                CellStyle="{StaticResource TableViewCellRightStyle}"/>
+                <tableView:TableViewTemplateColumn Header="Data Pointer" Width="130" CanSort="False">
+                    <tableView:TableViewTemplateColumn.CellTemplate>
+                        <DataTemplate x:DataType="columnstore:DictionarySummary">
+                            <HyperlinkButton Content="{x:Bind DataPointerDescription}"
+                                             Visibility="{x:Bind HasDataPointer, Converter={StaticResource BoolToVisibilityConverter}}"
+                                             Click="DictionaryDataPointerButton_Click"
+                                             Style="{StaticResource CellPageAddressStyle}"
+                                             Tag="{x:Bind}"/>
+                        </DataTemplate>
+                    </tableView:TableViewTemplateColumn.CellTemplate>
+                </tableView:TableViewTemplateColumn>
             </tableView:TableView.Columns>
         </tableView:TableView>
     </Grid>

@@ -20,10 +20,27 @@
                                                  RowGroups="{x:Bind ViewModel.RowGroups, Mode=OneWay}"
                                                  DictionaryCoding="{x:Bind ViewModel.DictionaryCoding, Mode=OneWay}"
                                                  Revision="{x:Bind ViewModel.DrawingRevision, Mode=OneWay}"
-                                                 DatabaseId="{x:Bind ViewModel.DatabaseId, Mode=OneWay}"/>
+                                                 DatabaseId="{x:Bind ViewModel.DatabaseId, Mode=OneWay}"
+                                                 Visibility="{x:Bind ViewModel.IsDrawingReady, Mode=OneWay,
+                                                         Converter={StaticResource BoolToVisibilityConverter}}"/>
+
+        <StackPanel Grid.Row="0"
+                    Spacing="12"
+                    VerticalAlignment="Center"
+                    HorizontalAlignment="Center"
+                    Visibility="{x:Bind ViewModel.IsDrawingReady, Mode=OneWay,
+                            Converter={StaticResource BoolToVisibilityConverter},
+                            ConverterParameter=True}">
+            <ProgressRing HorizontalAlignment="Center" IsActive="True"/>
+            <TextBlock HorizontalAlignment="Center"
+                       Foreground="#FF6E6E6E"
+                       Text="Loading"/>
+        </StackPanel>
 
         <ItemsControl x:Name="LegendItems"
-                      Grid.Row="1">
+                      Grid.Row="1"
+                      Visibility="{x:Bind ViewModel.IsDrawingReady, Mode=OneWay,
+                              Converter={StaticResource BoolToVisibilityConverter}}">
             <ItemsControl.ItemsPanel>
                 <ItemsPanelTemplate>
                     <StackPanel Orientation="Horizontal" 

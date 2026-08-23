@@ -67,6 +67,18 @@ public sealed partial class ColumnstoreMetadataTabView : IDisposable
         await WeakReferenceMessenger.Default.Send(new OpenPageMessage(request));
     }
 
+    private async void DictionaryDataPointerButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (((HyperlinkButton)sender).Tag is not DictionarySummary { HasDataPointer: true } dictionary)
+        {
+            return;
+        }
+
+        var request = new OpenPageRequest(ViewModel.Database, dictionary.DataPage) { Slot = dictionary.DataSlot };
+
+        await WeakReferenceMessenger.Default.Send(new OpenPageMessage(request));
+    }
+
     private void ViewDictionaryButton_Click(object sender, RoutedEventArgs e)
     {
         if (((HyperlinkButton)sender).Tag is SegmentSummary { HasDictionary: true } segment)

@@ -524,9 +524,11 @@ public sealed class ColumnstoreStructureRenderer : IDisposable
 
         _text.Color = MutedColour;
 
+        var entryTop = bounds.Top + 4 + BadgeHeight + ColumnstoreLayout.BadgeMargin;
+
         canvas.DrawText(Fit($"{dictionary.EntryCount} entries", bounds.Width - 8, _labelFont),
                         bounds.Left + 4,
-                        bounds.Top + 27,
+                        entryTop - _labelFont.Metrics.Ascent,
                         SKTextAlign.Left,
                         _labelFont,
                         _text);

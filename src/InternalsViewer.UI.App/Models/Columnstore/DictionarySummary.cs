@@ -1,5 +1,6 @@
 ﻿using CommunityToolkit.Mvvm.ComponentModel;
 using InternalsViewer.Internals.Columnstore.Metadata;
+using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.UI.App.Controls.Columnstore;
 
 namespace InternalsViewer.UI.App.Models.Columnstore;
@@ -26,7 +27,7 @@ public sealed partial class DictionarySummary : ObservableObject
     /// </summary>
     public string SubTypeDescription => Dictionary.Type switch
     {
-        1 => "Hash Table",
+        1 or 4 => "Hash Table",
         3 => "String Store",
         _ => string.Empty
     };
@@ -36,6 +37,17 @@ public sealed partial class DictionarySummary : ObservableObject
     public long EntryCount => Dictionary.EntryCount;
 
     public long OnDiskSize => Dictionary.OnDiskSize;
+
+    public LobPointer DataPointer => Dictionary.DataPointer;
+
+    public PageAddress DataPage => DataPointer.PageAddress;
+
+    public ushort DataSlot => (ushort)DataPointer.Slot;
+
+    public bool HasDataPointer => !DataPointer.IsEmpty;
+
+    public string DataPointerDescription
+        => HasDataPointer ? $"({DataPage.FileId}:{DataPage.PageId}:{DataSlot})" : string.Empty;
 
     /// <summary>
     /// Pages the dictionary holds, which arrives with the header read rather than with the metadata

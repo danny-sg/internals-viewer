@@ -116,6 +116,7 @@ public sealed class SegmentDataIdStream(SegmentBlob blob)
             var bookmark = bookmarks[Math.Min(rowOrdinal / Blob.BookmarkDistance, bookmarks.Length - 1)];
 
             entryIndex = bookmark.GetRleEntryIndex(Blob.RleEntryBytes);
+
             endRow = bookmark.EndRow;
         }
         else

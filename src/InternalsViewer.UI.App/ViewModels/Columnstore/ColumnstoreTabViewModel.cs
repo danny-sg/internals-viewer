@@ -96,6 +96,7 @@ public sealed partial class ColumnstoreTabViewModel : TabViewModel
     {
         IsLoading = true;
         IsInitialized = false;
+        IsDrawingReady = false;
 
         using var spinnerDelay = new CancellationTokenSource();
 
@@ -199,8 +200,6 @@ public sealed partial class ColumnstoreTabViewModel : TabViewModel
                     CancellationToken);
 
                 segment.Header = header;
-
-                DrawingRevision++;
             }
             catch (OperationCanceledException)
             {
@@ -214,6 +213,10 @@ public sealed partial class ColumnstoreTabViewModel : TabViewModel
                                 segment.ColumnId);
             }
         }
+
+        DrawingRevision++;
+
+        IsDrawingReady = true;
     }
 
     /// <summary>
@@ -325,6 +328,12 @@ public sealed partial class ColumnstoreTabViewModel : TabViewModel
     /// </remarks>
     [ObservableProperty]
     private int _drawingRevision;
+
+    /// <summary>
+    /// Whether every background read the drawing shows has arrived, the structure staying behind a spinner until it has
+    /// </summary>
+    [ObservableProperty]
+    private bool _isDrawingReady;
 
     /// <summary>
     /// Holds the spinner back so a load that returns straight away does not flash one up
