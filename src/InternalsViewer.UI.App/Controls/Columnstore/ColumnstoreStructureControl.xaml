@@ -22,7 +22,7 @@
                     Height="0"
                     Background="{ThemeResource SolidBackgroundFillColorSecondaryBrush}"/>
             <Border x:Name="BandProbe" Width="0" Height="0" Background="{ThemeResource SolidBackgroundFillColorTertiaryBrush}"/>
-            <Border x:Name="HoverBandProbe" Width="0" Height="0" Background="{ThemeResource SolidBackgroundFillColorQuarternaryBrush}"/>
+            <Border x:Name="HoverBandProbe" Width="0" Height="0" Background="{ThemeResource SolidBackgroundFillColorBaseBrush}"/>
             <Border x:Name="KeywordProbe" Width="0" Height="0" Background="{ThemeResource SqlKeywordBrush}"/>
             <Border x:Name="NumberProbe" Width="0" Height="0" Background="{ThemeResource SqlNumberBrush}"/>
             <Border x:Name="PunctuationProbe" Width="0" Height="0" Background="{ThemeResource SqlPunctuationBrush}"/>

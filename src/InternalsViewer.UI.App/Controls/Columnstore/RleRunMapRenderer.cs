@@ -175,12 +175,14 @@ public sealed class RleRunMapRenderer : IDisposable
 
         var caretTop = (TrackHeight * 2) + TrackGap + 1;
 
-        using var path = new SKPath();
+        var builder = new SKPathBuilder();
 
-        path.MoveTo(centre, caretTop);
-        path.LineTo(centre - MarkerHeight, caretTop + MarkerHeight);
-        path.LineTo(centre + MarkerHeight, caretTop + MarkerHeight);
-        path.Close();
+        builder.MoveTo(centre, caretTop);
+        builder.LineTo(centre - MarkerHeight, caretTop + MarkerHeight);
+        builder.LineTo(centre + MarkerHeight, caretTop + MarkerHeight);
+        builder.Close();
+
+        using var path = builder.Detach();
 
         _marker.Color = SelectionColour;
 

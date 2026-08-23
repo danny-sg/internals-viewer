@@ -137,7 +137,6 @@ public sealed partial class ColumnstoreStructureControl : IDisposable
     {
         var isDark = ActualTheme == ElementTheme.Dark;
 
-        _renderer.HoverColour = isDark ? ColumnstoreColours.DarkHover : ColumnstoreColours.Selection;
         _renderer.TextColour = isDark ? ColumnstoreColours.DarkText : ColumnstoreColours.Text;
         _renderer.MutedColour = isDark ? ColumnstoreColours.DarkMuted : ColumnstoreColours.Muted;
         _renderer.PanelColour = ProbeColour(PanelProbe, isDark ? ColumnstoreColours.DarkPanel : ColumnstoreColours.Panel);

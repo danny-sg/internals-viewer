@@ -78,23 +78,13 @@ public sealed class ColumnstoreStructureRenderer : IDisposable
 
     public SKColor MutedColour { get; set; } = ColumnstoreColours.Muted;
 
-    /// <summary>
-    /// The three greys the drawing is built from - the column bands, the rows over them, and a hovered column
-    /// </summary>
     public SKColor PanelColour { get; set; } = ColumnstoreColours.Panel;
 
     public SKColor BandColour { get; set; } = ColumnstoreColours.Panel;
 
     public SKColor HoverBandColour { get; set; } = ColumnstoreColours.Hover;
 
-    /// <summary>
-    /// Band behind a locator column, set apart so the clustered key it holds is not read as data of its own
-    /// </summary>
     public SKColor LocatorBandColour { get; set; } = ColumnstoreColours.LocatorBand;
-
-    public SKColor SelectionColour { get; set; } = ColumnstoreColours.Selection;
-
-    public SKColor HoverColour { get; set; } = ColumnstoreColours.Hover;
 
     public SKColor KeywordColour { get; set; } = ColumnstoreColours.Text;
 
@@ -172,8 +162,6 @@ public sealed class ColumnstoreStructureRenderer : IDisposable
 
             y += ColumnstoreLayout.GetRowGroupHeight(hasLocalDictionaries) + ColumnstoreLayout.RowGroupGap;
         }
-
-        DrawEmphasis(canvas, regions);
 
         canvas.Restore();
 
@@ -402,41 +390,6 @@ public sealed class ColumnstoreStructureRenderer : IDisposable
     public float BandTop { get; private set; }
 
     public float BandBottom { get; private set; }
-
-    /// <summary>
-    /// Draws the hover and selection outlines last, so neither is painted over by a later region
-    /// </summary>
-    private void DrawEmphasis(SKCanvas canvas, List<ColumnstoreRegion> regions)
-    {
-        if (FindMatch(regions, Hover) is { } hover)
-        {
-            _stroke.StrokeWidth = 1;
-
-            DrawBorder(canvas, SKRect.Inflate(hover.Bounds, 1, 1), HoverColour);
-        }
-    }
-
-    private static ColumnstoreRegion? FindMatch(List<ColumnstoreRegion> regions, ColumnstoreRegion? target)
-    {
-        if (target is null)
-        {
-            return null;
-        }
-
-        foreach (var region in regions)
-        {
-            if (region.ElementType == target.ElementType
-                && ReferenceEquals(region.Segment, target.Segment)
-                && ReferenceEquals(region.Dictionary, target.Dictionary)
-                && ReferenceEquals(region.RowGroup, target.RowGroup)
-                && region.Bounds == target.Bounds)
-            {
-                return region;
-            }
-        }
-
-        return null;
-    }
 
     private float DrawRowSets(SKCanvas canvas,
                               ColumnStoreIndex index,

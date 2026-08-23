@@ -41,7 +41,7 @@ public static class ColumnstoreColours
 
     public static readonly SKColor Selection = FromHex(0x185FA5);
 
-    public static readonly SKColor Hover = FromHex(0x85B7EB);
+    public static readonly SKColor Hover = FromHex(0xD0CEC6);
 
     public static readonly SKColor DarkHover = FromHex(0x85B7EB);
 
