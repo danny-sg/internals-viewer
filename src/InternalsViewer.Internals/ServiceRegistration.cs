@@ -1,4 +1,5 @@
 ﻿using System.Diagnostics.CodeAnalysis;
+using InternalsViewer.Internals.Columnstore.Services;
 using InternalsViewer.Internals.Connections.File;
 using InternalsViewer.Internals.Connections.Server;
 using InternalsViewer.Internals.Interfaces.Connections;
@@ -63,6 +64,8 @@ public static class ServiceRegistration
         services.AddTransient<LobRecordLoader>();
 
         services.AddTransient<IndexService>();
+
+        services.AddTransient<ColumnstoreService>();
 
         RegisterPageParsers(services);
     }

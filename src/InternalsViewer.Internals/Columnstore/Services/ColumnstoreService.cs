@@ -1,18 +1,18 @@
 ﻿using System.IO;
 using System.Threading;
 using InternalsViewer.Internals.Columnstore.Decoding;
-using InternalsViewer.Internals.Columnstore.Blobs;
 using InternalsViewer.Internals.Columnstore.Dictionaries;
 using InternalsViewer.Internals.Columnstore.Metadata;
+using InternalsViewer.Internals.Columnstore.Metadata.Enums;
 using InternalsViewer.Internals.Columnstore.Parsers;
 using InternalsViewer.Internals.Columnstore.Segments;
 using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Internals.Engine.Database;
 using InternalsViewer.Internals.Engine.Database.Enums;
 using InternalsViewer.Internals.Engine.Records;
-using InternalsViewer.Internals.Engine.Records.Data;
 using InternalsViewer.Internals.Interfaces.Readers.Internals;
 using InternalsViewer.Internals.Interfaces.Services.Records;
+using InternalsViewer.Internals.Metadata.Structures;
 using InternalsViewer.Internals.Providers.Metadata;
 
 namespace InternalsViewer.Internals.Columnstore.Services;
@@ -42,11 +42,13 @@ public sealed class ColumnstoreService(IRecordReader recordReader, ILobDataServi
         var columnMap = structure.Columns
                                  .Where(c => c.IndexColumnId > 0)
                                  .GroupBy(c => c.IndexColumnId)
-                                 .ToDictionary(g => g.Key, global::InternalsViewer.Internals.Metadata.Structures.ColumnStructure (g) => g.First());
+                                 .ToDictionary(g => g.Key, ColumnStructure (g) => g.First());
 
         var related = database.AllocationUnits
                               .Values
-                              .Where(a => a.ObjectId == allocationUnit.ObjectId && a.IndexId == allocationUnit.IndexId)
+                              .Where(a => a.ObjectId == allocationUnit.ObjectId
+                                          && a.IndexId == allocationUnit.IndexId
+                                          && a.PartitionNumber == allocationUnit.PartitionNumber)
                               .ToList();
 
         return ColumnstoreMetadataMapper.Map(allocationUnit,
@@ -58,58 +60,9 @@ public sealed class ColumnstoreService(IRecordReader recordReader, ILobDataServi
                                              GetLocatorNames(database, allocationUnit, structure));
     }
 
-    /// <summary>
-    /// The clustered key columns a nonclustered index has to keep, being the ones it does not already hold
-    /// </summary>
-    /// <remarks>
-    /// Confirmed against four shapes: the key columns come in key order regardless of the order the index lists its
-    /// own, a key column the index already carries is not repeated, and a non unique clustered index adds its
-    /// uniqueifier. A heap has no key, so its locator is the row id and is named as such.
-    /// </remarks>
-    private static List<string> GetLocatorNames(DatabaseSource database,
-                                                AllocationUnit allocationUnit,
-                                                global::InternalsViewer.Internals.Metadata.Structures.IndexStructure indexStructure)
-    {
-        if (allocationUnit.IndexType != IndexType.NonClusteredColumnStore)
-        {
-            return [];
-        }
-
-        if (allocationUnit.ParentIndexType != IndexType.Clustered)
-        {
-            return ["RID"];
-        }
-
-        var clustered = database.AllocationUnits
-                                .Values
-                                .FirstOrDefault(a => a.ObjectId == allocationUnit.ObjectId && a.IndexId == 1);
-
-        if (clustered is null)
-        {
-            return [];
-        }
-
-        // Matched on name, the column ids of one index structure not meaning the same thing in another
-        var held = indexStructure.Columns
-                                 .Where(c => c.IsIncludeColumn)
-                                 .Select(c => c.ColumnName)
-                                 .ToHashSet();
-
-        var key = IndexStructureProvider.GetIndexStructure(database, clustered.AllocationUnitId).Columns;
-
-        var names = key.Where(c => c.IsIndexKey && !held.Contains(c.ColumnName))
-                       .Select(c => c.ColumnName)
-                       .ToList();
-
-        // The uniqueifier a non unique clustered index adds comes after its key, whatever order it is listed in
-        names.AddRange(key.Where(c => c.IsUniqueifier).Select(c => c.ColumnName));
-
-        return names;
-    }
-
     public async Task<byte[]> GetData(DatabaseSource database,
-                                             LobPointer lobPointer,
-                                             CancellationToken cancellationToken)
+                                      LobPointer lobPointer,
+                                      CancellationToken cancellationToken)
     {
         return await LobDataService.GetData(database,
                                             new RowIdentifier(lobPointer.PageAddress, (ushort)lobPointer.Slot),
@@ -117,12 +70,8 @@ public sealed class ColumnstoreService(IRecordReader recordReader, ILobDataServi
     }
 
     /// <summary>
-    /// Reads a segment's prologue alone, which is enough to describe its layout without pulling the whole blob
+    /// Reads a segment prologue alone, which is enough to describe its layout without pulling the whole blob
     /// </summary>
-    /// <remarks>
-    /// An archive compressed segment has to be expanded before any of it can be read, so it falls back to the full
-    /// blob. Everything else costs the root page plus the page holding the first chunk.
-    /// </remarks>
     public async Task<SegmentBlobHeader> GetSegmentHeader(DatabaseSource database,
                                                           ColumnSegment segment,
                                                           CancellationToken cancellationToken)
@@ -192,9 +141,9 @@ public sealed class ColumnstoreService(IRecordReader recordReader, ILobDataServi
     }
 
     public async Task<DictionaryBlob> GetDictionaryBlob(DatabaseSource database,
-                                                       SegmentDictionary dictionary,
-                                                       CancellationToken cancellationToken,
-                                                       bool isMarkEnabled = false)
+                                                        SegmentDictionary dictionary,
+                                                        CancellationToken cancellationToken,
+                                                        bool isMarkEnabled = false)
     {
         var data = await GetData(database, dictionary.DataPointer, cancellationToken);
 
@@ -211,7 +160,7 @@ public sealed class ColumnstoreService(IRecordReader recordReader, ILobDataServi
     }
 
     /// <summary>
-    /// Resolves a segment's data ids to values, for a caller holding a blob it has already read
+    /// Resolves a segment data ids to values
     /// </summary>
     public async Task<SegmentValueDecoder> GetSegmentDecoder(DatabaseSource database,
                                                              ColumnSegment segment,
@@ -240,17 +189,91 @@ public sealed class ColumnstoreService(IRecordReader recordReader, ILobDataServi
 
         return new RowGroupReader(rowGroup, readers, skipped);
     }
-    
+
+    public async Task ResolveDeltaStoreRowGroups(DatabaseSource database, CancellationToken cancellationToken)
+    {
+        var deltaStores = database.AllocationUnits
+                                  .Values
+                                  .Where(a => a.OwnerType == (byte)ColumnstoreRowsetType.DeltaStore)
+                                  .ToList();
+
+        if (deltaStores.Count == 0)
+        {
+            return;
+        }
+
+        var records = await GetRecords("syscsrowgroups", database, cancellationToken);
+
+        var rowGroupByDeltaStore = new Dictionary<long, int>();
+
+        foreach (var record in records)
+        {
+            rowGroupByDeltaStore.TryAdd(record.GetValue<long>("ds_hobtid"), record.GetValue<int>("segment_id"));
+        }
+
+        foreach (var deltaStore in deltaStores)
+        {
+            if (rowGroupByDeltaStore.TryGetValue(deltaStore.PartitionId, out var rowGroupId))
+            {
+                deltaStore.DeltaStoreRowGroupId = rowGroupId;
+            }
+        }
+    }
+
+    /// <summary>
+    /// The clustered key columns a nonclustered index has to keep, being the ones it does not already hold
+    /// </summary>
+    private static List<string> GetLocatorNames(DatabaseSource database,
+                                                AllocationUnit allocationUnit,
+                                                IndexStructure indexStructure)
+    {
+        if (allocationUnit.IndexType != IndexType.NonClusteredColumnStore)
+        {
+            return [];
+        }
+
+        if (allocationUnit.ParentIndexType != IndexType.Clustered)
+        {
+            return ["RID"];
+        }
+
+        var clustered = database.AllocationUnits
+                                .Values
+                                .FirstOrDefault(a => a.ObjectId == allocationUnit.ObjectId && a.IndexId == 1);
+
+        if (clustered is null)
+        {
+            return [];
+        }
+
+        // Matched on name, the column ids of one index structure not meaning the same thing in another
+        var held = indexStructure.Columns
+                                 .Where(c => c.IsIncludeColumn)
+                                 .Select(c => c.ColumnName)
+                                 .ToHashSet();
+
+        var key = IndexStructureProvider.GetIndexStructure(database, clustered.AllocationUnitId).Columns;
+
+        var names = key.Where(c => c.IsIndexKey && !held.Contains(c.ColumnName))
+                       .Select(c => c.ColumnName)
+                       .ToList();
+
+        // The uniqueifier a non unique clustered index adds comes after its key, whatever order it is listed in
+        names.AddRange(key.Where(c => c.IsUniqueifier).Select(c => c.ColumnName));
+
+        return names;
+    }
+
     /// <summary>
     /// The dictionary the segment's ids index, a local one taking precedence over the column's global one
     /// </summary>
     private async Task<DictionaryBlob?> GetSegmentDictionary(DatabaseSource database,
-        ColumnSegment segment,
-        CancellationToken cancellationToken)
+                                                             ColumnSegment segment,
+                                                             CancellationToken cancellationToken)
     {
         var source = segment.SecondaryDictionaryId >= 0
-            ? segment.LocalDictionary
-            : segment.Column?.GlobalDictionary;
+                        ? segment.LocalDictionary
+                        : segment.Column?.GlobalDictionary;
 
         return source is null ? null : await GetDictionaryBlob(database, source, cancellationToken);
     }
@@ -260,16 +283,21 @@ public sealed class ColumnstoreService(IRecordReader recordReader, ILobDataServi
                                                 DatabaseSource database,
                                                 CancellationToken cancellationToken)
     {
+        var records = await GetRecords(name, database, cancellationToken);
+
+        return [.. records.Where(r => r.GetValue<long>("hobt_id") == partitionId)];
+    }
+
+    private async Task<List<Record>> GetRecords(string name,
+                                                DatabaseSource database,
+                                                CancellationToken cancellationToken)
+    {
         var allocationUnit = database.AllocationUnits
                                      .Values
                                      .FirstOrDefault(a => a.SchemaName == "sys"
                                                           && a.TableName == name
-                                                          && a.AllocationUnitType == AllocationUnitType.InRowData);
-
-        if (allocationUnit is null)
-        {
-            throw new InvalidOperationException($"sys.{name} allocation unit not found");
-        }
+                                                          && a.AllocationUnitType == AllocationUnitType.InRowData)
+                             ?? throw new InvalidOperationException($"sys.{name} allocation unit not found");
 
         if (allocationUnit.FirstPage == PageAddress.Empty)
         {
@@ -278,11 +306,9 @@ public sealed class ColumnstoreService(IRecordReader recordReader, ILobDataServi
 
         var tableStructure = TableStructureProvider.GetTableStructure(database, allocationUnit.AllocationUnitId);
 
-        var records = await RecordReader.Read(database,
-                                              allocationUnit.FirstPage,
-                                              tableStructure,
-                                              cancellationToken);
-
-        return [.. records.Where(r => r.GetValue<long>("hobt_id") == partitionId)];
+        return await RecordReader.Read(database,
+                                       allocationUnit.FirstPage,
+                                       tableStructure,
+                                       cancellationToken);
     }
 }

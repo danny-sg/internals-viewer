@@ -65,12 +65,7 @@ public sealed class FileHeaderPageParser : PageParser, IPageParser<FileHeaderPag
 
         return fileHeaderPage;
     }
-
-    /// <summary>
-    /// Position and length of a variable length column, relative to the start of the page
-    /// </summary>
-    private readonly record struct Column(int Offset, int Length);
-
+    
     /// <summary>
     /// Walks the record's variable length column offset array to give the position of every column
     /// </summary>
@@ -83,7 +78,7 @@ public sealed class FileHeaderPageParser : PageParser, IPageParser<FileHeaderPag
 
         var recordOffset = page.OffsetTable[0];
 
-        if (recordOffset == 0 || recordOffset >= PageData.Size)
+        if (recordOffset is 0 or >= PageData.Size)
         {
             return [];
         }
@@ -114,7 +109,7 @@ public sealed class FileHeaderPageParser : PageParser, IPageParser<FileHeaderPag
 
         var offsetArrayOffset = variableColumnCountOffset + sizeof(ushort);
 
-        var start = offsetArrayOffset + variableColumnCount * sizeof(ushort);
+        var start = offsetArrayOffset + (variableColumnCount * sizeof(ushort));
 
         if (start > PageData.Size)
         {
@@ -125,7 +120,7 @@ public sealed class FileHeaderPageParser : PageParser, IPageParser<FileHeaderPag
 
         for (var index = 0; index < variableColumnCount; index++)
         {
-            var end = recordOffset + BinaryPrimitives.ReadUInt16LittleEndian(data[(offsetArrayOffset + index * sizeof(ushort))..]);
+            var end = recordOffset + BinaryPrimitives.ReadUInt16LittleEndian(data[(offsetArrayOffset + (index * sizeof(ushort)))..]);
 
             end = Math.Clamp(end, start, PageData.Size);
 
@@ -248,22 +243,22 @@ public sealed class FileHeaderPageParser : PageParser, IPageParser<FileHeaderPag
     private static short ReadInt16(byte[] data, Column[] columns, int columnId)
     {
         return TryGetColumn(columns, columnId, sizeof(short), out var column)
-            ? BitConverter.ToInt16(data, column.Offset)
-            : default;
+               ? BitConverter.ToInt16(data, column.Offset)
+               : default;
     }
 
     private static int ReadInt32(byte[] data, Column[] columns, int columnId)
     {
         return TryGetColumn(columns, columnId, sizeof(int), out var column)
-            ? BitConverter.ToInt32(data, column.Offset)
-            : default;
+               ? BitConverter.ToInt32(data, column.Offset)
+               : 0;
     }
 
     private static Guid ReadGuid(byte[] data, Column[] columns, int columnId)
     {
         return TryGetColumn(columns, columnId, GuidSize, out var column)
-            ? new Guid(data.AsSpan(column.Offset, GuidSize))
-            : default;
+               ? new Guid(data.AsSpan(column.Offset, GuidSize))
+               : Guid.Empty;
     }
 
     private static LogSequenceNumber ReadLogSequenceNumber(byte[] data, Column[] columns, int columnId)
@@ -279,4 +274,9 @@ public sealed class FileHeaderPageParser : PageParser, IPageParser<FileHeaderPag
             ? Encoding.Unicode.GetString(data, column.Offset, column.Length)
             : string.Empty;
     }
+
+    /// <summary>
+    /// Position and length of a variable length column, relative to the start of the page
+    /// </summary>
+    private readonly record struct Column(int Offset, int Length);
 }

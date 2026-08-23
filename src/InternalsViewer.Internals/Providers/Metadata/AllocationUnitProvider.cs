@@ -58,6 +58,7 @@ public static class AllocationUnitProvider
             IsSystem = (internalObject.Status & 1) != 0,
             PartitionId = source.ContainerId,
             OwnerType = rowset.OwnerType,
+            PartitionNumber = rowset.PartitionNumber,
             FirstPage = PageAddressParser.Parse(source.FirstPage!),
             RootPage = PageAddressParser.Parse(source.RootPage!),
             FirstIamPage = PageAddressParser.Parse(source.FirstIamPage!),

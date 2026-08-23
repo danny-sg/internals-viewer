@@ -5,7 +5,7 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-    xmlns:models="using:InternalsViewer.UI.App.Models"
+    xmlns:allocation="using:InternalsViewer.UI.App.Controls.Allocation"
     xmlns:tableView="using:WinUI.TableView"
     xmlns:system="using:System"
     x:Name="Root"
@@ -64,33 +64,69 @@
                                                        Width="48"
                                                        CanSort="False">
                         <tableView:TableViewTemplateColumn.CellTemplate>
-                            <DataTemplate x:DataType="models:AllocationLayer">
+                            <DataTemplate x:DataType="allocation:AllocationLayerRow">
                                 <Rectangle Width="16"
                                            Height="16"
-                                           Fill="{x:Bind Colour, Mode=OneWay, Converter={StaticResource ColorToSolidColorBrushValueConverter}}" />
+                                           Visibility="{x:Bind KeyVisibility}"
+                                           Fill="{x:Bind Layer.Colour, Mode=OneWay, Converter={StaticResource ColorToSolidColorBrushValueConverter}}" />
                             </DataTemplate>
                         </tableView:TableViewTemplateColumn.CellTemplate>
                     </tableView:TableViewTemplateColumn>
 
-                    <tableView:TableViewTextColumn Header="Object Name"
-                                                   Width="200"
-                                                   Tag="ObjectName"
-                                                   Binding="{Binding ObjectName}"/>
-                    <tableView:TableViewTextColumn Header="Index Name"
-                                                   Width="240"
-                                                   Tag="IndexName"
-                                                   Binding="{Binding IndexName}"/>
-                    <tableView:TableViewTextColumn Header="Index Type"
-                                                   Width="160"
-                                                   Tag="IndexTypeDescription"
-                                                   Binding="{Binding IndexTypeDescription}"/>
+                    <tableView:TableViewTemplateColumn Header="Object Name"
+                                                       Width="220"
+                                                       Tag="ObjectName">
+                        <tableView:TableViewTemplateColumn.CellTemplate>
+                            <DataTemplate x:DataType="allocation:AllocationLayerRow">
+                                <StackPanel Orientation="Horizontal"
+                                            Margin="{x:Bind Indent}"
+                                            VerticalAlignment="Center">
+                                    <Grid Width="16" Height="16" VerticalAlignment="Center">
+                                        <Button Click="ExpanderButton_Click"
+                                                Visibility="{x:Bind ExpanderVisibility}"
+                                                Background="Transparent"
+                                                BorderThickness="0"
+                                                Padding="0"
+                                                MinWidth="16" Width="16" MinHeight="16" Height="16">
+                                            <FontIcon Glyph="{x:Bind ExpanderGlyph, Mode=OneWay}" FontSize="10"/>
+                                        </Button>
+                                    </Grid>
+                                    <TextBlock Text="{x:Bind ObjectName}"
+                                               Margin="4,0"
+                                               VerticalAlignment="Center"/>
+                                </StackPanel>
+                            </DataTemplate>
+                        </tableView:TableViewTemplateColumn.CellTemplate>
+                    </tableView:TableViewTemplateColumn>
+                    <tableView:TableViewTemplateColumn Header="Index Name"
+                                                       Width="240"
+                                                       Tag="IndexName">
+                        <tableView:TableViewTemplateColumn.CellTemplate>
+                            <DataTemplate x:DataType="allocation:AllocationLayerRow">
+                                <TextBlock Text="{x:Bind IndexName}"
+                                           Margin="{x:Bind TextMargin}"
+                                           VerticalAlignment="Center"/>
+                            </DataTemplate>
+                        </tableView:TableViewTemplateColumn.CellTemplate>
+                    </tableView:TableViewTemplateColumn>
+                    <tableView:TableViewTemplateColumn Header="Type"
+                                                       Width="160"
+                                                       Tag="IndexTypeDescription">
+                        <tableView:TableViewTemplateColumn.CellTemplate>
+                            <DataTemplate x:DataType="allocation:AllocationLayerRow">
+                                <TextBlock Text="{x:Bind TypeDescription}"
+                                           Margin="{x:Bind TextMargin}"
+                                           VerticalAlignment="Center"/>
+                            </DataTemplate>
+                        </tableView:TableViewTemplateColumn.CellTemplate>
+                    </tableView:TableViewTemplateColumn>
                     <tableView:TableViewTemplateColumn Header="Page Count"
                                                        Width="100"
                                                        Tag="TotalPages"
                                                        SortMemberPath="TotalPages">
                         <tableView:TableViewTemplateColumn.CellTemplate>
-                            <DataTemplate x:DataType="models:AllocationLayer">
-                                <TextBlock Text="{x:Bind TotalPages, Mode=OneWay}"
+                            <DataTemplate x:DataType="allocation:AllocationLayerRow">
+                                <TextBlock Text="{x:Bind TotalPages}"
                                            Margin="0,0,10,0"
                                            TextAlignment="Right"/>
                             </DataTemplate>
@@ -100,8 +136,9 @@
                                                        Width="100"
                                                        CanSort="False">
                         <tableView:TableViewTemplateColumn.CellTemplate>
-                            <DataTemplate x:DataType="models:AllocationLayer">
-                                <HyperlinkButton Content="{x:Bind RootPage, Mode=OneWay}"
+                            <DataTemplate x:DataType="allocation:AllocationLayerRow">
+                                <HyperlinkButton Content="{x:Bind RootPage}"
+                                                 Visibility="{x:Bind HasEntryPoints, Converter={StaticResource BoolToVisibilityConverter}}"
                                                  Click="HyperlinkButton_Click"
                                                  Style="{StaticResource CellPageAddressStyle}"
                                                  Tag="{x:Bind RootPage}"/>
@@ -112,8 +149,9 @@
                                                        Width="100"
                                                        CanSort="False">
                         <tableView:TableViewTemplateColumn.CellTemplate>
-                            <DataTemplate x:DataType="models:AllocationLayer">
-                                <HyperlinkButton Content="{x:Bind FirstPage, Mode=OneWay}"
+                            <DataTemplate x:DataType="allocation:AllocationLayerRow">
+                                <HyperlinkButton Content="{x:Bind FirstPage}"
+                                                 Visibility="{x:Bind HasEntryPoints, Converter={StaticResource BoolToVisibilityConverter}}"
                                                  Click="HyperlinkButton_Click"
                                                  Style="{StaticResource CellPageAddressStyle}"
                                                  Tag="{x:Bind FirstPage}"/>
@@ -124,8 +162,9 @@
                                                        Width="120"
                                                        CanSort="False">
                         <tableView:TableViewTemplateColumn.CellTemplate>
-                            <DataTemplate x:DataType="models:AllocationLayer">
-                                <HyperlinkButton Content="{x:Bind FirstIamPage, Mode=OneWay}"
+                            <DataTemplate x:DataType="allocation:AllocationLayerRow">
+                                <HyperlinkButton Content="{x:Bind FirstIamPage}"
+                                                 Visibility="{x:Bind HasEntryPoints, Converter={StaticResource BoolToVisibilityConverter}}"
                                                  Click="HyperlinkButton_Click"
                                                  Style="{StaticResource CellPageAddressStyle}"
                                                  Tag="{x:Bind FirstIamPage}"/>
@@ -137,10 +176,10 @@
                                                        Width="100"
                                                        CanSort="False">
                         <tableView:TableViewTemplateColumn.CellTemplate>
-                            <DataTemplate x:DataType="models:AllocationLayer">
+                            <DataTemplate x:DataType="allocation:AllocationLayerRow">
                                 <Grid HorizontalAlignment="Center">
                                     <HyperlinkButton Content="View"
-                                                     Visibility="{x:Bind IsIndex, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}"
+                                                     Visibility="{x:Bind IsIndex, Converter={StaticResource BoolToVisibilityConverter}}"
                                                      Click="ViewIndexButton_Click"
                                                      Style="{StaticResource CellPageAddressStyle}"
                                                      Tag="{x:Bind RootPage}"/>
@@ -153,10 +192,10 @@
                                                        Width="100"
                                                        CanSort="False">
                         <tableView:TableViewTemplateColumn.CellTemplate>
-                            <DataTemplate x:DataType="models:AllocationLayer">
+                            <DataTemplate x:DataType="allocation:AllocationLayerRow">
                                 <Grid HorizontalAlignment="Center">
                                     <HyperlinkButton Content="View"
-                                                     Visibility="{x:Bind IsColumnstore, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}"
+                                                     Visibility="{x:Bind IsColumnstore, Converter={StaticResource BoolToVisibilityConverter}}"
                                                      Click="ViewColumnstoreButton_Click"
                                                      Style="{StaticResource CellPageAddressStyle}"
                                                      Tag="{x:Bind AllocationUnitId}"/>

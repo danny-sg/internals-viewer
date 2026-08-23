@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Drawing;
 using System.Linq;
+using InternalsViewer.Internals.Columnstore.Metadata.Enums;
 using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Internals.Engine.Allocation;
 using InternalsViewer.Internals.Engine.Database;
@@ -42,9 +43,16 @@ internal static class AllocationLayerBuilder
                                              .Distinct()
                                              .Count();
 
+        var partitionedObjectNames = allocationUnits.Values
+                                                    .GroupBy(u => GetCurrentObjectName(u, separateIndexes))
+                                                    .Where(g => g.Select(u => u.PartitionNumber).Distinct().Count() > 1)
+                                                    .Select(g => g.Key)
+                                                    .ToHashSet();
+
         foreach (var allocationUnit in allocationUnits.Values
                                                       .OrderBy(o => o.TableName)
                                                       .ThenBy(o => o.IndexName)
+                                                      .ThenBy(o => o.PartitionNumber)
                                                       .ThenBy(o => ScoreAllocationUnit(o))
                                                       .Where(o => !o.IsSystem || isDisplaySystemObjects))
         {
@@ -59,10 +67,20 @@ internal static class AllocationLayerBuilder
                                            ref colourIndex,
                                            ref systemColourIndex);
 
+                layer.IsPartitioned = partitionedObjectNames.Contains(currentObjectName);
+
                 layers.Add(layer);
             }
 
             var lastLayer = layers.Last();
+
+            if (HasEntryPoints(allocationUnit))
+            {
+                lastLayer.Units.Add(CreateUnit(allocationUnit, lastLayer.IsPartitioned));
+            }
+
+            lastLayer.UsedPages += allocationUnit.UsedPages;
+            lastLayer.TotalPages += allocationUnit.IamChain.AllocatedPageCount();
 
             lastLayer.AllocationChains.Add(allocationUnit.IamChain);
 
@@ -115,7 +133,7 @@ internal static class AllocationLayerBuilder
                     }
                 }
 
-                systemLayer.TotalPages += systemAllocationUnit.TotalPages;
+                systemLayer.TotalPages += systemAllocationUnit.IamChain.AllocatedPageCount();
             }
 
             layers.Add(systemLayer);
@@ -269,8 +287,6 @@ internal static class AllocationLayerBuilder
             RootPage = allocationUnit.RootPage,
             FirstIamPage = allocationUnit.FirstIamPage,
             IndexName = allocationUnit.IndexName,
-            UsedPages = allocationUnit.UsedPages,
-            TotalPages = allocationUnit.TotalPages,
             IndexType = allocationUnit.IndexType,
             IsSystemObject = allocationUnit.IsSystem,
             IsAllocationLayer = false,
@@ -280,6 +296,45 @@ internal static class AllocationLayerBuilder
         };
 
         return layer;
+    }
+
+    private static string GetColumnstoreUsage(AllocationUnit allocationUnit)
+    {
+        var isColumnstore = allocationUnit.IndexType is IndexType.ClusteredColumnStore or IndexType.NonClusteredColumnStore;
+
+        return (ColumnstoreRowsetType)allocationUnit.OwnerType switch
+        {
+            ColumnstoreRowsetType.DeleteBitmap => "Delete Bitmap",
+            ColumnstoreRowsetType.DeltaStore when allocationUnit.DeltaStoreRowGroupId is { } rowGroupId => $"Row Group {rowGroupId} Delta Store",
+            ColumnstoreRowsetType.DeltaStore => "Delta Store",
+            _ when isColumnstore && allocationUnit.AllocationUnitType == AllocationUnitType.LargeObjectData => "Segments/Dictionaries",
+            _ => string.Empty
+        };
+    }
+
+    private static bool HasEntryPoints(AllocationUnit allocationUnit)
+    {
+        return allocationUnit.FirstPage != PageAddress.Empty
+               || allocationUnit.RootPage != PageAddress.Empty
+               || allocationUnit.FirstIamPage != PageAddress.Empty;
+    }
+
+    private static AllocationLayerUnit CreateUnit(AllocationUnit allocationUnit, bool isPartitioned)
+    {
+        return new AllocationLayerUnit
+        {
+            AllocationUnitId = allocationUnit.AllocationUnitId,
+            PartitionNumber = isPartitioned ? allocationUnit.PartitionNumber : null,
+            AllocationUnitType = allocationUnit.AllocationUnitType,
+            ColumnstoreUsage = GetColumnstoreUsage(allocationUnit),
+            IndexName = allocationUnit.IndexName,
+            IndexType = allocationUnit.IndexType,
+            FirstPage = allocationUnit.FirstPage,
+            RootPage = allocationUnit.RootPage,
+            FirstIamPage = allocationUnit.FirstIamPage,
+            UsedPages = allocationUnit.UsedPages,
+            TotalPages = allocationUnit.IamChain.AllocatedPageCount()
+        };
     }
 
     public static AllocationLayer GenerateLayer(AllocationPage allocationPage, int startOffset)

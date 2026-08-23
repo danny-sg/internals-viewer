@@ -1,4 +1,5 @@
 using System.IO;
+
 namespace InternalsViewer.Internals.Compression;
 
 /// <summary>
@@ -6,19 +7,19 @@ namespace InternalsViewer.Internals.Compression;
 /// </summary>
 public sealed class XpressBufferOutput(int size) : IXpressOutput
 {
-    private readonly byte[] buffer = new byte[size];
+    private readonly byte[] _buffer = new byte[size];
 
-    private int position;
+    private int _position;
 
-    public long Length => position;
+    public long Length => _position;
 
-    public ReadOnlyMemory<byte> Buffer => buffer.AsMemory(0, position);
+    public ReadOnlyMemory<byte> Buffer => _buffer.AsMemory(0, _position);
 
-    public void WriteLiteral(byte value) => buffer[position++] = value;
+    public void WriteLiteral(byte value) => _buffer[_position++] = value;
 
     public void WriteMatch(int offset, int length)
     {
-        var source = position - offset;
+        var source = _position - offset;
 
         if (source < 0)
         {
@@ -27,7 +28,7 @@ public sealed class XpressBufferOutput(int size) : IXpressOutput
 
         for (var i = 0; i < length; i++)
         {
-            buffer[position++] = buffer[source + i];
+            _buffer[_position++] = _buffer[source + i];
         }
     }
 }

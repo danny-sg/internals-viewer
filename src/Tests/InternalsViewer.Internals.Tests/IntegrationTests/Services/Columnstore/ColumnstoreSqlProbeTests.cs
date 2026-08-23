@@ -40,13 +40,33 @@ public sealed class ColumnstoreSqlProbeTests(ITestOutputHelper testOutput) : Pro
     }
 
     [RequiresConnectionStringFact("local")]
+    public async Task Dump_Decimal_Encodings()
+    {
+        await Dump("""
+                   SELECT t.name AS TableName, c.name AS ColumnName,
+                          ty.name AS TypeName, c.precision, c.scale, c.max_length,
+                          s.encoding_type AS Enc, d.type AS DictType, d.entry_count AS DictEntries
+                   FROM sys.column_store_segments s
+                   JOIN sys.partitions p ON p.partition_id = s.hobt_id
+                   JOIN sys.tables t ON t.object_id = p.object_id
+                   JOIN sys.columns c ON c.object_id = t.object_id AND c.column_id = s.column_id
+                   JOIN sys.types ty ON ty.user_type_id = c.user_type_id
+                   LEFT JOIN sys.column_store_dictionaries d ON d.hobt_id = s.hobt_id
+                                                            AND d.column_id = s.column_id
+                                                            AND d.dictionary_id = 0
+                   WHERE ty.name IN ('decimal', 'numeric') AND s.segment_id = 0
+                   ORDER BY c.precision, c.scale
+                   """);
+    }
+
+    [RequiresConnectionStringFact("local")]
     public async Task Dump_Delete_Bitmaps()
     {
         await Dump("""
                    SELECT t.name AS TableName, rg.row_group_id, rg.state_desc, rg.total_rows, rg.deleted_rows
                    FROM sys.dm_db_column_store_row_group_physical_stats rg
                    JOIN sys.tables t ON t.object_id = rg.object_id
-                   WHERE rg.deleted_rows > 0
+                   WHERE rg.deleted_rows > 0 OR t.name LIKE 'SegDel%'
                    ORDER BY t.name, rg.row_group_id
                    """);
 

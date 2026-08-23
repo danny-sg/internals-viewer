@@ -11,6 +11,8 @@ namespace InternalsViewer.Internals.Columnstore.Parsers;
 /// </summary>
 public static class DictionaryBlobParser
 {
+    private const int PageSizeBytes = 4;
+
     public static DictionaryBlob Parse(ReadOnlyMemory<byte> data, int entryCount, int lastId, bool isMarkEnabled = false)
     {
         if (ArchiveBlobHeader.IsArchive(data.Span))
@@ -81,9 +83,7 @@ public static class DictionaryBlobParser
 
         return span.Length < offset + 4 ? null : (SubLobType)ReadInt32(span, offset);
     }
-
-    private const int PageSizeBytes = 4;
-
+    
     private static NumericDictionary ParseNumeric(ReadOnlyMemory<byte> data, int entryCount, int firstId, bool isMarkEnabled)
     {
         var span = data.Span;

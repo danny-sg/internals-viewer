@@ -5,6 +5,11 @@
 /// </summary>
 public sealed class HuffmanBitReader
 {
+    /// <summary>
+    /// Bytes the reader pulls in before any bit is consumed, being the two words the mask is filled from
+    /// </summary>
+    private const int PrefetchBytes = 4;    
+    
     private ReadOnlyMemory<byte> _payload;
 
     private uint _mask;
@@ -12,11 +17,6 @@ public sealed class HuffmanBitReader
     private int _bits;
 
     private int _position;
-
-    /// <summary>
-    /// Bytes the reader pulls in before any bit is consumed, being the two words the mask is filled from
-    /// </summary>
-    private const int PrefetchBytes = 4;
 
     /// <summary>
     /// Byte cursor the word reader has reached, which runs ahead of the consumed bits

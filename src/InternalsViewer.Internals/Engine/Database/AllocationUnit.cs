@@ -32,6 +32,8 @@ public sealed record AllocationUnit
     /// </summary>
     public byte OwnerType { get; set; }
 
+    public int? DeltaStoreRowGroupId { get; set; }
+
     public PageAddress FirstIamPage { get; set; }
 
     public PageAddress RootPage { get; set; }
@@ -59,6 +61,8 @@ public sealed record AllocationUnit
     public string DisplayName { get; set; } = string.Empty;
     
     public CompressionType CompressionType { get; set; }
+
+    public int PartitionNumber { get; set; }
 
     public IndexType? ParentIndexType { get; set; }
 }

@@ -69,7 +69,7 @@ public sealed class HuffmanStringPage : StringPage
     /// Stands in for the packed table in a marker, a hundred and twenty eight bytes of nibbles reading as noise
     /// </summary>
     [DataStructureItem(ItemType.HuffmanCodeLengths)]
-    public string CodeLengthTable => "[Huffman Table]";
+    public static string CodeLengthTable => "[Huffman Table]";
 
     /// <summary>
     /// Bytes between the code lengths and the stream, the stream starting on a four byte boundary
@@ -87,7 +87,7 @@ public sealed class HuffmanStringPage : StringPage
     /// <summary>
     /// What one symbol stands for, a narrow page coding characters where a byte page codes raw bytes
     /// </summary>
-    public string DescribeSymbol(int symbol)
+    public static string DescribeSymbol(int symbol)
         => symbol is >= 0x20 and < 0x7F ? ((char)symbol).ToString() : string.Empty;
 
     public override void Mark()
@@ -107,6 +107,18 @@ public sealed class HuffmanStringPage : StringPage
                          Offset + HeaderSize + CodeLengthTableSize,
                          DataOffset - HeaderSize - CodeLengthTableSize);
         }
+    }
+
+    public void Build()
+    {
+        if (HuffmanBlobType is not (NarrowBlobType or ByteBlobType))
+        {
+            throw new InvalidDataException($"Huffman string page blob type {HuffmanBlobType} is not supported.");
+        }
+
+        _table.Build(CodeLengths.Span);
+
+        _reader.Reset(Content);
     }
 
     /// <summary>
@@ -141,47 +153,6 @@ public sealed class HuffmanStringPage : StringPage
         return steps;
     }
 
-    private int ReadStep(List<HuffmanDecodeStep> steps, bool isLength)
-    {
-        var bitOffset = _reader.BitPosition;
-
-        var symbol = ReadSymbol();
-
-        var bitLength = _table.GetCodeLength(symbol);
-
-        steps.Add(new HuffmanDecodeStep(bitOffset, bitLength, symbol, ReadCode(bitOffset, bitLength), isLength));
-
-        return symbol;
-    }
-
-    /// <summary>
-    /// The code as it sits in the stream, read back from the bits the symbol was taken from
-    /// </summary>
-    private int ReadCode(int bitOffset, int bitLength)
-    {
-        var position = _reader.BitPosition;
-
-        _reader.SeekBits(bitOffset);
-
-        var code = _reader.Peek(CanonicalHuffmanTable.MaxCodeBits) >> (CanonicalHuffmanTable.MaxCodeBits - bitLength);
-
-        _reader.SeekBits(position);
-
-        return code;
-    }
-
-    public void Build()
-    {
-        if (HuffmanBlobType is not (NarrowBlobType or ByteBlobType))
-        {
-            throw new InvalidDataException($"Huffman string page blob type {HuffmanBlobType} is not supported.");
-        }
-
-        _table.Build(CodeLengths.Span);
-
-        _reader.Reset(Content);
-    }
-
     protected override ReadOnlySpan<byte> GetBytes(int handleOffset)
     {
         _reader.SeekBits(handleOffset);
@@ -210,6 +181,35 @@ public sealed class HuffmanStringPage : StringPage
         }
 
         return _buffer.AsSpan(0, length);
+    }
+
+    private int ReadStep(List<HuffmanDecodeStep> steps, bool isLength)
+    {
+        var bitOffset = _reader.BitPosition;
+
+        var symbol = ReadSymbol();
+
+        var bitLength = _table.GetCodeLength(symbol);
+
+        steps.Add(new HuffmanDecodeStep(bitOffset, bitLength, symbol, ReadCode(bitOffset, bitLength), isLength));
+
+        return symbol;
+    }
+
+    /// <summary>
+    /// The code as it sits in the stream, read back from the bits the symbol was taken from
+    /// </summary>
+    private int ReadCode(int bitOffset, int bitLength)
+    {
+        var position = _reader.BitPosition;
+
+        _reader.SeekBits(bitOffset);
+
+        var code = _reader.Peek(CanonicalHuffmanTable.MaxCodeBits) >> (CanonicalHuffmanTable.MaxCodeBits - bitLength);
+
+        _reader.SeekBits(position);
+
+        return code;
     }
 
     private int ReadLength()

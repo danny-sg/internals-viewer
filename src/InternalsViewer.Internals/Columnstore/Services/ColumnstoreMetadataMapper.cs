@@ -5,7 +5,6 @@ using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Internals.Engine.Database;
 using InternalsViewer.Internals.Engine.Database.Enums;
 using InternalsViewer.Internals.Engine.Records;
-using InternalsViewer.Internals.Engine.Records.Data;
 using InternalsViewer.Internals.Metadata.Structures;
 
 namespace InternalsViewer.Internals.Columnstore.Services;
@@ -20,36 +19,7 @@ public static class ColumnstoreMetadataMapper
     /// </summary>
     private const int StatusHasNullsFlag = 1;
 
-    /// <summary>
-    /// Columnstore column ids are offset from the table column ids they map to
-    /// </summary>
-    /// <summary>
-    /// A locator named after the key column it holds, falling back to a number when the key cannot be read
-    /// </summary>
-    private static string NameLocator(bool isLocator, int ordinal, int count, IReadOnlyList<string> names)
-    {
-        if (!isLocator)
-        {
-            return string.Empty;
-        }
-
-        if (ordinal <= names.Count)
-        {
-            return names[ordinal - 1];
-        }
-
-        return count > 1 ? $"Row Locator {ordinal}" : "Row Locator";
-    }
-
-    /// <summary>
-    /// What a nonclustered index has to keep to find its way back, which is the RID over a heap and the key otherwise
-    /// </summary>
-    private static string DescribeLocator(IndexType? parentIndexType) => parentIndexType switch
-    {
-        IndexType.Heap => "RID",
-        IndexType.Clustered => "Clustered Key",
-        _ => string.Empty
-    };
+    private const int RowGroupStateMask = 0x7;
 
     /// <summary>
     /// How far the columnstore's own column numbering runs ahead of the index column it stands for
@@ -169,6 +139,37 @@ public static class ColumnstoreMetadataMapper
     }
 
     /// <summary>
+    /// What a nonclustered index has to keep to find its way back, which is the RID over a heap and the key otherwise
+    /// </summary>
+    private static string DescribeLocator(IndexType? parentIndexType) => parentIndexType switch
+    {
+        IndexType.Heap => "RID",
+        IndexType.Clustered => "Clustered Key",
+        _ => string.Empty
+    };
+    
+    /// <summary>
+    /// Columnstore column ids are offset from the table column ids they map to
+    /// </summary>
+    /// <summary>
+    /// A locator named after the key column it holds, falling back to a number when the key cannot be read
+    /// </summary>
+    private static string NameLocator(bool isLocator, int ordinal, int count, IReadOnlyList<string> names)
+    {
+        if (!isLocator)
+        {
+            return string.Empty;
+        }
+
+        if (ordinal <= names.Count)
+        {
+            return names[ordinal - 1];
+        }
+
+        return count > 1 ? $"Row Locator {ordinal}" : "Row Locator";
+    }
+
+    /// <summary>
     /// Groups the allocation units of an index by the row set they belong to
     /// </summary>
     private static IEnumerable<ColumnstoreRowset> BuildRowsets(IEnumerable<AllocationUnit> allocationUnits)
@@ -236,8 +237,6 @@ public static class ColumnstoreMetadataMapper
             yield return column;
         }
     }
-
-    private const int RowGroupStateMask = 0x7;
 
     private static RowGroup MapRowGroup(Record record, long hobtId)
     {

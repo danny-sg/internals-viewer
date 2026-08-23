@@ -48,7 +48,7 @@ public sealed class SegmentValuePage : DataStructure
     /// Stands in for the payload in a marker, the compressed bytes saying nothing a reader can use
     /// </summary>
     [DataStructureItem(ItemType.ValuePagePayload)]
-    public string Payload => "[Compressed Payload]";
+    public static string Payload => "[Compressed Payload]";
 
     public int ExpandedSize => ValueCount * ValueSize;
 

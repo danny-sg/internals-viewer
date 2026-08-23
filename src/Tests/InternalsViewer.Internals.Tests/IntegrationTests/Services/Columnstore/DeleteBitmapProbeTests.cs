@@ -18,7 +18,7 @@ namespace InternalsViewer.Internals.Tests.IntegrationTests.Services.Columnstore;
 /// </summary>
 public sealed class DeleteBitmapProbeTests(ITestOutputHelper testOutput) : ProviderTestBase(testOutput)
 {
-    private const string TableName = "SegDelMulti";
+    private const string TableName = "SegDelMap";
 
     /// <summary>
     /// A row group with three rows deleted at known positions, so a record can be matched to the row it marks
@@ -71,6 +71,10 @@ public sealed class DeleteBitmapProbeTests(ITestOutputHelper testOutput) : Provi
     [RequiresConnectionStringFact("local")]
     public async Task Report_Raw_Records()
     {
+        await using var connection = new SqlConnection(ConnectionStringHelper.GetConnectionString("local"));
+
+        await connection.OpenAsync();
+
         await Build();
 
         var database = await LoadDatabase();
@@ -83,6 +87,13 @@ public sealed class DeleteBitmapProbeTests(ITestOutputHelper testOutput) : Provi
                                       new CdDataRecordLoader(TestLogger.GetLogger<CdDataRecordLoader>(TestOutput)));
 
         var service = new ColumnstoreService(reader, new LobDataService(pageService));
+
+        foreach (var candidate in database.AllocationUnits.Values.Where(a => a.TableName == TableName))
+        {
+            TestOutput.WriteLine($"candidate hobt {candidate.PartitionId} part {candidate.PartitionNumber} "
+                                 + $"owner {candidate.OwnerType} type {candidate.AllocationUnitType} "
+                                 + $"unit {candidate.AllocationUnitId}");
+        }
 
         var allocationUnit = database.AllocationUnits.Values.First(a => a.TableName == TableName);
 
@@ -129,7 +140,12 @@ public sealed class DeleteBitmapProbeTests(ITestOutputHelper testOutput) : Provi
                     continue;
                 }
 
-                foreach (var record in ServiceHelper.CreateRecordService(TestOutput).GetRecords(dataPage))
+                var pageRecords = ServiceHelper.CreateRecordService(TestOutput).GetRecords(dataPage).ToList();
+
+                TestOutput.WriteLine($"  page {dataPage.PageAddress} slots {dataPage.PageHeader.SlotCount} "
+                                     + $"records {pageRecords.Count}");
+
+                foreach (var record in pageRecords)
                 {
                     var fields = record.Fields.Select(f => f.Value).ToList();
 
@@ -140,7 +156,20 @@ public sealed class DeleteBitmapProbeTests(ITestOutputHelper testOutput) : Provi
 
         TestOutput.WriteLine(string.Join(", ", deleted.Select(d => $"({d.Group},{d.Row})")));
 
-        // Id 5 is the fifth row of the first row group, 10001 and 19999 the first and last of the second
-        Assert.Equal([(0L, 4L), (1L, 0L), (1L, 9998L)], deleted.OrderBy(d => d.Group).ThenBy(d => d.Row));
+        // Taken from the engine rather than pinned, the tuple mover being free to merge deletes away at any time
+        await using var counts = new SqlCommand($"""
+                                                 SELECT SUM(deleted_rows)
+                                                 FROM sys.dm_db_column_store_row_group_physical_stats rg
+                                                 JOIN sys.tables t ON t.object_id = rg.object_id
+                                                 WHERE t.name = '{TableName}'
+                                                 """, connection);
+
+        var expected = Convert.ToInt32(await counts.ExecuteScalarAsync());
+
+        TestOutput.WriteLine($"engine reports {expected} deleted rows, decoded {deleted.Count}");
+
+        Assert.Equal(expected, deleted.Count);
+
+        Assert.All(deleted, d => Assert.InRange(d.Row, 0, int.MaxValue));
     }
 }

@@ -15,6 +15,11 @@ namespace InternalsViewer.Internals.Columnstore.Decoding;
 /// </remarks>
 public static class ColumnstoreValueConverter
 {
+    /// <summary>
+    /// Length prefix on the deep data fields, which hold a value rather than a data id
+    /// </summary>
+    public const int DeepDataPrefixSize = 2;
+
     public static object? Convert(object? decoded, ColumnStructure? structure)
     {
         if (decoded is null || structure is null)
@@ -36,11 +41,6 @@ public static class ColumnstoreValueConverter
 
         return ConvertStorage(storage, structure);
     }
-
-    /// <summary>
-    /// Length prefix on the deep data fields, which hold a value rather than a data id
-    /// </summary>
-    public const int DeepDataPrefixSize = 2;
 
     /// <summary>
     /// Converts the min or max deep data a segment carries into the value it stands for

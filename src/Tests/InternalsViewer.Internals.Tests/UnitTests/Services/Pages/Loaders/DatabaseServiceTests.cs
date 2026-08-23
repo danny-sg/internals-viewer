@@ -1,11 +1,14 @@
-﻿using InternalsViewer.Internals.Engine.Allocation;
+﻿using InternalsViewer.Internals.Columnstore.Services;
+using InternalsViewer.Internals.Engine.Allocation;
 using InternalsViewer.Internals.Engine.Database;
 using InternalsViewer.Internals.Engine.Pages.Enums;
 using InternalsViewer.Internals.Interfaces.Connections;
 using InternalsViewer.Internals.Interfaces.Readers;
+using InternalsViewer.Internals.Interfaces.Readers.Internals;
 using InternalsViewer.Internals.Interfaces.Services.Loaders.Chains;
 using InternalsViewer.Internals.Interfaces.Services.Loaders.Engine;
 using InternalsViewer.Internals.Interfaces.Services.Loaders.Pages;
+using InternalsViewer.Internals.Interfaces.Services.Records;
 using InternalsViewer.Internals.Metadata.Internals;
 using InternalsViewer.Internals.Metadata.Internals.Tables;
 using InternalsViewer.Internals.Services.Loaders.Engine;
@@ -62,7 +65,9 @@ public class DatabaseServiceTests(ITestOutputHelper testOutput)
                                                   pageService.Object,
                                                   allocationChainService.Object,
                                                   iamChainService.Object,
-                                                  pfsChainService.Object);
+                                                  pfsChainService.Object,
+                                                  new ColumnstoreService(new Mock<IRecordReader>().Object,
+                                                                         new Mock<ILobDataService>().Object));
 
         var result = await databaseService.LoadAsync("", BuildConnection(), CancellationToken.None);
 
@@ -102,7 +107,9 @@ public class DatabaseServiceTests(ITestOutputHelper testOutput)
                                                   bootPageService.Object,
                                                   allocationChainService.Object,
                                                   iamChainService.Object,
-                                                  pfsChainService.Object);
+                                                  pfsChainService.Object,
+                                                  new ColumnstoreService(new Mock<IRecordReader>().Object,
+                                                                         new Mock<ILobDataService>().Object));
 
         var result = await databaseService.LoadAsync("TestDatabase", BuildConnection(), CancellationToken.None);
 

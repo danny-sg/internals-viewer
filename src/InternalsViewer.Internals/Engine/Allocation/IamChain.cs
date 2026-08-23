@@ -87,6 +87,28 @@ public sealed class IamChain : IAllocationPageChain<IamPage>
         return false;
     }
 
+    public long AllocatedPageCount()
+    {
+        long count = 0;
+
+        foreach (var page in Pages)
+        {
+            if (page.PageAddress != PageAddress.Empty)
+            {
+                count++;
+            }
+
+            count += page.SinglePageSlots.Count(slot => slot != PageAddress.Empty);
+
+            foreach (var b in page.AllocationMap)
+            {
+                count += System.Numerics.BitOperations.PopCount(b) * 8;
+            }
+        }
+
+        return count;
+    }
+
     /// <summary>
     /// Enumerate a list of page ranges (From-To) for the allocations
     /// </summary>

@@ -1,5 +1,6 @@
 ﻿using System.Diagnostics;
 using System.Threading;
+using InternalsViewer.Internals.Columnstore.Services;
 using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Internals.Engine.Database;
 using InternalsViewer.Internals.Engine.Loading;
@@ -17,11 +18,12 @@ namespace InternalsViewer.Internals.Services.Loaders.Engine;
 /// Service responsible for loading Databases
 /// </summary>
 public sealed partial class DatabaseService(ILogger<DatabaseService> logger,
-                                    IMetadataLoader metadataLoader,
-                                    IPageService pageService,
-                                    IAllocationChainService allocationChainService,
-                                    IIamChainService iamChainService,
-                                    IPfsChainService pfsChainService)
+                                            IMetadataLoader metadataLoader,
+                                            IPageService pageService,
+                                            IAllocationChainService allocationChainService,
+                                            IIamChainService iamChainService,
+                                            IPfsChainService pfsChainService,
+                                            ColumnstoreService columnstoreService)
     : IDatabaseService
 {
     /// <summary>
@@ -40,6 +42,8 @@ public sealed partial class DatabaseService(ILogger<DatabaseService> logger,
     private IIamChainService IamChainService { get; } = iamChainService;
 
     private IPfsChainService PfsChainService { get; } = pfsChainService;
+
+    private ColumnstoreService ColumnstoreService { get; } = columnstoreService;
 
     /// <summary>
     /// Create and load a Database object for the given database name
@@ -92,6 +96,15 @@ public sealed partial class DatabaseService(ILogger<DatabaseService> logger,
         Logger.LogDebug("Reading allocations");
 
         await RefreshAllocations(database, cancellationToken);
+
+        try
+        {
+            await ColumnstoreService.ResolveDeltaStoreRowGroups(database, cancellationToken);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error resolving delta store row groups");
+        }
 
         progress?.Report(new ProgressDetail($"Loaded in {Stopwatch.GetElapsedTime(startTimestamp).TotalSeconds:N1}s"));
 

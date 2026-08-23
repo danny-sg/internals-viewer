@@ -92,7 +92,9 @@ public sealed partial class AllocationLayerGrid
             return;
         }
 
-        var layer = (AllocationLayer)row.Content;
+        var layerRow = (AllocationLayerRow)row.Content;
+
+        var layer = layerRow.Layer;
 
         // Snapshot selection state before the table's own handler changes anything
         var wasSelected = layers.Contains(layer);
@@ -121,9 +123,17 @@ public sealed partial class AllocationLayerGrid
         }
         SelectedLayers = new ObservableCollection<AllocationLayer>(layers);
 
-        LayerTable.SelectedItem = SelectedLayers.Count == 1 ? (object)SelectedLayers[0] : null;
+        LayerTable.SelectedItem = SelectedLayers.Count == 1 && SelectedLayers[0] == layer ? ViewModel.FindRow(layerRow) : null;
 
         e.Handled = true;
+    }
+
+    private void ExpanderButton_Click(object sender, RoutedEventArgs e)
+    {
+        if ((sender as FrameworkElement)?.DataContext is AllocationLayerRow row)
+        {
+            ViewModel.ToggleExpanded(row);
+        }
     }
 
     private void HyperlinkButton_Click(object sender, RoutedEventArgs e)

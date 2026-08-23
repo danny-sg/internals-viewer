@@ -36,6 +36,12 @@ public sealed partial class AllocationLayer : ObservableObject
     [ObservableProperty]
     private string _indexName = string.Empty;
 
+    [ObservableProperty]
+    private bool _isPartitioned;
+
+    [ObservableProperty]
+    private List<AllocationLayerUnit> _units = [];
+
     /// <summary>
     /// Identifies the allocation unit a viewer opened from this layer should load
     /// </summary>
