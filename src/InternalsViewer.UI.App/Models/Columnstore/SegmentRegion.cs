@@ -9,5 +9,5 @@ public enum SegmentRegion
     Bookmarks,
     RleArray,
     BitpackArray,
-    ValueStore
+    VariableLengthData
 }

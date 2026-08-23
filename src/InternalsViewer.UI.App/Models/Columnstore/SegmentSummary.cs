@@ -1,4 +1,6 @@
 ﻿using System;
+using System.Collections.Generic;
+using System.Linq;
 using InternalsViewer.Internals.Columnstore.Metadata;
 using InternalsViewer.Internals.Columnstore.Decoding;
 using InternalsViewer.Internals.Engine.Address;
@@ -7,6 +9,8 @@ using InternalsViewer.Internals.Columnstore.Segments;
 using InternalsViewer.Internals.Helpers;
 using InternalsViewer.Internals.Metadata.Structures;
 using CommunityToolkit.Mvvm.ComponentModel;
+using InternalsViewer.UI.App.Controls.Columnstore;
+using SkiaSharp;
 
 namespace InternalsViewer.UI.App.Models.Columnstore;
 
@@ -26,7 +30,218 @@ public sealed partial class SegmentSummary : ObservableObject
     [NotifyPropertyChangedFor(nameof(BitPackEntriesDescription))]
     [NotifyPropertyChangedFor(nameof(BitPackSizeDescription))]
     [NotifyPropertyChangedFor(nameof(BookmarkDescription))]
+    [NotifyPropertyChangedFor(nameof(Storage))]
+    [NotifyPropertyChangedFor(nameof(StorageDescription))]
+    [NotifyPropertyChangedFor(nameof(DataIdSteps))]
+    [NotifyPropertyChangedFor(nameof(ValueSteps))]
+    [NotifyPropertyChangedFor(nameof(DerivationDescription))]
     private SegmentBlobHeader? _header;
+
+    public SegmentStorage Storage => SegmentStorageExtensions.Classify(Header);
+
+    public string StorageDescription => Storage.Describe();
+
+    /// <summary>
+    /// How a stored value becomes a data id, being the half of the working the blob answers on its own
+    /// </summary>
+    public IReadOnlyList<SegmentDerivationStep> DataIdSteps => Split().DataId;
+
+    /// <summary>
+    /// How a data id becomes the column's value, which no segment can answer without its metadata
+    /// </summary>
+    public IReadOnlyList<SegmentDerivationStep> ValueSteps => Split().Value;
+
+    public string DerivationDescription
+        => $"Data Id = {string.Join(" ", DataIdSteps.Select(Describe))}"
+           + $", Value = {string.Join(" ", ValueSteps.Select(Describe))}";
+
+    private const string Arrow = "→";
+
+    /// <summary>
+    /// The working for each result, the result itself being named beside it rather than ending the chain
+    /// </summary>
+    private (IReadOnlyList<SegmentDerivationStep> DataId, IReadOnlyList<SegmentDerivationStep> Value) Split()
+    {
+        var steps = BuildSteps();
+
+        var dataId = steps.FindIndex(s => s.Text == "Data Id");
+
+        return (steps[..dataId],
+                [steps[dataId] with { Prefix = string.Empty }, .. steps[(dataId + 1)..^1]]);
+    }
+
+    private List<SegmentDerivationStep> BuildSteps()
+    {
+        var steps = new List<SegmentDerivationStep>();
+
+        var minId = Header is null ? "0" : $"{Header.BitpackMinId}";
+
+        switch (Storage)
+        {
+            case SegmentStorage.VariableLengthData:
+                steps.Add(Chip("Stored Value", ColumnstoreColours.VariableLengthDataFlag) with
+                {
+                    Operator = ">>",
+                    Name = "Reserved Bits",
+                    Value = "1",
+                    Location = "Reserved Low Bit of the Stored Value"
+                });
+                break;
+
+            case SegmentStorage.BitPack:
+                steps.Add(PackedValue(minId));
+                break;
+
+            case SegmentStorage.Mixed:
+                steps.Add(Chip("RLE Value", ColumnstoreColours.RleFlag));
+                steps.Add(PackedValue(minId) with { Prefix = string.Empty });
+                break;
+
+            case SegmentStorage.RunLength:
+                steps.Add(Chip("RLE Value", ColumnstoreColours.RleFlag));
+                break;
+
+            default:
+                steps.Add(Chip("Stored Value", ColumnstoreColours.UnknownEncoding));
+                break;
+        }
+
+        steps[0] = steps[0] with { Prefix = string.Empty };
+
+        steps.Add(new SegmentDerivationStep
+        {
+            Prefix = Arrow,
+            Text = "Data Id",
+            Background = SegmentDerivationStep.Black,
+            Foreground = SegmentDerivationStep.White,
+            Border = SegmentDerivationStep.Black
+        });
+
+        steps.AddRange(GetDecodeSteps());
+
+        steps.Add(new SegmentDerivationStep
+        {
+            Prefix = Arrow,
+            Text = "Value",
+            Background = SegmentDerivationStep.White,
+            Foreground = SegmentDerivationStep.Black,
+            Border = SegmentDerivationStep.Outline
+        });
+
+        return steps;
+    }
+
+    private static string Describe(SegmentDerivationStep step)
+    {
+        var parts = new List<string>();
+
+        if (step.HasPrefix)
+        {
+            parts.Add(step.Prefix);
+        }
+
+        if (step.HasChip)
+        {
+            parts.Add(step.Text);
+        }
+
+        if (step.HasOperator)
+        {
+            parts.Add(step.Operator);
+        }
+
+        if (step.HasBadge)
+        {
+            parts.Add($"{step.Name} ({step.Value})");
+        }
+
+        if (step.HasSuffix)
+        {
+            parts.Add(step.Suffix);
+        }
+
+        return string.Join(" ", parts);
+    }
+
+    private static SegmentDerivationStep Chip(string text, SKColor colour) => new()
+    {
+        Prefix = Arrow,
+        Text = text,
+        Background = SegmentDerivationStep.FromSkia(colour),
+        Foreground = SegmentDerivationStep.White,
+        Border = SegmentDerivationStep.FromSkia(colour)
+    };
+
+    private static SegmentDerivationStep PackedValue(string minId)
+        => Chip("Packed Value", ColumnstoreColours.BitPackFlag) with
+        {
+            Operator = "+",
+            Name = "Bit Pack Min Id",
+            Value = minId,
+            Location = "Segment Blob Header, +0x28"
+        };
+
+    /// <summary>
+    /// What turns the data id into the value, which continues the same expression rather than being a step on
+    /// </summary>
+    private IEnumerable<SegmentDerivationStep> GetDecodeSteps()
+    {
+        if (Dictionary is { } dictionary)
+        {
+            yield return Chip($"{DictionaryDescription} Dictionary", ColumnstoreLayout.GetDictionaryColour(dictionary.Type)) with
+            {
+                Operator = "[Data Id -",
+                Name = "First Id",
+                Value = $"{dictionary.LastId - dictionary.EntryCount + 1}",
+                Suffix = "]",
+                Location = "Metadata.Dictionaries.FirstId",
+                BadgeBackground = SegmentDerivationStep.MetadataConstant
+            };
+
+            yield break;
+        }
+
+        if (Storage == SegmentStorage.VariableLengthData)
+        {
+            if (Structure is { Scale: > 0 } structure)
+            {
+                yield return new SegmentDerivationStep
+                {
+                    Operator = "/ 10^",
+                    Name = "Scale",
+                    Value = $"{structure.Scale}",
+                    Location = "Column.Scale",
+                    BadgeBackground = SegmentDerivationStep.MetadataConstant
+                };
+            }
+
+            yield break;
+        }
+
+        if (Segment.BaseId != 0)
+        {
+            yield return new SegmentDerivationStep
+            {
+                Operator = "+",
+                Name = "Base Id",
+                Value = $"{Segment.BaseId}",
+                Location = "Metadata.Segments.BaseId",
+                BadgeBackground = SegmentDerivationStep.MetadataConstant
+            };
+        }
+
+        if (Segment.Magnitude > 0 && Math.Abs(Segment.Magnitude - 1) > double.Epsilon)
+        {
+            yield return new SegmentDerivationStep
+            {
+                Operator = "x",
+                Name = "Magnitude",
+                Value = $"{Segment.Magnitude:G}",
+                Location = "Metadata.Segments.Magnitude",
+                BadgeBackground = SegmentDerivationStep.MetadataConstant
+            };
+        }
+    }
 
     public string StructureDescription
         => Header is null ? string.Empty : Header.StructureType.ToString().SplitCamelCase();
@@ -106,6 +321,10 @@ public sealed partial class SegmentSummary : ObservableObject
         : HasGlobalDictionary
             ? $"Global {GlobalDictionary!.DictionaryId}"
             : string.Empty;
+
+    public long BaseId => Segment.BaseId;
+
+    public double Magnitude => Segment.Magnitude;
 
     public long MinDataId => Segment.MinDataId;
 

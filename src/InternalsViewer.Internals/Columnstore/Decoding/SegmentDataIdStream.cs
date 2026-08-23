@@ -24,9 +24,9 @@ public sealed class SegmentDataIdStream(SegmentBlob blob)
             throw new ArgumentOutOfRangeException(nameof(rowOrdinal));
         }
 
-        if (Blob.ValueStore is { } store)
+        if (Blob.VariableLengthData is { } store)
         {
-            return new SegmentDataIdSource(store.GetValue(rowOrdinal), SegmentValueOrigin.ValueStore, -1, -1);
+            return new SegmentDataIdSource(store.GetValue(rowOrdinal), SegmentValueOrigin.VariableLengthData, -1, -1);
         }
 
         var (entryIndex, endRow) = Seek(rowOrdinal);
@@ -48,9 +48,9 @@ public sealed class SegmentDataIdStream(SegmentBlob blob)
     /// </summary>
     public BitSpan GetSpan(int rowOrdinal)
     {
-        if (Blob.ValueStore is not null)
+        if (Blob.VariableLengthData is not null)
         {
-            return BitSpan.FromBytes(Blob.ValueStoreOffset, Blob.Data.Length - Blob.ValueStoreOffset);
+            return BitSpan.FromBytes(Blob.VariableLengthDataOffset, Blob.Data.Length - Blob.VariableLengthDataOffset);
         }
 
         var (entryIndex, endRow) = Seek(rowOrdinal);
@@ -69,7 +69,7 @@ public sealed class SegmentDataIdStream(SegmentBlob blob)
 
     public IEnumerable<long> ReadAll()
     {
-        if (Blob.ValueStore is { } store)
+        if (Blob.VariableLengthData is { } store)
         {
             for (var i = 0; i < store.ValueCount; i++)
             {
@@ -109,7 +109,7 @@ public sealed class SegmentDataIdStream(SegmentBlob blob)
 
         var entryIndex = 0;
 
-        var endRow = 0;
+        int endRow;
 
         if (bookmarks.Length > 0 && Blob.BookmarkDistance > 0)
         {

@@ -37,9 +37,9 @@ public static class SegmentElementBuilder
         {
             elements.Add(new SegmentElement
             {
-                Name = "Value Store",
-                Offset = blob.ValueStoreOffset,
-                Size = blob.Data.Length - blob.ValueStoreOffset
+                Name = "Variable Length Data",
+                Offset = blob.VariableLengthDataOffset,
+                Size = blob.Data.Length - blob.VariableLengthDataOffset
             });
 
             return elements;

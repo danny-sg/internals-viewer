@@ -65,7 +65,7 @@ public sealed class SegmentBlob : DataStructure
 
     public int RleEntryCount => Header.RleEntryCount;
 
-    public SegmentValueStore? ValueStore { get; set; }
+    public SegmentVariableLengthData? VariableLengthData { get; set; }
 
     public bool IsStoreByValue => Header.IsStoreByValue;
 
@@ -73,7 +73,7 @@ public sealed class SegmentBlob : DataStructure
 
     public int BookmarkArrayOffset => Header.BookmarkArrayOffset;
 
-    public int ValueStoreOffset => Header.ValueStoreOffset;
+    public int VariableLengthDataOffset => Header.VariableLengthDataOffset;
 
     public int RleArrayOffset => Header.RleArrayOffset;
 
@@ -84,7 +84,7 @@ public sealed class SegmentBlob : DataStructure
     /// <summary>
     /// Rows the RLE runs cover, excluding the terminator
     /// </summary>
-    public int RowCount => ValueStore?.ValueCount ?? RleEntries.Sum(e => e.Count);
+    public int RowCount => VariableLengthData?.ValueCount ?? RleEntries.Sum(e => e.Count);
 
     public int BitpackRowCount => RleEntries.Where(e => e.IsBitpacked).Sum(e => e.Count);
 

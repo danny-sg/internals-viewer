@@ -20,8 +20,20 @@ public sealed class SegmentValuePage : DataStructure
     [DataStructureItem(ItemType.ValuePageSubLobType)]
     public SubLobType SubLobType { get; set; }
 
-    [DataStructureItem(ItemType.ValuePageUnknown)]
-    public short Unknown04 { get; set; }
+    /// <summary>
+    /// Low nibble of the byte at 0x04, which DBCC CSINDEX reports as the page's compression
+    /// </summary>
+    [DataStructureItem(ItemType.ValuePageCompression)]
+    public byte Compression { get; set; }
+
+    /// <summary>
+    /// High nibble of the same byte
+    /// </summary>
+    [DataStructureItem(ItemType.ValuePageFlags)]
+    public byte Flags { get; set; }
+
+    [DataStructureItem(ItemType.ValuePageReserved)]
+    public byte Reserved05 { get; set; }
 
     /// <summary>
     /// Bytes one value occupies once expanded
@@ -57,7 +69,9 @@ public sealed class SegmentValuePage : DataStructure
     public void Mark()
     {
         MarkProperty(nameof(SubLobType), Offset, 4);
-        MarkProperty(nameof(Unknown04), Offset + 0x04, 2);
+        MarkBits(ItemType.ValuePageCompression, "Compression", Compression, ((Offset + 0x04) * 8), 4);
+        MarkBits(ItemType.ValuePageFlags, "Flags", Flags, ((Offset + 0x04) * 8) + 4, 4);
+        MarkProperty(nameof(Reserved05), Offset + 0x05, 1);
         MarkProperty(nameof(ValueSize), Offset + 0x06, 2);
         MarkProperty(nameof(ValueCount), Offset + 0x08, 4);
         MarkProperty(nameof(PayloadSize), Offset + 0x0C, 2);

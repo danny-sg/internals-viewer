@@ -76,7 +76,7 @@ public sealed class BitRulerRenderer : IDisposable
     /// <summary>
     /// Rule down each byte boundary, which the value bands underneath it do not line up with
     /// </summary>
-    public SKColor ByteDividerColour { get; set; } = SKColors.White;
+    public SKColor ByteDividerColour { get; set; } = new(0xFF, 0xFF, 0xFF, 0x32);
 
     /// <summary>
     /// Two tints alternating along the unit, so where one value ends and the next begins is never in doubt
@@ -110,7 +110,7 @@ public sealed class BitRulerRenderer : IDisposable
 
         var cellWidth = MathF.Max(6f, (width - (ColumnstoreLayout.Margin * 2)) / UnitBits);
 
-        var left = ColumnstoreLayout.Margin;
+        const float left = ColumnstoreLayout.Margin;
 
         var cellTop = ByteHeight;
 

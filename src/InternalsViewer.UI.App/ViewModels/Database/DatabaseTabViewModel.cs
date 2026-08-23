@@ -113,9 +113,9 @@ public sealed partial class DatabaseTabViewModel(ILogger<DatabaseTabViewModel> l
     [ObservableProperty]
     private double _allocationMapHeight = 200;
 
-    public long SequenceFrom => 0;
+    public static long SequenceFrom => 0;
 
-    public long SequenceTo => 0;
+    public static long SequenceTo => 0;
 
     public long PlayheadTimeUs => 0;
 

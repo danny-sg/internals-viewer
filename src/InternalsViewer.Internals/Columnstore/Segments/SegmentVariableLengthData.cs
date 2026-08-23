@@ -6,7 +6,7 @@ namespace InternalsViewer.Internals.Columnstore.Segments;
 /// <summary>
 /// Paged value array a store by value segment holds in place of an RLE and bit pack pair
 /// </summary>
-public sealed class SegmentValueStore : DataStructure
+public sealed class SegmentVariableLengthData : DataStructure
 {
     public const int HeaderSize = 24;
 
@@ -15,33 +15,28 @@ public sealed class SegmentValueStore : DataStructure
     /// </summary>
     public const int ReservedBits = 1;
 
-    [DataStructureItem(ItemType.ValueStoreUnknown)]
-    public int Unknown00 { get; set; }
+    [DataStructureItem(ItemType.VariableLengthDataHeader)]
+    public SegmentVariableLengthDataHeader Header { get; set; } = new();
 
-    [DataStructureItem(ItemType.ValueStoreValueCount)]
-    public int ValueCount { get; set; }
+    [DataStructureItem(ItemType.PageSizeArray)]
+    public SegmentPageSizeArray PageSizeArray { get; set; } = new();
 
-    [DataStructureItem(ItemType.ValueStoreMaxStringSize)]
-    public int MaxStringSize { get; set; }
+    public int ValueCount => Header.ValueCount;
 
-    [DataStructureItem(ItemType.ValueStoreSubLobType)]
-    public SubLobType SubLobType { get; set; }
+    public int MaxStringSize => Header.MaxStringSize;
 
     /// <summary>
     /// Element size of the page size array rather than of a value
     /// </summary>
-    [DataStructureItem(ItemType.ValueStoreElementSize)]
-    public int ElementSize { get; set; }
+    public int ElementSize => PageSizeArray.ElementSize;
 
-    [DataStructureItem(ItemType.ValueStorePageCount)]
-    public int PageCount { get; set; }
+    public int PageCount => PageSizeArray.ElementCount;
 
     /// <summary>
     /// Where the store begins in the segment blob, its fields being marked against the blob rather than itself
     /// </summary>
     public int Offset { get; set; }
 
-    [DataStructureItem(ItemType.ValueStorePageSizes)]
     public int[] PageSizes { get; set; } = [];
 
     public SegmentValuePage[] Pages { get; set; } = [];
@@ -51,17 +46,13 @@ public sealed class SegmentValueStore : DataStructure
     /// </summary>
     public void Mark()
     {
-        MarkProperty(nameof(Unknown00), Offset, 4);
-        MarkProperty(nameof(ValueCount), Offset + 0x04, 4);
-        MarkProperty(nameof(MaxStringSize), Offset + 0x08, 4);
-        MarkProperty(nameof(SubLobType), Offset + 0x0C, 4);
-        MarkProperty(nameof(ElementSize), Offset + 0x10, 4);
-        MarkProperty(nameof(PageCount), Offset + 0x14, 4);
+        MarkProperty(nameof(Header), Offset, SegmentVariableLengthDataHeader.Size);
 
-        if (PageCount > 0 && ElementSize > 0)
-        {
-            MarkProperty(nameof(PageSizes), Offset + HeaderSize, PageCount * ElementSize);
-        }
+        MarkProperty(nameof(PageSizeArray), PageSizeArray.Offset, PageSizeArray.TotalSize);
+
+        Header.Mark();
+
+        PageSizeArray.Mark();
     }
 
     public long GetRawValue(int ordinal)

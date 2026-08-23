@@ -45,7 +45,7 @@ public static class SegmentBlobParser
 
         if (blob.IsStoreByValue)
         {
-            blob.ValueStore = ReadValueStore(data, blob);
+            blob.VariableLengthData = ReadVariableLengthData(data, blob);
 
             return blob;
         }
@@ -112,27 +112,37 @@ public static class SegmentBlobParser
         return bookmarks;
     }
 
-    private static SegmentValueStore ReadValueStore(ReadOnlyMemory<byte> data, SegmentBlob blob)
+    private static SegmentVariableLengthData ReadVariableLengthData(ReadOnlyMemory<byte> data, SegmentBlob blob)
     {
         var span = data.Span;
 
-        var offset = blob.ValueStoreOffset;
+        var offset = blob.VariableLengthDataOffset;
 
-        var store = new SegmentValueStore
+        var store = new SegmentVariableLengthData
         {
-            Unknown00 = ReadInt32(span, offset),
-            ValueCount = ReadInt32(span, offset + 0x04),
-            MaxStringSize = ReadInt32(span, offset + 0x08),
-            SubLobType = (SubLobType)ReadInt32(span, offset + 0x0C),
-            ElementSize = ReadInt32(span, offset + 0x10),
-            PageCount = ReadInt32(span, offset + 0x14),
+            Header = new SegmentVariableLengthDataHeader
+            {
+                Offset = offset,
+                IsMarkEnabled = blob.IsMarkEnabled,
+                SubLobType = (SubLobType)ReadInt32(span, offset),
+                ValueCount = ReadInt32(span, offset + 0x04),
+                MaxStringSize = ReadInt32(span, offset + 0x08)
+            },
+            PageSizeArray = new SegmentPageSizeArray
+            {
+                Offset = offset + SegmentVariableLengthDataHeader.Size,
+                IsMarkEnabled = blob.IsMarkEnabled,
+                SubLobType = (SubLobType)ReadInt32(span, offset + 0x0C),
+                ElementSize = ReadInt32(span, offset + 0x10),
+                ElementCount = ReadInt32(span, offset + 0x14)
+            },
             Offset = offset,
             IsMarkEnabled = blob.IsMarkEnabled
         };
 
         var pageCount = store.PageCount;
 
-        offset += SegmentValueStore.HeaderSize;
+        offset += SegmentVariableLengthData.HeaderSize;
 
         var sizes = new int[pageCount];
 
@@ -162,6 +172,7 @@ public static class SegmentBlobParser
         }
 
         store.PageSizes = sizes;
+        store.PageSizeArray.PageSizes = sizes;
         store.Pages = pages;
 
         store.Mark();
@@ -185,7 +196,9 @@ public static class SegmentBlobParser
         return new SegmentValuePage
         {
             SubLobType = subLobType,
-            Unknown04 = ReadInt16(span, offset + 0x04),
+            Compression = (byte)(span[offset + 0x04] & 0x0F),
+            Flags = (byte)(span[offset + 0x04] >> 4),
+            Reserved05 = span[offset + 0x05],
             ValueSize = ReadInt16(span, offset + 0x06),
             ValueCount = ReadInt32(span, offset + 0x08),
             PayloadSize = (ushort)ReadInt16(span, offset + 0x0C),

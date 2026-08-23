@@ -252,15 +252,19 @@
 
 
     <!--Columnstore store by value-->
-    <models:MarkStyle x:Key="ValueStoreUnknownMarkerStyle" ForeColour="#EF9A9A" BackColour="#4A1212" Name="Unknown" Ordinal="300"/>
-    <models:MarkStyle x:Key="ValueStoreValueCountMarkerStyle" ForeColour="#80CBC4" BackColour="#00332E" Name="Value Count" Ordinal="301"/>
-    <models:MarkStyle x:Key="ValueStoreMaxStringSizeMarkerStyle" ForeColour="#A5D6A7" BackColour="#14361A" Name="Max String Size" Ordinal="302"/>
-    <models:MarkStyle x:Key="ValueStoreSubLobTypeMarkerStyle" ForeColour="#F48FB1" BackColour="#3D0A22" Name="Sub Lob Type" Ordinal="303"/>
-    <models:MarkStyle x:Key="ValueStoreElementSizeMarkerStyle" ForeColour="#DCE775" BackColour="#3E3A08" Name="Element Size" Ordinal="304"/>
-    <models:MarkStyle x:Key="ValueStorePageCountMarkerStyle" ForeColour="#FFCC80" BackColour="#3E2205" Name="Page Count" Ordinal="305"/>
-    <models:MarkStyle x:Key="ValueStorePageSizesMarkerStyle" ForeColour="#B39DDB" BackColour="#2A1A5E" Name="Page Sizes" Ordinal="306"/>
+    <models:MarkStyle x:Key="VariableLengthDataHeaderMarkerStyle" ForeColour="#B0BEC5" BackColour="#1C2A30" Name="Variable Length Data Header" Ordinal="300"/>
+    <models:MarkStyle x:Key="VariableLengthDataSubLobTypeMarkerStyle" ForeColour="#F48FB1" BackColour="#3D0A22" Name="Sub Lob Type" Ordinal="301"/>
+    <models:MarkStyle x:Key="VariableLengthDataValueCountMarkerStyle" ForeColour="#80CBC4" BackColour="#00332E" Name="Value Count" Ordinal="302"/>
+    <models:MarkStyle x:Key="VariableLengthDataMaxStringSizeMarkerStyle" ForeColour="#A5D6A7" BackColour="#14361A" Name="Max String Size" Ordinal="303"/>
+    <models:MarkStyle x:Key="PageSizeArrayMarkerStyle" ForeColour="#B0BEC5" BackColour="#1C2A30" Name="Page Size Array" Ordinal="304"/>
+    <models:MarkStyle x:Key="PageSizeArraySubLobTypeMarkerStyle" ForeColour="#EF9A9A" BackColour="#4A1212" Name="Page Size Type" Ordinal="305"/>
+    <models:MarkStyle x:Key="PageSizeArrayElementSizeMarkerStyle" ForeColour="#DCE775" BackColour="#3E3A08" Name="Element Size" Ordinal="306"/>
+    <models:MarkStyle x:Key="PageSizeArrayElementCountMarkerStyle" ForeColour="#FFCC80" BackColour="#3E2205" Name="Element Count" Ordinal="307"/>
+    <models:MarkStyle x:Key="PageSizeArrayDataMarkerStyle" ForeColour="#B39DDB" BackColour="#2A1A5E" Name="Page Size" Ordinal="308"/>
     <models:MarkStyle x:Key="ValuePageSubLobTypeMarkerStyle" ForeColour="#F48FB1" BackColour="#3D0A22" Name="Sub Lob Type" Ordinal="307"/>
-    <models:MarkStyle x:Key="ValuePageUnknownMarkerStyle" ForeColour="#EF9A9A" BackColour="#4A1212" Name="Unknown" Ordinal="308"/>
+    <models:MarkStyle x:Key="ValuePageCompressionMarkerStyle" ForeColour="#CE93D8" BackColour="#2E1437" Name="Compression" Ordinal="308"/>
+    <models:MarkStyle x:Key="ValuePageFlagsMarkerStyle" ForeColour="#FFE082" BackColour="#3E3005" Name="Flags" Ordinal="308"/>
+    <models:MarkStyle x:Key="ValuePageReservedMarkerStyle" ForeColour="#B0BEC5" BackColour="#1C2A30" Name="Reserved" Ordinal="308"/>
     <models:MarkStyle x:Key="ValuePageValueSizeMarkerStyle" ForeColour="#90CAF9" BackColour="#0A2A52" Name="Value Size" Ordinal="309"/>
     <models:MarkStyle x:Key="ValuePageValueCountMarkerStyle" ForeColour="#80CBC4" BackColour="#00332E" Name="Value Count" Ordinal="310"/>
     <models:MarkStyle x:Key="ValuePagePayloadSizeMarkerStyle" ForeColour="#FFAB91" BackColour="#3E1005" Name="Payload Size" Ordinal="311"/>

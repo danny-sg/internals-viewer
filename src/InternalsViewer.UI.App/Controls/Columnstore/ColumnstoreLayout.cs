@@ -48,7 +48,7 @@ public static class ColumnstoreLayout
 
     public const float RowSetBoxHeight = 54f;
 
-    public const float GlobalDictionaryHeight = 34f;
+    public const float GlobalDictionaryHeight = 38f;
     
     public const float ContainerPadding = 8f;
 
@@ -177,6 +177,15 @@ public static class ColumnstoreLayout
         _ => ColumnstoreColours.UnknownEncoding
     };
 
+    public static SKColor GetStorageColour(SegmentStorage storage) => storage switch
+    {
+        SegmentStorage.RunLength => ColumnstoreColours.RleFlag,
+        SegmentStorage.BitPack => ColumnstoreColours.BitPackFlag,
+        SegmentStorage.Mixed => ColumnstoreColours.MixedStorage,
+        SegmentStorage.VariableLengthData => ColumnstoreColours.VariableLengthDataFlag,
+        _ => ColumnstoreColours.UnknownEncoding
+    };
+
     public const float BadgePadding = 3f;
 
     /// <summary>
@@ -209,8 +218,8 @@ public static class ColumnstoreLayout
     /// </summary>
     public static SKColor GetStructureColour(SegmentStructureType structureType) => structureType switch
     {
-        SegmentStructureType.RunLength => ColumnstoreColours.RunLengthStructure,
-        SegmentStructureType.StoreByValue => ColumnstoreColours.StoreByValueStructure,
+        SegmentStructureType.RunLength => GetStorageColour(SegmentStorage.RunLength),
+        SegmentStructureType.StoreByValue => GetStorageColour(SegmentStorage.VariableLengthData),
         _ => ColumnstoreColours.UnknownStructure
     };
 
@@ -244,11 +253,10 @@ public static class ColumnstoreLayout
 
     public static IReadOnlyList<(string Name, SKColor Colour)> Legend =>
     [
-        ("Value based", GetEncodingColour(SegmentEncoding.ValueBased)),
-        ("Value hash", GetEncodingColour(SegmentEncoding.ValueHashBased)),
-        ("String hash", GetEncodingColour(SegmentEncoding.StringHashBased)),
-        ("Store by value", GetEncodingColour(SegmentEncoding.StoreByValueBased)),
-        ("String store", GetEncodingColour(SegmentEncoding.StringStoreByValueBased)),
+        (SegmentStorage.RunLength.Describe(), GetStorageColour(SegmentStorage.RunLength)),
+        (SegmentStorage.BitPack.Describe(), GetStorageColour(SegmentStorage.BitPack)),
+        (SegmentStorage.Mixed.Describe(), GetStorageColour(SegmentStorage.Mixed)),
+        (SegmentStorage.VariableLengthData.Describe(), GetStorageColour(SegmentStorage.VariableLengthData)),
         ("Numeric dictionary", GetDictionaryColour(1)),
         ("String dictionary", GetDictionaryColour(3)),
         ("Delete bitmap", DeleteBitmapColour),

@@ -69,8 +69,8 @@ public sealed partial class SegmentTabViewModel(ColumnstoreService columnstoreSe
     [NotifyPropertyChangedFor(nameof(HasRleArray))]
     [NotifyPropertyChangedFor(nameof(RleRuns))]
     [NotifyPropertyChangedFor(nameof(HasBitpackArray))]
-    [NotifyPropertyChangedFor(nameof(HasValueStore))]
-    [NotifyPropertyChangedFor(nameof(FlagBadges))]
+    [NotifyPropertyChangedFor(nameof(HasVariableLengthData))]
+    [NotifyPropertyChangedFor(nameof(StorageBadges))]
     private SegmentBlob? _blob;
 
     public bool HasBookmarks => Blob is { BookmarkCount: > 0 };
@@ -84,27 +84,18 @@ public sealed partial class SegmentTabViewModel(ColumnstoreService columnstoreSe
     ];
 
     /// <summary>
-    /// What the blob turned out to hold, which is not always what the encoding implies
+    /// Which store the rows came out of, which the blob decides rather than the metadata
     /// </summary>
-    public IReadOnlyList<SegmentBadge> FlagBadges
-        => Blob is not { } blob ? [] : SegmentBadge.Compound([.. BuildFlagBadges(blob)]);
-
-    private IEnumerable<SegmentBadge> BuildFlagBadges(SegmentBlob blob)
+    public IReadOnlyList<SegmentBadge> StorageBadges
     {
-        // No RLE badge - a run length segment always has one, so it would only repeat the structure type
-        yield return SegmentBadge.Create(blob.StructureType.ToString().SplitCamelCase(),
-                                         ColumnstoreLayout.GetStructureColour(blob.StructureType));
-
-        if (blob.Header.HasBitpackArray)
+        get
         {
-            yield return SegmentBadge.Create("Bit Pack", ColumnstoreColours.BitPackFlag);
-        }
+            var storage = SegmentStorageExtensions.Classify(Blob?.Header);
 
-        if (blob.ValueStore is not null)
-        {
-            yield return SegmentBadge.Create("Value Store", ColumnstoreColours.ValueStoreFlag);
+            return storage == SegmentStorage.Unknown
+                ? []
+                : [SegmentBadge.Create(storage.Describe(), ColumnstoreLayout.GetStorageColour(storage))];
         }
-
     }
 
     /// <summary>
@@ -151,7 +142,7 @@ public sealed partial class SegmentTabViewModel(ColumnstoreService columnstoreSe
     /// <summary>
     /// Whether the segment holds a paged value store in place of the run length and bit pack pair
     /// </summary>
-    public bool HasValueStore => Blob?.ValueStore is not null;
+    public bool HasVariableLengthData => Blob?.VariableLengthData is not null;
 
     public ObservableCollection<ValuePageSummary> ValuePages { get; } = [];
 
@@ -342,7 +333,7 @@ public sealed partial class SegmentTabViewModel(ColumnstoreService columnstoreSe
             return null;
         }
 
-        if (blob.ValueStore is { } store)
+        if (blob.VariableLengthData is { } store)
         {
             var page = store.Pages[store.GetPageIndex(ordinal)];
 
@@ -413,7 +404,7 @@ public sealed partial class SegmentTabViewModel(ColumnstoreService columnstoreSe
     private int _selectedRegionTabIndex;
 
     [ObservableProperty]
-    private int _selectedValueStoreTabIndex;
+    private int _selectedVariableLengthDataTabIndex;
 
     /// <summary>
     /// Region the window sits on, set by picking a tab and reported back when a scroll leaves the region
@@ -474,7 +465,7 @@ public sealed partial class SegmentTabViewModel(ColumnstoreService columnstoreSe
     {
         ValuePages.Clear();
 
-        if (blob.ValueStore is not { } store)
+        if (blob.VariableLengthData is not { } store)
         {
             return;
         }
@@ -635,7 +626,13 @@ public sealed partial class SegmentTabViewModel(ColumnstoreService columnstoreSe
 
             BuildValuePages(blob);
 
-            GoToRegion(Region);
+            Region = SegmentRegion.Header;
+
+            SelectedRegionTabIndex = 0;
+
+            SelectedVariableLengthDataTabIndex = 0;
+
+            GoToRegion(SegmentRegion.Header);
 
             StatusText = $"{blob.Data.Length} bytes";
 
@@ -680,7 +677,7 @@ public sealed partial class SegmentTabViewModel(ColumnstoreService columnstoreSe
     {
         var rows = SegmentRegionMarkerBuilder.Window(RowMarkers(), start, length);
 
-        if (Region != SegmentRegion.ValueStore || blob.ValueStore is not { } store)
+        if (Region != SegmentRegion.VariableLengthData || blob.VariableLengthData is not { } store)
         {
             return [.. SegmentRegionMarkerBuilder.Build(blob, Region, start, length), .. rows];
         }
@@ -692,7 +689,7 @@ public sealed partial class SegmentTabViewModel(ColumnstoreService columnstoreSe
             ? SegmentRegionMarkerBuilder.Window(MarkerBuilder.BuildMarkers(selected.Page), start, length)
             : [];
 
-        ValueStoreHeaderMarkers = new ObservableCollection<Marker>(header);
+        VariableLengthDataHeaderMarkers = new ObservableCollection<Marker>(header);
 
         ValuePageMarkers = new ObservableCollection<Marker>(page);
 
@@ -703,7 +700,7 @@ public sealed partial class SegmentTabViewModel(ColumnstoreService columnstoreSe
     /// Fields of the store itself, which the page list above the tabs does not stand for
     /// </summary>
     [ObservableProperty]
-    private ObservableCollection<Marker> _valueStoreHeaderMarkers = [];
+    private ObservableCollection<Marker> _variableLengthDataHeaderMarkers = [];
 
     [ObservableProperty]
     private ObservableCollection<Marker> _valuePageMarkers = [];
@@ -721,9 +718,9 @@ public sealed partial class SegmentTabViewModel(ColumnstoreService columnstoreSe
     /// <summary>
     /// Moves the window onto the store header, which the tab showing its fields asks for
     /// </summary>
-    public void GoToValueStoreHeader()
+    public void GoToVariableLengthDataHeader()
     {
-        if (Blob?.ValueStore is { } store)
+        if (Blob?.VariableLengthData is { } store)
         {
             Hex.GoToOffset(store.Offset);
         }

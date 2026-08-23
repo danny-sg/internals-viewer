@@ -77,7 +77,7 @@ public sealed partial class ColumnstoreTabViewModel : TabViewModel
     private const int SpinnerDelayMs = 100;
 
     [ObservableProperty]
-    private string _loadingText = "Loading columnstore index...";
+    private string _loadingText = "Loading Columnstore Index...";
 
     [ObservableProperty]
     private string _indexDescription = string.Empty;
@@ -116,9 +116,9 @@ public sealed partial class ColumnstoreTabViewModel : TabViewModel
                 return;
             }
 
-            Name = string.IsNullOrEmpty(allocationUnit.IndexName)
+            Name = string.IsNullOrEmpty(allocationUnit.DisplayName)
                 ? allocationUnit.TableName
-                : allocationUnit.IndexName;
+                : allocationUnit.DisplayName;
 
             var index = await Task.Run(() => ColumnstoreService.GetIndex(allocationUnit, Database, CancellationToken),
                                        CancellationToken);
@@ -142,7 +142,7 @@ public sealed partial class ColumnstoreTabViewModel : TabViewModel
                 }
             }
 
-            IndexTypeDescription = index.IsClustered ? "Clustered" : "Non Clustered";
+            IndexTypeDescription = index.IsClustered ? "Clustered" : "Non-Clustered";
 
             BuildDictionaries(index);
 
@@ -255,10 +255,7 @@ public sealed partial class ColumnstoreTabViewModel : TabViewModel
                 var summary = Dictionaries.FirstOrDefault(d => d.ColumnId == dictionary.ColumnId
                                                                && d.DictionaryId == dictionary.DictionaryId);
 
-                if (summary is not null)
-                {
-                    summary.PageCount = pageCoding.PageCount;
-                }
+                summary?.PageCount = pageCoding.PageCount;
             }
             catch (OperationCanceledException)
             {

@@ -59,6 +59,8 @@ public static class ColumnstoreColours
 
     public static readonly SKColor UnknownEncoding = FromHex(0x888780);
 
+    public static readonly SKColor MixedStorage = FromHex(0x2E9E8F);
+
     // Row group states, as a background with the text that reads on it
 
     public static readonly SKColor InvisibleState = FromHex(0xFFFFFF);
@@ -124,7 +126,7 @@ public static class ColumnstoreColours
 
     public static readonly SKColor BitPackFlag = FromHex(0x2C6FBB);
 
-    public static readonly SKColor ValueStoreFlag = FromHex(0x8A4FBE);
+    public static readonly SKColor VariableLengthDataFlag = FromHex(0x8A4FBE);
 
     // The row sets a row group is built on
 

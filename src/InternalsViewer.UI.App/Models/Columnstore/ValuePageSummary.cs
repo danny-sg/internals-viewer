@@ -45,7 +45,7 @@ public sealed class ValueDetail(SegmentValuePage page, int index) : IEquatable<V
     /// <summary>
     /// The value the low reserved bit has been taken off, which is what the segment reads back
     /// </summary>
-    public long Value => Raw >> SegmentValueStore.ReservedBits;
+    public long Value => Raw >> SegmentVariableLengthData.ReservedBits;
 
     /// <summary>
     /// Working from the stored integer to the value, the low bit being reserved rather than part of it
@@ -55,7 +55,7 @@ public sealed class ValueDetail(SegmentValuePage page, int index) : IEquatable<V
         Steps =
         [
             new DerivationStep { Name = "Stored", Value = $"{Raw}" },
-            new DerivationStep { Operator = ">>", Name = "Reserved Bits", Value = $"{SegmentValueStore.ReservedBits}" }
+            new DerivationStep { Operator = ">>", Name = "Reserved Bits", Value = $"{SegmentVariableLengthData.ReservedBits}" }
         ],
         Result = $"{Value}"
     };

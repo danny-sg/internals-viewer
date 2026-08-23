@@ -38,7 +38,7 @@ public sealed class SegmentRowDetail(SegmentRowContext context, int ordinal) : I
     {
         SegmentValueOrigin.BitPack => "Bit Pack",
         SegmentValueOrigin.RleRun => "RLE Run",
-        SegmentValueOrigin.ValueStore => "Value Store",
+        SegmentValueOrigin.VariableLengthData => "Variable Length Data",
         _ => string.Empty
     };
 
@@ -102,7 +102,7 @@ public sealed class SegmentRowDetail(SegmentRowContext context, int ordinal) : I
             },
             _ => new ValueDerivation
             {
-                Steps = [new DerivationStep { Name = "Value Store", Value = $"{Ordinal}" }],
+                Steps = [new DerivationStep { Name = "Variable Length Data", Value = $"{Ordinal}" }],
                 Result = result
             }
         };

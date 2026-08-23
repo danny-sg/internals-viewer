@@ -91,6 +91,9 @@
                 <tableView:TableViewTextColumn Header="Rows" Width="100"
                                                Binding="{Binding RowCount}"
                                                CellStyle="{StaticResource TableViewCellRightStyle}"/>
+                <tableView:TableViewTextColumn Header="First Id" Width="100"
+                                               Binding="{Binding FirstId}"
+                                               CellStyle="{StaticResource TableViewCellRightStyle}"/>
                 <tableView:TableViewTextColumn Header="Size" Width="100"
                                                Binding="{Binding OnDiskSize}"
                                                CellStyle="{StaticResource TableViewCellRightStyle}"/>
@@ -122,6 +125,12 @@
                                                CellStyle="{StaticResource TableViewCellRightStyle}"/>
                 <tableView:TableViewTextColumn Header="Max Data Id" Width="110"
                                                Binding="{Binding MaxDataId}"
+                                               CellStyle="{StaticResource TableViewCellRightStyle}"/>
+                <tableView:TableViewTextColumn Header="Base Id" Width="110"
+                                               Binding="{Binding BaseId}"
+                                               CellStyle="{StaticResource TableViewCellRightStyle}"/>
+                <tableView:TableViewTextColumn Header="Magnitude" Width="110"
+                                               Binding="{Binding Magnitude}"
                                                CellStyle="{StaticResource TableViewCellRightStyle}"/>
                 <tableView:TableViewTextColumn Header="Min Value" Width="120"
                                                Binding="{Binding MinValueDescription}"/>

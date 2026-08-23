@@ -12,6 +12,8 @@ public enum SubLobType
     StringPage = 5,
     CompressedStringPage = 6,
 
+    VariableLengthData = 8,
+
     /// <summary>
     /// Page of a store by value segment, holding its values under Xpress Huffman
     /// </summary>

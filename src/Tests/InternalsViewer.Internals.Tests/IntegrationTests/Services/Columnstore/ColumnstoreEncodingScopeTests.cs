@@ -55,10 +55,10 @@ public sealed class ColumnstoreEncodingScopeTests(ITestOutputHelper testOutput) 
 
                     TestOutput.WriteLine($"    row group {segment.Key.RowGroupId} column {segment.Key.ColumnId} "
                                          + $"{segment.Encoding} rows {segment.RowCount} "
-                                         + $"pages {blob.ValueStore?.Pages.Length ?? 0} "
+                                         + $"pages {blob.VariableLengthData?.Pages.Length ?? 0} "
                                          + $"lob {blob.LobType} structure {blob.StructureType} "
-                                         + $"store {blob.ValueStore?.SubLobType.ToString() ?? "-"} "
-                                         + $"pageTypes [{string.Join(", ", (blob.ValueStore?.Pages ?? []).Select(x => x.SubLobType.ToString()).Distinct())}]");
+                                         + $"store {blob.VariableLengthData?.Header.SubLobType.ToString() ?? "-"} "
+                                         + $"pageTypes [{string.Join(", ", (blob.VariableLengthData?.Pages ?? []).Select(x => x.SubLobType.ToString()).Distinct())}]");
                 }
             }
             catch

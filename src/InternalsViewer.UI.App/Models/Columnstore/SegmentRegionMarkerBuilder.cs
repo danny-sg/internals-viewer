@@ -28,16 +28,16 @@ public static class SegmentRegionMarkerBuilder
             SegmentRegion.RleArray => [.. RleHeader(blob), .. BuildRleEntries(blob, windowStart, windowLength)],
             SegmentRegion.BitpackArray => [.. BitpackHeader(blob),
                                            .. BuildBitpackUnits(blob, windowStart, windowLength)],
-            SegmentRegion.ValueStore => ValueStoreMarkers(blob, windowStart, windowLength),
+            SegmentRegion.VariableLengthData => VariableLengthDataMarkers(blob, windowStart, windowLength),
             _ => []
         };
 
     /// <summary>
     /// The store header and page size array, with the header of every page the window holds
     /// </summary>
-    private static List<Marker> ValueStoreMarkers(SegmentBlob blob, int windowStart, int windowLength)
+    private static List<Marker> VariableLengthDataMarkers(SegmentBlob blob, int windowStart, int windowLength)
     {
-        if (blob.ValueStore is not { } store)
+        if (blob.VariableLengthData is not { } store)
         {
             return [];
         }

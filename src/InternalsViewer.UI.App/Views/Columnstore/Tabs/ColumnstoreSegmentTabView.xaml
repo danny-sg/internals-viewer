@@ -14,10 +14,81 @@
     xmlns:toolkit="using:CommunityToolkit.WinUI.Controls"
     mc:Ignorable="d">
     <UserControl.Resources>
-        <!--A chip carrying its own colour, white text reading on every one of the palettes they come from-->
+        <Style x:Key="DerivationChainOperatorStyle" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="11"/>
+            <Setter Property="FontFamily" Value="{StaticResource MonospaceFontFamily}"/>
+            <Setter Property="Foreground" Value="#FF444444"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+        </Style>
+
+        <Style x:Key="DerivationChainBadgeTextStyle" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="11"/>
+            <Setter Property="FontFamily" Value="{StaticResource MonospaceFontFamily}"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+        </Style>
+
+        <Style x:Key="DerivationChainNameBadgeStyle" TargetType="Border">
+            <Setter Property="Background" Value="#FF4A4A4A"/>
+            <Setter Property="Padding" Value="4,0"/>
+            <Setter Property="Height" Value="18"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+        </Style>
+
+        <DataTemplate x:Key="DerivationStepTemplate" x:DataType="models:SegmentDerivationStep">
+            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                <TextBlock Text="{x:Bind Prefix}"
+                           Margin="0,0,4,0"
+                           Style="{StaticResource DerivationChainOperatorStyle}"
+                           Visibility="{x:Bind HasPrefix, Converter={StaticResource BoolToVisibilityConverter}}"/>
+                <Border Padding="4,0"
+                        Height="18"
+                        BorderThickness="1"
+                        VerticalAlignment="Center"
+                        Visibility="{x:Bind HasChip, Converter={StaticResource BoolToVisibilityConverter}}">
+                    <Border.Background>
+                        <SolidColorBrush Color="{x:Bind Background}"/>
+                    </Border.Background>
+                    <Border.BorderBrush>
+                        <SolidColorBrush Color="{x:Bind Border}"/>
+                    </Border.BorderBrush>
+                    <TextBlock Text="{x:Bind Text}"
+                               FontSize="11"
+                               VerticalAlignment="Center"
+                               FontFamily="{StaticResource MonospaceFontFamily}">
+                        <TextBlock.Foreground>
+                            <SolidColorBrush Color="{x:Bind Foreground}"/>
+                        </TextBlock.Foreground>
+                    </TextBlock>
+                </Border>
+                <TextBlock Text="{x:Bind Operator}"
+                           Margin="4,0,4,0"
+                           Style="{StaticResource DerivationChainOperatorStyle}"
+                           Visibility="{x:Bind HasOperator, Converter={StaticResource BoolToVisibilityConverter}}"/>
+                <StackPanel Orientation="Horizontal"
+                            VerticalAlignment="Center"
+                            ToolTipService.ToolTip="{x:Bind Location}"
+                            Visibility="{x:Bind HasBadge, Converter={StaticResource BoolToVisibilityConverter}}">
+                    <Border Style="{StaticResource DerivationChainNameBadgeStyle}">
+                        <TextBlock Text="{x:Bind Name}" Style="{StaticResource DerivationChainBadgeTextStyle}"/>
+                    </Border>
+                    <Border Padding="4,0" Height="18" VerticalAlignment="Center">
+                        <Border.Background>
+                            <SolidColorBrush Color="{x:Bind BadgeBackground}"/>
+                        </Border.Background>
+                        <TextBlock Text="{x:Bind Value}" Style="{StaticResource DerivationChainBadgeTextStyle}"/>
+                    </Border>
+                </StackPanel>
+                <TextBlock Text="{x:Bind Suffix}"
+                           Style="{StaticResource DerivationChainOperatorStyle}"
+                           Visibility="{x:Bind HasSuffix, Converter={StaticResource BoolToVisibilityConverter}}"/>
+            </StackPanel>
+        </DataTemplate>
+
         <DataTemplate x:Key="SegmentBadgeTemplate" x:DataType="models:SegmentBadge">
             <Border CornerRadius="{x:Bind CornerRadius}"
-                    Padding="6,1"
+                    Padding="6,0"
+                    Height="18"
                     VerticalAlignment="Center">
                 <Border.Background>
                     <SolidColorBrush Color="{x:Bind Background}"/>
@@ -82,42 +153,122 @@
 
             <AppBarSeparator/>
 
-            <!--How the column was compressed, which the metadata decides before the blob is read-->
             <AppBarElementContainer VerticalContentAlignment="Center">
-                <ItemsControl ItemsSource="{x:Bind ViewModel.EncodingBadges, Mode=OneWay}"
-                              ItemTemplate="{StaticResource SegmentBadgeTemplate}"
-                              VerticalAlignment="Center"
-                              Margin="4,0,4,0">
-                    <ItemsControl.ItemsPanel>
-                        <ItemsPanelTemplate>
-                            <StackPanel Orientation="Horizontal" Spacing="4"/>
-                        </ItemsPanelTemplate>
-                    </ItemsControl.ItemsPanel>
-                </ItemsControl>
-            </AppBarElementContainer>
+                <Grid Margin="6,0,12,0" VerticalAlignment="Center" RowSpacing="3" ColumnSpacing="8">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
 
-            <!--What the blob turned out to hold, which is not always what the encoding implies-->
-            <AppBarElementContainer VerticalContentAlignment="Center">
-                <ItemsControl ItemsSource="{x:Bind ViewModel.FlagBadges, Mode=OneWay}"
-                              ItemTemplate="{StaticResource SegmentBadgeTemplate}"
-                              VerticalAlignment="Center"
-                              Margin="4,0,4,0">
-                    <ItemsControl.ItemsPanel>
-                        <ItemsPanelTemplate>
-                            <StackPanel Orientation="Horizontal" Spacing="0"/>
-                        </ItemsPanelTemplate>
-                    </ItemsControl.ItemsPanel>
-                </ItemsControl>
+                    <TextBlock Grid.Row="0" Grid.Column="0"
+                               Text="Storage"
+                               FontSize="12"
+                               VerticalAlignment="Center"
+                               Padding="4,0,8,0"
+                               Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
+                    <ItemsControl Grid.Row="0" Grid.Column="1"
+                                  ItemsSource="{x:Bind ViewModel.StorageBadges, Mode=OneWay}"
+                                  ItemTemplate="{StaticResource SegmentBadgeTemplate}"
+                                  HorizontalAlignment="Left"
+                                  VerticalAlignment="Center">
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <StackPanel Orientation="Horizontal" Spacing="4"/>
+                            </ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                    </ItemsControl>
+
+                    <TextBlock Grid.Row="1" Grid.Column="0"
+                               Text="Encoding"
+                               Padding="4,0,8,0"
+                               FontSize="12"
+                               VerticalAlignment="Center"
+                               Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
+                    <ItemsControl Grid.Row="1" Grid.Column="1"
+                                  ItemsSource="{x:Bind ViewModel.EncodingBadges, Mode=OneWay}"
+                                  ItemTemplate="{StaticResource SegmentBadgeTemplate}"
+                                  HorizontalAlignment="Left"
+                                  VerticalAlignment="Center">
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <StackPanel Orientation="Horizontal" Spacing="4"/>
+                            </ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                    </ItemsControl>
+                </Grid>
             </AppBarElementContainer>
 
             <AppBarSeparator Visibility="{x:Bind ViewModel.HasDictionary, Mode=OneWay,
-                                     Converter={StaticResource BoolToVisibilityConverter}}"/>
+                                     Converter={StaticResource BoolToVisibilityConverter}}" />
 
-                <AppBarButton Label="Dictionary"  
-                              Visibility="{x:Bind ViewModel.HasDictionary, Mode=OneWay,
-                               Converter={StaticResource BoolToVisibilityConverter}}"
-                              Click="Dictionary_OnClick"/>
+            <AppBarSeparator/>
+
+            <AppBarElementContainer VerticalContentAlignment="Center">
+                <Grid VerticalAlignment="Center" RowSpacing="3" ColumnSpacing="8"  Margin="8,0,0,0">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+
+                    <TextBlock Grid.Row="0" Grid.Column="0"
+                       Text="Data Id"
+                       FontSize="12"
+                       VerticalAlignment="Center"
+                       Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
+                    <Border Grid.Row="0" Grid.Column="1"
+                    Background="White"
+                    Padding="8,0"
+                    VerticalAlignment="Center">
+                        <ItemsControl ItemsSource="{x:Bind ViewModel.Segment.DataIdSteps, Mode=OneWay}"
+                              ItemTemplate="{StaticResource DerivationStepTemplate}"
+                              HorizontalAlignment="Left">
+                            <ItemsControl.ItemsPanel>
+                                <ItemsPanelTemplate>
+                                    <StackPanel Orientation="Horizontal" Spacing="4" VerticalAlignment="Center"/>
+                                </ItemsPanelTemplate>
+                            </ItemsControl.ItemsPanel>
+                        </ItemsControl>
+                    </Border>
+
+                    <TextBlock Grid.Row="1" Grid.Column="0"
+                       Text="Value"
+                       FontSize="12"
+                       VerticalAlignment="Center"
+                       Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
+                    <Border Grid.Row="1" Grid.Column="1"
+                    Background="White"
+                    Padding="8,0"
+                    VerticalAlignment="Center">
+                        <ItemsControl ItemsSource="{x:Bind ViewModel.Segment.ValueSteps, Mode=OneWay}"
+                              ItemTemplate="{StaticResource DerivationStepTemplate}"
+                              HorizontalAlignment="Left">
+                            <ItemsControl.ItemsPanel>
+                                <ItemsPanelTemplate>
+                                    <StackPanel Orientation="Horizontal" Spacing="4" VerticalAlignment="Center"/>
+                                </ItemsPanelTemplate>
+                            </ItemsControl.ItemsPanel>
+                        </ItemsControl>
+                    </Border>
+                </Grid>
+            </AppBarElementContainer>
         </CommandBar>
+
+        <AppBarButton Grid.Row="0"
+                      Label="Dictionary"
+                      HorizontalAlignment="Right"
+                      VerticalAlignment="Center"
+                      Margin="0,0,12,0"
+                      Visibility="{x:Bind ViewModel.HasDictionary, Mode=OneWay,
+                       Converter={StaticResource BoolToVisibilityConverter}}"
+                      Click="Dictionary_OnClick"/>
         <Grid Grid.Row="1"
               Visibility="{x:Bind ViewModel.IsLoaded, Mode=OneWay,
                            Converter={StaticResource BoolToVisibilityConverter}}">
@@ -163,8 +314,8 @@
                     <TabViewItem Header="Bit Pack" IsClosable="False" Tag="BitpackArray"
                              Visibility="{x:Bind ViewModel.HasBitpackArray, Mode=OneWay,
                                      Converter={StaticResource BoolToVisibilityConverter}}"/>
-                    <TabViewItem Header="Value Store" IsClosable="False" Tag="ValueStore"
-                             Visibility="{x:Bind ViewModel.HasValueStore, Mode=OneWay,
+                    <TabViewItem Header="Variable Length Data" IsClosable="False" Tag="VariableLengthData"
+                             Visibility="{x:Bind ViewModel.HasVariableLengthData, Mode=OneWay,
                                      Converter={StaticResource BoolToVisibilityConverter}}"/>
                     <TabViewItem Header="Data" IsClosable="False" Tag="Data"/>
                 </TabView>
@@ -264,7 +415,6 @@
                                           HorizontalAlignment="Stretch"
                                           ResizeBehavior="BasedOnAlignment"/>
 
-                        <!--The detail belongs to the page picked above, so it sits under the list rather than beside it-->
                         <Grid Grid.Row="2">
                             <Grid.RowDefinitions>
                                 <RowDefinition Height="Auto"/>
@@ -274,26 +424,26 @@
                             <TabView Grid.Row="0"
                                  IsAddTabButtonVisible="False"
                                  TabWidthMode="SizeToContent"
-                                 SelectedIndex="{x:Bind ViewModel.SelectedValueStoreTabIndex, Mode=TwoWay}"
-                                 SelectionChanged="ValueStoreTabs_OnSelectionChanged">
-                                <TabViewItem Header="Value Store Header" IsClosable="False" Tag="StoreHeader"/>
+                                 SelectedIndex="{x:Bind ViewModel.SelectedVariableLengthDataTabIndex, Mode=TwoWay}"
+                                 SelectionChanged="VariableLengthDataTabs_OnSelectionChanged">
+                                <TabViewItem Header="Variable Length Data Header" IsClosable="False" Tag="StoreHeader"/>
                                 <TabViewItem Header="Page" IsClosable="False"/>
                                 <TabViewItem Header="Decode" IsClosable="False" Tag="Decode"/>
                             </TabView>
 
                             <Grid Grid.Row="1">
-                                <page:MarkerTreeView Visibility="{x:Bind GetTabContentVisibility(ViewModel.SelectedValueStoreTabIndex, 0), Mode=OneWay}"
+                                <page:MarkerTreeView Visibility="{x:Bind GetTabContentVisibility(ViewModel.SelectedVariableLengthDataTabIndex, 0), Mode=OneWay}"
                                                  Opacity="{x:Bind ViewModel.Hex.MarkerOpacity, Mode=OneWay}"
-                                                 Markers="{x:Bind ViewModel.ValueStoreHeaderMarkers, Mode=OneWay}"
+                                                 Markers="{x:Bind ViewModel.VariableLengthDataHeaderMarkers, Mode=OneWay}"
                                                  SelectedMarker="{x:Bind ViewModel.Hex.SelectedMarker, Mode=TwoWay}"/>
 
-                                <page:MarkerTreeView Visibility="{x:Bind GetTabContentVisibility(ViewModel.SelectedValueStoreTabIndex, 1), Mode=OneWay}"
+                                <page:MarkerTreeView Visibility="{x:Bind GetTabContentVisibility(ViewModel.SelectedVariableLengthDataTabIndex, 1), Mode=OneWay}"
                                                  Opacity="{x:Bind ViewModel.Hex.MarkerOpacity, Mode=OneWay}"
                                                  Markers="{x:Bind ViewModel.ValuePageMarkers, Mode=OneWay}"
                                                  SelectedMarker="{x:Bind ViewModel.Hex.SelectedMarker, Mode=TwoWay}"/>
 
                                 <segment:DecodeTabView x:Name="DecodeTab"
-                                                 Visibility="{x:Bind GetTabContentVisibility(ViewModel.SelectedValueStoreTabIndex, 2), Mode=OneWay}"/>
+                                                 Visibility="{x:Bind GetTabContentVisibility(ViewModel.SelectedVariableLengthDataTabIndex, 2), Mode=OneWay}"/>
                             </Grid>
                         </Grid>
                     </Grid>

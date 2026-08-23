@@ -67,8 +67,8 @@ public sealed class ColumnstoreEncodingMatrixTests(ITestOutputHelper testOutput)
     {
         var blob = await service.GetSegmentBlob(database, segment, CancellationToken.None);
 
-        var store = blob.ValueStore is { } valueStore
-            ? $"{valueStore.SubLobType}/{string.Join("+", valueStore.Pages.Select(p => p.SubLobType.ToString()).Distinct())}"
+        var store = blob.VariableLengthData is { } variableLengthData
+            ? $"{variableLengthData.Header.SubLobType}/{string.Join("+", variableLengthData.Pages.Select(p => p.SubLobType.ToString()).Distinct())}"
             : "-";
 
         var metadata = segment.SecondaryDictionaryId >= 0 ? segment.LocalDictionary : segment.Column?.GlobalDictionary;

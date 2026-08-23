@@ -36,6 +36,11 @@ public sealed partial class DictionarySummary : ObservableObject
 
     public long EntryCount => Dictionary.EntryCount;
 
+    /// <summary>
+    /// Data id the first entry answers to, the ids running to Last Id rather than starting at zero
+    /// </summary>
+    public long FirstId => Dictionary.LastId - Dictionary.EntryCount + 1;
+
     public long OnDiskSize => Dictionary.OnDiskSize;
 
     public LobPointer DataPointer => Dictionary.DataPointer;

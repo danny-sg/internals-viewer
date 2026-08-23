@@ -5,7 +5,7 @@ namespace InternalsViewer.Internals.Columnstore.Decoding;
 /// </summary>
 public enum SegmentValueOrigin
 {
-    ValueStore,
+    VariableLengthData,
     RleRun,
     BitPack
 }

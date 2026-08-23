@@ -724,7 +724,7 @@ public sealed class ColumnstoreStructureRenderer : IDisposable
                              SKRect bounds,
                              List<ColumnstoreRegion> regions)
     {
-        var colour = ColumnstoreLayout.GetEncodingColour(segment.Encoding);
+        var colour = ColumnstoreLayout.GetStorageColour(segment.Storage);
 
         _fill.Color = colour.WithAlpha(20);
 
@@ -756,8 +756,10 @@ public sealed class ColumnstoreStructureRenderer : IDisposable
                 new ColumnstoreDetail("Row Group", segment.RowGroupId.ToString()),
                 new ColumnstoreDetail("Column", $"{segment.ColumnId}"),
                 new ColumnstoreDetail("Encoding", segment.EncodingDescription),
+                new ColumnstoreDetail("Storage", segment.StorageDescription),
                 new ColumnstoreDetail("Rows", $"{segment.RowCount}"),
                 new ColumnstoreDetail("Data Pointer", segment.DataPointerDescription),
+                new ColumnstoreDetail("Derivation", segment.DerivationDescription),
             ]
         });
 
@@ -935,7 +937,7 @@ public sealed class ColumnstoreStructureRenderer : IDisposable
 
         if (header.IsStoreByValue)
         {
-            flags.Add(("Value Store", ColumnstoreColours.ValueStoreFlag));
+            flags.Add(("VLD", ColumnstoreColours.VariableLengthDataFlag));
         }
 
         // Only a segment that has one keeps the room for it, a short segment having none to spare

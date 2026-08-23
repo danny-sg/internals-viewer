@@ -75,7 +75,7 @@ public sealed class SegmentBlobHeader
 
     public int BookmarkArrayOffset => PrologueSize;
 
-    public int ValueStoreOffset => BookmarkArrayOffset + (BookmarkCount * EntrySize);
+    public int VariableLengthDataOffset => BookmarkArrayOffset + (BookmarkCount * EntrySize);
 
     public int RleArrayOffset => BookmarkArrayOffset + (BookmarkCount * EntrySize);
 

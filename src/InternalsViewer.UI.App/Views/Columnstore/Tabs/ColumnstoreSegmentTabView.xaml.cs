@@ -150,7 +150,7 @@ public sealed partial class ColumnstoreSegmentTabView : UserControl, IDocumentCo
     /// <summary>
     /// The store header is not a row of the page list, so its tab is what brings the window back to it
     /// </summary>
-    private void ValueStoreTabs_OnSelectionChanged(object sender, SelectionChangedEventArgs e)
+    private void VariableLengthDataTabs_OnSelectionChanged(object sender, SelectionChangedEventArgs e)
     {
         if (((TabView)sender).SelectedItem is not TabViewItem { Tag: string tag })
         {
@@ -159,7 +159,7 @@ public sealed partial class ColumnstoreSegmentTabView : UserControl, IDocumentCo
 
         if (tag == "StoreHeader")
         {
-            ViewModel.GoToValueStoreHeader();
+            ViewModel.GoToVariableLengthDataHeader();
         }
         else if (tag == "Decode")
         {
@@ -190,6 +190,8 @@ public sealed partial class ColumnstoreSegmentTabView : UserControl, IDocumentCo
         Loaded -= OnLoaded;
 
         await ViewModel.Load(_cts.Token);
+
+        RegionTabView.SelectedIndex = 0;
     }
 
     public void Dispose()

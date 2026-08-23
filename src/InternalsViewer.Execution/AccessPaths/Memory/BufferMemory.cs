@@ -25,5 +25,4 @@ public readonly record struct BufferMemory(long RowBytes, long OverheadBytes)
         : (TotalBytes + RowMemory.PageBytes - 1) / RowMemory.PageBytes * RowMemory.PageBytes;
 
     public double PagedKb => PagedBytes / 1024D;
-
 }

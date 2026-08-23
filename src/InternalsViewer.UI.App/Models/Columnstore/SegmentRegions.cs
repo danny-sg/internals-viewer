@@ -15,9 +15,9 @@ public static class SegmentRegions
     public static int GetOffset(SegmentBlob blob, SegmentRegion region) => region switch
     {
         SegmentRegion.Bookmarks => blob.BookmarkArrayOffset,
-        SegmentRegion.RleArray => blob.IsStoreByValue ? blob.ValueStoreOffset : blob.RleArrayOffset,
-        SegmentRegion.BitpackArray => blob.IsStoreByValue ? blob.ValueStoreOffset : blob.BitpackArrayOffset,
-        SegmentRegion.ValueStore => blob.ValueStoreOffset,
+        SegmentRegion.RleArray => blob.IsStoreByValue ? blob.VariableLengthDataOffset : blob.RleArrayOffset,
+        SegmentRegion.BitpackArray => blob.IsStoreByValue ? blob.VariableLengthDataOffset : blob.BitpackArrayOffset,
+        SegmentRegion.VariableLengthData => blob.VariableLengthDataOffset,
         _ => 0
     };
 
@@ -25,7 +25,7 @@ public static class SegmentRegions
     {
         if (blob.IsStoreByValue)
         {
-            return offset >= blob.ValueStoreOffset ? SegmentRegion.ValueStore
+            return offset >= blob.VariableLengthDataOffset ? SegmentRegion.VariableLengthData
                  : offset >= blob.BookmarkArrayOffset ? SegmentRegion.Bookmarks
                  : SegmentRegion.Header;
         }
