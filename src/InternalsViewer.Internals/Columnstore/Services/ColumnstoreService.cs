@@ -147,7 +147,14 @@ public sealed class ColumnstoreService(IRecordReader recordReader, ILobDataServi
     {
         var data = await GetData(database, dictionary.DataPointer, cancellationToken);
 
-        return DictionaryBlobParser.Parse(data, (int)dictionary.EntryCount, dictionary.LastId, isMarkEnabled);
+        var blob = DictionaryBlobParser.Parse(data, (int)dictionary.EntryCount, dictionary.LastId, isMarkEnabled);
+
+        if (blob is StringDictionary strings)
+        {
+            await ReadLobValues(database, strings, cancellationToken);
+        }
+
+        return blob;
     }
 
     public async Task<SegmentReader> GetSegmentReader(DatabaseSource database,
@@ -217,6 +224,36 @@ public sealed class ColumnstoreService(IRecordReader recordReader, ILobDataServi
             {
                 deltaStore.DeltaStoreRowGroupId = rowGroupId;
             }
+        }
+    }
+
+    /// <summary>
+    /// Follows the pointers a string dictionary holds in place of values too big for its string store
+    /// </summary>
+    /// <remarks>
+    /// The parser cannot do this, a pointer needing a read of its own, so it happens once the blob is loaded. A
+    /// LOB payload carries the same Xpress Huffman envelope as archive compression even on a plain index.
+    /// </remarks>
+    private async Task ReadLobValues(DatabaseSource database,
+        StringDictionary dictionary,
+        CancellationToken cancellationToken)
+    {
+        for (var i = 0; i < dictionary.Handles.Length; i++)
+        {
+            if (!dictionary.TryGetLobPointer(i, out var pointer))
+            {
+                continue;
+            }
+
+            var data = await GetData(database,
+                new LobPointer(pointer.BlobId, pointer.PageAddress, pointer.Slot),
+                cancellationToken);
+
+            ReadOnlyMemory<byte> payload = data;
+
+            dictionary.LobValues[i] = ArchiveBlobHeader.IsArchive(payload.Span)
+                ? ArchiveBlobExpander.Expand(payload).ToArray()
+                : data;
         }
     }
 

@@ -6,6 +6,7 @@ using InternalsViewer.Internals.Columnstore.Segments;
 using InternalsViewer.Internals.Columnstore.Metadata.Enums;
 using InternalsViewer.UI.App.Models.Columnstore;
 using SkiaSharp;
+using InternalsViewer.UI.App.Models.Columnstore.Segment;
 
 namespace InternalsViewer.UI.App.Controls.Columnstore;
 

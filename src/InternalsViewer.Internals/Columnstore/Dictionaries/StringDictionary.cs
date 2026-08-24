@@ -47,20 +47,59 @@ public sealed class StringDictionary : DictionaryBlob
 
     public Encoding Encoding { get; set; } = Encoding.Latin1;
 
+    /// <summary>
+    /// Values read from a LOB page, by entry index, for the entries that hold a pointer rather than a string
+    /// </summary>
+    /// <remarks>
+    /// The pointer cannot be followed while the blob is being parsed, the read needing the database, so the
+    /// service fills these in once the dictionary is loaded.
+    /// </remarks>
+    public Dictionary<int, byte[]> LobValues { get; } = [];
+
     public string GetValue(long dataId) => GetValueAt(GetIndex(dataId));
+
+    /// <summary>
+    /// The pointer an entry holds, for an entry whose value was too big for the string store
+    /// </summary>
+    public bool TryGetLobPointer(int index, out StringLobPointer pointer)
+    {
+        pointer = default;
+
+        if (index < 0 || index >= Handles.Length)
+        {
+            return false;
+        }
+
+        var handle = Handles[index];
+
+        return handle.Page < Pages.Length
+               && StringLobPointer.TryParse(Pages[handle.Page].GetValueBytes(handle.Offset), out pointer);
+    }
 
     /// <summary>
     /// Raw entry bytes, which the column type rather than the dictionary decides how to read
     /// </summary>
-    public byte[] GetValueBytes(long dataId)
+    public byte[] GetValueBytes(long dataId) => GetValueBytesAt(GetIndex(dataId));
+
+    public byte[] GetValueBytesAt(int index)
     {
-        var handle = Handles[GetIndex(dataId)];
+        if (LobValues.TryGetValue(index, out var resolved))
+        {
+            return resolved;
+        }
+
+        var handle = Handles[index];
 
         return Pages[handle.Page].GetValueBytes(handle.Offset);
     }
 
     public string GetValueAt(int index)
     {
+        if (LobValues.TryGetValue(index, out var resolved))
+        {
+            return Encoding.GetString(resolved);
+        }
+
         var handle = Handles[index];
 
         return Pages[handle.Page].GetValue(handle.Offset, Encoding);

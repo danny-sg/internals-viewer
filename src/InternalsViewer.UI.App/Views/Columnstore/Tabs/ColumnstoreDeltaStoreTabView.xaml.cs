@@ -3,7 +3,7 @@ using System.Threading;
 using CommunityToolkit.Mvvm.Messaging;
 using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.UI.App.Messages;
-using InternalsViewer.UI.App.Models.Columnstore;
+using InternalsViewer.UI.App.Models.Columnstore.Segment;
 using InternalsViewer.UI.App.ViewModels.Columnstore;
 using Microsoft.UI.Xaml.Controls;
 

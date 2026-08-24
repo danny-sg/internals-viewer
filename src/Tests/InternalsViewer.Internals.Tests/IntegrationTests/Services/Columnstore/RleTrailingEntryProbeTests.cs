@@ -74,12 +74,14 @@ public sealed class RleTrailingEntryProbeTests(ITestOutputHelper testOutput) : P
                     var actualWide = blobForWidth.RleEntries.Length * 2 == blobForWidth.Header.RleArrayCount
                                      && blobForWidth.Header.RleArrayCount > 0;
 
-                    // A dictionary segment stores slot numbers, so its base and magnitude are unset and unusable
-                    var scaled = segment.BaseId >= 0 && segment.Magnitude > 0;
+                    // A store by value literal is the value itself, anything else is an id relative to the base
+                    var storedMax = (int)segment.Encoding == 4
+                        ? segment.MaxDataId
+                        : segment.BaseId >= 0 && segment.Magnitude > 0
+                            ? (segment.MaxDataId / segment.Magnitude) - segment.BaseId
+                            : 0;
 
-                    var storedMax = scaled ? (segment.MaxDataId / segment.Magnitude) - segment.BaseId : 0;
-
-                    var predictedWide = scaled && storedMax > int.MaxValue;
+                    var predictedWide = storedMax > int.MaxValue;
 
                     if (actualWide != predictedWide)
                     {

@@ -1,5 +1,5 @@
 using System;
-using InternalsViewer.UI.App.Models.Columnstore;
+using InternalsViewer.UI.App.Models.Columnstore.Segment;
 using InternalsViewer.UI.App.ViewModels.Columnstore;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;

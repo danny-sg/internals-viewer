@@ -2,6 +2,7 @@
 using System.IO;
 using InternalsViewer.Internals.Columnstore.Blobs;
 using InternalsViewer.Internals.Columnstore.Metadata;
+using InternalsViewer.Internals.Columnstore.Metadata.Enums;
 using InternalsViewer.Internals.Columnstore.Segments;
 
 namespace InternalsViewer.Internals.Columnstore.Parsers;
@@ -194,7 +195,6 @@ public static class SegmentBlobParser
         store.PageSizeArray.PageSizes = sizes;
         store.Pages = pages;
 
-
         store.Mark();
 
         return store;
@@ -244,12 +244,16 @@ public static class SegmentBlobParser
     /// </remarks>
     private static int GetRleEntryBytes(ColumnSegment? segment)
     {
-        if (segment is null || segment.BaseId < 0 || segment.Magnitude <= 0)
+        if (segment is null)
         {
             return SegmentBlob.EntrySize;
         }
 
-        var storedMax = (segment.MaxDataId / segment.Magnitude) - segment.BaseId;
+        var storedMax = segment.Encoding == SegmentEncoding.StoreByValueBased
+            ? segment.MaxDataId
+            : segment.BaseId >= 0 && segment.Magnitude > 0
+                ? (segment.MaxDataId / segment.Magnitude) - segment.BaseId
+                : 0;
 
         return storedMax > int.MaxValue ? SegmentBlob.EntrySize * 2 : SegmentBlob.EntrySize;
     }

@@ -17,4 +17,14 @@ public sealed class ValueDerivation
     public IReadOnlyList<DerivationStep> Steps { get; init; } = [];
 
     public string Result { get; init; } = string.Empty;
+
+    /// <summary>
+    /// Where the result itself lives, for a caller that can navigate to it
+    /// </summary>
+    /// <remarks>
+    /// Untyped for the same reason a step's target is - a derivation says nothing about what it is describing.
+    /// </remarks>
+    public object? Target { get; init; }
+
+    public bool IsNavigable => Target is not null;
 }

@@ -28,6 +28,11 @@ public sealed partial class ValueDerivationControl
     /// </summary>
     public event EventHandler<DerivationStep>? StepInvoked;
 
+    /// <summary>
+    /// Raised when a result that knows where it lives is clicked
+    /// </summary>
+    public event EventHandler<ValueDerivation>? ResultInvoked;
+
     public ValueDerivation? Derivation
     {
         get => (ValueDerivation?)GetValue(DerivationProperty);
@@ -58,6 +63,14 @@ public sealed partial class ValueDerivationControl
     private static void OnShowStepsChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
         => ((ValueDerivationControl)d).ApplySteps();
 
+    private void Result_OnClick(object sender, RoutedEventArgs e)
+    {
+        if (Derivation is { IsNavigable: true } derivation)
+        {
+            ResultInvoked?.Invoke(this, derivation);
+        }
+    }
+
     private void Badge_OnClick(object sender, RoutedEventArgs e)
     {
         if (((Button)sender).Tag is DerivationStep { IsNavigable: true } step)
@@ -77,6 +90,11 @@ public sealed partial class ValueDerivationControl
 
         StepsPanel.Visibility = hasSteps ? Visibility.Visible : Visibility.Collapsed;
         EqualsText.Visibility = hasSteps ? Visibility.Visible : Visibility.Collapsed;
+
+        var resultMargin = hasSteps ? new Thickness(0, 0, 8, 0) : new Thickness(8, 0, 8, 0);
+
+        ResultText.Margin = resultMargin;
+        ResultLink.Margin = resultMargin;
 
         for (var index = 0; index < _slots.Length; index++)
         {
@@ -98,6 +116,12 @@ public sealed partial class ValueDerivationControl
         }
 
         control.ResultText.Text = derivation.Result;
+
+        control.ResultLink.Content = derivation.Result;
+
+        control.ResultText.Visibility = derivation.IsNavigable ? Visibility.Collapsed : Visibility.Visible;
+
+        control.ResultLink.Visibility = derivation.IsNavigable ? Visibility.Visible : Visibility.Collapsed;
 
         control.ApplySteps();
     }

@@ -17,6 +17,8 @@ using InternalsViewer.UI.App.Models;
 using InternalsViewer.UI.App.Controls.Columnstore;
 using InternalsViewer.UI.App.Models.Columnstore;
 using InternalsViewer.UI.App.Services.Markers;
+using InternalsViewer.UI.App.Models.Columnstore.Segment;
+using InternalsViewer.UI.App.Models.Columnstore.Dictionary;
 
 namespace InternalsViewer.UI.App.ViewModels.Columnstore;
 
@@ -144,7 +146,7 @@ public sealed partial class DictionaryTabViewModel(ColumnstoreService columnstor
     private bool _isDictionaryLoading;
 
     [ObservableProperty]
-    private string _statusText = "Loading dictionary...";
+    private string _statusText = "Loading Dictionary...";
 
     [ObservableProperty]
     private string _summaryText = string.Empty;
@@ -205,14 +207,8 @@ public sealed partial class DictionaryTabViewModel(ColumnstoreService columnstor
 
     public HuffmanTreeNode? Tree => SelectedPage?.Tree;
 
-    /// <summary>
-    /// Whether the blob is laid out in pages at all, a numeric dictionary holding a flat array of values instead
-    /// </summary>
     public bool HasPages => Blob is StringDictionary;
 
-    /// <summary>
-    /// Whether the values sit in a flat array rather than in pages, which is what a numeric dictionary holds
-    /// </summary>
     public bool HasValues => Blob is NumericDictionary;
 
     /// <summary>
@@ -405,13 +401,6 @@ public sealed partial class DictionaryTabViewModel(ColumnstoreService columnstor
         }
     }
 
-    /// <summary>
-    /// Takes the entry the grid picked, and marks it whether or not the property saw a change
-    /// </summary>
-    /// <remarks>
-    /// An entry stands for its index, so the grid handing back an equal instance leaves the property unchanged and
-    /// nothing would rebuild. The markers are for what is selected now, so they are built either way.
-    /// </remarks>
     public void SelectEntry(DictionaryEntryDetail? entry)
     {
         SelectedEntry = entry;
@@ -421,9 +410,6 @@ public sealed partial class DictionaryTabViewModel(ColumnstoreService columnstor
         Hex.BuildMarkers();
     }
 
-    /// <summary>
-    /// Narrows the entry list to the page, the handle array being what says which page an entry lives on
-    /// </summary>
     private DictionaryEntryList? BuildPageEntries(DictionaryPageSummary? page)
     {
         if (page is null || Blob is not StringDictionary strings)
@@ -444,18 +430,8 @@ public sealed partial class DictionaryTabViewModel(ColumnstoreService columnstor
         return new DictionaryEntryList(strings, IsDerivationVisible, [.. indexes]);
     }
 
-    /// <summary>
-    /// Set while the load picks a first page, whose selection must not carry the window off the header
-    /// </summary>
-    /// <remarks>
-    /// The window only ever holds the lines on screen, so moving it to a page leaves every header field outside it
-    /// and nothing to mark. A blob opens on its header, and moves only where the reader sends it.
-    /// </remarks>
     private bool _isLoading;
 
-    /// <summary>
-    /// Whether the grids show the working behind a value, or only the value itself
-    /// </summary>
     [ObservableProperty]
     private bool _isDerivationVisible = true;
 
@@ -595,7 +571,7 @@ public sealed partial class DictionaryTabViewModel(ColumnstoreService columnstor
     /// <summary>
     /// Handles carry two fields, so each one that is marked on its own opens to show them
     /// </summary>
-    private IEnumerable<Marker> HandleMarkers(StringDictionary strings)
+    private static IEnumerable<Marker> HandleMarkers(StringDictionary strings)
     {
         var markers = Region("Handle",
                              ItemType.DictionaryHandle,

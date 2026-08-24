@@ -122,7 +122,7 @@ public sealed class BookmarkMeaningProbeTests(ITestOutputHelper testOutput) : Pr
 
             totals.Bookmarks++;
 
-            if (bookmark.IsSentinel)
+            if (bookmark.Position == unchecked((int)0x80000000))
             {
                 totals.Sentinels++;
 

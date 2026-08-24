@@ -14,6 +14,7 @@ using InternalsViewer.Internals.Interfaces.Services.Loaders.Chains;
 using InternalsViewer.Internals.Engine.Allocation;
 using InternalsViewer.Internals.Interfaces.Services.Loaders.Pages;
 using InternalsViewer.UI.App.Models.Columnstore;
+using InternalsViewer.UI.App.Models.Columnstore.Segment;
 
 namespace InternalsViewer.UI.App.ViewModels.Columnstore;
 

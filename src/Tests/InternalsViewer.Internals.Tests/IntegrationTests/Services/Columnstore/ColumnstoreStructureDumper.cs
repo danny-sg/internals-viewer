@@ -129,10 +129,10 @@ internal static class ColumnstoreStructureDumper
         AppendSample(builder, blob.Header.RleEntryCount, i => FormatRleEntry(blob, i));
 
         builder.AppendLine();
-        builder.AppendLine($"Bookmark Array ({blob.Header.BookmarkCount} entries, every {blob.Header.BookmarkDistance:N0} rows)");
+        builder.AppendLine($"Bookmark Array ({blob.Bookmarks.Length} entries, every {blob.Header.BookmarkDistance:N0} rows)");
 
         AppendSample(builder,
-                     blob.Header.BookmarkCount,
+                     blob.Bookmarks.Length,
                      i => $"  [{i,6}] rle entry {blob.Bookmarks[i].GetRleEntryIndex(blob.Header.RleEntryBytes),8}   "
                           + $"end row {blob.Bookmarks[i].EndRow,12:N0}");
 

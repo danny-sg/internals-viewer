@@ -26,6 +26,7 @@
             <converters:ColorToSolidColorBrushValueConverter x:Key="ColorToSolidColorBrushValueConverter"/>
             <page:HexColorToBrushConverter x:Key="HexColorToBrushConverter"/>
             <converters:NullToVisibilityConverter x:Key="NullToVisibilityConverter"/>
+            <converters:NullToVisibilityConverter x:Key="InverseNullToVisibilityConverter" IsInverse="True"/>
             <plan:MarkStyleConverter x:Key="MarkStyleConverter"/>
             <converters:OperatorCategoryToBrushConverter x:Key="OperatorCategoryToBrushConverter"/>
             <converters:BoolToCornerRadiusConverter x:Key="CategoryBadgeCornerConverter"

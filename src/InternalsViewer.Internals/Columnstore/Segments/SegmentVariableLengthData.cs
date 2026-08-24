@@ -94,6 +94,16 @@ public sealed class SegmentVariableLengthData : DataStructure
     public int GetPageIndex(int ordinal) => Locate(ordinal).Page;
 
     /// <summary>
+    /// Where an ordinal sits, which is the address a run would have used to name it
+    /// </summary>
+    public SegmentPageSlot GetPageSlot(int ordinal)
+    {
+        var (page, index) = Locate(ordinal);
+
+        return new SegmentPageSlot(page, index);
+    }
+
+    /// <summary>
     /// Where the value a page and slot pair addresses starts in the segment blob
     /// </summary>
     public int GetValueOffset(int page, int slot)

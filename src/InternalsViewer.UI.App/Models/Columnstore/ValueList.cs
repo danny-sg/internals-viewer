@@ -2,6 +2,7 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using InternalsViewer.Internals.Columnstore.Segments;
+using InternalsViewer.UI.App.Models.Columnstore.Segment;
 
 namespace InternalsViewer.UI.App.Models.Columnstore;
 

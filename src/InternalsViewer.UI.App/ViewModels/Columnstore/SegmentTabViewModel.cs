@@ -17,6 +17,7 @@ using InternalsViewer.UI.App.Controls.Columnstore;
 using InternalsViewer.UI.App.Models;
 using InternalsViewer.UI.App.Models.Columnstore;
 using InternalsViewer.UI.App.Services.Markers;
+using InternalsViewer.UI.App.Models.Columnstore.Segment;
 
 namespace InternalsViewer.UI.App.ViewModels.Columnstore;
 
@@ -70,6 +71,8 @@ public sealed partial class SegmentTabViewModel(ColumnstoreService columnstoreSe
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(HasBookmarks))]
+    [NotifyPropertyChangedFor(nameof(Bookmarks))]
+    [NotifyPropertyChangedFor(nameof(BitpackUnits))]
     [NotifyPropertyChangedFor(nameof(HasRleArray))]
     [NotifyPropertyChangedFor(nameof(RleRuns))]
     [NotifyPropertyChangedFor(nameof(RleValueLabel))]
@@ -81,6 +84,67 @@ public sealed partial class SegmentTabViewModel(ColumnstoreService columnstoreSe
     private SegmentBlob? _blob;
 
     public bool HasBookmarks => Blob is { Header.BookmarkCount: > 0 };
+
+    /// <summary>
+    /// Every bookmark of the segment, listed rather than marked, the array running to thousands of entries
+    /// </summary>
+    public IReadOnlyList<BookmarkDetail> Bookmarks
+    {
+        get
+        {
+            if (Blob is not { } blob)
+            {
+                return [];
+            }
+
+            var details = new List<BookmarkDetail>(blob.Bookmarks.Length);
+
+            for (var i = 0; i < blob.Bookmarks.Length; i++)
+            {
+                var bookmark = blob.Bookmarks[i];
+
+                details.Add(new BookmarkDetail(i,
+                                               bookmark.Position,
+                                               bookmark.GetRleEntryIndex(blob.Header.RleEntryBytes),
+                                               bookmark.EndRow,
+                                               blob.Header.BookmarkArrayOffset + (i * SegmentBlob.EntrySize),
+                                               blob.Header.RleEntryBytes,
+                                               blob.Header.RleArrayOffset
+                                               + (bookmark.GetRleEntryIndex(blob.Header.RleEntryBytes)
+                                                  * blob.Header.RleEntryBytes)));
+            }
+
+            return details;
+        }
+    }
+
+    public void SelectBookmark(BookmarkDetail? bookmark)
+    {
+        if (bookmark is not null)
+        {
+            GoToTarget(new SegmentNavigationTarget(SegmentRegion.Bookmarks, bookmark.Offset));
+        }
+    }
+
+    /// <summary>
+    /// Units of the bit pack array, listed lazily, a segment holding hundreds of thousands of them
+    /// </summary>
+    public BitpackUnitList? BitpackUnits => Blob is { Header.HasBitpackArray: true } blob
+        ? new BitpackUnitList(blob)
+        : null;
+
+    public void SelectBitpackUnit(BitpackUnitRow? row)
+    {
+        if (Blob is not { } blob || row is null)
+        {
+            return;
+        }
+
+        BitpackUnit = BitpackUnitDetail.Build(blob, row.Unit, DeriveDataIdValue, IsDerivationVisible);
+
+        GoToTarget(new SegmentNavigationTarget(SegmentRegion.BitpackArray, row.Offset));
+    }
+
 
     /// <summary>
     /// How the column was compressed, which the metadata decides before the blob is ever read
@@ -440,7 +504,7 @@ public sealed partial class SegmentTabViewModel(ColumnstoreService columnstoreSe
                 return null;
             }
 
-            var unit = source.BitpackIndex / perUnit;
+            var unit = source.SourceIndex / perUnit;
 
             return (blob.Header.BitpackArrayOffset + (unit * BitpackArray.UnitBytes),
                     BitpackArray.UnitBytes,
@@ -508,8 +572,23 @@ public sealed partial class SegmentTabViewModel(ColumnstoreService columnstoreSe
             return;
         }
 
+        // A marker belongs to the region it was built for, so it means nothing once another region is on show
+        Hex.SelectedMarker = null;
+
         GoToRegion(value);
     }
+
+    /// <summary>
+    /// Tab a region is shown on, so following something into another region brings its tab forward
+    /// </summary>
+    private static int GetRegionTabIndex(SegmentRegion region) => region switch
+    {
+        SegmentRegion.Bookmarks => 1,
+        SegmentRegion.RleArray => 2,
+        SegmentRegion.BitpackArray => 3,
+        SegmentRegion.VariableLengthData => 4,
+        _ => 0
+    };
 
     /// <summary>
     /// Whether scrolling out of a region moves on to the tab for the region scrolled into
@@ -835,8 +914,44 @@ public sealed partial class SegmentTabViewModel(ColumnstoreService columnstoreSe
     /// The markers are built rather than left to the debounce, there being nothing to select until they exist.
     /// </remarks>
     /// <summary>
-    /// Follows a run's address to the value it points at, the store being where a value actually lives
+    /// Follows a run to the bit pack entry it names, the unit holding it being what can actually be shown
     /// </summary>
+    public void GoToBitpackValue(long valueIndex)
+    {
+        if (Blob is not { } blob || blob.Bitpack.ValuesPerUnit <= 0)
+        {
+            return;
+        }
+
+        var unit = (int)(valueIndex / blob.Bitpack.ValuesPerUnit);
+
+        if (unit < 0 || unit >= blob.Header.BitpackUnitCount)
+        {
+            return;
+        }
+
+        BitpackUnit = BitpackUnitDetail.Build(blob, unit, DeriveDataIdValue, IsDerivationVisible);
+
+        GoToTarget(new SegmentNavigationTarget(SegmentRegion.BitpackArray,
+                                               blob.Header.BitpackArrayOffset + (unit * BitpackArray.UnitBytes)));
+    }
+
+    public void SelectRun(RleRunDetail? run)
+    {
+        if (run is not null)
+        {
+            GoToTarget(new SegmentNavigationTarget(SegmentRegion.RleArray, run.Offset));
+        }
+    }
+
+    /// <summary>
+    /// Follows a run to the value it names, which means the page holding it as well as the bytes
+    /// </summary>
+    /// <remarks>
+    /// The store is addressed by page and slot, so showing the value means picking its page, turning to the tab
+    /// that decodes one, and selecting the slot there. The page has to be picked first, choosing one rebuilding
+    /// the value list the slot is taken from.
+    /// </remarks>
     public void GoToValue(string address)
     {
         if (Blob?.VariableLengthData is not { } store || !SegmentPageSlot.TryParse(address, out var parsed))
@@ -844,9 +959,20 @@ public sealed partial class SegmentTabViewModel(ColumnstoreService columnstoreSe
             return;
         }
 
+        SelectedValuePage = ValuePages.FirstOrDefault(p => p.Index == parsed.Page);
+
+        SelectedVariableLengthDataTabIndex = DecodeTabIndex;
+
+        if (Values is { } values && parsed.Slot >= 0 && parsed.Slot < values.Count)
+        {
+            SelectValue(values[parsed.Slot]);
+        }
+
         GoToTarget(new SegmentNavigationTarget(SegmentRegion.VariableLengthData,
                                                store.GetValueOffset(parsed.Page, parsed.Slot)));
     }
+
+    private const int DecodeTabIndex = 2;
 
     public void GoToTarget(SegmentNavigationTarget target)
     {
@@ -860,6 +986,8 @@ public sealed partial class SegmentTabViewModel(ColumnstoreService columnstoreSe
         Region = target.Region;
 
         _isFollowingWindow = false;
+
+        SelectedRegionTabIndex = GetRegionTabIndex(target.Region);
 
         Hex.GoToOffset(target.Offset);
 

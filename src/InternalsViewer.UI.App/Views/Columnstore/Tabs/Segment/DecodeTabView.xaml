@@ -7,7 +7,7 @@
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     xmlns:tableView="using:WinUI.TableView"
     xmlns:controls="using:InternalsViewer.UI.App.Controls"
-    xmlns:models="using:InternalsViewer.UI.App.Models.Columnstore"
+    xmlns:models="using:InternalsViewer.UI.App.Models.Columnstore.Segment"
     xmlns:page="using:InternalsViewer.UI.App.Controls.Page"
     mc:Ignorable="d">
     <Grid>
@@ -58,6 +58,7 @@
                      BorderThickness="0"
                      Background="{ThemeResource LayerFillColorDefaultBrush}"
                      SelectionChanged="Values_OnSelectionChanged"
+                     SelectedItem="{x:Bind ViewModel.SelectedValue, Mode=TwoWay}"
                      ItemsSource="{x:Bind ViewModel.Values, Mode=OneWay}">
             <tableView:TableView.Resources>
                 <x:Double x:Key="ListViewItemMinHeight">0</x:Double>

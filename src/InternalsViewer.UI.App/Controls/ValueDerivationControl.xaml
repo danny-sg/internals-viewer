@@ -72,5 +72,15 @@
         <TextBlock x:Name="ResultText"
                    VerticalAlignment="Center"
                    FontFamily="{StaticResource MonospaceFontFamily}"/>
+
+        <HyperlinkButton x:Name="ResultLink"
+                         Style="{StaticResource PointerStyle}"
+                         Padding="0"
+                         Margin="0"
+                         MinHeight="0"
+                         Visibility="Collapsed"
+                         VerticalAlignment="Center"
+                         FontFamily="{StaticResource MonospaceFontFamily}"
+                         Click="Result_OnClick"/>
     </StackPanel>
 </UserControl>

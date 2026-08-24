@@ -20,4 +20,4 @@ public enum SegmentValueOrigin
 public readonly record struct SegmentDataIdSource(long DataId,
                                                   SegmentValueOrigin Origin,
                                                   int EntryIndex,
-                                                  int BitpackIndex);
+                                                  int SourceIndex);

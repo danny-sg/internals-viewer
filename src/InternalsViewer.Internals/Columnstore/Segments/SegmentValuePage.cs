@@ -76,6 +76,15 @@ public sealed class SegmentValuePage : DataStructure
 
     public bool IsCompressed => Compression == HuffmanCompression;
 
+    /// <summary>
+    /// Whether the values are scaled integers, which the low bit of the flags nibble marks
+    /// </summary>
+    /// <remarks>
+    /// Every page carrying it in the lab is a decimal column, and they are the only pages the reserved low bit of
+    /// a stored value applies to. Decimal is also the only type that fills a narrow value page at all.
+    /// </remarks>
+    public bool IsScaled => (Flags & 1) != 0;
+
     public ReadOnlyMemory<byte> Values
         => _values ??= IsCompressed ? _decoder.Decode(Compressed, ExpandedSize) : Compressed;
 
@@ -189,7 +198,12 @@ public sealed class SegmentValuePage : DataStructure
     public void Mark()
     {
         MarkProperty(nameof(SubLobType), Offset, 4);
-        MarkProperty(nameof(PageFlags), Offset + 0x04, 1, [IsCompressed ? "Compressed" : "Uncompressed"]);
+        MarkProperty(nameof(PageFlags),
+                     Offset + 0x04,
+                     1,
+                     IsScaled
+                         ? [IsCompressed ? "Compressed" : "Uncompressed", "Decimal"]
+                         : [IsCompressed ? "Compressed" : "Uncompressed"]);
         MarkProperty(nameof(Reserved05), Offset + 0x05, 1);
         MarkProperty(nameof(ValueSize), Offset + 0x06, 2);
         MarkProperty(nameof(ValueCount), Offset + 0x08, 4);

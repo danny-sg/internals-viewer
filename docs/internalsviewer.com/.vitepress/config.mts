@@ -129,6 +129,7 @@ export default defineConfig({
           { text: "Data Records", link: "docs/reference/data-records" },
           { text: "Index Records", link: "docs/reference/index-records" },
           { text: "Compression", link: "docs/reference/compression" },
+          { text: "Column Segments", link: "docs/reference/column-segments" },
           { text: "Log Appliers", link: "docs/reference/log-appliers" },
           { text: "Glossary", link: "docs/reference/glossary" },
           { text: "Resources", link: "docs/reference/resources" },
