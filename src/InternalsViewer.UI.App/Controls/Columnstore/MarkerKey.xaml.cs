@@ -1,4 +1,4 @@
-using InternalsViewer.Internals.Annotations;
+﻿using InternalsViewer.Internals.Annotations;
 using InternalsViewer.UI.App.Services.Markers;
 using Microsoft.UI.Xaml;
 
@@ -29,6 +29,14 @@ public sealed partial class MarkerKey
     private static void OnItemTypeChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
     {
         var control = (MarkerKey)d;
+
+        // A column whose marker depends on what is selected has nothing to show when the selection carries none
+        control.Visibility = control.ItemType == ItemType.None ? Visibility.Collapsed : Visibility.Visible;
+
+        if (control.ItemType == ItemType.None)
+        {
+            return;
+        }
 
         control.Swatch.Background = new MarkStyleProvider().GetMarkStyle(control.ItemType).BackColour;
     }

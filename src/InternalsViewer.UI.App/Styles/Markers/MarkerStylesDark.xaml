@@ -245,6 +245,7 @@
     <models:MarkStyle x:Key="StringPageFreeSpaceOffsetMarkerStyle" ForeColour="#FFCC80" BackColour="#3E2205" Name="Free Space Offset" Ordinal="284"/>
     <models:MarkStyle x:Key="StringPageUncompressedSizeMarkerStyle" ForeColour="#90CAF9" BackColour="#0A2A52" Name="Uncompressed Size" Ordinal="285"/>
     <models:MarkStyle x:Key="StringPageAlignmentMarkerStyle" ForeColour="#BDBDBD" BackColour="#3A3A38" Name="Alignment" Ordinal="286"/>
+    <models:MarkStyle x:Key="StringPagePayloadMarkerStyle" ForeColour="#AED581" BackColour="#243C1C" Name="Payload" Ordinal="287"/>
 
 
     <!--Columnstore dictionary entry-->

@@ -35,6 +35,14 @@ public sealed class DictionaryEntryDetail(DictionaryBlob blob, int index, bool s
         ? $"{strings.Handles[Index].Offset}"
         : $"0x{ValueOffset:X}";
 
+    /// <summary>
+    /// Bytes the entry takes, a numeric one being a fixed element and a string one whatever it decodes to
+    /// </summary>
+    public int Length => blob is NumericDictionary numbers ? numbers.ElementSize : StoredBytes?.Length ?? 0;
+
+    private byte[]? StoredBytes
+        => field ??= blob is StringDictionary strings ? strings.GetValueBytesAt(Index) : null;
+
     public string Value => field ??= Decode();
 
     /// <summary>

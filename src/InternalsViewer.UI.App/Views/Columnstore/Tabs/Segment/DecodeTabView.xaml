@@ -74,6 +74,14 @@
                                                Visibility="{x:Bind ViewModel.HasVariableWidthValues, Mode=OneWay,
                                                             Converter={StaticResource BoolToVisibilityConverter}}"
                                                CellStyle="{StaticResource TableViewCellRightStyle}"/>
+                <tableView:TableViewTextColumn Header="Offset"
+                                               Width="90"
+                                               Binding="{Binding PositionDescription}"
+                                               CellStyle="{StaticResource TableViewCellRightStyle}"/>
+                <tableView:TableViewTextColumn Header="Length"
+                                               Width="80"
+                                               Binding="{Binding Length}"
+                                               CellStyle="{StaticResource TableViewCellRightStyle}"/>
                 <tableView:TableViewTextColumn Header="Stored" 
                                                Width="140"
                                                Binding="{Binding StoredDescription}"

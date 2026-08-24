@@ -4,13 +4,17 @@ using InternalsViewer.Internals.Columnstore.Metadata;
 namespace InternalsViewer.Internals.Columnstore.Decoding;
 
 /// <summary>
-/// Maps a segment data id to the value it represents
+/// Decodes Data Id to Value for a Segment
 /// </summary>
-public sealed class SegmentValueDecoder(ColumnSegment segment, DictionaryBlob? dictionary)
+public sealed class SegmentValueDecoder(ColumnSegment segment,
+                                        DictionaryBlob? dictionary,
+                                        DictionaryBlob? overflow = null)
 {
     private ColumnSegment Segment { get; } = segment;
 
     private DictionaryBlob? Dictionary { get; } = dictionary;
+
+    private DictionaryBlob? Overflow { get; } = overflow;
 
     public object? Decode(long dataId)
     {
@@ -19,14 +23,29 @@ public sealed class SegmentValueDecoder(ColumnSegment segment, DictionaryBlob? d
             return null;
         }
 
-        return Dictionary switch
+        var (source, id) = Resolve(dataId);
+
+        return source switch
         {
             StringDictionary strings 
-                => strings.GetValueBytes(dataId),
+                => strings.GetValueBytes(id),
             NumericDictionary numbers 
-                => numbers.GetValue(dataId),
-            _ => DecodeValueBased(dataId)
+                => numbers.GetValue(id),
+            _ => DecodeValueBased(id)
         };
+    }
+
+    /// <summary>
+    /// Gets the Dictionary/relative Data Id for a Data Id
+    /// </summary>
+    public (DictionaryBlob? Dictionary, long DataId) Resolve(long dataId)
+    {
+        if (Dictionary != null && Overflow is { } second && dataId > Dictionary.LastId)
+        {
+            return (second, dataId - Dictionary.LastId);
+        }
+
+        return (Dictionary ?? Overflow, dataId);
     }
 
     private object DecodeValueBased(long dataId)

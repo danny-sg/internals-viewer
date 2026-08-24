@@ -80,6 +80,12 @@ public sealed class HuffmanStringPage : StringPage
     public ReadOnlyMemory<byte> Content { get; set; }
 
     /// <summary>
+    /// Stands in for the coded stream in a marker, the bits of it belonging to no one entry
+    /// </summary>
+    [DataStructureItem(ItemType.StringPagePayload)]
+    public string Payload => "[Coded Payload]";
+
+    /// <summary>
     /// The code assigned to each symbol the page uses, available once the table has been built
     /// </summary>
     public IReadOnlyList<HuffmanCode> GetCodes() => _table.GetCodes();
@@ -106,6 +112,11 @@ public sealed class HuffmanStringPage : StringPage
             MarkProperty(nameof(Alignment),
                          Offset + HeaderSize + CodeLengthTableSize,
                          DataOffset - HeaderSize - CodeLengthTableSize);
+        }
+
+        if (Size > DataOffset)
+        {
+            MarkProperty(nameof(Payload), Offset + DataOffset, Size - DataOffset);
         }
     }
 

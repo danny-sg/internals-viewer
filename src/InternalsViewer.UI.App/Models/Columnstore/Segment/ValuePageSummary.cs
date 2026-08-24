@@ -55,6 +55,13 @@ public sealed class ValueDetail(SegmentValuePage page, int index) : IEquatable<V
     public long Value => Raw >> SegmentVariableLengthData.ReservedBits;
 
     /// <summary>
+    /// Where the value starts in the expanded payload, which is what the hex beside the table is showing
+    /// </summary>
+    public string PositionDescription => page.IsNull(Index) ? string.Empty : $"0x{page.GetValuePosition(Index):X}";
+
+    public int Length => page.GetValueLength(Index);
+
+    /// <summary>
     /// Where the offset array puts the value, which only a variable width page has to say
     /// </summary>
     public string OffsetDescription

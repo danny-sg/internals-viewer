@@ -960,10 +960,38 @@ public sealed partial class HexViewControl
                                                           + BytesPerLine - 1               // Spaces in between bytes (except last byte)
                                                           + Environment.NewLine.Length) - 1;
 
-            var marker = Markers?.FirstOrDefault(m => m.StartPosition <= offset && m.EndPosition >= offset);
-
-            MouseOver = new(offset, marker);
+            MouseOver = new(offset, FindMarker(Markers, offset));
         }
+    }
+
+    /// <summary>
+    /// The narrowest marker covering an offset, a field being wanted ahead of the section it sits in
+    /// </summary>
+    private static Marker? FindMarker(IEnumerable<Marker>? markers, int offset)
+    {
+        Marker? found = null;
+
+        if (markers is null)
+        {
+            return null;
+        }
+
+        foreach (var marker in markers)
+        {
+            if (marker.StartPosition > offset || marker.EndPosition < offset)
+            {
+                continue;
+            }
+
+            var candidate = FindMarker(marker.Children, offset) ?? marker;
+
+            if (found is null || candidate.Length < found.Length)
+            {
+                found = candidate;
+            }
+        }
+
+        return found;
     }
 
     private void HexRichTextBlock_PointerEntered(object sender, Microsoft.UI.Xaml.Input.PointerRoutedEventArgs e)

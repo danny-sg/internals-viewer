@@ -2,6 +2,8 @@
 
 public enum ItemType
 {
+    None = -1,
+
     // Allocations
     PageAddress,
 
@@ -185,6 +187,7 @@ public enum ItemType
     StringPageFreeSpaceOffset,
     StringPageUncompressedSize,
     StringPageAlignment,
+    StringPagePayload,
     HuffmanBlobType,
     HuffmanBitCount,
     HuffmanDecoderBitSize,

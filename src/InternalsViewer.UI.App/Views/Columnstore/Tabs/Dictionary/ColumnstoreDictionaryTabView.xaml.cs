@@ -6,6 +6,8 @@ using Microsoft.UI.Xaml.Controls;
 using WinUI.TableView;
 using Microsoft.UI.Xaml.Controls.Primitives;
 using InternalsViewer.UI.App.Models.Columnstore.Dictionary;
+using Microsoft.UI.Xaml.Input;
+using InternalsViewer.UI.App.Controls.Columnstore;
 
 namespace InternalsViewer.UI.App.Views.Columnstore.Tabs;
 
@@ -84,6 +86,19 @@ public sealed partial class ColumnstoreDictionaryTabView : UserControl, IDocumen
         panel.Children.Add(hex);
 
         return panel;
+    }
+
+    private void Handles_OnSelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        ViewModel.SelectHandle(((TableView)sender).SelectedItem as DictionaryHandleDetail);
+    }
+
+    private void CommandBar_OnRightTapped(object sender, RightTappedRoutedEventArgs e)
+    {
+        var flyout = CsIndexMenu.Build(ViewModel.Dictionary.IsGlobal ? "Global" : $"Local {ViewModel.Dictionary.DictionaryId}",
+                                       ViewModel.GetCsIndexCommand);
+
+        flyout?.ShowAt(DictionaryCommandBar, e.GetPosition(DictionaryCommandBar));
     }
 
     private void Entries_OnSelectionChanged(object sender, SelectionChangedEventArgs e)

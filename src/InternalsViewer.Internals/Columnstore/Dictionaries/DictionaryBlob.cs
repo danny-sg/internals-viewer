@@ -22,9 +22,17 @@ public abstract class DictionaryBlob : DataStructure
     public int EntryCount { get; set; }
 
     /// <summary>
-    /// Data id the first entry is addressed by, since ids do not start at zero
+    /// Start Data Id for the dictionary
     /// </summary>
     public int FirstId { get; set; }
+
+    /// <summary>
+    /// Last Data Id for the dictionary
+    /// </summary>
+    /// <remarks>
+    /// Overflow dictionary takes over after the Last Id
+    /// </remarks>
+    public int LastId => FirstId + EntryCount - 1;
 
     protected int GetIndex(long dataId) => (int)(dataId - FirstId);
 }

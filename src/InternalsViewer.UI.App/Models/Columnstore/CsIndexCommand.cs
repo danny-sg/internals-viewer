@@ -1,5 +1,6 @@
 ﻿using System;
 using InternalsViewer.UI.App.Controls.Columnstore;
+using InternalsViewer.Internals.Columnstore.Metadata;
 
 namespace InternalsViewer.UI.App.Models.Columnstore;
 
@@ -51,6 +52,17 @@ public static class CsIndexCommand
 
     public static string Build(SegmentSummary segment, short databaseId, long hobtId, int printMode)
         => Format(databaseId, hobtId, segment.ColumnId, segment.RowGroupId, SegmentKind, printMode);
+
+    /// <summary>
+    /// The command for one dictionary, a global and a local being asked for by different kinds
+    /// </summary>
+    public static string Build(SegmentDictionary dictionary, short databaseId, long hobtId, int printMode)
+        => Format(databaseId,
+                  dictionary.HobtId == 0 ? hobtId : dictionary.HobtId,
+                  dictionary.ColumnId,
+                  dictionary.IsGlobal ? 0 : dictionary.DictionaryId,
+                  dictionary.IsGlobal ? GlobalDictionaryKind : LocalDictionaryKind,
+                  printMode);
 
     private static string Format(short databaseId, long hobtId, int columnId, int target, int kind, int printMode)
         => $"DBCC TRACEON (3604);{Environment.NewLine}"

@@ -15,7 +15,7 @@ public sealed class SegmentDataIdStream(SegmentBlob blob)
     public long GetDataId(int rowOrdinal) => GetSource(rowOrdinal).DataId;
 
     /// <summary>
-    /// Reads a row's data id along with the store it came from
+    /// Read Segment Row Data Id
     /// </summary>
     public SegmentDataIdSource GetSource(int rowOrdinal)
     {
@@ -176,6 +176,7 @@ public sealed class SegmentDataIdStream(SegmentBlob blob)
         while (rowOrdinal >= endRow && entryIndex + 1 < Blob.RleEntries.Length)
         {
             entryIndex++;
+
             endRow += Blob.RleEntries[entryIndex].Count;
         }
 

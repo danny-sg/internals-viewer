@@ -937,11 +937,37 @@ public sealed class ColumnstoreStructureRenderer : IDisposable
     /// </summary>
     private void DrawSegmentBadges(SKCanvas canvas, SegmentSummary segment, SKRect bounds, float contentLeft)
     {
+        if (segment.Header is not { } header)
+        {
+            return;
+        }
+
+        var badges = new List<(string, SKColor)>();
+
+        // Without a bit pack array the runs carry the values themselves, otherwise it takes a run beyond the
+        // one pointing at that array to be carrying anything
+        var hasRuns = header.IsVariableLengthData
+            ? header.RleEntryCount > 2
+            : !header.HasBitpackArray || header.RleEntryCount > 2;
+
+        if (hasRuns)
+        {
+            badges.Add(("RLE", ColumnstoreColours.RleFlag));
+        }
+
+        if (header.HasBitpackArray)
+        {
+            badges.Add(("Bit Pack", ColumnstoreColours.BitPackFlag));
+        }
+
+        if (header.IsVariableLengthData)
+        {
+            badges.Add(("VLD", ColumnstoreColours.VariableLengthDataFlag));
+        }
+
         var left = contentLeft + 4;
 
-        var encoding = new[] { (segment.EncodingDescription, ColumnstoreLayout.GetEncodingColour(segment.Encoding)) };
-
-        DrawBadges(canvas, encoding, left, bounds.Top + BadgeTopMargin, bounds.Right - left - 4, 0);
+        DrawBadges(canvas, badges, left, bounds.Top + BadgeTopMargin, bounds.Right - left - 4, 0);
     }
 
     /// <summary>

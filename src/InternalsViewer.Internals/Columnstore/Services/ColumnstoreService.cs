@@ -69,9 +69,6 @@ public sealed class ColumnstoreService(IRecordReader recordReader, ILobDataServi
                                             cancellationToken);
     }
 
-    /// <summary>
-    /// Reads a segment prologue alone, which is enough to describe its layout without pulling the whole blob
-    /// </summary>
     public async Task<SegmentBlobHeader> GetSegmentHeader(DatabaseSource database,
                                                           ColumnSegment segment,
                                                           CancellationToken cancellationToken)
@@ -103,13 +100,6 @@ public sealed class ColumnstoreService(IRecordReader recordReader, ILobDataServi
         return SegmentBlobParser.Parse(data, segment, isMarkEnabled);
     }
 
-    /// <summary>
-    /// How a string dictionary's pages are coded, read without pulling the whole dictionary in
-    /// </summary>
-    /// <remarks>
-    /// Two reads rather than one, the first being what says how far in the pages start. A numeric dictionary has no
-    /// pages and answers null, as does an archive compressed one whose bytes cannot be read a prefix at a time.
-    /// </remarks>
     public async Task<DictionaryHeaderInfo> GetDictionaryCoding(DatabaseSource database,
                                                                 SegmentDictionary dictionary,
                                                                 CancellationToken cancellationToken)
@@ -163,16 +153,19 @@ public sealed class ColumnstoreService(IRecordReader recordReader, ILobDataServi
     {
         var blob = await GetSegmentBlob(database, segment, cancellationToken);
 
-        return new SegmentReader(segment, blob, await GetSegmentDictionary(database, segment, cancellationToken));
+        var (dictionary, overflow) = await GetSegmentDictionaries(database, segment, cancellationToken);
+
+        return new SegmentReader(segment, blob, dictionary, overflow);
     }
 
-    /// <summary>
-    /// Resolves a segment data ids to values
-    /// </summary>
     public async Task<SegmentValueDecoder> GetSegmentDecoder(DatabaseSource database,
                                                              ColumnSegment segment,
                                                              CancellationToken cancellationToken)
-        => new(segment, await GetSegmentDictionary(database, segment, cancellationToken));
+    {
+        var (dictionary, overflow) = await GetSegmentDictionaries(database, segment, cancellationToken);
+
+        return new SegmentValueDecoder(segment, dictionary, overflow);
+    }
 
     public async Task<RowGroupReader> GetRowGroupReader(DatabaseSource database,
                                                        RowGroup rowGroup,
@@ -227,16 +220,9 @@ public sealed class ColumnstoreService(IRecordReader recordReader, ILobDataServi
         }
     }
 
-    /// <summary>
-    /// Follows the pointers a string dictionary holds in place of values too big for its string store
-    /// </summary>
-    /// <remarks>
-    /// The parser cannot do this, a pointer needing a read of its own, so it happens once the blob is loaded. A
-    /// LOB payload carries the same Xpress Huffman envelope as archive compression even on a plain index.
-    /// </remarks>
     private async Task ReadLobValues(DatabaseSource database,
-        StringDictionary dictionary,
-        CancellationToken cancellationToken)
+                                     StringDictionary dictionary,
+                                     CancellationToken cancellationToken)
     {
         for (var i = 0; i < dictionary.Handles.Length; i++)
         {
@@ -246,8 +232,8 @@ public sealed class ColumnstoreService(IRecordReader recordReader, ILobDataServi
             }
 
             var data = await GetData(database,
-                new LobPointer(pointer.BlobId, pointer.PageAddress, pointer.Slot),
-                cancellationToken);
+                                     new LobPointer(pointer.BlobId, pointer.PageAddress, pointer.Slot),
+                                     cancellationToken);
 
             ReadOnlyMemory<byte> payload = data;
 
@@ -302,17 +288,24 @@ public sealed class ColumnstoreService(IRecordReader recordReader, ILobDataServi
     }
 
     /// <summary>
-    /// The dictionary the segment's ids index, a local one taking precedence over the column's global one
+    /// Get Dictionaries linked to the Segment
     /// </summary>
-    private async Task<DictionaryBlob?> GetSegmentDictionary(DatabaseSource database,
-                                                             ColumnSegment segment,
-                                                             CancellationToken cancellationToken)
+    private async Task<(DictionaryBlob? Dictionary, DictionaryBlob? Overflow)> 
+        GetSegmentDictionaries(DatabaseSource database,
+                               ColumnSegment segment,
+                               CancellationToken cancellationToken)
     {
-        var source = segment.SecondaryDictionaryId >= 0
-                        ? segment.LocalDictionary
-                        : segment.Column?.GlobalDictionary;
+        var primary = segment.PrimaryDictionaryId >= 0 ? segment.Column?.GlobalDictionary : null;
 
-        return source is null ? null : await GetDictionaryBlob(database, source, cancellationToken);
+        var secondary = segment.SecondaryDictionaryId >= 0 ? segment.LocalDictionary : null;
+
+        if (primary is null)
+        {
+            return (secondary is null ? null : await GetDictionaryBlob(database, secondary, cancellationToken), null);
+        }
+
+        return (await GetDictionaryBlob(database, primary, cancellationToken),
+                secondary is null ? null : await GetDictionaryBlob(database, secondary, cancellationToken));
     }
 
     private async Task<List<Record>> GetRecords(string name,

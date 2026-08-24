@@ -161,6 +161,8 @@ public sealed partial class DictionaryTabViewModel(ColumnstoreService columnstor
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(HasHuffmanPage))]
+    [NotifyPropertyChangedFor(nameof(EntryValueItemType))]
+    [NotifyPropertyChangedFor(nameof(EntryLengthItemType))]
     private DictionaryPageSummary? _selectedPage;
 
     [ObservableProperty]
@@ -176,6 +178,22 @@ public sealed partial class DictionaryTabViewModel(ColumnstoreService columnstor
     /// Whether the selected page carries a coding, an uncompressed page having no table or tree to show
     /// </summary>
     public bool HasHuffmanPage => SelectedPage?.Huffman is not null;
+
+    /// <summary>
+    /// Colour the selected entry's value is marked in, a coded entry being marked over the words its bits fall in
+    /// </summary>
+    public ItemType EntryValueItemType => Blob is NumericDictionary
+        ? ItemType.DictionaryValue
+        : HasHuffmanPage
+            ? ItemType.StringEntryCode
+            : ItemType.StringEntryValue;
+
+    /// <summary>
+    /// Colour the entry's length prefix is marked in, which only a page holding its values plainly carries
+    /// </summary>
+    public ItemType EntryLengthItemType => Blob is StringDictionary && !HasHuffmanPage
+        ? ItemType.StringEntryLength
+        : ItemType.None;
 
     /// <summary>
     /// Which halves of the decode the reader wants, the entries read out and the coding that produced them
@@ -210,6 +228,95 @@ public sealed partial class DictionaryTabViewModel(ColumnstoreService columnstor
     public bool HasPages => Blob is StringDictionary;
 
     public bool HasValues => Blob is NumericDictionary;
+
+    public bool HasHandles => Blob is StringDictionary;
+
+    /// <summary>
+    /// The handle array, listed lazily, a dictionary running to tens of thousands of entries
+    /// </summary>
+    public DictionaryHandleList? Handles => Blob is StringDictionary strings ? new DictionaryHandleList(strings) : null;
+
+    /// <summary>
+    /// Moves the window onto the handle itself, which is where the lookup starts rather than where it lands
+    /// </summary>
+    public void SelectHandle(DictionaryHandleDetail? handle)
+    {
+        SelectedHandle = handle;
+
+        if (handle is not null)
+        {
+            Hex.GoToOffset(handle.HandleOffset);
+        }
+
+        Hex.BuildMarkers();
+    }
+
+    [ObservableProperty]
+    private DictionaryHandleDetail? _selectedHandle;
+
+    /// <summary>
+    /// The fields of the handle on show, which the array is too long to open for every entry
+    /// </summary>
+    private IEnumerable<Marker> SelectedHandleMarkers()
+    {
+        if (SelectedHandle is not { } handle || Blob is not StringDictionary)
+        {
+            yield break;
+        }
+
+        yield return MarkerBuilder.CreateMarker("Offset",
+                                                ItemType.DictionaryHandleOffset,
+                                                handle.HandleOffset,
+                                                4,
+                                                $"{handle.Offset}");
+
+        yield return MarkerBuilder.CreateMarker("Page",
+                                                ItemType.DictionaryHandlePage,
+                                                handle.HandleOffset + 4,
+                                                4,
+                                                $"{handle.Page}");
+    }
+
+    /// <summary>
+    /// The blob's parts in the order they sit, which the hex gutter names while a drag is under way
+    /// </summary>
+    public IReadOnlyList<HexArea> HexAreas
+    {
+        get
+        {
+            switch (Blob)
+            {
+                case NumericDictionary:
+                    return
+                    [
+                        new HexArea("Dictionary Header", 0),
+                        new HexArea("Hash Table", 0x0C),
+                        new HexArea("Array Header", 0x2C),
+                        new HexArea("Values", NumericDictionary.HeaderSize)
+                    ];
+
+                case StringDictionary strings:
+                    var pageSizes = StringDictionary.HandleArrayOffset + (strings.HandleCount * strings.HandleSize);
+
+                    return
+                    [
+                        new HexArea("Dictionary Header", 0),
+                        new HexArea("String Store", 0x0C),
+                        new HexArea("Handle Array Header", StringDictionary.HandleArrayHeaderOffset),
+                        new HexArea("Page Size Array Header", StringDictionary.PageSizeArrayHeaderOffset),
+                        new HexArea("Handles", StringDictionary.HandleArrayOffset),
+                        new HexArea("Page Sizes", pageSizes),
+                        new HexArea("Pages", pageSizes + (strings.PageCount * PageSizeBytes))
+                    ];
+
+                default:
+                    return [];
+            }
+        }
+    }
+
+    public string GetCsIndexCommand(int printMode)
+        => CsIndexCommand.Build(Dictionary, Database.DatabaseId, Dictionary.HobtId, printMode);
 
     /// <summary>
     /// Entries living on the selected page, which is the list the decode walks through
@@ -407,7 +514,44 @@ public sealed partial class DictionaryTabViewModel(ColumnstoreService columnstor
 
         SelectedStep = -1;
 
+        if (GetEntryOffset(entry) is { } offset)
+        {
+            Hex.GoToOffset(offset);
+        }
+
         Hex.BuildMarkers();
+    }
+
+    /// <summary>
+    /// Where an entry's bytes start, a numeric one being an element and a string one whatever its page holds
+    /// </summary>
+    /// <remarks>
+    /// A Huffman coded entry is addressed in bits, so the offset it lands on is the byte those bits fall in.
+    /// </remarks>
+    private int? GetEntryOffset(DictionaryEntryDetail? entry)
+    {
+        if (entry is null)
+        {
+            return null;
+        }
+
+        if (entry.ValueOffset >= 0)
+        {
+            return entry.ValueOffset;
+        }
+
+        if (SelectedPage is not { } page || Blob is not StringDictionary strings)
+        {
+            return null;
+        }
+
+        var handle = strings.Handles[entry.Index];
+
+        return page.Page switch
+        {
+            UncompressedStringPage uncompressed => uncompressed.GetExtent(handle.Offset).Offset,
+            _ => page.Offset + (handle.Offset / 8)
+        };
     }
 
     private DictionaryEntryList? BuildPageEntries(DictionaryPageSummary? page)
@@ -466,11 +610,12 @@ public sealed partial class DictionaryTabViewModel(ColumnstoreService columnstor
     {
         try
         {
-            var header = Window([.. MarkerBuilder.BuildMarkers(blob), .. ArrayMarkers()], start, length);
+            var header = GroupHeader(Window([.. MarkerBuilder.BuildMarkers(blob), .. ArrayMarkers()], start, length));
 
             var page = SelectedPage is { } selected
-                ? Window([.. MarkerBuilder.BuildMarkers(selected.Page), .. EntryMarkers()], start, length)
-                : Window([.. EntryMarkers()], start, length);
+                ? Window([.. MarkerBuilder.BuildMarkers(selected.Page), .. EntryMarkers(), .. SelectedHandleMarkers()],
+                         start, length)
+                : Window([.. EntryMarkers(), .. SelectedHandleMarkers()], start, length);
 
             HeaderMarkers = new ObservableCollection<Marker>(header);
 
@@ -486,6 +631,37 @@ public sealed partial class DictionaryTabViewModel(ColumnstoreService columnstor
             return [];
         }
     }
+
+    /// <summary>
+    /// Gathers the fields the blob opens with under one heading, the stores after them being grouped already
+    /// </summary>
+    /// <remarks>
+    /// CSINDEX reports the first twelve bytes as the dictionary header and everything past them as a store of its
+    /// own, so the tree reads the same way its output does.
+    /// </remarks>
+    private static List<Marker> GroupHeader(List<Marker> markers)
+    {
+        var loose = markers.Where(m => m.Children.Count == 0 && m.EndPosition < DictionaryHeaderSize).ToList();
+
+        if (loose.Count == 0)
+        {
+            return markers;
+        }
+
+        var from = loose.Min(m => m.StartPosition);
+
+        var section = MarkerBuilder.CreateMarker("Dictionary Header",
+                                                 ItemType.SegmentHeaderSection,
+                                                 from,
+                                                 loose.Max(m => m.EndPosition) - from + 1,
+                                                 string.Empty);
+
+        section.Children = new ObservableCollection<Marker>(loose);
+
+        return [section, .. markers.Except(loose)];
+    }
+
+    private const int DictionaryHeaderSize = 12;
 
     /// <summary>
     /// Positions the fields the window holds, and takes the position off the ones it does not
@@ -535,16 +711,12 @@ public sealed partial class DictionaryTabViewModel(ColumnstoreService columnstor
     {
         switch (Blob)
         {
-            case NumericDictionary numeric:
-                foreach (var marker in Region("Value",
-                                              ItemType.DictionaryValue,
-                                              NumericDictionary.HeaderSize,
-                                              numeric.ValueCount,
-                                              numeric.ElementSize,
-                                              i => $"{numeric.Values[i]}"))
-                {
-                    yield return marker;
-                }
+            case NumericDictionary numeric when numeric.ValueCount > 0 && numeric.ElementSize > 0:
+                yield return MarkerBuilder.CreateMarker("Value Array",
+                                                        ItemType.DictionaryValue,
+                                                        NumericDictionary.HeaderSize,
+                                                        numeric.ValueCount * numeric.ElementSize,
+                                                        $"({numeric.ValueCount} Entries)");
 
                 break;
 
@@ -740,7 +912,15 @@ public sealed partial class DictionaryTabViewModel(ColumnstoreService columnstor
 
             OnPropertyChanged(nameof(HasPages));
 
+            OnPropertyChanged(nameof(EntryValueItemType));
+
+            OnPropertyChanged(nameof(EntryLengthItemType));
+
             OnPropertyChanged(nameof(HasValues));
+
+            OnPropertyChanged(nameof(HasHandles));
+
+            OnPropertyChanged(nameof(Handles));
 
             Hex.MarkerFactory = (start, length) => BuildMarkers(blob, start, length);
 

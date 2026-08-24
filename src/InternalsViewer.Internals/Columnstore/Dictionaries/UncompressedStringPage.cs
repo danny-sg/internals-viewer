@@ -3,8 +3,12 @@
 namespace InternalsViewer.Internals.Columnstore.Dictionaries;
 
 /// <summary>
-/// String page holding length prefixed values back to back
+/// String Page
 /// </summary>
+/// <remarks>
+/// String values are held consecutively in the Content with a length prefix of one or two bytes. The first byte has its high bit set if the
+/// length is greater than 127, in which case the second byte is used to hold the rest of the length.
+/// </remarks>
 public sealed class UncompressedStringPage : StringPage
 {
     public const int HeaderSize = 24;

@@ -15,9 +15,6 @@ public sealed class NumericDictionaryValueArray : DataStructure
     [DataStructureItem(ItemType.DictionaryElementSize)]
     public int ElementSize { get; set; }
 
-    /// <summary>
-    /// Values the blob records itself, which the entry count from the metadata is checked against
-    /// </summary>
     [DataStructureItem(ItemType.DictionaryValueCount)]
     public int ValueCount { get; set; }
 

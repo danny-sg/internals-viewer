@@ -64,8 +64,25 @@
                 <tableView:TableViewTextColumn Header="Offset" Width="80"
                                                Binding="{Binding OffsetDescription}"
                                                CellStyle="{StaticResource TableViewCellRightStyle}"/>
-                <tableView:TableViewTextColumn Header="Value" Width="180"
-                                               Binding="{Binding Value}"/>
+                <tableView:TableViewTextColumn Width="80"
+                                               Binding="{Binding Length}"
+                                               CellStyle="{StaticResource TableViewCellRightStyle}">
+                    <tableView:TableViewTextColumn.Header>
+                        <StackPanel Orientation="Horizontal">
+                            <columnstore:MarkerKey ItemType="{x:Bind ViewModel.EntryLengthItemType, Mode=OneWay}"/>
+                            <TextBlock Text="Length"/>
+                        </StackPanel>
+                    </tableView:TableViewTextColumn.Header>
+                </tableView:TableViewTextColumn>
+                <tableView:TableViewTextColumn Width="180"
+                                               Binding="{Binding Value}">
+                    <tableView:TableViewTextColumn.Header>
+                        <StackPanel Orientation="Horizontal">
+                            <columnstore:MarkerKey ItemType="{x:Bind ViewModel.EntryValueItemType, Mode=OneWay}"/>
+                            <TextBlock Text="Value"/>
+                        </StackPanel>
+                    </tableView:TableViewTextColumn.Header>
+                </tableView:TableViewTextColumn>
             </tableView:TableView.Columns>
         </tableView:TableView>
 
