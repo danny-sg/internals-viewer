@@ -26,6 +26,11 @@ public sealed class SegmentValuePage : DataStructure
     /// </summary>
     public const int HuffmanCompression = 1;
 
+    /// <summary>
+    /// Offset standing for a null, which has no bytes in the value region to point at
+    /// </summary>
+    public const ushort NullOffset = 0xFFFE;
+
     private readonly XpressHuffmanDecoder _decoder = new();
 
     private ReadOnlyMemory<byte>? _values;
@@ -68,6 +73,16 @@ public sealed class SegmentValuePage : DataStructure
     public ReadOnlyMemory<byte> Compressed { get; set; }
 
     /// <summary>
+    /// Whether a value is wider than the integer the run length encodings work in
+    /// </summary>
+    public bool IsWide => IsVariableWidth || ValueSize > 8;
+
+    public bool IsCompressed => Compression == HuffmanCompression;
+
+    public ReadOnlyMemory<byte> Values
+        => _values ??= IsCompressed ? _decoder.Decode(Compressed, ExpandedSize) : Compressed;
+
+    /// <summary>
     /// Stands in for the payload in a marker, the compressed bytes saying nothing a reader can use
     /// </summary>
     [DataStructureItem(ItemType.ValuePagePayload)]
@@ -77,41 +92,41 @@ public sealed class SegmentValuePage : DataStructure
     /// Whether the values are not all one width, which the page says by setting the size to all ones
     /// </summary>
     /// <remarks>
-    /// Seen on nullable store by value columns, where some pages carry a width and others do not. What the values
-    /// look like inside such a page is not yet known, so nothing tries to read one.
+    /// Such a page keeps its values from the front and an offset per value at the back, so a value's length is
+    /// the distance to the next one rather than a width the page can name.
     /// </remarks>
     public bool IsVariableWidth => ValueSize < 0;
 
-    public int ExpandedSize => IsVariableWidth ? 0 : ValueCount * ValueSize;
-
-    public bool IsCompressed => Compression == HuffmanCompression;
+    public int ExpandedSize => IsVariableWidth ? PayloadSize + 1 : ValueCount * ValueSize;
 
     /// <summary>
-    /// Whether a value is wider than the integer the run length encodings work in
+    /// Where the offset array starts, being the last two bytes of every value
     /// </summary>
-    public bool IsWide => IsVariableWidth || ValueSize > 8;
-
-    public ReadOnlyMemory<byte> Values
-        => _values ??= IsVariableWidth
-            ? ReadOnlyMemory<byte>.Empty
-            : IsCompressed ? _decoder.Decode(Compressed, ExpandedSize) : Compressed;
+    private int OffsetArrayStart => Values.Length - (ValueCount * 2);
 
     /// <summary>
     /// Value as stored, for a width the integer path cannot take
     /// </summary>
     public ReadOnlyMemory<byte> GetValueBytes(int index)
     {
-        if (IsVariableWidth)
-        {
-            return ReadOnlyMemory<byte>.Empty;
-        }
-
         if ((uint)index >= (uint)ValueCount)
         {
             throw new ArgumentOutOfRangeException(nameof(index));
         }
 
-        return Values.Slice(index * ValueSize, ValueSize);
+        if (!IsVariableWidth)
+        {
+            return Values.Slice(index * ValueSize, ValueSize);
+        }
+
+        var offset = GetOffset(index);
+
+        if (offset == NullOffset)
+        {
+            return ReadOnlyMemory<byte>.Empty;
+        }
+
+        return Values.Slice(offset, GetEnd(index) - offset);
     }
 
     public void Mark()
@@ -155,4 +170,28 @@ public sealed class SegmentValuePage : DataStructure
             _ => throw new InvalidDataException($"Unsupported store by value size {ValueSize}.")
         };
     }
+
+    /// <summary>
+    /// Where a value stops, being the next one that has bytes or the offset array if none follows
+    /// </summary>
+    private int GetEnd(int index)
+    {
+        for (var next = index + 1; next < ValueCount; next++)
+        {
+            var offset = GetOffset(next);
+
+            if (offset != NullOffset)
+            {
+                return offset;
+            }
+        }
+
+        return OffsetArrayStart;
+    }
+
+    /// <summary>
+    /// Offset of a value, the array running backwards so the last row is the first entry
+    /// </summary>
+    private ushort GetOffset(int index)
+        => BinaryPrimitives.ReadUInt16LittleEndian(Values.Span.Slice(Values.Length - ((index + 1) * 2), 2));
 }

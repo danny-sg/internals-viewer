@@ -177,6 +177,10 @@ public static class SegmentBlobParser
         store.PageSizeArray.PageSizes = sizes;
         store.Pages = pages;
 
+        // Only a store whose pages all carry an offset array has somewhere to put a null, so only that one has a
+        // value for every row
+        store.IsRowAligned = pages.Length == 0 || pages.All(p => p.IsVariableWidth) || pages.All(p => !p.IsVariableWidth);
+
         store.Mark();
 
         return store;

@@ -139,6 +139,11 @@ public static class IndexStructureProvider
                                           .Select(c => c.ColumnId)
                                           .ToHashSet();
 
+        var orderOrdinals = metadata.IndexColumns[(structure.ObjectId, structure.IndexId)]
+                                    .Where(c => c.ColumnStoreOrderOrdinal > 0)
+                                    .GroupBy(c => c.ColumnId)
+                                    .ToDictionary(g => g.Key, g => g.First().ColumnStoreOrderOrdinal);
+
         return
         [
             .. structure.TableStructure
@@ -163,7 +168,8 @@ public static class IndexStructureProvider
                     IndexColumnId = 0,
                     IsKey = s.IsKey,
                     IsIndexKey = s.IsKey,
-                    IsDescending = descendingColumnIds.Contains(s.ColumnId)
+                    IsDescending = descendingColumnIds.Contains(s.ColumnId),
+                    ColumnStoreOrderOrdinal = orderOrdinals.GetValueOrDefault(s.ColumnId)
                 })
         ];
     }
@@ -285,6 +291,7 @@ public static class IndexStructureProvider
             BitPosition = (byte)layout.BitPosition,
             IsIncludeColumn = isIncludeColumn,
             IndexColumnId = indexColumn?.IndexColumnId ?? 0,
+            ColumnStoreOrderOrdinal = indexColumn?.ColumnStoreOrderOrdinal ?? 0,
             IsKey = isKey,
             IsIndexKey = indexColumn?.KeyOrdinal > 0,
             IsRowIdentifier = isRowIdentifier,

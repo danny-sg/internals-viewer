@@ -27,8 +27,10 @@ public sealed partial class DictionarySummary : ObservableObject
     /// </summary>
     public string SubTypeDescription => Dictionary.Type switch
     {
-        1 or 4 => "Hash Table",
-        3 => "String Store",
+        1 or 4 
+            => "Hash Table",
+        3 
+            => "String Store",
         _ => string.Empty
     };
 

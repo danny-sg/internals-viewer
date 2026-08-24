@@ -35,5 +35,12 @@ public sealed class ColumnStoreColumn
                               || Structure.IsUniqueifier
                               || Structure.IsDropped;
 
+    /// <summary>
+    /// Where the column sits in the index's ordering, an ordered columnstore being the only one that has any
+    /// </summary>
+    public byte OrderOrdinal => Structure?.ColumnStoreOrderOrdinal ?? 0;
+
+    public bool IsOrdered => OrderOrdinal > 0;
+
     public SegmentDictionary? GlobalDictionary { get; set; }
 }

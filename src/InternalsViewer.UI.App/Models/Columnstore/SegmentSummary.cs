@@ -281,6 +281,13 @@ public sealed partial class SegmentSummary : ObservableObject
     public string ColumnName => Segment.Column?.Name ?? $"Column {ColumnId}";
 
     /// <summary>
+    /// Where the column sits in an ordered index's ordering, which no other index has
+    /// </summary>
+    public string OrderDescription => Segment.Column is { IsOrdered: true } column
+        ? $"{column.OrderOrdinal}"
+        : string.Empty;
+
+    /// <summary>
     /// The column the segment holds, which carries the type the values were declared as
     /// </summary>
     public ColumnStructure? Structure => Segment.Column?.Structure;

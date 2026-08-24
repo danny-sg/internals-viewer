@@ -265,10 +265,13 @@ public sealed class ColumnstoreStructureRenderer : IDisposable
         {
             _text.Color = TextColour;
 
+            // An ordered index is the only thing a column's position in the ordering shows up on
+            var name = column.IsOrdered ? $"{column.Name} ↑{column.OrderOrdinal}" : column.Name;
+
             if (isNarrow)
             {
                 DrawVertical(canvas,
-                             column.Name,
+                             name,
                              x + columnWidth,
                              y + ColumnstoreLayout.VerticalColumnHeaderHeight - 4,
                              ColumnstoreLayout.VerticalColumnHeaderHeight - 8,
@@ -276,7 +279,7 @@ public sealed class ColumnstoreStructureRenderer : IDisposable
             }
             else
             {
-                DrawClipped(canvas, column.Name, x + 4, y + 14, columnWidth - 8, _titleFont);
+                DrawClipped(canvas, name, x + 4, y + 14, columnWidth - 8, _titleFont);
 
                 DrawTypeRuns(canvas, column, x + 4, y + 29, columnWidth - 8);
             }
@@ -757,6 +760,7 @@ public sealed class ColumnstoreStructureRenderer : IDisposable
                 new ColumnstoreDetail("Column", $"{segment.ColumnId}"),
                 new ColumnstoreDetail("Encoding", segment.EncodingDescription),
                 new ColumnstoreDetail("Storage", segment.StorageDescription),
+                new ColumnstoreDetail("Order", segment.OrderDescription),
                 new ColumnstoreDetail("Rows", $"{segment.RowCount}"),
                 new ColumnstoreDetail("Data Pointer", segment.DataPointerDescription),
                 new ColumnstoreDetail("Derivation", segment.DerivationDescription),

@@ -1,5 +1,4 @@
 ﻿using InternalsViewer.Internals.Annotations;
-using InternalsViewer.Internals.Columnstore.Blobs;
 
 namespace InternalsViewer.Internals.Columnstore.Segments;
 
@@ -42,6 +41,11 @@ public sealed class SegmentVariableLengthData : DataStructure
     public SegmentValuePage[] Pages { get; set; } = [];
 
     /// <summary>
+    /// Whether the values are wider than an integer, which the numeric encodings have no way to carry
+    /// </summary>
+    public bool IsWide => Pages.Length > 0 && Pages[0].IsWide;
+
+    /// <summary>
     /// Records the header fields and the page size array that follows them
     /// </summary>
     public void Mark()
@@ -56,15 +60,25 @@ public sealed class SegmentVariableLengthData : DataStructure
     }
 
     /// <summary>
-    /// Whether the values are wider than an integer, which the numeric encodings have no way to carry
+    /// Whether a store holds one value per row, which is what lets a row be read by its ordinal
     /// </summary>
-    public bool IsWide => Pages.Length > 0 && Pages[0].IsWide;
+    /// <remarks>
+    /// A store whose pages are all variable width carries every row, marking the nulls in the offset array. One
+    /// holding a mix of fixed and variable pages carries only the values, and what maps a row to one of them is
+    /// not yet known, so nothing tries to read a row out of it.
+    /// </remarks>
+    public bool IsRowAligned { get; set; } = true;
 
     /// <summary>
     /// Value as stored, for a width the integer path cannot take
     /// </summary>
     public ReadOnlyMemory<byte> GetValueBytes(int ordinal)
     {
+        if (!IsRowAligned)
+        {
+            return ReadOnlyMemory<byte>.Empty;
+        }
+
         var (page, index) = Locate(ordinal);
 
         return Pages[page].GetValueBytes(index);
@@ -85,10 +99,6 @@ public sealed class SegmentVariableLengthData : DataStructure
     /// <summary>
     /// The page an ordinal falls on, which is the closest a stored value comes to having a place in the blob
     /// </summary>
-    /// <remarks>
-    /// A value is not addressable on its own. The page holds a compressed payload and the value only exists once
-    /// that has been expanded, so the page is the tightest range of the blob a row can be pointed at.
-    /// </remarks>
     public int GetPageIndex(int ordinal) => Locate(ordinal).Page;
 
     private (int Page, int Index) Locate(int ordinal)

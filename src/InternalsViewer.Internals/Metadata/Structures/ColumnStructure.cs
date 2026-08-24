@@ -73,4 +73,9 @@ public record ColumnStructure
     public byte BitPosition { get; set; }
 
     public bool IsKey { get; set; }
+
+    /// <summary>
+    /// Position of the column in a columnstore index's ordering, zero when the index is not ordered by it
+    /// </summary>
+    public byte ColumnStoreOrderOrdinal { get; set; }
 }
