@@ -69,7 +69,7 @@ public sealed class CsIndexVldProbeTests(ITestOutputHelper testOutput) : Provide
             TestOutput.WriteLine(line);
         }
 
-        File.WriteAllLines(Path.Combine("C:", "ColumnstoreDump", "csindex_headings.txt"), lines);
+        ProbeDump.Write("csindex_headings.txt", lines);
     }
 
     private static async Task Execute(SqlConnection connection, string sql)

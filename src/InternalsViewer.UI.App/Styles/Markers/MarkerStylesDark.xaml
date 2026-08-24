@@ -187,6 +187,7 @@
     <models:MarkStyle x:Key="RleValueMarkerStyle" ForeColour="#FFB74D" BackColour="#4A2A05" Name="RLE Value" Ordinal="222"/>
     <models:MarkStyle x:Key="RleCountMarkerStyle" ForeColour="#81C784" BackColour="#123D16" Name="RLE Count" Ordinal="223"/>
     <models:MarkStyle x:Key="RleBitpackIndexMarkerStyle" ForeColour="#F06292" BackColour="#3D0A22" Name="Bit Pack Index" Ordinal="224"/>
+    <models:MarkStyle x:Key="ValueAddressMarkerStyle" ForeColour="#4DB6AC" BackColour="#06302B" Name="Page Slot" Ordinal="225"/>
     <models:MarkStyle x:Key="BitpackEntrySizeMarkerStyle" ForeColour="#9FA8DA" BackColour="#161C4A" Name="Bit Pack Entry Size" Ordinal="230"/>
     <models:MarkStyle x:Key="BitpackUnitCountMarkerStyle" ForeColour="#81D4FA" BackColour="#052F52" Name="Bit Pack Unit Count" Ordinal="231"/>
     <models:MarkStyle x:Key="BitpackMinIdMarkerStyle" ForeColour="#4DD0E1" BackColour="#00363A" Name="Bit Pack Min Id" Ordinal="232"/>
@@ -253,6 +254,8 @@
 
     <!--Columnstore store by value-->
     <models:MarkStyle x:Key="VariableLengthDataHeaderMarkerStyle" ForeColour="#B0BEC5" BackColour="#1C2A30" Name="Variable Length Data Header" Ordinal="300"/>
+    <models:MarkStyle x:Key="ValueOffsetArrayMarkerStyle" ForeColour="#CE93D8" BackColour="#2A1233" Name="Offset Array" Ordinal="301"/>
+    <models:MarkStyle x:Key="ValueOffsetEntryMarkerStyle" ForeColour="#F48FB1" BackColour="#3D0A22" Name="Offset Entry" Ordinal="302"/>
     <models:MarkStyle x:Key="VariableLengthDataSubLobTypeMarkerStyle" ForeColour="#F48FB1" BackColour="#3D0A22" Name="Sub Lob Type" Ordinal="301"/>
     <models:MarkStyle x:Key="VariableLengthDataValueCountMarkerStyle" ForeColour="#80CBC4" BackColour="#00332E" Name="Value Count" Ordinal="302"/>
     <models:MarkStyle x:Key="VariableLengthDataMaxStringSizeMarkerStyle" ForeColour="#A5D6A7" BackColour="#14361A" Name="Max String Size" Ordinal="303"/>

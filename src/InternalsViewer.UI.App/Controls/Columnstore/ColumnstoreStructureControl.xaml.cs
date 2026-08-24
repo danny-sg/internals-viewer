@@ -4,7 +4,6 @@ using System.Linq;
 using InternalsViewer.Internals.Columnstore.Blobs;
 using InternalsViewer.Internals.Columnstore.Metadata;
 using InternalsViewer.UI.App.Models.Columnstore;
-using Windows.ApplicationModel.DataTransfer;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Controls.Primitives;
 using Microsoft.UI.Xaml.Media;
@@ -272,49 +271,11 @@ public sealed partial class ColumnstoreStructureControl : IDisposable
             return;
         }
 
-        var submenu = new MenuFlyoutSubItem { Text = $"Copy DBCC CSINDEX command to clipboard ({region.Label})" };
+        var flyout = CsIndexMenu.Build(region.Label,
+                                       mode => CsIndexCommand.Build(region, DatabaseId, index.HobtId, mode));
 
-        foreach (var (mode, label) in PrintModes)
-        {
-            if (CsIndexCommand.Build(region, DatabaseId, index.HobtId, mode) is not { } command)
-            {
-                continue;
-            }
-
-            var item = new MenuFlyoutItem { Text = label };
-
-            item.Click += (_, _) =>
-            {
-                var package = new DataPackage();
-
-                package.SetText(command);
-
-                Clipboard.SetContent(package);
-            };
-
-            submenu.Items.Add(item);
-        }
-
-        if (submenu.Items.Count == 0)
-        {
-            return;
-        }
-
-        var flyout = new MenuFlyout();
-
-        flyout.Items.Add(submenu);
-
-        flyout.ShowAt(StructureCanvas, point);
+        flyout?.ShowAt(StructureCanvas, point);
     }
-
-    /// <summary>
-    /// Print modes the last argument takes, 0 to 2 all giving the parsed structure and 3 a raw memory dump
-    /// </summary>
-    private static readonly (int Mode, string Label)[] PrintModes =
-    [
-        (0, "Option 0 - Parsed structure"),
-        (3, "Option 3 - Raw memory dump")
-    ];
 
     /// <summary>
     /// The database the drawing is of, which CSINDEX needs as a literal
@@ -403,14 +364,14 @@ public sealed partial class ColumnstoreStructureControl : IDisposable
                                                 index.Columns.Count(c => c.GlobalDictionary is not null))
             : 0;
 
-        var columnWidth = Index is { } columns
-            ? ColumnstoreLayout.GetColumnWidth((float)StructureCanvas.ActualWidth, columns.Columns.Count)
+        var columnHeaderHeight = Index is { } columns
+            ? _renderer.GetColumnHeaderHeight(columns, (float)StructureCanvas.ActualWidth)
             : 0;
 
         var content = ColumnstoreLayout.GetContentHeight(RowGroups?.Count ?? 0,
                                                          headerHeight,
                                                          HasLocalDictionaries(),
-                                                         columnWidth);
+                                                         columnHeaderHeight);
 
         var viewport = (float)StructureCanvas.ActualHeight;
 

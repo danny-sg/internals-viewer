@@ -194,7 +194,7 @@ public sealed class LongStringProbeTests(ITestOutputHelper testOutput) : Provide
             }
         }
 
-        File.WriteAllLines(Path.Combine("C:", "ColumnstoreDump", "long_string_probe.txt"), lines);
+        ProbeDump.Write("long_string_probe.txt", lines);
 
         foreach (var line in lines)
         {

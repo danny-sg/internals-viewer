@@ -21,6 +21,7 @@ Grids use `WinUI.TableView` (1.4.1)
 - `Sorting` has a `Handled` contract — set it when you sort yourself, or the control sorts again.
 - Cell population via `Binding` costs roughly 3x what `DataContextChanged` does. On wide grids that is the
   difference between a tab switching instantly and visibly hitching.
+- Do not use column autosizing as it causes slow renders. Fixed width is the default
 
 ## TabView
 

@@ -30,9 +30,26 @@ public sealed class SegmentReader(ColumnSegment segment, SegmentBlob blob, Dicti
     /// stored as and the converter reads them against the column the same way a deep data field is read.
     /// </remarks>
     public object? GetRawValue(int rowOrdinal)
-        => Blob.VariableLengthData is { IsWide: true } store
-            ? store.GetValueBytes(rowOrdinal) is { IsEmpty: false } bytes ? bytes.ToArray() : null
-            : Decoder.Decode(DataIds.GetDataId(rowOrdinal));
+    {
+        if (Blob.VariableLengthData is not { } store)
+        {
+            return Decoder.Decode(DataIds.GetDataId(rowOrdinal));
+        }
+
+        var (_, valueOrdinal) = DataIds.LocateValue(rowOrdinal);
+
+        if (valueOrdinal < 0)
+        {
+            return null;
+        }
+
+        if (!store.IsWide)
+        {
+            return Decoder.Decode(store.GetValue(valueOrdinal));
+        }
+
+        return store.GetValueBytes(valueOrdinal) is { IsEmpty: false } bytes ? bytes.ToArray() : null;
+    }
 
     public object? GetValue(int rowOrdinal)
         => ColumnstoreValueConverter.Convert(GetRawValue(rowOrdinal), Segment.Column?.Structure);

@@ -60,28 +60,20 @@ public sealed class SegmentVariableLengthData : DataStructure
     }
 
     /// <summary>
-    /// Whether a store holds one value per row, which is what lets a row be read by its ordinal
-    /// </summary>
-    /// <remarks>
-    /// A store whose pages are all variable width carries every row, marking the nulls in the offset array. One
-    /// holding a mix of fixed and variable pages carries only the values, and what maps a row to one of them is
-    /// not yet known, so nothing tries to read a row out of it.
-    /// </remarks>
-    public bool IsRowAligned { get; set; } = true;
-
-    /// <summary>
     /// Value as stored, for a width the integer path cannot take
     /// </summary>
     public ReadOnlyMemory<byte> GetValueBytes(int ordinal)
     {
-        if (!IsRowAligned)
-        {
-            return ReadOnlyMemory<byte>.Empty;
-        }
-
         var (page, index) = Locate(ordinal);
 
         return Pages[page].GetValueBytes(index);
+    }
+
+    public bool IsNull(int ordinal)
+    {
+        var (page, index) = Locate(ordinal);
+
+        return Pages[page].IsNull(index);
     }
 
     public long GetRawValue(int ordinal)
@@ -100,6 +92,27 @@ public sealed class SegmentVariableLengthData : DataStructure
     /// The page an ordinal falls on, which is the closest a stored value comes to having a place in the blob
     /// </summary>
     public int GetPageIndex(int ordinal) => Locate(ordinal).Page;
+
+    /// <summary>
+    /// Where the value a page and slot pair addresses starts in the segment blob
+    /// </summary>
+    public int GetValueOffset(int page, int slot)
+        => page >= 0 && page < Pages.Length ? Pages[page].GetValueOffset(slot) : Offset;
+
+    /// <summary>
+    /// Ordinal a page and slot pair addresses, which is how an RLE run names where its values start
+    /// </summary>
+    public int GetOrdinal(int page, int slot)
+    {
+        var ordinal = slot;
+
+        for (var i = 0; i < page && i < Pages.Length; i++)
+        {
+            ordinal += Pages[i].ValueCount;
+        }
+
+        return ordinal;
+    }
 
     private (int Page, int Index) Locate(int ordinal)
     {

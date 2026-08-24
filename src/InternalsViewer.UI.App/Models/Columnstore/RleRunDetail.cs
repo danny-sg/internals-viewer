@@ -1,4 +1,7 @@
-﻿namespace InternalsViewer.UI.App.Models.Columnstore;
+﻿using System;
+using InternalsViewer.Internals.Columnstore.Segments;
+
+namespace InternalsViewer.UI.App.Models.Columnstore;
 
 /// <summary>
 /// One run of the RLE array as the map draws it, its width being the rows it covers
@@ -10,9 +13,23 @@
 public sealed record RleRunDetail(int Index,
                                   int StartRow,
                                   int Count,
-                                  bool IsBitpacked,
+                                  bool IsValue,
                                   long Value,
-                                  int Offset)
+                                  int Offset,
+                                  SegmentPageSlot? Address = null,
+                                  int StoreOrdinal = -1)
 {
-    public string ValueDescription => IsBitpacked ? $"Bit Pack Unit {Value}" : $"{Value}";
+    public string ValueDescription => Address is { } address
+        ? address.ToString()
+        : IsValue ? $"{Value}" : $"Bit Pack Unit {Value}";
+
+    /// <summary>
+    /// What the map places on the hue wheel, a run addressing the store saying more by where its values sit
+    /// </summary>
+    public long ColourValue => StoreOrdinal >= 0 ? StoreOrdinal : Value;
+
+    /// <summary>
+    /// Where a run that covers a sequence has reached by its last row, which is where it stands for one value
+    /// </summary>
+    public long EndColourValue => IsValue ? ColourValue : ColourValue + Math.Max(0, Count - 1);
 }

@@ -40,7 +40,7 @@ public sealed class UnseenStructureProbeTests(ITestOutputHelper testOutput) : Pr
             await Report(service, database, tableName);
         }
 
-        File.WriteAllLines(Path.Combine("C:", "ColumnstoreDump", "unseen_probe.txt"), _lines);
+        ProbeDump.Write("unseen_probe.txt", _lines);
 
         foreach (var line in _lines)
         {

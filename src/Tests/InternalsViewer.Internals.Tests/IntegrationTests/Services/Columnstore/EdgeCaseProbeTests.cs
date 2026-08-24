@@ -32,7 +32,7 @@ public sealed class EdgeCaseProbeTests(ITestOutputHelper testOutput) : ProviderT
 
         await Verify(service, database);
 
-        File.WriteAllLines(Path.Combine("C:", "ColumnstoreDump", "edge_probe.txt"), _lines);
+        ProbeDump.Write("edge_probe.txt", _lines);
 
         foreach (var line in _lines)
         {

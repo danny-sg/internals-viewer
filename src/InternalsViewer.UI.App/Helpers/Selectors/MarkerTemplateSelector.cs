@@ -25,11 +25,18 @@ public class MarkerTemplateSelector : DataTemplateSelector
 
     public DataTemplate PointerTemplate { get; set; } = null!;
 
+    public DataTemplate AddressTemplate { get; set; } = null!;
+
     protected override DataTemplate SelectTemplateCore(object item, DependencyObject container)
     {
         if (item is not Marker marker)
         {
             return DefaultTemplate;
+        }
+
+        if (marker.Type == ItemType.ValueAddress)
+        {
+            return AddressTemplate;
         }
 
         if (marker.MarkerType == MarkerType.PageAddress || PointerTypes.Any(p => p == marker.Type))

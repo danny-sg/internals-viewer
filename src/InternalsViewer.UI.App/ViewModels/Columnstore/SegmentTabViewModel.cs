@@ -43,6 +43,10 @@ public sealed partial class SegmentTabViewModel(ColumnstoreService columnstoreSe
         : [SegmentBadge.Create(Segment.DictionaryScope, ColumnstoreLayout.GetDictionaryColour(dictionary.Type))];
 
     public void OpenDictionary() => OpenDictionaryAction?.Invoke(Segment);
+
+    public string GetCsIndexCommand(int printMode)
+        => CsIndexCommand.Build(Segment, Database.DatabaseId, Segment.Segment.Key.HobtId, printMode);
+
     private ColumnstoreService ColumnstoreService { get; } = columnstoreService;
 
     private DatabaseSource Database { get; } = database;
@@ -68,6 +72,8 @@ public sealed partial class SegmentTabViewModel(ColumnstoreService columnstoreSe
     [NotifyPropertyChangedFor(nameof(HasBookmarks))]
     [NotifyPropertyChangedFor(nameof(HasRleArray))]
     [NotifyPropertyChangedFor(nameof(RleRuns))]
+    [NotifyPropertyChangedFor(nameof(RleValueLabel))]
+    [NotifyPropertyChangedFor(nameof(RleIndexLabel))]
     [NotifyPropertyChangedFor(nameof(HasBitpackArray))]
     [NotifyPropertyChangedFor(nameof(HasVariableLengthData))]
     [NotifyPropertyChangedFor(nameof(StorageBadges))]
@@ -121,12 +127,20 @@ public sealed partial class SegmentTabViewModel(ColumnstoreService columnstoreSe
             {
                 var entry = blob.RleEntries[i];
 
+                var address = entry.PageSlot;
+
+                var storeOrdinal = blob.VariableLengthData is { } store && address is { } located
+                    ? store.GetOrdinal(located.Page, located.Slot)
+                    : -1;
+
                 runs.Add(new RleRunDetail(i,
                                           row,
                                           entry.Count,
-                                          entry.IsBitpacked,
-                                          entry.IsBitpacked ? entry.BitpackIndex : entry.Value,
-                                          blob.Header.RleArrayOffset + (i * blob.Header.RleEntryBytes)));
+                                          entry.IsValue,
+                                          entry.IsValue ? entry.Value : entry.BitpackIndex,
+                                          blob.Header.RleArrayOffset + (i * blob.Header.RleEntryBytes),
+                                          address,
+                                          storeOrdinal));
 
                 row += entry.Count;
             }
@@ -134,6 +148,15 @@ public sealed partial class SegmentTabViewModel(ColumnstoreService columnstoreSe
             return runs;
         }
     }
+
+    /// <summary>
+    /// Whether the page on show locates its values through an offset array rather than a fixed stride
+    /// </summary>
+    public bool HasVariableWidthValues => SelectedValuePage?.Page.IsVariableWidth ?? false;
+
+    public string RleValueLabel => Blob?.Header.IsVariableLengthData == true ? "Repeat" : "Value";
+
+    public string RleIndexLabel => Blob?.Header.IsVariableLengthData == true ? "Read" : "Bit Pack";
 
     public bool HasRleArray => Blob?.Header.HasRleArray ?? false;
 
@@ -147,6 +170,7 @@ public sealed partial class SegmentTabViewModel(ColumnstoreService columnstoreSe
     public ObservableCollection<ValuePageSummary> ValuePages { get; } = [];
 
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasVariableWidthValues))]
     private ValuePageSummary? _selectedValuePage;
 
     [ObservableProperty]
@@ -196,26 +220,54 @@ public sealed partial class SegmentTabViewModel(ColumnstoreService columnstoreSe
     /// </remarks>
     private List<Marker> BuildPayloadMarkers(SegmentValuePage page, int start, int length)
     {
-        if (SelectedValue is not { } value || page.ValueSize <= 0)
+        var markers = new List<Marker>();
+
+        // The offset array is what makes a variable width page readable at all, so it is marked whatever is selected
+        if (page.IsVariableWidth)
         {
-            return [];
+            Add(markers,
+                "Offset Array",
+                ItemType.ValueOffsetArray,
+                page.OffsetArrayStart,
+                page.OffsetArraySize,
+                $"{page.ValueCount} Entries");
         }
 
-        var offset = (value.Index * page.ValueSize) - start;
-
-        if (offset < 0 || offset + page.ValueSize > length)
+        if (SelectedValue is not { } value)
         {
-            return [];
+            return markers;
         }
 
-        return
-        [
-            MarkerBuilder.CreateMarker($"Value {value.Index}",
-                                       ItemType.DictionaryValue,
-                                       offset,
-                                       page.ValueSize,
-                                       $"{value.Value}")
-        ];
+        Add(markers,
+            $"Value {value.Index}",
+            ItemType.DictionaryValue,
+            page.GetValuePosition(value.Index),
+            page.GetValueLength(value.Index),
+            value.StoredDescription);
+
+        if (page.IsVariableWidth)
+        {
+            Add(markers,
+                $"Offset {value.Index}",
+                ItemType.ValueOffsetEntry,
+                page.GetOffsetPosition(value.Index),
+                2,
+                $"0x{page.GetStoredOffset(value.Index):X4}");
+        }
+
+        return markers;
+
+        void Add(List<Marker> into, string name, ItemType type, int position, int size, string text)
+        {
+            var offset = position - start;
+
+            if (position < 0 || size <= 0 || offset < 0 || offset + size > length)
+            {
+                return;
+            }
+
+            into.Add(MarkerBuilder.CreateMarker(name, type, offset, size, text));
+        }
     }
 
     /// <summary>
@@ -246,8 +298,10 @@ public sealed partial class SegmentTabViewModel(ColumnstoreService columnstoreSe
             return;
         }
 
-        // The value has a place of its own in the expanded payload, which is the one window that can show it
-        PayloadHex.GoToOffset(value.Index * page.ValueSize);
+        // The value has a place of its own in the expanded payload, a null having only its offset array entry
+        var position = page.Page.GetValuePosition(value.Index);
+
+        PayloadHex.GoToOffset(position >= 0 ? position : page.Page.GetOffsetPosition(value.Index));
 
         SelectPayloadMarker();
     }
@@ -503,7 +557,7 @@ public sealed partial class SegmentTabViewModel(ColumnstoreService columnstoreSe
     private BitpackUnitDetail? GetBitpackUnit(Marker? marker)
     {
         if (Blob is not { } blob
-            || blob.Header.IsStoreByValue
+            || blob.Header.IsVariableLengthData
             || Region != SegmentRegion.BitpackArray
             || marker is not { StartPosition: >= 0 })
         {
@@ -745,6 +799,20 @@ public sealed partial class SegmentTabViewModel(ColumnstoreService columnstoreSe
     /// <remarks>
     /// The markers are built rather than left to the debounce, there being nothing to select until they exist.
     /// </remarks>
+    /// <summary>
+    /// Follows a run's address to the value it points at, the store being where a value actually lives
+    /// </summary>
+    public void GoToValue(string address)
+    {
+        if (Blob?.VariableLengthData is not { } store || !SegmentPageSlot.TryParse(address, out var parsed))
+        {
+            return;
+        }
+
+        GoToTarget(new SegmentNavigationTarget(SegmentRegion.VariableLengthData,
+                                               store.GetValueOffset(parsed.Page, parsed.Slot)));
+    }
+
     public void GoToTarget(SegmentNavigationTarget target)
     {
         if (Blob is null)

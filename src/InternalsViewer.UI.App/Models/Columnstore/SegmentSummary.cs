@@ -276,8 +276,6 @@ public sealed partial class SegmentSummary : ObservableObject
 
     public int RowGroupId => Segment.Key.RowGroupId;
 
-    public string SegmentDescription => $"Row Group {RowGroupId} Segment {Segment.ContainerId}";
-
     public string ColumnName => Segment.Column?.Name ?? $"Column {ColumnId}";
 
     /// <summary>

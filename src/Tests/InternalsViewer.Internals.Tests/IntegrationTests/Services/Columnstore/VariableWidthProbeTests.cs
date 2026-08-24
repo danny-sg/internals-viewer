@@ -27,6 +27,9 @@ public sealed class VariableWidthProbeTests(ITestOutputHelper testOutput) : Prov
 
         var service = new ColumnstoreService(reader, new LobDataService(pageService));
 
+        var checks = new List<(InternalsViewer.Internals.Columnstore.Metadata.ColumnSegment Segment, string Column,
+                               InternalsViewer.Internals.Columnstore.Metadata.ColumnStoreIndex Index)>();
+
         foreach (var (tableName, columnId) in new[] { ("SegWideNull", 4), ("SegWideNull", 3), ("SegWideNull", 5) })
         {
             var allocationUnit = database.AllocationUnits.Values.First(a => a.TableName == tableName);
@@ -178,9 +181,62 @@ public sealed class VariableWidthProbeTests(ITestOutputHelper testOutput) : Prov
             }
 
             _lines.Add($"  bookmark[0..3] {Convert.ToHexString(blob.Data.Span.Slice(blob.Header.BookmarkArrayOffset, 24))}");
+
+            // CSINDEX says the RLE array holds real entries, so find where they physically are
+            var blobSpan = blob.Data.Span;
+
+            _lines.Add($"  bytes 660..740 {Convert.ToHexString(blobSpan.Slice(660, 80))}");
+
+            // The array should sit immediately before the store, one entry per eight bytes
+            var rleAt = blob.Header.VariableLengthDataOffset - (blob.Header.RleArrayCount * 8);
+
+            var rleBytes = blob.Data.Slice(rleAt, blob.Header.RleArrayCount * 8).ToArray();
+
+            var runs = new List<string>();
+
+            var covered = 0;
+
+            for (var i = 0; i < blob.Header.RleArrayCount; i++)
+            {
+                var value = System.Buffers.Binary.BinaryPrimitives.ReadUInt32LittleEndian(rleBytes.AsSpan(i * 8, 4));
+
+                var count = System.Buffers.Binary.BinaryPrimitives.ReadInt32LittleEndian(rleBytes.AsSpan((i * 8) + 4, 4));
+
+                runs.Add($"0x{value:X8} x{count}");
+
+                covered += count;
+            }
+
+            _lines.Add($"  RLE at {rleAt}: {string.Join(" | ", runs)} covering {covered} of {segment.RowCount} rows");
+
+            checks.Add((segment, column?.Name ?? string.Empty, index));
         }
 
-        File.WriteAllLines(Path.Combine("C:", "ColumnstoreDump", "variable_width_probe.txt"), _lines);
+        // The rows the first run covers, checked against the table now that no span is in scope
+        await using (var connection = new SqlConnection(ConnectionStringHelper.GetConnectionString("local")))
+        {
+            await connection.OpenAsync();
+
+            foreach (var check in checks)
+            {
+                var idSegment = check.Index.CompressedRowGroups.First().Segments.First(x => x.Key.ColumnId == 2);
+
+                var idReader = await service.GetSegmentReader(database, idSegment, CancellationToken.None);
+
+                foreach (var row in new[] { 0, 100, 4998, 5000, 5001, 9000 })
+                {
+                    await using var command = new SqlCommand(
+                        $"SELECT CASE WHEN [{check.Column}] IS NULL THEN 'null' ELSE 'value' END "
+                        + "FROM SegWideNull WHERE Id = @id", connection);
+
+                    command.Parameters.AddWithValue("@id", idReader.GetValue(row) ?? (object)DBNull.Value);
+
+                    _lines.Add($"    {check.Column} row {row} is {await command.ExecuteScalarAsync()}");
+                }
+            }
+        }
+
+        ProbeDump.Write("variable_width_probe.txt", _lines);
 
         foreach (var line in _lines)
         {

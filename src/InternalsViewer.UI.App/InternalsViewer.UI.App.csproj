@@ -544,6 +544,9 @@
     <ItemGroup>
       <Folder Include="Assets\Help\images\" />
       <Folder Include="Controls\Logging\" />
+      <Folder Include="Models\Columnstore\Dictionary\" />
+      <Folder Include="Models\Columnstore\DeleteBitmap\" />
+      <Folder Include="Models\Columnstore\Segment\" />
       <Folder Include="Views\Query\Tabs\Index\" />
       <Folder Include="Views\Query\Tabs\Plan\" />
       <Folder Include="Views\Query\Tabs\Trace\Panels\" />

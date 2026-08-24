@@ -40,7 +40,7 @@ public sealed class OrderedColumnstoreProbeTests(ITestOutputHelper testOutput) :
 
         await ReportBlob(service, database, "SegUnordered");
 
-        File.WriteAllLines(Path.Combine("C:", "ColumnstoreDump", "ordered_probe.txt"), _lines);
+        ProbeDump.Write("ordered_probe.txt", _lines);
 
         foreach (var line in _lines)
         {

@@ -53,6 +53,10 @@ public sealed class RleRunMapRenderer : IDisposable
 
     public SKColor LabelColour { get; set; } = ColumnstoreColours.Muted;
 
+    public string ValueLabel { get; set; } = "Value";
+
+    public string IndexLabel { get; set; } = "Bit Pack";
+
     public int SelectedIndex { get; set; } = -1;
 
     /// <summary>
@@ -71,9 +75,9 @@ public sealed class RleRunMapRenderer : IDisposable
 
         var scale = RunScale.Build(runs);
 
-        DrawTrack(canvas, runs, scale, trackWidth, firstRow, rowSpan, 0, "Value", false);
+        DrawTrack(canvas, runs, scale, trackWidth, firstRow, rowSpan, 0, ValueLabel, true);
 
-        DrawTrack(canvas, runs, scale, trackWidth, firstRow, rowSpan, TrackHeight + TrackGap, "Bit Pack", true);
+        DrawTrack(canvas, runs, scale, trackWidth, firstRow, rowSpan, TrackHeight + TrackGap, IndexLabel, false);
 
         DrawMarker(canvas, runs, trackWidth, firstRow, rowSpan);
     }
@@ -86,7 +90,7 @@ public sealed class RleRunMapRenderer : IDisposable
                            int rowSpan,
                            float top,
                            string label,
-                           bool isBitpacked)
+                           bool isValue)
     {
         var bounds = new SKRect(GutterWidth, top, GutterWidth + trackWidth, top + TrackHeight);
 
@@ -110,7 +114,7 @@ public sealed class RleRunMapRenderer : IDisposable
 
         foreach (var run in runs)
         {
-            if (run.Count <= 0 || run.IsBitpacked != isBitpacked)
+            if (run.Count <= 0 || run.IsValue != isValue)
             {
                 continue;
             }
@@ -136,9 +140,20 @@ public sealed class RleRunMapRenderer : IDisposable
 
             if (owners[start] >= 0)
             {
-                _fill.Color = scale.GetColour(runs[owners[start]]);
+                var run = runs[owners[start]];
 
-                canvas.DrawRect(new SKRect(GutterWidth + start, bounds.Top, GutterWidth + x, bounds.Bottom), _fill);
+                var rect = new SKRect(GutterWidth + start, bounds.Top, GutterWidth + x, bounds.Bottom);
+
+                if (run.IsValue)
+                {
+                    _fill.Color = scale.GetColour(run);
+
+                    canvas.DrawRect(rect, _fill);
+                }
+                else
+                {
+                    DrawSweep(canvas, run, scale, rect, firstRow, rowSpan, trackWidth);
+                }
             }
 
             start = x < owners.Length ? x : start;
@@ -157,7 +172,7 @@ public sealed class RleRunMapRenderer : IDisposable
 
         var run = runs[SelectedIndex];
 
-        var top = run.IsBitpacked ? TrackHeight + TrackGap : 0;
+        var top = run.IsValue ? 0 : TrackHeight + TrackGap;
 
         var from = GutterWidth + ToPixel(run.StartRow, firstRow, rowSpan, trackWidth);
 
@@ -221,13 +236,13 @@ public sealed class RleRunMapRenderer : IDisposable
             return -1;
         }
 
-        var isBitpacked = y > TrackHeight + (TrackGap / 2);
+        var isValue = y <= TrackHeight + (TrackGap / 2);
 
         var row = firstRow + (int)((x - GutterWidth) / trackWidth * rowSpan);
 
         for (var i = 0; i < runs.Count; i++)
         {
-            if (runs[i].IsBitpacked == isBitpacked
+            if (runs[i].IsValue == isValue
                 && row >= runs[i].StartRow
                 && row < runs[i].StartRow + runs[i].Count)
             {
@@ -242,6 +257,38 @@ public sealed class RleRunMapRenderer : IDisposable
         => runs.Count == 0 ? 0 : runs[^1].StartRow + runs[^1].Count;
 
     /// <summary>
+    /// Colours a run that covers a sequence, its values advancing across it rather than standing still
+    /// </summary>
+    /// <remarks>
+    /// The gradient spans the run's whole width even where only part of it is on screen, so a run scrolled halfway
+    /// out keeps the colours it had.
+    /// </remarks>
+    private void DrawSweep(SKCanvas canvas,
+                           RleRunDetail run,
+                           RunScale scale,
+                           SKRect rect,
+                           int firstRow,
+                           int rowSpan,
+                           float trackWidth)
+    {
+        var from = GutterWidth + ToPixel(run.StartRow, firstRow, rowSpan, trackWidth);
+
+        var to = GutterWidth + ToPixel(run.StartRow + run.Count, firstRow, rowSpan, trackWidth);
+
+        using var shader = SKShader.CreateLinearGradient(new SKPoint(from, 0),
+                                                         new SKPoint(Math.Max(to, from + 1), 0),
+                                                         [scale.GetColour(run), scale.GetEndColour(run)],
+                                                         null,
+                                                         SKShaderTileMode.Clamp);
+
+        _fill.Shader = shader;
+
+        canvas.DrawRect(rect, _fill);
+
+        _fill.Shader = null;
+    }
+
+    /// <summary>
     /// Places the values either kind of run holds on the hue wheel, each kind scaled over its own range
     /// </summary>
     private readonly record struct RunScale(long LiteralMin, long LiteralMax, long BitpackMin, long BitpackMax)
@@ -253,30 +300,34 @@ public sealed class RleRunMapRenderer : IDisposable
 
             foreach (var run in runs)
             {
-                if (run.IsBitpacked)
+                if (run.IsValue)
                 {
-                    bitpackMin = Math.Min(bitpackMin, run.Value);
-                    bitpackMax = Math.Max(bitpackMax, run.Value);
+                    literalMin = Math.Min(literalMin, run.ColourValue);
+                    literalMax = Math.Max(literalMax, run.ColourValue);
                 }
                 else
                 {
-                    literalMin = Math.Min(literalMin, run.Value);
-                    literalMax = Math.Max(literalMax, run.Value);
+                    bitpackMin = Math.Min(bitpackMin, run.ColourValue);
+                    bitpackMax = Math.Max(bitpackMax, run.EndColourValue);
                 }
             }
 
             return new RunScale(literalMin, literalMax, bitpackMin, bitpackMax);
         }
 
-        public SKColor GetColour(RleRunDetail run)
+        public SKColor GetColour(RleRunDetail run) => GetColour(run, run.ColourValue);
+
+        public SKColor GetEndColour(RleRunDetail run) => GetColour(run, run.EndColourValue);
+
+        private SKColor GetColour(RleRunDetail run, long value)
         {
-            var (min, max) = run.IsBitpacked ? (BitpackMin, BitpackMax) : (LiteralMin, LiteralMax);
+            var (min, max) = run.IsValue ? (LiteralMin, LiteralMax) : (BitpackMin, BitpackMax);
 
-            var hue = max > min ? (int)((run.Value - min) * (HueWheel - 1) / (max - min)) : HueWheel / 2;
+            var hue = max > min ? (int)((value - min) * (HueWheel - 1) / (max - min)) : HueWheel / 2;
 
-            return run.IsBitpacked
-                ? ColourHelpers.HsvToColor(hue, BitpackSaturation, BitpackValue).ToSkColor()
-                : ColourHelpers.HsvToColor(hue, LiteralSaturation, LiteralValue).ToSkColor();
+            return run.IsValue
+                ? ColourHelpers.HsvToColor(hue, LiteralSaturation, LiteralValue).ToSkColor()
+                : ColourHelpers.HsvToColor(hue, BitpackSaturation, BitpackValue).ToSkColor();
         }
     }
 

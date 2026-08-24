@@ -13,6 +13,8 @@ public sealed partial class MarkerTreeView
 {
     public event EventHandler<PageAddressEventArgs>? PageClicked;
 
+    public event EventHandler<string>? AddressClicked;
+
     private readonly Dictionary<Marker, TreeViewNode> _nodesByMarker = new(ReferenceEqualityComparer.Instance);
 
     // SelectedMarker is TwoWay-bound to the same ViewModel property from both this control and
@@ -140,6 +142,14 @@ public sealed partial class MarkerTreeView
             };
 
             PageClicked?.Invoke(this, eventArgs);
+        }
+    }
+
+    private void AddressLink_Click(object sender, RoutedEventArgs e)
+    {
+        if (((HyperlinkButton)sender).Content is string value)
+        {
+            AddressClicked?.Invoke(this, value);
         }
     }
 

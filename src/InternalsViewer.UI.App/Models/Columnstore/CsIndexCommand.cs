@@ -43,11 +43,14 @@ public static class CsIndexCommand
 
         if (region.ElementType == ColumnstoreElementType.Segment && region.Segment is { } segment)
         {
-            return Format(databaseId, hobtId, segment.ColumnId, segment.RowGroupId, SegmentKind, printMode);
+            return Build(segment, databaseId, hobtId, printMode);
         }
 
         return null;
     }
+
+    public static string Build(SegmentSummary segment, short databaseId, long hobtId, int printMode)
+        => Format(databaseId, hobtId, segment.ColumnId, segment.RowGroupId, SegmentKind, printMode);
 
     private static string Format(short databaseId, long hobtId, int columnId, int target, int kind, int printMode)
         => $"DBCC TRACEON (3604);{Environment.NewLine}"

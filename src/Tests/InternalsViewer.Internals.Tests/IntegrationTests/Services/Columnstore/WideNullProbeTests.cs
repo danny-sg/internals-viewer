@@ -29,7 +29,7 @@ public sealed class WideNullProbeTests(ITestOutputHelper testOutput) : ProviderT
 
         await Report(service, database, "SegExact");
 
-        File.WriteAllLines(Path.Combine("C:", "ColumnstoreDump", "wide_null_probe.txt"), _lines);
+        ProbeDump.Write("wide_null_probe.txt", _lines);
 
         foreach (var line in _lines)
         {
@@ -96,7 +96,10 @@ public sealed class WideNullProbeTests(ITestOutputHelper testOutput) : ProviderT
 
                 var mismatch = string.Empty;
 
-                for (var i = 0; i < Math.Min(200, segment.RowCount); i++)
+                // Sampled across the whole segment, the runs meaning the first rows are not representative
+                var sample = new List<int> { 0, 1, 2, 500, 4999, 5000, 5001, 6000, 9000, 12000, 15000, 17000, 19999 };
+
+                foreach (var i in sample.Where(x => x < segment.RowCount))
                 {
                     var decoded = reader.GetValue(i);
 
@@ -105,28 +108,41 @@ public sealed class WideNullProbeTests(ITestOutputHelper testOutput) : ProviderT
                         nulls++;
                     }
 
-                    if (i >= 20 || idReader is null)
+                    if (idReader is null)
                     {
                         continue;
                     }
 
                     await using var command = new SqlCommand(
-                        $"SELECT CASE WHEN {column?.Name} IS NULL THEN 1 ELSE 0 END FROM {tableName} WHERE Id = @id",
-                        connection);
+                        $"SELECT LEFT(CONVERT(varchar(120), {column?.Name}, 121), 60) FROM {tableName} WHERE Id = @id", connection);
 
                     command.Parameters.AddWithValue("@id", idReader.GetValue(i) ?? (object)DBNull.Value);
 
-                    var isNull = Convert.ToInt32(await command.ExecuteScalarAsync()) == 1;
+                    var actual = await command.ExecuteScalarAsync();
+
+                    var expected = actual is null or DBNull ? null : actual.ToString();
+
+                    var got = decoded switch
+                    {
+                        null => null,
+                        byte[] bytes => "0x" + Convert.ToHexString(bytes),
+                        _ => decoded.ToString()
+                    };
 
                     checkedRows++;
 
-                    if (isNull == (decoded is null))
+                    if (got is { Length: > 60 })
+                    {
+                        got = got[..60];
+                    }
+
+                    if (string.Equals(got, expected, StringComparison.OrdinalIgnoreCase))
                     {
                         matched++;
                     }
                     else if (mismatch.Length == 0)
                     {
-                        mismatch = $" FIRST MISMATCH row {i} decoded '{decoded ?? "<null>"}' actualNull {isNull}";
+                        mismatch = $" FIRST MISMATCH row {i} decoded '{got ?? "<null>"}' actual '{expected ?? "<null>"}'";
                     }
                 }
 

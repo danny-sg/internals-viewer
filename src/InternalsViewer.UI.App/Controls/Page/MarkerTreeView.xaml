@@ -138,7 +138,38 @@
 
         <selectors:MarkerTemplateSelector x:Key="ValueTemplateSelector" 
                                           DefaultTemplate="{StaticResource ValueDefaultTemplate}"
-                                          PointerTemplate="{StaticResource ValuePointerTemplate}"/>
+                                          PointerTemplate="{StaticResource ValuePointerTemplate}"
+                                          AddressTemplate="{StaticResource ValueAddressTemplate}"/>
+
+        <DataTemplate x:Key="ValueAddressTemplate" x:DataType="models:Marker">
+            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                <HyperlinkButton Style="{StaticResource PointerStyle}"
+                                 Content="{x:Bind Value}"
+                                 ToolTipService.ToolTip="Go To Value"
+                                 Click="AddressLink_Click"/>
+
+                <ItemsControl ItemsSource="{x:Bind Tags}"
+                              VerticalAlignment="Center"
+                              Margin="10,0"
+                              HorizontalAlignment="Left">
+                    <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate>
+                            <StackPanel Orientation="Horizontal" Spacing="4"/>
+                        </ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate x:DataType="x:String">
+                            <Border Background="{ThemeResource AccentFillColorDefaultBrush}"
+                                    CornerRadius="2"
+                                    Padding="4,1"
+                                    VerticalAlignment="Center">
+                                <TextBlock Text="{x:Bind}" Style="{StaticResource TagTextBlockStyle}" />
+                            </Border>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </StackPanel>
+        </DataTemplate>
 
         <DataTemplate x:Key="ValuePointerTemplate" x:DataType="models:Marker">
             <HyperlinkButton Style="{StaticResource PointerStyle}"

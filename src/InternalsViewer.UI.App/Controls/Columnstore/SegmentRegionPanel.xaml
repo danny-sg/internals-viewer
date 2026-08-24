@@ -18,7 +18,8 @@
         <page:MarkerTreeView Grid.Row="0"
                              Opacity="{x:Bind MarkerOpacity, Mode=OneWay}"
                              Markers="{x:Bind Markers, Mode=OneWay}"
-                             SelectedMarker="{x:Bind SelectedMarker, Mode=TwoWay}"/>
+                             SelectedMarker="{x:Bind SelectedMarker, Mode=TwoWay}"
+                             AddressClicked="MarkerTree_OnAddressClicked"/>
 
         <controls:GridSplitter Grid.Row="1"
                                Height="8"

@@ -29,9 +29,11 @@ public sealed class SegmentBlob : DataStructure
     /// <summary>
     /// Rows the RLE runs cover, excluding the terminator
     /// </summary>
-    public int RowCount => VariableLengthData?.ValueCount ?? RleEntries.Sum(e => e.Count);
+    public int RowCount => RleEntries.Length > 0
+        ? RleEntries.Sum(e => e.Count)
+        : VariableLengthData?.ValueCount ?? 0;
 
-    public int BitpackRowCount => RleEntries.Where(e => e.IsBitpacked).Sum(e => e.Count);
+    public int BitpackRowCount => RleEntries.Where(e => !e.IsValue).Sum(e => e.Count);
 
-    public int LiteralRunCount => RleEntries.Count(e => e is { IsBitpacked: false, Count: > 0 });
+    public int LiteralRunCount => RleEntries.Count(e => e is { IsValue: true, Count: > 0 });
 }

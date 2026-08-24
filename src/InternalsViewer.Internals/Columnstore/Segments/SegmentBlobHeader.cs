@@ -68,11 +68,11 @@ public sealed class SegmentBlobHeader : DataStructure
     /// </summary>
     public int RleEntryCount => RleArrayCount * EntrySize / RleEntryBytes;
 
-    public bool IsStoreByValue => StructureType == SegmentStructureType.StoreByValue;
+    public bool IsVariableLengthData => StructureType == SegmentStructureType.VariableLengthData;
 
-    public bool HasRleArray => StructureType == SegmentStructureType.RunLength && RleArrayCount > 0;
+    public bool HasRleArray => RleArrayCount > 0;
 
-    public bool HasBitpackArray => StructureType == SegmentStructureType.RunLength && BitpackUnitCount > 0;
+    public bool HasBitpackArray => StructureType == SegmentStructureType.BitPack && BitpackUnitCount > 0;
 
     /// <summary>
     /// Values packed into each unit, the remainder of sixty four being left unused
@@ -84,7 +84,7 @@ public sealed class SegmentBlobHeader : DataStructure
     /// <summary>
     /// Bytes before the bookmark array, the store by value layout carrying two more than the run length one
     /// </summary>
-    public int PrologueSize => IsStoreByValue ? Size + 2 : Size;
+    public int PrologueSize => IsVariableLengthData ? Size + 2 : Size;
 
     public int BookmarkArrayOffset => PrologueSize;
 
@@ -96,12 +96,17 @@ public sealed class SegmentBlobHeader : DataStructure
     /// the bookmarks and the store, so the store moves down by them. Measured on uniqueidentifier, binary and
     /// datetimeoffset columns at counts of 2, 3 and 4, whose stores sat at +0, +8 and +16.
     /// </remarks>
-    public int TrailingRleUnits => IsStoreByValue ? Math.Max(0, RleArrayCount - 2) : 0;
+    public int TrailingRleUnits => IsVariableLengthData ? Math.Max(0, RleArrayCount - 2) : 0;
 
     public int VariableLengthDataOffset
         => BookmarkArrayOffset + (BookmarkCount * EntrySize) + (TrailingRleUnits * EntrySize);
 
-    public int RleArrayOffset => BookmarkArrayOffset + (BookmarkCount * EntrySize);
+    /// <summary>
+    /// Where the RLE array starts, a store by value segment writing it immediately before the store
+    /// </summary>
+    public int RleArrayOffset => IsVariableLengthData
+        ? VariableLengthDataOffset - (RleArrayCount * EntrySize)
+        : BookmarkArrayOffset + (BookmarkCount * EntrySize);
 
     public int BitpackArrayOffset => RleArrayOffset + (RleArrayCount * EntrySize);
 

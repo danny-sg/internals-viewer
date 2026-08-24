@@ -1,4 +1,4 @@
-using InternalsViewer.Internals.Columnstore.Segments;
+﻿using InternalsViewer.Internals.Columnstore.Segments;
 
 namespace InternalsViewer.UI.App.Models.Columnstore;
 
@@ -15,17 +15,19 @@ public static class SegmentRegions
     public static int GetOffset(SegmentBlob blob, SegmentRegion region) => region switch
     {
         SegmentRegion.Bookmarks => blob.Header.BookmarkArrayOffset,
-        SegmentRegion.RleArray => blob.Header.IsStoreByValue ? blob.Header.VariableLengthDataOffset : blob.Header.RleArrayOffset,
-        SegmentRegion.BitpackArray => blob.Header.IsStoreByValue ? blob.Header.VariableLengthDataOffset : blob.Header.BitpackArrayOffset,
+        SegmentRegion.RleArray => blob.Header.RleArrayOffset,
+        SegmentRegion.BitpackArray => blob.Header.IsVariableLengthData ? blob.Header.VariableLengthDataOffset : blob.Header.BitpackArrayOffset,
         SegmentRegion.VariableLengthData => blob.Header.VariableLengthDataOffset,
         _ => 0
     };
 
     public static SegmentRegion GetRegion(SegmentBlob blob, int offset)
     {
-        if (blob.Header.IsStoreByValue)
+        // A store by value segment keeps its RLE array between the bookmarks and the store
+        if (blob.Header.IsVariableLengthData)
         {
             return offset >= blob.Header.VariableLengthDataOffset ? SegmentRegion.VariableLengthData
+                 : offset >= blob.Header.RleArrayOffset ? SegmentRegion.RleArray
                  : offset >= blob.Header.BookmarkArrayOffset ? SegmentRegion.Bookmarks
                  : SegmentRegion.Header;
         }

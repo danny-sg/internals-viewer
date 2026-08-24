@@ -33,8 +33,15 @@ public static class SegmentElementBuilder
             Size = blob.Header.BookmarkCount * SegmentBlob.EntrySize
         });
 
-        if (blob.Header.IsStoreByValue)
+        if (blob.Header.IsVariableLengthData)
         {
+            elements.Add(new SegmentElement
+            {
+                Name = "RLE Array",
+                Offset = blob.Header.RleArrayOffset,
+                Size = blob.Header.RleArrayCount * SegmentBlob.EntrySize
+            });
+
             elements.Add(new SegmentElement
             {
                 Name = "Variable Length Data",

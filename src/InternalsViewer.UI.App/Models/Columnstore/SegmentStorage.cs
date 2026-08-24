@@ -27,7 +27,7 @@ public static class SegmentStorageExtensions
             return SegmentStorage.Unknown;
         }
 
-        if (header.IsStoreByValue)
+        if (header.IsVariableLengthData)
         {
             return SegmentStorage.VariableLengthData;
         }

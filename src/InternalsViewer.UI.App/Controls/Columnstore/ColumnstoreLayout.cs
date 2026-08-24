@@ -76,9 +76,6 @@ public static class ColumnstoreLayout
 
     public static bool IsNarrow(float columnWidth) => columnWidth < NarrowColumnWidth;
 
-    public static float GetColumnHeaderHeight(float columnWidth)
-        => IsNarrow(columnWidth) ? VerticalColumnHeaderHeight : ColumnHeaderHeight;
-
     public static float GetColumnWidth(float width, int columnCount)
         => GetSegmentWidth(GetSegmentsAvailable(width), columnCount);
 
@@ -218,8 +215,8 @@ public static class ColumnstoreLayout
     /// </summary>
     public static SKColor GetStructureColour(SegmentStructureType structureType) => structureType switch
     {
-        SegmentStructureType.RunLength => GetStorageColour(SegmentStorage.RunLength),
-        SegmentStructureType.StoreByValue => GetStorageColour(SegmentStorage.VariableLengthData),
+        SegmentStructureType.BitPack => GetStorageColour(SegmentStorage.RunLength),
+        SegmentStructureType.VariableLengthData => GetStorageColour(SegmentStorage.VariableLengthData),
         _ => ColumnstoreColours.UnknownStructure
     };
 
@@ -273,9 +270,9 @@ public static class ColumnstoreLayout
     public static float GetContentHeight(int rowGroupCount,
                                         float headerHeight,
                                         bool hasLocalDictionaries,
-                                        float columnWidth)
+                                        float columnHeaderHeight)
         => headerHeight
-           + (rowGroupCount > 0 ? GetColumnHeaderHeight(columnWidth) + SectionLabelBottomPadding : 0)
+           + (rowGroupCount > 0 ? columnHeaderHeight + SectionLabelBottomPadding : 0)
            + (Margin * 2)
            + (rowGroupCount * (GetRowGroupHeight(hasLocalDictionaries) + RowGroupGap));
 

@@ -222,7 +222,7 @@ internal static class ColumnstoreStructureDumper
             return $"  [{index,6}] terminator";
         }
 
-        return entry.IsBitpacked
+        return !entry.IsValue
             ? $"  [{index,6}] bitpack from {entry.BitpackIndex,12:N0}   count {entry.Count,10:N0}"
             : $"  [{index,6}] value        {entry.Value,12}   count {entry.Count,10:N0}";
     }

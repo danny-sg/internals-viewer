@@ -112,7 +112,9 @@ public static class SegmentRegionMarkerBuilder
                                          ItemType.BookmarkPosition,
                                          offset,
                                          4,
-                                         $"{bookmark.Position} (entry {bookmark.GetRleEntryIndex(blob.Header.RleEntryBytes)})"),
+                                         bookmark.IsSentinel
+                                             ? $"0x{bookmark.Position:X8} sentinel"
+                                             : $"{bookmark.Position} (entry {bookmark.GetRleEntryIndex(blob.Header.RleEntryBytes)})"),
                                   Create("End Row", ItemType.BookmarkEndRow, offset + 4, 4, $"{bookmark.EndRow}")
                               ]));
         }
@@ -140,8 +142,13 @@ public static class SegmentRegionMarkerBuilder
 
             var entry = blob.RleEntries[i];
 
-            var value = entry.IsBitpacked
-                ? Create("Bit Pack Index", ItemType.RleBitpackIndex, offset, valueSize, $"{entry.BitpackIndex}")
+            var value = entry.PageSlot is { } address
+                ? Tagged(Create("Value", ItemType.ValueAddress, offset, valueSize, address.ToString()),
+                         "Page Slot",
+                         entry.IsValue ? "Repeat" : "Read")
+                : !entry.IsValue
+                ? Tagged(Create("Value", ItemType.RleBitpackIndex, offset, valueSize, $"{entry.BitpackIndex}"),
+                         "Bit Pack Index")
                 : Create("Value",
                          ItemType.RleValue,
                          offset,
@@ -297,6 +304,13 @@ public static class SegmentRegionMarkerBuilder
 
     private static Marker Create(string name, ItemType type, int offset, int size, string value)
         => MarkerBuilder.CreateMarker(name, type, offset, size, value);
+
+    private static Marker Tagged(Marker marker, params string[] tags)
+    {
+        marker.Tags = tags;
+
+        return marker;
+    }
 
     private static Marker Entry(string name, ItemType type, int offset, int size, IEnumerable<Marker> children)
     {

@@ -1,12 +1,14 @@
 ﻿using System;
 using System.ComponentModel;
 using System.Threading;
+using InternalsViewer.UI.App.Controls.Columnstore;
 using InternalsViewer.UI.App.Controls.Docking;
 using InternalsViewer.UI.App.Models;
 using InternalsViewer.UI.App.Models.Columnstore;
 using InternalsViewer.UI.App.ViewModels.Columnstore;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Controls.Primitives;
+using Microsoft.UI.Xaml.Input;
 using WinUI.TableView;
 
 namespace InternalsViewer.UI.App.Views.Columnstore.Tabs;
@@ -169,7 +171,16 @@ public sealed partial class ColumnstoreSegmentTabView : UserControl, IDocumentCo
 
     private void RleRunMap_OnRunInvoked(object? sender, SegmentNavigationTarget target) => ViewModel.GoToTarget(target);
 
+    private void Marker_OnAddressClicked(object? sender, string address) => ViewModel.GoToValue(address);
+
     private void Dictionary_OnClick(object sender, RoutedEventArgs e) => ViewModel.OpenDictionary();
+
+    private void CommandBar_OnRightTapped(object sender, RightTappedRoutedEventArgs e)
+    {
+        var flyout = CsIndexMenu.Build(ViewModel.Segment.ColumnName, ViewModel.GetCsIndexCommand);
+
+        flyout?.ShowAt(SegmentCommandBar, e.GetPosition(SegmentCommandBar));
+    }
 
     private void DataRows_OnSelectionChanged(object sender, SelectionChangedEventArgs e)
     {

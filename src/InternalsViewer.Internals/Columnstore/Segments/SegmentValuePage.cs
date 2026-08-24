@@ -102,7 +102,9 @@ public sealed class SegmentValuePage : DataStructure
     /// <summary>
     /// Where the offset array starts, being the last two bytes of every value
     /// </summary>
-    private int OffsetArrayStart => Values.Length - (ValueCount * 2);
+    public int OffsetArrayStart => Values.Length - (ValueCount * 2);
+
+    public int OffsetArraySize => IsVariableWidth ? ValueCount * 2 : 0;
 
     /// <summary>
     /// Value as stored, for a width the integer path cannot take
@@ -129,6 +131,64 @@ public sealed class SegmentValuePage : DataStructure
         return Values.Slice(offset, GetEnd(index) - offset);
     }
 
+    /// <summary>
+    /// Whether the slot holds a null, which only a variable width page can say and only through its offset array
+    /// </summary>
+    public bool IsNull(int index) => IsVariableWidth && GetOffset(index) == NullOffset;
+
+    /// <summary>
+    /// Offset the array holds for the slot, which is the null marker rather than a position when there is no value
+    /// </summary>
+    public ushort GetStoredOffset(int index) => GetOffset(index);
+
+    /// <summary>
+    /// Where the offset array entry for a slot sits, the array running backwards from the end of the values
+    /// </summary>
+    public int GetOffsetPosition(int index) => Values.Length - ((index + 1) * 2);
+
+    /// <summary>
+    /// Where a value starts within the expanded values, or -1 when the slot holds a null
+    /// </summary>
+    public int GetValuePosition(int index)
+    {
+        if (!IsVariableWidth)
+        {
+            return index * ValueSize;
+        }
+
+        return IsNull(index) ? -1 : GetOffset(index);
+    }
+
+    public int GetValueLength(int index)
+    {
+        if (!IsVariableWidth)
+        {
+            return ValueSize;
+        }
+
+        return IsNull(index) ? 0 : GetEnd(index) - GetOffset(index);
+    }
+
+    /// <summary>
+    /// Where a value's bytes start in the segment blob, or the page itself when they are compressed away
+    /// </summary>
+    public int GetValueOffset(int index)
+    {
+        if (IsCompressed)
+        {
+            return Offset;
+        }
+
+        if (!IsVariableWidth)
+        {
+            return Offset + RawHeaderSize + (index * ValueSize);
+        }
+
+        var offset = GetOffset(index);
+
+        return offset == NullOffset ? Offset : Offset + RawHeaderSize + offset;
+    }
+
     public void Mark()
     {
         MarkProperty(nameof(SubLobType), Offset, 4);
@@ -136,6 +196,7 @@ public sealed class SegmentValuePage : DataStructure
         MarkProperty(nameof(Reserved05), Offset + 0x05, 1);
         MarkProperty(nameof(ValueSize), Offset + 0x06, 2);
         MarkProperty(nameof(ValueCount), Offset + 0x08, 4);
+
         if (IsCompressed)
         {
             MarkProperty(nameof(PayloadSize), Offset + 0x0C, 2);

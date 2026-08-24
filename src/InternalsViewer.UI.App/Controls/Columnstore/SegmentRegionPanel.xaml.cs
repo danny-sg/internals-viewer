@@ -1,4 +1,5 @@
-﻿using System.Collections.ObjectModel;
+﻿using System;
+using System.Collections.ObjectModel;
 using InternalsViewer.UI.App.Models;
 
 namespace InternalsViewer.UI.App.Controls.Columnstore;
@@ -12,6 +13,8 @@ public sealed partial class SegmentRegionPanel
     {
         InitializeComponent();
     }
+
+    public event EventHandler<string>? AddressClicked;
 
     public ObservableCollection<Marker>? Markers
     {
@@ -127,4 +130,6 @@ public sealed partial class SegmentRegionPanel
                                       typeof(GridLength),
                                       typeof(SegmentRegionPanel),
                                       new PropertyMetadata(new GridLength(0)));
+
+    private void MarkerTree_OnAddressClicked(object? sender, string address) => AddressClicked?.Invoke(this, address);
 }

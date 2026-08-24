@@ -57,7 +57,7 @@ public sealed class StoreByValueBookmarkProbeTests(ITestOutputHelper testOutput)
                         continue;
                     }
 
-                    if (blob.Header.StructureType != SegmentStructureType.StoreByValue)
+                    if (blob.Header.StructureType != SegmentStructureType.VariableLengthData)
                     {
                         continue;
                     }
@@ -74,6 +74,14 @@ public sealed class StoreByValueBookmarkProbeTests(ITestOutputHelper testOutput)
 
                         lines.Add($"  page valueCounts {string.Join(",", store.Pages.Take(8).Select(p => p.ValueCount))}");
                     }
+
+                    var runs = blob.RleEntries.Select(e =>
+                        $"{(e.IsValue ? $"val 0x{(uint)e.Value:X8}" : $"idx 0x{e.BitpackIndex:X8}")} x{e.Count}");
+
+                    lines.Add($"  RLE runs [{string.Join(" | ", runs)}] "
+                              + $"pages {blob.VariableLengthData?.PageCount} "
+                              + $"variable {blob.VariableLengthData?.Pages.Count(p => p.IsVariableWidth)} "
+                              + $"fixed {blob.VariableLengthData?.Pages.Count(p => !p.IsVariableWidth)}");
 
                     var distinct = blob.Bookmarks.Distinct().ToList();
 
@@ -97,7 +105,7 @@ public sealed class StoreByValueBookmarkProbeTests(ITestOutputHelper testOutput)
             TestOutput.WriteLine(line);
         }
 
-        File.WriteAllLines(Path.Combine("C:", "ColumnstoreDump", "sbv_bookmark_probe.txt"), lines);
+        ProbeDump.Write("sbv_bookmark_probe.txt", lines);
     }
 
     private sealed record ColumnStoreIndexProbe(string TableName, Internals.Columnstore.Metadata.ColumnStoreIndex Index);

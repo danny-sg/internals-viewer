@@ -85,6 +85,10 @@ public enum ItemType
     ValuePageValueCount,
     ValuePagePayloadSize,
     ValuePagePayload,
+
+    ValueOffsetArray,
+
+    ValueOffsetEntry,
     SegmentRowSource,
     DictionaryEntries,
     DictionarySymbol,
@@ -160,6 +164,8 @@ public enum ItemType
     RleValue,
     RleCount,
     RleBitpackIndex,
+
+    ValueAddress,
     BitpackEntrySize,
     BitpackUnitCount,
     BitpackMinId,

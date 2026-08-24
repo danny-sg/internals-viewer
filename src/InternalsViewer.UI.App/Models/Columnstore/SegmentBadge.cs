@@ -7,10 +7,6 @@ namespace InternalsViewer.UI.App.Models.Columnstore;
 /// <summary>
 /// A labelled chip for the segment header, carrying its own colour
 /// </summary>
-/// <remarks>
-/// The colours are the ones the structure drawing uses, so a segment reads the same in the header as it does in the
-/// picture. They are held as Skia colours there, which is why the conversion lives here rather than in a converter.
-/// </remarks>
 public sealed class SegmentBadge
 {
     public required string Label { get; init; }

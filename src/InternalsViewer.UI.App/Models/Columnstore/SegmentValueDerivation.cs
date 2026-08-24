@@ -18,9 +18,9 @@ public static class SegmentValueDerivation
     {
         var bytes = store.GetValueBytes(ordinal);
 
-        if (bytes.IsEmpty)
+        if (store.IsNull(ordinal))
         {
-            return new ValueDerivation { Steps = [], Result = "[Variable Width]" };
+            return new ValueDerivation { Steps = [], Result = "[Null]" };
         }
 
         return new ValueDerivation

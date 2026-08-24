@@ -55,11 +55,17 @@ public sealed class ValueDetail(SegmentValuePage page, int index) : IEquatable<V
     public long Value => Raw >> SegmentVariableLengthData.ReservedBits;
 
     /// <summary>
+    /// Where the offset array puts the value, which only a variable width page has to say
+    /// </summary>
+    public string OffsetDescription
+        => page.IsVariableWidth ? $"0x{page.GetStoredOffset(Index):X4}" : string.Empty;
+
+    /// <summary>
     /// What the page holds for the value, a wide one having no integer form to show
     /// </summary>
     public string StoredDescription
-        => page.IsVariableWidth
-            ? "[Variable Width]"
+        => page.IsNull(Index)
+            ? "[Null]"
             : IsWide ? $"0x{Convert.ToHexString(page.GetValueBytes(Index).Span)}" : $"{Raw}";
 
     /// <summary>

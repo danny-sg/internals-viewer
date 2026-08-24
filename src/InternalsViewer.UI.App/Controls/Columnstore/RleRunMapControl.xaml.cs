@@ -49,6 +49,54 @@ public sealed partial class RleRunMapControl : IDisposable
                                       typeof(RleRunMapControl),
                                       new PropertyMetadata(null, OnRunsChanged));
 
+    /// <summary>
+    /// What the first track holds, being the runs that stand for a single value
+    /// </summary>
+    public string ValueLabel
+    {
+        get => (string)GetValue(ValueLabelProperty);
+        set => SetValue(ValueLabelProperty, value);
+    }
+
+    public static readonly DependencyProperty ValueLabelProperty
+        = DependencyProperty.Register(nameof(ValueLabel),
+                                      typeof(string),
+                                      typeof(RleRunMapControl),
+                                      new PropertyMetadata("Value", OnValueLabelChanged));
+
+    private static void OnValueLabelChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
+    {
+        var control = (RleRunMapControl)d;
+
+        control._renderer.ValueLabel = control.ValueLabel;
+
+        control.MapCanvas.Invalidate();
+    }
+
+    /// <summary>
+    /// What the second track holds, being the runs that cover a sequence rather than a single value
+    /// </summary>
+    public string IndexLabel
+    {
+        get => (string)GetValue(IndexLabelProperty);
+        set => SetValue(IndexLabelProperty, value);
+    }
+
+    public static readonly DependencyProperty IndexLabelProperty
+        = DependencyProperty.Register(nameof(IndexLabel),
+                                      typeof(string),
+                                      typeof(RleRunMapControl),
+                                      new PropertyMetadata("Bit Pack", OnIndexLabelChanged));
+
+    private static void OnIndexLabelChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
+    {
+        var control = (RleRunMapControl)d;
+
+        control._renderer.IndexLabel = control.IndexLabel;
+
+        control.MapCanvas.Invalidate();
+    }
+
     private static void OnRunsChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
     {
         var control = (RleRunMapControl)d;
@@ -165,7 +213,7 @@ public sealed partial class RleRunMapControl : IDisposable
                                                    _rowSpan);
 
                 TooltipText.Text = $"Row {row}{Environment.NewLine}"
-                                   + $"{(run.IsBitpacked ? "Bit Pack Unit" : "Value")} {run.Value}{Environment.NewLine}"
+                                   + $"{(run.IsValue ? ValueLabel : IndexLabel)} {run.ValueDescription}{Environment.NewLine}"
                                    + $"Run {run.Index}, count {run.Count}";
 
                 TooltipPopup.IsOpen = true;

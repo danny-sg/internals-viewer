@@ -45,14 +45,16 @@ public static class SegmentBlobParser
 
         blob.Bookmarks = ReadBookmarks(span, blob);
 
-        if (blob.Header.IsStoreByValue)
+        if (blob.Header.IsVariableLengthData)
         {
             blob.VariableLengthData = ReadVariableLengthData(data, blob);
+
+            blob.RleEntries = ReadRleEntries(span, blob);
 
             return blob;
         }
 
-        if (blob.Header.StructureType != SegmentStructureType.RunLength)
+        if (blob.Header.StructureType != SegmentStructureType.BitPack)
         {
             throw new InvalidDataException($"Segment structure type {(int)blob.Header.StructureType} is not supported.");
         }
@@ -177,9 +179,6 @@ public static class SegmentBlobParser
         store.PageSizeArray.PageSizes = sizes;
         store.Pages = pages;
 
-        // Only a store whose pages all carry an offset array has somewhere to put a null, so only that one has a
-        // value for every row
-        store.IsRowAligned = pages.Length == 0 || pages.All(p => p.IsVariableWidth) || pages.All(p => !p.IsVariableWidth);
 
         store.Mark();
 
@@ -231,8 +230,8 @@ public static class SegmentBlobParser
             var offset = blob.Header.RleArrayOffset + (i * blob.Header.RleEntryBytes);
 
             entries[i] = wide
-                ? new RleEntry(ReadInt64(span, offset), ReadInt32(span, offset + 8))
-                : new RleEntry(ReadInt32(span, offset), ReadInt32(span, offset + 4));
+                ? new RleEntry(ReadInt64(span, offset), ReadInt32(span, offset + 8), blob.Header.IsVariableLengthData)
+                : new RleEntry(ReadInt32(span, offset), ReadInt32(span, offset + 4), blob.Header.IsVariableLengthData);
         }
 
         return entries;

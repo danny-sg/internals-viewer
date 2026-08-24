@@ -95,6 +95,7 @@
                 </Border.Background>
                 <TextBlock Text="{x:Bind Label}"
                            FontSize="11"
+                           VerticalAlignment="Center"
                            Foreground="White"/>
             </Border>
         </DataTemplate>
@@ -122,33 +123,61 @@
                        Text="{x:Bind ViewModel.StatusText, Mode=OneWay}"/>
         </StackPanel>
 
-        <CommandBar IsOpen="False"
+        <CommandBar x:Name="SegmentCommandBar"
+                    IsOpen="False"
                     DefaultLabelPosition="Right"
                     Grid.Row="0"
                     HorizontalAlignment="Left"
                     Background="Transparent"
+                    RightTapped="CommandBar_OnRightTapped"
                     Visibility="{x:Bind ViewModel.IsLoaded, Mode=OneWay,
                            Converter={StaticResource BoolToVisibilityConverter}}">
 
             <AppBarElementContainer VerticalContentAlignment="Center">
-                <AppBarElementContainer VerticalAlignment="Center">
-                    <StackPanel VerticalAlignment="Stretch" Margin="12,0,18,0">
-                        <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
-                            <TextBlock Text="{x:Bind ViewModel.Segment.ColumnName, Mode=OneWay}"
-                                       VerticalAlignment="Center"
-                                       FontWeight="SemiBold"
-                                       FontSize="12"/>
-                            <controls:DataTypeTextBlock DataType="{x:Bind ViewModel.DataType, Mode=OneWay}"
-                                                        Precision="{x:Bind ViewModel.Precision, Mode=OneWay}"
-                                                        DataScale="{x:Bind ViewModel.Scale, Mode=OneWay}"
-                                                        Length="{x:Bind ViewModel.DataLength, Mode=OneWay}"
-                                                        VerticalAlignment="Center"/>
-                        </StackPanel>
-                        <TextBlock Text="{x:Bind ViewModel.Segment.SegmentDescription, Mode=OneWay}"
-                                   VerticalAlignment="Center" />
-                    </StackPanel>
-                </AppBarElementContainer>
+                <Grid VerticalAlignment="Center" RowSpacing="3" ColumnSpacing="8" Margin="12,0,18,0">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
 
+                    <TextBlock Grid.Row="0" Grid.Column="0"
+                               Text="{x:Bind ViewModel.Segment.ColumnName, Mode=OneWay}"
+                               VerticalAlignment="Center"
+                               FontWeight="SemiBold"
+                               FontSize="12"
+                               Margin="0,0,10,0"/>
+                    <controls:DataTypeTextBlock Grid.Row="1" Grid.Column="0"
+                                                DataType="{x:Bind ViewModel.DataType, Mode=OneWay}"
+                                                Precision="{x:Bind ViewModel.Precision, Mode=OneWay}"
+                                                DataScale="{x:Bind ViewModel.Scale, Mode=OneWay}"
+                                                Length="{x:Bind ViewModel.DataLength, Mode=OneWay}"
+                                                VerticalAlignment="Center"/>
+
+                    <TextBlock Grid.Row="0" Grid.Column="1"
+                               Text="Row Group"
+                               FontSize="12"
+                               VerticalAlignment="Center"
+                               Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
+                    <TextBlock Grid.Row="0" Grid.Column="2"
+                               Text="{x:Bind ViewModel.Segment.RowGroupId, Mode=OneWay}"
+                               FontSize="12"
+                               VerticalAlignment="Center"/>
+
+                    <TextBlock Grid.Row="1" Grid.Column="1"
+                               Text="Column"
+                               FontSize="12"
+                               VerticalAlignment="Center"
+                               Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
+                    <TextBlock Grid.Row="1" Grid.Column="2"
+                               Text="{x:Bind ViewModel.Segment.ColumnId, Mode=OneWay}"
+                               FontSize="12"
+                               VerticalAlignment="Center"/>
+                </Grid>
             </AppBarElementContainer>
 
             <AppBarSeparator/>
@@ -204,61 +233,6 @@
 
             <AppBarSeparator Visibility="{x:Bind ViewModel.HasDictionary, Mode=OneWay,
                                      Converter={StaticResource BoolToVisibilityConverter}}" />
-
-            <AppBarSeparator/>
-
-            <AppBarElementContainer VerticalContentAlignment="Center">
-                <Grid VerticalAlignment="Center" RowSpacing="3" ColumnSpacing="8"  Margin="8,0,0,0">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="Auto"/>
-                        <ColumnDefinition Width="Auto"/>
-                    </Grid.ColumnDefinitions>
-                    <Grid.RowDefinitions>
-                        <RowDefinition Height="Auto"/>
-                        <RowDefinition Height="Auto"/>
-                    </Grid.RowDefinitions>
-
-                    <TextBlock Grid.Row="0" Grid.Column="0"
-                       Text="Data Id"
-                       FontSize="12"
-                       VerticalAlignment="Center"
-                       Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
-                    <Border Grid.Row="0" Grid.Column="1"
-                    Background="White"
-                    Padding="8,0"
-                    VerticalAlignment="Center">
-                        <ItemsControl ItemsSource="{x:Bind ViewModel.Segment.DataIdSteps, Mode=OneWay}"
-                              ItemTemplate="{StaticResource DerivationStepTemplate}"
-                              HorizontalAlignment="Left">
-                            <ItemsControl.ItemsPanel>
-                                <ItemsPanelTemplate>
-                                    <StackPanel Orientation="Horizontal" Spacing="4" VerticalAlignment="Center"/>
-                                </ItemsPanelTemplate>
-                            </ItemsControl.ItemsPanel>
-                        </ItemsControl>
-                    </Border>
-
-                    <TextBlock Grid.Row="1" Grid.Column="0"
-                       Text="Value"
-                       FontSize="12"
-                       VerticalAlignment="Center"
-                       Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
-                    <Border Grid.Row="1" Grid.Column="1"
-                    Background="White"
-                    Padding="8,0"
-                    VerticalAlignment="Center">
-                        <ItemsControl ItemsSource="{x:Bind ViewModel.Segment.ValueSteps, Mode=OneWay}"
-                              ItemTemplate="{StaticResource DerivationStepTemplate}"
-                              HorizontalAlignment="Left">
-                            <ItemsControl.ItemsPanel>
-                                <ItemsPanelTemplate>
-                                    <StackPanel Orientation="Horizontal" Spacing="4" VerticalAlignment="Center"/>
-                                </ItemsPanelTemplate>
-                            </ItemsControl.ItemsPanel>
-                        </ItemsControl>
-                    </Border>
-                </Grid>
-            </AppBarElementContainer>
         </CommandBar>
 
         <AppBarButton Grid.Row="0"
@@ -345,12 +319,15 @@
                                                 MarkerOpacity="{x:Bind ViewModel.Hex.MarkerOpacity, Mode=OneWay}"
                                                 Markers="{x:Bind ViewModel.Hex.Markers, Mode=OneWay}"
                                                 SelectedMarker="{x:Bind ViewModel.Hex.SelectedMarker, Mode=TwoWay}"
+                                                AddressClicked="Marker_OnAddressClicked"
                                                 DetailSize="130">
                         <columnstore:SegmentRegionPanel.Detail>
                             <StackPanel>
                                 <TextBlock Padding="16,8,8,8" FontWeight="SemiBold">RLE Runs</TextBlock>
                                 <columnstore:RleRunMapControl x:Name="RleRunMap"
                                                               Runs="{x:Bind ViewModel.RleRuns, Mode=OneWay}"
+                                                              ValueLabel="{x:Bind ViewModel.RleValueLabel, Mode=OneWay}"
+                                                              IndexLabel="{x:Bind ViewModel.RleIndexLabel, Mode=OneWay}"
                                                               RunInvoked="RleRunMap_OnRunInvoked"/>
                             </StackPanel>
                         </columnstore:SegmentRegionPanel.Detail>
@@ -479,11 +456,63 @@
 
                     <Grid Visibility="{x:Bind GetTabContentVisibility(ViewModel.SelectedRegionTabIndex, 5), Mode=OneWay}">
                         <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
                             <RowDefinition Height="*"/>
                             <RowDefinition Height="Auto"/>
                         </Grid.RowDefinitions>
 
-                        <tableView:TableView Grid.Row="0"
+                        <Grid Grid.Row="0" RowSpacing="3" ColumnSpacing="8" Margin="8,8,8,8">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                            </Grid.RowDefinitions>
+
+                            <TextBlock Grid.Row="0" Grid.Column="0"
+                               Text="Data Id"
+                               FontSize="12"
+                               VerticalAlignment="Center"
+                               Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
+                            <Border Grid.Row="0" Grid.Column="1"
+                            Background="White"
+                            Padding="8,0"
+                            VerticalAlignment="Center">
+                                <ItemsControl ItemsSource="{x:Bind ViewModel.Segment.DataIdSteps, Mode=OneWay}"
+                                      ItemTemplate="{StaticResource DerivationStepTemplate}"
+                                      HorizontalAlignment="Left">
+                                    <ItemsControl.ItemsPanel>
+                                        <ItemsPanelTemplate>
+                                            <StackPanel Orientation="Horizontal" Spacing="4" VerticalAlignment="Center"/>
+                                        </ItemsPanelTemplate>
+                                    </ItemsControl.ItemsPanel>
+                                </ItemsControl>
+                            </Border>
+
+                            <TextBlock Grid.Row="1" Grid.Column="0"
+                               Text="Value"
+                               FontSize="12"
+                               VerticalAlignment="Center"
+                               Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
+                            <Border Grid.Row="1" Grid.Column="1"
+                            Background="White"
+                            Padding="8,0"
+                            VerticalAlignment="Center">
+                                <ItemsControl ItemsSource="{x:Bind ViewModel.Segment.ValueSteps, Mode=OneWay}"
+                                      ItemTemplate="{StaticResource DerivationStepTemplate}"
+                                      HorizontalAlignment="Left">
+                                    <ItemsControl.ItemsPanel>
+                                        <ItemsPanelTemplate>
+                                            <StackPanel Orientation="Horizontal" Spacing="4" VerticalAlignment="Center"/>
+                                        </ItemsPanelTemplate>
+                                    </ItemsControl.ItemsPanel>
+                                </ItemsControl>
+                            </Border>
+                        </Grid>
+
+                        <tableView:TableView Grid.Row="1"
                                              AutoGenerateColumns="False"
                                              CanSortColumns="False"
                                              CanFilterColumns="False"
@@ -531,7 +560,7 @@
                             </tableView:TableView.Columns>
                         </tableView:TableView>
 
-                        <TextBlock Grid.Row="1"
+                        <TextBlock Grid.Row="2"
                                    Padding="8,4"
                                    FontSize="12"
                                    Opacity="0.7"

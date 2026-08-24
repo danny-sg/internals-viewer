@@ -8,12 +8,12 @@ public enum SegmentStructureType
     Unknown = 0,
 
     /// <summary>
-    /// Bookmark array, RLE array and bit pack array
+    /// Runs address the bit pack array
     /// </summary>
-    RunLength = 3,
+    BitPack = 3,
 
     /// <summary>
-    /// Used by the store by value encodings, where values are held outside the RLE array
+    /// Runs address the variable length data store
     /// </summary>
-    StoreByValue = 7
+    VariableLengthData = 7
 }

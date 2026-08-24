@@ -48,9 +48,9 @@ public sealed class RleRunSplitProbeTests(ITestOutputHelper testOutput) : Provid
 
             var entries = blob.RleEntries.Where(e => !e.IsTerminator).ToList();
 
-            var literals = entries.Where(e => !e.IsBitpacked).ToList();
+            var literals = entries.Where(e => e.IsValue).ToList();
 
-            var packed = entries.Where(e => e.IsBitpacked).ToList();
+            var packed = entries.Where(e => !e.IsValue).ToList();
 
             var width = blob.Header.BitpackEntrySize;
 
@@ -96,6 +96,6 @@ public sealed class RleRunSplitProbeTests(ITestOutputHelper testOutput) : Provid
             TestOutput.WriteLine(line);
         }
 
-        File.WriteAllLines(Path.Combine("C:", "ColumnstoreDump", "rle_split_probe.txt"), lines);
+        ProbeDump.Write("rle_split_probe.txt", lines);
     }
 }

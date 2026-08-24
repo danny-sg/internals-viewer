@@ -26,17 +26,19 @@ public sealed class SegmentDataIdStream(SegmentBlob blob)
 
         if (Blob.VariableLengthData is { } store)
         {
-            // A wide value is the value rather than an id, so there is no number to report for it
-            var dataId = store.IsWide ? 0 : store.GetValue(rowOrdinal);
+            var (runIndex, valueOrdinal) = LocateValue(rowOrdinal);
 
-            return new SegmentDataIdSource(dataId, SegmentValueOrigin.VariableLengthData, -1, -1);
+            // A wide value is the value rather than an id, so there is no number to report for it
+            var dataId = valueOrdinal < 0 || store.IsWide ? 0 : store.GetValue(valueOrdinal);
+
+            return new SegmentDataIdSource(dataId, SegmentValueOrigin.VariableLengthData, runIndex, valueOrdinal);
         }
 
         var (entryIndex, endRow) = Seek(rowOrdinal);
 
         var entry = Blob.RleEntries[entryIndex];
 
-        if (!entry.IsBitpacked)
+        if (entry.IsValue)
         {
             return new SegmentDataIdSource(entry.Value, SegmentValueOrigin.RleRun, entryIndex, -1);
         }
@@ -60,7 +62,7 @@ public sealed class SegmentDataIdStream(SegmentBlob blob)
 
         var entry = Blob.RleEntries[entryIndex];
 
-        if (!entry.IsBitpacked)
+        if (entry.IsValue)
         {
             return BitSpan.FromBytes(Blob.Header.RleArrayOffset + (entryIndex * Blob.Header.RleEntryBytes), Blob.Header.RleEntryBytes / 2);
         }
@@ -89,7 +91,7 @@ public sealed class SegmentDataIdStream(SegmentBlob blob)
                 continue;
             }
 
-            if (entry.IsBitpacked)
+            if (!entry.IsValue)
             {
                 for (var i = 0; i < entry.Count; i++)
                 {
@@ -104,6 +106,50 @@ public sealed class SegmentDataIdStream(SegmentBlob blob)
                 }
             }
         }
+    }
+
+    /// <summary>
+    /// Which value of the store a row reads, the RLE array being what maps one to the other
+    /// </summary>
+    /// <remarks>
+    /// A run whose value is negative reads the store in order from wherever the runs before it left off, and any
+    /// other run repeats the one value it takes. Whether that value is null is the store's own business, a null
+    /// being an entry the page's offset array marks rather than anything the run says.
+    /// </remarks>
+    public (int EntryIndex, int ValueOrdinal) LocateValue(int rowOrdinal)
+    {
+        if (Blob.VariableLengthData is not { } store)
+        {
+            return (-1, -1);
+        }
+
+        var start = 0;
+
+        for (var i = 0; i < Blob.RleEntries.Length; i++)
+        {
+            var entry = Blob.RleEntries[i];
+
+            if (entry.Count == 0)
+            {
+                break;
+            }
+
+            if (rowOrdinal < start + entry.Count)
+            {
+                if (entry.PageSlot is not { } address)
+                {
+                    return (-1, -1);
+                }
+
+                var ordinal = store.GetOrdinal(address.Page, address.Slot);
+
+                return (i, entry.IsValue ? ordinal : ordinal + (rowOrdinal - start));
+            }
+
+            start += entry.Count;
+        }
+
+        return (-1, -1);
     }
 
     private (int EntryIndex, int EndRow) Seek(int rowOrdinal)

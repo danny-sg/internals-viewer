@@ -138,7 +138,7 @@ public sealed class FloatDictionaryProbeTests(ITestOutputHelper testOutput) : Pr
             TestOutput.WriteLine(line);
         }
 
-        File.WriteAllLines(Path.Combine("C:", "ColumnstoreDump", "float_dict_probe.txt"), lines);
+        ProbeDump.Write("float_dict_probe.txt", lines);
     }
 
     private async Task BuildTable()

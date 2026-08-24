@@ -138,11 +138,14 @@ public sealed class ColumnstoreStructureRenderer : IDisposable
             hasGlobalDictionaries |= column.GlobalDictionary is not null;
         }
 
+        var columnHeaderHeight = GetColumnHeaderHeight(index, width);
+
         DrawColumnBands(canvas,
                         index,
                         rowGroups,
                         width,
                         y,
+                        columnHeaderHeight,
                         hasGlobalDictionaries,
                         hasLocalDictionaries);
 
@@ -150,8 +153,7 @@ public sealed class ColumnstoreStructureRenderer : IDisposable
         {
             DrawColumnHeaders(canvas, index, width, y);
 
-            y += ColumnstoreLayout.GetColumnHeaderHeight(ColumnstoreLayout.GetColumnWidth(width, index.Columns.Count))
-                 + ColumnstoreLayout.SectionLabelBottomPadding;
+            y += columnHeaderHeight + ColumnstoreLayout.SectionLabelBottomPadding;
         }
 
         y = DrawGlobalDictionaries(canvas, index, width, y, regions);
@@ -191,6 +193,7 @@ public sealed class ColumnstoreStructureRenderer : IDisposable
                                  IReadOnlyList<RowGroupSummary> rowGroups,
                                  float width,
                                  float top,
+                                 float columnHeaderHeight,
                                  bool hasGlobalDictionaries,
                                  bool hasLocalDictionaries)
     {
@@ -201,8 +204,7 @@ public sealed class ColumnstoreStructureRenderer : IDisposable
 
         var bottom = ColumnstoreLayout.BandOverhang
                      + top
-                     + ColumnstoreLayout.GetColumnHeaderHeight(ColumnstoreLayout.GetColumnWidth(width,
-                                                                                                index.Columns.Count))
+                     + columnHeaderHeight
                      + ColumnstoreLayout.SectionLabelBottomPadding
                      + (hasGlobalDictionaries
                             ? ColumnstoreLayout.GlobalDictionaryContainerHeight + ColumnstoreLayout.Margin
@@ -257,7 +259,7 @@ public sealed class ColumnstoreStructureRenderer : IDisposable
 
         var columnWidth = ColumnstoreLayout.GetColumnWidth(width, index.Columns.Count);
 
-        var isNarrow = ColumnstoreLayout.IsNarrow(columnWidth);
+        var isVertical = UsesVerticalHeaders(index, width);
 
         var x = ColumnstoreLayout.GetSegmentsLeft();
 
@@ -265,10 +267,9 @@ public sealed class ColumnstoreStructureRenderer : IDisposable
         {
             _text.Color = TextColour;
 
-            // An ordered index is the only thing a column's position in the ordering shows up on
-            var name = column.IsOrdered ? $"{column.Name} ↑{column.OrderOrdinal}" : column.Name;
+            var name = GetHeaderName(column);
 
-            if (isNarrow)
+            if (isVertical)
             {
                 DrawVertical(canvas,
                              name,
@@ -287,6 +288,30 @@ public sealed class ColumnstoreStructureRenderer : IDisposable
             x += columnWidth + ColumnstoreLayout.SegmentGap;
         }
     }
+
+    // An ordered index is the only thing a column's position in the ordering shows up on
+    private static string GetHeaderName(ColumnStoreColumn column)
+        => column.IsOrdered ? $"{column.Name} ↑{column.OrderOrdinal}" : column.Name;
+
+    private bool UsesVerticalHeaders(ColumnStoreIndex index, float width)
+    {
+        var available = ColumnstoreLayout.GetColumnWidth(width, index.Columns.Count) - 8;
+
+        foreach (var column in index.Columns)
+        {
+            if (_titleFont.MeasureText(GetHeaderName(column)) > available)
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    public float GetColumnHeaderHeight(ColumnStoreIndex index, float width)
+        => UsesVerticalHeaders(index, width)
+            ? ColumnstoreLayout.VerticalColumnHeaderHeight
+            : ColumnstoreLayout.ColumnHeaderHeight;
 
     /// <summary>
     /// A name turned to read bottom to top, which is the only way one fits a column narrower than it is
@@ -939,7 +964,7 @@ public sealed class ColumnstoreStructureRenderer : IDisposable
             flags.Add(("Bit Pack", ColumnstoreColours.BitPackFlag));
         }
 
-        if (header.IsStoreByValue)
+        if (header.IsVariableLengthData)
         {
             flags.Add(("VLD", ColumnstoreColours.VariableLengthDataFlag));
         }
