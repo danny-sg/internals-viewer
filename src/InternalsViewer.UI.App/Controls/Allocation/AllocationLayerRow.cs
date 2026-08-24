@@ -45,9 +45,9 @@ public sealed partial class AllocationLayerRow : ObservableObject
                                .GroupBy(u => (u.IndexName, u.IndexType))
                                .ToList();
 
-        IReadOnlyList<AllocationLayerRow> children = indexGroups.Count > 1
-            ? [.. indexGroups.Select(g => ForIndex(layer, [.. g], expansionOverrides))]
-            : UnitRows(layer, layer.Units, depth: 1);
+        var children = indexGroups.Count > 1
+                       ? [.. indexGroups.Select(g => ForIndex(layer, [.. g], expansionOverrides))]
+                       : UnitRows(layer, layer.Units, depth: 1);
 
         return new AllocationLayerRow(layer,
                                       AllocationLayerRowKind.Layer,

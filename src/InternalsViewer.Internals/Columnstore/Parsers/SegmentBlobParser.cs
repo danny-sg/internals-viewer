@@ -34,38 +34,40 @@ public static class SegmentBlobParser
             Header = ParseHeader(span)
         };
 
-        MarkHeader(blob);
+        blob.Header.IsMarkEnabled = blob.IsMarkEnabled;
 
-        if (blob.Version != SupportedVersion)
+        blob.Header.Mark();
+
+        if (blob.Header.Version != SupportedVersion)
         {
-            throw new InvalidDataException($"Segment blob version {blob.Version} is not supported.");
+            throw new InvalidDataException($"Segment blob version {blob.Header.Version} is not supported.");
         }
 
         blob.Bookmarks = ReadBookmarks(span, blob);
 
-        if (blob.IsStoreByValue)
+        if (blob.Header.IsStoreByValue)
         {
             blob.VariableLengthData = ReadVariableLengthData(data, blob);
 
             return blob;
         }
 
-        if (blob.StructureType != SegmentStructureType.RunLength)
+        if (blob.Header.StructureType != SegmentStructureType.RunLength)
         {
-            throw new InvalidDataException($"Segment structure type {(int)blob.StructureType} is not supported.");
+            throw new InvalidDataException($"Segment structure type {(int)blob.Header.StructureType} is not supported.");
         }
 
-        if (blob.ExpectedSize != data.Length)
+        if (blob.Header.ExpectedSize != data.Length)
         {
-            throw new InvalidDataException($"Segment blob is {data.Length} bytes, header implies {blob.ExpectedSize}.");
+            throw new InvalidDataException($"Segment blob is {data.Length} bytes, header implies {blob.Header.ExpectedSize}.");
         }
 
         blob.RleEntries = ReadRleEntries(span, blob);
 
-        blob.Bitpack = new BitpackArray(data[blob.BitpackArrayOffset..],
-                                        blob.BitpackEntrySize,
-                                        blob.BitpackUnitCount,
-                                        blob.BitpackMinId);
+        blob.Bitpack = new BitpackArray(data[blob.Header.BitpackArrayOffset..],
+                                        blob.Header.BitpackEntrySize,
+                                        blob.Header.BitpackUnitCount,
+                                        blob.Header.BitpackMinId);
 
         return blob;
     }
@@ -100,11 +102,11 @@ public static class SegmentBlobParser
 
     private static SegmentBookmark[] ReadBookmarks(ReadOnlySpan<byte> span, SegmentBlob blob)
     {
-        var bookmarks = new SegmentBookmark[blob.BookmarkCount];
+        var bookmarks = new SegmentBookmark[blob.Header.BookmarkCount];
 
         for (var i = 0; i < bookmarks.Length; i++)
         {
-            var offset = blob.BookmarkArrayOffset + (i * SegmentBlob.EntrySize);
+            var offset = blob.Header.BookmarkArrayOffset + (i * SegmentBlob.EntrySize);
 
             bookmarks[i] = new SegmentBookmark(ReadInt32(span, offset), ReadInt32(span, offset + 4));
         }
@@ -116,7 +118,7 @@ public static class SegmentBlobParser
     {
         var span = data.Span;
 
-        var offset = blob.VariableLengthDataOffset;
+        var offset = blob.Header.VariableLengthDataOffset;
 
         var store = new SegmentVariableLengthData
         {
@@ -188,35 +190,41 @@ public static class SegmentBlobParser
 
         // The payload is read as Xpress Huffman whatever the type says, so an unknown one has to stop here rather
         // than decompress into nonsense the way it would if the type were simply ignored
-        if (subLobType != SubLobType.CompressedValuePage)
+        if (subLobType != SubLobType.ValuePage)
         {
             throw new InvalidDataException($"Store by value page sub lob type {(int)subLobType} is not supported.");
         }
 
+        var compression = (byte)(span[offset + 0x04] & 0x0F);
+
+        // A page whose values do not compress is held raw, and carries no payload size to make room for
+        var headerSize = compression == SegmentValuePage.HuffmanCompression
+            ? SegmentValuePage.HeaderSize
+            : SegmentValuePage.RawHeaderSize;
+
         return new SegmentValuePage
         {
             SubLobType = subLobType,
-            Compression = (byte)(span[offset + 0x04] & 0x0F),
-            Flags = (byte)(span[offset + 0x04] >> 4),
+            PageFlags = span[offset + 0x04],
             Reserved05 = span[offset + 0x05],
             ValueSize = ReadInt16(span, offset + 0x06),
             ValueCount = ReadInt32(span, offset + 0x08),
-            PayloadSize = (ushort)ReadInt16(span, offset + 0x0C),
+            PayloadSize = headerSize == SegmentValuePage.HeaderSize ? (ushort)ReadInt16(span, offset + 0x0C) : (ushort)0,
             Offset = offset,
             Size = size,
-            Compressed = data.Slice(offset + SegmentValuePage.HeaderSize, size - SegmentValuePage.HeaderSize)
+            Compressed = data.Slice(offset + headerSize, size - headerSize)
         };
     }
 
     private static RleEntry[] ReadRleEntries(ReadOnlySpan<byte> span, SegmentBlob blob)
     {
-        var entries = new RleEntry[blob.RleEntryCount];
+        var entries = new RleEntry[blob.Header.RleEntryCount];
 
-        var wide = blob.RleEntryBytes > SegmentBlob.EntrySize;
+        var wide = blob.Header.RleEntryBytes > SegmentBlob.EntrySize;
 
         for (var i = 0; i < entries.Length; i++)
         {
-            var offset = blob.RleArrayOffset + (i * blob.RleEntryBytes);
+            var offset = blob.Header.RleArrayOffset + (i * blob.Header.RleEntryBytes);
 
             entries[i] = wide
                 ? new RleEntry(ReadInt64(span, offset), ReadInt32(span, offset + 8))
@@ -224,22 +232,6 @@ public static class SegmentBlobParser
         }
 
         return entries;
-    }
-
-    private static void MarkHeader(SegmentBlob blob)
-    {
-        blob.MarkProperty(nameof(SegmentBlob.Version), 0x00, 4);
-        blob.MarkProperty(nameof(SegmentBlob.LobType), 0x04, 4);
-        blob.MarkProperty(nameof(SegmentBlob.Reserved), 0x08, 4);
-        blob.MarkProperty(nameof(SegmentBlob.Unknown0C), 0x0C, 4);
-        blob.MarkProperty(nameof(SegmentBlob.StructureType), 0x10, 4);
-        blob.MarkProperty(nameof(SegmentBlob.BookmarkCount), 0x14, 4);
-        blob.MarkProperty(nameof(SegmentBlob.BookmarkDistance), 0x18, 4);
-        blob.MarkProperty(nameof(SegmentBlob.RleArrayCount), 0x1C, 4);
-        blob.MarkProperty(nameof(SegmentBlob.RleEntrySize), 0x20, 2);
-        blob.MarkProperty(nameof(SegmentBlob.BitpackEntrySize), 0x22, 2);
-        blob.MarkProperty(nameof(SegmentBlob.BitpackUnitCount), 0x24, 4);
-        blob.MarkProperty(nameof(SegmentBlob.BitpackMinId), 0x28, 8);
     }
 
     private static int ReadInt32(ReadOnlySpan<byte> span, int offset)

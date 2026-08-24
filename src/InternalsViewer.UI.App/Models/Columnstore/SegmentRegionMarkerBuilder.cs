@@ -23,7 +23,7 @@ public static class SegmentRegionMarkerBuilder
     public static List<Marker> Build(SegmentBlob blob, SegmentRegion region, int windowStart, int windowLength)
         => region switch
         {
-            SegmentRegion.Header => Windowed(MarkerBuilder.BuildMarkers(blob), windowStart, windowLength),
+            SegmentRegion.Header => Windowed(MarkerBuilder.BuildMarkers(blob.Header), windowStart, windowLength),
             SegmentRegion.Bookmarks => [.. BookmarkHeader(blob), .. BuildBookmarks(blob, windowStart, windowLength)],
             SegmentRegion.RleArray => [.. RleHeader(blob), .. BuildRleEntries(blob, windowStart, windowLength)],
             SegmentRegion.BitpackArray => [.. BitpackHeader(blob),
@@ -58,23 +58,23 @@ public static class SegmentRegionMarkerBuilder
     /// </remarks>
     private static IEnumerable<Marker> RleHeader(SegmentBlob blob)
     {
-        yield return ContextMarker("RLE Entry Count", ItemType.RleArrayCount, $"{blob.RleEntryCount}");
-        yield return ContextMarker("RLE Entry Size", ItemType.RleEntrySize, $"{blob.RleEntryBytes} bytes");
-        yield return ContextMarker("Lob Type", ItemType.SegmentStructureType, $"{blob.StructureType.ToString().SplitCamelCase()} ({(int)blob.StructureType})");
+        yield return ContextMarker("RLE Entry Count", ItemType.RleArrayCount, $"{blob.Header.RleEntryCount}");
+        yield return ContextMarker("RLE Entry Size", ItemType.RleEntrySize, $"{blob.Header.RleEntryBytes} bytes");
+        yield return ContextMarker("Lob Type", ItemType.SegmentStructureType, $"{blob.Header.StructureType.ToString().SplitCamelCase()} ({(int)blob.Header.StructureType})");
     }
 
     private static IEnumerable<Marker> BookmarkHeader(SegmentBlob blob)
     {
-        yield return ContextMarker("Bookmark Count", ItemType.BookmarkCount, $"{blob.BookmarkCount}");
-        yield return ContextMarker("Bookmark Distance", ItemType.BookmarkDistance, $"{blob.BookmarkDistance} rows");
+        yield return ContextMarker("Bookmark Count", ItemType.BookmarkCount, $"{blob.Header.BookmarkCount}");
+        yield return ContextMarker("Bookmark Distance", ItemType.BookmarkDistance, $"{blob.Header.BookmarkDistance} rows");
     }
 
     private static IEnumerable<Marker> BitpackHeader(SegmentBlob blob)
     {
-        yield return ContextMarker("Bit Pack Entry Size", ItemType.BitpackEntrySize, $"{blob.BitpackEntrySize} bits");
+        yield return ContextMarker("Bit Pack Entry Size", ItemType.BitpackEntrySize, $"{blob.Header.BitpackEntrySize} bits");
         yield return ContextMarker("Values Per Unit", ItemType.BitpackEntrySize, $"{blob.Bitpack.ValuesPerUnit}");
-        yield return ContextMarker("Bit Pack Unit Count", ItemType.BitpackUnitCount, $"{blob.BitpackUnitCount}");
-        yield return ContextMarker("Bit Pack Min Id", ItemType.BitpackMinId, $"{blob.BitpackMinId}");
+        yield return ContextMarker("Bit Pack Unit Count", ItemType.BitpackUnitCount, $"{blob.Header.BitpackUnitCount}");
+        yield return ContextMarker("Bit Pack Min Id", ItemType.BitpackMinId, $"{blob.Header.BitpackMinId}");
     }
 
     private static Marker ContextMarker(string name, ItemType type, string value)
@@ -91,15 +91,15 @@ public static class SegmentRegionMarkerBuilder
     {
         var markers = new List<Marker>();
 
-        var (first, last) = GetEntryRange(blob.BookmarkArrayOffset,
+        var (first, last) = GetEntryRange(blob.Header.BookmarkArrayOffset,
                                           SegmentBlob.EntrySize,
-                                          blob.BookmarkCount,
+                                          blob.Header.BookmarkCount,
                                           windowStart,
                                           windowLength);
 
         for (var i = first; i <= last; i++)
         {
-            var offset = blob.BookmarkArrayOffset + (i * SegmentBlob.EntrySize) - windowStart;
+            var offset = blob.Header.BookmarkArrayOffset + (i * SegmentBlob.EntrySize) - windowStart;
 
             var bookmark = blob.Bookmarks[i];
 
@@ -112,7 +112,7 @@ public static class SegmentRegionMarkerBuilder
                                          ItemType.BookmarkPosition,
                                          offset,
                                          4,
-                                         $"{bookmark.Position} (entry {bookmark.GetRleEntryIndex(blob.RleEntryBytes)})"),
+                                         $"{bookmark.Position} (entry {bookmark.GetRleEntryIndex(blob.Header.RleEntryBytes)})"),
                                   Create("End Row", ItemType.BookmarkEndRow, offset + 4, 4, $"{bookmark.EndRow}")
                               ]));
         }
@@ -124,19 +124,19 @@ public static class SegmentRegionMarkerBuilder
     {
         var markers = new List<Marker>();
 
-        var entryBytes = blob.RleEntryBytes;
+        var entryBytes = blob.Header.RleEntryBytes;
 
         var valueSize = entryBytes / 2;
 
-        var (first, last) = GetEntryRange(blob.RleArrayOffset,
+        var (first, last) = GetEntryRange(blob.Header.RleArrayOffset,
                                           entryBytes,
-                                          blob.RleEntryCount,
+                                          blob.Header.RleEntryCount,
                                           windowStart,
                                           windowLength);
 
         for (var i = first; i <= last; i++)
         {
-            var offset = blob.RleArrayOffset + (i * entryBytes) - windowStart;
+            var offset = blob.Header.RleArrayOffset + (i * entryBytes) - windowStart;
 
             var entry = blob.RleEntries[i];
 
@@ -174,15 +174,15 @@ public static class SegmentRegionMarkerBuilder
 
         var perUnit = blob.Bitpack.ValuesPerUnit;
 
-        var (first, last) = GetEntryRange(blob.BitpackArrayOffset,
+        var (first, last) = GetEntryRange(blob.Header.BitpackArrayOffset,
                                           BitpackArray.UnitBytes,
-                                          blob.BitpackUnitCount,
+                                          blob.Header.BitpackUnitCount,
                                           windowStart,
                                           windowLength);
 
         for (var i = first; i <= last; i++)
         {
-            var offset = blob.BitpackArrayOffset + (i * BitpackArray.UnitBytes) - windowStart;
+            var offset = blob.Header.BitpackArrayOffset + (i * BitpackArray.UnitBytes) - windowStart;
 
             markers.Add(Create($"Unit {i}",
                                ItemType.BitpackUnit,

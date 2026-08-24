@@ -1,5 +1,8 @@
 ﻿[*.cs]
 
+# Line width
+max_line_length = 140
+
 # Default severity for all analyzer diagnostics
 csharp_indent_labels = one_less_than_current
 csharp_space_around_binary_operators = before_and_after

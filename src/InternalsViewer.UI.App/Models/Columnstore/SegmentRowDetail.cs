@@ -52,7 +52,7 @@ public sealed class SegmentRowDetail(SegmentRowContext context, int ordinal) : I
 
     public ValueDerivation DataIdDerivation => field ??= BuildDataIdDerivation();
 
-    public ValueDerivation? ValueDerivation => field ??= context.DeriveValue(DataId);
+    public ValueDerivation? ValueDerivation => field ??= context.DeriveValue(Ordinal, DataId);
 
     public bool ShowDerivation => context.ShowDerivation;
 

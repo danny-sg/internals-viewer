@@ -73,7 +73,7 @@ public sealed partial class SegmentTabViewModel(ColumnstoreService columnstoreSe
     [NotifyPropertyChangedFor(nameof(StorageBadges))]
     private SegmentBlob? _blob;
 
-    public bool HasBookmarks => Blob is { BookmarkCount: > 0 };
+    public bool HasBookmarks => Blob is { Header.BookmarkCount: > 0 };
 
     /// <summary>
     /// How the column was compressed, which the metadata decides before the blob is ever read
@@ -353,13 +353,13 @@ public sealed partial class SegmentTabViewModel(ColumnstoreService columnstoreSe
 
             var unit = source.BitpackIndex / perUnit;
 
-            return (blob.BitpackArrayOffset + (unit * BitpackArray.UnitBytes),
+            return (blob.Header.BitpackArrayOffset + (unit * BitpackArray.UnitBytes),
                     BitpackArray.UnitBytes,
                     $"Bit Pack Unit {unit}");
         }
 
-        return (blob.RleArrayOffset + (source.EntryIndex * blob.RleEntryBytes),
-                blob.RleEntryBytes,
+        return (blob.Header.RleArrayOffset + (source.EntryIndex * blob.Header.RleEntryBytes),
+                blob.Header.RleEntryBytes,
                 $"RLE Entry {source.EntryIndex}");
     }
 
@@ -484,29 +484,42 @@ public sealed partial class SegmentTabViewModel(ColumnstoreService columnstoreSe
         SelectedValuePage = ValuePages.FirstOrDefault();
     }
 
-    private ValueDerivation? DeriveValue(long dataId)
+    /// <summary>
+    /// The working behind a row's value, which a wide store answers by ordinal rather than by data id
+    /// </summary>
+    private ValueDerivation? DeriveValue(int ordinal, long dataId)
+    {
+        if (Blob?.VariableLengthData is { IsWide: true } store)
+        {
+            return SegmentValueDerivation.BuildWide(Segment.Segment, store, ordinal);
+        }
+
+        return DeriveDataIdValue(dataId);
+    }
+
+    private ValueDerivation? DeriveDataIdValue(long dataId)
         => Decoder is { } decoder ? SegmentValueDerivation.Build(Segment.Segment, decoder, dataId) : null;
 
     private BitpackUnitDetail? GetBitpackUnit(Marker? marker)
     {
         if (Blob is not { } blob
-            || blob.IsStoreByValue
+            || blob.Header.IsStoreByValue
             || Region != SegmentRegion.BitpackArray
             || marker is not { StartPosition: >= 0 })
         {
             return null;
         }
 
-        var offset = Hex.HexBaseAddress + marker.StartPosition - blob.BitpackArrayOffset;
+        var offset = Hex.HexBaseAddress + marker.StartPosition - blob.Header.BitpackArrayOffset;
 
         var index = offset / BitpackArray.UnitBytes;
 
-        if (index < 0 || index >= blob.BitpackUnitCount)
+        if (index < 0 || index >= blob.Header.BitpackUnitCount)
         {
             return null;
         }
 
-        return BitpackUnitDetail.Build(blob, index, DeriveValue, IsDerivationVisible);
+        return BitpackUnitDetail.Build(blob, index, DeriveDataIdValue, IsDerivationVisible);
     }
 
     /// <summary>

@@ -17,5 +17,5 @@ public enum SubLobType
     /// <summary>
     /// Page of a store by value segment, holding its values under Xpress Huffman
     /// </summary>
-    CompressedValuePage = 9
+    ValuePage = 9
 }

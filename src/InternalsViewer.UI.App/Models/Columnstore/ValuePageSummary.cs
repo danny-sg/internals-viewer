@@ -23,6 +23,8 @@ public sealed class ValuePageSummary
 
     public int ValueSize => Page.ValueSize;
 
+    public bool IsCompressed => Page.IsCompressed;
+
     public string OffsetDescription => $"0x{Offset:X}";
 
     /// <summary>
@@ -40,7 +42,12 @@ public sealed class ValueDetail(SegmentValuePage page, int index) : IEquatable<V
 {
     public int Index { get; } = index;
 
-    public long Raw => page.GetRawValue(Index);
+    /// <summary>
+    /// Whether the value is too wide to be an integer, in which case it is the bytes rather than a number
+    /// </summary>
+    public bool IsWide => page.IsWide;
+
+    public long Raw => IsWide ? 0 : page.GetRawValue(Index);
 
     /// <summary>
     /// The value the low reserved bit has been taken off, which is what the segment reads back
@@ -48,17 +55,27 @@ public sealed class ValueDetail(SegmentValuePage page, int index) : IEquatable<V
     public long Value => Raw >> SegmentVariableLengthData.ReservedBits;
 
     /// <summary>
+    /// What the page holds for the value, a wide one having no integer form to show
+    /// </summary>
+    public string StoredDescription
+        => page.IsVariableWidth
+            ? "[Variable Width]"
+            : IsWide ? $"0x{Convert.ToHexString(page.GetValueBytes(Index).Span)}" : $"{Raw}";
+
+    /// <summary>
     /// Working from the stored integer to the value, the low bit being reserved rather than part of it
     /// </summary>
-    public ValueDerivation Derivation => new()
-    {
-        Steps =
-        [
-            new DerivationStep { Name = "Stored", Value = $"{Raw}" },
-            new DerivationStep { Operator = ">>", Name = "Reserved Bits", Value = $"{SegmentVariableLengthData.ReservedBits}" }
-        ],
-        Result = $"{Value}"
-    };
+    public ValueDerivation Derivation => IsWide
+        ? new ValueDerivation { Steps = [], Result = StoredDescription }
+        : new ValueDerivation
+        {
+            Steps =
+            [
+                new DerivationStep { Name = "Stored", Value = $"{Raw}" },
+                new DerivationStep { Operator = ">>", Name = "Reserved Bits", Value = $"{SegmentVariableLengthData.ReservedBits}" }
+            ],
+            Result = $"{Value}"
+        };
 
     public bool Equals(ValueDetail? other) => other is not null && other.Index == Index;
 

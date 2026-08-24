@@ -57,14 +57,14 @@ public sealed class StoreByValueBookmarkProbeTests(ITestOutputHelper testOutput)
                         continue;
                     }
 
-                    if (blob.StructureType != SegmentStructureType.StoreByValue)
+                    if (blob.Header.StructureType != SegmentStructureType.StoreByValue)
                     {
                         continue;
                     }
 
                     lines.Add($"{index.TableName} rg{rowGroup.RowGroupId} col{segment.Key.ColumnId} "
-                              + $"rows {segment.RowCount} bookmarkCount {blob.BookmarkCount} "
-                              + $"bookmarkDistance {blob.BookmarkDistance}");
+                              + $"rows {segment.RowCount} bookmarkCount {blob.Header.BookmarkCount} "
+                              + $"bookmarkDistance {blob.Header.BookmarkDistance}");
 
                     if (blob.VariableLengthData is { } store)
                     {
@@ -80,11 +80,11 @@ public sealed class StoreByValueBookmarkProbeTests(ITestOutputHelper testOutput)
                     lines.Add($"    bookmarks read {blob.Bookmarks.Length} distinct {distinct.Count} "
                               + $"| {string.Join(" ", distinct.Take(6).Select(b => $"({b.Position},{b.EndRow})"))}");
 
-                    var start = blob.BookmarkArrayOffset;
+                    var start = blob.Header.BookmarkArrayOffset;
 
                     var length = Math.Min(48, blob.Data.Length - start);
 
-                    lines.Add($"    prologue {blob.PrologueSize} bookmarkOffset {start} "
+                    lines.Add($"    prologue {blob.Header.PrologueSize} bookmarkOffset {start} "
                               + $"raw {Convert.ToHexString(blob.Data.Span.Slice(start, length))}");
 
                     lines.Add($"    header raw {Convert.ToHexString(blob.Data.Span[..56])}");

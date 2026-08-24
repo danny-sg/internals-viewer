@@ -14,25 +14,25 @@ public static class SegmentRegions
 {
     public static int GetOffset(SegmentBlob blob, SegmentRegion region) => region switch
     {
-        SegmentRegion.Bookmarks => blob.BookmarkArrayOffset,
-        SegmentRegion.RleArray => blob.IsStoreByValue ? blob.VariableLengthDataOffset : blob.RleArrayOffset,
-        SegmentRegion.BitpackArray => blob.IsStoreByValue ? blob.VariableLengthDataOffset : blob.BitpackArrayOffset,
-        SegmentRegion.VariableLengthData => blob.VariableLengthDataOffset,
+        SegmentRegion.Bookmarks => blob.Header.BookmarkArrayOffset,
+        SegmentRegion.RleArray => blob.Header.IsStoreByValue ? blob.Header.VariableLengthDataOffset : blob.Header.RleArrayOffset,
+        SegmentRegion.BitpackArray => blob.Header.IsStoreByValue ? blob.Header.VariableLengthDataOffset : blob.Header.BitpackArrayOffset,
+        SegmentRegion.VariableLengthData => blob.Header.VariableLengthDataOffset,
         _ => 0
     };
 
     public static SegmentRegion GetRegion(SegmentBlob blob, int offset)
     {
-        if (blob.IsStoreByValue)
+        if (blob.Header.IsStoreByValue)
         {
-            return offset >= blob.VariableLengthDataOffset ? SegmentRegion.VariableLengthData
-                 : offset >= blob.BookmarkArrayOffset ? SegmentRegion.Bookmarks
+            return offset >= blob.Header.VariableLengthDataOffset ? SegmentRegion.VariableLengthData
+                 : offset >= blob.Header.BookmarkArrayOffset ? SegmentRegion.Bookmarks
                  : SegmentRegion.Header;
         }
 
-        return offset >= blob.BitpackArrayOffset ? SegmentRegion.BitpackArray
-             : offset >= blob.RleArrayOffset ? SegmentRegion.RleArray
-             : offset >= blob.BookmarkArrayOffset ? SegmentRegion.Bookmarks
+        return offset >= blob.Header.BitpackArrayOffset ? SegmentRegion.BitpackArray
+             : offset >= blob.Header.RleArrayOffset ? SegmentRegion.RleArray
+             : offset >= blob.Header.BookmarkArrayOffset ? SegmentRegion.Bookmarks
              : SegmentRegion.Header;
     }
 }

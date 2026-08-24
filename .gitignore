@@ -205,3 +205,6 @@ docs/internalsviewer.com/.vitepress/cache/deps/vitepress___@vueuse_core.js
 docs/internalsviewer.com/.vitepress/cache/deps/vue.js
 /docs/internalsviewer.com/.vitepress/dist
 /src/NDependOut*
+
+# Claude Code personal settings
+.claude/settings.local.json

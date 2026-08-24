@@ -60,7 +60,7 @@ public sealed class BitpackUnitDetail
         return new BitpackUnitDetail
         {
             UnitIndex = unitIndex,
-            Offset = blob.BitpackArrayOffset + (unitIndex * BitpackArray.UnitBytes),
+            Offset = blob.Header.BitpackArrayOffset + (unitIndex * BitpackArray.UnitBytes),
             Bits = ReadUnit(blob, unitIndex),
             EntrySizeBits = array.EntrySizeBits,
             PaddingBits = BitpackArray.UnitBits - (perUnit * array.EntrySizeBits),

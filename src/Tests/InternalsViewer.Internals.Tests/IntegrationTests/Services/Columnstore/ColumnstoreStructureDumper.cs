@@ -101,45 +101,45 @@ internal static class ColumnstoreStructureDumper
 
         builder.AppendLine();
         builder.AppendLine("Header");
-        builder.AppendLine($"  +0x00 Version              {blob.Version}");
-        builder.AppendLine($"  +0x04 LobType              {blob.LobType} ({(int)blob.LobType})");
-        builder.AppendLine($"  +0x08 Reserved             {blob.Reserved}");
-        builder.AppendLine($"  +0x0C Unknown              {blob.Unknown0C} (0x{blob.Unknown0C:X})");
-        builder.AppendLine($"  +0x10 StructureType        {blob.StructureType} ({(int)blob.StructureType})");
-        builder.AppendLine($"  +0x14 BookmarkCount        {blob.BookmarkCount}");
-        builder.AppendLine($"  +0x18 BookmarkDistance     {blob.BookmarkDistance}");
-        builder.AppendLine($"  +0x1C RleArrayCount        {blob.RleArrayCount}");
-        builder.AppendLine($"  +0x20 RleEntrySize         {blob.RleEntrySize}");
-        builder.AppendLine($"  +0x22 BitpackEntrySize     {blob.BitpackEntrySize} bits, "
+        builder.AppendLine($"  +0x00 Version              {blob.Header.Version}");
+        builder.AppendLine($"  +0x04 LobType              {blob.Header.LobType} ({(int)blob.Header.LobType})");
+        builder.AppendLine($"  +0x08 Reserved             {blob.Header.Reserved}");
+        builder.AppendLine($"  +0x0C Unknown              {blob.Header.Unknown0C} (0x{blob.Header.Unknown0C:X})");
+        builder.AppendLine($"  +0x10 StructureType        {blob.Header.StructureType} ({(int)blob.Header.StructureType})");
+        builder.AppendLine($"  +0x14 BookmarkCount        {blob.Header.BookmarkCount}");
+        builder.AppendLine($"  +0x18 BookmarkDistance     {blob.Header.BookmarkDistance}");
+        builder.AppendLine($"  +0x1C RleArrayCount        {blob.Header.RleArrayCount}");
+        builder.AppendLine($"  +0x20 RleEntrySize         {blob.Header.RleEntrySize}");
+        builder.AppendLine($"  +0x22 BitpackEntrySize     {blob.Header.BitpackEntrySize} bits, "
                            + $"{blob.Bitpack.ValuesPerUnit} per 64 bit unit");
-        builder.AppendLine($"  +0x24 BitpackUnitCount     {blob.BitpackUnitCount:N0}");
-        builder.AppendLine($"  +0x28 BitpackMinId         {blob.BitpackMinId}");
+        builder.AppendLine($"  +0x24 BitpackUnitCount     {blob.Header.BitpackUnitCount:N0}");
+        builder.AppendLine($"  +0x28 BitpackMinId         {blob.Header.BitpackMinId}");
 
         builder.AppendLine();
-        builder.AppendLine($"Layout   header 0..48   bookmarks {blob.BookmarkArrayOffset:N0}..{blob.RleArrayOffset:N0}   "
-                           + $"rle {blob.RleArrayOffset:N0}..{blob.BitpackArrayOffset:N0}   "
-                           + $"bitpack {blob.BitpackArrayOffset:N0}..{blob.ExpectedSize:N0}");
+        builder.AppendLine($"Layout   header 0..48   bookmarks {blob.Header.BookmarkArrayOffset:N0}..{blob.Header.RleArrayOffset:N0}   "
+                           + $"rle {blob.Header.RleArrayOffset:N0}..{blob.Header.BitpackArrayOffset:N0}   "
+                           + $"bitpack {blob.Header.BitpackArrayOffset:N0}..{blob.Header.ExpectedSize:N0}");
 
         builder.AppendLine($"Rows     {blob.RowCount:N0} total, {blob.BitpackRowCount:N0} bit packed, "
                            + $"{blob.LiteralRunCount:N0} literal runs");
 
         builder.AppendLine();
-        builder.AppendLine($"RLE Array ({blob.RleEntryCount} entries of {blob.RleEntryBytes} bytes)");
+        builder.AppendLine($"RLE Array ({blob.Header.RleEntryCount} entries of {blob.Header.RleEntryBytes} bytes)");
 
-        AppendSample(builder, blob.RleEntryCount, i => FormatRleEntry(blob, i));
+        AppendSample(builder, blob.Header.RleEntryCount, i => FormatRleEntry(blob, i));
 
         builder.AppendLine();
-        builder.AppendLine($"Bookmark Array ({blob.BookmarkCount} entries, every {blob.BookmarkDistance:N0} rows)");
+        builder.AppendLine($"Bookmark Array ({blob.Header.BookmarkCount} entries, every {blob.Header.BookmarkDistance:N0} rows)");
 
         AppendSample(builder,
-                     blob.BookmarkCount,
-                     i => $"  [{i,6}] rle entry {blob.Bookmarks[i].GetRleEntryIndex(blob.RleEntryBytes),8}   "
+                     blob.Header.BookmarkCount,
+                     i => $"  [{i,6}] rle entry {blob.Bookmarks[i].GetRleEntryIndex(blob.Header.RleEntryBytes),8}   "
                           + $"end row {blob.Bookmarks[i].EndRow,12:N0}");
 
-        if (blob.BitpackUnitCount > 0)
+        if (blob.Header.BitpackUnitCount > 0)
         {
             builder.AppendLine();
-            builder.AppendLine($"Bit Pack Array ({blob.Bitpack.Count:N0} values at {blob.BitpackEntrySize} bits)");
+            builder.AppendLine($"Bit Pack Array ({blob.Bitpack.Count:N0} values at {blob.Header.BitpackEntrySize} bits)");
 
             AppendSample(builder, blob.Bitpack.Count, i => FormatBitpackValue(blob, i));
         }
@@ -232,7 +232,7 @@ internal static class ColumnstoreStructureDumper
         var span = blob.Bitpack.GetSpan(index);
 
         return $"  [{index,6}] {blob.Bitpack[index],22}   bit {span.BitOffset,12:N0} len {span.BitLength,3}   "
-               + $"bytes {blob.BitpackArrayOffset + span.ByteOffset,10:N0}+{span.ByteLength}";
+               + $"bytes {blob.Header.BitpackArrayOffset + span.ByteOffset,10:N0}+{span.ByteLength}";
     }
 
     private static string FormatHuffmanPage(StringPage page)

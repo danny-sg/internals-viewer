@@ -1,4 +1,4 @@
-using Microsoft.Data.SqlClient;
+﻿using Microsoft.Data.SqlClient;
 using InternalsViewer.Internals.Columnstore.Dictionaries;
 using InternalsViewer.Internals.Tests.Helpers;
 using InternalsViewer.Internals.Columnstore.Services;

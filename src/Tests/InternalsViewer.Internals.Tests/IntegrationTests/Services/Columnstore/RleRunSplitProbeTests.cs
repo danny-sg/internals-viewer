@@ -52,7 +52,7 @@ public sealed class RleRunSplitProbeTests(ITestOutputHelper testOutput) : Provid
 
             var packed = entries.Where(e => e.IsBitpacked).ToList();
 
-            var width = blob.BitpackEntrySize;
+            var width = blob.Header.BitpackEntrySize;
 
             var breakEven = width > 0 ? 64.0 / width : 0;
 
@@ -75,8 +75,8 @@ public sealed class RleRunSplitProbeTests(ITestOutputHelper testOutput) : Provid
 
             var perUnit = blob.Bitpack.ValuesPerUnit;
 
-            lines.Add($"  units {blob.BitpackUnitCount} perUnit {perUnit} "
-                      + $"derivedValues {blob.Bitpack.ValuesPerUnit * blob.BitpackUnitCount} packedRows {packed.Sum(e => (long)e.Count)}");
+            lines.Add($"  units {blob.Header.BitpackUnitCount} perUnit {perUnit} "
+                      + $"derivedValues {blob.Bitpack.ValuesPerUnit * blob.Header.BitpackUnitCount} packedRows {packed.Sum(e => (long)e.Count)}");
 
             if (perUnit > 0 && packed.Count > 0)
             {

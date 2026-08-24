@@ -3,8 +3,11 @@
 namespace InternalsViewer.Internals.Columnstore.Segments;
 
 /// <summary>
-/// Fixed width values packed into sixty four bit units, filled from the least significant bit upward
+/// Fixed width values packed into sixty four bit Units
 /// </summary>
+/// <remarks>
+/// Filled from the least significant bit upward
+/// </remarks>
 public readonly struct BitpackArray(ReadOnlyMemory<byte> data, int entrySizeBits, int unitCount, long minId)
 {
     public const int UnitBits = 64;

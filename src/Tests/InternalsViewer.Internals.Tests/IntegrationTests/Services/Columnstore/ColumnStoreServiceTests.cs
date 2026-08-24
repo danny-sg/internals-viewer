@@ -150,9 +150,9 @@ public sealed class ColumnstoreServiceTests(ITestOutputHelper testOutput) : Prov
         {
             var blob = await service.GetSegmentBlob(database, segment, CancellationToken.None);
 
-            Assert.Equal(segment.OnDiskSize, blob.ExpectedSize);
+            Assert.Equal(segment.OnDiskSize, blob.Header.ExpectedSize);
             Assert.Equal(segment.RowCount, blob.RowCount);
-            Assert.Equal(1, blob.Version);
+            Assert.Equal(1, blob.Header.Version);
 
             var stream = new SegmentDataIdStream(blob);
 

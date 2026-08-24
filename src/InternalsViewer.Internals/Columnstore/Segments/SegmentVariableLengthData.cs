@@ -55,6 +55,21 @@ public sealed class SegmentVariableLengthData : DataStructure
         PageSizeArray.Mark();
     }
 
+    /// <summary>
+    /// Whether the values are wider than an integer, which the numeric encodings have no way to carry
+    /// </summary>
+    public bool IsWide => Pages.Length > 0 && Pages[0].IsWide;
+
+    /// <summary>
+    /// Value as stored, for a width the integer path cannot take
+    /// </summary>
+    public ReadOnlyMemory<byte> GetValueBytes(int ordinal)
+    {
+        var (page, index) = Locate(ordinal);
+
+        return Pages[page].GetValueBytes(index);
+    }
+
     public long GetRawValue(int ordinal)
     {
         var (page, index) = Locate(ordinal);

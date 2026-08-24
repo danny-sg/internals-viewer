@@ -26,7 +26,10 @@ public sealed class SegmentDataIdStream(SegmentBlob blob)
 
         if (Blob.VariableLengthData is { } store)
         {
-            return new SegmentDataIdSource(store.GetValue(rowOrdinal), SegmentValueOrigin.VariableLengthData, -1, -1);
+            // A wide value is the value rather than an id, so there is no number to report for it
+            var dataId = store.IsWide ? 0 : store.GetValue(rowOrdinal);
+
+            return new SegmentDataIdSource(dataId, SegmentValueOrigin.VariableLengthData, -1, -1);
         }
 
         var (entryIndex, endRow) = Seek(rowOrdinal);
@@ -50,7 +53,7 @@ public sealed class SegmentDataIdStream(SegmentBlob blob)
     {
         if (Blob.VariableLengthData is not null)
         {
-            return BitSpan.FromBytes(Blob.VariableLengthDataOffset, Blob.Data.Length - Blob.VariableLengthDataOffset);
+            return BitSpan.FromBytes(Blob.Header.VariableLengthDataOffset, Blob.Data.Length - Blob.Header.VariableLengthDataOffset);
         }
 
         var (entryIndex, endRow) = Seek(rowOrdinal);
@@ -59,12 +62,12 @@ public sealed class SegmentDataIdStream(SegmentBlob blob)
 
         if (!entry.IsBitpacked)
         {
-            return BitSpan.FromBytes(Blob.RleArrayOffset + (entryIndex * Blob.RleEntryBytes), Blob.RleEntryBytes / 2);
+            return BitSpan.FromBytes(Blob.Header.RleArrayOffset + (entryIndex * Blob.Header.RleEntryBytes), Blob.Header.RleEntryBytes / 2);
         }
 
         var span = Blob.Bitpack.GetSpan(entry.BitpackIndex + (rowOrdinal - (endRow - entry.Count)));
 
-        return span with { BitOffset = (Blob.BitpackArrayOffset * 8) + span.BitOffset };
+        return span with { BitOffset = (Blob.Header.BitpackArrayOffset * 8) + span.BitOffset };
     }
 
     public IEnumerable<long> ReadAll()
@@ -111,11 +114,11 @@ public sealed class SegmentDataIdStream(SegmentBlob blob)
 
         int endRow;
 
-        if (bookmarks.Length > 0 && Blob.BookmarkDistance > 0)
+        if (bookmarks.Length > 0 && Blob.Header.BookmarkDistance > 0)
         {
-            var bookmark = bookmarks[Math.Min(rowOrdinal / Blob.BookmarkDistance, bookmarks.Length - 1)];
+            var bookmark = bookmarks[Math.Min(rowOrdinal / Blob.Header.BookmarkDistance, bookmarks.Length - 1)];
 
-            entryIndex = bookmark.GetRleEntryIndex(Blob.RleEntryBytes);
+            entryIndex = bookmark.GetRleEntryIndex(Blob.Header.RleEntryBytes);
 
             endRow = bookmark.EndRow;
         }

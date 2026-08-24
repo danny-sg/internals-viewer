@@ -54,9 +54,6 @@ public sealed partial class DictionarySummary : ObservableObject
     public string DataPointerDescription
         => HasDataPointer ? $"({DataPage.FileId}:{DataPage.PageId}:{DataSlot})" : string.Empty;
 
-    /// <summary>
-    /// Pages the dictionary holds, which arrives with the header read rather than with the metadata
-    /// </summary>
     [ObservableProperty]
     private int _pageCount;
 }

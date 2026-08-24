@@ -3,7 +3,7 @@
 ## General
 - Target `.NET 10` and use the language version configured by the project.
 - Always use braces for control blocks (`if`, `for`, `foreach`, `while`, `switch` cases with blocks).
-- Keep lines at 110 characters or less.
+- Keep lines at 140 characters or less.
 - Prefer properties over fields.
 - Prefer private properties over private fields.
 - Prefer primary constructors for classes/records when they improve clarity.
@@ -22,11 +22,18 @@
 
 ## Structure
 Order members as:
-1. Properties/private class variables
-2. Constructors
-3. Public methods
-4. Protected methods
-5. Private methods
+1. Constants and `static readonly` fields
+2. Properties (use private properties in place of private fields)
+3. Constructors
+4. Public methods
+5. Protected methods
+6. Private methods
+
+Static members are not a separate group. A static member belongs to the group its accessibility puts it in,
+alongside the instance members of the same visibility - a `private static` helper sits with the other private
+methods, not above the constructor. SA1204 is disabled for this reason.
+
+Where a group mixes accessibility, order it most accessible first (`public`, `internal`, `private`).
 
 ## Types and Performance
 - Performance and memory efficiency are critical.

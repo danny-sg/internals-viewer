@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using InternalsViewer.Internals.Columnstore.Decoding;
 using InternalsViewer.Internals.Columnstore.Metadata;
+using InternalsViewer.Internals.Columnstore.Segments;
 
 namespace InternalsViewer.UI.App.Models.Columnstore;
 
@@ -10,6 +11,25 @@ namespace InternalsViewer.UI.App.Models.Columnstore;
 /// </summary>
 public static class SegmentValueDerivation
 {
+    /// <summary>
+    /// The working for a value too wide to be a data id, which is the stored bytes read against the column
+    /// </summary>
+    public static ValueDerivation BuildWide(ColumnSegment segment, SegmentVariableLengthData store, int ordinal)
+    {
+        var bytes = store.GetValueBytes(ordinal);
+
+        if (bytes.IsEmpty)
+        {
+            return new ValueDerivation { Steps = [], Result = "[Variable Width]" };
+        }
+
+        return new ValueDerivation
+        {
+            Steps = [new DerivationStep { Name = "Stored", Value = $"0x{Convert.ToHexString(bytes.Span)}" }],
+            Result = $"{ColumnstoreValueConverter.Convert(bytes.ToArray(), segment.Column?.Structure)}"
+        };
+    }
+
     public static ValueDerivation Build(ColumnSegment segment, SegmentValueDecoder decoder, long dataId)
     {
         var result = Describe(decoder.Decode(dataId), segment);

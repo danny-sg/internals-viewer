@@ -305,19 +305,29 @@
                      SelectedIndex="{x:Bind ViewModel.SelectedRegionTabIndex, Mode=TwoWay}"
                      SelectionChanged="TabView_OnSelectionChanged">
                     <TabViewItem Header="Header" IsClosable="False" Tag="Header"/>
-                    <TabViewItem Header="Bookmarks" IsClosable="False" Tag="Bookmarks"
-                             Visibility="{x:Bind ViewModel.HasBookmarks, Mode=OneWay,
-                                     Converter={StaticResource BoolToVisibilityConverter}}"/>
-                    <TabViewItem Header="RLE Array" IsClosable="False" Tag="RleArray"
-                             Visibility="{x:Bind ViewModel.HasRleArray, Mode=OneWay,
-                                     Converter={StaticResource BoolToVisibilityConverter}}"/>
-                    <TabViewItem Header="Bit Pack" IsClosable="False" Tag="BitpackArray"
-                             Visibility="{x:Bind ViewModel.HasBitpackArray, Mode=OneWay,
-                                     Converter={StaticResource BoolToVisibilityConverter}}"/>
-                    <TabViewItem Header="Variable Length Data" IsClosable="False" Tag="VariableLengthData"
-                             Visibility="{x:Bind ViewModel.HasVariableLengthData, Mode=OneWay,
-                                     Converter={StaticResource BoolToVisibilityConverter}}"/>
-                    <TabViewItem Header="Data" IsClosable="False" Tag="Data"/>
+                    <TabViewItem Header="Bookmarks" 
+                                 IsClosable="False"
+                                 Tag="Bookmarks"
+                                 Visibility="{x:Bind ViewModel.HasBookmarks, Mode=OneWay,
+                                               Converter={StaticResource BoolToVisibilityConverter}}"/>
+                    <TabViewItem Header="RLE Array"
+                                 IsClosable="False" 
+                                 Tag="RleArray"
+                                 Visibility="{x:Bind ViewModel.HasRleArray, Mode=OneWay,
+                                               Converter={StaticResource BoolToVisibilityConverter}}"/>
+                    <TabViewItem Header="Bit Pack" 
+                                 IsClosable="False" 
+                                 Tag="BitpackArray"
+                                 Visibility="{x:Bind ViewModel.HasBitpackArray, Mode=OneWay,
+                                               Converter={StaticResource BoolToVisibilityConverter}}"/>
+                    <TabViewItem Header="Variable Length Data" 
+                                 IsClosable="False"
+                                 Tag="VariableLengthData"
+                                 Visibility="{x:Bind ViewModel.HasVariableLengthData, Mode=OneWay,
+                                               Converter={StaticResource BoolToVisibilityConverter}}"/>
+                    <TabViewItem Header="Data" 
+                                 IsClosable="False" 
+                                 Tag="Data"/>
                 </TabView>
 
                 <Grid Grid.Row="1">
@@ -399,6 +409,25 @@
                                                                Width="90"
                                                                Binding="{Binding ValueSize}"
                                                                CellStyle="{StaticResource TableViewCellRightStyle}"/>
+                                <tableView:TableViewTemplateColumn Header="Compressed" Width="110" CanSort="False">
+                                    <tableView:TableViewTemplateColumn.CellTemplate>
+                                        <DataTemplate x:DataType="models:ValuePageSummary">
+                                            <Grid HorizontalAlignment="Center">
+                                                <FontIcon Glyph="&#xE73E;"
+                                                          FontSize="12"
+                                                          Foreground="{ThemeResource SystemFillColorSuccessBrush}"
+                                                          Visibility="{x:Bind IsCompressed,
+                                                                              Converter={StaticResource BoolToVisibilityConverter}}"/>
+                                                <FontIcon Glyph="&#xE711;"
+                                                          FontSize="12"
+                                                          Foreground="{ThemeResource SystemFillColorCriticalBrush}"
+                                                          Visibility="{x:Bind IsCompressed,
+                                                                              Converter={StaticResource BoolToVisibilityConverter},
+                                                                              ConverterParameter=True}"/>
+                                            </Grid>
+                                        </DataTemplate>
+                                    </tableView:TableViewTemplateColumn.CellTemplate>
+                                </tableView:TableViewTemplateColumn>
                                 <tableView:TableViewTextColumn Header="Offset" 
                                                                Width="90"
                                                                Binding="{Binding OffsetDescription}"
@@ -427,7 +456,7 @@
                                  SelectedIndex="{x:Bind ViewModel.SelectedVariableLengthDataTabIndex, Mode=TwoWay}"
                                  SelectionChanged="VariableLengthDataTabs_OnSelectionChanged">
                                 <TabViewItem Header="Variable Length Data Header" IsClosable="False" Tag="StoreHeader"/>
-                                <TabViewItem Header="Page" IsClosable="False"/>
+                                <TabViewItem Header="Page Header" IsClosable="False"/>
                                 <TabViewItem Header="Decode" IsClosable="False" Tag="Decode"/>
                             </TabView>
 

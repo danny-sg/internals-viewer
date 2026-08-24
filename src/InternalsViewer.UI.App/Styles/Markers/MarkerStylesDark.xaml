@@ -262,8 +262,7 @@
     <models:MarkStyle x:Key="PageSizeArrayElementCountMarkerStyle" ForeColour="#FFCC80" BackColour="#3E2205" Name="Element Count" Ordinal="307"/>
     <models:MarkStyle x:Key="PageSizeArrayDataMarkerStyle" ForeColour="#B39DDB" BackColour="#2A1A5E" Name="Page Size" Ordinal="308"/>
     <models:MarkStyle x:Key="ValuePageSubLobTypeMarkerStyle" ForeColour="#F48FB1" BackColour="#3D0A22" Name="Sub Lob Type" Ordinal="307"/>
-    <models:MarkStyle x:Key="ValuePageCompressionMarkerStyle" ForeColour="#CE93D8" BackColour="#2E1437" Name="Compression" Ordinal="308"/>
-    <models:MarkStyle x:Key="ValuePageFlagsMarkerStyle" ForeColour="#FFE082" BackColour="#3E3005" Name="Flags" Ordinal="308"/>
+    <models:MarkStyle x:Key="ValuePageFlagsMarkerStyle" ForeColour="#FFE082" BackColour="#3E3005" Name="Page Flags" Ordinal="308"/>
     <models:MarkStyle x:Key="ValuePageReservedMarkerStyle" ForeColour="#B0BEC5" BackColour="#1C2A30" Name="Reserved" Ordinal="308"/>
     <models:MarkStyle x:Key="ValuePageValueSizeMarkerStyle" ForeColour="#90CAF9" BackColour="#0A2A52" Name="Value Size" Ordinal="309"/>
     <models:MarkStyle x:Key="ValuePageValueCountMarkerStyle" ForeColour="#80CBC4" BackColour="#00332E" Name="Value Count" Ordinal="310"/>

@@ -79,7 +79,6 @@ public enum ItemType
     PageSizeArrayElementCount,
     PageSizeArrayData,
     ValuePageSubLobType,
-    ValuePageCompression,
     ValuePageFlags,
     ValuePageReserved,
     ValuePageValueSize,

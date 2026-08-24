@@ -9,12 +9,12 @@ namespace InternalsViewer.UI.App.Models.Columnstore;
 /// </summary>
 public sealed class SegmentRowContext(SegmentBlob blob,
                                       SegmentDataIdStream dataIds,
-                                      Func<long, ValueDerivation?> deriveValue,
+                                      Func<int, long, ValueDerivation?> deriveValue,
                                       bool showDerivation)
 {
     public SegmentDataIdStream DataIds { get; } = dataIds;
 
-    public long MinId { get; } = blob.BitpackMinId;
+    public long MinId { get; } = blob.Header.BitpackMinId;
 
     /// <summary>
     /// The unit the packed value sits in, a unit being what the bit pack region is marked and navigated by
@@ -28,7 +28,7 @@ public sealed class SegmentRowContext(SegmentBlob blob,
             return null;
         }
 
-        var offset = blob.BitpackArrayOffset + (bitpackIndex / perUnit * BitpackArray.UnitBytes);
+        var offset = blob.Header.BitpackArrayOffset + (bitpackIndex / perUnit * BitpackArray.UnitBytes);
 
         return new SegmentNavigationTarget(SegmentRegion.BitpackArray, offset);
     }
@@ -37,9 +37,9 @@ public sealed class SegmentRowContext(SegmentBlob blob,
         => entryIndex < 0
             ? null
             : new SegmentNavigationTarget(SegmentRegion.RleArray,
-                blob.RleArrayOffset + (entryIndex * blob.RleEntryBytes));
+                blob.Header.RleArrayOffset + (entryIndex * blob.Header.RleEntryBytes));
 
-    public Func<long, ValueDerivation?> DeriveValue { get; } = deriveValue;
+    public Func<int, long, ValueDerivation?> DeriveValue { get; } = deriveValue;
 
     /// <summary>
     /// Carried on the context rather than bound from the view, a cell template only reaching its own row

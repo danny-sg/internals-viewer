@@ -147,7 +147,10 @@ public static class DateTimeConverters
         var offsetTime = default(DateTime).AddMinutes(Math.Abs(time));
         var sign = time >= 0 ? "+" : "-";
 
-        return $"{returnDate:yyyy-MM-dd HH:mm:ss.fffffff} {sign}{offsetTime:HH:mm}";
+        // The date and time are held as UTC, so the offset has to be applied rather than only labelled
+        var localDate = returnDate.AddMinutes(time);
+
+        return $"{localDate:yyyy-MM-dd HH:mm:ss.fffffff} {sign}{offsetTime:HH:mm}";
     }
 
     /// <summary>

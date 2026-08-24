@@ -42,7 +42,7 @@ public static class ArchiveBlobExpander
 
         if (blocks.Count == 1)
         {
-            return decoder.Decode(data[blocks[0].Offset..], blocks[0].Header.UncompressedSize);
+            return Read(decoder, data, blocks[0].Offset, blocks[0].Header);
         }
 
         var expanded = new byte[total];
@@ -51,7 +51,7 @@ public static class ArchiveBlobExpander
 
         foreach (var (payload, header) in blocks)
         {
-            var block = decoder.Decode(data.Slice(payload, header.CompressedSize), header.UncompressedSize);
+            var block = Read(decoder, data, payload, header);
 
             block.Span.CopyTo(expanded.AsSpan(written));
 
@@ -60,4 +60,19 @@ public static class ArchiveBlobExpander
 
         return expanded;
     }
+
+    /// <summary>
+    /// Expands one block, a block that did not compress being held as it is rather than as a payload
+    /// </summary>
+    /// <remarks>
+    /// The sizes matching is what says so, seen on a uniqueidentifier column whose values leave Huffman nothing
+    /// to find - four of its five blocks are stored raw.
+    /// </remarks>
+    private static ReadOnlyMemory<byte> Read(XpressHuffmanDecoder decoder,
+                                             ReadOnlyMemory<byte> data,
+                                             int offset,
+                                             ArchiveBlobHeader header)
+        => header.UncompressedSize == header.CompressedSize
+            ? data.Slice(offset, header.CompressedSize)
+            : decoder.Decode(data.Slice(offset, header.CompressedSize), header.UncompressedSize);
 }

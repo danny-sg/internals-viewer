@@ -22,24 +22,24 @@ public static class SegmentElementBuilder
             {
                 Name = HeaderGroup,
                 Offset = 0,
-                Size = blob.PrologueSize
+                Size = blob.Header.PrologueSize
             }
         };
 
         elements.Add(new SegmentElement
         {
             Name = "Bookmark Array",
-            Offset = blob.BookmarkArrayOffset,
-            Size = blob.BookmarkCount * SegmentBlob.EntrySize
+            Offset = blob.Header.BookmarkArrayOffset,
+            Size = blob.Header.BookmarkCount * SegmentBlob.EntrySize
         });
 
-        if (blob.IsStoreByValue)
+        if (blob.Header.IsStoreByValue)
         {
             elements.Add(new SegmentElement
             {
                 Name = "Variable Length Data",
-                Offset = blob.VariableLengthDataOffset,
-                Size = blob.Data.Length - blob.VariableLengthDataOffset
+                Offset = blob.Header.VariableLengthDataOffset,
+                Size = blob.Data.Length - blob.Header.VariableLengthDataOffset
             });
 
             return elements;
@@ -48,15 +48,15 @@ public static class SegmentElementBuilder
         elements.Add(new SegmentElement
         {
             Name = "RLE Array",
-            Offset = blob.RleArrayOffset,
-            Size = blob.RleArrayCount * SegmentBlob.EntrySize
+            Offset = blob.Header.RleArrayOffset,
+            Size = blob.Header.RleArrayCount * SegmentBlob.EntrySize
         });
 
         elements.Add(new SegmentElement
         {
             Name = "Bit Pack Array",
-            Offset = blob.BitpackArrayOffset,
-            Size = blob.BitpackUnitCount * SegmentBlob.EntrySize
+            Offset = blob.Header.BitpackArrayOffset,
+            Size = blob.Header.BitpackUnitCount * SegmentBlob.EntrySize
         });
 
         return elements;

@@ -22,7 +22,17 @@ public sealed class SegmentReader(ColumnSegment segment, SegmentBlob blob, Dicti
     /// <summary>
     /// Value in the segment domain, being the storage integer or the raw dictionary entry
     /// </summary>
-    public object? GetRawValue(int rowOrdinal) => Decoder.Decode(DataIds.GetDataId(rowOrdinal));
+    /// <summary>
+    /// What the row holds before the column's type is applied
+    /// </summary>
+    /// <remarks>
+    /// A value too wide for an integer never becomes a data id at all, so it comes back as the bytes it was
+    /// stored as and the converter reads them against the column the same way a deep data field is read.
+    /// </remarks>
+    public object? GetRawValue(int rowOrdinal)
+        => Blob.VariableLengthData is { IsWide: true } store
+            ? store.GetValueBytes(rowOrdinal) is { IsEmpty: false } bytes ? bytes.ToArray() : null
+            : Decoder.Decode(DataIds.GetDataId(rowOrdinal));
 
     public object? GetValue(int rowOrdinal)
         => ColumnstoreValueConverter.Convert(GetRawValue(rowOrdinal), Segment.Column?.Structure);

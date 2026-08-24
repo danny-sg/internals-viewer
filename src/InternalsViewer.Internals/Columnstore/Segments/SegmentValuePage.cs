@@ -11,7 +11,20 @@ namespace InternalsViewer.Internals.Columnstore.Segments;
 /// </summary>
 public sealed class SegmentValuePage : DataStructure
 {
+    /// <summary>
+    /// Header of a compressed page, the trailing size only being there because there is a payload to size
+    /// </summary>
     public const int HeaderSize = 14;
+
+    /// <summary>
+    /// Header of a page held raw, whose values start straight after it
+    /// </summary>
+    public const int RawHeaderSize = 12;
+
+    /// <summary>
+    /// Value the compression nibble takes when the payload is Xpress Huffman rather than raw
+    /// </summary>
+    public const int HuffmanCompression = 1;
 
     private readonly XpressHuffmanDecoder _decoder = new();
 
@@ -21,16 +34,14 @@ public sealed class SegmentValuePage : DataStructure
     public SubLobType SubLobType { get; set; }
 
     /// <summary>
-    /// Low nibble of the byte at 0x04, which DBCC CSINDEX reports as the page's compression
-    /// </summary>
-    [DataStructureItem(ItemType.ValuePageCompression)]
-    public byte Compression { get; set; }
-
-    /// <summary>
-    /// High nibble of the same byte
+    /// Byte at 0x04, whose low nibble DBCC CSINDEX reports as the page's compression and high nibble as its flags
     /// </summary>
     [DataStructureItem(ItemType.ValuePageFlags)]
-    public byte Flags { get; set; }
+    public byte PageFlags { get; set; }
+
+    public byte Compression => (byte)(PageFlags & 0x0F);
+
+    public byte Flags => (byte)(PageFlags >> 4);
 
     [DataStructureItem(ItemType.ValuePageReserved)]
     public byte Reserved05 { get; set; }
@@ -60,25 +71,66 @@ public sealed class SegmentValuePage : DataStructure
     /// Stands in for the payload in a marker, the compressed bytes saying nothing a reader can use
     /// </summary>
     [DataStructureItem(ItemType.ValuePagePayload)]
-    public static string Payload => "[Compressed Payload]";
+    public string Payload => IsCompressed ? "[Compressed Payload]" : "[Payload]";
 
-    public int ExpandedSize => ValueCount * ValueSize;
+    /// <summary>
+    /// Whether the values are not all one width, which the page says by setting the size to all ones
+    /// </summary>
+    /// <remarks>
+    /// Seen on nullable store by value columns, where some pages carry a width and others do not. What the values
+    /// look like inside such a page is not yet known, so nothing tries to read one.
+    /// </remarks>
+    public bool IsVariableWidth => ValueSize < 0;
 
-    public ReadOnlyMemory<byte> Values => _values ??= _decoder.Decode(Compressed, ExpandedSize);
+    public int ExpandedSize => IsVariableWidth ? 0 : ValueCount * ValueSize;
+
+    public bool IsCompressed => Compression == HuffmanCompression;
+
+    /// <summary>
+    /// Whether a value is wider than the integer the run length encodings work in
+    /// </summary>
+    public bool IsWide => IsVariableWidth || ValueSize > 8;
+
+    public ReadOnlyMemory<byte> Values
+        => _values ??= IsVariableWidth
+            ? ReadOnlyMemory<byte>.Empty
+            : IsCompressed ? _decoder.Decode(Compressed, ExpandedSize) : Compressed;
+
+    /// <summary>
+    /// Value as stored, for a width the integer path cannot take
+    /// </summary>
+    public ReadOnlyMemory<byte> GetValueBytes(int index)
+    {
+        if (IsVariableWidth)
+        {
+            return ReadOnlyMemory<byte>.Empty;
+        }
+
+        if ((uint)index >= (uint)ValueCount)
+        {
+            throw new ArgumentOutOfRangeException(nameof(index));
+        }
+
+        return Values.Slice(index * ValueSize, ValueSize);
+    }
 
     public void Mark()
     {
         MarkProperty(nameof(SubLobType), Offset, 4);
-        MarkBits(ItemType.ValuePageCompression, "Compression", Compression, ((Offset + 0x04) * 8), 4);
-        MarkBits(ItemType.ValuePageFlags, "Flags", Flags, ((Offset + 0x04) * 8) + 4, 4);
+        MarkProperty(nameof(PageFlags), Offset + 0x04, 1, [IsCompressed ? "Compressed" : "Uncompressed"]);
         MarkProperty(nameof(Reserved05), Offset + 0x05, 1);
         MarkProperty(nameof(ValueSize), Offset + 0x06, 2);
         MarkProperty(nameof(ValueCount), Offset + 0x08, 4);
-        MarkProperty(nameof(PayloadSize), Offset + 0x0C, 2);
-
-        if (Size > HeaderSize)
+        if (IsCompressed)
         {
-            MarkProperty(nameof(Payload), Offset + HeaderSize, Size - HeaderSize);
+            MarkProperty(nameof(PayloadSize), Offset + 0x0C, 2);
+        }
+
+        var payloadOffset = IsCompressed ? HeaderSize : RawHeaderSize;
+
+        if (Size > payloadOffset)
+        {
+            MarkProperty(nameof(Payload), Offset + payloadOffset, Size - payloadOffset);
         }
     }
 
