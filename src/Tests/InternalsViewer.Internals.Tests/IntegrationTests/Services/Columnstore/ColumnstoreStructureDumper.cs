@@ -105,7 +105,7 @@ internal static class ColumnstoreStructureDumper
         builder.AppendLine($"  +0x04 LobType              {blob.Header.LobType} ({(int)blob.Header.LobType})");
         builder.AppendLine($"  +0x08 Reserved             {blob.Header.Reserved}");
         builder.AppendLine($"  +0x0C Unknown              {blob.Header.Unknown0C} (0x{blob.Header.Unknown0C:X})");
-        builder.AppendLine($"  +0x10 StructureType        {blob.Header.StructureType} ({(int)blob.Header.StructureType})");
+        builder.AppendLine($"  +0x10 StructureType        {blob.Header.RleType} ({(int)blob.Header.RleType})");
         builder.AppendLine($"  +0x14 BookmarkCount        {blob.Header.BookmarkCount}");
         builder.AppendLine($"  +0x18 BookmarkDistance     {blob.Header.BookmarkDistance}");
         builder.AppendLine($"  +0x1C RleArrayCount        {blob.Header.RleArrayCount}");

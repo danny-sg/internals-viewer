@@ -14,6 +14,9 @@ public sealed class SegmentBlobHeader : DataStructure
 {
     public const int Size = 48;
 
+    /// <summary>
+    /// RLE Bytes per entry
+    /// </summary>
     public const int EntrySize = 8;
 
     [DataStructureItem(ItemType.SegmentVersion)]
@@ -31,8 +34,8 @@ public sealed class SegmentBlobHeader : DataStructure
     /// <summary>
     /// Layout of the value stream, which is not the RLE and bit pack pair for every encoding
     /// </summary>
-    [DataStructureItem(ItemType.SegmentStructureType)]
-    public SegmentStructureType StructureType { get; set; }
+    [DataStructureItem(ItemType.SegmentRleType)]
+    public SegmentRleType RleType { get; set; }
 
     [DataStructureItem(ItemType.BookmarkCount)]
     public int BookmarkCount { get; set; }
@@ -40,9 +43,15 @@ public sealed class SegmentBlobHeader : DataStructure
     [DataStructureItem(ItemType.BookmarkDistance)]
     public int BookmarkDistance { get; set; }
 
+    /// <summary>
+    /// How many 8-byte native units the array occupies
+    /// </summary>
     [DataStructureItem(ItemType.RleArrayCount)]
     public int RleArrayCount { get; set; }
 
+    /// <summary>
+    /// Size of the native unit
+    /// </summary>
     [DataStructureItem(ItemType.RleEntrySize)]
     public short RleEntrySize { get; set; }
 
@@ -59,20 +68,25 @@ public sealed class SegmentBlobHeader : DataStructure
     public long BitpackMinId { get; set; }
 
     /// <summary>
-    /// Width of one RLE entry, which doubles when a data id no longer fits in four bytes
+    /// Width of one RLE entry
     /// </summary>
-    public int RleEntryBytes => BitpackEntrySize > 32 ? EntrySize * 2 : EntrySize;
+    /// <remarks>
+    /// Eight bytes carry an int32 value and an int32 count, sixteen an int64 value and an int32 count. Nothing in the
+    /// header separates the two - segments that agree on every field here disagree on the width - so the parser
+    /// works it out from base id and magnitude and sets it. Eight until it says otherwise.
+    /// </remarks>
+    public int RleEntryBytes { get; set; } = EntrySize;
 
     /// <summary>
     /// RleArrayCount is held in eight byte units rather than entries
     /// </summary>
     public int RleEntryCount => RleArrayCount * EntrySize / RleEntryBytes;
 
-    public bool IsVariableLengthData => StructureType == SegmentStructureType.VariableLengthData;
+    public bool IsVariableLengthData => RleType == SegmentRleType.VariableLengthData;
 
     public bool HasRleArray => RleArrayCount > 0;
 
-    public bool HasBitpackArray => StructureType == SegmentStructureType.BitPack && BitpackUnitCount > 0;
+    public bool HasBitpackArray => RleType == SegmentRleType.BitPack && BitpackUnitCount > 0;
 
     /// <summary>
     /// Values packed into each unit, the remainder of sixty four being left unused
@@ -124,7 +138,7 @@ public sealed class SegmentBlobHeader : DataStructure
         MarkProperty(nameof(LobType), 0x04, 4);
         MarkProperty(nameof(Reserved), 0x08, 4);
         MarkProperty(nameof(Unknown0C), 0x0C, 4);
-        MarkProperty(nameof(StructureType), 0x10, 4);
+        MarkProperty(nameof(RleType), 0x10, 4);
         MarkProperty(nameof(BookmarkCount), 0x14, 4);
         MarkProperty(nameof(BookmarkDistance), 0x18, 4);
         MarkProperty(nameof(RleArrayCount), 0x1C, 4);

@@ -90,7 +90,7 @@ public sealed class ColumnstoreEncodingMatrixTests(ITestOutputHelper testOutput)
             };
         }
 
-        return $"{(int)segment.Encoding} {segment.Encoding,-24} | {blob.Header.StructureType,-12} "
+        return $"{(int)segment.Encoding} {segment.Encoding,-24} | {blob.Header.RleType,-12} "
                + $"| bookmarks {blob.Header.BookmarkCount,-6} every {blob.Header.BookmarkDistance,-7} rows {blob.RowCount,-9} "
                + $"| rle {(blob.Header.HasRleArray ? "yes" : "NO "),-4} entries {blob.Header.RleEntryCount,-7} "
                + $"| bitpack {(blob.Header.HasBitpackArray ? "yes" : "NO "),-4} units {blob.Header.BitpackUnitCount,-7} "

@@ -118,7 +118,7 @@ public static class ColumnstoreColours
 
     public static readonly SKColor VariableLengthDataStructure = FromHex(0x0F7B6C);
 
-    public static readonly SKColor UnknownStructure = FromHex(0x888780);
+    public static readonly SKColor UnknownRleType = FromHex(0x888780);
 
     // What a segment carries, one colour per flag
 

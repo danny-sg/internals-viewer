@@ -78,7 +78,7 @@
                 <tableView:TableViewTextColumn Header="Encoding" Width="180"
                                                Binding="{Binding EncodingDescription}"/>
                 <tableView:TableViewTextColumn Header="Structure" Width="110"
-                                               Binding="{Binding StructureDescription}"/>
+                                               Binding="{Binding RleTypeDescription}"/>
                 <tableView:TableViewTextColumn Header="RLE Entries" Width="100"
                                                Binding="{Binding RleDescription}"
                                                CellStyle="{StaticResource TableViewCellRightStyle}"/>

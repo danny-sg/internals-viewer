@@ -142,7 +142,7 @@ public sealed class OrderedColumnstoreProbeTests(ITestOutputHelper testOutput) :
                     var blob = await service.GetSegmentBlob(database, segment, CancellationToken.None);
 
                     _lines.Add($"    col{segment.Key.ColumnId} {column?.Name} enc {(int)segment.Encoding} "
-                               + $"structure {(int)blob.Header.StructureType} unknown0C 0x{blob.Header.Unknown0C:X} "
+                               + $"structure {(int)blob.Header.RleType} unknown0C 0x{blob.Header.Unknown0C:X} "
                                + $"rle {blob.Header.RleEntryCount} bitpack {blob.Header.BitpackUnitCount} "
                                + $"bookmarks {blob.Header.BookmarkCount} minId {segment.MinDataId} "
                                + $"maxId {segment.MaxDataId} bloom {segment.BloomFilterMetadata:X} "

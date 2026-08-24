@@ -147,7 +147,7 @@ public sealed class WideNullProbeTests(ITestOutputHelper testOutput) : ProviderT
                 }
 
                 _lines.Add($"col{segment.Key.ColumnId} {column?.Name} enc {(int)segment.Encoding} "
-                           + $"structure {(int)blob.Header.StructureType} hasNulls {segment.HasNulls} "
+                           + $"structure {(int)blob.Header.RleType} hasNulls {segment.HasNulls} "
                            + $"nullValue {segment.NullValue} | decoded nulls {nulls}/200 "
                            + $"| null agreement {matched}/{checkedRows}{mismatch}");
             }

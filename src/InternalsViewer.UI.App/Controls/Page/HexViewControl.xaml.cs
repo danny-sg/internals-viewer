@@ -61,6 +61,17 @@ public sealed partial class HexViewControl
 
         // The virtualized window holds only the lines on screen, so the ScrollViewer has nothing of its own to scroll
         ScrollViewer.AddHandler(PointerWheelChangedEvent, new PointerEventHandler(OnPointerWheelChanged), true);
+
+        // A drag that ends without its closing scroll would leave the window held, so the pointer ends it too
+        VirtualScrollBar.AddHandler(PointerCaptureLostEvent, new PointerEventHandler(OnScrollBarCaptureLost), true);
+    }
+
+    private void OnScrollBarCaptureLost(object sender, PointerRoutedEventArgs e)
+    {
+        if (IsScrolling)
+        {
+            EndScroll(_pendingScrollLine);
+        }
     }
 
     private void OnPointerWheelChanged(object sender, PointerRoutedEventArgs e)
@@ -100,6 +111,9 @@ public sealed partial class HexViewControl
 
         var lineCount = (length + BytesPerLine - 1) / BytesPerLine;
 
+        // A held drag leaves the bytes where they were, so the addresses are the only sign of where it has reached
+        var baseAddress = IsScrolling ? _pendingScrollLine * BytesPerLine : BaseAddress;
+
         var stringBuilder = new StringBuilder();
 
         for (var i = 0; i < lineCount; i++)
@@ -110,11 +124,99 @@ public sealed partial class HexViewControl
                 stringBuilder.AppendLine();
             }
 
-            stringBuilder.Append($"{BaseAddress + (i * BytesPerLine):X8}");
+            stringBuilder.Append($"{baseAddress + (i * BytesPerLine):X8}");
         }
 
         AddressTextBlock.Text = stringBuilder.ToString();
+
+        SetAreas(baseAddress, lineCount);
     }
+
+    /// <summary>
+    /// Names the areas the window covers, which is the only map of the blob a held drag has to steer by
+    /// </summary>
+    /// <remarks>
+    /// A name is written where its area starts rather than against every line, so the column reads as a map of
+    /// where the window has reached rather than a wall of repeated text.
+    /// </remarks>
+    private void SetAreas(int baseAddress, int lineCount)
+    {
+        AreaOverlay.Visibility = IsScrolling && Areas is { Count: > 0 } ? Visibility.Visible : Visibility.Collapsed;
+
+        AreaOverlay.Children.Clear();
+
+        if (AreaOverlay.Visibility == Visibility.Collapsed || Areas is not { } areas)
+        {
+            return;
+        }
+
+        var previous = string.Empty;
+
+        for (var i = 0; i < lineCount; i++)
+        {
+            var name = NameAt(areas, baseAddress + (i * BytesPerLine));
+
+            if (name.Length > 0 && name != previous)
+            {
+                AreaOverlay.Children.Add(AreaLabel(name, i));
+            }
+
+            previous = name;
+        }
+    }
+
+    /// <summary>
+    /// One area name, sitting over the bytes on the line its area starts at
+    /// </summary>
+    private static Border AreaLabel(string name, int line) => new()
+    {
+        Background = new SolidColorBrush(Colors.White),
+        CornerRadius = new CornerRadius(2),
+        Padding = new Thickness(4, 0, 4, 0),
+        Margin = new Thickness(0, line * LineHeight, 12, 0),
+        HorizontalAlignment = HorizontalAlignment.Right,
+        VerticalAlignment = VerticalAlignment.Top,
+        Child = new TextBlock
+        {
+            Text = name,
+            FontSize = 12,
+            FontWeight = FontWeights.Bold,
+            Foreground = new SolidColorBrush(Colors.Black),
+            LineHeight = LineHeight
+        }
+    };
+
+    private static string NameAt(IReadOnlyList<HexArea> areas, int offset)
+    {
+        var name = string.Empty;
+
+        foreach (var area in areas)
+        {
+            if (area.Start > offset)
+            {
+                break;
+            }
+
+            name = area.Name;
+        }
+
+        return name;
+    }
+
+    /// <summary>
+    /// Named stretches of the data, in order, each running until the next one starts
+    /// </summary>
+    public IReadOnlyList<HexArea>? Areas
+    {
+        get => (IReadOnlyList<HexArea>?)GetValue(AreasProperty);
+        set => SetValue(AreasProperty, value);
+    }
+
+    public static readonly DependencyProperty AreasProperty
+        = DependencyProperty.Register(nameof(Areas),
+            typeof(IReadOnlyList<HexArea>),
+            typeof(HexViewControl),
+            new PropertyMetadata(null));
 
     /// <summary>
     /// Shows only as many lines as fit, scrolling by moving the window rather than the content
@@ -228,8 +330,63 @@ public sealed partial class HexViewControl
         VirtualScrollBar.LargeChange = visibleLines;
     }
 
+    /// <summary>
+    /// Moves the window the scroll bar asks for, a drag being held until it ends
+    /// </summary>
+    /// <remarks>
+    /// A thumb drag raises a scroll for every pixel it passes, and each one reloads the window and rebuilds every
+    /// marker over it. Holding the drag lets it run at the speed of the mouse and pays the cost once, on release.
+    /// </remarks>
     private void VirtualScrollBar_OnScroll(object sender, ScrollEventArgs e)
-        => WindowOffset = (int)e.NewValue * BytesPerLine;
+    {
+        if (e.ScrollEventType == ScrollEventType.ThumbTrack)
+        {
+            IsScrolling = true;
+
+            _pendingScrollLine = (int)e.NewValue;
+
+            SetAddress();
+
+            return;
+        }
+
+        EndScroll((int)e.NewValue);
+    }
+
+    private void EndScroll(int line)
+    {
+        IsScrolling = false;
+
+        WindowOffset = Math.Clamp(line, 0, (int)VirtualScrollBar.Maximum) * BytesPerLine;
+
+        // Dragging back to where it started moves nothing, leaving the preview addresses to be put back by hand
+        SetAddress();
+    }
+
+    private int _pendingScrollLine;
+
+    private bool _isScrolling;
+
+    /// <summary>
+    /// Whether a drag is in progress, the bytes on show being the ones it started from until it ends
+    /// </summary>
+    private bool IsScrolling
+    {
+        get => _isScrolling;
+        set
+        {
+            if (_isScrolling == value)
+            {
+                return;
+            }
+
+            _isScrolling = value;
+
+            HexRichTextBlock.Opacity = value ? ScrollingOpacity : 1;
+        }
+    }
+
+    private const double ScrollingOpacity = 0.4;
 
     /// <summary>
     /// Offset the address column counts from, so a slice of a larger structure shows its true offsets

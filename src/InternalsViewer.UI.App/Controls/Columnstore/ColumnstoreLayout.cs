@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using InternalsViewer.Internals.Helpers;
 using InternalsViewer.Internals.Columnstore.Metadata;
 using InternalsViewer.Internals.Columnstore.Segments;
 using InternalsViewer.Internals.Columnstore.Metadata.Enums;
@@ -213,11 +214,11 @@ public static class ColumnstoreLayout
     /// <summary>
     /// One colour per structure type, a scheme apart from the encodings so the two are not confused
     /// </summary>
-    public static SKColor GetStructureColour(SegmentStructureType structureType) => structureType switch
+    public static SKColor GetRleTypeColour(SegmentRleType structureType) => structureType switch
     {
-        SegmentStructureType.BitPack => GetStorageColour(SegmentStorage.RunLength),
-        SegmentStructureType.VariableLengthData => GetStorageColour(SegmentStorage.VariableLengthData),
-        _ => ColumnstoreColours.UnknownStructure
+        SegmentRleType.BitPack => ColumnstoreColours.BitPackFlag,
+        SegmentRleType.VariableLengthData => ColumnstoreColours.VariableLengthDataFlag,
+        _ => ColumnstoreColours.UnknownRleType
     };
 
     public static SKColor DictionaryColour => ColumnstoreColours.FloatDictionary;
@@ -250,10 +251,9 @@ public static class ColumnstoreLayout
 
     public static IReadOnlyList<(string Name, SKColor Colour)> Legend =>
     [
-        (SegmentStorage.RunLength.Describe(), GetStorageColour(SegmentStorage.RunLength)),
-        (SegmentStorage.BitPack.Describe(), GetStorageColour(SegmentStorage.BitPack)),
-        (SegmentStorage.Mixed.Describe(), GetStorageColour(SegmentStorage.Mixed)),
-        (SegmentStorage.VariableLengthData.Describe(), GetStorageColour(SegmentStorage.VariableLengthData)),
+        (SegmentRleType.BitPack.ToString().SplitCamelCase(), GetRleTypeColour(SegmentRleType.BitPack)),
+        (SegmentRleType.VariableLengthData.ToString().SplitCamelCase(),
+         GetRleTypeColour(SegmentRleType.VariableLengthData)),
         ("Numeric dictionary", GetDictionaryColour(1)),
         ("String dictionary", GetDictionaryColour(3)),
         ("Delete bitmap", DeleteBitmapColour),

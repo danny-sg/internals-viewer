@@ -150,9 +150,10 @@ public enum ItemType
     LatestVersioningUpgradeLsn,
 
     // Columnstore
+    SegmentHeaderSection,
     SegmentVersion,
     SegmentLobType,
-    SegmentStructureType,
+    SegmentRleType,
     SegmentReserved,
     SegmentUnknown,
     BookmarkCount,

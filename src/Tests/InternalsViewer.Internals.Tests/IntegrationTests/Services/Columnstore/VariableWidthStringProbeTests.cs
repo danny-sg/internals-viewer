@@ -77,7 +77,7 @@ public sealed class VariableWidthStringProbeTests(ITestOutputHelper testOutput) 
 
         if (blob.VariableLengthData is not { } store)
         {
-            _lines.Add($"  no value store, structure {(int)blob.Header.StructureType}");
+            _lines.Add($"  no value store, structure {(int)blob.Header.RleType}");
 
             return;
         }

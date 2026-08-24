@@ -1,6 +1,7 @@
 ﻿using System.Buffers.Binary;
 using System.IO;
 using InternalsViewer.Internals.Columnstore.Blobs;
+using InternalsViewer.Internals.Columnstore.Metadata;
 using InternalsViewer.Internals.Columnstore.Segments;
 
 namespace InternalsViewer.Internals.Columnstore.Parsers;
@@ -12,7 +13,7 @@ public static class SegmentBlobParser
 {
     public const int SupportedVersion = 1;
 
-    public static SegmentBlob Parse(ReadOnlyMemory<byte> data, bool isMarkEnabled = false)
+    public static SegmentBlob Parse(ReadOnlyMemory<byte> data, ColumnSegment? segment, bool isMarkEnabled = false)
     {
         if (ArchiveBlobHeader.IsArchive(data.Span))
         {
@@ -31,8 +32,11 @@ public static class SegmentBlobParser
         {
             IsMarkEnabled = isMarkEnabled,
             Data = data,
+            Segment = segment,
             Header = ParseHeader(span)
         };
+
+        blob.Header.RleEntryBytes = GetRleEntryBytes(segment);
 
         blob.Header.IsMarkEnabled = blob.IsMarkEnabled;
 
@@ -54,9 +58,9 @@ public static class SegmentBlobParser
             return blob;
         }
 
-        if (blob.Header.StructureType != SegmentStructureType.BitPack)
+        if (blob.Header.RleType != SegmentRleType.BitPack)
         {
-            throw new InvalidDataException($"Segment structure type {(int)blob.Header.StructureType} is not supported.");
+            throw new InvalidDataException($"Segment structure type {(int)blob.Header.RleType} is not supported.");
         }
 
         if (blob.Header.ExpectedSize != data.Length)
@@ -91,7 +95,7 @@ public static class SegmentBlobParser
             LobType = (ColumnstoreLobType)ReadInt32(span, 0x04),
             Reserved = ReadInt32(span, 0x08),
             Unknown0C = ReadInt32(span, 0x0C),
-            StructureType = (SegmentStructureType)ReadInt32(span, 0x10),
+            RleType = (SegmentRleType)ReadInt32(span, 0x10),
             BookmarkCount = ReadInt32(span, 0x14),
             BookmarkDistance = ReadInt32(span, 0x18),
             RleArrayCount = ReadInt32(span, 0x1C),
@@ -102,9 +106,20 @@ public static class SegmentBlobParser
         };
     }
 
+    /// <summary>
+    /// Reads the bookmark array, whose declared count runs two entries into the RLE array on a VLD segment
+    /// </summary>
+    /// <remarks>
+    /// The RLE array starts sixteen bytes before `BookmarkArrayOffset + BookmarkCount * 8`, so the last two slots
+    /// hold the first two RLE entries.
+    /// </remarks>
     private static SegmentBookmark[] ReadBookmarks(ReadOnlySpan<byte> span, SegmentBlob blob)
     {
-        var bookmarks = new SegmentBookmark[blob.Header.BookmarkCount];
+        var count = blob.Header.IsVariableLengthData
+                                ? Math.Max(0, blob.Header.BookmarkCount - 2)
+                                : blob.Header.BookmarkCount;
+
+        var bookmarks = new SegmentBookmark[count];
 
         for (var i = 0; i < bookmarks.Length; i++)
         {
@@ -219,15 +234,49 @@ public static class SegmentBlobParser
         };
     }
 
+    /// <summary>
+    /// Width of an RLE entry, taken from how large a data id the segment has to hold
+    /// </summary>
+    /// <remarks>
+    /// A literal run carries the data id relative to the base, in a signed field whose negatives mean a read run,
+    /// so an id past int.MaxValue cannot fit and the entry doubles. A dictionary segment leaves base and magnitude
+    /// at -1 and holds slot numbers, which are always small. Measured against 400 segments, 32 of them wide.
+    /// </remarks>
+    private static int GetRleEntryBytes(ColumnSegment? segment)
+    {
+        if (segment is null || segment.BaseId < 0 || segment.Magnitude <= 0)
+        {
+            return SegmentBlob.EntrySize;
+        }
+
+        var storedMax = (segment.MaxDataId / segment.Magnitude) - segment.BaseId;
+
+        return storedMax > int.MaxValue ? SegmentBlob.EntrySize * 2 : SegmentBlob.EntrySize;
+    }
+
     private static RleEntry[] ReadRleEntries(ReadOnlySpan<byte> span, SegmentBlob blob)
     {
-        var entries = new RleEntry[blob.Header.RleEntryCount];
+        var entries = ReadRleEntries(span, blob, blob.Header.RleEntryBytes);
 
-        var wide = blob.Header.RleEntryBytes > SegmentBlob.EntrySize;
+        // A count cannot be negative, so a value split in half by the wrong width says so rather than passing quietly
+        if (Array.Exists(entries, e => e.Count < 0))
+        {
+            throw new InvalidDataException($"Segment RLE array read as {blob.Header.RleEntryBytes} byte entries "
+                                           + "gives a negative run count, so the entry width is wrong.");
+        }
+
+        return entries;
+    }
+
+    private static RleEntry[] ReadRleEntries(ReadOnlySpan<byte> span, SegmentBlob blob, int entryBytes)
+    {
+        var entries = new RleEntry[blob.Header.RleArrayCount * SegmentBlob.EntrySize / entryBytes];
+
+        var wide = entryBytes > SegmentBlob.EntrySize;
 
         for (var i = 0; i < entries.Length; i++)
         {
-            var offset = blob.Header.RleArrayOffset + (i * blob.Header.RleEntryBytes);
+            var offset = blob.Header.RleArrayOffset + (i * entryBytes);
 
             entries[i] = wide
                 ? new RleEntry(ReadInt64(span, offset), ReadInt32(span, offset + 8), blob.Header.IsVariableLengthData)

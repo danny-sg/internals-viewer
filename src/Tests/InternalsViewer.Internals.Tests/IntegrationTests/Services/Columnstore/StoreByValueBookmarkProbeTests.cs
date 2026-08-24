@@ -57,7 +57,7 @@ public sealed class StoreByValueBookmarkProbeTests(ITestOutputHelper testOutput)
                         continue;
                     }
 
-                    if (blob.Header.StructureType != SegmentStructureType.VariableLengthData)
+                    if (blob.Header.RleType != SegmentRleType.VariableLengthData)
                     {
                         continue;
                     }

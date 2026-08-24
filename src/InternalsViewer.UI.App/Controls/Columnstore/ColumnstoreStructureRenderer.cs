@@ -752,7 +752,7 @@ public sealed class ColumnstoreStructureRenderer : IDisposable
                              SKRect bounds,
                              List<ColumnstoreRegion> regions)
     {
-        var colour = ColumnstoreLayout.GetStorageColour(segment.Storage);
+        var colour = ColumnstoreLayout.GetRleTypeColour(segment.RleType);
 
         _fill.Color = colour.WithAlpha(20);
 
@@ -939,60 +939,9 @@ public sealed class ColumnstoreStructureRenderer : IDisposable
     {
         var left = contentLeft + 4;
 
-        var available = bounds.Right - left - 4;
-
         var encoding = new[] { (segment.EncodingDescription, ColumnstoreLayout.GetEncodingColour(segment.Encoding)) };
 
-        var encodingWidth = MeasureBadges(encoding, 0);
-
-        var drewEncoding = DrawBadges(canvas, encoding, left, bounds.Top + BadgeTopMargin, available, 0);
-
-        var top = bounds.Top + BadgeTopMargin + BadgeHeight + ColumnstoreLayout.BadgeMargin;
-
-        if (segment.Header is not { } header)
-        {
-            return;
-        }
-
-        var flags = new List<(string, SKColor)>
-        {
-            (header.StructureType.ToString().SplitCamelCase(), ColumnstoreLayout.GetStructureColour(header.StructureType))
-        };
-
-        if (header.HasBitpackArray)
-        {
-            flags.Add(("Bit Pack", ColumnstoreColours.BitPackFlag));
-        }
-
-        if (header.IsVariableLengthData)
-        {
-            flags.Add(("VLD", ColumnstoreColours.VariableLengthDataFlag));
-        }
-
-        // Only a segment that has one keeps the room for it, a short segment having none to spare
-        var reserved = segment.HasDictionary ? ColumnstoreLayout.DictionaryHeight + BadgeTopMargin : 0;
-
-        if (top + BadgeHeight <= bounds.Bottom - reserved)
-        {
-            DrawBadges(canvas, flags, left, top, available, 0);
-
-            return;
-        }
-
-        // Too short for a row of their own, so they follow the encoding rather than being dropped
-        if (!drewEncoding)
-        {
-            return;
-        }
-
-        var gap = ColumnstoreLayout.BadgeMargin * 2;
-
-        DrawBadges(canvas,
-                   flags,
-                   left + encodingWidth + gap,
-                   bounds.Top + BadgeTopMargin,
-                   available - encodingWidth - gap,
-                   0);
+        DrawBadges(canvas, encoding, left, bounds.Top + BadgeTopMargin, bounds.Right - left - 4, 0);
     }
 
     /// <summary>

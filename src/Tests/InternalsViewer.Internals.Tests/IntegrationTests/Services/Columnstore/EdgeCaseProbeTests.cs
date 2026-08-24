@@ -162,7 +162,7 @@ public sealed class EdgeCaseProbeTests(ITestOutputHelper testOutput) : ProviderT
             {
                 var blob = await service.GetSegmentBlob(database, segment, CancellationToken.None);
 
-                structure = $"{(int)blob.Header.StructureType}";
+                structure = $"{(int)blob.Header.RleType}";
 
                 pageTypes = blob.VariableLengthData is { } store
                     ? string.Join(",", store.Pages.Select(p => (int)p.SubLobType).Distinct())

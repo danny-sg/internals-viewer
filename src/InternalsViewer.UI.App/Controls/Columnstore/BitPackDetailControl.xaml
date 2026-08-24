@@ -23,7 +23,7 @@
                    Margin="12"
                    VerticalAlignment="Top"
                    Foreground="{ThemeResource TextFillColorTertiaryBrush}"
-                   Text="Select a unit to see the values packed into it"/>
+                   Text="Select a Unit"/>
 
         <StackPanel Grid.Row="0" Grid.RowSpan="3"  Visibility="Collapsed">
             <TextBlock x:Name="UnitText"

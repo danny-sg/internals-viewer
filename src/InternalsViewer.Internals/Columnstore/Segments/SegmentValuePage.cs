@@ -7,18 +7,12 @@ using InternalsViewer.Internals.Compression;
 namespace InternalsViewer.Internals.Columnstore.Segments;
 
 /// <summary>
-/// Page of a store by value segment, holding a fixed width value array under Xpress Huffman
+/// Value Segment Page
 /// </summary>
 public sealed class SegmentValuePage : DataStructure
 {
-    /// <summary>
-    /// Header of a compressed page, the trailing size only being there because there is a payload to size
-    /// </summary>
     public const int HeaderSize = 14;
 
-    /// <summary>
-    /// Header of a page held raw, whose values start straight after it
-    /// </summary>
     public const int RawHeaderSize = 12;
 
     /// <summary>
@@ -39,8 +33,11 @@ public sealed class SegmentValuePage : DataStructure
     public SubLobType SubLobType { get; set; }
 
     /// <summary>
-    /// Byte at 0x04, whose low nibble DBCC CSINDEX reports as the page's compression and high nibble as its flags
+    /// Flags Byte at 0x04
     /// </summary>
+    /// <remarks>
+    /// Low nibble DBCC CSINDEX reports as the page's compression and high nibble as its flags
+    /// </remarks>
     [DataStructureItem(ItemType.ValuePageFlags)]
     public byte PageFlags { get; set; }
 

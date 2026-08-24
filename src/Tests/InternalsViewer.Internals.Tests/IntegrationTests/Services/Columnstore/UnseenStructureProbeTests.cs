@@ -90,12 +90,12 @@ public sealed class UnseenStructureProbeTests(ITestOutputHelper testOutput) : Pr
                 ? string.Join(",", store.Pages.Select(p => (int)p.SubLobType).Distinct())
                 : "-";
 
-            _lines.Add($"{prefix} enc {(int)segment.Encoding} structure {(int)blob.Header.StructureType} "
+            _lines.Add($"{prefix} enc {(int)segment.Encoding} structure {(int)blob.Header.RleType} "
                        + $"unknown0C 0x{blob.Header.Unknown0C:X} rows {segment.RowCount} "
                        + $"size {segment.OnDiskSize} pageTypes {pageTypes} "
                        + $"bloom {segment.BloomFilterMetadata:X} bloomPointer {!segment.BloomFilterPointer.IsEmpty}");
 
-            Flag($"{prefix} structure", (int)blob.Header.StructureType, KnownStructureTypes);
+            Flag($"{prefix} structure", (int)blob.Header.RleType, KnownStructureTypes);
 
             if (blob.VariableLengthData is { } vld)
             {

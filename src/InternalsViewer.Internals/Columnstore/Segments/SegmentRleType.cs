@@ -3,7 +3,7 @@ namespace InternalsViewer.Internals.Columnstore.Segments;
 /// <summary>
 /// Layout the segment uses for its value stream
 /// </summary>
-public enum SegmentStructureType
+public enum SegmentRleType
 {
     Unknown = 0,
 

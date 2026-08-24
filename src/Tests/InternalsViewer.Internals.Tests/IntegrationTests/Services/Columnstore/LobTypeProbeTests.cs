@@ -31,13 +31,17 @@ public sealed class LobTypeProbeTests(ITestOutputHelper testOutput) : ProviderTe
         var targets = new List<(long Hobt, int Column, int RowGroup, int Encoding, string Table)>();
 
         await using (var command = new SqlCommand("""
-                                                  SELECT TOP (12) s.hobt_id, s.column_id, s.segment_id,
-                                                         s.encoding_type, o.name
-                                                  FROM sys.column_store_segments s
-                                                  JOIN sys.partitions p ON p.partition_id = s.hobt_id
-                                                  JOIN sys.objects o ON o.object_id = p.object_id
-                                                  WHERE o.name LIKE 'Seg%'
-                                                  ORDER BY s.encoding_type, o.name, s.segment_id
+                                                  SELECT hobt_id, column_id, segment_id, encoding_type, name
+                                                  FROM (SELECT s.hobt_id, s.column_id, s.segment_id,
+                                                               s.encoding_type, o.name,
+                                                               ROW_NUMBER() OVER (PARTITION BY s.encoding_type
+                                                                                  ORDER BY o.name) AS rn
+                                                        FROM sys.column_store_segments s
+                                                        JOIN sys.partitions p ON p.partition_id = s.hobt_id
+                                                        JOIN sys.objects o ON o.object_id = p.object_id
+                                                        WHERE s.encoding_type IN (4, 5)) AS Ranked
+                                                  WHERE rn <= 40
+                                                  ORDER BY encoding_type, name
                                                   """, connection))
         {
             await using var reader = await command.ExecuteReaderAsync();
@@ -66,19 +70,15 @@ public sealed class LobTypeProbeTests(ITestOutputHelper testOutput) : ProviderTe
                 continue;
             }
 
-            _lines.Add($"=== {table} col{column} rg{rowGroup} encoding {encoding} ===");
-
             var lines = messages.SelectMany(m => m.Split(Environment.NewLine))
                                 .Select(m => m.TrimEnd())
                                 .Where(m => m.Trim().Length > 0)
                                 .ToList();
 
-            var index = lines.FindIndex(l => l.Contains("RLE Header"));
+            var lobType = lines.FirstOrDefault(l => l.Contains("Lob type =")) ?? "no RLE header";
 
-            foreach (var line in index >= 0 ? lines.Skip(index).Take(3) : lines.Take(4))
-            {
-                _lines.Add($"  {line}");
-            }
+            _lines.Add($"encoding {encoding} {table} col{column} rg{rowGroup} | "
+                       + $"{lobType.Split("  ")[0].Trim()}");
         }
 
         ProbeDump.Write("lob_type_probe.txt", _lines);

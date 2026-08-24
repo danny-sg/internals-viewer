@@ -25,12 +25,13 @@ public sealed partial class SegmentSummary : ObservableObject
     /// The segment blob's prologue, read separately from the metadata and applied once it arrives
     /// </summary>
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(StructureDescription))]
+    [NotifyPropertyChangedFor(nameof(RleTypeDescription))]
     [NotifyPropertyChangedFor(nameof(RleDescription))]
     [NotifyPropertyChangedFor(nameof(BitPackEntriesDescription))]
     [NotifyPropertyChangedFor(nameof(BitPackSizeDescription))]
     [NotifyPropertyChangedFor(nameof(BookmarkDescription))]
     [NotifyPropertyChangedFor(nameof(Storage))]
+    [NotifyPropertyChangedFor(nameof(RleType))]
     [NotifyPropertyChangedFor(nameof(StorageDescription))]
     [NotifyPropertyChangedFor(nameof(DataIdSteps))]
     [NotifyPropertyChangedFor(nameof(ValueSteps))]
@@ -38,6 +39,8 @@ public sealed partial class SegmentSummary : ObservableObject
     private SegmentBlobHeader? _header;
 
     public SegmentStorage Storage => SegmentStorageExtensions.Classify(Header);
+
+    public SegmentRleType RleType => Header?.RleType ?? SegmentRleType.Unknown;
 
     public string StorageDescription => Storage.Describe();
 
@@ -243,8 +246,8 @@ public sealed partial class SegmentSummary : ObservableObject
         }
     }
 
-    public string StructureDescription
-        => Header is null ? string.Empty : Header.StructureType.ToString().SplitCamelCase();
+    public string RleTypeDescription
+        => Header is null ? string.Empty : Header.RleType.ToString().SplitCamelCase();
 
     public string RleDescription => Header is null
         ? string.Empty

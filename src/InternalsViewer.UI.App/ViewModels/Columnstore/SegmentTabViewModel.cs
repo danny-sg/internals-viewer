@@ -73,6 +73,7 @@ public sealed partial class SegmentTabViewModel(ColumnstoreService columnstoreSe
     [NotifyPropertyChangedFor(nameof(HasRleArray))]
     [NotifyPropertyChangedFor(nameof(RleRuns))]
     [NotifyPropertyChangedFor(nameof(RleValueLabel))]
+    [NotifyPropertyChangedFor(nameof(HexAreas))]
     [NotifyPropertyChangedFor(nameof(RleIndexLabel))]
     [NotifyPropertyChangedFor(nameof(HasBitpackArray))]
     [NotifyPropertyChangedFor(nameof(HasVariableLengthData))]
@@ -146,6 +147,40 @@ public sealed partial class SegmentTabViewModel(ColumnstoreService columnstoreSe
             }
 
             return runs;
+        }
+    }
+
+    /// <summary>
+    /// The blob's regions in the order they sit on disk, which the hex gutter names while a drag is under way
+    /// </summary>
+    public IReadOnlyList<HexArea> HexAreas
+    {
+        get
+        {
+            if (Blob is not { } blob)
+            {
+                return [];
+            }
+
+            var header = blob.Header;
+
+            List<HexArea> areas =
+            [
+                new("Header", 0),
+                new("Bookmarks", header.BookmarkArrayOffset),
+                new("RLE Array", header.RleArrayOffset)
+            ];
+
+            if (header.IsVariableLengthData)
+            {
+                areas.Add(new HexArea("VLD", header.VariableLengthDataOffset));
+            }
+            else if (header.HasBitpackArray)
+            {
+                areas.Add(new HexArea("Bit Pack", header.BitpackArrayOffset));
+            }
+
+            return [.. areas.OrderBy(a => a.Start)];
         }
     }
 

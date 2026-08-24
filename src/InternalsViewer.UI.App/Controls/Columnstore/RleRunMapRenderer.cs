@@ -21,7 +21,10 @@ public sealed class RleRunMapRenderer : IDisposable
 
     public static float TotalHeight => (TrackHeight * 2) + TrackGap + MarkerHeight + 2;
 
-    private const int HueWheel = 256;
+    /// <summary>
+    /// Arc of the hue wheel a scale is spread over, stopping short of a full turn so the ends stay apart
+    /// </summary>
+    private const int HueSpan = 180;
 
     private const int LiteralSaturation = 150;
 
@@ -323,7 +326,7 @@ public sealed class RleRunMapRenderer : IDisposable
         {
             var (min, max) = run.IsValue ? (LiteralMin, LiteralMax) : (BitpackMin, BitpackMax);
 
-            var hue = max > min ? (int)((value - min) * (HueWheel - 1) / (max - min)) : HueWheel / 2;
+            var hue = max > min ? (int)((value - min) * HueSpan / (max - min)) : HueSpan / 2;
 
             return run.IsValue
                 ? ColourHelpers.HsvToColor(hue, LiteralSaturation, LiteralValue).ToSkColor()

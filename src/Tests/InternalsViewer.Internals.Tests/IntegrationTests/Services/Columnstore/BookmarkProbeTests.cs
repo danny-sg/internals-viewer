@@ -47,7 +47,7 @@ public sealed class BookmarkProbeTests(ITestOutputHelper testOutput) : ProviderT
                 continue;
             }
 
-            TestOutput.WriteLine($"{tableName} col {segment.Key.ColumnId} {blob.Header.StructureType} "
+            TestOutput.WriteLine($"{tableName} col {segment.Key.ColumnId} {blob.Header.RleType} "
                                  + $"bitpack {blob.Header.HasBitpackArray} "
                                  + $"rows {blob.RowCount} rle {blob.RleEntries.Length} "
                                  + $"bookmarks {blob.Header.BookmarkCount} every {blob.Header.BookmarkDistance} "

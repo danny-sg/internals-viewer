@@ -106,6 +106,10 @@
                     <Canvas x:Name="HexOverlayCanvas"
                             IsHitTestVisible="False"
                             Canvas.ZIndex="10" />
+                    <Grid x:Name="AreaOverlay"
+                          IsHitTestVisible="False"
+                          Canvas.ZIndex="20"
+                          Visibility="Collapsed"/>
                     <Popup x:Name="SelectionInfoPopup" 
                            PlacementTarget="{x:Bind HexRichTextBlock}"
                            IsOpen="{x:Bind ViewModel.IsDataTipOpen, Mode=OneWay}">

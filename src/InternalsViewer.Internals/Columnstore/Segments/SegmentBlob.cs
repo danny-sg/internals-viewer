@@ -1,9 +1,10 @@
 ﻿using InternalsViewer.Internals.Annotations;
+using InternalsViewer.Internals.Columnstore.Metadata;
 
 namespace InternalsViewer.Internals.Columnstore.Segments;
 
 /// <summary>
-/// Parsed column segment blob
+/// Parsed Column Segment
 /// </summary>
 public sealed class SegmentBlob : DataStructure
 {
@@ -11,11 +12,10 @@ public sealed class SegmentBlob : DataStructure
 
     public const int EntrySize = SegmentBlobHeader.EntrySize;
 
+    public ColumnSegment? Segment { get; set; }
+
     public ReadOnlyMemory<byte> Data { get; set; }
 
-    /// <summary>
-    /// The prologue the rest of the blob is laid out from, which a header only read produces on its own
-    /// </summary>
     public SegmentBlobHeader Header { get; set; } = new();
 
     public SegmentBookmark[] Bookmarks { get; set; } = [];
@@ -26,12 +26,7 @@ public sealed class SegmentBlob : DataStructure
 
     public SegmentVariableLengthData? VariableLengthData { get; set; }
 
-    /// <summary>
-    /// Rows the RLE runs cover, excluding the terminator
-    /// </summary>
-    public int RowCount => RleEntries.Length > 0
-        ? RleEntries.Sum(e => e.Count)
-        : VariableLengthData?.ValueCount ?? 0;
+    public int RowCount => RleEntries.Length > 0 ? RleEntries.Sum(e => e.Count) : VariableLengthData?.ValueCount ?? 0;
 
     public int BitpackRowCount => RleEntries.Where(e => !e.IsValue).Sum(e => e.Count);
 

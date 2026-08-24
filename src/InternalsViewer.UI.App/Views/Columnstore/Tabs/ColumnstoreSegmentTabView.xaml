@@ -136,7 +136,7 @@
             <AppBarElementContainer VerticalContentAlignment="Center">
                 <Grid VerticalAlignment="Center" RowSpacing="3" ColumnSpacing="8" Margin="12,0,18,0">
                     <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="Auto" MinWidth="100"/>
                         <ColumnDefinition Width="Auto"/>
                         <ColumnDefinition Width="Auto"/>
                     </Grid.ColumnDefinitions>
@@ -233,16 +233,15 @@
 
             <AppBarSeparator Visibility="{x:Bind ViewModel.HasDictionary, Mode=OneWay,
                                      Converter={StaticResource BoolToVisibilityConverter}}" />
+            <AppBarButton Label="Dictionary"
+                          HorizontalAlignment="Right"
+                          VerticalAlignment="Center"
+                          Visibility="{x:Bind ViewModel.HasDictionary, Mode=OneWay,
+                                        Converter={StaticResource BoolToVisibilityConverter}}"
+                          Click="Dictionary_OnClick"/>
         </CommandBar>
 
-        <AppBarButton Grid.Row="0"
-                      Label="Dictionary"
-                      HorizontalAlignment="Right"
-                      VerticalAlignment="Center"
-                      Margin="0,0,12,0"
-                      Visibility="{x:Bind ViewModel.HasDictionary, Mode=OneWay,
-                       Converter={StaticResource BoolToVisibilityConverter}}"
-                      Click="Dictionary_OnClick"/>
+        
         <Grid Grid.Row="1"
               Visibility="{x:Bind ViewModel.IsLoaded, Mode=OneWay,
                            Converter={StaticResource BoolToVisibilityConverter}}">
@@ -263,6 +262,7 @@
                              WindowLength="{x:Bind ViewModel.Hex.WindowLength, Mode=TwoWay}"
                              Data="{x:Bind ViewModel.Hex.HexData, Mode=OneWay}"
                              BaseAddress="{x:Bind ViewModel.Hex.HexBaseAddress, Mode=OneWay}"
+                             Areas="{x:Bind ViewModel.HexAreas, Mode=OneWay}"
                              Markers="{x:Bind ViewModel.Hex.Markers, Mode=OneWay}"
                              SelectedMarker="{x:Bind ViewModel.Hex.SelectedMarker, Mode=TwoWay}"/>
 
@@ -378,7 +378,7 @@
                                 <tableView:TableViewTextColumn Header="Sub Lob Type" 
                                                                Width="180"
                                                                Binding="{Binding SubLobTypeDescription}"/>
-                                <tableView:TableViewTextColumn Header="Values" 
+                                <tableView:TableViewTextColumn Header="Value Count" 
                                                                Width="90"
                                                                Binding="{Binding ValueCount}"
                                                                CellStyle="{StaticResource TableViewCellRightStyle}"/>

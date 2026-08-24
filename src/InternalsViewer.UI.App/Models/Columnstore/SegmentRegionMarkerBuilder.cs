@@ -23,7 +23,7 @@ public static class SegmentRegionMarkerBuilder
     public static List<Marker> Build(SegmentBlob blob, SegmentRegion region, int windowStart, int windowLength)
         => region switch
         {
-            SegmentRegion.Header => Windowed(MarkerBuilder.BuildMarkers(blob.Header), windowStart, windowLength),
+            SegmentRegion.Header => HeaderSections(blob, windowStart, windowLength),
             SegmentRegion.Bookmarks => [.. BookmarkHeader(blob), .. BuildBookmarks(blob, windowStart, windowLength)],
             SegmentRegion.RleArray => [.. RleHeader(blob), .. BuildRleEntries(blob, windowStart, windowLength)],
             SegmentRegion.BitpackArray => [.. BitpackHeader(blob),
@@ -31,6 +31,49 @@ public static class SegmentRegionMarkerBuilder
             SegmentRegion.VariableLengthData => VariableLengthDataMarkers(blob, windowStart, windowLength),
             _ => []
         };
+
+    /// <summary>
+    /// Where each section of the header starts and ends, the sections being how CSINDEX reports the same bytes
+    /// </summary>
+    /// <remarks>
+    /// The RLE and bookmark fields interleave, so they only form a contiguous run when taken together. Everything
+    /// before them belongs to the blob rather than to a section, whatever it turns out to hold.
+    /// </remarks>
+    private static readonly (string Name, int Start, int End)[] HeaderLayout =
+    [
+        ("LOB Header", 0x00, 0x0F),
+        ("RLE / Bookmark Header", 0x10, 0x21),
+        ("Bit Pack Header", 0x22, 0x2F)
+    ];
+
+    private static List<Marker> HeaderSections(SegmentBlob blob, int windowStart, int windowLength)
+    {
+        var fields = Windowed(MarkerBuilder.BuildMarkers(blob.Header), windowStart, windowLength);
+
+        var sections = new List<Marker>();
+
+        foreach (var (name, start, end) in HeaderLayout)
+        {
+            var children = fields.Where(f => f.StartPosition + windowStart >= start
+                                             && f.StartPosition + windowStart <= end)
+                                 .ToList();
+
+            if (children.Count == 0)
+            {
+                continue;
+            }
+
+            var from = children.Min(c => c.StartPosition);
+
+            sections.Add(Entry(name,
+                               ItemType.SegmentHeaderSection,
+                               from,
+                               children.Max(c => c.EndPosition) - from + 1,
+                               children));
+        }
+
+        return sections;
+    }
 
     /// <summary>
     /// The store header and page size array, with the header of every page the window holds
@@ -60,7 +103,7 @@ public static class SegmentRegionMarkerBuilder
     {
         yield return ContextMarker("RLE Entry Count", ItemType.RleArrayCount, $"{blob.Header.RleEntryCount}");
         yield return ContextMarker("RLE Entry Size", ItemType.RleEntrySize, $"{blob.Header.RleEntryBytes} bytes");
-        yield return ContextMarker("Lob Type", ItemType.SegmentStructureType, $"{blob.Header.StructureType.ToString().SplitCamelCase()} ({(int)blob.Header.StructureType})");
+        yield return ContextMarker("Lob Type", ItemType.SegmentRleType, $"{blob.Header.RleType.ToString().SplitCamelCase()} ({(int)blob.Header.RleType})");
     }
 
     private static IEnumerable<Marker> BookmarkHeader(SegmentBlob blob)
@@ -148,12 +191,11 @@ public static class SegmentRegionMarkerBuilder
                          entry.IsValue ? "Repeat" : "Read")
                 : !entry.IsValue
                 ? Tagged(Create("Value", ItemType.RleBitpackIndex, offset, valueSize, $"{entry.BitpackIndex}"),
-                         "Bit Pack Index")
-                : Create("Value",
-                         ItemType.RleValue,
-                         offset,
-                         valueSize,
-                         entry.IsTerminator ? "Terminator" : $"{entry.Value}");
+                         "Bit Pack Index",
+                         "Read")
+                : entry.IsTerminator
+                ? Create("Value", ItemType.RleValue, offset, valueSize, "Terminator")
+                : Tagged(Create("Value", ItemType.RleValue, offset, valueSize, $"{entry.Value}"), "Repeat");
 
             markers.Add(Entry($"RLE Index {i}",
                               ItemType.RleEntry,

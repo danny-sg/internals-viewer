@@ -171,11 +171,12 @@
 
 
     <!--Columnstore: adjacent fields alternate hue so a run of markers stays readable in hex-->
+    <models:MarkStyle x:Key="SegmentHeaderSectionMarkerStyle" ForeColour="#B0BEC5" BackColour="#1C2A30" Name="Header Section" Ordinal="199"/>
     <models:MarkStyle x:Key="SegmentVersionMarkerStyle" ForeColour="#D1C4E9" BackColour="#2A1A5E" Name="Version" Ordinal="200"/>
     <models:MarkStyle x:Key="SegmentLobTypeMarkerStyle" ForeColour="#90CAF9" BackColour="#0A2A52" Name="Lob Type" Ordinal="201"/>
     <models:MarkStyle x:Key="SegmentReservedMarkerStyle" ForeColour="#BDBDBD" BackColour="#3A3A38" Name="Reserved" Ordinal="202"/>
     <models:MarkStyle x:Key="SegmentUnknownMarkerStyle" ForeColour="#EF9A9A" BackColour="#4A1212" Name="Unknown" Ordinal="203"/>
-    <models:MarkStyle x:Key="SegmentStructureTypeMarkerStyle" ForeColour="#CE93D8" BackColour="#3A1145" Name="Structure Type" Ordinal="204"/>
+    <models:MarkStyle x:Key="SegmentRleTypeMarkerStyle" ForeColour="#CE93D8" BackColour="#3A1145" Name="RLE Type" Ordinal="204"/>
     <models:MarkStyle x:Key="BookmarkCountMarkerStyle" ForeColour="#80CBC4" BackColour="#00332E" Name="Bookmark Count" Ordinal="210"/>
     <models:MarkStyle x:Key="BookmarkDistanceMarkerStyle" ForeColour="#A5D6A7" BackColour="#14361A" Name="Bookmark Distance" Ordinal="211"/>
     <models:MarkStyle x:Key="BookmarkEntryMarkerStyle" ForeColour="#B0BEC5" BackColour="#1C2A30" Name="Bookmark Entry" Ordinal="211"/>

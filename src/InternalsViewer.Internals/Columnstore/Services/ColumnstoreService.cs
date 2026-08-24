@@ -100,7 +100,7 @@ public sealed class ColumnstoreService(IRecordReader recordReader, ILobDataServi
     {
         var data = await GetData(database, segment.DataPointer, cancellationToken);
 
-        return SegmentBlobParser.Parse(data, isMarkEnabled);
+        return SegmentBlobParser.Parse(data, segment, isMarkEnabled);
     }
 
     /// <summary>

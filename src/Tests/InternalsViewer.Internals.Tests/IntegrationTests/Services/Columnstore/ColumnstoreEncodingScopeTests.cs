@@ -56,7 +56,7 @@ public sealed class ColumnstoreEncodingScopeTests(ITestOutputHelper testOutput) 
                     TestOutput.WriteLine($"    row group {segment.Key.RowGroupId} column {segment.Key.ColumnId} "
                                          + $"{segment.Encoding} rows {segment.RowCount} "
                                          + $"pages {blob.VariableLengthData?.Pages.Length ?? 0} "
-                                         + $"lob {blob.Header.LobType} structure {blob.Header.StructureType} "
+                                         + $"lob {blob.Header.LobType} structure {blob.Header.RleType} "
                                          + $"store {blob.VariableLengthData?.Header.SubLobType.ToString() ?? "-"} "
                                          + $"pageTypes [{string.Join(", ", (blob.VariableLengthData?.Pages ?? []).Select(x => x.SubLobType.ToString()).Distinct())}]");
                 }

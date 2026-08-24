@@ -257,7 +257,7 @@ public sealed class TwoReadRunProbeTests(ITestOutputHelper testOutput) : Provide
             accumulated += entry.Value < 0 ? entry.Count : 1;
         }
 
-        _lines.Add($"=== {tableName}.{columnName} enc {(int)segment.Encoding} structure {(int)blob.Header.StructureType} "
+        _lines.Add($"=== {tableName}.{columnName} enc {(int)segment.Encoding} structure {(int)blob.Header.RleType} "
                    + $"rows {segment.RowCount} ===");
 
         _lines.Add($"  runs ({blob.RleEntries.Length}) [{string.Join(" | ", runs)}]");
