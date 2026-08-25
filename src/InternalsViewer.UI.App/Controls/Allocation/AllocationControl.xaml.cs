@@ -25,6 +25,7 @@ namespace InternalsViewer.UI.App.Controls.Allocation;
 public sealed partial class AllocationControl : IDisposable
 {
     private const double MinimumZoom = 0.2;
+
     private const double MaximumZoom = 4;
 
     private const double MinimumZoomForLines = 0.4;
@@ -55,11 +56,11 @@ public sealed partial class AllocationControl : IDisposable
         set => SetValue(GridColorProperty, value);
     }
 
-    public static readonly DependencyProperty GridColorProperty
+    public static readonly DependencyProperty GridColorProperty 
         = DependencyProperty.Register(nameof(GridColor),
-            typeof(Color),
-            typeof(AllocationControl),
-            new PropertyMetadata(null, OnPropertyChanged));
+                                      typeof(Color),
+                                      typeof(AllocationControl),
+                                      new PropertyMetadata(null, OnPropertyChanged));
 
     public short FileId
     {
@@ -697,10 +698,10 @@ public sealed partial class AllocationControl : IDisposable
                                       int height)
     {
         // Offset accounting for the scrollbar buttons
-        var offset = 18;
+        const int offset = 18;
 
         // Size of each block next to the scrollbar
-        var blockSize = 4;
+        const int blockSize = 4;
 
         // The number of [Block Size] pixel block in the allocation map
         var renderLines = (height - (offset)) / blockSize;

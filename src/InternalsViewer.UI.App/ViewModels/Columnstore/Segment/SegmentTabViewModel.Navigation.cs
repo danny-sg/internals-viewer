@@ -4,6 +4,8 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using InternalsViewer.UI.App.Models;
 using InternalsViewer.UI.App.Models.Columnstore;
 using InternalsViewer.UI.App.Models.Columnstore.Segment;
+using InternalsViewer.UI.App.Services.Diagnostics;
+using Microsoft.Extensions.Logging;
 
 namespace InternalsViewer.UI.App.ViewModels.Columnstore.Segment;
 
@@ -94,6 +96,8 @@ public sealed partial class SegmentTabViewModel
     /// </summary>
     private void GoToRegion(SegmentRegion region)
     {
+        using var timing = Logger.Time("Go to region", $"{region}");
+
         _isJumpingToRegion = true;
 
         try

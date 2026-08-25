@@ -108,22 +108,28 @@
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="*"/>
         </Grid.RowDefinitions>
+        <Grid Grid.Row="1"
+              Canvas.ZIndex="10"
+              Visibility="{x:Bind ViewModel.IsBusy, Mode=OneWay,
+                      Converter={StaticResource BoolToVisibilityConverter}}">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="{x:Bind GetHexSpacing(ViewModel.IsLoaded, ViewModel.Hex.IsVisible), Mode=OneWay}"/>
+                <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
+
         <StackPanel Padding="10"
                     Spacing="12"
-                    Grid.Row="1"
-                    Canvas.ZIndex="10"
+                    Grid.Column="1"
                     VerticalAlignment="Center"
-                    HorizontalAlignment="Center"
-                    Visibility="{x:Bind ViewModel.IsLoaded, Mode=OneWay,
-                            Converter={StaticResource BoolToVisibilityConverter},
-                            ConverterParameter=True}">
+                    HorizontalAlignment="Center">
             <ProgressRing HorizontalAlignment="Center"
-                          IsActive="{x:Bind ViewModel.IsSegmentLoading, Mode=OneWay}"
-                          Visibility="{x:Bind ViewModel.IsSegmentLoading, Mode=OneWay,
+                          IsActive="{x:Bind ViewModel.IsBusy, Mode=OneWay}"
+                          Visibility="{x:Bind ViewModel.IsBusy, Mode=OneWay,
                                   Converter={StaticResource BoolToVisibilityConverter}}"/>
             <TextBlock HorizontalAlignment="Center"
                        Text="{x:Bind ViewModel.StatusText, Mode=OneWay}"/>
         </StackPanel>
+        </Grid>
 
         <CommandBar x:Name="SegmentCommandBar"
                     IsOpen="False"
@@ -256,7 +262,7 @@
 
             <hexView:HexViewControl x:Name="HexView"
                              Grid.Column="0"
-                             Width="455" 
+                             Width="{x:Bind HexWidth}"
                              VerticalAlignment="Stretch"
                              Visibility="{x:Bind ViewModel.Hex.IsVisible, Mode=OneWay,
                              Converter={StaticResource BoolToVisibilityConverter}}"
@@ -357,8 +363,8 @@
                                 <tableView:TableViewTemplateColumn Header="RLE Array Entry" Width="340">
                                     <tableView:TableViewTemplateColumn.CellTemplate>
                                         <DataTemplate x:DataType="models:BookmarkDetail">
-                                            <controls:ValueDerivationControl Derivation="{x:Bind Derivation, Mode=OneTime}"
-                                                                             ResultInvoked="Derivation_OnResultInvoked"/>
+                                            <TextBlock controls:DerivationText.Derivation="{x:Bind Derivation, Mode=OneTime}"
+                                                       Style="{StaticResource DerivationTextStyle}"/>
                                         </DataTemplate>
                                     </tableView:TableViewTemplateColumn.CellTemplate>
                                 </tableView:TableViewTemplateColumn>
@@ -495,8 +501,8 @@
                                 <tableView:TableViewTemplateColumn Header="Offset" Width="340">
                                     <tableView:TableViewTemplateColumn.CellTemplate>
                                         <DataTemplate x:DataType="models:BitpackUnitRow">
-                                            <controls:ValueDerivationControl Derivation="{x:Bind Derivation, Mode=OneTime}"
-                                                                             ResultInvoked="Derivation_OnResultInvoked"/>
+                                            <TextBlock controls:DerivationText.Derivation="{x:Bind Derivation, Mode=OneTime}"
+                                                       Style="{StaticResource DerivationTextStyle}"/>
                                         </DataTemplate>
                                     </tableView:TableViewTemplateColumn.CellTemplate>
                                 </tableView:TableViewTemplateColumn>
@@ -711,20 +717,18 @@
                                 <tableView:TableViewTemplateColumn Header="Data Id" Width="340">
                                     <tableView:TableViewTemplateColumn.CellTemplate>
                                         <DataTemplate x:DataType="models:SegmentRowDetail">
-                                            <controls:ValueDerivationControl Derivation="{x:Bind DataIdDerivation, Mode=OneTime}"
-                                                                         ShowSteps="{x:Bind ShowDerivation, Mode=OneTime}"
-                                                                         StepInvoked="Derivation_OnStepInvoked"
-                                                                         ResultInvoked="Derivation_OnResultInvoked"/>
+                                            <TextBlock controls:DerivationText.Derivation="{x:Bind DataIdDerivation, Mode=OneTime}"
+                                                       controls:DerivationText.ShowSteps="{x:Bind ShowDerivation, Mode=OneTime}"
+                                                       Style="{StaticResource DerivationTextStyle}"/>
                                         </DataTemplate>
                                     </tableView:TableViewTemplateColumn.CellTemplate>
                                 </tableView:TableViewTemplateColumn>
                                 <tableView:TableViewTemplateColumn Header="Value" Width="360">
                                     <tableView:TableViewTemplateColumn.CellTemplate>
                                         <DataTemplate x:DataType="models:SegmentRowDetail">
-                                            <controls:ValueDerivationControl Derivation="{x:Bind ValueDerivation, Mode=OneTime}"
-                                                                         ShowSteps="{x:Bind ShowDerivation, Mode=OneTime}"
-                                                                         StepInvoked="Derivation_OnStepInvoked"
-                                                                         ResultInvoked="Derivation_OnResultInvoked"/>
+                                            <TextBlock controls:DerivationText.Derivation="{x:Bind ValueDerivation, Mode=OneTime}"
+                                                       controls:DerivationText.ShowSteps="{x:Bind ShowDerivation, Mode=OneTime}"
+                                                       Style="{StaticResource DerivationTextStyle}"/>
                                         </DataTemplate>
                                     </tableView:TableViewTemplateColumn.CellTemplate>
                                 </tableView:TableViewTemplateColumn>

@@ -295,6 +295,9 @@
       <Content Update="Assets\TabIcons\Database.png">
         <CopyToOutputDirectory>Always</CopyToOutputDirectory>
       </Content>
+      <Content Update="Assets\TabIcons\ColumnstoreTabIcon.svg">
+        <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+      </Content>
       <Content Update="Assets\TabIcons\IndexTabIcon.svg">
         <CopyToOutputDirectory>Always</CopyToOutputDirectory>
       </Content>

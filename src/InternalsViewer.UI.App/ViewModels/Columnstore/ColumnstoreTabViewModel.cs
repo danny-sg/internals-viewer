@@ -22,18 +22,27 @@ using Microsoft.Extensions.Logging;
 namespace InternalsViewer.UI.App.ViewModels.Columnstore;
 
 public sealed class ColumnstoreTabViewModelFactory(ILogger<ColumnstoreTabViewModel> logger,
+                                                   ILoggerFactory loggerFactory,
                                                    ColumnstoreService columnstoreService,
                                                    IPageService pageService,
                                                    IIamChainService iamChainService,
                                                    IRecordService recordService)
 {
     public ColumnstoreTabViewModel Create(DatabaseSource database, long allocationUnitId)
-        => new(logger, columnstoreService, pageService, iamChainService, recordService, database, allocationUnitId);
+        => new(logger,
+               loggerFactory,
+               columnstoreService,
+               pageService,
+               iamChainService,
+               recordService,
+               database,
+               allocationUnitId);
 }
 
 public sealed partial class ColumnstoreTabViewModel : TabViewModel
 {
     public ColumnstoreTabViewModel(ILogger<ColumnstoreTabViewModel> logger,
+                                   ILoggerFactory loggerFactory,
                                    ColumnstoreService columnstoreService,
                                    IPageService pageService,
                                    IIamChainService iamChainService,
@@ -42,6 +51,7 @@ public sealed partial class ColumnstoreTabViewModel : TabViewModel
                                    long allocationUnitId)
     {
         Logger = logger;
+        LoggerFactory = loggerFactory;
         ColumnstoreService = columnstoreService;
         PageService = pageService;
         IamChainService = iamChainService;
@@ -53,6 +63,11 @@ public sealed partial class ColumnstoreTabViewModel : TabViewModel
     }
 
     private ILogger<ColumnstoreTabViewModel> Logger { get; }
+
+    /// <summary>
+    /// Hands each tab a logger of its own, which is what the timings are written through
+    /// </summary>
+    private ILoggerFactory LoggerFactory { get; }
 
     internal ColumnstoreService ColumnstoreService { get; }
 

@@ -81,16 +81,18 @@
                 <tableView:TableViewTemplateColumn Header="Data Id" Width="340">
                     <tableView:TableViewTemplateColumn.CellTemplate>
                         <DataTemplate x:DataType="models:BitpackValueDetail">
-                            <controls:ValueDerivationControl Derivation="{x:Bind Derivation, Mode=OneTime}"
-                                                             ShowSteps="{x:Bind ShowDerivation, Mode=OneTime}"/>
+                            <TextBlock controls:DerivationText.Derivation="{x:Bind Derivation, Mode=OneTime}"
+                                       controls:DerivationText.ShowSteps="{x:Bind ShowDerivation, Mode=OneTime}"
+                                       Style="{StaticResource DerivationTextStyle}"/>
                         </DataTemplate>
                     </tableView:TableViewTemplateColumn.CellTemplate>
                 </tableView:TableViewTemplateColumn>
                 <tableView:TableViewTemplateColumn Header="Value" Width="340">
                     <tableView:TableViewTemplateColumn.CellTemplate>
                         <DataTemplate x:DataType="models:BitpackValueDetail">
-                            <controls:ValueDerivationControl Derivation="{x:Bind ValueDerivation, Mode=OneTime}"
-                                                             ShowSteps="{x:Bind ShowDerivation, Mode=OneTime}"/>
+                            <TextBlock controls:DerivationText.Derivation="{x:Bind ValueDerivation, Mode=OneTime}"
+                                       controls:DerivationText.ShowSteps="{x:Bind ShowDerivation, Mode=OneTime}"
+                                       Style="{StaticResource DerivationTextStyle}"/>
                         </DataTemplate>
                     </tableView:TableViewTemplateColumn.CellTemplate>
                 </tableView:TableViewTemplateColumn>

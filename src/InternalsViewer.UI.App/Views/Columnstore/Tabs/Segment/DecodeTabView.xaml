@@ -81,7 +81,8 @@
                 <tableView:TableViewTemplateColumn Header="Value" Width="360">
                     <tableView:TableViewTemplateColumn.CellTemplate>
                         <DataTemplate x:DataType="models:ValueDetail">
-                            <controls:ValueDerivationControl Derivation="{x:Bind Derivation, Mode=OneTime}"/>
+                            <TextBlock controls:DerivationText.Derivation="{x:Bind Derivation, Mode=OneTime}"
+                                       Style="{StaticResource DerivationTextStyle}"/>
                         </DataTemplate>
                     </tableView:TableViewTemplateColumn.CellTemplate>
                 </tableView:TableViewTemplateColumn>

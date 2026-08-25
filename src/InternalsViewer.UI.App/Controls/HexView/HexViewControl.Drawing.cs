@@ -12,6 +12,8 @@ using Microsoft.UI.Xaml.Documents;
 using Microsoft.UI.Xaml.Media;
 using Microsoft.UI.Xaml.Shapes;
 using InternalsViewer.UI.App.Models.Logging;
+using InternalsViewer.UI.App.Services.Diagnostics;
+using Microsoft.Extensions.Logging;
 
 namespace InternalsViewer.UI.App.Controls.HexView;
 
@@ -299,6 +301,8 @@ public sealed partial class HexViewControl
 
     private static void HighlightMarkers(HexViewControl target, ObservableCollection<Marker>? markers)
     {
+        using var timing = target.Logger.Time("Highlight markers", $"{Count(markers)} markers");
+
         target.HexRichTextBlock.TextHighlighters.Clear();
 
         void Highlight(Marker source)
@@ -351,6 +355,16 @@ public sealed partial class HexViewControl
     /// This works by taking the height of the text and dividing by the know number of lines to get the height of each line, then 
     /// multiplying by the calculated line number to get the position.
     /// </remarks>
+    /// <summary>
+    /// Markers over the whole tree, a highlighter being added for every one of them
+    /// </summary>
+    private static int Count(IEnumerable<Marker>? markers)
+        => markers?.Sum(m => 1 + Count(m.Children)) ?? 0;
+
+    private ILogger? _logger;
+
+    private ILogger Logger => _logger ??= App.GetService<ILoggerFactory>().CreateLogger<HexViewControl>();
+
     private static void ScrollToPosition(HexViewControl target, int position, bool isFollowingSelection)
     {
         // A virtualized control holds only the lines already on screen, and a marker outside the window has no position

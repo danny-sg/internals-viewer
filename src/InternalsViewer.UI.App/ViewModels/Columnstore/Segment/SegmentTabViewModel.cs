@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Data;
 using System.Collections.ObjectModel;
@@ -10,6 +10,8 @@ using InternalsViewer.Internals.Columnstore.Segments;
 using InternalsViewer.Internals.Columnstore.Services;
 using InternalsViewer.Internals.Engine.Database;
 using InternalsViewer.UI.App.Controls.Columnstore;
+using Microsoft.Extensions.Logging;
+using InternalsViewer.UI.App.Services.Diagnostics;
 using InternalsViewer.UI.App.Models;
 using InternalsViewer.UI.App.Models.Columnstore;
 using InternalsViewer.UI.App.Models.Columnstore.Segment;
@@ -19,7 +21,8 @@ namespace InternalsViewer.UI.App.ViewModels.Columnstore.Segment;
 /// <summary>
 /// One column segment, its blob broken into the regions the structure table navigates
 /// </summary>
-public sealed partial class SegmentTabViewModel(ColumnstoreService columnstoreService,
+public sealed partial class SegmentTabViewModel(ILogger<SegmentTabViewModel> logger,
+                                                ColumnstoreService columnstoreService,
                                                 DatabaseSource database,
                                                 SegmentSummary segment,
                                                 Action<SegmentSummary>? openDictionary = null) : ObservableObject, IDisposable
@@ -42,6 +45,8 @@ public sealed partial class SegmentTabViewModel(ColumnstoreService columnstoreSe
 
     public string GetCsIndexCommand(int printMode)
         => CsIndexCommand.Build(Segment, Database.DatabaseId, Segment.Segment.Key.HobtId, printMode);
+
+    private ILogger<SegmentTabViewModel> Logger { get; } = logger;
 
     private ColumnstoreService ColumnstoreService { get; } = columnstoreService;
 
@@ -109,7 +114,36 @@ public sealed partial class SegmentTabViewModel(ColumnstoreService columnstoreSe
     private SegmentValueDecoder? Decoder { get; set; }
 
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsBusy))]
     private bool _isLoaded;
+
+    /// <summary>
+    /// Whether the tabs are being laid out before they are shown, which the reader waits through as part of loading
+    /// </summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsBusy))]
+    private bool _isPreparing;
+
+    public bool IsBusy => !IsLoaded || IsPreparing;
+
+    private string? _statusBeforePreparing;
+
+    partial void OnIsPreparingChanged(bool value)
+    {
+        if (value)
+        {
+            _statusBeforePreparing = StatusText;
+
+            StatusText = "Loading...";
+
+            return;
+        }
+
+        if (_statusBeforePreparing is { } previous)
+        {
+            StatusText = previous;
+        }
+    }
 
     [ObservableProperty]
     private bool _isSegmentLoading;
@@ -149,6 +183,13 @@ public sealed partial class SegmentTabViewModel(ColumnstoreService columnstoreSe
     /// <summary>
     /// The working behind a row's value, which a wide store answers by ordinal rather than by data id
     /// </summary>
+    private ValueDerivation? DeriveValueTimed(int ordinal, long dataId)
+    {
+        using var timing = Logger.Time("Derive row value", $"row {ordinal}");
+
+        return DeriveValue(ordinal, dataId);
+    }
+
     private ValueDerivation? DeriveValue(int ordinal, long dataId)
     {
         if (Blob?.VariableLengthData is { IsWide: true } store)

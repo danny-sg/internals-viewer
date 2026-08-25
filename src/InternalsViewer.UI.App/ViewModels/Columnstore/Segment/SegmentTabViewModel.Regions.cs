@@ -11,6 +11,8 @@ using InternalsViewer.UI.App.Models.Columnstore;
 using InternalsViewer.UI.App.Models.Columnstore.Segment;
 using InternalsViewer.UI.App.Services.Markers;
 using InternalsViewer.UI.App.ViewModels.Columnstore;
+using InternalsViewer.UI.App.Services.Diagnostics;
+using Microsoft.Extensions.Logging;
 
 namespace InternalsViewer.UI.App.ViewModels.Columnstore.Segment;
 
@@ -37,6 +39,8 @@ public sealed partial class SegmentTabViewModel
         {
             return [];
         }
+
+        using var timing = Logger.Time("Build bookmarks", $"{blob.Bookmarks.Length} bookmarks");
 
         var details = new List<BookmarkDetail>(blob.Bookmarks.Length);
 
@@ -96,6 +100,8 @@ public sealed partial class SegmentTabViewModel
         {
             return [];
         }
+
+        using var timing = Logger.Time("Build RLE runs", $"{blob.RleEntries.Length} entries");
 
         var runs = new List<RleRunDetail>(blob.RleEntries.Length);
 
@@ -308,9 +314,11 @@ public sealed partial class SegmentTabViewModel
     /// </summary>
     private void BuildRows(SegmentBlob blob)
     {
+        using var timing = Logger.Time("Build rows");
+
         var stream = _dataIdStream ??= new SegmentDataIdStream(blob);
 
-        var context = new SegmentRowContext(blob, stream, DeriveValue, IsDerivationVisible);
+        var context = new SegmentRowContext(blob, stream, DeriveValueTimed, IsDerivationVisible);
 
         Rows = new SegmentRowList(context, stream.RowCount);
 
@@ -322,6 +330,8 @@ public sealed partial class SegmentTabViewModel
     /// </summary>
     private List<Marker> BuildMarkers(SegmentBlob blob, int start, int length)
     {
+        using var timing = Logger.Time("Build markers", $"{Region}, {length} bytes");
+
         // The row was picked on the data tab, so its source is marked only while that tab is the one showing
         var rows = SelectedRegionTabIndex == DataTabIndex
             ? SegmentRegionMarkerBuilder.Window(RowMarkers(), start, length)

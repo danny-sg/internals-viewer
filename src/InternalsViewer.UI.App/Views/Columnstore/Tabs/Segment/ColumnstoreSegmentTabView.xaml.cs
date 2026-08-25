@@ -10,10 +10,17 @@ using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Controls.Primitives;
 using Microsoft.UI.Xaml.Input;
 using WinUI.TableView;
+using InternalsViewer.UI.App.Services.Diagnostics;
+using Microsoft.Extensions.Logging;
+using Microsoft.UI.Xaml.Media;
+using Microsoft.UI.Dispatching;
+using System.Collections;
+using InternalsViewer.UI.App.Controls;
+using System.Collections.Generic;
 
 namespace InternalsViewer.UI.App.Views.Columnstore.Tabs;
 
-public sealed partial class ColumnstoreSegmentTabView : UserControl, IDocumentCommands, IDisposable
+public sealed partial class ColumnstoreSegmentTabView : UserControl, IDocumentCommands, IDerivationNavigator, IDisposable
 {
     private readonly CancellationTokenSource _cts = new();
 
@@ -84,9 +91,76 @@ public sealed partial class ColumnstoreSegmentTabView : UserControl, IDocumentCo
     {
         if (element is null && isWanted)
         {
+            using var timing = Logger.Time("Realize panel", name);
+
             FindName(name);
         }
     }
+
+    /// <summary>
+    /// Reports what the grid on show has realised, which is how a grid that has stopped virtualizing gives itself up
+    /// </summary>
+    /// <remarks>
+    /// A virtualizing panel keeps containers for the rows on screen and a cache either side of them. One holding a
+    /// container per row has been measured against a height it can always satisfy, so it built the lot.
+    /// </remarks>
+    private void LogGridState()
+    {
+        if (!Logger.IsEnabled(LogLevel.Debug))
+        {
+            return;
+        }
+
+        DispatcherQueue.TryEnqueue(DispatcherQueuePriority.Low, () =>
+        {
+            if (FindTableView(this) is not { } table)
+            {
+                return;
+            }
+
+            var panel = table.ItemsPanelRoot;
+
+            var stack = panel as ItemsStackPanel;
+
+            Logger.LogDebug("Grid {Rows} rows, {Containers} containers in {Panel}, visible {First} to {Last}, "
+                            + "cached {CacheFirst} to {CacheLast}, height {Height:0}",
+                            (table.ItemsSource as ICollection)?.Count ?? -1,
+                            panel?.Children.Count ?? -1,
+                            panel?.GetType().Name ?? "none",
+                            stack?.FirstVisibleIndex ?? -1,
+                            stack?.LastVisibleIndex ?? -1,
+                            stack?.FirstCacheIndex ?? -1,
+                            stack?.LastCacheIndex ?? -1,
+                            table.ActualHeight);
+        });
+    }
+
+    /// <summary>
+    /// The grid the tab on show is holding, whichever panel that turns out to be
+    /// </summary>
+    private static TableView? FindTableView(DependencyObject root)
+    {
+        for (var i = 0; i < VisualTreeHelper.GetChildrenCount(root); i++)
+        {
+            var child = VisualTreeHelper.GetChild(root, i);
+
+            if (child is TableView { ActualHeight: > 0 } table)
+            {
+                return table;
+            }
+
+            if (FindTableView(child) is { } found)
+            {
+                return found;
+            }
+        }
+
+        return null;
+    }
+
+    private ILogger? _logger;
+
+    private ILogger Logger => _logger ??= App.GetService<ILoggerFactory>().CreateLogger<ColumnstoreSegmentTabView>();
 
     /// <summary>
     /// Selects the tab for the region, the window having scrolled into it rather than the tab having been picked
@@ -111,6 +185,17 @@ public sealed partial class ColumnstoreSegmentTabView : UserControl, IDocumentCo
     }
 
     public SegmentTabViewModel ViewModel => (SegmentTabViewModel)DataContext;
+
+    /// <summary>
+    /// Width the hex view takes beside the tabs
+    /// </summary>
+    public double HexWidth => 455;
+
+    /// <summary>
+    /// What the spinner is pushed across by, so it centres on the tabs rather than on the pair of them
+    /// </summary>
+    public GridLength GetHexSpacing(bool isLoaded, bool isHexVisible)
+        => new(isLoaded && isHexVisible ? HexWidth : 0);
 
     public Visibility GetTabContentVisibility(int selectedIndex, int index)
         => selectedIndex == index ? Visibility.Visible : Visibility.Collapsed;
@@ -170,20 +255,20 @@ public sealed partial class ColumnstoreSegmentTabView : UserControl, IDocumentCo
         return panel;
     }
 
-    /// <summary>
-    /// Takes an operand back to where it was read from, which puts its region on show with the item selected
-    /// </summary>
-    private void Derivation_OnResultInvoked(object? sender, ValueDerivation derivation)
+    public void OnStepInvoked(DerivationStep step)
     {
-        if (derivation.Target is SegmentNavigationTarget target)
+        if (step.Target is SegmentNavigationTarget target)
         {
             ViewModel.GoToTarget(target);
         }
     }
 
-    private void Derivation_OnStepInvoked(object? sender, DerivationStep step)
+    /// <summary>
+    /// Takes an operand back to where it was read from, which puts its region on show with the item selected
+    /// </summary>
+    public void OnResultInvoked(ValueDerivation derivation)
     {
-        if (step.Target is SegmentNavigationTarget target)
+        if (derivation.Target is SegmentNavigationTarget target)
         {
             ViewModel.GoToTarget(target);
         }
@@ -261,7 +346,13 @@ public sealed partial class ColumnstoreSegmentTabView : UserControl, IDocumentCo
 
     private void TabView_OnSelectionChanged(object sender, SelectionChangedEventArgs e)
     {
+        Logger.TimeUntilIdle(DispatcherQueue,
+                             "Region tab",
+                             ((TabView)sender).SelectedItem is TabViewItem { Tag: string name } ? name : null);
+
         ViewModel.Hex.SelectedMarker = null;
+
+        LogGridState();
 
         if (((TabView)sender).SelectedItem is TabViewItem { Tag: string tag }
             && Enum.TryParse<SegmentRegion>(tag, out var region))
@@ -280,6 +371,91 @@ public sealed partial class ColumnstoreSegmentTabView : UserControl, IDocumentCo
         {
             RegionTabView.SelectedIndex = 0;
         }
+
+        WarmPanels();
+    }
+
+    /// <summary>
+    /// Lays out the tabs that are not showing, so the first switch to one is not the first time it is measured
+    /// </summary>
+    /// <remarks>
+    /// A collapsed panel is never measured, so its grid holds no rows until the tab is picked and the whole cost
+    /// of generating them lands on the switch. Measuring each one here spends the same time while the reader is
+    /// still on the header, and the containers it builds are what the switch then reuses.
+    /// </remarks>
+    private void WarmPanels()
+    {
+        (string Name, bool IsWanted)[] panels =
+        [
+            (nameof(BookmarksPanel), ViewModel.HasBookmarks),
+            (nameof(RlePanel), ViewModel.HasRleArray),
+            (nameof(BitPackPanel), ViewModel.HasBitpackArray),
+            (nameof(VariableLengthDataPanel), ViewModel.HasVariableLengthData),
+            (nameof(DataPanel), true)
+        ];
+
+        foreach (var (name, isWanted) in panels)
+        {
+            if (isWanted)
+            {
+                _warming.Enqueue(name);
+            }
+        }
+
+        ViewModel.IsPreparing = _warming.Count > 0;
+
+        WarmNext();
+    }
+
+    private readonly Queue<string> _warming = new();
+
+    /// <summary>
+    /// Takes the panels one at a time, so what the interface is doing between them is still its own
+    /// </summary>
+    /// <remarks>
+    /// Only the first is waited on. The tab on show when a segment opens is the header, which has no grid to
+    /// build, so the rest are laid out behind a view the reader can already use rather than behind a spinner.
+    /// </remarks>
+    private void WarmNext()
+    {
+        if (_warming.Count == 0)
+        {
+            ViewModel.IsPreparing = false;
+
+            return;
+        }
+
+        DispatcherQueue.TryEnqueue(DispatcherQueuePriority.Low, () =>
+        {
+            Warm(_warming.Dequeue());
+
+            ViewModel.IsPreparing = false;
+
+            WarmNext();
+        });
+    }
+
+    /// <summary>
+    /// Measures one panel out of sight, which is what leaves its grid holding the rows a switch would build
+    /// </summary>
+    private void Warm(string name)
+    {
+        if (FindName(name) is not FrameworkElement { Visibility: Visibility.Collapsed } panel)
+        {
+            return;
+        }
+
+        using var timing = Logger.Time("Warm panel", name);
+
+        panel.Opacity = 0;
+
+        panel.Visibility = Visibility.Visible;
+
+        panel.UpdateLayout();
+
+        panel.Visibility = Visibility.Collapsed;
+
+        panel.Opacity = 1;
     }
 
     public void Dispose()

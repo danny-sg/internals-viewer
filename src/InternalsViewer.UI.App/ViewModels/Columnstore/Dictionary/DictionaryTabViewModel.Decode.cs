@@ -13,6 +13,8 @@ using InternalsViewer.UI.App.Models;
 using InternalsViewer.UI.App.Models.Columnstore;
 using InternalsViewer.UI.App.Models.Columnstore.Dictionary;
 using InternalsViewer.UI.App.Services.Markers;
+using InternalsViewer.UI.App.Services.Diagnostics;
+using Microsoft.Extensions.Logging;
 
 namespace InternalsViewer.UI.App.ViewModels.Columnstore.Dictionary;
 
@@ -289,6 +291,8 @@ public sealed partial class DictionaryTabViewModel
             return (null, []);
         }
 
+        using var timing = Logger.Time("Load page detail", $"page {page.Index}, {page.StringCount} entries");
+
         var codes = page.Codes.Select(c => new HuffmanCodeDetail { Code = c }).ToList();
 
         _ = page.Tree;
@@ -401,6 +405,8 @@ public sealed partial class DictionaryTabViewModel
 
     private List<Marker> BuildMarkers(DictionaryBlob blob, int start, int length)
     {
+        using var timing = Logger.Time("Build markers", $"{length} bytes");
+
         try
         {
             var header = DictionaryMarkerBuilder.GroupHeader(

@@ -8,6 +8,8 @@ using Microsoft.UI.Text;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Documents;
 using Microsoft.UI.Xaml.Media;
+using InternalsViewer.UI.App.Services.Diagnostics;
+using Microsoft.Extensions.Logging;
 
 namespace InternalsViewer.UI.App.Controls.HexView;
 
@@ -170,6 +172,8 @@ public sealed partial class HexViewControl
 
     private static void SetHexData(IReadOnlyList<byte> data, HexViewControl target)
     {
+        using var timing = target.Logger.Time("Set hex data", $"{data.Count} bytes");
+
         var paragraph = new Paragraph();
 
         paragraph.Inlines.Add(new Run { Text = HexTextBuilder.Build(data, BytesPerLine) });

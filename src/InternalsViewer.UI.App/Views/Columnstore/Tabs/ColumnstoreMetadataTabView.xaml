@@ -6,6 +6,7 @@
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     xmlns:tableView="using:WinUI.TableView"
+    xmlns:controls="using:InternalsViewer.UI.App.Controls"
     xmlns:columnstore="using:InternalsViewer.UI.App.Models.Columnstore"
     mc:Ignorable="d">
     <Grid>
@@ -45,23 +46,21 @@
                 <tableView:TableViewTemplateColumn Header="Segment" Width="80" CanSort="False">
                     <tableView:TableViewTemplateColumn.CellTemplate>
                         <DataTemplate x:DataType="columnstore:SegmentSummary">
-                            <HyperlinkButton Content="View"
-                                             HorizontalAlignment="Center"
-                                             Click="ViewSegmentButton_Click"
-                                             Style="{StaticResource CellPageAddressStyle}"
-                                             Tag="{x:Bind}"/>
+                            <TextBlock controls:CellLink.Text="View"
+                                       controls:CellLink.Kind="Segment"
+                                       controls:CellLink.Parameter="{x:Bind}"
+                                       Style="{StaticResource CellLinkCentredStyle}"/>
                         </DataTemplate>
                     </tableView:TableViewTemplateColumn.CellTemplate>
                 </tableView:TableViewTemplateColumn>
                 <tableView:TableViewTemplateColumn Header="Dictionary" Width="90" CanSort="False">
                     <tableView:TableViewTemplateColumn.CellTemplate>
                         <DataTemplate x:DataType="columnstore:SegmentSummary">
-                            <HyperlinkButton Content="{x:Bind DictionaryScope}"
-                                             Visibility="{x:Bind HasDictionary, Converter={StaticResource BoolToVisibilityConverter}}"
-                                             Click="ViewDictionaryButton_Click"
-                                             HorizontalAlignment="Center"
-                                             Style="{StaticResource CellPageAddressStyle}"
-                                             Tag="{x:Bind}"/>
+                            <TextBlock controls:CellLink.Text="{x:Bind DictionaryScope}"
+                                       controls:CellLink.Kind="SegmentDictionary"
+                                       controls:CellLink.Parameter="{x:Bind}"
+                                       Visibility="{x:Bind HasDictionary, Converter={StaticResource BoolToVisibilityConverter}}"
+                                       Style="{StaticResource CellLinkCentredStyle}"/>
                         </DataTemplate>
                     </tableView:TableViewTemplateColumn.CellTemplate>
                 </tableView:TableViewTemplateColumn>
@@ -130,11 +129,11 @@
                 <tableView:TableViewTemplateColumn Header="Data Pointer" Width="130" CanSort="False">
                     <tableView:TableViewTemplateColumn.CellTemplate>
                         <DataTemplate x:DataType="columnstore:SegmentSummary">
-                            <HyperlinkButton Content="{x:Bind DataPointerDescription}"
-                                             Visibility="{x:Bind HasDataPointer, Converter={StaticResource BoolToVisibilityConverter}}"
-                                             Click="DataPointerButton_Click"
-                                             Style="{StaticResource CellPageAddressStyle}"
-                                             Tag="{x:Bind}"/>
+                            <TextBlock controls:CellLink.Text="{x:Bind DataPointerDescription}"
+                                       controls:CellLink.Kind="SegmentDataPointer"
+                                       controls:CellLink.Parameter="{x:Bind}"
+                                       Visibility="{x:Bind HasDataPointer, Converter={StaticResource BoolToVisibilityConverter}}"
+                                       Style="{StaticResource CellLinkStyle}"/>
                         </DataTemplate>
                     </tableView:TableViewTemplateColumn.CellTemplate>
                 </tableView:TableViewTemplateColumn>
@@ -163,13 +162,10 @@
                 <tableView:TableViewTemplateColumn Header="Dictionary" Width="90" CanSort="False">
                     <tableView:TableViewTemplateColumn.CellTemplate>
                         <DataTemplate x:DataType="columnstore:DictionarySummary">
-                            <HyperlinkButton Content="View"
-                                             Padding="0"
-                                             Style="{StaticResource CellPageAddressStyle}"
-                                             VerticalAlignment="Center"
-                                             HorizontalAlignment="Center"
-                                             Click="Dictionary_OnClick"
-                                             Tag="{x:Bind}"/>
+                            <TextBlock controls:CellLink.Text="View"
+                                       controls:CellLink.Kind="Dictionary"
+                                       controls:CellLink.Parameter="{x:Bind}"
+                                       Style="{StaticResource CellLinkCentredStyle}"/>
                         </DataTemplate>
                     </tableView:TableViewTemplateColumn.CellTemplate>
                 </tableView:TableViewTemplateColumn>
@@ -199,11 +195,11 @@
                 <tableView:TableViewTemplateColumn Header="Data Pointer" Width="130" CanSort="False">
                     <tableView:TableViewTemplateColumn.CellTemplate>
                         <DataTemplate x:DataType="columnstore:DictionarySummary">
-                            <HyperlinkButton Content="{x:Bind DataPointerDescription}"
-                                             Visibility="{x:Bind HasDataPointer, Converter={StaticResource BoolToVisibilityConverter}}"
-                                             Click="DictionaryDataPointerButton_Click"
-                                             Style="{StaticResource CellPageAddressStyle}"
-                                             Tag="{x:Bind}"/>
+                            <TextBlock controls:CellLink.Text="{x:Bind DataPointerDescription}"
+                                       controls:CellLink.Kind="DictionaryDataPointer"
+                                       controls:CellLink.Parameter="{x:Bind}"
+                                       Visibility="{x:Bind HasDataPointer, Converter={StaticResource BoolToVisibilityConverter}}"
+                                       Style="{StaticResource CellLinkStyle}"/>
                         </DataTemplate>
                     </tableView:TableViewTemplateColumn.CellTemplate>
                 </tableView:TableViewTemplateColumn>

@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
@@ -6,6 +6,8 @@ using Windows.ApplicationModel.DataTransfer;
 using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.UI.App.Models;
 using Microsoft.UI.Xaml.Controls;
+using InternalsViewer.UI.App.Services.Diagnostics;
+using Microsoft.Extensions.Logging;
 
 namespace InternalsViewer.UI.App.Controls.Page;
 
@@ -59,6 +61,10 @@ public sealed partial class MarkerTreeView
 
     private bool _isRebuildPending;
 
+    private ILogger? _logger;
+
+    private ILogger Logger => _logger ??= App.GetService<ILoggerFactory>().CreateLogger<MarkerTreeView>();
+
     private void OnVisibilityChanged(DependencyObject sender, DependencyProperty property)
     {
         if (Visibility == Visibility.Visible && _isRebuildPending)
@@ -69,6 +75,8 @@ public sealed partial class MarkerTreeView
 
     private void RebuildNodes()
     {
+        using var timing = Logger.Time("Rebuild marker tree", $"{Markers?.Count ?? 0} roots");
+
         _isRebuildPending = false;
 
         var markers = Markers?.Where(m => m.IsVisible) ?? [];

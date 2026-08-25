@@ -6,6 +6,7 @@ using InternalsViewer.UI.App.ViewModels.Columnstore.Dictionary;
 using InternalsViewer.UI.App.ViewModels.Columnstore.Segment;
 using InternalsViewer.UI.App.ViewModels.Docking;
 using InternalsViewer.UI.App.Views.Columnstore.Tabs;
+using Microsoft.Extensions.Logging;
 
 namespace InternalsViewer.UI.App.ViewModels.Columnstore;
 
@@ -69,7 +70,11 @@ public sealed partial class ColumnstoreTabViewModel
         => Open($"Segment {segment.RowGroupId}:{segment.ColumnId} ({segment.ColumnName})",
                 $"Segment:{segment.RowGroupId}:{segment.ColumnId}",
                 () => new ColumnstoreSegmentTabView(),
-                new SegmentTabViewModel(ColumnstoreService, Database, segment, OpenDictionary));
+                new SegmentTabViewModel(LoggerFactory.CreateLogger<SegmentTabViewModel>(),
+                                        ColumnstoreService,
+                                        Database,
+                                        segment,
+                                        OpenDictionary));
 
     public void OpenDictionary(SegmentSummary segment)
     {
@@ -85,7 +90,8 @@ public sealed partial class ColumnstoreTabViewModel
         => Open($"Dictionary {dictionary.ColumnId}:{dictionary.DictionaryId}",
                 $"Dictionary:{dictionary.ColumnId}:{dictionary.DictionaryId}",
                 () => new ColumnstoreDictionaryTabView(),
-                new DictionaryTabViewModel(ColumnstoreService,
+                new DictionaryTabViewModel(LoggerFactory.CreateLogger<DictionaryTabViewModel>(),
+                                           ColumnstoreService,
                                            Database,
                                            dictionary,
                                            Index?.Columns.FirstOrDefault(c => c.ColumnStoreColumnId == dictionary.ColumnId)));

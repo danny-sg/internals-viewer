@@ -4,10 +4,12 @@ using InternalsViewer.UI.App.Messages;
 using InternalsViewer.UI.App.Models.Columnstore;
 using InternalsViewer.UI.App.ViewModels.Columnstore;
 using Microsoft.UI.Xaml.Controls;
+using InternalsViewer.UI.App.Controls;
+using InternalsViewer.Internals.Engine.Address;
 
 namespace InternalsViewer.UI.App.Views.Columnstore.Tabs;
 
-public sealed partial class ColumnstoreMetadataTabView : IDisposable
+public sealed partial class ColumnstoreMetadataTabView : ICellLinkNavigator, IDisposable
 {
     public ColumnstoreMetadataTabView()
     {
@@ -54,12 +56,42 @@ public sealed partial class ColumnstoreMetadataTabView : IDisposable
     private Visibility GetTabContentVisibility(int selected, int index)
         => selected == index ? Visibility.Visible : Visibility.Collapsed;
 
-    private void Dictionary_OnClick(object sender, RoutedEventArgs e)
+    public void OnLinkInvoked(string kind, object? parameter)
     {
-        if ((sender as FrameworkElement)?.Tag is DictionarySummary summary)
+        switch (kind)
         {
-            ViewModel.OpenDictionary(summary.Dictionary);
+            case "Segment" when parameter is SegmentSummary segment:
+                ViewModel.OpenSegment(segment);
+
+                break;
+
+            case "SegmentDictionary" when parameter is SegmentSummary { HasDictionary: true } withDictionary:
+                ViewModel.OpenDictionary(withDictionary);
+
+                break;
+
+            case "Dictionary" when parameter is DictionarySummary summary:
+                ViewModel.OpenDictionary(summary.Dictionary);
+
+                break;
+
+            case "SegmentDataPointer" when parameter is SegmentSummary { HasDataPointer: true } source:
+                OpenPage(source.DataPage, source.DataSlot);
+
+                break;
+
+            case "DictionaryDataPointer" when parameter is DictionarySummary { HasDataPointer: true } dictionary:
+                OpenPage(dictionary.DataPage, dictionary.DataSlot);
+
+                break;
         }
+    }
+
+    private async void OpenPage(PageAddress address, ushort? slot)
+    {
+        var request = new OpenPageRequest(ViewModel.Database, address) { Slot = slot };
+
+        await WeakReferenceMessenger.Default.Send(new OpenPageMessage(request));
     }
 
     public void Dispose()
@@ -77,43 +109,4 @@ public sealed partial class ColumnstoreMetadataTabView : IDisposable
         Bindings.StopTracking();
     }
 
-    private async void DataPointerButton_Click(object sender, RoutedEventArgs e)
-    {
-        if (((HyperlinkButton)sender).Tag is not SegmentSummary { HasDataPointer: true } segment)
-        {
-            return;
-        }
-
-        var request = new OpenPageRequest(ViewModel.Database, segment.DataPage) { Slot = segment.DataSlot };
-
-        await WeakReferenceMessenger.Default.Send(new OpenPageMessage(request));
-    }
-
-    private async void DictionaryDataPointerButton_Click(object sender, RoutedEventArgs e)
-    {
-        if (((HyperlinkButton)sender).Tag is not DictionarySummary { HasDataPointer: true } dictionary)
-        {
-            return;
-        }
-
-        var request = new OpenPageRequest(ViewModel.Database, dictionary.DataPage) { Slot = dictionary.DataSlot };
-
-        await WeakReferenceMessenger.Default.Send(new OpenPageMessage(request));
-    }
-
-    private void ViewDictionaryButton_Click(object sender, RoutedEventArgs e)
-    {
-        if (((HyperlinkButton)sender).Tag is SegmentSummary { HasDictionary: true } segment)
-        {
-            ViewModel.OpenDictionary(segment);
-        }
-    }
-
-    private void ViewSegmentButton_Click(object sender, RoutedEventArgs e)
-    {
-        if (((HyperlinkButton)sender).Tag is SegmentSummary segment)
-        {
-            ViewModel.OpenSegment(segment);
-        }
-    }
 }

@@ -334,7 +334,7 @@ public sealed partial class MainWindow
 
             var content = new ColumnstoreView { DataContext = viewModel };
 
-            var svg = new SvgImageSource(new Uri("ms-appx:///Assets/TabIcons/IndexTabIcon.svg"));
+            var svg = new SvgImageSource(new Uri("ms-appx:///Assets/TabIcons/ColumnstoreTabIcon.svg"));
 
             var tab = new TabViewItem
             {

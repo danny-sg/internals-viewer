@@ -15,13 +15,16 @@ using InternalsViewer.UI.App.Controls.Columnstore;
 using InternalsViewer.UI.App.Models.Columnstore;
 using InternalsViewer.UI.App.Models.Columnstore.Segment;
 using InternalsViewer.UI.App.Models.Columnstore.Dictionary;
+using InternalsViewer.UI.App.Services.Diagnostics;
+using Microsoft.Extensions.Logging;
 
 namespace InternalsViewer.UI.App.ViewModels.Columnstore.Dictionary;
 
 /// <summary>
 /// Columnstore Dictionary Tab View Model
 /// </summary>
-public sealed partial class DictionaryTabViewModel(ColumnstoreService columnstoreService,
+public sealed partial class DictionaryTabViewModel(ILogger<DictionaryTabViewModel> logger,
+                                                   ColumnstoreService columnstoreService,
                                                    DatabaseSource database,
                                                    SegmentDictionary dictionary,
                                                    ColumnStoreColumn? column) : ObservableObject, IDisposable
@@ -29,6 +32,8 @@ public sealed partial class DictionaryTabViewModel(ColumnstoreService columnstor
     private const int SpinnerDelayMs = 100;
 
     private const float ShadeFactor = 0.72f;
+
+    private ILogger<DictionaryTabViewModel> Logger { get; } = logger;
 
     private ColumnstoreService ColumnstoreService { get; } = columnstoreService;
 
