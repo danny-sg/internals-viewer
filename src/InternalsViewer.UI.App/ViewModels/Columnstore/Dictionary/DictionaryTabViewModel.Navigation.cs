@@ -1,4 +1,4 @@
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using CommunityToolkit.Mvvm.ComponentModel;
 using InternalsViewer.Internals.Columnstore.Dictionaries;
 using InternalsViewer.UI.App.Models;
@@ -12,6 +12,10 @@ public sealed partial class DictionaryTabViewModel
     [ObservableProperty]
     private int _selectedTabIndex;
 
+    private const int HandlesTabIndex = 1;
+
+    private const int PagesTabIndex = 2;
+
     private const int EntriesTabIndex = 3;
 
     [ObservableProperty]
@@ -19,6 +23,16 @@ public sealed partial class DictionaryTabViewModel
 
     [ObservableProperty]
     private int _selectedPageTabIndex;
+
+    /// <summary>
+    /// A marker belongs to the tab it was picked on, so moving between them leaves nothing selected
+    /// </summary>
+    partial void OnSelectedPageTabIndexChanged(int value)
+    {
+        Hex.SelectedMarker = null;
+
+        Hex.BuildMarkers();
+    }
 
     /// <summary>
     /// Hex Region

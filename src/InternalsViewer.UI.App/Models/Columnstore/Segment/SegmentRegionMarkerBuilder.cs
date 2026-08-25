@@ -23,7 +23,8 @@ public static class SegmentRegionMarkerBuilder
     public static List<Marker> Build(SegmentBlob blob, SegmentRegion region, int windowStart, int windowLength)
         => region switch
         {
-            SegmentRegion.Header => HeaderSections(blob, windowStart, windowLength),
+            SegmentRegion.Header => [.. HeaderSections(blob, windowStart, windowLength),
+                                     .. RegionMarkers(blob, windowStart, windowLength)],
             SegmentRegion.Bookmarks => [.. BookmarkHeader(blob), .. BuildBookmarks(blob, windowStart, windowLength)],
             SegmentRegion.RleArray => [.. RleHeader(blob), .. BuildRleEntries(blob, windowStart, windowLength)],
             SegmentRegion.BitpackArray => [.. BitpackHeader(blob),
@@ -73,6 +74,94 @@ public static class SegmentRegionMarkerBuilder
         }
 
         return sections;
+    }
+
+    /// <summary>
+    /// The areas the blob divides into past its header, so the header accounts for every byte of the segment
+    /// </summary>
+    /// <remarks>
+    /// An area runs to wherever the next one starts. They are kept in the tree whether the window holds them or
+    /// not, a region being longer than any window and the header being where the shape of the blob is read.
+    /// </remarks>
+    private static List<Marker> RegionMarkers(SegmentBlob blob, int windowStart, int windowLength)
+    {
+        var header = blob.Header;
+
+        var end = blob.Data.Length;
+
+        var regions = new List<(string Name, ItemType Type, int Start, int End, string Value)>
+        {
+            ("Bookmark Array",
+             ItemType.BookmarkArrayRegion,
+             header.BookmarkArrayOffset,
+             header.RleArrayOffset,
+             $"({header.BookmarkCount} Bookmarks)")
+        };
+
+        if (header.HasRleArray)
+        {
+            regions.Add(("RLE Array",
+                         ItemType.RleArrayRegion,
+                         header.RleArrayOffset,
+                         header.IsVariableLengthData ? header.VariableLengthDataOffset : header.BitpackArrayOffset,
+                         $"({header.RleEntryCount} Entries)"));
+        }
+
+        if (header.IsVariableLengthData)
+        {
+            regions.Add(("Value Store",
+                         ItemType.ValueStoreRegion,
+                         header.VariableLengthDataOffset,
+                         end,
+                         $"({blob.VariableLengthData?.ValueCount ?? 0} Values)"));
+        }
+        else if (header.HasBitpackArray)
+        {
+            regions.Add(("Bit Pack Array",
+                         ItemType.BitpackArrayRegion,
+                         header.BitpackArrayOffset,
+                         end,
+                         $"({header.BitpackUnitCount} Units)"));
+        }
+
+        var markers = new List<Marker>();
+
+        foreach (var (name, type, start, regionEnd, value) in regions)
+        {
+            if (regionEnd <= start)
+            {
+                continue;
+            }
+
+            markers.Add(Clip(MarkerBuilder.CreateMarker(name, type, start, regionEnd - start, value),
+                             windowStart,
+                             windowLength));
+        }
+
+        return markers;
+    }
+
+    /// <summary>
+    /// Positions the part of a marker the window holds, and takes the position off one it holds nothing of
+    /// </summary>
+    private static Marker Clip(Marker marker, int windowStart, int windowLength)
+    {
+        var from = Math.Max(marker.StartPosition, windowStart);
+
+        var to = Math.Min(marker.EndPosition, windowStart + windowLength - 1);
+
+        if (to < from)
+        {
+            marker.StartPosition = -1;
+            marker.EndPosition = -1;
+        }
+        else
+        {
+            marker.StartPosition = from - windowStart;
+            marker.EndPosition = to - windowStart;
+        }
+
+        return marker;
     }
 
     /// <summary>

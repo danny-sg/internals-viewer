@@ -275,4 +275,14 @@
     <models:MarkStyle x:Key="ValuePagePayloadMarkerStyle" ForeColour="#AED581" BackColour="#243C1C" Name="Payload" Ordinal="311"/>
     <models:MarkStyle x:Key="SegmentRowSourceMarkerStyle" ForeColour="#CE93D8" BackColour="#3A1145" Name="Row Source" Ordinal="312"/>
 
+    <!--Blob regions-->
+    <models:MarkStyle x:Key="BookmarkArrayRegionMarkerStyle" ForeColour="#8FA6B2" BackColour="#1B262C" Name="Bookmark Array" Ordinal="320"/>
+    <models:MarkStyle x:Key="RleArrayRegionMarkerStyle" ForeColour="#A3A8C4" BackColour="#1F2233" Name="RLE Array" Ordinal="321"/>
+    <models:MarkStyle x:Key="BitpackArrayRegionMarkerStyle" ForeColour="#A9BFA0" BackColour="#1E2A1B" Name="Bit Pack Array" Ordinal="322"/>
+    <models:MarkStyle x:Key="ValueStoreRegionMarkerStyle" ForeColour="#C2AE94" BackColour="#2A231A" Name="Value Store" Ordinal="323"/>
+    <models:MarkStyle x:Key="HandleArrayRegionMarkerStyle" ForeColour="#B7A2BC" BackColour="#261E29" Name="Handle Array" Ordinal="324"/>
+    <models:MarkStyle x:Key="PageSizeArrayRegionMarkerStyle" ForeColour="#9FB8B4" BackColour="#1A2725" Name="Page Size Array" Ordinal="325"/>
+    <models:MarkStyle x:Key="StringPageRegionMarkerStyle" ForeColour="#C09E9E" BackColour="#2A1D1D" Name="Pages" Ordinal="326"/>
+    <models:MarkStyle x:Key="ValueArrayRegionMarkerStyle" ForeColour="#A8B594" BackColour="#22271A" Name="Value Array" Ordinal="327"/>
+
 </ResourceDictionary>

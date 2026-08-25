@@ -228,7 +228,7 @@
                                      IsAddTabButtonVisible="False"
                                      TabWidthMode="SizeToContent"
                                      SelectedIndex="{x:Bind ViewModel.SelectedPageTabIndex, Mode=TwoWay}">
-                                <TabViewItem Header="Page" IsClosable="False"/>
+                                <TabViewItem Header="Page Header" IsClosable="False"/>
                                 <TabViewItem Header="Decode" IsClosable="False"/>
 
                                 <TabView.TabStripFooter>

@@ -1,4 +1,5 @@
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
+using InternalsViewer.Internals.Annotations;
 using InternalsViewer.UI.App.Models;
 
 namespace InternalsViewer.UI.App.Controls.HexView;
@@ -36,6 +37,36 @@ public static class MarkerLookup
         }
 
         return found;
+    }
+
+    /// <summary>
+    /// The first marker of a type, which is how a selection is found again after the markers are rebuilt
+    /// </summary>
+    /// <remarks>
+    /// A rebuild replaces every marker, so a caller holding one from before has nothing the tree or the hex view
+    /// still knows about. The type is what survives, each selection marking its own kind of thing.
+    /// </remarks>
+    public static Marker? FindByType(IEnumerable<Marker>? markers, ItemType type)
+    {
+        if (markers is null)
+        {
+            return null;
+        }
+
+        foreach (var marker in markers)
+        {
+            if (marker.Type == type)
+            {
+                return marker;
+            }
+
+            if (FindByType(marker.Children, type) is { } found)
+            {
+                return found;
+            }
+        }
+
+        return null;
     }
 
     public static (int Start, int End)? GetRange(Marker? marker)

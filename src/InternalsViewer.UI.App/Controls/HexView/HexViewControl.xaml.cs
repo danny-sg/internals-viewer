@@ -25,7 +25,7 @@ public sealed partial class HexViewControl
 
         SetAddress();
 
-        MouseOver = new(default, default);
+        MouseOver = new MouseOverInfo(null, null);
 
         // Border positions depend on the rendered text layout, so a resize/re-layout invalidates them
         HexRichTextBlock.SizeChanged += (_, _) =>

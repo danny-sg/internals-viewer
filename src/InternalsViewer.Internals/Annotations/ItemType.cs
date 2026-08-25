@@ -250,5 +250,15 @@ public enum ItemType
     DifferentialBaseGuid,
     FileOfflineLsn,
     RestoreStatus,
-    RestoreRedoStartLsn
+    RestoreRedoStartLsn,
+
+    // Regions, being the broad areas of a blob rather than anything read out of one
+    BookmarkArrayRegion,
+    RleArrayRegion,
+    BitpackArrayRegion,
+    ValueStoreRegion,
+    HandleArrayRegion,
+    PageSizeArrayRegion,
+    StringPageRegion,
+    ValueArrayRegion,
 }

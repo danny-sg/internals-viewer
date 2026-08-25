@@ -38,6 +38,11 @@ public sealed partial class MarkerKey
             return;
         }
 
-        control.Swatch.Background = MarkStyleProvider.Default.GetMarkStyle(control.ItemType).BackColour;
+        var style = MarkStyleProvider.Default.GetMarkStyle(control.ItemType);
+
+        control.Swatch.Background = style.BackColour;
+
+        // The colour a marker writes its bytes in, which is half of what tells one marker from another
+        control.Swatch.BorderBrush = style.ForeColour;
     }
 }

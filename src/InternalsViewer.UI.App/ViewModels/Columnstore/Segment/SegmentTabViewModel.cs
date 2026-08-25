@@ -87,17 +87,11 @@ public sealed partial class SegmentTabViewModel(ColumnstoreService columnstoreSe
         _dataIdStream = null;
     }
 
-    /// <summary>
-    /// How the column was compressed, which the metadata decides before the blob is ever read
-    /// </summary>
     public IReadOnlyList<SegmentBadge> EncodingBadges =>
     [
         SegmentBadge.Create(Segment.EncodingDescription, ColumnstoreLayout.GetEncodingColour(Segment.Encoding))
     ];
 
-    /// <summary>
-    /// Which store the rows came out of, which the blob decides rather than the metadata
-    /// </summary>
     public IReadOnlyList<SegmentBadge> StorageBadges
     {
         get
@@ -110,22 +104,13 @@ public sealed partial class SegmentTabViewModel(ColumnstoreService columnstoreSe
         }
     }
 
-    /// <summary>
-    /// Moves the window onto an offset without changing which region tab is on show
-    /// </summary>
     private void GoToOffset(int offset) => Hex.GoToOffset(offset);
 
-    /// <summary>
-    /// Resolves data ids to values, which the dictionary the segment reads has to be fetched for
-    /// </summary>
     private SegmentValueDecoder? Decoder { get; set; }
 
     [ObservableProperty]
     private bool _isLoaded;
 
-    /// <summary>
-    /// Whether the spinner is up, which a load only long enough to notice turns on
-    /// </summary>
     [ObservableProperty]
     private bool _isSegmentLoading;
 

@@ -1,10 +1,11 @@
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using InternalsViewer.Internals.Annotations;
 using InternalsViewer.Internals.Columnstore.Decoding;
 using InternalsViewer.Internals.Columnstore.Segments;
+using InternalsViewer.UI.App.Controls.HexView;
 using InternalsViewer.UI.App.Models;
 using InternalsViewer.UI.App.Models.Columnstore;
 using InternalsViewer.UI.App.Models.Columnstore.Segment;
@@ -236,6 +237,8 @@ public sealed partial class SegmentTabViewModel
         if (GetRowSource(row.Ordinal) is { } source)
         {
             GoToOffset(source.Offset);
+
+            Hex.SelectedMarker = MarkerLookup.FindByType(Hex.Markers, ItemType.SegmentRowSource);
         }
     }
 
@@ -319,7 +322,10 @@ public sealed partial class SegmentTabViewModel
     /// </summary>
     private List<Marker> BuildMarkers(SegmentBlob blob, int start, int length)
     {
-        var rows = SegmentRegionMarkerBuilder.Window(RowMarkers(), start, length);
+        // The row was picked on the data tab, so its source is marked only while that tab is the one showing
+        var rows = SelectedRegionTabIndex == DataTabIndex
+            ? SegmentRegionMarkerBuilder.Window(RowMarkers(), start, length)
+            : [];
 
         if (Region != SegmentRegion.VariableLengthData || blob.VariableLengthData is not { } store)
         {

@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Data;
 using System.Linq;
@@ -172,6 +172,10 @@ public sealed partial class DictionaryTabViewModel(ColumnstoreService columnstor
 
             Hex.WindowMoved += OnWindowMoved;
 
+            Hex.PropertyChanged -= OnHexPropertyChanged;
+
+            Hex.PropertyChanged += OnHexPropertyChanged;
+
             Hex.MarkerFactory = (start, length) => BuildMarkers(blob, start, length);
 
             Hex.SetData(blob.Data);
@@ -253,6 +257,8 @@ public sealed partial class DictionaryTabViewModel(ColumnstoreService columnstor
     public void Dispose()
     {
         Hex.WindowMoved -= OnWindowMoved;
+
+        Hex.PropertyChanged -= OnHexPropertyChanged;
 
         Hex.Dispose();
     }

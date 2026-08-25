@@ -345,14 +345,6 @@
                                         </StackPanel>
                                     </tableView:TableViewTextColumn.Header>
                                 </tableView:TableViewTextColumn>
-                                <tableView:TableViewTemplateColumn Header="RLE Array Entry" Width="340">
-                                    <tableView:TableViewTemplateColumn.CellTemplate>
-                                        <DataTemplate x:DataType="models:BookmarkDetail">
-                                            <controls:ValueDerivationControl Derivation="{x:Bind Derivation, Mode=OneTime}"
-                                                                             ResultInvoked="Derivation_OnResultInvoked"/>
-                                        </DataTemplate>
-                                    </tableView:TableViewTemplateColumn.CellTemplate>
-                                </tableView:TableViewTemplateColumn>
                                 <tableView:TableViewTextColumn Width="120" Binding="{Binding EndRow}"
                                                                CellStyle="{StaticResource TableViewCellRightStyle}">
                                     <tableView:TableViewTextColumn.Header>
@@ -362,6 +354,15 @@
                                         </StackPanel>
                                     </tableView:TableViewTextColumn.Header>
                                 </tableView:TableViewTextColumn>
+                                <tableView:TableViewTemplateColumn Header="RLE Array Entry" Width="340">
+                                    <tableView:TableViewTemplateColumn.CellTemplate>
+                                        <DataTemplate x:DataType="models:BookmarkDetail">
+                                            <controls:ValueDerivationControl Derivation="{x:Bind Derivation, Mode=OneTime}"
+                                                                             ResultInvoked="Derivation_OnResultInvoked"/>
+                                        </DataTemplate>
+                                    </tableView:TableViewTemplateColumn.CellTemplate>
+                                </tableView:TableViewTemplateColumn>
+                                
                             </tableView:TableView.Columns>
                         </tableView:TableView>
                     </Grid>
@@ -376,9 +377,11 @@
                         </Grid.RowDefinitions>
 
                         <tableView:TableView Grid.Row="0"
- CanSortColumns="False"
-                                             RowHeight="24" SelectionMode="Single"
- GridLinesVisibility="All" BorderThickness="0"
+                                             CanSortColumns="False"
+                                             RowHeight="24" 
+                                             SelectionMode="Single"
+                                             GridLinesVisibility="All" 
+                                             BorderThickness="0"
                                              Background="{ThemeResource LayerFillColorDefaultBrush}"
                                              SelectionChanged="RleRuns_OnSelectionChanged"
                                              ItemsSource="{x:Bind ViewModel.RleRuns, Mode=OneWay}">
@@ -468,9 +471,11 @@
                         </Grid.RowDefinitions>
 
                         <tableView:TableView Grid.Row="0"
- CanSortColumns="False"
-                                             RowHeight="24" SelectionMode="Single"
- GridLinesVisibility="All" BorderThickness="0"
+                                             CanSortColumns="False"
+                                             RowHeight="24" 
+                                             SelectionMode="Single"
+                                             GridLinesVisibility="All" 
+                                             BorderThickness="0"
                                              Background="{ThemeResource LayerFillColorDefaultBrush}"
                                              SelectionChanged="BitpackUnits_OnSelectionChanged"
                                              ItemsSource="{x:Bind ViewModel.BitpackUnits, Mode=OneWay}">
@@ -487,7 +492,7 @@
                                         </StackPanel>
                                     </tableView:TableViewTextColumn.Header>
                                 </tableView:TableViewTextColumn>
-                                <tableView:TableViewTemplateColumn Header="Offset" Width="300">
+                                <tableView:TableViewTemplateColumn Header="Offset" Width="340">
                                     <tableView:TableViewTemplateColumn.CellTemplate>
                                         <DataTemplate x:DataType="models:BitpackUnitRow">
                                             <controls:ValueDerivationControl Derivation="{x:Bind Derivation, Mode=OneTime}"

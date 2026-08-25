@@ -1,9 +1,10 @@
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
 using CommunityToolkit.Mvvm.ComponentModel;
 using InternalsViewer.Internals.Annotations;
 using InternalsViewer.Internals.Columnstore.Segments;
+using InternalsViewer.UI.App.Controls.HexView;
 using InternalsViewer.UI.App.Models;
 using InternalsViewer.UI.App.Models.Columnstore;
 using InternalsViewer.UI.App.Models.Columnstore.Segment;
@@ -159,6 +160,12 @@ public sealed partial class SegmentTabViewModel
         var position = page.Page.GetValuePosition(value.Index);
 
         PayloadHex.GoToOffset(position >= 0 ? position : page.Page.GetOffsetPosition(value.Index));
+
+        // The blob hex can only show the page the value was read from, the payload hex holding the value itself
+        PayloadHex.SelectedMarker = MarkerLookup.FindByType(PayloadHex.Markers,
+                                                            position >= 0
+                                                                ? ItemType.DictionaryValue
+                                                                : ItemType.ValueOffsetEntry);
 
         SelectPayloadMarker();
     }

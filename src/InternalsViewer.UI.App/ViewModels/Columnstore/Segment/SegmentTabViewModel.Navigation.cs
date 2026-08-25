@@ -1,4 +1,4 @@
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Linq;
 using CommunityToolkit.Mvvm.ComponentModel;
 using InternalsViewer.UI.App.Models;
@@ -23,10 +23,24 @@ public sealed partial class SegmentTabViewModel
         {
             IsDataTabLoaded = true;
         }
+
+        Hex.SelectedMarker = null;
+
+        Hex.BuildMarkers();
     }
 
     [ObservableProperty]
     private int _selectedVariableLengthDataTabIndex;
+
+    /// <summary>
+    /// A marker belongs to the tab it was picked on, so moving between them leaves nothing selected
+    /// </summary>
+    partial void OnSelectedVariableLengthDataTabIndexChanged(int value)
+    {
+        Hex.SelectedMarker = null;
+
+        Hex.BuildMarkers();
+    }
 
     /// <summary>
     /// Region the window sits on, set by picking a tab and reported back when a scroll leaves the region

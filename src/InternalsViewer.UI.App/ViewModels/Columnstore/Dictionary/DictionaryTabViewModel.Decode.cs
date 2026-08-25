@@ -1,12 +1,14 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.ComponentModel;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
 using InternalsViewer.Internals.Annotations;
 using InternalsViewer.Internals.Columnstore.Dictionaries;
+using InternalsViewer.UI.App.Controls.HexView;
 using InternalsViewer.UI.App.Models;
 using InternalsViewer.UI.App.Models.Columnstore;
 using InternalsViewer.UI.App.Models.Columnstore.Dictionary;
@@ -88,7 +90,39 @@ public sealed partial class DictionaryTabViewModel
         }
 
         Hex.BuildMarkers();
+
+        SelectMarker(handle is null ? null : ItemType.DictionaryHandle);
     }
+
+    /// <summary>
+    /// Puts the mask back on the row that is picked, the markers having been replaced by a rebuild
+    /// </summary>
+    /// <remarks>
+    /// A window move drops the selection along with the markers it was made against. The row picked in a table
+    /// outlives them both, so the mask is put back from whatever that row is once the new markers arrive.
+    /// </remarks>
+    private void OnHexPropertyChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName != nameof(BlobHexViewModel.Markers) || Hex.SelectedMarker is not null)
+        {
+            return;
+        }
+
+        if (IsHandleSelectionShown && SelectedHandle is not null)
+        {
+            SelectMarker(ItemType.DictionaryHandle);
+        }
+        else if (IsEntrySelectionShown && SelectedEntry is not null)
+        {
+            SelectMarker(GetEntryItemType());
+        }
+    }
+
+    /// <summary>
+    /// Puts the mask on what was just picked, the markers having been rebuilt from scratch to show it
+    /// </summary>
+    private void SelectMarker(ItemType? type)
+        => Hex.SelectedMarker = type is { } wanted ? MarkerLookup.FindByType(Hex.Markers, wanted) : null;
 
     [ObservableProperty]
     private DictionaryHandleDetail? _selectedHandle;
@@ -170,6 +204,10 @@ public sealed partial class DictionaryTabViewModel
         ClearDecodeCache();
 
         SelectedEntry = null;
+
+        SelectedHandle = null;
+
+        Hex.SelectedMarker = null;
 
         _pageLoad = ApplySelectedPageAsync(value);
 
@@ -286,7 +324,19 @@ public sealed partial class DictionaryTabViewModel
         }
 
         Hex.BuildMarkers();
+
+        SelectMarker(entry is null ? null : GetEntryItemType());
     }
+
+    /// <summary>
+    /// What an entry is marked as, which is the value itself unless a page codes it rather than storing it
+    /// </summary>
+    private ItemType GetEntryItemType()
+        => Blob is NumericDictionary
+            ? ItemType.DictionaryValue
+            : SelectedPage?.Huffman is not null
+                ? ItemType.StringEntryCode
+                : ItemType.StringEntryValue;
 
     private int? GetEntryOffset(DictionaryEntryDetail? entry)
     {
@@ -310,7 +360,7 @@ public sealed partial class DictionaryTabViewModel
         return page.Page switch
         {
             UncompressedStringPage uncompressed => uncompressed.GetExtent(handle.Offset).Offset,
-            _ => page.Offset + (handle.Offset / 8)
+            _ => page.Offset + HuffmanStringPage.DataOffset + (handle.Offset / 16 * 2)
         };
     }
 
@@ -334,6 +384,15 @@ public sealed partial class DictionaryTabViewModel
         return new DictionaryEntryList(strings, IsDerivationVisible, [.. indexes]);
     }
 
+    private bool IsHandleSelectionShown => SelectedTabIndex == HandlesTabIndex;
+
+    /// <summary>
+    /// Whether an entry is on show, which is the entry list or a page opened on its decode
+    /// </summary>
+    private bool IsEntrySelectionShown => SelectedTabIndex == EntriesTabIndex
+                                          || (SelectedTabIndex == PagesTabIndex
+                                              && SelectedPageTabIndex == DecodeTabIndex);
+
     [ObservableProperty]
     private ObservableCollection<Marker> _headerMarkers = [];
 
@@ -350,10 +409,15 @@ public sealed partial class DictionaryTabViewModel
                     start,
                     length));
 
+            // A selection is made on a tab and means nothing on another, so it is marked only while that tab shows
             List<Marker> selection =
             [
-                .. DictionaryMarkerBuilder.EntryMarkers(Blob, SelectedPage, SelectedEntry, DecodeSteps),
-                .. DictionaryMarkerBuilder.SelectedHandleMarkers(Blob, SelectedHandle)
+                .. IsEntrySelectionShown
+                       ? DictionaryMarkerBuilder.EntryMarkers(Blob, SelectedPage, SelectedEntry, DecodeSteps)
+                       : [],
+                .. IsHandleSelectionShown
+                       ? DictionaryMarkerBuilder.SelectedHandleMarkers(Blob, SelectedHandle)
+                       : []
             ];
 
             var page = SelectedPage is { } selected

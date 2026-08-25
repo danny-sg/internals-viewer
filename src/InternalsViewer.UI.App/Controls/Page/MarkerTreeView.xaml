@@ -125,6 +125,16 @@
                     </ControlTemplate>
                 </Setter.Value>
             </Setter>
+            <Setter Property="ContentTransitions">
+                <Setter.Value>
+                    <TransitionCollection />
+                </Setter.Value>
+            </Setter>
+            <Setter Property="Transitions">
+                <Setter.Value>
+                    <TransitionCollection />
+                </Setter.Value>
+            </Setter>
         </Style>
 
         <Style x:Key="RowHeader" TargetType="Border" >
@@ -259,6 +269,14 @@
                                 Content="{x:Bind Content}"/>
             </controls:DataRow>
         </DataTemplate>
+
+        <Style TargetType="muxc:TreeViewList">
+            <Setter Property="ItemContainerTransitions">
+                <Setter.Value>
+                    <TransitionCollection />
+                </Setter.Value>
+            </Setter>
+        </Style>
     </UserControl.Resources>
 
     <Border BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
