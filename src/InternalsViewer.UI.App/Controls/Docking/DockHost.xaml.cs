@@ -14,12 +14,9 @@ namespace InternalsViewer.UI.App.Controls.Docking;
 /// </summary>
 public sealed partial class DockHost : UserControl
 {
-    private readonly Dictionary<SplitNode, (Grid Grid, bool Horizontal)> grids = new();
-
-    public DockHost()
-    {
-        InitializeComponent();
-    }
+    public static readonly DependencyProperty LayoutProperty =
+        DependencyProperty.Register(nameof(Layout), typeof(DockLayoutViewModel), typeof(DockHost),
+            new PropertyMetadata(null, OnLayoutPropertyChanged));
 
     public DockLayoutViewModel? Layout
     {
@@ -27,25 +24,53 @@ public sealed partial class DockHost : UserControl
         set => SetValue(LayoutProperty, value);
     }
 
-    public static readonly DependencyProperty LayoutProperty =
-        DependencyProperty.Register(nameof(Layout), typeof(DockLayoutViewModel), typeof(DockHost),
-            new PropertyMetadata(null, OnLayoutPropertyChanged));
+    private readonly Dictionary<SplitNode, (Grid Grid, bool Horizontal)> grids = new();
 
-    private static void OnLayoutPropertyChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
+    public DockHost()
     {
-        var host = (DockHost)d;
+        InitializeComponent();
+    }
 
-        if (e.OldValue is DockLayoutViewModel oldLayout)
+    private static Brush SplitterBrush =>
+        Application.Current.Resources["ControlStrokeColorDefaultBrush"] as Brush
+        ?? new SolidColorBrush(Microsoft.UI.Colors.Gray);
+
+    /// <summary>Writes the live splitter star sizes back into the model (e.g. before persisting the layout)</summary>
+    public void CaptureSizes()
+    {
+        foreach (var (node, (grid, horizontal)) in grids)
         {
-            oldLayout.LayoutChanged -= host.OnLayoutChanged;
-        }
+            if (horizontal && grid.ColumnDefinitions.Count == 3)
+            {
+                var a = grid.ColumnDefinitions[0].Width;
+                var b = grid.ColumnDefinitions[2].Width;
 
-        if (e.NewValue is DockLayoutViewModel newLayout)
-        {
-            newLayout.LayoutChanged += host.OnLayoutChanged;
-        }
+                if (a.IsStar)
+                {
+                    node.FirstStar = a.Value;
+                }
 
-        host.Rebuild();
+                if (b.IsStar)
+                {
+                    node.SecondStar = b.Value;
+                }
+            }
+            else if (!horizontal && grid.RowDefinitions.Count == 3)
+            {
+                var a = grid.RowDefinitions[0].Height;
+                var b = grid.RowDefinitions[2].Height;
+
+                if (a.IsStar)
+                {
+                    node.FirstStar = a.Value;
+                }
+
+                if (b.IsStar)
+                {
+                    node.SecondStar = b.Value;
+                }
+            }
+        }
     }
 
     // Defer so we never mutate the visual tree from inside a drop handler that lives within it.
@@ -130,45 +155,20 @@ public sealed partial class DockHost : UserControl
         return grid;
     }
 
-    /// <summary>Writes the live splitter star sizes back into the model (e.g. before persisting the layout).</summary>
-    public void CaptureSizes()
+    private static void OnLayoutPropertyChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
     {
-        foreach (var (node, (grid, horizontal)) in grids)
+        var host = (DockHost)d;
+
+        if (e.OldValue is DockLayoutViewModel oldLayout)
         {
-            if (horizontal && grid.ColumnDefinitions.Count == 3)
-            {
-                var a = grid.ColumnDefinitions[0].Width;
-                var b = grid.ColumnDefinitions[2].Width;
-
-                if (a.IsStar)
-                {
-                    node.FirstStar = a.Value;
-                }
-
-                if (b.IsStar)
-                {
-                    node.SecondStar = b.Value;
-                }
-            }
-            else if (!horizontal && grid.RowDefinitions.Count == 3)
-            {
-                var a = grid.RowDefinitions[0].Height;
-                var b = grid.RowDefinitions[2].Height;
-
-                if (a.IsStar)
-                {
-                    node.FirstStar = a.Value;
-                }
-
-                if (b.IsStar)
-                {
-                    node.SecondStar = b.Value;
-                }
-            }
+            oldLayout.LayoutChanged -= host.OnLayoutChanged;
         }
-    }
 
-    private static Brush SplitterBrush =>
-        Application.Current.Resources["ControlStrokeColorDefaultBrush"] as Brush
-        ?? new SolidColorBrush(Microsoft.UI.Colors.Gray);
+        if (e.NewValue is DockLayoutViewModel newLayout)
+        {
+            newLayout.LayoutChanged += host.OnLayoutChanged;
+        }
+
+        host.Rebuild();
+    }
 }

@@ -40,11 +40,7 @@ public sealed class BitpackUnitList(SegmentBlob blob) : IList<BitpackUnitRow>, I
 
     public int IndexOf(BitpackUnitRow item) => item.Unit >= 0 && item.Unit < Count ? item.Unit : -1;
 
-    int IList.IndexOf(object? value) => value is BitpackUnitRow row ? IndexOf(row) : -1;
-
     public bool Contains(BitpackUnitRow item) => IndexOf(item) >= 0;
-
-    bool IList.Contains(object? value) => value is BitpackUnitRow row && Contains(row);
 
     public IEnumerator<BitpackUnitRow> GetEnumerator()
     {
@@ -54,25 +50,29 @@ public sealed class BitpackUnitList(SegmentBlob blob) : IList<BitpackUnitRow>, I
         }
     }
 
-    IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
-
     public void CopyTo(BitpackUnitRow[] array, int arrayIndex) => throw new NotSupportedException();
 
-    void ICollection.CopyTo(Array array, int index) => throw new NotSupportedException();
-
     public void Add(BitpackUnitRow item) => throw new NotSupportedException();
-
-    int IList.Add(object? value) => throw new NotSupportedException();
 
     public void Clear() => throw new NotSupportedException();
 
     public void Insert(int index, BitpackUnitRow item) => throw new NotSupportedException();
 
-    void IList.Insert(int index, object? value) => throw new NotSupportedException();
-
     public bool Remove(BitpackUnitRow item) => throw new NotSupportedException();
 
-    void IList.Remove(object? value) => throw new NotSupportedException();
-
     public void RemoveAt(int index) => throw new NotSupportedException();
+
+    int IList.IndexOf(object? value) => value is BitpackUnitRow row ? IndexOf(row) : -1;
+
+    bool IList.Contains(object? value) => value is BitpackUnitRow row && Contains(row);
+
+    IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
+
+    void ICollection.CopyTo(Array array, int index) => throw new NotSupportedException();
+
+    int IList.Add(object? value) => throw new NotSupportedException();
+
+    void IList.Insert(int index, object? value) => throw new NotSupportedException();
+
+    void IList.Remove(object? value) => throw new NotSupportedException();
 }

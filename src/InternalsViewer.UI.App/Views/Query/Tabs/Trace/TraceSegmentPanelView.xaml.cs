@@ -5,12 +5,12 @@ namespace InternalsViewer.UI.App.Views.Query.Tabs.Trace;
 
 public sealed partial class TraceSegmentPanelView : UserControl
 {
-    public TraceSegmentViewModel? ViewModel => DataContext as TraceSegmentViewModel;
-
     public TraceSegmentPanelView()
     {
         InitializeComponent();
 
         DataContextChanged += (_, _) => Bindings.Update();
     }
+
+    public TraceSegmentViewModel? ViewModel => DataContext as TraceSegmentViewModel;
 }

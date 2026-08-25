@@ -7,23 +7,16 @@ namespace InternalsViewer.UI.App.Services.Markers;
 
 public sealed class MarkStyleProvider
 {
-    public static MarkStyleProvider Default { get; } = new();
-
     private readonly Dictionary<ItemType, MarkStyle> _styleCache = [];
-
-    private ResourceDictionary? ThemeDictionary { get; set; }
 
     public MarkStyleProvider()
     {
         Initialize();
     }
 
-    private void Initialize()
-    {
-        var currentTheme = Application.Current.RequestedTheme;
+    public static MarkStyleProvider Default { get; } = new();
 
-        ThemeDictionary = Application.Current.Resources.ThemeDictionaries[currentTheme.ToString()] as ResourceDictionary;
-    }
+    private ResourceDictionary? ThemeDictionary { get; set; }
 
     public MarkStyle GetDefaultMarkStyle()
     {
@@ -62,5 +55,12 @@ public sealed class MarkStyleProvider
         _styleCache[itemType] = style;
 
         return style;
+    }
+
+    private void Initialize()
+    {
+        var currentTheme = Application.Current.RequestedTheme;
+
+        ThemeDictionary = Application.Current.Resources.ThemeDictionaries[currentTheme.ToString()] as ResourceDictionary;
     }
 }

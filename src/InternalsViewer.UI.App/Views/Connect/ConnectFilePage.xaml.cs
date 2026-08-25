@@ -7,12 +7,12 @@ namespace InternalsViewer.UI.App.Views.Connect;
 
 public sealed partial class ConnectFilePage
 {
-    private ConnectFileViewModel ViewModel => (ConnectFileViewModel)DataContext;
-
     public ConnectFilePage()
     {
         InitializeComponent();
     }
+
+    private ConnectFileViewModel ViewModel => (ConnectFileViewModel)DataContext;
 
     protected override void OnNavigatedTo(NavigationEventArgs e)
     {

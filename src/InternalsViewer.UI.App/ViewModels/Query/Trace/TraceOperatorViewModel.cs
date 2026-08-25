@@ -9,17 +9,6 @@ namespace InternalsViewer.UI.App.ViewModels.Query.Trace;
 
 public sealed partial class TraceOperatorViewModel(int nodeId, string title, string description) : ObservableObject
 {
-    public int NodeId { get; } = nodeId;
-
-    public string Title { get; } = title;
-
-    /// <summary>
-    /// What the operator matches on, which is the one thing about it that is not visible in its inputs
-    /// </summary>
-    public string Description { get; } = description;
-
-    public Uri? Icon { get; set; }
-
     /// <summary>
     /// The iterator has been opened and not yet closed, which is while it has a position to show
     /// </summary>
@@ -38,6 +27,20 @@ public sealed partial class TraceOperatorViewModel(int nodeId, string title, str
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(CurrentRowIdentifier))]
     private int? _currentSlot;
+
+    public event Action<int>? ActivationRequested;
+
+    public event Action<PageAddress>? PageOpenRequested;
+    public int NodeId { get; } = nodeId;
+
+    public string Title { get; } = title;
+
+    /// <summary>
+    /// What the operator matches on, which is the one thing about it that is not visible in its inputs
+    /// </summary>
+    public string Description { get; } = description;
+
+    public Uri? Icon { get; set; }
 
     public bool IsPositionVisible => IsOpen && CurrentPage is not null;
 
@@ -75,11 +78,7 @@ public sealed partial class TraceOperatorViewModel(int nodeId, string title, str
 
     public TraceRowStreamViewModel Output { get; } = new();
 
-    public event Action<int>? ActivationRequested;
-
     public void RequestActivation(int targetNodeId) => ActivationRequested?.Invoke(targetNodeId);
-
-    public event Action<PageAddress>? PageOpenRequested;
 
     public void RequestPageOpen()
     {

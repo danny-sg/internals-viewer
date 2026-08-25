@@ -9,14 +9,14 @@ namespace InternalsViewer.UI.App.Views.Query.Tabs.Trace;
 /// </summary>
 public sealed partial class TracePlanPanelView : UserControl
 {
-    public TraceTabViewModel? ViewModel => DataContext as TraceTabViewModel;
-
     public TracePlanPanelView()
     {
         InitializeComponent();
 
         DataContextChanged += (_, _) => Bindings.Update();
     }
+
+    public TraceTabViewModel? ViewModel => DataContext as TraceTabViewModel;
 
     private void OnNodeSelected(object? sender, PlanNode? node) => ViewModel?.ActivateOperator(node);
 }

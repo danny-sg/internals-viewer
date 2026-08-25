@@ -28,11 +28,6 @@ public sealed partial class ProbeRangeBar : UserControl
         InitializeComponent();
     }
 
-    private static void OnProbeChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
-    {
-        ((ProbeRangeBar)d).Rebuild();
-    }
-
     private void Rebuild()
     {
         BarGrid.Children.Clear();
@@ -94,5 +89,10 @@ public sealed partial class ProbeRangeBar : UserControl
         }
 
         return new SolidColorBrush(fallback);
+    }
+
+    private static void OnProbeChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
+    {
+        ((ProbeRangeBar)d).Rebuild();
     }
 }

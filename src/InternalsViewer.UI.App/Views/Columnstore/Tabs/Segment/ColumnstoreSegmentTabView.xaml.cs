@@ -24,7 +24,11 @@ public sealed partial class ColumnstoreSegmentTabView : UserControl, IDocumentCo
 {
     private readonly CancellationTokenSource _cts = new();
 
+    private readonly Queue<string> _warming = new();
+
     private SegmentTabViewModel? _tracked;
+
+    private ILogger? _logger;
 
     public ColumnstoreSegmentTabView()
     {
@@ -34,6 +38,126 @@ public sealed partial class ColumnstoreSegmentTabView : UserControl, IDocumentCo
 
         // x:Bind resolves against the view, and the dock sets DataContext after the view is built
         DataContextChanged += OnDataContextChanged;
+    }
+
+    public SegmentTabViewModel ViewModel => (SegmentTabViewModel)DataContext;
+
+    /// <summary>
+    /// Width the hex view takes beside the tabs
+    /// </summary>
+    public double HexWidth => 455;
+
+    private ILogger Logger => _logger ??= App.GetService<ILoggerFactory>().CreateLogger<ColumnstoreSegmentTabView>();
+
+    /// <summary>
+    /// What the spinner is pushed across by, so it centres on the tabs rather than on the pair of them
+    /// </summary>
+    public GridLength GetHexSpacing(bool isLoaded, bool isHexVisible)
+        => new(isLoaded && isHexVisible ? HexWidth : 0);
+
+    public Visibility GetTabContentVisibility(int selectedIndex, int index)
+        => selectedIndex == index ? Visibility.Visible : Visibility.Collapsed;
+
+    /// <summary>
+    /// The hex view is either at its set width or hidden, a splitter being of no use to a fixed width column
+    /// </summary>
+    public FrameworkElement CreateCommands()
+    {
+        var panel = new StackPanel
+        {
+            Orientation = Orientation.Horizontal,
+            HorizontalAlignment = HorizontalAlignment.Right,
+            VerticalAlignment = VerticalAlignment.Center,
+            Margin = new Thickness(0, 0, 8, 0),
+            Spacing = 2
+        };
+
+        var toggle = new ToggleButton
+        {
+            Style = (Style)Application.Current.Resources["TabCommandToggleStyle"],
+            Content = "Hex",
+            IsChecked = ViewModel.Hex.IsVisible
+        };
+
+        toggle.Checked += (_, _) => ViewModel.Hex.IsVisible = true;
+        toggle.Unchecked += (_, _) => ViewModel.Hex.IsVisible = false;
+
+        var derivation = new ToggleButton
+        {
+            Style = (Style)Application.Current.Resources["TabCommandToggleStyle"],
+            Content = "Show Derivation",
+            IsChecked = ViewModel.IsDerivationVisible
+        };
+
+        ToolTipService.SetToolTip(derivation, "Show the working behind a value rather than the value alone");
+
+        derivation.Checked += (_, _) => ViewModel.IsDerivationVisible = true;
+        derivation.Unchecked += (_, _) => ViewModel.IsDerivationVisible = false;
+
+        var auto = new ToggleButton
+        {
+            Style = (Style)Application.Current.Resources["TabCommandToggleStyle"],
+            Content = "Auto",
+            IsChecked = ViewModel.IsAutoRegion
+        };
+
+        ToolTipService.SetToolTip(auto, "Move on to the tab for the region scrolled into");
+
+        auto.Checked += (_, _) => ViewModel.IsAutoRegion = true;
+        auto.Unchecked += (_, _) => ViewModel.IsAutoRegion = false;
+
+        panel.Children.Add(derivation);
+        panel.Children.Add(auto);
+        panel.Children.Add(toggle);
+
+        return panel;
+    }
+
+    public void OnStepInvoked(DerivationStep step)
+    {
+        if (step.Target is SegmentNavigationTarget target)
+        {
+            ViewModel.GoToTarget(target);
+        }
+    }
+
+    /// <summary>
+    /// Takes an operand back to where it was read from, which puts its region on show with the item selected
+    /// </summary>
+    public void OnResultInvoked(ValueDerivation derivation)
+    {
+        if (derivation.Target is SegmentNavigationTarget target)
+        {
+            ViewModel.GoToTarget(target);
+        }
+    }
+
+    public void Dispose()
+    {
+        Loaded -= OnLoaded;
+
+        DataContextChanged -= OnDataContextChanged;
+
+        if (_tracked is not null)
+        {
+            _tracked.PropertyChanged -= OnViewModelPropertyChanged;
+
+            _tracked.Dispose();
+
+            _tracked = null;
+        }
+
+        // x:Bind listens to the view model, which outlives the view, so the view stays rooted until tracking stops
+        Bindings.StopTracking();
+
+        BitPackDetail?.Dispose();
+
+        RleRunMap?.Dispose();
+
+        DecodeTab?.Dispose();
+
+        _cts.Cancel();
+        _cts.Dispose();
     }
 
     /// <summary>
@@ -158,10 +282,6 @@ public sealed partial class ColumnstoreSegmentTabView : UserControl, IDocumentCo
         return null;
     }
 
-    private ILogger? _logger;
-
-    private ILogger Logger => _logger ??= App.GetService<ILoggerFactory>().CreateLogger<ColumnstoreSegmentTabView>();
-
     /// <summary>
     /// Selects the tab for the region, the window having scrolled into it rather than the tab having been picked
     /// </summary>
@@ -181,96 +301,6 @@ public sealed partial class ColumnstoreSegmentTabView : UserControl, IDocumentCo
 
                 return;
             }
-        }
-    }
-
-    public SegmentTabViewModel ViewModel => (SegmentTabViewModel)DataContext;
-
-    /// <summary>
-    /// Width the hex view takes beside the tabs
-    /// </summary>
-    public double HexWidth => 455;
-
-    /// <summary>
-    /// What the spinner is pushed across by, so it centres on the tabs rather than on the pair of them
-    /// </summary>
-    public GridLength GetHexSpacing(bool isLoaded, bool isHexVisible)
-        => new(isLoaded && isHexVisible ? HexWidth : 0);
-
-    public Visibility GetTabContentVisibility(int selectedIndex, int index)
-        => selectedIndex == index ? Visibility.Visible : Visibility.Collapsed;
-
-    /// <summary>
-    /// The hex view is either at its set width or hidden, a splitter being of no use to a fixed width column
-    /// </summary>
-    public FrameworkElement CreateCommands()
-    {
-        var panel = new StackPanel
-        {
-            Orientation = Orientation.Horizontal,
-            HorizontalAlignment = HorizontalAlignment.Right,
-            VerticalAlignment = VerticalAlignment.Center,
-            Margin = new Thickness(0, 0, 8, 0),
-            Spacing = 2
-        };
-
-        var toggle = new ToggleButton
-        {
-            Style = (Style)Application.Current.Resources["TabCommandToggleStyle"],
-            Content = "Hex",
-            IsChecked = ViewModel.Hex.IsVisible
-        };
-
-        toggle.Checked += (_, _) => ViewModel.Hex.IsVisible = true;
-        toggle.Unchecked += (_, _) => ViewModel.Hex.IsVisible = false;
-
-        var derivation = new ToggleButton
-        {
-            Style = (Style)Application.Current.Resources["TabCommandToggleStyle"],
-            Content = "Show Derivation",
-            IsChecked = ViewModel.IsDerivationVisible
-        };
-
-        ToolTipService.SetToolTip(derivation, "Show the working behind a value rather than the value alone");
-
-        derivation.Checked += (_, _) => ViewModel.IsDerivationVisible = true;
-        derivation.Unchecked += (_, _) => ViewModel.IsDerivationVisible = false;
-
-        var auto = new ToggleButton
-        {
-            Style = (Style)Application.Current.Resources["TabCommandToggleStyle"],
-            Content = "Auto",
-            IsChecked = ViewModel.IsAutoRegion
-        };
-
-        ToolTipService.SetToolTip(auto, "Move on to the tab for the region scrolled into");
-
-        auto.Checked += (_, _) => ViewModel.IsAutoRegion = true;
-        auto.Unchecked += (_, _) => ViewModel.IsAutoRegion = false;
-
-        panel.Children.Add(derivation);
-        panel.Children.Add(auto);
-        panel.Children.Add(toggle);
-
-        return panel;
-    }
-
-    public void OnStepInvoked(DerivationStep step)
-    {
-        if (step.Target is SegmentNavigationTarget target)
-        {
-            ViewModel.GoToTarget(target);
-        }
-    }
-
-    /// <summary>
-    /// Takes an operand back to where it was read from, which puts its region on show with the item selected
-    /// </summary>
-    public void OnResultInvoked(ValueDerivation derivation)
-    {
-        if (derivation.Target is SegmentNavigationTarget target)
-        {
-            ViewModel.GoToTarget(target);
         }
     }
 
@@ -407,8 +437,6 @@ public sealed partial class ColumnstoreSegmentTabView : UserControl, IDocumentCo
         WarmNext();
     }
 
-    private readonly Queue<string> _warming = new();
-
     /// <summary>
     /// Takes the panels one at a time, so what the interface is doing between them is still its own
     /// </summary>
@@ -456,33 +484,5 @@ public sealed partial class ColumnstoreSegmentTabView : UserControl, IDocumentCo
         panel.Visibility = Visibility.Collapsed;
 
         panel.Opacity = 1;
-    }
-
-    public void Dispose()
-    {
-        Loaded -= OnLoaded;
-
-        DataContextChanged -= OnDataContextChanged;
-
-        if (_tracked is not null)
-        {
-            _tracked.PropertyChanged -= OnViewModelPropertyChanged;
-
-            _tracked.Dispose();
-
-            _tracked = null;
-        }
-
-        // x:Bind listens to the view model, which outlives the view, so the view stays rooted until tracking stops
-        Bindings.StopTracking();
-
-        BitPackDetail?.Dispose();
-
-        RleRunMap?.Dispose();
-
-        DecodeTab?.Dispose();
-
-        _cts.Cancel();
-        _cts.Dispose();
     }
 }

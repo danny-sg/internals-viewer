@@ -45,32 +45,6 @@ namespace InternalsViewer.UI.App;
 
 public sealed partial class MainWindow
 {
-    private IDatabaseService DatabaseService { get; }
-
-    private IEnumerable<IConnectionTypeFactory> ConnectionFactories { get; }
-
-    private TabViewItem? ConnectTab { get; set; }
-
-    private TabViewItem? LogTab { get; set; }
-
-    private MainViewModel ViewModel { get; }
-
-    private AppLogViewModel AppLogViewModel { get; }
-
-    private PageTabViewModelFactory PageTabViewModelFactory { get; }
-
-    private DatabaseTabViewModelFactory DatabaseTabViewModelFactory { get; }
-
-    private IndexTabViewModelFactory IndexTabViewModelFactory { get; }
-
-    private ColumnstoreTabViewModelFactory ColumnstoreTabViewModelFactory { get; }
-
-    private QueryViewModelFactory QueryViewModelFactory { get;  }
-   
-    private ConnectServerViewModelFactory ConnectServerViewModelFactory { get; }
-
-    private CancellationTokenSource WindowCts { get; } = new();
-
     public MainWindow(IDatabaseService databaseService,
                       IEnumerable<IConnectionTypeFactory> connectionFactories,
                       MainViewModel mainViewModel,
@@ -138,6 +112,37 @@ public sealed partial class MainWindow
             => m.Reply(OpenLogTab()));
 
         SetTitleBar(CustomDragRegion);
+    }
+
+    private IDatabaseService DatabaseService { get; }
+
+    private IEnumerable<IConnectionTypeFactory> ConnectionFactories { get; }
+
+    private TabViewItem? ConnectTab { get; set; }
+
+    private TabViewItem? LogTab { get; set; }
+
+    private MainViewModel ViewModel { get; }
+
+    private AppLogViewModel AppLogViewModel { get; }
+
+    private PageTabViewModelFactory PageTabViewModelFactory { get; }
+
+    private DatabaseTabViewModelFactory DatabaseTabViewModelFactory { get; }
+
+    private IndexTabViewModelFactory IndexTabViewModelFactory { get; }
+
+    private ColumnstoreTabViewModelFactory ColumnstoreTabViewModelFactory { get; }
+
+    private QueryViewModelFactory QueryViewModelFactory { get;  }
+
+    private ConnectServerViewModelFactory ConnectServerViewModelFactory { get; }
+
+    private CancellationTokenSource WindowCts { get; } = new();
+
+    public async Task InitializeAsync()
+    {
+        await ViewModel.InitializeAsync();
     }
 
     private async Task<bool> ShowExceptionDialog(Exception exception)
@@ -558,10 +563,5 @@ public sealed partial class MainWindow
         AddWindowTab(LogTab, content);
 
         return Task.FromResult(true);
-    }
-
-    public async Task InitializeAsync()
-    {
-        await ViewModel.InitializeAsync();
     }
 }

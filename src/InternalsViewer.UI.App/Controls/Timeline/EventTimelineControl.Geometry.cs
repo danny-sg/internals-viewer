@@ -5,6 +5,28 @@ namespace InternalsViewer.UI.App.Controls.Timeline;
 
 public sealed partial class EventTimelineControl
 {
+    // The selection only counts once the user has explicitly dragged a handle.
+    private bool SelectionActive => _selectionActivated;
+
+    // The active window the playhead is confined to and playback loops within: the from/to selection
+    // when set, otherwise the whole axis.
+    private (double Lo, double Hi) ActiveRange => SelectionActive
+        ? (Math.Min(_startTime, _endTime), Math.Max(_startTime, _endTime))
+        : (_minTime, _maxTime);
+
+    private float CanvasWidth => (float)_overlay.ActualWidth;
+
+    private float DrawWidth => CanvasWidth - RowLabelWidth;
+
+    private double ContentWidth => DrawWidth * _zoom;
+
+    private double MaxScroll => Math.Max(0, ContentWidth - DrawWidth);
+
+    private float PlayheadX => TimeToX(_playheadTime);
+
+    private float StartDrawX => SelectionActive ? TimeToX(_startTime) : TimeToX(_startTime) - HandleGap;
+    private float EndDrawX => SelectionActive ? TimeToX(_endTime) : TimeToX(_endTime) + HandleGap;
+
     // EngineEvent.TimeUs / DurationUs are microseconds; divide by AxisUnitsPerMs (1000) to get ms.
     private static double StartMs(EngineEvent ev) => ev.TimeUs / AxisUnitsPerMs;
 
@@ -14,15 +36,6 @@ public sealed partial class EventTimelineControl
     private static long ToUs(double ms) => (long)Math.Round(ms * 1000.0);
 
     private double EffectiveToMs(double effective) => effective - _minTime;
-
-    // The selection only counts once the user has explicitly dragged a handle.
-    private bool SelectionActive => _selectionActivated;
-
-    // The active window the playhead is confined to and playback loops within: the from/to selection
-    // when set, otherwise the whole axis.
-    private (double Lo, double Hi) ActiveRange => SelectionActive
-        ? (Math.Min(_startTime, _endTime), Math.Max(_startTime, _endTime))
-        : (_minTime, _maxTime);
 
     // While not activated the handles sit on the playhead, so they follow it as it scrubs/plays.
     private void SyncHandlesToPlayhead()
@@ -34,24 +47,11 @@ public sealed partial class EventTimelineControl
         }
     }
 
-    private float CanvasWidth => (float)_overlay.ActualWidth;
-
-    private float DrawWidth => CanvasWidth - RowLabelWidth;
-    
-    private double ContentWidth => DrawWidth * _zoom;
-    
-    private double MaxScroll => Math.Max(0, ContentWidth - DrawWidth);
-
     private float TimeToX(double effectiveTimeMs)
         => RowLabelWidth + (float)((effectiveTimeMs - _minTime) / _timeRange * ContentWidth - _scrollX);
 
     private double XToTime(double x)
         => _minTime + (Math.Max(0, x - RowLabelWidth) + _scrollX) / ContentWidth * _timeRange;
-
-    private float PlayheadX => TimeToX(_playheadTime);
-
-    private float StartDrawX => SelectionActive ? TimeToX(_startTime) : TimeToX(_startTime) - HandleGap;
-    private float EndDrawX => SelectionActive ? TimeToX(_endTime) : TimeToX(_endTime) + HandleGap;
 
     private void EnsurePlayheadVisible()
     {

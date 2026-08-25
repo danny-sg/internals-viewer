@@ -7,12 +7,24 @@ using Microsoft.UI.Xaml.Controls;
 
 namespace InternalsViewer.UI.App.Views.Query.Tabs;
 
-/// <summary>Dock document hosting the execution plan diagrams for the active query.</summary>
+/// <summary>Dock document hosting the execution plan diagrams for the active query</summary>
 public sealed partial class QueryPlanTabView : UserControl
 {
-    public QueryViewModel? ViewModel => DataContext as QueryViewModel;
-
     private QueryViewModel? _subscribed;
+
+    public QueryPlanTabView()
+    {
+        InitializeComponent();
+
+        // Keep-alive: this view is reused across re-layout, so subscriptions follow the load lifecycle
+        // rather than DataContext changes (reparenting fires Unloaded/Loaded without a DataContext change).
+        Loaded += OnLoaded;
+        Unloaded += (_, _) => Unsubscribe();
+        DataContextChanged += OnDataContextChanged;
+        PlanRepeater.ElementPrepared += OnPlanElementPrepared;
+    }
+
+    public QueryViewModel? ViewModel => DataContext as QueryViewModel;
 
     public bool IsPropertiesPaneVisible
     {
@@ -36,18 +48,6 @@ public sealed partial class QueryPlanTabView : UserControl
 
     public Visibility DetailSplitterVisibility
         => IsPropertiesPaneVisible ? Visibility.Visible : Visibility.Collapsed;
-
-    public QueryPlanTabView()
-    {
-        InitializeComponent();
-
-        // Keep-alive: this view is reused across re-layout, so subscriptions follow the load lifecycle
-        // rather than DataContext changes (reparenting fires Unloaded/Loaded without a DataContext change).
-        Loaded += OnLoaded;
-        Unloaded += (_, _) => Unsubscribe();
-        DataContextChanged += OnDataContextChanged;
-        PlanRepeater.ElementPrepared += OnPlanElementPrepared;
-    }
 
     private void OnDataContextChanged(FrameworkElement sender, DataContextChangedEventArgs args)
     {
@@ -158,7 +158,6 @@ public sealed partial class QueryPlanTabView : UserControl
     }
 
     private void OnPlanIndexOpenRequested(object? sender, PlanNode node) => ViewModel?.OpenIndex(node);
-
 
     private void OnPlanTraceOpenRequested(object? sender, PlanNode node) => ViewModel?.OpenTrace(node);
 

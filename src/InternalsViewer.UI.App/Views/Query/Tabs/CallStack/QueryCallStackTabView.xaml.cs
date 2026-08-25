@@ -18,7 +18,16 @@ namespace InternalsViewer.UI.App.Views.Query.Tabs.CallStack;
 
 public sealed partial class QueryCallStackTabView : UserControl, IDocumentCommands
 {
+    private const string HistogramGrey = "#606060";
+    private const string HistogramHighlight = "#4CA3E0";
     private readonly Dictionary<CallStackNode, TreeViewNode> _nodes = new();
+
+    // Where the selection has been, so following the operator links is reversible. Every selection lands here, not only
+    // the ones made in this view: arriving from the timeline and stepping back to where you were is the same movement.
+    private readonly List<EngineEvent> _history = [];
+
+    // The operator rows built when scoped, so only they are auto-expanded (their call frames stay collapsed).
+    private readonly List<TreeViewNode> _operatorNodes = new();
 
     private Button? _backButton;
 
@@ -41,19 +50,12 @@ public sealed partial class QueryCallStackTabView : UserControl, IDocumentComman
     // Set while the tree itself is driving the selection, so the resulting change does not rebuild the tree.
     private bool _selectingFromTree;
 
-    // Where the selection has been, so following the operator links is reversible. Every selection lands here, not only
-    // the ones made in this view: arriving from the timeline and stepping back to where you were is the same movement.
-    private readonly List<EngineEvent> _history = [];
-
     private int _historyIndex = -1;
 
     // Set while a Back/Forward is driving the selection, so replaying the past does not rewrite it.
     private bool _navigatingHistory;
 
     private string _search = string.Empty;
-
-    // The operator rows built when scoped, so only they are auto-expanded (their call frames stay collapsed).
-    private readonly List<TreeViewNode> _operatorNodes = new();
 
     // The operator each of the current segment's exit frames hands off to, rebuilt per operator as it is projected.
     private Dictionary<CallStackNode, ExecutionOperatorEvent> _nextOperator = new();
@@ -63,14 +65,9 @@ public sealed partial class QueryCallStackTabView : UserControl, IDocumentComman
 
     private CallStackNode? _histogramNode;
 
-    private const string HistogramGrey = "#606060";
-    private const string HistogramHighlight = "#4CA3E0";
-
     private TreeViewNode? _contextNode;
 
     private QueryViewModel? _viewModel;
-
-    public QueryViewModel? ViewModel => DataContext as QueryViewModel;
 
     public QueryCallStackTabView()
     {
@@ -78,6 +75,8 @@ public sealed partial class QueryCallStackTabView : UserControl, IDocumentComman
 
         DataContextChanged += (_, _) => OnViewModelChanged();
     }
+
+    public QueryViewModel? ViewModel => DataContext as QueryViewModel;
 
     /// <summary>
     /// Builds the history and focus controls for a tab strip to host
@@ -618,7 +617,6 @@ public sealed partial class QueryCallStackTabView : UserControl, IDocumentComman
         Tree.RootNodes.Clear();
     }
 
-
     private IEnumerable<TreeViewNode> BuildVisible(CallStackNode node)
     {
         var children = node.ChildNodes
@@ -900,7 +898,6 @@ public sealed partial class QueryCallStackTabView : UserControl, IDocumentComman
 
         return nodes;
     }
-
 
     // Renders a projected node's subtree, hiding infrastructure and promoting its visible children. No scope set: the
     // projection already contains only the operator's frames.

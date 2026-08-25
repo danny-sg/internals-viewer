@@ -23,11 +23,7 @@ public sealed class ConnectServerViewModelFactory(SettingsService settingsServic
 
 public partial class ConnectServerViewModel(SettingsService settingsService) : ObservableValidator
 {
-    private SettingsService SettingsService { get; } = settingsService;
-
     private readonly SqlConnectionStringBuilder _builder = new() { TrustServerCertificate = true };
-
-    public bool CanConnect() => !HasErrors && !IsBusy;    
 
     [Required(AllowEmptyStrings = false)]
     [ObservableProperty]
@@ -69,16 +65,7 @@ public partial class ConnectServerViewModel(SettingsService settingsService) : O
 #pragma warning disable CS0618 // Type or member is obsolete
     public bool IsPasswordEnabled 
         => AuthenticationType is (int)SqlAuthenticationMethod.SqlPassword or (int)SqlAuthenticationMethod.ActiveDirectoryPassword;
-#pragma warning restore CS0618 // Type or member is obsolete
 
-    protected override void OnPropertyChanged(PropertyChangedEventArgs e)
-    {
-        ValidateAllProperties();
-
-        base.OnPropertyChanged(e);
-    }
-
-#pragma warning disable CS0618 // Type or member is obsolete
     public List<AuthenticationTypeOption> AuthenticationTypes =>
     [
         new((int) SqlAuthenticationMethod.ActiveDirectoryIntegrated, "Windows Authentication"),
@@ -87,36 +74,9 @@ public partial class ConnectServerViewModel(SettingsService settingsService) : O
     ];
 #pragma warning restore CS0618 // Type or member is obsolete
 
-    /// <summary>
-    /// Gets the connection string from the current settings
-    /// </summary>
-    private string GetConnectionString()
-    {
-        RefreshConnectionString();
+    private SettingsService SettingsService { get; } = settingsService;
 
-        return _builder.ConnectionString;
-    }
-
-    /// <summary>
-    /// Gets the connection string without the password
-    /// </summary>
-    private string GetSafeConnectionString()
-    {
-        RefreshConnectionString();
-
-        _builder.Remove(nameof(Password));
-
-        return _builder.ConnectionString;
-    }
-
-    private ServerConnectionSettings GetSettings() =>
-        new()
-        {
-            InstanceName = InstanceName,
-            AuthenticationType = AuthenticationType,
-            DatabaseName = Database ?? string.Empty,
-            UserId = UserId
-        };
+    public bool CanConnect() => !HasErrors && !IsBusy;    
 
     public async Task RefreshDatabases()
     {
@@ -168,6 +128,66 @@ public partial class ConnectServerViewModel(SettingsService settingsService) : O
             IsBusy = false;
         }
     }
+
+    public async Task InitializeAsync()
+    {
+        var settings = await SettingsService.ReadSettingAsync<ServerConnectionSettings>("CurrentServerConnection");
+
+        if (settings != null)
+        {
+            InstanceName = settings.InstanceName;
+            AuthenticationType = settings.AuthenticationType;
+            Database = settings.DatabaseName;
+            UserId = settings.UserId;
+
+            if (Databases.Count == 0)
+            {
+                Databases.Add(Database);
+            }
+
+            RefreshConnectionString();
+        }
+
+        ValidateAllProperties();
+    }
+
+    protected override void OnPropertyChanged(PropertyChangedEventArgs e)
+    {
+        ValidateAllProperties();
+
+        base.OnPropertyChanged(e);
+    }
+
+    /// <summary>
+    /// Gets the connection string from the current settings
+    /// </summary>
+    private string GetConnectionString()
+    {
+        RefreshConnectionString();
+
+        return _builder.ConnectionString;
+    }
+
+    /// <summary>
+    /// Gets the connection string without the password
+    /// </summary>
+    private string GetSafeConnectionString()
+    {
+        RefreshConnectionString();
+
+        _builder.Remove(nameof(Password));
+
+        return _builder.ConnectionString;
+    }
+
+    private ServerConnectionSettings GetSettings() =>
+        new()
+        {
+            InstanceName = InstanceName,
+            AuthenticationType = AuthenticationType,
+            DatabaseName = Database ?? string.Empty,
+            UserId = UserId
+        };
 
     [RelayCommand(CanExecute = nameof(CanConnect))]
     private async Task Connect()
@@ -246,28 +266,6 @@ public partial class ConnectServerViewModel(SettingsService settingsService) : O
         {
             Databases.Add(Database);
         }
-    }
-
-    public async Task InitializeAsync()
-    {
-        var settings = await SettingsService.ReadSettingAsync<ServerConnectionSettings>("CurrentServerConnection");
-
-        if (settings != null)
-        {
-            InstanceName = settings.InstanceName;
-            AuthenticationType = settings.AuthenticationType;
-            Database = settings.DatabaseName;
-            UserId = settings.UserId;
-
-            if (Databases.Count == 0)
-            {
-                Databases.Add(Database);
-            }
-
-            RefreshConnectionString();
-        }
-
-        ValidateAllProperties();
     }
 
     private void RefreshConnectionString()

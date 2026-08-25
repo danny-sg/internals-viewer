@@ -11,9 +11,8 @@ namespace InternalsViewer.UI.App.Services.Markers;
 
 public static class DictionaryMarkerBuilder
 {
-    private const int HandleFieldBytes = 4;
-
     public const int PageSizeBytes = 4;
+    private const int HandleFieldBytes = 4;
 
     private const int DictionaryHeaderSize = 12;
 
@@ -108,9 +107,6 @@ public static class DictionaryMarkerBuilder
                 break;
         }
     }
-
-    private static Marker Region(string name, ItemType type, int offset, int size, string value)
-        => MarkerBuilder.CreateMarker(name, type, offset, size, value);
 
     /// <summary>
     /// The selected entry as it sits in its page, which the parser cannot mark because it depends on the selection
@@ -227,4 +223,7 @@ public static class DictionaryMarkerBuilder
 
         yield return marker;
     }
+
+    private static Marker Region(string name, ItemType type, int offset, int size, string value)
+        => MarkerBuilder.CreateMarker(name, type, offset, size, value);
 }

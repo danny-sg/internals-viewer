@@ -10,7 +10,11 @@ namespace InternalsViewer.UI.App.Controls
 {
     public sealed partial class PageAddressTextBox
     {
-        public event EventHandler<PageAddressEventArgs>? AddressChanged;
+        public static readonly DependencyProperty PageAddressProperty
+            = DependencyProperty.Register(nameof(PageAddress),
+                typeof(PageAddress?),
+                typeof(PageAddressTextBox),
+                new PropertyMetadata(default, null));
 
         public PageAddress? PageAddress
         {
@@ -18,9 +22,9 @@ namespace InternalsViewer.UI.App.Controls
             set => SetValue(PageAddressProperty, value);
         }
 
-        public static readonly DependencyProperty PageAddressProperty
-            = DependencyProperty.Register(nameof(PageAddress),
-                typeof(PageAddress?),
+        public static readonly DependencyProperty DatabaseNameProperty
+            = DependencyProperty.Register(nameof(DatabaseName),
+                typeof(string),
                 typeof(PageAddressTextBox),
                 new PropertyMetadata(default, null));
 
@@ -30,16 +34,12 @@ namespace InternalsViewer.UI.App.Controls
             set => SetValue(DatabaseNameProperty, value);
         }
 
-        public static readonly DependencyProperty DatabaseNameProperty
-            = DependencyProperty.Register(nameof(DatabaseName),
-                typeof(string),
-                typeof(PageAddressTextBox),
-                new PropertyMetadata(default, null));
-
         public PageAddressTextBox()
         {
             InitializeComponent();
         }
+
+        public event EventHandler<PageAddressEventArgs>? AddressChanged;
 
         private void TextBox_KeyDown(object sender, KeyRoutedEventArgs e)
         {

@@ -48,7 +48,7 @@ public sealed class ScaledBlobProbeTests(ITestOutputHelper testOutput) : Provide
                     var blob = await service.GetSegmentBlob(database, segment, CancellationToken.None);
 
                     _lines.Add($"OK   {label} rleType {(int)blob.Header.RleType} "
-                               + $"entryBytes {blob.Header.RleEntryBytes} arrayCount {blob.Header.RleArrayCount} "
+                               + $"entryBytes {blob.Header.RleEntrySize} arrayCount {blob.Header.RleArrayCount} "
                                + $"entries {blob.Header.RleEntryCount} "
                                + $"bitpackEntrySize {blob.Header.BitpackEntrySize} minId {blob.Header.BitpackMinId} "
                                + $"units {blob.Header.BitpackUnitCount}");
@@ -58,7 +58,7 @@ public sealed class ScaledBlobProbeTests(ITestOutputHelper testOutput) : Provide
                     var header = await service.GetSegmentHeader(database, segment, CancellationToken.None);
 
                     _lines.Add($"FAIL {label} rleType {(int)header.RleType} "
-                               + $"arrayCount {header.RleArrayCount} entrySize {header.RleEntrySize} "
+                               + $"arrayCount {header.RleArrayCount} entrySize {header.RleArrayEntrySize} "
                                + $"bitpackEntrySize {header.BitpackEntrySize} minId {header.BitpackMinId} "
                                + $"units {header.BitpackUnitCount} bookmarks {header.BookmarkCount}");
 

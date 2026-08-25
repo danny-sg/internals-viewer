@@ -25,6 +25,19 @@ public sealed partial class ColumnstoreDeleteBitmapTabView : UserControl, IDispo
 
     public DeleteBitmapTabViewModel ViewModel => (DeleteBitmapTabViewModel)DataContext;
 
+    public void Dispose()
+    {
+        Loaded -= OnLoaded;
+
+        DataContextChanged -= OnDataContextChanged;
+
+        // x:Bind listens to the view model, which outlives the view, so the view stays rooted until tracking stops
+        Bindings.StopTracking();
+
+        _cts.Cancel();
+        _cts.Dispose();
+    }
+
     private void OnDataContextChanged(FrameworkElement sender, DataContextChangedEventArgs args) => Bindings.Update();
 
     private void FirstPage_OnClick(object sender, RoutedEventArgs e) => OpenPage(ViewModel.FirstPage);
@@ -47,18 +60,5 @@ public sealed partial class ColumnstoreDeleteBitmapTabView : UserControl, IDispo
         Loaded -= OnLoaded;
 
         await ViewModel.Load(_cts.Token);
-    }
-
-    public void Dispose()
-    {
-        Loaded -= OnLoaded;
-
-        DataContextChanged -= OnDataContextChanged;
-
-        // x:Bind listens to the view model, which outlives the view, so the view stays rooted until tracking stops
-        Bindings.StopTracking();
-
-        _cts.Cancel();
-        _cts.Dispose();
     }
 }

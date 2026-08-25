@@ -5,8 +5,6 @@ namespace InternalsViewer.UI.App.ViewModels.Docking;
 
 public sealed partial class TabGroupNode : LayoutNode
 {
-    public ObservableCollection<DocumentViewModel> Documents { get; } = [];
-
     [ObservableProperty]
     private DocumentViewModel? _selectedDocument;
 
@@ -23,4 +21,6 @@ public sealed partial class TabGroupNode : LayoutNode
 
         SelectedDocument = Documents.Count > 0 ? Documents[0] : null;
     }
+
+    public ObservableCollection<DocumentViewModel> Documents { get; } = [];
 }

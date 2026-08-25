@@ -14,8 +14,6 @@ namespace InternalsViewer.UI.App.Views.Query.Tabs;
 
 public sealed partial class QueryAllocationTabView : UserControl, IDisposable
 {
-    public QueryViewModel? ViewModel => DataContext as QueryViewModel;
-
     public QueryAllocationTabView()
     {
         InitializeComponent();
@@ -24,7 +22,7 @@ public sealed partial class QueryAllocationTabView : UserControl, IDisposable
         AllocationItemRepeater.SizeChanged += OnParentSizeChanged;
     }
 
-    private void OnDataContextChanged(FrameworkElement sender, DataContextChangedEventArgs args) => Bindings.Update();
+    public QueryViewModel? ViewModel => DataContext as QueryViewModel;
 
     public void Dispose()
     {
@@ -42,6 +40,8 @@ public sealed partial class QueryAllocationTabView : UserControl, IDisposable
         }
     }
 
+    private void OnDataContextChanged(FrameworkElement sender, DataContextChangedEventArgs args) => Bindings.Update();
+
     private void OnParentSizeChanged(object sender, SizeChangedEventArgs e)
     {
         if (ViewModel is not { } viewModel)
@@ -56,8 +56,6 @@ public sealed partial class QueryAllocationTabView : UserControl, IDisposable
             viewModel.AllocationMapHeight = AllocationItemRepeater.ActualHeight / itemCount;
         }
     }
-
-
 
     private void OnPageSelected(object? sender, PageAddressEventArgs e)
     {

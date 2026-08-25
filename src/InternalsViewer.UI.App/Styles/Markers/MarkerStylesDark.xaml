@@ -183,7 +183,7 @@
     <models:MarkStyle x:Key="BookmarkPositionMarkerStyle" ForeColour="#4DB6AC" BackColour="#003B33" Name="Bookmark Position" Ordinal="212"/>
     <models:MarkStyle x:Key="BookmarkEndRowMarkerStyle" ForeColour="#FFF176" BackColour="#3E3606" Name="Bookmark End Row" Ordinal="213"/>
     <models:MarkStyle x:Key="RleArrayCountMarkerStyle" ForeColour="#FFCC80" BackColour="#3E2205" Name="RLE Array Count" Ordinal="220"/>
-    <models:MarkStyle x:Key="RleEntrySizeMarkerStyle" ForeColour="#FFAB91" BackColour="#3E1005" Name="RLE Entry Size" Ordinal="221"/>
+    <models:MarkStyle x:Key="RleArrayEntrySizeMarkerStyle" ForeColour="#FFAB91" BackColour="#3E1005" Name="RLE Array Entry Size" Ordinal="221"/>
     <models:MarkStyle x:Key="RleEntryMarkerStyle" ForeColour="#B0BEC5" BackColour="#1C2A30" Name="RLE Entry" Ordinal="221"/>
     <models:MarkStyle x:Key="RleValueMarkerStyle" ForeColour="#FFB74D" BackColour="#4A2A05" Name="RLE Value" Ordinal="222"/>
     <models:MarkStyle x:Key="RleCountMarkerStyle" ForeColour="#81C784" BackColour="#123D16" Name="RLE Count" Ordinal="223"/>

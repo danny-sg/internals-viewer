@@ -12,7 +12,7 @@ internal static class TimelineColours
     // Per-category brightness applied to the row colour so each category band reads slightly differently.
     private static readonly float[] CategoryShade = [0.70f, 0.85f, 1.0f, 1.15f];
 
-    /// <summary>Scales a colour's RGB channels by <paramref name="factor"/> (clamped), preserving alpha.</summary>
+    /// <summary>Scales a colour's RGB channels by <paramref name="factor"/> (clamped), preserving alpha</summary>
     public static SKColor Scale(SKColor colour, float factor) => new(
         (byte)Math.Clamp(colour.Red * factor, 0, 255),
         (byte)Math.Clamp(colour.Green * factor, 0, 255),

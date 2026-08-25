@@ -72,6 +72,29 @@ public static class TraceLayoutBuilder
         };
     }
 
+    public static string DisplayName(IteratorDefinition definition)
+        => definition switch
+        {
+            HashMatchDefinition => "Hash Match",
+            MergeJoinDefinition => "Merge Join",
+            NestedLoopsDefinition => "Nested Loops",
+            TopDefinition => "Top",
+            SelectDefinition => "SELECT",
+            ConcatenationDefinition => "Concatenation",
+            SortDefinition => "Sort",
+            StreamAggregateDefinition => "Stream Aggregate",
+            HashAggregateDefinition => "Hash Match",
+            ComputeScalarDefinition => "Compute Scalar",
+            FilterDefinition => "Filter",
+            SegmentDefinition => "Segment",
+            SequenceProjectDefinition => "Sequence Project",
+            SeekDefinition => "Index Seek",
+            RangeDefinition => "Index Scan",
+            HeapFetchDefinition => "RID Lookup",
+            AllocationScanDefinition => "Table Scan",
+            _ => "Operator"
+        };
+
     private static Dictionary<int, TraceOperatorViewModel> CreateTabs(IReadOnlyList<IteratorDefinition> operators,
                                                                       TraceBlobPalette palette,
                                                                       Func<int, PlanNode?> nodeFor)
@@ -348,29 +371,6 @@ public static class TraceLayoutBuilder
             Index(child, definitions, depths, ordered, depth + 1);
         }
     }
-
-    public static string DisplayName(IteratorDefinition definition)
-        => definition switch
-        {
-            HashMatchDefinition => "Hash Match",
-            MergeJoinDefinition => "Merge Join",
-            NestedLoopsDefinition => "Nested Loops",
-            TopDefinition => "Top",
-            SelectDefinition => "SELECT",
-            ConcatenationDefinition => "Concatenation",
-            SortDefinition => "Sort",
-            StreamAggregateDefinition => "Stream Aggregate",
-            HashAggregateDefinition => "Hash Match",
-            ComputeScalarDefinition => "Compute Scalar",
-            FilterDefinition => "Filter",
-            SegmentDefinition => "Segment",
-            SequenceProjectDefinition => "Sequence Project",
-            SeekDefinition => "Index Seek",
-            RangeDefinition => "Index Scan",
-            HeapFetchDefinition => "RID Lookup",
-            AllocationScanDefinition => "Table Scan",
-            _ => "Operator"
-        };
 
     private static string OperatorTitle(IteratorDefinition definition)
         => DisplayName(definition);

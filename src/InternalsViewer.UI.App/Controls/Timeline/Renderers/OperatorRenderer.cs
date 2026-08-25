@@ -44,12 +44,12 @@ internal sealed class OperatorRenderer(RenderResource resources, CurrentSelectio
     private static readonly SKColor FlowPathColour = new(200, 200, 200, 200);
     private static readonly SKColor FlowSelectedColour = new(255, 255, 255, 230);
 
+    private static readonly SKTypeface BoldTypeface = SKTypeface.FromFamilyName(SKTypeface.Default.FamilyName, SKFontStyle.Bold);
+
     private readonly SKPaint _bar = new() { Color = SKColors.LimeGreen, Style = SKPaintStyle.Fill, IsAntialias = true };
     private readonly SKPaint _text = new() { IsAntialias = true };
     private readonly SKPaint _flowConnector = new() { Style = SKPaintStyle.Fill, IsAntialias = true };
     private readonly SKPaint _outline = new() { Style = SKPaintStyle.Stroke, IsAntialias = true };
-
-    private static readonly SKTypeface BoldTypeface = SKTypeface.FromFamilyName(SKTypeface.Default.FamilyName, SKFontStyle.Bold);
 
     private readonly SKFont _font = new(SKTypeface.Default, 12f);
     private readonly SKFont _boldFont = new(BoldTypeface, 10f);
@@ -107,6 +107,16 @@ internal sealed class OperatorRenderer(RenderResource resources, CurrentSelectio
         {
             DrawRowFlowPath(canvas, frame, bars, selected);
         }
+    }
+
+    public void Dispose()
+    {
+        _bar.Dispose();
+        _text.Dispose();
+        _flowConnector.Dispose();
+        _outline.Dispose();
+        _font.Dispose();
+        _boldFont.Dispose();
     }
 
     /// <remarks>
@@ -527,15 +537,5 @@ internal sealed class OperatorRenderer(RenderResource resources, CurrentSelectio
         {
             canvas.DrawText(blob, x, y, paint);
         }
-    }
-
-    public void Dispose()
-    {
-        _bar.Dispose();
-        _text.Dispose();
-        _flowConnector.Dispose();
-        _outline.Dispose();
-        _font.Dispose();
-        _boldFont.Dispose();
     }
 }

@@ -31,17 +31,6 @@ internal sealed class TimelineTransport : StackPanel, IDisposable
 
     private int _playSpeedIndex = 1;
 
-    public event Action? PlayPauseRequested;
-
-    /// <summary>Raised on a step; the argument is true for forward, false for back.</summary>
-    public event Action<bool>? StepRequested;
-
-    public event Action<double>? PlaySpeedChanged;
-
-    public event Action<bool>? ThreadsToggled;
-
-    public event Action<bool>? AudioToggled;
-
     public TimelineTransport()
     {
         Orientation = Orientation.Horizontal;
@@ -132,6 +121,17 @@ internal sealed class TimelineTransport : StackPanel, IDisposable
         Children.Add(audioSlot);
     }
 
+    public event Action? PlayPauseRequested;
+
+    /// <summary>Raised on a step; the argument is true for forward, false for back</summary>
+    public event Action<bool>? StepRequested;
+
+    public event Action<double>? PlaySpeedChanged;
+
+    public event Action<bool>? ThreadsToggled;
+
+    public event Action<bool>? AudioToggled;
+
     /// <summary>
     /// Shows a spinner over the audio toggle while the audio player builds its voices
     /// </summary>
@@ -152,13 +152,25 @@ internal sealed class TimelineTransport : StackPanel, IDisposable
         }
     }
 
-    /// <summary>Swaps the play/pause glyph to reflect the current playback state.</summary>
+    /// <summary>Swaps the play/pause glyph to reflect the current playback state</summary>
     public void SetPlaying(bool isPlaying)
     {
         if (_playButton.Content is FontIcon icon)
         {
             icon.Glyph = isPlaying ? PauseGlyph : PlayGlyph;
         }
+    }
+
+    public void Dispose()
+    {
+        _playButton.Click -= OnPlayButtonClick;
+        _stepBackButton.Click -= OnStepBackButtonClick;
+        _stepForwardButton.Click -= OnStepForwardButtonClick;
+        _playSpeedButton.Click -= OnPlaySpeedButtonClick;
+        _threadsButton.Checked -= OnThreadsToggled;
+        _threadsButton.Unchecked -= OnThreadsToggled;
+        _audioButton.Checked -= OnAudioToggled;
+        _audioButton.Unchecked -= OnAudioToggled;
     }
 
     private static Button MakeButton(FrameworkElement content, double width) => new()
@@ -204,17 +216,5 @@ internal sealed class TimelineTransport : StackPanel, IDisposable
         }
 
         AudioToggled?.Invoke(enabled);
-    }
-
-    public void Dispose()
-    {
-        _playButton.Click -= OnPlayButtonClick;
-        _stepBackButton.Click -= OnStepBackButtonClick;
-        _stepForwardButton.Click -= OnStepForwardButtonClick;
-        _playSpeedButton.Click -= OnPlaySpeedButtonClick;
-        _threadsButton.Checked -= OnThreadsToggled;
-        _threadsButton.Unchecked -= OnThreadsToggled;
-        _audioButton.Checked -= OnAudioToggled;
-        _audioButton.Unchecked -= OnAudioToggled;
     }
 }

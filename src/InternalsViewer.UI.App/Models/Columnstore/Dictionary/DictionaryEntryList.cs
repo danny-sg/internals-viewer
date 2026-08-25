@@ -40,9 +40,6 @@ public sealed class DictionaryEntryDetail(DictionaryBlob blob, int index, bool s
     /// </summary>
     public int Length => blob is NumericDictionary numbers ? numbers.ElementSize : StoredBytes?.Length ?? 0;
 
-    private byte[]? StoredBytes
-        => field ??= blob is StringDictionary strings ? strings.GetValueBytesAt(Index) : null;
-
     public string Value => field ??= Decode();
 
     /// <summary>
@@ -57,6 +54,9 @@ public sealed class DictionaryEntryDetail(DictionaryBlob blob, int index, bool s
         ],
         Result = $"{Index}"
     };
+
+    private byte[]? StoredBytes
+        => field ??= blob is StringDictionary strings ? strings.GetValueBytesAt(Index) : null;
 
     public bool Equals(DictionaryEntryDetail? other) => other is not null && other.Index == Index;
 
@@ -136,11 +136,7 @@ public sealed class DictionaryEntryList(DictionaryBlob blob, bool showDerivation
         return position >= 0 && position < Count ? this[position] : null;
     }
 
-    int IList.IndexOf(object? value) => value is DictionaryEntryDetail entry ? IndexOf(entry) : -1;
-
     public bool Contains(DictionaryEntryDetail item) => IndexOf(item) >= 0;
-
-    bool IList.Contains(object? value) => value is DictionaryEntryDetail entry && Contains(entry);
 
     public IEnumerator<DictionaryEntryDetail> GetEnumerator()
     {
@@ -150,25 +146,29 @@ public sealed class DictionaryEntryList(DictionaryBlob blob, bool showDerivation
         }
     }
 
-    IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
-
     public void CopyTo(DictionaryEntryDetail[] array, int arrayIndex) => throw new NotSupportedException();
 
-    void ICollection.CopyTo(Array array, int index) => throw new NotSupportedException();
-
     public void Add(DictionaryEntryDetail item) => throw new NotSupportedException();
-
-    int IList.Add(object? value) => throw new NotSupportedException();
 
     public void Clear() => throw new NotSupportedException();
 
     public void Insert(int index, DictionaryEntryDetail item) => throw new NotSupportedException();
 
-    void IList.Insert(int index, object? value) => throw new NotSupportedException();
-
     public bool Remove(DictionaryEntryDetail item) => throw new NotSupportedException();
 
-    void IList.Remove(object? value) => throw new NotSupportedException();
-
     public void RemoveAt(int index) => throw new NotSupportedException();
+
+    int IList.IndexOf(object? value) => value is DictionaryEntryDetail entry ? IndexOf(entry) : -1;
+
+    bool IList.Contains(object? value) => value is DictionaryEntryDetail entry && Contains(entry);
+
+    IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
+
+    void ICollection.CopyTo(Array array, int index) => throw new NotSupportedException();
+
+    int IList.Add(object? value) => throw new NotSupportedException();
+
+    void IList.Insert(int index, object? value) => throw new NotSupportedException();
+
+    void IList.Remove(object? value) => throw new NotSupportedException();
 }

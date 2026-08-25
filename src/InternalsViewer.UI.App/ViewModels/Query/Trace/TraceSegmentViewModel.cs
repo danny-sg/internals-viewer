@@ -10,6 +10,9 @@ public sealed partial class TraceSegmentViewModel : ObservableObject
 {
     private const string NoColumns = "(No grouping columns)";
 
+    [ObservableProperty]
+    private long _segments;
+
     public TraceSegmentViewModel(IReadOnlyList<string> groupBy)
     {
         GroupBy = groupBy;
@@ -28,9 +31,6 @@ public sealed partial class TraceSegmentViewModel : ObservableObject
     /// One column per grouping column, or a single placeholder when the window has none
     /// </summary>
     public IReadOnlyList<string> Columns { get; }
-
-    [ObservableProperty]
-    private long _segments;
 
     public void Sync(IReadOnlyList<string> currentKey, IReadOnlyList<string> rowKey, long segments)
     {

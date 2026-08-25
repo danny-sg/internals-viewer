@@ -31,18 +31,6 @@ public sealed partial class DeleteBitmapTabViewModel(IPageService pageService,
                                                      DatabaseSource database,
                                                      ColumnStoreIndex index) : ObservableObject
 {
-    private IPageService PageService { get; } = pageService;
-
-    private IIamChainService IamChainService { get; } = iamChainService;
-
-    private IRecordService RecordService { get; } = recordService;
-
-    public DatabaseSource Database { get; } = database;
-
-    private ColumnStoreIndex Index { get; } = index;
-
-    public string Title => "Delete Bitmap";
-
     [ObservableProperty]
     private bool _isLoaded;
 
@@ -55,6 +43,13 @@ public sealed partial class DeleteBitmapTabViewModel(IPageService pageService,
     [NotifyPropertyChangedFor(nameof(FirstIamPage))]
     private AllocationUnit? _allocationUnit;
 
+    [ObservableProperty]
+    private IReadOnlyList<DeletedRowSummary> _deletedRows = [];
+
+    public DatabaseSource Database { get; } = database;
+
+    public string Title => "Delete Bitmap";
+
     public string HobtDescription => $"{Index.DeleteBitmap?.HobtId ?? 0}";
 
     public string AllocationUnitDescription => AllocationUnit is { } unit ? $"{unit.AllocationUnitId}" : string.Empty;
@@ -62,9 +57,13 @@ public sealed partial class DeleteBitmapTabViewModel(IPageService pageService,
     public PageAddress FirstPage => AllocationUnit?.FirstPage ?? PageAddress.Empty;
 
     public PageAddress FirstIamPage => AllocationUnit?.FirstIamPage ?? PageAddress.Empty;
+    private IPageService PageService { get; } = pageService;
 
-    [ObservableProperty]
-    private IReadOnlyList<DeletedRowSummary> _deletedRows = [];
+    private IIamChainService IamChainService { get; } = iamChainService;
+
+    private IRecordService RecordService { get; } = recordService;
+
+    private ColumnStoreIndex Index { get; } = index;
 
     public async Task Load(CancellationToken cancellationToken)
     {

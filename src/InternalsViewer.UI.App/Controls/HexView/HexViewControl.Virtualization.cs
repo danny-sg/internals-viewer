@@ -7,10 +7,100 @@ namespace InternalsViewer.UI.App.Controls.HexView;
 
 public sealed partial class HexViewControl
 {
+    private const double ScrollingOpacity = 0.4;
+
+    public static readonly DependencyProperty IsVirtualizedProperty
+        = DependencyProperty.Register(nameof(IsVirtualized),
+            typeof(bool),
+            typeof(HexViewControl),
+            new PropertyMetadata(false, OnVirtualizationChanged));
+
+    /// <summary>
+    /// Shows only as many lines as fit, scrolling by moving the window rather than the content
+    /// </summary>
+    /// <remarks>
+    /// A page fits in one layout pass, a columnstore blob does not - megabytes of runs will not lay out at all. When
+    /// virtualised the owner supplies just the window the control asks for, which keeps the rendered run count to
+    /// whatever is on screen however large the structure behind it is.
+    /// </remarks>
+    public bool IsVirtualized
+    {
+        get => (bool)GetValue(IsVirtualizedProperty);
+        set => SetValue(IsVirtualizedProperty, value);
+    }
+
+    public static readonly DependencyProperty TotalLengthProperty
+        = DependencyProperty.Register(nameof(TotalLength),
+            typeof(int),
+            typeof(HexViewControl),
+            new PropertyMetadata(0, OnVirtualizationChanged));
+
+    /// <summary>
+    /// Total bytes of the structure being windowed, which sizes the scroll bar
+    /// </summary>
+    public int TotalLength
+    {
+        get => (int)GetValue(TotalLengthProperty);
+        set => SetValue(TotalLengthProperty, value);
+    }
+
+    public static readonly DependencyProperty WindowOffsetProperty
+        = DependencyProperty.Register(nameof(WindowOffset),
+            typeof(int),
+            typeof(HexViewControl),
+            new PropertyMetadata(0, OnWindowOffsetChanged));
+
+    /// <summary>
+    /// Byte offset of the window the owner should supply, always on a line boundary
+    /// </summary>
+    public int WindowOffset
+    {
+        get => (int)GetValue(WindowOffsetProperty);
+        set => SetValue(WindowOffsetProperty, value);
+    }
+
+    public static readonly DependencyProperty WindowLengthProperty
+        = DependencyProperty.Register(nameof(WindowLength),
+            typeof(int),
+            typeof(HexViewControl),
+            new PropertyMetadata(0));
+
+    /// <summary>
+    /// Bytes the window should hold, being the lines that fit plus one so scrolling does not reveal a gap
+    /// </summary>
+    public int WindowLength
+    {
+        get => (int)GetValue(WindowLengthProperty);
+        set => SetValue(WindowLengthProperty, value);
+    }
+
     /// <summary>
     /// Set while the view is being moved to bring the selection into sight, which is not a scroll away from it
     /// </summary>
     private bool _isScrollingToSelection;
+
+    private int _pendingScrollLine;
+
+    private bool _isScrolling;
+
+    /// <summary>
+    /// Whether a drag is in progress, the bytes on show being the ones it started from until it ends
+    /// </summary>
+    private bool IsScrolling
+    {
+        get => _isScrolling;
+        set
+        {
+            if (_isScrolling == value)
+            {
+                return;
+            }
+
+            _isScrolling = value;
+
+            HexRichTextBlock.Opacity = value ? ScrollingOpacity : 1;
+        }
+    }
 
     /// <summary>
     /// Brings a settled scroll onto a line boundary, so the window starts on a whole row of bytes
@@ -90,91 +180,6 @@ public sealed partial class HexViewControl
         WindowOffset = Math.Clamp(line, 0, (int)VirtualScrollBar.Maximum) * BytesPerLine;
     }
 
-    /// <summary>
-    /// Shows only as many lines as fit, scrolling by moving the window rather than the content
-    /// </summary>
-    /// <remarks>
-    /// A page fits in one layout pass, a columnstore blob does not - megabytes of runs will not lay out at all. When
-    /// virtualised the owner supplies just the window the control asks for, which keeps the rendered run count to
-    /// whatever is on screen however large the structure behind it is.
-    /// </remarks>
-    public bool IsVirtualized
-    {
-        get => (bool)GetValue(IsVirtualizedProperty);
-        set => SetValue(IsVirtualizedProperty, value);
-    }
-
-    public static readonly DependencyProperty IsVirtualizedProperty
-        = DependencyProperty.Register(nameof(IsVirtualized),
-            typeof(bool),
-            typeof(HexViewControl),
-            new PropertyMetadata(false, OnVirtualizationChanged));
-
-    /// <summary>
-    /// Total bytes of the structure being windowed, which sizes the scroll bar
-    /// </summary>
-    public int TotalLength
-    {
-        get => (int)GetValue(TotalLengthProperty);
-        set => SetValue(TotalLengthProperty, value);
-    }
-
-    public static readonly DependencyProperty TotalLengthProperty
-        = DependencyProperty.Register(nameof(TotalLength),
-            typeof(int),
-            typeof(HexViewControl),
-            new PropertyMetadata(0, OnVirtualizationChanged));
-
-    /// <summary>
-    /// Byte offset of the window the owner should supply, always on a line boundary
-    /// </summary>
-    public int WindowOffset
-    {
-        get => (int)GetValue(WindowOffsetProperty);
-        set => SetValue(WindowOffsetProperty, value);
-    }
-
-    public static readonly DependencyProperty WindowOffsetProperty
-        = DependencyProperty.Register(nameof(WindowOffset),
-            typeof(int),
-            typeof(HexViewControl),
-            new PropertyMetadata(0, OnWindowOffsetChanged));
-
-    /// <summary>
-    /// Follows the window when something other than the scroll bar moves it, such as jumping to a region
-    /// </summary>
-    private static void OnWindowOffsetChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
-    {
-        var control = (HexViewControl)d;
-
-        if (!control.IsVirtualized)
-        {
-            return;
-        }
-
-        var line = (int)e.NewValue / BytesPerLine;
-
-        control.VirtualScrollBar.Value = Math.Clamp(line, 0, (int)control.VirtualScrollBar.Maximum);
-    }
-
-    /// <summary>
-    /// Bytes the window should hold, being the lines that fit plus one so scrolling does not reveal a gap
-    /// </summary>
-    public int WindowLength
-    {
-        get => (int)GetValue(WindowLengthProperty);
-        set => SetValue(WindowLengthProperty, value);
-    }
-
-    public static readonly DependencyProperty WindowLengthProperty
-        = DependencyProperty.Register(nameof(WindowLength),
-            typeof(int),
-            typeof(HexViewControl),
-            new PropertyMetadata(0));
-
-    private static void OnVirtualizationChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
-        => ((HexViewControl)d).UpdateVirtualization();
-
     private void UpdateVirtualization()
     {
         if (!IsVirtualized)
@@ -235,28 +240,23 @@ public sealed partial class HexViewControl
         SetAddress();
     }
 
-    private int _pendingScrollLine;
-
-    private bool _isScrolling;
-
     /// <summary>
-    /// Whether a drag is in progress, the bytes on show being the ones it started from until it ends
+    /// Follows the window when something other than the scroll bar moves it, such as jumping to a region
     /// </summary>
-    private bool IsScrolling
+    private static void OnWindowOffsetChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
     {
-        get => _isScrolling;
-        set
+        var control = (HexViewControl)d;
+
+        if (!control.IsVirtualized)
         {
-            if (_isScrolling == value)
-            {
-                return;
-            }
-
-            _isScrolling = value;
-
-            HexRichTextBlock.Opacity = value ? ScrollingOpacity : 1;
+            return;
         }
+
+        var line = (int)e.NewValue / BytesPerLine;
+
+        control.VirtualScrollBar.Value = Math.Clamp(line, 0, (int)control.VirtualScrollBar.Maximum);
     }
 
-    private const double ScrollingOpacity = 0.4;
+    private static void OnVirtualizationChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
+        => ((HexViewControl)d).UpdateVirtualization();
 }

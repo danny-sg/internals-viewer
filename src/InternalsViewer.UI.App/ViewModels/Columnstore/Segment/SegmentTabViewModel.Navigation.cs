@@ -11,13 +11,65 @@ namespace InternalsViewer.UI.App.ViewModels.Columnstore.Segment;
 
 public sealed partial class SegmentTabViewModel
 {
+    private const int DataTabIndex = 5;
+
+    /// <summary>
+    /// Set while the region is being brought into line with the window, so it does not move the window in turn
+    /// </summary>
+    private bool _isFollowingWindow;
+
+    /// <summary>
+    /// Set while the window is being moved to a region, the region being the cause rather than something to follow
+    /// </summary>
+    private bool _isJumpingToRegion;
+
+    private IReadOnlyList<HexArea>? _hexAreas;
+
     [ObservableProperty]
     private int _selectedRegionTabIndex;
 
-    private const int DataTabIndex = 5;
-
     [ObservableProperty]
     private bool _isDataTabLoaded;
+
+    [ObservableProperty]
+    private int _selectedVariableLengthDataTabIndex;
+
+    /// <summary>
+    /// Region the window sits on, set by picking a tab and reported back when a scroll leaves the region
+    /// </summary>
+    [ObservableProperty]
+    private SegmentRegion _region = SegmentRegion.Header;
+
+    /// <summary>
+    /// Whether scrolling out of a region moves on to the tab for the region scrolled into
+    /// </summary>
+    [ObservableProperty]
+    private bool _isAutoRegion = true;
+
+    /// <summary>
+    /// The blob's regions in the order they sit on disk, which the hex gutter names while a drag is under way
+    /// </summary>
+    public IReadOnlyList<HexArea> HexAreas => _hexAreas ??= BuildHexAreas();
+
+    public void GoToTarget(SegmentNavigationTarget target)
+    {
+        if (Blob is null)
+        {
+            return;
+        }
+
+        _isFollowingWindow = true;
+
+        Region = target.Region;
+
+        _isFollowingWindow = false;
+
+        SelectedRegionTabIndex = GetRegionTabIndex(target.Region);
+
+        Hex.GoToOffset(target.Offset);
+
+        Hex.SelectedMarker = Hex.Markers.FirstOrDefault(m => m.StartPosition == target.Offset - Hex.HexBaseAddress);
+    }
 
     partial void OnSelectedRegionTabIndexChanged(int value)
     {
@@ -31,9 +83,6 @@ public sealed partial class SegmentTabViewModel
         Hex.BuildMarkers();
     }
 
-    [ObservableProperty]
-    private int _selectedVariableLengthDataTabIndex;
-
     /// <summary>
     /// A marker belongs to the tab it was picked on, so moving between them leaves nothing selected
     /// </summary>
@@ -43,12 +92,6 @@ public sealed partial class SegmentTabViewModel
 
         Hex.BuildMarkers();
     }
-
-    /// <summary>
-    /// Region the window sits on, set by picking a tab and reported back when a scroll leaves the region
-    /// </summary>
-    [ObservableProperty]
-    private SegmentRegion _region = SegmentRegion.Header;
 
     partial void OnRegionChanged(SegmentRegion value)
     {
@@ -74,22 +117,6 @@ public sealed partial class SegmentTabViewModel
         SegmentRegion.VariableLengthData => 4,
         _ => 0
     };
-
-    /// <summary>
-    /// Whether scrolling out of a region moves on to the tab for the region scrolled into
-    /// </summary>
-    [ObservableProperty]
-    private bool _isAutoRegion = true;
-
-    /// <summary>
-    /// Set while the region is being brought into line with the window, so it does not move the window in turn
-    /// </summary>
-    private bool _isFollowingWindow;
-
-    /// <summary>
-    /// Set while the window is being moved to a region, the region being the cause rather than something to follow
-    /// </summary>
-    private bool _isJumpingToRegion;
 
     /// <summary>
     /// Moves the window to the region's first line, or rebuilds in place if it is already there
@@ -144,33 +171,6 @@ public sealed partial class SegmentTabViewModel
 
         Hex.BuildMarkers();
     }
-
-    public void GoToTarget(SegmentNavigationTarget target)
-    {
-        if (Blob is null)
-        {
-            return;
-        }
-
-        _isFollowingWindow = true;
-
-        Region = target.Region;
-
-        _isFollowingWindow = false;
-
-        SelectedRegionTabIndex = GetRegionTabIndex(target.Region);
-
-        Hex.GoToOffset(target.Offset);
-
-        Hex.SelectedMarker = Hex.Markers.FirstOrDefault(m => m.StartPosition == target.Offset - Hex.HexBaseAddress);
-    }
-
-    private IReadOnlyList<HexArea>? _hexAreas;
-
-    /// <summary>
-    /// The blob's regions in the order they sit on disk, which the hex gutter names while a drag is under way
-    /// </summary>
-    public IReadOnlyList<HexArea> HexAreas => _hexAreas ??= BuildHexAreas();
 
     private IReadOnlyList<HexArea> BuildHexAreas()
     {

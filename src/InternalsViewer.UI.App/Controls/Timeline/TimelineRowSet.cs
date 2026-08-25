@@ -20,8 +20,6 @@ namespace InternalsViewer.UI.App.Controls.Timeline;
 /// </summary>
 internal sealed class TimelineRowSet : IDisposable
 {
-    public readonly record struct Row(Type EventType, string Label, SKColor Color, float Weight);
-
     // Rows below this event count use a wider marker so their sparse ticks stay easy to see.
     private const int SparseRowThreshold = 25;
 
@@ -130,4 +128,6 @@ internal sealed class TimelineRowSet : IDisposable
             blob?.Dispose();
         }
     }
+
+    public readonly record struct Row(Type EventType, string Label, SKColor Color, float Weight);
 }

@@ -11,6 +11,11 @@ namespace InternalsViewer.UI.App.ViewModels.Query.Events;
 
 internal static class EventBorderBuilder
 {
+    private const long MinLockBorderDurationUs = 1000;
+
+    // How far an intent lock's colour is blended towards white — enough to read as the same hue, a shade lighter.
+    private const double IntentLightenAmount = 0.5;
+
     internal static IReadOnlyList<AllocationBorder> GetLockBorders(IReadOnlyList<LockEvent> locks, DatabaseSource databaseSource)
     {
         if (locks.Count == 0)
@@ -90,12 +95,7 @@ internal static class EventBorderBuilder
         }
     }
 
-    private const long MinLockBorderDurationUs = 1000;
-
     private static bool IsIntentLock(LockMode mode) => LockModeClassifier.IsIntent(mode);
-
-    // How far an intent lock's colour is blended towards white — enough to read as the same hue, a shade lighter.
-    private const double IntentLightenAmount = 0.5;
 
     // The category colour, lightened for intent modes: an intent lock only flags finer locks below the resource, so it
     // reads as a paler shade of the real S/U/X lock's colour rather than a distinct one.

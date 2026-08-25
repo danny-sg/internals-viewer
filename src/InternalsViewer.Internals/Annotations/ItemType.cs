@@ -163,7 +163,7 @@ public enum ItemType
     BookmarkPosition,
     BookmarkEndRow,
     RleArrayCount,
-    RleEntrySize,
+    RleArrayEntrySize,
     RleValue,
     RleCount,
     RleReadFlag,

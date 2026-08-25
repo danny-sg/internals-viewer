@@ -9,10 +9,11 @@ namespace InternalsViewer.UI.App.Controls.Columnstore;
 /// </summary>
 public sealed partial class MarkerKey
 {
-    public MarkerKey()
-    {
-        InitializeComponent();
-    }
+    public static readonly DependencyProperty ItemTypeProperty
+        = DependencyProperty.Register(nameof(ItemType),
+                                      typeof(ItemType),
+                                      typeof(MarkerKey),
+                                      new PropertyMetadata(ItemType.PageAddress, OnItemTypeChanged));
 
     public ItemType ItemType
     {
@@ -20,11 +21,10 @@ public sealed partial class MarkerKey
         set => SetValue(ItemTypeProperty, value);
     }
 
-    public static readonly DependencyProperty ItemTypeProperty
-        = DependencyProperty.Register(nameof(ItemType),
-                                      typeof(ItemType),
-                                      typeof(MarkerKey),
-                                      new PropertyMetadata(ItemType.PageAddress, OnItemTypeChanged));
+    public MarkerKey()
+    {
+        InitializeComponent();
+    }
 
     private static void OnItemTypeChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
     {

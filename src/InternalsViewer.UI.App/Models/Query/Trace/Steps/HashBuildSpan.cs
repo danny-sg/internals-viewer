@@ -14,6 +14,8 @@ public sealed record HashBuildSpan() : AccessStep(AccessPhase.Walk), ITraceSpan
 
 public sealed partial class HashBuildProgress : ObservableObject
 {
+    private int[] _fill = [];
+
     [ObservableProperty]
     private int _count;
 
@@ -28,8 +30,6 @@ public sealed partial class HashBuildProgress : ObservableObject
 
     [ObservableProperty]
     private int _fillVersion;
-
-    private int[] _fill = [];
 
     public IReadOnlyList<int> Fill => _fill;
 

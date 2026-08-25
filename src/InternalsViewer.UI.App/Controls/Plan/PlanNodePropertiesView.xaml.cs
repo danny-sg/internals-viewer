@@ -61,11 +61,6 @@ public sealed partial class PlanNodePropertiesView : UserControl
         InitializeComponent();
     }
 
-    private static void OnNodeChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
-    {
-        ((PlanNodePropertiesView)d).Rebuild();
-    }
-
     private void Rebuild()
     {
         TreeView.RootNodes.Clear();
@@ -98,5 +93,10 @@ public sealed partial class PlanNodePropertiesView : UserControl
         }
 
         return node;
+    }
+
+    private static void OnNodeChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
+    {
+        ((PlanNodePropertiesView)d).Rebuild();
     }
 }

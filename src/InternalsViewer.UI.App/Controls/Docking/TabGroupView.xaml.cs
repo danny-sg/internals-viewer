@@ -27,10 +27,6 @@ public sealed partial class TabGroupView : UserControl
 
     private bool _syncing;
 
-    public TabGroupNode? Group { get; private set; }
-
-    public DockLayoutViewModel? Dock { get; private set; }
-
     public TabGroupView()
     {
         InitializeComponent();
@@ -47,13 +43,9 @@ public sealed partial class TabGroupView : UserControl
         Unloaded += OnUnloaded;
     }
 
-    private void OnDragActiveChanged(object? sender, EventArgs e)
-    {
-        if (!DockDragState.IsActive)
-        {
-            HideHighlight();
-        }
-    }
+    public TabGroupNode? Group { get; private set; }
+
+    public DockLayoutViewModel? Dock { get; private set; }
 
     private bool AcceptsCurrentDrag
         => DockDragState.Document is { } document && Dock?.FindGroup(document) is not null;
@@ -67,6 +59,14 @@ public sealed partial class TabGroupView : UserControl
 
         group.Documents.CollectionChanged += OnDocumentsChanged;
         group.PropertyChanged += OnGroupPropertyChanged;
+    }
+
+    private void OnDragActiveChanged(object? sender, EventArgs e)
+    {
+        if (!DockDragState.IsActive)
+        {
+            HideHighlight();
+        }
     }
 
     private void OnUnloaded(object sender, RoutedEventArgs e)

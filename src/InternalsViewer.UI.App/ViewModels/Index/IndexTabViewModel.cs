@@ -41,15 +41,7 @@ public partial class IndexTabViewModel(ILogger<IndexTabViewModel> logger,
                                        IPageService pageService,
                                        DatabaseSource database) : TabViewModel
 {
-    private ILogger<IndexTabViewModel> Logger { get; } = logger;
-
-    private IndexService IndexService { get; } = indexService;
-
-    private IRecordService RecordService { get; } = recordService;
-
-    private IPageService PageService { get; } = pageService;
-
-    public DatabaseSource Database { get; } = database;
+    private const int RecordsSpinnerDelayMs = 100;
 
     [ObservableProperty]
     private float _zoom = 1;
@@ -75,38 +67,8 @@ public partial class IndexTabViewModel(ILogger<IndexTabViewModel> logger,
     [ObservableProperty]
     private AllocationUnit? _allocationUnit;
 
-    public string ProgressText => TotalPageCount > 0
-        ? $"{LoadedPageCount:N0} / {TotalPageCount:N0} pages"
-        : $"{LoadedPageCount:N0} pages";
-
-    public bool IsProgressVisible => TotalPageCount >= IndexService.ProgressReportInterval;
-
-    public double ProgressMaximum => TotalPageCount;
-
-    public string LoadingText => string.IsNullOrEmpty(AllocationUnit?.IndexName)
-        ? "Loading Index..."
-        : $"Loading {AllocationUnit.IndexName}...";
-
-    partial void OnAllocationUnitChanged(AllocationUnit? value)
-    {
-        TotalPageCount = value?.UsedPages ?? 0;
-
-        OnPropertyChanged(nameof(LoadingText));
-    }
-
-    partial void OnLoadedPageCountChanged(int value) => OnPropertyChanged(nameof(ProgressText));
-
-    partial void OnTotalPageCountChanged(long value)
-    {
-        OnPropertyChanged(nameof(ProgressText));
-        OnPropertyChanged(nameof(IsProgressVisible));
-        OnPropertyChanged(nameof(ProgressMaximum));
-    }
-
     [ObservableProperty]
     private bool _isRecordsLoading;
-
-    private const int RecordsSpinnerDelayMs = 100;
 
     [ObservableProperty]
     private bool _isTooltipEnabled;
@@ -116,15 +78,6 @@ public partial class IndexTabViewModel(ILogger<IndexTabViewModel> logger,
     [NotifyPropertyChangedFor(nameof(DetailColumnWidth))]
     [NotifyPropertyChangedFor(nameof(DetailSplitterVisibility))]
     private bool _isDetailPaneVisible;
-
-    public GridLength BodyColumnWidth
-        => IsDetailPaneVisible ? new GridLength(6, GridUnitType.Star) : new GridLength(1, GridUnitType.Star);
-
-    public GridLength DetailColumnWidth
-        => IsDetailPaneVisible ? new GridLength(4, GridUnitType.Star) : new GridLength(0);
-
-    public Visibility DetailSplitterVisibility
-        => IsDetailPaneVisible ? Visibility.Visible : Visibility.Collapsed;
 
     [ObservableProperty]
     private ObservableCollection<IndexRecordModel> _records = [];
@@ -152,6 +105,37 @@ public partial class IndexTabViewModel(ILogger<IndexTabViewModel> logger,
 
     [ObservableProperty]
     private ObservableCollection<PageAddress> _highlightedPages = [];
+
+    public DatabaseSource Database { get; } = database;
+
+    public string ProgressText => TotalPageCount > 0
+        ? $"{LoadedPageCount:N0} / {TotalPageCount:N0} pages"
+        : $"{LoadedPageCount:N0} pages";
+
+    public bool IsProgressVisible => TotalPageCount >= IndexService.ProgressReportInterval;
+
+    public double ProgressMaximum => TotalPageCount;
+
+    public string LoadingText => string.IsNullOrEmpty(AllocationUnit?.IndexName)
+        ? "Loading Index..."
+        : $"Loading {AllocationUnit.IndexName}...";
+
+    public GridLength BodyColumnWidth
+        => IsDetailPaneVisible ? new GridLength(6, GridUnitType.Star) : new GridLength(1, GridUnitType.Star);
+
+    public GridLength DetailColumnWidth
+        => IsDetailPaneVisible ? new GridLength(4, GridUnitType.Star) : new GridLength(0);
+
+    public Visibility DetailSplitterVisibility
+        => IsDetailPaneVisible ? Visibility.Visible : Visibility.Collapsed;
+
+    private ILogger<IndexTabViewModel> Logger { get; } = logger;
+
+    private IndexService IndexService { get; } = indexService;
+
+    private IRecordService RecordService { get; } = recordService;
+
+    private IPageService PageService { get; } = pageService;
 
     [RelayCommand]
     public async Task Refresh()
@@ -263,6 +247,34 @@ public partial class IndexTabViewModel(ILogger<IndexTabViewModel> logger,
         IsDetailPaneVisible = true;
     }
 
+    public void SetHighlightedPage(PageAddress pageAddress)
+    {
+        if (pageAddress != PageAddress.Empty)
+        {
+            HighlightedPages = [pageAddress];
+        }
+        else
+        {
+            HighlightedPages = [];
+        }
+    }
+
+    partial void OnAllocationUnitChanged(AllocationUnit? value)
+    {
+        TotalPageCount = value?.UsedPages ?? 0;
+
+        OnPropertyChanged(nameof(LoadingText));
+    }
+
+    partial void OnLoadedPageCountChanged(int value) => OnPropertyChanged(nameof(ProgressText));
+
+    partial void OnTotalPageCountChanged(long value)
+    {
+        OnPropertyChanged(nameof(ProgressText));
+        OnPropertyChanged(nameof(IsProgressVisible));
+        OnPropertyChanged(nameof(ProgressMaximum));
+    }
+
     private async Task ShowRecordsSpinnerAfterDelay(CancellationToken token)
     {
         try
@@ -327,17 +339,5 @@ public partial class IndexTabViewModel(ILogger<IndexTabViewModel> logger,
         }).ToList();
 
         return models;
-    }
-
-    public void SetHighlightedPage(PageAddress pageAddress)
-    {
-        if (pageAddress != PageAddress.Empty)
-        {
-            HighlightedPages = [pageAddress];
-        }
-        else
-        {
-            HighlightedPages = [];
-        }
     }
 }

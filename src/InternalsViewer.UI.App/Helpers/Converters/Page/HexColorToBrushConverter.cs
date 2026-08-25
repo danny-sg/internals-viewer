@@ -6,7 +6,7 @@ using Windows.UI;
 
 namespace InternalsViewer.UI.App.Helpers.Converters.Page;
 
-/// <summary>Converts a CSS-style hex color string (e.g. "#4472C4") to a SolidColorBrush.</summary>
+/// <summary>Converts a CSS-style hex color string (e.g. "#4472C4") to a SolidColorBrush</summary>
 public sealed class HexColorToBrushConverter : IValueConverter
 {
     public object Convert(object? value, Type targetType, object parameter, string language)

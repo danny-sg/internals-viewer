@@ -279,7 +279,7 @@ public sealed partial class EventTimelineControl
     }
 
     /// <summary>
-    /// Shows a pointer-following tooltip with the name of the event under the pointer.
+    /// Shows a pointer-following tooltip with the name of the event under the pointer
     /// </summary>
     private void UpdateHoverTooltip(Windows.Foundation.Point position)
     {

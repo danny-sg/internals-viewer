@@ -13,6 +13,19 @@ namespace InternalsViewer.UI.App.Controls.Timeline.Renderers;
 /// </remarks>
 internal sealed class RenderResource : IDisposable
 {
+    private readonly SKPathEffect _callRailDash = SKPathEffect.CreateDash([2f, 2f], 0f);
+
+    public RenderResource()
+    {
+        ReadCallRail = new SKPaint
+        {
+            StrokeWidth = 1f,
+            Style = SKPaintStyle.Stroke,
+            IsAntialias = false,
+            PathEffect = _callRailDash,
+        };
+    }
+
     // Crisp (non-antialiased) fill for pixel-aligned bars and ticks; the caller sets Color per draw.
     public SKPaint Fill { get; } = new() { Style = SKPaintStyle.Fill };
 
@@ -41,19 +54,6 @@ internal sealed class RenderResource : IDisposable
     public SKFont LabelFont { get; } = new(SKTypeface.Default, 10f);
 
     public SKPaint LabelPaint { get; } = new() { Color = SKColors.LightGray, IsAntialias = true };
-
-    private readonly SKPathEffect _callRailDash = SKPathEffect.CreateDash([2f, 2f], 0f);
-
-    public RenderResource()
-    {
-        ReadCallRail = new SKPaint
-        {
-            StrokeWidth = 1f,
-            Style = SKPaintStyle.Stroke,
-            IsAntialias = false,
-            PathEffect = _callRailDash,
-        };
-    }
 
     public void Dispose()
     {

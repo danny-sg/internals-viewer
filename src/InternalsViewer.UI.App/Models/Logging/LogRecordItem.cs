@@ -13,10 +13,6 @@ namespace InternalsViewer.UI.App.Models.Logging;
 /// </remarks>
 public partial class LogRecordItem : ObservableObject
 {
-    internal PageLogRecord Record { get; set; } = null!;
-
-    internal ObservableCollection<LogRecordAnnotation> Annotations { get; set; } = [];
-
     /// <summary>
     /// Whether the record is applied by the current replay - checked for the target record and every record
     /// before it
@@ -40,4 +36,7 @@ public partial class LogRecordItem : ObservableObject
     public int SlotId => Record.SlotId;
 
     public string Description => Record.Description;
+    internal PageLogRecord Record { get; set; } = null!;
+
+    internal ObservableCollection<LogRecordAnnotation> Annotations { get; set; } = [];
 }

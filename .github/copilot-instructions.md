@@ -21,13 +21,21 @@
 - Do not add XML parameter descriptions unless requested.
 
 ## Structure
-Order members as:
-1. Constants and `static readonly` fields
-2. Properties (use private properties in place of private fields)
-3. Constructors
-4. Public methods
-5. Protected methods
-6. Private methods
+Order members as (SA1201):
+1. Fields - constants, then `static readonly`, then instance
+2. Constructors
+3. Events
+4. Properties (use private properties in place of private fields)
+5. Methods
+6. Nested types
+
+Two exceptions to the field-first rule:
+- A `DependencyProperty` field is followed immediately by its CLR property, the two kept as a pair. For an
+  attached property the pair is the field and its `Get`/`Set` accessors.
+- `[ObservableProperty]` fields are grouped together.
+
+A `DependencyProperty` changed-callback goes at the bottom of the class rather than beside the property it
+serves.
 
 Static members are not a separate group. A static member belongs to the group its accessibility puts it in,
 alongside the instance members of the same visibility - a `private static` helper sits with the other private

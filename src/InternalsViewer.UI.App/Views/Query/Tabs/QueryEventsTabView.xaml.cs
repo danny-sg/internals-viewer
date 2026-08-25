@@ -12,11 +12,9 @@ using InternalsViewer.UI.App.Controls;
 
 namespace InternalsViewer.UI.App.Views.Query.Tabs;
 
-/// <summary>Dock document hosting the engine-events grid for the active query.</summary>
+/// <summary>Dock document hosting the engine-events grid for the active query</summary>
 public sealed partial class QueryEventsTabView : UserControl, IDisposable
 {
-    public QueryViewModel? ViewModel => DataContext as QueryViewModel;
-
     private QueryViewModel? _subscribed;
 
     public QueryEventsTabView()
@@ -28,6 +26,20 @@ public sealed partial class QueryEventsTabView : UserControl, IDisposable
         Loaded += (_, _) => Subscribe();
         Unloaded += (_, _) => Unsubscribe();
         DataContextChanged += OnDataContextChanged;
+    }
+
+    public QueryViewModel? ViewModel => DataContext as QueryViewModel;
+
+    /// <summary>Disposed by <see cref="DocumentViewModel.DisposeView"/> when the query tab closes</summary>
+    public void Dispose()
+    {
+        // x:Bind listens to the view model, which outlives the view, so the view stays rooted until
+        // tracking stops
+        Bindings.StopTracking();
+
+        Unsubscribe();
+
+        EventGrid.Dispose();
     }
 
     private void OnDataContextChanged(FrameworkElement sender, DataContextChangedEventArgs args)
@@ -63,18 +75,6 @@ public sealed partial class QueryEventsTabView : UserControl, IDisposable
     }
 
     private void OnEventNavigationRequested(EngineEvent engineEvent) => EventGrid.NavigateToEvent(engineEvent);
-
-    /// <summary>Disposed by <see cref="DocumentViewModel.DisposeView"/> when the query tab closes.</summary>
-    public void Dispose()
-    {
-        // x:Bind listens to the view model, which outlives the view, so the view stays rooted until
-        // tracking stops
-        Bindings.StopTracking();
-
-        Unsubscribe();
-
-        EventGrid.Dispose();
-    }
 
     private void OnPageSelected(object? sender, PageAddressEventArgs e)
     {

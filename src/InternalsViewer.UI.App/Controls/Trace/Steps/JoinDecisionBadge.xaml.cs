@@ -52,11 +52,6 @@ public sealed partial class JoinDecisionBadge : UserControl
         InitializeComponent();
     }
 
-    private static void OnDecisionChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
-    {
-        ((JoinDecisionBadge)d).Rebuild();
-    }
-
     private void Rebuild()
     {
         Root.Children.Clear();
@@ -229,4 +224,9 @@ public sealed partial class JoinDecisionBadge : UserControl
     }
 
     private static string Label(bool isInner) => isInner ? "inner" : "outer";
+
+    private static void OnDecisionChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
+    {
+        ((JoinDecisionBadge)d).Rebuild();
+    }
 }

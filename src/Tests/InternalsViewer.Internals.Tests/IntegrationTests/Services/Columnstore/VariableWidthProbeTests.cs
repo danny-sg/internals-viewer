@@ -170,7 +170,7 @@ public sealed class VariableWidthProbeTests(ITestOutputHelper testOutput) : Prov
             }
 
             // The trailing units a nullable segment writes between the bookmarks and the store
-            var trailing = blob.Header.TrailingRleUnits;
+            var trailing = blob.Header.IsVariableLengthData ? Math.Max(0, blob.Header.RleArrayCount - 2) : 0;
 
             if (trailing > 0)
             {

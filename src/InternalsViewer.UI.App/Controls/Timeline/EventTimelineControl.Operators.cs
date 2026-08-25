@@ -10,9 +10,6 @@ namespace InternalsViewer.UI.App.Controls.Timeline;
 
 public sealed partial class EventTimelineControl
 {
-    // The statement (SELECT) node draws as a single grey bar; BuildOperatorBars uses this for level-0 operators.
-    private static readonly SKColor StatementColour = new(130, 130, 130);
-
     private const float OperatorLineMargin = 3f;
 
     // Extra per-block padding added in Trace mode so stacked bars leave a gap for the trace lines.
@@ -29,6 +26,9 @@ public sealed partial class EventTimelineControl
     private const float StatementBandWeight = 0.5f;
     private const float MinCostWeight = 0.35f;
     private const float MaxCostWeight = 1.5f;
+
+    // The statement (SELECT) node draws as a single grey bar; BuildOperatorBars uses this for level-0 operators.
+    private static readonly SKColor StatementColour = new(130, 130, 130);
 
     // Lays out the operator bars for this frame: a cost-weighted vertical slot per operator, with the bar sized within
     // its slot by kind (thin for buffer operators, row-count-scaled for data access, full for the rest). Shared by the

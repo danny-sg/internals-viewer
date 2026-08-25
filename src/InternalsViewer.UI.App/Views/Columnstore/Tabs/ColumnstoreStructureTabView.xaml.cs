@@ -23,6 +23,18 @@ public sealed partial class ColumnstoreStructureTabView : IDisposable
 
     public ColumnstoreTabViewModel ViewModel => (ColumnstoreTabViewModel)DataContext;
 
+    public void Dispose()
+    {
+        DataContextChanged -= OnDataContextChanged;
+
+        StructureControl.ElementClicked -= OnElementClicked;
+
+        // x:Bind listens to the view model, which outlives the view, so the view stays rooted until tracking stops
+        Bindings.StopTracking();
+
+        StructureControl.Dispose();
+    }
+
     private void OnDataContextChanged(FrameworkElement sender, DataContextChangedEventArgs args) => Bindings.Update();
 
     private void BuildLegend()
@@ -76,17 +88,5 @@ public sealed partial class ColumnstoreStructureTabView : IDisposable
                 ViewModel.OpenDeltaStore(rowGroup);
                 break;
         }
-    }
-
-    public void Dispose()
-    {
-        DataContextChanged -= OnDataContextChanged;
-
-        StructureControl.ElementClicked -= OnElementClicked;
-
-        // x:Bind listens to the view model, which outlives the view, so the view stays rooted until tracking stops
-        Bindings.StopTracking();
-
-        StructureControl.Dispose();
     }
 }

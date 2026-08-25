@@ -5,9 +5,6 @@ namespace InternalsViewer.UI.App.Helpers;
 
 public static class RuntimeHelper
 {
-    [DllImport("kernel32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
-    private static extern int GetCurrentPackageFullName(ref int packageFullNameLength, StringBuilder? packageFullName);
-
     public static bool IsMsix
     {
         get
@@ -17,4 +14,7 @@ public static class RuntimeHelper
             return GetCurrentPackageFullName(ref length, null) != 15700L;
         }
     }
+
+    [DllImport("kernel32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
+    private static extern int GetCurrentPackageFullName(ref int packageFullNameLength, StringBuilder? packageFullName);
 }

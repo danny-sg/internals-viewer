@@ -9,6 +9,7 @@ namespace InternalsViewer.UI.App.Models.Columnstore.Segment;
 /// </summary>
 public sealed class SegmentBadge
 {
+    private const double Radius = 3;
     public required string Label { get; init; }
 
     public required Color Background { get; init; }
@@ -37,6 +38,4 @@ public sealed class SegmentBadge
 
         return badges;
     }
-
-    private const double Radius = 3;
 }

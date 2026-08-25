@@ -37,15 +37,7 @@ public sealed class ExecutionPlanControl : Canvas
     private const double IcicleHeight = 24;
     private const int MaxIcicleLevels = 8;
 
-    // Node height grows to make room for the icicle when the plan has linked call stacks, else stays compact.
-    private double _nodeHeight = BaseNodeHeight;
-
-    // The plan's operators as a tree, so each node's icicle can be weighted by the events its whole subtree drove.
-    // Rebuilt with the diagram rather than per node, which would invert the parent links once for every operator.
-    private OperatorHierarchy _hierarchy = OperatorHierarchy.Build([]);
-
     private const double ColumnPitch = NodeWidth + HorizontalGap;
-    private double RowPitch => _nodeHeight + VerticalGap;
 
     private static readonly Color ConnectorColor = Color.FromArgb(255, 185, 185, 185);
 
@@ -54,6 +46,70 @@ public sealed class ExecutionPlanControl : Canvas
 
     // Branch labels (Build / Probe) sit near the child end of a hash join's input connectors.
     private static readonly Color BranchLabelColor = Color.FromArgb(255, 160, 160, 160);
+
+    public static readonly DependencyProperty PlanProperty =
+        DependencyProperty.Register(nameof(Plan), typeof(ExecutionPlan), typeof(ExecutionPlanControl),
+            new PropertyMetadata(null, OnPlanChanged));
+
+    public ExecutionPlan? Plan
+    {
+        get => (ExecutionPlan?)GetValue(PlanProperty);
+        set => SetValue(PlanProperty, value);
+    }
+
+    public static readonly DependencyProperty HasFlameGraphProperty =
+        DependencyProperty.Register(nameof(HasFlameGraph), typeof(bool), typeof(ExecutionPlanControl),
+            new PropertyMetadata(true, OnPlanChanged));
+
+    public bool HasFlameGraph
+    {
+        get => (bool)GetValue(HasFlameGraphProperty);
+        set => SetValue(HasFlameGraphProperty, value);
+    }
+
+    public static readonly DependencyProperty SelectedNodeProperty =
+        DependencyProperty.Register(nameof(SelectedNode), typeof(PlanNode), typeof(ExecutionPlanControl),
+            new PropertyMetadata(null, OnSelectedNodeChanged));
+
+    public PlanNode? SelectedNode
+    {
+        get => (PlanNode?)GetValue(SelectedNodeProperty);
+        set => SetValue(SelectedNodeProperty, value);
+    }
+
+    public static readonly DependencyProperty ActiveNodesProperty =
+        DependencyProperty.Register(nameof(ActiveNodes), typeof(IReadOnlyList<PlanNode>), typeof(ExecutionPlanControl),
+            new PropertyMetadata(null, OnActiveNodesChanged));
+
+    public IReadOnlyList<PlanNode>? ActiveNodes
+    {
+        get => (IReadOnlyList<PlanNode>?)GetValue(ActiveNodesProperty);
+        set => SetValue(ActiveNodesProperty, value);
+    }
+
+    public static readonly DependencyProperty EmittingNodesProperty =
+        DependencyProperty.Register(nameof(EmittingNodes), typeof(IReadOnlyList<PlanNode>), typeof(ExecutionPlanControl),
+            new PropertyMetadata(null, OnEmittingNodesChanged));
+
+    public IReadOnlyList<PlanNode>? EmittingNodes
+    {
+        get => (IReadOnlyList<PlanNode>?)GetValue(EmittingNodesProperty);
+        set => SetValue(EmittingNodesProperty, value);
+    }
+
+    public static readonly DependencyProperty EventsProperty =
+        DependencyProperty.Register(nameof(Events), typeof(IReadOnlyList<EngineEvent>), typeof(ExecutionPlanControl),
+            new PropertyMetadata(null, OnEventsChanged));
+
+    /// <summary>
+    /// The query's events, so each operator can show a mini icicle of its linked call stacks (see
+    /// <see cref="OperatorIcicle"/>). Null/empty leaves the nodes compact with no icicle strip.
+    /// </summary>
+    public IReadOnlyList<EngineEvent>? Events
+    {
+        get => (IReadOnlyList<EngineEvent>?)GetValue(EventsProperty);
+        set => SetValue(EventsProperty, value);
+    }
 
     // Each producer node mapped to the connector that carries its rows to its consumer (parent), and to
     // that connector's arrowhead (recoloured to match the flow line while the producer is active).
@@ -66,6 +122,13 @@ public sealed class ExecutionPlanControl : Canvas
     // Per-emitting-producer animated data-flow overlay marching along its outgoing connector. Keyed by
     // producer so the set can be reconciled incrementally as the active operators change each tick.
     private readonly Dictionary<PlanNode, FlowOverlay> _flows = new();
+
+    // Node height grows to make room for the icicle when the plan has linked call stacks, else stays compact.
+    private double _nodeHeight = BaseNodeHeight;
+
+    // The plan's operators as a tree, so each node's icicle can be weighted by the events its whole subtree drove.
+    // Rebuilt with the diagram rather than per node, which would invert the parent links once for every operator.
+    private OperatorHierarchy _hierarchy = OperatorHierarchy.Build([]);
 
     private ScrollViewer? _scrollViewer;
     private PlanNodeControl? _selectedControl;
@@ -90,107 +153,15 @@ public sealed class ExecutionPlanControl : Canvas
         DoubleTapped += OnDoubleTapped;
     }
 
-    public ExecutionPlan? Plan
-    {
-        get => (ExecutionPlan?)GetValue(PlanProperty);
-        set => SetValue(PlanProperty, value);
-    }
-
-    public static readonly DependencyProperty PlanProperty =
-        DependencyProperty.Register(nameof(Plan), typeof(ExecutionPlan), typeof(ExecutionPlanControl),
-            new PropertyMetadata(null, OnPlanChanged));
-
-    public bool HasFlameGraph
-    {
-        get => (bool)GetValue(HasFlameGraphProperty);
-        set => SetValue(HasFlameGraphProperty, value);
-    }
-
-    public static readonly DependencyProperty HasFlameGraphProperty =
-        DependencyProperty.Register(nameof(HasFlameGraph), typeof(bool), typeof(ExecutionPlanControl),
-            new PropertyMetadata(true, OnPlanChanged));
-
-    public PlanNode? SelectedNode
-    {
-        get => (PlanNode?)GetValue(SelectedNodeProperty);
-        set => SetValue(SelectedNodeProperty, value);
-    }
-
-    public static readonly DependencyProperty SelectedNodeProperty =
-        DependencyProperty.Register(nameof(SelectedNode), typeof(PlanNode), typeof(ExecutionPlanControl),
-            new PropertyMetadata(null, OnSelectedNodeChanged));
-
-    private static void OnSelectedNodeChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
-    {
-        var control = (ExecutionPlanControl)d;
-
-        // Ignore the echo from our own click-driven selection; only react to external (timeline) changes.
-        if (!control._applyingSelection)
-        {
-            control.SelectByNode((PlanNode?)e.NewValue);
-        }
-    }
-
-    public IReadOnlyList<PlanNode>? ActiveNodes
-    {
-        get => (IReadOnlyList<PlanNode>?)GetValue(ActiveNodesProperty);
-        set => SetValue(ActiveNodesProperty, value);
-    }
-
-    public static readonly DependencyProperty ActiveNodesProperty =
-        DependencyProperty.Register(nameof(ActiveNodes), typeof(IReadOnlyList<PlanNode>), typeof(ExecutionPlanControl),
-            new PropertyMetadata(null, OnActiveNodesChanged));
-
-    private static void OnActiveNodesChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
-    {
-        var control = (ExecutionPlanControl)d;
-
-        control.UpdateActiveHighlights();
-        control.UpdateFlows();
-    }
-
-    public IReadOnlyList<PlanNode>? EmittingNodes
-    {
-        get => (IReadOnlyList<PlanNode>?)GetValue(EmittingNodesProperty);
-        set => SetValue(EmittingNodesProperty, value);
-    }
-
-    public static readonly DependencyProperty EmittingNodesProperty =
-        DependencyProperty.Register(nameof(EmittingNodes), typeof(IReadOnlyList<PlanNode>), typeof(ExecutionPlanControl),
-            new PropertyMetadata(null, OnEmittingNodesChanged));
-
-    private static void OnEmittingNodesChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
-        => ((ExecutionPlanControl)d).UpdateFlows();
-
-    /// <summary>
-    /// The query's events, so each operator can show a mini icicle of its linked call stacks (see
-    /// <see cref="OperatorIcicle"/>). Null/empty leaves the nodes compact with no icicle strip.
-    /// </summary>
-    public IReadOnlyList<EngineEvent>? Events
-    {
-        get => (IReadOnlyList<EngineEvent>?)GetValue(EventsProperty);
-        set => SetValue(EventsProperty, value);
-    }
-
-    public static readonly DependencyProperty EventsProperty =
-        DependencyProperty.Register(nameof(Events), typeof(IReadOnlyList<EngineEvent>), typeof(ExecutionPlanControl),
-            new PropertyMetadata(null, OnEventsChanged));
-
-    // The icicles (and the node height that makes room for them) depend on the events, so rebuild when they arrive.
-    private static void OnEventsChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
-        => ((ExecutionPlanControl)d).Rebuild();
-
     public event EventHandler<PlanNode?>? NodeSelected;
 
-    /// <summary>Raised when "Open Index" is chosen on a data-access node that runs against a named index.</summary>
+    /// <summary>Raised when "Open Index" is chosen on a data-access node that runs against a named index</summary>
     public event EventHandler<PlanNode>? IndexOpenRequested;
 
     public event EventHandler<PlanNode>? TraceOpenRequested;
 
     public event EventHandler<PlanNode>? PropertiesOpenRequested;
-
-    private static void OnPlanChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
-        => ((ExecutionPlanControl)d).Rebuild();
+    private double RowPitch => _nodeHeight + VerticalGap;
 
     private void Rebuild()
     {
@@ -824,4 +795,33 @@ public sealed class ExecutionPlanControl : Canvas
     }
 
     private readonly record struct FlowOverlay(Polyline Overlay, Storyboard? Storyboard, bool IsEmitting);
+
+    private static void OnSelectedNodeChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
+    {
+        var control = (ExecutionPlanControl)d;
+
+        // Ignore the echo from our own click-driven selection; only react to external (timeline) changes.
+        if (!control._applyingSelection)
+        {
+            control.SelectByNode((PlanNode?)e.NewValue);
+        }
+    }
+
+    private static void OnActiveNodesChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
+    {
+        var control = (ExecutionPlanControl)d;
+
+        control.UpdateActiveHighlights();
+        control.UpdateFlows();
+    }
+
+    private static void OnEmittingNodesChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
+        => ((ExecutionPlanControl)d).UpdateFlows();
+
+    // The icicles (and the node height that makes room for them) depend on the events, so rebuild when they arrive.
+    private static void OnEventsChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
+        => ((ExecutionPlanControl)d).Rebuild();
+
+    private static void OnPlanChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
+        => ((ExecutionPlanControl)d).Rebuild();
 }

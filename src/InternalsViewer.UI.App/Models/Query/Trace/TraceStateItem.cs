@@ -4,6 +4,9 @@ namespace InternalsViewer.UI.App.Models.Query.Trace;
 
 public sealed partial class TraceStateItem(string name) : ObservableObject
 {
+    [ObservableProperty]
+    private string _value = string.Empty;
+
     public string Name { get; } = name;
 
     public bool? Flag { get; init; }
@@ -13,7 +16,4 @@ public sealed partial class TraceStateItem(string name) : ObservableObject
     public Visibility CrossVisibility => Flag == false ? Visibility.Visible : Visibility.Collapsed;
 
     public Visibility ValueVisibility => Flag is null ? Visibility.Visible : Visibility.Collapsed;
-
-    [ObservableProperty]
-    private string _value = string.Empty;
 }

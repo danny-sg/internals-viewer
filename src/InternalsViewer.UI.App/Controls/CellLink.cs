@@ -25,12 +25,22 @@ public interface ICellLinkNavigator
 /// </remarks>
 public static class CellLink
 {
+    private static Brush? _accent;
+
+    private static ElementTheme _accentTheme = ElementTheme.Default;
+
+    public static readonly DependencyProperty TextProperty
+        = DependencyProperty.RegisterAttached("Text",
+                                              typeof(string),
+                                              typeof(CellLink),
+                                              new PropertyMetadata(null, OnChanged));
+
     public static string? GetText(DependencyObject element) => (string?)element.GetValue(TextProperty);
 
     public static void SetText(DependencyObject element, string? value) => element.SetValue(TextProperty, value);
 
-    public static readonly DependencyProperty TextProperty
-        = DependencyProperty.RegisterAttached("Text",
+    public static readonly DependencyProperty KindProperty
+        = DependencyProperty.RegisterAttached("Kind",
                                               typeof(string),
                                               typeof(CellLink),
                                               new PropertyMetadata(null, OnChanged));
@@ -42,9 +52,9 @@ public static class CellLink
 
     public static void SetKind(DependencyObject element, string? value) => element.SetValue(KindProperty, value);
 
-    public static readonly DependencyProperty KindProperty
-        = DependencyProperty.RegisterAttached("Kind",
-                                              typeof(string),
+    public static readonly DependencyProperty ParameterProperty
+        = DependencyProperty.RegisterAttached("Parameter",
+                                              typeof(object),
                                               typeof(CellLink),
                                               new PropertyMetadata(null, OnChanged));
 
@@ -52,20 +62,6 @@ public static class CellLink
 
     public static void SetParameter(DependencyObject element, object? value)
         => element.SetValue(ParameterProperty, value);
-
-    public static readonly DependencyProperty ParameterProperty
-        = DependencyProperty.RegisterAttached("Parameter",
-                                              typeof(object),
-                                              typeof(CellLink),
-                                              new PropertyMetadata(null, OnChanged));
-
-    private static void OnChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
-    {
-        if (d is TextBlock text)
-        {
-            Build(text);
-        }
-    }
 
     private static void Build(TextBlock text)
     {
@@ -110,13 +106,6 @@ public static class CellLink
         return null;
     }
 
-    private static Brush? _accent;
-
-    private static ElementTheme _accentTheme = ElementTheme.Default;
-
-    /// <summary>
-    /// The colour a link is written in, held against the theme it was read for
-    /// </summary>
     private static Brush? Accent(TextBlock text)
     {
         if (_accent is not null && _accentTheme == text.ActualTheme)
@@ -129,5 +118,13 @@ public static class CellLink
         return _accent = Application.Current.Resources.TryGetValue("AccentTextFillColorSecondaryBrush", out var resource)
             ? resource as Brush
             : null;
+    }
+
+    private static void OnChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
+    {
+        if (d is TextBlock text)
+        {
+            Build(text);
+        }
     }
 }

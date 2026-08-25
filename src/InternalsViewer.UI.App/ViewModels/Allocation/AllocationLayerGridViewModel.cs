@@ -15,12 +15,6 @@ public sealed partial class AllocationLayerGridViewModel : ObservableObject
 
     private readonly Dictionary<string, bool> _expansionOverrides = [];
 
-    private List<AllocationLayer> Layers { get; set; } = [];
-
-    private string SortProperty { get; set; } = string.Empty;
-
-    private bool SortAscending { get; set; } = true;
-
     [ObservableProperty]
     private string _filter = string.Empty;
 
@@ -29,6 +23,68 @@ public sealed partial class AllocationLayerGridViewModel : ObservableObject
 
     [ObservableProperty]
     private ObservableCollection<AllocationLayerRow> _dataSource = [];
+
+    private List<AllocationLayer> Layers { get; set; } = [];
+
+    private string SortProperty { get; set; } = string.Empty;
+
+    private bool SortAscending { get; set; } = true;
+
+    public void ToggleExpanded(AllocationLayerRow row)
+    {
+        if (!row.HasChildren)
+        {
+            return;
+        }
+
+        var index = DataSource.IndexOf(row);
+
+        if (index < 0)
+        {
+            return;
+        }
+
+        row.IsExpanded = !row.IsExpanded;
+
+        _expansionOverrides[row.Key] = row.IsExpanded;
+
+        if (row.IsExpanded)
+        {
+            var insertAt = index + 1;
+
+            foreach (var descendant in VisibleDescendants(row))
+            {
+                DataSource.Insert(insertAt++, descendant);
+            }
+        }
+        else
+        {
+            while (index + 1 < DataSource.Count && DataSource[index + 1].Depth > row.Depth)
+            {
+                DataSource.RemoveAt(index + 1);
+            }
+        }
+    }
+
+    public AllocationLayerRow? FindRow(AllocationLayerRow row)
+    {
+        return DataSource.FirstOrDefault(r => r.Key == row.Key);
+    }
+
+    public void Sort(string property, bool ascending)
+    {
+        SortProperty = property;
+        SortAscending = ascending;
+
+        RefreshDataSource();
+    }
+
+    public void SetLayers(List<AllocationLayer> value)
+    {
+        Layers = value;
+
+        RefreshDataSource();
+    }
 
     partial void OnFilterChanged(string? oldValue, string newValue)
     {
@@ -82,47 +138,6 @@ public sealed partial class AllocationLayerGridViewModel : ObservableObject
         }
     }
 
-    public void ToggleExpanded(AllocationLayerRow row)
-    {
-        if (!row.HasChildren)
-        {
-            return;
-        }
-
-        var index = DataSource.IndexOf(row);
-
-        if (index < 0)
-        {
-            return;
-        }
-
-        row.IsExpanded = !row.IsExpanded;
-
-        _expansionOverrides[row.Key] = row.IsExpanded;
-
-        if (row.IsExpanded)
-        {
-            var insertAt = index + 1;
-
-            foreach (var descendant in VisibleDescendants(row))
-            {
-                DataSource.Insert(insertAt++, descendant);
-            }
-        }
-        else
-        {
-            while (index + 1 < DataSource.Count && DataSource[index + 1].Depth > row.Depth)
-            {
-                DataSource.RemoveAt(index + 1);
-            }
-        }
-    }
-
-    public AllocationLayerRow? FindRow(AllocationLayerRow row)
-    {
-        return DataSource.FirstOrDefault(r => r.Key == row.Key);
-    }
-
     private static IComparable? GetSortValue(AllocationLayer layer, string property) => property switch
     {
         nameof(AllocationLayer.ObjectName) => layer.ObjectName,
@@ -138,20 +153,5 @@ public sealed partial class AllocationLayerGridViewModel : ObservableObject
         {
             RefreshDataSource();
         }
-    }
-
-    public void Sort(string property, bool ascending)
-    {
-        SortProperty = property;
-        SortAscending = ascending;
-
-        RefreshDataSource();
-    }
-
-    public void SetLayers(List<AllocationLayer> value)
-    {
-        Layers = value;
-
-        RefreshDataSource();
     }
 }

@@ -15,6 +15,50 @@ namespace InternalsViewer.UI.App.Controls.HexView;
 
 public sealed partial class HexViewControl
 {
+    public static readonly DependencyProperty AreasProperty
+        = DependencyProperty.Register(nameof(Areas),
+            typeof(IReadOnlyList<HexArea>),
+            typeof(HexViewControl),
+            new PropertyMetadata(null));
+
+    /// <summary>
+    /// Named stretches of the data, in order, each running until the next one starts
+    /// </summary>
+    public IReadOnlyList<HexArea>? Areas
+    {
+        get => (IReadOnlyList<HexArea>?)GetValue(AreasProperty);
+        set => SetValue(AreasProperty, value);
+    }
+
+    public static readonly DependencyProperty BaseAddressProperty
+        = DependencyProperty.Register(nameof(BaseAddress),
+            typeof(int),
+            typeof(HexViewControl),
+            new PropertyMetadata(0, OnBaseAddressChanged));
+
+    /// <summary>
+    /// Offset the address column counts from, so a slice of a larger structure shows its true offsets
+    /// </summary>
+    public int BaseAddress
+    {
+        get => (int)GetValue(BaseAddressProperty);
+        set => SetValue(BaseAddressProperty, value);
+    }
+
+    public static readonly DependencyProperty DataProperty = DependencyProperty
+        .Register(nameof(Data),
+            typeof(byte[]),
+            typeof(HexViewControl),
+            new PropertyMetadata(null, OnDataChanged));
+
+    public byte[] Data
+    {
+        get { return (byte[])GetValue(DataProperty); }
+        set { SetValue(DataProperty, value); }
+    }
+
+    private bool _isHexRebuildPending;
+
     /// <summary>
     /// Builds the address column for whatever length of data is shown, offset by <see cref="BaseAddress"/>
     /// </summary>
@@ -95,41 +139,6 @@ public sealed partial class HexViewControl
     };
 
     /// <summary>
-    /// Named stretches of the data, in order, each running until the next one starts
-    /// </summary>
-    public IReadOnlyList<HexArea>? Areas
-    {
-        get => (IReadOnlyList<HexArea>?)GetValue(AreasProperty);
-        set => SetValue(AreasProperty, value);
-    }
-
-    public static readonly DependencyProperty AreasProperty
-        = DependencyProperty.Register(nameof(Areas),
-            typeof(IReadOnlyList<HexArea>),
-            typeof(HexViewControl),
-            new PropertyMetadata(null));
-
-    /// <summary>
-    /// Offset the address column counts from, so a slice of a larger structure shows its true offsets
-    /// </summary>
-    public int BaseAddress
-    {
-        get => (int)GetValue(BaseAddressProperty);
-        set => SetValue(BaseAddressProperty, value);
-    }
-
-    public static readonly DependencyProperty BaseAddressProperty
-        = DependencyProperty.Register(nameof(BaseAddress),
-            typeof(int),
-            typeof(HexViewControl),
-            new PropertyMetadata(0, OnBaseAddressChanged));
-
-    private static void OnBaseAddressChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
-        => ((HexViewControl)d).InvalidateHexData();
-
-    private bool _isHexRebuildPending;
-
-    /// <summary>
     /// Asks for one rebuild of the hex text at the end of the current pass, however many properties moved
     /// </summary>
     /// <remarks>
@@ -155,21 +164,6 @@ public sealed partial class HexViewControl
         });
     }
 
-    public byte[] Data
-    {
-        get { return (byte[])GetValue(DataProperty); }
-        set { SetValue(DataProperty, value); }
-    }
-
-    public static readonly DependencyProperty DataProperty = DependencyProperty
-        .Register(nameof(Data),
-            typeof(byte[]),
-            typeof(HexViewControl),
-            new PropertyMetadata(null, OnDataChanged));
-
-    private static void OnDataChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
-        => ((HexViewControl)d).InvalidateHexData();
-
     private static void SetHexData(IReadOnlyList<byte> data, HexViewControl target)
     {
         using var timing = target.Logger.Time("Set hex data", $"{data.Count} bytes");
@@ -187,4 +181,10 @@ public sealed partial class HexViewControl
 
         target.DrawSelectionMask();
     }
+
+    private static void OnBaseAddressChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
+        => ((HexViewControl)d).InvalidateHexData();
+
+    private static void OnDataChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
+        => ((HexViewControl)d).InvalidateHexData();
 }

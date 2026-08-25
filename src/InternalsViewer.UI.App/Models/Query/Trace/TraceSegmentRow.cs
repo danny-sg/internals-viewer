@@ -7,12 +7,12 @@ namespace InternalsViewer.UI.App.Models.Query.Trace;
 
 public sealed partial class TraceSegmentRow(string name, int columns) : ObservableObject
 {
+    [ObservableProperty]
+    private bool _isDifferent;
+
     public string Name { get; } = name;
 
     public ObservableCollection<TraceSegmentCell> Cells { get; } = [.. Enumerable.Range(0, columns).Select(_ => new TraceSegmentCell())];
-
-    [ObservableProperty]
-    private bool _isDifferent;
 
     public void Fill(IReadOnlyList<string> values)
     {

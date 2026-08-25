@@ -16,6 +16,12 @@ namespace InternalsViewer.UI.App.ViewModels;
 public partial class MainViewModel(SettingsService settingsService)
     : TabViewModel
 {
+    [ObservableProperty]
+    private ObservableCollection<RecentConnection> _recentConnections = [];
+
+    [ObservableProperty]
+    private ObservableCollection<PageBookmark> _pageBookmarks = [];
+
     private SettingsService SettingsService { get; } = settingsService;
 
     public async Task InitializeAsync()
@@ -116,10 +122,4 @@ public partial class MainViewModel(SettingsService settingsService)
 
         await SettingsService.SaveSettingAsync("PageBookmarks", PageBookmarks.ToArray());
     }
-
-    [ObservableProperty]
-    private ObservableCollection<RecentConnection> _recentConnections = [];
-
-    [ObservableProperty]
-    private ObservableCollection<PageBookmark> _pageBookmarks = [];
 }

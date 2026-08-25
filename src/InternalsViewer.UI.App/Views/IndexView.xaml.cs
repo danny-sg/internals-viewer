@@ -19,8 +19,6 @@ public sealed partial class IndexView: IDisposable
 
     private bool _hasLoaded;
 
-    public IndexTabViewModel ViewModel => (IndexTabViewModel)DataContext;
-
     public IndexView()
     {
         InitializeComponent();
@@ -54,6 +52,39 @@ public sealed partial class IndexView: IDisposable
 
         // Opens the page from the grid
         RecordGrid.PageClicked += IndexView_PageClicked;
+    }
+
+    public IndexTabViewModel ViewModel => (IndexTabViewModel)DataContext;
+
+    public void Dispose()
+    {
+        // x:Bind listens to the view model, which outlives the view, so the view stays rooted until
+        // tracking stops
+        Bindings.StopTracking();
+
+        IndexControl.PageClicked -= IndexView_PageClicked;
+
+        PageAddressLink.Click -= PageAddressLink_OnClick;
+        PreviousPageAddressLink.Click -= PageAddressLink_OnClick;
+        NextPageAddressLink.Click -= PageAddressLink_OnClick;
+
+        PageAddressLink.PointerEntered -= PageAddressLink_PointerEntered;
+        PageAddressLink.PointerExited -= PageAddressLink_PointerExited;
+
+        PreviousPageAddressLink.PointerEntered -= PageAddressLink_PointerEntered;
+        PreviousPageAddressLink.PointerExited -= PageAddressLink_PointerExited;
+
+        NextPageAddressLink.PointerEntered -= PageAddressLink_PointerEntered;
+        NextPageAddressLink.PointerExited -= PageAddressLink_PointerExited;
+
+        RecordGrid.PageOver -= RecordGrid_PageOver;
+
+        RecordGrid.PageClicked -= IndexView_PageClicked;
+
+        RecordGrid.Dispose();
+        IndexControl.Dispose();
+
+        (DataContext as IndexTabViewModel)?.Dispose();
     }
 
     private void IndexView_PointerWheelChanged(object sender, PointerRoutedEventArgs e)
@@ -172,36 +203,5 @@ public sealed partial class IndexView: IDisposable
     private void CloseDetailPane()
     {
         ViewModel.IsDetailPaneVisible = false;
-    }
-
-    public void Dispose()
-    {
-        // x:Bind listens to the view model, which outlives the view, so the view stays rooted until
-        // tracking stops
-        Bindings.StopTracking();
-
-        IndexControl.PageClicked -= IndexView_PageClicked;
-
-        PageAddressLink.Click -= PageAddressLink_OnClick;
-        PreviousPageAddressLink.Click -= PageAddressLink_OnClick;
-        NextPageAddressLink.Click -= PageAddressLink_OnClick;
-
-        PageAddressLink.PointerEntered -= PageAddressLink_PointerEntered;
-        PageAddressLink.PointerExited -= PageAddressLink_PointerExited;
-
-        PreviousPageAddressLink.PointerEntered -= PageAddressLink_PointerEntered;
-        PreviousPageAddressLink.PointerExited -= PageAddressLink_PointerExited;
-
-        NextPageAddressLink.PointerEntered -= PageAddressLink_PointerEntered;
-        NextPageAddressLink.PointerExited -= PageAddressLink_PointerExited;
-
-        RecordGrid.PageOver -= RecordGrid_PageOver;
-
-        RecordGrid.PageClicked -= IndexView_PageClicked;
-
-        RecordGrid.Dispose();
-        IndexControl.Dispose();
-
-        (DataContext as IndexTabViewModel)?.Dispose();
     }
 }

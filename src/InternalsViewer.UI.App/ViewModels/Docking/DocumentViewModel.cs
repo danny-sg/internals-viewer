@@ -11,6 +11,16 @@ public sealed partial class DocumentViewModel : ObservableObject
 
     private ContentControl? _currentHolder;
 
+    /// <summary>
+    /// The document a click last landed on, which its tab header shows in bold
+    /// </summary>
+    /// <remarks>
+    /// Selection within a group is the tab view's own, and says nothing across groups. This is the owner's notion of which of its
+    /// documents is the current one, so a layout that spreads them over several groups still has one.
+    /// </remarks>
+    [ObservableProperty]
+    private bool _isSelected;
+
     public DocumentViewModel(string title,
                              object content,
                              Func<FrameworkElement> viewFactory,
@@ -30,12 +40,12 @@ public sealed partial class DocumentViewModel : ObservableObject
         CommandsFactory = commandsFactory;
     }
 
-    /// <summary>Stable identifier used to persist/restore which documents are open and where.</summary>
+    /// <summary>Stable identifier used to persist/restore which documents are open and where</summary>
     public string Key { get; }
 
     /// <summary>
     /// When false the document is excluded from the saved layout (e.g. dynamically opened index tabs,
-    /// which are reopened on demand rather than restored).
+    /// which are reopened on demand rather than restored)
     /// </summary>
     public bool Persist { get; }
 
@@ -64,16 +74,6 @@ public sealed partial class DocumentViewModel : ObservableObject
     public bool CanClose { get; }
 
     public Microsoft.UI.Xaml.Media.Brush? Accent { get; set; }
-
-    /// <summary>
-    /// The document a click last landed on, which its tab header shows in bold
-    /// </summary>
-    /// <remarks>
-    /// Selection within a group is the tab view's own, and says nothing across groups. This is the owner's notion of which of its
-    /// documents is the current one, so a layout that spreads them over several groups still has one.
-    /// </remarks>
-    [ObservableProperty]
-    private bool _isSelected;
 
     /// <summary>
     /// Returns the element to host as a tab's content, with the view's <c>DataContext</c> set to
@@ -128,20 +128,6 @@ public sealed partial class DocumentViewModel : ObservableObject
         }
     }
 
-    private FrameworkElement? BuildCommands()
-    {
-        if (CommandsFactory is { } factory)
-        {
-            var commands = factory();
-
-            commands.DataContext = Content;
-
-            return commands;
-        }
-
-        return (_cachedView as IDocumentCommands)?.CreateCommands();
-    }
-
     /// <summary>
     /// Disposes and drops the cached view (for keep-alive documents) when the tab is closed
     /// </summary>
@@ -189,4 +175,18 @@ public sealed partial class DocumentViewModel : ObservableObject
                keepAlive,
                key,
                commandsFactory: static () => new TCommands());
+
+    private FrameworkElement? BuildCommands()
+    {
+        if (CommandsFactory is { } factory)
+        {
+            var commands = factory();
+
+            commands.DataContext = Content;
+
+            return commands;
+        }
+
+        return (_cachedView as IDocumentCommands)?.CreateCommands();
+    }
 }

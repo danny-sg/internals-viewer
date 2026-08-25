@@ -6,46 +6,6 @@ namespace InternalsViewer.UI.App.Helpers;
 
 public static class LchColorScale
 {
-    internal static Color LchToRgbSafe(double l, double c, double h)
-    {
-        for (var i = 0; i < 20; i++)
-        {
-            var lab = LchToLab((l, c, h));
-            var rgb = LabToRgbRaw(lab);
-
-            if (IsValidRgb(rgb))
-            {
-                return ToColor(rgb);
-            }
-
-            // reduce chroma progressively
-            c *= 0.85;
-        }
-
-        // fallback (very desaturated but safe)
-        var fallback = LchToLab((l, 0, h));
-        return ToColor(LabToRgbRaw(fallback));
-    }
-
-    private static bool IsValidRgb((double r, double g, double b) rgb)
-    {
-        return rgb.r is >= 0 and <= 1 &&
-               rgb.g is >= 0 and <= 1 &&
-               rgb.b is >= 0 and <= 1;
-    }
-
-    private static Color ToColor((double r, double g, double b) rgb)
-    {
-        return Color.FromArgb(Clamp(rgb.r * 255),
-                              Clamp(rgb.g * 255),
-                              Clamp(rgb.b * 255));
-    }
-
-    private static int Clamp(double v)
-    {
-        return (int)Math.Max(0, Math.Min(255, Math.Round(v)));
-    }
-
     public static List<Color> Generate(Color baseColor, int steps)
     {
         var lab = RgbToLab(baseColor);
@@ -82,6 +42,27 @@ public static class LchColorScale
         return results;
     }
 
+    internal static Color LchToRgbSafe(double l, double c, double h)
+    {
+        for (var i = 0; i < 20; i++)
+        {
+            var lab = LchToLab((l, c, h));
+            var rgb = LabToRgbRaw(lab);
+
+            if (IsValidRgb(rgb))
+            {
+                return ToColor(rgb);
+            }
+
+            // reduce chroma progressively
+            c *= 0.85;
+        }
+
+        // fallback (very desaturated but safe)
+        var fallback = LchToLab((l, 0, h));
+        return ToColor(LabToRgbRaw(fallback));
+    }
+
     internal static double Lerp(double a, double b, double t) => a + (b - a) * t;
 
     internal static (double l, double a, double b) RgbToLab(Color c)
@@ -96,6 +77,49 @@ public static class LchColorScale
         var xyz = LabToXyz(lab);
 
         return XyzToRgb(xyz);
+    }
+
+    internal static (double l, double c, double h) LabToLch((double l, double a, double b) lab)
+    {
+        var c = Math.Sqrt(lab.a * lab.a + lab.b * lab.b);
+        var h = Math.Atan2(lab.b, lab.a) * (180 / Math.PI);
+
+        if (h < 0)
+        {
+            h += 360;
+        }
+
+        return (lab.l, c, h);
+    }
+
+    internal static (double l, double a, double b) LchToLab((double l, double c, double h) lch)
+    {
+        var hRad = lch.h * (Math.PI / 180);
+
+        return (
+            lch.l,
+            Math.Cos(hRad) * lch.c,
+            Math.Sin(hRad) * lch.c
+        );
+    }
+
+    private static bool IsValidRgb((double r, double g, double b) rgb)
+    {
+        return rgb.r is >= 0 and <= 1 &&
+               rgb.g is >= 0 and <= 1 &&
+               rgb.b is >= 0 and <= 1;
+    }
+
+    private static Color ToColor((double r, double g, double b) rgb)
+    {
+        return Color.FromArgb(Clamp(rgb.r * 255),
+                              Clamp(rgb.g * 255),
+                              Clamp(rgb.b * 255));
+    }
+
+    private static int Clamp(double v)
+    {
+        return (int)Math.Max(0, Math.Min(255, Math.Round(v)));
     }
 
     private static (double x, double y, double z) RgbToXyz(Color c)
@@ -162,30 +186,6 @@ public static class LchColorScale
         );
     }
 
-    internal static (double l, double c, double h) LabToLch((double l, double a, double b) lab)
-    {
-        var c = Math.Sqrt(lab.a * lab.a + lab.b * lab.b);
-        var h = Math.Atan2(lab.b, lab.a) * (180 / Math.PI);
-
-        if (h < 0)
-        {
-            h += 360;
-        }
-
-        return (lab.l, c, h);
-    }
-
-    internal static (double l, double a, double b) LchToLab((double l, double c, double h) lch)
-    {
-        var hRad = lch.h * (Math.PI / 180);
-
-        return (
-            lch.l,
-            Math.Cos(hRad) * lch.c,
-            Math.Sin(hRad) * lch.c
-        );
-    }
-
     private static double PivotRgb(double n)
         => (n > 0.04045) ? Math.Pow((n + 0.055) / 1.055, 2.4) : n / 12.92;
 
@@ -239,7 +239,6 @@ public static class LchColorScale
 
         return (int)Math.Max(0, Math.Min(255, Math.Round(v)));
     }
-
 
     private static double GetSafeChroma(double h, double l)
     {

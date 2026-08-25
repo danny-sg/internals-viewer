@@ -12,10 +12,6 @@ namespace InternalsViewer.UI.App.Views;
 
 public sealed partial class DatabaseView : IDisposable
 {
-    public DatabaseTabViewModel TabViewModel => (DatabaseTabViewModel)DataContext;
-
-    public double AllocationMapHeight { get; set; }
-
     public DatabaseView()
     {
         InitializeComponent();
@@ -32,6 +28,35 @@ public sealed partial class DatabaseView : IDisposable
         AllocationTabView.Loaded += AllocationTabView_Loaded;
     }
 
+    public DatabaseTabViewModel TabViewModel => (DatabaseTabViewModel)DataContext;
+
+    public double AllocationMapHeight { get; set; }
+
+    public Visibility ToInverseVisibility(bool value) => value ? Visibility.Collapsed : Visibility.Visible;
+
+    public void Dispose()
+    {
+        foreach (var child in this.FindChildren())
+        {
+            if (child is IDisposable disposable)
+            {
+                disposable.Dispose();
+            }
+        }
+
+        AllocationItemRepeater.SizeChanged -= OnParentSizeChanged;
+        AllocationLayerGrid.PageClicked -= OnPageSelected;
+        AllocationLayerGrid.ViewIndexClicked -= OnViewIndexClicked;
+        AllocationLayerGrid.ViewColumnstoreClicked -= OnViewColumnstoreClicked;
+        PageAddressTextBox.AddressChanged -= OnPageSelected;
+        AllocationInfoAppBarToggleButton.Checked -= AppBarToggleButton_Changed;
+        AllocationInfoAppBarToggleButton.Unchecked -= AppBarToggleButton_Changed;
+        AllocationTabView.Loaded -= AllocationTabView_Loaded;
+
+        // Releases the connection, and with it the backup's file handles, decode window and page map
+        _ = (DataContext as DatabaseTabViewModel)?.DisposeAsync().AsTask();
+    }
+
     private void AllocationTabView_Loaded(object sender, RoutedEventArgs e)
     {
         EnsureTabSelected();
@@ -44,8 +69,6 @@ public sealed partial class DatabaseView : IDisposable
             AllocationTabView.SelectedIndex = 0;
         }
     }
-
-    public Visibility ToInverseVisibility(bool value) => value ? Visibility.Collapsed : Visibility.Visible;
 
     private void OnSwitchToTabsClick(object sender, RoutedEventArgs e)
     {
@@ -111,28 +134,5 @@ public sealed partial class DatabaseView : IDisposable
         await WeakReferenceMessenger.Default
                                     .Send(new OpenColumnstoreMessage(
                                         new OpenColumnstoreRequest(TabViewModel.Database, allocationUnitId)));
-    }
-
-    public void Dispose()
-    {
-        foreach (var child in this.FindChildren())
-        {
-            if (child is IDisposable disposable)
-            {
-                disposable.Dispose();
-            }
-        }
-
-        AllocationItemRepeater.SizeChanged -= OnParentSizeChanged;
-        AllocationLayerGrid.PageClicked -= OnPageSelected;
-        AllocationLayerGrid.ViewIndexClicked -= OnViewIndexClicked;
-        AllocationLayerGrid.ViewColumnstoreClicked -= OnViewColumnstoreClicked;
-        PageAddressTextBox.AddressChanged -= OnPageSelected;
-        AllocationInfoAppBarToggleButton.Checked -= AppBarToggleButton_Changed;
-        AllocationInfoAppBarToggleButton.Unchecked -= AppBarToggleButton_Changed;
-        AllocationTabView.Loaded -= AllocationTabView_Loaded;
-
-        // Releases the connection, and with it the backup's file handles, decode window and page map
-        _ = (DataContext as DatabaseTabViewModel)?.DisposeAsync().AsTask();
     }
 }

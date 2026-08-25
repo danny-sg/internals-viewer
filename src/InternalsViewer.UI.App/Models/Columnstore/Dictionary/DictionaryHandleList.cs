@@ -36,11 +36,7 @@ public sealed class DictionaryHandleList(StringDictionary dictionary) : IList<Di
 
     public int IndexOf(DictionaryHandleDetail item) => item.Index >= 0 && item.Index < Count ? item.Index : -1;
 
-    int IList.IndexOf(object? value) => value is DictionaryHandleDetail handle ? IndexOf(handle) : -1;
-
     public bool Contains(DictionaryHandleDetail item) => IndexOf(item) >= 0;
-
-    bool IList.Contains(object? value) => value is DictionaryHandleDetail handle && Contains(handle);
 
     public IEnumerator<DictionaryHandleDetail> GetEnumerator()
     {
@@ -50,25 +46,29 @@ public sealed class DictionaryHandleList(StringDictionary dictionary) : IList<Di
         }
     }
 
-    IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
-
     public void CopyTo(DictionaryHandleDetail[] array, int arrayIndex) => throw new NotSupportedException();
 
-    void ICollection.CopyTo(Array array, int index) => throw new NotSupportedException();
-
     public void Add(DictionaryHandleDetail item) => throw new NotSupportedException();
-
-    int IList.Add(object? value) => throw new NotSupportedException();
 
     public void Clear() => throw new NotSupportedException();
 
     public void Insert(int index, DictionaryHandleDetail item) => throw new NotSupportedException();
 
-    void IList.Insert(int index, object? value) => throw new NotSupportedException();
-
     public bool Remove(DictionaryHandleDetail item) => throw new NotSupportedException();
 
-    void IList.Remove(object? value) => throw new NotSupportedException();
-
     public void RemoveAt(int index) => throw new NotSupportedException();
+
+    int IList.IndexOf(object? value) => value is DictionaryHandleDetail handle ? IndexOf(handle) : -1;
+
+    bool IList.Contains(object? value) => value is DictionaryHandleDetail handle && Contains(handle);
+
+    IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
+
+    void ICollection.CopyTo(Array array, int index) => throw new NotSupportedException();
+
+    int IList.Add(object? value) => throw new NotSupportedException();
+
+    void IList.Insert(int index, object? value) => throw new NotSupportedException();
+
+    void IList.Remove(object? value) => throw new NotSupportedException();
 }

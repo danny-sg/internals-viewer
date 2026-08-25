@@ -13,20 +13,10 @@ namespace InternalsViewer.UI.App.Models;
 
 public sealed partial class AllocationLayer : ObservableObject
 {
-    [ObservableProperty]
-    private Color _colour;
-
     private SKColor? _rendererColour;
 
-    public SKColor RendererColour
-    {
-        get
-        {
-            _rendererColour ??= Colour.ToSkColor();
-
-            return _rendererColour.Value;
-        }
-    }
+    [ObservableProperty]
+    private Color _colour;
 
     [ObservableProperty]
     private string _name = string.Empty;
@@ -53,12 +43,6 @@ public sealed partial class AllocationLayer : ObservableObject
     [NotifyPropertyChangedFor(nameof(IndexTypeDescription))]
     [NotifyPropertyChangedFor(nameof(IsIndex))]
     private IndexType _indexType;
-
-    public bool IsIndex => IndexType is IndexType.Clustered or IndexType.NonClustered && TotalPages > 0;
-
-    public bool IsColumnstore => IndexType is IndexType.ClusteredColumnStore or IndexType.NonClusteredColumnStore && TotalPages > 0;
-
-    public string IndexTypeDescription => IndexType.ToString().SplitCamelCase();
 
     [ObservableProperty]
     private bool _isSystemObject;
@@ -90,11 +74,6 @@ public sealed partial class AllocationLayer : ObservableObject
     [ObservableProperty]
     private IReadOnlyList<PageSpan> _pageSpans = [];
 
-    public void SetPageSpans(IReadOnlyList<PageSpan> spans)
-    {
-        PageSpans = spans;
-    }
-
     [ObservableProperty]
     private bool _isInverted;
 
@@ -104,7 +83,28 @@ public sealed partial class AllocationLayer : ObservableObject
     [ObservableProperty]
     private byte _opacity = 100;
 
+    public SKColor RendererColour
+    {
+        get
+        {
+            _rendererColour ??= Colour.ToSkColor();
+
+            return _rendererColour.Value;
+        }
+    }
+
+    public bool IsIndex => IndexType is IndexType.Clustered or IndexType.NonClustered && TotalPages > 0;
+
+    public bool IsColumnstore => IndexType is IndexType.ClusteredColumnStore or IndexType.NonClusteredColumnStore && TotalPages > 0;
+
+    public string IndexTypeDescription => IndexType.ToString().SplitCamelCase();
+
     public string LayerName { get; set; } = string.Empty;
 
     public LayerType LayerType { get; set; } = LayerType.Fill;
+
+    public void SetPageSpans(IReadOnlyList<PageSpan> spans)
+    {
+        PageSpans = spans;
+    }
 }

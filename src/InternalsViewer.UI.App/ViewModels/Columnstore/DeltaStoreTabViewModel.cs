@@ -31,9 +31,23 @@ public sealed partial class DeltaStoreTabViewModel(IPageService pageService,
                                                    DatabaseSource database,
                                                    RowGroupSummary rowGroup) : ObservableObject
 {
-    private IPageService PageService { get; } = pageService;
+    /// <summary>
+    /// The rowset behind the delta store, which its pages are reached through
+    /// </summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(AllocationUnitDescription))]
+    [NotifyPropertyChangedFor(nameof(FirstPage))]
+    [NotifyPropertyChangedFor(nameof(FirstIamPage))]
+    private AllocationUnit? _allocationUnit;
 
-    private IIamChainService IamChainService { get; } = iamChainService;
+    [ObservableProperty]
+    private bool _isLoaded;
+
+    [ObservableProperty]
+    private string _statusText = "Loading Delta Store";
+
+    [ObservableProperty]
+    private IReadOnlyList<DeltaStorePageSummary> _pages = [];
 
     public DatabaseSource Database { get; } = database;
 
@@ -45,29 +59,14 @@ public sealed partial class DeltaStoreTabViewModel(IPageService pageService,
 
     public string HobtDescription => $"{RowGroup.DeltaStoreHobtId}";
 
-    /// <summary>
-    /// The rowset behind the delta store, which its pages are reached through
-    /// </summary>
-    [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(AllocationUnitDescription))]
-    [NotifyPropertyChangedFor(nameof(FirstPage))]
-    [NotifyPropertyChangedFor(nameof(FirstIamPage))]
-    private AllocationUnit? _allocationUnit;
-
     public string AllocationUnitDescription => AllocationUnit is { } unit ? $"{unit.AllocationUnitId}" : string.Empty;
 
     public PageAddress FirstPage => AllocationUnit?.FirstPage ?? PageAddress.Empty;
 
     public PageAddress FirstIamPage => AllocationUnit?.FirstIamPage ?? PageAddress.Empty;
+    private IPageService PageService { get; } = pageService;
 
-    [ObservableProperty]
-    private bool _isLoaded;
-
-    [ObservableProperty]
-    private string _statusText = "Loading Delta Store";
-
-    [ObservableProperty]
-    private IReadOnlyList<DeltaStorePageSummary> _pages = [];
+    private IIamChainService IamChainService { get; } = iamChainService;
 
     public async Task Load(CancellationToken cancellationToken)
     {

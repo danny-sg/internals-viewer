@@ -41,8 +41,6 @@ public sealed record RleRunDetail(int Index,
     /// </summary>
     public bool IsLink => Address is not null || (!IsValue && !IsTerminator);
 
-    private bool IsTerminator => Count == 0 && Value == 0;
-
     /// <summary>
     /// What the map places on the hue wheel, a run addressing the store saying more by where its values sit
     /// </summary>
@@ -52,4 +50,6 @@ public sealed record RleRunDetail(int Index,
     /// Where a run that covers a sequence has reached by its last row, which is where it stands for one value
     /// </summary>
     public long EndColourValue => IsValue ? ColourValue : ColourValue + Math.Max(0, Count - 1);
+
+    private bool IsTerminator => Count == 0 && Value == 0;
 }

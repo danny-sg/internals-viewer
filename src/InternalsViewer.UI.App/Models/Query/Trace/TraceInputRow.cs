@@ -5,6 +5,9 @@ namespace InternalsViewer.UI.App.Models.Query.Trace;
 
 public sealed partial class TraceInputRow(int sourceNodeId, string name) : ObservableObject
 {
+    [ObservableProperty]
+    private string _rowCount = "0";
+
     public int SourceNodeId { get; } = sourceNodeId;
 
     public string Name { get; } = name;
@@ -16,7 +19,4 @@ public sealed partial class TraceInputRow(int sourceNodeId, string name) : Obser
     public ImageSource? Icon { get; init; }
 
     public bool HasRowCount { get; init; } = true;
-
-    [ObservableProperty]
-    private string _rowCount = "0";
 }

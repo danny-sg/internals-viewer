@@ -7,15 +7,15 @@ namespace InternalsViewer.UI.App.Controls.EventGrid;
 public sealed partial class EventGridRow(EngineEvent engineEvent, int depth, bool hasChildren, bool isExpanded)
     : ObservableObject
 {
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(ExpanderGlyph))]
+    private bool _isExpanded = isExpanded;
+
     public EngineEvent Event { get; } = engineEvent;
 
     public int Depth { get; } = depth;
 
     public bool HasChildren { get; } = hasChildren;
-
-    [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(ExpanderGlyph))]
-    private bool _isExpanded = isExpanded;
 
     public Thickness Indent => new(Depth * 16, 0, 0, 0);
 

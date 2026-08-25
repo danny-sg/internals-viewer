@@ -8,13 +8,13 @@ namespace InternalsViewer.UI.App.Models.Query.Trace.Hash;
 /// </summary>
 public sealed partial class HashEntryModel : ObservableObject
 {
-    public IReadOnlyList<HashCellModel> Cells { get; init; } = [];
-
-    public bool IsPlaceholder { get; init; }
-
     [ObservableProperty]
     private bool _isMatched;
 
     [ObservableProperty]
     private bool _isCurrent;
+
+    public IReadOnlyList<HashCellModel> Cells { get; init; } = [];
+
+    public bool IsPlaceholder { get; init; }
 }

@@ -13,9 +13,29 @@ namespace InternalsViewer.UI.App.Controls.Page;
 
 public sealed partial class MarkerTreeView
 {
-    public event EventHandler<PageAddressEventArgs>? PageClicked;
+    public static readonly DependencyProperty MarkersProperty = DependencyProperty
+        .Register(nameof(Markers),
+            typeof(ObservableCollection<Marker>),
+            typeof(MarkerTreeView),
+            new PropertyMetadata(null, OnMarkersChanged));
 
-    public event EventHandler<string>? AddressClicked;
+    public ObservableCollection<Marker>? Markers
+    {
+        get => (ObservableCollection<Marker>?)GetValue(MarkersProperty);
+        set => SetValue(MarkersProperty, value);
+    }
+
+    public static readonly DependencyProperty SelectedMarkerProperty
+        = DependencyProperty.Register(nameof(SelectedMarker),
+            typeof(Marker),
+            typeof(MarkerTreeView),
+            new PropertyMetadata(null, OnSelectedMarkerChanged));
+
+    public Marker? SelectedMarker
+    {
+        get => (Marker?)GetValue(SelectedMarkerProperty);
+        set => SetValue(SelectedMarkerProperty, value);
+    }
 
     private readonly Dictionary<Marker, TreeViewNode> _nodesByMarker = new(ReferenceEqualityComparer.Instance);
 
@@ -24,44 +44,20 @@ public sealed partial class MarkerTreeView
     // that turning into an unbounded TreeView_SelectionChanged <-> OnSelectedMarkerChanged cycle.
     private bool _isSyncingSelection;
 
-    public ObservableCollection<Marker>? Markers
-    {
-        get => (ObservableCollection<Marker>?)GetValue(MarkersProperty);
-        set => SetValue(MarkersProperty, value);
-    }
-
-    public static readonly DependencyProperty MarkersProperty = DependencyProperty
-        .Register(nameof(Markers),
-            typeof(ObservableCollection<Marker>),
-            typeof(MarkerTreeView),
-            new PropertyMetadata(null, OnMarkersChanged));
-
-    // TreeView.ItemsSource has a known WinUI bug (microsoft/microsoft-ui-xaml#7044) where it reuses
-    // TreeViewNode/TreeViewItem containers without resetting their state, which is especially bad
-    // here since the nested Children are also driven off ItemsSource - stale child nodes can be left
-    // on screen after a new Markers value comes in. Building TreeViewNodes directly and clearing
-    // RootNodes on every change avoids the recycling path entirely, matching the workaround Microsoft
-    // recommends for that issue.
-    private static void OnMarkersChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
-    {
-        if (d is not MarkerTreeView control)
-        {
-            return;
-        }
-
-        if (control.Visibility == Visibility.Collapsed)
-        {
-            control._isRebuildPending = true;
-
-            return;
-        }
-
-        control.RebuildNodes();
-    }
-
     private bool _isRebuildPending;
 
     private ILogger? _logger;
+
+    public MarkerTreeView()
+    {
+        InitializeComponent();
+
+        RegisterPropertyChangedCallback(VisibilityProperty, OnVisibilityChanged);
+    }
+
+    public event EventHandler<PageAddressEventArgs>? PageClicked;
+
+    public event EventHandler<string>? AddressClicked;
 
     private ILogger Logger => _logger ??= App.GetService<ILoggerFactory>().CreateLogger<MarkerTreeView>();
 
@@ -111,43 +107,6 @@ public sealed partial class MarkerTreeView
         return node;
     }
 
-    public Marker? SelectedMarker
-    {
-        get => (Marker?)GetValue(SelectedMarkerProperty);
-        set => SetValue(SelectedMarkerProperty, value);
-    }
-
-    public static readonly DependencyProperty SelectedMarkerProperty
-        = DependencyProperty.Register(nameof(SelectedMarker),
-            typeof(Marker),
-            typeof(MarkerTreeView),
-            new PropertyMetadata(null, OnSelectedMarkerChanged));
-
-    private static void OnSelectedMarkerChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
-    {
-        if (d is not MarkerTreeView control || control._isSyncingSelection)
-        {
-            return;
-        }
-
-        var newNode = e.NewValue is Marker marker
-                      && control._nodesByMarker.TryGetValue(marker, out var node)
-                      ? node
-                      : null;
-
-        if (ReferenceEquals(control.TreeView.SelectedNode, newNode))
-        {
-            return;
-        }
-
-        control.DispatcherQueue.TryEnqueue(() =>
-        {
-            control._isSyncingSelection = true;
-            control.TreeView.SelectedNode = newNode;
-            control._isSyncingSelection = false;
-        });
-    }
-
     private void TreeView_SelectionChanged(TreeView sender, TreeViewSelectionChangedEventArgs args)
     {
         if (_isSyncingSelection)
@@ -160,13 +119,6 @@ public sealed partial class MarkerTreeView
         SelectedMarker = sender.SelectedNode?.Content as Marker;
 
         _isSyncingSelection = false;
-    }
-
-    public MarkerTreeView()
-    {
-        InitializeComponent();
-
-        RegisterPropertyChangedCallback(VisibilityProperty, OnVisibilityChanged);
     }
 
     private void PageLink_Click(object sender, RoutedEventArgs e)
@@ -203,5 +155,53 @@ public sealed partial class MarkerTreeView
         package.SetText(value);
 
         Clipboard.SetContent(package);
+    }
+
+    // TreeView.ItemsSource has a known WinUI bug (microsoft/microsoft-ui-xaml#7044) where it reuses
+    // TreeViewNode/TreeViewItem containers without resetting their state, which is especially bad
+    // here since the nested Children are also driven off ItemsSource - stale child nodes can be left
+    // on screen after a new Markers value comes in. Building TreeViewNodes directly and clearing
+    // RootNodes on every change avoids the recycling path entirely, matching the workaround Microsoft
+    // recommends for that issue.
+    private static void OnMarkersChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
+    {
+        if (d is not MarkerTreeView control)
+        {
+            return;
+        }
+
+        if (control.Visibility == Visibility.Collapsed)
+        {
+            control._isRebuildPending = true;
+
+            return;
+        }
+
+        control.RebuildNodes();
+    }
+
+    private static void OnSelectedMarkerChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
+    {
+        if (d is not MarkerTreeView control || control._isSyncingSelection)
+        {
+            return;
+        }
+
+        var newNode = e.NewValue is Marker marker
+                      && control._nodesByMarker.TryGetValue(marker, out var node)
+                      ? node
+                      : null;
+
+        if (ReferenceEquals(control.TreeView.SelectedNode, newNode))
+        {
+            return;
+        }
+
+        control.DispatcherQueue.TryEnqueue(() =>
+        {
+            control._isSyncingSelection = true;
+            control.TreeView.SelectedNode = newNode;
+            control._isSyncingSelection = false;
+        });
     }
 }

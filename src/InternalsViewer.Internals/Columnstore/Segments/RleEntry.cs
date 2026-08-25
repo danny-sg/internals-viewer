@@ -1,32 +1,49 @@
 ﻿namespace InternalsViewer.Internals.Columnstore.Segments;
 
 /// <summary>
-/// One run in a segment RLE array
+/// One run in a Segment RLE array
 /// </summary>
 /// <remarks>
 /// There are three types of runs:
 ///
-///     Value greater than 0 - Repeat: - Start of repeated run for the Count length
-///     Value less than 0    - Read:  - Value from source is read forward for Count items
-///     Value equal to 0     - Terminator
+///     Read, Repeat, and Terminator
 ///
-/// Bit Pack
+/// Value is either 4 bytes or 8 bytes, depending on the data in the segment.
+///
+/// Run Type Bit Flags
+/// ------------------
+///
+/// The Run Type Flags determines if the value/count is a run of the same value, or a start point in the Bit Pack/VLD data that is read
+/// forward by the count. It is how the segment interleaves runs with non-sequential data.
+///
+/// RLE Type
+/// --------
+/// Value will be either a literal Data Id or a pointer to the Bit Pack Array.
+///
+/// -Value - 1 is the index in the Bit Pack Array.
+///
+/// If Value is 4 bytes the flag is the high (sign) bit of the Value. Value less than zero is a read, value greater or equal to zero is a
+/// run (as the run is defined by the literal value rather than reference to the Bit Pack Array).
+///
+/// 8 byte values have to be able to represent the full 64-bit space so the bit flag is moved to a separate 4 byte structure at the end of
+/// the entry where the low bit (or full value as it only represents 1 or 0) is the read marker.
+///
+/// VLD Type
 /// --------
 ///
-/// Repeat:
-///   Value is an in-place value
+/// Value will always be a pointer to a VLD Value Page. VLD will always use a 4-byte value. The layout is:
 ///
-/// Read:
-///   -Value - 1 is the index of the first bit packed value the run covers
+///  - Bits 0 - 14   Page Index
+///  - Bits 15 - 28  Slot Index
+///  - Bit  30       Repeat Flag
+///  - Bit  31       Read Flag
 ///
-/// Variable Length Data
+/// The additional Repeat Flag bit is to differentiate an address of 0:0 vs the terminator 0 value.
 ///
-/// Repeat:
-///     Value is the page slot of the value to repeat, which is a 15 bit page index and a 14 bit slot index
+/// Terminator
+/// ----------
 ///
-/// Read:
-///     Value is the page slot of the first value to read, which is a 15 bit page index and a 14 bit slot index 
-/// 
+/// Value = 0, Run Count = 0 is the run terminator marker.
 /// </remarks>
 public readonly record struct RleEntry(long Value, int Count, bool IsVariableLengthData = false, int? ReadFlag = null)
 {
@@ -36,9 +53,6 @@ public readonly record struct RleEntry(long Value, int Count, bool IsVariableLen
 
     public bool HasRepeatFlag => IsVariableLengthData && (Value & VariableLengthRepeatFlag) != 0;
 
-    /// <summary>
-    /// Where in the value store the run reads, which only a store by value segment addresses
-    /// </summary>
     public SegmentPageSlot? PageSlot => IsVariableLengthData && !IsTerminator
                                         ? new SegmentPageSlot((int)(Value & 0x7FFF), (int)((Value & 0x3FFF8000) >> 15))
                                         : null;

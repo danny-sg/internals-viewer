@@ -19,8 +19,6 @@ public sealed class RleRunMapRenderer : IDisposable
 
     public const float GutterWidth = 58f;
 
-    public static float TotalHeight => (TrackHeight * 2) + TrackGap + MarkerHeight + 2;
-
     /// <summary>
     /// Arc of the hue wheel a scale is spread over, stopping short of a full turn so the ends stay apart
     /// </summary>
@@ -34,6 +32,8 @@ public sealed class RleRunMapRenderer : IDisposable
 
     private const int BitpackValue = 110;
 
+    private static readonly SKTypeface LabelTypeface = SKTypeface.FromFamilyName("Segoe UI Variable Text") ?? SKTypeface.Default;
+
     private readonly SKPaint _fill = new() { IsAntialias = false, Style = SKPaintStyle.Fill };
 
     private readonly SKPaint _marker = new() { IsAntialias = true, Style = SKPaintStyle.Fill };
@@ -42,13 +42,19 @@ public sealed class RleRunMapRenderer : IDisposable
 
     private readonly SKPaint _text = new() { IsAntialias = true, Style = SKPaintStyle.Fill };
 
-    private static readonly SKTypeface LabelTypeface = SKTypeface.FromFamilyName("Segoe UI Variable Text") ?? SKTypeface.Default;
-
     private readonly SKFont _font = new(LabelTypeface, 11f)
     {
         Edging = SKFontEdging.SubpixelAntialias,
         Subpixel = true
     };
+
+    private IReadOnlyList<RleRunDetail>? _scaleRuns;
+
+    private RunScale _scale;
+
+    private int[] _owners = [];
+
+    public static float TotalHeight => (TrackHeight * 2) + TrackGap + MarkerHeight + 2;
 
     public SKColor TrackColour { get; set; } = ColumnstoreColours.Panel;
 
@@ -66,12 +72,6 @@ public sealed class RleRunMapRenderer : IDisposable
     /// Row the caret points at, which is where the reader clicked rather than the middle of the run holding it
     /// </summary>
     public int SelectedRow { get; set; } = -1;
-
-    private IReadOnlyList<RleRunDetail>? _scaleRuns;
-
-    private RunScale _scale;
-
-    private int[] _owners = [];
 
     public void Draw(SKCanvas canvas, IReadOnlyList<RleRunDetail> runs, float width, int firstRow, int rowSpan)
     {
@@ -96,6 +96,64 @@ public sealed class RleRunMapRenderer : IDisposable
         DrawTrack(canvas, runs, scale, trackWidth, firstRow, rowSpan, TrackHeight + TrackGap, IndexLabel, false);
 
         DrawMarker(canvas, runs, trackWidth, firstRow, rowSpan);
+    }
+
+    /// <summary>
+    /// The run a point falls on, taken from the row it sits over and which track it is on
+    /// </summary>
+    /// <summary>
+    /// The row a point sits over, which is the reading the tracks are laid out to give
+    /// </summary>
+    public static int GetRow(float x, float width, int firstRow, int rowSpan)
+    {
+        var trackWidth = width - GutterWidth;
+
+        return trackWidth <= 0 || rowSpan <= 0
+            ? -1
+            : firstRow + (int)((x - GutterWidth) / trackWidth * rowSpan);
+    }
+
+    public static int GetRunIndex(IReadOnlyList<RleRunDetail> runs,
+                                  float x,
+                                  float y,
+                                  float width,
+                                  int firstRow,
+                                  int rowSpan)
+    {
+        var trackWidth = width - GutterWidth;
+
+        if (trackWidth <= 0 || rowSpan <= 0 || x < GutterWidth)
+        {
+            return -1;
+        }
+
+        var isValue = y <= TrackHeight + (TrackGap / 2);
+
+        var row = firstRow + (int)((x - GutterWidth) / trackWidth * rowSpan);
+
+        for (var i = 0; i < runs.Count; i++)
+        {
+            if (runs[i].IsValue == isValue
+                && row >= runs[i].StartRow
+                && row < runs[i].StartRow + runs[i].Count)
+            {
+                return i;
+            }
+        }
+
+        return -1;
+    }
+
+    public static int TotalRows(IReadOnlyList<RleRunDetail> runs)
+        => runs.Count == 0 ? 0 : runs[^1].StartRow + runs[^1].Count;
+
+    public void Dispose()
+    {
+        _fill.Dispose();
+        _marker.Dispose();
+        _stroke.Dispose();
+        _text.Dispose();
+        _font.Dispose();
     }
 
     private void DrawTrack(SKCanvas canvas,
@@ -229,55 +287,6 @@ public sealed class RleRunMapRenderer : IDisposable
         => (int)((row - firstRow) / (double)rowSpan * trackWidth);
 
     /// <summary>
-    /// The run a point falls on, taken from the row it sits over and which track it is on
-    /// </summary>
-    /// <summary>
-    /// The row a point sits over, which is the reading the tracks are laid out to give
-    /// </summary>
-    public static int GetRow(float x, float width, int firstRow, int rowSpan)
-    {
-        var trackWidth = width - GutterWidth;
-
-        return trackWidth <= 0 || rowSpan <= 0
-            ? -1
-            : firstRow + (int)((x - GutterWidth) / trackWidth * rowSpan);
-    }
-
-    public static int GetRunIndex(IReadOnlyList<RleRunDetail> runs,
-                                  float x,
-                                  float y,
-                                  float width,
-                                  int firstRow,
-                                  int rowSpan)
-    {
-        var trackWidth = width - GutterWidth;
-
-        if (trackWidth <= 0 || rowSpan <= 0 || x < GutterWidth)
-        {
-            return -1;
-        }
-
-        var isValue = y <= TrackHeight + (TrackGap / 2);
-
-        var row = firstRow + (int)((x - GutterWidth) / trackWidth * rowSpan);
-
-        for (var i = 0; i < runs.Count; i++)
-        {
-            if (runs[i].IsValue == isValue
-                && row >= runs[i].StartRow
-                && row < runs[i].StartRow + runs[i].Count)
-            {
-                return i;
-            }
-        }
-
-        return -1;
-    }
-
-    public static int TotalRows(IReadOnlyList<RleRunDetail> runs)
-        => runs.Count == 0 ? 0 : runs[^1].StartRow + runs[^1].Count;
-
-    /// <summary>
     /// Colours a run that covers a sequence, its values advancing across it rather than standing still
     /// </summary>
     /// <remarks>
@@ -359,14 +368,5 @@ public sealed class RleRunMapRenderer : IDisposable
                 ? ColourHelpers.HsvToColor(hue, LiteralSaturation, LiteralValue).ToSkColor()
                 : ColourHelpers.HsvToColor(hue, BitpackSaturation, BitpackValue).ToSkColor();
         }
-    }
-
-    public void Dispose()
-    {
-        _fill.Dispose();
-        _marker.Dispose();
-        _stroke.Dispose();
-        _text.Dispose();
-        _font.Dispose();
     }
 }

@@ -20,9 +20,6 @@ using Microsoft.Extensions.Logging;
 
 namespace InternalsViewer.UI.App.ViewModels.Columnstore.Dictionary;
 
-/// <summary>
-/// Columnstore Dictionary Tab View Model
-/// </summary>
 public sealed partial class DictionaryTabViewModel(ILogger<DictionaryTabViewModel> logger,
                                                    ColumnstoreService columnstoreService,
                                                    DatabaseSource database,
@@ -33,11 +30,39 @@ public sealed partial class DictionaryTabViewModel(ILogger<DictionaryTabViewMode
 
     private const float ShadeFactor = 0.72f;
 
-    private ILogger<DictionaryTabViewModel> Logger { get; } = logger;
+    private bool _isLoading;
 
-    private ColumnstoreService ColumnstoreService { get; } = columnstoreService;
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(FlagBadges))]
+    [NotifyPropertyChangedFor(nameof(TypeBadges))]
+    [NotifyPropertyChangedFor(nameof(HasPages))]
+    [NotifyPropertyChangedFor(nameof(HasValues))]
+    [NotifyPropertyChangedFor(nameof(HasHandles))]
+    [NotifyPropertyChangedFor(nameof(Handles))]
+    [NotifyPropertyChangedFor(nameof(EntryValueItemType))]
+    [NotifyPropertyChangedFor(nameof(EntryLengthItemType))]
+    private DictionaryBlob? _blob;
 
-    private DatabaseSource Database { get; } = database;
+    [ObservableProperty]
+    private bool _isLoaded;
+
+    [ObservableProperty]
+    private bool _isDictionaryLoading;
+
+    [ObservableProperty]
+    private string _statusText = "Loading Dictionary...";
+
+    [ObservableProperty]
+    private string _summaryText = string.Empty;
+
+    [ObservableProperty]
+    private DictionaryEntryList? _entries;
+
+    [ObservableProperty]
+    private bool _isDerivationVisible = true;
+
+    [ObservableProperty]
+    private int _selectedEntryIndex = -1;
 
     public SegmentDictionary Dictionary { get; } = dictionary;
 
@@ -82,75 +107,25 @@ public sealed partial class DictionaryTabViewModel(ILogger<DictionaryTabViewMode
         }
     }
 
-    private SubLobType? StoreSubLobType => Blob switch
-    {
-        NumericDictionary numeric => numeric.HashTable.SubLobType,
-        StringDictionary strings => strings.Store.SubLobType,
-        _ => null
-    };
-
     public IReadOnlyList<SegmentBadge> FlagBadges => SegmentBadge.Compound([.. BuildFlagBadges()]);
-
-    private IEnumerable<SegmentBadge> BuildFlagBadges()
-    {
-        if (Blob is not StringDictionary strings || strings.Pages.Length == 0)
-        {
-            yield break;
-        }
-
-        var huffman = strings.Pages.Count(p => p is HuffmanStringPage);
-
-        yield return huffman switch
-        {
-            0 => SegmentBadge.Create("Uncompressed", ColumnstoreColours.UncompressedFlag),
-            _ when huffman == strings.Pages.Length => SegmentBadge.Create("Huffman", ColumnstoreColours.HuffmanFlag),
-            _ => SegmentBadge.Create($"Huffman {huffman}/{strings.Pages.Length}", ColumnstoreColours.HuffmanFlag)
-        };
-    }
-
-    [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(FlagBadges))]
-    [NotifyPropertyChangedFor(nameof(TypeBadges))]
-    [NotifyPropertyChangedFor(nameof(HasPages))]
-    [NotifyPropertyChangedFor(nameof(HasValues))]
-    [NotifyPropertyChangedFor(nameof(HasHandles))]
-    [NotifyPropertyChangedFor(nameof(Handles))]
-    [NotifyPropertyChangedFor(nameof(EntryValueItemType))]
-    [NotifyPropertyChangedFor(nameof(EntryLengthItemType))]
-    private DictionaryBlob? _blob;
 
     /// <summary>
     /// The whole dictionary blob, a page being a range within it rather than a blob of its own
     /// </summary>
     public BlobHexViewModel Hex { get; } = new();
 
-    [ObservableProperty]
-    private bool _isLoaded;
+    private ILogger<DictionaryTabViewModel> Logger { get; } = logger;
 
-    [ObservableProperty]
-    private bool _isDictionaryLoading;
+    private ColumnstoreService ColumnstoreService { get; } = columnstoreService;
 
-    [ObservableProperty]
-    private string _statusText = "Loading Dictionary...";
+    private DatabaseSource Database { get; } = database;
 
-    [ObservableProperty]
-    private string _summaryText = string.Empty;
-
-    [ObservableProperty]
-    private DictionaryEntryList? _entries;
-
-    private bool _isLoading;
-
-    [ObservableProperty]
-    private bool _isDerivationVisible = true;
-
-    partial void OnIsDerivationVisibleChanged(bool value)
+    private SubLobType? StoreSubLobType => Blob switch
     {
-        if (Blob is { } blob)
-        {
-            Entries = new DictionaryEntryList(blob, value);
-        }
-    }
+        NumericDictionary numeric => numeric.HashTable.SubLobType,
+        StringDictionary strings => strings.Store.SubLobType,
+        _ => null
+    };
 
     public string GetCsIndexCommand(int printMode)
         => CsIndexCommand.Build(Dictionary, Database.DatabaseId, Dictionary.HobtId, printMode);
@@ -231,8 +206,39 @@ public sealed partial class DictionaryTabViewModel(ILogger<DictionaryTabViewMode
         SelectedEntryIndex = index >= 0 && index < blob.EntryCount ? index : -1;
     }
 
-    [ObservableProperty]
-    private int _selectedEntryIndex = -1;
+    public void Dispose()
+    {
+        Hex.WindowMoved -= OnWindowMoved;
+
+        Hex.PropertyChanged -= OnHexPropertyChanged;
+
+        Hex.Dispose();
+    }
+
+    private IEnumerable<SegmentBadge> BuildFlagBadges()
+    {
+        if (Blob is not StringDictionary strings || strings.Pages.Length == 0)
+        {
+            yield break;
+        }
+
+        var huffman = strings.Pages.Count(p => p is HuffmanStringPage);
+
+        yield return huffman switch
+        {
+            0 => SegmentBadge.Create("Uncompressed", ColumnstoreColours.UncompressedFlag),
+            _ when huffman == strings.Pages.Length => SegmentBadge.Create("Huffman", ColumnstoreColours.HuffmanFlag),
+            _ => SegmentBadge.Create($"Huffman {huffman}/{strings.Pages.Length}", ColumnstoreColours.HuffmanFlag)
+        };
+    }
+
+    partial void OnIsDerivationVisibleChanged(bool value)
+    {
+        if (Blob is { } blob)
+        {
+            Entries = new DictionaryEntryList(blob, value);
+        }
+    }
 
     private static string Describe(DictionaryBlob blob)
     {
@@ -257,14 +263,5 @@ public sealed partial class DictionaryTabViewModel(ILogger<DictionaryTabViewMode
         {
             // The dictionary read finished inside the delay, so no spinner is wanted
         }
-    }
-
-    public void Dispose()
-    {
-        Hex.WindowMoved -= OnWindowMoved;
-
-        Hex.PropertyChanged -= OnHexPropertyChanged;
-
-        Hex.Dispose();
     }
 }

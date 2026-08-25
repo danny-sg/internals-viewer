@@ -9,42 +9,11 @@ namespace InternalsViewer.UI.App.ViewModels.Columnstore.Dictionary;
 
 public sealed partial class DictionaryTabViewModel
 {
-    [ObservableProperty]
-    private int _selectedTabIndex;
-
     private const int HandlesTabIndex = 1;
 
     private const int PagesTabIndex = 2;
 
     private const int EntriesTabIndex = 3;
-
-    [ObservableProperty]
-    private bool _isEntriesTabLoaded;
-
-    [ObservableProperty]
-    private int _selectedPageTabIndex;
-
-    /// <summary>
-    /// A marker belongs to the tab it was picked on, so moving between them leaves nothing selected
-    /// </summary>
-    partial void OnSelectedPageTabIndexChanged(int value)
-    {
-        Hex.SelectedMarker = null;
-
-        Hex.BuildMarkers();
-    }
-
-    /// <summary>
-    /// Hex Region
-    /// </summary>
-    [ObservableProperty]
-    private DictionaryRegion _region = DictionaryRegion.Header;
-
-    /// <summary>
-    /// Move tab if region changes
-    /// </summary>
-    [ObservableProperty]
-    private bool _isAutoRegion = true;
 
     /// <summary>
     /// Set while the region is being brought into line with the window, so it does not move the window in turn
@@ -55,6 +24,69 @@ public sealed partial class DictionaryTabViewModel
     /// Set while the window is being moved to a region, the region being the cause rather than something to follow
     /// </summary>
     private bool _isJumpingToRegion;
+
+    [ObservableProperty]
+    private int _selectedTabIndex;
+
+    [ObservableProperty]
+    private bool _isEntriesTabLoaded;
+
+    [ObservableProperty]
+    private int _selectedPageTabIndex;
+
+    [ObservableProperty]
+    private DictionaryRegion _region = DictionaryRegion.Header;
+
+    /// <summary>
+    /// Move tab if region changes
+    /// </summary>
+    [ObservableProperty]
+    private bool _isAutoRegion = true;
+
+    public IReadOnlyList<HexArea> HexAreas
+    {
+        get
+        {
+            switch (Blob)
+            {
+                case NumericDictionary:
+                    return
+                    [
+                        new HexArea("Dictionary Header", 0),
+                        new HexArea("Hash Table", 0x0C),
+                        new HexArea("Array Header", 0x2C),
+                        new HexArea("Values", NumericDictionary.HeaderSize)
+                    ];
+
+                case StringDictionary strings:
+                    var pageSizes = StringDictionary.HandleArrayOffset + (strings.HandleCount * strings.HandleSize);
+
+                    return
+                    [
+                        new HexArea("Dictionary Header", 0),
+                        new HexArea("String Store", 0x0C),
+                        new HexArea("Handle Array Header", StringDictionary.HandleArrayHeaderOffset),
+                        new HexArea("Page Size Array Header", StringDictionary.PageSizeArrayHeaderOffset),
+                        new HexArea("Handles", StringDictionary.HandleArrayOffset),
+                        new HexArea("Page Sizes", pageSizes),
+                        new HexArea("Pages", pageSizes + (strings.PageCount * DictionaryMarkerBuilder.PageSizeBytes))
+                    ];
+
+                default:
+                    return [];
+            }
+        }
+    }
+
+    /// <summary>
+    /// A marker belongs to the tab it was picked on, so moving between them leaves nothing selected
+    /// </summary>
+    partial void OnSelectedPageTabIndexChanged(int value)
+    {
+        Hex.SelectedMarker = null;
+
+        Hex.BuildMarkers();
+    }
 
     partial void OnRegionChanged(DictionaryRegion value)
     {
@@ -153,40 +185,5 @@ public sealed partial class DictionaryTabViewModel
         _isFollowingWindow = false;
 
         Hex.BuildMarkers();
-    }
-
-    public IReadOnlyList<HexArea> HexAreas
-    {
-        get
-        {
-            switch (Blob)
-            {
-                case NumericDictionary:
-                    return
-                    [
-                        new HexArea("Dictionary Header", 0),
-                        new HexArea("Hash Table", 0x0C),
-                        new HexArea("Array Header", 0x2C),
-                        new HexArea("Values", NumericDictionary.HeaderSize)
-                    ];
-
-                case StringDictionary strings:
-                    var pageSizes = StringDictionary.HandleArrayOffset + (strings.HandleCount * strings.HandleSize);
-
-                    return
-                    [
-                        new HexArea("Dictionary Header", 0),
-                        new HexArea("String Store", 0x0C),
-                        new HexArea("Handle Array Header", StringDictionary.HandleArrayHeaderOffset),
-                        new HexArea("Page Size Array Header", StringDictionary.PageSizeArrayHeaderOffset),
-                        new HexArea("Handles", StringDictionary.HandleArrayOffset),
-                        new HexArea("Page Sizes", pageSizes),
-                        new HexArea("Pages", pageSizes + (strings.PageCount * DictionaryMarkerBuilder.PageSizeBytes))
-                    ];
-
-                default:
-                    return [];
-            }
-        }
     }
 }

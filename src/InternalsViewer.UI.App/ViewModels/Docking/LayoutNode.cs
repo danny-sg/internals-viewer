@@ -8,7 +8,7 @@ namespace InternalsViewer.UI.App.ViewModels.Docking;
 /// </summary>
 public abstract partial class LayoutNode : ObservableObject
 {
-    /// <summary>The split that contains this node, or <c>null</c> when this node is the tree root.</summary>
+    /// <summary>The split that contains this node, or <c>null</c> when this node is the tree root</summary>
     [ObservableProperty]
     private SplitNode? _parent;
 }

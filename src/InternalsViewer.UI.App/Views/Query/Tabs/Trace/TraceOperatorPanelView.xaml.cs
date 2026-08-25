@@ -18,11 +18,20 @@ namespace InternalsViewer.UI.App.Views.Query.Tabs.Trace;
 /// </remarks>
 public sealed partial class TraceOperatorPanelView : UserControl, IDocumentCommands
 {
-    public TraceOperatorViewModel? ViewModel => DataContext as TraceOperatorViewModel;
-
     private bool _isOutputVisible = true;
 
     private bool _isHashTableVisible = true;
+
+    private TraceOperatorViewModel? _appliedViewModel;
+
+    public TraceOperatorPanelView()
+    {
+        InitializeComponent();
+
+        DataContextChanged += (_, _) => ApplyPanes();
+    }
+
+    public TraceOperatorViewModel? ViewModel => DataContext as TraceOperatorViewModel;
 
     public FrameworkElement? CreateCommands()
     {
@@ -99,15 +108,6 @@ public sealed partial class TraceOperatorPanelView : UserControl, IDocumentComma
 
         OuterSplitter.Visibility = isVisible ? Visibility.Visible : Visibility.Collapsed;
     }
-
-    public TraceOperatorPanelView()
-    {
-        InitializeComponent();
-
-        DataContextChanged += (_, _) => ApplyPanes();
-    }
-
-    private TraceOperatorViewModel? _appliedViewModel;
 
     /// <summary>
     /// Builds the panes once for an operator, leaving the sizes its splitters have since been dragged to

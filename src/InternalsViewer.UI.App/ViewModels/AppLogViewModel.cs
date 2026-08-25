@@ -14,16 +14,23 @@ using Windows.Storage.Pickers;
 namespace InternalsViewer.UI.App.ViewModels;
 
 /// <summary>
-/// Singleton ViewModel that exposes log entries from the internals layer for UI binding.
+/// Singleton ViewModel that exposes log entries from the internals layer for UI binding
 /// </summary>
 public partial class AppLogViewModel : TabViewModel
 {
-    private AppLogService AppLogService { get; }
-
-    private List<LogEntry> AllEntries { get; } = [];
+    private string _searchText = string.Empty;
 
     [ObservableProperty]
     private ObservableCollection<LogEntry> _logEntries = [];
+
+    [ObservableProperty]
+    private int _maxLogEntries = 1000;
+
+    public AppLogViewModel(AppLogService appLogService)
+    {
+        AppLogService = appLogService;
+        AppLogService.LogEntryReceived += OnLogEntryReceived;
+    }
 
     public LogLevel[] LogLevels { get; } =
     [
@@ -51,11 +58,6 @@ public partial class AppLogViewModel : TabViewModel
         }
     }
 
-    [ObservableProperty]
-    private int _maxLogEntries = 1000;
-
-    private string _searchText = string.Empty;
-
     public string SearchText
     {
         get => _searchText;
@@ -68,11 +70,9 @@ public partial class AppLogViewModel : TabViewModel
         }
     }
 
-    public AppLogViewModel(AppLogService appLogService)
-    {
-        AppLogService = appLogService;
-        AppLogService.LogEntryReceived += OnLogEntryReceived;
-    }
+    private AppLogService AppLogService { get; }
+
+    private List<LogEntry> AllEntries { get; } = [];
 
     partial void OnMaxLogEntriesChanged(int value)
     {

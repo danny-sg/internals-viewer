@@ -66,7 +66,7 @@ public sealed class SegmentDataIdStream(SegmentBlob blob)
 
         if (entry.IsValue)
         {
-            return BitSpan.FromBytes(Blob.Header.RleArrayOffset + (entryIndex * Blob.Header.RleEntryBytes), Blob.Header.RleEntryBytes / 2);
+            return BitSpan.FromBytes(Blob.Header.RleArrayOffset + (entryIndex * Blob.Header.RleEntrySize), Blob.Header.RleValueSize);
         }
 
         var span = Blob.Bitpack.GetSpan(entry.BitpackIndex + (rowOrdinal - (endRow - entry.Count)));
@@ -184,7 +184,7 @@ public sealed class SegmentDataIdStream(SegmentBlob blob)
         {
             var bookmark = bookmarks[Math.Min(rowOrdinal / Blob.Header.BookmarkDistance, bookmarks.Length - 1)];
 
-            entryIndex = bookmark.GetRleEntryIndex(Blob.Header.RleEntryBytes);
+            entryIndex = bookmark.GetRleEntryIndex(Blob.Header.RleEntrySize);
 
             endRow = bookmark.EndRow;
         }

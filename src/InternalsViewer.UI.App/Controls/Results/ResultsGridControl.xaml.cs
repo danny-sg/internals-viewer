@@ -8,8 +8,6 @@ namespace InternalsViewer.UI.App.Controls.Results;
 
 public sealed partial class ResultsGridControl : UserControl
 {
-    public event EventHandler<PageAddressEventArgs>? PageClicked;
-
     public static readonly DependencyProperty ResultSetProperty =
         DependencyProperty.Register(
             nameof(ResultSet),
@@ -17,18 +15,18 @@ public sealed partial class ResultsGridControl : UserControl
             typeof(ResultsGridControl),
             new PropertyMetadata(null, OnResultSetChanged));
 
+    public QueryResultSet? ResultSet
+    {
+        get => (QueryResultSet?)GetValue(ResultSetProperty);
+        set => SetValue(ResultSetProperty, value);
+    }
+
     public static readonly DependencyProperty SelectedRowProperty =
         DependencyProperty.Register(
             nameof(SelectedRow),
             typeof(ResultRow<long>),
             typeof(ResultsGridControl),
             new PropertyMetadata(null));
-
-    public QueryResultSet? ResultSet
-    {
-        get => (QueryResultSet?)GetValue(ResultSetProperty);
-        set => SetValue(ResultSetProperty, value);
-    }
 
     public ResultRow<long>? SelectedRow
     {
@@ -51,13 +49,7 @@ public sealed partial class ResultsGridControl : UserControl
         };
     }
 
-    private static void OnResultSetChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
-    {
-        var control = (ResultsGridControl)d;
-        
-        control.SelectedRow = null;
-        control.Rebuild();
-    }
+    public event EventHandler<PageAddressEventArgs>? PageClicked;
 
     private void Rebuild()
     {
@@ -144,5 +136,13 @@ public sealed partial class ResultsGridControl : UserControl
     private void OnPageClicked(PageAddressEventArgs e)
     {
         PageClicked?.Invoke(this, e);
+    }
+
+    private static void OnResultSetChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
+    {
+        var control = (ResultsGridControl)d;
+        
+        control.SelectedRow = null;
+        control.Rebuild();
     }
 }

@@ -14,7 +14,74 @@ namespace InternalsViewer.UI.App.ViewModels.Query.Trace;
 
 public sealed partial class TraceTabViewModel
 {
+    private DocumentViewModel? _stepsDocument;
+
+    private DocumentViewModel? _descriptionDocument;
+
+    private DocumentViewModel? _planDocument;
+
+    private Dictionary<int, DocumentViewModel>? _operatorDocumentsByNode;
+
+    private TabGroupNode? _operatorGroup;
+
+    [ObservableProperty]
+    private bool _isNestedLayout;
+
+    /// <summary>
+    /// The operator whose tab is open, marked in the plan so a tab can be placed in the tree it came from
+    /// </summary>
+    [ObservableProperty]
+    private IReadOnlyList<PlanNode> _activePlanNodes = [];
+
     public DockLayoutViewModel Dock { get; }
+
+    public PlanNode? ActivePlanNode => ActivePlanNodes.Count > 0 ? ActivePlanNodes[0] : null;
+
+    public void ActivateOperator(PlanNode? node)
+    {
+        if (node is null)
+        {
+            return;
+        }
+
+        var operatorIds = Operators.Select(o => o.NodeId).ToHashSet();
+
+        var target = node;
+
+        while (target is not null && !operatorIds.Contains(target.NodeId))
+        {
+            target = FindParent(PlanNode, target);
+        }
+
+        var targetId = target?.NodeId ?? (operatorIds.Contains(-1) ? -1 : (int?)null);
+
+        if (targetId is not null)
+        {
+            SelectOperator(targetId.Value);
+        }
+    }
+
+    /// <summary>
+    /// Selects the operator a click asked for, which is not always one with a tab of its own
+    /// </summary>
+    /// <remarks>
+    /// A join shows its inputs as panes rather than as tabs, so an input clicked there is described in place: the operator selected is the
+    /// pane's, while the tab brought forward is the join it sits in.
+    /// </remarks>
+    public void ActivateOperator(int nodeId)
+    {
+        if (Layout.Nodes.ContainsKey(nodeId))
+        {
+            SelectOperator(nodeId);
+
+            return;
+        }
+
+        if (_planNodesById.TryGetValue(nodeId, out var node))
+        {
+            ActivateOperator(node);
+        }
+    }
 
     /// <summary>
     /// Lays the trace out flat, one tab per operator beside the panels that describe the walk
@@ -68,17 +135,6 @@ public sealed partial class TraceTabViewModel
 
         return new SplitNode(Orientation.Horizontal, left, right);
     }
-
-    private DocumentViewModel? _stepsDocument;
-
-    private DocumentViewModel? _descriptionDocument;
-
-    private DocumentViewModel? _planDocument;
-
-    private Dictionary<int, DocumentViewModel>? _operatorDocumentsByNode;
-
-    [ObservableProperty]
-    private bool _isNestedLayout;
 
     partial void OnIsNestedLayoutChanged(bool value)
     {
@@ -168,18 +224,8 @@ public sealed partial class TraceTabViewModel
         return document;
     }
 
-    /// <summary>
-    /// The operator whose tab is open, marked in the plan so a tab can be placed in the tree it came from
-    /// </summary>
-    [ObservableProperty]
-    private IReadOnlyList<PlanNode> _activePlanNodes = [];
-
-    public PlanNode? ActivePlanNode => ActivePlanNodes.Count > 0 ? ActivePlanNodes[0] : null;
-
     partial void OnActivePlanNodesChanged(IReadOnlyList<PlanNode> value) 
         => OnPropertyChanged(nameof(ActivePlanNode));
-
-    private TabGroupNode? _operatorGroup;
 
     private void OnOperatorGroupPropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
     {
@@ -237,52 +283,6 @@ public sealed partial class TraceTabViewModel
         ActivePlanNodes = _planNodesById.TryGetValue(SelectedNodeId, out var node)
             ? [node]
             : SelectedNodeId < 0 && PlanNode is { } root ? [root] : [];
-    }
-
-    public void ActivateOperator(PlanNode? node)
-    {
-        if (node is null)
-        {
-            return;
-        }
-
-        var operatorIds = Operators.Select(o => o.NodeId).ToHashSet();
-
-        var target = node;
-
-        while (target is not null && !operatorIds.Contains(target.NodeId))
-        {
-            target = FindParent(PlanNode, target);
-        }
-
-        var targetId = target?.NodeId ?? (operatorIds.Contains(-1) ? -1 : (int?)null);
-
-        if (targetId is not null)
-        {
-            SelectOperator(targetId.Value);
-        }
-    }
-
-    /// <summary>
-    /// Selects the operator a click asked for, which is not always one with a tab of its own
-    /// </summary>
-    /// <remarks>
-    /// A join shows its inputs as panes rather than as tabs, so an input clicked there is described in place: the operator selected is the
-    /// pane's, while the tab brought forward is the join it sits in.
-    /// </remarks>
-    public void ActivateOperator(int nodeId)
-    {
-        if (Layout.Nodes.ContainsKey(nodeId))
-        {
-            SelectOperator(nodeId);
-
-            return;
-        }
-
-        if (_planNodesById.TryGetValue(nodeId, out var node))
-        {
-            ActivateOperator(node);
-        }
     }
 
     private void SelectOperator(int nodeId)

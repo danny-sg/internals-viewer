@@ -22,18 +22,18 @@ public sealed partial class DecodeTabView : UserControl, IDisposable
 
     public SegmentTabViewModel ViewModel => (SegmentTabViewModel)DataContext;
 
-    private void OnDataContextChanged(FrameworkElement sender, DataContextChangedEventArgs args) => Bindings.Update();
-
-    private void Values_OnSelectionChanged(object sender, SelectionChangedEventArgs e)
-    {
-        ViewModel.SelectValue(((TableView)sender).SelectedItem as ValueDetail);
-    }
-
     public void Dispose()
     {
         DataContextChanged -= OnDataContextChanged;
 
         // x:Bind listens to the view model, which outlives the view, so the view stays rooted until tracking stops
         Bindings.StopTracking();
+    }
+
+    private void OnDataContextChanged(FrameworkElement sender, DataContextChangedEventArgs args) => Bindings.Update();
+
+    private void Values_OnSelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        ViewModel.SelectValue(((TableView)sender).SelectedItem as ValueDetail);
     }
 }

@@ -11,11 +11,6 @@ namespace InternalsViewer.UI.App.Views.Connect;
 
 public sealed partial class ConnectView
 {
-    private ConnectServerViewModelFactory ConnectServerViewModelFactory { get; }
-
-    public string PaneTitle { get; }
-        = $"Internals Viewer {typeof(ConnectView).Assembly.GetName().Version?.ToString(3)}";
-
     public ConnectView(ConnectServerViewModelFactory connectServerViewModelFactory)
     {
         ConnectServerViewModelFactory = connectServerViewModelFactory;
@@ -25,6 +20,11 @@ public sealed partial class ConnectView
         WeakReferenceMessenger.Default.Register<NavigateMessage>(this, (_, m)
             => SelectAndNavigate(m.Value));
     }
+
+    public string PaneTitle { get; }
+        = $"Internals Viewer {typeof(ConnectView).Assembly.GetName().Version?.ToString(3)}";
+
+    private ConnectServerViewModelFactory ConnectServerViewModelFactory { get; }
 
     private MainViewModel ViewModel => (MainViewModel)DataContext;
 

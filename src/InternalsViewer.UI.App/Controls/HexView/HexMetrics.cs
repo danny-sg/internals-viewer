@@ -19,16 +19,20 @@ public sealed class HexMetrics
 
     private const double VerticalPadding = 1;
 
-    public double ByteWidth { get; }
-
-    public IReadOnlyList<double> ColumnPositions { get; }
-
     private HexMetrics(double byteWidth, IReadOnlyList<double> columnPositions)
     {
         ByteWidth = byteWidth;
 
         ColumnPositions = columnPositions;
     }
+
+    public double ByteWidth { get; }
+
+    public IReadOnlyList<double> ColumnPositions { get; }
+
+    private double LineLeft => GetLeft(0);
+
+    private double LineRight => GetRight(HexLayout.BytesPerLine - 1);
 
     /// <summary>
     /// Measures the x position of each hex column and the width of a two character byte
@@ -162,10 +166,6 @@ public sealed class HexMetrics
 
         return right > left && bottom > top ? new Rect(left, top, right - left, bottom - top) : default;
     }
-
-    private double LineLeft => GetLeft(0);
-
-    private double LineRight => GetRight(HexLayout.BytesPerLine - 1);
 
     // Rounded to whole pixels so the strokes render crisp instead of anti-aliased across two pixels
     private double GetLeft(int position) => Math.Round(ColumnPositions[position % HexLayout.BytesPerLine]) - LeadingPadding;

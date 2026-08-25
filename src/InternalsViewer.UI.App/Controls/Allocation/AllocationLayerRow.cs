@@ -17,6 +17,10 @@ public enum AllocationLayerRowKind
 
 public sealed partial class AllocationLayerRow : ObservableObject
 {
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(ExpanderGlyph))]
+    private bool _isExpanded;
+
     private AllocationLayerRow(AllocationLayer layer,
                                AllocationLayerRowKind kind,
                                string key,
@@ -36,6 +40,72 @@ public sealed partial class AllocationLayerRow : ObservableObject
         IndexTypeDescription = indexTypeDescription;
         Children = children;
         _isExpanded = isExpanded;
+    }
+
+    public AllocationLayer Layer { get; }
+
+    public AllocationLayerRowKind Kind { get; }
+
+    public string Key { get; }
+
+    public int Depth { get; }
+
+    public IReadOnlyList<AllocationLayerUnit> Units { get; }
+
+    public IReadOnlyList<AllocationLayerRow> Children { get; }
+
+    public bool HasChildren => Children.Count > 0;
+
+    public Thickness Indent => new(Depth * 16, 0, 0, 0);
+
+    public Visibility ExpanderVisibility => HasChildren ? Visibility.Visible : Visibility.Collapsed;
+
+    public Visibility KeyVisibility => Kind == AllocationLayerRowKind.Layer ? Visibility.Visible : Visibility.Collapsed;
+
+    public string ExpanderGlyph => ((char)(IsExpanded ? 0xE70D : 0xE76C)).ToString();
+
+    public string ObjectName => Kind switch
+    {
+        AllocationLayerRowKind.Layer => Layer.ObjectName,
+        AllocationLayerRowKind.Unit => Units[0].ColumnstoreUsage,
+        _ => string.Empty
+    };
+
+    public string IndexName { get; }
+
+    public string IndexTypeDescription { get; }
+
+    public string TypeDescription => Kind == AllocationLayerRowKind.Unit ? Units[0].AllocationUnitTypeDescription : IndexTypeDescription;
+
+    public Thickness TextMargin => new(Kind == AllocationLayerRowKind.Unit ? 28 : 12, 0, 12, 0);
+
+    public long TotalPages => Kind == AllocationLayerRowKind.Layer ? Layer.TotalPages : Units.Sum(u => u.TotalPages);
+
+    public long AllocationUnitId => DefaultUnit?.AllocationUnitId ?? Layer.AllocationUnitId;
+
+    public PageAddress RootPage => DefaultUnit?.RootPage ?? PageAddress.Empty;
+
+    public PageAddress FirstPage => DefaultUnit?.FirstPage ?? PageAddress.Empty;
+
+    public PageAddress FirstIamPage => DefaultUnit?.FirstIamPage ?? PageAddress.Empty;
+
+    public bool HasEntryPoints => DefaultUnit is not null;
+
+    public bool IsIndex => DefaultUnit?.IsIndex ?? false;
+
+    public bool IsColumnstore => DefaultUnit?.IsColumnstore ?? false;
+
+    private AllocationLayerUnit? DefaultUnit
+    {
+        get
+        {
+            if (Kind == AllocationLayerRowKind.Unit)
+            {
+                return Units[0];
+            }
+
+            return Layer.IsPartitioned || Units.Count == 0 ? null : Units[0];
+        }
     }
 
     public static AllocationLayerRow ForLayer(AllocationLayer layer, IReadOnlyDictionary<string, bool> expansionOverrides)
@@ -106,75 +176,5 @@ public sealed partial class AllocationLayerRow : ObservableObject
                                                             string.Empty,
                                                             [],
                                                             isExpanded: false))];
-    }
-
-    public AllocationLayer Layer { get; }
-
-    public AllocationLayerRowKind Kind { get; }
-
-    public string Key { get; }
-
-    public int Depth { get; }
-
-    public IReadOnlyList<AllocationLayerUnit> Units { get; }
-
-    public IReadOnlyList<AllocationLayerRow> Children { get; }
-
-    public bool HasChildren => Children.Count > 0;
-
-    [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(ExpanderGlyph))]
-    private bool _isExpanded;
-
-    public Thickness Indent => new(Depth * 16, 0, 0, 0);
-
-    public Visibility ExpanderVisibility => HasChildren ? Visibility.Visible : Visibility.Collapsed;
-
-    public Visibility KeyVisibility => Kind == AllocationLayerRowKind.Layer ? Visibility.Visible : Visibility.Collapsed;
-
-    public string ExpanderGlyph => ((char)(IsExpanded ? 0xE70D : 0xE76C)).ToString();
-
-    public string ObjectName => Kind switch
-    {
-        AllocationLayerRowKind.Layer => Layer.ObjectName,
-        AllocationLayerRowKind.Unit => Units[0].ColumnstoreUsage,
-        _ => string.Empty
-    };
-
-    public string IndexName { get; }
-
-    public string IndexTypeDescription { get; }
-
-    public string TypeDescription => Kind == AllocationLayerRowKind.Unit ? Units[0].AllocationUnitTypeDescription : IndexTypeDescription;
-
-    public Thickness TextMargin => new(Kind == AllocationLayerRowKind.Unit ? 28 : 12, 0, 12, 0);
-
-    public long TotalPages => Kind == AllocationLayerRowKind.Layer ? Layer.TotalPages : Units.Sum(u => u.TotalPages);
-
-    public long AllocationUnitId => DefaultUnit?.AllocationUnitId ?? Layer.AllocationUnitId;
-
-    public PageAddress RootPage => DefaultUnit?.RootPage ?? PageAddress.Empty;
-
-    public PageAddress FirstPage => DefaultUnit?.FirstPage ?? PageAddress.Empty;
-
-    public PageAddress FirstIamPage => DefaultUnit?.FirstIamPage ?? PageAddress.Empty;
-
-    public bool HasEntryPoints => DefaultUnit is not null;
-
-    public bool IsIndex => DefaultUnit?.IsIndex ?? false;
-
-    public bool IsColumnstore => DefaultUnit?.IsColumnstore ?? false;
-
-    private AllocationLayerUnit? DefaultUnit
-    {
-        get
-        {
-            if (Kind == AllocationLayerRowKind.Unit)
-            {
-                return Units[0];
-            }
-
-            return Layer.IsPartitioned || Units.Count == 0 ? null : Units[0];
-        }
     }
 }

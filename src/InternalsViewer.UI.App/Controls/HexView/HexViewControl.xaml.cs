@@ -17,7 +17,29 @@ public sealed partial class HexViewControl
 
     private const int LinesPerNotch = 3;
 
-    public HexControlViewModel ViewModel { get; } = new();
+    public static readonly DependencyProperty MarkersProperty = DependencyProperty
+        .Register(nameof(Markers),
+            typeof(ObservableCollection<Marker>),
+            typeof(HexViewControl),
+            new PropertyMetadata(null, OnMarkersChanged));
+
+    public ObservableCollection<Marker>? Markers
+    {
+        get { return (ObservableCollection<Marker>)GetValue(MarkersProperty); }
+        set { SetValue(MarkersProperty, value); }
+    }
+
+    public static readonly DependencyProperty SelectedMarkerProperty
+        = DependencyProperty.Register(nameof(SelectedMarker),
+            typeof(Marker),
+            typeof(HexViewControl),
+            new PropertyMetadata(null, OnSelectedMarkerChanged));
+
+    public Marker? SelectedMarker
+    {
+        get => (Marker?)GetValue(SelectedMarkerProperty);
+        set => SetValue(SelectedMarkerProperty, value);
+    }
 
     public HexViewControl()
     {
@@ -51,29 +73,7 @@ public sealed partial class HexViewControl
         HexRichTextBlock.AddHandler(PointerReleasedEvent, new PointerEventHandler(OnHexPointerReleased), true);
     }
 
-    public ObservableCollection<Marker>? Markers
-    {
-        get { return (ObservableCollection<Marker>)GetValue(MarkersProperty); }
-        set { SetValue(MarkersProperty, value); }
-    }
-
-    public static readonly DependencyProperty MarkersProperty = DependencyProperty
-        .Register(nameof(Markers),
-            typeof(ObservableCollection<Marker>),
-            typeof(HexViewControl),
-            new PropertyMetadata(null, OnMarkersChanged));
-
-    public Marker? SelectedMarker
-    {
-        get => (Marker?)GetValue(SelectedMarkerProperty);
-        set => SetValue(SelectedMarkerProperty, value);
-    }
-
-    public static readonly DependencyProperty SelectedMarkerProperty
-        = DependencyProperty.Register(nameof(SelectedMarker),
-            typeof(Marker),
-            typeof(HexViewControl),
-            new PropertyMetadata(null, OnSelectedMarkerChanged));
+    public HexControlViewModel ViewModel { get; } = new();
 
     private static void OnSelectedMarkerChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
     {

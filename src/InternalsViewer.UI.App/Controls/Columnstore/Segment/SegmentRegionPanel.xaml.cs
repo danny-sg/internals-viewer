@@ -9,17 +9,11 @@ namespace InternalsViewer.UI.App.Controls.Columnstore.Segment;
 /// </summary>
 public sealed partial class SegmentRegionPanel
 {
-    public SegmentRegionPanel()
-    {
-        InitializeComponent();
-
-        RegisterPropertyChangedCallback(VisibilityProperty, OnVisibilityChanged);
-    }
-
-    private void OnVisibilityChanged(DependencyObject sender, DependencyProperty property)
-        => MarkerTree.Visibility = Visibility;
-
-    public event EventHandler<string>? AddressClicked;
+    public static readonly DependencyProperty MarkersProperty
+        = DependencyProperty.Register(nameof(Markers),
+                                      typeof(ObservableCollection<Marker>),
+                                      typeof(SegmentRegionPanel),
+                                      new PropertyMetadata(null));
 
     public ObservableCollection<Marker>? Markers
     {
@@ -27,9 +21,9 @@ public sealed partial class SegmentRegionPanel
         set => SetValue(MarkersProperty, value);
     }
 
-    public static readonly DependencyProperty MarkersProperty
-        = DependencyProperty.Register(nameof(Markers),
-                                      typeof(ObservableCollection<Marker>),
+    public static readonly DependencyProperty SelectedMarkerProperty
+        = DependencyProperty.Register(nameof(SelectedMarker),
+                                      typeof(Marker),
                                       typeof(SegmentRegionPanel),
                                       new PropertyMetadata(null));
 
@@ -39,11 +33,11 @@ public sealed partial class SegmentRegionPanel
         set => SetValue(SelectedMarkerProperty, value);
     }
 
-    public static readonly DependencyProperty SelectedMarkerProperty
-        = DependencyProperty.Register(nameof(SelectedMarker),
-                                      typeof(Marker),
+    public static readonly DependencyProperty MarkerOpacityProperty
+        = DependencyProperty.Register(nameof(MarkerOpacity),
+                                      typeof(double),
                                       typeof(SegmentRegionPanel),
-                                      new PropertyMetadata(null));
+                                      new PropertyMetadata(1.0));
 
     /// <summary>
     /// Dims the markers while they are behind the window, rather than leaving them looking current
@@ -54,11 +48,11 @@ public sealed partial class SegmentRegionPanel
         set => SetValue(MarkerOpacityProperty, value);
     }
 
-    public static readonly DependencyProperty MarkerOpacityProperty
-        = DependencyProperty.Register(nameof(MarkerOpacity),
-                                      typeof(double),
+    public static readonly DependencyProperty DetailProperty
+        = DependencyProperty.Register(nameof(Detail),
+                                      typeof(object),
                                       typeof(SegmentRegionPanel),
-                                      new PropertyMetadata(1.0));
+                                      new PropertyMetadata(null, OnDetailChanged));
 
     /// <summary>
     /// Content shown beneath the markers, which the regions fill in as their detail views are built
@@ -69,11 +63,11 @@ public sealed partial class SegmentRegionPanel
         set => SetValue(DetailProperty, value);
     }
 
-    public static readonly DependencyProperty DetailProperty
-        = DependencyProperty.Register(nameof(Detail),
-                                      typeof(object),
+    public static readonly DependencyProperty DetailSizeProperty
+        = DependencyProperty.Register(nameof(DetailSize),
+                                      typeof(double),
                                       typeof(SegmentRegionPanel),
-                                      new PropertyMetadata(null, OnDetailChanged));
+                                      new PropertyMetadata(0d, OnDetailChanged));
 
     /// <summary>
     /// Height the detail asks for, or none to take whatever the markers leave
@@ -88,18 +82,41 @@ public sealed partial class SegmentRegionPanel
         set => SetValue(DetailSizeProperty, value);
     }
 
-    public static readonly DependencyProperty DetailSizeProperty
-        = DependencyProperty.Register(nameof(DetailSize),
-                                      typeof(double),
+    public static readonly DependencyProperty HasDetailProperty
+        = DependencyProperty.Register(nameof(HasDetail),
+                                      typeof(Visibility),
                                       typeof(SegmentRegionPanel),
-                                      new PropertyMetadata(0d, OnDetailChanged));
+                                      new PropertyMetadata(Visibility.Collapsed));
 
-    private static void OnDetailChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
+    public Visibility HasDetail
     {
-        var panel = (SegmentRegionPanel)d;
-
-        panel.Apply();
+        get => (Visibility)GetValue(HasDetailProperty);
+        set => SetValue(HasDetailProperty, value);
     }
+
+    public static readonly DependencyProperty DetailHeightProperty
+        = DependencyProperty.Register(nameof(DetailHeight),
+                                      typeof(GridLength),
+                                      typeof(SegmentRegionPanel),
+                                      new PropertyMetadata(new GridLength(0)));
+
+    public GridLength DetailHeight
+    {
+        get => (GridLength)GetValue(DetailHeightProperty);
+        set => SetValue(DetailHeightProperty, value);
+    }
+
+    public SegmentRegionPanel()
+    {
+        InitializeComponent();
+
+        RegisterPropertyChangedCallback(VisibilityProperty, OnVisibilityChanged);
+    }
+
+    public event EventHandler<string>? AddressClicked;
+
+    private void OnVisibilityChanged(DependencyObject sender, DependencyProperty property)
+        => MarkerTree.Visibility = Visibility;
 
     private void Apply()
     {
@@ -112,29 +129,12 @@ public sealed partial class SegmentRegionPanel
                 : new GridLength(1, GridUnitType.Star);
     }
 
-    public Visibility HasDetail
-    {
-        get => (Visibility)GetValue(HasDetailProperty);
-        set => SetValue(HasDetailProperty, value);
-    }
-
-    public static readonly DependencyProperty HasDetailProperty
-        = DependencyProperty.Register(nameof(HasDetail),
-                                      typeof(Visibility),
-                                      typeof(SegmentRegionPanel),
-                                      new PropertyMetadata(Visibility.Collapsed));
-
-    public GridLength DetailHeight
-    {
-        get => (GridLength)GetValue(DetailHeightProperty);
-        set => SetValue(DetailHeightProperty, value);
-    }
-
-    public static readonly DependencyProperty DetailHeightProperty
-        = DependencyProperty.Register(nameof(DetailHeight),
-                                      typeof(GridLength),
-                                      typeof(SegmentRegionPanel),
-                                      new PropertyMetadata(new GridLength(0)));
-
     private void MarkerTree_OnAddressClicked(object? sender, string address) => AddressClicked?.Invoke(this, address);
+
+    private static void OnDetailChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
+    {
+        var panel = (SegmentRegionPanel)d;
+
+        panel.Apply();
+    }
 }

@@ -14,62 +14,16 @@ namespace InternalsViewer.UI.App.Controls.Columnstore.Dictionary;
 /// </summary>
 public sealed partial class HuffmanDecodeControl : IDisposable
 {
-    private readonly HuffmanDecodeRenderer _renderer = new();
-
-    private List<(SKRect Bounds, int Index)> _regions = [];
-
-    private float _scrollOffset;
-
-    public HuffmanDecodeControl()
-    {
-        InitializeComponent();
-
-        WalkCanvas.PaintSurface += OnPaintSurface;
-        WalkCanvas.PointerPressed += OnPointerPressed;
-        WalkCanvas.PointerWheelChanged += OnPointerWheelChanged;
-
-        ActualThemeChanged += OnActualThemeChanged;
-    }
-
-    private bool _isThemeDirty = true;
-
-    private void OnActualThemeChanged(FrameworkElement sender, object args)
-    {
-        _isThemeDirty = true;
-
-        WalkCanvas.Invalidate();
-    }
-
-    public IReadOnlyList<HuffmanDecodeStep>? Steps
-    {
-        get => (IReadOnlyList<HuffmanDecodeStep>?)GetValue(StepsProperty);
-        set => SetValue(StepsProperty, value);
-    }
-
     public static readonly DependencyProperty StepsProperty
         = DependencyProperty.Register(nameof(Steps),
                                       typeof(IReadOnlyList<HuffmanDecodeStep>),
                                       typeof(HuffmanDecodeControl),
                                       new PropertyMetadata(null, OnStepsChanged));
 
-    private static void OnStepsChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
+    public IReadOnlyList<HuffmanDecodeStep>? Steps
     {
-        var control = (HuffmanDecodeControl)d;
-
-        control._scrollOffset = 0;
-
-        control.EmptyText.Visibility = e.NewValue is IReadOnlyList<HuffmanDecodeStep> { Count: > 0 }
-            ? Visibility.Collapsed
-            : Visibility.Visible;
-
-        control.UpdateScrollBar();
-        control.WalkCanvas.Invalidate();
-    }
-
-    public int SelectedStep
-    {
-        get => (int)GetValue(SelectedStepProperty);
-        set => SetValue(SelectedStepProperty, value);
+        get => (IReadOnlyList<HuffmanDecodeStep>?)GetValue(StepsProperty);
+        set => SetValue(StepsProperty, value);
     }
 
     public static readonly DependencyProperty SelectedStepProperty
@@ -78,14 +32,17 @@ public sealed partial class HuffmanDecodeControl : IDisposable
                                       typeof(HuffmanDecodeControl),
                                       new PropertyMetadata(-1, OnSelectedStepChanged));
 
-    private static void OnSelectedStepChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
+    public int SelectedStep
     {
-        var control = (HuffmanDecodeControl)d;
-
-        control._renderer.SelectedStep = (int)e.NewValue;
-
-        control.WalkCanvas.Invalidate();
+        get => (int)GetValue(SelectedStepProperty);
+        set => SetValue(SelectedStepProperty, value);
     }
+
+    public static readonly DependencyProperty CodedContentProperty
+        = DependencyProperty.Register(nameof(CodedContent),
+                                      typeof(ReadOnlyMemory<byte>),
+                                      typeof(HuffmanDecodeControl),
+                                      new PropertyMetadata(default(ReadOnlyMemory<byte>)));
 
     /// <summary>
     /// The coded stream the steps read from, which the bits and words are drawn out of
@@ -99,16 +56,47 @@ public sealed partial class HuffmanDecodeControl : IDisposable
         set => SetValue(CodedContentProperty, value);
     }
 
-    public static readonly DependencyProperty CodedContentProperty
-        = DependencyProperty.Register(nameof(CodedContent),
-                                      typeof(ReadOnlyMemory<byte>),
-                                      typeof(HuffmanDecodeControl),
-                                      new PropertyMetadata(default(ReadOnlyMemory<byte>)));
+    private readonly HuffmanDecodeRenderer _renderer = new();
+
+    private List<(SKRect Bounds, int Index)> _regions = [];
+
+    private float _scrollOffset;
+
+    private bool _isThemeDirty = true;
+
+    public HuffmanDecodeControl()
+    {
+        InitializeComponent();
+
+        WalkCanvas.PaintSurface += OnPaintSurface;
+        WalkCanvas.PointerPressed += OnPointerPressed;
+        WalkCanvas.PointerWheelChanged += OnPointerWheelChanged;
+
+        ActualThemeChanged += OnActualThemeChanged;
+    }
 
     /// <summary>
     /// Raised when a band is clicked, for a code table wanting to follow the symbol
     /// </summary>
     public event EventHandler<int>? SymbolInvoked;
+
+    public void Dispose()
+    {
+        ActualThemeChanged -= OnActualThemeChanged;
+
+        WalkCanvas.PaintSurface -= OnPaintSurface;
+        WalkCanvas.PointerPressed -= OnPointerPressed;
+        WalkCanvas.PointerWheelChanged -= OnPointerWheelChanged;
+
+        _renderer.Dispose();
+    }
+
+    private void OnActualThemeChanged(FrameworkElement sender, object args)
+    {
+        _isThemeDirty = true;
+
+        WalkCanvas.Invalidate();
+    }
 
     private void OnPaintSurface(object? sender, SKPaintSurfaceEventArgs e)
     {
@@ -221,14 +209,26 @@ public sealed partial class HuffmanDecodeControl : IDisposable
         SetScroll(_scrollOffset);
     }
 
-    public void Dispose()
+    private static void OnStepsChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
     {
-        ActualThemeChanged -= OnActualThemeChanged;
+        var control = (HuffmanDecodeControl)d;
 
-        WalkCanvas.PaintSurface -= OnPaintSurface;
-        WalkCanvas.PointerPressed -= OnPointerPressed;
-        WalkCanvas.PointerWheelChanged -= OnPointerWheelChanged;
+        control._scrollOffset = 0;
 
-        _renderer.Dispose();
+        control.EmptyText.Visibility = e.NewValue is IReadOnlyList<HuffmanDecodeStep> { Count: > 0 }
+            ? Visibility.Collapsed
+            : Visibility.Visible;
+
+        control.UpdateScrollBar();
+        control.WalkCanvas.Invalidate();
+    }
+
+    private static void OnSelectedStepChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
+    {
+        var control = (HuffmanDecodeControl)d;
+
+        control._renderer.SelectedStep = (int)e.NewValue;
+
+        control.WalkCanvas.Invalidate();
     }
 }

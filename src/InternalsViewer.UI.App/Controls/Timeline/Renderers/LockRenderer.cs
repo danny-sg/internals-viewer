@@ -24,7 +24,7 @@ internal sealed class LockRenderer(RenderResource resources, CurrentSelection se
     private const float MinLockBarHeight = 2f;
 
     private const byte LockBarAlpha = 230;
-    
+
     private const byte IntentLockBarAlpha = 128;
 
     private const byte DimAlpha = 70;
@@ -35,9 +35,9 @@ internal sealed class LockRenderer(RenderResource resources, CurrentSelection se
 
     private const float EscalationOutlineWidth = 1.5f;
 
-    private static readonly SKColor EscalationOutlineColour = new(10, 10, 10, 235);
-
     private const float BandGap = 1f;
+
+    private static readonly SKColor EscalationOutlineColour = new(10, 10, 10, 235);
 
     private readonly SKPathBuilder _pathBuilder = new();
 
@@ -92,6 +92,8 @@ internal sealed class LockRenderer(RenderResource resources, CurrentSelection se
 
         DrawEscalationPoints(canvas, frame, innerTop, innerHeight);
     }
+
+    public void Dispose() => _pathBuilder.Dispose();
 
     private void DrawCategory(SKCanvas canvas,
                               TimelineFrame frame,
@@ -240,6 +242,4 @@ internal sealed class LockRenderer(RenderResource resources, CurrentSelection se
 
         return caret.Op(stem, SKPathOp.Union) ?? new SKPath(stem);
     }
-
-    public void Dispose() => _pathBuilder.Dispose();
 }

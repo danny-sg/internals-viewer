@@ -9,9 +9,8 @@ namespace InternalsViewer.UI.App.ViewModels.Query.Trace;
 
 public sealed partial class TraceHeldRowsViewModel : ObservableObject
 {
-    public BulkObservableCollection<IndexRecordModel> Rows { get; } = [];
-
     private List<JoinBufferRow> _synced = [];
+    public BulkObservableCollection<IndexRecordModel> Rows { get; } = [];
 
     public void Sync(IReadOnlyList<JoinBufferRow> buffer)
     {

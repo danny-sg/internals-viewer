@@ -90,8 +90,8 @@
                     HorizontalAlignment="Left">
                     <AppBarElementContainer VerticalAlignment="Stretch">
                         <StackPanel VerticalAlignment="Stretch" Margin="12,8,18,0">
-                            <TextBlock>Allocations</TextBlock>
-                            <TextBlock FontWeight="SemiBold" Text="TODO" />
+                            <TextBlock>Page</TextBlock>
+                            <TextBlock FontWeight="SemiBold" Text="{x:Bind Name, Mode=OneWay}" />
                         </StackPanel>
                     </AppBarElementContainer>
                     <AppBarElementContainer>

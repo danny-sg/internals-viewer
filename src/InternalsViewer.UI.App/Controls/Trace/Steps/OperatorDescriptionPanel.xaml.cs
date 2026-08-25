@@ -40,97 +40,17 @@ public sealed partial class OperatorDescriptionPanel : UserControl
                                     typeof(OperatorDescriptionPanel),
                                     new PropertyMetadata(null, OnDescriptionChanged));
 
-    public static readonly DependencyProperty IconProperty =
-        DependencyProperty.Register(nameof(Icon),
-                                    typeof(Uri),
-                                    typeof(OperatorDescriptionPanel),
-                                    new PropertyMetadata(null, OnDescriptionChanged));
-
-    public static readonly DependencyProperty OperatorNameProperty =
-        DependencyProperty.Register(nameof(OperatorName),
-                                    typeof(string),
-                                    typeof(OperatorDescriptionPanel),
-                                    new PropertyMetadata(null, OnDescriptionChanged));
-
-    public static readonly DependencyProperty DefinitionProperty =
-        DependencyProperty.Register(nameof(Definition),
-                                    typeof(IteratorDefinition),
-                                    typeof(OperatorDescriptionPanel),
-                                    new PropertyMetadata(null, OnDescriptionChanged));
-
-    public static readonly DependencyProperty StrategyProperty =
-        DependencyProperty.Register(nameof(Strategy),
-                                    typeof(AccessStrategy),
-                                    typeof(OperatorDescriptionPanel),
-                                    new PropertyMetadata(null, OnDescriptionChanged));
-
-    public static readonly DependencyProperty PhysicalOperatorProperty =
-        DependencyProperty.Register(nameof(PhysicalOperator),
-                                    typeof(string),
-                                    typeof(OperatorDescriptionPanel),
-                                    new PropertyMetadata(null, OnDescriptionChanged));
-
-    public static readonly DependencyProperty LogicalOperatorProperty =
-        DependencyProperty.Register(nameof(LogicalOperator),
-                                    typeof(string),
-                                    typeof(OperatorDescriptionPanel),
-                                    new PropertyMetadata(null, OnDescriptionChanged));
-
-    public static readonly DependencyProperty IsOrderedProperty =
-        DependencyProperty.Register(nameof(IsOrdered),
-                                    typeof(bool?),
-                                    typeof(OperatorDescriptionPanel),
-                                    new PropertyMetadata(null, OnDescriptionChanged));
-
-    public static readonly DependencyProperty MemoryGrantProperty =
-        DependencyProperty.Register(nameof(MemoryGrant),
-                                    typeof(PlanMemoryGrant),
-                                    typeof(OperatorDescriptionPanel),
-                                    new PropertyMetadata(null, OnDescriptionChanged));
-
-    public static readonly DependencyProperty IsPendingProperty =
-        DependencyProperty.Register(nameof(IsPending),
-                                    typeof(bool),
-                                    typeof(OperatorDescriptionPanel),
-                                    new PropertyMetadata(false, OnDescriptionChanged));
-
-    public static readonly DependencyProperty CurrentPhaseProperty =
-        DependencyProperty.Register(nameof(CurrentPhase),
-                                    typeof(AccessPhase?),
-                                    typeof(OperatorDescriptionPanel),
-                                    new PropertyMetadata(null, OnCurrentPhaseChanged));
-
-    public static readonly DependencyProperty CountersProperty =
-        DependencyProperty.Register(nameof(Counters),
-                                    typeof(AccessCounters),
-                                    typeof(OperatorDescriptionPanel),
-                                    new PropertyMetadata(default(AccessCounters), OnCountersChanged));
-
-    public static readonly DependencyProperty RunToPhaseCommandProperty =
-        DependencyProperty.Register(nameof(RunToPhaseCommand),
-                                    typeof(ICommand),
-                                    typeof(OperatorDescriptionPanel),
-                                    new PropertyMetadata(null));
-
-    public static readonly DependencyProperty IsWalkActiveProperty =
-        DependencyProperty.Register(nameof(IsWalkActive),
-                                    typeof(bool),
-                                    typeof(OperatorDescriptionPanel),
-                                    new PropertyMetadata(false, OnCurrentPhaseChanged));
-
-    private readonly List<(AccessPhase Phase, Grid Row)> _phaseRows = [];
-
-    private readonly List<(TextBlock Value, Func<AccessCounters, string> Get)> _counterValues = [];
-
-    private SvgImageSource? _iconSource;
-
-    private Uri? _iconUri;
-
     public OperatorDescription? Description
     {
         get => (OperatorDescription?)GetValue(DescriptionProperty);
         set => SetValue(DescriptionProperty, value);
     }
+
+    public static readonly DependencyProperty IconProperty =
+        DependencyProperty.Register(nameof(Icon),
+                                    typeof(Uri),
+                                    typeof(OperatorDescriptionPanel),
+                                    new PropertyMetadata(null, OnDescriptionChanged));
 
     public Uri? Icon
     {
@@ -138,11 +58,23 @@ public sealed partial class OperatorDescriptionPanel : UserControl
         set => SetValue(IconProperty, value);
     }
 
+    public static readonly DependencyProperty OperatorNameProperty =
+        DependencyProperty.Register(nameof(OperatorName),
+                                    typeof(string),
+                                    typeof(OperatorDescriptionPanel),
+                                    new PropertyMetadata(null, OnDescriptionChanged));
+
     public string? OperatorName
     {
         get => (string?)GetValue(OperatorNameProperty);
         set => SetValue(OperatorNameProperty, value);
     }
+
+    public static readonly DependencyProperty DefinitionProperty =
+        DependencyProperty.Register(nameof(Definition),
+                                    typeof(IteratorDefinition),
+                                    typeof(OperatorDescriptionPanel),
+                                    new PropertyMetadata(null, OnDescriptionChanged));
 
     public IteratorDefinition? Definition
     {
@@ -150,11 +82,23 @@ public sealed partial class OperatorDescriptionPanel : UserControl
         set => SetValue(DefinitionProperty, value);
     }
 
+    public static readonly DependencyProperty StrategyProperty =
+        DependencyProperty.Register(nameof(Strategy),
+                                    typeof(AccessStrategy),
+                                    typeof(OperatorDescriptionPanel),
+                                    new PropertyMetadata(null, OnDescriptionChanged));
+
     public AccessStrategy? Strategy
     {
         get => (AccessStrategy?)GetValue(StrategyProperty);
         set => SetValue(StrategyProperty, value);
     }
+
+    public static readonly DependencyProperty PhysicalOperatorProperty =
+        DependencyProperty.Register(nameof(PhysicalOperator),
+                                    typeof(string),
+                                    typeof(OperatorDescriptionPanel),
+                                    new PropertyMetadata(null, OnDescriptionChanged));
 
     public string? PhysicalOperator
     {
@@ -162,17 +106,35 @@ public sealed partial class OperatorDescriptionPanel : UserControl
         set => SetValue(PhysicalOperatorProperty, value);
     }
 
+    public static readonly DependencyProperty LogicalOperatorProperty =
+        DependencyProperty.Register(nameof(LogicalOperator),
+                                    typeof(string),
+                                    typeof(OperatorDescriptionPanel),
+                                    new PropertyMetadata(null, OnDescriptionChanged));
+
     public string? LogicalOperator
     {
         get => (string?)GetValue(LogicalOperatorProperty);
         set => SetValue(LogicalOperatorProperty, value);
     }
 
+    public static readonly DependencyProperty IsOrderedProperty =
+        DependencyProperty.Register(nameof(IsOrdered),
+                                    typeof(bool?),
+                                    typeof(OperatorDescriptionPanel),
+                                    new PropertyMetadata(null, OnDescriptionChanged));
+
     public bool? IsOrdered
     {
         get => (bool?)GetValue(IsOrderedProperty);
         set => SetValue(IsOrderedProperty, value);
     }
+
+    public static readonly DependencyProperty MemoryGrantProperty =
+        DependencyProperty.Register(nameof(MemoryGrant),
+                                    typeof(PlanMemoryGrant),
+                                    typeof(OperatorDescriptionPanel),
+                                    new PropertyMetadata(null, OnDescriptionChanged));
 
     /// <summary>
     /// What the plan says the operator was granted and used, which is what the memory a buffer is modelled at is measured against
@@ -183,6 +145,12 @@ public sealed partial class OperatorDescriptionPanel : UserControl
         set => SetValue(MemoryGrantProperty, value);
     }
 
+    public static readonly DependencyProperty IsPendingProperty =
+        DependencyProperty.Register(nameof(IsPending),
+                                    typeof(bool),
+                                    typeof(OperatorDescriptionPanel),
+                                    new PropertyMetadata(false, OnDescriptionChanged));
+
     /// <summary>
     /// The operator is a correlated access path that has not been bound yet, so it has no descent to describe
     /// </summary>
@@ -192,17 +160,35 @@ public sealed partial class OperatorDescriptionPanel : UserControl
         set => SetValue(IsPendingProperty, value);
     }
 
+    public static readonly DependencyProperty CurrentPhaseProperty =
+        DependencyProperty.Register(nameof(CurrentPhase),
+                                    typeof(AccessPhase?),
+                                    typeof(OperatorDescriptionPanel),
+                                    new PropertyMetadata(null, OnCurrentPhaseChanged));
+
     public AccessPhase? CurrentPhase
     {
         get => (AccessPhase?)GetValue(CurrentPhaseProperty);
         set => SetValue(CurrentPhaseProperty, value);
     }
 
+    public static readonly DependencyProperty CountersProperty =
+        DependencyProperty.Register(nameof(Counters),
+                                    typeof(AccessCounters),
+                                    typeof(OperatorDescriptionPanel),
+                                    new PropertyMetadata(default(AccessCounters), OnCountersChanged));
+
     public AccessCounters Counters
     {
         get => (AccessCounters)GetValue(CountersProperty);
         set => SetValue(CountersProperty, value);
     }
+
+    public static readonly DependencyProperty RunToPhaseCommandProperty =
+        DependencyProperty.Register(nameof(RunToPhaseCommand),
+                                    typeof(ICommand),
+                                    typeof(OperatorDescriptionPanel),
+                                    new PropertyMetadata(null));
 
     /// <summary>
     /// Run to the next step the operator takes in a phase, taking the phase as its parameter
@@ -213,30 +199,29 @@ public sealed partial class OperatorDescriptionPanel : UserControl
         set => SetValue(RunToPhaseCommandProperty, value);
     }
 
+    public static readonly DependencyProperty IsWalkActiveProperty =
+        DependencyProperty.Register(nameof(IsWalkActive),
+                                    typeof(bool),
+                                    typeof(OperatorDescriptionPanel),
+                                    new PropertyMetadata(false, OnCurrentPhaseChanged));
+
     public bool IsWalkActive
     {
         get => (bool)GetValue(IsWalkActiveProperty);
         set => SetValue(IsWalkActiveProperty, value);
     }
 
+    private readonly List<(AccessPhase Phase, Grid Row)> _phaseRows = [];
+
+    private readonly List<(TextBlock Value, Func<AccessCounters, string> Get)> _counterValues = [];
+
+    private SvgImageSource? _iconSource;
+
+    private Uri? _iconUri;
+
     public OperatorDescriptionPanel()
     {
         InitializeComponent();
-    }
-
-    private static void OnDescriptionChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
-    {
-        ((OperatorDescriptionPanel)d).Rebuild();
-    }
-
-    private static void OnCurrentPhaseChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
-    {
-        ((OperatorDescriptionPanel)d).ApplyCurrentPhase();
-    }
-
-    private static void OnCountersChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
-    {
-        ((OperatorDescriptionPanel)d).ApplyCounters();
     }
 
     private void Rebuild()
@@ -821,5 +806,20 @@ public sealed partial class OperatorDescriptionPanel : UserControl
         }
 
         return view;
+    }
+
+    private static void OnDescriptionChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
+    {
+        ((OperatorDescriptionPanel)d).Rebuild();
+    }
+
+    private static void OnCurrentPhaseChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
+    {
+        ((OperatorDescriptionPanel)d).ApplyCurrentPhase();
+    }
+
+    private static void OnCountersChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
+    {
+        ((OperatorDescriptionPanel)d).ApplyCounters();
     }
 }

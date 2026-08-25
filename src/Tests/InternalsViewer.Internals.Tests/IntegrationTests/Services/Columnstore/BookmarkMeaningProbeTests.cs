@@ -137,7 +137,7 @@ public sealed class BookmarkMeaningProbeTests(ITestOutputHelper testOutput) : Pr
 
             var row = Math.Min(Math.Max(0, bookmark.EndRow - 1), stream.RowCount - 1);
 
-            var entryIndex = bookmark.GetRleEntryIndex(blob.Header.RleEntryBytes);
+            var entryIndex = bookmark.GetRleEntryIndex(blob.Header.RleEntrySize);
 
             var start = 0;
 

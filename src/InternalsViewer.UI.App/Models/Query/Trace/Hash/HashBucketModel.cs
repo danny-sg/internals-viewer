@@ -7,12 +7,12 @@ namespace InternalsViewer.UI.App.Models.Query.Trace.Hash;
 /// </summary>
 public sealed partial class HashBucketModel : ObservableObject
 {
+    [ObservableProperty]
+    private bool _isCurrent;
+
     public int Index { get; init; }
 
     public string IndexText => $"0x{Index:X2}";
 
     public BulkObservableCollection<HashEntryModel> Entries { get; } = [];
-
-    [ObservableProperty]
-    private bool _isCurrent;
 }

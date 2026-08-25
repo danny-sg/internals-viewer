@@ -15,13 +15,6 @@ namespace InternalsViewer.UI.App.Views;
 
 public sealed partial class PageView : IDisposable
 {
-    public PageTabViewModel ViewModel => (PageTabViewModel)DataContext;
-
-    public Visibility GetTabContentVisibility(int selectedIndex, bool isTabVisible, int index)
-    {
-        return selectedIndex == index && isTabVisible ? Visibility.Visible : Visibility.Collapsed;
-    }
-
     public PageView()
     {
         InitializeComponent();
@@ -31,6 +24,27 @@ public sealed partial class PageView : IDisposable
         AllocationControl.PageClicked += Control_PageClicked;
         LogRecordTreeView.RecordClicked += OnLogRecordClicked;
         ResultsGrid.PageClicked += Control_PageClicked;
+    }
+
+    public PageTabViewModel ViewModel => (PageTabViewModel)DataContext;
+
+    public Visibility GetTabContentVisibility(int selectedIndex, bool isTabVisible, int index)
+    {
+        return selectedIndex == index && isTabVisible ? Visibility.Visible : Visibility.Collapsed;
+    }
+
+    public void Dispose()
+    {
+        PageAddressTextBox.AddressChanged -= PageAddressTextBox_Changed;
+        MarkerTreeView.PageClicked -= Control_PageClicked;
+        AllocationControl.PageClicked -= Control_PageClicked;
+        LogRecordTreeView.RecordClicked -= OnLogRecordClicked;
+        ResultsGrid.PageClicked -= Control_PageClicked;
+
+        AllocationControl.Dispose();
+        PfsControl.Dispose();
+
+        (DataContext as PageTabViewModel)?.Dispose();
     }
 
     private void OnLogRecordClicked(LogRecordItem item)
@@ -102,19 +116,5 @@ public sealed partial class PageView : IDisposable
             listView.DeselectAll();
             ViewModel.SelectedSlot = null;
         }
-    }
-
-    public void Dispose()
-    {
-        PageAddressTextBox.AddressChanged -= PageAddressTextBox_Changed;
-        MarkerTreeView.PageClicked -= Control_PageClicked;
-        AllocationControl.PageClicked -= Control_PageClicked;
-        LogRecordTreeView.RecordClicked -= OnLogRecordClicked;
-        ResultsGrid.PageClicked -= Control_PageClicked;
-
-        AllocationControl.Dispose();
-        PfsControl.Dispose();
-
-        (DataContext as PageTabViewModel)?.Dispose();
     }
 }

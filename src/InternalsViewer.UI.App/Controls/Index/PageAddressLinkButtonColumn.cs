@@ -31,16 +31,16 @@ public sealed class PageAddressLinkButtonColumn<T> : TableViewBoundColumn
         return button;
     }
 
-    private static PageAddress GetPageAddress(object sender)
-        => ((HyperlinkButton)sender).Content is PageAddress pageAddress ? pageAddress : PageAddress.Empty;
+    public override FrameworkElement GenerateEditingElement(TableViewCell cell, object? dataItem)
+    {
+        return null!;
+    }
 
     protected override object PrepareCellForEdit(TableViewCell cell, RoutedEventArgs editingEventArgs)
     {
         return null!;
     }
 
-    public override FrameworkElement GenerateEditingElement(TableViewCell cell, object? dataItem)
-    {
-        return null!;
-    }
+    private static PageAddress GetPageAddress(object sender)
+        => ((HyperlinkButton)sender).Content is PageAddress pageAddress ? pageAddress : PageAddress.Empty;
 }

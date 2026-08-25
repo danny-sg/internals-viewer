@@ -14,13 +14,11 @@ namespace InternalsViewer.UI.App.Controls.Allocation;
 
 public sealed partial class AllocationLayerGrid
 {
-    public event EventHandler<PageAddressEventArgs>? PageClicked;
-
-    public event EventHandler<PageAddressEventArgs>? ViewIndexClicked;
-
-    public event EventHandler<long>? ViewColumnstoreClicked;
-
-    public AllocationLayerGridViewModel ViewModel { get; } = new();
+    public static readonly DependencyProperty LayersProperty
+        = DependencyProperty.Register(nameof(Layers),
+            typeof(ObservableCollection<AllocationLayer>),
+            typeof(AllocationLayerGrid),
+            new PropertyMetadata(null, OnPropertyChanged));
 
     public ObservableCollection<AllocationLayer> Layers
     {
@@ -28,23 +26,17 @@ public sealed partial class AllocationLayerGrid
         set => SetValue(LayersProperty, value);
     }
 
-    public static readonly DependencyProperty LayersProperty
-        = DependencyProperty.Register(nameof(Layers),
+    public static readonly DependencyProperty SelectedLayersProperty
+        = DependencyProperty.Register(nameof(SelectedLayers),
             typeof(ObservableCollection<AllocationLayer>),
             typeof(AllocationLayerGrid),
-            new PropertyMetadata(null, OnPropertyChanged));
+            new PropertyMetadata(new ObservableCollection<AllocationLayer>(), OnPropertyChanged));
 
     public ObservableCollection<AllocationLayer> SelectedLayers
     {
         get => (ObservableCollection<AllocationLayer>)GetValue(SelectedLayersProperty);
         set => SetValue(SelectedLayersProperty, value);
     }
-
-    public static readonly DependencyProperty SelectedLayersProperty
-        = DependencyProperty.Register(nameof(SelectedLayers),
-            typeof(ObservableCollection<AllocationLayer>),
-            typeof(AllocationLayerGrid),
-            new PropertyMetadata(new ObservableCollection<AllocationLayer>(), OnPropertyChanged));
 
     public AllocationLayerGrid()
     {
@@ -56,22 +48,13 @@ public sealed partial class AllocationLayerGrid
                               handledEventsToo: true);
     }
 
-    private static void OnPropertyChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
-    {
-        var control = (AllocationLayerGrid)d;
+    public event EventHandler<PageAddressEventArgs>? PageClicked;
 
-        if (e.Property == LayersProperty)
-        {
-            var layers = (ObservableCollection<AllocationLayer>)e.NewValue;
+    public event EventHandler<PageAddressEventArgs>? ViewIndexClicked;
 
-            control.ViewModel.SetLayers([.. layers.Where(l => !l.IsAllocationLayer)]);
-        }
+    public event EventHandler<long>? ViewColumnstoreClicked;
 
-        if (e.Property == SelectedLayersProperty)
-        {
-            control.ViewModel.SelectedLayers = (ObservableCollection<AllocationLayer>)e.NewValue;
-        }
-    }
+    public AllocationLayerGridViewModel ViewModel { get; } = new();
 
     private void LayerTable_OnPointerPressed(object sender, PointerRoutedEventArgs e)
     {
@@ -178,5 +161,22 @@ public sealed partial class AllocationLayerGrid
         e.Column.SortDirection = ascending ? SortDirection.Ascending : SortDirection.Descending;
 
         ViewModel.Sort(tag, ascending);
+    }
+
+    private static void OnPropertyChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
+    {
+        var control = (AllocationLayerGrid)d;
+
+        if (e.Property == LayersProperty)
+        {
+            var layers = (ObservableCollection<AllocationLayer>)e.NewValue;
+
+            control.ViewModel.SetLayers([.. layers.Where(l => !l.IsAllocationLayer)]);
+        }
+
+        if (e.Property == SelectedLayersProperty)
+        {
+            control.ViewModel.SelectedLayers = (ObservableCollection<AllocationLayer>)e.NewValue;
+        }
     }
 }

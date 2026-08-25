@@ -6,8 +6,6 @@ namespace InternalsViewer.UI.App.Views.Query.Tabs;
 
 public sealed partial class QuerySqlTabView : UserControl, IDisposable
 {
-    public QueryViewModel? ViewModel => DataContext as QueryViewModel;
-
     public QuerySqlTabView()
     {
         InitializeComponent();
@@ -15,7 +13,7 @@ public sealed partial class QuerySqlTabView : UserControl, IDisposable
         DataContextChanged += OnDataContextChanged;
     }
 
-    private void OnDataContextChanged(FrameworkElement sender, DataContextChangedEventArgs args) => Bindings.Update();
+    public QueryViewModel? ViewModel => DataContext as QueryViewModel;
 
     public void Dispose()
     {
@@ -25,6 +23,8 @@ public sealed partial class QuerySqlTabView : UserControl, IDisposable
 
         SqlEditor.Dispose();
     }
+
+    private void OnDataContextChanged(FrameworkElement sender, DataContextChangedEventArgs args) => Bindings.Update();
 
     private void OnOpenAllocations(object sender, RoutedEventArgs e)
     {

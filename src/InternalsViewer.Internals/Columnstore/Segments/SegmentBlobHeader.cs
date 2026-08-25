@@ -51,8 +51,8 @@ public sealed class SegmentBlobHeader : DataStructure
     /// <summary>
     /// Size of the native unit
     /// </summary>
-    [DataStructureItem(ItemType.RleEntrySize)]
-    public short RleEntrySize { get; set; }
+    [DataStructureItem(ItemType.RleArrayEntrySize)]
+    public short RleArrayEntrySize { get; set; }
 
     [DataStructureItem(ItemType.BitpackEntrySize)]
     public short BitpackEntrySize { get; set; }
@@ -66,20 +66,21 @@ public sealed class SegmentBlobHeader : DataStructure
     [DataStructureItem(ItemType.BitpackMinId)]
     public long BitpackMinId { get; set; }
 
+    public int RleValueSize { get; set; } = sizeof(int);
+
     /// <summary>
-    /// Width of one RLE entry
+    /// Width of one RLE entry in the RLE array
     /// </summary>
     /// <remarks>
-    /// Eight bytes carry an int32 value and an int32 count, sixteen an int64 value and an int32 count. Nothing in the
-    /// header separates the two - segments that agree on every field here disagree on the width - so the parser
-    /// works it out from base id and magnitude and sets it. Eight until it says otherwise.
+    /// Entry Size = Value Size (4 bytes or 8 bytes) + Run Count (4 bytes)
+    ///              + If Value Size = 8 bytes -> + Read Flag (4 bytes)
     /// </remarks>
-    public int RleEntryBytes { get; set; } = NativeUnitSize;
+    public int RleEntrySize => RleValueSize + sizeof(int) + (RleValueSize == sizeof(long) ? sizeof(int) : 0);
 
     /// <summary>
     /// RleArrayCount is held in eight byte native units rather than entries
     /// </summary>
-    public int RleEntryCount => RleArrayCount * NativeUnitSize / RleEntryBytes;
+    public int RleEntryCount => RleArrayCount * NativeUnitSize / RleEntrySize;
 
     public bool IsVariableLengthData => RleType == SegmentRleType.VariableLengthData;
 
@@ -129,7 +130,7 @@ public sealed class SegmentBlobHeader : DataStructure
         MarkProperty(nameof(BookmarkCount), 0x14, 4);
         MarkProperty(nameof(BookmarkDistance), 0x18, 4);
         MarkProperty(nameof(RleArrayCount), 0x1C, 4);
-        MarkProperty(nameof(RleEntrySize), 0x20, 2);
+        MarkProperty(nameof(RleArrayEntrySize), 0x20, 2);
         MarkProperty(nameof(BitpackEntrySize), 0x22, 2);
         MarkProperty(nameof(BitpackUnitCount), 0x24, 4);
         MarkProperty(nameof(BitpackMinId), 0x28, 8);

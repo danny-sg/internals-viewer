@@ -109,7 +109,7 @@ internal static class ColumnstoreStructureDumper
         builder.AppendLine($"  +0x14 BookmarkCount        {blob.Header.BookmarkCount}");
         builder.AppendLine($"  +0x18 BookmarkDistance     {blob.Header.BookmarkDistance}");
         builder.AppendLine($"  +0x1C RleArrayCount        {blob.Header.RleArrayCount}");
-        builder.AppendLine($"  +0x20 RleEntrySize         {blob.Header.RleEntrySize}");
+        builder.AppendLine($"  +0x20 RleArrayEntrySize         {blob.Header.RleArrayEntrySize}");
         builder.AppendLine($"  +0x22 BitpackEntrySize     {blob.Header.BitpackEntrySize} bits, "
                            + $"{blob.Bitpack.ValuesPerUnit} per 64 bit unit");
         builder.AppendLine($"  +0x24 BitpackUnitCount     {blob.Header.BitpackUnitCount:N0}");
@@ -124,7 +124,7 @@ internal static class ColumnstoreStructureDumper
                            + $"{blob.LiteralRunCount:N0} literal runs");
 
         builder.AppendLine();
-        builder.AppendLine($"RLE Array ({blob.Header.RleEntryCount} entries of {blob.Header.RleEntryBytes} bytes)");
+        builder.AppendLine($"RLE Array ({blob.Header.RleEntryCount} entries of {blob.Header.RleEntrySize} bytes)");
 
         AppendSample(builder, blob.Header.RleEntryCount, i => FormatRleEntry(blob, i));
 
@@ -133,7 +133,7 @@ internal static class ColumnstoreStructureDumper
 
         AppendSample(builder,
                      blob.Bookmarks.Length,
-                     i => $"  [{i,6}] rle entry {blob.Bookmarks[i].GetRleEntryIndex(blob.Header.RleEntryBytes),8}   "
+                     i => $"  [{i,6}] rle entry {blob.Bookmarks[i].GetRleEntryIndex(blob.Header.RleEntrySize),8}   "
                           + $"end row {blob.Bookmarks[i].EndRow,12:N0}");
 
         if (blob.Header.BitpackUnitCount > 0)

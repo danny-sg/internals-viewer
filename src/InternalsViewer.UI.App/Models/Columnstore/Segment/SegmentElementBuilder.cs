@@ -30,7 +30,7 @@ public static class SegmentElementBuilder
         {
             Name = "Bookmark Array",
             Offset = blob.Header.BookmarkArrayOffset,
-            Size = blob.Header.BookmarkCount * SegmentBlob.EntrySize
+            Size = blob.Header.BookmarkEntryCount * SegmentBlob.EntrySize
         });
 
         if (blob.Header.IsVariableLengthData)

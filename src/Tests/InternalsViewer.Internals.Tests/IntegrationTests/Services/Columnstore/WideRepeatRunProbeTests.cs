@@ -50,11 +50,11 @@ public sealed class WideRepeatRunProbeTests(ITestOutputHelper testOutput) : Prov
             var blob = await service.GetSegmentBlob(database, segment, CancellationToken.None);
 
             _lines.Add($"rg{rowGroup.RowGroupId} enc {(int)segment.Encoding} rleType {(int)blob.Header.RleType} "
-                       + $"entryBytes {blob.Header.RleEntryBytes} entries {blob.Header.RleEntryCount} "
+                       + $"entryBytes {blob.Header.RleEntrySize} entries {blob.Header.RleEntryCount} "
                        + $"base {segment.BaseId} magnitude {segment.Magnitude} "
                        + $"min {segment.MinDataId} max {segment.MaxDataId} rows {segment.RowCount}");
 
-            if (blob.Header.RleEntryBytes <= SegmentBlob.EntrySize)
+            if (blob.Header.RleEntrySize <= SegmentBlob.EntrySize)
             {
                 _lines.Add("  entries are narrow, the value range did not force the wide layout");
 
@@ -67,7 +67,7 @@ public sealed class WideRepeatRunProbeTests(ITestOutputHelper testOutput) : Prov
             {
                 var entry = blob.RleEntries[i];
 
-                var at = blob.Header.RleArrayOffset + (i * blob.Header.RleEntryBytes) + 12;
+                var at = blob.Header.RleArrayOffset + (i * blob.Header.RleEntrySize) + 12;
 
                 var tail = at + 4 <= span.Length
                     ? $"{span[at]:X2} {span[at + 1]:X2} {span[at + 2]:X2} {span[at + 3]:X2}"

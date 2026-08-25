@@ -21,11 +21,11 @@ namespace InternalsViewer.UI.App.Services.XEvents;
 /// </remarks>
 public sealed class TraceDirectoryService(ILogger<TraceDirectoryService> logger)
 {
-    private ILogger<TraceDirectoryService> Logger { get; } = logger;
-
     public string DefaultDirectory { get; } = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData),
                                                            "InternalsViewer", 
                                                            "Traces");
+
+    private ILogger<TraceDirectoryService> Logger { get; } = logger;
 
     /// <summary>
     /// Creates the directory (if needed) and grants each local SQL Server engine service Modify access to it

@@ -5,14 +5,14 @@ namespace InternalsViewer.UI.App.Controls.Connections;
 
 public sealed partial class BackupFileConnectionControl
 {
-    public BackupFileConnectionViewModel ViewModel => (BackupFileConnectionViewModel)DataContext;
-
     public BackupFileConnectionControl()
     {
         InitializeComponent();
 
         DataContext = new BackupFileConnectionViewModel();
     }
+
+    public BackupFileConnectionViewModel ViewModel => (BackupFileConnectionViewModel)DataContext;
 
     private void OpenButton_Click(object sender, RoutedEventArgs e)
     {

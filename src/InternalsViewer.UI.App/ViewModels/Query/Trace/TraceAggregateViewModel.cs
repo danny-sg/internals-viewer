@@ -8,6 +8,15 @@ namespace InternalsViewer.UI.App.ViewModels.Query.Trace;
 
 public sealed partial class TraceAggregateViewModel : ObservableObject
 {
+    [ObservableProperty]
+    private string _groupKey = string.Empty;
+
+    [ObservableProperty]
+    private long _groupRows;
+
+    [ObservableProperty]
+    private long _groups;
+
     public TraceAggregateViewModel(IReadOnlyList<AggregateColumn> columns, IReadOnlyList<string> groupBy)
     {
         GroupBy = groupBy;
@@ -31,15 +40,6 @@ public sealed partial class TraceAggregateViewModel : ObservableObject
 
     public string GroupHeading => IsGrouped ? $"Group by {string.Join(", ", GroupBy)}" : "(No group by)";
 
-    [ObservableProperty]
-    private string _groupKey = string.Empty;
-
-    [ObservableProperty]
-    private long _groupRows;
-
-    [ObservableProperty]
-    private long _groups;
-
     public void Sync(IReadOnlyList<AggregateValue> groupValues,
                      IReadOnlyList<AggregateValue> values,
                      string groupKey,
@@ -55,14 +55,6 @@ public sealed partial class TraceAggregateViewModel : ObservableObject
         Fill(GroupBy.Count, values);
     }
 
-    private void Fill(int offset, IReadOnlyList<AggregateValue> values)
-    {
-        for (var index = 0; index < values.Count && offset + index < Rows.Count; index++)
-        {
-            Rows[offset + index].Value = values[index].Value;
-        }
-    }
-
     public void Reset()
     {
         GroupKey = string.Empty;
@@ -72,6 +64,14 @@ public sealed partial class TraceAggregateViewModel : ObservableObject
         foreach (var row in Rows)
         {
             row.Value = "NULL";
+        }
+    }
+
+    private void Fill(int offset, IReadOnlyList<AggregateValue> values)
+    {
+        for (var index = 0; index < values.Count && offset + index < Rows.Count; index++)
+        {
+            Rows[offset + index].Value = values[index].Value;
         }
     }
 }

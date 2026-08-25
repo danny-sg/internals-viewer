@@ -32,17 +32,7 @@ public sealed partial class AllocationControl : IDisposable
 
     private const int ScrollBufferRows = 2;
 
-    private Size ExtentSize => new((int)(80 * Zoom), (int)(10 * Zoom));
-
-    private ExtentLayout Layout { get; set; } = new();
-
-    public event EventHandler<PageAddressEventArgs>? PageClicked;
-
-    public Color BorderColor
-    {
-        get => (Color)GetValue(BorderColorProperty);
-        set => SetValue(BorderColorProperty, value);
-    }
+    private const float MinHeatmapChromaRatio = 0.15F;
 
     public static readonly DependencyProperty BorderColorProperty
         = DependencyProperty.Register(nameof(BorderColor),
@@ -50,10 +40,10 @@ public sealed partial class AllocationControl : IDisposable
             typeof(AllocationControl),
             new PropertyMetadata(null, OnPropertyChanged));
 
-    public Color GridColor
+    public Color BorderColor
     {
-        get => (Color)GetValue(GridColorProperty);
-        set => SetValue(GridColorProperty, value);
+        get => (Color)GetValue(BorderColorProperty);
+        set => SetValue(BorderColorProperty, value);
     }
 
     public static readonly DependencyProperty GridColorProperty 
@@ -62,15 +52,27 @@ public sealed partial class AllocationControl : IDisposable
                                       typeof(AllocationControl),
                                       new PropertyMetadata(null, OnPropertyChanged));
 
+    public Color GridColor
+    {
+        get => (Color)GetValue(GridColorProperty);
+        set => SetValue(GridColorProperty, value);
+    }
+
+    public static readonly DependencyProperty FileIdProperty
+        = DependencyProperty.Register(nameof(FileId),
+            typeof(short),
+            typeof(AllocationControl),
+            null);
+
     public short FileId
     {
         get => (short)GetValue(FileIdProperty);
         set => SetValue(FileIdProperty, value);
     }
 
-    public static readonly DependencyProperty FileIdProperty
-        = DependencyProperty.Register(nameof(FileId),
-            typeof(short),
+    public static readonly DependencyProperty IsTooltipEnabledProperty
+        = DependencyProperty.Register(nameof(IsTooltipEnabled),
+            typeof(bool),
             typeof(AllocationControl),
             null);
 
@@ -80,11 +82,11 @@ public sealed partial class AllocationControl : IDisposable
         set => SetValue(IsTooltipEnabledProperty, value);
     }
 
-    public static readonly DependencyProperty IsTooltipEnabledProperty
-        = DependencyProperty.Register(nameof(IsTooltipEnabled),
-            typeof(bool),
+    public static readonly DependencyProperty ExtentCountProperty
+        = DependencyProperty.Register(nameof(ExtentCount),
+            typeof(int),
             typeof(AllocationControl),
-            null);
+            new PropertyMetadata(null, OnPropertyChanged));
 
     public int ExtentCount
     {
@@ -92,8 +94,8 @@ public sealed partial class AllocationControl : IDisposable
         set => SetValue(ExtentCountProperty, value);
     }
 
-    public static readonly DependencyProperty ExtentCountProperty
-        = DependencyProperty.Register(nameof(ExtentCount),
+    public static readonly DependencyProperty StartPageProperty
+        = DependencyProperty.Register(nameof(StartPage),
             typeof(int),
             typeof(AllocationControl),
             new PropertyMetadata(null, OnPropertyChanged));
@@ -107,11 +109,11 @@ public sealed partial class AllocationControl : IDisposable
         set => SetValue(StartPageProperty, value);
     }
 
-    public static readonly DependencyProperty StartPageProperty
-        = DependencyProperty.Register(nameof(StartPage),
-            typeof(int),
-            typeof(AllocationControl),
-            new PropertyMetadata(null, OnPropertyChanged));
+    public static readonly DependencyProperty LayersProperty
+        = DependencyProperty.Register(nameof(Layers),
+                                      typeof(ObservableCollection<AllocationLayer>),
+                                      typeof(AllocationControl),
+                                      new PropertyMetadata(null, OnPropertyChanged));
 
     public ObservableCollection<AllocationLayer> Layers
     {
@@ -119,8 +121,8 @@ public sealed partial class AllocationControl : IDisposable
         set => SetValue(LayersProperty, value);
     }
 
-    public static readonly DependencyProperty LayersProperty
-        = DependencyProperty.Register(nameof(Layers),
+    public static readonly DependencyProperty SelectedLayersProperty
+        = DependencyProperty.Register(nameof(SelectedLayers),
                                       typeof(ObservableCollection<AllocationLayer>),
                                       typeof(AllocationControl),
                                       new PropertyMetadata(null, OnPropertyChanged));
@@ -131,39 +133,16 @@ public sealed partial class AllocationControl : IDisposable
         set => SetValue(SelectedLayersProperty, value);
     }
 
-    public static readonly DependencyProperty SelectedLayersProperty
-        = DependencyProperty.Register(nameof(SelectedLayers),
-                                      typeof(ObservableCollection<AllocationLayer>),
-                                      typeof(AllocationControl),
-                                      new PropertyMetadata(null, OnPropertyChanged));
-
-    public IReadOnlyList<AllocationBorder>? Borders
-    {
-        get => (IReadOnlyList<AllocationBorder>?)GetValue(BordersProperty);
-        set => SetValue(BordersProperty, value);
-    }
-
     public static readonly DependencyProperty BordersProperty
         = DependencyProperty.Register(nameof(Borders),
                                       typeof(IReadOnlyList<AllocationBorder>),
                                       typeof(AllocationControl),
                                       new PropertyMetadata(null, OnBordersChanged));
 
-    private static void OnBordersChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
+    public IReadOnlyList<AllocationBorder>? Borders
     {
-        var control = (AllocationControl)d;
-
-        control._orderedBorders = e.NewValue is IReadOnlyList<AllocationBorder> borders
-            ? [.. borders.OrderBy(BorderStartUs)]
-            : [];
-
-        control.Refresh();
-    }
-
-    public RowIdentifier? SelectedRowIdentifier
-    {
-        get => (RowIdentifier?)GetValue(SelectedRowIdentifierProperty);
-        set => SetValue(SelectedRowIdentifierProperty, value);
+        get => (IReadOnlyList<AllocationBorder>?)GetValue(BordersProperty);
+        set => SetValue(BordersProperty, value);
     }
 
     public static readonly DependencyProperty SelectedRowIdentifierProperty
@@ -172,10 +151,10 @@ public sealed partial class AllocationControl : IDisposable
                                       typeof(AllocationControl),
                                       new PropertyMetadata(null, OnPropertyChanged));
 
-    public int SelectedRowSlotCount
+    public RowIdentifier? SelectedRowIdentifier
     {
-        get => (int)GetValue(SelectedRowSlotCountProperty);
-        set => SetValue(SelectedRowSlotCountProperty, value);
+        get => (RowIdentifier?)GetValue(SelectedRowIdentifierProperty);
+        set => SetValue(SelectedRowIdentifierProperty, value);
     }
 
     public static readonly DependencyProperty SelectedRowSlotCountProperty
@@ -184,15 +163,27 @@ public sealed partial class AllocationControl : IDisposable
                                       typeof(AllocationControl),
                                       new PropertyMetadata(0, OnPropertyChanged));
 
+    public int SelectedRowSlotCount
+    {
+        get => (int)GetValue(SelectedRowSlotCountProperty);
+        set => SetValue(SelectedRowSlotCountProperty, value);
+    }
+
+    public static readonly DependencyProperty PfsChainProperty
+        = DependencyProperty.Register(nameof(PfsChain),
+                                      typeof(PfsChain),
+                                      typeof(AllocationControl),
+                                      new PropertyMetadata(null, OnPropertyChanged));
+
     public PfsChain PfsChain
     {
         get => (PfsChain)GetValue(PfsChainProperty);
         set => SetValue(PfsChainProperty, value);
     }
 
-    public static readonly DependencyProperty PfsChainProperty
-        = DependencyProperty.Register(nameof(PfsChain),
-                                      typeof(PfsChain),
+    public static readonly DependencyProperty IsPfsVisibleProperty
+        = DependencyProperty.Register(nameof(IsPfsVisible),
+                                      typeof(bool),
                                       typeof(AllocationControl),
                                       new PropertyMetadata(null, OnPropertyChanged));
 
@@ -202,28 +193,16 @@ public sealed partial class AllocationControl : IDisposable
         set => SetValue(IsPfsVisibleProperty, value);
     }
 
-    public static readonly DependencyProperty IsPfsVisibleProperty
-        = DependencyProperty.Register(nameof(IsPfsVisible),
-                                      typeof(bool),
-                                      typeof(AllocationControl),
-                                      new PropertyMetadata(null, OnPropertyChanged));
-
-    public bool AutoScroll
-    {
-        get => (bool)GetValue(AutoScrollProperty);
-        set => SetValue(AutoScrollProperty, value);
-    }
-
     public static readonly DependencyProperty AutoScrollProperty
         = DependencyProperty.Register(nameof(AutoScroll),
                                       typeof(bool),
                                       typeof(AllocationControl),
                                       new PropertyMetadata(false, OnAutoScrollChanged));
 
-    public bool IsHeatmap
+    public bool AutoScroll
     {
-        get => (bool)GetValue(IsHeatmapProperty);
-        set => SetValue(IsHeatmapProperty, value);
+        get => (bool)GetValue(AutoScrollProperty);
+        set => SetValue(AutoScrollProperty, value);
     }
 
     public static readonly DependencyProperty IsHeatmapProperty
@@ -232,16 +211,10 @@ public sealed partial class AllocationControl : IDisposable
                                       typeof(AllocationControl),
                                       new PropertyMetadata(false, OnPropertyChanged));
 
-    public double Zoom
+    public bool IsHeatmap
     {
-        get => (double)GetValue(ZoomProperty);
-        set => SetValue(ZoomProperty, value);
-    }
-
-    public long PlayheadTimeUs
-    {
-        get => (long)GetValue(PlayheadTimeUsProperty);
-        set => SetValue(PlayheadTimeUsProperty, value);
+        get => (bool)GetValue(IsHeatmapProperty);
+        set => SetValue(IsHeatmapProperty, value);
     }
 
     public static readonly DependencyProperty PlayheadTimeUsProperty
@@ -250,33 +223,10 @@ public sealed partial class AllocationControl : IDisposable
                                       typeof(AllocationControl),
                                       new PropertyMetadata(0L, OnPlayheadTimeChanged));
 
-    private static void OnPlayheadTimeChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
+    public long PlayheadTimeUs
     {
-        var control = (AllocationControl)d;
-        var playheadUs = (long)e.NewValue;
-
-        if (control.AutoScroll)
-        {
-            control.ScrollToLatestPageSpan(playheadUs);
-        }
-
-        if (control.Layers?.Any(l => l.PageSpans.Count > 0) == true
-            || control.Borders is { Count: > 0 })
-        {
-            control.AllocationCanvas.Invalidate();
-        }
-    }
-
-    private static void OnAutoScrollChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
-    {
-        var control = (AllocationControl)d;
-
-        if ((bool)e.NewValue)
-        {
-            control.ScrollToLatestPageSpan(control.PlayheadTimeUs);
-        }
-
-        control.AllocationCanvas.Invalidate();
+        get => (long)GetValue(PlayheadTimeUsProperty);
+        set => SetValue(PlayheadTimeUsProperty, value);
     }
 
     private static readonly DependencyProperty ZoomProperty
@@ -285,19 +235,13 @@ public sealed partial class AllocationControl : IDisposable
                                       typeof(AllocationControl),
                                       new PropertyMetadata(1D, OnPropertyChanged));
 
-    public AllocationOverViewModel AllocationOver { get; } = new();
-
-    private int PageCount => ExtentCount * 8;
-
-    private AllocationRenderer? _renderer;
-
-    private SKPaint? _borderPaint;
-
-    private Size _lastExtentSize;
+    public double Zoom
+    {
+        get => (double)GetValue(ZoomProperty);
+        set => SetValue(ZoomProperty, value);
+    }
 
     private readonly SKPaint _spanPaint = new();
-
-    private AllocationBorder[] _orderedBorders = [];
 
     private readonly HashSet<int> _liveCells = [];
 
@@ -309,6 +253,16 @@ public sealed partial class AllocationControl : IDisposable
         IsAntialias = false,
     };
 
+    private readonly Dictionary<PageAddress, (int Count, System.Drawing.Color Colour)> _heatmapVisits = new();
+
+    private AllocationRenderer? _renderer;
+
+    private SKPaint? _borderPaint;
+
+    private Size _lastExtentSize;
+
+    private AllocationBorder[] _orderedBorders = [];
+
     private Color _lastGridColor;
 
     private SKPicture? _staticLayer;
@@ -317,7 +271,62 @@ public sealed partial class AllocationControl : IDisposable
 
     private int _staticVersion;
 
-    private readonly record struct StaticLayerKey(int ScrollPosition, int Width, int Height, int Version);
+    public AllocationControl()
+    {
+        InitializeComponent();
+
+        AllocationCanvas.PaintSurface += AllocationCanvas_PaintSurface;
+        AllocationCanvas.PointerMoved += AllocationCanvas_PointerMoved;
+        AllocationCanvas.PointerPressed += AllocationCanvas_PointerPressed;
+        AllocationCanvas.PointerExited += AllocationCanvas_PointerExited;
+        AllocationCanvas.PointerEntered += AllocationCanvas_PointerEntered;
+        AllocationCanvas.SizeChanged += AllocationCanvas_SizeChanged;
+
+        PointerWheelChanged += AllocationControl_PointerWheelChanged;
+
+        Loaded += (_, _) => Refresh();
+
+        SetScrollBarValues();
+    }
+
+    public event EventHandler<PageAddressEventArgs>? PageClicked;
+
+    public AllocationOverViewModel AllocationOver { get; } = new();
+
+    private Size ExtentSize => new((int)(80 * Zoom), (int)(10 * Zoom));
+
+    private ExtentLayout Layout { get; set; } = new();
+
+    private int PageCount => ExtentCount * 8;
+
+    private int ScrollPosition { get; set; }
+
+    public void Dispose()
+    {
+        _staticLayer?.Dispose();
+        _renderer?.Dispose();
+        _borderPaint?.Dispose();
+        _spanPaint.Dispose();
+        _overlayBorderPaint.Dispose();
+
+        AllocationCanvas.SizeChanged -= AllocationCanvas_SizeChanged;
+        PointerWheelChanged -= AllocationControl_PointerWheelChanged;
+        AllocationCanvas.PaintSurface -= AllocationCanvas_PaintSurface;
+        AllocationCanvas.PointerMoved -= AllocationCanvas_PointerMoved;
+        AllocationCanvas.PointerPressed -= AllocationCanvas_PointerPressed;
+        AllocationCanvas.PointerExited -= AllocationCanvas_PointerExited;
+        AllocationCanvas.PointerEntered -= AllocationCanvas_PointerEntered;
+
+        if (Layers is { } layers)
+        {
+            layers.CollectionChanged -= OnLayersChanged;
+        }
+
+        if (SelectedLayers is { } selectedLayers)
+        {
+            selectedLayers.CollectionChanged -= OnSelectedLayersChanged;
+        }
+    }
 
     private AllocationRenderer GetOrCreateRenderer()
     {
@@ -346,65 +355,11 @@ public sealed partial class AllocationControl : IDisposable
         return _renderer;
     }
 
-    private static void OnPropertyChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
-    {
-        if (d is AllocationControl control)
-        {
-            if (e.Property == LayersProperty)
-            {
-                if (e.OldValue is ObservableCollection<AllocationLayer> old)
-                {
-                    old.CollectionChanged -= control.OnLayersChanged;
-                }
-
-                if (e.NewValue is ObservableCollection<AllocationLayer> next)
-                {
-                    next.CollectionChanged += control.OnLayersChanged;
-                }
-            }
-
-            if (e.Property == SelectedLayersProperty)
-            {
-                if (e.OldValue is ObservableCollection<AllocationLayer> old)
-                {
-                    old.CollectionChanged -= control.OnSelectedLayersChanged;
-                }
-
-                if (e.NewValue is ObservableCollection<AllocationLayer> next)
-                {
-                    next.CollectionChanged += control.OnSelectedLayersChanged;
-                }
-            }
-
-            control.Refresh();
-        }
-    }
-
     private void OnLayersChanged(object? sender,
                                  System.Collections.Specialized.NotifyCollectionChangedEventArgs e) => Refresh();
 
     private void OnSelectedLayersChanged(object? sender,
         System.Collections.Specialized.NotifyCollectionChangedEventArgs e) => Refresh();
-
-    private int ScrollPosition { get; set; }
-
-    public AllocationControl()
-    {
-        InitializeComponent();
-
-        AllocationCanvas.PaintSurface += AllocationCanvas_PaintSurface;
-        AllocationCanvas.PointerMoved += AllocationCanvas_PointerMoved;
-        AllocationCanvas.PointerPressed += AllocationCanvas_PointerPressed;
-        AllocationCanvas.PointerExited += AllocationCanvas_PointerExited;
-        AllocationCanvas.PointerEntered += AllocationCanvas_PointerEntered;
-        AllocationCanvas.SizeChanged += AllocationCanvas_SizeChanged;
-
-        PointerWheelChanged += AllocationControl_PointerWheelChanged;
-
-        Loaded += (_, _) => Refresh();
-
-        SetScrollBarValues();
-    }
 
     private void Refresh()
     {
@@ -1002,10 +957,6 @@ public sealed partial class AllocationControl : IDisposable
         }
     }
 
-    private readonly Dictionary<PageAddress, (int Count, System.Drawing.Color Colour)> _heatmapVisits = new();
-
-    private const float MinHeatmapChromaRatio = 0.15F;
-
     private void DrawPageSpanHeatmap(SKCanvas canvas, ExtentLayout layout, AllocationLayer layer)
     {
         var spans = layer.PageSpans;
@@ -1206,9 +1157,6 @@ public sealed partial class AllocationControl : IDisposable
         };
     }
 
-    /// <summary>
-    /// Get the extent at a particular x and y position
-    /// </summary>
     private int GetExtentAtPosition(int x, int y)
     {
         var column = GetColumnAtPosition(x, ExtentSize.Width, Layout.HorizontalCount);
@@ -1216,9 +1164,6 @@ public sealed partial class AllocationControl : IDisposable
         return y / ExtentSize.Height * Layout.HorizontalCount + column + ScrollPosition;
     }
 
-    /// <summary>
-    /// Get the extent at a particular x and y position
-    /// </summary>
     private int GetPageAtPosition(int x, int y)
     {
         var column = GetColumnAtPosition(x, ExtentSize.Width / 8F, Layout.HorizontalCount * 8);
@@ -1331,30 +1276,79 @@ public sealed partial class AllocationControl : IDisposable
         //  AllocationOver.IsOpen = IsTooltipEnabled;
     }
 
-    public void Dispose()
+    private readonly record struct StaticLayerKey(int ScrollPosition, int Width, int Height, int Version);
+
+    private static void OnBordersChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
     {
-        _staticLayer?.Dispose();
-        _renderer?.Dispose();
-        _borderPaint?.Dispose();
-        _spanPaint.Dispose();
-        _overlayBorderPaint.Dispose();
+        var control = (AllocationControl)d;
 
-        AllocationCanvas.SizeChanged -= AllocationCanvas_SizeChanged;
-        PointerWheelChanged -= AllocationControl_PointerWheelChanged;
-        AllocationCanvas.PaintSurface -= AllocationCanvas_PaintSurface;
-        AllocationCanvas.PointerMoved -= AllocationCanvas_PointerMoved;
-        AllocationCanvas.PointerPressed -= AllocationCanvas_PointerPressed;
-        AllocationCanvas.PointerExited -= AllocationCanvas_PointerExited;
-        AllocationCanvas.PointerEntered -= AllocationCanvas_PointerEntered;
+        control._orderedBorders = e.NewValue is IReadOnlyList<AllocationBorder> borders
+            ? [.. borders.OrderBy(BorderStartUs)]
+            : [];
 
-        if (Layers is { } layers)
+        control.Refresh();
+    }
+
+    private static void OnPlayheadTimeChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
+    {
+        var control = (AllocationControl)d;
+        var playheadUs = (long)e.NewValue;
+
+        if (control.AutoScroll)
         {
-            layers.CollectionChanged -= OnLayersChanged;
+            control.ScrollToLatestPageSpan(playheadUs);
         }
 
-        if (SelectedLayers is { } selectedLayers)
+        if (control.Layers?.Any(l => l.PageSpans.Count > 0) == true
+            || control.Borders is { Count: > 0 })
         {
-            selectedLayers.CollectionChanged -= OnSelectedLayersChanged;
+            control.AllocationCanvas.Invalidate();
+        }
+    }
+
+    private static void OnAutoScrollChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
+    {
+        var control = (AllocationControl)d;
+
+        if ((bool)e.NewValue)
+        {
+            control.ScrollToLatestPageSpan(control.PlayheadTimeUs);
+        }
+
+        control.AllocationCanvas.Invalidate();
+    }
+
+    private static void OnPropertyChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
+    {
+        if (d is AllocationControl control)
+        {
+            if (e.Property == LayersProperty)
+            {
+                if (e.OldValue is ObservableCollection<AllocationLayer> old)
+                {
+                    old.CollectionChanged -= control.OnLayersChanged;
+                }
+
+                if (e.NewValue is ObservableCollection<AllocationLayer> next)
+                {
+                    next.CollectionChanged += control.OnLayersChanged;
+                }
+            }
+
+            if (e.Property == SelectedLayersProperty)
+            {
+                if (e.OldValue is ObservableCollection<AllocationLayer> old)
+                {
+                    old.CollectionChanged -= control.OnSelectedLayersChanged;
+                }
+
+                if (e.NewValue is ObservableCollection<AllocationLayer> next)
+                {
+                    next.CollectionChanged += control.OnSelectedLayersChanged;
+                }
+            }
+
+            control.Refresh();
         }
     }
 }

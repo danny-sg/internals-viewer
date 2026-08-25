@@ -20,6 +20,20 @@ namespace InternalsViewer.UI.App.Models.Columnstore.Segment;
 /// </remarks>
 public static class SegmentRegionMarkerBuilder
 {
+    /// <summary>
+    /// Where each section of the header starts and ends, the sections being how CSINDEX reports the same bytes
+    /// </summary>
+    /// <remarks>
+    /// The RLE and bookmark fields interleave, so they only form a contiguous run when taken together. Everything
+    /// before them belongs to the blob rather than to a section, whatever it turns out to hold.
+    /// </remarks>
+    private static readonly (string Name, int Start, int End)[] HeaderLayout =
+    [
+        ("LOB Header", 0x00, 0x0F),
+        ("RLE / Bookmark Header", 0x10, 0x21),
+        ("Bit Pack Header", 0x22, 0x2F)
+    ];
+
     public static List<Marker> Build(SegmentBlob blob, SegmentRegion region, int windowStart, int windowLength)
         => region switch
         {
@@ -34,18 +48,41 @@ public static class SegmentRegionMarkerBuilder
         };
 
     /// <summary>
-    /// Where each section of the header starts and ends, the sections being how CSINDEX reports the same bytes
+    /// Rebases a structure's fields onto the window, keeping the ones it does not reach
     /// </summary>
     /// <remarks>
-    /// The RLE and bookmark fields interleave, so they only form a contiguous run when taken together. Everything
-    /// before them belongs to the blob rather than to a section, whatever it turns out to hold.
+    /// A field outside the window keeps its place in the tree and loses its position, the same as a field marked for
+    /// context. Dropping it instead empties a tree the moment the window moves elsewhere, which is what the entries
+    /// of an array want but never what a fixed set of fields wants.
     /// </remarks>
-    private static readonly (string Name, int Start, int End)[] HeaderLayout =
-    [
-        ("LOB Header", 0x00, 0x0F),
-        ("RLE / Bookmark Header", 0x10, 0x21),
-        ("Bit Pack Header", 0x22, 0x2F)
-    ];
+    public static List<Marker> Window(IEnumerable<Marker> markers, int windowStart, int windowLength)
+    {
+        var windowed = new List<Marker>();
+
+        var windowEnd = windowStart + windowLength - 1;
+
+        foreach (var marker in markers)
+        {
+            var start = Math.Max(marker.StartPosition, windowStart);
+
+            var end = Math.Min(marker.EndPosition, windowEnd);
+
+            if (marker.StartPosition < 0 || end < start)
+            {
+                marker.StartPosition = -1;
+                marker.EndPosition = -1;
+            }
+            else
+            {
+                marker.StartPosition = start - windowStart;
+                marker.EndPosition = end - windowStart;
+            }
+
+            windowed.Add(marker);
+        }
+
+        return windowed;
+    }
 
     private static List<Marker> HeaderSections(SegmentBlob blob, int windowStart, int windowLength)
     {
@@ -95,7 +132,7 @@ public static class SegmentRegionMarkerBuilder
              ItemType.BookmarkArrayRegion,
              header.BookmarkArrayOffset,
              header.RleArrayOffset,
-             $"({header.BookmarkCount} Bookmarks)")
+             $"({header.BookmarkEntryCount} Bookmarks)")
         };
 
         if (header.HasRleArray)
@@ -191,7 +228,7 @@ public static class SegmentRegionMarkerBuilder
     private static IEnumerable<Marker> RleHeader(SegmentBlob blob)
     {
         yield return ContextMarker("RLE Entry Count", ItemType.RleArrayCount, $"{blob.Header.RleEntryCount}");
-        yield return ContextMarker("RLE Entry Size", ItemType.RleEntrySize, $"{blob.Header.RleEntryBytes} bytes");
+        yield return ContextMarker("RLE Entry Size", ItemType.RleArrayEntrySize, $"{blob.Header.RleEntrySize} bytes");
         yield return ContextMarker("Lob Type", ItemType.SegmentRleType, $"{blob.Header.RleType.ToString().SplitCamelCase()} ({(int)blob.Header.RleType})");
     }
 
@@ -246,7 +283,7 @@ public static class SegmentRegionMarkerBuilder
                                          offset,
                                          4,
                                          $"{bookmark.Position} "
-                                         + $"(entry {bookmark.GetRleEntryIndex(blob.Header.RleEntryBytes)})"),
+                                         + $"(entry {bookmark.GetRleEntryIndex(blob.Header.RleEntrySize)})"),
                                   Create("End Row", ItemType.BookmarkEndRow, offset + 4, 4, $"{bookmark.EndRow}")
                               ]));
         }
@@ -258,9 +295,9 @@ public static class SegmentRegionMarkerBuilder
     {
         var markers = new List<Marker>();
 
-        var entryBytes = blob.Header.RleEntryBytes;
+        var entryBytes = blob.Header.RleEntrySize;
 
-        var valueSize = entryBytes / 2;
+        var valueSize = blob.Header.RleValueSize;
 
         var (first, last) = GetEntryRange(blob.Header.RleArrayOffset,
                                           entryBytes,
@@ -286,14 +323,26 @@ public static class SegmentRegionMarkerBuilder
                 ? Create("Value", ItemType.RleValue, offset, valueSize, "Terminator")
                 : Tagged(Create("Value", ItemType.RleValue, offset, valueSize, $"{entry.Value}"), "Repeat");
 
+            var children = new List<Marker>
+            {
+                value,
+                Create("Count", ItemType.RleCount, offset + valueSize, 4, $"{entry.Count}")
+            };
+
+            if (entry.ReadFlag is { } readFlag)
+            {
+                children.Add(Create("Read Flag",
+                                    ItemType.RleReadFlag,
+                                    offset + valueSize + 4,
+                                    4,
+                                    readFlag == 0 ? $"{readFlag} (Value)" : $"{readFlag} (Read)"));
+            }
+
             markers.Add(Entry($"RLE Index {i}",
                               ItemType.RleEntry,
                               offset,
                               entryBytes,
-                              [
-                                  value,
-                                  Create("Count", ItemType.RleCount, offset + valueSize, 4, $"{entry.Count}")
-                              ]));
+                              children));
         }
 
         return markers;
@@ -356,43 +405,6 @@ public static class SegmentRegionMarkerBuilder
         var last = Math.Min(entryCount - 1, (windowStart + windowLength - arrayOffset) / entrySize);
 
         return (first, last);
-    }
-
-    /// <summary>
-    /// Rebases a structure's fields onto the window, keeping the ones it does not reach
-    /// </summary>
-    /// <remarks>
-    /// A field outside the window keeps its place in the tree and loses its position, the same as a field marked for
-    /// context. Dropping it instead empties a tree the moment the window moves elsewhere, which is what the entries
-    /// of an array want but never what a fixed set of fields wants.
-    /// </remarks>
-    public static List<Marker> Window(IEnumerable<Marker> markers, int windowStart, int windowLength)
-    {
-        var windowed = new List<Marker>();
-
-        var windowEnd = windowStart + windowLength - 1;
-
-        foreach (var marker in markers)
-        {
-            var start = Math.Max(marker.StartPosition, windowStart);
-
-            var end = Math.Min(marker.EndPosition, windowEnd);
-
-            if (marker.StartPosition < 0 || end < start)
-            {
-                marker.StartPosition = -1;
-                marker.EndPosition = -1;
-            }
-            else
-            {
-                marker.StartPosition = start - windowStart;
-                marker.EndPosition = end - windowStart;
-            }
-
-            windowed.Add(marker);
-        }
-
-        return windowed;
     }
 
     /// <summary>

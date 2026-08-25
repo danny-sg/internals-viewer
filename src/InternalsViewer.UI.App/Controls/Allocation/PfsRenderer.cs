@@ -10,26 +10,6 @@ public sealed class PfsRenderer : IDisposable
 {
     private const string IamFlag = "I";
 
-    public Size IamFlagSize { get; }
-
-    public Size PageSize { get; }
-
-    private SKPaint SpaceFreePaint { get; }
-
-    private SKPaint AllocatedPaint { get; }
-
-    private SKFont IamFlagFont { get; }
-
-    private SKPaint IamFlagPaint { get; }
-
-    private SKPaint GhostPaint { get; }
-
-    private SKPaint GhostLightenPaint { get; }
-
-    private SKPaint GhostEyePaint { get; }
-
-    private readonly SKPath _ghostPath;
-
     private const float EyeMinRenderSize = 24F;
 
     private static readonly SKRect LeftEye = new(0.30f, 0.33f, 0.45f, 0.58f);
@@ -47,6 +27,8 @@ public sealed class PfsRenderer : IDisposable
         weight: SKFontStyleWeight.SemiBold,
         width: SKFontStyleWidth.Normal,
         slant: SKFontStyleSlant.Upright);
+
+    private readonly SKPath _ghostPath;
 
     public PfsRenderer(Size pageSize)
     {
@@ -91,26 +73,23 @@ public sealed class PfsRenderer : IDisposable
         _ghostPath = BuildGhostPath();
     }
 
-    private static SKPath BuildGhostPath()
-    {
-        using var builder = new SKPathBuilder();
+    public Size IamFlagSize { get; }
 
-        builder.MoveTo(0.15f, 0.45f);
+    public Size PageSize { get; }
 
-        // Dome over the top (start at the left point, sweep 180 degrees through the top to the right point)
-        builder.ArcTo(new SKRect(0.15f, 0.10f, 0.85f, 0.80f), 180, 180, false);
+    private SKPaint SpaceFreePaint { get; }
 
-        builder.LineTo(0.85f, 0.82f);
+    private SKPaint AllocatedPaint { get; }
 
-        // Scalloped bottom, right to left
-        builder.QuadTo(0.733f, 0.98f, 0.617f, 0.82f);
-        builder.QuadTo(0.500f, 0.98f, 0.383f, 0.82f);
-        builder.QuadTo(0.267f, 0.98f, 0.150f, 0.82f);
+    private SKFont IamFlagFont { get; }
 
-        builder.Close();
+    private SKPaint IamFlagPaint { get; }
 
-        return builder.Detach();
-    }
+    private SKPaint GhostPaint { get; }
+
+    private SKPaint GhostLightenPaint { get; }
+
+    private SKPaint GhostEyePaint { get; }
 
     public void DrawPfs(SKCanvas canvas, SKRect position, PfsByte value)
     {
@@ -180,17 +159,6 @@ public sealed class PfsRenderer : IDisposable
         }
     }
 
-    private static SKPaint GetPagePaint(SKColor colour)
-    {
-        var paint = new SKPaint
-        {
-            Color = colour,
-            Style = SKPaintStyle.Fill,
-        };
-
-        return paint;
-    }
-
     public void Dispose()
     {
         SpaceFreePaint.Dispose();
@@ -201,5 +169,37 @@ public sealed class PfsRenderer : IDisposable
         GhostEyePaint.Dispose();
         _ghostPath.Dispose();
         AllocatedPaint.Dispose();
+    }
+
+    private static SKPath BuildGhostPath()
+    {
+        using var builder = new SKPathBuilder();
+
+        builder.MoveTo(0.15f, 0.45f);
+
+        // Dome over the top (start at the left point, sweep 180 degrees through the top to the right point)
+        builder.ArcTo(new SKRect(0.15f, 0.10f, 0.85f, 0.80f), 180, 180, false);
+
+        builder.LineTo(0.85f, 0.82f);
+
+        // Scalloped bottom, right to left
+        builder.QuadTo(0.733f, 0.98f, 0.617f, 0.82f);
+        builder.QuadTo(0.500f, 0.98f, 0.383f, 0.82f);
+        builder.QuadTo(0.267f, 0.98f, 0.150f, 0.82f);
+
+        builder.Close();
+
+        return builder.Detach();
+    }
+
+    private static SKPaint GetPagePaint(SKColor colour)
+    {
+        var paint = new SKPaint
+        {
+            Color = colour,
+            Style = SKPaintStyle.Fill,
+        };
+
+        return paint;
     }
 }

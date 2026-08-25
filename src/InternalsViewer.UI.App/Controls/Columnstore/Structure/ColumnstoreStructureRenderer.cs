@@ -15,6 +15,15 @@ namespace InternalsViewer.UI.App.Controls.Columnstore.Structure;
 /// </summary>
 public sealed class ColumnstoreStructureRenderer : IDisposable
 {
+    private const string InterfaceFontFamily = "Segoe UI Variable Text";
+
+    private const float BadgeTopMargin = 6f;
+
+    private static readonly SKTypeface InterfaceTypeface = GetInterfaceTypeface(SKFontStyleWeight.Normal);
+
+    private static readonly SKTypeface InterfaceSemiBoldTypeface = GetInterfaceTypeface(SKFontStyleWeight.SemiBold);
+
+    private static readonly SKTypeface MonoTypeface = SKTypeface.FromFamilyName("Cascadia Mono") ?? SKTypeface.Default;
     private readonly SKPaint _fill = new() { IsAntialias = false, Style = SKPaintStyle.Fill };
 
     private readonly SKPathEffect _dots = SKPathEffect.CreateDash([2f, 2f], 0);
@@ -59,21 +68,6 @@ public sealed class ColumnstoreStructureRenderer : IDisposable
 
     private readonly SKRoundRect _roundRect = new();
 
-    /// <summary>
-    /// Matches the font the rest of the interface uses, the drawing sitting alongside XAML text
-    /// </summary>
-    private static SKTypeface GetInterfaceTypeface(SKFontStyleWeight weight)
-        => SKTypeface.FromFamilyName(InterfaceFontFamily, weight, SKFontStyleWidth.Normal, SKFontStyleSlant.Upright)
-           ?? SKTypeface.Default;
-
-    private static readonly SKTypeface InterfaceTypeface = GetInterfaceTypeface(SKFontStyleWeight.Normal);
-
-    private static readonly SKTypeface InterfaceSemiBoldTypeface = GetInterfaceTypeface(SKFontStyleWeight.SemiBold);
-
-    private static readonly SKTypeface MonoTypeface = SKTypeface.FromFamilyName("Cascadia Mono") ?? SKTypeface.Default;
-
-    private const string InterfaceFontFamily = "Segoe UI Variable Text";
-
     public SKColor TextColour { get; set; } = ColumnstoreColours.Text;
 
     public SKColor MutedColour { get; set; } = ColumnstoreColours.Muted;
@@ -91,13 +85,32 @@ public sealed class ColumnstoreStructureRenderer : IDisposable
     public SKColor NumberColour { get; set; } = ColumnstoreColours.Text;
 
     public SKColor PunctuationColour { get; set; } = ColumnstoreColours.Muted;
-    
+
     public ColumnstoreRegion? Hover { get; set; }
 
     /// <summary>
     /// Coding of each dictionary's pages, which arrives after the drawing is first painted
     /// </summary>
     public IReadOnlyDictionary<long, SubLobType> DictionaryCoding { get; set; } = new Dictionary<long, SubLobType>();
+
+    /// <summary>
+    /// Column the pointer is over, which lights its band the whole way down rather than only what is under it
+    /// </summary>
+    /// <remarks>
+    /// Set from where the pointer is rather than from the region under it, so the band lights from anywhere in the
+    /// column - the header, the gaps between row groups, and the parts of a row group no box covers.
+    /// </remarks>
+    public int HoveredColumnId { get; set; } = -1;
+
+    /// <summary>
+    /// Where the bands start and stop, which is how far down the pointer still counts as being in a column
+    /// </summary>
+    public float BandTop { get; private set; }
+
+    public float BandBottom { get; private set; }
+
+    private float BadgeHeight
+        => _badgeFont.Metrics.Descent - _badgeFont.Metrics.Ascent + (ColumnstoreLayout.BadgeVerticalPadding * 2);
 
     public static long CodingKey(int columnId, int dictionaryId) => ((long)columnId << 32) | (uint)dictionaryId;
 
@@ -169,6 +182,39 @@ public sealed class ColumnstoreStructureRenderer : IDisposable
 
         return regions;
     }
+
+    public float GetColumnHeaderHeight(ColumnStoreIndex index, float width)
+        => UsesVerticalHeaders(index, width)
+            ? ColumnstoreLayout.VerticalColumnHeaderHeight
+            : ColumnstoreLayout.ColumnHeaderHeight;
+
+    public static string FormatSize(long bytes) => bytes switch
+    {
+        >= 1024 * 1024 => $"{bytes / 1024d / 1024d:N1} MB",
+        >= 1024 => $"{bytes / 1024d:N1} KB",
+        _ => $"{bytes} B"
+    };
+
+    public void Dispose()
+    {
+        _fill.Dispose();
+        _text.Dispose();
+        _badge.Dispose();
+        _stroke.Dispose();
+        _labelFont.Dispose();
+        _monoFont.Dispose();
+        _badgeFont.Dispose();
+        _roundRect.Dispose();
+        _dots.Dispose();
+        _titleFont.Dispose();
+    }
+
+    /// <summary>
+    /// Matches the font the rest of the interface uses, the drawing sitting alongside XAML text
+    /// </summary>
+    private static SKTypeface GetInterfaceTypeface(SKFontStyleWeight weight)
+        => SKTypeface.FromFamilyName(InterfaceFontFamily, weight, SKFontStyleWidth.Normal, SKFontStyleSlant.Upright)
+           ?? SKTypeface.Default;
 
     private float DrawSeparator(SKCanvas canvas, float width, float y)
     {
@@ -308,11 +354,6 @@ public sealed class ColumnstoreStructureRenderer : IDisposable
         return false;
     }
 
-    public float GetColumnHeaderHeight(ColumnStoreIndex index, float width)
-        => UsesVerticalHeaders(index, width)
-            ? ColumnstoreLayout.VerticalColumnHeaderHeight
-            : ColumnstoreLayout.ColumnHeaderHeight;
-
     /// <summary>
     /// A name turned to read bottom to top, which is the only way one fits a column narrower than it is
     /// </summary>
@@ -402,22 +443,6 @@ public sealed class ColumnstoreStructureRenderer : IDisposable
             x += _monoFont.MeasureText(run.Text);
         }
     }
-
-    /// <summary>
-    /// Column the pointer is over, which lights its band the whole way down rather than only what is under it
-    /// </summary>
-    /// <remarks>
-    /// Set from where the pointer is rather than from the region under it, so the band lights from anywhere in the
-    /// column - the header, the gaps between row groups, and the parts of a row group no box covers.
-    /// </remarks>
-    public int HoveredColumnId { get; set; } = -1;
-
-    /// <summary>
-    /// Where the bands start and stop, which is how far down the pointer still counts as being in a column
-    /// </summary>
-    public float BandTop { get; private set; }
-
-    public float BandBottom { get; private set; }
 
     private float DrawRowSets(SKCanvas canvas,
                               ColumnStoreIndex index,
@@ -841,7 +866,6 @@ public sealed class ColumnstoreStructureRenderer : IDisposable
 
     }
 
-
     /// <summary>
     /// Width a run of badges needs, which decides whether it is drawn at all
     /// </summary>
@@ -856,9 +880,6 @@ public sealed class ColumnstoreStructureRenderer : IDisposable
 
         return width;
     }
-
-    private float BadgeHeight
-        => _badgeFont.Metrics.Descent - _badgeFont.Metrics.Ascent + (ColumnstoreLayout.BadgeVerticalPadding * 2);
 
     /// <summary>
     /// Draws a run of badges, or none of it when the run will not fit
@@ -1061,8 +1082,6 @@ public sealed class ColumnstoreStructureRenderer : IDisposable
         return badges;
     }
 
-    private const float BadgeTopMargin = 6f;
-
     /// <summary>
     /// The dictionary block, which sits at the bottom right of the segment, clear of its size bar
     /// </summary>
@@ -1154,25 +1173,4 @@ public sealed class ColumnstoreStructureRenderer : IDisposable
     /// </remarks>
     private static string Fit(string text, float width, SKFont font)
         => width > 0 && font.MeasureText(text) <= width ? text : string.Empty;
-
-    public static string FormatSize(long bytes) => bytes switch
-    {
-        >= 1024 * 1024 => $"{bytes / 1024d / 1024d:N1} MB",
-        >= 1024 => $"{bytes / 1024d:N1} KB",
-        _ => $"{bytes} B"
-    };
-
-    public void Dispose()
-    {
-        _fill.Dispose();
-        _text.Dispose();
-        _badge.Dispose();
-        _stroke.Dispose();
-        _labelFont.Dispose();
-        _monoFont.Dispose();
-        _badgeFont.Dispose();
-        _roundRect.Dispose();
-        _dots.Dispose();
-        _titleFont.Dispose();
-    }
 }

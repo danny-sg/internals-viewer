@@ -28,17 +28,17 @@ public sealed class BitRulerRenderer : IDisposable
 
     private const float EndLabelHeight = 14f;
 
-    public static float Height => ByteHeight + CellHeight + ValueBoxGap + ValueBoxHeight + EndLabelHeight;
+    private static readonly SKTypeface MonoTypeface = SKTypeface.FromFamilyName("Cascadia Mono") ?? SKTypeface.Default;
+
+    private static readonly SKTypeface LabelTypeface = SKTypeface.FromFamilyName("Segoe UI Variable Text") ?? SKTypeface.Default;
+
+    private static readonly string[] HexLabels = BuildHexLabels();
 
     private readonly SKPaint _fill = new() { IsAntialias = false, Style = SKPaintStyle.Fill };
 
     private readonly SKPaint _stroke = new() { IsAntialias = false, Style = SKPaintStyle.Stroke, StrokeWidth = 1 };
 
     private readonly SKPaint _text = new() { IsAntialias = true, Style = SKPaintStyle.Fill };
-
-    private static readonly SKTypeface MonoTypeface = SKTypeface.FromFamilyName("Cascadia Mono") ?? SKTypeface.Default;
-
-    private static readonly SKTypeface LabelTypeface = SKTypeface.FromFamilyName("Segoe UI Variable Text") ?? SKTypeface.Default;
 
     private readonly SKFont _bitFont = new(MonoTypeface, 11f)
     {
@@ -60,6 +60,10 @@ public sealed class BitRulerRenderer : IDisposable
         Edging = SKFontEdging.SubpixelAntialias,
         Subpixel = true
     };
+
+    private float _cellWidth;
+
+    public static float Height => ByteHeight + CellHeight + ValueBoxGap + ValueBoxHeight + EndLabelHeight;
 
     public SKColor TextColour { get; set; } = new(0x20, 0x20, 0x20);
 
@@ -85,7 +89,9 @@ public sealed class BitRulerRenderer : IDisposable
 
     public int SelectedValueIndex { get; set; } = -1;
 
-    private float _cellWidth;
+    public SKColor SelectionColour { get; set; } = new(0x18, 0x5F, 0xA5);
+
+    private float BitGlyphWidth => field > 0 ? field : field = _bitFont.MeasureText("0");
 
     /// <summary>
     /// Bit the point falls on, or minus one where it is outside the bit row
@@ -100,24 +106,6 @@ public sealed class BitRulerRenderer : IDisposable
         var bit = (int)((x - ColumnstoreLayout.Margin) / _cellWidth);
 
         return bit is >= 0 and < UnitBits ? bit : -1;
-    }
-
-    public SKColor SelectionColour { get; set; } = new(0x18, 0x5F, 0xA5);
-
-    private float BitGlyphWidth => field > 0 ? field : field = _bitFont.MeasureText("0");
-
-    private static readonly string[] HexLabels = BuildHexLabels();
-
-    private static string[] BuildHexLabels()
-    {
-        var labels = new string[256];
-
-        for (var value = 0; value < labels.Length; value++)
-        {
-            labels[value] = $"0x{value:X2}";
-        }
-
-        return labels;
     }
 
     public List<(SKRect Bounds, int Index)> Draw(SKCanvas canvas, BitpackUnitDetail unit, float width)
@@ -163,6 +151,31 @@ public sealed class BitRulerRenderer : IDisposable
         DrawEndLabels(canvas, left, cellWidth);
 
         return regions;
+    }
+
+    /// <summary>
+    /// Releases the paints and fonts, which hold native Skia handles rather than managed memory
+    /// </summary>
+    public void Dispose()
+    {
+        _fill.Dispose();
+        _stroke.Dispose();
+        _text.Dispose();
+        _bitFont.Dispose();
+        _labelFont.Dispose();
+        _monoFont.Dispose();
+    }
+
+    private static string[] BuildHexLabels()
+    {
+        var labels = new string[256];
+
+        for (var value = 0; value < labels.Length; value++)
+        {
+            labels[value] = $"0x{value:X2}";
+        }
+
+        return labels;
     }
 
     private void DrawPadding(SKCanvas canvas, BitpackUnitDetail unit, float left, float cellWidth, float top)
@@ -346,17 +359,5 @@ public sealed class BitRulerRenderer : IDisposable
                         SKTextAlign.Left,
                         _labelFont,
                         _text);
-    }
-    /// <summary>
-    /// Releases the paints and fonts, which hold native Skia handles rather than managed memory
-    /// </summary>
-    public void Dispose()
-    {
-        _fill.Dispose();
-        _stroke.Dispose();
-        _text.Dispose();
-        _bitFont.Dispose();
-        _labelFont.Dispose();
-        _monoFont.Dispose();
     }
 }

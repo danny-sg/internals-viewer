@@ -5,11 +5,10 @@ namespace InternalsViewer.UI.App.Controls.Docking;
 
 public static class DockDragState
 {
+    public static event EventHandler? ActiveChanged;
     public static DocumentViewModel? Document { get; private set; }
 
     public static bool IsActive => Document is not null;
-
-    public static event EventHandler? ActiveChanged;
 
     public static void Begin(DocumentViewModel document)
     {

@@ -12,15 +12,6 @@ namespace InternalsViewer.UI.App.Controls.Columnstore;
 /// </remarks>
 public static class ColumnstoreColours
 {
-    /// <summary>
-    /// Builds a colour from a six digit hex value, which is how a colour is written everywhere else
-    /// </summary>
-    /// <remarks>
-    /// Taking the whole value rather than three components means a colour can be pasted in from a picker or a style
-    /// sheet as it stands. Alpha is added because these are all opaque.
-    /// </remarks>
-    private static SKColor FromHex(uint rgb) => new(rgb | 0xFF000000);
-
     // Surfaces, which change with the theme
 
     public static readonly SKColor Text = FromHex(0x202020);
@@ -109,9 +100,6 @@ public static class ColumnstoreColours
 
     public static readonly SKColor UncompressedFlag = FromHex(0x6B6A63);
 
-    public static SKColor Shade(SKColor colour, float factor)
-        => new((byte)(colour.Red * factor), (byte)(colour.Green * factor), (byte)(colour.Blue * factor));
-
     // Structure types, a scheme of their own so the layout is not read as an encoding
 
     public static readonly SKColor RunLengthStructure = FromHex(0x5E5CE6);
@@ -133,4 +121,16 @@ public static class ColumnstoreColours
     public static readonly SKColor DeleteBitmap = FromHex(0xE24B4A);
 
     public static readonly SKColor DeltaStore = FromHex(0x639922);
+
+    public static SKColor Shade(SKColor colour, float factor)
+        => new((byte)(colour.Red * factor), (byte)(colour.Green * factor), (byte)(colour.Blue * factor));
+
+    /// <summary>
+    /// Builds a colour from a six digit hex value, which is how a colour is written everywhere else
+    /// </summary>
+    /// <remarks>
+    /// Taking the whole value rather than three components means a colour can be pasted in from a picker or a style
+    /// sheet as it stands. Alpha is added because these are all opaque.
+    /// </remarks>
+    private static SKColor FromHex(uint rgb) => new(rgb | 0xFF000000);
 }

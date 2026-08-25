@@ -6,6 +6,8 @@ namespace InternalsViewer.UI.App.Helpers;
 
 internal static class ColourHelpers
 {
+    private const double MinimumContrastDistance = 200;
+
     public static SKColor ToSkColor(this Color color)
     {
         return new SKColor(color.R, color.G, color.B, color.A);
@@ -113,11 +115,10 @@ internal static class ColourHelpers
         return Color.FromArgb((int) (r * 255), (int) (g * 255), (int) (b * 255));
     }
 
-
     /// <summary>
     /// Produces a perceptually even spread of colours related to <paramref name="baseColor"/>:
     /// the base hue and chroma are preserved while the CIE L*C*h* lightness progresses across the
-    /// series, so the members look like a tidy family of shades anchored on the base colour.
+    /// series, so the members look like a tidy family of shades anchored on the base colour
     /// </summary>
     /// <param name="baseColor">The colour the series is built around.</param>
     /// <param name="index">Position in the series (0 = darkest, count-1 = lightest).</param>
@@ -166,7 +167,13 @@ internal static class ColourHelpers
         return Distance(colour, background) < MinimumContrastDistance ? HighContrast(background) : colour;
     }
 
-    private const double MinimumContrastDistance = 200;
+    public static Color Lighten(Color colour)
+    {
+        return Color.FromArgb(255,
+                              colour.R + (255 - colour.R) * 3 / 4,
+                              colour.G + (255 - colour.G) * 3 / 4,
+                              colour.B + (255 - colour.B) * 3 / 4);
+    }
 
     /// <summary>
     /// Weighted distance between two colours, the weights approximating how strongly the eye reads each channel
@@ -192,13 +199,5 @@ internal static class ColourHelpers
     private static double Luminance(Color colour)
     {
         return ((0.299 * colour.R) + (0.587 * colour.G) + (0.114 * colour.B)) / 255;
-    }
-
-    public static Color Lighten(Color colour)
-    {
-        return Color.FromArgb(255,
-                              colour.R + (255 - colour.R) * 3 / 4,
-                              colour.G + (255 - colour.G) * 3 / 4,
-                              colour.B + (255 - colour.B) * 3 / 4);
     }
 }

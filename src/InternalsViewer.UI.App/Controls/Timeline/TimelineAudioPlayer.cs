@@ -21,21 +21,6 @@ namespace InternalsViewer.UI.App.Controls.Timeline;
 /// </remarks>
 internal sealed class TimelineAudioPlayer : IDisposable
 {
-    // Two-octave pentatonic scale. Ten distinct pitches cover the most common object-id spread.
-    private static readonly double[] PentatonicNotes =
-    [
-        261.63,  // C4
-        293.66,  // D4
-        329.63,  // E4
-        392.00,  // G4
-        440.00,  // A4
-        523.25,  // C5
-        587.33,  // D5
-        659.25,  // E5
-        783.99,  // G5
-        880.00,  // A5
-    ];
-
     private const int SampleRate = 44100;
 
     private const double AttackSeconds = 0.001;
@@ -81,13 +66,30 @@ internal sealed class TimelineAudioPlayer : IDisposable
     // slots to ride out a burst of reads without cutting itself off.
     private const int RumblePoolSize = 8;
 
-    private enum Waveform { Sine, Square, Rumble }
+    // Two-octave pentatonic scale. Ten distinct pitches cover the most common object-id spread.
+    private static readonly double[] PentatonicNotes =
+    [
+        261.63,  // C4
+        293.66,  // D4
+        329.63,  // E4
+        392.00,  // G4
+        440.00,  // A4
+        523.25,  // C5
+        587.33,  // D5
+        659.25,  // E5
+        783.99,  // G5
+        880.00,  // A5
+    ];
 
     private readonly Dictionary<double, MediaPlayer[]> _playersByFrequency = new();
     private readonly Dictionary<double, int> _poolIndexByFrequency = new();
 
     private readonly Dictionary<double, MediaPlayer[]> _latchPlayersByFrequency = new();
     private readonly Dictionary<double, int> _latchPoolIndexByFrequency = new();
+
+    // Guards the voice dictionaries against Dispose() racing the background build: the build publishes under it and
+    // Dispose sweeps under it, so neither ever enumerates a dictionary the other is mutating.
+    private readonly object _sync = new();
 
     private MediaPlayer[] _rumblePlayers = [];
     private int _rumblePoolIndex;
@@ -97,11 +99,9 @@ internal sealed class TimelineAudioPlayer : IDisposable
     private bool _initialized;
     private bool _disposed;
 
-    // Guards the voice dictionaries against Dispose() racing the background build: the build publishes under it and
-    // Dispose sweeps under it, so neither ever enumerates a dictionary the other is mutating.
-    private readonly object _sync = new();
+    private enum Waveform { Sine, Square, Rumble }
 
-    /// <summary>Returns the pentatonic frequency (Hz) for the given object id.</summary>
+    /// <summary>Returns the pentatonic frequency (Hz) for the given object id</summary>
     public static double FrequencyForObject(int objectId)
     {
         var index = Math.Abs(objectId) % PentatonicNotes.Length;
@@ -125,6 +125,79 @@ internal sealed class TimelineAudioPlayer : IDisposable
         }
 
         return _initializeTask ??= InitializeAsync();
+    }
+
+    public void PlayPlink(double frequencyHz)
+    {
+        if (!_initialized || _disposed)
+        {
+            return;
+        }
+
+        if (!_playersByFrequency.TryGetValue(frequencyHz, out var players))
+        {
+            return;
+        }
+
+        var index = _poolIndexByFrequency[frequencyHz];
+        _poolIndexByFrequency[frequencyHz] = (index + 1) % PerFrequencyPoolSize;
+
+        var player = players[index];
+        player.PlaybackSession.Position = TimeSpan.Zero;
+        player.Play();
+    }
+
+    public void PlayLatchTick(double frequencyHz)
+    {
+        if (!_initialized || _disposed)
+        {
+            return;
+        }
+
+        if (!_latchPlayersByFrequency.TryGetValue(frequencyHz, out var players))
+        {
+            return;
+        }
+
+        var index = _latchPoolIndexByFrequency[frequencyHz];
+        _latchPoolIndexByFrequency[frequencyHz] = (index + 1) % PerFrequencyPoolSize;
+
+        var player = players[index];
+        player.PlaybackSession.Position = TimeSpan.Zero;
+        player.Play();
+    }
+
+    /// <summary>
+    /// Plays the low rumble for a physical file read
+    /// </summary>
+    public void PlayFileRumble()
+    {
+        if (!_initialized || _disposed || _rumblePlayers.Length == 0)
+        {
+            return;
+        }
+
+        var index = _rumblePoolIndex;
+        _rumblePoolIndex = (index + 1) % _rumblePlayers.Length;
+
+        var player = _rumblePlayers[index];
+        player.PlaybackSession.Position = TimeSpan.Zero;
+        player.Play();
+    }
+
+    public void Dispose()
+    {
+        lock (_sync)
+        {
+            if (_disposed)
+            {
+                return;
+            }
+
+            _disposed = true;
+
+            DisposePlayers();
+        }
     }
 
     private async Task InitializeAsync()
@@ -232,64 +305,6 @@ internal sealed class TimelineAudioPlayer : IDisposable
         return players;
     }
 
-    public void PlayPlink(double frequencyHz)
-    {
-        if (!_initialized || _disposed)
-        {
-            return;
-        }
-
-        if (!_playersByFrequency.TryGetValue(frequencyHz, out var players))
-        {
-            return;
-        }
-
-        var index = _poolIndexByFrequency[frequencyHz];
-        _poolIndexByFrequency[frequencyHz] = (index + 1) % PerFrequencyPoolSize;
-
-        var player = players[index];
-        player.PlaybackSession.Position = TimeSpan.Zero;
-        player.Play();
-    }
-
-    public void PlayLatchTick(double frequencyHz)
-    {
-        if (!_initialized || _disposed)
-        {
-            return;
-        }
-
-        if (!_latchPlayersByFrequency.TryGetValue(frequencyHz, out var players))
-        {
-            return;
-        }
-
-        var index = _latchPoolIndexByFrequency[frequencyHz];
-        _latchPoolIndexByFrequency[frequencyHz] = (index + 1) % PerFrequencyPoolSize;
-
-        var player = players[index];
-        player.PlaybackSession.Position = TimeSpan.Zero;
-        player.Play();
-    }
-
-    /// <summary>
-    /// Plays the low rumble for a physical file read
-    /// </summary>
-    public void PlayFileRumble()
-    {
-        if (!_initialized || _disposed || _rumblePlayers.Length == 0)
-        {
-            return;
-        }
-
-        var index = _rumblePoolIndex;
-        _rumblePoolIndex = (index + 1) % _rumblePlayers.Length;
-
-        var player = _rumblePlayers[index];
-        player.PlaybackSession.Position = TimeSpan.Zero;
-        player.Play();
-    }
-
     /// <summary>
     /// A motor-like "brrr" - a harmonic stack chopped by a low-frequency tremolo
     /// </summary>
@@ -384,21 +399,6 @@ internal sealed class TimelineAudioPlayer : IDisposable
         }
 
         return ms.ToArray();
-    }
-
-    public void Dispose()
-    {
-        lock (_sync)
-        {
-            if (_disposed)
-            {
-                return;
-            }
-
-            _disposed = true;
-
-            DisposePlayers();
-        }
     }
 
     private void DisposePlayers()

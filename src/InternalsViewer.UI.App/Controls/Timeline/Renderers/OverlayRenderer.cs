@@ -89,6 +89,16 @@ internal sealed class OverlayRenderer(RenderResource resources) : IDisposable
         canvas.Restore();
     }
 
+    public void Dispose()
+    {
+        _playhead.Dispose();
+        _playheadFill.Dispose();
+        _handle.Dispose();
+        _clipDim.Dispose();
+        _badgeText.Dispose();
+        _pathBuilder.Dispose();
+    }
+
     private void DrawHandle(SKCanvas canvas, float x, bool isStart)
     {
         var top = MarkerStripHeight - HandleHeight;
@@ -142,15 +152,5 @@ internal sealed class OverlayRenderer(RenderResource resources) : IDisposable
         {
             canvas.DrawText(blob, bx + padding, baseline, _badgeText);
         }
-    }
-
-    public void Dispose()
-    {
-        _playhead.Dispose();
-        _playheadFill.Dispose();
-        _handle.Dispose();
-        _clipDim.Dispose();
-        _badgeText.Dispose();
-        _pathBuilder.Dispose();
     }
 }

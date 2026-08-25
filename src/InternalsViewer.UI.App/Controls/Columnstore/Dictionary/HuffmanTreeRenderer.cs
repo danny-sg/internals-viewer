@@ -26,20 +26,26 @@ public sealed class HuffmanTreeRenderer : IDisposable
     private const float BitGap = 4f;
 
     private const float SelectedStrokeWidth = 2f;
-    
+
+    private static readonly SKTypeface MonoTypeface = SKTypeface.FromFamilyName("Cascadia Mono") ?? SKTypeface.Default;
+
+    private static readonly string[] Labels = BuildLabels();
+
     private readonly SKPaint _line = new() { IsAntialias = false, Style = SKPaintStyle.Stroke, StrokeWidth = 1 };
 
     private readonly SKPaint _dot = new() { IsAntialias = true, Style = SKPaintStyle.Fill };
 
     private readonly SKPaint _text = new() { IsAntialias = true, Style = SKPaintStyle.Fill };
 
-    private static readonly SKTypeface MonoTypeface = SKTypeface.FromFamilyName("Cascadia Mono") ?? SKTypeface.Default;
-
     private readonly SKFont _font = new(MonoTypeface, 11f)
     {
         Edging = SKFontEdging.SubpixelAntialias,
         Subpixel = true
     };
+
+    private readonly HashSet<HuffmanTreeNode> _path = [];
+
+    private readonly float[] _labelWidths = new float[256];
 
     public SKColor TextColour { get; set; } = new(0x20, 0x20, 0x20);
 
@@ -52,8 +58,6 @@ public sealed class HuffmanTreeRenderer : IDisposable
     public SKColor SelectionColour { get; set; } = new(0x2E, 0x7D, 0x32);
 
     public int SelectedSymbol { get; set; } = -1;
-
-    private readonly HashSet<HuffmanTreeNode> _path = [];
 
     public static float GetHeight(HuffmanTreeNode root) => (root.LeafCount * RowHeight) + (ColumnstoreLayout.Margin * 2);
 
@@ -74,6 +78,38 @@ public sealed class HuffmanTreeRenderer : IDisposable
 
             DrawNode(canvas, node, top, y);
         }
+    }
+
+    public static IReadOnlyList<(SKRect Bounds, int Symbol)> GetLeafRegions(HuffmanTreeNode root, float scrollOffset, float width)
+    {
+        var regions = new List<(SKRect, int)>();
+
+        var top = ColumnstoreLayout.Margin - scrollOffset;
+
+        foreach (var node in root.Descend())
+        {
+            if (!node.IsLeaf)
+            {
+                continue;
+            }
+
+            var y = top + (node.Row * RowHeight);
+
+            regions.Add((new SKRect(0, y, width, y + RowHeight), node.Code!.Value.Symbol));
+        }
+
+        return regions;
+    }
+
+    /// <summary>
+    /// Releases the paints and fonts, which hold native Skia handles rather than managed memory
+    /// </summary>
+    public void Dispose()
+    {
+        _line.Dispose();
+        _dot.Dispose();
+        _text.Dispose();
+        _font.Dispose();
     }
 
     /// <summary>
@@ -204,8 +240,6 @@ public sealed class HuffmanTreeRenderer : IDisposable
                         _text);
     }
 
-    private readonly float[] _labelWidths = new float[256];
-
     private float GetLabelWidth(int symbol, string label)
     {
         if ((uint)symbol >= 256)
@@ -220,8 +254,6 @@ public sealed class HuffmanTreeRenderer : IDisposable
 
         return _labelWidths[symbol];
     }
-
-    private static readonly string[] Labels = BuildLabels();
 
     private static string[] BuildLabels()
     {
@@ -242,35 +274,4 @@ public sealed class HuffmanTreeRenderer : IDisposable
         => (uint)symbol < 256
             ? Labels[symbol]
             : symbol is >= 0x20 and < 0x7F ? $"'{(char)symbol}'" : $"0x{symbol:X2}";
-
-    public static IReadOnlyList<(SKRect Bounds, int Symbol)> GetLeafRegions(HuffmanTreeNode root, float scrollOffset, float width)
-    {
-        var regions = new List<(SKRect, int)>();
-
-        var top = ColumnstoreLayout.Margin - scrollOffset;
-
-        foreach (var node in root.Descend())
-        {
-            if (!node.IsLeaf)
-            {
-                continue;
-            }
-
-            var y = top + (node.Row * RowHeight);
-
-            regions.Add((new SKRect(0, y, width, y + RowHeight), node.Code!.Value.Symbol));
-        }
-
-        return regions;
-    }
-    /// <summary>
-    /// Releases the paints and fonts, which hold native Skia handles rather than managed memory
-    /// </summary>
-    public void Dispose()
-    {
-        _line.Dispose();
-        _dot.Dispose();
-        _text.Dispose();
-        _font.Dispose();
-    }
 }

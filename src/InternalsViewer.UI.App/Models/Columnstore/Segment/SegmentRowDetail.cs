@@ -15,21 +15,6 @@ public sealed class SegmentRowDetail(SegmentRowContext context, int ordinal) : I
 {
     private bool _sourceResolved;
 
-    private SegmentDataIdSource Source
-    {
-        get
-        {
-            if (!_sourceResolved)
-            {
-                field = context.DataIds.GetSource(Ordinal);
-
-                _sourceResolved = true;
-            }
-
-            return field;
-        }
-    }
-
     public int Ordinal { get; } = ordinal;
 
     public long DataId => Source.DataId;
@@ -60,6 +45,21 @@ public sealed class SegmentRowDetail(SegmentRowContext context, int ordinal) : I
     public ValueDerivation? ValueDerivation => field ??= context.DeriveValue(ValueOrdinal, DataId);
 
     public bool ShowDerivation => context.ShowDerivation;
+
+    private SegmentDataIdSource Source
+    {
+        get
+        {
+            if (!_sourceResolved)
+            {
+                field = context.DataIds.GetSource(Ordinal);
+
+                _sourceResolved = true;
+            }
+
+            return field;
+        }
+    }
 
     /// <summary>
     /// A row stands for its ordinal, the grid seeing a different instance each time it realises the same row

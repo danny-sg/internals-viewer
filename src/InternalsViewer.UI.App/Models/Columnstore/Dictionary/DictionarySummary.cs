@@ -10,6 +10,9 @@ namespace InternalsViewer.UI.App.Models.Columnstore;
 /// </summary>
 public sealed partial class DictionarySummary : ObservableObject
 {
+    [ObservableProperty]
+    private int _pageCount;
+
     public required SegmentDictionary Dictionary { get; init; }
 
     public required string ColumnName { get; init; }
@@ -55,7 +58,4 @@ public sealed partial class DictionarySummary : ObservableObject
 
     public string DataPointerDescription
         => HasDataPointer ? $"({DataPage.FileId}:{DataPage.PageId}:{DataSlot})" : string.Empty;
-
-    [ObservableProperty]
-    private int _pageCount;
 }

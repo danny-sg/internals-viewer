@@ -34,6 +34,8 @@ public sealed class TraceDefinitionBuilder(Func<PlanNode, AllocationUnit?> resol
 
     private readonly Dictionary<string, SqlDbType?> _typesByColumn = new(StringComparer.OrdinalIgnoreCase);
 
+    private readonly Dictionary<string, ColumnReference> _columnAliases = new(StringComparer.OrdinalIgnoreCase);
+
     /// <summary>
     /// The plan operator behind each definition, by node id
     /// </summary>
@@ -661,8 +663,6 @@ public sealed class TraceDefinitionBuilder(Func<PlanNode, AllocationUnit?> resol
                 : existing == column.DataType ? existing : null;
         }
     }
-
-    private readonly Dictionary<string, ColumnReference> _columnAliases = new(StringComparer.OrdinalIgnoreCase);
 
     private ColumnReference ResolveColumn(ColumnReference column)
         => _columnAliases.TryGetValue(column.Column.Trim('[', ']'), out var resolved) ? resolved : column;

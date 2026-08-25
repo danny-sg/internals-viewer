@@ -31,16 +31,6 @@ public sealed partial class BlobHexViewModel : ObservableObject, IDisposable
 
     private ReadOnlyMemory<byte> _data;
 
-    /// <summary>
-    /// Builds the markers for a window, given where it starts and how long it is
-    /// </summary>
-    public Func<int, int, List<Marker>>? MarkerFactory { get; set; }
-
-    /// <summary>
-    /// Raised once the window has moved, for an owner tracking which part of the blob is on show
-    /// </summary>
-    public event EventHandler<int>? WindowMoved;
-
     [ObservableProperty]
     private byte[] _hexData = [];
 
@@ -50,17 +40,11 @@ public sealed partial class BlobHexViewModel : ObservableObject, IDisposable
     [ObservableProperty]
     private bool _isVisible = true;
 
-    public int TotalLength => _data.Length;
-
     [ObservableProperty]
     private int _windowOffset;
 
     [ObservableProperty]
     private int _windowLength;
-
-    partial void OnWindowOffsetChanged(int value) => SetWindow(value);
-
-    partial void OnWindowLengthChanged(int value) => SetWindow(WindowOffset);
 
     /// <summary>
     /// Replaced rather than mutated, the marker controls rebuilding only when the property itself changes
@@ -72,10 +56,22 @@ public sealed partial class BlobHexViewModel : ObservableObject, IDisposable
     [NotifyPropertyChangedFor(nameof(MarkerOpacity))]
     private bool _areMarkersStale;
 
-    public double MarkerOpacity => AreMarkersStale ? 0.35 : 1.0;
-
     [ObservableProperty]
     private Marker? _selectedMarker;
+
+    /// <summary>
+    /// Raised once the window has moved, for an owner tracking which part of the blob is on show
+    /// </summary>
+    public event EventHandler<int>? WindowMoved;
+
+    /// <summary>
+    /// Builds the markers for a window, given where it starts and how long it is
+    /// </summary>
+    public Func<int, int, List<Marker>>? MarkerFactory { get; set; }
+
+    public int TotalLength => _data.Length;
+
+    public double MarkerOpacity => AreMarkersStale ? 0.35 : 1.0;
 
     public void SetData(ReadOnlyMemory<byte> data)
     {
@@ -143,6 +139,10 @@ public sealed partial class BlobHexViewModel : ObservableObject, IDisposable
         _markerDebounce?.Dispose();
         _markerDebounce = null;
     }
+
+    partial void OnWindowOffsetChanged(int value) => SetWindow(value);
+
+    partial void OnWindowLengthChanged(int value) => SetWindow(WindowOffset);
 
     private int Align(int offset)
         => Math.Clamp(offset, 0, Math.Max(0, _data.Length - 1)) / BytesPerLine * BytesPerLine;

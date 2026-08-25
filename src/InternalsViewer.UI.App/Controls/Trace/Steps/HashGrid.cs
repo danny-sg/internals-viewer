@@ -94,11 +94,6 @@ public sealed partial class HashGrid : SKXamlCanvas
         return fallback;
     }
 
-    private static void OnFillChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
-    {
-        ((HashGrid)d).Invalidate();
-    }
-
     private void OnPaintSurface(object? sender, SKPaintSurfaceEventArgs e)
     {
         var canvas = e.Surface.Canvas;
@@ -171,5 +166,10 @@ public sealed partial class HashGrid : SKXamlCanvas
 
             canvas.DrawRect(x, y, cell - gap, cell - gap, paint);
         }
+    }
+
+    private static void OnFillChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
+    {
+        ((HashGrid)d).Invalidate();
     }
 }

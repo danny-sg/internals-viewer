@@ -8,12 +8,12 @@ namespace InternalsViewer.UI.App.Views.Query.Tabs.Trace;
 /// </summary>
 public sealed partial class TraceHashTablePanelView : UserControl
 {
-    public TraceHashTableViewModel? ViewModel => DataContext as TraceHashTableViewModel;
-
     public TraceHashTablePanelView()
     {
         InitializeComponent();
 
         DataContextChanged += (_, _) => Bindings.Update();
     }
+
+    public TraceHashTableViewModel? ViewModel => DataContext as TraceHashTableViewModel;
 }

@@ -14,9 +14,28 @@ namespace InternalsViewer.UI.App.Controls.Columnstore.Segment;
 /// </summary>
 public sealed partial class BitPackDetailControl : IDisposable
 {
+    public static readonly DependencyProperty UnitProperty
+        = DependencyProperty.Register(nameof(Unit),
+                                      typeof(BitpackUnitDetail),
+                                      typeof(BitPackDetailControl),
+                                      new PropertyMetadata(null, OnUnitChanged));
+
+    public BitpackUnitDetail? Unit
+    {
+        get => (BitpackUnitDetail?)GetValue(UnitProperty);
+        set => SetValue(UnitProperty, value);
+    }
+
     private readonly BitRulerRenderer _renderer = new();
 
     private List<(SKRect Bounds, int Index)> _regions = [];
+
+    private bool _isThemeDirty = true;
+
+    /// <summary>
+    /// Names the bit under the pointer, the row being too fine to label every position along it
+    /// </summary>
+    private int _hoveredBit = -1;
 
     public BitPackDetailControl()
     {
@@ -30,7 +49,20 @@ public sealed partial class BitPackDetailControl : IDisposable
         ActualThemeChanged += OnActualThemeChanged;
     }
 
-    private bool _isThemeDirty = true;
+    /// <summary>
+    /// Releases the renderer, whose paints and fonts are native Skia handles the collector will not reclaim
+    /// </summary>
+    public void Dispose()
+    {
+        RulerCanvas.PaintSurface -= OnPaintSurface;
+        RulerCanvas.PointerPressed -= OnPointerPressed;
+        RulerCanvas.PointerMoved -= OnPointerMoved;
+        RulerCanvas.PointerExited -= OnPointerExited;
+
+        ActualThemeChanged -= OnActualThemeChanged;
+
+        _renderer.Dispose();
+    }
 
     private void OnActualThemeChanged(FrameworkElement sender, object args)
     {
@@ -40,46 +72,6 @@ public sealed partial class BitPackDetailControl : IDisposable
     }
 
     private void OnPointerExited(object sender, PointerRoutedEventArgs e) => BitTooltip.IsOpen = false;
-
-    public BitpackUnitDetail? Unit
-    {
-        get => (BitpackUnitDetail?)GetValue(UnitProperty);
-        set => SetValue(UnitProperty, value);
-    }
-
-    public static readonly DependencyProperty UnitProperty
-        = DependencyProperty.Register(nameof(Unit),
-                                      typeof(BitpackUnitDetail),
-                                      typeof(BitPackDetailControl),
-                                      new PropertyMetadata(null, OnUnitChanged));
-
-    private static void OnUnitChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
-    {
-        var control = (BitPackDetailControl)d;
-
-        var unit = e.NewValue as BitpackUnitDetail;
-
-        var visibility = unit is null ? Visibility.Collapsed : Visibility.Visible;
-
-        control.EmptyText.Visibility = unit is null ? Visibility.Visible : Visibility.Collapsed;
-        control.UnitText.Visibility = visibility;
-        control.RulerCanvas.Visibility = visibility;
-        control.ValueTable.Visibility = visibility;
-
-        control.ValueTable.ItemsSource = unit?.Values;
-
-        if (unit is not null)
-        {
-            control.UnitText.Text = $"Unit {unit.UnitIndex} at {unit.OffsetDescription}, "
-                                    + $"{unit.Values.Count} values of {unit.EntrySizeBits} bits";
-        }
-
-        control.BitTooltip.IsOpen = false;
-
-        control._renderer.SelectedValueIndex = -1;
-
-        control.RulerCanvas.Invalidate();
-    }
 
     private void OnPaintSurface(object? sender, SKPaintSurfaceEventArgs e)
     {
@@ -135,11 +127,6 @@ public sealed partial class BitPackDetailControl : IDisposable
         }
     }
 
-    /// <summary>
-    /// Names the bit under the pointer, the row being too fine to label every position along it
-    /// </summary>
-    private int _hoveredBit = -1;
-
     private void OnPointerMoved(object sender, PointerRoutedEventArgs e)
     {
         var point = e.GetCurrentPoint(RulerCanvas).Position;
@@ -174,18 +161,32 @@ public sealed partial class BitPackDetailControl : IDisposable
 
         RulerCanvas.Invalidate();
     }
-    /// <summary>
-    /// Releases the renderer, whose paints and fonts are native Skia handles the collector will not reclaim
-    /// </summary>
-    public void Dispose()
+
+    private static void OnUnitChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
     {
-        RulerCanvas.PaintSurface -= OnPaintSurface;
-        RulerCanvas.PointerPressed -= OnPointerPressed;
-        RulerCanvas.PointerMoved -= OnPointerMoved;
-        RulerCanvas.PointerExited -= OnPointerExited;
+        var control = (BitPackDetailControl)d;
 
-        ActualThemeChanged -= OnActualThemeChanged;
+        var unit = e.NewValue as BitpackUnitDetail;
 
-        _renderer.Dispose();
+        var visibility = unit is null ? Visibility.Collapsed : Visibility.Visible;
+
+        control.EmptyText.Visibility = unit is null ? Visibility.Visible : Visibility.Collapsed;
+        control.UnitText.Visibility = visibility;
+        control.RulerCanvas.Visibility = visibility;
+        control.ValueTable.Visibility = visibility;
+
+        control.ValueTable.ItemsSource = unit?.Values;
+
+        if (unit is not null)
+        {
+            control.UnitText.Text = $"Unit {unit.UnitIndex} at {unit.OffsetDescription}, "
+                                    + $"{unit.Values.Count} values of {unit.EntrySizeBits} bits";
+        }
+
+        control.BitTooltip.IsOpen = false;
+
+        control._renderer.SelectedValueIndex = -1;
+
+        control.RulerCanvas.Invalidate();
     }
 }

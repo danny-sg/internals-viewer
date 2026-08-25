@@ -16,25 +16,30 @@ public sealed partial class AllocationUnitSummaryControl : UserControl, INotifyP
                                      typeof(AllocationUnitSummaryControl),
                                      new PropertyMetadata(null, OnAllocationUnitChanged));
 
-    public static readonly DependencyProperty IsIndexProperty =
-        DependencyProperty.Register(nameof(IsIndex),
-                                     typeof(bool),
-                                     typeof(AllocationUnitSummaryControl),
-                                     new PropertyMetadata(false, OnIsIndexChanged));
-
-    public event PropertyChangedEventHandler? PropertyChanged;
-
     public AllocationUnit? AllocationUnit
     {
         get => (AllocationUnit?)GetValue(AllocationUnitProperty);
         set => SetValue(AllocationUnitProperty, value);
     }
 
+    public static readonly DependencyProperty IsIndexProperty =
+        DependencyProperty.Register(nameof(IsIndex),
+                                     typeof(bool),
+                                     typeof(AllocationUnitSummaryControl),
+                                     new PropertyMetadata(false, OnIsIndexChanged));
+
     public bool IsIndex
     {
         get => (bool)GetValue(IsIndexProperty);
         set => SetValue(IsIndexProperty, value);
     }
+
+    public AllocationUnitSummaryControl()
+    {
+        InitializeComponent();
+    }
+
+    public event PropertyChangedEventHandler? PropertyChanged;
 
     public string ObjectName => AllocationUnit is { } allocationUnit
         ? $"{allocationUnit.SchemaName}.{allocationUnit.TableName}"
@@ -62,14 +67,13 @@ public sealed partial class AllocationUnitSummaryControl : UserControl, INotifyP
         _ => "Unknown"
     };
 
-
     public FontWeight ObjectNameFontWeight => IsIndex ? FontWeights.Normal : FontWeights.Bold;
 
     public FontWeight IndexNameFontWeight => IsIndex ? FontWeights.Bold : FontWeights.Normal;
 
-    public AllocationUnitSummaryControl()
+    private void OnPropertyChanged([CallerMemberName] string? propertyName = null)
     {
-        InitializeComponent();
+        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
     }
 
     private static void OnAllocationUnitChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
@@ -90,10 +94,5 @@ public sealed partial class AllocationUnitSummaryControl : UserControl, INotifyP
 
         control.OnPropertyChanged(nameof(ObjectNameFontWeight));
         control.OnPropertyChanged(nameof(IndexNameFontWeight));
-    }
-
-    private void OnPropertyChanged([CallerMemberName] string? propertyName = null)
-    {
-        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
     }
 }

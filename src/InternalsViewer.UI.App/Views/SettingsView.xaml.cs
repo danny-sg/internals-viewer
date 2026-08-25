@@ -8,15 +8,8 @@ using Windows.Storage.Pickers;
 
 namespace InternalsViewer.UI.App.Views;
 
-/// <summary>
-/// Settings page.
-/// </summary>
 public sealed partial class SettingsView : Page
 {
-    internal AppLogViewModel AppLogViewModel { get; } = App.GetService<AppLogViewModel>();
-
-    internal SettingsViewModel ViewModel { get; } = App.GetService<SettingsViewModel>();
-
     private readonly DispatcherTimer _memoryTimer = new() { Interval = TimeSpan.FromSeconds(1) };
 
     public SettingsView()
@@ -32,6 +25,10 @@ public sealed partial class SettingsView : Page
         Loaded += (_, _) => _memoryTimer.Start();
         Unloaded += (_, _) => _memoryTimer.Stop();
     }
+
+    internal AppLogViewModel AppLogViewModel { get; } = App.GetService<AppLogViewModel>();
+
+    internal SettingsViewModel ViewModel { get; } = App.GetService<SettingsViewModel>();
 
     private async void OpenLogButton_Click(object sender, RoutedEventArgs e)
     {

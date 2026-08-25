@@ -21,14 +21,14 @@ public sealed partial class QueryOptionsViewModel : ObservableObject
 {
     private readonly EventOptions _options = new();
 
-    /// <summary>The engine options handed to the query runner</summary>
-    public EventOptions Options => _options;
-
     /// <summary>Raised when a change alters which events are shown, so the owner re-applies its filter</summary>
     public event Action? FilterChanged;
 
     /// <summary>Raised when any persisted option changes, so the owner schedules a save</summary>
     public event Action? Changed;
+
+    /// <summary>The engine options handed to the query runner</summary>
+    public EventOptions Options => _options;
 
     public bool CropToQuery
     {
@@ -111,6 +111,29 @@ public sealed partial class QueryOptionsViewModel : ObservableObject
     public bool Includes(LockModeCategory category) => _options.IncludeLockModeCategories.Contains(category);
 
     /// <summary>
+    /// Overwrites the options from a restored layout, raising property notifications but not the change events (the
+    /// caller re-filters and the restore itself must not schedule a save)
+    /// </summary>
+    public void Restore(bool cropToQuery,
+                        bool includeSystemObjects,
+                        bool includeWait,
+                        bool includeLatch,
+                        bool includeMemory,
+                        bool includeCallStack,
+                        IEnumerable<LockModeCategory> lockModeCategories)
+    {
+        _options.CropToQuery = cropToQuery;
+        _options.IncludeSystemObjects = includeSystemObjects;
+        _options.IncludeWait = includeWait;
+        _options.IncludeLatch = includeLatch;
+        _options.IncludeMemory = includeMemory;
+        _options.IncludeCallStack = includeCallStack;
+        _options.IncludeLockModeCategories = [.. lockModeCategories];
+
+        RaiseAll();
+    }
+
+    /// <summary>
     /// Clears every lock category, hiding locks entirely
     /// </summary>
     [RelayCommand]
@@ -135,29 +158,6 @@ public sealed partial class QueryOptionsViewModel : ObservableObject
         _options.IncludeLockModeCategories = EventOptions.DefaultLockModeCategories();
 
         OnLockCategoriesChanged();
-    }
-
-    /// <summary>
-    /// Overwrites the options from a restored layout, raising property notifications but not the change events (the
-    /// caller re-filters and the restore itself must not schedule a save)
-    /// </summary>
-    public void Restore(bool cropToQuery,
-                        bool includeSystemObjects,
-                        bool includeWait,
-                        bool includeLatch,
-                        bool includeMemory,
-                        bool includeCallStack,
-                        IEnumerable<LockModeCategory> lockModeCategories)
-    {
-        _options.CropToQuery = cropToQuery;
-        _options.IncludeSystemObjects = includeSystemObjects;
-        _options.IncludeWait = includeWait;
-        _options.IncludeLatch = includeLatch;
-        _options.IncludeMemory = includeMemory;
-        _options.IncludeCallStack = includeCallStack;
-        _options.IncludeLockModeCategories = [.. lockModeCategories];
-
-        RaiseAll();
     }
 
     private void SetLockCategory(LockModeCategory category, bool selected)

@@ -7,7 +7,7 @@ namespace InternalsViewer.UI.App.Controls.Timeline;
 /// </summary>
 internal static class TimelineFormat
 {
-    /// <summary>Rounds a raw interval up to the nearest 1/2/5×10ⁿ so ruler ticks land on readable values.</summary>
+    /// <summary>Rounds a raw interval up to the nearest 1/2/5×10ⁿ so ruler ticks land on readable values</summary>
     public static double NiceInterval(double raw)
     {
         if (raw <= 0)
@@ -24,7 +24,7 @@ internal static class TimelineFormat
         return nice * magnitude;
     }
 
-    /// <summary>Formats a millisecond value into <paramref name="buffer"/>, switching to seconds above 1000ms.</summary>
+    /// <summary>Formats a millisecond value into <paramref name="buffer"/>, switching to seconds above 1000ms</summary>
     public static int FormatTimeIntoSpan(double ms, Span<char> buffer)
     {
         if (ms < 0)

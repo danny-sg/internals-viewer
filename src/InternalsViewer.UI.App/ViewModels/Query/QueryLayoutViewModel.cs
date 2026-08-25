@@ -33,12 +33,26 @@ public sealed partial class QueryLayoutViewModel : ObservableObject, IDisposable
     // Set while SyncTabVisibility writes the flags back from the dock, so their setters don't loop back into the dock.
     private bool _suppressVisibilitySync;
 
-    /// <summary>Raised after a change that should be persisted (a tab shown/closed, the dock rearranged, timeline toggled)</summary>
-    public event Action? Changed;
+    [ObservableProperty]
+    private bool _isSqlEditorVisible = true;
 
-    public event Action? SelectionChanged;
+    [ObservableProperty]
+    private bool _isAllocationsVisible;
 
-    public DockLayoutViewModel Dock { get; }
+    [ObservableProperty]
+    private bool _isExecutionPlanVisible;
+
+    [ObservableProperty]
+    private bool _isEventsVisible;
+
+    [ObservableProperty]
+    private bool _isCallstackVisible;
+
+    [ObservableProperty]
+    private bool _isInstructionsVisible;
+
+    [ObservableProperty]
+    private bool _isTimelineVisible = true;
 
     /// <param name="content">
     /// The data context the tab document views bind to (the owning query view model).
@@ -90,56 +104,12 @@ public sealed partial class QueryLayoutViewModel : ObservableObject, IDisposable
         Dock.SelectionChanged += OnDockSelectionChanged;
     }
 
-    [ObservableProperty]
-    private bool _isSqlEditorVisible = true;
+    /// <summary>Raised after a change that should be persisted (a tab shown/closed, the dock rearranged, timeline toggled)</summary>
+    public event Action? Changed;
 
-    [ObservableProperty]
-    private bool _isAllocationsVisible;
+    public event Action? SelectionChanged;
 
-    [ObservableProperty]
-    private bool _isExecutionPlanVisible;
-
-    [ObservableProperty]
-    private bool _isEventsVisible;
-
-    [ObservableProperty]
-    private bool _isCallstackVisible;
-
-    [ObservableProperty]
-    private bool _isInstructionsVisible;
-
-    [ObservableProperty]
-    private bool _isTimelineVisible = true;
-
-    /// <summary>
-    /// The default layout: the SQL editor above the timeline, which is where the timeline sat when it was a fixed
-    /// row rather than a document
-    /// </summary>
-    private LayoutNode DefaultRoot()
-        => new SplitNode(Orientation.Vertical,
-                         new TabGroupNode(_documentsByKey[SqlKey]),
-                         new TabGroupNode(_documentsByKey[TimelineKey]));
-
-    partial void OnIsSqlEditorVisibleChanged(bool value)
-        => SetDocumentVisible(_documentsByKey[SqlKey], value);
-
-    partial void OnIsAllocationsVisibleChanged(bool value)
-        => SetDocumentVisible(_documentsByKey[AllocationsKey], value);
-
-    partial void OnIsExecutionPlanVisibleChanged(bool value)
-        => SetDocumentVisible(_documentsByKey[PlanKey], value);
-
-    partial void OnIsEventsVisibleChanged(bool value)
-        => SetDocumentVisible(_documentsByKey[EventsKey], value);
-
-    partial void OnIsCallstackVisibleChanged(bool value)
-        => SetDocumentVisible(_documentsByKey[CallstackKey], value);
-
-    partial void OnIsInstructionsVisibleChanged(bool value)
-        => SetDocumentVisible(_documentsByKey[InstructionsKey], value);
-
-    partial void OnIsTimelineVisibleChanged(bool value)
-        => SetDocumentVisible(_documentsByKey[TimelineKey], value);
+    public DockLayoutViewModel Dock { get; }
 
     /// <summary>
     /// Serialises the current dock tree for persistence
@@ -205,6 +175,47 @@ public sealed partial class QueryLayoutViewModel : ObservableObject, IDisposable
     /// </summary>
     public void Close(DocumentViewModel document) => Dock.Close(document);
 
+    public void Dispose()
+    {
+        Dock.LayoutChanged -= OnDockLayoutChanged;
+        Dock.SelectionChanged -= OnDockSelectionChanged;
+
+        foreach (var document in _documentsByKey.Values)
+        {
+            document.DisposeView();
+        }
+    }
+
+    /// <summary>
+    /// The default layout: the SQL editor above the timeline, which is where the timeline sat when it was a fixed
+    /// row rather than a document
+    /// </summary>
+    private LayoutNode DefaultRoot()
+        => new SplitNode(Orientation.Vertical,
+                         new TabGroupNode(_documentsByKey[SqlKey]),
+                         new TabGroupNode(_documentsByKey[TimelineKey]));
+
+    partial void OnIsSqlEditorVisibleChanged(bool value)
+        => SetDocumentVisible(_documentsByKey[SqlKey], value);
+
+    partial void OnIsAllocationsVisibleChanged(bool value)
+        => SetDocumentVisible(_documentsByKey[AllocationsKey], value);
+
+    partial void OnIsExecutionPlanVisibleChanged(bool value)
+        => SetDocumentVisible(_documentsByKey[PlanKey], value);
+
+    partial void OnIsEventsVisibleChanged(bool value)
+        => SetDocumentVisible(_documentsByKey[EventsKey], value);
+
+    partial void OnIsCallstackVisibleChanged(bool value)
+        => SetDocumentVisible(_documentsByKey[CallstackKey], value);
+
+    partial void OnIsInstructionsVisibleChanged(bool value)
+        => SetDocumentVisible(_documentsByKey[InstructionsKey], value);
+
+    partial void OnIsTimelineVisibleChanged(bool value)
+        => SetDocumentVisible(_documentsByKey[TimelineKey], value);
+
     private void SetDocumentVisible(DocumentViewModel document, bool show)
     {
         if (_suppressVisibilitySync)
@@ -245,15 +256,4 @@ public sealed partial class QueryLayoutViewModel : ObservableObject, IDisposable
     }
 
     private void OnDockSelectionChanged(object? sender, EventArgs e) => SelectionChanged?.Invoke();
-
-    public void Dispose()
-    {
-        Dock.LayoutChanged -= OnDockLayoutChanged;
-        Dock.SelectionChanged -= OnDockSelectionChanged;
-
-        foreach (var document in _documentsByKey.Values)
-        {
-            document.DisposeView();
-        }
-    }
 }

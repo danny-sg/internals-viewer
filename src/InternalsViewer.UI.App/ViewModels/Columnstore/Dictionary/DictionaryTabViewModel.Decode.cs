@@ -23,7 +23,17 @@ namespace InternalsViewer.UI.App.ViewModels.Columnstore.Dictionary;
 /// </summary>
 public sealed partial class DictionaryTabViewModel
 {
-    public ObservableCollection<DictionaryPageSummary> Pages { get; } = [];
+    private const int DecodeTabIndex = 1;
+
+    private DictionaryHandleList? _handles;
+
+    private IReadOnlyList<HuffmanDecodeStep>? _decodeSteps;
+
+    private IReadOnlyList<DecodeStepDetail>? _decodeStepDetails;
+
+    private IReadOnlyList<HuffmanCodeDetail>? _codes;
+
+    private Task? _pageLoad;
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(HasHuffmanPage))]
@@ -33,6 +43,38 @@ public sealed partial class DictionaryTabViewModel
 
     [ObservableProperty]
     private bool _isPageLoading;
+
+    [ObservableProperty]
+    private bool _isDecodeValuesVisible = true;
+
+    [ObservableProperty]
+    private bool _isDecodeDetailsVisible = true;
+
+    [ObservableProperty]
+    private DictionaryHandleDetail? _selectedHandle;
+
+    [ObservableProperty]
+    private DictionaryEntryList? _pageEntries;
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(DecodeSteps))]
+    [NotifyPropertyChangedFor(nameof(DecodeStepDetails))]
+    [NotifyPropertyChangedFor(nameof(DecodeContent))]
+    private DictionaryEntryDetail? _selectedEntry;
+
+    [ObservableProperty]
+    private int _selectedStep = -1;
+
+    [ObservableProperty]
+    private int _selectedSymbol = -1;
+
+    [ObservableProperty]
+    private ObservableCollection<Marker> _headerMarkers = [];
+
+    [ObservableProperty]
+    private ObservableCollection<Marker> _pageMarkers = [];
+
+    public ObservableCollection<DictionaryPageSummary> Pages { get; } = [];
 
     public bool HasHuffmanPage => SelectedPage?.Huffman is not null;
 
@@ -46,11 +88,94 @@ public sealed partial class DictionaryTabViewModel
         ? ItemType.StringEntryLength
         : ItemType.None;
 
-    [ObservableProperty]
-    private bool _isDecodeValuesVisible = true;
+    public HuffmanTreeNode? Tree => SelectedPage?.Tree;
 
-    [ObservableProperty]
-    private bool _isDecodeDetailsVisible = true;
+    public bool HasPages => Blob is StringDictionary;
+
+    public bool HasValues => Blob is NumericDictionary;
+
+    public bool HasHandles => Blob is StringDictionary;
+
+    public DictionaryHandleList? Handles => Blob is StringDictionary strings
+                                            ? _handles ??= new DictionaryHandleList(strings)
+                                            : null;
+
+    public IReadOnlyList<HuffmanDecodeStep> DecodeSteps => _decodeSteps ??= Trace();
+
+    public ReadOnlyMemory<byte> DecodeContent => SelectedPage?.Huffman?.Content ?? default;
+
+    public IReadOnlyList<DecodeStepDetail> DecodeStepDetails
+        => _decodeStepDetails ??= [.. DecodeSteps.Select((s, i) => new DecodeStepDetail { Step = s, Ordinal = i })];
+
+    public IReadOnlyList<HuffmanCodeDetail> Codes
+        => _codes ??= SelectedPage?.Codes.Select(c => new HuffmanCodeDetail { Code = c }).ToList() ?? [];
+
+    private bool IsHandleSelectionShown => SelectedTabIndex == HandlesTabIndex;
+
+    /// <summary>
+    /// Whether an entry is on show, which is the entry list or a page opened on its decode
+    /// </summary>
+    private bool IsEntrySelectionShown => SelectedTabIndex == EntriesTabIndex
+                                          || (SelectedTabIndex == PagesTabIndex
+                                              && SelectedPageTabIndex == DecodeTabIndex);
+
+    public void SelectHandle(DictionaryHandleDetail? handle)
+    {
+        SelectedHandle = handle;
+
+        if (handle is not null)
+        {
+            Hex.GoToOffset(handle.HandleOffset);
+        }
+
+        Hex.BuildMarkers();
+
+        SelectMarker(handle is null ? null : ItemType.DictionaryHandle);
+    }
+
+    public void SelectSymbol(int symbol) => SelectedSymbol = symbol;
+
+    public async Task GoToHandleValue(DictionaryHandleDetail handle)
+    {
+        if (Blob is not StringDictionary)
+        {
+            return;
+        }
+
+        SelectedTabIndex = GetRegionTabIndex(DictionaryRegion.Pages);
+
+        if (Pages.FirstOrDefault(p => p.Index == handle.Page) is not { } page)
+        {
+            return;
+        }
+
+        SelectedPage = page;
+
+        SelectedPageTabIndex = DecodeTabIndex;
+
+        if (_pageLoad is { } load)
+        {
+            await load;
+        }
+
+        SelectEntry(PageEntries?.Find(handle.Index));
+    }
+
+    public void SelectEntry(DictionaryEntryDetail? entry)
+    {
+        SelectedEntry = entry;
+
+        SelectedStep = -1;
+
+        if (GetEntryOffset(entry) is { } offset)
+        {
+            Hex.GoToOffset(offset);
+        }
+
+        Hex.BuildMarkers();
+
+        SelectMarker(entry is null ? null : GetEntryItemType());
+    }
 
     partial void OnIsDecodeValuesVisibleChanged(bool value)
     {
@@ -66,34 +191,6 @@ public sealed partial class DictionaryTabViewModel
         {
             IsDecodeValuesVisible = true;
         }
-    }
-
-    public HuffmanTreeNode? Tree => SelectedPage?.Tree;
-
-    public bool HasPages => Blob is StringDictionary;
-
-    public bool HasValues => Blob is NumericDictionary;
-
-    public bool HasHandles => Blob is StringDictionary;
-
-    public DictionaryHandleList? Handles => Blob is StringDictionary strings
-                                            ? _handles ??= new DictionaryHandleList(strings)
-                                            : null;
-
-    private DictionaryHandleList? _handles;
-
-    public void SelectHandle(DictionaryHandleDetail? handle)
-    {
-        SelectedHandle = handle;
-
-        if (handle is not null)
-        {
-            Hex.GoToOffset(handle.HandleOffset);
-        }
-
-        Hex.BuildMarkers();
-
-        SelectMarker(handle is null ? null : ItemType.DictionaryHandle);
     }
 
     /// <summary>
@@ -126,36 +223,6 @@ public sealed partial class DictionaryTabViewModel
     private void SelectMarker(ItemType? type)
         => Hex.SelectedMarker = type is { } wanted ? MarkerLookup.FindByType(Hex.Markers, wanted) : null;
 
-    [ObservableProperty]
-    private DictionaryHandleDetail? _selectedHandle;
-
-    [ObservableProperty]
-    private DictionaryEntryList? _pageEntries;
-
-    [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(DecodeSteps))]
-    [NotifyPropertyChangedFor(nameof(DecodeStepDetails))]
-    [NotifyPropertyChangedFor(nameof(DecodeContent))]
-    private DictionaryEntryDetail? _selectedEntry;
-
-    [ObservableProperty]
-    private int _selectedStep = -1;
-
-    private IReadOnlyList<HuffmanDecodeStep>? _decodeSteps;
-
-    private IReadOnlyList<DecodeStepDetail>? _decodeStepDetails;
-
-    private IReadOnlyList<HuffmanCodeDetail>? _codes;
-
-    public IReadOnlyList<HuffmanDecodeStep> DecodeSteps => _decodeSteps ??= Trace();
-
-    public ReadOnlyMemory<byte> DecodeContent => SelectedPage?.Huffman?.Content ?? default;
-
-    public void SelectSymbol(int symbol) => SelectedSymbol = symbol;
-
-    public IReadOnlyList<DecodeStepDetail> DecodeStepDetails
-        => _decodeStepDetails ??= [.. DecodeSteps.Select((s, i) => new DecodeStepDetail { Step = s, Ordinal = i })];
-
     private IReadOnlyList<HuffmanDecodeStep> Trace()
     {
         if (SelectedPage?.Huffman is not { } huffman || SelectedEntry is null || Blob is not StringDictionary strings)
@@ -172,12 +239,6 @@ public sealed partial class DictionaryTabViewModel
             return [];
         }
     }
-
-    public IReadOnlyList<HuffmanCodeDetail> Codes
-        => _codes ??= SelectedPage?.Codes.Select(c => new HuffmanCodeDetail { Code = c }).ToList() ?? [];
-
-    [ObservableProperty]
-    private int _selectedSymbol = -1;
 
     partial void OnSelectedEntryChanged(DictionaryEntryDetail? value) => ClearDecodeCache();
 
@@ -217,36 +278,6 @@ public sealed partial class DictionaryTabViewModel
         {
             Hex.GoToOffset(value.Offset);
         }
-    }
-
-    private Task? _pageLoad;
-
-    private const int DecodeTabIndex = 1;
-
-    public async Task GoToHandleValue(DictionaryHandleDetail handle)
-    {
-        if (Blob is not StringDictionary)
-        {
-            return;
-        }
-
-        SelectedTabIndex = GetRegionTabIndex(DictionaryRegion.Pages);
-
-        if (Pages.FirstOrDefault(p => p.Index == handle.Page) is not { } page)
-        {
-            return;
-        }
-
-        SelectedPage = page;
-
-        SelectedPageTabIndex = DecodeTabIndex;
-
-        if (_pageLoad is { } load)
-        {
-            await load;
-        }
-
-        SelectEntry(PageEntries?.Find(handle.Index));
     }
 
     private async Task ApplySelectedPageAsync(DictionaryPageSummary? page)
@@ -316,22 +347,6 @@ public sealed partial class DictionaryTabViewModel
         }
     }
 
-    public void SelectEntry(DictionaryEntryDetail? entry)
-    {
-        SelectedEntry = entry;
-
-        SelectedStep = -1;
-
-        if (GetEntryOffset(entry) is { } offset)
-        {
-            Hex.GoToOffset(offset);
-        }
-
-        Hex.BuildMarkers();
-
-        SelectMarker(entry is null ? null : GetEntryItemType());
-    }
-
     /// <summary>
     /// What an entry is marked as, which is the value itself unless a page codes it rather than storing it
     /// </summary>
@@ -387,21 +402,6 @@ public sealed partial class DictionaryTabViewModel
 
         return new DictionaryEntryList(strings, IsDerivationVisible, [.. indexes]);
     }
-
-    private bool IsHandleSelectionShown => SelectedTabIndex == HandlesTabIndex;
-
-    /// <summary>
-    /// Whether an entry is on show, which is the entry list or a page opened on its decode
-    /// </summary>
-    private bool IsEntrySelectionShown => SelectedTabIndex == EntriesTabIndex
-                                          || (SelectedTabIndex == PagesTabIndex
-                                              && SelectedPageTabIndex == DecodeTabIndex);
-
-    [ObservableProperty]
-    private ObservableCollection<Marker> _headerMarkers = [];
-
-    [ObservableProperty]
-    private ObservableCollection<Marker> _pageMarkers = [];
 
     private List<Marker> BuildMarkers(DictionaryBlob blob, int start, int length)
     {

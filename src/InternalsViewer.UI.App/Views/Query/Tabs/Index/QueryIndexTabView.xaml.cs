@@ -20,8 +20,6 @@ public sealed partial class QueryIndexTabView : UserControl, IDisposable
 
     private bool _hasLoaded;
 
-    public IndexTabViewModel? ViewModel => DataContext as IndexTabViewModel;
-
     public QueryIndexTabView()
     {
         InitializeComponent();
@@ -36,6 +34,20 @@ public sealed partial class QueryIndexTabView : UserControl, IDisposable
         IndexControl.SingleSelectedColour = Windows.UI.Color.FromArgb(255, io.R, io.G, io.B);
         IndexControl.RangeSelectedColour = Windows.UI.Color.FromArgb(255, io.R, io.G, io.B);
         IndexControl.SelectedBackgroundColour = Windows.UI.Color.FromArgb(200, io.R, io.G, io.B);
+    }
+
+    public IndexTabViewModel? ViewModel => DataContext as IndexTabViewModel;
+
+    public void Dispose()
+    {
+        // x:Bind listens to the view model, which outlives the view, so the view stays rooted until
+        // tracking stops
+        Bindings.StopTracking();
+
+        IndexControl.PageClicked -= OnPageClicked;
+        IndexControl.Dispose();
+
+        RecordGrid.Dispose();
     }
 
 #pragma warning disable VSTHRD100
@@ -110,6 +122,7 @@ public sealed partial class QueryIndexTabView : UserControl, IDisposable
             await WeakReferenceMessenger.Default.Send(new ExceptionMessage(ex));
         }
     }
+
     #pragma warning restore VSTHRD100
 
     private void CloseDetailPane()
@@ -120,17 +133,5 @@ public sealed partial class QueryIndexTabView : UserControl, IDisposable
         }
 
         ViewModel.IsDetailPaneVisible = false;
-    }
-
-    public void Dispose()
-    {
-        // x:Bind listens to the view model, which outlives the view, so the view stays rooted until
-        // tracking stops
-        Bindings.StopTracking();
-
-        IndexControl.PageClicked -= OnPageClicked;
-        IndexControl.Dispose();
-
-        RecordGrid.Dispose();
     }
 }

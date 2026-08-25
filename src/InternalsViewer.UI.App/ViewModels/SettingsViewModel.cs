@@ -21,10 +21,6 @@ public partial class SettingsViewModel(SettingsService settingsService, TraceDir
 
     private const double DefaultMaxTraceSizeMb = 150;
 
-    private SettingsService SettingsService { get; } = settingsService;
-
-    private TraceDirectoryService TraceDirectoryService { get; } = traceDirectoryService;
-
     [ObservableProperty]
     private string _symbolsPath = DefaultSymbolsPath;
 
@@ -46,11 +42,15 @@ public partial class SettingsViewModel(SettingsService settingsService, TraceDir
     [ObservableProperty]
     private bool _traceNestedLayout = true;
 
+    [ObservableProperty]
+    private string _memoryUsage = string.Empty;
+
     public string? ActiveTraceDirectory =>
         UseCustomTraceDirectory && !string.IsNullOrWhiteSpace(TraceDirectory) ? TraceDirectory : null;
 
-    [ObservableProperty]
-    private string _memoryUsage = string.Empty;
+    private SettingsService SettingsService { get; } = settingsService;
+
+    private TraceDirectoryService TraceDirectoryService { get; } = traceDirectoryService;
 
     public void RefreshMemoryUsage()
     {

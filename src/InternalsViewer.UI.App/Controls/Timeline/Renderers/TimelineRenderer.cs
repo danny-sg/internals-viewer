@@ -110,6 +110,13 @@ internal sealed class TimelineRenderer(RenderResource resources) : IDisposable
         }
     }
 
+    public void Dispose()
+    {
+        _rowBackground.Dispose();
+        _separator.Dispose();
+        _tick.Dispose();
+    }
+
     // Draws the split Read row's three labels — "Buffer" (cached lane), "Disk" (physical lane), "Read" (centred), all
     // left-aligned like the single-label rows. Returns false when the row is too short to fit all three.
     private bool TryDrawReadRowLabels(SKCanvas canvas, float rowTop, float rowHeight)
@@ -133,12 +140,5 @@ internal sealed class TimelineRenderer(RenderResource resources) : IDisposable
                         resources.LabelFont, resources.LabelPaint);
 
         return true;
-    }
-
-    public void Dispose()
-    {
-        _rowBackground.Dispose();
-        _separator.Dispose();
-        _tick.Dispose();
     }
 }

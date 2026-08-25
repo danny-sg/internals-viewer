@@ -16,7 +16,7 @@ internal sealed class ResultCellColumn(int ordinal) : TableViewColumn
     public ResultAlignment Alignment { get; init; } = ResultAlignment.Left;
 
     /// <summary>
-    /// Raised when a page address or row identifier link is clicked.
+    /// Raised when a page address or row identifier link is clicked
     /// </summary>
     public Action<PageAddressEventArgs>? PageClicked { get; init; }
 
@@ -52,6 +52,16 @@ internal sealed class ResultCellColumn(int ordinal) : TableViewColumn
         {
             Apply(host, cell, dataItem);
         }
+    }
+
+    public override FrameworkElement GenerateEditingElement(TableViewCell cell, object? dataItem)
+    {
+        return GenerateElement(cell, dataItem);
+    }
+
+    protected override object PrepareCellForEdit(TableViewCell cell, RoutedEventArgs editingEventArgs)
+    {
+        return null!;
     }
 
     private void Apply(ContentControl host, TableViewCell cell, object? dataItem)
@@ -150,23 +160,12 @@ internal sealed class ResultCellColumn(int ordinal) : TableViewColumn
             : ResultRowBackgroundConverter.TransparentBrush;
     }
 
-
     private static HorizontalAlignment ToHorizontalAlignment(ResultAlignment alignment) => alignment switch
     {
         ResultAlignment.Center => HorizontalAlignment.Center,
         ResultAlignment.Right => HorizontalAlignment.Right,
         _ => HorizontalAlignment.Left
     };
-
-    public override FrameworkElement GenerateEditingElement(TableViewCell cell, object? dataItem)
-    {
-        return GenerateElement(cell, dataItem);
-    }
-
-    protected override object PrepareCellForEdit(TableViewCell cell, RoutedEventArgs editingEventArgs)
-    {
-        return null!;
-    }
 
     private static SolidColorBrush CreateBrush(Color color)
     {

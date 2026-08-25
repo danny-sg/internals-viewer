@@ -15,14 +15,11 @@ namespace InternalsViewer.UI.App.Controls;
 /// </remarks>
 public sealed partial class DataTypeTextBlock
 {
-    public DataTypeTextBlock()
-    {
-        InitializeComponent();
-
-        ActualThemeChanged += (_, _) => Render();
-
-        Loaded += (_, _) => Render();
-    }
+    public static readonly DependencyProperty DataTypeProperty
+        = DependencyProperty.Register(nameof(DataType),
+                                      typeof(SqlDbType?),
+                                      typeof(DataTypeTextBlock),
+                                      new PropertyMetadata(null, OnSourceChanged));
 
     public SqlDbType? DataType
     {
@@ -30,11 +27,11 @@ public sealed partial class DataTypeTextBlock
         set => SetValue(DataTypeProperty, value);
     }
 
-    public static readonly DependencyProperty DataTypeProperty
-        = DependencyProperty.Register(nameof(DataType),
-                                      typeof(SqlDbType?),
+    public static readonly DependencyProperty PrecisionProperty
+        = DependencyProperty.Register(nameof(Precision),
+                                      typeof(int),
                                       typeof(DataTypeTextBlock),
-                                      new PropertyMetadata(null, OnSourceChanged));
+                                      new PropertyMetadata(0, OnSourceChanged));
 
     public int Precision
     {
@@ -42,8 +39,8 @@ public sealed partial class DataTypeTextBlock
         set => SetValue(PrecisionProperty, value);
     }
 
-    public static readonly DependencyProperty PrecisionProperty
-        = DependencyProperty.Register(nameof(Precision),
+    public static readonly DependencyProperty DataScaleProperty
+        = DependencyProperty.Register(nameof(DataScale),
                                       typeof(int),
                                       typeof(DataTypeTextBlock),
                                       new PropertyMetadata(0, OnSourceChanged));
@@ -54,8 +51,8 @@ public sealed partial class DataTypeTextBlock
         set => SetValue(DataScaleProperty, value);
     }
 
-    public static readonly DependencyProperty DataScaleProperty
-        = DependencyProperty.Register(nameof(DataScale),
+    public static readonly DependencyProperty LengthProperty
+        = DependencyProperty.Register(nameof(Length),
                                       typeof(int),
                                       typeof(DataTypeTextBlock),
                                       new PropertyMetadata(0, OnSourceChanged));
@@ -69,14 +66,14 @@ public sealed partial class DataTypeTextBlock
         set => SetValue(LengthProperty, value);
     }
 
-    public static readonly DependencyProperty LengthProperty
-        = DependencyProperty.Register(nameof(Length),
-                                      typeof(int),
-                                      typeof(DataTypeTextBlock),
-                                      new PropertyMetadata(0, OnSourceChanged));
+    public DataTypeTextBlock()
+    {
+        InitializeComponent();
 
-    private static void OnSourceChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
-        => ((DataTypeTextBlock)d).Render();
+        ActualThemeChanged += (_, _) => Render();
+
+        Loaded += (_, _) => Render();
+    }
 
     private void Render()
     {
@@ -117,4 +114,7 @@ public sealed partial class DataTypeTextBlock
         Text = text,
         Foreground = (Brush)Application.Current.Resources[brush]
     };
+
+    private static void OnSourceChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
+        => ((DataTypeTextBlock)d).Render();
 }

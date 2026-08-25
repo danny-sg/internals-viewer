@@ -38,13 +38,11 @@ public sealed class HuffmanDecodeRenderer : IDisposable
     /// </summary>
     private const int BoxLines = 3;
 
-    private static float BoxHeight => (BoxLines * BoxLineHeight) + (BoxPadding * 2);
+    private static readonly SKTypeface MonoTypeface = SKTypeface.FromFamilyName("Cascadia Mono") ?? SKTypeface.Default;
 
-    /// <summary>
-    /// The whole drawing, there being only one row of codes however long the entry runs
-    /// </summary>
-    public static float Height
-        => WordHeight + BitHeight + LeaderHeight + BoxHeight + (ColumnstoreLayout.Margin * 2);
+    private static readonly string[] BinaryLabels = BuildLabels(symbol => Convert.ToString(symbol, 2).PadLeft(8, '0'));
+
+    private static readonly string[] HexLabels = BuildLabels(symbol => $"0x{symbol:X2}");
 
     private readonly SKPaint _fill = new() { IsAntialias = false, Style = SKPaintStyle.Fill };
 
@@ -54,13 +52,23 @@ public sealed class HuffmanDecodeRenderer : IDisposable
 
     private readonly SKPaint _text = new() { IsAntialias = true, Style = SKPaintStyle.Fill };
 
-    private static readonly SKTypeface MonoTypeface = SKTypeface.FromFamilyName("Cascadia Mono") ?? SKTypeface.Default;
-
     private readonly SKFont _font = new(MonoTypeface, 11f)
     {
         Edging = SKFontEdging.SubpixelAntialias,
         Subpixel = true
     };
+
+    private (SKPoint From, SKPoint To)? _selectedLeader;
+
+    private float _boxWidth;
+
+    private float _glyphWidth;
+
+    /// <summary>
+    /// The whole drawing, there being only one row of codes however long the entry runs
+    /// </summary>
+    public static float Height
+        => WordHeight + BitHeight + LeaderHeight + BoxHeight + (ColumnstoreLayout.Margin * 2);
 
     public SKColor TextColour { get; set; } = new(0x20, 0x20, 0x20);
 
@@ -94,64 +102,11 @@ public sealed class HuffmanDecodeRenderer : IDisposable
 
     public int SelectedStep { get; set; } = -1;
 
-    private (SKPoint From, SKPoint To)? _selectedLeader;
-
-    /// <summary>
-    /// The selection over the top of everything, a neighbouring fill otherwise painting out the side of its border
-    /// </summary>
-    private void DrawSelection(SKCanvas canvas, List<(SKRect Bounds, int Index)> regions)
-    {
-        if (SelectedStep < 0)
-        {
-            return;
-        }
-
-        _stroke.Color = SelectionColour;
-
-        foreach (var (bounds, index) in regions)
-        {
-            if (index == SelectedStep)
-            {
-                canvas.DrawRect(bounds, _stroke);
-            }
-        }
-
-        if (_selectedLeader is { } leader)
-        {
-            _leader.Color = SelectionColour;
-
-            canvas.DrawLine(leader.From, leader.To, _leader);
-        }
-    }
-
-    private float _boxWidth;
+    private static float BoxHeight => (BoxLines * BoxLineHeight) + (BoxPadding * 2);
 
     private float BoxWidth => _boxWidth > 0 ? _boxWidth : _boxWidth = _font.MeasureText("00000000") + (BoxPadding * 4);
 
-    private float _glyphWidth;
-
     private float GlyphWidth => _glyphWidth > 0 ? _glyphWidth : _glyphWidth = _font.MeasureText("0");
-
-    private static readonly string[] BinaryLabels = BuildLabels(symbol => Convert.ToString(symbol, 2).PadLeft(8, '0'));
-
-    private static readonly string[] HexLabels = BuildLabels(symbol => $"0x{symbol:X2}");
-
-    private static string[] BuildLabels(Func<int, string> format)
-    {
-        var labels = new string[256];
-
-        for (var symbol = 0; symbol < labels.Length; symbol++)
-        {
-            labels[symbol] = format(symbol);
-        }
-
-        return labels;
-    }
-
-    private static string BinaryLabel(int symbol)
-        => (uint)symbol < 256 ? BinaryLabels[symbol] : Convert.ToString(symbol, 2).PadLeft(8, '0');
-
-    private static string HexLabel(int symbol) => (uint)symbol < 256 ? HexLabels[symbol] : $"0x{symbol:X2}";
 
     /// <summary>
     /// Width the whole walk needs, the codes running on rather than wrapping
@@ -162,20 +117,6 @@ public sealed class HuffmanDecodeRenderer : IDisposable
     /// </remarks>
     public float GetWidth(IReadOnlyList<HuffmanDecodeStep> steps)
         => steps.Count == 0 ? 0 : GetInnerWidth(steps) + (ColumnstoreLayout.Margin * 2);
-
-    private float GetInnerWidth(IReadOnlyList<HuffmanDecodeStep> steps)
-        => Math.Max(GetBitsWidth(steps), (steps.Count * BoxWidth) + ((steps.Count - 1) * BoxGap));
-
-    private static float GetBitsWidth(IReadOnlyList<HuffmanDecodeStep> steps)
-    {
-        var last = steps[^1];
-
-        var firstBit = steps[0].BitOffset / BitsPerWord * BitsPerWord;
-
-        var lastBit = (last.BitOffset + last.BitLength + BitsPerWord - 1) / BitsPerWord * BitsPerWord;
-
-        return (lastBit - firstBit) * BitWidth;
-    }
 
     public List<(SKRect Bounds, int Index)> Draw(SKCanvas canvas,
                                                  IReadOnlyList<HuffmanDecodeStep> steps,
@@ -258,6 +199,77 @@ public sealed class HuffmanDecodeRenderer : IDisposable
         DrawSelection(canvas, regions);
 
         return regions;
+    }
+
+    /// <summary>
+    /// Releases the paints and fonts, which hold native Skia handles rather than managed memory
+    /// </summary>
+    public void Dispose()
+    {
+        _fill.Dispose();
+        _stroke.Dispose();
+        _leader.Dispose();
+        _text.Dispose();
+        _font.Dispose();
+    }
+
+    /// <summary>
+    /// The selection over the top of everything, a neighbouring fill otherwise painting out the side of its border
+    /// </summary>
+    private void DrawSelection(SKCanvas canvas, List<(SKRect Bounds, int Index)> regions)
+    {
+        if (SelectedStep < 0)
+        {
+            return;
+        }
+
+        _stroke.Color = SelectionColour;
+
+        foreach (var (bounds, index) in regions)
+        {
+            if (index == SelectedStep)
+            {
+                canvas.DrawRect(bounds, _stroke);
+            }
+        }
+
+        if (_selectedLeader is { } leader)
+        {
+            _leader.Color = SelectionColour;
+
+            canvas.DrawLine(leader.From, leader.To, _leader);
+        }
+    }
+
+    private static string[] BuildLabels(Func<int, string> format)
+    {
+        var labels = new string[256];
+
+        for (var symbol = 0; symbol < labels.Length; symbol++)
+        {
+            labels[symbol] = format(symbol);
+        }
+
+        return labels;
+    }
+
+    private static string BinaryLabel(int symbol)
+        => (uint)symbol < 256 ? BinaryLabels[symbol] : Convert.ToString(symbol, 2).PadLeft(8, '0');
+
+    private static string HexLabel(int symbol) => (uint)symbol < 256 ? HexLabels[symbol] : $"0x{symbol:X2}";
+
+    private float GetInnerWidth(IReadOnlyList<HuffmanDecodeStep> steps)
+        => Math.Max(GetBitsWidth(steps), (steps.Count * BoxWidth) + ((steps.Count - 1) * BoxGap));
+
+    private static float GetBitsWidth(IReadOnlyList<HuffmanDecodeStep> steps)
+    {
+        var last = steps[^1];
+
+        var firstBit = steps[0].BitOffset / BitsPerWord * BitsPerWord;
+
+        var lastBit = (last.BitOffset + last.BitLength + BitsPerWord - 1) / BitsPerWord * BitsPerWord;
+
+        return (lastBit - firstBit) * BitWidth;
     }
 
     /// <summary>
@@ -452,16 +464,5 @@ public sealed class HuffmanDecodeRenderer : IDisposable
         isSet = (word & (1 << (BitsPerWord - 1 - (bitOffset % BitsPerWord)))) != 0;
 
         return true;
-    }
-    /// <summary>
-    /// Releases the paints and fonts, which hold native Skia handles rather than managed memory
-    /// </summary>
-    public void Dispose()
-    {
-        _fill.Dispose();
-        _stroke.Dispose();
-        _leader.Dispose();
-        _text.Dispose();
-        _font.Dispose();
     }
 }

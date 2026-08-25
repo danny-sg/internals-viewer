@@ -10,6 +10,25 @@ namespace InternalsViewer.UI.App.ViewModels.Docking;
 /// </summary>
 public sealed partial class SplitNode : LayoutNode
 {
+    [ObservableProperty]
+    private Orientation _orientation;
+
+    [ObservableProperty]
+    private LayoutNode _first;
+
+    [ObservableProperty]
+    private LayoutNode _second;
+
+    /// <summary>Star weight of the first child; paired with <see cref="SecondStar"/> to size the two panes</summary>
+    [ObservableProperty]
+    private double _firstStar = 1;
+
+    [ObservableProperty]
+    private double _secondStar = 1;
+
+    [ObservableProperty]
+    private double? _firstPixels;
+
     public SplitNode(Orientation orientation, LayoutNode first, LayoutNode second)
     {
         Orientation = orientation;
@@ -20,30 +39,7 @@ public sealed partial class SplitNode : LayoutNode
         second.Parent = this;
     }
 
-    [ObservableProperty]
-    private Orientation _orientation;
-
-    [ObservableProperty]
-    private LayoutNode _first;
-
-    [ObservableProperty]
-    private LayoutNode _second;
-
-    /// <summary>Star weight of the first child; paired with <see cref="SecondStar"/> to size the two panes.</summary>
-    [ObservableProperty]
-    private double _firstStar = 1;
-
-    [ObservableProperty]
-    private double _secondStar = 1;
-
-    [ObservableProperty]
-    private double? _firstPixels;
-
-    partial void OnFirstChanged(LayoutNode value) => value.Parent = this;
-
-    partial void OnSecondChanged(LayoutNode value) => value.Parent = this;
-
-    /// <summary>Returns the child that is not <paramref name="node"/>, or <c>null</c> if it isn't a child.</summary>
+    /// <summary>Returns the child that is not <paramref name="node"/>, or <c>null</c> if it isn't a child</summary>
     public LayoutNode? Sibling(LayoutNode node)
     {
         if (ReferenceEquals(First, node))
@@ -65,4 +61,8 @@ public sealed partial class SplitNode : LayoutNode
             Second = replacement;
         }
     }
+
+    partial void OnFirstChanged(LayoutNode value) => value.Parent = this;
+
+    partial void OnSecondChanged(LayoutNode value) => value.Parent = this;
 }

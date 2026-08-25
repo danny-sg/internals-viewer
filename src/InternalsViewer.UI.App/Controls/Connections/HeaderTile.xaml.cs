@@ -5,36 +5,17 @@ namespace InternalsViewer.UI.App.Controls.Connections;
 
 public sealed partial class HeaderTile
 {
+    public static readonly DependencyProperty TitleProperty =
+        DependencyProperty.Register(nameof(Title), typeof(string), typeof(HeaderTile), new PropertyMetadata(null));
+
     public string Title
     {
         get { return (string)GetValue(TitleProperty); }
         set { SetValue(TitleProperty, value); }
     }
 
-    public static readonly DependencyProperty TitleProperty =
-        DependencyProperty.Register(nameof(Title), typeof(string), typeof(HeaderTile), new PropertyMetadata(null));
-
     public static readonly DependencyProperty FlyoutProperty =
         DependencyProperty.Register(nameof(Flyout), typeof(FlyoutBase), typeof(HeaderTile), new PropertyMetadata(null));
-
-    public string Description
-    {
-        get { return (string)GetValue(DescriptionProperty); }
-        set { SetValue(DescriptionProperty, value); }
-    }
-
-    public static readonly DependencyProperty DescriptionProperty =
-        DependencyProperty.Register(nameof(Description), typeof(string), typeof(HeaderTile), new PropertyMetadata(null));
-
-    public object Source
-    {
-        get { return GetValue(SourceProperty); }
-        set { SetValue(SourceProperty, value); }
-    }
-
-    public static readonly DependencyProperty SourceProperty =
-        DependencyProperty.Register(nameof(Source), typeof(object), typeof(HeaderTile), new PropertyMetadata(null));
-
 
     public FlyoutBase Flyout
     {
@@ -42,15 +23,33 @@ public sealed partial class HeaderTile
         set { SetValue(FlyoutProperty, value); }
     }
 
+    public static readonly DependencyProperty DescriptionProperty =
+        DependencyProperty.Register(nameof(Description), typeof(string), typeof(HeaderTile), new PropertyMetadata(null));
+
+    public string Description
+    {
+        get { return (string)GetValue(DescriptionProperty); }
+        set { SetValue(DescriptionProperty, value); }
+    }
+
+    public static readonly DependencyProperty SourceProperty =
+        DependencyProperty.Register(nameof(Source), typeof(object), typeof(HeaderTile), new PropertyMetadata(null));
+
+    public object Source
+    {
+        get { return GetValue(SourceProperty); }
+        set { SetValue(SourceProperty, value); }
+    }
+
     public HeaderTile()
     {
         InitializeComponent();
     }
 
+    public event EventHandler<RoutedEventArgs>? Click;
+
     private void Button_Click(object sender, RoutedEventArgs e)
     {
         Click?.Invoke(this, e);
     }
-
-    public event EventHandler<RoutedEventArgs>? Click;
 }

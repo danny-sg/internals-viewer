@@ -18,6 +18,8 @@ public sealed class EventColourProvider
 {
     private const double LatchDarkenFactor = 0.6;
 
+    private static readonly Color StatementColour = Color.FromArgb(255, 130, 130, 130);
+
     private readonly Dictionary<PlanNodeIdentifier, Color> _ioOperatorNodes;
 
     private readonly IReadOnlyDictionary<string, Color> _objectColours;
@@ -69,15 +71,13 @@ public sealed class EventColourProvider
     public Color? GetLatchMapColour(string? objectName) =>
         GetObjectColour(objectName) is { } colour ? Darken(colour, LatchDarkenFactor) : null;
 
-    private static Color Darken(Color c, double factor) =>
-        Color.FromArgb(c.A, (int)(c.R * factor), (int)(c.G * factor), (int)(c.B * factor));
-
-    private static readonly Color StatementColour = Color.FromArgb(255, 130, 130, 130);
-
     internal static Color GetOperatorColour(PlanNode node)
         => node.IsStatement
             ? StatementColour
             : GetOperatorCategoryColour(OperatorClassifier.GetCategory(node));
+
+    private static Color Darken(Color c, double factor) =>
+        Color.FromArgb(c.A, (int)(c.R * factor), (int)(c.G * factor), (int)(c.B * factor));
 
     private static Color GetOperatorCategoryColour(OperatorCategory category)
     {

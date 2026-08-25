@@ -10,6 +10,7 @@ namespace InternalsViewer.UI.App.Views.Columnstore.Tabs.Dictionary;
 
 public sealed partial class DecodeTabView : UserControl, IDisposable
 {
+    private const double ValuesMinWidth = 240;
     private DictionaryTabViewModel? _tracked;
 
     /// <summary>
@@ -22,8 +23,6 @@ public sealed partial class DecodeTabView : UserControl, IDisposable
     /// </remarks>
     private GridLength _huffmanWidth = new(2, GridUnitType.Star);
 
-    private const double ValuesMinWidth = 240;
-
     public DecodeTabView()
     {
         InitializeComponent();
@@ -33,6 +32,24 @@ public sealed partial class DecodeTabView : UserControl, IDisposable
     }
 
     public DictionaryTabViewModel ViewModel => (DictionaryTabViewModel)DataContext;
+
+    public void Dispose()
+    {
+        DataContextChanged -= OnDataContextChanged;
+
+        if (_tracked is not null)
+        {
+            _tracked.PropertyChanged -= OnViewModelPropertyChanged;
+
+            _tracked = null;
+        }
+
+        Bindings.StopTracking();
+
+        DecodeControl.Dispose();
+
+        TreeControl.Dispose();
+    }
 
     /// <summary>
     /// Follows the view model the tab hands over, letting go of the one before it
@@ -152,23 +169,5 @@ public sealed partial class DecodeTabView : UserControl, IDisposable
     private void CodeTable_OnSelectionChanged(object sender, SelectionChangedEventArgs e)
     {
         ViewModel.SelectedSymbol = ((TableView)sender).SelectedItem is HuffmanCodeDetail code ? code.Symbol : -1;
-    }
-
-    public void Dispose()
-    {
-        DataContextChanged -= OnDataContextChanged;
-
-        if (_tracked is not null)
-        {
-            _tracked.PropertyChanged -= OnViewModelPropertyChanged;
-
-            _tracked = null;
-        }
-
-        Bindings.StopTracking();
-
-        DecodeControl.Dispose();
-
-        TreeControl.Dispose();
     }
 }

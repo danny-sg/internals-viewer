@@ -13,13 +13,7 @@ namespace InternalsViewer.UI.App.Services;
 
 public class SettingsService
 {
-    private ILogger<SettingsService> Logger { get; }
-
     private readonly string localApplicationData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
-
-    private string ApplicationDataFolder { get; }
-
-    private string LocalSettingsFile { get; }
 
     private IDictionary<string, object> settings;
 
@@ -36,16 +30,11 @@ public class SettingsService
         settings = new Dictionary<string, object>();
     }
 
-    private async Task InitializeAsync()
-    {
-        if (!isInitialized)
-        {
-            settings = await FileHelpers.ReadFile<IDictionary<string, object>>(ApplicationDataFolder, LocalSettingsFile)
-                       ?? new Dictionary<string, object>();
+    private ILogger<SettingsService> Logger { get; }
 
-            isInitialized = true;
-        }
-    }
+    private string ApplicationDataFolder { get; }
+
+    private string LocalSettingsFile { get; }
 
     public async Task<T?> ReadSettingAsync<T>(string key)
     {
@@ -60,6 +49,29 @@ public class SettingsService
             Logger.LogError(ex, "Error reading setting {Key}", key);
 
             return default;
+        }
+    }
+
+    public async Task SaveSettingAsync<T>(string key, T value)
+    {
+        try
+        {
+            await SaveSettingInternal(key, value);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error saving setting {Key} - {value}", key, value);
+        }   
+    }
+
+    private async Task InitializeAsync()
+    {
+        if (!isInitialized)
+        {
+            settings = await FileHelpers.ReadFile<IDictionary<string, object>>(ApplicationDataFolder, LocalSettingsFile)
+                       ?? new Dictionary<string, object>();
+
+            isInitialized = true;
         }
     }
 
@@ -95,18 +107,6 @@ public class SettingsService
         }
 
         return default;
-    }
-
-    public async Task SaveSettingAsync<T>(string key, T value)
-    {
-        try
-        {
-            await SaveSettingInternal(key, value);
-        }
-        catch (Exception ex)
-        {
-            Logger.LogError(ex, "Error saving setting {Key} - {value}", key, value);
-        }   
     }
 
     private async Task SaveSettingInternal<T>(string key, T value)

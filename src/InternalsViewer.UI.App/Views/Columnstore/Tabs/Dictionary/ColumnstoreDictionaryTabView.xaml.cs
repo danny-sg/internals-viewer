@@ -27,56 +27,6 @@ public sealed partial class ColumnstoreDictionaryTabView : UserControl, IDocumen
         DataContextChanged += OnDataContextChanged;
     }
 
-    /// <summary>
-    /// Follows the view model the dock hands over, letting go of the one before it
-    /// </summary>
-    /// <remarks>
-    /// The event fires more than once over the life of a view, so subscribing without releasing the previous one
-    /// leaves handlers stacked up on the view model and every change doing its work several times over.
-    /// </remarks>
-    private void OnDataContextChanged(FrameworkElement sender, DataContextChangedEventArgs args)
-    {
-        Bindings.Update();
-
-        if (_tracked is not null)
-        {
-            _tracked.PropertyChanged -= OnViewModelPropertyChanged;
-        }
-
-        _tracked = DataContext as DictionaryTabViewModel;
-
-        if (_tracked is not null)
-        {
-            _tracked.PropertyChanged += OnViewModelPropertyChanged;
-        }
-
-        RealizePanels();
-    }
-
-    private void OnViewModelPropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
-        => RealizePanels();
-
-    private void RealizePanels()
-    {
-        if (_tracked is not { } viewModel)
-        {
-            return;
-        }
-
-        Realize(ContentGrid, nameof(ContentGrid), viewModel.IsLoaded);
-        Realize(HandlesTable, nameof(HandlesTable), viewModel.HasHandles);
-        Realize(PagesPanel, nameof(PagesPanel), viewModel.HasPages);
-        Realize(EntriesTable, nameof(EntriesTable), viewModel.IsEntriesTabLoaded);
-    }
-
-    private void Realize(object? element, string name, bool isWanted)
-    {
-        if (element is null && isWanted)
-        {
-            FindName(name);
-        }
-    }
-
     public DictionaryTabViewModel ViewModel => (DictionaryTabViewModel)DataContext;
 
     public Visibility GetTabContentVisibility(int selectedIndex, int index)
@@ -137,6 +87,80 @@ public sealed partial class ColumnstoreDictionaryTabView : UserControl, IDocumen
         return panel;
     }
 
+    public void Dispose()
+    {
+        Loaded -= OnLoaded;
+
+        DataContextChanged -= OnDataContextChanged;
+
+        if (_tracked is not null)
+        {
+            _tracked.PropertyChanged -= OnViewModelPropertyChanged;
+
+            _tracked.Dispose();
+
+            _tracked = null;
+        }
+
+        // x:Bind listens to the view model, which outlives the view, so the view stays rooted until tracking stops
+        Bindings.StopTracking();
+
+        DecodeTab?.Dispose();
+
+        _cts.Cancel();
+        _cts.Dispose();
+    }
+
+    /// <summary>
+    /// Follows the view model the dock hands over, letting go of the one before it
+    /// </summary>
+    /// <remarks>
+    /// The event fires more than once over the life of a view, so subscribing without releasing the previous one
+    /// leaves handlers stacked up on the view model and every change doing its work several times over.
+    /// </remarks>
+    private void OnDataContextChanged(FrameworkElement sender, DataContextChangedEventArgs args)
+    {
+        Bindings.Update();
+
+        if (_tracked is not null)
+        {
+            _tracked.PropertyChanged -= OnViewModelPropertyChanged;
+        }
+
+        _tracked = DataContext as DictionaryTabViewModel;
+
+        if (_tracked is not null)
+        {
+            _tracked.PropertyChanged += OnViewModelPropertyChanged;
+        }
+
+        RealizePanels();
+    }
+
+    private void OnViewModelPropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
+        => RealizePanels();
+
+    private void RealizePanels()
+    {
+        if (_tracked is not { } viewModel)
+        {
+            return;
+        }
+
+        Realize(ContentGrid, nameof(ContentGrid), viewModel.IsLoaded);
+        Realize(HandlesTable, nameof(HandlesTable), viewModel.HasHandles);
+        Realize(PagesPanel, nameof(PagesPanel), viewModel.HasPages);
+        Realize(EntriesTable, nameof(EntriesTable), viewModel.IsEntriesTabLoaded);
+    }
+
+    private void Realize(object? element, string name, bool isWanted)
+    {
+        if (element is null && isWanted)
+        {
+            FindName(name);
+        }
+    }
+
     private void Handles_OnSelectionChanged(object sender, SelectionChangedEventArgs e)
     {
         ViewModel.SelectHandle(((TableView)sender).SelectedItem as DictionaryHandleDetail);
@@ -171,29 +195,5 @@ public sealed partial class ColumnstoreDictionaryTabView : UserControl, IDocumen
         Loaded -= OnLoaded;
 
         await ViewModel.Load(_cts.Token);
-    }
-
-    public void Dispose()
-    {
-        Loaded -= OnLoaded;
-
-        DataContextChanged -= OnDataContextChanged;
-
-        if (_tracked is not null)
-        {
-            _tracked.PropertyChanged -= OnViewModelPropertyChanged;
-
-            _tracked.Dispose();
-
-            _tracked = null;
-        }
-
-        // x:Bind listens to the view model, which outlives the view, so the view stays rooted until tracking stops
-        Bindings.StopTracking();
-
-        DecodeTab?.Dispose();
-
-        _cts.Cancel();
-        _cts.Dispose();
     }
 }

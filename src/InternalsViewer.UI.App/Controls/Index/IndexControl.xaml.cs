@@ -21,13 +21,20 @@ namespace InternalsViewer.UI.App.Controls.Index;
 
 public sealed partial class IndexControl : IDisposable
 {
-    public event EventHandler<PageAddressEventArgs>? PageClicked;
+    // Fit the content a touch inside the viewport; the slack stops the scrollbars flickering on at the exact boundary
+    // (a full-bleed fit can leave content == viewport, which flips a scrollbar on, shrinking the viewport, and so on).
+    private const float FitPadding = 0.95f;
 
-    public float Zoom
-    {
-        get => (float)GetValue(ZoomProperty);
-        set => SetValue(ZoomProperty, value);
-    }
+    private const float ZoomMiniMode = 0.8f;
+    private const float ZoomMaxiMode = 4f;
+
+    private const float ZoomToPageDurationMs = 450f;
+
+    private const float MinZoom = 0.05f;
+    private const float MaxZoom = 10.0f;
+    private const double DragThreshold = 4;
+
+    private static readonly SKTypeface DetailBoldTypeface = SKTypeface.FromFamilyName(SKTypeface.Default.FamilyName, SKFontStyle.Bold);
 
     public static readonly DependencyProperty ZoomProperty
         = DependencyProperty.Register(nameof(Zoom),
@@ -35,10 +42,10 @@ public sealed partial class IndexControl : IDisposable
                                       typeof(IndexControl),
                                       new PropertyMetadata(1F, OnPropertyChanged));
 
-    public bool IsZoomToFit
+    public float Zoom
     {
-        get => (bool)GetValue(IsZoomToFitProperty);
-        set => SetValue(IsZoomToFitProperty, value);
+        get => (float)GetValue(ZoomProperty);
+        set => SetValue(ZoomProperty, value);
     }
 
     public static readonly DependencyProperty IsZoomToFitProperty
@@ -47,10 +54,10 @@ public sealed partial class IndexControl : IDisposable
                                       typeof(IndexControl),
                                       new PropertyMetadata(true, OnPropertyChanged));
 
-    public PageAddress? SelectedPageAddress
+    public bool IsZoomToFit
     {
-        get => (PageAddress?)GetValue(SelectedPageAddressProperty);
-        set => SetValue(SelectedPageAddressProperty, value);
+        get => (bool)GetValue(IsZoomToFitProperty);
+        set => SetValue(IsZoomToFitProperty, value);
     }
 
     public static readonly DependencyProperty SelectedPageAddressProperty
@@ -59,10 +66,10 @@ public sealed partial class IndexControl : IDisposable
                                       typeof(IndexControl),
                                       new PropertyMetadata(null, OnPropertyChanged));
 
-    public int? SelectedSlot
+    public PageAddress? SelectedPageAddress
     {
-        get => (int?)GetValue(SelectedSlotProperty);
-        set => SetValue(SelectedSlotProperty, value);
+        get => (PageAddress?)GetValue(SelectedPageAddressProperty);
+        set => SetValue(SelectedPageAddressProperty, value);
     }
 
     public static readonly DependencyProperty SelectedSlotProperty
@@ -70,6 +77,18 @@ public sealed partial class IndexControl : IDisposable
             typeof(int?),
             typeof(IndexControl),
             new PropertyMetadata(null, OnPropertyChanged));
+
+    public int? SelectedSlot
+    {
+        get => (int?)GetValue(SelectedSlotProperty);
+        set => SetValue(SelectedSlotProperty, value);
+    }
+
+    public static readonly DependencyProperty SelectChildPathProperty
+        = DependencyProperty.Register(nameof(SelectChildPath),
+                                      typeof(bool),
+                                      typeof(IndexControl),
+                                      new PropertyMetadata(true, OnPropertyChanged));
 
     /// <summary>
     /// Draws the lines to the selected page's children in the selection colour with a heavier stroke
@@ -80,11 +99,11 @@ public sealed partial class IndexControl : IDisposable
         set => SetValue(SelectChildPathProperty, value);
     }
 
-    public static readonly DependencyProperty SelectChildPathProperty
-        = DependencyProperty.Register(nameof(SelectChildPath),
-                                      typeof(bool),
+    public static readonly DependencyProperty ZoomToSelectedPageAddressProperty
+        = DependencyProperty.Register(nameof(ZoomToSelectedPageAddress),
+                                      typeof(float?),
                                       typeof(IndexControl),
-                                      new PropertyMetadata(true, OnPropertyChanged));
+                                      new PropertyMetadata(null, OnPropertyChanged));
 
     public float? ZoomToSelectedPageAddress
     {
@@ -92,9 +111,9 @@ public sealed partial class IndexControl : IDisposable
         set => SetValue(ZoomToSelectedPageAddressProperty, value);
     }
 
-    public static readonly DependencyProperty ZoomToSelectedPageAddressProperty
-        = DependencyProperty.Register(nameof(ZoomToSelectedPageAddress),
-                                      typeof(float?),
+    public static readonly DependencyProperty PageSpansProperty
+        = DependencyProperty.Register(nameof(PageSpans),
+                                      typeof(IReadOnlyList<PageSpan>),
                                       typeof(IndexControl),
                                       new PropertyMetadata(null, OnPropertyChanged));
 
@@ -104,11 +123,11 @@ public sealed partial class IndexControl : IDisposable
         set => SetValue(PageSpansProperty, value);
     }
 
-    public static readonly DependencyProperty PageSpansProperty
-        = DependencyProperty.Register(nameof(PageSpans),
-                                      typeof(IReadOnlyList<PageSpan>),
+    public static readonly DependencyProperty PlayheadTimeUsProperty
+        = DependencyProperty.Register(nameof(PlayheadTimeUs),
+                                      typeof(long),
                                       typeof(IndexControl),
-                                      new PropertyMetadata(null, OnPropertyChanged));
+                                      new PropertyMetadata(0L, OnPropertyChanged));
 
     /// <summary>
     /// Current playhead position (microseconds) - drives which spans are currently active
@@ -119,29 +138,16 @@ public sealed partial class IndexControl : IDisposable
         set => SetValue(PlayheadTimeUsProperty, value);
     }
 
-    public static readonly DependencyProperty PlayheadTimeUsProperty
-        = DependencyProperty.Register(nameof(PlayheadTimeUs),
-                                      typeof(long),
-                                      typeof(IndexControl),
-                                      new PropertyMetadata(0L, OnPropertyChanged));
-
-    public Windows.UI.Color SingleSelectedColour
-    {
-        get => (Windows.UI.Color)GetValue(SingleSelectedColourProperty);
-        set => SetValue(SingleSelectedColourProperty, value);
-    }
-
     public static readonly DependencyProperty SingleSelectedColourProperty
         = DependencyProperty.Register(nameof(SingleSelectedColour),
                                       typeof(Windows.UI.Color),
                                       typeof(IndexControl),
                                       new PropertyMetadata(Microsoft.UI.Colors.Navy, OnPropertyChanged));
 
-
-    public Windows.UI.Color SelectedSlotColour
+    public Windows.UI.Color SingleSelectedColour
     {
-        get => (Windows.UI.Color)GetValue(SelectedSlotColourProperty);
-        set => SetValue(SelectedSlotColourProperty, value);
+        get => (Windows.UI.Color)GetValue(SingleSelectedColourProperty);
+        set => SetValue(SingleSelectedColourProperty, value);
     }
 
     public static readonly DependencyProperty SelectedSlotColourProperty
@@ -150,10 +156,10 @@ public sealed partial class IndexControl : IDisposable
             typeof(IndexControl),
             new PropertyMetadata(Microsoft.UI.Colors.Red, OnPropertyChanged));
 
-    public Windows.UI.Color SelectedBackgroundColour
+    public Windows.UI.Color SelectedSlotColour
     {
-        get => (Windows.UI.Color)GetValue(SelectedBackgroundColourProperty);
-        set => SetValue(SelectedBackgroundColourProperty, value);
+        get => (Windows.UI.Color)GetValue(SelectedSlotColourProperty);
+        set => SetValue(SelectedSlotColourProperty, value);
     }
 
     public static readonly DependencyProperty SelectedBackgroundColourProperty
@@ -162,10 +168,10 @@ public sealed partial class IndexControl : IDisposable
             typeof(IndexControl),
             new PropertyMetadata(Microsoft.UI.Colors.White, OnPropertyChanged));
 
-    public Windows.UI.Color RangeSelectedColour
+    public Windows.UI.Color SelectedBackgroundColour
     {
-        get => (Windows.UI.Color)GetValue(RangeSelectedColourProperty);
-        set => SetValue(RangeSelectedColourProperty, value);
+        get => (Windows.UI.Color)GetValue(SelectedBackgroundColourProperty);
+        set => SetValue(SelectedBackgroundColourProperty, value);
     }
 
     public static readonly DependencyProperty RangeSelectedColourProperty
@@ -174,15 +180,15 @@ public sealed partial class IndexControl : IDisposable
                                       typeof(IndexControl),
                                       new PropertyMetadata(Microsoft.UI.Colors.Navy, OnPropertyChanged));
 
-    private IndexNode? HoverNode
+    public Windows.UI.Color RangeSelectedColour
     {
-        get => (IndexNode?)GetValue(HoverNodeProperty);
-        set => SetValue(HoverNodeProperty, value);
+        get => (Windows.UI.Color)GetValue(RangeSelectedColourProperty);
+        set => SetValue(RangeSelectedColourProperty, value);
     }
 
-    private static readonly DependencyProperty HoverNodeProperty
-        = DependencyProperty.Register(nameof(HoverNode),
-            typeof(IndexNode),
+    public static readonly DependencyProperty HighlightedPageAddressesProperty
+        = DependencyProperty.Register(nameof(HighlightedPageAddresses),
+            typeof(ObservableCollection<PageAddress>),
             typeof(IndexControl),
             new PropertyMetadata(null, OnPropertyChanged));
 
@@ -192,49 +198,16 @@ public sealed partial class IndexControl : IDisposable
         set => SetValue(HighlightedPageAddressesProperty, value);
     }
 
-    public static readonly DependencyProperty HighlightedPageAddressesProperty
-        = DependencyProperty.Register(nameof(HighlightedPageAddresses),
-            typeof(ObservableCollection<PageAddress>),
-            typeof(IndexControl),
-            new PropertyMetadata(null, OnPropertyChanged));
-
-    public bool IsTooltipEnabled
-    {
-        get => (bool)GetValue(IsTooltipEnabledProperty);
-        set => SetValue(IsTooltipEnabledProperty, value);
-    }
-
     public static readonly DependencyProperty IsTooltipEnabledProperty
         = DependencyProperty.Register(nameof(IsTooltipEnabled),
             typeof(bool),
             typeof(AllocationControl),
             null);
 
-    private float _zoom = 1f;
-
-    private bool _isZoomToFit = true;
-
-    // True only while a fit-driven zoom is being applied, so that self-triggered zoom change is not mistaken for a
-    // manual one (which would switch fit off).
-    private bool _applyingFit;
-
-    // Fit the content a touch inside the viewport; the slack stops the scrollbars flickering on at the exact boundary
-    // (a full-bleed fit can leave content == viewport, which flips a scrollbar on, shrinking the viewport, and so on).
-    private const float FitPadding = 0.95f;
-
-    private const float ZoomMiniMode = 0.8f;
-    private const float ZoomMaxiMode = 4f;
-
-    private float PageWidth => 20 * _zoom;
-    private float PageHeight => 30 * _zoom;
-    private float HorizontalMargin => 20 * _zoom;
-    private float VerticalMargin => 60 * _zoom;
-    private float LevelMargin => 90 * _zoom;
-
-    public List<IndexNode> Nodes
+    public bool IsTooltipEnabled
     {
-        get => (List<IndexNode>)GetValue(NodesProperty);
-        set => SetValue(NodesProperty, value);
+        get => (bool)GetValue(IsTooltipEnabledProperty);
+        set => SetValue(IsTooltipEnabledProperty, value);
     }
 
     public static readonly DependencyProperty NodesProperty
@@ -243,12 +216,28 @@ public sealed partial class IndexControl : IDisposable
                                       typeof(IndexControl),
                                       new PropertyMetadata(new(), OnPropertyChanged));
 
+    public List<IndexNode> Nodes
+    {
+        get => (List<IndexNode>)GetValue(NodesProperty);
+        set => SetValue(NodesProperty, value);
+    }
+
+    private static readonly DependencyProperty HoverNodeProperty
+        = DependencyProperty.Register(nameof(HoverNode),
+            typeof(IndexNode),
+            typeof(IndexControl),
+            new PropertyMetadata(null, OnPropertyChanged));
+
+    private IndexNode? HoverNode
+    {
+        get => (IndexNode?)GetValue(HoverNodeProperty);
+        set => SetValue(HoverNodeProperty, value);
+    }
+
     private readonly SKPaint _indexPagePaint;
     private readonly SKPaint _linePaint;
     private readonly SKPaint _detailTextPaint;
     private readonly SKPaint _slotPaint;
-
-    private static readonly SKTypeface DetailBoldTypeface = SKTypeface.FromFamilyName(SKTypeface.Default.FamilyName, SKFontStyle.Bold);
 
     private readonly SKFont _detailFont = new(SKTypeface.Default, 10f);
     private readonly SKFont _detailBoldFont = new(DetailBoldTypeface, 10f);
@@ -257,9 +246,6 @@ public sealed partial class IndexControl : IDisposable
     private readonly SKColor _highlightedBorderColour = SKColors.Green;
     private readonly SKColor _lineColour = SKColors.DarkGray;
     private readonly SKColor _miniColour = SKColors.LightGray;
-
-    private SKColor _singleSelectedColour = SKColors.Navy;
-    private SKColor _rangeSelectedColour = SKColors.Navy;
 
     private readonly Dictionary<PageAddress, SKColor> _activeSpanColours = [];
 
@@ -274,16 +260,27 @@ public sealed partial class IndexControl : IDisposable
     private readonly Dictionary<int, int> _levelMaxColumnAfterParent = [];
 
     private readonly Dictionary<int, int> _levelMaxColumnBeforeParent = [];
-    private int _globalMaxColumn;
 
     private readonly Dictionary<PageAddress, int> _ordinalByAddress = [];
-    private int _levelCount;
 
     private readonly Dictionary<PageAddress, IndexTreeNode> _treeNodeByAddress = [];
 
-    private const float ZoomToPageDurationMs = 450f;
-
     private readonly Stopwatch _zoomToPageStopwatch = new();
+
+    private readonly SKPoint[] _linePoints = new SKPoint[5];
+
+    private float _zoom = 1f;
+
+    private bool _isZoomToFit = true;
+
+    // True only while a fit-driven zoom is being applied, so that self-triggered zoom change is not mistaken for a
+    // manual one (which would switch fit off).
+    private bool _applyingFit;
+
+    private SKColor _singleSelectedColour = SKColors.Navy;
+    private SKColor _rangeSelectedColour = SKColors.Navy;
+    private int _globalMaxColumn;
+    private int _levelCount;
 
     private bool _isZoomToPageRunning;
     private PageAddress _zoomToPageTargetAddress;
@@ -291,16 +288,6 @@ public sealed partial class IndexControl : IDisposable
     private float _zoomToPageTargetZoom;
     private float _zoomToPageStartLookAtX;
     private float _zoomToPageStartLookAtY;
-
-    private float NodeX(IndexTreeNode node) => GetNodeX(node.Column - 1);
-
-    private float NodeY(IndexTreeNode node) => GetNodeY(node.Node.Level, node.Row - 1);
-
-    private readonly SKPoint[] _linePoints = new SKPoint[5];
-
-    private const float MinZoom = 0.05f;
-    private const float MaxZoom = 10.0f;
-    private const double DragThreshold = 4;
 
     private bool _isPointerDown;
     private bool _isDragging;
@@ -355,57 +342,39 @@ public sealed partial class IndexControl : IDisposable
         };
     }
 
-    private static void OnPropertyChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
+    public event EventHandler<PageAddressEventArgs>? PageClicked;
+
+    private float PageWidth => 20 * _zoom;
+    private float PageHeight => 30 * _zoom;
+    private float HorizontalMargin => 20 * _zoom;
+    private float VerticalMargin => 60 * _zoom;
+    private float LevelMargin => 90 * _zoom;
+
+    public void Dispose()
     {
-        var control = (IndexControl)d;
+        StopZoomToSelectedPage();
 
-        if (e.Property == HoverNodeProperty)
-        {
-            return;
-        }
+        _indexPagePaint.Dispose();
+        _linePaint.Dispose();
+        _detailTextPaint.Dispose();
+        _detailFont.Dispose();
+        _detailBoldFont.Dispose();
+        _slotPaint.Dispose();
 
-        if (e.Property == ZoomProperty)
-        {
-            control._zoom = (float)e.NewValue;
+        Loaded -= IndexControl_OnLoaded;
 
-            if (!control._applyingFit)
-            {
-                control.IsZoomToFit = false;
-            }
-        }
-
-        if (e.Property == IsZoomToFitProperty)
-        {
-            control._isZoomToFit = (bool)e.NewValue;
-        }
-
-        if (e.Property == NodesProperty)
-        {
-            control.BuildIndexTree();
-        }
-
-        if (e.Property == ZoomProperty)
-        {
-            control.UpdateScrollbarsCentredOnZoom((float)e.OldValue, (float)e.NewValue);
-        }
-        else if (e.Property == NodesProperty)
-        {
-            control.UpdateScrollbars();
-        }
-
-        if (e.Property == NodesProperty || (e.Property == IsZoomToFitProperty && control._isZoomToFit))
-        {
-            control.ApplyZoomToFit();
-        }
-
-        if (e.Property == ZoomToSelectedPageAddressProperty ||
-            (e.Property == SelectedPageAddressProperty && control.ZoomToSelectedPageAddress is > 0))
-        {
-            control.StartZoomToSelectedPage();
-        }
-
-        control.IndexCanvas.Invalidate();
+        IndexCanvas.PaintSurface -= IndexCanvas_PaintSurface;
+        IndexCanvas.PointerMoved -= IndexCanvas_PointerMoved;
+        IndexCanvas.PointerExited -= IndexCanvas_OnPointerExited;
+        IndexCanvas.PointerPressed -= IndexCanvas_PointerPressed;
+        IndexCanvas.PointerReleased -= IndexCanvas_PointerReleased;
+        IndexCanvas.PointerCaptureLost -= IndexCanvas_PointerReleased;
+        IndexCanvas.PointerWheelChanged -= IndexCanvas_PointerWheelChanged;
     }
+
+    private float NodeX(IndexTreeNode node) => GetNodeX(node.Column - 1);
+
+    private float NodeY(IndexTreeNode node) => GetNodeY(node.Node.Level, node.Row - 1);
 
     /// <summary>
     /// When fit mode is on, sets <see cref="Zoom"/> so the whole tree fits the viewport
@@ -1077,7 +1046,7 @@ public sealed partial class IndexControl : IDisposable
     }
 
     /// <summary>
-    /// Draws the page header when zoomed in far enough (maxi-mode) to show readable text.
+    /// Draws the page header when zoomed in far enough (maxi-mode) to show readable text
     /// </summary>
     /// <remarks>
     /// The header occupies the top two rows of the page:
@@ -1123,7 +1092,7 @@ public sealed partial class IndexControl : IDisposable
     }
 
     /// <summary>
-    /// Draws text centred within a cell, shrinking the font so it fits the cell width.
+    /// Draws text centred within a cell, shrinking the font so it fits the cell width
     /// </summary>
     private void DrawCellText(SKCanvas canvas,
                               string text,
@@ -1382,7 +1351,7 @@ public sealed partial class IndexControl : IDisposable
     }
 
     /// <summary>
-    /// Pans the view while dragging, otherwise tracks the hovered node to drive the tooltip.
+    /// Pans the view while dragging, otherwise tracks the hovered node to drive the tooltip
     /// </summary>
     private void IndexCanvas_PointerMoved(object sender, PointerRoutedEventArgs e)
     {
@@ -1554,25 +1523,55 @@ public sealed partial class IndexControl : IDisposable
         return null;
     }
 
-    public void Dispose()
+    private static void OnPropertyChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
     {
-        StopZoomToSelectedPage();
+        var control = (IndexControl)d;
 
-        _indexPagePaint.Dispose();
-        _linePaint.Dispose();
-        _detailTextPaint.Dispose();
-        _detailFont.Dispose();
-        _detailBoldFont.Dispose();
-        _slotPaint.Dispose();
+        if (e.Property == HoverNodeProperty)
+        {
+            return;
+        }
 
-        Loaded -= IndexControl_OnLoaded;
+        if (e.Property == ZoomProperty)
+        {
+            control._zoom = (float)e.NewValue;
 
-        IndexCanvas.PaintSurface -= IndexCanvas_PaintSurface;
-        IndexCanvas.PointerMoved -= IndexCanvas_PointerMoved;
-        IndexCanvas.PointerExited -= IndexCanvas_OnPointerExited;
-        IndexCanvas.PointerPressed -= IndexCanvas_PointerPressed;
-        IndexCanvas.PointerReleased -= IndexCanvas_PointerReleased;
-        IndexCanvas.PointerCaptureLost -= IndexCanvas_PointerReleased;
-        IndexCanvas.PointerWheelChanged -= IndexCanvas_PointerWheelChanged;
+            if (!control._applyingFit)
+            {
+                control.IsZoomToFit = false;
+            }
+        }
+
+        if (e.Property == IsZoomToFitProperty)
+        {
+            control._isZoomToFit = (bool)e.NewValue;
+        }
+
+        if (e.Property == NodesProperty)
+        {
+            control.BuildIndexTree();
+        }
+
+        if (e.Property == ZoomProperty)
+        {
+            control.UpdateScrollbarsCentredOnZoom((float)e.OldValue, (float)e.NewValue);
+        }
+        else if (e.Property == NodesProperty)
+        {
+            control.UpdateScrollbars();
+        }
+
+        if (e.Property == NodesProperty || (e.Property == IsZoomToFitProperty && control._isZoomToFit))
+        {
+            control.ApplyZoomToFit();
+        }
+
+        if (e.Property == ZoomToSelectedPageAddressProperty ||
+            (e.Property == SelectedPageAddressProperty && control.ZoomToSelectedPageAddress is > 0))
+        {
+            control.StartZoomToSelectedPage();
+        }
+
+        control.IndexCanvas.Invalidate();
     }
 }

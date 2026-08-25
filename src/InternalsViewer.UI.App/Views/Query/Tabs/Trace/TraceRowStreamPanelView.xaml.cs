@@ -6,8 +6,6 @@ namespace InternalsViewer.UI.App.Views.Query.Tabs.Trace;
 
 public sealed partial class TraceRowStreamPanelView : UserControl
 {
-    public TraceRowStreamViewModel? ViewModel => DataContext as TraceRowStreamViewModel;
-
     private TraceRowStreamViewModel? _subscribed;
 
     public TraceRowStreamPanelView()
@@ -21,6 +19,8 @@ public sealed partial class TraceRowStreamPanelView : UserControl
             Resubscribe();
         };
     }
+
+    public TraceRowStreamViewModel? ViewModel => DataContext as TraceRowStreamViewModel;
 
     private void Resubscribe()
     {

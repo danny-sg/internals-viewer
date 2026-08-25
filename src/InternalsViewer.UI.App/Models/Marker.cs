@@ -9,6 +9,18 @@ namespace InternalsViewer.UI.App.Models;
 
 public class Marker: DependencyObject
 {
+    public static readonly DependencyProperty ChildrenProperty =
+        DependencyProperty.Register(nameof(Children),
+            typeof(ObservableCollection<Marker>),
+            typeof(Marker),
+            new PropertyMetadata(new ObservableCollection<Marker>()));
+
+    public ObservableCollection<Marker> Children
+    {
+        get => (ObservableCollection<Marker>)GetValue(ChildrenProperty);
+        set => SetValue(ChildrenProperty, value);
+    }
+
     public string Name { get; set; } = string.Empty;
 
     public int StartPosition { get; set; }
@@ -40,31 +52,19 @@ public class Marker: DependencyObject
     public bool IsNull { get; set; }
 
     public bool IsVisible { get; set; } = true;
-        
+
     public MarkerType MarkerType { get; set; }
-        
+
     public ItemType Type { get; set; }
 
     public int? Ordinal { get; set; }
 
     public string[] Tags { get; set; } = [];
 
+    public bool HasKey { get; set; }
+
     public static Marker? GetMarkerAtPosition(int startPosition, int endPosition, List<Marker> markers)
     {
         return markers.FirstOrDefault(marker => marker.StartPosition >= startPosition & marker.EndPosition <= endPosition);
     }
-
-    public ObservableCollection<Marker> Children
-    {
-        get => (ObservableCollection<Marker>)GetValue(ChildrenProperty);
-        set => SetValue(ChildrenProperty, value);
-    }
-
-    public static readonly DependencyProperty ChildrenProperty =
-        DependencyProperty.Register(nameof(Children),
-            typeof(ObservableCollection<Marker>),
-            typeof(Marker),
-            new PropertyMetadata(new ObservableCollection<Marker>()));
-
-    public bool HasKey { get; set; }
 }

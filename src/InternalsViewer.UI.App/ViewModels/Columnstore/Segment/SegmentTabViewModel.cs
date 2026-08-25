@@ -27,10 +27,50 @@ public sealed partial class SegmentTabViewModel(ILogger<SegmentTabViewModel> log
                                                 SegmentSummary segment,
                                                 Action<SegmentSummary>? openDictionary = null) : ObservableObject, IDisposable
 {
+    private const int SpinnerDelayMs = 100;
+
+    private string? _statusBeforePreparing;
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasBookmarks))]
+    [NotifyPropertyChangedFor(nameof(Bookmarks))]
+    [NotifyPropertyChangedFor(nameof(BitpackUnits))]
+    [NotifyPropertyChangedFor(nameof(HasRleArray))]
+    [NotifyPropertyChangedFor(nameof(RleRuns))]
+    [NotifyPropertyChangedFor(nameof(RleValueLabel))]
+    [NotifyPropertyChangedFor(nameof(HexAreas))]
+    [NotifyPropertyChangedFor(nameof(RleIndexLabel))]
+    [NotifyPropertyChangedFor(nameof(HasBitpackArray))]
+    [NotifyPropertyChangedFor(nameof(HasVariableLengthData))]
+    [NotifyPropertyChangedFor(nameof(StorageBadges))]
+    private SegmentBlob? _blob;
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsBusy))]
+    private bool _isLoaded;
+
     /// <summary>
-    /// Opens the dictionary the segment reads, which only the dock above this tab knows how to do
+    /// Whether the tabs are being laid out before they are shown, which the reader waits through as part of loading
     /// </summary>
-    private Action<SegmentSummary>? OpenDictionaryAction { get; } = openDictionary;
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsBusy))]
+    private bool _isPreparing;
+
+    [ObservableProperty]
+    private bool _isSegmentLoading;
+
+    [ObservableProperty]
+    private string _statusText = "Loading Segment...";
+
+    /// <summary>
+    /// Whether the grids show the working behind a value, or only the value itself
+    /// </summary>
+    /// <remarks>
+    /// The flag reaches a cell through the row it is bound to, so the rows are rebuilt to take a change. Both lists
+    /// are cheap to rebuild, one being an index over the segment and the other a single packed unit.
+    /// </remarks>
+    [ObservableProperty]
+    private bool _isDerivationVisible = true;
 
     public bool HasDictionary => Segment.HasDictionary;
 
@@ -40,17 +80,6 @@ public sealed partial class SegmentTabViewModel(ILogger<SegmentTabViewModel> log
     public IReadOnlyList<SegmentBadge> DictionaryBadges => Segment.Dictionary is not { } dictionary
         ? []
         : [SegmentBadge.Create(Segment.DictionaryScope, ColumnstoreLayout.GetDictionaryColour(dictionary.Type))];
-
-    public void OpenDictionary() => OpenDictionaryAction?.Invoke(Segment);
-
-    public string GetCsIndexCommand(int printMode)
-        => CsIndexCommand.Build(Segment, Database.DatabaseId, Segment.Segment.Key.HobtId, printMode);
-
-    private ILogger<SegmentTabViewModel> Logger { get; } = logger;
-
-    private ColumnstoreService ColumnstoreService { get; } = columnstoreService;
-
-    private DatabaseSource Database { get; } = database;
 
     public SegmentSummary Segment { get; } = segment;
 
@@ -69,29 +98,6 @@ public sealed partial class SegmentTabViewModel(ILogger<SegmentTabViewModel> log
 
     public int DataLength => Segment.Structure?.DataLength ?? 0;
 
-    [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(HasBookmarks))]
-    [NotifyPropertyChangedFor(nameof(Bookmarks))]
-    [NotifyPropertyChangedFor(nameof(BitpackUnits))]
-    [NotifyPropertyChangedFor(nameof(HasRleArray))]
-    [NotifyPropertyChangedFor(nameof(RleRuns))]
-    [NotifyPropertyChangedFor(nameof(RleValueLabel))]
-    [NotifyPropertyChangedFor(nameof(HexAreas))]
-    [NotifyPropertyChangedFor(nameof(RleIndexLabel))]
-    [NotifyPropertyChangedFor(nameof(HasBitpackArray))]
-    [NotifyPropertyChangedFor(nameof(HasVariableLengthData))]
-    [NotifyPropertyChangedFor(nameof(StorageBadges))]
-    private SegmentBlob? _blob;
-
-    partial void OnBlobChanged(SegmentBlob? value)
-    {
-        _rleRuns = null;
-        _bookmarks = null;
-        _bitpackUnits = null;
-        _hexAreas = null;
-        _dataIdStream = null;
-    }
-
     public IReadOnlyList<SegmentBadge> EncodingBadges =>
     [
         SegmentBadge.Create(Segment.EncodingDescription, ColumnstoreLayout.GetEncodingColour(Segment.Encoding))
@@ -109,49 +115,7 @@ public sealed partial class SegmentTabViewModel(ILogger<SegmentTabViewModel> log
         }
     }
 
-    private void GoToOffset(int offset) => Hex.GoToOffset(offset);
-
-    private SegmentValueDecoder? Decoder { get; set; }
-
-    [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(IsBusy))]
-    private bool _isLoaded;
-
-    /// <summary>
-    /// Whether the tabs are being laid out before they are shown, which the reader waits through as part of loading
-    /// </summary>
-    [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(IsBusy))]
-    private bool _isPreparing;
-
     public bool IsBusy => !IsLoaded || IsPreparing;
-
-    private string? _statusBeforePreparing;
-
-    partial void OnIsPreparingChanged(bool value)
-    {
-        if (value)
-        {
-            _statusBeforePreparing = StatusText;
-
-            StatusText = "Loading...";
-
-            return;
-        }
-
-        if (_statusBeforePreparing is { } previous)
-        {
-            StatusText = previous;
-        }
-    }
-
-    [ObservableProperty]
-    private bool _isSegmentLoading;
-
-    private const int SpinnerDelayMs = 100;
-
-    [ObservableProperty]
-    private string _statusText = "Loading Segment...";
 
     /// <summary>
     /// The whole segment blob, the regions being ranges within it rather than blobs of their own
@@ -161,47 +125,22 @@ public sealed partial class SegmentTabViewModel(ILogger<SegmentTabViewModel> log
     public ObservableCollection<SegmentElement> Elements { get; } = [];
 
     /// <summary>
-    /// Whether the grids show the working behind a value, or only the value itself
+    /// Opens the dictionary the segment reads, which only the dock above this tab knows how to do
     /// </summary>
-    /// <remarks>
-    /// The flag reaches a cell through the row it is bound to, so the rows are rebuilt to take a change. Both lists
-    /// are cheap to rebuild, one being an index over the segment and the other a single packed unit.
-    /// </remarks>
-    [ObservableProperty]
-    private bool _isDerivationVisible = true;
+    private Action<SegmentSummary>? OpenDictionaryAction { get; } = openDictionary;
 
-    partial void OnIsDerivationVisibleChanged(bool value)
-    {
-        if (Blob is { } blob)
-        {
-            BuildRows(blob);
-        }
+    private ILogger<SegmentTabViewModel> Logger { get; } = logger;
 
-        BitpackUnit = GetBitpackUnit(Hex.SelectedMarker);
-    }
+    private ColumnstoreService ColumnstoreService { get; } = columnstoreService;
 
-    /// <summary>
-    /// The working behind a row's value, which a wide store answers by ordinal rather than by data id
-    /// </summary>
-    private ValueDerivation? DeriveValueTimed(int ordinal, long dataId)
-    {
-        using var timing = Logger.Time("Derive row value", $"row {ordinal}");
+    private DatabaseSource Database { get; } = database;
 
-        return DeriveValue(ordinal, dataId);
-    }
+    private SegmentValueDecoder? Decoder { get; set; }
 
-    private ValueDerivation? DeriveValue(int ordinal, long dataId)
-    {
-        if (Blob?.VariableLengthData is { IsWide: true } store)
-        {
-            return SegmentValueDerivation.BuildWide(Segment.Segment, store, ordinal);
-        }
+    public void OpenDictionary() => OpenDictionaryAction?.Invoke(Segment);
 
-        return DeriveDataIdValue(dataId);
-    }
-
-    private ValueDerivation? DeriveDataIdValue(long dataId)
-        => Decoder is { } decoder ? SegmentValueDerivation.Build(Segment.Segment, decoder, dataId) : null;
+    public string GetCsIndexCommand(int printMode)
+        => CsIndexCommand.Build(Segment, Database.DatabaseId, Segment.Segment.Key.HobtId, printMode);
 
     public async Task Load(CancellationToken cancellationToken)
     {
@@ -270,6 +209,78 @@ public sealed partial class SegmentTabViewModel(ILogger<SegmentTabViewModel> log
         }
     }
 
+    public void Dispose()
+    {
+        Hex.WindowMoved -= OnWindowMoved;
+
+        Hex.PropertyChanged -= OnHexPropertyChanged;
+
+        Hex.Dispose();
+
+        PayloadHex.Dispose();
+    }
+
+    partial void OnBlobChanged(SegmentBlob? value)
+    {
+        _rleRuns = null;
+        _bookmarks = null;
+        _bitpackUnits = null;
+        _hexAreas = null;
+        _dataIdStream = null;
+    }
+
+    private void GoToOffset(int offset) => Hex.GoToOffset(offset);
+
+    partial void OnIsPreparingChanged(bool value)
+    {
+        if (value)
+        {
+            _statusBeforePreparing = StatusText;
+
+            StatusText = "Loading...";
+
+            return;
+        }
+
+        if (_statusBeforePreparing is { } previous)
+        {
+            StatusText = previous;
+        }
+    }
+
+    partial void OnIsDerivationVisibleChanged(bool value)
+    {
+        if (Blob is { } blob)
+        {
+            BuildRows(blob);
+        }
+
+        BitpackUnit = GetBitpackUnit(Hex.SelectedMarker);
+    }
+
+    /// <summary>
+    /// The working behind a row's value, which a wide store answers by ordinal rather than by data id
+    /// </summary>
+    private ValueDerivation? DeriveValueTimed(int ordinal, long dataId)
+    {
+        using var timing = Logger.Time("Derive row value", $"row {ordinal}");
+
+        return DeriveValue(ordinal, dataId);
+    }
+
+    private ValueDerivation? DeriveValue(int ordinal, long dataId)
+    {
+        if (Blob?.VariableLengthData is { IsWide: true } store)
+        {
+            return SegmentValueDerivation.BuildWide(Segment.Segment, store, ordinal);
+        }
+
+        return DeriveDataIdValue(dataId);
+    }
+
+    private ValueDerivation? DeriveDataIdValue(long dataId)
+        => Decoder is { } decoder ? SegmentValueDerivation.Build(Segment.Segment, decoder, dataId) : null;
+
     /// <summary>
     /// Holds the spinner back so a segment that reads straight away does not flash one up
     /// </summary>
@@ -288,16 +299,5 @@ public sealed partial class SegmentTabViewModel(ILogger<SegmentTabViewModel> log
         {
             // The segment read finished inside the delay, so no spinner is wanted
         }
-    }
-
-    public void Dispose()
-    {
-        Hex.WindowMoved -= OnWindowMoved;
-
-        Hex.PropertyChanged -= OnHexPropertyChanged;
-
-        Hex.Dispose();
-
-        PayloadHex.Dispose();
     }
 }

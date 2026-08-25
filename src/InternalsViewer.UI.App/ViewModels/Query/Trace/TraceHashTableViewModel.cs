@@ -25,6 +25,20 @@ public sealed partial class TraceHashTableViewModel(RecordColumnFilter columnFil
 
     private const int FirstValueColumn = 2;
 
+    private readonly List<HashEntryModel> _matchedEntries = [];
+
+    private List<HashBucketModel>? _bucketModels;
+
+    private int _syncedRowCount;
+
+    private HashBucketModel? _currentBucket;
+
+    private HashEntryModel? _currentEntry;
+
+    private bool _suppressResize;
+
+    private IReadOnlyList<HashColumnModel>? _placeholderColumns;
+
     [ObservableProperty]
     private IReadOnlyList<HashBucketModel> _buckets = [];
 
@@ -39,20 +53,6 @@ public sealed partial class TraceHashTableViewModel(RecordColumnFilter columnFil
 
     private IHashTableIterator? Iterator { get; set; }
 
-    private List<HashBucketModel>? _bucketModels;
-
-    private int _syncedRowCount;
-
-    private HashBucketModel? _currentBucket;
-
-    private HashEntryModel? _currentEntry;
-
-    private readonly List<HashEntryModel> _matchedEntries = [];
-
-    private bool _suppressResize;
-
-    private IReadOnlyList<HashColumnModel>? _placeholderColumns;
-
     /// <summary>
     /// Binds to the iterator that fills this table, which is a new one each time the trace is opened
     /// </summary>
@@ -65,18 +65,6 @@ public sealed partial class TraceHashTableViewModel(RecordColumnFilter columnFil
         BucketCount = iterator.Table.BucketCount;
 
         _suppressResize = false;
-
-        Sync(null);
-    }
-
-    partial void OnBucketCountChanged(int value)
-    {
-        if (_suppressResize || Iterator is not { } iterator)
-        {
-            return;
-        }
-
-        iterator.SetBucketCount(value);
 
         Sync(null);
     }
@@ -168,6 +156,18 @@ public sealed partial class TraceHashTableViewModel(RecordColumnFilter columnFil
         Buckets = [];
         Columns = HashColumnModel.CreateBaseColumns();
         Summary = string.Empty;
+    }
+
+    partial void OnBucketCountChanged(int value)
+    {
+        if (_suppressResize || Iterator is not { } iterator)
+        {
+            return;
+        }
+
+        iterator.SetBucketCount(value);
+
+        Sync(null);
     }
 
     private static (int Bucket, int Entry)? Added(AccessStep step)

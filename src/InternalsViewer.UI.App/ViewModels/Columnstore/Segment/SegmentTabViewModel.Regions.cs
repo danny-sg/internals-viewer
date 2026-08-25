@@ -26,6 +26,33 @@ public sealed partial class SegmentTabViewModel
 
     private SegmentDataIdStream? _dataIdStream;
 
+    /// <summary>
+    /// Unit the bit ruler breaks apart, found from the marker selected in the bit pack region
+    /// </summary>
+    [ObservableProperty]
+    private BitpackUnitDetail? _bitpackUnit;
+
+    /// <summary>
+    /// Every row of the segment, indexed rather than materialised so the grid only ever builds what it shows
+    /// </summary>
+    [ObservableProperty]
+    private SegmentRowList? _rows;
+
+    [ObservableProperty]
+    private string _rowCountDescription = string.Empty;
+
+    [ObservableProperty]
+    private SegmentRowDetail? _selectedRow;
+
+    /// <summary>
+    /// Fields of the store itself, which the page list above the tabs does not stand for
+    /// </summary>
+    [ObservableProperty]
+    private ObservableCollection<Marker> _variableLengthDataHeaderMarkers = [];
+
+    [ObservableProperty]
+    private ObservableCollection<Marker> _valuePageMarkers = [];
+
     public bool HasBookmarks => Blob is { Header.BookmarkCount: > 0 };
 
     /// <summary>
@@ -33,34 +60,25 @@ public sealed partial class SegmentTabViewModel
     /// </summary>
     public IReadOnlyList<BookmarkDetail> Bookmarks => _bookmarks ??= BuildBookmarks();
 
-    private IReadOnlyList<BookmarkDetail> BuildBookmarks()
-    {
-        if (Blob is not { } blob)
-        {
-            return [];
-        }
+    /// <summary>
+    /// Units of the bit pack array, listed lazily, a segment holding hundreds of thousands of them
+    /// </summary>
+    public BitpackUnitList? BitpackUnits => Blob is { Header.HasBitpackArray: true } blob
+        ? _bitpackUnits ??= new BitpackUnitList(blob)
+        : null;
 
-        using var timing = Logger.Time("Build bookmarks", $"{blob.Bookmarks.Length} bookmarks");
+    /// <summary>
+    /// The RLE array as a run of rows each entry covers, which the map draws to show the shape of the array
+    /// </summary>
+    public IReadOnlyList<RleRunDetail> RleRuns => _rleRuns ??= BuildRleRuns();
 
-        var details = new List<BookmarkDetail>(blob.Bookmarks.Length);
+    public string RleValueLabel => Blob?.Header.IsVariableLengthData == true ? "Repeat" : "Value";
 
-        for (var i = 0; i < blob.Bookmarks.Length; i++)
-        {
-            var bookmark = blob.Bookmarks[i];
+    public string RleIndexLabel => Blob?.Header.IsVariableLengthData == true ? "Read" : "Bit Pack";
 
-            var rleEntryIndex = bookmark.GetRleEntryIndex(blob.Header.RleEntryBytes);
+    public bool HasRleArray => Blob?.Header.HasRleArray ?? false;
 
-            details.Add(new BookmarkDetail(i,
-                                           bookmark.Position,
-                                           rleEntryIndex,
-                                           bookmark.EndRow,
-                                           blob.Header.BookmarkArrayOffset + (i * SegmentBlob.EntrySize),
-                                           blob.Header.RleEntryBytes,
-                                           blob.Header.RleArrayOffset + (rleEntryIndex * blob.Header.RleEntryBytes)));
-        }
-
-        return details;
-    }
+    public bool HasBitpackArray => Blob?.Header.HasBitpackArray ?? false;
 
     public void SelectBookmark(BookmarkDetail? bookmark)
     {
@@ -69,13 +87,6 @@ public sealed partial class SegmentTabViewModel
             GoToTarget(new SegmentNavigationTarget(SegmentRegion.Bookmarks, bookmark.Offset));
         }
     }
-
-    /// <summary>
-    /// Units of the bit pack array, listed lazily, a segment holding hundreds of thousands of them
-    /// </summary>
-    public BitpackUnitList? BitpackUnits => Blob is { Header.HasBitpackArray: true } blob
-        ? _bitpackUnits ??= new BitpackUnitList(blob)
-        : null;
 
     public void SelectBitpackUnit(BitpackUnitRow? row)
     {
@@ -88,57 +99,6 @@ public sealed partial class SegmentTabViewModel
 
         GoToTarget(new SegmentNavigationTarget(SegmentRegion.BitpackArray, row.Offset));
     }
-
-    /// <summary>
-    /// The RLE array as a run of rows each entry covers, which the map draws to show the shape of the array
-    /// </summary>
-    public IReadOnlyList<RleRunDetail> RleRuns => _rleRuns ??= BuildRleRuns();
-
-    private IReadOnlyList<RleRunDetail> BuildRleRuns()
-    {
-        if (Blob is not { } blob || !blob.Header.HasRleArray)
-        {
-            return [];
-        }
-
-        using var timing = Logger.Time("Build RLE runs", $"{blob.RleEntries.Length} entries");
-
-        var runs = new List<RleRunDetail>(blob.RleEntries.Length);
-
-        var row = 0;
-
-        for (var i = 0; i < blob.RleEntries.Length; i++)
-        {
-            var entry = blob.RleEntries[i];
-
-            var address = entry.PageSlot;
-
-            var storeOrdinal = blob.VariableLengthData is { } store && address is { } located
-                ? store.GetOrdinal(located.Page, located.Slot)
-                : -1;
-
-            runs.Add(new RleRunDetail(i,
-                                      row,
-                                      entry.Count,
-                                      entry.IsValue,
-                                      entry.IsValue ? entry.Value : entry.BitpackIndex,
-                                      blob.Header.RleArrayOffset + (i * blob.Header.RleEntryBytes),
-                                      address,
-                                      storeOrdinal));
-
-            row += entry.Count;
-        }
-
-        return runs;
-    }
-
-    public string RleValueLabel => Blob?.Header.IsVariableLengthData == true ? "Repeat" : "Value";
-
-    public string RleIndexLabel => Blob?.Header.IsVariableLengthData == true ? "Read" : "Bit Pack";
-
-    public bool HasRleArray => Blob?.Header.HasRleArray ?? false;
-
-    public bool HasBitpackArray => Blob?.Header.HasBitpackArray ?? false;
 
     public void SelectRun(RleRunDetail? run)
     {
@@ -172,10 +132,97 @@ public sealed partial class SegmentTabViewModel
     }
 
     /// <summary>
-    /// Unit the bit ruler breaks apart, found from the marker selected in the bit pack region
+    /// Takes the row the grid picked, moves the window onto where its value was read from and marks it
     /// </summary>
-    [ObservableProperty]
-    private BitpackUnitDetail? _bitpackUnit;
+    /// <remarks>
+    /// A row stands for its ordinal, so the grid handing back an equal instance leaves the property unchanged and
+    /// nothing would rebuild. The marker is for what is selected now, so it is built either way.
+    /// </remarks>
+    public void SelectRow(SegmentRowDetail? row)
+    {
+        SelectedRow = row;
+
+        if (row is null || Blob is null)
+        {
+            Hex.BuildMarkers();
+
+            return;
+        }
+
+        if (GetRowSource(row.Ordinal) is { } source)
+        {
+            GoToOffset(source.Offset);
+
+            Hex.SelectedMarker = MarkerLookup.FindByType(Hex.Markers, ItemType.SegmentRowSource);
+        }
+    }
+
+    private IReadOnlyList<BookmarkDetail> BuildBookmarks()
+    {
+        if (Blob is not { } blob)
+        {
+            return [];
+        }
+
+        using var timing = Logger.Time("Build bookmarks", $"{blob.Bookmarks.Length} bookmarks");
+
+        var details = new List<BookmarkDetail>(blob.Bookmarks.Length);
+
+        for (var i = 0; i < blob.Bookmarks.Length; i++)
+        {
+            var bookmark = blob.Bookmarks[i];
+
+            var rleEntryIndex = bookmark.GetRleEntryIndex(blob.Header.RleEntrySize);
+
+            details.Add(new BookmarkDetail(i,
+                                           bookmark.Position,
+                                           rleEntryIndex,
+                                           bookmark.EndRow,
+                                           blob.Header.BookmarkArrayOffset + (i * SegmentBlob.EntrySize),
+                                           blob.Header.RleEntrySize,
+                                           blob.Header.RleArrayOffset + (rleEntryIndex * blob.Header.RleEntrySize)));
+        }
+
+        return details;
+    }
+
+    private IReadOnlyList<RleRunDetail> BuildRleRuns()
+    {
+        if (Blob is not { } blob || !blob.Header.HasRleArray)
+        {
+            return [];
+        }
+
+        using var timing = Logger.Time("Build RLE runs", $"{blob.RleEntries.Length} entries");
+
+        var runs = new List<RleRunDetail>(blob.RleEntries.Length);
+
+        var row = 0;
+
+        for (var i = 0; i < blob.RleEntries.Length; i++)
+        {
+            var entry = blob.RleEntries[i];
+
+            var address = entry.PageSlot;
+
+            var storeOrdinal = blob.VariableLengthData is { } store && address is { } located
+                ? store.GetOrdinal(located.Page, located.Slot)
+                : -1;
+
+            runs.Add(new RleRunDetail(i,
+                                      row,
+                                      entry.Count,
+                                      entry.IsValue,
+                                      entry.IsValue ? entry.Value : entry.BitpackIndex,
+                                      blob.Header.RleArrayOffset + (i * blob.Header.RleEntrySize),
+                                      address,
+                                      storeOrdinal));
+
+            row += entry.Count;
+        }
+
+        return runs;
+    }
 
     private BitpackUnitDetail? GetBitpackUnit(Marker? marker)
     {
@@ -207,44 +254,6 @@ public sealed partial class SegmentTabViewModel
         if (e.PropertyName == nameof(BlobHexViewModel.SelectedMarker))
         {
             BitpackUnit = GetBitpackUnit(Hex.SelectedMarker);
-        }
-    }
-
-    /// <summary>
-    /// Every row of the segment, indexed rather than materialised so the grid only ever builds what it shows
-    /// </summary>
-    [ObservableProperty]
-    private SegmentRowList? _rows;
-
-    [ObservableProperty]
-    private string _rowCountDescription = string.Empty;
-
-    [ObservableProperty]
-    private SegmentRowDetail? _selectedRow;
-
-    /// <summary>
-    /// Takes the row the grid picked, moves the window onto where its value was read from and marks it
-    /// </summary>
-    /// <remarks>
-    /// A row stands for its ordinal, so the grid handing back an equal instance leaves the property unchanged and
-    /// nothing would rebuild. The marker is for what is selected now, so it is built either way.
-    /// </remarks>
-    public void SelectRow(SegmentRowDetail? row)
-    {
-        SelectedRow = row;
-
-        if (row is null || Blob is null)
-        {
-            Hex.BuildMarkers();
-
-            return;
-        }
-
-        if (GetRowSource(row.Ordinal) is { } source)
-        {
-            GoToOffset(source.Offset);
-
-            Hex.SelectedMarker = MarkerLookup.FindByType(Hex.Markers, ItemType.SegmentRowSource);
         }
     }
 
@@ -287,8 +296,8 @@ public sealed partial class SegmentTabViewModel
                     $"Bit Pack Unit {unit}");
         }
 
-        return (blob.Header.RleArrayOffset + (source.EntryIndex * blob.Header.RleEntryBytes),
-                blob.Header.RleEntryBytes,
+        return (blob.Header.RleArrayOffset + (source.EntryIndex * blob.Header.RleEntrySize),
+                blob.Header.RleEntrySize,
                 $"RLE Entry {source.EntryIndex}");
     }
 
@@ -355,13 +364,4 @@ public sealed partial class SegmentTabViewModel
 
         return [.. header, .. page, .. rows];
     }
-
-    /// <summary>
-    /// Fields of the store itself, which the page list above the tabs does not stand for
-    /// </summary>
-    [ObservableProperty]
-    private ObservableCollection<Marker> _variableLengthDataHeaderMarkers = [];
-
-    [ObservableProperty]
-    private ObservableCollection<Marker> _valuePageMarkers = [];
 }

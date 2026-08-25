@@ -12,43 +12,10 @@ namespace InternalsViewer.UI.App.ViewModels.Columnstore;
 
 public sealed partial class ColumnstoreTabViewModel
 {
+    private DocumentViewModel? _structureDocument;
+
+    private DocumentViewModel? _rowGroupsDocument;
     public DockLayoutViewModel Dock { get; }
-
-    /// <summary>
-    /// Structure and row groups open with the index, everything else opens from a click on one of them
-    /// </summary>
-    private DockLayoutViewModel BuildDock()
-    {
-        _structureDocument = DocumentViewModel.Create<ColumnstoreStructureTabView>("Structure",
-                                                                                   this,
-                                                                                   canClose: false,
-                                                                                   keepAlive: true,
-                                                                                   key: "Structure");
-
-        _rowGroupsDocument = DocumentViewModel.Create<ColumnstoreMetadataTabView>("Metadata",
-                                                                                   this,
-                                                                                   canClose: false,
-                                                                                   keepAlive: true,
-                                                                                   key: "RowGroups");
-
-        var dock = new DockLayoutViewModel(new TabGroupNode(_structureDocument, _rowGroupsDocument));
-
-        dock.DocumentClosed += OnDocumentClosed;
-
-        return dock;
-    }
-
-    private void OnDocumentClosed(object? sender, DocumentViewModel document) => DisposeDocument(document);
-
-    private void DisposeDocument(DocumentViewModel document)
-    {
-        document.DisposeView();
-
-        if (document.Content is IDisposable disposable && !ReferenceEquals(document.Content, this))
-        {
-            disposable.Dispose();
-        }
-    }
 
     public override void Dispose()
     {
@@ -61,10 +28,6 @@ public sealed partial class ColumnstoreTabViewModel
 
         base.Dispose();
     }
-
-    private DocumentViewModel? _structureDocument;
-
-    private DocumentViewModel? _rowGroupsDocument;
 
     public void OpenSegment(SegmentSummary segment)
         => Open($"Segment {segment.RowGroupId}:{segment.ColumnId} ({segment.ColumnName})",
@@ -109,6 +72,42 @@ public sealed partial class ColumnstoreTabViewModel
                 $"DeltaStore:{rowGroup.RowGroupId}",
                 () => new ColumnstoreDeltaStoreTabView(),
                 new DeltaStoreTabViewModel(PageService, IamChainService, Database, rowGroup));
+
+    /// <summary>
+    /// Structure and row groups open with the index, everything else opens from a click on one of them
+    /// </summary>
+    private DockLayoutViewModel BuildDock()
+    {
+        _structureDocument = DocumentViewModel.Create<ColumnstoreStructureTabView>("Structure",
+                                                                                   this,
+                                                                                   canClose: false,
+                                                                                   keepAlive: true,
+                                                                                   key: "Structure");
+
+        _rowGroupsDocument = DocumentViewModel.Create<ColumnstoreMetadataTabView>("Metadata",
+                                                                                   this,
+                                                                                   canClose: false,
+                                                                                   keepAlive: true,
+                                                                                   key: "RowGroups");
+
+        var dock = new DockLayoutViewModel(new TabGroupNode(_structureDocument, _rowGroupsDocument));
+
+        dock.DocumentClosed += OnDocumentClosed;
+
+        return dock;
+    }
+
+    private void OnDocumentClosed(object? sender, DocumentViewModel document) => DisposeDocument(document);
+
+    private void DisposeDocument(DocumentViewModel document)
+    {
+        document.DisposeView();
+
+        if (document.Content is IDisposable disposable && !ReferenceEquals(document.Content, this))
+        {
+            disposable.Dispose();
+        }
+    }
 
     /// <summary>
     /// Adds a document to the group the structure drawing sits in, or selects it if it is already open

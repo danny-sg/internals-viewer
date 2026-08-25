@@ -1,29 +1,16 @@
 namespace InternalsViewer.UI.App.Controls.Page;
 public sealed partial class LabelTextBox
 {
-    public LabelTextBox()
-    {
-        InitializeComponent();
-
-        DataContext = this;
-    }
-
-    public string Label
-    {
-        get { return (string)GetValue(LabelProperty); }
-        set { SetValue(LabelProperty, value); }
-    }
-
     public static readonly DependencyProperty LabelProperty = DependencyProperty
         .Register(nameof(Label),
             typeof(string),
             typeof(LabelTextBox),
             PropertyMetadata.Create(() => "Label"));
 
-    public string Text
+    public string Label
     {
-        get { return (string)GetValue(TextProperty); }
-        set { SetValue(TextProperty, value); }
+        get { return (string)GetValue(LabelProperty); }
+        set { SetValue(LabelProperty, value); }
     }
 
     public static readonly DependencyProperty TextProperty = DependencyProperty
@@ -32,10 +19,10 @@ public sealed partial class LabelTextBox
             typeof(LabelTextBox),
             PropertyMetadata.Create(() => "TextBox"));
 
-    public double LabelWidth
+    public string Text
     {
-        get { return (double)GetValue(LabelWidthProperty); }
-        set { SetValue(LabelWidthProperty, value); }
+        get { return (string)GetValue(TextProperty); }
+        set { SetValue(TextProperty, value); }
     }
 
     public static readonly DependencyProperty LabelWidthProperty = DependencyProperty
@@ -43,4 +30,17 @@ public sealed partial class LabelTextBox
             typeof(double),
             typeof(LabelTextBox),
             PropertyMetadata.Create(() => 100));
+
+    public double LabelWidth
+    {
+        get { return (double)GetValue(LabelWidthProperty); }
+        set { SetValue(LabelWidthProperty, value); }
+    }
+
+    public LabelTextBox()
+    {
+        InitializeComponent();
+
+        DataContext = this;
+    }
 }

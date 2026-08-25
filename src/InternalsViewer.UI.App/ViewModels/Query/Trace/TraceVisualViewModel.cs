@@ -35,19 +35,25 @@ public sealed partial class TraceVisualViewModel(TraceVisualType visualType,
                                                  string title,
                                                  int nodeId = 0) : ObservableObject
 {
-    public TraceVisualType VisualType { get; } = visualType;
+    private readonly List<PageSpan> _visitedPages = [];
 
-    public string Title { get; } = title;
+    /// <summary>
+    /// The span already held for a page, so a page read again is recoloured rather than added a second time
+    /// </summary>
+    /// <remarks>
+    /// A walk rereads the same pages endlessly - every descent of a correlated seek starts at the root - and a span per read would grow
+    /// without limit while showing nothing a single span for that page does not. The whole list is copied on each read and walked again on
+    /// each repaint, so the duplicates cost time quadratic in the length of the walk.
+    /// </remarks>
+    private readonly Dictionary<PageAddress, PageSpan> _visitedByAddress = [];
 
-    public int NodeId { get; } = nodeId;
+    private Color? _objectColour;
 
-    public bool ShowObjectBorderImmediately { get; init; }
+    private PageAddress? _currentTracePage;
 
-    public DatabaseSource Database { get; } = database;
+    private AllocationBorder? _objectBorder;
 
-    public AllocationUnit AllocationUnit { get; } = allocationUnit;
-
-    private IndexService IndexService { get; } = indexService;
+    private bool _objectBorderVisible;
 
     [ObservableProperty]
     private List<IndexNode> _nodes = [];
@@ -89,31 +95,21 @@ public sealed partial class TraceVisualViewModel(TraceVisualType visualType,
     [ObservableProperty]
     private int _selectedRowSlotCount;
 
-    private Color? _objectColour;
+    public TraceVisualType VisualType { get; } = visualType;
+
+    public string Title { get; } = title;
+
+    public int NodeId { get; } = nodeId;
+
+    public bool ShowObjectBorderImmediately { get; init; }
+
+    public DatabaseSource Database { get; } = database;
+
+    public AllocationUnit AllocationUnit { get; } = allocationUnit;
 
     public Color? OperatorColour { get; set; }
 
     public Color ObjectColour => OperatorColour ?? (_objectColour ??= AllocationLayerBuilder.GetObjectColour(Database, AllocationUnit));
-
-    private Color LightObjectColour => ColourHelpers.Lighten(ObjectColour);
-
-    private PageAddress? _currentTracePage;
-
-    private AllocationBorder? _objectBorder;
-
-    private bool _objectBorderVisible;
-
-    private readonly List<PageSpan> _visitedPages = [];
-
-    /// <summary>
-    /// The span already held for a page, so a page read again is recoloured rather than added a second time
-    /// </summary>
-    /// <remarks>
-    /// A walk rereads the same pages endlessly - every descent of a correlated seek starts at the root - and a span per read would grow
-    /// without limit while showing nothing a single span for that page does not. The whole list is copied on each read and walked again on
-    /// each repaint, so the duplicates cost time quadratic in the length of the walk.
-    /// </remarks>
-    private readonly Dictionary<PageAddress, PageSpan> _visitedByAddress = [];
 
     public long TotalPageCount => AllocationUnit.UsedPages;
 
@@ -129,6 +125,10 @@ public sealed partial class TraceVisualViewModel(TraceVisualType visualType,
     public int ExtentCount => Database.GetFilePageCount(VisualFileId) / 8;
 
     public PfsChain? PfsChain => Database.Pfs.GetValueOrDefault(VisualFileId);
+
+    private IndexService IndexService { get; } = indexService;
+
+    private Color LightObjectColour => ColourHelpers.Lighten(ObjectColour);
 
     public async Task LoadVisualAsync()
     {
@@ -272,22 +272,6 @@ public sealed partial class TraceVisualViewModel(TraceVisualType visualType,
         }
     }
 
-    /// <summary>
-    /// Drops what the walk was pointing at, keeping the pages it visited
-    /// </summary>
-    /// <remarks>
-    /// A closed operator holds no position, so nothing should be lit as current. What it read on the way is history rather than a
-    /// position, so the visited pages stay.
-    /// </remarks>
-    private void ClearSelection()
-    {
-        SelectedPageAddress = null;
-        SelectedSlot = null;
-        SelectedRowIdentifier = null;
-
-        _currentTracePage = null;
-    }
-
     public TraceVisualReplay ComputeReplay(IReadOnlyList<AccessStep> steps)
     {
         var visited = new List<PageSpan>();
@@ -419,6 +403,39 @@ public sealed partial class TraceVisualViewModel(TraceVisualType visualType,
     }
 
     /// <summary>
+    /// The row identifier a record carries, which only the record formats that hold one expose
+    /// </summary>
+    /// <remarks>
+    /// A nonclustered index of a heap stores the row identifier of the row it points at, and a heap row knows its own. Neither is on
+    /// <see cref="IRecord"/>, so the format has to be asked.
+    /// </remarks>
+    internal static RowIdentifier? GetRowIdentifier(IRecord record)
+        => record switch
+        {
+            FixedVarIndexRecord index => index.Rid,
+            CdIndexRecord cdIndex => cdIndex.Rid,
+            DataRecord data => data.RowIdentifier,
+            CdRecord cd => cd.RowIdentifier,
+            _ => null
+        };
+
+    /// <summary>
+    /// Drops what the walk was pointing at, keeping the pages it visited
+    /// </summary>
+    /// <remarks>
+    /// A closed operator holds no position, so nothing should be lit as current. What it read on the way is history rather than a
+    /// position, so the visited pages stay.
+    /// </remarks>
+    private void ClearSelection()
+    {
+        SelectedPageAddress = null;
+        SelectedSlot = null;
+        SelectedRowIdentifier = null;
+
+        _currentTracePage = null;
+    }
+
+    /// <summary>
     /// The text a field shows, taking the row identifier from the record for the hidden column that holds it
     /// </summary>
     /// <remarks>
@@ -458,23 +475,6 @@ public sealed partial class TraceVisualViewModel(TraceVisualType visualType,
             span.DisplayColour = light;
         }
     }
-
-    /// <summary>
-    /// The row identifier a record carries, which only the record formats that hold one expose
-    /// </summary>
-    /// <remarks>
-    /// A nonclustered index of a heap stores the row identifier of the row it points at, and a heap row knows its own. Neither is on
-    /// <see cref="IRecord"/>, so the format has to be asked.
-    /// </remarks>
-    internal static RowIdentifier? GetRowIdentifier(IRecord record)
-        => record switch
-        {
-            FixedVarIndexRecord index => index.Rid,
-            CdIndexRecord cdIndex => cdIndex.Rid,
-            DataRecord data => data.RowIdentifier,
-            CdRecord cd => cd.RowIdentifier,
-            _ => null
-        };
 
     private static int? GetStepSlot(AccessStep step)
     {

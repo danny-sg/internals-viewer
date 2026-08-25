@@ -51,13 +51,13 @@ public sealed class BookmarkProbeTests(ITestOutputHelper testOutput) : ProviderT
                                  + $"bitpack {blob.Header.HasBitpackArray} "
                                  + $"rows {blob.RowCount} rle {blob.RleEntries.Length} "
                                  + $"bookmarks {blob.Header.BookmarkCount} every {blob.Header.BookmarkDistance} "
-                                 + $"entryBytes {blob.Header.RleEntryBytes}");
+                                 + $"entryBytes {blob.Header.RleEntrySize}");
 
             for (var i = 0; i < Math.Min(blob.Bookmarks.Length, 4); i++)
             {
                 var bookmark = blob.Bookmarks[i];
 
-                var entryIndex = bookmark.GetRleEntryIndex(blob.Header.RleEntryBytes);
+                var entryIndex = bookmark.GetRleEntryIndex(blob.Header.RleEntrySize);
 
                 var cumulative = 0;
 
@@ -71,7 +71,7 @@ public sealed class BookmarkProbeTests(ITestOutputHelper testOutput) : ProviderT
 
                 TestOutput.WriteLine($"  [{i,3}] expected row {i * blob.Header.BookmarkDistance,-10} "
                                      + $"position {bookmark.Position,-10} "
-                                     + $"entry {bookmark.GetRleEntryIndex(blob.Header.RleEntryBytes),-8} "
+                                     + $"entry {bookmark.GetRleEntryIndex(blob.Header.RleEntrySize),-8} "
                                      + $"endRow {bookmark.EndRow}");
             }
 

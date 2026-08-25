@@ -26,11 +26,13 @@ public static class DerivationText
 {
     private const int BadgeFontSize = 11;
 
-    public static ValueDerivation? GetDerivation(DependencyObject element)
-        => (ValueDerivation?)element.GetValue(DerivationProperty);
+    private static int _built;
 
-    public static void SetDerivation(DependencyObject element, ValueDerivation? value)
-        => element.SetValue(DerivationProperty, value);
+    private static ILogger? _logger;
+
+    private static Palette? _palette;
+
+    private static ElementTheme _paletteTheme = ElementTheme.Default;
 
     public static readonly DependencyProperty DerivationProperty
         = DependencyProperty.RegisterAttached("Derivation",
@@ -38,9 +40,11 @@ public static class DerivationText
                                               typeof(DerivationText),
                                               new PropertyMetadata(null, OnChanged));
 
-    public static bool GetShowSteps(DependencyObject element) => (bool)element.GetValue(ShowStepsProperty);
+    public static ValueDerivation? GetDerivation(DependencyObject element)
+        => (ValueDerivation?)element.GetValue(DerivationProperty);
 
-    public static void SetShowSteps(DependencyObject element, bool value) => element.SetValue(ShowStepsProperty, value);
+    public static void SetDerivation(DependencyObject element, ValueDerivation? value)
+        => element.SetValue(DerivationProperty, value);
 
     public static readonly DependencyProperty ShowStepsProperty
         = DependencyProperty.RegisterAttached("ShowSteps",
@@ -48,17 +52,9 @@ public static class DerivationText
                                               typeof(DerivationText),
                                               new PropertyMetadata(true, OnChanged));
 
-    private static void OnChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
-    {
-        if (d is TextBlock text)
-        {
-            Build(text);
-        }
-    }
+    public static bool GetShowSteps(DependencyObject element) => (bool)element.GetValue(ShowStepsProperty);
 
-    private static int _built;
-
-    private static ILogger? _logger;
+    public static void SetShowSteps(DependencyObject element, bool value) => element.SetValue(ShowStepsProperty, value);
 
     private static ILogger Logger => _logger ??= App.GetService<ILoggerFactory>().CreateLogger(nameof(DerivationText));
 
@@ -96,18 +92,11 @@ public static class DerivationText
 
             if (derivation.Steps.Count > 0)
             {
-                Add(text, new Run { Text = " = ", Foreground = palette.Equals }, ref position);
+                Add(text, new Run { Text = " = ", Foreground = palette.EqualsBrush }, ref position);
             }
         }
 
         AddResult(text, derivation, ref position);
-
-        using (Logger.Time("Highlight derivation", $"{names.Count + values.Count} ranges"))
-        {
-            Highlight(text, names, palette.NameBadge, palette.BadgeText);
-
-            Highlight(text, values, palette.ValueBadge, palette.BadgeText);
-        }
     }
 
     /// <summary>
@@ -123,7 +112,7 @@ public static class DerivationText
         if (step.Operator.Length > 0)
         {
             Add(text,
-                new Run { Text = $" {step.Operator} ", Foreground = palette.Operator },
+                new Run { Text = $" {step.Operator} ", Foreground = palette.OperatorBrush },
                 ref position);
         }
 
@@ -231,43 +220,6 @@ public static class DerivationText
 
     private static TextRange Range(int start, int length) => new() { StartIndex = start, Length = length };
 
-    /// <summary>
-    /// The brushes a derivation is drawn in, held rather than looked up for each cell that draws one
-    /// </summary>
-    /// <remarks>
-    /// Every cell asks for the same handful, and a lookup walks the merged and theme dictionaries to reach a
-    /// system brush. They are kept against the theme they were read for, so a theme change re-reads them rather
-    /// than leaving the text painted in the colours of the theme before it.
-    /// </remarks>
-    private sealed class Palette
-    {
-        public required Brush? Operator { get; init; }
-
-        public required Brush? Equals { get; init; }
-
-        public required Brush? BadgeText { get; init; }
-
-        public required Brush? NameBadge { get; init; }
-
-        public required Brush? ValueBadge { get; init; }
-
-        public static Palette Read() => new()
-        {
-            Operator = Brush("TextFillColorSecondaryBrush"),
-            Equals = Brush("TextFillColorTertiaryBrush"),
-            BadgeText = Brush("TextOnAccentFillColorPrimaryBrush"),
-            NameBadge = Brush("ControlStrongFillColorDefaultBrush"),
-            ValueBadge = Brush("AccentFillColorDefaultBrush")
-        };
-
-        private static Brush? Brush(string key)
-            => Application.Current.Resources.TryGetValue(key, out var resource) ? resource as Brush : null;
-    }
-
-    private static Palette? _palette;
-
-    private static ElementTheme _paletteTheme = ElementTheme.Default;
-
     private static Palette GetPalette(TextBlock text)
     {
         if (_palette is { } palette && _paletteTheme == text.ActualTheme)
@@ -278,5 +230,38 @@ public static class DerivationText
         _paletteTheme = text.ActualTheme;
 
         return _palette = Palette.Read();
+    }
+
+    private sealed class Palette
+    {
+        public required Brush? OperatorBrush { get; init; }
+
+        public required Brush? EqualsBrush { get; init; }
+
+        public required Brush? BadgeTextBrush { get; init; }
+
+        public required Brush? NameBadgeBrush { get; init; }
+
+        public required Brush? ValueBadgeBrush { get; init; }
+
+        public static Palette Read() => new()
+        {
+            OperatorBrush = GetBrush("TextFillColorSecondaryBrush"),
+            EqualsBrush = GetBrush("TextFillColorTertiaryBrush"),
+            BadgeTextBrush = GetBrush("TextOnAccentFillColorPrimaryBrush"),
+            NameBadgeBrush = GetBrush("ControlStrongFillColorDefaultBrush"),
+            ValueBadgeBrush = GetBrush("AccentFillColorDefaultBrush")
+        };
+
+        private static Brush? GetBrush(string key)
+            => Application.Current.Resources.TryGetValue(key, out var resource) ? resource as Brush : null;
+    }
+
+    private static void OnChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
+    {
+        if (d is TextBlock text)
+        {
+            Build(text);
+        }
     }
 }

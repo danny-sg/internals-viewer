@@ -61,13 +61,13 @@ public sealed class OpenQuestionsProbeTests(ITestOutputHelper testOutput) : Prov
                         Count(unknown0C, $"0x{blob.Header.Unknown0C:X}");
 
                         // The four bytes past the count in a wide entry, which nothing reads
-                        if (blob.Header.RleEntryBytes > InternalsViewer.Internals.Columnstore.Segments.SegmentBlob.EntrySize)
+                        if (blob.Header.RleEntrySize > InternalsViewer.Internals.Columnstore.Segments.SegmentBlob.EntrySize)
                         {
                             var span = blob.Data.Span;
 
                             for (var i = 0; i < blob.Header.RleEntryCount; i++)
                             {
-                                var at = blob.Header.RleArrayOffset + (i * blob.Header.RleEntryBytes) + 12;
+                                var at = blob.Header.RleArrayOffset + (i * blob.Header.RleEntrySize) + 12;
 
                                 if (at + 4 <= span.Length)
                                 {

@@ -15,6 +15,18 @@ namespace InternalsViewer.UI.App.ViewModels.Columnstore.Segment;
 
 public sealed partial class SegmentTabViewModel
 {
+    private const int DecodeTabIndex = 2;
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasVariableWidthValues))]
+    private ValuePageSummary? _selectedValuePage;
+
+    [ObservableProperty]
+    private ValueList? _values;
+
+    [ObservableProperty]
+    private ValueDetail? _selectedValue;
+
     /// <summary>
     /// Whether the segment holds a paged value store in place of the run length and bit pack pair
     /// </summary>
@@ -27,12 +39,93 @@ public sealed partial class SegmentTabViewModel
 
     public ObservableCollection<ValuePageSummary> ValuePages { get; } = [];
 
-    [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(HasVariableWidthValues))]
-    private ValuePageSummary? _selectedValuePage;
+    /// <summary>
+    /// The expanded payload of the selected page, which is where a value has a place of its own
+    /// </summary>
+    /// <remarks>
+    /// A second window over a different run of bytes entirely - the blob hex above shows the page compressed, this
+    /// shows what it decompresses to, so their offsets have nothing to do with one another.
+    /// </remarks>
+    public BlobHexViewModel PayloadHex { get; } = new();
 
-    [ObservableProperty]
-    private ValueList? _values;
+    /// <summary>
+    /// Picks out the page a value came from, that being as close as the hex can get to the value itself
+    /// </summary>
+    /// <remarks>
+    /// The values sit inside a compressed payload, so an index has no range of the blob of its own. Selecting the
+    /// page marker is what shows where it was read from.
+    /// </remarks>
+    public void SelectValue(ValueDetail? value)
+    {
+        SelectedValue = value;
+
+        if (value is null || SelectedValuePage is not { } page)
+        {
+            return;
+        }
+
+        // The value has a place of its own in the expanded payload, a null having only its offset array entry
+        var position = page.Page.GetValuePosition(value.Index);
+
+        PayloadHex.GoToOffset(position >= 0 ? position : page.Page.GetOffsetPosition(value.Index));
+
+        // The blob hex can only show the page the value was read from, the payload hex holding the value itself
+        PayloadHex.SelectedMarker = MarkerLookup.FindByType(PayloadHex.Markers,
+                                                            position >= 0
+                                                                ? ItemType.DictionaryValue
+                                                                : ItemType.ValueOffsetEntry);
+
+        SelectPayloadMarker();
+    }
+
+    /// <summary>
+    /// Picks out the compressed payload on the blob hex, that being where the decode reads from
+    /// </summary>
+    /// <remarks>
+    /// Matched on what the marker is rather than where it starts, the page header sharing its first byte with the
+    /// page itself so an offset alone would find the sub lob type instead.
+    /// </remarks>
+    public void SelectPayloadMarker()
+        => Hex.SelectedMarker = Hex.Markers.FirstOrDefault(m => m.Type == ItemType.ValuePagePayload);
+
+    /// <summary>
+    /// Moves the window onto the store header, which the tab showing its fields asks for
+    /// </summary>
+    public void GoToVariableLengthDataHeader()
+    {
+        if (Blob?.VariableLengthData is { } store)
+        {
+            Hex.GoToOffset(store.Offset);
+        }
+    }
+
+    /// <summary>
+    /// Follows a run to the value it names, which means the page holding it as well as the bytes
+    /// </summary>
+    /// <remarks>
+    /// The store is addressed by page and slot, so showing the value means picking its page, turning to the tab
+    /// that decodes one, and selecting the slot there. The page has to be picked first, choosing one rebuilding
+    /// the value list the slot is taken from.
+    /// </remarks>
+    public void GoToValue(string address)
+    {
+        if (Blob?.VariableLengthData is not { } store || !SegmentPageSlot.TryParse(address, out var parsed))
+        {
+            return;
+        }
+
+        SelectedValuePage = ValuePages.FirstOrDefault(p => p.Index == parsed.Page);
+
+        SelectedVariableLengthDataTabIndex = DecodeTabIndex;
+
+        if (Values is { } values && parsed.Slot >= 0 && parsed.Slot < values.Count)
+        {
+            SelectValue(values[parsed.Slot]);
+        }
+
+        GoToTarget(new SegmentNavigationTarget(SegmentRegion.VariableLengthData,
+                                               store.GetValueOffset(parsed.Page, parsed.Slot)));
+    }
 
     partial void OnSelectedValuePageChanged(ValuePageSummary? value)
     {
@@ -129,48 +222,6 @@ public sealed partial class SegmentTabViewModel
     }
 
     /// <summary>
-    /// The expanded payload of the selected page, which is where a value has a place of its own
-    /// </summary>
-    /// <remarks>
-    /// A second window over a different run of bytes entirely - the blob hex above shows the page compressed, this
-    /// shows what it decompresses to, so their offsets have nothing to do with one another.
-    /// </remarks>
-    public BlobHexViewModel PayloadHex { get; } = new();
-
-    [ObservableProperty]
-    private ValueDetail? _selectedValue;
-
-    /// <summary>
-    /// Picks out the page a value came from, that being as close as the hex can get to the value itself
-    /// </summary>
-    /// <remarks>
-    /// The values sit inside a compressed payload, so an index has no range of the blob of its own. Selecting the
-    /// page marker is what shows where it was read from.
-    /// </remarks>
-    public void SelectValue(ValueDetail? value)
-    {
-        SelectedValue = value;
-
-        if (value is null || SelectedValuePage is not { } page)
-        {
-            return;
-        }
-
-        // The value has a place of its own in the expanded payload, a null having only its offset array entry
-        var position = page.Page.GetValuePosition(value.Index);
-
-        PayloadHex.GoToOffset(position >= 0 ? position : page.Page.GetOffsetPosition(value.Index));
-
-        // The blob hex can only show the page the value was read from, the payload hex holding the value itself
-        PayloadHex.SelectedMarker = MarkerLookup.FindByType(PayloadHex.Markers,
-                                                            position >= 0
-                                                                ? ItemType.DictionaryValue
-                                                                : ItemType.ValueOffsetEntry);
-
-        SelectPayloadMarker();
-    }
-
-    /// <summary>
     /// The pages of a store by value segment, there being none for any other layout
     /// </summary>
     private void BuildValuePages(SegmentBlob blob)
@@ -195,55 +246,4 @@ public sealed partial class SegmentTabViewModel
 
         SelectedValuePage = ValuePages.FirstOrDefault();
     }
-
-    /// <summary>
-    /// Picks out the compressed payload on the blob hex, that being where the decode reads from
-    /// </summary>
-    /// <remarks>
-    /// Matched on what the marker is rather than where it starts, the page header sharing its first byte with the
-    /// page itself so an offset alone would find the sub lob type instead.
-    /// </remarks>
-    public void SelectPayloadMarker()
-        => Hex.SelectedMarker = Hex.Markers.FirstOrDefault(m => m.Type == ItemType.ValuePagePayload);
-
-    /// <summary>
-    /// Moves the window onto the store header, which the tab showing its fields asks for
-    /// </summary>
-    public void GoToVariableLengthDataHeader()
-    {
-        if (Blob?.VariableLengthData is { } store)
-        {
-            Hex.GoToOffset(store.Offset);
-        }
-    }
-
-    /// <summary>
-    /// Follows a run to the value it names, which means the page holding it as well as the bytes
-    /// </summary>
-    /// <remarks>
-    /// The store is addressed by page and slot, so showing the value means picking its page, turning to the tab
-    /// that decodes one, and selecting the slot there. The page has to be picked first, choosing one rebuilding
-    /// the value list the slot is taken from.
-    /// </remarks>
-    public void GoToValue(string address)
-    {
-        if (Blob?.VariableLengthData is not { } store || !SegmentPageSlot.TryParse(address, out var parsed))
-        {
-            return;
-        }
-
-        SelectedValuePage = ValuePages.FirstOrDefault(p => p.Index == parsed.Page);
-
-        SelectedVariableLengthDataTabIndex = DecodeTabIndex;
-
-        if (Values is { } values && parsed.Slot >= 0 && parsed.Slot < values.Count)
-        {
-            SelectValue(values[parsed.Slot]);
-        }
-
-        GoToTarget(new SegmentNavigationTarget(SegmentRegion.VariableLengthData,
-                                               store.GetValueOffset(parsed.Page, parsed.Slot)));
-    }
-
-    private const int DecodeTabIndex = 2;
 }

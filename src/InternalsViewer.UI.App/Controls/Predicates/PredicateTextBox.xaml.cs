@@ -13,33 +13,6 @@ public sealed partial class PredicateTextBox : UserControl
                                     typeof(PredicateTextBox),
                                     new PropertyMetadata(null, OnSourceChanged));
 
-    public static readonly DependencyProperty PlaceholderTextProperty =
-        DependencyProperty.Register(nameof(PlaceholderText),
-                                    typeof(string),
-                                    typeof(PredicateTextBox),
-                                    new PropertyMetadata(string.Empty, OnSourceChanged));
-
-    public static readonly DependencyProperty TextPaddingProperty =
-        DependencyProperty.Register(nameof(TextPadding),
-                                    typeof(Thickness),
-                                    typeof(PredicateTextBox),
-                                    new PropertyMetadata(new Thickness(10, 8, 10, 8)));
-
-    public static readonly DependencyProperty HasBackgroundProperty =
-        DependencyProperty.Register(nameof(HasBackground),
-                                    typeof(bool),
-                                    typeof(PredicateTextBox),
-                                    new PropertyMetadata(true, OnHasBackgroundChanged));
-
-    public PredicateTextBox()
-    {
-        InitializeComponent();
-
-        ActualThemeChanged += (_, _) => Render();
-
-        Loaded += (_, _) => Render();
-    }
-
     /// <summary>
     /// Formatted predicate to display
     /// </summary>
@@ -48,6 +21,12 @@ public sealed partial class PredicateTextBox : UserControl
         get => (PredicateText?)GetValue(TextProperty);
         set => SetValue(TextProperty, value);
     }
+
+    public static readonly DependencyProperty PlaceholderTextProperty =
+        DependencyProperty.Register(nameof(PlaceholderText),
+                                    typeof(string),
+                                    typeof(PredicateTextBox),
+                                    new PropertyMetadata(string.Empty, OnSourceChanged));
 
     /// <summary>
     /// Text shown when there is nothing to display
@@ -58,11 +37,23 @@ public sealed partial class PredicateTextBox : UserControl
         set => SetValue(PlaceholderTextProperty, value);
     }
 
+    public static readonly DependencyProperty TextPaddingProperty =
+        DependencyProperty.Register(nameof(TextPadding),
+                                    typeof(Thickness),
+                                    typeof(PredicateTextBox),
+                                    new PropertyMetadata(new Thickness(10, 8, 10, 8)));
+
     public Thickness TextPadding
     {
         get => (Thickness)GetValue(TextPaddingProperty);
         set => SetValue(TextPaddingProperty, value);
     }
+
+    public static readonly DependencyProperty HasBackgroundProperty =
+        DependencyProperty.Register(nameof(HasBackground),
+                                    typeof(bool),
+                                    typeof(PredicateTextBox),
+                                    new PropertyMetadata(true, OnHasBackgroundChanged));
 
     public bool HasBackground
     {
@@ -70,9 +61,13 @@ public sealed partial class PredicateTextBox : UserControl
         set => SetValue(HasBackgroundProperty, value);
     }
 
-    private static void OnHasBackgroundChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
+    public PredicateTextBox()
     {
-        ((PredicateTextBox)d).ApplyBackground();
+        InitializeComponent();
+
+        ActualThemeChanged += (_, _) => Render();
+
+        Loaded += (_, _) => Render();
     }
 
     private void ApplyBackground()
@@ -87,11 +82,6 @@ public sealed partial class PredicateTextBox : UserControl
             BackgroundBorder.Background = null;
             BackgroundBorder.BorderThickness = new Thickness(0);
         }
-    }
-
-    private static void OnSourceChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
-    {
-        ((PredicateTextBox)d).Render();
     }
 
     private void Render()
@@ -187,5 +177,15 @@ public sealed partial class PredicateTextBox : UserControl
         }
 
         return TextHost.Foreground;
+    }
+
+    private static void OnHasBackgroundChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
+    {
+        ((PredicateTextBox)d).ApplyBackground();
+    }
+
+    private static void OnSourceChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
+    {
+        ((PredicateTextBox)d).Render();
     }
 }

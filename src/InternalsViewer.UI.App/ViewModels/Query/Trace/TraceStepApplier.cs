@@ -145,38 +145,6 @@ public sealed class TraceStepApplier(TraceLayout layout,
         }
     }
 
-    private void RouteRow(AccessStep step)
-    {
-        if (layout.Nodes.GetValueOrDefault(step.NodeId)?.Stream is not { } stream || ToStreamModel(step) is not { } model)
-        {
-            return;
-        }
-
-        stream.Show(model);
-    }
-
-    private IndexRecordModel? ToStreamModel(AccessStep step)
-        => step switch
-        {
-            AccessStep.JoinEmit emit
-                => rowBuilder.ToJoinedModel(emit),
-            AccessStep.TopRow { EmittedRecord: { } emitted }
-                => ToRecordModel(emitted),
-            AccessStep.Output { EmittedRecord: { } emitted }
-                => ToRecordModel(emitted),
-            AccessStep.ConcatRow { EmittedRecord: { } emitted }
-                => ToRecordModel(emitted),
-            AccessStep.SortRow { EmittedRecord: { } emitted }
-                => ToRecordModel(emitted),
-            AccessStep.AggregateEmit { EmittedRecord: { } emitted }
-                => ToRecordModel(emitted),
-            AccessStep.ComputeRow { EmittedRecord: { } emitted }
-                => ToRecordModel(emitted),
-            AccessStep.Row { EmittedRecord: { } emitted }
-                => ToRecordModel(emitted),
-            _ => null
-        };
-
     public void BuildStateItems(TraceOperatorViewModel tab)
     {
         if (layout.Nodes.GetValueOrDefault(tab.NodeId)?.Definition is not { } definition)
@@ -233,52 +201,6 @@ public sealed class TraceStepApplier(TraceLayout layout,
             case ComputeScalarDefinition:
                 break;
         }
-    }
-
-    /// <summary>
-    /// Follows where an access path stands, which is the page it is reading and the slot it reached on it
-    /// </summary>
-    /// <remarks>
-    /// The iterators publish the page but not the slot, because the slot is a position within a walk rather than state an iterator keeps.
-    /// It is read off the steps instead, which is also what makes a page read reset it.
-    /// </remarks>
-    private void ApplyPosition(AccessStep step)
-    {
-        if (!operatorsByNode.TryGetValue(step.NodeId, out var tab))
-        {
-            return;
-        }
-
-        var position = PositionByNode.GetValueOrDefault(step.NodeId);
-
-        switch (step)
-        {
-            case AccessStep.Open:
-                tab.IsOpen = true;
-                break;
-
-            case AccessStep.Close:
-                tab.IsOpen = false;
-                position = default;
-                break;
-
-            case AccessStep.ReadPage read:
-                position = (read.PageAddress, null);
-                break;
-
-            case AccessStep.Row row:
-                position = (position.Page, row.Slot);
-                break;
-
-            case AccessStep.RowRun run:
-                position = (position.Page, run.ToSlot);
-                break;
-        }
-
-        PositionByNode[step.NodeId] = position;
-
-        tab.CurrentPage = position.Page;
-        tab.CurrentSlot = position.Slot;
     }
 
     /// <summary>
@@ -349,18 +271,6 @@ public sealed class TraceStepApplier(TraceLayout layout,
         }
     }
 
-    private void ResetPositions()
-    {
-        PositionByNode.Clear();
-
-        foreach (var tab in operatorsByNode.Values)
-        {
-            tab.IsOpen = false;
-            tab.CurrentPage = null;
-            tab.CurrentSlot = null;
-        }
-    }
-
     public void UpdateOperatorStates(IteratorStepper stepper)
     {
         foreach (var iterator in Iterators(stepper.Root))
@@ -419,12 +329,6 @@ public sealed class TraceStepApplier(TraceLayout layout,
             }
         }
     }
-
-    /// <summary>
-    /// What a buffer is holding, to the page the engine would allocate it in rather than to the byte the model reached
-    /// </summary>
-    private static string FormatMemory(BufferMemory memory)
-        => $"{memory.PagedKb:N0} KB";
 
     public void SyncHeldRows(IteratorStepper stepper)
     {
@@ -527,6 +431,120 @@ public sealed class TraceStepApplier(TraceLayout layout,
     }
 
     /// <summary>
+    /// Takes the strategy each input settled on once it was opened, so a tab can show its own rather than the tree's
+    /// </summary>
+    /// <remarks>
+    /// A correlated inner has no strategy until its first rebind plans a descent, so this is called again as the walk proceeds and leaves
+    /// what it already found alone.
+    /// </remarks>
+    public void UpdateStrategies(IteratorStepper stepper)
+    {
+        foreach (var iterator in Iterators(stepper.Root))
+        {
+            if (iterator.Strategy is { } strategy && visualsByNode.ContainsKey(iterator.NodeId))
+            {
+                StrategyBySource[iterator.NodeId] = strategy;
+            }
+        }
+    }
+
+    private void RouteRow(AccessStep step)
+    {
+        if (layout.Nodes.GetValueOrDefault(step.NodeId)?.Stream is not { } stream || ToStreamModel(step) is not { } model)
+        {
+            return;
+        }
+
+        stream.Show(model);
+    }
+
+    private IndexRecordModel? ToStreamModel(AccessStep step)
+        => step switch
+        {
+            AccessStep.JoinEmit emit
+                => rowBuilder.ToJoinedModel(emit),
+            AccessStep.TopRow { EmittedRecord: { } emitted }
+                => ToRecordModel(emitted),
+            AccessStep.Output { EmittedRecord: { } emitted }
+                => ToRecordModel(emitted),
+            AccessStep.ConcatRow { EmittedRecord: { } emitted }
+                => ToRecordModel(emitted),
+            AccessStep.SortRow { EmittedRecord: { } emitted }
+                => ToRecordModel(emitted),
+            AccessStep.AggregateEmit { EmittedRecord: { } emitted }
+                => ToRecordModel(emitted),
+            AccessStep.ComputeRow { EmittedRecord: { } emitted }
+                => ToRecordModel(emitted),
+            AccessStep.Row { EmittedRecord: { } emitted }
+                => ToRecordModel(emitted),
+            _ => null
+        };
+
+    /// <summary>
+    /// Follows where an access path stands, which is the page it is reading and the slot it reached on it
+    /// </summary>
+    /// <remarks>
+    /// The iterators publish the page but not the slot, because the slot is a position within a walk rather than state an iterator keeps.
+    /// It is read off the steps instead, which is also what makes a page read reset it.
+    /// </remarks>
+    private void ApplyPosition(AccessStep step)
+    {
+        if (!operatorsByNode.TryGetValue(step.NodeId, out var tab))
+        {
+            return;
+        }
+
+        var position = PositionByNode.GetValueOrDefault(step.NodeId);
+
+        switch (step)
+        {
+            case AccessStep.Open:
+                tab.IsOpen = true;
+                break;
+
+            case AccessStep.Close:
+                tab.IsOpen = false;
+                position = default;
+                break;
+
+            case AccessStep.ReadPage read:
+                position = (read.PageAddress, null);
+                break;
+
+            case AccessStep.Row row:
+                position = (position.Page, row.Slot);
+                break;
+
+            case AccessStep.RowRun run:
+                position = (position.Page, run.ToSlot);
+                break;
+        }
+
+        PositionByNode[step.NodeId] = position;
+
+        tab.CurrentPage = position.Page;
+        tab.CurrentSlot = position.Slot;
+    }
+
+    private void ResetPositions()
+    {
+        PositionByNode.Clear();
+
+        foreach (var tab in operatorsByNode.Values)
+        {
+            tab.IsOpen = false;
+            tab.CurrentPage = null;
+            tab.CurrentSlot = null;
+        }
+    }
+
+    /// <summary>
+    /// What a buffer is holding, to the page the engine would allocate it in rather than to the byte the model reached
+    /// </summary>
+    private static string FormatMemory(BufferMemory memory)
+        => $"{memory.PagedKb:N0} KB";
+
+    /// <summary>
     /// The running operators, the whole tree rather than the one at the top of it
     /// </summary>
     private static IEnumerable<IIterator> Iterators(IIterator iterator)
@@ -572,24 +590,6 @@ public sealed class TraceStepApplier(TraceLayout layout,
                 }
 
                 break;
-        }
-    }
-
-    /// <summary>
-    /// Takes the strategy each input settled on once it was opened, so a tab can show its own rather than the tree's
-    /// </summary>
-    /// <remarks>
-    /// A correlated inner has no strategy until its first rebind plans a descent, so this is called again as the walk proceeds and leaves
-    /// what it already found alone.
-    /// </remarks>
-    public void UpdateStrategies(IteratorStepper stepper)
-    {
-        foreach (var iterator in Iterators(stepper.Root))
-        {
-            if (iterator.Strategy is { } strategy && visualsByNode.ContainsKey(iterator.NodeId))
-            {
-                StrategyBySource[iterator.NodeId] = strategy;
-            }
         }
     }
 

@@ -30,21 +30,6 @@ namespace InternalsViewer.UI.App;
 
 public partial class App
 {
-    private IHost Host { get; }
-
-    public static T GetService<T>()
-        where T : class
-    {
-        if ((Current as App)!.Host.Services.GetService(typeof(T)) is not T service)
-        {
-            throw new ArgumentException($"{typeof(T)} needs to be registered in ConfigureServices within App.xaml.cs.");
-        }
-
-        return service;
-    }
-
-    public static MainWindow? MainWindow { get; private set; }
-
     public App()
     {
         InitializeComponent();
@@ -102,11 +87,18 @@ public partial class App
         UnhandledException += App_UnhandledException;
     }
 
-    private static void App_UnhandledException(object sender, Microsoft.UI.Xaml.UnhandledExceptionEventArgs e)
-    {
-        WeakReferenceMessenger.Default.Send(new ExceptionMessage(e.Exception));
+    public static MainWindow? MainWindow { get; private set; }
+    private IHost Host { get; }
 
-        e.Handled = true;
+    public static T GetService<T>()
+        where T : class
+    {
+        if ((Current as App)!.Host.Services.GetService(typeof(T)) is not T service)
+        {
+            throw new ArgumentException($"{typeof(T)} needs to be registered in ConfigureServices within App.xaml.cs.");
+        }
+
+        return service;
     }
 
     protected override async void OnLaunched(LaunchActivatedEventArgs args)
@@ -116,5 +108,12 @@ public partial class App
         MainWindow.Activate();
 
         await MainWindow.InitializeAsync();
+    }
+
+    private static void App_UnhandledException(object sender, Microsoft.UI.Xaml.UnhandledExceptionEventArgs e)
+    {
+        WeakReferenceMessenger.Default.Send(new ExceptionMessage(e.Exception));
+
+        e.Handled = true;
     }
 }

@@ -16,7 +16,12 @@ public sealed partial class DockLayoutViewModel : ObservableObject
     [ObservableProperty]
     private LayoutNode _root;
 
-    /// <summary>Raised after the tree's shape changes (split, move between groups, collapse).</summary>
+    public DockLayoutViewModel(LayoutNode root)
+    {
+        _root = root;
+    }
+
+    /// <summary>Raised after the tree's shape changes (split, move between groups, collapse)</summary>
     public event EventHandler? LayoutChanged;
 
     public event EventHandler? SelectionChanged;
@@ -28,18 +33,11 @@ public sealed partial class DockLayoutViewModel : ObservableObject
 
     public event EventHandler<DocumentViewModel>? DocumentClosed;
 
-    public DockLayoutViewModel(LayoutNode root)
-    {
-        _root = root;
-    }
-
-    private void OnLayoutChanged() => LayoutChanged?.Invoke(this, EventArgs.Empty);
-
     public void NotifySelectionChanged() => SelectionChanged?.Invoke(this, EventArgs.Empty);
 
     public void NotifyActivated(DocumentViewModel document) => DocumentActivated?.Invoke(this, document);
 
-    /// <summary>Replaces the entire layout tree (e.g. when restoring a persisted layout) and rebuilds.</summary>
+    /// <summary>Replaces the entire layout tree (e.g. when restoring a persisted layout) and rebuilds</summary>
     public void SetRoot(LayoutNode root)
     {
         root.Parent = null;
@@ -47,30 +45,8 @@ public sealed partial class DockLayoutViewModel : ObservableObject
         OnLayoutChanged();
     }
 
-    /// <summary>All tab groups in the tree, depth first.</summary>
+    /// <summary>All tab groups in the tree, depth first</summary>
     public IEnumerable<TabGroupNode> Groups() => Groups(Root);
-
-    private static IEnumerable<TabGroupNode> Groups(LayoutNode node)
-    {
-        switch (node)
-        {
-            case TabGroupNode group:
-                yield return group;
-                break;
-            case SplitNode split:
-                foreach (var g in Groups(split.First))
-                {
-                    yield return g;
-                }
-
-                foreach (var g in Groups(split.Second))
-                {
-                    yield return g;
-                }
-
-                break;
-        }
-    }
 
     public TabGroupNode? FindGroup(DocumentViewModel document)
         => Groups().FirstOrDefault(g => g.Documents.Contains(document));
@@ -98,7 +74,7 @@ public sealed partial class DockLayoutViewModel : ObservableObject
         OnLayoutChanged();
     }
 
-    /// <summary>Selects <paramref name="document"/> in whichever group currently hosts it.</summary>
+    /// <summary>Selects <paramref name="document"/> in whichever group currently hosts it</summary>
     public void Activate(DocumentViewModel document)
     {
         var group = FindGroup(document);
@@ -149,6 +125,58 @@ public sealed partial class DockLayoutViewModel : ObservableObject
         }
 
         SplitInto(document, source, target, zone);
+    }
+
+    /// <summary>Removes a document from the layout, collapsing its group if it becomes empty</summary>
+    public void Close(DocumentViewModel document)
+    {
+        var group = FindGroup(document);
+
+        if (group is null)
+        {
+            return;
+        }
+
+        group.Documents.Remove(document);
+
+        if (ReferenceEquals(group.SelectedDocument, document))
+        {
+            group.SelectedDocument = group.Documents.FirstOrDefault();
+        }
+
+        if (document.Content is IAsyncDisposable disposable)
+        {
+            _ = disposable.DisposeAsync().AsTask();
+        }
+
+        DocumentClosed?.Invoke(this, document);
+
+        CollapseIfEmpty(group);
+        OnLayoutChanged();
+    }
+
+    private void OnLayoutChanged() => LayoutChanged?.Invoke(this, EventArgs.Empty);
+
+    private static IEnumerable<TabGroupNode> Groups(LayoutNode node)
+    {
+        switch (node)
+        {
+            case TabGroupNode group:
+                yield return group;
+                break;
+            case SplitNode split:
+                foreach (var g in Groups(split.First))
+                {
+                    yield return g;
+                }
+
+                foreach (var g in Groups(split.Second))
+                {
+                    yield return g;
+                }
+
+                break;
+        }
     }
 
     private void SplitInto(DocumentViewModel document, TabGroupNode source, TabGroupNode target, DropZone zone)
@@ -204,34 +232,6 @@ public sealed partial class DockLayoutViewModel : ObservableObject
 
         target.Documents.Add(document);
         target.SelectedDocument = document;
-    }
-
-    /// <summary>Removes a document from the layout, collapsing its group if it becomes empty.</summary>
-    public void Close(DocumentViewModel document)
-    {
-        var group = FindGroup(document);
-
-        if (group is null)
-        {
-            return;
-        }
-
-        group.Documents.Remove(document);
-
-        if (ReferenceEquals(group.SelectedDocument, document))
-        {
-            group.SelectedDocument = group.Documents.FirstOrDefault();
-        }
-
-        if (document.Content is IAsyncDisposable disposable)
-        {
-            _ = disposable.DisposeAsync().AsTask();
-        }
-
-        DocumentClosed?.Invoke(this, document);
-
-        CollapseIfEmpty(group);
-        OnLayoutChanged();
     }
 
     private void CollapseIfEmpty(TabGroupNode group)

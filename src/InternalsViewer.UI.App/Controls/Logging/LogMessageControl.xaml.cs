@@ -21,23 +21,6 @@ public sealed partial class LogMessageControl : UserControl
         set => SetValue(EntryProperty, value);
     }
 
-    private TextBlock MessageBlock { get; } = new()
-    {
-        FontFamily = new("Consolas"),
-        FontSize = 11,
-        TextWrapping = TextWrapping.Wrap,
-        IsTextSelectionEnabled = true
-    };
-
-    private Button ExpandCollapseButton { get; } = new()
-    {
-        Content = "Expand",
-        HorizontalAlignment = HorizontalAlignment.Left,
-        Visibility = Visibility.Collapsed
-    };
-
-    private bool IsExpanded { get; set; }
-
     public LogMessageControl()
     {
         ExpandCollapseButton.Click += OnExpandCollapseClick;
@@ -63,8 +46,22 @@ public sealed partial class LogMessageControl : UserControl
         };
     }
 
-    private static void OnEntryChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
-        => ((LogMessageControl)d).Rebuild();
+    private TextBlock MessageBlock { get; } = new()
+    {
+        FontFamily = new("Consolas"),
+        FontSize = 11,
+        TextWrapping = TextWrapping.Wrap,
+        IsTextSelectionEnabled = true
+    };
+
+    private Button ExpandCollapseButton { get; } = new()
+    {
+        Content = "Expand",
+        HorizontalAlignment = HorizontalAlignment.Left,
+        Visibility = Visibility.Collapsed
+    };
+
+    private bool IsExpanded { get; set; }
 
     private void Rebuild()
     {
@@ -236,4 +233,7 @@ public sealed partial class LogMessageControl : UserControl
             return xml.Replace("\r", string.Empty).Replace("\n", " ").Trim();
         }
     }
+
+    private static void OnEntryChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
+        => ((LogMessageControl)d).Rebuild();
 }

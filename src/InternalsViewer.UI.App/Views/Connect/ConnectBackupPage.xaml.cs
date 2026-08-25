@@ -9,12 +9,12 @@ namespace InternalsViewer.UI.App.Views.Connect;
 
 public sealed partial class ConnectBackupPage
 {
-    private ConnectBackupViewModel ViewModel => (ConnectBackupViewModel)DataContext;
-
     public ConnectBackupPage()
     {
         InitializeComponent();
     }
+
+    private ConnectBackupViewModel ViewModel => (ConnectBackupViewModel)DataContext;
 
     protected override void OnNavigatedTo(NavigationEventArgs e)
     {

@@ -19,9 +19,9 @@ public sealed partial class EventGridControl : UserControl, IDisposable
     private static readonly SolidColorBrush InScopeBrush =
         new(Windows.UI.Color.FromArgb(20, 121, 251, 155));
 
-    public event EventHandler<PageAddressEventArgs>? PageClicked;
-
-    private readonly TappedEventHandler _tappedHandler;
+    public static readonly DependencyProperty SelectedItemProperty =
+        DependencyProperty.Register(nameof(SelectedItem), typeof(EngineEvent), typeof(EventGridControl),
+            new PropertyMetadata(null, OnSelectedItemChanged));
 
     public EngineEvent? SelectedItem
     {
@@ -29,39 +29,9 @@ public sealed partial class EventGridControl : UserControl, IDisposable
         set => SetValue(SelectedItemProperty, value);
     }
 
-    public static readonly DependencyProperty SelectedItemProperty =
-        DependencyProperty.Register(nameof(SelectedItem), typeof(EngineEvent), typeof(EventGridControl),
-            new PropertyMetadata(null, OnSelectedItemChanged));
-
-    private static void OnSelectedItemChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
-    {
-        var control = (EventGridControl)d;
-
-        if (!ReferenceEquals((control.EventTable.SelectedItem as EventGridRow)?.Event, e.NewValue))
-        {
-            control.SelectRow(e.NewValue as EngineEvent);
-        }
-    }
-
-    private void SelectRow(EngineEvent? engineEvent)
-    {
-        if (engineEvent is null)
-        {
-            EventTable.SelectedItem = null;
-
-            return;
-        }
-
-        if (_parentOf.TryGetValue(engineEvent, out var parent) && _expanded.Add(parent))
-        {
-            ApplyFilter();
-        }
-
-        EventTable.SelectedItem = FindRow(engineEvent);
-    }
-
-    private EventGridRow? FindRow(EngineEvent engineEvent) =>
-        (EventTable.ItemsSource as IEnumerable<EventGridRow>)?.FirstOrDefault(r => ReferenceEquals(r.Event, engineEvent));
+    public static readonly DependencyProperty EventsProperty =
+        DependencyProperty.Register(nameof(Events), typeof(List<EngineEvent>), typeof(EventGridControl),
+            new PropertyMetadata(null, OnEventsChanged));
 
     public List<EngineEvent> Events
     {
@@ -69,31 +39,9 @@ public sealed partial class EventGridControl : UserControl, IDisposable
         set => SetValue(EventsProperty, value);
     }
 
-    public static readonly DependencyProperty EventsProperty =
-        DependencyProperty.Register(nameof(Events), typeof(List<EngineEvent>), typeof(EventGridControl),
-            new PropertyMetadata(null, OnEventsChanged));
-
-    private static void OnEventsChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
-    {
-        var control = (EventGridControl)d;
-
-        control.RebuildParentMap();
-        control.ApplyFilter();
-    }
-
-    private void RebuildParentMap()
-    {
-        _parentOf.Clear();
-        _expanded.Clear();
-
-        foreach (var group in (Events).OfType<IEventGroup>())
-        {
-            foreach (var child in group.Events)
-            {
-                _parentOf[child] = (EngineEvent)group;
-            }
-        }
-    }
+    public static readonly DependencyProperty SequenceFromProperty =
+        DependencyProperty.Register(nameof(SequenceFrom), typeof(long), typeof(EventGridControl),
+            new PropertyMetadata(0L, OnSequenceRangeChanged));
 
     public long SequenceFrom
     {
@@ -101,8 +49,8 @@ public sealed partial class EventGridControl : UserControl, IDisposable
         set => SetValue(SequenceFromProperty, value);
     }
 
-    public static readonly DependencyProperty SequenceFromProperty =
-        DependencyProperty.Register(nameof(SequenceFrom), typeof(long), typeof(EventGridControl),
+    public static readonly DependencyProperty SequenceToProperty =
+        DependencyProperty.Register(nameof(SequenceTo), typeof(long), typeof(EventGridControl),
             new PropertyMetadata(0L, OnSequenceRangeChanged));
 
     public long SequenceTo
@@ -111,14 +59,7 @@ public sealed partial class EventGridControl : UserControl, IDisposable
         set => SetValue(SequenceToProperty, value);
     }
 
-    public static readonly DependencyProperty SequenceToProperty =
-        DependencyProperty.Register(nameof(SequenceTo), typeof(long), typeof(EventGridControl),
-            new PropertyMetadata(0L, OnSequenceRangeChanged));
-
-    private static void OnSequenceRangeChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
-    {
-        ((EventGridControl)d).RefreshRowHighlights();
-    }
+    private readonly TappedEventHandler _tappedHandler;
 
     private readonly Dictionary<TableViewRow, EngineEvent> _visibleRows = new();
 
@@ -151,6 +92,8 @@ public sealed partial class EventGridControl : UserControl, IDisposable
         EventTable.AddHandler(UIElement.TappedEvent, _tappedHandler, handledEventsToo: true);
     }
 
+    public event EventHandler<PageAddressEventArgs>? PageClicked;
+
     /// <summary>
     /// Releases the grid's row/event references and detaches the table handlers, so a closed query tab's events
     /// aren't held through this control
@@ -167,6 +110,59 @@ public sealed partial class EventGridControl : UserControl, IDisposable
         _visibleRows.Clear();
         _expanded.Clear();
         _parentOf.Clear();
+    }
+
+    /// <summary>
+    /// Selects and scrolls the grid to the given event, clearing the search filter if it hides it
+    /// </summary>
+    public void NavigateToEvent(EngineEvent ev)
+    {
+        if (SearchBox is { Text.Length: > 0 } box && FindRow(ev) is null)
+        {
+            box.Text = string.Empty;
+        }
+
+        // A child event's group must be expanded before its row exists
+        SelectRow(ev);
+
+        var row = FindRow(ev);
+
+        // Defer the scroll so it runs after any tab switch / filter change has laid the grid out.
+        DispatcherQueue.TryEnqueue(() => { if (row is not null) { EventTable.ScrollIntoView(row); } });
+    }
+
+    private void SelectRow(EngineEvent? engineEvent)
+    {
+        if (engineEvent is null)
+        {
+            EventTable.SelectedItem = null;
+
+            return;
+        }
+
+        if (_parentOf.TryGetValue(engineEvent, out var parent) && _expanded.Add(parent))
+        {
+            ApplyFilter();
+        }
+
+        EventTable.SelectedItem = FindRow(engineEvent);
+    }
+
+    private EventGridRow? FindRow(EngineEvent engineEvent) =>
+        (EventTable.ItemsSource as IEnumerable<EventGridRow>)?.FirstOrDefault(r => ReferenceEquals(r.Event, engineEvent));
+
+    private void RebuildParentMap()
+    {
+        _parentOf.Clear();
+        _expanded.Clear();
+
+        foreach (var group in (Events).OfType<IEventGroup>())
+        {
+            foreach (var child in group.Events)
+            {
+                _parentOf[child] = (EngineEvent)group;
+            }
+        }
     }
 
     private void OnTableSelectionChanged(object sender, SelectionChangedEventArgs e)
@@ -296,25 +292,6 @@ public sealed partial class EventGridControl : UserControl, IDisposable
         row.Background = inScope ? InScopeBrush : null;
     }
 
-    /// <summary>
-    /// Selects and scrolls the grid to the given event, clearing the search filter if it hides it
-    /// </summary>
-    public void NavigateToEvent(EngineEvent ev)
-    {
-        if (SearchBox is { Text.Length: > 0 } box && FindRow(ev) is null)
-        {
-            box.Text = string.Empty;
-        }
-
-        // A child event's group must be expanded before its row exists
-        SelectRow(ev);
-
-        var row = FindRow(ev);
-
-        // Defer the scroll so it runs after any tab switch / filter change has laid the grid out.
-        DispatcherQueue.TryEnqueue(() => { if (row is not null) { EventTable.ScrollIntoView(row); } });
-    }
-
     private void HyperlinkButton_Click(object sender, RoutedEventArgs e)
     {
         if (((HyperlinkButton)sender).Tag is PageAddress pageAddress)
@@ -329,7 +306,7 @@ public sealed partial class EventGridControl : UserControl, IDisposable
     }
 
     /// <summary>
-    /// Sets the grid's source to the events matching the search box (all fields), in the current sort order.
+    /// Sets the grid's source to the events matching the search box (all fields), in the current sort order
     /// </summary>
     private void ApplyFilter()
     {
@@ -382,7 +359,7 @@ public sealed partial class EventGridControl : UserControl, IDisposable
         return rows;
     }
 
-    /// <summary>Shows a per-event-type count of the currently filtered events, e.g. "wait_info: 100   latch_acquired: 20".</summary>
+    /// <summary>Shows a per-event-type count of the currently filtered events, e.g. "wait_info: 100   latch_acquired: 20"</summary>
     private void UpdateStatusBar(IReadOnlyCollection<EngineEvent> filtered)
     {
         var counts = filtered
@@ -473,11 +450,34 @@ public sealed partial class EventGridControl : UserControl, IDisposable
     // Sort pages numerically by (file, page) rather than by their textual form.
     private static long PageSortKey(EngineEvent ev) =>
         PageOf(ev) is { } page ? ((long)page.FileId << 32) | (uint)page.PageId : long.MinValue;
+
+    private static void OnSelectedItemChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
+    {
+        var control = (EventGridControl)d;
+
+        if (!ReferenceEquals((control.EventTable.SelectedItem as EventGridRow)?.Event, e.NewValue))
+        {
+            control.SelectRow(e.NewValue as EngineEvent);
+        }
+    }
+
+    private static void OnEventsChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
+    {
+        var control = (EventGridControl)d;
+
+        control.RebuildParentMap();
+        control.ApplyFilter();
+    }
+
+    private static void OnSequenceRangeChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
+    {
+        ((EventGridControl)d).RefreshRowHighlights();
+    }
 }
 
-/// <summary>Formatting helpers called directly from the grid's x:Bind cell templates.</summary>
+/// <summary>Formatting helpers called directly from the grid's x:Bind cell templates</summary>
 public static class EventGridFormat
 {
-    /// <summary>Converts a <see cref="EngineEvent.TimeUs"/> value to milliseconds, e.g. "1234.500".</summary>
+    /// <summary>Converts a <see cref="EngineEvent.TimeUs"/> value to milliseconds, e.g. "1234.500"</summary>
     public static string TimeMs(long timeUs) => (timeUs / 1000.0).ToString("0.000");
 }

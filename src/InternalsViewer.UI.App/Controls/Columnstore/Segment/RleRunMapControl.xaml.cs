@@ -15,6 +15,48 @@ public sealed partial class RleRunMapControl : IDisposable
 {
     private const int MinimumRowSpan = 16;
 
+    public static readonly DependencyProperty RunsProperty
+        = DependencyProperty.Register(nameof(Runs),
+                                      typeof(IReadOnlyList<RleRunDetail>),
+                                      typeof(RleRunMapControl),
+                                      new PropertyMetadata(null, OnRunsChanged));
+
+    public IReadOnlyList<RleRunDetail>? Runs
+    {
+        get => (IReadOnlyList<RleRunDetail>?)GetValue(RunsProperty);
+        set => SetValue(RunsProperty, value);
+    }
+
+    public static readonly DependencyProperty ValueLabelProperty
+        = DependencyProperty.Register(nameof(ValueLabel),
+                                      typeof(string),
+                                      typeof(RleRunMapControl),
+                                      new PropertyMetadata("Value", OnValueLabelChanged));
+
+    /// <summary>
+    /// What the first track holds, being the runs that stand for a single value
+    /// </summary>
+    public string ValueLabel
+    {
+        get => (string)GetValue(ValueLabelProperty);
+        set => SetValue(ValueLabelProperty, value);
+    }
+
+    public static readonly DependencyProperty IndexLabelProperty
+        = DependencyProperty.Register(nameof(IndexLabel),
+                                      typeof(string),
+                                      typeof(RleRunMapControl),
+                                      new PropertyMetadata("Bit Pack", OnIndexLabelChanged));
+
+    /// <summary>
+    /// What the second track holds, being the runs that cover a sequence rather than a single value
+    /// </summary>
+    public string IndexLabel
+    {
+        get => (string)GetValue(IndexLabelProperty);
+        set => SetValue(IndexLabelProperty, value);
+    }
+
     private readonly RleRunMapRenderer _renderer = new();
 
     private int _hoveredIndex = -1;
@@ -22,6 +64,8 @@ public sealed partial class RleRunMapControl : IDisposable
     private int _firstRow;
 
     private int _rowSpan;
+
+    private bool _isThemeDirty = true;
 
     public RleRunMapControl()
     {
@@ -36,7 +80,20 @@ public sealed partial class RleRunMapControl : IDisposable
         ActualThemeChanged += OnActualThemeChanged;
     }
 
-    private bool _isThemeDirty = true;
+    public event EventHandler<SegmentNavigationTarget>? RunInvoked;
+
+    public void Dispose()
+    {
+        MapCanvas.PaintSurface -= OnPaintSurface;
+        MapCanvas.PointerPressed -= OnPointerPressed;
+        MapCanvas.PointerMoved -= OnPointerMoved;
+        MapCanvas.PointerExited -= OnPointerExited;
+        MapCanvas.PointerWheelChanged -= OnPointerWheelChanged;
+
+        ActualThemeChanged -= OnActualThemeChanged;
+
+        _renderer.Dispose();
+    }
 
     private void OnActualThemeChanged(FrameworkElement sender, object args)
     {
@@ -44,89 +101,6 @@ public sealed partial class RleRunMapControl : IDisposable
 
         MapCanvas.Invalidate();
     }
-
-    public IReadOnlyList<RleRunDetail>? Runs
-    {
-        get => (IReadOnlyList<RleRunDetail>?)GetValue(RunsProperty);
-        set => SetValue(RunsProperty, value);
-    }
-
-    public static readonly DependencyProperty RunsProperty
-        = DependencyProperty.Register(nameof(Runs),
-                                      typeof(IReadOnlyList<RleRunDetail>),
-                                      typeof(RleRunMapControl),
-                                      new PropertyMetadata(null, OnRunsChanged));
-
-    /// <summary>
-    /// What the first track holds, being the runs that stand for a single value
-    /// </summary>
-    public string ValueLabel
-    {
-        get => (string)GetValue(ValueLabelProperty);
-        set => SetValue(ValueLabelProperty, value);
-    }
-
-    public static readonly DependencyProperty ValueLabelProperty
-        = DependencyProperty.Register(nameof(ValueLabel),
-                                      typeof(string),
-                                      typeof(RleRunMapControl),
-                                      new PropertyMetadata("Value", OnValueLabelChanged));
-
-    private static void OnValueLabelChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
-    {
-        var control = (RleRunMapControl)d;
-
-        control._renderer.ValueLabel = control.ValueLabel;
-
-        control.MapCanvas.Invalidate();
-    }
-
-    /// <summary>
-    /// What the second track holds, being the runs that cover a sequence rather than a single value
-    /// </summary>
-    public string IndexLabel
-    {
-        get => (string)GetValue(IndexLabelProperty);
-        set => SetValue(IndexLabelProperty, value);
-    }
-
-    public static readonly DependencyProperty IndexLabelProperty
-        = DependencyProperty.Register(nameof(IndexLabel),
-                                      typeof(string),
-                                      typeof(RleRunMapControl),
-                                      new PropertyMetadata("Bit Pack", OnIndexLabelChanged));
-
-    private static void OnIndexLabelChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
-    {
-        var control = (RleRunMapControl)d;
-
-        control._renderer.IndexLabel = control.IndexLabel;
-
-        control.MapCanvas.Invalidate();
-    }
-
-    private static void OnRunsChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
-    {
-        var control = (RleRunMapControl)d;
-
-        control._renderer.SelectedIndex = -1;
-
-        control._renderer.SelectedRow = -1;
-
-        control._hoveredIndex = -1;
-
-        control.TooltipPopup.IsOpen = false;
-
-        control._firstRow = 0;
-
-        control._rowSpan = RleRunMapRenderer.TotalRows(control.Runs ?? []);
-
-        control.UpdateScrollBar();
-
-        control.MapCanvas.Invalidate();
-    }
-
-    public event EventHandler<SegmentNavigationTarget>? RunInvoked;
 
     private void OnPaintSurface(object? sender, SKPaintSurfaceEventArgs e)
     {
@@ -313,16 +287,42 @@ public sealed partial class RleRunMapControl : IDisposable
         RunInvoked?.Invoke(this, new SegmentNavigationTarget(SegmentRegion.RleArray, runs[index].Offset));
     }
 
-    public void Dispose()
+    private static void OnValueLabelChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
     {
-        MapCanvas.PaintSurface -= OnPaintSurface;
-        MapCanvas.PointerPressed -= OnPointerPressed;
-        MapCanvas.PointerMoved -= OnPointerMoved;
-        MapCanvas.PointerExited -= OnPointerExited;
-        MapCanvas.PointerWheelChanged -= OnPointerWheelChanged;
+        var control = (RleRunMapControl)d;
 
-        ActualThemeChanged -= OnActualThemeChanged;
+        control._renderer.ValueLabel = control.ValueLabel;
 
-        _renderer.Dispose();
+        control.MapCanvas.Invalidate();
+    }
+
+    private static void OnIndexLabelChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
+    {
+        var control = (RleRunMapControl)d;
+
+        control._renderer.IndexLabel = control.IndexLabel;
+
+        control.MapCanvas.Invalidate();
+    }
+
+    private static void OnRunsChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
+    {
+        var control = (RleRunMapControl)d;
+
+        control._renderer.SelectedIndex = -1;
+
+        control._renderer.SelectedRow = -1;
+
+        control._hoveredIndex = -1;
+
+        control.TooltipPopup.IsOpen = false;
+
+        control._firstRow = 0;
+
+        control._rowSpan = RleRunMapRenderer.TotalRows(control.Runs ?? []);
+
+        control.UpdateScrollBar();
+
+        control.MapCanvas.Invalidate();
     }
 }

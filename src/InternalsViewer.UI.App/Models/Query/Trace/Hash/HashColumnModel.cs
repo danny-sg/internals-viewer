@@ -8,6 +8,13 @@ namespace InternalsViewer.UI.App.Models.Query.Trace.Hash;
 /// </summary>
 public sealed partial class HashColumnModel : ObservableObject
 {
+    [ObservableProperty]
+    private double _width = 120;
+
+    public string Header { get; init; } = string.Empty;
+
+    public bool IsMonospace { get; init; }
+
     /// <summary>
     /// The two columns that exist before any row has been read, so the grid always has a header
     /// </summary>
@@ -16,11 +23,4 @@ public sealed partial class HashColumnModel : ObservableObject
         new() { Header = "Bucket", IsMonospace = true, Width = 62 },
         new() { Header = "Hash", IsMonospace = true, Width = 92 }
     ];
-
-    public string Header { get; init; } = string.Empty;
-
-    public bool IsMonospace { get; init; }
-
-    [ObservableProperty]
-    private double _width = 120;
 }

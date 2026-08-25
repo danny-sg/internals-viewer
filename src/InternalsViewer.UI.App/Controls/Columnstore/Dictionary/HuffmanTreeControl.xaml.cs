@@ -13,9 +13,38 @@ namespace InternalsViewer.UI.App.Controls.Columnstore.Dictionary;
 /// </summary>
 public sealed partial class HuffmanTreeControl : IDisposable
 {
+    public static readonly DependencyProperty TreeProperty
+        = DependencyProperty.Register(nameof(Tree),
+                                      typeof(HuffmanTreeNode),
+                                      typeof(HuffmanTreeControl),
+                                      new PropertyMetadata(null, OnTreeChanged));
+
+    public HuffmanTreeNode? Tree
+    {
+        get => (HuffmanTreeNode?)GetValue(TreeProperty);
+        set => SetValue(TreeProperty, value);
+    }
+
+    public static readonly DependencyProperty SelectedSymbolProperty
+        = DependencyProperty.Register(nameof(SelectedSymbol),
+                                      typeof(int),
+                                      typeof(HuffmanTreeControl),
+                                      new PropertyMetadata(-1, OnSelectedSymbolChanged));
+
+    /// <summary>
+    /// Symbol picked out in the drawing, which the code table sets as its selection moves
+    /// </summary>
+    public int SelectedSymbol
+    {
+        get => (int)GetValue(SelectedSymbolProperty);
+        set => SetValue(SelectedSymbolProperty, value);
+    }
+
     private readonly HuffmanTreeRenderer _renderer = new();
 
     private float _scrollOffset;
+
+    private bool _isThemeDirty = true;
 
     public HuffmanTreeControl()
     {
@@ -28,62 +57,25 @@ public sealed partial class HuffmanTreeControl : IDisposable
         ActualThemeChanged += OnActualThemeChanged;
     }
 
-    private bool _isThemeDirty = true;
+    /// <summary>
+    /// Releases the renderer, whose paints and fonts are native Skia handles the collector will not reclaim
+    /// </summary>
+    public void Dispose()
+    {
+        ActualThemeChanged -= OnActualThemeChanged;
+
+        TreeCanvas.PaintSurface -= OnPaintSurface;
+        TreeCanvas.PointerPressed -= OnPointerPressed;
+        TreeCanvas.PointerWheelChanged -= OnPointerWheelChanged;
+
+        _renderer.Dispose();
+    }
 
     private void OnActualThemeChanged(FrameworkElement sender, object args)
     {
         _isThemeDirty = true;
 
         TreeCanvas.Invalidate();
-    }
-
-    public HuffmanTreeNode? Tree
-    {
-        get => (HuffmanTreeNode?)GetValue(TreeProperty);
-        set => SetValue(TreeProperty, value);
-    }
-
-    public static readonly DependencyProperty TreeProperty
-        = DependencyProperty.Register(nameof(Tree),
-                                      typeof(HuffmanTreeNode),
-                                      typeof(HuffmanTreeControl),
-                                      new PropertyMetadata(null, OnTreeChanged));
-
-    private static void OnTreeChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
-    {
-        var control = (HuffmanTreeControl)d;
-
-        control._scrollOffset = 0;
-        control._renderer.SelectedSymbol = -1;
-
-        control.EmptyText.Visibility = e.NewValue is null ? Visibility.Visible : Visibility.Collapsed;
-
-        control.UpdateScrollBar();
-        control.TreeCanvas.Invalidate();
-    }
-
-    /// <summary>
-    /// Symbol picked out in the drawing, which the code table sets as its selection moves
-    /// </summary>
-    public int SelectedSymbol
-    {
-        get => (int)GetValue(SelectedSymbolProperty);
-        set => SetValue(SelectedSymbolProperty, value);
-    }
-
-    public static readonly DependencyProperty SelectedSymbolProperty
-        = DependencyProperty.Register(nameof(SelectedSymbol),
-                                      typeof(int),
-                                      typeof(HuffmanTreeControl),
-                                      new PropertyMetadata(-1, OnSelectedSymbolChanged));
-
-    private static void OnSelectedSymbolChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
-    {
-        var control = (HuffmanTreeControl)d;
-
-        control._renderer.SelectedSymbol = (int)e.NewValue;
-
-        control.TreeCanvas.Invalidate();
     }
 
     private void OnPaintSurface(object? sender, SKPaintSurfaceEventArgs e)
@@ -169,17 +161,26 @@ public sealed partial class HuffmanTreeControl : IDisposable
 
         SetScroll(_scrollOffset);
     }
-    /// <summary>
-    /// Releases the renderer, whose paints and fonts are native Skia handles the collector will not reclaim
-    /// </summary>
-    public void Dispose()
+
+    private static void OnTreeChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
     {
-        ActualThemeChanged -= OnActualThemeChanged;
+        var control = (HuffmanTreeControl)d;
 
-        TreeCanvas.PaintSurface -= OnPaintSurface;
-        TreeCanvas.PointerPressed -= OnPointerPressed;
-        TreeCanvas.PointerWheelChanged -= OnPointerWheelChanged;
+        control._scrollOffset = 0;
+        control._renderer.SelectedSymbol = -1;
 
-        _renderer.Dispose();
+        control.EmptyText.Visibility = e.NewValue is null ? Visibility.Visible : Visibility.Collapsed;
+
+        control.UpdateScrollBar();
+        control.TreeCanvas.Invalidate();
+    }
+
+    private static void OnSelectedSymbolChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
+    {
+        var control = (HuffmanTreeControl)d;
+
+        control._renderer.SelectedSymbol = (int)e.NewValue;
+
+        control.TreeCanvas.Invalidate();
     }
 }

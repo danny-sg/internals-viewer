@@ -15,11 +15,19 @@ namespace InternalsViewer.UI.App.Controls.Index;
 
 public sealed partial class RecordGrid : IDisposable
 {
-    public AllocationLayerGridViewModel ViewModel { get; } = new();
+    private const int ScrollIntervalMs = 150;
 
-    public event EventHandler<PageAddressEventArgs>? PageOver;
+    private static readonly SolidColorBrush MatchedBackground
+        = new(Windows.UI.Color.FromArgb(255, 223, 244, 223));
 
-    public event EventHandler<PageAddressEventArgs>? PageClicked;
+    private static readonly SolidColorBrush MatchedForeground
+        = new(Windows.UI.Color.FromArgb(255, 11, 93, 11));
+
+    public static readonly DependencyProperty RecordsProperty
+        = DependencyProperty.Register(nameof(Records),
+            typeof(ObservableCollection<IndexRecordModel>),
+            typeof(RecordGrid),
+            new PropertyMetadata(null, OnPropertyChanged));
 
     public ObservableCollection<IndexRecordModel> Records
     {
@@ -27,9 +35,9 @@ public sealed partial class RecordGrid : IDisposable
         set => SetValue(RecordsProperty, value);
     }
 
-    public static readonly DependencyProperty RecordsProperty
-        = DependencyProperty.Register(nameof(Records),
-            typeof(ObservableCollection<IndexRecordModel>),
+    public static readonly DependencyProperty SelectedSlotProperty
+        = DependencyProperty.Register(nameof(SelectedSlot),
+            typeof(int?),
             typeof(RecordGrid),
             new PropertyMetadata(null, OnPropertyChanged));
 
@@ -39,27 +47,43 @@ public sealed partial class RecordGrid : IDisposable
         set => SetValue(SelectedSlotProperty, value);
     }
 
-    public static readonly DependencyProperty SelectedSlotProperty
-        = DependencyProperty.Register(nameof(SelectedSlot),
-            typeof(int?),
-            typeof(RecordGrid),
-            new PropertyMetadata(null, OnPropertyChanged));
+    private ObservableCollection<IndexRecordModel>? _subscribedRecords;
 
-    public bool HideSlotColumn { get; set; }
+    private bool _hasFieldColumns;
 
-    public bool AutoScrollToEnd { get; set; }
+    private bool _isRebindQueued;
 
-    private static readonly SolidColorBrush MatchedBackground
-        = new(Windows.UI.Color.FromArgb(255, 223, 244, 223));
+    private Microsoft.UI.Dispatching.DispatcherQueueTimer? _scrollTimer;
 
-    private static readonly SolidColorBrush MatchedForeground
-        = new(Windows.UI.Color.FromArgb(255, 11, 93, 11));
+    private long _lastScroll;
 
     public RecordGrid()
     {
         InitializeComponent();
 
         RecordTable.ContainerContentChanging += OnContainerContentChanging;
+    }
+
+    public event EventHandler<PageAddressEventArgs>? PageOver;
+
+    public event EventHandler<PageAddressEventArgs>? PageClicked;
+    public AllocationLayerGridViewModel ViewModel { get; } = new();
+
+    public bool HideSlotColumn { get; set; }
+
+    public bool AutoScrollToEnd { get; set; }
+
+    public void Dispose()
+    {
+        RecordTable.ContainerContentChanging -= OnContainerContentChanging;
+
+        RemoveEventHandlers();
+
+        _scrollTimer?.Stop();
+        _scrollTimer = null;
+
+        _subscribedRecords?.CollectionChanged -= OnRecordsCollectionChanged;
+        _subscribedRecords = null;
     }
 
     private static void OnContainerContentChanging(ListViewBase sender, ContainerContentChangingEventArgs args)
@@ -80,25 +104,6 @@ public sealed partial class RecordGrid : IDisposable
 
         row.ClearValue(BackgroundProperty);
         row.ClearValue(ForegroundProperty);
-    }
-
-    private ObservableCollection<IndexRecordModel>? _subscribedRecords;
-
-    private bool _hasFieldColumns;
-
-    private bool _isRebindQueued;
-
-    private static void OnPropertyChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
-    {
-        var control = (RecordGrid)d;
-
-        if (e.Property == RecordsProperty)
-        {
-            control.SubscribeRecords();
-            control.Rebind();
-        }
-
-        control.DispatcherQueue.TryEnqueue(control.ApplySelectedSlot);
     }
 
     private void SubscribeRecords()
@@ -137,12 +142,6 @@ public sealed partial class RecordGrid : IDisposable
 
         DispatcherQueue.TryEnqueue(Rebind);
     }
-
-    private const int ScrollIntervalMs = 150;
-
-    private Microsoft.UI.Dispatching.DispatcherQueueTimer? _scrollTimer;
-
-    private long _lastScroll;
 
     private void RequestScrollToEnd()
     {
@@ -321,16 +320,16 @@ public sealed partial class RecordGrid : IDisposable
         PageOver?.Invoke(this, e);
     }
 
-    public void Dispose()
+    private static void OnPropertyChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
     {
-        RecordTable.ContainerContentChanging -= OnContainerContentChanging;
+        var control = (RecordGrid)d;
 
-        RemoveEventHandlers();
+        if (e.Property == RecordsProperty)
+        {
+            control.SubscribeRecords();
+            control.Rebind();
+        }
 
-        _scrollTimer?.Stop();
-        _scrollTimer = null;
-
-        _subscribedRecords?.CollectionChanged -= OnRecordsCollectionChanged;
-        _subscribedRecords = null;
+        control.DispatcherQueue.TryEnqueue(control.ApplySelectedSlot);
     }
 }

@@ -13,8 +13,6 @@ public sealed partial class QueryTimelineTabView : UserControl, IDocumentCommand
 {
     private QueryViewModel? _subscribed;
 
-    public QueryViewModel? ViewModel => DataContext as QueryViewModel;
-
     public QueryTimelineTabView()
     {
         InitializeComponent();
@@ -32,7 +30,34 @@ public sealed partial class QueryTimelineTabView : UserControl, IDocumentCommand
         EventTimeline.PlayStateChanged += OnPlayStateChanged;
     }
 
+    public QueryViewModel? ViewModel => DataContext as QueryViewModel;
+
     public FrameworkElement CreateCommands() => EventTimeline.CreateTransport();
+
+    public void Dispose()
+    {
+        // x:Bind listens to the view model, which outlives the view, so the view stays rooted until
+        // tracking stops
+        Bindings.StopTracking();
+
+        EventTimeline.ScopeChanged -= OnScopeChanged;
+        EventTimeline.PlayheadTimeChanged -= OnPlayheadTimeChanged;
+        EventTimeline.PlanNodeSelected -= OnPlanNodeSelected;
+        EventTimeline.EventSelected -= OnEventSelected;
+        EventTimeline.EventDoubleClicked -= OnEventDoubleClicked;
+        EventTimeline.IndexOpenRequested -= OnIndexOpenRequested;
+        EventTimeline.ExecutionPlanRequested -= OnExecutionPlanRequested;
+        EventTimeline.TraceOpenRequested -= OnTraceOpenRequested;
+        EventTimeline.PlayStateChanged -= OnPlayStateChanged;
+
+        if (_subscribed is not null)
+        {
+            _subscribed.PlayheadMoveRequested -= OnPlayheadMoveRequested;
+            _subscribed = null;
+        }
+
+        EventTimeline.Dispose();
+    }
 
     private void OnDataContextChanged(FrameworkElement sender, DataContextChangedEventArgs args)
     {
@@ -87,30 +112,5 @@ public sealed partial class QueryTimelineTabView : UserControl, IDocumentCommand
         {
             ViewModel?.OpenTrace(identifier);
         }
-    }
-
-    public void Dispose()
-    {
-        // x:Bind listens to the view model, which outlives the view, so the view stays rooted until
-        // tracking stops
-        Bindings.StopTracking();
-
-        EventTimeline.ScopeChanged -= OnScopeChanged;
-        EventTimeline.PlayheadTimeChanged -= OnPlayheadTimeChanged;
-        EventTimeline.PlanNodeSelected -= OnPlanNodeSelected;
-        EventTimeline.EventSelected -= OnEventSelected;
-        EventTimeline.EventDoubleClicked -= OnEventDoubleClicked;
-        EventTimeline.IndexOpenRequested -= OnIndexOpenRequested;
-        EventTimeline.ExecutionPlanRequested -= OnExecutionPlanRequested;
-        EventTimeline.TraceOpenRequested -= OnTraceOpenRequested;
-        EventTimeline.PlayStateChanged -= OnPlayStateChanged;
-
-        if (_subscribed is not null)
-        {
-            _subscribed.PlayheadMoveRequested -= OnPlayheadMoveRequested;
-            _subscribed = null;
-        }
-
-        EventTimeline.Dispose();
     }
 }

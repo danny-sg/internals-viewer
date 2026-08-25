@@ -53,7 +53,7 @@ public static class ColumnstoreLayout
     public const float RowSetBoxHeight = 54f;
 
     public const float GlobalDictionaryHeight = 38f;
-    
+
     public const float ContainerPadding = 8f;
 
     public const float SectionLabelBottomPadding = 6f;
@@ -78,17 +78,6 @@ public static class ColumnstoreLayout
     /// </summary>
     public const float NarrowColumnWidth = 20f;
 
-    public static bool IsNarrow(float columnWidth) => columnWidth < NarrowColumnWidth;
-
-    public static float GetColumnWidth(float width, int columnCount)
-        => GetSegmentWidth(GetSegmentsAvailable(width), columnCount);
-
-    /// <summary>
-    /// The dictionaries container, being its header over one row of blocks
-    /// </summary>
-    public static float GlobalDictionaryContainerHeight
-        => GlobalDictionaryHeight + (ContainerPadding * 2);
-
     public const float RowGroupHeight = 62f;
 
     /// <summary>
@@ -97,9 +86,6 @@ public static class ColumnstoreLayout
     public const float LocalDictionaryRowHeight = GlobalDictionaryHeight + (LocalDictionaryGap * 2);
 
     public const float LocalDictionaryGap = 5f;
-
-    public static float GetRowGroupHeight(bool hasLocalDictionaries)
-        => RowGroupHeight + (hasLocalDictionaries ? LocalDictionaryRowHeight : 0);
 
     public const float RowGroupGap = 12f;
 
@@ -111,6 +97,65 @@ public static class ColumnstoreLayout
     /// How far a column band runs past the last row group, so it reads as a column rather than as a backing
     /// </summary>
     public const float BandOverhang = 24f;
+
+    /// <summary>
+    /// Segments always share the width available, shrinking rather than overflowing a narrow pane
+    /// </summary>
+    /// <remarks>
+    /// The floor only keeps a segment wide enough to click. Labels drop out on their own once they no longer fit.
+    /// </remarks>
+    public const float SegmentMinWidth = 6f;
+
+    public const float DictionaryHeight = 14f;
+
+    public const float SegmentDictionaryWidth = 60f;
+
+    public const float SizeBarWidth = 8f;
+
+    public const float BadgePadding = 3f;
+
+    /// <summary>
+    /// Padding above and below a badge label, which sits tighter than the padding either side of it
+    /// </summary>
+    public const float BadgeVerticalPadding = 1f;
+
+    /// <summary>
+    /// Space kept above and below the badge, the padding staying tight to the text
+    /// </summary>
+    public const float BadgeMargin = 2f;
+
+    public const float BadgeCornerRadius = 3f;
+
+    /// <summary>
+    /// The dictionaries container, being its header over one row of blocks
+    /// </summary>
+    public static float GlobalDictionaryContainerHeight
+        => GlobalDictionaryHeight + (ContainerPadding * 2);
+
+    public static SKColor DictionaryColour => ColumnstoreColours.FloatDictionary;
+
+    public static SKColor DeleteBitmapColour => ColumnstoreColours.DeleteBitmap;
+
+    public static SKColor DeltaStoreColour => ColumnstoreColours.DeltaStore;
+
+    public static IReadOnlyList<(string Name, SKColor Colour)> Legend =>
+    [
+        (nameof(SegmentRleType.BitPack).SplitCamelCase(), GetRleTypeColour(SegmentRleType.BitPack)),
+        (nameof(SegmentRleType.VariableLengthData).SplitCamelCase(),
+         GetRleTypeColour(SegmentRleType.VariableLengthData)),
+        ("Numeric dictionary", GetDictionaryColour(1)),
+        ("String dictionary", GetDictionaryColour(3)),
+        ("Delete bitmap", DeleteBitmapColour),
+        ("Delta store", DeltaStoreColour)
+    ];
+
+    public static bool IsNarrow(float columnWidth) => columnWidth < NarrowColumnWidth;
+
+    public static float GetColumnWidth(float width, int columnCount)
+        => GetSegmentWidth(GetSegmentsAvailable(width), columnCount);
+
+    public static float GetRowGroupHeight(bool hasLocalDictionaries)
+        => RowGroupHeight + (hasLocalDictionaries ? LocalDictionaryRowHeight : 0);
 
     /// <summary>
     /// The column a point falls in, or -1 for the gutter and the gaps between columns
@@ -152,20 +197,6 @@ public static class ColumnstoreLayout
     public static float GetSegmentsAvailable(float width) => width - Margin - GetSegmentsLeft() - SegmentGap;
 
     /// <summary>
-    /// Segments always share the width available, shrinking rather than overflowing a narrow pane
-    /// </summary>
-    /// <remarks>
-    /// The floor only keeps a segment wide enough to click. Labels drop out on their own once they no longer fit.
-    /// </remarks>
-    public const float SegmentMinWidth = 6f;
-
-    public const float DictionaryHeight = 14f;
-
-    public const float SegmentDictionaryWidth = 60f;
-    
-    public const float SizeBarWidth = 8f;
-    
-    /// <summary>
     /// One colour per encoding so the drawing reads as a map of compression techniques
     /// </summary>
     public static SKColor GetEncodingColour(SegmentEncoding encoding) => encoding switch
@@ -186,20 +217,6 @@ public static class ColumnstoreLayout
         SegmentStorage.VariableLengthData => ColumnstoreColours.VariableLengthDataFlag,
         _ => ColumnstoreColours.UnknownEncoding
     };
-
-    public const float BadgePadding = 3f;
-
-    /// <summary>
-    /// Padding above and below a badge label, which sits tighter than the padding either side of it
-    /// </summary>
-    public const float BadgeVerticalPadding = 1f;
-
-    /// <summary>
-    /// Space kept above and below the badge, the padding staying tight to the text
-    /// </summary>
-    public const float BadgeMargin = 2f;
-    
-    public const float BadgeCornerRadius = 3f;
 
     /// <summary>
     /// Background and text for a row group state badge
@@ -224,8 +241,6 @@ public static class ColumnstoreLayout
         _ => ColumnstoreColours.UnknownRleType
     };
 
-    public static SKColor DictionaryColour => ColumnstoreColours.FloatDictionary;
-
     /// <summary>
     /// Dictionary sub types stay within one colour family, being variants of the same thing
     /// </summary>
@@ -247,21 +262,6 @@ public static class ColumnstoreLayout
         4 => "Float",
         _ => $"Type {dictionaryType}"
     };
-
-    public static SKColor DeleteBitmapColour => ColumnstoreColours.DeleteBitmap;
-
-    public static SKColor DeltaStoreColour => ColumnstoreColours.DeltaStore;
-
-    public static IReadOnlyList<(string Name, SKColor Colour)> Legend =>
-    [
-        (nameof(SegmentRleType.BitPack).SplitCamelCase(), GetRleTypeColour(SegmentRleType.BitPack)),
-        (nameof(SegmentRleType.VariableLengthData).SplitCamelCase(),
-         GetRleTypeColour(SegmentRleType.VariableLengthData)),
-        ("Numeric dictionary", GetDictionaryColour(1)),
-        ("String dictionary", GetDictionaryColour(3)),
-        ("Delete bitmap", DeleteBitmapColour),
-        ("Delta store", DeltaStoreColour)
-    ];
 
     /// <summary>
     /// Height of the band above the row groups, which only carries the rows sets that are actually present

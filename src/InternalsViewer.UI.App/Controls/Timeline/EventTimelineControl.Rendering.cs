@@ -17,13 +17,13 @@ public sealed partial class EventTimelineControl
     private const float RowLabelWidth = 36f;
     private const float RowPadding = 2f;
 
-    private SKPicture? _staticLayer;
-
-    private StaticLayerKey _staticLayerKey;
-
     private readonly SKColor _laneColour = new(30, 30, 30, 220);
 
     private readonly SKColor _alternateLaneColour = new(44, 44, 44, 220);
+
+    private SKPicture? _staticLayer;
+
+    private StaticLayerKey _staticLayerKey;
 
     private void OnPaintSurface(object? sender, SKPaintSurfaceEventArgs e)
     {
@@ -178,6 +178,8 @@ public sealed partial class EventTimelineControl
                                                                     _timeRange,
                                                                     _eventsVersion);
 
+    private float RowMarkerWidth(int rowIndex) => _rows.IsSparse(rowIndex) ? SparseMarkerWidth : MarkerWidth;
+
     private readonly record struct StaticLayerKey(double Zoom,
                                                   double ScrollX,
                                                   int Width,
@@ -187,6 +189,4 @@ public sealed partial class EventTimelineControl
                                                   double MinTime,
                                                   double TimeRange,
                                                   int EventsVersion);
-
-    private float RowMarkerWidth(int rowIndex) => _rows.IsSparse(rowIndex) ? SparseMarkerWidth : MarkerWidth;
 }

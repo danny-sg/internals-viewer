@@ -10,14 +10,6 @@ public sealed class CopyButton : Button
         DefaultStyleKey = typeof(CopyButton);
     }
 
-    private void CopyButton_Click(object sender, RoutedEventArgs e)
-    {
-        if (GetTemplateChild("CopyToClipboardSuccessAnimation") is Storyboard storyBoard)
-        {
-            storyBoard.Begin();
-        }
-    }
-
     protected override void OnApplyTemplate()
     {
         Click -= CopyButton_Click;
@@ -25,5 +17,13 @@ public sealed class CopyButton : Button
         base.OnApplyTemplate();
         
         Click += CopyButton_Click;
+    }
+
+    private void CopyButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (GetTemplateChild("CopyToClipboardSuccessAnimation") is Storyboard storyBoard)
+        {
+            storyBoard.Begin();
+        }
     }
 }

@@ -9,14 +9,16 @@ namespace InternalsViewer.UI.App.Controls.HexView;
 
 public sealed partial class HexViewControl
 {
-    public sealed class MouseOverInfo(int? offset, Marker? marker)
-    {
-        public int? Offset { get; } = offset;
+    /// <summary>
+    /// How far a pointer can move between press and release and still count as a click rather than a drag
+    /// </summary>
+    private const double ClickSlop = 3;
 
-        public Marker? Marker { get; } = marker;
-
-        public bool HasMarker => Marker != null;
-    }
+    public static readonly DependencyProperty MouseOverProperty
+        = DependencyProperty.Register(nameof(MouseOver),
+            typeof(MouseOverInfo),
+            typeof(HexViewControl),
+            new PropertyMetadata(null, null));
 
     public MouseOverInfo MouseOver
     {
@@ -24,11 +26,7 @@ public sealed partial class HexViewControl
         set => SetValue(MouseOverProperty, value);
     }
 
-    public static readonly DependencyProperty MouseOverProperty
-        = DependencyProperty.Register(nameof(MouseOver),
-            typeof(MouseOverInfo),
-            typeof(HexViewControl),
-            new PropertyMetadata(null, null));
+    private Point? _pressPoint;
 
     private void HexRichTextBlock_SelectionChanged(object sender, RoutedEventArgs e)
     {
@@ -62,13 +60,6 @@ public sealed partial class HexViewControl
             MouseOver = new(offset, MarkerLookup.FindAt(Markers, offset));
         }
     }
-
-    /// <summary>
-    /// How far a pointer can move between press and release and still count as a click rather than a drag
-    /// </summary>
-    private const double ClickSlop = 3;
-
-    private Point? _pressPoint;
 
     private void OnHexPointerPressed(object sender, PointerRoutedEventArgs e)
         => _pressPoint = e.GetCurrentPoint(HexRichTextBlock).Position;
@@ -107,5 +98,14 @@ public sealed partial class HexViewControl
     private void HexRichTextBlock_PointerExited(object sender, PointerRoutedEventArgs e)
     {
         MouseOver = new MouseOverInfo(null, null);
+    }
+
+    public sealed class MouseOverInfo(int? offset, Marker? marker)
+    {
+        public int? Offset { get; } = offset;
+
+        public Marker? Marker { get; } = marker;
+
+        public bool HasMarker => Marker != null;
     }
 }

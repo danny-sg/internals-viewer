@@ -41,6 +41,76 @@ public sealed class ColumnstoreTabViewModelFactory(ILogger<ColumnstoreTabViewMod
 
 public sealed partial class ColumnstoreTabViewModel : TabViewModel
 {
+    private const int SpinnerDelayMs = 100;
+
+    private const int DictionariesTabIndex = 1;
+
+    [ObservableProperty]
+    private ColumnStoreIndex? _index;
+
+    [ObservableProperty]
+    private bool _isInitialized;
+
+    [ObservableProperty]
+    private bool _isStructureLoading;
+
+    [ObservableProperty]
+    private string _loadingText = "Loading Columnstore Index...";
+
+    [ObservableProperty]
+    private string _indexDescription = string.Empty;
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(RowGroupCountDescription))]
+    private int _rowGroupCount;
+
+    [ObservableProperty]
+    private IReadOnlyList<RowGroupSummary> _rowGroups = [];
+
+    [ObservableProperty]
+    private IReadOnlyList<SegmentSummary> _segments = [];
+
+    /// <remarks>
+    /// A tab holding its own content is rebuilt every time it is selected, so the strip is separated from what it
+    /// picks and the grids are shown and hidden instead.
+    /// </remarks>
+    [ObservableProperty]
+    private int _selectedMetadataTabIndex;
+
+    [ObservableProperty]
+    private bool _isDictionariesTabLoaded;
+
+    /// <summary>
+    /// Whether the index is the table or an index over it, which decides whether it carries a row locator
+    /// </summary>
+    [ObservableProperty]
+    private string _indexTypeDescription = string.Empty;
+
+    /// <summary>
+    /// Every dictionary the index holds, global ones once and local ones per row group
+    /// </summary>
+    [ObservableProperty]
+    private IReadOnlyList<DictionarySummary> _dictionaries = [];
+
+    [ObservableProperty]
+    private IReadOnlyDictionary<long, SubLobType> _dictionaryCoding = new Dictionary<long, SubLobType>();
+
+    /// <summary>
+    /// Bumped as headers and coding arrive, which is what tells the drawing there is something new to paint
+    /// </summary>
+    /// <remarks>
+    /// The drawing reads the summaries rather than binding to them, so a header landing changes what it would draw
+    /// without anything asking it to draw again. One read at a time means the repaints are spaced by the reads.
+    /// </remarks>
+    [ObservableProperty]
+    private int _drawingRevision;
+
+    /// <summary>
+    /// Whether every background read the drawing shows has arrived, the structure staying behind a spinner until it has
+    /// </summary>
+    [ObservableProperty]
+    private bool _isDrawingReady;
+
     public ColumnstoreTabViewModel(ILogger<ColumnstoreTabViewModel> logger,
                                    ILoggerFactory loggerFactory,
                                    ColumnstoreService columnstoreService,
@@ -62,12 +132,13 @@ public sealed partial class ColumnstoreTabViewModel : TabViewModel
         Dock = BuildDock();
     }
 
-    private ILogger<ColumnstoreTabViewModel> Logger { get; }
+    public DatabaseSource Database { get; }
 
-    /// <summary>
-    /// Hands each tab a logger of its own, which is what the timings are written through
-    /// </summary>
-    private ILoggerFactory LoggerFactory { get; }
+    public long AllocationUnitId { get; }
+
+    public string RowGroupCountDescription => RowGroupCount == 1 ? "1 row group" : $"{RowGroupCount} row groups";
+
+    public short DatabaseId => Database.DatabaseId;
 
     internal ColumnstoreService ColumnstoreService { get; }
 
@@ -77,58 +148,12 @@ public sealed partial class ColumnstoreTabViewModel : TabViewModel
 
     internal IRecordService RecordService { get; }
 
-    public DatabaseSource Database { get; }
+    private ILogger<ColumnstoreTabViewModel> Logger { get; }
 
-    public long AllocationUnitId { get; }
-
-    [ObservableProperty]
-    private ColumnStoreIndex? _index;
-
-    [ObservableProperty]
-    private bool _isInitialized;
-
-    [ObservableProperty]
-    private bool _isStructureLoading;
-
-    private const int SpinnerDelayMs = 100;
-
-    [ObservableProperty]
-    private string _loadingText = "Loading Columnstore Index...";
-
-    [ObservableProperty]
-    private string _indexDescription = string.Empty;
-
-    [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(RowGroupCountDescription))]
-    private int _rowGroupCount;
-
-    public string RowGroupCountDescription => RowGroupCount == 1 ? "1 row group" : $"{RowGroupCount} row groups";
-
-    [ObservableProperty]
-    private IReadOnlyList<RowGroupSummary> _rowGroups = [];
-
-    [ObservableProperty]
-    private IReadOnlyList<SegmentSummary> _segments = [];
-
-    /// <remarks>
-    /// A tab holding its own content is rebuilt every time it is selected, so the strip is separated from what it
-    /// picks and the grids are shown and hidden instead.
-    /// </remarks>
-    [ObservableProperty]
-    private int _selectedMetadataTabIndex;
-
-    private const int DictionariesTabIndex = 1;
-
-    [ObservableProperty]
-    private bool _isDictionariesTabLoaded;
-
-    partial void OnSelectedMetadataTabIndexChanged(int value)
-    {
-        if (value == DictionariesTabIndex)
-        {
-            IsDictionariesTabLoaded = true;
-        }
-    }
+    /// <summary>
+    /// Hands each tab a logger of its own, which is what the timings are written through
+    /// </summary>
+    private ILoggerFactory LoggerFactory { get; }
 
     public async Task Load()
     {
@@ -198,6 +223,14 @@ public sealed partial class ColumnstoreTabViewModel : TabViewModel
             IsStructureLoading = false;
 
             IsLoading = false;
+        }
+    }
+
+    partial void OnSelectedMetadataTabIndexChanged(int value)
+    {
+        if (value == DictionariesTabIndex)
+        {
+            IsDictionariesTabLoaded = true;
         }
     }
 
@@ -311,20 +344,6 @@ public sealed partial class ColumnstoreTabViewModel : TabViewModel
         DrawingRevision++;
     }
 
-    /// <summary>
-    /// Whether the index is the table or an index over it, which decides whether it carries a row locator
-    /// </summary>
-    [ObservableProperty]
-    private string _indexTypeDescription = string.Empty;
-
-    public short DatabaseId => Database.DatabaseId;
-
-    /// <summary>
-    /// Every dictionary the index holds, global ones once and local ones per row group
-    /// </summary>
-    [ObservableProperty]
-    private IReadOnlyList<DictionarySummary> _dictionaries = [];
-
     private void BuildDictionaries(ColumnStoreIndex index)
     {
         var dictionaries = new List<DictionarySummary>();
@@ -351,25 +370,6 @@ public sealed partial class ColumnstoreTabViewModel : TabViewModel
 
         Dictionaries = dictionaries;
     }
-
-    [ObservableProperty]
-    private IReadOnlyDictionary<long, SubLobType> _dictionaryCoding = new Dictionary<long, SubLobType>();
-
-    /// <summary>
-    /// Bumped as headers and coding arrive, which is what tells the drawing there is something new to paint
-    /// </summary>
-    /// <remarks>
-    /// The drawing reads the summaries rather than binding to them, so a header landing changes what it would draw
-    /// without anything asking it to draw again. One read at a time means the repaints are spaced by the reads.
-    /// </remarks>
-    [ObservableProperty]
-    private int _drawingRevision;
-
-    /// <summary>
-    /// Whether every background read the drawing shows has arrived, the structure staying behind a spinner until it has
-    /// </summary>
-    [ObservableProperty]
-    private bool _isDrawingReady;
 
     /// <summary>
     /// Holds the spinner back so a load that returns straight away does not flash one up

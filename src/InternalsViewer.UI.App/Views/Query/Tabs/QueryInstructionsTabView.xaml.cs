@@ -33,8 +33,6 @@ public sealed partial class QueryInstructionsTabView : UserControl
         ["Timeline"] = l => l.IsTimelineVisible = true
     };
 
-    public QueryViewModel? ViewModel => DataContext as QueryViewModel;
-
     private QueryOptionsViewModel? _subscribedOptions;
 
     private string _currentPage = "GettingStarted";
@@ -49,6 +47,8 @@ public sealed partial class QueryInstructionsTabView : UserControl
         Unloaded += (_, _) => Unsubscribe();
         DataContextChanged += (_, _) => Subscribe();
     }
+
+    public QueryViewModel? ViewModel => DataContext as QueryViewModel;
 
     private MarkdownConfig CreateConfig() => new()
     {

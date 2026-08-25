@@ -15,6 +15,8 @@ public sealed record StreamAggregateSpan() : AccessStep(AccessPhase.Accumulate),
 
 public sealed partial class AggregateProgress : ObservableObject
 {
+    private int[] _fill = [];
+
     [ObservableProperty]
     private long _rows;
 
@@ -38,8 +40,6 @@ public sealed partial class AggregateProgress : ObservableObject
 
     [ObservableProperty]
     private int _fillVersion;
-
-    private int[] _fill = [];
 
     public IReadOnlyList<int> Fill => _fill;
 

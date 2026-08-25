@@ -33,6 +33,9 @@ public static class TraceSourceCollector
         return operators;
     }
 
+    public static bool IsLeaf(IteratorDefinition definition)
+        => definition is not (JoinDefinition or UnaryDefinition or ConcatenationDefinition);
+
     private static void Walk(IteratorDefinition definition, TraceSourceRole role, int? operatorNodeId, List<TraceSource> sources)
     {
         switch (definition)
@@ -125,7 +128,4 @@ public static class TraceSourceCollector
             WalkOperators(side, operators);
         }
     }
-
-    public static bool IsLeaf(IteratorDefinition definition)
-        => definition is not (JoinDefinition or UnaryDefinition or ConcatenationDefinition);
 }

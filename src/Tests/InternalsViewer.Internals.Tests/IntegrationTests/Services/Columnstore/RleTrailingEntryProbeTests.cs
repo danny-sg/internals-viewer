@@ -108,7 +108,7 @@ public sealed class RleTrailingEntryProbeTests(ITestOutputHelper testOutput) : P
                                    + $"reserved {header.Reserved} unknown0C 0x{header.Unknown0C:X} "
                                    + $"structure {(int)header.RleType} bookmarks {header.BookmarkCount} "
                                    + $"distance {header.BookmarkDistance} rleArrayCount {header.RleArrayCount} "
-                                   + $"rleEntrySize {header.RleEntrySize} bitpackEntrySize {header.BitpackEntrySize} "
+                                   + $"rleEntrySize {header.RleArrayEntrySize} bitpackEntrySize {header.BitpackEntrySize} "
                                    + $"bitpackUnits {header.BitpackUnitCount} minId {header.BitpackMinId} "
                                    + $"size {segment.OnDiskSize} rows {segment.RowCount} "
                                    + $"minData {segment.MinDataId} maxData {segment.MaxDataId}");
@@ -179,7 +179,7 @@ public sealed class RleTrailingEntryProbeTests(ITestOutputHelper testOutput) : P
 
         return new SegmentReport((int)blob.Header.RleType,
                                  blob.Header.BitpackEntrySize,
-                                 blob.Header.RleEntryBytes,
+                                 blob.Header.RleEntrySize,
                                  blob.Header.RleEntryCount,
                                  used,
                                  entries.Length - used,

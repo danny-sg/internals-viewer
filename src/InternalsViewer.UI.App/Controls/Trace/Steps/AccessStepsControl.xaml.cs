@@ -15,17 +15,44 @@ public sealed partial class AccessStepsControl : UserControl
                                     typeof(AccessStepsControl),
                                     new PropertyMetadata(null));
 
+    /// <summary>
+    /// The full history of steps taken by the access path
+    /// </summary>
+    public IEnumerable? StepHistory
+    {
+        get => (IEnumerable?)GetValue(StepHistoryProperty);
+        set => SetValue(StepHistoryProperty, value);
+    }
+
     public static readonly DependencyProperty CurrentStepProperty =
         DependencyProperty.Register(nameof(CurrentStep),
                                     typeof(AccessStep),
                                     typeof(AccessStepsControl),
                                     new PropertyMetadata(null, OnCurrentStepChanged));
 
+    /// <summary>
+    /// The most recently taken step
+    /// </summary>
+    public AccessStep? CurrentStep
+    {
+        get => (AccessStep?)GetValue(CurrentStepProperty);
+        set => SetValue(CurrentStepProperty, value);
+    }
+
     public static readonly DependencyProperty NodesProperty =
         DependencyProperty.Register(nameof(Nodes),
                                     typeof(object),
                                     typeof(AccessStepsControl),
                                     new PropertyMetadata(null, OnNodesChanged));
+
+    /// <summary>
+    /// What each plan node shows as in the timeline - its name, its colour and how deep it sits in the operator tree
+    /// </summary>
+    public IReadOnlyDictionary<int, TraceStepNode>? Nodes
+    {
+        get => (IReadOnlyDictionary<int, TraceStepNode>?)GetValue(NodesProperty);
+        set => SetValue(NodesProperty, value);
+    }
 
     public static readonly DependencyProperty BlobPaletteProperty =
         DependencyProperty.Register(nameof(BlobPalette),
@@ -37,13 +64,6 @@ public sealed partial class AccessStepsControl : UserControl
     {
         get => (TraceBlobPalette?)GetValue(BlobPaletteProperty);
         set => SetValue(BlobPaletteProperty, value);
-    }
-
-    private static void OnBlobPaletteChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
-    {
-        var control = (AccessStepsControl)d;
-
-        control._styler.Palette = control.BlobPalette;
     }
 
     private readonly StepRowStyler _styler = new();
@@ -59,22 +79,6 @@ public sealed partial class AccessStepsControl : UserControl
     }
 
     public event EventHandler<int>? NodeActivated;
-
-    /// <summary>
-    /// What each plan node shows as in the timeline - its name, its colour and how deep it sits in the operator tree
-    /// </summary>
-    public IReadOnlyDictionary<int, TraceStepNode>? Nodes
-    {
-        get => (IReadOnlyDictionary<int, TraceStepNode>?)GetValue(NodesProperty);
-        set => SetValue(NodesProperty, value);
-    }
-
-    private static void OnNodesChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
-    {
-        var control = (AccessStepsControl)d;
-
-        control._styler.SetNodes(control.Nodes);
-    }
 
     private void OnElementPrepared(ItemsRepeater sender, ItemsRepeaterElementPreparedEventArgs args)
         => StyleRow(args.Element as Grid, args.Index);
@@ -100,22 +104,18 @@ public sealed partial class AccessStepsControl : UserControl
         _styler.ApplyNodeStyling(grid, step, showName);
     }
 
-    /// <summary>
-    /// The full history of steps taken by the access path
-    /// </summary>
-    public IEnumerable? StepHistory
+    private static void OnBlobPaletteChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
     {
-        get => (IEnumerable?)GetValue(StepHistoryProperty);
-        set => SetValue(StepHistoryProperty, value);
+        var control = (AccessStepsControl)d;
+
+        control._styler.Palette = control.BlobPalette;
     }
 
-    /// <summary>
-    /// The most recently taken step
-    /// </summary>
-    public AccessStep? CurrentStep
+    private static void OnNodesChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
     {
-        get => (AccessStep?)GetValue(CurrentStepProperty);
-        set => SetValue(CurrentStepProperty, value);
+        var control = (AccessStepsControl)d;
+
+        control._styler.SetNodes(control.Nodes);
     }
 
     private static void OnCurrentStepChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)

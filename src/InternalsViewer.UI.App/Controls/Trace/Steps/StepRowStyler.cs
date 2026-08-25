@@ -26,9 +26,6 @@ public sealed class StepRowStyler
 
     public TraceBlobPalette? Palette { get; set; }
 
-    private Brush? BlobBrushFor(int nodeId)
-        => NodeFor(nodeId) is { } node && Palette is { } palette ? palette.For(nodeId, node.Colour) : BrushFor(nodeId);
-
     public void SetNodes(IReadOnlyDictionary<int, TraceStepNode>? nodes)
     {
         _nodes = nodes;
@@ -50,8 +47,6 @@ public sealed class StepRowStyler
         }
     }
 
-    private TraceStepNode? NodeFor(int nodeId) => _nodes?.GetValueOrDefault(nodeId);
-
     public SolidColorBrush? BrushFor(int nodeId)
     {
         if (_nodes is null || !_nodes.TryGetValue(nodeId, out var node))
@@ -64,27 +59,6 @@ public sealed class StepRowStyler
             brush = new SolidColorBrush(node.Colour);
 
             _brushes[nodeId] = brush;
-        }
-
-        return brush;
-    }
-
-    private SolidColorBrush? LevelBrushFor(int depth)
-    {
-        var levelsAboveLeaf = _maxDepth - depth;
-
-        if (levelsAboveLeaf <= 0)
-        {
-            return null;
-        }
-
-        if (!_levelBrushes.TryGetValue(levelsAboveLeaf, out var brush))
-        {
-            var alpha = (byte)Math.Min(levelsAboveLeaf * 6, 24);
-
-            brush = new SolidColorBrush(Windows.UI.Color.FromArgb(alpha, 0, 0, 0));
-
-            _levelBrushes[levelsAboveLeaf] = brush;
         }
 
         return brush;
@@ -138,6 +112,32 @@ public sealed class StepRowStyler
 
         grid.BorderBrush = brush;
         grid.BorderThickness = new Thickness(3, 0, 0, 0);
+    }
+
+    private Brush? BlobBrushFor(int nodeId)
+        => NodeFor(nodeId) is { } node && Palette is { } palette ? palette.For(nodeId, node.Colour) : BrushFor(nodeId);
+
+    private TraceStepNode? NodeFor(int nodeId) => _nodes?.GetValueOrDefault(nodeId);
+
+    private SolidColorBrush? LevelBrushFor(int depth)
+    {
+        var levelsAboveLeaf = _maxDepth - depth;
+
+        if (levelsAboveLeaf <= 0)
+        {
+            return null;
+        }
+
+        if (!_levelBrushes.TryGetValue(levelsAboveLeaf, out var brush))
+        {
+            var alpha = (byte)Math.Min(levelsAboveLeaf * 6, 24);
+
+            brush = new SolidColorBrush(Windows.UI.Color.FromArgb(alpha, 0, 0, 0));
+
+            _levelBrushes[levelsAboveLeaf] = brush;
+        }
+
+        return brush;
     }
 
     private void OnGutterTapped(object sender, TappedRoutedEventArgs e)

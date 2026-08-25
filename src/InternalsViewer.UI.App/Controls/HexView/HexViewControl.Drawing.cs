@@ -21,6 +21,48 @@ public sealed partial class HexViewControl
 {
     private static readonly Dictionary<Color, SolidColorBrush> BrushCache = [];
 
+    public static readonly DependencyProperty ChangeSpansProperty = DependencyProperty
+        .Register(nameof(ChangeSpans),
+            typeof(ObservableCollection<LogRecordAnnotation>),
+            typeof(HexViewControl),
+            new PropertyMetadata(null, OnChangeSpansChanged));
+
+    public ObservableCollection<LogRecordAnnotation>? ChangeSpans
+    {
+        get => (ObservableCollection<LogRecordAnnotation>?)GetValue(ChangeSpansProperty);
+        set => SetValue(ChangeSpansProperty, value);
+    }
+
+    public static readonly DependencyProperty SelectedChangeSpanProperty = DependencyProperty
+        .Register(nameof(SelectedChangeSpan),
+            typeof(LogRecordAnnotation),
+            typeof(HexViewControl),
+            new PropertyMetadata(null, OnSelectedChangeSpanChanged));
+
+    public LogRecordAnnotation? SelectedChangeSpan
+    {
+        get => (LogRecordAnnotation?)GetValue(SelectedChangeSpanProperty);
+        set => SetValue(SelectedChangeSpanProperty, value);
+    }
+
+    public static readonly DependencyProperty ScrollToOffsetProperty = DependencyProperty
+        .Register(nameof(ScrollToOffset),
+            typeof(int?),
+            typeof(HexViewControl),
+            new PropertyMetadata(null, OnScrollToOffsetChanged));
+
+    public int? ScrollToOffset
+    {
+        get => (int?)GetValue(ScrollToOffsetProperty);
+        set => SetValue(ScrollToOffsetProperty, value);
+    }
+
+    private HexMetrics? _metrics;
+
+    private ILogger? _logger;
+
+    private ILogger Logger => _logger ??= App.GetService<ILoggerFactory>().CreateLogger<HexViewControl>();
+
     private static SolidColorBrush GetBrush(Color colour)
     {
         if (!BrushCache.TryGetValue(colour, out var brush))
@@ -32,69 +74,6 @@ public sealed partial class HexViewControl
 
         return brush;
     }
-
-    public ObservableCollection<LogRecordAnnotation>? ChangeSpans
-    {
-        get => (ObservableCollection<LogRecordAnnotation>?)GetValue(ChangeSpansProperty);
-        set => SetValue(ChangeSpansProperty, value);
-    }
-
-    public static readonly DependencyProperty ChangeSpansProperty = DependencyProperty
-        .Register(nameof(ChangeSpans),
-            typeof(ObservableCollection<LogRecordAnnotation>),
-            typeof(HexViewControl),
-            new PropertyMetadata(null, OnChangeSpansChanged));
-
-    private static void OnChangeSpansChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
-    {
-        ((HexViewControl)d).DrawChangeSpans();
-    }
-
-    public LogRecordAnnotation? SelectedChangeSpan
-    {
-        get => (LogRecordAnnotation?)GetValue(SelectedChangeSpanProperty);
-        set => SetValue(SelectedChangeSpanProperty, value);
-    }
-
-    public static readonly DependencyProperty SelectedChangeSpanProperty = DependencyProperty
-        .Register(nameof(SelectedChangeSpan),
-            typeof(LogRecordAnnotation),
-            typeof(HexViewControl),
-            new PropertyMetadata(null, OnSelectedChangeSpanChanged));
-
-    private static void OnSelectedChangeSpanChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
-    {
-        var control = (HexViewControl)d;
-
-        if (e.NewValue is LogRecordAnnotation span)
-        {
-            ScrollToPosition(control, span.Offset, isFollowingSelection: false);
-        }
-
-        control.DrawChangeSpans();
-    }
-
-    public int? ScrollToOffset
-    {
-        get => (int?)GetValue(ScrollToOffsetProperty);
-        set => SetValue(ScrollToOffsetProperty, value);
-    }
-
-    public static readonly DependencyProperty ScrollToOffsetProperty = DependencyProperty
-        .Register(nameof(ScrollToOffset),
-            typeof(int?),
-            typeof(HexViewControl),
-            new PropertyMetadata(null, OnScrollToOffsetChanged));
-
-    private static void OnScrollToOffsetChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
-    {
-        if (e.NewValue is int offset)
-        {
-            ScrollToPosition((HexViewControl)d, offset, isFollowingSelection: false);
-        }
-    }
-
-    private HexMetrics? _metrics;
 
     /// <summary>
     /// Measures the hex columns, which is done once and against a detached TextBlock
@@ -361,10 +340,6 @@ public sealed partial class HexViewControl
     private static int Count(IEnumerable<Marker>? markers)
         => markers?.Sum(m => 1 + Count(m.Children)) ?? 0;
 
-    private ILogger? _logger;
-
-    private ILogger Logger => _logger ??= App.GetService<ILoggerFactory>().CreateLogger<HexViewControl>();
-
     private static void ScrollToPosition(HexViewControl target, int position, bool isFollowingSelection)
     {
         // A virtualized control holds only the lines already on screen, and a marker outside the window has no position
@@ -390,5 +365,30 @@ public sealed partial class HexViewControl
         target._isScrollingToSelection = isFollowingSelection;
 
         target.ScrollViewer.ScrollToVerticalOffset(scrollPosition);
+    }
+
+    private static void OnChangeSpansChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
+    {
+        ((HexViewControl)d).DrawChangeSpans();
+    }
+
+    private static void OnSelectedChangeSpanChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
+    {
+        var control = (HexViewControl)d;
+
+        if (e.NewValue is LogRecordAnnotation span)
+        {
+            ScrollToPosition(control, span.Offset, isFollowingSelection: false);
+        }
+
+        control.DrawChangeSpans();
+    }
+
+    private static void OnScrollToOffsetChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
+    {
+        if (e.NewValue is int offset)
+        {
+            ScrollToPosition((HexViewControl)d, offset, isFollowingSelection: false);
+        }
     }
 }

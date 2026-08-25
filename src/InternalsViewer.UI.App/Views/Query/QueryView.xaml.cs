@@ -6,8 +6,6 @@ namespace InternalsViewer.UI.App.Views.Query;
 
 public sealed partial class QueryView : Page, IDisposable
 {
-    public QueryViewModel ViewModel => (QueryViewModel)DataContext;
-
     public QueryView()
     {
         InitializeComponent();
@@ -16,6 +14,8 @@ public sealed partial class QueryView : Page, IDisposable
 
         Unloaded += OnUnloaded;
     }
+
+    public QueryViewModel ViewModel => (QueryViewModel)DataContext;
 
     public void Dispose()
     {

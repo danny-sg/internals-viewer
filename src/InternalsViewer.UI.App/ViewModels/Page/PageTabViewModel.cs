@@ -56,11 +56,7 @@ public sealed partial class PageTabViewModel(ILogger<PageTabViewModel> logger,
                                              DatabaseSource database)
     : TabViewModel
 {
-    private ILogger<PageTabViewModel> Logger { get; } = logger;
-
-    private IPageService PageService { get; } = pageService;
-
-    private IRecordService RecordService { get; } = recordService;
+    private byte[]? _baselineData;
 
     [ObservableProperty]
     private AllocationUnit? _allocationUnit;
@@ -133,8 +129,6 @@ public sealed partial class PageTabViewModel(ILogger<PageTabViewModel> logger,
     [ObservableProperty]
     private bool _isAllocationsTabVisible;
 
-    public bool IsDataTabVisible => Page.PageHeader.PageType is PageType.Data or PageType.Index;
-
     [ObservableProperty]
     private bool _isPfsTabVisible;
 
@@ -159,13 +153,7 @@ public sealed partial class PageTabViewModel(ILogger<PageTabViewModel> logger,
     [ObservableProperty]
     private ResultRow<long>? _selectedRecordRow;
 
-    private const int HeaderTab = 0;
-
-    //private const short PageHeaderSlot = PageDisplayBuilder.PageHeaderSlot;
-    //private const short IamHeaderSlot = PageDisplayBuilder.IamHeaderSlot;
-    //private const short CompressionInfoSlot = PageDisplayBuilder.CompressionInfoSlot;
-
-    private PageDisplayBuilder DisplayBuilder { get; } = new(logger, recordService);
+    public bool IsDataTabVisible => Page.PageHeader.PageType is PageType.Data or PageType.Index;
 
     public Visibility LogRecordsVisibility => HasLogRecords ? Visibility.Visible : Visibility.Collapsed;
 
@@ -173,80 +161,17 @@ public sealed partial class PageTabViewModel(ILogger<PageTabViewModel> logger,
         ? new GridLength(1, GridUnitType.Star)
         : new GridLength(0);
 
-    partial void OnLogRecordsChanged(ObservableCollection<LogRecordItem> value)
-    {
-        UpdateLogRecordsVisibility();
-    }
+    private ILogger<PageTabViewModel> Logger { get; } = logger;
 
-    partial void OnSelectedRecordRowChanged(ResultRow<long>? value)
-    {
-        if (SelectedSlot?.Index != value?.Id)
-        {
-            SelectedSlot = PageSlots.FirstOrDefault(s => s.Index == value?.Id);
-        }
-    }
+    private IPageService PageService { get; } = pageService;
 
-    partial void OnPageAddressChanged(PageAddress value)
-    {
-        if (SelectedLogRecord is not null && SelectedLogRecord.Record.PageAddress != value)
-        {
-            SelectedLogRecord = null;
-        }
+    private IRecordService RecordService { get; } = recordService;
 
-        UpdateLogRecordsVisibility();
-    }
-
-    private void UpdateLogRecordsVisibility()
-    {
-        HasLogRecords = LogRecords.Any(item => item.Record.PageAddress == PageAddress);
-    }
+    private PageDisplayBuilder DisplayBuilder { get; } = new(logger, recordService);
 
     private List<IRecord> Records { get; } = [];
 
     private History<PageAddress> History { get; } = new();
-
-    private byte[]? _baselineData;
-
-    partial void OnSelectedSlotChanged(PageSlot? value)
-    {
-        if (value == null)
-        {
-            Markers.Clear();
-            return;
-        }
-
-        switch (value.Index)
-        {
-            case PageDisplayBuilder.PageHeaderSlot:
-                AddPageHeaderMarkers();
-                break;
-            case PageDisplayBuilder.CompressionInfoSlot:
-                AddCompressionInfoMarkers();
-                break;
-            case PageDisplayBuilder.IamHeaderSlot:
-                AddPageMarkers(" Header");
-                break;
-            case PageDisplayBuilder.BootPageSlot:
-                AddPageMarkers(string.Empty);
-                break;
-            case PageDisplayBuilder.FileHeaderSlot:
-                AddPageMarkers(string.Empty);
-                break;
-            default:
-                AddRecordMarkers(value);
-                break;
-        }
-
-        ScrollToOffset = value.Offset;
-
-        var selectedRecord = RecordsResultSet.Rows
-                                             .FirstOrDefault(r => r.Id == value.Index);
-
-        if (selectedRecord is not null && selectedRecord != SelectedRecordRow)
-        {
-            SelectedRecordRow = selectedRecord;
-        }
-    }
 
     [RelayCommand]
     public async Task LoadPage(PageAddress pageAddress)
@@ -325,6 +250,93 @@ public sealed partial class PageTabViewModel(ILogger<PageTabViewModel> logger,
             }, CancellationToken);
 
         History.Add(PageAddress);
+    }
+
+    /// <summary>
+    /// Selects the page slot a log record operated on, so it is highlighted and scrolled to in the hex view
+    /// </summary>
+    public void SelectSlotForRecord(LogRecordItem item)
+    {
+        if (item.Record.PageAddress != PageAddress)
+        {
+            return;
+        }
+
+        var slot = PageSlots.FirstOrDefault(s => s.Index == item.Record.SlotId);
+
+        if (slot is not null)
+        {
+            SelectedSlot = slot;
+        }
+    }
+
+    partial void OnLogRecordsChanged(ObservableCollection<LogRecordItem> value)
+    {
+        UpdateLogRecordsVisibility();
+    }
+
+    partial void OnSelectedRecordRowChanged(ResultRow<long>? value)
+    {
+        if (SelectedSlot?.Index != value?.Id)
+        {
+            SelectedSlot = PageSlots.FirstOrDefault(s => s.Index == value?.Id);
+        }
+    }
+
+    partial void OnPageAddressChanged(PageAddress value)
+    {
+        if (SelectedLogRecord is not null && SelectedLogRecord.Record.PageAddress != value)
+        {
+            SelectedLogRecord = null;
+        }
+
+        UpdateLogRecordsVisibility();
+    }
+
+    private void UpdateLogRecordsVisibility()
+    {
+        HasLogRecords = LogRecords.Any(item => item.Record.PageAddress == PageAddress);
+    }
+
+    partial void OnSelectedSlotChanged(PageSlot? value)
+    {
+        if (value == null)
+        {
+            Markers.Clear();
+            return;
+        }
+
+        switch (value.Index)
+        {
+            case PageDisplayBuilder.PageHeaderSlot:
+                AddPageHeaderMarkers();
+                break;
+            case PageDisplayBuilder.CompressionInfoSlot:
+                AddCompressionInfoMarkers();
+                break;
+            case PageDisplayBuilder.IamHeaderSlot:
+                AddPageMarkers(" Header");
+                break;
+            case PageDisplayBuilder.BootPageSlot:
+                AddPageMarkers(string.Empty);
+                break;
+            case PageDisplayBuilder.FileHeaderSlot:
+                AddPageMarkers(string.Empty);
+                break;
+            default:
+                AddRecordMarkers(value);
+                break;
+        }
+
+        ScrollToOffset = value.Offset;
+
+        var selectedRecord = RecordsResultSet.Rows
+                                             .FirstOrDefault(r => r.Id == value.Index);
+
+        if (selectedRecord is not null && selectedRecord != SelectedRecordRow)
+        {
+            SelectedRecordRow = selectedRecord;
+        }
     }
 
     private void ApplyPageDisplay(PageDisplay display)
@@ -474,24 +486,6 @@ public sealed partial class PageTabViewModel(ILogger<PageTabViewModel> logger,
     partial void OnSelectedLogRecordChanged(LogRecordItem? value)
     {
         _ = ShowLogRecordState(value);
-    }
-
-    /// <summary>
-    /// Selects the page slot a log record operated on, so it is highlighted and scrolled to in the hex view
-    /// </summary>
-    public void SelectSlotForRecord(LogRecordItem item)
-    {
-        if (item.Record.PageAddress != PageAddress)
-        {
-            return;
-        }
-
-        var slot = PageSlots.FirstOrDefault(s => s.Index == item.Record.SlotId);
-
-        if (slot is not null)
-        {
-            SelectedSlot = slot;
-        }
     }
 
     partial void OnSelectedChangeSpanChanged(LogRecordAnnotation? value)
@@ -735,7 +729,6 @@ public sealed partial class PageTabViewModel(ILogger<PageTabViewModel> logger,
 
         AddMarkers(record);
     }
-
 
     private void AddCompressionInfoMarkers()
     {

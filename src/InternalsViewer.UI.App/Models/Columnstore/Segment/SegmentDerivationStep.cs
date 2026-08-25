@@ -53,8 +53,6 @@ public sealed record SegmentDerivationStep
 
     public bool HasSuffix => Suffix.Length > 0;
 
-    public static Color FromSkia(SKColor colour) => Color.FromArgb(255, colour.Red, colour.Green, colour.Blue);
-
     public static Color White => Color.FromArgb(255, 255, 255, 255);
 
     public static Color Black => Color.FromArgb(255, 0, 0, 0);
@@ -64,4 +62,6 @@ public sealed record SegmentDerivationStep
     public static Color BlobConstant => Color.FromArgb(255, 31, 111, 235);
 
     public static Color MetadataConstant => Color.FromArgb(255, 126, 87, 194);
+
+    public static Color FromSkia(SKColor colour) => Color.FromArgb(255, colour.Red, colour.Green, colour.Blue);
 }

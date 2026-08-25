@@ -17,15 +17,6 @@ public sealed partial class ColumnstoreView : IDisposable
 
     public ColumnstoreTabViewModel ViewModel => (ColumnstoreTabViewModel)DataContext;
 
-    private void OnDataContextChanged(FrameworkElement sender, DataContextChangedEventArgs args) => Bindings.Update();
-
-    private async void OnLoaded(object sender, RoutedEventArgs e)
-    {
-        Loaded -= OnLoaded;
-
-        await ViewModel.Load();
-    }
-
     public void Dispose()
     {
         Loaded -= OnLoaded;
@@ -36,5 +27,14 @@ public sealed partial class ColumnstoreView : IDisposable
         Bindings.StopTracking();
 
         ViewModel.Dispose();
+    }
+
+    private void OnDataContextChanged(FrameworkElement sender, DataContextChangedEventArgs args) => Bindings.Update();
+
+    private async void OnLoaded(object sender, RoutedEventArgs e)
+    {
+        Loaded -= OnLoaded;
+
+        await ViewModel.Load();
     }
 }

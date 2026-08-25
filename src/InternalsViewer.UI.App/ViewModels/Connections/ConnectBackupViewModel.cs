@@ -22,8 +22,6 @@ public partial class ConnectBackupViewModel : ObservableObject
 {
     private string _lastMessage = string.Empty;
 
-    public ObservableCollection<string> Filenames { get; } = [];
-
     [ObservableProperty]
     private bool _isValid;
 
@@ -43,6 +41,8 @@ public partial class ConnectBackupViewModel : ObservableObject
 
     [ObservableProperty]
     private bool _isProgressIndeterminate = true;
+
+    public ObservableCollection<string> Filenames { get; } = [];
 
     public bool HasError => !string.IsNullOrEmpty(ErrorMessage);
 

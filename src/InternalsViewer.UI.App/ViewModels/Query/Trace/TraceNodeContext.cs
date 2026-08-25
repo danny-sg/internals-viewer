@@ -7,6 +7,7 @@ namespace InternalsViewer.UI.App.ViewModels.Query.Trace;
 
 public sealed class TraceNodeContext
 {
+    private static readonly Dictionary<int, TraceHeldRowsViewModel> EmptyHeldRows = [];
     public required IteratorDefinition Definition { get; init; }
 
     public required int Depth { get; init; }
@@ -32,6 +33,4 @@ public sealed class TraceNodeContext
     public IReadOnlyDictionary<int, TraceHeldRowsViewModel> HeldRows { get; init; } = EmptyHeldRows;
 
     public OperatorSides? Sides { get; init; }
-
-    private static readonly Dictionary<int, TraceHeldRowsViewModel> EmptyHeldRows = [];
 }

@@ -15,13 +15,81 @@ namespace InternalsViewer.UI.App.Controls.Columnstore.Structure;
 
 public sealed partial class ColumnstoreStructureControl : IDisposable
 {
+    public static readonly DependencyProperty IndexProperty
+        = DependencyProperty.Register(nameof(Index),
+                                      typeof(ColumnStoreIndex),
+                                      typeof(ColumnstoreStructureControl),
+                                      new PropertyMetadata(null, OnSourceChanged));
+
+    public ColumnStoreIndex? Index
+    {
+        get => (ColumnStoreIndex?)GetValue(IndexProperty);
+        set => SetValue(IndexProperty, value);
+    }
+
+    public static readonly DependencyProperty RowGroupsProperty
+        = DependencyProperty.Register(nameof(RowGroups),
+                                      typeof(IReadOnlyList<RowGroupSummary>),
+                                      typeof(ColumnstoreStructureControl),
+                                      new PropertyMetadata(null, OnSourceChanged));
+
+    public IReadOnlyList<RowGroupSummary>? RowGroups
+    {
+        get => (IReadOnlyList<RowGroupSummary>?)GetValue(RowGroupsProperty);
+        set => SetValue(RowGroupsProperty, value);
+    }
+
+    public static readonly DependencyProperty DictionaryCodingProperty
+        = DependencyProperty.Register(nameof(DictionaryCoding),
+                                      typeof(object),
+                                      typeof(ColumnstoreStructureControl),
+                                      new PropertyMetadata(null, OnCodingChanged));
+
+    public object? DictionaryCoding
+    {
+        get => GetValue(DictionaryCodingProperty);
+        set => SetValue(DictionaryCodingProperty, value);
+    }
+
+    public static readonly DependencyProperty RevisionProperty
+        = DependencyProperty.Register(nameof(Revision),
+                                      typeof(int),
+                                      typeof(ColumnstoreStructureControl),
+                                      new PropertyMetadata(0, OnRevisionChanged));
+
+    /// <summary>
+    /// Repaints without moving, for detail that arrives after the drawing was laid out
+    /// </summary>
+    public int Revision
+    {
+        get => (int)GetValue(RevisionProperty);
+        set => SetValue(RevisionProperty, value);
+    }
+
+    public static readonly DependencyProperty DatabaseIdProperty
+        = DependencyProperty.Register(nameof(DatabaseId),
+                                      typeof(short),
+                                      typeof(ColumnstoreStructureControl),
+                                      new PropertyMetadata((short)0));
+
+    /// <summary>
+    /// The database the drawing is of, which CSINDEX needs as a literal
+    /// </summary>
+    public short DatabaseId
+    {
+        get => (short)GetValue(DatabaseIdProperty);
+        set => SetValue(DatabaseIdProperty, value);
+    }
+
     private readonly ColumnstoreStructureRenderer _renderer = new();
 
     private List<ColumnstoreRegion> _regions = [];
 
     private float _scrollOffset;
 
-    public event EventHandler<ColumnstoreRegion>? ElementClicked;
+    private bool _isThemeDirty = true;
+
+    private bool? _hasLocalDictionaries;
 
     public ColumnstoreStructureControl()
     {
@@ -39,84 +107,22 @@ public sealed partial class ColumnstoreStructureControl : IDisposable
         Loaded += OnLoaded;
     }
 
-    public ColumnStoreIndex? Index
+    public event EventHandler<ColumnstoreRegion>? ElementClicked;
+
+    public void Dispose()
     {
-        get => (ColumnStoreIndex?)GetValue(IndexProperty);
-        set => SetValue(IndexProperty, value);
+        StructureCanvas.PaintSurface -= OnPaintSurface;
+        StructureCanvas.PointerPressed -= OnPointerPressed;
+        StructureCanvas.PointerMoved -= OnPointerMoved;
+        StructureCanvas.PointerWheelChanged -= OnPointerWheelChanged;
+        StructureCanvas.PointerExited -= OnPointerExited;
+
+        ActualThemeChanged -= OnActualThemeChanged;
+
+        Loaded -= OnLoaded;
+
+        _renderer.Dispose();
     }
-
-    public static readonly DependencyProperty IndexProperty
-        = DependencyProperty.Register(nameof(Index),
-                                      typeof(ColumnStoreIndex),
-                                      typeof(ColumnstoreStructureControl),
-                                      new PropertyMetadata(null, OnSourceChanged));
-
-    public IReadOnlyList<RowGroupSummary>? RowGroups
-    {
-        get => (IReadOnlyList<RowGroupSummary>?)GetValue(RowGroupsProperty);
-        set => SetValue(RowGroupsProperty, value);
-    }
-
-    public static readonly DependencyProperty RowGroupsProperty
-        = DependencyProperty.Register(nameof(RowGroups),
-                                      typeof(IReadOnlyList<RowGroupSummary>),
-                                      typeof(ColumnstoreStructureControl),
-                                      new PropertyMetadata(null, OnSourceChanged));
-
-    public object? DictionaryCoding
-    {
-        get => GetValue(DictionaryCodingProperty);
-        set => SetValue(DictionaryCodingProperty, value);
-    }
-
-    public static readonly DependencyProperty DictionaryCodingProperty
-        = DependencyProperty.Register(nameof(DictionaryCoding),
-                                      typeof(object),
-                                      typeof(ColumnstoreStructureControl),
-                                      new PropertyMetadata(null, OnCodingChanged));
-
-    /// <summary>
-    /// Repaints without moving, for detail that arrives after the drawing was laid out
-    /// </summary>
-    public int Revision
-    {
-        get => (int)GetValue(RevisionProperty);
-        set => SetValue(RevisionProperty, value);
-    }
-
-    public static readonly DependencyProperty RevisionProperty
-        = DependencyProperty.Register(nameof(Revision),
-                                      typeof(int),
-                                      typeof(ColumnstoreStructureControl),
-                                      new PropertyMetadata(0, OnRevisionChanged));
-
-    private static void OnRevisionChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
-        => ((ColumnstoreStructureControl)d).StructureCanvas.Invalidate();
-
-    private static void OnCodingChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
-    {
-        var control = (ColumnstoreStructureControl)d;
-
-        control._renderer.DictionaryCoding = e.NewValue as IReadOnlyDictionary<long, SubLobType>
-                                             ?? new Dictionary<long, SubLobType>();
-
-        control.StructureCanvas.Invalidate();
-    }
-
-    private static void OnSourceChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
-    {
-        var control = (ColumnstoreStructureControl)d;
-
-        control._scrollOffset = 0;
-
-        control._hasLocalDictionaries = null;
-
-        control.UpdateScrollBar();
-
-        control.StructureCanvas.Invalidate();
-    }
-
-    private bool _isThemeDirty = true;
 
     private void OnActualThemeChanged(FrameworkElement sender, object args)
     {
@@ -250,8 +256,6 @@ public sealed partial class ColumnstoreStructureControl : IDisposable
         TooltipPopup.IsOpen = true;
     }
 
-    private bool? _hasLocalDictionaries;
-
     /// <summary>
     /// Whether any row group carries a local dictionary, which is what the row of them costs its height for
     /// </summary>
@@ -301,21 +305,6 @@ public sealed partial class ColumnstoreStructureControl : IDisposable
 
         flyout?.ShowAt(StructureCanvas, point);
     }
-
-    /// <summary>
-    /// The database the drawing is of, which CSINDEX needs as a literal
-    /// </summary>
-    public short DatabaseId
-    {
-        get => (short)GetValue(DatabaseIdProperty);
-        set => SetValue(DatabaseIdProperty, value);
-    }
-
-    public static readonly DependencyProperty DatabaseIdProperty
-        = DependencyProperty.Register(nameof(DatabaseId),
-                                      typeof(short),
-                                      typeof(ColumnstoreStructureControl),
-                                      new PropertyMetadata((short)0));
 
     private void OnPointerExited(object sender, PointerRoutedEventArgs e)
     {
@@ -410,18 +399,29 @@ public sealed partial class ColumnstoreStructureControl : IDisposable
         VerticalScrollBar.Value = _scrollOffset;
     }
 
-    public void Dispose()
+    private static void OnRevisionChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
+        => ((ColumnstoreStructureControl)d).StructureCanvas.Invalidate();
+
+    private static void OnCodingChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
     {
-        StructureCanvas.PaintSurface -= OnPaintSurface;
-        StructureCanvas.PointerPressed -= OnPointerPressed;
-        StructureCanvas.PointerMoved -= OnPointerMoved;
-        StructureCanvas.PointerWheelChanged -= OnPointerWheelChanged;
-        StructureCanvas.PointerExited -= OnPointerExited;
+        var control = (ColumnstoreStructureControl)d;
 
-        ActualThemeChanged -= OnActualThemeChanged;
+        control._renderer.DictionaryCoding = e.NewValue as IReadOnlyDictionary<long, SubLobType>
+                                             ?? new Dictionary<long, SubLobType>();
 
-        Loaded -= OnLoaded;
+        control.StructureCanvas.Invalidate();
+    }
 
-        _renderer.Dispose();
+    private static void OnSourceChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
+    {
+        var control = (ColumnstoreStructureControl)d;
+
+        control._scrollOffset = 0;
+
+        control._hasLocalDictionaries = null;
+
+        control.UpdateScrollBar();
+
+        control.StructureCanvas.Invalidate();
     }
 }

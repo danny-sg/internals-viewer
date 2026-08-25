@@ -16,6 +16,15 @@ public sealed class SegmentRowContext(SegmentBlob blob,
 
     public long MinId { get; } = blob.Header.BitpackMinId;
 
+    public bool IsWideStore => blob.VariableLengthData is { IsWide: true };
+
+    public Func<int, long, ValueDerivation?> DeriveValue { get; } = deriveValue;
+
+    /// <summary>
+    /// Carried on the context rather than bound from the view, a cell template only reaching its own row
+    /// </summary>
+    public bool ShowDerivation { get; } = showDerivation;
+
     /// <summary>
     /// The unit the packed value sits in, a unit being what the bit pack region is marked and navigated by
     /// </summary>
@@ -37,7 +46,7 @@ public sealed class SegmentRowContext(SegmentBlob blob,
         => entryIndex < 0
             ? null
             : new SegmentNavigationTarget(SegmentRegion.RleArray,
-                blob.Header.RleArrayOffset + (entryIndex * blob.Header.RleEntryBytes));
+                blob.Header.RleArrayOffset + (entryIndex * blob.Header.RleEntrySize));
 
     /// <summary>
     /// Address of a stored value, a wide one having no data id of its own to show instead
@@ -46,8 +55,6 @@ public sealed class SegmentRowContext(SegmentBlob blob,
         => blob.VariableLengthData is { } store && valueOrdinal >= 0 && valueOrdinal < store.ValueCount
             ? store.GetPageSlot(valueOrdinal).ToString()
             : null;
-
-    public bool IsWideStore => blob.VariableLengthData is { IsWide: true };
 
     /// <summary>
     /// Where a stored value sits, a compressed page having only the page itself to point at
@@ -64,11 +71,4 @@ public sealed class SegmentRowContext(SegmentBlob blob,
         return new SegmentNavigationTarget(SegmentRegion.VariableLengthData,
                                            store.GetValueOffset(address.Page, address.Slot));
     }
-
-    public Func<int, long, ValueDerivation?> DeriveValue { get; } = deriveValue;
-
-    /// <summary>
-    /// Carried on the context rather than bound from the view, a cell template only reaching its own row
-    /// </summary>
-    public bool ShowDerivation { get; } = showDerivation;
 }

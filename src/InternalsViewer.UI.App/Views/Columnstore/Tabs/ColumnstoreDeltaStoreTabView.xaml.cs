@@ -25,6 +25,19 @@ public sealed partial class ColumnstoreDeltaStoreTabView : UserControl, IDisposa
 
     public DeltaStoreTabViewModel ViewModel => (DeltaStoreTabViewModel)DataContext;
 
+    public void Dispose()
+    {
+        Loaded -= OnLoaded;
+
+        DataContextChanged -= OnDataContextChanged;
+
+        // x:Bind listens to the view model, which outlives the view, so the view stays rooted until tracking stops
+        Bindings.StopTracking();
+
+        _cts.Cancel();
+        _cts.Dispose();
+    }
+
     private void OnDataContextChanged(FrameworkElement sender, DataContextChangedEventArgs args) => Bindings.Update();
 
     private void Page_OnClick(object sender, RoutedEventArgs e)
@@ -55,18 +68,5 @@ public sealed partial class ColumnstoreDeltaStoreTabView : UserControl, IDisposa
         Loaded -= OnLoaded;
 
         await ViewModel.Load(_cts.Token);
-    }
-
-    public void Dispose()
-    {
-        Loaded -= OnLoaded;
-
-        DataContextChanged -= OnDataContextChanged;
-
-        // x:Bind listens to the view model, which outlives the view, so the view stays rooted until tracking stops
-        Bindings.StopTracking();
-
-        _cts.Cancel();
-        _cts.Dispose();
     }
 }

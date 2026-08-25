@@ -89,51 +89,20 @@ public sealed class AllocationRenderer : IDisposable
         PagePaint.Shader = pageShader;
     }
 
-    private SKPaint GetBorderPaint()
+    public void Dispose()
     {
-        var paint = new SKPaint
-        {
-            Color = new SKColor(BorderColour.R, BorderColour.G, BorderColour.B),
-            IsAntialias = false,
-            Style = SKPaintStyle.Stroke,
-            StrokeWidth = 1
-        };
+        AllocationPaint.Shader?.Dispose();
+        PagePaint.Shader?.Dispose();
+        BackgroundPaint.Shader?.Dispose();
 
-        return paint;
+        AllocationPaint.Dispose();
+        BorderPaint.Dispose();
+        BackgroundPaint.Dispose();
+        PagePaint.Dispose();
+        PageMarkerPaint.Dispose();
+
+        PathBuilder.Dispose();
     }
-
-    private SKPaint GetExtentPaint(Color colourFrom, Color colourTo)
-    {
-        var rect = new SKRect(0, 0, ExtentSize.Width, ExtentSize.Height);
-
-        var paint = new SKPaint
-        {
-            Shader = SKShader.CreateLinearGradient(new SKPoint(rect.Left, rect.Top),
-                                                   new SKPoint(rect.Right, rect.Top),
-                                                   [colourFrom.ToSkColor(), colourTo.ToSkColor()],
-                                                   null,
-                                                   SKShaderTileMode.Repeat)
-        };
-
-        return paint;
-    }
-
-    private SKPaint GetPagePaint(Color colourFrom, Color colourTo)
-    {
-        var rect = new SKRect(0, 0, ExtentSize.Width / 8F, ExtentSize.Height);
-
-        var paint = new SKPaint
-        {
-            Shader = SKShader.CreateLinearGradient(new SKPoint(rect.Left, rect.Top),
-                                                   new SKPoint(rect.Right, rect.Top),
-                                                   [colourFrom.ToSkColor(), colourTo.ToSkColor()],
-                                                   null,
-                                                   SKShaderTileMode.Repeat)
-        };
-
-        return paint;
-    }
-
 
     internal void DrawExtent(SKCanvas g, SKRect rect)
     {
@@ -266,18 +235,48 @@ public sealed class AllocationRenderer : IDisposable
         }
     }
 
-    public void Dispose()
+    private SKPaint GetBorderPaint()
     {
-        AllocationPaint.Shader?.Dispose();
-        PagePaint.Shader?.Dispose();
-        BackgroundPaint.Shader?.Dispose();
+        var paint = new SKPaint
+        {
+            Color = new SKColor(BorderColour.R, BorderColour.G, BorderColour.B),
+            IsAntialias = false,
+            Style = SKPaintStyle.Stroke,
+            StrokeWidth = 1
+        };
 
-        AllocationPaint.Dispose();
-        BorderPaint.Dispose();
-        BackgroundPaint.Dispose();
-        PagePaint.Dispose();
-        PageMarkerPaint.Dispose();
+        return paint;
+    }
 
-        PathBuilder.Dispose();
+    private SKPaint GetExtentPaint(Color colourFrom, Color colourTo)
+    {
+        var rect = new SKRect(0, 0, ExtentSize.Width, ExtentSize.Height);
+
+        var paint = new SKPaint
+        {
+            Shader = SKShader.CreateLinearGradient(new SKPoint(rect.Left, rect.Top),
+                                                   new SKPoint(rect.Right, rect.Top),
+                                                   [colourFrom.ToSkColor(), colourTo.ToSkColor()],
+                                                   null,
+                                                   SKShaderTileMode.Repeat)
+        };
+
+        return paint;
+    }
+
+    private SKPaint GetPagePaint(Color colourFrom, Color colourTo)
+    {
+        var rect = new SKRect(0, 0, ExtentSize.Width / 8F, ExtentSize.Height);
+
+        var paint = new SKPaint
+        {
+            Shader = SKShader.CreateLinearGradient(new SKPoint(rect.Left, rect.Top),
+                                                   new SKPoint(rect.Right, rect.Top),
+                                                   [colourFrom.ToSkColor(), colourTo.ToSkColor()],
+                                                   null,
+                                                   SKShaderTileMode.Repeat)
+        };
+
+        return paint;
     }
 }
