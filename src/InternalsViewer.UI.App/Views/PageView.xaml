@@ -88,6 +88,12 @@
                     IsOpen="False"       
                     DefaultLabelPosition="Right" 
                     HorizontalAlignment="Left">
+                    <AppBarElementContainer VerticalAlignment="Stretch">
+                        <StackPanel VerticalAlignment="Stretch" Margin="12,8,18,0">
+                            <TextBlock>Allocations</TextBlock>
+                            <TextBlock FontWeight="SemiBold" Text="TODO" />
+                        </StackPanel>
+                    </AppBarElementContainer>
                     <AppBarElementContainer>
                         <controls:PageAddressTextBox x:Name="PageAddressTextBox" 
                                                      PageAddress="{x:Bind ViewModel.PageAddress, Mode=TwoWay}" 

@@ -35,6 +35,8 @@ public sealed partial class ColumnstoreStructureControl : IDisposable
         StructureCanvas.RightTapped += OnRightTapped;
 
         ActualThemeChanged += OnActualThemeChanged;
+
+        Loaded += OnLoaded;
     }
 
     public ColumnStoreIndex? Index
@@ -107,12 +109,28 @@ public sealed partial class ColumnstoreStructureControl : IDisposable
 
         control._scrollOffset = 0;
 
+        control._hasLocalDictionaries = null;
+
         control.UpdateScrollBar();
-        
+
         control.StructureCanvas.Invalidate();
     }
 
-    private void OnActualThemeChanged(FrameworkElement sender, object args) => StructureCanvas.Invalidate();
+    private bool _isThemeDirty = true;
+
+    private void OnActualThemeChanged(FrameworkElement sender, object args)
+    {
+        _isThemeDirty = true;
+
+        StructureCanvas.Invalidate();
+    }
+
+    private void OnLoaded(object sender, RoutedEventArgs e)
+    {
+        _isThemeDirty = true;
+
+        StructureCanvas.Invalidate();
+    }
 
     private void OnPaintSurface(object? sender, SKPaintSurfaceEventArgs e)
     {
@@ -123,7 +141,12 @@ public sealed partial class ColumnstoreStructureControl : IDisposable
             return;
         }
 
-        ApplyTheme();
+        if (_isThemeDirty)
+        {
+            ApplyTheme();
+
+            _isThemeDirty = false;
+        }
 
         _regions = _renderer.Draw(e.Surface.Canvas,
                                   index,
@@ -227,11 +250,13 @@ public sealed partial class ColumnstoreStructureControl : IDisposable
         TooltipPopup.IsOpen = true;
     }
 
+    private bool? _hasLocalDictionaries;
+
     /// <summary>
     /// Whether any row group carries a local dictionary, which is what the row of them costs its height for
     /// </summary>
     private bool HasLocalDictionaries()
-        => Index?.RowGroups.Any(r => r.Segments.Any(s => s.LocalDictionary is not null)) ?? false;
+        => _hasLocalDictionaries ??= Index?.RowGroups.Any(r => r.Segments.Any(s => s.LocalDictionary is not null)) ?? false;
 
     /// <summary>
     /// Column under the pointer, which the bands take from the pointer rather than from what it is over
@@ -394,6 +419,8 @@ public sealed partial class ColumnstoreStructureControl : IDisposable
         StructureCanvas.PointerExited -= OnPointerExited;
 
         ActualThemeChanged -= OnActualThemeChanged;
+
+        Loaded -= OnLoaded;
 
         _renderer.Dispose();
     }

@@ -55,9 +55,6 @@
                     <x:Double x:Key="ListViewItemMinHeight">0</x:Double>
                 </tableView:TableView.Resources>
 
-                <tableView:TableView.ItemContainerTransitions>
-                    <TransitionCollection />
-                </tableView:TableView.ItemContainerTransitions>
 
                 <tableView:TableView.Columns>
                     <tableView:TableViewTemplateColumn Header="Key"

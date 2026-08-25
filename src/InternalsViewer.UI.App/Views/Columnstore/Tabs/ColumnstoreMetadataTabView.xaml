@@ -17,14 +17,14 @@
         <TabView Grid.Row="0"
                  IsAddTabButtonVisible="False"
                  TabWidthMode="SizeToContent"
-                 SelectedIndex="{x:Bind SelectedTabIndex, Mode=TwoWay}">
+                 SelectedIndex="{x:Bind ViewModel.SelectedMetadataTabIndex, Mode=TwoWay}">
             <TabViewItem Header="Row Groups/Segments" IsClosable="False"/>
             <TabViewItem Header="Dictionaries" IsClosable="False"/>
         </TabView>
 
         <tableView:TableView x:Name="SegmentTable"
                              Grid.Row="1"
-                             Visibility="{x:Bind GetTabContentVisibility(SelectedTabIndex, 0), Mode=OneWay}"
+                             Visibility="{x:Bind GetTabContentVisibility(ViewModel.SelectedMetadataTabIndex, 0), Mode=OneWay}"
                              AutoGenerateColumns="False"
                              CanSortColumns="True"
                              CanFilterColumns="False"
@@ -152,8 +152,9 @@
         </tableView:TableView>
 
         <tableView:TableView x:Name="DictionaryTable"
+                             x:Load="False"
                              Grid.Row="1"
-                             Visibility="{x:Bind GetTabContentVisibility(SelectedTabIndex, 1), Mode=OneWay}"
+                             Visibility="{x:Bind GetTabContentVisibility(ViewModel.SelectedMetadataTabIndex, 1), Mode=OneWay}"
                              AutoGenerateColumns="False"
                              CanSortColumns="True"
                              CanFilterColumns="False"

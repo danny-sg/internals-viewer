@@ -46,7 +46,9 @@
                        Text="{x:Bind ViewModel.StatusText, Mode=OneWay}"/>
         </StackPanel>
 
-        <Grid Visibility="{x:Bind ViewModel.IsLoaded, Mode=OneWay,
+        <Grid x:Name="ContentGrid"
+              x:Load="False"
+              Visibility="{x:Bind ViewModel.IsLoaded, Mode=OneWay,
                       Converter={StaticResource BoolToVisibilityConverter}}">
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto"/>
@@ -164,7 +166,9 @@
                                          Markers="{x:Bind ViewModel.HeaderMarkers, Mode=OneWay}"
                                          SelectedMarker="{x:Bind ViewModel.Hex.SelectedMarker, Mode=TwoWay}"/>
 
-                    <Grid Visibility="{x:Bind GetTabContentVisibility(ViewModel.SelectedTabIndex, 2), Mode=OneWay}">
+                    <Grid x:Name="PagesPanel"
+                          x:Load="False"
+                          Visibility="{x:Bind GetTabContentVisibility(ViewModel.SelectedTabIndex, 2), Mode=OneWay}">
                         <Grid.RowDefinitions>
                             <RowDefinition Height="*" MinHeight="80"/>
                             <RowDefinition Height="Auto"/>
@@ -273,7 +277,9 @@
                         </Grid>
                     </Grid>
 
-                    <tableView:TableView Visibility="{x:Bind GetTabContentVisibility(ViewModel.SelectedTabIndex, 1), Mode=OneWay}"
+                    <tableView:TableView x:Name="HandlesTable"
+                                         x:Load="False"
+                                         Visibility="{x:Bind GetTabContentVisibility(ViewModel.SelectedTabIndex, 1), Mode=OneWay}"
                                          AutoGenerateColumns="False"
                                          CanSortColumns="False"
                                          CanFilterColumns="False"
@@ -351,7 +357,9 @@
                         </tableView:TableView.Columns>
                     </tableView:TableView>
 
-                    <tableView:TableView Visibility="{x:Bind GetTabContentVisibility(ViewModel.SelectedTabIndex, 3), Mode=OneWay}"
+                    <tableView:TableView x:Name="EntriesTable"
+                                         x:Load="False"
+                                         Visibility="{x:Bind GetTabContentVisibility(ViewModel.SelectedTabIndex, 3), Mode=OneWay}"
                                          SelectionChanged="Entries_OnSelectionChanged"
                                          AutoGenerateColumns="False"
                                          CanSortColumns="False"

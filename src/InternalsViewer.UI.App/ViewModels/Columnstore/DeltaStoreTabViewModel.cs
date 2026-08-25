@@ -66,7 +66,8 @@ public sealed partial class DeltaStoreTabViewModel(IPageService pageService,
     [ObservableProperty]
     private string _statusText = "Loading Delta Store";
 
-    public ObservableCollection<DeltaStorePageSummary> Pages { get; } = [];
+    [ObservableProperty]
+    private IReadOnlyList<DeltaStorePageSummary> _pages = [];
 
     public async Task Load(CancellationToken cancellationToken)
     {
@@ -88,6 +89,8 @@ public sealed partial class DeltaStoreTabViewModel(IPageService pageService,
 
             var chain = await IamChainService.LoadChain(Database, allocationUnit.FirstIamPage, cancellationToken);
 
+            var pages = new List<DeltaStorePageSummary>();
+
             foreach (var address in GetPageAddresses(chain))
             {
                 if (cancellationToken.IsCancellationRequested)
@@ -105,11 +108,13 @@ public sealed partial class DeltaStoreTabViewModel(IPageService pageService,
                     continue;
                 }
 
-                Pages.Add(new DeltaStorePageSummary(address,
+                pages.Add(new DeltaStorePageSummary(address,
                                                     page.PageHeader.SlotCount,
                                                     page.PageHeader.FreeCount,
                                                     page.PageHeader.PageType.ToString()));
             }
+
+            Pages = pages;
 
             StatusText = $"{Pages.Count} pages";
 

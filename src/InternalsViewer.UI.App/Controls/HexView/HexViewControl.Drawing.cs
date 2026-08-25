@@ -16,6 +16,20 @@ namespace InternalsViewer.UI.App.Controls.HexView;
 
 public sealed partial class HexViewControl
 {
+    private static readonly Dictionary<Color, SolidColorBrush> BrushCache = [];
+
+    private static SolidColorBrush GetBrush(Color colour)
+    {
+        if (!BrushCache.TryGetValue(colour, out var brush))
+        {
+            brush = new SolidColorBrush(colour);
+
+            BrushCache[colour] = brush;
+        }
+
+        return brush;
+    }
+
     public ObservableCollection<LogRecordAnnotation>? ChangeSpans
     {
         get => (ObservableCollection<LogRecordAnnotation>?)GetValue(ChangeSpansProperty);
@@ -137,9 +151,9 @@ public sealed partial class HexViewControl
 
         var lineHeight = GetLineHeight();
 
-        var selectedBrush = new SolidColorBrush(Colors.OrangeRed);
+        var selectedBrush = GetBrush(Colors.OrangeRed);
 
-        var defaultBrush = new SolidColorBrush(Colors.Gray);
+        var defaultBrush = GetBrush(Colors.Gray);
 
         foreach (var changeSpan in spans)
         {
@@ -304,20 +318,17 @@ public sealed partial class HexViewControl
 
             var highlighter = new TextHighlighter
             {
-                Foreground = new SolidColorBrush(foregroundColour),
-                Background = new SolidColorBrush(backgroundColour),
+                Foreground = GetBrush(foregroundColour),
+                Background = GetBrush(backgroundColour),
 
                 Ranges = { new TextRange(start, length) }
             };
 
             target.HexRichTextBlock.TextHighlighters.Add(highlighter);
 
-            if (source.Children.Any())
+            foreach (var child in source.Children)
             {
-                foreach (var child in source.Children)
-                {
-                    Highlight(child);
-                }
+                Highlight(child);
             }
         }
 

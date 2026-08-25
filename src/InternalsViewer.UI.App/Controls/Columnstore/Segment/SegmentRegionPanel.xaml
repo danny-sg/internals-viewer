@@ -1,6 +1,6 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <UserControl
-    x:Class="InternalsViewer.UI.App.Controls.Columnstore.SegmentRegionPanel"
+    x:Class="InternalsViewer.UI.App.Controls.Columnstore.Segment.SegmentRegionPanel"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
@@ -15,7 +15,8 @@
             <RowDefinition Height="{x:Bind DetailHeight, Mode=OneWay}" MinHeight="0"/>
         </Grid.RowDefinitions>
 
-        <page:MarkerTreeView Grid.Row="0"
+        <page:MarkerTreeView x:Name="MarkerTree"
+                             Grid.Row="0"
                              Opacity="{x:Bind MarkerOpacity, Mode=OneWay}"
                              Markers="{x:Bind Markers, Mode=OneWay}"
                              SelectedMarker="{x:Bind SelectedMarker, Mode=TwoWay}"

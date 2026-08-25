@@ -445,7 +445,7 @@ public sealed class ColumnstoreStructureRenderer : IDisposable
                 ElementType = ColumnstoreElementType.DeleteBitmap,
                 Label = "Delete Bitmap",
                 Detail = detail,
-                Details =
+                DetailsFactory = () =>
                 [
                     new ColumnstoreDetail("HoBT", deleteBitmap.HobtId.ToString()),
                     new ColumnstoreDetail("Allocation Unit",
@@ -569,7 +569,7 @@ public sealed class ColumnstoreStructureRenderer : IDisposable
             Dictionary = dictionary,
             Label = $"{columnName} {(isGlobal ? "Global" : "Local")} Dictionary",
             Detail = $"{dictionary.EntryCount} entries",
-            Details = BuildDictionaryDetails(dictionary, isGlobal, columnName)
+            DetailsFactory = () => BuildDictionaryDetails(dictionary, isGlobal, columnName)
         });
     }
 
@@ -595,7 +595,7 @@ public sealed class ColumnstoreStructureRenderer : IDisposable
             ElementType = ColumnstoreElementType.RowGroup,
             RowGroup = rowGroup,
             Label = $"Row Group {rowGroup.RowGroupId}",
-            Details =
+            DetailsFactory = () =>
             [
                 new ColumnstoreDetail("State", rowGroup.State.ToString()),
                 new ColumnstoreDetail("Rows", $"{rowGroup.TotalRows}"),
@@ -737,7 +737,7 @@ public sealed class ColumnstoreStructureRenderer : IDisposable
             RowGroup = rowGroup,
             Label = $"Delta Store, Row Group {rowGroup.RowGroupId}",
             Detail = $"{rowGroup.TotalRows} rows",
-            Details =
+            DetailsFactory = () =>
             [
                 new ColumnstoreDetail("Row Group", rowGroup.RowGroupId.ToString()),
                 new ColumnstoreDetail("State", rowGroup.State.ToString()),
@@ -779,7 +779,7 @@ public sealed class ColumnstoreStructureRenderer : IDisposable
             Segment = segment,
             Label = segment.ColumnName,
             Detail = $"{segment.EncodingDescription}, {FormatSize(segment.OnDiskSize)}",
-            Details =
+            DetailsFactory = () =>
             [
                 new ColumnstoreDetail("Row Group", segment.RowGroupId.ToString()),
                 new ColumnstoreDetail("Column", $"{segment.ColumnId}"),
@@ -832,7 +832,7 @@ public sealed class ColumnstoreStructureRenderer : IDisposable
             Segment = segment,
             Label = segment.ColumnName,
             Detail = $"{segment.EncodingDescription}, {FormatSize(segment.OnDiskSize)}",
-            Details =
+            DetailsFactory = () =>
             [
                 new ColumnstoreDetail("Size", FormatSize(segment.OnDiskSize)),
                 new ColumnstoreDetail("Compression", (1D - segment.SizeFraction).ToString("P2")),
@@ -1037,7 +1037,7 @@ public sealed class ColumnstoreStructureRenderer : IDisposable
             Dictionary = dictionary,
             Label = isGlobal ? "Global Dictionary" : "Local Dictionary",
             Detail = $"{dictionary.EntryCount} entries",
-            Details = BuildDictionaryDetails(dictionary, isGlobal, segment.ColumnName)
+            DetailsFactory = () => BuildDictionaryDetails(dictionary, isGlobal, segment.ColumnName)
         });
     }
 

@@ -45,6 +45,8 @@ public sealed class SegmentVariableLengthData : DataStructure
     /// </summary>
     public bool IsWide => Pages.Length > 0 && Pages[0].IsWide;
 
+    private int[] PageStartOrdinals => field ??= BuildPageStartOrdinals();
+
     /// <summary>
     /// Records the header fields and the page size array that follows them
     /// </summary>
@@ -113,15 +115,18 @@ public sealed class SegmentVariableLengthData : DataStructure
     /// Ordinal a page and slot pair addresses, which is how an RLE run names where its values start
     /// </summary>
     public int GetOrdinal(int page, int slot)
-    {
-        var ordinal = slot;
+        => PageStartOrdinals[Math.Clamp(page, 0, Pages.Length)] + slot;
 
-        for (var i = 0; i < page && i < Pages.Length; i++)
+    private int[] BuildPageStartOrdinals()
+    {
+        var starts = new int[Pages.Length + 1];
+
+        for (var i = 0; i < Pages.Length; i++)
         {
-            ordinal += Pages[i].ValueCount;
+            starts[i + 1] = starts[i] + Pages[i].ValueCount;
         }
 
-        return ordinal;
+        return starts;
     }
 
     private (int Page, int Index) Locate(int ordinal)
@@ -131,18 +136,20 @@ public sealed class SegmentVariableLengthData : DataStructure
             throw new ArgumentOutOfRangeException(nameof(ordinal));
         }
 
-        var remaining = ordinal;
+        var starts = PageStartOrdinals;
 
-        for (var i = 0; i < Pages.Length; i++)
+        var page = Array.BinarySearch(starts, 0, Pages.Length, ordinal);
+
+        if (page < 0)
         {
-            if (remaining < Pages[i].ValueCount)
-            {
-                return (i, remaining);
-            }
-
-            remaining -= Pages[i].ValueCount;
+            page = ~page - 1;
         }
 
-        throw new ArgumentOutOfRangeException(nameof(ordinal));
+        while (ordinal - starts[page] >= Pages[page].ValueCount)
+        {
+            page++;
+        }
+
+        return (page, ordinal - starts[page]);
     }
 }

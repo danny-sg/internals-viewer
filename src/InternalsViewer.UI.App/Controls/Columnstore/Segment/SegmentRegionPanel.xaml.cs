@@ -2,7 +2,7 @@
 using System.Collections.ObjectModel;
 using InternalsViewer.UI.App.Models;
 
-namespace InternalsViewer.UI.App.Controls.Columnstore;
+namespace InternalsViewer.UI.App.Controls.Columnstore.Segment;
 
 /// <summary>
 /// Markers over the detail for one region of a segment, split so either can be given the room
@@ -12,7 +12,12 @@ public sealed partial class SegmentRegionPanel
     public SegmentRegionPanel()
     {
         InitializeComponent();
+
+        RegisterPropertyChangedCallback(VisibilityProperty, OnVisibilityChanged);
     }
+
+    private void OnVisibilityChanged(DependencyObject sender, DependencyProperty property)
+        => MarkerTree.Visibility = Visibility;
 
     public event EventHandler<string>? AddressClicked;
 

@@ -7,6 +7,8 @@ namespace InternalsViewer.UI.App.Services.Markers;
 
 public sealed class MarkStyleProvider
 {
+    public static MarkStyleProvider Default { get; } = new();
+
     private readonly Dictionary<ItemType, MarkStyle> _styleCache = [];
 
     private ResourceDictionary? ThemeDictionary { get; set; }

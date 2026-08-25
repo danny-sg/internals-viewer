@@ -19,20 +19,35 @@ public sealed partial class ColumnstoreMetadataTabView : IDisposable
 
     public ColumnstoreTabViewModel ViewModel => (ColumnstoreTabViewModel)DataContext;
 
-    private void OnDataContextChanged(FrameworkElement sender, DataContextChangedEventArgs args) => Bindings.Update();
+    private ColumnstoreTabViewModel? _tracked;
 
-    /// <remarks>
-    /// A tab holding its own content is rebuilt every time it is selected, so the strip is separated from what it
-    /// picks and the grids are shown and hidden instead.
-    /// </remarks>
-    public int SelectedTabIndex
+    private void OnDataContextChanged(FrameworkElement sender, DataContextChangedEventArgs args)
     {
-        get;
-        set
-        {
-            field = value;
+        Bindings.Update();
 
-            Bindings.Update();
+        if (_tracked is not null)
+        {
+            _tracked.PropertyChanged -= OnViewModelPropertyChanged;
+        }
+
+        _tracked = DataContext as ColumnstoreTabViewModel;
+
+        if (_tracked is not null)
+        {
+            _tracked.PropertyChanged += OnViewModelPropertyChanged;
+        }
+
+        RealizePanels();
+    }
+
+    private void OnViewModelPropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
+        => RealizePanels();
+
+    private void RealizePanels()
+    {
+        if (_tracked is { IsDictionariesTabLoaded: true } && DictionaryTable is null)
+        {
+            FindName(nameof(DictionaryTable));
         }
     }
 
@@ -50,6 +65,13 @@ public sealed partial class ColumnstoreMetadataTabView : IDisposable
     public void Dispose()
     {
         DataContextChanged -= OnDataContextChanged;
+
+        if (_tracked is not null)
+        {
+            _tracked.PropertyChanged -= OnViewModelPropertyChanged;
+
+            _tracked = null;
+        }
 
         // x:Bind listens to the view model, which outlives the view, so the view stays rooted until tracking stops
         Bindings.StopTracking();

@@ -1,6 +1,6 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <UserControl
-    x:Class="InternalsViewer.UI.App.Controls.Columnstore.BitPackDetailControl"
+    x:Class="InternalsViewer.UI.App.Controls.Columnstore.Segment.BitPackDetailControl"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
@@ -75,9 +75,6 @@
                              Margin="8"
                              SelectionChanged="ValueTable_OnSelectionChanged"
                              Background="{ThemeResource LayerFillColorDefaultBrush}">
-            <tableView:TableView.ItemContainerTransitions>
-                <TransitionCollection />
-            </tableView:TableView.ItemContainerTransitions>
             <tableView:TableView.Resources>
                 <x:Double x:Key="ListViewItemMinHeight">0</x:Double>
             </tableView:TableView.Resources>

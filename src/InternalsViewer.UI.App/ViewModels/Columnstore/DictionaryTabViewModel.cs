@@ -50,13 +50,6 @@ public sealed partial class DictionaryTabViewModel(ColumnstoreService columnstor
 
     public string ColumnName => Column?.Name ?? $"Column {Dictionary.ColumnId}";
 
-    /// <summary>
-    /// The type the column was declared as, which the header shows beside its name
-    /// </summary>
-    /// <remarks>
-    /// Surfaced a field at a time because a data type is drawn from four of them, and x:Bind cannot reach through a
-    /// structure that may not be there.
-    /// </remarks>
     public SqlDbType? DataType => Column?.Structure?.DataType;
 
     public int Precision => Column?.Structure?.Precision ?? 0;
@@ -65,9 +58,6 @@ public sealed partial class DictionaryTabViewModel(ColumnstoreService columnstor
 
     public int DataLength => Column?.Structure?.DataLength ?? 0;
 
-    /// <summary>
-    /// Whether the dictionary covers the whole index or the one row group, which the header shows under the column
-    /// </summary>
     public IReadOnlyList<SegmentBadge> ScopeBadges =>
     [
         Dictionary.IsGlobal
@@ -75,9 +65,6 @@ public sealed partial class DictionaryTabViewModel(ColumnstoreService columnstor
             : SegmentBadge.Create($"Local {Dictionary.DictionaryId}", ColumnstoreColours.LocalScope)
     ];
 
-    /// <summary>
-    /// The lob type and the store it opens, the store being the element that tells one dictionary kind from the other
-    /// </summary>
     public IReadOnlyList<SegmentBadge> TypeBadges
     {
         get
@@ -107,9 +94,6 @@ public sealed partial class DictionaryTabViewModel(ColumnstoreService columnstor
         _ => null
     };
 
-    /// <summary>
-    /// What the blob turned out to hold, which is only known once it is read
-    /// </summary>
     public IReadOnlyList<SegmentBadge> FlagBadges => SegmentBadge.Compound([.. BuildFlagBadges()]);
 
     private IEnumerable<SegmentBadge> BuildFlagBadges()
@@ -151,9 +135,6 @@ public sealed partial class DictionaryTabViewModel(ColumnstoreService columnstor
     [ObservableProperty]
     private string _summaryText = string.Empty;
 
-    /// <summary>
-    /// Every entry, indexed rather than materialised so the grid only ever decodes what it shows
-    /// </summary>
     [ObservableProperty]
     private DictionaryEntryList? _entries;
 
@@ -168,14 +149,19 @@ public sealed partial class DictionaryTabViewModel(ColumnstoreService columnstor
     [ObservableProperty]
     private int _selectedTabIndex;
 
+    private const int EntriesTabIndex = 3;
+
+    [ObservableProperty]
+    private bool _isEntriesTabLoaded;
+
     /// <summary>
-    /// Region the window sits on, set by picking a tab and reported back when a scroll leaves the region
+    /// Hex Region
     /// </summary>
     [ObservableProperty]
     private DictionaryRegion _region = DictionaryRegion.Header;
 
     /// <summary>
-    /// Whether scrolling out of a region moves on to the tab for the region scrolled into
+    /// Move tab if region changes
     /// </summary>
     [ObservableProperty]
     private bool _isAutoRegion = true;
@@ -197,7 +183,6 @@ public sealed partial class DictionaryTabViewModel(ColumnstoreService columnstor
             return;
         }
 
-        // A marker belongs to the region it was built for, so it means nothing once another region is on show
         Hex.SelectedMarker = null;
 
         GoToRegion(value);
@@ -205,6 +190,11 @@ public sealed partial class DictionaryTabViewModel(ColumnstoreService columnstor
 
     partial void OnSelectedTabIndexChanged(int value)
     {
+        if (value == EntriesTabIndex)
+        {
+            IsEntriesTabLoaded = true;
+        }
+
         if (_isFollowingWindow)
         {
             return;
@@ -224,9 +214,6 @@ public sealed partial class DictionaryTabViewModel(ColumnstoreService columnstor
         Region = region;
     }
 
-    /// <summary>
-    /// Region a tab shows, so picking one moves the window to what it describes
-    /// </summary>
     private static DictionaryRegion GetTabRegion(int index) => index switch
     {
         1 => DictionaryRegion.Handles,
@@ -235,9 +222,6 @@ public sealed partial class DictionaryTabViewModel(ColumnstoreService columnstor
         _ => DictionaryRegion.Header
     };
 
-    /// <summary>
-    /// Tab a region is shown on, so following the window into another region brings its tab forward
-    /// </summary>
     private static int GetRegionTabIndex(DictionaryRegion region) => region switch
     {
         DictionaryRegion.Handles => 1,
@@ -246,9 +230,6 @@ public sealed partial class DictionaryTabViewModel(ColumnstoreService columnstor
         _ => 0
     };
 
-    /// <summary>
-    /// Moves the window to the region's first line, or rebuilds in place if it is already there
-    /// </summary>
     private void GoToRegion(DictionaryRegion region)
     {
         if (Blob is not { } blob)
@@ -269,9 +250,6 @@ public sealed partial class DictionaryTabViewModel(ColumnstoreService columnstor
         }
     }
 
-    /// <summary>
-    /// Brings the region into line with the window, so a scroll past a boundary moves on to the tab it landed in
-    /// </summary>
     private void OnWindowMoved(object? sender, int start)
     {
         if (Blob is not { } blob || !IsAutoRegion || _isJumpingToRegion)
@@ -303,33 +281,18 @@ public sealed partial class DictionaryTabViewModel(ColumnstoreService columnstor
     [ObservableProperty]
     private bool _isPageLoading;
 
-    /// <summary>
-    /// Whether the selected page carries a coding, an uncompressed page having no table or tree to show
-    /// </summary>
     public bool HasHuffmanPage => SelectedPage?.Huffman is not null;
 
-    /// <summary>
-    /// Colour the selected entry's value is marked in, a coded entry being marked over the words its bits fall in
-    /// </summary>
     public ItemType EntryValueItemType => Blob is NumericDictionary
-        ? ItemType.DictionaryValue
-        : HasHuffmanPage
-            ? ItemType.StringEntryCode
-            : ItemType.StringEntryValue;
+                                          ? ItemType.DictionaryValue
+                                          : HasHuffmanPage
+                                              ? ItemType.StringEntryCode
+                                              : ItemType.StringEntryValue;
 
-    /// <summary>
-    /// Colour the entry's length prefix is marked in, which only a page holding its values plainly carries
-    /// </summary>
     public ItemType EntryLengthItemType => Blob is StringDictionary && !HasHuffmanPage
         ? ItemType.StringEntryLength
         : ItemType.None;
 
-    /// <summary>
-    /// Which halves of the decode the reader wants, the entries read out and the coding that produced them
-    /// </summary>
-    /// <remarks>
-    /// Turning the last one off would leave the tab blank, so the other comes back on rather than being refused.
-    /// </remarks>
     [ObservableProperty]
     private bool _isDecodeValuesVisible = true;
 
@@ -360,14 +323,12 @@ public sealed partial class DictionaryTabViewModel(ColumnstoreService columnstor
 
     public bool HasHandles => Blob is StringDictionary;
 
-    /// <summary>
-    /// The handle array, listed lazily, a dictionary running to tens of thousands of entries
-    /// </summary>
-    public DictionaryHandleList? Handles => Blob is StringDictionary strings ? new DictionaryHandleList(strings) : null;
+    public DictionaryHandleList? Handles => Blob is StringDictionary strings
+                                            ? _handles ??= new DictionaryHandleList(strings)
+                                            : null;
 
-    /// <summary>
-    /// Moves the window onto the handle itself, which is where the lookup starts rather than where it lands
-    /// </summary>
+    private DictionaryHandleList? _handles;
+
     public void SelectHandle(DictionaryHandleDetail? handle)
     {
         SelectedHandle = handle;
@@ -383,9 +344,6 @@ public sealed partial class DictionaryTabViewModel(ColumnstoreService columnstor
     [ObservableProperty]
     private DictionaryHandleDetail? _selectedHandle;
 
-    /// <summary>
-    /// The fields of the handle on show, which the array is too long to open for every entry
-    /// </summary>
     private IEnumerable<Marker> SelectedHandleMarkers()
     {
         if (SelectedHandle is not { } handle || Blob is not StringDictionary)
@@ -406,9 +364,6 @@ public sealed partial class DictionaryTabViewModel(ColumnstoreService columnstor
                                                 $"{handle.Page}");
     }
 
-    /// <summary>
-    /// The blob's parts in the order they sit, which the hex gutter names while a drag is under way
-    /// </summary>
     public IReadOnlyList<HexArea> HexAreas
     {
         get
@@ -447,9 +402,6 @@ public sealed partial class DictionaryTabViewModel(ColumnstoreService columnstor
     public string GetCsIndexCommand(int printMode)
         => CsIndexCommand.Build(Dictionary, Database.DatabaseId, Dictionary.HobtId, printMode);
 
-    /// <summary>
-    /// Entries living on the selected page, which is the list the decode walks through
-    /// </summary>
     [ObservableProperty]
     private DictionaryEntryList? _pageEntries;
 
@@ -469,19 +421,10 @@ public sealed partial class DictionaryTabViewModel(ColumnstoreService columnstor
 
     private IReadOnlyList<HuffmanCodeDetail>? _codes;
 
-    /// <summary>
-    /// The bit walk the selected entry decodes through, which only a Huffman coded page has
-    /// </summary>
     public IReadOnlyList<HuffmanDecodeStep> DecodeSteps => _decodeSteps ??= Trace();
 
-    /// <summary>
-    /// The coded stream the walk reads from, which the drawing shows the words and bits of
-    /// </summary>
     public ReadOnlyMemory<byte> DecodeContent => SelectedPage?.Huffman?.Content ?? default;
 
-    /// <summary>
-    /// Selects the code a clicked band used, so the table and the drawing stay on the same symbol
-    /// </summary>
     public void SelectSymbol(int symbol) => SelectedSymbol = symbol;
 
     public IReadOnlyList<DecodeStepDetail> DecodeStepDetails
@@ -529,9 +472,6 @@ public sealed partial class DictionaryTabViewModel(ColumnstoreService columnstor
         }
     }
 
-    /// <summary>
-    /// Codes of the selected page, which only a Huffman coded page carries
-    /// </summary>
     public IReadOnlyList<HuffmanCodeDetail> Codes
         => _codes ??= SelectedPage?.Codes.Select(c => new HuffmanCodeDetail { Code = c }).ToList() ?? [];
 
@@ -543,6 +483,8 @@ public sealed partial class DictionaryTabViewModel(ColumnstoreService columnstor
     partial void OnBlobChanged(DictionaryBlob? value)
     {
         _codes = null;
+
+        _handles = null;
 
         ClearDecodeCache();
     }
@@ -576,9 +518,6 @@ public sealed partial class DictionaryTabViewModel(ColumnstoreService columnstor
 
     private const int DecodeTabIndex = 1;
 
-    /// <summary>
-    /// Follows a handle to the value it names, which is an entry of the page the handle points at
-    /// </summary>
     public async Task GoToHandleValue(DictionaryHandleDetail handle)
     {
         if (Blob is not StringDictionary)
@@ -684,12 +623,6 @@ public sealed partial class DictionaryTabViewModel(ColumnstoreService columnstor
         Hex.BuildMarkers();
     }
 
-    /// <summary>
-    /// Where an entry's bytes start, a numeric one being an element and a string one whatever its page holds
-    /// </summary>
-    /// <remarks>
-    /// A Huffman coded entry is addressed in bits, so the offset it lands on is the byte those bits fall in.
-    /// </remarks>
     private int? GetEntryOffset(DictionaryEntryDetail? entry)
     {
         if (entry is null)
@@ -749,25 +682,12 @@ public sealed partial class DictionaryTabViewModel(ColumnstoreService columnstor
         }
     }
 
-    /// <summary>
-    /// Fields of the blob header, which the Header tab lists on its own
-    /// </summary>
     [ObservableProperty]
     private ObservableCollection<Marker> _headerMarkers = [];
 
-    /// <summary>
-    /// Fields of the page on show together with the entry selected in it
-    /// </summary>
     [ObservableProperty]
     private ObservableCollection<Marker> _pageMarkers = [];
 
-    /// <summary>
-    /// Splits the fields by what they describe, and hands the hex view the two of them together
-    /// </summary>
-    /// <remarks>
-    /// The lists share their markers with the combined one rather than copying them, so a marker picked in either
-    /// tree is the same object the hex view is holding and still highlights.
-    /// </remarks>
     private List<Marker> BuildMarkers(DictionaryBlob blob, int start, int length)
     {
         try
@@ -794,13 +714,6 @@ public sealed partial class DictionaryTabViewModel(ColumnstoreService columnstor
         }
     }
 
-    /// <summary>
-    /// Gathers the fields the blob opens with under one heading, the stores after them being grouped already
-    /// </summary>
-    /// <remarks>
-    /// CSINDEX reports the first twelve bytes as the dictionary header and everything past them as a store of its
-    /// own, so the tree reads the same way its output does.
-    /// </remarks>
     private static List<Marker> GroupHeader(List<Marker> markers)
     {
         var loose = markers.Where(m => m.Children.Count == 0 && m.EndPosition < DictionaryHeaderSize).ToList();
@@ -825,13 +738,6 @@ public sealed partial class DictionaryTabViewModel(ColumnstoreService columnstor
 
     private const int DictionaryHeaderSize = 12;
 
-    /// <summary>
-    /// Positions the fields the window holds, and takes the position off the ones it does not
-    /// </summary>
-    /// <remarks>
-    /// A field outside the window keeps its place in the tree and loses its position, the same as a field marked for
-    /// context. Dropping it instead would empty the tree whenever the window sat anywhere but the header.
-    /// </remarks>
     private static List<Marker> Window(IEnumerable<Marker> markers, int start, int length)
     {
         var windowed = new List<Marker>();

@@ -38,7 +38,43 @@ public sealed partial class ColumnstoreDictionaryTabView : UserControl, IDocumen
     {
         Bindings.Update();
 
+        if (_tracked is not null)
+        {
+            _tracked.PropertyChanged -= OnViewModelPropertyChanged;
+        }
+
         _tracked = DataContext as DictionaryTabViewModel;
+
+        if (_tracked is not null)
+        {
+            _tracked.PropertyChanged += OnViewModelPropertyChanged;
+        }
+
+        RealizePanels();
+    }
+
+    private void OnViewModelPropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
+        => RealizePanels();
+
+    private void RealizePanels()
+    {
+        if (_tracked is not { } viewModel)
+        {
+            return;
+        }
+
+        Realize(ContentGrid, nameof(ContentGrid), viewModel.IsLoaded);
+        Realize(HandlesTable, nameof(HandlesTable), viewModel.HasHandles);
+        Realize(PagesPanel, nameof(PagesPanel), viewModel.HasPages);
+        Realize(EntriesTable, nameof(EntriesTable), viewModel.IsEntriesTabLoaded);
+    }
+
+    private void Realize(object? element, string name, bool isWanted)
+    {
+        if (element is null && isWanted)
+        {
+            FindName(name);
+        }
     }
 
     public DictionaryTabViewModel ViewModel => (DictionaryTabViewModel)DataContext;
@@ -145,6 +181,8 @@ public sealed partial class ColumnstoreDictionaryTabView : UserControl, IDocumen
 
         if (_tracked is not null)
         {
+            _tracked.PropertyChanged -= OnViewModelPropertyChanged;
+
             _tracked.Dispose();
 
             _tracked = null;
@@ -153,7 +191,7 @@ public sealed partial class ColumnstoreDictionaryTabView : UserControl, IDocumen
         // x:Bind listens to the view model, which outlives the view, so the view stays rooted until tracking stops
         Bindings.StopTracking();
 
-        DecodeTab.Dispose();
+        DecodeTab?.Dispose();
 
         _cts.Cancel();
         _cts.Dispose();

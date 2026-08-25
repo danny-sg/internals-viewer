@@ -134,7 +134,7 @@ public sealed class SegmentValuePage : DataStructure
             return ReadOnlyMemory<byte>.Empty;
         }
 
-        return Values.Slice(offset, GetEnd(index) - offset);
+        return Values[offset..GetEnd(index)];
     }
 
     /// <summary>
@@ -197,13 +197,12 @@ public sealed class SegmentValuePage : DataStructure
 
     public void Mark()
     {
+        string[] flagTags = IsScaled
+                            ? [IsCompressed ? "Compressed" : "Uncompressed", "Decimal"]
+                            : [IsCompressed ? "Compressed" : "Uncompressed"];
+
         MarkProperty(nameof(SubLobType), Offset, 4);
-        MarkProperty(nameof(PageFlags),
-                     Offset + 0x04,
-                     1,
-                     IsScaled
-                         ? [IsCompressed ? "Compressed" : "Uncompressed", "Decimal"]
-                         : [IsCompressed ? "Compressed" : "Uncompressed"]);
+        MarkProperty(nameof(PageFlags), Offset + 0x04, 1, flagTags);
         MarkProperty(nameof(Reserved05), Offset + 0x05, 1);
         MarkProperty(nameof(ValueSize), Offset + 0x06, 2);
         MarkProperty(nameof(ValueCount), Offset + 0x08, 4);

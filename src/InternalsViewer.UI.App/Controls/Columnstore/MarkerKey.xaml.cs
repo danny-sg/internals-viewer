@@ -38,6 +38,6 @@ public sealed partial class MarkerKey
             return;
         }
 
-        control.Swatch.Background = new MarkStyleProvider().GetMarkStyle(control.ItemType).BackColour;
+        control.Swatch.Background = MarkStyleProvider.Default.GetMarkStyle(control.ItemType).BackColour;
     }
 }

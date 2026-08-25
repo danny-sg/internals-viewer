@@ -8,6 +8,7 @@
     xmlns:tableView="using:WinUI.TableView"
     xmlns:columnstore="using:InternalsViewer.UI.App.Controls.Columnstore"
     xmlns:toolkit="using:CommunityToolkit.WinUI.Controls"
+    xmlns:dictionary="using:InternalsViewer.UI.App.Controls.Columnstore.Dictionary"
     mc:Ignorable="d">
     <Grid>
         <Grid.ColumnDefinitions>
@@ -137,7 +138,7 @@
             </tableView:TableView.Columns>
         </tableView:TableView>
 
-            <columnstore:HuffmanTreeControl x:Name="TreeControl" Grid.Column="1"
+            <dictionary:HuffmanTreeControl x:Name="TreeControl" Grid.Column="1"
                                             Grid.Row="1"
                                             Tree="{x:Bind ViewModel.Tree, Mode=OneWay}"
                                             SelectedSymbol="{x:Bind ViewModel.SelectedSymbol, Mode=TwoWay}"/>
@@ -148,7 +149,7 @@
                     Visibility="{x:Bind ViewModel.HasHuffmanPage, Mode=OneWay,
                     Converter={StaticResource BoolToVisibilityConverter}}">
             <TextBlock Padding="8,8,0,0" FontWeight="SemiBold">Huffman Decoding</TextBlock>
-            <columnstore:HuffmanDecodeControl x:Name="DecodeControl" 
+            <dictionary:HuffmanDecodeControl x:Name="DecodeControl" 
                 Height="145"
                 VerticalAlignment="Top"
                 Margin="0"

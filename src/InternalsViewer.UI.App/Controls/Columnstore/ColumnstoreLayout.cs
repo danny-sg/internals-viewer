@@ -38,7 +38,9 @@ public sealed class ColumnstoreRegion
 
     public string Detail { get; init; } = string.Empty;
 
-    public IReadOnlyList<ColumnstoreDetail> Details { get; init; } = [];
+    public Func<IReadOnlyList<ColumnstoreDetail>>? DetailsFactory { get; init; }
+
+    public IReadOnlyList<ColumnstoreDetail> Details => field ??= DetailsFactory?.Invoke() ?? [];
 }
 
 /// <summary>
@@ -252,8 +254,8 @@ public static class ColumnstoreLayout
 
     public static IReadOnlyList<(string Name, SKColor Colour)> Legend =>
     [
-        (SegmentRleType.BitPack.ToString().SplitCamelCase(), GetRleTypeColour(SegmentRleType.BitPack)),
-        (SegmentRleType.VariableLengthData.ToString().SplitCamelCase(),
+        (nameof(SegmentRleType.BitPack).SplitCamelCase(), GetRleTypeColour(SegmentRleType.BitPack)),
+        (nameof(SegmentRleType.VariableLengthData).SplitCamelCase(),
          GetRleTypeColour(SegmentRleType.VariableLengthData)),
         ("Numeric dictionary", GetDictionaryColour(1)),
         ("String dictionary", GetDictionaryColour(3)),

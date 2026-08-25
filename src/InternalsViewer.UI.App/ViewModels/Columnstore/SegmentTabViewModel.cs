@@ -83,39 +83,57 @@ public sealed partial class SegmentTabViewModel(ColumnstoreService columnstoreSe
     [NotifyPropertyChangedFor(nameof(StorageBadges))]
     private SegmentBlob? _blob;
 
+    partial void OnBlobChanged(SegmentBlob? value)
+    {
+        _rleRuns = null;
+        _bookmarks = null;
+        _bitpackUnits = null;
+        _hexAreas = null;
+        _dataIdStream = null;
+    }
+
+    private IReadOnlyList<RleRunDetail>? _rleRuns;
+
+    private IReadOnlyList<BookmarkDetail>? _bookmarks;
+
+    private BitpackUnitList? _bitpackUnits;
+
+    private IReadOnlyList<HexArea>? _hexAreas;
+
+    private SegmentDataIdStream? _dataIdStream;
+
     public bool HasBookmarks => Blob is { Header.BookmarkCount: > 0 };
 
     /// <summary>
     /// Every bookmark of the segment, listed rather than marked, the array running to thousands of entries
     /// </summary>
-    public IReadOnlyList<BookmarkDetail> Bookmarks
+    public IReadOnlyList<BookmarkDetail> Bookmarks => _bookmarks ??= BuildBookmarks();
+
+    private IReadOnlyList<BookmarkDetail> BuildBookmarks()
     {
-        get
+        if (Blob is not { } blob)
         {
-            if (Blob is not { } blob)
-            {
-                return [];
-            }
-
-            var details = new List<BookmarkDetail>(blob.Bookmarks.Length);
-
-            for (var i = 0; i < blob.Bookmarks.Length; i++)
-            {
-                var bookmark = blob.Bookmarks[i];
-
-                details.Add(new BookmarkDetail(i,
-                                               bookmark.Position,
-                                               bookmark.GetRleEntryIndex(blob.Header.RleEntryBytes),
-                                               bookmark.EndRow,
-                                               blob.Header.BookmarkArrayOffset + (i * SegmentBlob.EntrySize),
-                                               blob.Header.RleEntryBytes,
-                                               blob.Header.RleArrayOffset
-                                               + (bookmark.GetRleEntryIndex(blob.Header.RleEntryBytes)
-                                                  * blob.Header.RleEntryBytes)));
-            }
-
-            return details;
+            return [];
         }
+
+        var details = new List<BookmarkDetail>(blob.Bookmarks.Length);
+
+        for (var i = 0; i < blob.Bookmarks.Length; i++)
+        {
+            var bookmark = blob.Bookmarks[i];
+
+            var rleEntryIndex = bookmark.GetRleEntryIndex(blob.Header.RleEntryBytes);
+
+            details.Add(new BookmarkDetail(i,
+                                           bookmark.Position,
+                                           rleEntryIndex,
+                                           bookmark.EndRow,
+                                           blob.Header.BookmarkArrayOffset + (i * SegmentBlob.EntrySize),
+                                           blob.Header.RleEntryBytes,
+                                           blob.Header.RleArrayOffset + (rleEntryIndex * blob.Header.RleEntryBytes)));
+        }
+
+        return details;
     }
 
     public void SelectBookmark(BookmarkDetail? bookmark)
@@ -130,7 +148,7 @@ public sealed partial class SegmentTabViewModel(ColumnstoreService columnstoreSe
     /// Units of the bit pack array, listed lazily, a segment holding hundreds of thousands of them
     /// </summary>
     public BitpackUnitList? BitpackUnits => Blob is { Header.HasBitpackArray: true } blob
-        ? new BitpackUnitList(blob)
+        ? _bitpackUnits ??= new BitpackUnitList(blob)
         : null;
 
     public void SelectBitpackUnit(BitpackUnitRow? row)
@@ -175,77 +193,75 @@ public sealed partial class SegmentTabViewModel(ColumnstoreService columnstoreSe
     /// <summary>
     /// The RLE array as a run of rows each entry covers, which the map draws to show the shape of the array
     /// </summary>
-    public IReadOnlyList<RleRunDetail> RleRuns
+    public IReadOnlyList<RleRunDetail> RleRuns => _rleRuns ??= BuildRleRuns();
+
+    private IReadOnlyList<RleRunDetail> BuildRleRuns()
     {
-        get
+        if (Blob is not { } blob || !blob.Header.HasRleArray)
         {
-            if (Blob is not { } blob || !blob.Header.HasRleArray)
-            {
-                return [];
-            }
-
-            var runs = new List<RleRunDetail>(blob.RleEntries.Length);
-
-            var row = 0;
-
-            for (var i = 0; i < blob.RleEntries.Length; i++)
-            {
-                var entry = blob.RleEntries[i];
-
-                var address = entry.PageSlot;
-
-                var storeOrdinal = blob.VariableLengthData is { } store && address is { } located
-                    ? store.GetOrdinal(located.Page, located.Slot)
-                    : -1;
-
-                runs.Add(new RleRunDetail(i,
-                                          row,
-                                          entry.Count,
-                                          entry.IsValue,
-                                          entry.IsValue ? entry.Value : entry.BitpackIndex,
-                                          blob.Header.RleArrayOffset + (i * blob.Header.RleEntryBytes),
-                                          address,
-                                          storeOrdinal));
-
-                row += entry.Count;
-            }
-
-            return runs;
+            return [];
         }
+
+        var runs = new List<RleRunDetail>(blob.RleEntries.Length);
+
+        var row = 0;
+
+        for (var i = 0; i < blob.RleEntries.Length; i++)
+        {
+            var entry = blob.RleEntries[i];
+
+            var address = entry.PageSlot;
+
+            var storeOrdinal = blob.VariableLengthData is { } store && address is { } located
+                ? store.GetOrdinal(located.Page, located.Slot)
+                : -1;
+
+            runs.Add(new RleRunDetail(i,
+                                      row,
+                                      entry.Count,
+                                      entry.IsValue,
+                                      entry.IsValue ? entry.Value : entry.BitpackIndex,
+                                      blob.Header.RleArrayOffset + (i * blob.Header.RleEntryBytes),
+                                      address,
+                                      storeOrdinal));
+
+            row += entry.Count;
+        }
+
+        return runs;
     }
 
     /// <summary>
     /// The blob's regions in the order they sit on disk, which the hex gutter names while a drag is under way
     /// </summary>
-    public IReadOnlyList<HexArea> HexAreas
+    public IReadOnlyList<HexArea> HexAreas => _hexAreas ??= BuildHexAreas();
+
+    private IReadOnlyList<HexArea> BuildHexAreas()
     {
-        get
+        if (Blob is not { } blob)
         {
-            if (Blob is not { } blob)
-            {
-                return [];
-            }
-
-            var header = blob.Header;
-
-            List<HexArea> areas =
-            [
-                new("Header", 0),
-                new("Bookmarks", header.BookmarkArrayOffset),
-                new("RLE Array", header.RleArrayOffset)
-            ];
-
-            if (header.IsVariableLengthData)
-            {
-                areas.Add(new HexArea("VLD", header.VariableLengthDataOffset));
-            }
-            else if (header.HasBitpackArray)
-            {
-                areas.Add(new HexArea("Bit Pack", header.BitpackArrayOffset));
-            }
-
-            return [.. areas.OrderBy(a => a.Start)];
+            return [];
         }
+
+        var header = blob.Header;
+
+        List<HexArea> areas =
+        [
+            new("Header", 0),
+            new("Bookmarks", header.BookmarkArrayOffset),
+            new("RLE Array", header.RleArrayOffset)
+        ];
+
+        if (header.IsVariableLengthData)
+        {
+            areas.Add(new HexArea("VLD", header.VariableLengthDataOffset));
+        }
+        else if (header.HasBitpackArray)
+        {
+            areas.Add(new HexArea("Bit Pack", header.BitpackArrayOffset));
+        }
+
+        return [.. areas.OrderBy(a => a.Start)];
     }
 
     /// <summary>
@@ -493,7 +509,7 @@ public sealed partial class SegmentTabViewModel(ColumnstoreService columnstoreSe
             return (page.Offset, page.Size, $"Value Store Page {store.GetPageIndex(ordinal)}");
         }
 
-        var source = new SegmentDataIdStream(blob).GetSource(ordinal);
+        var source = (_dataIdStream ??= new SegmentDataIdStream(blob)).GetSource(ordinal);
 
         if (source.Origin == SegmentValueOrigin.BitPack)
         {
@@ -556,6 +572,19 @@ public sealed partial class SegmentTabViewModel(ColumnstoreService columnstoreSe
     [ObservableProperty]
     private int _selectedRegionTabIndex;
 
+    private const int DataTabIndex = 5;
+
+    [ObservableProperty]
+    private bool _isDataTabLoaded;
+
+    partial void OnSelectedRegionTabIndexChanged(int value)
+    {
+        if (value == DataTabIndex)
+        {
+            IsDataTabLoaded = true;
+        }
+    }
+
     [ObservableProperty]
     private int _selectedVariableLengthDataTabIndex;
 
@@ -617,7 +646,7 @@ public sealed partial class SegmentTabViewModel(ColumnstoreService columnstoreSe
     /// </summary>
     private void BuildRows(SegmentBlob blob)
     {
-        var stream = new SegmentDataIdStream(blob);
+        var stream = _dataIdStream ??= new SegmentDataIdStream(blob);
 
         var context = new SegmentRowContext(blob, stream, DeriveValue, IsDerivationVisible);
 

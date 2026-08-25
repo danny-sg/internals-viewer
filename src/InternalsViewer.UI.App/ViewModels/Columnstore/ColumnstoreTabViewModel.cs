@@ -89,9 +89,31 @@ public sealed partial class ColumnstoreTabViewModel : TabViewModel
 
     public string RowGroupCountDescription => RowGroupCount == 1 ? "1 row group" : $"{RowGroupCount} row groups";
 
-    public ObservableCollection<RowGroupSummary> RowGroups { get; } = [];
+    [ObservableProperty]
+    private IReadOnlyList<RowGroupSummary> _rowGroups = [];
 
-    public ObservableCollection<SegmentSummary> Segments { get; } = [];
+    [ObservableProperty]
+    private IReadOnlyList<SegmentSummary> _segments = [];
+
+    /// <remarks>
+    /// A tab holding its own content is rebuilt every time it is selected, so the strip is separated from what it
+    /// picks and the grids are shown and hidden instead.
+    /// </remarks>
+    [ObservableProperty]
+    private int _selectedMetadataTabIndex;
+
+    private const int DictionariesTabIndex = 1;
+
+    [ObservableProperty]
+    private bool _isDictionariesTabLoaded;
+
+    partial void OnSelectedMetadataTabIndexChanged(int value)
+    {
+        if (value == DictionariesTabIndex)
+        {
+            IsDictionariesTabLoaded = true;
+        }
+    }
 
     public async Task Load()
     {
@@ -130,18 +152,9 @@ public sealed partial class ColumnstoreTabViewModel : TabViewModel
 
             Index = index;
 
-            RowGroups.Clear();
-            Segments.Clear();
+            RowGroups = summaries;
 
-            foreach (var summary in summaries)
-            {
-                RowGroups.Add(summary);
-
-                foreach (var segment in summary.Segments)
-                {
-                    Segments.Add(segment);
-                }
-            }
+            Segments = [.. summaries.SelectMany(s => s.Segments)];
 
             IndexTypeDescription = index.IsClustered ? "Clustered" : "Non-Clustered";
 
@@ -235,6 +248,13 @@ public sealed partial class ColumnstoreTabViewModel : TabViewModel
 
         var coding = new Dictionary<long, SubLobType>();
 
+        var summariesByKey = new Dictionary<(int ColumnId, int DictionaryId), DictionarySummary>();
+
+        foreach (var summary in Dictionaries)
+        {
+            summariesByKey.TryAdd((summary.ColumnId, summary.DictionaryId), summary);
+        }
+
         foreach (var dictionary in dictionaries)
         {
             if (CancellationToken.IsCancellationRequested)
@@ -253,10 +273,10 @@ public sealed partial class ColumnstoreTabViewModel : TabViewModel
                     coding[ColumnstoreStructureRenderer.CodingKey(dictionary.ColumnId, dictionary.DictionaryId)] = value;
                 }
 
-                var summary = Dictionaries.FirstOrDefault(d => d.ColumnId == dictionary.ColumnId
-                                                               && d.DictionaryId == dictionary.DictionaryId);
-
-                summary?.PageCount = pageCoding.PageCount;
+                if (summariesByKey.TryGetValue((dictionary.ColumnId, dictionary.DictionaryId), out var summary))
+                {
+                    summary.PageCount = pageCoding.PageCount;
+                }
             }
             catch (OperationCanceledException)
             {
@@ -287,17 +307,18 @@ public sealed partial class ColumnstoreTabViewModel : TabViewModel
     /// <summary>
     /// Every dictionary the index holds, global ones once and local ones per row group
     /// </summary>
-    public ObservableCollection<DictionarySummary> Dictionaries { get; } = [];
+    [ObservableProperty]
+    private IReadOnlyList<DictionarySummary> _dictionaries = [];
 
     private void BuildDictionaries(ColumnStoreIndex index)
     {
-        Dictionaries.Clear();
+        var dictionaries = new List<DictionarySummary>();
 
         foreach (var column in index.Columns)
         {
             if (column.GlobalDictionary is { } global)
             {
-                Dictionaries.Add(new DictionarySummary { Dictionary = global, ColumnName = column.Name });
+                dictionaries.Add(new DictionarySummary { Dictionary = global, ColumnName = column.Name });
             }
         }
 
@@ -305,13 +326,15 @@ public sealed partial class ColumnstoreTabViewModel : TabViewModel
         {
             if (segment.LocalDictionary is { } local)
             {
-                Dictionaries.Add(new DictionarySummary
+                dictionaries.Add(new DictionarySummary
                 {
                     Dictionary = local,
                     ColumnName = segment.Column?.Name ?? $"Column {local.ColumnId}"
                 });
             }
         }
+
+        Dictionaries = dictionaries;
     }
 
     [ObservableProperty]

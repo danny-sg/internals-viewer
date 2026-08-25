@@ -18,7 +18,7 @@ public sealed class BitpackUnitRow(SegmentBlob blob, int unit) : IEquatable<Bitp
     /// <summary>
     /// Working from the unit to where it starts, the array being addressed in eight byte units from its own offset
     /// </summary>
-    public ValueDerivation Derivation => new()
+    public ValueDerivation Derivation => field ??= new()
     {
         Steps =
         [

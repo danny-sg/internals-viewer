@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <UserControl
     x:Class="InternalsViewer.UI.App.Controls.Index.RecordGrid"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
@@ -39,9 +39,6 @@
             <tableView:TableView.Resources>
                 <x:Double x:Key="ListViewItemMinHeight">0</x:Double>
             </tableView:TableView.Resources>
-            <tableView:TableView.ItemContainerTransitions>
-                <TransitionCollection />
-            </tableView:TableView.ItemContainerTransitions>
         </tableView:TableView>
     </Grid>
 </UserControl>

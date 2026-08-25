@@ -25,7 +25,7 @@ public static class MarkerBuilder
 
     public static List<Marker> BuildMarkers(IDataStructure markedObject)
     {
-        return BuildMarkers(markedObject, new MarkStyleProvider());
+        return BuildMarkers(markedObject, MarkStyleProvider.Default);
     }
 
     private static List<Marker> BuildMarkers(IDataStructure markedObject, MarkStyleProvider styleProvider)
@@ -157,7 +157,7 @@ public static class MarkerBuilder
     /// </remarks>
     public static Marker CreateMarker(string name, ItemType type, int offset, int size, string value)
     {
-        var style = new MarkStyleProvider().GetMarkStyle(type);
+        var style = MarkStyleProvider.Default.GetMarkStyle(type);
 
         var marker = new Marker
         {

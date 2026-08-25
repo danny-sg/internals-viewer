@@ -51,6 +51,8 @@ public sealed partial class ColumnstoreSegmentTabView : UserControl, IDocumentCo
         {
             _tracked.PropertyChanged += OnViewModelPropertyChanged;
         }
+
+        RealizePanels();
     }
 
     private void OnViewModelPropertyChanged(object? sender, PropertyChangedEventArgs e)
@@ -59,6 +61,31 @@ public sealed partial class ColumnstoreSegmentTabView : UserControl, IDocumentCo
         {
             SelectRegionTab(ViewModel.Region);
         }
+
+        RealizePanels();
+    }
+
+    private void RealizePanels()
+    {
+        if (_tracked is not { } viewModel)
+        {
+            return;
+        }
+
+        Realize(ContentGrid, nameof(ContentGrid), viewModel.IsLoaded);
+        Realize(BookmarksPanel, nameof(BookmarksPanel), viewModel.HasBookmarks);
+        Realize(RlePanel, nameof(RlePanel), viewModel.HasRleArray);
+        Realize(BitPackPanel, nameof(BitPackPanel), viewModel.HasBitpackArray);
+        Realize(VariableLengthDataPanel, nameof(VariableLengthDataPanel), viewModel.HasVariableLengthData);
+        Realize(DataPanel, nameof(DataPanel), viewModel.IsDataTabLoaded);
+    }
+
+    private void Realize(object? element, string name, bool isWanted)
+    {
+        if (element is null && isWanted)
+        {
+            FindName(name);
+        }
     }
 
     /// <summary>
@@ -66,6 +93,11 @@ public sealed partial class ColumnstoreSegmentTabView : UserControl, IDocumentCo
     /// </summary>
     private void SelectRegionTab(SegmentRegion region)
     {
+        if (RegionTabView is null)
+        {
+            return;
+        }
+
         foreach (var item in RegionTabView.TabItems)
         {
             // A region with nothing in it has no tab, so a scroll that lands in one leaves the selection alone
@@ -244,7 +276,10 @@ public sealed partial class ColumnstoreSegmentTabView : UserControl, IDocumentCo
 
         await ViewModel.Load(_cts.Token);
 
-        RegionTabView.SelectedIndex = 0;
+        if (RegionTabView is not null)
+        {
+            RegionTabView.SelectedIndex = 0;
+        }
     }
 
     public void Dispose()
@@ -265,11 +300,11 @@ public sealed partial class ColumnstoreSegmentTabView : UserControl, IDocumentCo
         // x:Bind listens to the view model, which outlives the view, so the view stays rooted until tracking stops
         Bindings.StopTracking();
 
-        BitPackDetail.Dispose();
+        BitPackDetail?.Dispose();
 
-        RleRunMap.Dispose();
+        RleRunMap?.Dispose();
 
-        DecodeTab.Dispose();
+        DecodeTab?.Dispose();
 
         _cts.Cancel();
         _cts.Dispose();

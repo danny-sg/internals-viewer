@@ -67,6 +67,12 @@ public sealed class RleRunMapRenderer : IDisposable
     /// </summary>
     public int SelectedRow { get; set; } = -1;
 
+    private IReadOnlyList<RleRunDetail>? _scaleRuns;
+
+    private RunScale _scale;
+
+    private int[] _owners = [];
+
     public void Draw(SKCanvas canvas, IReadOnlyList<RleRunDetail> runs, float width, int firstRow, int rowSpan)
     {
         var trackWidth = width - GutterWidth;
@@ -76,7 +82,14 @@ public sealed class RleRunMapRenderer : IDisposable
             return;
         }
 
-        var scale = RunScale.Build(runs);
+        if (!ReferenceEquals(_scaleRuns, runs))
+        {
+            _scale = RunScale.Build(runs);
+
+            _scaleRuns = runs;
+        }
+
+        var scale = _scale;
 
         DrawTrack(canvas, runs, scale, trackWidth, firstRow, rowSpan, 0, ValueLabel, true);
 
@@ -111,7 +124,12 @@ public sealed class RleRunMapRenderer : IDisposable
                         _text);
 
         // Runs narrower than a pixel would vanish, so each pixel takes the last run to cover any of it
-        var owners = new int[(int)trackWidth];
+        if (_owners.Length != (int)trackWidth)
+        {
+            _owners = new int[(int)trackWidth];
+        }
+
+        var owners = _owners;
 
         Array.Fill(owners, -1);
 
@@ -274,6 +292,15 @@ public sealed class RleRunMapRenderer : IDisposable
                            int rowSpan,
                            float trackWidth)
     {
+        if (rect.Width <= 1)
+        {
+            _fill.Color = scale.GetColour(run);
+
+            canvas.DrawRect(rect, _fill);
+
+            return;
+        }
+
         var from = GutterWidth + ToPixel(run.StartRow, firstRow, rowSpan, trackWidth);
 
         var to = GutterWidth + ToPixel(run.StartRow + run.Count, firstRow, rowSpan, trackWidth);

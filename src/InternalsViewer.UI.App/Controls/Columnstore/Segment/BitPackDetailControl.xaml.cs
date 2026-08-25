@@ -1,14 +1,13 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using InternalsViewer.UI.App.Controls.Columnstore.Segment;
 using InternalsViewer.UI.App.Models.Columnstore.Segment;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Input;
 using SkiaSharp;
 using SkiaSharp.Views.Windows;
 
-namespace InternalsViewer.UI.App.Controls.Columnstore;
+namespace InternalsViewer.UI.App.Controls.Columnstore.Segment;
 
 /// <summary>
 /// The bits of one packed unit over the values read out of them
@@ -26,10 +25,21 @@ public sealed partial class BitPackDetailControl : IDisposable
         RulerCanvas.PaintSurface += OnPaintSurface;
         RulerCanvas.PointerPressed += OnPointerPressed;
         RulerCanvas.PointerMoved += OnPointerMoved;
-        RulerCanvas.PointerExited += (_, _) => BitTooltip.IsOpen = false;
+        RulerCanvas.PointerExited += OnPointerExited;
 
-        ActualThemeChanged += (_, _) => RulerCanvas.Invalidate();
+        ActualThemeChanged += OnActualThemeChanged;
     }
+
+    private bool _isThemeDirty = true;
+
+    private void OnActualThemeChanged(FrameworkElement sender, object args)
+    {
+        _isThemeDirty = true;
+
+        RulerCanvas.Invalidate();
+    }
+
+    private void OnPointerExited(object sender, PointerRoutedEventArgs e) => BitTooltip.IsOpen = false;
 
     public BitpackUnitDetail? Unit
     {
@@ -80,7 +90,12 @@ public sealed partial class BitPackDetailControl : IDisposable
             return;
         }
 
-        ApplyTheme();
+        if (_isThemeDirty)
+        {
+            ApplyTheme();
+
+            _isThemeDirty = false;
+        }
 
         _regions = _renderer.Draw(e.Surface.Canvas, unit, (float)RulerCanvas.ActualWidth);
     }
@@ -123,6 +138,8 @@ public sealed partial class BitPackDetailControl : IDisposable
     /// <summary>
     /// Names the bit under the pointer, the row being too fine to label every position along it
     /// </summary>
+    private int _hoveredBit = -1;
+
     private void OnPointerMoved(object sender, PointerRoutedEventArgs e)
     {
         var point = e.GetCurrentPoint(RulerCanvas).Position;
@@ -131,12 +148,19 @@ public sealed partial class BitPackDetailControl : IDisposable
 
         if (bit < 0)
         {
+            _hoveredBit = -1;
+
             BitTooltip.IsOpen = false;
 
             return;
         }
 
-        BitTooltipText.Text = $"Bit {bit}";
+        if (bit != _hoveredBit)
+        {
+            _hoveredBit = bit;
+
+            BitTooltipText.Text = $"Bit {bit}";
+        }
 
         BitTooltip.HorizontalOffset = point.X + 12;
         BitTooltip.VerticalOffset = point.Y + 18;
@@ -158,6 +182,9 @@ public sealed partial class BitPackDetailControl : IDisposable
         RulerCanvas.PaintSurface -= OnPaintSurface;
         RulerCanvas.PointerPressed -= OnPointerPressed;
         RulerCanvas.PointerMoved -= OnPointerMoved;
+        RulerCanvas.PointerExited -= OnPointerExited;
+
+        ActualThemeChanged -= OnActualThemeChanged;
 
         _renderer.Dispose();
     }

@@ -20,7 +20,7 @@ public sealed class HuffmanTreeNode
 
     public HuffmanCode? Code { get; private set; }
 
-    public int Depth { get; private set; }
+    public int Depth { get; private init; }
 
     public bool IsLeaf => Code is not null;
 
@@ -56,18 +56,24 @@ public sealed class HuffmanTreeNode
 
     public IEnumerable<HuffmanTreeNode> Descend()
     {
-        yield return this;
+        var stack = new Stack<HuffmanTreeNode>();
 
-        foreach (var child in new[] { Zero, One })
+        stack.Push(this);
+
+        while (stack.Count > 0)
         {
-            if (child is null)
+            var node = stack.Pop();
+
+            yield return node;
+
+            if (node.One is { } one)
             {
-                continue;
+                stack.Push(one);
             }
 
-            foreach (var node in child.Descend())
+            if (node.Zero is { } zero)
             {
-                yield return node;
+                stack.Push(zero);
             }
         }
     }
@@ -96,19 +102,24 @@ public sealed class HuffmanTreeNode
 
         var last = float.MinValue;
 
-        foreach (var child in new[] { Zero, One })
+        if (Zero is { } zero)
         {
-            if (child is null)
-            {
-                continue;
-            }
+            zero.Layout(ref nextRow);
 
-            child.Layout(ref nextRow);
+            LeafCount += zero.LeafCount;
 
-            LeafCount += child.LeafCount;
+            first = Math.Min(first, zero.Row);
+            last = Math.Max(last, zero.Row);
+        }
 
-            first = Math.Min(first, child.Row);
-            last = Math.Max(last, child.Row);
+        if (One is { } one)
+        {
+            one.Layout(ref nextRow);
+
+            LeafCount += one.LeafCount;
+
+            first = Math.Min(first, one.Row);
+            last = Math.Max(last, one.Row);
         }
 
         Row = LeafCount == 0 ? nextRow : (first + last) / 2;

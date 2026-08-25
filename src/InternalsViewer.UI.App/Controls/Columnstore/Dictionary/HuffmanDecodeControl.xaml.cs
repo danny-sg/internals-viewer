@@ -2,13 +2,12 @@
 using System.Collections.Generic;
 using System.Linq;
 using InternalsViewer.Internals.Columnstore.Dictionaries;
-using InternalsViewer.UI.App.Controls.Columnstore.Dictionary;
 using Microsoft.UI.Xaml.Controls.Primitives;
 using Microsoft.UI.Xaml.Input;
 using SkiaSharp;
 using SkiaSharp.Views.Windows;
 
-namespace InternalsViewer.UI.App.Controls.Columnstore;
+namespace InternalsViewer.UI.App.Controls.Columnstore.Dictionary;
 
 /// <summary>
 /// The bit walk one entry decodes through, wrapped across lines
@@ -29,7 +28,16 @@ public sealed partial class HuffmanDecodeControl : IDisposable
         WalkCanvas.PointerPressed += OnPointerPressed;
         WalkCanvas.PointerWheelChanged += OnPointerWheelChanged;
 
-        ActualThemeChanged += (_, _) => WalkCanvas.Invalidate();
+        ActualThemeChanged += OnActualThemeChanged;
+    }
+
+    private bool _isThemeDirty = true;
+
+    private void OnActualThemeChanged(FrameworkElement sender, object args)
+    {
+        _isThemeDirty = true;
+
+        WalkCanvas.Invalidate();
     }
 
     public IReadOnlyList<HuffmanDecodeStep>? Steps
@@ -111,7 +119,12 @@ public sealed partial class HuffmanDecodeControl : IDisposable
             return;
         }
 
-        ApplyTheme();
+        if (_isThemeDirty)
+        {
+            ApplyTheme();
+
+            _isThemeDirty = false;
+        }
 
         _regions = _renderer.Draw(e.Surface.Canvas,
                                   steps,
@@ -207,11 +220,11 @@ public sealed partial class HuffmanDecodeControl : IDisposable
 
         SetScroll(_scrollOffset);
     }
-    /// <summary>
-    /// Releases the renderer, whose paints and fonts are native Skia handles the collector will not reclaim
-    /// </summary>
+
     public void Dispose()
     {
+        ActualThemeChanged -= OnActualThemeChanged;
+
         WalkCanvas.PaintSurface -= OnPaintSurface;
         WalkCanvas.PointerPressed -= OnPointerPressed;
         WalkCanvas.PointerWheelChanged -= OnPointerWheelChanged;

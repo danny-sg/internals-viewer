@@ -1,14 +1,12 @@
 ﻿using System;
 using System.Collections.Generic;
-using InternalsViewer.UI.App.Controls.Columnstore.Segment;
 using InternalsViewer.UI.App.Models.Columnstore.Segment;
-using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls.Primitives;
 using Microsoft.UI.Xaml.Input;
 using SkiaSharp;
 using SkiaSharp.Views.Windows;
 
-namespace InternalsViewer.UI.App.Controls.Columnstore;
+namespace InternalsViewer.UI.App.Controls.Columnstore.Segment;
 
 /// <summary>
 /// The RLE array drawn as two tracks of runs, which is the shape of the array rather than its entries
@@ -35,7 +33,16 @@ public sealed partial class RleRunMapControl : IDisposable
         MapCanvas.PointerExited += OnPointerExited;
         MapCanvas.PointerWheelChanged += OnPointerWheelChanged;
 
-        ActualThemeChanged += (_, _) => MapCanvas.Invalidate();
+        ActualThemeChanged += OnActualThemeChanged;
+    }
+
+    private bool _isThemeDirty = true;
+
+    private void OnActualThemeChanged(FrameworkElement sender, object args)
+    {
+        _isThemeDirty = true;
+
+        MapCanvas.Invalidate();
     }
 
     public IReadOnlyList<RleRunDetail>? Runs
@@ -130,10 +137,15 @@ public sealed partial class RleRunMapControl : IDisposable
             return;
         }
 
-        var isDark = ActualTheme == ElementTheme.Dark;
+        if (_isThemeDirty)
+        {
+            var isDark = ActualTheme == ElementTheme.Dark;
 
-        _renderer.TrackColour = isDark ? ColumnstoreColours.DarkPanel : ColumnstoreColours.Panel;
-        _renderer.LabelColour = isDark ? ColumnstoreColours.DarkMuted : ColumnstoreColours.Muted;
+            _renderer.TrackColour = isDark ? ColumnstoreColours.DarkPanel : ColumnstoreColours.Panel;
+            _renderer.LabelColour = isDark ? ColumnstoreColours.DarkMuted : ColumnstoreColours.Muted;
+
+            _isThemeDirty = false;
+        }
 
         _renderer.Draw(e.Surface.Canvas, runs, (float)MapCanvas.ActualWidth, _firstRow, _rowSpan);
     }
@@ -308,6 +320,8 @@ public sealed partial class RleRunMapControl : IDisposable
         MapCanvas.PointerMoved -= OnPointerMoved;
         MapCanvas.PointerExited -= OnPointerExited;
         MapCanvas.PointerWheelChanged -= OnPointerWheelChanged;
+
+        ActualThemeChanged -= OnActualThemeChanged;
 
         _renderer.Dispose();
     }

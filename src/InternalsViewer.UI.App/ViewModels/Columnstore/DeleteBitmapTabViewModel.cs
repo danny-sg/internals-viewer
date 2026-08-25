@@ -63,7 +63,8 @@ public sealed partial class DeleteBitmapTabViewModel(IPageService pageService,
 
     public PageAddress FirstIamPage => AllocationUnit?.FirstIamPage ?? PageAddress.Empty;
 
-    public ObservableCollection<DeletedRowSummary> DeletedRows { get; } = [];
+    [ObservableProperty]
+    private IReadOnlyList<DeletedRowSummary> _deletedRows = [];
 
     public async Task Load(CancellationToken cancellationToken)
     {
@@ -80,6 +81,8 @@ public sealed partial class DeleteBitmapTabViewModel(IPageService pageService,
             AllocationUnit = unit;
 
             var chain = await IamChainService.LoadChain(Database, unit.FirstIamPage, cancellationToken);
+
+            var deletedRows = new List<DeletedRowSummary>();
 
             foreach (var address in GetPageAddresses(chain, unit.FirstIamPage.FileId))
             {
@@ -104,10 +107,12 @@ public sealed partial class DeleteBitmapTabViewModel(IPageService pageService,
                 {
                     if (Read(record.Fields.Select(f => f.Value).ToList()) is { } deleted)
                     {
-                        DeletedRows.Add(deleted);
+                        deletedRows.Add(deleted);
                     }
                 }
             }
+
+            DeletedRows = deletedRows;
 
             StatusText = $"{DeletedRows.Count} deleted rows";
 

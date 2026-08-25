@@ -102,15 +102,9 @@ public sealed class HuffmanTreeRenderer : IDisposable
                 return true;
             }
         }
-        else
+        else if ((node.Zero is { } zero && Follow(zero)) || (node.One is { } one && Follow(one)))
         {
-            foreach (var child in new[] { node.Zero, node.One })
-            {
-                if (child is not null && Follow(child))
-                {
-                    return true;
-                }
-            }
+            return true;
         }
 
         _path.Remove(node);
@@ -141,42 +135,47 @@ public sealed class HuffmanTreeRenderer : IDisposable
     /// </summary>
     private void DrawEdges(SKCanvas canvas, HuffmanTreeNode node, float top, float x, float y)
     {
-        var bit = 0;
-
-        foreach (var child in new[] { node.Zero, node.One })
+        if (node.Zero is { } zero)
         {
-            if (child is null)
-            {
-                bit++;
+            DrawEdge(canvas, node, zero, "0", top, x, y);
+        }
 
-                continue;
-            }
-
-            var childY = top + (child.Row * RowHeight) + (RowHeight / 2);
-
-            var childX = ColumnstoreLayout.Margin + (child.Depth * LevelWidth);
-
-            var isOnPath = _path.Contains(node) && _path.Contains(child);
-
-            _line.Color = isOnPath ? SelectionColour : BranchColour;
-            _line.StrokeWidth = isOnPath ? SelectedStrokeWidth : 1;
-
-            canvas.DrawLine(x, y, x, childY, _line);
-            canvas.DrawLine(x, childY, childX, childY, _line);
-
-            _text.Color = isOnPath ? SelectionColour : MutedColour;
-
-            canvas.DrawText($"{bit}",
-                            childX - BitGap,
-                            childY - BitGap,
-                            SKTextAlign.Right,
-                            _font,
-                            _text);
-
-            bit++;
+        if (node.One is { } one)
+        {
+            DrawEdge(canvas, node, one, "1", top, x, y);
         }
 
         _line.StrokeWidth = 1;
+    }
+
+    private void DrawEdge(SKCanvas canvas,
+                          HuffmanTreeNode node,
+                          HuffmanTreeNode child,
+                          string bit,
+                          float top,
+                          float x,
+                          float y)
+    {
+        var childY = top + (child.Row * RowHeight) + (RowHeight / 2);
+
+        var childX = ColumnstoreLayout.Margin + (child.Depth * LevelWidth);
+
+        var isOnPath = _path.Contains(node) && _path.Contains(child);
+
+        _line.Color = isOnPath ? SelectionColour : BranchColour;
+        _line.StrokeWidth = isOnPath ? SelectedStrokeWidth : 1;
+
+        canvas.DrawLine(x, y, x, childY, _line);
+        canvas.DrawLine(x, childY, childX, childY, _line);
+
+        _text.Color = isOnPath ? SelectionColour : MutedColour;
+
+        canvas.DrawText(bit,
+                        childX - BitGap,
+                        childY - BitGap,
+                        SKTextAlign.Right,
+                        _font,
+                        _text);
     }
 
     private void DrawLeaf(SKCanvas canvas, HuffmanTreeNode node, float x, float y)
@@ -198,18 +197,51 @@ public sealed class HuffmanTreeRenderer : IDisposable
         _text.Color = MutedColour;
 
         canvas.DrawText(code.Bits,
-                        x + LeafGap + _font.MeasureText(label) + LeafGap,
+                        x + LeafGap + GetLabelWidth(code.Symbol, label) + LeafGap,
                         y + (_font.Size / 2) - 1,
                         SKTextAlign.Left,
                         _font,
                         _text);
     }
 
+    private readonly float[] _labelWidths = new float[256];
+
+    private float GetLabelWidth(int symbol, string label)
+    {
+        if ((uint)symbol >= 256)
+        {
+            return _font.MeasureText(label);
+        }
+
+        if (_labelWidths[symbol] <= 0)
+        {
+            _labelWidths[symbol] = _font.MeasureText(label);
+        }
+
+        return _labelWidths[symbol];
+    }
+
+    private static readonly string[] Labels = BuildLabels();
+
+    private static string[] BuildLabels()
+    {
+        var labels = new string[256];
+
+        for (var symbol = 0; symbol < labels.Length; symbol++)
+        {
+            labels[symbol] = symbol is >= 0x20 and < 0x7F ? $"'{(char)symbol}'" : $"0x{symbol:X2}";
+        }
+
+        return labels;
+    }
+
     /// <summary>
     /// A printable symbol shows as itself, everything else as the byte it codes
     /// </summary>
     private static string Label(int symbol)
-        => symbol is >= 0x20 and < 0x7F ? $"'{(char)symbol}'" : $"0x{symbol:X2}";
+        => (uint)symbol < 256
+            ? Labels[symbol]
+            : symbol is >= 0x20 and < 0x7F ? $"'{(char)symbol}'" : $"0x{symbol:X2}";
 
     public static IReadOnlyList<(SKRect Bounds, int Symbol)> GetLeafRegions(HuffmanTreeNode root, float scrollOffset, float width)
     {

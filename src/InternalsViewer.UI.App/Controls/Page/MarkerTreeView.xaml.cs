@@ -47,14 +47,45 @@ public sealed partial class MarkerTreeView
             return;
         }
 
-        var markers = (e.NewValue as ObservableCollection<Marker>)?.Where(m => m.IsVisible) ?? [];
+        if (control.Visibility == Visibility.Collapsed)
+        {
+            control._isRebuildPending = true;
 
-        control.TreeView.RootNodes.Clear();
-        control._nodesByMarker.Clear();
+            return;
+        }
+
+        control.RebuildNodes();
+    }
+
+    private bool _isRebuildPending;
+
+    private void OnVisibilityChanged(DependencyObject sender, DependencyProperty property)
+    {
+        if (Visibility == Visibility.Visible && _isRebuildPending)
+        {
+            RebuildNodes();
+        }
+    }
+
+    private void RebuildNodes()
+    {
+        _isRebuildPending = false;
+
+        var markers = Markers?.Where(m => m.IsVisible) ?? [];
+
+        TreeView.RootNodes.Clear();
+        _nodesByMarker.Clear();
 
         foreach (var marker in markers)
         {
-            control.TreeView.RootNodes.Add(control.BuildNode(marker));
+            TreeView.RootNodes.Add(BuildNode(marker));
+        }
+
+        if (SelectedMarker is { } selected && _nodesByMarker.TryGetValue(selected, out var node))
+        {
+            _isSyncingSelection = true;
+            TreeView.SelectedNode = node;
+            _isSyncingSelection = false;
         }
     }
 
@@ -126,6 +157,8 @@ public sealed partial class MarkerTreeView
     public MarkerTreeView()
     {
         InitializeComponent();
+
+        RegisterPropertyChangedCallback(VisibilityProperty, OnVisibilityChanged);
     }
 
     private void PageLink_Click(object sender, RoutedEventArgs e)

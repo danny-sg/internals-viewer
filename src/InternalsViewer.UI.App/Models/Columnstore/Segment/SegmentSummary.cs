@@ -48,12 +48,19 @@ public sealed partial class SegmentSummary : ObservableObject
     /// <summary>
     /// How a stored value becomes a data id, being the half of the working the blob answers on its own
     /// </summary>
-    public IReadOnlyList<SegmentDerivationStep> DataIdSteps => Split().DataId;
+    public IReadOnlyList<SegmentDerivationStep> DataIdSteps => Steps.DataId;
 
     /// <summary>
     /// How a data id becomes the column's value, which no segment can answer without its metadata
     /// </summary>
-    public IReadOnlyList<SegmentDerivationStep> ValueSteps => Split().Value;
+    public IReadOnlyList<SegmentDerivationStep> ValueSteps => Steps.Value;
+
+    private (IReadOnlyList<SegmentDerivationStep> DataId, IReadOnlyList<SegmentDerivationStep> Value)? _steps;
+
+    private (IReadOnlyList<SegmentDerivationStep> DataId, IReadOnlyList<SegmentDerivationStep> Value) Steps
+        => _steps ??= Split();
+
+    partial void OnHeaderChanged(SegmentBlobHeader? value) => _steps = null;
 
     public string DerivationDescription
         => $"Data Id = {string.Join(" ", DataIdSteps.Select(Describe))}"

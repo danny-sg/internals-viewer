@@ -36,6 +36,23 @@
         </Setter>
     </Style>
 
+    <Style TargetType="tableView:TableView">
+        <Setter Property="ItemContainerTransitions">
+            <Setter.Value>
+                <TransitionCollection />
+            </Setter.Value>
+        </Setter>
+        <Setter Property="ItemContainerStyle" Value="{StaticResource TableViewRowStyle}" />
+        <Setter Property="ColumnHeaderStyle" Value="{StaticResource TableViewColumnHeaderStyle}" />
+        <Setter Property="CellStyle" Value="{StaticResource TableViewCellStyle}" />
+        <Setter Property="AutoGenerateColumns" Value="False" />
+        <Setter Property="CanFilterColumns" Value="False" />
+        <Setter Property="CornerButtonMode" Value="None" />
+        <Setter Property="HeadersVisibility" Value="Columns" />
+        <Setter Property="SelectionUnit" Value="Row" />
+        <Setter Property="IsReadOnly" Value="True" />
+    </Style>
+
     <Style TargetType="tableView:TableViewHeaderRow">
         <Setter Property="Background" Value="Transparent" />
     </Style>

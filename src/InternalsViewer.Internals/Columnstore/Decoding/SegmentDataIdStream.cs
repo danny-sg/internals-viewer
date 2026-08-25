@@ -12,6 +12,8 @@ public sealed class SegmentDataIdStream(SegmentBlob blob)
 
     private SegmentBlob Blob { get; } = blob;
 
+    private int[] RunStartRows => field ??= BuildRunStartRows();
+
     public long GetDataId(int rowOrdinal) => GetSource(rowOrdinal).DataId;
 
     /// <summary>
@@ -123,33 +125,51 @@ public sealed class SegmentDataIdStream(SegmentBlob blob)
             return (-1, -1);
         }
 
-        var start = 0;
+        var starts = RunStartRows;
 
-        for (var i = 0; i < Blob.RleEntries.Length; i++)
+        if (rowOrdinal < 0 || rowOrdinal >= starts[^1])
         {
-            var entry = Blob.RleEntries[i];
-
-            if (entry.Count == 0)
-            {
-                break;
-            }
-
-            if (rowOrdinal < start + entry.Count)
-            {
-                if (entry.PageSlot is not { } address)
-                {
-                    return (-1, -1);
-                }
-
-                var ordinal = store.GetOrdinal(address.Page, address.Slot);
-
-                return (i, entry.IsValue ? ordinal : ordinal + (rowOrdinal - start));
-            }
-
-            start += entry.Count;
+            return (-1, -1);
         }
 
-        return (-1, -1);
+        var index = Array.BinarySearch(starts, 0, starts.Length - 1, rowOrdinal);
+
+        if (index < 0)
+        {
+            index = ~index - 1;
+        }
+
+        var entry = Blob.RleEntries[index];
+
+        if (entry.PageSlot is not { } address)
+        {
+            return (-1, -1);
+        }
+
+        var ordinal = store.GetOrdinal(address.Page, address.Slot);
+
+        return (index, entry.IsValue ? ordinal : ordinal + (rowOrdinal - starts[index]));
+    }
+
+    private int[] BuildRunStartRows()
+    {
+        var entries = Blob.RleEntries;
+
+        var count = 0;
+
+        while (count < entries.Length && entries[count].Count > 0)
+        {
+            count++;
+        }
+
+        var starts = new int[count + 1];
+
+        for (var i = 0; i < count; i++)
+        {
+            starts[i + 1] = starts[i] + entries[i].Count;
+        }
+
+        return starts;
     }
 
     private (int EntryIndex, int EndRow) Seek(int rowOrdinal)

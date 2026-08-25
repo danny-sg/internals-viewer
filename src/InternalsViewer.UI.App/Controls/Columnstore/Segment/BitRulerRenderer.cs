@@ -104,6 +104,22 @@ public sealed class BitRulerRenderer : IDisposable
 
     public SKColor SelectionColour { get; set; } = new(0x18, 0x5F, 0xA5);
 
+    private float BitGlyphWidth => field > 0 ? field : field = _bitFont.MeasureText("0");
+
+    private static readonly string[] HexLabels = BuildHexLabels();
+
+    private static string[] BuildHexLabels()
+    {
+        var labels = new string[256];
+
+        for (var value = 0; value < labels.Length; value++)
+        {
+            labels[value] = $"0x{value:X2}";
+        }
+
+        return labels;
+    }
+
     public List<(SKRect Bounds, int Index)> Draw(SKCanvas canvas, BitpackUnitDetail unit, float width)
     {
         var regions = new List<(SKRect, int)>(unit.Values.Count);
@@ -144,7 +160,7 @@ public sealed class BitRulerRenderer : IDisposable
 
         DrawSelection(canvas, regions);
 
-        DrawEndLabels(canvas, left, cellWidth, width);
+        DrawEndLabels(canvas, left, cellWidth);
 
         return regions;
     }
@@ -173,7 +189,7 @@ public sealed class BitRulerRenderer : IDisposable
 
         canvas.DrawRect(new SKRect(left, top, left + (UnitBits * cellWidth), top + CellHeight), _stroke);
 
-        if (cellWidth < _bitFont.MeasureText("0") + 2f)
+        if (cellWidth < BitGlyphWidth + 2f)
         {
             return;
         }
@@ -190,7 +206,7 @@ public sealed class BitRulerRenderer : IDisposable
 
             _text.Color = isSet ? TextColour : MutedColour;
 
-            var x = left + (bit * cellWidth) + ((cellWidth - _bitFont.MeasureText(glyph)) / 2);
+            var x = left + (bit * cellWidth) + ((cellWidth - BitGlyphWidth) / 2);
 
             canvas.DrawText(glyph, x, baseline, SKTextAlign.Left, _bitFont, _text);
         }
@@ -234,7 +250,7 @@ public sealed class BitRulerRenderer : IDisposable
 
             canvas.DrawRect(bounds, _stroke);
 
-            var label = $"0x{(byte)(unit.Bits >> (i * BitsPerByte)):X2}";
+            var label = HexLabels[(byte)(unit.Bits >> (i * BitsPerByte))];
 
             var textWidth = _monoFont.MeasureText(label);
 
@@ -314,7 +330,7 @@ public sealed class BitRulerRenderer : IDisposable
     /// <summary>
     /// Which end is which, the drawing running least significant bit first against the hex view's byte order
     /// </summary>
-    private void DrawEndLabels(SKCanvas canvas, float left, float cellWidth, float width)
+    private void DrawEndLabels(SKCanvas canvas, float left, float cellWidth)
     {
         _text.Color = MutedColour;
 

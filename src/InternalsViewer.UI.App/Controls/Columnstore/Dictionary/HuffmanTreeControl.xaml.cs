@@ -1,13 +1,12 @@
 ﻿using System;
 using System.Linq;
-using InternalsViewer.UI.App.Controls.Columnstore.Dictionary;
 using InternalsViewer.UI.App.Models.Columnstore.Dictionary;
 using Microsoft.UI.Xaml.Controls.Primitives;
 using Microsoft.UI.Xaml.Input;
 using SkiaSharp;
 using SkiaSharp.Views.Windows;
 
-namespace InternalsViewer.UI.App.Controls.Columnstore;
+namespace InternalsViewer.UI.App.Controls.Columnstore.Dictionary;
 
 /// <summary>
 /// The tree a page's Huffman codes describe, scrolled a symbol at a time
@@ -26,7 +25,16 @@ public sealed partial class HuffmanTreeControl : IDisposable
         TreeCanvas.PointerPressed += OnPointerPressed;
         TreeCanvas.PointerWheelChanged += OnPointerWheelChanged;
 
-        ActualThemeChanged += (_, _) => TreeCanvas.Invalidate();
+        ActualThemeChanged += OnActualThemeChanged;
+    }
+
+    private bool _isThemeDirty = true;
+
+    private void OnActualThemeChanged(FrameworkElement sender, object args)
+    {
+        _isThemeDirty = true;
+
+        TreeCanvas.Invalidate();
     }
 
     public HuffmanTreeNode? Tree
@@ -87,7 +95,12 @@ public sealed partial class HuffmanTreeControl : IDisposable
             return;
         }
 
-        ApplyTheme();
+        if (_isThemeDirty)
+        {
+            ApplyTheme();
+
+            _isThemeDirty = false;
+        }
 
         _renderer.Draw(e.Surface.Canvas, tree, _scrollOffset, (float)TreeCanvas.ActualHeight);
     }
@@ -113,7 +126,7 @@ public sealed partial class HuffmanTreeControl : IDisposable
         var point = e.GetCurrentPoint(TreeCanvas).Position;
 
         var region = HuffmanTreeRenderer.GetLeafRegions(tree, _scrollOffset, (float)TreeCanvas.ActualWidth)
-                              .FirstOrDefault(r => r.Bounds.Contains((float)point.X, (float)point.Y));
+                                        .FirstOrDefault(r => r.Bounds.Contains((float)point.X, (float)point.Y));
 
         if (region.Bounds.Height > 0)
         {
@@ -161,6 +174,8 @@ public sealed partial class HuffmanTreeControl : IDisposable
     /// </summary>
     public void Dispose()
     {
+        ActualThemeChanged -= OnActualThemeChanged;
+
         TreeCanvas.PaintSurface -= OnPaintSurface;
         TreeCanvas.PointerPressed -= OnPointerPressed;
         TreeCanvas.PointerWheelChanged -= OnPointerWheelChanged;

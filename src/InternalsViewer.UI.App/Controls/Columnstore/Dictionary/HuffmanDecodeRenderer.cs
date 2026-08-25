@@ -124,7 +124,34 @@ public sealed class HuffmanDecodeRenderer : IDisposable
         }
     }
 
-    private float BoxWidth => _font.MeasureText("00000000") + (BoxPadding * 4);
+    private float _boxWidth;
+
+    private float BoxWidth => _boxWidth > 0 ? _boxWidth : _boxWidth = _font.MeasureText("00000000") + (BoxPadding * 4);
+
+    private float _glyphWidth;
+
+    private float GlyphWidth => _glyphWidth > 0 ? _glyphWidth : _glyphWidth = _font.MeasureText("0");
+
+    private static readonly string[] BinaryLabels = BuildLabels(symbol => Convert.ToString(symbol, 2).PadLeft(8, '0'));
+
+    private static readonly string[] HexLabels = BuildLabels(symbol => $"0x{symbol:X2}");
+
+    private static string[] BuildLabels(Func<int, string> format)
+    {
+        var labels = new string[256];
+
+        for (var symbol = 0; symbol < labels.Length; symbol++)
+        {
+            labels[symbol] = format(symbol);
+        }
+
+        return labels;
+    }
+
+    private static string BinaryLabel(int symbol)
+        => (uint)symbol < 256 ? BinaryLabels[symbol] : Convert.ToString(symbol, 2).PadLeft(8, '0');
+
+    private static string HexLabel(int symbol) => (uint)symbol < 256 ? HexLabels[symbol] : $"0x{symbol:X2}";
 
     /// <summary>
     /// Width the whole walk needs, the codes running on rather than wrapping
@@ -292,7 +319,7 @@ public sealed class HuffmanDecodeRenderer : IDisposable
             _text.Color = bit >= codedFrom && bit < codedTo ? TextColour : UnusedColour;
 
             canvas.DrawText(glyph,
-                            left + ((bit - firstBit) * BitWidth) + ((BitWidth - _font.MeasureText(glyph)) / 2),
+                            left + ((bit - firstBit) * BitWidth) + ((BitWidth - GlyphWidth) / 2),
                             top + (BitHeight / 2) + (_font.Size / 2) - 1,
                             SKTextAlign.Left,
                             _font,
@@ -341,9 +368,9 @@ public sealed class HuffmanDecodeRenderer : IDisposable
 
         var colour = index == SelectedStep ? SelectionColour : TextColour;
 
-        DrawLine(canvas, Convert.ToString(step.Symbol, 2).PadLeft(8, '0'), bounds, 0, colour);
+        DrawLine(canvas, BinaryLabel(step.Symbol), bounds, 0, colour);
 
-        DrawLine(canvas, $"0x{step.Symbol:X2}", bounds, 1, colour);
+        DrawLine(canvas, HexLabel(step.Symbol), bounds, 1, colour);
 
         DrawLine(canvas, step.IsLength ? "Length" : step.Character, bounds, 2, MutedColour);
 

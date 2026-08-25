@@ -13,6 +13,7 @@
     xmlns:models="using:InternalsViewer.UI.App.Models.Columnstore.Segment"
     xmlns:tableView="using:WinUI.TableView"
     xmlns:toolkit="using:CommunityToolkit.WinUI.Controls"
+    xmlns:segment1="using:InternalsViewer.UI.App.Controls.Columnstore.Segment"
     mc:Ignorable="d">
     <UserControl.Resources>
         <Style x:Key="DerivationChainOperatorStyle" TargetType="TextBlock">
@@ -243,7 +244,9 @@
         </CommandBar>
 
         
-        <Grid Grid.Row="1"
+        <Grid x:Name="ContentGrid"
+              x:Load="False"
+              Grid.Row="1"
               Visibility="{x:Bind ViewModel.IsLoaded, Mode=OneWay,
                            Converter={StaticResource BoolToVisibilityConverter}}">
             <Grid.ColumnDefinitions>
@@ -306,12 +309,14 @@
                 </TabView>
 
                 <Grid Grid.Row="1">
-                    <columnstore:SegmentRegionPanel Visibility="{x:Bind GetTabContentVisibility(ViewModel.SelectedRegionTabIndex, 0), Mode=OneWay}"
+                    <segment1:SegmentRegionPanel Visibility="{x:Bind GetTabContentVisibility(ViewModel.SelectedRegionTabIndex, 0), Mode=OneWay}"
                                                 MarkerOpacity="{x:Bind ViewModel.Hex.MarkerOpacity, Mode=OneWay}"
                                                 Markers="{x:Bind ViewModel.Hex.Markers, Mode=OneWay}"
                                                 SelectedMarker="{x:Bind ViewModel.Hex.SelectedMarker, Mode=TwoWay}"/>
 
-                    <Grid Visibility="{x:Bind GetTabContentVisibility(ViewModel.SelectedRegionTabIndex, 1), Mode=OneWay}">
+                    <Grid x:Name="BookmarksPanel"
+                          x:Load="False"
+                          Visibility="{x:Bind GetTabContentVisibility(ViewModel.SelectedRegionTabIndex, 1), Mode=OneWay}">
                         <tableView:TableView
                                              AutoGenerateColumns="False" CanSortColumns="False" CanFilterColumns="False"
                                              CornerButtonMode="None" HeadersVisibility="Columns"
@@ -366,7 +371,9 @@
                         </tableView:TableView>
                     </Grid>
 
-                    <Grid Visibility="{x:Bind GetTabContentVisibility(ViewModel.SelectedRegionTabIndex, 2), Mode=OneWay}">
+                    <Grid x:Name="RlePanel"
+                          x:Load="False"
+                          Visibility="{x:Bind GetTabContentVisibility(ViewModel.SelectedRegionTabIndex, 2), Mode=OneWay}">
                         <Grid.RowDefinitions>
                             <RowDefinition Height="*"/>
                             <RowDefinition Height="Auto"/>
@@ -452,7 +459,7 @@
 
                         <StackPanel Grid.Row="2">
                             <TextBlock Padding="16,8,8,8" FontWeight="SemiBold">RLE Runs</TextBlock>
-                            <columnstore:RleRunMapControl x:Name="RleRunMap"
+                            <segment1:RleRunMapControl x:Name="RleRunMap"
                                                           Runs="{x:Bind ViewModel.RleRuns, Mode=OneWay}"
                                                           ValueLabel="{x:Bind ViewModel.RleValueLabel, Mode=OneWay}"
                                                           IndexLabel="{x:Bind ViewModel.RleIndexLabel, Mode=OneWay}"
@@ -460,7 +467,9 @@
                         </StackPanel>
                     </Grid>
 
-                    <Grid Visibility="{x:Bind GetTabContentVisibility(ViewModel.SelectedRegionTabIndex, 3), Mode=OneWay}">
+                    <Grid x:Name="BitPackPanel"
+                          x:Load="False"
+                          Visibility="{x:Bind GetTabContentVisibility(ViewModel.SelectedRegionTabIndex, 3), Mode=OneWay}">
                         <Grid.RowDefinitions>
                             <RowDefinition Height="*"/>
                             <RowDefinition Height="Auto"/>
@@ -519,12 +528,14 @@
                                               HorizontalAlignment="Stretch"
                                               ResizeBehavior="BasedOnAlignment"/>
 
-                        <columnstore:BitPackDetailControl Grid.Row="2"
+                        <segment1:BitPackDetailControl Grid.Row="2"
                                                           x:Name="BitPackDetail"
                                                           Unit="{x:Bind ViewModel.BitpackUnit, Mode=OneWay}"/>
                     </Grid>
 
-                    <Grid Visibility="{x:Bind GetTabContentVisibility(ViewModel.SelectedRegionTabIndex, 4), Mode=OneWay}">
+                    <Grid x:Name="VariableLengthDataPanel"
+                          x:Load="False"
+                          Visibility="{x:Bind GetTabContentVisibility(ViewModel.SelectedRegionTabIndex, 4), Mode=OneWay}">
                         <Grid.RowDefinitions>
                             <RowDefinition Height="1*" MinHeight="60"/>
                             <RowDefinition Height="Auto"/>
@@ -636,7 +647,9 @@
                         </Grid>
                     </Grid>
 
-                    <Grid Visibility="{x:Bind GetTabContentVisibility(ViewModel.SelectedRegionTabIndex, 5), Mode=OneWay}">
+                    <Grid x:Name="DataPanel"
+                          x:Load="False"
+                          Visibility="{x:Bind GetTabContentVisibility(ViewModel.SelectedRegionTabIndex, 5), Mode=OneWay}">
                         <Grid.RowDefinitions>
                             <RowDefinition Height="Auto"/>
                             <RowDefinition Height="*"/>
