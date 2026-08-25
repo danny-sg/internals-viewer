@@ -29,19 +29,10 @@
 
         <tableView:TableView x:Name="EventTable"
                              Grid.Row="1"
-                             AutoGenerateColumns="False"
                              CanSortColumns="True"
-                             CanFilterColumns="False"
-                             CornerButtonMode="None"
-                             HeadersVisibility="Columns"
-                             ColumnHeaderStyle="{StaticResource TableViewColumnHeaderStyle}"
-                             CellStyle="{StaticResource TableViewCellStyle}"
-                             ItemContainerStyle="{StaticResource TableViewRowStyle}"
                              RowHeight="32"
                              Sorting="OnSorting"
                              SelectionMode="Single"
-                             SelectionUnit="Row"
-                             IsReadOnly="True"
                              GridLinesVisibility="Vertical"
                              Background="{ThemeResource LayerFillColorDefaultBrush}">
             <tableView:TableView.Resources>

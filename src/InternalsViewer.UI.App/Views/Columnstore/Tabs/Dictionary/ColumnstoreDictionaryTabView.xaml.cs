@@ -1,6 +1,6 @@
 ﻿using System;
 using System.Threading;
-using InternalsViewer.UI.App.ViewModels.Columnstore;
+using InternalsViewer.UI.App.ViewModels.Columnstore.Dictionary;
 using InternalsViewer.UI.App.Controls.Docking;
 using Microsoft.UI.Xaml.Controls;
 using WinUI.TableView;

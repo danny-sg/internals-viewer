@@ -18,6 +18,7 @@ using Windows.System;
 using Windows.UI.Core;
 using InternalsViewer.UI.App.ViewModels.Allocation;
 using Color = Windows.UI.Color;
+using InternalsViewer.UI.App.Models.Allocations;
 
 namespace InternalsViewer.UI.App.Controls.Allocation;
 

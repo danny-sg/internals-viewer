@@ -1,6 +1,6 @@
-﻿namespace InternalsViewer.UI.App.Models;
+﻿namespace InternalsViewer.UI.App.Models.Page;
 
-public class PageSlot
+public sealed record PageSlot
 {
     public short Index { get; init; }
 

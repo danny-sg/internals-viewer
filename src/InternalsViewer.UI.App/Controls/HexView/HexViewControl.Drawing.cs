@@ -11,6 +11,7 @@ using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Documents;
 using Microsoft.UI.Xaml.Media;
 using Microsoft.UI.Xaml.Shapes;
+using InternalsViewer.UI.App.Models.Logging;
 
 namespace InternalsViewer.UI.App.Controls.HexView;
 

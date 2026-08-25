@@ -2,7 +2,7 @@ using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Internals.Engine.Database.Enums;
 using InternalsViewer.Internals.Helpers;
 
-namespace InternalsViewer.UI.App.Models;
+namespace InternalsViewer.UI.App.Models.Allocations;
 
 public sealed class AllocationLayerUnit
 {

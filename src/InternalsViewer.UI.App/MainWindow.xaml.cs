@@ -39,6 +39,7 @@ using WinUIEx;
 using QueryView = InternalsViewer.UI.App.Views.Query.QueryView;
 using InternalsViewer.Connection.BackupFile.Media;
 using InternalsViewer.Internals.Engine.Loading;
+using LogRecordItem = InternalsViewer.UI.App.Models.Logging.LogRecordItem;
 
 namespace InternalsViewer.UI.App;
 

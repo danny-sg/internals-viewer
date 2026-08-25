@@ -5,7 +5,7 @@ using InternalsViewer.UI.App.Controls.Columnstore;
 using InternalsViewer.UI.App.Controls.Docking;
 using InternalsViewer.UI.App.Models;
 using InternalsViewer.UI.App.Models.Columnstore.Segment;
-using InternalsViewer.UI.App.ViewModels.Columnstore;
+using InternalsViewer.UI.App.ViewModels.Columnstore.Segment;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Controls.Primitives;
 using Microsoft.UI.Xaml.Input;

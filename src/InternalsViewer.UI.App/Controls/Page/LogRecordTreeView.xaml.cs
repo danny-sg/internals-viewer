@@ -2,9 +2,11 @@ using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
 using InternalsViewer.UI.App.Models;
+using InternalsViewer.UI.App.Models.Logging;
 using Microsoft.UI.Dispatching;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Media;
+using LogRecordItem = InternalsViewer.UI.App.Models.Logging.LogRecordItem;
 
 namespace InternalsViewer.UI.App.Controls.Page;
 

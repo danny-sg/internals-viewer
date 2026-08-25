@@ -317,14 +317,9 @@
                     <Grid x:Name="BookmarksPanel"
                           x:Load="False"
                           Visibility="{x:Bind GetTabContentVisibility(ViewModel.SelectedRegionTabIndex, 1), Mode=OneWay}">
-                        <tableView:TableView
-                                             AutoGenerateColumns="False" CanSortColumns="False" CanFilterColumns="False"
-                                             CornerButtonMode="None" HeadersVisibility="Columns"
-                                             ColumnHeaderStyle="{StaticResource TableViewColumnHeaderStyle}"
-                                             CellStyle="{StaticResource TableViewCellStyle}"
-                                             ItemContainerStyle="{StaticResource TableViewRowStyle}"
-                                             RowHeight="24" SelectionMode="Single" SelectionUnit="Row"
-                                             IsReadOnly="True" GridLinesVisibility="All" BorderThickness="0"
+                        <tableView:TableView CanSortColumns="False"
+                                             RowHeight="24" SelectionMode="Single"
+                                             GridLinesVisibility="All" BorderThickness="0"
                                              Background="{ThemeResource LayerFillColorDefaultBrush}"
                                              SelectionChanged="Bookmarks_OnSelectionChanged"
                                              ItemsSource="{x:Bind ViewModel.Bookmarks, Mode=OneWay}">
@@ -381,13 +376,9 @@
                         </Grid.RowDefinitions>
 
                         <tableView:TableView Grid.Row="0"
-                                             AutoGenerateColumns="False" CanSortColumns="False" CanFilterColumns="False"
-                                             CornerButtonMode="None" HeadersVisibility="Columns"
-                                             ColumnHeaderStyle="{StaticResource TableViewColumnHeaderStyle}"
-                                             CellStyle="{StaticResource TableViewCellStyle}"
-                                             ItemContainerStyle="{StaticResource TableViewRowStyle}"
-                                             RowHeight="24" SelectionMode="Single" SelectionUnit="Row"
-                                             IsReadOnly="True" GridLinesVisibility="All" BorderThickness="0"
+ CanSortColumns="False"
+                                             RowHeight="24" SelectionMode="Single"
+ GridLinesVisibility="All" BorderThickness="0"
                                              Background="{ThemeResource LayerFillColorDefaultBrush}"
                                              SelectionChanged="RleRuns_OnSelectionChanged"
                                              ItemsSource="{x:Bind ViewModel.RleRuns, Mode=OneWay}">
@@ -477,13 +468,9 @@
                         </Grid.RowDefinitions>
 
                         <tableView:TableView Grid.Row="0"
-                                             AutoGenerateColumns="False" CanSortColumns="False" CanFilterColumns="False"
-                                             CornerButtonMode="None" HeadersVisibility="Columns"
-                                             ColumnHeaderStyle="{StaticResource TableViewColumnHeaderStyle}"
-                                             CellStyle="{StaticResource TableViewCellStyle}"
-                                             ItemContainerStyle="{StaticResource TableViewRowStyle}"
-                                             RowHeight="24" SelectionMode="Single" SelectionUnit="Row"
-                                             IsReadOnly="True" GridLinesVisibility="All" BorderThickness="0"
+ CanSortColumns="False"
+                                             RowHeight="24" SelectionMode="Single"
+ GridLinesVisibility="All" BorderThickness="0"
                                              Background="{ThemeResource LayerFillColorDefaultBrush}"
                                              SelectionChanged="BitpackUnits_OnSelectionChanged"
                                              ItemsSource="{x:Bind ViewModel.BitpackUnits, Mode=OneWay}">
@@ -543,18 +530,9 @@
                         </Grid.RowDefinitions>
 
                         <tableView:TableView Grid.Row="0"
-                                             AutoGenerateColumns="False"
                                              CanSortColumns="False"
-                                             CanFilterColumns="False"
-                                             CornerButtonMode="None"
-                                             HeadersVisibility="Columns"
-                                             ColumnHeaderStyle="{StaticResource TableViewColumnHeaderStyle}"
-                                             CellStyle="{StaticResource TableViewCellStyle}"
-                                             ItemContainerStyle="{StaticResource TableViewRowStyle}"
                                              RowHeight="28"
                                              SelectionMode="Single"
-                                             SelectionUnit="Row"
-                                             IsReadOnly="True"
                                              GridLinesVisibility="All"
                                              BorderThickness="0"
                                              Background="{ThemeResource LayerFillColorDefaultBrush}"
@@ -708,18 +686,9 @@
                         </Grid>
 
                         <tableView:TableView Grid.Row="1"
-                                             AutoGenerateColumns="False"
                                              CanSortColumns="False"
-                                             CanFilterColumns="False"
-                                             CornerButtonMode="None"
-                                             HeadersVisibility="Columns"
-                                             ColumnHeaderStyle="{StaticResource TableViewColumnHeaderStyle}"
-                                             CellStyle="{StaticResource TableViewCellStyle}"
-                                             ItemContainerStyle="{StaticResource TableViewRowStyle}"
                                              RowHeight="28"
                                              SelectionMode="Single"
-                                             SelectionUnit="Row"
-                                             IsReadOnly="True"
                                              GridLinesVisibility="All"
                                              BorderThickness="0"
                                              Background="{ThemeResource LayerFillColorDefaultBrush}"

@@ -548,6 +548,7 @@
       <Folder Include="Controls\Columnstore\Segment\" />
       <Folder Include="Controls\Logging\" />
       <Folder Include="Models\Columnstore\DeleteBitmap\" />
+      <Folder Include="ViewModels\Columnstore\Segment\" />
       <Folder Include="Views\Query\Tabs\Index\" />
       <Folder Include="Views\Query\Tabs\Plan\" />
       <Folder Include="Views\Query\Tabs\Trace\Panels\" />

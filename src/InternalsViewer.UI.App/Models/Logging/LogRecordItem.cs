@@ -2,7 +2,7 @@ using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using InternalsViewer.TransactionLog.LogRecords;
 
-namespace InternalsViewer.UI.App.Models;
+namespace InternalsViewer.UI.App.Models.Logging;
 
 /// <summary>
 /// Log record list item pairing a page log record with the annotations produced when the record is applied

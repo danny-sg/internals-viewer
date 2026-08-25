@@ -5,7 +5,7 @@ using InternalsViewer.Execution.AccessPaths.Text;
 using InternalsViewer.Query.Events.Operators;
 using InternalsViewer.Query.Plans.Model;
 using InternalsViewer.Query.Plans.Operators;
-using InternalsViewer.UI.App.Models;
+using InternalsViewer.UI.App.Models.Query;
 
 namespace InternalsViewer.UI.App.Helpers;
 

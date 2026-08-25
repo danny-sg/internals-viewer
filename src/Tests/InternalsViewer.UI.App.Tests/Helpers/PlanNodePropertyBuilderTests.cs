@@ -1,7 +1,7 @@
 using InternalsViewer.Query.Events.Operators;
 using InternalsViewer.Query.Plans.Model;
 using InternalsViewer.UI.App.Helpers;
-using InternalsViewer.UI.App.Models;
+using InternalsViewer.UI.App.Models.Query;
 
 namespace InternalsViewer.UI.App.Tests.Helpers;
 

@@ -1,7 +1,7 @@
 using System.Collections.Generic;
 using InternalsViewer.Execution.AccessPaths.Text;
 
-namespace InternalsViewer.UI.App.Models;
+namespace InternalsViewer.UI.App.Models.Query;
 
 public sealed record PlanNodeProperty(string Name, string Value)
 {

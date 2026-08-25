@@ -20,6 +20,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using InternalsViewer.Internals.Connections.Server;
 using DatabaseFile = InternalsViewer.UI.App.Models.DatabaseFile;
+using InternalsViewer.UI.App.Models.Allocations;
 
 namespace InternalsViewer.UI.App.ViewModels.Database;
 

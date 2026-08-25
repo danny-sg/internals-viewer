@@ -4,6 +4,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Internals.Engine.Database.Enums;
 using InternalsViewer.UI.App.Models;
+using InternalsViewer.UI.App.Models.Allocations;
 
 namespace InternalsViewer.UI.App.Controls.Allocation;
 

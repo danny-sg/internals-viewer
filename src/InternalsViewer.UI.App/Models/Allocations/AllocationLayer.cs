@@ -6,6 +6,7 @@ using InternalsViewer.Internals.Engine.Database.Enums;
 using InternalsViewer.Internals.Helpers;
 using InternalsViewer.Internals.Interfaces.Engine;
 using InternalsViewer.UI.App.Helpers;
+using InternalsViewer.UI.App.Models.Allocations;
 using SkiaSharp;
 
 namespace InternalsViewer.UI.App.Models;
@@ -106,10 +107,4 @@ public sealed partial class AllocationLayer : ObservableObject
     public string LayerName { get; set; } = string.Empty;
 
     public LayerType LayerType { get; set; } = LayerType.Fill;
-}
-
-public enum LayerType
-{
-    Fill,
-    TopLeft
 }

@@ -47,6 +47,9 @@ using InternalsViewer.Query.Plans;
 using InternalsViewer.Query.Plans.Model;
 using InternalsViewer.UI.App.Views.Query.Tabs.Index;
 using DatabaseFile = InternalsViewer.UI.App.Models.DatabaseFile;
+using InternalsViewer.UI.App.Models.Allocations;
+using InternalsViewer.UI.App.Models.Query;
+using LogRecordItem = InternalsViewer.UI.App.Models.Logging.LogRecordItem;
 
 namespace InternalsViewer.UI.App.ViewModels.Query;
 

@@ -1,4 +1,4 @@
-using InternalsViewer.UI.App.Models;
+using InternalsViewer.UI.App.Models.Logging;
 using Microsoft.UI.Xaml.Controls;
 
 namespace InternalsViewer.UI.App.Helpers.Selectors;

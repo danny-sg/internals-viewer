@@ -32,18 +32,9 @@
        
         <Grid Grid.Row="1">
             <tableView:TableView x:Name="LayerTable"
-                                 AutoGenerateColumns="False"
                                  CanSortColumns="True"
-                                 CanFilterColumns="False"
-                                 CornerButtonMode="None"
-                                 HeadersVisibility="Columns"
-                                 ColumnHeaderStyle="{StaticResource TableViewColumnHeaderStyle}"
-                                 CellStyle="{StaticResource TableViewCellStyle}"
-                                 ItemContainerStyle="{StaticResource TableViewRowStyle}"
                                  RowHeight="32"
                                  SelectionMode="Extended"
-                                 SelectionUnit="Row"
-                                 IsReadOnly="True"
                                  AllowLiveShaping="False"
                                  GridLinesVisibility="Vertical"
                                  BorderThickness="0"

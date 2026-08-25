@@ -16,18 +16,9 @@
     </UserControl.Resources>
     <Grid>
         <tableView:TableView x:Name="RecordTable"
-                             AutoGenerateColumns="False"
                              CanSortColumns="True"
-                             CanFilterColumns="False"
-                             CornerButtonMode="None"
-                             HeadersVisibility="Columns"
-                             ColumnHeaderStyle="{StaticResource TableViewColumnHeaderStyle}"
-                             CellStyle="{StaticResource TableViewCellStyle}"
-                             ItemContainerStyle="{StaticResource TableViewRowStyle}"
                              RowHeight="32"
                              SelectionMode="Single"
-                             SelectionUnit="Row"
-                             IsReadOnly="True"
                              AllowLiveShaping="False"
                              GridLinesVisibility="All"
                              HeaderGridLinesVisibility="All"

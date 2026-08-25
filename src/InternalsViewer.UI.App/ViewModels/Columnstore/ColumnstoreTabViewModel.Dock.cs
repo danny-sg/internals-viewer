@@ -2,6 +2,8 @@
 using System.Linq;
 using InternalsViewer.Internals.Columnstore.Metadata;
 using InternalsViewer.UI.App.Models.Columnstore;
+using InternalsViewer.UI.App.ViewModels.Columnstore.Dictionary;
+using InternalsViewer.UI.App.ViewModels.Columnstore.Segment;
 using InternalsViewer.UI.App.ViewModels.Docking;
 using InternalsViewer.UI.App.Views.Columnstore.Tabs;
 

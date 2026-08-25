@@ -1,15 +1,11 @@
 using InternalsViewer.Internals.Annotations;
 
-namespace InternalsViewer.UI.App.Models;
+namespace InternalsViewer.UI.App.Models.Logging;
 
 /// <summary>
 /// XAML bindable view of a log record apply change span
 /// </summary>
-/// <remarks>
-/// Mirrors ChangeSpan with mutable properties - the XAML type info generator cannot handle the init-only members
-/// on the Query record types, so bound types stay plain
-/// </remarks>
-public class LogRecordAnnotation
+public sealed class LogRecordAnnotation
 {
     public int Offset { get; set; }
 

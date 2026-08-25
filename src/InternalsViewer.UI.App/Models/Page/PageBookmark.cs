@@ -1,6 +1,6 @@
 ﻿using InternalsViewer.Internals.Engine.Address;
 
-namespace InternalsViewer.UI.App.Models;
+namespace InternalsViewer.UI.App.Models.Page;
 
 public record PageBookmark
 {

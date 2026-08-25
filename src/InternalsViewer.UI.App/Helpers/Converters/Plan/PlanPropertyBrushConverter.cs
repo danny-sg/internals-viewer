@@ -1,5 +1,5 @@
 using System;
-using InternalsViewer.UI.App.Models;
+using InternalsViewer.UI.App.Models.Query;
 using Microsoft.UI.Xaml.Data;
 
 namespace InternalsViewer.UI.App.Helpers.Converters.Plan;

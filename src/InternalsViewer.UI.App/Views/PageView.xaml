@@ -7,11 +7,11 @@
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     xmlns:page="using:InternalsViewer.UI.App.Controls.Page"
     xmlns:hexView="using:InternalsViewer.UI.App.Controls.HexView"
-    xmlns:models="using:InternalsViewer.UI.App.Models"
+    xmlns:models="using:InternalsViewer.UI.App.Models.Page"
     xmlns:allocation="using:InternalsViewer.UI.App.Controls.Allocation"
     xmlns:controls="using:InternalsViewer.UI.App.Controls"
     xmlns:selectors="using:InternalsViewer.UI.App.Helpers.Selectors"
-    xmlns:controls1="using:CommunityToolkit.WinUI.Controls"
+    xmlns:toolkit="using:CommunityToolkit.WinUI.Controls"
     xmlns:results="using:InternalsViewer.UI.App.Controls.Results"
     mc:Ignorable="d">
     <UserControl.Resources>
@@ -301,14 +301,14 @@
                                                 SelectedRow="{x:Bind ViewModel.SelectedRecordRow, Mode=TwoWay}"/>
                 </Grid>
 
-                <controls1:GridSplitter Grid.Row="2"
+                <toolkit:GridSplitter Grid.Row="2"
                                         x:Name="LogRecordsSplitter"
                                         Height="1"
                                         Visibility="{x:Bind ViewModel.LogRecordsVisibility, Mode=OneWay}"
                                         Background="{ThemeResource ControlStrokeColorDefaultBrush}"
                                         VerticalAlignment="Stretch">
 
-                </controls1:GridSplitter>
+                </toolkit:GridSplitter>
 
                 <Grid Grid.Row="3"
                       VerticalAlignment="Stretch"

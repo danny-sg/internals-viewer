@@ -2,7 +2,7 @@
 using System.ComponentModel;
 using System.Linq;
 using InternalsViewer.UI.App.Models.Columnstore.Dictionary;
-using InternalsViewer.UI.App.ViewModels.Columnstore;
+using InternalsViewer.UI.App.ViewModels.Columnstore.Dictionary;
 using Microsoft.UI.Xaml.Controls;
 using WinUI.TableView;
 

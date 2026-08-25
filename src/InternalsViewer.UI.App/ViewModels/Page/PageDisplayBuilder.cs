@@ -6,6 +6,7 @@ using InternalsViewer.Internals.Interfaces.Services.Records;
 using InternalsViewer.Query.Results;
 using InternalsViewer.UI.App.Helpers;
 using InternalsViewer.UI.App.Models;
+using InternalsViewer.UI.App.Models.Page;
 using InternalsViewer.UI.App.ViewModels.Allocation;
 using Microsoft.Extensions.Logging;
 using System;

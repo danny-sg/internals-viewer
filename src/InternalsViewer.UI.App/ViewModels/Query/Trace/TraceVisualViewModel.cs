@@ -20,6 +20,7 @@ using InternalsViewer.Internals.Metadata.Structures;
 using InternalsViewer.Internals.Services.Indexes;
 using InternalsViewer.UI.App.Helpers;
 using InternalsViewer.UI.App.Models;
+using InternalsViewer.UI.App.Models.Allocations;
 using InternalsViewer.UI.App.Models.Index;
 using InternalsViewer.UI.App.Models.Query.Trace;
 using InternalsViewer.UI.App.ViewModels.Allocation;

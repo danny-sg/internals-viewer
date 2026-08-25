@@ -16,6 +16,9 @@ using InternalsViewer.Query.Results;
 using InternalsViewer.TransactionLog;
 using InternalsViewer.UI.App.Messages;
 using InternalsViewer.UI.App.Models;
+using InternalsViewer.UI.App.Models.Allocations;
+using InternalsViewer.UI.App.Models.Logging;
+using InternalsViewer.UI.App.Models.Page;
 using InternalsViewer.UI.App.Services.Markers;
 using InternalsViewer.UI.App.ViewModels.Tabs;
 using Microsoft.Extensions.Logging;
@@ -27,6 +30,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using Windows.UI;
 using AllocationUnit = InternalsViewer.Internals.Engine.Database.AllocationUnit;
+using LogRecordItem = InternalsViewer.UI.App.Models.Logging.LogRecordItem;
 
 namespace InternalsViewer.UI.App.ViewModels.Page;
 
