@@ -10,6 +10,7 @@
     xmlns:controls="using:InternalsViewer.UI.App.Controls"
     xmlns:models="using:InternalsViewer.UI.App.Models.Columnstore.Dictionary"
     xmlns:page="using:InternalsViewer.UI.App.Controls.Page"
+    xmlns:hexView="using:InternalsViewer.UI.App.Controls.HexView"
     xmlns:dictionary="using:InternalsViewer.UI.App.Views.Columnstore.Tabs.Dictionary"
     xmlns:toolkit="using:CommunityToolkit.WinUI.Controls"
     xmlns:segment="using:InternalsViewer.UI.App.Models.Columnstore.Segment"
@@ -120,7 +121,7 @@
                 </AppBarElementContainer>
             </CommandBar>
 
-            <page:HexViewControl Grid.Row="1"
+            <hexView:HexViewControl Grid.Row="1"
                                  Areas="{x:Bind ViewModel.HexAreas, Mode=OneWay}"
                                  Grid.Column="0"
                                  Width="455"
@@ -300,16 +301,28 @@
                             <tableView:TableViewTextColumn Header="Data Id" Width="90"
                                                            Binding="{Binding DataId}"
                                                            CellStyle="{StaticResource TableViewCellRightStyle}"/>
-                            <tableView:TableViewTextColumn Width="70"
-                                                           Binding="{Binding Page}"
-                                                           CellStyle="{StaticResource TableViewCellRightStyle}">
-                                <tableView:TableViewTextColumn.Header>
+                            <tableView:TableViewTemplateColumn Width="70">
+                                <tableView:TableViewTemplateColumn.Header>
                                     <StackPanel Orientation="Horizontal">
                                         <columnstore:MarkerKey ItemType="DictionaryHandlePage"/>
                                         <TextBlock Text="Page"/>
                                     </StackPanel>
-                                </tableView:TableViewTextColumn.Header>
-                            </tableView:TableViewTextColumn>
+                                </tableView:TableViewTemplateColumn.Header>
+                                <tableView:TableViewTemplateColumn.CellTemplate>
+                                    <DataTemplate x:DataType="models:DictionaryHandleDetail">
+                                        <HyperlinkButton Content="{x:Bind Page}"
+                                                         Style="{StaticResource PointerStyle}"
+                                                         Padding="0"
+                                                         Margin="0,0,8,0"
+                                                         MinHeight="0"
+                                                         FontSize="12"
+                                                         HorizontalAlignment="Right"
+                                                         VerticalAlignment="Center"
+                                                         Tag="{x:Bind}"
+                                                         Click="HandlePage_OnClick"/>
+                                    </DataTemplate>
+                                </tableView:TableViewTemplateColumn.CellTemplate>
+                            </tableView:TableViewTemplateColumn>
                             <tableView:TableViewTextColumn Width="90"
                                                            Binding="{Binding Offset}"
                                                            CellStyle="{StaticResource TableViewCellRightStyle}">

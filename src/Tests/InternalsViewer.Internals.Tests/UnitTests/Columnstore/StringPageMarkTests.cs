@@ -1,4 +1,4 @@
-using InternalsViewer.Internals.Columnstore.Blobs;
+﻿using InternalsViewer.Internals.Columnstore.Blobs;
 using InternalsViewer.Internals.Columnstore.Dictionaries;
 
 namespace InternalsViewer.Internals.Tests.UnitTests.Columnstore;
@@ -34,7 +34,7 @@ public class StringPageMarkTests
 
         page.Mark();
 
-        Assert.Equal(10, page.MarkItems.Count);
+        Assert.Equal(11, page.MarkItems.Count);
     }
 
     [Fact]

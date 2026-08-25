@@ -3,24 +3,17 @@ using System;
 using System.Collections.Generic;
 using System.Text;
 
-namespace InternalsViewer.UI.App.Controls.Page;
+namespace InternalsViewer.UI.App.Controls.HexView;
 
 /// <summary>
-/// A stretch of hex dump text sharing the same formatting
-/// </summary>
-internal readonly record struct HexRun(string Text, bool IsSelected);
-
-/// <summary>
-/// Builds the hex dump text, split into runs either side of the selected marker
+/// Builds the hex dump text
 /// </summary>
 internal static class HexTextBuilder
 {
     private static readonly string[] HexByValue = CreateHexTable();
 
-    public static List<HexRun> Build(IReadOnlyList<byte> data, int bytesPerLine, int? selectionStart, int? selectionEnd)
+    public static string Build(IReadOnlyList<byte> data, int bytesPerLine)
     {
-        var runs = new List<HexRun>();
-
         var stringBuilder = new StringBuilder();
 
         var position = 0;
@@ -32,17 +25,7 @@ internal static class HexTextBuilder
         {
             for (var byteIndex = 0; byteIndex < bytesPerLine && position < data.Count; byteIndex++)
             {
-                if (position == selectionStart)
-                {
-                    runs.Add(Flush(stringBuilder, false));
-                }
-
                 stringBuilder.Append(HexByValue[data[position]]);
-
-                if (position == selectionEnd)
-                {
-                    runs.Add(Flush(stringBuilder, true));
-                }
 
                 position++;
 
@@ -60,18 +43,7 @@ internal static class HexTextBuilder
             }
         }
 
-        runs.Add(Flush(stringBuilder, false));
-
-        return runs;
-    }
-
-    private static HexRun Flush(StringBuilder stringBuilder, bool isSelected)
-    {
-        var run = new HexRun(stringBuilder.ToString(), isSelected);
-
-        stringBuilder.Clear();
-
-        return run;
+        return stringBuilder.ToString();
     }
 
     private static string[] CreateHexTable()

@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <UserControl
     x:Class="InternalsViewer.UI.App.Views.PageView"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
@@ -6,6 +6,7 @@
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     xmlns:page="using:InternalsViewer.UI.App.Controls.Page"
+    xmlns:hexView="using:InternalsViewer.UI.App.Controls.HexView"
     xmlns:models="using:InternalsViewer.UI.App.Models"
     xmlns:allocation="using:InternalsViewer.UI.App.Controls.Allocation"
     xmlns:controls="using:InternalsViewer.UI.App.Controls"
@@ -144,7 +145,7 @@
             </Grid>
 
             <!--Hex Data View-->
-            <page:HexViewControl Grid.Row="1"
+            <hexView:HexViewControl Grid.Row="1"
                                  Grid.Column="0"
                                  Background="{ThemeResource LayerOnMicaBaseAltFillColorDefault}"
                                  Width="455" 

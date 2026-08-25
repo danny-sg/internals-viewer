@@ -9,6 +9,7 @@
     xmlns:controls="using:InternalsViewer.UI.App.Controls"
     xmlns:models="using:InternalsViewer.UI.App.Models.Columnstore.Segment"
     xmlns:page="using:InternalsViewer.UI.App.Controls.Page"
+    xmlns:hexView="using:InternalsViewer.UI.App.Controls.HexView"
     mc:Ignorable="d">
     <Grid>
         <Grid.ColumnDefinitions>
@@ -27,7 +28,7 @@
            FontWeight="SemiBold"
            Text="Decompressed Payload"/>
 
-        <page:HexViewControl Grid.Row="1"
+        <hexView:HexViewControl Grid.Row="1"
                              Grid.Column="0"
                              VerticalAlignment="Stretch"
                              IsVirtualized="True"

@@ -82,7 +82,20 @@ public sealed partial class ColumnstoreDictionaryTabView : UserControl, IDocumen
         hex.Checked += (_, _) => ViewModel.Hex.IsVisible = true;
         hex.Unchecked += (_, _) => ViewModel.Hex.IsVisible = false;
 
+        var auto = new ToggleButton
+        {
+            Style = (Style)Application.Current.Resources["TabCommandToggleStyle"],
+            Content = "Auto",
+            IsChecked = ViewModel.IsAutoRegion
+        };
+
+        ToolTipService.SetToolTip(auto, "Move on to the tab for the region scrolled into");
+
+        auto.Checked += (_, _) => ViewModel.IsAutoRegion = true;
+        auto.Unchecked += (_, _) => ViewModel.IsAutoRegion = false;
+
         panel.Children.Add(derivation);
+        panel.Children.Add(auto);
         panel.Children.Add(hex);
 
         return panel;
@@ -91,6 +104,17 @@ public sealed partial class ColumnstoreDictionaryTabView : UserControl, IDocumen
     private void Handles_OnSelectionChanged(object sender, SelectionChangedEventArgs e)
     {
         ViewModel.SelectHandle(((TableView)sender).SelectedItem as DictionaryHandleDetail);
+    }
+
+    /// <summary>
+    /// Follows a handle to the page holding its value, which the decode tab opens on the entry itself
+    /// </summary>
+    private void HandlePage_OnClick(object sender, RoutedEventArgs e)
+    {
+        if (((FrameworkElement)sender).Tag is DictionaryHandleDetail handle)
+        {
+            _ = ViewModel.GoToHandleValue(handle);
+        }
     }
 
     private void CommandBar_OnRightTapped(object sender, RightTappedRoutedEventArgs e)

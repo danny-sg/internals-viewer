@@ -168,6 +168,135 @@ public sealed partial class DictionaryTabViewModel(ColumnstoreService columnstor
     [ObservableProperty]
     private int _selectedTabIndex;
 
+    /// <summary>
+    /// Region the window sits on, set by picking a tab and reported back when a scroll leaves the region
+    /// </summary>
+    [ObservableProperty]
+    private DictionaryRegion _region = DictionaryRegion.Header;
+
+    /// <summary>
+    /// Whether scrolling out of a region moves on to the tab for the region scrolled into
+    /// </summary>
+    [ObservableProperty]
+    private bool _isAutoRegion = true;
+
+    /// <summary>
+    /// Set while the region is being brought into line with the window, so it does not move the window in turn
+    /// </summary>
+    private bool _isFollowingWindow;
+
+    /// <summary>
+    /// Set while the window is being moved to a region, the region being the cause rather than something to follow
+    /// </summary>
+    private bool _isJumpingToRegion;
+
+    partial void OnRegionChanged(DictionaryRegion value)
+    {
+        if (_isFollowingWindow)
+        {
+            return;
+        }
+
+        // A marker belongs to the region it was built for, so it means nothing once another region is on show
+        Hex.SelectedMarker = null;
+
+        GoToRegion(value);
+    }
+
+    partial void OnSelectedTabIndexChanged(int value)
+    {
+        if (_isFollowingWindow)
+        {
+            return;
+        }
+
+        Hex.SelectedMarker = null;
+
+        var region = GetTabRegion(value);
+
+        if (region == Region)
+        {
+            GoToRegion(region);
+
+            return;
+        }
+
+        Region = region;
+    }
+
+    /// <summary>
+    /// Region a tab shows, so picking one moves the window to what it describes
+    /// </summary>
+    private static DictionaryRegion GetTabRegion(int index) => index switch
+    {
+        1 => DictionaryRegion.Handles,
+        2 => DictionaryRegion.Pages,
+        3 => DictionaryRegion.Values,
+        _ => DictionaryRegion.Header
+    };
+
+    /// <summary>
+    /// Tab a region is shown on, so following the window into another region brings its tab forward
+    /// </summary>
+    private static int GetRegionTabIndex(DictionaryRegion region) => region switch
+    {
+        DictionaryRegion.Handles => 1,
+        DictionaryRegion.Pages => 2,
+        DictionaryRegion.Values => 3,
+        _ => 0
+    };
+
+    /// <summary>
+    /// Moves the window to the region's first line, or rebuilds in place if it is already there
+    /// </summary>
+    private void GoToRegion(DictionaryRegion region)
+    {
+        if (Blob is not { } blob)
+        {
+            return;
+        }
+
+        _isJumpingToRegion = true;
+
+        try
+        {
+            Hex.GoToOffset(DictionaryRegions.GetOffset(blob, region) / BlobHexViewModel.BytesPerLine
+                           * BlobHexViewModel.BytesPerLine);
+        }
+        finally
+        {
+            _isJumpingToRegion = false;
+        }
+    }
+
+    /// <summary>
+    /// Brings the region into line with the window, so a scroll past a boundary moves on to the tab it landed in
+    /// </summary>
+    private void OnWindowMoved(object? sender, int start)
+    {
+        if (Blob is not { } blob || !IsAutoRegion || _isJumpingToRegion)
+        {
+            return;
+        }
+
+        var region = DictionaryRegions.GetRegion(blob, start);
+
+        if (region == Region)
+        {
+            return;
+        }
+
+        _isFollowingWindow = true;
+
+        Region = region;
+
+        SelectedTabIndex = GetRegionTabIndex(region);
+
+        _isFollowingWindow = false;
+
+        Hex.BuildMarkers();
+    }
+
     [ObservableProperty]
     private int _selectedPageTabIndex;
 
@@ -435,12 +564,45 @@ public sealed partial class DictionaryTabViewModel(ColumnstoreService columnstor
 
         SelectedEntry = null;
 
-        _ = ApplySelectedPageAsync(value);
+        _pageLoad = ApplySelectedPageAsync(value);
 
         if (value is not null && !_isLoading)
         {
             Hex.GoToOffset(value.Offset);
         }
+    }
+
+    private Task? _pageLoad;
+
+    private const int DecodeTabIndex = 1;
+
+    /// <summary>
+    /// Follows a handle to the value it names, which is an entry of the page the handle points at
+    /// </summary>
+    public async Task GoToHandleValue(DictionaryHandleDetail handle)
+    {
+        if (Blob is not StringDictionary)
+        {
+            return;
+        }
+
+        SelectedTabIndex = GetRegionTabIndex(DictionaryRegion.Pages);
+
+        if (Pages.FirstOrDefault(p => p.Index == handle.Page) is not { } page)
+        {
+            return;
+        }
+
+        SelectedPage = page;
+
+        SelectedPageTabIndex = DecodeTabIndex;
+
+        if (_pageLoad is { } load)
+        {
+            await load;
+        }
+
+        SelectEntry(PageEntries?.Find(handle.Index));
     }
 
     private async Task ApplySelectedPageAsync(DictionaryPageSummary? page)
@@ -726,12 +888,13 @@ public sealed partial class DictionaryTabViewModel(ColumnstoreService columnstor
                     yield return marker;
                 }
 
-                foreach (var marker in Region("Page Size",
-                                              ItemType.DictionaryPageSize,
-                                              StringDictionary.HandleArrayOffset + (strings.HandleCount * strings.HandleSize),
-                                              strings.PageCount,
-                                              PageSizeBytes,
-                                              i => $"{strings.PageSizes[i]} bytes"))
+                foreach (var marker in MarkRegion("Page Size",
+                                                  ItemType.DictionaryPageSize,
+                                                  StringDictionary.HandleArrayOffset
+                                                  + (strings.HandleCount * strings.HandleSize),
+                                                  strings.PageCount,
+                                                  PageSizeBytes,
+                                                  i => $"{strings.PageSizes[i]} bytes"))
                 {
                     yield return marker;
                 }
@@ -745,12 +908,12 @@ public sealed partial class DictionaryTabViewModel(ColumnstoreService columnstor
     /// </summary>
     private static IEnumerable<Marker> HandleMarkers(StringDictionary strings)
     {
-        var markers = Region("Handle",
-                             ItemType.DictionaryHandle,
-                             StringDictionary.HandleArrayOffset,
-                             strings.HandleCount,
-                             strings.HandleSize,
-                             _ => string.Empty);
+        var markers = MarkRegion("Handle",
+                                 ItemType.DictionaryHandle,
+                                 StringDictionary.HandleArrayOffset,
+                                 strings.HandleCount,
+                                 strings.HandleSize,
+                                 _ => string.Empty);
 
         if (strings.HandleCount > MaxMarkedEntries)
         {
@@ -782,12 +945,12 @@ public sealed partial class DictionaryTabViewModel(ColumnstoreService columnstor
     /// <summary>
     /// One marker per entry while there are few enough to read, and one over the whole run once there are not
     /// </summary>
-    private static IEnumerable<Marker> Region(string name,
-                                              ItemType type,
-                                              int offset,
-                                              int count,
-                                              int elementSize,
-                                              Func<int, string> describe)
+    private static IEnumerable<Marker> MarkRegion(string name,
+                                                  ItemType type,
+                                                  int offset,
+                                                  int count,
+                                                  int elementSize,
+                                                  Func<int, string> describe)
     {
         if (count <= 0 || elementSize <= 0)
         {
@@ -890,7 +1053,12 @@ public sealed partial class DictionaryTabViewModel(ColumnstoreService columnstor
                                                 $"{lastBit - firstBit} bits from bit {firstBit}");
     }
 
-    public void Dispose() => Hex.Dispose();
+    public void Dispose()
+    {
+        Hex.WindowMoved -= OnWindowMoved;
+
+        Hex.Dispose();
+    }
 
     public async Task Load(CancellationToken cancellationToken)
     {
@@ -921,6 +1089,10 @@ public sealed partial class DictionaryTabViewModel(ColumnstoreService columnstor
             OnPropertyChanged(nameof(HasHandles));
 
             OnPropertyChanged(nameof(Handles));
+
+            Hex.WindowMoved -= OnWindowMoved;
+
+            Hex.WindowMoved += OnWindowMoved;
 
             Hex.MarkerFactory = (start, length) => BuildMarkers(blob, start, length);
 

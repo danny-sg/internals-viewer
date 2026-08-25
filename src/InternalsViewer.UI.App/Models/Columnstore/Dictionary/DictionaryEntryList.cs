@@ -121,7 +121,20 @@ public sealed class DictionaryEntryList(DictionaryBlob blob, bool showDerivation
         set => throw new NotSupportedException();
     }
 
-    public int IndexOf(DictionaryEntryDetail item) => item.Index >= 0 && item.Index < Count ? item.Index : -1;
+    public int IndexOf(DictionaryEntryDetail item)
+        => indexes is null
+            ? item.Index >= 0 && item.Index < Count ? item.Index : -1
+            : Array.IndexOf(indexes, item.Index);
+
+    /// <summary>
+    /// The entry standing at a dictionary index, which a narrowed list holds at a row of its own
+    /// </summary>
+    public DictionaryEntryDetail? Find(int entryIndex)
+    {
+        var position = indexes is null ? entryIndex : Array.IndexOf(indexes, entryIndex);
+
+        return position >= 0 && position < Count ? this[position] : null;
+    }
 
     int IList.IndexOf(object? value) => value is DictionaryEntryDetail entry ? IndexOf(entry) : -1;
 

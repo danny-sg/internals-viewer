@@ -6,6 +6,7 @@
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     xmlns:page="using:InternalsViewer.UI.App.Controls.Page"
+    xmlns:hexView="using:InternalsViewer.UI.App.Controls.HexView"
     xmlns:segment="using:InternalsViewer.UI.App.Views.Columnstore.Tabs.Segment"
     xmlns:columnstore="using:InternalsViewer.UI.App.Controls.Columnstore"
     xmlns:controls="using:InternalsViewer.UI.App.Controls"
@@ -250,7 +251,7 @@
                 <ColumnDefinition Width="*"/>
             </Grid.ColumnDefinitions>
 
-            <page:HexViewControl x:Name="HexView"
+            <hexView:HexViewControl x:Name="HexView"
                              Grid.Column="0"
                              Width="455" 
                              VerticalAlignment="Stretch"

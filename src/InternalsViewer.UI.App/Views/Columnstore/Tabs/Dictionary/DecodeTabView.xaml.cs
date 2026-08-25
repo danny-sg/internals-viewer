@@ -102,6 +102,13 @@ public sealed partial class DecodeTabView : UserControl, IDisposable
             return;
         }
 
+        if (e.PropertyName is nameof(DictionaryTabViewModel.SelectedEntry))
+        {
+            SelectEntry();
+
+            return;
+        }
+
         if (e.PropertyName != nameof(DictionaryTabViewModel.SelectedSymbol))
         {
             return;
@@ -112,6 +119,26 @@ public sealed partial class DecodeTabView : UserControl, IDisposable
         if (!Equals(CodeTable.SelectedItem, selected))
         {
             CodeTable.SelectedItem = selected;
+        }
+    }
+
+    /// <summary>
+    /// Brings the table onto the entry something else picked, such as a handle followed to its value
+    /// </summary>
+    private void SelectEntry()
+    {
+        var entry = ViewModel.SelectedEntry;
+
+        if (Equals(PageEntries.SelectedItem, entry))
+        {
+            return;
+        }
+
+        PageEntries.SelectedItem = entry;
+
+        if (entry is not null)
+        {
+            PageEntries.ScrollIntoView(entry);
         }
     }
 
