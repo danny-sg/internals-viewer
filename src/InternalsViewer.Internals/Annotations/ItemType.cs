@@ -166,6 +166,7 @@ public enum ItemType
     RleEntrySize,
     RleValue,
     RleCount,
+    RleReadFlag,
     RleBitpackIndex,
 
     ValueAddress,

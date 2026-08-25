@@ -10,7 +10,7 @@ public sealed class SegmentBlob : DataStructure
 {
     public const int HeaderSize = SegmentBlobHeader.Size;
 
-    public const int EntrySize = SegmentBlobHeader.EntrySize;
+    public const int EntrySize = SegmentBlobHeader.NativeUnitSize;
 
     public ColumnSegment? Segment { get; set; }
 

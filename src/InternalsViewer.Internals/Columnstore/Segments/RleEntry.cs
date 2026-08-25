@@ -28,9 +28,13 @@
 ///     Value is the page slot of the first value to read, which is a 15 bit page index and a 14 bit slot index 
 /// 
 /// </remarks>
-public readonly record struct RleEntry(long Value, int Count, bool IsVariableLengthData = false)
+public readonly record struct RleEntry(long Value, int Count, bool IsVariableLengthData = false, int? ReadFlag = null)
 {
-    public bool IsValue => Value >= 0;
+    public const long VariableLengthRepeatFlag = 0x40000000;
+
+    public bool IsValue => ReadFlag is { } flag ? flag == 0 : Value >= 0;
+
+    public bool HasRepeatFlag => IsVariableLengthData && (Value & VariableLengthRepeatFlag) != 0;
 
     /// <summary>
     /// Where in the value store the run reads, which only a store by value segment addresses

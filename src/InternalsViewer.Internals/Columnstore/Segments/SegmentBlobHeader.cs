@@ -14,10 +14,9 @@ public sealed class SegmentBlobHeader : DataStructure
 {
     public const int Size = 48;
 
-    /// <summary>
-    /// RLE Bytes per entry
-    /// </summary>
-    public const int EntrySize = 8;
+    public const int NativeUnitSize = 8;
+
+    private const int VariableLengthBookmarkOverlap = 2;
 
     [DataStructureItem(ItemType.SegmentVersion)]
     public int Version { get; set; }
@@ -75,12 +74,12 @@ public sealed class SegmentBlobHeader : DataStructure
     /// header separates the two - segments that agree on every field here disagree on the width - so the parser
     /// works it out from base id and magnitude and sets it. Eight until it says otherwise.
     /// </remarks>
-    public int RleEntryBytes { get; set; } = EntrySize;
+    public int RleEntryBytes { get; set; } = NativeUnitSize;
 
     /// <summary>
-    /// RleArrayCount is held in eight byte units rather than entries
+    /// RleArrayCount is held in eight byte native units rather than entries
     /// </summary>
-    public int RleEntryCount => RleArrayCount * EntrySize / RleEntryBytes;
+    public int RleEntryCount => RleArrayCount * NativeUnitSize / RleEntryBytes;
 
     public bool IsVariableLengthData => RleType == SegmentRleType.VariableLengthData;
 
@@ -102,32 +101,20 @@ public sealed class SegmentBlobHeader : DataStructure
 
     public int BookmarkArrayOffset => PrologueSize;
 
-    /// <summary>
-    /// Units of the RLE array a store by value segment writes out, the prologue already covering the first two
-    /// </summary>
-    /// <remarks>
-    /// A nullable column raises RleArrayCount above the two a plain one carries and writes the extra units between
-    /// the bookmarks and the store, so the store moves down by them. Measured on uniqueidentifier, binary and
-    /// datetimeoffset columns at counts of 2, 3 and 4, whose stores sat at +0, +8 and +16.
-    /// </remarks>
-    public int TrailingRleUnits => IsVariableLengthData ? Math.Max(0, RleArrayCount - 2) : 0;
+    public int BookmarkEntryCount => IsVariableLengthData
+        ? Math.Max(0, BookmarkCount - VariableLengthBookmarkOverlap)
+        : BookmarkCount;
 
-    public int VariableLengthDataOffset
-        => BookmarkArrayOffset + (BookmarkCount * EntrySize) + (TrailingRleUnits * EntrySize);
+    public int RleArrayOffset => BookmarkArrayOffset + (BookmarkEntryCount * NativeUnitSize);
 
-    /// <summary>
-    /// Where the RLE array starts, a store by value segment writing it immediately before the store
-    /// </summary>
-    public int RleArrayOffset => IsVariableLengthData
-        ? VariableLengthDataOffset - (RleArrayCount * EntrySize)
-        : BookmarkArrayOffset + (BookmarkCount * EntrySize);
+    public int VariableLengthDataOffset => RleArrayOffset + (RleArrayCount * NativeUnitSize);
 
-    public int BitpackArrayOffset => RleArrayOffset + (RleArrayCount * EntrySize);
+    public int BitpackArrayOffset => RleArrayOffset + (RleArrayCount * NativeUnitSize);
 
     /// <summary>
     /// Size the header fields imply, which must equal on_disk_size and the blob length
     /// </summary>
-    public int ExpectedSize => Size + (EntrySize * (RleArrayCount + BookmarkCount + BitpackUnitCount));
+    public int ExpectedSize => Size + (NativeUnitSize * (RleArrayCount + BookmarkCount + BitpackUnitCount));
 
     /// <summary>
     /// Records the fields against the blob, the prologue being the opening bytes of it
