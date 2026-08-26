@@ -1,7 +1,6 @@
 using System.Collections.Immutable;
 using System.Text.RegularExpressions;
 using InternalsViewer.Execution.AccessPaths.Text;
-using InternalsViewer.Query.Plans;
 using InternalsViewer.Query.Results;
 
 namespace InternalsViewer.Query.Plans.Model;

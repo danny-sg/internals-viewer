@@ -66,6 +66,8 @@ public sealed class PlanNode
 
     public Dictionary<int, ThreadRuntime> CountersByThread { get; set; } = new();
 
+    public ExecutionMode ExecutionMode { get; set; }
+
     public long RowsProcessed => CountersByThread.Values.Sum(c => c.RowsProcessed);
 
     /// <summary>
@@ -79,4 +81,10 @@ public sealed class PlanNode
         && coordinator.ElapsedUs > 0
             ? coordinator.ElapsedUs
             : CountersByThread.Values.Select(c => c.ElapsedUs).DefaultIfEmpty(0).Max();
+
+    public BatchInfo? BatchInfo { get; set; }
+
+    public double? RowsPerBatch => BatchInfo is { BatchCount: > 0 } batch ? (double)RowsOutput / batch.BatchCount : null;
+
+    public string? Storage { get; set; }
 }

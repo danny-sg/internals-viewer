@@ -19,7 +19,7 @@ public static class ExecutionPlanParser
         var doc = XDocument.Parse(xml);
 
         var queryPlan = doc.Descendants()
-                           .FirstOrDefault(e => e.Name.LocalName == "QueryPlan") 
+                           .FirstOrDefault(e => e.Name.LocalName == "QueryPlan")
                         ?? throw new InvalidOperationException("QueryPlan element not found.");
 
         var planHandleId = planHandles.GetOrAdd(GetPlanHandle(doc));
@@ -116,7 +116,9 @@ public static class ExecutionPlanParser
             EstimatedRows = (long)Math.Round(GetDoubleAttribute(element, "EstimateRows") ?? 0),
             CountersByThread = ExtractThreadCounters(element),
             IoStats = ParseIoStats(element),
-            MemoryGrant = ParseMemoryGrant(element)
+            BatchInfo = ParseBatchInfo(element),
+            MemoryGrant = ParseMemoryGrant(element),
+            ExecutionMode = GetStringAttribute(element, "EstimatedExecutionMode") == "Row" ? ExecutionMode.Row : ExecutionMode.Batch
         };
 
         ParseRowCounts(element, node);
@@ -167,6 +169,12 @@ public static class ExecutionPlanParser
                 string.Equals(node.PhysicalOperator, "Clustered Index Seek", StringComparison.OrdinalIgnoreCase))
             {
                 node.PhysicalOperator = "Key Lookup";
+            }
+
+            if (string.Equals(node.Storage, "ColumnStore", StringComparison.OrdinalIgnoreCase)
+                && node.PhysicalOperator.Contains("Index Scan", StringComparison.OrdinalIgnoreCase))
+            {
+                node.PhysicalOperator = "Columnstore Index Scan";
             }
         }
         else if (string.Equals(node.PhysicalOperator, "Filter", StringComparison.OrdinalIgnoreCase))
@@ -276,11 +284,41 @@ public static class ExecutionPlanParser
             var read = GetLongAttribute(counter, "ActualRowsRead") ?? 0;
             var output = GetLongAttribute(counter, "ActualRows") ?? 0;
             var elapsedMs = GetDoubleAttribute(counter, "ActualElapsedms") ?? 0;
+            var executionMode = GetStringAttribute(counter, "ActualExecutionMode") == "Row" ? ExecutionMode.Row : ExecutionMode.Batch;
 
-            counters[thread] = new ThreadRuntime(read > 0 ? read : output, (long)(elapsedMs * 1000));
+            var batches = GetLongAttribute(counter, "Batches") ?? 0;
+
+            counters[thread] = new ThreadRuntime(read > 0 ? read : output, (long)(elapsedMs * 1000), executionMode, batches);
         }
 
         return counters;
+    }
+
+    private static BatchInfo? ParseBatchInfo(XElement relOp)
+    {
+        var runtime = relOp.Elements().FirstOrDefault(e => e.Name.LocalName == "RunTimeInformation");
+
+        if (runtime == null)
+        {
+            return null;
+        }
+
+        var counters = runtime.Elements().Where(e => e.Name.LocalName == "RunTimeCountersPerThread").ToList();
+
+        string[] attributes = ["Batches", "SegmentReads", "SegmentSkips", "ActualLocallyAggregatedRows"];
+
+        if (!counters.Any(c => attributes.Any(a => c.Attribute(a) != null)))
+        {
+            return null;
+        }
+
+        return new BatchInfo
+        {
+            BatchCount = counters.Sum(c => GetLongAttribute(c, "Batches") ?? 0),
+            SegmentReads = counters.Sum(c => GetLongAttribute(c, "SegmentReads") ?? 0),
+            SegmentSkips = counters.Sum(c => GetLongAttribute(c, "SegmentSkips") ?? 0),
+            LocallyAggregatedRows = counters.Sum(c => GetLongAttribute(c, "ActualLocallyAggregatedRows") ?? 0)
+        };
     }
 
     private static void ParseRowCounts(XElement relOp, PlanNode node)
@@ -390,6 +428,7 @@ public static class ExecutionPlanParser
         node.Schema = GetAttribute("Schema", objectElement);
         node.Table = GetAttribute("Table", objectElement);
         node.Index = GetAttribute("Index", objectElement);
+        node.Storage = GetAttribute("Storage", objectElement);
     }
 
     /// <summary>

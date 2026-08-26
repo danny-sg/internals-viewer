@@ -59,7 +59,7 @@ public static class SegmentBlobParser
             Header = ParseHeader(span)
         };
 
-        blob.Header.RleValueSize = GetRleValueSize(segment);
+        blob.Header.RleValueSize = CalculateRleValueSize(segment);
 
         blob.Header.IsMarkEnabled = blob.IsMarkEnabled;
 
@@ -160,7 +160,7 @@ public static class SegmentBlobParser
     /// so an id past int.MaxValue cannot fit and the entry doubles. A dictionary segment leaves base and magnitude
     /// at -1 and holds slot numbers, which are always small. Measured against 400 segments, 32 of them wide.
     /// </remarks>
-    private static int GetRleValueSize(ColumnSegment? segment)
+    private static int CalculateRleValueSize(ColumnSegment? segment)
     {
         if (segment is null)
         {

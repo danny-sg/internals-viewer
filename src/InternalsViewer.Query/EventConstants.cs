@@ -24,7 +24,28 @@ internal static class EventConstants
         "sqlserver.query_post_execution_showplan",
 
         // Transaction lifecycle (also used for lock closing)
-        "sqlserver.sql_transaction"
+        "sqlserver.sql_transaction",
+    ];
+
+    public static readonly string[] BatchModeEvents =
+    [
+        // Columnstore events
+        "sqlserver.query_execution_column_store_segment_scan_started",
+        "sqlserver.query_execution_column_store_segment_scan_finished",
+        "sqlserver.query_execution_column_store_rowgroup_scan_finished",
+        "sqlserver.column_store_expression_filter_bitmap_set",
+        "sqlserver.column_store_segment_eliminate",
+        "sqlserver.column_store_rowgroup_skip_delete_buffer",
+
+        // Object pool, showing the first touch cost of a segment or dictionary - not keyed on a plan node
+        "sqlserver.column_store_object_pool_hit",
+        "sqlserver.column_store_object_pool_miss",
+
+        // Batch mode operators
+        "sqlserver.query_execution_batch_filter",
+        "sqlserver.query_execution_batch_global_string_dictionary",
+        "sqlserver.query_execution_batch_hash_aggregation_finished",
+        "sqlserver.batch_hash_join_separate_hash_column"
     ];
 
     public static readonly string[] LockEvents =

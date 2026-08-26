@@ -1,11 +1,13 @@
 ﻿using System.Diagnostics.CodeAnalysis;
 using InternalsViewer.Execution.Interfaces;
 using InternalsViewer.Execution.Iterators;
-using InternalsViewer.Execution.Iterators.Aggregation;
-using InternalsViewer.Execution.Iterators.DataAccess;
-using InternalsViewer.Execution.Iterators.Joins;
-using InternalsViewer.Execution.Iterators.Row;
-using InternalsViewer.Execution.Iterators.Windowing;
+using InternalsViewer.Execution.Iterators.BatchMode;
+using InternalsViewer.Execution.Iterators.BatchMode.DataAccess;
+using InternalsViewer.Execution.Iterators.RowMode.Aggregation;
+using InternalsViewer.Execution.Iterators.RowMode.DataAccess;
+using InternalsViewer.Execution.Iterators.RowMode.Joins;
+using InternalsViewer.Execution.Iterators.RowMode.Row;
+using InternalsViewer.Execution.Iterators.RowMode.Windowing;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace InternalsViewer.Execution;
@@ -33,5 +35,8 @@ public static class ServiceRegistration
         services.AddTransient<FilterIterator>();
         services.AddTransient<SegmentIterator>();
         services.AddTransient<SequenceProjectIterator>();
+
+        services.AddTransient<ColumnstoreScanIterator>();
+        services.AddTransient<BatchToRowIterator>();
     }
 }

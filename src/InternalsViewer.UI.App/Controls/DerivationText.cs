@@ -97,11 +97,12 @@ public static class DerivationText
         }
 
         AddResult(text, derivation, ref position);
+
+        Highlight(text, names, palette.NameBadgeBrush, palette.BadgeTextBrush);
+
+        Highlight(text, values, palette.ValueBadgeBrush, palette.BadgeTextBrush);
     }
 
-    /// <summary>
-    /// One operand, being the operator that brought it in and the split badge naming it and what it held
-    /// </summary>
     private static void Append(TextBlock text,
                                DerivationStep step,
                                Palette palette,

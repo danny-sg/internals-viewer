@@ -23,6 +23,8 @@ public sealed record EventOptions
 
     public bool IncludeLatch { get; set; } = true;
 
+    public bool IncludeBatchMode { get; set; }
+
     public bool IncludeSystemObjects { get; set; } 
 
     /// <summary>

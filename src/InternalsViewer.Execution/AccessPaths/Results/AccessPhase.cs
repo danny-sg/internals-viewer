@@ -1,4 +1,4 @@
-namespace InternalsViewer.Execution.AccessPaths.Results;
+﻿namespace InternalsViewer.Execution.AccessPaths.Results;
 
 public enum AccessPhase
 {
@@ -34,5 +34,7 @@ public enum AccessPhase
     Compute,
     Filter,
     Segment,
+    Partition,
+    RowGroup,
     Rank
 }

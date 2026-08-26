@@ -6,11 +6,11 @@ using InternalsViewer.Execution.AccessPaths.Results;
 using InternalsViewer.Execution.AccessPaths.Results.Steps;
 using InternalsViewer.Execution.AccessPaths.Search;
 using InternalsViewer.Execution.AccessPaths.Values;
-using InternalsViewer.Execution.Iterators.Joins;
-using InternalsViewer.Execution.Iterators.Stepping;
+using InternalsViewer.Execution.Iterators.RowMode.Stepping;
 using InternalsViewer.Internals.Engine.Database;
 using InternalsViewer.Internals.Interfaces.Engine;
 using InternalsViewer.Internals.Tests.Helpers;
+using InternalsViewer.Execution.Iterators.RowMode.Joins;
 
 namespace InternalsViewer.Execution.Tests.IntegrationTests.Services.Joins;
 

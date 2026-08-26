@@ -231,6 +231,12 @@ public enum SymbolCategory : byte
     Storage,
 
     [Category(
+        "Columnstore",
+        Description = "Column segment, dictionary and row group access in the storage engine",
+        ForegroundColor = "#2E8B90")]
+    ColumnStore,
+
+    [Category(
         "XML",
         Description = "XML data type conversion, serialisation and XML index access",
         ForegroundColor = "#8E44AD")]

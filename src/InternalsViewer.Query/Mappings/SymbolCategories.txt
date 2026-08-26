@@ -1,4 +1,4 @@
-# Symbol -> SymbolCategory mappings: what a call-stack frame IS, for colouring and for hiding infrastructure.
+﻿# Symbol -> SymbolCategory mappings: what a call-stack frame IS, for colouring and for hiding infrastructure.
 #
 # Pipe-delimited: Module|Class|Function|Category. Lines starting with # and blank lines are ignored.
 #   - Matching per field: "CQScan" = exact (case-insensitive), "CQScan*" = starts-with, "*Scan" = ends-with,
@@ -455,3 +455,80 @@ sqlmin|AllocScan|*|PageAccess
 *|*|SendBlob*|LargeObjectStorage
 
 *|*|PqsWrapQScan*|QueryExecution
+
+# -----------------------------------------------------------------------------------------------------------------------------------------
+# Columnstore
+# -----------------------------------------------------------------------------------------------------------------------------------------
+# The storage engine side of a batch mode scan. A columnstore scan opens a column data set per column, walks row
+# groups through a row bucket scanner, and pulls each segment and dictionary out of LOB storage on first use — so a
+# scan's first batch carries the deserialization of everything it touches, and the reads underneath it are blob
+# reads rather than index reads.
+
+# The scan session: one column set over the columns the query asked for, each with a data set of its own.
+*|ColumnsetSS*|*|ColumnStore
+*|NormalColumnDataSet*|*|ColumnStore
+*|ColumnDataSetSession*|*|ColumnStore
+*|BaseColumnDataSetSession*|*|ColumnStore
+
+# Row groups, and the bucket scanner that walks them a batch at a time. Compile builds the per-column read plan for
+# the row group, which is where the segment scan event is raised.
+*|RowGroupManager*|*|ColumnStore
+*|RowBucketScanner*|*|ColumnStore
+*|RowBucketProcessorNew*|*|ColumnStore
+*|*|PopulateRowGroupIdRangeObject*|ColumnStore
+
+# Segments and dictionaries deserialized out of LOB storage, and the pool that keeps them for the scan's lifetime.
+*|ColumnStoreObjectManager*|*|ColumnStore
+*|ColumnStoreObjectPool*|*|ColumnStore
+*|ColumnStoreObjectRef*|*|ColumnStore
+*|ColumnStoreBlobManager*|*|ColumnStore
+*|ColumnStoreLockBytesSS*|*|ColumnStore
+*|DeserializeFromDiskConstructor*|*|ColumnStore
+*|ColumnSegmentBuilder*|*|ColumnStore
+*|ValueHashDictionaryBuilder*|*|ColumnStore
+*|StringDictionaryBuilder*|*|ColumnStore
+*|DataSegmentTranscoder*|*|ColumnStore
+*|ExternalTranscoderSegmentInserter*|*|ColumnStore
+
+# The dictionary a batch mode operator reads through, which is the local one for the row group being scanned.
+*|CBpLocalDictionaryManager*|*|ColumnStore
+
+# Deleted rows, carried beside the segments as a bitmap.
+*|DeleteBitmap*|*|ColumnStore
+*|DeleteBuffer*|*|ColumnStore
+
+# Row group flush locks. Named for the columnstore structure they guard, but what the frame does is take a lock.
+*|HoBtRowGroupCollectionAccess*|*|Locking
+*|AutoHoBtRowGroupFlushLock*|*|Locking
+*|*|AcquireHoBtRowGroupLock*|Locking
+
+# -----------------------------------------------------------------------------------------------------------------------------------------
+# Batch mode
+# -----------------------------------------------------------------------------------------------------------------------------------------
+# Bp is the batch processing prefix: CBpQScan* are the batch mode iterators, parallel to the row mode CQScan* above.
+# CQScanBatchHelper is the join between the two - a row mode parent pulling batches from a batch mode subtree.
+sqlmin|CQScanBatchHelper|*|QueryOperator
+sqlmin|CBpQScan|*|QueryOperator
+sqlmin|CBpQScan*|*|PhysicalOperator
+sqlmin|CBpagExpr*|*|ExpressionEvaluation
+sqlmin|CBpagBatchProcessing*|*|PhysicalOperator
+sqlmin|CBpHashTable*|*|PhysicalOperator
+sqlmin|CBpBatchScanAccessor*|*|RowAccess
+sqlmin|RbpExpression*|*|ExpressionEvaluation
+
+# The batch itself, its vectors, and the off-batch memory a value too wide for a vector slot is held in.
+sqlmin|CBpBatch*|*|Dataset
+sqlmin|CBatchVectorInserter*|*|Dataset
+sqlmin|CBpDeepDataContext*|*|Dataset
+sqlmin|CBpRowCacheDeepData*|*|Dataset
+sqlmin|CValRunTimeDeepData*|*|Dataset
+sqlmin|CBpNormalizationHelper*|*|ExpressionEvaluation
+sqlmin|CBatchToRowDeserializer*|*|Dataset
+sqlmin|CBatchAdapterBaseHelpers*|*|Dataset
+
+# Metadata the optimizer reads before any of this: row counts and index sizes, which for a columnstore go through
+# the row group collection rather than a b-tree root.
+*|HoBtFactory*|*|Metadata
+*|COpArg*|*|Optimization
+*|*|GetIndexSizeData*|Metadata
+*|*|GetRealIndexSizeData*|Metadata

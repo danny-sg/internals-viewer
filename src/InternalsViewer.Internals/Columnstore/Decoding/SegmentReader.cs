@@ -47,6 +47,16 @@ public sealed class SegmentReader(ColumnSegment segment,
     public object? GetValue(int rowOrdinal)
         => ColumnstoreValueConverter.Convert(GetRawValue(rowOrdinal), Segment.Column?.Structure);
 
+    /// <summary>
+    /// Gets the value a data id names, for a caller holding the id rather than a row ordinal
+    /// </summary>
+    /// <remarks>
+    /// Wide values are located by value ordinal rather than by data id, so a segment holding them cannot be read
+    /// this way.
+    /// </remarks>
+    public object? GetValueForDataId(long dataId)
+        => ColumnstoreValueConverter.Convert(Decoder.Decode(dataId), Segment.Column?.Structure);
+
     public IEnumerable<object?> ReadAll()
         => DataIds.ReadAll()
                   .Select(Decoder.Decode)

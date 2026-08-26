@@ -190,6 +190,52 @@ public sealed class ColumnstoreService(IRecordReader recordReader, ILobDataServi
         return new RowGroupReader(rowGroup, readers, skipped);
     }
 
+    public async Task<DeletedRows> GetDeletedRows(DatabaseSource database,
+                                                 ColumnStoreIndex index,
+                                                 CancellationToken cancellationToken)
+    {
+        if (index.DeleteBitmapAllocationUnit is not { } allocationUnit || allocationUnit.FirstPage == PageAddress.Empty)
+        {
+            return DeletedRows.None;
+        }
+
+        var structure = TableStructureProvider.GetTableStructure(database, allocationUnit.AllocationUnitId);
+
+        var records = await RecordReader.Read(database, allocationUnit.FirstPage, structure, cancellationToken);
+
+        var byRowGroup = new Dictionary<int, List<int>>();
+
+        foreach (var record in records)
+        {
+            if (record.IsGhost || record.Fields.Count < 2)
+            {
+                continue;
+            }
+
+            var rowGroupId = record.Fields[0].GetValue<int>();
+
+            var rowOrdinal = record.Fields[1].GetValue<int>();
+
+            if (!byRowGroup.TryGetValue(rowGroupId, out var rows))
+            {
+                rows = [];
+
+                byRowGroup[rowGroupId] = rows;
+            }
+
+            rows.Add(rowOrdinal);
+        }
+
+        return new DeletedRows(byRowGroup.ToDictionary(g => g.Key, g =>
+        {
+            var rows = g.Value.ToArray();
+
+            Array.Sort(rows);
+
+            return rows;
+        }));
+    }
+
     public async Task ResolveDeltaStoreRowGroups(DatabaseSource database, CancellationToken cancellationToken)
     {
         var deltaStores = database.AllocationUnits

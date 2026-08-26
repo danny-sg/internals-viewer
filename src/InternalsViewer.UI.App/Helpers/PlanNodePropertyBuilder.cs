@@ -1,4 +1,4 @@
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
 using InternalsViewer.Execution.AccessPaths.Text;
@@ -22,6 +22,7 @@ public static class PlanNodePropertyBuilder
 
         operatorGroup.Children.Add(new PlanNodeProperty("Physical Operator", node.PhysicalOperator));
         operatorGroup.Children.Add(new PlanNodeProperty("Logical Operator", node.LogicalOperator));
+        operatorGroup.Children.Add(new PlanNodeProperty("Execution Mode", node.ExecutionMode.ToString()));
         operatorGroup.Children.Add(new PlanNodeProperty("Node Id", node.NodeId.ToString(CultureInfo.InvariantCulture)));
 
         if ((OperatorClassifier.IsNestedLoop(node) || OperatorClassifier.IsMergeJoin(node)) && node.Children.Count >= 2)
@@ -100,6 +101,93 @@ public static class PlanNodePropertyBuilder
             }
 
             result.Add(storageGroup);
+        }
+
+        if (node.BatchInfo is { } batchInfo)
+        {
+            var batchGroup = new PlanNodeProperty("Batch Mode", string.Empty);
+
+            batchGroup.Children.Add(new PlanNodeProperty("Batches", batchInfo.BatchCount.ToString("N0", CultureInfo.InvariantCulture)));
+
+            if (node.RowsPerBatch is { } rowsPerBatch)
+            {
+                batchGroup.Children.Add(new PlanNodeProperty("Rows Per Batch", rowsPerBatch.ToString("N1", CultureInfo.InvariantCulture)));
+            }
+
+            if (batchInfo.SegmentReads > 0 || batchInfo.SegmentSkips > 0)
+            {
+                batchGroup.Children.Add(new PlanNodeProperty("Segment Reads",
+                                                            batchInfo.SegmentReads.ToString("N0", CultureInfo.InvariantCulture)));
+
+                batchGroup.Children.Add(new PlanNodeProperty("Segments Skipped",
+                                                            batchInfo.SegmentSkips.ToString("N0", CultureInfo.InvariantCulture)));
+            }
+
+            if (batchInfo.LocallyAggregatedRows > 0)
+            {
+                batchGroup.Children.Add(new PlanNodeProperty("Locally Aggregated Rows",
+                                                             batchInfo.LocallyAggregatedRows.ToString("N0", CultureInfo.InvariantCulture)));
+            }
+
+            if (batchInfo.SegmentsEliminated is { } eliminated)
+            {
+                batchGroup.Children.Add(new PlanNodeProperty("Segments Eliminated",
+                                                             eliminated.ToString("N0", CultureInfo.InvariantCulture)));
+            }
+
+            if (batchInfo.PureRowBuckets is not null || batchInfo.ImpureRowBuckets is not null)
+            {
+                batchGroup.Children.Add(new PlanNodeProperty("Pure Row Buckets",
+                                                             (batchInfo.PureRowBuckets ?? 0).ToString("N0", CultureInfo.InvariantCulture)));
+
+                batchGroup.Children.Add(new PlanNodeProperty("Impure Row Buckets",
+                                                             (batchInfo.ImpureRowBuckets ?? 0).ToString("N0", CultureInfo.InvariantCulture)));
+            }
+
+            if (!string.IsNullOrEmpty(batchInfo.CpuInstructionSet))
+            {
+                batchGroup.Children.Add(new PlanNodeProperty("Instruction Set", batchInfo.CpuInstructionSet));
+            }
+
+            if (batchInfo.IsFilterOnCompressedDataUsed is { } compressedFilter)
+            {
+                batchGroup.Children.Add(BoolProperty("Filter On Compressed Data", compressedFilter));
+            }
+
+            if (batchInfo.IsDeepDataPossible is { } deepDataPossible)
+            {
+                batchGroup.Children.Add(BoolProperty("Deep Data Possible", deepDataPossible));
+            }
+
+            if (batchInfo.IsFastComparisonUsed is { } fastComparison)
+            {
+                batchGroup.Children.Add(BoolProperty("Fast Comparison", fastComparison));
+            }
+
+            if (batchInfo.IsLocalAggregationUsed is { } localAggregation)
+            {
+                batchGroup.Children.Add(BoolProperty("Local Aggregation", localAggregation));
+            }
+
+            if (batchInfo.IsPrefiltered is { } prefiltered)
+            {
+                batchGroup.Children.Add(BoolProperty("Prefiltered", prefiltered));
+            }
+
+            if (batchInfo.IsGlobalDictionaryUsed is { } globalDictionary)
+            {
+                batchGroup.Children.Add(BoolProperty("Global Dictionary", globalDictionary));
+            }
+
+            if (!string.IsNullOrEmpty(batchInfo.GlobalDictionaryKeyColumns))
+            {
+                batchGroup.Children.Add(new PlanNodeProperty("Dictionary Key Columns", batchInfo.GlobalDictionaryKeyColumns)
+                {
+                    IsValueMonospace = true
+                });
+            }
+
+            result.Add(batchGroup);
         }
 
         if (node.PredicateInfo is { } predicateInfo)

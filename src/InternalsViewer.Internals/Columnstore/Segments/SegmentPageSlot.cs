@@ -3,10 +3,6 @@ namespace InternalsViewer.Internals.Columnstore.Segments;
 /// <summary>
 /// Address of a value in a variable length data store, being its page and its slot on that page
 /// </summary>
-/// <remarks>
-/// Written the way a row identifier is, the store being addressed rather than searched because each of its pages
-/// is compressed on its own and a reader wants to expand only the one holding the value it is after.
-/// </remarks>
 public readonly record struct SegmentPageSlot(int Page, int Slot)
 {
     public override string ToString() => $"({Page}:{Slot})";

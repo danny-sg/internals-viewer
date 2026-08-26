@@ -1,4 +1,4 @@
-# Frame -> (Iterator, PlanOperator) mappings: which plan operator a frame belongs to.
+﻿# Frame -> (Iterator, PlanOperator) mappings: which plan operator a frame belongs to.
 #
 # Pipe-delimited: Module|Class|Function|Iterator|PlanOperator. Lines starting with # and blank lines are ignored.
 # Matching per field is the same glob syntax as SymbolCategories.txt: "CQScan" = exact (case-insensitive),
@@ -73,3 +73,20 @@ sqlmin|CQScanSpool*|*|Spool|*Spool
 sqlmin|CQScanExchange*|*|Parallelism|Parallelism
 sqlmin|CQScanSeq*|*|Sequence|Sequence
 sqlmin|CQScanUpdate*|*|Update|*Update
+
+# Batch mode iterators. Bp is the batch processing prefix and these are the batch equivalents of the CQScan* rules
+# above, so the same plan operator names appear on both - a Hash Match is a Hash Match whichever mode ran it.
+# CQScanBatchHelper is the boundary between the modes rather than a node of its own: a row mode parent asks it for a
+# row and it pulls a batch from the batch mode subtree beneath, so it carries a badge and no plan operator.
+sqlmin|CQScanBatchHelper|*|Batch Mode Adapter|
+sqlmin|CBpQScan|*|Batch Iterator|
+sqlmin|CBpQScanColumnStoreScan*|*|Columnstore Index Scan|*Columnstore Index Scan
+sqlmin|CBpQScanRowStoreScan*|*|Scan|*Index Scan,Table Scan
+sqlmin|CBpQScanHashJoin*|*|Hash Match|Hash Match
+sqlmin|CBpQScanHashAgg*|*|Hash Match (Aggregate)|Hash Match
+sqlmin|CBpQScanSort*|*|Sort|*Sort
+sqlmin|CBpQScanWindowAgg*|*|Window Aggregate|Window Aggregate
+sqlmin|CBpQScanProject*|*|Compute Scalar|Compute Scalar
+sqlmin|CBpQScanConcat*|*|Concatenation|Concatenation
+sqlmin|CBpQScanFilter*|*|Filter|Filter
+sqlmin|CBpQScanTop*|*|Top|Top

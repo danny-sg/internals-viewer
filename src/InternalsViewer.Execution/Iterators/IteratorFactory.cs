@@ -1,10 +1,10 @@
 ﻿using InternalsViewer.Execution.AccessPaths.Definitions;
 using InternalsViewer.Execution.Interfaces;
-using InternalsViewer.Execution.Iterators.Aggregation;
-using InternalsViewer.Execution.Iterators.DataAccess;
-using InternalsViewer.Execution.Iterators.Joins;
-using InternalsViewer.Execution.Iterators.Row;
-using InternalsViewer.Execution.Iterators.Windowing;
+using InternalsViewer.Execution.Iterators.RowMode.Aggregation;
+using InternalsViewer.Execution.Iterators.RowMode.DataAccess;
+using InternalsViewer.Execution.Iterators.RowMode.Joins;
+using InternalsViewer.Execution.Iterators.RowMode.Row;
+using InternalsViewer.Execution.Iterators.RowMode.Windowing;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace InternalsViewer.Execution.Iterators;

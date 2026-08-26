@@ -39,6 +39,11 @@ public sealed class RowGroupReader(RowGroup rowGroup, IReadOnlyList<SegmentReade
         return reader.GetValue(rowOrdinal);
     }
 
+    /// <summary>
+    /// Gets the value a data id names for a column, the entry point a batch mode caller needs
+    /// </summary>
+    public object? GetValueForDataId(int columnIndex, long dataId) => Readers[columnIndex].GetValueForDataId(dataId);
+
     public IEnumerable<object?[]> ReadAll()
     {
         for (var i = 0; i < RowCount; i++)

@@ -10,11 +10,11 @@ using InternalsViewer.Execution.AccessPaths.Values;
 using InternalsViewer.Internals.Engine.Database;
 using InternalsViewer.Internals.Engine.Database.Enums;
 using InternalsViewer.Internals.Interfaces.Services.Loaders.Engine;
-using InternalsViewer.Execution.Iterators.Joins;
-using InternalsViewer.Execution.Iterators.Stepping;
 using InternalsViewer.Internals.Tests.Helpers;
 using InternalsViewer.Execution.AccessPaths.Joins.Hash;
 using InternalsViewer.Execution.AccessPaths.Results.Steps;
+using InternalsViewer.Execution.Iterators.RowMode.Joins;
+using InternalsViewer.Execution.Iterators.RowMode.Stepping;
 
 namespace InternalsViewer.Execution.Tests.IntegrationTests.Services.Joins;
 
