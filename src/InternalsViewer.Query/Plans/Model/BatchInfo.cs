@@ -20,6 +20,8 @@ public sealed class BatchInfo
 
     public string? GlobalDictionaryKeyColumns { get; set; }
 
+    public List<SegmentScanInfo> SegmentScans { get; } = [];
+
     public string? CpuInstructionSet { get; set; }
 
     public bool? IsFilterOnCompressedDataUsed { get; set; }

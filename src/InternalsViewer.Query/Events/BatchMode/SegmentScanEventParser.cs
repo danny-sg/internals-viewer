@@ -15,7 +15,8 @@ internal static class SegmentScanEventParser
             ThreadId = e.GetInt("thread_id") ?? 0,
             NodeId = e.GetInt("node_id") ?? 0,
             RowGroupId = e.GetLong("rowgroup_id") ?? 0,
-            ColumnId = e.GetInt("rowset_column_id") ?? 0
+            ColumnId = e.GetInt("rowset_column_id") ?? 0,
+            IsScanStart = !e.Name.EndsWith("finished", StringComparison.Ordinal)
         };
 
         if (e.Name.EndsWith("finished", StringComparison.Ordinal))

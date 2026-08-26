@@ -6,46 +6,44 @@ public static class SegmentScanCollapser
 {
     public static List<EngineEvent> Collapse(IReadOnlyList<EngineEvent> events)
     {
-        var started = new Dictionary<(int Node, long RowGroup, int Column, int Thread), SegmentScanEvent>();
+        var starts = new Dictionary<(int Node, long RowGroup, int Column, int Thread), Queue<SegmentScanEvent>>();
 
-        var result = new List<EngineEvent>(events.Count);
-
-        foreach (var engineEvent in events)
+        foreach (var scan in events.OfType<SegmentScanEvent>().Where(s => s.IsScanStart))
         {
-            if (engineEvent is not SegmentScanEvent scan)
+            if (!starts.TryGetValue(KeyOf(scan), out var queue))
             {
-                result.Add(engineEvent);
+                queue = new Queue<SegmentScanEvent>();
 
-                continue;
+                starts[KeyOf(scan)] = queue;
             }
 
-            var key = (scan.NodeId, scan.RowGroupId, scan.ColumnId, scan.ThreadId);
-
-            if (scan.Name.EndsWith("started", StringComparison.Ordinal))
-            {
-                started[key] = scan;
-
-                result.Add(scan);
-
-                continue;
-            }
-
-            if (!started.Remove(key, out var begin))
-            {
-                result.Add(scan);
-
-                continue;
-            }
-
-            begin.Name = "Columnstore segment scan";
-            begin.InputRows = scan.InputRows;
-            begin.OutputRows = scan.OutputRows;
-            begin.PureRowBuckets = scan.PureRowBuckets;
-            begin.ImpureRowBuckets = scan.ImpureRowBuckets;
-            begin.DurationUs = scan.DurationUs > 0 ? scan.DurationUs : Math.Max(0, scan.TimeUs - begin.TimeUs);
-            begin.FoldedFrom = scan;
+            queue.Enqueue(scan);
         }
 
-        return result;
+        var folded = new HashSet<EngineEvent>(ReferenceEqualityComparer.Instance);
+
+        foreach (var scan in events.OfType<SegmentScanEvent>().Where(s => !s.IsScanStart))
+        {
+            if (!starts.TryGetValue(KeyOf(scan), out var queue) || queue.Count == 0)
+            {
+                continue;
+            }
+
+            var start = queue.Dequeue();
+
+            start.InputRows = scan.InputRows;
+            start.OutputRows = scan.OutputRows;
+            start.PureRowBuckets = scan.PureRowBuckets;
+            start.ImpureRowBuckets = scan.ImpureRowBuckets;
+            start.DurationUs = scan.DurationUs > 0 ? scan.DurationUs : Math.Max(0, scan.TimeUs - start.TimeUs);
+            start.FoldedFrom = scan;
+
+            folded.Add(scan);
+        }
+
+        return [.. events.Where(e => !folded.Contains(e))];
     }
+
+    private static (int, long, int, int) KeyOf(SegmentScanEvent scan)
+        => (scan.NodeId, scan.RowGroupId, scan.ColumnId, scan.ThreadId);
 }

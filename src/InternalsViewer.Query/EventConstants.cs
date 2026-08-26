@@ -37,10 +37,6 @@ internal static class EventConstants
         "sqlserver.column_store_segment_eliminate",
         "sqlserver.column_store_rowgroup_skip_delete_buffer",
 
-        // Object pool, showing the first touch cost of a segment or dictionary - not keyed on a plan node
-        "sqlserver.column_store_object_pool_hit",
-        "sqlserver.column_store_object_pool_miss",
-
         // Batch mode operators
         "sqlserver.query_execution_batch_filter",
         "sqlserver.query_execution_batch_global_string_dictionary",

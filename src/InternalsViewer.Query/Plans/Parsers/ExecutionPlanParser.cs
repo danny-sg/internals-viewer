@@ -118,7 +118,7 @@ public static class ExecutionPlanParser
             IoStats = ParseIoStats(element),
             BatchInfo = ParseBatchInfo(element),
             MemoryGrant = ParseMemoryGrant(element),
-            ExecutionMode = GetStringAttribute(element, "EstimatedExecutionMode") == "Row" ? ExecutionMode.Row : ExecutionMode.Batch
+            ExecutionMode = GetStringAttribute(element, "EstimatedExecutionMode") == "Batch" ? ExecutionMode.Batch : ExecutionMode.Row
         };
 
         ParseRowCounts(element, node);

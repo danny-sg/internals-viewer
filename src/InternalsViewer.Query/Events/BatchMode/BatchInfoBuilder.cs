@@ -61,6 +61,30 @@ public static class BatchInfoBuilder
                 info.ImpureRowBuckets = Add(info.ImpureRowBuckets, scan.ImpureRowBuckets);
             }
 
+            if (!scan.IsScanStart)
+            {
+                return;
+            }
+
+            info.SegmentScans.Add(new SegmentScanInfo
+            {
+                RowGroupId = scan.RowGroupId,
+                ColumnId = scan.ColumnId,
+                EncodingType = scan.EncodingType.ToString(),
+                CompressedDataType = scan.CompressedDataType.ToString(),
+                FilterOnCompressedDataType = scan.FilterOnCompressedDataType.ToString(),
+                InstructionSet = scan.CpuInstructionSet.ToString(),
+                BitPacking = scan.BitPacking,
+                BaseId = scan.BaseId,
+                Magnitude = scan.Magnitude,
+                MinDataId = scan.MinDataId,
+                MaxDataId = scan.MaxDataId,
+                PrimaryDictionaryValueCount = scan.PrimaryDictionaryValueCount,
+                SecondaryDictionaryValueCount = scan.SecondaryDictionaryValueCount,
+                IsDeepDataPossible = scan.IsDeepDataPossible,
+                IsNullable = scan.IsNullable
+            });
+
             return;
         }
 

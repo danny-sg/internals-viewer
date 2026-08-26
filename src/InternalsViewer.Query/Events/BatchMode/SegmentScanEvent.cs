@@ -4,6 +4,8 @@ namespace InternalsViewer.Query.Events.BatchMode;
 
 public sealed record SegmentScanEvent : EngineEvent
 {
+    public bool IsScanStart { get; set; }
+
     public int NodeId { get; set; }
 
     public long RowGroupId { get; set; }

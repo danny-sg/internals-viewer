@@ -1,5 +1,6 @@
 ﻿using System.Collections.Generic;
 using System.Globalization;
+using System.Text;
 using System.Linq;
 using InternalsViewer.Execution.AccessPaths.Text;
 using InternalsViewer.Query.Events.Operators;
@@ -103,7 +104,7 @@ public static class PlanNodePropertyBuilder
             result.Add(storageGroup);
         }
 
-        if (node.IsBatchMode && node.BatchInfo is { } batchInfo)
+        if (node is { IsBatchMode: true, BatchInfo: { } batchInfo })
         {
             var batchGroup = new PlanNodeProperty("Batch Mode", string.Empty);
 
@@ -146,7 +147,7 @@ public static class PlanNodePropertyBuilder
 
             if (batchInfo.IsFilterOnCompressedDataUsed is { } compressedFilter)
             {
-                batchGroup.Children.Add(BoolProperty("Filter On Compressed Data", compressedFilter));
+                batchGroup.Children.Add(BoolProperty("Compressed Data Filter", compressedFilter));
             }
 
             if (batchInfo.IsDeepDataPossible is { } deepDataPossible)
@@ -180,6 +181,35 @@ public static class PlanNodePropertyBuilder
                 {
                     IsValueMonospace = true
                 });
+            }
+
+            if (batchInfo.SegmentScans.Count > 0)
+            {
+                var rowGroups = new PlanNodeProperty("Row Groups", batchInfo.SegmentScans.Select(s => s.RowGroupId)
+                                                                                         .Distinct()
+                                                                                         .Count()
+                                                                                         .ToString(CultureInfo.InvariantCulture));
+
+                foreach (var rowGroup in batchInfo.SegmentScans.GroupBy(s => s.RowGroupId).OrderBy(g => g.Key))
+                {
+                    var segments = rowGroup.OrderBy(s => s.ColumnId).ToList();
+
+                    var rowGroupProperty = new PlanNodeProperty($"Row Group {rowGroup.Key}",
+                                                                $"{segments.Count} segments");
+
+                    foreach (var segment in segments)
+                    {
+                        rowGroupProperty.Children.Add(new PlanNodeProperty($"Column {segment.ColumnId}",
+                                                                          SegmentSummary(segment))
+                        {
+                            Tooltip = SegmentDetail(segment)
+                        });
+                    }
+
+                    rowGroups.Children.Add(rowGroupProperty);
+                }
+
+                batchGroup.Children.Add(rowGroups);
             }
 
             result.Add(batchGroup);
@@ -540,6 +570,26 @@ public static class PlanNodePropertyBuilder
         }
 
         group.Children.Add(new PlanNodeProperty(name, $"{kilobytes.ToString("N0", CultureInfo.InvariantCulture)} KB"));
+    }
+
+    private static string SegmentSummary(SegmentScanInfo segment)
+        => $"{segment.EncodingType}, {segment.BitPacking} bit";
+
+    private static string SegmentDetail(SegmentScanInfo segment)
+    {
+        var builder = new StringBuilder();
+
+        builder.AppendLine($"Compressed type: {segment.CompressedDataType}");
+        builder.AppendLine($"Data ids: {segment.MinDataId:N0} to {segment.MaxDataId:N0}");
+        builder.AppendLine($"Base id: {segment.BaseId:N0}, magnitude {segment.Magnitude}");
+        builder.AppendLine($"Dictionary values: {segment.PrimaryDictionaryValueCount:N0} primary, "
+                           + $"{segment.SecondaryDictionaryValueCount:N0} secondary");
+        builder.AppendLine($"Compressed data filter: {segment.FilterOnCompressedDataType}");
+        builder.AppendLine($"Instruction set: {segment.InstructionSet}");
+
+        builder.Append($"Deep data possible: {segment.IsDeepDataPossible}, nullable: {segment.IsNullable}");
+
+        return builder.ToString();
     }
 
     private static PlanNodeProperty BoolProperty(string name, bool value)
