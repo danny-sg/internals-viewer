@@ -123,8 +123,14 @@ public static class TraceStepRuns
                 return true;
 
             case AccessStep.BatchProduced batchProduced:
-                BatchCountSpanFor(batchProduced, "→ Batch", history, top)
-                    .Progress.Apply(batchProduced.Number, batchProduced.RowCount);
+                var batchSpan = BatchCountSpanFor(batchProduced, "→ Batch", history, top);
+
+                batchSpan.Progress.Apply(batchProduced.Number, batchProduced.RowCount);
+
+                batchSpan.Work.Apply(batchProduced.RleEntries,
+                                     batchProduced.Operations,
+                                     batchProduced.RowCount,
+                                     batchProduced.QualifyingCount);
                 return true;
 
             case AccessStep.FilterRow filterRow:

@@ -29,7 +29,7 @@ public sealed class SegmentReader(ColumnSegment segment,
             return Decoder.Decode(DataIds.GetDataId(rowOrdinal));
         }
 
-        var (_, valueOrdinal) = DataIds.LocateValue(rowOrdinal);
+        var (_, valueOrdinal) = DataIds.FindValue(rowOrdinal);
 
         if (valueOrdinal < 0)
         {

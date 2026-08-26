@@ -1,6 +1,7 @@
 ﻿using System.Data.SqlTypes;
 using InternalsViewer.Execution.AccessPaths.Definitions;
 using InternalsViewer.Execution.AccessPaths.Elimination;
+using InternalsViewer.Execution.AccessPaths.Predicates;
 using InternalsViewer.Execution.AccessPaths.Results;
 using InternalsViewer.Execution.AccessPaths.Results.Steps;
 using InternalsViewer.Execution.BatchMode;
@@ -131,7 +132,14 @@ public sealed class ColumnstoreScanIterator(ColumnstoreService columnstoreServic
                 continue;
             }
 
-            return await FillAsync(Math.Min(BatchRows, remaining), cancellationToken);
+            var batch = await FillAsync(Math.Min(BatchRows, remaining), cancellationToken);
+
+            if (batch is null)
+            {
+                continue;
+            }
+
+            return batch;
         }
     }
 
@@ -149,20 +157,21 @@ public sealed class ColumnstoreScanIterator(ColumnstoreService columnstoreServic
     private ValueTask EmitAsync(AccessStep step, CancellationToken cancellationToken)
         => Context.Steps.EmitAsync(step with { NodeId = NodeId }, cancellationToken);
 
-    private async Task<ExecutionBatch> FillAsync(int size, CancellationToken cancellationToken)
+    private async Task<ExecutionBatch?> FillAsync(int size, CancellationToken cancellationToken)
     {
         var deepData = new BatchDeepDataStore();
 
         var vectors = new List<BatchVector>(Columns.Count);
 
+        var rleEntries = 0;
+
+        var operations = 0;
+
         foreach (var column in Columns)
         {
             var vector = new BatchVector(column.Column, size) { Source = column.Reader };
 
-            for (var i = 0; i < size; i++)
-            {
-                vector.Slots[i] = CreateSlot(column, RowOrdinal + i, deepData);
-            }
+            FillVector(column, vector, RowOrdinal, size, deepData, ref rleEntries, ref operations);
 
             vectors.Add(vector);
         }
@@ -171,6 +180,8 @@ public sealed class ColumnstoreScanIterator(ColumnstoreService columnstoreServic
 
         var batch = new ExecutionBatch(size, vectors, deepData) { RowGroupId = rowGroupId };
 
+        ApplyCompressedFilters(batch, RowOrdinal, size, ref rleEntries, ref operations);
+
         var deleted = ClearDeleted(batch, rowGroupId, RowOrdinal, size);
 
         if (deleted > 0)
@@ -178,12 +189,23 @@ public sealed class ColumnstoreScanIterator(ColumnstoreService columnstoreServic
             await EmitAsync(new AccessStep.DeleteBitmapApplied(rowGroupId, deleted), cancellationToken);
         }
 
+        RowOrdinal += size;
+
+        if (batch.SelectionBitmap.Count == 0)
+        {
+            return null;
+        }
+
         BatchNumber++;
 
-        await EmitAsync(new AccessStep.BatchProduced(BatchNumber, rowGroupId, RowOrdinal, size, batch.SelectionBitmap.Count),
+        await EmitAsync(new AccessStep.BatchProduced(BatchNumber,
+                                                     rowGroupId,
+                                                     RowOrdinal - size,
+                                                     size,
+                                                     batch.SelectionBitmap.Count,
+                                                     rleEntries,
+                                                     operations),
                         cancellationToken);
-
-        RowOrdinal += size;
 
         return batch;
     }
@@ -216,11 +238,96 @@ public sealed class ColumnstoreScanIterator(ColumnstoreService columnstoreServic
         return cleared;
     }
 
-    private static BatchSlot CreateSlot(ScanColumn column, int rowOrdinal, BatchDeepDataStore deepData)
+    private void ApplyCompressedFilters(ExecutionBatch batch, int fromRow, int size, ref int rleEntries, ref int operations)
+    {
+        foreach (var column in Columns)
+        {
+            if (column.Filter is not { } filter)
+            {
+                continue;
+            }
+
+            foreach (var run in column.Reader.DataIds.GetBatchDataIds(fromRow, size))
+            {
+                var offset = run.FirstRow - fromRow;
+
+                rleEntries++;
+
+                if (run.Origin == SegmentValueOrigin.RleRun)
+                {
+                    operations++;
+
+                    if (filter.Matches(run.Value))
+                    {
+                        continue;
+                    }
+
+                    for (var i = 0; i < run.RowCount; i++)
+                    {
+                        batch.SelectionBitmap.Clear(offset + i);
+                    }
+
+                    continue;
+                }
+
+                operations += run.RowCount;
+
+                for (var i = 0; i < run.RowCount; i++)
+                {
+                    if (!filter.Matches(column.Reader.DataIds.GetDataId(run.FirstRow + i)))
+                    {
+                        batch.SelectionBitmap.Clear(offset + i);
+                    }
+                }
+            }
+        }
+    }
+
+    private static void FillVector(ScanColumn column,
+                                   BatchVector vector,
+                                   int fromRow,
+                                   int size,
+                                   BatchDeepDataStore deepData,
+                                   ref int rleEntries,
+                                   ref int operations)
+    {
+        foreach (var run in column.Reader.DataIds.GetBatchDataIds(fromRow, size))
+        {
+            var offset = run.FirstRow - fromRow;
+
+            rleEntries++;
+
+            if (run.Origin == SegmentValueOrigin.RleRun)
+            {
+                operations++;
+
+                var slot = CreateSlot(column, run.Value, run.FirstRow, deepData);
+
+                for (var i = 0; i < run.RowCount; i++)
+                {
+                    vector.Slots[offset + i] = slot;
+                }
+
+                continue;
+            }
+
+            operations += run.RowCount;
+
+            for (var i = 0; i < run.RowCount; i++)
+            {
+                var rowOrdinal = run.FirstRow + i;
+
+                vector.Slots[offset + i] = CreateSlot(column,
+                                                      column.Reader.DataIds.GetDataId(rowOrdinal),
+                                                      rowOrdinal,
+                                                      deepData);
+            }
+        }
+    }
+
+    private static BatchSlot CreateSlot(ScanColumn column, long dataId, int rowOrdinal, BatchDeepDataStore deepData)
     {
         var segment = column.Reader.Segment;
-
-        var dataId = column.Reader.DataIds.GetDataId(rowOrdinal);
 
         if (segment.HasNulls && segment.NullValue == dataId)
         {
@@ -275,6 +382,12 @@ public sealed class ColumnstoreScanIterator(ColumnstoreService columnstoreServic
             RowOrdinal = 0;
 
             await EmitAsync(new AccessStep.RowGroupOpened(rowGroup.RowGroupId, columns.Count, BatchRows), cancellationToken);
+
+            if (columns.Where(c => c.Filter is not null).Select(c => c.Column.Name).ToList() is { Count: > 0 } filtered)
+            {
+                await EmitAsync(new AccessStep.CompressedDataFilter(rowGroup.RowGroupId, string.Join(", ", filtered)),
+                                cancellationToken);
+            }
 
             return true;
         }
@@ -425,7 +538,10 @@ public sealed class ColumnstoreScanIterator(ColumnstoreService columnstoreServic
                                                  hasLocal ? segment.SecondaryDictionaryId : DataIdSpace.NoLocalDictionary);
             }
 
-            columns.Add(new ScanColumn(segmentReader, column, hasDictionary));
+            columns.Add(new ScanColumn(segmentReader,
+                                       column,
+                                       hasDictionary,
+                                       CompressedDataFilter.Create(Definition.Residual, segment)));
         }
 
         return columns;
@@ -457,5 +573,8 @@ public sealed class ColumnstoreScanIterator(ColumnstoreService columnstoreServic
         _ => []
     };
 
-    private sealed record ScanColumn(SegmentReader Reader, BatchColumn Column, bool HasDictionary);
+    private sealed record ScanColumn(SegmentReader Reader,
+                                     BatchColumn Column,
+                                     bool HasDictionary,
+                                     CompressedDataFilter? Filter);
 }

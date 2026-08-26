@@ -15,11 +15,18 @@ public abstract partial record AccessStep
     public sealed record SegmentOpened(int RowGroupId, int ColumnId, string ColumnName, long SizeBytes)
         : AccessStep(AccessPhase.RowGroup);
 
+    public sealed record CompressedDataFilter(int RowGroupId, string Columns) : AccessStep(AccessPhase.RowGroup);
+
     public sealed record RowGroupOpened(int RowGroupId, int ColumnCount, int BatchRows)
         : AccessStep(AccessPhase.RowGroup);
 
     public sealed record DeleteBitmapApplied(int RowGroupId, int Count) : AccessStep(AccessPhase.Walk);
 
-    public sealed record BatchProduced(long Number, int RowGroupId, int FirstRow, int RowCount, int QualifyingCount)
-        : AccessStep(AccessPhase.Walk);
+    public sealed record BatchProduced(long Number,
+                                      int RowGroupId,
+                                      int FirstRow,
+                                      int RowCount,
+                                      int QualifyingCount,
+                                      int RleEntries,
+                                      int Operations) : AccessStep(AccessPhase.Walk);
 }

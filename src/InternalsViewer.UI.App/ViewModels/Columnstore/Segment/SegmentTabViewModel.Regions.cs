@@ -278,7 +278,7 @@ public sealed partial class SegmentTabViewModel
             return (page.Offset, page.Size, $"Value Store Page {store.GetPageIndex(ordinal)}");
         }
 
-        var source = (_dataIdStream ??= new SegmentDataIdStream(blob)).GetSource(ordinal);
+        var source = (_dataIdStream ??= new SegmentDataIdStream(blob)).GetRowDataId(ordinal);
 
         if (source.Origin == SegmentValueOrigin.BitPack)
         {

@@ -387,10 +387,46 @@ public sealed partial class TraceVisualViewModel(TraceVisualType visualType,
                                  })];
     }
 
+    public void ResetColumnstore()
+    {
+        if (VisualType != TraceVisualType.Columnstore)
+        {
+            return;
+        }
+
+        ActiveRowGroupId = null;
+
+        BatchFirstRow = 0;
+
+        BatchRowCount = 0;
+
+        foreach (var rowGroup in ScanRowGroups)
+        {
+            rowGroup.IsEliminated = false;
+
+            rowGroup.IsVisited = false;
+
+            foreach (var segment in rowGroup.Segments)
+            {
+                segment.IsOpened = false;
+
+                segment.IsEliminated = false;
+
+                segment.IsProjected = false;
+            }
+        }
+
+        ScanVersion++;
+    }
+
     private void ApplyColumnstore(AccessStep step)
     {
         switch (step)
         {
+            case AccessStep.Open:
+                ResetColumnstore();
+                break;
+
             case AccessStep.Close:
                 ActiveRowGroupId = null;
                 BatchFirstRow = 0;

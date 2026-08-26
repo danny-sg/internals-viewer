@@ -14,12 +14,12 @@ public sealed class SegmentDataIdStream(SegmentBlob blob)
 
     private int[] RunStartRows => field ??= BuildRunStartRows();
 
-    public long GetDataId(int rowOrdinal) => GetSource(rowOrdinal).DataId;
+    public long GetDataId(int rowOrdinal) => GetRowDataId(rowOrdinal).DataId;
 
     /// <summary>
     /// Read Segment Row Data Id
     /// </summary>
-    public SegmentDataIdSource GetSource(int rowOrdinal)
+    public SegmentDataIdSource GetRowDataId(int rowOrdinal)
     {
         if ((uint)rowOrdinal >= (uint)RowCount)
         {
@@ -28,7 +28,7 @@ public sealed class SegmentDataIdStream(SegmentBlob blob)
 
         if (Blob.VariableLengthData is { } store)
         {
-            var (runIndex, valueOrdinal) = LocateValue(rowOrdinal);
+            var (runIndex, valueOrdinal) = FindValue(rowOrdinal);
 
             // A wide value is the value rather than an id, so there is no number to report for it
             var dataId = valueOrdinal < 0 || store.IsWide ? 0 : store.GetValue(valueOrdinal);
@@ -74,6 +74,51 @@ public sealed class SegmentDataIdStream(SegmentBlob blob)
         return span with { BitOffset = (Blob.Header.BitpackArrayOffset * 8) + span.BitOffset };
     }
 
+    public IEnumerable<SegmentDataIdRun> GetBatchDataIds(int fromRow, int count)
+    {
+        var end = Math.Min(fromRow + count, RowCount);
+
+        if (Blob.VariableLengthData is not null)
+        {
+            for (var row = fromRow; row < end; row++)
+            {
+                var source = GetRowDataId(row);
+
+                yield return new SegmentDataIdRun(source.Origin, source.DataId, source.SourceIndex, row, 1);
+            }
+
+            yield break;
+        }
+
+        var current = fromRow;
+
+        while (current < end)
+        {
+            var (entryIndex, endRow) = Seek(current);
+
+            var entry = Blob.RleEntries[entryIndex];
+
+            var startRow = endRow - entry.Count;
+
+            var take = Math.Min(endRow, end) - current;
+
+            if (take <= 0)
+            {
+                yield break;
+            }
+
+            yield return entry.IsValue
+                ? new SegmentDataIdRun(SegmentValueOrigin.RleRun, entry.Value, -1, current, take)
+                : new SegmentDataIdRun(SegmentValueOrigin.BitPack,
+                                       0,
+                                       entry.BitpackIndex + (current - startRow),
+                                       current,
+                                       take);
+
+            current += take;
+        }
+    }
+
     public IEnumerable<long> ReadAll()
     {
         if (Blob.VariableLengthData is { } store)
@@ -110,15 +155,7 @@ public sealed class SegmentDataIdStream(SegmentBlob blob)
         }
     }
 
-    /// <summary>
-    /// Which value of the store a row reads, the RLE array being what maps one to the other
-    /// </summary>
-    /// <remarks>
-    /// A run whose value is negative reads the store in order from wherever the runs before it left off, and any
-    /// other run repeats the one value it takes. Whether that value is null is the store's own business, a null
-    /// being an entry the page's offset array marks rather than anything the run says.
-    /// </remarks>
-    public (int EntryIndex, int ValueOrdinal) LocateValue(int rowOrdinal)
+    public (int EntryIndex, int ValueOrdinal) FindValue(int rowOrdinal)
     {
         if (Blob.VariableLengthData is not { } store)
         {

@@ -341,7 +341,7 @@ public sealed class TwoReadRunProbeTests(ITestOutputHelper testOutput) : Provide
 
                 var endRow = Math.Min(bookmark.EndRow, segment.RowCount - 1);
 
-                var (_, actual) = stream.LocateValue(Math.Max(0, endRow));
+                var (_, actual) = stream.FindValue(Math.Max(0, endRow));
 
                 if (address == actual)
                 {

@@ -52,7 +52,7 @@ public sealed class SegmentRowDetail(SegmentRowContext context, int ordinal) : I
         {
             if (!_sourceResolved)
             {
-                field = context.DataIds.GetSource(Ordinal);
+                field = context.DataIds.GetRowDataId(Ordinal);
 
                 _sourceResolved = true;
             }

@@ -20,6 +20,8 @@ public sealed class AccessStepTemplateSelector : DataTemplateSelector
 
     public DataTemplate SegmentEliminationTemplate { get; set; } = null!;
 
+    public DataTemplate CompressedDataFilterTemplate { get; set; } = null!;
+
     public DataTemplate PartitionSkippedTemplate { get; set; } = null!;
 
     public DataTemplate DeleteBitmapAppliedTemplate { get; set; } = null!;
@@ -211,6 +213,7 @@ public sealed class AccessStepTemplateSelector : DataTemplateSelector
             AccessStep.RowGroupSkipped => RowGroupSkippedTemplate,
             AccessStep.SegmentSkipped => SegmentSkippedTemplate,
             AccessStep.SegmentElimination => SegmentEliminationTemplate,
+            AccessStep.CompressedDataFilter => CompressedDataFilterTemplate,
             AccessStep.PartitionSkipped => PartitionSkippedTemplate,
             AccessStep.DeleteBitmapApplied => DeleteBitmapAppliedTemplate,
             _ => DefaultTemplate

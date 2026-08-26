@@ -83,6 +83,11 @@ public sealed class TraceStepApplier(TraceLayout layout,
             }
         }
 
+        foreach (var visual in visualsByNode.Values)
+        {
+            visual.ResetColumnstore();
+        }
+
         StrategyBySource.Clear();
 
         ResetPositions();
