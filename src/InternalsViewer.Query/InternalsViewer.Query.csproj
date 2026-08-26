@@ -41,4 +41,8 @@
       <None Remove="Locks\**" />
     </ItemGroup>
 
+    <ItemGroup>
+      <Folder Include="Events\Columnstore\" />
+    </ItemGroup>
+
 </Project>

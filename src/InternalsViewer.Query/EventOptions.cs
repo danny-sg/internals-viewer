@@ -4,10 +4,6 @@ namespace InternalsViewer.Query;
 
 public sealed record EventOptions
 {
-    /// <summary>
-    /// The lock mode categories to surface — locks are captured for every mode (event grouping needs them) then narrowed
-    /// to these before the query is cropped, so a deselected mode can't widen the crop window
-    /// </summary>
     public HashSet<LockModeCategory> IncludeLockModeCategories { get; set; } = DefaultLockModeCategories();
 
     /// <summary>
@@ -23,7 +19,7 @@ public sealed record EventOptions
 
     public bool IncludeLatch { get; set; } = true;
 
-    public bool IncludeBatchMode { get; set; }
+    public bool IncludeBatchMode { get; set; } = true;
 
     public bool IncludeSystemObjects { get; set; } 
 

@@ -103,7 +103,7 @@ public static class PlanNodePropertyBuilder
             result.Add(storageGroup);
         }
 
-        if (node.BatchInfo is { } batchInfo)
+        if (node.IsBatchMode && node.BatchInfo is { } batchInfo)
         {
             var batchGroup = new PlanNodeProperty("Batch Mode", string.Empty);
 
@@ -129,11 +129,6 @@ public static class PlanNodePropertyBuilder
                                                              batchInfo.LocallyAggregatedRows.ToString("N0", CultureInfo.InvariantCulture)));
             }
 
-            if (batchInfo.SegmentsEliminated is { } eliminated)
-            {
-                batchGroup.Children.Add(new PlanNodeProperty("Segments Eliminated",
-                                                             eliminated.ToString("N0", CultureInfo.InvariantCulture)));
-            }
 
             if (batchInfo.PureRowBuckets is not null || batchInfo.ImpureRowBuckets is not null)
             {

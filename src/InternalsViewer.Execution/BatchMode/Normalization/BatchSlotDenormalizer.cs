@@ -54,17 +54,19 @@ public static class BatchSlotDenormalizer
         _ => throw new NotSupportedException($"{column.Domain} slots hold no storage value")
     };
 
-    public static object GetTemporalValue(BatchSlot slot, BatchColumn column) 
-        => column.DataType switch
+    public static object GetTemporalValue(BatchSlot slot, BatchColumn column)
     {
-        SqlDbType.DateTime2 
-            => new DateTime(slot.Value >> 1),
-        SqlDbType.Time 
-            => new TimeSpan(slot.Value >> 1),
-        SqlDbType.DateTimeOffset 
-            => ToDateTimeOffset(slot.Value >> 1),
-        _ => throw new NotSupportedException($"{column.DataType} slots are not decoded yet")
-    };
+        return column.DataType switch
+        {
+            SqlDbType.DateTime2
+                => new DateTime(slot.Value >> 1),
+            SqlDbType.Time
+                => new TimeSpan(slot.Value >> 1),
+            SqlDbType.DateTimeOffset
+                => ToDateTimeOffset(slot.Value >> 1),
+            _ => throw new NotSupportedException($"{column.DataType} slots are not decoded yet")
+        };
+    }
 
     private static DateTimeOffset ToDateTimeOffset(long storage)
     {

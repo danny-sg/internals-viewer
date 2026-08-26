@@ -1,7 +1,8 @@
-using System.Data;
+﻿using System.Data;
 using System.Diagnostics;
 using InternalsViewer.Internals.Engine.Database;
 using InternalsViewer.Query.CallStack;
+using InternalsViewer.Query.Events.BatchMode;
 using InternalsViewer.Query.Events.Consolidation;
 using InternalsViewer.Query.Events.Locks;
 using InternalsViewer.Query.Events.Operators;
@@ -144,6 +145,8 @@ public sealed class EventReader(ILogger<EventReader> logger)
         // Match Events to Execution Plan nodes, assigning PlanNodeIdentifier
         EventPlanNodeMatcher.Match(consolidatedEvents, executionPlans);
 
+        BatchInfoBuilder.Apply(consolidatedEvents, executionPlans);
+
         // Build the operator events bottom-up from each plan and its matched events
         var operatorEvents = executionPlans.SelectMany(plan => new OperatorEventBuilder(plan, consolidatedEvents).Build())
                                            .ToList();
@@ -200,6 +203,8 @@ public sealed class EventReader(ILogger<EventReader> logger)
         Logger.LogDebug("Held locks closed in {Duration}", Stopwatch.GetElapsedTime(start));
 
         start = Stopwatch.GetTimestamp();
+
+        collapsedEvents = SegmentScanCollapser.Collapse(collapsedEvents);
 
         collapsedEvents = LockPartitionCollapser.Collapse(collapsedEvents);
 

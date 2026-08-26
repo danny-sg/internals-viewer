@@ -30,5 +30,4 @@ public sealed class BatchInfo
 
     public long? ImpureRowBuckets { get; set; }
 
-    public long? SegmentsEliminated { get; set; }
 }

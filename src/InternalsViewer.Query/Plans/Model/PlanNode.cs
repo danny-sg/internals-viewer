@@ -82,6 +82,10 @@ public sealed class PlanNode
             ? coordinator.ElapsedUs
             : CountersByThread.Values.Select(c => c.ElapsedUs).DefaultIfEmpty(0).Max();
 
+    public bool IsBatchMode => CountersByThread.Count > 0
+        ? CountersByThread.Values.Any(c => c.ExecutionMode == ExecutionMode.Batch)
+        : ExecutionMode == ExecutionMode.Batch;
+
     public BatchInfo? BatchInfo { get; set; }
 
     public double? RowsPerBatch => BatchInfo is { BatchCount: > 0 } batch ? (double)RowsOutput / batch.BatchCount : null;

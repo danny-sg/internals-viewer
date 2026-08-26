@@ -129,10 +129,6 @@ public static class OperatorClassifier
         return InputRole.Streaming;
     }
 
-    /// <summary>
-    /// The child that drives the operator's start - the build side of a hash join, the outer side of a
-    /// nested loop - or <c>null</c> when the operator simply opens with its earliest child.
-    /// </summary>
     public static PlanNode? DrivingChild(PlanNode n)
     {
         if (IsHashJoin(n))
@@ -170,44 +166,36 @@ public static class OperatorClassifier
 
     public static OperatorCategory GetCategory(PlanNode n)
     {
-        // Aggregates reshape rows. Checked first because a Hash Aggregate shares the "Hash Match"
-        // physical operator with a hash join and would otherwise be miscategorised as a join.
         if (Contains(n.LogicalOperator, "Aggregate"))
         {
             return OperatorCategory.Transformation;
         }
 
-        // Data access (IO): scans, seeks and key/RID lookups read pages.
         if (IsScan(n) || IsSeek(n) || IsLookup(n))
         {
             return OperatorCategory.DataAccess;
         }
 
-        // Joins. Checked before modification so a "Merge Join" isn't caught by the "Merge" rule below.
         if (IsHash(n) || IsNestedLoop(n) || IsMergeJoin(n))
         {
             return OperatorCategory.Join;
         }
 
-        // Data modification: insert/update/delete/merge write to the table and transaction log.
         if (IsDataModification(n))
         {
             return OperatorCategory.Modification;
         }
 
-        // Buffering / blocking: spools, sort (materialises rows) and exchange (parallelism buffers).
         if (IsSpool(n) || IsSort(n) || IsExchange(n))
         {
             return OperatorCategory.Buffer;
         }
 
-        // Explicit transformations.
         if (IsFilter(n) || IsComputeScalar(n))
         {
             return OperatorCategory.Transformation;
         }
 
-        // Fallback: Top, Concatenation, Segment, Window, and other row-shaping operators.
         return OperatorCategory.Transformation;
     }
 
@@ -234,7 +222,7 @@ public static class OperatorClassifier
             }
         }
 
-        // Fallback to the table with the lowest estimated rows (the build side is usually the smaller).
+        // Fallback to the table with the lowest estimated rows (the build side is usually the smaller)
         var byEstimate = hash.Children
                              .Where(c => c.EstimatedRows > 0)
                              .OrderBy(c => c.EstimatedRows)

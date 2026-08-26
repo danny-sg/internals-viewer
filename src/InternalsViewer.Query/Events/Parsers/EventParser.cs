@@ -1,7 +1,8 @@
-using InternalsViewer.Internals.Engine.Database;
+﻿using InternalsViewer.Internals.Engine.Database;
 using InternalsViewer.Internals.Extensions;
 using InternalsViewer.Query.CallStack;
 using InternalsViewer.Query.Events.Batches;
+using InternalsViewer.Query.Events.BatchMode;
 using InternalsViewer.Query.Events.Files;
 using InternalsViewer.Query.Events.Latches;
 using InternalsViewer.Query.Events.Locks;
@@ -62,6 +63,13 @@ public sealed class EventParser
                 => TransactionLogEventParser.Map(database, e),
             "sql_transaction"
                 => TransactionEventParser.Map(database, e),
+            "query_execution_column_store_segment_scan_started"
+                or "query_execution_column_store_segment_scan_finished"
+                => SegmentScanEventParser.Map(database, e),
+            "column_store_segment_eliminate"
+                => SegmentEliminateEventParser.Map(database, e),
+            var n when n.StartsWith("query_execution_batch_")
+                => BatchModeEventParser.Map(database, e),
             "sql_batch_starting"
                 => BatchStartEventParser.Map(database, e),
             "sql_batch_completed"

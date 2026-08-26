@@ -1,4 +1,4 @@
-using System.Globalization;
+﻿using System.Globalization;
 using System.Text;
 
 namespace InternalsViewer.Query.Events;
@@ -25,6 +25,9 @@ public static class EventResultExtensions
 
     public static bool TryGetActionSpan(this EventResult e, string key, out ReadOnlySpan<char> span)
         => TryGetSpan(e.Actions, e.Buffer, key, out span);
+
+    public static bool? GetBool(this EventResult e, string key)
+        => TryGetSpan(e.Data, e.Buffer, key, out var span) ? Decode(span) == "true" : null;
 
     public static bool GetBoolAction(this EventResult e, string key)
         => TryGetSpan(e.Actions, e.Buffer, key, out var span) && Decode(span) == "true";
