@@ -73,6 +73,9 @@ public static class OperatorClassifier
     public static bool IsDataAccess(PlanNode n) =>
         IsScan(n) || IsSeek(n) || IsLookup(n) || IsDataModification(n);
 
+    public static bool IsColumnstoreScan(PlanNode n) =>
+        IsScan(n) && string.Equals(n.Storage, "ColumnStore", StringComparison.OrdinalIgnoreCase);
+
     public static bool IsRead(PlanNode n) =>
         IsScan(n) || IsSeek(n) || IsLookup(n);
 

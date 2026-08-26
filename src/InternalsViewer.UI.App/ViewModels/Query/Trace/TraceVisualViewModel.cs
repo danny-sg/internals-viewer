@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Drawing;
@@ -25,6 +25,8 @@ using InternalsViewer.UI.App.Models.Index;
 using InternalsViewer.UI.App.Models.Query.Trace;
 using InternalsViewer.UI.App.ViewModels.Allocation;
 using AllocationUnit = InternalsViewer.Internals.Engine.Database.AllocationUnit;
+using InternalsViewer.UI.App.Models.Query.Trace.Columnstore;
+using InternalsViewer.Internals.Columnstore.Services;
 
 namespace InternalsViewer.UI.App.ViewModels.Query.Trace;
 
@@ -95,6 +97,21 @@ public sealed partial class TraceVisualViewModel(TraceVisualType visualType,
     [ObservableProperty]
     private int _selectedRowSlotCount;
 
+    [ObservableProperty]
+    private IReadOnlyList<ScanRowGroup> _scanRowGroups = [];
+
+    [ObservableProperty]
+    private int? _activeRowGroupId;
+
+    [ObservableProperty]
+    private int _scanVersion;
+
+    [ObservableProperty]
+    private int _batchFirstRow;
+
+    [ObservableProperty]
+    private int _batchRowCount;
+
     public TraceVisualType VisualType { get; } = visualType;
 
     public string Title { get; } = title;
@@ -134,6 +151,15 @@ public sealed partial class TraceVisualViewModel(TraceVisualType visualType,
     {
         if (IsVisualInitialized)
         {
+            return;
+        }
+
+        if (VisualType == TraceVisualType.Columnstore)
+        {
+            await LoadColumnstoreAsync(CancellationToken.None);
+
+            IsVisualInitialized = true;
+
             return;
         }
 
@@ -195,6 +221,13 @@ public sealed partial class TraceVisualViewModel(TraceVisualType visualType,
     {
         if (step.NodeId != NodeId)
         {
+            return;
+        }
+
+        if (VisualType == TraceVisualType.Columnstore)
+        {
+            ApplyColumnstore(step);
+
             return;
         }
 
@@ -329,6 +362,88 @@ public sealed partial class TraceVisualViewModel(TraceVisualType visualType,
         }
 
         return new TraceVisualReplay(visited, lastPage, lastDataPage, lastSlot, lastSlotCount);
+    }
+
+    public async Task LoadColumnstoreAsync(CancellationToken cancellationToken)
+    {
+        var service = App.GetService<ColumnstoreService>();
+
+        var index = await service.GetIndex(AllocationUnit, Database, cancellationToken);
+
+        ScanRowGroups = [.. index.CompressedRowGroups
+                                 .OrderBy(r => r.RowGroupId)
+                                 .Select(r => new ScanRowGroup
+                                 {
+                                     RowGroupId = r.RowGroupId,
+                                     TotalRows = r.TotalRows,
+                                     Segments = [.. r.Segments
+                                                     .Where(s => s.Column is { IsInternal: false })
+                                                     .OrderBy(s => s.Column!.ColumnStoreColumnId)
+                                                     .Select(s => new ScanSegment
+                                                     {
+                                                         ColumnId = s.Column!.ColumnStoreColumnId,
+                                                         ColumnName = s.Column!.Name
+                                                     })]
+                                 })];
+    }
+
+    private void ApplyColumnstore(AccessStep step)
+    {
+        switch (step)
+        {
+            case AccessStep.Close:
+                ActiveRowGroupId = null;
+                BatchFirstRow = 0;
+                BatchRowCount = 0;
+                break;
+
+            case AccessStep.RowGroupOpened opened:
+                ActiveRowGroupId = opened.RowGroupId;
+                break;
+
+            case AccessStep.SegmentOpened segmentOpened:
+                SetSegment(segmentOpened.RowGroupId, segmentOpened.ColumnId, s => s.IsOpened = true);
+                break;
+
+            case AccessStep.SegmentSkipped segmentSkipped:
+                SetSegment(segmentSkipped.RowGroupId, segmentSkipped.ColumnId, s => s.IsEliminated = true);
+                break;
+
+            case AccessStep.RowGroupSkipped rowGroupSkipped:
+                SetRowGroup(rowGroupSkipped.RowGroupId, r => r.IsEliminated = true);
+                break;
+
+            case AccessStep.BatchProduced batch:
+                ActiveRowGroupId = batch.RowGroupId;
+                BatchFirstRow = batch.FirstRow;
+                BatchRowCount = batch.RowCount;
+                SetRowGroup(batch.RowGroupId, r => r.IsVisited = true);
+                break;
+        }
+    }
+
+    private void SetRowGroup(int rowGroupId, Action<ScanRowGroup> apply)
+    {
+        foreach (var rowGroup in ScanRowGroups.Where(r => r.RowGroupId == rowGroupId))
+        {
+            apply(rowGroup);
+        }
+
+        ScanVersion++;
+    }
+
+    private void SetSegment(int rowGroupId, int columnId, Action<ScanSegment> apply)
+    {
+        foreach (var segment in ScanRowGroups.Where(r => r.RowGroupId == rowGroupId)
+                                             .SelectMany(r => r.Segments)
+                                             .Where(s => s.ColumnId == columnId))
+        {
+            segment.IsProjected = true;
+
+            apply(segment);
+        }
+
+        ScanVersion++;
     }
 
     public void ApplyReplay(TraceVisualReplay replay)

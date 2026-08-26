@@ -111,6 +111,11 @@ public sealed class TraceDefinitionBuilder(Func<PlanNode, AllocationUnit?> resol
             return BuildSequenceProject(node);
         }
 
+        if (OperatorClassifier.IsColumnstoreScan(node))
+        {
+            return AsRowSource(BuildColumnstoreScan(node));
+        }
+
         if (OperatorClassifier.IsRead(node))
         {
             return BuildAccess(node);
@@ -540,6 +545,33 @@ public sealed class TraceDefinitionBuilder(Func<PlanNode, AllocationUnit?> resol
             Residual = node.PredicateInfo?.Residual
         };
     }
+
+    private ColumnstoreScanDefinition? BuildColumnstoreScan(PlanNode node)
+    {
+        if (Unit(node) is not { } unit)
+        {
+            return null;
+        }
+
+        Nodes[node.NodeId] = node;
+
+        Units[node.NodeId] = unit;
+
+        return new ColumnstoreScanDefinition
+        {
+            NodeId = node.NodeId,
+            AllocationUnit = unit,
+            ColumnNames = [.. node.OutputColumns.Select(c => c.Column).Where(c => !string.IsNullOrEmpty(c)).Distinct()],
+            OutputList = OutputList(node),
+            Residual = Translated(Residual(node), node.PredicateInfo?.HasUntranslatedPredicate == true),
+            RowGoal = node.PredicateInfo?.RowGoal
+        };
+    }
+
+    private static IteratorDefinition? AsRowSource(IteratorDefinition? definition)
+        => definition is ColumnstoreScanDefinition batch
+            ? new BatchToRowDefinition(batch) { NodeId = -(batch.NodeId + 2), OutputList = batch.OutputList }
+            : definition;
 
     private IteratorDefinition? BuildAccess(PlanNode node)
     {

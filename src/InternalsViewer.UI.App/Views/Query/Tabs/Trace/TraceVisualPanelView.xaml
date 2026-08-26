@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <UserControl
     x:Class="InternalsViewer.UI.App.Views.Query.Tabs.Trace.TraceVisualPanelView"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
@@ -7,6 +7,7 @@
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     xmlns:index="using:InternalsViewer.UI.App.Controls.Index"
     xmlns:allocation="using:InternalsViewer.UI.App.Controls.Allocation"
+    xmlns:cs="using:InternalsViewer.UI.App.Controls.Trace.Columnstore"
     mc:Ignorable="d"
     Loaded="OnLoaded">
 
@@ -25,6 +26,17 @@
                                 SingleSelectedColour="{x:Bind ToWindowsColor(ViewModel.ObjectColour), Mode=OneWay}"
                                 VerticalAlignment="Stretch"
                                 HorizontalAlignment="Stretch" />
+
+            <cs:ColumnstoreScanControl x:Name="ColumnstoreScanControl"
+                                       Visibility="{x:Bind ColumnstoreVisibility(ViewModel.VisualType, ViewModel.IsVisualInitialized), Mode=OneWay}"
+                                       RowGroups="{x:Bind ViewModel.ScanRowGroups, Mode=OneWay}"
+                                       ActiveRowGroupId="{x:Bind ViewModel.ActiveRowGroupId, Mode=OneWay}"
+                                       ScanVersion="{x:Bind ViewModel.ScanVersion, Mode=OneWay}"
+                                       BatchFirstRow="{x:Bind ViewModel.BatchFirstRow, Mode=OneWay}"
+                                       BatchRowCount="{x:Bind ViewModel.BatchRowCount, Mode=OneWay}"
+                                       NodeColour="{x:Bind ToWindowsColor(ViewModel.ObjectColour), Mode=OneWay}"
+                                       VerticalAlignment="Stretch"
+                                       HorizontalAlignment="Stretch" />
 
             <StackPanel Padding="10"
                         HorizontalAlignment="Center"

@@ -1,4 +1,4 @@
-namespace InternalsViewer.Execution.AccessPaths.Results;
+﻿namespace InternalsViewer.Execution.AccessPaths.Results;
 
 /// <summary>
 /// Why an access path stopped producing rows
@@ -21,6 +21,11 @@ public enum StopReason
     IndexExhausted,
 
     AllocationExhausted,
+
+    /// <summary>
+    /// Every row group was read or eliminated with none left to scan
+    /// </summary>
+    RowGroupsExhausted,
 
     /// <summary>
     /// The end of the page was reached and the access path is limited to a single page

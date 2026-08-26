@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using InternalsViewer.Execution.AccessPaths.Definitions;
@@ -31,7 +31,7 @@ public sealed class TraceTabViewModelFactory(IIteratorFactory iteratorFactory, I
             return null;
         }
 
-        var definition = wrapInSelect
+        var definition = wrapInSelect || built is BatchToRowDefinition
             ? new SelectDefinition(built) { NodeId = -1, OutputList = built.OutputList }
             : built;
 
@@ -59,7 +59,12 @@ public sealed class TraceTabViewModelFactory(IIteratorFactory iteratorFactory, I
             return null;
         }
 
-        var visualType = source.VisualType == TraceSourceKind.Index ? TraceVisualType.Index : TraceVisualType.Allocation;
+        var visualType = source.VisualType switch
+        {
+            TraceSourceKind.Index => TraceVisualType.Index,
+            TraceSourceKind.Columnstore => TraceVisualType.Columnstore,
+            _ => TraceVisualType.Allocation
+        };
 
         var title = source.Role == TraceSourceRole.None
             ? $"{unit.DisplayName()} ({source.NodeId})"

@@ -122,6 +122,11 @@ public static class TraceStepRuns
                 RankSpanFor(rankRow, history).Progress.Apply(rankRow);
                 return true;
 
+            case AccessStep.BatchProduced batchProduced:
+                BatchCountSpanFor(batchProduced, "→ Batch", history, top)
+                    .Progress.Apply(batchProduced.Number, batchProduced.RowCount);
+                return true;
+
             case AccessStep.FilterRow filterRow:
                 RowCountSpanFor(filterRow, RowCountSpan.PassBadge, history, top)
                     .Progress.Apply(filterRow.PassedCount, filterRow.Number);
@@ -270,6 +275,28 @@ public static class TraceStepRuns
         }
 
         var created = new RowCountSpan
+        {
+            NodeId = step.NodeId,
+            Counters = step.Counters,
+            Badge = badge
+        };
+
+        InsertSpan(history, created);
+
+        return created;
+    }
+
+    private static BatchCountSpan BatchCountSpanFor(AccessStep step,
+                                                    string badge,
+                                                    ObservableCollection<AccessStep> history,
+                                                    int top)
+    {
+        if (FindOpenSpan<BatchCountSpan>(history, step.NodeId) is { } span)
+        {
+            return span;
+        }
+
+        var created = new BatchCountSpan
         {
             NodeId = step.NodeId,
             Counters = step.Counters,

@@ -14,6 +14,14 @@ using InternalsViewer.Internals.Interfaces.Engine;
 
 namespace InternalsViewer.Execution.Iterators.BatchMode;
 
+/// <summary>
+/// Iterator that converts between Batch Mode and Row Mode
+/// </summary>
+/// <remarks>
+/// Reads per batch, materializes the batch vector to rows, then emits each row as a Row Mode iterator.
+///
+/// This does exist as CQScanBatchHelper, but it's not visible on query plans
+/// </remarks>
 public sealed class BatchToRowIterator(ColumnstoreScanIterator source) : IteratorBase
 {
     public override PageAddress? CurrentPageAddress => null;
@@ -36,7 +44,7 @@ public sealed class BatchToRowIterator(ColumnstoreScanIterator source) : Iterato
 
         Position = 0;
 
-        await source.OpenAsync(adapter.Source, context, cancellationToken);
+        await source.OpenAsync(adapter.Batch, context, cancellationToken);
     }
 
     public override async Task<IRecord?> GetRowAsync(CancellationToken cancellationToken)

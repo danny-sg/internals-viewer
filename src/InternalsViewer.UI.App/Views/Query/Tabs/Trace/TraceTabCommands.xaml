@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <UserControl
     x:Class="InternalsViewer.UI.App.Views.Query.Tabs.Trace.TraceTabCommands"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
@@ -10,6 +10,13 @@
                 HorizontalAlignment="Right"
                 VerticalAlignment="Center"
                 Margin="0,0,8,0">
+        <ToggleButton Style="{StaticResource TabCommandToggleStyle}"
+                      MinWidth="90"
+                      Margin="0,0,4,0"
+                      Visibility="{x:Bind BatchModeVisibility(ViewModel.HasBatchMode)}"
+                      IsChecked="{x:Bind ViewModel.IsBatchStepping, Mode=TwoWay}">
+            <TextBlock Text="Batch Mode" VerticalAlignment="Center" />
+        </ToggleButton>
         <ToggleButton Style="{StaticResource TabCommandToggleStyle}"
                       MinWidth="90"
                       IsChecked="{x:Bind ViewModel.IsNestedLayout, Mode=TwoWay}">

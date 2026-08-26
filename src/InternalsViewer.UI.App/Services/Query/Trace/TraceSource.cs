@@ -1,4 +1,4 @@
-using InternalsViewer.Execution.AccessPaths.Definitions;
+﻿using InternalsViewer.Execution.AccessPaths.Definitions;
 
 namespace InternalsViewer.UI.App.Services.Query.Trace;
 
@@ -14,6 +14,7 @@ public sealed record TraceSource(int NodeId, IteratorDefinition Definition)
     {
         AllocationScanDefinition => TraceSourceKind.Allocation,
         HeapFetchDefinition => TraceSourceKind.Heap,
+        ColumnstoreScanDefinition or BatchToRowDefinition => TraceSourceKind.Columnstore,
         _ => TraceSourceKind.Index
     };
 

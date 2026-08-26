@@ -1,4 +1,4 @@
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Linq;
 using CommunityToolkit.Mvvm.ComponentModel;
 using InternalsViewer.Execution.AccessPaths.Definitions;
@@ -203,7 +203,12 @@ public sealed partial class TraceTabViewModel
     }
 
     private IEnumerable<IteratorDefinition> OperatorChildren(IteratorDefinition definition)
-        => DefinitionTreeWalker.ChildrenOf(definition).Where(HasDocument);
+        => DefinitionTreeWalker.ChildrenOf(definition).SelectMany(ResolveChild);
+
+    private IEnumerable<IteratorDefinition> ResolveChild(IteratorDefinition child)
+        => HasDocument(child)
+            ? [child]
+            : DefinitionTreeWalker.ChildrenOf(child).SelectMany(ResolveChild);
 
     private bool HasDocument(IteratorDefinition definition)
         => _operatorDocumentsByNode?.ContainsKey(definition.NodeId) == true;

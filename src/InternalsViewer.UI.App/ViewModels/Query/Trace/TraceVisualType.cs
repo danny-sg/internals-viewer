@@ -1,7 +1,8 @@
-namespace InternalsViewer.UI.App.ViewModels.Query.Trace;
+﻿namespace InternalsViewer.UI.App.ViewModels.Query.Trace;
 
 public enum TraceVisualType
 {
     Index,
-    Allocation
+    Allocation,
+    Columnstore
 }

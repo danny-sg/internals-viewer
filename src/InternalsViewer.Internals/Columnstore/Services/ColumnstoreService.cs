@@ -167,15 +167,25 @@ public sealed class ColumnstoreService(IRecordReader recordReader, ILobDataServi
         return new SegmentValueDecoder(segment, dictionary, overflow);
     }
 
+    public Task<RowGroupReader> GetRowGroupReader(DatabaseSource database,
+                                                 RowGroup rowGroup,
+                                                 CancellationToken cancellationToken)
+        => GetRowGroupReader(database, rowGroup, null, cancellationToken);
+
     public async Task<RowGroupReader> GetRowGroupReader(DatabaseSource database,
                                                        RowGroup rowGroup,
+                                                       IReadOnlyCollection<int>? columnIds,
                                                        CancellationToken cancellationToken)
     {
         var readers = new List<SegmentReader>();
 
         var skipped = new List<ColumnSegment>();
 
-        foreach (var segment in rowGroup.Segments)
+        var wanted = rowGroup.Segments.Where(s => columnIds is null
+                                                  || s.Column is null
+                                                  || columnIds.Contains(s.Column.ColumnStoreColumnId));
+
+        foreach (var segment in wanted)
         {
             try
             {

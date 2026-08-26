@@ -102,15 +102,32 @@ public sealed class SegmentBlobHeader : DataStructure
 
     public int BookmarkArrayOffset => PrologueSize;
 
-    public int BookmarkEntryCount => IsVariableLengthData
-        ? Math.Max(0, BookmarkCount - VariableLengthBookmarkOverlap)
-        : BookmarkCount;
+    public int BookmarkEntryCount
+        => IsVariableLengthData
+            ? Math.Max(0, BookmarkCount - VariableLengthBookmarkOverlap)
+            : BookmarkCount;
 
-    public int RleArrayOffset => BookmarkArrayOffset + (BookmarkEntryCount * NativeUnitSize);
+    /// <summary>
+    /// Offset of the RLE array, which is after the bookmark array
+    /// </summary>
+    public int RleArrayOffset
+        => BookmarkArrayOffset + (BookmarkEntryCount * NativeUnitSize);
 
-    public int VariableLengthDataOffset => RleArrayOffset + (RleArrayCount * NativeUnitSize);
+    /// <remarks>
+    /// RLE size is slightly confusing and the raw header RLE Entry Count is in terms of 8-byte native units, not the actual entry size,
+    /// but for the raw size RLE Array Count (in native units) * Native Unit Size is the correct size of the RLE array in bytes
+    /// </remarks>
+    public int RleArraySize => RleArrayCount * NativeUnitSize;
 
-    public int BitpackArrayOffset => RleArrayOffset + (RleArrayCount * NativeUnitSize);
+    /// <summary>
+    /// Offset of the variable length data, which is after the RLE array in VLD sub-types
+    /// </summary>
+    public int VariableLengthDataOffset => RleArrayOffset + RleArraySize;
+
+    /// <summary>
+    /// Offset of the bit pack array, which is after the RLE array in RLE sub-types
+    /// </summary>
+    public int BitpackArrayOffset => RleArrayOffset + RleArraySize;
 
     /// <summary>
     /// Size the header fields imply, which must equal on_disk_size and the blob length

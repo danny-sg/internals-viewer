@@ -45,7 +45,13 @@ public sealed class ColumnstoreScanIterator(ColumnstoreService columnstoreServic
 
     private int RowOrdinal { get; set; }
 
+    private long BatchNumber { get; set; }
+
     private DeletedRows Deleted { get; set; } = DeletedRows.None;
+
+    private IReadOnlyList<RowGroup> RowGroups { get; set; } = [];
+
+    private IReadOnlyList<int> ColumnIds { get; set; } = [];
 
     private int BatchRows { get; set; } = MaximumBatchRows;
 
@@ -67,15 +73,19 @@ public sealed class ColumnstoreScanIterator(ColumnstoreService columnstoreServic
 
         RowOrdinal = 0;
 
+        BatchNumber = 0;
+
         Reader = null;
 
         Columns = [];
 
         IsComplete = false;
 
-        Deleted = Definition.Index is { } index
-                  ? await columnstoreService.GetDeletedRows(context.Database, index, cancellationToken)
-                  : DeletedRows.None;
+        RowGroups = [];
+
+        ColumnIds = [];
+
+        Deleted = DeletedRows.None;
 
         Partitions = new PartitionEliminator(Definition.Residual);
 
@@ -84,6 +94,17 @@ public sealed class ColumnstoreScanIterator(ColumnstoreService columnstoreServic
         SkippedPartitions.Clear();
 
         await EmitAsync(new AccessStep.Open(), cancellationToken);
+
+        if (Definition.AllocationUnit is { } allocationUnit)
+        {
+            var index = await columnstoreService.GetIndex(allocationUnit, context.Database, cancellationToken);
+
+            ColumnIds = ResolveColumns(index);
+
+            Deleted = await columnstoreService.GetDeletedRows(context.Database, index, cancellationToken);
+
+            RowGroups = await QualifyAsync([.. index.CompressedRowGroups], cancellationToken);
+        }
     }
 
     public async Task<ExecutionBatch?> GetNextBatchAsync(CancellationToken cancellationToken)
@@ -96,7 +117,7 @@ public sealed class ColumnstoreScanIterator(ColumnstoreService columnstoreServic
             {
                 IsComplete = true;
 
-                await EmitAsync(new AccessStep.Stopped(StopReason.PageExhausted), cancellationToken);
+                await EmitAsync(new AccessStep.Stopped(StopReason.RowGroupsExhausted), cancellationToken);
 
                 return null;
             }
@@ -154,10 +175,12 @@ public sealed class ColumnstoreScanIterator(ColumnstoreService columnstoreServic
 
         if (deleted > 0)
         {
-            await EmitAsync(new AccessStep.DeletedRowsSkipped(rowGroupId, deleted), cancellationToken);
+            await EmitAsync(new AccessStep.DeleteBitmapApplied(rowGroupId, deleted), cancellationToken);
         }
 
-        await EmitAsync(new AccessStep.BatchProduced(rowGroupId, RowOrdinal, size, batch.SelectionBitmap.Count),
+        BatchNumber++;
+
+        await EmitAsync(new AccessStep.BatchProduced(BatchNumber, rowGroupId, RowOrdinal, size, batch.SelectionBitmap.Count),
                         cancellationToken);
 
         RowOrdinal += size;
@@ -228,10 +251,43 @@ public sealed class ColumnstoreScanIterator(ColumnstoreService columnstoreServic
 
     private async Task<bool> MoveToNextRowGroupAsync(CancellationToken cancellationToken)
     {
-        while (RowGroupIndex < Definition.RowGroups.Count)
+        while (RowGroupIndex < RowGroups.Count)
         {
-            var rowGroup = Definition.RowGroups[RowGroupIndex++];
+            var rowGroup = RowGroups[RowGroupIndex++];
 
+            var reader = await OpenRowGroupAsync(rowGroup, cancellationToken);
+
+            var columns = Bind(reader, rowGroup);
+
+            if (columns.Count == 0 || reader.RowCount == 0)
+            {
+                await EmitAsync(new AccessStep.RowGroupSkipped(rowGroup.RowGroupId, "No readable segments"), cancellationToken);
+
+                continue;
+            }
+
+            Reader = reader;
+
+            Columns = columns;
+
+            BatchRows = GetBatchRows(columns.Count);
+
+            RowOrdinal = 0;
+
+            await EmitAsync(new AccessStep.RowGroupOpened(rowGroup.RowGroupId, columns.Count, BatchRows), cancellationToken);
+
+            return true;
+        }
+
+        return false;
+    }
+
+    private async Task<List<RowGroup>> QualifyAsync(IReadOnlyList<RowGroup> rowGroups, CancellationToken cancellationToken)
+    {
+        var qualified = new List<RowGroup>(rowGroups.Count);
+
+        foreach (var rowGroup in rowGroups)
+        {
             var partition = Partitions.Evaluate(rowGroup);
 
             if (partition.IsEliminated)
@@ -244,45 +300,27 @@ public sealed class ColumnstoreScanIterator(ColumnstoreService columnstoreServic
                 continue;
             }
 
-            var reader = await columnstoreService.GetRowGroupReader(Context.Database, rowGroup, cancellationToken);
-
-            var columns = Bind(reader, rowGroup);
-
-            if (columns.Count == 0 || reader.RowCount == 0)
-            {
-                await EmitAsync(new AccessStep.RowGroupSkipped(rowGroup.RowGroupId, "No readable segments"), cancellationToken);
-
-                continue;
-            }
-
-            if (await IsEliminatedAsync(rowGroup, columns, cancellationToken))
+            if (await IsEliminatedAsync(rowGroup, cancellationToken))
             {
                 continue;
             }
 
-            Reader = reader;
-
-            Columns = columns;
-
-            BatchRows = GetBatchRows(columns.Count);
-
-            RowOrdinal = 0;
-
-            await EmitAsync(new AccessStep.RowGroupOpened(rowGroup.RowGroupId, reader.RowCount, columns.Count, BatchRows),
-                            cancellationToken);
-
-            return true;
+            qualified.Add(rowGroup);
         }
 
-        return false;
+        return qualified;
     }
 
-    private async Task<bool> IsEliminatedAsync(RowGroup rowGroup, List<ScanColumn> columns, CancellationToken cancellationToken)
+    private async Task<bool> IsEliminatedAsync(RowGroup rowGroup, CancellationToken cancellationToken)
     {
-        foreach (var column in columns)
-        {
-            var segment = column.Reader.Segment;
+        var projected = rowGroup.Segments
+                                .Where(s => s.Column is not null && ColumnIds.Contains(s.Column.ColumnStoreColumnId))
+                                .ToList();
 
+        var eliminated = new List<string>();
+
+        foreach (var segment in projected)
+        {
             var result = Segments.Evaluate(segment);
 
             if (!result.IsEliminated)
@@ -290,25 +328,73 @@ public sealed class ColumnstoreScanIterator(ColumnstoreService columnstoreServic
                 continue;
             }
 
+            eliminated.Add(segment.Column!.Name);
+
             await EmitAsync(new AccessStep.SegmentSkipped(rowGroup.RowGroupId,
-                                                          segment.Column?.ColumnStoreColumnId ?? -1,
-                                                          column.Column.Name,
+                                                          segment.Column!.ColumnStoreColumnId,
+                                                          segment.Column!.Name,
                                                           result.Reason),
                             cancellationToken);
-
-            await EmitAsync(new AccessStep.RowGroupSkipped(rowGroup.RowGroupId, result.Reason), cancellationToken);
-
-            return true;
         }
 
-        return false;
+        await EmitAsync(new AccessStep.SegmentElimination(rowGroup.RowGroupId, eliminated.Count, projected.Count),
+                        cancellationToken);
+
+        if (eliminated.Count == 0)
+        {
+            return false;
+        }
+
+        var columns = string.Join(", ", eliminated);
+
+        var label = eliminated.Count == 1 ? "segment" : "segments";
+
+        await EmitAsync(new AccessStep.RowGroupSkipped(rowGroup.RowGroupId,
+                                                       $"No match possible in {eliminated.Count} of {projected.Count} "
+                                                       + $"{label} ({columns})"),
+                        cancellationToken);
+
+        return true;
+    }
+
+    private async Task<RowGroupReader> OpenRowGroupAsync(RowGroup rowGroup, CancellationToken cancellationToken)
+    {
+        var wanted = rowGroup.Segments
+                             .Where(s => s.Column is null || ColumnIds.Contains(s.Column.ColumnStoreColumnId))
+                             .ToList();
+
+        var readers = new List<SegmentReader>();
+
+        var skipped = new List<ColumnSegment>();
+
+        for (var i = 0; i < wanted.Count; i++)
+        {
+            var segment = wanted[i];
+
+            try
+            {
+                readers.Add(await columnstoreService.GetSegmentReader(Context.Database, segment, cancellationToken));
+            }
+            catch (InvalidDataException)
+            {
+                skipped.Add(segment);
+            }
+
+            await EmitAsync(new AccessStep.SegmentOpened(rowGroup.RowGroupId,
+                                                         segment.Column?.ColumnStoreColumnId ?? -1,
+                                                         segment.Column?.Name ?? string.Empty,
+                                                         segment.OnDiskSize),
+                            cancellationToken);
+        }
+
+        return new RowGroupReader(rowGroup, readers, skipped);
     }
 
     private List<ScanColumn> Bind(RowGroupReader reader, RowGroup rowGroup)
     {
         var columns = new List<ScanColumn>();
 
-        foreach (var columnId in Definition.ColumnIds)
+        foreach (var columnId in ColumnIds)
         {
             var segmentReader = reader.Readers.FirstOrDefault(r => r.Segment.Column?.ColumnStoreColumnId == columnId);
 
@@ -343,6 +429,18 @@ public sealed class ColumnstoreScanIterator(ColumnstoreService columnstoreServic
         }
 
         return columns;
+    }
+
+    private List<int> ResolveColumns(ColumnStoreIndex index)
+    {
+        if (Definition.ColumnNames.Count == 0)
+        {
+            return [.. index.Columns.Where(c => !c.IsInternal).Select(c => c.ColumnStoreColumnId)];
+        }
+
+        var byName = index.Columns.ToDictionary(c => c.Name, c => c.ColumnStoreColumnId, StringComparer.OrdinalIgnoreCase);
+
+        return [.. Definition.ColumnNames.Where(byName.ContainsKey).Select(n => byName[n])];
     }
 
     private static int GetBatchRows(int columns)

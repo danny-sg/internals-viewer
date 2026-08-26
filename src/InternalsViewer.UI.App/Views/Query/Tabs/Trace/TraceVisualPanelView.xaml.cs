@@ -1,4 +1,4 @@
-using InternalsViewer.UI.App.ViewModels.Query.Trace;
+﻿using InternalsViewer.UI.App.ViewModels.Query.Trace;
 using Microsoft.UI.Xaml.Controls;
 
 namespace InternalsViewer.UI.App.Views.Query.Tabs.Trace;
@@ -25,6 +25,9 @@ public sealed partial class TraceVisualPanelView : UserControl
 
     public Visibility AllocationVisibility(TraceVisualType visualType, bool isInitialized)
         => visualType == TraceVisualType.Allocation && isInitialized ? Visibility.Visible : Visibility.Collapsed;
+
+    public Visibility ColumnstoreVisibility(TraceVisualType visualType, bool isInitialized)
+        => visualType == TraceVisualType.Columnstore && isInitialized ? Visibility.Visible : Visibility.Collapsed;
 
     private async void OnLoaded(object sender, RoutedEventArgs e)
     {

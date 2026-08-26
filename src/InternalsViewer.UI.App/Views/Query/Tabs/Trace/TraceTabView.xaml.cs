@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using CommunityToolkit.WinUI;
 using InternalsViewer.UI.App.ViewModels.Query.Trace;
 using Microsoft.UI.Xaml.Controls;

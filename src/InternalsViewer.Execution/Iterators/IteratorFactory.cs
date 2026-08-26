@@ -1,4 +1,6 @@
 ﻿using InternalsViewer.Execution.AccessPaths.Definitions;
+using InternalsViewer.Execution.Iterators.BatchMode;
+using InternalsViewer.Execution.Iterators.BatchMode.DataAccess;
 using InternalsViewer.Execution.Interfaces;
 using InternalsViewer.Execution.Iterators.RowMode.Aggregation;
 using InternalsViewer.Execution.Iterators.RowMode.DataAccess;
@@ -36,6 +38,8 @@ public sealed class IteratorFactory(IServiceProvider services) : IIteratorFactor
                 => services.GetRequiredService<ComputeScalarIterator>(),
             FilterDefinition
                 => services.GetRequiredService<FilterIterator>(),
+            BatchToRowDefinition
+                => services.GetRequiredService<BatchToRowIterator>(),
             SegmentDefinition
                 => services.GetRequiredService<SegmentIterator>(),
             SequenceProjectDefinition

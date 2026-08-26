@@ -66,7 +66,8 @@ public static class TraceLayoutBuilder
 
         return new TraceLayout
         {
-            Tabs = [.. operators.Select(o => tabsByNode[o.NodeId])],
+            Tabs = [.. operators.Where(o => o is not BatchToRowDefinition)
+                                .Select(o => tabsByNode[o.NodeId])],
             Nodes = nodes,
             Palette = palette
         };
@@ -92,6 +93,8 @@ public static class TraceLayoutBuilder
             RangeDefinition => "Index Scan",
             HeapFetchDefinition => "RID Lookup",
             AllocationScanDefinition => "Table Scan",
+            ColumnstoreScanDefinition => "Columnstore Index Scan",
+            BatchToRowDefinition => "Batch Mode Adapter",
             _ => "Operator"
         };
 
@@ -303,7 +306,19 @@ public static class TraceLayoutBuilder
                                           TraceBlobPalette palette,
                                           bool hasRowCount = true)
     {
+        var adapter = input as BatchToRowDefinition;
+
+        if (adapter is not null)
+        {
+            input = adapter.Batch;
+        }
+
         var header = OperatorHeader.For(input, nodeFor(input.NodeId));
+
+        if (adapter is not null)
+        {
+            header = header with { Heading = $"{DisplayName(adapter)} : {header.Heading}" };
+        }
 
         return new TraceInputRow(input.NodeId, header.Heading)
         {
@@ -478,7 +493,19 @@ public static class TraceLayoutBuilder
             return TracePane.Empty;
         }
 
+        var adapter = input as BatchToRowDefinition;
+
+        if (adapter is not null)
+        {
+            input = adapter.Batch;
+        }
+
         var header = OperatorHeader.For(input, nodeFor(input.NodeId));
+
+        if (adapter is not null)
+        {
+            header = header with { Heading = $"{DisplayName(adapter)} : {header.Heading}" };
+        }
 
         if (tabsByNode.TryGetValue(input.NodeId, out var tab))
         {

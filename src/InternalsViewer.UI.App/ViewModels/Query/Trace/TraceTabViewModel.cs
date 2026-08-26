@@ -63,6 +63,9 @@ public sealed partial class TraceTabViewModel : ObservableObject, IDisposable
     private Task? _interactiveRun;
 
     [ObservableProperty]
+    private bool _isBatchStepping;
+
+    [ObservableProperty]
     private double _runDelayMs = 150;
 
     /// <summary>
@@ -197,24 +200,17 @@ public sealed partial class TraceTabViewModel : ObservableObject, IDisposable
     /// </summary>
     public JoinDecision? JoinRule => Definition is JoinDefinition join ? join.JoinType.Decide(true, true) : null;
 
+    public bool HasBatchMode => Layout.Nodes.Values.Any(n => n.Definition is ColumnstoreScanDefinition
+                                                                     or BatchToRowDefinition);
+
     public IteratorDefinition? SelectedDefinition => Layout.Nodes.GetValueOrDefault(SelectedNodeId)?.Definition;
 
     public Uri? SelectedOperatorIcon => SelectedHeader?.Icon;
 
     public string SelectedOperatorName => SelectedHeader?.Heading ?? string.Empty;
 
-    /// <summary>
-    /// The access path the selected operator settled on, or the one its definition already describes before the walk starts
-    /// </summary>
     public AccessStrategy? SelectedStrategy => Applier.StrategyFor(SelectedNodeId) ?? PlannedStrategyFor(SelectedNodeId);
 
-    /// <summary>
-    /// Describes the selected operator, holding on to what was built until the strategy it describes is replaced
-    /// </summary>
-    /// <remarks>
-    /// The description panel rebuilds itself whenever this changes, which is every step of a run if a fresh description is handed back
-    /// each time it is read. Nothing about it changes between strategies, so the one built for a strategy is kept and returned again.
-    /// </remarks>
     public OperatorDescription? SelectedDescription
     {
         get
@@ -333,6 +329,13 @@ public sealed partial class TraceTabViewModel : ObservableObject, IDisposable
     [RelayCommand]
     public async Task StepNext()
     {
+        if (IsBatchStepping)
+        {
+            await StepToBatchAsync();
+
+            return;
+        }
+
         if (!IsStepping)
         {
             await StartAsync();
@@ -391,6 +394,66 @@ public sealed partial class TraceTabViewModel : ObservableObject, IDisposable
     /// </summary>
     [RelayCommand(AllowConcurrentExecutions = true)]
     public Task RunToPhase(AccessPhase phase) => RunUntilAsync(PhaseStopCondition(phase, SelectedDefinition, SelectedNodeId));
+
+    private static bool IsBatchBoundary(AccessStep step)
+        => step is AccessStep.BatchProduced
+                   or AccessStep.RowGroupOpened
+                   or AccessStep.RowGroupSkipped
+                   or AccessStep.SegmentElimination
+                   or AccessStep.Stopped
+                   or AccessStep.Close;
+
+    private async Task StepToBatchAsync()
+    {
+        if (!IsStepping)
+        {
+            await StartAsync();
+        }
+
+        if (Stepper is not { } stepper)
+        {
+            return;
+        }
+
+        AccessStep? last = null;
+
+        while (true)
+        {
+            var step = await Task.Run(() => stepper.StepNextAsync(CancellationToken.None));
+
+            if (step is null)
+            {
+                IsStepComplete = true;
+                IsRunning = false;
+
+                break;
+            }
+
+            TraceStepRuns.Append(step, StepHistory, HistoryLimit);
+
+            Applier.ApplyStep(stepper, step);
+
+            last = step;
+
+            if (IsBatchBoundary(step))
+            {
+                break;
+            }
+        }
+
+        if (last is null)
+        {
+            return;
+        }
+
+        NotifyDescriptionChanged();
+
+        CurrentStep = last;
+    }
+
+    [RelayCommand(AllowConcurrentExecutions = true)]
+    public Task RunToNextBatch()
+        => RunUntilAsync(static step => step is AccessStep.BatchProduced);
 
     [RelayCommand]
     public void ResetStep()

@@ -4,9 +4,25 @@ using Microsoft.UI.Xaml.Controls;
 
 namespace InternalsViewer.UI.App.Helpers.Selectors;
 
-public class AccessStepTemplateSelector : DataTemplateSelector
+public sealed class AccessStepTemplateSelector : DataTemplateSelector
 {
     public DataTemplate OpenTemplate { get; set; } = null!;
+
+    public DataTemplate BatchCountSpanTemplate { get; set; } = null!;
+
+    public DataTemplate RowGroupOpenedTemplate { get; set; } = null!;
+
+    public DataTemplate SegmentOpenedTemplate { get; set; } = null!;
+
+    public DataTemplate RowGroupSkippedTemplate { get; set; } = null!;
+
+    public DataTemplate SegmentSkippedTemplate { get; set; } = null!;
+
+    public DataTemplate SegmentEliminationTemplate { get; set; } = null!;
+
+    public DataTemplate PartitionSkippedTemplate { get; set; } = null!;
+
+    public DataTemplate DeleteBitmapAppliedTemplate { get; set; } = null!;
 
     public DataTemplate CloseTemplate { get; set; } = null!;
 
@@ -189,6 +205,14 @@ public class AccessStepTemplateSelector : DataTemplateSelector
             AccessStep.Advance => AdvanceTemplate,
             AccessStep.ExtentStart => ExtentStartTemplate,
             AccessStep.PageSkipped => PageSkippedTemplate,
+            BatchCountSpan => BatchCountSpanTemplate,
+            AccessStep.RowGroupOpened => RowGroupOpenedTemplate,
+            AccessStep.SegmentOpened => SegmentOpenedTemplate,
+            AccessStep.RowGroupSkipped => RowGroupSkippedTemplate,
+            AccessStep.SegmentSkipped => SegmentSkippedTemplate,
+            AccessStep.SegmentElimination => SegmentEliminationTemplate,
+            AccessStep.PartitionSkipped => PartitionSkippedTemplate,
+            AccessStep.DeleteBitmapApplied => DeleteBitmapAppliedTemplate,
             _ => DefaultTemplate
         };
     }

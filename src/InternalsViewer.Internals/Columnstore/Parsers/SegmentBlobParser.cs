@@ -153,12 +153,17 @@ public static class SegmentBlobParser
     }
 
     /// <summary>
-    /// Width of an RLE entry, taken from how large a data id the segment has to hold
+    /// Size of an RLE Value
     /// </summary>
     /// <remarks>
-    /// A literal run carries the data id relative to the base, in a signed field whose negatives mean a read run,
-    /// so an id past int.MaxValue cannot fit and the entry doubles. A dictionary segment leaves base and magnitude
-    /// at -1 and holds slot numbers, which are always small. Measured against 400 segments, 32 of them wide.
+    /// An RLE Value is either 32-bits or 64-bits. There is no additional metadata or structure information to find this so it has to be
+    /// derived from the MaxDataId value held in the segment metadata.
+    ///
+    /// If the encoding is not StoreByValueBased the MaxDataId scaled with Magnitude and offset with Base Id.
+    ///
+    /// If the value is greater than Int32.MaxValue, the RLE Value is 64-bits, otherwise it is 32-bits.
+    ///
+    /// There may be a more straightforward way to do this but I haven't found it yet.
     /// </remarks>
     private static int CalculateRleValueSize(ColumnSegment? segment)
     {
@@ -168,10 +173,10 @@ public static class SegmentBlobParser
         }
 
         var storedMax = segment.Encoding == SegmentEncoding.StoreByValueBased
-            ? segment.MaxDataId
-            : segment is { BaseId: >= 0, Magnitude: > 0 }
-                ? (segment.MaxDataId / segment.Magnitude) - segment.BaseId
-                : 0;
+                        ? segment.MaxDataId
+                        : segment is { BaseId: >= 0, Magnitude: > 0 }
+                            ? (segment.MaxDataId / segment.Magnitude) - segment.BaseId
+                            : 0;
 
         return storedMax > int.MaxValue ? sizeof(long) : sizeof(int);
     }
@@ -180,7 +185,6 @@ public static class SegmentBlobParser
     {
         var entries = ReadRleEntries(span, blob, blob.Header.RleEntrySize);
 
-        // A count cannot be negative, so a value split in half by the wrong width says so rather than passing quietly
         if (Array.Exists(entries, e => e.Count < 0))
         {
             throw new InvalidDataException($"Segment RLE array read as {blob.Header.RleEntrySize} byte entries "

@@ -1,8 +1,9 @@
-namespace InternalsViewer.UI.App.Services.Query.Trace;
+﻿namespace InternalsViewer.UI.App.Services.Query.Trace;
 
 public enum TraceSourceKind
 {
     Index,
     Allocation,
-    Heap
+    Heap,
+    Columnstore
 }
