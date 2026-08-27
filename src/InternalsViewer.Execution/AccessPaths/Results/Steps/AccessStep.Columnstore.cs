@@ -5,12 +5,12 @@ public abstract partial record AccessStep
     public sealed record PartitionSkipped(long PartitionId, string Reason) : AccessStep(AccessPhase.Partition);
 
     public sealed record SegmentElimination(int RowGroupId, int EliminatedCount, int SegmentCount)
-        : AccessStep(AccessPhase.RowGroup);
+        : AccessStep(AccessPhase.SegmentElimination);
 
     public sealed record RowGroupSkipped(int RowGroupId, string Reason) : AccessStep(AccessPhase.RowGroup);
 
     public sealed record SegmentSkipped(int RowGroupId, int ColumnId, string ColumnName, string Reason)
-        : AccessStep(AccessPhase.RowGroup);
+        : AccessStep(AccessPhase.SegmentElimination);
 
     public sealed record DictionaryOpened(int RowGroupId,
                                           int ColumnId,

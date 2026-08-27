@@ -1,5 +1,6 @@
 ﻿using InternalsViewer.Execution.AccessPaths.Definitions;
 using InternalsViewer.Execution.AccessPaths.Descriptions.Aggregation;
+using InternalsViewer.Execution.AccessPaths.Descriptions.BatchMode;
 using InternalsViewer.Execution.AccessPaths.Descriptions.DataAccess;
 using InternalsViewer.Execution.AccessPaths.Descriptions.Joins;
 using InternalsViewer.Execution.AccessPaths.Descriptions.Row;
@@ -38,6 +39,12 @@ public static class OperatorDescriptionBuilder
                 => ComputeScalarDescriber.Describe(compute),
             FilterDefinition filter 
                 => FilterDescriber.Describe(filter),
+            BatchFilterDefinition batchFilter 
+                => BatchFilterDescriber.Describe(batchFilter),
+            BatchComputeScalarDefinition batchCompute 
+                => BatchComputeScalarDescriber.Describe(batchCompute),
+            ColumnstoreScanDefinition columnstore 
+                => ColumnstoreScanDescriber.Describe(columnstore),
             SegmentDefinition segment 
                 => SegmentDescriber.Describe(segment),
             SequenceProjectDefinition sequence 

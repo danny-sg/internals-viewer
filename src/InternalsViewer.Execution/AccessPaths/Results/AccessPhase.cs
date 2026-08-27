@@ -34,6 +34,7 @@ public enum AccessPhase
     Compute,
     Filter,
     Segment,
+    SegmentElimination,
     Partition,
     RowGroup,
     Rank

@@ -165,13 +165,13 @@ public sealed partial class PageTabViewModel(ILogger<PageTabViewModel> logger,
 
     private IPageService PageService { get; } = pageService;
 
-    private IRecordService RecordService { get; } = recordService;
-
     private PageDisplayBuilder DisplayBuilder { get; } = new(logger, recordService);
 
     private List<IRecord> Records { get; } = [];
 
     private History<PageAddress> History { get; } = new();
+
+    public string PageTitle => $"{Page.PageHeader.PageTypeName} Page {Page.PageAddress}";
 
     [RelayCommand]
     public async Task LoadPage(PageAddress pageAddress)

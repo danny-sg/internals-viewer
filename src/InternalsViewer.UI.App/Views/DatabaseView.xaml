@@ -113,8 +113,8 @@
                         VerticalContentAlignment="Center"
                         Background="Transparent">
                 <AppBarElementContainer VerticalAlignment="Stretch">
-                    <StackPanel VerticalAlignment="Stretch" Margin="12,8,18,0">
-                        <TextBlock>Allocations</TextBlock>
+                    <StackPanel VerticalAlignment="Stretch" Margin="12,8,18,0" MinWidth="150">
+                        <TextBlock Foreground="{ThemeResource TextFillColorSecondaryBrush}">Allocations</TextBlock>
                         <TextBlock FontWeight="SemiBold" Text="{x:Bind TabViewModel.Database.Name, Mode=OneWay}"/>
                     </StackPanel>
                 </AppBarElementContainer>
@@ -151,7 +151,7 @@
 
                     </ToggleSplitButton>
                 </AppBarElementContainer>
-
+                <AppBarSeparator/>
                 <AppBarButton Label="Refresh" 
                               Icon="Refresh" 
                               Command="{x:Bind TabViewModel.RefreshCommand}"/>

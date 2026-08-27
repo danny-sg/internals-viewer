@@ -13,13 +13,6 @@ public sealed class ExecutionBatch(int capacity, IReadOnlyList<BatchVector> vect
 
     public IReadOnlyList<BatchVector> Vectors => VectorList;
 
-    private List<BatchVector> VectorList { get; } = [.. vectors];
-
-    public void AddVector(BatchVector vector) => VectorList.Add(vector);
-
-    public BatchVector? FindVector(string columnName)
-        => VectorList.Find(v => string.Equals(v.Column.Name, columnName, StringComparison.OrdinalIgnoreCase));
-
     public IDeepDataContext DeepDataContext { get; } = deepDataContext;
 
     public SelectionVector SelectionVector { get; } = new(capacity);
@@ -27,6 +20,8 @@ public sealed class ExecutionBatch(int capacity, IReadOnlyList<BatchVector> vect
     public int RowGroupId { get; set; }
 
     public bool IsPure => SelectionVector.RowCount == RowCount;
+
+    private List<BatchVector> VectorList { get; } = [.. vectors];
 
     public void Reset(int rowCount)
     {
@@ -42,6 +37,8 @@ public sealed class ExecutionBatch(int capacity, IReadOnlyList<BatchVector> vect
         SelectionVector.Reset(rowCount);
     }
 
-    public BatchVector? Find(string columnName)
-        => Vectors.FirstOrDefault(v => string.Equals(v.Column.Name, columnName, StringComparison.OrdinalIgnoreCase));
+    public void AddVector(BatchVector vector) => VectorList.Add(vector);
+
+    public BatchVector? FindVector(string columnName)
+        => VectorList.Find(v => string.Equals(v.Column.Name, columnName, StringComparison.OrdinalIgnoreCase));
 }

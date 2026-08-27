@@ -16,7 +16,49 @@
             <RowDefinition Height="*"/>
         </Grid.RowDefinitions>
         <!--Top command bar-->
-        <CommandBar IsOpen="False" 
+        <Grid Grid.Row="0"
+        Grid.ColumnSpan="3"
+        BorderThickness="0" 
+        BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="Auto"/>
+            </Grid.ColumnDefinitions>
+            <CommandBar 
+          Grid.Column="0"
+          Background="Transparent" 
+          IsOpen="False"       
+          DefaultLabelPosition="Right" 
+          HorizontalAlignment="Left">
+                <AppBarElementContainer VerticalAlignment="Stretch">
+                    <StackPanel VerticalAlignment="Stretch" Margin="12,8,18,0" MinWidth="150">
+                        <TextBlock Foreground="{ThemeResource TextFillColorSecondaryBrush}">Index</TextBlock>
+                        <TextBlock FontWeight="SemiBold" Text="{x:Bind ViewModel.AllocationUnit.DisplayName, Mode=OneWay}" />
+                    </StackPanel>
+                </AppBarElementContainer>
+                <AppBarSeparator />
+                <AppBarButton Label="Refresh" 
+                        Icon="Refresh" 
+                        Command="{x:Bind ViewModel.RefreshCommand}"/>
+            </CommandBar>
+
+            <CommandBar Grid.Column="1"         
+                  Background="Transparent" 
+                  IsOpen="False"       
+                  Name="AllocationUnitSummaryCommandBar"
+                  Visibility="{x:Bind ViewModel.AllocationUnit,
+                                      Converter={StaticResource NullToVisibilityConverter},
+                                      Mode=OneWay}"
+                  DefaultLabelPosition="Right" 
+                  HorizontalAlignment="Right">
+
+                <AppBarElementContainer>
+                    <allocation:AllocationUnitSummaryControl AllocationUnit="{x:Bind ViewModel.AllocationUnit, Mode=OneWay}" />
+                </AppBarElementContainer>
+            </CommandBar>
+        </Grid>
+        <!--<CommandBar IsOpen="False" 
                     DefaultLabelPosition="Right"
                     Grid.Row="0"
                     HorizontalAlignment="Left"
@@ -27,7 +69,7 @@
                 <allocation:AllocationUnitSummaryControl AllocationUnit="{x:Bind ViewModel.AllocationUnit, Mode=OneWay}"
                                                           IsIndex="True" />
             </AppBarElementContainer>
-        </CommandBar>
+        </CommandBar>-->
 
         <StackPanel Padding="10"
                     VerticalAlignment="Center"

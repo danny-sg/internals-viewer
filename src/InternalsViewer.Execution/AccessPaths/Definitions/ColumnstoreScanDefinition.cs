@@ -11,4 +11,6 @@ public sealed record ColumnstoreScanDefinition : IteratorDefinition, IBatchDefin
     public bool IsFilterOnCompressedDataUsed { get; init; }
 
     public bool IsGenericFilterUsed { get; init; }
+
+    public int BatchRowCount => BatchMode.BatchSize.GetRowCount(ColumnNames.Count);
 }

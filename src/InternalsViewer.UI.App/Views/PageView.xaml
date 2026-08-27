@@ -89,25 +89,32 @@
                     DefaultLabelPosition="Right" 
                     HorizontalAlignment="Left">
                     <AppBarElementContainer VerticalAlignment="Stretch">
-                        <StackPanel VerticalAlignment="Stretch" Margin="12,8,18,0">
-                            <TextBlock>Page</TextBlock>
-                            <TextBlock FontWeight="SemiBold" Text="{x:Bind Name, Mode=OneWay}" />
+                        <StackPanel VerticalAlignment="Stretch" Margin="12,8,18,0" MinWidth="150">
+                            <TextBlock Foreground="{ThemeResource TextFillColorSecondaryBrush}">Page</TextBlock>
+                            <TextBlock FontWeight="SemiBold" Text="{x:Bind ViewModel.PageTitle, Mode=OneWay}" />
                         </StackPanel>
                     </AppBarElementContainer>
-                    <AppBarElementContainer>
-                        <controls:PageAddressTextBox x:Name="PageAddressTextBox" 
-                                                     PageAddress="{x:Bind ViewModel.PageAddress, Mode=TwoWay}" 
-                                                     DatabaseName="{x:Bind ViewModel.Database.Name, Mode=OneWay}" />
+                    <AppBarSeparator />
+                    <AppBarElementContainer VerticalAlignment="Stretch" Margin="12,0,0,0" VerticalContentAlignment="Stretch">
+                        <StackPanel Orientation="Horizontal" VerticalAlignment="Stretch">
+                            <TextBlock         Foreground="{ThemeResource TextFillColorSecondaryBrush}">Page Address</TextBlock>
+                            <controls:PageAddressTextBox x:Name="PageAddressTextBox" 
+                                                         VerticalAlignment="Top"
+                                                         PageAddress="{x:Bind ViewModel.PageAddress, Mode=TwoWay}" 
+                                                         DatabaseName="{x:Bind ViewModel.Database.Name, Mode=OneWay}" />
+                        </StackPanel>
                     </AppBarElementContainer>
-                    <AppBarButton Label="Back" 
+                    <AppBarSeparator />
+                    <AppBarButton Label="Refresh" 
+                                  Icon="Refresh" 
+                                  Command="{x:Bind ViewModel.RefreshCommand}"/>
+                    <!--<AppBarButton Label="Back" 
                                   Icon="Previous" 
                                   Command="{x:Bind ViewModel.PageBackCommand}" />
                     <AppBarButton Label="Forward" 
                                   Icon="Next" 
-                                  Command="{x:Bind ViewModel.PageForwardCommand}"/>
-                    <AppBarButton Label="Refresh" 
-                                  Icon="Refresh" 
-                                  Command="{x:Bind ViewModel.RefreshCommand}"/>
+                                  Command="{x:Bind ViewModel.PageForwardCommand}"/>-->
+
                     <AppBarSeparator />
 
                     <AppBarButton Label="Index" Command="{x:Bind ViewModel.OpenIndexViewCommand}">
@@ -126,8 +133,8 @@
                                                 Converter={StaticResource NullToVisibilityConverter},
                                                 Mode=OneWay}"
                             DefaultLabelPosition="Right" 
-                            HorizontalAlignment="Left">
-                    <AppBarSeparator />
+                            HorizontalAlignment="Right">
+
                     <AppBarElementContainer>
                         <allocation:AllocationUnitSummaryControl
                             AllocationUnit="{x:Bind ViewModel.AllocationUnit, Mode=OneWay}" />
@@ -200,7 +207,7 @@
                 </ListView>
             </Grid>
 
-       
+
             <!--Tab View/Log Record view-->
             <Grid Grid.Column="2" Grid.Row="1">
                 <Grid.RowDefinitions>

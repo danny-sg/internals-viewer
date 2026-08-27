@@ -33,7 +33,8 @@ internal static class SeekPanelRows
         {
             Text = title,
             FontSize = 12,
-            VerticalAlignment = VerticalAlignment.Top
+            VerticalAlignment = VerticalAlignment.Top,
+            TextWrapping = TextWrapping.WrapWholeWords
         };
 
         if (semiBoldTitle)
@@ -49,6 +50,7 @@ internal static class SeekPanelRows
         row.Children.Add(titleBlock);
 
         content.HorizontalAlignment = HorizontalAlignment.Stretch;
+        content.VerticalAlignment = VerticalAlignment.Stretch;
 
         Grid.SetColumn(content, 1);
 

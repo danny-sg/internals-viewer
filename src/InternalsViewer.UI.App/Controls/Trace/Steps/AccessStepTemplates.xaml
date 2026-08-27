@@ -65,7 +65,7 @@
         <Setter Property="FontWeight" Value="SemiBold" />
         <Setter Property="HorizontalAlignment" Value="Left" />
         <Setter Property="VerticalAlignment" Value="Top" />
-        
+
         <!--<Setter Property="MaxWidth" Value="126" />-->
         <Setter Property="TextTrimming" Value="None" />
     </Style>
@@ -138,7 +138,7 @@
                 <Border x:Name="SourceBlob" Width="9" Height="9" CornerRadius="2" Margin="0,4,0,0" VerticalAlignment="Top" />
                 <TextBlock x:Name="SourceName" Style="{StaticResource StepNodeStyle}" />
             </StackPanel>
-            <TextBlock Text="Probe" Style="{StaticResource StepLabelStyle}" />
+            <TextBlock  Grid.Column="0" Text="Probe" Style="{StaticResource StepLabelStyle}" />
             <StackPanel Grid.Column="1" Orientation="Vertical">
                 <StackPanel Orientation="Horizontal">
                     <TextBlock Text="Slot (Mid)" Style="{StaticResource StepPropertyStyle}" />
@@ -1974,34 +1974,34 @@
                             Visibility="{Binding Work.HasEmitted, Converter={StaticResource StepsBoolToVisibilityConverter}}">
                         <StackPanel Orientation="Horizontal">
                             <TextBlock Text="{Binding Badge}" Foreground="White" FontSize="11" />
-                            <TextBlock Text="×" Foreground="White" FontSize="11" Opacity="0.6" Margin="4,0,2,0" />
+                            <TextBlock Text="×" FontSize="11" Foreground="White"  Opacity="0.6" Margin="0,0,2,0" />
                             <TextBlock Text="{Binding Work.Emitted}" Foreground="White" FontSize="11" />
                         </StackPanel>
                     </Border>
                 </StackPanel>
                 <StackPanel Orientation="Horizontal" Spacing="6">
                     <TextBlock Text="" Style="{StaticResource StepLabelStyle}" Margin="0" />
-                <Border Background="{ThemeResource SubtleFillColorSecondaryBrush}"
+                    <Border Background="{ThemeResource SubtleFillColorSecondaryBrush}"
                         CornerRadius="4"
                         Padding="6,0,6,1"
                         VerticalAlignment="Center"
                         Visibility="{Binding Work.HasNoFilter, Converter={StaticResource StepsBoolToVisibilityConverter}}">
-                    <TextBlock Text="No Filter" Foreground="{ThemeResource TextFillColorSecondaryBrush}" FontSize="11" />
-                </Border>
-                <Border Background="{ThemeResource SystemFillColorSuccessBrush}"
+                        <TextBlock Text="No Filter" Foreground="{ThemeResource TextFillColorSecondaryBrush}" FontSize="11" />
+                    </Border>
+                    <Border Background="{ThemeResource SystemFillColorSuccessBrush}"
                         CornerRadius="4"
                         Padding="6,0,6,1"
                         VerticalAlignment="Center"
                         Visibility="{Binding Work.HasFilter, Converter={StaticResource StepsBoolToVisibilityConverter}}">
-                    <TextBlock Text="Compressed Filter" Foreground="White" FontSize="11" />
-                </Border>
-                <Border Background="{ThemeResource SystemFillColorCautionBrush}"
+                        <TextBlock Text="Compressed Filter" Foreground="White" FontSize="11" />
+                    </Border>
+                    <Border Background="{ThemeResource SystemFillColorCautionBrush}"
                         CornerRadius="4"
                         Padding="6,0,6,1"
                         VerticalAlignment="Center"
                         Visibility="{Binding Work.HasPredicate, Converter={StaticResource StepsBoolToVisibilityConverter}}">
-                    <TextBlock Text="Predicate" Foreground="White" FontSize="11" />
-                </Border>
+                        <TextBlock Text="Predicate" Foreground="White" FontSize="11" />
+                    </Border>
                     <StackPanel Orientation="Horizontal"
                                 Visibility="{Binding Work.HasFilter, Converter={StaticResource StepsBoolToVisibilityConverter}}">
                         <TextBlock Text="{Binding Work.Operations}" Style="{StaticResource StepValueStyle}" />
@@ -2015,7 +2015,7 @@
                             VerticalAlignment="Center">
                         <StackPanel Orientation="Horizontal">
                             <TextBlock Text="Match" FontSize="11" Opacity="0.6" />
-                            <TextBlock Text="×" FontSize="11" Opacity="0.6" Margin="4,0,2,0" />
+                            <TextBlock Text="×" FontSize="11" Opacity="0.6" Margin="0,0,2,0" />
                             <TextBlock Text="{Binding Work.Qualifying}" FontSize="11" />
                         </StackPanel>
                     </Border>
@@ -2110,10 +2110,10 @@
                 <TextBlock x:Name="SourceName" Style="{StaticResource StepNodeStyle}" />
             </StackPanel>
             <StackPanel Orientation="Horizontal">
+
                 <TextBlock Text="Open Row Group" Style="{StaticResource StepLabelStyle}" />
+                <TextBlock Text="Id" Style="{StaticResource StepPropertyStyle}" Margin="0,0,0,0" />
                 <TextBlock Text="{Binding RowGroupId}" Style="{StaticResource StepValueStyle}" />
-                <TextBlock Text="Columns" Style="{StaticResource StepPropertyStyle}" Margin="8,0,0,0" />
-                <TextBlock Text="{Binding ColumnCount}" Style="{StaticResource StepValueStyle}" />
                 <TextBlock Text="Batch Rows" Style="{StaticResource StepPropertyStyle}" Margin="8,0,0,0" />
                 <TextBlock Text="{Binding BatchRows}" Style="{StaticResource StepValueStyle}" />
             </StackPanel>
@@ -2212,17 +2212,23 @@
             </StackPanel>
             <StackPanel Orientation="Horizontal">
                 <TextBlock Text="Open Dictionary" Style="{StaticResource StepLabelStyle}" />
+                <TextBlock Text="Column" Style="{StaticResource StepPropertyStyle}" Margin="0,0,0,0" />
                 <TextBlock Text="{Binding ColumnName}" Style="{StaticResource StepValueStyle}" />
-                <TextBlock Text="Global"
-                           Style="{StaticResource StepPropertyStyle}"
-                           Margin="8,0,0,0"
-                           Visibility="{Binding IsGlobal, Converter={StaticResource StepsBoolToVisibilityConverter}}" />
-                <TextBlock Text="Local"
-                           Style="{StaticResource StepPropertyStyle}"
-                           Margin="8,0,0,0"
-                           Visibility="{Binding IsGlobal, Converter={StaticResource StepsInverseBoolToVisibilityConverter}}" />
-                <TextBlock Text="{Binding EntryCount}" Style="{StaticResource StepValueStyle}" Margin="8,0,0,0" />
-                <TextBlock Text="entries" Style="{StaticResource StepPropertyStyle}" />
+                <Border Background="{ThemeResource SubtleFillColorSecondaryBrush}"
+                        CornerRadius="2"
+                        Margin="8,0,0,0" 
+                        VerticalAlignment="Center"
+                        Visibility="{Binding IsGlobal, Converter={StaticResource StepsBoolToVisibilityConverter}}" >
+                    <TextBlock Text="Global Dictionary" Padding="2,1,2,1" />
+                </Border>
+                <Border Background="{ThemeResource SubtleFillColorSecondaryBrush}"
+                        CornerRadius="2"
+                        Margin="8,0,0,0" 
+                        VerticalAlignment="Center"
+                        Visibility="{Binding IsGlobal, Converter={StaticResource StepsInverseBoolToVisibilityConverter}}">
+                    <TextBlock Text="Local Dictionary" Padding="2,1,2,1" />
+                </Border>
+                <TextBlock Text="Size" Style="{StaticResource StepPropertyStyle}" Margin="8,0,0,0" />
                 <TextBlock Text="{Binding SizeBytes, Converter={StaticResource ByteSizeToTextConverter}}"
                            Style="{StaticResource StepValueStyle}"
                            Margin="8,0,0,0" />
@@ -2243,12 +2249,12 @@
             </StackPanel>
             <StackPanel Orientation="Horizontal">
                 <TextBlock Text="Open Segment" Style="{StaticResource StepLabelStyle}" />
+                <TextBlock Text="Column" Style="{StaticResource StepPropertyStyle}" Margin="0,0,0,0"/>
                 <TextBlock Text="{Binding ColumnName}" Style="{StaticResource StepValueStyle}" />
+                <TextBlock Text="Size" Style="{StaticResource StepPropertyStyle}" Margin="8,0,0,0" />
                 <TextBlock Text="{Binding SizeBytes, Converter={StaticResource ByteSizeToTextConverter}}"
                            Style="{StaticResource StepValueStyle}"
                            Margin="8,0,0,0" />
-                <TextBlock Text="Row Group" Style="{StaticResource StepPropertyStyle}" Margin="8,0,0,0" />
-                <TextBlock Text="{Binding RowGroupId}" Style="{StaticResource StepValueStyle}" />
             </StackPanel>
         </Grid>
     </DataTemplate>
