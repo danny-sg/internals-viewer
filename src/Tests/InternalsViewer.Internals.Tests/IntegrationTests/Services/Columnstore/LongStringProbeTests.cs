@@ -99,7 +99,7 @@ public sealed class LongStringProbeTests(ITestOutputHelper testOutput) : Provide
 
                 var text = value?.ToString() ?? string.Empty;
 
-                lines.Add($"col{segment.Key.ColumnId} row {i} dataId {reader.DataIds.GetDataId(i)} "
+                lines.Add($"col{segment.Key.ColumnId} row {i} dataId {reader.DataIds.GetRowDataId(i)} "
                           + $"decoded length {text.Length} starts '{text[..Math.Min(24, text.Length)]}'");
             }
 

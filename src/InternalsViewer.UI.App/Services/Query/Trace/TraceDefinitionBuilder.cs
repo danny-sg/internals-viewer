@@ -49,7 +49,12 @@ public sealed class TraceDefinitionBuilder(Func<PlanNode, AllocationUnit?> resol
 
     public bool CanBuild(PlanNode node) => new TraceDefinitionBuilder(resolveUnit, database).Build(node) is not null;
 
-    public IteratorDefinition? Build(PlanNode node)
+    public IteratorDefinition? Build(PlanNode node) => AsRowSource(BuildOperator(node), parentIsBatch: false);
+
+    private IteratorDefinition? BuildInput(PlanNode parent, PlanNode child)
+        => AsRowSource(BuildOperator(child), parent.IsBatchMode);
+
+    private IteratorDefinition? BuildOperator(PlanNode node)
     {
         if (OperatorClassifier.IsHashAggregate(node))
         {
@@ -113,7 +118,7 @@ public sealed class TraceDefinitionBuilder(Func<PlanNode, AllocationUnit?> resol
 
         if (OperatorClassifier.IsColumnstoreScan(node))
         {
-            return AsRowSource(BuildColumnstoreScan(node));
+            return BuildColumnstoreScan(node);
         }
 
         if (OperatorClassifier.IsRead(node))
@@ -131,7 +136,7 @@ public sealed class TraceDefinitionBuilder(Func<PlanNode, AllocationUnit?> resol
             return null;
         }
 
-        if (Build(node.Children[0]) is not { } source)
+        if (BuildInput(node, node.Children[0]) is not { } source)
         {
             return null;
         }
@@ -160,7 +165,7 @@ public sealed class TraceDefinitionBuilder(Func<PlanNode, AllocationUnit?> resol
             return null;
         }
 
-        if (Build(node.Children[0]) is not { } source)
+        if (BuildInput(node, node.Children[0]) is not { } source)
         {
             return null;
         }
@@ -185,7 +190,7 @@ public sealed class TraceDefinitionBuilder(Func<PlanNode, AllocationUnit?> resol
             return null;
         }
 
-        if (Build(node.Children[0]) is not { } source)
+        if (BuildInput(node, node.Children[0]) is not { } source)
         {
             return null;
         }
@@ -204,19 +209,29 @@ public sealed class TraceDefinitionBuilder(Func<PlanNode, AllocationUnit?> resol
         };
     }
 
-    private FilterDefinition? BuildFilter(PlanNode node)
+    private IteratorDefinition? BuildFilter(PlanNode node)
     {
         if (node.PredicateInfo is not { HasUntranslatedPredicate: false, Residual: { } predicate } || node.Children.Count != 1)
         {
             return null;
         }
 
-        if (Build(node.Children[0]) is not { } source)
+        if (BuildInput(node, node.Children[0]) is not { } source)
         {
             return null;
         }
 
         Nodes[node.NodeId] = node;
+
+        if (source is IBatchDefinition)
+        {
+            return new BatchFilterDefinition(source)
+            {
+                NodeId = node.NodeId,
+                OutputList = OutputList(node),
+                Residual = predicate
+            };
+        }
 
         return new FilterDefinition(source)
         {
@@ -233,7 +248,7 @@ public sealed class TraceDefinitionBuilder(Func<PlanNode, AllocationUnit?> resol
             return null;
         }
 
-        if (Build(node.Children[0]) is not { } source)
+        if (BuildInput(node, node.Children[0]) is not { } source)
         {
             return null;
         }
@@ -275,7 +290,7 @@ public sealed class TraceDefinitionBuilder(Func<PlanNode, AllocationUnit?> resol
             return null;
         }
 
-        if (Build(node.Children[0]) is not { } source)
+        if (BuildInput(node, node.Children[0]) is not { } source)
         {
             return null;
         }
@@ -310,7 +325,7 @@ public sealed class TraceDefinitionBuilder(Func<PlanNode, AllocationUnit?> resol
             return null;
         }
 
-        if (Build(node.Children[0]) is not { } source)
+        if (BuildInput(node, node.Children[0]) is not { } source)
         {
             return null;
         }
@@ -388,7 +403,7 @@ public sealed class TraceDefinitionBuilder(Func<PlanNode, AllocationUnit?> resol
 
         foreach (var child in node.Children)
         {
-            if (Build(child) is not { } input)
+            if (BuildInput(node, child) is not { } input)
             {
                 return null;
             }
@@ -421,7 +436,7 @@ public sealed class TraceDefinitionBuilder(Func<PlanNode, AllocationUnit?> resol
             return null;
         }
 
-        if (Build(node.Children[0]) is not { } source)
+        if (BuildInput(node, node.Children[0]) is not { } source)
         {
             return null;
         }
@@ -443,8 +458,8 @@ public sealed class TraceDefinitionBuilder(Func<PlanNode, AllocationUnit?> resol
             return null;
         }
 
-        if (BuildSide(hash.Build, info.BuildKeys) is not { } build
-            || BuildSide(hash.Probe, info.ProbeKeys) is not { } probe)
+        if (BuildSide(node, hash.Build, info.BuildKeys) is not { } build
+            || BuildSide(node, hash.Probe, info.ProbeKeys) is not { } probe)
         {
             return null;
         }
@@ -467,8 +482,8 @@ public sealed class TraceDefinitionBuilder(Func<PlanNode, AllocationUnit?> resol
             return null;
         }
 
-        if (BuildSide(merge.Outer, info.OuterKeys) is not { } outer
-            || BuildSide(merge.Inner, info.InnerKeys) is not { } inner)
+        if (BuildSide(node, merge.Outer, info.OuterKeys) is not { } outer
+            || BuildSide(node, merge.Inner, info.InnerKeys) is not { } inner)
         {
             return null;
         }
@@ -491,7 +506,7 @@ public sealed class TraceDefinitionBuilder(Func<PlanNode, AllocationUnit?> resol
             return null;
         }
 
-        if (Build(join.Outer) is not { } outer || BuildInner(join.Inner) is not { } inner)
+        if (BuildInput(node, join.Outer) is not { } outer || BuildInner(join.Inner) is not { } inner)
         {
             return null;
         }
@@ -568,9 +583,13 @@ public sealed class TraceDefinitionBuilder(Func<PlanNode, AllocationUnit?> resol
         };
     }
 
-    private static IteratorDefinition? AsRowSource(IteratorDefinition? definition)
-        => definition is ColumnstoreScanDefinition batch
-            ? new BatchToRowDefinition(batch) { NodeId = -(batch.NodeId + 2), OutputList = batch.OutputList }
+    private static IteratorDefinition? AsRowSource(IteratorDefinition? definition, bool parentIsBatch)
+        => definition is IBatchDefinition && !parentIsBatch
+            ? new BatchToRowDefinition(definition)
+              {
+                  NodeId = -(definition.NodeId + 2),
+                  OutputList = definition.OutputList
+              }
             : definition;
 
     private IteratorDefinition? BuildAccess(PlanNode node)
@@ -619,9 +638,9 @@ public sealed class TraceDefinitionBuilder(Func<PlanNode, AllocationUnit?> resol
     /// <summary>
     /// Builds one side of a join, which is whatever access path or operator feeds it plus the columns the join matches on
     /// </summary>
-    private JoinInputDefinition? BuildSide(PlanNode node, List<ColumnReference> keys)
+    private JoinInputDefinition? BuildSide(PlanNode parent, PlanNode node, List<ColumnReference> keys)
     {
-        if (Build(node) is not { } source)
+        if (BuildInput(parent, node) is not { } source)
         {
             return null;
         }

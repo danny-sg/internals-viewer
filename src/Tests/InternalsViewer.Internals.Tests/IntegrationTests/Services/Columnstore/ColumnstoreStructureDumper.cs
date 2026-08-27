@@ -207,7 +207,7 @@ internal static class ColumnstoreStructureDumper
 
         for (var i = 0; i < Math.Min(count, reader.RowCount); i++)
         {
-            builder.AppendLine($"  [{i,6}] dataId {reader.DataIds.GetDataId(i),22}   value {reader.GetValue(i)}");
+            builder.AppendLine($"  [{i,6}] dataId {reader.DataIds.GetRowDataId(i),22}   value {reader.GetValue(i)}");
         }
 
         return builder.ToString();

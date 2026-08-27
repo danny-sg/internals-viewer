@@ -1,3 +1,3 @@
-﻿namespace InternalsViewer.Execution.AccessPaths.Definitions;
+namespace InternalsViewer.Execution.AccessPaths.Definitions;
 
-public sealed record BatchToRowDefinition(ColumnstoreScanDefinition Batch) : UnaryDefinition(Batch);
+public sealed record BatchToRowDefinition(IteratorDefinition Batch) : UnaryDefinition(Batch);

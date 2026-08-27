@@ -41,6 +41,8 @@ public static class OperatorPhases
                 => ComputeScalar(step),
             FilterDefinition 
                 => Filter(step),
+            BatchFilterDefinition 
+                => BatchFilter(step),
             SegmentDefinition 
                 => Segment(step),
             SequenceProjectDefinition 
@@ -168,6 +170,14 @@ public static class OperatorPhases
         => step switch
         {
             AccessStep.Open or AccessStep.FilterRow => AccessPhase.Filter,
+            AccessStep.Stopped or AccessStep.Close => AccessPhase.Complete,
+            _ => null
+        };
+
+    private static AccessPhase? BatchFilter(AccessStep step)
+        => step switch
+        {
+            AccessStep.Open or AccessStep.FilterVector or AccessStep.BatchFiltered => AccessPhase.Filter,
             AccessStep.Stopped or AccessStep.Close => AccessPhase.Complete,
             _ => null
         };

@@ -29,4 +29,16 @@ public abstract partial record AccessStep
                                       int QualifyingCount,
                                       int RleEntries,
                                       int Operations) : AccessStep(AccessPhase.Walk);
+
+    public sealed record FilterVector(long Number,
+                                      int RowGroupId,
+                                      string Columns,
+                                      int RowsEvaluated,
+                                      int Matches) : AccessStep(AccessPhase.Filter);
+
+    public sealed record BatchFiltered(long Number,
+                                       int RowGroupId,
+                                       int RowCount,
+                                       int QualifyingCount,
+                                       long PassedCount) : AccessStep(AccessPhase.Walk);
 }

@@ -161,9 +161,9 @@ public sealed class ColumnstoreServiceTests(ITestOutputHelper testOutput) : Prov
             Assert.Equal(segment.RowCount, ids.Count);
 
             Assert.All(Enumerable.Range(0, Math.Min(ids.Count, 5000)),
-                       i => Assert.Equal(ids[i], stream.GetDataId(i)));
+                       i => Assert.Equal(ids[i], stream.GetRowDataId(i)));
 
-            Assert.Equal(ids[^1], stream.GetDataId(ids.Count - 1));
+            Assert.Equal(ids[^1], stream.GetRowDataId(ids.Count - 1));
         }
     }
 

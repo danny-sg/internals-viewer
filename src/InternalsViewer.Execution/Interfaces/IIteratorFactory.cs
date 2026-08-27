@@ -1,4 +1,5 @@
-using InternalsViewer.Execution.AccessPaths.Definitions;
+﻿using InternalsViewer.Execution.AccessPaths.Definitions;
+using InternalsViewer.Execution.Interfaces.BatchMode;
 
 namespace InternalsViewer.Execution.Interfaces;
 
@@ -11,4 +12,6 @@ namespace InternalsViewer.Execution.Interfaces;
 public interface IIteratorFactory
 {
     IIterator Create(IteratorDefinition definition);
+
+    IBatchIterator CreateBatch(IteratorDefinition definition);
 }

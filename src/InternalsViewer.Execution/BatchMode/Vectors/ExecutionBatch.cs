@@ -2,17 +2,31 @@
 
 namespace InternalsViewer.Execution.BatchMode.Vectors;
 
-public sealed class ExecutionBatch(int rowCount, IReadOnlyList<BatchVector> vectors, IDeepDataContext deepData)
+/// <summary>
+/// Representation of a Batch mode Batch
+/// </summary>
+public sealed class ExecutionBatch(int capacity, IReadOnlyList<BatchVector> vectors, IDeepDataContext deepDataContext)
 {
-    public int RowCount { get; } = rowCount;
+    public int Capacity { get; } = capacity;
+
+    public int RowCount { get; private set; } = capacity;
 
     public IReadOnlyList<BatchVector> Vectors { get; } = vectors;
 
-    public IDeepDataContext DeepData { get; } = deepData;
+    public IDeepDataContext DeepDataContext { get; } = deepDataContext;
 
-    public SelectionBitmap SelectionBitmap { get; } = new(rowCount);
+    public SelectionVector SelectionVector { get; } = new(capacity);
 
     public int RowGroupId { get; init; }
+
+    public void Reset(int rowCount)
+    {
+        RowCount = rowCount;
+
+        DeepDataContext.Clear();
+
+        SelectionVector.Reset(rowCount);
+    }
 
     public BatchVector? Find(string columnName)
         => Vectors.FirstOrDefault(v => string.Equals(v.Column.Name, columnName, StringComparison.OrdinalIgnoreCase));

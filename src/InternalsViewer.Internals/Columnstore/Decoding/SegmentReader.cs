@@ -26,7 +26,7 @@ public sealed class SegmentReader(ColumnSegment segment,
     {
         if (Blob.VariableLengthData is not { } store)
         {
-            return Decoder.Decode(DataIds.GetDataId(rowOrdinal));
+            return Decoder.Decode(DataIds.GetRowDataId(rowOrdinal));
         }
 
         var (_, valueOrdinal) = DataIds.FindValue(rowOrdinal);

@@ -14,12 +14,12 @@ public sealed class SegmentDataIdStream(SegmentBlob blob)
 
     private int[] RunStartRows => field ??= BuildRunStartRows();
 
-    public long GetDataId(int rowOrdinal) => GetRowDataId(rowOrdinal).DataId;
+    public long GetRowDataId(int rowOrdinal) => GetRowDataIdSource(rowOrdinal).DataId;
 
     /// <summary>
-    /// Read Segment Row Data Id
+    /// Read Data Id Source for a row
     /// </summary>
-    public SegmentDataIdSource GetRowDataId(int rowOrdinal)
+    public SegmentDataIdSource GetRowDataIdSource(int rowOrdinal)
     {
         if ((uint)rowOrdinal >= (uint)RowCount)
         {
@@ -74,7 +74,7 @@ public sealed class SegmentDataIdStream(SegmentBlob blob)
         return span with { BitOffset = (Blob.Header.BitpackArrayOffset * 8) + span.BitOffset };
     }
 
-    public IEnumerable<SegmentDataIdRun> GetBatchDataIds(int fromRow, int count)
+    public IEnumerable<SegmentRun> GetRuns(int fromRow, int count)
     {
         var end = Math.Min(fromRow + count, RowCount);
 
@@ -82,9 +82,9 @@ public sealed class SegmentDataIdStream(SegmentBlob blob)
         {
             for (var row = fromRow; row < end; row++)
             {
-                var source = GetRowDataId(row);
+                var source = GetRowDataIdSource(row);
 
-                yield return new SegmentDataIdRun(source.Origin, source.DataId, source.SourceIndex, row, 1);
+                yield return new SegmentRun(source.Origin, source.DataId, source.SourceIndex, row, 1);
             }
 
             yield break;
@@ -108,8 +108,8 @@ public sealed class SegmentDataIdStream(SegmentBlob blob)
             }
 
             yield return entry.IsValue
-                ? new SegmentDataIdRun(SegmentValueOrigin.RleRun, entry.Value, -1, current, take)
-                : new SegmentDataIdRun(SegmentValueOrigin.BitPack,
+                ? new SegmentRun(SegmentValueOrigin.RleRun, entry.Value, -1, current, take)
+                : new SegmentRun(SegmentValueOrigin.BitPack,
                                        0,
                                        entry.BitpackIndex + (current - startRow),
                                        current,

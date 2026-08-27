@@ -38,5 +38,7 @@ public static class ServiceRegistration
 
         services.AddTransient<ColumnstoreScanIterator>();
         services.AddTransient<BatchToRowIterator>();
+
+        services.AddTransient<BatchFilterIterator>();
     }
 }

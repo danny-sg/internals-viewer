@@ -34,6 +34,8 @@ public sealed class ColumnstoreScanIterator(ColumnstoreService columnstoreServic
 
     public bool IsComplete { get; private set; }
 
+    public StopReason? StopReason { get; private set; }
+
     private IteratorContext Context { get; set; } = null!;
 
     private ColumnstoreScanDefinition Definition { get; set; } = null!;
@@ -50,7 +52,7 @@ public sealed class ColumnstoreScanIterator(ColumnstoreService columnstoreServic
 
     private DeletedRows Deleted { get; set; } = DeletedRows.None;
 
-    private IReadOnlyList<RowGroup> RowGroups { get; set; } = [];
+    private List<RowGroup> RowGroups { get; set; } = [];
 
     private IReadOnlyList<int> ColumnIds { get; set; } = [];
 
@@ -61,6 +63,10 @@ public sealed class ColumnstoreScanIterator(ColumnstoreService columnstoreServic
     private SegmentEliminator Segments { get; set; } = new(null);
 
     private HashSet<long> SkippedPartitions { get; } = [];
+
+    private bool[] Keep { get; } = new bool[MaximumBatchRows];
+
+    private ExecutionBatch? Batch { get; set; }
 
     public async Task OpenAsync(IteratorDefinition definition, IteratorContext context, CancellationToken cancellationToken)
     {
@@ -80,7 +86,11 @@ public sealed class ColumnstoreScanIterator(ColumnstoreService columnstoreServic
 
         Columns = [];
 
+        Batch = null;
+
         IsComplete = false;
+
+        StopReason = null;
 
         RowGroups = [];
 
@@ -118,7 +128,9 @@ public sealed class ColumnstoreScanIterator(ColumnstoreService columnstoreServic
             {
                 IsComplete = true;
 
-                await EmitAsync(new AccessStep.Stopped(StopReason.RowGroupsExhausted), cancellationToken);
+                StopReason = AccessPaths.Results.StopReason.RowGroupsExhausted;
+
+                await EmitAsync(new AccessStep.Stopped(StopReason.Value), cancellationToken);
 
                 return null;
             }
@@ -149,6 +161,8 @@ public sealed class ColumnstoreScanIterator(ColumnstoreService columnstoreServic
 
         Columns = [];
 
+        Batch = null;
+
         IsComplete = true;
 
         await EmitAsync(new AccessStep.Close(), CancellationToken.None);
@@ -157,32 +171,47 @@ public sealed class ColumnstoreScanIterator(ColumnstoreService columnstoreServic
     private ValueTask EmitAsync(AccessStep step, CancellationToken cancellationToken)
         => Context.Steps.EmitAsync(step with { NodeId = NodeId }, cancellationToken);
 
+    private ExecutionBatch CreateBatch(RowGroup rowGroup)
+    {
+        var vectors = new List<BatchVector>(Columns.Count);
+
+        foreach (var column in Columns)
+        {
+            vectors.Add(new BatchVector(column.Column, BatchRows) { Source = column.Reader });
+        }
+
+        return new ExecutionBatch(BatchRows, vectors, new BatchDeepDataStore()) { RowGroupId = rowGroup.RowGroupId };
+    }
+
     private async Task<ExecutionBatch?> FillAsync(int size, CancellationToken cancellationToken)
     {
-        var deepData = new BatchDeepDataStore();
+        var batch = Batch!;
 
-        var vectors = new List<BatchVector>(Columns.Count);
+        batch.Reset(size);
 
         var rleEntries = 0;
 
         var operations = 0;
 
-        foreach (var column in Columns)
+        for (var i = 0; i < Columns.Count; i++)
         {
-            var vector = new BatchVector(column.Column, size) { Source = column.Reader };
-
-            FillVector(column, vector, RowOrdinal, size, deepData, ref rleEntries, ref operations);
-
-            vectors.Add(vector);
+            FillVector(Columns[i], batch.Vectors[i], RowOrdinal, size, batch.DeepDataContext, ref rleEntries, ref operations);
         }
 
-        var rowGroupId = Reader!.RowGroup.RowGroupId;
+        var rowGroupId = batch.RowGroupId;
 
-        var batch = new ExecutionBatch(size, vectors, deepData) { RowGroupId = rowGroupId };
+        var keep = Keep.AsSpan(0, size);
 
-        ApplyCompressedFilters(batch, RowOrdinal, size, ref rleEntries, ref operations);
+        keep.Fill(true);
 
-        var deleted = ClearDeleted(batch, rowGroupId, RowOrdinal, size);
+        var filtered = ApplyCompressedFilters(keep, RowOrdinal, ref rleEntries, ref operations);
+
+        var deleted = ApplyDeleted(keep, rowGroupId, RowOrdinal, size);
+
+        if (filtered > 0 || deleted > 0)
+        {
+            Select(batch.SelectionVector, keep);
+        }
 
         if (deleted > 0)
         {
@@ -191,7 +220,7 @@ public sealed class ColumnstoreScanIterator(ColumnstoreService columnstoreServic
 
         RowOrdinal += size;
 
-        if (batch.SelectionBitmap.Count == 0)
+        if (batch.SelectionVector.RowCount == 0)
         {
             return null;
         }
@@ -202,7 +231,7 @@ public sealed class ColumnstoreScanIterator(ColumnstoreService columnstoreServic
                                                      rowGroupId,
                                                      RowOrdinal - size,
                                                      size,
-                                                     batch.SelectionBitmap.Count,
+                                                     batch.SelectionVector.RowCount,
                                                      rleEntries,
                                                      operations),
                         cancellationToken);
@@ -210,7 +239,20 @@ public sealed class ColumnstoreScanIterator(ColumnstoreService columnstoreServic
         return batch;
     }
 
-    private int ClearDeleted(ExecutionBatch batch, int rowGroupId, int from, int size)
+    private static void Select(SelectionVector selection, ReadOnlySpan<bool> keep)
+    {
+        selection.RemoveAll();
+
+        for (var i = 0; i < keep.Length; i++)
+        {
+            if (keep[i])
+            {
+                selection.Add(i);
+            }
+        }
+    }
+
+    private int ApplyDeleted(Span<bool> keep, int rowGroupId, int from, int size)
     {
         var rows = Deleted.ForRowGroup(rowGroupId);
 
@@ -230,7 +272,7 @@ public sealed class ColumnstoreScanIterator(ColumnstoreService columnstoreServic
 
         for (var i = start; i < rows.Length && rows[i] < from + size; i++)
         {
-            batch.SelectionBitmap.Clear(rows[i] - from);
+            keep[rows[i] - from] = false;
 
             cleared++;
         }
@@ -238,8 +280,10 @@ public sealed class ColumnstoreScanIterator(ColumnstoreService columnstoreServic
         return cleared;
     }
 
-    private void ApplyCompressedFilters(ExecutionBatch batch, int fromRow, int size, ref int rleEntries, ref int operations)
+    private int ApplyCompressedFilters(Span<bool> keep, int fromRow, ref int rleEntries, ref int operations)
     {
+        var cleared = 0;
+
         foreach (var column in Columns)
         {
             if (column.Filter is not { } filter)
@@ -247,7 +291,7 @@ public sealed class ColumnstoreScanIterator(ColumnstoreService columnstoreServic
                 continue;
             }
 
-            foreach (var run in column.Reader.DataIds.GetBatchDataIds(fromRow, size))
+            foreach (var run in column.Reader.DataIds.GetRuns(fromRow, keep.Length))
             {
                 var offset = run.FirstRow - fromRow;
 
@@ -262,10 +306,9 @@ public sealed class ColumnstoreScanIterator(ColumnstoreService columnstoreServic
                         continue;
                     }
 
-                    for (var i = 0; i < run.RowCount; i++)
-                    {
-                        batch.SelectionBitmap.Clear(offset + i);
-                    }
+                    keep.Slice(offset, run.RowCount).Clear();
+
+                    cleared += run.RowCount;
 
                     continue;
                 }
@@ -274,24 +317,30 @@ public sealed class ColumnstoreScanIterator(ColumnstoreService columnstoreServic
 
                 for (var i = 0; i < run.RowCount; i++)
                 {
-                    if (!filter.Matches(column.Reader.DataIds.GetDataId(run.FirstRow + i)))
+                    if (filter.Matches(column.Reader.DataIds.GetRowDataId(run.FirstRow + i)))
                     {
-                        batch.SelectionBitmap.Clear(offset + i);
+                        continue;
                     }
+
+                    keep[offset + i] = false;
+
+                    cleared++;
                 }
             }
         }
+
+        return cleared;
     }
 
     private static void FillVector(ScanColumn column,
                                    BatchVector vector,
                                    int fromRow,
                                    int size,
-                                   BatchDeepDataStore deepData,
+                                   IDeepDataContext deepData,
                                    ref int rleEntries,
                                    ref int operations)
     {
-        foreach (var run in column.Reader.DataIds.GetBatchDataIds(fromRow, size))
+        foreach (var run in column.Reader.DataIds.GetRuns(fromRow, size))
         {
             var offset = run.FirstRow - fromRow;
 
@@ -318,14 +367,14 @@ public sealed class ColumnstoreScanIterator(ColumnstoreService columnstoreServic
                 var rowOrdinal = run.FirstRow + i;
 
                 vector.Slots[offset + i] = CreateSlot(column,
-                                                      column.Reader.DataIds.GetDataId(rowOrdinal),
+                                                      column.Reader.DataIds.GetRowDataId(rowOrdinal),
                                                       rowOrdinal,
                                                       deepData);
             }
         }
     }
 
-    private static BatchSlot CreateSlot(ScanColumn column, long dataId, int rowOrdinal, BatchDeepDataStore deepData)
+    private static BatchSlot CreateSlot(ScanColumn column, long dataId, int rowOrdinal, IDeepDataContext deepData)
     {
         var segment = column.Reader.Segment;
 
@@ -378,6 +427,8 @@ public sealed class ColumnstoreScanIterator(ColumnstoreService columnstoreServic
             Columns = columns;
 
             BatchRows = GetBatchRows(columns.Count);
+
+            Batch = CreateBatch(rowGroup);
 
             RowOrdinal = 0;
 

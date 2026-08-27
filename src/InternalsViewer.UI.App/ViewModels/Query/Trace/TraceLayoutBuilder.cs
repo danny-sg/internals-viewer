@@ -86,7 +86,7 @@ public static class TraceLayoutBuilder
             StreamAggregateDefinition => "Stream Aggregate",
             HashAggregateDefinition => "Hash Match",
             ComputeScalarDefinition => "Compute Scalar",
-            FilterDefinition => "Filter",
+            FilterDefinition or BatchFilterDefinition => "Filter",
             SegmentDefinition => "Segment",
             SequenceProjectDefinition => "Sequence Project",
             SeekDefinition => "Index Seek",
@@ -430,9 +430,9 @@ public static class TraceLayoutBuilder
             return string.Join(", ", compute.Columns.Select(c => c.Name));
         }
 
-        if (definition is FilterDefinition filter)
+        if (definition is FilterDefinition or BatchFilterDefinition)
         {
-            return filter.Residual is null ? string.Empty : PredicateText.From(filter.Residual).ToString();
+            return definition.Residual is null ? string.Empty : PredicateText.From(definition.Residual).ToString();
         }
 
         if (definition is SegmentDefinition segment)
@@ -475,7 +475,7 @@ public static class TraceLayoutBuilder
             StreamAggregateDefinition => ("Input", string.Empty),
             HashAggregateDefinition => ("Input", string.Empty),
             ComputeScalarDefinition => ("Input", string.Empty),
-            FilterDefinition => ("Input", string.Empty),
+            FilterDefinition or BatchFilterDefinition => ("Input", string.Empty),
             SegmentDefinition => ("Input", string.Empty),
             SequenceProjectDefinition => ("Input", string.Empty),
             _ => ("Outer Input", "Inner Input")

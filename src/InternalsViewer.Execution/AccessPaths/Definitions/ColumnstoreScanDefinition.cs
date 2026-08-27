@@ -2,7 +2,7 @@
 
 namespace InternalsViewer.Execution.AccessPaths.Definitions;
 
-public sealed record ColumnstoreScanDefinition : IteratorDefinition
+public sealed record ColumnstoreScanDefinition : IteratorDefinition, IBatchDefinition
 {
     public AllocationUnit? AllocationUnit { get; init; }
 

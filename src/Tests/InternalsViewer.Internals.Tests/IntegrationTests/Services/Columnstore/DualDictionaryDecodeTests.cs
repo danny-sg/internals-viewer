@@ -70,7 +70,7 @@ public sealed class DualDictionaryDecodeTests(ITestOutputHelper testOutput) : Pr
 
             for (var row = 0; row < segment.RowCount; row += step)
             {
-                var dataId = stream.GetDataId(row);
+                var dataId = stream.GetRowDataId(row);
 
                 var decoded = noteReader.GetValue(row);
 

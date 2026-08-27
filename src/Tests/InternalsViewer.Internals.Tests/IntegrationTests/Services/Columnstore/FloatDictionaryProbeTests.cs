@@ -111,7 +111,7 @@ public sealed class FloatDictionaryProbeTests(ITestOutputHelper testOutput) : Pr
 
                     if (i < 3)
                     {
-                        lines.Add($"  {columnName}[{i}] dataId {segmentReader.DataIds.GetDataId(i)} "
+                        lines.Add($"  {columnName}[{i}] dataId {segmentReader.DataIds.GetRowDataId(i)} "
                                   + $"=> {value} ({value?.GetType().Name})");
                     }
 

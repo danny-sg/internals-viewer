@@ -200,8 +200,7 @@ public sealed partial class TraceTabViewModel : ObservableObject, IDisposable
     /// </summary>
     public JoinDecision? JoinRule => Definition is JoinDefinition join ? join.JoinType.Decide(true, true) : null;
 
-    public bool HasBatchMode => Layout.Nodes.Values.Any(n => n.Definition is ColumnstoreScanDefinition
-                                                                     or BatchToRowDefinition);
+    public bool HasBatchMode => Layout.Nodes.Values.Any(n => n.Definition is IBatchDefinition or BatchToRowDefinition);
 
     public IteratorDefinition? SelectedDefinition => Layout.Nodes.GetValueOrDefault(SelectedNodeId)?.Definition;
 
@@ -397,6 +396,8 @@ public sealed partial class TraceTabViewModel : ObservableObject, IDisposable
 
     private static bool IsBatchBoundary(AccessStep step)
         => step is AccessStep.BatchProduced
+                   or AccessStep.FilterVector
+                   or AccessStep.BatchFiltered
                    or AccessStep.RowGroupOpened
                    or AccessStep.RowGroupSkipped
                    or AccessStep.SegmentElimination

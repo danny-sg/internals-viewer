@@ -46,7 +46,7 @@ public sealed class RepeatRunOrdinalProbeTests(ITestOutputHelper testOutput) : P
 
         foreach (var row in new[] { 0, 1, 2, 5000, 9998, 9999, 10000, 10001, 59999 })
         {
-            var source = stream.GetRowDataId(row);
+            var source = stream.GetRowDataIdSource(row);
 
             _lines.Add($"row {row,6} origin {source.Origin} entry {source.EntryIndex} "
                        + $"valueOrdinal {source.SourceIndex,6} address {store.GetPageSlot(source.SourceIndex)}");

@@ -133,6 +133,14 @@ public static class TraceStepRuns
                                      batchProduced.QualifyingCount);
                 return true;
 
+            case AccessStep.FilterVector filterVector:
+                BatchFilterSpanFor(filterVector, history).Progress.Apply(filterVector);
+                return true;
+
+            case AccessStep.BatchFiltered batchFiltered:
+                BatchFilterSpanFor(batchFiltered, history).Progress.Apply(batchFiltered);
+                return true;
+
             case AccessStep.FilterRow filterRow:
                 RowCountSpanFor(filterRow, RowCountSpan.PassBadge, history, top)
                     .Progress.Apply(filterRow.PassedCount, filterRow.Number);
@@ -307,6 +315,24 @@ public static class TraceStepRuns
             NodeId = step.NodeId,
             Counters = step.Counters,
             Badge = badge
+        };
+
+        InsertSpan(history, created);
+
+        return created;
+    }
+
+    private static BatchFilterSpan BatchFilterSpanFor(AccessStep step, ObservableCollection<AccessStep> history)
+    {
+        if (FindOpenSpan<BatchFilterSpan>(history, step.NodeId) is { } span)
+        {
+            return span;
+        }
+
+        var created = new BatchFilterSpan
+        {
+            NodeId = step.NodeId,
+            Counters = step.Counters
         };
 
         InsertSpan(history, created);

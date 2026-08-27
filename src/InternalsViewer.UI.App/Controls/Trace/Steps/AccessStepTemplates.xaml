@@ -26,6 +26,7 @@
     <converters:BoolToVisibilityConverter x:Key="StepsInverseBoolToVisibilityConverter" IsInverse="True" />
     <trace:MergeCompareRunToTextConverter x:Key="MergeCompareRunToTextConverter" />
     <trace:HashValueToTextConverter x:Key="HashValueToTextConverter" />
+    <trace:StopReasonToTextConverter x:Key="StopReasonToTextConverter" />
     <converters:NullToVisibilityConverter x:Key="StepsNullToInverseVisibilityConverter" IsInverse="True" />
 
     <Style x:Key="StepLabelStyle" TargetType="TextBlock">
@@ -1762,7 +1763,7 @@
             </StackPanel>
             <StackPanel Orientation="Horizontal">
                 <TextBlock Text="Stopped" Style="{StaticResource StepLabelStyle}" />
-                <TextBlock Text="{Binding Reason, Converter={StaticResource EnumToTextConverter}}"
+                <TextBlock Text="{Binding Reason, Converter={StaticResource StopReasonToTextConverter}}"
                            Style="{StaticResource StepValueStyle}" />
             </StackPanel>
         </Grid>
@@ -1977,6 +1978,41 @@
                         Margin="8,0,0,0"
                         VerticalAlignment="Center">
                     <TextBlock Text="{Binding Badge}"
+                               Foreground="White"
+                               FontSize="11" />
+                </Border>
+            </StackPanel>
+        </Grid>
+    </DataTemplate>
+
+    <DataTemplate x:Key="BatchFilterSpanTemplate" >
+        <Grid Style="{StaticResource StepRowStyle}">
+            <StackPanel Orientation="Horizontal" 
+                        Grid.ColumnSpan="9" 
+                        HorizontalAlignment="Left" 
+                        VerticalAlignment="Top" 
+                        Spacing="5" Width="190" 
+                        Margin="-200,0,0,0">
+                <Border x:Name="SourceBlob" Width="9" Height="9" CornerRadius="2" Margin="0,4,0,0" VerticalAlignment="Top" />
+                <TextBlock x:Name="SourceName" Style="{StaticResource StepNodeStyle}" />
+            </StackPanel>
+            <StackPanel Orientation="Horizontal">
+                <TextBlock Text="Filter Vector" Style="{StaticResource StepLabelStyle}" />
+                <TextBlock Text="Batch" Style="{StaticResource StepPropertyStyle}" />
+                <TextBlock Text="{Binding Progress.Batches}" Style="{StaticResource StepValueStyle}" />
+                <TextBlock Text="{Binding Progress.Columns}" Style="{StaticResource StepValueStyle}" Margin="8,0,0,0" />
+                <TextBlock Text="{Binding Progress.Rows}" Style="{StaticResource StepValueStyle}" Margin="8,0,0,0" />
+                <TextBlock Text="rows evaluated" Style="{StaticResource StepPropertyStyle}" />
+                <TextBlock Text="→" Style="{StaticResource StepPropertyStyle}" Margin="8,0,0,0" />
+                <TextBlock Text="{Binding Progress.Selected}" Style="{StaticResource StepValueStyle}" />
+                <TextBlock Text="selected" Style="{StaticResource StepPropertyStyle}" />
+                <Border x:Name="EmitBadge"
+                        Background="{ThemeResource SystemFillColorSuccessBrush}"
+                        CornerRadius="4"
+                        Padding="6,0,6,1"
+                        Margin="8,0,0,0"
+                        VerticalAlignment="Center">
+                    <TextBlock Text="{Binding Progress.Passed}"
                                Foreground="White"
                                FontSize="11" />
                 </Border>
@@ -2213,6 +2249,7 @@
         ExtentStartTemplate="{StaticResource ExtentStartTemplate}"
         PageSkippedTemplate="{StaticResource PageSkippedTemplate}"
         BatchCountSpanTemplate="{StaticResource BatchCountSpanTemplate}"
+        BatchFilterSpanTemplate="{StaticResource BatchFilterSpanTemplate}"
         RowGroupOpenedTemplate="{StaticResource RowGroupOpenedTemplate}"
         SegmentOpenedTemplate="{StaticResource SegmentOpenedTemplate}"
         RowGroupSkippedTemplate="{StaticResource RowGroupSkippedTemplate}"

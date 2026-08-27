@@ -1,7 +1,8 @@
 ﻿using InternalsViewer.Execution.AccessPaths.Definitions;
+using InternalsViewer.Execution.Interfaces;
+using InternalsViewer.Execution.Interfaces.BatchMode;
 using InternalsViewer.Execution.Iterators.BatchMode;
 using InternalsViewer.Execution.Iterators.BatchMode.DataAccess;
-using InternalsViewer.Execution.Interfaces;
 using InternalsViewer.Execution.Iterators.RowMode.Aggregation;
 using InternalsViewer.Execution.Iterators.RowMode.DataAccess;
 using InternalsViewer.Execution.Iterators.RowMode.Joins;
@@ -51,5 +52,15 @@ public sealed class IteratorFactory(IServiceProvider services) : IIteratorFactor
             RangeDefinition or SeekDefinition
                 => services.GetRequiredService<IndexIterator>(),
             _ => throw new ArgumentException($"No iterator runs a {definition.GetType().Name}")
+        };
+
+    public IBatchIterator CreateBatch(IteratorDefinition definition)
+        => definition switch
+        {
+            ColumnstoreScanDefinition
+                => services.GetRequiredService<ColumnstoreScanIterator>(),
+            BatchFilterDefinition
+                => services.GetRequiredService<BatchFilterIterator>(),
+            _ => throw new ArgumentException($"No batch iterator runs a {definition.GetType().Name}")
         };
 }

@@ -10,6 +10,8 @@ public sealed class AccessStepTemplateSelector : DataTemplateSelector
 
     public DataTemplate BatchCountSpanTemplate { get; set; } = null!;
 
+    public DataTemplate BatchFilterSpanTemplate { get; set; } = null!;
+
     public DataTemplate RowGroupOpenedTemplate { get; set; } = null!;
 
     public DataTemplate SegmentOpenedTemplate { get; set; } = null!;
@@ -208,6 +210,7 @@ public sealed class AccessStepTemplateSelector : DataTemplateSelector
             AccessStep.ExtentStart => ExtentStartTemplate,
             AccessStep.PageSkipped => PageSkippedTemplate,
             BatchCountSpan => BatchCountSpanTemplate,
+            BatchFilterSpan => BatchFilterSpanTemplate,
             AccessStep.RowGroupOpened => RowGroupOpenedTemplate,
             AccessStep.SegmentOpened => SegmentOpenedTemplate,
             AccessStep.RowGroupSkipped => RowGroupSkippedTemplate,

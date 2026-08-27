@@ -18,8 +18,8 @@ public readonly record struct SegmentDataIdSource(long DataId,
 /// <summary>
 /// A span of consecutive rows sharing one origin, being an RLE run or a stretch of bit packed values
 /// </summary>
-public readonly record struct SegmentDataIdRun(SegmentValueOrigin Origin,
-                                               long Value,
-                                               int BitpackIndex,
-                                               int FirstRow,
-                                               int RowCount);
+public readonly record struct SegmentRun(SegmentValueOrigin Origin,
+                                         long Value,
+                                         int BitpackIndex,
+                                         int FirstRow,
+                                         int RowCount);
