@@ -18,7 +18,37 @@ public sealed class SegmentReader(ColumnSegment segment,
 
     public SegmentDataIdStream DataIds { get; } = new(blob);
 
+    public IEnumerable<long> DictionaryDataIds
+    {
+        get
+        {
+            if (Dictionary is { } primary)
+            {
+                for (var id = primary.FirstId; id <= primary.LastId; id++)
+                {
+                    yield return id;
+                }
+            }
+
+            if (Overflow is not { } second)
+            {
+                yield break;
+            }
+
+            var offset = Dictionary?.LastId ?? 0;
+
+            for (var id = second.FirstId; id <= second.LastId; id++)
+            {
+                yield return offset + id;
+            }
+        }
+    }
+
     public int RowCount => DataIds.RowCount;
+
+    private DictionaryBlob? Dictionary { get; } = dictionary;
+
+    private DictionaryBlob? Overflow { get; } = overflow;
 
     private SegmentValueDecoder Decoder { get; } = new(segment, dictionary, overflow);
 

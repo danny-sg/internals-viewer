@@ -7,4 +7,6 @@ public sealed record ColumnstoreScanDefinition : IteratorDefinition, IBatchDefin
     public AllocationUnit? AllocationUnit { get; init; }
 
     public IReadOnlyList<string> ColumnNames { get; init; } = [];
+
+    public bool IsFilterOnCompressedDataUsed { get; init; }
 }

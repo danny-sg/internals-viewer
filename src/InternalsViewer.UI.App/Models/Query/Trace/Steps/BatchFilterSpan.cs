@@ -1,10 +1,38 @@
-﻿using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.ComponentModel;
 using InternalsViewer.Execution.AccessPaths.Results;
 using InternalsViewer.Execution.AccessPaths.Results.Steps;
 
 namespace InternalsViewer.UI.App.Models.Query.Trace.Steps;
 
-public sealed record BatchFilterSpan() : AccessStep(AccessPhase.Walk), ITraceSpan
+public sealed record BatchGetSpan() : AccessStep(AccessPhase.Walk), ITraceSpan
+{
+    public BatchGetProgress Progress { get; } = new();
+
+    public bool IsComplete { get; set; }
+}
+
+public sealed partial class BatchGetProgress : ObservableObject
+{
+    [ObservableProperty]
+    private long _batches;
+
+    [ObservableProperty]
+    private long _rows;
+
+    [ObservableProperty]
+    private long _passed;
+
+    public void Apply(AccessStep.BatchFiltered step)
+    {
+        Batches = step.Number;
+
+        Rows += step.RowCount;
+
+        Passed = step.PassedCount;
+    }
+}
+
+public sealed record BatchFilterSpan() : AccessStep(AccessPhase.Filter), ITraceSpan
 {
     public BatchFilterProgress Progress { get; } = new();
 
@@ -14,38 +42,23 @@ public sealed record BatchFilterSpan() : AccessStep(AccessPhase.Walk), ITraceSpa
 public sealed partial class BatchFilterProgress : ObservableObject
 {
     [ObservableProperty]
-    private long _batches;
+    private string _columns = "";
 
     [ObservableProperty]
-    private long _rows;
+    private long _evaluated;
 
     [ObservableProperty]
     private long _selected;
 
-    [ObservableProperty]
-    private long _passed;
-
-    [ObservableProperty]
-    private string _columns = "";
-
     public void Apply(AccessStep.FilterVector step)
     {
-        Batches = step.Number;
-
-        Rows += step.RowsEvaluated;
-
         if (Columns != step.Columns)
         {
             Columns = step.Columns;
         }
-    }
 
-    public void Apply(AccessStep.BatchFiltered step)
-    {
-        Batches = step.Number;
+        Evaluated = step.RowsEvaluated;
 
-        Selected = step.QualifyingCount;
-
-        Passed = step.PassedCount;
+        Selected = step.Matches;
     }
 }

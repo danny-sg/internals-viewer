@@ -72,6 +72,7 @@ public static class BatchInfoBuilder
                 ColumnId = scan.ColumnId,
                 EncodingType = scan.EncodingType.ToString(),
                 CompressedDataType = scan.CompressedDataType.ToString(),
+                FilterType = scan.FilterType.ToString(),
                 FilterOnCompressedDataType = scan.FilterOnCompressedDataType.ToString(),
                 InstructionSet = scan.CpuInstructionSet.ToString(),
                 BitPacking = scan.BitPacking,

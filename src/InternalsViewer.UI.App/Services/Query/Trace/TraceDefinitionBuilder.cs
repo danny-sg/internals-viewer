@@ -49,10 +49,15 @@ public sealed class TraceDefinitionBuilder(Func<PlanNode, AllocationUnit?> resol
 
     public bool CanBuild(PlanNode node) => new TraceDefinitionBuilder(resolveUnit, database).Build(node) is not null;
 
-    public IteratorDefinition? Build(PlanNode node) => AsRowSource(BuildOperator(node), parentIsBatch: false);
+    public IteratorDefinition? Build(PlanNode node) => AsRowSource(BuildOperator(node));
 
     private IteratorDefinition? BuildInput(PlanNode parent, PlanNode child)
-        => AsRowSource(BuildOperator(child), parent.IsBatchMode);
+        => Cross(BuildOperator(child), parent.IsBatchMode);
+
+    private static IteratorDefinition? Cross(IteratorDefinition? definition, bool parentIsBatch)
+        => parentIsBatch
+            ? AsBatchSource(definition)
+            : AsRowSource(definition);
 
     private IteratorDefinition? BuildOperator(PlanNode node)
     {
@@ -579,13 +584,23 @@ public sealed class TraceDefinitionBuilder(Func<PlanNode, AllocationUnit?> resol
             ColumnNames = [.. node.OutputColumns.Select(c => c.Column).Where(c => !string.IsNullOrEmpty(c)).Distinct()],
             OutputList = OutputList(node),
             Residual = Translated(Residual(node), node.PredicateInfo?.HasUntranslatedPredicate == true),
-            RowGoal = node.PredicateInfo?.RowGoal
+            RowGoal = node.PredicateInfo?.RowGoal,
+            IsFilterOnCompressedDataUsed = node.BatchInfo?.IsFilterOnCompressedDataUsed == true
         };
     }
 
-    private static IteratorDefinition? AsRowSource(IteratorDefinition? definition, bool parentIsBatch)
-        => definition is IBatchDefinition && !parentIsBatch
+    private static IteratorDefinition? AsRowSource(IteratorDefinition? definition)
+        => definition is IBatchDefinition
             ? new BatchToRowDefinition(definition)
+              {
+                  NodeId = -(definition.NodeId + 2),
+                  OutputList = definition.OutputList
+              }
+            : definition;
+
+    private static IteratorDefinition? AsBatchSource(IteratorDefinition? definition)
+        => definition is not null and not IBatchDefinition
+            ? new RowToBatchDefinition(definition)
               {
                   NodeId = -(definition.NodeId + 2),
                   OutputList = definition.OutputList

@@ -35,6 +35,8 @@ public sealed class BatchFilterIterator(IIteratorFactory factory) : IBatchIterat
 
     private RowOutcome[] Outcomes { get; set; } = [];
 
+    private BatchRowValueSource Values { get; } = new();
+
     public async Task OpenAsync(IteratorDefinition definition, IteratorContext context, CancellationToken cancellationToken)
     {
         var filter = definition.Expect<BatchFilterDefinition>();
@@ -143,13 +145,17 @@ public sealed class BatchFilterIterator(IIteratorFactory factory) : IBatchIterat
             Outcomes = new RowOutcome[batch.Capacity];
         }
 
+        Values.Bind(batch);
+
         var matches = 0;
 
         for (var i = 0; i < read; i++)
         {
             var row = selection[i];
 
-            var outcome = Evaluate(BatchRecordMaterialiser.Materialise(batch, row)) switch
+            Values.MoveTo(row);
+
+            var outcome = Evaluate() switch
             {
                 true 
                     => RowOutcome.Match,
@@ -184,6 +190,6 @@ public sealed class BatchFilterIterator(IIteratorFactory factory) : IBatchIterat
         }
     }
 
-    private bool? Evaluate(IRecord row)
-        => PredicateEvaluator.Evaluate(Predicate!, new RecordRowValueSource(row), Context.EvaluationContext);
+    private bool? Evaluate()
+        => PredicateEvaluator.Evaluate(Predicate!, Values, Context.EvaluationContext);
 }

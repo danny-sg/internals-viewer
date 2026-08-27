@@ -10,6 +10,8 @@ public sealed class SegmentScanInfo
 
     public string CompressedDataType { get; set; } = string.Empty;
 
+    public string FilterType { get; set; } = string.Empty;
+
     public string FilterOnCompressedDataType { get; set; } = string.Empty;
 
     public string InstructionSet { get; set; } = string.Empty;

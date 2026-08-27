@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.Globalization;
 using System.Text;
 using System.Linq;
@@ -148,6 +149,16 @@ public static class PlanNodePropertyBuilder
             if (batchInfo.IsFilterOnCompressedDataUsed is { } compressedFilter)
             {
                 batchGroup.Children.Add(BoolProperty("Compressed Data Filter", compressedFilter));
+            }
+
+            if (Distinct(batchInfo.SegmentScans.Select(s => s.FilterType)) is { Length: > 0 } filterTypes)
+            {
+                batchGroup.Children.Add(new PlanNodeProperty("Filter Type", filterTypes));
+            }
+
+            if (Distinct(batchInfo.SegmentScans.Select(s => s.FilterOnCompressedDataType)) is { Length: > 0 } earlyTypes)
+            {
+                batchGroup.Children.Add(new PlanNodeProperty("Compressed Data Filter Type", earlyTypes));
             }
 
             if (batchInfo.IsDeepDataPossible is { } deepDataPossible)
@@ -591,6 +602,12 @@ public static class PlanNodePropertyBuilder
 
         return builder.ToString();
     }
+
+    private static string Distinct(IEnumerable<string> values)
+        => string.Join(", ", values.Where(v => !string.IsNullOrEmpty(v) && v != "None")
+                                   .Distinct(StringComparer.OrdinalIgnoreCase)
+                                   .Order(StringComparer.OrdinalIgnoreCase)
+                                   .Select(v => v.SplitString()));
 
     private static PlanNodeProperty BoolProperty(string name, bool value)
     {

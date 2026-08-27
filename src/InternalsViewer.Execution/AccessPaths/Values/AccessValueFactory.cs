@@ -1,4 +1,5 @@
-using System.Data;
+﻿using System.Data;
+using System.Data.SqlTypes;
 using System.Text;
 using InternalsViewer.Internals.Engine.Records;
 
@@ -72,6 +73,24 @@ internal static class AccessValueFactory
             _ => AccessValue.FromBytes(dataType, field.Data.ToArray())
         };
     }
+
+    public static AccessValue FromObject(SqlDbType dataType, object? value)
+        => value switch
+        {
+            null => AccessValue.FromNull(dataType),
+            byte[] bytes => AccessValue.FromBytes(dataType, bytes),
+            string text => FromText(dataType, text),
+            bool flag => AccessValue.FromInteger(dataType, flag ? 1 : 0),
+            byte number => AccessValue.FromInteger(dataType, number),
+            short number => AccessValue.FromInteger(dataType, number),
+            int number => AccessValue.FromInteger(dataType, number),
+            long number => AccessValue.FromInteger(dataType, number),
+            float number => AccessValue.FromReal(dataType, number),
+            double number => AccessValue.FromReal(dataType, number),
+            SqlDecimal number => AccessValue.FromDecimal(dataType, number.Value),
+            decimal number => AccessValue.FromDecimal(dataType, number),
+            _ => FromText(dataType, value.ToString())
+        };
 
     /// <summary>
     /// Creates a value for a literal, used when building predicates

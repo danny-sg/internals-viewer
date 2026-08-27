@@ -127,10 +127,7 @@ public static class TraceStepRuns
 
                 batchSpan.Progress.Apply(batchProduced.Number, batchProduced.RowCount);
 
-                batchSpan.Work.Apply(batchProduced.RleEntries,
-                                     batchProduced.Operations,
-                                     batchProduced.RowCount,
-                                     batchProduced.QualifyingCount);
+                batchSpan.Work.Apply(batchProduced);
                 return true;
 
             case AccessStep.FilterVector filterVector:
@@ -138,7 +135,7 @@ public static class TraceStepRuns
                 return true;
 
             case AccessStep.BatchFiltered batchFiltered:
-                BatchFilterSpanFor(batchFiltered, history).Progress.Apply(batchFiltered);
+                BatchGetSpanFor(batchFiltered, history).Progress.Apply(batchFiltered);
                 return true;
 
             case AccessStep.FilterRow filterRow:
@@ -340,6 +337,24 @@ public static class TraceStepRuns
         return created;
     }
 
+    private static BatchGetSpan BatchGetSpanFor(AccessStep step, ObservableCollection<AccessStep> history)
+    {
+        if (FindOpenSpan<BatchGetSpan>(history, step.NodeId) is { } span)
+        {
+            return span;
+        }
+
+        var created = new BatchGetSpan
+        {
+            NodeId = step.NodeId,
+            Counters = step.Counters
+        };
+
+        InsertSpan(history, created);
+
+        return created;
+    }
+
     private static SegmentSpan SegmentSpanFor(AccessStep step, ObservableCollection<AccessStep> history)
     {
         if (FindOpenSpan<SegmentSpan>(history, step.NodeId) is { } span)
@@ -496,6 +511,7 @@ public static class TraceStepRuns
     {
         HashMatchSpan or MergeMatchSpan => 0,
         HashProbeSpan or MergeCompareSpan => 1,
+        BatchGetSpan => 1,
         _ => 2
     };
 

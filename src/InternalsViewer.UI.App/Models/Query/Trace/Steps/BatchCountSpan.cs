@@ -29,14 +29,24 @@ public sealed partial class BatchWorkProgress : ObservableObject
     [ObservableProperty]
     private long _qualifying;
 
-    public void Apply(long rleEntries, long operations, long rows, long qualifying)
+    [ObservableProperty]
+    private long _materialised;
+
+    [ObservableProperty]
+    private bool _hasFilter;
+
+    public void Apply(AccessStep.BatchProduced step)
     {
-        RleEntries += rleEntries;
+        HasFilter = step.HasCompressedFilter;
 
-        Operations += operations;
+        Materialised += step.Materialised;
 
-        Rows += rows;
+        RleEntries += step.FilterRleEntries;
 
-        Qualifying += qualifying;
+        Operations += step.FilterOperations;
+
+        Rows += step.RowCount;
+
+        Qualifying += step.QualifyingCount;
     }
 }

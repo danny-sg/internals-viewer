@@ -1,4 +1,5 @@
 ﻿using System.Data.SqlTypes;
+using InternalsViewer.Execution.AccessPaths.Binding;
 using InternalsViewer.Execution.AccessPaths.Definitions;
 using InternalsViewer.Execution.AccessPaths.Elimination;
 using InternalsViewer.Execution.AccessPaths.Predicates;
@@ -17,19 +18,34 @@ namespace InternalsViewer.Execution.Iterators.BatchMode.DataAccess;
 /// <summary>
 /// Reads compressed row groups of a columnstore index as batches
 /// </summary>
+/// <remarks>
+/// Columnstore scan is a complex operator where a lot happens over the phases.
+///
+/// Steps are:
+///
+/// Open
+/// ----
+/// 1. The Delete Bitmap is read and set to the Row Mask. Batches use a selection vector that tracks which slots are valid. The Row Mask is
+///    used during the lifecycle of the iterator to track valid rows on a positional basis.
+///
+/// 2. Partition and Segment elimination is run to determine a list of qualified row groups
+///
+/// Get Next Batch
+/// --------------
+///
+/// 1. The next row group is moved to, if there are no more row groups the iterator stops.
+///
+/// 2. The batch is filled from the rowgroup
+///
+///    a. The batch is reset, clearing the vectors and selection vector. If there is no existing batch a new one will be created.
+///
+///    b. The batch vectors are filled from the segment readers to add normalized values from the segments to the batch.
+///
+///    c. Compressed data filters a
+/// 
+/// </remarks>
 public sealed class ColumnstoreScanIterator(ColumnstoreService columnstoreService) : IBatchIterator
 {
-    /// <summary>
-    /// Row positions a batch holds, sized so every vector for a batch sits in cache together
-    /// </summary>
-    public const int BatchBytes = 65536;
-
-    public const int MinimumBatchRows = 64;
-
-    public const int MaximumBatchRows = 900;
-
-    private const int SlotBytes = 8;
-
     public int NodeId { get; private set; }
 
     public bool IsComplete { get; private set; }
@@ -50,13 +66,13 @@ public sealed class ColumnstoreScanIterator(ColumnstoreService columnstoreServic
 
     private long BatchNumber { get; set; }
 
-    private DeletedRows Deleted { get; set; } = DeletedRows.None;
+    private DeletedRows DeletedRows { get; set; } = DeletedRows.None;
 
     private List<RowGroup> RowGroups { get; set; } = [];
 
     private IReadOnlyList<int> ColumnIds { get; set; } = [];
 
-    private int BatchRows { get; set; } = MaximumBatchRows;
+    private int BatchRows { get; set; } = BatchSize.MaxRowCount;
 
     private PartitionEliminator Partitions { get; set; } = new(null);
 
@@ -64,9 +80,21 @@ public sealed class ColumnstoreScanIterator(ColumnstoreService columnstoreServic
 
     private HashSet<long> SkippedPartitions { get; } = [];
 
-    private bool[] Keep { get; } = new bool[MaximumBatchRows];
+    private HashSet<(long HobtId, int ColumnId, int DictionaryId)> OpenDictionaries { get; } = [];
+
+    private bool[] RowMask { get; } = new bool[BatchSize.MaxRowCount];
+
+    private bool HasCompressedFilter => Columns.Exists(c => c.Filter is not null);
+
+    private BatchRowValueSource Values { get; } = new();
 
     private ExecutionBatch? Batch { get; set; }
+
+    private AccessPredicate? Predicate { get; set; }
+
+    private string PredicateColumnNames { get; set; } = string.Empty;
+
+    private long VectorNumber { get; set; }
 
     public async Task OpenAsync(IteratorDefinition definition, IteratorContext context, CancellationToken cancellationToken)
     {
@@ -76,33 +104,11 @@ public sealed class ColumnstoreScanIterator(ColumnstoreService columnstoreServic
 
         NodeId = definition.NodeId;
 
-        RowGroupIndex = 0;
-
-        RowOrdinal = 0;
-
-        BatchNumber = 0;
-
-        Reader = null;
-
-        Columns = [];
-
-        Batch = null;
-
-        IsComplete = false;
-
-        StopReason = null;
-
-        RowGroups = [];
-
-        ColumnIds = [];
-
-        Deleted = DeletedRows.None;
+        Reset();
 
         Partitions = new PartitionEliminator(Definition.Residual);
 
         Segments = new SegmentEliminator(Definition.Residual);
-
-        SkippedPartitions.Clear();
 
         await EmitAsync(new AccessStep.Open(), cancellationToken);
 
@@ -112,9 +118,9 @@ public sealed class ColumnstoreScanIterator(ColumnstoreService columnstoreServic
 
             ColumnIds = ResolveColumns(index);
 
-            Deleted = await columnstoreService.GetDeletedRows(context.Database, index, cancellationToken);
+            DeletedRows = await columnstoreService.GetDeletedRows(context.Database, index, cancellationToken);
 
-            RowGroups = await QualifyAsync([.. index.CompressedRowGroups], cancellationToken);
+            RowGroups = await EliminateRowGroupsAsync([.. index.CompressedRowGroups], cancellationToken);
         }
     }
 
@@ -144,7 +150,7 @@ public sealed class ColumnstoreScanIterator(ColumnstoreService columnstoreServic
                 continue;
             }
 
-            var batch = await FillAsync(Math.Min(BatchRows, remaining), cancellationToken);
+            var batch = await FillBatchAsync(Math.Min(BatchRows, remaining), cancellationToken);
 
             if (batch is null)
             {
@@ -171,6 +177,25 @@ public sealed class ColumnstoreScanIterator(ColumnstoreService columnstoreServic
     private ValueTask EmitAsync(AccessStep step, CancellationToken cancellationToken)
         => Context.Steps.EmitAsync(step with { NodeId = NodeId }, cancellationToken);
 
+    private ExecutionBatch OpenBatch(RowGroup rowGroup)
+    {
+        if (Batch is not { } batch || batch.Vectors.Count != Columns.Count || batch.Capacity != BatchRows)
+        {
+            return CreateBatch(rowGroup);
+        }
+
+        batch.RowGroupId = rowGroup.RowGroupId;
+
+        for (var i = 0; i < Columns.Count; i++)
+        {
+            batch.Vectors[i].Column = Columns[i].Column;
+
+            batch.Vectors[i].Source = Columns[i].Reader;
+        }
+
+        return batch;
+    }
+
     private ExecutionBatch CreateBatch(RowGroup rowGroup)
     {
         var vectors = new List<BatchVector>(Columns.Count);
@@ -183,34 +208,42 @@ public sealed class ColumnstoreScanIterator(ColumnstoreService columnstoreServic
         return new ExecutionBatch(BatchRows, vectors, new BatchDeepDataStore()) { RowGroupId = rowGroup.RowGroupId };
     }
 
-    private async Task<ExecutionBatch?> FillAsync(int size, CancellationToken cancellationToken)
+    private async Task<ExecutionBatch?> FillBatchAsync(int size, CancellationToken cancellationToken)
     {
         var batch = Batch!;
 
         batch.Reset(size);
 
-        var rleEntries = 0;
-
-        var operations = 0;
-
-        for (var i = 0; i < Columns.Count; i++)
-        {
-            FillVector(Columns[i], batch.Vectors[i], RowOrdinal, size, batch.DeepDataContext, ref rleEntries, ref operations);
-        }
-
         var rowGroupId = batch.RowGroupId;
 
-        var keep = Keep.AsSpan(0, size);
+        var filterRleEntries = 0;
 
-        keep.Fill(true);
+        var filterOperations = 0;
 
-        var filtered = ApplyCompressedFilters(keep, RowOrdinal, ref rleEntries, ref operations);
+        RowMask.AsSpan(0, size).Fill(true);
 
-        var deleted = ApplyDeleted(keep, rowGroupId, RowOrdinal, size);
+        var deleted = ApplyDeletedRows(RowMask.AsSpan(0, size), rowGroupId, RowOrdinal, size);
+
+        var filtered = ApplyCompressedFilters(RowMask.AsSpan(0, size), RowOrdinal, ref filterRleEntries, ref filterOperations);
 
         if (filtered > 0 || deleted > 0)
         {
-            Select(batch.SelectionVector, keep);
+            batch.SelectionVector.Set(RowMask.AsSpan(0, size));
+        }
+
+        var materialised = 0;
+
+        if (batch.SelectionVector.RowCount > 0)
+        {
+            for (var i = 0; i < Columns.Count; i++)
+            {
+                FillVector(Columns[i], batch.Vectors[i], RowOrdinal, RowMask.AsSpan(0, size), batch.DeepDataContext, ref materialised);
+            }
+
+            if (await ApplyPredicateAsync(batch, size, cancellationToken) > 0)
+            {
+                batch.SelectionVector.Set(RowMask.AsSpan(0, size));
+            }
         }
 
         if (deleted > 0)
@@ -220,41 +253,78 @@ public sealed class ColumnstoreScanIterator(ColumnstoreService columnstoreServic
 
         RowOrdinal += size;
 
-        if (batch.SelectionVector.RowCount == 0)
-        {
-            return null;
-        }
-
         BatchNumber++;
 
         await EmitAsync(new AccessStep.BatchProduced(BatchNumber,
                                                      rowGroupId,
                                                      RowOrdinal - size,
                                                      size,
-                                                     batch.SelectionVector.RowCount,
-                                                     rleEntries,
-                                                     operations),
+                                                     batch.SelectionVector.RowCount)
+                        {
+                            FilterRleEntries = filterRleEntries,
+                            FilterOperations = filterOperations,
+                            Materialised = materialised,
+                            HasCompressedFilter = HasCompressedFilter
+                        },
                         cancellationToken);
 
-        return batch;
+        return batch.SelectionVector.RowCount == 0 ? null : batch;
     }
 
-    private static void Select(SelectionVector selection, ReadOnlySpan<bool> keep)
+    private async Task<int> ApplyPredicateAsync(ExecutionBatch batch, int size, CancellationToken cancellationToken)
     {
-        selection.RemoveAll();
-
-        for (var i = 0; i < keep.Length; i++)
+        if (Predicate is null)
         {
-            if (keep[i])
-            {
-                selection.Add(i);
-            }
+            return 0;
         }
+
+        var (evaluated, matches) = EvaluatePredicate(batch, size);
+
+        VectorNumber++;
+
+        await EmitAsync(new AccessStep.FilterVector(VectorNumber, batch.RowGroupId, PredicateColumnNames, evaluated, matches),
+                        cancellationToken);
+
+        return evaluated - matches;
     }
 
-    private int ApplyDeleted(Span<bool> keep, int rowGroupId, int from, int size)
+    private (int Evaluated, int Matches) EvaluatePredicate(ExecutionBatch batch, int size)
     {
-        var rows = Deleted.ForRowGroup(rowGroupId);
+        var mask = RowMask.AsSpan(0, size);
+
+        Values.Bind(batch);
+
+        var evaluated = 0;
+
+        var matches = 0;
+
+        for (var i = 0; i < mask.Length; i++)
+        {
+            if (!mask[i])
+            {
+                continue;
+            }
+
+            evaluated++;
+
+            Values.MoveTo(i);
+
+            if (PredicateEvaluator.Evaluate(Predicate!, Values, Context.EvaluationContext) == true)
+            {
+                matches++;
+
+                continue;
+            }
+
+            mask[i] = false;
+        }
+
+        return (evaluated, matches);
+    }
+
+    private int ApplyDeletedRows(Span<bool> mask, int rowGroupId, int from, int size)
+    {
+        var rows = DeletedRows.ForRowGroup(rowGroupId);
 
         if (rows.Length == 0)
         {
@@ -272,7 +342,7 @@ public sealed class ColumnstoreScanIterator(ColumnstoreService columnstoreServic
 
         for (var i = start; i < rows.Length && rows[i] < from + size; i++)
         {
-            keep[rows[i] - from] = false;
+            mask[rows[i] - from] = false;
 
             cleared++;
         }
@@ -280,7 +350,7 @@ public sealed class ColumnstoreScanIterator(ColumnstoreService columnstoreServic
         return cleared;
     }
 
-    private int ApplyCompressedFilters(Span<bool> keep, int fromRow, ref int rleEntries, ref int operations)
+    private int ApplyCompressedFilters(Span<bool> mask, int fromRow, ref int rleEntries, ref int operations)
     {
         var cleared = 0;
 
@@ -291,12 +361,13 @@ public sealed class ColumnstoreScanIterator(ColumnstoreService columnstoreServic
                 continue;
             }
 
-            foreach (var run in column.Reader.DataIds.GetRuns(fromRow, keep.Length))
+            foreach (var run in column.Reader.DataIds.GetRuns(fromRow, mask.Length))
             {
                 var offset = run.FirstRow - fromRow;
 
                 rleEntries++;
 
+                // Pure path
                 if (run.Origin == SegmentValueOrigin.RleRun)
                 {
                     operations++;
@@ -306,23 +377,37 @@ public sealed class ColumnstoreScanIterator(ColumnstoreService columnstoreServic
                         continue;
                     }
 
-                    keep.Slice(offset, run.RowCount).Clear();
+                    for (var i = 0; i < run.RowCount; i++)
+                    {
+                        if (!mask[offset + i])
+                        {
+                            continue;
+                        }
 
-                    cleared += run.RowCount;
+                        mask[offset + i] = false;
+
+                        cleared++;
+                    }
 
                     continue;
                 }
 
-                operations += run.RowCount;
-
+                // Impure path
                 for (var i = 0; i < run.RowCount; i++)
                 {
+                    if (!mask[offset + i])
+                    {
+                        continue;
+                    }
+
+                    operations++;
+
                     if (filter.Matches(column.Reader.DataIds.GetRowDataId(run.FirstRow + i)))
                     {
                         continue;
                     }
 
-                    keep[offset + i] = false;
+                    mask[offset + i] = false;
 
                     cleared++;
                 }
@@ -335,36 +420,52 @@ public sealed class ColumnstoreScanIterator(ColumnstoreService columnstoreServic
     private static void FillVector(ScanColumn column,
                                    BatchVector vector,
                                    int fromRow,
-                                   int size,
+                                   ReadOnlySpan<bool> mask,
                                    IDeepDataContext deepData,
-                                   ref int rleEntries,
-                                   ref int operations)
+                                   ref int materialised)
     {
-        foreach (var run in column.Reader.DataIds.GetRuns(fromRow, size))
+        foreach (var run in column.Reader.DataIds.GetRuns(fromRow, mask.Length))
         {
             var offset = run.FirstRow - fromRow;
 
-            rleEntries++;
-
             if (run.Origin == SegmentValueOrigin.RleRun)
             {
-                operations++;
+                var slot = default(BatchSlot);
 
-                var slot = CreateSlot(column, run.Value, run.FirstRow, deepData);
+                var decoded = false;
 
                 for (var i = 0; i < run.RowCount; i++)
                 {
+                    if (!mask[offset + i])
+                    {
+                        continue;
+                    }
+
+                    if (!decoded)
+                    {
+                        slot = CreateSlot(column, run.Value, run.FirstRow, deepData);
+
+                        materialised++;
+
+                        decoded = true;
+                    }
+
                     vector.Slots[offset + i] = slot;
                 }
 
                 continue;
             }
 
-            operations += run.RowCount;
-
             for (var i = 0; i < run.RowCount; i++)
             {
+                if (!mask[offset + i])
+                {
+                    continue;
+                }
+
                 var rowOrdinal = run.FirstRow + i;
+
+                materialised++;
 
                 vector.Slots[offset + i] = CreateSlot(column,
                                                       column.Reader.DataIds.GetRowDataId(rowOrdinal),
@@ -422,13 +523,26 @@ public sealed class ColumnstoreScanIterator(ColumnstoreService columnstoreServic
                 continue;
             }
 
+            if (UnmatchedDictionaryColumn(reader) is { } unmatched)
+            {
+                await EliminateOnDictionaryAsync(rowGroup, reader, unmatched, cancellationToken);
+
+                continue;
+            }
+
             Reader = reader;
 
             Columns = columns;
 
-            BatchRows = GetBatchRows(columns.Count);
+            BatchRows = BatchSize.GetRowCount(columns.Count);
 
-            Batch = CreateBatch(rowGroup);
+            Predicate = ResolvePredicate(columns);
+
+            PredicateColumnNames = Predicate is null
+                                   ? string.Empty
+                                   : string.Join(", ", PredicateColumns.Referenced(Predicate).Distinct());
+
+            Batch = OpenBatch(rowGroup);
 
             RowOrdinal = 0;
 
@@ -436,7 +550,12 @@ public sealed class ColumnstoreScanIterator(ColumnstoreService columnstoreServic
 
             if (columns.Where(c => c.Filter is not null).Select(c => c.Column.Name).ToList() is { Count: > 0 } filtered)
             {
-                await EmitAsync(new AccessStep.CompressedDataFilter(rowGroup.RowGroupId, string.Join(", ", filtered)),
+                await EmitAsync(new AccessStep.CompressedDataFilter(rowGroup.RowGroupId, string.Join(", ", filtered), true),
+                                cancellationToken);
+            }
+            else if (Predicate is not null)
+            {
+                await EmitAsync(new AccessStep.CompressedDataFilter(rowGroup.RowGroupId, PredicateColumnNames, false),
                                 cancellationToken);
             }
 
@@ -446,7 +565,7 @@ public sealed class ColumnstoreScanIterator(ColumnstoreService columnstoreServic
         return false;
     }
 
-    private async Task<List<RowGroup>> QualifyAsync(IReadOnlyList<RowGroup> rowGroups, CancellationToken cancellationToken)
+    private async Task<List<RowGroup>> EliminateRowGroupsAsync(IReadOnlyList<RowGroup> rowGroups, CancellationToken cancellationToken)
     {
         var qualified = new List<RowGroup>(rowGroups.Count);
 
@@ -513,12 +632,34 @@ public sealed class ColumnstoreScanIterator(ColumnstoreService columnstoreServic
 
         var label = eliminated.Count == 1 ? "segment" : "segments";
 
-        await EmitAsync(new AccessStep.RowGroupSkipped(rowGroup.RowGroupId,
-                                                       $"No match possible in {eliminated.Count} of {projected.Count} "
-                                                       + $"{label} ({columns})"),
+        var message = $"No match possible in {eliminated.Count} of {projected.Count} {label} ({columns})";
+
+        await EmitAsync(new AccessStep.RowGroupSkipped(rowGroup.RowGroupId, message),
                         cancellationToken);
 
         return true;
+    }
+
+    private async Task EliminateOnDictionaryAsync(RowGroup rowGroup,
+                                                  RowGroupReader reader,
+                                                  SegmentReader unmatched,
+                                                  CancellationToken cancellationToken)
+    {
+        var column = unmatched.Segment.Column!;
+
+        var projected = reader.Readers.Count(r => r.Segment.Column is not null);
+
+        await EmitAsync(new AccessStep.SegmentSkipped(rowGroup.RowGroupId,
+                                                      column.ColumnStoreColumnId,
+                                                      column.Name,
+                                                      "No dictionary entry matches"),
+                        cancellationToken);
+
+        await EmitAsync(new AccessStep.SegmentElimination(rowGroup.RowGroupId, 1, projected), cancellationToken);
+
+        await EmitAsync(new AccessStep.RowGroupSkipped(rowGroup.RowGroupId,
+                                                       $"No match possible in 1 of {projected} segments ({column.Name})"),
+                        cancellationToken);
     }
 
     private async Task<RowGroupReader> OpenRowGroupAsync(RowGroup rowGroup, CancellationToken cancellationToken)
@@ -535,6 +676,29 @@ public sealed class ColumnstoreScanIterator(ColumnstoreService columnstoreServic
         {
             var segment = wanted[i];
 
+            foreach (var dictionary in Dictionaries(segment))
+            {
+                if (dictionary.IsGlobal
+                    && !OpenDictionaries.Add((dictionary.HobtId, dictionary.ColumnId, dictionary.DictionaryId)))
+                {
+                    continue;
+                }
+
+                await EmitAsync(new AccessStep.DictionaryOpened(rowGroup.RowGroupId,
+                                                                segment.Column?.ColumnStoreColumnId ?? -1,
+                                                                segment.Column?.Name ?? string.Empty,
+                                                                dictionary.IsGlobal,
+                                                                dictionary.EntryCount,
+                                                                dictionary.OnDiskSize),
+                                cancellationToken);
+            }
+
+            await EmitAsync(new AccessStep.SegmentOpened(rowGroup.RowGroupId,
+                                                         segment.Column?.ColumnStoreColumnId ?? -1,
+                                                         segment.Column?.Name ?? string.Empty,
+                                                         segment.OnDiskSize),
+                            cancellationToken);
+
             try
             {
                 readers.Add(await columnstoreService.GetSegmentReader(Context.Database, segment, cancellationToken));
@@ -543,15 +707,50 @@ public sealed class ColumnstoreScanIterator(ColumnstoreService columnstoreServic
             {
                 skipped.Add(segment);
             }
-
-            await EmitAsync(new AccessStep.SegmentOpened(rowGroup.RowGroupId,
-                                                         segment.Column?.ColumnStoreColumnId ?? -1,
-                                                         segment.Column?.Name ?? string.Empty,
-                                                         segment.OnDiskSize),
-                            cancellationToken);
         }
 
         return new RowGroupReader(rowGroup, readers, skipped);
+    }
+
+    private SegmentReader? UnmatchedDictionaryColumn(RowGroupReader reader)
+    {
+        if (Definition.Residual is not { } residual)
+        {
+            return null;
+        }
+
+        foreach (var segmentReader in reader.Readers)
+        {
+            if (segmentReader.Segment is not { Column.Structure: { } structure } segment)
+            {
+                continue;
+            }
+
+            if (segment is { PrimaryDictionaryId: < 0, SecondaryDictionaryId: < 0 })
+            {
+                continue;
+            }
+
+            if (CompressedDataFilter.MatchingDictionaryIds(residual, segmentReader, Context.EvaluationContext) is { Count: 0 })
+            {
+                return segmentReader;
+            }
+        }
+
+        return null;
+    }
+
+    private static IEnumerable<SegmentDictionary> Dictionaries(ColumnSegment segment)
+    {
+        if (segment is { PrimaryDictionaryId: >= 0, Column.GlobalDictionary: { } global })
+        {
+            yield return global;
+        }
+
+        if (segment is { SecondaryDictionaryId: >= 0, LocalDictionary: { } local })
+        {
+            yield return local;
+        }
     }
 
     private List<ScanColumn> Bind(RowGroupReader reader, RowGroup rowGroup)
@@ -589,13 +788,41 @@ public sealed class ColumnstoreScanIterator(ColumnstoreService columnstoreServic
                                                  hasLocal ? segment.SecondaryDictionaryId : DataIdSpace.NoLocalDictionary);
             }
 
-            columns.Add(new ScanColumn(segmentReader,
-                                       column,
-                                       hasDictionary,
-                                       CompressedDataFilter.Create(Definition.Residual, segment)));
+            var filter = Definition.IsFilterOnCompressedDataUsed
+                            ? CompressedDataFilter.Create(Definition.Residual, segmentReader, Context.EvaluationContext)
+                            : null;
+
+            columns.Add(new ScanColumn(segmentReader, column, hasDictionary, filter));
         }
 
         return columns;
+    }
+
+    private AccessPredicate? ResolvePredicate(List<ScanColumn> columns)
+    {
+        if (Definition.Residual is not { } residual || residual is AccessPredicate.True or AccessPredicate.NoTranslation)
+        {
+            return null;
+        }
+
+        if (!CompressedDataFilter.IsPureConjunction(residual))
+        {
+            return residual;
+        }
+
+        var claimed = columns.SelectMany(c => c.Filter?.Claimed ?? []).ToList();
+
+        var unclaimed = CompressedDataFilter.Conjunctions(residual)
+                                            .Where(c => !claimed.Contains(c))
+                                            .Cast<AccessPredicate>()
+                                            .ToList();
+
+        return unclaimed.Count switch
+        {
+            0 => null,
+            1 => unclaimed[0],
+            _ => new AccessPredicate.And([.. unclaimed])
+        };
     }
 
     private List<int> ResolveColumns(ColumnStoreIndex index)
@@ -610,11 +837,6 @@ public sealed class ColumnstoreScanIterator(ColumnstoreService columnstoreServic
         return [.. Definition.ColumnNames.Where(byName.ContainsKey).Select(n => byName[n])];
     }
 
-    private static int GetBatchRows(int columns)
-        => columns <= 0
-            ? MaximumBatchRows
-            : Math.Clamp(BatchBytes / (SlotBytes * columns), MinimumBatchRows, MaximumBatchRows);
-
     private static byte[] ToDeepBytes(object? value) => value switch
     {
         byte[] bytes => bytes,
@@ -623,6 +845,41 @@ public sealed class ColumnstoreScanIterator(ColumnstoreService columnstoreServic
         SqlDecimal number => number.BinData,
         _ => []
     };
+
+    private void Reset()
+    {
+        RowGroupIndex = 0;
+
+        RowOrdinal = 0;
+
+        BatchNumber = 0;
+
+        Reader = null;
+
+        Columns = [];
+
+        Batch = null;
+
+        Predicate = null;
+
+        PredicateColumnNames = string.Empty;
+
+        VectorNumber = 0;
+
+        IsComplete = false;
+
+        StopReason = null;
+
+        RowGroups = [];
+
+        ColumnIds = [];
+
+        DeletedRows = DeletedRows.None;
+
+        SkippedPartitions.Clear();
+
+        OpenDictionaries.Clear();
+    }
 
     private sealed record ScanColumn(SegmentReader Reader,
                                      BatchColumn Column,

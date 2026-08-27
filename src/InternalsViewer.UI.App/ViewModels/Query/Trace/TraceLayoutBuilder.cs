@@ -66,12 +66,15 @@ public static class TraceLayoutBuilder
 
         return new TraceLayout
         {
-            Tabs = [.. operators.Where(o => o is not BatchToRowDefinition)
+            Tabs = [.. operators.Where(o => o is not (BatchToRowDefinition or RowToBatchDefinition))
                                 .Select(o => tabsByNode[o.NodeId])],
             Nodes = nodes,
             Palette = palette
         };
     }
+
+    private static UnaryDefinition? Adapter(IteratorDefinition definition)
+        => definition is BatchToRowDefinition or RowToBatchDefinition ? (UnaryDefinition)definition : null;
 
     public static string DisplayName(IteratorDefinition definition)
         => definition switch
@@ -95,6 +98,7 @@ public static class TraceLayoutBuilder
             AllocationScanDefinition => "Table Scan",
             ColumnstoreScanDefinition => "Columnstore Index Scan",
             BatchToRowDefinition => "Batch Mode Adapter",
+            RowToBatchDefinition => "Row Mode Adapter",
             _ => "Operator"
         };
 
@@ -111,6 +115,8 @@ public static class TraceLayoutBuilder
             var tab = new TraceOperatorViewModel(op.NodeId, title, OperatorDescription(op));
 
             ApplyHeader(tab, op, nodeFor(op.NodeId));
+
+            tab.IsBatchMode = op is IBatchDefinition || nodeFor(op.NodeId)?.IsBatchMode == true;
 
             tab.BlobPalette = palette;
 
@@ -306,11 +312,11 @@ public static class TraceLayoutBuilder
                                           TraceBlobPalette palette,
                                           bool hasRowCount = true)
     {
-        var adapter = input as BatchToRowDefinition;
+        var adapter = Adapter(input);
 
         if (adapter is not null)
         {
-            input = adapter.Batch;
+            input = adapter.Source;
         }
 
         var header = OperatorHeader.For(input, nodeFor(input.NodeId));
@@ -493,11 +499,11 @@ public static class TraceLayoutBuilder
             return TracePane.Empty;
         }
 
-        var adapter = input as BatchToRowDefinition;
+        var adapter = Adapter(input);
 
         if (adapter is not null)
         {
-            input = adapter.Batch;
+            input = adapter.Source;
         }
 
         var header = OperatorHeader.For(input, nodeFor(input.NodeId));

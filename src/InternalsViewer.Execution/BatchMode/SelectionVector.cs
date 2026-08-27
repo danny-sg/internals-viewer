@@ -36,6 +36,19 @@ public sealed class SelectionVector
         ActiveRowCount = 0;
     }
 
+    public void Set(ReadOnlySpan<bool> mask)
+    {
+        ActiveRowCount = 0;
+
+        for (var row = 0; row < mask.Length; row++)
+        {
+            if (mask[row])
+            {
+                Add(row);
+            }
+        }
+    }
+
     public bool Clear(int row)
     {
         for (var i = 0; i < ActiveRowCount; i++)

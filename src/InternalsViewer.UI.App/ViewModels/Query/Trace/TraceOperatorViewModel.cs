@@ -1,9 +1,11 @@
-using System;
+﻿using System;
 using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using InternalsViewer.Execution.AccessPaths.Joins;
 using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.UI.App.Models.Query.Trace;
+using Microsoft.UI;
+using Microsoft.UI.Xaml.Media;
 
 namespace InternalsViewer.UI.App.ViewModels.Query.Trace;
 
@@ -41,6 +43,12 @@ public sealed partial class TraceOperatorViewModel(int nodeId, string title, str
     public string Description { get; } = description;
 
     public Uri? Icon { get; set; }
+
+    public bool IsBatchMode { get; set; }
+
+    public string ModeName => IsBatchMode ? "Batch Mode" : "Row Mode";
+
+    public SolidColorBrush ModeBrush => new(IsBatchMode ? Colors.CadetBlue : Colors.Maroon);
 
     public bool IsPositionVisible => IsOpen && CurrentPage is not null;
 

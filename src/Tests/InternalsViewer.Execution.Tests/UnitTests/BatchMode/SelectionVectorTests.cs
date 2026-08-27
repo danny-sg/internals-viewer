@@ -117,6 +117,40 @@ public class SelectionVectorTests
     }
 
     [Fact]
+    public void Set_Keeps_Only_The_Marked_Rows_In_Order()
+    {
+        var selection = new SelectionVector(8);
+
+        selection.Set([true, false, true, true, false, false, true, false]);
+
+        Assert.Equal(4, selection.RowCount);
+
+        Assert.Equal([0, 2, 3, 6], Enumerable.Range(0, selection.RowCount).Select(i => (int)selection[i]));
+    }
+
+    [Fact]
+    public void Set_With_Nothing_Marked_Leaves_Nothing_To_Walk()
+    {
+        var selection = new SelectionVector(4);
+
+        selection.Set([false, false, false, false]);
+
+        Assert.Equal(0, selection.RowCount);
+    }
+
+    [Fact]
+    public void Set_Narrower_Than_The_Capacity_Ignores_The_Rows_Past_It()
+    {
+        var selection = new SelectionVector(8);
+
+        selection.Set([true, true, true]);
+
+        Assert.Equal(3, selection.RowCount);
+
+        Assert.Equal(2, selection[2]);
+    }
+
+    [Fact]
     public void Reset_Selects_Every_Row_Again()
     {
         var selection = new SelectionVector(16);

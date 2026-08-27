@@ -72,7 +72,7 @@ public sealed class BatchToRowIterator(IIteratorFactory factory) : IteratorBase
                 continue;
             }
 
-            CurrentRow = BatchRecordMaterialiser.Materialise(Batch, Batch.SelectionVector[Position]);
+            CurrentRow = BatchRecordBuilder.Build(Batch, Batch.SelectionVector[Position]);
 
             Position++;
 

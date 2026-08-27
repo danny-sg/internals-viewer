@@ -169,6 +169,8 @@ public sealed partial class TraceTabViewModel : ObservableObject, IDisposable
             Applier.BuildStateItems(op);
         }
 
+        IsBatchStepping = HasBatchMode;
+
         SelectedVisual = visuals[0];
 
         SelectedNodeId = Operators.Count > 0 ? Operators[0].NodeId : definition.NodeId;

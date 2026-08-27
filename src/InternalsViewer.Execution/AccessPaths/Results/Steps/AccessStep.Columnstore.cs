@@ -12,10 +12,18 @@ public abstract partial record AccessStep
     public sealed record SegmentSkipped(int RowGroupId, int ColumnId, string ColumnName, string Reason)
         : AccessStep(AccessPhase.RowGroup);
 
+    public sealed record DictionaryOpened(int RowGroupId,
+                                          int ColumnId,
+                                          string ColumnName,
+                                          bool IsGlobal,
+                                          long EntryCount,
+                                          long SizeBytes) : AccessStep(AccessPhase.RowGroup);
+
     public sealed record SegmentOpened(int RowGroupId, int ColumnId, string ColumnName, long SizeBytes)
         : AccessStep(AccessPhase.RowGroup);
 
-    public sealed record CompressedDataFilter(int RowGroupId, string Columns) : AccessStep(AccessPhase.RowGroup);
+    public sealed record CompressedDataFilter(int RowGroupId, string Columns, bool OnCompressedData)
+        : AccessStep(AccessPhase.RowGroup);
 
     public sealed record RowGroupOpened(int RowGroupId, int ColumnCount, int BatchRows)
         : AccessStep(AccessPhase.RowGroup);
@@ -26,9 +34,16 @@ public abstract partial record AccessStep
                                       int RowGroupId,
                                       int FirstRow,
                                       int RowCount,
-                                      int QualifyingCount,
-                                      int RleEntries,
-                                      int Operations) : AccessStep(AccessPhase.Walk);
+                                      int QualifyingCount) : AccessStep(AccessPhase.Walk)
+    {
+        public int FilterRleEntries { get; init; }
+
+        public int FilterOperations { get; init; }
+
+        public int Materialised { get; init; }
+
+        public bool HasCompressedFilter { get; init; }
+    }
 
     public sealed record FilterVector(long Number,
                                       int RowGroupId,

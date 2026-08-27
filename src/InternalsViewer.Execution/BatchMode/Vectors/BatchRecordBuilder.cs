@@ -8,9 +8,9 @@ using InternalsViewer.Internals.Engine.Records;
 
 namespace InternalsViewer.Execution.BatchMode.Vectors;
 
-public static class BatchRecordMaterialiser
+public static class BatchRecordBuilder
 {
-    public static BatchRecord Materialise(ExecutionBatch batch, int row)
+    public static BatchRecord Build(ExecutionBatch batch, int row)
     {
         var fields = new List<RecordField>(batch.Vectors.Count);
 
@@ -22,7 +22,7 @@ public static class BatchRecordMaterialiser
         return new BatchRecord(fields, batch.RowGroupId, row);
     }
 
-    private static AccessValue ToValue(ExecutionBatch batch, BatchVector vector, int row)
+    public static AccessValue ToValue(ExecutionBatch batch, BatchVector vector, int row)
     {
         var column = vector.Column;
 
@@ -41,29 +41,7 @@ public static class BatchRecordMaterialiser
     }
 
     private static AccessValue FromDictionary(BatchVector vector, long dataId)
-    {
-        var column = vector.Column;
-
-        return vector.Source?.GetValueForDataId(dataId) switch
-        {
-            null
-                => AccessValue.FromNull(column.DataType),
-            byte[] bytes
-                => AccessValue.FromBytes(column.DataType, bytes),
-            string text
-                => AccessValue.FromBytes(column.DataType, Encode(column.DataType, text)),
-            long number
-                => AccessValue.FromInteger(column.DataType, number),
-            double number
-                => AccessValue.FromReal(column.DataType, number),
-            SqlDecimal number
-                => AccessValue.FromDecimal(column.DataType, number.Value),
-            decimal number
-                => AccessValue.FromDecimal(column.DataType, number),
-            var other
-                => AccessValue.FromBytes(column.DataType, Encode(column.DataType, other.ToString() ?? string.Empty))
-        };
-    }
+        => AccessValueFactory.FromObject(vector.Column.DataType, vector.Source?.GetValueForDataId(dataId));
 
     private static AccessValue FromInline(BatchColumn column, BatchSlot slot)
         => column.Domain switch

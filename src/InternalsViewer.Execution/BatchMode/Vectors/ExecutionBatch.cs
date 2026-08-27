@@ -17,13 +17,18 @@ public sealed class ExecutionBatch(int capacity, IReadOnlyList<BatchVector> vect
 
     public SelectionVector SelectionVector { get; } = new(capacity);
 
-    public int RowGroupId { get; init; }
+    public int RowGroupId { get; set; }
 
     public void Reset(int rowCount)
     {
-        RowCount = rowCount;
-
         DeepDataContext.Clear();
+
+        SetRowCount(rowCount);
+    }
+
+    public void SetRowCount(int rowCount)
+    {
+        RowCount = rowCount;
 
         SelectionVector.Reset(rowCount);
     }

@@ -1,5 +1,4 @@
-using System;
-using System.Linq;
+﻿using System;
 using InternalsViewer.Execution.AccessPaths.Results;
 using Microsoft.UI.Xaml.Data;
 
@@ -15,7 +14,7 @@ public sealed class StopReasonToTextConverter : IValueConverter
                 or StopReason.IndexExhausted
                 or StopReason.AllocationExhausted
                 or StopReason.RowGroupsExhausted => "Exhausted",
-            StopReason reason => Spaced(reason.ToString()),
+            StopReason reason => reason.ToString().SplitString(),
             _ => string.Empty
         };
     }
@@ -24,7 +23,4 @@ public sealed class StopReasonToTextConverter : IValueConverter
     {
         return null;
     }
-
-    private static string Spaced(string text)
-        => string.Concat(text.Select((c, i) => i > 0 && char.IsUpper(c) ? $" {c}" : c.ToString()));
 }

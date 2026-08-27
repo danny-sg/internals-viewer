@@ -17,7 +17,7 @@ public sealed class BatchVector(BatchColumn column, int size)
     /// <remarks>
     /// Required to decode the normalized values in the vector into their actual values as the decode depends on the data type and domain.
     /// </remarks>
-    public BatchColumn Column { get; } = column;
+    public BatchColumn Column { get; set; } = column;
 
     /// <summary>
     /// Normalized values of the vector
@@ -30,5 +30,5 @@ public sealed class BatchVector(BatchColumn column, int size)
     /// <remarks>
     /// Required for reference back to the dictionaries linked to the Segment to look up values if the column is dictionary encoded
     /// </remarks>
-    public SegmentReader? Source { get; init; }
+    public SegmentReader? Source { get; set; }
 }

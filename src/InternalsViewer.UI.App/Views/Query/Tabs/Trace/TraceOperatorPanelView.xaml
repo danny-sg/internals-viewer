@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <UserControl
     x:Class="InternalsViewer.UI.App.Views.Query.Tabs.Trace.TraceOperatorPanelView"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
@@ -160,22 +160,36 @@
 
         <StackPanel Grid.Row="0"
                     Orientation="Horizontal"
-                    Spacing="6"
+                    Spacing="12"
                     Margin="0,0,12,0"
                     HorizontalAlignment="Right"
-                    VerticalAlignment="Center"
-                    Visibility="{Binding IsPositionVisible, Converter={StaticResource BoolToVisibilityConverter}}">
-            <TextBlock Text="Current Page/Slot"
-                       FontSize="12"
-                       VerticalAlignment="Center"
-                       Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                    VerticalAlignment="Center">
+            <StackPanel Orientation="Horizontal"
+                        Spacing="6"
+                        VerticalAlignment="Center"
+                        Visibility="{Binding IsPositionVisible, Converter={StaticResource BoolToVisibilityConverter}}">
+                <TextBlock Text="Current Page/Slot"
+                           FontSize="12"
+                           VerticalAlignment="Center"
+                           Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
 
-            <HyperlinkButton Content="{Binding CurrentRowIdentifier}"
-                             Style="{StaticResource PageAddressStyle}"
-                             VerticalAlignment="Center"
-                             HorizontalContentAlignment="Right"
-                             MinWidth="80"
-                             Click="OnCurrentPageClicked" />
+                <HyperlinkButton Content="{Binding CurrentRowIdentifier}"
+                                 Style="{StaticResource PageAddressStyle}"
+                                 VerticalAlignment="Center"
+                                 HorizontalContentAlignment="Right"
+                                 MinWidth="80"
+                                 Click="OnCurrentPageClicked" />
+            </StackPanel>
+
+            <Border Background="{Binding ModeBrush}"
+                    CornerRadius="4"
+                    Padding="8,2"
+                    VerticalAlignment="Center">
+                <TextBlock Text="{Binding ModeName}"
+                           FontSize="11"
+                           FontWeight="SemiBold"
+                           Foreground="White" />
+            </Border>
         </StackPanel>
 
         <ItemsControl x:Name="InputsList"
