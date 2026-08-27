@@ -42,5 +42,7 @@ public static class ServiceRegistration
         services.AddTransient<BatchFilterIterator>();
 
         services.AddTransient<RowToBatchIterator>();
+
+        services.AddTransient<BatchComputeScalarIterator>();
     }
 }

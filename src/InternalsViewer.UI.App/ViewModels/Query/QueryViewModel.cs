@@ -1,10 +1,11 @@
-using InternalsViewer.UI.App.Services.Query.Trace;
+﻿using InternalsViewer.UI.App.Services.Query.Trace;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using CommunityToolkit.Mvvm.Messaging;
 using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Internals.Engine.Allocation;
 using InternalsViewer.Internals.Engine.Database;
+using InternalsViewer.Internals.Providers.Metadata;
 using InternalsViewer.Internals.Engine.Database.Enums;
 using InternalsViewer.Internals.Extensions;
 using InternalsViewer.Query;
@@ -211,6 +212,7 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
     [NotifyPropertyChangedFor(nameof(SelectedPlanNodeEventStatistics))]
     [NotifyPropertyChangedFor(nameof(SelectedPlanExpressions))]
     [NotifyPropertyChangedFor(nameof(SelectedPlanNodeScanMode))]
+    [NotifyPropertyChangedFor(nameof(SelectedPlanNodeColumnNames))]
     private PlanNode? _selectedPlanNode;
 
     [ObservableProperty]
@@ -339,6 +341,31 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
                                  || (f.Resolved.ModuleCategory.GetCategoryMetadata()?.IsInfrastructure != true
                                   && f.Resolved.SymbolCategory.GetCategoryMetadata()?.IsInfrastructure != true))
                         .ToList() ?? [];
+
+    public IReadOnlyDictionary<int, string>? SelectedPlanNodeColumnNames
+    {
+        get
+        {
+            if (SelectedPlanNode is not { } node || FindAllocationUnit(node) is not { } unit)
+            {
+                return null;
+            }
+
+            var structure = IndexStructureProvider.GetIndexStructure(Database, unit.AllocationUnitId);
+
+            var names = new Dictionary<int, string>();
+
+            foreach (var column in structure.Columns.Concat(structure.TableStructure?.Columns ?? []))
+            {
+                if (!string.IsNullOrEmpty(column.ColumnName))
+                {
+                    names[column.ColumnId] = column.ColumnName;
+                }
+            }
+
+            return names;
+        }
+    }
 
     public ScanModeResult? SelectedPlanNodeScanMode
     {

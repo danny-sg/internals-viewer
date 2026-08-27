@@ -1,3 +1,4 @@
+﻿using System.Collections.Generic;
 using InternalsViewer.Query.Events.Operators;
 using InternalsViewer.Query.Plans.Model;
 using InternalsViewer.UI.App.Helpers;
@@ -50,6 +51,18 @@ public sealed partial class PlanNodePropertiesView : UserControl
                                     typeof(PlanNodePropertiesView),
                                     new PropertyMetadata(null, OnNodeChanged));
 
+    public static readonly DependencyProperty ColumnNamesProperty =
+        DependencyProperty.Register(nameof(ColumnNames),
+                                    typeof(IReadOnlyDictionary<int, string>),
+                                    typeof(PlanNodePropertiesView),
+                                    new PropertyMetadata(null, OnNodeChanged));
+
+    public IReadOnlyDictionary<int, string>? ColumnNames
+    {
+        get => (IReadOnlyDictionary<int, string>?)GetValue(ColumnNamesProperty);
+        set => SetValue(ColumnNamesProperty, value);
+    }
+
     public ScanModeResult? ScanMode
     {
         get => (ScanModeResult?)GetValue(ScanModeProperty);
@@ -72,7 +85,7 @@ public sealed partial class PlanNodePropertiesView : UserControl
             return;
         }
 
-        foreach (var property in PlanNodePropertyBuilder.Build(Node, EventStatistics, Expressions, ScanMode))
+        foreach (var property in PlanNodePropertyBuilder.Build(Node, EventStatistics, Expressions, ScanMode, ColumnNames))
         {
             TreeView.RootNodes.Add(ToTreeNode(property, 0));
         }

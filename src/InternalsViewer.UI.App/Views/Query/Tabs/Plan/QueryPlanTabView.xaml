@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <UserControl
     x:Class="InternalsViewer.UI.App.Views.Query.Tabs.QueryPlanTabView"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
@@ -86,7 +86,8 @@
                                          Node="{x:Bind ViewModel.SelectedPlanNode, Mode=OneWay}"
                                          EventStatistics="{x:Bind ViewModel.SelectedPlanNodeEventStatistics, Mode=OneWay}"
                                          Expressions="{x:Bind ViewModel.SelectedPlanExpressions, Mode=OneWay}"
-                                         ScanMode="{x:Bind ViewModel.SelectedPlanNodeScanMode, Mode=OneWay}" />
+                                         ScanMode="{x:Bind ViewModel.SelectedPlanNodeScanMode, Mode=OneWay}"
+                                         ColumnNames="{x:Bind ViewModel.SelectedPlanNodeColumnNames, Mode=OneWay}" />
         </Grid>
     </Grid>
 

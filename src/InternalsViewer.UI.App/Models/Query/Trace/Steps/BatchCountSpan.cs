@@ -35,9 +35,32 @@ public sealed partial class BatchWorkProgress : ObservableObject
     [ObservableProperty]
     private bool _hasFilter;
 
+    [ObservableProperty]
+    private bool _hasPredicate;
+
+    [ObservableProperty]
+    private bool _hasNoFilter;
+
+    [ObservableProperty]
+    private long _emitted;
+
+    [ObservableProperty]
+    private bool _hasEmitted;
+
     public void Apply(AccessStep.BatchProduced step)
     {
+        if (step.QualifyingCount > 0)
+        {
+            Emitted++;
+
+            HasEmitted = true;
+        }
+
         HasFilter = step.HasCompressedFilter;
+
+        HasPredicate = step.HasPredicate;
+
+        HasNoFilter = step is { HasCompressedFilter: false, HasPredicate: false };
 
         Materialised += step.Materialised;
 

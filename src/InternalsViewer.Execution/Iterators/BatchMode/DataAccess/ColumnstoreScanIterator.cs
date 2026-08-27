@@ -19,29 +19,6 @@ namespace InternalsViewer.Execution.Iterators.BatchMode.DataAccess;
 /// Reads compressed row groups of a columnstore index as batches
 /// </summary>
 /// <remarks>
-/// Columnstore scan is a complex operator where a lot happens over the phases.
-///
-/// Steps are:
-///
-/// Open
-/// ----
-/// 1. The Delete Bitmap is read and set to the Row Mask. Batches use a selection vector that tracks which slots are valid. The Row Mask is
-///    used during the lifecycle of the iterator to track valid rows on a positional basis.
-///
-/// 2. Partition and Segment elimination is run to determine a list of qualified row groups
-///
-/// Get Next Batch
-/// --------------
-///
-/// 1. The next row group is moved to, if there are no more row groups the iterator stops.
-///
-/// 2. The batch is filled from the rowgroup
-///
-///    a. The batch is reset, clearing the vectors and selection vector. If there is no existing batch a new one will be created.
-///
-///    b. The batch vectors are filled from the segment readers to add normalized values from the segments to the batch.
-///
-///    c. Compressed data filters a
 /// 
 /// </remarks>
 public sealed class ColumnstoreScanIterator(ColumnstoreService columnstoreService) : IBatchIterator
@@ -264,7 +241,8 @@ public sealed class ColumnstoreScanIterator(ColumnstoreService columnstoreServic
                             FilterRleEntries = filterRleEntries,
                             FilterOperations = filterOperations,
                             Materialised = materialised,
-                            HasCompressedFilter = HasCompressedFilter
+                            HasCompressedFilter = HasCompressedFilter,
+                            HasPredicate = Predicate is not null || Definition.IsGenericFilterUsed
                         },
                         cancellationToken);
 
@@ -367,7 +345,6 @@ public sealed class ColumnstoreScanIterator(ColumnstoreService columnstoreServic
 
                 rleEntries++;
 
-                // Pure path
                 if (run.Origin == SegmentValueOrigin.RleRun)
                 {
                     operations++;
@@ -392,7 +369,6 @@ public sealed class ColumnstoreScanIterator(ColumnstoreService columnstoreServic
                     continue;
                 }
 
-                // Impure path
                 for (var i = 0; i < run.RowCount; i++)
                 {
                     if (!mask[offset + i])

@@ -9,4 +9,6 @@ public sealed record ColumnstoreScanDefinition : IteratorDefinition, IBatchDefin
     public IReadOnlyList<string> ColumnNames { get; init; } = [];
 
     public bool IsFilterOnCompressedDataUsed { get; init; }
+
+    public bool IsGenericFilterUsed { get; init; }
 }

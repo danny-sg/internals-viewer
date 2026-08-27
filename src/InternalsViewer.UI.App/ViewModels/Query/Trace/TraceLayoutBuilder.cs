@@ -88,7 +88,7 @@ public static class TraceLayoutBuilder
             SortDefinition => "Sort",
             StreamAggregateDefinition => "Stream Aggregate",
             HashAggregateDefinition => "Hash Match",
-            ComputeScalarDefinition => "Compute Scalar",
+            ComputeScalarDefinition or BatchComputeScalarDefinition => "Compute Scalar",
             FilterDefinition or BatchFilterDefinition => "Filter",
             SegmentDefinition => "Segment",
             SequenceProjectDefinition => "Sequence Project",

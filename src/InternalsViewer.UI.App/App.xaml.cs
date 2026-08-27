@@ -88,6 +88,7 @@ public partial class App
     }
 
     public static MainWindow? MainWindow { get; private set; }
+
     private IHost Host { get; }
 
     public static T GetService<T>()

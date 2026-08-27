@@ -63,6 +63,7 @@
         <None Remove="Assets\AppLogo.svg" />
         <None Remove="Assets\Monaco\index.html" />
         <None Remove="Assets\TabIcons\IndexTabIcon.svg" />
+        <None Remove="Assets\TabIcons\QueryTabIcon.svg" />
         <None Remove="Controls\AllocationControl.xaml" />
         <None Remove="Controls\AllocationDataGridView.xaml" />
         <None Remove="Controls\Connections\BackupFileConnectionControl.xaml" />

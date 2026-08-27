@@ -5,7 +5,7 @@ using System.Runtime.InteropServices;
 namespace InternalsViewer.Execution.AccessPaths.Values;
 
 /// <summary>
-/// A single typed key or predicate value
+/// A single typed key value or value used in a predicate
 /// </summary>
 public readonly struct AccessValue : IEquatable<AccessValue>
 {
@@ -40,9 +40,6 @@ public readonly struct AccessValue : IEquatable<AccessValue>
 
     public ReadOnlyMemory<byte> Data { get; }
 
-    /// <summary>
-    /// The column this value compares against, when known
-    /// </summary>
     /// <remarks>
     /// Carrying the name on the value itself lets a predicate or seek bound be written back to text without a caller having to supply the
     /// index's key columns separately.

@@ -1,4 +1,4 @@
-using System.Data;
+﻿using System.Data;
 using System.Globalization;
 using System.Text;
 using InternalsViewer.Execution.AccessPaths.Values;
@@ -61,7 +61,42 @@ internal static class AccessValueFormatter
             return value.Numeric == 0 ? "0" : "1";
         }
 
+        if (TryFormatTemporal(value, out var temporal))
+        {
+            return temporal;
+        }
+
         return value.Numeric.ToString(CultureInfo.InvariantCulture);
+    }
+
+    public static bool TryFormatTemporal(AccessValue value, out string text)
+    {
+        if (value.Type != AccessValueType.Integer)
+        {
+            text = string.Empty;
+
+            return false;
+        }
+
+        text = value.DataType switch
+        {
+            SqlDbType.Date
+                => new DateTime(value.Numeric).ToString("yyyy-MM-dd", CultureInfo.InvariantCulture),
+            SqlDbType.SmallDateTime
+                => new DateTime(value.Numeric).ToString("yyyy-MM-dd HH:mm", CultureInfo.InvariantCulture),
+            SqlDbType.DateTime
+                => new DateTime(value.Numeric).ToString("yyyy-MM-dd HH:mm:ss.fff", CultureInfo.InvariantCulture),
+            SqlDbType.DateTime2
+                => new DateTime(value.Numeric).ToString("yyyy-MM-dd HH:mm:ss.fffffff", CultureInfo.InvariantCulture),
+            SqlDbType.Time
+                => new TimeSpan(value.Numeric).ToString(@"hh\:mm\:ss\.fffffff", CultureInfo.InvariantCulture),
+            SqlDbType.DateTimeOffset
+                => new DateTimeOffset(value.Numeric, TimeSpan.Zero).ToString("yyyy-MM-dd HH:mm:ss.fffffff zzz",
+                                                                             CultureInfo.InvariantCulture),
+            _ => string.Empty
+        };
+
+        return text.Length > 0;
     }
 
     private static string FormatBytes(AccessValue value)

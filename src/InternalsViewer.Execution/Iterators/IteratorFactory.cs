@@ -63,6 +63,8 @@ public sealed class IteratorFactory(IServiceProvider services) : IIteratorFactor
                 => services.GetRequiredService<BatchFilterIterator>(),
             RowToBatchDefinition
                 => services.GetRequiredService<RowToBatchIterator>(),
+            BatchComputeScalarDefinition
+                => services.GetRequiredService<BatchComputeScalarIterator>(),
             _ => throw new ArgumentException($"No batch iterator runs a {definition.GetType().Name}")
         };
 }

@@ -284,7 +284,9 @@ public static class ExecutionPlanParser
             var read = GetLongAttribute(counter, "ActualRowsRead") ?? 0;
             var output = GetLongAttribute(counter, "ActualRows") ?? 0;
             var elapsedMs = GetDoubleAttribute(counter, "ActualElapsedms") ?? 0;
-            var executionMode = GetStringAttribute(counter, "ActualExecutionMode") == "Row" ? ExecutionMode.Row : ExecutionMode.Batch;
+            var executionMode = GetStringAttribute(counter, "ActualExecutionMode") == "Batch"
+                                ? ExecutionMode.Batch
+                                : ExecutionMode.Row;
 
             var batches = GetLongAttribute(counter, "Batches") ?? 0;
 

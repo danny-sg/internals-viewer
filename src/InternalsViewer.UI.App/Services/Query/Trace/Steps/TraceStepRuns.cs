@@ -130,6 +130,10 @@ public static class TraceStepRuns
                 batchSpan.Work.Apply(batchProduced);
                 return true;
 
+            case AccessStep.ComputeVector computeVector:
+                ComputeVectorSpanFor(computeVector, history).Progress.Apply(computeVector);
+                return true;
+
             case AccessStep.FilterVector filterVector:
                 BatchFilterSpanFor(filterVector, history).Progress.Apply(filterVector);
                 return true;
@@ -327,6 +331,24 @@ public static class TraceStepRuns
         }
 
         var created = new BatchFilterSpan
+        {
+            NodeId = step.NodeId,
+            Counters = step.Counters
+        };
+
+        InsertSpan(history, created);
+
+        return created;
+    }
+
+    private static ComputeVectorSpan ComputeVectorSpanFor(AccessStep step, ObservableCollection<AccessStep> history)
+    {
+        if (FindOpenSpan<ComputeVectorSpan>(history, step.NodeId) is { } span)
+        {
+            return span;
+        }
+
+        var created = new ComputeVectorSpan
         {
             NodeId = step.NodeId,
             Counters = step.Counters

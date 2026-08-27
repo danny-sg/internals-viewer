@@ -1,11 +1,7 @@
-﻿using System.Data;
-using System.Data.SqlTypes;
-using InternalsViewer.Execution.AccessPaths.Definitions;
+﻿using InternalsViewer.Execution.AccessPaths.Definitions;
 using InternalsViewer.Execution.AccessPaths.Results;
 using InternalsViewer.Execution.AccessPaths.Results.Steps;
-using InternalsViewer.Execution.AccessPaths.Values;
 using InternalsViewer.Execution.BatchMode;
-using InternalsViewer.Execution.BatchMode.Normalization;
 using InternalsViewer.Execution.BatchMode.Vectors;
 using InternalsViewer.Execution.Interfaces;
 using InternalsViewer.Execution.Interfaces.BatchMode;
@@ -133,71 +129,7 @@ public sealed class RowToBatchIterator(IIteratorFactory factory) : IBatchIterato
         {
             var vector = batch.Vectors[i];
 
-            vector.Slots[index] = ToSlot(vector.Column, row.Fields[i], batch.DeepDataContext);
+            vector.Slots[index] = BatchSlotBuilder.FromField(vector.Column, row.Fields[i], batch.DeepDataContext);
         }
-    }
-
-    private static BatchSlot ToSlot(BatchColumn column, RecordField field, IDeepDataContext deepData)
-    {
-        if (field.IsNull)
-        {
-            return BatchSlotNormalizer.Null;
-        }
-
-        if (TryNormalize(column, field, out var slot))
-        {
-            return slot;
-        }
-
-        var value = AccessValueFactory.FromField(field);
-
-        return value.Data.IsEmpty
-            ? BatchSlotNormalizer.Null
-            : new BatchSlot(deepData.Store(value.Data.Span));
-    }
-
-    private static bool TryNormalize(BatchColumn column, RecordField field, out BatchSlot slot)
-    {
-        switch (column.Domain)
-        {
-            case BatchSlotDomain.Temporal:
-                return TryNormalizeTemporal(column, field, out slot);
-
-            case BatchSlotDomain.Numeric:
-                return BatchSlotNormalizer.TryNormalize(ToNumeric(column, field), out slot);
-        }
-
-        var value = AccessValueFactory.FromField(field);
-
-        return (column.Domain, value.Type) switch
-        {
-            (BatchSlotDomain.Integer, AccessValueType.Integer)
-                => BatchSlotNormalizer.TryNormalize(value.Numeric, out slot),
-            (BatchSlotDomain.Real, AccessValueType.Real)
-                => BatchSlotNormalizer.TryNormalize(value.Real, out slot),
-            _ => Fail(out slot)
-        };
-    }
-
-    private static bool TryNormalizeTemporal(BatchColumn column, RecordField field, out BatchSlot slot)
-        => column.DataType switch
-        {
-            SqlDbType.DateTime2
-                => BatchSlotNormalizer.TryNormalize(field.GetValue<DateTime>(), out slot),
-            SqlDbType.Time
-                => BatchSlotNormalizer.TryNormalize(field.GetValue<TimeSpan>(), out slot),
-            SqlDbType.DateTimeOffset
-                => BatchSlotNormalizer.TryNormalize(field.GetValue<DateTimeOffset>(), out slot),
-            _ => Fail(out slot)
-        };
-
-    private static SqlDecimal ToNumeric(BatchColumn column, RecordField field)
-        => SqlDecimal.ConvertToPrecScale(new SqlDecimal(field.GetValue<decimal>()), column.Precision, column.Scale);
-
-    private static bool Fail(out BatchSlot slot)
-    {
-        slot = BatchSlotNormalizer.Null;
-
-        return false;
     }
 }

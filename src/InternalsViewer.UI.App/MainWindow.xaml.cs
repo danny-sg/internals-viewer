@@ -311,7 +311,7 @@ public sealed partial class MainWindow
 
         content.DataContext = viewModel;
 
-        var svg = new SvgImageSource(new Uri("ms-appx:///Assets/TabIcons/PageTabIcon.svg"))
+        var svg = new SvgImageSource(new Uri("ms-appx:///Assets/TabIcons/QueryTabIcon.svg"))
         {
             RasterizePixelHeight = 32, RasterizePixelWidth = 32
         };

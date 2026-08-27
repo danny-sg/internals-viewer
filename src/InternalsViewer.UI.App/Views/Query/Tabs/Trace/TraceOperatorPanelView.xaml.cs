@@ -63,7 +63,7 @@ public sealed partial class TraceOperatorPanelView : UserControl, IDocumentComma
             panel.Children.Add(hashTableToggle);
         }
 
-        if (ViewModel?.HasOutputPane != false)
+        if (ViewModel is { HasOutputPane: true, IsBatchMode: false })
         {
             var outputToggle = new ToggleButton
             {

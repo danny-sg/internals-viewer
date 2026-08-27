@@ -16,7 +16,8 @@ public static class PlanNodePropertyBuilder
     public static List<PlanNodeProperty> Build(PlanNode node,
                                                EventIoStatistics? eventStatistics = null,
                                                ExpressionCatalog? expressions = null,
-                                               ScanModeResult? scanMode = null)
+                                               ScanModeResult? scanMode = null,
+                                               IReadOnlyDictionary<int, string>? columnNames = null)
     {
         var result = new List<PlanNodeProperty>();
 
@@ -210,8 +211,13 @@ public static class PlanNodePropertyBuilder
 
                     foreach (var segment in segments)
                     {
-                        rowGroupProperty.Children.Add(new PlanNodeProperty($"Column {segment.ColumnId}",
-                                                                          SegmentSummary(segment))
+                        var columnName = columnNames?.GetValueOrDefault(segment.ColumnId);
+
+                        var segmentName = string.IsNullOrEmpty(columnName)
+                                          ? $"Column {segment.ColumnId}"
+                                          : $"{columnName} ({segment.ColumnId})";
+
+                        rowGroupProperty.Children.Add(new PlanNodeProperty(segmentName, SegmentSummary(segment))
                         {
                             Tooltip = SegmentDetail(segment)
                         });

@@ -43,7 +43,12 @@ public abstract partial record AccessStep
         public int Materialised { get; init; }
 
         public bool HasCompressedFilter { get; init; }
+
+        public bool HasPredicate { get; init; }
     }
+
+    public sealed record ComputeVector(long Number, int RowGroupId, string Columns, int RowCount)
+        : AccessStep(AccessPhase.Compute);
 
     public sealed record FilterVector(long Number,
                                       int RowGroupId,

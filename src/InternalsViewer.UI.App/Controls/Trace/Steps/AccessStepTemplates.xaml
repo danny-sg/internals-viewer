@@ -60,14 +60,14 @@
         <Setter Property="Padding" Value="208,4,8,4" />
     </Style>
 
-    <!-- Drawn in the gutter the row's left padding reserves, so it lines up as a column whatever the step lays out beside it -->
     <Style x:Key="StepNodeStyle" TargetType="TextBlock">
         <Setter Property="FontSize" Value="11" />
         <Setter Property="FontWeight" Value="SemiBold" />
         <Setter Property="HorizontalAlignment" Value="Left" />
         <Setter Property="VerticalAlignment" Value="Top" />
-        <Setter Property="TextTrimming" Value="CharacterEllipsis" />
-        <Setter Property="MaxWidth" Value="126" />
+        
+        <!--<Setter Property="MaxWidth" Value="126" />-->
+        <Setter Property="TextTrimming" Value="None" />
     </Style>
 
     <DataTemplate x:Key="ReadPageTemplate" >
@@ -1958,34 +1958,88 @@
                 <Border x:Name="SourceBlob" Width="9" Height="9" CornerRadius="2" Margin="0,4,0,0" VerticalAlignment="Top" />
                 <TextBlock x:Name="SourceName" Style="{StaticResource StepNodeStyle}" />
             </StackPanel>
-            <StackPanel Orientation="Horizontal">
-                <TextBlock Text="Get Batch" Style="{StaticResource StepLabelStyle}" />
-                <TextBlock Text="Batch" Style="{StaticResource StepPropertyStyle}" />
-                <TextBlock Text="{Binding Progress.Rows}" Style="{StaticResource StepValueStyle}" />
-                <TextBlock Text="{Binding Work.Rows}" Style="{StaticResource StepValueStyle}" Margin="8,0,0,0" />
-                <TextBlock Text="rows" Style="{StaticResource StepPropertyStyle}" />
-                <StackPanel Orientation="Horizontal"
-                            Visibility="{Binding Work.HasFilter, Converter={StaticResource StepsBoolToVisibilityConverter}}">
-                    <TextBlock Text="{Binding Work.Operations}" Style="{StaticResource StepValueStyle}" Margin="8,0,0,0" />
-                    <TextBlock Text="filter operations in" Style="{StaticResource StepPropertyStyle}" />
-                    <TextBlock Text="{Binding Work.RleEntries}" Style="{StaticResource StepValueStyle}" />
-                    <TextBlock Text="RLE entries" Style="{StaticResource StepPropertyStyle}" />
-                    <TextBlock Text="→" Style="{StaticResource StepPropertyStyle}" Margin="8,0,0,0" />
-                    <TextBlock Text="{Binding Work.Qualifying}" Style="{StaticResource StepValueStyle}" />
-                    <TextBlock Text="match" Style="{StaticResource StepPropertyStyle}" />
+            <StackPanel Orientation="Vertical" Spacing="3">
+                <StackPanel Orientation="Horizontal">
+                    <TextBlock Text="Get Batch" Style="{StaticResource StepLabelStyle}" />
+                    <TextBlock Text="Batch" Style="{StaticResource StepPropertyStyle}" />
+                    <TextBlock Text="{Binding Progress.Rows}" Style="{StaticResource StepValueStyle}" />
+                    <TextBlock Text="Rows" Style="{StaticResource StepPropertyStyle}" Margin="8,0,0,0" />
+                    <TextBlock Text="{Binding Work.Rows}" Style="{StaticResource StepValueStyle}" />
+                    <Border x:Name="EmitBadge"
+                            Background="{ThemeResource SystemFillColorSuccessBrush}"
+                            CornerRadius="4"
+                            Padding="6,0,6,1"
+                            Margin="8,0,0,0"
+                            VerticalAlignment="Center"
+                            Visibility="{Binding Work.HasEmitted, Converter={StaticResource StepsBoolToVisibilityConverter}}">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="{Binding Badge}" Foreground="White" FontSize="11" />
+                            <TextBlock Text="×" Foreground="White" FontSize="11" Opacity="0.6" Margin="4,0,2,0" />
+                            <TextBlock Text="{Binding Work.Emitted}" Foreground="White" FontSize="11" />
+                        </StackPanel>
+                    </Border>
                 </StackPanel>
-                <TextBlock Text="{Binding Work.Materialised}" Style="{StaticResource StepValueStyle}" Margin="8,0,0,0" />
-                <TextBlock Text="materialised" Style="{StaticResource StepPropertyStyle}" />
-                <Border x:Name="EmitBadge"
-                        Background="{ThemeResource SystemFillColorSuccessBrush}"
+                <StackPanel Orientation="Horizontal" Spacing="6">
+                    <TextBlock Text="" Style="{StaticResource StepLabelStyle}" Margin="0" />
+                <Border Background="{ThemeResource SubtleFillColorSecondaryBrush}"
                         CornerRadius="4"
                         Padding="6,0,6,1"
-                        Margin="8,0,0,0"
-                        VerticalAlignment="Center">
-                    <TextBlock Text="{Binding Badge}"
-                               Foreground="White"
-                               FontSize="11" />
+                        VerticalAlignment="Center"
+                        Visibility="{Binding Work.HasNoFilter, Converter={StaticResource StepsBoolToVisibilityConverter}}">
+                    <TextBlock Text="No Filter" Foreground="{ThemeResource TextFillColorSecondaryBrush}" FontSize="11" />
                 </Border>
+                <Border Background="{ThemeResource SystemFillColorSuccessBrush}"
+                        CornerRadius="4"
+                        Padding="6,0,6,1"
+                        VerticalAlignment="Center"
+                        Visibility="{Binding Work.HasFilter, Converter={StaticResource StepsBoolToVisibilityConverter}}">
+                    <TextBlock Text="Compressed Filter" Foreground="White" FontSize="11" />
+                </Border>
+                <Border Background="{ThemeResource SystemFillColorCautionBrush}"
+                        CornerRadius="4"
+                        Padding="6,0,6,1"
+                        VerticalAlignment="Center"
+                        Visibility="{Binding Work.HasPredicate, Converter={StaticResource StepsBoolToVisibilityConverter}}">
+                    <TextBlock Text="Predicate" Foreground="White" FontSize="11" />
+                </Border>
+                    <StackPanel Orientation="Horizontal"
+                                Visibility="{Binding Work.HasFilter, Converter={StaticResource StepsBoolToVisibilityConverter}}">
+                        <TextBlock Text="{Binding Work.Operations}" Style="{StaticResource StepValueStyle}" />
+                        <TextBlock Text="filter operations in" Style="{StaticResource StepPropertyStyle}" />
+                        <TextBlock Text="{Binding Work.RleEntries}" Style="{StaticResource StepValueStyle}" />
+                        <TextBlock Text="RLE" Style="{StaticResource StepPropertyStyle}" />
+                    </StackPanel>
+                    <Border Background="{ThemeResource SubtleFillColorSecondaryBrush}"
+                            CornerRadius="4"
+                            Padding="6,0,6,1"
+                            VerticalAlignment="Center">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="Match" FontSize="11" Opacity="0.6" />
+                            <TextBlock Text="×" FontSize="11" Opacity="0.6" Margin="4,0,2,0" />
+                            <TextBlock Text="{Binding Work.Qualifying}" FontSize="11" />
+                        </StackPanel>
+                    </Border>
+                </StackPanel>
+            </StackPanel>
+        </Grid>
+    </DataTemplate>
+
+    <DataTemplate x:Key="ComputeVectorTemplate" >
+        <Grid Style="{StaticResource StepRowStyle}">
+            <StackPanel Orientation="Horizontal" 
+                        Grid.ColumnSpan="9" 
+                        HorizontalAlignment="Left" 
+                        VerticalAlignment="Top" 
+                        Spacing="5" Width="190" 
+                        Margin="-200,0,0,0">
+                <Border x:Name="SourceBlob" Width="9" Height="9" CornerRadius="2" Margin="0,4,0,0" VerticalAlignment="Top" />
+                <TextBlock x:Name="SourceName" Style="{StaticResource StepNodeStyle}" />
+            </StackPanel>
+            <StackPanel Orientation="Horizontal">
+                <TextBlock Text="Compute Vector" Style="{StaticResource StepLabelStyle}" />
+                <TextBlock Text="{Binding Columns}" Style="{StaticResource StepValueStyle}" />
+                <TextBlock Text="{Binding RowCount}" Style="{StaticResource StepValueStyle}" Margin="8,0,0,0" />
+                <TextBlock Text="rows computed" Style="{StaticResource StepPropertyStyle}" />
             </StackPanel>
         </Grid>
     </DataTemplate>
@@ -2311,6 +2365,7 @@
         BatchCountSpanTemplate="{StaticResource BatchCountSpanTemplate}"
         BatchFilterSpanTemplate="{StaticResource BatchFilterSpanTemplate}"
         BatchGetSpanTemplate="{StaticResource BatchGetSpanTemplate}"
+        ComputeVectorTemplate="{StaticResource ComputeVectorTemplate}"
         RowGroupOpenedTemplate="{StaticResource RowGroupOpenedTemplate}"
         SegmentOpenedTemplate="{StaticResource SegmentOpenedTemplate}"
         DictionaryOpenedTemplate="{StaticResource DictionaryOpenedTemplate}"

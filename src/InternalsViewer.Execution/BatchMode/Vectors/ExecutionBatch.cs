@@ -11,13 +11,22 @@ public sealed class ExecutionBatch(int capacity, IReadOnlyList<BatchVector> vect
 
     public int RowCount { get; private set; } = capacity;
 
-    public IReadOnlyList<BatchVector> Vectors { get; } = vectors;
+    public IReadOnlyList<BatchVector> Vectors => VectorList;
+
+    private List<BatchVector> VectorList { get; } = [.. vectors];
+
+    public void AddVector(BatchVector vector) => VectorList.Add(vector);
+
+    public BatchVector? FindVector(string columnName)
+        => VectorList.Find(v => string.Equals(v.Column.Name, columnName, StringComparison.OrdinalIgnoreCase));
 
     public IDeepDataContext DeepDataContext { get; } = deepDataContext;
 
     public SelectionVector SelectionVector { get; } = new(capacity);
 
     public int RowGroupId { get; set; }
+
+    public bool IsPure => SelectionVector.RowCount == RowCount;
 
     public void Reset(int rowCount)
     {

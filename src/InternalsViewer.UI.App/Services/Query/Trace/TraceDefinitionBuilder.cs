@@ -52,7 +52,12 @@ public sealed class TraceDefinitionBuilder(Func<PlanNode, AllocationUnit?> resol
     public IteratorDefinition? Build(PlanNode node) => AsRowSource(BuildOperator(node));
 
     private IteratorDefinition? BuildInput(PlanNode parent, PlanNode child)
-        => Cross(BuildOperator(child), parent.IsBatchMode);
+        => Cross(BuildOperator(child), parent.IsBatchMode && IsBatchCapable(parent));
+
+    private static bool IsBatchCapable(PlanNode node)
+        => OperatorClassifier.IsFilter(node)
+           || OperatorClassifier.IsComputeScalar(node)
+           || OperatorClassifier.IsColumnstoreScan(node);
 
     private static IteratorDefinition? Cross(IteratorDefinition? definition, bool parentIsBatch)
         => parentIsBatch
@@ -246,7 +251,7 @@ public sealed class TraceDefinitionBuilder(Func<PlanNode, AllocationUnit?> resol
         };
     }
 
-    private ComputeScalarDefinition? BuildComputeScalar(PlanNode node)
+    private IteratorDefinition? BuildComputeScalar(PlanNode node)
     {
         if (node.Children.Count != 1)
         {
@@ -271,7 +276,7 @@ public sealed class TraceDefinitionBuilder(Func<PlanNode, AllocationUnit?> resol
 
             columns.Add(new ComputedColumn(name, expression)
             {
-                DataType = definedValue.DataType,
+                DataType = definedValue.DataType ?? TypeOf(expression),
                 Text = definedValue.Expression ?? string.Empty
             });
 
@@ -279,6 +284,16 @@ public sealed class TraceDefinitionBuilder(Func<PlanNode, AllocationUnit?> resol
         }
 
         Nodes[node.NodeId] = node;
+
+        if (source is IBatchDefinition)
+        {
+            return new BatchComputeScalarDefinition(source)
+            {
+                NodeId = node.NodeId,
+                OutputList = OutputList(node),
+                Columns = columns
+            };
+        }
 
         return new ComputeScalarDefinition(source)
         {
@@ -394,6 +409,8 @@ public sealed class TraceDefinitionBuilder(Func<PlanNode, AllocationUnit?> resol
         {
             AccessExpression.Column column => _typesByColumn.GetValueOrDefault(column.Name.Trim('[', ']')),
             AccessExpression.Constant constant => constant.Value.DataType,
+            AccessExpression.Arithmetic arithmetic => TypeOf(arithmetic.Left) ?? TypeOf(arithmetic.Right),
+            AccessExpression.Conditional conditional => TypeOf(conditional.Then) ?? TypeOf(conditional.Else),
             _ => null
         };
 
@@ -585,7 +602,9 @@ public sealed class TraceDefinitionBuilder(Func<PlanNode, AllocationUnit?> resol
             OutputList = OutputList(node),
             Residual = Translated(Residual(node), node.PredicateInfo?.HasUntranslatedPredicate == true),
             RowGoal = node.PredicateInfo?.RowGoal,
-            IsFilterOnCompressedDataUsed = node.BatchInfo?.IsFilterOnCompressedDataUsed == true
+            IsFilterOnCompressedDataUsed = node.BatchInfo?.IsFilterOnCompressedDataUsed == true,
+            IsGenericFilterUsed = node.BatchInfo?.SegmentScans
+                                      .Any(s => string.Equals(s.FilterType, "Generic", StringComparison.OrdinalIgnoreCase)) == true
         };
     }
 

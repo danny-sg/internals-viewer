@@ -1,12 +1,16 @@
-using System.Data;
+﻿using System.Data;
 using System.Globalization;
 using System.Text;
+using InternalsViewer.Execution.AccessPaths.Text;
 using InternalsViewer.Execution.AccessPaths.Values;
 using InternalsViewer.Internals.Engine.Records;
 using InternalsViewer.Internals.Metadata.Structures;
 
 namespace InternalsViewer.Execution.Records;
 
+/// <summary>
+/// Computed/Derived Record Field
+/// </summary>
 public sealed class ComputedField : RecordField
 {
     public ComputedField(string name, AccessValue value)
@@ -92,6 +96,11 @@ public sealed class ComputedField : RecordField
         if (value.IsNull)
         {
             return string.Empty;
+        }
+
+        if (AccessValueFormatter.TryFormatTemporal(value, out var temporal))
+        {
+            return temporal;
         }
 
         return value.Type switch

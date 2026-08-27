@@ -14,6 +14,8 @@ public sealed class AccessStepTemplateSelector : DataTemplateSelector
 
     public DataTemplate BatchGetSpanTemplate { get; set; } = null!;
 
+    public DataTemplate ComputeVectorTemplate { get; set; } = null!;
+
     public DataTemplate RowGroupOpenedTemplate { get; set; } = null!;
 
     public DataTemplate SegmentOpenedTemplate { get; set; } = null!;
@@ -216,6 +218,7 @@ public sealed class AccessStepTemplateSelector : DataTemplateSelector
             BatchCountSpan => BatchCountSpanTemplate,
             BatchFilterSpan => BatchFilterSpanTemplate,
             BatchGetSpan => BatchGetSpanTemplate,
+            ComputeVectorSpan => ComputeVectorTemplate,
             AccessStep.RowGroupOpened => RowGroupOpenedTemplate,
             AccessStep.SegmentOpened => SegmentOpenedTemplate,
             AccessStep.DictionaryOpened => DictionaryOpenedTemplate,

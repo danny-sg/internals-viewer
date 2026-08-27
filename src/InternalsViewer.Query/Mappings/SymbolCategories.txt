@@ -532,3 +532,15 @@ sqlmin|CBatchAdapterBaseHelpers*|*|Dataset
 *|COpArg*|*|Optimization
 *|*|GetIndexSizeData*|Metadata
 *|*|GetRealIndexSizeData*|Metadata
+
+*|VLDStoreBuilder*|*|ColumnStore
+*|DeleteSegmentRef*|*|ColumnStore
+*|*DeleteBitmap*|*|ColumnStore
+*|CsLobRedirect*|*|ColumnStore
+*|*|CsLobRedirect*|ColumnStore
+*|*|CheckPageAllocStatus*|Allocations
+*|*|GetIAMPage*|Allocations
+*|*|FCardBasedRecompile*|Compilation
+*|SystemThread*|*|SqlOs
+*|CModTrackingInfo*|*|Optimization
+*|CBpContext*|*|QueryExecution
