@@ -21,83 +21,100 @@
             <CommandBar DefaultLabelPosition="Right" 
                         Height="32">
                 <CommandBar.Content>
-                    <MenuBar Grid.Row="0"
-                             Height="32"
-                             Padding="0">
-                        <MenuBar.Resources>
-                            <x:Double x:Key="ControlContentThemeFontSize">12</x:Double>
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto"></ColumnDefinition>
+                            <ColumnDefinition Width="*"></ColumnDefinition>
+                            <ColumnDefinition Width="*"></ColumnDefinition>
+                        </Grid.ColumnDefinitions>
+                        <StackPanel Grid.Column="0" VerticalAlignment="Center">
+                            <TextBlock Margin="12,0,12,0" FontWeight="SemiBold">
+                                Query
+                            </TextBlock>
 
-                        </MenuBar.Resources>
-                        <MenuBarItem Title="View">
-                            <ToggleMenuFlyoutItem Text="SQL Editor"
-                                                  IsChecked="{x:Bind ViewModel.Layout.IsSqlEditorVisible, Mode=TwoWay}"/>
-                            <ToggleMenuFlyoutItem Text="Allocations"
-                                                  IsChecked="{x:Bind ViewModel.Layout.IsAllocationsVisible, Mode=TwoWay}"/>
-                            <ToggleMenuFlyoutItem Text="Execution Plan"
-                                                  IsChecked="{x:Bind ViewModel.Layout.IsExecutionPlanVisible, Mode=TwoWay}"/>
-                            <ToggleMenuFlyoutItem Text="Events"
-                                                  IsChecked="{x:Bind ViewModel.Layout.IsEventsVisible, Mode=TwoWay}"/>
 
-                            <ToggleMenuFlyoutItem Text="Call Stack"
-                                                  IsChecked="{x:Bind ViewModel.Layout.IsCallstackVisible, Mode=TwoWay}"/>
-                            <MenuFlyoutSeparator/>
-                            <ToggleMenuFlyoutItem Text="Timeline"
-                                                  IsChecked="{x:Bind ViewModel.Layout.IsTimelineVisible, Mode=TwoWay}"/>
-                            <ToggleMenuFlyoutItem Text="Trace"
-                                                  IsChecked="{x:Bind ViewModel.IsTraceVisible, Mode=TwoWay}"/>
-                            <MenuFlyoutSeparator/>
-                            <MenuFlyoutItem Text="Reset Layout"
-                                            Command="{x:Bind ViewModel.ResetLayoutCommand}"/>
-                            <MenuFlyoutSeparator/>
-                            <ToggleMenuFlyoutItem Text="Instructions"
-                                                  IsChecked="{x:Bind ViewModel.Layout.IsInstructionsVisible, Mode=TwoWay}"/>
-                        </MenuBarItem>
 
-                        <MenuBarItem Title="Query">
-                            <ToggleMenuFlyoutItem Text="Crop to query"
-                                                  IsChecked="{x:Bind ViewModel.QueryOptions.CropToQuery, Mode=TwoWay}"/>
-                            <ToggleMenuFlyoutItem Text="Include System Objects"
-                                                  IsChecked="{x:Bind ViewModel.QueryOptions.IncludeSystemObjects, Mode=TwoWay}"/>
-                        </MenuBarItem>
-                        <MenuBarItem Title="Index">
-                            <MenuFlyoutItem Text="Open all indexes"
-                                            Command="{x:Bind ViewModel.OpenIndexesCommand}"/>
+                        </StackPanel>
+                        <AppBarSeparator Grid.Column="1"/>
+                        <MenuBar Grid.Column="2"
+                                 Height="32"
+                                 Padding="0">
+                            <MenuBar.Resources>
+                                <x:Double x:Key="ControlContentThemeFontSize">12</x:Double>
 
-                        </MenuBarItem>
+                            </MenuBar.Resources>
+                            <MenuBarItem Title="View">
+                                <ToggleMenuFlyoutItem Text="SQL Editor"
+                                   IsChecked="{x:Bind ViewModel.Layout.IsSqlEditorVisible, Mode=TwoWay}"/>
+                                <ToggleMenuFlyoutItem Text="Allocations"
+                                   IsChecked="{x:Bind ViewModel.Layout.IsAllocationsVisible, Mode=TwoWay}"/>
+                                <ToggleMenuFlyoutItem Text="Execution Plan"
+                                   IsChecked="{x:Bind ViewModel.Layout.IsExecutionPlanVisible, Mode=TwoWay}"/>
+                                <ToggleMenuFlyoutItem Text="Events"
+                                   IsChecked="{x:Bind ViewModel.Layout.IsEventsVisible, Mode=TwoWay}"/>
 
-                        <MenuBarItem Title="Events">
-                            <MenuFlyoutSubItem Text="Locks">
-                                <MenuFlyoutItem Text="None"
-                                                Command="{x:Bind ViewModel.QueryOptions.NoLockModeCategoriesCommand}"/>
+                                <ToggleMenuFlyoutItem Text="Call Stack"
+                                   IsChecked="{x:Bind ViewModel.Layout.IsCallstackVisible, Mode=TwoWay}"/>
                                 <MenuFlyoutSeparator/>
-                                <ToggleMenuFlyoutItem Text="Read"
-                                                      IsChecked="{x:Bind ViewModel.QueryOptions.ShowReadLocks, Mode=TwoWay}"/>
-                                <ToggleMenuFlyoutItem Text="Update"
-                                                      IsChecked="{x:Bind ViewModel.QueryOptions.ShowUpdateLocks, Mode=TwoWay}"/>
-                                <ToggleMenuFlyoutItem Text="Write"
-                                                      IsChecked="{x:Bind ViewModel.QueryOptions.ShowWriteLocks, Mode=TwoWay}"/>
-                                <ToggleMenuFlyoutItem Text="Schema"
-                                                      IsChecked="{x:Bind ViewModel.QueryOptions.ShowSchemaLocks, Mode=TwoWay}"/>
-                                <ToggleMenuFlyoutItem Text="Range"
-                                                      IsChecked="{x:Bind ViewModel.QueryOptions.ShowRangeLocks, Mode=TwoWay}"/>
-                                <ToggleMenuFlyoutItem Text="Bulk"
-                                                      IsChecked="{x:Bind ViewModel.QueryOptions.ShowBulkLocks, Mode=TwoWay}"/>
+                                <ToggleMenuFlyoutItem Text="Timeline"
+                                   IsChecked="{x:Bind ViewModel.Layout.IsTimelineVisible, Mode=TwoWay}"/>
+                                <ToggleMenuFlyoutItem Text="Trace"
+                                   IsChecked="{x:Bind ViewModel.IsTraceVisible, Mode=TwoWay}"/>
                                 <MenuFlyoutSeparator/>
-                                <MenuFlyoutItem Text="Default"
-                                                Command="{x:Bind ViewModel.QueryOptions.DefaultLockModeCategoriesCommand}"/>
-                            </MenuFlyoutSubItem>
+                                <MenuFlyoutItem Text="Reset Layout"
+                             Command="{x:Bind ViewModel.ResetLayoutCommand}"/>
+                                <MenuFlyoutSeparator/>
+                                <ToggleMenuFlyoutItem Text="Instructions"
+                                   IsChecked="{x:Bind ViewModel.Layout.IsInstructionsVisible, Mode=TwoWay}"/>
+                            </MenuBarItem>
 
-                            <ToggleMenuFlyoutItem Text="Waits"
-                                                  IsChecked="{x:Bind ViewModel.QueryOptions.ShowWaits, Mode=TwoWay}"/>
-                            <ToggleMenuFlyoutItem Text="Latches"
-                                                  IsChecked="{x:Bind ViewModel.QueryOptions.ShowLatches, Mode=TwoWay}"/>
-                            <ToggleMenuFlyoutItem Text="Memory"
-                                                  IsChecked="{x:Bind ViewModel.QueryOptions.IncludeMemory, Mode=TwoWay}"/>
-                            <ToggleMenuFlyoutItem Text="Call Stack"
-                                                  IsChecked="{x:Bind ViewModel.QueryOptions.IncludeCallStack, Mode=TwoWay}"/>
-                        </MenuBarItem>
+                            <MenuBarItem Title="Query">
+                                <ToggleMenuFlyoutItem Text="Crop to query"
+                                   IsChecked="{x:Bind ViewModel.QueryOptions.CropToQuery, Mode=TwoWay}"/>
+                                <ToggleMenuFlyoutItem Text="Include System Objects"
+                                   IsChecked="{x:Bind ViewModel.QueryOptions.IncludeSystemObjects, Mode=TwoWay}"/>
+                            </MenuBarItem>
+                            <MenuBarItem Title="Index">
+                                <MenuFlyoutItem Text="Open all indexes"
+                             Command="{x:Bind ViewModel.OpenIndexesCommand}"/>
 
-                    </MenuBar>
+                            </MenuBarItem>
+
+                            <MenuBarItem Title="Events">
+                                <MenuFlyoutSubItem Text="Locks">
+                                    <MenuFlyoutItem Text="None"
+                                 Command="{x:Bind ViewModel.QueryOptions.NoLockModeCategoriesCommand}"/>
+                                    <MenuFlyoutSeparator/>
+                                    <ToggleMenuFlyoutItem Text="Read"
+                                       IsChecked="{x:Bind ViewModel.QueryOptions.ShowReadLocks, Mode=TwoWay}"/>
+                                    <ToggleMenuFlyoutItem Text="Update"
+                                       IsChecked="{x:Bind ViewModel.QueryOptions.ShowUpdateLocks, Mode=TwoWay}"/>
+                                    <ToggleMenuFlyoutItem Text="Write"
+                                       IsChecked="{x:Bind ViewModel.QueryOptions.ShowWriteLocks, Mode=TwoWay}"/>
+                                    <ToggleMenuFlyoutItem Text="Schema"
+                                       IsChecked="{x:Bind ViewModel.QueryOptions.ShowSchemaLocks, Mode=TwoWay}"/>
+                                    <ToggleMenuFlyoutItem Text="Range"
+                                       IsChecked="{x:Bind ViewModel.QueryOptions.ShowRangeLocks, Mode=TwoWay}"/>
+                                    <ToggleMenuFlyoutItem Text="Bulk"
+                                       IsChecked="{x:Bind ViewModel.QueryOptions.ShowBulkLocks, Mode=TwoWay}"/>
+                                    <MenuFlyoutSeparator/>
+                                    <MenuFlyoutItem Text="Default"
+                                 Command="{x:Bind ViewModel.QueryOptions.DefaultLockModeCategoriesCommand}"/>
+                                </MenuFlyoutSubItem>
+
+                                <ToggleMenuFlyoutItem Text="Waits"
+                                   IsChecked="{x:Bind ViewModel.QueryOptions.ShowWaits, Mode=TwoWay}"/>
+                                <ToggleMenuFlyoutItem Text="Latches"
+                                   IsChecked="{x:Bind ViewModel.QueryOptions.ShowLatches, Mode=TwoWay}"/>
+                                <ToggleMenuFlyoutItem Text="Memory"
+                                   IsChecked="{x:Bind ViewModel.QueryOptions.IncludeMemory, Mode=TwoWay}"/>
+                                <ToggleMenuFlyoutItem Text="Call Stack"
+                                   IsChecked="{x:Bind ViewModel.QueryOptions.IncludeCallStack, Mode=TwoWay}"/>
+                            </MenuBarItem>
+
+                        </MenuBar>
+                    </Grid>
+
                 </CommandBar.Content>
 
 

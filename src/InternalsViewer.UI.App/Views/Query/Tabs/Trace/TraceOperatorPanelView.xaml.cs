@@ -63,6 +63,20 @@ public sealed partial class TraceOperatorPanelView : UserControl, IDocumentComma
             panel.Children.Add(hashTableToggle);
         }
 
+        if (ViewModel is { HasZoomToPage: true } zoomViewModel)
+        {
+            var zoomToPageToggle = new ToggleButton
+            {
+                Style = (Style)Application.Current.Resources["TabCommandToggleStyle"],
+                Content = new TextBlock { Text = "Zoom to Page", VerticalAlignment = VerticalAlignment.Center },
+                IsChecked = zoomViewModel.IsZoomToPage
+            };
+
+            zoomToPageToggle.Click += (_, _) => zoomViewModel.IsZoomToPage = zoomToPageToggle.IsChecked == true;
+
+            panel.Children.Add(zoomToPageToggle);
+        }
+
         if (ViewModel is { HasOutputPane: true, IsBatchMode: false })
         {
             var outputToggle = new ToggleButton

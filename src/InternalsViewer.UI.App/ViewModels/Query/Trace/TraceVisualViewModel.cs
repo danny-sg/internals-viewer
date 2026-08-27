@@ -73,6 +73,12 @@ public sealed partial class TraceVisualViewModel(TraceVisualType visualType,
     [ObservableProperty]
     private bool _isZoomToFit = true;
 
+    /// <summary>
+    /// Whether the visual zooms in on the page the operator is reading rather than showing the whole structure
+    /// </summary>
+    [ObservableProperty]
+    private bool _isZoomToPage;
+
     [ObservableProperty]
     private IReadOnlyList<PageSpan> _pageSpans = [];
 
@@ -301,6 +307,8 @@ public sealed partial class TraceVisualViewModel(TraceVisualType visualType,
 
         if (current is { } page)
         {
+            SelectedPageAddress = page;
+
             SetTraceBorders(page);
         }
     }
@@ -506,6 +514,8 @@ public sealed partial class TraceVisualViewModel(TraceVisualType visualType,
         if (replay.LastPage is { } page)
         {
             _objectBorderVisible = true;
+
+            SelectedPageAddress = page;
 
             SetTraceBorders(page);
 

@@ -1,4 +1,4 @@
-using InternalsViewer.Internals.Engine.Address;
+﻿using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Internals.Engine.Allocation;
 using InternalsViewer.Internals.Engine.Allocation.Enums;
 using InternalsViewer.Internals.Interfaces.Engine;
@@ -31,6 +31,13 @@ public sealed partial class AllocationControl : IDisposable
     private const double MinimumZoomForLines = 0.4;
 
     private const int ScrollBufferRows = 2;
+
+    private const int UnitZoomPageWidth = 10;
+
+    /// <summary>
+    /// How far either side of the zoom asked for a better fitting one is looked for
+    /// </summary>
+    private const double FitZoomTolerance = 0.25;
 
     private const float MinHeatmapChromaRatio = 0.15F;
 
@@ -205,6 +212,43 @@ public sealed partial class AllocationControl : IDisposable
         set => SetValue(AutoScrollProperty, value);
     }
 
+    public static readonly DependencyProperty CurrentPageAddressProperty
+        = DependencyProperty.Register(nameof(CurrentPageAddress),
+                                      typeof(PageAddress?),
+                                      typeof(AllocationControl),
+                                      new PropertyMetadata(null, OnCurrentPageAddressChanged));
+
+    /// <summary>
+    /// The page the map follows where its layers carry no timed spans
+    /// </summary>
+    /// <remarks>
+    /// A trace draws the page it stands on as a border rather than as a span, so there is nothing under the playhead for the map to find
+    /// and the page has to be given to it directly.
+    /// </remarks>
+    public PageAddress? CurrentPageAddress
+    {
+        get => (PageAddress?)GetValue(CurrentPageAddressProperty);
+        set => SetValue(CurrentPageAddressProperty, value);
+    }
+
+    public static readonly DependencyProperty ZoomToCurrentPageProperty
+        = DependencyProperty.Register(nameof(ZoomToCurrentPage),
+                                      typeof(double?),
+                                      typeof(AllocationControl),
+                                      new PropertyMetadata(null, OnZoomToCurrentPageChanged));
+
+    /// <summary>
+    /// The zoom to hold the followed page at, or null to leave the zoom to the user
+    /// </summary>
+    /// <remarks>
+    /// Set, it follows as <see cref="AutoScroll"/> does, so a page far enough in to fill the map is still the one on screen.
+    /// </remarks>
+    public double? ZoomToCurrentPage
+    {
+        get => (double?)GetValue(ZoomToCurrentPageProperty);
+        set => SetValue(ZoomToCurrentPageProperty, value);
+    }
+
     public static readonly DependencyProperty IsHeatmapProperty
         = DependencyProperty.Register(nameof(IsHeatmap),
                                       typeof(bool),
@@ -267,6 +311,8 @@ public sealed partial class AllocationControl : IDisposable
 
     private SKPicture? _staticLayer;
 
+    private bool _isFollowingPage;
+
     private StaticLayerKey _staticLayerKey;
 
     private int _staticVersion;
@@ -293,7 +339,17 @@ public sealed partial class AllocationControl : IDisposable
 
     public AllocationOverViewModel AllocationOver { get; } = new();
 
-    private Size ExtentSize => new((int)(80 * Zoom), (int)(10 * Zoom));
+    /// <summary>
+    /// The side of a page in pixels, which is a whole number so that the eight pages of an extent fill it exactly
+    /// </summary>
+    /// <remarks>
+    /// A fractional width leaves a seam inside every extent, since each page is drawn as its own rectangle.
+    /// </remarks>
+    private int PageWidth => Math.Max(1, (int)Math.Round(UnitZoomPageWidth * Zoom));
+
+    private Size ExtentSize => new(PageWidth * 8, PageWidth);
+
+    private bool IsFollowingCurrentPage => AutoScroll || ZoomToCurrentPage is > 0;
 
     private ExtentLayout Layout { get; set; } = new();
 
@@ -368,19 +424,60 @@ public sealed partial class AllocationControl : IDisposable
 
         RebuildLayout((int)AllocationCanvas.ActualWidth, (int)AllocationCanvas.ActualHeight);
 
-        if (AutoScroll)
+        if (IsFollowingCurrentPage)
         {
-            ScrollToLatestPageSpan(PlayheadTimeUs);
+            FollowCurrentPage(PlayheadTimeUs);
         }
 
         AllocationCanvas.Invalidate();
     }
 
-    private void ScrollToLatestPageSpan(long playheadUs)
+    /// <summary>
+    /// Brings the page the map is following into view, zoomed in on it where a zoom is asked for
+    /// </summary>
+    /// <remarks>
+    /// The span under the playhead and <see cref="CurrentPageAddress"/> are tried in turn rather than one standing for both, because an
+    /// allocation map built for a trace carries no timed spans at all.
+    /// </remarks>
+    private void FollowCurrentPage(long playheadUs)
     {
-        if (Layers is not { Count: > 0 } || Layout.HorizontalCount <= 0 || Layout.VisibleCount <= 0)
+        if (_isFollowingPage || Layout.HorizontalCount <= 0 || Layout.VisibleCount <= 0)
         {
             return;
+        }
+
+        var followed = LatestPageSpan(playheadUs)?.Address.PageId ?? FollowedPageId();
+
+        if (followed is not { } pageId)
+        {
+            return;
+        }
+
+        _isFollowingPage = true;
+
+        try
+        {
+            if (ZoomToCurrentPage is { } zoom)
+            {
+                ApplyZoom(zoom);
+            }
+
+            ScrollToPage(pageId);
+        }
+        finally
+        {
+            _isFollowingPage = false;
+        }
+    }
+
+    private int? FollowedPageId()
+        => CurrentPageAddress is { } address && address.FileId == FileId ? address.PageId : null;
+
+    private PageSpan? LatestPageSpan(long playheadUs)
+    {
+        if (Layers is not { Count: > 0 })
+        {
+            return null;
         }
 
         PageSpan? latestSpan = null;
@@ -408,12 +505,61 @@ public sealed partial class AllocationControl : IDisposable
             }
         }
 
-        if (latestSpan is null)
+        return latestSpan;
+    }
+
+    /// <summary>
+    /// Zooms the map, whose layout is rebuilt before the caller goes on to scroll against it
+    /// </summary>
+    private void ApplyZoom(double zoom)
+    {
+        var target = FitZoom(zoom);
+
+        if (Math.Abs(Zoom - target) < 0.0001)
         {
             return;
         }
 
-        ScrollToPage(latestSpan.Address.PageId);
+        Zoom = target;
+    }
+
+    /// <summary>
+    /// The zoom near <paramref name="zoom"/> that leaves the least of the canvas untiled
+    /// </summary>
+    /// <remarks>
+    /// Extents are laid out left to right until the next one will not fit, so a width the canvas is not a multiple of leaves a strip of
+    /// dead space down the right hand side. Every page width within the tolerance is scored on what it would leave over, which is worth
+    /// doing only where the zoom is chosen for the user - a zoom they set themselves is the one they asked for.
+    /// </remarks>
+    private double FitZoom(double zoom)
+    {
+        var target = Math.Clamp(zoom, MinimumZoom, MaximumZoom) * UnitZoomPageWidth;
+
+        var lowest = Math.Max((int)Math.Ceiling(MinimumZoom * UnitZoomPageWidth), (int)Math.Round(target * (1 - FitZoomTolerance)));
+        var highest = Math.Min((int)(MaximumZoom * UnitZoomPageWidth), (int)Math.Round(target * (1 + FitZoomTolerance)));
+
+        var canvasWidth = (int)AllocationCanvas.ActualWidth;
+
+        var fitted = Math.Clamp((int)Math.Round(target), lowest, Math.Max(lowest, highest));
+
+        if (canvasWidth > 0)
+        {
+            var leastLeftOver = int.MaxValue;
+
+            for (var width = lowest; width <= highest; width++)
+            {
+                var leftOver = canvasWidth % (width * 8);
+
+                if (leftOver < leastLeftOver
+                    || (leftOver == leastLeftOver && Math.Abs(width - target) < Math.Abs(fitted - target)))
+                {
+                    leastLeftOver = leftOver;
+                    fitted = width;
+                }
+            }
+        }
+
+        return (double)fitted / UnitZoomPageWidth;
     }
 
     private void ScrollToPage(int pageId)
@@ -478,6 +624,11 @@ public sealed partial class AllocationControl : IDisposable
     private void AllocationCanvas_SizeChanged(object sender, SizeChangedEventArgs e)
     {
         RebuildLayout((int)e.NewSize.Width, (int)e.NewSize.Height);
+
+        if (IsFollowingCurrentPage)
+        {
+            FollowCurrentPage(PlayheadTimeUs);
+        }
 
         AllocationCanvas.Invalidate();
     }
@@ -624,7 +775,7 @@ public sealed partial class AllocationControl : IDisposable
 
         if (IsPfsVisible)
         {
-            using var pfsRenderer = new PfsRenderer(ExtentSize with { Width = ExtentSize.Width / 8 });
+            using var pfsRenderer = new PfsRenderer(ExtentSize with { Width = PageWidth });
 
             DrawPfs(canvas, pfsRenderer, layout);
         }
@@ -1096,7 +1247,7 @@ public sealed partial class AllocationControl : IDisposable
         var row = pageId / horizontalCount;
         var column = pageId % horizontalCount;
 
-        var pageWidth = ExtentSize.Width / 8F;
+        var pageWidth = PageWidth;
 
         var left = column * pageWidth;
         var top = row * ExtentSize.Height;
@@ -1166,7 +1317,7 @@ public sealed partial class AllocationControl : IDisposable
 
     private int GetPageAtPosition(int x, int y)
     {
-        var column = GetColumnAtPosition(x, ExtentSize.Width / 8F, Layout.HorizontalCount * 8);
+        var column = GetColumnAtPosition(x, PageWidth, Layout.HorizontalCount * 8);
 
         return y / ExtentSize.Height * Layout.HorizontalCount * 8 + column + ScrollPosition * 8;
     }
@@ -1294,9 +1445,9 @@ public sealed partial class AllocationControl : IDisposable
         var control = (AllocationControl)d;
         var playheadUs = (long)e.NewValue;
 
-        if (control.AutoScroll)
+        if (control.IsFollowingCurrentPage)
         {
-            control.ScrollToLatestPageSpan(playheadUs);
+            control.FollowCurrentPage(playheadUs);
         }
 
         if (control.Layers?.Any(l => l.PageSpans.Count > 0) == true
@@ -1312,10 +1463,32 @@ public sealed partial class AllocationControl : IDisposable
 
         if ((bool)e.NewValue)
         {
-            control.ScrollToLatestPageSpan(control.PlayheadTimeUs);
+            control.FollowCurrentPage(control.PlayheadTimeUs);
         }
 
         control.AllocationCanvas.Invalidate();
+    }
+
+    private static void OnZoomToCurrentPageChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
+    {
+        var control = (AllocationControl)d;
+
+        if (e.NewValue is > 0d)
+        {
+            control.FollowCurrentPage(control.PlayheadTimeUs);
+        }
+
+        control.AllocationCanvas.Invalidate();
+    }
+
+    private static void OnCurrentPageAddressChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
+    {
+        var control = (AllocationControl)d;
+
+        if (control.IsFollowingCurrentPage)
+        {
+            control.FollowCurrentPage(control.PlayheadTimeUs);
+        }
     }
 
     private static void OnPropertyChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)

@@ -1,5 +1,7 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.Linq;
 using CommunityToolkit.Mvvm.ComponentModel;
 using InternalsViewer.Execution.AccessPaths.Joins;
 using InternalsViewer.Internals.Engine.Address;
@@ -83,6 +85,37 @@ public sealed partial class TraceOperatorViewModel(int nodeId, string title, str
     public TracePane InnerTop { get; set; } = TracePane.Empty;
 
     public TracePane InnerBottom { get; set; } = TracePane.Empty;
+
+    /// <summary>
+    /// The page visuals among the operator's panes, which are the ones a zoom acts on
+    /// </summary>
+    /// <remarks>
+    /// A columnstore visual has no pages to zoom to, so it is left out and an operator with only one offers no toggle.
+    /// </remarks>
+    public IEnumerable<TraceVisualViewModel> PageVisuals
+        => new[] { MainPane, OuterTop, OuterBottom, InnerTop, InnerBottom }
+            .Select(p => p.Content)
+            .OfType<TraceVisualViewModel>()
+            .Where(v => v.VisualType is TraceVisualType.Index or TraceVisualType.Allocation);
+
+    public bool HasZoomToPage => PageVisuals.Any();
+
+    /// <summary>
+    /// Whether the operator's page visuals follow the page it is reading rather than showing the whole structure
+    /// </summary>
+    public bool IsZoomToPage
+    {
+        get => PageVisuals.Any(v => v.IsZoomToPage);
+        set
+        {
+            foreach (var visual in PageVisuals)
+            {
+                visual.IsZoomToPage = value;
+            }
+
+            OnPropertyChanged();
+        }
+    }
 
     public TraceRowStreamViewModel Output { get; } = new();
 
