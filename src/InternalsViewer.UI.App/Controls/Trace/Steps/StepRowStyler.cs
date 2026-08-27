@@ -70,24 +70,18 @@ public sealed class StepRowStyler
 
         var brush = BrushFor(step.NodeId);
 
-        if (grid.FindName("SourceName") is TextBlock sourceName)
+        if (grid.FindName("SourceGutter") is StepSourceGutter gutter)
         {
-            sourceName.Text = showName ? node?.Name ?? string.Empty : string.Empty;
-        }
+            gutter.NodeName = showName ? node?.Name ?? string.Empty : string.Empty;
 
-        if (grid.FindName("SourceBlob") is Border blob)
-        {
-            blob.Background = BlobBrushFor(step.NodeId);
+            gutter.BlobBrush = BlobBrushFor(step.NodeId);
 
-            blob.Visibility = showName && brush is not null ? Visibility.Visible : Visibility.Collapsed;
+            gutter.IsBlobVisible = showName && brush is not null;
 
-            if (blob.Parent is StackPanel gutter)
-            {
-                gutter.Tag = step.NodeId;
+            gutter.NodeId = step.NodeId;
 
-                gutter.Tapped -= OnGutterTapped;
-                gutter.Tapped += OnGutterTapped;
-            }
+            gutter.Tapped -= OnGutterTapped;
+            gutter.Tapped += OnGutterTapped;
         }
 
         UpdateEmitBadge(grid, brush, step is AccessStep.Row { IsReadAhead: true });
@@ -142,9 +136,9 @@ public sealed class StepRowStyler
 
     private void OnGutterTapped(object sender, TappedRoutedEventArgs e)
     {
-        if (sender is StackPanel { Tag: int nodeId })
+        if (sender is StepSourceGutter gutter)
         {
-            NodeActivated?.Invoke(nodeId);
+            NodeActivated?.Invoke(gutter.NodeId);
         }
     }
 

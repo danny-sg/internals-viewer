@@ -3,6 +3,7 @@ using InternalsViewer.UI.App.Models.Query.Trace;
 using InternalsViewer.UI.App.ViewModels.Query.Trace;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Controls.Primitives;
+using Microsoft.UI.Xaml.Data;
 using Microsoft.UI.Xaml.Media;
 using Microsoft.UI.Xaml.Media.Imaging;
 
@@ -23,6 +24,8 @@ public sealed partial class TraceOperatorPanelView : UserControl, IDocumentComma
     private bool _isHashTableVisible = true;
 
     private TraceOperatorViewModel? _appliedViewModel;
+
+    private ToggleButton? _zoomToPageToggle;
 
     public TraceOperatorPanelView()
     {
@@ -68,11 +71,22 @@ public sealed partial class TraceOperatorPanelView : UserControl, IDocumentComma
             var zoomToPageToggle = new ToggleButton
             {
                 Style = (Style)Application.Current.Resources["TabCommandToggleStyle"],
-                Content = new TextBlock { Text = "Zoom to Page", VerticalAlignment = VerticalAlignment.Center },
-                IsChecked = zoomViewModel.IsZoomToPage
+                Content = new TextBlock { Text = "Zoom to Page", VerticalAlignment = VerticalAlignment.Center }
             };
 
-            zoomToPageToggle.Click += (_, _) => zoomViewModel.IsZoomToPage = zoomToPageToggle.IsChecked == true;
+            // The strip is rebuilt on every tab switch, so drop the binding the discarded toggle holds on the view model.
+            _zoomToPageToggle?.ClearValue(ToggleButton.IsCheckedProperty);
+
+            _zoomToPageToggle = zoomToPageToggle;
+
+            // Bound rather than set, because a nested layout shows a strip per operator and the setting is the whole trace's.
+            zoomToPageToggle.SetBinding(ToggleButton.IsCheckedProperty,
+                                        new Binding
+                                        {
+                                            Source = zoomViewModel,
+                                            Path = new PropertyPath(nameof(TraceOperatorViewModel.IsZoomToPage)),
+                                            Mode = BindingMode.TwoWay
+                                        });
 
             panel.Children.Add(zoomToPageToggle);
         }

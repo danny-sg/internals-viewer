@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Drawing;
 using InternalsViewer.UI.App.Helpers;
 using InternalsViewer.UI.App.Models;
@@ -8,6 +8,11 @@ namespace InternalsViewer.UI.App.Controls.Allocation;
 
 public sealed class AllocationRenderer : IDisposable
 {
+    /// <summary>
+    /// How far the wash over a selected page lifts what is under it, leaving the allocation colour readable through it
+    /// </summary>
+    private const byte SelectedPageAlpha = 128;
+
     public AllocationRenderer(Color borderColour,
                               Size extentSize)
     {
@@ -26,6 +31,18 @@ public sealed class AllocationRenderer : IDisposable
         };
 
         BorderPaint = GetBorderPaint();
+
+        SelectedPagePaint = new SKPaint
+        {
+            Color = SKColors.White.WithAlpha(SelectedPageAlpha),
+            Style = SKPaintStyle.Fill
+        };
+
+        SelectedRowPaint = new SKPaint
+        {
+            Color = SKColors.Red,
+            Style = SKPaintStyle.Fill
+        };
     }
 
     public bool IsDrawBorder { get; set; }
@@ -43,6 +60,10 @@ public sealed class AllocationRenderer : IDisposable
     private SKPaint PageMarkerPaint { get; }
 
     private SKPaint BorderPaint { get; }
+
+    private SKPaint SelectedPagePaint { get; }
+
+    private SKPaint SelectedRowPaint { get; }
 
     private Color LastColourFrom { get; set; } = Color.White;
 
@@ -100,6 +121,8 @@ public sealed class AllocationRenderer : IDisposable
         BackgroundPaint.Dispose();
         PagePaint.Dispose();
         PageMarkerPaint.Dispose();
+        SelectedPagePaint.Dispose();
+        SelectedRowPaint.Dispose();
 
         PathBuilder.Dispose();
     }
@@ -117,6 +140,22 @@ public sealed class AllocationRenderer : IDisposable
                 g.DrawRect(rect, PagePaint);
                 break;
         }
+    }
+
+    internal void DrawSelectedRow(SKCanvas g, SKRect pageRect, int slot, int slotCount)
+    {
+        if (slotCount <= 0)
+        {
+            return;
+        }
+
+        g.DrawRect(pageRect, SelectedPagePaint);
+
+        var rowHeight = Math.Max(2F, pageRect.Height / slotCount);
+
+        var top = pageRect.Top + Math.Min(slot, slotCount - 1) * pageRect.Height / slotCount;
+
+        g.DrawRect(new SKRect(pageRect.Left, top, pageRect.Right, top + rowHeight), SelectedRowPaint);
     }
 
     internal void DrawPageMarker(SKCanvas g, SKRect rect, AllocationLayer layer, SKColor colour)

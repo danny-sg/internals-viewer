@@ -166,6 +166,8 @@ public sealed partial class TraceTabViewModel : ObservableObject, IDisposable
 
             op.PageOpenRequested += address => PageOpenRequested?.Invoke(this, address);
 
+            op.ZoomToPageRequested += value => IsZoomToPage = value;
+
             Applier.BuildStateItems(op);
         }
 
@@ -644,6 +646,19 @@ public sealed partial class TraceTabViewModel : ObservableObject, IDisposable
         }
     }
 
+    partial void OnIsZoomToPageChanged(bool value)
+    {
+        foreach (var visual in Visuals)
+        {
+            visual.IsZoomToPage = value;
+        }
+
+        foreach (var op in Operators)
+        {
+            op.IsZoomToPage = value;
+        }
+    }
+
     /// <summary>
     /// The strategy the selected operator will use, worked out before the walk starts
     /// </summary>
@@ -773,7 +788,7 @@ public sealed partial class TraceTabViewModel : ObservableObject, IDisposable
         {
             while (IsRunning && !IsStepComplete)
             {
-                if (RunDelayMs < 0)
+                if (RunDelayMs <= -500)
                 {
                     IsRunning = false;
 
@@ -783,8 +798,12 @@ public sealed partial class TraceTabViewModel : ObservableObject, IDisposable
                 }
 
                 await StepNext();
+                var delay = RunDelayMs < 0 ? 0 : Math.Max(1, RunDelayMs);
 
-                await Task.Delay(TimeSpan.FromMilliseconds(Math.Max(1, RunDelayMs)), cancellationToken);
+                if (delay > 0)
+                {
+                    await Task.Delay(TimeSpan.FromMilliseconds(delay), cancellationToken);
+                }
             }
         }
         catch (OperationCanceledException)

@@ -727,10 +727,10 @@ public sealed partial class AllocationControl : IDisposable
 
         DrawBorders(canvas, renderLayout);
 
-        DrawSelectedRow(canvas, renderLayout);
+        DrawSelectedRow(canvas, renderer, renderLayout);
     }
 
-    private void DrawSelectedRow(SKCanvas canvas, ExtentLayout layout)
+    private void DrawSelectedRow(SKCanvas canvas, AllocationRenderer renderer, ExtentLayout layout)
     {
         if (SelectedRowIdentifier is not { } row
             || row.PageAddress.FileId != FileId
@@ -754,13 +754,7 @@ public sealed partial class AllocationControl : IDisposable
             return;
         }
 
-        var rowHeight = Math.Max(1F, rect.Height / SelectedRowSlotCount);
-
-        var top = rect.Top + Math.Min(row.SlotId, SelectedRowSlotCount - 1) * rect.Height / SelectedRowSlotCount;
-
-        using var paint = new SKPaint { Color = SKColors.Red, Style = SKPaintStyle.Fill };
-
-        canvas.DrawRect(new SKRect(rect.Left, top, rect.Right, top + rowHeight), paint);
+        renderer.DrawSelectedRow(canvas, rect, row.SlotId, SelectedRowSlotCount);
     }
 
     private SKPicture RecordStaticLayer(AllocationRenderer renderer, ExtentLayout layout, int width, int height)

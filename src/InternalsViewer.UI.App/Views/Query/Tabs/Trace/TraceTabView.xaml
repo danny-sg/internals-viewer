@@ -80,7 +80,7 @@
                             ToolTipService.ToolTip="Run speed">
                     <TextBlock Text="Speed" />
                     <Slider Width="120"
-                            Minimum="-100"
+                            Minimum="-500"
                             Maximum="1000"
                             StepFrequency="100"
                             IsDirectionReversed="True"

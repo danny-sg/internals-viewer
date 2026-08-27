@@ -190,6 +190,15 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
     [ObservableProperty]
     private long _playheadTimeUs;
 
+    /// <summary>
+    /// Whether a trace's page visuals follow the page their operator is reading
+    /// </summary>
+    /// <remarks>
+    /// Held by the query rather than by the trace, which is rebuilt from scratch each time an operator is traced.
+    /// </remarks>
+    [ObservableProperty]
+    private bool _isZoomToPage;
+
     [ObservableProperty]
     private DatabaseSchema? _schema;
 
@@ -898,11 +907,18 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
         traceViewModel.IsNestedLayout = _settingsViewModel.TraceNestedLayout;
 
+        traceViewModel.IsZoomToPage = IsZoomToPage;
+
         traceViewModel.PropertyChanged += (_, e) =>
         {
             if (e.PropertyName == nameof(TraceTabViewModel.IsNestedLayout))
             {
                 _settingsViewModel.TraceNestedLayout = traceViewModel.IsNestedLayout;
+            }
+
+            if (e.PropertyName == nameof(TraceTabViewModel.IsZoomToPage))
+            {
+                IsZoomToPage = traceViewModel.IsZoomToPage;
             }
         };
 

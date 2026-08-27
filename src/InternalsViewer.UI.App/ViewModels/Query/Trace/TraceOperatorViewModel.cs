@@ -32,9 +32,21 @@ public sealed partial class TraceOperatorViewModel(int nodeId, string title, str
     [NotifyPropertyChangedFor(nameof(CurrentRowIdentifier))]
     private int? _currentSlot;
 
+    /// <summary>
+    /// Whether the page visuals follow the page the operator is reading rather than showing the whole structure
+    /// </summary>
+    /// <remarks>
+    /// One setting for the whole query rather than one per operator, so the value here is a copy the owner keeps in step with every other
+    /// operator's. A panel writing to it is asking for the change, not making it.
+    /// </remarks>
+    [ObservableProperty]
+    private bool _isZoomToPage;
+
     public event Action<int>? ActivationRequested;
 
     public event Action<PageAddress>? PageOpenRequested;
+
+    public event Action<bool>? ZoomToPageRequested;
     public int NodeId { get; } = nodeId;
 
     public string Title { get; } = title;
@@ -100,26 +112,11 @@ public sealed partial class TraceOperatorViewModel(int nodeId, string title, str
 
     public bool HasZoomToPage => PageVisuals.Any();
 
-    /// <summary>
-    /// Whether the operator's page visuals follow the page it is reading rather than showing the whole structure
-    /// </summary>
-    public bool IsZoomToPage
-    {
-        get => PageVisuals.Any(v => v.IsZoomToPage);
-        set
-        {
-            foreach (var visual in PageVisuals)
-            {
-                visual.IsZoomToPage = value;
-            }
-
-            OnPropertyChanged();
-        }
-    }
-
     public TraceRowStreamViewModel Output { get; } = new();
 
     public void RequestActivation(int targetNodeId) => ActivationRequested?.Invoke(targetNodeId);
+
+    partial void OnIsZoomToPageChanged(bool value) => ZoomToPageRequested?.Invoke(value);
 
     public void RequestPageOpen()
     {

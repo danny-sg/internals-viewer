@@ -28,6 +28,16 @@ public sealed partial class TraceTabViewModel
     private bool _isNestedLayout;
 
     /// <summary>
+    /// Whether every page visual in the trace follows the page its operator is reading
+    /// </summary>
+    /// <remarks>
+    /// One setting for the trace rather than one per operator, so a nested layout showing several operator tab strips at once has them all
+    /// agree. The query holds it, which is what carries it from one trace to the next.
+    /// </remarks>
+    [ObservableProperty]
+    private bool _isZoomToPage;
+
+    /// <summary>
     /// The operator whose tab is open, marked in the plan so a tab can be placed in the tree it came from
     /// </summary>
     [ObservableProperty]
