@@ -23,11 +23,17 @@ public sealed class BatchComputeScalarIterator(IIteratorFactory factory) : IBatc
 
     public IReadOnlyList<ComputedColumn> Columns { get; private set; } = [];
 
+    public ExecutionBatch? CurrentBatch => Input?.CurrentBatch;
+
+    public IReadOnlyList<BatchVector> OutputVectors => Output;
+
+    public IBatchIterator? Input { get; private set; }
+
     private IteratorContext Context { get; set; } = null!;
 
-    private IBatchIterator? Input { get; set; }
-
     private BatchRowValueSource Values { get; } = new();
+
+    private List<BatchVector> Output { get; } = [];
 
     public async Task OpenAsync(IteratorDefinition definition, IteratorContext context, CancellationToken cancellationToken)
     {
@@ -105,6 +111,8 @@ public sealed class BatchComputeScalarIterator(IIteratorFactory factory) : IBatc
 
         var vectors = Bind(batch);
 
+        TakeOutput(vectors);
+
         Values.Bind(batch);
 
         var selection = batch.SelectionVector;
@@ -136,6 +144,24 @@ public sealed class BatchComputeScalarIterator(IIteratorFactory factory) : IBatc
         }
 
         return selection.RowCount;
+    }
+
+    private void TakeOutput(List<BatchVector> bound)
+    {
+        Output.Clear();
+
+        if (Input is { } input)
+        {
+            Output.AddRange(input.OutputVectors);
+        }
+
+        foreach (var vector in bound)
+        {
+            if (!Output.Contains(vector))
+            {
+                Output.Add(vector);
+            }
+        }
     }
 
     private List<BatchVector> Bind(ExecutionBatch batch)

@@ -1,4 +1,4 @@
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Linq;
 using CommunityToolkit.Mvvm.ComponentModel;
 using InternalsViewer.Execution.AccessPaths.Joins.Hash;
@@ -51,14 +51,18 @@ public sealed partial class TraceHashTableViewModel(RecordColumnFilter columnFil
     [ObservableProperty]
     private int _bucketCount = 1 << JoinHash.DefaultBucketBits;
 
-    private IHashTableIterator? Iterator { get; set; }
+    private IHashTableSource? Iterator { get; set; }
+
+    private int IteratorNodeId { get; set; }
 
     /// <summary>
     /// Binds to the iterator that fills this table, which is a new one each time the trace is opened
     /// </summary>
-    public void Attach(IHashTableIterator iterator)
+    public void Attach(IHashTableSource iterator, int nodeId)
     {
         Iterator = iterator;
+
+        IteratorNodeId = nodeId;
 
         _suppressResize = true;
 
@@ -85,7 +89,7 @@ public sealed partial class TraceHashTableViewModel(RecordColumnFilter columnFil
 
         var table = iterator.Table;
 
-        var isOwnStep = step is not null && step.NodeId == iterator.NodeId;
+        var isOwnStep = step is not null && step.NodeId == IteratorNodeId;
 
         if (isOwnStep
             && _bucketModels is { } models

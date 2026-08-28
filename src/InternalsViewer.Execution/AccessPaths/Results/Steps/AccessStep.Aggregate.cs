@@ -30,6 +30,23 @@ public abstract partial record AccessStep
         public long GroupRows { get; init; }
     }
 
+    public sealed record HashAggregateBatch(long Number, int RowCount) : AccessStep(AccessPhase.Accumulate)
+    {
+        public long InputRowCount { get; init; }
+
+        public long Groups { get; init; }
+
+        public long NewGroups { get; init; }
+
+        public int BucketCount { get; init; }
+
+        public IReadOnlyList<int> Fill { get; init; } = [];
+
+        public string LastKey { get; init; } = string.Empty;
+
+        public string Running { get; init; } = string.Empty;
+    }
+
     public sealed record HashAggregate(int Bucket, uint Hash, int Entry) : AccessStep(AccessPhase.Accumulate)
     {
         public AccessKey Key { get; init; }

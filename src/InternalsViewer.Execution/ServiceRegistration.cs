@@ -3,6 +3,7 @@ using InternalsViewer.Execution.Interfaces;
 using InternalsViewer.Execution.Iterators;
 using InternalsViewer.Execution.Iterators.BatchMode;
 using InternalsViewer.Execution.Iterators.BatchMode.DataAccess;
+using InternalsViewer.Execution.Iterators.Common;
 using InternalsViewer.Execution.Iterators.RowMode.Aggregation;
 using InternalsViewer.Execution.Iterators.RowMode.DataAccess;
 using InternalsViewer.Execution.Iterators.RowMode.Joins;
@@ -44,5 +45,7 @@ public static class ServiceRegistration
         services.AddTransient<RowToBatchIterator>();
 
         services.AddTransient<BatchComputeScalarIterator>();
+
+        services.AddTransient<BatchHashAggregateIterator>();
     }
 }

@@ -1,7 +1,6 @@
 ﻿using InternalsViewer.Execution.AccessPaths.Values;
 using InternalsViewer.Execution.Interfaces.AccessPaths.Binding;
 using InternalsViewer.Internals.Columnstore.Decoding;
-using InternalsViewer.Internals.Columnstore.Metadata;
 using InternalsViewer.Internals.Metadata.Structures;
 
 namespace InternalsViewer.Execution.AccessPaths.Predicates;

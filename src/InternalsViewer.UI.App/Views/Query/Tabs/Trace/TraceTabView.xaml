@@ -89,6 +89,20 @@
                             Value="{x:Bind ViewModel.RunDelayMs, Mode=TwoWay}" />
                 </StackPanel>
             </AppBarElementContainer>
+            <AppBarSeparator Visibility="{x:Bind BoolVisibility(ViewModel.IsActiveOperatorVisible), Mode=OneWay}" />
+            <AppBarElementContainer VerticalContentAlignment="Center"
+                                    Visibility="{x:Bind BoolVisibility(ViewModel.IsActiveOperatorVisible), Mode=OneWay}">
+                <StackPanel Orientation="Horizontal"
+                            Spacing="6"
+                            Margin="8,0,8,0"
+                            VerticalAlignment="Center"
+                            ToolTipService.ToolTip="Active Operator">
+                    <TextBlock Text="Operator"
+                               Foreground="{ThemeResource TextFillColorTertiaryBrush}" />
+                    <TextBlock Text="{x:Bind ViewModel.ActiveOperatorName, Mode=OneWay}"
+                               Foreground="{ThemeResource TextFillColorPrimaryBrush}" />
+                </StackPanel>
+            </AppBarElementContainer>
         </CommandBar>
         <docking:DockHost Grid.Row="1"
                           Grid.Column="0"

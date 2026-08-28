@@ -21,6 +21,8 @@ namespace InternalsViewer.Execution.BatchMode;
 /// </remarks>
 public sealed class BatchDeepDataStore : IDeepDataContext
 {
+    public int Count => Values.Count;
+
     private List<byte[]> Values { get; } = [];
 
     public long Store(ReadOnlySpan<byte> value)
@@ -31,6 +33,8 @@ public sealed class BatchDeepDataStore : IDeepDataContext
     }
 
     public ReadOnlySpan<byte> Get(long slot) => Values[(int)(slot >> 1) - 1];
+
+    public long AddressOf(int index) => ((long)(index + 1) << 1) | 1;
 
     public void Clear() => Values.Clear();
 }

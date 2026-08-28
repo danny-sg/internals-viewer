@@ -1,5 +1,4 @@
-﻿using System.Collections.Immutable;
-using InternalsViewer.Execution.AccessPaths.Predicates;
+﻿using InternalsViewer.Execution.AccessPaths.Predicates;
 using InternalsViewer.Execution.AccessPaths.Values;
 using InternalsViewer.Internals.Columnstore.Metadata;
 

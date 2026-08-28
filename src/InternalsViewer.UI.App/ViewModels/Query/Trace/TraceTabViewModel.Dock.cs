@@ -20,6 +20,8 @@ public sealed partial class TraceTabViewModel
 
     private DocumentViewModel? _planDocument;
 
+    private Dictionary<int, DocumentViewModel>? _batchDocumentsByNode;
+
     private Dictionary<int, DocumentViewModel>? _operatorDocumentsByNode;
 
     private TabGroupNode? _operatorGroup;
@@ -120,7 +122,19 @@ public sealed partial class TraceTabViewModel
 
         MarkSelectedDocument();
 
-        var right = new TabGroupNode(_stepsDocument, _descriptionDocument, _planDocument);
+        _batchDocumentsByNode ??= Batches.ToDictionary(b => b.NodeId, BatchDocument);
+
+        var panels = new TabGroupNode(_stepsDocument, _descriptionDocument, _planDocument);
+
+        LayoutNode right = Batches.Count == 0
+            ? panels
+            : new SplitNode(Orientation.Vertical,
+                            panels,
+                            new TabGroupNode([.. Batches.Select(b => _batchDocumentsByNode[b.NodeId])]))
+              {
+                  FirstStar = 2,
+                  SecondStar = 1
+              };
 
         LayoutNode left;
 
@@ -222,6 +236,32 @@ public sealed partial class TraceTabViewModel
 
     private bool HasDocument(IteratorDefinition definition)
         => _operatorDocumentsByNode?.ContainsKey(definition.NodeId) == true;
+
+    private DocumentViewModel BatchDocument(TraceBatchViewModel batch)
+    {
+        var document = DocumentViewModel.Create<TraceBatchPanelView>($"Batch: {batch.Title}",
+                                                                     batch,
+                                                                     keepAlive: true,
+                                                                     key: $"Batch{batch.NodeId}");
+
+        if (Layout.Nodes.TryGetValue(batch.NodeId, out var node))
+        {
+            document.Accent = Layout.Palette.For(batch.NodeId, node.Colour.ToWindowsColor());
+        }
+
+        return document;
+    }
+
+    /// <summary>
+    /// Brings the batch the playhead moved forward, which only follows while stepping
+    /// </summary>
+    partial void OnActiveBatchNodeIdChanged(int value)
+    {
+        if (_batchDocumentsByNode?.GetValueOrDefault(value) is { } document && Dock.FindGroup(document) is { } group)
+        {
+            group.SelectedDocument = document;
+        }
+    }
 
     private DocumentViewModel OperatorDocument(TraceOperatorViewModel op)
     {

@@ -87,7 +87,7 @@ public static class TraceLayoutBuilder
             ConcatenationDefinition => "Concatenation",
             SortDefinition => "Sort",
             StreamAggregateDefinition => "Stream Aggregate",
-            HashAggregateDefinition => "Hash Match",
+            HashAggregateDefinition or BatchHashAggregateDefinition => "Hash Match",
             ComputeScalarDefinition or BatchComputeScalarDefinition => "Compute Scalar",
             FilterDefinition or BatchFilterDefinition => "Filter",
             SegmentDefinition => "Segment",
@@ -189,7 +189,7 @@ public static class TraceLayoutBuilder
                 SelectDefinition => new TracePane(TracePaneKind.RowStream, tab.Output, "Results"),
                 StreamAggregateDefinition aggregate => AggregatePane(aggregates, aggregate),
                 SegmentDefinition segment => SegmentPane(segments, segment),
-                HashAggregateDefinition => HashAggregatePane(hashTables, op.NodeId),
+                HashAggregateDefinition or BatchHashAggregateDefinition => HashAggregatePane(hashTables, op.NodeId),
                 _ when visuals.TryGetValue(op.NodeId, out var visual) => new TracePane(TracePaneKind.Visual, visual),
                 _ => TracePane.Empty
             };
@@ -431,6 +431,13 @@ public static class TraceLayoutBuilder
             return $"{hashed} GROUP BY {string.Join(", ", hashAggregate.GroupBy)}".TrimStart();
         }
 
+        if (definition is BatchHashAggregateDefinition batchAggregate)
+        {
+            var hashed = string.Join(", ", batchAggregate.Aggregates.Select(a => a.ToText()));
+
+            return $"{hashed} GROUP BY {string.Join(", ", batchAggregate.GroupBy)}".TrimStart();
+        }
+
         if (definition is ComputeScalarDefinition compute)
         {
             return string.Join(", ", compute.Columns.Select(c => c.Name));
@@ -479,7 +486,7 @@ public static class TraceLayoutBuilder
             ConcatenationDefinition => ("Input 1", "Input 2"),
             SortDefinition => ("Input", string.Empty),
             StreamAggregateDefinition => ("Input", string.Empty),
-            HashAggregateDefinition => ("Input", string.Empty),
+            HashAggregateDefinition or BatchHashAggregateDefinition => ("Input", string.Empty),
             ComputeScalarDefinition => ("Input", string.Empty),
             FilterDefinition or BatchFilterDefinition => ("Input", string.Empty),
             SegmentDefinition => ("Input", string.Empty),

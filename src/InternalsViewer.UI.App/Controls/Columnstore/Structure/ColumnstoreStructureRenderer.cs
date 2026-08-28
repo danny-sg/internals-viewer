@@ -188,12 +188,7 @@ public sealed class ColumnstoreStructureRenderer : IDisposable
             ? ColumnstoreLayout.VerticalColumnHeaderHeight
             : ColumnstoreLayout.ColumnHeaderHeight;
 
-    public static string FormatSize(long bytes) => bytes switch
-    {
-        >= 1024 * 1024 => $"{bytes / 1024d / 1024d:N1} MB",
-        >= 1024 => $"{bytes / 1024d:N1} KB",
-        _ => $"{bytes} B"
-    };
+    public static string FormatSize(long bytes) => SizeFormat.Format(bytes);
 
     public void Dispose()
     {

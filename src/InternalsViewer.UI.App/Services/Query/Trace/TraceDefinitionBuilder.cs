@@ -57,6 +57,7 @@ public sealed class TraceDefinitionBuilder(Func<PlanNode, AllocationUnit?> resol
     private static bool IsBatchCapable(PlanNode node)
         => OperatorClassifier.IsFilter(node)
            || OperatorClassifier.IsComputeScalar(node)
+           || OperatorClassifier.IsHashAggregate(node)
            || OperatorClassifier.IsColumnstoreScan(node);
 
     private static IteratorDefinition? Cross(IteratorDefinition? definition, bool parentIsBatch)
@@ -193,9 +194,9 @@ public sealed class TraceDefinitionBuilder(Func<PlanNode, AllocationUnit?> resol
         };
     }
 
-    private HashAggregateDefinition? BuildHashAggregate(PlanNode node)
+    private IteratorDefinition? BuildHashAggregate(PlanNode node)
     {
-        if (node.AggregateInfo is not { HasUntranslatedAggregate: false, GroupBy.Count: > 0 } info || node.Children.Count != 1)
+        if (node.AggregateInfo is not { HasUntranslatedAggregate: false } info || node.Children.Count != 1)
         {
             return null;
         }
@@ -208,6 +209,18 @@ public sealed class TraceDefinitionBuilder(Func<PlanNode, AllocationUnit?> resol
         RegisterAggregateTypes(info);
 
         Nodes[node.NodeId] = node;
+
+        if (source is IBatchDefinition)
+        {
+            return new BatchHashAggregateDefinition(source)
+            {
+                NodeId = node.NodeId,
+                OutputList = OutputList(node),
+                GroupBy = [.. info.GroupBy.Select(c => ResolveColumnName(c.Column))],
+                Aggregates = info.Columns,
+                RowEstimate = node.EstimatedRows > 0 ? node.EstimatedRows : node.RowsOutput
+            };
+        }
 
         return new HashAggregateDefinition(source)
         {
@@ -287,7 +300,7 @@ public sealed class TraceDefinitionBuilder(Func<PlanNode, AllocationUnit?> resol
 
         if (source is IBatchDefinition)
         {
-            return new BatchComputeScalarDefinition(source)
+            return new BatchComputeScalarDefinition(ReserveBatchColumns(source, [.. columns.Select(c => c.Name)]))
             {
                 NodeId = node.NodeId,
                 OutputList = OutputList(node),
@@ -583,6 +596,21 @@ public sealed class TraceDefinitionBuilder(Func<PlanNode, AllocationUnit?> resol
         };
     }
 
+    private static IteratorDefinition ReserveBatchColumns(IteratorDefinition definition, IReadOnlyList<string> names)
+        => definition switch
+        {
+            ColumnstoreScanDefinition scan => scan with
+            {
+                PipelineColumnNames = [.. scan.PipelineColumnNames.Concat(names)
+                                                                  .Where(n => !scan.ColumnNames.Contains(n))
+                                                                  .Distinct()]
+            },
+            BatchFilterDefinition filter => filter with { Source = ReserveBatchColumns(filter.Source, names) },
+            BatchComputeScalarDefinition compute => compute with { Source = ReserveBatchColumns(compute.Source, names) },
+            BatchHashAggregateDefinition => definition,
+            _ => definition
+        };
+
     private ColumnstoreScanDefinition? BuildColumnstoreScan(PlanNode node)
     {
         if (Unit(node) is not { } unit)
@@ -594,18 +622,35 @@ public sealed class TraceDefinitionBuilder(Func<PlanNode, AllocationUnit?> resol
 
         Units[node.NodeId] = unit;
 
+        var residual = Translated(Residual(node), node.PredicateInfo?.HasUntranslatedPredicate == true);
+
         return new ColumnstoreScanDefinition
         {
             NodeId = node.NodeId,
             AllocationUnit = unit,
-            ColumnNames = [.. node.OutputColumns.Select(c => c.Column).Where(c => !string.IsNullOrEmpty(c)).Distinct()],
+            ColumnNames = ScanColumnNames(node, residual),
             OutputList = OutputList(node),
-            Residual = Translated(Residual(node), node.PredicateInfo?.HasUntranslatedPredicate == true),
+            Residual = residual,
             RowGoal = node.PredicateInfo?.RowGoal,
             IsFilterOnCompressedDataUsed = node.BatchInfo?.IsFilterOnCompressedDataUsed == true,
             IsGenericFilterUsed = node.BatchInfo?.SegmentScans
                                       .Any(s => string.Equals(s.FilterType, "Generic", StringComparison.OrdinalIgnoreCase)) == true
         };
+    }
+
+    /// <summary>
+    /// The columns a scan reads, being what it returns plus what its predicate tests
+    /// </summary>
+    private static IReadOnlyList<string> ScanColumnNames(PlanNode node, AccessPredicate? residual)
+    {
+        var names = node.OutputColumns.Select(c => c.Column).Where(c => !string.IsNullOrEmpty(c));
+
+        if (residual is not null and not AccessPredicate.True and not AccessPredicate.NoTranslation)
+        {
+            names = names.Concat(PredicateColumns.Referenced(residual));
+        }
+
+        return [.. names.Where(n => !string.IsNullOrEmpty(n)).Distinct(StringComparer.OrdinalIgnoreCase)];
     }
 
     private static IteratorDefinition? AsRowSource(IteratorDefinition? definition)

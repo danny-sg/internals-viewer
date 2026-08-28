@@ -42,6 +42,9 @@ public sealed partial class TraceOperatorViewModel(int nodeId, string title, str
     [ObservableProperty]
     private bool _isZoomToPage;
 
+    [ObservableProperty]
+    private bool _isBreakpoint;
+
     public event Action<int>? ActivationRequested;
 
     public event Action<PageAddress>? PageOpenRequested;

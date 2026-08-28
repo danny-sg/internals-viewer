@@ -1,4 +1,4 @@
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Globalization;
 using CommunityToolkit.Mvvm.ComponentModel;
 using InternalsViewer.Execution.AccessPaths.Results;
@@ -27,6 +27,10 @@ public sealed partial class AggregateProgress : ObservableObject
     private long _groups;
 
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasBatches))]
+    private long _batches;
+
+    [ObservableProperty]
     private string _running = "";
 
     [ObservableProperty]
@@ -36,12 +40,17 @@ public sealed partial class AggregateProgress : ObservableObject
     private bool _isHashed;
 
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasBucket))]
     private int _bucket = -1;
 
     [ObservableProperty]
     private int _fillVersion;
 
     public IReadOnlyList<int> Fill => _fill;
+
+    public bool HasBucket => Bucket >= 0;
+
+    public bool HasBatches => Batches > 0;
 
     public void Apply(AccessStep.AggregateRow step)
     {
@@ -50,6 +59,39 @@ public sealed partial class AggregateProgress : ObservableObject
         Running = step.Running;
 
         Detail = Running;
+    }
+
+    public void Apply(AccessStep.HashAggregateBatch step)
+    {
+        Rows = step.InputRowCount;
+
+        Batches = step.Number;
+
+        GroupRows = step.RowCount;
+
+        Groups = step.Groups;
+
+        Running = step.Running;
+
+        Detail = $"{Groups.ToString("N0", CultureInfo.InvariantCulture)} groups";
+
+        IsHashed = true;
+
+        Bucket = -1;
+
+        if (_fill.Length != step.Fill.Count)
+        {
+            _fill = new int[step.Fill.Count];
+
+            OnPropertyChanged(nameof(Fill));
+        }
+
+        for (var index = 0; index < _fill.Length; index++)
+        {
+            _fill[index] = step.Fill[index];
+        }
+
+        FillVersion++;
     }
 
     public void Apply(AccessStep.HashAggregate step)

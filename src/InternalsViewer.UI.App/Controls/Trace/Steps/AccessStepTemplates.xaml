@@ -1079,11 +1079,11 @@
                         <TextBlock Text="Bucket"
                                    Style="{StaticResource StepPropertyStyle}"
                                    Margin="8,0,0,0"
-                                   Visibility="{Binding Progress.IsHashed,
+                                   Visibility="{Binding Progress.HasBucket,
                                            Converter={StaticResource StepsBoolToVisibilityConverter}}" />
                         <TextBlock Text="{Binding Progress.Bucket}"
                                    Style="{StaticResource StepValueStyle}"
-                                   Visibility="{Binding Progress.IsHashed,
+                                   Visibility="{Binding Progress.HasBucket,
                                            Converter={StaticResource StepsBoolToVisibilityConverter}}" />
                         <Border Background="{ThemeResource SubtleFillColorSecondaryBrush}"
                                 CornerRadius="4"
@@ -1092,6 +1092,12 @@
                                 VerticalAlignment="Center">
                             <TextBlock Text="{Binding Progress.Detail}" FontSize="11" />
                         </Border>
+                    </StackPanel>
+                    <StackPanel Orientation="Horizontal"
+                                Visibility="{Binding Progress.HasBatches,
+                                        Converter={StaticResource StepsBoolToVisibilityConverter}}">
+                        <TextBlock Text="{Binding Progress.Batches}" Style="{StaticResource StepValueStyle}" />
+                        <TextBlock Text="batches" Style="{StaticResource StepPropertyStyle}" />
                     </StackPanel>
                     <accessSteps:HashGrid Fill="{Binding Progress.Fill}"
                                           Version="{Binding Progress.FillVersion}"

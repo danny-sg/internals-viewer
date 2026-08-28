@@ -5,10 +5,8 @@ using InternalsViewer.Execution.BatchMode;
 using InternalsViewer.Execution.BatchMode.Vectors;
 using InternalsViewer.Execution.Interfaces;
 using InternalsViewer.Execution.Interfaces.BatchMode;
-using InternalsViewer.Internals.Engine.Records;
-using InternalsViewer.Internals.Interfaces.Engine;
 
-namespace InternalsViewer.Execution.Iterators.BatchMode;
+namespace InternalsViewer.Execution.Iterators.Common;
 
 public sealed class RowToBatchIterator(IIteratorFactory factory) : IBatchIterator
 {
@@ -20,9 +18,15 @@ public sealed class RowToBatchIterator(IIteratorFactory factory) : IBatchIterato
 
     public long BatchCount { get; private set; }
 
-    private IteratorContext Context { get; set; } = null!;
+    public ExecutionBatch? CurrentBatch => Batch;
 
-    private IIterator? Input { get; set; }
+    public IReadOnlyList<BatchVector> OutputVectors => Batch?.Vectors ?? [];
+
+    public IBatchIterator? Input => null;
+
+    public IIterator? Source { get; private set; }
+
+    private IteratorContext Context { get; set; } = null!;
 
     private ExecutionBatch? Batch { get; set; }
 
@@ -44,14 +48,14 @@ public sealed class RowToBatchIterator(IIteratorFactory factory) : IBatchIterato
 
         await EmitAsync(new AccessStep.Open(), cancellationToken);
 
-        Input = factory.Create(adapter.Row);
+        Source = factory.Create(adapter.Row);
 
-        await Input.OpenAsync(adapter.Row, context, cancellationToken);
+        await Source.OpenAsync(adapter.Row, context, cancellationToken);
     }
 
     public async Task<ExecutionBatch?> GetNextBatchAsync(CancellationToken cancellationToken)
     {
-        if (IsComplete || Input is null)
+        if (IsComplete || Source is null)
         {
             return null;
         }
@@ -60,13 +64,13 @@ public sealed class RowToBatchIterator(IIteratorFactory factory) : IBatchIterato
 
         var count = 0;
 
-        while (count < (Batch?.Capacity ?? BatchSize.MaxRowCount) && await Input.GetRowAsync(cancellationToken) is { } row)
+        while (count < (Batch?.Capacity ?? BatchSize.MaxRowCount) && await Source.GetRowAsync(cancellationToken) is { } row)
         {
             cancellationToken.ThrowIfCancellationRequested();
 
-            Batch ??= CreateBatch(row);
+            Batch ??= BatchPacker.Create(row);
 
-            Pack(Batch, row, count);
+            BatchPacker.Fill(Batch, row, count);
 
             count++;
         }
@@ -75,7 +79,7 @@ public sealed class RowToBatchIterator(IIteratorFactory factory) : IBatchIterato
         {
             IsComplete = true;
 
-            StopReason = Input.StopReason ?? AccessPaths.Results.StopReason.PageExhausted;
+            StopReason = Source.StopReason ?? AccessPaths.Results.StopReason.PageExhausted;
 
             return null;
         }
@@ -89,9 +93,9 @@ public sealed class RowToBatchIterator(IIteratorFactory factory) : IBatchIterato
 
     public async Task CloseAsync()
     {
-        if (Input is not null)
+        if (Source is not null)
         {
-            await Input.CloseAsync();
+            await Source.CloseAsync();
         }
 
         Batch = null;
@@ -104,32 +108,4 @@ public sealed class RowToBatchIterator(IIteratorFactory factory) : IBatchIterato
     private ValueTask EmitAsync(AccessStep step, CancellationToken cancellationToken)
         => Context.Steps.EmitAsync(step with { NodeId = NodeId }, cancellationToken);
 
-    private static ExecutionBatch CreateBatch(IRecord row)
-    {
-        var columns = row.Fields.Select(ToColumn).ToList();
-
-        var capacity = BatchSize.GetRowCount(columns.Count);
-
-        return new ExecutionBatch(capacity, [.. columns.Select(c => new BatchVector(c, capacity))], new BatchDeepDataStore());
-    }
-
-    private static BatchColumn ToColumn(RecordField field)
-        => new()
-        {
-            Name = field.ColumnStructure.ColumnName,
-            DataType = field.ColumnStructure.DataType,
-            Precision = field.ColumnStructure.Precision,
-            Scale = field.ColumnStructure.Scale,
-            DataLength = field.ColumnStructure.DataLength
-        };
-
-    private static void Pack(ExecutionBatch batch, IRecord row, int index)
-    {
-        for (var i = 0; i < batch.Vectors.Count && i < row.Fields.Count; i++)
-        {
-            var vector = batch.Vectors[i];
-
-            vector.Slots[index] = BatchSlotBuilder.FromField(vector.Column, row.Fields[i], batch.DeepDataContext);
-        }
-    }
 }

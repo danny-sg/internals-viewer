@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.Linq;
 using InternalsViewer.Execution.AccessPaths.Definitions;
 using InternalsViewer.Execution.AccessPaths.Memory;
@@ -6,7 +7,11 @@ using InternalsViewer.Execution.AccessPaths.Results.Steps;
 using InternalsViewer.Execution.AccessPaths.Search;
 using InternalsViewer.Execution.Interfaces;
 using InternalsViewer.Execution.Interfaces.Iterators;
+using InternalsViewer.Execution.BatchMode.Vectors;
+using InternalsViewer.Execution.Interfaces.BatchMode;
 using InternalsViewer.Execution.Interfaces.Iterators.Joins;
+using InternalsViewer.Execution.Iterators.BatchMode;
+using InternalsViewer.Execution.Iterators.Common;
 using InternalsViewer.Execution.Iterators.RowMode.Aggregation;
 using InternalsViewer.Execution.Iterators.RowMode.Row;
 using InternalsViewer.Execution.Iterators.RowMode.Stepping;
@@ -22,8 +27,14 @@ namespace InternalsViewer.UI.App.ViewModels.Query.Trace;
 public sealed class TraceStepApplier(TraceLayout layout,
                                      TraceRowBuilder rowBuilder,
                                      IReadOnlyDictionary<int, TraceVisualViewModel> visualsByNode,
-                                     IReadOnlyDictionary<int, TraceOperatorViewModel> operatorsByNode)
+                                     IReadOnlyDictionary<int, TraceOperatorViewModel> operatorsByNode,
+                                     IReadOnlyDictionary<int, TraceBatchViewModel> batches)
 {
+    /// <summary>
+    /// Raised with the operator that owns the batch a step just moved
+    /// </summary>
+    public event Action<int>? BatchTouched;
+
     private Dictionary<int, AccessStrategy?> StrategyBySource { get; } = [];
 
     private Dictionary<int, (PageAddress? Page, int? Slot)> PositionByNode { get; } = [];
@@ -50,11 +61,18 @@ public sealed class TraceStepApplier(TraceLayout layout,
 
         SyncHashTables(step);
 
+        SyncBatch(stepper, step);
+
         visualsByNode.GetValueOrDefault(step.NodeId)?.Apply(step);
     }
 
     public void Reset()
     {
+        foreach (var open in batches.Values)
+        {
+            open.Clear();
+        }
+
         foreach (var node in layout.Nodes.Values)
         {
             node.Stream?.Clear();
@@ -192,7 +210,7 @@ public sealed class TraceStepApplier(TraceLayout layout,
 
                 break;
 
-            case HashAggregateDefinition:
+            case HashAggregateDefinition or BatchHashAggregateDefinition:
                 tab.StateItems.Add(new TraceStateItem("Groups") { Value = "0" });
                 tab.StateItems.Add(new TraceStateItem("Memory") { Value = "0 KB" });
                 break;
@@ -424,13 +442,133 @@ public sealed class TraceStepApplier(TraceLayout layout,
     /// <summary>
     /// Binds each hash match's table to the iterator filling it, which the factory builds fresh on every open
     /// </summary>
+    private void SyncBatch(IteratorStepper stepper, AccessStep step)
+    {
+        if (BatchIterators(stepper).GetValueOrDefault(step.NodeId) is not { } iterator)
+        {
+            return;
+        }
+
+        if (Owner(iterator) is not { } owner || batches.GetValueOrDefault(owner.NodeId) is not { } target)
+        {
+            return;
+        }
+
+        if (ClearsBatch(step))
+        {
+            target.Clear();
+
+            return;
+        }
+
+        if (BatchNumber(step) is not { } number)
+        {
+            return;
+        }
+
+        target.Update(iterator.CurrentBatch, number, iterator.OutputVectors);
+
+        BatchTouched?.Invoke(owner.NodeId);
+    }
+
+    /// <summary>
+    /// The operator a batch belongs to, being the lowest one that did not take it from its input
+    /// </summary>
+    private static IBatchIterator? Owner(IBatchIterator iterator)
+    {
+        for (var current = iterator; current is not null; current = current.Input)
+        {
+            if (!ReferenceEquals(current.CurrentBatch, current.Input?.CurrentBatch))
+            {
+                return current;
+            }
+        }
+
+        return null;
+    }
+
+    /// <summary>
+    /// The batch iterators of the tree, keyed by the operator whose steps they emit
+    /// </summary>
+    private static Dictionary<int, IBatchIterator> BatchIterators(IteratorStepper stepper)
+    {
+        var found = new Dictionary<int, IBatchIterator>();
+
+        foreach (var adapter in Iterators(stepper.Root).OfType<BatchToRowIterator>())
+        {
+            for (var iterator = adapter.Source; iterator is not null; iterator = iterator.Input)
+            {
+                found[iterator.NodeId] = iterator;
+            }
+        }
+
+        return found;
+    }
+
+    /// <summary>
+    /// The batch a step belongs to, where the step is one after which a batch holds rows the trace can show
+    /// </summary>
+    private static long? BatchNumber(AccessStep step) => step switch
+    {
+        AccessStep.BatchProduced produced => produced.Number,
+        AccessStep.BatchFiltered filtered => filtered.Number,
+        AccessStep.FilterVector filter => filter.Number,
+        AccessStep.ComputeVector compute => compute.Number,
+        _ => null
+    };
+
+    /// <summary>
+    /// Steps that leave no batch in flight
+    /// </summary>
+    /// <summary>
+    /// The row mode iterators a batch pipeline runs inside itself
+    /// </summary>
+    private static IEnumerable<IIterator> Nested(IBatchIterator batch)
+    {
+        for (var iterator = batch; iterator is not null; iterator = iterator.Input)
+        {
+            var inner = iterator switch
+            {
+                RowToBatchIterator { Source: { } row } => row,
+                _ => null
+            };
+
+            if (inner is null)
+            {
+                continue;
+            }
+
+            foreach (var found in Iterators(inner))
+            {
+                yield return found;
+            }
+
+            yield break;
+        }
+    }
+
+    private static bool ClearsBatch(AccessStep step)
+        => step is AccessStep.RowGroupOpened
+                   or AccessStep.RowGroupSkipped
+                   or AccessStep.SegmentElimination
+                   or AccessStep.Stopped
+                   or AccessStep.Close;
+
     public void AttachHashTables(IteratorStepper stepper)
     {
         foreach (var iterator in Iterators(stepper.Root).OfType<IHashTableIterator>())
         {
             if (layout.Nodes.GetValueOrDefault(iterator.NodeId)?.HashTable is { } hashTable)
             {
-                hashTable.Attach(iterator);
+                hashTable.Attach(iterator, iterator.NodeId);
+            }
+        }
+
+        foreach (var iterator in BatchIterators(stepper).Values.OfType<BatchHashAggregateIterator>())
+        {
+            if (layout.Nodes.GetValueOrDefault(iterator.NodeId)?.HashTable is { } hashTable)
+            {
+                hashTable.Attach(iterator, iterator.NodeId);
             }
         }
     }
@@ -558,6 +696,14 @@ public sealed class TraceStepApplier(TraceLayout layout,
 
         switch (iterator)
         {
+            case BatchToRowIterator { Source: { } source }:
+                foreach (var found in Nested(source))
+                {
+                    yield return found;
+                }
+
+                break;
+
             case IJoinIterator join:
                 if (join.Outer?.Iterator is { } outer)
                 {

@@ -3,6 +3,7 @@ using InternalsViewer.Execution.Interfaces;
 using InternalsViewer.Execution.Interfaces.BatchMode;
 using InternalsViewer.Execution.Iterators.BatchMode;
 using InternalsViewer.Execution.Iterators.BatchMode.DataAccess;
+using InternalsViewer.Execution.Iterators.Common;
 using InternalsViewer.Execution.Iterators.RowMode.Aggregation;
 using InternalsViewer.Execution.Iterators.RowMode.DataAccess;
 using InternalsViewer.Execution.Iterators.RowMode.Joins;
@@ -65,6 +66,8 @@ public sealed class IteratorFactory(IServiceProvider services) : IIteratorFactor
                 => services.GetRequiredService<RowToBatchIterator>(),
             BatchComputeScalarDefinition
                 => services.GetRequiredService<BatchComputeScalarIterator>(),
+            BatchHashAggregateDefinition
+                => services.GetRequiredService<BatchHashAggregateIterator>(),
             _ => throw new ArgumentException($"No batch iterator runs a {definition.GetType().Name}")
         };
 }

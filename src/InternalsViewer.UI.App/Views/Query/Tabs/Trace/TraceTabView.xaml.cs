@@ -39,6 +39,8 @@ public sealed partial class TraceTabView : UserControl, IDisposable
     public string RunToEndLabel(bool isRunningToEnd) => isRunningToEnd ? "Stop" : "Run to end";
 
     public string RunGlyph(bool isRunning) => isRunning ? "\uE769" : "\uE768";
+
+    public Visibility BoolVisibility(bool value) => value ? Visibility.Visible : Visibility.Collapsed;
 #pragma warning restore CA1822
 
     private void OnDataContextChanged(FrameworkElement sender, DataContextChangedEventArgs args) => Bindings.Update();

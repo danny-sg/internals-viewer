@@ -1,17 +1,14 @@
-﻿using System.Numerics;
-using System.Runtime.InteropServices;
-using InternalsViewer.Execution.AccessPaths.Aggregation;
-using InternalsViewer.Execution.AccessPaths.Binding;
+﻿using InternalsViewer.Execution.AccessPaths.Aggregation;
 using InternalsViewer.Execution.AccessPaths.Definitions;
 using InternalsViewer.Execution.AccessPaths.Joins.Hash;
 using InternalsViewer.Execution.AccessPaths.Memory;
 using InternalsViewer.Execution.AccessPaths.Results.Steps;
 using InternalsViewer.Execution.AccessPaths.Search;
 using InternalsViewer.Execution.AccessPaths.Text;
-using InternalsViewer.Execution.AccessPaths.Values;
 using InternalsViewer.Execution.Interfaces;
 using InternalsViewer.Execution.Interfaces.Iterators;
 using InternalsViewer.Execution.Interfaces.Iterators.Joins;
+using InternalsViewer.Execution.Iterators.Common;
 using InternalsViewer.Execution.Records;
 using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Internals.Engine.Records;
@@ -42,19 +39,19 @@ public sealed class HashAggregateIterator(IIteratorFactory factory)
 
     public IIterator? Input { get; private set; }
 
-    public HashTable Table { get; private set; } = new(JoinHash.DefaultBucketBits);
+    public HashTable Table => Builder.Table;
 
     public BufferMemory Memory => Table.Memory;
 
     public long BuildRowEstimate { get; private set; }
 
-    public IReadOnlyList<string> GroupBy { get; private set; } = [];
+    public IReadOnlyList<string> GroupBy => Builder.GroupBy;
 
-    public IReadOnlyList<AggregateColumn> Aggregates { get; private set; } = [];
+    public IReadOnlyList<AggregateColumn> Aggregates => Builder.Aggregates;
 
     public long RowCount { get; private set; }
 
-    public long InputRowCount { get; private set; }
+    public long InputRowCount => Builder.InputRowCount;
 
     public long GroupCount => Table.RowCount;
 
@@ -67,11 +64,11 @@ public sealed class HashAggregateIterator(IIteratorFactory factory)
 
     public IReadOnlyList<AggregateValue> GroupValues => AggregateGroupValues.Of(GroupBy, CurrentGroupKey);
 
+    private HashAggregateBuilder Builder { get; set; } = new([], [], JoinHash.DefaultBucketBits);
+
     private AggregateGroupRecord? CurrentGroup { get; set; }
 
     private AccessKey CurrentGroupKey { get; set; }
-
-    private int? PendingBucketBits { get; set; }
 
     private bool IsBuilt { get; set; }
 
@@ -82,34 +79,13 @@ public sealed class HashAggregateIterator(IIteratorFactory factory)
     private int OutputEntry { get; set; }
 
     public void SetBucketCount(int bucketCount)
-    {
-        if (bucketCount < 2 || (bucketCount & (bucketCount - 1)) != 0)
-        {
-            throw new ArgumentOutOfRangeException(nameof(bucketCount), bucketCount, "Bucket count must be a power of two.");
-        }
-
-        var bucketBits = BitOperations.Log2((uint)bucketCount);
-
-        if (Input is null || IsComplete || IsBuilt)
-        {
-            Table.Resize(bucketBits);
-
-            return;
-        }
-
-        PendingBucketBits = bucketBits;
-    }
+        => Builder.Resize(HashAggregateBuilder.BucketBitsOf(bucketCount), Input is null || IsComplete || IsBuilt);
 
     public override async Task OpenAsync(IteratorDefinition definition,
                                          IteratorContext context,
                                          CancellationToken cancellationToken)
     {
         var aggregate = definition.Expect<HashAggregateDefinition>();
-
-        if (aggregate.GroupBy.Count == 0)
-        {
-            throw new ArgumentException("A hash aggregate needs at least one grouping column");
-        }
 
         if (Input is not null)
         {
@@ -118,21 +94,17 @@ public sealed class HashAggregateIterator(IIteratorFactory factory)
 
         await PrepareAsync(definition, context, cancellationToken);
 
-        GroupBy = aggregate.GroupBy;
-        Aggregates = aggregate.Aggregates;
-
         BuildRowEstimate = aggregate.RowEstimate;
 
-        Table = new HashTable(aggregate.BucketBits ?? JoinHash.BucketBitsFor(aggregate.RowEstimate));
+        Builder = new HashAggregateBuilder(aggregate.GroupBy,
+                                           aggregate.Aggregates,
+                                           aggregate.BucketBits ?? JoinHash.BucketBitsFor(aggregate.RowEstimate));
 
         RowCount = 0;
-        InputRowCount = 0;
 
         CurrentGroup = null;
         CurrentGroupKey = AccessKey.Unbounded;
         CurrentKey = string.Empty;
-
-        PendingBucketBits = null;
 
         IsBuilt = false;
         IsPendingStart = true;
@@ -202,7 +174,7 @@ public sealed class HashAggregateIterator(IIteratorFactory factory)
             var emit = new AccessStep.AggregateEmit(RowCount, CurrentKey)
             {
                 EmittedRecord = group,
-                Values = RunningText(group),
+                Values = HashAggregateBuilder.RunningText(group),
                 GroupRows = group.RowCount
             };
 
@@ -233,31 +205,21 @@ public sealed class HashAggregateIterator(IIteratorFactory factory)
     {
         while (await Input!.GetRowAsync(cancellationToken) is { } row)
         {
-            ApplyPendingResize();
+            var hit = Builder.Accumulate(row, Context.EvaluationContext);
 
-            var key = GetKey(row);
+            CurrentGroup = hit.Group;
+            CurrentGroupKey = hit.Key;
+            CurrentKey = KeyText(hit.Key);
 
-            var hash = JoinHash.Compute(key, key.Count);
-
-            var (bucket, entry, group, isNew) = Find(hash, key, row);
-
-            group.Add(new RecordRowValueSource(row), Context.EvaluationContext);
-
-            InputRowCount++;
-
-            CurrentGroup = group;
-            CurrentGroupKey = key;
-            CurrentKey = KeyText(key);
-
-            var step = new AccessStep.HashAggregate(bucket, hash, entry)
+            var step = new AccessStep.HashAggregate(hit.Bucket, hit.Hash, hit.Entry)
             {
-                Key = key,
-                ChainLength = Table.Buckets[bucket].Count,
+                Key = hit.Key,
+                ChainLength = Table.Buckets[hit.Bucket].Count,
                 BucketCount = Table.BucketCount,
-                IsNewGroup = isNew,
+                IsNewGroup = hit.IsNew,
                 Number = InputRowCount,
-                GroupRows = group.RowCount,
-                Running = RunningText(group)
+                GroupRows = hit.Group.RowCount,
+                Running = HashAggregateBuilder.RunningText(hit.Group)
             };
 
             await EmitAsync(step, cancellationToken);
@@ -266,80 +228,8 @@ public sealed class HashAggregateIterator(IIteratorFactory factory)
         await Input.CloseAsync();
     }
 
-    private (int Bucket, int Entry, AggregateGroupRecord Group, bool IsNew) Find(uint hash, AccessKey key, IRecord row)
-    {
-        var bucket = Table.GetBucket(hash);
-
-        for (var index = 0; index < bucket.Count; index++)
-        {
-            var candidate = bucket.Entries[index];
-
-            if (candidate.Hash == hash
-                && candidate.Record is AggregateGroupRecord existing
-                && candidate.Key.ComparePrefix(key, key.Count) == 0)
-            {
-                return (bucket.Index, index, existing, false);
-            }
-        }
-
-        var group = new AggregateGroupRecord(GroupFields(row), Aggregates);
-
-        var (added, entry) = Table.Add(hash, key, group, JoinHash.HasNull(key, key.Count));
-
-        return (added, entry, group, true);
-    }
-
-    private List<RecordField> GroupFields(IRecord row)
-    {
-        var fields = new List<RecordField>(GroupBy.Count);
-
-        foreach (var column in GroupBy)
-        {
-            if (FindField(row, column) is { } field)
-            {
-                fields.Add(field);
-            }
-        }
-
-        return fields;
-    }
-
-    private AccessKey GetKey(IRecord record)
-    {
-        var source = new RecordRowValueSource(record);
-
-        var values = new AccessValue[GroupBy.Count];
-
-        for (var index = 0; index < GroupBy.Count; index++)
-        {
-            var column = GroupBy[index];
-
-            if (FindField(record, column) is null)
-            {
-                throw new InvalidOperationException($"Row has no column '{column}' to group on");
-            }
-
-            values[index] = source.GetValue(-1, column).WithColumnName(column);
-        }
-
-        return new AccessKey(ImmutableCollectionsMarshal.AsImmutableArray(values));
-    }
-
-    private void ApplyPendingResize()
-    {
-        if (PendingBucketBits is { } bucketBits)
-        {
-            Table.Resize(bucketBits);
-
-            PendingBucketBits = null;
-        }
-    }
-
     private static AggregateValue Empty(AggregateColumn column)
         => new(column.Column, column.ToText(), "NULL");
-
-    private static string RunningText(AggregateGroupRecord group)
-        => string.Join(", ", group.Accumulators.Select(a => $"{a.Column.ToText()} = {AccessValueFormatter.ToText(a.Result)}"));
 
     private static string KeyText(AccessKey key)
         => key.IsUnbounded ? string.Empty : string.Join(", ", key.Values.Select(AccessValueFormatter.ToText));

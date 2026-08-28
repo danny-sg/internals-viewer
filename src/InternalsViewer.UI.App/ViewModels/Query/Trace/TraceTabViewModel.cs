@@ -100,21 +100,29 @@ public sealed partial class TraceTabViewModel : ObservableObject, IDisposable
     private ObservableCollection<AccessStep> _stepHistory = [];
 
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(ActiveOperatorName))]
+    [NotifyPropertyChangedFor(nameof(IsActiveOperatorVisible))]
     private AccessStep? _currentStep;
 
     [ObservableProperty]
     private IReadOnlyDictionary<int, TraceStepNode>? _stepNodes;
 
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(ActiveOperatorName))]
+    [NotifyPropertyChangedFor(nameof(IsActiveOperatorVisible))]
     private bool _isStepping;
 
     [ObservableProperty]
     private bool _isStepComplete;
 
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(ActiveOperatorName))]
+    [NotifyPropertyChangedFor(nameof(IsActiveOperatorVisible))]
     private bool _isRunning;
 
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(ActiveOperatorName))]
+    [NotifyPropertyChangedFor(nameof(IsActiveOperatorVisible))]
     private bool _isRunningToEnd;
 
     [ObservableProperty]
@@ -158,7 +166,22 @@ public sealed partial class TraceTabViewModel : ObservableObject, IDisposable
         var sides = layout.Nodes.Where(n => n.Value.Sides is not null)
                                 .ToDictionary(n => n.Key, n => n.Value.Sides!);
 
-        Applier = new TraceStepApplier(layout, new TraceRowBuilder(definitions, sides), VisualsByNode, OperatorsByNode);
+        Batches = [.. BatchOwners.Find(definition)
+                                 .Select(d => new TraceBatchViewModel
+                                 {
+                                     NodeId = d.NodeId,
+                                     Title = OperatorsByNode.GetValueOrDefault(d.NodeId)?.Title ?? "Batch"
+                                 })];
+
+        BatchesByNode = Batches.ToDictionary(b => b.NodeId);
+
+        Applier = new TraceStepApplier(layout,
+                                       new TraceRowBuilder(definitions, sides),
+                                       VisualsByNode,
+                                       OperatorsByNode,
+                                       BatchesByNode);
+
+        Applier.BatchTouched += OnBatchTouched;
 
         foreach (var op in Operators)
         {
@@ -205,6 +228,36 @@ public sealed partial class TraceTabViewModel : ObservableObject, IDisposable
     public JoinDecision? JoinRule => Definition is JoinDefinition join ? join.JoinType.Decide(true, true) : null;
 
     public bool HasBatchMode => Layout.Nodes.Values.Any(n => n.Definition is IBatchDefinition or BatchToRowDefinition);
+
+    /// <summary>
+    /// The batches of the plan, one per operator that creates one
+    /// </summary>
+    public IReadOnlyList<TraceBatchViewModel> Batches { get; }
+
+    private IReadOnlyDictionary<int, TraceBatchViewModel> BatchesByNode { get; }
+
+    private void OnBatchTouched(int nodeId)
+    {
+        if (!IsRunning && !IsRunningToEnd)
+        {
+            ActiveBatchNodeId = nodeId;
+        }
+    }
+
+    /// <summary>
+    /// The batch the playhead last touched, which is the tab to bring forward
+    /// </summary>
+    [ObservableProperty]
+    private int _activeBatchNodeId = int.MinValue;
+
+    /// <summary>
+    /// The operator the playhead is on, which only stands still while stepping
+    /// </summary>
+    public string ActiveOperatorName
+        => CurrentStep is { } step && OperatorsByNode.TryGetValue(step.NodeId, out var op) ? op.Heading : string.Empty;
+
+    public bool IsActiveOperatorVisible
+        => IsStepping && !IsRunning && !IsRunningToEnd && ActiveOperatorName.Length > 0;
 
     public IteratorDefinition? SelectedDefinition => Layout.Nodes.GetValueOrDefault(SelectedNodeId)?.Definition;
 
@@ -388,6 +441,23 @@ public sealed partial class TraceTabViewModel : ObservableObject, IDisposable
 
     [RelayCommand(AllowConcurrentExecutions = true)]
     public Task RunToEnd() => RunUntilAsync(null);
+
+    public bool HasBreakpoints => Operators.Any(o => o.IsBreakpoint);
+
+    private bool IsBreakpointHit(AccessStep step)
+        => OperatorsByNode.GetValueOrDefault(step.NodeId)?.IsBreakpoint == true;
+
+    private Func<AccessStep, bool>? WithBreakpoints(Func<AccessStep, bool>? stopAfter)
+    {
+        if (!HasBreakpoints)
+        {
+            return stopAfter;
+        }
+
+        return stopAfter is null
+            ? IsBreakpointHit
+            : step => stopAfter(step) || IsBreakpointHit(step);
+    }
 
     [RelayCommand(AllowConcurrentExecutions = true)]
     public Task RunTo(string target) => RunUntilAsync(StopCondition(target));
@@ -799,6 +869,13 @@ public sealed partial class TraceTabViewModel : ObservableObject, IDisposable
 
                 await StepNext();
 
+                if (CurrentStep is { } current && IsBreakpointHit(current))
+                {
+                    IsRunning = false;
+
+                    return;
+                }
+
                 var delay = RunDelayMs < 0 ? 0 : Math.Max(1, RunDelayMs);
 
                 if (delay > 0)
@@ -860,6 +937,8 @@ public sealed partial class TraceTabViewModel : ObservableObject, IDisposable
 
     private async Task RunUntilAsync(Func<AccessStep, bool>? stopAfter)
     {
+        stopAfter = WithBreakpoints(stopAfter);
+
         if (IsRunningToEnd)
         {
             _runToEndCancellation?.Cancel();

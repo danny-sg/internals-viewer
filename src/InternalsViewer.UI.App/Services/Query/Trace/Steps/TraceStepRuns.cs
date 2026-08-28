@@ -106,6 +106,10 @@ public static class TraceStepRuns
                 StreamAggregateSpanFor(hashAggregate, history, top).Progress.Apply(hashAggregate);
                 return true;
 
+            case AccessStep.HashAggregateBatch hashAggregateBatch:
+                StreamAggregateSpanFor(hashAggregateBatch, history, top).Progress.Apply(hashAggregateBatch);
+                return true;
+
             case AccessStep.AggregateEmit aggregateEmit:
                 RowCountSpanFor(aggregateEmit, "→ Emit", history, top).Progress.Apply(aggregateEmit.Number, 0);
                 return true;

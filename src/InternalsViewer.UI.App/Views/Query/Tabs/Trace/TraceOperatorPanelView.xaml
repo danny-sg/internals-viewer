@@ -7,6 +7,7 @@
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     xmlns:controls="using:CommunityToolkit.WinUI.Controls"
     xmlns:accessSteps="using:InternalsViewer.UI.App.Controls.Trace.Steps"
+    xmlns:trace="using:InternalsViewer.UI.App.Controls.Trace"
     mc:Ignorable="d">
 
     <UserControl.Resources>
@@ -142,6 +143,9 @@
                     Background="Transparent">
             <AppBarElementContainer VerticalContentAlignment="Center">
                 <StackPanel Orientation="Horizontal">
+                    <trace:BreakpointToggle IsSet="{Binding IsBreakpoint, Mode=TwoWay}"
+                                            VerticalAlignment="Center"
+                                            Margin="0,0,4,0" />
                     <Image x:Name="OperatorIcon"
                            Width="32"
                            Height="32"

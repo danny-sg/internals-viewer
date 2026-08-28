@@ -1,0 +1,313 @@
+<?xml version="1.0" encoding="utf-8"?>
+<UserControl
+    x:Class="InternalsViewer.UI.App.Views.Query.Tabs.Trace.TraceBatchPanelView"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    xmlns:controls="using:CommunityToolkit.WinUI.Controls"
+    xmlns:batch="using:InternalsViewer.UI.App.Models.Query.Trace.Batch"
+    xmlns:tableView="using:WinUI.TableView"
+    mc:Ignorable="d">
+
+    <Grid Background="{ThemeResource LayerOnMicaBaseAltFillColorDefault}">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+
+        <Border Grid.Row="0"
+                Padding="10,6"
+                BorderThickness="0,0,0,1"
+                BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}">
+            <Grid>
+                <TextBlock Text="No Batch"
+                           Visibility="{x:Bind Batch.HasBatch, Mode=OneWay, Converter={StaticResource InverseBoolToVisibilityConverter}}"
+                           Foreground="{ThemeResource TextFillColorTertiaryBrush}" />
+
+                <StackPanel Orientation="Horizontal"
+                            Spacing="8"
+                            Visibility="{x:Bind Batch.HasBatch, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}">
+                    <TextBlock Text="{x:Bind Batch.BatchName, Mode=OneWay}" />
+                    <Border Width="1"
+                            Margin="4,2"
+                            Background="{ThemeResource CardStrokeColorDefaultBrush}" />
+                    <TextBlock Text="Selected"
+                               Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                    <TextBlock Text="{x:Bind Batch.SelectionSummary, Mode=OneWay}"
+                               FontFamily="{StaticResource MonospaceFontFamily}" />
+                    <TextBlock Text="&#x2192;"
+                               Foreground="{ThemeResource TextFillColorTertiaryBrush}" />
+                    <Border Padding="6,1"
+                            CornerRadius="3"
+                            VerticalAlignment="Center"
+                            Background="{x:Bind PurityBrush, Mode=OneWay}">
+                        <TextBlock Text="{x:Bind Batch.Purity, Mode=OneWay}"
+                                   FontSize="11"
+                                   Foreground="White" />
+                    </Border>
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <TabView Grid.Row="1"
+                 x:Name="BatchTabs"
+                 VerticalAlignment="Stretch"
+                 IsAddTabButtonVisible="False"
+                 CanDragTabs="False"
+                 CanReorderTabs="False"
+                 TabWidthMode="SizeToContent">
+
+            <TabViewItem Header="Data Vectors" IsClosable="False">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition x:Name="VectorRow" Height="2*" MinHeight="60" />
+                        <RowDefinition x:Name="SplitterRow" Height="Auto" />
+                        <RowDefinition x:Name="DetailHeaderRow" Height="Auto" />
+                        <RowDefinition x:Name="DetailRow" Height="0" />
+                    </Grid.RowDefinitions>
+
+                    <tableView:TableView x:Name="VectorTable"
+                                         Grid.Row="0"
+                                         CanSortColumns="False"
+                                         SelectionMode="Single"
+                                         RowHeight="28"
+                                         GridLinesVisibility="All"
+                                         HorizontalGridLinesStroke="{ThemeResource ControlStrokeColorDefaultBrush}"
+                                         HorizontalGridLinesStrokeThickness="1"
+                                         VerticalGridLinesStroke="{ThemeResource ControlStrokeColorDefaultBrush}"
+                                         VerticalGridLinesStrokeThickness="1"
+                                         MinColumnWidth="20"
+                                         BorderThickness="0"
+                                         Background="{ThemeResource LayerFillColorDefaultBrush}">
+                        <tableView:TableView.Resources>
+                            <x:Double x:Key="ListViewItemMinHeight">0</x:Double>
+                        </tableView:TableView.Resources>
+                    </tableView:TableView>
+
+                    <controls:GridSplitter x:Name="DetailSplitter"
+                                           Grid.Row="1"
+                                           Height="6"
+                                           Visibility="Collapsed"
+                                           HorizontalAlignment="Stretch"
+                                           ResizeBehavior="PreviousAndNext"
+                                           ResizeDirection="Rows" />
+
+                    <Border x:Name="DetailHeader"
+                            Grid.Row="2"
+                            Padding="10,1,4,1"
+                            Visibility="Collapsed"
+                            BorderThickness="0,1,0,1"
+                            BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Text="{x:Bind Batch.DetailHeading, Mode=OneWay}"
+                                       VerticalAlignment="Center"
+                                       Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                            <Button Grid.Column="1"
+                                    Click="{x:Bind CloseDetailPane}"
+                                    Background="Transparent"
+                                    BorderThickness="0"
+                                    Padding="6"
+                                    VerticalAlignment="Center">
+                                <FontIcon Glyph="&#xE711;" FontSize="12" />
+                            </Button>
+                        </Grid>
+                    </Border>
+
+                    <ListView x:Name="DetailList"
+                              Grid.Row="3"
+                              Visibility="Collapsed"
+                              ItemsSource="{x:Bind Batch.Detail, Mode=OneWay}"
+                              SelectionMode="None"
+                              Padding="0,2,0,6">
+                        <ListView.ItemContainerTransitions>
+                            <TransitionCollection />
+                        </ListView.ItemContainerTransitions>
+                        <ListView.ItemContainerStyle>
+                            <Style TargetType="ListViewItem">
+                                <Setter Property="MinHeight" Value="0" />
+                                <Setter Property="Padding" Value="10,2" />
+                                <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+                            </Style>
+                        </ListView.ItemContainerStyle>
+                        <ListView.ItemTemplate>
+                            <DataTemplate x:DataType="batch:BatchDetailItem">
+                                <Grid ColumnSpacing="10">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="150" />
+                                        <ColumnDefinition Width="*" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Text="{x:Bind Name}"
+                                               TextTrimming="CharacterEllipsis"
+                                               Foreground="{ThemeResource TextFillColorTertiaryBrush}" />
+                                    <TextBlock Grid.Column="1"
+                                               Text="{x:Bind Value}"
+                                               IsTextSelectionEnabled="True"
+                                               TextWrapping="Wrap"
+                                               Foreground="{ThemeResource TextFillColorPrimaryBrush}" />
+                                </Grid>
+                            </DataTemplate>
+                        </ListView.ItemTemplate>
+                    </ListView>
+                </Grid>
+            </TabViewItem>
+
+            <TabViewItem Header="Selection Vector" IsClosable="False">
+                <tableView:TableView x:Name="SelectionTable"
+                                     CanSortColumns="False"
+                                     SelectionMode="Single"
+                                     RowHeight="28"
+                                     GridLinesVisibility="All"
+                                     HorizontalGridLinesStroke="{ThemeResource ControlStrokeColorDefaultBrush}"
+                                     HorizontalGridLinesStrokeThickness="1"
+                                     VerticalGridLinesStroke="{ThemeResource ControlStrokeColorDefaultBrush}"
+                                     VerticalGridLinesStrokeThickness="1"
+                                     MinColumnWidth="20"
+                                     BorderThickness="0"
+                                     ItemsSource="{x:Bind Batch.Selection, Mode=OneWay}"
+                                     Background="{ThemeResource LayerFillColorDefaultBrush}">
+                    <tableView:TableView.Resources>
+                        <x:Double x:Key="ListViewItemMinHeight">0</x:Double>
+                    </tableView:TableView.Resources>
+                    <tableView:TableView.Columns>
+                        <tableView:TableViewTextColumn Header="Index" Width="120" Binding="{Binding Index}" />
+                    </tableView:TableView.Columns>
+                </tableView:TableView>
+            </TabViewItem>
+
+            <TabViewItem Header="Deep Data" IsClosable="False">
+              <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="2*" MinHeight="60" />
+                    <RowDefinition x:Name="DeepSplitterRow" Height="0" />
+                    <RowDefinition x:Name="DeepHeaderRow" Height="0" />
+                    <RowDefinition x:Name="DeepDetailRow" Height="0" />
+                </Grid.RowDefinitions>
+
+                <Border Grid.Row="0"
+                        Padding="10,5"
+                        BorderThickness="0,0,0,1"
+                        BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}">
+                    <TextBlock Text="{x:Bind Batch.DeepDataSummary, Mode=OneWay}"
+                               Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                </Border>
+
+                <tableView:TableView x:Name="DeepDataTable"
+                                     Grid.Row="1"
+                                     CanSortColumns="False"
+                                     SelectionMode="Single"
+                                     RowHeight="28"
+                                     GridLinesVisibility="All"
+                                     HorizontalGridLinesStroke="{ThemeResource ControlStrokeColorDefaultBrush}"
+                                     HorizontalGridLinesStrokeThickness="1"
+                                     VerticalGridLinesStroke="{ThemeResource ControlStrokeColorDefaultBrush}"
+                                     VerticalGridLinesStrokeThickness="1"
+                                     MinColumnWidth="20"
+                                     BorderThickness="0"
+                                     SelectionChanged="OnDeepDataSelectionChanged"
+                                     ItemsSource="{x:Bind Batch.DeepData, Mode=OneWay}"
+                                     Background="{ThemeResource LayerFillColorDefaultBrush}">
+                    <tableView:TableView.Resources>
+                        <x:Double x:Key="ListViewItemMinHeight">0</x:Double>
+                    </tableView:TableView.Resources>
+                    <tableView:TableView.Columns>
+                        <tableView:TableViewTemplateColumn Header="Address" Width="180">
+                            <tableView:TableViewTemplateColumn.CellTemplate>
+                                <DataTemplate x:DataType="batch:BatchDeepDataRow">
+                                    <TextBlock Text="{x:Bind AddressText}"
+                                               Padding="8,0,4,0"
+                                               FontFamily="{StaticResource MonospaceFontFamily}" />
+                                </DataTemplate>
+                            </tableView:TableViewTemplateColumn.CellTemplate>
+                        </tableView:TableViewTemplateColumn>
+                        <tableView:TableViewTextColumn Header="Length" Width="80" Binding="{Binding Length}" />
+                        <tableView:TableViewTemplateColumn Header="Data" Width="600">
+                            <tableView:TableViewTemplateColumn.CellTemplate>
+                                <DataTemplate x:DataType="batch:BatchDeepDataRow">
+                                    <TextBlock Text="{x:Bind Data}"
+                                               Padding="8,0,4,0"
+                                               FontFamily="{StaticResource MonospaceFontFamily}" />
+                                </DataTemplate>
+                            </tableView:TableViewTemplateColumn.CellTemplate>
+                        </tableView:TableViewTemplateColumn>
+                    </tableView:TableView.Columns>
+                </tableView:TableView>
+
+                <controls:GridSplitter x:Name="DeepSplitter"
+                                       Grid.Row="2"
+                                       Height="6"
+                                       Visibility="Collapsed"
+                                       HorizontalAlignment="Stretch"
+                                       ResizeBehavior="PreviousAndNext"
+                                       ResizeDirection="Rows" />
+
+                <Border x:Name="DeepHeader"
+                        Grid.Row="3"
+                        Padding="10,1,4,1"
+                        Visibility="Collapsed"
+                        BorderThickness="0,1,0,1"
+                        BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Text="Deep Data Entry"
+                                   VerticalAlignment="Center"
+                                   Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                        <Button Grid.Column="1"
+                                Click="{x:Bind CloseDeepPane}"
+                                Background="Transparent"
+                                BorderThickness="0"
+                                Padding="6"
+                                VerticalAlignment="Center">
+                            <FontIcon Glyph="&#xE711;" FontSize="12" />
+                        </Button>
+                    </Grid>
+                </Border>
+
+                <ListView x:Name="DeepDetailList"
+                          Grid.Row="4"
+                          Visibility="Collapsed"
+                          ItemsSource="{x:Bind Batch.DeepDataDetail, Mode=OneWay}"
+                          SelectionMode="None"
+                          Padding="0,2,0,6">
+                    <ListView.ItemContainerTransitions>
+                        <TransitionCollection />
+                    </ListView.ItemContainerTransitions>
+                    <ListView.ItemContainerStyle>
+                        <Style TargetType="ListViewItem">
+                            <Setter Property="MinHeight" Value="0" />
+                            <Setter Property="Padding" Value="10,2" />
+                            <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+                        </Style>
+                    </ListView.ItemContainerStyle>
+                    <ListView.ItemTemplate>
+                        <DataTemplate x:DataType="batch:BatchDetailItem">
+                            <Grid ColumnSpacing="10">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="150" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Text="{x:Bind Name}"
+                                           TextTrimming="CharacterEllipsis"
+                                           Foreground="{ThemeResource TextFillColorTertiaryBrush}" />
+                                <TextBlock Grid.Column="1"
+                                           Text="{x:Bind Value}"
+                                           IsTextSelectionEnabled="True"
+                                           TextWrapping="Wrap"
+                                           Foreground="{ThemeResource TextFillColorPrimaryBrush}" />
+                            </Grid>
+                        </DataTemplate>
+                    </ListView.ItemTemplate>
+                </ListView>
+              </Grid>
+            </TabViewItem>
+        </TabView>
+    </Grid>
+</UserControl>

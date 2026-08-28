@@ -1,6 +1,5 @@
 ﻿using InternalsViewer.Execution.AccessPaths.Definitions;
 using InternalsViewer.Execution.AccessPaths.Results;
-using InternalsViewer.Execution.BatchMode;
 using InternalsViewer.Execution.BatchMode.Vectors;
 
 namespace InternalsViewer.Execution.Interfaces.BatchMode;
@@ -15,6 +14,12 @@ public interface IBatchIterator
     bool IsComplete { get; }
 
     StopReason? StopReason { get; }
+
+    ExecutionBatch? CurrentBatch { get; }
+
+    IBatchIterator? Input { get; }
+
+    IReadOnlyList<BatchVector> OutputVectors { get; }
 
     Task OpenAsync(IteratorDefinition definition, IteratorContext context, CancellationToken cancellationToken);
 

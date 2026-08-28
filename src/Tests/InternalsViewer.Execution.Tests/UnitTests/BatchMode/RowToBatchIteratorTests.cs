@@ -9,6 +9,7 @@ using InternalsViewer.Execution.BatchMode.Vectors;
 using InternalsViewer.Execution.Interfaces;
 using InternalsViewer.Execution.Interfaces.BatchMode;
 using InternalsViewer.Execution.Iterators.BatchMode;
+using InternalsViewer.Execution.Iterators.Common;
 using InternalsViewer.Execution.Records;
 using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Internals.Engine.Records;

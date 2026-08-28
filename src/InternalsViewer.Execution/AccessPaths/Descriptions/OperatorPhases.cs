@@ -45,6 +45,8 @@ public static class OperatorPhases
                 => BatchFilter(step),
             BatchComputeScalarDefinition 
                 => BatchComputeScalar(step),
+            BatchHashAggregateDefinition 
+                => BatchHashAggregate(step),
             SegmentDefinition 
                 => Segment(step),
             SequenceProjectDefinition 
@@ -172,6 +174,16 @@ public static class OperatorPhases
         => step switch
         {
             AccessStep.Open or AccessStep.FilterRow => AccessPhase.Filter,
+            AccessStep.Stopped or AccessStep.Close => AccessPhase.Complete,
+            _ => null
+        };
+
+    private static AccessPhase? BatchHashAggregate(AccessStep step)
+        => step switch
+        {
+            AccessStep.Open or AccessStep.AggregateStart => AccessPhase.Buckets,
+            AccessStep.HashAggregateBatch => AccessPhase.Accumulate,
+            AccessStep.AggregateEmit or AccessStep.BatchProduced => AccessPhase.Emit,
             AccessStep.Stopped or AccessStep.Close => AccessPhase.Complete,
             _ => null
         };

@@ -3,10 +3,12 @@ using InternalsViewer.Execution.AccessPaths.Search;
 using InternalsViewer.Execution.BatchMode.Vectors;
 using InternalsViewer.Execution.Interfaces;
 using InternalsViewer.Execution.Interfaces.BatchMode;
+using InternalsViewer.Execution.Records;
 using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Internals.Interfaces.Engine;
 
-namespace InternalsViewer.Execution.Iterators.BatchMode;
+
+namespace InternalsViewer.Execution.Iterators.Common;
 
 /// <summary>
 /// Iterator that converts between Batch Mode and Row Mode
@@ -22,7 +24,7 @@ public sealed class BatchToRowIterator(IIteratorFactory factory) : IteratorBase
 
     public override AccessStrategy? Strategy => null;
 
-    private IBatchIterator? Source { get; set; }
+    public IBatchIterator? Source { get; private set; }
 
     private ExecutionBatch? Batch { get; set; }
 
@@ -72,7 +74,7 @@ public sealed class BatchToRowIterator(IIteratorFactory factory) : IteratorBase
                 continue;
             }
 
-            CurrentRow = BatchRecordBuilder.Build(Batch, Batch.SelectionVector[Position]);
+            CurrentRow = ProjectedRecord.Project(BatchRecordBuilder.Build(Batch, Batch.SelectionVector[Position]), OutputList);
 
             Position++;
 

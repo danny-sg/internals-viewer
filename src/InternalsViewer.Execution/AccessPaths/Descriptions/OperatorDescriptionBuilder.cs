@@ -43,6 +43,8 @@ public static class OperatorDescriptionBuilder
                 => BatchFilterDescriber.Describe(batchFilter),
             BatchComputeScalarDefinition batchCompute 
                 => BatchComputeScalarDescriber.Describe(batchCompute),
+            BatchHashAggregateDefinition batchAggregate 
+                => BatchHashAggregateDescriber.Describe(batchAggregate),
             ColumnstoreScanDefinition columnstore 
                 => ColumnstoreScanDescriber.Describe(columnstore),
             SegmentDefinition segment 

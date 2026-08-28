@@ -7,7 +7,6 @@ using InternalsViewer.Execution.BatchMode;
 using InternalsViewer.Execution.BatchMode.Vectors;
 using InternalsViewer.Execution.Interfaces;
 using InternalsViewer.Execution.Interfaces.BatchMode;
-using InternalsViewer.Internals.Interfaces.Engine;
 
 namespace InternalsViewer.Execution.Iterators.BatchMode;
 
@@ -25,9 +24,13 @@ public sealed class BatchFilterIterator(IIteratorFactory factory) : IBatchIterat
 
     public long PassedCount { get; private set; }
 
-    private IteratorContext Context { get; set; } = null!;
+    public ExecutionBatch? CurrentBatch => Input?.CurrentBatch;
 
-    private IBatchIterator? Input { get; set; }
+    public IReadOnlyList<BatchVector> OutputVectors => Input?.OutputVectors ?? [];
+
+    public IBatchIterator? Input { get; private set; }
+
+    private IteratorContext Context { get; set; } = null!;
 
     private AccessPredicate? Predicate { get; set; }
 
