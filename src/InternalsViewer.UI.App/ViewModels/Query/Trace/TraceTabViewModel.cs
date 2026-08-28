@@ -798,6 +798,7 @@ public sealed partial class TraceTabViewModel : ObservableObject, IDisposable
                 }
 
                 await StepNext();
+
                 var delay = RunDelayMs < 0 ? 0 : Math.Max(1, RunDelayMs);
 
                 if (delay > 0)

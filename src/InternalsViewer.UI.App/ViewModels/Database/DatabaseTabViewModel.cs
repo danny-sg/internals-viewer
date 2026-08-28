@@ -16,6 +16,7 @@ using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Diagnostics;
+using System.Drawing;
 using System.Linq;
 using System.Threading.Tasks;
 using InternalsViewer.Internals.Connections.Server;
@@ -59,6 +60,9 @@ public sealed partial class DatabaseTabViewModel(ILogger<DatabaseTabViewModel> l
 
     [ObservableProperty]
     private ObservableCollection<AllocationLayer> _allocationLayers = [];
+
+    [ObservableProperty]
+    private IReadOnlyList<Color> _iconCells = DatabaseIconBuilder.DefaultCells;
 
     [ObservableProperty]
     private PfsChain _pfsChain = new();
@@ -319,13 +323,13 @@ public sealed partial class DatabaseTabViewModel(ILogger<DatabaseTabViewModel> l
         {
             var layersStart = Stopwatch.GetTimestamp();
 
-            var (layers, extentCount, pfsChain) = await Task.Run(() =>
+            var (layers, extentCount, pfsChain, iconCells) = await Task.Run(() =>
             {
                 var generated = AllocationLayerBuilder.GenerateLayers(Database, true, IsDisplaySystemObjects);
                 var extents = Database.GetFilePageCount(1) / 8;
                 var pfs = Database.Pfs.First().Value;
 
-                return (generated, extents, pfs);
+                return (generated, extents, pfs, DatabaseIconBuilder.Build(generated));
             });
 
             Logger.LogDebug("Generated allocation layers in: {Elapsed}", Stopwatch.GetElapsedTime(layersStart));
@@ -334,6 +338,7 @@ public sealed partial class DatabaseTabViewModel(ILogger<DatabaseTabViewModel> l
 
             ExtentCount = extentCount;
             PfsChain = pfsChain;
+            IconCells = iconCells;
         }
         catch (Exception ex)
         {

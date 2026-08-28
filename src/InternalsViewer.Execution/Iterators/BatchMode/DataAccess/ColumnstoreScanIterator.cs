@@ -199,7 +199,7 @@ public sealed class ColumnstoreScanIterator(ColumnstoreService columnstoreServic
 
         RowMask.AsSpan(0, size).Fill(true);
 
-        var deleted = ApplyDeletedRows(RowMask.AsSpan(0, size), rowGroupId, RowOrdinal, size);
+        var deleted = ApplyDeletedRows(RowMask.AsSpan(0, size), rowGroupId, RowOrdinal);
 
         var filtered = ApplyCompressedFilters(RowMask.AsSpan(0, size), RowOrdinal, ref filterRleEntries, ref filterOperations);
 
@@ -300,7 +300,7 @@ public sealed class ColumnstoreScanIterator(ColumnstoreService columnstoreServic
         return (evaluated, matches);
     }
 
-    private int ApplyDeletedRows(Span<bool> mask, int rowGroupId, int from, int size)
+    private int ApplyDeletedRows(Span<bool> mask, int rowGroupId, int from)
     {
         var rows = DeletedRows.ForRowGroup(rowGroupId);
 
@@ -318,7 +318,7 @@ public sealed class ColumnstoreScanIterator(ColumnstoreService columnstoreServic
 
         var cleared = 0;
 
-        for (var i = start; i < rows.Length && rows[i] < from + size; i++)
+        for (var i = start; i < rows.Length && rows[i] < from + mask.Length; i++)
         {
             mask[rows[i] - from] = false;
 
