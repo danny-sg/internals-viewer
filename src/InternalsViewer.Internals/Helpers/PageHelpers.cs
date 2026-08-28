@@ -56,17 +56,17 @@ public static class PageHelpers
     }
 
     public static bool IsGam(int pageId) 
-        => (pageId - AllocationPage.FirstGamPage) % AllocationPage.AllocationExtentInterval == 0;
+        => (pageId - AllocationPage.FirstGamPage) % AllocationPage.AllocationPageCount == 0;
     
     public static bool IsSgam(int pageId) 
-        => (pageId - AllocationPage.FirstSgamPage) % AllocationPage.AllocationExtentInterval == 0;
+        => (pageId - AllocationPage.FirstSgamPage) % AllocationPage.AllocationPageCount == 0;
     
     public static bool IsDcm(int pageId) 
-        => (pageId - AllocationPage.FirstDcmPage) % AllocationPage.AllocationExtentInterval == 0;
+        => (pageId - AllocationPage.FirstDcmPage) % AllocationPage.AllocationPageCount == 0;
     
     public static bool IsBcm(int pageId) 
-        => (pageId - AllocationPage.FirstBcmPage) % AllocationPage.AllocationExtentInterval == 0;
+        => (pageId - AllocationPage.FirstBcmPage) % AllocationPage.AllocationPageCount == 0;
     
     public static bool IsPfs(int pageId)
-        => pageId == 1 || (pageId % PfsPage.PfsInterval == 0);
+        => pageId == 1 || (pageId > 0 && pageId % PfsPage.PfsInterval == 0);
 }

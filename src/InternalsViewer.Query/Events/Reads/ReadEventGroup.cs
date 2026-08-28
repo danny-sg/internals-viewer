@@ -41,6 +41,11 @@ public sealed record ReadEventGroup : PageEngineEvent, IEventGroup
 
             var description = $"{TypeLabel}: {PageAddress}";
 
+            if (PageAddress is { } pageAddress && PageNameHelper.TryGetPageName(pageAddress) is { } pageName)
+            {
+                return $"{description} - {pageName}";
+            }
+
             if (PageAddress == AllocationUnit?.FirstIamPage)
             {
                 return $"{description} - First IAM Page";
@@ -49,13 +54,6 @@ public sealed record ReadEventGroup : PageEngineEvent, IEventGroup
             if (PageAddress == AllocationUnit?.RootPage)
             {
                 return $"{description} - Root Page";
-            }
-
-            if (AllocationUnit is null && PageAddress.HasValue)
-            {
-                var pageName = PageNameHelper.TryGetPageName(PageAddress.Value);
-
-                return $"{description} - {pageName}";
             }
 
             return description;

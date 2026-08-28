@@ -110,7 +110,9 @@ public sealed class EventParser
         {
             if (engineEvent is PageEngineEvent { ObjectId: 0, PageAddress: { } pageAddress } pageEvent)
             {
-                var allocationUnit = database.FindPageAllocationUnit(pageAddress);
+                var allocationUnit = PageNameHelper.TryGetPageName(pageAddress) is null
+                                     ? database.FindPageAllocationUnit(pageAddress)
+                                     : null;
 
                 engineEvent.AllocationUnit = allocationUnit;
 

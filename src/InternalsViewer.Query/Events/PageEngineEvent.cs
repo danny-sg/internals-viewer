@@ -9,8 +9,8 @@ public abstract record PageEngineEvent : EngineEvent
 {
     public virtual PageAddress? PageAddress { get; set; }
 
-    public override string ObjectName => AllocationUnit?.DisplayName is { Length: > 0 } displayName
-                                         ? displayName
-                                         : (PageAddress is { } page ? PageNameHelper.TryGetPageName(page) : null)
-                                           ?? string.Empty;
+    public override string ObjectName => (PageAddress is { } page ? PageNameHelper.TryGetPageName(page) : null)
+                                         ?? (AllocationUnit?.DisplayName is { Length: > 0 } displayName
+                                             ? displayName
+                                             : string.Empty);
 }

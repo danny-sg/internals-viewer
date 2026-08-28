@@ -13,13 +13,16 @@ public static class PageNameHelper
     /// </summary>
     public static string? TryGetPageName(PageAddress pageAddress)
     {
-        switch (pageAddress.PageId)
+        switch (pageAddress)
         {
-            case 0:
+            case { FileId: <= 0 }:
+                return null;
+
+            case { PageId: 0 }:
                 return "File Header";
 
-            case 9:
-                return "Boot page";
+            case { FileId: 1, PageId: 9 }:
+                return "Boot Page";
 
             default:
                 if (PageHelpers.IsBcm(pageAddress.PageId))

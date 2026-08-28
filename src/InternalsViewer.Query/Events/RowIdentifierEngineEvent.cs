@@ -8,9 +8,4 @@ namespace InternalsViewer.Query.Events;
 public abstract record RowIdentifierEngineEvent : PageEngineEvent
 {
     public virtual RowIdentifier? RowIdentifier { get; set; }
-
-    public override string ObjectName => AllocationUnit?.DisplayName is { Length: > 0 } displayName
-                                         ? displayName
-                                         : (PageAddress is { } page ? PageNameHelper.TryGetPageName(page) : null)
-                                           ?? string.Empty;
 }
