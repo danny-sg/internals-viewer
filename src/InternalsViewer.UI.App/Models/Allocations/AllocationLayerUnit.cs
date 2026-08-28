@@ -1,6 +1,8 @@
+using InternalsViewer.Execution.AccessPaths.Predicates;
 using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Internals.Engine.Database.Enums;
 using InternalsViewer.Internals.Helpers;
+using InternalsViewer.UI.App.Helpers;
 
 namespace InternalsViewer.UI.App.Models.Allocations;
 
@@ -20,7 +22,7 @@ public sealed class AllocationLayerUnit
 
     public IndexType IndexType { get; set; }
 
-    public string IndexTypeDescription => IndexType.ToString().SplitCamelCase();
+    public string IndexTypeDescription => AllocationUnitHelpers.GetIndexTypeName(IndexType);
 
     public PageAddress FirstPage { get; set; }
 

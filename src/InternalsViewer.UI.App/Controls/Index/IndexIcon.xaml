@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<UserControl
+    x:Class="InternalsViewer.UI.App.Controls.Index.IndexIcon"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    Width="32"
+    Height="32"
+    mc:Ignorable="d">
+    <Border Padding="2">
+    <Viewbox>
+        <Canvas Width="32" Height="32">
+            <Rectangle x:Name="RootNode" Canvas.Left="12" Canvas.Top="1" Width="9" Height="13"/>
+
+            <Rectangle x:Name="LeftNode" Canvas.Left="2" Canvas.Top="19" Width="9" Height="13"/>
+            <Rectangle x:Name="RightNode" Canvas.Left="22" Canvas.Top="19" Width="9" Height="13"/>
+        </Canvas>
+    </Viewbox>
+    </Border>
+</UserControl>

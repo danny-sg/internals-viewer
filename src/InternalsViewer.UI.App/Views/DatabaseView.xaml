@@ -110,17 +110,15 @@
                         DefaultLabelPosition="Right"
                         Grid.Column="0"
                         HorizontalAlignment="Left"
-                        VerticalContentAlignment="Center"
-                        Background="Transparent">
+                        VerticalContentAlignment="Center">
                 <AppBarElementContainer VerticalAlignment="Stretch">
                     <StackPanel Orientation="Horizontal"
                                 Spacing="12"
-                                VerticalAlignment="Stretch"
-                                Margin="12,8,18,0"
+                                Margin="12,9,18,0"
                                 MinWidth="150">
                         <allocation:DatabaseIcon Cells="{x:Bind TabViewModel.IconCells, Mode=OneWay}"/>
-                        <StackPanel VerticalAlignment="Stretch">
-                            <TextBlock VerticalAlignment="Top" Foreground="{ThemeResource TextFillColorSecondaryBrush}">Allocations</TextBlock>
+                        <StackPanel>
+                            <TextBlock Foreground="{ThemeResource TextFillColorSecondaryBrush}">Allocations</TextBlock>
                             <TextBlock FontWeight="SemiBold" Text="{x:Bind TabViewModel.Database.Name, Mode=OneWay}"/>
                         </StackPanel>
                     </StackPanel>

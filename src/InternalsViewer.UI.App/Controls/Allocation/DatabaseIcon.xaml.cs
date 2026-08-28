@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using System.Drawing;
 using InternalsViewer.UI.App.Helpers;
+using InternalsViewer.UI.App.ViewModels.Allocation;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Media;
 using Colors = Microsoft.UI.Colors;
@@ -42,12 +43,21 @@ public sealed partial class DatabaseIcon : UserControl
 
         for (var index = 0; index < Rectangles.Length; index++)
         {
-            var colour = cells is not null && index < cells.Count
-                ? cells[index].ToWindowsColor()
-                : Colors.Transparent;
-
-            Rectangles[index].Fill = new SolidColorBrush(colour);
+            Rectangles[index].Fill = cells is not null && index < cells.Count
+                ? CreateCellBrush(cells[index], index)
+                : new SolidColorBrush(Colors.Transparent);
         }
+    }
+
+    private static Brush CreateCellBrush(Color colour, int index)
+    {
+        var column = index % DatabaseIconBuilder.ColumnCount;
+
+        var row = index / DatabaseIconBuilder.ColumnCount;
+
+        var diagonal = (double) DatabaseIconBuilder.ColumnCount + DatabaseIconBuilder.RowCount;
+
+        return IconHighlight.CreateBrush(colour, (column + row) / diagonal, (column + row + 2) / diagonal);
     }
 
     private static void OnCellsChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)

@@ -88,20 +88,20 @@
                     IsOpen="False"       
                     DefaultLabelPosition="Right" 
                     HorizontalAlignment="Left">
-                    <AppBarElementContainer VerticalAlignment="Stretch">
-                        <StackPanel VerticalAlignment="Stretch" Margin="12,8,18,0" MinWidth="150">
-                            <TextBlock Foreground="{ThemeResource TextFillColorSecondaryBrush}">Page</TextBlock>
-                            <TextBlock FontWeight="SemiBold" Text="{x:Bind ViewModel.PageTitle, Mode=OneWay}" />
-                        </StackPanel>
+                    <AppBarElementContainer VerticalAlignment="Stretch" 
+                                            Margin="12,0,0,0" 
+                                            VerticalContentAlignment="Stretch">
+                        <controls:PageAddressTextBox x:Name="PageAddressTextBox" 
+                                                     VerticalAlignment="Center"
+                                                     BorderThickness="1"
+                                                     Margin="0,0,10,0"
+                                                     PageAddress="{x:Bind ViewModel.PageAddress, Mode=TwoWay}" 
+                                                     DatabaseName="{x:Bind ViewModel.Database.Name, Mode=OneWay}" />
                     </AppBarElementContainer>
-                    <AppBarSeparator />
-                    <AppBarElementContainer VerticalAlignment="Stretch" Margin="12,0,0,0" VerticalContentAlignment="Stretch">
-                        <StackPanel Orientation="Horizontal" VerticalAlignment="Stretch">
-                            <TextBlock         Foreground="{ThemeResource TextFillColorSecondaryBrush}">Page Address</TextBlock>
-                            <controls:PageAddressTextBox x:Name="PageAddressTextBox" 
-                                                         VerticalAlignment="Top"
-                                                         PageAddress="{x:Bind ViewModel.PageAddress, Mode=TwoWay}" 
-                                                         DatabaseName="{x:Bind ViewModel.Database.Name, Mode=OneWay}" />
+                    <AppBarElementContainer VerticalAlignment="Stretch">
+                        <StackPanel VerticalAlignment="Stretch" Margin="0,8,14,0" MinWidth="150">
+                            <TextBlock Foreground="{ThemeResource TextFillColorSecondaryBrush}" Text="{x:Bind ViewModel.PageTitle, Mode=OneWay}"/>
+                            <TextBlock FontWeight="SemiBold" Text="{x:Bind ViewModel.AllocationUnit.DisplayName, Mode=OneWay}" />
                         </StackPanel>
                     </AppBarElementContainer>
                     <AppBarSeparator />
@@ -117,11 +117,7 @@
 
                     <AppBarSeparator />
 
-                    <AppBarButton Label="Index" Command="{x:Bind ViewModel.OpenIndexViewCommand}">
-                        <AppBarButton.Icon>
-                            <BitmapIcon UriSource="ms-appx:///Assets/Index32.png"/>
-                        </AppBarButton.Icon>
-                    </AppBarButton>
+                    <AppBarButton Label="Index" Command="{x:Bind ViewModel.OpenIndexViewCommand}"/>
 
                 </CommandBar>
 
@@ -134,11 +130,12 @@
                                                 Mode=OneWay}"
                             DefaultLabelPosition="Right" 
                             HorizontalAlignment="Right">
-
-                    <AppBarElementContainer>
-                        <allocation:AllocationUnitSummaryControl
+                    <CommandBar.SecondaryCommands>
+                        <AppBarElementContainer>
+                            <allocation:AllocationUnitSummaryControl
                             AllocationUnit="{x:Bind ViewModel.AllocationUnit, Mode=OneWay}" />
-                    </AppBarElementContainer>
+                        </AppBarElementContainer>
+                    </CommandBar.SecondaryCommands>
                 </CommandBar>
                 <CommandBar Grid.Column="2"         
                             Background="Transparent" 

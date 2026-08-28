@@ -17,9 +17,9 @@
         </Grid.RowDefinitions>
         <!--Top command bar-->
         <Grid Grid.Row="0"
-        Grid.ColumnSpan="3"
-        BorderThickness="0" 
-        BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}">
+              Grid.ColumnSpan="3"
+              BorderThickness="0" 
+              BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="Auto"/>
                 <ColumnDefinition Width="*"/>
@@ -32,9 +32,18 @@
           DefaultLabelPosition="Right" 
           HorizontalAlignment="Left">
                 <AppBarElementContainer VerticalAlignment="Stretch">
-                    <StackPanel VerticalAlignment="Stretch" Margin="12,8,18,0" MinWidth="150">
-                        <TextBlock Foreground="{ThemeResource TextFillColorSecondaryBrush}">Index</TextBlock>
-                        <TextBlock FontWeight="SemiBold" Text="{x:Bind ViewModel.AllocationUnit.DisplayName, Mode=OneWay}" />
+                    <StackPanel Orientation="Horizontal"
+                                Spacing="10"
+                                VerticalAlignment="Stretch"
+                                Margin="12,8,18,0"
+                                MinWidth="150">
+                        <index:IndexIcon VerticalAlignment="Center"
+                                         Colour="{x:Bind ViewModel.IconColour, Mode=OneWay}"/>
+                        <StackPanel VerticalAlignment="Stretch">
+                            <TextBlock Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                       Text="{x:Bind ViewModel.IndexTypeName}"/>
+                            <TextBlock FontWeight="SemiBold" Text="{x:Bind ViewModel.AllocationUnit.DisplayName, Mode=OneWay}" />
+                        </StackPanel>
                     </StackPanel>
                 </AppBarElementContainer>
                 <AppBarSeparator />
@@ -52,10 +61,11 @@
                                       Mode=OneWay}"
                   DefaultLabelPosition="Right" 
                   HorizontalAlignment="Right">
-
-                <AppBarElementContainer>
-                    <allocation:AllocationUnitSummaryControl AllocationUnit="{x:Bind ViewModel.AllocationUnit, Mode=OneWay}" />
-                </AppBarElementContainer>
+                <CommandBar.SecondaryCommands>
+                    <AppBarElementContainer>
+                        <allocation:AllocationUnitSummaryControl AllocationUnit="{x:Bind ViewModel.AllocationUnit, Mode=OneWay}" />
+                    </AppBarElementContainer>
+                </CommandBar.SecondaryCommands>
             </CommandBar>
         </Grid>
         <!--<CommandBar IsOpen="False" 
@@ -96,7 +106,7 @@
                                 Converter={StaticResource BoolToVisibilityConverter}}"
                        Text="{x:Bind ViewModel.ProgressText, Mode=OneWay}"/>
         </StackPanel>
-        
+
         <Grid Grid.Row="1"
               x:Name="ContainerGrid"
               BorderThickness="0,1,0,0" 

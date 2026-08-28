@@ -20,7 +20,6 @@
     <Grid>
         <TextBox x:Name="TextBox"
                  Style="{StaticResource PageAddressTextBox}"
-                 Margin="10 8 10 0"  
                  PlaceholderText="(File Id: Page Id)"  
                  KeyDown="TextBox_KeyDown"   
                  Text="{x:Bind PageAddress, 

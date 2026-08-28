@@ -171,7 +171,8 @@ public sealed partial class PageTabViewModel(ILogger<PageTabViewModel> logger,
 
     private History<PageAddress> History { get; } = new();
 
-    public string PageTitle => $"{Page.PageHeader.PageTypeName} Page {Page.PageAddress}";
+    public string PageTitle 
+        => $"{Page.PageHeader.PageTypeName}{(Page.PageHeader.PageType == PageType.None ? string.Empty : " Page")}";
 
     [RelayCommand]
     public async Task LoadPage(PageAddress pageAddress)

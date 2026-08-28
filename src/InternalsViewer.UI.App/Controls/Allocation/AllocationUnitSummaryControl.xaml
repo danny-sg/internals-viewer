@@ -9,8 +9,13 @@
     HorizontalAlignment="Left"
     VerticalAlignment="Center"
     mc:Ignorable="d">
-    <Grid Margin="8" Padding="0">
+    <Grid Margin="8" Padding="2" RowSpacing="4" ColumnSpacing="4">
         <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
@@ -61,6 +66,36 @@
                    Grid.Column="1"
                    Text="Index Id" />
 
+        <TextBlock Margin="14,0,0,0"
+                   Grid.Row="2"
+                   Foreground="{ThemeResource TextFillColorTertiaryBrush}"
+                   Grid.Column="1"
+                   Text="Allocation Unit Id" />
+
+        <TextBlock Margin="14,0,0,0"
+                   Grid.Row="3"
+                   Foreground="{ThemeResource TextFillColorTertiaryBrush}"
+                   Grid.Column="1"
+                   Text="Partition Id" />
+
+        <TextBlock Margin="14,0,0,0"
+                   Grid.Row="4"
+                   Foreground="{ThemeResource TextFillColorTertiaryBrush}"
+                   Grid.Column="1"
+                   Text="Root Page" />
+
+        <TextBlock Margin="14,0,0,0"
+                   Grid.Row="5"
+                   Foreground="{ThemeResource TextFillColorTertiaryBrush}"
+                   Grid.Column="1"
+                   Text="First Page" />
+
+        <TextBlock Margin="14,0,0,0"
+                   Grid.Row="6"
+                   Foreground="{ThemeResource TextFillColorTertiaryBrush}"
+                   Grid.Column="1"
+                   Text="First IAM Page" />
+
         <controls:CopyTextBlock
                        x:Name="ObjectIdTextBlock"
                        Margin="14,0,0,0"
@@ -69,10 +104,41 @@
                        Value="{x:Bind ObjectId, Mode=OneWay}" />
 
         <controls:CopyTextBlock
-                       x:Name="IndexIdTextBlock"
                        Margin="14,0,0,0"
                        Grid.Row="1"
                        Grid.Column="2"
                        Value="{x:Bind IndexId, Mode=OneWay}" />
+
+        <controls:CopyTextBlock Margin="14,0,0,0"
+                                Grid.Row="2"
+                                Grid.Column="2"
+                                Value="{x:Bind AllocationUnit.AllocationUnitId, Mode=OneWay}" />
+
+        <controls:CopyTextBlock Margin="14,0,0,0"
+                                Grid.Row="3"
+                                Grid.Column="2"
+                                Value="{x:Bind AllocationUnit.PartitionId, Mode=OneWay}" />
+
+        <HyperlinkButton Grid.Row="4"
+                         HorizontalAlignment="Left"
+                         Grid.Column="2"
+                         Padding="0"
+                         Margin="18,0,0,0"
+                         Style="{StaticResource PageAddressStyle}"
+                         Content="{x:Bind AllocationUnit.RootPage, Mode=OneWay}" />
+        <HyperlinkButton Grid.Row="5"
+                         Padding="0"
+                         Margin="18,0,0,0"
+                         HorizontalAlignment="Left"
+                         Grid.Column="2"
+                         Style="{StaticResource PageAddressStyle}"
+                         Content="{x:Bind AllocationUnit.FirstPage, Mode=OneWay}" />
+        <HyperlinkButton Grid.Row="6"
+                         Padding="0"
+                         Margin="18,0,0,0"
+                         HorizontalAlignment="Left"
+                         Grid.Column="2"
+                         Style="{StaticResource PageAddressStyle}"
+                         Content="{x:Bind AllocationUnit.FirstIamPage, Mode=OneWay}" />
     </Grid>
 </UserControl>

@@ -14,9 +14,11 @@ using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.Drawing;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using InternalsViewer.UI.App.Helpers;
 
 namespace InternalsViewer.UI.App.ViewModels.Index;
 
@@ -65,6 +67,7 @@ public partial class IndexTabViewModel(ILogger<IndexTabViewModel> logger,
     private long _totalPageCount;
 
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IconColour))]
     private AllocationUnit? _allocationUnit;
 
     [ObservableProperty]
@@ -119,6 +122,12 @@ public partial class IndexTabViewModel(ILogger<IndexTabViewModel> logger,
     public string LoadingText => string.IsNullOrEmpty(AllocationUnit?.IndexName)
         ? "Loading Index..."
         : $"Loading {AllocationUnit.IndexName}...";
+
+    public string IndexTypeName => string.IsNullOrEmpty(AllocationUnit?.IndexName)
+        ? "Index"
+        : $"{AllocationUnit.IndexTypeName()} Index";
+
+    public Color IconColour => AllocationUnit?.DisplayColour ?? Color.Gray;
 
     public GridLength BodyColumnWidth
         => IsDetailPaneVisible ? new GridLength(6, GridUnitType.Star) : new GridLength(1, GridUnitType.Star);

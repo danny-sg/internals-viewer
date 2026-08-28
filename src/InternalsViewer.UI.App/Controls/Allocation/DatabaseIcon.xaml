@@ -5,33 +5,35 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-    Width="25"
-    Height="25"
+    Width="32"
+    Height="32"
     mc:Ignorable="d">
-    <Grid x:Name="CellGrid" 
-          RowSpacing="2" 
-          ColumnSpacing="2">
-        <Grid.RowDefinitions>
-            <RowDefinition Height="*"/>
-            <RowDefinition Height="*"/>
-            <RowDefinition Height="*"/>
-        </Grid.RowDefinitions>
-        <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="*"/>
-            <ColumnDefinition Width="*"/>
-            <ColumnDefinition Width="*"/>
-        </Grid.ColumnDefinitions>
+    <Border Padding="2">
+        <Grid x:Name="CellGrid" 
+              RowSpacing="2" 
+              ColumnSpacing="2">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="*"/>
+                <RowDefinition Height="*"/>
+                <RowDefinition Height="*"/>
+            </Grid.RowDefinitions>
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
 
-        <Rectangle x:Name="Cell0" Grid.Row="0" Grid.Column="0"/>
-        <Rectangle x:Name="Cell1" Grid.Row="0" Grid.Column="1"/>
-        <Rectangle x:Name="Cell2" Grid.Row="0" Grid.Column="2"/>
+            <Rectangle x:Name="Cell0" Grid.Row="0" Grid.Column="0"/>
+            <Rectangle x:Name="Cell1" Grid.Row="0" Grid.Column="1"/>
+            <Rectangle x:Name="Cell2" Grid.Row="0" Grid.Column="2"/>
 
-        <Rectangle x:Name="Cell3" Grid.Row="1" Grid.Column="0"/>
-        <Rectangle x:Name="Cell4" Grid.Row="1" Grid.Column="1"/>
-        <Rectangle x:Name="Cell5" Grid.Row="1" Grid.Column="2"/>
+            <Rectangle x:Name="Cell3" Grid.Row="1" Grid.Column="0"/>
+            <Rectangle x:Name="Cell4" Grid.Row="1" Grid.Column="1"/>
+            <Rectangle x:Name="Cell5" Grid.Row="1" Grid.Column="2"/>
 
-        <Rectangle x:Name="Cell6" Grid.Row="2" Grid.Column="0"/>
-        <Rectangle x:Name="Cell7" Grid.Row="2" Grid.Column="1"/>
-        <Rectangle x:Name="Cell8" Grid.Row="2" Grid.Column="2"/>
-    </Grid>
+            <Rectangle x:Name="Cell6" Grid.Row="2" Grid.Column="0"/>
+            <Rectangle x:Name="Cell7" Grid.Row="2" Grid.Column="1"/>
+            <Rectangle x:Name="Cell8" Grid.Row="2" Grid.Column="2"/>
+        </Grid>
+    </Border>
 </UserControl>

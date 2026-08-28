@@ -100,6 +100,8 @@ internal static class AllocationLayerBuilder
                     lastLayer.SinglePages.Add(page.PageAddress);
                 }
             }
+
+            allocationUnit.DisplayColour = lastLayer.Colour;
         }
 
         var systemLayer = new AllocationLayer

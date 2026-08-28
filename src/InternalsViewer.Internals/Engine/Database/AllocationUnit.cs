@@ -1,4 +1,5 @@
-﻿using InternalsViewer.Internals.Engine.Address;
+﻿using System.Drawing;
+using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Internals.Engine.Allocation;
 using InternalsViewer.Internals.Engine.Database.Enums;
 using InternalsViewer.Internals.Engine.Records.CdRecordType;
@@ -65,4 +66,6 @@ public sealed record AllocationUnit
     public int PartitionNumber { get; set; }
 
     public IndexType? ParentIndexType { get; set; }
+
+    public Color DisplayColour { get; set; } = Color.Gray;
 }
