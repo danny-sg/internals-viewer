@@ -88,8 +88,11 @@ public sealed class IamPageParser : PageParser, IPageParser<IamPage>
                               PageAddress.Size);
         }
 
-        page.MarkProperty("AllocationMap",
+        page.MarkProperty(ItemType.AllocationData,
+                          "AllocationMap",
                           AllocationPage.AllocationArrayOffset,
-                          AllocationPage.AllocationExtentInterval / 8);
+                          AllocationPage.AllocationExtentInterval / 8,
+                          null,
+                          false);
     }
 }

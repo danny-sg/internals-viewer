@@ -23,13 +23,17 @@ using InternalsViewer.UI.App.Services.Markers;
 using InternalsViewer.UI.App.ViewModels.Tabs;
 using Microsoft.Extensions.Logging;
 using Microsoft.UI;
+using Microsoft.UI.Xaml.Documents;
 using System;
+using System.Buffers.Binary;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
 using System.Threading.Tasks;
 using Windows.UI;
+using InternalsViewer.Internals.Engine.Records.CdRecordType;
 using AllocationUnit = InternalsViewer.Internals.Engine.Database.AllocationUnit;
+using DrawingColor = System.Drawing.Color;
 using LogRecordItem = InternalsViewer.UI.App.Models.Logging.LogRecordItem;
 
 namespace InternalsViewer.UI.App.ViewModels.Page;
@@ -59,6 +63,7 @@ public sealed partial class PageTabViewModel(ILogger<PageTabViewModel> logger,
     private byte[]? _baselineData;
 
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IconColour))]
     private AllocationUnit? _allocationUnit;
 
     [ObservableProperty]
@@ -171,8 +176,10 @@ public sealed partial class PageTabViewModel(ILogger<PageTabViewModel> logger,
 
     private History<PageAddress> History { get; } = new();
 
-    public string PageTitle 
+    public string PageTitle
         => $"{Page.PageHeader.PageTypeName}{(Page.PageHeader.PageType == PageType.None ? string.Empty : " Page")}";
+
+    public DrawingColor IconColour => AllocationUnit?.DisplayColour ?? DrawingColor.Gray;
 
     [RelayCommand]
     public async Task LoadPage(PageAddress pageAddress)
@@ -307,13 +314,20 @@ public sealed partial class PageTabViewModel(ILogger<PageTabViewModel> logger,
             return;
         }
 
+        var offset = value.Offset;
+
         switch (value.Index)
         {
             case PageDisplayBuilder.PageHeaderSlot:
                 AddPageHeaderMarkers();
+                offset = 0;
+                break;
+            case PageDisplayBuilder.OffsetTableSlot:
+                offset = AddSlotOffsetMarkers();
                 break;
             case PageDisplayBuilder.CompressionInfoSlot:
                 AddCompressionInfoMarkers();
+                offset = CompressionInfo.SlotOffset;
                 break;
             case PageDisplayBuilder.IamHeaderSlot:
                 AddPageMarkers(" Header");
@@ -329,7 +343,7 @@ public sealed partial class PageTabViewModel(ILogger<PageTabViewModel> logger,
                 break;
         }
 
-        ScrollToOffset = value.Offset;
+        ScrollToOffset = offset;
 
         var selectedRecord = RecordsResultSet.Rows
                                              .FirstOrDefault(r => r.Id == value.Index);
@@ -504,14 +518,6 @@ public sealed partial class PageTabViewModel(ILogger<PageTabViewModel> logger,
         }
     }
 
-    /// <summary>
-    /// Finds the slot associated with a page offset
-    /// </summary>
-    /// <remarks>
-    /// Offsets in the 96 byte page header select the header pseudo-slot; offsets in the offset table at the end of
-    /// the page select the slot the entry belongs to; anything else selects the slot whose row starts closest
-    /// before the offset
-    /// </remarks>
     private PageSlot? FindSlotForOffset(int offset)
     {
         if (offset < 96)
@@ -708,6 +714,51 @@ public sealed partial class PageTabViewModel(ILogger<PageTabViewModel> logger,
         Markers = new ObservableCollection<Marker>(headerMarkers);
     }
 
+    private ushort AddSlotOffsetMarkers()
+    {
+        MarkerTabName = "Slot Offset Table";
+
+        var offsetTableMarkers = new List<Marker>();
+
+        var slotMarkers = new List<Marker>(Page.OffsetTable.Length);
+
+        var offsetTableStart = PageData.Size - Page.PageHeader.SlotCount * 2;
+
+        var offset = PageData.Size - 2;
+
+        for (uint slotIndex = 0; slotIndex < Page.PageHeader.SlotCount; slotIndex++)
+        {
+            offsetTableMarkers.Add(new Marker
+            {
+                Name = $"Slot {slotIndex}",
+                Value = Page.OffsetTable[slotIndex].ToString(),
+                StartPosition = offset,
+                EndPosition = offset + 1,
+                ForeColour = Colors.Green,
+                BackColour = slotIndex % 2 == 0 ? Color.FromArgb(50, 205, 250, 205) : Color.FromArgb(255, 215, 255, 215),
+                IsVisible = true,
+                HasKey = true,
+            });
+
+            offset -= 2;
+        }
+
+        offsetTableMarkers.Add(new Marker
+        {
+            Name = "Offset Table",
+            StartPosition = offsetTableStart,
+            EndPosition = PageData.Size,
+            ForeColour = Colors.Green,
+            BackColour = Color.FromArgb(100, 205, 250, 205),
+            IsVisible = false,
+            Children = new ObservableCollection<Marker>(slotMarkers)
+        });
+
+        Markers = new ObservableCollection<Marker>(offsetTableMarkers);
+
+        return (ushort)offsetTableStart;
+    }
+
     private void AddPageMarkers(string suffix)
     {
         MarkerTabName = $"{Page.PageHeader.PageTypeName}{suffix}";
@@ -776,7 +827,7 @@ public sealed partial class PageTabViewModel(ILogger<PageTabViewModel> logger,
             EndPosition = PageData.Size,
             ForeColour = Colors.Green,
             BackColour = Color.FromArgb(50, 205, 250, 205),
-            IsVisible = true
+            IsVisible = false
         });
 
         return m;

@@ -7,6 +7,7 @@
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     xmlns:docking="using:InternalsViewer.UI.App.Controls.Docking"
+    xmlns:query="using:InternalsViewer.UI.App.Controls.Query"
     mc:Ignorable="d">
 
     <Grid Background="{ThemeResource LayerFillColorDefaultBrush}">
@@ -27,13 +28,19 @@
                             <ColumnDefinition Width="*"></ColumnDefinition>
                             <ColumnDefinition Width="*"></ColumnDefinition>
                         </Grid.ColumnDefinitions>
-                        <StackPanel Grid.Column="0" VerticalAlignment="Center">
-                            <TextBlock Margin="12,0,12,0" FontWeight="SemiBold">
+                        <StackPanel Grid.Column="0"
+                                    Orientation="Horizontal"
+                                    Spacing="6"
+                                    Margin="12,0,12,0"
+                                    VerticalAlignment="Center">
+                            <query:QueryIcon VerticalAlignment="Center">
+                                <query:QueryIcon.RenderTransform>
+                                    <TranslateTransform Y="1"/>
+                                </query:QueryIcon.RenderTransform>
+                            </query:QueryIcon>
+                            <TextBlock FontWeight="SemiBold" VerticalAlignment="Center">
                                 Query
                             </TextBlock>
-
-
-
                         </StackPanel>
                         <AppBarSeparator Grid.Column="1"/>
                         <MenuBar Grid.Column="2"

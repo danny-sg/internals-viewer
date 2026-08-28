@@ -88,21 +88,30 @@
                     IsOpen="False"       
                     DefaultLabelPosition="Right" 
                     HorizontalAlignment="Left">
+                    <AppBarElementContainer VerticalAlignment="Stretch">
+                        <StackPanel Orientation="Horizontal"
+                                    Spacing="12"
+                                    Margin="12,9,18,0"
+                                    MinWidth="140">
+                            <page:PageIcon VerticalAlignment="Center"
+                                           Colour="{x:Bind ViewModel.IconColour, Mode=OneWay}"/>
+
+                            <StackPanel>
+                                <TextBlock Foreground="{ThemeResource TextFillColorSecondaryBrush}" Text="{x:Bind ViewModel.PageTitle, Mode=OneWay}"/>
+                                <TextBlock FontWeight="SemiBold" Text="{x:Bind ViewModel.AllocationUnit.DisplayName, Mode=OneWay}" />
+                            </StackPanel>
+                        </StackPanel>
+                    </AppBarElementContainer>
+
                     <AppBarElementContainer VerticalAlignment="Stretch" 
                                             Margin="12,0,0,0" 
                                             VerticalContentAlignment="Stretch">
                         <controls:PageAddressTextBox x:Name="PageAddressTextBox" 
-                                                     VerticalAlignment="Center"
-                                                     BorderThickness="1"
-                                                     Margin="0,0,10,0"
-                                                     PageAddress="{x:Bind ViewModel.PageAddress, Mode=TwoWay}" 
-                                                     DatabaseName="{x:Bind ViewModel.Database.Name, Mode=OneWay}" />
-                    </AppBarElementContainer>
-                    <AppBarElementContainer VerticalAlignment="Stretch">
-                        <StackPanel VerticalAlignment="Stretch" Margin="0,8,14,0" MinWidth="150">
-                            <TextBlock Foreground="{ThemeResource TextFillColorSecondaryBrush}" Text="{x:Bind ViewModel.PageTitle, Mode=OneWay}"/>
-                            <TextBlock FontWeight="SemiBold" Text="{x:Bind ViewModel.AllocationUnit.DisplayName, Mode=OneWay}" />
-                        </StackPanel>
+                                               VerticalAlignment="Center"
+                                               BorderThickness="1"
+                                               Margin="0,0,14,0"
+                                               PageAddress="{x:Bind ViewModel.PageAddress, Mode=TwoWay}" 
+                                               DatabaseName="{x:Bind ViewModel.Database.Name, Mode=OneWay}" />
                     </AppBarElementContainer>
                     <AppBarSeparator />
                     <AppBarButton Label="Refresh" 

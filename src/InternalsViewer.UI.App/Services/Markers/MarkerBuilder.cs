@@ -4,6 +4,7 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
+using Windows.ApplicationModel.Email;
 using InternalsViewer.Internals.Annotations;
 using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Internals.Engine.Records;
@@ -163,6 +164,8 @@ public static class MarkerBuilder
         {
             style = styleProvider.GetMarkStyle(item.ItemType);
 
+            marker.IsVisible = item.IsVisible;
+
             marker.Name = item.PropertyName.SplitCamelCase();
         }
 
@@ -256,7 +259,6 @@ public static class MarkerBuilder
                 case (ColumnDescriptor[] columnDescriptors, _):
                     marker.Value = StringHelpers.GetArrayString(columnDescriptors);
                     break;
-                // An enum name reads as one run-together word, which is not how the rest of the interface writes it
                 case (Enum enumValue, _):
                     marker.Value = enumValue.ToString().SplitCamelCase();
                     break;

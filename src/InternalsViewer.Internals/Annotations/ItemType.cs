@@ -6,6 +6,7 @@ public enum ItemType
 
     // Allocations
     PageAddress,
+    AllocationData,
 
     // Page Header
     AllocationUnitId,

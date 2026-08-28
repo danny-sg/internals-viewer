@@ -13,6 +13,11 @@ public class DataStructure : IDataStructure
     /// </summary>
     public void MarkProperty(string propertyName, int offset, int length, string[]? tags = null)
     {
+        MarkProperty(ItemType.None, propertyName, offset, length, tags);
+    }
+
+    public void MarkProperty(ItemType itemType, string propertyName, int offset, int length, string[]? tags = null, bool isVisible = true)
+    {
         if (!IsMarkEnabled)
         {
             return;
@@ -20,10 +25,12 @@ public class DataStructure : IDataStructure
 
         var dataStructureItem = new PropertyItem
         {
+            ItemType = itemType,
             PropertyName = propertyName,
             Offset = offset,
             Length = length,
-            Tags = tags ?? []
+            Tags = tags ?? [],
+            IsVisible = isVisible
         };
 
         MarkItems.Add(dataStructureItem);

@@ -29,14 +29,26 @@ public sealed class ColumnstoreTabViewModelFactory(ILogger<ColumnstoreTabViewMod
                                                    IRecordService recordService)
 {
     public ColumnstoreTabViewModel Create(DatabaseSource database, long allocationUnitId)
-        => new(logger,
-               loggerFactory,
-               columnstoreService,
-               pageService,
-               iamChainService,
-               recordService,
-               database,
-               allocationUnitId);
+    {
+        var allocationUnit = database.AllocationUnits.GetValueOrDefault(allocationUnitId)
+                             ?? database.AllocationUnits
+                                 .Values
+                                 .FirstOrDefault(a => a.AllocationUnitId == allocationUnitId);
+
+        if (allocationUnit is null)
+        {
+            throw new InvalidOperationException($"Allocation unit: {allocationUnitId} not found");
+        }
+
+        return new(logger,
+                   loggerFactory,
+                   columnstoreService,
+                   pageService,
+                   iamChainService,
+                   recordService,
+                   database,
+                   allocationUnit);
+    }
 }
 
 public sealed partial class ColumnstoreTabViewModel : TabViewModel
@@ -118,7 +130,7 @@ public sealed partial class ColumnstoreTabViewModel : TabViewModel
                                    IIamChainService iamChainService,
                                    IRecordService recordService,
                                    DatabaseSource database,
-                                   long allocationUnitId)
+                                   AllocationUnit allocationUnit)
     {
         Logger = logger;
         LoggerFactory = loggerFactory;
@@ -127,14 +139,14 @@ public sealed partial class ColumnstoreTabViewModel : TabViewModel
         IamChainService = iamChainService;
         RecordService = recordService;
         Database = database;
-        AllocationUnitId = allocationUnitId;
+        AllocationUnit = allocationUnit;
 
         Dock = BuildDock();
     }
 
     public DatabaseSource Database { get; }
 
-    public long AllocationUnitId { get; }
+    public AllocationUnit AllocationUnit { get; }
 
     public string RowGroupCountDescription => RowGroupCount == 1 ? "1 row group" : $"{RowGroupCount} row groups";
 
@@ -167,23 +179,11 @@ public sealed partial class ColumnstoreTabViewModel : TabViewModel
 
         try
         {
-            var allocationUnit = Database.AllocationUnits.GetValueOrDefault(AllocationUnitId)
-                                 ?? Database.AllocationUnits
-                                            .Values
-                                            .FirstOrDefault(a => a.AllocationUnitId == AllocationUnitId);
-
-            if (allocationUnit is null)
-            {
-                LoadingText = $"Allocation unit {AllocationUnitId} was not found";
-
-                return;
-            }
-
-            Name = string.IsNullOrEmpty(allocationUnit.DisplayName)
-                ? allocationUnit.TableName
-                : allocationUnit.DisplayName;
-
-            var index = await Task.Run(() => ColumnstoreService.GetIndex(allocationUnit, Database, CancellationToken),
+            Name = string.IsNullOrEmpty(AllocationUnit.DisplayName)
+                   ? AllocationUnit.TableName
+                   : AllocationUnit.DisplayName;
+                  
+            var index = await Task.Run(() => ColumnstoreService.GetIndex(AllocationUnit, Database, CancellationToken),
                                        CancellationToken);
 
             var summaries = await Task.Run(() => RowGroupSummary.Build(index), CancellationToken);
@@ -212,7 +212,7 @@ public sealed partial class ColumnstoreTabViewModel : TabViewModel
         }
         catch (Exception exception)
         {
-            Logger.LogError(exception, "Failed to load columnstore index {AllocationUnitId}", AllocationUnitId);
+            Logger.LogError(exception, "Failed to load columnstore index {AllocationUnitId}", AllocationUnit.AllocationUnitId);
 
             LoadingText = exception.Message;
         }

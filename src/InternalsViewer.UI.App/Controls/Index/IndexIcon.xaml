@@ -9,13 +9,17 @@
     Height="32"
     mc:Ignorable="d">
     <Border Padding="2">
-    <Viewbox>
-        <Canvas Width="32" Height="32">
-            <Rectangle x:Name="RootNode" Canvas.Left="12" Canvas.Top="1" Width="9" Height="13"/>
+        <Viewbox>
+            <Canvas Width="32" Height="32">
+                <Rectangle x:Name="RootNode" Canvas.Left="12" Canvas.Top="0" Width="8" Height="8"/>
 
-            <Rectangle x:Name="LeftNode" Canvas.Left="2" Canvas.Top="19" Width="9" Height="13"/>
-            <Rectangle x:Name="RightNode" Canvas.Left="22" Canvas.Top="19" Width="9" Height="13"/>
-        </Canvas>
-    </Viewbox>
+                <Rectangle x:Name="IntermediateLeftNode" Canvas.Left="6" Canvas.Top="12" Width="8" Height="8"/>
+                <Rectangle x:Name="IntermediateRightNode" Canvas.Left="18" Canvas.Top="12" Width="8" Height="8"/>
+
+                <Rectangle x:Name="LeafLeftNode" Canvas.Left="0" Canvas.Top="24" Width="8" Height="8"/>
+                <Rectangle x:Name="LeafMiddleNode" Canvas.Left="12" Canvas.Top="24" Width="8" Height="8"/>
+                <Rectangle x:Name="LeafRightNode" Canvas.Left="24" Canvas.Top="24" Width="8" Height="8"/>
+            </Canvas>
+        </Viewbox>
     </Border>
 </UserControl>

@@ -1,20 +1,32 @@
+using System.Collections.Generic;
 using System.Drawing;
+using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Media;
 using Point = Windows.Foundation.Point;
+using Rectangle = Microsoft.UI.Xaml.Shapes.Rectangle;
 
 namespace InternalsViewer.UI.App.Helpers;
 
-/// <summary>
-/// Diagonal white highlight shared by the generated command bar icons
-/// </summary>
-/// <remarks>
-/// Each shape takes its two stops from one ramp running top left to bottom right across the whole icon, so shapes drawn
-/// separately still read as a single gradient. Positions are the shape's top left and bottom right corners measured
-/// along that ramp, where 0 is the top left of the icon and 1 the bottom right.
-/// </remarks>
 internal static class IconHighlight
 {
-    private const double MaximumHighlight = 0.65;
+    private const double MaximumHighlight = 0.45;
+
+    public static void FillShapes(IReadOnlyList<Rectangle> shapes, Color colour, double iconSize)
+    {
+        foreach (var shape in shapes)
+        {
+            shape.Fill = CreateShapeBrush(shape, colour, iconSize);
+        }
+    }
+
+    private static Brush CreateShapeBrush(Rectangle shape, Color colour, double iconSize)
+    {
+        var start = Canvas.GetLeft(shape) + Canvas.GetTop(shape);
+
+        var end = start + shape.Width + shape.Height;
+
+        return CreateBrush(colour, start / (iconSize * 2), end / (iconSize * 2));
+    }
 
     public static Brush CreateBrush(Color colour, double start, double end)
     {

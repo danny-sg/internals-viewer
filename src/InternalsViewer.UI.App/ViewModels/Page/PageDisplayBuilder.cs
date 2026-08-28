@@ -3,7 +3,6 @@ using InternalsViewer.Internals.Engine.Allocation;
 using InternalsViewer.Internals.Engine.Pages;
 using InternalsViewer.Internals.Interfaces.Engine;
 using InternalsViewer.Internals.Interfaces.Services.Records;
-using InternalsViewer.Query.Results;
 using InternalsViewer.UI.App.Helpers;
 using InternalsViewer.UI.App.Models;
 using InternalsViewer.UI.App.Models.Page;
@@ -12,7 +11,6 @@ using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using AllocationUnit = InternalsViewer.Internals.Engine.Database.AllocationUnit;
 
 namespace InternalsViewer.UI.App.ViewModels.Page;
 
@@ -25,6 +23,7 @@ internal sealed class PageDisplayBuilder(ILogger logger, IRecordService recordSe
     public const int AllocationsTabIndex = 2;
 
     public const short PageHeaderSlot = -100;
+    public const short OffsetTableSlot = -200;
     public const short IamHeaderSlot = -10;
     public const short BootPageSlot = -9;
     public const short FileHeaderSlot = -8;
@@ -46,6 +45,14 @@ internal sealed class PageDisplayBuilder(ILogger logger, IRecordService recordSe
 
         if (resultPage is not AllocationPage and not BootPage)
         {
+            var offsetTableSlot = new PageSlot()
+            {
+                Index = OffsetTableSlot,
+                Description = "Offset Table"
+            };
+
+            slots.Add(offsetTableSlot);
+
             slots.AddRange(resultPage.OffsetTable.Select((s, i) => new PageSlot
             {
                 Index = (short)i,
@@ -203,29 +210,4 @@ internal sealed class PageDisplayBuilder(ILogger logger, IRecordService recordSe
 
         return records;
     }
-}
-
-internal sealed record PageDisplay(Internals.Engine.Pages.Page Page, List<PageSlot> Slots, short? Slot)
-{
-    public AllocationUnit? AllocationUnit { get; init; }
-
-    public List<IRecord>? Records { get; init; }
-
-    public QueryResultSet? RecordsResultSet { get; init; }
-
-    public AllocationLayer? AllocationLayer { get; init; }
-
-    public short? AllocationFileId { get; init; }
-
-    public int? AllocationStartPage { get; init; }
-
-    public PfsChain? PfsChain { get; init; }
-
-    public bool? IsRowDataTabVisible { get; init; }
-
-    public bool? IsAllocationsTabVisible { get; init; }
-
-    public bool? IsPfsTabVisible { get; init; }
-
-    public (int From, int To)? TabSwitch { get; init; }
 }

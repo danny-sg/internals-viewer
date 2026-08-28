@@ -6,6 +6,7 @@
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     xmlns:docking="using:InternalsViewer.UI.App.Controls.Docking"
+    xmlns:columnstore="using:InternalsViewer.UI.App.Controls.Columnstore"
     mc:Ignorable="d">
 
     <Grid Background="{ThemeResource LayerFillColorDefaultBrush}">
@@ -22,20 +23,27 @@
      
             <AppBarElementContainer VerticalContentAlignment="Center">
                 <AppBarElementContainer VerticalAlignment="Center">
-                    <StackPanel VerticalAlignment="Stretch" Margin="12,0,18,0">
-                        <TextBlock>Columnstore Index</TextBlock>
-                        <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
-                            <TextBlock Text="{x:Bind ViewModel.IndexDescription, Mode=OneWay}"
-                                       VerticalAlignment="Center"
-                                       FontWeight="SemiBold"
-                                       FontSize="12"/>
-                            <Grid Margin="0"
-                                  VerticalAlignment="Center"
-                                  Background="{ThemeResource LayerOnMicaBaseAltFillColorDefault}">
-                                <TextBlock Margin="0"
-                                           Foreground="DarkGreen"
-                                           Text="{x:Bind ViewModel.IndexTypeDescription, Mode=OneWay}"/>
-                            </Grid>
+                    <StackPanel Orientation="Horizontal"
+                                Spacing="10"
+                                VerticalAlignment="Stretch"
+                                Margin="12,0,18,0">
+                        <columnstore:ColumnstoreIcon VerticalAlignment="Center"
+                                                     Colour="{x:Bind ViewModel.AllocationUnit.DisplayColour, Mode=OneWay}"/>
+                        <StackPanel VerticalAlignment="Center">
+                            <TextBlock>Columnstore Index</TextBlock>
+                            <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                                <TextBlock Text="{x:Bind ViewModel.IndexDescription, Mode=OneWay}"
+                                           VerticalAlignment="Center"
+                                           FontWeight="SemiBold"
+                                           FontSize="12"/>
+                                <Grid Margin="0"
+                                      VerticalAlignment="Center"
+                                      Background="{ThemeResource LayerOnMicaBaseAltFillColorDefault}">
+                                    <TextBlock Margin="0"
+                                               Foreground="DarkGreen"
+                                               Text="{x:Bind ViewModel.IndexTypeDescription, Mode=OneWay}"/>
+                                </Grid>
+                            </StackPanel>
                         </StackPanel>
                     </StackPanel>
                 </AppBarElementContainer>

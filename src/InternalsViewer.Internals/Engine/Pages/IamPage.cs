@@ -21,7 +21,7 @@ public sealed class IamPage : AllocationPage
     public AllocationUnit AllocationUnit { get; set; } = AllocationUnit.Unknown;
 
     /// <summary>
-    /// Single page slots collection (IAM pages only).
+    /// Single page slots collection
     /// </summary>
     public PageAddress[] SinglePageSlots { get; set; } = new PageAddress[8];
 

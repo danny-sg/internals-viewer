@@ -3,19 +3,19 @@ using InternalsViewer.UI.App.Helpers;
 using Microsoft.UI.Xaml.Controls;
 using Rectangle = Microsoft.UI.Xaml.Shapes.Rectangle;
 
-namespace InternalsViewer.UI.App.Controls.Index;
+namespace InternalsViewer.UI.App.Controls.Page;
 
 /// <summary>
-/// Index tab icon coloured by an allocation unit's display colour
+/// Page tab icon coloured by an allocation unit's display colour
 /// </summary>
-public sealed partial class IndexIcon : UserControl
+public sealed partial class PageIcon : UserControl
 {
     private const double IconSize = 32;
 
     public static readonly DependencyProperty ColourProperty =
         DependencyProperty.Register(nameof(Colour),
                                     typeof(Color),
-                                    typeof(IndexIcon),
+                                    typeof(PageIcon),
                                     new PropertyMetadata(Color.Gray, OnColourChanged));
 
     public Color Colour
@@ -24,29 +24,24 @@ public sealed partial class IndexIcon : UserControl
         set => SetValue(ColourProperty, value);
     }
 
-    public IndexIcon()
+    public PageIcon()
     {
         InitializeComponent();
 
-        Nodes =
-        [
-            RootNode,
-            IntermediateLeftNode, IntermediateRightNode,
-            LeafLeftNode, LeafMiddleNode, LeafRightNode
-        ];
+        Bands = [HeaderBand];
 
         ApplyColour();
     }
 
-    private Rectangle[] Nodes { get; }
+    private Rectangle[] Bands { get; }
 
     private void ApplyColour()
     {
-        IconHighlight.FillShapes(Nodes, Colour, IconSize);
+        IconHighlight.FillShapes(Bands, Colour, IconSize);
     }
 
     private static void OnColourChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
     {
-        ((IndexIcon)d).ApplyColour();
+        ((PageIcon)d).ApplyColour();
     }
 }
