@@ -111,24 +111,12 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
     private readonly TraceDirectoryService _traceDirectoryService;
 
-    private bool _autoScroll = true;
-
-    private bool _isHeatmap;
-
     private bool _isRestoringLayout;
     private bool _layoutRestored;
     private bool _layoutTouched;
     private bool _saveScheduled;
 
     private int? _traceTargetNodeId;
-
-    private bool _isFlameGraphVisible = true;
-
-    private bool _isSqlResultsVisible;
-
-    private bool _isSqlMessagesVisible;
-
-    private bool _isSqlHistoryVisible;
 
     private List<PageSpan> _pageSpans = [];
 
@@ -201,24 +189,29 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
     [ObservableProperty]
     private long _playheadTimeUs;
 
-    /// <summary>
-    /// Whether a trace's page visuals follow the page their operator is reading
-    /// </summary>
-    /// <remarks>
-    /// Held by the query rather than by the trace, which is rebuilt from scratch each time an operator is traced.
-    /// </remarks>
     [ObservableProperty]
     private bool _isZoomToPage;
 
-    /// <summary>
-    /// Whether the query is fully tracked, capturing events and a plan rather than just running it
-    /// </summary>
-    /// <remarks>
-    /// Untracked, the query runs straight through with no Extended Events session, so there is nothing to show in the
-    /// allocation map, the timeline, the events or the trace.
-    /// </remarks>
     [ObservableProperty]
     private bool _trackQuery = true;
+
+    [ObservableProperty]
+    private bool _autoScroll = true;
+
+    [ObservableProperty]
+    private bool _isHeatmap;
+
+    [ObservableProperty]
+    private bool _isFlameGraphVisible = true;
+
+    [ObservableProperty]
+    private bool _isSqlResultsVisible;
+
+    [ObservableProperty]
+    private bool _isSqlMessagesVisible;
+
+    [ObservableProperty]
+    private bool _isSqlHistoryVisible;
 
     [ObservableProperty]
     private DatabaseSchema? _schema;
@@ -345,18 +338,6 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
     /// The queries run against this database, listed beside the SQL editor
     /// </summary>
     public QueryHistoryViewModel History { get; }
-
-    public bool AutoScroll
-    {
-        get => _autoScroll;
-        set => SetProperty(ref _autoScroll, value);
-    }
-
-    public bool IsHeatmap
-    {
-        get => _isHeatmap;
-        set => SetProperty(ref _isHeatmap, value);
-    }
 
     /// <summary>
     /// The query capture and display options (crop, system objects, lock categories, waits/latches/memory/call stack)
@@ -489,30 +470,6 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
         }
     }
 
-    public bool IsFlameGraphVisible
-    {
-        get => _isFlameGraphVisible;
-        set => SetProperty(ref _isFlameGraphVisible, value);
-    }
-
-    public bool IsSqlResultsVisible
-    {
-        get => _isSqlResultsVisible;
-        set => SetProperty(ref _isSqlResultsVisible, value);
-    }
-
-    public bool IsSqlMessagesVisible
-    {
-        get => _isSqlMessagesVisible;
-        set => SetProperty(ref _isSqlMessagesVisible, value);
-    }
-
-    public bool IsSqlHistoryVisible
-    {
-        get => _isSqlHistoryVisible;
-        set => SetProperty(ref _isSqlHistoryVisible, value);
-    }
-
     public Visibility HasEvents
         => Events.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
 
@@ -563,14 +520,6 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
         }
     }
 
-    /// <summary>
-    /// Opens a trace of an operator and everything below it
-    /// </summary>
-    /// <remarks>
-    /// The plan node is the whole identity of a trace, so one document is kept per operator and the kind of operator no longer decides
-    /// anything here. An operator with something below it that cannot be simulated builds no definition and opens nothing, which is the
-    /// same test the context menu uses to decide whether to offer the command.
-    /// </remarks>
     public bool OpenTrace(PlanNode node)
     {
         if (node.IsStatement)
@@ -1648,7 +1597,7 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
             CallStack = results.CallStackTree;
 
-            ExecutionPlans = new ObservableCollection<ExecutionPlan>(results.ExecutionPlans);
+            ExecutionPlans = new ObservableCollection<ExecutionPlan>(results.ExecutionPlans.Where(p => !p.IsInternalPlan));
 
             RefreshTraceDocuments();
 

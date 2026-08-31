@@ -875,12 +875,9 @@ public sealed partial class TraceTabViewModel : ObservableObject, IDisposable
                     return;
                 }
 
-                var delay = RunDelayMs < 0 ? 0 : Math.Max(1, RunDelayMs);
+                var delay = RunDelayMs < 0 ? 1 : Math.Max(1, RunDelayMs);
 
-                if (delay > 0)
-                {
-                    await Task.Delay(TimeSpan.FromMilliseconds(delay), cancellationToken);
-                }
+                await Task.Delay(TimeSpan.FromMilliseconds(delay), cancellationToken);
             }
         }
         catch (OperationCanceledException)

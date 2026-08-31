@@ -80,6 +80,7 @@ public sealed partial class PageTabViewModel(ILogger<PageTabViewModel> logger,
     [NotifyCanExecuteChangedFor(nameof(PageForwardCommand))]
     [NotifyCanExecuteChangedFor(nameof(PageBackCommand))]
     [NotifyPropertyChangedFor(nameof(IsDataTabVisible))]
+    [NotifyPropertyChangedFor(nameof(PageTitle))]
     private Internals.Engine.Pages.Page _page = new EmptyPage();
 
     [ObservableProperty]
@@ -221,6 +222,8 @@ public sealed partial class PageTabViewModel(ILogger<PageTabViewModel> logger,
             PageAddress = pageAddress;
         });
 
+        var completion = new TaskCompletionSource();
+
         await Task.Run(async () =>
             {
                 var resultPage = await PageService.GetPage(Database, pageAddress, CancellationToken);
@@ -228,7 +231,7 @@ public sealed partial class PageTabViewModel(ILogger<PageTabViewModel> logger,
                 _baselineData = (byte[])resultPage.Data.Clone();
 
                 var display = DisplayBuilder.Build(resultPage, (short?)slot, pageAddress);
-
+                
                 DispatcherQueue.TryEnqueue(() =>
                 {
                     Name = $"{PageHelpers.GetPageTypeShortName(resultPage.PageHeader.PageType)} " +
@@ -252,8 +255,12 @@ public sealed partial class PageTabViewModel(ILogger<PageTabViewModel> logger,
                     PfsBorders = null;
 
                     IsLoading = false;
+
+                    completion.SetResult();
                 });
             }, CancellationToken);
+
+        await completion.Task;
 
         History.Add(PageAddress);
     }

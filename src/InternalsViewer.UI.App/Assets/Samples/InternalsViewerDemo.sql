@@ -7,14 +7,27 @@ GO
 SELECT Id
       ,TextField
 FROM   dbo.ClusteredTable
-WHERE  TextField LIKE 'Clustered table row 400%' OR Id = 1000
+WHERE  Id = 1000
 GO
 
--- Index scan
+-- Index seek (multiple)
+SELECT Id
+      ,TextField
+FROM   dbo.ClusteredTable
+WHERE  Id IN (1000, 2000)
+GO
+
+-- Clustered Index scan
 SELECT Id
       ,TextField
 FROM   dbo.ClusteredTable
 WHERE  TextField LIKE '%Clustered table row 400%'
+GO
+
+-- Heap Scan
+SELECT *
+FROM   dbo.HeapTable
+WHERE  TextField = ''
 GO
 
 -- RID Lookup
