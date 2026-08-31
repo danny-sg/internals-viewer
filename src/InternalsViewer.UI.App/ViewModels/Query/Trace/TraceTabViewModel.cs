@@ -379,6 +379,13 @@ public sealed partial class TraceTabViewModel : ObservableObject, IDisposable
     [RelayCommand]
     public async Task StepNext()
     {
+        if (HasBatchAdapter)
+        {
+            await StepToBatchAsync();
+
+            return;
+        }
+
         if (!IsStepping)
         {
             await StartAsync();
@@ -428,6 +435,68 @@ public sealed partial class TraceTabViewModel : ObservableObject, IDisposable
 
     [RelayCommand(AllowConcurrentExecutions = true)]
     public Task RunToEnd() => RunUntilAsync(null);
+
+    public bool HasBatchAdapter => Layout.Nodes.Values.Any(n => n.Definition is BatchToRowDefinition);
+
+    private static bool IsBatchBoundary(AccessStep step)
+        => step is AccessStep.BatchProduced
+                   or AccessStep.FilterVector
+                   or AccessStep.BatchFiltered
+                   or AccessStep.ComputeVector
+                   or AccessStep.RowGroupOpened
+                   or AccessStep.RowGroupSkipped
+                   or AccessStep.SegmentElimination
+                   or AccessStep.Stopped
+                   or AccessStep.Close;
+
+    private async Task StepToBatchAsync()
+    {
+        if (!IsStepping)
+        {
+            await StartAsync();
+        }
+
+        if (Stepper is not { } stepper)
+        {
+            return;
+        }
+
+        AccessStep? last = null;
+
+        while (true)
+        {
+            var step = await Task.Run(() => stepper.StepNextAsync(CancellationToken.None));
+
+            if (step is null)
+            {
+                IsStepComplete = true;
+
+                IsRunning = false;
+
+                break;
+            }
+
+            TraceStepRuns.Append(step, StepHistory, HistoryLimit);
+
+            Applier.ApplyStep(stepper, step);
+
+            last = step;
+
+            if (IsBatchBoundary(step) || IsBreakpointHit(step))
+            {
+                break;
+            }
+        }
+
+        if (last is null)
+        {
+            return;
+        }
+
+        NotifyDescriptionChanged();
+
+        CurrentStep = last;
+    }
 
     public bool HasBreakpoints => Operators.Any(o => o.IsBreakpoint);
 

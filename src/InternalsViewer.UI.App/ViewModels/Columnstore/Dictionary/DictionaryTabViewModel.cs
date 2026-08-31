@@ -15,7 +15,6 @@ using InternalsViewer.UI.App.Controls.Columnstore;
 using InternalsViewer.UI.App.Models.Columnstore;
 using InternalsViewer.UI.App.Models.Columnstore.Segment;
 using InternalsViewer.UI.App.Models.Columnstore.Dictionary;
-using InternalsViewer.UI.App.Services.Diagnostics;
 using Microsoft.Extensions.Logging;
 
 namespace InternalsViewer.UI.App.ViewModels.Columnstore.Dictionary;

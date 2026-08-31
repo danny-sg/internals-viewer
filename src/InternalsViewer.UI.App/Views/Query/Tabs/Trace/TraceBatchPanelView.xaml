@@ -46,6 +46,9 @@
                                    FontSize="11"
                                    Foreground="White" />
                     </Border>
+                    <TextBlock Text="Complete"
+                               Visibility="{x:Bind Batch.IsSpent, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}"
+                               Foreground="{ThemeResource TextFillColorTertiaryBrush}" />
                 </StackPanel>
             </Grid>
         </Border>

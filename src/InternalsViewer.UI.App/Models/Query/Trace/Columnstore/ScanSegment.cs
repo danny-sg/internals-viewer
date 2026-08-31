@@ -1,4 +1,5 @@
 ﻿using System.Collections.Generic;
+using InternalsViewer.Internals.Columnstore.Segments;
 
 namespace InternalsViewer.UI.App.Models.Query.Trace.Columnstore;
 
@@ -14,5 +15,5 @@ public sealed class ScanSegment
 
     public bool IsOpened { get; set; }
 
-    public IReadOnlyList<int> Runs { get; set; } = [];
+    public IReadOnlyList<RleEntry> Runs { get; set; } = [];
 }

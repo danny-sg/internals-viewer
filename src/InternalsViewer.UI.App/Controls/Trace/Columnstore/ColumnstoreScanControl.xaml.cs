@@ -82,6 +82,8 @@ public sealed partial class ColumnstoreScanControl
         set => SetValue(NodeColourProperty, value);
     }
 
+    private readonly ColumnstoreScanRenderer _renderer = new();
+
     private List<ColumnstoreRegion> _regions = [];
 
     public ColumnstoreScanControl()
@@ -99,6 +101,17 @@ public sealed partial class ColumnstoreScanControl
 
     public void Refresh() => ScanCanvas.Invalidate();
 
+    public void Dispose()
+    {
+        ScanCanvas.PaintSurface -= OnPaintSurface;
+
+        ScanCanvas.PointerMoved -= OnPointerMoved;
+
+        ScanCanvas.PointerExited -= OnPointerExited;
+
+        _renderer.Dispose();
+    }
+
     private static void OnVisualChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
         => ((ColumnstoreScanControl)d).ScanCanvas.Invalidate();
 
@@ -108,7 +121,7 @@ public sealed partial class ColumnstoreScanControl
 
         var colour = new SKColor(NodeColour.R, NodeColour.G, NodeColour.B, NodeColour.A);
 
-        _regions = ColumnstoreScanRenderer.Draw(e.Surface.Canvas,
+        _regions = _renderer.Draw(e.Surface.Canvas,
                                      bounds,
                                      RowGroups ?? [],
                                      ActiveRowGroupId,

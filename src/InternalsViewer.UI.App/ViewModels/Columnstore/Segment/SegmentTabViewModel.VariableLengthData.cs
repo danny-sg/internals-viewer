@@ -9,7 +9,6 @@ using InternalsViewer.UI.App.Models;
 using InternalsViewer.UI.App.Models.Columnstore;
 using InternalsViewer.UI.App.Models.Columnstore.Segment;
 using InternalsViewer.UI.App.Services.Markers;
-using InternalsViewer.UI.App.ViewModels.Columnstore;
 
 namespace InternalsViewer.UI.App.ViewModels.Columnstore.Segment;
 

@@ -3,7 +3,6 @@ using CommunityToolkit.Mvvm.Messaging;
 using InternalsViewer.UI.App.Messages;
 using InternalsViewer.UI.App.Models.Columnstore;
 using InternalsViewer.UI.App.ViewModels.Columnstore;
-using Microsoft.UI.Xaml.Controls;
 using InternalsViewer.UI.App.Controls;
 using InternalsViewer.Internals.Engine.Address;
 

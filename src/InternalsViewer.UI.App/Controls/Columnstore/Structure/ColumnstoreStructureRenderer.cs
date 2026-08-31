@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using InternalsViewer.Internals.Columnstore.Metadata;
 using InternalsViewer.Internals.Columnstore.Blobs;
 using InternalsViewer.Internals.Columnstore.Metadata.Enums;
-using InternalsViewer.Internals.Helpers;
 using InternalsViewer.UI.App.Helpers;
 using InternalsViewer.UI.App.Models.Columnstore;
 using InternalsViewer.UI.App.Models.Columnstore.Segment;
@@ -20,11 +19,9 @@ public sealed class ColumnstoreStructureRenderer : IDisposable
 
     private const float BadgeTopMargin = 6f;
 
-    private const int RunBandAlpha = 150;
+    private const int RunMinimumAlpha = 60;
 
-    private const int RunDensityAlphaMax = 210;
-
-    public bool ShowRuns { get; set; }
+    private const int RunMaximumAlpha = 220;
 
     private static readonly SKTypeface InterfaceTypeface = GetInterfaceTypeface(SKFontStyleWeight.Normal);
 
@@ -69,6 +66,8 @@ public sealed class ColumnstoreStructureRenderer : IDisposable
     };
 
     private readonly SKRoundRect _roundRect = new();
+
+    private int[] _runAlphas = [];
 
     public SKColor TextColour { get; set; } = ColumnstoreColours.Text;
 
@@ -191,6 +190,18 @@ public sealed class ColumnstoreStructureRenderer : IDisposable
             : ColumnstoreLayout.ColumnHeaderHeight;
 
     public static string FormatSize(long bytes) => SizeFormat.Format(bytes);
+
+    private int[] RunBuffer(int size)
+    {
+        if (_runAlphas.Length < size)
+        {
+            _runAlphas = new int[size];
+        }
+
+        Array.Clear(_runAlphas, 0, size);
+
+        return _runAlphas;
+    }
 
     public void Dispose()
     {
@@ -807,8 +818,7 @@ public sealed class ColumnstoreStructureRenderer : IDisposable
     /// </summary>
     private bool DrawSegmentRuns(SKCanvas canvas, SegmentSummary segment, SKRect bounds, float left, SKColor colour)
     {
-        if (!ShowRuns
-            || ColumnstoreLayout.IsNarrow(bounds.Width)
+        if (ColumnstoreLayout.IsNarrow(bounds.Width)
             || segment.Storage is not (SegmentStorage.RunLength or SegmentStorage.Mixed)
             || segment.Runs.Count == 0
             || segment.RowCount <= 0
@@ -827,49 +837,42 @@ public sealed class ColumnstoreStructureRenderer : IDisposable
 
         canvas.DrawLine(track.Left + 0.5f, track.Top, track.Left + 0.5f, track.Bottom, _stroke);
 
+        var scale = RunValueScale.Build(segment.Runs, RunMinimumAlpha, RunMaximumAlpha);
+
         var lines = (int)MathF.Ceiling(track.Height);
 
-        var covering = new int[lines];
+        var alphas = RunBuffer(lines);
 
-        var parity = new int[lines];
-
-        var scale = track.Height / segment.RowCount;
+        var rowScale = track.Height / segment.RowCount;
 
         var row = 0;
 
-        for (var i = 0; i < segment.Runs.Count; i++)
+        foreach (var run in segment.Runs)
         {
-            var top = row * scale;
+            var top = row * rowScale;
 
-            row += segment.Runs[i];
+            row += run.Count;
 
             var first = Math.Clamp((int)MathF.Floor(top), 0, lines - 1);
 
-            var last = Math.Clamp((int)MathF.Ceiling(row * scale) - 1, first, lines - 1);
+            var last = Math.Clamp((int)MathF.Ceiling(row * rowScale) - 1, first, lines - 1);
+
+            var alpha = scale.GetAlpha(run);
 
             for (var line = first; line <= last; line++)
             {
-                covering[line]++;
-
-                parity[line] = i & 1;
+                alphas[line] = Math.Max(alphas[line], alpha);
             }
         }
 
         for (var line = 0; line < lines; line++)
         {
-            var alpha = covering[line] switch
-            {
-                0 => 0,
-                1 => parity[line] == 1 ? RunBandAlpha : 0,
-                _ => Math.Min(RunDensityAlphaMax, (int)(RunBandAlpha * (0.5f + (MathF.Log2(covering[line]) / 4f))))
-            };
-
-            if (alpha == 0)
+            if (alphas[line] == 0)
             {
                 continue;
             }
 
-            _fill.Color = colour.WithAlpha((byte)alpha);
+            _fill.Color = colour.WithAlpha((byte)alphas[line]);
 
             canvas.DrawRect(new SKRect(track.Left, track.Top + line, track.Right, track.Top + line + 1), _fill);
         }

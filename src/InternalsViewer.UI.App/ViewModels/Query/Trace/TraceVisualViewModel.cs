@@ -25,8 +25,6 @@ using InternalsViewer.UI.App.Models.Index;
 using InternalsViewer.UI.App.Models.Query.Trace;
 using InternalsViewer.UI.App.ViewModels.Allocation;
 using AllocationUnit = InternalsViewer.Internals.Engine.Database.AllocationUnit;
-using InternalsViewer.Execution.Iterators.BatchMode.DataAccess;
-using InternalsViewer.Internals.Columnstore.Decoding;
 using InternalsViewer.Internals.Columnstore.Metadata;
 using System.IO;
 using InternalsViewer.Internals.Columnstore.Segments;
@@ -531,34 +529,29 @@ public sealed partial class TraceVisualViewModel(TraceVisualType visualType,
         }
     }
 
-    private static IReadOnlyList<int> RunRows(SegmentBlob blob)
+    private static IReadOnlyList<RleEntry> RunRows(SegmentBlob blob)
     {
-        var runs = new List<int>();
+        var runs = blob.RleEntries;
 
-        foreach (var run in new SegmentDataIdStream(blob).GetRuns(0, blob.RowCount))
-        {
-            runs.Add(run.RowCount);
-        }
-
-        if (runs.Count <= MaxDrawnRuns)
+        if (runs.Length <= MaxDrawnRuns)
         {
             return runs;
         }
 
-        var merge = (runs.Count + MaxDrawnRuns - 1) / MaxDrawnRuns;
+        var merge = (runs.Length + MaxDrawnRuns - 1) / MaxDrawnRuns;
 
-        var merged = new List<int>(MaxDrawnRuns);
+        var merged = new List<RleEntry>(MaxDrawnRuns);
 
-        for (var i = 0; i < runs.Count; i += merge)
+        for (var i = 0; i < runs.Length; i += merge)
         {
             var rows = 0;
 
-            for (var j = i; j < runs.Count && j < i + merge; j++)
+            for (var j = i; j < runs.Length && j < i + merge; j++)
             {
-                rows += runs[j];
+                rows += runs[j].Count;
             }
 
-            merged.Add(rows);
+            merged.Add(runs[i] with { Count = rows });
         }
 
         return merged;

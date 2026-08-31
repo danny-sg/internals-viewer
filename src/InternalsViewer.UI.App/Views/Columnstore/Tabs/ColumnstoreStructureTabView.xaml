@@ -21,7 +21,6 @@
                                                  DictionaryCoding="{x:Bind ViewModel.DictionaryCoding, Mode=OneWay}"
                                                  Revision="{x:Bind ViewModel.DrawingRevision, Mode=OneWay}"
                                                  DatabaseId="{x:Bind ViewModel.DatabaseId, Mode=OneWay}"
-                                                 ShowRuns="{x:Bind ViewModel.IsRunsVisible, Mode=OneWay}"
                                                  Visibility="{x:Bind ViewModel.IsDrawingReady, Mode=OneWay,
                                                  Converter={StaticResource BoolToVisibilityConverter}}"/>
 

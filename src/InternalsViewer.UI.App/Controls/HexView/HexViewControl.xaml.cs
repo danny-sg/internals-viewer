@@ -1,5 +1,4 @@
-﻿using System;
-using System.Collections.ObjectModel;
+﻿using System.Collections.ObjectModel;
 using InternalsViewer.UI.App.Models;
 using InternalsViewer.UI.App.ViewModels.Page;
 using Microsoft.UI.Xaml.Input;

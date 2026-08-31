@@ -43,7 +43,7 @@ public sealed partial class SegmentSummary : ObservableObject
 
     public required ColumnSegment Segment { get; init; }
 
-    public IReadOnlyList<int> Runs { get; set; } = [];
+    public IReadOnlyList<RleEntry> Runs { get; set; } = [];
 
     public SegmentStorage Storage => SegmentStorageExtensions.Classify(Header);
 

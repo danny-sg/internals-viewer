@@ -4,7 +4,6 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
-using Windows.ApplicationModel.Email;
 using InternalsViewer.Internals.Annotations;
 using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Internals.Engine.Records;

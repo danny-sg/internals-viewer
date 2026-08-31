@@ -1,5 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Text;
 using InternalsViewer.Internals.Engine.Pages;
 using InternalsViewer.UI.App.Models;
@@ -9,7 +8,6 @@ using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Documents;
 using Microsoft.UI.Xaml.Media;
 using InternalsViewer.UI.App.Services.Diagnostics;
-using Microsoft.Extensions.Logging;
 
 namespace InternalsViewer.UI.App.Controls.HexView;
 

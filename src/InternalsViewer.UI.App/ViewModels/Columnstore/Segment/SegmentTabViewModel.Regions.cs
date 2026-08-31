@@ -7,12 +7,9 @@ using InternalsViewer.Internals.Columnstore.Decoding;
 using InternalsViewer.Internals.Columnstore.Segments;
 using InternalsViewer.UI.App.Controls.HexView;
 using InternalsViewer.UI.App.Models;
-using InternalsViewer.UI.App.Models.Columnstore;
 using InternalsViewer.UI.App.Models.Columnstore.Segment;
 using InternalsViewer.UI.App.Services.Markers;
-using InternalsViewer.UI.App.ViewModels.Columnstore;
 using InternalsViewer.UI.App.Services.Diagnostics;
-using Microsoft.Extensions.Logging;
 
 namespace InternalsViewer.UI.App.ViewModels.Columnstore.Segment;
 

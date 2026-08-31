@@ -4,7 +4,6 @@ using CommunityToolkit.Mvvm.Messaging;
 using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.UI.App.Messages;
 using InternalsViewer.UI.App.ViewModels.Columnstore;
-using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 
 namespace InternalsViewer.UI.App.Views.Columnstore.Tabs;

@@ -1,13 +1,11 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Collections.ObjectModel;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using InternalsViewer.Internals.Columnstore.Blobs;
-using InternalsViewer.UI.App.Controls.Columnstore;
 using InternalsViewer.Internals.Columnstore.Metadata;
 using InternalsViewer.Internals.Columnstore.Segments;
 using InternalsViewer.Internals.Columnstore.Services;
@@ -83,8 +81,6 @@ public sealed partial class ColumnstoreTabViewModel : TabViewModel
     [ObservableProperty]
     private IReadOnlyList<SegmentSummary> _segments = [];
 
-    [ObservableProperty]
-    private bool _isRunsVisible;
 
     /// <remarks>
     /// A tab holding its own content is rebuilt every time it is selected, so the strip is separated from what it
@@ -283,27 +279,13 @@ public sealed partial class ColumnstoreTabViewModel : TabViewModel
         DrawingRevision++;
 
         IsDrawingReady = true;
-    }
 
-    partial void OnIsRunsVisibleChanged(bool value)
-    {
-        if (value)
-        {
-            _ = LoadSegmentRuns();
-        }
-        else
-        {
-            DrawingRevision++;
-        }
+        await LoadSegmentRuns();
     }
 
     private async Task LoadSegmentRuns()
     {
-        var pending = Segments.Where(s => s.HasDataPointer && s.Runs.Count == 0).ToList();
-
-        Logger.LogDebug("Loading runs for {Pending} of {Total} segments", pending.Count, Segments.Count);
-
-        foreach (var segment in pending)
+        foreach (var segment in Segments.Where(s => s.HasDataPointer && s.Runs.Count == 0).ToList())
         {
             if (CancellationToken.IsCancellationRequested)
             {
@@ -318,7 +300,7 @@ public sealed partial class ColumnstoreTabViewModel : TabViewModel
                                                                                   depth: SegmentLoadDepth.Runs),
                                           CancellationToken);
 
-                segment.Runs = [.. blob.RleEntries.Select(e => e.Count)];
+                segment.Runs = blob.RleEntries;
             }
             catch (OperationCanceledException)
             {
@@ -332,10 +314,6 @@ public sealed partial class ColumnstoreTabViewModel : TabViewModel
                                 segment.ColumnId);
             }
         }
-
-        Logger.LogDebug("Runs loaded for {Loaded} segments, {Empty} with fewer than two runs",
-                        Segments.Count(s => s.Runs.Count > 0),
-                        Segments.Count(s => s.HasDataPointer && s.Runs.Count < 2));
 
         DrawingRevision++;
     }

@@ -2,10 +2,8 @@
 using System.Linq;
 using CommunityToolkit.Mvvm.ComponentModel;
 using InternalsViewer.UI.App.Models;
-using InternalsViewer.UI.App.Models.Columnstore;
 using InternalsViewer.UI.App.Models.Columnstore.Segment;
 using InternalsViewer.UI.App.Services.Diagnostics;
-using Microsoft.Extensions.Logging;
 
 namespace InternalsViewer.UI.App.ViewModels.Columnstore.Segment;
 

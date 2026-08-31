@@ -1,7 +1,6 @@
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
-using InternalsViewer.UI.App.Models;
 using InternalsViewer.UI.App.Models.Logging;
 using Microsoft.UI.Dispatching;
 using Microsoft.UI.Xaml.Controls;

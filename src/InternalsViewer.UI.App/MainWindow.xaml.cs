@@ -34,7 +34,6 @@ using System.Collections.ObjectModel;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using InternalsViewer.UI.App.Models;
 using WinUIEx;
 using QueryView = InternalsViewer.UI.App.Views.Query.QueryView;
 using InternalsViewer.Connection.BackupFile.Media;

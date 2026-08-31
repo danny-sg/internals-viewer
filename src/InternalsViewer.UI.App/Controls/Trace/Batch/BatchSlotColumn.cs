@@ -2,7 +2,6 @@
 using InternalsViewer.Execution.BatchMode.Normalization;
 using InternalsViewer.UI.App.Models.Query.Trace.Batch;
 using Microsoft.UI;
-using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Input;
 using Microsoft.UI.Xaml.Media;

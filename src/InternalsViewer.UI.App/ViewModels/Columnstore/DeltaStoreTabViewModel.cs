@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Collections.ObjectModel;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -8,7 +7,6 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Internals.Engine.Database;
 using InternalsViewer.Internals.Engine.Database.Enums;
-using InternalsViewer.Internals.Engine.Pages;
 using InternalsViewer.Internals.Engine.Pages.Enums;
 using InternalsViewer.Internals.Interfaces.Services.Loaders.Chains;
 using InternalsViewer.Internals.Engine.Allocation;

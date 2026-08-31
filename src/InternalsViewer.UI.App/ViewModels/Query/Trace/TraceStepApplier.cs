@@ -7,11 +7,9 @@ using InternalsViewer.Execution.AccessPaths.Results.Steps;
 using InternalsViewer.Execution.AccessPaths.Search;
 using InternalsViewer.Execution.Interfaces;
 using InternalsViewer.Execution.Interfaces.Iterators;
-using InternalsViewer.Execution.BatchMode.Vectors;
 using InternalsViewer.Execution.Interfaces.BatchMode;
 using InternalsViewer.Execution.Interfaces.Iterators.Joins;
 using InternalsViewer.Execution.Iterators.BatchMode;
-using InternalsViewer.Execution.Iterators.BatchMode.DataAccess;
 using InternalsViewer.Execution.Iterators.Common;
 using InternalsViewer.Execution.Iterators.RowMode.Aggregation;
 using InternalsViewer.Execution.Iterators.RowMode.Row;
@@ -462,6 +460,13 @@ public sealed class TraceStepApplier(TraceLayout layout,
             return;
         }
 
+        if (step is AccessStep.Stopped)
+        {
+            target.MarkSpent();
+
+            return;
+        }
+
         if (BatchNumber(step) is not { } number)
         {
             return;
@@ -552,7 +557,6 @@ public sealed class TraceStepApplier(TraceLayout layout,
         => step is AccessStep.RowGroupOpened
                    or AccessStep.RowGroupSkipped
                    or AccessStep.SegmentElimination
-                   or AccessStep.Stopped
                    or AccessStep.Close;
 
     public void AttachHashTables(IteratorStepper stepper)

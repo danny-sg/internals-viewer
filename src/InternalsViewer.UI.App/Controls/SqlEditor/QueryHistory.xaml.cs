@@ -1,6 +1,5 @@
 ﻿using InternalsViewer.UI.App.Models.Query;
 using InternalsViewer.UI.App.ViewModels.Query;
-using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Input;
 using System;

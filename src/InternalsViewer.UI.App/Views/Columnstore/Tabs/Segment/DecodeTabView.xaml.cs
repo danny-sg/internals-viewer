@@ -1,7 +1,6 @@
 using System;
 using InternalsViewer.UI.App.Models.Columnstore.Segment;
 using InternalsViewer.UI.App.ViewModels.Columnstore.Segment;
-using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using WinUI.TableView;
 

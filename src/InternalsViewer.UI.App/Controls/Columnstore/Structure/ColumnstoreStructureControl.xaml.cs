@@ -27,18 +27,6 @@ public sealed partial class ColumnstoreStructureControl : IDisposable
         set => SetValue(IndexProperty, value);
     }
 
-    public static readonly DependencyProperty ShowRunsProperty
-        = DependencyProperty.Register(nameof(ShowRuns),
-                                      typeof(bool),
-                                      typeof(ColumnstoreStructureControl),
-                                      new PropertyMetadata(false, OnSourceChanged));
-
-    public bool ShowRuns
-    {
-        get => (bool)GetValue(ShowRunsProperty);
-        set => SetValue(ShowRunsProperty, value);
-    }
-
     public static readonly DependencyProperty RowGroupsProperty
         = DependencyProperty.Register(nameof(RowGroups),
                                       typeof(IReadOnlyList<RowGroupSummary>),
@@ -165,8 +153,6 @@ public sealed partial class ColumnstoreStructureControl : IDisposable
 
             _isThemeDirty = false;
         }
-
-        _renderer.ShowRuns = ShowRuns;
 
         _regions = _renderer.Draw(e.Surface.Canvas,
                                   index,

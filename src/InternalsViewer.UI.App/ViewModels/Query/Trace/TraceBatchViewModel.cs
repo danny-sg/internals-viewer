@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Collections.ObjectModel;
 using System.Linq;
 using CommunityToolkit.Mvvm.ComponentModel;
 using InternalsViewer.Execution.BatchMode.Normalization;
@@ -17,6 +16,9 @@ public sealed partial class TraceBatchViewModel : ObservableObject
 {
     [ObservableProperty]
     private bool _hasBatch;
+
+    [ObservableProperty]
+    private bool _isSpent;
 
     [ObservableProperty]
     private IReadOnlyList<BatchColumnView> _columns = [];
@@ -113,12 +115,18 @@ public sealed partial class TraceBatchViewModel : ObservableObject
 
         HasBatch = true;
 
+        IsSpent = false;
+
         RefreshDetail();
     }
+
+    public void MarkSpent() => IsSpent = HasBatch;
 
     public void Clear()
     {
         HasBatch = false;
+
+        IsSpent = false;
 
         Columns = [];
 

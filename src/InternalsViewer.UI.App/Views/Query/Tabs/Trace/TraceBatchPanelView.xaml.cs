@@ -3,7 +3,6 @@ using InternalsViewer.UI.App.Controls.Trace.Batch;
 using InternalsViewer.UI.App.Models.Query.Trace.Batch;
 using InternalsViewer.UI.App.ViewModels.Query.Trace;
 using Microsoft.UI;
-using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Data;
 using Microsoft.UI.Xaml.Media;
