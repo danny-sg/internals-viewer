@@ -5,6 +5,8 @@ using CommunityToolkit.Mvvm.Messaging;
 using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Query.Events;
 using InternalsViewer.UI.App.Messages;
+using InternalsViewer.Internals.Columnstore.Services;
+using InternalsViewer.UI.App.Helpers;
 using InternalsViewer.UI.App.ViewModels.Query;
 using Microsoft.UI.Input;
 using Microsoft.UI.Xaml.Controls;
@@ -26,6 +28,8 @@ public sealed partial class QueryEventsTabView : UserControl, IDisposable
         Loaded += (_, _) => Subscribe();
         Unloaded += (_, _) => Unsubscribe();
         DataContextChanged += OnDataContextChanged;
+
+        Loaded += (_, _) => AttachStructureResolver();
     }
 
     public QueryViewModel? ViewModel => DataContext as QueryViewModel;
@@ -40,6 +44,18 @@ public sealed partial class QueryEventsTabView : UserControl, IDisposable
         Unsubscribe();
 
         EventGrid.Dispose();
+    }
+
+    private void AttachStructureResolver()
+    {
+        if (ViewModel is not { } viewModel)
+        {
+            return;
+        }
+
+        var cache = App.GetService<ColumnstoreCache>();
+
+        EventGrid.ResolveStructure = page => ColumnstoreStructureText.Describe(cache.GetPageReads(viewModel.Database, page));
     }
 
     private void OnDataContextChanged(FrameworkElement sender, DataContextChangedEventArgs args)

@@ -66,7 +66,6 @@
                     <Grid.RowDefinitions>
                         <RowDefinition x:Name="VectorRow" Height="2*" MinHeight="60" />
                         <RowDefinition x:Name="SplitterRow" Height="Auto" />
-                        <RowDefinition x:Name="DetailHeaderRow" Height="Auto" />
                         <RowDefinition x:Name="DetailRow" Height="0" />
                     </Grid.RowDefinitions>
 
@@ -96,11 +95,16 @@
                                            ResizeBehavior="PreviousAndNext"
                                            ResizeDirection="Rows" />
 
+                    <Grid x:Name="DetailPane" Grid.Row="2" Visibility="Collapsed">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="*" />
+                        </Grid.RowDefinitions>
+
                     <Border x:Name="DetailHeader"
-                            Grid.Row="2"
+                            Grid.Row="0"
                             Padding="10,1,4,1"
-                            Visibility="Collapsed"
-                            BorderThickness="0,1,0,1"
+                                                        BorderThickness="0,1,0,1"
                             BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}">
                         <Grid>
                             <Grid.ColumnDefinitions>
@@ -108,6 +112,7 @@
                                 <ColumnDefinition Width="Auto" />
                             </Grid.ColumnDefinitions>
                             <TextBlock Text="{x:Bind Batch.DetailHeading, Mode=OneWay}"
+                                       FontSize="12"
                                        VerticalAlignment="Center"
                                        Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
                             <Button Grid.Column="1"
@@ -122,9 +127,8 @@
                     </Border>
 
                     <ListView x:Name="DetailList"
-                              Grid.Row="3"
-                              Visibility="Collapsed"
-                              ItemsSource="{x:Bind Batch.Detail, Mode=OneWay}"
+                              Grid.Row="1"
+                                                            ItemsSource="{x:Bind Batch.Detail, Mode=OneWay}"
                               SelectionMode="None"
                               Padding="0,2,0,6">
                         <ListView.ItemContainerTransitions>
@@ -145,10 +149,12 @@
                                         <ColumnDefinition Width="*" />
                                     </Grid.ColumnDefinitions>
                                     <TextBlock Text="{x:Bind Name}"
+                                               FontSize="12"
                                                TextTrimming="CharacterEllipsis"
                                                Foreground="{ThemeResource TextFillColorTertiaryBrush}" />
                                     <TextBlock Grid.Column="1"
                                                Text="{x:Bind Value}"
+                                               FontSize="12"
                                                IsTextSelectionEnabled="True"
                                                TextWrapping="Wrap"
                                                Foreground="{ThemeResource TextFillColorPrimaryBrush}" />
@@ -156,6 +162,7 @@
                             </DataTemplate>
                         </ListView.ItemTemplate>
                     </ListView>
+                    </Grid>
                 </Grid>
             </TabViewItem>
 
@@ -188,7 +195,6 @@
                     <RowDefinition Height="Auto" />
                     <RowDefinition Height="2*" MinHeight="60" />
                     <RowDefinition x:Name="DeepSplitterRow" Height="0" />
-                    <RowDefinition x:Name="DeepHeaderRow" Height="0" />
                     <RowDefinition x:Name="DeepDetailRow" Height="0" />
                 </Grid.RowDefinitions>
 
@@ -249,11 +255,16 @@
                                        ResizeBehavior="PreviousAndNext"
                                        ResizeDirection="Rows" />
 
+                <Grid x:Name="DeepPane" Grid.Row="3" Visibility="Collapsed">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="*" />
+                    </Grid.RowDefinitions>
+
                 <Border x:Name="DeepHeader"
-                        Grid.Row="3"
+                        Grid.Row="0"
                         Padding="10,1,4,1"
-                        Visibility="Collapsed"
-                        BorderThickness="0,1,0,1"
+                                                BorderThickness="0,1,0,1"
                         BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}">
                     <Grid>
                         <Grid.ColumnDefinitions>
@@ -261,6 +272,7 @@
                             <ColumnDefinition Width="Auto" />
                         </Grid.ColumnDefinitions>
                         <TextBlock Text="Deep Data Entry"
+                                   FontSize="12"
                                    VerticalAlignment="Center"
                                    Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
                         <Button Grid.Column="1"
@@ -275,9 +287,8 @@
                 </Border>
 
                 <ListView x:Name="DeepDetailList"
-                          Grid.Row="4"
-                          Visibility="Collapsed"
-                          ItemsSource="{x:Bind Batch.DeepDataDetail, Mode=OneWay}"
+                          Grid.Row="1"
+                                                    ItemsSource="{x:Bind Batch.DeepDataDetail, Mode=OneWay}"
                           SelectionMode="None"
                           Padding="0,2,0,6">
                     <ListView.ItemContainerTransitions>
@@ -298,10 +309,12 @@
                                     <ColumnDefinition Width="*" />
                                 </Grid.ColumnDefinitions>
                                 <TextBlock Text="{x:Bind Name}"
+                                           FontSize="12"
                                            TextTrimming="CharacterEllipsis"
                                            Foreground="{ThemeResource TextFillColorTertiaryBrush}" />
                                 <TextBlock Grid.Column="1"
                                            Text="{x:Bind Value}"
+                                           FontSize="12"
                                            IsTextSelectionEnabled="True"
                                            TextWrapping="Wrap"
                                            Foreground="{ThemeResource TextFillColorPrimaryBrush}" />
@@ -309,6 +322,7 @@
                         </DataTemplate>
                     </ListView.ItemTemplate>
                 </ListView>
+                </Grid>
               </Grid>
             </TabViewItem>
         </TabView>

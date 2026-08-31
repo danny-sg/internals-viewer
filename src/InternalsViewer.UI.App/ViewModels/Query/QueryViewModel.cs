@@ -2,6 +2,7 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using CommunityToolkit.Mvvm.Messaging;
+using InternalsViewer.Internals.Columnstore.Metadata.Enums;
 using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Internals.Engine.Allocation;
 using InternalsViewer.Internals.Engine.Database;
@@ -23,6 +24,7 @@ using InternalsViewer.UI.App.Services.XEvents;
 using InternalsViewer.UI.App.ViewModels.Allocation;
 using InternalsViewer.UI.App.ViewModels.Docking;
 using InternalsViewer.UI.App.ViewModels.Query.Trace;
+using InternalsViewer.UI.App.ViewModels.Columnstore;
 using InternalsViewer.UI.App.ViewModels.Index;
 using InternalsViewer.UI.App.ViewModels.Query.Events;
 using InternalsViewer.UI.App.ViewModels.Tabs;
@@ -46,6 +48,7 @@ using InternalsViewer.UI.App.ViewModels.Query.Settings;
 using InternalsViewer.UI.App.Views.Query.Tabs.Trace;
 using InternalsViewer.Query.Plans;
 using InternalsViewer.Query.Plans.Model;
+using InternalsViewer.UI.App.Views.Columnstore;
 using InternalsViewer.UI.App.Views.Query.Tabs.Index;
 using DatabaseFile = InternalsViewer.UI.App.Models.DatabaseFile;
 using InternalsViewer.UI.App.Models.Allocations;
@@ -59,6 +62,7 @@ public sealed class QueryViewModelFactory(ILogger<QueryViewModel> logger,
                                           SettingsService settingsService,
                                           SettingsViewModel settingsViewModel,
                                           IndexTabViewModelFactory indexTabViewModelFactory,
+                                          ColumnstoreTabViewModelFactory columnstoreTabViewModelFactory,
                                           PageTabViewModelFactory pageTabViewModelFactory,
                                           TraceDirectoryService traceDirectoryService,
                                           IBufferPoolInfoProvider bufferPoolInfoProvider,
@@ -69,6 +73,7 @@ public sealed class QueryViewModelFactory(ILogger<QueryViewModel> logger,
                                                                  settingsService,
                                                                  settingsViewModel,
                                                                  indexTabViewModelFactory,
+                                                                 columnstoreTabViewModelFactory,
                                                                  pageTabViewModelFactory,
                                                                  traceDirectoryService,
                                                                  bufferPoolInfoProvider,
@@ -88,6 +93,8 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
     private readonly Dictionary<string, IndexTabViewModel> _openIndexes = [];
 
+    private readonly Dictionary<string, ColumnstoreTabViewModel> _openColumnstores = [];
+
     private readonly Dictionary<string, PageTabViewModel> _openPages = [];
 
     private readonly Dictionary<string, Color> _objectColoursByName;
@@ -97,6 +104,8 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
     private readonly SettingsViewModel _settingsViewModel;
 
     private readonly IndexTabViewModelFactory _indexTabViewModelFactory;
+
+    private readonly ColumnstoreTabViewModelFactory _columnstoreTabViewModelFactory;
 
     private readonly PageTabViewModelFactory _pageTabViewModelFactory;
 
@@ -250,6 +259,7 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
                           SettingsService settingsService,
                           SettingsViewModel settingsViewModel,
                           IndexTabViewModelFactory indexTabViewModelFactory,
+                          ColumnstoreTabViewModelFactory columnstoreTabViewModelFactory,
                           PageTabViewModelFactory pageTabViewModelFactory,
                           TraceDirectoryService traceDirectoryService,
                           IBufferPoolInfoProvider bufferPoolInfoProvider,
@@ -264,6 +274,7 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
         _settingsService = settingsService;
         _settingsViewModel = settingsViewModel;
         _indexTabViewModelFactory = indexTabViewModelFactory;
+        _columnstoreTabViewModelFactory = columnstoreTabViewModelFactory;
         _pageTabViewModelFactory = pageTabViewModelFactory;
         _traceDirectoryService = traceDirectoryService;
         Message = string.Empty;
@@ -782,6 +793,8 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
         _openIndexes.Clear();
 
+        _openColumnstores.Clear();
+
         foreach (var trace in _openTraces.Values)
         {
             trace.PageNavigated -= OnIndexPageNavigated;
@@ -805,6 +818,8 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
         }
 
         PruneClosedIndexes();
+
+        PruneClosedColumnstores();
 
         PruneClosedPages();
 
@@ -1112,12 +1127,21 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
             return;
         }
 
-        var allocationUnit = Database.AllocationUnits
-                                     .Values
-                                     .FirstOrDefault(a => NameMatches(a.IndexName, index)
-                                                          && NameMatches(a.TableName, table)
-                                                          && (schema.Length == 0 || NameMatches(a.SchemaName, schema))
-                                                          && a.AllocationUnitType == AllocationUnitType.InRowData);
+        var candidates = Database.AllocationUnits
+                                 .Values
+                                 .Where(a => NameMatches(a.IndexName, index)
+                                             && NameMatches(a.TableName, table)
+                                             && (schema.Length == 0 || NameMatches(a.SchemaName, schema)))
+                                 .ToList();
+
+        if (FindColumnstoreUnit(candidates) is { } columnstoreUnit)
+        {
+            OpenColumnstore(columnstoreUnit, index, key);
+
+            return;
+        }
+
+        var allocationUnit = candidates.FirstOrDefault(a => a.AllocationUnitType == AllocationUnitType.InRowData);
 
         if (allocationUnit is null)
         {
@@ -1167,6 +1191,75 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
         catch (Exception ex)
         {
             Logger.LogError(ex, "Error opening page {PageAddress}", pageAddress);
+        }
+    }
+
+    /// <summary>
+    /// The rowset holding the compressed segments and dictionaries, which is what the columnstore viewer reads
+    /// </summary>
+    /// <remarks>
+    /// The delete bitmap and the delta stores are rowsets of their own, each with a partition id the columnstore
+    /// metadata is not keyed on, so they cannot stand in for the index.
+    /// </remarks>
+    private static Internals.Engine.Database.AllocationUnit? FindColumnstoreUnit(List<Internals.Engine.Database.AllocationUnit> candidates)
+    {
+        var units = candidates.Where(a => a.IndexType is IndexType.ClusteredColumnStore or IndexType.NonClusteredColumnStore
+                                          && (ColumnstoreRowsetType)a.OwnerType is not (ColumnstoreRowsetType.DeleteBitmap
+                                                                                        or ColumnstoreRowsetType.DeltaStore))
+                              .ToList();
+
+        return units.FirstOrDefault(a => a.AllocationUnitType == AllocationUnitType.LargeObjectData)
+               ?? units.FirstOrDefault();
+    }
+
+    /// <summary>
+    /// Opens a columnstore index's structure as a document tab, in place of the index tree a b-tree index gets
+    /// </summary>
+    /// <remarks>
+    /// The columnstore viewer is opened whole rather than the structure drawing on its own, so a click on a segment,
+    /// a dictionary or a delta store still has somewhere to open. It loads and disposes itself, as it does in a tab.
+    /// </remarks>
+    private void OpenColumnstore(Internals.Engine.Database.AllocationUnit allocationUnit, string index, string key)
+    {
+        var columnstoreViewModel = _columnstoreTabViewModelFactory.Create(Database, allocationUnit.AllocationUnitId);
+
+        var document = new DocumentViewModel(title: $"Columnstore: {index}",
+                                             content: columnstoreViewModel,
+                                             viewFactory: static () => new ColumnstoreView(),
+                                             canClose: true,
+                                             keepAlive: true,
+                                             key: key,
+                                             persist: false);
+
+        Layout.RegisterDocument(key, document);
+
+        _openColumnstores[key] = columnstoreViewModel;
+
+        Layout.Show(document);
+    }
+
+    /// <summary>
+    /// Drops columnstore tabs the user has closed (they are transient and recreated on demand)
+    /// </summary>
+    private void PruneClosedColumnstores()
+    {
+        if (_openColumnstores.Count == 0)
+        {
+            return;
+        }
+
+        var closed = _openColumnstores.Keys
+            .Where(k => !Layout.IsShown(k))
+            .ToList();
+
+        foreach (var key in closed)
+        {
+            _openColumnstores.Remove(key);
+
+            if (Layout.RemoveDocument(key, out var document))
+            {
+                document.DisposeView();
+            }
         }
     }
 

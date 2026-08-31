@@ -18,13 +18,14 @@ public sealed class LobDataService(IPageService pageService) : ILobDataService
 
     public async Task<byte[]> GetData(DatabaseSource database,
                                       RowIdentifier rowIdentifier,
-                                      CancellationToken cancellationToken)
+                                      CancellationToken cancellationToken,
+                                      Action<PageAddress>? onPageRead = null)
     {
-        var (page, record) = await GetLobRecord(database, rowIdentifier, cancellationToken);
+        var (page, record) = await GetLobRecord(database, rowIdentifier, cancellationToken, onPageRead);
 
         var result = new byte[GetTotalLength(record)];
 
-        await WriteRecordData(database, page, record, result, 0, cancellationToken);
+        await WriteRecordData(database, page, record, result, 0, cancellationToken, onPageRead);
 
         return result;
     }
@@ -32,15 +33,16 @@ public sealed class LobDataService(IPageService pageService) : ILobDataService
     public async Task<LobDataPrefix> GetDataPrefix(DatabaseSource database,
                                                    RowIdentifier rowIdentifier,
                                                    int maxLength,
-                                                   CancellationToken cancellationToken)
+                                                   CancellationToken cancellationToken,
+                                                   Action<PageAddress>? onPageRead = null)
     {
-        var (page, record) = await GetLobRecord(database, rowIdentifier, cancellationToken);
+        var (page, record) = await GetLobRecord(database, rowIdentifier, cancellationToken, onPageRead);
 
         var totalLength = GetTotalLength(record);
 
         var result = new byte[Math.Min(totalLength, Math.Max(0, maxLength))];
 
-        await WriteRecordData(database, page, record, result, 0, cancellationToken);
+        await WriteRecordData(database, page, record, result, 0, cancellationToken, onPageRead);
 
         return new LobDataPrefix(result, totalLength);
     }
@@ -91,7 +93,8 @@ public sealed class LobDataService(IPageService pageService) : ILobDataService
                                             LobRecord record,
                                             byte[] destination,
                                             int position,
-                                            CancellationToken cancellationToken)
+                                            CancellationToken cancellationToken,
+                                            Action<PageAddress>? onPageRead)
     {
         switch (record.BlobType)
         {
@@ -117,14 +120,16 @@ public sealed class LobDataService(IPageService pageService) : ILobDataService
 
                     var (childPage, childRecord) = await GetLobRecord(database,
                                                                       child.RowIdentifier,
-                                                                      cancellationToken);
+                                                                      cancellationToken,
+                                                                      onPageRead);
 
                     position = await WriteRecordData(database,
                                                      childPage,
                                                      childRecord,
                                                      destination,
                                                      position,
-                                                     cancellationToken);
+                                                     cancellationToken,
+                                                     onPageRead);
                 }
 
                 return position;
@@ -136,12 +141,15 @@ public sealed class LobDataService(IPageService pageService) : ILobDataService
 
     private async Task<(LobPage Page, LobRecord Record)> GetLobRecord(DatabaseSource database,
                                                                       RowIdentifier rowIdentifier,
-                                                                      CancellationToken cancellationToken)
+                                                                      CancellationToken cancellationToken,
+                                                                      Action<PageAddress>? onPageRead)
     {
         var page = await PageService.GetPage<LobPage>(database,
                                                       rowIdentifier.PageAddress,
                                                       cancellationToken,
                                                       isMarkEnabled: false);
+
+        onPageRead?.Invoke(rowIdentifier.PageAddress);
 
         if (rowIdentifier.SlotId >= page.OffsetTable.Length)
         {

@@ -90,7 +90,7 @@ public sealed partial class TraceBatchViewModel : ObservableObject
 
     public void Update(ExecutionBatch? batch, long number, IReadOnlyList<BatchVector> scope)
     {
-        if (batch is null || batch.Vectors.Count == 0)
+        if (batch is null)
         {
             Clear();
 

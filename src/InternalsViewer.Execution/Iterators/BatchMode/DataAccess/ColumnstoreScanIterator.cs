@@ -48,7 +48,7 @@ public sealed class ColumnstoreScanIterator(ColumnstoreService columnstoreServic
 
     private int RowOrdinal { get; set; }
 
-    private long BatchNumber { get; set; }
+    public long BatchNumber { get; private set; }
 
     private DeletedRows DeletedRows { get; set; } = DeletedRows.None;
 

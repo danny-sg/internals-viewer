@@ -1,6 +1,7 @@
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Linq;
 using System;
+using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Query.Events.Latches;
 using InternalsViewer.Query.Events.Operators;
 using InternalsViewer.Query.Events.Reads;
@@ -22,6 +23,8 @@ namespace InternalsViewer.UI.App.Controls.Timeline;
 /// </summary>
 public sealed partial class EventTimelineControl : Grid, IDisposable
 {
+    public Func<PageAddress, string?>? ResolveStructure { get; set; }
+
     // Wider marker for sparse rows (see TimelineRowSet.IsSparse) so their few ticks stay easy to see.
     private const float SparseMarkerWidth = 4f;
 

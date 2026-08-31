@@ -477,9 +477,30 @@ public sealed class TraceStepApplier(TraceLayout layout,
         BatchTouched?.Invoke(owner.NodeId);
     }
 
-    /// <summary>
-    /// The operator a batch belongs to, being the lowest one that did not take it from its input
-    /// </summary>
+    public void SyncBatches(IteratorStepper stepper)
+    {
+        foreach (var iterator in BatchIterators(stepper).Values)
+        {
+            if (Owner(iterator) is not { } owner
+                || !ReferenceEquals(owner, iterator)
+                || batches.GetValueOrDefault(owner.NodeId) is not { } target)
+            {
+                continue;
+            }
+
+            if (iterator.CurrentBatch is null)
+            {
+                target.Clear();
+
+                continue;
+            }
+
+            target.Update(iterator.CurrentBatch, iterator.BatchNumber, iterator.OutputVectors);
+
+            target.MarkSpent();
+        }
+    }
+
     private static IBatchIterator? Owner(IBatchIterator iterator)
     {
         for (var current = iterator; current is not null; current = current.Input)
@@ -493,9 +514,6 @@ public sealed class TraceStepApplier(TraceLayout layout,
         return null;
     }
 
-    /// <summary>
-    /// The batch iterators of the tree, keyed by the operator whose steps they emit
-    /// </summary>
     private static Dictionary<int, IBatchIterator> BatchIterators(IteratorStepper stepper)
     {
         var found = new Dictionary<int, IBatchIterator>();

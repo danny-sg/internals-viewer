@@ -128,13 +128,9 @@ public sealed partial class TraceBatchPanelView : UserControl
 
         DeepSplitter.Visibility = isVisible ? Visibility.Visible : Visibility.Collapsed;
 
-        DeepHeader.Visibility = DeepSplitter.Visibility;
-
-        DeepDetailList.Visibility = DeepSplitter.Visibility;
+        DeepPane.Visibility = DeepSplitter.Visibility;
 
         DeepSplitterRow.Height = isVisible ? GridLength.Auto : new GridLength(0);
-
-        DeepHeaderRow.Height = DeepSplitterRow.Height;
 
         DeepDetailRow.Height = isVisible ? new GridLength(1, GridUnitType.Star) : new GridLength(0);
     }
@@ -189,13 +185,9 @@ public sealed partial class TraceBatchPanelView : UserControl
 
         DetailSplitter.Visibility = isVisible ? Visibility.Visible : Visibility.Collapsed;
 
-        DetailHeader.Visibility = DetailSplitter.Visibility;
-
-        DetailList.Visibility = DetailSplitter.Visibility;
+        DetailPane.Visibility = DetailSplitter.Visibility;
 
         SplitterRow.Height = isVisible ? GridLength.Auto : new GridLength(0);
-
-        DetailHeaderRow.Height = SplitterRow.Height;
 
         DetailRow.Height = isVisible ? new GridLength(1, GridUnitType.Star) : new GridLength(0);
     }

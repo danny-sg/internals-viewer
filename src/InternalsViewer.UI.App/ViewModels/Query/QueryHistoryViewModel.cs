@@ -7,6 +7,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using InternalsViewer.UI.App.Models.Query;
 using InternalsViewer.UI.App.Services;
+using InternalsViewer.UI.App.Services.Query;
 
 namespace InternalsViewer.UI.App.ViewModels.Query;
 
@@ -17,18 +18,11 @@ namespace InternalsViewer.UI.App.ViewModels.Query;
 /// The whole history is held in <see cref="AllEntries"/> and <see cref="Entries"/> is the filtered projection the
 /// history pane binds to, so searching hides entries rather than dropping them.
 /// </remarks>
-public sealed partial class QueryHistoryViewModel : ObservableObject
+public sealed partial class QueryHistoryViewModel(SettingsService settingsService, string databaseName) : ObservableObject
 {
     private const int MaxEntries = 200;
 
     private string _searchText = string.Empty;
-
-    public QueryHistoryViewModel(SettingsService settingsService, string databaseName)
-    {
-        SettingsService = settingsService;
-
-        SettingKey = $"QueryHistory:{databaseName}";
-    }
 
     public ObservableCollection<QueryHistoryEntry> Entries { get; } = [];
 
@@ -44,21 +38,29 @@ public sealed partial class QueryHistoryViewModel : ObservableObject
         }
     }
 
-    private SettingsService SettingsService { get; }
+    private SettingsService SettingsService { get; } = settingsService;
 
-    private string SettingKey { get; }
+    private string DatabaseName { get; } = databaseName;
+
+    private string SettingKey { get; } = $"QueryHistory:{databaseName}";
 
     private List<QueryHistoryEntry> AllEntries { get; } = [];
 
     /// <summary>
-    /// Reads the saved history
+    /// Reads the saved history, seeding it the first time a database is opened
     /// </summary>
+    /// <remarks>
+    /// Nothing saved means the database has never had a history, which is not the same as one that has been cleared -
+    /// clearing writes an empty list. Seeding only the first case is what lets the queries be thrown away for good.
+    /// </remarks>
     public async Task LoadAsync()
     {
         var saved = await SettingsService.ReadSettingAsync<List<QueryHistoryEntry>>(SettingKey);
 
         if (saved is null)
         {
+            Seed();
+
             return;
         }
 
@@ -123,6 +125,26 @@ public sealed partial class QueryHistoryViewModel : ObservableObject
         AllEntries.Clear();
 
         Entries.Clear();
+
+        Save();
+    }
+
+    private void Seed()
+    {
+        var queries = QueryHistorySeed.Read(DatabaseName);
+
+        if (queries.Count == 0)
+        {
+            return;
+        }
+
+        var seeded = DateTimeOffset.Now;
+
+        AllEntries.Clear();
+
+        AllEntries.AddRange(queries.Select(q => new QueryHistoryEntry(q, seeded)));
+
+        ApplyFilter();
 
         Save();
     }

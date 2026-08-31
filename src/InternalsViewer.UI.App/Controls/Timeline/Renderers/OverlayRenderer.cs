@@ -13,7 +13,8 @@ internal readonly record struct TimelineOverlay(bool SelectionActive,
                                                 float StartHandleX,
                                                 float EndHandleX,
                                                 float PlayheadX,
-                                                double PlayheadMs);
+                                                double PlayheadMs,
+                                                float RowLabelWidth);
 
 /// <summary>
 /// Draws the dynamic overlay above the cached static layer: the selection dim outside the from/to window, the two range
@@ -26,7 +27,6 @@ internal readonly record struct TimelineOverlay(bool SelectionActive,
 /// </remarks>
 internal sealed class OverlayRenderer(RenderResource resources) : IDisposable
 {
-    private const float RowLabelWidth = 36f;
     private const float RulerBandHeight = 18f;
     private const float HandleBandHeight = 16f;
     private const float MarkerStripHeight = RulerBandHeight + HandleBandHeight;
@@ -59,16 +59,20 @@ internal sealed class OverlayRenderer(RenderResource resources) : IDisposable
     {
         canvas.Save();
 
-        canvas.ClipRect(new SKRect(RowLabelWidth, 0, w, h));
+        canvas.ClipRect(new SKRect(overlay.RowLabelWidth, 0, w, h));
 
         if (overlay.SelectionActive)
         {
             var rowsTop = MarkerStripHeight;
             var rowsHeight = h - rowsTop;
 
-            if (overlay.SelectionLoX > RowLabelWidth)
+            if (overlay.SelectionLoX > overlay.RowLabelWidth)
             {
-                canvas.DrawRect(RowLabelWidth, rowsTop, overlay.SelectionLoX - RowLabelWidth, rowsHeight, _clipDim);
+                canvas.DrawRect(overlay.RowLabelWidth,
+                                rowsTop,
+                                overlay.SelectionLoX - overlay.RowLabelWidth,
+                                rowsHeight,
+                                _clipDim);
             }
 
             if (overlay.SelectionHiX < w)
@@ -84,7 +88,7 @@ internal sealed class OverlayRenderer(RenderResource resources) : IDisposable
 
         DrawPlayheadTriangle(canvas, overlay.PlayheadX);
 
-        DrawBadge(canvas, w, overlay.PlayheadX, overlay.PlayheadMs);
+        DrawBadge(canvas, w, overlay.PlayheadX, overlay.PlayheadMs, overlay.RowLabelWidth);
 
         canvas.Restore();
     }
@@ -126,7 +130,7 @@ internal sealed class OverlayRenderer(RenderResource resources) : IDisposable
         canvas.DrawPath(path, _playheadFill);
     }
 
-    private void DrawBadge(SKCanvas canvas, float w, float px, double playheadMs)
+    private void DrawBadge(SKCanvas canvas, float w, float px, double playheadMs, float rowLabelWidth)
     {
         Span<char> buf = stackalloc char[12];
 
@@ -140,7 +144,7 @@ internal sealed class OverlayRenderer(RenderResource resources) : IDisposable
 
         const float badgeHeight = RulerBandHeight - 2;
 
-        var bx = Math.Clamp(px - badgeWidth / 2f, RowLabelWidth, Math.Max(RowLabelWidth, w - badgeWidth));
+        var bx = Math.Clamp(px - badgeWidth / 2f, rowLabelWidth, Math.Max(rowLabelWidth, w - badgeWidth));
 
         canvas.DrawRoundRect(new SKRect(bx, 0, bx + badgeWidth, badgeHeight), 2, 2, _playheadFill);
 

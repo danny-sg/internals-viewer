@@ -56,13 +56,11 @@ public sealed record SegmentScanEvent : EngineEvent
 
     public long ImpureRowBuckets { get; set; }
 
+    public override string Name => "Segment Scan";
+
     public override string Description => $"Segment Scan (Row Group {RowGroupId}, Column {ColumnId})";
 
     public bool HasScanResult => FoldedFrom is not null;
 
-    public override string Detail
-        => HasScanResult
-            ? $"{EncodingType}, {CompressedDataType}, {BitPacking} bit, {FilterOnCompressedDataType} on compressed, "
-              + $"{InputRows:N0} in, {OutputRows:N0} out"
-            : $"{EncodingType}, {CompressedDataType}, {BitPacking} bit, {FilterOnCompressedDataType} on compressed";
+    public override string Detail => $"Row Group {RowGroupId}, Column {ColumnId}";
 }

@@ -312,12 +312,38 @@ public sealed partial class SqlEditorControl : UserControl, IDisposable
         }
     }
 
-    private void OnHistoryQuerySelected(object? sender, string sql) => SqlText = sql;
+    private void OnHistoryQuerySelected(object? sender, string sql) => TakeHistoryQuery(sql);
+
+    private void OnHistoryQueryRunRequested(object? sender, string sql)
+    {
+        TakeHistoryQuery(sql);
+
+        Execute(sql);
+    }
+
+    /// <summary>
+    /// Puts a query from the history into the editor
+    /// </summary>
+    /// <remarks>
+    /// The selection is dropped with it. Both halves of it point into the text being replaced, so leaving either in
+    /// place would have the next execute run a fragment of the query that has just gone.
+    /// </remarks>
+    private void TakeHistoryQuery(string sql)
+    {
+        _selectedText = string.Empty;
+
+        TrackedSelection = null;
+
+        SqlText = sql;
+    }
 
     private void HandleExecuteClick()
     {
-        var text = string.IsNullOrEmpty(_selectedText) ? SqlText : _selectedText;
+        Execute(string.IsNullOrEmpty(_selectedText) ? SqlText : _selectedText);
+    }
 
+    private void Execute(string text)
+    {
         var payload = new ExecuteSqlPayload(text,
                                             QueryOptions,
                                             StatementParser.GetStatementType(text),

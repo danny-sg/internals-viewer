@@ -46,6 +46,10 @@
       <Content Remove="Assets\Samples\SampleQueries.sql" />
     </ItemGroup>
     <ItemGroup>
+      <Content Remove="Assets\Samples\*.sql" />
+      <EmbeddedResource Include="Assets\Samples\*.sql" />
+    </ItemGroup>
+    <ItemGroup>
       <Content Remove="Assets\Instructions\*.md" />
       <EmbeddedResource Include="Assets\Instructions\*.md" />
       <Content Include="Assets\Instructions\Images\*.svg">

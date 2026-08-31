@@ -21,6 +21,11 @@ public interface IBatchIterator
 
     IReadOnlyList<BatchVector> OutputVectors { get; }
 
+    /// <summary>
+    /// Number of batches this iterator has handed on
+    /// </summary>
+    long BatchNumber { get; }
+
     Task OpenAsync(IteratorDefinition definition, IteratorContext context, CancellationToken cancellationToken);
 
     Task<ExecutionBatch?> GetNextBatchAsync(CancellationToken cancellationToken);

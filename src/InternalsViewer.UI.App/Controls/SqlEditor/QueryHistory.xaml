@@ -66,6 +66,7 @@
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="*"/>
                                 <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="Auto"/>
                             </Grid.ColumnDefinitions>
 
                             <sqlEditor:SqlTextBlock Grid.Column="0"
@@ -74,6 +75,18 @@
                                                     ToolTipService.ToolTip="{x:Bind Sql}"/>
 
                             <Button Grid.Column="1"
+                                    Style="{StaticResource TabCommandButtonStyle}"
+                                    VerticalAlignment="Top"
+                                    Click="OnRunClick"
+                                    ToolTipService.ToolTip="Run this query">
+                                <Path Data="M 0,0 L 10,5.5 L 0,11 Z"
+                                      Width="9"
+                                      Height="10"
+                                      Stretch="Uniform"
+                                      Fill="{ThemeResource SystemFillColorSuccessBrush}"/>
+                            </Button>
+
+                            <Button Grid.Column="2"
                                     Style="{StaticResource TabCommandButtonStyle}"
                                     VerticalAlignment="Top"
                                     FontFamily="{ThemeResource SymbolThemeFontFamily}"

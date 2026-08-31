@@ -22,6 +22,8 @@ public sealed class RowToBatchIterator(IIteratorFactory factory) : IBatchIterato
 
     public IReadOnlyList<BatchVector> OutputVectors => Batch?.Vectors ?? [];
 
+    public long BatchNumber => BatchCount;
+
     public IBatchIterator? Input => null;
 
     public IIterator? Source { get; private set; }

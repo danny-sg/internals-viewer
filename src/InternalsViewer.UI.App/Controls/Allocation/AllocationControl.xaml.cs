@@ -933,10 +933,12 @@ public sealed partial class AllocationControl : IDisposable
             {
                 if (page.FileId == FileId)
                 {
+                    var alpha = (byte)(layer.Opacity * 255 / 100);
+
                     renderer.DrawPageMarker(canvas,
                                             GetPagePosition(page.PageId - (ScrollPosition * 8), layout),
                                             layer,
-                                            layer.RendererColour);
+                                            layer.RendererColour.WithAlpha(alpha));
                 }
             }
         }

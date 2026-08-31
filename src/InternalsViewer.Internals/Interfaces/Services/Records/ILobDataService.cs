@@ -11,7 +11,8 @@ public interface ILobDataService
 {
     Task<byte[]> GetData(DatabaseSource database,
                          RowIdentifier rowIdentifier,
-                         CancellationToken cancellationToken);
+                         CancellationToken cancellationToken,
+                         Action<PageAddress>? onPageRead = null);
 
     /// <summary>
     /// Reads no more than the opening bytes of a blob, along with the length the whole blob would have been
@@ -23,5 +24,6 @@ public interface ILobDataService
     Task<LobDataPrefix> GetDataPrefix(DatabaseSource database,
                                       RowIdentifier rowIdentifier,
                                       int maxLength,
-                                      CancellationToken cancellationToken);
+                                      CancellationToken cancellationToken,
+                                      Action<PageAddress>? onPageRead = null);
 }

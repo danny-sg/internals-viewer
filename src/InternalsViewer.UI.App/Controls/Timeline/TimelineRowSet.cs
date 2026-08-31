@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using InternalsViewer.Query.Events;
+using InternalsViewer.Query.Events.BatchMode;
 using InternalsViewer.Query.Events.Latches;
 using InternalsViewer.Query.Events.Locks;
 using InternalsViewer.Query.Events.Operators;
@@ -24,11 +25,13 @@ internal sealed class TimelineRowSet : IDisposable
     private const int SparseRowThreshold = 25;
 
     // Operator events span a duration and are drawn as lines, so the Plan row is given extra weight for its
-    // per-level tracks. The Log row is dropped when there are no transaction-log events; the rest are always present.
+    // per-level tracks. The Log and Segment Scan rows are dropped when there are no transaction-log or columnstore
+    // segment events; the rest are always present.
     private static readonly Row[] AllRows =
     [
         new(typeof(TransactionLogEvent), "Log",  ColourConstants.LogColour.ToSkColor().WithAlpha(255),  0.5f),
         new(typeof(ExecutionOperatorEvent), "Plan", SKColors.LimeGreen, 3f),
+        new(typeof(SegmentScanEvent), "Segment Scan", ColourConstants.SegmentColour.ToSkColor().WithAlpha(255), 0.167f),
         new(typeof(ReadEventGroup), "Read", ColourConstants.IoColour.ToSkColor().WithAlpha(255), 0.5f),
         new(typeof(LockEvent), "Lock", ColourConstants.LockColour.ToSkColor().WithAlpha(255), 0.5f),
         new(typeof(LatchEvent), "Latch", ColourConstants.LatchColour.ToSkColor().WithAlpha(255), 0.167f),
@@ -41,6 +44,11 @@ internal sealed class TimelineRowSet : IDisposable
 
     public IReadOnlyList<Row> Active => _active;
 
+    /// <summary>
+    /// The width of the widest label among the shown rows, which is what the label gutter has to fit
+    /// </summary>
+    public float MaxLabelWidth { get; private set; }
+
     public void Rebuild(IReadOnlyList<EngineEvent> events,
                         bool showLocks,
                         bool showLatches,
@@ -48,12 +56,14 @@ internal sealed class TimelineRowSet : IDisposable
                         SKFont labelFont)
     {
         var hasLog = events.Any(e => e is TransactionLogEvent);
+        var hasSegment = events.Any(e => e is SegmentScanEvent or SegmentEliminateEvent);
         var hasLock = showLocks && events.Any(e => e is LockEvent or LockGroup);
         var hasLatch = showLatches && events.Any(e => e is LatchEvent);
         var hasWait = showWaits && events.Any(e => e is WaitEvent);
 
         _active = AllRows.Where(r =>
             (r.EventType != typeof(TransactionLogEvent) || hasLog) &&
+            (r.EventType != typeof(SegmentScanEvent) || hasSegment) &&
             (r.EventType != typeof(LockEvent) || hasLock) &&
             (r.EventType != typeof(LatchEvent) || hasLatch) &&
             (r.EventType != typeof(WaitEvent) || hasWait)).ToArray();
@@ -77,9 +87,13 @@ internal sealed class TimelineRowSet : IDisposable
 
         _labelBlobs = new SKTextBlob?[_active.Length];
 
+        MaxLabelWidth = 0;
+
         for (var i = 0; i < _active.Length; i++)
         {
             _labelBlobs[i] = SKTextBlob.Create(_active[i].Label, labelFont, SKPoint.Empty);
+
+            MaxLabelWidth = Math.Max(MaxLabelWidth, labelFont.MeasureText(_active[i].Label));
         }
     }
 
@@ -89,6 +103,11 @@ internal sealed class TimelineRowSet : IDisposable
         if (ev is IoEvent)
         {
             return IndexOf(typeof(ReadEventGroup));
+        }
+
+        if (ev is SegmentEliminateEvent)
+        {
+            return IndexOf(typeof(SegmentScanEvent));
         }
 
         for (var i = 0; i < _active.Length; i++)

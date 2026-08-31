@@ -8,8 +8,10 @@ public sealed record SegmentEliminateEvent : EngineEvent
 
     public bool IsEliminatedByUniqueValueFilter { get; set; }
 
+    public override string Name => "Segment Eliminated";
+
     public override string Description => $"Segment Eliminated (Row Group {RowGroupId})";
 
     public override string Detail
-        => IsEliminatedByUniqueValueFilter ? "Eliminated by unique value filter" : "Eliminated by segment metadata";
+        => $"{Description} - {(IsEliminatedByUniqueValueFilter ? "Eliminated by unique value filter" : "Eliminated by segment metadata")}";
 }

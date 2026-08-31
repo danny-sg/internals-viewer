@@ -28,6 +28,8 @@ public sealed class BatchFilterIterator(IIteratorFactory factory) : IBatchIterat
 
     public IReadOnlyList<BatchVector> OutputVectors => Input?.OutputVectors ?? [];
 
+    public long BatchNumber => Input?.BatchNumber ?? 0;
+
     public IBatchIterator? Input { get; private set; }
 
     private IteratorContext Context { get; set; } = null!;

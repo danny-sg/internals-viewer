@@ -27,6 +27,8 @@ public sealed class BatchComputeScalarIterator(IIteratorFactory factory) : IBatc
 
     public IReadOnlyList<BatchVector> OutputVectors => Output;
 
+    public long BatchNumber => Input?.BatchNumber ?? 0;
+
     public IBatchIterator? Input { get; private set; }
 
     private IteratorContext Context { get; set; } = null!;

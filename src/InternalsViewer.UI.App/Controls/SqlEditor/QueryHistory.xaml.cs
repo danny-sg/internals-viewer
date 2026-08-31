@@ -25,6 +25,8 @@ public sealed partial class QueryHistoryControl : UserControl
 
     public event EventHandler<string>? QuerySelected;
 
+    public event EventHandler<string>? QueryRunRequested;
+
     private void OnSearchTextChanged(AutoSuggestBox sender, AutoSuggestBoxTextChangedEventArgs args)
     {
         if (ViewModel is { } viewModel)
@@ -38,6 +40,14 @@ public sealed partial class QueryHistoryControl : UserControl
         if (sender is FrameworkElement { DataContext: QueryHistoryEntry entry })
         {
             QuerySelected?.Invoke(this, entry.Sql);
+        }
+    }
+
+    private void OnRunClick(object sender, RoutedEventArgs e)
+    {
+        if (sender is FrameworkElement { DataContext: QueryHistoryEntry entry })
+        {
+            QueryRunRequested?.Invoke(this, entry.Sql);
         }
     }
 

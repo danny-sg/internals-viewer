@@ -31,6 +31,8 @@ public sealed class BatchHashAggregateIterator(IIteratorFactory factory) : IBatc
 
     public IReadOnlyList<BatchVector> OutputVectors => Batch?.Vectors ?? [];
 
+    public long BatchNumber => OutputBatchCount;
+
     public HashTable Table => Builder.Table;
 
     public BufferMemory Memory => Table.Memory;
@@ -42,6 +44,8 @@ public sealed class BatchHashAggregateIterator(IIteratorFactory factory) : IBatc
     public long GroupCount => Builder.GroupCount;
 
     public long BatchCount { get; private set; }
+
+    private long OutputBatchCount { get; set; }
 
     private HashAggregateBuilder Builder { get; set; } = new([], [], JoinHash.DefaultBucketBits);
 
@@ -79,6 +83,8 @@ public sealed class BatchHashAggregateIterator(IIteratorFactory factory) : IBatc
         Batch = null;
 
         BatchCount = 0;
+
+        OutputBatchCount = 0;
 
         OutputBucket = 0;
 
@@ -206,7 +212,9 @@ public sealed class BatchHashAggregateIterator(IIteratorFactory factory) : IBatc
 
         Batch = BatchPacker.Pack(groups.Select(g => ProjectedRecord.Project(g, OutputList)), Batch);
 
-        await EmitAsync(new AccessStep.BatchProduced(BatchCount, 0, 0, Batch.RowCount, Batch.SelectionVector.RowCount),
+        OutputBatchCount++;
+
+        await EmitAsync(new AccessStep.BatchProduced(OutputBatchCount, 0, 0, Batch.RowCount, Batch.SelectionVector.RowCount),
                         cancellationToken);
 
         return Batch;

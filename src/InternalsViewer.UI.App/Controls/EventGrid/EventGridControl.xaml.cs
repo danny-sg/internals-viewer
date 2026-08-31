@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
@@ -63,20 +63,15 @@ public sealed partial class EventGridControl : UserControl, IDisposable
 
     private readonly Dictionary<TableViewRow, EngineEvent> _visibleRows = new();
 
-    // Read groups the user has expanded, and the parent group of each child event (for expanding on selection).
     private readonly HashSet<EngineEvent> _expanded = new(ReferenceEqualityComparer.Instance);
 
     private readonly Dictionary<EngineEvent, EngineEvent> _parentOf = new(ReferenceEqualityComparer.Instance);
 
-    // The grid's bound rows. Expand/collapse mutates this in place so the table keeps its scroll offset; only a
-    // filter/sort/new-events change replaces it.
     private ObservableCollection<EventGridRow> _rows = [];
 
     private string? _sortTag;
     private bool _sortAscending = true;
 
-    // Whether the in-progress click changed the selection: a click on the already-selected row raises no
-    // SelectionChanged, so the tap handler uses this to tell "selected a new row" from "clicked the selected row".
     private bool _selectionChanged;
 
     public EventGridControl()
@@ -88,16 +83,11 @@ public sealed partial class EventGridControl : UserControl, IDisposable
 
         _tappedHandler = OnTableTapped;
 
-        // handledEventsToo so the tap still reaches us after the table has handled the pointer for selection.
         EventTable.AddHandler(UIElement.TappedEvent, _tappedHandler, handledEventsToo: true);
     }
 
     public event EventHandler<PageAddressEventArgs>? PageClicked;
 
-    /// <summary>
-    /// Releases the grid's row/event references and detaches the table handlers, so a closed query tab's events
-    /// aren't held through this control
-    /// </summary>
     public void Dispose()
     {
         EventTable.ContainerContentChanging -= OnContainerContentChanging;
@@ -177,8 +167,6 @@ public sealed partial class EventGridControl : UserControl, IDisposable
         }
     }
 
-    // Click-to-deselect: clicking the already-selected row clears the selection. SelectionChanged fires on pointer
-    // press (before this tap on release), so if it did NOT fire this click, the tapped row was already selected.
     private void OnTableTapped(object sender, TappedRoutedEventArgs e)
     {
         var changedThisClick = _selectionChanged;
@@ -266,7 +254,7 @@ public sealed partial class EventGridControl : UserControl, IDisposable
 
             foreach (var child in children)
             {
-                _rows.Insert(insertAt++, new EventGridRow(child, row.Depth + 1, hasChildren: false, isExpanded: false));
+                _rows.Insert(insertAt++, Row(child, row.Depth + 1, hasChildren: false, isExpanded: false));
             }
         }
 
@@ -343,7 +331,7 @@ public sealed partial class EventGridControl : UserControl, IDisposable
 
             var expanded = hasChildren && _expanded.Contains(engineEvent);
 
-            rows.Add(new EventGridRow(engineEvent, depth: 0, hasChildren, expanded));
+            rows.Add(Row(engineEvent, depth: 0, hasChildren, expanded));
 
             if (!expanded)
             {
@@ -352,7 +340,7 @@ public sealed partial class EventGridControl : UserControl, IDisposable
 
             foreach (var child in children)
             {
-                rows.Add(new EventGridRow(child, depth: 1, hasChildren: false, isExpanded: false));
+                rows.Add(Row(child, depth: 1, hasChildren: false, isExpanded: false));
             }
         }
 
@@ -376,18 +364,30 @@ public sealed partial class EventGridControl : UserControl, IDisposable
     private static bool Matches(EngineEvent ev, string query) =>
         BuildSearchText(ev).Contains(query, StringComparison.OrdinalIgnoreCase);
 
-    // The same fields shown as columns, flattened to one string so a query matches any of them.
-    private static string BuildSearchText(EngineEvent ev) => string.Join(" ",
-        ev.Name,
-        ev.Description,
-        ev.TimeUs,
-        ev.DurationUs,
-        PageOf(ev),
-        ev.ObjectName,
-        ev.SequenceId,
-        ev.PlanNodeIdentifier);
+    public Func<PageAddress, string?>? ResolveStructure { get; set; }
 
-    // The representative page of an event: its single page, or the first page of a multi-page read group.
+    private EventGridRow Row(EngineEvent engineEvent, int depth, bool hasChildren, bool isExpanded)
+    {
+        var row = new EventGridRow(engineEvent, depth, hasChildren, isExpanded);
+
+        if (ResolveStructure is { } resolve && PageOf(engineEvent) is { } page)
+        {
+            row.Structure = resolve(page) ?? string.Empty;
+        }
+
+        return row;
+    }
+
+    private static string BuildSearchText(EngineEvent ev) => string.Join(" ",
+       ev.Name,
+       ev.Description,
+       ev.TimeUs,
+       ev.DurationUs,
+       PageOf(ev),
+       ev.ObjectName,
+       ev.SequenceId,
+       ev.PlanNodeIdentifier);
+
     private static PageAddress? PageOf(EngineEvent ev) => ev switch
     {
         PageEngineEvent { PageAddress: { } page } => page,
@@ -425,7 +425,7 @@ public sealed partial class EventGridControl : UserControl, IDisposable
     {
         if (string.IsNullOrEmpty(_sortTag))
         {
-            return events.ToList();
+            return [.. events];
         }
 
         IOrderedEnumerable<EngineEvent> ordered = _sortTag switch
@@ -441,7 +441,7 @@ public sealed partial class EventGridControl : UserControl, IDisposable
             _ => Order(events, e => e.SequenceId),
         };
 
-        return ordered.ToList();
+        return [.. ordered];
     }
 
     private IOrderedEnumerable<EngineEvent> Order<TKey>(IEnumerable<EngineEvent> events, Func<EngineEvent, TKey> key)
@@ -475,9 +475,7 @@ public sealed partial class EventGridControl : UserControl, IDisposable
     }
 }
 
-/// <summary>Formatting helpers called directly from the grid's x:Bind cell templates</summary>
 public static class EventGridFormat
 {
-    /// <summary>Converts a <see cref="EngineEvent.TimeUs"/> value to milliseconds, e.g. "1234.500"</summary>
     public static string TimeMs(long timeUs) => (timeUs / 1000.0).ToString("0.000");
 }

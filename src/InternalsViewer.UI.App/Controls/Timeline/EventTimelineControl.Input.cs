@@ -1,4 +1,6 @@
-using System;
+﻿using System;
+using InternalsViewer.Query.Events.Reads;
+using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Query.Events.Operators;
 using InternalsViewer.Query.Events;
 using InternalsViewer.Query.Plans.Operators;
@@ -15,6 +17,9 @@ public sealed partial class EventTimelineControl
 
     // Two presses within this window count as a double-click.
     private const long DoubleClickMs = 300;
+
+    // Gap between the pointer and the tooltip, on whichever side the tooltip is shown.
+    private const double TooltipGap = 12;
 
     private enum DragTarget { None, Start, End, Playhead }
 
@@ -297,12 +302,56 @@ public sealed partial class EventTimelineControl
         {
             _hoverEvent = region.Event;
             _hoverLabel = region.Label;
-            _toolTipText.Text = region.Event.Detail;
+            _toolTipText.Text = WithStructure(region.Event);
         }
 
-        _toolTip.HorizontalOffset = position.X + 12;
-        _toolTip.VerticalOffset = position.Y + 12;
+        PositionTooltip(position);
+
         _toolTip.IsOpen = true;
+    }
+
+    /// <summary>
+    /// Places the tooltip below and right of the pointer, flipping it to the left when it would run past the right edge
+    /// </summary>
+    /// <remarks>
+    /// The popup is offset within the overlay rather than laid out by it, so nothing else keeps it inside the control.
+    /// Its child is measured here because a popup that has never been open has no desired size of its own yet.
+    /// </remarks>
+    private string WithStructure(EngineEvent engineEvent)
+    {
+        if (ResolveStructure is not { } resolve)
+        {
+            return engineEvent.Detail;
+        }
+
+        var page = engineEvent switch
+        {
+            PageEngineEvent { PageAddress: { } address } => address,
+            ReadEventGroup { PageAddress: { } address } => address,
+            _ => (PageAddress?)null
+        };
+
+        return page is { } value && resolve(value) is { Length: > 0 } structure
+               ? engineEvent.Detail + Environment.NewLine + structure
+               : engineEvent.Detail;
+    }
+
+    private void PositionTooltip(Windows.Foundation.Point position)
+    {
+        var x = position.X + TooltipGap;
+
+        if (_toolTip.Child is FrameworkElement content)
+        {
+            content.Measure(new Windows.Foundation.Size(double.PositiveInfinity, double.PositiveInfinity));
+
+            if (x + content.DesiredSize.Width > _overlay.ActualWidth)
+            {
+                x = Math.Max(0, position.X - TooltipGap - content.DesiredSize.Width);
+            }
+        }
+
+        _toolTip.HorizontalOffset = x;
+        _toolTip.VerticalOffset = position.Y + TooltipGap;
     }
 
     private (EngineEvent Event, string? Label)? HitTestRegion(double x, double y)

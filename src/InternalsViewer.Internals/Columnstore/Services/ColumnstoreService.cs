@@ -29,11 +29,48 @@ public sealed class ColumnstoreService(IRecordReader recordReader,
     /// </summary>
     private const int PrologueSlack = 16;
 
+    private const int PrefixProbeSize = 8192;
+
     private IRecordReader RecordReader { get; } = recordReader;
 
     private ILobDataService LobDataService { get; } = lobDataService;
 
     private ILogger<ColumnstoreService>? Logger { get; } = logger;
+
+    /// <summary>
+    /// Raised for each page a columnstore read touches, with the structure it was read for
+    /// </summary>
+    public Action<ColumnstorePageRead>? PageRead { get; set; }
+
+    private Action<PageAddress> SegmentSink(DatabaseSource database, ColumnSegment segment)
+        => Sink(database,
+                new ColumnstorePageRead(PageAddress.Empty,
+                                        segment.Key.RowGroupId,
+                                        segment.Key.ColumnId,
+                                        segment.Column?.Name ?? string.Empty,
+                                        segment.Key.RowGroupId,
+                                        -1,
+                                        ColumnstoreReadType.Segment));
+
+    private Action<PageAddress> DictionarySink(DatabaseSource database, SegmentDictionary dictionary)
+        => Sink(database,
+                new ColumnstorePageRead(PageAddress.Empty,
+                                        -1,
+                                        dictionary.ColumnId,
+                                        string.Empty,
+                                        -1,
+                                        dictionary.DictionaryId,
+                                        ColumnstoreReadType.Dictionary));
+
+    private Action<PageAddress> Sink(DatabaseSource database, ColumnstorePageRead template)
+        => address =>
+        {
+            var read = template with { PageAddress = address };
+
+            cache?.SetPageRead(database, read);
+
+            PageRead?.Invoke(read);
+        };
 
     public async Task<ColumnStoreIndex> GetIndex(AllocationUnit allocationUnit,
                                                  DatabaseSource database,
@@ -78,7 +115,8 @@ public sealed class ColumnstoreService(IRecordReader recordReader,
 
     public async Task<byte[]> GetData(DatabaseSource database,
                                       LobPointer lobPointer,
-                                      CancellationToken cancellationToken)
+                                      CancellationToken cancellationToken,
+                                      Action<PageAddress>? onPageRead = null)
     {
         var identifier = new RowIdentifier(lobPointer.PageAddress, (ushort)lobPointer.Slot);
 
@@ -89,7 +127,7 @@ public sealed class ColumnstoreService(IRecordReader recordReader,
 
         var start = Stopwatch.GetTimestamp();
 
-        var data = await LobDataService.GetData(database, identifier, cancellationToken);
+        var data = await LobDataService.GetData(database, identifier, cancellationToken, onPageRead);
 
         Logger?.LogDebug("Read {Bytes} bytes of lob data from {Page} in {Duration}",
                          data.Length,
@@ -112,7 +150,8 @@ public sealed class ColumnstoreService(IRecordReader recordReader,
         var prefix = await LobDataService.GetDataPrefix(database,
                                                         new RowIdentifier(pointer.PageAddress, (ushort)pointer.Slot),
                                                         SegmentBlobHeader.Size + PrologueSlack,
-                                                        cancellationToken);
+                                                        cancellationToken,
+                                                        SegmentSink(database, segment));
 
         if (!ArchiveBlobHeader.IsArchive(prefix.Data, prefix.TotalLength))
         {
@@ -143,8 +182,10 @@ public sealed class ColumnstoreService(IRecordReader recordReader,
                                                  bool isMarkEnabled = false,
                                                  SegmentLoadDepth depth = SegmentLoadDepth.Full)
     {
+        var sink = SegmentSink(database, segment);
+
         var data = depth == SegmentLoadDepth.Full
-                   ? await GetData(database, segment.DataPointer, cancellationToken)
+                   ? await GetData(database, segment.DataPointer, cancellationToken, sink)
                    : await GetPartialData(database, segment, depth, cancellationToken);
 
         var start = Stopwatch.GetTimestamp();
@@ -177,27 +218,28 @@ public sealed class ColumnstoreService(IRecordReader recordReader,
 
         var start = Stopwatch.GetTimestamp();
 
-        var prologue = await LobDataService.GetDataPrefix(database,
-                                                          identifier,
-                                                          SegmentBlobHeader.Size + PrologueSlack,
-                                                          cancellationToken);
+        var sink = SegmentSink(database, segment);
 
-        if (ArchiveBlobHeader.IsArchive(prologue.Data, prologue.TotalLength))
+        var probe = await LobDataService.GetDataPrefix(database, identifier, PrefixProbeSize, cancellationToken, sink);
+
+        if (ArchiveBlobHeader.IsArchive(probe.Data, probe.TotalLength))
         {
-            return await GetData(database, pointer, cancellationToken);
+            return await GetData(database, pointer, cancellationToken, sink);
         }
 
-        var required = SegmentBlobParser.GetRequiredLength(prologue.Data, segment, depth);
+        var required = SegmentBlobParser.GetRequiredLength(probe.Data, segment, depth);
 
-        if (required <= 0 || required > prologue.TotalLength)
+        if (required <= 0 || required > probe.TotalLength)
         {
-            return await GetData(database, pointer, cancellationToken);
+            return await GetData(database, pointer, cancellationToken, sink);
         }
 
-        var prefix = await LobDataService.GetDataPrefix(database, identifier, required, cancellationToken);
+        var prefix = required <= probe.Data.Length
+                     ? probe
+                     : await LobDataService.GetDataPrefix(database, identifier, required, cancellationToken, sink);
 
         Logger?.LogDebug("Read {Bytes} of {Total} bytes for row group {RowGroup} column {Column} to {Depth} in {Duration}",
-                         prefix.Data.Length,
+                         required,
                          prefix.TotalLength,
                          segment.Key.RowGroupId,
                          segment.Key.ColumnId,
@@ -242,7 +284,10 @@ public sealed class ColumnstoreService(IRecordReader recordReader,
                                                         CancellationToken cancellationToken,
                                                         bool isMarkEnabled = false)
     {
-        var data = await GetData(database, dictionary.DataPointer, cancellationToken);
+        var data = await GetData(database,
+                                 dictionary.DataPointer,
+                                 cancellationToken,
+                                 DictionarySink(database, dictionary));
 
         var blob = DictionaryBlobParser.Parse(data, (int)dictionary.EntryCount, dictionary.LastId, isMarkEnabled);
 

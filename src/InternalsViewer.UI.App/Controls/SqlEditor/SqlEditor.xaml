@@ -216,7 +216,8 @@
                                        Grid.Column="2"
                                        x:Name="HistoryPanel"
                                        ViewModel="{x:Bind History, Mode=OneWay}"
-                                       QuerySelected="OnHistoryQuerySelected" />
+                                       QuerySelected="OnHistoryQuerySelected"
+                                       QueryRunRequested="OnHistoryQueryRunRequested" />
     </Grid>
 
 </UserControl>

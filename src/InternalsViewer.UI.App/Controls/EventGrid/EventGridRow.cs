@@ -1,4 +1,4 @@
-using CommunityToolkit.Mvvm.ComponentModel;
+﻿using CommunityToolkit.Mvvm.ComponentModel;
 using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Query.Events;
 
@@ -12,6 +12,8 @@ public sealed partial class EventGridRow(EngineEvent engineEvent, int depth, boo
     private bool _isExpanded = isExpanded;
 
     public EngineEvent Event { get; } = engineEvent;
+
+    public string Structure { get; set; } = string.Empty;
 
     public int Depth { get; } = depth;
 

@@ -1,10 +1,12 @@
 using System;
 using System.Collections.Generic;
 using InternalsViewer.Query.Events;
+using InternalsViewer.Query.Events.BatchMode;
 using InternalsViewer.Query.Events.Locks;
 using InternalsViewer.Query.Events.Operators;
 using InternalsViewer.Query.Events.Reads;
 using InternalsViewer.UI.App.Helpers;
+using InternalsViewer.UI.App.ViewModels.Query;
 using SkiaSharp;
 
 namespace InternalsViewer.UI.App.Controls.Timeline.Renderers;
@@ -30,6 +32,8 @@ internal sealed class MarkerRenderer(RenderResource resources, CurrentSelection 
 
     // The widest a tick can be (sparse rows): used as the left cull margin so a marker just off the label edge still culls.
     private const float MaxMarkerWidth = 4f;
+
+    private static readonly SKColor SegmentEliminationColour = ColourConstants.SegmentEliminationColour.ToSkColor();
 
     public void Draw(SKCanvas canvas, TimelineFrame frame)
     {
@@ -131,14 +135,20 @@ internal sealed class MarkerRenderer(RenderResource resources, CurrentSelection 
     }
 
     // Category lanes tint the lane colour by category step; the Read lane takes its per-node colour from the provider,
-    // falling back to the flat lane colour. Dimming only lowers the alpha for an out-of-focus event.
+    // falling back to the flat lane colour. The Segment Scan lane is flat, a scan taking the lane colour and an
+    // elimination its own. Dimming only lowers the alpha for an out-of-focus event.
     private SKColor MarkerColour(TimelineFrame frame, EngineEvent sourceEvent, int rowIndex, EventCategory? category)
     {
-        var colour = category.HasValue
-            ? TimelineColours.TintByCategory(frame.Rows.Active[rowIndex].Color, (int)category.Value)
-            : frame.ColourProvider is { } colours
-                ? colours.GetColour(sourceEvent).ToSkColor()
-                : frame.Rows.Active[rowIndex].Color;
+        var laneColour = frame.Rows.Active[rowIndex].Color;
+
+        var colour = sourceEvent switch
+        {
+            SegmentEliminateEvent => SegmentEliminationColour,
+            SegmentScanEvent => laneColour,
+            _ when category.HasValue => TimelineColours.TintByCategory(laneColour, (int)category.Value),
+            _ when frame.ColourProvider is { } colours => colours.GetColour(sourceEvent).ToSkColor(),
+            _ => laneColour,
+        };
 
         return colour.WithAlpha(selection.ShouldDim(sourceEvent) ? DimAlpha : (byte)255);
     }

@@ -14,7 +14,8 @@ public sealed partial class EventTimelineControl
     private const float HandleHeight = 8f;
     private const float HandleGap = 13f;
     private const float TriangleHalfWidth = 9f;
-    private const float RowLabelWidth = 36f;
+    private const float MinRowLabelWidth = 36f;
+    private const float RowLabelGutterPadding = 6f;
     private const float RowPadding = 2f;
 
     private readonly SKColor _laneColour = new(30, 30, 30, 220);
@@ -163,7 +164,8 @@ public sealed partial class EventTimelineControl
                                           StartDrawX,
                                           EndDrawX,
                                           PlayheadX,
-                                          EffectiveToMs(_playheadTime));
+                                          EffectiveToMs(_playheadTime),
+                                          RowLabelWidth);
 
         _overlayRenderer.Draw(canvas, w, h, overlay);
     }

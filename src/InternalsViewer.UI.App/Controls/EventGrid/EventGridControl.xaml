@@ -114,6 +114,16 @@
                     </tableView:TableViewTemplateColumn.CellTemplate>
                 </tableView:TableViewTemplateColumn>
 
+                <tableView:TableViewTemplateColumn Header="Structure" Tag="Structure" Width="220">
+                    <tableView:TableViewTemplateColumn.CellTemplate>
+                        <DataTemplate x:DataType="eventGrid:EventGridRow">
+                            <TextBlock Text="{x:Bind Structure, Mode=OneTime}"
+                                       Margin="4,0"
+                                       VerticalAlignment="Center"/>
+                        </DataTemplate>
+                    </tableView:TableViewTemplateColumn.CellTemplate>
+                </tableView:TableViewTemplateColumn>
+
             </tableView:TableView.Columns>
         </tableView:TableView>
 

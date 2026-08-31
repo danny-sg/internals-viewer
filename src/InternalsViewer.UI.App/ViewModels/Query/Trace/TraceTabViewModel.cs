@@ -5,6 +5,7 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
+using Microsoft.Extensions.Logging;
 using CommunityToolkit.Mvvm.Input;
 using InternalsViewer.Execution.AccessPaths.Definitions;
 using InternalsViewer.Execution.AccessPaths.Descriptions;
@@ -1036,6 +1037,8 @@ public sealed partial class TraceTabViewModel : ObservableObject, IDisposable
         Applier.SyncSegments(stepper);
 
         Applier.SyncHashTables(stepper.Current);
+
+        Applier.SyncBatches(stepper);
 
         NotifyDescriptionChanged();
 

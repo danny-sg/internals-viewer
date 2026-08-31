@@ -16,6 +16,9 @@ public sealed partial class EventTimelineControl
 
     private float CanvasWidth => (float)_overlay.ActualWidth;
 
+    // The gutter is sized to the widest label the shown rows carry, so a long one is not drawn over the lanes.
+    private float RowLabelWidth => Math.Max(MinRowLabelWidth, _rows.MaxLabelWidth + RowLabelGutterPadding);
+
     private float DrawWidth => CanvasWidth - RowLabelWidth;
 
     private double ContentWidth => DrawWidth * _zoom;

@@ -162,9 +162,6 @@ public sealed partial class ColumnstoreTabViewModel : TabViewModel
 
     private ILogger<ColumnstoreTabViewModel> Logger { get; }
 
-    /// <summary>
-    /// Hands each tab a logger of its own, which is what the timings are written through
-    /// </summary>
     private ILoggerFactory LoggerFactory { get; }
 
     public async Task Load()
@@ -285,7 +282,7 @@ public sealed partial class ColumnstoreTabViewModel : TabViewModel
 
     private async Task LoadSegmentRuns()
     {
-        foreach (var segment in Segments.Where(s => s.HasDataPointer && s.Runs.Count == 0).ToList())
+        foreach (var segment in Segments.Where(s => s is { HasDataPointer: true, Runs.Count: 0 }).ToList())
         {
             if (CancellationToken.IsCancellationRequested)
             {

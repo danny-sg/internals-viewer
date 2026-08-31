@@ -1,4 +1,5 @@
 ﻿using System.Collections.Concurrent;
+using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Threading;
 using InternalsViewer.Internals.Columnstore.Metadata;
@@ -41,6 +42,19 @@ public sealed class ColumnstoreCache
         }
     }
 
+    public void SetPageRead(DatabaseSource database, ColumnstorePageRead read)
+        => Entries.GetOrCreateValue(database)
+                  .PageReads
+                  .GetOrAdd(read.PageAddress, _ => new ConcurrentDictionary<ColumnstorePageRead, byte>())[read] = 0;
+
+    public IReadOnlyList<ColumnstorePageRead> GetPageReads(DatabaseSource database, PageAddress pageAddress)
+        => Entries.TryGetValue(database, out var entry) && entry.PageReads.TryGetValue(pageAddress, out var reads)
+            ? [.. reads.Keys]
+            : [];
+
+    public IReadOnlyCollection<ColumnstorePageRead> PageReads(DatabaseSource database)
+        => Entries.TryGetValue(database, out var entry) ? [.. entry.PageReads.Values.SelectMany(r => r.Keys)] : [];
+
     public void Clear(DatabaseSource database) => Entries.Remove(database);
 
     private sealed class Entry
@@ -50,5 +64,7 @@ public sealed class ColumnstoreCache
         public ConcurrentDictionary<long, ColumnStoreIndex> Indexes { get; } = new();
 
         public ConcurrentDictionary<RowIdentifier, byte[]> Data { get; } = new();
+
+        public ConcurrentDictionary<PageAddress, ConcurrentDictionary<ColumnstorePageRead, byte>> PageReads { get; } = new();
     }
 }

@@ -3,6 +3,8 @@ using InternalsViewer.Query.Events;
 using InternalsViewer.Query.Events.Operators;
 using InternalsViewer.Query.Plans.Model;
 using InternalsViewer.UI.App.Controls.Docking;
+using InternalsViewer.Internals.Columnstore.Services;
+using InternalsViewer.UI.App.Helpers;
 using InternalsViewer.UI.App.ViewModels.Query;
 using Microsoft.UI.Xaml.Controls;
 
@@ -28,6 +30,21 @@ public sealed partial class QueryTimelineTabView : UserControl, IDocumentCommand
         EventTimeline.ExecutionPlanRequested += OnExecutionPlanRequested;
         EventTimeline.TraceOpenRequested += OnTraceOpenRequested;
         EventTimeline.PlayStateChanged += OnPlayStateChanged;
+
+        Loaded += (_, _) => AttachStructureResolver();
+    }
+
+    private void AttachStructureResolver()
+    {
+        if (ViewModel is not { } viewModel)
+        {
+            return;
+        }
+
+        var cache = App.GetService<ColumnstoreCache>();
+
+        EventTimeline.ResolveStructure =
+            page => ColumnstoreStructureText.Describe(cache.GetPageReads(viewModel.Database, page));
     }
 
     public QueryViewModel? ViewModel => DataContext as QueryViewModel;
