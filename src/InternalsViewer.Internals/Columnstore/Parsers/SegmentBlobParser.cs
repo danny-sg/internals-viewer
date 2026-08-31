@@ -36,7 +36,10 @@ public static class SegmentBlobParser
 {
     public const int SupportedVersion = 1;
 
-    public static SegmentBlob Parse(ReadOnlyMemory<byte> data, ColumnSegment? segment, bool isMarkEnabled = false)
+    public static SegmentBlob Parse(ReadOnlyMemory<byte> data,
+                                    ColumnSegment? segment,
+                                    bool isMarkEnabled = false,
+                                    SegmentLoadDepth depth = SegmentLoadDepth.Full)
     {
         if (ArchiveBlobHeader.IsArchive(data.Span))
         {
@@ -72,11 +75,19 @@ public static class SegmentBlobParser
 
         blob.Bookmarks = ReadBookmarks(span, blob);
 
+        if (depth == SegmentLoadDepth.Header)
+        {
+            return blob;
+        }
+
         if (blob.Header.IsVariableLengthData)
         {
-            blob.VariableLengthData = SegmentVariableLengthDataParser.Parse(data,
-                                                                            blob.Header.VariableLengthDataOffset,
-                                                                            blob.IsMarkEnabled);
+            if (depth == SegmentLoadDepth.Full)
+            {
+                blob.VariableLengthData = SegmentVariableLengthDataParser.Parse(data,
+                                                                                blob.Header.VariableLengthDataOffset,
+                                                                                blob.IsMarkEnabled);
+            }
 
             blob.RleEntries = ReadRleEntries(span, blob);
 
@@ -88,19 +99,36 @@ public static class SegmentBlobParser
             throw new InvalidDataException($"Segment structure type {(int)blob.Header.RleType} is not supported.");
         }
 
-        if (blob.Header.ExpectedSize != data.Length)
+        if (depth == SegmentLoadDepth.Full && blob.Header.ExpectedSize != data.Length)
         {
             throw new InvalidDataException($"Segment blob is {data.Length} bytes, header implies {blob.Header.ExpectedSize}.");
         }
 
         blob.RleEntries = ReadRleEntries(span, blob);
 
-        blob.Bitpack = new BitpackArray(data[blob.Header.BitpackArrayOffset..],
-                                        blob.Header.BitpackEntrySize,
-                                        blob.Header.BitpackUnitCount,
-                                        blob.Header.BitpackMinId);
+        if (depth == SegmentLoadDepth.Full)
+        {
+            blob.Bitpack = new BitpackArray(data[blob.Header.BitpackArrayOffset..],
+                                            blob.Header.BitpackEntrySize,
+                                            blob.Header.BitpackUnitCount,
+                                            blob.Header.BitpackMinId);
+        }
 
         return blob;
+    }
+
+    public static int GetRequiredLength(ReadOnlySpan<byte> prologue, ColumnSegment? segment, SegmentLoadDepth depth)
+    {
+        var header = ParseHeader(prologue);
+
+        header.RleValueSize = CalculateRleValueSize(segment);
+
+        return depth switch
+        {
+            SegmentLoadDepth.Header => header.RleArrayOffset,
+            SegmentLoadDepth.Runs => header.BitpackArrayOffset,
+            _ => header.ExpectedSize
+        };
     }
 
     /// <summary>

@@ -35,7 +35,9 @@ public sealed partial class TraceVisualPanelView : UserControl
         => visualType == TraceVisualType.Index && isInitialized ? Visibility.Visible : Visibility.Collapsed;
 
     public Visibility LoadingVisibility(TraceVisualType visualType, bool isInitialized)
-        => visualType == TraceVisualType.Index && !isInitialized ? Visibility.Visible : Visibility.Collapsed;
+        => visualType is TraceVisualType.Index or TraceVisualType.Columnstore && !isInitialized
+            ? Visibility.Visible
+            : Visibility.Collapsed;
 
     public Visibility AllocationVisibility(TraceVisualType visualType, bool isInitialized)
         => visualType == TraceVisualType.Allocation && isInitialized ? Visibility.Visible : Visibility.Collapsed;

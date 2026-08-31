@@ -12,13 +12,6 @@
                 Margin="0,0,8,0">
         <ToggleButton Style="{StaticResource TabCommandToggleStyle}"
                       MinWidth="90"
-                      Margin="0,0,4,0"
-                      Visibility="{x:Bind BatchModeVisibility(ViewModel.HasBatchMode)}"
-                      IsChecked="{x:Bind ViewModel.IsBatchStepping, Mode=TwoWay}">
-            <TextBlock Text="Batch Mode" VerticalAlignment="Center" />
-        </ToggleButton>
-        <ToggleButton Style="{StaticResource TabCommandToggleStyle}"
-                      MinWidth="90"
                       IsChecked="{x:Bind ViewModel.IsNestedLayout, Mode=TwoWay}">
             <TextBlock Text="Layout" VerticalAlignment="Center" />
         </ToggleButton>

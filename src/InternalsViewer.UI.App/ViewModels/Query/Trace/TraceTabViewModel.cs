@@ -62,8 +62,6 @@ public sealed partial class TraceTabViewModel : ObservableObject, IDisposable
 
     private Task? _interactiveRun;
 
-    [ObservableProperty]
-    private bool _isBatchStepping;
 
     [ObservableProperty]
     private double _runDelayMs = 150;
@@ -194,8 +192,6 @@ public sealed partial class TraceTabViewModel : ObservableObject, IDisposable
             Applier.BuildStateItems(op);
         }
 
-        IsBatchStepping = HasBatchMode;
-
         SelectedVisual = visuals[0];
 
         SelectedNodeId = Operators.Count > 0 ? Operators[0].NodeId : definition.NodeId;
@@ -226,8 +222,6 @@ public sealed partial class TraceTabViewModel : ObservableObject, IDisposable
     /// What the join does with a pair that matches on both sides, or null when the trace is not a join
     /// </summary>
     public JoinDecision? JoinRule => Definition is JoinDefinition join ? join.JoinType.Decide(true, true) : null;
-
-    public bool HasBatchMode => Layout.Nodes.Values.Any(n => n.Definition is IBatchDefinition or BatchToRowDefinition);
 
     /// <summary>
     /// The batches of the plan, one per operator that creates one
@@ -385,13 +379,6 @@ public sealed partial class TraceTabViewModel : ObservableObject, IDisposable
     [RelayCommand]
     public async Task StepNext()
     {
-        if (IsBatchStepping)
-        {
-            await StepToBatchAsync();
-
-            return;
-        }
-
         if (!IsStepping)
         {
             await StartAsync();
@@ -467,64 +454,6 @@ public sealed partial class TraceTabViewModel : ObservableObject, IDisposable
     /// </summary>
     [RelayCommand(AllowConcurrentExecutions = true)]
     public Task RunToPhase(AccessPhase phase) => RunUntilAsync(PhaseStopCondition(phase, SelectedDefinition, SelectedNodeId));
-
-    private static bool IsBatchBoundary(AccessStep step)
-        => step is AccessStep.BatchProduced
-                   or AccessStep.FilterVector
-                   or AccessStep.BatchFiltered
-                   or AccessStep.RowGroupOpened
-                   or AccessStep.RowGroupSkipped
-                   or AccessStep.SegmentElimination
-                   or AccessStep.Stopped
-                   or AccessStep.Close;
-
-    private async Task StepToBatchAsync()
-    {
-        if (!IsStepping)
-        {
-            await StartAsync();
-        }
-
-        if (Stepper is not { } stepper)
-        {
-            return;
-        }
-
-        AccessStep? last = null;
-
-        while (true)
-        {
-            var step = await Task.Run(() => stepper.StepNextAsync(CancellationToken.None));
-
-            if (step is null)
-            {
-                IsStepComplete = true;
-                IsRunning = false;
-
-                break;
-            }
-
-            TraceStepRuns.Append(step, StepHistory, HistoryLimit);
-
-            Applier.ApplyStep(stepper, step);
-
-            last = step;
-
-            if (IsBatchBoundary(step))
-            {
-                break;
-            }
-        }
-
-        if (last is null)
-        {
-            return;
-        }
-
-        NotifyDescriptionChanged();
-
-        CurrentStep = last;
-    }
 
     [RelayCommand(AllowConcurrentExecutions = true)]
     public Task RunToNextBatch()

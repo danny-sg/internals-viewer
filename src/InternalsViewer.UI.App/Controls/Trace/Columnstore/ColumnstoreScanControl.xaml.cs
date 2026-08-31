@@ -1,6 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
 using InternalsViewer.UI.App.Models.Query.Trace.Columnstore;
+using InternalsViewer.UI.App.Controls.Columnstore;
+using Microsoft.UI.Xaml.Input;
 using SkiaSharp;
 using SkiaSharp.Views.Windows;
 
@@ -80,11 +82,17 @@ public sealed partial class ColumnstoreScanControl
         set => SetValue(NodeColourProperty, value);
     }
 
+    private List<ColumnstoreRegion> _regions = [];
+
     public ColumnstoreScanControl()
     {
         InitializeComponent();
 
         ScanCanvas.PaintSurface += OnPaintSurface;
+
+        ScanCanvas.PointerMoved += OnPointerMoved;
+
+        ScanCanvas.PointerExited += OnPointerExited;
 
         ActualThemeChanged += (_, _) => ScanCanvas.Invalidate();
     }
@@ -100,7 +108,7 @@ public sealed partial class ColumnstoreScanControl
 
         var colour = new SKColor(NodeColour.R, NodeColour.G, NodeColour.B, NodeColour.A);
 
-        ColumnstoreScanRenderer.Draw(e.Surface.Canvas,
+        _regions = ColumnstoreScanRenderer.Draw(e.Surface.Canvas,
                                      bounds,
                                      RowGroups ?? [],
                                      ActiveRowGroupId,
@@ -109,4 +117,16 @@ public sealed partial class ColumnstoreScanControl
                                      colour,
                                      ActualTheme == ElementTheme.Dark);
     }
+
+    private void OnPointerMoved(object sender, PointerRoutedEventArgs e)
+    {
+        var position = e.GetCurrentPoint(ScanCanvas).Position;
+
+        Tooltip.Show(FindRegion((float)position.X, (float)position.Y), position);
+    }
+
+    private void OnPointerExited(object sender, PointerRoutedEventArgs e) => Tooltip.Hide();
+
+    private ColumnstoreRegion? FindRegion(float x, float y)
+        => _regions.Find(r => r.Bounds.Contains(x, y));
 }

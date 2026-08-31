@@ -5,6 +5,7 @@ using InternalsViewer.Query.Results;
 using InternalsViewer.UI.App.Messages;
 using InternalsViewer.UI.App.Models.Schema;
 using InternalsViewer.UI.App.Services;
+using InternalsViewer.UI.App.ViewModels.Query;
 using Microsoft.UI;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Media;
@@ -24,6 +25,8 @@ public sealed partial class SqlEditorControl : UserControl, IDisposable
     private const string FontSizeSettingKey = "SqlEditorFontSize";
 
     private const string ResultsVisibleSettingKey = "SqlEditorResultsVisible";
+
+    private const string HistoryVisibleSettingKey = "SqlEditorHistoryVisible";
 
     public static readonly DependencyProperty ExecuteCommandProperty =
         DependencyProperty.Register(
@@ -144,6 +147,26 @@ public sealed partial class SqlEditorControl : UserControl, IDisposable
         set => SetValue(IsResultsVisibleProperty, value);
     }
 
+    public static readonly DependencyProperty IsHistoryVisibleProperty =
+        DependencyProperty.Register(nameof(IsHistoryVisible), typeof(bool), typeof(SqlEditorControl),
+            new PropertyMetadata(false, OnIsHistoryVisibleChanged));
+
+    public bool IsHistoryVisible
+    {
+        get => (bool)GetValue(IsHistoryVisibleProperty);
+        set => SetValue(IsHistoryVisibleProperty, value);
+    }
+
+    public static readonly DependencyProperty HistoryProperty =
+        DependencyProperty.Register(nameof(History), typeof(QueryHistoryViewModel), typeof(SqlEditorControl),
+            new PropertyMetadata(null));
+
+    public QueryHistoryViewModel? History
+    {
+        get => (QueryHistoryViewModel?)GetValue(HistoryProperty);
+        set => SetValue(HistoryProperty, value);
+    }
+
     public static readonly DependencyProperty AdditionalContentProperty =
         DependencyProperty.Register(nameof(AdditionalContent), typeof(object), typeof(SqlEditorControl),
             new PropertyMetadata(null));
@@ -209,6 +232,7 @@ public sealed partial class SqlEditorControl : UserControl, IDisposable
 
         ApplyBottomPanelVisibility();
         ApplyResultsTabVisibility();
+        ApplyHistoryVisibility();
     }
 
     public event EventHandler<string>? SqlTextChanged;
@@ -269,6 +293,27 @@ public sealed partial class SqlEditorControl : UserControl, IDisposable
         ResultsTab.Visibility = ResultSet is not null ? Visibility.Visible : Visibility.Collapsed;
     }
 
+    private void ApplyHistoryVisibility()
+    {
+        if (IsHistoryVisible)
+        {
+            if (HistoryColumn.Width.GridUnitType == GridUnitType.Pixel && HistoryColumn.Width.Value == 0)
+            {
+                HistoryColumn.Width = new GridLength(320);
+            }
+
+            HistorySplitter.Visibility = Visibility.Visible;
+        }
+        else
+        {
+            HistoryColumn.Width = new GridLength(0);
+
+            HistorySplitter.Visibility = Visibility.Collapsed;
+        }
+    }
+
+    private void OnHistoryQuerySelected(object? sender, string sql) => SqlText = sql;
+
     private void HandleExecuteClick()
     {
         var text = string.IsNullOrEmpty(_selectedText) ? SqlText : _selectedText;
@@ -304,6 +349,8 @@ public sealed partial class SqlEditorControl : UserControl, IDisposable
             LoadingOverlay.Visibility = Visibility.Visible;
 
             await ApplySavedResultsVisibilityAsync();
+
+            await ApplySavedHistoryVisibilityAsync();
 
             await WebView.EnsureCoreWebView2Async();
 
@@ -440,6 +487,11 @@ public sealed partial class SqlEditorControl : UserControl, IDisposable
         QueryOptions = QueryOptions with { IncludeResults = saved };
     }
 
+    private async Task ApplySavedHistoryVisibilityAsync()
+    {
+        IsHistoryVisible = await App.GetService<SettingsService>().ReadSettingAsync<bool?>(HistoryVisibleSettingKey) ?? false;
+    }
+
     // Applies the persisted editor font size (set by Ctrl+wheel zoom) once the editor is ready
     private async Task ApplySavedFontSizeAsync()
     {
@@ -491,6 +543,13 @@ public sealed partial class SqlEditorControl : UserControl, IDisposable
 
     private static void OnIsMessagesVisibleChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
         => ((SqlEditorControl)d).ApplyBottomPanelVisibility();
+
+    private static void OnIsHistoryVisibleChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
+    {
+        ((SqlEditorControl)d).ApplyHistoryVisibility();
+
+        _ = App.GetService<SettingsService>().SaveSettingAsync(HistoryVisibleSettingKey, (bool)e.NewValue);
+    }
 
     private static void OnTrackQueryChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
     {

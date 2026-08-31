@@ -25,6 +25,11 @@ using InternalsViewer.UI.App.Models.Index;
 using InternalsViewer.UI.App.Models.Query.Trace;
 using InternalsViewer.UI.App.ViewModels.Allocation;
 using AllocationUnit = InternalsViewer.Internals.Engine.Database.AllocationUnit;
+using InternalsViewer.Execution.Iterators.BatchMode.DataAccess;
+using InternalsViewer.Internals.Columnstore.Decoding;
+using InternalsViewer.Internals.Columnstore.Metadata;
+using System.IO;
+using InternalsViewer.Internals.Columnstore.Segments;
 using InternalsViewer.UI.App.Models.Query.Trace.Columnstore;
 using InternalsViewer.Internals.Columnstore.Services;
 
@@ -37,6 +42,8 @@ public sealed partial class TraceVisualViewModel(TraceVisualType visualType,
                                                  string title,
                                                  int nodeId = 0) : ObservableObject
 {
+    private const int MaxDrawnRuns = 1024;
+
     private readonly List<PageSpan> _visitedPages = [];
 
     /// <summary>
@@ -65,7 +72,19 @@ public sealed partial class TraceVisualViewModel(TraceVisualType visualType,
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(ProgressText))]
+    [NotifyPropertyChangedFor(nameof(ProgressValue))]
     private int _loadedPageCount;
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(ProgressText))]
+    [NotifyPropertyChangedFor(nameof(ProgressValue))]
+    private int _loadedSegmentCount;
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(ProgressText))]
+    [NotifyPropertyChangedFor(nameof(ProgressMaximum))]
+    [NotifyPropertyChangedFor(nameof(IsProgressVisible))]
+    private int _segmentCount;
 
     [ObservableProperty]
     private float _zoom = 1;
@@ -136,11 +155,17 @@ public sealed partial class TraceVisualViewModel(TraceVisualType visualType,
 
     public long TotalPageCount => AllocationUnit.UsedPages;
 
-    public string ProgressText => TotalPageCount > 0 ? $"{LoadedPageCount:N0} of {TotalPageCount:N0} pages" : string.Empty;
+    public string ProgressText => VisualType == TraceVisualType.Columnstore
+        ? SegmentCount > 0 ? $"{LoadedSegmentCount:N0} of {SegmentCount:N0} segments" : string.Empty
+        : TotalPageCount > 0 ? $"{LoadedPageCount:N0} of {TotalPageCount:N0} pages" : string.Empty;
 
-    public bool IsProgressVisible => TotalPageCount >= IndexService.ProgressReportInterval;
+    public bool IsProgressVisible => VisualType == TraceVisualType.Columnstore
+        ? SegmentCount > 0
+        : TotalPageCount >= IndexService.ProgressReportInterval;
 
-    public double ProgressMaximum => TotalPageCount;
+    public double ProgressMaximum => VisualType == TraceVisualType.Columnstore ? SegmentCount : TotalPageCount;
+
+    public double ProgressValue => VisualType == TraceVisualType.Columnstore ? LoadedSegmentCount : LoadedPageCount;
 
     public short VisualFileId
         => (AllocationUnit.FirstPage != PageAddress.Empty ? AllocationUnit.FirstPage : AllocationUnit.FirstIamPage).FileId;
@@ -393,6 +418,46 @@ public sealed partial class TraceVisualViewModel(TraceVisualType visualType,
                                                          ColumnName = s.Column!.Name
                                                      })]
                                  })];
+
+        await LoadSegmentRunsAsync(index, cancellationToken);
+    }
+
+    private async Task LoadSegmentRunsAsync(ColumnStoreIndex index, CancellationToken cancellationToken)
+    {
+        var service = App.GetService<ColumnstoreService>();
+
+        var segments = index.CompressedRowGroups
+                            .SelectMany(r => r.Segments.Where(s => s.Column is { IsInternal: false }))
+                            .Count();
+
+        LoadedSegmentCount = 0;
+
+        SegmentCount = segments;
+
+        foreach (var rowGroup in index.CompressedRowGroups)
+        {
+            foreach (var segment in rowGroup.Segments.Where(s => s.Column is { IsInternal: false }))
+            {
+                try
+                {
+                    var blob = await service.GetSegmentBlob(Database,
+                                                            segment,
+                                                            cancellationToken,
+                                                            depth: SegmentLoadDepth.Runs);
+
+                    SetSegment(rowGroup.RowGroupId,
+                               segment.Column!.ColumnStoreColumnId,
+                               s => s.Runs = RunRows(blob));
+                }
+                catch (InvalidDataException)
+                {
+                }
+
+                LoadedSegmentCount++;
+            }
+        }
+
+        SegmentCount = 0;
     }
 
     public void ResetColumnstore()
@@ -464,6 +529,39 @@ public sealed partial class TraceVisualViewModel(TraceVisualType visualType,
                 SetRowGroup(batch.RowGroupId, r => r.IsVisited = true);
                 break;
         }
+    }
+
+    private static IReadOnlyList<int> RunRows(SegmentBlob blob)
+    {
+        var runs = new List<int>();
+
+        foreach (var run in new SegmentDataIdStream(blob).GetRuns(0, blob.RowCount))
+        {
+            runs.Add(run.RowCount);
+        }
+
+        if (runs.Count <= MaxDrawnRuns)
+        {
+            return runs;
+        }
+
+        var merge = (runs.Count + MaxDrawnRuns - 1) / MaxDrawnRuns;
+
+        var merged = new List<int>(MaxDrawnRuns);
+
+        for (var i = 0; i < runs.Count; i += merge)
+        {
+            var rows = 0;
+
+            for (var j = i; j < runs.Count && j < i + merge; j++)
+            {
+                rows += runs[j];
+            }
+
+            merged.Add(rows);
+        }
+
+        return merged;
     }
 
     private void SetRowGroup(int rowGroupId, Action<ScanRowGroup> apply)

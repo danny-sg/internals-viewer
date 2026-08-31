@@ -1,4 +1,5 @@
-﻿using System.IO;
+﻿using System.Diagnostics;
+using System.IO;
 using System.Threading;
 using InternalsViewer.Internals.Columnstore.Decoding;
 using InternalsViewer.Internals.Columnstore.Dictionaries;
@@ -14,10 +15,14 @@ using InternalsViewer.Internals.Interfaces.Readers.Internals;
 using InternalsViewer.Internals.Interfaces.Services.Records;
 using InternalsViewer.Internals.Metadata.Structures;
 using InternalsViewer.Internals.Providers.Metadata;
+using Microsoft.Extensions.Logging;
 
 namespace InternalsViewer.Internals.Columnstore.Services;
 
-public sealed class ColumnstoreService(IRecordReader recordReader, ILobDataService lobDataService)
+public sealed class ColumnstoreService(IRecordReader recordReader,
+                                       ILobDataService lobDataService,
+                                       ColumnstoreCache? cache = null,
+                                       ILogger<ColumnstoreService>? logger = null)
 {
     /// <summary>
     /// Bytes read past the header, covering the two the store by value prologue carries beyond it
@@ -28,10 +33,17 @@ public sealed class ColumnstoreService(IRecordReader recordReader, ILobDataServi
 
     private ILobDataService LobDataService { get; } = lobDataService;
 
+    private ILogger<ColumnstoreService>? Logger { get; } = logger;
+
     public async Task<ColumnStoreIndex> GetIndex(AllocationUnit allocationUnit,
                                                  DatabaseSource database,
                                                  CancellationToken cancellationToken)
     {
+        if (cache?.GetIndex(database, allocationUnit.AllocationUnitId) is { } cached)
+        {
+            return cached;
+        }
+
         var rowGroupRecords = await GetRecords("syscsrowgroups", allocationUnit.PartitionId, database, cancellationToken);
         var columnSegmentRecords = await GetRecords("syscscolsegments", allocationUnit.PartitionId, database, cancellationToken);
         var dictionaryRecords = await GetRecords("syscsdictionaries", allocationUnit.PartitionId, database, cancellationToken);
@@ -51,22 +63,42 @@ public sealed class ColumnstoreService(IRecordReader recordReader, ILobDataServi
                                           && a.PartitionNumber == allocationUnit.PartitionNumber)
                               .ToList();
 
-        return ColumnstoreMetadataMapper.Map(allocationUnit,
-                                             rowGroupRecords,
-                                             columnSegmentRecords,
-                                             dictionaryRecords,
-                                             columnMap,
-                                             related,
-                                             GetLocatorNames(database, allocationUnit, structure));
+        var index = ColumnstoreMetadataMapper.Map(allocationUnit,
+                                                  rowGroupRecords,
+                                                  columnSegmentRecords,
+                                                  dictionaryRecords,
+                                                  columnMap,
+                                                  related,
+                                                  GetLocatorNames(database, allocationUnit, structure));
+
+        cache?.SetIndex(database, allocationUnit.AllocationUnitId, index);
+
+        return index;
     }
 
     public async Task<byte[]> GetData(DatabaseSource database,
                                       LobPointer lobPointer,
                                       CancellationToken cancellationToken)
     {
-        return await LobDataService.GetData(database,
-                                            new RowIdentifier(lobPointer.PageAddress, (ushort)lobPointer.Slot),
-                                            cancellationToken);
+        var identifier = new RowIdentifier(lobPointer.PageAddress, (ushort)lobPointer.Slot);
+
+        if (cache?.GetData(database, identifier) is { } cached)
+        {
+            return cached;
+        }
+
+        var start = Stopwatch.GetTimestamp();
+
+        var data = await LobDataService.GetData(database, identifier, cancellationToken);
+
+        Logger?.LogDebug("Read {Bytes} bytes of lob data from {Page} in {Duration}",
+                         data.Length,
+                         lobPointer.PageAddress,
+                         Stopwatch.GetElapsedTime(start));
+
+        cache?.SetData(database, identifier, data);
+
+        return data;
     }
 
     public async Task<SegmentBlobHeader> GetSegmentHeader(DatabaseSource database,
@@ -75,6 +107,8 @@ public sealed class ColumnstoreService(IRecordReader recordReader, ILobDataServi
     {
         var pointer = segment.DataPointer;
 
+        var start = Stopwatch.GetTimestamp();
+
         var prefix = await LobDataService.GetDataPrefix(database,
                                                         new RowIdentifier(pointer.PageAddress, (ushort)pointer.Slot),
                                                         SegmentBlobHeader.Size + PrologueSlack,
@@ -82,10 +116,23 @@ public sealed class ColumnstoreService(IRecordReader recordReader, ILobDataServi
 
         if (!ArchiveBlobHeader.IsArchive(prefix.Data, prefix.TotalLength))
         {
-            return SegmentBlobParser.ParseHeader(prefix.Data);
+            var header = SegmentBlobParser.ParseHeader(prefix.Data);
+
+            Logger?.LogDebug("Read header for row group {RowGroup} column {Column} from a {Bytes} byte prefix in {Duration}",
+                             segment.Key.RowGroupId,
+                             segment.Key.ColumnId,
+                             prefix.Data.Length,
+                             Stopwatch.GetElapsedTime(start));
+
+            return header;
         }
 
-        var blob = await GetSegmentBlob(database, segment, cancellationToken);
+        var blob = await GetSegmentBlob(database, segment, cancellationToken, depth: SegmentLoadDepth.Header);
+
+        Logger?.LogDebug("Read header for row group {RowGroup} column {Column} through the whole archive blob in {Duration}",
+                         segment.Key.RowGroupId,
+                         segment.Key.ColumnId,
+                         Stopwatch.GetElapsedTime(start));
 
         return blob.Header;
     }
@@ -93,11 +140,71 @@ public sealed class ColumnstoreService(IRecordReader recordReader, ILobDataServi
     public async Task<SegmentBlob> GetSegmentBlob(DatabaseSource database,
                                                  ColumnSegment segment,
                                                  CancellationToken cancellationToken,
-                                                 bool isMarkEnabled = false)
+                                                 bool isMarkEnabled = false,
+                                                 SegmentLoadDepth depth = SegmentLoadDepth.Full)
     {
-        var data = await GetData(database, segment.DataPointer, cancellationToken);
+        var data = depth == SegmentLoadDepth.Full
+                   ? await GetData(database, segment.DataPointer, cancellationToken)
+                   : await GetPartialData(database, segment, depth, cancellationToken);
 
-        return SegmentBlobParser.Parse(data, segment, isMarkEnabled);
+        var start = Stopwatch.GetTimestamp();
+
+        var blob = SegmentBlobParser.Parse(data, segment, isMarkEnabled, depth);
+
+        Logger?.LogDebug("Parsed {Bytes} byte segment for row group {RowGroup} column {Column} to {Depth} in {Duration}",
+                         data.Length,
+                         segment.Key.RowGroupId,
+                         segment.Key.ColumnId,
+                         depth,
+                         Stopwatch.GetElapsedTime(start));
+
+        return blob;
+    }
+
+    private async Task<byte[]> GetPartialData(DatabaseSource database,
+                                              ColumnSegment segment,
+                                              SegmentLoadDepth depth,
+                                              CancellationToken cancellationToken)
+    {
+        var pointer = segment.DataPointer;
+
+        var identifier = new RowIdentifier(pointer.PageAddress, (ushort)pointer.Slot);
+
+        if (cache?.GetData(database, identifier) is { } cached)
+        {
+            return cached;
+        }
+
+        var start = Stopwatch.GetTimestamp();
+
+        var prologue = await LobDataService.GetDataPrefix(database,
+                                                          identifier,
+                                                          SegmentBlobHeader.Size + PrologueSlack,
+                                                          cancellationToken);
+
+        if (ArchiveBlobHeader.IsArchive(prologue.Data, prologue.TotalLength))
+        {
+            return await GetData(database, pointer, cancellationToken);
+        }
+
+        var required = SegmentBlobParser.GetRequiredLength(prologue.Data, segment, depth);
+
+        if (required <= 0 || required > prologue.TotalLength)
+        {
+            return await GetData(database, pointer, cancellationToken);
+        }
+
+        var prefix = await LobDataService.GetDataPrefix(database, identifier, required, cancellationToken);
+
+        Logger?.LogDebug("Read {Bytes} of {Total} bytes for row group {RowGroup} column {Column} to {Depth} in {Duration}",
+                         prefix.Data.Length,
+                         prefix.TotalLength,
+                         segment.Key.RowGroupId,
+                         segment.Key.ColumnId,
+                         depth,
+                         Stopwatch.GetElapsedTime(start));
+
+        return prefix.Data;
     }
 
     public async Task<DictionaryHeaderInfo> GetDictionaryCoding(DatabaseSource database,

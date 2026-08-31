@@ -15,7 +15,6 @@
             <ColumnDefinition Width="*"/>
             <ColumnDefinition Width="Auto"/>
         </Grid.ColumnDefinitions>
-        <!--Zero sized so the drawing can read theme brushes that resolve against this control's actual theme-->
         <StackPanel IsHitTestVisible="False">
             <Border x:Name="PanelProbe"
                     Width="0"
@@ -33,41 +32,7 @@
                                 IgnorePixelScaling="True"
                                 VerticalAlignment="Stretch"
                                 HorizontalAlignment="Stretch"/>
-        <Popup x:Name="TooltipPopup"
-               Grid.Column="0"
-               ShouldConstrainToRootBounds="False">
-            <Border CornerRadius="1"
-                    BorderThickness="1"
-                    BorderBrush="{ThemeResource ControlStrokeColorDefaultBrush}">
-                <Border.Background>
-                    <SolidColorBrush Color="{ThemeResource SolidBackgroundFillColorBase}" Opacity="0.95"/>
-                </Border.Background>
-                <StackPanel Padding="6" Spacing="1">
-                    <TextBlock x:Name="TooltipTitle"
-                               Style="{StaticResource TooltipValueStyle}"
-                               FontWeight="SemiBold"
-                               Margin="0,0,0,3"/>
-                    <ItemsControl x:Name="TooltipDetails">
-                        <ItemsControl.ItemTemplate>
-                            <DataTemplate x:DataType="columnstore:ColumnstoreDetail">
-                                <Grid>
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="Auto" MinWidth="90"/>
-                                        <ColumnDefinition Width="*"/>
-                                    </Grid.ColumnDefinitions>
-                                    <TextBlock Grid.Column="0"
-                                               Text="{x:Bind Key}"
-                                               Style="{StaticResource TooltipKeyStyle}"/>
-                                    <TextBlock Grid.Column="1"
-                                               Text="{x:Bind Value}"
-                                               Style="{StaticResource TooltipValueStyle}"/>
-                                </Grid>
-                            </DataTemplate>
-                        </ItemsControl.ItemTemplate>
-                    </ItemsControl>
-                </StackPanel>
-            </Border>
-        </Popup>
+        <columnstore:ColumnstoreTooltip x:Name="Tooltip" Grid.Column="0"/>
 
         <ScrollBar x:Name="VerticalScrollBar"
                    Grid.Column="1"

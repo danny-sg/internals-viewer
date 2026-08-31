@@ -11,6 +11,7 @@ using InternalsViewer.Execution.BatchMode.Vectors;
 using InternalsViewer.Execution.Interfaces.BatchMode;
 using InternalsViewer.Execution.Interfaces.Iterators.Joins;
 using InternalsViewer.Execution.Iterators.BatchMode;
+using InternalsViewer.Execution.Iterators.BatchMode.DataAccess;
 using InternalsViewer.Execution.Iterators.Common;
 using InternalsViewer.Execution.Iterators.RowMode.Aggregation;
 using InternalsViewer.Execution.Iterators.RowMode.Row;

@@ -12,6 +12,10 @@
                 Margin="0,0,8,0"
                 Spacing="4">
         <ToggleButton Style="{StaticResource TabCommandToggleStyle}"
+                      IsChecked="{x:Bind ViewModel.IsSqlHistoryVisible, Mode=TwoWay}">
+            <TextBlock Text="History" VerticalAlignment="Center" />
+        </ToggleButton>
+        <ToggleButton Style="{StaticResource TabCommandToggleStyle}"
                       IsChecked="{x:Bind ViewModel.IsSqlResultsVisible, Mode=TwoWay}">
             <TextBlock Text="Results" VerticalAlignment="Center" />
         </ToggleButton>

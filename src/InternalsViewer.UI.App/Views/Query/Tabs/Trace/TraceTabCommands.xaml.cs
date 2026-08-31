@@ -14,6 +14,4 @@ public sealed partial class TraceTabCommands : UserControl
 
     public TraceTabViewModel? ViewModel => DataContext as TraceTabViewModel;
 
-    public Visibility BatchModeVisibility(bool hasBatchMode)
-        => hasBatchMode ? Visibility.Visible : Visibility.Collapsed;
 }

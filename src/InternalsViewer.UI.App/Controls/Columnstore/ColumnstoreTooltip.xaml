@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="utf-8"?>
+<UserControl
+    x:Class="InternalsViewer.UI.App.Controls.Columnstore.ColumnstoreTooltip"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    xmlns:columnstore="using:InternalsViewer.UI.App.Controls.Columnstore"
+    IsHitTestVisible="False"
+    mc:Ignorable="d">
+    <Popup x:Name="TooltipPopup" ShouldConstrainToRootBounds="False">
+        <Border CornerRadius="1"
+                BorderThickness="1"
+                BorderBrush="{ThemeResource ControlStrokeColorDefaultBrush}">
+            <Border.Background>
+                <SolidColorBrush Color="{ThemeResource SolidBackgroundFillColorBase}" Opacity="0.95"/>
+            </Border.Background>
+            <StackPanel Padding="6" Spacing="1">
+                <TextBlock x:Name="TooltipTitle"
+                           Style="{StaticResource TooltipValueStyle}"
+                           FontWeight="SemiBold"
+                           Margin="0,0,0,3"/>
+                <ItemsControl x:Name="TooltipDetails">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate x:DataType="columnstore:ColumnstoreDetail">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" MinWidth="90"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Grid.Column="0"
+                                           Text="{x:Bind Key}"
+                                           Style="{StaticResource TooltipKeyStyle}"/>
+                                <TextBlock Grid.Column="1"
+                                           Text="{x:Bind Value}"
+                                           Style="{StaticResource TooltipValueStyle}"/>
+                            </Grid>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </StackPanel>
+        </Border>
+    </Popup>
+</UserControl>

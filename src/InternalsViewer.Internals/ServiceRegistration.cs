@@ -65,6 +65,8 @@ public static class ServiceRegistration
 
         services.AddTransient<IndexService>();
 
+        services.AddSingleton<ColumnstoreCache>();
+
         services.AddTransient<ColumnstoreService>();
 
         RegisterPageParsers(services);

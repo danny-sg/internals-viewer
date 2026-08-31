@@ -13,6 +13,8 @@
                                 CancelCommand="{x:Bind ViewModel.ExecuteQueryCancelCommand, Mode=OneWay}"
                                 TraceCommand="{x:Bind ViewModel.OpenTraceCommand, Mode=OneWay}"
                                 TrackQuery="{x:Bind ViewModel.TrackQuery, Mode=TwoWay}"
+                                History="{x:Bind ViewModel.History, Mode=OneWay}"
+                                IsHistoryVisible="{x:Bind ViewModel.IsSqlHistoryVisible, Mode=TwoWay}"
                                 Message="{x:Bind ViewModel.Message, Mode=OneWay}"
                                 IsError="{x:Bind ViewModel.IsError, Mode=OneWay}"
                                 Schema="{x:Bind ViewModel.Schema, Mode=OneWay}"

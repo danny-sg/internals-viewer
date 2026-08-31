@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Globalization;
 using InternalsViewer.UI.App.Controls.Columnstore;
 using InternalsViewer.UI.App.Models.Query.Trace.Columnstore;
 using SkiaSharp;
@@ -20,9 +21,15 @@ public static class ColumnstoreScanRenderer
 
     public const float MinimumBatchHeight = 3f;
 
-    private const byte UnselectedAlpha = 128;
+    private const byte UnopenedAlpha = 128;
 
-    public static void Draw(SKCanvas canvas,
+    private const float MinimumRunHeight = 50f;
+
+    private const float RunBandLightness = 0.35f;
+
+    private const float MaximumRunLightness = 0.8f;
+
+    public static List<ColumnstoreRegion> Draw(SKCanvas canvas,
                             SKRect bounds,
                             IReadOnlyList<ScanRowGroup> rowGroups,
                             int? activeRowGroupId,
@@ -33,9 +40,11 @@ public static class ColumnstoreScanRenderer
     {
         canvas.Clear(SKColors.Transparent);
 
+        var regions = new List<ColumnstoreRegion>();
+
         if (rowGroups.Count == 0)
         {
-            return;
+            return regions;
         }
 
         var area = new SKRect(bounds.Left + Margin, bounds.Top + Margin, bounds.Right - Margin, bounds.Bottom - Margin);
@@ -65,20 +74,23 @@ public static class ColumnstoreScanRenderer
 
             canvas.DrawRect(rect, background);
 
-            DrawSegments(canvas, rect, rowGroup, nodeColour, background);
+            DrawSegments(canvas, rect, rowGroup, nodeColour, background, regions);
 
             if (isActive && batchRowCount > 0 && rowGroup.TotalRows > 0)
             {
                 DrawBatch(canvas, rect, rowGroup.TotalRows, batchFirstRow, batchRowCount, nodeColour, background);
             }
         }
+
+        return regions;
     }
 
     private static void DrawSegments(SKCanvas canvas,
                                      SKRect rect,
                                      ScanRowGroup rowGroup,
                                      SKColor nodeColour,
-                                     SKPaint paint)
+                                     SKPaint paint,
+                                     List<ColumnstoreRegion> regions)
     {
         if (rowGroup.Segments.Count == 0)
         {
@@ -99,8 +111,100 @@ public static class ColumnstoreScanRenderer
             paint.Color = SegmentColour(segment, rowGroup, nodeColour);
 
             canvas.DrawRect(box, paint);
+
+            DrawRuns(canvas, box, segment, rowGroup, paint.Color, paint);
+
+            regions.Add(Region(segment, rowGroup, box));
         }
     }
+
+    private static void DrawRuns(SKCanvas canvas,
+                                 SKRect box,
+                                 ScanSegment segment,
+                                 ScanRowGroup rowGroup,
+                                 SKColor colour,
+                                 SKPaint paint)
+    {
+        if (!segment.IsOpened
+            || segment.IsEliminated
+            || rowGroup.IsEliminated
+            || rowGroup.TotalRows == 0
+            || segment.Runs.Count < 2
+            || box.Height < MinimumRunHeight)
+        {
+            return;
+        }
+
+        var lines = (int)MathF.Ceiling(box.Height);
+
+        var covering = new int[lines];
+
+        var parity = new int[lines];
+
+        var scale = box.Height / rowGroup.TotalRows;
+
+        var row = 0;
+
+        for (var i = 0; i < segment.Runs.Count; i++)
+        {
+            var top = row * scale;
+
+            row += segment.Runs[i];
+
+            var bottom = row * scale;
+
+            var first = Math.Clamp((int)MathF.Floor(top), 0, lines - 1);
+
+            var last = Math.Clamp((int)MathF.Ceiling(bottom) - 1, first, lines - 1);
+
+            for (var line = first; line <= last; line++)
+            {
+                covering[line]++;
+
+                parity[line] = i & 1;
+            }
+        }
+
+        for (var line = 0; line < lines; line++)
+        {
+            var lightness = covering[line] switch
+            {
+                0 => -1f,
+                1 => parity[line] == 1 ? RunBandLightness : -1f,
+                _ => Density(covering[line])
+            };
+
+            if (lightness < 0)
+            {
+                continue;
+            }
+
+            paint.Color = Lighten(colour, lightness);
+
+            canvas.DrawRect(new SKRect(box.Left, box.Top + line, box.Right, box.Top + line + 1), paint);
+        }
+
+        paint.Color = colour;
+    }
+
+    private static float Density(int runs)
+        => Math.Min(MaximumRunLightness, RunBandLightness * (0.5f + (MathF.Log2(runs) / 4f)));
+
+    private static ColumnstoreRegion Region(ScanSegment segment, ScanRowGroup rowGroup, SKRect box)
+        => new()
+        {
+            Bounds = box,
+            ElementType = ColumnstoreElementType.Segment,
+            Label = segment.ColumnName,
+            DetailsFactory = () =>
+            [
+                new ColumnstoreDetail("Row Group", rowGroup.RowGroupId.ToString(CultureInfo.InvariantCulture)),
+                new ColumnstoreDetail("Column", segment.ColumnName),
+                new ColumnstoreDetail("Rows", rowGroup.TotalRows.ToString("N0", CultureInfo.InvariantCulture)),
+                new ColumnstoreDetail("Runs", segment.Runs.Count.ToString("N0", CultureInfo.InvariantCulture)),
+                new ColumnstoreDetail("Eliminated", segment.IsEliminated || rowGroup.IsEliminated ? "Yes" : "No")
+            ]
+        };
 
     private static SKColor SegmentColour(ScanSegment segment, ScanRowGroup rowGroup, SKColor nodeColour)
     {
@@ -109,7 +213,7 @@ public static class ColumnstoreScanRenderer
             return ColumnstoreColours.UnknownEncoding;
         }
 
-        return segment.IsProjected ? nodeColour : SKColors.White.WithAlpha(UnselectedAlpha);
+        return segment.IsOpened ? nodeColour : SKColors.White.WithAlpha(UnopenedAlpha);
     }
 
     private static void DrawBatch(SKCanvas canvas,

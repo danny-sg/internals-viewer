@@ -17,6 +17,7 @@
             <SolidColorBrush x:Key="SqlNumberBrush" Color="#098658" />
             <SolidColorBrush x:Key="SqlLiteralBrush" Color="#A31515" />
             <SolidColorBrush x:Key="SqlPunctuationBrush" Color="#000000" />
+            <SolidColorBrush x:Key="SqlCommentBrush" Color="#008000" />
             <SolidColorBrush x:Key="SqlUnknownBrush" Color="#CD3131" />
         </ResourceDictionary>
 
@@ -28,6 +29,7 @@
             <SolidColorBrush x:Key="SqlNumberBrush" Color="#B5CEA8" />
             <SolidColorBrush x:Key="SqlLiteralBrush" Color="#CE9178" />
             <SolidColorBrush x:Key="SqlPunctuationBrush" Color="#D4D4D4" />
+            <SolidColorBrush x:Key="SqlCommentBrush" Color="#6A9955" />
             <SolidColorBrush x:Key="SqlUnknownBrush" Color="#F48771" />
         </ResourceDictionary>
 
@@ -38,6 +40,7 @@
             <SolidColorBrush x:Key="SqlNumberBrush" Color="{ThemeResource SystemColorWindowTextColor}" />
             <SolidColorBrush x:Key="SqlLiteralBrush" Color="{ThemeResource SystemColorWindowTextColor}" />
             <SolidColorBrush x:Key="SqlPunctuationBrush" Color="{ThemeResource SystemColorWindowTextColor}" />
+            <SolidColorBrush x:Key="SqlCommentBrush" Color="{ThemeResource SystemColorWindowTextColor}" />
             <SolidColorBrush x:Key="SqlUnknownBrush" Color="{ThemeResource SystemColorWindowTextColor}" />
         </ResourceDictionary>
 

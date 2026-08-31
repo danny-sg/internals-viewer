@@ -6,11 +6,13 @@
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     xmlns:skiaSharp="using:SkiaSharp.Views.Windows"
+    xmlns:columnstore="using:InternalsViewer.UI.App.Controls.Columnstore"
     mc:Ignorable="d">
     <Grid>
         <skiaSharp:SKXamlCanvas x:Name="ScanCanvas"
                                 IgnorePixelScaling="True"
                                 HorizontalAlignment="Stretch"
                                 VerticalAlignment="Stretch"/>
+        <columnstore:ColumnstoreTooltip x:Name="Tooltip"/>
     </Grid>
 </UserControl>

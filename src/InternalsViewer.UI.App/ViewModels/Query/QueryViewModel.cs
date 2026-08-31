@@ -119,6 +119,8 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
     private bool _isSqlMessagesVisible;
 
+    private bool _isSqlHistoryVisible;
+
     private List<PageSpan> _pageSpans = [];
 
     private bool _resultTabsOpened;
@@ -268,6 +270,8 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
         Name = $"{Database.Name}: Query";
 
+        History = new QueryHistoryViewModel(settingsService, database.Name);
+
         DatabaseFiles =
         [
             .. database.Files
@@ -310,6 +314,8 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
             try
             {
                 await RestoreLayoutAsync();
+
+                await History.LoadAsync();
             }
             catch (Exception ex)
             {
@@ -323,6 +329,11 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
     public event Action<long>? PlayheadMoveRequested;
 
     public DatabaseSource Database { get; }
+
+    /// <summary>
+    /// The queries run against this database, listed beside the SQL editor
+    /// </summary>
+    public QueryHistoryViewModel History { get; }
 
     public bool AutoScroll
     {
@@ -483,6 +494,12 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
     {
         get => _isSqlMessagesVisible;
         set => SetProperty(ref _isSqlMessagesVisible, value);
+    }
+
+    public bool IsSqlHistoryVisible
+    {
+        get => _isSqlHistoryVisible;
+        set => SetProperty(ref _isSqlHistoryVisible, value);
     }
 
     public Visibility HasEvents
@@ -1465,6 +1482,8 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
     private async Task ExecuteQuery(ExecuteSqlPayload payload, CancellationToken cancellationToken)
     {
         ScheduleSaveLayout();
+
+        History.Add(payload.SqlText);
 
         ClearResults();
 

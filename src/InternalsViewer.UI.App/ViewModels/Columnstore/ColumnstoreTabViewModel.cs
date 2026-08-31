@@ -9,6 +9,7 @@ using CommunityToolkit.Mvvm.Input;
 using InternalsViewer.Internals.Columnstore.Blobs;
 using InternalsViewer.UI.App.Controls.Columnstore;
 using InternalsViewer.Internals.Columnstore.Metadata;
+using InternalsViewer.Internals.Columnstore.Segments;
 using InternalsViewer.Internals.Columnstore.Services;
 using InternalsViewer.Internals.Engine.Database;
 using InternalsViewer.Internals.Interfaces.Services.Loaders.Chains;
@@ -81,6 +82,9 @@ public sealed partial class ColumnstoreTabViewModel : TabViewModel
 
     [ObservableProperty]
     private IReadOnlyList<SegmentSummary> _segments = [];
+
+    [ObservableProperty]
+    private bool _isRunsVisible;
 
     /// <remarks>
     /// A tab holding its own content is rebuilt every time it is selected, so the strip is separated from what it
@@ -279,6 +283,61 @@ public sealed partial class ColumnstoreTabViewModel : TabViewModel
         DrawingRevision++;
 
         IsDrawingReady = true;
+    }
+
+    partial void OnIsRunsVisibleChanged(bool value)
+    {
+        if (value)
+        {
+            _ = LoadSegmentRuns();
+        }
+        else
+        {
+            DrawingRevision++;
+        }
+    }
+
+    private async Task LoadSegmentRuns()
+    {
+        var pending = Segments.Where(s => s.HasDataPointer && s.Runs.Count == 0).ToList();
+
+        Logger.LogDebug("Loading runs for {Pending} of {Total} segments", pending.Count, Segments.Count);
+
+        foreach (var segment in pending)
+        {
+            if (CancellationToken.IsCancellationRequested)
+            {
+                return;
+            }
+
+            try
+            {
+                var blob = await Task.Run(() => ColumnstoreService.GetSegmentBlob(Database,
+                                                                                  segment.Segment,
+                                                                                  CancellationToken,
+                                                                                  depth: SegmentLoadDepth.Runs),
+                                          CancellationToken);
+
+                segment.Runs = [.. blob.RleEntries.Select(e => e.Count)];
+            }
+            catch (OperationCanceledException)
+            {
+                return;
+            }
+            catch (Exception exception)
+            {
+                Logger.LogDebug(exception,
+                                "Could not read the segment runs for row group {RowGroup} column {Column}",
+                                segment.RowGroupId,
+                                segment.ColumnId);
+            }
+        }
+
+        Logger.LogDebug("Runs loaded for {Loaded} segments, {Empty} with fewer than two runs",
+                        Segments.Count(s => s.Runs.Count > 0),
+                        Segments.Count(s => s.HasDataPointer && s.Runs.Count < 2));
+
+        DrawingRevision++;
     }
 
     /// <summary>

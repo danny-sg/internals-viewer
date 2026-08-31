@@ -27,6 +27,18 @@ public sealed partial class ColumnstoreStructureControl : IDisposable
         set => SetValue(IndexProperty, value);
     }
 
+    public static readonly DependencyProperty ShowRunsProperty
+        = DependencyProperty.Register(nameof(ShowRuns),
+                                      typeof(bool),
+                                      typeof(ColumnstoreStructureControl),
+                                      new PropertyMetadata(false, OnSourceChanged));
+
+    public bool ShowRuns
+    {
+        get => (bool)GetValue(ShowRunsProperty);
+        set => SetValue(ShowRunsProperty, value);
+    }
+
     public static readonly DependencyProperty RowGroupsProperty
         = DependencyProperty.Register(nameof(RowGroups),
                                       typeof(IReadOnlyList<RowGroupSummary>),
@@ -154,6 +166,8 @@ public sealed partial class ColumnstoreStructureControl : IDisposable
             _isThemeDirty = false;
         }
 
+        _renderer.ShowRuns = ShowRuns;
+
         _regions = _renderer.Draw(e.Surface.Canvas,
                                   index,
                                   rowGroups,
@@ -240,20 +254,7 @@ public sealed partial class ColumnstoreStructureControl : IDisposable
     /// </summary>
     private void ShowTooltip(ColumnstoreRegion? region, global::Windows.Foundation.Point position)
     {
-        if (region is null || region.Details.Count == 0)
-        {
-            TooltipPopup.IsOpen = false;
-
-            return;
-        }
-
-        TooltipTitle.Text = region.Label;
-        TooltipDetails.ItemsSource = region.Details;
-
-        TooltipPopup.HorizontalOffset = position.X + 12;
-        TooltipPopup.VerticalOffset = position.Y + 12;
-
-        TooltipPopup.IsOpen = true;
+        Tooltip.Show(region, position);
     }
 
     /// <summary>
@@ -312,7 +313,7 @@ public sealed partial class ColumnstoreStructureControl : IDisposable
 
         _renderer.HoveredColumnId = -1;
 
-        TooltipPopup.IsOpen = false;
+        Tooltip.Hide();
 
         StructureCanvas.Invalidate();
     }
@@ -321,7 +322,7 @@ public sealed partial class ColumnstoreStructureControl : IDisposable
     {
         var delta = e.GetCurrentPoint(StructureCanvas).Properties.MouseWheelDelta;
 
-        TooltipPopup.IsOpen = false;
+        Tooltip.Hide();
 
         SetScrollOffset(_scrollOffset - delta);
 

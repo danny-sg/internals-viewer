@@ -5,7 +5,8 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:controls="using:CommunityToolkit.WinUI.Controls"
     xmlns:converters="using:InternalsViewer.UI.App.Helpers.Converters"
-    xmlns:results="using:InternalsViewer.UI.App.Controls.Results">
+    xmlns:results="using:InternalsViewer.UI.App.Controls.Results"
+    xmlns:sqlEditor="using:InternalsViewer.UI.App.Controls.SqlEditor">
 
     <UserControl.Resources>
         <converters:InverseBoolConverter x:Key="InverseBoolConverter" />
@@ -24,7 +25,13 @@
             <RowDefinition x:Name="MessagesRow" Height="*"/>
         </Grid.RowDefinitions>
 
-        <Grid Grid.Row="0" Padding="0">
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="*"/>
+            <ColumnDefinition Width="Auto"/>
+            <ColumnDefinition x:Name="HistoryColumn" Width="0"/>
+        </Grid.ColumnDefinitions>
+
+        <Grid Grid.Row="0" Grid.ColumnSpan="3" Padding="0">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="*"/>
                 <ColumnDefinition Width="Auto"/>
@@ -129,7 +136,7 @@
 
         </Grid>
 
-        <Grid Grid.Row="1">
+        <Grid Grid.Row="1" Grid.Column="0">
             <WebView2 x:Name="WebView" />
 
             <Border x:Name="LoadingOverlay"
@@ -146,7 +153,7 @@
             </Border>
         </Grid>
 
-        <controls:GridSplitter Grid.Row="2"
+        <controls:GridSplitter Grid.Row="2" Grid.Column="0"
                                x:Name="MessagesSplitter"
                                Height="2"
                                Background="{ThemeResource ControlStrokeColorDefaultBrush}"
@@ -159,6 +166,7 @@
         </controls:GridSplitter>
 
         <TabView Grid.Row="3"
+                 Grid.Column="0"
                  x:Name="ResultsTabView"
                  IsAddTabButtonVisible="False"
                  VerticalAlignment="Stretch"
@@ -188,6 +196,27 @@
                 </Border>
             </TabViewItem>
         </TabView>
+
+        <controls:GridSplitter Grid.Row="1"
+                               Grid.RowSpan="3"
+                               Grid.Column="1"
+                               x:Name="HistorySplitter"
+                               Width="2"
+                               Background="{ThemeResource ControlStrokeColorDefaultBrush}"
+                               HorizontalAlignment="Stretch">
+            <controls:GridSplitter.Template>
+                <ControlTemplate TargetType="controls:GridSplitter">
+                    <Grid Background="{TemplateBinding Background}" />
+                </ControlTemplate>
+            </controls:GridSplitter.Template>
+        </controls:GridSplitter>
+
+        <sqlEditor:QueryHistoryControl Grid.Row="1"
+                                       Grid.RowSpan="3"
+                                       Grid.Column="2"
+                                       x:Name="HistoryPanel"
+                                       ViewModel="{x:Bind History, Mode=OneWay}"
+                                       QuerySelected="OnHistoryQuerySelected" />
     </Grid>
 
 </UserControl>

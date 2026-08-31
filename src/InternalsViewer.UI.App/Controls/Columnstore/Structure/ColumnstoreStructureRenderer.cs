@@ -6,6 +6,7 @@ using InternalsViewer.Internals.Columnstore.Metadata.Enums;
 using InternalsViewer.Internals.Helpers;
 using InternalsViewer.UI.App.Helpers;
 using InternalsViewer.UI.App.Models.Columnstore;
+using InternalsViewer.UI.App.Models.Columnstore.Segment;
 using SkiaSharp;
 
 namespace InternalsViewer.UI.App.Controls.Columnstore.Structure;
@@ -19,23 +20,24 @@ public sealed class ColumnstoreStructureRenderer : IDisposable
 
     private const float BadgeTopMargin = 6f;
 
+    private const int RunBandAlpha = 150;
+
+    private const int RunDensityAlphaMax = 210;
+
+    public bool ShowRuns { get; set; }
+
     private static readonly SKTypeface InterfaceTypeface = GetInterfaceTypeface(SKFontStyleWeight.Normal);
 
     private static readonly SKTypeface InterfaceSemiBoldTypeface = GetInterfaceTypeface(SKFontStyleWeight.SemiBold);
 
     private static readonly SKTypeface MonoTypeface = SKTypeface.FromFamilyName("Cascadia Mono") ?? SKTypeface.Default;
+
     private readonly SKPaint _fill = new() { IsAntialias = false, Style = SKPaintStyle.Fill };
 
     private readonly SKPathEffect _dots = SKPathEffect.CreateDash([2f, 2f], 0);
 
-    /// <summary>
-    /// Text keeps its antialiasing, the shapes and rules being crisper without it
-    /// </summary>
     private readonly SKPaint _text = new() { IsAntialias = true, Style = SKPaintStyle.Fill };
 
-    /// <summary>
-    /// Badges keep their antialiasing, rounded corners needing it where the square boxes do not
-    /// </summary>
     private readonly SKPaint _badge = new() { IsAntialias = true, Style = SKPaintStyle.Fill };
 
     private readonly SKPaint _stroke = new() { IsAntialias = false, Style = SKPaintStyle.Stroke, StrokeWidth = 0 };
@@ -204,9 +206,6 @@ public sealed class ColumnstoreStructureRenderer : IDisposable
         _titleFont.Dispose();
     }
 
-    /// <summary>
-    /// Matches the font the rest of the interface uses, the drawing sitting alongside XAML text
-    /// </summary>
     private static SKTypeface GetInterfaceTypeface(SKFontStyleWeight weight)
         => SKTypeface.FromFamilyName(InterfaceFontFamily, weight, SKFontStyleWidth.Normal, SKFontStyleSlant.Upright)
            ?? SKTypeface.Default;
@@ -222,13 +221,6 @@ public sealed class ColumnstoreStructureRenderer : IDisposable
         return y + (ColumnstoreLayout.SeparatorGap * 2);
     }
 
-    /// <summary>
-    /// One band per column running the whole way down, which is what ties a column together across the row groups
-    /// </summary>
-    /// <remarks>
-    /// Drawn in one pass before anything else on the grid rather than per row group, so neither the header nor the
-    /// gaps between row groups break it up. Everything after it paints on top, panels covering only the gutter.
-    /// </remarks>
     private void DrawColumnBands(SKCanvas canvas,
                                  ColumnStoreIndex index,
                                  IReadOnlyList<RowGroupSummary> rowGroups,
@@ -284,9 +276,6 @@ public sealed class ColumnstoreStructureRenderer : IDisposable
         }
     }
 
-    /// <summary>
-    /// Names the columns once above the row groups, the segments below carrying only what differs between them
-    /// </summary>
     private void DrawColumnHeaders(SKCanvas canvas, ColumnStoreIndex index, float width, float y)
     {
         _text.Color = MutedColour;
@@ -330,7 +319,6 @@ public sealed class ColumnstoreStructureRenderer : IDisposable
         }
     }
 
-    // An ordered index is the only thing a column's position in the ordering shows up on
     private static string GetHeaderName(ColumnStoreColumn column)
         => column.IsOrdered ? $"{column.Name} ↑{column.OrderOrdinal}" : column.Name;
 
@@ -349,9 +337,6 @@ public sealed class ColumnstoreStructureRenderer : IDisposable
         return false;
     }
 
-    /// <summary>
-    /// A name turned to read bottom to top, which is the only way one fits a column narrower than it is
-    /// </summary>
     private void DrawVertical(SKCanvas canvas, string text, float x, float y, float height, SKFont font)
     {
         canvas.Save();
@@ -367,9 +352,6 @@ public sealed class ColumnstoreStructureRenderer : IDisposable
         canvas.Restore();
     }
 
-    /// <summary>
-    /// The column as it was declared, coloured the way the editor colours it
-    /// </summary>
     private void DrawTypeRuns(SKCanvas canvas, ColumnStoreColumn column, float x, float y, float available)
     {
         if (column.Structure is not { } structure)
@@ -785,6 +767,11 @@ public sealed class ColumnstoreStructureRenderer : IDisposable
         var contentLeft = bounds.Left
                           + (ColumnstoreLayout.IsNarrow(bounds.Width) ? 0 : ColumnstoreLayout.SizeBarWidth);
 
+        if (DrawSegmentRuns(canvas, segment, bounds, contentLeft, colour))
+        {
+            contentLeft += ColumnstoreLayout.SizeBarWidth;
+        }
+
         DrawSegmentBadges(canvas, segment, bounds, contentLeft);
 
         var regionBounds = new SKRect(contentLeft,
@@ -818,6 +805,78 @@ public sealed class ColumnstoreStructureRenderer : IDisposable
     /// <summary>
     /// A bar down the left whose height is the segment's share of the largest segment in the index
     /// </summary>
+    private bool DrawSegmentRuns(SKCanvas canvas, SegmentSummary segment, SKRect bounds, float left, SKColor colour)
+    {
+        if (!ShowRuns
+            || ColumnstoreLayout.IsNarrow(bounds.Width)
+            || segment.Storage is not (SegmentStorage.RunLength or SegmentStorage.Mixed)
+            || segment.Runs.Count == 0
+            || segment.RowCount <= 0
+            || bounds.Height < 1)
+        {
+            return false;
+        }
+
+        var track = new SKRect(left, bounds.Top, left + ColumnstoreLayout.SizeBarWidth, bounds.Bottom);
+
+        _fill.Color = colour.WithAlpha(30);
+
+        canvas.DrawRect(track, _fill);
+
+        _stroke.Color = colour.WithAlpha(90);
+
+        canvas.DrawLine(track.Left + 0.5f, track.Top, track.Left + 0.5f, track.Bottom, _stroke);
+
+        var lines = (int)MathF.Ceiling(track.Height);
+
+        var covering = new int[lines];
+
+        var parity = new int[lines];
+
+        var scale = track.Height / segment.RowCount;
+
+        var row = 0;
+
+        for (var i = 0; i < segment.Runs.Count; i++)
+        {
+            var top = row * scale;
+
+            row += segment.Runs[i];
+
+            var first = Math.Clamp((int)MathF.Floor(top), 0, lines - 1);
+
+            var last = Math.Clamp((int)MathF.Ceiling(row * scale) - 1, first, lines - 1);
+
+            for (var line = first; line <= last; line++)
+            {
+                covering[line]++;
+
+                parity[line] = i & 1;
+            }
+        }
+
+        for (var line = 0; line < lines; line++)
+        {
+            var alpha = covering[line] switch
+            {
+                0 => 0,
+                1 => parity[line] == 1 ? RunBandAlpha : 0,
+                _ => Math.Min(RunDensityAlphaMax, (int)(RunBandAlpha * (0.5f + (MathF.Log2(covering[line]) / 4f))))
+            };
+
+            if (alpha == 0)
+            {
+                continue;
+            }
+
+            _fill.Color = colour.WithAlpha((byte)alpha);
+
+            canvas.DrawRect(new SKRect(track.Left, track.Top + line, track.Right, track.Top + line + 1), _fill);
+        }
+
+        return true;
+    }
+
     private void DrawSizeBar(SKCanvas canvas, SegmentSummary segment, SKRect bounds, SKColor colour, List<ColumnstoreRegion> regions)
     {
         if (ColumnstoreLayout.IsNarrow(bounds.Width))
