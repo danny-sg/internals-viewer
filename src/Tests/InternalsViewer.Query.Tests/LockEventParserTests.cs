@@ -1,7 +1,8 @@
-using InternalsViewer.Query.Events.Locks;
+﻿using InternalsViewer.Query.Events.Locks;
 
 namespace InternalsViewer.Query.Tests;
 
+[Trait("Category", "Unit")]
 public class LockEventParserTests
 {
     // A KEY lock's %%lockres%% hash is the high word of resource_1 byte-swapped, then resource_2 byte-swapped, as 12

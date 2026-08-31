@@ -1,8 +1,10 @@
-using System.Data;
+﻿using System.Data;
 using InternalsViewer.Internals.Converters;
 
 namespace InternalsViewer.Internals.Tests.UnitTests.Converters;
 
+[Trait("Category", "Unit")]
+[Trait("Area", "Converters")]
 public class CompressedDataConverterTests
 {
     [Theory]

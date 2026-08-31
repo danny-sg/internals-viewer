@@ -1,8 +1,10 @@
-using System.Globalization;
+﻿using System.Globalization;
 using InternalsViewer.UI.App.Controls.Timeline;
 
 namespace InternalsViewer.UI.App.Tests.Controls.Timeline;
 
+[Trait("Category", "Unit")]
+[Trait("Area", "Timeline")]
 public class TimelineFormatTests
 {
     [Theory]

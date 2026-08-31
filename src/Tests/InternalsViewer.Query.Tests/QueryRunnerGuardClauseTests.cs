@@ -1,4 +1,4 @@
-using InternalsViewer.Internals.Connections.Server;
+﻿using InternalsViewer.Internals.Connections.Server;
 using InternalsViewer.Internals.Engine.Database;
 using InternalsViewer.Internals.Readers.Pages;
 using InternalsViewer.Internals.Tests.Helpers;
@@ -13,6 +13,7 @@ namespace InternalsViewer.Query.Tests;
 /// Covers the TraceQuery guard clauses that return before any database connection is opened,
 /// so these run without a live SQL Server (unlike <see cref="QueryRunnerTests"/>).
 /// </summary>
+[Trait("Category", "Unit")]
 public class QueryRunnerGuardClauseTests(ITestOutputHelper testOutputHelper)
 {
     private QueryRunner CreateRunner()

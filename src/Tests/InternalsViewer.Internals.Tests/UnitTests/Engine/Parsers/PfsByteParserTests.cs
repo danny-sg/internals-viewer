@@ -2,6 +2,8 @@
 
 namespace InternalsViewer.Internals.Tests.UnitTests.Engine.Parsers;
 
+[Trait("Category", "Unit")]
+[Trait("Area", "Parsers")]
 public class PfsByteParserTests(ITestOutputHelper output)
 {
     public ITestOutputHelper Output { get; set; } = output;

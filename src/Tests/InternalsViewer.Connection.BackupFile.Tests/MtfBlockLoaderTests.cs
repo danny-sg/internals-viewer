@@ -5,6 +5,7 @@ using InternalsViewer.Connection.BackupFile.Mtf.Blocks;
 
 namespace InternalsViewer.Connection.BackupFile.Tests;
 
+[Trait("Category", "Unit")]
 public class MtfBlockLoaderTests(ITestOutputHelper testOutput) : IDisposable
 {
     private const string CompressedBackupPath = @"C:\Temp\AdventureWorks2025.bak";

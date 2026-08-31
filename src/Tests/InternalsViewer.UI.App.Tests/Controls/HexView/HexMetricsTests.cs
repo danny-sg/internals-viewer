@@ -1,4 +1,4 @@
-using Windows.Foundation;
+﻿using Windows.Foundation;
 using InternalsViewer.UI.App.Controls.HexView;
 
 namespace InternalsViewer.UI.App.Tests.Controls.HexView;
@@ -6,6 +6,7 @@ namespace InternalsViewer.UI.App.Tests.Controls.HexView;
 /// <summary>
 /// The shapes drawn over the hex, measured against a monospace font of a known width
 /// </summary>
+[Trait("Category", "Unit")]
 public class HexMetricsTests
 {
     private const double CharacterWidth = 10;

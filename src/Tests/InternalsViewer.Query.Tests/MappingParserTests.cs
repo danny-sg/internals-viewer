@@ -1,7 +1,8 @@
-using InternalsViewer.Query.CallStack.Categories;
+﻿using InternalsViewer.Query.CallStack.Categories;
 
 namespace InternalsViewer.Query.Tests;
 
+[Trait("Category", "Unit")]
 public class MappingParserTests
 {
     [Fact]

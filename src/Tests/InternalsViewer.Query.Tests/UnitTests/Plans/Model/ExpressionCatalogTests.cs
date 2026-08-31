@@ -1,4 +1,4 @@
-using InternalsViewer.Execution.AccessPaths.Predicates;
+﻿using InternalsViewer.Execution.AccessPaths.Predicates;
 using InternalsViewer.Execution.AccessPaths.Text;
 using InternalsViewer.Query.Plans.Model;
 using InternalsViewer.Query.Plans;
@@ -6,6 +6,8 @@ using InternalsViewer.Query.Results;
 
 namespace InternalsViewer.Query.Tests.UnitTests.Plans.Model;
 
+[Trait("Category", "Unit")]
+[Trait("Area", "Plans")]
 public class ExpressionCatalogTests
 {
     [Fact]

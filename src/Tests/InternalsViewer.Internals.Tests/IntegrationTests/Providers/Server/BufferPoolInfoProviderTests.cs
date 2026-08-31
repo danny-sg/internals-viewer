@@ -6,6 +6,7 @@ using InternalsViewer.Internals.Tests.Helpers;
 
 namespace InternalsViewer.Internals.Tests.IntegrationTests.Providers.Server;
 
+[Trait("Category", "Integration")]
 public class BufferPoolInfoProviderTests(ITestOutputHelper outputHelper)
 {
     public ITestOutputHelper OutputHelper { get; } = outputHelper;

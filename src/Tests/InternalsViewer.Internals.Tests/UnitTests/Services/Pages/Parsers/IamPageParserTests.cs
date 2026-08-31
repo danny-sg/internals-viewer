@@ -3,6 +3,8 @@ using InternalsViewer.Internals.Services.Pages.Parsers;
 
 namespace InternalsViewer.Internals.Tests.UnitTests.Services.Pages.Parsers;
 
+[Trait("Category", "Unit")]
+[Trait("Area", "Pages")]
 public class IamPageParserTests(ITestOutputHelper testOutput)
     : PageParserTestsBase(testOutput)
 {

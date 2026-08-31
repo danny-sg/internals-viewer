@@ -1,7 +1,8 @@
-using InternalsViewer.UI.App.Controls.Instructions;
+﻿using InternalsViewer.UI.App.Controls.Instructions;
 
 namespace InternalsViewer.UI.App.Tests.Controls.Instructions;
 
+[Trait("Category", "Unit")]
 public class InstructionsLinkTests
 {
     [Fact]

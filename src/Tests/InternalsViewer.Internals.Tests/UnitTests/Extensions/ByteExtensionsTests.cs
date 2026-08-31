@@ -1,7 +1,8 @@
-using InternalsViewer.Internals.Extensions;
+﻿using InternalsViewer.Internals.Extensions;
 
 namespace InternalsViewer.Internals.Tests.UnitTests.Extensions;
 
+[Trait("Category", "Unit")]
 public class ByteExtensionsTests
 {
     [Theory]

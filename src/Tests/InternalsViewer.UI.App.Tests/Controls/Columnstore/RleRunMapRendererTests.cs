@@ -1,9 +1,11 @@
-using InternalsViewer.UI.App.Controls.Columnstore.Segment;
+﻿using InternalsViewer.UI.App.Controls.Columnstore.Segment;
 using InternalsViewer.UI.App.Models.Columnstore.Segment;
 using SkiaSharp;
 
 namespace InternalsViewer.UI.App.Tests.Controls.Columnstore;
 
+[Trait("Category", "Unit")]
+[Trait("Area", "Columnstore")]
 public class RleRunMapRendererTests
 {
     private const int Width = 400;

@@ -10,6 +10,7 @@ using Xunit.Abstractions;
 
 namespace InternalsViewer.Query.Tests;
 
+[Trait("Category", "Unit")]
 public class QueryRunnerTests(ITestOutputHelper testOutputHelper)
 {
     public ITestOutputHelper TestOutputHelper { get; } = testOutputHelper;

@@ -10,6 +10,8 @@ using InternalsViewer.Internals.Tests.IntegrationTests.Providers.Metadata;
 
 namespace InternalsViewer.Internals.Tests.IntegrationTests.Services.Columnstore;
 
+[Trait("Category", "Integration")]
+[Trait("Area", "Columnstore")]
 public sealed class ColumnstoreStructureDumpTests(ITestOutputHelper testOutput) : ProviderTestBase(testOutput)
 {
     private const string DumpPath = @"C:\ColumnstoreDump\Structures";

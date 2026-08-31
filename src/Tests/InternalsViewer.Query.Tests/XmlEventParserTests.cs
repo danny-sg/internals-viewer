@@ -1,4 +1,4 @@
-using InternalsViewer.Internals.Engine.Address;
+﻿using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Query.CallStack;
 using InternalsViewer.Query.Events.Batches;
 using InternalsViewer.Query.Events.Locks;
@@ -14,6 +14,7 @@ using InternalsViewer.TransactionLog;
 
 namespace InternalsViewer.Query.Tests;
 
+[Trait("Category", "Unit")]
 public class XmlEventParserTests
 {
     /// <summary>

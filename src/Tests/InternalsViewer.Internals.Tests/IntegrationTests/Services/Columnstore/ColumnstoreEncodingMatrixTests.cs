@@ -13,6 +13,8 @@ namespace InternalsViewer.Internals.Tests.IntegrationTests.Services.Columnstore;
 /// <summary>
 /// Reports every combination of encoding, blob layout and sub lob type the lab tables actually produce
 /// </summary>
+[Trait("Category", "Integration")]
+[Trait("Area", "Columnstore")]
 public sealed class ColumnstoreEncodingMatrixTests(ITestOutputHelper testOutput) : ProviderTestBase(testOutput)
 {
     [Fact]

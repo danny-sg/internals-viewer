@@ -1,9 +1,11 @@
-using InternalsViewer.Execution.AccessPaths.Aggregation;
+﻿using InternalsViewer.Execution.AccessPaths.Aggregation;
 using InternalsViewer.Execution.AccessPaths.Predicates;
 using InternalsViewer.UI.App.ViewModels.Query.Trace;
 
 namespace InternalsViewer.UI.App.Tests.ViewModels.Query.Trace;
 
+[Trait("Category", "Unit")]
+[Trait("Area", "Trace")]
 public class TraceAggregateViewModelTests
 {
     [Fact]

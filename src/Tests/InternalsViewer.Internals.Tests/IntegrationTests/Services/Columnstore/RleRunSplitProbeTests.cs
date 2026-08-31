@@ -1,4 +1,4 @@
-using InternalsViewer.Internals.Tests.Helpers;
+﻿using InternalsViewer.Internals.Tests.Helpers;
 using InternalsViewer.Internals.Columnstore.Services;
 using InternalsViewer.Internals.Readers.Internals;
 using InternalsViewer.Internals.Services.Loaders.Records.Cd;
@@ -8,6 +8,8 @@ using InternalsViewer.Internals.Tests.IntegrationTests.Providers.Metadata;
 
 namespace InternalsViewer.Internals.Tests.IntegrationTests.Services.Columnstore;
 
+[Trait("Category", "Integration")]
+[Trait("Area", "Columnstore")]
 public sealed class RleRunSplitProbeTests(ITestOutputHelper testOutput) : ProviderTestBase(testOutput)
 {
     [Fact]

@@ -5,6 +5,8 @@ using InternalsViewer.Execution.BatchMode.Vectors;
 
 namespace InternalsViewer.Execution.Tests.UnitTests.BatchMode;
 
+[Trait("Category", "Unit")]
+[Trait("Area", "BatchMode")]
 public class BatchDeepDataStoreTests
 {
     /// <summary>

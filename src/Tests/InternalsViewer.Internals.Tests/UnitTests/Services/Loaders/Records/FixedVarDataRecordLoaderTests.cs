@@ -26,6 +26,8 @@ namespace InternalsViewer.Internals.Tests.UnitTests.Services.Loaders.Records;
 ///                LEFT JOIN sys.all_columns c ON column_id = partition_column_id AND c.object_id = p.object_id
 ///         WHERE  o.name = 'DataRecordLoaderTests_VariableFixed_NotNull'
 /// </remarks>
+[Trait("Category", "Unit")]
+[Trait("Area", "Records")]
 public class FixedVarDataRecordLoaderTests(ITestOutputHelper testOutputHelper)
 {
     public ITestOutputHelper TestOutput { get; set; } = testOutputHelper;

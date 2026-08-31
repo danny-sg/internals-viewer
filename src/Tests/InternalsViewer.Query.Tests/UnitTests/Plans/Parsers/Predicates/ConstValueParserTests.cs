@@ -1,10 +1,12 @@
-using System.Data;
+﻿using System.Data;
 using System.Text;
 using InternalsViewer.Execution.AccessPaths.Values;
 using InternalsViewer.Query.Plans.Parsers.Predicates;
 
 namespace InternalsViewer.Query.Tests.UnitTests.Plans.Parsers.Predicates;
 
+[Trait("Category", "Unit")]
+[Trait("Area", "Plans")]
 public class ConstValueParserTests
 {
     [Theory]

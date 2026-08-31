@@ -1,5 +1,7 @@
 ﻿namespace InternalsViewer.Internals.Tests.UnitTests.Services.Loaders.Records;
 
+[Trait("Category", "Unit")]
+[Trait("Area", "Records")]
 public class FixedVarIndexRecordLoaderTests
 {
     /// <summary>

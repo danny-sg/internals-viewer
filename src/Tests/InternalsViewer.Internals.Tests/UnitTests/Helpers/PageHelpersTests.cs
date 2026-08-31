@@ -1,9 +1,11 @@
-using InternalsViewer.Internals.Engine.Pages;
+﻿using InternalsViewer.Internals.Engine.Pages;
 using InternalsViewer.Internals.Engine.Pages.Enums;
 using InternalsViewer.Internals.Helpers;
 
 namespace InternalsViewer.Internals.Tests.UnitTests.Helpers;
 
+[Trait("Category", "Unit")]
+[Trait("Area", "Helpers")]
 public class PageHelpersTests
 {
     [Theory]

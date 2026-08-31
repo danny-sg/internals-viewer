@@ -1,9 +1,10 @@
-using InternalsViewer.Query.Events;
+﻿using InternalsViewer.Query.Events;
 using InternalsViewer.Query.Events.Latches;
 using InternalsViewer.Query.Events.Reads;
 
 namespace InternalsViewer.Query.Tests;
 
+[Trait("Category", "Unit")]
 public class EventSpreaderTests
 {
     [Fact]

@@ -9,6 +9,7 @@ using InternalsViewer.Connection.BackupFile.Mtf.Blocks;
 
 namespace InternalsViewer.Connection.BackupFile.Tests;
 
+[Trait("Category", "Unit")]
 public class BackupLoaderTests(ITestOutputHelper testOutput)
 {
     public ITestOutputHelper TestOutput { get; } = testOutput;
@@ -99,6 +100,7 @@ public class BackupLoaderTests(ITestOutputHelper testOutput)
     }
 }
 
+[Trait("Category", "Unit")]
 public class BlockTests
 {
     [Fact]

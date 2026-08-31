@@ -1,8 +1,10 @@
-using InternalsViewer.Internals.Engine.Allocation;
+﻿using InternalsViewer.Internals.Engine.Allocation;
 using InternalsViewer.Internals.Engine.Pages;
 
 namespace InternalsViewer.Internals.Tests.UnitTests.Engine.Allocation;
 
+[Trait("Category", "Unit")]
+[Trait("Area", "Allocation")]
 public class AllocationChainTests
 {
     private static AllocationChain BuildChain(short fileId, int setExtent = -1)

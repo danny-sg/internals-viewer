@@ -1,7 +1,9 @@
-using InternalsViewer.UI.App.ViewModels.Query.Trace;
+﻿using InternalsViewer.UI.App.ViewModels.Query.Trace;
 
 namespace InternalsViewer.UI.App.Tests.ViewModels.Query.Trace;
 
+[Trait("Category", "Unit")]
+[Trait("Area", "Trace")]
 public class TraceSegmentViewModelTests
 {
     [Fact]

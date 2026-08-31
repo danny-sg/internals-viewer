@@ -2,6 +2,8 @@
 
 namespace InternalsViewer.Internals.Tests.UnitTests.Helpers;
 
+[Trait("Category", "Unit")]
+[Trait("Area", "Helpers")]
 public class IdHelperTests
 {
     [Theory]

@@ -1,7 +1,9 @@
-using InternalsViewer.Internals.Columnstore.Segments;
+﻿using InternalsViewer.Internals.Columnstore.Segments;
 
 namespace InternalsViewer.Internals.Tests.UnitTests.Columnstore;
 
+[Trait("Category", "Unit")]
+[Trait("Area", "Columnstore")]
 public class SegmentBlobHeaderTests
 {
     [Fact]

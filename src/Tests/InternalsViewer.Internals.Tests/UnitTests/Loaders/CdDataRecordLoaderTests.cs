@@ -6,6 +6,8 @@ using InternalsViewer.Internals.Tests.Helpers;
 
 namespace InternalsViewer.Internals.Tests.UnitTests.Loaders;
 
+[Trait("Category", "Unit")]
+[Trait("Area", "Loaders")]
 public class CdDataRecordLoaderTests(ITestOutputHelper testOutputHelper)
 {
     private ITestOutputHelper TestOutputHelper { get; } = testOutputHelper;

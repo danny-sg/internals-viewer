@@ -1,8 +1,9 @@
-using InternalsViewer.Query.Events.Parsers;
+﻿using InternalsViewer.Query.Events.Parsers;
 using InternalsViewer.Query.Events.Parsers.Xml;
 
 namespace InternalsViewer.Query.Tests;
 
+[Trait("Category", "Unit")]
 public class XmlCallStackParserTests
 {
     // The callstack action is held in the event buffer as escaped XML: angle brackets are &lt;/&gt; while the

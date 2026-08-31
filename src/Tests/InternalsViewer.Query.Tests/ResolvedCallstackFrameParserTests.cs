@@ -1,8 +1,9 @@
-using InternalsViewer.Query.CallStack;
+﻿using InternalsViewer.Query.CallStack;
 using InternalsViewer.Query.CallStack.Categories;
 
 namespace InternalsViewer.Query.Tests;
 
+[Trait("Category", "Unit")]
 public class ResolvedCallstackFrameParserTests
 {
     [Fact]

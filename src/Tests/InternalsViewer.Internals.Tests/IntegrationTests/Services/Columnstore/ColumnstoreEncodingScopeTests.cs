@@ -12,6 +12,8 @@ namespace InternalsViewer.Internals.Tests.IntegrationTests.Services.Columnstore;
 /// <summary>
 /// Reports which tables hold store by value segments, those being the ones with a paged value store
 /// </summary>
+[Trait("Category", "Integration")]
+[Trait("Area", "Columnstore")]
 public sealed class ColumnstoreEncodingScopeTests(ITestOutputHelper testOutput) : ProviderTestBase(testOutput)
 {
     [Fact]

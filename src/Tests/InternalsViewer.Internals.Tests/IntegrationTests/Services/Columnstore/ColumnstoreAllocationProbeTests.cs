@@ -2,6 +2,8 @@
 
 namespace InternalsViewer.Internals.Tests.IntegrationTests.Services.Columnstore;
 
+[Trait("Category", "Integration")]
+[Trait("Area", "Columnstore")]
 public sealed class ColumnstoreAllocationProbeTests(ITestOutputHelper testOutput) : ProviderTestBase(testOutput)
 {
     [Theory]

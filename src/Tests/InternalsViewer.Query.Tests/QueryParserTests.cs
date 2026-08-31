@@ -1,7 +1,8 @@
-using InternalsViewer.Query.Parsing;
+﻿using InternalsViewer.Query.Parsing;
 
 namespace InternalsViewer.Query.Tests;
 
+[Trait("Category", "Unit")]
 public class QueryParserTests
 {
     [Fact]

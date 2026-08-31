@@ -1,7 +1,8 @@
-using InternalsViewer.Query.Events.Reads;
+﻿using InternalsViewer.Query.Events.Reads;
 
 namespace InternalsViewer.Query.Tests;
 
+[Trait("Category", "Unit")]
 public class FileEventTests
 {
     [Fact]

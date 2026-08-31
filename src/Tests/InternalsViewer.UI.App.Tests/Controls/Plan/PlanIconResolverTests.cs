@@ -1,8 +1,9 @@
-using InternalsViewer.Query.Plans.Model;
+﻿using InternalsViewer.Query.Plans.Model;
 using InternalsViewer.UI.App.Controls.Plan;
 
 namespace InternalsViewer.UI.App.Tests.Controls.Plan;
 
+[Trait("Category", "Unit")]
 public class PlanIconResolverTests
 {
     [Fact]

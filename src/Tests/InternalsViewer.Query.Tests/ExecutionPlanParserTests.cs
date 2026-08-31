@@ -14,6 +14,7 @@ namespace InternalsViewer.Query.Tests;
 /// Unit tests for <see cref="ExecutionPlanParser"/>.
 /// XML literals use the real showplan namespace so that namespace-stripping bugs are caught here.
 /// </summary>
+[Trait("Category", "Unit")]
 public class ExecutionPlanParserTests
 {
     private const string Ns = "http://schemas.microsoft.com/sqlserver/2004/07/showplan";

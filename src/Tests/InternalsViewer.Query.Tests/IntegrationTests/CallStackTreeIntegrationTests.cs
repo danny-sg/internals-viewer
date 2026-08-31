@@ -1,4 +1,4 @@
-using InternalsViewer.Internals;
+﻿using InternalsViewer.Internals;
 using InternalsViewer.Internals.Connections.Server;
 using InternalsViewer.Internals.Engine.Database;
 using InternalsViewer.Internals.Interfaces.Services.Loaders.Engine;
@@ -21,6 +21,7 @@ using Xunit.Abstractions;
 
 namespace InternalsViewer.Query.Tests.IntegrationTests;
 
+[Trait("Category", "Integration")]
 public class CallStackTreeIntegrationTests(ITestOutputHelper testOutputHelper)
 {
     public ITestOutputHelper TestOutputHelper { get; } = testOutputHelper;

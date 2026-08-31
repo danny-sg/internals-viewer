@@ -1,10 +1,12 @@
-using System.Buffers.Binary;
+﻿using System.Buffers.Binary;
 using InternalsViewer.Internals.Engine.Database;
 using InternalsViewer.Internals.Engine.Pages.Enums;
 using InternalsViewer.Internals.Readers.Pages;
 
 namespace InternalsViewer.Internals.Tests.UnitTests.Readers;
 
+[Trait("Category", "Unit")]
+[Trait("Area", "Readers")]
 public sealed class DataFilePageReaderTests : IDisposable
 {
     private readonly string testDirectory;

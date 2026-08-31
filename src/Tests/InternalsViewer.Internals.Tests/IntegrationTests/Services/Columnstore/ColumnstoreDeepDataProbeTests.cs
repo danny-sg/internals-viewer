@@ -9,6 +9,8 @@ using InternalsViewer.Internals.Tests.IntegrationTests.Providers.Metadata;
 
 namespace InternalsViewer.Internals.Tests.IntegrationTests.Services.Columnstore;
 
+[Trait("Category", "Integration")]
+[Trait("Area", "Columnstore")]
 public sealed class ColumnstoreDeepDataProbeTests(ITestOutputHelper testOutput) : ProviderTestBase(testOutput)
 {
     [Theory]

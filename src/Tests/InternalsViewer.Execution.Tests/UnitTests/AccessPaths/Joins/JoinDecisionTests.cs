@@ -1,8 +1,10 @@
-using InternalsViewer.Execution.AccessPaths.Results;
+﻿using InternalsViewer.Execution.AccessPaths.Results;
 using InternalsViewer.Execution.AccessPaths.Joins;
 
 namespace InternalsViewer.Execution.Tests.UnitTests.AccessPaths.Joins;
 
+[Trait("Category", "Unit")]
+[Trait("Area", "AccessPaths")]
 public class JoinDecisionTests
 {
     [Theory]

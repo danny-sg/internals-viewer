@@ -5,6 +5,8 @@ using InternalsViewer.UI.App.Services.Query.Trace.Steps;
 
 namespace InternalsViewer.UI.App.Tests.Services.Query.Trace.Steps;
 
+[Trait("Category", "Unit")]
+[Trait("Area", "Trace")]
 public class TraceStepRunsTests
 {
     private const int HistoryLimit = 1000;

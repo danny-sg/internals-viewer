@@ -1,8 +1,10 @@
-using InternalsViewer.Query.Plans.Joins;
+﻿using InternalsViewer.Query.Plans.Joins;
 using InternalsViewer.Query.Plans.Model;
 
 namespace InternalsViewer.Query.Tests.UnitTests.Plans.Joins;
 
+[Trait("Category", "Unit")]
+[Trait("Area", "Plans")]
 public class HashJoinResolverTests
 {
     [Fact]

@@ -1,8 +1,10 @@
-using System.Collections;
+﻿using System.Collections;
 using InternalsViewer.Internals.Helpers;
 
 namespace InternalsViewer.Internals.Tests.UnitTests.Helpers;
 
+[Trait("Category", "Unit")]
+[Trait("Area", "Helpers")]
 public class StringHelpersTests
 {
     [Theory]

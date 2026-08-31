@@ -1,4 +1,4 @@
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using InternalsViewer.Execution.AccessPaths.Definitions;
 using InternalsViewer.Execution.AccessPaths.Joins;
 using InternalsViewer.Execution.AccessPaths.Search;
@@ -8,6 +8,8 @@ using InternalsViewer.UI.App.ViewModels.Query.Trace;
 
 namespace InternalsViewer.UI.App.Tests.ViewModels.Query.Trace;
 
+[Trait("Category", "Unit")]
+[Trait("Area", "Trace")]
 public class TraceLayoutBuilderTests
 {
     [Fact]

@@ -3,6 +3,8 @@ using InternalsViewer.Internals.Services.Loaders.Compression;
 
 namespace InternalsViewer.Internals.Tests.UnitTests.Loaders;
 
+[Trait("Category", "Unit")]
+[Trait("Area", "Loaders")]
 public class DictionaryLoaderTests(ITestOutputHelper testOutputHelper)
 {
     private ITestOutputHelper TestOutputHelper { get; } = testOutputHelper;

@@ -1,4 +1,4 @@
-using System.Globalization;
+﻿using System.Globalization;
 using System.Runtime.InteropServices;
 using System.Text;
 using InternalsViewer.Query.CallStack.Dia;
@@ -18,6 +18,7 @@ namespace InternalsViewer.Query.Tests;
 /// thousand characters, and the native side formats with swprintf_s, which terminates the process rather than
 /// truncating when the buffer is too small.
 /// </remarks>
+[Trait("Category", "Unit")]
 public class SymbolIndexTests
 {
     private const string Pdb = @"C:\Symbols\sqlmin.pdb\0F0CBB2ABB8040D69CC36FB2CDB380602\sqlmin.pdb";

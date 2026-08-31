@@ -3,6 +3,7 @@ using InternalsViewer.UI.App.Models;
 
 namespace InternalsViewer.UI.App.Tests.Controls.HexView;
 
+[Trait("Category", "Unit")]
 public class HexAreasTests
 {
     private static readonly HexArea[] Areas =

@@ -1,9 +1,10 @@
-using CommunityToolkit.Mvvm.Messaging;
+﻿using CommunityToolkit.Mvvm.Messaging;
 using InternalsViewer.UI.App.Messages;
 using InternalsViewer.UI.App.ViewModels.Connections;
 
 namespace InternalsViewer.UI.App.Tests.ViewModels.Connections;
 
+[Trait("Category", "Unit")]
 public sealed class ConnectBackupViewModelTests : IDisposable
 {
     private readonly List<string> tempFiles = [];

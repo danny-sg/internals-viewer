@@ -1,7 +1,8 @@
-using InternalsViewer.UI.App.Controls.HexView;
+﻿using InternalsViewer.UI.App.Controls.HexView;
 
 namespace InternalsViewer.UI.App.Tests.Controls.HexView;
 
+[Trait("Category", "Unit")]
 public class HexLayoutTests
 {
     [Theory]

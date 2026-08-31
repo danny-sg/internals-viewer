@@ -4,6 +4,8 @@ using InternalsViewer.Internals.Services.Loaders.Records.Fields;
 
 namespace InternalsViewer.Internals.Tests.UnitTests.Services.Loaders.Records.Fields;
 
+[Trait("Category", "Unit")]
+[Trait("Area", "Records")]
 public class LobPointerFieldLoaderTests
 {
     private const string TestData = "00 00 35 F2 00 00 00 00 10 23 00 00 01 00 01 00";

@@ -1,4 +1,4 @@
-using InternalsViewer.Internals.Engine.Address;
+﻿using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Query.Events.Consolidation;
 using InternalsViewer.Query.Events.Latches;
 using InternalsViewer.Query.Events.Locks;
@@ -7,6 +7,7 @@ using InternalsViewer.Query.Events.Waits;
 
 namespace InternalsViewer.Query.Tests;
 
+[Trait("Category", "Unit")]
 public class IntervalCollapserTests
 {
     [Fact]

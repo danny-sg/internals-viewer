@@ -1,4 +1,4 @@
-using InternalsViewer.Internals.Engine.Address;
+﻿using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Query.Events.Latches;
 using InternalsViewer.Query.Events.Operators;
 using InternalsViewer.Query.Events.Reads;
@@ -7,6 +7,7 @@ using InternalsViewer.Query.Plans;
 
 namespace InternalsViewer.Query.Tests;
 
+[Trait("Category", "Unit")]
 public class EventPlanNodeMatcherTests
 {
     private const short PlanHandleId = 1;

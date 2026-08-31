@@ -1,8 +1,10 @@
-using System.Data;
+﻿using System.Data;
 using InternalsViewer.Internals.Metadata.Internals;
 
 namespace InternalsViewer.Internals.Tests.UnitTests.Metadata.Internals;
 
+[Trait("Category", "Unit")]
+[Trait("Area", "Metadata")]
 public class TypeInfoExtensionsTests
 {
     [Theory]

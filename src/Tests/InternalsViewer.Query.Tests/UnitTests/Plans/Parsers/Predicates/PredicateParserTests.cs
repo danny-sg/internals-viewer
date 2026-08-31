@@ -1,4 +1,4 @@
-using System.Xml.Linq;
+﻿using System.Xml.Linq;
 using InternalsViewer.Execution.AccessPaths.Predicates;
 using InternalsViewer.Execution.AccessPaths.Values;
 using InternalsViewer.Query.Plans.Model;
@@ -6,6 +6,8 @@ using InternalsViewer.Query.Plans.Parsers.Predicates;
 
 namespace InternalsViewer.Query.Tests.UnitTests.Plans.Parsers.Predicates;
 
+[Trait("Category", "Unit")]
+[Trait("Area", "Plans")]
 public class PredicateParserTests
 {
     [Fact]

@@ -2,6 +2,8 @@
 
 namespace InternalsViewer.Internals.Tests.UnitTests.Services.Pages.Parsers;
 
+[Trait("Category", "Unit")]
+[Trait("Area", "Pages")]
 public class BootPageParserTests(ITestOutputHelper testOutput)
     : PageParserTestsBase(testOutput)
 {

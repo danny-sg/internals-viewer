@@ -1,7 +1,9 @@
-using InternalsViewer.Internals.Converters.Decoder;
+﻿using InternalsViewer.Internals.Converters.Decoder;
 
 namespace InternalsViewer.Internals.Tests.UnitTests.Converters;
 
+[Trait("Category", "Unit")]
+[Trait("Area", "Converters")]
 public class DataDecoderTests
 {
     [Fact]

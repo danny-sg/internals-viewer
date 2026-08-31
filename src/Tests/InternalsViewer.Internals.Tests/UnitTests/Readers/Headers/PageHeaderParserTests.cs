@@ -5,6 +5,8 @@ using InternalsViewer.Internals.Tests.Helpers;
 
 namespace InternalsViewer.Internals.Tests.UnitTests.Readers.Headers;
 
+[Trait("Category", "Unit")]
+[Trait("Area", "Readers")]
 public class PageHeaderParserTests
 {
     [Fact]

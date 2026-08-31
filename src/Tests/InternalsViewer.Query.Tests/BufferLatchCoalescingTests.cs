@@ -1,10 +1,11 @@
-using InternalsViewer.Internals.Engine.Address;
+﻿using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Query.Events;
 using InternalsViewer.Query.Events.Consolidation;
 using InternalsViewer.Query.Events.Latches;
 
 namespace InternalsViewer.Query.Tests;
 
+[Trait("Category", "Unit")]
 public class BufferLatchCoalescingTests
 {
     [Fact]

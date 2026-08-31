@@ -1,7 +1,9 @@
-using InternalsViewer.Internals.Engine.Allocation;
+﻿using InternalsViewer.Internals.Engine.Allocation;
 
 namespace InternalsViewer.Internals.Tests.UnitTests.Engine.Allocation;
 
+[Trait("Category", "Unit")]
+[Trait("Area", "Allocation")]
 public class IamChainTests
 {
     // StartPage PageId 1 gives Extent 0 and a start extent of 0, so an extent maps directly to its

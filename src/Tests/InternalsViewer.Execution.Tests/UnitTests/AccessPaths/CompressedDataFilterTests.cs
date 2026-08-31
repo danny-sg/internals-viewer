@@ -5,6 +5,8 @@ using InternalsViewer.Execution.AccessPaths.Values;
 
 namespace InternalsViewer.Execution.Tests.UnitTests.AccessPaths;
 
+[Trait("Category", "Unit")]
+[Trait("Area", "AccessPaths")]
 public class CompressedDataFilterTests
 {
     [Fact]

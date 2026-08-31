@@ -1,5 +1,7 @@
-namespace InternalsViewer.Internals.Tests.UnitTests.Pages;
+﻿namespace InternalsViewer.Internals.Tests.UnitTests.Pages;
 
+[Trait("Category", "Unit")]
+[Trait("Area", "Pages")]
 public class PfsByteTests
 {
     [Theory]

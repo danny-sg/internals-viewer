@@ -13,6 +13,8 @@ namespace InternalsViewer.Internals.Tests.IntegrationTests.Services.Columnstore;
 /// <summary>
 /// Reports which columnstore tables carry a local dictionary, a local one being built per row group
 /// </summary>
+[Trait("Category", "Integration")]
+[Trait("Area", "Columnstore")]
 public sealed class ColumnstoreDictionaryScopeTests(ITestOutputHelper testOutput) : ProviderTestBase(testOutput)
 {
     [Fact]

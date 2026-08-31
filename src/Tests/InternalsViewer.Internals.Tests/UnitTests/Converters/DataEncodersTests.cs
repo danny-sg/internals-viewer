@@ -1,4 +1,4 @@
-using System.Data;
+﻿using System.Data;
 using InternalsViewer.Internals.Converters;
 using InternalsViewer.Internals.Helpers;
 
@@ -8,6 +8,8 @@ namespace InternalsViewer.Internals.Tests.UnitTests.Converters;
 /// Round-trip tests: encode a value with DataEncoders, decode the resulting hex string with
 /// DataConverter.BinaryToString, and assert the original value is recovered.
 /// </summary>
+[Trait("Category", "Unit")]
+[Trait("Area", "Converters")]
 public class DataEncodersTests
 {
     [Theory]

@@ -1,5 +1,7 @@
-namespace InternalsViewer.Internals.Tests.UnitTests.Engine.Address;
+﻿namespace InternalsViewer.Internals.Tests.UnitTests.Engine.Address;
 
+[Trait("Category", "Unit")]
+[Trait("Area", "Engine")]
 public class PageAddressTests
 {
     [Fact]

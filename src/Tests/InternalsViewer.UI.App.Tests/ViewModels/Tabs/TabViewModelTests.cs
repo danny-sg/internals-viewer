@@ -1,7 +1,8 @@
-using InternalsViewer.UI.App.ViewModels.Tabs;
+﻿using InternalsViewer.UI.App.ViewModels.Tabs;
 
 namespace InternalsViewer.UI.App.Tests.ViewModels.Tabs;
 
+[Trait("Category", "Unit")]
 public class TabViewModelTests
 {
     private sealed class TestTabViewModel : TabViewModel

@@ -1,10 +1,11 @@
-using InternalsViewer.Query.Events.Operators;
+﻿using InternalsViewer.Query.Events.Operators;
 using InternalsViewer.Query.Events.Reads;
 using InternalsViewer.Query.Events;
 using InternalsViewer.Query.Plans.Model;
 
 namespace InternalsViewer.Query.Tests;
 
+[Trait("Category", "Unit")]
 public class OperatorHierarchyTests
 {
     [Fact]

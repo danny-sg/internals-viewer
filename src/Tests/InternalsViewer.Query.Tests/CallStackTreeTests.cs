@@ -1,9 +1,10 @@
-using InternalsViewer.Query.CallStack;
+﻿using InternalsViewer.Query.CallStack;
 using InternalsViewer.Query.Events;
 using Xunit.Abstractions;
 
 namespace InternalsViewer.Query.Tests;
 
+[Trait("Category", "Unit")]
 public class CallStackTreeTests(ITestOutputHelper output)
 {
     [Fact]

@@ -1,4 +1,4 @@
-using InternalsViewer.Execution.Interfaces.AccessPaths.Binding;
+﻿using InternalsViewer.Execution.Interfaces.AccessPaths.Binding;
 using System.Data;
 using System.Text;
 using InternalsViewer.Execution.AccessPaths.Predicates;
@@ -6,6 +6,8 @@ using InternalsViewer.Execution.AccessPaths.Values;
 
 namespace InternalsViewer.Execution.Tests.UnitTests.AccessPaths.Predicates;
 
+[Trait("Category", "Unit")]
+[Trait("Area", "AccessPaths")]
 public class IntrinsicFunctionsTests
 {
     private static readonly IRowValueSource Row = new TestRowValueSource(10);

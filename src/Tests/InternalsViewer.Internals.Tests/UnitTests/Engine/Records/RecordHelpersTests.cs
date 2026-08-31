@@ -1,7 +1,9 @@
-using InternalsViewer.Internals.Engine.Records;
+﻿using InternalsViewer.Internals.Engine.Records;
 
 namespace InternalsViewer.Internals.Tests.UnitTests.Engine.Records;
 
+[Trait("Category", "Unit")]
+[Trait("Area", "Records")]
 public class RecordHelpersTests
 {
     [Theory]

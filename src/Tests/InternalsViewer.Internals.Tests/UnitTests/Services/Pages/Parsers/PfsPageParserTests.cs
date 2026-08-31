@@ -1,7 +1,9 @@
-using InternalsViewer.Internals.Services.Pages.Parsers;
+﻿using InternalsViewer.Internals.Services.Pages.Parsers;
 
 namespace InternalsViewer.Internals.Tests.UnitTests.Services.Pages.Parsers;
 
+[Trait("Category", "Unit")]
+[Trait("Area", "Pages")]
 public class PfsPageParserTests(ITestOutputHelper testOutput)
     : PageParserTestsBase(testOutput)
 {

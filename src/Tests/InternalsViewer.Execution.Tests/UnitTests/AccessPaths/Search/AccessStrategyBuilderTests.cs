@@ -1,4 +1,4 @@
-using System.Data;
+﻿using System.Data;
 using InternalsViewer.Execution.AccessPaths.Predicates;
 using InternalsViewer.Execution.AccessPaths.Results;
 using InternalsViewer.Execution.AccessPaths.Search;
@@ -7,6 +7,8 @@ using InternalsViewer.Internals.Metadata.Structures;
 
 namespace InternalsViewer.Execution.Tests.UnitTests.AccessPaths.Search;
 
+[Trait("Category", "Unit")]
+[Trait("Area", "AccessPaths")]
 public class AccessStrategyBuilderTests
 {
     [Fact]

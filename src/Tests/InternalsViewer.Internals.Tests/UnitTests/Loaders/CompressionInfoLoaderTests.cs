@@ -5,6 +5,8 @@ using InternalsViewer.Internals.Tests.Helpers;
 
 namespace InternalsViewer.Internals.Tests.UnitTests.Loaders;
 
+[Trait("Category", "Unit")]
+[Trait("Area", "Loaders")]
 public class CompressionInfoLoaderTests(ITestOutputHelper testOutputHelper)
 {
     private ITestOutputHelper TestOutputHelper { get; } = testOutputHelper;

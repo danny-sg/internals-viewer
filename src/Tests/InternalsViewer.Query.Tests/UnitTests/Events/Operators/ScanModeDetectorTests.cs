@@ -1,4 +1,4 @@
-using InternalsViewer.Execution.AccessPaths.Search;
+﻿using InternalsViewer.Execution.AccessPaths.Search;
 using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Internals.Engine.Database;
 using InternalsViewer.Query.Events.Operators;
@@ -8,6 +8,8 @@ using InternalsViewer.Query.Plans.Model;
 
 namespace InternalsViewer.Query.Tests.UnitTests.Events.Operators;
 
+[Trait("Category", "Unit")]
+[Trait("Area", "Events")]
 public class ScanModeDetectorTests
 {
     private static readonly PageAddress IamPage = new(1, 157);

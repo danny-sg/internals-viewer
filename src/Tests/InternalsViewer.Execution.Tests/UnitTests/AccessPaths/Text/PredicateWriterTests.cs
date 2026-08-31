@@ -8,6 +8,8 @@ using InternalsViewer.Execution.AccessPaths.Values;
 
 namespace InternalsViewer.Execution.Tests.UnitTests.AccessPaths.Text;
 
+[Trait("Category", "Unit")]
+[Trait("Area", "AccessPaths")]
 public class PredicateWriterTests
 {
     [Fact]

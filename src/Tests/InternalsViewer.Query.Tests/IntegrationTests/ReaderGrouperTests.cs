@@ -13,6 +13,7 @@ using InternalsViewer.Query.Events.Latches;
 
 namespace InternalsViewer.Query.Tests.IntegrationTests;
 
+[Trait("Category", "Integration")]
 public class ReaderGrouperTests(ITestOutputHelper testOutputHelper)
 {
     public ITestOutputHelper TestOutputHelper { get; } = testOutputHelper;

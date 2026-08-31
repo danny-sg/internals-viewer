@@ -1,4 +1,4 @@
-using InternalsViewer.Internals.Connections.Server;
+﻿using InternalsViewer.Internals.Connections.Server;
 using InternalsViewer.Internals.Engine.Database;
 using InternalsViewer.Internals.Interfaces.Services.Loaders.Engine;
 using InternalsViewer.Internals.Readers.Pages;
@@ -29,6 +29,7 @@ namespace InternalsViewer.Query.Tests.IntegrationTests;
 /// mapping file or from event ownership, and what the segment then contains. Every wrong guess about this feature so far
 /// came from inferring the plan backwards from a pasted stack; this reads it from the plan instead.
 /// </remarks>
+[Trait("Category", "Integration")]
 public class OperatorScopeIntegrationTests(ITestOutputHelper testOutputHelper)
 {
     private ITestOutputHelper Output { get; } = testOutputHelper;

@@ -1,4 +1,4 @@
-using System.Data;
+﻿using System.Data;
 using InternalsViewer.Execution.AccessPaths.Aggregation;
 using InternalsViewer.Execution.AccessPaths.Definitions;
 using InternalsViewer.Internals.Engine.Address;
@@ -12,6 +12,8 @@ namespace InternalsViewer.UI.App.Tests.Services.Query.Trace;
 /// <summary>
 /// Covers the step from a parsed plan to the definition tree that runs it
 /// </summary>
+[Trait("Category", "Unit")]
+[Trait("Area", "Trace")]
 public class TraceDefinitionBuilderTests
 {
     /// <summary>

@@ -1,10 +1,12 @@
-using System.Data;
+﻿using System.Data;
 using InternalsViewer.Execution.AccessPaths.Joins.Hash;
 using InternalsViewer.Execution.AccessPaths.Search;
 using InternalsViewer.Execution.AccessPaths.Values;
 
 namespace InternalsViewer.Execution.Tests.UnitTests.AccessPaths.Joins;
 
+[Trait("Category", "Unit")]
+[Trait("Area", "AccessPaths")]
 public class JoinHashTests
 {
     [Fact]

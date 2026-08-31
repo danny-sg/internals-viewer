@@ -1,8 +1,10 @@
-using System.Data;
+﻿using System.Data;
 using InternalsViewer.Internals.Helpers;
 
 namespace InternalsViewer.Internals.Tests.UnitTests.Helpers;
 
+[Trait("Category", "Unit")]
+[Trait("Area", "Helpers")]
 public class SqlTypeHelpersTests
 {
     [Theory]

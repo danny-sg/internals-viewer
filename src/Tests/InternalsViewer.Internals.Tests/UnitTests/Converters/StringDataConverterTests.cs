@@ -4,6 +4,8 @@ using InternalsViewer.Internals.Helpers;
 
 namespace InternalsViewer.Internals.Tests.UnitTests.Converters;
 
+[Trait("Category", "Unit")]
+[Trait("Area", "Converters")]
 public class StringDataConverterTests
 {
     [Theory]

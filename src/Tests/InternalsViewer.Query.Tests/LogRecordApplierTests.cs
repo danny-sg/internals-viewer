@@ -1,4 +1,4 @@
-using System.Buffers.Binary;
+﻿using System.Buffers.Binary;
 using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Internals.Engine.Pages;
 using InternalsViewer.TransactionLog;
@@ -6,6 +6,7 @@ using InternalsViewer.TransactionLog.LogRecords;
 
 namespace InternalsViewer.Query.Tests;
 
+[Trait("Category", "Unit")]
 public class LogRecordApplierTests
 {
     private static readonly PageAddress Address = new(1, 1);

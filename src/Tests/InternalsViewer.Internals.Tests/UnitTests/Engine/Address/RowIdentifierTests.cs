@@ -1,7 +1,9 @@
-using InternalsViewer.Internals.Engine.Address;
+﻿using InternalsViewer.Internals.Engine.Address;
 
 namespace InternalsViewer.Internals.Tests.UnitTests.Engine.Address;
 
+[Trait("Category", "Unit")]
+[Trait("Area", "Engine")]
 public class RowIdentifierTests
 {
     [Theory]

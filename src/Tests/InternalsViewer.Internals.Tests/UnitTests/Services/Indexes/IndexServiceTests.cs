@@ -1,4 +1,4 @@
-using System.Buffers.Binary;
+﻿using System.Buffers.Binary;
 using System.Collections.Concurrent;
 using InternalsViewer.Internals.Engine.Database;
 using InternalsViewer.Internals.Engine.Pages.Enums;
@@ -11,6 +11,8 @@ using Moq;
 
 namespace InternalsViewer.Internals.Tests.UnitTests.Services.Indexes;
 
+[Trait("Category", "Unit")]
+[Trait("Area", "Services")]
 public class IndexServiceTests(ITestOutputHelper testOutput)
 {
     private const ushort FixedLength = 13;

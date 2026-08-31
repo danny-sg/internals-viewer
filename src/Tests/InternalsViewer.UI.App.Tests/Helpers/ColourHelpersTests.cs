@@ -1,8 +1,10 @@
-using System.Drawing;
+﻿using System.Drawing;
 using InternalsViewer.UI.App.Helpers;
 
 namespace InternalsViewer.UI.App.Tests.Helpers;
 
+[Trait("Category", "Unit")]
+[Trait("Area", "Helpers")]
 public class ColourHelpersTests
 {
     [Fact]

@@ -1,8 +1,10 @@
-using InternalsViewer.UI.App.ViewModels.Docking;
+﻿using InternalsViewer.UI.App.ViewModels.Docking;
 using Microsoft.UI.Xaml.Controls;
 
 namespace InternalsViewer.UI.App.Tests.ViewModels.Docking;
 
+[Trait("Category", "Unit")]
+[Trait("Area", "Docking")]
 public class DockLayoutSerializerTests
 {
     [Fact]

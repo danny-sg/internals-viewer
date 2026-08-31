@@ -1,7 +1,8 @@
-using InternalsViewer.Query.CallStack;
+﻿using InternalsViewer.Query.CallStack;
 
 namespace InternalsViewer.Query.Tests;
 
+[Trait("Category", "Unit")]
 public class CallstackResolverTests
 {
     private static CallstackFrame CreateFrame(string pdb = "sqlmin.pdb",

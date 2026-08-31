@@ -4,6 +4,8 @@ using InternalsViewer.Internals.Services.Loaders.Records.Fields;
 
 namespace InternalsViewer.Internals.Tests.UnitTests.Services.Loaders.Records.Fields;
 
+[Trait("Category", "Unit")]
+[Trait("Area", "Records")]
 public class LobOverflowFieldLoaderTests
 {
     private const string TestData = "02 00 00 00 01 00 00 00 23 48 00 00 40 1F 00 00 4D 03 00 00 01 00 00 00";

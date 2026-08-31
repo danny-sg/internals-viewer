@@ -1,4 +1,4 @@
-using InternalsViewer.UI.App.Models;
+﻿using InternalsViewer.UI.App.Models;
 using InternalsViewer.UI.App.Services;
 using InternalsViewer.UI.App.ViewModels.Connections;
 using Microsoft.Data.SqlClient;
@@ -7,6 +7,7 @@ using Microsoft.Extensions.Options;
 
 namespace InternalsViewer.UI.App.Tests.ViewModels.Connections;
 
+[Trait("Category", "Unit")]
 public class ConnectServerViewModelTests
 {
     [Fact]

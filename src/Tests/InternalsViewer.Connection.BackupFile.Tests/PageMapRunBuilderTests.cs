@@ -3,6 +3,7 @@ using InternalsViewer.Internals.Engine.Address;
 
 namespace InternalsViewer.Connection.BackupFile.Tests;
 
+[Trait("Category", "Unit")]
 public class PageMapRunBuilderTests
 {
     private const int PageSize = 8192;

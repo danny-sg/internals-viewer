@@ -12,6 +12,8 @@ namespace InternalsViewer.Internals.Tests.IntegrationTests.Services.Columnstore;
 /// <summary>
 /// Dumps the header of every numeric dictionary, to place the fields the parser does not yet read
 /// </summary>
+[Trait("Category", "Integration")]
+[Trait("Area", "Columnstore")]
 public sealed class NumericDictionaryHeaderProbeTests(ITestOutputHelper testOutput) : ProviderTestBase(testOutput)
 {
     [Fact]

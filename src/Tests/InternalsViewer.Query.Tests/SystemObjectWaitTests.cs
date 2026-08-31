@@ -1,4 +1,4 @@
-using InternalsViewer.Internals.Engine.Database;
+﻿using InternalsViewer.Internals.Engine.Database;
 using InternalsViewer.Query.Events;
 using InternalsViewer.Query.Events.Latches;
 using InternalsViewer.Query.Events.Parsers;
@@ -14,6 +14,7 @@ namespace InternalsViewer.Query.Tests;
 /// event ever resolves to a system object and nothing is ever excluded. The exclusion — and this — only bites in the app,
 /// where the allocation metadata is loaded.
 /// </remarks>
+[Trait("Category", "Unit")]
 public class SystemObjectWaitTests
 {
     [Fact]

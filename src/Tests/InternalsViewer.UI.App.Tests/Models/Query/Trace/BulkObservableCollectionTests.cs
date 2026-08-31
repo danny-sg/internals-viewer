@@ -1,8 +1,10 @@
-using System.Collections.Specialized;
+﻿using System.Collections.Specialized;
 using InternalsViewer.UI.App.Models.Query.Trace;
 
 namespace InternalsViewer.UI.App.Tests.Models.Query.Trace;
 
+[Trait("Category", "Unit")]
+[Trait("Area", "Trace")]
 public class BulkObservableCollectionTests
 {
     [Fact]

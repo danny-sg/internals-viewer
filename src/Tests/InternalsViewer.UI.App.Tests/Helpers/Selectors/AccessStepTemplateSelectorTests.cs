@@ -1,4 +1,4 @@
-using System.Reflection;
+﻿using System.Reflection;
 using InternalsViewer.UI.App.Helpers.Selectors;
 using Microsoft.UI.Xaml;
 
@@ -12,6 +12,8 @@ namespace InternalsViewer.UI.App.Tests.Helpers.Selectors;
 /// template" without naming which one, only once a step of that kind actually happens. Both halves are assigned by hand for every
 /// operator added, so they are compared here instead.
 /// </remarks>
+[Trait("Category", "Unit")]
+[Trait("Area", "Helpers")]
 public class AccessStepTemplateSelectorTests
 {
     [Fact]

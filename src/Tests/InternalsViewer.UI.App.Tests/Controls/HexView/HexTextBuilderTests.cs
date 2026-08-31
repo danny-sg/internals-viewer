@@ -1,7 +1,8 @@
-using InternalsViewer.UI.App.Controls.HexView;
+﻿using InternalsViewer.UI.App.Controls.HexView;
 
 namespace InternalsViewer.UI.App.Tests.Controls.HexView;
 
+[Trait("Category", "Unit")]
 public class HexTextBuilderTests
 {
     private static byte[] Bytes(int count) => [.. Enumerable.Range(0, count).Select(i => (byte)i)];

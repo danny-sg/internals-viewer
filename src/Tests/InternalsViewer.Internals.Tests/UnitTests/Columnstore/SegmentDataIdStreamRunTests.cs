@@ -1,8 +1,10 @@
-using InternalsViewer.Internals.Columnstore.Decoding;
+﻿using InternalsViewer.Internals.Columnstore.Decoding;
 using InternalsViewer.Internals.Columnstore.Segments;
 
 namespace InternalsViewer.Internals.Tests.UnitTests.Columnstore;
 
+[Trait("Category", "Unit")]
+[Trait("Area", "Columnstore")]
 public class SegmentDataIdStreamRunTests
 {
     [Theory]

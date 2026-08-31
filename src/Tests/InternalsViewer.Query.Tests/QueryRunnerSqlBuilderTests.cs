@@ -1,9 +1,10 @@
-using InternalsViewer.Query.Events;
+﻿using InternalsViewer.Query.Events;
 using InternalsViewer.Query.Events.Locks;
 using Microsoft.Extensions.Logging.Abstractions;
 
 namespace InternalsViewer.Query.Tests;
 
+[Trait("Category", "Unit")]
 public class EventSqlTests
 {
     [Fact]

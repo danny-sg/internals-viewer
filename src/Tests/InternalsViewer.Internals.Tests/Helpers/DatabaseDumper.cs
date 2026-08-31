@@ -4,6 +4,8 @@ using Microsoft.Data.SqlClient;
 
 namespace InternalsViewer.Internals.Tests.Helpers;
 
+[Trait("Category", "Unit")]
+[Trait("Area", "Helpers")]
 public class DatabaseDumper(ITestOutputHelper testOutputHelper)
 {
     public ITestOutputHelper TestOutputHelper { get; } = testOutputHelper;

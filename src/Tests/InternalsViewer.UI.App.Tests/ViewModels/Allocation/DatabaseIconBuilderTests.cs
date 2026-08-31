@@ -1,9 +1,11 @@
-using System.Drawing;
+﻿using System.Drawing;
 using InternalsViewer.UI.App.Models;
 using InternalsViewer.UI.App.ViewModels.Allocation;
 
 namespace InternalsViewer.UI.App.Tests.ViewModels.Allocation;
 
+[Trait("Category", "Unit")]
+[Trait("Area", "Allocation")]
 public class DatabaseIconBuilderTests
 {
     [Fact]

@@ -17,6 +17,8 @@ using Moq;
 
 namespace InternalsViewer.Internals.Tests.UnitTests.Services.Pages.Loaders;
 
+[Trait("Category", "Unit")]
+[Trait("Area", "Pages")]
 public class DatabaseServiceTests(ITestOutputHelper testOutput)
 {
     public ITestOutputHelper TestOutputHelper { get; set; } = testOutput;

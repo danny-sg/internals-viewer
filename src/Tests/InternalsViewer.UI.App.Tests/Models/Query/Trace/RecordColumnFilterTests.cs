@@ -1,4 +1,4 @@
-using System.Data;
+﻿using System.Data;
 using InternalsViewer.Internals.Engine.Records;
 using InternalsViewer.Internals.Engine.Records.FixedVarRecordType;
 using InternalsViewer.Internals.Metadata.Structures;
@@ -7,6 +7,8 @@ using InternalsViewer.UI.App.Models.Query.Trace;
 
 namespace InternalsViewer.UI.App.Tests.Models.Query.Trace;
 
+[Trait("Category", "Unit")]
+[Trait("Area", "Trace")]
 public class RecordColumnFilterTests
 {
     [Fact]

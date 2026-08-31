@@ -10,6 +10,8 @@ using InternalsViewer.Internals.Engine.Address;
 
 namespace InternalsViewer.Execution.Tests.UnitTests.Executors;
 
+[Trait("Category", "Unit")]
+[Trait("Area", "Executors")]
 public class IndexSeekExecutorTests
 {
     [Fact]

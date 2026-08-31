@@ -17,6 +17,8 @@ using InternalsViewer.Internals.Interfaces.Engine;
 
 namespace InternalsViewer.Execution.Tests.UnitTests.BatchMode;
 
+[Trait("Category", "Unit")]
+[Trait("Area", "BatchMode")]
 public class RowToBatchIteratorTests
 {
     [Fact]

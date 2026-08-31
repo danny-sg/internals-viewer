@@ -1,9 +1,11 @@
-using InternalsViewer.UI.App.Controls.Timeline;
+﻿using InternalsViewer.UI.App.Controls.Timeline;
 using InternalsViewer.UI.App.Controls.Timeline.Renderers;
 using SkiaSharp;
 
 namespace InternalsViewer.UI.App.Tests.Controls.Timeline.Renderers;
 
+[Trait("Category", "Unit")]
+[Trait("Area", "Timeline")]
 public class TimelineRendererTests
 {
     private static readonly SKColor TickColour = new(110, 110, 110);

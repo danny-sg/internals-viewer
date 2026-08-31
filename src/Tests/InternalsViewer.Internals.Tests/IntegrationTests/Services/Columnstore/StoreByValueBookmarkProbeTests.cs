@@ -1,4 +1,4 @@
-using InternalsViewer.Internals.Tests.Helpers;
+﻿using InternalsViewer.Internals.Tests.Helpers;
 using InternalsViewer.Internals.Columnstore.Segments;
 using InternalsViewer.Internals.Columnstore.Services;
 using InternalsViewer.Internals.Readers.Internals;
@@ -9,6 +9,8 @@ using InternalsViewer.Internals.Tests.IntegrationTests.Providers.Metadata;
 
 namespace InternalsViewer.Internals.Tests.IntegrationTests.Services.Columnstore;
 
+[Trait("Category", "Integration")]
+[Trait("Area", "Columnstore")]
 public sealed class StoreByValueBookmarkProbeTests(ITestOutputHelper testOutput) : ProviderTestBase(testOutput)
 {
     [Fact]

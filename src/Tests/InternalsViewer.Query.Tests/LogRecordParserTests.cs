@@ -1,10 +1,11 @@
-using InternalsViewer.Internals.Engine.Address;
+﻿using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Internals.Engine.Parsers;
 using InternalsViewer.TransactionLog;
 using InternalsViewer.TransactionLog.LogRecords;
 
 namespace InternalsViewer.Query.Tests;
 
+[Trait("Category", "Unit")]
 public class LogRecordParserTests
 {
     private const string ModifyRowRecord =

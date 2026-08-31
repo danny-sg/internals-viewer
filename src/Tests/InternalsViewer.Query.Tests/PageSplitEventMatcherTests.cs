@@ -1,10 +1,11 @@
-using InternalsViewer.Internals.Engine.Address;
+﻿using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Query.Events;
 using InternalsViewer.Query.Events.Splits;
 using InternalsViewer.TransactionLog.LogRecords;
 
 namespace InternalsViewer.Query.Tests;
 
+[Trait("Category", "Unit")]
 public class PageSplitEventMatcherTests
 {
     private static readonly PageAddress SplitPage = new(1, 100);

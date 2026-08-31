@@ -1,7 +1,9 @@
-using InternalsViewer.Execution.AccessPaths.Results;
+﻿using InternalsViewer.Execution.AccessPaths.Results;
 
 namespace InternalsViewer.Execution.Tests.UnitTests.AccessPaths.Results;
 
+[Trait("Category", "Unit")]
+[Trait("Area", "AccessPaths")]
 public class AccessCountersTests
 {
     [Fact]

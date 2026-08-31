@@ -1,9 +1,10 @@
-using InternalsViewer.Query.Events;
+﻿using InternalsViewer.Query.Events;
 using InternalsViewer.Query.Events.Consolidation;
 using InternalsViewer.Query.Events.Locks;
 
 namespace InternalsViewer.Query.Tests;
 
+[Trait("Category", "Unit")]
 public class LockPartitionCollapserTests
 {
     [Fact]

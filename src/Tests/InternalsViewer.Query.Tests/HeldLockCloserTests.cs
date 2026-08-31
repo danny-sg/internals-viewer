@@ -1,10 +1,11 @@
-using InternalsViewer.Query.Events;
+﻿using InternalsViewer.Query.Events;
 using InternalsViewer.Query.Events.Consolidation;
 using InternalsViewer.Query.Events.Locks;
 using InternalsViewer.Query.Events.Transactions;
 
 namespace InternalsViewer.Query.Tests;
 
+[Trait("Category", "Unit")]
 public class HeldLockCloserTests
 {
     [Fact]

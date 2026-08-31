@@ -5,6 +5,8 @@ using InternalsViewer.Internals.Tests.Helpers;
 
 namespace InternalsViewer.Internals.Tests.IntegrationTests.Services.Indexes;
 
+[Trait("Category", "Integration")]
+[Trait("Area", "Services")]
 public class IndexServiceTests(ITestOutputHelper testOutput)
 {
     public ITestOutputHelper TestOutput { get; } = testOutput;

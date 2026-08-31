@@ -1,4 +1,4 @@
-using System.Buffers.Binary;
+﻿using System.Buffers.Binary;
 using InternalsViewer.Internals.Annotations;
 using InternalsViewer.Internals.Columnstore.Blobs;
 using InternalsViewer.Internals.Columnstore.Dictionaries;
@@ -6,6 +6,8 @@ using InternalsViewer.Internals.Columnstore.Parsers;
 
 namespace InternalsViewer.Internals.Tests.UnitTests.Columnstore;
 
+[Trait("Category", "Unit")]
+[Trait("Area", "Columnstore")]
 public class NumericDictionaryMarkTests
 {
     private static byte[] BuildBlob()

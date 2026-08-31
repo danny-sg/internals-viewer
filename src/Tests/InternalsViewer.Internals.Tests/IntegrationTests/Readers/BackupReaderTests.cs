@@ -4,6 +4,8 @@ using Microsoft.Extensions.Logging;
 
 namespace InternalsViewer.Internals.Tests.IntegrationTests.Readers;
 
+[Trait("Category", "Integration")]
+[Trait("Area", "Readers")]
 public class BackupReaderTests(ITestOutputHelper testOutput)
 {
     public ITestOutputHelper TestOutput { get; } = testOutput;
@@ -17,6 +19,8 @@ public class BackupReaderTests(ITestOutputHelper testOutput)
     }
 }
 
+[Trait("Category", "Integration")]
+[Trait("Area", "Readers")]
 public class MtfParser(ILogger<MtfParser> logger)
 {
     public ILogger<MtfParser> Logger { get; } = logger;

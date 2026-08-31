@@ -1,7 +1,9 @@
-using InternalsViewer.Internals.Engine.Allocation;
+﻿using InternalsViewer.Internals.Engine.Allocation;
 
 namespace InternalsViewer.Internals.Tests.UnitTests.Engine.Allocation;
 
+[Trait("Category", "Unit")]
+[Trait("Area", "Allocation")]
 public class BitmapAllocationTests
 {
     private const short FileId = 1;

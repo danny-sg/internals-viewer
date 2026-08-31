@@ -3,6 +3,8 @@ using InternalsViewer.Internals.Columnstore.Dictionaries;
 
 namespace InternalsViewer.Internals.Tests.UnitTests.Columnstore;
 
+[Trait("Category", "Unit")]
+[Trait("Area", "Columnstore")]
 public class StringPageMarkTests
 {
     [Fact]
