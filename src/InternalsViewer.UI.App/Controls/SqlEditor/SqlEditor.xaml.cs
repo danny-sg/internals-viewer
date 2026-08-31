@@ -51,6 +51,29 @@ public sealed partial class SqlEditorControl : UserControl, IDisposable
         set => SetValue(CancelCommandProperty, value);
     }
 
+    public static readonly DependencyProperty TraceCommandProperty =
+        DependencyProperty.Register(
+            nameof(TraceCommand),
+            typeof(ICommand),
+            typeof(SqlEditorControl),
+            new PropertyMetadata(null));
+
+    public ICommand? TraceCommand
+    {
+        get => (ICommand)GetValue(TraceCommandProperty);
+        set => SetValue(TraceCommandProperty, value);
+    }
+
+    public static readonly DependencyProperty TrackQueryProperty =
+        DependencyProperty.Register(nameof(TrackQuery), typeof(bool), typeof(SqlEditorControl),
+            new PropertyMetadata(true, OnTrackQueryChanged));
+
+    public bool TrackQuery
+    {
+        get => (bool)GetValue(TrackQueryProperty);
+        set => SetValue(TrackQueryProperty, value);
+    }
+
     public static readonly DependencyProperty SchemaProperty =
         DependencyProperty.Register(nameof(Schema), typeof(DatabaseSchema), typeof(SqlEditorControl),
             new PropertyMetadata(null, OnSchemaChanged));
@@ -468,6 +491,13 @@ public sealed partial class SqlEditorControl : UserControl, IDisposable
 
     private static void OnIsMessagesVisibleChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
         => ((SqlEditorControl)d).ApplyBottomPanelVisibility();
+
+    private static void OnTrackQueryChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
+    {
+        var control = (SqlEditorControl)d;
+
+        control.QueryOptions = control.QueryOptions with { Trace = (bool)e.NewValue };
+    }
 
     private static void OnIsResultsVisibleChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
     {

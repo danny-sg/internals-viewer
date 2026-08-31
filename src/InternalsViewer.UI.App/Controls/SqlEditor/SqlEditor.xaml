@@ -46,6 +46,7 @@
                 <!--Execute-->
                 <AppBarElementContainer VerticalContentAlignment="Center" Height="40" Width="80" >
                     <Button Click="{x:Bind HandleExecuteClick}"
+                            ToolTipService.ToolTip="Execute the query"
                             IsEnabled="{x:Bind IsExecuting, Mode=OneWay, Converter={StaticResource InverseBoolConverter }}"
                                            Background="Transparent"
                                            BorderThickness="0"
@@ -75,7 +76,8 @@
                     <Button Command="{x:Bind CancelCommand, Mode=OneWay}"
                             Background="Transparent"
                             BorderThickness="0"
-                            Padding="6,0">
+                            ToolTipService.ToolTip="Stop query execution"
+                            Padding="6,0,14,0">
                         <Rectangle Width="12"
                                    Height="12"
                                    RadiusX="2"
@@ -87,13 +89,15 @@
 
                 <AppBarSeparator/>
 
-                <!--Trace Toggle-->
+                <!--Trace-->
                 <AppBarElementContainer VerticalContentAlignment="Center">
-                    <ToggleButton Margin="12,0,12,0"
-                                  IsChecked="{x:Bind QueryOptions.Trace, Mode=TwoWay}"
-                                  BorderThickness="0">
+                    <Button Margin="12,0,12,0"
+                            Command="{x:Bind TraceCommand, Mode=OneWay}"
+                            Background="Transparent"
+                            BorderThickness="0"
+                            ToolTipService.ToolTip="Open the Trace tab">
                         <TextBlock Text="Trace" VerticalAlignment="Center" />
-                    </ToggleButton>
+                    </Button>
                 </AppBarElementContainer>
 
                 <AppBarSeparator/>
@@ -101,6 +105,8 @@
                 <!--Clear Buffer Pool Toggle-->
                 <AppBarElementContainer VerticalContentAlignment="Center">
                     <ToggleButton Margin="12,0,8,0"
+                                  ToolTipService.ToolTip
+                                  ="Clear the Buffer Pool (DBCC DROPCLEANBUFFERS) to ensure no pages are cached before executing the query"
                                   IsChecked="{x:Bind QueryOptions.ClearBufferPool, Mode=TwoWay}"
                                   BorderThickness="0">
                         <TextBlock Text="Clear Buffer Pool" VerticalAlignment="Center" />
@@ -110,6 +116,8 @@
                 <!--Disable Read-Ahead Toggle-->
                 <AppBarElementContainer VerticalContentAlignment="Center" Margin="0,0,8,0">
                     <ToggleButton IsChecked="{x:Bind QueryOptions.DisableReadAhead, Mode=TwoWay}"
+                                  ToolTipService.ToolTip
+                                  ="Use Trace Flag 652 to disable read-ahead (scatter-gather) reads"
                                   Margin="0,0,0,0" 
                                   BorderThickness="0"
                                   >

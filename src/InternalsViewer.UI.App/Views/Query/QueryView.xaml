@@ -76,6 +76,9 @@
                             </MenuBarItem>
 
                             <MenuBarItem Title="Query">
+                                <ToggleMenuFlyoutItem Text="Track Query"
+                                   IsChecked="{x:Bind ViewModel.TrackQuery, Mode=TwoWay}"/>
+                                <MenuFlyoutSeparator/>
                                 <ToggleMenuFlyoutItem Text="Crop to query"
                                    IsChecked="{x:Bind ViewModel.QueryOptions.CropToQuery, Mode=TwoWay}"/>
                                 <ToggleMenuFlyoutItem Text="Include System Objects"

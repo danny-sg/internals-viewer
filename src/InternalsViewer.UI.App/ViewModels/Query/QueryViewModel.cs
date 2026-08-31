@@ -199,6 +199,16 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
     [ObservableProperty]
     private bool _isZoomToPage;
 
+    /// <summary>
+    /// Whether the query is fully tracked, capturing events and a plan rather than just running it
+    /// </summary>
+    /// <remarks>
+    /// Untracked, the query runs straight through with no Extended Events session, so there is nothing to show in the
+    /// allocation map, the timeline, the events or the trace.
+    /// </remarks>
+    [ObservableProperty]
+    private bool _trackQuery = true;
+
     [ObservableProperty]
     private DatabaseSchema? _schema;
 
