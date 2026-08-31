@@ -24,16 +24,18 @@ public static class ExecutionPlanParser
 
         var planHandleId = planHandles.GetOrAdd(GetPlanHandle(doc));
 
-        var plan = new ExecutionPlan(planHandleId);
+        var statementElement = queryPlan.Parent;
 
-        var parameters = PlanParameters.Parse(queryPlan.Parent ?? queryPlan);
+        var plan = new ExecutionPlan(planHandleId) { IsInternalPlan = IsInternalStatement(statementElement) };
+
+        var parameters = PlanParameters.Parse(statementElement ?? queryPlan);
 
         var rootRelationalOperators = queryPlan.Elements()
                                                .Where(e => e.Name.LocalName == "RelOp")
                                                .Select(e => ParseRelationalOperator(e, parameters, 1))
                                                .ToList();
 
-        var statementNode = BuildStatementNode(queryPlan.Parent, queryPlan, rootRelationalOperators);
+        var statementNode = BuildStatementNode(statementElement, queryPlan, rootRelationalOperators);
 
         plan.Root.Add(statementNode);
 
@@ -43,6 +45,26 @@ public static class ExecutionPlanParser
         }
 
         return plan;
+    }
+
+    /// <summary>
+    /// Whether the statement is one the engine ran for itself rather than one the user submitted
+    /// </summary>
+    /// <remarks>
+    /// Automatic statistics creation and update run their sampling query on the user's own session, inside the user's request, so the
+    /// trace captures a showplan for it alongside the one being looked at. The statement text is the only thing that separates them.
+    /// </remarks>
+    private static bool IsInternalStatement(XElement? statementElement)
+    {
+        if (statementElement is null)
+        {
+            return false;
+        }
+
+        var statementText = GetStringAttribute(statementElement, "StatementText");
+
+        return statementText.Contains("StatMan", StringComparison.OrdinalIgnoreCase)
+               || statementText.Contains("_MS_UPDSTATS_TBL", StringComparison.OrdinalIgnoreCase);
     }
 
     private static PlanNode BuildStatementNode(XElement? statementElement, XElement queryPlan, List<PlanNode> rootRelOps)

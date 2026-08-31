@@ -1168,4 +1168,52 @@ public class ExecutionPlanParserTests
         Assert.Null(plan.NodesById[0].AggregateInfo);
         Assert.Null(plan.NodesById[2].AggregateInfo);
     }
+    // ------------------------------------------------------------------
+    // Automatic statistics sampling
+    // ------------------------------------------------------------------
+
+    private const string StatManXml =
+        """
+        <?xml version="1.0"?>
+        <ShowPlanXML xmlns="http://schemas.microsoft.com/sqlserver/2004/07/showplan"
+                     Version="1.7" Build="16.0.0">
+          <BatchSequence>
+            <Batch>
+              <Statements>
+                <StmtSimple StatementText="SELECT StatMan([SC0]) FROM (SELECT TOP 100 PERCENT [Id] AS [SC0] FROM [dbo].[HeapTable] WITH (READUNCOMMITTED) ORDER BY [SC0] ) AS _MS_UPDSTATS_TBL OPTION (MAXDOP 16)"
+                            StatementType="SELECT"
+                            StatementSubTreeCost="0.0100024">
+                  <QueryPlan>
+                    <RelOp NodeId="0"
+                           PhysicalOp="Stream Aggregate"
+                           LogicalOp="Aggregate"
+                           EstimatedTotalSubtreeCost="0.0100024"
+                           EstimateRows="1"
+                           AvgRowSize="9"
+                           Parallel="0">
+                      <StreamAggregate />
+                    </RelOp>
+                  </QueryPlan>
+                </StmtSimple>
+              </Statements>
+            </Batch>
+          </BatchSequence>
+        </ShowPlanXML>
+        """;
+
+    [Fact]
+    public void An_Automatic_Statistics_Plan_Is_Marked_Internal()
+    {
+        var plan = Parse(StatManXml);
+
+        Assert.True(plan.IsInternalPlan);
+    }
+
+    [Fact]
+    public void A_Submitted_Query_Plan_Is_Not_Marked_Internal()
+    {
+        var plan = Parse(ClusteredIndexSeekXml);
+
+        Assert.False(plan.IsInternalPlan);
+    }
 }
