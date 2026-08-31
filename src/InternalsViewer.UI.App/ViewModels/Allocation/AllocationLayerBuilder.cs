@@ -240,7 +240,7 @@ internal static class AllocationLayerBuilder
             ObjectName = "Database Pages",
             Colour = Color.FromArgb(120, 100, 100, 205),
             IsSystemObject = true,
-            IsAllocationLayer = true,
+            IsAllocationLayer = false,
             IsVisible = true
         };
 
