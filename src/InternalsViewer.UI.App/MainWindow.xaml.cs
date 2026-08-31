@@ -23,6 +23,7 @@ using InternalsViewer.UI.App.ViewModels.Columnstore;
 using InternalsViewer.UI.App.Views;
 using InternalsViewer.UI.App.Views.Columnstore;
 using InternalsViewer.UI.App.Views.Connect;
+using Microsoft.Extensions.Logging;
 using Microsoft.UI.Composition.SystemBackdrops;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Data;
@@ -44,6 +45,8 @@ namespace InternalsViewer.UI.App;
 
 public sealed partial class MainWindow
 {
+    private ILogger? _logger;
+
     public MainWindow(IDatabaseService databaseService,
                       IEnumerable<IConnectionTypeFactory> connectionFactories,
                       MainViewModel mainViewModel,
@@ -138,6 +141,8 @@ public sealed partial class MainWindow
     private ConnectServerViewModelFactory ConnectServerViewModelFactory { get; }
 
     private CancellationTokenSource WindowCts { get; } = new();
+
+    private ILogger Logger => _logger ??= App.GetService<ILoggerFactory>().CreateLogger<MainWindow>();
 
     public async Task InitializeAsync()
     {
@@ -354,7 +359,7 @@ public sealed partial class MainWindow
         }
         catch (Exception exception)
         {
-            System.Diagnostics.Debug.WriteLine(exception);
+            Logger.LogError(exception, "Could not open the tab");
 
             return false;
         }

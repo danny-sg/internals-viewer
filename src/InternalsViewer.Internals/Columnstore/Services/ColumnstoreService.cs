@@ -30,46 +30,13 @@ public sealed class ColumnstoreService(IRecordReader recordReader,
 
     private const int PrefixProbeSize = 8192;
 
+    public Action<ColumnstorePageRead>? PageRead { get; set; }
+
     private IRecordReader RecordReader { get; } = recordReader;
 
     private ILobDataService LobDataService { get; } = lobDataService;
 
     private ILogger<ColumnstoreService>? Logger { get; } = logger;
-
-    /// <summary>
-    /// Raised for each page a columnstore read touches, with the structure it was read for
-    /// </summary>
-    public Action<ColumnstorePageRead>? PageRead { get; set; }
-
-    private Action<PageAddress> SegmentSink(DatabaseSource database, ColumnSegment segment)
-        => Sink(database,
-                new ColumnstorePageRead(PageAddress.Empty,
-                                        segment.Key.RowGroupId,
-                                        segment.Key.ColumnId,
-                                        segment.Column?.Name ?? string.Empty,
-                                        segment.Key.RowGroupId,
-                                        -1,
-                                        ColumnstoreReadType.Segment));
-
-    private Action<PageAddress> DictionarySink(DatabaseSource database, SegmentDictionary dictionary)
-        => Sink(database,
-                new ColumnstorePageRead(PageAddress.Empty,
-                                        -1,
-                                        dictionary.ColumnId,
-                                        string.Empty,
-                                        -1,
-                                        dictionary.DictionaryId,
-                                        ColumnstoreReadType.Dictionary));
-
-    private Action<PageAddress> Sink(DatabaseSource database, ColumnstorePageRead template)
-        => address =>
-        {
-            var read = template with { PageAddress = address };
-
-            cache?.SetPageRead(database, read);
-
-            PageRead?.Invoke(read);
-        };
 
     public async Task<ColumnStoreIndex> GetIndex(AllocationUnit allocationUnit,
                                                  DatabaseSource database,
@@ -115,7 +82,7 @@ public sealed class ColumnstoreService(IRecordReader recordReader,
     public async Task<byte[]> GetData(DatabaseSource database,
                                       LobPointer lobPointer,
                                       CancellationToken cancellationToken,
-                                      Action<PageAddress>? onPageRead = null)
+                                      Action<PageAddress, int>? onPageRead = null)
     {
         var identifier = new RowIdentifier(lobPointer.PageAddress, (ushort)lobPointer.Slot);
 
@@ -126,7 +93,7 @@ public sealed class ColumnstoreService(IRecordReader recordReader,
 
         var start = Stopwatch.GetTimestamp();
 
-        var data = await LobDataService.GetData(database, identifier, cancellationToken, onPageRead);
+        var data = await LobDataService.GetData(database, identifier, onPageRead, cancellationToken);
 
         Logger?.LogDebug("Read {Bytes} bytes of lob data from {Page} in {Duration}",
                          data.Length,
@@ -149,8 +116,8 @@ public sealed class ColumnstoreService(IRecordReader recordReader,
         var prefix = await LobDataService.GetDataPrefix(database,
                                                         new RowIdentifier(pointer.PageAddress, (ushort)pointer.Slot),
                                                         SegmentBlobHeader.Size + PrologueSlack,
-                                                        cancellationToken,
-                                                        SegmentSink(database, segment));
+                                                        SegmentSink(database, segment), 
+                                                        cancellationToken);
 
         if (!ArchiveBlobHeader.IsArchive(prefix.Data, prefix.TotalLength))
         {
@@ -201,53 +168,6 @@ public sealed class ColumnstoreService(IRecordReader recordReader,
         return blob;
     }
 
-    private async Task<byte[]> GetPartialData(DatabaseSource database,
-                                              ColumnSegment segment,
-                                              SegmentLoadDepth depth,
-                                              CancellationToken cancellationToken)
-    {
-        var pointer = segment.DataPointer;
-
-        var identifier = new RowIdentifier(pointer.PageAddress, (ushort)pointer.Slot);
-
-        if (cache?.GetData(database, identifier) is { } cached)
-        {
-            return cached;
-        }
-
-        var start = Stopwatch.GetTimestamp();
-
-        var sink = SegmentSink(database, segment);
-
-        var probe = await LobDataService.GetDataPrefix(database, identifier, PrefixProbeSize, cancellationToken, sink);
-
-        if (ArchiveBlobHeader.IsArchive(probe.Data, probe.TotalLength))
-        {
-            return await GetData(database, pointer, cancellationToken, sink);
-        }
-
-        var required = SegmentBlobParser.GetRequiredLength(probe.Data, segment, depth);
-
-        if (required <= 0 || required > probe.TotalLength)
-        {
-            return await GetData(database, pointer, cancellationToken, sink);
-        }
-
-        var prefix = required <= probe.Data.Length
-                     ? probe
-                     : await LobDataService.GetDataPrefix(database, identifier, required, cancellationToken, sink);
-
-        Logger?.LogDebug("Read {Bytes} of {Total} bytes for row group {RowGroup} column {Column} to {Depth} in {Duration}",
-                         required,
-                         prefix.TotalLength,
-                         segment.Key.RowGroupId,
-                         segment.Key.ColumnId,
-                         depth,
-                         Stopwatch.GetElapsedTime(start));
-
-        return prefix.Data;
-    }
-
     public async Task<DictionaryHeaderInfo> GetDictionaryCoding(DatabaseSource database,
                                                                 SegmentDictionary dictionary,
                                                                 CancellationToken cancellationToken)
@@ -259,6 +179,7 @@ public sealed class ColumnstoreService(IRecordReader recordReader,
         var header = await LobDataService.GetDataPrefix(database,
                                                         identifier,
                                                         StringDictionary.HandleArrayOffset,
+                                                        null,
                                                         cancellationToken);
 
         if (ArchiveBlobHeader.IsArchive(header.Data, header.TotalLength))
@@ -273,7 +194,7 @@ public sealed class ColumnstoreService(IRecordReader recordReader,
             return new DictionaryHeaderInfo(null, pageCount);
         }
 
-        var pages = await LobDataService.GetDataPrefix(database, identifier, offset + 4, cancellationToken);
+        var pages = await LobDataService.GetDataPrefix(database, identifier, offset + 4, null, cancellationToken);
 
         return new DictionaryHeaderInfo(DictionaryBlobParser.ParsePageCoding(pages.Data, offset), pageCount);
     }
@@ -281,12 +202,14 @@ public sealed class ColumnstoreService(IRecordReader recordReader,
     public async Task<DictionaryBlob> GetDictionaryBlob(DatabaseSource database,
                                                         SegmentDictionary dictionary,
                                                         CancellationToken cancellationToken,
-                                                        bool isMarkEnabled = false)
+                                                        bool isMarkEnabled = false,
+                                                        int rowGroupId = -1,
+                                                        string columnName = "")
     {
         var data = await GetData(database,
                                  dictionary.DataPointer,
                                  cancellationToken,
-                                 DictionarySink(database, dictionary));
+                                 DictionarySink(database, dictionary, rowGroupId, columnName));
 
         var blob = DictionaryBlobParser.Parse(data, (int)dictionary.EntryCount, dictionary.LastId, isMarkEnabled);
 
@@ -427,6 +350,84 @@ public sealed class ColumnstoreService(IRecordReader recordReader,
         }
     }
 
+    private Action<PageAddress, int> SegmentSink(DatabaseSource database, ColumnSegment segment)
+        => Sink(database,
+                new ColumnstorePageRead(PageAddress.Empty,
+                                        segment.Key.RowGroupId,
+                                        segment.Key.ColumnId,
+                                        segment.Column?.Name ?? string.Empty,
+                                        -1,
+                                        ColumnstoreReadType.Segment));
+
+    private Action<PageAddress, int> DictionarySink(DatabaseSource database,
+                                                    SegmentDictionary dictionary,
+                                                    int rowGroupId,
+                                                    string columnName)
+        => Sink(database,
+                new ColumnstorePageRead(PageAddress.Empty,
+                                        rowGroupId,
+                                        dictionary.ColumnId,
+                                        columnName,
+                                        dictionary.DictionaryId,
+                                        ColumnstoreReadType.Dictionary));
+
+    private Action<PageAddress, int> Sink(DatabaseSource database, ColumnstorePageRead template)
+        => (address, bytes) =>
+        {
+            var read = template with { PageAddress = address, Bytes = bytes };
+
+            cache?.SetPageRead(database, read);
+
+            PageRead?.Invoke(read);
+        };
+
+    private async Task<byte[]> GetPartialData(DatabaseSource database,
+                                              ColumnSegment segment,
+                                              SegmentLoadDepth depth,
+                                              CancellationToken cancellationToken)
+    {
+        var pointer = segment.DataPointer;
+
+        var identifier = new RowIdentifier(pointer.PageAddress, (ushort)pointer.Slot);
+
+        if (cache?.GetData(database, identifier) is { } cached)
+        {
+            return cached;
+        }
+
+        var start = Stopwatch.GetTimestamp();
+
+        var sink = SegmentSink(database, segment);
+
+        var probe = await LobDataService.GetDataPrefix(database, identifier, PrefixProbeSize, sink, cancellationToken);
+
+        if (ArchiveBlobHeader.IsArchive(probe.Data, probe.TotalLength))
+        {
+            return await GetData(database, pointer, cancellationToken, sink);
+        }
+
+        var required = SegmentBlobParser.GetRequiredLength(probe.Data, segment, depth);
+
+        if (required <= 0 || required > probe.TotalLength)
+        {
+            return await GetData(database, pointer, cancellationToken, sink);
+        }
+
+        var prefix = required <= probe.Data.Length
+                     ? probe
+                     : await LobDataService.GetDataPrefix(database, identifier, required, sink, cancellationToken);
+
+        Logger?.LogDebug("Read {Bytes} of {Total} bytes for row group {RowGroup} column {Column} to {Depth} in {Duration}",
+                         required,
+                         prefix.TotalLength,
+                         segment.Key.RowGroupId,
+                         segment.Key.ColumnId,
+                         depth,
+                         Stopwatch.GetElapsedTime(start));
+
+        return prefix.Data;
+    }
+
     private async Task ReadLobValues(DatabaseSource database,
                                      StringDictionary dictionary,
                                      CancellationToken cancellationToken)
@@ -506,13 +507,22 @@ public sealed class ColumnstoreService(IRecordReader recordReader,
 
         var secondary = segment.SecondaryDictionaryId >= 0 ? segment.LocalDictionary : null;
 
+        var columnName = segment.Column?.Name ?? string.Empty;
+
         if (primary is null)
         {
-            return (secondary is null ? null : await GetDictionaryBlob(database, secondary, cancellationToken), null);
+            return (secondary is null ? null : await Local(secondary), null);
         }
 
-        return (await GetDictionaryBlob(database, primary, cancellationToken),
-                secondary is null ? null : await GetDictionaryBlob(database, secondary, cancellationToken));
+        return (await GetDictionaryBlob(database, primary, cancellationToken, rowGroupId: -1, columnName: columnName),
+                secondary is null ? null : await Local(secondary));
+
+        Task<DictionaryBlob> Local(SegmentDictionary dictionary)
+            => GetDictionaryBlob(database,
+                                 dictionary,
+                                 cancellationToken,
+                                 rowGroupId: segment.Key.RowGroupId,
+                                 columnName: columnName);
     }
 
     private async Task<List<Record>> GetRecords(string name,

@@ -1,4 +1,6 @@
-﻿using System;
+﻿using InternalsViewer.UI.App.Messages;
+using CommunityToolkit.Mvvm.Messaging;
+using System;
 using System.ComponentModel;
 using System.Threading;
 using InternalsViewer.UI.App.Controls.Columnstore;
@@ -391,19 +393,28 @@ public sealed partial class ColumnstoreSegmentTabView : UserControl, IDocumentCo
         }
     }
 
+#pragma warning disable VSTHRD100
     private async void OnLoaded(object sender, RoutedEventArgs e)
     {
-        Loaded -= OnLoaded;
-
-        await ViewModel.Load(_cts.Token);
-
-        if (RegionTabView is not null)
+        try
         {
-            RegionTabView.SelectedIndex = 0;
-        }
+            Loaded -= OnLoaded;
 
-        WarmPanels();
+            await ViewModel.Load(_cts.Token);
+
+            if (RegionTabView is not null)
+            {
+                RegionTabView.SelectedIndex = 0;
+            }
+
+            WarmPanels();
+        }
+        catch (Exception exception)
+        {
+            await WeakReferenceMessenger.Default.Send(new ExceptionMessage(exception));
+        }
     }
+#pragma warning restore VSTHRD100
 
     /// <summary>
     /// Lays out the tabs that are not showing, so the first switch to one is not the first time it is measured

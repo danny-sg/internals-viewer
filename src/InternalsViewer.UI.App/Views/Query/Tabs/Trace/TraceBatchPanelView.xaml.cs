@@ -2,20 +2,14 @@
 using InternalsViewer.UI.App.Controls.Trace.Batch;
 using InternalsViewer.UI.App.Models.Query.Trace.Batch;
 using InternalsViewer.UI.App.ViewModels.Query.Trace;
-using Microsoft.UI;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Data;
-using Microsoft.UI.Xaml.Media;
 using WinUI.TableView;
 
 namespace InternalsViewer.UI.App.Views.Query.Tabs.Trace;
 
 public sealed partial class TraceBatchPanelView : UserControl
 {
-    private static SolidColorBrush PureBrush { get; } = new(Colors.SeaGreen);
-
-    private static SolidColorBrush ImpureBrush { get; } = new(Colors.SlateGray);
-
     private static TraceBatchViewModel Empty { get; } = new();
 
     private int _columnVersion = -1;
@@ -42,8 +36,6 @@ public sealed partial class TraceBatchPanelView : UserControl
     }
 
     public TraceBatchViewModel Batch => DataContext as TraceBatchViewModel ?? Empty;
-
-    public Brush PurityBrush => Batch.IsPure ? PureBrush : ImpureBrush;
 
     private TraceBatchViewModel? Attached { get; set; }
 

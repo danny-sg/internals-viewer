@@ -155,7 +155,7 @@ public sealed partial class QueryHistoryViewModel(SettingsService settingsServic
 
         var filtered = term.Length == 0
             ? AllEntries
-            : AllEntries.Where(e => e.Sql.Contains(term, StringComparison.OrdinalIgnoreCase)).ToList();
+            : [.. AllEntries.Where(e => e.Sql.Contains(term, StringComparison.OrdinalIgnoreCase))];
 
         Entries.Clear();
 

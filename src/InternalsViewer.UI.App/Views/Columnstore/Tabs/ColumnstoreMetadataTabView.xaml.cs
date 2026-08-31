@@ -101,11 +101,20 @@ public sealed partial class ColumnstoreMetadataTabView : ICellLinkNavigator, IDi
     private Visibility GetTabContentVisibility(int selected, int index)
         => selected == index ? Visibility.Visible : Visibility.Collapsed;
 
+#pragma warning disable VSTHRD100
     private async void OpenPage(PageAddress address, ushort? slot)
     {
-        var request = new OpenPageRequest(ViewModel.Database, address) { Slot = slot };
+        try
+        {
+            var request = new OpenPageRequest(ViewModel.Database, address) { Slot = slot };
 
-        await WeakReferenceMessenger.Default.Send(new OpenPageMessage(request));
+            await WeakReferenceMessenger.Default.Send(new OpenPageMessage(request));
+        }
+        catch (Exception exception)
+        {
+            await WeakReferenceMessenger.Default.Send(new ExceptionMessage(exception));
+        }
     }
+#pragma warning restore VSTHRD100
 
 }

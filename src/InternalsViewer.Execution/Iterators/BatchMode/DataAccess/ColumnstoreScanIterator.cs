@@ -36,6 +36,8 @@ public sealed class ColumnstoreScanIterator(ColumnstoreService columnstoreServic
 
     public IBatchIterator? Input => null;
 
+    public long BatchNumber { get; private set; }
+
     private IteratorContext Context { get; set; } = null!;
 
     private ColumnstoreScanDefinition Definition { get; set; } = null!;
@@ -47,8 +49,6 @@ public sealed class ColumnstoreScanIterator(ColumnstoreService columnstoreServic
     private int RowGroupIndex { get; set; }
 
     private int RowOrdinal { get; set; }
-
-    public long BatchNumber { get; private set; }
 
     private DeletedRows DeletedRows { get; set; } = DeletedRows.None;
 

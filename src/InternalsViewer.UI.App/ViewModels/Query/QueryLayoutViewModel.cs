@@ -158,6 +158,13 @@ public sealed partial class QueryLayoutViewModel : ObservableObject, IDisposable
         Show(_documentsByKey[PlanKey]);
     }
 
+    public void ShowCallStack()
+    {
+        IsCallstackVisible = true;
+
+        Show(_documentsByKey[CallstackKey]);
+    }
+
     /// <summary>
     /// Whether the keyed document is currently present in the dock
     /// </summary>

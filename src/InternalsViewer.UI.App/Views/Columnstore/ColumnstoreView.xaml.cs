@@ -1,4 +1,6 @@
-﻿using System;
+﻿using InternalsViewer.UI.App.Messages;
+using CommunityToolkit.Mvvm.Messaging;
+using System;
 using InternalsViewer.UI.App.ViewModels.Columnstore;
 
 namespace InternalsViewer.UI.App.Views.Columnstore;
@@ -31,10 +33,19 @@ public sealed partial class ColumnstoreView : IDisposable
 
     private void OnDataContextChanged(FrameworkElement sender, DataContextChangedEventArgs args) => Bindings.Update();
 
+#pragma warning disable VSTHRD100
     private async void OnLoaded(object sender, RoutedEventArgs e)
     {
-        Loaded -= OnLoaded;
+        try
+        {
+            Loaded -= OnLoaded;
 
-        await ViewModel.Load();
+            await ViewModel.Load();
+        }
+        catch (Exception exception)
+        {
+            await WeakReferenceMessenger.Default.Send(new ExceptionMessage(exception));
+        }
     }
+#pragma warning restore VSTHRD100
 }

@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.Messaging;
 using InternalsViewer.UI.App.Messages;
@@ -30,31 +30,58 @@ public sealed partial class SettingsView : Page
 
     internal SettingsViewModel ViewModel { get; } = App.GetService<SettingsViewModel>();
 
+#pragma warning disable VSTHRD100
     private async void OpenLogButton_Click(object sender, RoutedEventArgs e)
     {
-        await WeakReferenceMessenger.Default.Send(new OpenLogMessage());
+        try
+        {
+            await WeakReferenceMessenger.Default.Send(new OpenLogMessage());
+        }
+        catch (Exception exception)
+        {
+            await WeakReferenceMessenger.Default.Send(new ExceptionMessage(exception));
+        }
     }
+#pragma warning restore VSTHRD100
 
     private void ClearLogButton_Click(object sender, RoutedEventArgs e)
     {
         AppLogViewModel.ClearLogCommand.Execute(null);
     }
 
+#pragma warning disable VSTHRD100
     private async void BrowseTraceDirectory_Click(object sender, RoutedEventArgs e)
     {
-        if (await PickFolderAsync() is { } path)
+        try
         {
-            ViewModel.TraceDirectory = path;
+            if (await PickFolderAsync() is { } path)
+            {
+                ViewModel.TraceDirectory = path;
+            }
+        }
+        catch (Exception exception)
+        {
+            await WeakReferenceMessenger.Default.Send(new ExceptionMessage(exception));
         }
     }
+#pragma warning restore VSTHRD100
 
+#pragma warning disable VSTHRD100
     private async void BrowseSymbolsPath_Click(object sender, RoutedEventArgs e)
     {
-        if (await PickFolderAsync() is { } path)
+        try
         {
-            ViewModel.SymbolsPath = path;
+            if (await PickFolderAsync() is { } path)
+            {
+                ViewModel.SymbolsPath = path;
+            }
+        }
+        catch (Exception exception)
+        {
+            await WeakReferenceMessenger.Default.Send(new ExceptionMessage(exception));
         }
     }
+#pragma warning restore VSTHRD100
 
     private static async Task<string?> PickFolderAsync()
     {

@@ -901,7 +901,10 @@ public sealed partial class TraceTabViewModel : ObservableObject, IDisposable
 
         IsRunning = false;
 
-        _interactiveCancellation?.Cancel();
+        if (_interactiveCancellation is { } interactiveCancellation)
+        {
+            await interactiveCancellation.CancelAsync();
+        }
 
         if (_interactiveRun is { } interactive)
         {
@@ -937,7 +940,10 @@ public sealed partial class TraceTabViewModel : ObservableObject, IDisposable
 
         if (IsRunningToEnd)
         {
-            _runToEndCancellation?.Cancel();
+            if (_runToEndCancellation is { } runToEndCancellation)
+            {
+                await runToEndCancellation.CancelAsync();
+            }
 
             return;
         }

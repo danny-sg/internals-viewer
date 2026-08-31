@@ -102,6 +102,7 @@ public partial class App
         return service;
     }
 
+#pragma warning disable VSTHRD100
     protected override async void OnLaunched(LaunchActivatedEventArgs args)
     {
         MainWindow = Host.Services.GetRequiredService<MainWindow>();
@@ -110,6 +111,7 @@ public partial class App
 
         await MainWindow.InitializeAsync();
     }
+#pragma warning restore VSTHRD100
 
     private static void App_UnhandledException(object sender, Microsoft.UI.Xaml.UnhandledExceptionEventArgs e)
     {

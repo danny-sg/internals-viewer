@@ -1,3 +1,6 @@
+﻿using InternalsViewer.UI.App.Messages;
+using CommunityToolkit.Mvvm.Messaging;
+using System;
 using InternalsViewer.UI.App.ViewModels.Connections;
 using Microsoft.UI.Xaml.Navigation;
 
@@ -24,8 +27,17 @@ public sealed partial class ConnectServerPage
         }
     }
 
+#pragma warning disable VSTHRD100
     private async void DatabaseComboBox_DropDownOpened(object? sender, object e)
     {
-        await ViewModel.RefreshDatabases();
+        try
+        {
+            await ViewModel.RefreshDatabases();
+        }
+        catch (Exception exception)
+        {
+            await WeakReferenceMessenger.Default.Send(new ExceptionMessage(exception));
+        }
     }
+#pragma warning restore VSTHRD100
 }

@@ -16,22 +16,11 @@ using InternalsViewer.UI.App.Models.Columnstore.Segment;
 
 namespace InternalsViewer.UI.App.ViewModels.Columnstore;
 
-/// <summary>
-/// The rows a row group is holding uncompressed, which live in a rowstore of their own until it is closed
-/// </summary>
-/// <remarks>
-/// A delta store is an ordinary rowstore rowset, so its pages are walked through its IAM chain and read with the
-/// same record loaders any other page uses. Records are read a page at a time rather than all at once, a delta
-/// store running to a million rows before it is compressed.
-/// </remarks>
 public sealed partial class DeltaStoreTabViewModel(IPageService pageService,
                                                    IIamChainService iamChainService,
                                                    DatabaseSource database,
                                                    RowGroupSummary rowGroup) : ObservableObject
 {
-    /// <summary>
-    /// The rowset behind the delta store, which its pages are reached through
-    /// </summary>
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(AllocationUnitDescription))]
     [NotifyPropertyChangedFor(nameof(FirstPage))]
@@ -42,7 +31,7 @@ public sealed partial class DeltaStoreTabViewModel(IPageService pageService,
     private bool _isLoaded;
 
     [ObservableProperty]
-    private string _statusText = "Loading Delta Store";
+    private string _statusText = "Loading Delta Store...";
 
     [ObservableProperty]
     private IReadOnlyList<DeltaStorePageSummary> _pages = [];
@@ -62,6 +51,7 @@ public sealed partial class DeltaStoreTabViewModel(IPageService pageService,
     public PageAddress FirstPage => AllocationUnit?.FirstPage ?? PageAddress.Empty;
 
     public PageAddress FirstIamPage => AllocationUnit?.FirstIamPage ?? PageAddress.Empty;
+
     private IPageService PageService { get; } = pageService;
 
     private IIamChainService IamChainService { get; } = iamChainService;
@@ -95,10 +85,13 @@ public sealed partial class DeltaStoreTabViewModel(IPageService pageService,
                     return;
                 }
 
-                // Markers are not wanted for a page only being listed, and building them is most of the cost
+                if (!IsAllocated(address))
+                {
+                    continue;
+                }
+
                 var page = await PageService.GetPage(Database, address, cancellationToken, isMarkEnabled: false);
 
-                // A mixed extent holds pages of other objects, so the IAM's ranges are not the rowset on their own
                 if (page.PageHeader.AllocationUnitId != allocationUnit.AllocationUnitId
                     || page.PageHeader.PageType is not (PageType.Data or PageType.Index))
                 {
@@ -123,9 +116,16 @@ public sealed partial class DeltaStoreTabViewModel(IPageService pageService,
         }
     }
 
-    /// <summary>
-    /// Pages the IAM chain says belong to the rowset, taken from its allocated ranges
-    /// </summary>
+    private bool IsAllocated(PageAddress address)
+    {
+        if (!Database.Pfs.TryGetValue(address.FileId, out var pfs))
+        {
+            return true;
+        }
+
+        return pfs.GetPageStatus(address.PageId).IsAllocated;
+    }
+
     private static IEnumerable<PageAddress> GetPageAddresses(IamChain chain)
     {
         foreach (var page in chain.SinglePageSlots.Where(p => p != PageAddress.Empty))

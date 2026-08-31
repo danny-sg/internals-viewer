@@ -1,4 +1,6 @@
-﻿using System;
+﻿using InternalsViewer.UI.App.Messages;
+using CommunityToolkit.Mvvm.Messaging;
+using System;
 using System.Threading;
 using InternalsViewer.UI.App.ViewModels.Columnstore.Dictionary;
 using InternalsViewer.UI.App.Controls.Docking;
@@ -190,10 +192,19 @@ public sealed partial class ColumnstoreDictionaryTabView : UserControl, IDocumen
         ViewModel.SelectEntry(((TableView)sender).SelectedItem as DictionaryEntryDetail);
     }
 
+#pragma warning disable VSTHRD100
     private async void OnLoaded(object sender, RoutedEventArgs e)
     {
-        Loaded -= OnLoaded;
+        try
+        {
+            Loaded -= OnLoaded;
 
-        await ViewModel.Load(_cts.Token);
+            await ViewModel.Load(_cts.Token);
+        }
+        catch (Exception exception)
+        {
+            await WeakReferenceMessenger.Default.Send(new ExceptionMessage(exception));
+        }
     }
+#pragma warning restore VSTHRD100
 }

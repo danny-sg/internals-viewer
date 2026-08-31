@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Linq;
 using Microsoft.UI.Xaml.Controls;
 
@@ -63,7 +63,8 @@ public static class DockLayoutSerializer
                 return null;
             }
 
-            group.SelectedDocument = group.Documents.FirstOrDefault();
+            group.SelectedDocument = group.Documents.FirstOrDefault(d => d.Key == node.Selected)
+                                     ?? group.Documents.FirstOrDefault();
 
             return group;
         }

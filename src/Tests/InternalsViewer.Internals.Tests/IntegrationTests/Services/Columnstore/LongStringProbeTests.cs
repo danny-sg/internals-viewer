@@ -1,4 +1,4 @@
-using Microsoft.Data.SqlClient;
+﻿using Microsoft.Data.SqlClient;
 using InternalsViewer.Internals.Columnstore.Dictionaries;
 using InternalsViewer.Internals.Columnstore.Services;
 using InternalsViewer.Internals.Readers.Internals;
@@ -167,7 +167,7 @@ public sealed class LongStringProbeTests(ITestOutputHelper testOutput) : Provide
                                                     new InternalsViewer.Internals.Engine.Address.RowIdentifier(
                                                         new InternalsViewer.Internals.Engine.Address.PageAddress((short)fileId, pageId),
                                                         (ushort)slot),
-                                                    CancellationToken.None);
+                                                    cancellationToken: CancellationToken.None);
 
                     var distinct = payload.Distinct().Take(6).Select(b => $"{b:X2}");
 

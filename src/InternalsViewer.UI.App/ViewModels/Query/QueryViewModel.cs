@@ -313,6 +313,7 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
         Layout.Changed += OnLayoutChanged;
         Layout.SelectionChanged += ScheduleSaveLayout;
 
+#pragma warning disable VSTHRD101
         DispatcherQueue.TryEnqueue(async () =>
         {
             try
@@ -326,6 +327,7 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
                 Logger.LogError(ex, "Error restoring layout");
             }
         });
+#pragma warning restore VSTHRD101
     }
 
     public event Action<EngineEvent>? EventNavigationRequested;
@@ -599,6 +601,21 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
         SelectedPlanNode = ResolvePlanNode(identifier);
 
         if (Events.FirstOrDefault(e => e is ExecutionOperatorEvent && e.PlanNodeIdentifier == identifier) is { } op)
+        {
+            SelectedEvent = op;
+        }
+    }
+
+    /// <summary>
+    /// Opens the call stack focused on an operator
+    /// </summary>
+    public void OpenCallStack(PlanNode node)
+    {
+        Layout.ShowCallStack();
+
+        SelectedPlanNode = node;
+
+        if (Events.FirstOrDefault(e => e is ExecutionOperatorEvent && e.PlanNodeIdentifier?.NodeId == node.NodeId) is { } op)
         {
             SelectedEvent = op;
         }

@@ -8,6 +8,9 @@ using InternalsViewer.Execution.Interfaces.BatchMode;
 
 namespace InternalsViewer.Execution.Iterators.Common;
 
+/// <summary>
+/// Iterator to convert from Row Mode to Batch Mode
+/// </summary>
 public sealed class RowToBatchIterator(IIteratorFactory factory) : IBatchIterator
 {
     public int NodeId { get; private set; }
@@ -109,5 +112,4 @@ public sealed class RowToBatchIterator(IIteratorFactory factory) : IBatchIterato
 
     private ValueTask EmitAsync(AccessStep step, CancellationToken cancellationToken)
         => Context.Steps.EmitAsync(step with { NodeId = NodeId }, cancellationToken);
-
 }

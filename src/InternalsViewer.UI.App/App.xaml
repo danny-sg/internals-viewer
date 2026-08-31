@@ -23,6 +23,7 @@
             <toolkitConverters:BoolToVisibilityConverter x:Key="BoolToVisibilityConverter"/>
             <converters:BoolToVisibilityConverter x:Key="InverseBoolToVisibilityConverter" IsInverse="True"/>
             <converters:ColorToSolidColorBrushValueConverter x:Key="ColorToSolidColorBrushValueConverter"/>
+            <converters:BoolToFontFamilyConverter x:Key="BoolToFontFamilyConverter"/>
             <page:HexColorToBrushConverter x:Key="HexColorToBrushConverter"/>
             <converters:NullToVisibilityConverter x:Key="NullToVisibilityConverter"/>
             <converters:NullToVisibilityConverter x:Key="InverseNullToVisibilityConverter" IsInverse="True"/>

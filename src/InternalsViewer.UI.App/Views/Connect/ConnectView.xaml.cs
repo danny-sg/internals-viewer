@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Linq;
 using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.Messaging;
@@ -28,6 +28,7 @@ public sealed partial class ConnectView
 
     private MainViewModel ViewModel => (MainViewModel)DataContext;
 
+#pragma warning disable VSTHRD100
     private async void ConnectNavigationView_SelectionChanged(NavigationView sender,
                                                               NavigationViewSelectionChangedEventArgs args)
     {
@@ -50,6 +51,7 @@ public sealed partial class ConnectView
             }
         }
     }
+#pragma warning restore VSTHRD100
 
     private void SelectAndNavigate(string value)
     {

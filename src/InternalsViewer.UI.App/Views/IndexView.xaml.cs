@@ -104,6 +104,7 @@ public sealed partial class IndexView: IDisposable
         }
     }
 
+#pragma warning disable VSTHRD100
     private async void UserControl_Loaded(object sender, RoutedEventArgs e)
     {
         if (_hasLoaded)
@@ -122,12 +123,14 @@ public sealed partial class IndexView: IDisposable
             await WeakReferenceMessenger.Default.Send(new ExceptionMessage(ex));
         }
     }
+#pragma warning restore VSTHRD100
 
     private void RecordGrid_PageOver(object? sender, PageAddressEventArgs e)
     {
         ViewModel.SetHighlightedPage(e.PageAddress);
     }
 
+#pragma warning disable VSTHRD100
     private async void IndexView_PageClicked(object? sender, PageAddressEventArgs e)
     {
         try
@@ -148,6 +151,7 @@ public sealed partial class IndexView: IDisposable
             await WeakReferenceMessenger.Default.Send(new ExceptionMessage(ex));
         }
     }
+#pragma warning restore VSTHRD100
 
     private void PageAddressLink_PointerEntered(object sender, PointerRoutedEventArgs e)
     {
@@ -163,6 +167,7 @@ public sealed partial class IndexView: IDisposable
         ViewModel.SetHighlightedPage(PageAddress.Empty);
     }
 
+#pragma warning disable VSTHRD100
     private async void PageAddressLink_OnClick(object sender, RoutedEventArgs e)
     {
         try
@@ -191,6 +196,7 @@ public sealed partial class IndexView: IDisposable
             await WeakReferenceMessenger.Default.Send(new ExceptionMessage(ex));
         }
     }
+#pragma warning restore VSTHRD100
 
     private void IndexView_SizeChanged(object sender, SizeChangedEventArgs e)
     {

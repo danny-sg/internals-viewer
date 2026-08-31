@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <UserControl
     x:Class="InternalsViewer.UI.App.Views.Query.Tabs.Trace.TraceBatchPanelView"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
@@ -9,7 +9,14 @@
     xmlns:controls="using:InternalsViewer.UI.App.Controls"
     xmlns:batch="using:InternalsViewer.UI.App.Models.Query.Trace.Batch"
     xmlns:tableView="using:WinUI.TableView"
+    xmlns:converters="using:InternalsViewer.UI.App.Helpers.Converters"
     mc:Ignorable="d">
+
+    <UserControl.Resources>
+        <converters:BoolToBrushConverter x:Key="PurityBrushConverter"
+                                         TrueBrush="SeaGreen"
+                                         FalseBrush="SlateGray" />
+    </UserControl.Resources>
 
     <Grid Background="{ThemeResource LayerOnMicaBaseAltFillColorDefault}">
         <Grid.RowDefinitions>
@@ -42,7 +49,7 @@
                     <Border Padding="6,1"
                             CornerRadius="3"
                             VerticalAlignment="Center"
-                            Background="{x:Bind PurityBrush, Mode=OneWay}">
+                            Background="{x:Bind Batch.IsPure, Mode=OneWay, Converter={StaticResource PurityBrushConverter}}">
                         <TextBlock Text="{x:Bind Batch.Purity, Mode=OneWay}"
                                    FontSize="11"
                                    Foreground="White" />
@@ -154,7 +161,8 @@
                                                TextTrimming="CharacterEllipsis"
                                                Foreground="{ThemeResource TextFillColorTertiaryBrush}" />
                                     <controls:CopyTextBlock Grid.Column="1"
-                                                            Value="{x:Bind Value}" />
+                                                            Value="{x:Bind Value}"
+                                                            FontFamily="{x:Bind IsMonospaced, Converter={StaticResource BoolToFontFamilyConverter}}" />
                                 </Grid>
                             </DataTemplate>
                         </ListView.ItemTemplate>
@@ -310,7 +318,8 @@
                                            TextTrimming="CharacterEllipsis"
                                            Foreground="{ThemeResource TextFillColorTertiaryBrush}" />
                                 <controls:CopyTextBlock Grid.Column="1"
-                                                        Value="{x:Bind Value}" />
+                                                        Value="{x:Bind Value}"
+                                                        FontFamily="{x:Bind IsMonospaced, Converter={StaticResource BoolToFontFamilyConverter}}" />
                             </Grid>
                         </DataTemplate>
                     </ListView.ItemTemplate>

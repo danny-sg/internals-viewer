@@ -13,6 +13,16 @@ using InternalsViewer.Internals.Interfaces.Engine;
 
 namespace InternalsViewer.Execution.Iterators.Common;
 
+/// <summary>
+/// Where one row landed in the table
+/// </summary>
+public readonly record struct HashAggregateHit(int Bucket,
+                                              int Entry,
+                                              uint Hash,
+                                              AccessKey Key,
+                                              AggregateGroupRecord Group,
+                                              bool IsNew);
+
 public sealed class HashAggregateBuilder(IReadOnlyList<string> groupBy, IReadOnlyList<AggregateColumn> aggregates, int bucketBits)
 {
     public HashTable Table { get; } = new(bucketBits);
@@ -141,13 +151,3 @@ public sealed class HashAggregateBuilder(IReadOnlyList<string> groupBy, IReadOnl
     private static RecordField? FindField(IRecord record, string column)
         => record.Fields.FirstOrDefault(f => string.Equals(f.ColumnStructure.ColumnName, column, StringComparison.OrdinalIgnoreCase));
 }
-
-/// <summary>
-/// Where one row landed in the table
-/// </summary>
-public readonly record struct HashAggregateHit(int Bucket,
-                                              int Entry,
-                                              uint Hash,
-                                              AccessKey Key,
-                                              AggregateGroupRecord Group,
-                                              bool IsNew);

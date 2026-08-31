@@ -595,7 +595,7 @@ public sealed class QueryRunner(ILogger<QueryRunner> logger,
         return (filePath, rowCount, logRecords, resultSets);
     }
 
-    private async Task<(long RowCount, List<QueryResultSet> ResultSets)> 
+    private static async Task<(long RowCount, List<QueryResultSet> ResultSets)> 
         RunQueryDirect(string commandSql,
                        string connectionString,
                        QueryOptions queryOptions,

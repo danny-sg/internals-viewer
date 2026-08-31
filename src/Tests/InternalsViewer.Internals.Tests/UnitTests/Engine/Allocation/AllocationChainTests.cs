@@ -15,7 +15,7 @@ public class AllocationChainTests
 
         if (setExtent >= 0)
         {
-            page.AllocationMap[setExtent] = 1;
+            page.AllocationMap[setExtent >> 3] |= (byte)(1 << (setExtent & 7));
         }
 
         chain.Pages.Add(page);
@@ -72,21 +72,45 @@ public class AllocationChainTests
     }
 
     [Fact]
-    public void Out_Of_Range_Extent_Throws()
+    public void Out_Of_Range_Extent_Returns_False()
     {
         var chain = BuildChain(fileId: 1);
 
-        Assert.Throws<IndexOutOfRangeException>(() =>
-            chain.IsExtentAllocated(AllocationPage.AllocationExtentInterval + 1, 1, invert: false));
+        Assert.False(chain.IsExtentAllocated(AllocationPage.AllocationExtentInterval + 1, 1, invert: false));
     }
 
     [Fact]
-    public void Empty_Pages_Throws_For_Any_Extent()
+    public void Empty_Pages_Return_False_For_Any_Extent()
     {
         var chain = new AllocationChain { FileId = 1 };
 
-        Assert.Throws<IndexOutOfRangeException>(() =>
-            chain.IsExtentAllocated(0, 1, invert: false));
+        Assert.False(chain.IsExtentAllocated(0, 1, invert: false));
+    }
+
+    [Fact]
+    public void An_Allocated_Extent_Does_Not_Allocate_Its_Byte_Neighbours()
+    {
+        var chain = BuildChain(fileId: 1, setExtent: 5);
+
+        Assert.False(chain.IsExtentAllocated(4, 1, invert: false));
+
+        Assert.False(chain.IsExtentAllocated(6, 1, invert: false));
+
+        Assert.False(chain.IsExtentAllocated(40, 1, invert: false));
+    }
+
+    [Fact]
+    public void An_Extent_Past_The_First_Page_Reads_From_The_Second()
+    {
+        var chain = BuildChain(fileId: 1);
+
+        var second = new AllocationPage();
+
+        second.AllocationMap[0] |= 1;
+
+        chain.Pages.Add(second);
+
+        Assert.True(chain.IsExtentAllocated(AllocationPage.AllocationExtentInterval, 1, invert: false));
     }
 
     [Fact]

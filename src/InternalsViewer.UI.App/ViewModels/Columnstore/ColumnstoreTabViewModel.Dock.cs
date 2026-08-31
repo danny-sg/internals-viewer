@@ -68,14 +68,11 @@ public sealed partial class ColumnstoreTabViewModel
                     : this);
 
     public void OpenDeltaStore(RowGroupSummary rowGroup)
-        => Open($"Delta store {rowGroup.RowGroupId}",
+        => Open($"Delta Store (Row Group {rowGroup.RowGroupId})",
                 $"DeltaStore:{rowGroup.RowGroupId}",
                 () => new ColumnstoreDeltaStoreTabView(),
                 new DeltaStoreTabViewModel(PageService, IamChainService, Database, rowGroup));
 
-    /// <summary>
-    /// Structure and row groups open with the index, everything else opens from a click on one of them
-    /// </summary>
     private DockLayoutViewModel BuildDock()
     {
         _structureDocument = DocumentViewModel.Create<ColumnstoreStructureTabView>("Structure",
@@ -85,10 +82,10 @@ public sealed partial class ColumnstoreTabViewModel
                                                                                    key: "Structure");
 
         _rowGroupsDocument = DocumentViewModel.Create<ColumnstoreMetadataTabView>("Metadata",
-                                                                                   this,
-                                                                                   canClose: false,
-                                                                                   keepAlive: true,
-                                                                                   key: "RowGroups");
+                                                                                  this,
+                                                                                  canClose: false,
+                                                                                  keepAlive: true,
+                                                                                  key: "RowGroups");
 
         var dock = new DockLayoutViewModel(new TabGroupNode(_structureDocument, _rowGroupsDocument));
 

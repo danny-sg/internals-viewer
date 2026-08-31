@@ -19,7 +19,7 @@ public sealed class ColumnstorePageMapper(IPageService pageService,
                                CancellationToken cancellationToken,
                                long sizeLimit = DefaultSizeLimit)
     {
-        var size = index.CompressedRowGroups.Sum(r => r.Segments.Sum(s => s.OnDiskSize));
+        var size = index.CompressedRowGroups.Sum(r => (long)r.Segments.Sum(s => s.OnDiskSize));
 
         if (sizeLimit > 0 && size > sizeLimit)
         {
@@ -48,7 +48,6 @@ public sealed class ColumnstorePageMapper(IPageService pageService,
                                                    segment.Key.RowGroupId,
                                                    segment.Key.ColumnId,
                                                    segment.Column?.Name ?? string.Empty,
-                                                   segment.Key.RowGroupId,
                                                    -1,
                                                    ColumnstoreReadType.Segment);
 
@@ -56,7 +55,7 @@ public sealed class ColumnstorePageMapper(IPageService pageService,
             }
         }
 
-        foreach (var dictionary in Dictionaries(index))
+        foreach (var (dictionary, rowGroupId, columnName) in GetDictionaries(index))
         {
             if (cancellationToken.IsCancellationRequested)
             {
@@ -64,10 +63,9 @@ public sealed class ColumnstorePageMapper(IPageService pageService,
             }
 
             var read = new ColumnstorePageRead(PageAddress.Empty,
-                                               -1,
+                                               rowGroupId,
                                                dictionary.ColumnId,
-                                               string.Empty,
-                                               -1,
+                                               columnName,
                                                dictionary.DictionaryId,
                                                ColumnstoreReadType.Dictionary);
 
@@ -114,21 +112,22 @@ public sealed class ColumnstorePageMapper(IPageService pageService,
         return count;
     }
 
-    private static IEnumerable<SegmentDictionary> Dictionaries(ColumnStoreIndex index)
+    private static IEnumerable<(SegmentDictionary Dictionary, int RowGroupId, string ColumnName)> 
+        GetDictionaries(ColumnStoreIndex index)
     {
         foreach (var column in index.Columns)
         {
-            if (column.GlobalDictionary is { } global && !global.DataPointer.IsEmpty)
+            if (column.GlobalDictionary is { DataPointer.IsEmpty: false } global)
             {
-                yield return global;
+                yield return (global, -1, column.Name);
             }
         }
 
         foreach (var segment in index.CompressedRowGroups.SelectMany(r => r.Segments))
         {
-            if (segment.LocalDictionary is { } local && !local.DataPointer.IsEmpty)
+            if (segment.LocalDictionary is { DataPointer.IsEmpty: false } local)
             {
-                yield return local;
+                yield return (local, segment.Key.RowGroupId, segment.Column?.Name ?? string.Empty);
             }
         }
     }

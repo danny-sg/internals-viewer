@@ -30,14 +30,14 @@ public sealed class ColumnstoreCache
     {
         var entry = Entries.GetOrCreateValue(database);
 
-        if (Interlocked.Read(ref entry.Bytes) + data.LongLength > DataBudget)
+        if (!entry.HasRoomFor(data.LongLength))
         {
             return;
         }
 
         if (entry.Data.TryAdd(identifier, data))
         {
-            Interlocked.Add(ref entry.Bytes, data.LongLength);
+            entry.AddBytes(data.LongLength);
         }
     }
 
@@ -63,12 +63,16 @@ public sealed class ColumnstoreCache
 
     private sealed class Entry
     {
-        public long Bytes;
+        private long _bytes;
 
         public ConcurrentDictionary<long, ColumnStoreIndex> Indexes { get; } = new();
 
         public ConcurrentDictionary<RowIdentifier, byte[]> Data { get; } = new();
 
         public ConcurrentDictionary<PageAddress, ConcurrentDictionary<ColumnstorePageRead, ColumnstorePageRead>> PageReads { get; } = new();
+
+        public bool HasRoomFor(long bytes) => Interlocked.Read(ref _bytes) + bytes <= DataBudget;
+
+        public void AddBytes(long bytes) => Interlocked.Add(ref _bytes, bytes);
     }
 }

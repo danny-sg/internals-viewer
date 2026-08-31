@@ -7,7 +7,6 @@ using InternalsViewer.Execution.Records;
 using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Internals.Interfaces.Engine;
 
-
 namespace InternalsViewer.Execution.Iterators.Common;
 
 /// <summary>

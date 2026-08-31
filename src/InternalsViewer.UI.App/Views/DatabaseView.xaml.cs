@@ -120,19 +120,37 @@ public sealed partial class DatabaseView : IDisposable
         }
     }
 
+#pragma warning disable VSTHRD100
     private async void OnViewIndexClicked(object? sender, PageAddressEventArgs e)
     {
-        var pageAddress = new PageAddress(e.FileId, e.PageId);
+        try
+        {
+            var pageAddress = new PageAddress(e.FileId, e.PageId);
 
-        await WeakReferenceMessenger.Default
-                                    .Send(new OpenIndexMessage(
-                                        new OpenIndexRequest(TabViewModel.Database, pageAddress)));
+            await WeakReferenceMessenger.Default
+                                        .Send(new OpenIndexMessage(
+                                            new OpenIndexRequest(TabViewModel.Database, pageAddress)));
+        }
+        catch (Exception exception)
+        {
+            await WeakReferenceMessenger.Default.Send(new ExceptionMessage(exception));
+        }
     }
+#pragma warning restore VSTHRD100
 
+#pragma warning disable VSTHRD100
     private async void OnViewColumnstoreClicked(object? sender, long allocationUnitId)
     {
-        await WeakReferenceMessenger.Default
-                                    .Send(new OpenColumnstoreMessage(
-                                        new OpenColumnstoreRequest(TabViewModel.Database, allocationUnitId)));
+        try
+        {
+            await WeakReferenceMessenger.Default
+                                        .Send(new OpenColumnstoreMessage(
+                                            new OpenColumnstoreRequest(TabViewModel.Database, allocationUnitId)));
+        }
+        catch (Exception exception)
+        {
+            await WeakReferenceMessenger.Default.Send(new ExceptionMessage(exception));
+        }
     }
+#pragma warning restore VSTHRD100
 }

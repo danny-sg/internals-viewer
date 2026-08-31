@@ -16,19 +16,24 @@ public static class LobChainWalker
                                        Action<PageAddress, int> onPage,
                                        CancellationToken cancellationToken)
     {
-        var visited = new HashSet<PageAddress>();
-
-        await WalkAsync(pageService, database, root, onPage, visited, cancellationToken);
+        await WalkAsync(pageService,
+                        database,
+                        root,
+                        onPage,
+                        [],
+                        [],
+                        cancellationToken);
     }
 
     private static async Task WalkAsync(IPageService pageService,
                                         DatabaseSource database,
                                         RowIdentifier identifier,
                                         Action<PageAddress, int> onPage,
-                                        HashSet<PageAddress> visited,
+                                        HashSet<RowIdentifier> visited,
+                                        HashSet<PageAddress> reported,
                                         CancellationToken cancellationToken)
     {
-        if (!visited.Add(identifier.PageAddress))
+        if (!visited.Add(identifier))
         {
             return;
         }
@@ -42,7 +47,10 @@ public static class LobChainWalker
 
         var record = LobRecordLoader.Load(page, page.OffsetTable[identifier.SlotId]);
 
-        onPage(identifier.PageAddress, record.Data.Length);
+        if (reported.Add(identifier.PageAddress))
+        {
+            onPage(identifier.PageAddress, record.Data.Length);
+        }
 
         if (record.BlobType is BlobType.SmallRoot or BlobType.Data)
         {
@@ -63,12 +71,12 @@ public static class LobChainWalker
 
             if (record.Level > 1)
             {
-                await WalkAsync(pageService, database, childIdentifier, onPage, visited, cancellationToken);
+                await WalkAsync(pageService, database, childIdentifier, onPage, visited, reported, cancellationToken);
 
                 continue;
             }
 
-            if (visited.Add(childIdentifier.PageAddress))
+            if (reported.Add(childIdentifier.PageAddress))
             {
                 onPage(childIdentifier.PageAddress, child.Length);
             }

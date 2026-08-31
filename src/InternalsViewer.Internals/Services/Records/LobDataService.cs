@@ -18,14 +18,14 @@ public sealed class LobDataService(IPageService pageService) : ILobDataService
 
     public async Task<byte[]> GetData(DatabaseSource database,
                                       RowIdentifier rowIdentifier,
-                                      CancellationToken cancellationToken,
-                                      Action<PageAddress>? onPageRead = null)
+                                      Action<PageAddress, int>? onPageRead = null,
+                                      CancellationToken cancellationToken = default)
     {
-        var (page, record) = await GetLobRecord(database, rowIdentifier, cancellationToken, onPageRead);
+        var (page, record) = await GetLobRecord(database, rowIdentifier, onPageRead, cancellationToken);
 
         var result = new byte[GetTotalLength(record)];
 
-        await WriteRecordData(database, page, record, result, 0, cancellationToken, onPageRead);
+        await WriteRecordData(database, page, record, result, 0, onPageRead, cancellationToken);
 
         return result;
     }
@@ -33,16 +33,16 @@ public sealed class LobDataService(IPageService pageService) : ILobDataService
     public async Task<LobDataPrefix> GetDataPrefix(DatabaseSource database,
                                                    RowIdentifier rowIdentifier,
                                                    int maxLength,
-                                                   CancellationToken cancellationToken,
-                                                   Action<PageAddress>? onPageRead = null)
+                                                   Action<PageAddress, int>? onPageRead = null,
+                                                   CancellationToken cancellationToken = default)
     {
-        var (page, record) = await GetLobRecord(database, rowIdentifier, cancellationToken, onPageRead);
+        var (page, record) = await GetLobRecord(database, rowIdentifier, onPageRead, cancellationToken);
 
         var totalLength = GetTotalLength(record);
 
         var result = new byte[Math.Min(totalLength, Math.Max(0, maxLength))];
 
-        await WriteRecordData(database, page, record, result, 0, cancellationToken, onPageRead);
+        await WriteRecordData(database, page, record, result, 0, onPageRead, cancellationToken);
 
         return new LobDataPrefix(result, totalLength);
     }
@@ -93,8 +93,8 @@ public sealed class LobDataService(IPageService pageService) : ILobDataService
                                             LobRecord record,
                                             byte[] destination,
                                             int position,
-                                            CancellationToken cancellationToken,
-                                            Action<PageAddress>? onPageRead)
+                                            Action<PageAddress, int>? onPageRead,
+                                            CancellationToken cancellationToken)
     {
         switch (record.BlobType)
         {
@@ -120,16 +120,16 @@ public sealed class LobDataService(IPageService pageService) : ILobDataService
 
                     var (childPage, childRecord) = await GetLobRecord(database,
                                                                       child.RowIdentifier,
-                                                                      cancellationToken,
-                                                                      onPageRead);
+                                                                      onPageRead, 
+                                                                      cancellationToken);
 
                     position = await WriteRecordData(database,
                                                      childPage,
                                                      childRecord,
                                                      destination,
                                                      position,
-                                                     cancellationToken,
-                                                     onPageRead);
+                                                     onPageRead,
+                                                     cancellationToken);
                 }
 
                 return position;
@@ -141,15 +141,13 @@ public sealed class LobDataService(IPageService pageService) : ILobDataService
 
     private async Task<(LobPage Page, LobRecord Record)> GetLobRecord(DatabaseSource database,
                                                                       RowIdentifier rowIdentifier,
-                                                                      CancellationToken cancellationToken,
-                                                                      Action<PageAddress>? onPageRead)
+                                                                      Action<PageAddress, int>? onPageRead,
+                                                                      CancellationToken cancellationToken)
     {
         var page = await PageService.GetPage<LobPage>(database,
                                                       rowIdentifier.PageAddress,
                                                       cancellationToken,
                                                       isMarkEnabled: false);
-
-        onPageRead?.Invoke(rowIdentifier.PageAddress);
 
         if (rowIdentifier.SlotId >= page.OffsetTable.Length)
         {
@@ -158,6 +156,8 @@ public sealed class LobDataService(IPageService pageService) : ILobDataService
         }
 
         var record = LobRecordLoader.Load(page, page.OffsetTable[rowIdentifier.SlotId]);
+
+        onPageRead?.Invoke(rowIdentifier.PageAddress, record.Data.Length);
 
         record.Slot = rowIdentifier.SlotId;
 

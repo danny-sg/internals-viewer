@@ -297,7 +297,7 @@ public sealed partial class AllocationControl : IDisposable
         IsAntialias = false,
     };
 
-    private readonly Dictionary<PageAddress, (int Count, System.Drawing.Color Colour)> _heatmapVisits = new();
+    private readonly Dictionary<PageAddress, (int Count, System.Drawing.Color Colour)> _heatmapVisits = [];
 
     private AllocationRenderer? _renderer;
 

@@ -54,21 +54,6 @@ internal static class AccessValueFormatter
     /// A bit is stored as an integer but reads better as 0 or 1, and a date or time is stored as its engine representation, which is not
     /// meaningful on its own, so it is left as the raw number rather than guessed at.
     /// </remarks>
-    private static string FormatInteger(AccessValue value)
-    {
-        if (value.DataType == SqlDbType.Bit)
-        {
-            return value.Numeric == 0 ? "0" : "1";
-        }
-
-        if (TryFormatTemporal(value, out var temporal))
-        {
-            return temporal;
-        }
-
-        return value.Numeric.ToString(CultureInfo.InvariantCulture);
-    }
-
     public static bool TryFormatTemporal(AccessValue value, out string text)
     {
         if (value.Type != AccessValueType.Integer)
@@ -97,6 +82,21 @@ internal static class AccessValueFormatter
         };
 
         return text.Length > 0;
+    }
+
+    private static string FormatInteger(AccessValue value)
+    {
+        if (value.DataType == SqlDbType.Bit)
+        {
+            return value.Numeric == 0 ? "0" : "1";
+        }
+
+        if (TryFormatTemporal(value, out var temporal))
+        {
+            return temporal;
+        }
+
+        return value.Numeric.ToString(CultureInfo.InvariantCulture);
     }
 
     private static string FormatBytes(AccessValue value)

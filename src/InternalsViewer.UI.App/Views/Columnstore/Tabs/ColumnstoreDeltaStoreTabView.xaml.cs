@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Threading;
 using CommunityToolkit.Mvvm.Messaging;
 using InternalsViewer.Internals.Engine.Address;
@@ -52,21 +52,39 @@ public sealed partial class ColumnstoreDeltaStoreTabView : UserControl, IDisposa
 
     private void FirstIamPage_OnClick(object sender, RoutedEventArgs e) => OpenPage(ViewModel.FirstIamPage);
 
+#pragma warning disable VSTHRD100
     private async void OpenPage(PageAddress pageAddress)
     {
-        if (pageAddress == PageAddress.Empty)
+        try
         {
-            return;
+            if (pageAddress == PageAddress.Empty)
+            {
+                return;
+            }
+
+            await WeakReferenceMessenger.Default.Send(
+                new OpenPageMessage(new OpenPageRequest(ViewModel.Database, pageAddress)));
         }
-
-        await WeakReferenceMessenger.Default.Send(
-            new OpenPageMessage(new OpenPageRequest(ViewModel.Database, pageAddress)));
+        catch (Exception exception)
+        {
+            await WeakReferenceMessenger.Default.Send(new ExceptionMessage(exception));
+        }
     }
+#pragma warning restore VSTHRD100
 
+#pragma warning disable VSTHRD100
     private async void OnLoaded(object sender, RoutedEventArgs e)
     {
-        Loaded -= OnLoaded;
+        try
+        {
+            Loaded -= OnLoaded;
 
-        await ViewModel.Load(_cts.Token);
+            await ViewModel.Load(_cts.Token);
+        }
+        catch (Exception exception)
+        {
+            await WeakReferenceMessenger.Default.Send(new ExceptionMessage(exception));
+        }
     }
+#pragma warning restore VSTHRD100
 }

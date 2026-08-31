@@ -113,15 +113,15 @@ public sealed class ExecutionPlanControl : Canvas
 
     // Each producer node mapped to the connector that carries its rows to its consumer (parent), and to
     // that connector's arrowhead (recoloured to match the flow line while the producer is active).
-    private readonly Dictionary<PlanNode, Polyline> _connectorByProducer = new();
-    private readonly Dictionary<PlanNode, Polygon> _arrowByProducer = new();
+    private readonly Dictionary<PlanNode, Polyline> _connectorByProducer = [];
+    private readonly Dictionary<PlanNode, Polygon> _arrowByProducer = [];
 
     // The second chevron of an ordered read node's double arrowhead, recoloured alongside the primary.
-    private readonly Dictionary<PlanNode, Polygon> _secondaryArrowByProducer = new();
+    private readonly Dictionary<PlanNode, Polygon> _secondaryArrowByProducer = [];
 
     // Per-emitting-producer animated data-flow overlay marching along its outgoing connector. Keyed by
     // producer so the set can be reconciled incrementally as the active operators change each tick.
-    private readonly Dictionary<PlanNode, FlowOverlay> _flows = new();
+    private readonly Dictionary<PlanNode, FlowOverlay> _flows = [];
 
     // Node height grows to make room for the icicle when the plan has linked call stacks, else stays compact.
     private double _nodeHeight = BaseNodeHeight;
@@ -155,12 +155,14 @@ public sealed class ExecutionPlanControl : Canvas
 
     public event EventHandler<PlanNode?>? NodeSelected;
 
-    /// <summary>Raised when "Open Index" is chosen on a data-access node that runs against a named index</summary>
     public event EventHandler<PlanNode>? IndexOpenRequested;
 
     public event EventHandler<PlanNode>? TraceOpenRequested;
 
+    public event EventHandler<PlanNode>? CallStackOpenRequested;
+
     public event EventHandler<PlanNode>? PropertiesOpenRequested;
+    
     private double RowPitch => _nodeHeight + VerticalGap;
 
     private void Rebuild()
@@ -492,6 +494,12 @@ public sealed class ExecutionPlanControl : Canvas
                 flyout.Items.Add(openTrace);
             }
 
+            var openCallStack = new MenuFlyoutItem { Text = "Call Stack" };
+
+            openCallStack.Click += (_, _) => CallStackOpenRequested?.Invoke(this, node);
+
+            flyout.Items.Add(openCallStack);
+
             var openProperties = new MenuFlyoutItem { Text = $"Properties" };
 
             openProperties.Click += (_, _) => PropertiesOpenRequested?.Invoke(this, node);
@@ -723,7 +731,7 @@ public sealed class ExecutionPlanControl : Canvas
             const double period = dashOn + dashOff;
 
             overlay.StrokeDashCap = PenLineCap.Round;
-            overlay.StrokeDashArray = new DoubleCollection { dashOn, dashOff };
+            overlay.StrokeDashArray = [dashOn, dashOff];
 
             var animation = new DoubleAnimation
             {

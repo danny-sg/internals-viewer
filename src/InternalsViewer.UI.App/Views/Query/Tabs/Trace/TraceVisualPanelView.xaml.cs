@@ -1,4 +1,7 @@
-﻿using InternalsViewer.UI.App.ViewModels.Query.Trace;
+﻿using InternalsViewer.UI.App.Messages;
+using CommunityToolkit.Mvvm.Messaging;
+using System;
+using InternalsViewer.UI.App.ViewModels.Query.Trace;
 using Microsoft.UI.Xaml.Controls;
 
 namespace InternalsViewer.UI.App.Views.Query.Tabs.Trace;
@@ -45,11 +48,20 @@ public sealed partial class TraceVisualPanelView : UserControl
     public Visibility ColumnstoreVisibility(TraceVisualType visualType, bool isInitialized)
         => visualType == TraceVisualType.Columnstore && isInitialized ? Visibility.Visible : Visibility.Collapsed;
 
+#pragma warning disable VSTHRD100
     private async void OnLoaded(object sender, RoutedEventArgs e)
     {
-        if (ViewModel is { } viewModel)
+        try
         {
-            await viewModel.LoadVisualAsync();
+            if (ViewModel is { } viewModel)
+            {
+                await viewModel.LoadVisualAsync();
+            }
+        }
+        catch (Exception exception)
+        {
+            await WeakReferenceMessenger.Default.Send(new ExceptionMessage(exception));
         }
     }
+#pragma warning restore VSTHRD100
 }

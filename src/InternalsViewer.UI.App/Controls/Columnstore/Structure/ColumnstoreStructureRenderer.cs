@@ -561,7 +561,9 @@ public sealed class ColumnstoreStructureRenderer : IDisposable
 
         var entryTop = bounds.Top + 4 + BadgeHeight + ColumnstoreLayout.BadgeMargin;
 
-        canvas.DrawText(Fit($"{dictionary.EntryCount} entries", bounds.Width - 8, _labelFont),
+        var entries = dictionary.EntryCount == 0 ? "entry" : "entries";
+
+        canvas.DrawText(Fit($"{dictionary.EntryCount} {entries}", bounds.Width - 8, _labelFont),
                         bounds.Left + 4,
                         entryTop - _labelFont.Metrics.Ascent,
                         SKTextAlign.Left,
@@ -575,7 +577,7 @@ public sealed class ColumnstoreStructureRenderer : IDisposable
             Segment = segment,
             Dictionary = dictionary,
             Label = $"{columnName} {(isGlobal ? "Global" : "Local")} Dictionary",
-            Detail = $"{dictionary.EntryCount} entries",
+            Detail = $"{dictionary.EntryCount} {entries}",
             DetailsFactory = () => BuildDictionaryDetails(dictionary, isGlobal, columnName)
         });
     }

@@ -1,4 +1,4 @@
-using Microsoft.Data.SqlClient;
+﻿using Microsoft.Data.SqlClient;
 using InternalsViewer.Internals.Columnstore.Services;
 using InternalsViewer.Internals.Engine.Database;
 using InternalsViewer.Internals.Readers.Internals;
@@ -162,7 +162,7 @@ public sealed class WideNullProbeTests(ITestOutputHelper testOutput) : ProviderT
                     var bytes = await lob.GetData(database,
                                                   new InternalsViewer.Internals.Engine.Address.RowIdentifier(
                                                       segment.DataPointer.PageAddress, (ushort)segment.DataPointer.Slot),
-                                                  CancellationToken.None);
+                                                  cancellationToken: CancellationToken.None);
 
                     var raw = new ReadOnlyMemory<byte>(bytes);
 

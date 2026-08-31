@@ -106,6 +106,7 @@ sqlmin|Rowset*|*|RowAccess
 
 *|BUF*|*|BufferManager
 *|BPool*|*|BufferPool
+*|*|IssueReadAheadHelper*|BufferPool
 *|FCB*|*|FileControlBlock
 
 *|IndexRowScanner*|*|RowAccess
@@ -195,6 +196,7 @@ sqlmin|AllocScan|*|PageAccess
 
 # Cardinality estimation and the statistics it reads: the optimizer asking how many rows it should expect. Loading a
 # histogram genuinely reads pages, so these appear above real storage work — at compile time, before the plan exists.
+*|CQSIndex*|*|Optimization
 *|CCardFramework*|*|Optimization
 *|CCardUtil*|*|Optimization
 *|CSelCalc*|*|Optimization
@@ -496,6 +498,10 @@ sqlmin|AllocScan|*|PageAccess
 # Deleted rows, carried beside the segments as a bitmap.
 *|DeleteBitmap*|*|ColumnStore
 *|DeleteBuffer*|*|ColumnStore
+
+*|RowGroupReadAheadManager*|*|ColumnStore
+*|AsyncRowGroupTranscoder*|*|ColumnStore
+*|*|IssueReadAheadHelperColumnStore*|ColumnStore
 
 # Row group flush locks. Named for the columnstore structure they guard, but what the frame does is take a lock.
 *|HoBtRowGroupCollectionAccess*|*|Locking
