@@ -1,5 +1,4 @@
 ﻿using System.Collections.Concurrent;
-using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Threading;
 using InternalsViewer.Internals.Columnstore.Metadata;
@@ -43,17 +42,22 @@ public sealed class ColumnstoreCache
     }
 
     public void SetPageRead(DatabaseSource database, ColumnstorePageRead read)
-        => Entries.GetOrCreateValue(database)
-                  .PageReads
-                  .GetOrAdd(read.PageAddress, _ => new ConcurrentDictionary<ColumnstorePageRead, byte>())[read] = 0;
+    {
+        var reads = Entries.GetOrCreateValue(database)
+                           .PageReads
+                           .GetOrAdd(read.PageAddress,
+                                     _ => new ConcurrentDictionary<ColumnstorePageRead, ColumnstorePageRead>());
+
+        reads.AddOrUpdate(read with { Bytes = 0 }, read, (_, existing) => existing.Bytes >= read.Bytes ? existing : read);
+    }
 
     public IReadOnlyList<ColumnstorePageRead> GetPageReads(DatabaseSource database, PageAddress pageAddress)
         => Entries.TryGetValue(database, out var entry) && entry.PageReads.TryGetValue(pageAddress, out var reads)
-            ? [.. reads.Keys]
+            ? [.. reads.Values]
             : [];
 
     public IReadOnlyCollection<ColumnstorePageRead> PageReads(DatabaseSource database)
-        => Entries.TryGetValue(database, out var entry) ? [.. entry.PageReads.Values.SelectMany(r => r.Keys)] : [];
+        => Entries.TryGetValue(database, out var entry) ? [.. entry.PageReads.Values.SelectMany(r => r.Values)] : [];
 
     public void Clear(DatabaseSource database) => Entries.Remove(database);
 
@@ -65,6 +69,6 @@ public sealed class ColumnstoreCache
 
         public ConcurrentDictionary<RowIdentifier, byte[]> Data { get; } = new();
 
-        public ConcurrentDictionary<PageAddress, ConcurrentDictionary<ColumnstorePageRead, byte>> PageReads { get; } = new();
+        public ConcurrentDictionary<PageAddress, ConcurrentDictionary<ColumnstorePageRead, ColumnstorePageRead>> PageReads { get; } = new();
     }
 }

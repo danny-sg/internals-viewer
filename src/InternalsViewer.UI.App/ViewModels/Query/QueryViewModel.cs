@@ -1594,6 +1594,8 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
         eventOptions.AutoDeleteTrace = _settingsViewModel.AutoDeleteTrace;
 
+        QueryRunner.ResolveColumnstorePages = _settingsViewModel.FullColumnstoreResolution;
+
         // Run full trace on background thread
         var (results, colours, startOffset, endOffset) =
             await Task.Run(async () =>

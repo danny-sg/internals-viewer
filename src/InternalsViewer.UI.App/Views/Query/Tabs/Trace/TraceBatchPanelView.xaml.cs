@@ -22,6 +22,14 @@ public sealed partial class TraceBatchPanelView : UserControl
 
     private object? _boundRows;
 
+    private GridLength _detailHeight = new(1, GridUnitType.Star);
+
+    private GridLength _vectorHeight = new(2, GridUnitType.Star);
+
+    private GridLength _deepDetailHeight = new(1, GridUnitType.Star);
+
+    private GridLength _deepTableHeight = new(2, GridUnitType.Star);
+
     public TraceBatchPanelView()
     {
         InitializeComponent();
@@ -130,9 +138,29 @@ public sealed partial class TraceBatchPanelView : UserControl
 
         DeepPane.Visibility = DeepSplitter.Visibility;
 
-        DeepSplitterRow.Height = isVisible ? GridLength.Auto : new GridLength(0);
+        if (isVisible)
+        {
+            DeepSplitterRow.Height = GridLength.Auto;
 
-        DeepDetailRow.Height = isVisible ? new GridLength(1, GridUnitType.Star) : new GridLength(0);
+            DeepTableRow.Height = _deepTableHeight;
+
+            DeepDetailRow.Height = _deepDetailHeight;
+
+            return;
+        }
+
+        if (DeepDetailRow.Height.Value > 0)
+        {
+            _deepDetailHeight = DeepDetailRow.Height;
+
+            _deepTableHeight = DeepTableRow.Height;
+        }
+
+        DeepSplitterRow.Height = new GridLength(0);
+
+        DeepDetailRow.Height = new GridLength(0);
+
+        DeepTableRow.Height = new GridLength(1, GridUnitType.Star);
     }
 
     private void RebuildColumns()
@@ -187,9 +215,29 @@ public sealed partial class TraceBatchPanelView : UserControl
 
         DetailPane.Visibility = DetailSplitter.Visibility;
 
-        SplitterRow.Height = isVisible ? GridLength.Auto : new GridLength(0);
+        if (isVisible)
+        {
+            SplitterRow.Height = GridLength.Auto;
 
-        DetailRow.Height = isVisible ? new GridLength(1, GridUnitType.Star) : new GridLength(0);
+            VectorRow.Height = _vectorHeight;
+
+            DetailRow.Height = _detailHeight;
+
+            return;
+        }
+
+        if (DetailRow.Height.Value > 0)
+        {
+            _detailHeight = DetailRow.Height;
+
+            _vectorHeight = VectorRow.Height;
+        }
+
+        SplitterRow.Height = new GridLength(0);
+
+        DetailRow.Height = new GridLength(0);
+
+        VectorRow.Height = new GridLength(1, GridUnitType.Star);
     }
 
     private void OnSlotClicked(BatchSlotSelection selection) => Attached?.SelectSlot(selection);

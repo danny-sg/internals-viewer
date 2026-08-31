@@ -7,6 +7,9 @@ using InternalsViewer.UI.App.Models.Columnstore;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Controls.Primitives;
 using Microsoft.UI.Xaml.Input;
+using Microsoft.UI.Input;
+using Windows.System;
+using Windows.UI.Core;
 using Microsoft.UI.Xaml.Media;
 using SkiaSharp;
 using SkiaSharp.Views.Windows;
@@ -81,11 +84,24 @@ public sealed partial class ColumnstoreStructureControl : IDisposable
         set => SetValue(DatabaseIdProperty, value);
     }
 
+    // Pointer movement (px) that turns a press into a pan rather than a click.
+    private const double DragThreshold = 3;
+
     private readonly ColumnstoreStructureRenderer _renderer = new();
+
+    private readonly CanvasViewport _viewport = new();
 
     private List<ColumnstoreRegion> _regions = [];
 
-    private float _scrollOffset;
+    private bool _isPointerDown;
+
+    private bool _isDragging;
+
+    private global::Windows.Foundation.Point _dragStart;
+
+    private float _dragStartOffsetX;
+
+    private float _dragStartOffsetY;
 
     private bool _isThemeDirty = true;
 
@@ -97,6 +113,8 @@ public sealed partial class ColumnstoreStructureControl : IDisposable
 
         StructureCanvas.PaintSurface += OnPaintSurface;
         StructureCanvas.PointerPressed += OnPointerPressed;
+        StructureCanvas.PointerReleased += OnPointerReleased;
+        StructureCanvas.PointerCaptureLost += OnPointerReleased;
         StructureCanvas.PointerMoved += OnPointerMoved;
         StructureCanvas.PointerWheelChanged += OnPointerWheelChanged;
         StructureCanvas.PointerExited += OnPointerExited;
@@ -113,9 +131,12 @@ public sealed partial class ColumnstoreStructureControl : IDisposable
     {
         StructureCanvas.PaintSurface -= OnPaintSurface;
         StructureCanvas.PointerPressed -= OnPointerPressed;
+        StructureCanvas.PointerReleased -= OnPointerReleased;
+        StructureCanvas.PointerCaptureLost -= OnPointerReleased;
         StructureCanvas.PointerMoved -= OnPointerMoved;
         StructureCanvas.PointerWheelChanged -= OnPointerWheelChanged;
         StructureCanvas.PointerExited -= OnPointerExited;
+        StructureCanvas.RightTapped -= OnRightTapped;
 
         ActualThemeChanged -= OnActualThemeChanged;
 
@@ -154,11 +175,15 @@ public sealed partial class ColumnstoreStructureControl : IDisposable
             _isThemeDirty = false;
         }
 
-        _regions = _renderer.Draw(e.Surface.Canvas,
-                                  index,
-                                  rowGroups,
-                                  (float)StructureCanvas.ActualWidth,
-                                  _scrollOffset);
+        var canvas = e.Surface.Canvas;
+
+        canvas.Save();
+
+        _viewport.Apply(canvas);
+
+        _regions = _renderer.Draw(canvas, index, rowGroups, (float)StructureCanvas.ActualWidth);
+
+        canvas.Restore();
     }
 
     private void ApplyTheme()
@@ -198,22 +223,50 @@ public sealed partial class ColumnstoreStructureControl : IDisposable
             return;
         }
 
-        var point = pointer.Position;
+        _isPointerDown = true;
+        _isDragging = false;
+        _dragStart = pointer.Position;
+        _dragStartOffsetX = _viewport.OffsetX;
+        _dragStartOffsetY = _viewport.OffsetY;
 
-        if (FindRegion((float)point.X, (float)point.Y) is not { } region)
+        StructureCanvas.CapturePointer(e.Pointer);
+    }
+
+    /// <summary>
+    /// A press that panned is the pan, one that did not is a click on whatever it landed on
+    /// </summary>
+    private void OnPointerReleased(object sender, PointerRoutedEventArgs e)
+    {
+        if (_isPointerDown && !_isDragging)
         {
-            return;
+            var point = e.GetCurrentPoint(StructureCanvas).Position;
+
+            if (FindRegion((float)point.X, (float)point.Y) is { } region
+                && region.ElementType != ColumnstoreElementType.RowGroup)
+            {
+                ElementClicked?.Invoke(this, region);
+            }
         }
 
-        if (region.ElementType != ColumnstoreElementType.RowGroup)
+        if (_isDragging)
         {
-            ElementClicked?.Invoke(this, region);
+            ProtectedCursor = InputSystemCursor.Create(InputSystemCursorShape.Arrow);
         }
+
+        _isPointerDown = false;
+        _isDragging = false;
+
+        StructureCanvas.ReleasePointerCapture(e.Pointer);
     }
 
     private void OnPointerMoved(object sender, PointerRoutedEventArgs e)
     {
         var point = e.GetCurrentPoint(StructureCanvas).Position;
+
+        if (_isPointerDown && Pan(point))
+        {
+            return;
+        }
 
         var region = FindRegion((float)point.X, (float)point.Y);
 
@@ -259,15 +312,15 @@ public sealed partial class ColumnstoreStructureControl : IDisposable
             return -1;
         }
 
-        // The bands are drawn scrolled, so the pointer is put back into the coordinates they were laid out in
-        var canvasY = y + _scrollOffset;
+        // The bands are drawn through the viewport, so the pointer is put back into the coordinates they were laid out in
+        var point = _viewport.ToContent(x, y);
 
-        if (canvasY < _renderer.BandTop || canvasY > _renderer.BandBottom)
+        if (point.Y < _renderer.BandTop || point.Y > _renderer.BandBottom)
         {
             return -1;
         }
 
-        var slot = ColumnstoreLayout.GetColumnIndex(x, (float)StructureCanvas.ActualWidth, index.Columns.Count);
+        var slot = ColumnstoreLayout.GetColumnIndex(point.X, (float)StructureCanvas.ActualWidth, index.Columns.Count);
 
         return slot < 0 ? -1 : index.Columns[slot].ColumnStoreColumnId;
     }
@@ -304,33 +357,77 @@ public sealed partial class ColumnstoreStructureControl : IDisposable
         StructureCanvas.Invalidate();
     }
 
+    /// <summary>
+    /// Wheel scrolls, and with control held zooms about the pointer
+    /// </summary>
     private void OnPointerWheelChanged(object sender, PointerRoutedEventArgs e)
     {
-        var delta = e.GetCurrentPoint(StructureCanvas).Properties.MouseWheelDelta;
+        var pointer = e.GetCurrentPoint(StructureCanvas);
+
+        var delta = pointer.Properties.MouseWheelDelta;
 
         Tooltip.Hide();
 
-        SetScrollOffset(_scrollOffset - delta);
-
         e.Handled = true;
+
+        var changed = IsControlPressed()
+            ? _viewport.ZoomAt(delta, pointer.Position.X, pointer.Position.Y, pointer.Timestamp)
+            : _viewport.SetOffset(_viewport.OffsetX, _viewport.OffsetY - delta);
+
+        if (changed)
+        {
+            SyncScrollBars();
+
+            StructureCanvas.Invalidate();
+        }
     }
 
-    private void ScrollBar_OnScroll(object sender, ScrollEventArgs e) => SetScrollOffset((float)e.NewValue);
+    private static bool IsControlPressed()
+        => InputKeyboardSource.GetKeyStateForCurrentThread(VirtualKey.Control).HasFlag(CoreVirtualKeyStates.Down);
 
-    private void SetScrollOffset(float value)
+    /// <summary>
+    /// Drags the drawing under the pointer, once the press has moved far enough to be a drag rather than a click
+    /// </summary>
+    private bool Pan(global::Windows.Foundation.Point position)
     {
-        var clamped = Math.Clamp(value, 0, (float)VerticalScrollBar.Maximum);
+        var deltaX = position.X - _dragStart.X;
+        var deltaY = position.Y - _dragStart.Y;
 
-        if (Math.Abs(clamped - _scrollOffset) < 0.5f)
+        if (!_isDragging && Math.Abs(deltaX) < DragThreshold && Math.Abs(deltaY) < DragThreshold)
         {
-            return;
+            return false;
         }
 
-        _scrollOffset = clamped;
+        if (!_isDragging)
+        {
+            _isDragging = true;
 
-        VerticalScrollBar.Value = clamped;
+            Tooltip.Hide();
 
-        StructureCanvas.Invalidate();
+            ProtectedCursor = InputSystemCursor.Create(InputSystemCursorShape.SizeAll);
+        }
+
+        if (_viewport.SetOffset(_dragStartOffsetX - (float)deltaX, _dragStartOffsetY - (float)deltaY))
+        {
+            SyncScrollBars();
+
+            StructureCanvas.Invalidate();
+        }
+
+        return true;
+    }
+
+    private void ScrollBar_OnScroll(object sender, ScrollEventArgs e)
+    {
+        var horizontal = ReferenceEquals(sender, HorizontalScrollBar) ? (float)e.NewValue : _viewport.OffsetX;
+        var vertical = ReferenceEquals(sender, VerticalScrollBar) ? (float)e.NewValue : _viewport.OffsetY;
+
+        if (_viewport.SetOffset(horizontal, vertical))
+        {
+            SyncScrollBars();
+
+            StructureCanvas.Invalidate();
+        }
     }
 
     /// <summary>
@@ -338,7 +435,7 @@ public sealed partial class ColumnstoreStructureControl : IDisposable
     /// </summary>
     private ColumnstoreRegion? FindRegion(float x, float y)
     {
-        var point = new SKPoint(x, y + _scrollOffset);
+        var point = _viewport.ToContent(x, y);
 
         for (var i = _regions.Count - 1; i >= 0; i--)
         {
@@ -374,16 +471,26 @@ public sealed partial class ColumnstoreStructureControl : IDisposable
                                                          HasLocalDictionaries(),
                                                          columnHeaderHeight);
 
-        var viewport = (float)StructureCanvas.ActualHeight;
+        // The drawing is laid out to the canvas width, so at a zoom of one there is nothing to pan horizontally
+        _viewport.SetExtent((float)StructureCanvas.ActualWidth,
+                            content,
+                            (float)StructureCanvas.ActualWidth,
+                            (float)StructureCanvas.ActualHeight);
 
-        var maximum = Math.Max(0, content - viewport);
+        SyncScrollBars();
+    }
 
-        VerticalScrollBar.Maximum = maximum;
-        VerticalScrollBar.ViewportSize = viewport;
-        VerticalScrollBar.Visibility = maximum > 0 ? Visibility.Visible : Visibility.Collapsed;
+    private void SyncScrollBars()
+    {
+        VerticalScrollBar.Maximum = _viewport.MaximumOffsetY;
+        VerticalScrollBar.ViewportSize = StructureCanvas.ActualHeight;
+        VerticalScrollBar.Visibility = _viewport.MaximumOffsetY > 0 ? Visibility.Visible : Visibility.Collapsed;
+        VerticalScrollBar.Value = _viewport.OffsetY;
 
-        _scrollOffset = Math.Min(_scrollOffset, maximum);
-        VerticalScrollBar.Value = _scrollOffset;
+        HorizontalScrollBar.Maximum = _viewport.MaximumOffsetX;
+        HorizontalScrollBar.ViewportSize = StructureCanvas.ActualWidth;
+        HorizontalScrollBar.Visibility = _viewport.MaximumOffsetX > 0 ? Visibility.Visible : Visibility.Collapsed;
+        HorizontalScrollBar.Value = _viewport.OffsetX;
     }
 
     private static void OnRevisionChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
@@ -403,7 +510,7 @@ public sealed partial class ColumnstoreStructureControl : IDisposable
     {
         var control = (ColumnstoreStructureControl)d;
 
-        control._scrollOffset = 0;
+        control._viewport.SetOffset(0, 0);
 
         control._hasLocalDictionaries = null;
 

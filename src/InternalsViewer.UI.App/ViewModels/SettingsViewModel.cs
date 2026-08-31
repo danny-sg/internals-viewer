@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
@@ -18,6 +18,8 @@ public partial class SettingsViewModel(SettingsService settingsService, TraceDir
     private const string MaxTraceSizeKey = "MaxTraceSizeMb";
     private const string AutoDeleteTraceKey = "AutoDeleteTrace";
     private const string TraceNestedLayoutKey = "TraceNestedLayout";
+
+    private const string ColumnstoreResolutionKey = "FullColumnstoreAllocationResolution";
 
     private const double DefaultMaxTraceSizeMb = 150;
 
@@ -41,6 +43,9 @@ public partial class SettingsViewModel(SettingsService settingsService, TraceDir
 
     [ObservableProperty]
     private bool _traceNestedLayout = true;
+
+    [ObservableProperty]
+    private bool _fullColumnstoreResolution = true;
 
     [ObservableProperty]
     private string _memoryUsage = string.Empty;
@@ -86,6 +91,10 @@ public partial class SettingsViewModel(SettingsService settingsService, TraceDir
         var savedNestedLayout = await SettingsService.ReadSettingAsync<bool?>(TraceNestedLayoutKey);
 
         TraceNestedLayout = savedNestedLayout ?? true;
+
+        var savedColumnstoreResolution = await SettingsService.ReadSettingAsync<bool?>(ColumnstoreResolutionKey);
+
+        FullColumnstoreResolution = savedColumnstoreResolution ?? true;
     }
 
     /// <summary>
@@ -122,6 +131,11 @@ public partial class SettingsViewModel(SettingsService settingsService, TraceDir
     partial void OnAutoDeleteTraceChanged(bool value)
     {
         _ = SettingsService.SaveSettingAsync(AutoDeleteTraceKey, value);
+    }
+
+    partial void OnFullColumnstoreResolutionChanged(bool value)
+    {
+        _ = SettingsService.SaveSettingAsync(ColumnstoreResolutionKey, value);
     }
 
     partial void OnTraceNestedLayoutChanged(bool value)

@@ -54,7 +54,7 @@ public class ColumnStoreIndex
     public AllocationUnit? DeleteBitmapAllocationUnit => DeleteBitmap?.DataAllocationUnit;
 
     public IEnumerable<RowGroup> CompressedRowGroups
-        => RowGroups.Where(r => r.State == RowGroupState.Compressed);
+        => RowGroups.Where(r => r.State == RowGroupState.Compressed).OrderBy(r => r.RowGroupId);
 
     public long TotalRows => RowGroups.Sum(r => (long)r.TotalRows);
 

@@ -64,6 +64,13 @@
                                   OffContent=""
                                   IsEnabled="{x:Bind ViewModel.UseCustomTraceDirectory, Mode=OneWay}"/>
                 </controls:SettingsCard>
+                <controls:SettingsCard Header="Full Columnstore Allocation Resolution"
+                                       Description="Map every columnstore page chain when a query reads one, so reads resolve to a row group, column and segment. Large indexes are skipped regardless">
+                    <ToggleSwitch IsOn="{x:Bind ViewModel.FullColumnstoreResolution, Mode=TwoWay}"
+                                  HorizontalAlignment="Right"
+                                  OnContent=""
+                                  OffContent=""/>
+                </controls:SettingsCard>
                 <controls:SettingsCard Header="Maximum Trace Size"
                                        Description="Maximum size (MB) of the .xel trace">
                     <NumberBox Value="{x:Bind ViewModel.MaxTraceSizeMb, Mode=TwoWay}"

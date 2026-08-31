@@ -15,6 +15,10 @@
             <ColumnDefinition Width="*"/>
             <ColumnDefinition Width="Auto"/>
         </Grid.ColumnDefinitions>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
         <StackPanel IsHitTestVisible="False">
             <Border x:Name="PanelProbe"
                     Width="0"
@@ -29,14 +33,26 @@
 
         <skiaSharp:SKXamlCanvas x:Name="StructureCanvas"
                                 Grid.Column="0"
+                                Grid.Row="0"
                                 IgnorePixelScaling="True"
                                 VerticalAlignment="Stretch"
                                 HorizontalAlignment="Stretch"/>
-        <columnstore:ColumnstoreTooltip x:Name="Tooltip" Grid.Column="0"/>
+        <columnstore:ColumnstoreTooltip x:Name="Tooltip" Grid.Column="0" Grid.Row="0"/>
 
         <ScrollBar x:Name="VerticalScrollBar"
                    Grid.Column="1"
+                   Grid.Row="0"
                    Orientation="Vertical"
+                   Maximum="0"
+                   Minimum="0"
+                   Value="0"
+                   IndicatorMode="MouseIndicator"
+                   Scroll="ScrollBar_OnScroll"/>
+
+        <ScrollBar x:Name="HorizontalScrollBar"
+                   Grid.Column="0"
+                   Grid.Row="1"
+                   Orientation="Horizontal"
                    Maximum="0"
                    Minimum="0"
                    Value="0"

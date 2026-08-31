@@ -15,4 +15,5 @@ public sealed record ColumnstorePageRead(PageAddress PageAddress,
                                          string ColumnName,
                                          int SegmentId,
                                          int DictionaryId,
-                                         ColumnstoreReadType ReadType);
+                                         ColumnstoreReadType ReadType,
+                                         int Bytes = 0);

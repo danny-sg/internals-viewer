@@ -15,7 +15,6 @@ using InternalsViewer.Internals.Interfaces.Readers.Internals;
 using InternalsViewer.Internals.Interfaces.Services.Records;
 using InternalsViewer.Internals.Metadata.Structures;
 using InternalsViewer.Internals.Providers.Metadata;
-using Microsoft.Extensions.Logging;
 
 namespace InternalsViewer.Internals.Columnstore.Services;
 

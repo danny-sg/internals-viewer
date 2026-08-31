@@ -7,37 +7,41 @@ namespace InternalsViewer.UI.App.Helpers;
 public static class ColumnstoreStructureText
 {
     public static string? Describe(IReadOnlyList<ColumnstorePageRead> reads)
-        => reads.Count == 0
-            ? null
-            : string.Join("; ", reads.Select(Describe).Where(t => t is { Length: > 0 }));
-
-    public static string? Describe(ColumnstorePageRead? read)
     {
-        if (read is null)
+        if (reads.Count == 0)
         {
             return null;
         }
 
-        var parts = new List<string>(3);
+        var groups = reads.GroupBy(r => r.RowGroupId)
+                          .OrderBy(g => g.Key)
+                          .Select(Describe);
 
-        if (read.RowGroupId >= 0)
-        {
-            parts.Add($"Row Group {read.RowGroupId}");
-        }
+        return string.Join("; ", groups);
+    }
 
-        parts.Add(read.ColumnName.Length > 0
-                  ? $"Column {read.ColumnName}"
-                  : $"Column {read.ColumnId}");
+    private static string Describe(IGrouping<int, ColumnstorePageRead> group)
+    {
+        var parts = group.Select(Part).Where(p => p.Length > 0).Distinct().Order();
 
-        parts.Add(read.ReadType switch
+        var detail = string.Join(" / ", parts);
+
+        return group.Key >= 0 ? $"Row Group {group.Key}, {detail}" : detail;
+    }
+
+    private static string Part(ColumnstorePageRead read)
+    {
+        var name = read.ColumnName.Length > 0
+                   ? $"{read.ColumnName} ({read.ColumnId})"
+                   : $"Column {read.ColumnId}";
+
+        return read.ReadType switch
         {
             ColumnstoreReadType.Dictionary => read.DictionaryId >= 0
-                                              ? $"Dictionary {read.DictionaryId}"
-                                              : "Dictionary",
+                                              ? $"{name} Dictionary {read.DictionaryId}"
+                                              : $"{name} Dictionary",
             ColumnstoreReadType.DeleteBitmap => "Delete Bitmap",
-            _ => read.SegmentId >= 0 ? $"Segment {read.SegmentId}" : "Segment"
-        });
-
-        return string.Join(", ", parts);
+            _ => name
+        };
     }
 }

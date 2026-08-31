@@ -69,6 +69,8 @@ public static class ServiceRegistration
 
         services.AddTransient<ColumnstoreService>();
 
+        services.AddTransient<ColumnstorePageMapper>();
+
         RegisterPageParsers(services);
     }
 

@@ -1,4 +1,4 @@
-using System.Diagnostics;
+﻿using System.Diagnostics;
 using InternalsViewer.Internals.Engine.Database;
 using InternalsViewer.Query.CallStack;
 using InternalsViewer.Query.Events.Batches;
@@ -15,14 +15,21 @@ using InternalsViewer.Query.Results;
 using InternalsViewer.TransactionLog.LogRecords;
 using InternalsViewer.TransactionLog;
 using Microsoft.Data.SqlClient;
+using InternalsViewer.Internals.Columnstore.Services;
+using InternalsViewer.Query.Plans.Operators;
+using InternalsViewer.Internals.Engine.Database.Enums;
 using Microsoft.Extensions.Logging;
 
 namespace InternalsViewer.Query;
 
 public sealed class QueryRunner(ILogger<QueryRunner> logger,
                                 EventReader eventReader,
-                                LogRecordReader logRecordReader)
+                                LogRecordReader logRecordReader,
+                                ColumnstoreService? columnstoreService = null,
+                                ColumnstorePageMapper? columnstorePageMapper = null)
 {
+    public bool ResolveColumnstorePages { get; set; } = true;
+
     private ILogger<QueryRunner> Logger { get; } = logger;
 
     private EventReader EventReader { get; } = eventReader;
@@ -159,6 +166,8 @@ public sealed class QueryRunner(ILogger<QueryRunner> logger,
 
             progress?.Report($"{events.Count} event(s) retrieved in {Stopwatch.GetElapsedTime(eventsStart)}");
 
+            await MapColumnstorePages(database, executionPlans, progress, cancellationToken);
+
             if (eventOptions.AutoDeleteTrace && !string.IsNullOrWhiteSpace(eventOptions.TraceDirectory))
             {
                 DeleteTraceFiles(filePath, progress);
@@ -272,6 +281,59 @@ public sealed class QueryRunner(ILogger<QueryRunner> logger,
             CropEndUs = cropEnd
         };
     }
+
+    private async Task MapColumnstorePages(DatabaseSource database,
+                                           List<ExecutionPlan>? executionPlans,
+                                           IProgress<string>? progress,
+                                           CancellationToken cancellationToken)
+    {
+        if (!ResolveColumnstorePages
+            || executionPlans is null
+            || columnstoreService is null
+            || columnstorePageMapper is null)
+        {
+            return;
+        }
+
+        var units = executionPlans.SelectMany(p => p.NodesById.Values)
+                                  .Where(OperatorClassifier.IsColumnstoreScan)
+                                  .Select(n => FindAllocationUnit(database, n))
+                                  .OfType<AllocationUnit>()
+                                  .DistinctBy(u => u.AllocationUnitId)
+                                  .ToList();
+
+        if (units.Count == 0)
+        {
+            return;
+        }
+
+        progress?.Report("Resolving columnstore pages");
+
+        foreach (var unit in units)
+        {
+            var index = await columnstoreService.GetIndex(unit, database, cancellationToken);
+
+            await columnstorePageMapper.MapAsync(database, index, cancellationToken);
+        }
+    }
+
+    private static AllocationUnit? FindAllocationUnit(DatabaseSource database, PlanNode node)
+    {
+        if (string.IsNullOrEmpty(node.Table))
+        {
+            return null;
+        }
+
+        return database.AllocationUnits
+                       .Values
+                       .FirstOrDefault(a => NameMatches(a.IndexName, node.Index ?? string.Empty)
+                                            && NameMatches(a.TableName, node.Table)
+                                            && (string.IsNullOrEmpty(node.Schema) || NameMatches(a.SchemaName, node.Schema))
+                                            && a.AllocationUnitType == AllocationUnitType.InRowData);
+    }
+
+    private static bool NameMatches(string? left, string right)
+        => string.Equals(left?.Trim('[', ']'), right.Trim('[', ']'), StringComparison.OrdinalIgnoreCase);
 
     private void DeleteTraceFiles(string filePath, IProgress<string>? progress)
     {

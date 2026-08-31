@@ -118,13 +118,9 @@ public sealed class ColumnstoreStructureRenderer : IDisposable
     public List<ColumnstoreRegion> Draw(SKCanvas canvas,
                                         ColumnStoreIndex index,
                                         IReadOnlyList<RowGroupSummary> rowGroups,
-                                        float width,
-                                        float scrollOffset)
+                                        float width)
     {
         var regions = new List<ColumnstoreRegion>();
-
-        canvas.Save();
-        canvas.Translate(0, -scrollOffset);
 
         var y = ColumnstoreLayout.Margin;
 
@@ -178,8 +174,6 @@ public sealed class ColumnstoreStructureRenderer : IDisposable
 
             y += ColumnstoreLayout.GetRowGroupHeight(hasLocalDictionaries) + ColumnstoreLayout.RowGroupGap;
         }
-
-        canvas.Restore();
 
         return regions;
     }

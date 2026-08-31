@@ -411,6 +411,9 @@ public sealed partial class AllocationControl : IDisposable
         return _renderer;
     }
 
+    private bool IsHiddenBySelection(AllocationLayer layer) =>
+        layer.IsAllocationLayer && SelectedLayers is { Count: > 0 } && !SelectedLayers.Contains(layer);
+
     private void OnLayersChanged(object? sender,
                                  System.Collections.Specialized.NotifyCollectionChangedEventArgs e) => Refresh();
 
@@ -843,7 +846,7 @@ public sealed partial class AllocationControl : IDisposable
     {
         foreach (var layer in Layers)
         {
-            if (!layer.IsVisible || layer.Opacity == 0)
+            if (!layer.IsVisible || layer.Opacity == 0 || IsHiddenBySelection(layer))
             {
                 continue;
             }
@@ -924,7 +927,7 @@ public sealed partial class AllocationControl : IDisposable
     {
         foreach (var layer in Layers)
         {
-            if (!layer.IsVisible || layer.Opacity == 0)
+            if (!layer.IsVisible || layer.Opacity == 0 || IsHiddenBySelection(layer))
             {
                 continue;
             }

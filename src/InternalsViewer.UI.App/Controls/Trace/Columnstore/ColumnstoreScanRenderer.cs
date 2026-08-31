@@ -41,6 +41,28 @@ public sealed class ColumnstoreScanRenderer : IDisposable
 
     public void Dispose() => _fill.Dispose();
 
+    /// <summary>
+    /// The height the row groups take, which is the canvas height until they hit their smallest height
+    /// </summary>
+    public static float GetContentHeight(int rowGroupCount, float viewportHeight)
+    {
+        if (rowGroupCount == 0)
+        {
+            return 0;
+        }
+
+        var available = viewportHeight - (Margin * 2);
+
+        var height = (available - (RowGroupGap * (rowGroupCount - 1))) / rowGroupCount;
+
+        if (height < MinimumRowGroupHeight)
+        {
+            height = MinimumRowGroupHeight;
+        }
+
+        return (Margin * 2) + (rowGroupCount * height) + (RowGroupGap * (rowGroupCount - 1));
+    }
+
     public List<ColumnstoreRegion> Draw(SKCanvas canvas,
                                                SKRect bounds,
                                                IReadOnlyList<ScanRowGroup> rowGroups,

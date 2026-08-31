@@ -5,7 +5,8 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-    xmlns:controls="using:CommunityToolkit.WinUI.Controls"
+    xmlns:toolkit="using:CommunityToolkit.WinUI.Controls"
+    xmlns:controls="using:InternalsViewer.UI.App.Controls"
     xmlns:batch="using:InternalsViewer.UI.App.Models.Query.Trace.Batch"
     xmlns:tableView="using:WinUI.TableView"
     mc:Ignorable="d">
@@ -87,7 +88,7 @@
                         </tableView:TableView.Resources>
                     </tableView:TableView>
 
-                    <controls:GridSplitter x:Name="DetailSplitter"
+                    <toolkit:GridSplitter x:Name="DetailSplitter"
                                            Grid.Row="1"
                                            Height="6"
                                            Visibility="Collapsed"
@@ -152,12 +153,8 @@
                                                FontSize="12"
                                                TextTrimming="CharacterEllipsis"
                                                Foreground="{ThemeResource TextFillColorTertiaryBrush}" />
-                                    <TextBlock Grid.Column="1"
-                                               Text="{x:Bind Value}"
-                                               FontSize="12"
-                                               IsTextSelectionEnabled="True"
-                                               TextWrapping="Wrap"
-                                               Foreground="{ThemeResource TextFillColorPrimaryBrush}" />
+                                    <controls:CopyTextBlock Grid.Column="1"
+                                                            Value="{x:Bind Value}" />
                                 </Grid>
                             </DataTemplate>
                         </ListView.ItemTemplate>
@@ -193,7 +190,7 @@
               <Grid>
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto" />
-                    <RowDefinition Height="2*" MinHeight="60" />
+                    <RowDefinition x:Name="DeepTableRow" Height="2*" MinHeight="60" />
                     <RowDefinition x:Name="DeepSplitterRow" Height="0" />
                     <RowDefinition x:Name="DeepDetailRow" Height="0" />
                 </Grid.RowDefinitions>
@@ -247,7 +244,7 @@
                     </tableView:TableView.Columns>
                 </tableView:TableView>
 
-                <controls:GridSplitter x:Name="DeepSplitter"
+                <toolkit:GridSplitter x:Name="DeepSplitter"
                                        Grid.Row="2"
                                        Height="6"
                                        Visibility="Collapsed"
@@ -312,12 +309,8 @@
                                            FontSize="12"
                                            TextTrimming="CharacterEllipsis"
                                            Foreground="{ThemeResource TextFillColorTertiaryBrush}" />
-                                <TextBlock Grid.Column="1"
-                                           Text="{x:Bind Value}"
-                                           FontSize="12"
-                                           IsTextSelectionEnabled="True"
-                                           TextWrapping="Wrap"
-                                           Foreground="{ThemeResource TextFillColorPrimaryBrush}" />
+                                <controls:CopyTextBlock Grid.Column="1"
+                                                        Value="{x:Bind Value}" />
                             </Grid>
                         </DataTemplate>
                     </ListView.ItemTemplate>
