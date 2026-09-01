@@ -134,6 +134,10 @@ public static class TraceStepRuns
                 batchSpan.Work.Apply(batchProduced);
                 return true;
 
+            case AccessStep.AggregatePushdown pushdown:
+                PushdownSpanFor(pushdown, history).Progress.Apply(pushdown);
+                return true;
+
             case AccessStep.BatchSkipped batchSkipped:
                 BatchCountSpanFor(batchSkipped, "→ Batch", history, top).Work.Apply(batchSkipped);
                 return true;
@@ -302,6 +306,24 @@ public static class TraceStepRuns
             NodeId = step.NodeId,
             Counters = step.Counters,
             Badge = badge
+        };
+
+        InsertSpan(history, created);
+
+        return created;
+    }
+
+    private static AggregatePushdownSpan PushdownSpanFor(AccessStep step, ObservableCollection<AccessStep> history)
+    {
+        if (FindOpenSpan<AggregatePushdownSpan>(history, step.NodeId) is { } span)
+        {
+            return span;
+        }
+
+        var created = new AggregatePushdownSpan
+        {
+            NodeId = step.NodeId,
+            Counters = step.Counters
         };
 
         InsertSpan(history, created);

@@ -13,9 +13,6 @@ using InternalsViewer.Internals.Interfaces.Engine;
 
 namespace InternalsViewer.Execution.Iterators.Common;
 
-/// <summary>
-/// Where one row landed in the table
-/// </summary>
 public readonly record struct HashAggregateHit(int Bucket,
                                               int Entry,
                                               uint Hash,
@@ -74,6 +71,23 @@ public sealed class HashAggregateBuilder(IReadOnlyList<string> groupBy, IReadOnl
         group.Add(new RecordRowValueSource(row), context);
 
         InputRowCount++;
+
+        return new HashAggregateHit(bucket, entry, hash, key, group, isNew);
+    }
+
+    public HashAggregateHit AccumulateRun(IRecord row, EvaluationContext context, long count, AccessKey? localKey, int skipKeyFields)
+    {
+        ApplyPendingResize();
+
+        var key = localKey ?? GetKey(row);
+
+        var hash = JoinHash.Compute(key, key.Count);
+
+        var (bucket, entry, group, isNew) = Find(hash, key, row, localKey, skipKeyFields);
+
+        group.AddRun(new RecordRowValueSource(row), context, count);
+
+        InputRowCount += count;
 
         return new HashAggregateHit(bucket, entry, hash, key, group, isNew);
     }

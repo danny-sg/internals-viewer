@@ -58,7 +58,16 @@ public abstract partial record AccessStep
                                             long Materialised) : AccessStep(AccessPhase.Accumulate)
     {
         public long NewGroups => GlobalGroupsAfter - GlobalGroupsBefore;
+
+        public bool HasRowGroup => RowGroupId >= 0;
     }
+
+    public sealed record AggregatePushdown(int RowGroupId,
+                                          int FirstRow,
+                                          int RowCount,
+                                          long Groups,
+                                          long NewGroups,
+                                          bool IsRunFolded) : AccessStep(AccessPhase.Accumulate);
 
     public sealed record BatchSkipped(int RowGroupId,
                                       int FirstRow,

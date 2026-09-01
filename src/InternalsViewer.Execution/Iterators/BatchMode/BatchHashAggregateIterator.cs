@@ -70,6 +70,8 @@ public sealed class BatchHashAggregateIterator(IIteratorFactory factory) : IBatc
 
     private int LocalRowGroupId { get; set; } = -1;
 
+    private bool IsPushdown { get; set; }
+
     private IteratorContext Context { get; set; } = null!;
 
     private ExecutionBatch? Batch { get; set; }
@@ -111,6 +113,8 @@ public sealed class BatchHashAggregateIterator(IIteratorFactory factory) : IBatc
 
         Batch = null;
 
+        IsPushdown = false;
+
         BatchCount = 0;
 
         OutputBatchCount = 0;
@@ -133,6 +137,14 @@ public sealed class BatchHashAggregateIterator(IIteratorFactory factory) : IBatc
         cancellationToken);
 
         Input = factory.CreateBatch(aggregate.Source);
+
+        if (aggregate.Source is ColumnstoreScanDefinition { IsAggregatePushdown: true }
+            && Input is IAggregatePushdownTarget target)
+        {
+            target.SetPushdownSink(LocalBuilder, context.EvaluationContext);
+
+            IsPushdown = true;
+        }
 
         await Input.OpenAsync(aggregate.Source, context, cancellationToken);
     }

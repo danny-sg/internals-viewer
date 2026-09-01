@@ -1,4 +1,4 @@
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Linq;
 using System;
 using InternalsViewer.Query.Events.Operators;
@@ -9,6 +9,7 @@ using InternalsViewer.Query.Plans.Model;
 using InternalsViewer.Query.Plans.Operators;
 using InternalsViewer.Query.Plans;
 using InternalsViewer.UI.App.Helpers;
+using InternalsViewer.UI.App.Models.Plan;
 using InternalsViewer.UI.App.ViewModels.Query;
 using Microsoft.UI.Input;
 using Microsoft.UI.Xaml.Controls.Primitives;
@@ -25,7 +26,7 @@ namespace InternalsViewer.UI.App.Controls.Plan;
 
 public sealed class ExecutionPlanControl : Canvas
 {
-    private const double NodeWidth = 150;
+    private const double BaseNodeWidth = 150;
     private const double BaseNodeHeight = 90;
     private const double HorizontalGap = 46;
     private const double VerticalGap = 22;
@@ -37,7 +38,28 @@ public sealed class ExecutionPlanControl : Canvas
     private const double IcicleHeight = 24;
     private const int MaxIcicleLevels = 8;
 
-    private const double ColumnPitch = NodeWidth + HorizontalGap;
+    private readonly Dictionary<PlanNode, IReadOnlyList<PlanNodeAnnotation>> _annotationsByNode = [];
+
+    private readonly List<double> _columnWidths = [];
+
+    private double WidthOf(PlanNode node)
+        => BaseNodeWidth + (_annotationsByNode.TryGetValue(node, out var a) && a.Count > 0
+                            ? PlanNodeControl.AnnotationColumnWidth
+                            : 0);
+
+    private double ColumnWidth(int depth) => depth < _columnWidths.Count ? _columnWidths[depth] : BaseNodeWidth;
+
+    private double ColumnX(int depth)
+    {
+        var x = CanvasMargin;
+
+        for (var d = 0; d < depth; d++)
+        {
+            x += ColumnWidth(d) + HorizontalGap;
+        }
+
+        return x;
+    }
 
     private static readonly Color ConnectorColor = Color.FromArgb(255, 185, 185, 185);
 
@@ -55,6 +77,16 @@ public sealed class ExecutionPlanControl : Canvas
     {
         get => (ExecutionPlan?)GetValue(PlanProperty);
         set => SetValue(PlanProperty, value);
+    }
+
+    public static readonly DependencyProperty AreAnnotationsVisibleProperty =
+        DependencyProperty.Register(nameof(AreAnnotationsVisible), typeof(bool), typeof(ExecutionPlanControl),
+            new PropertyMetadata(false, OnAnnotationsVisibleChanged));
+
+    public bool AreAnnotationsVisible
+    {
+        get => (bool)GetValue(AreAnnotationsVisibleProperty);
+        set => SetValue(AreAnnotationsVisibleProperty, value);
     }
 
     public static readonly DependencyProperty HasFlameGraphProperty =
@@ -189,6 +221,8 @@ public sealed class ExecutionPlanControl : Canvas
         // Reserve the icicle strip only when this plan actually has linked call stacks to draw.
         _nodeHeight = HasFlameGraph && HasLinkedCallstacks() ? BaseNodeHeight + IcicleStripHeight : BaseNodeHeight;
 
+        MeasureColumns();
+
         var positions = new Dictionary<PlanNode, Point>();
         var leaf = new LeafCursor();
 
@@ -219,10 +253,10 @@ public sealed class ExecutionPlanControl : Canvas
             AddNode(node, point, RelativeCost(node, totalCost));
         }
 
-        var maxX = positions.Values.Max(p => p.X);
+        var maxX = positions.Max(p => p.Value.X + WidthOf(p.Key));
         var maxY = positions.Values.Max(p => p.Y);
 
-        Width = maxX + NodeWidth + CanvasMargin;
+        Width = maxX + CanvasMargin;
         Height = maxY + _nodeHeight + CanvasMargin;
 
         SelectByNode(SelectedNode);
@@ -267,7 +301,7 @@ public sealed class ExecutionPlanControl : Canvas
                                    Dictionary<PlanNode, Point> positions,
                                    LeafCursor leaf)
     {
-        var x = CanvasMargin + depth * ColumnPitch;
+        var x = ColumnX(depth);
 
         double y;
 
@@ -304,7 +338,8 @@ public sealed class ExecutionPlanControl : Canvas
         {
             Node = node,
             CostPercent = costFraction,
-            Width = NodeWidth,
+            AreAnnotationsVisible = AreAnnotationsVisible,
+            Width = WidthOf(node),
             Height = _nodeHeight
         };
 
@@ -329,7 +364,7 @@ public sealed class ExecutionPlanControl : Canvas
                                                              PlanNode parentNode, PlanNode childNode)
     {
         var start = new Point(child.X, child.Y + _nodeHeight / 2);
-        var end = new Point(parent.X + NodeWidth, parent.Y + _nodeHeight / 2);
+        var end = new Point(parent.X + WidthOf(parentNode), parent.Y + _nodeHeight / 2);
 
         var elbowX = (start.X + end.X) / 2;
 
@@ -832,4 +867,49 @@ public sealed class ExecutionPlanControl : Canvas
 
     private static void OnPlanChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
         => ((ExecutionPlanControl)d).Rebuild();
+
+    private static void OnAnnotationsVisibleChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
+        => ((ExecutionPlanControl)d).Rebuild();
+
+    /// <summary>
+    /// Widens a depth column only where a node in it carries badges, so a plan with none keeps its original pitch
+    /// </summary>
+    private void MeasureColumns()
+    {
+        _annotationsByNode.Clear();
+
+        _columnWidths.Clear();
+
+        if (Plan is null)
+        {
+            return;
+        }
+
+        foreach (var root in Plan.Root)
+        {
+            MeasureNode(root, 0);
+        }
+    }
+
+    private void MeasureNode(PlanNode node, int depth)
+    {
+        var annotations = AreAnnotationsVisible ? PlanNodeAnnotations.For(node) : [];
+
+        _annotationsByNode[node] = annotations;
+
+        while (_columnWidths.Count <= depth)
+        {
+            _columnWidths.Add(BaseNodeWidth);
+        }
+
+        if (annotations.Count > 0)
+        {
+            _columnWidths[depth] = BaseNodeWidth + PlanNodeControl.AnnotationColumnWidth;
+        }
+
+        foreach (var child in node.Children)
+        {
+            MeasureNode(child, depth + 1);
+        }
+    }
 }

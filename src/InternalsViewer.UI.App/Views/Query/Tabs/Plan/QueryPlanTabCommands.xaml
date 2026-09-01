@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <UserControl
     x:Class="InternalsViewer.UI.App.Views.Query.Tabs.Plan.QueryPlanTabCommands"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
@@ -15,6 +15,10 @@
                       IsChecked="{x:Bind ViewModel.IsFlameGraphVisible, Mode=TwoWay}"
                       IsEnabled="{x:Bind ViewModel.QueryOptions.IncludeCallStack, Mode=OneWay}">
             <TextBlock Text="Flame Graph" VerticalAlignment="Center" />
+        </ToggleButton>
+        <ToggleButton Style="{StaticResource TabCommandToggleStyle}"
+                      IsChecked="{x:Bind ViewModel.IsAnnotationsVisible, Mode=TwoWay}">
+            <TextBlock Text="Annotations" VerticalAlignment="Center" />
         </ToggleButton>
         <ToggleButton Style="{StaticResource TabCommandToggleStyle}"
                       IsChecked="{x:Bind ViewModel.IsPlanPropertiesVisible, Mode=TwoWay}">

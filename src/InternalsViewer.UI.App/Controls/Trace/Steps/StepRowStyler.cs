@@ -7,6 +7,7 @@ using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Controls.Primitives;
 using Microsoft.UI.Xaml.Input;
 using Microsoft.UI.Xaml.Media;
+using Windows.UI;
 
 namespace InternalsViewer.UI.App.Controls.Trace.Steps;
 
@@ -188,7 +189,7 @@ public sealed class StepRowStyler
 
     private static void UpdateEmitBadge(Grid grid, SolidColorBrush? sideBrush, bool isReadAhead)
     {
-        if (grid.FindName("EmitBadge") is not Border badge)
+        if (grid.FindName("EmitBadge") is not SplitBadge badge)
         {
             return;
         }
@@ -201,13 +202,13 @@ public sealed class StepRowStyler
 
         if (sideBrush is not null)
         {
-            badge.Tag ??= badge.Background;
+            badge.Tag ??= badge.BadgeColour;
 
-            badge.Background = sideBrush;
+            badge.BadgeColour = sideBrush.Color;
         }
-        else if (badge.Tag is Brush original)
+        else if (badge.Tag is Color original)
         {
-            badge.Background = original;
+            badge.BadgeColour = original;
 
             badge.Tag = null;
         }

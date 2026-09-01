@@ -36,7 +36,7 @@ public sealed record SegmentScanEvent : EngineEvent
 
     public int SecondaryBaseId { get; set; }
 
-    public ColumnStoreInstructionSet CpuInstructionSet { get; set; }
+    public ColumnStoreInstructionSet? CpuInstructionSet { get; set; }
 
     public ColumnStoreFilterType FilterType { get; set; }
 

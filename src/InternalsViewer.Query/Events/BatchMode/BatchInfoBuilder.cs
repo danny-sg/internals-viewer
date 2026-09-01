@@ -50,7 +50,7 @@ public static class BatchInfoBuilder
     {
         if (engineEvent is SegmentScanEvent scan)
         {
-            info.CpuInstructionSet ??= scan.CpuInstructionSet.ToString();
+            info.CpuInstructionSet ??= scan.CpuInstructionSet?.ToString().ToUpperInvariant();
 
             info.IsFilterOnCompressedDataUsed = Or(info.IsFilterOnCompressedDataUsed, scan.IsFilterOnCompressedDataUsed);
             info.IsDeepDataPossible = Or(info.IsDeepDataPossible, scan.IsDeepDataPossible);
@@ -74,7 +74,7 @@ public static class BatchInfoBuilder
                 CompressedDataType = scan.CompressedDataType.ToString(),
                 FilterType = scan.FilterType.ToString(),
                 FilterOnCompressedDataType = scan.FilterOnCompressedDataType.ToString(),
-                InstructionSet = scan.CpuInstructionSet.ToString(),
+                InstructionSet = scan.CpuInstructionSet?.ToString().ToUpperInvariant() ?? string.Empty,
                 BitPacking = scan.BitPacking,
                 BaseId = scan.BaseId,
                 Magnitude = scan.Magnitude,

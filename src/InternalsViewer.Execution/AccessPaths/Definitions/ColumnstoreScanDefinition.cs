@@ -17,5 +17,7 @@ public sealed record ColumnstoreScanDefinition : IteratorDefinition, IBatchDefin
 
     public bool IsGenericFilterUsed { get; init; }
 
+    public bool IsAggregatePushdown { get; init; }
+
     public int BatchRowCount => BatchMode.BatchSize.GetRowCount(ColumnNames.Count + PipelineColumnNames.Count);
 }

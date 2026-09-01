@@ -345,6 +345,19 @@ public sealed class TraceStepApplier(TraceLayout layout,
             }
         }
 
+        foreach (var iterator in BatchIterators(stepper).Values.OfType<IAggregatePushdownTarget>())
+        {
+            if (!iterator.IsAggregatePushdown || iterator is not IBatchIterator batch)
+            {
+                continue;
+            }
+
+            if (operatorsByNode.TryGetValue(batch.NodeId, out var scanTab))
+            {
+                scanTab.SetState("Locally Aggregated Rows", iterator.LocallyAggregatedRows.ToString("N0"));
+            }
+        }
+
         foreach (var iterator in BatchIterators(stepper).Values.OfType<BatchHashAggregateIterator>())
         {
             if (!operatorsByNode.TryGetValue(iterator.NodeId, out var tab))

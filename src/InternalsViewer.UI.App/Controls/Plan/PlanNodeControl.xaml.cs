@@ -1,4 +1,4 @@
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Globalization;
 using System.Text;
 using InternalsViewer.Query.Plans.Model;
@@ -72,9 +72,32 @@ public sealed partial class PlanNodeControl : UserControl
         set => SetValue(IsActiveProperty, value);
     }
 
+    public static readonly DependencyProperty AreAnnotationsVisibleProperty =
+        DependencyProperty.Register(nameof(AreAnnotationsVisible), typeof(bool), typeof(PlanNodeControl),
+            new PropertyMetadata(false, OnAnnotationsChanged));
+
+    public bool AreAnnotationsVisible
+    {
+        get => (bool)GetValue(AreAnnotationsVisibleProperty);
+        set => SetValue(AreAnnotationsVisibleProperty, value);
+    }
+
     public PlanNodeControl()
     {
         InitializeComponent();
+    }
+
+    public const double AnnotationColumnWidth = 104;
+
+    private void RefreshAnnotations()
+    {
+        var annotations = AreAnnotationsVisible && Node is { } node ? PlanNodeAnnotations.For(node) : [];
+
+        AnnotationBadges.ItemsSource = annotations;
+
+        AnnotationColumn.Width = annotations.Count > 0 ? new GridLength(AnnotationColumnWidth) : new GridLength(0);
+
+        AnnotationBadges.Visibility = annotations.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
     }
 
     public SvgImageSource? IconSource => Node is null ? null : new SvgImageSource(PlanIconResolver.Resolve(Node));
@@ -245,7 +268,13 @@ public sealed partial class PlanNodeControl : UserControl
     private static string Trim(string? value) => value?.Trim('[', ']') ?? string.Empty;
 
     private static void OnNodeChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
-        => ((PlanNodeControl)d).Bindings.Update();
+    {
+        var control = (PlanNodeControl)d;
+
+        control.Bindings.Update();
+
+        control.RefreshAnnotations();
+    }
 
     private static void OnIcicleSegmentsChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
         => ((PlanNodeControl)d).RenderIcicle();
@@ -255,4 +284,7 @@ public sealed partial class PlanNodeControl : UserControl
 
     private static void OnIsActiveChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
         => ((PlanNodeControl)d).UpdateStateVisual();
+
+    private static void OnAnnotationsChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
+        => ((PlanNodeControl)d).RefreshAnnotations();
 }

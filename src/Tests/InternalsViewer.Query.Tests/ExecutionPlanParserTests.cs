@@ -1168,6 +1168,71 @@ public class ExecutionPlanParserTests
         Assert.Null(plan.NodesById[0].AggregateInfo);
         Assert.Null(plan.NodesById[2].AggregateInfo);
     }
+
+    // ------------------------------------------------------------------
+    // Batch mode columnstore counters
+    // ------------------------------------------------------------------
+
+    private const string ColumnstoreBatchXml =
+        """
+        <?xml version="1.0"?>
+        <ShowPlanXML xmlns="http://schemas.microsoft.com/sqlserver/2004/07/showplan"
+                     Version="1.7" Build="16.0.0">
+          <BatchSequence>
+            <Batch>
+              <Statements>
+                <StmtSimple StatementText="SELECT Region, COUNT(*) FROM dbo.Sales GROUP BY Region"
+                            StatementType="SELECT">
+                  <QueryPlan>
+                    <RelOp NodeId="0"
+                           PhysicalOp="Columnstore Index Scan"
+                           LogicalOp="Index Scan"
+                           EstimatedTotalSubtreeCost="1"
+                           EstimateRows="1685159">
+                      <OutputList />
+                      <RunTimeInformation>
+                        <RunTimeCountersPerThread Thread="0"
+                                                  ActualRows="5"
+                                                  ActualRowsRead="1685159"
+                                                  ActualElapsedms="120"
+                                                  ActualExecutions="1"
+                                                  ActualExecutionMode="Batch"
+                                                  Batches="1880"
+                                                  SegmentReads="2"
+                                                  SegmentSkips="0"
+                                                  ActualLocallyAggregatedRows="1685154" />
+                      </RunTimeInformation>
+                    </RelOp>
+                  </QueryPlan>
+                </StmtSimple>
+              </Statements>
+            </Batch>
+          </BatchSequence>
+        </ShowPlanXML>
+        """;
+
+    [Fact]
+    public void Locally_Aggregated_Rows_Are_Read_From_The_Scan_Counters()
+    {
+        var plan = Parse(ColumnstoreBatchXml);
+
+        Assert.Equal(1685154, plan.NodesById[0].BatchInfo!.LocallyAggregatedRows);
+    }
+
+    [Fact]
+    public void Batch_Counters_Are_Read_Alongside_Locally_Aggregated_Rows()
+    {
+        var batchInfo = Parse(ColumnstoreBatchXml).NodesById[0].BatchInfo!;
+
+        Assert.Equal(1880, batchInfo.BatchCount);
+
+        Assert.Equal(2, batchInfo.SegmentReads);
+
+        Assert.Equal(0, batchInfo.SegmentSkips);
+
+        Assert.Null(batchInfo.PureRowBuckets);
+    }
+
     // ------------------------------------------------------------------
     // Automatic statistics sampling
     // ------------------------------------------------------------------

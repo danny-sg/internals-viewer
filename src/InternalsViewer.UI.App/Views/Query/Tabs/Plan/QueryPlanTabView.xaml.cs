@@ -1,4 +1,4 @@
-using System.ComponentModel;
+﻿using System.ComponentModel;
 using System;
 using InternalsViewer.Query.Plans.Model;
 using InternalsViewer.UI.App.Controls.Plan;
@@ -104,6 +104,7 @@ public sealed partial class QueryPlanTabView : UserControl
             p.EmittingNodes = ViewModel?.EmittingPlanNodes;
             p.Events = ViewModel?.Events;
             p.HasFlameGraph = ViewModel?.IsFlameGraphVisible == true;
+            p.AreAnnotationsVisible = ViewModel?.IsAnnotationsVisible == true;
         });
     }
 
@@ -149,6 +150,9 @@ public sealed partial class QueryPlanTabView : UserControl
             case nameof(QueryViewModel.IsFlameGraphVisible):
                 ApplyToPlans(p => p.HasFlameGraph = _subscribed.IsFlameGraphVisible);
                 break;
+            case nameof(QueryViewModel.IsAnnotationsVisible):
+                ApplyToPlans(p => p.AreAnnotationsVisible = _subscribed.IsAnnotationsVisible);
+                break;
             case nameof(QueryViewModel.SelectedPlanNode):
                 ApplyToPlans(p => p.SelectedNode = _subscribed.SelectedPlanNode);
                 break;
@@ -173,6 +177,7 @@ public sealed partial class QueryPlanTabView : UserControl
             planControl.EmittingNodes = viewModel.EmittingPlanNodes;
             planControl.Events = viewModel.Events;
             planControl.HasFlameGraph = viewModel.IsFlameGraphVisible;
+            planControl.AreAnnotationsVisible = viewModel.IsAnnotationsVisible;
 
             // ItemsRepeater recycles elements, so guard against subscribing the same control twice.
             planControl.IndexOpenRequested -= OnPlanIndexOpenRequested;

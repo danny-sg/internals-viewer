@@ -36,6 +36,10 @@ public sealed class AccessStepTemplateSelector : DataTemplateSelector
 
     public DataTemplate AggregateLocalMergeTemplate { get; set; } = null!;
 
+    public DataTemplate AggregatePushdownTemplate { get; set; } = null!;
+
+    public DataTemplate AggregatePushdownSpanTemplate { get; set; } = null!;
+
     public DataTemplate CloseTemplate { get; set; } = null!;
 
     public DataTemplate OutputTemplate { get; set; } = null!;
@@ -187,6 +191,8 @@ public sealed class AccessStepTemplateSelector : DataTemplateSelector
             AccessStep.Sorted => SortedTemplate,
             AccessStep.SortRow => SortRowTemplate,
             AccessStep.SortDuplicate => SortDuplicateTemplate,
+            AggregatePushdownSpan => AggregatePushdownSpanTemplate,
+            AccessStep.AggregatePushdown => AggregatePushdownTemplate,
             AccessStep.AggregateLocalMerge => AggregateLocalMergeTemplate,
             AccessStep.AggregateStart => AggregateStartTemplate,
             AccessStep.AggregateGroup => AggregateGroupTemplate,

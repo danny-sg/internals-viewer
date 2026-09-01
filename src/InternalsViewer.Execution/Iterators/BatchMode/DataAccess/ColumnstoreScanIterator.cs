@@ -10,6 +10,7 @@ using InternalsViewer.Execution.BatchMode;
 using InternalsViewer.Execution.BatchMode.Normalization;
 using InternalsViewer.Execution.BatchMode.Vectors;
 using InternalsViewer.Execution.Interfaces.BatchMode;
+using InternalsViewer.Execution.Iterators.Common;
 using InternalsViewer.Internals.Columnstore.Decoding;
 using InternalsViewer.Internals.Columnstore.Metadata;
 using InternalsViewer.Internals.Columnstore.Services;
@@ -25,7 +26,9 @@ namespace InternalsViewer.Execution.Iterators.BatchMode.DataAccess;
 /// OpenAsync()
 /// 
 ///   - Create a new batch (scan should be at the bottom of the operator tree)
+/// 
 ///   - Source deleted rows from the Delete Bitmap
+/// 
 ///   - Row Group elimination to produce a set of non-eliminated row groups
 ///     - Partition elimination eliminates partitions using the boundaries (not yet implemented)
 ///     - Segment elimination eliminates based on the max and min values held in metadata - <see cref="SegmentEliminator"/>. If the segment
@@ -36,7 +39,7 @@ namespace InternalsViewer.Execution.Iterators.BatchMode.DataAccess;
 ///    - Selected Row Groups will be iterated through
 ///    - The scan fills the batch vectors for this batch
 /// </remarks>
-public sealed class ColumnstoreScanIterator(ColumnstoreService columnstoreService) : IBatchIterator
+public sealed class ColumnstoreScanIterator(ColumnstoreService columnstoreService) : IBatchIterator, IAggregatePushdownTarget
 {
     public int NodeId { get; private set; }
 
@@ -51,6 +54,14 @@ public sealed class ColumnstoreScanIterator(ColumnstoreService columnstoreServic
     public IBatchIterator? Input => null;
 
     public long BatchNumber { get; private set; }
+
+    public bool IsAggregatePushdown => PushdownSink is not null;
+
+    public long LocallyAggregatedRows { get; private set; }
+
+    private HashAggregateBuilder? PushdownSink { get; set; }
+
+    private EvaluationContext? PushdownContext { get; set; }
 
     private IteratorContext Context { get; set; } = null!;
 
@@ -99,6 +110,13 @@ public sealed class ColumnstoreScanIterator(ColumnstoreService columnstoreServic
     private string PredicateColumnNames { get; set; } = string.Empty;
 
     private long VectorNumber { get; set; }
+
+    public void SetPushdownSink(HashAggregateBuilder builder, EvaluationContext context)
+    {
+        PushdownSink = builder;
+
+        PushdownContext = context;
+    }
 
     public async Task OpenAsync(IteratorDefinition definition, IteratorContext context, CancellationToken cancellationToken)
     {
@@ -294,12 +312,31 @@ public sealed class ColumnstoreScanIterator(ColumnstoreService columnstoreServic
         if (batch.SelectionVector.RowCount == 0)
         {
             await EmitAsync(new AccessStep.BatchSkipped(rowGroupId, RowOrdinal - size, size)
-                            {
-                                FilterRleEntries = filterRleEntries,
-                                FilterOperations = filterOperations,
-                                HasCompressedFilter = HasCompressedFilter,
-                                HasPredicate = Predicate is not null || Definition.IsGenericFilterUsed
-                            },
+            {
+                FilterRleEntries = filterRleEntries,
+                FilterOperations = filterOperations,
+                HasCompressedFilter = HasCompressedFilter,
+                HasPredicate = Predicate is not null || Definition.IsGenericFilterUsed
+            },
+                            cancellationToken);
+
+            return null;
+        }
+
+        if (PushdownSink is { } sink)
+        {
+            var groupsBefore = sink.GroupCount;
+
+            var isRunFolded = AccumulatePushdown(batch, sink);
+
+            LocallyAggregatedRows += batch.SelectionVector.RowCount;
+
+            await EmitAsync(new AccessStep.AggregatePushdown(rowGroupId,
+                                                             RowOrdinal - size,
+                                                             batch.SelectionVector.RowCount,
+                                                             sink.GroupCount,
+                                                             sink.GroupCount - groupsBefore,
+                                                             isRunFolded),
                             cancellationToken);
 
             return null;
@@ -312,15 +349,15 @@ public sealed class ColumnstoreScanIterator(ColumnstoreService columnstoreServic
                                                      RowOrdinal - size,
                                                      size,
                                                      batch.SelectionVector.RowCount)
-                        {
-                            FilterRleEntries = filterRleEntries,
-                            FilterOperations = filterOperations,
-                            Materialised = materialised,
-                            HasCompressedFilter = HasCompressedFilter,
-                            HasPredicate = Predicate is not null || Definition.IsGenericFilterUsed,
-                            PureColumns = pureColumns,
-                            ImpureColumns = impureColumns
-                        },
+        {
+            FilterRleEntries = filterRleEntries,
+            FilterOperations = filterOperations,
+            Materialised = materialised,
+            HasCompressedFilter = HasCompressedFilter,
+            HasPredicate = Predicate is not null || Definition.IsGenericFilterUsed,
+            PureColumns = pureColumns,
+            ImpureColumns = impureColumns
+        },
                         cancellationToken);
 
         return batch;
@@ -492,6 +529,88 @@ public sealed class ColumnstoreScanIterator(ColumnstoreService columnstoreServic
         }
 
         return Math.Max(1, limit);
+    }
+
+    /// <summary>
+    /// Aggregate Pushdown
+    /// </summary>
+    /// <remarks>
+    /// Aggregate Pushdown is where aggregations are executed inside the columnstore scan directly.
+    ///
+    /// The scan reports no batches and no rows. What it folds is counted as locally aggregated instead, which is why a pushed down
+    /// scan shows ActualRows and Batches of zero next to an ActualLocallyAggregatedRows of the whole table. SQL Server still emits
+    /// batches, each carrying grouping keys and a partial aggregate rather than rows, they are simply not counted as batches. Here
+    /// the values go straight into the sink, so that intermediate form is skipped.
+    ///
+    /// From the call stack in SQL Server, outermost first:
+    ///
+    ///     RowBucketProcessorNew::FlushGroupedAggregateResults - Aggregate results being flushed
+    ///
+    ///       RowBucketProcessorNew::PushPartialAggregatesToQE - Partial aggregates are being pushed to the Query Engine
+    ///
+    ///         CBpagAggregateInMemory::AggregateBatchFastPath - Fast path = Aggregate Pushdown
+    ///
+    ///           CBpagBatchProcessing::RecomputeHashForGlobalAggregation - Partials folded into the global table
+    ///
+    /// The sink builder is the Hash Aggregate's local table, passed to this method so the current batch can be added to it. The
+    /// global table stays with the Hash Aggregate and takes these partials at its merge, which is what RecomputeHashForGlobalAggregation
+    /// does above.
+    /// </remarks>
+    private bool AccumulatePushdown(ExecutionBatch batch, HashAggregateBuilder sink)
+    {
+        var selection = batch.SelectionVector;
+
+        if (CanFoldRun(batch, sink))
+        {
+            sink.AccumulateRun(BatchRecordBuilder.Build(batch, selection[0]),
+                               PushdownContext!,
+                               selection.RowCount,
+                               null,
+                               0);
+
+            return true;
+        }
+
+        for (var index = 0; index < selection.RowCount; index++)
+        {
+            sink.Accumulate(BatchRecordBuilder.Build(batch, selection[index]), PushdownContext!);
+        }
+
+        return false;
+    }
+
+    /// <summary>
+    /// Checks if a batch can be folded into a single operation
+    /// </summary>
+    /// <remarks>
+    /// A. Every GROUP BY column must be constant
+    ///
+    /// B. No aggregate has an argument
+    ///
+    /// C. RowCount != 0 - guard against empty vectors
+    ///
+    /// If both of those conditions are met the row count and constant value can be used together for aggregations.
+    /// </remarks>
+    private static bool CanFoldRun(ExecutionBatch batch, HashAggregateBuilder sink)
+    {
+        if (batch.SelectionVector.RowCount == 0 || sink.Aggregates.Any(a => a.Argument is not null))
+        {
+            return false;
+        }
+
+        foreach (var column in sink.GroupBy)
+        {
+            var vector = batch.Vectors.FirstOrDefault(v => string.Equals(v.Column.Name,
+                                                                        column,
+                                                                        StringComparison.OrdinalIgnoreCase));
+
+            if (vector is not { IsConstant: true })
+            {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     /// <summary>

@@ -634,7 +634,8 @@ public sealed class TraceDefinitionBuilder(Func<PlanNode, AllocationUnit?> resol
             RowGoal = node.PredicateInfo?.RowGoal,
             IsFilterOnCompressedDataUsed = node.BatchInfo?.IsFilterOnCompressedDataUsed == true,
             IsGenericFilterUsed = node.BatchInfo?.SegmentScans
-                                      .Any(s => string.Equals(s.FilterType, "Generic", StringComparison.OrdinalIgnoreCase)) == true
+                                      .Any(s => string.Equals(s.FilterType, "Generic", StringComparison.OrdinalIgnoreCase)) == true,
+            IsAggregatePushdown = node.BatchInfo?.LocallyAggregatedRows > 0
         };
     }
 

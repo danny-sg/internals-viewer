@@ -48,13 +48,29 @@ public sealed class AggregateGroupRecord : IRecord
         foreach (var accumulator in _accumulators)
         {
             var value = accumulator.Column.Argument is { } argument
-                ? PredicateEvaluator.Resolve(argument, source, context)
-                : AccessValue.Null;
+                        ? PredicateEvaluator.Resolve(argument, source, context)
+                        : AccessValue.Null;
 
             accumulator.Add(value);
         }
 
         RowCount++;
+
+        Refresh();
+    }
+
+    public void AddRun(IRowValueSource source, EvaluationContext context, long count)
+    {
+        foreach (var accumulator in _accumulators)
+        {
+            var value = accumulator.Column.Argument is { } argument
+                ? PredicateEvaluator.Resolve(argument, source, context)
+                : AccessValue.Null;
+
+            accumulator.AddRun(value, count);
+        }
+
+        RowCount += count;
 
         Refresh();
     }

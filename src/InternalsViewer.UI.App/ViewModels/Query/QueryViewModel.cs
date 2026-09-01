@@ -205,6 +205,9 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
     private bool _isFlameGraphVisible = true;
 
     [ObservableProperty]
+    private bool _isAnnotationsVisible;
+
+    [ObservableProperty]
     private bool _isSqlResultsVisible;
 
     [ObservableProperty]

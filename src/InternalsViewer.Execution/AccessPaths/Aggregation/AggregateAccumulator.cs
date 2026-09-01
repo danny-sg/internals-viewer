@@ -4,6 +4,9 @@ using InternalsViewer.Execution.AccessPaths.Values;
 
 namespace InternalsViewer.Execution.AccessPaths.Aggregation;
 
+/// <summary>
+/// Accumulator responsible for column aggregation
+/// </summary>
 public sealed class AggregateAccumulator(AggregateColumn column)
 {
     private readonly HashSet<AccessValue> _seen = [];
@@ -124,9 +127,58 @@ public sealed class AggregateAccumulator(AggregateColumn column)
         _hasValue = true;
     }
 
+    public void AddRun(AccessValue value, long count)
+    {
+        if (count <= 0)
+        {
+            return;
+        }
+
+        if (Column.Function == AggregateFunction.CountStar)
+        {
+            _count += count;
+
+            _hasValue = true;
+
+            return;
+        }
+
+        if (value.IsNull)
+        {
+            return;
+        }
+
+        if (Column.IsDistinct)
+        {
+            Add(value);
+
+            return;
+        }
+
+        Add(value);
+
+        if (count == 1)
+        {
+            return;
+        }
+
+        _count += count - 1;
+
+        switch (Column.Function)
+        {
+            case AggregateFunction.Sum or AggregateFunction.Average:
+                for (var repeat = 1; repeat < count; repeat++)
+                {
+                    AddToTotal(value);
+                }
+
+                break;
+        }
+    }
+
     public void Combine(AggregateAccumulator other)
     {
-        if (!other._hasValue && other._count == 0)
+        if (other is { _hasValue: false, _count: 0 })
         {
             return;
         }

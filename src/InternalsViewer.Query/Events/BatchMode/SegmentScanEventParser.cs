@@ -43,9 +43,11 @@ internal static class SegmentScanEventParser
         scan.PrimaryDictionaryValueCount = e.GetUInt("primary_dictionary_value_count") ?? 0;
         scan.SecondaryDictionaryValueCount = e.GetUInt("secondary_dictionary_value_count") ?? 0;
         scan.SecondaryBaseId = e.GetInt("secondary_base_id") ?? 0;
-        scan.CpuInstructionSet = (ColumnStoreInstructionSet)(e.GetInt("cpu_instruction_set_used") ?? 0);
+        scan.CpuInstructionSet = e.GetInt("cpu_instruction_set_used") is { } instructionSet
+                                 ? (ColumnStoreInstructionSet)instructionSet
+                                 : null;
         scan.IsFilterOnCompressedDataUsed = e.GetBool("is_filter_on_compressed_data_used") ?? false;
-        scan.IsDeepDataPossible = e.GetBool("id_deep_data_possible") ?? false;
+        scan.IsDeepDataPossible = e.GetBool("is_deep_data_possible") ?? e.GetBool("id_deep_data_possible") ?? false;
         scan.IsNullable = e.GetBool("is_nullable") ?? false;
 
         return scan;
