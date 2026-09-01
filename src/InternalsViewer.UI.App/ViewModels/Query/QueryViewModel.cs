@@ -272,10 +272,13 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
         Database = database;
         _settingsService = settingsService;
         _settingsViewModel = settingsViewModel;
+
+        IsAnnotationsVisible = settingsViewModel.PlanAnnotations;
         _indexTabViewModelFactory = indexTabViewModelFactory;
         _columnstoreTabViewModelFactory = columnstoreTabViewModelFactory;
         _pageTabViewModelFactory = pageTabViewModelFactory;
         _traceDirectoryService = traceDirectoryService;
+        
         Message = string.Empty;
 
         Name = $"{Database.Name}: Query";
@@ -1792,4 +1795,9 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
         LockGroup g => g.Events.OfType<LockEvent>(),
         _ => [],
     };
+
+    partial void OnIsAnnotationsVisibleChanged(bool value)
+    {
+        _settingsViewModel.PlanAnnotations = value;
+    }
 }

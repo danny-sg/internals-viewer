@@ -468,7 +468,7 @@ public sealed class ColumnstoreScanIterator(ColumnstoreService columnstoreServic
                 {
                     operations++;
 
-                    if (filter.Matches(run.Value))
+                    if (filter.IsMatch(run.Value))
                     {
                         continue;
                     }
@@ -491,7 +491,7 @@ public sealed class ColumnstoreScanIterator(ColumnstoreService columnstoreServic
 
                     operations++;
 
-                    if (filter.Matches(column.Reader.DataIds.GetRowDataId(run.FirstRow + i)))
+                    if (filter.IsMatch(column.Reader.DataIds.GetRowDataId(run.FirstRow + i)))
                     {
                         continue;
                     }
@@ -542,7 +542,7 @@ public sealed class ColumnstoreScanIterator(ColumnstoreService columnstoreServic
     /// batches, each carrying grouping keys and a partial aggregate rather than rows, they are simply not counted as batches. Here
     /// the values go straight into the sink, so that intermediate form is skipped.
     ///
-    /// From the call stack in SQL Server, outermost first:
+    /// From the call stack in SQL Server:
     ///
     ///     RowBucketProcessorNew::FlushGroupedAggregateResults - Aggregate results being flushed
     ///
@@ -912,7 +912,7 @@ public sealed class ColumnstoreScanIterator(ColumnstoreService columnstoreServic
         {
             var segment = wanted[i];
 
-            foreach (var dictionary in Dictionaries(segment))
+            foreach (var dictionary in GetSegmentDictionaries(segment))
             {
                 if (dictionary.IsGlobal
                     && !OpenDictionaries.Add((dictionary.HobtId, dictionary.ColumnId, dictionary.DictionaryId)))
@@ -957,7 +957,7 @@ public sealed class ColumnstoreScanIterator(ColumnstoreService columnstoreServic
 
         foreach (var segmentReader in reader.Readers)
         {
-            if (segmentReader.Segment is not { Column.Structure: { } structure } segment)
+            if (segmentReader.Segment is not { Column.Structure: not null } segment)
             {
                 continue;
             }
@@ -976,7 +976,7 @@ public sealed class ColumnstoreScanIterator(ColumnstoreService columnstoreServic
         return null;
     }
 
-    private static IEnumerable<SegmentDictionary> Dictionaries(ColumnSegment segment)
+    private static IEnumerable<SegmentDictionary> GetSegmentDictionaries(ColumnSegment segment)
     {
         if (segment is { PrimaryDictionaryId: >= 0, Column.GlobalDictionary: { } global })
         {

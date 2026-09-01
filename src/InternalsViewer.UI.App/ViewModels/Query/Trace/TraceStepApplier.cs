@@ -29,9 +29,6 @@ public sealed class TraceStepApplier(TraceLayout layout,
                                      IReadOnlyDictionary<int, TraceOperatorViewModel> operatorsByNode,
                                      IReadOnlyDictionary<int, TraceBatchViewModel> batches)
 {
-    /// <summary>
-    /// Raised with the operator that owns the batch a step just moved
-    /// </summary>
     public event Action<int>? BatchTouched;
 
     private Dictionary<int, AccessStrategy?> StrategyBySource { get; } = [];

@@ -7,13 +7,13 @@ namespace InternalsViewer.Execution.AccessPaths.Predicates;
 
 public sealed class CompressedDataFilter
 {
-    private CompressedDataFilter((ComparisonOperator Operator, decimal DataId)[] tests,
+    private CompressedDataFilter((ComparisonOperator Operator, decimal DataId)[] filters,
                                  HashSet<long>? matchingIds,
                                  AccessPredicate.Comparison[] claimed,
                                  bool hasNulls,
                                  long nullValue)
     {
-        Tests = tests;
+        Filters = filters;
 
         MatchingIds = matchingIds;
 
@@ -26,7 +26,7 @@ public sealed class CompressedDataFilter
 
     public IReadOnlyList<AccessPredicate.Comparison> Claimed { get; }
 
-    private (ComparisonOperator Operator, decimal DataId)[] Tests { get; }
+    private (ComparisonOperator Operator, decimal DataId)[] Filters { get; }
 
     private HashSet<long>? MatchingIds { get; }
 
@@ -52,7 +52,7 @@ public sealed class CompressedDataFilter
                         ? (decimal)segment.Magnitude
                         : 1m;
 
-        var tests = new List<(ComparisonOperator, decimal)>();
+        var filters = new List<(ComparisonOperator, decimal)>();
 
         var claimed = new List<AccessPredicate.Comparison>();
 
@@ -63,31 +63,31 @@ public sealed class CompressedDataFilter
                 continue;
             }
 
-            tests.Add((comparisonOperator, (literal / magnitude) - segment.BaseId));
+            filters.Add((comparisonOperator, (literal / magnitude) - segment.BaseId));
 
             claimed.Add(comparison);
         }
 
-        return tests.Count == 0
+        return filters.Count == 0
                ? null
-               : new CompressedDataFilter([.. tests], null, [.. claimed], segment.HasNulls, segment.NullValue ?? 0);
+               : new CompressedDataFilter([.. filters], null, [.. claimed], segment.HasNulls, segment.NullValue ?? 0);
     }
 
-    public bool Matches(long dataId)
+    public bool IsMatch(long dataId)
     {
         if (HasNulls && dataId == NullValue)
         {
             return false;
         }
 
-        if (MatchingIds is { } ids)
+        if (MatchingIds != null)
         {
-            return ids.Contains(dataId);
+            return MatchingIds.Contains(dataId);
         }
 
-        for (var i = 0; i < Tests.Length; i++)
+        for (var i = 0; i < Filters.Length; i++)
         {
-            if (!Satisfies(Tests[i].Operator, dataId, Tests[i].DataId))
+            if (!Check(Filters[i].Operator, dataId, Filters[i].DataId))
             {
                 return false;
             }
@@ -134,11 +134,19 @@ public sealed class CompressedDataFilter
     public static bool IsPlainConjunction(AccessPredicate predicate)
         => predicate switch
         {
-            AccessPredicate.Comparison => true,
-            AccessPredicate.And and => and.Predicates.All(IsPlainConjunction),
+            AccessPredicate.Comparison 
+                => true,
+            AccessPredicate.And and 
+                => and.Predicates.All(IsPlainConjunction),
             _ => false
         };
 
+    /// <summary>
+    /// Flattens an AND AccessPredicate into its individual comparison conjuncts
+    /// </summary>
+    /// <remarks>
+    /// Ignoring any non-comparison/non-AND nodes
+    /// </remarks>
     public static IEnumerable<AccessPredicate.Comparison> Conjunctions(AccessPredicate predicate)
     {
         switch (predicate)
@@ -181,7 +189,7 @@ public sealed class CompressedDataFilter
         => (IsColumn(comparison.Left, columnName) && comparison.Right is AccessExpression.Constant)
            || (IsColumn(comparison.Right, columnName) && comparison.Left is AccessExpression.Constant);
 
-    private static bool Satisfies(ComparisonOperator comparisonOperator, decimal dataId, decimal target)
+    private static bool Check(ComparisonOperator comparisonOperator, decimal dataId, decimal target)
         => comparisonOperator switch
         {
             ComparisonOperator.Equal => dataId == target,

@@ -18,6 +18,7 @@ public partial class SettingsViewModel(SettingsService settingsService, TraceDir
     private const string MaxTraceSizeKey = "MaxTraceSizeMb";
     private const string AutoDeleteTraceKey = "AutoDeleteTrace";
     private const string TraceNestedLayoutKey = "TraceNestedLayout";
+    private const string PlanAnnotationsKey = "PlanAnnotations";
 
     private const string ColumnstoreResolutionKey = "FullColumnstoreAllocationResolution";
 
@@ -25,6 +26,9 @@ public partial class SettingsViewModel(SettingsService settingsService, TraceDir
 
     [ObservableProperty]
     private string _symbolsPath = DefaultSymbolsPath;
+
+    [ObservableProperty]
+    private bool _planAnnotations;
 
     [ObservableProperty]
     private bool _useCustomTraceDirectory;
@@ -95,6 +99,10 @@ public partial class SettingsViewModel(SettingsService settingsService, TraceDir
         var savedColumnstoreResolution = await SettingsService.ReadSettingAsync<bool?>(ColumnstoreResolutionKey);
 
         FullColumnstoreResolution = savedColumnstoreResolution ?? true;
+
+        var savedPlanAnnotations = await SettingsService.ReadSettingAsync<bool?>(PlanAnnotationsKey);
+
+        PlanAnnotations = savedPlanAnnotations ?? false;
     }
 
     /// <summary>
@@ -141,5 +149,10 @@ public partial class SettingsViewModel(SettingsService settingsService, TraceDir
     partial void OnTraceNestedLayoutChanged(bool value)
     {
         _ = SettingsService.SaveSettingAsync(TraceNestedLayoutKey, value);
+    }
+
+    partial void OnPlanAnnotationsChanged(bool value)
+    {
+        _ = SettingsService.SaveSettingAsync(PlanAnnotationsKey, value);
     }
 }
