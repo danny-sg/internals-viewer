@@ -22,6 +22,10 @@ public sealed partial class SplitBadge : UserControl
         DependencyProperty.Register(nameof(BadgeValue), typeof(object), typeof(SplitBadge),
             new PropertyMetadata(null, OnBadgeChanged));
 
+    public static readonly DependencyProperty BadgeSuffixProperty =
+        DependencyProperty.Register(nameof(BadgeSuffix), typeof(string), typeof(SplitBadge),
+            new PropertyMetadata(string.Empty, OnBadgeChanged));
+
     public static readonly DependencyProperty BadgeColourProperty =
         DependencyProperty.Register(nameof(BadgeColour), typeof(Color), typeof(SplitBadge),
             new PropertyMetadata(Color.FromArgb(255, 0x5A, 0x5A, 0x5A), OnBadgeChanged));
@@ -46,6 +50,12 @@ public sealed partial class SplitBadge : UserControl
     }
 
     private string ValueLabel => BadgeValue?.ToString() ?? string.Empty;
+
+    public string BadgeSuffix
+    {
+        get => (string)GetValue(BadgeSuffixProperty);
+        set => SetValue(BadgeSuffixProperty, value);
+    }
 
     public Color BadgeColour
     {
@@ -91,9 +101,19 @@ public sealed partial class SplitBadge : UserControl
 
         ValueText.Foreground = TextOver(value);
 
-        ValuePart.Visibility = string.IsNullOrEmpty(ValueLabel) ? Visibility.Collapsed : Visibility.Visible;
+        SuffixText.Text = BadgeSuffix;
 
-        NamePart.CornerRadius = string.IsNullOrEmpty(ValueLabel) ? new CornerRadius(4) : new CornerRadius(4, 0, 0, 4);
+        SuffixText.Foreground = TextOver(value);
+
+        SuffixText.Visibility = string.IsNullOrEmpty(BadgeSuffix) ? Visibility.Collapsed : Visibility.Visible;
+
+        ValuePart.Visibility = string.IsNullOrEmpty(ValueLabel) && string.IsNullOrEmpty(BadgeSuffix)
+                               ? Visibility.Collapsed
+                               : Visibility.Visible;
+
+        NamePart.CornerRadius = ValuePart.Visibility == Visibility.Collapsed
+                                ? new CornerRadius(4)
+                                : new CornerRadius(4, 0, 0, 4);
     }
 
     private static void OnBadgeChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)

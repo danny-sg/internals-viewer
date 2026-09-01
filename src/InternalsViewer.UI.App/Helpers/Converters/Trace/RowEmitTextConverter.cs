@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using InternalsViewer.Execution.AccessPaths.Results.Steps;
 using Microsoft.UI.Xaml.Data;
 
@@ -10,8 +10,9 @@ public sealed class RowEmitTextConverter : IValueConverter
     {
         return value switch
         {
-            AccessStep.RowRun run => $"→ Emit {run.EmitCount:N0} rows",
-            _ => "→ Emit row"
+            AccessStep.RowRun 
+                => "→ Emit Rows",
+            _ => "→ Emit Row"
         };
     }
 

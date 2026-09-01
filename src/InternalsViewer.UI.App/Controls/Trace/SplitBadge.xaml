@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <UserControl
     x:Class="InternalsViewer.UI.App.Controls.Trace.SplitBadge"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
@@ -15,7 +15,10 @@
         <Border x:Name="ValuePart"
                 CornerRadius="0,4,4,0"
                 Padding="5,0,6,1">
-            <TextBlock x:Name="ValueText" FontSize="11" FontWeight="SemiBold" />
+            <StackPanel Orientation="Horizontal">
+                <TextBlock x:Name="ValueText" FontSize="11" FontWeight="SemiBold" />
+                <TextBlock x:Name="SuffixText" FontSize="11" Opacity="0.7" Margin="4,0,0,0" />
+            </StackPanel>
         </Border>
     </StackPanel>
 </UserControl>

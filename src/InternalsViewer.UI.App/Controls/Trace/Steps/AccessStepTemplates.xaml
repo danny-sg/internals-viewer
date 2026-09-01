@@ -20,6 +20,7 @@
     <trace:RowOutcomeToTextConverter x:Key="RowOutcomeToTextConverter" />
     <trace:RowEmitToVisibilityConverter x:Key="RowEmitToVisibilityConverter" />
     <trace:RowEmitTextConverter x:Key="RowEmitTextConverter" />
+    <trace:RowEmitCountConverter x:Key="RowEmitCountConverter" />
     <trace:LeafLinkToTextConverter x:Key="LeafLinkToTextConverter" />
     <converters:PfsAllocatedToTextConverter x:Key="PfsAllocatedToTextConverter" />
     <converters:PfsAllocatedToBrushConverter x:Key="PfsAllocatedToBrushConverter" />
@@ -235,23 +236,11 @@
                 <TextBlock Text="Outcome" Style="{StaticResource StepPropertyStyle}" />
                 <TextBlock Text="{Binding Converter={StaticResource RowOutcomeToTextConverter}}"
                            Style="{StaticResource StepValueStyle}" />
-                <Border x:Name="EmitBadge"
-                        Visibility="{Binding Converter={StaticResource RowEmitToVisibilityConverter}}"
-                        Background="{ThemeResource SystemFillColorSuccessBrush}"
-                        CornerRadius="4"
-                        Padding="6,0,6,1"
-                        VerticalAlignment="Center">
-                    <StackPanel Orientation="Horizontal">
-                        <TextBlock Text="→ Emit"
-                                   Foreground="White"
-                                   FontSize="11" />
-                        <TextBlock x:Name="EmitSideText"
-                                   Foreground="White"
-                                   FontSize="11"
-                                   Margin="4,0,0,0"
-                                   Visibility="Collapsed" />
-                    </StackPanel>
-                </Border>
+                <badge:SplitBadge x:Name="EmitBadge"
+                                  BadgeName="→ Emit"
+                                  BadgeColour="#2E7D32"
+                                  VerticalAlignment="Center"
+                                  Visibility="{Binding Converter={StaticResource RowEmitToVisibilityConverter}}" />
             </StackPanel>
         </Grid>
     </DataTemplate>
@@ -270,24 +259,12 @@
                 <TextBlock Text="Outcome" Style="{StaticResource StepPropertyStyle}" Margin="8,0,0,0" />
                 <TextBlock Text="{Binding Converter={StaticResource RowOutcomeToTextConverter}}"
                            Style="{StaticResource StepValueStyle}" />
-                <Border x:Name="EmitBadge"
-                        Visibility="{Binding Converter={StaticResource RowEmitToVisibilityConverter}}"
-                        Background="{ThemeResource SystemFillColorSuccessBrush}"
-                        CornerRadius="4"
-                        Padding="6,0,6,1"
-                        MinWidth="110"
-                        VerticalAlignment="Center">
-                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
-                        <TextBlock Text="{Binding Converter={StaticResource RowEmitTextConverter}}"
-                                   Foreground="White"
-                                   FontSize="11" />
-                        <TextBlock x:Name="EmitSideText"
-                                   Foreground="White"
-                                   FontSize="11"
-                                   Margin="4,0,0,0"
-                                   Visibility="Collapsed" />
-                    </StackPanel>
-                </Border>
+                <badge:SplitBadge x:Name="EmitBadge"
+                                  BadgeName="{Binding Converter={StaticResource RowEmitTextConverter}}"
+                                  BadgeValue="{Binding Converter={StaticResource RowEmitCountConverter}}"
+                                  BadgeColour="#2E7D32"
+                                  VerticalAlignment="Center"
+                                  Visibility="{Binding Converter={StaticResource RowEmitToVisibilityConverter}}" />
             </StackPanel>
         </Grid>
     </DataTemplate>
@@ -557,17 +534,8 @@
                 <TextBlock Text="{Binding Progress.Entry}" Style="{StaticResource StepValueStyle}" />
                 <TextBlock Text="Pair" Style="{StaticResource StepPropertyStyle}" Margin="8,0,0,0" />
                 <TextBlock Text="{Binding Progress.PairNumber}" Style="{StaticResource StepValueStyle}" />
-                <Border x:Name="EmitBadge"
-                        Background="{ThemeResource SystemFillColorSuccessBrush}"
-                        CornerRadius="4"
-                        Padding="6,0,6,1"
-                        Margin="8,0,0,0"
-                        VerticalAlignment="Center">
-                    <TextBlock Text="→ Emit"
-                               Foreground="White"
-                               FontSize="11" />
-                </Border>
-                <badge:SplitBadge BadgeName="rows" BadgeValue="{Binding Progress.Emits}" BadgeColour="#5A5A5A" Margin="8,0,0,0" VerticalAlignment="Center" />
+                <badge:SplitBadge x:Name="EmitBadge" BadgeName="→ Emit Rows" BadgeValue="{Binding Progress.Emits}"
+                                  BadgeColour="#2E7D32" Margin="8,0,0,0" VerticalAlignment="Center" />
             </StackPanel>
         </Grid>
     </DataTemplate>
@@ -786,14 +754,8 @@
                            FontWeight="SemiBold"
                            VerticalAlignment="Center"
                            Margin="0,0,8,0" />
-                <Border Background="{ThemeResource SystemFillColorSuccessBrush}"
-                        CornerRadius="4"
-                        Padding="6,0,6,1"
-                        VerticalAlignment="Center">
-                    <TextBlock Text="→ Emit"
-                               Foreground="White"
-                               FontSize="11" />
-                </Border>
+                <badge:SplitBadge BadgeName="→ Emit"
+                                  BadgeColour="#2E7D32" VerticalAlignment="Center" />
                 <TextBlock Text="from buffered group"
                            Style="{StaticResource StepPropertyStyle}"
                            Margin="8,0,0,0"
@@ -839,15 +801,8 @@
                 <TextBlock Text="Get Row" Style="{StaticResource StepLabelStyle}" />
                 <TextBlock Text="Row" Style="{StaticResource StepPropertyStyle}" />
                 <TextBlock Text="{Binding Number}" Style="{StaticResource StepValueStyle}" />
-                <Border Background="{ThemeResource SystemFillColorSuccessBrush}"
-                        CornerRadius="4"
-                        Padding="6,0,6,1"
-                        Margin="8,0,0,0"
-                        VerticalAlignment="Center">
-                    <TextBlock Text="→ Client"
-                               Foreground="White"
-                               FontSize="11" />
-                </Border>
+                <badge:SplitBadge BadgeName="→ Client"
+                                  BadgeColour="#2E7D32" Margin="8,0,0,0" VerticalAlignment="Center" />
             </StackPanel>
         </Grid>
     </DataTemplate>
@@ -885,17 +840,8 @@
                 <TextBlock Text="{Binding Progress.Key}" Style="{StaticResource StepValueStyle}" />
                 <TextBlock Text="Pair" Style="{StaticResource StepPropertyStyle}" Margin="8,0,0,0" />
                 <TextBlock Text="{Binding Progress.PairNumber}" Style="{StaticResource StepValueStyle}" />
-                <Border x:Name="EmitBadge"
-                        Background="{ThemeResource SystemFillColorSuccessBrush}"
-                        CornerRadius="4"
-                        Padding="6,0,6,1"
-                        Margin="8,0,0,0"
-                        VerticalAlignment="Center">
-                    <TextBlock Text="→ Emit"
-                               Foreground="White"
-                               FontSize="11" />
-                </Border>
-                <badge:SplitBadge BadgeName="rows" BadgeValue="{Binding Progress.Emits}" BadgeColour="#5A5A5A" Margin="8,0,0,0" VerticalAlignment="Center" />
+                <badge:SplitBadge x:Name="EmitBadge" BadgeName="→ Emit Rows" BadgeValue="{Binding Progress.Emits}"
+                                  BadgeColour="#2E7D32" Margin="8,0,0,0" VerticalAlignment="Center" />
             </StackPanel>
         </Grid>
     </DataTemplate>
@@ -907,13 +853,8 @@
                 <TextBlock Text="Collect" Style="{StaticResource StepLabelStyle}" />
                 <TextBlock Text="Row" Style="{StaticResource StepPropertyStyle}" />
                 <TextBlock Text="{Binding Progress.Rows}" Style="{StaticResource StepValueStyle}" />
-                <Border Background="{ThemeResource SubtleFillColorSecondaryBrush}"
-                        CornerRadius="4"
-                        Padding="6,0,6,1"
-                        Margin="8,0,0,0"
-                        VerticalAlignment="Center">
-                    <TextBlock Text="→ Sort Table" FontSize="11" />
-                </Border>
+                <badge:SplitBadge BadgeName="→ Sort Table"
+                                  BadgeColour="#5A5A5A" Margin="8,0,0,0" VerticalAlignment="Center" />
             </StackPanel>
         </Grid>
     </DataTemplate>
@@ -952,16 +893,8 @@
                 <TextBlock Text="Get Row" Style="{StaticResource StepLabelStyle}" />
                 <TextBlock Text="Row" Style="{StaticResource StepPropertyStyle}" />
                 <TextBlock Text="{Binding Number}" Style="{StaticResource StepValueStyle}" />
-                <Border x:Name="EmitBadge"
-                        Background="{ThemeResource SystemFillColorSuccessBrush}"
-                        CornerRadius="4"
-                        Padding="6,0,6,1"
-                        Margin="8,0,0,0"
-                        VerticalAlignment="Center">
-                    <TextBlock Text="→ Emit"
-                               Foreground="White"
-                               FontSize="11" />
-                </Border>
+                <badge:SplitBadge x:Name="EmitBadge" BadgeName="→ Emit"
+                                  BadgeColour="#2E7D32" Margin="8,0,0,0" VerticalAlignment="Center" />
             </StackPanel>
         </Grid>
     </DataTemplate>
@@ -1070,15 +1003,8 @@
                 <TextBlock Text="{Binding Key}" Style="{StaticResource StepValueStyle}" />
                 <TextBlock Text="bucket" Style="{StaticResource StepPropertyStyle}" Margin="8,0,0,0" />
                 <TextBlock Text="{Binding Bucket}" Style="{StaticResource StepValueStyle}" />
-                <Border Background="{ThemeResource SystemFillColorSuccessBrush}"
-                        CornerRadius="4"
-                        Padding="6,0,6,1"
-                        Margin="8,0,0,0"
-                        VerticalAlignment="Center">
-                    <TextBlock Text="→ New Group"
-                               Foreground="White"
-                               FontSize="11" />
-                </Border>
+                <badge:SplitBadge BadgeName="→ New Group"
+                                  BadgeColour="#2E7D32" Margin="8,0,0,0" VerticalAlignment="Center" />
             </StackPanel>
         </Grid>
     </DataTemplate>
@@ -1089,16 +1015,8 @@
             <StackPanel Orientation="Horizontal">
                 <TextBlock Text="Get Row" Style="{StaticResource StepLabelStyle}" />
                 <TextBlock Text="{Binding Values}" Style="{StaticResource StepValueStyle}" />
-                <Border x:Name="EmitBadge"
-                        Background="{ThemeResource SystemFillColorSuccessBrush}"
-                        CornerRadius="4"
-                        Padding="6,0,6,1"
-                        Margin="8,0,0,0"
-                        VerticalAlignment="Center">
-                    <TextBlock Text="→ Emit"
-                               Foreground="White"
-                               FontSize="11" />
-                </Border>
+                <badge:SplitBadge x:Name="EmitBadge" BadgeName="→ Emit"
+                                  BadgeColour="#2E7D32" Margin="8,0,0,0" VerticalAlignment="Center" />
             </StackPanel>
         </Grid>
     </DataTemplate>
@@ -1113,17 +1031,9 @@
                 <TextBlock Text="{Binding Outcome, Converter={StaticResource RowOutcomeToTextConverter}}"
                            Style="{StaticResource StepPropertyStyle}"
                            Margin="8,0,0,0" />
-                <Border x:Name="EmitBadge"
-                        Background="{ThemeResource SystemFillColorSuccessBrush}"
-                        CornerRadius="4"
-                        Padding="6,0,6,1"
-                        Margin="8,0,0,0"
-                        VerticalAlignment="Center"
-                        Visibility="{Binding EmittedRecord, Converter={StaticResource StepsNullToInverseVisibilityConverter}}">
-                    <TextBlock Text="→ Pass"
-                               Foreground="White"
-                               FontSize="11" />
-                </Border>
+                <badge:SplitBadge x:Name="EmitBadge" BadgeName="→ Pass"
+                                  BadgeColour="#2E7D32" Margin="8,0,0,0" VerticalAlignment="Center"
+                                  Visibility="{Binding EmittedRecord, Converter={StaticResource StepsNullToInverseVisibilityConverter}}" />
             </StackPanel>
         </Grid>
     </DataTemplate>
@@ -1206,16 +1116,8 @@
                 <TextBlock Text="{Binding Number}" Style="{StaticResource StepValueStyle}" />
                 <TextBlock Text="from input" Style="{StaticResource StepPropertyStyle}" Margin="8,0,0,0" />
                 <TextBlock Text="{Binding InputNumber}" Style="{StaticResource StepValueStyle}" />
-                <Border x:Name="EmitBadge"
-                        Background="{ThemeResource SystemFillColorSuccessBrush}"
-                        CornerRadius="4"
-                        Padding="6,0,6,1"
-                        Margin="8,0,0,0"
-                        VerticalAlignment="Center">
-                    <TextBlock Text="→ Emit"
-                               Foreground="White"
-                               FontSize="11" />
-                </Border>
+                <badge:SplitBadge x:Name="EmitBadge" BadgeName="→ Emit"
+                                  BadgeColour="#2E7D32" Margin="8,0,0,0" VerticalAlignment="Center" />
             </StackPanel>
         </Grid>
     </DataTemplate>
@@ -1240,16 +1142,8 @@
                 <TextBlock Text="{Binding Number}" Style="{StaticResource StepValueStyle}" />
                 <TextBlock Text="of" Style="{StaticResource StepPropertyStyle}" />
                 <TextBlock Text="{Binding RowCount}" Style="{StaticResource StepValueStyle}" />
-                <Border x:Name="EmitBadge"
-                        Background="{ThemeResource SystemFillColorSuccessBrush}"
-                        CornerRadius="4"
-                        Padding="6,0,6,1"
-                        Margin="8,0,0,0"
-                        VerticalAlignment="Center">
-                    <TextBlock Text="→ Emit"
-                               Foreground="White"
-                               FontSize="11" />
-                </Border>
+                <badge:SplitBadge x:Name="EmitBadge" BadgeName="→ Emit"
+                                  BadgeColour="#2E7D32" Margin="8,0,0,0" VerticalAlignment="Center" />
             </StackPanel>
         </Grid>
     </DataTemplate>
@@ -1413,27 +1307,15 @@
                 </StackPanel>
                 <StackPanel Orientation="Horizontal" Spacing="6">
                     <TextBlock Text="" Style="{StaticResource StepLabelStyle}" Margin="0" />
-                    <Border Background="{ThemeResource SubtleFillColorSecondaryBrush}"
-                        CornerRadius="4"
-                        Padding="6,0,6,1"
-                        VerticalAlignment="Center"
-                        Visibility="{Binding Work.HasNoFilter, Converter={StaticResource StepsBoolToVisibilityConverter}}">
-                        <TextBlock Text="No Filter" Foreground="{ThemeResource TextFillColorSecondaryBrush}" FontSize="11" />
-                    </Border>
-                    <Border Background="{ThemeResource SystemFillColorSuccessBrush}"
-                        CornerRadius="4"
-                        Padding="6,0,6,1"
-                        VerticalAlignment="Center"
-                        Visibility="{Binding Work.HasFilter, Converter={StaticResource StepsBoolToVisibilityConverter}}">
-                        <TextBlock Text="Compressed Filter" Foreground="White" FontSize="11" />
-                    </Border>
-                    <Border Background="{ThemeResource SystemFillColorCautionBrush}"
-                        CornerRadius="4"
-                        Padding="6,0,6,1"
-                        VerticalAlignment="Center"
-                        Visibility="{Binding Work.HasPredicate, Converter={StaticResource StepsBoolToVisibilityConverter}}">
-                        <TextBlock Text="Predicate" Foreground="White" FontSize="11" />
-                    </Border>
+                    <badge:SplitBadge BadgeName="No Filter"
+                                  BadgeColour="#5A5A5A" VerticalAlignment="Center"
+                                  Visibility="{Binding Work.HasNoFilter, Converter={StaticResource StepsBoolToVisibilityConverter}}" />
+                    <badge:SplitBadge BadgeName="Compressed Filter"
+                                  BadgeColour="#2E7D32" VerticalAlignment="Center"
+                                  Visibility="{Binding Work.HasFilter, Converter={StaticResource StepsBoolToVisibilityConverter}}" />
+                    <badge:SplitBadge BadgeName="Predicate"
+                                  BadgeColour="#C28A1E" VerticalAlignment="Center"
+                                  Visibility="{Binding Work.HasPredicate, Converter={StaticResource StepsBoolToVisibilityConverter}}" />
                     <StackPanel Orientation="Horizontal"
                                 Visibility="{Binding Work.HasFilter, Converter={StaticResource StepsBoolToVisibilityConverter}}">
                         <TextBlock Text="{Binding Work.Operations}" Style="{StaticResource StepValueStyle}" />
@@ -1441,16 +1323,9 @@
                         <TextBlock Text="{Binding Work.RleEntries}" Style="{StaticResource StepValueStyle}" />
                         <TextBlock Text="RLE" Style="{StaticResource StepPropertyStyle}" />
                     </StackPanel>
-                    <Border Background="{ThemeResource SubtleFillColorSecondaryBrush}"
-                            CornerRadius="4"
-                            Padding="6,0,6,1"
-                            Visibility="{Binding Work.HasFilter, Converter={StaticResource StepsBoolToVisibilityConverter}}"
-                            VerticalAlignment="Center">
-                        <StackPanel Orientation="Horizontal">
-                            <TextBlock Text="Match" FontSize="11" Opacity="0.6" Margin="0,0,4,0"/>
-                            <TextBlock Text="{Binding Work.Qualifying}" FontSize="11" />
-                        </StackPanel>
-                    </Border>
+                    <badge:SplitBadge BadgeName="Match" BadgeValue="{Binding Work.Qualifying}"
+                                      BadgeColour="#5A5A5A" VerticalAlignment="Center"
+                                      Visibility="{Binding Work.HasFilter, Converter={StaticResource StepsBoolToVisibilityConverter}}" />
                     <StackPanel Orientation="Horizontal"
                                 Visibility="{Binding Work.HasBatchPurity,
                                         Converter={StaticResource StepsBoolToVisibilityConverter}}">
@@ -1652,14 +1527,9 @@ Visibility="{Binding Work.HasSkipped, Converter={StaticResource StepsBoolToVisib
                 <TextBlock Text="rows folded into" Style="{StaticResource StepPropertyStyle}" />
                 <TextBlock Text="{Binding Groups}" Style="{StaticResource StepValueStyle}" />
                 <TextBlock Text="groups" Style="{StaticResource StepPropertyStyle}" />
-                <Border Background="{ThemeResource SystemFillColorSuccessBrush}"
-                        CornerRadius="4"
-                        Padding="6,0,6,1"
-                        Margin="8,0,0,0"
-                        VerticalAlignment="Center"
-                        Visibility="{Binding IsRunFolded, Converter={StaticResource StepsBoolToVisibilityConverter}}">
-                    <TextBlock Text="Run Folded" Foreground="White" FontSize="11" />
-                </Border>
+                <badge:SplitBadge BadgeName="Run Folded"
+                                  BadgeColour="#2E7D32" Margin="8,0,0,0" VerticalAlignment="Center"
+                                  Visibility="{Binding IsRunFolded, Converter={StaticResource StepsBoolToVisibilityConverter}}" />
                 <TextBlock Text="Row Group" Style="{StaticResource StepPropertyStyle}" Margin="8,0,0,0" />
                 <TextBlock Text="{Binding RowGroupId}" Style="{StaticResource StepValueStyle}" />
             </StackPanel>

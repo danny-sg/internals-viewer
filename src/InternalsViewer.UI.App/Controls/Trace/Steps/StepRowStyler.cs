@@ -194,11 +194,7 @@ public sealed class StepRowStyler
             return;
         }
 
-        if (grid.FindName("EmitSideText") is TextBlock sideText)
-        {
-            sideText.Text = isReadAhead ? "(read ahead)" : string.Empty;
-            sideText.Visibility = isReadAhead ? Visibility.Visible : Visibility.Collapsed;
-        }
+        badge.BadgeSuffix = isReadAhead ? "(read ahead)" : string.Empty;
 
         if (sideBrush is not null)
         {
