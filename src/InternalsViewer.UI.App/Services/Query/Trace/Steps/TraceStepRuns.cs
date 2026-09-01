@@ -134,6 +134,10 @@ public static class TraceStepRuns
                 batchSpan.Work.Apply(batchProduced);
                 return true;
 
+            case AccessStep.BatchSkipped batchSkipped:
+                BatchCountSpanFor(batchSkipped, "→ Batch", history, top).Work.Apply(batchSkipped);
+                return true;
+
             case AccessStep.ComputeVector computeVector:
                 ComputeVectorSpanFor(computeVector, history).Progress.Apply(computeVector);
                 return true;

@@ -10,17 +10,17 @@ namespace InternalsViewer.Execution.Tests.UnitTests.AccessPaths;
 public class CompressedDataFilterTests
 {
     [Fact]
-    public void A_Single_Comparison_Is_A_Pure_Conjunction()
+    public void A_Single_Comparison_Is_A_Plain_Conjunction()
     {
         var predicate = Comparison("Id", 1900000);
 
-        Assert.True(CompressedDataFilter.IsPureConjunction(predicate));
+        Assert.True(CompressedDataFilter.IsPlainConjunction(predicate));
 
         Assert.Equal([predicate], CompressedDataFilter.Conjunctions(predicate));
     }
 
     [Fact]
-    public void An_And_Of_Comparisons_Is_A_Pure_Conjunction()
+    public void An_And_Of_Comparisons_Is_A_Plain_Conjunction()
     {
         var left = Comparison("Id", 1900000);
 
@@ -28,23 +28,23 @@ public class CompressedDataFilterTests
 
         var predicate = new AccessPredicate.And([left, right]);
 
-        Assert.True(CompressedDataFilter.IsPureConjunction(predicate));
+        Assert.True(CompressedDataFilter.IsPlainConjunction(predicate));
 
         Assert.Equal([left, right], CompressedDataFilter.Conjunctions(predicate));
     }
 
     [Fact]
-    public void An_Or_Is_Not_A_Pure_Conjunction_And_Yields_Nothing()
+    public void An_Or_Is_Not_A_Plain_Conjunction_And_Yields_Nothing()
     {
         var predicate = new AccessPredicate.Or([Comparison("Id", 1900000), Comparison("Spread", 939)]);
 
-        Assert.False(CompressedDataFilter.IsPureConjunction(predicate));
+        Assert.False(CompressedDataFilter.IsPlainConjunction(predicate));
 
         Assert.Empty(CompressedDataFilter.Conjunctions(predicate));
     }
 
     [Fact]
-    public void An_And_Holding_An_Or_Is_Not_Pure_But_Still_Yields_Its_Comparisons()
+    public void An_And_Holding_An_Or_Is_Not_Plain_But_Still_Yields_Its_Comparisons()
     {
         var pushable = Comparison("Id", 1900000);
 
@@ -54,7 +54,7 @@ public class CompressedDataFilterTests
             new AccessPredicate.Or([Comparison("Spread", 939), Comparison("Spread", 940)])
         ]);
 
-        Assert.False(CompressedDataFilter.IsPureConjunction(predicate));
+        Assert.False(CompressedDataFilter.IsPlainConjunction(predicate));
 
         Assert.Equal([pushable], CompressedDataFilter.Conjunctions(predicate));
     }
@@ -70,7 +70,7 @@ public class CompressedDataFilterTests
 
         var predicate = new AccessPredicate.And([first, new AccessPredicate.And([second, third])]);
 
-        Assert.True(CompressedDataFilter.IsPureConjunction(predicate));
+        Assert.True(CompressedDataFilter.IsPlainConjunction(predicate));
 
         Assert.Equal([first, second, third], CompressedDataFilter.Conjunctions(predicate));
     }

@@ -1,4 +1,4 @@
-using InternalsViewer.Execution.AccessPaths.Aggregation;
+﻿using InternalsViewer.Execution.AccessPaths.Aggregation;
 using InternalsViewer.Execution.AccessPaths.Predicates;
 using InternalsViewer.Execution.AccessPaths.Values;
 using InternalsViewer.Execution.Interfaces.AccessPaths.Binding;
@@ -55,6 +55,18 @@ public sealed class AggregateGroupRecord : IRecord
         }
 
         RowCount++;
+
+        Refresh();
+    }
+
+    public void Combine(AggregateGroupRecord other)
+    {
+        for (var index = 0; index < _accumulators.Length; index++)
+        {
+            _accumulators[index].Combine(other._accumulators[index]);
+        }
+
+        RowCount += other.RowCount;
 
         Refresh();
     }

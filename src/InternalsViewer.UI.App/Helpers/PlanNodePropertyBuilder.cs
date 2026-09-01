@@ -126,11 +126,8 @@ public static class PlanNodePropertyBuilder
                                                             batchInfo.SegmentSkips.ToString("N0", CultureInfo.InvariantCulture)));
             }
 
-            if (batchInfo.LocallyAggregatedRows > 0)
-            {
-                batchGroup.Children.Add(new PlanNodeProperty("Locally Aggregated Rows",
-                                                             batchInfo.LocallyAggregatedRows.ToString("N0", CultureInfo.InvariantCulture)));
-            }
+            batchGroup.Children.Add(new PlanNodeProperty("Locally Aggregated Rows",
+                                                         batchInfo.LocallyAggregatedRows.ToString("N0", CultureInfo.InvariantCulture)));
 
 
             if (batchInfo.PureRowBuckets is not null || batchInfo.ImpureRowBuckets is not null)

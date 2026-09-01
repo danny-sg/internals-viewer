@@ -127,13 +127,13 @@ public sealed class RleRunMapRenderer : IDisposable
             return -1;
         }
 
-        var isValue = y <= TrackHeight + (TrackGap / 2);
+        var isPureValue = y <= TrackHeight + (TrackGap / 2);
 
         var row = firstRow + (int)((x - GutterWidth) / trackWidth * rowSpan);
 
         for (var i = 0; i < runs.Count; i++)
         {
-            if (runs[i].IsValue == isValue
+            if (runs[i].IsPureValue == isPureValue
                 && row >= runs[i].StartRow
                 && row < runs[i].StartRow + runs[i].Count)
             {
@@ -164,7 +164,7 @@ public sealed class RleRunMapRenderer : IDisposable
                            int rowSpan,
                            float top,
                            string label,
-                           bool isValue)
+                           bool isPureValue)
     {
         var bounds = new SKRect(GutterWidth, top, GutterWidth + trackWidth, top + TrackHeight);
 
@@ -193,7 +193,7 @@ public sealed class RleRunMapRenderer : IDisposable
 
         foreach (var run in runs)
         {
-            if (run.Count <= 0 || run.IsValue != isValue)
+            if (run.Count <= 0 || run.IsPureValue != isPureValue)
             {
                 continue;
             }
@@ -223,7 +223,7 @@ public sealed class RleRunMapRenderer : IDisposable
 
                 var rect = new SKRect(GutterWidth + start, bounds.Top, GutterWidth + x, bounds.Bottom);
 
-                if (run.IsValue)
+                if (run.IsPureValue)
                 {
                     _fill.Color = scale.GetColour(run);
 
@@ -251,7 +251,7 @@ public sealed class RleRunMapRenderer : IDisposable
 
         var run = runs[SelectedIndex];
 
-        var top = run.IsValue ? 0 : TrackHeight + TrackGap;
+        var top = run.IsPureValue ? 0 : TrackHeight + TrackGap;
 
         var from = GutterWidth + ToPixel(run.StartRow, firstRow, rowSpan, trackWidth);
 
@@ -339,7 +339,7 @@ public sealed class RleRunMapRenderer : IDisposable
 
             foreach (var run in runs)
             {
-                if (run.IsValue)
+                if (run.IsPureValue)
                 {
                     literalMin = Math.Min(literalMin, run.ColourValue);
                     literalMax = Math.Max(literalMax, run.ColourValue);
@@ -360,11 +360,11 @@ public sealed class RleRunMapRenderer : IDisposable
 
         private SKColor GetColour(RleRunDetail run, long value)
         {
-            var (min, max) = run.IsValue ? (LiteralMin, LiteralMax) : (BitpackMin, BitpackMax);
+            var (min, max) = run.IsPureValue ? (LiteralMin, LiteralMax) : (BitpackMin, BitpackMax);
 
             var hue = max > min ? (int)((value - min) * HueSpan / (max - min)) : HueSpan / 2;
 
-            return run.IsValue
+            return run.IsPureValue
                 ? ColourHelpers.HsvToColor(hue, LiteralSaturation, LiteralValue).ToSkColor()
                 : ColourHelpers.HsvToColor(hue, BitpackSaturation, BitpackValue).ToSkColor();
         }

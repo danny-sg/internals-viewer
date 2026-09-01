@@ -1,4 +1,4 @@
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using InternalsViewer.UI.App.Models.Query.Trace.Hash;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Media;
@@ -16,6 +16,18 @@ public sealed partial class HashTableGrid : UserControl
 
     public static readonly DependencyProperty SummaryProperty =
         DependencyProperty.Register(nameof(Summary),
+                                    typeof(string),
+                                    typeof(HashTableGrid),
+                                    new PropertyMetadata(string.Empty));
+
+    public static readonly DependencyProperty TitleProperty =
+        DependencyProperty.Register(nameof(Title),
+                                    typeof(string),
+                                    typeof(HashTableGrid),
+                                    new PropertyMetadata("Hash Table"));
+
+    public static readonly DependencyProperty SubTitleProperty =
+        DependencyProperty.Register(nameof(SubTitle),
                                     typeof(string),
                                     typeof(HashTableGrid),
                                     new PropertyMetadata(string.Empty));
@@ -61,6 +73,18 @@ public sealed partial class HashTableGrid : UserControl
     {
         get => (string)GetValue(SummaryProperty);
         set => SetValue(SummaryProperty, value);
+    }
+
+    public string Title
+    {
+        get => (string)GetValue(TitleProperty);
+        set => SetValue(TitleProperty, value);
+    }
+
+    public string SubTitle
+    {
+        get => (string)GetValue(SubTitleProperty);
+        set => SetValue(SubTitleProperty, value);
     }
 
     private void OnBodyViewChanged(object? sender, ScrollViewerViewChangedEventArgs e)

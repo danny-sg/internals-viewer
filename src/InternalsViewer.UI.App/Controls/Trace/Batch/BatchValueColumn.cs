@@ -13,7 +13,7 @@ namespace InternalsViewer.UI.App.Controls.Trace.Batch;
 /// <summary>
 /// One vector of the batch shown as a column of normalized slot values
 /// </summary>
-internal sealed class BatchSlotColumn(BatchColumnView column) : TableViewColumn
+internal sealed class BatchValueColumn(BatchColumnView column) : TableViewColumn
 {
     private static SolidColorBrush UnselectedBrush { get; } = new(Windows.UI.Color.FromArgb(48, 128, 128, 128));
 
@@ -27,7 +27,7 @@ internal sealed class BatchSlotColumn(BatchColumnView column) : TableViewColumn
 
     private static SolidColorBrush DimTextBrush { get; } = new(Windows.UI.Color.FromArgb(110, 128, 128, 128));
 
-    public Action<BatchSlotSelection>? SlotClicked { get; init; }
+    public Action<BatchValueSelection>? SlotClicked { get; init; }
 
     public Action<int>? DeepDataClicked { get; init; }
 
@@ -62,7 +62,7 @@ internal sealed class BatchSlotColumn(BatchColumnView column) : TableViewColumn
 
     private void Apply(ContentControl host, TableViewCell cell, object? dataItem)
     {
-        if (dataItem is not BatchRowView row || column.Ordinal >= row.Slots.Length)
+        if (dataItem is not BatchRowView row || column.Ordinal >= row.Values.Length)
         {
             host.Content = null;
 
@@ -77,11 +77,11 @@ internal sealed class BatchSlotColumn(BatchColumnView column) : TableViewColumn
 
         cell.Background = row.IsSelected ? TransparentBrush : UnselectedBrush;
 
-        var slot = row.Slots[column.Ordinal];
+        var slot = row.Values[column.Ordinal];
 
         var text = $"0x{slot.Value:X16}";
 
-        if (BatchSlotDenormalizer.GetValueType(slot, column.Column) == BatchSlotValueType.DeepDataReference)
+        if (BatchValueDenormalizer.GetValueType(slot, column.Column) == BatchValueType.DeepDataReference)
         {
             ApplyLink(host, text, (int)(slot.Value >> 1) - 1);
 
@@ -177,7 +177,7 @@ internal sealed class BatchSlotColumn(BatchColumnView column) : TableViewColumn
     {
         if (sender is ContentControl { Tag: int rowIndex })
         {
-            SlotClicked?.Invoke(new BatchSlotSelection(rowIndex, column.Ordinal));
+            SlotClicked?.Invoke(new BatchValueSelection(rowIndex, column.Ordinal));
         }
     }
 

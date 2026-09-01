@@ -34,6 +34,8 @@ public sealed class AccessStepTemplateSelector : DataTemplateSelector
 
     public DataTemplate DeleteBitmapAppliedTemplate { get; set; } = null!;
 
+    public DataTemplate AggregateLocalMergeTemplate { get; set; } = null!;
+
     public DataTemplate CloseTemplate { get; set; } = null!;
 
     public DataTemplate OutputTemplate { get; set; } = null!;
@@ -185,6 +187,7 @@ public sealed class AccessStepTemplateSelector : DataTemplateSelector
             AccessStep.Sorted => SortedTemplate,
             AccessStep.SortRow => SortRowTemplate,
             AccessStep.SortDuplicate => SortDuplicateTemplate,
+            AccessStep.AggregateLocalMerge => AggregateLocalMergeTemplate,
             AccessStep.AggregateStart => AggregateStartTemplate,
             AccessStep.AggregateGroup => AggregateGroupTemplate,
             StreamAggregateSpan => StreamAggregateSpanTemplate,

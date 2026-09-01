@@ -1,4 +1,4 @@
-using InternalsViewer.Internals.Columnstore.Services;
+﻿using InternalsViewer.Internals.Columnstore.Services;
 using InternalsViewer.Internals.Readers.Internals;
 using InternalsViewer.Internals.Services.Loaders.Records.Cd;
 using InternalsViewer.Internals.Services.Loaders.Records.FixedVar;
@@ -74,7 +74,7 @@ public sealed class OpenQuestionsProbeTests(ITestOutputHelper testOutput) : Prov
                                     var entry = blob.RleEntries[i];
 
                                     Count(wideTail, $"{span[at]:X2} {span[at + 1]:X2} {span[at + 2]:X2} {span[at + 3]:X2}"
-                                                    + $" on {(entry.IsTerminator ? "terminator" : entry.IsValue ? "repeat" : "read")}"
+                                                    + $" on {(entry.IsTerminator ? "terminator" : entry.IsPureValue ? "repeat" : "read")}"
                                                     + $" value 0x{(ulong)entry.Value:X16} count {entry.Count}");
                                 }
                             }

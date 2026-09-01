@@ -21,8 +21,14 @@
             <ColumnDefinition Width="Auto" />
             <ColumnDefinition Width="{x:Bind DetailColumnWidth, Mode=OneTime}" />
         </Grid.ColumnDefinitions>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="{x:Bind BodyRowHeight, Mode=OneTime}" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="{x:Bind DetailRowHeight, Mode=OneTime}" />
+        </Grid.RowDefinitions>
 
-        <ScrollViewer Grid.Column="0"
+        <ScrollViewer Grid.Row="0"
+                      Grid.Column="0"
                       HorizontalScrollBarVisibility="Auto"
                       VerticalScrollBarVisibility="Auto"
                       HorizontalScrollMode="Enabled"
@@ -38,13 +44,14 @@
                            ItemTemplate="{StaticResource ExecutionPlanTemplate}" />
         </ScrollViewer>
 
-        <controls:GridSplitter Grid.Column="1"
+        <controls:GridSplitter Grid.Row="0"
+                               Grid.Column="1"
                                Width="4"
                                HorizontalAlignment="Stretch"
                                VerticalAlignment="Stretch"
                                ResizeBehavior="PreviousAndNext"
                                ResizeDirection="Columns"
-                               Visibility="{x:Bind DetailSplitterVisibility, Mode=OneTime}"
+                               Visibility="{x:Bind ColumnSplitterVisibility, Mode=OneTime}"
                                Background="{ThemeResource ControlStrokeColorDefaultBrush}">
             <controls:GridSplitter.Template>
                 <ControlTemplate TargetType="controls:GridSplitter">
@@ -53,10 +60,28 @@
             </controls:GridSplitter.Template>
         </controls:GridSplitter>
 
-        <Grid Grid.Column="2"
-              Visibility="{x:Bind DetailSplitterVisibility, Mode=OneTime}"
+        <controls:GridSplitter Grid.Row="1"
+                               Grid.Column="0"
+                               Height="4"
+                               HorizontalAlignment="Stretch"
+                               VerticalAlignment="Stretch"
+                               ResizeBehavior="PreviousAndNext"
+                               ResizeDirection="Rows"
+                               Visibility="{x:Bind RowSplitterVisibility, Mode=OneTime}"
+                               Background="{ThemeResource ControlStrokeColorDefaultBrush}">
+            <controls:GridSplitter.Template>
+                <ControlTemplate TargetType="controls:GridSplitter">
+                    <Grid Background="{TemplateBinding Background}" />
+                </ControlTemplate>
+            </controls:GridSplitter.Template>
+        </controls:GridSplitter>
+
+        <Grid x:Name="DetailPane"
+              Grid.Row="0"
+              Grid.Column="2"
+              Visibility="{x:Bind DetailPaneVisibility, Mode=OneTime}"
               BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
-              BorderThickness="1,0,0,0">
+              BorderThickness="{x:Bind DetailPaneBorderThickness, Mode=OneTime}">
             <Grid.RowDefinitions>
                 <RowDefinition Height="40" />
                 <RowDefinition Height="*" />
@@ -73,14 +98,26 @@
                            Margin="4,0,0,1"
                            VerticalAlignment="Center"
                            Text="Properties" />
-                <Button Grid.Column="1"
-                        Click="{x:Bind CloseDetailPane}"
-                        Background="Transparent"
-                        BorderThickness="0"
-                        Padding="0"
-                        VerticalAlignment="Center">
-                    <FontIcon Glyph="&#xE711;" FontSize="12" />
-                </Button>
+                <StackPanel Grid.Column="1"
+                            Orientation="Horizontal"
+                            Spacing="8"
+                            VerticalAlignment="Center">
+                    <Button Click="{x:Bind ToggleDetailPaneDock}"
+                            Background="Transparent"
+                            BorderThickness="0"
+                            Padding="0"
+                            VerticalAlignment="Center"
+                            ToolTipService.ToolTip="{x:Bind DockToggleTooltip, Mode=OneTime}">
+                        <FontIcon Glyph="{x:Bind DockToggleGlyph, Mode=OneTime}" FontSize="12" />
+                    </Button>
+                    <Button Click="{x:Bind CloseDetailPane}"
+                            Background="Transparent"
+                            BorderThickness="0"
+                            Padding="0"
+                            VerticalAlignment="Center">
+                        <FontIcon Glyph="&#xE711;" FontSize="12" />
+                    </Button>
+                </StackPanel>
             </Grid>
             <plan:PlanNodePropertiesView Grid.Row="1"
                                          Node="{x:Bind ViewModel.SelectedPlanNode, Mode=OneWay}"

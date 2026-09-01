@@ -11,7 +11,7 @@ public class RleEntryTests
     {
         var entry = new RleEntry(-1, 1500);
 
-        Assert.False(entry.IsValue);
+        Assert.False(entry.IsPureValue);
 
         Assert.Equal(0, entry.BitpackIndex);
     }
@@ -21,7 +21,7 @@ public class RleEntryTests
     {
         var entry = new RleEntry(3, 4500);
 
-        Assert.True(entry.IsValue);
+        Assert.True(entry.IsPureValue);
     }
 
     [Fact]
@@ -29,7 +29,7 @@ public class RleEntryTests
     {
         var entry = new RleEntry(-1, 1500, ReadFlag: 1);
 
-        Assert.False(entry.IsValue);
+        Assert.False(entry.IsPureValue);
 
         Assert.Equal(0, entry.BitpackIndex);
     }
@@ -39,7 +39,7 @@ public class RleEntryTests
     {
         var entry = new RleEntry(-5000000000017, 2000, ReadFlag: 0);
 
-        Assert.True(entry.IsValue);
+        Assert.True(entry.IsPureValue);
     }
 
     [Fact]
@@ -55,7 +55,7 @@ public class RleEntryTests
     {
         var entry = new RleEntry(RleEntry.VariableLengthRepeatFlag, 5000, IsVariableLengthData: true);
 
-        Assert.True(entry.IsValue);
+        Assert.True(entry.IsPureValue);
 
         Assert.True(entry.HasRepeatFlag);
 
@@ -79,7 +79,7 @@ public class RleEntryTests
     {
         var entry = new RleEntry(unchecked((int)0x80008000), 15000, IsVariableLengthData: true);
 
-        Assert.False(entry.IsValue);
+        Assert.False(entry.IsPureValue);
 
         Assert.False(entry.HasRepeatFlag);
 

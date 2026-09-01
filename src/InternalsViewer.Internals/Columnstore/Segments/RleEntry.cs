@@ -49,7 +49,7 @@ public readonly record struct RleEntry(long Value, int Count, bool IsVariableLen
 {
     public const long VariableLengthRepeatFlag = 0x40000000;
 
-    public bool IsValue => ReadFlag is { } flag ? flag == 0 : Value >= 0;
+    public bool IsPureValue => ReadFlag is { } flag ? flag == 0 : Value >= 0;
 
     public bool HasRepeatFlag => IsVariableLengthData && (Value & VariableLengthRepeatFlag) != 0;
 

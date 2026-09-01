@@ -1,4 +1,4 @@
-using Microsoft.Data.SqlClient;
+﻿using Microsoft.Data.SqlClient;
 using InternalsViewer.Internals.Columnstore.Segments;
 using InternalsViewer.Internals.Columnstore.Services;
 using InternalsViewer.Internals.Readers.Internals;
@@ -73,7 +73,7 @@ public sealed class WideRepeatRunProbeTests(ITestOutputHelper testOutput) : Prov
                     ? $"{span[at]:X2} {span[at + 1]:X2} {span[at + 2]:X2} {span[at + 3]:X2}"
                     : "past end";
 
-                _lines.Add($"  [{i}] {(entry.IsTerminator ? "terminator" : entry.IsValue ? "REPEAT" : "read")} "
+                _lines.Add($"  [{i}] {(entry.IsTerminator ? "terminator" : entry.IsPureValue ? "REPEAT" : "read")} "
                            + $"value 0x{(ulong)entry.Value:X16} count {entry.Count} bytes12to15 [{tail}]");
             }
         }

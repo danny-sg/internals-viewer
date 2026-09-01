@@ -321,6 +321,8 @@ sqlmin|AllocScan|*|PageAccess
 # CValFetchByKey rule above is longer and still wins for the row fetch.
 *|*CVal*|*|ExpressionEvaluation
 *|CEsRuntime*|*|ExpressionEvaluation
+*|CEsMD*|*|ExpressionEvaluation
+*|CMultiDataEs*|*|ExpressionEvaluation
 *|CEsCompValSeg*|*|ExpressionEvaluation
 *|udf*|*|ExpressionEvaluation
 
@@ -518,6 +520,10 @@ sqlmin|CBpQScan|*|QueryOperator
 sqlmin|CBpQScan*|*|PhysicalOperator
 sqlmin|CBpagExpr*|*|ExpressionEvaluation
 sqlmin|CBpagBatchProcessing*|*|PhysicalOperator
+sqlmin|CBpagAggregate*|*|PhysicalOperator
+sqlmin|CBpagHashTable*|*|PhysicalOperator
+sqlmin|CBpSpillProcessor*|*|PhysicalOperator
+sqlmin|CBpCompute*|*|ExpressionEvaluation
 sqlmin|CBpHashTable*|*|PhysicalOperator
 sqlmin|CBpBatchScanAccessor*|*|RowAccess
 sqlmin|RbpExpression*|*|ExpressionEvaluation

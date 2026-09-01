@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <UserControl
     x:Class="InternalsViewer.UI.App.Views.Query.Tabs.Trace.TraceHashTablePanelView"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
@@ -11,5 +11,7 @@
     <trace:HashTableGrid Buckets="{x:Bind ViewModel.Buckets, Mode=OneWay}"
                          Columns="{x:Bind ViewModel.Columns, Mode=OneWay}"
                          Summary="{x:Bind ViewModel.Summary, Mode=OneWay}"
+                         Title="{x:Bind Title, Mode=OneWay}"
+                         SubTitle="{x:Bind SubTitle, Mode=OneWay}"
                          BucketCount="{x:Bind ViewModel.BucketCount, Mode=TwoWay}" />
 </UserControl>

@@ -17,22 +17,22 @@ public sealed record BatchColumn
 
     public DataIdSpace? IdSpace { get; set; }
 
-    public BatchSlotDomain Domain => DataType switch
+    public BatchValueDomain Domain => DataType switch
     {
         SqlDbType.BigInt or SqlDbType.Int or SqlDbType.SmallInt or SqlDbType.TinyInt or SqlDbType.Bit
             or SqlDbType.Money or SqlDbType.SmallMoney
-            or SqlDbType.Date or SqlDbType.DateTime or SqlDbType.SmallDateTime => BatchSlotDomain.Integer,
+            or SqlDbType.Date or SqlDbType.DateTime or SqlDbType.SmallDateTime => BatchValueDomain.Integer,
 
-        SqlDbType.Float or SqlDbType.Real => BatchSlotDomain.Real,
+        SqlDbType.Float or SqlDbType.Real => BatchValueDomain.Real,
 
-        SqlDbType.Decimal => BatchSlotDomain.Numeric,
+        SqlDbType.Decimal => BatchValueDomain.Numeric,
 
-        SqlDbType.DateTime2 or SqlDbType.Time or SqlDbType.DateTimeOffset => BatchSlotDomain.Temporal,
+        SqlDbType.DateTime2 or SqlDbType.Time or SqlDbType.DateTimeOffset => BatchValueDomain.Temporal,
 
         SqlDbType.Char or SqlDbType.VarChar or SqlDbType.NChar or SqlDbType.NVarChar
-            => BatchSlotDomain.Dictionary,
+            => BatchValueDomain.Dictionary,
 
-        _ => BatchSlotDomain.Deep
+        _ => BatchValueDomain.Deep
     };
 
     /// <summary>

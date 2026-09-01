@@ -19,13 +19,18 @@ public sealed class ExecutionBatch(int capacity, IReadOnlyList<BatchVector> vect
 
     public int RowGroupId { get; set; }
 
-    public bool IsPure => SelectionVector.RowCount == RowCount;
+    public bool IsPureVector => SelectionVector.RowCount == RowCount;
 
     private List<BatchVector> VectorList { get; } = [.. vectors];
 
     public void Reset(int rowCount)
     {
         DeepDataContext.Clear();
+
+        foreach (var vector in VectorList)
+        {
+            vector.ClearConstant();
+        }
 
         SetRowCount(rowCount);
     }

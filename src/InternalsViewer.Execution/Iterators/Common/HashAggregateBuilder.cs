@@ -59,15 +59,17 @@ public sealed class HashAggregateBuilder(IReadOnlyList<string> groupBy, IReadOnl
         return BitOperations.Log2((uint)bucketCount);
     }
 
-    public HashAggregateHit Accumulate(IRecord row, EvaluationContext context)
+    public HashAggregateHit Accumulate(IRecord row, EvaluationContext context) => Accumulate(row, context, null);
+
+    public HashAggregateHit Accumulate(IRecord row, EvaluationContext context, AccessKey? localKey, int skipKeyFields = 0)
     {
         ApplyPendingResize();
 
-        var key = GetKey(row);
+        var key = localKey ?? GetKey(row);
 
         var hash = JoinHash.Compute(key, key.Count);
 
-        var (bucket, entry, group, isNew) = Find(hash, key, row);
+        var (bucket, entry, group, isNew) = Find(hash, key, row, localKey, skipKeyFields);
 
         group.Add(new RecordRowValueSource(row), context);
 
@@ -76,10 +78,38 @@ public sealed class HashAggregateBuilder(IReadOnlyList<string> groupBy, IReadOnl
         return new HashAggregateHit(bucket, entry, hash, key, group, isNew);
     }
 
+    public HashAggregateHit Merge(AggregateGroupRecord source)
+    {
+        ApplyPendingResize();
+
+        var key = GetKey(source);
+
+        var hash = JoinHash.Compute(key, key.Count);
+
+        var (bucket, entry, group, isNew) = Find(hash, key, source, null, 0);
+
+        group.Combine(source);
+
+        InputRowCount += source.RowCount;
+
+        return new HashAggregateHit(bucket, entry, hash, key, group, isNew);
+    }
+
+    public void Clear()
+    {
+        Table.Clear();
+
+        InputRowCount = 0;
+    }
+
     public static string RunningText(AggregateGroupRecord group)
         => string.Join(", ", group.Accumulators.Select(a => $"{a.Column.ToText()} = {AccessValueFormatter.ToText(a.Result)}"));
 
-    private (int Bucket, int Entry, AggregateGroupRecord Group, bool IsNew) Find(uint hash, AccessKey key, IRecord row)
+    private (int Bucket, int Entry, AggregateGroupRecord Group, bool IsNew) Find(uint hash,
+                                                                                 AccessKey key,
+                                                                                 IRecord row,
+                                                                                 AccessKey? keyFields,
+                                                                                 int skipKeyFields)
     {
         var bucket = Table.GetBucket(hash);
 
@@ -95,16 +125,24 @@ public sealed class HashAggregateBuilder(IReadOnlyList<string> groupBy, IReadOnl
             }
         }
 
-        var group = new AggregateGroupRecord(GroupFields(row), Aggregates);
+        var group = new AggregateGroupRecord(GroupFields(row, keyFields, skipKeyFields), Aggregates);
 
         var (added, entry) = Table.Add(hash, key, group, JoinHash.HasNull(key, key.Count));
 
         return (added, entry, group, true);
     }
 
-    private List<RecordField> GroupFields(IRecord row)
+    private List<RecordField> GroupFields(IRecord row, AccessKey? keyFields, int skipKeyFields)
     {
-        var fields = new List<RecordField>(GroupBy.Count);
+        var fields = new List<RecordField>(GroupBy.Count + (keyFields?.Count ?? 0));
+
+        if (keyFields is { } key)
+        {
+            for (var index = skipKeyFields; index < key.Count; index++)
+            {
+                fields.Add(new ComputedField(key[index].ColumnName, key[index]));
+            }
+        }
 
         foreach (var column in GroupBy)
         {

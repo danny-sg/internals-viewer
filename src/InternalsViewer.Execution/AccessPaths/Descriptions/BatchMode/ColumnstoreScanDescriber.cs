@@ -36,7 +36,7 @@ public static class ColumnstoreScanDescriber
         {
             Phase = AccessPhase.Walk,
             Title = "Get Batch",
-            Lead = $"The row group is read a window of up to {definition.BatchRowCount} rows at a time into the same batch, which is "
+            Lead = $"The row group is read in a window of up to {definition.BatchRowCount} rows at a time into the same batch, which is "
                    + "reset rather than allocated again. Every row starts selected, then the delete bitmap read at open clears the rows "
                    + "deleted in this window.",
             Middle = definition.IsFilterOnCompressedDataUsed

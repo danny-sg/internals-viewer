@@ -114,11 +114,11 @@ public class BatchRowValueSourceTests
 
         for (var row = 0; row < 3; row++)
         {
-            batch.Vectors[0].Slots[row] = Slot(row + 1);
+            batch.Vectors[0].Values[row] = Slot(row + 1);
 
-            batch.Vectors[1].Slots[row] = Slot((row + 1) * 10);
+            batch.Vectors[1].Values[row] = Slot((row + 1) * 10);
 
-            batch.Vectors[2].Slots[row] = new BatchSlot(0xFF);
+            batch.Vectors[2].Values[row] = new BatchValue(0xFF);
         }
 
         batch.SetRowCount(3);
@@ -129,9 +129,9 @@ public class BatchRowValueSourceTests
     private static BatchVector Vector(string name)
         => new(new BatchColumn { Name = name, DataType = SqlDbType.BigInt }, 3);
 
-    private static BatchSlot Slot(long value)
+    private static BatchValue Slot(long value)
     {
-        Assert.True(BatchSlotNormalizer.TryNormalize(value, out var slot));
+        Assert.True(BatchValueNormalizer.TryNormalize(value, out var slot));
 
         return slot;
     }

@@ -22,5 +22,5 @@ public sealed class BatchColumnView
 
     public SqlDbType DataType => Column.DataType;
 
-    public BatchSlotDomain Domain => Column.Domain;
+    public BatchValueDomain Domain => Column.Domain;
 }

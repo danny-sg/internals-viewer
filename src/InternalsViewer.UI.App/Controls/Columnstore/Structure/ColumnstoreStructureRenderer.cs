@@ -362,7 +362,7 @@ public sealed class ColumnstoreStructureRenderer : IDisposable
         if (column.Structure is not { } structure)
         {
             // A locator has no declared type, so what it holds is written where the type would be
-            if (column.IsLocator && column.LocatorDescription.Length > 0)
+            if (column is { IsLocator: true, LocatorDescription.Length: > 0 })
             {
                 _text.Color = MutedColour;
 
@@ -554,14 +554,13 @@ public sealed class ColumnstoreStructureRenderer : IDisposable
 
         DrawBorder(canvas, bounds, colour);
 
-        // The column is named in the header above and the band it sits in, so the badges take that place
         DrawBadges(canvas, DictionaryBadges(dictionary), bounds.Left + 4, bounds.Top + 4, bounds.Width - 8, 0);
 
         _text.Color = MutedColour;
 
         var entryTop = bounds.Top + 4 + BadgeHeight + ColumnstoreLayout.BadgeMargin;
 
-        var entries = dictionary.EntryCount == 0 ? "entry" : "entries";
+        var entries = dictionary.EntryCount == 1 ? "entry" : "entries";
 
         canvas.DrawText(Fit($"{dictionary.EntryCount} {entries}", bounds.Width - 8, _labelFont),
                         bounds.Left + 4,

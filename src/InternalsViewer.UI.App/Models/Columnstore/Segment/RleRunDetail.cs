@@ -13,7 +13,7 @@ namespace InternalsViewer.UI.App.Models.Columnstore.Segment;
 public sealed record RleRunDetail(int Index,
                                   int StartRow,
                                   int Count,
-                                  bool IsValue,
+                                  bool IsPureValue,
                                   long Value,
                                   int Offset,
                                   SegmentPageSlot? Address = null,
@@ -27,19 +27,19 @@ public sealed record RleRunDetail(int Index,
     /// <summary>
     /// What the run does at the place it names, which the sign of the value decides
     /// </summary>
-    public string RunType => IsTerminator ? "Terminator" : IsValue ? "Repeat" : "Read";
+    public string RunType => IsTerminator ? "Terminator" : IsPureValue ? "Repeat" : "Read";
 
     /// <summary>
     /// What the value names, an address into the store or a place in the bit pack array or the value itself
     /// </summary>
     public string ValueType => IsTerminator
         ? string.Empty
-        : Address is not null ? "Page Slot" : IsValue ? "Value" : "Bit Pack Entry";
+        : Address is not null ? "Page Slot" : IsPureValue ? "Value" : "Bit Pack Entry";
 
     /// <summary>
     /// Whether the value names somewhere else, which is what makes it worth following
     /// </summary>
-    public bool IsLink => Address is not null || (!IsValue && !IsTerminator);
+    public bool IsLink => Address is not null || (!IsPureValue && !IsTerminator);
 
     /// <summary>
     /// What the map places on the hue wheel, a run addressing the store saying more by where its values sit
@@ -49,7 +49,7 @@ public sealed record RleRunDetail(int Index,
     /// <summary>
     /// Where a run that covers a sequence has reached by its last row, which is where it stands for one value
     /// </summary>
-    public long EndColourValue => IsValue ? ColourValue : ColourValue + Math.Max(0, Count - 1);
+    public long EndColourValue => IsPureValue ? ColourValue : ColourValue + Math.Max(0, Count - 1);
 
     private bool IsTerminator => Count == 0 && Value == 0;
 }

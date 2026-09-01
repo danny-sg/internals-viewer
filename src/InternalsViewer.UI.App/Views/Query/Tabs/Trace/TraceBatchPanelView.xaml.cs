@@ -177,7 +177,7 @@ public sealed partial class TraceBatchPanelView : UserControl
 
         foreach (var column in batch.Columns)
         {
-            VectorTable.Columns.Add(new BatchSlotColumn(column)
+            VectorTable.Columns.Add(new BatchValueColumn(column)
             {
                 Header = column.Name,
                 Width = new GridLength(170),
@@ -232,7 +232,7 @@ public sealed partial class TraceBatchPanelView : UserControl
         VectorRow.Height = new GridLength(1, GridUnitType.Star);
     }
 
-    private void OnSlotClicked(BatchSlotSelection selection) => Attached?.SelectSlot(selection);
+    private void OnSlotClicked(BatchValueSelection selection) => Attached?.SelectSlot(selection);
 
     private void OnDeepDataClicked(int index) => Attached?.RequestDeepData(index);
 

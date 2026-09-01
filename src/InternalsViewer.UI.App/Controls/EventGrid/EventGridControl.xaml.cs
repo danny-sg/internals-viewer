@@ -219,6 +219,7 @@ public sealed partial class EventGridControl : UserControl, IDisposable
         if (args.Item is EventGridRow row)
         {
             _visibleRows[container] = row.Event;
+
             ApplyHighlight(container, row.Event);
         }
     }

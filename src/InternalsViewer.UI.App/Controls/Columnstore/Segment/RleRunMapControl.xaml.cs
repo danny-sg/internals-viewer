@@ -200,7 +200,7 @@ public sealed partial class RleRunMapControl : IDisposable
                                                    _rowSpan);
 
                 TooltipText.Text = $"Row {row}{Environment.NewLine}"
-                                   + $"{(run.IsValue ? ValueLabel : IndexLabel)} {run.ValueDescription}{Environment.NewLine}"
+                                   + $"{(run.IsPureValue ? ValueLabel : IndexLabel)} {run.ValueDescription}{Environment.NewLine}"
                                    + $"Run {run.Index}, count {run.Count}";
 
                 TooltipPopup.IsOpen = true;

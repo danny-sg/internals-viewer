@@ -355,6 +355,8 @@ public sealed partial class TraceOperatorPanelView : UserControl, IDocumentComma
                 => new TraceHeldRowsPanelView(),
             TracePaneKind.HashTable 
                 => new TraceHashTablePanelView(),
+            TracePaneKind.HashTables
+                => new TraceHashTablePairView(),
             TracePaneKind.Aggregates 
                 => new TraceAggregatePanelView(),
             TracePaneKind.Segment 

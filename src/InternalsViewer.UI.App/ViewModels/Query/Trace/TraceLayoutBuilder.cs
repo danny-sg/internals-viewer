@@ -39,13 +39,26 @@ public static class TraceLayoutBuilder
 
         var hashTables = new Dictionary<int, TraceHashTableViewModel>();
 
+        var localHashTables = new Dictionary<int, TraceHashTableViewModel>();
+
         var sides = new Dictionary<int, OperatorSides>();
 
         var aggregates = new Dictionary<int, TraceAggregateViewModel>();
 
         var segments = new Dictionary<int, TraceSegmentViewModel>();
 
-        WirePanes(operators, tabsByNode, visuals, colours, nodeFor, palette, heldRows, hashTables, sides, aggregates, segments);
+        WirePanes(operators,
+                  tabsByNode,
+                  visuals,
+                  colours,
+                  nodeFor,
+                  palette,
+                  heldRows,
+                  hashTables,
+                  localHashTables,
+                  sides,
+                  aggregates,
+                  segments);
 
         ConfigureRootTab(definition, tabsByNode);
 
@@ -59,6 +72,7 @@ public static class TraceLayoutBuilder
                                   visuals,
                                   sourceVisuals,
                                   hashTables,
+                                  localHashTables,
                                   heldRows,
                                   sides,
                                   aggregates,
@@ -134,6 +148,7 @@ public static class TraceLayoutBuilder
                                   TraceBlobPalette palette,
                                   Dictionary<(int NodeId, int InputIndex), TraceHeldRowsViewModel> heldRows,
                                   Dictionary<int, TraceHashTableViewModel> hashTables,
+                                  Dictionary<int, TraceHashTableViewModel> localHashTables,
                                   Dictionary<int, OperatorSides> sides,
                                   Dictionary<int, TraceAggregateViewModel> aggregates,
                                   Dictionary<int, TraceSegmentViewModel> segments)
@@ -189,7 +204,8 @@ public static class TraceLayoutBuilder
                 SelectDefinition => new TracePane(TracePaneKind.RowStream, tab.Output, "Results"),
                 StreamAggregateDefinition aggregate => AggregatePane(aggregates, aggregate),
                 SegmentDefinition segment => SegmentPane(segments, segment),
-                HashAggregateDefinition or BatchHashAggregateDefinition => HashAggregatePane(hashTables, op.NodeId),
+                BatchHashAggregateDefinition => BatchHashAggregatePane(hashTables, localHashTables, op.NodeId),
+                HashAggregateDefinition => HashAggregatePane(hashTables, op.NodeId),
                 _ when visuals.TryGetValue(op.NodeId, out var visual) => new TracePane(TracePaneKind.Visual, visual),
                 _ => TracePane.Empty
             };
@@ -239,6 +255,7 @@ public static class TraceLayoutBuilder
                                                                    IReadOnlyDictionary<int, TraceVisualViewModel> visuals,
                                                                    IReadOnlyDictionary<int, TraceVisualViewModel> sourceVisuals,
                                                                    IReadOnlyDictionary<int, TraceHashTableViewModel> hashTables,
+                                                                   IReadOnlyDictionary<int, TraceHashTableViewModel> localHashTables,
                                                                    IReadOnlyDictionary<(int NodeId, int InputIndex), TraceHeldRowsViewModel> heldRows,
                                                                    IReadOnlyDictionary<int, OperatorSides> sides,
                                                                    IReadOnlyDictionary<int, TraceAggregateViewModel> aggregates,
@@ -260,6 +277,7 @@ public static class TraceLayoutBuilder
                 Colour = colours[nodeId],
                 InputNodes = (outer?.NodeId ?? -1, inner?.NodeId ?? -1),
                 Tab = tabsByNode.GetValueOrDefault(nodeId),
+                LocalHashTable = localHashTables.GetValueOrDefault(nodeId),
                 Visual = visuals.GetValueOrDefault(nodeId),
                 SourceVisual = sourceVisuals.GetValueOrDefault(nodeId),
                 HashTable = hashTables.GetValueOrDefault(nodeId),
@@ -575,6 +593,21 @@ public static class TraceLayoutBuilder
         hashTables[nodeId] = hashTable;
 
         return new TracePane(TracePaneKind.HashTable, hashTable, "Hash Table");
+    }
+
+    private static TracePane BatchHashAggregatePane(Dictionary<int, TraceHashTableViewModel> hashTables,
+                                                    Dictionary<int, TraceHashTableViewModel> localHashTables,
+                                                    int nodeId)
+    {
+        var local = new TraceHashTableViewModel(RecordColumnFilter.All);
+
+        var global = new TraceHashTableViewModel(RecordColumnFilter.All);
+
+        localHashTables[nodeId] = local;
+
+        hashTables[nodeId] = global;
+
+        return new TracePane(TracePaneKind.HashTables, new TraceHashTablePair(local, global), "Hash Tables");
     }
 
     private static TracePane AggregatePane(Dictionary<int, TraceAggregateViewModel> aggregates, StreamAggregateDefinition definition)

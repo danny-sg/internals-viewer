@@ -61,7 +61,7 @@ public static class ExecutionPlanParser
             return false;
         }
 
-        var statementText = GetStringAttribute(statementElement, "StatementText");
+        var statementText = statementElement.Value;
 
         return statementText.Contains("StatMan", StringComparison.OrdinalIgnoreCase)
                || statementText.Contains("_MS_UPDSTATS_TBL", StringComparison.OrdinalIgnoreCase);

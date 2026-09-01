@@ -209,8 +209,8 @@ public sealed partial class SegmentTabViewModel
             runs.Add(new RleRunDetail(i,
                                       row,
                                       entry.Count,
-                                      entry.IsValue,
-                                      entry.IsValue ? entry.Value : entry.BitpackIndex,
+                                      entry.IsPureValue,
+                                      entry.IsPureValue ? entry.Value : entry.BitpackIndex,
                                       blob.Header.RleArrayOffset + (i * blob.Header.RleEntrySize),
                                       address,
                                       storeOrdinal));

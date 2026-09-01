@@ -18,14 +18,14 @@ public class BatchDeepDataStoreTests
     {
         var store = new BatchDeepDataStore();
 
-        var slot = new BatchSlot(store.Store([1, 2, 3]));
+        var slot = new BatchValue(store.Store([1, 2, 3]));
 
         Assert.False(slot.IsNull);
 
         Assert.True(slot.IsDeepDataReference);
 
-        Assert.Equal(BatchSlotValueType.DeepDataReference,
-                     BatchSlotDenormalizer.GetValueType(slot, new BatchColumn { DataType = SqlDbType.BigInt }));
+        Assert.Equal(BatchValueType.DeepDataReference,
+                     BatchValueDenormalizer.GetValueType(slot, new BatchColumn { DataType = SqlDbType.BigInt }));
     }
 
     [Fact]
@@ -52,6 +52,6 @@ public class BatchDeepDataStoreTests
 
         Assert.Equal(slots.Length, slots.Distinct().Count());
 
-        Assert.All(slots, s => Assert.True(new BatchSlot(s).IsDeepDataReference));
+        Assert.All(slots, s => Assert.True(new BatchValue(s).IsDeepDataReference));
     }
 }

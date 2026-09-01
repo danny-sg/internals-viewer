@@ -36,22 +36,59 @@ public sealed partial class QueryPlanTabView : UserControl
                 viewModel.IsPlanPropertiesVisible = value;
             }
 
-            Bindings.Update();
+            RefreshDetailPane();
+        }
+    }
+
+    public bool IsPropertiesPaneDockedBottom
+    {
+        get => ViewModel?.IsPlanPropertiesDockedBottom == true;
+        set
+        {
+            if (ViewModel is { } viewModel)
+            {
+                viewModel.IsPlanPropertiesDockedBottom = value;
+            }
+
+            RefreshDetailPane();
         }
     }
 
     public GridLength BodyColumnWidth
-        => IsPropertiesPaneVisible ? new GridLength(6, GridUnitType.Star) : new GridLength(1, GridUnitType.Star);
+        => IsPropertiesPaneVisible && !IsPropertiesPaneDockedBottom
+            ? new GridLength(6, GridUnitType.Star)
+            : new GridLength(1, GridUnitType.Star);
 
     public GridLength DetailColumnWidth
-        => IsPropertiesPaneVisible ? new GridLength(4, GridUnitType.Star) : new GridLength(0);
+        => IsPropertiesPaneVisible && !IsPropertiesPaneDockedBottom ? new GridLength(4, GridUnitType.Star) : new GridLength(0);
 
-    public Visibility DetailSplitterVisibility
+    public GridLength BodyRowHeight
+        => IsPropertiesPaneVisible && IsPropertiesPaneDockedBottom
+            ? new GridLength(6, GridUnitType.Star)
+            : new GridLength(1, GridUnitType.Star);
+
+    public GridLength DetailRowHeight
+        => IsPropertiesPaneVisible && IsPropertiesPaneDockedBottom ? new GridLength(4, GridUnitType.Star) : new GridLength(0);
+
+    public Visibility DetailPaneVisibility
         => IsPropertiesPaneVisible ? Visibility.Visible : Visibility.Collapsed;
+
+    public Visibility ColumnSplitterVisibility
+        => IsPropertiesPaneVisible && !IsPropertiesPaneDockedBottom ? Visibility.Visible : Visibility.Collapsed;
+
+    public Visibility RowSplitterVisibility
+        => IsPropertiesPaneVisible && IsPropertiesPaneDockedBottom ? Visibility.Visible : Visibility.Collapsed;
+
+    public Thickness DetailPaneBorderThickness
+        => IsPropertiesPaneDockedBottom ? new Thickness(0, 1, 0, 0) : new Thickness(1, 0, 0, 0);
+
+    public string DockToggleGlyph => IsPropertiesPaneDockedBottom ? "\uE90D" : "\uE90E";
+
+    public string DockToggleTooltip => IsPropertiesPaneDockedBottom ? "Dock Right" : "Dock Bottom";
 
     private void OnDataContextChanged(FrameworkElement sender, DataContextChangedEventArgs args)
     {
-        Bindings.Update();
+        RefreshDetailPane();
         Subscribe();
     }
 
@@ -106,7 +143,8 @@ public sealed partial class QueryPlanTabView : UserControl
         switch (e.PropertyName)
         {
             case nameof(QueryViewModel.IsPlanPropertiesVisible):
-                Bindings.Update();
+            case nameof(QueryViewModel.IsPlanPropertiesDockedBottom):
+                RefreshDetailPane();
                 break;
             case nameof(QueryViewModel.IsFlameGraphVisible):
                 ApplyToPlans(p => p.HasFlameGraph = _subscribed.IsFlameGraphVisible);
@@ -158,6 +196,19 @@ public sealed partial class QueryPlanTabView : UserControl
     private void CloseDetailPane()
     {
         IsPropertiesPaneVisible = false;
+    }
+
+    private void ToggleDetailPaneDock()
+    {
+        IsPropertiesPaneDockedBottom = !IsPropertiesPaneDockedBottom;
+    }
+
+    private void RefreshDetailPane()
+    {
+        Grid.SetRow(DetailPane, IsPropertiesPaneDockedBottom ? 2 : 0);
+        Grid.SetColumn(DetailPane, IsPropertiesPaneDockedBottom ? 0 : 2);
+
+        Bindings.Update();
     }
 
     private void OnPlanIndexOpenRequested(object? sender, PlanNode node) => ViewModel?.OpenIndex(node);

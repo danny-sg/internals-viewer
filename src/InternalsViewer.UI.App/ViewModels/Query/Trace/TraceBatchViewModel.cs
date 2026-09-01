@@ -48,7 +48,7 @@ public sealed partial class TraceBatchViewModel : ObservableObject
     private string _purity = string.Empty;
 
     [ObservableProperty]
-    private bool _isPure;
+    private bool _isPureVector;
 
     [ObservableProperty]
     private int _rowGroupId;
@@ -58,7 +58,7 @@ public sealed partial class TraceBatchViewModel : ObservableObject
     private long _batchNumber;
 
     [ObservableProperty]
-    private BatchSlotSelection? _selectedSlot;
+    private BatchValueSelection? _selectedSlot;
 
     [ObservableProperty]
     private IReadOnlyList<BatchDetailItem> _detail = [];
@@ -107,9 +107,9 @@ public sealed partial class TraceBatchViewModel : ObservableObject
 
         BatchNumber = number;
 
-        IsPure = batch.IsPure;
+        IsPureVector = batch.IsPureVector;
 
-        Purity = batch.IsPure ? "Pure" : "Impure";
+        Purity = batch.IsPureVector ? "Pure" : "Impure";
 
         SelectionSummary = $"{batch.SelectionVector.RowCount}/{batch.RowCount}";
 
@@ -157,7 +157,7 @@ public sealed partial class TraceBatchViewModel : ObservableObject
         ColumnVersion++;
     }
 
-    public void SelectSlot(BatchSlotSelection? selection)
+    public void SelectSlot(BatchValueSelection? selection)
     {
         SelectedSlot = selection;
 
@@ -225,20 +225,20 @@ public sealed partial class TraceBatchViewModel : ObservableObject
 
         for (var row = 0; row < rows.Length; row++)
         {
-            var slots = new BatchSlot[vectors.Count];
+            var slots = new BatchValue[vectors.Count];
 
             for (var ordinal = 0; ordinal < vectors.Count; ordinal++)
             {
                 var vector = vectors[ordinal];
 
-                slots[ordinal] = row < vector.Slots.Length ? vector.Slots[row] : default;
+                slots[ordinal] = row < vector.Values.Length ? vector[row] : default;
             }
 
             rows[row] = new BatchRowView
             {
                 RowIndex = row,
                 IsSelected = selected[row],
-                Slots = slots
+                Values = slots
             };
         }
 
@@ -285,7 +285,7 @@ public sealed partial class TraceBatchViewModel : ObservableObject
     }
 
     partial void OnSelectedDeepDataChanged(BatchDeepDataRow? value)
-        => DeepDataDetail = value is null ? [] : BatchSlotDescriber.DescribeDeepData(value);
+        => DeepDataDetail = value is null ? [] : BatchValueDescriber.DescribeDeepData(value);
 
     private void RefreshDetail()
     {
@@ -306,6 +306,6 @@ public sealed partial class TraceBatchViewModel : ObservableObject
 
         DetailHeading = $"{column.Name} [{selection.RowIndex}]";
 
-        Detail = BatchSlotDescriber.Describe(column, row, DeepData);
+        Detail = BatchValueDescriber.Describe(column, row, DeepData);
     }
 }

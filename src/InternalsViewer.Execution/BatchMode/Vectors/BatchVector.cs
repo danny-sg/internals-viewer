@@ -22,7 +22,7 @@ public sealed class BatchVector(BatchColumn column, int size)
     /// <summary>
     /// Normalized values of the vector
     /// </summary>
-    public BatchSlot[] Slots { get; } = new BatchSlot[size];
+    public BatchValue[] Values { get; } = new BatchValue[size];
 
     /// <summary>
     /// Source segment reader
@@ -31,4 +31,31 @@ public sealed class BatchVector(BatchColumn column, int size)
     /// Required for reference back to the dictionaries linked to the Segment to look up values if the column is dictionary encoded
     /// </remarks>
     public SegmentReader? Source { get; set; }
+
+    public bool IsConstant { get; private set; }
+
+    public BatchValue ConstantValue { get; private set; }
+
+    public BatchValue this[int row] => IsConstant ? ConstantValue : Values[row];
+
+    public void SetConstant(BatchValue value)
+    {
+        IsConstant = true;
+
+        ConstantValue = value;
+    }
+
+    public void SetValue(int row, BatchValue value)
+    {
+        if (IsConstant)
+        {
+            Values.AsSpan().Fill(ConstantValue);
+
+            IsConstant = false;
+        }
+
+        Values[row] = value;
+    }
+
+    public void ClearConstant() => IsConstant = false;
 }

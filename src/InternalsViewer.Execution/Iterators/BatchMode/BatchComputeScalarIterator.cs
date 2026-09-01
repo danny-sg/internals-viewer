@@ -141,7 +141,7 @@ public sealed class BatchComputeScalarIterator(IIteratorFactory factory) : IBatc
                     column.DataType = value.DataType;
                 }
 
-                vectors[c].Slots[row] = BatchSlotBuilder.FromValue(column, value, batch.DeepDataContext);
+                vectors[c].SetValue(row, BatchValueBuilder.FromValue(column, value, batch.DeepDataContext));
             }
         }
 

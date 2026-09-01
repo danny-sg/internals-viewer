@@ -47,6 +47,21 @@ public sealed partial class BatchWorkProgress : ObservableObject
     [ObservableProperty]
     private bool _hasEmitted;
 
+    [ObservableProperty]
+    private long _pureBatches;
+
+    [ObservableProperty]
+    private long _impureBatches;
+
+    [ObservableProperty]
+    private bool _hasBatchPurity;
+
+    [ObservableProperty]
+    private long _skipped;
+
+    [ObservableProperty]
+    private bool _hasSkipped;
+
     public void Apply(AccessStep.BatchProduced step)
     {
         if (step.QualifyingCount > 0)
@@ -71,5 +86,30 @@ public sealed partial class BatchWorkProgress : ObservableObject
         Rows += step.RowCount;
 
         Qualifying += step.QualifyingCount;
+
+        PureBatches += step.PureColumns;
+
+        ImpureBatches += step.ImpureColumns;
+
+        HasBatchPurity = PureBatches + ImpureBatches > 0;
+    }
+
+    public void Apply(AccessStep.BatchSkipped step)
+    {
+        Skipped++;
+
+        HasSkipped = true;
+
+        HasFilter = step.HasCompressedFilter;
+
+        HasPredicate = step.HasPredicate;
+
+        HasNoFilter = step is { HasCompressedFilter: false, HasPredicate: false };
+
+        RleEntries += step.FilterRleEntries;
+
+        Operations += step.FilterOperations;
+
+        Rows += step.RowCount;
     }
 }

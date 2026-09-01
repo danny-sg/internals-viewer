@@ -23,11 +23,15 @@ public sealed class BatchDeepDataStore : IDeepDataContext
 {
     public int Count => Values.Count;
 
+    public long ByteCount { get; private set; }
+
     private List<byte[]> Values { get; } = [];
 
     public long Store(ReadOnlySpan<byte> value)
     {
         Values.Add([.. value]);
+
+        ByteCount += value.Length;
 
         return ((long)Values.Count << 1) | 1;
     }
@@ -36,5 +40,10 @@ public sealed class BatchDeepDataStore : IDeepDataContext
 
     public long AddressOf(int index) => ((long)(index + 1) << 1) | 1;
 
-    public void Clear() => Values.Clear();
+    public void Clear()
+    {
+        Values.Clear();
+
+        ByteCount = 0;
+    }
 }

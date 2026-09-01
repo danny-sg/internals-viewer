@@ -1,4 +1,4 @@
-using System.Data;
+﻿using System.Data;
 using InternalsViewer.Execution.AccessPaths.Text;
 using InternalsViewer.Execution.AccessPaths.Values;
 
@@ -117,6 +117,81 @@ public sealed class AggregateAccumulator(AggregateColumn column)
 
             case AggregateFunction.Sum or AggregateFunction.Average:
                 AddToTotal(value);
+
+                break;
+        }
+
+        _hasValue = true;
+    }
+
+    public void Combine(AggregateAccumulator other)
+    {
+        if (!other._hasValue && other._count == 0)
+        {
+            return;
+        }
+
+        if (Column.IsDistinct)
+        {
+            foreach (var value in other._seen)
+            {
+                Add(value);
+            }
+
+            return;
+        }
+
+        if (Column.Function == AggregateFunction.CountStar)
+        {
+            _count += other._count;
+
+            _hasValue = true;
+
+            return;
+        }
+
+        if (_argumentType == SqlDbType.Variant)
+        {
+            _argumentType = other._argumentType;
+        }
+
+        _count += other._count;
+
+        switch (Column.Function)
+        {
+            case AggregateFunction.Min:
+                if (!_hasValue || AccessValueComparer.Compare(other._extreme, _extreme) < 0)
+                {
+                    _extreme = other._extreme;
+                }
+
+                break;
+
+            case AggregateFunction.Max:
+                if (!_hasValue || AccessValueComparer.Compare(other._extreme, _extreme) > 0)
+                {
+                    _extreme = other._extreme;
+                }
+
+                break;
+
+            case AggregateFunction.Any:
+                if (!_hasValue)
+                {
+                    _extreme = other._extreme;
+                }
+
+                break;
+
+            case AggregateFunction.Sum or AggregateFunction.Average:
+                _sumInteger += other._sumInteger;
+                _sumDecimal += other._sumDecimal;
+                _sumReal += other._sumReal;
+
+                if (other._sumType != AccessValueType.Null)
+                {
+                    _sumType = other._sumType;
+                }
 
                 break;
         }

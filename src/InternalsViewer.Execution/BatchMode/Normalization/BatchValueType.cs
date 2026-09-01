@@ -1,6 +1,6 @@
 ﻿namespace InternalsViewer.Execution.BatchMode.Normalization;
 
-public enum BatchSlotValueType
+public enum BatchValueType
 {
     Inline,
     Null, 

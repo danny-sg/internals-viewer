@@ -78,7 +78,7 @@ public sealed class StoreByValueBookmarkProbeTests(ITestOutputHelper testOutput)
                     }
 
                     var runs = blob.RleEntries.Select(e =>
-                        $"{(e.IsValue ? $"val 0x{(uint)e.Value:X8}" : $"idx 0x{e.BitpackIndex:X8}")} x{e.Count}");
+                        $"{(e.IsPureValue ? $"val 0x{(uint)e.Value:X8}" : $"idx 0x{e.BitpackIndex:X8}")} x{e.Count}");
 
                     lines.Add($"  RLE runs [{string.Join(" | ", runs)}] "
                               + $"pages {blob.VariableLengthData?.PageCount} "

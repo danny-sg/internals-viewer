@@ -55,7 +55,7 @@ public static class BatchPacker
         {
             var vector = batch.Vectors[i];
 
-            vector.Slots[index] = BatchSlotBuilder.FromField(vector.Column, row.Fields[i], batch.DeepDataContext);
+            vector.SetValue(index, BatchValueBuilder.FromField(vector.Column, row.Fields[i], batch.DeepDataContext));
         }
     }
 

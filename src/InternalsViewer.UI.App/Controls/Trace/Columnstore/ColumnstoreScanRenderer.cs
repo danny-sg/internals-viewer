@@ -320,7 +320,7 @@ public sealed class ColumnstoreScanRenderer : IDisposable
 
             if (row < start + run.Count)
             {
-                return run.IsValue;
+                return run.IsPureValue;
             }
 
             start += run.Count;

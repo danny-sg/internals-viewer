@@ -1,4 +1,4 @@
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using CommunityToolkit.Mvvm.ComponentModel;
 
 namespace InternalsViewer.UI.App.Models.Query.Trace.Hash;
@@ -14,6 +14,8 @@ public sealed partial class HashColumnModel : ObservableObject
     public string Header { get; init; } = string.Empty;
 
     public bool IsMonospace { get; init; }
+
+    public double PrefixWidth { get; init; }
 
     /// <summary>
     /// The two columns that exist before any row has been read, so the grid always has a header

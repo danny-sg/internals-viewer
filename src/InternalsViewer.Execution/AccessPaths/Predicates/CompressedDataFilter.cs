@@ -131,11 +131,11 @@ public sealed class CompressedDataFilter
         return matching;
     }
 
-    public static bool IsPureConjunction(AccessPredicate predicate)
+    public static bool IsPlainConjunction(AccessPredicate predicate)
         => predicate switch
         {
             AccessPredicate.Comparison => true,
-            AccessPredicate.And and => and.Predicates.All(IsPureConjunction),
+            AccessPredicate.And and => and.Predicates.All(IsPlainConjunction),
             _ => false
         };
 

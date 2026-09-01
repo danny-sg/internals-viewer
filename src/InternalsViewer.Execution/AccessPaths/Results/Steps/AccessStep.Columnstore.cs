@@ -45,6 +45,32 @@ public abstract partial record AccessStep
         public bool HasCompressedFilter { get; init; }
 
         public bool HasPredicate { get; init; }
+
+        public int PureColumns { get; init; }
+
+        public int ImpureColumns { get; init; }
+    }
+
+    public sealed record AggregateLocalMerge(int RowGroupId,
+                                            long LocalGroups,
+                                            long GlobalGroupsBefore,
+                                            long GlobalGroupsAfter,
+                                            long Materialised) : AccessStep(AccessPhase.Accumulate)
+    {
+        public long NewGroups => GlobalGroupsAfter - GlobalGroupsBefore;
+    }
+
+    public sealed record BatchSkipped(int RowGroupId,
+                                      int FirstRow,
+                                      int RowCount) : AccessStep(AccessPhase.Walk)
+    {
+        public int FilterRleEntries { get; init; }
+
+        public int FilterOperations { get; init; }
+
+        public bool HasCompressedFilter { get; init; }
+
+        public bool HasPredicate { get; init; }
     }
 
     public sealed record ComputeVector(long Number, int RowGroupId, string Columns, int RowCount)

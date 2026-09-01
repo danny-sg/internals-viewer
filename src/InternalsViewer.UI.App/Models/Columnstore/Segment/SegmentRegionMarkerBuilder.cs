@@ -314,8 +314,8 @@ public static class SegmentRegionMarkerBuilder
             var value = entry.PageSlot is { } address
                 ? Tagged(Create("Value", ItemType.ValueAddress, offset, valueSize, address.ToString()),
                          "Page Slot",
-                         entry.IsValue ? "Repeat" : "Read")
-                : !entry.IsValue
+                         entry.IsPureValue ? "Repeat" : "Read")
+                : !entry.IsPureValue
                 ? Tagged(Create("Value", ItemType.RleBitpackIndex, offset, valueSize, $"{entry.BitpackIndex}"),
                          "Bit Pack Index",
                          "Read")

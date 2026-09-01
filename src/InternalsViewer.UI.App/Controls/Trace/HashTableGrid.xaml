@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <UserControl
     x:Class="InternalsViewer.UI.App.Controls.Trace.HashTableGrid"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
@@ -11,6 +11,7 @@
 
     <UserControl.Resources>
         <converters:BoolToFontFamilyConverter x:Key="HashBoolToFontFamilyConverter" />
+        <converters:BoolToVisibilityConverter x:Key="HashBoolToVisibilityConverter" />
 
         <SolidColorBrush x:Key="HashBucketCurrentBrush" Color="{ThemeResource SystemListAccentLowColor}" />
         <SolidColorBrush x:Key="HashRowCurrentBrush" Color="{ThemeResource SystemListAccentMediumColor}" />
@@ -47,11 +48,16 @@
                     <ColumnDefinition Width="Auto" />
                 </Grid.ColumnDefinitions>
 
-                <TextBlock VerticalAlignment="Center"
-                           Margin="0,0,6,0"
-                           Text="Hash Table"
-                           Style="{ThemeResource CaptionTextBlockStyle}"
-                           Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center" Margin="0,0,6,0">
+                    <TextBlock VerticalAlignment="Center"
+                               Text="{x:Bind Title, Mode=OneWay}"
+                               Style="{ThemeResource CaptionTextBlockStyle}"
+                               Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                    <TextBlock VerticalAlignment="Center"
+                               Text="{x:Bind SubTitle, Mode=OneWay}"
+                               Style="{ThemeResource CaptionTextBlockStyle}"
+                               Foreground="{ThemeResource TextFillColorTertiaryBrush}" />
+                </StackPanel>
                 <StackPanel Grid.Column="1" Orientation="Horizontal">
                     <TextBlock VerticalAlignment="Center"
                                Margin="0,0,6,0"
@@ -140,11 +146,30 @@
                                                     <DataTemplate x:DataType="trace:HashCellModel">
                                                         <Border Style="{StaticResource HashGridLineStyle}"
                                                                 Width="{x:Bind Column.Width, Mode=OneWay}">
-                                                            <TextBlock Text="{x:Bind Value}"
-                                                                       Height="30"
-                                                                       Style="{StaticResource HashCellStyle}"
-                                                                       FontFamily="{x:Bind Column.IsMonospace,
-                                                                               Converter={StaticResource HashBoolToFontFamilyConverter}}" />
+                                                            <Grid>
+                                                                <Grid.ColumnDefinitions>
+                                                                    <ColumnDefinition Width="Auto" />
+                                                                    <ColumnDefinition Width="*" />
+                                                                </Grid.ColumnDefinitions>
+                                                                <Border Grid.Column="0"
+                                                                        Width="{x:Bind Column.PrefixWidth, Mode=OneWay}"
+                                                                        BorderThickness="0,0,1,0"
+                                                                        BorderBrush="{ThemeResource ControlStrokeColorDefaultBrush}"
+                                                                        Visibility="{x:Bind HasPrefix,
+                                                                                Converter={StaticResource HashBoolToVisibilityConverter}}">
+                                                                    <TextBlock Text="{x:Bind Prefix}"
+                                                                               Height="30"
+                                                                               Style="{StaticResource HashCellStyle}"
+                                                                               Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                                                               FontFamily="{StaticResource MonospaceFontFamily}" />
+                                                                </Border>
+                                                                <TextBlock Grid.Column="1"
+                                                                           Text="{x:Bind Value}"
+                                                                           Height="30"
+                                                                           Style="{StaticResource HashCellStyle}"
+                                                                           FontFamily="{x:Bind Column.IsMonospace,
+                                                                                   Converter={StaticResource HashBoolToFontFamilyConverter}}" />
+                                                            </Grid>
                                                         </Border>
                                                     </DataTemplate>
                                                 </ItemsControl.ItemTemplate>

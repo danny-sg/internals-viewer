@@ -1,4 +1,4 @@
-using InternalsViewer.Internals.Columnstore.Services;
+﻿using InternalsViewer.Internals.Columnstore.Services;
 using InternalsViewer.Internals.Readers.Internals;
 using InternalsViewer.Internals.Services.Loaders.Records.Cd;
 using InternalsViewer.Internals.Services.Loaders.Records.FixedVar;
@@ -82,7 +82,7 @@ public sealed class RlePresenceProbeTests(ITestOutputHelper testOutput) : Provid
                         {
                             withRuns++;
 
-                            var shortest = blob.RleEntries.Where(e => e.IsValue && e.Count > 0).Min(e => e.Count);
+                            var shortest = blob.RleEntries.Where(e => e.IsPureValue && e.Count > 0).Min(e => e.Count);
 
                             shortestRun = Math.Min(shortestRun, shortest);
                         }

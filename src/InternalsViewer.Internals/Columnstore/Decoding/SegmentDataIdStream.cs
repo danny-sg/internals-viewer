@@ -40,7 +40,7 @@ public sealed class SegmentDataIdStream(SegmentBlob blob)
 
         var entry = Blob.RleEntries[entryIndex];
 
-        if (entry.IsValue)
+        if (entry.IsPureValue)
         {
             return new SegmentDataIdSource(entry.Value, SegmentValueOrigin.RleRun, entryIndex, -1);
         }
@@ -64,7 +64,7 @@ public sealed class SegmentDataIdStream(SegmentBlob blob)
 
         var entry = Blob.RleEntries[entryIndex];
 
-        if (entry.IsValue)
+        if (entry.IsPureValue)
         {
             return BitSpan.FromBytes(Blob.Header.RleArrayOffset + (entryIndex * Blob.Header.RleEntrySize), Blob.Header.RleValueSize);
         }
@@ -107,7 +107,7 @@ public sealed class SegmentDataIdStream(SegmentBlob blob)
                 yield break;
             }
 
-            yield return entry.IsValue
+            yield return entry.IsPureValue
                 ? new SegmentRun(SegmentValueOrigin.RleRun, entry.Value, -1, current, take)
                 : new SegmentRun(SegmentValueOrigin.BitPack,
                                        0,
@@ -138,7 +138,7 @@ public sealed class SegmentDataIdStream(SegmentBlob blob)
                 continue;
             }
 
-            if (!entry.IsValue)
+            if (!entry.IsPureValue)
             {
                 for (var i = 0; i < entry.Count; i++)
                 {
@@ -185,7 +185,7 @@ public sealed class SegmentDataIdStream(SegmentBlob blob)
 
         var ordinal = store.GetOrdinal(address.Page, address.Slot);
 
-        return (index, entry.IsValue ? ordinal : ordinal + (rowOrdinal - starts[index]));
+        return (index, entry.IsPureValue ? ordinal : ordinal + (rowOrdinal - starts[index]));
     }
 
     private int[] BuildRunStartRows()

@@ -33,7 +33,7 @@ public readonly struct RunValueScale
 
         foreach (var run in runs)
         {
-            if (!run.IsValue || run.IsTerminator)
+            if (!run.IsPureValue || run.IsTerminator)
             {
                 continue;
             }
@@ -53,7 +53,7 @@ public readonly struct RunValueScale
             return 0;
         }
 
-        if (!run.IsValue)
+        if (!run.IsPureValue)
         {
             return BitpackAlpha;
         }

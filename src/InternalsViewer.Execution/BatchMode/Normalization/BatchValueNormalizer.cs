@@ -18,7 +18,7 @@ namespace InternalsViewer.Execution.BatchMode.Normalization;
 ///
 /// See <see href="https://sqlperformance.com/2019/09/sql-performance/batch-mode-normalization-performance"/>
 /// </remarks>
-public static class BatchSlotNormalizer
+public static class BatchValueNormalizer
 {
     private const long RealPayloadMask = 0x0FFFFFFFFFFFFFFF;
 
@@ -30,7 +30,7 @@ public static class BatchSlotNormalizer
 
     private const int OffsetBias = 1024;
 
-    public static BatchSlot Null { get; } = new(1);
+    public static BatchValue Null { get; } = new(1);
 
     /// <summary>
     /// Normalize integer
@@ -41,7 +41,7 @@ public static class BatchSlotNormalizer
     /// Check is made to ensure the value shifted right by 1 bit gives the original value ensuring that the value is representable in a
     /// normalized space.
     /// </remarks>
-    public static bool TryNormalize(long value, out BatchSlot slot)
+    public static bool TryNormalize(long value, out BatchValue slot)
     {
         var normalized = value << 1;
 
@@ -52,7 +52,7 @@ public static class BatchSlotNormalizer
             return false;
         }
 
-        slot = new BatchSlot(normalized);
+        slot = new BatchValue(normalized);
 
         return true;
     }
@@ -68,7 +68,7 @@ public static class BatchSlotNormalizer
     /// check is a band of the exponent range rather than a magnitude limit, so ordinary values and the very largest both normalize while
     /// magnitudes roughly between 1e-231 and 1e-77, or between 1e77 and 1e231, do not.
     /// </remarks>
-    public static bool TryNormalize(double value, out BatchSlot slot)
+    public static bool TryNormalize(double value, out BatchValue slot)
     {
         var bits = BitConverter.DoubleToInt64Bits(value);
 
@@ -81,7 +81,7 @@ public static class BatchSlotNormalizer
             return false;
         }
 
-        slot = new BatchSlot(((bits & RealPayloadMask) << 1) | (bits & RealSignAndExponentMask));
+        slot = new BatchValue(((bits & RealPayloadMask) << 1) | (bits & RealSignAndExponentMask));
 
         return true;
     }
@@ -97,7 +97,7 @@ public static class BatchSlotNormalizer
     /// Check is made that the magnitude uses no more than the low two 32 bit words and still survives the doubling, which allows 18
     /// decimal digits or fewer whatever precision the column declares.
     /// </remarks>
-    public static bool TryNormalize(SqlDecimal value, out BatchSlot slot)
+    public static bool TryNormalize(SqlDecimal value, out BatchValue slot)
     {
         if (value.IsNull)
         {
@@ -133,7 +133,7 @@ public static class BatchSlotNormalizer
     /// <remarks>
     /// Treats the DateTime as a long of ticks and normalizes it as an integer.
     /// </remarks>
-    public static bool TryNormalize(DateTime value, out BatchSlot slot) 
+    public static bool TryNormalize(DateTime value, out BatchValue slot) 
         => TryNormalize(value.Ticks, out slot);
 
     /// <summary>
@@ -142,7 +142,7 @@ public static class BatchSlotNormalizer
     /// <remarks>
     /// Treats the TimeSpan as a long of ticks and normalizes it as an integer.
     /// </remarks>
-    public static bool TryNormalize(TimeSpan value, out BatchSlot slot) 
+    public static bool TryNormalize(TimeSpan value, out BatchValue slot) 
         => TryNormalize(value.Ticks, out slot);
 
     /// <summary>
@@ -163,7 +163,7 @@ public static class BatchSlotNormalizer
     /// Note: the split between the instant and the offset is this implementation's own. SQL Server rescales to a scale of 2 in the same
     /// way, but its internal layout of the two has not been established, so a raw slot value here will not match the engine's.
     /// </remarks>
-    public static bool TryNormalize(DateTimeOffset value, out BatchSlot slot)
+    public static bool TryNormalize(DateTimeOffset value, out BatchValue slot)
     {
         if (value.UtcTicks % TicksPerScaleTwoUnit != 0)
         {
@@ -180,7 +180,7 @@ public static class BatchSlotNormalizer
     /// <summary>
     /// Normalizes a decoded value whose type is only known at run time
     /// </summary>
-    public static bool TryNormalizeValue(object? value, out BatchSlot slot)
+    public static bool TryNormalizeValue(object? value, out BatchValue slot)
     {
         switch (value)
         {
@@ -224,12 +224,12 @@ public static class BatchSlotNormalizer
     /// Shifts the Data Id left by 16 bits to normalize it for use as a dictionary slot. This moves the Data Id 2 bytes to the left, leaving
     /// the tag and the low bits clear to mark it as a dictionary reference rather than a deep data reference.
     /// </remarks>
-    public static BatchSlot FromDictionaryDataId(long dataId)
+    public static BatchValue FromDictionaryDataId(long dataId)
     {
         ArgumentOutOfRangeException.ThrowIfNegative(dataId);
 
         ArgumentOutOfRangeException.ThrowIfGreaterThan(dataId, int.MaxValue);
 
-        return new BatchSlot(dataId << 16);
+        return new BatchValue(dataId << 16);
     }
 }

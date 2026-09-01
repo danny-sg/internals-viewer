@@ -9,6 +9,7 @@ public enum TracePaneKind
     RowStream,
     HeldRows,
     HashTable,
+    HashTables,
     Aggregates,
     Segment
 }

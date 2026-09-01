@@ -10,15 +10,15 @@ namespace InternalsViewer.UI.App.ViewModels.Query.Trace;
 /// <summary>
 /// Describes what one batch slot holds, from the raw normalized value through to the value it decodes to
 /// </summary>
-public static class BatchSlotDescriber
+public static class BatchValueDescriber
 {
     public static IReadOnlyList<BatchDetailItem> Describe(BatchColumnView column,
                                                           BatchRowView row,
                                                           IReadOnlyList<BatchDeepDataRow> deepData)
     {
-        var slot = row.Slots[column.Ordinal];
+        var slot = row.Values[column.Ordinal];
 
-        var valueType = BatchSlotDenormalizer.GetValueType(slot, column.Column);
+        var valueType = BatchValueDenormalizer.GetValueType(slot, column.Column);
 
         var items = new List<BatchDetailItem>
         {
@@ -33,22 +33,22 @@ public static class BatchSlotDescriber
 
         switch (valueType)
         {
-            case BatchSlotValueType.Null:
+            case BatchValueType.Null:
                 items.Add(Item("Value", "NULL"));
 
                 break;
 
-            case BatchSlotValueType.Inline:
+            case BatchValueType.Inline:
                 items.Add(Item("Value", InlineValue(column, slot)));
 
                 break;
 
-            case BatchSlotValueType.DictionaryReference:
+            case BatchValueType.DictionaryReference:
                 AddDictionary(items, column, slot);
 
                 break;
 
-            case BatchSlotValueType.DeepDataReference:
+            case BatchValueType.DeepDataReference:
                 AddDeepData(items, slot, deepData);
 
                 break;
@@ -87,9 +87,9 @@ public static class BatchSlotDescriber
         }
     }
 
-    private static void AddDictionary(List<BatchDetailItem> items, BatchColumnView column, BatchSlot slot)
+    private static void AddDictionary(List<BatchDetailItem> items, BatchColumnView column, BatchValue slot)
     {
-        var dataId = BatchSlotDenormalizer.GetDictionaryDataId(slot);
+        var dataId = BatchValueDenormalizer.GetDictionaryDataId(slot);
 
         items.Add(Item("Data Id", dataId.ToString(CultureInfo.InvariantCulture)));
 
@@ -112,7 +112,7 @@ public static class BatchSlotDescriber
         }
     }
 
-    private static void AddDeepData(List<BatchDetailItem> items, BatchSlot slot, IReadOnlyList<BatchDeepDataRow> deepData)
+    private static void AddDeepData(List<BatchDetailItem> items, BatchValue slot, IReadOnlyList<BatchDeepDataRow> deepData)
     {
         var index = (int)(slot.Value >> 1) - 1;
 
@@ -172,16 +172,16 @@ public static class BatchSlotDescriber
             : $"Global ({segment.PrimaryDictionaryId})";
     }
 
-    private static string InlineValue(BatchColumnView column, BatchSlot slot)
+    private static string InlineValue(BatchColumnView column, BatchValue slot)
     {
         try
         {
             return column.Domain switch
             {
-                BatchSlotDomain.Temporal => Format(BatchSlotDenormalizer.GetTemporalValue(slot, column.Column)),
-                BatchSlotDomain.Real => BitConverter.Int64BitsToDouble(BatchSlotDenormalizer.GetStorageValue(slot, column.Column))
+                BatchValueDomain.Temporal => Format(BatchValueDenormalizer.GetTemporalValue(slot, column.Column)),
+                BatchValueDomain.Real => BitConverter.Int64BitsToDouble(BatchValueDenormalizer.GetStorageValue(slot, column.Column))
                                                     .ToString(CultureInfo.InvariantCulture),
-                _ => BatchSlotDenormalizer.GetStorageValue(slot, column.Column).ToString(CultureInfo.InvariantCulture)
+                _ => BatchValueDenormalizer.GetStorageValue(slot, column.Column).ToString(CultureInfo.InvariantCulture)
             };
         }
         catch (Exception exception)

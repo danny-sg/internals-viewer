@@ -1,4 +1,5 @@
-﻿using InternalsViewer.Execution.AccessPaths.Definitions;
+﻿using InternalsViewer.Execution.AccessPaths.Aggregation;
+using InternalsViewer.Execution.AccessPaths.Definitions;
 using InternalsViewer.Execution.AccessPaths.Joins.Hash;
 using InternalsViewer.Execution.AccessPaths.Memory;
 using InternalsViewer.Execution.AccessPaths.Results;
@@ -35,11 +36,25 @@ public sealed class BatchHashAggregateIterator(IIteratorFactory factory) : IBatc
 
     public HashTable Table => Builder.Table;
 
-    public BufferMemory Memory => Table.Memory;
+    public IHashTableSource LocalHashTable => LocalSource;
+
+    public BufferMemory Memory
+    {
+        get
+        {
+            var rows = Builder.Table.RowCount + LocalBuilder.Table.RowCount;
+
+            var rowBytes = Builder.Table.RowBytes + LocalBuilder.Table.RowBytes + DeepDataBytes;
+
+            return new BufferMemory(rowBytes, (rows * RowMemory.WorkspaceRowBytes) + RowMemory.HashFloorBytes);
+        }
+    }
+
+    public long DeepDataBytes => Batch?.DeepDataContext.ByteCount ?? 0;
 
     public long BuildRowEstimate { get; private set; }
 
-    public long InputRowCount => Builder.InputRowCount;
+    public long InputRowCount => Builder.InputRowCount + LocalBuilder.InputRowCount;
 
     public long GroupCount => Builder.GroupCount;
 
@@ -48,6 +63,12 @@ public sealed class BatchHashAggregateIterator(IIteratorFactory factory) : IBatc
     private long OutputBatchCount { get; set; }
 
     private HashAggregateBuilder Builder { get; set; } = new([], [], JoinHash.DefaultBucketBits);
+
+    private HashAggregateBuilder LocalBuilder { get; set; } = new([], [], JoinHash.DefaultBucketBits);
+
+    private HashAggregateLocalSource LocalSource { get; set; } = new(new([], [], JoinHash.DefaultBucketBits), 0);
+
+    private int LocalRowGroupId { get; set; } = -1;
 
     private IteratorContext Context { get; set; } = null!;
 
@@ -79,6 +100,14 @@ public sealed class BatchHashAggregateIterator(IIteratorFactory factory) : IBatc
         Builder = new HashAggregateBuilder(aggregate.GroupBy,
                                            aggregate.Aggregates,
                                            aggregate.BucketBits ?? JoinHash.BucketBitsFor(aggregate.RowEstimate));
+
+        LocalBuilder = new HashAggregateBuilder(aggregate.GroupBy,
+                                                aggregate.Aggregates,
+                                                aggregate.BucketBits ?? JoinHash.BucketBitsFor(aggregate.RowEstimate));
+
+        LocalSource = new HashAggregateLocalSource(LocalBuilder, aggregate.RowEstimate);
+
+        LocalRowGroupId = -1;
 
         Batch = null;
 
@@ -145,7 +174,14 @@ public sealed class BatchHashAggregateIterator(IIteratorFactory factory) : IBatc
 
             var selection = batch.SelectionVector;
 
-            var groupsBefore = Builder.GroupCount;
+            if (LocalRowGroupId >= 0 && batch.RowGroupId != LocalRowGroupId)
+            {
+                await MergeLocalAsync(cancellationToken);
+            }
+
+            LocalRowGroupId = batch.RowGroupId;
+
+            var groupsBefore = LocalBuilder.GroupCount;
 
             var lastKey = string.Empty;
 
@@ -155,7 +191,10 @@ public sealed class BatchHashAggregateIterator(IIteratorFactory factory) : IBatc
             {
                 var row = BatchRecordBuilder.Build(batch, selection[index]);
 
-                var hit = Builder.Accumulate(row, Context.EvaluationContext);
+                var hit = LocalBuilder.Accumulate(row,
+                                                  Context.EvaluationContext,
+                                                  BatchRecordBuilder.BuildLocalKey(batch, selection[index], LocalBuilder.GroupBy),
+                                                  skipKeyFields: 1);
 
                 lastKey = KeyText(hit.Key);
 
@@ -164,16 +203,56 @@ public sealed class BatchHashAggregateIterator(IIteratorFactory factory) : IBatc
 
             await EmitAsync(new AccessStep.HashAggregateBatch(BatchCount, selection.RowCount)
             {
-                InputRowCount = Builder.InputRowCount,
-                Groups = Builder.GroupCount,
-                NewGroups = Builder.GroupCount - groupsBefore,
-                BucketCount = Table.BucketCount,
-                Fill = TableFill(),
+                InputRowCount = Builder.InputRowCount + LocalBuilder.InputRowCount,
+                Groups = LocalBuilder.GroupCount,
+                NewGroups = LocalBuilder.GroupCount - groupsBefore,
+                BucketCount = LocalBuilder.Table.BucketCount,
+                Fill = TableFill(LocalBuilder),
                 LastKey = lastKey,
                 Running = running
             },
             cancellationToken);
         }
+
+        await MergeLocalAsync(cancellationToken);
+    }
+
+    private async Task MergeLocalAsync(CancellationToken cancellationToken)
+    {
+        if (LocalBuilder.GroupCount == 0)
+        {
+            return;
+        }
+
+        var localGroups = LocalBuilder.GroupCount;
+
+        var globalBefore = Builder.GroupCount;
+
+        var materialised = 0L;
+
+        foreach (var bucket in LocalBuilder.Table.Buckets)
+        {
+            for (var index = 0; index < bucket.Count; index++)
+            {
+                if (bucket.Entries[index].Record is not AggregateGroupRecord group)
+                {
+                    continue;
+                }
+
+                Builder.Merge(group);
+
+                materialised++;
+            }
+        }
+
+        await EmitAsync(new AccessStep.AggregateLocalMerge(LocalRowGroupId,
+                                                           localGroups,
+                                                           globalBefore,
+                                                           Builder.GroupCount,
+                                                           materialised),
+                        cancellationToken);
+
+        LocalBuilder.Clear();
     }
 
     private async Task<ExecutionBatch?> EmitBatchAsync(CancellationToken cancellationToken)
@@ -220,13 +299,13 @@ public sealed class BatchHashAggregateIterator(IIteratorFactory factory) : IBatc
         return Batch;
     }
 
-    private int[] TableFill()
+    private static int[] TableFill(HashAggregateBuilder builder)
     {
-        var fill = new int[Table.BucketCount];
+        var fill = new int[builder.Table.BucketCount];
 
         for (var index = 0; index < fill.Length; index++)
         {
-            fill[index] = Table.Buckets[index].Count;
+            fill[index] = builder.Table.Buckets[index].Count;
         }
 
         return fill;

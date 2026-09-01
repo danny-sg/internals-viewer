@@ -26,6 +26,8 @@ public sealed class TraceNodeContext
 
     public TraceHashTableViewModel? HashTable { get; init; }
 
+    public TraceHashTableViewModel? LocalHashTable { get; init; }
+
     public TraceAggregateViewModel? Aggregates { get; init; }
 
     public TraceSegmentViewModel? Segment { get; init; }

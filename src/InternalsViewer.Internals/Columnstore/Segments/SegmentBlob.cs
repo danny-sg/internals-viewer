@@ -28,7 +28,7 @@ public sealed class SegmentBlob : DataStructure
 
     public int RowCount => RleEntries.Length > 0 ? RleEntries.Sum(e => e.Count) : VariableLengthData?.ValueCount ?? 0;
 
-    public int BitpackRowCount => RleEntries.Where(e => !e.IsValue).Sum(e => e.Count);
+    public int BitpackRowCount => RleEntries.Where(e => !e.IsPureValue).Sum(e => e.Count);
 
-    public int LiteralRunCount => RleEntries.Count(e => e is { IsValue: true, Count: > 0 });
+    public int LiteralRunCount => RleEntries.Count(e => e is { IsPureValue: true, Count: > 0 });
 }

@@ -1,7 +1,9 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.Linq;
 using CommunityToolkit.Mvvm.ComponentModel;
 using InternalsViewer.Execution.AccessPaths.Joins.Hash;
+using InternalsViewer.Execution.BatchMode.Vectors;
 using InternalsViewer.Execution.AccessPaths.Results.Steps;
 using InternalsViewer.Execution.Interfaces.Iterators.Joins;
 using InternalsViewer.UI.App.Models.Index;
@@ -24,6 +26,8 @@ public sealed partial class TraceHashTableViewModel(RecordColumnFilter columnFil
     private const int HashColumn = 1;
 
     private const int FirstValueColumn = 2;
+
+    private const double DataIdWidth = 68;
 
     private readonly List<HashEntryModel> _matchedEntries = [];
 
@@ -335,12 +339,19 @@ public sealed partial class TraceHashTableViewModel(RecordColumnFilter columnFil
             new() { Value = $"{entry.Hash:X8}", Column = columns[HashColumn] }
         };
 
+        var pairs = Pair(record);
+
         // Positional, because a build side reading two objects can carry the same column name twice and a lookup would find only the first
         for (var index = FirstValueColumn; index < columns.Count; index++)
         {
-            var field = index - FirstValueColumn < record.Fields.Count ? record.Fields[index - FirstValueColumn] : null;
+            var pair = index - FirstValueColumn < pairs.Count ? pairs[index - FirstValueColumn] : default;
 
-            cells.Add(new HashCellModel { Value = field?.Value ?? string.Empty, Column = columns[index] });
+            cells.Add(new HashCellModel
+            {
+                Value = pair.Value ?? string.Empty,
+                Prefix = pair.Prefix ?? string.Empty,
+                Column = columns[index]
+            });
         }
 
         return new HashEntryModel { Cells = cells };
@@ -362,10 +373,36 @@ public sealed partial class TraceHashTableViewModel(RecordColumnFilter columnFil
 
         var columns = new List<HashColumnModel>(HashColumnModel.CreateBaseColumns());
 
-        columns.AddRange(record.Fields.Select(f => new HashColumnModel { Header = f.Name }));
+        foreach (var pair in Pair(record))
+        {
+            columns.Add(pair.Prefix is null
+                        ? new HashColumnModel { Header = pair.Name }
+                        : new HashColumnModel { Header = pair.Name, PrefixWidth = DataIdWidth, Width = DataIdWidth + 120 });
+        }
 
         Columns = columns;
 
         return columns;
+    }
+
+    private static List<(string Name, string? Prefix, string Value)> Pair(IndexRecordModel record)
+    {
+        var pairs = new List<(string Name, string? Prefix, string Value)>(record.Fields.Count);
+
+        foreach (var field in record.Fields)
+        {
+            if (field.Name.EndsWith(BatchRecordBuilder.DataIdSuffix, StringComparison.Ordinal))
+            {
+                continue;
+            }
+
+            var identifier = field.Name + BatchRecordBuilder.DataIdSuffix;
+
+            var match = record.Fields.FirstOrDefault(f => f.Name == identifier);
+
+            pairs.Add((field.Name, match?.Value, field.Value));
+        }
+
+        return pairs;
     }
 }

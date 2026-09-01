@@ -3,7 +3,7 @@
 /// <summary>
 /// Slot Value domain
 /// </summary>
-public enum BatchSlotDomain
+public enum BatchValueDomain
 {
     Integer,
     Real,

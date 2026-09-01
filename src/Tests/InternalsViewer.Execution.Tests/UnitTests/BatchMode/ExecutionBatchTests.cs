@@ -16,7 +16,7 @@ public class ExecutionBatchTests
     {
         var batch = Create();
 
-        var slots = batch.Vectors[0].Slots;
+        var slots = batch.Vectors[0].Values;
 
         var selection = batch.SelectionVector.Selection;
 
@@ -24,7 +24,7 @@ public class ExecutionBatchTests
 
         batch.Reset(64);
 
-        Assert.Same(slots, batch.Vectors[0].Slots);
+        Assert.Same(slots, batch.Vectors[0].Values);
 
         Assert.Same(selection, batch.SelectionVector.Selection);
     }
@@ -80,7 +80,7 @@ public class ExecutionBatchTests
     {
         var batch = Create();
 
-        batch.Vectors[0].Slots[800] = BatchSlotNormalizer.FromDictionaryDataId(7);
+        batch.Vectors[0].Values[800] = BatchValueNormalizer.FromDictionaryDataId(7);
 
         batch.Reset(64);
 

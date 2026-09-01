@@ -11,5 +11,5 @@ public sealed class BatchRowView
 
     public required bool IsSelected { get; set; }
 
-    public required BatchSlot[] Slots { get; set; }
+    public required BatchValue[] Values { get; set; }
 }

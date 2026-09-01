@@ -3,7 +3,7 @@
 /// <summary>
 /// A single normalized 64 bit value in a batch mode vector
 /// </summary>
-public readonly record struct BatchSlot(long Value)
+public readonly record struct BatchValue(long Value)
 {
     public bool IsNull => Value == 1;
 

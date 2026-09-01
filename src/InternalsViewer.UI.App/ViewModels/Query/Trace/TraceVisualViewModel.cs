@@ -526,6 +526,13 @@ public sealed partial class TraceVisualViewModel(TraceVisualType visualType,
                 BatchRowCount = batch.RowCount;
                 SetRowGroup(batch.RowGroupId, r => r.IsVisited = true);
                 break;
+
+            case AccessStep.BatchSkipped skipped:
+                ActiveRowGroupId = skipped.RowGroupId;
+                BatchFirstRow = skipped.FirstRow;
+                BatchRowCount = skipped.RowCount;
+                SetRowGroup(skipped.RowGroupId, r => r.IsVisited = true);
+                break;
         }
     }
 

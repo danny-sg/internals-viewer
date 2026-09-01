@@ -8,7 +8,7 @@ namespace InternalsViewer.Execution.Tests.UnitTests.BatchMode;
 
 [Trait("Category", "Unit")]
 [Trait("Area", "BatchMode")]
-public class BatchSlotRoundTripTests
+public class BatchValueRoundTripTests
 {
     [Theory]
     [InlineData(0)]
@@ -20,9 +20,9 @@ public class BatchSlotRoundTripTests
     [InlineData(-4611686018427387904)]
     public void Integer_Round_Trips_While_It_Fits_In_Sixty_Three_Bits(long value)
     {
-        Assert.True(BatchSlotNormalizer.TryNormalize(value, out var slot));
+        Assert.True(BatchValueNormalizer.TryNormalize(value, out var slot));
 
-        Assert.Equal(value, BatchSlotDenormalizer.GetStorageValue(slot, Column(SqlDbType.BigInt)));
+        Assert.Equal(value, BatchValueDenormalizer.GetStorageValue(slot, Column(SqlDbType.BigInt)));
     }
 
     [Theory]
@@ -31,19 +31,19 @@ public class BatchSlotRoundTripTests
     [InlineData(long.MinValue)]
     public void Integer_Does_Not_Normalize_Once_The_Doubling_Overflows(long value)
     {
-        Assert.False(BatchSlotNormalizer.TryNormalize(value, out _));
+        Assert.False(BatchValueNormalizer.TryNormalize(value, out _));
     }
 
     [Fact]
     public void Integer_Leaves_The_Tag_Clear_So_The_Slot_Reads_As_A_Value()
     {
-        BatchSlotNormalizer.TryNormalize(42, out var slot);
+        BatchValueNormalizer.TryNormalize(42, out var slot);
 
         Assert.False(slot.IsDeepDataReference);
 
         Assert.False(slot.IsNull);
 
-        Assert.Equal(BatchSlotValueType.Inline, BatchSlotDenormalizer.GetValueType(slot, Column(SqlDbType.BigInt)));
+        Assert.Equal(BatchValueType.Inline, BatchValueDenormalizer.GetValueType(slot, Column(SqlDbType.BigInt)));
     }
 
     [Theory]
@@ -59,9 +59,9 @@ public class BatchSlotRoundTripTests
     [InlineData(double.Epsilon)]
     public void Real_Round_Trips_While_The_Two_Exponent_Bits_Match(double value)
     {
-        Assert.True(BatchSlotNormalizer.TryNormalize(value, out var slot));
+        Assert.True(BatchValueNormalizer.TryNormalize(value, out var slot));
 
-        var storage = BatchSlotDenormalizer.GetStorageValue(slot, Column(SqlDbType.Float));
+        var storage = BatchValueDenormalizer.GetStorageValue(slot, Column(SqlDbType.Float));
 
         Assert.Equal(value, BitConverter.Int64BitsToDouble(storage));
     }
@@ -77,7 +77,7 @@ public class BatchSlotRoundTripTests
     [InlineData(1e-200d)]
     public void Real_Does_Not_Normalize_When_The_Two_Exponent_Bits_Differ(double value)
     {
-        Assert.False(BatchSlotNormalizer.TryNormalize(value, out _));
+        Assert.False(BatchValueNormalizer.TryNormalize(value, out _));
     }
 
     [Theory]
@@ -91,9 +91,9 @@ public class BatchSlotRoundTripTests
 
         var value = new SqlDecimal(precision, scale, scaled >= 0, (int)(magnitude & 0xFFFFFFFF), (int)(magnitude >> 32), 0, 0);
 
-        Assert.True(BatchSlotNormalizer.TryNormalize(value, out var slot));
+        Assert.True(BatchValueNormalizer.TryNormalize(value, out var slot));
 
-        Assert.Equal(scaled, BatchSlotDenormalizer.GetStorageValue(slot, Column(SqlDbType.Decimal, precision, scale)));
+        Assert.Equal(scaled, BatchValueDenormalizer.GetStorageValue(slot, Column(SqlDbType.Decimal, precision, scale)));
     }
 
     [Theory]
@@ -104,9 +104,9 @@ public class BatchSlotRoundTripTests
     {
         var value = new DateTime(ticks);
 
-        Assert.True(BatchSlotNormalizer.TryNormalize(value, out var slot));
+        Assert.True(BatchValueNormalizer.TryNormalize(value, out var slot));
 
-        Assert.Equal(value, BatchSlotDenormalizer.GetTemporalValue(slot, Column(SqlDbType.DateTime2)));
+        Assert.Equal(value, BatchValueDenormalizer.GetTemporalValue(slot, Column(SqlDbType.DateTime2)));
     }
 
     [Fact]
@@ -114,9 +114,9 @@ public class BatchSlotRoundTripTests
     {
         var value = new TimeSpan(0, 13, 45, 30, 123);
 
-        Assert.True(BatchSlotNormalizer.TryNormalize(value, out var slot));
+        Assert.True(BatchValueNormalizer.TryNormalize(value, out var slot));
 
-        Assert.Equal(value, BatchSlotDenormalizer.GetTemporalValue(slot, Column(SqlDbType.Time)));
+        Assert.Equal(value, BatchValueDenormalizer.GetTemporalValue(slot, Column(SqlDbType.Time)));
     }
 
     [Theory]
@@ -131,9 +131,9 @@ public class BatchSlotRoundTripTests
 
         var value = new DateTimeOffset(new DateTime(utcTicks, DateTimeKind.Utc)).ToOffset(offset);
 
-        Assert.True(BatchSlotNormalizer.TryNormalize(value, out var slot));
+        Assert.True(BatchValueNormalizer.TryNormalize(value, out var slot));
 
-        var read = (DateTimeOffset)BatchSlotDenormalizer.GetTemporalValue(slot, Column(SqlDbType.DateTimeOffset));
+        var read = (DateTimeOffset)BatchValueDenormalizer.GetTemporalValue(slot, Column(SqlDbType.DateTimeOffset));
 
         Assert.Equal(value.UtcTicks, read.UtcTicks);
 
@@ -145,17 +145,17 @@ public class BatchSlotRoundTripTests
     {
         var value = new DateTimeOffset(new DateTime(630822816000000001, DateTimeKind.Utc));
 
-        Assert.False(BatchSlotNormalizer.TryNormalize(value, out _));
+        Assert.False(BatchValueNormalizer.TryNormalize(value, out _));
     }
 
     [Theory]
-    [InlineData(SqlDbType.UniqueIdentifier, BatchSlotDomain.Deep)]
-    [InlineData(SqlDbType.VarBinary, BatchSlotDomain.Deep)]
-    [InlineData(SqlDbType.Timestamp, BatchSlotDomain.Deep)]
-    [InlineData(SqlDbType.Xml, BatchSlotDomain.Deep)]
-    [InlineData(SqlDbType.VarChar, BatchSlotDomain.Dictionary)]
-    [InlineData(SqlDbType.NVarChar, BatchSlotDomain.Dictionary)]
-    public void Types_That_Never_Normalize_Are_Deep_Unless_They_Can_Use_A_Dictionary(SqlDbType dataType, BatchSlotDomain domain)
+    [InlineData(SqlDbType.UniqueIdentifier, BatchValueDomain.Deep)]
+    [InlineData(SqlDbType.VarBinary, BatchValueDomain.Deep)]
+    [InlineData(SqlDbType.Timestamp, BatchValueDomain.Deep)]
+    [InlineData(SqlDbType.Xml, BatchValueDomain.Deep)]
+    [InlineData(SqlDbType.VarChar, BatchValueDomain.Dictionary)]
+    [InlineData(SqlDbType.NVarChar, BatchValueDomain.Dictionary)]
+    public void Types_That_Never_Normalize_Are_Deep_Unless_They_Can_Use_A_Dictionary(SqlDbType dataType, BatchValueDomain domain)
     {
         Assert.Equal(domain, Column(dataType).Domain);
     }
@@ -168,39 +168,39 @@ public class BatchSlotRoundTripTests
     [InlineData(16777216)]
     public void Dictionary_Reference_Round_Trips_Its_Data_Id(long dataId)
     {
-        var slot = BatchSlotNormalizer.FromDictionaryDataId(dataId);
+        var slot = BatchValueNormalizer.FromDictionaryDataId(dataId);
 
-        Assert.Equal(dataId, BatchSlotDenormalizer.GetDictionaryDataId(slot));
+        Assert.Equal(dataId, BatchValueDenormalizer.GetDictionaryDataId(slot));
 
-        Assert.Equal(BatchSlotValueType.DictionaryReference,
-                     BatchSlotDenormalizer.GetValueType(slot, Column(SqlDbType.VarChar)));
+        Assert.Equal(BatchValueType.DictionaryReference,
+                     BatchValueDenormalizer.GetValueType(slot, Column(SqlDbType.VarChar)));
     }
 
     [Fact]
     public void Null_Is_The_Flag_With_No_Value_And_Is_Not_Read_As_Deep()
     {
-        var slot = BatchSlotNormalizer.Null;
+        var slot = BatchValueNormalizer.Null;
 
         Assert.True(slot.IsNull);
 
         Assert.False(slot.IsDeepDataReference);
 
-        Assert.Equal(BatchSlotValueType.Null, BatchSlotDenormalizer.GetValueType(slot, Column(SqlDbType.BigInt)));
+        Assert.Equal(BatchValueType.Null, BatchValueDenormalizer.GetValueType(slot, Column(SqlDbType.BigInt)));
     }
 
     [Theory]
-    [InlineData(SqlDbType.BigInt, BatchSlotDomain.Integer)]
-    [InlineData(SqlDbType.Bit, BatchSlotDomain.Integer)]
-    [InlineData(SqlDbType.Money, BatchSlotDomain.Integer)]
-    [InlineData(SqlDbType.Float, BatchSlotDomain.Real)]
-    [InlineData(SqlDbType.Real, BatchSlotDomain.Real)]
-    [InlineData(SqlDbType.Decimal, BatchSlotDomain.Numeric)]
-    [InlineData(SqlDbType.DateTime2, BatchSlotDomain.Temporal)]
-    [InlineData(SqlDbType.Time, BatchSlotDomain.Temporal)]
-    [InlineData(SqlDbType.VarChar, BatchSlotDomain.Dictionary)]
-    [InlineData(SqlDbType.NVarChar, BatchSlotDomain.Dictionary)]
-    [InlineData(SqlDbType.VarBinary, BatchSlotDomain.Deep)]
-    public void Domain_Follows_The_Data_Type(SqlDbType dataType, BatchSlotDomain domain)
+    [InlineData(SqlDbType.BigInt, BatchValueDomain.Integer)]
+    [InlineData(SqlDbType.Bit, BatchValueDomain.Integer)]
+    [InlineData(SqlDbType.Money, BatchValueDomain.Integer)]
+    [InlineData(SqlDbType.Float, BatchValueDomain.Real)]
+    [InlineData(SqlDbType.Real, BatchValueDomain.Real)]
+    [InlineData(SqlDbType.Decimal, BatchValueDomain.Numeric)]
+    [InlineData(SqlDbType.DateTime2, BatchValueDomain.Temporal)]
+    [InlineData(SqlDbType.Time, BatchValueDomain.Temporal)]
+    [InlineData(SqlDbType.VarChar, BatchValueDomain.Dictionary)]
+    [InlineData(SqlDbType.NVarChar, BatchValueDomain.Dictionary)]
+    [InlineData(SqlDbType.VarBinary, BatchValueDomain.Deep)]
+    public void Domain_Follows_The_Data_Type(SqlDbType dataType, BatchValueDomain domain)
     {
         Assert.Equal(domain, Column(dataType).Domain);
     }
@@ -267,15 +267,15 @@ public class BatchSlotRoundTripTests
     [Fact]
     public void A_Value_That_Does_Not_Normalize_Leaves_The_Null_Slot_Behind()
     {
-        Assert.False(BatchSlotNormalizer.TryNormalize(long.MaxValue, out var integer));
+        Assert.False(BatchValueNormalizer.TryNormalize(long.MaxValue, out var integer));
 
         Assert.True(integer.IsNull);
 
-        Assert.False(BatchSlotNormalizer.TryNormalize(1e100d, out var real));
+        Assert.False(BatchValueNormalizer.TryNormalize(1e100d, out var real));
 
         Assert.True(real.IsNull);
 
-        Assert.False(BatchSlotNormalizer.TryNormalize(SqlDecimal.Parse("99999999999999999999"), out var numeric));
+        Assert.False(BatchValueNormalizer.TryNormalize(SqlDecimal.Parse("99999999999999999999"), out var numeric));
 
         Assert.True(numeric.IsNull);
     }
@@ -283,7 +283,7 @@ public class BatchSlotRoundTripTests
     [Fact]
     public void A_Null_Decimal_Normalizes_To_The_Null_Slot()
     {
-        Assert.True(BatchSlotNormalizer.TryNormalize(SqlDecimal.Null, out var slot));
+        Assert.True(BatchValueNormalizer.TryNormalize(SqlDecimal.Null, out var slot));
 
         Assert.True(slot.IsNull);
     }
@@ -293,7 +293,7 @@ public class BatchSlotRoundTripTests
     [InlineData(4294967296)]
     public void A_Data_Id_Outside_Its_Field_Is_Rejected(long dataId)
     {
-        Assert.Throws<ArgumentOutOfRangeException>(() => BatchSlotNormalizer.FromDictionaryDataId(dataId));
+        Assert.Throws<ArgumentOutOfRangeException>(() => BatchValueNormalizer.FromDictionaryDataId(dataId));
     }
 
     private static BatchColumn Column(SqlDbType dataType, byte precision = 0, byte scale = 0)

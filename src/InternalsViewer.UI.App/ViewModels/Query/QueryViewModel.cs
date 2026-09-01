@@ -247,6 +247,9 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
     [ObservableProperty]
     private bool _isPlanPropertiesVisible;
 
+    [ObservableProperty]
+    private bool _isPlanPropertiesDockedBottom;
+
     public QueryViewModel(ILogger<QueryViewModel> logger,
                           QueryRunner queryRunner,
                           SettingsService settingsService,

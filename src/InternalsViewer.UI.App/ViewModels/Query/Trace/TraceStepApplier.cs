@@ -83,6 +83,8 @@ public sealed class TraceStepApplier(TraceLayout layout,
 
             node.HashTable?.Reset();
 
+            node.LocalHashTable?.Reset();
+
             node.Aggregates?.Reset();
 
             node.Segment?.Reset();
@@ -343,6 +345,22 @@ public sealed class TraceStepApplier(TraceLayout layout,
             }
         }
 
+        foreach (var iterator in BatchIterators(stepper).Values.OfType<BatchHashAggregateIterator>())
+        {
+            if (!operatorsByNode.TryGetValue(iterator.NodeId, out var tab))
+            {
+                continue;
+            }
+
+            tab.SetState("Groups", iterator.GroupCount.ToString("N0"));
+
+            tab.SetState("Rows", iterator.InputRowCount.ToString("N0"));
+
+            tab.SetState("Deep Data", FormatBytes(iterator.DeepDataBytes));
+
+            tab.SetState("Memory", FormatMemory(iterator.Memory));
+        }
+
         foreach (var tab in operatorsByNode.Values)
         {
             foreach (var row in tab.InputRows)
@@ -435,6 +453,8 @@ public sealed class TraceStepApplier(TraceLayout layout,
         foreach (var node in layout.Nodes.Values)
         {
             node.HashTable?.Sync(step);
+
+            node.LocalHashTable?.Sync(step);
         }
     }
 
@@ -593,6 +613,11 @@ public sealed class TraceStepApplier(TraceLayout layout,
             {
                 hashTable.Attach(iterator, iterator.NodeId);
             }
+
+            if (layout.Nodes.GetValueOrDefault(iterator.NodeId)?.LocalHashTable is { } localHashTable)
+            {
+                localHashTable.Attach(iterator.LocalHashTable, iterator.NodeId);
+            }
         }
     }
 
@@ -709,6 +734,9 @@ public sealed class TraceStepApplier(TraceLayout layout,
     /// </summary>
     private static string FormatMemory(BufferMemory memory)
         => $"{memory.PagedKb:N0} KB";
+
+    private static string FormatBytes(long bytes)
+        => bytes < 1024 ? $"{bytes:N0} B" : $"{bytes / 1024D:N0} KB";
 
     /// <summary>
     /// The running operators, the whole tree rather than the one at the top of it
