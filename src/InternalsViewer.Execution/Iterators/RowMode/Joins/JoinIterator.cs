@@ -40,7 +40,7 @@ public abstract class JoinIterator : IteratorBase, IJoinIterator, IRowBufferIter
 
     private IAsyncEnumerator<IRecord>? Rows { get; set; }
 
-    public override async Task<IRecord?> GetRowAsync(CancellationToken cancellationToken)
+    public override async ValueTask<IRecord?> GetRowAsync(CancellationToken cancellationToken)
     {
         if (IsComplete || Rows is null)
         {

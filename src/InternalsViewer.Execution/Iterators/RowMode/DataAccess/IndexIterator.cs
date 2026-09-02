@@ -165,7 +165,7 @@ public sealed class IndexIterator(IPageService pageService, IRecordService recor
         await LoadPageAsync(range.RootPage, cancellationToken);
     }
 
-    public override async Task<IRecord?> GetRowAsync(CancellationToken cancellationToken)
+    public override async ValueTask<IRecord?> GetRowAsync(CancellationToken cancellationToken)
     {
         if (IsComplete || CurrentPageSteps is null)
         {

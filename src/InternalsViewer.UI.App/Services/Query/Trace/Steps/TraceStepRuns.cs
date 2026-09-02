@@ -8,6 +8,10 @@ namespace InternalsViewer.UI.App.Services.Query.Trace.Steps;
 
 public static class TraceStepRuns
 {
+    private const string EmitBadge = "\u2192 Emit";
+
+    private const string EmitRowsBadge = "\u2192 Emit Rows";
+
     public static void Append(AccessStep step, ObservableCollection<AccessStep> history, int historyLimit)
     {
         if (step is AccessStep.Stopped or AccessStep.Close or AccessStep.Sorted)
@@ -17,7 +21,7 @@ public static class TraceStepRuns
 
         if (step is AccessStep.AggregateEmit)
         {
-            RetireSpan<StreamAggregateSpan>(history, step.NodeId);
+            RetireSpan(history, step.NodeId, "Accumulate");
         }
 
         var top = LeadingSpans(history);
@@ -79,84 +83,134 @@ public static class TraceStepRuns
                 return FoldJoinEmit(joinEmit, history, top);
 
             case AccessStep.TopRow topRow:
-                RowCountSpanFor(topRow, "→ Emit", history, top).Progress.Apply(topRow.Number, topRow.RowCount);
-                return true;
+                return Rows(topRow, EmitBadge, topRow.Number, topRow.RowCount, history);
 
             case AccessStep.Output output:
-                RowCountSpanFor(output, "→ Client", history, top).Progress.Apply(output.Number, 0);
-                return true;
-
-            case AccessStep.SortCollect sortCollect:
-                SortCollectSpanFor(sortCollect, history, top).Progress.Apply(sortCollect.Number, 0);
-                return true;
+                return Rows(output, "→ Client", output.Number, 0, history);
 
             case AccessStep.SortRow sortRow:
-                RowCountSpanFor(sortRow, "→ Emit", history, top).Progress.Apply(sortRow.Number, 0);
-                return true;
+                return Rows(sortRow, EmitBadge, sortRow.Number, 0, history);
 
             case AccessStep.ConcatRow concatRow:
-                RowCountSpanFor(concatRow, "→ Emit", history, top).Progress.Apply(concatRow.Number, 0);
+                return Rows(concatRow, EmitBadge, concatRow.Number, 0, history);
+
+            case AccessStep.AggregateEmit aggregateEmit:
+                return Rows(aggregateEmit, EmitBadge, aggregateEmit.Number, 0, history);
+
+            case AccessStep.ComputeRow computeRow:
+                return Rows(computeRow, EmitBadge, computeRow.Number, 0, history);
+
+            case AccessStep.FilterRow filterRow:
+                return Rows(filterRow, "→ Pass", filterRow.PassedCount, filterRow.Number, history);
+
+            case AccessStep.SortCollect sortCollect:
+                SpanFor(sortCollect, "Collect", history)
+                    .Set("Row", sortCollect.Number)
+                    .Set("→ Sort Table", null, TraceCounterKind.Badge, TraceCounterColours.Success);
                 return true;
 
             case AccessStep.AggregateRow aggregateRow:
-                StreamAggregateSpanFor(aggregateRow, history, top).Progress.Apply(aggregateRow);
+                Accumulate(aggregateRow, history).Set("Values", aggregateRow.Running, TraceCounterKind.Pill);
                 return true;
 
             case AccessStep.HashAggregate hashAggregate:
-                StreamAggregateSpanFor(hashAggregate, history, top).Progress.Apply(hashAggregate);
+                var hashed = Accumulate(hashAggregate, history);
+
+                hashed.Set("Bucket", (long)hashAggregate.Bucket)
+                      .Set("Values", hashAggregate.Running, TraceCounterKind.Pill);
+
+                if (hashAggregate.IsNewGroup)
+                {
+                    hashed.Increment("Groups", TraceCounterKind.Pair);
+                }
+
+                hashed.Fill.Land(hashAggregate.Bucket, hashAggregate.ChainLength, hashAggregate.BucketCount);
                 return true;
 
-            case AccessStep.HashAggregateBatch hashAggregateBatch:
-                StreamAggregateSpanFor(hashAggregateBatch, history, top).Progress.Apply(hashAggregateBatch);
-                return true;
+            case AccessStep.HashAggregateBatch batch:
+                var accumulate = Accumulate(batch, history);
 
-            case AccessStep.AggregateEmit aggregateEmit:
-                RowCountSpanFor(aggregateEmit, "→ Emit", history, top).Progress.Apply(aggregateEmit.Number, 0);
-                return true;
+                accumulate.Set("Batches", batch.Number, TraceCounterKind.Lead)
+                          .Set("Groups", batch.Groups)
+                          .Set("Values", batch.Running, TraceCounterKind.Pill);
 
-            case AccessStep.ComputeRow computeRow:
-                RowCountSpanFor(computeRow, "→ Emit", history, top).Progress.Apply(computeRow.Number, 0);
+                accumulate.Fill.Set(batch.Fill);
                 return true;
 
             case AccessStep.SegmentRow segmentRow:
-                SegmentSpanFor(segmentRow, history).Progress.Apply(segmentRow);
+                var segment = SpanFor(segmentRow, "Segment", history);
+
+                segment.Increment("Rows");
+
+                segment.Set("Segments", segmentRow.SegmentCount, TraceCounterKind.Lead)
+                       .Set("Key", segmentRow.Key, TraceCounterKind.Pill);
                 return true;
 
             case AccessStep.RankRow rankRow:
-                RankSpanFor(rankRow, history).Progress.Apply(rankRow);
+                SpanFor(rankRow, "Rank", history)
+                    .Set("Row", rankRow.Number)
+                    .Set("Values", rankRow.Values, TraceCounterKind.Pill);
                 return true;
 
-            case AccessStep.BatchProduced batchProduced:
-                var batchSpan = BatchCountSpanFor(batchProduced, "→ Batch", history, top);
+            case AccessStep.BatchProduced produced:
+                var batchSpan = SpanFor(produced, "Get Batch", history);
 
-                batchSpan.Progress.Apply(batchProduced.Number, batchProduced.RowCount);
+                batchSpan.Set("Batch", produced.Number)
+                         .Add("Rows", produced.RowCount, TraceCounterKind.Pair)
+                         .Add("Match", produced.QualifyingCount, TraceCounterKind.Badge)
+                         .Add("Filter Operations", produced.FilterOperations, TraceCounterKind.Pair)
+                         .Add("RLE Entries", produced.FilterRleEntries, TraceCounterKind.Pair)
+                         .Add("Pure", produced.PureColumns, TraceCounterKind.Pair)
+                         .Add("Impure", produced.ImpureColumns, TraceCounterKind.Pair);
 
-                batchSpan.Work.Apply(batchProduced);
+                Filters(batchSpan, produced.HasCompressedFilter, produced.HasPredicate);
+                return true;
+
+            case AccessStep.BatchSkipped skipped:
+                var skippedSpan = SpanFor(skipped, "Get Batch", history);
+
+                skippedSpan.Add("Rows", skipped.RowCount, TraceCounterKind.Pair)
+                           .Add("Filter Operations", skipped.FilterOperations, TraceCounterKind.Pair)
+                           .Add("RLE Entries", skipped.FilterRleEntries, TraceCounterKind.Pair)
+                           .Add("Skipped", 1, TraceCounterKind.Badge);
+
+                Filters(skippedSpan, skipped.HasCompressedFilter, skipped.HasPredicate);
                 return true;
 
             case AccessStep.AggregatePushdown pushdown:
-                PushdownSpanFor(pushdown, history).Progress.Apply(pushdown);
-                return true;
+                var down = SpanFor(pushdown, "Aggregate Pushdown", history);
 
-            case AccessStep.BatchSkipped batchSkipped:
-                BatchCountSpanFor(batchSkipped, "→ Batch", history, top).Work.Apply(batchSkipped);
+                down.Add("Rows", pushdown.RowCount, TraceCounterKind.Lead)
+                    .Set("Groups", pushdown.Groups);
+
+                if (pushdown.IsRunFolded)
+                {
+                    down.Increment("Runs");
+                }
+                else
+                {
+                    down.Add("Rows Probed", pushdown.RowCount, TraceCounterKind.Lead);
+                }
                 return true;
 
             case AccessStep.ComputeVector computeVector:
-                ComputeVectorSpanFor(computeVector, history).Progress.Apply(computeVector);
+                SpanFor(computeVector, "Compute Vector", history)
+                    .Set("Columns", computeVector.Columns, TraceCounterKind.Pill)
+                    .Add("Rows Computed", computeVector.RowCount, TraceCounterKind.Lead);
                 return true;
 
             case AccessStep.FilterVector filterVector:
-                BatchFilterSpanFor(filterVector, history).Progress.Apply(filterVector);
+                SpanFor(filterVector, "Filter Vector", history)
+                    .Set("Columns", filterVector.Columns, TraceCounterKind.Pill)
+                    .Add("Rows Evaluated", filterVector.RowsEvaluated, TraceCounterKind.Lead)
+                    .Add("Selected", filterVector.Matches, TraceCounterKind.Lead);
                 return true;
 
             case AccessStep.BatchFiltered batchFiltered:
-                BatchGetSpanFor(batchFiltered, history).Progress.Apply(batchFiltered);
-                return true;
-
-            case AccessStep.FilterRow filterRow:
-                RowCountSpanFor(filterRow, RowCountSpan.PassBadge, history, top)
-                    .Progress.Apply(filterRow.PassedCount, filterRow.Number);
+                SpanFor(batchFiltered, "Get Batch", history)
+                    .Set("Batch", batchFiltered.Number)
+                    .Set("Rows", batchFiltered.RowCount, TraceCounterKind.Lead)
+                    .Set("Passed", batchFiltered.PassedCount, TraceCounterKind.Pill);
                 return true;
 
             default:
@@ -164,103 +218,145 @@ public static class TraceStepRuns
         }
     }
 
+    private static bool Rows(AccessStep step, string badge, long rows, long limit, ObservableCollection<AccessStep> history)
+    {
+        var span = SpanFor(step, "Get Row", history);
+
+        span.Set("Row", rows).Set(badge, null, TraceCounterKind.Badge, TraceCounterColours.Success);
+
+        if (limit > 0)
+        {
+            span.Set("Of", limit);
+        }
+
+        return true;
+    }
+
+    private static void Filters(TraceCounterSpan span, bool hasCompressedFilter, bool hasPredicate)
+    {
+        if (hasCompressedFilter)
+        {
+            span.SetOnce("Compressed Filter", null, TraceCounterKind.Badge, TraceCounterColours.Success);
+        }
+
+        if (hasPredicate)
+        {
+            span.SetOnce("Predicate", null, TraceCounterKind.Badge, TraceCounterColours.Caution);
+        }
+
+        if (!hasCompressedFilter && !hasPredicate)
+        {
+            span.SetOnce("No Filter", null, TraceCounterKind.Badge);
+        }
+    }
+
+    private static TraceCounterSpan Accumulate(AccessStep step, ObservableCollection<AccessStep> history)
+    {
+        var span = SpanFor(step, "Accumulate", history);
+
+        span.Increment("Rows");
+
+        return span;
+    }
+
     private static bool FoldMergeCompare(AccessStep.MergeCompare compare, ObservableCollection<AccessStep> history, int top)
     {
-        var span = FindSpan<MergeCompareSpan>(history, top, compare.NodeId);
+        var span = FindSpan(history, top, compare.NodeId, "Compare");
 
         if (compare.Comparison == 0)
         {
-            span?.IsComplete = true;
+            if (span is not null)
+            {
+                span.IsComplete = true;
+            }
 
-            MergeMatch(history, compare).Progress.Apply(compare);
+            MergeMatch(history, compare).Set("Key", compare.OuterKey).Increment("Pair", TraceCounterKind.Pair);
 
             return true;
         }
 
-        if (span is not null && span.Progress.Direction != Math.Sign(compare.Comparison))
+        var direction = Math.Sign(compare.Comparison);
+
+        if (span is not null && span.Number("Direction") != direction)
         {
             span.IsComplete = true;
 
             span = null;
         }
 
-        if (span is null)
-        {
-            span = new MergeCompareSpan
-            {
-                NodeId = compare.NodeId,
-                Counters = compare.Counters
-            };
+        span ??= Insert(compare, "Compare", history);
 
-            InsertSpan(history, span);
-        }
+        span.Set("Direction", (long)direction);
 
-        span.Progress.Apply(compare);
+        var moved = direction < 0 ? compare.OuterKey : compare.InnerKey;
+
+        span.SetOnce("Advance", direction < 0 ? "Outer" : "Inner", TraceCounterKind.Pill)
+            .SetOnce("From", moved)
+            .Set("To", moved)
+            .Set("Against", direction < 0 ? compare.InnerKey : compare.OuterKey)
+            .Increment("Compares", TraceCounterKind.Badge);
 
         return true;
     }
 
     private static bool FoldHashBuild(AccessStep.HashBuild hashBuild, ObservableCollection<AccessStep> history, int top)
     {
-        if (FindSpan<HashBuildSpan>(history, top, hashBuild.NodeId) is { } buildSpan)
-        {
-            buildSpan.Progress.Apply(hashBuild);
+        var span = FindSpan(history, top, hashBuild.NodeId, "Build") ?? Insert(hashBuild, "Build", history);
 
-            return true;
-        }
+        span.Set("Bucket", (long)hashBuild.Bucket)
+            .Set("Hash", $"0x{hashBuild.Hash:X8}")
+            .Set("Chain Entry Item", (long)hashBuild.ChainLength)
+            .Increment("Rows", TraceCounterKind.Badge);
 
-        var created = new HashBuildSpan
-        {
-            NodeId = hashBuild.NodeId,
-            Counters = hashBuild.Counters
-        };
-
-        created.Progress.Apply(hashBuild);
-
-        InsertSpan(history, created);
+        span.Fill.Land(hashBuild.Bucket, hashBuild.ChainLength, hashBuild.BucketCount);
 
         return true;
     }
 
     private static bool FoldHashProbe(AccessStep.HashProbe hashProbe, ObservableCollection<AccessStep> history, int top)
     {
-        var span = FindSpan<HashProbeSpan>(history, top, hashProbe.NodeId);
+        var span = FindSpan(history, top, hashProbe.NodeId, "Probe");
 
         if (span is null)
         {
-            span = new HashProbeSpan
-            {
-                NodeId = hashProbe.NodeId,
-                Counters = hashProbe.Counters
-            };
+            span = Insert(hashProbe, "Probe", history);
 
-            if (FindSpan<HashBuildSpan>(history, top, hashProbe.NodeId) is { } buildSpan)
+            if (FindSpan(history, top, hashProbe.NodeId, "Build") is { } buildSpan)
             {
-                span.Progress.Fill = buildSpan.Progress.Fill;
+                span.Fill.Set(buildSpan.Fill.Buckets);
 
                 buildSpan.IsComplete = true;
             }
-
-            InsertSpan(history, span);
         }
 
-        span.Progress.Apply(hashProbe);
+        span.Set("Bucket", (long)hashProbe.Bucket)
+            .Set("Hash", $"0x{hashProbe.Hash:X8}")
+            .Increment("Rows", TraceCounterKind.Badge);
+
+        span.Fill.Touch(hashProbe.Bucket, false);
 
         return true;
     }
 
     private static bool FoldHashCompare(AccessStep.HashCompare hashCompare, ObservableCollection<AccessStep> history, int top)
     {
-        if (FindSpan<HashProbeSpan>(history, top, hashCompare.NodeId) is not { } span)
+        if (FindSpan(history, top, hashCompare.NodeId, "Probe") is not { } span)
         {
             return false;
         }
 
-        span.Progress.Apply(hashCompare);
+        span.Increment("Compares", TraceCounterKind.Pair);
 
         if (hashCompare.IsMatch)
         {
-            MatchSpan(history, top, hashCompare).Progress.Apply(hashCompare);
+            span.Increment("Matches", TraceCounterKind.Pair);
+
+            span.Fill.Touch(hashCompare.Bucket, true);
+
+            MatchSpan(history, top, hashCompare)
+                .Set("Bucket", (long)hashCompare.Bucket)
+                .Set("Entry", (long)hashCompare.Entry)
+                .Increment("Pair", TraceCounterKind.Pair);
         }
 
         return true;
@@ -268,25 +364,25 @@ public static class TraceStepRuns
 
     private static bool FoldJoinEmit(AccessStep.JoinEmit joinEmit, ObservableCollection<AccessStep> history, int top)
     {
-        if (FindSpan<HashProbeSpan>(history, top, joinEmit.NodeId) is { } emitSpan)
+        if (FindSpan(history, top, joinEmit.NodeId, "Probe") is { } emitSpan)
         {
-            emitSpan.Progress.Apply(joinEmit);
+            emitSpan.Increment("Emits", TraceCounterKind.Pair);
 
-            MatchSpan(history, top, joinEmit).Progress.Apply(joinEmit);
+            MatchSpan(history, top, joinEmit).Increment(EmitRowsBadge, TraceCounterKind.Badge, TraceCounterColours.Success);
 
             return true;
         }
 
-        if (FindSpan<MergeMatchSpan>(history, top, joinEmit.NodeId) is { } mergeMatch)
+        if (FindSpan(history, top, joinEmit.NodeId, "Match") is { } mergeMatch)
         {
-            mergeMatch.Progress.Apply(joinEmit);
+            mergeMatch.Increment(EmitRowsBadge, TraceCounterKind.Badge, TraceCounterColours.Success);
 
             return true;
         }
 
-        if (FindSpan<MergeCompareSpan>(history, top, joinEmit.NodeId) is not null)
+        if (FindSpan(history, top, joinEmit.NodeId, "Compare") is not null)
         {
-            MergeMatch(history, joinEmit).Progress.Apply(joinEmit);
+            MergeMatch(history, joinEmit).Increment(EmitRowsBadge, TraceCounterKind.Badge, TraceCounterColours.Success);
 
             return true;
         }
@@ -294,184 +390,16 @@ public static class TraceStepRuns
         return false;
     }
 
-    private static RowCountSpan RowCountSpanFor(AccessStep step, string badge, ObservableCollection<AccessStep> history, int top)
-    {
-        if (FindOpenSpan<RowCountSpan>(history, step.NodeId) is { } span)
-        {
-            return span;
-        }
+    private static TraceCounterSpan SpanFor(AccessStep step, string label, ObservableCollection<AccessStep> history)
+        => FindOpenSpan(history, step.NodeId, label) ?? Insert(step, label, history);
 
-        var created = new RowCountSpan
+    private static TraceCounterSpan Insert(AccessStep step, string label, ObservableCollection<AccessStep> history)
+    {
+        var created = new TraceCounterSpan
         {
             NodeId = step.NodeId,
             Counters = step.Counters,
-            Badge = badge
-        };
-
-        InsertSpan(history, created);
-
-        return created;
-    }
-
-    private static AggregatePushdownSpan PushdownSpanFor(AccessStep step, ObservableCollection<AccessStep> history)
-    {
-        if (FindOpenSpan<AggregatePushdownSpan>(history, step.NodeId) is { } span)
-        {
-            return span;
-        }
-
-        var created = new AggregatePushdownSpan
-        {
-            NodeId = step.NodeId,
-            Counters = step.Counters
-        };
-
-        InsertSpan(history, created);
-
-        return created;
-    }
-
-    private static BatchCountSpan BatchCountSpanFor(AccessStep step,
-                                                    string badge,
-                                                    ObservableCollection<AccessStep> history,
-                                                    int top)
-    {
-        if (FindOpenSpan<BatchCountSpan>(history, step.NodeId) is { } span)
-        {
-            return span;
-        }
-
-        var created = new BatchCountSpan
-        {
-            NodeId = step.NodeId,
-            Counters = step.Counters,
-            Badge = badge
-        };
-
-        InsertSpan(history, created);
-
-        return created;
-    }
-
-    private static BatchFilterSpan BatchFilterSpanFor(AccessStep step, ObservableCollection<AccessStep> history)
-    {
-        if (FindOpenSpan<BatchFilterSpan>(history, step.NodeId) is { } span)
-        {
-            return span;
-        }
-
-        var created = new BatchFilterSpan
-        {
-            NodeId = step.NodeId,
-            Counters = step.Counters
-        };
-
-        InsertSpan(history, created);
-
-        return created;
-    }
-
-    private static ComputeVectorSpan ComputeVectorSpanFor(AccessStep step, ObservableCollection<AccessStep> history)
-    {
-        if (FindOpenSpan<ComputeVectorSpan>(history, step.NodeId) is { } span)
-        {
-            return span;
-        }
-
-        var created = new ComputeVectorSpan
-        {
-            NodeId = step.NodeId,
-            Counters = step.Counters
-        };
-
-        InsertSpan(history, created);
-
-        return created;
-    }
-
-    private static BatchGetSpan BatchGetSpanFor(AccessStep step, ObservableCollection<AccessStep> history)
-    {
-        if (FindOpenSpan<BatchGetSpan>(history, step.NodeId) is { } span)
-        {
-            return span;
-        }
-
-        var created = new BatchGetSpan
-        {
-            NodeId = step.NodeId,
-            Counters = step.Counters
-        };
-
-        InsertSpan(history, created);
-
-        return created;
-    }
-
-    private static SegmentSpan SegmentSpanFor(AccessStep step, ObservableCollection<AccessStep> history)
-    {
-        if (FindOpenSpan<SegmentSpan>(history, step.NodeId) is { } span)
-        {
-            return span;
-        }
-
-        var created = new SegmentSpan
-        {
-            NodeId = step.NodeId,
-            Counters = step.Counters
-        };
-
-        InsertSpan(history, created);
-
-        return created;
-    }
-
-    private static RankSpan RankSpanFor(AccessStep step, ObservableCollection<AccessStep> history)
-    {
-        if (FindOpenSpan<RankSpan>(history, step.NodeId) is { } span)
-        {
-            return span;
-        }
-
-        var created = new RankSpan
-        {
-            NodeId = step.NodeId,
-            Counters = step.Counters
-        };
-
-        InsertSpan(history, created);
-
-        return created;
-    }
-
-    private static SortCollectSpan SortCollectSpanFor(AccessStep step, ObservableCollection<AccessStep> history, int top)
-    {
-        if (FindSpan<SortCollectSpan>(history, top, step.NodeId) is { } span)
-        {
-            return span;
-        }
-
-        var created = new SortCollectSpan
-        {
-            NodeId = step.NodeId,
-            Counters = step.Counters
-        };
-
-        InsertSpan(history, created);
-
-        return created;
-    }
-
-    private static StreamAggregateSpan StreamAggregateSpanFor(AccessStep step, ObservableCollection<AccessStep> history, int top)
-    {
-        if (FindOpenSpan<StreamAggregateSpan>(history, step.NodeId) is { } span)
-        {
-            return span;
-        }
-
-        var created = new StreamAggregateSpan
-        {
-            NodeId = step.NodeId,
-            Counters = step.Counters
+            Label = label
         };
 
         InsertSpan(history, created);
@@ -559,20 +487,20 @@ public static class TraceStepRuns
 
     private static bool IsSpan(AccessStep step) => step is ITraceSpan { IsComplete: false };
 
-    private static int Rank(AccessStep step) => step switch
-    {
-        HashMatchSpan or MergeMatchSpan => 0,
-        HashProbeSpan or MergeCompareSpan => 1,
-        BatchGetSpan => 1,
-        _ => 2
-    };
+    private static int Rank(AccessStep step) => step is TraceCounterSpan { Label: var label }
+        ? label switch
+        {
+            "Match" => 0,
+            "Probe" or "Compare" => 1,
+            _ => 2
+        }
+        : 2;
 
-    private static void RetireSpan<T>(ObservableCollection<AccessStep> history, int nodeId)
-        where T : AccessStep, ITraceSpan
+    private static void RetireSpan(ObservableCollection<AccessStep> history, int nodeId, string label)
     {
         for (var index = 0; index < history.Count && history[index] is ITraceSpan; index++)
         {
-            if (history[index] is T span && span.NodeId == nodeId)
+            if (history[index] is TraceCounterSpan span && span.NodeId == nodeId && span.Label == label)
             {
                 span.IsComplete = true;
             }
@@ -602,12 +530,11 @@ public static class TraceStepRuns
         return count;
     }
 
-    private static T? FindOpenSpan<T>(ObservableCollection<AccessStep> history, int nodeId)
-        where T : AccessStep, ITraceSpan
+    private static TraceCounterSpan? FindOpenSpan(ObservableCollection<AccessStep> history, int nodeId, string label)
     {
         for (var index = 0; index < history.Count && history[index] is ITraceSpan; index++)
         {
-            if (history[index] is T { IsComplete: false } span && span.NodeId == nodeId)
+            if (history[index] is TraceCounterSpan { IsComplete: false } span && span.NodeId == nodeId && span.Label == label)
             {
                 return span;
             }
@@ -616,11 +543,11 @@ public static class TraceStepRuns
         return null;
     }
 
-    private static T? FindSpan<T>(ObservableCollection<AccessStep> history, int top, int nodeId) where T : AccessStep
+    private static TraceCounterSpan? FindSpan(ObservableCollection<AccessStep> history, int top, int nodeId, string label)
     {
         for (var index = 0; index < top; index++)
         {
-            if (history[index] is T span && span.NodeId == nodeId)
+            if (history[index] is TraceCounterSpan span && span.NodeId == nodeId && span.Label == label)
             {
                 return span;
             }
@@ -644,43 +571,15 @@ public static class TraceStepRuns
         history.Insert(index, span);
     }
 
-    private static MergeMatchSpan MergeMatch(ObservableCollection<AccessStep> history, AccessStep step)
+    private static TraceCounterSpan MergeMatch(ObservableCollection<AccessStep> history, AccessStep step)
     {
         var top = LeadingSpans(history);
 
-        if (FindSpan<MergeMatchSpan>(history, top, step.NodeId) is { } span)
-        {
-            return span;
-        }
-
-        var created = new MergeMatchSpan
-        {
-            NodeId = step.NodeId,
-            Counters = step.Counters
-        };
-
-        InsertSpan(history, created);
-
-        return created;
+        return FindSpan(history, top, step.NodeId, "Match") ?? Insert(step, "Match", history);
     }
 
-    private static HashMatchSpan MatchSpan(ObservableCollection<AccessStep> history, int top, AccessStep step)
-    {
-        if (FindSpan<HashMatchSpan>(history, top, step.NodeId) is { } span)
-        {
-            return span;
-        }
-
-        var created = new HashMatchSpan
-        {
-            NodeId = step.NodeId,
-            Counters = step.Counters
-        };
-
-        InsertSpan(history, created);
-
-        return created;
-    }
+    private static TraceCounterSpan MatchSpan(ObservableCollection<AccessStep> history, int top, AccessStep step)
+        => FindSpan(history, top, step.NodeId, "Match") ?? Insert(step, "Match", history);
 
     private static int EmitOf(AccessStep.Row row)
     {

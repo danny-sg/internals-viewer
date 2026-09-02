@@ -103,7 +103,7 @@ public sealed class AllocationScanIterator(IPageService pageService, IRecordServ
         await LoadIamAsync(scan.FirstIamPage, cancellationToken);
     }
 
-    public override async Task<IRecord?> GetRowAsync(CancellationToken cancellationToken)
+    public override async ValueTask<IRecord?> GetRowAsync(CancellationToken cancellationToken)
     {
         if (IsComplete)
         {

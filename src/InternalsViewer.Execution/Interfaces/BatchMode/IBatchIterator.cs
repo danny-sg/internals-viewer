@@ -28,7 +28,7 @@ public interface IBatchIterator
 
     Task OpenAsync(IteratorDefinition definition, IteratorContext context, CancellationToken cancellationToken);
 
-    Task<ExecutionBatch?> GetNextBatchAsync(CancellationToken cancellationToken);
+    ValueTask<ExecutionBatch?> GetNextBatchAsync(CancellationToken cancellationToken);
 
     Task CloseAsync();
 }

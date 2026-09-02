@@ -148,7 +148,7 @@ public sealed class ColumnstoreScanIterator(ColumnstoreService columnstoreServic
         }
     }
 
-    public async Task<ExecutionBatch?> GetNextBatchAsync(CancellationToken cancellationToken)
+    public async ValueTask<ExecutionBatch?> GetNextBatchAsync(CancellationToken cancellationToken)
     {
         while (true)
         {

@@ -60,7 +60,7 @@ public sealed class BatchComputeScalarIterator(IIteratorFactory factory) : IBatc
         await Input.OpenAsync(compute.Source, context, cancellationToken);
     }
 
-    public async Task<ExecutionBatch?> GetNextBatchAsync(CancellationToken cancellationToken)
+    public async ValueTask<ExecutionBatch?> GetNextBatchAsync(CancellationToken cancellationToken)
     {
         if (IsComplete || Input is null)
         {

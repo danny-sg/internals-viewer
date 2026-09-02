@@ -53,7 +53,7 @@ public sealed class ComputeScalarIterator(IIteratorFactory factory) : IteratorBa
         await Input.OpenAsync(compute.Source, context, cancellationToken);
     }
 
-    public override async Task<IRecord?> GetRowAsync(CancellationToken cancellationToken)
+    public override async ValueTask<IRecord?> GetRowAsync(CancellationToken cancellationToken)
     {
         if (IsComplete || Input is null)
         {

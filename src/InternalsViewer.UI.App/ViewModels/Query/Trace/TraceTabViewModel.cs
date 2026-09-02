@@ -397,7 +397,7 @@ public sealed partial class TraceTabViewModel : ObservableObject, IDisposable
             return;
         }
 
-        var step = await Task.Run(() => stepper.StepNextAsync(CancellationToken.None));
+        var step = await stepper.StepNextAsync(CancellationToken.None);
 
         if (step is null)
         {
@@ -466,7 +466,7 @@ public sealed partial class TraceTabViewModel : ObservableObject, IDisposable
 
         while (true)
         {
-            var step = await Task.Run(() => stepper.StepNextAsync(CancellationToken.None));
+            var step = await stepper.StepNextAsync(CancellationToken.None);
 
             if (step is null)
             {

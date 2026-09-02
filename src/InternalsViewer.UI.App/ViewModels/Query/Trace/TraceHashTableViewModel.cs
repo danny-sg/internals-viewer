@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
 using CommunityToolkit.Mvvm.ComponentModel;
 using InternalsViewer.Execution.AccessPaths.Joins.Hash;
 using InternalsViewer.Execution.BatchMode.Vectors;
@@ -40,6 +39,8 @@ public sealed partial class TraceHashTableViewModel(RecordColumnFilter columnFil
     private HashEntryModel? _currentEntry;
 
     private bool _suppressResize;
+
+    private (int Rows, long Estimate, int Buckets, int LongestChain) _summaryKey = (-1, -1, -1, -1);
 
     private IReadOnlyList<HashColumnModel>? _placeholderColumns;
 
@@ -95,33 +96,11 @@ public sealed partial class TraceHashTableViewModel(RecordColumnFilter columnFil
 
         var isOwnStep = step is not null && step.NodeId == IteratorNodeId;
 
-        if (isOwnStep
-            && _bucketModels is { } models
-            && models.Count == table.BucketCount
-            && table.RowCount == _syncedRowCount + 1
-            && step != null
-            && Added(step) is { } added)
+        if (_bucketModels is null
+            || _bucketModels.Count != table.BucketCount
+            || _syncedRowCount != table.RowCount)
         {
-            var entries = models[added.Bucket].Entries;
-
-            var entry = ToEntryModel(table.Buckets[added.Bucket].Entries[added.Entry], added.Bucket, added.Entry);
-
-            if (entries is [{ IsPlaceholder: true }])
-            {
-                entries.Reset([entry]);
-            }
-            else
-            {
-                entries.Add(entry);
-            }
-
-            _syncedRowCount = table.RowCount;
-        }
-        else if (_bucketModels is null
-                 || _bucketModels.Count != table.BucketCount
-                 || _syncedRowCount != table.RowCount)
-        {
-            RebuildBuckets(table);
+            SyncBuckets(table);
 
             Buckets = _bucketModels!;
         }
@@ -143,10 +122,7 @@ public sealed partial class TraceHashTableViewModel(RecordColumnFilter columnFil
             UpdateHighlight(step);
         }
 
-        Summary = iterator.BuildRowEstimate > 0
-            ? $"{table.RowCount:N0} rows, sized for {iterator.BuildRowEstimate:N0}, "
-              + $"{table.BucketCount} buckets, longest chain {table.LongestChain}"
-            : $"{table.RowCount:N0} rows, {table.BucketCount} buckets, longest chain {table.LongestChain}";
+        UpdateSummary(iterator, table);
     }
 
     public void Reset()
@@ -158,6 +134,7 @@ public sealed partial class TraceHashTableViewModel(RecordColumnFilter columnFil
         _placeholderColumns = null;
         _currentBucket = null;
         _currentEntry = null;
+        _summaryKey = (-1, -1, -1, -1);
 
         _matchedEntries.Clear();
 
@@ -178,14 +155,6 @@ public sealed partial class TraceHashTableViewModel(RecordColumnFilter columnFil
         Sync(null);
     }
 
-    private static (int Bucket, int Entry)? Added(AccessStep step)
-        => step switch
-        {
-            AccessStep.HashBuild { IsNullKey: false } build => (build.Bucket, build.Entry),
-            AccessStep.HashAggregate { IsNewGroup: true } group => (group.Bucket, group.Entry),
-            _ => null
-        };
-
     private void RefreshEntry(HashTable table, int bucket, int entry)
     {
         if (_bucketModels is not { } models
@@ -201,6 +170,40 @@ public sealed partial class TraceHashTableViewModel(RecordColumnFilter columnFil
         models[bucket].Entries[entry] = ToEntryModel(table.Buckets[bucket].Entries[entry], bucket, entry);
     }
 
+    private void UpdateSummary(IHashTableSource iterator, HashTable table)
+    {
+        var key = (table.RowCount, iterator.BuildRowEstimate, table.BucketCount, table.LongestChain);
+
+        if (key == _summaryKey)
+        {
+            return;
+        }
+
+        _summaryKey = key;
+
+        Summary = iterator.BuildRowEstimate > 0
+            ? $"{table.RowCount:N0} rows, sized for {iterator.BuildRowEstimate:N0}, "
+              + $"{table.BucketCount} buckets, longest chain {table.LongestChain}"
+            : $"{table.RowCount:N0} rows, {table.BucketCount} buckets, longest chain {table.LongestChain}";
+    }
+
+    private void SyncBuckets(HashTable table)
+    {
+        if (_bucketModels is not { } models || models.Count != table.BucketCount)
+        {
+            RebuildBuckets(table);
+
+            return;
+        }
+
+        for (var index = 0; index < models.Count; index++)
+        {
+            FillBucket(models[index], table.Buckets[index]);
+        }
+
+        _syncedRowCount = table.RowCount;
+    }
+
     private void RebuildBuckets(HashTable table)
     {
         _currentBucket = null;
@@ -214,25 +217,54 @@ public sealed partial class TraceHashTableViewModel(RecordColumnFilter columnFil
         {
             var model = new HashBucketModel { Index = bucket.Index };
 
-            var entries = new List<HashEntryModel>(bucket.Count);
-
-            foreach (var entry in bucket.Entries)
-            {
-                entries.Add(ToEntryModel(entry, bucket.Index, entries.Count));
-            }
-
-            if (entries.Count == 0)
-            {
-                entries.Add(EmptyEntryModel(bucket.Index));
-            }
-
-            model.Entries.Reset(entries);
+            model.Entries.Reset(BuildEntries(bucket, bucket.Index));
 
             models.Add(model);
         }
 
         _bucketModels = models;
         _syncedRowCount = table.RowCount;
+    }
+
+    private void FillBucket(HashBucketModel model, HashBucket bucket)
+    {
+        var entries = model.Entries;
+
+        var materialised = entries is [{ IsPlaceholder: true }] ? 0 : entries.Count;
+
+        if (materialised == bucket.Count)
+        {
+            return;
+        }
+
+        if (materialised == 0 || materialised > bucket.Count)
+        {
+            entries.Reset(BuildEntries(bucket, model.Index));
+
+            return;
+        }
+
+        for (var index = materialised; index < bucket.Count; index++)
+        {
+            entries.Add(ToEntryModel(bucket.Entries[index], model.Index, index));
+        }
+    }
+
+    private List<HashEntryModel> BuildEntries(HashBucket bucket, int bucketIndex)
+    {
+        if (bucket.Count == 0)
+        {
+            return [EmptyEntryModel(bucketIndex)];
+        }
+
+        var entries = new List<HashEntryModel>(bucket.Count);
+
+        for (var index = 0; index < bucket.Count; index++)
+        {
+            entries.Add(ToEntryModel(bucket.Entries[index], bucketIndex, index));
+        }
+
+        return entries;
     }
 
     private void UpdateHighlight(AccessStep? step)
@@ -330,7 +362,9 @@ public sealed partial class TraceHashTableViewModel(RecordColumnFilter columnFil
     {
         var record = TraceVisualViewModel.ToRecordModel(entry.Record, columnFilter);
 
-        var columns = EnsureColumns(record);
+        var pairs = Pair(record);
+
+        var columns = EnsureColumns(pairs);
 
         var cells = new List<HashCellModel>(columns.Count)
         {
@@ -338,8 +372,6 @@ public sealed partial class TraceHashTableViewModel(RecordColumnFilter columnFil
             new() { Value = entryIndex == 0 ? bucketIndex.ToString() : string.Empty, Column = columns[BucketColumn] },
             new() { Value = $"{entry.Hash:X8}", Column = columns[HashColumn] }
         };
-
-        var pairs = Pair(record);
 
         // Positional, because a build side reading two objects can carry the same column name twice and a lookup would find only the first
         for (var index = FirstValueColumn; index < columns.Count; index++)
@@ -364,16 +396,16 @@ public sealed partial class TraceHashTableViewModel(RecordColumnFilter columnFil
     /// The base columns exist so the header is there before the build starts. Every row of a given build side carries the same columns, so
     /// this settles on the first row and the rest line up under it.
     /// </remarks>
-    private IReadOnlyList<HashColumnModel> EnsureColumns(IndexRecordModel record)
+    private IReadOnlyList<HashColumnModel> EnsureColumns(List<(string Name, string? Prefix, string Value)> pairs)
     {
-        if (Columns.Count > FirstValueColumn)
+        if (pairs.Count == 0 || Columns.Count > FirstValueColumn)
         {
             return Columns;
         }
 
         var columns = new List<HashColumnModel>(HashColumnModel.CreateBaseColumns());
 
-        foreach (var pair in Pair(record))
+        foreach (var pair in pairs)
         {
             columns.Add(pair.Prefix is null
                         ? new HashColumnModel { Header = pair.Name }
@@ -398,9 +430,19 @@ public sealed partial class TraceHashTableViewModel(RecordColumnFilter columnFil
 
             var identifier = field.Name + BatchRecordBuilder.DataIdSuffix;
 
-            var match = record.Fields.FirstOrDefault(f => f.Name == identifier);
+            string? prefix = null;
 
-            pairs.Add((field.Name, match?.Value, field.Value));
+            foreach (var candidate in record.Fields)
+            {
+                if (candidate.Name == identifier)
+                {
+                    prefix = candidate.Value;
+
+                    break;
+                }
+            }
+
+            pairs.Add((field.Name, prefix, field.Value));
         }
 
         return pairs;

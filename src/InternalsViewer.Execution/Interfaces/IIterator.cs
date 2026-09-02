@@ -22,7 +22,7 @@ public interface IIterator
 
     Task OpenAsync(IteratorDefinition definition, IteratorContext context, CancellationToken cancellationToken);
 
-    Task<IRecord?> GetRowAsync(CancellationToken cancellationToken);
+    ValueTask<IRecord?> GetRowAsync(CancellationToken cancellationToken);
 
     Task CloseAsync();
 }

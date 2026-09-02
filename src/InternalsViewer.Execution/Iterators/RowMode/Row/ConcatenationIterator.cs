@@ -74,7 +74,7 @@ public sealed class ConcatenationIterator(IIteratorFactory factory) : IteratorBa
         await first.OpenAsync(Definitions[0], context, cancellationToken);
     }
 
-    public override async Task<IRecord?> GetRowAsync(CancellationToken cancellationToken)
+    public override async ValueTask<IRecord?> GetRowAsync(CancellationToken cancellationToken)
     {
         if (IsComplete)
         {

@@ -37,6 +37,8 @@ public sealed class IteratorStepper : IAsyncDisposable
 
     private bool _hasDelivered;
 
+    private bool _hasPendingStep;
+
     public IteratorStepper(IIterator root, IteratorDefinition definition, IteratorContext context)
     {
         Root = root;
@@ -86,11 +88,9 @@ public sealed class IteratorStepper : IAsyncDisposable
             _resume.Release();
         }
 
-        var delivered = _delivered.WaitAsync(cancellationToken);
+        await _delivered.WaitAsync(cancellationToken);
 
-        var completed = await Task.WhenAny(delivered, _engine!);
-
-        if (completed == _engine && !delivered.IsCompletedSuccessfully)
+        if (!_hasPendingStep)
         {
             IsComplete = true;
 
@@ -99,7 +99,7 @@ public sealed class IteratorStepper : IAsyncDisposable
             return null;
         }
 
-        await delivered;
+        _hasPendingStep = false;
 
         _isRequestOutstanding = false;
 
@@ -132,7 +132,18 @@ public sealed class IteratorStepper : IAsyncDisposable
 
     private void EnsureEngine()
     {
-        _engine ??= Task.Run(RunAsync);
+        if (_engine is not null)
+        {
+            return;
+        }
+
+        _engine = Task.Run(RunAsync);
+
+        _ = _engine.ContinueWith(static (_, state) => ((IteratorStepper)state!)._delivered.Release(),
+                                 this,
+                                 CancellationToken.None,
+                                 TaskContinuationOptions.ExecuteSynchronously,
+                                 TaskScheduler.Default);
     }
 
     private async Task RunAsync()
@@ -182,6 +193,8 @@ public sealed class IteratorStepper : IAsyncDisposable
             await owner._resume.WaitAsync(owner._engineCancellation.Token);
 
             owner._pending = owner.Record(step);
+
+            owner._hasPendingStep = true;
 
             owner._delivered.Release();
 

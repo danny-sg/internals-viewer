@@ -157,7 +157,7 @@ public sealed class StepRowStyler
         {
             AccessStep.MergeCompare compare => compare.Comparison,
             AccessStep.MergeCompareRun run => run.Comparison,
-            MergeCompareSpan span => span.Progress.Direction,
+            TraceCounterSpan { Label: "Compare" } span => (int)span.Number("Direction"),
             _ => 0
         };
 

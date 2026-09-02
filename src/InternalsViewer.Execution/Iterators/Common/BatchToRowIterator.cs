@@ -46,7 +46,7 @@ public sealed class BatchToRowIterator(IIteratorFactory factory) : IteratorBase
         await Source.OpenAsync(adapter.Batch, context, cancellationToken);
     }
 
-    public override async Task<IRecord?> GetRowAsync(CancellationToken cancellationToken)
+    public override async ValueTask<IRecord?> GetRowAsync(CancellationToken cancellationToken)
     {
         if (IsComplete || Source is null)
         {

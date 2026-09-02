@@ -117,7 +117,7 @@ public sealed class HashAggregateIterator(IIteratorFactory factory)
         await Input.OpenAsync(aggregate.Source, context, cancellationToken);
     }
 
-    public override async Task<IRecord?> GetRowAsync(CancellationToken cancellationToken)
+    public override async ValueTask<IRecord?> GetRowAsync(CancellationToken cancellationToken)
     {
         if (IsComplete || Input is null)
         {

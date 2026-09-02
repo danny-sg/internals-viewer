@@ -166,7 +166,7 @@ public class RowToBatchIteratorTests
         public Task OpenAsync(IteratorDefinition definition, IteratorContext context, CancellationToken cancellationToken)
             => Task.CompletedTask;
 
-        public Task<IRecord?> GetRowAsync(CancellationToken cancellationToken)
+        public ValueTask<IRecord?> GetRowAsync(CancellationToken cancellationToken)
         {
             if (Position >= rows.Count)
             {
@@ -174,12 +174,12 @@ public class RowToBatchIteratorTests
 
                 CurrentRow = null;
 
-                return Task.FromResult<IRecord?>(null);
+                return new ValueTask<IRecord?>((IRecord?)null);
             }
 
             CurrentRow = rows[Position++];
 
-            return Task.FromResult<IRecord?>(CurrentRow);
+            return new ValueTask<IRecord?>(CurrentRow);
         }
 
         public Task CloseAsync() => Task.CompletedTask;

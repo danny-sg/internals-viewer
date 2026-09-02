@@ -58,7 +58,7 @@ public sealed class TopIterator(IIteratorFactory factory) : IteratorBase, IUnary
         await Input.OpenAsync(top.Source, context, cancellationToken);
     }
 
-    public override async Task<IRecord?> GetRowAsync(CancellationToken cancellationToken)
+    public override async ValueTask<IRecord?> GetRowAsync(CancellationToken cancellationToken)
     {
         if (IsComplete || Input is null)
         {

@@ -1,0 +1,29 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<UserControl
+    x:Class="InternalsViewer.UI.App.Controls.Trace.Steps.TraceCounterView"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    xmlns:badge="using:InternalsViewer.UI.App.Controls.Trace"
+    mc:Ignorable="d">
+    <UserControl.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="ms-appx:///Controls/Trace/Steps/StepTextStyles.xaml" />
+            </ResourceDictionary.MergedDictionaries>
+        </ResourceDictionary>
+    </UserControl.Resources>
+    <Grid x:Name="Host">
+        <StackPanel x:Name="PairPanel" Orientation="Horizontal" Visibility="Collapsed">
+            <TextBlock x:Name="PairName" Style="{StaticResource StepPropertyStyle}" />
+            <TextBlock x:Name="PairValue" Style="{StaticResource StepValueStyle}" />
+        </StackPanel>
+        <StackPanel x:Name="LeadPanel" Orientation="Horizontal" Visibility="Collapsed">
+            <TextBlock x:Name="LeadValue" Style="{StaticResource StepValueStyle}" />
+            <TextBlock x:Name="LeadName" Style="{StaticResource StepPropertyStyle}" />
+        </StackPanel>
+        <TextBlock x:Name="TextOnly" Style="{StaticResource StepPropertyStyle}" Visibility="Collapsed" />
+        <badge:SplitBadge x:Name="Badge" Margin="8,0,0,0" VerticalAlignment="Center" Visibility="Collapsed" />
+    </Grid>
+</UserControl>

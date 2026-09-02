@@ -1,3 +1,5 @@
+#pragma warning disable VSTHRD003
+
 using System.Collections.Concurrent;
 using System.Runtime.CompilerServices;
 using System.Threading;
@@ -31,14 +33,14 @@ public sealed partial class CachingPageService(ILogger<CachingPageService> logge
     // Weak keys so each per-database cache is collected automatically when the DatabaseSource is GC'd.
     // ConcurrentDictionary so pages can be loaded in parallel (e.g. IAM chains during a database
     // refresh); a race just re-loads the same page and the last write wins with identical data.
-    private readonly ConditionalWeakTable<DatabaseSource, ConcurrentDictionary<PageAddress, Page>> _cache = new();
+    private readonly ConditionalWeakTable<DatabaseSource, ConcurrentDictionary<PageAddress, Task<Page>>> _cache = new();
 
     private ILogger<CachingPageService> Logger { get; } = logger;
 
-    public async Task<Page> GetPage(DatabaseSource database, 
-                                    PageAddress pageAddress, 
-                                    CancellationToken cancellationToken,
-                                    bool isMarkEnabled = true)
+    public Task<Page> GetPage(DatabaseSource database,
+                              PageAddress pageAddress,
+                              CancellationToken cancellationToken,
+                              bool isMarkEnabled = true)
     {
         var dbCache = _cache.GetOrCreateValue(database);
 
@@ -49,20 +51,13 @@ public sealed partial class CachingPageService(ILogger<CachingPageService> logge
             return cached;
         }
 
-        var page = await inner.GetPage(database, pageAddress, cancellationToken, isMarkEnabled);
-
-        if (CacheablePageTypes.Contains(page.PageHeader.PageType))
-        {
-            dbCache[pageAddress] = page;
-        }
-
-        return page;
+        return LoadAsync(dbCache, database, pageAddress, cancellationToken, isMarkEnabled);
     }
 
-    public async Task<Page> GetPage(DatabaseSource database,
-                                    PageAddress pageAddress, 
-                                    byte[] buffer,
-                                    CancellationToken cancellationToken)
+    public Task<Page> GetPage(DatabaseSource database,
+                              PageAddress pageAddress,
+                              byte[] buffer,
+                              CancellationToken cancellationToken)
     {
         var dbCache = _cache.GetOrCreateValue(database);
 
@@ -72,15 +67,13 @@ public sealed partial class CachingPageService(ILogger<CachingPageService> logge
 
             return cached;
         }
-
-        var page = await inner.GetPage(database, pageAddress, buffer, cancellationToken);
 
         // Don't cache the page as it came from a buffered load that is a lightweight load
-        return page;
+        return inner.GetPage(database, pageAddress, buffer, cancellationToken);
     }
 
-    public async Task<T> GetPage<T>(DatabaseSource database, 
-                                    PageAddress pageAddress, 
+    public async Task<T> GetPage<T>(DatabaseSource database,
+                                    PageAddress pageAddress,
                                     CancellationToken cancellationToken,
                                     bool isMarkEnabled = true)
         where T : Page
@@ -108,5 +101,21 @@ public sealed partial class CachingPageService(ILogger<CachingPageService> logge
         _cache.Remove(database);
 
         LogCacheReset(Logger, database.Name);
+    }
+
+    private async Task<Page> LoadAsync(ConcurrentDictionary<PageAddress, Task<Page>> dbCache,
+                                       DatabaseSource database,
+                                       PageAddress pageAddress,
+                                       CancellationToken cancellationToken,
+                                       bool isMarkEnabled)
+    {
+        var page = await inner.GetPage(database, pageAddress, cancellationToken, isMarkEnabled);
+
+        if (CacheablePageTypes.Contains(page.PageHeader.PageType))
+        {
+            dbCache[pageAddress] = Task.FromResult(page);
+        }
+
+        return page;
     }
 }

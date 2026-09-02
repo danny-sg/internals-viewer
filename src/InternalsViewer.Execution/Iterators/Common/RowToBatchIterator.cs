@@ -58,7 +58,7 @@ public sealed class RowToBatchIterator(IIteratorFactory factory) : IBatchIterato
         await Source.OpenAsync(adapter.Row, context, cancellationToken);
     }
 
-    public async Task<ExecutionBatch?> GetNextBatchAsync(CancellationToken cancellationToken)
+    public async ValueTask<ExecutionBatch?> GetNextBatchAsync(CancellationToken cancellationToken)
     {
         if (IsComplete || Source is null)
         {

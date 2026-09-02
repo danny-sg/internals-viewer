@@ -34,8 +34,8 @@
 /// Value will always be a pointer to a VLD Value Page. VLD will always use a 4-byte value. The layout is:
 ///
 ///  - Bits 0 - 14   Page Index
-///  - Bits 15 - 28  Slot Index
-///  - Bit  30       Repeat Flag
+///  - Bits 15 - 29  Slot Index
+///  - Bit  30       Terminator/Read 0:0 disambiguator
 ///  - Bit  31       Read Flag
 ///
 /// The additional Repeat Flag bit is to differentiate an address of 0:0 vs the terminator 0 value.

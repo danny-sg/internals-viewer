@@ -83,7 +83,7 @@ public sealed class SequenceProjectIterator(IIteratorFactory factory) : Iterator
         await Input.OpenAsync(sequence.Source, context, cancellationToken);
     }
 
-    public override async Task<IRecord?> GetRowAsync(CancellationToken cancellationToken)
+    public override async ValueTask<IRecord?> GetRowAsync(CancellationToken cancellationToken)
     {
         if (IsComplete || Input is null)
         {

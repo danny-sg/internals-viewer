@@ -34,7 +34,7 @@ public abstract class IteratorBase : IIterator
                                    IteratorContext context,
                                    CancellationToken cancellationToken);
 
-    public abstract Task<IRecord?> GetRowAsync(CancellationToken cancellationToken);
+    public abstract ValueTask<IRecord?> GetRowAsync(CancellationToken cancellationToken);
 
     public virtual async Task CloseAsync()
     {

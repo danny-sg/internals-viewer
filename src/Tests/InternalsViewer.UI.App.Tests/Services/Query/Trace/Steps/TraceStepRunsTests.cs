@@ -23,11 +23,11 @@ public class TraceStepRunsTests
             Append(history, new AccessStep.AggregateRow(number, number) { NodeId = 1, Running = $"COUNT(*) = {number}" });
         }
 
-        var span = Assert.Single(history.OfType<StreamAggregateSpan>());
+        var span = Single(history, "Accumulate");
 
-        Assert.Equal(5, span.Progress.Rows);
-        Assert.Equal(5, span.Progress.GroupRows);
-        Assert.Equal("COUNT(*) = 5", span.Progress.Running);
+        Assert.Equal(5, span.Number("Rows"));
+
+        Assert.Equal("COUNT(*) = 5", Text(span, "Values"));
 
         Assert.DoesNotContain(history, s => s is AccessStep.AggregateRow);
     }
@@ -40,15 +40,13 @@ public class TraceStepRunsTests
         Append(history, new AccessStep.AggregateRow(1, 1) { NodeId = 1 });
         Append(history, new AccessStep.AggregateEmit(1, "20") { NodeId = 1, GroupRows = 1 });
 
-        var first = Assert.Single(history.OfType<StreamAggregateSpan>());
-
-        Assert.True(first.IsComplete);
+        Assert.True(Single(history, "Accumulate").IsComplete);
 
         Append(history, new AccessStep.AggregateRow(2, 1) { NodeId = 1 });
 
-        Assert.Equal(2, history.OfType<StreamAggregateSpan>().Count());
+        Assert.Equal(2, Spans(history, "Accumulate").Count);
 
-        Assert.Single(history.OfType<StreamAggregateSpan>().Where(s => !s.IsComplete));
+        Assert.Single(Spans(history, "Accumulate").Where(s => !s.IsComplete));
     }
 
     [Fact]
@@ -60,12 +58,13 @@ public class TraceStepRunsTests
         Append(history, new AccessStep.AggregateRow(1, 1) { NodeId = 2 });
         Append(history, new AccessStep.AggregateRow(2, 2) { NodeId = 1 });
 
-        var spans = history.OfType<StreamAggregateSpan>().ToList();
+        var spans = Spans(history, "Accumulate");
 
         Assert.Equal(2, spans.Count);
 
-        Assert.Equal(2, spans.Single(s => s.NodeId == 1).Progress.GroupRows);
-        Assert.Equal(1, spans.Single(s => s.NodeId == 2).Progress.GroupRows);
+        Assert.Equal(2, spans.Single(s => s.NodeId == 1).Number("Rows"));
+
+        Assert.Equal(1, spans.Single(s => s.NodeId == 2).Number("Rows"));
     }
 
     [Fact]
@@ -84,11 +83,11 @@ public class TraceStepRunsTests
             });
         }
 
-        var span = Assert.Single(history.OfType<StreamAggregateSpan>());
+        var span = Single(history, "Accumulate");
 
-        Assert.Equal(6, span.Progress.Rows);
-        Assert.Equal(3, span.Progress.Groups);
-        Assert.Equal("3 groups", span.Progress.Detail);
+        Assert.Equal(6, span.Number("Rows"));
+
+        Assert.Equal(3, span.Number("Groups"));
 
         Assert.DoesNotContain(history, s => s is AccessStep.HashAggregate);
     }
@@ -113,13 +112,13 @@ public class TraceStepRunsTests
             });
         }
 
-        var span = Assert.Single(history.OfType<StreamAggregateSpan>());
+        var span = Single(history, "Accumulate");
 
-        Assert.True(span.Progress.IsHashed);
+        Assert.True(span.Fill.HasBuckets);
 
-        Assert.Equal([1, 2, 0, 1], span.Progress.Fill);
+        Assert.Equal([1, 2, 0, 1], span.Fill.Buckets);
 
-        Assert.Equal(3, span.Progress.Bucket);
+        Assert.Equal(3, span.Number("Bucket"));
     }
 
     [Fact]
@@ -129,10 +128,7 @@ public class TraceStepRunsTests
 
         Append(history, new AccessStep.AggregateRow(1, 1) { NodeId = 1, Running = "COUNT(*) = 1" });
 
-        var span = Assert.Single(history.OfType<StreamAggregateSpan>());
-
-        Assert.False(span.Progress.IsHashed);
-        Assert.Empty(span.Progress.Fill);
+        Assert.False(Single(history, "Accumulate").Fill.HasBuckets);
     }
 
     [Fact]
@@ -149,9 +145,10 @@ public class TraceStepRunsTests
         Append(history, new AccessStep.AggregateRow(3, 1) { NodeId = 1 });
         Append(history, new AccessStep.AggregateEmit(3, "22") { NodeId = 1, GroupRows = 1 });
 
-        var output = Assert.Single(history.OfType<RowCountSpan>());
+        var output = Single(history, "Get Row");
 
-        Assert.Equal(3, output.Progress.Rows);
+        Assert.Equal(3, output.Number("Row"));
+
         Assert.False(output.IsComplete);
 
         Assert.DoesNotContain(history, s => s is AccessStep.AggregateEmit);
@@ -167,9 +164,9 @@ public class TraceStepRunsTests
         Append(history, new AccessStep.AggregateRow(2, 1) { NodeId = 1 });
         Append(history, new AccessStep.AggregateEmit(2, "21") { NodeId = 1 });
 
-        Assert.Equal(2, history.OfType<StreamAggregateSpan>().Count());
+        Assert.Equal(2, Spans(history, "Accumulate").Count);
 
-        Assert.All(history.OfType<StreamAggregateSpan>(), span => Assert.True(span.IsComplete));
+        Assert.All(Spans(history, "Accumulate"), span => Assert.True(span.IsComplete));
     }
 
     [Fact]
@@ -182,9 +179,7 @@ public class TraceStepRunsTests
             Append(history, new AccessStep.ComputeRow(number) { NodeId = 3 });
         }
 
-        var span = Assert.Single(history.OfType<RowCountSpan>());
-
-        Assert.Equal(4, span.Progress.Rows);
+        Assert.Equal(4, Single(history, "Get Row").Number("Row"));
 
         Assert.DoesNotContain(history, s => s is AccessStep.ComputeRow);
     }
@@ -202,34 +197,23 @@ public class TraceStepRunsTests
             {
                 NodeId = 4,
                 SegmentCount = (number + 4) / 5,
-                Key = $"{20 + (number - 1) / 5}"
+                Key = $"{20 + ((number - 1) / 5)}"
             });
         }
 
-        var span = Assert.Single(history.OfType<SegmentSpan>());
+        var span = Single(history, "Segment");
 
-        Assert.Equal(15, span.Progress.Rows);
-        Assert.Equal(3, span.Progress.Segments);
-        Assert.Equal("22", span.Progress.Key);
-        Assert.True(span.Progress.HasKey);
+        Assert.Equal(15, span.Number("Rows"));
+
+        Assert.Equal(3, span.Number("Segments"));
+
+        Assert.Equal("22", Text(span, "Key"));
 
         Assert.DoesNotContain(history, s => s is AccessStep.SegmentRow);
     }
 
     [Fact]
-    public void A_Segment_With_No_Grouping_Columns_Has_No_Key_To_Show()
-    {
-        var history = new ObservableCollection<AccessStep>();
-
-        Append(history, new AccessStep.SegmentRow(1, true) { NodeId = 4, SegmentCount = 1 });
-
-        var span = Assert.Single(history.OfType<SegmentSpan>());
-
-        Assert.False(span.Progress.HasKey);
-    }
-
-    [Fact]
-    public void Ranked_Rows_Fold_Into_One_Span_Counting_Partitions()
+    public void Ranked_Rows_Fold_Into_One_Span()
     {
         var history = new ObservableCollection<AccessStep>();
 
@@ -239,15 +223,15 @@ public class TraceStepRunsTests
             {
                 NodeId = 5,
                 IsNewPartition = number % 5 == 1,
-                Values = $"Expr1002 = {(number - 1) % 5 + 1}"
+                Values = $"Expr1002 = {((number - 1) % 5) + 1}"
             });
         }
 
-        var span = Assert.Single(history.OfType<RankSpan>());
+        var span = Single(history, "Rank");
 
-        Assert.Equal(15, span.Progress.Rows);
-        Assert.Equal(3, span.Progress.Partitions);
-        Assert.Equal("Expr1002 = 5", span.Progress.Values);
+        Assert.Equal(15, span.Number("Row"));
+
+        Assert.Equal("Expr1002 = 5", Text(span, "Values"));
 
         Assert.DoesNotContain(history, s => s is AccessStep.RankRow);
     }
@@ -262,9 +246,36 @@ public class TraceStepRunsTests
         Append(history, new AccessStep.SegmentRow(2, false) { NodeId = 4, SegmentCount = 1 });
         Append(history, new AccessStep.RankRow(2) { NodeId = 5 });
 
-        Assert.Equal(2, Assert.Single(history.OfType<SegmentSpan>()).Progress.Rows);
-        Assert.Equal(2, Assert.Single(history.OfType<RankSpan>()).Progress.Rows);
+        Assert.Equal(2, Single(history, "Segment").Number("Rows"));
+
+        Assert.Equal(2, Single(history, "Rank").Number("Row"));
     }
+
+    [Fact]
+    public void A_Counter_Is_Created_Once_And_Then_Mutated()
+    {
+        var history = new ObservableCollection<AccessStep>();
+
+        for (var number = 1; number <= 50; number++)
+        {
+            Append(history, new AccessStep.ComputeRow(number) { NodeId = 3 });
+        }
+
+        var span = Single(history, "Get Row");
+
+        Assert.Equal(2, span.Items.Count);
+
+        Assert.Equal(50, span.Number("Row"));
+    }
+
+    private static List<TraceCounterSpan> Spans(ObservableCollection<AccessStep> history, string label)
+        => [.. history.OfType<TraceCounterSpan>().Where(s => s.Label == label)];
+
+    private static TraceCounterSpan Single(ObservableCollection<AccessStep> history, string label)
+        => Assert.Single(Spans(history, label));
+
+    private static string Text(TraceCounterSpan span, string name)
+        => span.Items.Single(c => c.Name == name).Text;
 
     private static void Append(ObservableCollection<AccessStep> history, AccessStep step)
         => TraceStepRuns.Append(step, history, HistoryLimit);

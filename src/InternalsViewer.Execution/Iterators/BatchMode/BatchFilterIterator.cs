@@ -76,7 +76,7 @@ public sealed class BatchFilterIterator(IIteratorFactory factory) : IBatchIterat
         await Input.OpenAsync(filter.Source, context, cancellationToken);
     }
 
-    public async Task<ExecutionBatch?> GetNextBatchAsync(CancellationToken cancellationToken)
+    public async ValueTask<ExecutionBatch?> GetNextBatchAsync(CancellationToken cancellationToken)
     {
         if (IsComplete || Input is null)
         {

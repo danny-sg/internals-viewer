@@ -8,14 +8,6 @@ public sealed class AccessStepTemplateSelector : DataTemplateSelector
 {
     public DataTemplate OpenTemplate { get; set; } = null!;
 
-    public DataTemplate BatchCountSpanTemplate { get; set; } = null!;
-
-    public DataTemplate BatchFilterSpanTemplate { get; set; } = null!;
-
-    public DataTemplate BatchGetSpanTemplate { get; set; } = null!;
-
-    public DataTemplate ComputeVectorTemplate { get; set; } = null!;
-
     public DataTemplate RowGroupOpenedTemplate { get; set; } = null!;
 
     public DataTemplate SegmentOpenedTemplate { get; set; } = null!;
@@ -37,8 +29,6 @@ public sealed class AccessStepTemplateSelector : DataTemplateSelector
     public DataTemplate AggregateLocalMergeTemplate { get; set; } = null!;
 
     public DataTemplate AggregatePushdownTemplate { get; set; } = null!;
-
-    public DataTemplate AggregatePushdownSpanTemplate { get; set; } = null!;
 
     public DataTemplate CloseTemplate { get; set; } = null!;
 
@@ -74,19 +64,11 @@ public sealed class AccessStepTemplateSelector : DataTemplateSelector
 
     public DataTemplate HashBuildTemplate { get; set; } = null!;
 
-    public DataTemplate HashBuildRunTemplate { get; set; } = null!;
-
-    public DataTemplate HashProbeSpanTemplate { get; set; } = null!;
-
-    public DataTemplate HashMatchSpanTemplate { get; set; } = null!;
-
     public DataTemplate TopStartTemplate { get; set; } = null!;
 
     public DataTemplate InputStartTemplate { get; set; } = null!;
 
     public DataTemplate ConcatRowTemplate { get; set; } = null!;
-
-    public DataTemplate SortCollectSpanTemplate { get; set; } = null!;
 
     public DataTemplate SortCollectTemplate { get; set; } = null!;
 
@@ -102,8 +84,6 @@ public sealed class AccessStepTemplateSelector : DataTemplateSelector
 
     public DataTemplate AggregateRowTemplate { get; set; } = null!;
 
-    public DataTemplate StreamAggregateSpanTemplate { get; set; } = null!;
-
     public DataTemplate AggregateEmitTemplate { get; set; } = null!;
 
     public DataTemplate HashAggregateTemplate { get; set; } = null!;
@@ -112,13 +92,7 @@ public sealed class AccessStepTemplateSelector : DataTemplateSelector
 
     public DataTemplate FilterRowTemplate { get; set; } = null!;
 
-    public DataTemplate SegmentSpanTemplate { get; set; } = null!;
-
-    public DataTemplate RankSpanTemplate { get; set; } = null!;
-
     public DataTemplate TopRowTemplate { get; set; } = null!;
-
-    public DataTemplate RowCountSpanTemplate { get; set; } = null!;
 
     public DataTemplate HashProbeTemplate { get; set; } = null!;
 
@@ -131,10 +105,6 @@ public sealed class AccessStepTemplateSelector : DataTemplateSelector
     public DataTemplate MergeCompareTemplate { get; set; } = null!;
 
     public DataTemplate MergeCompareRunTemplate { get; set; } = null!;
-
-    public DataTemplate MergeCompareSpanTemplate { get; set; } = null!;
-
-    public DataTemplate MergeMatchSpanTemplate { get; set; } = null!;
 
     public DataTemplate JoinEmitTemplate { get; set; } = null!;
 
@@ -156,12 +126,15 @@ public sealed class AccessStepTemplateSelector : DataTemplateSelector
 
     public DataTemplate PageSkippedTemplate { get; set; } = null!;
 
+    public DataTemplate TraceCounterSpanTemplate { get; set; } = null!;
+
     public DataTemplate DefaultTemplate { get; set; } = null!;
 
     protected override DataTemplate SelectTemplateCore(object item, DependencyObject container)
     {
         return item switch
         {
+            TraceCounterSpan => TraceCounterSpanTemplate,
             AccessStep.Open => OpenTemplate,
             AccessStep.Close => CloseTemplate,
             AccessStep.Output => OutputTemplate,
@@ -180,40 +153,29 @@ public sealed class AccessStepTemplateSelector : DataTemplateSelector
             AccessStep.JoinStart => JoinStartTemplate,
             AccessStep.JoinVerdict => JoinVerdictTemplate,
             AccessStep.HashBuild => HashBuildTemplate,
-            HashBuildSpan => HashBuildRunTemplate,
-            HashProbeSpan => HashProbeSpanTemplate,
-            HashMatchSpan => HashMatchSpanTemplate,
             AccessStep.TopStart => TopStartTemplate,
             AccessStep.InputStart => InputStartTemplate,
             AccessStep.ConcatRow => ConcatRowTemplate,
-            SortCollectSpan => SortCollectSpanTemplate,
             AccessStep.SortCollect => SortCollectTemplate,
             AccessStep.Sorted => SortedTemplate,
             AccessStep.SortRow => SortRowTemplate,
             AccessStep.SortDuplicate => SortDuplicateTemplate,
-            AggregatePushdownSpan => AggregatePushdownSpanTemplate,
             AccessStep.AggregatePushdown => AggregatePushdownTemplate,
             AccessStep.AggregateLocalMerge => AggregateLocalMergeTemplate,
             AccessStep.AggregateStart => AggregateStartTemplate,
             AccessStep.AggregateGroup => AggregateGroupTemplate,
-            StreamAggregateSpan => StreamAggregateSpanTemplate,
             AccessStep.AggregateRow => AggregateRowTemplate,
             AccessStep.AggregateEmit => AggregateEmitTemplate,
             AccessStep.HashAggregate => HashAggregateTemplate,
             AccessStep.ComputeRow => ComputeRowTemplate,
             AccessStep.FilterRow => FilterRowTemplate,
-            SegmentSpan => SegmentSpanTemplate,
-            RankSpan => RankSpanTemplate,
             AccessStep.TopRow => TopRowTemplate,
-            RowCountSpan => RowCountSpanTemplate,
             AccessStep.HashProbe => HashProbeTemplate,
             AccessStep.HashProbeRun => HashProbeRunTemplate,
             AccessStep.HashCompare => HashCompareTemplate,
             AccessStep.ForwardedRecord => ForwardedRecordTemplate,
             AccessStep.MergeCompare => MergeCompareTemplate,
             AccessStep.MergeCompareRun => MergeCompareRunTemplate,
-            MergeCompareSpan => MergeCompareSpanTemplate,
-            MergeMatchSpan => MergeMatchSpanTemplate,
             AccessStep.JoinEmit => JoinEmitTemplate,
             AccessStep.Stopped => StoppedTemplate,
             AccessStep.Truncated => TruncatedTemplate,
@@ -224,10 +186,6 @@ public sealed class AccessStepTemplateSelector : DataTemplateSelector
             AccessStep.Advance => AdvanceTemplate,
             AccessStep.ExtentStart => ExtentStartTemplate,
             AccessStep.PageSkipped => PageSkippedTemplate,
-            BatchCountSpan => BatchCountSpanTemplate,
-            BatchFilterSpan => BatchFilterSpanTemplate,
-            BatchGetSpan => BatchGetSpanTemplate,
-            ComputeVectorSpan => ComputeVectorTemplate,
             AccessStep.RowGroupOpened => RowGroupOpenedTemplate,
             AccessStep.SegmentOpened => SegmentOpenedTemplate,
             AccessStep.DictionaryOpened => DictionaryOpenedTemplate,

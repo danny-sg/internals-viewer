@@ -92,7 +92,7 @@ public sealed class HeapFetchIterator(IPageService pageService, IRecordService r
         return base.CloseAsync();
     }
 
-    public override async Task<IRecord?> GetRowAsync(CancellationToken cancellationToken)
+    public override async ValueTask<IRecord?> GetRowAsync(CancellationToken cancellationToken)
     {
         if (IsComplete)
         {

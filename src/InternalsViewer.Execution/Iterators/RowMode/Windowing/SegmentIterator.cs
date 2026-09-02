@@ -96,7 +96,7 @@ public sealed class SegmentIterator(IIteratorFactory factory) : IteratorBase, IU
         await Input.OpenAsync(segment.Source, context, cancellationToken);
     }
 
-    public override async Task<IRecord?> GetRowAsync(CancellationToken cancellationToken)
+    public override async ValueTask<IRecord?> GetRowAsync(CancellationToken cancellationToken)
     {
         if (IsComplete || Input is null)
         {
