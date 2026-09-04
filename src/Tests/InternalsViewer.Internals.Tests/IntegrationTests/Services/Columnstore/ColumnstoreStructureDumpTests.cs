@@ -77,6 +77,9 @@ public sealed class ColumnstoreStructureDumpTests(ITestOutputHelper testOutput) 
     [InlineData("Sales", 5)]
     [InlineData("Sales", 7)]
     [InlineData("SegDictionary", 2)]
+    [InlineData("SegNonAscii", 3)]
+    [InlineData("SegNonAscii", 4)]
+    [InlineData("SegNonAscii", 5)]
     public async Task Dump_Dictionary_Structure(string tableName, int columnId)
     {
         var (service, database) = await CreateService();
@@ -91,7 +94,7 @@ public sealed class ColumnstoreStructureDumpTests(ITestOutputHelper testOutput) 
                                .First(s => s.Key.ColumnId == columnId && s.LocalDictionary is not null)
                                .LocalDictionary!;
 
-        var blob = await service.GetDictionaryBlob(database, metadata, CancellationToken.None);
+        var blob = await service.GetDictionaryBlob(database, metadata, CancellationToken.None, column: column.Structure);
 
         Write($"{tableName}_col{columnId}_dict{metadata.DictionaryId}.txt",
               ColumnstoreStructureDumper.DumpDictionary(metadata, blob));

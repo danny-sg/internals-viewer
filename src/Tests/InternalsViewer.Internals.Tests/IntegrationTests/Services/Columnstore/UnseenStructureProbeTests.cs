@@ -33,7 +33,7 @@ public sealed class UnseenStructureProbeTests(ITestOutputHelper testOutput) : Pr
 
         var service = CreateService();
 
-        var tables = new[] { "SegLongString", "SegArchiveBig", "SegHugeDict", "SegLongStringArchive" };
+        var tables = new[] { "SegLongString", "SegArchiveBig", "SegHugeDict", "SegLongStringArchive", "SegNonAscii" };
 
         foreach (var tableName in tables)
         {
@@ -231,6 +231,21 @@ public sealed class UnseenStructureProbeTests(ITestOutputHelper testOutput) : Pr
                    'C' + CAST(ABS(CHECKSUM(NEWID())) % 400000 AS varchar(20)),
                    CAST(ABS(CHECKSUM(NEWID())) % 400000 AS bigint) * 7919
             FROM sys.all_columns a CROSS JOIN sys.all_columns b CROSS JOIN sys.all_columns c;
+            """);
+
+        await Build(connection, "SegNonAscii", """
+            CREATE TABLE SegNonAscii (Id int NOT NULL, Latin1Text nvarchar(200) NOT NULL,
+                WideText nvarchar(200) NOT NULL, SurrogateText nvarchar(200) NOT NULL);
+            CREATE CLUSTERED COLUMNSTORE INDEX CCI_SegNonAscii ON SegNonAscii;
+            INSERT INTO SegNonAscii WITH (TABLOCK) (Id, Latin1Text, WideText, SurrogateText)
+            SELECT TOP (200000) CAST(ROW_NUMBER() OVER (ORDER BY (SELECT NULL)) AS int),
+                   REPLICATE(NCHAR(233) + NCHAR(252) + NCHAR(241) + NCHAR(176), 12)
+                       + CAST(ROW_NUMBER() OVER (ORDER BY (SELECT NULL)) % 2000 AS nvarchar(10)),
+                   REPLICATE(NCHAR(937) + NCHAR(1071) + NCHAR(26085), 16)
+                       + CAST(ROW_NUMBER() OVER (ORDER BY (SELECT NULL)) % 2000 AS nvarchar(10)),
+                   REPLICATE(NCHAR(0xD83D) + NCHAR(0xDE00), 20)
+                       + CAST(ROW_NUMBER() OVER (ORDER BY (SELECT NULL)) % 2000 AS nvarchar(10))
+            FROM sys.all_columns a CROSS JOIN sys.all_columns b;
             """);
     }
 

@@ -15,7 +15,7 @@ public static class BatchSize
 {
     public const int MaxBytes = 65536;
 
-    public const int MinRowCount = 64;
+    public const int MinRowCount = 70;
 
     public const int MaxRowCount = 900;
 

@@ -206,10 +206,7 @@ public sealed class HuffmanStringPage : StringPage
 
         return symbol;
     }
-
-    /// <summary>
-    /// The code as it sits in the stream, read back from the bits the symbol was taken from
-    /// </summary>
+    
     private int ReadCode(int bitOffset, int bitLength)
     {
         var position = _reader.BitPosition;

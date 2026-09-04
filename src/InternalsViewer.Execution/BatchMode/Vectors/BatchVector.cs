@@ -32,30 +32,30 @@ public sealed class BatchVector(BatchColumn column, int size)
     /// </remarks>
     public SegmentReader? Source { get; set; }
 
-    public bool IsConstant { get; private set; }
+    public bool IsPure { get; private set; }
 
-    public BatchValue ConstantValue { get; private set; }
+    public BatchValue PureValue { get; private set; }
 
-    public BatchValue this[int row] => IsConstant ? ConstantValue : Values[row];
+    public BatchValue this[int row] => IsPure ? PureValue : Values[row];
 
-    public void SetConstant(BatchValue value)
+    public void SetPureValue(BatchValue value)
     {
-        IsConstant = true;
+        IsPure = true;
 
-        ConstantValue = value;
+        PureValue = value;
     }
 
     public void SetValue(int row, BatchValue value)
     {
-        if (IsConstant)
+        if (IsPure)
         {
-            Values.AsSpan().Fill(ConstantValue);
+            Values.AsSpan().Fill(PureValue);
 
-            IsConstant = false;
+            IsPure = false;
         }
 
         Values[row] = value;
     }
 
-    public void ClearConstant() => IsConstant = false;
+    public void ClearPure() => IsPure = false;
 }

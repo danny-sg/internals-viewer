@@ -1,4 +1,5 @@
 ﻿using InternalsViewer.Internals.Engine.Address;
+using InternalsViewer.Query.Events.BatchMode;
 using InternalsViewer.Query.Events.Latches;
 using InternalsViewer.Query.Events.Operators;
 using InternalsViewer.Query.Events.Reads;
@@ -31,6 +32,27 @@ public class EventPlanNodeMatcherTests
         Assert.NotNull(threadEvent.PlanNodeIdentifier);
         Assert.Equal(1, threadEvent.PlanNodeIdentifier!.NodeId);
         Assert.Equal(PlanHandleId, threadEvent.PlanNodeIdentifier.PlanHandleId);
+    }
+
+    [Fact]
+    public void Segment_Scan_Event_Anchors_To_Node_By_NodeId()
+    {
+        var plan = PlanWith(
+            Node(0, "Hash Match", table: null, index: null),
+            Node(1, "Columnstore Index Scan", table: "Sales", index: "CCI_Sales"));
+
+        var scan = new SegmentScanEvent
+        {
+            PlanHandleId = PlanHandleId,
+            NodeId = 1,
+            IsScanStart = true
+        };
+
+        EventPlanNodeMatcher.Match([scan], [plan]);
+
+        Assert.NotNull(scan.PlanNodeIdentifier);
+        Assert.Equal(1, scan.PlanNodeIdentifier!.NodeId);
+        Assert.Equal(PlanHandleId, scan.PlanNodeIdentifier.PlanHandleId);
     }
 
     [Fact]

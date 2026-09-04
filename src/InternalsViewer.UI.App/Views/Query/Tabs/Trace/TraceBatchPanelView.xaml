@@ -49,7 +49,7 @@
                     <Border Padding="6,1"
                             CornerRadius="3"
                             VerticalAlignment="Center"
-                            Background="{x:Bind Batch.IsPureVector, Mode=OneWay, Converter={StaticResource PurityBrushConverter}}">
+                            Background="{x:Bind Batch.HasPureVectors, Mode=OneWay, Converter={StaticResource PurityBrushConverter}}">
                         <TextBlock Text="{x:Bind Batch.Purity, Mode=OneWay}"
                                    FontSize="11"
                                    Foreground="White" />

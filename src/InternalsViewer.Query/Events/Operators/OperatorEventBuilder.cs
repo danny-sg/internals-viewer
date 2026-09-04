@@ -3,6 +3,7 @@ using InternalsViewer.Query.Events.Operators;
 using InternalsViewer.Query.Events.Reads;
 using InternalsViewer.Query.Events.Transactions;
 using InternalsViewer.Query.Events;
+using InternalsViewer.Query.Events.BatchMode;
 using InternalsViewer.Query.Plans.Model;
 using InternalsViewer.Query.Plans.Operators;
 using InternalsViewer.Query.Plans;
@@ -106,13 +107,12 @@ internal sealed class OperatorEventBuilder
 
         if (node.Children.Count == 0)
         {
-            // A leaf is positioned by its own data access (I/O or latch - the first page access),
-            // falling back to its activity.
+            // A leaf is positioned by its own data access (I/O or latch - the first page access), falling back to its activity
             start = FirstDataAccess(nodeEvents) ?? FirstActivity(nodeEvents) ?? 0;
         }
         else
         {
-            // A parent opens when its driving input opens (hash build / loop outer), else its earliest child.
+            // A parent opens when its driving input opens (hash build / loop outer), else its earliest child
             var driver = OperatorClassifier.DrivingChild(node);
 
             start = driver is not null
@@ -120,16 +120,16 @@ internal sealed class OperatorEventBuilder
                 : node.Children.Min(c => Timing(c).StartUs);
         }
 
-        // The query (statement) node spans the whole batch, so it can't start after the first page read
-        // from any of its operators - even when its driving input opens later (common on very fast queries
-        // where a read is timestamped before the statement's own measured start).
+        // The query (statement) node spans the whole batch, so it can't start after the first page read from any of its operators - even
+        // when its driving input opens later (common on very fast queries where a read is timestamped before the statement's own measured
+        // start)
         if (node.IsStatement && EarliestSubtreeDataAccess(node) is { } firstRead)
         {
             start = Math.Min(start, firstRead);
         }
 
-        // The operator runs for its measured wall-clock duration, but never ends before its own data
-        // access (I/O or latch), its log writes, its children, or its threads.
+        // The operator runs for its measured wall-clock duration, but never ends before its own data access (I/O or latch), its log writes,
+        // its children, or its threads
         var end = start + node.DurationUs;
 
         if (LastDataAccess(nodeEvents) is { } lastAccess)
@@ -319,7 +319,8 @@ internal sealed class OperatorEventBuilder
     }
 
     private static long? LastDataAccess(List<EngineEvent> events) =>
-        events.Where(e => e is IoEvent or LatchEvent or ReadEventGroup).Select(e => (long?)e.TimeUs + e.DurationUs).Max();
+        events.Where(e => e is IoEvent or LatchEvent or ReadEventGroup or SegmentScanEvent)
+              .Select(e => (long?)e.TimeUs + e.DurationUs).Max();
 
     private static long? LastLog(List<EngineEvent> events) =>
         events.Where(e => e is TransactionLogEvent).Select(e => (long?)e.TimeUs + e.DurationUs).Max();

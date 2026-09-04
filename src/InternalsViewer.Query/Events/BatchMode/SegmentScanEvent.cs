@@ -62,5 +62,5 @@ public sealed record SegmentScanEvent : EngineEvent
 
     public bool HasScanResult => FoldedFrom is not null;
 
-    public override string Detail => $"Row Group {RowGroupId}, Column {ColumnId}";
+    public override string Detail => $"Segment Scan: Row Group {RowGroupId}, Column {ColumnId}";
 }

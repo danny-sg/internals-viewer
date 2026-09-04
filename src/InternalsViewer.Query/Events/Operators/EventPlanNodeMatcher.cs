@@ -1,4 +1,5 @@
 using InternalsViewer.Internals.Engine.Address;
+using InternalsViewer.Query.Events.BatchMode;
 using InternalsViewer.Query.Events.Latches;
 using InternalsViewer.Query.Events.Operators;
 using InternalsViewer.Query.Events.Reads;
@@ -83,14 +84,14 @@ public static class EventPlanNodeMatcher
 
     private static void MatchPlan(ExecutionPlan plan, List<EngineEvent> events)
     {
-        foreach (var threadEvent in events.OfType<QueryThreadEvent>())
+        foreach (var engineEvent in events)
         {
-            if (plan.NodesById.ContainsKey(threadEvent.NodeId))
+            if (NodeIdOf(engineEvent) is { } nodeId && plan.NodesById.ContainsKey(nodeId))
             {
-                threadEvent.PlanNodeIdentifier = new PlanNodeIdentifier
+                engineEvent.PlanNodeIdentifier = new PlanNodeIdentifier
                 {
                     PlanHandleId = plan.PlanHandleId,
-                    NodeId = threadEvent.NodeId
+                    NodeId = nodeId
                 };
             }
         }
@@ -183,6 +184,14 @@ public static class EventPlanNodeMatcher
             };
         }
     }
+
+    private static int? NodeIdOf(EngineEvent engineEvent) => engineEvent switch
+    {
+        QueryThreadEvent thread => thread.NodeId,
+        SegmentScanEvent scan => scan.NodeId,
+        BatchModeEvent batch => batch.NodeId,
+        _ => null,
+    };
 
     // The pages an event anchors: a read group links to all of them, a single-page event to its one.
     private static IEnumerable<PageAddress> PagesOf(EngineEvent engineEvent) => engineEvent switch

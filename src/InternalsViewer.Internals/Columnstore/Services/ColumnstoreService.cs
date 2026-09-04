@@ -1,5 +1,7 @@
-﻿using System.Diagnostics;
+﻿using System.Data;
+using System.Diagnostics;
 using System.IO;
+using System.Text;
 using System.Threading;
 using InternalsViewer.Internals.Columnstore.Decoding;
 using InternalsViewer.Internals.Columnstore.Dictionaries;
@@ -204,7 +206,8 @@ public sealed class ColumnstoreService(IRecordReader recordReader,
                                                         CancellationToken cancellationToken,
                                                         bool isMarkEnabled = false,
                                                         int rowGroupId = -1,
-                                                        string columnName = "")
+                                                        string columnName = "",
+                                                        ColumnStructure? column = null)
     {
         var data = await GetData(database,
                                  dictionary.DataPointer,
@@ -215,6 +218,8 @@ public sealed class ColumnstoreService(IRecordReader recordReader,
 
         if (blob is StringDictionary strings)
         {
+            strings.Encoding = GetStringEncoding(column);
+
             await ReadLobValues(database, strings, cancellationToken);
         }
 
@@ -275,8 +280,8 @@ public sealed class ColumnstoreService(IRecordReader recordReader,
     }
 
     public async Task<DeletedRows> GetDeletedRows(DatabaseSource database,
-                                                 ColumnStoreIndex index,
-                                                 CancellationToken cancellationToken)
+                                                  ColumnStoreIndex index,
+                                                  CancellationToken cancellationToken)
     {
         if (index.DeleteBitmapAllocationUnit is not { } allocationUnit || allocationUnit.FirstPage == PageAddress.Empty)
         {
@@ -495,10 +500,17 @@ public sealed class ColumnstoreService(IRecordReader recordReader,
         return names;
     }
 
+    private static Encoding GetStringEncoding(ColumnStructure? column)
+        => column?.DataType switch
+        {
+            SqlDbType.NChar or SqlDbType.NVarChar or SqlDbType.NText => Encoding.Unicode,
+            _ => Encoding.Latin1
+        };
+
     /// <summary>
     /// Get Dictionaries linked to the Segment
     /// </summary>
-    private async Task<(DictionaryBlob? Dictionary, DictionaryBlob? Overflow)> 
+    private async Task<(DictionaryBlob? Dictionary, DictionaryBlob? Overflow)>
         GetSegmentDictionaries(DatabaseSource database,
                                ColumnSegment segment,
                                CancellationToken cancellationToken)
@@ -514,7 +526,12 @@ public sealed class ColumnstoreService(IRecordReader recordReader,
             return (secondary is null ? null : await Local(secondary), null);
         }
 
-        return (await GetDictionaryBlob(database, primary, cancellationToken, rowGroupId: -1, columnName: columnName),
+        return (await GetDictionaryBlob(database,
+                                        primary,
+                                        cancellationToken,
+                                        rowGroupId: -1,
+                                        columnName: columnName,
+                                        column: segment.Column?.Structure),
                 secondary is null ? null : await Local(secondary));
 
         Task<DictionaryBlob> Local(SegmentDictionary dictionary)
@@ -522,7 +539,8 @@ public sealed class ColumnstoreService(IRecordReader recordReader,
                                  dictionary,
                                  cancellationToken,
                                  rowGroupId: segment.Key.RowGroupId,
-                                 columnName: columnName);
+                                 columnName: columnName,
+                                 column: segment.Column?.Structure);
     }
 
     private async Task<List<Record>> GetRecords(string name,

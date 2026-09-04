@@ -4,7 +4,7 @@ using InternalsViewer.Internals.Engine.Database;
 
 namespace InternalsViewer.Internals.Columnstore.Metadata;
 
-public class ColumnStoreIndex
+public sealed class ColumnStoreIndex
 {
     public long HobtId { get; set; }
 

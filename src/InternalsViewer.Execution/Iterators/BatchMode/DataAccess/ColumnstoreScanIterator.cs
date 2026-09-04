@@ -604,7 +604,7 @@ public sealed class ColumnstoreScanIterator(ColumnstoreService columnstoreServic
                                                                         column,
                                                                         StringComparison.OrdinalIgnoreCase));
 
-            if (vector is not { IsConstant: true })
+            if (vector is not { IsPure: true })
             {
                 return false;
             }
@@ -629,7 +629,7 @@ public sealed class ColumnstoreScanIterator(ColumnstoreService columnstoreServic
     {
         for (var i = 0; i < Columns.Count; i++)
         {
-            if (BoundVectors[i].IsConstant)
+            if (BoundVectors[i].IsPure)
             {
                 pure++;
 
@@ -676,7 +676,7 @@ public sealed class ColumnstoreScanIterator(ColumnstoreService columnstoreServic
 
                 if (offset == 0 && run.RowCount == mask.Length)
                 {
-                    vector.SetConstant(batchValue);
+                    vector.SetPureValue(batchValue);
 
                     continue;
                 }

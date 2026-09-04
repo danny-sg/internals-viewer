@@ -19,7 +19,7 @@ public sealed class ExecutionBatch(int capacity, IReadOnlyList<BatchVector> vect
 
     public int RowGroupId { get; set; }
 
-    public bool IsPureVector => SelectionVector.RowCount == RowCount;
+    public int PureVectorCount => VectorList.Count(v => v.IsPure);
 
     private List<BatchVector> VectorList { get; } = [.. vectors];
 
@@ -29,7 +29,7 @@ public sealed class ExecutionBatch(int capacity, IReadOnlyList<BatchVector> vect
 
         foreach (var vector in VectorList)
         {
-            vector.ClearConstant();
+            vector.ClearPure();
         }
 
         SetRowCount(rowCount);

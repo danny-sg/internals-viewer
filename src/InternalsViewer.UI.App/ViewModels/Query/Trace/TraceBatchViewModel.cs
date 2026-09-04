@@ -48,7 +48,7 @@ public sealed partial class TraceBatchViewModel : ObservableObject
     private string _purity = string.Empty;
 
     [ObservableProperty]
-    private bool _isPureVector;
+    private bool _hasPureVectors;
 
     [ObservableProperty]
     private int _rowGroupId;
@@ -107,9 +107,9 @@ public sealed partial class TraceBatchViewModel : ObservableObject
 
         BatchNumber = number;
 
-        IsPureVector = batch.IsPureVector;
+        HasPureVectors = batch.PureVectorCount > 0;
 
-        Purity = batch.IsPureVector ? "Pure" : "Impure";
+        Purity = $"{batch.PureVectorCount}/{batch.Vectors.Count} Pure";
 
         SelectionSummary = $"{batch.SelectionVector.RowCount}/{batch.RowCount}";
 
@@ -200,6 +200,8 @@ public sealed partial class TraceBatchViewModel : ObservableObject
         for (var i = 0; i < Columns.Count && i < vectors.Count; i++)
         {
             Columns[i].IsInScope = scope.Contains(vectors[i]);
+
+            Columns[i].IsPure = vectors[i].IsPure;
         }
     }
 

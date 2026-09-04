@@ -17,6 +17,8 @@ internal sealed class BatchValueColumn(BatchColumnView column) : TableViewColumn
 {
     private static SolidColorBrush UnselectedBrush { get; } = new(Windows.UI.Color.FromArgb(48, 128, 128, 128));
 
+    private static SolidColorBrush PureBrush { get; } = new(Windows.UI.Color.FromArgb(28, 86, 156, 214));
+
     private static SolidColorBrush TransparentBrush { get; } = new(Colors.Transparent);
 
     private static FontFamily Monospace { get; } = new("Cascadia Mono, Consolas, Courier New");
@@ -75,7 +77,7 @@ internal sealed class BatchValueColumn(BatchColumnView column) : TableViewColumn
 
         host.Tag = row.RowIndex;
 
-        cell.Background = row.IsSelected ? TransparentBrush : UnselectedBrush;
+        cell.Background = !row.IsSelected ? UnselectedBrush : column.IsPure ? PureBrush : TransparentBrush;
 
         var slot = row.Values[column.Ordinal];
 

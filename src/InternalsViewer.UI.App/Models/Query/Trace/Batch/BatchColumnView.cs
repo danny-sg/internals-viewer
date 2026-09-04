@@ -20,6 +20,8 @@ public sealed class BatchColumnView
 
     public bool IsInScope { get; set; } = true;
 
+    public bool IsPure { get; set; }
+
     public SqlDbType DataType => Column.DataType;
 
     public BatchValueDomain Domain => Column.Domain;

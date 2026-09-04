@@ -202,10 +202,17 @@
 
     <ItemGroup>
         <None Remove="Assets\Monaco\**\*" />
+        <None Remove="Models\Columnstore\DeleteBitmap\**" />
 
         <Content Include="Assets\Monaco\**\*">
             <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
         </Content>
+    </ItemGroup>
+
+    <ItemGroup>
+      <Compile Remove="Models\Columnstore\DeleteBitmap\**" />
+      <EmbeddedResource Remove="Models\Columnstore\DeleteBitmap\**" />
+      <Page Remove="Models\Columnstore\DeleteBitmap\**" />
     </ItemGroup>
     <ItemGroup>
         <PackageReference Include="CommunityToolkit.Labs.WinUI.Controls.DataTable" Version="0.1.251217-build.2433" />
@@ -555,11 +562,14 @@
       <Folder Include="Controls\Columnstore\Structure\" />
       <Folder Include="Controls\Columnstore\Segment\" />
       <Folder Include="Controls\Logging\" />
-      <Folder Include="Models\Columnstore\DeleteBitmap\" />
       <Folder Include="ViewModels\Columnstore\Segment\" />
       <Folder Include="Views\Query\Tabs\Index\" />
       <Folder Include="Views\Query\Tabs\Plan\" />
       <Folder Include="Views\Query\Tabs\Trace\Panels\" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <PRIResource Remove="Models\Columnstore\DeleteBitmap\**" />
     </ItemGroup>
 
 
