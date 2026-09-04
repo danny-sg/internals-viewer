@@ -28,8 +28,6 @@ public sealed partial class TraceCounterView : UserControl
 
         PairPanel.Visibility = counter.Kind == TraceCounterKind.Pair ? Visibility.Visible : Visibility.Collapsed;
 
-        LeadPanel.Visibility = counter.Kind == TraceCounterKind.Lead ? Visibility.Visible : Visibility.Collapsed;
-
         TextOnly.Visibility = counter.Kind == TraceCounterKind.Text ? Visibility.Visible : Visibility.Collapsed;
 
         Badge.Visibility = counter.Kind is TraceCounterKind.Badge or TraceCounterKind.Pill
@@ -37,8 +35,6 @@ public sealed partial class TraceCounterView : UserControl
                            : Visibility.Collapsed;
 
         PairName.Text = counter.Name;
-
-        LeadName.Text = counter.Name;
 
         TextOnly.Text = counter.Name;
 
@@ -57,8 +53,6 @@ public sealed partial class TraceCounterView : UserControl
         }
 
         PairValue.Text = counter.Text;
-
-        LeadValue.Text = counter.Text;
 
         if (counter.Kind == TraceCounterKind.Pill)
         {

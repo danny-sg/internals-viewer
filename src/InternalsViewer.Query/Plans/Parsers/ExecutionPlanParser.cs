@@ -26,7 +26,7 @@ public static class ExecutionPlanParser
 
         var statementElement = queryPlan.Parent;
 
-        var plan = new ExecutionPlan(planHandleId) { IsInternalPlan = IsInternalStatement(statementElement) };
+        var plan = new ExecutionPlan(planHandleId) { IsInternalPlan = IsInternalStatement(statementElement ?? queryPlan) };
 
         var parameters = PlanParameters.Parse(statementElement ?? queryPlan);
 
@@ -61,11 +61,17 @@ public static class ExecutionPlanParser
             return false;
         }
 
-        var statementText = statementElement.Value;
-
-        return statementText.Contains("StatMan", StringComparison.OrdinalIgnoreCase)
-               || statementText.Contains("_MS_UPDSTATS_TBL", StringComparison.OrdinalIgnoreCase);
+        return statementElement.DescendantsAndSelf()
+                               .Attributes()
+                               .Any(a => IsInternalMarker(a.Value))
+               || statementElement.DescendantNodes()
+                                  .OfType<XText>()
+                                  .Any(t => IsInternalMarker(t.Value));
     }
+
+    private static bool IsInternalMarker(string value)
+        => value.Contains("StatMan", StringComparison.OrdinalIgnoreCase)
+           || value.Contains("_MS_UPDSTATS_TBL", StringComparison.OrdinalIgnoreCase);
 
     private static PlanNode BuildStatementNode(XElement? statementElement, XElement queryPlan, List<PlanNode> rootRelOps)
     {

@@ -252,6 +252,24 @@ public class TraceStepRunsTests
     }
 
     [Fact]
+    public void Applied_Deletes_Fold_Into_One_Span_Accumulating_The_Deleted_Rows()
+    {
+        var history = new ObservableCollection<AccessStep>();
+
+        Append(history, new AccessStep.DeleteBitmapApplied(0, 14) { NodeId = 2 });
+        Append(history, new AccessStep.DeleteBitmapApplied(0, 13) { NodeId = 2 });
+        Append(history, new AccessStep.DeleteBitmapApplied(1, 15) { NodeId = 2 });
+
+        var span = Single(history, "Apply Deletes");
+
+        Assert.Equal(42, span.Number("Rows Deleted"));
+
+        Assert.Equal(1, span.Number("Row Group"));
+
+        Assert.DoesNotContain(history, s => s is AccessStep.DeleteBitmapApplied);
+    }
+
+    [Fact]
     public void A_Counter_Is_Created_Once_And_Then_Mutated()
     {
         var history = new ObservableCollection<AccessStep>();

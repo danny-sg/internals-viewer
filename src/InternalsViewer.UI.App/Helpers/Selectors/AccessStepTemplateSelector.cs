@@ -24,8 +24,6 @@ public sealed class AccessStepTemplateSelector : DataTemplateSelector
 
     public DataTemplate PartitionSkippedTemplate { get; set; } = null!;
 
-    public DataTemplate DeleteBitmapAppliedTemplate { get; set; } = null!;
-
     public DataTemplate AggregateLocalMergeTemplate { get; set; } = null!;
 
     public DataTemplate AggregatePushdownTemplate { get; set; } = null!;
@@ -194,7 +192,6 @@ public sealed class AccessStepTemplateSelector : DataTemplateSelector
             AccessStep.SegmentElimination => SegmentEliminationTemplate,
             AccessStep.CompressedDataFilter => CompressedDataFilterTemplate,
             AccessStep.PartitionSkipped => PartitionSkippedTemplate,
-            AccessStep.DeleteBitmapApplied => DeleteBitmapAppliedTemplate,
             _ => DefaultTemplate
         };
     }

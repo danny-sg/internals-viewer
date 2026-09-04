@@ -1281,4 +1281,47 @@ public class ExecutionPlanParserTests
 
         Assert.False(plan.IsInternalPlan);
     }
+    private const string StatManWithoutStatementTextXml =
+        """
+        <?xml version="1.0"?>
+        <ShowPlanXML xmlns="http://schemas.microsoft.com/sqlserver/2004/07/showplan"
+                     Version="1.7" Build="16.0.0">
+          <BatchSequence>
+            <Batch>
+              <Statements>
+                <StmtSimple StatementType="SELECT" StatementSubTreeCost="0.0100024">
+                  <QueryPlan>
+                    <RelOp NodeId="0"
+                           PhysicalOp="Stream Aggregate"
+                           LogicalOp="Aggregate"
+                           EstimatedTotalSubtreeCost="0.0100024"
+                           EstimateRows="1"
+                           AvgRowSize="9"
+                           Parallel="0">
+                      <StreamAggregate>
+                        <DefinedValues>
+                          <DefinedValue>
+                            <ColumnReference Column="Expr1001" />
+                            <ScalarOperator ScalarString="StatMan([SC0])">
+                              <Aggregate Distinct="0" AggType="StatMan" />
+                            </ScalarOperator>
+                          </DefinedValue>
+                        </DefinedValues>
+                      </StreamAggregate>
+                    </RelOp>
+                  </QueryPlan>
+                </StmtSimple>
+              </Statements>
+            </Batch>
+          </BatchSequence>
+        </ShowPlanXML>
+        """;
+
+    [Fact]
+    public void An_Automatic_Statistics_Plan_With_No_Statement_Text_Is_Marked_Internal()
+    {
+        var plan = Parse(StatManWithoutStatementTextXml);
+
+        Assert.True(plan.IsInternalPlan);
+    }
 }

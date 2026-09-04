@@ -19,11 +19,7 @@
             <TextBlock x:Name="PairName" Style="{StaticResource StepPropertyStyle}" />
             <TextBlock x:Name="PairValue" Style="{StaticResource StepValueStyle}" />
         </StackPanel>
-        <StackPanel x:Name="LeadPanel" Orientation="Horizontal" Visibility="Collapsed">
-            <TextBlock x:Name="LeadValue" Style="{StaticResource StepValueStyle}" />
-            <TextBlock x:Name="LeadName" Style="{StaticResource StepPropertyStyle}" />
-        </StackPanel>
         <TextBlock x:Name="TextOnly" Style="{StaticResource StepPropertyStyle}" Visibility="Collapsed" />
-        <badge:SplitBadge x:Name="Badge" Margin="8,0,0,0" VerticalAlignment="Center" Visibility="Collapsed" />
+        <badge:SplitBadge x:Name="Badge" Margin="6,0,6,0" VerticalAlignment="Center" Visibility="Collapsed" />
     </Grid>
 </UserControl>

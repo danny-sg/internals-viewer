@@ -121,7 +121,7 @@ public static class TraceStepRuns
 
                 if (hashAggregate.IsNewGroup)
                 {
-                    hashed.Increment("Groups", TraceCounterKind.Pair);
+                    hashed.Increment("Groups");
                 }
 
                 hashed.Fill.Land(hashAggregate.Bucket, hashAggregate.ChainLength, hashAggregate.BucketCount);
@@ -130,7 +130,7 @@ public static class TraceStepRuns
             case AccessStep.HashAggregateBatch batch:
                 var accumulate = Accumulate(batch, history);
 
-                accumulate.Set("Batches", batch.Number, TraceCounterKind.Lead)
+                accumulate.Set("Batches", batch.Number)
                           .Set("Groups", batch.Groups)
                           .Set("Values", batch.Running, TraceCounterKind.Pill);
 
@@ -142,7 +142,7 @@ public static class TraceStepRuns
 
                 segment.Increment("Rows");
 
-                segment.Set("Segments", segmentRow.SegmentCount, TraceCounterKind.Lead)
+                segment.Set("Segments", segmentRow.SegmentCount)
                        .Set("Key", segmentRow.Key, TraceCounterKind.Pill);
                 return true;
 
@@ -156,12 +156,12 @@ public static class TraceStepRuns
                 var batchSpan = SpanFor(produced, "Get Batch", history);
 
                 batchSpan.Set("Batch", produced.Number)
-                         .Add("Rows", produced.RowCount, TraceCounterKind.Pair)
+                         .Add("Rows", produced.RowCount)
                          .Add("Match", produced.QualifyingCount, TraceCounterKind.Badge)
-                         .Add("Filter Operations", produced.FilterOperations, TraceCounterKind.Pair)
-                         .Add("RLE Entries", produced.FilterRleEntries, TraceCounterKind.Pair)
-                         .Add("Pure", produced.PureColumns, TraceCounterKind.Pair)
-                         .Add("Impure", produced.ImpureColumns, TraceCounterKind.Pair);
+                         .Add("Filter Operations", produced.FilterOperations)
+                         .Add("RLE Entries", produced.FilterRleEntries)
+                         .Add("Pure", produced.PureColumns)
+                         .Add("Impure", produced.ImpureColumns);
 
                 Filters(batchSpan, produced.HasCompressedFilter, produced.HasPredicate);
                 return true;
@@ -169,9 +169,9 @@ public static class TraceStepRuns
             case AccessStep.BatchSkipped skipped:
                 var skippedSpan = SpanFor(skipped, "Get Batch", history);
 
-                skippedSpan.Add("Rows", skipped.RowCount, TraceCounterKind.Pair)
-                           .Add("Filter Operations", skipped.FilterOperations, TraceCounterKind.Pair)
-                           .Add("RLE Entries", skipped.FilterRleEntries, TraceCounterKind.Pair)
+                skippedSpan.Add("Rows", skipped.RowCount)
+                           .Add("Filter Operations", skipped.FilterOperations)
+                           .Add("RLE Entries", skipped.FilterRleEntries)
                            .Add("Skipped", 1, TraceCounterKind.Badge);
 
                 Filters(skippedSpan, skipped.HasCompressedFilter, skipped.HasPredicate);
@@ -180,7 +180,7 @@ public static class TraceStepRuns
             case AccessStep.AggregatePushdown pushdown:
                 var down = SpanFor(pushdown, "Aggregate Pushdown", history);
 
-                down.Add("Rows", pushdown.RowCount, TraceCounterKind.Lead)
+                down.Add("Rows", pushdown.RowCount)
                     .Set("Groups", pushdown.Groups);
 
                 if (pushdown.IsRunFolded)
@@ -189,27 +189,33 @@ public static class TraceStepRuns
                 }
                 else
                 {
-                    down.Add("Rows Probed", pushdown.RowCount, TraceCounterKind.Lead);
+                    down.Add("Rows Probed", pushdown.RowCount);
                 }
+                return true;
+
+            case AccessStep.DeleteBitmapApplied deleted:
+                SpanFor(deleted, "Apply Deletes", history)
+                    .Set("Row Group", (long)deleted.RowGroupId)
+                    .Add("Rows Deleted", deleted.Count);
                 return true;
 
             case AccessStep.ComputeVector computeVector:
                 SpanFor(computeVector, "Compute Vector", history)
                     .Set("Columns", computeVector.Columns, TraceCounterKind.Pill)
-                    .Add("Rows Computed", computeVector.RowCount, TraceCounterKind.Lead);
+                    .Add("Rows Computed", computeVector.RowCount);
                 return true;
 
             case AccessStep.FilterVector filterVector:
                 SpanFor(filterVector, "Filter Vector", history)
                     .Set("Columns", filterVector.Columns, TraceCounterKind.Pill)
-                    .Add("Rows Evaluated", filterVector.RowsEvaluated, TraceCounterKind.Lead)
-                    .Add("Selected", filterVector.Matches, TraceCounterKind.Lead);
+                    .Add("Rows Evaluated", filterVector.RowsEvaluated)
+                    .Add("Selected", filterVector.Matches);
                 return true;
 
             case AccessStep.BatchFiltered batchFiltered:
                 SpanFor(batchFiltered, "Get Batch", history)
                     .Set("Batch", batchFiltered.Number)
-                    .Set("Rows", batchFiltered.RowCount, TraceCounterKind.Lead)
+                    .Set("Rows", batchFiltered.RowCount)
                     .Set("Passed", batchFiltered.PassedCount, TraceCounterKind.Pill);
                 return true;
 
@@ -270,7 +276,7 @@ public static class TraceStepRuns
                 span.IsComplete = true;
             }
 
-            MergeMatch(history, compare).Set("Key", compare.OuterKey).Increment("Pair", TraceCounterKind.Pair);
+            MergeMatch(history, compare).Set("Key", compare.OuterKey).Increment("Pair");
 
             return true;
         }
@@ -345,18 +351,18 @@ public static class TraceStepRuns
             return false;
         }
 
-        span.Increment("Compares", TraceCounterKind.Pair);
+        span.Increment("Compares");
 
         if (hashCompare.IsMatch)
         {
-            span.Increment("Matches", TraceCounterKind.Pair);
+            span.Increment("Matches");
 
             span.Fill.Touch(hashCompare.Bucket, true);
 
             MatchSpan(history, top, hashCompare)
                 .Set("Bucket", (long)hashCompare.Bucket)
                 .Set("Entry", (long)hashCompare.Entry)
-                .Increment("Pair", TraceCounterKind.Pair);
+                .Increment("Pair");
         }
 
         return true;
@@ -366,7 +372,7 @@ public static class TraceStepRuns
     {
         if (FindSpan(history, top, joinEmit.NodeId, "Probe") is { } emitSpan)
         {
-            emitSpan.Increment("Emits", TraceCounterKind.Pair);
+            emitSpan.Increment("Emits");
 
             MatchSpan(history, top, joinEmit).Increment(EmitRowsBadge, TraceCounterKind.Badge, TraceCounterColours.Success);
 

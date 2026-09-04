@@ -34,7 +34,7 @@ public sealed record TraceCounterSpan() : AccessStep(AccessPhase.Walk), ITraceSp
         return this;
     }
 
-    public TraceCounterSpan Add(string name, long amount, TraceCounterKind kind = TraceCounterKind.Lead,
+    public TraceCounterSpan Add(string name, long amount, TraceCounterKind kind = TraceCounterKind.Pair,
                                 Color? colour = null)
     {
         var counter = Counter(name, kind, colour);
@@ -44,7 +44,7 @@ public sealed record TraceCounterSpan() : AccessStep(AccessPhase.Walk), ITraceSp
         return this;
     }
 
-    public long Increment(string name, TraceCounterKind kind = TraceCounterKind.Lead, Color? colour = null)
+    public long Increment(string name, TraceCounterKind kind = TraceCounterKind.Pair, Color? colour = null)
     {
         var counter = Counter(name, kind, colour);
 

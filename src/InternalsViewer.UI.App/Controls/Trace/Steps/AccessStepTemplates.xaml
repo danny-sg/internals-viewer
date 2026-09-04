@@ -730,9 +730,8 @@
             <accessSteps:StepSourceGutter x:Name="SourceGutter" />
             <StackPanel Orientation="Horizontal" Padding="0,8,0,8">
                 <TextBlock Text="Sort" Style="{StaticResource StepLabelStyle}" />
-                <TextBlock Text="Sorted" Style="{StaticResource StepPropertyStyle}" />
+                <TextBlock Text="Rows Sorted" Style="{StaticResource StepPropertyStyle}" />
                 <TextBlock Text="{Binding Rows}" Style="{StaticResource StepValueStyle}" />
-                <TextBlock Text="Rows" Style="{StaticResource StepPropertyStyle}" />
             </StackPanel>
         </Grid>
     </DataTemplate>
@@ -1080,18 +1079,6 @@
         </Grid>
     </DataTemplate>
 
-    <DataTemplate x:Key="DeleteBitmapAppliedTemplate" >
-        <Grid Style="{StaticResource StepRowStyle}">
-            <accessSteps:StepSourceGutter x:Name="SourceGutter" />
-            <StackPanel Orientation="Horizontal">
-                <TextBlock Text="Apply Deletes" Style="{StaticResource StepLabelStyle}" />
-                <TextBlock Text="{Binding Count}" Style="{StaticResource StepValueStyle}" />
-                <TextBlock Text="Row Group" Style="{StaticResource StepPropertyStyle}" Margin="8,0,0,0" />
-                <TextBlock Text="{Binding RowGroupId}" Style="{StaticResource StepValueStyle}" />
-            </StackPanel>
-        </Grid>
-    </DataTemplate>
-
     <DataTemplate x:Key="DictionaryOpenedTemplate" >
         <Grid Style="{StaticResource StepRowStyle}">
             <accessSteps:StepSourceGutter x:Name="SourceGutter" />
@@ -1174,10 +1161,10 @@
             <accessSteps:StepSourceGutter x:Name="SourceGutter" />
             <StackPanel Orientation="Horizontal">
                 <TextBlock Text="Aggregate Pushdown" Style="{StaticResource StepLabelStyle}" />
+                <TextBlock Text="Rows" Style="{StaticResource StepPropertyStyle}" />
                 <TextBlock Text="{Binding RowCount}" Style="{StaticResource StepValueStyle}" />
-                <TextBlock Text="Rows Folded Into" Style="{StaticResource StepPropertyStyle}" />
+                <TextBlock Text="Groups" Style="{StaticResource StepPropertyStyle}" Margin="8,0,0,0" />
                 <TextBlock Text="{Binding Groups}" Style="{StaticResource StepValueStyle}" />
-                <TextBlock Text="Groups" Style="{StaticResource StepPropertyStyle}" />
                 <badge:SplitBadge BadgeName="Run Folded"
                                   BadgeColour="#2E7D32" Margin="8,0,0,0" VerticalAlignment="Center"
                                   Visibility="{Binding IsRunFolded, Converter={StaticResource StepsBoolToVisibilityConverter}}" />
@@ -1193,10 +1180,10 @@
             <StackPanel Orientation="Vertical" Spacing="3">
                 <StackPanel Orientation="Horizontal">
                     <TextBlock Text="Merge Local" Style="{StaticResource StepLabelStyle}" />
+                    <TextBlock Text="Local Groups" Style="{StaticResource StepPropertyStyle}" />
                     <TextBlock Text="{Binding LocalGroups}" Style="{StaticResource StepValueStyle}" />
-                    <TextBlock Text="Local Groups Into" Style="{StaticResource StepPropertyStyle}" />
+                    <TextBlock Text="Global Groups" Style="{StaticResource StepPropertyStyle}" Margin="8,0,0,0" />
                     <TextBlock Text="{Binding GlobalGroupsAfter}" Style="{StaticResource StepValueStyle}" />
-                    <TextBlock Text="Global" Style="{StaticResource StepPropertyStyle}" />
                     <StackPanel Orientation="Horizontal"
                                 Visibility="{Binding HasRowGroup, Converter={StaticResource StepsBoolToVisibilityConverter}}">
                         <TextBlock Text="Row Group" Style="{StaticResource StepPropertyStyle}" Margin="8,0,0,0" />
@@ -1207,8 +1194,8 @@
                     <TextBlock Text="" Style="{StaticResource StepLabelStyle}" Margin="0" />
                     <badge:SplitBadge BadgeName="New" BadgeValue="{Binding NewGroups}" BadgeColour="#2E7D32" VerticalAlignment="Center" />
                     <StackPanel Orientation="Horizontal">
-                        <TextBlock Text="{Binding Materialised}" Style="{StaticResource StepValueStyle}" />
                         <TextBlock Text="Values Resolved Through The Dictionary" Style="{StaticResource StepPropertyStyle}" />
+                        <TextBlock Text="{Binding Materialised}" Style="{StaticResource StepValueStyle}" />
                     </StackPanel>
                 </StackPanel>
             </StackPanel>
@@ -1220,10 +1207,10 @@
             <accessSteps:StepSourceGutter x:Name="SourceGutter" />
             <StackPanel Orientation="Horizontal">
                 <TextBlock Text="Segment Elimination" Style="{StaticResource StepLabelStyle}" />
+                <TextBlock Text="Eliminated" Style="{StaticResource StepPropertyStyle}" />
                 <TextBlock Text="{Binding EliminatedCount}" Style="{StaticResource StepValueStyle}" />
                 <TextBlock Text="Of" Style="{StaticResource StepPropertyStyle}" />
                 <TextBlock Text="{Binding SegmentCount}" Style="{StaticResource StepValueStyle}" />
-                <TextBlock Text="Eliminated" Style="{StaticResource StepPropertyStyle}" />
                 <TextBlock Text="Row Group" Style="{StaticResource StepPropertyStyle}" Margin="8,0,0,0" />
                 <TextBlock Text="{Binding RowGroupId}" Style="{StaticResource StepValueStyle}" />
             </StackPanel>
@@ -1306,7 +1293,6 @@
         SegmentEliminationTemplate="{StaticResource SegmentEliminationTemplate}"
         CompressedDataFilterTemplate="{StaticResource CompressedDataFilterTemplate}"
         PartitionSkippedTemplate="{StaticResource PartitionSkippedTemplate}"
-        DeleteBitmapAppliedTemplate="{StaticResource DeleteBitmapAppliedTemplate}"
         AggregateLocalMergeTemplate="{StaticResource AggregateLocalMergeTemplate}"
         AggregatePushdownTemplate="{StaticResource AggregatePushdownTemplate}"
         TraceCounterSpanTemplate="{StaticResource TraceCounterSpanTemplate}"

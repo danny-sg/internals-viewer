@@ -6,7 +6,6 @@ namespace InternalsViewer.UI.App.Models.Query.Trace.Steps;
 public enum TraceCounterKind
 {
     Pair,
-    Lead,
     Badge,
     Pill,
     Text
