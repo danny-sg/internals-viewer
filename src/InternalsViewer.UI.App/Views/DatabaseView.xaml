@@ -168,8 +168,9 @@
             </CommandBar>
             <CommandBar 
                 Grid.Column="1"
-                HorizontalAlignment="Stretch" HorizontalContentAlignment="Right">
-                <AppBarElementContainer>
+                HorizontalAlignment="Stretch"
+                HorizontalContentAlignment="Right">
+                <AppBarElementContainer VerticalAlignment="Center">
                     <controls:PageAddressTextBox x:Name="PageAddressTextBox" 
                                                  DatabaseName="{x:Bind TabViewModel.Database.Name, Mode=OneWay}" />
                 </AppBarElementContainer>
