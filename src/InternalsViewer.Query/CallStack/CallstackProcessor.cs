@@ -31,7 +31,7 @@ namespace InternalsViewer.Query.CallStack;
 /// InternalsViewer.Query.DiaBridge to provide registration-free access to DIA that can be P/Invoke'd from C#. This is a bit of a faff but
 /// is the cleanest way to access DIA without quite heavyweight requirements, e.g. installing Build Tools. 
 /// </remarks>
-internal class CallstackProcessor
+internal static class CallstackProcessor
 {
     public static async Task<string[]> Process(CallStackTree callStack,
                                                string symbolsPath,
@@ -67,7 +67,7 @@ internal class CallstackProcessor
             }
         }
 
-        return unknown.ToArray();
+        return [.. unknown];
     }
 
     /// <summary>

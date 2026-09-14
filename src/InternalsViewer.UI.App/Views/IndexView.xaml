@@ -50,6 +50,12 @@
                 <AppBarButton Label="Refresh" 
                         Icon="Refresh" 
                         Command="{x:Bind ViewModel.RefreshCommand}"/>
+                <AppBarToggleButton Label="Levels"
+                                    IsChecked="{x:Bind ViewModel.IsLevelsVisible, Mode=TwoWay}">
+                    <AppBarToggleButton.Icon>
+                        <FontIcon Glyph="&#xE81E;" />
+                    </AppBarToggleButton.Icon>
+                </AppBarToggleButton>
             </CommandBar>
 
             <CommandBar Grid.Column="1"         
@@ -126,6 +132,7 @@
                                 Nodes="{x:Bind ViewModel.Nodes, Mode=OneWay}"
                                 Zoom="{x:Bind ViewModel.Zoom, Mode=TwoWay}"
                                 IsTooltipEnabled="{x:Bind ViewModel.IsTooltipEnabled, Mode=OneWay}"
+                                IsLevelsVisible="{x:Bind ViewModel.IsLevelsVisible, Mode=OneWay}"
                                 HighlightedPageAddresses="{x:Bind ViewModel.HighlightedPages, Mode=OneWay}"
                                 SelectedPageAddress="{x:Bind ViewModel.SelectedPageAddress, Mode=TwoWay}"
                                 VerticalAlignment="Stretch"

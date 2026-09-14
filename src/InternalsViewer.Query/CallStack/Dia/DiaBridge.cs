@@ -24,6 +24,19 @@ internal static class DiaBridge
     [return: MarshalAs(UnmanagedType.U1)]
     public static extern bool NextSymbol(IntPtr enumerator, StringBuilder buffer, int bufferLength);
 
+    [DllImport("InternalsViewer.Query.DiaBridge.dll", CharSet = CharSet.Unicode)]
+    [return: MarshalAs(UnmanagedType.U1)]
+    public static extern bool NextSymbolDetail(IntPtr enumerator,
+                                               StringBuilder nameBuffer,
+                                               int nameLength,
+                                               StringBuilder? signatureBuffer,
+                                               int signatureLength,
+                                               out uint rva,
+                                               out int isFunction);
+
+    [DllImport("InternalsViewer.Query.DiaBridge.dll")]
+    public static extern IntPtr BeginEnumSymbolsAtRva(IntPtr session, uint rva);
+
     [DllImport("InternalsViewer.Query.DiaBridge.dll")]
     public static extern void EndEnumSymbols(IntPtr enumerator);
 

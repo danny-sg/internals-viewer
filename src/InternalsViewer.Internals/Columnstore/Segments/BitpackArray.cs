@@ -53,7 +53,7 @@ public readonly struct BitpackArray(ReadOnlyMemory<byte> data, int entrySizeBits
     /// <summary>
     /// Bit address of a packed value relative to the start of the bit pack array
     /// </summary>
-    public BitSpan GetSpan(int index)
+    public BitSpan GetBitSpan(int index)
     {
         var perUnit = ValuesPerUnit;
 

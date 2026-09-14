@@ -70,7 +70,7 @@ public class ResolvedCallstackFrameParser
     /// <summary>
     /// Finds the last "::" that separates the class from the method, ignoring any "::" nested inside template/lambda angle brackets
     /// </summary>
-    private static int FindClassMethodSeparator(string symbolPart)
+    internal static int FindClassMethodSeparator(string symbolPart)
     {
         var depth = 0;
         var lastSeparator = -1;

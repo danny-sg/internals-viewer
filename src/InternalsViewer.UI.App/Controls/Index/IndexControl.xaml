@@ -104,5 +104,43 @@
                 </Border>
             </Grid>
         </Popup>
+        <Popup x:Name="LevelTooltipPopup"
+               Grid.Row="0" Grid.Column="0"
+               DesiredPlacement="Auto"
+               ShouldConstrainToRootBounds="False"
+               PlacementTarget="{x:Bind IndexCanvas}"
+               IsOpen="False">
+            <Border CornerRadius="1">
+                <Border.Background>
+                    <SolidColorBrush Color="{ThemeResource SolidBackgroundFillColorBase}" Opacity="0.9"/>
+                </Border.Background>
+                <Grid Padding="4">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                    </Grid.RowDefinitions>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+
+                    <TextBlock Grid.Row="0"
+                               Grid.Column="0"
+                               Grid.ColumnSpan="2"
+                               Style="{StaticResource TooltipValueStyle}"
+                               Text="{x:Bind HoverLevel.Name, Mode=OneWay, FallbackValue=''}"/>
+
+                    <TextBlock Grid.Row="1"
+                               Grid.Column="0"
+                               Style="{StaticResource TooltipKeyStyle}">
+                        Level
+                    </TextBlock>
+                    <TextBlock Grid.Row="1"
+                               Grid.Column="1"
+                               Style="{StaticResource TooltipValueStyle}"
+                               Text="{x:Bind HoverLevel.Level, Mode=OneWay, FallbackValue=''}"/>
+                </Grid>
+            </Border>
+        </Popup>
     </Grid>
 </UserControl>

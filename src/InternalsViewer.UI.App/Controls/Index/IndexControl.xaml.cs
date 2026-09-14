@@ -21,8 +21,6 @@ namespace InternalsViewer.UI.App.Controls.Index;
 
 public sealed partial class IndexControl : IDisposable
 {
-    // Fit the content a touch inside the viewport; the slack stops the scrollbars flickering on at the exact boundary
-    // (a full-bleed fit can leave content == viewport, which flips a scrollbar on, shrinking the viewport, and so on).
     private const float FitPadding = 0.95f;
 
     private const float ZoomMiniMode = 0.8f;
@@ -33,6 +31,10 @@ public sealed partial class IndexControl : IDisposable
     private const float MinZoom = 0.05f;
     private const float MaxZoom = 10.0f;
     private const double DragThreshold = 4;
+    private const byte LevelBandAlpha = 4;
+    private const float MiniLinkedMix = 0.4f;
+    private const double LevelTooltipOffsetX = 18;
+    private const double LevelTooltipOffsetY = 28;
 
     private static readonly SKTypeface DetailBoldTypeface = SKTypeface.FromFamilyName(SKTypeface.Default.FamilyName, SKFontStyle.Bold);
 
@@ -210,6 +212,18 @@ public sealed partial class IndexControl : IDisposable
         set => SetValue(IsTooltipEnabledProperty, value);
     }
 
+    public static readonly DependencyProperty IsLevelsVisibleProperty
+        = DependencyProperty.Register(nameof(IsLevelsVisible),
+                                      typeof(bool),
+                                      typeof(IndexControl),
+                                      new PropertyMetadata(false, OnPropertyChanged));
+
+    public bool IsLevelsVisible
+    {
+        get => (bool)GetValue(IsLevelsVisibleProperty);
+        set => SetValue(IsLevelsVisibleProperty, value);
+    }
+
     public static readonly DependencyProperty NodesProperty
         = DependencyProperty.Register(nameof(Nodes),
                                       typeof(List<IndexNode>),
@@ -234,10 +248,23 @@ public sealed partial class IndexControl : IDisposable
         set => SetValue(HoverNodeProperty, value);
     }
 
+    private static readonly DependencyProperty HoverLevelProperty
+        = DependencyProperty.Register(nameof(HoverLevel),
+            typeof(IndexLevelBand),
+            typeof(IndexControl),
+            new PropertyMetadata(null, OnPropertyChanged));
+
+    private IndexLevelBand? HoverLevel
+    {
+        get => (IndexLevelBand?)GetValue(HoverLevelProperty);
+        set => SetValue(HoverLevelProperty, value);
+    }
+
     private readonly SKPaint _indexPagePaint;
     private readonly SKPaint _linePaint;
     private readonly SKPaint _detailTextPaint;
     private readonly SKPaint _slotPaint;
+    private readonly SKPaint _levelBandPaint;
 
     private readonly SKFont _detailFont = new(SKTypeface.Default, 10f);
     private readonly SKFont _detailBoldFont = new(DetailBoldTypeface, 10f);
@@ -250,6 +277,8 @@ public sealed partial class IndexControl : IDisposable
     private readonly Dictionary<PageAddress, SKColor> _activeSpanColours = [];
 
     private readonly List<IndexTreeNode> _nodePositions = [];
+
+    private readonly List<IndexLevelBand> _levelBands = [];
 
     private readonly Dictionary<int, List<IndexTreeNode>> _nodesByLevel = [];
 
@@ -279,6 +308,7 @@ public sealed partial class IndexControl : IDisposable
 
     private SKColor _singleSelectedColour = SKColors.Navy;
     private SKColor _rangeSelectedColour = SKColors.Navy;
+    private SKColor _miniLinkedColour = SKColors.LightGray;
     private int _globalMaxColumn;
     private int _levelCount;
 
@@ -340,6 +370,13 @@ public sealed partial class IndexControl : IDisposable
             StrokeWidth = 1f,
             StrokeCap = SKStrokeCap.Square
         };
+
+        _levelBandPaint = new SKPaint
+        {
+            Style = SKPaintStyle.Fill,
+            Color = SKColors.Black.WithAlpha(LevelBandAlpha),
+            IsAntialias = false
+        };
     }
 
     public event EventHandler<PageAddressEventArgs>? PageClicked;
@@ -349,6 +386,7 @@ public sealed partial class IndexControl : IDisposable
     private float HorizontalMargin => 20 * _zoom;
     private float VerticalMargin => 60 * _zoom;
     private float LevelMargin => 90 * _zoom;
+    private float LevelBandPadding => 20 * _zoom;
 
     public void Dispose()
     {
@@ -360,6 +398,7 @@ public sealed partial class IndexControl : IDisposable
         _detailFont.Dispose();
         _detailBoldFont.Dispose();
         _slotPaint.Dispose();
+        _levelBandPaint.Dispose();
 
         Loaded -= IndexControl_OnLoaded;
 
@@ -437,6 +476,7 @@ public sealed partial class IndexControl : IDisposable
 
         _singleSelectedColour = SingleSelectedColour.ToSkColor();
         _rangeSelectedColour = RangeSelectedColour.ToSkColor();
+        _miniLinkedColour = TintNoDarker(_miniColour, _singleSelectedColour, MiniLinkedMix);
 
         _slotPaint.Color = SelectedSlotColour.ToColor()
                                              .ContrastingWith(SingleSelectedColour.ToColor())
@@ -446,11 +486,31 @@ public sealed partial class IndexControl : IDisposable
 
         CollectActiveSpanColours(PageSpans, PlayheadTimeUs, _rangeSelectedColour, _activeSpanColours);
 
+        if (IsLevelsVisible)
+        {
+            DrawLevelBands(e.Surface.Canvas);
+        }
+
         // Draw levels from the bottom up
         for (var i = _levelCount; i >= 0; i--)
         {
             DrawTreeLevel(i, e.Surface.Canvas);
         }
+    }
+
+    private static SKColor TintNoDarker(SKColor baseColour, SKColor tint, float mix)
+    {
+        var red = baseColour.Red + ((tint.Red - baseColour.Red) * mix);
+        var green = baseColour.Green + ((tint.Green - baseColour.Green) * mix);
+        var blue = baseColour.Blue + ((tint.Blue - baseColour.Blue) * mix);
+
+        var mixed = new SKColor((byte)red, (byte)green, (byte)blue);
+
+        mixed.ToHsl(out var hue, out var saturation, out var lightness);
+
+        baseColour.ToHsl(out _, out _, out var baseLightness);
+
+        return SKColor.FromHsl(hue, saturation, Math.Max(lightness, baseLightness));
     }
 
     private static void CollectActiveSpanColours(IReadOnlyList<PageSpan>? spans,
@@ -517,6 +577,7 @@ public sealed partial class IndexControl : IDisposable
         _levelMaxColumnBeforeParent.Clear();
         _ordinalByAddress.Clear();
         _treeNodeByAddress.Clear();
+        _levelBands.Clear();
 
         _globalMaxColumn = 0;
         _levelCount = 0;
@@ -581,6 +642,75 @@ public sealed partial class IndexControl : IDisposable
                 _globalMaxColumn = treeNode.Column;
             }
         }
+
+        var maxIndexLevel = Nodes.Max(n => n.IndexLevel);
+
+        for (var level = 0; level <= _levelCount; level++)
+        {
+            if (_nodesByLevel.TryGetValue(level, out var levelNodes))
+            {
+                var firstNode = levelNodes[0].Node;
+
+                var name = GetLevelBandName(firstNode.IndexLevel, maxIndexLevel, firstNode.PageType == PageType.Data);
+
+                _levelBands.Add(new IndexLevelBand(level, firstNode.IndexLevel, name));
+            }
+        }
+    }
+
+    private static string GetLevelBandName(byte indexLevel, byte maxIndexLevel, bool isData)
+    {
+        if (indexLevel == maxIndexLevel)
+        {
+            return "Root";
+        }
+
+        if (indexLevel != 0)
+        {
+            return "Intermediate";
+        }
+
+        return isData ? "Leaf (Data)" : "Leaf";
+    }
+
+    private float GetLevelBandTop(int level) => GetNodeY(level, 0) - LevelBandPadding;
+
+    private float GetLevelBandBottom(int level)
+        => GetNodeY(level, _levelMaxRow.GetValueOrDefault(level, 1) - 1) + PageHeight + LevelBandPadding;
+
+    private void DrawLevelBands(SKCanvas canvas)
+    {
+        var yScrollOffset = (float)VerticalScrollBar.Value;
+
+        var clip = canvas.LocalClipBounds;
+
+        foreach (var band in _levelBands)
+        {
+            var top = GetLevelBandTop(band.Depth) - yScrollOffset;
+            var bottom = GetLevelBandBottom(band.Depth) - yScrollOffset;
+
+            if (bottom < clip.Top || top > clip.Bottom)
+            {
+                continue;
+            }
+
+            canvas.DrawRect(clip.Left, top, clip.Width, bottom - top, _levelBandPaint);
+        }
+    }
+
+    private IndexLevelBand? GetLevelBandAtPosition(double y)
+    {
+        var worldY = y + VerticalScrollBar.Value;
+
+        foreach (var band in _levelBands)
+        {
+            if (worldY >= GetLevelBandTop(band.Depth) && worldY <= GetLevelBandBottom(band.Depth))
+            {
+                return band;
+            }
+        }
+
+        return null;
     }
 
     private void BuildIndexTreeLevel(int level, List<IndexNode> nodes)
@@ -744,11 +874,12 @@ public sealed partial class IndexControl : IDisposable
 
                 var isHighlighted = highlightedAddresses?.Contains(node.Node.PageAddress) ?? false;
                 var isSelected = node.Node.PageAddress == selectedAddress;
+                var isLinked = SelectChildPath && node.Node.Parent == selectedAddress;
                 var hasSpanColour = _activeSpanColours.TryGetValue(node.Node.PageAddress, out var spanColour);
 
                 if (miniMode)
                 {
-                    DrawMiniPage(canvas, renderX, renderY, isSelected, isHighlighted, hasSpanColour, spanColour);
+                    DrawMiniPage(canvas, renderX, renderY, isSelected, isHighlighted, isLinked, hasSpanColour, spanColour);
                 }
                 else
                 {
@@ -964,6 +1095,7 @@ public sealed partial class IndexControl : IDisposable
                               float y,
                               bool isSelected,
                               bool isHighlighted,
+                              bool isLinked,
                               bool hasSpanColour,
                               SKColor spanColour)
     {
@@ -982,6 +1114,10 @@ public sealed partial class IndexControl : IDisposable
         else if (hasSpanColour)
         {
             _indexPagePaint.Color = spanColour;
+        }
+        else if (isLinked)
+        {
+            _indexPagePaint.Color = _miniLinkedColour;
         }
         else
         {
@@ -1291,6 +1427,7 @@ public sealed partial class IndexControl : IDisposable
     private void IndexCanvas_OnPointerExited(object sender, PointerRoutedEventArgs e)
     {
         TooltipPopup.IsOpen = false;
+        LevelTooltipPopup.IsOpen = false;
     }
 
     private void IndexCanvas_PointerPressed(object sender, PointerRoutedEventArgs e)
@@ -1366,7 +1503,9 @@ public sealed partial class IndexControl : IDisposable
             {
                 _isDragging = true;
                 TooltipPopup.IsOpen = false;
+                LevelTooltipPopup.IsOpen = false;
                 HoverNode = null;
+                HoverLevel = null;
                 ProtectedCursor = InputSystemCursor.Create(InputSystemCursorShape.SizeAll);
             }
 
@@ -1383,15 +1522,34 @@ public sealed partial class IndexControl : IDisposable
         if (node is not null)
         {
             HoverNode = node;
+            HoverLevel = null;
+
+            LevelTooltipPopup.IsOpen = false;
 
             TooltipPopup.HorizontalOffset = position.X + 10;
             TooltipPopup.VerticalOffset = position.Y + 10;
             TooltipPopup.IsOpen = true;
+
+            return;
+        }
+
+        TooltipPopup.IsOpen = false;
+        HoverNode = null;
+
+        var band = IsLevelsVisible ? GetLevelBandAtPosition(position.Y) : null;
+
+        if (band is not null)
+        {
+            HoverLevel = band;
+
+            LevelTooltipPopup.HorizontalOffset = position.X + LevelTooltipOffsetX;
+            LevelTooltipPopup.VerticalOffset = position.Y + LevelTooltipOffsetY;
+            LevelTooltipPopup.IsOpen = true;
         }
         else
         {
-            TooltipPopup.IsOpen = false;
-            HoverNode = null;
+            LevelTooltipPopup.IsOpen = false;
+            HoverLevel = null;
         }
     }
 
@@ -1527,7 +1685,7 @@ public sealed partial class IndexControl : IDisposable
     {
         var control = (IndexControl)d;
 
-        if (e.Property == HoverNodeProperty)
+        if (e.Property == HoverNodeProperty || e.Property == HoverLevelProperty)
         {
             return;
         }

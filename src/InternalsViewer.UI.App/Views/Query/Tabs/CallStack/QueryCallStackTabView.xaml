@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <UserControl
     x:Class="InternalsViewer.UI.App.Views.Query.Tabs.CallStack.QueryCallStackTabView"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
@@ -10,6 +10,9 @@
     xmlns:local="using:InternalsViewer.UI.App.Views.Query.Tabs" 
     xmlns:callstack="using:InternalsViewer.Query.CallStack"
     xmlns:callStack="using:InternalsViewer.UI.App.Views.Query.Tabs.CallStack"
+    xmlns:controls="using:CommunityToolkit.WinUI.Controls"
+    xmlns:signature="using:InternalsViewer.UI.App.Controls.CallStack"
+    xmlns:members="using:InternalsViewer.UI.App.Models.Query.CallStack"
     mc:Ignorable="d">
 
     <UserControl.Resources>
@@ -20,10 +23,12 @@
             <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center" RightTapped="OnNodeRightTapped">
                 <StackPanel.ContextFlyout>
                     <MenuFlyout>
-                        <MenuFlyoutItem Text="Expand All" Click="OnExpandAllClick"/>
-                        <MenuFlyoutItem Text="Collapse All" Click="OnCollapseAllClick"/>
+                        <MenuFlyoutItem Text="Expand all" Click="OnExpandAllClick"/>
+                        <MenuFlyoutItem Text="Collapse all" Click="OnCollapseAllClick"/>
                         <MenuFlyoutSeparator/>
                         <MenuFlyoutItem Text="Copy to clipboard" Click="OnCopyClick"/>
+                        <MenuFlyoutSeparator/>
+                        <MenuFlyoutItem Text="List members" Click="OnListMembersClick"/>
                     </MenuFlyout>
                 </StackPanel.ContextFlyout>
 
@@ -164,48 +169,60 @@
     </UserControl.Resources>
 
     <Grid>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="{x:Bind BodyColumnWidth, Mode=OneTime}"/>
+            <ColumnDefinition Width="Auto"/>
+            <ColumnDefinition Width="{x:Bind DetailColumnWidth, Mode=OneTime}"/>
+        </Grid.ColumnDefinitions>
         <Grid.RowDefinitions>
+            <RowDefinition Height="{x:Bind BodyRowHeight, Mode=OneTime}"/>
             <RowDefinition Height="Auto"/>
-            <RowDefinition Height="Auto"/>
-            <RowDefinition Height="*"/>
+            <RowDefinition Height="{x:Bind DetailRowHeight, Mode=OneTime}"/>
         </Grid.RowDefinitions>
 
-        <AutoSuggestBox x:Name="SearchBox"
-                        Grid.Row="0"
-                        Margin="0,0,0,4"
-                        PlaceholderText="Search"
-                        QueryIcon="Find"
-                        BorderThickness="0"
-                        FontSize="12"
-                        Height="28"
-                        TextChanged="OnSearchTextChanged"/>
+        <Grid Grid.Row="0" Grid.Column="0">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="*"/>
+            </Grid.RowDefinitions>
 
-        <Grid x:Name="FocusHeader"
-              Grid.Row="1"
-              Visibility="Collapsed"
-              Padding="8,4,8,6"
-              BorderBrush="{ThemeResource ControlStrokeColorDefaultBrush}"
-              BorderThickness="0,0,0,1">
-            <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="Auto"/>
-                <ColumnDefinition Width="Auto"/>
-                <ColumnDefinition Width="*"/>
-            </Grid.ColumnDefinitions>
+            <AutoSuggestBox x:Name="SearchBox"
+                            Grid.Row="0"
+                            Margin="0,0,0,4"
+                            PlaceholderText="Search"
+                            QueryIcon="Find"
+                            BorderThickness="0"
+                            FontSize="12"
+                            Height="28"
+                            TextChanged="OnSearchTextChanged"/>
 
-            <ContentControl x:Name="HeaderParent"
-                            Grid.Column="2"
-                            VerticalAlignment="Center"
-                            HorizontalAlignment="Right"
-                            IsTabStop="False"
-                            Tapped="OnHeaderParentTapped"
-                            ContentTemplateSelector="{StaticResource NodeTemplateSelector}"/>
+            <Grid x:Name="FocusHeader"
+                  Grid.Row="1"
+                  Visibility="Collapsed"
+                  Padding="8,4,8,6"
+                  BorderBrush="{ThemeResource ControlStrokeColorDefaultBrush}"
+                  BorderThickness="0,0,0,1">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
 
-            <ContentControl x:Name="HeaderCurrent"
-                            Grid.Column="0"
-                            VerticalAlignment="Center"
-                            HorizontalAlignment="Left"
-                            IsTabStop="False"
-                            ContentTemplateSelector="{StaticResource NodeTemplateSelector}"/>
+                <ContentControl x:Name="HeaderParent"
+                                Grid.Column="2"
+                                VerticalAlignment="Center"
+                                HorizontalAlignment="Right"
+                                IsTabStop="False"
+                                Tapped="OnHeaderParentTapped"
+                                ContentTemplateSelector="{StaticResource NodeTemplateSelector}"/>
+
+                <ContentControl x:Name="HeaderCurrent"
+                                Grid.Column="0"
+                                VerticalAlignment="Center"
+                                HorizontalAlignment="Left"
+                                IsTabStop="False"
+                                ContentTemplateSelector="{StaticResource NodeTemplateSelector}"/>
         </Grid>
 
         <muxc:TreeView x:Name="Tree"
@@ -224,5 +241,169 @@
                 </Style>
             </muxc:TreeView.ItemContainerStyle>
         </muxc:TreeView>
+        </Grid>
+
+        <controls:GridSplitter Grid.Row="0"
+                               Grid.Column="1"
+                               Width="4"
+                               HorizontalAlignment="Stretch"
+                               VerticalAlignment="Stretch"
+                               ResizeBehavior="PreviousAndNext"
+                               ResizeDirection="Columns"
+                               Visibility="{x:Bind ColumnSplitterVisibility, Mode=OneTime}"
+                               Background="{ThemeResource ControlStrokeColorDefaultBrush}">
+            <controls:GridSplitter.Template>
+                <ControlTemplate TargetType="controls:GridSplitter">
+                    <Grid Background="{TemplateBinding Background}"/>
+                </ControlTemplate>
+            </controls:GridSplitter.Template>
+        </controls:GridSplitter>
+
+        <controls:GridSplitter Grid.Row="1"
+                               Grid.Column="0"
+                               Height="4"
+                               HorizontalAlignment="Stretch"
+                               VerticalAlignment="Stretch"
+                               ResizeBehavior="PreviousAndNext"
+                               ResizeDirection="Rows"
+                               Visibility="{x:Bind RowSplitterVisibility, Mode=OneTime}"
+                               Background="{ThemeResource ControlStrokeColorDefaultBrush}">
+            <controls:GridSplitter.Template>
+                <ControlTemplate TargetType="controls:GridSplitter">
+                    <Grid Background="{TemplateBinding Background}"/>
+                </ControlTemplate>
+            </controls:GridSplitter.Template>
+        </controls:GridSplitter>
+
+        <Grid x:Name="DetailPane"
+              Grid.Row="0"
+              Grid.Column="2"
+              Visibility="{x:Bind DetailPaneVisibility, Mode=OneTime}"
+              BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+              BorderThickness="{x:Bind DetailPaneBorderThickness, Mode=OneTime}">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="40"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="*"/>
+            </Grid.RowDefinitions>
+            <Grid Grid.Row="0"
+                  Padding="8,4,16,4"
+                  BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                  BorderThickness="0,0,0,1">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+                <Button Grid.Column="0"
+                        Style="{StaticResource TabCommandButtonStyle}"
+                        Click="OnMembersBackClick"
+                        IsEnabled="{x:Bind ViewModel.CanGoBackMembers, Mode=OneWay}"
+                        Margin="0,0,6,0"
+                        VerticalAlignment="Center"
+                        ToolTipService.ToolTip="Back">
+                    <FontIcon Glyph="&#xE72B;" FontSize="12"/>
+                </Button>
+                <TextBlock Grid.Column="1"
+                           Margin="4,0,0,1"
+                           VerticalAlignment="Center"
+                           FontFamily="{StaticResource MonospaceFontFamily}"
+                           TextTrimming="CharacterEllipsis"
+                           Text="{x:Bind ViewModel.CallStackMembersClassName, Mode=OneWay}"/>
+                <TextBlock Grid.Column="2"
+                           Margin="10,0,8,0"
+                           VerticalAlignment="Center"
+                           FontSize="11"
+                           Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                           TextTrimming="CharacterEllipsis"
+                           Text="{x:Bind ViewModel.CallStackMembersSummary, Mode=OneWay}"/>
+                <StackPanel Grid.Column="3"
+                            Orientation="Horizontal"
+                            Spacing="8"
+                            VerticalAlignment="Center">
+                    <Button Click="{x:Bind ToggleDetailPaneDock}"
+                            Background="Transparent"
+                            BorderThickness="0"
+                            Padding="0"
+                            VerticalAlignment="Center"
+                            ToolTipService.ToolTip="{x:Bind DockToggleTooltip, Mode=OneTime}">
+                        <FontIcon Glyph="{x:Bind DockToggleGlyph, Mode=OneTime}" FontSize="12"/>
+                    </Button>
+                    <Button Click="{x:Bind CloseDetailPane}"
+                            Background="Transparent"
+                            BorderThickness="0"
+                            Padding="0"
+                            VerticalAlignment="Center">
+                        <FontIcon Glyph="&#xE711;" FontSize="12"/>
+                    </Button>
+                </StackPanel>
+            </Grid>
+
+            <AutoSuggestBox x:Name="MembersSearchBox"
+                            Grid.Row="1"
+                            Margin="0,0,0,4"
+                            PlaceholderText="Search"
+                            QueryIcon="Find"
+                            BorderThickness="0"
+                            FontSize="12"
+                            Height="28"
+                            TextChanged="OnMembersSearchTextChanged"/>
+
+            <TextBlock Grid.Row="2"
+                       Text="{x:Bind ViewModel.CallStackMembersMessage, Mode=OneWay}"
+                       Visibility="{x:Bind ViewModel.CallStackMembersMessage, Mode=OneWay, Converter={StaticResource NullToVisibilityConverter}}"
+                       FontSize="12"
+                       Margin="12,8,12,8"
+                       TextWrapping="Wrap"
+                       VerticalAlignment="Top"/>
+
+            <ListView Grid.Row="2"
+                      ItemsSource="{x:Bind ViewModel.FilteredCallStackMembers, Mode=OneWay}"
+                      SelectionMode="None"
+                      IsItemClickEnabled="False"
+                      Background="{ThemeResource LayerFillColorDefaultBrush}"
+                      ScrollViewer.HorizontalScrollBarVisibility="Auto"
+                      ScrollViewer.HorizontalScrollMode="Enabled">
+                <ListView.ItemContainerStyle>
+                    <Style TargetType="ListViewItem">
+                        <Setter Property="MinHeight" Value="22"/>
+                        <Setter Property="Padding" Value="12,0,12,0"/>
+                        <Setter Property="HorizontalContentAlignment" Value="Left"/>
+                    </Style>
+                </ListView.ItemContainerStyle>
+                <ListView.ItemTemplate>
+                    <DataTemplate x:DataType="members:ClassMemberRow">
+                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center" RightTapped="OnMemberRightTapped">
+                            <StackPanel.ContextFlyout>
+                                <MenuFlyout>
+                                    <MenuFlyoutItem Text="Copy Signature" Click="OnCopySignatureClick"/>
+                                </MenuFlyout>
+                            </StackPanel.ContextFlyout>
+                            <TextBlock Text="{x:Bind Prefix}"
+                                       FontFamily="{StaticResource MonospaceFontFamily}"
+                                       FontSize="11"
+                                       Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                       VerticalAlignment="Center"/>
+                            <TextBlock signature:SignatureText.Signature="{x:Bind Signature}"
+                                       FontFamily="{StaticResource MonospaceFontFamily}"
+                                       FontSize="11"
+                                       VerticalAlignment="Center"/>
+                        </StackPanel>
+                    </DataTemplate>
+                </ListView.ItemTemplate>
+            </ListView>
+
+            <StackPanel Grid.Row="2"
+                        Orientation="Vertical"
+                        Spacing="8"
+                        HorizontalAlignment="Center"
+                        VerticalAlignment="Center"
+                        Visibility="{x:Bind ViewModel.IsCallStackMembersLoading, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}">
+                <ProgressRing IsActive="{x:Bind ViewModel.IsCallStackMembersLoading, Mode=OneWay}"
+                              HorizontalAlignment="Center"/>
+                <TextBlock Text="Loading..." HorizontalAlignment="Center"/>
+            </StackPanel>
+        </Grid>
     </Grid>
 </UserControl>

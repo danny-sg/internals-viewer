@@ -229,7 +229,7 @@ internal static class ColumnstoreStructureDumper
 
     private static string FormatBitpackValue(SegmentBlob blob, int index)
     {
-        var span = blob.Bitpack.GetSpan(index);
+        var span = blob.Bitpack.GetBitSpan(index);
 
         return $"  [{index,6}] {blob.Bitpack[index],22}   bit {span.BitOffset,12:N0} len {span.BitLength,3}   "
                + $"bytes {blob.Header.BitpackArrayOffset + span.ByteOffset,10:N0}+{span.ByteLength}";

@@ -10,6 +10,7 @@ using InternalsViewer.Internals.Providers.Metadata;
 using InternalsViewer.Internals.Engine.Database.Enums;
 using InternalsViewer.Internals.Extensions;
 using InternalsViewer.Query;
+using InternalsViewer.Query.CallStack;
 using InternalsViewer.Query.Events.Latches;
 using InternalsViewer.Query.Events.Locks;
 using InternalsViewer.Query.Events.Operators;
@@ -18,6 +19,7 @@ using InternalsViewer.Query.Results;
 using InternalsViewer.UI.App.Controls.SqlEditor;
 using InternalsViewer.UI.App.Messages;
 using InternalsViewer.UI.App.Models;
+using InternalsViewer.UI.App.Models.Query.CallStack;
 using InternalsViewer.UI.App.Models.Schema;
 using InternalsViewer.UI.App.Services;
 using InternalsViewer.UI.App.Services.XEvents;
@@ -252,6 +254,43 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
     [ObservableProperty]
     private bool _isPlanPropertiesDockedBottom;
+
+    [ObservableProperty]
+    private bool _isCallStackMembersVisible;
+
+    [ObservableProperty]
+    private bool _isCallStackMembersDockedBottom;
+
+    [ObservableProperty]
+    private bool _isCallStackMembersLoading;
+
+    [ObservableProperty]
+    private string _callStackMembersClassName = string.Empty;
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(CallStackMembersSummary))]
+    [NotifyPropertyChangedFor(nameof(FilteredCallStackMembers))]
+    private ClassMemberListing? _callStackMembers;
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(FilteredCallStackMembers))]
+    private string _callStackMembersFilter = string.Empty;
+
+    [ObservableProperty]
+    private string? _callStackMembersMessage;
+
+    [ObservableProperty]
+    private bool _canGoBackMembers;
+
+    private CallstackResolver? _symbolResolver;
+
+    private string? _symbolResolverPath;
+
+    private int _membersRequest;
+
+    private (CallstackFrame Frame, string ClassName)? _currentMembers;
+
+    private readonly List<(CallstackFrame Frame, string ClassName)> _membersHistory = [];
 
     public QueryViewModel(ILogger<QueryViewModel> logger,
                           QueryRunner queryRunner,
@@ -630,6 +669,189 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
         }
     }
 
+    public string CallStackMembersSummary
+    {
+        get
+        {
+            if (CallStackMembers is not { Groups.Count: > 0 } listing)
+            {
+                return string.Empty;
+            }
+
+            var summary = $"{listing.Count} {(listing.Count == 1 ? "member" : "members")}";
+
+            return listing.Groups.Count == 1
+                ? summary
+                : $"{summary}, {string.Join(", ", listing.Groups.Select(g => $"{g.Module} {g.Members.Count}"))}";
+        }
+    }
+
+    public IReadOnlyList<ClassMemberRow> FilteredCallStackMembers
+    {
+        get
+        {
+            if (CallStackMembers is not { } listing)
+            {
+                return [];
+            }
+
+            var showModule = listing.Groups.Count > 1;
+
+            return listing.Groups
+                          .SelectMany(g => g.Members)
+                          .Where(m => string.IsNullOrWhiteSpace(CallStackMembersFilter)
+                                      || m.Signature.Contains(CallStackMembersFilter, StringComparison.OrdinalIgnoreCase))
+                          .Select(m => new ClassMemberRow(showModule ? $"{m.Module}!" : string.Empty, m))
+                          .ToList();
+        }
+    }
+
+    /// <summary>
+    /// Lists the members of a call stack frame's class in the Members pane
+    /// </summary>
+    public Task ListMembersAsync(CallStackNode node)
+    {
+        if (node.Frame is { Resolved.ClassName: { Length: > 0 } className } frame)
+        {
+            return NavigateMembersAsync(frame, className);
+        }
+
+        IsCallStackMembersVisible = true;
+
+        _membersRequest++;
+
+        _currentMembers = null;
+
+        CallStackMembers = null;
+        CallStackMembersFilter = string.Empty;
+        CallStackMembersClassName = node.Symbol;
+        CallStackMembersMessage = "The frame is not a class member";
+
+        return Task.CompletedTask;
+    }
+
+    /// <summary>
+    /// Lists the members of a type named in the current listing, from the same module's symbols
+    /// </summary>
+    public Task ListMembersAsync(string className)
+        => _currentMembers is { } current ? NavigateMembersAsync(current.Frame, className) : Task.CompletedTask;
+
+    /// <summary>
+    /// Returns the Members pane to the listing shown before the last navigation
+    /// </summary>
+    public Task GoBackMembersAsync()
+    {
+        if (_membersHistory.Count == 0)
+        {
+            return Task.CompletedTask;
+        }
+
+        var (frame, className) = _membersHistory[^1];
+
+        _membersHistory.RemoveAt(_membersHistory.Count - 1);
+
+        CanGoBackMembers = _membersHistory.Count > 0;
+
+        return ListMembersAsync(frame, className);
+    }
+
+    private Task NavigateMembersAsync(CallstackFrame frame, string className)
+    {
+        if (_currentMembers is { } current && current != (frame, className))
+        {
+            _membersHistory.Add(current);
+
+            CanGoBackMembers = true;
+        }
+
+        return ListMembersAsync(frame, className);
+    }
+
+    private async Task ListMembersAsync(CallstackFrame frame, string className)
+    {
+        IsCallStackMembersVisible = true;
+
+        var request = ++_membersRequest;
+
+        _currentMembers = (frame, className);
+
+        CallStackMembers = null;
+        CallStackMembersFilter = string.Empty;
+        CallStackMembersClassName = $"{frame.Module}!{className}";
+        CallStackMembersMessage = null;
+        IsCallStackMembersLoading = true;
+
+        try
+        {
+            var resolver = GetSymbolResolver();
+
+            var listing = await resolver.ListMembersAsync(MemberSearchFrames(frame), className);
+
+            if (request != _membersRequest)
+            {
+                return;
+            }
+
+            CallStackMembers = listing;
+            CallStackMembersMessage = listing.Count == 0 ? $"No symbols found for {className}" : null;
+
+            if (listing.Groups.Count > 0)
+            {
+                CallStackMembersClassName = $"{listing.Groups[0].Module}!{className}";
+            }
+        }
+        catch (Exception exception)
+        {
+            Logger.LogError(exception, "Listing members for {ClassName} failed", className);
+
+            if (request == _membersRequest)
+            {
+                CallStackMembersMessage = $"Listing {className} members failed: {exception.Message}";
+            }
+        }
+        finally
+        {
+            if (request == _membersRequest)
+            {
+                IsCallStackMembersLoading = false;
+            }
+        }
+    }
+
+    /// <summary>
+    /// The frame's own module first, then every other module the query's call stacks carry symbols for
+    /// </summary>
+    private List<CallstackFrame> MemberSearchFrames(CallstackFrame frame)
+    {
+        var frames = new List<CallstackFrame> { frame };
+
+        foreach (var node in CallStack?.Nodes() ?? [])
+        {
+            if (node.Frame is { Pdb.Length: > 0 } candidate
+                && !frames.Any(f => f.Pdb == candidate.Pdb && f.Guid == candidate.Guid && f.Age == candidate.Age))
+            {
+                frames.Add(candidate);
+            }
+        }
+
+        return frames;
+    }
+
+    private CallstackResolver GetSymbolResolver()
+    {
+        var symbolsPath = _settingsViewModel.SymbolsPath;
+
+        if (_symbolResolver is null || _symbolResolverPath != symbolsPath)
+        {
+            _symbolResolver?.Dispose();
+
+            _symbolResolver = new CallstackResolver(symbolsPath);
+            _symbolResolverPath = symbolsPath;
+        }
+
+        return _symbolResolver;
+    }
+
     public void OpenExecutionPlan(PlanNodeIdentifier identifier)
     {
         Layout.ShowExecutionPlan();
@@ -779,6 +1001,9 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
         _openTraces.Clear();
 
         _pageSpans = [];
+
+        _symbolResolver?.Dispose();
+        _symbolResolver = null;
 
         Layout.Dispose();
 

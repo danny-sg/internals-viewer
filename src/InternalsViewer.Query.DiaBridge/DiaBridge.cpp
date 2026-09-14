@@ -1,8 +1,9 @@
-#include "pch.h"
+﻿#include "pch.h"
 #include "DiaBridge.h"
 
 #include <filesystem>
 #include <memory>
+#include <mutex>
 #include <string>
 #include <windows.h>
 
@@ -14,6 +15,18 @@
 #pragma comment(lib, "Dbghelp.lib")
 
 using Microsoft::WRL::ComPtr;
+
+#ifndef UNDNAME_NO_ECSU
+#define UNDNAME_NO_ECSU (0x8000)
+#endif
+
+static std::mutex DemangleLock;
+
+static constexpr DWORD SignatureFlags = UNDNAME_NO_MS_KEYWORDS | UNDNAME_NO_FUNCTION_RETURNS |
+                                        UNDNAME_NO_ALLOCATION_MODEL | UNDNAME_NO_ALLOCATION_LANGUAGE |
+                                        UNDNAME_NO_THISTYPE | UNDNAME_NO_ACCESS_SPECIFIERS |
+                                        UNDNAME_NO_THROW_SIGNATURES | UNDNAME_NO_MEMBER_TYPE |
+                                        UNDNAME_NO_RETURN_UDT_MODEL | UNDNAME_NO_ECSU;
 
 // Source/Session are COM objects whose code lives inside msdia140.dll (DiaModule). They must be released before
 // FreeLibrary(DiaModule) runs, otherwise Release() ends up calling into memory that's already been unloaded. Members
@@ -114,12 +127,45 @@ static std::wstring DemangleName(const wchar_t *name)
 
     wchar_t buffer[4096] = {};
 
+    std::lock_guard<std::mutex> guard(DemangleLock);
+
     if (UnDecorateSymbolNameW(name, buffer, _countof(buffer), UNDNAME_NAME_ONLY))
     {
         return buffer;
     }
 
     return name;
+}
+
+static std::wstring DemangleSignature(const wchar_t *name)
+{
+    if (!name)
+    {
+        return L"";
+    }
+
+    wchar_t buffer[4096] = {};
+
+    std::lock_guard<std::mutex> guard(DemangleLock);
+
+    if (UnDecorateSymbolNameW(name, buffer, _countof(buffer), SignatureFlags))
+    {
+        return buffer;
+    }
+
+    return name;
+}
+
+static void CopyTruncated(wchar_t *buffer, int bufferLength, const std::wstring &value)
+{
+    if (!buffer || bufferLength <= 0)
+    {
+        return;
+    }
+
+    auto copied = value.copy(buffer, static_cast<size_t>(bufferLength) - 1);
+
+    buffer[copied] = L'\0';
 }
 
 void *OpenPdb(const wchar_t *pdbPath)
@@ -306,6 +352,91 @@ bool NextSymbol(void *enumeratorHandle, wchar_t *buffer, int bufferLength)
             return true;
         }
     }
+}
+
+bool NextSymbolDetail(void *enumeratorHandle, wchar_t *nameBuffer, int nameLength, wchar_t *signatureBuffer,
+                      int signatureLength, unsigned int *rva, int *isFunction)
+{
+    if (!enumeratorHandle)
+    {
+        return false;
+    }
+
+    auto enumerator = static_cast<EnumHandle *>(enumeratorHandle);
+
+    for (;;)
+    {
+        ComPtr<IDiaSymbol> symbol;
+
+        ULONG fetched = 0;
+
+        if (FAILED(enumerator->Symbols->Next(1, symbol.GetAddressOf(), &fetched)) || fetched != 1)
+        {
+            return false;
+        }
+
+        Bstr name;
+
+        if (FAILED(symbol->get_name(name.GetAddressOf())) || !name)
+        {
+            continue;
+        }
+
+        auto friendly = DemangleName(name.Get());
+
+        if (friendly.empty() || (!enumerator->Prefix.empty() && friendly.rfind(enumerator->Prefix, 0) != 0))
+        {
+            continue;
+        }
+
+        DWORD symbolRva = 0;
+
+        symbol->get_relativeVirtualAddress(&symbolRva);
+
+        BOOL function = FALSE;
+
+        symbol->get_function(&function);
+
+        CopyTruncated(nameBuffer, nameLength, friendly);
+
+        if (signatureBuffer)
+        {
+            CopyTruncated(signatureBuffer, signatureLength, DemangleSignature(name.Get()));
+        }
+
+        *rva = symbolRva;
+        *isFunction = function ? 1 : 0;
+
+        return true;
+    }
+}
+
+void *BeginEnumSymbolsAtRva(void *sessionHandle, unsigned int rva)
+{
+    if (!sessionHandle)
+    {
+        return nullptr;
+    }
+
+    auto handle = static_cast<DiaHandle *>(sessionHandle);
+
+    ComPtr<IDiaSymbol> global;
+
+    if (FAILED(handle->Session->get_globalScope(global.GetAddressOf())) || !global)
+    {
+        return nullptr;
+    }
+
+    auto enumerator = std::make_unique<EnumHandle>();
+
+    if (FAILED(handle->Session->findChildrenExByRVA(global.Get(), SymTagPublicSymbol, nullptr, nsNone, rva,
+                                                    enumerator->Symbols.GetAddressOf())) ||
+        !enumerator->Symbols)
+    {
+        return nullptr;
+    }
+
+    return enumerator.release();
 }
 
 void EndEnumSymbols(void *enumeratorHandle)

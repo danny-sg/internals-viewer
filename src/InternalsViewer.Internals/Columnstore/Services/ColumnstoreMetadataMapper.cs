@@ -15,7 +15,7 @@ namespace InternalsViewer.Internals.Columnstore.Services;
 public static class ColumnstoreMetadataMapper
 {
     /// <summary>
-    /// has_nulls is derived from bit 0 of the segment status field.
+    /// has_nulls is derived from bit 0 of the segment status field
     /// </summary>
     private const int StatusHasNullsFlag = 1;
 
@@ -138,13 +138,12 @@ public static class ColumnstoreMetadataMapper
         return new LobPointer(blobId, new PageAddress(fileId, pageId), slot);
     }
 
-    /// <summary>
-    /// What a nonclustered index has to keep to find its way back, which is the RID over a heap and the key otherwise
-    /// </summary>
     private static string DescribeLocator(IndexType? parentIndexType) => parentIndexType switch
     {
-        IndexType.Heap => "RID",
-        IndexType.Clustered => "Clustered Key",
+        IndexType.Heap 
+            => "RID",
+        IndexType.Clustered
+            => "Clustered Key",
         _ => string.Empty
     };
     
@@ -169,9 +168,6 @@ public static class ColumnstoreMetadataMapper
         return count > 1 ? $"Row Locator {ordinal}" : "Row Locator";
     }
 
-    /// <summary>
-    /// Groups the allocation units of an index by the row set they belong to
-    /// </summary>
     private static IEnumerable<ColumnstoreRowset> BuildRowsets(IEnumerable<AllocationUnit> allocationUnits)
     {
         var grouped = allocationUnits.GroupBy(a => a.PartitionId)
@@ -201,10 +197,6 @@ public static class ColumnstoreMetadataMapper
         var offset = GetColumnIdOffset(indexType);
 
         var columnIds = segments.Select(s => s.Key.ColumnId).Distinct().OrderBy(id => id).ToList();
-
-        bool IsLocator(int columnId)
-            => indexType == IndexType.NonClusteredColumnStore
-               && !(columnStructures?.ContainsKey(columnId - offset) ?? false);
 
         // A composite clustered key is kept a column at a time, so there is one locator per key column
         var locatorCount = columnIds.Count(IsLocator);
@@ -236,6 +228,12 @@ public static class ColumnstoreMetadataMapper
 
             yield return column;
         }
+
+        yield break;
+
+        bool IsLocator(int columnId)
+            => indexType == IndexType.NonClusteredColumnStore
+               && !(columnStructures?.ContainsKey(columnId - offset) ?? false);
     }
 
     private static RowGroup MapRowGroup(Record record, long hobtId)
@@ -340,8 +338,10 @@ public static class ColumnstoreMetadataMapper
     {
         Dictionary<string, byte[]>? unmapped = null;
 
-        foreach (var field in record.Fields)
+        for (var index = 0; index < record.Fields.Count; index++)
         {
+            var field = record.Fields[index];
+
             if (known.Contains(field.Name))
             {
                 continue;

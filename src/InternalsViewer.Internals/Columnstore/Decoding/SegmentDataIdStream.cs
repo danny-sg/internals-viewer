@@ -69,7 +69,7 @@ public sealed class SegmentDataIdStream(SegmentBlob blob)
             return BitSpan.FromBytes(Blob.Header.RleArrayOffset + (entryIndex * Blob.Header.RleEntrySize), Blob.Header.RleValueSize);
         }
 
-        var span = Blob.Bitpack.GetSpan(entry.BitpackIndex + (rowOrdinal - (endRow - entry.Count)));
+        var span = Blob.Bitpack.GetBitSpan(entry.BitpackIndex + (rowOrdinal - (endRow - entry.Count)));
 
         return span with { BitOffset = (Blob.Header.BitpackArrayOffset * 8) + span.BitOffset };
     }

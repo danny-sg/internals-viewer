@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 // Plain C ABI so this can be P/Invoked from C#: opaque void* handles instead of
 // C++ classes/exceptions, since neither survives crossing the managed/native boundary.
@@ -13,6 +13,12 @@ extern "C"
     __declspec(dllexport) void *BeginEnumSymbols(void *session, const wchar_t *prefix);
 
     __declspec(dllexport) bool NextSymbol(void *enumerator, wchar_t *buffer, int bufferLength);
+
+    __declspec(dllexport) bool NextSymbolDetail(void *enumerator, wchar_t *nameBuffer, int nameLength,
+                                                wchar_t *signatureBuffer, int signatureLength, unsigned int *rva,
+                                                int *isFunction);
+
+    __declspec(dllexport) void *BeginEnumSymbolsAtRva(void *session, unsigned int rva);
 
     __declspec(dllexport) void EndEnumSymbols(void *enumerator);
 

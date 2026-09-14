@@ -1,4 +1,4 @@
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.ComponentModel;
 using System.Linq;
 using System;
@@ -7,7 +7,9 @@ using InternalsViewer.Query.Events.Operators;
 using InternalsViewer.Query.Events;
 using InternalsViewer.Query.Interfaces.Events;
 using InternalsViewer.Query.Plans.Model;
+using InternalsViewer.UI.App.Controls.CallStack;
 using InternalsViewer.UI.App.Controls.Docking;
+using InternalsViewer.UI.App.Models.Query.CallStack;
 using InternalsViewer.UI.App.ViewModels.Query;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Controls.Primitives;
@@ -16,7 +18,7 @@ using Windows.ApplicationModel.DataTransfer;
 
 namespace InternalsViewer.UI.App.Views.Query.Tabs.CallStack;
 
-public sealed partial class QueryCallStackTabView : UserControl, IDocumentCommands
+public sealed partial class QueryCallStackTabView : UserControl, IDocumentCommands, ISignatureNavigator
 {
     private const string HistogramGrey = "#606060";
     private const string HistogramHighlight = "#4CA3E0";
@@ -67,6 +69,8 @@ public sealed partial class QueryCallStackTabView : UserControl, IDocumentComman
 
     private TreeViewNode? _contextNode;
 
+    private ClassMemberRow? _contextMember;
+
     private QueryViewModel? _viewModel;
 
     public QueryCallStackTabView()
@@ -77,6 +81,66 @@ public sealed partial class QueryCallStackTabView : UserControl, IDocumentComman
     }
 
     public QueryViewModel? ViewModel => DataContext as QueryViewModel;
+
+    public bool IsMembersPaneVisible
+    {
+        get => ViewModel?.IsCallStackMembersVisible == true;
+        set
+        {
+            if (ViewModel is { } viewModel)
+            {
+                viewModel.IsCallStackMembersVisible = value;
+            }
+
+            RefreshDetailPane();
+        }
+    }
+
+    public bool IsMembersPaneDockedBottom
+    {
+        get => ViewModel?.IsCallStackMembersDockedBottom == true;
+        set
+        {
+            if (ViewModel is { } viewModel)
+            {
+                viewModel.IsCallStackMembersDockedBottom = value;
+            }
+
+            RefreshDetailPane();
+        }
+    }
+
+    public GridLength BodyColumnWidth
+        => IsMembersPaneVisible && !IsMembersPaneDockedBottom
+            ? new GridLength(6, GridUnitType.Star)
+            : new GridLength(1, GridUnitType.Star);
+
+    public GridLength DetailColumnWidth
+        => IsMembersPaneVisible && !IsMembersPaneDockedBottom ? new GridLength(4, GridUnitType.Star) : new GridLength(0);
+
+    public GridLength BodyRowHeight
+        => IsMembersPaneVisible && IsMembersPaneDockedBottom
+            ? new GridLength(6, GridUnitType.Star)
+            : new GridLength(1, GridUnitType.Star);
+
+    public GridLength DetailRowHeight
+        => IsMembersPaneVisible && IsMembersPaneDockedBottom ? new GridLength(4, GridUnitType.Star) : new GridLength(0);
+
+    public Visibility DetailPaneVisibility
+        => IsMembersPaneVisible ? Visibility.Visible : Visibility.Collapsed;
+
+    public Visibility ColumnSplitterVisibility
+        => IsMembersPaneVisible && !IsMembersPaneDockedBottom ? Visibility.Visible : Visibility.Collapsed;
+
+    public Visibility RowSplitterVisibility
+        => IsMembersPaneVisible && IsMembersPaneDockedBottom ? Visibility.Visible : Visibility.Collapsed;
+
+    public Thickness DetailPaneBorderThickness
+        => IsMembersPaneDockedBottom ? new Thickness(0, 1, 0, 0) : new Thickness(1, 0, 0, 0);
+
+    public string DockToggleGlyph => IsMembersPaneDockedBottom ? "" : "";
+
+    public string DockToggleTooltip => IsMembersPaneDockedBottom ? "Dock Right" : "Dock Bottom";
 
     /// <summary>
     /// Builds the history and focus controls for a tab strip to host
@@ -288,6 +352,75 @@ public sealed partial class QueryCallStackTabView : UserControl, IDocumentComman
         Clipboard.SetContent(package);
     }
 
+    private void OnListMembersClick(object sender, RoutedEventArgs e)
+    {
+        if (_contextNode?.Content is not CallStackNode node || _viewModel is null)
+        {
+            return;
+        }
+
+        _ = _viewModel.ListMembersAsync(node);
+    }
+
+    private void OnMemberRightTapped(object sender, RightTappedRoutedEventArgs e) =>
+        _contextMember = (sender as FrameworkElement)?.DataContext as ClassMemberRow;
+
+    private void OnCopySignatureClick(object sender, RoutedEventArgs e)
+    {
+        if (_contextMember is null)
+        {
+            return;
+        }
+
+        var package = new DataPackage();
+
+        package.SetText(_contextMember.Signature);
+
+        Clipboard.SetContent(package);
+    }
+
+    private void OnMembersBackClick(object sender, RoutedEventArgs e)
+    {
+        if (_viewModel is not null)
+        {
+            _ = _viewModel.GoBackMembersAsync();
+        }
+    }
+
+    public void OnTypeInvoked(string typeName)
+    {
+        if (_viewModel is not null)
+        {
+            _ = _viewModel.ListMembersAsync(typeName);
+        }
+    }
+
+    private void OnMembersSearchTextChanged(AutoSuggestBox sender, AutoSuggestBoxTextChangedEventArgs args)
+    {
+        if (_viewModel is not null)
+        {
+            _viewModel.CallStackMembersFilter = sender.Text;
+        }
+    }
+
+    private void CloseDetailPane()
+    {
+        IsMembersPaneVisible = false;
+    }
+
+    private void ToggleDetailPaneDock()
+    {
+        IsMembersPaneDockedBottom = !IsMembersPaneDockedBottom;
+    }
+
+    private void RefreshDetailPane()
+    {
+        Grid.SetRow(DetailPane, IsMembersPaneDockedBottom ? 2 : 0);
+        Grid.SetColumn(DetailPane, IsMembersPaneDockedBottom ? 0 : 2);
+
+        Bindings.Update();
+    }
+
     private static void SetExpanded(TreeViewNode? node, bool expanded)
     {
         if (node is null)
@@ -317,6 +450,8 @@ public sealed partial class QueryCallStackTabView : UserControl, IDocumentComman
             _viewModel.PropertyChanged += OnPropertyChanged;
         }
 
+        RefreshDetailPane();
+
         ApplyFocus(_viewModel?.SelectedEvent);
     }
 
@@ -334,6 +469,17 @@ public sealed partial class QueryCallStackTabView : UserControl, IDocumentComman
             RecordHistory(_viewModel?.SelectedEvent);
 
             ApplyFocus(_viewModel?.SelectedEvent);
+        }
+        else if (e.PropertyName is nameof(QueryViewModel.IsCallStackMembersVisible)
+                                or nameof(QueryViewModel.IsCallStackMembersDockedBottom))
+        {
+            RefreshDetailPane();
+        }
+        else if (e.PropertyName == nameof(QueryViewModel.CallStackMembersFilter)
+                 && _viewModel is { } viewModel
+                 && MembersSearchBox.Text != viewModel.CallStackMembersFilter)
+        {
+            MembersSearchBox.Text = viewModel.CallStackMembersFilter;
         }
     }
 

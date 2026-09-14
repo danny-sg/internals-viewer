@@ -43,7 +43,7 @@ public sealed class BitpackUnitDetail
         {
             var index = (unitIndex * perUnit) + i;
 
-            var span = array.GetSpan(index);
+            var span = array.GetBitSpan(index);
 
             values.Add(new BitpackValueDetail
             {

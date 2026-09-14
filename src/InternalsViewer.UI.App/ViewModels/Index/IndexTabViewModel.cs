@@ -77,6 +77,9 @@ public partial class IndexTabViewModel(ILogger<IndexTabViewModel> logger,
     private bool _isTooltipEnabled;
 
     [ObservableProperty]
+    private bool _isLevelsVisible;
+
+    [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(BodyColumnWidth))]
     [NotifyPropertyChangedFor(nameof(DetailColumnWidth))]
     [NotifyPropertyChangedFor(nameof(DetailSplitterVisibility))]
