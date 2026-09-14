@@ -60,7 +60,7 @@ public sealed partial class QueryPageReader(ILogger<QueryPageReader> logger, str
                                CancellationToken cancellationToken)
     {
         var pageCommand = $@"
-    EXEC ('DBCC PAGE({name}, {pageAddress.FileId}, {pageAddress.PageId}, {DbccPageHexDumpOption}) WITH TABLERESULTS')
+    EXEC ('DBCC PAGE([{name}], {pageAddress.FileId}, {pageAddress.PageId}, {DbccPageHexDumpOption}) WITH TABLERESULTS')
     WITH RESULT SETS
     (
         (
