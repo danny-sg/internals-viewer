@@ -14,6 +14,8 @@ public sealed class SegmentScanInfo
 
     public string FilterOnCompressedDataType { get; set; } = string.Empty;
 
+    public bool IsFilterOnCompressedDataUsed { get; set; }
+
     public string InstructionSet { get; set; } = string.Empty;
 
     public int BitPacking { get; set; }
@@ -33,4 +35,8 @@ public sealed class SegmentScanInfo
     public bool IsDeepDataPossible { get; set; }
 
     public bool IsNullable { get; set; }
+
+    public long? PureRowBuckets { get; set; }
+
+    public long? ImpureRowBuckets { get; set; }
 }

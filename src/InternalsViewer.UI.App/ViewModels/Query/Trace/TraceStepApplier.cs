@@ -59,6 +59,11 @@ public sealed class TraceStepApplier(TraceLayout layout,
 
         SyncBatch(stepper, step);
 
+        if (step is AccessStep.CompressedDataFilterBitmap bitmap)
+        {
+            batches.GetValueOrDefault(step.NodeId)?.ApplyFilterBitmap(bitmap);
+        }
+
         visualsByNode.GetValueOrDefault(step.NodeId)?.Apply(step);
     }
 

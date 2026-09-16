@@ -7,6 +7,7 @@
     xmlns:predicates="using:InternalsViewer.UI.App.Controls.Predicates"
     xmlns:accessSteps="using:InternalsViewer.UI.App.Controls.Trace.Steps"
     xmlns:trace="using:InternalsViewer.UI.App.Helpers.Converters.Trace"
+    xmlns:app="using:InternalsViewer.UI.App.Controls"
     xmlns:badge="using:InternalsViewer.UI.App.Controls.Trace">
 
     <ResourceDictionary.MergedDictionaries>
@@ -297,7 +298,7 @@
                     <StackPanel Orientation="Horizontal">
                         <TextBlock Text="Range" Style="{StaticResource StepPropertyStyle}" />
                         <TextBlock Text="{Binding RangeNumber}" Style="{StaticResource StepValueStyle}" />
-                        <TextBlock Text="Of" Style="{StaticResource StepPropertyStyle}" />
+                        <TextBlock Text="of" Style="{StaticResource StepPropertyStyle}" />
                         <TextBlock Text="{Binding RangeCount}" Style="{StaticResource StepValueStyle}" />
                     </StackPanel>
                     <predicates:PredicateTextBox Style="{StaticResource StepDetailStyle}"
@@ -866,7 +867,7 @@
             <StackPanel Orientation="Horizontal">
                 <TextBlock Text="Input" Style="{StaticResource StepLabelStyle}" />
                 <TextBlock Text="{Binding Number}" Style="{StaticResource StepValueStyle}" />
-                <TextBlock Text="Of" Style="{StaticResource StepPropertyStyle}" />
+                <TextBlock Text="of" Style="{StaticResource StepPropertyStyle}" />
                 <TextBlock Text="{Binding Count}" Style="{StaticResource StepValueStyle}" />
             </StackPanel>
         </Grid>
@@ -905,7 +906,7 @@
                 <TextBlock Text="Get Row" Style="{StaticResource StepLabelStyle}" />
                 <TextBlock Text="Row" Style="{StaticResource StepPropertyStyle}" />
                 <TextBlock Text="{Binding Number}" Style="{StaticResource StepValueStyle}" />
-                <TextBlock Text="Of" Style="{StaticResource StepPropertyStyle}" />
+                <TextBlock Text="of" Style="{StaticResource StepPropertyStyle}" />
                 <TextBlock Text="{Binding RowCount}" Style="{StaticResource StepValueStyle}" />
                 <badge:SplitBadge x:Name="EmitBadge" BadgeName="→ Emit"
                                   BadgeColour="#2E7D32" Margin="8,0,0,0" VerticalAlignment="Center" />
@@ -1126,13 +1127,22 @@
     <DataTemplate x:Key="TraceCounterSpanTemplate" >
         <Grid Style="{StaticResource StepRowStyle}">
             <accessSteps:StepSourceGutter x:Name="SourceGutter" />
-            <StackPanel Orientation="Horizontal">
-                <TextBlock Text="{Binding Label}" Style="{StaticResource StepLabelStyle}" />
-                <StackPanel Orientation="Vertical">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+
+                <TextBlock Grid.Column="0"
+                           Text="{Binding Label}"
+                           VerticalAlignment="Top"
+                           Style="{StaticResource StepLabelStyle}" />
+
+                <StackPanel Grid.Column="1" Orientation="Vertical">
                     <ItemsControl ItemsSource="{Binding Items}" VerticalAlignment="Center">
                         <ItemsControl.ItemsPanel>
                             <ItemsPanelTemplate>
-                                <StackPanel Orientation="Horizontal" />
+                                <app:WrapPanel VerticalSpacing="3" />
                             </ItemsPanelTemplate>
                         </ItemsControl.ItemsPanel>
                         <ItemsControl.ItemTemplate>
@@ -1152,7 +1162,7 @@
                                           Visibility="{Binding Fill.HasBuckets,
                                                   Converter={StaticResource StepsBoolToVisibilityConverter}}" />
                 </StackPanel>
-            </StackPanel>
+            </Grid>
         </Grid>
     </DataTemplate>
 
@@ -1209,7 +1219,7 @@
                 <TextBlock Text="Segment Elimination" Style="{StaticResource StepLabelStyle}" />
                 <TextBlock Text="Eliminated" Style="{StaticResource StepPropertyStyle}" />
                 <TextBlock Text="{Binding EliminatedCount}" Style="{StaticResource StepValueStyle}" />
-                <TextBlock Text="Of" Style="{StaticResource StepPropertyStyle}" />
+                <TextBlock Text="of" Style="{StaticResource StepPropertyStyle}" />
                 <TextBlock Text="{Binding SegmentCount}" Style="{StaticResource StepValueStyle}" />
                 <TextBlock Text="Row Group" Style="{StaticResource StepPropertyStyle}" Margin="8,0,0,0" />
                 <TextBlock Text="{Binding RowGroupId}" Style="{StaticResource StepValueStyle}" />

@@ -144,7 +144,7 @@ public sealed class ColumnstoreScanIterator(ColumnstoreService columnstoreServic
 
             DeletedRows = await columnstoreService.GetDeletedRows(context.Database, index, cancellationToken);
 
-            RowGroups = await EliminateRowGroupsAsync([.. index.CompressedRowGroups], cancellationToken);
+            RowGroups = [.. index.CompressedRowGroups];
         }
     }
 
@@ -278,29 +278,23 @@ public sealed class ColumnstoreScanIterator(ColumnstoreService columnstoreServic
 
         var deleted = ApplyDeletedRows(RowMask.AsSpan(0, size), rowGroupId, RowOrdinal);
 
-        var filtered = ApplyCompressedFilters(RowMask.AsSpan(0, size), RowOrdinal, ref filterRleEntries, ref filterOperations);
-
-        if (filtered > 0 || deleted > 0)
-        {
-            batch.SelectionVector.Set(RowMask.AsSpan(0, size));
-        }
+        ApplyCompressedFilters(RowMask.AsSpan(0, size), RowOrdinal, ref filterRleEntries, ref filterOperations);
 
         var materialised = 0;
 
-        if (batch.SelectionVector.RowCount > 0)
+        if (RowMask.AsSpan(0, size).IndexOf(true) >= 0)
         {
             for (var i = 0; i < Columns.Count; i++)
             {
                 FillVector(Columns[i], BoundVectors[i], RowOrdinal, RowMask.AsSpan(0, size), batch.DeepDataContext, ref materialised);
             }
 
-            if (await ApplyPredicateAsync(batch, size, cancellationToken) > 0)
-            {
-                batch.SelectionVector.Set(RowMask.AsSpan(0, size));
-            }
+            await ApplyPredicateAsync(batch, size, cancellationToken);
 
             ClassifyColumns(ref pureColumns, ref impureColumns);
         }
+
+        Compact(batch, RowMask.AsSpan(0, size));
 
         if (deleted > 0)
         {
@@ -640,6 +634,34 @@ public sealed class ColumnstoreScanIterator(ColumnstoreService columnstoreServic
         }
     }
 
+    private void Compact(ExecutionBatch batch, ReadOnlySpan<bool> mask)
+    {
+        var write = 0;
+
+        for (var read = 0; read < mask.Length; read++)
+        {
+            if (!mask[read])
+            {
+                continue;
+            }
+
+            if (write != read)
+            {
+                foreach (var vector in BoundVectors)
+                {
+                    if (!vector.IsPure)
+                    {
+                        vector.Values[write] = vector.Values[read];
+                    }
+                }
+            }
+
+            write++;
+        }
+
+        batch.SelectionVector.Reset(write);
+    }
+
     /// <summary>
     /// Fills a vector with values for a column
     /// </summary>
@@ -743,6 +765,11 @@ public sealed class ColumnstoreScanIterator(ColumnstoreService columnstoreServic
         {
             var rowGroup = RowGroups[RowGroupIndex++];
 
+            if (await IsRowGroupEliminatedAsync(rowGroup, cancellationToken))
+            {
+                continue;
+            }
+
             var reader = await OpenRowGroupAsync(rowGroup, cancellationToken);
 
             var columns = Bind(reader, rowGroup);
@@ -783,6 +810,8 @@ public sealed class ColumnstoreScanIterator(ColumnstoreService columnstoreServic
             {
                 await EmitAsync(new AccessStep.CompressedDataFilter(rowGroup.RowGroupId, string.Join(", ", filtered), true),
                                 cancellationToken);
+
+                await EmitFilterBitmapsAsync(rowGroup, columns, cancellationToken);
             }
             else if (Predicate is not null)
             {
@@ -796,33 +825,72 @@ public sealed class ColumnstoreScanIterator(ColumnstoreService columnstoreServic
         return false;
     }
 
-    private async Task<List<RowGroup>> EliminateRowGroupsAsync(IReadOnlyList<RowGroup> rowGroups, CancellationToken cancellationToken)
+    private async Task EmitFilterBitmapsAsync(RowGroup rowGroup, List<ScanColumn> columns, CancellationToken cancellationToken)
     {
-        var qualified = new List<RowGroup>(rowGroups.Count);
-
-        foreach (var rowGroup in rowGroups)
+        foreach (var column in columns)
         {
-            var partition = Partitions.Evaluate(rowGroup);
-
-            if (partition.IsEliminated)
+            if (column.Filter is not { Category: CompressedFilterCategory.RawBitmap or CompressedFilterCategory.Equality } filter
+                || filter.QualifyingDataIds is not { } qualifying)
             {
-                if (SkippedPartitions.Add(rowGroup.PartitionId))
+                continue;
+            }
+
+            var dictionaryIds = column.Reader.DictionaryDataIds.OrderBy(id => id).ToArray();
+
+            if (dictionaryIds.Length == 0)
+            {
+                continue;
+            }
+
+            var matched = qualifying as HashSet<long> ?? [.. qualifying];
+
+            var flags = new bool[dictionaryIds.Length];
+
+            var values = new string[dictionaryIds.Length];
+
+            var qualifyingCount = 0;
+
+            for (var i = 0; i < dictionaryIds.Length; i++)
+            {
+                values[i] = column.Reader.GetValueForDataId(dictionaryIds[i])?.ToString() ?? string.Empty;
+
+                if (!matched.Contains(dictionaryIds[i]))
                 {
-                    await EmitAsync(new AccessStep.PartitionSkipped(rowGroup.PartitionId, partition.Reason), cancellationToken);
+                    continue;
                 }
 
-                continue;
+                flags[i] = true;
+
+                qualifyingCount++;
             }
 
-            if (await IsEliminatedAsync(rowGroup, cancellationToken))
+            await EmitAsync(new AccessStep.CompressedDataFilterBitmap(rowGroup.RowGroupId,
+                                                                      column.Reader.Segment.Column?.ColumnStoreColumnId ?? -1,
+                                                                      column.Column.Name,
+                                                                      filter.Category,
+                                                                      dictionaryIds,
+                                                                      flags,
+                                                                      values,
+                                                                      qualifyingCount),
+                            cancellationToken);
+        }
+    }
+
+    private async Task<bool> IsRowGroupEliminatedAsync(RowGroup rowGroup, CancellationToken cancellationToken)
+    {
+        var partition = Partitions.Evaluate(rowGroup);
+
+        if (partition.IsEliminated)
+        {
+            if (SkippedPartitions.Add(rowGroup.PartitionId))
             {
-                continue;
+                await EmitAsync(new AccessStep.PartitionSkipped(rowGroup.PartitionId, partition.Reason), cancellationToken);
             }
 
-            qualified.Add(rowGroup);
+            return true;
         }
 
-        return qualified;
+        return await IsEliminatedAsync(rowGroup, cancellationToken);
     }
 
     private async Task<bool> IsEliminatedAsync(RowGroup rowGroup, CancellationToken cancellationToken)

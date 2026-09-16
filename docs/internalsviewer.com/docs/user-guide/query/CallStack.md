@@ -27,7 +27,17 @@ Turning Focus off shows the full call tree for the whole query, from the top-lev
 The search box filters the tree to matching frames. Right-clicking a node gives:
 
 - **Expand All** / **Collapse All** - from that node down
-- **Copy to clipboard** - copies a formatted, nested text representation of the stack from that node down
+- **Copy to Clipboard** - copies the frame's symbol as `module!Class::Method`
+- **Copy Call Tree to Clipboard** - copies a formatted, nested text representation of the stack from that node down
+- **WinDbg** - copies a debugger command aimed at the frame, ready to paste into WinDbg attached to `sqlservr.exe`:
+  - **Breakpoint** (`bp`) breaks whenever the function is entered. **Breakpoint With Stack** prints the stack on each hit and continues, so a run can be logged without stopping it. **Breakpoint at Frame Address** breaks at the exact return address the trace captured, the instruction after the call this frame was waiting on.
+  - **Examine Symbol** (`x`) lists the function's address and any overloads. **Unassemble Function** (`uf`) disassembles it.
+  - **Display Type** (`dt`) dumps the class layout and **List Class Symbols** lists every symbol the class declares.
+
+  A frame whose symbol did not resolve is addressed as `module+offset`, so the commands still land on the right code.
+- **List Members** - lists the members the symbols declare on the frame's class
+
+Right-clicking a member in the Members pane gives **Copy Signature**, **Copy Symbol** (the member as `module!Class::Member`, without its parameters) and the same **WinDbg** submenu. Debugger commands take a symbol name rather than a signature, so the parameters are dropped. Where the name is overloaded, the breakpoint and unassemble commands use the member's address so the overload chosen is the one hit, and **Breakpoint on All Overloads** (`bm`) covers every overload at once.
 
 ## Flame Graph
 

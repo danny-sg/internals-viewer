@@ -10,6 +10,7 @@
         <Setter Property="VerticalAlignment" Value="Top" />
         <Setter Property="Margin" Value="0,0,8,0" />
         <Setter Property="Width" Value="120" />
+        <Setter Property="TextWrapping" Value="Wrap" />
     </Style>
 
     <Style x:Key="StepValueStyle" TargetType="TextBlock">

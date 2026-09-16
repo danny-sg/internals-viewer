@@ -338,18 +338,45 @@ public sealed partial class QueryCallStackTabView : UserControl, IDocumentComman
     private void OnCollapseAllClick(object sender, RoutedEventArgs e) => SetExpanded(_contextNode, expanded: false);
 
     // Copies the right-tapped node's subtree as the indented text dump CallStackTree.Render produces.
-    private void OnCopyClick(object sender, RoutedEventArgs e)
+    private void OnCopyCallTreeClick(object sender, RoutedEventArgs e)
     {
-        if (_contextNode?.Content is not CallStackNode node)
+        if (_contextNode?.Content is CallStackNode node)
+        {
+            CopyText(CallStackTree.Render(node));
+        }
+    }
+
+    private void OnCopySymbolClick(object sender, RoutedEventArgs e)
+    {
+        if (_contextNode?.Content is CallStackNode { Frame: { } frame })
+        {
+            CopyText(WinDbgCommands.Symbol(frame));
+        }
+    }
+
+    private void OnCopyWinDbgClick(object sender, RoutedEventArgs e)
+    {
+        if (_contextNode?.Content is not CallStackNode { Frame: { } frame } || sender is not MenuFlyoutItem { Tag: string command })
         {
             return;
         }
 
-        var package = new DataPackage();
+        var text = command switch
+        {
+            "Breakpoint" => WinDbgCommands.Breakpoint(frame),
+            "BreakpointWithStack" => WinDbgCommands.BreakpointWithStack(frame),
+            "BreakpointAtFrame" => WinDbgCommands.BreakpointAtFrame(frame),
+            "ExamineSymbol" => WinDbgCommands.ExamineSymbol(frame),
+            "UnassembleFunction" => WinDbgCommands.UnassembleFunction(frame),
+            "DisplayType" => WinDbgCommands.DisplayType(frame),
+            "ListClassSymbols" => WinDbgCommands.ListClassSymbols(frame),
+            _ => null
+        };
 
-        package.SetText(CallStackTree.Render(node));
-
-        Clipboard.SetContent(package);
+        if (text is not null)
+        {
+            CopyText(text);
+        }
     }
 
     private void OnListMembersClick(object sender, RoutedEventArgs e)
@@ -367,14 +394,50 @@ public sealed partial class QueryCallStackTabView : UserControl, IDocumentComman
 
     private void OnCopySignatureClick(object sender, RoutedEventArgs e)
     {
-        if (_contextMember is null)
+        if (_contextMember is not null)
+        {
+            CopyText(_contextMember.Signature);
+        }
+    }
+
+    private void OnCopyMemberSymbolClick(object sender, RoutedEventArgs e)
+    {
+        if (_contextMember is not null)
+        {
+            CopyText(WinDbgCommands.Symbol(_contextMember));
+        }
+    }
+
+    private void OnCopyMemberWinDbgClick(object sender, RoutedEventArgs e)
+    {
+        if (_contextMember is not { } member || sender is not MenuFlyoutItem { Tag: string command })
         {
             return;
         }
 
+        var text = command switch
+        {
+            "Breakpoint" => WinDbgCommands.Breakpoint(member),
+            "BreakpointWithStack" => WinDbgCommands.BreakpointWithStack(member),
+            "BreakpointOnAllOverloads" => WinDbgCommands.BreakpointOnAllOverloads(member),
+            "ExamineSymbol" => WinDbgCommands.ExamineSymbol(member),
+            "UnassembleFunction" => WinDbgCommands.UnassembleFunction(member),
+            "DisplayType" => WinDbgCommands.DisplayType(member),
+            "ListClassSymbols" => WinDbgCommands.ListClassSymbols(member),
+            _ => null
+        };
+
+        if (text is not null)
+        {
+            CopyText(text);
+        }
+    }
+
+    private static void CopyText(string text)
+    {
         var package = new DataPackage();
 
-        package.SetText(_contextMember.Signature);
+        package.SetText(text);
 
         Clipboard.SetContent(package);
     }

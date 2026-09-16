@@ -1,7 +1,24 @@
-﻿namespace InternalsViewer.Execution.AccessPaths.Results.Steps;
+﻿using InternalsViewer.Execution.AccessPaths.Predicates;
+
+namespace InternalsViewer.Execution.AccessPaths.Results.Steps;
 
 public abstract partial record AccessStep
 {
+    /// <summary>
+    /// A compressed data filter compiled into a bitmap of qualifying dictionary ids for a rowgroup
+    /// </summary>
+    public sealed record CompressedDataFilterBitmap(int RowGroupId,
+                                                    int ColumnId,
+                                                    string ColumnName,
+                                                    CompressedFilterCategory Category,
+                                                    IReadOnlyList<long> DictionaryIds,
+                                                    IReadOnlyList<bool> Qualifies,
+                                                    IReadOnlyList<string> Values,
+                                                    int QualifyingCount) : AccessStep(AccessPhase.RowGroup)
+    {
+        public int EntryCount => DictionaryIds.Count;
+    }
+
     public sealed record PartitionSkipped(long PartitionId, string Reason) : AccessStep(AccessPhase.Partition);
 
     public sealed record SegmentElimination(int RowGroupId, int EliminatedCount, int SegmentCount)

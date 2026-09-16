@@ -4,6 +4,7 @@ using InternalsViewer.UI.App.Models.Query.Trace.Batch;
 using InternalsViewer.UI.App.ViewModels.Query.Trace;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Data;
+using Microsoft.UI.Xaml.Media;
 using WinUI.TableView;
 
 namespace InternalsViewer.UI.App.Views.Query.Tabs.Trace;
@@ -11,6 +12,10 @@ namespace InternalsViewer.UI.App.Views.Query.Tabs.Trace;
 public sealed partial class TraceBatchPanelView : UserControl
 {
     private static TraceBatchViewModel Empty { get; } = new();
+
+    private static SolidColorBrush PureBadgeBrush { get; } = new(Windows.UI.Color.FromArgb(255, 29, 158, 117));
+
+    private static SolidColorBrush PureBadgeTextBrush { get; } = new(Windows.UI.Color.FromArgb(255, 255, 255, 255));
 
     private int _columnVersion = -1;
 
@@ -179,12 +184,49 @@ public sealed partial class TraceBatchPanelView : UserControl
         {
             VectorTable.Columns.Add(new BatchValueColumn(column)
             {
-                Header = column.Name,
+                Header = BuildHeader(column),
                 Width = new GridLength(170),
                 SlotClicked = OnSlotClicked,
                 DeepDataClicked = OnDeepDataClicked
             });
         }
+    }
+
+    private static object BuildHeader(BatchColumnView column)
+    {
+        if (!column.IsPure)
+        {
+            return column.Name;
+        }
+
+        var panel = new StackPanel
+        {
+            Orientation = Orientation.Horizontal,
+            VerticalAlignment = VerticalAlignment.Center
+        };
+
+        panel.Children.Add(new TextBlock
+        {
+            Text = column.Name,
+            VerticalAlignment = VerticalAlignment.Center
+        });
+
+        panel.Children.Add(new Border
+        {
+            Margin = new Thickness(6, 0, 0, 0),
+            Padding = new Thickness(5, 1, 5, 1),
+            CornerRadius = new CornerRadius(3),
+            Background = PureBadgeBrush,
+            VerticalAlignment = VerticalAlignment.Center,
+            Child = new TextBlock
+            {
+                Text = "Pure",
+                FontSize = 10,
+                Foreground = PureBadgeTextBrush
+            }
+        });
+
+        return panel;
     }
 
     private void Refresh()

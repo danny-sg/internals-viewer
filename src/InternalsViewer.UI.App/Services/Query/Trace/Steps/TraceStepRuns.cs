@@ -14,6 +14,11 @@ public static class TraceStepRuns
 
     public static void Append(AccessStep step, ObservableCollection<AccessStep> history, int historyLimit)
     {
+        if (step is AccessStep.CompressedDataFilterBitmap)
+        {
+            return;
+        }
+
         if (step is AccessStep.Stopped or AccessStep.Close or AccessStep.Sorted)
         {
             RetireSpans(history, step.NodeId);

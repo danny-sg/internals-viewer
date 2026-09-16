@@ -74,6 +74,7 @@ public static class BatchInfoBuilder
                 CompressedDataType = scan.CompressedDataType.ToString(),
                 FilterType = scan.FilterType.ToString(),
                 FilterOnCompressedDataType = scan.FilterOnCompressedDataType.ToString(),
+                IsFilterOnCompressedDataUsed = scan.IsFilterOnCompressedDataUsed,
                 InstructionSet = scan.CpuInstructionSet?.ToString().ToUpperInvariant() ?? string.Empty,
                 BitPacking = scan.BitPacking,
                 BaseId = scan.BaseId,
@@ -83,7 +84,9 @@ public static class BatchInfoBuilder
                 PrimaryDictionaryValueCount = scan.PrimaryDictionaryValueCount,
                 SecondaryDictionaryValueCount = scan.SecondaryDictionaryValueCount,
                 IsDeepDataPossible = scan.IsDeepDataPossible,
-                IsNullable = scan.IsNullable
+                IsNullable = scan.IsNullable,
+                PureRowBuckets = scan.HasScanResult ? scan.PureRowBuckets : null,
+                ImpureRowBuckets = scan.HasScanResult ? scan.ImpureRowBuckets : null
             });
 
             return;

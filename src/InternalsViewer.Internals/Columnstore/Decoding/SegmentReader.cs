@@ -22,9 +22,9 @@ public sealed class SegmentReader(ColumnSegment segment,
     {
         get
         {
-            if (Dictionary is { } primary)
+            if (Dictionary != null)
             {
-                for (var id = primary.FirstId; id <= primary.LastId; id++)
+                for (var id = Dictionary.FirstId; id <= Dictionary.LastId; id++)
                 {
                     yield return id;
                 }

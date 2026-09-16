@@ -17,7 +17,7 @@ internal sealed class BatchValueColumn(BatchColumnView column) : TableViewColumn
 {
     private static SolidColorBrush UnselectedBrush { get; } = new(Windows.UI.Color.FromArgb(48, 128, 128, 128));
 
-    private static SolidColorBrush PureBrush { get; } = new(Windows.UI.Color.FromArgb(28, 86, 156, 214));
+    private static SolidColorBrush PureBrush { get; } = new(Windows.UI.Color.FromArgb(28, 29, 158, 117));
 
     private static SolidColorBrush TransparentBrush { get; } = new(Colors.Transparent);
 
@@ -83,18 +83,20 @@ internal sealed class BatchValueColumn(BatchColumnView column) : TableViewColumn
 
         var text = $"0x{slot.Value:X16}";
 
+        var dim = !column.IsInScope || (column.IsPure && row.RowIndex != 0);
+
         if (BatchValueDenormalizer.GetValueType(slot, column.Column) == BatchValueType.DeepDataReference)
         {
             ApplyLink(host, text, (int)(slot.Value >> 1) - 1);
 
-            ApplyForeground(host);
+            ApplyForeground(host, dim);
 
             return;
         }
 
         ApplyText(host, text);
 
-        ApplyForeground(host);
+        ApplyForeground(host, dim);
     }
 
     private static void ApplyText(ContentControl host, string text)
@@ -119,14 +121,14 @@ internal sealed class BatchValueColumn(BatchColumnView column) : TableViewColumn
         };
     }
 
-    private void ApplyForeground(ContentControl host)
+    private static void ApplyForeground(ContentControl host, bool dim)
     {
         switch (host.Content)
         {
             case TextBlock text:
                 text.ClearValue(TextBlock.ForegroundProperty);
 
-                if (!column.IsInScope)
+                if (dim)
                 {
                     text.Foreground = DimTextBrush;
                 }
@@ -134,7 +136,7 @@ internal sealed class BatchValueColumn(BatchColumnView column) : TableViewColumn
                 break;
 
             case HyperlinkButton { Content: TextBlock label }:
-                label.Foreground = column.IsInScope ? LinkBrush : DimLinkBrush;
+                label.Foreground = dim ? DimLinkBrush : LinkBrush;
 
                 break;
         }

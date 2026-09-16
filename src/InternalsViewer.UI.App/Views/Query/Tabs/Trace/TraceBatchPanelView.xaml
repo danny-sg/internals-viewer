@@ -8,6 +8,7 @@
     xmlns:toolkit="using:CommunityToolkit.WinUI.Controls"
     xmlns:controls="using:InternalsViewer.UI.App.Controls"
     xmlns:batch="using:InternalsViewer.UI.App.Models.Query.Trace.Batch"
+    xmlns:cs="using:InternalsViewer.UI.App.Controls.Trace.Columnstore"
     xmlns:tableView="using:WinUI.TableView"
     xmlns:converters="using:InternalsViewer.UI.App.Helpers.Converters"
     mc:Ignorable="d">
@@ -326,6 +327,33 @@
                 </ListView>
                 </Grid>
               </Grid>
+            </TabViewItem>
+
+            <TabViewItem Header="Compressed Filter"
+                         IsClosable="False"
+                         Visibility="{x:Bind Batch.HasFilterBitmap, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="*" />
+                    </Grid.RowDefinitions>
+
+                    <ComboBox Grid.Row="0"
+                              Margin="8,6"
+                              MinWidth="180"
+                              Padding="8,0,0,0"
+                              MinHeight="0"
+                              FontSize="12"
+                              Visibility="{x:Bind Batch.HasMultipleFilterBitmaps, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}"
+                              ItemsSource="{x:Bind Batch.FilterBitmaps, Mode=OneWay}"
+                              SelectedItem="{x:Bind Batch.SelectedFilterBitmap, Mode=TwoWay}"
+                              DisplayMemberPath="Title" />
+
+                    <cs:FilterBitmapGrid Grid.Row="1"
+                                         Model="{x:Bind Batch.SelectedFilterBitmap, Mode=OneWay}"
+                                         HorizontalAlignment="Stretch"
+                                         VerticalAlignment="Stretch" />
+                </Grid>
             </TabViewItem>
         </TabView>
     </Grid>

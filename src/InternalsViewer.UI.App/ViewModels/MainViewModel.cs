@@ -22,6 +22,9 @@ public partial class MainViewModel(SettingsService settingsService)
     [ObservableProperty]
     private ObservableCollection<PageBookmark> _pageBookmarks = [];
 
+    [ObservableProperty]
+    private bool _isConnectingRecent;
+
     private SettingsService SettingsService { get; } = settingsService;
 
     public async Task InitializeAsync()
@@ -75,32 +78,48 @@ public partial class MainViewModel(SettingsService settingsService)
     }
 
     [RelayCommand]
-    private async Task ConnectRecent(RecentConnection recent)
+    private Task ConnectRecent(RecentConnection recent) => ConnectRecentAsync(recent, openQuery: false);
+
+    [RelayCommand]
+    private Task OpenRecentQuery(RecentConnection recent) => ConnectRecentAsync(recent, openQuery: true);
+
+    private async Task ConnectRecentAsync(RecentConnection recent, bool openQuery)
     {
-        switch (recent.ConnectionType)
+        IsConnectingRecent = true;
+
+        try
         {
-            case "Server":
-                var serverMessage = new ConnectServerMessage(recent.Value, recent);
+            switch (recent.ConnectionType)
+            {
+                case "Server":
+                    var serverMessage = new ConnectServerMessage(recent.Value, recent)
+                    {
+                        IsPasswordRequired = recent.IsPasswordRequired,
+                        OpenQuery = openQuery
+                    };
 
-                serverMessage.IsPasswordRequired = recent.IsPasswordRequired;
+                    await WeakReferenceMessenger.Default.Send(serverMessage);
 
-                await WeakReferenceMessenger.Default.Send(serverMessage);
+                    break;
 
-                break;
+                case "File":
+                    var fileMessage = new ConnectFileMessage(recent.Value, recent);
 
-            case "File":
-                var fileMessage = new ConnectFileMessage(recent.Value, recent);
+                    await WeakReferenceMessenger.Default.Send(fileMessage);
 
-                await WeakReferenceMessenger.Default.Send(fileMessage);
+                    break;
 
-                break;
+                case "Backup":
+                    var backupMessage = new ConnectBackupMessage(recent.Value, recent);
 
-            case "Backup":
-                var backupMessage = new ConnectBackupMessage(recent.Value, recent);
+                    await WeakReferenceMessenger.Default.Send(backupMessage);
 
-                await WeakReferenceMessenger.Default.Send(backupMessage);
-
-                break;
+                    break;
+            }
+        }
+        finally
+        {
+            IsConnectingRecent = false;
         }
     }
 

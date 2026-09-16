@@ -87,7 +87,7 @@ public sealed partial class MainWindow
         SystemBackdrop = new MicaBackdrop { Kind = MicaKind.Base };
 
         WeakReferenceMessenger.Default.Register<ConnectServerMessage>(this, (_, m)
-            => m.Reply(ConnectServer(m.ConnectionString, m.Recent, m.IsPasswordRequired)));
+            => m.Reply(ConnectServer(m.ConnectionString, m.Recent, m.IsPasswordRequired, m.OpenQuery)));
 
         WeakReferenceMessenger.Default.Register<ConnectFileMessage>(this, (_, m)
             => m.Reply(ConnectFile(m.Filename, m.Recent)));
@@ -181,7 +181,10 @@ public sealed partial class MainWindow
         return string.Empty;
     }
 
-    private async Task<bool> ConnectServer(string connectionString, RecentConnection recent, bool isPasswordRequired)
+    private async Task<bool> ConnectServer(string connectionString,
+                                           RecentConnection recent,
+                                           bool isPasswordRequired,
+                                           bool openQuery)
     {
         // Recent Connections don't store the password so if required it will prompt and update the connection string
         if (isPasswordRequired)
@@ -201,7 +204,7 @@ public sealed partial class MainWindow
 
         var connection = factory.Create(c => c.ConnectionString = connectionString);
 
-        if (!await AddConnection(connection))
+        if (!await AddConnection(connection, openQuery))
         {
             return false;
         }
@@ -433,9 +436,9 @@ public sealed partial class MainWindow
         }
     }
 
-    private async Task<bool> AddConnection(IConnectionType connection)
+    private async Task<bool> AddConnection(IConnectionType connection, bool openQuery = false)
     {
-        var error = await TryAddConnection(connection);
+        var error = await TryAddConnection(connection, openQuery: openQuery);
 
         if (error is null)
         {
@@ -447,7 +450,9 @@ public sealed partial class MainWindow
         return false;
     }
 
-    private async Task<Exception?> TryAddConnection(IConnectionType connection, IProgress<ProgressDetail>? progress = null)
+    private async Task<Exception?> TryAddConnection(IConnectionType connection,
+                                                    IProgress<ProgressDetail>? progress = null,
+                                                    bool openQuery = false)
     {
         try
         {
@@ -479,6 +484,11 @@ public sealed partial class MainWindow
                 BindTabTitle(viewModel, tab);
 
                 AddWindowTab(tab, content);
+
+                if (openQuery)
+                {
+                    OpenQuery(database);
+                }
             });
 
             return null;

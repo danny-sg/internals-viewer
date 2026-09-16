@@ -11,7 +11,8 @@ public sealed class CompressedDataFilter
                                  HashSet<long>? matchingIds,
                                  AccessPredicate.Comparison[] claimed,
                                  bool hasNulls,
-                                 long nullValue)
+                                 long nullValue,
+                                 CompressedFilterCategory category)
     {
         Filters = filters;
 
@@ -22,9 +23,15 @@ public sealed class CompressedDataFilter
         HasNulls = hasNulls;
 
         NullValue = nullValue;
+
+        Category = category;
     }
 
     public IReadOnlyList<AccessPredicate.Comparison> Claimed { get; }
+
+    public CompressedFilterCategory Category { get; }
+
+    public IReadOnlyCollection<long>? QualifyingDataIds => MatchingIds;
 
     private (ComparisonOperator Operator, decimal DataId)[] Filters { get; }
 
@@ -70,7 +77,12 @@ public sealed class CompressedDataFilter
 
         return filters.Count == 0
                ? null
-               : new CompressedDataFilter([.. filters], null, [.. claimed], segment.HasNulls, segment.NullValue ?? 0);
+               : new CompressedDataFilter([.. filters],
+                                          null,
+                                          [.. claimed],
+                                          segment.HasNulls,
+                                          segment.NullValue ?? 0,
+                                          CompressedFilterCategory.Comparison);
     }
 
     public bool IsMatch(long dataId)
@@ -182,7 +194,11 @@ public sealed class CompressedDataFilter
 
         var segment = reader.Segment;
 
-        return new CompressedDataFilter([], matching, [.. claimed], segment.HasNulls, segment.NullValue ?? 0);
+        var category = claimed.Count > 0 && claimed.TrueForAll(c => c.Operator == ComparisonOperator.Equal)
+                       ? CompressedFilterCategory.Equality
+                       : CompressedFilterCategory.RawBitmap;
+
+        return new CompressedDataFilter([], matching, [.. claimed], segment.HasNulls, segment.NullValue ?? 0, category);
     }
 
     private static bool References(AccessPredicate.Comparison comparison, string columnName)

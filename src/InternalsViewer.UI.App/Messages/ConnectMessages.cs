@@ -12,6 +12,8 @@ public sealed class ConnectServerMessage(string connectionString, RecentConnecti
     public RecentConnection Recent { get; } = recent;
 
     public bool IsPasswordRequired { get; set; }
+
+    public bool OpenQuery { get; set; }
 }
 
 public sealed class ConnectFileMessage(string filename, RecentConnection recent) : AsyncRequestMessage<bool>

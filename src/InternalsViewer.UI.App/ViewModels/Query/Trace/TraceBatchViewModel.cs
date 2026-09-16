@@ -1,11 +1,14 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.Linq;
 using CommunityToolkit.Mvvm.ComponentModel;
+using InternalsViewer.Execution.AccessPaths.Results.Steps;
 using InternalsViewer.Execution.BatchMode.Normalization;
 using InternalsViewer.Execution.BatchMode.Vectors;
 using InternalsViewer.UI.App.Helpers;
 using InternalsViewer.UI.App.Models.Query.Trace.Batch;
+using InternalsViewer.UI.App.Models.Query.Trace.Columnstore;
 
 namespace InternalsViewer.UI.App.ViewModels.Query.Trace;
 
@@ -14,6 +17,8 @@ namespace InternalsViewer.UI.App.ViewModels.Query.Trace;
 /// </summary>
 public sealed partial class TraceBatchViewModel : ObservableObject
 {
+    private const int MaxBitmapCells = 4096;
+
     [ObservableProperty]
     private bool _hasBatch;
 
@@ -65,6 +70,15 @@ public sealed partial class TraceBatchViewModel : ObservableObject
 
     [ObservableProperty]
     private string _detailHeading = string.Empty;
+
+    [ObservableProperty]
+    private FilterBitmapModel? _selectedFilterBitmap;
+
+    public ObservableCollection<FilterBitmapModel> FilterBitmaps { get; } = [];
+
+    public bool HasFilterBitmap => FilterBitmaps.Count > 0;
+
+    public bool HasMultipleFilterBitmaps => FilterBitmaps.Count > 1;
 
     /// <summary>
     /// Raised when a deep data link asks for the value it points at
@@ -122,6 +136,33 @@ public sealed partial class TraceBatchViewModel : ObservableObject
 
     public void MarkSpent() => IsSpent = HasBatch;
 
+    public void ApplyFilterBitmap(AccessStep.CompressedDataFilterBitmap step)
+    {
+        var model = FilterBitmapModel.From(step, MaxBitmapCells);
+
+        var existing = FilterBitmaps.FirstOrDefault(b => b.ColumnId == model.ColumnId);
+
+        var wasSelected = existing is not null && ReferenceEquals(SelectedFilterBitmap, existing);
+
+        if (existing is not null)
+        {
+            FilterBitmaps[FilterBitmaps.IndexOf(existing)] = model;
+        }
+        else
+        {
+            FilterBitmaps.Add(model);
+        }
+
+        if (SelectedFilterBitmap is null || wasSelected)
+        {
+            SelectedFilterBitmap = model;
+        }
+
+        OnPropertyChanged(nameof(HasFilterBitmap));
+
+        OnPropertyChanged(nameof(HasMultipleFilterBitmaps));
+    }
+
     public void Clear()
     {
         HasBatch = false;
@@ -147,6 +188,14 @@ public sealed partial class TraceBatchViewModel : ObservableObject
         DetailHeading = string.Empty;
 
         SelectionSummary = string.Empty;
+
+        FilterBitmaps.Clear();
+
+        SelectedFilterBitmap = null;
+
+        OnPropertyChanged(nameof(HasFilterBitmap));
+
+        OnPropertyChanged(nameof(HasMultipleFilterBitmaps));
 
         BatchNumber = 0;
 
@@ -197,11 +246,23 @@ public sealed partial class TraceBatchViewModel : ObservableObject
 
     private void ApplyScope(IReadOnlyList<BatchVector> vectors, IReadOnlyList<BatchVector> scope)
     {
+        var purityChanged = false;
+
         for (var i = 0; i < Columns.Count && i < vectors.Count; i++)
         {
             Columns[i].IsInScope = scope.Contains(vectors[i]);
 
-            Columns[i].IsPure = vectors[i].IsPure;
+            if (Columns[i].IsPure != vectors[i].IsPure)
+            {
+                Columns[i].IsPure = vectors[i].IsPure;
+
+                purityChanged = true;
+            }
+        }
+
+        if (purityChanged)
+        {
+            ColumnVersion++;
         }
     }
 

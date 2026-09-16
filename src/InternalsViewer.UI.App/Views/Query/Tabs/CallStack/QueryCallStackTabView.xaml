@@ -23,12 +23,24 @@
             <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center" RightTapped="OnNodeRightTapped">
                 <StackPanel.ContextFlyout>
                     <MenuFlyout>
-                        <MenuFlyoutItem Text="Expand all" Click="OnExpandAllClick"/>
-                        <MenuFlyoutItem Text="Collapse all" Click="OnCollapseAllClick"/>
+                        <MenuFlyoutItem Text="Expand All" Click="OnExpandAllClick"/>
+                        <MenuFlyoutItem Text="Collapse All" Click="OnCollapseAllClick"/>
                         <MenuFlyoutSeparator/>
-                        <MenuFlyoutItem Text="Copy to clipboard" Click="OnCopyClick"/>
+                        <MenuFlyoutItem Text="Copy to Clipboard" Click="OnCopySymbolClick"/>
+                        <MenuFlyoutItem Text="Copy Call Tree to Clipboard" Click="OnCopyCallTreeClick"/>
+                        <MenuFlyoutSubItem Text="WinDbg">
+                            <MenuFlyoutItem Text="Copy Breakpoint Command" Click="OnCopyWinDbgClick" Tag="Breakpoint"/>
+                            <MenuFlyoutItem Text="Copy Breakpoint With Stack Command" Click="OnCopyWinDbgClick" Tag="BreakpointWithStack"/>
+                            <MenuFlyoutItem Text="Copy Breakpoint at Frame Address Command" Click="OnCopyWinDbgClick" Tag="BreakpointAtFrame"/>
+                            <MenuFlyoutSeparator/>
+                            <MenuFlyoutItem Text="Copy Examine Symbol Command" Click="OnCopyWinDbgClick" Tag="ExamineSymbol"/>
+                            <MenuFlyoutItem Text="Copy Unassemble Function Command" Click="OnCopyWinDbgClick" Tag="UnassembleFunction"/>
+                            <MenuFlyoutSeparator/>
+                            <MenuFlyoutItem Text="Copy Display Type Command" Click="OnCopyWinDbgClick" Tag="DisplayType"/>
+                            <MenuFlyoutItem Text="Copy List Class Symbols Command" Click="OnCopyWinDbgClick" Tag="ListClassSymbols"/>
+                        </MenuFlyoutSubItem>
                         <MenuFlyoutSeparator/>
-                        <MenuFlyoutItem Text="List members" Click="OnListMembersClick"/>
+                        <MenuFlyoutItem Text="List Members" Click="OnListMembersClick"/>
                     </MenuFlyout>
                 </StackPanel.ContextFlyout>
 
@@ -378,6 +390,18 @@
                             <StackPanel.ContextFlyout>
                                 <MenuFlyout>
                                     <MenuFlyoutItem Text="Copy Signature" Click="OnCopySignatureClick"/>
+                                    <MenuFlyoutItem Text="Copy Symbol" Click="OnCopyMemberSymbolClick"/>
+                                    <MenuFlyoutSubItem Text="WinDbg">
+                                        <MenuFlyoutItem Text="Copy Breakpoint Command" Click="OnCopyMemberWinDbgClick" Tag="Breakpoint" IsEnabled="{x:Bind IsFunction}"/>
+                                        <MenuFlyoutItem Text="Copy Breakpoint With Stack Command" Click="OnCopyMemberWinDbgClick" Tag="BreakpointWithStack" IsEnabled="{x:Bind IsFunction}"/>
+                                        <MenuFlyoutItem Text="Copy Breakpoint on All Overloads Command" Click="OnCopyMemberWinDbgClick" Tag="BreakpointOnAllOverloads" IsEnabled="{x:Bind IsOverloadedFunction}"/>
+                                        <MenuFlyoutSeparator/>
+                                        <MenuFlyoutItem Text="Copy Examine Symbol Command" Click="OnCopyMemberWinDbgClick" Tag="ExamineSymbol"/>
+                                        <MenuFlyoutItem Text="Copy Unassemble Function Command" Click="OnCopyMemberWinDbgClick" Tag="UnassembleFunction" IsEnabled="{x:Bind IsFunction}"/>
+                                        <MenuFlyoutSeparator/>
+                                        <MenuFlyoutItem Text="Copy Display Type Command" Click="OnCopyMemberWinDbgClick" Tag="DisplayType"/>
+                                        <MenuFlyoutItem Text="Copy List Class Symbols Command" Click="OnCopyMemberWinDbgClick" Tag="ListClassSymbols"/>
+                                    </MenuFlyoutSubItem>
                                 </MenuFlyout>
                             </StackPanel.ContextFlyout>
                             <TextBlock Text="{x:Bind Prefix}"

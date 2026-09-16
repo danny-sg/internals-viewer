@@ -7,6 +7,7 @@
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     xmlns:connections="using:InternalsViewer.UI.App.Controls.Connections"
     xmlns:connections1="using:InternalsViewer.UI.App.Models.Connections"
+    xmlns:query="using:InternalsViewer.UI.App.Controls.Query"
     x:Name="CurrentStartPage"
     mc:Ignorable="d"
     Background="Transparent">
@@ -111,6 +112,24 @@
                                            Text="{x:Bind ConnectionType}"
                                            TextTrimming="CharacterEllipsis" />
                             </StackPanel>
+                            <HyperlinkButton Grid.Column="1"
+                                             Grid.ColumnSpan="2"
+                                             HorizontalAlignment="Right"
+                                             VerticalAlignment="Bottom"
+                                             Padding="6,2,6,2"
+                                             Visibility="{x:Bind IsServer}"
+                                             Command="{Binding ElementName=CurrentStartPage, Path=ViewModel.OpenRecentQueryCommand}"
+                                             CommandParameter="{x:Bind}">
+                                <StackPanel Orientation="Horizontal"
+                                            Spacing="4">
+                                    <query:QueryIcon Width="16"
+                                                     Height="16"
+                                                     VerticalAlignment="Center" />
+                                    <TextBlock Text="Query"
+                                               Style="{StaticResource CaptionTextBlockStyle}"
+                                               VerticalAlignment="Center" />
+                                </StackPanel>
+                            </HyperlinkButton>
                         </Grid>
                     </Button>
                 </DataTemplate>
@@ -121,15 +140,17 @@
                 </ItemsPanelTemplate>
             </GridView.ItemsPanel>
         </GridView>
-        <Button Margin="0,0,0,15"
-                Style="{StaticResource SubtleButtonStyle}"
-                FontSize="12"
-                HorizontalAlignment="Right"
-                Grid.Row="4"
-                Command="{x:Bind ViewModel.ClearRecentConnectionsCommand}"
-                Content="Clear recent"/>
+        <HyperlinkButton Margin="0,0,0,15"
+                         FontSize="12"
+                         HorizontalAlignment="Right"
+                         Grid.Row="4"
+                         Command="{x:Bind ViewModel.ClearRecentConnectionsCommand}">
+            <TextBlock Text="Clear recent"
+                       Style="{StaticResource CaptionTextBlockStyle}"
+                       VerticalAlignment="Center" />
+        </HyperlinkButton>
         <ProgressRing Grid.Row="5"
                       HorizontalAlignment="Left"
-                      IsActive="{x:Bind ViewModel.ConnectRecentCommand.IsRunning, Mode=OneWay}"/>
+                      IsActive="{x:Bind ViewModel.IsConnectingRecent, Mode=OneWay}"/>
     </Grid>
 </Page>

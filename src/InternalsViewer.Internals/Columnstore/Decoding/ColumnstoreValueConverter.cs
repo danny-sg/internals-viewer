@@ -9,10 +9,6 @@ namespace InternalsViewer.Internals.Columnstore.Decoding;
 /// <summary>
 /// Converts a decoded segment value to the type the column holds
 /// </summary>
-/// <remarks>
-/// A segment data id, once base and magnitude are applied, is the same integer a row store record holds for the
-/// column, so the row store converter does the type mapping.
-/// </remarks>
 public static class ColumnstoreValueConverter
 {
     /// <summary>
@@ -46,8 +42,8 @@ public static class ColumnstoreValueConverter
     /// Converts the min or max deep data a segment carries into the value it stands for
     /// </summary>
     /// <remarks>
-    /// Only the dictionary encoded string and binary columns populate these - everywhere else the catalog min and max
-    /// data ids are the values already, so there is nothing deeper to record.
+    /// Only the dictionary encoded string and binary columns populate these - everywhere else the catalog min and max data ids are the
+    /// values already, so there is nothing deeper to record.
     /// </remarks>
     public static object? ConvertDeepData(byte[]? deepData, ColumnStructure? structure)
     {

@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="utf-8"?>
+<UserControl
+    x:Class="InternalsViewer.UI.App.Controls.Trace.Columnstore.FilterBitmapGrid"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    xmlns:skia="using:SkiaSharp.Views.Windows"
+    mc:Ignorable="d">
+
+    <Grid Background="{ThemeResource LayerFillColorDefaultBrush}">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+
+        <Border Grid.Row="0"
+                Padding="8,4"
+                BorderThickness="0,1,0,1"
+                BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}">
+            <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+                <TextBlock Text="Compressed Data Filter"
+                           VerticalAlignment="Center"
+                           Style="{ThemeResource CaptionTextBlockStyle}"
+                           Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                <TextBlock Text="{x:Bind Model.Title, Mode=OneWay}"
+                           VerticalAlignment="Center"
+                           Style="{ThemeResource CaptionTextBlockStyle}" />
+                <TextBlock Text="{x:Bind Model.SubTitle, Mode=OneWay}"
+                           VerticalAlignment="Center"
+                           Style="{ThemeResource CaptionTextBlockStyle}"
+                           Foreground="{ThemeResource TextFillColorTertiaryBrush}" />
+            </StackPanel>
+        </Border>
+
+        <ScrollViewer x:Name="Scroller"
+                      Grid.Row="1"
+                      Padding="8"
+                      VerticalScrollBarVisibility="Auto"
+                      VerticalScrollMode="Enabled"
+                      HorizontalScrollBarVisibility="Disabled"
+                      HorizontalScrollMode="Disabled">
+            <skia:SKXamlCanvas x:Name="Canvas" IgnorePixelScaling="True" />
+        </ScrollViewer>
+    </Grid>
+</UserControl>

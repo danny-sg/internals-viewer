@@ -25,6 +25,8 @@ public sealed class BatchToRowIterator(IIteratorFactory factory) : IteratorBase
 
     public IBatchIterator? Source { get; private set; }
 
+    public long BatchNumber => Source?.BatchNumber ?? 0;
+
     private ExecutionBatch? Batch { get; set; }
 
     private int Position { get; set; }

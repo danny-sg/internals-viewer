@@ -441,6 +441,8 @@ public sealed partial class TraceTabViewModel : ObservableObject, IDisposable
 
     private static bool IsBatchBoundary(AccessStep step)
         => step is AccessStep.BatchProduced
+                   or AccessStep.BatchSkipped
+                   or AccessStep.AggregatePushdown
                    or AccessStep.FilterVector
                    or AccessStep.BatchFiltered
                    or AccessStep.ComputeVector
@@ -527,7 +529,9 @@ public sealed partial class TraceTabViewModel : ObservableObject, IDisposable
 
     [RelayCommand(AllowConcurrentExecutions = true)]
     public Task RunToNextBatch()
-        => RunUntilAsync(static step => step is AccessStep.BatchProduced);
+        => RunUntilAsync(static step => step is AccessStep.BatchProduced
+                                                 or AccessStep.BatchSkipped
+                                                 or AccessStep.AggregatePushdown);
 
     [RelayCommand]
     public void ResetStep()
@@ -1029,6 +1033,8 @@ public sealed partial class TraceTabViewModel : ObservableObject, IDisposable
         foreach (var visual in Visuals)
         {
             visual.ApplyReplay(result.Replays[visual]);
+
+            visual.ReplayColumnstore(stepper.History);
         }
 
         Applier.AttachHashTables(stepper);

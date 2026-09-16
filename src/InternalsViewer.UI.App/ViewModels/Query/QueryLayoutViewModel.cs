@@ -116,6 +116,9 @@ public sealed partial class QueryLayoutViewModel : ObservableObject, IDisposable
     /// </summary>
     public DockNode SerializeRoot() => DockLayoutSerializer.Serialize(Dock.Root);
 
+    /// <summary>
+    /// Rebuilds the dock from a persisted layout, opening on the SQL editor whichever tab was selected when it was saved
+    /// </summary>
     public bool RestoreRoot(DockNode? dto)
     {
         var root = DockLayoutSerializer.Deserialize(dto, key => _documentsByKey.GetValueOrDefault(key));
@@ -126,6 +129,8 @@ public sealed partial class QueryLayoutViewModel : ObservableObject, IDisposable
         }
 
         Dock.SetRoot(root);
+
+        Dock.Activate(_documentsByKey[SqlKey]);
 
         return true;
     }

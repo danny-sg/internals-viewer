@@ -3,6 +3,7 @@ using InternalsViewer.Execution.AccessPaths.Results.Steps;
 using InternalsViewer.Execution.AccessPaths.Search;
 using InternalsViewer.Execution.Interfaces;
 using InternalsViewer.Execution.Interfaces.Iterators;
+using InternalsViewer.Execution.Iterators.Common;
 using InternalsViewer.Execution.Records;
 using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Internals.Interfaces.Engine;
@@ -25,6 +26,10 @@ public sealed class SelectIterator(IIteratorFactory factory) : IteratorBase, IUn
 
     public IIterator? Input { get; private set; }
 
+    private BatchToRowIterator? BatchAdapter { get; set; }
+
+    private long EmittedBatchNumber { get; set; }
+
     public override async Task OpenAsync(IteratorDefinition definition,
                                          IteratorContext context,
                                          CancellationToken cancellationToken)
@@ -40,6 +45,9 @@ public sealed class SelectIterator(IIteratorFactory factory) : IteratorBase, IUn
 
         Input = factory.Create(select.Source);
         RowCount = 0;
+
+        BatchAdapter = Input as BatchToRowIterator;
+        EmittedBatchNumber = 0;
 
         await Input.OpenAsync(select.Source, context, cancellationToken);
     }
@@ -65,7 +73,19 @@ public sealed class SelectIterator(IIteratorFactory factory) : IteratorBase, IUn
 
         RowCount++;
 
-        await EmitAsync(new AccessStep.Output(RowCount) { EmittedRecord = row }, cancellationToken);
+        if (BatchAdapter is { } adapter)
+        {
+            if (adapter.BatchNumber != EmittedBatchNumber)
+            {
+                EmittedBatchNumber = adapter.BatchNumber;
+
+                await EmitAsync(new AccessStep.Output(RowCount) { EmittedRecord = row }, cancellationToken);
+            }
+        }
+        else
+        {
+            await EmitAsync(new AccessStep.Output(RowCount) { EmittedRecord = row }, cancellationToken);
+        }
 
         CurrentRow = ProjectedRecord.Project(row, OutputList);
 

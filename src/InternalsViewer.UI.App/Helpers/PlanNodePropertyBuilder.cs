@@ -144,21 +144,6 @@ public static class PlanNodePropertyBuilder
                 batchGroup.Children.Add(new PlanNodeProperty("Instruction Set", batchInfo.CpuInstructionSet));
             }
 
-            if (batchInfo.IsFilterOnCompressedDataUsed is { } compressedFilter)
-            {
-                batchGroup.Children.Add(BoolProperty("Compressed Data Filter", compressedFilter));
-            }
-
-            if (Distinct(batchInfo.SegmentScans.Select(s => s.FilterType)) is { Length: > 0 } filterTypes)
-            {
-                batchGroup.Children.Add(new PlanNodeProperty("Filter Type", filterTypes));
-            }
-
-            if (Distinct(batchInfo.SegmentScans.Select(s => s.FilterOnCompressedDataType)) is { Length: > 0 } earlyTypes)
-            {
-                batchGroup.Children.Add(new PlanNodeProperty("Compressed Data Filter Type", earlyTypes));
-            }
-
             if (batchInfo.IsDeepDataPossible is { } deepDataPossible)
             {
                 batchGroup.Children.Add(BoolProperty("Deep Data Possible", deepDataPossible));
@@ -201,23 +186,65 @@ public static class PlanNodePropertyBuilder
 
                 foreach (var rowGroup in batchInfo.SegmentScans.GroupBy(s => s.RowGroupId).OrderBy(g => g.Key))
                 {
-                    var segments = rowGroup.OrderBy(s => s.ColumnId).ToList();
+                    var columns = rowGroup.GroupBy(s => s.ColumnId).OrderBy(g => g.Key).ToList();
 
                     var rowGroupProperty = new PlanNodeProperty($"Row Group {rowGroup.Key}",
-                                                                $"{segments.Count} segments");
+                                                                $"{columns.Count} segments");
 
-                    foreach (var segment in segments)
+                    foreach (var column in columns)
                     {
+                        var scans = column.ToList();
+
+                        var segment = scans[0];
+
                         var columnName = columnNames?.GetValueOrDefault(segment.ColumnId);
 
                         var segmentName = string.IsNullOrEmpty(columnName)
                                           ? $"Column {segment.ColumnId}"
                                           : $"{columnName} ({segment.ColumnId})";
 
-                        rowGroupProperty.Children.Add(new PlanNodeProperty(segmentName, SegmentSummary(segment))
+                        var segmentProperty = new PlanNodeProperty(segmentName, string.Empty)
                         {
                             Tooltip = SegmentDetail(segment)
-                        });
+                        };
+
+                        segmentProperty.Children.Add(new PlanNodeProperty("Encoding Type", segment.EncodingType.SplitString()));
+
+                        segmentProperty.Children.Add(new PlanNodeProperty("Pure Buckets",
+                                                                          scans.Max(s => s.PureRowBuckets ?? 0).ToString("N0", CultureInfo.InvariantCulture)));
+
+                        segmentProperty.Children.Add(new PlanNodeProperty("Impure Buckets",
+                                                                          scans.Max(s => s.ImpureRowBuckets ?? 0).ToString("N0", CultureInfo.InvariantCulture)));
+
+                        var filters = scans.Where(s => !IsNone(s.FilterType)).ToList();
+
+                        if (filters.Count == 1)
+                        {
+                            AddFilter(segmentProperty, filters[0]);
+                        }
+                        else if (filters.Count > 1)
+                        {
+                            var filtersNode = new PlanNodeProperty("Filters", filters.Count.ToString(CultureInfo.InvariantCulture));
+
+                            foreach (var filter in filters)
+                            {
+                                var filterNode = new PlanNodeProperty(filter.FilterType.SplitString(), string.Empty);
+
+                                filterNode.Children.Add(BoolProperty("Compressed Data Filter", filter.IsFilterOnCompressedDataUsed));
+
+                                if (!IsNone(filter.FilterOnCompressedDataType))
+                                {
+                                    filterNode.Children.Add(new PlanNodeProperty("Compressed Data Filter Type",
+                                                                                 filter.FilterOnCompressedDataType.SplitString()));
+                                }
+
+                                filtersNode.Children.Add(filterNode);
+                            }
+
+                            segmentProperty.Children.Add(filtersNode);
+                        }
+
+                        rowGroupProperty.Children.Add(segmentProperty);
                     }
 
                     rowGroups.Children.Add(rowGroupProperty);
@@ -586,13 +613,11 @@ public static class PlanNodePropertyBuilder
         group.Children.Add(new PlanNodeProperty(name, $"{kilobytes.ToString("N0", CultureInfo.InvariantCulture)} KB"));
     }
 
-    private static string SegmentSummary(SegmentScanInfo segment)
-        => $"{segment.EncodingType}, {segment.BitPacking} bit";
-
     private static string SegmentDetail(SegmentScanInfo segment)
     {
         var builder = new StringBuilder();
 
+        builder.AppendLine($"Bit packing: {segment.BitPacking} bit");
         builder.AppendLine($"Compressed type: {segment.CompressedDataType}");
         builder.AppendLine($"Data ids: {segment.MinDataId:N0} to {segment.MaxDataId:N0}");
         builder.AppendLine($"Base id: {segment.BaseId:N0}, magnitude {segment.Magnitude}");
@@ -606,11 +631,19 @@ public static class PlanNodePropertyBuilder
         return builder.ToString();
     }
 
-    private static string Distinct(IEnumerable<string> values)
-        => string.Join(", ", values.Where(v => !string.IsNullOrEmpty(v) && v != "None")
-                                   .Distinct(StringComparer.OrdinalIgnoreCase)
-                                   .Order(StringComparer.OrdinalIgnoreCase)
-                                   .Select(v => v.SplitString()));
+    private static void AddFilter(PlanNodeProperty target, SegmentScanInfo filter)
+    {
+        target.Children.Add(new PlanNodeProperty("Filter Type", filter.FilterType.SplitString()));
+
+        target.Children.Add(BoolProperty("Compressed Data Filter", filter.IsFilterOnCompressedDataUsed));
+
+        if (!IsNone(filter.FilterOnCompressedDataType))
+        {
+            target.Children.Add(new PlanNodeProperty("Compressed Data Filter Type", filter.FilterOnCompressedDataType.SplitString()));
+        }
+    }
+
+    private static bool IsNone(string value) => string.IsNullOrEmpty(value) || value == "None";
 
     private static PlanNodeProperty BoolProperty(string name, bool value)
     {

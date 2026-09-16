@@ -395,6 +395,24 @@ public sealed partial class TraceVisualViewModel(TraceVisualType visualType,
         return new TraceVisualReplay(visited, lastPage, lastDataPage, lastSlot, lastSlotCount);
     }
 
+    public void ReplayColumnstore(IReadOnlyList<AccessStep> steps)
+    {
+        if (VisualType != TraceVisualType.Columnstore)
+        {
+            return;
+        }
+
+        ResetColumnstore();
+
+        foreach (var step in steps)
+        {
+            if (step.NodeId == NodeId)
+            {
+                ApplyColumnstore(step);
+            }
+        }
+    }
+
     public async Task LoadColumnstoreAsync(CancellationToken cancellationToken)
     {
         var service = App.GetService<ColumnstoreService>();
@@ -532,6 +550,13 @@ public sealed partial class TraceVisualViewModel(TraceVisualType visualType,
                 BatchFirstRow = skipped.FirstRow;
                 BatchRowCount = skipped.RowCount;
                 SetRowGroup(skipped.RowGroupId, r => r.IsVisited = true);
+                break;
+
+            case AccessStep.AggregatePushdown pushdown:
+                ActiveRowGroupId = pushdown.RowGroupId;
+                BatchFirstRow = pushdown.FirstRow;
+                BatchRowCount = pushdown.RowCount;
+                SetRowGroup(pushdown.RowGroupId, r => r.IsVisited = true);
                 break;
         }
     }

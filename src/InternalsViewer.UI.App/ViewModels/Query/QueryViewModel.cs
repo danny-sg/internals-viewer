@@ -40,7 +40,6 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using InternalsViewer.Internals.Interfaces.MetadataProviders;
-using InternalsViewer.Query.CallStack;
 using InternalsViewer.Query.CallStack.Categories;
 using InternalsViewer.Query.Events;
 using InternalsViewer.Query.Events.Transactions;
@@ -697,11 +696,21 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
             var showModule = listing.Groups.Count > 1;
 
+            var overloaded = listing.Groups
+                                    .SelectMany(g => g.Members)
+                                    .GroupBy(m => (m.Module, m.Name))
+                                    .Where(g => g.Count() > 1)
+                                    .Select(g => g.Key)
+                                    .ToHashSet();
+
             return listing.Groups
                           .SelectMany(g => g.Members)
                           .Where(m => string.IsNullOrWhiteSpace(CallStackMembersFilter)
                                       || m.Signature.Contains(CallStackMembersFilter, StringComparison.OrdinalIgnoreCase))
-                          .Select(m => new ClassMemberRow(showModule ? $"{m.Module}!" : string.Empty, m))
+                          .Select(m => new ClassMemberRow(showModule ? $"{m.Module}!" : string.Empty,
+                                                          m,
+                                                          listing.ClassName,
+                                                          overloaded.Contains((m.Module, m.Name))))
                           .ToList();
         }
     }

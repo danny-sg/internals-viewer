@@ -21,11 +21,13 @@ public sealed class ColumnstoreScanRenderer : IDisposable
 
     public const float MinimumBatchHeight = 3f;
 
-    private const double BatchContrast = 0.75;
+    private const byte BatchAlpha = 170;
 
-    private static readonly SKColor ValueRunColour = new(0, 0, 0);
+    private static readonly SKColor BatchLineColour = new(120, 120, 120, BatchAlpha);
 
-    private static readonly SKColor ReadRunColour = new(80, 80, 80);
+    private static readonly SKColor PureBatchColour = ColumnstoreColours.ValueHashBased.WithAlpha(BatchAlpha);
+
+    private static readonly SKColor ImpureBatchColour = ColumnstoreColours.StoreByValueBased.WithAlpha(BatchAlpha);
 
     private const byte UnopenedAlpha = 128;
 
@@ -261,7 +263,7 @@ public sealed class ColumnstoreScanRenderer : IDisposable
             top = area.Bottom - height;
         }
 
-        paint.Color = Contrast(nodeColour);
+        paint.Color = BatchLineColour;
 
         canvas.DrawRect(new SKRect(area.Left, top, area.Right, top + height), paint);
 
@@ -284,9 +286,9 @@ public sealed class ColumnstoreScanRenderer : IDisposable
 
             paint.Color = RunAt(segment, firstRow) switch
             {
-                true => ValueRunColour,
-                false => ReadRunColour,
-                _ => Contrast(nodeColour)
+                true => PureBatchColour,
+                false => ImpureBatchColour,
+                _ => BatchLineColour
             };
 
             var left = rect.Left + SegmentInset + (i * (width + SegmentGap));
@@ -334,8 +336,4 @@ public sealed class ColumnstoreScanRenderer : IDisposable
                (byte)(colour.Green + ((255 - colour.Green) * amount)),
                (byte)(colour.Blue + ((255 - colour.Blue) * amount)));
 
-    private static SKColor Contrast(SKColor colour)
-        => new((byte)Math.Min(255, colour.Red * BatchContrast),
-               (byte)Math.Min(255, colour.Green * BatchContrast),
-               (byte)Math.Min(255, colour.Blue * BatchContrast));
 }
