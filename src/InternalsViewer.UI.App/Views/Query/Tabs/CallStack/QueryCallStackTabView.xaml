@@ -29,15 +29,16 @@
                         <MenuFlyoutItem Text="Copy to Clipboard" Click="OnCopySymbolClick"/>
                         <MenuFlyoutItem Text="Copy Call Tree to Clipboard" Click="OnCopyCallTreeClick"/>
                         <MenuFlyoutSubItem Text="WinDbg">
-                            <MenuFlyoutItem Text="Copy Breakpoint Command" Click="OnCopyWinDbgClick" Tag="Breakpoint"/>
-                            <MenuFlyoutItem Text="Copy Breakpoint With Stack Command" Click="OnCopyWinDbgClick" Tag="BreakpointWithStack"/>
-                            <MenuFlyoutItem Text="Copy Breakpoint at Frame Address Command" Click="OnCopyWinDbgClick" Tag="BreakpointAtFrame"/>
+                            <MenuFlyoutItem Text="Set Breakpoint" Click="OnSendWinDbgClick" Tag="Breakpoint"/>
+                            <MenuFlyoutItem Text="Set Breakpoint With Stack" Click="OnSendWinDbgClick" Tag="BreakpointWithStack"/>
+                            <MenuFlyoutItem Text="Set Breakpoint, Dump Arguments and Continue" Click="OnSendWinDbgClick" Tag="DumpArguments"/>
+                            <MenuFlyoutItem Text="Set Breakpoint, Dump Arguments and Break" Click="OnSendWinDbgClick" Tag="DumpArgumentsAndBreak"/>
+                            <MenuFlyoutItem Text="Set Breakpoint at Frame Address" Click="OnSendWinDbgClick" Tag="BreakpointAtFrame"/>
                             <MenuFlyoutSeparator/>
-                            <MenuFlyoutItem Text="Copy Examine Symbol Command" Click="OnCopyWinDbgClick" Tag="ExamineSymbol"/>
-                            <MenuFlyoutItem Text="Copy Unassemble Function Command" Click="OnCopyWinDbgClick" Tag="UnassembleFunction"/>
+                            <MenuFlyoutItem Text="Examine Symbol" Click="OnSendWinDbgClick" Tag="ExamineSymbol"/>
                             <MenuFlyoutSeparator/>
-                            <MenuFlyoutItem Text="Copy Display Type Command" Click="OnCopyWinDbgClick" Tag="DisplayType"/>
-                            <MenuFlyoutItem Text="Copy List Class Symbols Command" Click="OnCopyWinDbgClick" Tag="ListClassSymbols"/>
+                            <MenuFlyoutItem Text="Display Type" Click="OnSendWinDbgClick" Tag="DisplayType"/>
+                            <MenuFlyoutItem Text="List Class Symbols" Click="OnSendWinDbgClick" Tag="ListClassSymbols"/>
                         </MenuFlyoutSubItem>
                         <MenuFlyoutSeparator/>
                         <MenuFlyoutItem Text="List Members" Click="OnListMembersClick"/>
@@ -392,15 +393,16 @@
                                     <MenuFlyoutItem Text="Copy Signature" Click="OnCopySignatureClick"/>
                                     <MenuFlyoutItem Text="Copy Symbol" Click="OnCopyMemberSymbolClick"/>
                                     <MenuFlyoutSubItem Text="WinDbg">
-                                        <MenuFlyoutItem Text="Copy Breakpoint Command" Click="OnCopyMemberWinDbgClick" Tag="Breakpoint" IsEnabled="{x:Bind IsFunction}"/>
-                                        <MenuFlyoutItem Text="Copy Breakpoint With Stack Command" Click="OnCopyMemberWinDbgClick" Tag="BreakpointWithStack" IsEnabled="{x:Bind IsFunction}"/>
-                                        <MenuFlyoutItem Text="Copy Breakpoint on All Overloads Command" Click="OnCopyMemberWinDbgClick" Tag="BreakpointOnAllOverloads" IsEnabled="{x:Bind IsOverloadedFunction}"/>
+                                        <MenuFlyoutItem Text="Set Breakpoint" Click="OnSendMemberWinDbgClick" Tag="Breakpoint" IsEnabled="{x:Bind IsFunction}"/>
+                                        <MenuFlyoutItem Text="Set Breakpoint With Stack" Click="OnSendMemberWinDbgClick" Tag="BreakpointWithStack" IsEnabled="{x:Bind IsFunction}"/>
+                                        <MenuFlyoutItem Text="Set Breakpoint, Dump Arguments and Continue" Click="OnSendMemberWinDbgClick" Tag="DumpArguments" IsEnabled="{x:Bind IsFunction}"/>
+                                        <MenuFlyoutItem Text="Set Breakpoint, Dump Arguments and Break" Click="OnSendMemberWinDbgClick" Tag="DumpArgumentsAndBreak" IsEnabled="{x:Bind IsFunction}"/>
+                                        <MenuFlyoutItem Text="Set Breakpoint on All Overloads" Click="OnSendMemberWinDbgClick" Tag="BreakpointOnAllOverloads" IsEnabled="{x:Bind IsOverloadedFunction}"/>
                                         <MenuFlyoutSeparator/>
-                                        <MenuFlyoutItem Text="Copy Examine Symbol Command" Click="OnCopyMemberWinDbgClick" Tag="ExamineSymbol"/>
-                                        <MenuFlyoutItem Text="Copy Unassemble Function Command" Click="OnCopyMemberWinDbgClick" Tag="UnassembleFunction" IsEnabled="{x:Bind IsFunction}"/>
+                                        <MenuFlyoutItem Text="Examine Symbol" Click="OnSendMemberWinDbgClick" Tag="ExamineSymbol"/>
                                         <MenuFlyoutSeparator/>
-                                        <MenuFlyoutItem Text="Copy Display Type Command" Click="OnCopyMemberWinDbgClick" Tag="DisplayType"/>
-                                        <MenuFlyoutItem Text="Copy List Class Symbols Command" Click="OnCopyMemberWinDbgClick" Tag="ListClassSymbols"/>
+                                        <MenuFlyoutItem Text="Display Type" Click="OnSendMemberWinDbgClick" Tag="DisplayType"/>
+                                        <MenuFlyoutItem Text="List Class Symbols" Click="OnSendMemberWinDbgClick" Tag="ListClassSymbols"/>
                                     </MenuFlyoutSubItem>
                                 </MenuFlyout>
                             </StackPanel.ContextFlyout>

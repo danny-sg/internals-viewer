@@ -10,6 +10,14 @@ using InternalsViewer.Execution.Interfaces.BatchMode;
 
 namespace InternalsViewer.Execution.Iterators.BatchMode;
 
+/// <summary>
+/// Batch mode Filter iterator
+/// </summary>
+/// <remarks>
+/// The batch mode filter operator checks a predicate against each row and uses the selection vector to remove rows if they do not qualify.
+///
+/// No data is removed or compacted, all amendments are made to the selection vector.
+/// </remarks>    
 public sealed class BatchFilterIterator(IIteratorFactory factory) : IBatchIterator
 {
     public int NodeId { get; private set; }
@@ -150,7 +158,7 @@ public sealed class BatchFilterIterator(IIteratorFactory factory) : IBatchIterat
             Outcomes = new RowOutcome[batch.Capacity];
         }
 
-        Values.Bind(batch);
+        Values.BindBatch(batch);
 
         var matches = 0;
 
@@ -158,7 +166,7 @@ public sealed class BatchFilterIterator(IIteratorFactory factory) : IBatchIterat
         {
             var row = selection[i];
 
-            Values.MoveTo(row);
+            Values.SetRow(row);
 
             var outcome = Evaluate() switch
             {

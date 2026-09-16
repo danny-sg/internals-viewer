@@ -25,6 +25,7 @@ using InternalsViewer.UI.App.Services;
 using InternalsViewer.UI.App.Services.XEvents;
 using InternalsViewer.UI.App.ViewModels.Allocation;
 using InternalsViewer.UI.App.ViewModels.Docking;
+using InternalsViewer.UI.App.Services.Query.Debugging;
 using InternalsViewer.UI.App.ViewModels.Query.Trace;
 using InternalsViewer.UI.App.ViewModels.Columnstore;
 using InternalsViewer.UI.App.ViewModels.Index;
@@ -67,7 +68,8 @@ public sealed class QueryViewModelFactory(ILogger<QueryViewModel> logger,
                                           PageTabViewModelFactory pageTabViewModelFactory,
                                           TraceDirectoryService traceDirectoryService,
                                           IBufferPoolInfoProvider bufferPoolInfoProvider,
-                                          TraceTabViewModelFactory traceTabViewModelFactory)
+                                          TraceTabViewModelFactory traceTabViewModelFactory,
+                                          WinDbgService winDbgService)
 {
     public QueryViewModel Create(DatabaseSource database) => new(logger,
                                                                  queryRunner,
@@ -79,6 +81,7 @@ public sealed class QueryViewModelFactory(ILogger<QueryViewModel> logger,
                                                                  traceDirectoryService,
                                                                  bufferPoolInfoProvider,
                                                                  traceTabViewModelFactory,
+                                                                 winDbgService,
                                                                  database);
 }
 
@@ -89,6 +92,8 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
     private const string TraceDocumentKey = "Trace";
 
     private readonly TraceTabViewModelFactory _traceTabViewModelFactory;
+
+    private readonly WinDbgService _winDbgService;
 
     private readonly Dictionary<string, TraceTabViewModel> _openTraces = [];
 
@@ -301,9 +306,11 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
                           TraceDirectoryService traceDirectoryService,
                           IBufferPoolInfoProvider bufferPoolInfoProvider,
                           TraceTabViewModelFactory traceTabViewModelFactory,
+                          WinDbgService winDbgService,
                           DatabaseSource database)
     {
         _traceTabViewModelFactory = traceTabViewModelFactory;
+        _winDbgService = winDbgService;
         Logger = logger;
         QueryRunner = queryRunner;
         BufferPoolInfoProvider = bufferPoolInfoProvider;
@@ -846,6 +853,27 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
         return frames;
     }
 
+    /// <summary>
+    /// Resolves the signature of the function a call stack frame is in, off the UI thread
+    /// </summary>
+    /// <remarks>
+    /// Best effort: a signature is a nicety over the register dump, so a resolver failure returns null and lets the
+    /// caller fall back rather than failing the command.
+    /// </remarks>
+    public async Task<string?> ResolveFrameSignatureAsync(CallstackFrame frame)
+    {
+        try
+        {
+            return await Task.Run(() => GetSymbolResolver().ResolveSignature(frame));
+        }
+        catch (Exception exception)
+        {
+            Logger.LogDebug(exception, "Resolving the signature for a frame failed");
+
+            return null;
+        }
+    }
+
     private CallstackResolver GetSymbolResolver()
     {
         var symbolsPath = _settingsViewModel.SymbolsPath;
@@ -1015,6 +1043,8 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
         _symbolResolver = null;
 
         Layout.Dispose();
+
+        _ = _winDbgService.DetachAsync();
 
         base.Dispose();
     }

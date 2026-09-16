@@ -1,4 +1,4 @@
-# Settings
+﻿# Settings
 
 Settings are opened from the start page. They cover where trace files and symbols are stored, plus the application's diagnostic log. All settings save as soon as they are changed.
 
@@ -31,6 +31,18 @@ The maximum size, in MB, a trace file is allowed to grow to. Large or long-runni
 ## Symbols Path
 
 The folder SQL Server's debugging symbols (PDB files) are downloaded to when resolving [Call Stack](/docs/user-guide/query/CallStack) events. Defaults to `C:\Symbols`.
+
+## Debugging
+
+Settings for sending commands from the [Call Stack](/docs/user-guide/query/CallStack#sending-commands-to-windbg) to a WinDbg session attached to SQL Server.
+
+### WinDbg Password
+
+The password the WinDbg session requires on its `InternalsViewer` named pipe, so nothing else on the machine can join it. Generated the first time the app runs and stored in plain text with the other settings.
+
+### WinDbg Path
+
+The WinDbg executable to start when attaching to SQL Server. Blank finds WinDbg from the Microsoft Store, then the Debugging Tools for Windows.
 
 ## Diagnostic Log
 

@@ -12,7 +12,7 @@ internal sealed class BatchRowValueSource : IRowValueSource
 
     private int Row { get; set; }
 
-    public void Bind(ExecutionBatch batch)
+    public void BindBatch(ExecutionBatch batch)
     {
         Batch = batch;
 
@@ -24,7 +24,7 @@ internal sealed class BatchRowValueSource : IRowValueSource
         }
     }
 
-    public void MoveTo(int row) => Row = row;
+    public void SetRow(int row) => Row = row;
 
     public AccessValue GetValue(int ordinal, string? columnName = null)
     {

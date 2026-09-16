@@ -29,6 +29,8 @@
         <HoursBetweenUpdateChecks>0</HoursBetweenUpdateChecks>
         <AppxPackageDir>D:\package\InternalsViewer</AppxPackageDir>
         <EnforceCodeStyleInBuild>True</EnforceCodeStyleInBuild>
+        <DefineConstants>$(DefineConstants);DISABLE_XAML_GENERATED_MAIN</DefineConstants>
+        <WindowsAppSdkDeploymentManagerInitialize>false</WindowsAppSdkDeploymentManagerInitialize>
         
         
     </PropertyGroup>
@@ -279,6 +281,7 @@
       <ProjectReference Include="..\InternalsViewer.Connection.BackupFile\InternalsViewer.Connection.BackupFile.csproj" />
       <ProjectReference Include="..\InternalsViewer.Internals\InternalsViewer.Internals.csproj" />
       <ProjectReference Include="..\InternalsViewer.Query\InternalsViewer.Query.csproj" />
+      <ProjectReference Include="..\InternalsViewer.Query.Debugging\InternalsViewer.Query.Debugging.csproj" />
     </ItemGroup>
 
     <ItemGroup>

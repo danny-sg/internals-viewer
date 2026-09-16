@@ -91,6 +91,25 @@ public sealed class CallstackResolver(string symbolsPath) : IDisposable
         return new ClassMemberGroup(frame.Module, members);
     }
 
+    /// <summary>
+    /// The signature of the function containing the frame's address, or null when its symbols are not available
+    /// </summary>
+    public string? ResolveSignature(CallstackFrame frame)
+    {
+        var pdbPath = GetPdbPath(frame);
+
+        if (!HasSymbolInformation(frame) || !File.Exists(pdbPath))
+        {
+            return null;
+        }
+
+        var resolver = _resolverCache.GetOrAdd(pdbPath, path => new DiaResolver(path));
+
+        return resolver.EnumerateSymbolsAtRva(frame.Rva)
+                       .Select(detail => detail.Signature)
+                       .FirstOrDefault(signature => !string.IsNullOrEmpty(signature));
+    }
+
     private static string RemoveScope(string signature, string prefix)
     {
         var index = signature.IndexOf(prefix, StringComparison.Ordinal);

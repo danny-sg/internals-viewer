@@ -1,4 +1,4 @@
-# Call Stack
+﻿# Call Stack
 
 Enable **Call Stack** in the [Events menu](/docs/user-guide/query#events-menu) and every captured event carries the SQL Server call stack that produced it - the chain of internal engine functions that were executing at the moment the event fired. Internals Viewer combines the call stacks from every captured event into a single merged tree for the query - the **Call Tree**.
 
@@ -29,15 +29,27 @@ The search box filters the tree to matching frames. Right-clicking a node gives:
 - **Expand All** / **Collapse All** - from that node down
 - **Copy to Clipboard** - copies the frame's symbol as `module!Class::Method`
 - **Copy Call Tree to Clipboard** - copies a formatted, nested text representation of the stack from that node down
-- **WinDbg** - copies a debugger command aimed at the frame, ready to paste into WinDbg attached to `sqlservr.exe`:
-  - **Breakpoint** (`bp`) breaks whenever the function is entered. **Breakpoint With Stack** prints the stack on each hit and continues, so a run can be logged without stopping it. **Breakpoint at Frame Address** breaks at the exact return address the trace captured, the instruction after the call this frame was waiting on.
-  - **Examine Symbol** (`x`) lists the function's address and any overloads. **Unassemble Function** (`uf`) disassembles it.
+- **WinDbg** - runs a debugger command aimed at the frame in the WinDbg session attached to `sqlservr.exe` (see [Sending Commands to WinDbg](#sending-commands-to-windbg)):
+  - **Set Breakpoint** (`bp`) breaks whenever the function is entered. **Set Breakpoint With Stack** prints the stack on each hit and continues, so a run can be logged without stopping it. **Set Breakpoint at Frame Address** breaks at the exact return address the trace captured, the instruction after the call this frame was waiting on.
+  - **Examine Symbol** (`x`) lists the function's address and any overloads.
   - **Display Type** (`dt`) dumps the class layout and **List Class Symbols** lists every symbol the class declares.
 
   A frame whose symbol did not resolve is addressed as `module+offset`, so the commands still land on the right code.
 - **List Members** - lists the members the symbols declare on the frame's class
 
-Right-clicking a member in the Members pane gives **Copy Signature**, **Copy Symbol** (the member as `module!Class::Member`, without its parameters) and the same **WinDbg** submenu. Debugger commands take a symbol name rather than a signature, so the parameters are dropped. Where the name is overloaded, the breakpoint and unassemble commands use the member's address so the overload chosen is the one hit, and **Breakpoint on All Overloads** (`bm`) covers every overload at once.
+Right-clicking a member in the Members pane gives **Copy Signature**, **Copy Symbol** (the member as `module!Class::Member`, without its parameters) and the same **WinDbg** submenu. Debugger commands take a symbol name rather than a signature, so the parameters are dropped. Where the name is overloaded, the breakpoint commands use the member's address so the overload chosen is the one hit, and **Set Breakpoint on All Overloads** (`bm`) covers every overload at once.
+
+## Sending Commands to WinDbg
+
+The **Debugger** button on the tab strip, next to Focus, manages the session the submenus send their commands to:
+
+- **Attach to SQL Server** looks up the instance's process id with `SERVERPROPERTY('ProcessID')`, starts WinDbg elevated attached to it and listening on a named pipe for Internals Viewer, then connects. Windows asks for administrator consent, since WinDbg has to run elevated to attach to SQL Server. The instance has to be on the same machine.
+- **Connect to Session** joins a WinDbg you already have attached. Type the command **Copy .server Command** gives you into that WinDbg first. Type it rather than passing it with `-c`: a server WinDbg starts from a startup script listens but refuses every client.
+- **Detach** clears every breakpoint, detaches WinDbg from SQL Server, and drops the app's connection. WinDbg stays open with no target, so it can be closed safely. Closing a query tab does the same, so a debugger is never left attached to the instance by accident.
+
+Commands are sent as an extra client of the session, so they and their output appear in the WinDbg window as if typed there. If the target is running when a command is sent, the app breaks in, runs it, and resumes. The pipe password is in [Settings](/docs/user-guide/settings#debugging).
+
+Nothing is needed until the first command is sent. WinDbg from the Microsoft Store has to be installed to attach, but a machine without it still does everything else. The Store package does not allow its debugger engine to be loaded by other programs, so the first use copies the engine into `%LOCALAPPDATA%\InternalsViewer\WinDbg`, and again whenever WinDbg updates.
 
 ## Flame Graph
 

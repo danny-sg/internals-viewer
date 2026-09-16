@@ -115,7 +115,7 @@ public sealed class BatchComputeScalarIterator(IIteratorFactory factory) : IBatc
 
         TakeOutput(vectors);
 
-        Values.Bind(batch);
+        Values.BindBatch(batch);
 
         var selection = batch.SelectionVector;
 
@@ -123,7 +123,7 @@ public sealed class BatchComputeScalarIterator(IIteratorFactory factory) : IBatc
         {
             var row = selection[i];
 
-            Values.MoveTo(row);
+            Values.SetRow(row);
 
             for (var c = 0; c < Columns.Count; c++)
             {

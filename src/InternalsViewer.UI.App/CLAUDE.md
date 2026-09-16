@@ -32,6 +32,12 @@ Grids use `WinUI.TableView` (1.4.1)
 - Tab content is rebuilt on every switch. Where that is too slow the pattern is a tab strip plus panels
   toggled by `Visibility`, rather than real tab items.
 
+## SkiaSharp
+
+- Don't instantiate skia objects in a render loop. Create them once as private fields and reuse, or use `SKAutoCanvasRestore` to avoid 
+  leaks.
+- Ensure that the private fields are disposed when the view is unloaded. The `SKElement` does not own them, so they must be disposed explicitly.
+
 ## Disposal
 
 Closing a tab must dispose its view model chain or the whole connection leaks. The entry point is the

@@ -12,6 +12,7 @@ using InternalsViewer.UI.App.Activation;
 using InternalsViewer.UI.App.Messages;
 using InternalsViewer.UI.App.Models;
 using InternalsViewer.UI.App.Services;
+using InternalsViewer.UI.App.Services.Query.Debugging;
 using InternalsViewer.UI.App.Services.XEvents;
 using InternalsViewer.UI.App.ViewModels;
 using InternalsViewer.UI.App.ViewModels.Columnstore;
@@ -53,6 +54,7 @@ public partial class App
 
             services.AddSingleton<SettingsService>();
             services.AddSingleton<TraceDirectoryService>();
+            services.AddSingleton<WinDbgService>();
 
             services.AddSingleton<AppLogService>();
             services.AddSingleton<ILoggerProvider, AppLogLoggerProvider>();

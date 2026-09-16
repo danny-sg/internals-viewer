@@ -108,9 +108,9 @@ public sealed class CompressedDataFilter
         return true;
     }
 
-    public static HashSet<long>? MatchingDictionaryIds(AccessPredicate? predicate,
-                                                       SegmentReader reader,
-                                                       EvaluationContext context)
+    public static HashSet<long>? GetMatchingDictionaryIds(AccessPredicate? predicate,
+                                                          SegmentReader reader,
+                                                          EvaluationContext context)
     {
         if (predicate is null || reader.Segment.Column?.Structure is not { } structure)
         {
@@ -183,7 +183,7 @@ public sealed class CompressedDataFilter
                                                              ColumnStructure structure,
                                                              EvaluationContext context)
     {
-        if (MatchingDictionaryIds(predicate, reader, context) is not { } matching)
+        if (GetMatchingDictionaryIds(predicate, reader, context) is not { } matching)
         {
             return null;
         }

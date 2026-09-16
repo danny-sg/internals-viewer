@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <Page
     x:Class="InternalsViewer.UI.App.Views.SettingsView"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
@@ -29,7 +29,7 @@
             </controls:SettingsExpander.ItemsHeader>
 
             <controls:SettingsExpander.Items>
-                <controls:SettingsCard Header="Trace Path"
+                <controls:SettingsCard Header="Trace path"
                                        Description="Local directory used for SQL Server .xel trace files">
 
                     <StackPanel Orientation="Vertical">
@@ -49,14 +49,14 @@
                                     VerticalAlignment="Center"
                                     IsEnabled="{x:Bind ViewModel.UseCustomTraceDirectory, Mode=OneWay}"/>
                         </StackPanel>
-                        <Button Content="Grant Permissions"
+                        <Button Content="Grant permissions"
                                 Command="{x:Bind ViewModel.GrantPermissionsCommand}"
                                 HorizontalAlignment="Right"
                                 Margin="0,4,0,0"
                                 IsEnabled="{x:Bind ViewModel.UseCustomTraceDirectory, Mode=OneWay}"/>
                     </StackPanel>
                 </controls:SettingsCard>
-                <controls:SettingsCard Header="Auto-Delete Trace"
+                <controls:SettingsCard Header="Auto-delete trace"
                                        Description="Automatically delete trace files after a trace has run">
                     <ToggleSwitch IsOn="{x:Bind ViewModel.AutoDeleteTrace, Mode=TwoWay}"
                                   HorizontalAlignment="Right"
@@ -64,14 +64,14 @@
                                   OffContent=""
                                   IsEnabled="{x:Bind ViewModel.UseCustomTraceDirectory, Mode=OneWay}"/>
                 </controls:SettingsCard>
-                <controls:SettingsCard Header="Full Columnstore Allocation Resolution"
-                                       Description="Map every columnstore page chain when a query reads one, so reads resolve to a row group, column and segment. Large indexes are skipped regardless">
+                <controls:SettingsCard Header="Full Columnstore allocation resolution"
+                                       Description="Map every columnstore page chain">
                     <ToggleSwitch IsOn="{x:Bind ViewModel.FullColumnstoreResolution, Mode=TwoWay}"
                                   HorizontalAlignment="Right"
                                   OnContent=""
                                   OffContent=""/>
                 </controls:SettingsCard>
-                <controls:SettingsCard Header="Maximum Trace Size"
+                <controls:SettingsCard Header="Maximum trace size"
                                        Description="Maximum size (MB) of the .xel trace">
                     <NumberBox Value="{x:Bind ViewModel.MaxTraceSizeMb, Mode=TwoWay}"
                                Minimum="1"
@@ -83,7 +83,7 @@
                                MinWidth="150"/>
                 </controls:SettingsCard>
 
-                <controls:SettingsCard Header="Symbols Path"
+                <controls:SettingsCard Header="Symbols path"
                                        Description="Local directory used to cache downloaded PDB symbol files"
                               >
                     <StackPanel Orientation="Horizontal" Spacing="8">
@@ -98,7 +98,24 @@
             </controls:SettingsExpander.Items>
         </controls:SettingsExpander>
 
-        <controls:SettingsCard Header="Diagnostic Log"
+        <controls:SettingsExpander Header="Debugging"
+                                   Description="Sending commands from the Call Stack to a WinDbg session attached to SQL Server">
+            <controls:SettingsExpander.Items>
+                <controls:SettingsCard Header="WinDbg Password"
+                                       Description="Password the WinDbg session requires on its InternalsViewer named pipe. Generated once, stored in plain text with the other settings">
+                    <TextBox Text="{x:Bind ViewModel.WinDbgPassword, Mode=TwoWay, UpdateSourceTrigger=LostFocus}"
+                             MinWidth="300"/>
+                </controls:SettingsCard>
+                <controls:SettingsCard Header="WinDbg Path"
+                                       Description="WinDbg executable to start when attaching. Leave blank to use the Microsoft Store WinDbg or the Debugging Tools for Windows">
+                    <TextBox Text="{x:Bind ViewModel.WinDbgPath, Mode=TwoWay, UpdateSourceTrigger=LostFocus}"
+                             PlaceholderText="WinDbgX.exe"
+                             MinWidth="800"/>
+                </controls:SettingsCard>
+            </controls:SettingsExpander.Items>
+        </controls:SettingsExpander>
+
+        <controls:SettingsCard Header="Diagnostic log"
                                Description="Activity log from the internals loading pipeline">
             <StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Right">
                 <Button x:Name="ClearLogButton" Content="Clear Log" Click="ClearLogButton_Click"/>
@@ -107,7 +124,7 @@
             </StackPanel>
         </controls:SettingsCard>
 
-        <controls:SettingsCard Header="Current Memory Usage">
+        <controls:SettingsCard Header="Current memory usage">
             <TextBlock VerticalAlignment="Center"
                        Text="{x:Bind ViewModel.MemoryUsage, Mode=OneWay}"/>
         </controls:SettingsCard>

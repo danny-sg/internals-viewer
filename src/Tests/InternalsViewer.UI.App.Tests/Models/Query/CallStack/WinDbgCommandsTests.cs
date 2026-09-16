@@ -20,7 +20,6 @@ public class WinDbgCommandsTests
 
         Assert.Equal("bp sqlmin!CQScanTableScanNew::GetRow", WinDbgCommands.Breakpoint(frame));
         Assert.Equal("bp sqlmin!CQScanTableScanNew::GetRow \"k; g\"", WinDbgCommands.BreakpointWithStack(frame));
-        Assert.Equal("uf sqlmin!CQScanTableScanNew::GetRow", WinDbgCommands.UnassembleFunction(frame));
         Assert.Equal("x sqlmin!CQScanTableScanNew::GetRow", WinDbgCommands.ExamineSymbol(frame));
     }
 
@@ -61,7 +60,7 @@ public class WinDbgCommandsTests
 
         Assert.Equal("bp @!\"sqlmin!CQScanTop<1>::GetRow\"", WinDbgCommands.Breakpoint(frame));
         Assert.Equal("bp @!\"sqlmin!CQScanTop<1>::GetRow\"+0x10", WinDbgCommands.BreakpointAtFrame(frame));
-        Assert.Equal("uf @!\"sqlmin!CQScanTop<1>::GetRow\"", WinDbgCommands.UnassembleFunction(frame));
+        Assert.Equal("bp @!\"sqlmin!CQScanTop<1>::GetRow\" \"k; g\"", WinDbgCommands.BreakpointWithStack(frame));
         Assert.Equal("x sqlmin!CQScanTop<1>::GetRow", WinDbgCommands.ExamineSymbol(frame));
         Assert.Equal("dt sqlmin!CQScanTop<1>", WinDbgCommands.DisplayType(frame));
     }
@@ -90,7 +89,6 @@ public class WinDbgCommandsTests
         Assert.Equal("sqlmin!HoBtAccess::AcquireHoBtRowGroupLock", WinDbgCommands.Symbol(member));
         Assert.Equal("bp sqlmin!HoBtAccess::AcquireHoBtRowGroupLock", WinDbgCommands.Breakpoint(member));
         Assert.Equal("bp sqlmin!HoBtAccess::AcquireHoBtRowGroupLock \"k; g\"", WinDbgCommands.BreakpointWithStack(member));
-        Assert.Equal("uf sqlmin!HoBtAccess::AcquireHoBtRowGroupLock", WinDbgCommands.UnassembleFunction(member));
         Assert.Equal("x sqlmin!HoBtAccess::AcquireHoBtRowGroupLock", WinDbgCommands.ExamineSymbol(member));
         Assert.Equal("dt sqlmin!HoBtAccess", WinDbgCommands.DisplayType(member));
         Assert.Equal("x sqlmin!HoBtAccess::*", WinDbgCommands.ListClassSymbols(member));
@@ -104,9 +102,43 @@ public class WinDbgCommandsTests
         Assert.Equal("sqlmin!HoBtAccess::GetRow", WinDbgCommands.Symbol(member));
         Assert.Equal("bp sqlmin+0x2509D40", WinDbgCommands.Breakpoint(member));
         Assert.Equal("bp sqlmin+0x2509D40 \"k; g\"", WinDbgCommands.BreakpointWithStack(member));
-        Assert.Equal("uf sqlmin+0x2509D40", WinDbgCommands.UnassembleFunction(member));
         Assert.Equal("bm sqlmin!HoBtAccess::GetRow", WinDbgCommands.BreakpointOnAllOverloads(member));
         Assert.Equal("x sqlmin!HoBtAccess::GetRow", WinDbgCommands.ExamineSymbol(member));
+    }
+
+    [Fact]
+    public void DumpArguments_Reads_Each_Argument_From_The_Signature_One_Per_Line()
+    {
+        var member = Member("AcquireHoBtRowGroupLock", "AcquireHoBtRowGroupLock(unsigned long,AutoHoBtRowGroupFlushLock *)");
+
+        var command = WinDbgCommands.DumpArguments(member);
+
+        Assert.StartsWith("bp sqlmin!HoBtAccess::AcquireHoBtRowGroupLock \".echo === Arguments ===;", command);
+        Assert.Contains(".printf \\\"this = rcx = %p\\\\n\\\", @rcx", command);
+        Assert.Contains(".printf \\\"arg1 (unsigned long) = rdx = %p\\\\n\\\", @rdx", command);
+        Assert.Contains(".printf \\\"arg2 (AutoHoBtRowGroupFlushLock *) = r8 = %p\\\\n\\\", @r8", command);
+        Assert.EndsWith("; g\"", command);
+    }
+
+    [Fact]
+    public void DumpArguments_Maps_Strings_And_Later_Arguments_To_The_Right_Location()
+    {
+        var member = Member("Probe", "Probe(char *,wchar_t *,int,int,int)");
+
+        var command = WinDbgCommands.DumpArguments(member);
+
+        Assert.Contains(".printf \\\"arg1 (char *) = rdx = %ma\\\\n\\\", @rdx", command);
+        Assert.Contains(".printf \\\"arg2 (wchar_t *) = r8 = %mu\\\\n\\\", @r8", command);
+        Assert.Contains(".printf \\\"arg3 (int) = r9 = %p\\\\n\\\", @r9", command);
+        Assert.Contains(".printf \\\"arg4 (int) = [rsp+0x28] = %p\\\\n\\\", poi(@rsp+0x28)", command);
+    }
+
+    [Fact]
+    public void DumpArgumentsAndBreak_Leaves_Out_The_Resume()
+    {
+        var member = Member("AcquireHoBtRowGroupLock", "AcquireHoBtRowGroupLock(unsigned long)");
+
+        Assert.DoesNotContain("; g\"", WinDbgCommands.DumpArgumentsAndBreak(member));
     }
 
     private static ClassMemberRow Member(string name, string signature, uint rva = 0x1000, bool overloaded = false) =>

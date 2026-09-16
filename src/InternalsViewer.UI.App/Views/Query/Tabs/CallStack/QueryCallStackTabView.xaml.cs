@@ -1,6 +1,8 @@
 ﻿using System.Collections.Generic;
 using System.ComponentModel;
 using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
 using System;
 using InternalsViewer.Query.CallStack;
 using InternalsViewer.Query.Events.Operators;
@@ -10,10 +12,14 @@ using InternalsViewer.Query.Plans.Model;
 using InternalsViewer.UI.App.Controls.CallStack;
 using InternalsViewer.UI.App.Controls.Docking;
 using InternalsViewer.UI.App.Models.Query.CallStack;
+using InternalsViewer.UI.App.Services.Query.Debugging;
 using InternalsViewer.UI.App.ViewModels.Query;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Controls.Primitives;
 using Microsoft.UI.Xaml.Input;
+using Microsoft.UI;
+using Microsoft.UI.Xaml.Media;
+using Microsoft.UI.Xaml.Shapes;
 using Windows.ApplicationModel.DataTransfer;
 
 namespace InternalsViewer.UI.App.Views.Query.Tabs.CallStack;
@@ -36,6 +42,12 @@ public sealed partial class QueryCallStackTabView : UserControl, IDocumentComman
     private Button? _forwardButton;
 
     private ToggleButton? _focusToggle;
+
+    private Button? _winDbgButton;
+
+    private Ellipse? _winDbgStatusDot;
+
+    private WinDbgService? _winDbg;
 
     private HashSet<CallStackNode>? _visible;
 
@@ -78,6 +90,10 @@ public sealed partial class QueryCallStackTabView : UserControl, IDocumentComman
         InitializeComponent();
 
         DataContextChanged += (_, _) => OnViewModelChanged();
+
+        Loaded += (_, _) => WinDbg.StatusChanged += OnWinDbgStatusChanged;
+
+        Unloaded += (_, _) => WinDbg.StatusChanged -= OnWinDbgStatusChanged;
     }
 
     public QueryViewModel? ViewModel => DataContext as QueryViewModel;
@@ -142,6 +158,8 @@ public sealed partial class QueryCallStackTabView : UserControl, IDocumentComman
 
     public string DockToggleTooltip => IsMembersPaneDockedBottom ? "Dock Right" : "Dock Bottom";
 
+    private WinDbgService WinDbg => _winDbg ??= App.GetService<WinDbgService>();
+
     /// <summary>
     /// Builds the history and focus controls for a tab strip to host
     /// </summary>
@@ -189,6 +207,38 @@ public sealed partial class QueryCallStackTabView : UserControl, IDocumentComman
 
         _focusToggle.Click += OnFocusChanged;
 
+        var winDbgMenu = new MenuFlyout();
+
+        winDbgMenu.Items.Add(WinDbgMenuItem("Attach to SQL Server", OnAttachWinDbgClick));
+        winDbgMenu.Items.Add(WinDbgMenuItem("Connect to Session", OnConnectWinDbgClick));
+        winDbgMenu.Items.Add(WinDbgMenuItem("Detach", OnDetachWinDbgClick));
+        winDbgMenu.Items.Add(new MenuFlyoutSeparator());
+        winDbgMenu.Items.Add(WinDbgMenuItem("Clear Breakpoints", OnClearBreakpointsClick));
+        winDbgMenu.Items.Add(new MenuFlyoutSeparator());
+        winDbgMenu.Items.Add(WinDbgMenuItem("Copy .server Command", OnCopyServerCommandClick));
+
+        _winDbgStatusDot = new Ellipse { Width = 7, Height = 7, VerticalAlignment = VerticalAlignment.Center };
+
+        var winDbgLabel = new StackPanel
+        {
+            Orientation = Orientation.Horizontal,
+            Spacing = 5,
+            VerticalAlignment = VerticalAlignment.Center
+        };
+
+        winDbgLabel.Children.Add(new TextBlock { Text = "Debugger", VerticalAlignment = VerticalAlignment.Center });
+        winDbgLabel.Children.Add(_winDbgStatusDot);
+
+        _winDbgButton = new Button
+        {
+            Style = (Style)Application.Current.Resources["TabCommandButtonStyle"],
+            Content = winDbgLabel,
+            Margin = new Thickness(2, 0, 0, 0),
+            Flyout = winDbgMenu
+        };
+
+        UpdateWinDbgStatus();
+
         var commands = new StackPanel
         {
             Orientation = Orientation.Horizontal,
@@ -201,8 +251,74 @@ public sealed partial class QueryCallStackTabView : UserControl, IDocumentComman
         commands.Children.Add(_backButton);
         commands.Children.Add(_forwardButton);
         commands.Children.Add(_focusToggle);
+        commands.Children.Add(_winDbgButton);
 
         return commands;
+    }
+
+    private static MenuFlyoutItem WinDbgMenuItem(string text, RoutedEventHandler handler)
+    {
+        var item = new MenuFlyoutItem { Text = text };
+
+        item.Click += handler;
+
+        return item;
+    }
+
+    private void OnWinDbgStatusChanged(object? sender, EventArgs e) => DispatcherQueue.TryEnqueue(UpdateWinDbgStatus);
+
+    private void UpdateWinDbgStatus()
+    {
+        if (_winDbgButton is null)
+        {
+            return;
+        }
+
+        ToolTipService.SetToolTip(_winDbgButton, WinDbg.Status);
+
+        if (_winDbgStatusDot is not null)
+        {
+            _winDbgStatusDot.Fill = new SolidColorBrush(WinDbg.IsConnected ? Colors.LimeGreen : Colors.Gray);
+        }
+    }
+
+    private void OnAttachWinDbgClick(object sender, RoutedEventArgs e)
+    {
+        if (_viewModel is { } viewModel)
+        {
+            RunWinDbg(() => WinDbg.AttachAsync(viewModel.Database.Connection.GetConnectionString(), CancellationToken.None));
+        }
+    }
+
+    private void OnConnectWinDbgClick(object sender, RoutedEventArgs e) =>
+        RunWinDbg(() => WinDbg.ConnectAsync(CancellationToken.None));
+
+    private void OnDetachWinDbgClick(object sender, RoutedEventArgs e) => RunWinDbg(WinDbg.DetachAsync);
+
+    private void OnCopyServerCommandClick(object sender, RoutedEventArgs e) => CopyText(WinDbg.ServerOptions.ServerCommand);
+
+    private void OnClearBreakpointsClick(object sender, RoutedEventArgs e) =>
+        RunWinDbg(() => WinDbg.SendAsync(WinDbgCommands.ClearBreakpoints, CancellationToken.None));
+
+    private async void RunWinDbg(Func<Task> action)
+    {
+        try
+        {
+            await action();
+        }
+        catch (Exception exception)
+        {
+            var dialog = new ContentDialog
+            {
+                Title = "WinDbg",
+                Content = exception.Message,
+                CloseButtonText = "OK",
+                XamlRoot = XamlRoot,
+                Style = Application.Current.Resources["DefaultContentDialogStyle"] as Style
+            };
+
+            await dialog.ShowAsync();
+        }
     }
 
     private void OnFocusChanged(object sender, RoutedEventArgs e)
@@ -354,30 +470,46 @@ public sealed partial class QueryCallStackTabView : UserControl, IDocumentComman
         }
     }
 
-    private void OnCopyWinDbgClick(object sender, RoutedEventArgs e)
+    private void OnSendWinDbgClick(object sender, RoutedEventArgs e)
     {
         if (_contextNode?.Content is not CallStackNode { Frame: { } frame } || sender is not MenuFlyoutItem { Tag: string command })
         {
             return;
         }
 
-        var text = command switch
+        if (command is "DumpArguments" or "DumpArgumentsAndBreak")
+        {
+            RunWinDbg(async () => await WinDbg.SendAsync(await FrameArgumentsCommand(command, frame), CancellationToken.None));
+
+            return;
+        }
+
+        if (FrameCommand(command, frame) is { } text)
+        {
+            RunWinDbg(() => WinDbg.SendAsync(text, CancellationToken.None));
+        }
+    }
+
+    private async Task<string> FrameArgumentsCommand(string command, CallstackFrame frame)
+    {
+        var signature = _viewModel is { } viewModel ? await viewModel.ResolveFrameSignatureAsync(frame) : null;
+
+        return command == "DumpArgumentsAndBreak"
+            ? WinDbgCommands.DumpArgumentsAndBreak(frame, signature)
+            : WinDbgCommands.DumpArguments(frame, signature);
+    }
+
+    private static string? FrameCommand(string command, CallstackFrame frame) =>
+        command switch
         {
             "Breakpoint" => WinDbgCommands.Breakpoint(frame),
             "BreakpointWithStack" => WinDbgCommands.BreakpointWithStack(frame),
             "BreakpointAtFrame" => WinDbgCommands.BreakpointAtFrame(frame),
             "ExamineSymbol" => WinDbgCommands.ExamineSymbol(frame),
-            "UnassembleFunction" => WinDbgCommands.UnassembleFunction(frame),
             "DisplayType" => WinDbgCommands.DisplayType(frame),
             "ListClassSymbols" => WinDbgCommands.ListClassSymbols(frame),
             _ => null
         };
-
-        if (text is not null)
-        {
-            CopyText(text);
-        }
-    }
 
     private void OnListMembersClick(object sender, RoutedEventArgs e)
     {
@@ -408,30 +540,29 @@ public sealed partial class QueryCallStackTabView : UserControl, IDocumentComman
         }
     }
 
-    private void OnCopyMemberWinDbgClick(object sender, RoutedEventArgs e)
+    private void OnSendMemberWinDbgClick(object sender, RoutedEventArgs e)
     {
-        if (_contextMember is not { } member || sender is not MenuFlyoutItem { Tag: string command })
+        if (_contextMember is { } member
+            && sender is MenuFlyoutItem { Tag: string command }
+            && MemberCommand(command, member) is { } text)
         {
-            return;
+            RunWinDbg(() => WinDbg.SendAsync(text, CancellationToken.None));
         }
+    }
 
-        var text = command switch
+    private static string? MemberCommand(string command, ClassMemberRow member) =>
+        command switch
         {
             "Breakpoint" => WinDbgCommands.Breakpoint(member),
             "BreakpointWithStack" => WinDbgCommands.BreakpointWithStack(member),
+            "DumpArguments" => WinDbgCommands.DumpArguments(member),
+            "DumpArgumentsAndBreak" => WinDbgCommands.DumpArgumentsAndBreak(member),
             "BreakpointOnAllOverloads" => WinDbgCommands.BreakpointOnAllOverloads(member),
             "ExamineSymbol" => WinDbgCommands.ExamineSymbol(member),
-            "UnassembleFunction" => WinDbgCommands.UnassembleFunction(member),
             "DisplayType" => WinDbgCommands.DisplayType(member),
             "ListClassSymbols" => WinDbgCommands.ListClassSymbols(member),
             _ => null
         };
-
-        if (text is not null)
-        {
-            CopyText(text);
-        }
-    }
 
     private static void CopyText(string text)
     {

@@ -42,6 +42,9 @@ else in the solution.
   built on top of Internals. Registers itself with `RegisterExecutionServices()`; callers invoke both.
 - **`InternalsViewer.Query`** — Extended Events capture, execution plan parsing, callstack resolution.
   Plan types live under `Plans/` (`Model/`, `Operators/`, `Joins/`, `Parsers/`); event types under `Events/`.
+- **`InternalsViewer.Query.Debugging`** — sending commands to a WinDbg session: a debugger engine remote client over the
+  engine's vtables (no compile-time dependency), served from a host process (`--windbg-host`) because the engine
+  cannot share the app process with the DIA bridge's `dbghelp.dll`. Depends on nothing else in the solution.
 - **`InternalsViewer.Connection.BackupFile`** — reads pages straight out of `.bak` files (MTF container,
   compressed and striped backups included).
 - **`InternalsViewer.Connection.Sandbox`**, **`InternalsViewer.TransactionLog`** — supporting connection and
@@ -71,7 +74,7 @@ Additional conventions for this repository:
 - Leave a blank line between non-trivial statements, including consecutive `var` declarations and
   multi-statement `switch` case bodies.
 - UI display strings are Title Case ("Bit Pack Entries", not "Bit pack entries").
-- Never use "..." in prose or display strings — write "etc." instead.
+- Never use "..." in prose or display strings — write "etc." instead. "Loading..." messages are an exeption to this rule.
 - Prefer short sentences over semicolons in prose.
 
 ## Known environmental build failures

@@ -60,9 +60,9 @@ public class BatchRowValueSourceTests
 
         var source = new BatchRowValueSource();
 
-        source.Bind(batch);
+        source.BindBatch(batch);
 
-        source.MoveTo(0);
+        source.SetRow(0);
 
         Assert.True(source.GetValue(0, "Missing").IsNull);
 
@@ -76,9 +76,9 @@ public class BatchRowValueSourceTests
 
         var source = new BatchRowValueSource();
 
-        source.Bind(batch);
+        source.BindBatch(batch);
 
-        source.MoveTo(2);
+        source.SetRow(2);
 
         Assert.Equal(30, source.GetValue(0, "Spread").Numeric);
 
@@ -89,13 +89,13 @@ public class BatchRowValueSourceTests
     {
         var source = new BatchRowValueSource();
 
-        source.Bind(batch);
+        source.BindBatch(batch);
 
         var results = new bool[batch.RowCount];
 
         for (var row = 0; row < batch.RowCount; row++)
         {
-            source.MoveTo(row);
+            source.SetRow(row);
 
             results[row] = PredicateEvaluator.Evaluate(predicate, source, EvaluationContext.Now) == true;
         }

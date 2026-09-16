@@ -22,6 +22,9 @@ public partial class SettingsViewModel(SettingsService settingsService, TraceDir
 
     private const string ColumnstoreResolutionKey = "FullColumnstoreAllocationResolution";
 
+    private const string WinDbgPasswordKey = "WinDbgPassword";
+    private const string WinDbgPathKey = "WinDbgPath";
+
     private const double DefaultMaxTraceSizeMb = 150;
 
     [ObservableProperty]
@@ -50,6 +53,12 @@ public partial class SettingsViewModel(SettingsService settingsService, TraceDir
 
     [ObservableProperty]
     private bool _fullColumnstoreResolution = true;
+
+    [ObservableProperty]
+    private string _winDbgPassword = string.Empty;
+
+    [ObservableProperty]
+    private string _winDbgPath = string.Empty;
 
     [ObservableProperty]
     private string _memoryUsage = string.Empty;
@@ -103,6 +112,12 @@ public partial class SettingsViewModel(SettingsService settingsService, TraceDir
         var savedPlanAnnotations = await SettingsService.ReadSettingAsync<bool?>(PlanAnnotationsKey);
 
         PlanAnnotations = savedPlanAnnotations ?? false;
+
+        var savedWinDbgPassword = await SettingsService.ReadSettingAsync<string>(WinDbgPasswordKey);
+
+        WinDbgPassword = string.IsNullOrWhiteSpace(savedWinDbgPassword) ? Guid.NewGuid().ToString("N")[..12] : savedWinDbgPassword;
+
+        WinDbgPath = await SettingsService.ReadSettingAsync<string>(WinDbgPathKey) ?? string.Empty;
     }
 
     /// <summary>
@@ -119,6 +134,16 @@ public partial class SettingsViewModel(SettingsService settingsService, TraceDir
     partial void OnSymbolsPathChanged(string value)
     {
         _ = SettingsService.SaveSettingAsync(SymbolsPathKey, value);
+    }
+
+    partial void OnWinDbgPasswordChanged(string value)
+    {
+        _ = SettingsService.SaveSettingAsync(WinDbgPasswordKey, value);
+    }
+
+    partial void OnWinDbgPathChanged(string value)
+    {
+        _ = SettingsService.SaveSettingAsync(WinDbgPathKey, value);
     }
 
     partial void OnUseCustomTraceDirectoryChanged(bool value)
