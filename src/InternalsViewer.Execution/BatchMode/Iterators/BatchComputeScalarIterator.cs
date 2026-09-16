@@ -1,0 +1,196 @@
+﻿using System.Data;
+using InternalsViewer.Execution.Common.AccessPaths.Binding;
+using InternalsViewer.Execution.BatchMode.AccessPaths.Definitions;
+using InternalsViewer.Execution.Common.AccessPaths.Predicates;
+using InternalsViewer.Execution.Common.AccessPaths.Results;
+using InternalsViewer.Execution.Common.AccessPaths.Results.Steps;
+using InternalsViewer.Execution.Common.AccessPaths.Values;
+using InternalsViewer.Execution.BatchMode.Data.Vectors;
+using InternalsViewer.Execution.Common.Interfaces;
+using InternalsViewer.Execution.BatchMode.Interfaces;
+
+namespace InternalsViewer.Execution.BatchMode.Iterators;
+
+public sealed class BatchComputeScalarIterator(IIteratorFactory factory) : IBatchIterator
+{
+    public int NodeId { get; private set; }
+
+    public bool IsComplete { get; private set; }
+
+    public StopReason? StopReason { get; private set; }
+
+    public long BatchCount { get; private set; }
+
+    public IReadOnlyList<ComputedColumn> Columns { get; private set; } = [];
+
+    public ExecutionBatch? CurrentBatch => Input?.CurrentBatch;
+
+    public IReadOnlyList<BatchVector> OutputVectors => Output;
+
+    public long BatchNumber => Input?.BatchNumber ?? 0;
+
+    public IBatchIterator? Input { get; private set; }
+
+    private IteratorContext Context { get; set; } = null!;
+
+    private BatchRowValueSource Values { get; } = new();
+
+    private List<BatchVector> Output { get; } = [];
+
+    public async Task OpenAsync(IteratorDefinition definition, IteratorContext context, CancellationToken cancellationToken)
+    {
+        var compute = definition.Expect<BatchComputeScalarDefinition>();
+
+        Context = context;
+
+        NodeId = definition.NodeId;
+
+        Columns = compute.Columns;
+
+        BatchCount = 0;
+
+        IsComplete = false;
+
+        StopReason = null;
+
+        await EmitAsync(new AccessStep.Open(), cancellationToken);
+
+        Input = factory.CreateBatch(compute.Source);
+
+        await Input.OpenAsync(compute.Source, context, cancellationToken);
+    }
+
+    public async ValueTask<ExecutionBatch?> GetNextBatchAsync(CancellationToken cancellationToken)
+    {
+        if (IsComplete || Input is null)
+        {
+            return null;
+        }
+
+        if (await Input.GetNextBatchAsync(cancellationToken) is not { } batch)
+        {
+            IsComplete = true;
+
+            StopReason = Input.StopReason ?? InternalsViewer.Execution.Common.AccessPaths.Results.StopReason.RowGroupsExhausted;
+
+            await EmitAsync(new AccessStep.Stopped(StopReason.Value), cancellationToken);
+
+            return null;
+        }
+
+        BatchCount++;
+
+        var computed = Compute(batch);
+
+        var columnNames = string.Join(", ", Columns.Select(c => c.Name));
+
+        await EmitAsync(new AccessStep.ComputeVector(BatchCount, batch.RowGroupId, columnNames, computed), cancellationToken);
+
+        return batch;
+    }
+
+    public async Task CloseAsync()
+    {
+        if (Input is not null)
+        {
+            await Input.CloseAsync();
+        }
+
+        IsComplete = true;
+
+        await EmitAsync(new AccessStep.Close(), CancellationToken.None);
+    }
+
+    private ValueTask EmitAsync(AccessStep step, CancellationToken cancellationToken)
+        => Context.Steps.EmitAsync(step with { NodeId = NodeId }, cancellationToken);
+
+    private int Compute(ExecutionBatch batch)
+    {
+        if (Columns.Count == 0)
+        {
+            return 0;
+        }
+
+        var vectors = Bind(batch);
+
+        TakeOutput(vectors);
+
+        Values.BindBatch(batch);
+
+        var selection = batch.SelectionVector;
+
+        for (var i = 0; i < selection.RowCount; i++)
+        {
+            var row = selection[i];
+
+            Values.SetRow(row);
+
+            for (var c = 0; c < Columns.Count; c++)
+            {
+                var value = PredicateEvaluator.Resolve(Columns[c].Expression, Values, Context.EvaluationContext);
+
+                if (Columns[c].DataType is { } dataType)
+                {
+                    value = AccessValueConverter.ConvertTo(value, dataType);
+                }
+
+                var column = vectors[c].Column;
+
+                if (column.DataType == SqlDbType.Variant && !value.IsNull)
+                {
+                    column.DataType = value.DataType;
+                }
+
+                vectors[c].SetValue(row, BatchValueBuilder.FromValue(column, value, batch.DeepDataContext));
+            }
+        }
+
+        return selection.RowCount;
+    }
+
+    private void TakeOutput(List<BatchVector> bound)
+    {
+        Output.Clear();
+
+        if (Input is { } input)
+        {
+            Output.AddRange(input.OutputVectors);
+        }
+
+        foreach (var vector in bound)
+        {
+            if (!Output.Contains(vector))
+            {
+                Output.Add(vector);
+            }
+        }
+    }
+
+    private List<BatchVector> Bind(ExecutionBatch batch)
+    {
+        var vectors = new List<BatchVector>(Columns.Count);
+
+        foreach (var column in Columns)
+        {
+            if (batch.FindVector(column.Name) is { } existing)
+            {
+                vectors.Add(existing);
+
+                continue;
+            }
+
+            var added = new BatchVector(new BatchColumn
+                                        {
+                                            Name = column.Name,
+                                            DataType = column.DataType ?? SqlDbType.Variant
+                                        },
+                                        batch.Capacity);
+
+            batch.AddVector(added);
+
+            vectors.Add(added);
+        }
+
+        return vectors;
+    }
+}
