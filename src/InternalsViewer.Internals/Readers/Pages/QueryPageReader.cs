@@ -4,6 +4,7 @@ using System.Threading;
 using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Internals.Engine.Loading;
 using InternalsViewer.Internals.Engine.Pages;
+using InternalsViewer.Internals.Exceptions;
 using InternalsViewer.Internals.Interfaces.Readers;
 using Microsoft.Data.SqlClient;
 
@@ -22,13 +23,14 @@ public sealed partial class QueryPageReader(ILogger<QueryPageReader> logger, str
     private const int DbccPageHexDumpOption = 2;
 
     /// <summary>
-    /// Characters before the hex data on each memory dump line: a 16 character address, a colon and
-    /// three spaces (e.g. "00000036061F6000:   ").
+    /// Characters before the hex data on each memory dump line: a 16 character address, a colon and three spaces
+    /// (e.g. "00000036061F6000:   ").
     /// </summary>
     private const int HexLinePrefixLength = 20;
 
     /// <summary>
-    /// Index of the colon that terminates the address on a memory dump line</summary>
+    /// Index of the colon that terminates the address on a memory dump line
+    /// </summary>
     private const int AddressColonIndex = 16;
 
     /// <summary>
@@ -40,7 +42,61 @@ public sealed partial class QueryPageReader(ILogger<QueryPageReader> logger, str
 
     private ILogger<QueryPageReader> Logger { get; } = logger;
 
-    public Task Initialize(CancellationToken cancellationToken, IProgress<ProgressDetail>? progress = null) => Task.CompletedTask;
+    public async Task Initialize(CancellationToken cancellationToken, IProgress<ProgressDetail>? progress = null)
+    {
+        var versionCommand = $@"SELECT SERVERPROPERTY('ProductVersion') AS ProductVersion
+                                      ,SERVERPROPERTY('ProductLevel')   AS ProductLevel
+                                      ,SERVERPROPERTY('Edition')        AS Edition
+                                      ,IS_SRVROLEMEMBER('sysadmin')     AS IsSysAdmin;";
+
+        try
+        {
+            var message = "Connecting to server";
+
+            progress?.Report(new ProgressDetail(message));
+
+            Logger.LogInformation(message);
+
+            await using var connection = new SqlConnection(ConnectionString);
+
+            await connection.OpenAsync(cancellationToken);
+
+            await using var command = new SqlCommand(versionCommand, connection);
+
+            command.CommandType = CommandType.Text;
+
+            await using var reader = await command.ExecuteReaderAsync(CommandBehavior.SequentialAccess,
+                                                                      cancellationToken);
+
+            if (await reader.ReadAsync(cancellationToken))
+            {
+                var version = reader.GetString(0);
+
+                var level = reader.GetString(1);
+
+                var edition = reader.GetString(2);
+
+                var isSysAdmin = reader.GetInt32(3) == 1;
+
+                message = $"Connected to server:\n{version} ({level}) - {edition}\nsysadmin: {isSysAdmin}";
+
+                progress?.Report(new ProgressDetail(message));
+
+                Logger.LogInformation(message);
+
+                if (!isSysAdmin)
+                {
+                    Logger.LogWarning("User does not have sysadmin permissions required");
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error connecting to database - {Message}", ex.Message);
+
+            throw new DatabaseLoadException($"Error connecting to server/database - {ex.Message}", ex);
+        }
+    }
 
     /// <summary>
     /// Loads the database page using DBCC PAGE (hex dump)

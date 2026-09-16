@@ -31,11 +31,6 @@
         <SignAssembly>True</SignAssembly>
     </PropertyGroup>
     <ItemGroup>
-      <Compile Remove="Exceptions\**" />
-      <EmbeddedResource Remove="Exceptions\**" />
-      <None Remove="Exceptions\**" />
-    </ItemGroup>
-    <ItemGroup>
       <None Include="..\.editorconfig" Link=".editorconfig" />
     </ItemGroup>
 
