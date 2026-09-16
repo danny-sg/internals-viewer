@@ -1,17 +1,29 @@
-# Internals Viewer 2026
+# Internals Viewer
 
 Internals Viewer is a visualisation tool for viewing the internals of the SQL Server Storage Engine.
 
-## Version 4.0 - New Features
+[Internals Viewer Medium Articles](https://medium.com/internals-viewer)
 
-### Query Trace
-https://github.com/user-attachments/assets/b2a5af3e-8cd8-4736-a6da-06af40242ae8
+## Version 4.4 - New Features
 
-The new **Query tracing** feature allows you to run a query and see the actual I/O on a timeline that is linked to the query plan operators. Using the index visualizations you can see scans vs seeks, see how different join types execute and zoom into detail down to the individual page level.
-
-- Drag the tabs to rearrange layout
-- Right click on tables/indexes in the timeline to open the index view for that object
-- Zoom in and out using Ctrl + mouse wheel
+- Columnstore View
+- Query
+  - Tracing
+    - Simulation of operators that can be stepped through
+  - Row Mode and Batch Mode
+  - Columnstore Index Scan operator
+  - Call stack
+    - Member listing and Symbols browsing
+    - WinDbg integration
+  - Execution Plan
+    - Additional operator properties
+    - Operator annotations
+- Allocations
+  - Improvements to allocation and partitions display
+- Page View
+  - Various bug fixes
+- Index View
+  - Levels overlay (root, intermediate, leaf)
 
 ## Installation
 
@@ -73,107 +85,3 @@ Internals Viewer can either connect to a live database or an offline .MDF file.
 The `sysadmin` role is required.
 
 Set the instance name, authentication type, User Id and Password if required for the authentication type, select the database to connect to and click **Connect**.
-
-#### Database File
-
-Database files must not be online in a database server as SQL Server holds an exclusive lock on the file.
-
-Internals Viewer opens the database entirely from its own engine so no additional permissions are required.
-
-Click **Browse** and find the offline .mdf file, then click **Open**.
-
-### Allocations
-
-Allocations will display when a database is opened.
-
-The allocations provide a visual map of the individual pages in database file(s), grouped to extents of 8 pages. The lower half displays the allocation names and details and includes links into the objects.
-
-Each different object is colour coded.
-
-#### Allocation Map
-
-Click a page to open it in the Page Viewer.
-
-Use the mouse wheel or scroll bar to move up and down the map. Use Ctrl + mouse wheel to zoom in and out of the allocation map.
-
-#### Command Bar
-
-##### Tooltip
-
-Toggle tooltip on and off. When on hovering over a page will display the page address, extent, PFS status, and the object the page is allocated to.
-
-##### Allocations
-
-Toggle the allocation details on and off
-
-##### Overlay
-
-Selects an overlay for the allocation map:
-
-###### GAM - Global Allocation Map
-
-Extents that are in use/allocated.
-
-###### SGAM - Shared Global Allocation Map
-
-Extents that are partially in use.
-
-###### PFS - Page Free Space
-
-Space usage in individual pages.
-
-###### Buffer Pool
-
-> SQL Server connections only
-
-Pages that are currently in the server buffer pool (memory).
-
-###### DCM - Differential Change Map
-
-Extents that have changed since the last full database backup.
-
-###### BCM - Bulk Change Map
-
-Extents modified by bulk operations since the last transaction log backup.
-
-##### Refresh
-
-Refreshes the allocations, re-reading metadata and allocation pages.
-
-##### Query
-
-Opens Query tracing
-
-##### Page Address
-
-Type in a page address in the format `File Id:Page Id` to open a page.
-
-Right click for options including _Copy to DBCC PAGE_ that will copy the command into the clipboard.
-
-#### Allocation Details
-
-Click on an object to highlight in the allocation map.
-
-##### Key
-
-Colour code for the object
-
-##### Page Count
-
-Number of pages allocated to the object
-
-##### Root Page
-
-The root page entry point to the object. Click to open in the Page Viewer.
-
-##### First Page
-
-The first data page for the object. Click to open in the Page Viewer.
-
-##### First IAM Page
-
-The first IAM (Index Allocation Map) page for the object. Click to open in the Page Viewer.
-
-##### Index
-
-Available if the object is a clustered or non-clustered index. Click to open the Index Viewer.
