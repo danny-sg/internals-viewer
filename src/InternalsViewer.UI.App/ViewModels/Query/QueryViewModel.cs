@@ -26,6 +26,7 @@ using InternalsViewer.UI.App.Services.XEvents;
 using InternalsViewer.UI.App.ViewModels.Allocation;
 using InternalsViewer.UI.App.ViewModels.Docking;
 using InternalsViewer.UI.App.Services.Query.Debugging;
+using InternalsViewer.UI.App.ViewModels.Query.CallStack;
 using InternalsViewer.UI.App.ViewModels.Query.Trace;
 using InternalsViewer.UI.App.ViewModels.Columnstore;
 using InternalsViewer.UI.App.ViewModels.Index;
@@ -260,41 +261,12 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
     private bool _isPlanPropertiesDockedBottom;
 
     [ObservableProperty]
-    private bool _isCallStackMembersVisible;
+    [NotifyCanExecuteChangedFor(nameof(DetachDebuggerCommand))]
+    [NotifyCanExecuteChangedFor(nameof(ClearBreakpointsCommand))]
+    private bool _isDebuggerConnected;
 
     [ObservableProperty]
-    private bool _isCallStackMembersDockedBottom;
-
-    [ObservableProperty]
-    private bool _isCallStackMembersLoading;
-
-    [ObservableProperty]
-    private string _callStackMembersClassName = string.Empty;
-
-    [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(CallStackMembersSummary))]
-    [NotifyPropertyChangedFor(nameof(FilteredCallStackMembers))]
-    private ClassMemberListing? _callStackMembers;
-
-    [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(FilteredCallStackMembers))]
-    private string _callStackMembersFilter = string.Empty;
-
-    [ObservableProperty]
-    private string? _callStackMembersMessage;
-
-    [ObservableProperty]
-    private bool _canGoBackMembers;
-
-    private CallstackResolver? _symbolResolver;
-
-    private string? _symbolResolverPath;
-
-    private int _membersRequest;
-
-    private (CallstackFrame Frame, string ClassName)? _currentMembers;
-
-    private readonly List<(CallstackFrame Frame, string ClassName)> _membersHistory = [];
+    private string _debuggerStatus = "Not Connected";
 
     public QueryViewModel(ILogger<QueryViewModel> logger,
                           QueryRunner queryRunner,
@@ -311,6 +283,13 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
     {
         _traceTabViewModelFactory = traceTabViewModelFactory;
         _winDbgService = winDbgService;
+
+        Symbols = new SymbolsViewModel(logger, settingsViewModel);
+
+        _winDbgService.StatusChanged += OnDebuggerStatusChanged;
+
+        IsDebuggerConnected = _winDbgService.IsConnected;
+        DebuggerStatus = _winDbgService.Status;
         Logger = logger;
         QueryRunner = queryRunner;
         BufferPoolInfoProvider = bufferPoolInfoProvider;
@@ -389,6 +368,11 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
     public event Action<long>? PlayheadMoveRequested;
 
     public DatabaseSource Database { get; }
+
+    /// <summary>
+    /// The Call Stack document's detail pane, its members listing and symbol search
+    /// </summary>
+    public SymbolsViewModel Symbols { get; }
 
     /// <summary>
     /// The queries run against this database, listed beside the SQL editor
@@ -675,218 +659,49 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
         }
     }
 
-    public string CallStackMembersSummary
-    {
-        get
-        {
-            if (CallStackMembers is not { Groups.Count: > 0 } listing)
-            {
-                return string.Empty;
-            }
-
-            var summary = $"{listing.Count} {(listing.Count == 1 ? "member" : "members")}";
-
-            return listing.Groups.Count == 1
-                ? summary
-                : $"{summary}, {string.Join(", ", listing.Groups.Select(g => $"{g.Module} {g.Members.Count}"))}";
-        }
-    }
-
-    public IReadOnlyList<ClassMemberRow> FilteredCallStackMembers
-    {
-        get
-        {
-            if (CallStackMembers is not { } listing)
-            {
-                return [];
-            }
-
-            var showModule = listing.Groups.Count > 1;
-
-            var overloaded = listing.Groups
-                                    .SelectMany(g => g.Members)
-                                    .GroupBy(m => (m.Module, m.Name))
-                                    .Where(g => g.Count() > 1)
-                                    .Select(g => g.Key)
-                                    .ToHashSet();
-
-            return listing.Groups
-                          .SelectMany(g => g.Members)
-                          .Where(m => string.IsNullOrWhiteSpace(CallStackMembersFilter)
-                                      || m.Signature.Contains(CallStackMembersFilter, StringComparison.OrdinalIgnoreCase))
-                          .Select(m => new ClassMemberRow(showModule ? $"{m.Module}!" : string.Empty,
-                                                          m,
-                                                          listing.ClassName,
-                                                          overloaded.Contains((m.Module, m.Name))))
-                          .ToList();
-        }
-    }
-
     /// <summary>
-    /// Lists the members of a call stack frame's class in the Members pane
+    /// Opens the Call Stack document's detail pane on the symbol search
     /// </summary>
-    public Task ListMembersAsync(CallStackNode node)
+    [RelayCommand]
+    private void SearchSymbols()
     {
-        if (node.Frame is { Resolved.ClassName: { Length: > 0 } className } frame)
-        {
-            return NavigateMembersAsync(frame, className);
-        }
+        Layout.ShowCallStack();
 
-        IsCallStackMembersVisible = true;
-
-        _membersRequest++;
-
-        _currentMembers = null;
-
-        CallStackMembers = null;
-        CallStackMembersFilter = string.Empty;
-        CallStackMembersClassName = node.Symbol;
-        CallStackMembersMessage = "The frame is not a class member";
-
-        return Task.CompletedTask;
+        Symbols.ShowSymbolSearch();
     }
 
-    /// <summary>
-    /// Lists the members of a type named in the current listing, from the same module's symbols
-    /// </summary>
-    public Task ListMembersAsync(string className)
-        => _currentMembers is { } current ? NavigateMembersAsync(current.Frame, className) : Task.CompletedTask;
+    [RelayCommand]
+    private Task AttachDebuggerAsync() =>
+        RunDebuggerAsync(() => _winDbgService.AttachAsync(Database.Connection.GetConnectionString(), CancellationToken.None));
 
-    /// <summary>
-    /// Returns the Members pane to the listing shown before the last navigation
-    /// </summary>
-    public Task GoBackMembersAsync()
-    {
-        if (_membersHistory.Count == 0)
-        {
-            return Task.CompletedTask;
-        }
+    [RelayCommand]
+    private Task ConnectDebuggerAsync() => RunDebuggerAsync(() => _winDbgService.ConnectAsync(CancellationToken.None));
 
-        var (frame, className) = _membersHistory[^1];
+    [RelayCommand(CanExecute = nameof(IsDebuggerConnected))]
+    private Task DetachDebuggerAsync() => RunDebuggerAsync(_winDbgService.DetachAsync);
 
-        _membersHistory.RemoveAt(_membersHistory.Count - 1);
+    [RelayCommand(CanExecute = nameof(IsDebuggerConnected))]
+    private Task ClearBreakpointsAsync() =>
+        RunDebuggerAsync(() => _winDbgService.SendAsync(WinDbgCommands.ClearBreakpoints, CancellationToken.None));
 
-        CanGoBackMembers = _membersHistory.Count > 0;
-
-        return ListMembersAsync(frame, className);
-    }
-
-    private Task NavigateMembersAsync(CallstackFrame frame, string className)
-    {
-        if (_currentMembers is { } current && current != (frame, className))
-        {
-            _membersHistory.Add(current);
-
-            CanGoBackMembers = true;
-        }
-
-        return ListMembersAsync(frame, className);
-    }
-
-    private async Task ListMembersAsync(CallstackFrame frame, string className)
-    {
-        IsCallStackMembersVisible = true;
-
-        var request = ++_membersRequest;
-
-        _currentMembers = (frame, className);
-
-        CallStackMembers = null;
-        CallStackMembersFilter = string.Empty;
-        CallStackMembersClassName = $"{frame.Module}!{className}";
-        CallStackMembersMessage = null;
-        IsCallStackMembersLoading = true;
-
-        try
-        {
-            var resolver = GetSymbolResolver();
-
-            var listing = await resolver.ListMembersAsync(MemberSearchFrames(frame), className);
-
-            if (request != _membersRequest)
-            {
-                return;
-            }
-
-            CallStackMembers = listing;
-            CallStackMembersMessage = listing.Count == 0 ? $"No symbols found for {className}" : null;
-
-            if (listing.Groups.Count > 0)
-            {
-                CallStackMembersClassName = $"{listing.Groups[0].Module}!{className}";
-            }
-        }
-        catch (Exception exception)
-        {
-            Logger.LogError(exception, "Listing members for {ClassName} failed", className);
-
-            if (request == _membersRequest)
-            {
-                CallStackMembersMessage = $"Listing {className} members failed: {exception.Message}";
-            }
-        }
-        finally
-        {
-            if (request == _membersRequest)
-            {
-                IsCallStackMembersLoading = false;
-            }
-        }
-    }
-
-    /// <summary>
-    /// The frame's own module first, then every other module the query's call stacks carry symbols for
-    /// </summary>
-    private List<CallstackFrame> MemberSearchFrames(CallstackFrame frame)
-    {
-        var frames = new List<CallstackFrame> { frame };
-
-        foreach (var node in CallStack?.Nodes() ?? [])
-        {
-            if (node.Frame is { Pdb.Length: > 0 } candidate
-                && !frames.Any(f => f.Pdb == candidate.Pdb && f.Guid == candidate.Guid && f.Age == candidate.Age))
-            {
-                frames.Add(candidate);
-            }
-        }
-
-        return frames;
-    }
-
-    /// <summary>
-    /// Resolves the signature of the function a call stack frame is in, off the UI thread
-    /// </summary>
-    /// <remarks>
-    /// Best effort: a signature is a nicety over the register dump, so a resolver failure returns null and lets the
-    /// caller fall back rather than failing the command.
-    /// </remarks>
-    public async Task<string?> ResolveFrameSignatureAsync(CallstackFrame frame)
+    private async Task RunDebuggerAsync(Func<Task> action)
     {
         try
         {
-            return await Task.Run(() => GetSymbolResolver().ResolveSignature(frame));
+            await action();
         }
         catch (Exception exception)
         {
-            Logger.LogDebug(exception, "Resolving the signature for a frame failed");
-
-            return null;
+            await WeakReferenceMessenger.Default.Send(new ExceptionMessage(exception));
         }
     }
 
-    private CallstackResolver GetSymbolResolver()
+    partial void OnCallStackChanged(CallStackTree? value) => Symbols.CallStack = value;
+
+    private void OnDebuggerStatusChanged(object? sender, EventArgs e)
     {
-        var symbolsPath = _settingsViewModel.SymbolsPath;
-
-        if (_symbolResolver is null || _symbolResolverPath != symbolsPath)
-        {
-            _symbolResolver?.Dispose();
-
-            _symbolResolver = new CallstackResolver(symbolsPath);
-            _symbolResolverPath = symbolsPath;
-        }
-
-        return _symbolResolver;
+        IsDebuggerConnected = _winDbgService.IsConnected;
+        DebuggerStatus = _winDbgService.Status;
     }
 
     public void OpenExecutionPlan(PlanNodeIdentifier identifier)
@@ -1016,6 +831,7 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
     public override void Dispose()
     {
         QueryOptions.FilterChanged -= RefreshFilteredEvents;
+        _winDbgService.StatusChanged -= OnDebuggerStatusChanged;
         QueryOptions.Changed -= ScheduleSaveLayout;
         Layout.Changed -= OnLayoutChanged;
         Layout.SelectionChanged -= ScheduleSaveLayout;
@@ -1039,8 +855,7 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
         _pageSpans = [];
 
-        _symbolResolver?.Dispose();
-        _symbolResolver = null;
+        Symbols.Dispose();
 
         Layout.Dispose();
 

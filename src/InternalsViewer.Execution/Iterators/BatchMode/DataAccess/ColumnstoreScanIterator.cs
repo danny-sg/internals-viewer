@@ -166,7 +166,8 @@ public sealed class ColumnstoreScanIterator(ColumnstoreService columnstoreServic
         await EmitAsync(new AccessStep.Close(), CancellationToken.None);
     }
 
-    public void SetPushdownSink(HashAggregateBuilder builder, EvaluationContext context) => AggregatePushdown.SetSink(builder, context);
+    public void SetPushdownSink(HashAggregateBuilder builder, EvaluationContext context) 
+        => AggregatePushdown.SetSink(builder, context);
 
     private ValueTask EmitAsync(AccessStep step, CancellationToken cancellationToken)
         => Context.Steps.EmitAsync(step with { NodeId = NodeId }, cancellationToken);
@@ -179,9 +180,9 @@ public sealed class ColumnstoreScanIterator(ColumnstoreService columnstoreServic
 
         var rowGroupId = batch.RowGroupId;
 
-        var filterRleEntries = 0;
+        var filterRleEntryCount = 0;
 
-        var filterOperations = 0;
+        var filterOperationCount = 0;
 
         var pureColumns = 0;
 
@@ -191,7 +192,11 @@ public sealed class ColumnstoreScanIterator(ColumnstoreService columnstoreServic
 
         var deleted = ColumnstoreScanFilter.ApplyDeletes(RowMask.AsSpan(0, size), DeletedRows, rowGroupId, RowOrdinal);
 
-        ColumnstoreScanFilter.ApplyCompressed(RowMask.AsSpan(0, size), Columns, RowOrdinal, ref filterRleEntries, ref filterOperations);
+        ColumnstoreScanFilter.ApplyCompressed(RowMask.AsSpan(0, size), 
+                                              Columns, 
+                                              RowOrdinal, 
+                                              ref filterRleEntryCount, 
+                                              ref filterOperationCount);
 
         var materialised = 0;
 
@@ -202,7 +207,6 @@ public sealed class ColumnstoreScanIterator(ColumnstoreService columnstoreServic
             await ApplyPredicateAsync(batch, size, cancellationToken);
 
             pureColumns = BoundVectors.Count(v => v.IsPure);
-
             impureColumns = BoundVectors.Count - pureColumns;
         }
 
@@ -219,8 +223,8 @@ public sealed class ColumnstoreScanIterator(ColumnstoreService columnstoreServic
         {
             await EmitAsync(new AccessStep.BatchSkipped(rowGroupId, RowOrdinal - size, size)
                             {
-                                FilterRleEntries = filterRleEntries,
-                                FilterOperations = filterOperations,
+                                FilterRleEntries = filterRleEntryCount,
+                                FilterOperations = filterOperationCount,
                                 HasCompressedFilter = HasCompressedFilter,
                                 HasPredicate = Predicate is not null || Definition.IsGenericFilterUsed
                             },
@@ -252,8 +256,8 @@ public sealed class ColumnstoreScanIterator(ColumnstoreService columnstoreServic
                                                      size,
                                                      batch.SelectionVector.RowCount)
                         {
-                            FilterRleEntries = filterRleEntries,
-                            FilterOperations = filterOperations,
+                            FilterRleEntries = filterRleEntryCount,
+                            FilterOperations = filterOperationCount,
                             Materialised = materialised,
                             HasCompressedFilter = HasCompressedFilter,
                             HasPredicate = Predicate is not null || Definition.IsGenericFilterUsed,
@@ -288,8 +292,8 @@ public sealed class ColumnstoreScanIterator(ColumnstoreService columnstoreServic
     /// Takes the next rowgroup the cursor hands back, binds the batch to it, and emits its opened and filter steps
     /// </summary>
     /// <remarks>
-    /// The cursor advances past eliminated rowgroups and emits their elimination steps. This sets up the surviving rowgroup
-    /// for reading and returns false only when the cursor is exhausted.
+    /// The cursor advances past eliminated rowgroups and emits their elimination steps. This sets up the surviving rowgroup for reading and
+    /// returns false only when the cursor is exhausted.
     /// </remarks>
     private async Task<bool> MoveToNextRowGroupAsync(CancellationToken cancellationToken)
     {

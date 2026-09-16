@@ -10,10 +10,10 @@ namespace InternalsViewer.Query.Debugging;
 /// A client of a running debugger session, connected over the debugger engine's remote protocol
 /// </summary>
 /// <remarks>
-/// <c>dbgeng.dll</c> is loaded by name at connect time, so nothing is needed until a session is used and a machine
-/// without the debugging tools still runs everything else. The interfaces are called through their vtables directly
-/// rather than through COM interop, with slot numbers taken from <c>dbgeng.h</c> in the Windows SDK. The engine ties
-/// a client to the thread that created it, so every call is marshalled onto one dedicated thread.
+/// <c>dbgeng.dll</c> is loaded by name at connect time, so nothing is needed until a session is used and a machine without the debugging
+/// tools still runs everything else. The interfaces are called through their vtables directly rather than through COM interop, with slot
+/// numbers taken from <c>dbgeng.h</c> in the Windows SDK. The engine ties a client to the thread that created it, so every call is
+/// marshalled onto one dedicated thread.
 /// </remarks>
 public sealed class DebuggerEngineClient : IDebuggerSession
 {

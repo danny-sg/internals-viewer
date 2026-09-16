@@ -7,7 +7,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Microsoft.WSL.Containers" Version="2.9.3" />
+    <PackageReference Include="Microsoft.WSL.Containers" Version="2.9.9" />
   </ItemGroup>
 
   <ItemGroup>

@@ -8,9 +8,9 @@ namespace InternalsViewer.Query.Debugging;
 /// Serves a debugger session to another process over a line-based request/response stream
 /// </summary>
 /// <remarks>
-/// The engine runs in its own process because it cannot share one with the app: the app already has an older
-/// <c>dbghelp.dll</c> loaded for symbol resolution, and Windows binds the engine's imports to whichever copy loaded
-/// first. A process of its own also keeps a debugger engine fault away from the app.
+/// The engine runs in its own process because it cannot share one with the app: the app already has an older <c>dbghelp.dll</c> loaded for
+/// symbol resolution, and Windows binds the engine's imports to whichever copy loaded first. A process of its own also keeps a debugger
+/// engine fault away from the app.
 ///
 /// Requests are tab separated, one per line. Each is answered with <c>ok</c>, or <c>error\t{kind}\t{message}</c> where the kind is
 /// <c>engine</c> when the engine could not be loaded and <c>session</c> otherwise.

@@ -1,4 +1,4 @@
-using InternalsViewer.UI.App.Models.Query.CallStack;
+﻿using InternalsViewer.UI.App.Models.Query.CallStack;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Documents;
 using Microsoft.UI.Xaml.Media;
@@ -32,6 +32,8 @@ public static class SignatureText
     {
         text.Inlines.Clear();
 
+        text.TextHighlighters.Clear();
+
         if (GetSignature(text) is not { Length: > 0 } signature)
         {
             return;
@@ -41,6 +43,8 @@ public static class SignatureText
         {
             text.Inlines.Add(CreateInline(token));
         }
+
+        SearchHighlight.Apply(text);
     }
 
     private static Inline CreateInline(SignatureToken token)
@@ -48,7 +52,7 @@ public static class SignatureText
         switch (token.Type)
         {
             case SignatureTokenType.Name:
-                return new Run { Text = token.Text };
+                return new Run { Text = token.Text, Foreground = Brush("CppFunctionBrush") };
 
             case SignatureTokenType.Keyword:
                 return new Run { Text = token.Text, Foreground = Brush("SqlKeywordBrush") };

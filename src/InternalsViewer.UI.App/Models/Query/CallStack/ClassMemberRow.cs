@@ -1,4 +1,4 @@
-using InternalsViewer.Query.CallStack;
+﻿using InternalsViewer.Query.CallStack;
 
 namespace InternalsViewer.UI.App.Models.Query.CallStack;
 
@@ -7,6 +7,10 @@ namespace InternalsViewer.UI.App.Models.Query.CallStack;
 /// </summary>
 public sealed record ClassMemberRow(string Prefix, ClassMember Member, string ClassName, bool IsOverloaded)
 {
+    public string ClassPrefix { get; set; } = string.Empty;
+
+    public string Highlight { get; set; } = string.Empty;
+
     public string Signature => Member.Signature;
 
     public bool IsFunction => Member.IsFunction;

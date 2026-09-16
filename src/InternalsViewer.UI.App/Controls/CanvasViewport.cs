@@ -6,11 +6,6 @@ namespace InternalsViewer.UI.App.Controls;
 /// <summary>
 /// The zoom and pan a canvas control draws its content through
 /// </summary>
-/// <remarks>
-/// Content is laid out at its natural size and the whole drawing scaled, so a control keeps the layout it has at a zoom
-/// of one. Offsets are held in canvas pixels, which is what the scroll bars carry, and are clamped to the extents the
-/// content has at the current zoom - at or below the zoom that fits, there is nothing to pan and the offset is zero.
-/// </remarks>
 internal sealed class CanvasViewport
 {
     private const float MinimumZoom = 0.2f;
@@ -99,9 +94,9 @@ internal sealed class CanvasViewport
     /// Zooms about a point on the canvas, so whatever is under the pointer stays under it
     /// </summary>
     /// <remarks>
-    /// A step that would cross a zoom of one stops there instead, and the wheel is held at it for the rest of the
-    /// gesture: turning it on past the stop takes a fresh one, either by letting the wheel rest or by releasing the
-    /// modifier and taking hold again. Turning back the way it came is not held, so a stop can be backed out of.
+    /// A step that would cross a zoom of one stops there instead, and the wheel is held at it for the rest of the gesture: turning it on
+    /// past the stop takes a fresh one, either by letting the wheel rest or by releasing the modifier and taking hold again. Turning back
+    /// the way it came is not held, so a stop can be backed out of.
     /// </remarks>
     public bool ZoomAt(int wheelDelta, double x, double y, ulong timestamp)
     {

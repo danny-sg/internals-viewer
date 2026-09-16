@@ -13,6 +13,8 @@ public sealed class CallstackResolver(string symbolsPath) : IDisposable
 
     private readonly ConcurrentDictionary<string, Lazy<ClassMemberIndex>> _indexCache = new();
 
+    private readonly ConcurrentDictionary<string, Lazy<SymbolIndex>> _searchIndexCache = new();
+
     private readonly ConcurrentDictionary<SymbolKey, UnresolvedSymbolInfo> _unresolvedSymbols = [];
 
     private bool _disposed;
@@ -47,6 +49,96 @@ public sealed class CallstackResolver(string symbolsPath) : IDisposable
         var groups = await Task.WhenAll(frames.Select(f => Task.Run(() => ListMembers(f, className))));
 
         return new ClassMemberListing(className, groups.Where(g => g.Members.Count > 0).ToList());
+    }
+
+    /// <summary>
+    /// Finds the public symbols whose name contains the text, across the PDBs of every frame given
+    /// </summary>
+    /// <remarks>
+    /// Each module is searched on its own thread, as the first search of a module packs its whole PDB into an index.
+    /// The limit applies per module, so a common word still shows something from each.
+    /// </remarks>
+    public async Task<IReadOnlyList<SymbolMatch>> SearchSymbolsAsync(IReadOnlyList<CallstackFrame> frames,
+                                                                    string text,
+                                                                    SymbolSearchFields fields,
+                                                                    int limit)
+    {
+        var groups = await Task.WhenAll(frames.Select(f => Task.Run(() => SearchSymbols(f, text, fields, limit))));
+
+        return groups.SelectMany(g => g).ToList();
+    }
+
+    /// <summary>
+    /// Finds the public symbols in the frame's PDB whose chosen fields contain the text
+    /// </summary>
+    /// <remarks>
+    /// A <c>module!</c> prefix on the text, as WinDbg writes a symbol, confines the search to modules matching it and
+    /// searches the rest. Otherwise the module field is decided here: when it is searched and the module's name
+    /// contains the text, the first symbols of the module qualify regardless of their own names.
+    /// </remarks>
+    public IReadOnlyList<SymbolMatch> SearchSymbols(CallstackFrame frame, string text, SymbolSearchFields fields, int limit)
+    {
+        var pdbPath = GetPdbPath(frame);
+
+        if (!HasSymbolInformation(frame) || !File.Exists(pdbPath))
+        {
+            return [];
+        }
+
+        var resolver = _resolverCache.GetOrAdd(pdbPath, path => new DiaResolver(path));
+
+        var index = _searchIndexCache.GetOrAdd(pdbPath, _ => new Lazy<SymbolIndex>(() => BuildSearchIndex(resolver),
+                                                                                    LazyThreadSafetyMode.ExecutionAndPublication))
+                                     .Value;
+
+        var (modulePart, symbolPart) = SymbolIndex.SplitModule(text);
+
+        if (modulePart is not null && !SymbolIndex.ModuleMatches(modulePart, frame.Module))
+        {
+            return [];
+        }
+
+        var moduleMatches = symbolPart.Length == 0
+                            || (modulePart is null
+                                && (fields == SymbolSearchFields.None || fields.HasFlag(SymbolSearchFields.Module))
+                                && frame.Module.Contains(symbolPart, StringComparison.OrdinalIgnoreCase));
+
+        var hits = moduleMatches ? index.First(limit) : index.Search(symbolPart, fields, limit);
+
+        var matches = new List<SymbolMatch>();
+
+        foreach (var hit in hits)
+        {
+            foreach (var detail in resolver.EnumerateSymbolsAtRva(hit.Rva))
+            {
+                if (detail.Name.Contains('`'))
+                {
+                    continue;
+                }
+
+                var separator = ResolvedCallstackFrameParser.FindClassMethodSeparator(detail.Name);
+
+                var className = separator > 0 ? detail.Name[..separator] : string.Empty;
+
+                if (!moduleMatches && !SymbolIndex.Matches(symbolPart, fields, className, detail.Name, detail.Signature))
+                {
+                    continue;
+                }
+
+                var name = separator > 0 ? detail.Name[(separator + 2)..] : detail.Name;
+
+                var prefix = className.Length > 0 ? $"{className}::" : string.Empty;
+
+                matches.Add(new SymbolMatch(className,
+                                            new ClassMember(frame.Module,
+                                                            name,
+                                                            RemoveScope(detail.Signature, prefix),
+                                                            detail.Rva,
+                                                            detail.IsFunction)));
+            }
+        }
+
+        return matches.DistinctBy(m => (m.ClassName, m.Member.Signature)).ToList();
     }
 
     /// <summary>
@@ -109,6 +201,9 @@ public sealed class CallstackResolver(string symbolsPath) : IDisposable
                        .Select(detail => detail.Signature)
                        .FirstOrDefault(signature => !string.IsNullOrEmpty(signature));
     }
+
+    private static SymbolIndex BuildSearchIndex(DiaResolver resolver) =>
+        SymbolIndex.Build(resolver.EnumerateSymbolDetails(string.Empty));
 
     private static string RemoveScope(string signature, string prefix)
     {

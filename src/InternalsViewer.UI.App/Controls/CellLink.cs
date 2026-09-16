@@ -20,8 +20,8 @@ public interface ICellLinkNavigator
 /// Draws a link into a text block, as text rather than as a button
 /// </summary>
 /// <remarks>
-/// A cell is built for every row on screen and again as rows recycle, so a button in one pays for its template
-/// and its visual states every time. A hyperlink is an inline, which costs a text layout and nothing else.
+/// A cell is built for every row on screen and again as rows recycle, so a button in one pays for its template and its visual states every
+/// time. A hyperlink is an inline, which costs a text layout and nothing else.
 /// </remarks>
 public static class CellLink
 {

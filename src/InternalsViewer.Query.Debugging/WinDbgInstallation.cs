@@ -7,10 +7,10 @@ namespace InternalsViewer.Query.Debugging;
 /// WinDbg installation location + debugger engine
 /// </summary>
 /// <remarks>
-/// The Microsoft Store WinDbg records its install folder in the per-user package repository in the registry, which
-/// any process can read. Its engine cannot be loaded from there, as the package folder refuses to map DLLs into
-/// processes outside the package, so <see cref="PrepareEngine"/> copies the engine into a cache first. The engine
-/// has to be the one the debugger runs, since a session refuses a client built from a different engine.
+/// The Microsoft Store WinDbg records its install folder in the per-user package repository in the registry, which any process can read.
+/// Its engine cannot be loaded from there, as the package folder refuses to map DLLs into processes outside the package, so
+/// <see cref="PrepareEngine"/> copies the engine into a cache first. The engine has to be the one the debugger runs, since a session
+/// refuses a client built from a different engine.
 /// </remarks>
 [SupportedOSPlatform("windows")]
 public sealed record WinDbgInstallation(string Executable, string EngineDirectory, string Name, bool IsPackaged)

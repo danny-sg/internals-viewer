@@ -24,6 +24,7 @@ public partial class SettingsViewModel(SettingsService settingsService, TraceDir
 
     private const string WinDbgPasswordKey = "WinDbgPassword";
     private const string WinDbgPathKey = "WinDbgPath";
+    private const string SymbolSearchExcludedModulesKey = "SymbolSearchExcludedModules";
 
     private const double DefaultMaxTraceSizeMb = 150;
 
@@ -59,6 +60,9 @@ public partial class SettingsViewModel(SettingsService settingsService, TraceDir
 
     [ObservableProperty]
     private string _winDbgPath = string.Empty;
+
+    [ObservableProperty]
+    private string _symbolSearchExcludedModules = string.Empty;
 
     [ObservableProperty]
     private string _memoryUsage = string.Empty;
@@ -118,6 +122,8 @@ public partial class SettingsViewModel(SettingsService settingsService, TraceDir
         WinDbgPassword = string.IsNullOrWhiteSpace(savedWinDbgPassword) ? Guid.NewGuid().ToString("N")[..12] : savedWinDbgPassword;
 
         WinDbgPath = await SettingsService.ReadSettingAsync<string>(WinDbgPathKey) ?? string.Empty;
+
+        SymbolSearchExcludedModules = await SettingsService.ReadSettingAsync<string>(SymbolSearchExcludedModulesKey) ?? string.Empty;
     }
 
     /// <summary>
@@ -144,6 +150,11 @@ public partial class SettingsViewModel(SettingsService settingsService, TraceDir
     partial void OnWinDbgPathChanged(string value)
     {
         _ = SettingsService.SaveSettingAsync(WinDbgPathKey, value);
+    }
+
+    partial void OnSymbolSearchExcludedModulesChanged(string value)
+    {
+        _ = SettingsService.SaveSettingAsync(SymbolSearchExcludedModulesKey, value);
     }
 
     partial void OnUseCustomTraceDirectoryChanged(bool value)

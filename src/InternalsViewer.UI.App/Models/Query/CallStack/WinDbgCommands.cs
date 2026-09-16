@@ -353,8 +353,8 @@ public static class WinDbgCommands
 
         public static Target From(ClassMemberRow member) =>
             new(member.Member.Module,
-                $"{member.ClassName}::{member.Member.Name}",
-                member.ClassName,
+                member.ClassName.Length > 0 ? $"{member.ClassName}::{member.Member.Name}" : member.Member.Name,
+                member.ClassName.Length > 0 ? member.ClassName : null,
                 member.Member.Rva,
                 member.IsOverloaded);
 

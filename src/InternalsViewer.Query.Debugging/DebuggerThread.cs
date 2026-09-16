@@ -3,7 +3,7 @@ using System.Collections.Concurrent;
 namespace InternalsViewer.Query.Debugging;
 
 /// <summary>
-/// One thread that runs every call made to a debugger engine client in the order they arrive
+/// Thread that runs every call made to a debugger engine client in the order they arrive
 /// </summary>
 internal sealed class DebuggerThread : IDisposable
 {

@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <Page
     x:Class="InternalsViewer.UI.App.Views.Query.QueryView"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
@@ -120,6 +120,24 @@
                                    IsChecked="{x:Bind ViewModel.QueryOptions.IncludeMemory, Mode=TwoWay}"/>
                                 <ToggleMenuFlyoutItem Text="Call Stack"
                                    IsChecked="{x:Bind ViewModel.QueryOptions.IncludeCallStack, Mode=TwoWay}"/>
+                            </MenuBarItem>
+
+                            <MenuBarItem Title="Debugger">
+                                <MenuFlyoutItem Text="{x:Bind ViewModel.DebuggerStatus, Mode=OneWay}"
+                                                IsEnabled="False"/>
+                                <MenuFlyoutSeparator/>
+                                <MenuFlyoutItem Text="Attach WinDbg to SQL Server"
+                                                Command="{x:Bind ViewModel.AttachDebuggerCommand}"/>
+                                <MenuFlyoutItem Text="Connect to Session"
+                                                Command="{x:Bind ViewModel.ConnectDebuggerCommand}"/>
+                                <MenuFlyoutItem Text="Detach"
+                                                Command="{x:Bind ViewModel.DetachDebuggerCommand}"/>
+                                <MenuFlyoutSeparator/>
+                                <MenuFlyoutItem Text="Clear Breakpoints"
+                                                Command="{x:Bind ViewModel.ClearBreakpointsCommand}"/>
+                                <MenuFlyoutSeparator/>
+                                <MenuFlyoutItem Text="Search Symbols"
+                                                Command="{x:Bind ViewModel.SearchSymbolsCommand}"/>
                             </MenuBarItem>
 
                         </MenuBar>

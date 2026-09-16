@@ -41,15 +41,25 @@ Right-clicking a member in the Members pane gives **Copy Signature**, **Copy Sym
 
 ## Sending Commands to WinDbg
 
-The **Debugger** button on the tab strip, next to Focus, manages the session the submenus send their commands to:
+The **Debugger** menu on the Query document's menu bar manages the session the submenus send their commands to. Its first line shows the connection state, and the items that need a session are disabled until one is connected, as are the **WinDbg** submenus:
 
 - **Attach to SQL Server** looks up the instance's process id with `SERVERPROPERTY('ProcessID')`, starts WinDbg elevated attached to it and listening on a named pipe for Internals Viewer, then connects. Windows asks for administrator consent, since WinDbg has to run elevated to attach to SQL Server. The instance has to be on the same machine.
-- **Connect to Session** joins a WinDbg you already have attached. Type the command **Copy .server Command** gives you into that WinDbg first. Type it rather than passing it with `-c`: a server WinDbg starts from a startup script listens but refuses every client.
+- **Connect to Session** joins a WinDbg you already have attached. It has to be listening first: choosing it with nothing to connect to reports the exact `.server` command to type into that WinDbg, and the dialog's copy button takes it to the clipboard. Type it rather than passing it with `-c`: a server WinDbg starts from a startup script listens but refuses every client.
 - **Detach** clears every breakpoint, detaches WinDbg from SQL Server, and drops the app's connection. WinDbg stays open with no target, so it can be closed safely. Closing a query tab does the same, so a debugger is never left attached to the instance by accident.
 
 Commands are sent as an extra client of the session, so they and their output appear in the WinDbg window as if typed there. If the target is running when a command is sent, the app breaks in, runs it, and resumes. The pipe password is in [Settings](/docs/user-guide/settings#debugging).
 
 Nothing is needed until the first command is sent. WinDbg from the Microsoft Store has to be installed to attach, but a machine without it still does everything else. The Store package does not allow its debugger engine to be loaded by other programs, so the first use copies the engine into `%LOCALAPPDATA%\InternalsViewer\WinDbg`, and again whenever WinDbg updates.
+
+## Searching Symbols
+
+**Search Symbols** on the Debugger menu opens the detail pane on its **Symbols** tab, beside **Members**. Typing three or more characters searches every public symbol in the modules the query's call stacks came from, so a function or class that never appeared in a stack can still be found and used. Each result has the same right-click actions as a member: copy its signature or symbol, or set a breakpoint on it in WinDbg. The first search of a module packs its PDB into an index, which takes a few seconds, and later searches are immediate.
+
+Plain text matches anywhere. Text with `*` or `?` is a pattern in WinDbg's style, matched against the whole name or signature, so `*XeSqlPkg::vector*` finds that class's members and `*::GetRow` every function of that name. A `module!` prefix confines the search to that module, so a symbol pasted from WinDbg such as `sqlmin!CBpQScanColumnStoreScan::BpGetNextBatch` finds exactly that function. The **Module**, **Class** and **Signature** toggles beside the box choose which parts are matched. None ticked searches all of them. Class matches the class name alone, and Signature reaches the parameter types, so `PageId` with Signature ticked lists the functions that take one.
+
+Results are a tree of module, then class, then the members found under it. Right-clicking a module or class gives **Expand All** and **Collapse All**. A module's menu also has **Exclude Module**, which leaves that module out of every search from then on, and **Clear Module Exclusions**. The exclusions are kept in Settings, and while any are in force the last row of the results is a **Clear exclusions** link, with the excluded modules in its tooltip, so the way back stays in reach even when every module is excluded. The matched text is highlighted in each row, except where the row is exactly the text searched for.
+
+Results are capped per module. A search needs a query with Call Stack events to have run first, since that is how the modules and their exact symbol files are known.
 
 ## Flame Graph
 

@@ -12,8 +12,8 @@ namespace InternalsViewer.UI.App.Controls;
 /// Something that a derivation drawn beneath it can hand a click back to
 /// </summary>
 /// <remarks>
-/// The text is drawn into a plain text block rather than a control of its own, so there is nothing in the cell to
-/// raise an event. The click walks up to whatever is hosting the grid instead.
+/// The text is drawn into a plain text block rather than a control of its own, so there is nothing in the cell to raise an event. The click
+/// walks up to whatever is hosting the grid instead.
 /// </remarks>
 public interface IDerivationNavigator
 {

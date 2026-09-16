@@ -13,9 +13,112 @@
     xmlns:controls="using:CommunityToolkit.WinUI.Controls"
     xmlns:signature="using:InternalsViewer.UI.App.Controls.CallStack"
     xmlns:members="using:InternalsViewer.UI.App.Models.Query.CallStack"
+    xmlns:selectors="using:InternalsViewer.UI.App.Helpers.Selectors"
     mc:Ignorable="d">
 
     <UserControl.Resources>
+        <DataTemplate x:Key="MemberRowTemplate" x:DataType="members:ClassMemberRow">
+            <StackPanel Orientation="Horizontal" VerticalAlignment="Center" RightTapped="OnMemberRightTapped">
+                <StackPanel.ContextFlyout>
+                    <MenuFlyout>
+                        <MenuFlyoutItem Text="Copy Signature" Click="OnCopySignatureClick"/>
+                        <MenuFlyoutItem Text="Copy Symbol" Click="OnCopyMemberSymbolClick"/>
+                        <MenuFlyoutSubItem Text="WinDbg">
+                            <MenuFlyoutItem Text="Set Breakpoint" Click="OnSendMemberWinDbgClick" Tag="Breakpoint" IsEnabled="{x:Bind IsFunction}"/>
+                            <MenuFlyoutItem Text="Set Breakpoint With Stack" Click="OnSendMemberWinDbgClick" Tag="BreakpointWithStack" IsEnabled="{x:Bind IsFunction}"/>
+                            <MenuFlyoutItem Text="Set Breakpoint, Dump Arguments and Continue" Click="OnSendMemberWinDbgClick" Tag="DumpArguments" IsEnabled="{x:Bind IsFunction}"/>
+                            <MenuFlyoutItem Text="Set Breakpoint, Dump Arguments and Break" Click="OnSendMemberWinDbgClick" Tag="DumpArgumentsAndBreak" IsEnabled="{x:Bind IsFunction}"/>
+                            <MenuFlyoutItem Text="Set Breakpoint on All Overloads" Click="OnSendMemberWinDbgClick" Tag="BreakpointOnAllOverloads" IsEnabled="{x:Bind IsOverloadedFunction}"/>
+                            <MenuFlyoutSeparator/>
+                            <MenuFlyoutItem Text="Examine Symbol" Click="OnSendMemberWinDbgClick" Tag="ExamineSymbol"/>
+                            <MenuFlyoutSeparator/>
+                            <MenuFlyoutItem Text="Display Type" Click="OnSendMemberWinDbgClick" Tag="DisplayType"/>
+                            <MenuFlyoutItem Text="List Class Symbols" Click="OnSendMemberWinDbgClick" Tag="ListClassSymbols"/>
+                        </MenuFlyoutSubItem>
+                    </MenuFlyout>
+                </StackPanel.ContextFlyout>
+                <TextBlock Text="{x:Bind Prefix}"
+                           signature:SearchHighlight.Search="{x:Bind Highlight}"
+                           FontFamily="{StaticResource MonospaceFontFamily}"
+                           FontSize="11"
+                           Foreground="{ThemeResource SqlKeywordBrush}"
+                           VerticalAlignment="Center"/>
+                <TextBlock Text="{x:Bind ClassPrefix}"
+                           signature:SearchHighlight.Search="{x:Bind Highlight}"
+                           FontFamily="{StaticResource MonospaceFontFamily}"
+                           FontSize="11"
+                           Foreground="{ThemeResource CppClassBrush}"
+                           VerticalAlignment="Center"/>
+                <TextBlock signature:SignatureText.Signature="{x:Bind Signature}"
+                           signature:SearchHighlight.Search="{x:Bind Highlight}"
+                           FontFamily="{StaticResource MonospaceFontFamily}"
+                           FontSize="11"
+                           VerticalAlignment="Center"/>
+            </StackPanel>
+        </DataTemplate>
+
+        <DataTemplate x:Key="SymbolModuleTemplate" x:DataType="muxc:TreeViewNode">
+            <StackPanel Orientation="Horizontal" Spacing="4" VerticalAlignment="Center" RightTapped="OnModuleRightTapped">
+                <StackPanel.ContextFlyout>
+                    <MenuFlyout>
+                        <MenuFlyoutItem Text="Expand All" Click="OnExpandSymbolsClick"/>
+                        <MenuFlyoutItem Text="Collapse All" Click="OnCollapseSymbolsClick"/>
+                        <MenuFlyoutSeparator/>
+                        <MenuFlyoutItem Text="Exclude Module" Click="OnExcludeModuleClick"/>
+                        <MenuFlyoutItem Text="Clear Module Exclusions" Click="OnClearModuleExclusionsClick"/>
+                    </MenuFlyout>
+                </StackPanel.ContextFlyout>
+                <TextBlock Text="{x:Bind ((members:SymbolModuleRow)Content).Module}"
+                           FontFamily="{StaticResource MonospaceFontFamily}"
+                           FontSize="11"
+                           Foreground="{ThemeResource SqlKeywordBrush}"
+                           VerticalAlignment="Center"/>
+                <TextBlock Text="{x:Bind ((members:SymbolModuleRow)Content).CountLabel}"
+                           FontSize="11"
+                           Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                           VerticalAlignment="Center"/>
+            </StackPanel>
+        </DataTemplate>
+
+        <DataTemplate x:Key="SymbolGroupTemplate" x:DataType="muxc:TreeViewNode">
+            <StackPanel Orientation="Horizontal" Spacing="4" VerticalAlignment="Center">
+                <StackPanel.ContextFlyout>
+                    <MenuFlyout>
+                        <MenuFlyoutItem Text="Expand All" Click="OnExpandSymbolsClick"/>
+                        <MenuFlyoutItem Text="Collapse All" Click="OnCollapseSymbolsClick"/>
+                    </MenuFlyout>
+                </StackPanel.ContextFlyout>
+                <TextBlock Text="{x:Bind ((members:SymbolGroupRow)Content).Label}"
+                           signature:SearchHighlight.Search="{x:Bind ((members:SymbolGroupRow)Content).Highlight}"
+                           FontFamily="{StaticResource MonospaceFontFamily}"
+                           FontSize="11"
+                           Foreground="{ThemeResource CppClassBrush}"
+                           VerticalAlignment="Center"/>
+                <TextBlock Text="{x:Bind ((members:SymbolGroupRow)Content).CountLabel}"
+                           FontSize="11"
+                           Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                           VerticalAlignment="Center"/>
+            </StackPanel>
+        </DataTemplate>
+
+        <DataTemplate x:Key="SymbolMemberTemplate" x:DataType="muxc:TreeViewNode">
+            <ContentPresenter Content="{x:Bind Content}" ContentTemplate="{StaticResource MemberRowTemplate}"/>
+        </DataTemplate>
+
+        <DataTemplate x:Key="SymbolExclusionsTemplate" x:DataType="muxc:TreeViewNode">
+            <HyperlinkButton Content="{x:Bind ((members:SymbolExclusionsRow)Content).Label}"
+                             ToolTipService.ToolTip="{x:Bind ((members:SymbolExclusionsRow)Content).Detail}"
+                             FontSize="11"
+                             Padding="0,2,0,2"
+                             Click="OnClearModuleExclusionsClick"/>
+        </DataTemplate>
+
+        <selectors:SymbolTreeTemplateSelector x:Key="SymbolTreeTemplateSelector"
+                                                ModuleTemplate="{StaticResource SymbolModuleTemplate}"
+                                                GroupTemplate="{StaticResource SymbolGroupTemplate}"
+                                                MemberTemplate="{StaticResource SymbolMemberTemplate}"
+                                                ExclusionsTemplate="{StaticResource SymbolExclusionsTemplate}"/>
+
         <!-- A call frame row: the Category | Operator badge, the resolved symbol, and (on the selected node) the
              activity histogram. Used for every node in the merged tree, and for the call frames under each operator
              when scoped. -->
@@ -236,9 +339,9 @@
                                 HorizontalAlignment="Left"
                                 IsTabStop="False"
                                 ContentTemplateSelector="{StaticResource NodeTemplateSelector}"/>
-        </Grid>
+            </Grid>
 
-        <muxc:TreeView x:Name="Tree"
+            <muxc:TreeView x:Name="Tree"
                        Grid.Row="2"
                        SelectionMode="Single"
                        ItemInvoked="OnFrameInvoked"
@@ -248,12 +351,12 @@
                        ScrollViewer.HorizontalScrollBarVisibility="Auto"
                        ScrollViewer.HorizontalScrollMode="Enabled"
                        ItemTemplateSelector="{StaticResource NodeTemplateSelector}">
-            <muxc:TreeView.ItemContainerStyle>
-                <Style TargetType="muxc:TreeViewItem">
-                    <Setter Property="HorizontalContentAlignment" Value="Left"/>
-                </Style>
-            </muxc:TreeView.ItemContainerStyle>
-        </muxc:TreeView>
+                <muxc:TreeView.ItemContainerStyle>
+                    <Style TargetType="muxc:TreeViewItem">
+                        <Setter Property="HorizontalContentAlignment" Value="Left"/>
+                    </Style>
+                </muxc:TreeView.ItemContainerStyle>
+            </muxc:TreeView>
         </Grid>
 
         <controls:GridSplitter Grid.Row="0"
@@ -294,142 +397,217 @@
               Visibility="{x:Bind DetailPaneVisibility, Mode=OneTime}"
               BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
               BorderThickness="{x:Bind DetailPaneBorderThickness, Mode=OneTime}">
-            <Grid.RowDefinitions>
-                <RowDefinition Height="40"/>
-                <RowDefinition Height="Auto"/>
-                <RowDefinition Height="*"/>
-            </Grid.RowDefinitions>
-            <Grid Grid.Row="0"
-                  Padding="8,4,16,4"
-                  BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
-                  BorderThickness="0,0,0,1">
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="Auto"/>
-                    <ColumnDefinition Width="Auto"/>
-                    <ColumnDefinition Width="*"/>
-                    <ColumnDefinition Width="Auto"/>
-                </Grid.ColumnDefinitions>
-                <Button Grid.Column="0"
-                        Style="{StaticResource TabCommandButtonStyle}"
-                        Click="OnMembersBackClick"
-                        IsEnabled="{x:Bind ViewModel.CanGoBackMembers, Mode=OneWay}"
-                        Margin="0,0,6,0"
-                        VerticalAlignment="Center"
-                        ToolTipService.ToolTip="Back">
-                    <FontIcon Glyph="&#xE72B;" FontSize="12"/>
-                </Button>
-                <TextBlock Grid.Column="1"
-                           Margin="4,0,0,1"
-                           VerticalAlignment="Center"
-                           FontFamily="{StaticResource MonospaceFontFamily}"
-                           TextTrimming="CharacterEllipsis"
-                           Text="{x:Bind ViewModel.CallStackMembersClassName, Mode=OneWay}"/>
-                <TextBlock Grid.Column="2"
-                           Margin="10,0,8,0"
-                           VerticalAlignment="Center"
-                           FontSize="11"
-                           Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                           TextTrimming="CharacterEllipsis"
-                           Text="{x:Bind ViewModel.CallStackMembersSummary, Mode=OneWay}"/>
-                <StackPanel Grid.Column="3"
-                            Orientation="Horizontal"
-                            Spacing="8"
-                            VerticalAlignment="Center">
-                    <Button Click="{x:Bind ToggleDetailPaneDock}"
-                            Background="Transparent"
-                            BorderThickness="0"
-                            Padding="0"
-                            VerticalAlignment="Center"
-                            ToolTipService.ToolTip="{x:Bind DockToggleTooltip, Mode=OneTime}">
-                        <FontIcon Glyph="{x:Bind DockToggleGlyph, Mode=OneTime}" FontSize="12"/>
-                    </Button>
-                    <Button Click="{x:Bind CloseDetailPane}"
-                            Background="Transparent"
-                            BorderThickness="0"
-                            Padding="0"
-                            VerticalAlignment="Center">
-                        <FontIcon Glyph="&#xE711;" FontSize="12"/>
-                    </Button>
-                </StackPanel>
-            </Grid>
+            <TabView x:Name="DetailTabs"
+                     VerticalAlignment="Stretch"
+                     IsAddTabButtonVisible="False"
+                     CanReorderTabs="False"
+                     CanDragTabs="False"
+                     TabWidthMode="SizeToContent"
+                     SelectionChanged="OnDetailTabChanged">
+                <TabView.TabStripFooter>
+                    <StackPanel Orientation="Horizontal"
+                                Spacing="8"
+                                Margin="8,0,12,0"
+                                HorizontalAlignment="Right"
+                                VerticalAlignment="Center">
+                        <Button Click="{x:Bind ToggleDetailPaneDock}"
+                                Background="Transparent"
+                                BorderThickness="0"
+                                Padding="0"
+                                VerticalAlignment="Center"
+                                ToolTipService.ToolTip="{x:Bind DockToggleTooltip, Mode=OneTime}">
+                            <FontIcon Glyph="{x:Bind DockToggleGlyph, Mode=OneTime}" FontSize="12"/>
+                        </Button>
+                        <Button Click="{x:Bind CloseDetailPane}"
+                                Background="Transparent"
+                                BorderThickness="0"
+                                Padding="0"
+                                VerticalAlignment="Center">
+                            <FontIcon Glyph="&#xE711;" FontSize="12"/>
+                        </Button>
+                    </StackPanel>
+                </TabView.TabStripFooter>
 
-            <AutoSuggestBox x:Name="MembersSearchBox"
-                            Grid.Row="1"
-                            Margin="0,0,0,4"
-                            PlaceholderText="Search"
-                            QueryIcon="Find"
-                            BorderThickness="0"
-                            FontSize="12"
-                            Height="28"
-                            TextChanged="OnMembersSearchTextChanged"/>
+                <TabViewItem Header="Members" IsClosable="False">
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="*"/>
+                        </Grid.RowDefinitions>
 
-            <TextBlock Grid.Row="2"
-                       Text="{x:Bind ViewModel.CallStackMembersMessage, Mode=OneWay}"
-                       Visibility="{x:Bind ViewModel.CallStackMembersMessage, Mode=OneWay, Converter={StaticResource NullToVisibilityConverter}}"
-                       FontSize="12"
-                       Margin="12,8,12,8"
-                       TextWrapping="Wrap"
-                       VerticalAlignment="Top"/>
-
-            <ListView Grid.Row="2"
-                      ItemsSource="{x:Bind ViewModel.FilteredCallStackMembers, Mode=OneWay}"
-                      SelectionMode="None"
-                      IsItemClickEnabled="False"
-                      Background="{ThemeResource LayerFillColorDefaultBrush}"
-                      ScrollViewer.HorizontalScrollBarVisibility="Auto"
-                      ScrollViewer.HorizontalScrollMode="Enabled">
-                <ListView.ItemContainerStyle>
-                    <Style TargetType="ListViewItem">
-                        <Setter Property="MinHeight" Value="22"/>
-                        <Setter Property="Padding" Value="12,0,12,0"/>
-                        <Setter Property="HorizontalContentAlignment" Value="Left"/>
-                    </Style>
-                </ListView.ItemContainerStyle>
-                <ListView.ItemTemplate>
-                    <DataTemplate x:DataType="members:ClassMemberRow">
-                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center" RightTapped="OnMemberRightTapped">
-                            <StackPanel.ContextFlyout>
-                                <MenuFlyout>
-                                    <MenuFlyoutItem Text="Copy Signature" Click="OnCopySignatureClick"/>
-                                    <MenuFlyoutItem Text="Copy Symbol" Click="OnCopyMemberSymbolClick"/>
-                                    <MenuFlyoutSubItem Text="WinDbg">
-                                        <MenuFlyoutItem Text="Set Breakpoint" Click="OnSendMemberWinDbgClick" Tag="Breakpoint" IsEnabled="{x:Bind IsFunction}"/>
-                                        <MenuFlyoutItem Text="Set Breakpoint With Stack" Click="OnSendMemberWinDbgClick" Tag="BreakpointWithStack" IsEnabled="{x:Bind IsFunction}"/>
-                                        <MenuFlyoutItem Text="Set Breakpoint, Dump Arguments and Continue" Click="OnSendMemberWinDbgClick" Tag="DumpArguments" IsEnabled="{x:Bind IsFunction}"/>
-                                        <MenuFlyoutItem Text="Set Breakpoint, Dump Arguments and Break" Click="OnSendMemberWinDbgClick" Tag="DumpArgumentsAndBreak" IsEnabled="{x:Bind IsFunction}"/>
-                                        <MenuFlyoutItem Text="Set Breakpoint on All Overloads" Click="OnSendMemberWinDbgClick" Tag="BreakpointOnAllOverloads" IsEnabled="{x:Bind IsOverloadedFunction}"/>
-                                        <MenuFlyoutSeparator/>
-                                        <MenuFlyoutItem Text="Examine Symbol" Click="OnSendMemberWinDbgClick" Tag="ExamineSymbol"/>
-                                        <MenuFlyoutSeparator/>
-                                        <MenuFlyoutItem Text="Display Type" Click="OnSendMemberWinDbgClick" Tag="DisplayType"/>
-                                        <MenuFlyoutItem Text="List Class Symbols" Click="OnSendMemberWinDbgClick" Tag="ListClassSymbols"/>
-                                    </MenuFlyoutSubItem>
-                                </MenuFlyout>
-                            </StackPanel.ContextFlyout>
-                            <TextBlock Text="{x:Bind Prefix}"
+                        <Grid Grid.Row="0"
+                              Padding="8,4,16,4"
+                              BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                              BorderThickness="0,0,0,1">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <Button Grid.Column="0"
+                                    Style="{StaticResource TabCommandButtonStyle}"
+                                    Click="OnMembersBackClick"
+                                    IsEnabled="{x:Bind ViewModel.Symbols.CanGoBackMembers, Mode=OneWay}"
+                                    Margin="0,0,6,0"
+                                    VerticalAlignment="Center"
+                                    ToolTipService.ToolTip="Back">
+                                <FontIcon Glyph="&#xE72B;" FontSize="12"/>
+                            </Button>
+                            <TextBlock Grid.Column="1"
+                                       Margin="4,0,0,1"
+                                       VerticalAlignment="Center"
                                        FontFamily="{StaticResource MonospaceFontFamily}"
+                                       TextTrimming="CharacterEllipsis"
+                                       Text="{x:Bind ViewModel.Symbols.MembersClassName, Mode=OneWay}"/>
+                            <TextBlock Grid.Column="2"
+                                       Margin="10,0,8,0"
+                                       VerticalAlignment="Center"
                                        FontSize="11"
                                        Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                                       VerticalAlignment="Center"/>
-                            <TextBlock signature:SignatureText.Signature="{x:Bind Signature}"
-                                       FontFamily="{StaticResource MonospaceFontFamily}"
-                                       FontSize="11"
-                                       VerticalAlignment="Center"/>
-                        </StackPanel>
-                    </DataTemplate>
-                </ListView.ItemTemplate>
-            </ListView>
+                                       TextTrimming="CharacterEllipsis"
+                                       Text="{x:Bind ViewModel.Symbols.MembersSummary, Mode=OneWay}"/>
+                        </Grid>
 
-            <StackPanel Grid.Row="2"
-                        Orientation="Vertical"
-                        Spacing="8"
-                        HorizontalAlignment="Center"
-                        VerticalAlignment="Center"
-                        Visibility="{x:Bind ViewModel.IsCallStackMembersLoading, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}">
-                <ProgressRing IsActive="{x:Bind ViewModel.IsCallStackMembersLoading, Mode=OneWay}"
-                              HorizontalAlignment="Center"/>
-                <TextBlock Text="Loading..." HorizontalAlignment="Center"/>
-            </StackPanel>
+                        <AutoSuggestBox x:Name="MembersSearchBox"
+                                        Grid.Row="1"
+                                        Margin="0,0,0,4"
+                                        PlaceholderText="Search"
+                                        QueryIcon="Find"
+                                        BorderThickness="0"
+                                        FontSize="12"
+                                        Height="28"
+                                        TextChanged="OnMembersSearchTextChanged"/>
+
+                        <TextBlock Grid.Row="2"
+                                   Text="{x:Bind ViewModel.Symbols.MembersMessage, Mode=OneWay}"
+                                   Visibility="{x:Bind ViewModel.Symbols.MembersMessage, Mode=OneWay, Converter={StaticResource NullToVisibilityConverter}}"
+                                   FontSize="12"
+                                   Margin="12,8,12,8"
+                                   TextWrapping="Wrap"
+                                   VerticalAlignment="Top"/>
+
+                        <ListView Grid.Row="2"
+                                  ItemsSource="{x:Bind ViewModel.Symbols.FilteredMembers, Mode=OneWay}"
+                                  ItemTemplate="{StaticResource MemberRowTemplate}"
+                                  SelectionMode="None"
+                                  IsItemClickEnabled="False"
+                                  Background="{ThemeResource LayerFillColorDefaultBrush}"
+                                  ScrollViewer.HorizontalScrollBarVisibility="Auto"
+                                  ScrollViewer.HorizontalScrollMode="Enabled">
+                            <ListView.ItemContainerStyle>
+                                <Style TargetType="ListViewItem">
+                                    <Setter Property="MinHeight" Value="22"/>
+                                    <Setter Property="Padding" Value="12,0,12,0"/>
+                                    <Setter Property="HorizontalContentAlignment" Value="Left"/>
+                                </Style>
+                            </ListView.ItemContainerStyle>
+                        </ListView>
+
+                        <StackPanel Grid.Row="2"
+                                    Orientation="Vertical"
+                                    Spacing="8"
+                                    HorizontalAlignment="Center"
+                                    VerticalAlignment="Center"
+                                    Visibility="{x:Bind ViewModel.Symbols.IsMembersLoading, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}">
+                            <ProgressRing IsActive="{x:Bind ViewModel.Symbols.IsMembersLoading, Mode=OneWay}"
+                                          HorizontalAlignment="Center"/>
+                            <TextBlock Text="Loading..." HorizontalAlignment="Center"/>
+                        </StackPanel>
+                    </Grid>
+                </TabViewItem>
+
+                <TabViewItem Header="Symbols" IsClosable="False">
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="*"/>
+                        </Grid.RowDefinitions>
+
+                        <Grid Grid.Row="0" Margin="0,0,0,4">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+
+
+                            <AutoSuggestBox x:Name="SymbolSearchBox"
+                                            Grid.Column="0"
+                                            Grid.Row="0"
+                                            PlaceholderText="Search"
+                                            QueryIcon="Find"
+                                            BorderThickness="0"
+                                            FontSize="12"
+                                            Height="28"
+                                            TextChanged="OnSymbolSearchTextChanged"/>
+
+                            <StackPanel Grid.Column="1"
+                                        Orientation="Horizontal"
+                                        Spacing="2"
+                                        Margin="6,0,8,0"
+                                        VerticalAlignment="Center">
+                                <ToggleButton Content="Module"
+                                              Tag="Module"
+                                              FontSize="11"
+                                              Padding="6,2,6,3"
+                                              BorderThickness="0"
+                                              Checked="OnSymbolFieldToggled"
+                                              Unchecked="OnSymbolFieldToggled"/>
+                                <ToggleButton Content="Class"
+                                              Tag="Class"
+                                              FontSize="11"
+                                              Padding="6,2,6,3"
+                                              BorderThickness="0"
+                                              Checked="OnSymbolFieldToggled"
+                                              Unchecked="OnSymbolFieldToggled"/>
+                                <ToggleButton Content="Signature"
+                                              Tag="Signature"
+                                              FontSize="11"
+                                              Padding="6,2,6,3"
+                                              BorderThickness="0"
+                                              Checked="OnSymbolFieldToggled"
+                                              Unchecked="OnSymbolFieldToggled"/>
+                            </StackPanel>
+                        </Grid>
+
+                        <TextBlock Grid.Row="1"
+                                   Text="{x:Bind ViewModel.Symbols.SymbolSearchMessage, Mode=OneWay}"
+                                   Visibility="{x:Bind ViewModel.Symbols.SymbolSearchMessage, Mode=OneWay, Converter={StaticResource NullToVisibilityConverter}}"
+                                   FontSize="12"
+                                   Margin="12,8,12,8"
+                                   TextWrapping="Wrap"
+                                   VerticalAlignment="Top"/>
+
+                        <muxc:TreeView x:Name="SymbolTree"
+                                       Grid.Row="1"
+                                       ItemTemplateSelector="{StaticResource SymbolTreeTemplateSelector}"
+                                       SelectionMode="None"
+                                       CanDragItems="False"
+                                       CanReorderItems="False"
+                                       Background="{ThemeResource LayerFillColorDefaultBrush}"
+                                       ScrollViewer.HorizontalScrollBarVisibility="Auto"
+                                       ScrollViewer.HorizontalScrollMode="Enabled">
+                            <muxc:TreeView.ItemContainerStyle>
+                                <Style TargetType="muxc:TreeViewItem">
+                                    <Setter Property="HorizontalContentAlignment" Value="Left"/>
+                                    <Setter Property="MinHeight" Value="22"/>
+                                </Style>
+                            </muxc:TreeView.ItemContainerStyle>
+                        </muxc:TreeView>
+
+                        <StackPanel Grid.Row="1"
+                                    Orientation="Vertical"
+                                    Spacing="8"
+                                    HorizontalAlignment="Center"
+                                    VerticalAlignment="Center"
+                                    Visibility="{x:Bind ViewModel.Symbols.IsSymbolSearchLoading, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}">
+                            <ProgressRing IsActive="{x:Bind ViewModel.Symbols.IsSymbolSearchLoading, Mode=OneWay}"
+                                          HorizontalAlignment="Center"/>
+                            <TextBlock Text="Searching..." HorizontalAlignment="Center"/>
+                        </StackPanel>
+                    </Grid>
+                </TabViewItem>
+            </TabView>
         </Grid>
     </Grid>
 </UserControl>

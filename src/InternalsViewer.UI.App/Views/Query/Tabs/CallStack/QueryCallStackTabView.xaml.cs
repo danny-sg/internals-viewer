@@ -14,12 +14,10 @@ using InternalsViewer.UI.App.Controls.Docking;
 using InternalsViewer.UI.App.Models.Query.CallStack;
 using InternalsViewer.UI.App.Services.Query.Debugging;
 using InternalsViewer.UI.App.ViewModels.Query;
+using InternalsViewer.UI.App.ViewModels.Query.CallStack;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Controls.Primitives;
 using Microsoft.UI.Xaml.Input;
-using Microsoft.UI;
-using Microsoft.UI.Xaml.Media;
-using Microsoft.UI.Xaml.Shapes;
 using Windows.ApplicationModel.DataTransfer;
 
 namespace InternalsViewer.UI.App.Views.Query.Tabs.CallStack;
@@ -42,10 +40,6 @@ public sealed partial class QueryCallStackTabView : UserControl, IDocumentComman
     private Button? _forwardButton;
 
     private ToggleButton? _focusToggle;
-
-    private Button? _winDbgButton;
-
-    private Ellipse? _winDbgStatusDot;
 
     private WinDbgService? _winDbg;
 
@@ -83,6 +77,8 @@ public sealed partial class QueryCallStackTabView : UserControl, IDocumentComman
 
     private ClassMemberRow? _contextMember;
 
+    private SymbolModuleRow? _contextModule;
+
     private QueryViewModel? _viewModel;
 
     public QueryCallStackTabView()
@@ -90,22 +86,18 @@ public sealed partial class QueryCallStackTabView : UserControl, IDocumentComman
         InitializeComponent();
 
         DataContextChanged += (_, _) => OnViewModelChanged();
-
-        Loaded += (_, _) => WinDbg.StatusChanged += OnWinDbgStatusChanged;
-
-        Unloaded += (_, _) => WinDbg.StatusChanged -= OnWinDbgStatusChanged;
     }
 
     public QueryViewModel? ViewModel => DataContext as QueryViewModel;
 
     public bool IsMembersPaneVisible
     {
-        get => ViewModel?.IsCallStackMembersVisible == true;
+        get => ViewModel?.Symbols.IsPaneVisible == true;
         set
         {
             if (ViewModel is { } viewModel)
             {
-                viewModel.IsCallStackMembersVisible = value;
+                viewModel.Symbols.IsPaneVisible = value;
             }
 
             RefreshDetailPane();
@@ -114,12 +106,12 @@ public sealed partial class QueryCallStackTabView : UserControl, IDocumentComman
 
     public bool IsMembersPaneDockedBottom
     {
-        get => ViewModel?.IsCallStackMembersDockedBottom == true;
+        get => ViewModel?.Symbols.IsPaneDockedBottom == true;
         set
         {
             if (ViewModel is { } viewModel)
             {
-                viewModel.IsCallStackMembersDockedBottom = value;
+                viewModel.Symbols.IsPaneDockedBottom = value;
             }
 
             RefreshDetailPane();
@@ -207,38 +199,6 @@ public sealed partial class QueryCallStackTabView : UserControl, IDocumentComman
 
         _focusToggle.Click += OnFocusChanged;
 
-        var winDbgMenu = new MenuFlyout();
-
-        winDbgMenu.Items.Add(WinDbgMenuItem("Attach to SQL Server", OnAttachWinDbgClick));
-        winDbgMenu.Items.Add(WinDbgMenuItem("Connect to Session", OnConnectWinDbgClick));
-        winDbgMenu.Items.Add(WinDbgMenuItem("Detach", OnDetachWinDbgClick));
-        winDbgMenu.Items.Add(new MenuFlyoutSeparator());
-        winDbgMenu.Items.Add(WinDbgMenuItem("Clear Breakpoints", OnClearBreakpointsClick));
-        winDbgMenu.Items.Add(new MenuFlyoutSeparator());
-        winDbgMenu.Items.Add(WinDbgMenuItem("Copy .server Command", OnCopyServerCommandClick));
-
-        _winDbgStatusDot = new Ellipse { Width = 7, Height = 7, VerticalAlignment = VerticalAlignment.Center };
-
-        var winDbgLabel = new StackPanel
-        {
-            Orientation = Orientation.Horizontal,
-            Spacing = 5,
-            VerticalAlignment = VerticalAlignment.Center
-        };
-
-        winDbgLabel.Children.Add(new TextBlock { Text = "Debugger", VerticalAlignment = VerticalAlignment.Center });
-        winDbgLabel.Children.Add(_winDbgStatusDot);
-
-        _winDbgButton = new Button
-        {
-            Style = (Style)Application.Current.Resources["TabCommandButtonStyle"],
-            Content = winDbgLabel,
-            Margin = new Thickness(2, 0, 0, 0),
-            Flyout = winDbgMenu
-        };
-
-        UpdateWinDbgStatus();
-
         var commands = new StackPanel
         {
             Orientation = Orientation.Horizontal,
@@ -251,54 +211,9 @@ public sealed partial class QueryCallStackTabView : UserControl, IDocumentComman
         commands.Children.Add(_backButton);
         commands.Children.Add(_forwardButton);
         commands.Children.Add(_focusToggle);
-        commands.Children.Add(_winDbgButton);
 
         return commands;
     }
-
-    private static MenuFlyoutItem WinDbgMenuItem(string text, RoutedEventHandler handler)
-    {
-        var item = new MenuFlyoutItem { Text = text };
-
-        item.Click += handler;
-
-        return item;
-    }
-
-    private void OnWinDbgStatusChanged(object? sender, EventArgs e) => DispatcherQueue.TryEnqueue(UpdateWinDbgStatus);
-
-    private void UpdateWinDbgStatus()
-    {
-        if (_winDbgButton is null)
-        {
-            return;
-        }
-
-        ToolTipService.SetToolTip(_winDbgButton, WinDbg.Status);
-
-        if (_winDbgStatusDot is not null)
-        {
-            _winDbgStatusDot.Fill = new SolidColorBrush(WinDbg.IsConnected ? Colors.LimeGreen : Colors.Gray);
-        }
-    }
-
-    private void OnAttachWinDbgClick(object sender, RoutedEventArgs e)
-    {
-        if (_viewModel is { } viewModel)
-        {
-            RunWinDbg(() => WinDbg.AttachAsync(viewModel.Database.Connection.GetConnectionString(), CancellationToken.None));
-        }
-    }
-
-    private void OnConnectWinDbgClick(object sender, RoutedEventArgs e) =>
-        RunWinDbg(() => WinDbg.ConnectAsync(CancellationToken.None));
-
-    private void OnDetachWinDbgClick(object sender, RoutedEventArgs e) => RunWinDbg(WinDbg.DetachAsync);
-
-    private void OnCopyServerCommandClick(object sender, RoutedEventArgs e) => CopyText(WinDbg.ServerOptions.ServerCommand);
-
-    private void OnClearBreakpointsClick(object sender, RoutedEventArgs e) =>
-        RunWinDbg(() => WinDbg.SendAsync(WinDbgCommands.ClearBreakpoints, CancellationToken.None));
 
     private async void RunWinDbg(Func<Task> action)
     {
@@ -358,10 +273,6 @@ public sealed partial class QueryCallStackTabView : UserControl, IDocumentComman
     /// <summary>
     /// Records a selection as a place that can be returned to
     /// </summary>
-    /// <remarks>
-    /// Moving after stepping back drops whatever was ahead — the forward entries were a path from where you were, not
-    /// from where you have just gone, and keeping them would offer a route that no longer connects.
-    /// </remarks>
     private void RecordHistory(EngineEvent? selected)
     {
         if (selected is null || _navigatingHistory)
@@ -446,8 +357,12 @@ public sealed partial class QueryCallStackTabView : UserControl, IDocumentComman
         _viewModel.SelectedEvent = link.Operator;
     }
 
-    private void OnNodeRightTapped(object sender, RightTappedRoutedEventArgs e) =>
+    private void OnNodeRightTapped(object sender, RightTappedRoutedEventArgs e)
+    {
         _contextNode = (sender as FrameworkElement)?.DataContext as TreeViewNode;
+
+        EnableWinDbgMenu(sender);
+    }
 
     private void OnExpandAllClick(object sender, RoutedEventArgs e) => SetExpanded(_contextNode, expanded: true);
 
@@ -492,7 +407,7 @@ public sealed partial class QueryCallStackTabView : UserControl, IDocumentComman
 
     private async Task<string> FrameArgumentsCommand(string command, CallstackFrame frame)
     {
-        var signature = _viewModel is { } viewModel ? await viewModel.ResolveFrameSignatureAsync(frame) : null;
+        var signature = _viewModel is { } viewModel ? await viewModel.Symbols.ResolveFrameSignatureAsync(frame) : null;
 
         return command == "DumpArgumentsAndBreak"
             ? WinDbgCommands.DumpArgumentsAndBreak(frame, signature)
@@ -518,11 +433,28 @@ public sealed partial class QueryCallStackTabView : UserControl, IDocumentComman
             return;
         }
 
-        _ = _viewModel.ListMembersAsync(node);
+        _ = _viewModel.Symbols.ListMembersAsync(node);
     }
 
-    private void OnMemberRightTapped(object sender, RightTappedRoutedEventArgs e) =>
+    private void OnMemberRightTapped(object sender, RightTappedRoutedEventArgs e)
+    {
         _contextMember = (sender as FrameworkElement)?.DataContext as ClassMemberRow;
+
+        EnableWinDbgMenu(sender);
+    }
+
+    private void EnableWinDbgMenu(object sender)
+    {
+        if ((sender as FrameworkElement)?.ContextFlyout is not MenuFlyout flyout)
+        {
+            return;
+        }
+
+        foreach (var item in flyout.Items.OfType<MenuFlyoutSubItem>().Where(i => i.Text == "WinDbg"))
+        {
+            item.IsEnabled = WinDbg.IsConnected;
+        }
+    }
 
     private void OnCopySignatureClick(object sender, RoutedEventArgs e)
     {
@@ -577,7 +509,7 @@ public sealed partial class QueryCallStackTabView : UserControl, IDocumentComman
     {
         if (_viewModel is not null)
         {
-            _ = _viewModel.GoBackMembersAsync();
+            _ = _viewModel.Symbols.GoBackMembersAsync();
         }
     }
 
@@ -585,7 +517,7 @@ public sealed partial class QueryCallStackTabView : UserControl, IDocumentComman
     {
         if (_viewModel is not null)
         {
-            _ = _viewModel.ListMembersAsync(typeName);
+            _ = _viewModel.Symbols.ListMembersAsync(typeName);
         }
     }
 
@@ -593,7 +525,105 @@ public sealed partial class QueryCallStackTabView : UserControl, IDocumentComman
     {
         if (_viewModel is not null)
         {
-            _viewModel.CallStackMembersFilter = sender.Text;
+            _viewModel.Symbols.MembersFilter = sender.Text;
+        }
+    }
+
+    private void OnSymbolSearchTextChanged(AutoSuggestBox sender, AutoSuggestBoxTextChangedEventArgs args)
+    {
+        if (_viewModel is not null)
+        {
+            _viewModel.Symbols.SymbolSearchText = sender.Text;
+        }
+    }
+
+    private void OnDetailTabChanged(object sender, SelectionChangedEventArgs args)
+    {
+        if (_viewModel is not null)
+        {
+            _viewModel.Symbols.IsSymbolSearchSelected = sender is TabView { SelectedIndex: 1 };
+        }
+    }
+
+    private void OnModuleRightTapped(object sender, RightTappedRoutedEventArgs e) =>
+        _contextModule = ((sender as FrameworkElement)?.DataContext as TreeViewNode)?.Content as SymbolModuleRow;
+
+    private void OnExcludeModuleClick(object sender, RoutedEventArgs e)
+    {
+        if (_contextModule is { } module)
+        {
+            _viewModel?.Symbols.ExcludeModule(module.Module);
+        }
+    }
+
+    private void OnClearModuleExclusionsClick(object sender, RoutedEventArgs e) => _viewModel?.Symbols.ClearModuleExclusions();
+
+    private void OnExpandSymbolsClick(object sender, RoutedEventArgs e) => ExpandSymbolTree(true);
+
+    private void OnCollapseSymbolsClick(object sender, RoutedEventArgs e) => ExpandSymbolTree(false);
+
+    private void ExpandSymbolTree(bool expanded)
+    {
+        foreach (var node in SymbolTree.RootNodes)
+        {
+            SetExpanded(node, expanded);
+        }
+    }
+
+    private void BuildSymbolTree()
+    {
+        SymbolTree.RootNodes.Clear();
+
+        foreach (var item in _viewModel?.Symbols.SymbolSearchItems ?? [])
+        {
+            var node = new TreeViewNode { Content = item };
+
+            if (item is SymbolModuleRow module)
+            {
+                node.IsExpanded = module.IsExpanded;
+
+                foreach (var group in module.Classes)
+                {
+                    var groupNode = new TreeViewNode { Content = group, IsExpanded = group.IsExpanded };
+
+                    foreach (var member in group.Members)
+                    {
+                        groupNode.Children.Add(new TreeViewNode { Content = member });
+                    }
+
+                    node.Children.Add(groupNode);
+                }
+            }
+
+            SymbolTree.RootNodes.Add(node);
+        }
+    }
+
+    private void OnSymbolFieldToggled(object sender, RoutedEventArgs e)
+    {
+        if (_viewModel is null || sender is not ToggleButton { Tag: string field } toggle)
+        {
+            return;
+        }
+
+        var on = toggle.IsChecked == true;
+
+        switch (field)
+        {
+            case "Module":
+                _viewModel.Symbols.SymbolSearchModule = on;
+
+                break;
+
+            case "Class":
+                _viewModel.Symbols.SymbolSearchClass = on;
+
+                break;
+
+            case "Signature":
+                _viewModel.Symbols.SymbolSearchSignature = on;
+
+                break;
         }
     }
 
@@ -635,6 +665,7 @@ public sealed partial class QueryCallStackTabView : UserControl, IDocumentComman
         if (_viewModel is not null)
         {
             _viewModel.PropertyChanged -= OnPropertyChanged;
+            _viewModel.Symbols.PropertyChanged -= OnSymbolsPropertyChanged;
         }
 
         _viewModel = ViewModel;
@@ -642,9 +673,12 @@ public sealed partial class QueryCallStackTabView : UserControl, IDocumentComman
         if (_viewModel is not null)
         {
             _viewModel.PropertyChanged += OnPropertyChanged;
+            _viewModel.Symbols.PropertyChanged += OnSymbolsPropertyChanged;
         }
 
         RefreshDetailPane();
+
+        BuildSymbolTree();
 
         ApplyFocus(_viewModel?.SelectedEvent);
     }
@@ -664,16 +698,39 @@ public sealed partial class QueryCallStackTabView : UserControl, IDocumentComman
 
             ApplyFocus(_viewModel?.SelectedEvent);
         }
-        else if (e.PropertyName is nameof(QueryViewModel.IsCallStackMembersVisible)
-                                or nameof(QueryViewModel.IsCallStackMembersDockedBottom))
+    }
+
+    private void OnSymbolsPropertyChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (_viewModel?.Symbols is not { } symbols)
+        {
+            return;
+        }
+
+        if (e.PropertyName is nameof(SymbolsViewModel.IsPaneVisible) or nameof(SymbolsViewModel.IsPaneDockedBottom))
         {
             RefreshDetailPane();
         }
-        else if (e.PropertyName == nameof(QueryViewModel.CallStackMembersFilter)
-                 && _viewModel is { } viewModel
-                 && MembersSearchBox.Text != viewModel.CallStackMembersFilter)
+        else if (e.PropertyName == nameof(SymbolsViewModel.SymbolSearchItems))
         {
-            MembersSearchBox.Text = viewModel.CallStackMembersFilter;
+            BuildSymbolTree();
+        }
+        else if (e.PropertyName == nameof(SymbolsViewModel.MembersFilter) && MembersSearchBox.Text != symbols.MembersFilter)
+        {
+            MembersSearchBox.Text = symbols.MembersFilter;
+        }
+        else if (e.PropertyName == nameof(SymbolsViewModel.IsSymbolSearchSelected))
+        {
+            DetailTabs.SelectedIndex = symbols.IsSymbolSearchSelected ? 1 : 0;
+
+            if (symbols.IsSymbolSearchSelected)
+            {
+                DispatcherQueue.TryEnqueue(() => SymbolSearchBox.Focus(FocusState.Programmatic));
+            }
+        }
+        else if (e.PropertyName == nameof(SymbolsViewModel.SymbolSearchText) && SymbolSearchBox.Text != symbols.SymbolSearchText)
+        {
+            SymbolSearchBox.Text = symbols.SymbolSearchText;
         }
     }
 

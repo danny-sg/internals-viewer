@@ -90,7 +90,10 @@
                     </ItemsControl.ItemsPanel>
                     <ItemsControl.ItemTemplate>
                         <DataTemplate x:DataType="trace:HashColumnModel">
-                            <Border Style="{StaticResource HashGridLineStyle}" Height="30" Width="{x:Bind Width, Mode=OneWay}" VerticalAlignment="Stretch">
+                            <Border Style="{StaticResource HashGridLineStyle}"
+                                    Height="30" 
+                                    Width="{x:Bind Width, Mode=OneWay}" 
+                                    VerticalAlignment="Stretch">
                                 <TextBlock Text="{x:Bind Header}"
                                            FontSize="12"
                                            Height="30"

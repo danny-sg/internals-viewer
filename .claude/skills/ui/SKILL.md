@@ -23,7 +23,7 @@ by the view.
 
 All top level views should have a command bar with a consistent layout:
 
-Title/Sub-title | Commands | Details (optional) | Navigation (optional)
+> Title/Sub-title | Commands | Details (optional) | Navigation (optional)
 
 - Title/Sub-title gives information about the view type and the current object. It can also
   contain a navigation control if it is intrinsic to the type, e.g. the Page view has Page Address
@@ -39,5 +39,8 @@ Title/Sub-title | Commands | Details (optional) | Navigation (optional)
 # Views
 
 # Checks
+
+- Are colours/styles/fonts/font weights/padding/margins consistent across all views?
+- Are fonts/
 
 # Performance

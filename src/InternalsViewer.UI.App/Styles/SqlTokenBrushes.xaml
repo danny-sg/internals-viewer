@@ -19,6 +19,10 @@
             <SolidColorBrush x:Key="SqlPunctuationBrush" Color="#000000" />
             <SolidColorBrush x:Key="SqlCommentBrush" Color="#008000" />
             <SolidColorBrush x:Key="SqlUnknownBrush" Color="#CD3131" />
+            <SolidColorBrush x:Key="CppClassBrush" Color="#2B91AF" />
+            <SolidColorBrush x:Key="CppFunctionBrush" Color="#795E26" />
+            <SolidColorBrush x:Key="SearchHighlightBrush" Color="#FFE066" />
+            <SolidColorBrush x:Key="SearchHighlightForegroundBrush" Color="#000000" />
         </ResourceDictionary>
 
         <!--Sql vs-dark-->
@@ -31,6 +35,10 @@
             <SolidColorBrush x:Key="SqlPunctuationBrush" Color="#D4D4D4" />
             <SolidColorBrush x:Key="SqlCommentBrush" Color="#6A9955" />
             <SolidColorBrush x:Key="SqlUnknownBrush" Color="#F48771" />
+            <SolidColorBrush x:Key="CppClassBrush" Color="#4EC9B0" />
+            <SolidColorBrush x:Key="CppFunctionBrush" Color="#DCDCAA" />
+            <SolidColorBrush x:Key="SearchHighlightBrush" Color="#FFD54F" />
+            <SolidColorBrush x:Key="SearchHighlightForegroundBrush" Color="#000000" />
         </ResourceDictionary>
 
         <ResourceDictionary x:Key="HighContrast">
@@ -42,6 +50,10 @@
             <SolidColorBrush x:Key="SqlPunctuationBrush" Color="{ThemeResource SystemColorWindowTextColor}" />
             <SolidColorBrush x:Key="SqlCommentBrush" Color="{ThemeResource SystemColorWindowTextColor}" />
             <SolidColorBrush x:Key="SqlUnknownBrush" Color="{ThemeResource SystemColorWindowTextColor}" />
+            <SolidColorBrush x:Key="CppClassBrush" Color="{ThemeResource SystemColorWindowTextColor}" />
+            <SolidColorBrush x:Key="CppFunctionBrush" Color="{ThemeResource SystemColorWindowTextColor}" />
+            <SolidColorBrush x:Key="SearchHighlightBrush" Color="{ThemeResource SystemColorHighlightColor}" />
+            <SolidColorBrush x:Key="SearchHighlightForegroundBrush" Color="{ThemeResource SystemColorHighlightTextColor}" />
         </ResourceDictionary>
 
     </ResourceDictionary.ThemeDictionaries>
