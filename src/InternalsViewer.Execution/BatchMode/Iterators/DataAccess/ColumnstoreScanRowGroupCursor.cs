@@ -1,5 +1,5 @@
 ﻿using InternalsViewer.Execution.BatchMode.AccessPaths.Definitions;
-using InternalsViewer.Execution.Common.AccessPaths.Elimination;
+using InternalsViewer.Execution.BatchMode.AccessPaths.Elimination;
 using InternalsViewer.Execution.Common.AccessPaths.Predicates;
 using InternalsViewer.Execution.Common.AccessPaths.Results.Steps;
 using InternalsViewer.Execution.BatchMode.Data.Normalization;

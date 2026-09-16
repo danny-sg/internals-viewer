@@ -6,7 +6,7 @@ using InternalsViewer.Execution.AccessPaths.Results.Steps;
 using InternalsViewer.Execution.AccessPaths.Search;
 using InternalsViewer.Execution.AccessPaths.Values;
 using InternalsViewer.Execution.Iterators.RowMode.Windowing;
-using InternalsViewer.Execution.Iterators.RowMode.Stepping;
+using InternalsViewer.Execution.Common.Iterators.Stepping;
 using InternalsViewer.Execution.Tests.Helpers;
 using InternalsViewer.Internals.Engine.Database;
 using InternalsViewer.Internals.Interfaces.Engine;

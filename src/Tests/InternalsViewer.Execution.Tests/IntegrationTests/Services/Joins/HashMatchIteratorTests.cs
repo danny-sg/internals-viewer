@@ -1,4 +1,4 @@
-using InternalsViewer.Execution.AccessPaths.Definitions;
+﻿using InternalsViewer.Execution.AccessPaths.Definitions;
 using InternalsViewer.Execution.AccessPaths.Joins;
 using System.Data;
 using InternalsViewer.Internals.Connections.File;
@@ -14,7 +14,7 @@ using InternalsViewer.Internals.Tests.Helpers;
 using InternalsViewer.Execution.AccessPaths.Joins.Hash;
 using InternalsViewer.Execution.AccessPaths.Results.Steps;
 using InternalsViewer.Execution.Iterators.RowMode.Joins;
-using InternalsViewer.Execution.Iterators.RowMode.Stepping;
+using InternalsViewer.Execution.Common.Iterators.Stepping;
 
 namespace InternalsViewer.Execution.Tests.IntegrationTests.Services.Joins;
 

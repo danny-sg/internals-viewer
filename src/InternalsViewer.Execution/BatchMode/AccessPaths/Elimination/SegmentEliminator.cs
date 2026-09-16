@@ -2,7 +2,7 @@
 using InternalsViewer.Execution.Common.AccessPaths.Values;
 using InternalsViewer.Internals.Columnstore.Metadata;
 
-namespace InternalsViewer.Execution.Common.AccessPaths.Elimination;
+namespace InternalsViewer.Execution.BatchMode.AccessPaths.Elimination;
 
 public sealed class SegmentEliminator(AccessPredicate? predicate)
 {

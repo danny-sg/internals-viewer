@@ -1,4 +1,4 @@
-﻿namespace InternalsViewer.Execution.Common.AccessPaths.Elimination;
+﻿namespace InternalsViewer.Execution.BatchMode.AccessPaths.Elimination;
 
 public readonly record struct EliminationResult(bool IsEliminated, string Reason)
 {

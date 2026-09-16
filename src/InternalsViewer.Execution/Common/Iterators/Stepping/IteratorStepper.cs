@@ -5,7 +5,7 @@ using InternalsViewer.Execution.Common.AccessPaths.Results;
 using InternalsViewer.Execution.Common.AccessPaths.Results.Steps;
 using InternalsViewer.Execution.Common.Interfaces;
 
-namespace InternalsViewer.Execution.RowMode.Iterators.Stepping;
+namespace InternalsViewer.Execution.Common.Iterators.Stepping;
 
 public sealed class IteratorStepper : IAsyncDisposable
 {

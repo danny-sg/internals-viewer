@@ -1,4 +1,4 @@
-using InternalsViewer.Execution.AccessPaths.Definitions;
+﻿using InternalsViewer.Execution.AccessPaths.Definitions;
 using InternalsViewer.Execution.AccessPaths.Joins;
 using System.Data;
 using InternalsViewer.Execution.AccessPaths.Binding;
@@ -6,7 +6,7 @@ using InternalsViewer.Execution.AccessPaths.Results;
 using InternalsViewer.Execution.AccessPaths.Results.Steps;
 using InternalsViewer.Execution.AccessPaths.Search;
 using InternalsViewer.Execution.AccessPaths.Values;
-using InternalsViewer.Execution.Iterators.RowMode.Stepping;
+using InternalsViewer.Execution.Common.Iterators.Stepping;
 using InternalsViewer.Internals.Engine.Database;
 using InternalsViewer.Internals.Interfaces.Engine;
 using InternalsViewer.Internals.Tests.Helpers;
