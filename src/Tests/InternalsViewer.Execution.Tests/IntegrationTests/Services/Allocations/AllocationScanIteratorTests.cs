@@ -1,4 +1,4 @@
-using System.Data;
+﻿using System.Data;
 using InternalsViewer.Internals.Connections.File;
 using InternalsViewer.Execution.AccessPaths.Binding;
 using InternalsViewer.Execution.AccessPaths.Predicates;
@@ -11,7 +11,7 @@ using InternalsViewer.Internals.Tests.Helpers;
 
 using InternalsViewer.Execution.AccessPaths.Definitions;
 using InternalsViewer.Execution.AccessPaths.Results.Steps;
-using InternalsViewer.Execution.Iterators.RowMode.Stepping;
+using InternalsViewer.Execution.Common.Iterators.Stepping;
 using InternalsViewer.Execution.Iterators.RowMode.DataAccess;
 
 namespace InternalsViewer.Execution.Tests.IntegrationTests.Services.Allocations;

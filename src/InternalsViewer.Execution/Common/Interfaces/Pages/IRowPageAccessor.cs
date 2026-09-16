@@ -1,0 +1,30 @@
+﻿using InternalsViewer.Execution.Common.AccessPaths.Binding;
+using InternalsViewer.Execution.Common.Interfaces.AccessPaths.Binding;
+using InternalsViewer.Internals.Engine.Address;
+using InternalsViewer.Internals.Interfaces.Engine;
+using InternalsViewer.Internals.Metadata.Structures;
+
+namespace InternalsViewer.Execution.Common.Interfaces.Pages;
+
+public interface IRowPageAccessor
+{
+    PageAddress PageAddress { get; }
+
+    /// <summary>
+    /// Index level, where zero is the leaf. A heap data page is always level zero
+    /// </summary>
+    byte Level { get; }
+
+    bool IsLeaf { get; }
+
+    int SlotCount { get; }
+
+    StructureType Structure => StructureType.BTree;
+
+    /// <summary>
+    /// Gets the underlying record for a slot, used when evaluating residual predicates
+    /// </summary>
+    IRecord GetRecord(int slot);
+
+    IRowValueSource BindRow(int slot) => new RecordRowValueSource(GetRecord(slot));
+}

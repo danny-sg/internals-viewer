@@ -1,0 +1,9 @@
+﻿global using InternalsViewer.Execution.Common.AccessPaths.Definitions;
+global using InternalsViewer.Execution.Common.AccessPaths.Results;
+global using InternalsViewer.Execution.Common.AccessPaths.Results.Steps;
+global using InternalsViewer.Execution.Common.Interfaces;
+global using InternalsViewer.Execution.Common.Interfaces.Iterators;
+global using InternalsViewer.Execution.BatchMode.AccessPaths.Definitions;
+global using InternalsViewer.Execution.BatchMode.Interfaces;
+global using InternalsViewer.Execution.BatchMode.Data.Vectors;
+global using InternalsViewer.Execution.BatchMode.Records;
