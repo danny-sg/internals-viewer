@@ -14,6 +14,7 @@ using InternalsViewer.Query.CallStack;
 using InternalsViewer.Query.Events.Latches;
 using InternalsViewer.Query.Events.Locks;
 using InternalsViewer.Query.Events.Operators;
+using InternalsViewer.Query.Events.Properties;
 using InternalsViewer.Query.Events.Reads;
 using InternalsViewer.Query.Results;
 using InternalsViewer.UI.App.Controls.SqlEditor;
@@ -256,6 +257,15 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
     [ObservableProperty]
     private bool _isPlanPropertiesVisible;
+
+    [ObservableProperty]
+    private bool _isEventDetailsVisible;
+
+    [ObservableProperty]
+    private bool _isEventDetailsDockedBottom;
+
+    [ObservableProperty]
+    private IReadOnlyList<EventProperty> _selectedEventProperties = [];
 
     [ObservableProperty]
     private bool _isPlanPropertiesDockedBottom;
@@ -696,6 +706,9 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
         }
     }
 
+    partial void OnSelectedEventChanged(EngineEvent? value)
+        => SelectedEventProperties = value?.GetProperties() ?? [];
+
     partial void OnCallStackChanged(CallStackTree? value) => Symbols.CallStack = value;
 
     private void OnDebuggerStatusChanged(object? sender, EventArgs e)
@@ -781,7 +794,7 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
         }
     }
 
-    public void OpenPage(PageAddress pageAddress)
+    public void OpenPage(PageAddress pageAddress, ushort? slot = null)
     {
         var logRecords = GetPageLogRecords(pageAddress);
 
@@ -793,7 +806,7 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
             if (_openPages.TryGetValue(key, out var openViewModel))
             {
-                _ = LoadPageDocument(openViewModel, pageAddress, logRecords);
+                _ = LoadPageDocument(openViewModel, pageAddress, slot, logRecords);
             }
 
             return;
@@ -815,7 +828,7 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
         Layout.Show(document);
 
-        _ = LoadPageDocument(pageViewModel, pageAddress, logRecords);
+        _ = LoadPageDocument(pageViewModel, pageAddress, slot, logRecords);
     }
 
     public void RefreshFilteredEvents()
@@ -1233,11 +1246,12 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
     private async Task LoadPageDocument(PageTabViewModel pageViewModel,
                                         PageAddress pageAddress,
+                                        ushort? slot,
                                         IReadOnlyList<PageLogRecord> logRecords)
     {
         try
         {
-            await pageViewModel.LoadPage(pageAddress, null);
+            await pageViewModel.LoadPage(pageAddress, slot);
 
             pageViewModel.LogRecords = new ObservableCollection<LogRecordItem>(
                 logRecords.Select(r => new LogRecordItem { Record = r }));
@@ -1434,7 +1448,7 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
         }
     }
 
-    private void OnTracePageOpenRequested(object? sender, PageAddress pageAddress) => OpenPage(pageAddress);
+    private void OnTracePageOpenRequested(object? sender, PageOpenRequestedEventArgs e) => OpenPage(e.PageAddress, e.Slot);
 
     private void OnIndexPageNavigated(object? sender, PageNavigatedEventArgs e)
     {

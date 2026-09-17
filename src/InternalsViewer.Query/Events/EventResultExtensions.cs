@@ -20,6 +20,12 @@ public static class EventResultExtensions
     public static long? GetLong(this EventResult e, string key)
         => TryGetSpan(e.Data, e.Buffer, key, out var span) && long.TryParse(span, out var i) ? i : null;
 
+    public static double? GetDouble(this EventResult e, string key)
+        => TryGetSpan(e.Data, e.Buffer, key, out var span)
+           && double.TryParse(span, NumberStyles.Float, CultureInfo.InvariantCulture, out var value)
+            ? value
+            : null;
+
     public static string GetString(this EventResult e, string key)
         => TryGetSpan(e.Data, e.Buffer, key, out var span) ? Decode(span) : string.Empty;
 

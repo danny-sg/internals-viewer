@@ -1,3 +1,4 @@
+using InternalsViewer.Query.Events.Properties;
 using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.TransactionLog.LogRecords;
 
@@ -14,15 +15,18 @@ namespace InternalsViewer.Query.Events.Splits;
 ///
 /// Different split operations are recorded in the event's SplitOperation property, and the new page allocated by the split is in NewPage.
 /// </remarks>
-public sealed record PageSplitEvent : PageEngineEvent
+public sealed partial record PageSplitEvent : PageEngineEvent
 {
+    [EventProperty("Operation")]
     public PageSplitOperation SplitOperation { get; init; }
 
     /// <summary>
     /// Page added to the structure by the split/allocation
     /// </summary>
+    [EventProperty("New Page", Type = EventPropertyType.PageAddress)]
     public PageAddress? NewPage { get; init; }
 
+    [EventProperty("Rowset Id")]
     public long RowsetId { get; init; }
 
     /// <summary>

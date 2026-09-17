@@ -6,18 +6,15 @@ public sealed record EventOptions
 {
     public HashSet<LockModeCategory> IncludeLockModeCategories { get; set; } = DefaultLockModeCategories();
 
-    /// <summary>
-    /// Whether any locks are shown, derived from <see cref="IncludeLockModeCategories"/>
-    /// </summary>
     public bool IncludeLock => IncludeLockModeCategories.Count > 0;
 
     public bool IncludeWait { get; set; } = true;
 
     public bool IncludeMemory { get; set; }
 
-    public bool IncludeCallStack { get; set; }
+    public bool IncludeCallStack { get; set; } = true;
 
-    public bool IncludeLatch { get; set; } = true;
+    public bool IncludeLatch { get; set; } = false;
 
     public bool IncludeBatchMode { get; set; } = true;
 
@@ -35,11 +32,14 @@ public sealed record EventOptions
     public int MaxTraceSizeMb { get; set; } = 150;
 
     /// <summary>
-    /// Directory the XEvent (.xel) file target is written to; when null/empty the SQL Server log directory is used
+    /// Directory the XEvent (.xel) file target is written to
     /// </summary>
     /// <remarks>
     /// A custom directory must be writable by the SQL Server service account (it, not the client, writes the file).
+    /// 
     /// Local SQL Server only — a path here is on the server's file system.
+    ///
+    /// When null/empty the SQL Server log directory is used.
     /// </remarks>
     public string? TraceDirectory { get; set; }
 

@@ -209,6 +209,20 @@
                     e.preventDefault();
                     e.stopPropagation();
                     window.chrome.webview.postMessage(JSON.stringify({ type: 'execute' }));
+                    return;
+                }
+
+                if (e.ctrlKey && !e.shiftKey && !e.altKey && (e.key === 'h' || e.key === 'H')) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    window.chrome.webview.postMessage(JSON.stringify({ type: 'toggleHistory' }));
+                    return;
+                }
+
+                if (e.ctrlKey && !e.shiftKey && !e.altKey && (e.key === 'r' || e.key === 'R')) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    window.chrome.webview.postMessage(JSON.stringify({ type: 'toggleResults' }));
                 }
             }, true);
 

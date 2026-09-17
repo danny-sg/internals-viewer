@@ -62,6 +62,8 @@ public sealed partial class TraceVisualViewModel(TraceVisualType visualType,
 
     private bool _objectBorderVisible;
 
+    private bool _suspendScanVersion;
+
     [ObservableProperty]
     private List<IndexNode> _nodes = [];
 
@@ -90,9 +92,6 @@ public sealed partial class TraceVisualViewModel(TraceVisualType visualType,
     [ObservableProperty]
     private bool _isZoomToFit = true;
 
-    /// <summary>
-    /// Whether the visual zooms in on the page the operator is reading rather than showing the whole structure
-    /// </summary>
     [ObservableProperty]
     private bool _isZoomToPage;
 
@@ -402,15 +401,32 @@ public sealed partial class TraceVisualViewModel(TraceVisualType visualType,
             return;
         }
 
-        ResetColumnstore();
+        _suspendScanVersion = true;
 
-        foreach (var step in steps)
+        try
         {
-            if (step.NodeId == NodeId)
+            ResetColumnstore();
+
+            foreach (var step in steps)
             {
-                ApplyColumnstore(step);
+                if (step.NodeId == NodeId)
+                {
+                    ApplyColumnstore(step);
+                }
             }
         }
+        finally
+        {
+            _suspendScanVersion = false;
+        }
+
+        OnPropertyChanged(nameof(ActiveRowGroupId));
+
+        OnPropertyChanged(nameof(BatchFirstRow));
+
+        OnPropertyChanged(nameof(BatchRowCount));
+
+        BumpScanVersion();
     }
 
     public async Task LoadColumnstoreAsync(CancellationToken cancellationToken)
@@ -483,11 +499,9 @@ public sealed partial class TraceVisualViewModel(TraceVisualType visualType,
             return;
         }
 
-        ActiveRowGroupId = null;
+        SetActiveRowGroupId(null);
 
-        BatchFirstRow = 0;
-
-        BatchRowCount = 0;
+        SetBatchWindow(0, 0);
 
         foreach (var rowGroup in ScanRowGroups)
         {
@@ -505,7 +519,7 @@ public sealed partial class TraceVisualViewModel(TraceVisualType visualType,
             }
         }
 
-        ScanVersion++;
+        BumpScanVersion();
     }
 
     private void ApplyColumnstore(AccessStep step)
@@ -517,13 +531,12 @@ public sealed partial class TraceVisualViewModel(TraceVisualType visualType,
                 break;
 
             case AccessStep.Close:
-                ActiveRowGroupId = null;
-                BatchFirstRow = 0;
-                BatchRowCount = 0;
+                SetActiveRowGroupId(null);
+                SetBatchWindow(0, 0);
                 break;
 
             case AccessStep.RowGroupOpened opened:
-                ActiveRowGroupId = opened.RowGroupId;
+                SetActiveRowGroupId(opened.RowGroupId);
                 break;
 
             case AccessStep.SegmentOpened segmentOpened:
@@ -539,23 +552,20 @@ public sealed partial class TraceVisualViewModel(TraceVisualType visualType,
                 break;
 
             case AccessStep.BatchProduced batch:
-                ActiveRowGroupId = batch.RowGroupId;
-                BatchFirstRow = batch.FirstRow;
-                BatchRowCount = batch.RowCount;
+                SetActiveRowGroupId(batch.RowGroupId);
+                SetBatchWindow(batch.FirstRow, batch.RowCount);
                 SetRowGroup(batch.RowGroupId, r => r.IsVisited = true);
                 break;
 
             case AccessStep.BatchSkipped skipped:
-                ActiveRowGroupId = skipped.RowGroupId;
-                BatchFirstRow = skipped.FirstRow;
-                BatchRowCount = skipped.RowCount;
+                SetActiveRowGroupId(skipped.RowGroupId);
+                SetBatchWindow(skipped.FirstRow, skipped.RowCount);
                 SetRowGroup(skipped.RowGroupId, r => r.IsVisited = true);
                 break;
 
             case AccessStep.AggregatePushdown pushdown:
-                ActiveRowGroupId = pushdown.RowGroupId;
-                BatchFirstRow = pushdown.FirstRow;
-                BatchRowCount = pushdown.RowCount;
+                SetActiveRowGroupId(pushdown.RowGroupId);
+                SetBatchWindow(pushdown.FirstRow, pushdown.RowCount);
                 SetRowGroup(pushdown.RowGroupId, r => r.IsVisited = true);
                 break;
         }
@@ -596,7 +606,7 @@ public sealed partial class TraceVisualViewModel(TraceVisualType visualType,
             apply(rowGroup);
         }
 
-        ScanVersion++;
+        BumpScanVersion();
     }
 
     private void SetSegment(int rowGroupId, int columnId, Action<ScanSegment> apply)
@@ -610,7 +620,49 @@ public sealed partial class TraceVisualViewModel(TraceVisualType visualType,
             apply(segment);
         }
 
+        BumpScanVersion();
+    }
+
+    private void BumpScanVersion()
+    {
+        if (_suspendScanVersion)
+        {
+            return;
+        }
+
         ScanVersion++;
+    }
+
+    private void SetActiveRowGroupId(int? value)
+    {
+        if (_suspendScanVersion)
+        {
+#pragma warning disable MVVMTK0034
+            _activeRowGroupId = value;
+#pragma warning restore MVVMTK0034
+
+            return;
+        }
+
+        ActiveRowGroupId = value;
+    }
+
+    private void SetBatchWindow(int firstRow, int rowCount)
+    {
+        if (_suspendScanVersion)
+        {
+#pragma warning disable MVVMTK0034
+            _batchFirstRow = firstRow;
+
+            _batchRowCount = rowCount;
+#pragma warning restore MVVMTK0034
+
+            return;
+        }
+
+        BatchFirstRow = firstRow;
+
+        BatchRowCount = rowCount;
     }
 
     public void ApplyReplay(TraceVisualReplay replay)

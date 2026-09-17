@@ -47,7 +47,7 @@ public sealed partial class TraceOperatorViewModel(int nodeId, string title, str
 
     public event Action<int>? ActivationRequested;
 
-    public event Action<PageAddress>? PageOpenRequested;
+    public event EventHandler<PageOpenRequestedEventArgs>? PageOpenRequested;
 
     public event Action<bool>? ZoomToPageRequested;
     public int NodeId { get; } = nodeId;
@@ -125,7 +125,7 @@ public sealed partial class TraceOperatorViewModel(int nodeId, string title, str
     {
         if (CurrentPage is { } pageAddress)
         {
-            PageOpenRequested?.Invoke(pageAddress);
+            PageOpenRequested?.Invoke(this, new PageOpenRequestedEventArgs(pageAddress, (ushort?)CurrentSlot));
         }
     }
 

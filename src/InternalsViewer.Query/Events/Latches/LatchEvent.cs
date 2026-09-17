@@ -1,12 +1,15 @@
-﻿using InternalsViewer.Query.Helpers;
+﻿using InternalsViewer.Query.Events.Properties;
+using InternalsViewer.Query.Helpers;
 
 namespace InternalsViewer.Query.Events.Latches;
 
 [EventItemName("Latch")]
-public sealed record LatchEvent : PageEngineEvent
+public sealed partial record LatchEvent : PageEngineEvent
 {
+    [EventProperty("Mode")]
     public LatchMode LatchMode { get; init; }
 
+    [EventProperty("Latch Class")]
     public LatchClass LatchClass { get; init; }
 
     public override string Description => $"Latch: {LatchClass} {LatchMode} - {PageAddress}";
@@ -35,5 +38,6 @@ public sealed record LatchEvent : PageEngineEvent
         }
     }
 
+    [EventProperty("Latch Address", Type = EventPropertyType.Address)]
     public ulong? LatchAddress { get; set; }
 }

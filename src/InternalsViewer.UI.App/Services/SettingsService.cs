@@ -11,23 +11,24 @@ using Microsoft.Extensions.Options;
 
 namespace InternalsViewer.UI.App.Services;
 
-public class SettingsService
+public sealed class SettingsService
 {
-    private readonly string localApplicationData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
+    private readonly string _localApplicationData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
 
-    private IDictionary<string, object> settings;
+    private IDictionary<string, object> _settings;
 
-    private bool isInitialized;
+    private bool _isInitialized;
 
     public SettingsService(ILogger<SettingsService> logger, IOptions<SettingsOptions> options)
     {
         Logger = logger;
+
         var value = options.Value;
 
-        ApplicationDataFolder = Path.Combine(localApplicationData, value.ApplicationDataFolder);
+        ApplicationDataFolder = Path.Combine(_localApplicationData, value.ApplicationDataFolder);
         LocalSettingsFile = value.SettingsFile;
 
-        settings = new Dictionary<string, object>();
+        _settings = new Dictionary<string, object>();
     }
 
     private ILogger<SettingsService> Logger { get; }
@@ -66,12 +67,12 @@ public class SettingsService
 
     private async Task InitializeAsync()
     {
-        if (!isInitialized)
+        if (!_isInitialized)
         {
-            settings = await FileHelpers.ReadFile<IDictionary<string, object>>(ApplicationDataFolder, LocalSettingsFile)
+            _settings = await FileHelpers.ReadFile<IDictionary<string, object>>(ApplicationDataFolder, LocalSettingsFile)
                        ?? new Dictionary<string, object>();
 
-            isInitialized = true;
+            _isInitialized = true;
         }
     }
 
@@ -89,7 +90,7 @@ public class SettingsService
         {
             await InitializeAsync();
 
-            isFound = settings.TryGetValue(key, out value);
+            isFound = _settings.TryGetValue(key, out value);
 
         }
         if (isFound && value != null)
@@ -119,9 +120,9 @@ public class SettingsService
         {
             await InitializeAsync();
 
-            settings[key] = JsonSerializer.Serialize(value);
+            _settings[key] = JsonSerializer.Serialize(value);
 
-            await FileHelpers.SaveFile(ApplicationDataFolder, LocalSettingsFile, settings);
+            await FileHelpers.SaveFile(ApplicationDataFolder, LocalSettingsFile, _settings);
         }
     }
 }

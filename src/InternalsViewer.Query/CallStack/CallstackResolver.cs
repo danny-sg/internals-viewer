@@ -72,9 +72,10 @@ public sealed class CallstackResolver(string symbolsPath) : IDisposable
     /// Finds the public symbols in the frame's PDB whose chosen fields contain the text
     /// </summary>
     /// <remarks>
-    /// A <c>module!</c> prefix on the text, as WinDbg writes a symbol, confines the search to modules matching it and
-    /// searches the rest. Otherwise the module field is decided here: when it is searched and the module's name
-    /// contains the text, the first symbols of the module qualify regardless of their own names.
+    /// Text with <c>|</c> in it is several searches, any of which qualifies a symbol. Within each, a <c>module!</c>
+    /// prefix, as WinDbg writes a symbol, confines the search to modules matching it and searches the rest. Otherwise
+    /// the module field is decided here: when it is searched and the module's name contains the text, the first
+    /// symbols of the module qualify regardless of their own names.
     /// </remarks>
     public IReadOnlyList<SymbolMatch> SearchSymbols(CallstackFrame frame, string text, SymbolSearchFields fields, int limit)
     {
@@ -91,6 +92,19 @@ public sealed class CallstackResolver(string symbolsPath) : IDisposable
                                                                                     LazyThreadSafetyMode.ExecutionAndPublication))
                                      .Value;
 
+        return text.Split(SymbolSearchSuggestion.Alternative, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                   .SelectMany(alternative => SearchAlternative(frame, resolver, index, alternative, fields, limit))
+                   .DistinctBy(m => (m.ClassName, m.Member.Signature))
+                   .ToList();
+    }
+
+    private static List<SymbolMatch> SearchAlternative(CallstackFrame frame,
+                                                       DiaResolver resolver,
+                                                       SymbolIndex index,
+                                                       string text,
+                                                       SymbolSearchFields fields,
+                                                       int limit)
+    {
         var (modulePart, symbolPart) = SymbolIndex.SplitModule(text);
 
         if (modulePart is not null && !SymbolIndex.ModuleMatches(modulePart, frame.Module))
@@ -138,7 +152,7 @@ public sealed class CallstackResolver(string symbolsPath) : IDisposable
             }
         }
 
-        return matches.DistinctBy(m => (m.ClassName, m.Member.Signature)).ToList();
+        return matches;
     }
 
     /// <summary>

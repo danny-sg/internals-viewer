@@ -45,7 +45,6 @@
       <Content Remove="Assets\Help\Pages.md" />
       <Content Remove="Assets\Help\Query.md" />
       <Content Remove="Assets\Help\Start.md" />
-      <Content Remove="Assets\Samples\SampleQueries.sql" />
     </ItemGroup>
     <ItemGroup>
       <Content Remove="Assets\Samples\*.sql" />

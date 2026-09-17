@@ -1,6 +1,7 @@
 ﻿using System.Diagnostics;
 using InternalsViewer.Internals.Engine.Database;
 using InternalsViewer.Query.CallStack;
+using InternalsViewer.Query.Events.Consolidation;
 using InternalsViewer.Query.Events.Batches;
 using InternalsViewer.Query.Events.Operators;
 using InternalsViewer.Query.Events.Splits;
@@ -203,11 +204,7 @@ public sealed class QueryRunner(ILogger<QueryRunner> logger,
 
                 OperatorCallStackMatcher.Match(events);
 
-                if (events.Count > 0)
-                {
-                    // Per-node activity histogram across the query window
-                    callStack.ComputeActivity(events.Min(e => e.TimeUs), events.Max(e => e.TimeUs), buckets: 24, height: 14);
-                }
+                CallStackPlanNodeMatcher.Match(events);
 
                 if (Logger.IsEnabled(LogLevel.Debug) && unknownSymbols.Length > 0)
                 {
@@ -218,9 +215,21 @@ public sealed class QueryRunner(ILogger<QueryRunner> logger,
                 }
             }
 
+            ObjectPoolDurationStamper.Stamp(events);
+
+            OperatorBoundsExtender.ExtendStarts(events);
+
             if (cropStart is { } trimStart && cropEnd is { } trimEnd)
             {
                 events = [.. events.Where(e => e.TimeUs <= trimEnd && e.TimeUs + e.DurationUs >= trimStart)];
+            }
+
+            if (eventOptions.IncludeCallStack && events.Count > 0)
+            {
+                // Per-node activity histogram across the query window
+                callStack.ComputeActivity(cropStart ?? events.Min(e => e.TimeUs),
+                                          cropEnd ?? events.Max(e => e.TimeUs),
+                                          buckets: 96);
             }
         }
         catch (OperationCanceledException)

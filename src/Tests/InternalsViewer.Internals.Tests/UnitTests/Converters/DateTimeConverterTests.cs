@@ -102,4 +102,20 @@ public class DateTimeConverterTests
         // Assert
         Assert.Equal(expected, result);
     }
+
+    [Theory]
+    [InlineData("C0 E3 E2 40 8D 40 46 0B 00 00", 7)]
+    public void Gets_DateTimeOffset_As_A_Typed_Value(string bytesString, byte scale)
+    {
+        // Arrange
+        var bytes = bytesString.ToByteArray();
+
+        // Act
+        var result = DataConverter.GetValue(bytes, SqlDbType.DateTimeOffset, 0, scale);
+
+        // Assert
+        var value = Assert.IsType<DateTimeOffset>(result);
+
+        Assert.Equal(new DateTimeOffset(2023, 12, 27, 16, 51, 7, 900, TimeSpan.Zero), value);
+    }
 }

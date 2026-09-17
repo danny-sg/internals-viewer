@@ -19,7 +19,7 @@ using Windows.UI;
 namespace InternalsViewer.UI.App.Controls.Timeline;
 
 /// <summary>
-/// Interactive timeline of a query's engine events
+/// Interactive timeline of query engine events
 /// </summary>
 public sealed partial class EventTimelineControl : Grid, IDisposable
 {
@@ -112,6 +112,8 @@ public sealed partial class EventTimelineControl : Grid, IDisposable
     }
 
     private readonly TimelineRowSet _rows = new();
+
+    private readonly SegmentScanLanes _segmentLanes = new();
 
     private readonly TimelineAudioPlayer _audioPlayer = new();
     private readonly SKXamlCanvas _skCanvas;
@@ -294,19 +296,10 @@ public sealed partial class EventTimelineControl : Grid, IDisposable
     /// </summary>
     public event Action<PlanNodeIdentifier>? PlanNodeSelected;
 
-    /// <summary>
-    /// Raised when an individual event marker is clicked (to reveal it in the event grid)
-    /// </summary>
     public event Action<EngineEvent>? EventSelected;
 
-    /// <summary>
-    /// Raised when an individual event marker is double clicked (e.g. to open the event's page)
-    /// </summary>
     public event Action<EngineEvent>? EventDoubleClicked;
 
-    /// <summary>
-    /// Raised when "Open Index" is chosen on a scan/seek operator (carries schema/table/index)
-    /// </summary>
     public event Action<ExecutionOperatorEvent>? IndexOpenRequested;
 
     public event Action<ExecutionOperatorEvent>? ExecutionPlanRequested;
@@ -454,6 +447,7 @@ public sealed partial class EventTimelineControl : Grid, IDisposable
         control._eventsVersion++;
 
         control.RebuildRows();
+        control._segmentLanes.Rebuild(control._sortedEvents);
         control.BuildTimes();
         control.BuildOperatorLayout();
 

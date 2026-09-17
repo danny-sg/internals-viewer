@@ -1,4 +1,5 @@
-﻿using InternalsViewer.Query.Events.Locks;
+﻿using InternalsViewer.Query.Events.BatchMode;
+using InternalsViewer.Query.Events.Locks;
 using InternalsViewer.Query.Events.Memory;
 using InternalsViewer.Query.Events.Operators;
 using InternalsViewer.Query.Events.Reads;
@@ -110,6 +111,6 @@ public static class EventSpreader
     /// the moments those holds start and end. Spreading them would drift them off the very lock events they line up with.
     /// </remarks>
     private static bool IsSerialWork(EngineEvent e) =>
-        e is not (QueryThreadEvent or MemoryEvent or LockEvent or LockGroup or LockEscalationEvent or TransactionEvent);
+        e is not (QueryThreadEvent or MemoryEvent or LockEvent or LockGroup or LockEscalationEvent or TransactionEvent or SegmentScanEvent);
 
 }

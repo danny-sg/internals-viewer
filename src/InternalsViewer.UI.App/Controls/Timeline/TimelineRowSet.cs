@@ -16,9 +16,12 @@ using SkiaSharp;
 namespace InternalsViewer.UI.App.Controls.Timeline;
 
 /// <summary>
-/// The timeline's horizontal bands: which event type each lane holds, its label/colour/weight, which
-/// lanes are shown for the current events and visibility flags, and the cached label text blobs
+/// Timeline horizontal bands
 /// </summary>
+/// <remarks>
+/// Defines which event type each lane holds, its label/colour/weight, which lanes are shown for the current events and visibility flags,
+/// and the cached label text blobs
+/// </remarks>
 internal sealed class TimelineRowSet : IDisposable
 {
     // Rows below this event count use a wider marker so their sparse ticks stay easy to see.
@@ -31,7 +34,7 @@ internal sealed class TimelineRowSet : IDisposable
     [
         new(typeof(TransactionLogEvent), "Log",  ColourConstants.LogColour.ToSkColor().WithAlpha(255),  0.5f),
         new(typeof(ExecutionOperatorEvent), "Plan", SKColors.LimeGreen, 3f),
-        new(typeof(SegmentScanEvent), "Segment Scan", ColourConstants.SegmentColour.ToSkColor().WithAlpha(255), 0.167f),
+        new(typeof(SegmentScanEvent), "Columnstore", ColourConstants.SegmentColour.ToSkColor().WithAlpha(255), 0.5f),
         new(typeof(ReadEventGroup), "Read", ColourConstants.IoColour.ToSkColor().WithAlpha(255), 0.5f),
         new(typeof(LockEvent), "Lock", ColourConstants.LockColour.ToSkColor().WithAlpha(255), 0.5f),
         new(typeof(LatchEvent), "Latch", ColourConstants.LatchColour.ToSkColor().WithAlpha(255), 0.167f),
@@ -56,17 +59,20 @@ internal sealed class TimelineRowSet : IDisposable
                         SKFont labelFont)
     {
         var hasLog = events.Any(e => e is TransactionLogEvent);
-        var hasSegment = events.Any(e => e is SegmentScanEvent or SegmentEliminateEvent);
+        var hasSegment = events.Any(e => e is SegmentScanEvent or SegmentEliminateEvent or ObjectPoolEvent or ColumnStoreScanEvent);
         var hasLock = showLocks && events.Any(e => e is LockEvent or LockGroup);
         var hasLatch = showLatches && events.Any(e => e is LatchEvent);
         var hasWait = showWaits && events.Any(e => e is WaitEvent);
 
-        _active = AllRows.Where(r =>
-            (r.EventType != typeof(TransactionLogEvent) || hasLog) &&
-            (r.EventType != typeof(SegmentScanEvent) || hasSegment) &&
-            (r.EventType != typeof(LockEvent) || hasLock) &&
-            (r.EventType != typeof(LatchEvent) || hasLatch) &&
-            (r.EventType != typeof(WaitEvent) || hasWait)).ToArray();
+        _active =
+        [
+            .. AllRows.Where(r =>
+                (r.EventType != typeof(TransactionLogEvent) || hasLog) &&
+                (r.EventType != typeof(SegmentScanEvent) || hasSegment) &&
+                (r.EventType != typeof(LockEvent) || hasLock) &&
+                (r.EventType != typeof(LatchEvent) || hasLatch) &&
+                (r.EventType != typeof(WaitEvent) || hasWait))
+        ];
 
         _eventCounts = new int[_active.Length];
 
@@ -97,7 +103,9 @@ internal sealed class TimelineRowSet : IDisposable
         }
     }
 
-    // The first active row whose event type the event is an instance of, or -1 when its lane isn't shown.
+    /// <summary>
+    /// Finds the first active row whose event type the event is an instance of, or -1 when its lane isn't shown
+    /// </summary>
     public int IndexOf(EngineEvent ev)
     {
         if (ev is IoEvent)
@@ -105,7 +113,7 @@ internal sealed class TimelineRowSet : IDisposable
             return IndexOf(typeof(ReadEventGroup));
         }
 
-        if (ev is SegmentEliminateEvent)
+        if (ev is SegmentEliminateEvent or ObjectPoolEvent or ColumnStoreScanEvent)
         {
             return IndexOf(typeof(SegmentScanEvent));
         }

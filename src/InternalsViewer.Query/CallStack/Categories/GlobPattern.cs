@@ -22,6 +22,16 @@ public readonly struct GlobPattern
     /// </summary>
     public int Score { get; }
 
+    /// <summary>
+    /// The pattern as written in the mapping file
+    /// </summary>
+    public string Text => _pattern;
+
+    /// <summary>
+    /// Whether the pattern matches anything at all, being blank or the lone wildcard
+    /// </summary>
+    public bool IsAny => _isAny;
+
     // An exact match is always more specific than any glob, however long, so it starts far above literal-length scores.
     private const int ExactBonus = 1_000_000;
 

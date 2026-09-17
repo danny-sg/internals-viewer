@@ -8,6 +8,8 @@ Each event shows its type, a description, its time and duration in milliseconds,
 
 The status bar at the bottom counts the events by type - a quick summary of what the query did.
 
+The **Details** toggle in the tab strip opens a pane beside the list showing every property of the selected event - the raw values behind the description, such as a latch's class and address, a segment scan's encoding and dictionary sizes, or the object type an object pool lookup was for.
+
 ## Working with events
 
 - **Click** an event to select it - the selection is shared with the timeline and, for operator events, the Execution Plan and Call Stack panes. Click the selected row again to deselect it

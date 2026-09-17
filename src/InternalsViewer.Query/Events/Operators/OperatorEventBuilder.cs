@@ -300,7 +300,10 @@ internal sealed class OperatorEventBuilder
         _eventsByNode.TryGetValue(node.NodeId, out var list) ? list : [];
 
     private static long? FirstDataAccess(List<EngineEvent> events) =>
-        events.Where(e => e is IoEvent or LatchEvent or ReadEventGroup).Select(e => (long?)e.TimeUs).Min();
+        events.Where(e => e is IoEvent or LatchEvent or ReadEventGroup or SegmentScanEvent or SegmentEliminateEvent
+                          or ObjectPoolEvent or ColumnStoreScanEvent)
+              .Select(e => (long?)e.TimeUs)
+              .Min();
 
     // The earliest page access (I/O or latch) anywhere in a node's subtree (the node and all its descendants).
     private long? EarliestSubtreeDataAccess(PlanNode node)

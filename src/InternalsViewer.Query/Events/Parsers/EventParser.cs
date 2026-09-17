@@ -21,9 +21,6 @@ public sealed class EventParser
 {
     private readonly StringInternPool _frameStrings = new();
 
-    /// <summary>
-    /// Whether events on system objects are mapped rather than excluded
-    /// </summary>
     public bool IncludeSystemObjects { get; init; }
 
     /// <summary>
@@ -68,6 +65,14 @@ public sealed class EventParser
                 => SegmentScanEventParser.Map(database, e),
             "column_store_segment_eliminate"
                 => SegmentEliminateEventParser.Map(database, e),
+            "column_store_object_pool_hit"
+                or "column_store_object_pool_miss"
+                => ObjectPoolEventParser.Map(database, e),
+            "query_execution_wait_syncpoint"
+                or "large_cache_caching_decision"
+                => ColumnStoreScanEventParser.Map(database, e),
+            var n when n.StartsWith("column_store_")
+                => ColumnStoreScanEventParser.Map(database, e),
             var n when n.StartsWith("query_execution_batch_")
                 => BatchModeEventParser.Map(database, e),
             "sql_batch_starting"

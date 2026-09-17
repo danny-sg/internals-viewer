@@ -413,12 +413,13 @@ public sealed partial class PageTabViewModel(ILogger<PageTabViewModel> logger,
 
         PageSlots = new ObservableCollection<PageSlot>(display.Slots);
 
-        SelectedSlot = PageSlots.FirstOrDefault(s => s.Index == display.Slot) ?? display.Slots[0];
-        SelectedMarker = null;
-
         Page = display.Page;
 
-        AddPageHeaderMarkers();
+        SelectedMarker = null;
+
+        SelectedSlot = null;
+
+        SelectedSlot = PageSlots.FirstOrDefault(s => s.Index == display.Slot) ?? display.Slots[0];
     }
 
     /// <summary>

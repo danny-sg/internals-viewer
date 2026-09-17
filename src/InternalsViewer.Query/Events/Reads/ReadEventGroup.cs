@@ -1,3 +1,4 @@
+using InternalsViewer.Query.Events.Properties;
 using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Query.Interfaces.Events;
 
@@ -11,16 +12,19 @@ namespace InternalsViewer.Query.Events.Reads;
 /// the children: child timestamps are quantised to the millisecond, so an envelope stretches to a full 1000us of slop, whereas the folded
 /// suspend carries the microsecond-accurate SQL-measured read duration.
 /// </remarks>
-public sealed record ReadEventGroup : PageEngineEvent, IEventGroup
+public sealed partial record ReadEventGroup : PageEngineEvent, IEventGroup
 {
     public required IReadOnlyList<EngineEvent> Events { get; init; }
 
+    [EventProperty("Read Type")]
     public ReadType ReadType { get; init; }
 
     /// <summary>
-    /// The distinct pages this read touched, ordered by page id
+    /// The distinct pages this read touched
     /// </summary>
     /// <remarks>
+    /// Ordered by page id.
+    /// 
     /// A read is no longer a single page: a Scatter/Gather read pulls a whole range, so the group links to every page rather than one.
     /// <see cref="PageAddress"/> is the first of them, kept for displays that show a representative.
     /// </remarks>

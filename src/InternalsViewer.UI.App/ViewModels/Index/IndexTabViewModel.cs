@@ -77,7 +77,7 @@ public partial class IndexTabViewModel(ILogger<IndexTabViewModel> logger,
     private bool _isTooltipEnabled;
 
     [ObservableProperty]
-    private bool _isLevelsVisible;
+    private bool _isLevelsVisible = true;
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(BodyColumnWidth))]
@@ -149,6 +149,8 @@ public partial class IndexTabViewModel(ILogger<IndexTabViewModel> logger,
 
     private IPageService PageService { get; } = pageService;
 
+    private PageAddress? LoadingPageAddress { get; set; }
+
     [RelayCommand]
     public async Task Refresh()
     {
@@ -212,6 +214,13 @@ public partial class IndexTabViewModel(ILogger<IndexTabViewModel> logger,
             return;
         }
 
+        if (pageAddress == LoadingPageAddress)
+        {
+            return;
+        }
+
+        LoadingPageAddress = pageAddress;
+
         SelectedPageAddress = pageAddress;
 
         IsDetailPaneVisible = true;
@@ -249,6 +258,13 @@ public partial class IndexTabViewModel(ILogger<IndexTabViewModel> logger,
 
         await spinnerDelay.CancelAsync();
 
+        if (LoadingPageAddress != pageAddress)
+        {
+            return;
+        }
+
+        LoadingPageAddress = null;
+
         Records = new ObservableCollection<IndexRecordModel>(decodedRecords);
         SelectedLevel = page?.PageHeader.Level;
         SelectedNextPage = page?.PageHeader.NextPage;
@@ -279,6 +295,55 @@ public partial class IndexTabViewModel(ILogger<IndexTabViewModel> logger,
     }
 
     partial void OnLoadedPageCountChanged(int value) => OnPropertyChanged(nameof(ProgressText));
+
+    partial void OnSelectedPageAddressChanged(PageAddress? value)
+    {
+        if (IsDetailPaneVisible)
+        {
+            ReloadSelectedPage(value);
+        }
+    }
+
+    partial void OnIsDetailPaneVisibleChanged(bool value)
+    {
+        if (value)
+        {
+            ReloadSelectedPage(SelectedPageAddress);
+        }
+    }
+
+    private void ReloadSelectedPage(PageAddress? pageAddress)
+    {
+        if (pageAddress is null || pageAddress == PageAddress.Empty)
+        {
+            Records.Clear();
+
+            SelectedLevel = null;
+            SelectedNextPage = null;
+            SelectedPreviousPage = null;
+
+            return;
+        }
+
+        if (pageAddress == LoadingPageAddress)
+        {
+            return;
+        }
+
+        _ = LoadSelectedPageSafely(pageAddress.Value);
+    }
+
+    private async Task LoadSelectedPageSafely(PageAddress pageAddress)
+    {
+        try
+        {
+            await LoadPage(pageAddress);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Failed to load index page {PageAddress}", pageAddress);
+        }
+    }
 
     partial void OnTotalPageCountChanged(long value)
     {

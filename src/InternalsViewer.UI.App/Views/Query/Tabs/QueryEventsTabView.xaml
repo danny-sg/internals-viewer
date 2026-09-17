@@ -6,11 +6,153 @@
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     xmlns:eventGrid="using:InternalsViewer.UI.App.Controls.EventGrid"
+    xmlns:controls="using:CommunityToolkit.WinUI.Controls"
+    xmlns:tableView="using:WinUI.TableView"
+    xmlns:properties="using:InternalsViewer.Query.Events.Properties"
+    xmlns:local="using:InternalsViewer.UI.App.Views.Query.Tabs"
     mc:Ignorable="d">
-    <eventGrid:EventGridControl x:Name="EventGrid"
-                                  Events="{x:Bind ViewModel.FilteredEvents, Mode=OneWay}"
-                                  SelectedItem="{x:Bind ViewModel.SelectedEvent, Mode=TwoWay}"
-                                  SequenceFrom="{x:Bind ViewModel.SequenceFrom, Mode=OneWay}"
-                                  SequenceTo="{x:Bind ViewModel.SequenceTo, Mode=OneWay}"
-                                  PageClicked="OnPageSelected"/>
+    <Grid>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="{x:Bind BodyColumnWidth, Mode=OneTime}" />
+            <ColumnDefinition Width="Auto" />
+            <ColumnDefinition Width="{x:Bind DetailColumnWidth, Mode=OneTime}" />
+        </Grid.ColumnDefinitions>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="{x:Bind BodyRowHeight, Mode=OneTime}" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="{x:Bind DetailRowHeight, Mode=OneTime}" />
+        </Grid.RowDefinitions>
+
+        <eventGrid:EventGridControl x:Name="EventGrid"
+                                    Grid.Row="0"
+                                    Grid.Column="0"
+                                    Events="{x:Bind ViewModel.FilteredEvents, Mode=OneWay}"
+                                    SelectedItem="{x:Bind ViewModel.SelectedEvent, Mode=TwoWay}"
+                                    SequenceFrom="{x:Bind ViewModel.SequenceFrom, Mode=OneWay}"
+                                    SequenceTo="{x:Bind ViewModel.SequenceTo, Mode=OneWay}"
+                                    PageClicked="OnPageSelected"/>
+
+        <controls:GridSplitter Grid.Row="0"
+                               Grid.Column="1"
+                               Width="4"
+                               HorizontalAlignment="Stretch"
+                               VerticalAlignment="Stretch"
+                               ResizeBehavior="PreviousAndNext"
+                               ResizeDirection="Columns"
+                               Visibility="{x:Bind ColumnSplitterVisibility, Mode=OneTime}"
+                               Background="{ThemeResource ControlStrokeColorDefaultBrush}">
+            <controls:GridSplitter.Template>
+                <ControlTemplate TargetType="controls:GridSplitter">
+                    <Grid Background="{TemplateBinding Background}" />
+                </ControlTemplate>
+            </controls:GridSplitter.Template>
+        </controls:GridSplitter>
+
+        <controls:GridSplitter Grid.Row="1"
+                               Grid.Column="0"
+                               Height="4"
+                               HorizontalAlignment="Stretch"
+                               VerticalAlignment="Stretch"
+                               ResizeBehavior="PreviousAndNext"
+                               ResizeDirection="Rows"
+                               Visibility="{x:Bind RowSplitterVisibility, Mode=OneTime}"
+                               Background="{ThemeResource ControlStrokeColorDefaultBrush}">
+            <controls:GridSplitter.Template>
+                <ControlTemplate TargetType="controls:GridSplitter">
+                    <Grid Background="{TemplateBinding Background}" />
+                </ControlTemplate>
+            </controls:GridSplitter.Template>
+        </controls:GridSplitter>
+
+        <Grid x:Name="DetailPane"
+              Grid.Row="0"
+              Grid.Column="2"
+              Visibility="{x:Bind DetailPaneVisibility, Mode=OneTime}"
+              BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+              BorderThickness="{x:Bind DetailPaneBorderThickness, Mode=OneTime}">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="40" />
+                <RowDefinition Height="*" />
+            </Grid.RowDefinitions>
+            <Grid Grid.Row="0"
+                  Padding="8,4,16,4"
+                  BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                  BorderThickness="0,0,0,1">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <TextBlock Grid.Column="0"
+                           Margin="4,0,0,1"
+                           VerticalAlignment="Center"
+                           Text="Details" />
+                <StackPanel Grid.Column="1"
+                            Orientation="Horizontal"
+                            Spacing="8"
+                            VerticalAlignment="Center">
+                    <Button Click="{x:Bind ToggleDetailPaneDock}"
+                            Background="Transparent"
+                            BorderThickness="0"
+                            Padding="0"
+                            VerticalAlignment="Center"
+                            ToolTipService.ToolTip="{x:Bind DockToggleTooltip, Mode=OneTime}">
+                        <FontIcon Glyph="{x:Bind DockToggleGlyph, Mode=OneTime}" FontSize="12" />
+                    </Button>
+                    <Button Click="{x:Bind CloseDetailPane}"
+                            Background="Transparent"
+                            BorderThickness="0"
+                            Padding="0"
+                            VerticalAlignment="Center">
+                        <FontIcon Glyph="&#xE711;" FontSize="12" />
+                    </Button>
+                </StackPanel>
+            </Grid>
+            <tableView:TableView x:Name="DetailTable"
+                                 Grid.Row="1"
+                                 ItemsSource="{x:Bind ViewModel.SelectedEventProperties, Mode=OneWay}"
+                                 CanSortColumns="False"
+                                 CanFilterColumns="False"
+                                 RowHeight="28"
+                                 SelectionMode="None"
+                                 IsReadOnly="True"
+                                 GridLinesVisibility="Vertical"
+                                 Background="{ThemeResource LayerFillColorDefaultBrush}">
+                <tableView:TableView.Resources>
+                    <x:Double x:Key="ListViewItemMinHeight">0</x:Double>
+                </tableView:TableView.Resources>
+                <tableView:TableView.Columns>
+                    <tableView:TableViewTemplateColumn Header="Property" Width="180">
+                        <tableView:TableViewTemplateColumn.CellTemplate>
+                            <DataTemplate x:DataType="properties:EventProperty">
+                                <TextBlock Text="{x:Bind Name, Mode=OneTime}"
+                                           Margin="4,0"
+                                           VerticalAlignment="Center"/>
+                            </DataTemplate>
+                        </tableView:TableViewTemplateColumn.CellTemplate>
+                    </tableView:TableViewTemplateColumn>
+                    <tableView:TableViewTemplateColumn Header="Value" Width="320">
+                        <tableView:TableViewTemplateColumn.CellTemplate>
+                            <DataTemplate x:DataType="properties:EventProperty">
+                                <Grid>
+                                    <TextBlock Text="{x:Bind Value, Mode=OneTime}"
+                                               Margin="4,0"
+                                               IsTextSelectionEnabled="True"
+                                               VerticalAlignment="Center"
+                                               Visibility="{x:Bind local:QueryEventsTabView.TextVisibility(Type), Mode=OneTime}"/>
+                                    <HyperlinkButton Content="{x:Bind Value, Mode=OneTime}"
+                                                     Style="{StaticResource PointerStyle}"
+                                                     Padding="4,0"
+                                                     VerticalAlignment="Center"
+                                                     HorizontalAlignment="Left"
+                                                     ToolTipService.ToolTip="Open the page or row (Shift + click opens it in a new tab)"
+                                                     Click="OnPropertyLinkClick"
+                                                     Visibility="{x:Bind local:QueryEventsTabView.LinkVisibility(Type), Mode=OneTime}"/>
+                                </Grid>
+                            </DataTemplate>
+                        </tableView:TableViewTemplateColumn.CellTemplate>
+                    </tableView:TableViewTemplateColumn>
+                </tableView:TableView.Columns>
+            </tableView:TableView>
+        </Grid>
+    </Grid>
 </UserControl>

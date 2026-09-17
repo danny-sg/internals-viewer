@@ -1,10 +1,13 @@
-﻿namespace InternalsViewer.Query.Events.Reads;
+﻿using InternalsViewer.Query.Events.Properties;
+
+namespace InternalsViewer.Query.Events.Reads;
 
 /// <summary>
 /// IO (page read/write) event
 /// </summary>
-public sealed record IoEvent : PageEngineEvent
+public sealed partial record IoEvent : PageEngineEvent
 {
+    [EventProperty("Read")]
     public bool IsRead { get; init; }
 
     public override string Description
@@ -27,6 +30,7 @@ public sealed record IoEvent : PageEngineEvent
         }
     }
 
+    [EventProperty("Root Page")]
     public bool IsRoot { get; set; }
 
     public override string Detail

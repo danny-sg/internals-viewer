@@ -14,9 +14,183 @@
     xmlns:signature="using:InternalsViewer.UI.App.Controls.CallStack"
     xmlns:members="using:InternalsViewer.UI.App.Models.Query.CallStack"
     xmlns:selectors="using:InternalsViewer.UI.App.Helpers.Selectors"
+    xmlns:converters="using:InternalsViewer.UI.App.Helpers.Converters"
+    xmlns:converters1="using:InternalsViewer.UI.App.Helpers.Converters.CallStack"
     mc:Ignorable="d">
 
     <UserControl.Resources>
+        <members:ActivityColumnLayout x:Key="ActivityColumn"/>
+
+        <Style x:Key="PlainItemStyle" TargetType="muxc:TreeViewItem">
+            <Setter Property="HorizontalContentAlignment" Value="Left"/>
+        </Style>
+
+        <Style x:Key="ActivityItemStyle" TargetType="muxc:TreeViewItem">
+            <Setter Property="HorizontalContentAlignment" Value="Left"/>
+            <Setter Property="Padding" Value="8,0,0,0"/>
+            <Setter Property="Margin" Value="0"/>
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="HorizontalAlignment" Value="Left"/>
+            <Setter Property="VerticalAlignment" Value="Stretch"/>
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="muxc:TreeViewItem">
+                        <Grid x:Name="ContentPresenterGrid"
+                              Background="{TemplateBinding Background}"
+                              BorderBrush="{TemplateBinding BorderBrush}"
+                              BorderThickness="{TemplateBinding BorderThickness}"
+                              Margin="{ThemeResource TreeViewItemPresenterMargin}"
+                              Padding="{ThemeResource TreeViewItemPresenterPadding}"
+                              CornerRadius="{TemplateBinding CornerRadius}">
+                            <VisualStateManager.VisualStateGroups>
+                                <VisualStateGroup x:Name="CommonStates">
+                                    <VisualState x:Name="Normal"/>
+                                    <VisualState x:Name="PointerOver">
+                                        <VisualState.Setters>
+                                            <Setter Target="ContentPresenterGrid.Background" Value="{ThemeResource TreeViewItemBackgroundPointerOver}"/>
+                                            <Setter Target="ContentPresenter.Foreground" Value="{ThemeResource TreeViewItemForegroundPointerOver}"/>
+                                            <Setter Target="CollapsedGlyph.Foreground" Value="{ThemeResource TreeViewItemForegroundPointerOver}"/>
+                                            <Setter Target="ExpandedGlyph.Foreground" Value="{ThemeResource TreeViewItemForegroundPointerOver}"/>
+                                            <Setter Target="ContentPresenterGrid.BorderBrush" Value="{ThemeResource TreeViewItemBorderBrushPointerOver}"/>
+                                        </VisualState.Setters>
+                                    </VisualState>
+                                    <VisualState x:Name="Pressed">
+                                        <VisualState.Setters>
+                                            <Setter Target="ContentPresenterGrid.Background" Value="{ThemeResource TreeViewItemBackgroundPressed}"/>
+                                            <Setter Target="ContentPresenter.Foreground" Value="{ThemeResource TreeViewItemForegroundPressed}"/>
+                                            <Setter Target="CollapsedGlyph.Foreground" Value="{ThemeResource TreeViewItemForegroundPressed}"/>
+                                            <Setter Target="ExpandedGlyph.Foreground" Value="{ThemeResource TreeViewItemForegroundPressed}"/>
+                                            <Setter Target="ContentPresenterGrid.BorderBrush" Value="{ThemeResource TreeViewItemBorderBrushPressed}"/>
+                                        </VisualState.Setters>
+                                    </VisualState>
+                                    <VisualState x:Name="Selected">
+                                        <VisualState.Setters>
+                                            <Setter Target="ContentPresenterGrid.Background" Value="{ThemeResource TreeViewItemBackgroundSelected}"/>
+                                            <Setter Target="ContentPresenter.Foreground" Value="{ThemeResource TreeViewItemForegroundSelected}"/>
+                                            <Setter Target="CollapsedGlyph.Foreground" Value="{ThemeResource TreeViewItemForegroundSelected}"/>
+                                            <Setter Target="ExpandedGlyph.Foreground" Value="{ThemeResource TreeViewItemForegroundSelected}"/>
+                                            <Setter Target="ContentPresenterGrid.BorderBrush" Value="{ThemeResource TreeViewItemBorderBrushSelected}"/>
+                                            <Setter Target="SelectionIndicator.Opacity" Value="1"/>
+                                        </VisualState.Setters>
+                                    </VisualState>
+                                    <VisualState x:Name="PointerOverSelected">
+                                        <VisualState.Setters>
+                                            <Setter Target="ContentPresenterGrid.Background" Value="{ThemeResource TreeViewItemBackgroundSelectedPointerOver}"/>
+                                            <Setter Target="ContentPresenter.Foreground" Value="{ThemeResource TreeViewItemForegroundSelectedPointerOver}"/>
+                                            <Setter Target="CollapsedGlyph.Foreground" Value="{ThemeResource TreeViewItemForegroundSelectedPointerOver}"/>
+                                            <Setter Target="ExpandedGlyph.Foreground" Value="{ThemeResource TreeViewItemForegroundSelectedPointerOver}"/>
+                                            <Setter Target="ContentPresenterGrid.BorderBrush" Value="{ThemeResource TreeViewItemBorderBrushSelectedPointerOver}"/>
+                                            <Setter Target="SelectionIndicator.Opacity" Value="1"/>
+                                        </VisualState.Setters>
+                                    </VisualState>
+                                    <VisualState x:Name="PressedSelected">
+                                        <VisualState.Setters>
+                                            <Setter Target="ContentPresenterGrid.Background" Value="{ThemeResource TreeViewItemBackgroundSelectedPressed}"/>
+                                            <Setter Target="ContentPresenter.Foreground" Value="{ThemeResource TreeViewItemForegroundSelectedPressed}"/>
+                                            <Setter Target="CollapsedGlyph.Foreground" Value="{ThemeResource TreeViewItemForegroundSelectedPressed}"/>
+                                            <Setter Target="ExpandedGlyph.Foreground" Value="{ThemeResource TreeViewItemForegroundSelectedPressed}"/>
+                                            <Setter Target="ContentPresenterGrid.BorderBrush" Value="{ThemeResource TreeViewItemBorderBrushSelectedPressed}"/>
+                                            <Setter Target="SelectionIndicator.Opacity" Value="1"/>
+                                        </VisualState.Setters>
+                                    </VisualState>
+                                </VisualStateGroup>
+                            </VisualStateManager.VisualStateGroups>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+
+                            <Rectangle x:Name="SelectionIndicator"
+                                       Grid.Column="0"
+                                       Width="3"
+                                       Height="16"
+                                       Fill="{ThemeResource TreeViewItemSelectionIndicatorForeground}"
+                                       Opacity="0"
+                                       HorizontalAlignment="Left"
+                                       VerticalAlignment="Center"
+                                       RadiusX="2"
+                                       RadiusY="2"/>
+
+                            <Border x:Name="ActivityCell"
+                                    Grid.Column="0"
+                                    Width="{Binding Width, Source={StaticResource ActivityColumn}, Mode=OneWay}"
+                                    Margin="6,0,4,0"
+                                    VerticalAlignment="Center"
+                                    HorizontalAlignment="Left">
+                                <Border Background="#F0F0F0"
+                                        Padding="1"
+                                        HorizontalAlignment="Stretch"
+                                        Visibility="{x:Bind converters1:ActivityBandBrush.Visibility(Content), Mode=OneWay}">
+                                    <Rectangle Height="12"
+                                               Fill="{x:Bind converters1:ActivityBandBrush.Fill(Content, IsExpanded), Mode=OneWay}"/>
+                                </Border>
+                            </Border>
+
+                            <Grid x:Name="MultiSelectGrid"
+                                  Grid.Column="1"
+                                  Margin="{ThemeResource TreeViewItemMultiSelectSelectedItemBorderMargin}"
+                                  Padding="{Binding RelativeSource={RelativeSource TemplatedParent}, Path=TreeViewItemTemplateSettings.Indentation}"
+                                  BorderBrush="Transparent"
+                                  BorderThickness="{ThemeResource TreeViewItemBorderThemeThickness}"
+                                  CornerRadius="{ThemeResource ControlCornerRadius}">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition/>
+                                </Grid.ColumnDefinitions>
+
+                                <Grid x:Name="ExpandCollapseChevron"
+                                      Grid.Column="0"
+                                      Padding="0"
+                                      Opacity="{TemplateBinding GlyphOpacity}"
+                                      Background="Transparent">
+                                    <TextBlock x:Name="CollapsedGlyph"
+                                               Foreground="{TemplateBinding GlyphBrush}"
+                                               Width="Auto"
+                                               Height="12"
+                                               Padding="8,0,0,0"
+                                               Visibility="{Binding RelativeSource={RelativeSource TemplatedParent}, Path=TreeViewItemTemplateSettings.CollapsedGlyphVisibility}"
+                                               FontSize="{TemplateBinding GlyphSize}"
+                                               Text="{TemplateBinding CollapsedGlyph}"
+                                               FontFamily="{StaticResource SymbolThemeFontFamily}"
+                                               VerticalAlignment="Center"
+                                               AutomationProperties.AccessibilityView="Raw"
+                                               IsTextScaleFactorEnabled="False"
+                                               IsHitTestVisible="False"/>
+                                    <TextBlock x:Name="ExpandedGlyph"
+                                               Foreground="{TemplateBinding GlyphBrush}"
+                                               Width="Auto"
+                                               Height="12"
+                                               Padding="8,0,0,0"
+                                               Visibility="{Binding RelativeSource={RelativeSource TemplatedParent}, Path=TreeViewItemTemplateSettings.ExpandedGlyphVisibility}"
+                                               FontSize="{TemplateBinding GlyphSize}"
+                                               Text="{TemplateBinding ExpandedGlyph}"
+                                               FontFamily="{StaticResource SymbolThemeFontFamily}"
+                                               VerticalAlignment="Center"
+                                               AutomationProperties.AccessibilityView="Raw"
+                                               IsTextScaleFactorEnabled="False"
+                                               IsHitTestVisible="False"/>
+                                </Grid>
+                                <ContentPresenter x:Name="ContentPresenter"
+                                                  Grid.Column="1"
+                                                  ContentTransitions="{TemplateBinding ContentTransitions}"
+                                                  ContentTemplate="{TemplateBinding ContentTemplate}"
+                                                  Content="{TemplateBinding Content}"
+                                                  HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
+                                                  VerticalAlignment="{TemplateBinding VerticalContentAlignment}"
+                                                  MinHeight="{ThemeResource TreeViewItemContentHeight}"
+                                                  Margin="{TemplateBinding Padding}"/>
+                            </Grid>
+                        </Grid>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style x:Key="SearchTextBoxStyle" TargetType="TextBox" BasedOn="{StaticResource AutoSuggestBoxTextBoxStyle}">
+            <Setter Property="IsSpellCheckEnabled" Value="False"/>
+        </Style>
+
         <DataTemplate x:Key="MemberRowTemplate" x:DataType="members:ClassMemberRow">
             <StackPanel Orientation="Horizontal" VerticalAlignment="Center" RightTapped="OnMemberRightTapped">
                 <StackPanel.ContextFlyout>
@@ -61,11 +235,11 @@
             <StackPanel Orientation="Horizontal" Spacing="4" VerticalAlignment="Center" RightTapped="OnModuleRightTapped">
                 <StackPanel.ContextFlyout>
                     <MenuFlyout>
-                        <MenuFlyoutItem Text="Expand All" Click="OnExpandSymbolsClick"/>
-                        <MenuFlyoutItem Text="Collapse All" Click="OnCollapseSymbolsClick"/>
+                        <MenuFlyoutItem Text="Expand all" Click="OnExpandSymbolsClick"/>
+                        <MenuFlyoutItem Text="Collapse all" Click="OnCollapseSymbolsClick"/>
                         <MenuFlyoutSeparator/>
-                        <MenuFlyoutItem Text="Exclude Module" Click="OnExcludeModuleClick"/>
-                        <MenuFlyoutItem Text="Clear Module Exclusions" Click="OnClearModuleExclusionsClick"/>
+                        <MenuFlyoutItem Text="Exclude module" Click="OnExcludeModuleClick"/>
+                        <MenuFlyoutItem Text="Clear module exclusions" Click="OnClearModuleExclusionsClick"/>
                     </MenuFlyout>
                 </StackPanel.ContextFlyout>
                 <TextBlock Text="{x:Bind ((members:SymbolModuleRow)Content).Module}"
@@ -175,33 +349,6 @@
                            FontSize="11"
                            VerticalAlignment="Center"/>
 
-                <!-- Activity histogram: shown only on the selected node — its subtree activity over the query
-                     window (taller = hotter), with the selected event's time bucket highlighted, the rest grey.
-                     The white background spans the full window so the chart's range is visible even where empty. -->
-                <Border Background="White"
-                        CornerRadius="2"
-                        Padding="1"
-                        Margin="10,0,0,0"
-                        VerticalAlignment="Center"
-                        Visibility="{x:Bind ((callstack:CallStackNode)Content).HasHistogram, Converter={StaticResource BoolToVisibilityConverter}}">
-                    <ItemsControl ItemsSource="{x:Bind ((callstack:CallStackNode)Content).DisplayBars}"
-                                  Height="14">
-                        <ItemsControl.ItemsPanel>
-                            <ItemsPanelTemplate>
-                                <StackPanel Orientation="Horizontal" VerticalAlignment="Bottom"/>
-                            </ItemsPanelTemplate>
-                        </ItemsControl.ItemsPanel>
-                        <ItemsControl.ItemTemplate>
-                            <DataTemplate x:DataType="callstack:ActivityBar">
-                                <Rectangle Width="3"
-                                           Height="{x:Bind Height}"
-                                           Margin="0,0,1,0"
-                                           VerticalAlignment="Bottom"
-                                           Fill="{x:Bind Colour, Converter={StaticResource HexColorToBrushConverter}}"/>
-                            </DataTemplate>
-                        </ItemsControl.ItemTemplate>
-                    </ItemsControl>
-                </Border>
             </StackPanel>
         </DataTemplate>
 
@@ -300,6 +447,7 @@
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto"/>
                 <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
                 <RowDefinition Height="*"/>
             </Grid.RowDefinitions>
 
@@ -308,6 +456,7 @@
                             Margin="0,0,0,4"
                             PlaceholderText="Search"
                             QueryIcon="Find"
+                            TextBoxStyle="{StaticResource SearchTextBoxStyle}"
                             BorderThickness="0"
                             FontSize="12"
                             Height="28"
@@ -341,22 +490,33 @@
                                 ContentTemplateSelector="{StaticResource NodeTemplateSelector}"/>
             </Grid>
 
+            <Grid x:Name="ActivityHeader"
+                  Grid.Row="2"
+                  Height="10">
+                <Border x:Name="ActivitySplitter"
+                        Width="7"
+                        HorizontalAlignment="Left"
+                        Background="Transparent"
+                        ManipulationMode="TranslateX"
+                        ManipulationDelta="OnActivitySplitterDelta"
+                        ToolTipService.ToolTip="Drag to resize the activity column">
+                    <Rectangle Width="1"
+                               HorizontalAlignment="Center"
+                               Fill="{ThemeResource ControlStrokeColorDefaultBrush}"/>
+                </Border>
+            </Grid>
+
             <muxc:TreeView x:Name="Tree"
-                       Grid.Row="2"
+                       Grid.Row="3"
                        SelectionMode="Single"
                        ItemInvoked="OnFrameInvoked"
                        CanDragItems="False"
                        CanReorderItems="False"
-                       Background="{ThemeResource LayerFillColorDefaultBrush}"
+                       Background="White"
                        ScrollViewer.HorizontalScrollBarVisibility="Auto"
                        ScrollViewer.HorizontalScrollMode="Enabled"
-                       ItemTemplateSelector="{StaticResource NodeTemplateSelector}">
-                <muxc:TreeView.ItemContainerStyle>
-                    <Style TargetType="muxc:TreeViewItem">
-                        <Setter Property="HorizontalContentAlignment" Value="Left"/>
-                    </Style>
-                </muxc:TreeView.ItemContainerStyle>
-            </muxc:TreeView>
+                       ItemTemplateSelector="{StaticResource NodeTemplateSelector}"
+                       ItemContainerStyle="{StaticResource ActivityItemStyle}"/>
         </Grid>
 
         <controls:GridSplitter Grid.Row="0"
@@ -474,6 +634,7 @@
                                         Margin="0,0,0,4"
                                         PlaceholderText="Search"
                                         QueryIcon="Find"
+                                        TextBoxStyle="{StaticResource SearchTextBoxStyle}"
                                         BorderThickness="0"
                                         FontSize="12"
                                         Height="28"
@@ -536,10 +697,19 @@
                                             Grid.Row="0"
                                             PlaceholderText="Search"
                                             QueryIcon="Find"
+                                            TextBoxStyle="{StaticResource SearchTextBoxStyle}"
                                             BorderThickness="0"
                                             FontSize="12"
                                             Height="28"
-                                            TextChanged="OnSymbolSearchTextChanged"/>
+                                            TextMemberPath="Term"
+                                            GotFocus="OnSymbolSearchGotFocus"
+                                            TextChanged="OnSymbolSearchTextChanged">
+                                <AutoSuggestBox.ItemTemplate>
+                                    <DataTemplate x:DataType="callstack:SymbolSearchSuggestion">
+                                        <TextBlock Text="{x:Bind Display}" FontSize="12"/>
+                                    </DataTemplate>
+                                </AutoSuggestBox.ItemTemplate>
+                            </AutoSuggestBox>
 
                             <StackPanel Grid.Column="1"
                                         Orientation="Horizontal"

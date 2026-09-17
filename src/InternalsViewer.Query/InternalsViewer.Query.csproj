@@ -16,6 +16,7 @@
         <ProjectReference Include="..\InternalsViewer.Internals\InternalsViewer.Internals.csproj" />
         <ProjectReference Include="..\InternalsViewer.TransactionLog\InternalsViewer.TransactionLog.csproj" />
         <ProjectReference Include="..\InternalsViewer.Execution\InternalsViewer.Execution.csproj" />
+        <ProjectReference Include="..\InternalsViewer.Query.SourceGenerators\InternalsViewer.Query.SourceGenerators.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
     </ItemGroup>
     <ItemGroup>
         <InternalsVisibleTo Include="$(AssemblyName).Tests" />

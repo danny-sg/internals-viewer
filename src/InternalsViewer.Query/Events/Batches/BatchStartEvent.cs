@@ -1,6 +1,6 @@
 ﻿namespace InternalsViewer.Query.Events.Batches;
 
-public sealed record BatchStartEvent : EngineEvent
+public sealed partial record BatchStartEvent : EngineEvent
 {
     public string SqlText
     {

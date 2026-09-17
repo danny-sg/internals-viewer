@@ -130,6 +130,21 @@ public static class DateTimeConverters
     /// </returns>
     public static string DecodeDateTimeOffset(ReadOnlySpan<byte> data, byte scale)
     {
+        var value = DecodeDateTimeOffsetValue(data, scale);
+
+        var sign = value.Offset < TimeSpan.Zero ? "-" : "+";
+
+        return $"{value.DateTime:yyyy-MM-dd HH:mm:ss.fffffff} {sign}{value.Offset.Duration():hh\\:mm}";
+    }
+
+    /// <summary>
+    /// Decodes DATETIMEOFFSET type as a DateTimeOffset
+    /// </summary>
+    /// <remarks>
+    /// The date and time are held as UTC, so the instant is read as UTC and the stored offset is then applied rather than only labelled.
+    /// </remarks>
+    public static DateTimeOffset DecodeDateTimeOffsetValue(ReadOnlySpan<byte> data, byte scale)
+    {
         Span<byte> dateData = stackalloc byte[4];
         Span<byte> timeData = stackalloc byte[8];
 
@@ -138,19 +153,13 @@ public static class DateTimeConverters
 
         var datePart = BinaryPrimitives.ReadInt32LittleEndian(dateData);
         var timePart = BinaryPrimitives.ReadInt64LittleEndian(timeData);
-        var time = BinaryPrimitives.ReadInt16LittleEndian(data[^2..]);
+        var offsetMinutes = BinaryPrimitives.ReadInt16LittleEndian(data[^2..]);
 
-        var returnDate = new DateTime(0001, 01, 01)
+        var utc = new DateTime(0001, 01, 01, 0, 0, 0, DateTimeKind.Utc)
             .AddDays(datePart)
             .AddTicks(timePart * TickFactors[scale]);
 
-        var offsetTime = default(DateTime).AddMinutes(Math.Abs(time));
-        var sign = time >= 0 ? "+" : "-";
-
-        // The date and time are held as UTC, so the offset has to be applied rather than only labelled
-        var localDate = returnDate.AddMinutes(time);
-
-        return $"{localDate:yyyy-MM-dd HH:mm:ss.fffffff} {sign}{offsetTime:HH:mm}";
+        return new DateTimeOffset(utc).ToOffset(TimeSpan.FromMinutes(offsetMinutes));
     }
 
     /// <summary>

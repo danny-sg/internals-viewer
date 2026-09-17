@@ -5,7 +5,6 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
-using Microsoft.Extensions.Logging;
 using CommunityToolkit.Mvvm.Input;
 using InternalsViewer.Execution.AccessPaths.Definitions;
 using InternalsViewer.Execution.AccessPaths.Descriptions;
@@ -24,9 +23,12 @@ using InternalsViewer.Query.Plans;
 using InternalsViewer.Query.Plans.Model;
 using InternalsViewer.UI.App.Helpers;
 using InternalsViewer.UI.App.Models.Query.Trace;
+using InternalsViewer.UI.App.Services.Diagnostics;
 using InternalsViewer.UI.App.Services.Query.Trace;
 using InternalsViewer.UI.App.Services.Query.Trace.Steps;
 using InternalsViewer.UI.App.ViewModels.Index;
+using Microsoft.Extensions.Logging;
+using Microsoft.UI.Dispatching;
 
 namespace InternalsViewer.UI.App.ViewModels.Query.Trace;
 
@@ -67,9 +69,6 @@ public sealed partial class TraceTabViewModel : ObservableObject, IDisposable
     [ObservableProperty]
     private double _runDelayMs = 150;
 
-    /// <summary>
-    /// The tab whose walk the strategy and description panels describe
-    /// </summary>
     [ObservableProperty]
     private TraceVisualViewModel _selectedVisual;
 
@@ -127,7 +126,8 @@ public sealed partial class TraceTabViewModel : ObservableObject, IDisposable
     [ObservableProperty]
     private long _playheadTimeUs;
 
-    public TraceTabViewModel(IIteratorFactory iteratorFactory,
+    public TraceTabViewModel(ILogger<TraceTabViewModel> logger,
+                             IIteratorFactory iteratorFactory,
                              IteratorDefinition definition,
                              DatabaseSource database,
                              PlanNode? planNode,
@@ -136,6 +136,8 @@ public sealed partial class TraceTabViewModel : ObservableObject, IDisposable
                              IReadOnlyList<TraceVisualViewModel> visuals,
                              TraceLayout layout)
     {
+        Logger = logger;
+
         IteratorFactory = iteratorFactory;
         Definition = definition;
         Database = database;
@@ -186,7 +188,7 @@ public sealed partial class TraceTabViewModel : ObservableObject, IDisposable
         {
             op.ActivationRequested += ActivateOperator;
 
-            op.PageOpenRequested += address => PageOpenRequested?.Invoke(this, address);
+            op.PageOpenRequested += (_, e) => PageOpenRequested?.Invoke(this, e);
 
             op.ZoomToPageRequested += value => IsZoomToPage = value;
 
@@ -206,10 +208,7 @@ public sealed partial class TraceTabViewModel : ObservableObject, IDisposable
 
     public event EventHandler<PageNavigatedEventArgs>? PageNavigated;
 
-    /// <summary>
-    /// Raised when the page an operator stands on is clicked, which opens it as a tab of the query it was traced from
-    /// </summary>
-    public event EventHandler<PageAddress>? PageOpenRequested;
+    public event EventHandler<PageOpenRequestedEventArgs>? PageOpenRequested;
 
     public IReadOnlyList<TraceVisualViewModel> Visuals { get; }
 
@@ -328,6 +327,8 @@ public sealed partial class TraceTabViewModel : ObservableObject, IDisposable
 
     private IteratorDefinition Definition { get; }
 
+    private ILogger<TraceTabViewModel> Logger { get; }
+
     private IIteratorFactory IteratorFactory { get; }
 
     private IteratorStepper? Stepper { get; set; }
@@ -436,6 +437,30 @@ public sealed partial class TraceTabViewModel : ObservableObject, IDisposable
 
     [RelayCommand(AllowConcurrentExecutions = true)]
     public Task RunToEnd() => RunUntilAsync(null);
+
+    [RelayCommand(AllowConcurrentExecutions = true)]
+    public async Task RestartRun()
+    {
+        ResetStep();
+
+        await Run();
+    }
+
+    [RelayCommand]
+    public async Task Pause()
+    {
+        if (IsRunningToEnd)
+        {
+            if (_runToEndCancellation is { } cancellation)
+            {
+                await cancellation.CancelAsync();
+            }
+
+            return;
+        }
+
+        await StopInteractiveRunAsync();
+    }
 
     public bool HasBatchAdapter => Layout.Nodes.Values.Any(n => n.Definition is BatchToRowDefinition);
 
@@ -964,7 +989,10 @@ public sealed partial class TraceTabViewModel : ObservableObject, IDisposable
         {
             if (!IsStepping)
             {
-                await StartAsync();
+                using (Logger.Time("Trace start"))
+                {
+                    await StartAsync();
+                }
             }
 
             if (Stepper is not { } stepper)
@@ -974,7 +1002,15 @@ public sealed partial class TraceTabViewModel : ObservableObject, IDisposable
 
             var result = await Task.Run(() => RunLoopAsync(stepper, stopAfter, cancellationToken), CancellationToken.None);
 
-            ApplyRunResult(stepper, result);
+            using (Logger.Time("Trace apply"))
+            {
+                ApplyRunResult(stepper, result);
+            }
+
+            if (DispatcherQueue.GetForCurrentThread() is { } dispatcher)
+            {
+                Logger.TimeUntilIdle(dispatcher, "Trace settle", $"{result.Steps.Count} rows");
+            }
         }
         finally
         {
@@ -985,37 +1021,38 @@ public sealed partial class TraceTabViewModel : ObservableObject, IDisposable
         }
     }
 
-    private async Task<RunResult> RunLoopAsync(IteratorStepper stepper, Func<AccessStep, bool>? stopAfter, CancellationToken cancellationToken)
+    private async Task<RunResult> RunLoopAsync(IteratorStepper stepper, 
+                                               Func<AccessStep, bool>? stopAfter, 
+                                               CancellationToken cancellationToken)
     {
-        try
+        using (Logger.Time("Trace drain"))
         {
-            while (!cancellationToken.IsCancellationRequested
-                   && await stepper.StepNextAsync(CancellationToken.None) is { } step)
+            try
             {
-                if (stopAfter?.Invoke(step) == true)
-                {
-                    break;
-                }
+                await stepper.DrainAsync(stopAfter, cancellationToken);
+            }
+            catch (OperationCanceledException)
+            {
             }
         }
-        catch (OperationCanceledException)
+
+        using (Logger.Time("Trace result", $"{stepper.History.Count} steps"))
         {
+            var steps = new ObservableCollection<AccessStep>();
+
+            foreach (var step in stepper.History)
+            {
+                TraceStepRuns.Append(step, steps, HistoryLimit);
+            }
+
+            var replays = Visuals.ToDictionary(v => v, v => v.ComputeReplay(stepper.History));
+
+            return new RunResult(steps,
+                                 Applier.ComputeStreamUpdate(stepper.History),
+                                 Applier.ComputePositions(stepper.History),
+                                 Applier.ComputeHeldRows(stepper),
+                                 replays);
         }
-
-        var steps = new ObservableCollection<AccessStep>();
-
-        foreach (var step in stepper.History)
-        {
-            TraceStepRuns.Append(step, steps, HistoryLimit);
-        }
-
-        var replays = Visuals.ToDictionary(v => v, v => v.ComputeReplay(stepper.History));
-
-        return new RunResult(steps,
-                             Applier.ComputeStreamUpdate(stepper.History),
-                             Applier.ComputePositions(stepper.History),
-                             Applier.ComputeHeldRows(stepper),
-                             replays);
     }
 
     private void ApplyRunResult(IteratorStepper stepper, RunResult result)

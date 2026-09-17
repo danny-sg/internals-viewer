@@ -1,11 +1,16 @@
-﻿namespace InternalsViewer.Query.Events.BatchMode;
+﻿using InternalsViewer.Query.Events.Properties;
 
-public sealed record SegmentEliminateEvent : EngineEvent
+namespace InternalsViewer.Query.Events.BatchMode;
+
+public sealed partial record SegmentEliminateEvent : EngineEvent
 {
+    [EventProperty("Row Group")]
     public long RowGroupId { get; set; }
 
+    [EventProperty("Hobt Id")]
     public ulong HobtId { get; set; }
 
+    [EventProperty("Unique Value Filter")]
     public bool IsEliminatedByUniqueValueFilter { get; set; }
 
     public override string Name => "Segment Eliminated";

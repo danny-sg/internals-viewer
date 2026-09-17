@@ -85,9 +85,7 @@ public sealed class CallStackNode
     /// Set by the view when a node is selected: its subtree activity as grey bars with the selected event's time
     /// bucket highlighted. Empty on every other node, so the histogram column is drawn only for the selection.
     /// </remarks>
-    public IReadOnlyList<ActivityBar> DisplayBars { get; set; } = [];
-
-    public bool HasHistogram => DisplayBars.Count > 0;
+    public ActivityBand? Activity { get; set; }
 
     /// <summary>
     /// Child frames keyed by identity (RVA before resolution, resolved function after) so equal frames merge to one

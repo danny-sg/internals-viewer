@@ -31,6 +31,8 @@ public sealed class CategoryMappings
 
     public IReadOnlyList<SymbolCategoryRule> Rules => _rules;
 
+    public IReadOnlyList<OperatorRule> Operators => _operators;
+
     public ModuleCategory GetModuleCategory(string? module) =>
         !string.IsNullOrWhiteSpace(module) && _modules.TryGetValue(module, out var category)
             ? category

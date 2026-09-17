@@ -1,5 +1,5 @@
 using System;
-using System.Linq;
+using InternalsViewer.Query.Events.BatchMode;
 using InternalsViewer.UI.App.Controls.Timeline.Renderers;
 using SkiaSharp;
 using SkiaSharp.Views.Windows;
@@ -74,18 +74,18 @@ public sealed partial class EventTimelineControl
 
         var rowCount = rows.Count;
 
-        var totalWeight = rows.Sum(r => r.Weight);
+        var rowHeights = TimelineRowLayout.Resolve(rows,
+                                                   rowsHeight,
+                                                   _rows.IndexOf(typeof(SegmentScanEvent)),
+                                                   _segmentLanes.MinRowHeight(RowPadding));
 
         var rowTops = new float[rowCount];
-
-        var rowHeights = new float[rowCount];
 
         var totalTop = rowsTop;
 
         for (var r = 0; r < rowCount; r++)
         {
             rowTops[r] = totalTop;
-            rowHeights[r] = rowsHeight * rows[r].Weight / totalWeight;
             totalTop += rowHeights[r];
         }
 
@@ -122,13 +122,16 @@ public sealed partial class EventTimelineControl
         return recorder.EndRecording();
     }
 
-    // Snapshots the per-paint data and geometry the lane renderers draw from: the event data, this frame's row layout,
-    // and the current zoom/scroll captured in TimeToX.
+    /// <remarks>
+    /// Snapshots the per-paint data and geometry the lane renderers draw from: the event data, this frame's row layout, and the current
+    /// zoom/scroll captured in TimeToX.
+    /// </remarks>
     private TimelineFrame BuildFrame(float[] rowTops, float[] rowHeights) => new()
     {
         Events = _sortedEvents,
         Times = _times,
         Rows = _rows,
+        SegmentLanes = _segmentLanes,
         RowTops = rowTops,
         RowHeights = rowHeights,
         CanvasWidth = CanvasWidth,

@@ -124,7 +124,9 @@ public static class BatchRecordBuilder
     private static long ToTicks(BatchColumn column, BatchValue slot)
         => BatchValueDenormalizer.GetTemporalValue(slot, column) switch
     {
+        DateOnly date => date.ToDateTime(TimeOnly.MinValue).Ticks,
         DateTime moment => moment.Ticks,
+        DateTimeOffset moment => moment.UtcTicks,
         TimeSpan span => span.Ticks,
         _ => 0
     };

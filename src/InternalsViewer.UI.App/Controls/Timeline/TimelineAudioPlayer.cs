@@ -160,6 +160,7 @@ internal sealed class TimelineAudioPlayer : IDisposable
         }
 
         var index = _latchPoolIndexByFrequency[frequencyHz];
+
         _latchPoolIndexByFrequency[frequencyHz] = (index + 1) % PerFrequencyPoolSize;
 
         var player = players[index];

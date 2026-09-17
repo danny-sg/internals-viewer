@@ -76,12 +76,12 @@
                             </MenuBarItem>
 
                             <MenuBarItem Title="Query">
-                                <ToggleMenuFlyoutItem Text="Track Query"
+                                <ToggleMenuFlyoutItem Text="Track query"
                                    IsChecked="{x:Bind ViewModel.TrackQuery, Mode=TwoWay}"/>
                                 <MenuFlyoutSeparator/>
                                 <ToggleMenuFlyoutItem Text="Crop to query"
                                    IsChecked="{x:Bind ViewModel.QueryOptions.CropToQuery, Mode=TwoWay}"/>
-                                <ToggleMenuFlyoutItem Text="Include System Objects"
+                                <ToggleMenuFlyoutItem Text="Include system objects"
                                    IsChecked="{x:Bind ViewModel.QueryOptions.IncludeSystemObjects, Mode=TwoWay}"/>
                             </MenuBarItem>
                             <MenuBarItem Title="Index">
@@ -128,15 +128,15 @@
                                 <MenuFlyoutSeparator/>
                                 <MenuFlyoutItem Text="Attach WinDbg to SQL Server"
                                                 Command="{x:Bind ViewModel.AttachDebuggerCommand}"/>
-                                <MenuFlyoutItem Text="Connect to Session"
+                                <MenuFlyoutItem Text="Connect to session"
                                                 Command="{x:Bind ViewModel.ConnectDebuggerCommand}"/>
                                 <MenuFlyoutItem Text="Detach"
                                                 Command="{x:Bind ViewModel.DetachDebuggerCommand}"/>
                                 <MenuFlyoutSeparator/>
-                                <MenuFlyoutItem Text="Clear Breakpoints"
+                                <MenuFlyoutItem Text="Clear breakpoints"
                                                 Command="{x:Bind ViewModel.ClearBreakpointsCommand}"/>
                                 <MenuFlyoutSeparator/>
-                                <MenuFlyoutItem Text="Search Symbols"
+                                <MenuFlyoutItem Text="Search symbols"
                                                 Command="{x:Bind ViewModel.SearchSymbolsCommand}"/>
                             </MenuBarItem>
 

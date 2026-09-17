@@ -73,11 +73,13 @@ public static class BatchValueBuilder
     private static bool TryTemporalField(BatchColumn column, RecordField field, out BatchValue slot)
         => column.DataType switch
         {
-            SqlDbType.DateTime2 
+            SqlDbType.Date
                 => BatchValueNormalizer.TryNormalize(field.GetValue<DateTime>(), out slot),
-            SqlDbType.Time 
+            SqlDbType.DateTime2
+                => BatchValueNormalizer.TryNormalize(field.GetValue<DateTime>(), out slot),
+            SqlDbType.Time
                 => BatchValueNormalizer.TryNormalize(field.GetValue<TimeSpan>(), out slot),
-            SqlDbType.DateTimeOffset 
+            SqlDbType.DateTimeOffset
                 => BatchValueNormalizer.TryNormalize(field.GetValue<DateTimeOffset>(), out slot),
             _ => Fail(out slot)
         };
@@ -85,7 +87,9 @@ public static class BatchValueBuilder
     private static bool TryTemporalTicks(BatchColumn column, long ticks, out BatchValue slot)
         => column.DataType switch
         {
-            SqlDbType.DateTime2 
+            SqlDbType.Date
+                => BatchValueNormalizer.TryNormalize(new DateTime(ticks), out slot),
+            SqlDbType.DateTime2
                 => BatchValueNormalizer.TryNormalize(new DateTime(ticks), out slot),
             SqlDbType.Time
                 => BatchValueNormalizer.TryNormalize(new TimeSpan(ticks), out slot),

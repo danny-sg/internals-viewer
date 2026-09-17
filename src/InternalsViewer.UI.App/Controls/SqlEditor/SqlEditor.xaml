@@ -17,7 +17,12 @@
                                          TrueBrush="#C42B1C"
                                          FalseBrush="#cacaca" />
     </UserControl.Resources>
-    <Grid>
+    <Grid KeyboardAcceleratorPlacementMode="Hidden">
+        <Grid.KeyboardAccelerators>
+            <KeyboardAccelerator Key="H" Modifiers="Control" Invoked="OnToggleHistoryAccelerator" />
+            <KeyboardAccelerator Key="R" Modifiers="Control" Invoked="OnToggleResultsAccelerator" />
+        </Grid.KeyboardAccelerators>
+
         <Grid.RowDefinitions>
             <RowDefinition Height="44" />
             <RowDefinition Height="2*"/>

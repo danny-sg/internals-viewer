@@ -120,4 +120,25 @@ public readonly record struct AccessCounters
             PagesSkipped = PagesSkipped + other.PagesSkipped
         };
     }
+
+    /// <summary>
+    /// Removes the totals of another access path
+    /// </summary>
+    public AccessCounters Subtract(AccessCounters other)
+    {
+        return new AccessCounters
+        {
+            PagesRead = PagesRead - other.PagesRead,
+            Comparisons = Comparisons - other.Comparisons,
+            RowsRead = RowsRead - other.RowsRead,
+            RowsOutput = RowsOutput - other.RowsOutput,
+            GhostsSkipped = GhostsSkipped - other.GhostsSkipped,
+            LeafLinksFollowed = LeafLinksFollowed - other.LeafLinksFollowed,
+            RangeSeeks = RangeSeeks - other.RangeSeeks,
+            IamPagesRead = IamPagesRead - other.IamPagesRead,
+            PfsPagesRead = PfsPagesRead - other.PfsPagesRead,
+            ExtentsVisited = ExtentsVisited - other.ExtentsVisited,
+            PagesSkipped = PagesSkipped - other.PagesSkipped
+        };
+    }
 }

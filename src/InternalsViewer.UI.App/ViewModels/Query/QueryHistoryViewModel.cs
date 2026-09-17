@@ -2,6 +2,8 @@
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
+using System.Text;
+using System.Text.Json;
 using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
@@ -11,32 +13,25 @@ using InternalsViewer.UI.App.Services.Query;
 
 namespace InternalsViewer.UI.App.ViewModels.Query;
 
-/// <summary>
-/// The queries run against a database, kept in the settings so they outlive the session
-/// </summary>
-/// <remarks>
-/// The whole history is held in <see cref="AllEntries"/> and <see cref="Entries"/> is the filtered projection the
-/// history pane binds to, so searching hides entries rather than dropping them.
-/// </remarks>
 public sealed partial class QueryHistoryViewModel(SettingsService settingsService, string databaseName) : ObservableObject
 {
     private const int MaxEntries = 200;
 
-    private string _searchText = string.Empty;
+    private const int MaxSettingBytes = 7168;
 
     public ObservableCollection<QueryHistoryEntry> Entries { get; } = [];
 
     public string SearchText
     {
-        get => _searchText;
+        get;
         set
         {
-            if (SetProperty(ref _searchText, value))
+            if (SetProperty(ref field, value))
             {
                 ApplyFilter();
             }
         }
-    }
+    } = string.Empty;
 
     private SettingsService SettingsService { get; } = settingsService;
 
@@ -47,12 +42,8 @@ public sealed partial class QueryHistoryViewModel(SettingsService settingsServic
     private List<QueryHistoryEntry> AllEntries { get; } = [];
 
     /// <summary>
-    /// Reads the saved history, seeding it the first time a database is opened
+    /// Reads the saved history + seed load for pre-seeded known dataases
     /// </summary>
-    /// <remarks>
-    /// Nothing saved means the database has never had a history, which is not the same as one that has been cleared -
-    /// clearing writes an empty list. Seeding only the first case is what lets the queries be thrown away for good.
-    /// </remarks>
     public async Task LoadAsync()
     {
         var saved = await SettingsService.ReadSettingAsync<List<QueryHistoryEntry>>(SettingKey);
@@ -71,13 +62,6 @@ public sealed partial class QueryHistoryViewModel(SettingsService settingsServic
         ApplyFilter();
     }
 
-    /// <summary>
-    /// Records a query that has just been executed
-    /// </summary>
-    /// <remarks>
-    /// A query already in the history moves back to the top rather than being listed twice, so re-running the same
-    /// statement does not push the rest of the history out.
-    /// </remarks>
     public void Add(string sql)
     {
         if (string.IsNullOrWhiteSpace(sql))
@@ -99,9 +83,6 @@ public sealed partial class QueryHistoryViewModel(SettingsService settingsServic
         Save();
     }
 
-    /// <summary>
-    /// Drops a single query from the history
-    /// </summary>
     public void Remove(QueryHistoryEntry entry)
     {
         if (!AllEntries.Remove(entry))
@@ -165,5 +146,31 @@ public sealed partial class QueryHistoryViewModel(SettingsService settingsServic
         }
     }
 
-    private void Save() => _ = SettingsService.SaveSettingAsync(SettingKey, AllEntries);
+    private void Save()
+    {
+        if (TrimToSettingLimit())
+        {
+            ApplyFilter();
+        }
+
+        _ = SettingsService.SaveSettingAsync(SettingKey, AllEntries);
+    }
+
+    /// <summary>
+    /// Trims history to available size
+    /// </summary>
+    private bool TrimToSettingLimit()
+    {
+        var trimmed = false;
+
+        while (AllEntries.Count > 0
+               && Encoding.UTF8.GetByteCount(JsonSerializer.Serialize(AllEntries)) > MaxSettingBytes)
+        {
+            AllEntries.RemoveAt(AllEntries.Count - 1);
+
+            trimmed = true;
+        }
+
+        return trimmed;
+    }
 }

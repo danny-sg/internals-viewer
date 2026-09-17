@@ -4,20 +4,12 @@ using System.Linq;
 using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
 using InternalsViewer.Query.CallStack;
+using InternalsViewer.Query.CallStack.Categories;
 using InternalsViewer.UI.App.Models.Query.CallStack;
 using Microsoft.Extensions.Logging;
 
 namespace InternalsViewer.UI.App.ViewModels.Query.CallStack;
 
-/// <summary>
-/// The Call Stack document's detail pane: the members of one class, and a search across every symbol
-/// </summary>
-/// <remarks>
-/// Both draw on the symbols of the modules the query's call stacks came from, which is how the exact symbol files
-/// are known, so the pane is given the query's call stack tree and reads its frames for that. Modules the user has
-/// excluded from the search are kept in Settings, separated by <see cref="ModuleSeparator"/>, so they hold across
-/// queries and sessions.
-/// </remarks>
 public sealed partial class SymbolsViewModel(ILogger logger, SettingsViewModel settings) : ObservableObject, IDisposable
 {
     private const int SymbolSearchMinimumLength = 3;
@@ -29,6 +21,9 @@ public sealed partial class SymbolsViewModel(ILogger logger, SettingsViewModel s
     private const char ModuleSeparator = ';';
 
     private static readonly TimeSpan SymbolSearchDelay = TimeSpan.FromMilliseconds(300);
+
+    private static readonly Lazy<IReadOnlyList<SymbolSearchSuggestion>> Suggestions =
+        new(() => SymbolSearchSuggestion.FromMappings(CategoryMappings.Default));
 
     private readonly List<(CallstackFrame Frame, string ClassName)> _membersHistory = [];
 
@@ -168,6 +163,9 @@ public sealed partial class SymbolsViewModel(ILogger logger, SettingsViewModel s
         (SymbolSearchModule ? SymbolSearchFields.Module : SymbolSearchFields.None)
         | (SymbolSearchClass ? SymbolSearchFields.Class : SymbolSearchFields.None)
         | (SymbolSearchSignature ? SymbolSearchFields.Signature : SymbolSearchFields.None);
+
+    public IReadOnlyList<SymbolSearchSuggestion> SuggestionsFor(string text) =>
+        Suggestions.Value.Where(s => s.Matches(text)).ToList();
 
     /// <summary>
     /// Shows the pane on the symbol search
@@ -448,7 +446,7 @@ public sealed partial class SymbolsViewModel(ILogger logger, SettingsViewModel s
     /// </remarks>
     private static IReadOnlyList<SymbolModuleRow> SymbolModules(IReadOnlyList<SymbolMatch> matches, string query)
     {
-        var highlight = SearchHighlightRanges.SymbolPart(query);
+        var highlight = query;
 
         var overloaded = matches.GroupBy(m => (m.Member.Module, m.ClassName, m.Member.Name))
                                 .Where(g => g.Count() > 1)
@@ -485,7 +483,9 @@ public sealed partial class SymbolsViewModel(ILogger logger, SettingsViewModel s
     {
         var fullName = match.ClassName.Length > 0 ? $"{match.ClassName}::{match.Member.Name}" : match.Member.Name;
 
-        var exact = string.Equals(fullName, highlight, StringComparison.OrdinalIgnoreCase);
+        var exact = SearchHighlightRanges.Alternatives(highlight)
+                                         .Select(SearchHighlightRanges.SymbolPart)
+                                         .Any(s => string.Equals(fullName, s, StringComparison.OrdinalIgnoreCase));
 
         return new ClassMemberRow(string.Empty,
                                   match.Member,

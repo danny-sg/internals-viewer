@@ -36,6 +36,13 @@ internal static class EventConstants
         "sqlserver.column_store_expression_filter_bitmap_set",
         "sqlserver.column_store_segment_eliminate",
         "sqlserver.column_store_rowgroup_skip_delete_buffer",
+        "sqlserver.column_store_object_pool_hit",
+        "sqlserver.column_store_object_pool_miss",
+        "sqlserver.column_store_rowgroup_read_issued",
+        "sqlserver.column_store_rowgroup_readahead_issued",
+        "sqlserver.column_store_fast_string_equals",
+        "sqlserver.query_execution_wait_syncpoint",
+        "sqlos.large_cache_caching_decision",
 
         // Batch mode operators
         "sqlserver.query_execution_batch_filter",

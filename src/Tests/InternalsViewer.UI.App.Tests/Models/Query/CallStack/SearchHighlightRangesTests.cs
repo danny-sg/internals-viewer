@@ -1,4 +1,4 @@
-using InternalsViewer.UI.App.Models.Query.CallStack;
+﻿using InternalsViewer.UI.App.Models.Query.CallStack;
 
 namespace InternalsViewer.UI.App.Tests.Models.Query.CallStack;
 
@@ -27,6 +27,15 @@ public class SearchHighlightRangesTests
         Assert.Empty(SearchHighlightRanges.Find("GetRow", "getrow"));
         Assert.Empty(SearchHighlightRanges.Find("GetRow", "sqlmin!"));
         Assert.Empty(SearchHighlightRanges.Find("GetRow", null));
+    }
+
+    [Fact]
+    public void Each_Alternative_Of_An_Or_Search_Is_Highlighted()
+    {
+        Assert.Equal([(0, 10)], SearchHighlightRanges.Find("CQScanSort::GetRow", "sqlmin!CBpQScanSort*|sqlmin!CQScanSort*"));
+        Assert.Equal([(0, 13)], SearchHighlightRanges.Find("CQScanTopSort::Init", "CQScanSort*|CQScanTopSort*"));
+        Assert.Empty(SearchHighlightRanges.Find("CQScanSort", "CQScanTopSort|cqscansort"));
+        Assert.Equal(["a", "b c"], SearchHighlightRanges.Alternatives(" a | b c |"));
     }
 
     [Fact]

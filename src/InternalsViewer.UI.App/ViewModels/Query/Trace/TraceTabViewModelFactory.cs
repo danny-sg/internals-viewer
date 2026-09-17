@@ -9,10 +9,13 @@ using InternalsViewer.Query.Events.Operators;
 using InternalsViewer.Query.Plans.Model;
 using InternalsViewer.UI.App.Helpers;
 using InternalsViewer.UI.App.Services.Query.Trace;
+using Microsoft.Extensions.Logging;
 
 namespace InternalsViewer.UI.App.ViewModels.Query.Trace;
 
-public sealed class TraceTabViewModelFactory(IIteratorFactory iteratorFactory, IndexService indexService)
+public sealed class TraceTabViewModelFactory(ILogger<TraceTabViewModel> logger,
+                                             IIteratorFactory iteratorFactory,
+                                             IndexService indexService)
 {
     /// <summary>
     /// Builds a trace of an operator and everything below it, or null when some operator in that tree cannot be simulated
@@ -49,7 +52,7 @@ public sealed class TraceTabViewModelFactory(IIteratorFactory iteratorFactory, I
                                               visuals.ToDictionary(v => v.NodeId),
                                               id => builder.Nodes.GetValueOrDefault(id));
 
-        return new TraceTabViewModel(iteratorFactory, definition, database, node, queryTime, scanMode, visuals, layout);
+        return new TraceTabViewModel(logger, iteratorFactory, definition, database, node, queryTime, scanMode, visuals, layout);
     }
 
     private TraceVisualViewModel? CreateVisual(DatabaseSource database, TraceSource source, TraceDefinitionBuilder builder)

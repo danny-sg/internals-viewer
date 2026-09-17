@@ -64,6 +64,7 @@
                                 Zoom="{x:Bind ViewModel.Zoom, Mode=TwoWay}"
                                 IsZoomToFit="{x:Bind ViewModel.IsZoomToFit, Mode=TwoWay}"
                                 IsTooltipEnabled="{x:Bind ViewModel.IsTooltipEnabled, Mode=OneWay}"
+                                IsLevelsVisible="{x:Bind ViewModel.IsLevelsVisible, Mode=OneWay}"
                                 PageSpans="{x:Bind ViewModel.PageSpans, Mode=OneWay}"
                                 PlayheadTimeUs="{x:Bind ViewModel.PlayheadTimeUs, Mode=OneWay}"
                                 SelectedPageAddress="{x:Bind ViewModel.SelectedPageAddress, Mode=TwoWay}"

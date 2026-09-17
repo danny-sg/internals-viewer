@@ -90,3 +90,31 @@ sqlmin|CBpQScanProject*|*|Compute Scalar|Compute Scalar
 sqlmin|CBpQScanConcat*|*|Concatenation|Concatenation
 sqlmin|CBpQScanFilter*|*|Filter|Filter
 sqlmin|CBpQScanTop*|*|Top|Top
+
+# Columnstore scan stages. Phases inside a Columnstore Index Scan that the plan has no node for, so each is a badge only
+# with no PlanOperator - it relabels frames within the scan segment rather than cutting a new one. The Columnstore
+# category (SymbolCategories.txt) supplies the colour; these name the stage.
+*|NormalColumnDataSet|*|Batch Iterator|
+*|ColumnDataSetSession|*|Batch Iterator|
+*|BaseColumnDataSetSession|*|Batch Iterator|
+*|ColumnsetSS|*|Batch Iterator|
+*|RowBucketScanner|*|Row Buckets|
+*|RowGroupManager|*|Rowgroups|
+*|RowBucketProcessorNew|Compile*|Compile|
+*|RbpCompile*|*|Compile|
+*|RbpEarlyFilter*|*|Compile|
+*|ColumnStoreObjectPool|*|Object Pool|
+*|ColumnStoreObjectRef|*|Object Pool|
+*|ColumnStoreObjectManager|*|Deserialize|
+*|DeserializeFromDiskConstructor|*|Deserialize|
+*|ColumnSegmentBuilder|*|Segment Read|
+*|ValueHashDictionaryBuilder|*|Dictionary|
+*|StringDictionaryBuilder|*|Dictionary|
+*|CBpLocalDictionaryManager|*|Dictionary|
+*|ColumnStoreBlobManager|*|LOB Read|
+*|ColumnStoreLockBytesSS|*|LOB Read|
+*|DeleteSegmentRef|*|Delete Bitmap|
+*|DeleteBitmap*|*|Delete Bitmap|
+*|DeleteBuffer|*|Delete Bitmap|
+*|RowGroupReadAheadManager|*|Read Ahead|
+*|AsyncRowGroupTranscoder|*|Read Ahead|

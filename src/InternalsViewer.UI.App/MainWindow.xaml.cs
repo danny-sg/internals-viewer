@@ -279,8 +279,10 @@ public sealed partial class MainWindow
 
             await viewModel.LoadPage(request.PageAddress, request.Slot);
 
-            viewModel.LogRecords = new ObservableCollection<LogRecordItem>(
-                request.LogRecords.Select(r => new LogRecordItem { Record = r }));
+            viewModel.LogRecords =
+            [
+                .. request.LogRecords.Select(r => new LogRecordItem { Record = r })
+            ];
 
             var content = new PageView();
 
@@ -534,9 +536,10 @@ public sealed partial class MainWindow
 
     private TabViewItem AddConnectTab()
     {
-        var content = new ConnectView(ConnectServerViewModelFactory);
-
-        content.DataContext = ViewModel;
+        var content = new ConnectView(ConnectServerViewModelFactory)
+        {
+            DataContext = ViewModel
+        };
 
         ViewModel.Name = "Internals Viewer";
 

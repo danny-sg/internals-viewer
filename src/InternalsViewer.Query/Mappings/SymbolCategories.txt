@@ -88,6 +88,10 @@ sqlmin|Rowset*|*|RowAccess
 *|ThreadScheduler*|*|SqlOs
 *|SchedulerManager*|*|SqlOs
 
+# The SOS cache store's probabilistic admission/eviction cost algorithm - shared infrastructure the columnstore object
+# pool decides through, not columnstore code itself.
+*|CacheProbabilisticAlgorithm*|*|SqlOs
+
 *|IOQueue*|*|IoInfrastructure
 *|DiskReadAsync*|*|IoInfrastructure
 *|JoinedIoCompletion*|*|IoInfrastructure
@@ -141,6 +145,7 @@ sqlmin|Rowset*|*|RowAccess
 
 *|WaitableBase*|*|Scheduling
 *|SOSHost_EventAuto*|*|Scheduling
+*|CSyncPoint*|*|Scheduling
 
 # Yield points and the callbacks SQLOS runs as a task suspends. Not the storage engine doing work — the scheduler
 # taking the thread away from it, which is why a wait shows up under an unrelated-looking frame.
@@ -479,6 +484,8 @@ sqlmin|AllocScan|*|PageAccess
 *|RowGroupManager*|*|ColumnStore
 *|RowBucketScanner*|*|ColumnStore
 *|RowBucketProcessorNew*|*|ColumnStore
+*|RbpCompile*|*|ColumnStore
+*|RbpEarlyFilter*|*|ColumnStore
 *|*|PopulateRowGroupIdRangeObject*|ColumnStore
 
 # Segments and dictionaries deserialized out of LOB storage, and the pool that keeps them for the scan's lifetime.

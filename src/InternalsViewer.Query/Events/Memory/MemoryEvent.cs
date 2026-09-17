@@ -1,12 +1,18 @@
-﻿namespace InternalsViewer.Query.Events.Memory;
+﻿using InternalsViewer.Query.Events.Properties;
 
-public sealed record MemoryEvent : EngineEvent
+namespace InternalsViewer.Query.Events.Memory;
+
+public sealed partial record MemoryEvent : EngineEvent
 {
-    public long? UsedMemoryKb;
+    [EventProperty("Used Memory", Type = EventPropertyType.Kilobytes)]
+    public long? UsedMemoryKb { get; set; }
 
-    public long? GrantedMemoryKb;
+    [EventProperty("Granted Memory", Type = EventPropertyType.Kilobytes)]
+    public long? GrantedMemoryKb { get; set; }
 
-    public long? AdditionalMemoryBeforeKb;
+    [EventProperty("Ideal Additional Memory Before", Type = EventPropertyType.Kilobytes)]
+    public long? AdditionalMemoryBeforeKb { get; set; }
 
-    public long? AdditionalMemoryAfterKb;
+    [EventProperty("Ideal Additional Memory After", Type = EventPropertyType.Kilobytes)]
+    public long? AdditionalMemoryAfterKb { get; set; }
 }

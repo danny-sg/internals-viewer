@@ -1,14 +1,18 @@
-﻿using InternalsViewer.Internals.Engine.Address;
+﻿using InternalsViewer.Query.Events.Properties;
+using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Query.Helpers;
 
 namespace InternalsViewer.Query.Events.Locks;
 
-public sealed record LockEvent : PageEngineEvent
+public sealed partial record LockEvent : PageEngineEvent
 {
+    [EventProperty("Mode")]
     public LockMode LockMode { get; init; }
 
+    [EventProperty("Resource")]
     public required LockResource Resource { get; init; }
 
+    [EventProperty("Owner Context")]
     public LockOwnerContext? LockOwnerContext { get; set; }
 
     /// <summary>
@@ -18,6 +22,7 @@ public sealed record LockEvent : PageEngineEvent
     /// Set by <see cref="Consolidation.LockPartitionCollapser"/>: an object lock in a non-intent mode is acquired on every partition, and
     /// those are collapsed into this one logical lock.
     /// </remarks>
+    [EventProperty("Partitions", Type = EventPropertyType.Number)]
     public int PartitionCount { get; set; } = 1;
 
     public LockIdentity Identity => new(Resource.Key,

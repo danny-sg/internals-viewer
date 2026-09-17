@@ -39,9 +39,16 @@ public sealed class IteratorStepper : IAsyncDisposable
 
     private bool _hasPendingStep;
 
+    private volatile bool _freeRun;
+
+    private Func<AccessStep, bool>? _stopAfter;
+
+    private TaskCompletionSource _drained = new(TaskCreationOptions.RunContinuationsAsynchronously);
+
     public IteratorStepper(IIterator root, IteratorDefinition definition, IteratorContext context)
     {
         Root = root;
+
         _definition = definition;
         _context = context with { Steps = new GateSink(this) };
     }
@@ -108,6 +115,56 @@ public sealed class IteratorStepper : IAsyncDisposable
         return _pending;
     }
 
+    /// <summary>
+    /// Runs the engine to completion or until a step satisfies the stop condition without parking between steps
+    /// </summary>
+    public async Task DrainAsync(Func<AccessStep, bool>? stopAfter, CancellationToken cancellationToken)
+    {
+        if (IsComplete)
+        {
+            return;
+        }
+
+        _stopAfter = stopAfter;
+
+        _drained = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        var alreadyRunning = _engine is not null;
+
+        _freeRun = true;
+
+        EnsureEngine();
+
+        if (_hasDelivered)
+        {
+            _hasDelivered = false;
+
+            _continue.Release();
+        }
+        else if (alreadyRunning && !_engine!.IsCompleted)
+        {
+            _resume.Release();
+        }
+
+        try
+        {
+            var finished = await Task.WhenAny(_drained.Task, _engine!).WaitAsync(cancellationToken);
+
+            if (finished == _engine)
+            {
+                IsComplete = true;
+
+                await _engine;
+            }
+        }
+        catch (OperationCanceledException)
+        {
+            _freeRun = false;
+
+            throw;
+        }
+    }
+
     public async ValueTask DisposeAsync()
     {
         await _engineCancellation.CancelAsync();
@@ -165,23 +222,33 @@ public sealed class IteratorStepper : IAsyncDisposable
     {
         if (step.Counters != default)
         {
+            var previous = _countersByNode.GetValueOrDefault(step.NodeId);
+
             _countersByNode[step.NodeId] = step.Counters;
+
+            Counters = Counters.Add(step.Counters.Subtract(previous));
         }
 
-        var totals = default(AccessCounters);
-
-        foreach (var counters in _countersByNode.Values)
-        {
-            totals = totals.Add(counters);
-        }
-
-        Counters = totals;
-
-        var stamped = step with { Counters = totals };
+        var stamped = step with { Counters = Counters };
 
         _history.Add(stamped);
 
         return stamped;
+    }
+
+    private async Task StopFreeRunAsync(AccessStep step)
+    {
+        _freeRun = false;
+
+        _pending = step;
+
+        _hasPendingStep = true;
+
+        _hasDelivered = true;
+
+        _drained.TrySetResult();
+
+        await _continue.WaitAsync(_engineCancellation.Token);
     }
 
     private sealed class GateSink(IteratorStepper owner) : IStepSink
@@ -190,7 +257,35 @@ public sealed class IteratorStepper : IAsyncDisposable
         {
             owner._started.TrySetResult();
 
+            if (owner._freeRun)
+            {
+                var recorded = owner.Record(step);
+
+                if (owner._stopAfter?.Invoke(recorded) != true)
+                {
+                    return;
+                }
+
+                await owner.StopFreeRunAsync(recorded);
+
+                return;
+            }
+
             await owner._resume.WaitAsync(owner._engineCancellation.Token);
+
+            if (owner._freeRun)
+            {
+                var recorded = owner.Record(step);
+
+                if (owner._stopAfter?.Invoke(recorded) != true)
+                {
+                    return;
+                }
+
+                await owner.StopFreeRunAsync(recorded);
+
+                return;
+            }
 
             owner._pending = owner.Record(step);
 

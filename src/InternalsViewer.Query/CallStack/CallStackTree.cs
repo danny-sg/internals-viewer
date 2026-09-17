@@ -66,6 +66,8 @@ public sealed class CallStackTree
     {
         var projected = new CallStackTree();
 
+        var borrowed = new List<(CallStackNode Leaf, List<EngineEvent> Events)>();
+
         // Insert leaves earliest-event-first so the projected nodes are created — and thus ordered — as first seen.
         var leaves = Nodes()
             .Where(node => node.Events.Count > 0)
@@ -101,6 +103,8 @@ public sealed class CallStackTree
             {
                 leaf.CutBelow.Add(ancestors[nested]);
 
+                borrowed.Add((leaf, events));
+
                 continue;
             }
 
@@ -118,6 +122,16 @@ public sealed class CallStackTree
         if (cutAt is null)
         {
             projected.GraftTruncatedRoots();
+        }
+
+        if (ActivityBuckets > 0)
+        {
+            projected.ComputeActivity(ActivityMinUs, ActivityMaxUs, ActivityBuckets);
+
+            foreach (var (leaf, events) in borrowed)
+            {
+                projected.AddActivity(leaf, events);
+            }
         }
 
         return projected;
@@ -335,16 +349,13 @@ public sealed class CallStackTree
 
     public int ActivityBuckets { get; private set; }
 
-    public double ActivityHeight { get; private set; }
-
     public int ActivityBusiest { get; private set; }
 
-    public void ComputeActivity(long minUs, long maxUs, int buckets, double height)
+    public void ComputeActivity(long minUs, long maxUs, int buckets)
     {
         ActivityMinUs = minUs;
         ActivityMaxUs = maxUs;
         ActivityBuckets = buckets;
-        ActivityHeight = height;
 
         if (maxUs - minUs <= 0)
         {
@@ -357,6 +368,30 @@ public sealed class CallStackTree
         }
 
         ActivityBusiest = Nodes().SelectMany(node => node.ActivityCounts).DefaultIfEmpty(0).Max();
+    }
+
+    /// <summary>
+    /// Counts events against a frame and every frame above it without linking them to it
+    /// </summary>
+    public void AddActivity(CallStackNode leaf, IEnumerable<EngineEvent> events)
+    {
+        foreach (var engineEvent in events)
+        {
+            if (engineEvent.TimeUs < ActivityMinUs || engineEvent.TimeUs > ActivityMaxUs)
+            {
+                continue;
+            }
+
+            var bucket = BucketOf(engineEvent.TimeUs);
+
+            foreach (var node in leaf.Ancestors())
+            {
+                if (node.ActivityCounts.Length == ActivityBuckets)
+                {
+                    node.ActivityCounts[bucket]++;
+                }
+            }
+        }
     }
 
     /// <summary>
@@ -380,6 +415,11 @@ public sealed class CallStackTree
 
         foreach (var engineEvent in node.Events)
         {
+            if (engineEvent.TimeUs < minUs || engineEvent.TimeUs > minUs + span)
+            {
+                continue;
+            }
+
             var index = (int)((engineEvent.TimeUs - minUs) * buckets / span);
 
             bucket[Math.Clamp(index, 0, buckets - 1)]++;

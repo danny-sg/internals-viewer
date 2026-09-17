@@ -8,7 +8,7 @@ namespace InternalsViewer.Query.Events.Locks;
 /// <remarks>
 /// Captures the escalation as its granularity moves up (e.g. rid → page → object) and includes the constituent locks
 /// </remarks>
-public sealed record LockGroup : EngineEvent, IEventGroup
+public sealed partial record LockGroup : EngineEvent, IEventGroup
 {
     public required IReadOnlyList<EngineEvent> Events { get; init; }
 

@@ -19,8 +19,7 @@ public sealed partial class QueryView : Page, IDisposable
 
     public void Dispose()
     {
-        // x:Bind listens to the view model, which outlives the view, so the view stays rooted until
-        // tracking stops
+        // x:Bind listens to the view model, which outlives the view, so the view stays rooted until tracking stops
         Bindings.StopTracking();
 
         (DataContext as QueryViewModel)?.Dispose();

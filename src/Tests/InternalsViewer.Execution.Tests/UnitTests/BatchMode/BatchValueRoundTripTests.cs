@@ -109,6 +109,33 @@ public class BatchValueRoundTripTests
         Assert.Equal(value, BatchValueDenormalizer.GetTemporalValue(slot, Column(SqlDbType.DateTime2)));
     }
 
+    [Theory]
+    [InlineData("2020-01-01")]
+    [InlineData("0001-01-01")]
+    [InlineData("9999-12-31")]
+    public void Date_Round_Trips_Through_The_Temporal_Path(string iso)
+    {
+        var value = DateOnly.Parse(iso, System.Globalization.CultureInfo.InvariantCulture);
+
+        Assert.True(BatchValueNormalizer.TryNormalize(value, out var slot));
+
+        Assert.Equal(value, BatchValueDenormalizer.GetTemporalValue(slot, Column(SqlDbType.Date)));
+    }
+
+    [Fact]
+    public void A_Date_Normalizes_Inline_Rather_Than_Going_To_Deep_Data()
+    {
+        var value = new DateOnly(2020, 1, 1);
+
+        Assert.True(BatchValueNormalizer.TryNormalizeValue(value, out var slot));
+
+        Assert.False(slot.IsDeepDataReference);
+
+        Assert.False(slot.IsNull);
+
+        Assert.Equal(value, (DateOnly)BatchValueDenormalizer.GetTemporalValue(slot, Column(SqlDbType.Date)));
+    }
+
     [Fact]
     public void Time_Round_Trips_As_A_Tick_Count()
     {
@@ -195,6 +222,7 @@ public class BatchValueRoundTripTests
     [InlineData(SqlDbType.Float, BatchValueDomain.Real)]
     [InlineData(SqlDbType.Real, BatchValueDomain.Real)]
     [InlineData(SqlDbType.Decimal, BatchValueDomain.Numeric)]
+    [InlineData(SqlDbType.Date, BatchValueDomain.Temporal)]
     [InlineData(SqlDbType.DateTime2, BatchValueDomain.Temporal)]
     [InlineData(SqlDbType.Time, BatchValueDomain.Temporal)]
     [InlineData(SqlDbType.VarChar, BatchValueDomain.Dictionary)]

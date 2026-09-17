@@ -271,7 +271,7 @@ public static class DataConverter
                 SqlDbType.Date => DateTimeConverters.DecodeDate(data),
                 SqlDbType.Time => DateTimeConverters.DecodeTime(data, scale),
                 SqlDbType.DateTime2 => DateTimeConverters.DecodeDateTime2(data, scale),
-                SqlDbType.DateTimeOffset => DateTimeConverters.DecodeDateTimeOffset(data, scale),
+                SqlDbType.DateTimeOffset => DateTimeConverters.DecodeDateTimeOffsetValue(data, scale),
                 _ => string.Format(CultureInfo.CurrentCulture, "not yet supported ({0:G})", sqlType)
             };
         }

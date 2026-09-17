@@ -1,5 +1,6 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 
 namespace InternalsViewer.UI.App.Models.Query.CallStack;
 
@@ -7,9 +8,10 @@ namespace InternalsViewer.UI.App.Models.Query.CallStack;
 /// Where a search text occurs in a piece of displayed text, for highlighting
 /// </summary>
 /// <remarks>
-/// A <c>module!</c> prefix on the search is not looked for, as it names where to search rather than what. The
-/// wildcard-free runs of a pattern are each highlighted. Text that is the search in its entirety gets no ranges,
-/// since colouring the whole of an exact match tells the reader nothing.
+/// A search with <c>|</c> in it is several, and each is highlighted. A <c>module!</c> prefix is not looked for, as it names where to search
+/// rather than what.
+///
+/// The wildcard-free runs of a pattern are each highlighted. Exact matches do not get highlighted.
 /// </remarks>
 public static class SearchHighlightRanges
 {
@@ -17,16 +19,16 @@ public static class SearchHighlightRanges
 
     public static IReadOnlyList<(int Start, int Length)> Find(string text, string? search)
     {
-        var symbol = SymbolPart(search);
+        var symbols = Alternatives(search).Select(SymbolPart).Where(s => s.Length > 0).ToList();
 
-        if (text.Length == 0 || symbol.Length == 0 || text.Equals(symbol, StringComparison.OrdinalIgnoreCase))
+        if (text.Length == 0 || symbols.Any(s => text.Equals(s, StringComparison.OrdinalIgnoreCase)))
         {
             return [];
         }
 
         var ranges = new List<(int Start, int Length)>();
 
-        foreach (var segment in symbol.Split(Wildcards, StringSplitOptions.RemoveEmptyEntries))
+        foreach (var segment in symbols.SelectMany(s => s.Split(Wildcards, StringSplitOptions.RemoveEmptyEntries)))
         {
             var index = 0;
 
@@ -42,6 +44,12 @@ public static class SearchHighlightRanges
 
         return Merge(ranges);
     }
+
+    /// <summary>
+    /// The searches a text holds, split on <c>|</c>
+    /// </summary>
+    public static IReadOnlyList<string> Alternatives(string? search) =>
+        (search ?? string.Empty).Split('|', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
 
     /// <summary>
     /// The search without any <c>module!</c> prefix, trimmed

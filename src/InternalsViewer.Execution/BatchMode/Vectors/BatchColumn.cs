@@ -21,13 +21,13 @@ public sealed record BatchColumn
     {
         SqlDbType.BigInt or SqlDbType.Int or SqlDbType.SmallInt or SqlDbType.TinyInt or SqlDbType.Bit
             or SqlDbType.Money or SqlDbType.SmallMoney
-            or SqlDbType.Date or SqlDbType.DateTime or SqlDbType.SmallDateTime => BatchValueDomain.Integer,
+            or SqlDbType.DateTime or SqlDbType.SmallDateTime => BatchValueDomain.Integer,
 
         SqlDbType.Float or SqlDbType.Real => BatchValueDomain.Real,
 
         SqlDbType.Decimal => BatchValueDomain.Numeric,
 
-        SqlDbType.DateTime2 or SqlDbType.Time or SqlDbType.DateTimeOffset => BatchValueDomain.Temporal,
+        SqlDbType.Date or SqlDbType.DateTime2 or SqlDbType.Time or SqlDbType.DateTimeOffset => BatchValueDomain.Temporal,
 
         SqlDbType.Char or SqlDbType.VarChar or SqlDbType.NChar or SqlDbType.NVarChar
             => BatchValueDomain.Dictionary,

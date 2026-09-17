@@ -24,16 +24,11 @@ namespace InternalsViewer.UI.App.Views.Query.Tabs.CallStack;
 
 public sealed partial class QueryCallStackTabView : UserControl, IDocumentCommands, ISignatureNavigator
 {
-    private const string HistogramGrey = "#606060";
-    private const string HistogramHighlight = "#4CA3E0";
     private readonly Dictionary<CallStackNode, TreeViewNode> _nodes = new();
 
-    // Where the selection has been, so following the operator links is reversible. Every selection lands here, not only
-    // the ones made in this view: arriving from the timeline and stepping back to where you were is the same movement.
     private readonly List<EngineEvent> _history = [];
 
-    // The operator rows built when scoped, so only they are auto-expanded (their call frames stay collapsed).
-    private readonly List<TreeViewNode> _operatorNodes = new();
+    private readonly List<TreeViewNode> _operatorNodes = [];
 
     private Button? _backButton;
 
@@ -41,37 +36,31 @@ public sealed partial class QueryCallStackTabView : UserControl, IDocumentComman
 
     private ToggleButton? _focusToggle;
 
-    private WinDbgService? _winDbg;
+    private ToggleButton? _activityToggle;
+
+    private ToggleButton? _symbolsToggle;
 
     private HashSet<CallStackNode>? _visible;
 
     private bool _revealInfrastructure;
 
-    // "Focus": show the selection's own call tree on its own — an operator cut at the frame where it starts executing
-    // and again where it hands off, an event cut at the barrier its work begins at. Nothing selected shows the plan's
-    // operator hierarchy. Off is the whole query's stacks merged into one tree.
-    //
-    // Default on, matching FocusToggle.IsChecked in the XAML: the merged tree is every stack the query captured at once,
-    // which is the view you narrow down FROM once you know what you are after, not the one to open on.
     private bool _focus = true;
 
-    // Set while the tree itself is driving the selection, so the resulting change does not rebuild the tree.
-    private bool _selectingFromTree;
+    private bool _activity = true;
+
+    private HashSet<int> _highlightBuckets = [];
+
+    private bool _isSelectingFromTree;
 
     private int _historyIndex = -1;
 
-    // Set while a Back/Forward is driving the selection, so replaying the past does not rewrite it.
     private bool _navigatingHistory;
 
     private string _search = string.Empty;
 
-    // The operator each of the current segment's exit frames hands off to, rebuilt per operator as it is projected.
     private Dictionary<CallStackNode, ExecutionOperatorEvent> _nextOperator = new();
 
-    // The plan's operators as a tree, rebuilt with the scoped tree.
     private OperatorHierarchy _hierarchy = OperatorHierarchy.Build([]);
-
-    private CallStackNode? _histogramNode;
 
     private TreeViewNode? _contextNode;
 
@@ -86,7 +75,11 @@ public sealed partial class QueryCallStackTabView : UserControl, IDocumentComman
         InitializeComponent();
 
         DataContextChanged += (_, _) => OnViewModelChanged();
+
+        PositionActivitySplitter();
     }
+
+    private ActivityColumnLayout ActivityColumn => (ActivityColumnLayout)Resources["ActivityColumn"];
 
     public QueryViewModel? ViewModel => DataContext as QueryViewModel;
 
@@ -150,7 +143,7 @@ public sealed partial class QueryCallStackTabView : UserControl, IDocumentComman
 
     public string DockToggleTooltip => IsMembersPaneDockedBottom ? "Dock Right" : "Dock Bottom";
 
-    private WinDbgService WinDbg => _winDbg ??= App.GetService<WinDbgService>();
+    private WinDbgService WinDbg => field ??= App.GetService<WinDbgService>();
 
     /// <summary>
     /// Builds the history and focus controls for a tab strip to host
@@ -199,6 +192,30 @@ public sealed partial class QueryCallStackTabView : UserControl, IDocumentComman
 
         _focusToggle.Click += OnFocusChanged;
 
+        _activityToggle = new ToggleButton
+        {
+            Style = (Style)Application.Current.Resources["TabCommandToggleStyle"],
+            Content = new TextBlock { Text = "Activity", VerticalAlignment = VerticalAlignment.Center },
+            Margin = new Thickness(2, 0, 0, 0),
+            IsChecked = _activity
+        };
+
+        ToolTipService.SetToolTip(_activityToggle,
+                                  "Show each frame's activity over the query window as a histogram: taller is hotter, "
+                                  + "with the selection's time highlighted.");
+
+        _activityToggle.Click += OnActivityChanged;
+
+        _symbolsToggle = new ToggleButton
+        {
+            Style = (Style)Application.Current.Resources["TabCommandToggleStyle"],
+            Content = new TextBlock { Text = "Symbols", VerticalAlignment = VerticalAlignment.Center },
+            Margin = new Thickness(2, 0, 0, 0),
+            IsChecked = IsMembersPaneVisible
+        };
+
+        _symbolsToggle.Click += OnSymbolsToggleChanged;
+
         var commands = new StackPanel
         {
             Orientation = Orientation.Horizontal,
@@ -211,6 +228,8 @@ public sealed partial class QueryCallStackTabView : UserControl, IDocumentComman
         commands.Children.Add(_backButton);
         commands.Children.Add(_forwardButton);
         commands.Children.Add(_focusToggle);
+        commands.Children.Add(_activityToggle);
+        commands.Children.Add(_symbolsToggle);
 
         return commands;
     }
@@ -241,6 +260,34 @@ public sealed partial class QueryCallStackTabView : UserControl, IDocumentComman
         _focus = _focusToggle?.IsChecked == true;
 
         ApplyFocus(_viewModel?.SelectedEvent);
+    }
+
+    private void OnActivityChanged(object sender, RoutedEventArgs e)
+    {
+        _activity = _activityToggle?.IsChecked == true;
+
+        Tree.ItemContainerStyle = (Style)Resources[_activity ? "ActivityItemStyle" : "PlainItemStyle"];
+
+        ActivityHeader.Visibility = _activity ? Visibility.Visible : Visibility.Collapsed;
+
+        ApplyFocus(_viewModel?.SelectedEvent);
+    }
+
+    private void OnActivitySplitterDelta(object sender, ManipulationDeltaRoutedEventArgs e)
+    {
+        ActivityColumn.Width = Math.Clamp(ActivityColumn.Width + e.Delta.Translation.X,
+                                          ActivityColumnLayout.MinimumWidth,
+                                          ActivityColumnLayout.MaximumWidth);
+
+        PositionActivitySplitter();
+    }
+
+    private void PositionActivitySplitter()
+        => ActivitySplitter.Margin = new Thickness(ActivityColumn.Width + 7, 0, 0, 0);
+
+    private void OnSymbolsToggleChanged(object sender, RoutedEventArgs e)
+    {
+        IsMembersPaneVisible = _symbolsToggle?.IsChecked ?? false;
     }
 
     private void OnBackClick(object sender, RoutedEventArgs e) => GoTo(_historyIndex - 1);
@@ -305,15 +352,9 @@ public sealed partial class QueryCallStackTabView : UserControl, IDocumentComman
 
     private void UpdateHistoryButtons()
     {
-        if (_backButton is not null)
-        {
-            _backButton.IsEnabled = _historyIndex > 0;
-        }
+        _backButton?.IsEnabled = _historyIndex > 0;
 
-        if (_forwardButton is not null)
-        {
-            _forwardButton.IsEnabled = _historyIndex >= 0 && _historyIndex < _history.Count - 1;
-        }
+        _forwardButton?.IsEnabled = _historyIndex >= 0 && _historyIndex < _history.Count - 1;
     }
 
     /// <summary>
@@ -368,7 +409,6 @@ public sealed partial class QueryCallStackTabView : UserControl, IDocumentComman
 
     private void OnCollapseAllClick(object sender, RoutedEventArgs e) => SetExpanded(_contextNode, expanded: false);
 
-    // Copies the right-tapped node's subtree as the indented text dump CallStackTree.Render produces.
     private void OnCopyCallTreeClick(object sender, RoutedEventArgs e)
     {
         if (_contextNode?.Content is CallStackNode node)
@@ -523,26 +563,32 @@ public sealed partial class QueryCallStackTabView : UserControl, IDocumentComman
 
     private void OnMembersSearchTextChanged(AutoSuggestBox sender, AutoSuggestBoxTextChangedEventArgs args)
     {
-        if (_viewModel is not null)
-        {
-            _viewModel.Symbols.MembersFilter = sender.Text;
-        }
+        _viewModel?.Symbols.MembersFilter = sender.Text;
     }
 
     private void OnSymbolSearchTextChanged(AutoSuggestBox sender, AutoSuggestBoxTextChangedEventArgs args)
     {
-        if (_viewModel is not null)
+        if (args.Reason == AutoSuggestionBoxTextChangeReason.UserInput)
         {
-            _viewModel.Symbols.SymbolSearchText = sender.Text;
+            sender.ItemsSource = _viewModel?.Symbols.SuggestionsFor(sender.Text);
+        }
+
+        _viewModel?.Symbols.SymbolSearchText = sender.Text;
+    }
+
+    private void OnSymbolSearchGotFocus(object sender, RoutedEventArgs e)
+    {
+        if (_viewModel is not null && sender is AutoSuggestBox { Text.Length: 0 } box)
+        {
+            box.ItemsSource = _viewModel.Symbols.SuggestionsFor(string.Empty);
+
+            box.IsSuggestionListOpen = true;
         }
     }
 
     private void OnDetailTabChanged(object sender, SelectionChangedEventArgs args)
     {
-        if (_viewModel is not null)
-        {
-            _viewModel.Symbols.IsSymbolSearchSelected = sender is TabView { SelectedIndex: 1 };
-        }
+        _viewModel?.Symbols.IsSymbolSearchSelected = sender is TabView { SelectedIndex: 1 };
     }
 
     private void OnModuleRightTapped(object sender, RightTappedRoutedEventArgs e) =>
@@ -692,7 +738,7 @@ public sealed partial class QueryCallStackTabView : UserControl, IDocumentComman
 
             ApplyFocus(_viewModel?.SelectedEvent);
         }
-        else if (e.PropertyName == nameof(QueryViewModel.SelectedEvent) && !_selectingFromTree)
+        else if (e.PropertyName == nameof(QueryViewModel.SelectedEvent) && !_isSelectingFromTree)
         {
             RecordHistory(_viewModel?.SelectedEvent);
 
@@ -736,10 +782,10 @@ public sealed partial class QueryCallStackTabView : UserControl, IDocumentComman
 
     private void ApplyFocus(EngineEvent? selected)
     {
+        SetHighlightBuckets(selected);
+
         if (_focus)
         {
-            // An operator selects its segment; anything else selects its own work. Scoping a read to the operator that
-            // issued it answers a question that was not asked — the read was clicked, not the seek.
             if (selected is not null and not ExecutionOperatorEvent)
             {
                 BuildEventTree(selected);
@@ -748,6 +794,8 @@ public sealed partial class QueryCallStackTabView : UserControl, IDocumentComman
             {
                 BuildPlanTree(SelectedNodeId(selected));
             }
+
+            ApplyActivityBands();
 
             return;
         }
@@ -784,30 +832,81 @@ public sealed partial class QueryCallStackTabView : UserControl, IDocumentComman
             _ => CommonAncestor(leaves),
         };
 
-        var shown = SelectNode(target);
+        SelectNode(target);
 
-        SetHistogram(shown, events);
+        ApplyActivityBands();
     }
 
-    private void SetHistogram(CallStackNode? node, IReadOnlyList<EngineEvent> events)
+    private void ApplyActivityBands()
     {
-        _histogramNode?.DisplayBars = [];
+        var band = _activity ? new ActivityBand(_highlightBuckets) : null;
 
-        _histogramNode = node;
+        foreach (var root in Tree.RootNodes)
+        {
+            ApplyActivityBands(root, band);
+        }
+    }
 
+    private static void ApplyActivityBands(TreeViewNode treeNode, ActivityBand? band)
+    {
+        if (treeNode.Content is CallStackNode node)
+        {
+            node.Activity = band;
+        }
+
+        foreach (var child in treeNode.Children)
+        {
+            ApplyActivityBands(child, band);
+        }
+    }
+
+    private ActivitySpan? OperatorSpan(ExecutionOperatorEvent op)
+    {
         var tree = _viewModel?.CallStack;
 
-        if (node is null || tree is null || tree.ActivityBusiest == 0)
+        if (tree is null || tree.ActivityMaxUs <= tree.ActivityMinUs)
         {
+            return null;
+        }
+
+        var startUs = op.TimeUs;
+
+        var endUs = op.DurationUs > 0 ? op.TimeUs + op.DurationUs : startUs;
+
+        if (op.DurationUs <= 0)
+        {
+            var events = ScopeEvents(op).ToList();
+
+            if (events.Count == 0)
+            {
+                return null;
+            }
+
+            startUs = events.Min(e => e.TimeUs);
+            endUs = events.Max(e => e.TimeUs);
+        }
+
+        var window = (double)(tree.ActivityMaxUs - tree.ActivityMinUs);
+
+        var start = Math.Clamp((startUs - tree.ActivityMinUs) / window, 0, 1);
+
+        var end = Math.Clamp((endUs - tree.ActivityMinUs) / window, start, 1);
+
+        return new ActivitySpan(start, Math.Max(end, start + 1d / tree.ActivityBuckets));
+    }
+
+    private void SetHighlightBuckets(EngineEvent? selected)
+    {
+        var tree = _viewModel?.CallStack;
+
+        if (selected is null or ExecutionOperatorEvent || tree is null)
+        {
+            _highlightBuckets = [];
+
             return;
         }
 
-        var highlight = events.Select(e => tree.BucketOf(e.TimeUs)).ToHashSet();
-
-        node.DisplayBars = node.ActivityCounts
-                               .Select((count, bucket) => new ActivityBar(count * tree.ActivityHeight / tree.ActivityBusiest,
-                                                                          highlight.Contains(bucket) ? HistogramHighlight : HistogramGrey))
-                               .ToList();
+        _highlightBuckets = ScopeEvents(selected).Select(e => tree.BucketOf(e.TimeUs)).ToHashSet();
     }
 
     private static HashSet<CallStackNode> VisibleFrom(List<CallStackNode> leaves)
@@ -885,7 +984,7 @@ public sealed partial class QueryCallStackTabView : UserControl, IDocumentComman
         // expansion the user opened to get there.
         var navigating = invoked.Content is OperatorLink;
 
-        _selectingFromTree = !navigating;
+        _isSelectingFromTree = !navigating;
 
         try
         {
@@ -893,7 +992,7 @@ public sealed partial class QueryCallStackTabView : UserControl, IDocumentComman
         }
         finally
         {
-            _selectingFromTree = false;
+            _isSelectingFromTree = false;
         }
     }
 
@@ -1072,12 +1171,6 @@ public sealed partial class QueryCallStackTabView : UserControl, IDocumentComman
 
         _operatorNodes.Clear();
 
-        if (_histogramNode is not null)
-        {
-            _histogramNode.DisplayBars = [];
-            _histogramNode = null;
-        }
-
         _hierarchy = OperatorHierarchy.Build(_viewModel?.Events ?? []);
 
         if (_hierarchy.Operators.Count == 0)
@@ -1124,8 +1217,6 @@ public sealed partial class QueryCallStackTabView : UserControl, IDocumentComman
         ClearTree();
 
         _operatorNodes.Clear();
-
-        SetHistogram(null, []);
 
         if (_viewModel?.CallStack is not { } tree)
         {
@@ -1212,7 +1303,7 @@ public sealed partial class QueryCallStackTabView : UserControl, IDocumentComman
             return null;
         }
 
-        var operatorNode = new TreeViewNode { Content = new OperatorRow(op, Unsegmented: !Segmented(op)) };
+        var operatorNode = new TreeViewNode { Content = new OperatorRow(op, Unsegmented: !Segmented(op), OperatorSpan(op)) };
 
         foreach (var callNode in callNodes)
         {

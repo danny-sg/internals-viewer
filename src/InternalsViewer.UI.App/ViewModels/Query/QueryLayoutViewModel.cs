@@ -11,13 +11,8 @@ using QueryPlanTabCommands = InternalsViewer.UI.App.Views.Query.Tabs.Plan.QueryP
 namespace InternalsViewer.UI.App.ViewModels.Query;
 
 /// <summary>
-/// Owns the query view's dock layout — the tab documents, their menu-driven visibility, and the timeline/details rows
+/// Query View Dock management
 /// </summary>
-/// <remarks>
-/// The tab-visibility flags are two-way bound to the View menu and kept in step with the dock: toggling a flag shows or
-/// closes the document, and rearranging the dock re-syncs the flags. <see cref="Changed"/> is raised after any change
-/// that should be persisted; the owner handles pruning transient tabs and scheduling the save.
-/// </remarks>
 public sealed partial class QueryLayoutViewModel : ObservableObject, IDisposable
 {
     private const string SqlKey = "Sql";
@@ -30,7 +25,9 @@ public sealed partial class QueryLayoutViewModel : ObservableObject, IDisposable
 
     private readonly Dictionary<string, DocumentViewModel> _documentsByKey;
 
-    // Set while SyncTabVisibility writes the flags back from the dock, so their setters don't loop back into the dock.
+    /// <remarks>
+    /// Set while SyncTabVisibility writes the flags back from the dock, so their setters don't loop back into the dock.
+    /// </remarks>
     private bool _suppressVisibilitySync;
 
     [ObservableProperty]
@@ -55,7 +52,7 @@ public sealed partial class QueryLayoutViewModel : ObservableObject, IDisposable
     private bool _isTimelineVisible = true;
 
     /// <param name="content">
-    /// The data context the tab document views bind to (the owning query view model).
+    /// The data context the tab document views bind to (the owning query view model)
     /// </param>
     public QueryLayoutViewModel(object content)
     {
@@ -77,10 +74,10 @@ public sealed partial class QueryLayoutViewModel : ObservableObject, IDisposable
                                                                                         keepAlive: true,
                                                                                         key: PlanKey),
 
-            [EventsKey] = DocumentViewModel.Create<QueryEventsTabView>("Events",
-                                                                       content,
-                                                                       keepAlive: true,
-                                                                       key: EventsKey),
+            [EventsKey] = DocumentViewModel.Create<QueryEventsTabView, QueryEventsTabCommands>("Events",
+                                                                                            content,
+                                                                                            keepAlive: true,
+                                                                                            key: EventsKey),
 
             [CallstackKey] = DocumentViewModel.Create<QueryCallStackTabView>("Call Stack",
                                                                              content,
@@ -104,21 +101,17 @@ public sealed partial class QueryLayoutViewModel : ObservableObject, IDisposable
         Dock.SelectionChanged += OnDockSelectionChanged;
     }
 
-    /// <summary>Raised after a change that should be persisted (a tab shown/closed, the dock rearranged, timeline toggled)</summary>
+    /// <summary>
+    /// Raised after a change that should be persisted (a tab shown/closed, the dock rearranged, timeline toggled)
+    /// </summary>
     public event Action? Changed;
 
     public event Action? SelectionChanged;
 
     public DockLayoutViewModel Dock { get; }
 
-    /// <summary>
-    /// Serialises the current dock tree for persistence
-    /// </summary>
     public DockNode SerializeRoot() => DockLayoutSerializer.Serialize(Dock.Root);
 
-    /// <summary>
-    /// Rebuilds the dock from a persisted layout, opening on the SQL editor whichever tab was selected when it was saved
-    /// </summary>
     public bool RestoreRoot(DockNode? dto)
     {
         var root = DockLayoutSerializer.Deserialize(dto, key => _documentsByKey.GetValueOrDefault(key));
@@ -140,20 +133,11 @@ public sealed partial class QueryLayoutViewModel : ObservableObject, IDisposable
     /// </summary>
     public void Reset() => Dock.SetRoot(DefaultRoot());
 
-    /// <summary>
-    /// Look up an already-open document (base tab or index tab) by key
-    /// </summary>
     public bool TryGetDocument(string key, out DocumentViewModel document)
         => _documentsByKey.TryGetValue(key, out document!);
 
-    /// <summary>
-    /// Registers a transient document by key
-    /// </summary>
     public void RegisterDocument(string key, DocumentViewModel document) => _documentsByKey[key] = document;
 
-    /// <summary>
-    /// Show a document in the dock, creating or focusing its tab
-    /// </summary>
     public void Show(DocumentViewModel document) => Dock.Show(document);
 
     public void ShowExecutionPlan()
@@ -170,21 +154,12 @@ public sealed partial class QueryLayoutViewModel : ObservableObject, IDisposable
         Show(_documentsByKey[CallstackKey]);
     }
 
-    /// <summary>
-    /// Whether the keyed document is currently present in the dock
-    /// </summary>
     public bool IsShown(string key) 
         => _documentsByKey.TryGetValue(key, out var document) && Dock.Contains(document);
 
-    /// <summary>
-    /// Drops a transient document from tracking, returning it so the caller can dispose its view
-    /// </summary>
     public bool RemoveDocument(string key, out DocumentViewModel document)
         => _documentsByKey.Remove(key, out document!);
 
-    /// <summary>
-    /// Takes a document out of the dock, which tracking it by key does not do on its own
-    /// </summary>
     public void Close(DocumentViewModel document) => Dock.Close(document);
 
     public void Dispose()
@@ -198,10 +173,6 @@ public sealed partial class QueryLayoutViewModel : ObservableObject, IDisposable
         }
     }
 
-    /// <summary>
-    /// The default layout: the SQL editor above the timeline, which is where the timeline sat when it was a fixed
-    /// row rather than a document
-    /// </summary>
     private LayoutNode DefaultRoot()
         => new SplitNode(Orientation.Vertical,
                          new TabGroupNode(_documentsByKey[SqlKey]),

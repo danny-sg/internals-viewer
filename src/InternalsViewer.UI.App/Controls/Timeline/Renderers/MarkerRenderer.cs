@@ -12,8 +12,8 @@ using SkiaSharp;
 namespace InternalsViewer.UI.App.Controls.Timeline.Renderers;
 
 /// <summary>
-/// Draws the point-event ticks — reads, waits, latches and log — as a tick per event in its lane, with a faint
-/// full-duration overlay behind events that span time
+/// Draws the point-event ticks — reads, waits, latches and log — as a tick per event in its lane, with a faint full-duration overlay behind
+/// events that span time
 /// </summary>
 /// <remarks>
 /// Operators and locks are drawn by their own renderers, so this covers every other lane: the Read band splits into
@@ -34,6 +34,12 @@ internal sealed class MarkerRenderer(RenderResource resources, CurrentSelection 
     private const float MaxMarkerWidth = 4f;
 
     private static readonly SKColor SegmentEliminationColour = ColourConstants.SegmentEliminationColour.ToSkColor();
+
+    private static readonly SKColor ObjectPoolHitColour = ColourConstants.ObjectPoolHitColour.ToSkColor();
+
+    private static readonly SKColor ObjectPoolMissColour = ColourConstants.ObjectPoolMissColour.ToSkColor();
+
+    private static readonly SKColor ColumnStoreEventColour = ColourConstants.ColumnStoreEventColour.ToSkColor();
 
     public void Draw(SKCanvas canvas, TimelineFrame frame)
     {
@@ -68,14 +74,36 @@ internal sealed class MarkerRenderer(RenderResource resources, CurrentSelection 
 
             if (sourceEvent is ReadEventGroup or IoEvent)
             {
-                // The read band is split into two lanes: cached (buffer-pool) reads on the top half, non-cached
-                // (physical) reads on the bottom half.
+                // The read band is split into two lanes: cached (buffer-pool) reads on the top half, non-cached (physical) reads on the
+                // bottom half.
                 var laneHeight = innerHeight / 2f;
 
                 var isCached = sourceEvent is ReadEventGroup { ReadType: ReadType.Cached };
 
                 markerTop = innerTop + (isCached ? 0f : laneHeight);
                 markerHeight = Math.Max(2f, laneHeight - 1f);
+            }
+            else if (sourceEvent is SegmentScanEvent or SegmentEliminateEvent or ObjectPoolEvent or ColumnStoreScanEvent)
+            {
+                var laneHeight = innerHeight / 2f;
+
+                if (sourceEvent is SegmentScanEvent)
+                {
+                    var subLaneHeight = laneHeight / frame.SegmentLanes.LaneCount;
+
+                    markerTop = innerTop + frame.SegmentLanes.LaneOf(i) * subLaneHeight;
+                    markerHeight = Math.Max(2f, subLaneHeight - 1f);
+                }
+                else if (sourceEvent is SegmentEliminateEvent)
+                {
+                    markerTop = innerTop;
+                    markerHeight = Math.Max(2f, laneHeight - 1f);
+                }
+                else
+                {
+                    markerTop = innerTop + laneHeight;
+                    markerHeight = Math.Max(2f, laneHeight - 1f);
+                }
             }
             else if (category.HasValue)
             {
@@ -91,7 +119,7 @@ internal sealed class MarkerRenderer(RenderResource resources, CurrentSelection 
                 markerHeight = innerHeight;
             }
 
-            var markerColour = MarkerColour(frame, sourceEvent, rowIndex, category);
+            var markerColour = GetMarkerColour(frame, sourceEvent, rowIndex, category);
 
             var markerWidth = frame.RowMarkerWidth(rowIndex);
 
@@ -122,8 +150,6 @@ internal sealed class MarkerRenderer(RenderResource resources, CurrentSelection 
 
             resources.Fill.Color = markerColour;
 
-            // A read is considered actioned at its end (the row is returned there), so its solid tick sits at the end
-            // edge to line up with the solid return rail; other lanes keep the tick at the event's start.
             var tickX = sourceEvent is ReadEventGroup && hasDuration ? endX - markerWidth : startX;
 
             canvas.DrawRect(tickX, markerTop, markerWidth, markerHeight, resources.Fill);
@@ -134,16 +160,16 @@ internal sealed class MarkerRenderer(RenderResource resources, CurrentSelection 
         }
     }
 
-    // Category lanes tint the lane colour by category step; the Read lane takes its per-node colour from the provider,
-    // falling back to the flat lane colour. The Segment Scan lane is flat, a scan taking the lane colour and an
-    // elimination its own. Dimming only lowers the alpha for an out-of-focus event.
-    private SKColor MarkerColour(TimelineFrame frame, EngineEvent sourceEvent, int rowIndex, EventCategory? category)
+    private SKColor GetMarkerColour(TimelineFrame frame, EngineEvent sourceEvent, int rowIndex, EventCategory? category)
     {
         var laneColour = frame.Rows.Active[rowIndex].Color;
 
         var colour = sourceEvent switch
         {
             SegmentEliminateEvent => SegmentEliminationColour,
+            ObjectPoolEvent { IsHit: true } => ObjectPoolHitColour,
+            ObjectPoolEvent => ObjectPoolMissColour,
+            ColumnStoreScanEvent => ColumnStoreEventColour,
             SegmentScanEvent => laneColour,
             _ when category.HasValue => TimelineColours.TintByCategory(laneColour, (int)category.Value),
             _ when frame.ColourProvider is { } colours => colours.GetColour(sourceEvent).ToSkColor(),

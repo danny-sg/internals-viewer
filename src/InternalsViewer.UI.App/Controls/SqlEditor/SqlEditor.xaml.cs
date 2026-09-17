@@ -8,6 +8,7 @@ using InternalsViewer.UI.App.Services;
 using InternalsViewer.UI.App.ViewModels.Query;
 using Microsoft.UI;
 using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Input;
 using Microsoft.UI.Xaml.Media;
 using Microsoft.Web.WebView2.Core;
 using System;
@@ -337,6 +338,31 @@ public sealed partial class SqlEditorControl : UserControl, IDisposable
         SqlText = sql;
     }
 
+    private void ToggleHistory() => IsHistoryVisible = !IsHistoryVisible;
+
+    private void ToggleResults()
+    {
+        var show = !(IsResultsVisible || IsMessagesVisible);
+
+        IsResultsVisible = show;
+
+        IsMessagesVisible = show;
+    }
+
+    private void OnToggleHistoryAccelerator(KeyboardAccelerator sender, KeyboardAcceleratorInvokedEventArgs args)
+    {
+        args.Handled = true;
+
+        ToggleHistory();
+    }
+
+    private void OnToggleResultsAccelerator(KeyboardAccelerator sender, KeyboardAcceleratorInvokedEventArgs args)
+    {
+        args.Handled = true;
+
+        ToggleResults();
+    }
+
     private void HandleExecuteClick()
     {
         Execute(string.IsNullOrEmpty(_selectedText) ? SqlText : _selectedText);
@@ -448,6 +474,14 @@ public sealed partial class SqlEditorControl : UserControl, IDisposable
 
                     case "execute":
                         HandleExecuteClick();
+                        break;
+
+                    case "toggleHistory":
+                        ToggleHistory();
+                        break;
+
+                    case "toggleResults":
+                        ToggleResults();
                         break;
 
                     case "selectionChanged":

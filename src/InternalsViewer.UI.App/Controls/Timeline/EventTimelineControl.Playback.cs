@@ -265,11 +265,18 @@ public sealed partial class EventTimelineControl
         var lo = Math.Min(fromUs, toUs);
         var hi = Math.Max(fromUs, toUs);
 
-        SweepEvents(_readEventsByTime, lo, hi,
+        SweepEvents(_readEventsByTime, 
+                    lo, 
+                    hi,
                     io => _audioPlayer.PlayPlink(TimelineAudioPlayer.FrequencyForObject(io.ObjectId)));
 
-        SweepEvents(_latchEventsByTime, lo, hi,
-                    latch => _audioPlayer.PlayLatchTick(TimelineAudioPlayer.FrequencyForObject(latch.ObjectId)));
+        if (ShowLatches)
+        {
+            SweepEvents(_latchEventsByTime,
+                        lo,
+                        hi,
+                        latch => _audioPlayer.PlayLatchTick(TimelineAudioPlayer.FrequencyForObject(latch.ObjectId)));
+        }
 
         SweepEvents(_fileReadEventsByTime, lo, hi, _ => _audioPlayer.PlayFileRumble());
     }

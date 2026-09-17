@@ -12,6 +12,10 @@ public class CategoryMappingsTests
     [InlineData("CQDSManager", "SomeUncategorizedMethod", SymbolCategory.QueryStore)]
     [InlineData("SomeUnknownClass", "AcquireGenericQdsDbAndProcess", SymbolCategory.QueryStore)]
     [InlineData(null, "ExecuteCommandsInAutoTransaction", SymbolCategory.QueryExecution)]
+    [InlineData("CSyncPoint", "Wait", SymbolCategory.Scheduling)]
+    [InlineData("CacheProbabilisticAlgorithm", "EntryReInitCost", SymbolCategory.SqlOs)]
+    [InlineData("RbpCompile", "CompileFilter", SymbolCategory.ColumnStore)]
+    [InlineData("RbpEarlyFilterTransform", "ReportFilterReplacedWithBitmapFilter", SymbolCategory.ColumnStore)]
     [InlineData("SomeUnknownClass", "SomeUnknownMethod", SymbolCategory.Unknown)]
     [InlineData(null, null, SymbolCategory.Unknown)]
     public void Default_Classifies(string? className, string? methodName, SymbolCategory expected) =>
@@ -30,6 +34,24 @@ public class CategoryMappingsTests
     {
         Assert.Equal(SymbolCategory.QueryOperator, CategoryMappings.Default.Classify("sqlmin", "CQScanTopNew", "GetRow"));
         Assert.Equal("Top", CategoryMappings.Default.ClassifyOperator("sqlmin", "CQScanTopNew", "GetRow").Iterator);
+    }
+
+    [Theory]
+    // Stages inside a Columnstore Index Scan: a badge that names the phase, with no plan operator boundary of its own
+    [InlineData("NormalColumnDataSet", "FetchNextColumnBatch", "Batch Iterator")]
+    [InlineData("RowBucketScanner", "GetNextRowBucketAndFinalizeCurrent", "Row Buckets")]
+    [InlineData("RowGroupManager", "GetNextRowGroup", "Rowgroups")]
+    [InlineData("ColumnStoreObjectPool", "ConstructObjectAndFix", "Object Pool")]
+    [InlineData("ColumnSegmentBuilder", "DeserializeFromDisk", "Segment Read")]
+    [InlineData("ValueHashDictionaryBuilder", "DeserializeFromDisk", "Dictionary")]
+    [InlineData("DeleteSegmentRef", "FindCurrentDeleteBitmap", "Delete Bitmap")]
+    [InlineData("RbpCompile", "CompileFilter", "Compile")]
+    public void Default_Badges_A_Columnstore_Scan_Stage(string className, string methodName, string expected)
+    {
+        var (iterator, planOperator) = CategoryMappings.Default.ClassifyOperator("sqlmin", className, methodName);
+
+        Assert.Equal(expected, iterator);
+        Assert.Empty(planOperator);
     }
 
     [Theory]
