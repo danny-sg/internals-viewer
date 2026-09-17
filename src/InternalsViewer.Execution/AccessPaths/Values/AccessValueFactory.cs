@@ -89,6 +89,10 @@ internal static class AccessValueFactory
             double number => AccessValue.FromReal(dataType, number),
             SqlDecimal number => AccessValue.FromDecimal(dataType, number.Value),
             decimal number => AccessValue.FromDecimal(dataType, number),
+            DateOnly date => AccessValue.FromInteger(dataType, date.ToDateTime(TimeOnly.MinValue).Ticks),
+            DateTime moment => AccessValue.FromInteger(dataType, moment.Ticks),
+            DateTimeOffset moment => AccessValue.FromInteger(dataType, moment.UtcTicks),
+            TimeSpan span => AccessValue.FromInteger(dataType, span.Ticks),
             _ => FromText(dataType, value.ToString())
         };
 

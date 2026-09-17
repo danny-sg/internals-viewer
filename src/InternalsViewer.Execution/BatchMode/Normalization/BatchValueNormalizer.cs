@@ -137,12 +137,22 @@ public static class BatchValueNormalizer
         => TryNormalize(value.Ticks, out slot);
 
     /// <summary>
+    /// Normalizes a DateOnly value
+    /// </summary>
+    /// <remarks>
+    /// Treats the date as midnight and normalizes its tick count, the representation a DATE record field also takes, so a columnstore DATE
+    /// and a row mode DATE share one encoding and compare against each other and against a literal.
+    /// </remarks>
+    public static bool TryNormalize(DateOnly value, out BatchValue slot)
+        => TryNormalize(value.ToDateTime(TimeOnly.MinValue).Ticks, out slot);
+
+    /// <summary>
     /// Normalizes a TimeSpan value
     /// </summary>
     /// <remarks>
     /// Treats the TimeSpan as a long of ticks and normalizes it as an integer.
     /// </remarks>
-    public static bool TryNormalize(TimeSpan value, out BatchValue slot) 
+    public static bool TryNormalize(TimeSpan value, out BatchValue slot)
         => TryNormalize(value.Ticks, out slot);
 
     /// <summary>
@@ -207,6 +217,8 @@ public static class BatchValueNormalizer
                 return TryNormalize(number, out slot);
             case DateTime moment:
                 return TryNormalize(moment, out slot);
+            case DateOnly date:
+                return TryNormalize(date, out slot);
             case DateTimeOffset moment:
                 return TryNormalize(moment, out slot);
             case TimeSpan span:

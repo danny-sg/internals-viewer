@@ -58,6 +58,8 @@ public static class BatchValueDenormalizer
     {
         return column.DataType switch
         {
+            SqlDbType.Date
+                => DateOnly.FromDateTime(new DateTime(slot.Value >> 1)),
             SqlDbType.DateTime2
                 => new DateTime(slot.Value >> 1),
             SqlDbType.Time
