@@ -29,6 +29,10 @@ public sealed partial class SqlEditorControl : UserControl, IDisposable
 
     private const string HistoryVisibleSettingKey = "SqlEditorHistoryVisible";
 
+    private const string ClearBufferPoolSettingKey = "SqlEditorClearBufferPool";
+
+    private const string DisableReadAheadSettingKey = "SqlEditorDisableReadAhead";
+
     public static readonly DependencyProperty ExecuteCommandProperty =
         DependencyProperty.Register(
             nameof(ExecuteCommand),
@@ -404,6 +408,8 @@ public sealed partial class SqlEditorControl : UserControl, IDisposable
 
             await ApplySavedHistoryVisibilityAsync();
 
+            await ApplySavedRunOptionsAsync();
+
             await WebView.EnsureCoreWebView2Async();
 
             WebView.CoreWebView2.WebMessageReceived += OnWebMessageReceived;
@@ -545,6 +551,27 @@ public sealed partial class SqlEditorControl : UserControl, IDisposable
         IsResultsVisible = saved;
 
         QueryOptions = QueryOptions with { IncludeResults = saved };
+    }
+
+    private async Task ApplySavedRunOptionsAsync()
+    {
+        var settings = App.GetService<SettingsService>();
+
+        var clearBufferPool = await settings.ReadSettingAsync<bool?>(ClearBufferPoolSettingKey) ?? QueryOptions.ClearBufferPool;
+
+        var disableReadAhead = await settings.ReadSettingAsync<bool?>(DisableReadAheadSettingKey) ?? QueryOptions.DisableReadAhead;
+
+        QueryOptions = QueryOptions with { ClearBufferPool = clearBufferPool, DisableReadAhead = disableReadAhead };
+
+        Bindings.Update();
+    }
+
+    private void OnRunOptionClick(object sender, RoutedEventArgs e)
+    {
+        var settings = App.GetService<SettingsService>();
+
+        _ = settings.SaveSettingAsync(ClearBufferPoolSettingKey, QueryOptions.ClearBufferPool);
+        _ = settings.SaveSettingAsync(DisableReadAheadSettingKey, QueryOptions.DisableReadAhead);
     }
 
     private async Task ApplySavedHistoryVisibilityAsync()

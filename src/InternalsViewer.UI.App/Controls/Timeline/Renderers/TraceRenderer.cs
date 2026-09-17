@@ -29,6 +29,8 @@ internal sealed class TraceRenderer(RenderResource resources, CurrentSelection s
     // Mirrors the control's focused-dim tier: a trace belonging to a non-selected operator fades to this.
     private const byte DimAlpha = 70;
 
+    private const byte RailAlpha = 150;
+
     public void Draw(SKCanvas canvas, TimelineFrame frame, IReadOnlyList<OperatorBar> bars)
     {
         var byNode = new Dictionary<PlanNodeIdentifier, OperatorBar>(bars.Count);
@@ -179,6 +181,6 @@ internal sealed class TraceRenderer(RenderResource resources, CurrentSelection s
             ? colours.GetColour(ev).ToSkColor()
             : frame.Rows.Active[rowIndex].Color;
 
-        return colour.WithAlpha(selection.ShouldDim(ev) ? DimAlpha : (byte)255);
+        return colour.WithAlpha(selection.ShouldDim(ev) ? DimAlpha : RailAlpha);
     }
 }
