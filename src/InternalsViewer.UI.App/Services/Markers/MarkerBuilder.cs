@@ -13,6 +13,7 @@ using InternalsViewer.Internals.Helpers;
 using InternalsViewer.Internals.Interfaces.Annotations;
 using InternalsViewer.UI.App.Helpers;
 using InternalsViewer.UI.App.Models;
+using Microsoft.UI;
 
 namespace InternalsViewer.UI.App.Services.Markers;
 
@@ -25,7 +26,7 @@ public static class MarkerBuilder
 
     public static List<Marker> BuildMarkers(IDataStructure markedObject)
     {
-        return BuildMarkers(markedObject, MarkStyleProvider.Default);
+        return ApplyAlternateColours(BuildMarkers(markedObject, MarkStyleProvider.Default));
     }
 
     /// <summary>
@@ -76,6 +77,38 @@ public static class MarkerBuilder
 
         return [.. markers.OrderBy(o => o.Ordinal).ThenBy(o => o.StartPosition)];
     }
+
+    /// <summary>
+    /// Swaps every other marker in a run of the same type onto its alternate background
+    /// </summary>
+    private static List<Marker> ApplyAlternateColours(List<Marker> markers)
+    {
+        var isAlternate = false;
+
+        for (var index = 1; index < markers.Count; index++)
+        {
+            var marker = markers[index];
+
+            if (marker.Type != markers[index - 1].Type || !HasAlternate(marker))
+            {
+                isAlternate = false;
+
+                continue;
+            }
+
+            isAlternate = !isAlternate;
+
+            if (isAlternate)
+            {
+                marker.BackColour = marker.AlternateBackColour;
+            }
+        }
+
+        return markers;
+    }
+
+    private static bool HasAlternate(Marker marker)
+        => marker.AlternateBackColour != Colors.Transparent && marker.AlternateBackColour != marker.BackColour;
 
     /// <summary>
     /// Resolves the reflection metadata a <see cref="PropertyItem"/> marker needs
@@ -210,7 +243,7 @@ public static class MarkerBuilder
 
         if (value is DataStructure markedObject)
         {
-            var children = BuildMarkers(markedObject, styleProvider);
+            var children = ApplyAlternateColours(BuildMarkers(markedObject, styleProvider));
 
             marker.Children = children.ToObservableCollection();
 
@@ -225,7 +258,7 @@ public static class MarkerBuilder
                 children.AddRange(BuildMarkers(child, styleProvider));
             }
 
-            marker.Children = children.ToObservableCollection();
+            marker.Children = ApplyAlternateColours(children).ToObservableCollection();
 
             hasChildren = children.Count > 0;
         }

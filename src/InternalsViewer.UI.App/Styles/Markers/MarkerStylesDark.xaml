@@ -41,8 +41,8 @@
     <models:MarkStyle x:Key="NullBitmapMarkerStyle" ForeColour="White" BackColour="#8AB7BD" Name="Null Bitmap"/>
     <models:MarkStyle x:Key="VariableLengthColumnCountMarkerStyle" ForeColour="White" BackColour="#606264" Name="Variable Length Column Count"/>
     <models:MarkStyle x:Key="VariableLengthColumnOffsetArrayMarkerStyle" ForeColour="White" BackColour="#2D563A" Name="Variable Length Column Offset Array"/>
-    <models:MarkStyle x:Key="FixedLengthValueMarkerStyle" ForeColour="Black" BackColour="#D6DAD4" Name="Fixed Length Value"/>
-    <models:MarkStyle x:Key="VariableLengthValueMarkerStyle" ForeColour="Black" BackColour="#C2D0CB" Name="Variable Length Value"/>
+    <models:MarkStyle x:Key="FixedLengthValueMarkerStyle" ForeColour="#2C4030" BackColour="#ECF2EC" AlternateBackColour="#D9E4DA" Name="Fixed Length Value"/>
+    <models:MarkStyle x:Key="VariableLengthValueMarkerStyle" ForeColour="#24403A" BackColour="#DCE8E4" AlternateBackColour="#C7DAD3" Name="Variable Length Value"/>
     <models:MarkStyle x:Key="ForwardingStubMarkerStyle" ForeColour="White" BackColour="#d85240" Name="Forwarding Stub"/>
 
     <!--CD Format-->
