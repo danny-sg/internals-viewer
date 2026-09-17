@@ -56,6 +56,12 @@ public sealed partial class QueryOptionsViewModel : ObservableObject
         set => SetOption(_options.IncludeLatch, value, v => _options.IncludeLatch = v);
     }
 
+    public bool IncludeColumnstore
+    {
+        get => _options.IncludeColumnstore;
+        set => SetOption(_options.IncludeColumnstore, value, v => _options.IncludeColumnstore = v);
+    }
+
     public bool IncludeMemory
     {
         get => _options.IncludeMemory;
@@ -118,6 +124,7 @@ public sealed partial class QueryOptionsViewModel : ObservableObject
                         bool includeSystemObjects,
                         bool includeWait,
                         bool includeLatch,
+                        bool includeColumnstore,
                         bool includeMemory,
                         bool includeCallStack,
                         IEnumerable<LockModeCategory> lockModeCategories)
@@ -126,6 +133,7 @@ public sealed partial class QueryOptionsViewModel : ObservableObject
         _options.IncludeSystemObjects = includeSystemObjects;
         _options.IncludeWait = includeWait;
         _options.IncludeLatch = includeLatch;
+        _options.IncludeColumnstore = includeColumnstore;
         _options.IncludeMemory = includeMemory;
         _options.IncludeCallStack = includeCallStack;
         _options.IncludeLockModeCategories = [.. lockModeCategories];
@@ -224,6 +232,7 @@ public sealed partial class QueryOptionsViewModel : ObservableObject
         OnPropertyChanged(nameof(IncludeSystemObjects));
         OnPropertyChanged(nameof(ShowWaits));
         OnPropertyChanged(nameof(ShowLatches));
+        OnPropertyChanged(nameof(IncludeColumnstore));
         OnPropertyChanged(nameof(IncludeMemory));
         OnPropertyChanged(nameof(IncludeCallStack));
 

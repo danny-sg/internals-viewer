@@ -80,6 +80,7 @@ public class TimelineRendererTests
             Times = [],
             Rows = rowSet,
             SegmentLanes = new SegmentScanLanes(),
+            PoolLanes = new ObjectPoolLanes(),
             RowTops = [.. Enumerable.Range(0, rowCount).Select(r => r * rowHeight)],
             RowHeights = [.. Enumerable.Repeat(rowHeight, rowCount)],
             CanvasWidth = canvasWidth,

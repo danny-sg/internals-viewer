@@ -116,6 +116,8 @@
                                    IsChecked="{x:Bind ViewModel.QueryOptions.ShowWaits, Mode=TwoWay}"/>
                                 <ToggleMenuFlyoutItem Text="Latches"
                                    IsChecked="{x:Bind ViewModel.QueryOptions.ShowLatches, Mode=TwoWay}"/>
+                                <ToggleMenuFlyoutItem Text="Columnstore"
+                                   IsChecked="{x:Bind ViewModel.QueryOptions.IncludeColumnstore, Mode=TwoWay}"/>
                                 <ToggleMenuFlyoutItem Text="Memory"
                                    IsChecked="{x:Bind ViewModel.QueryOptions.IncludeMemory, Mode=TwoWay}"/>
                                 <ToggleMenuFlyoutItem Text="Call Stack"

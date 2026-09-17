@@ -554,6 +554,7 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
             IncludeLock = QueryOptions.Options.IncludeLock,
             IncludeWait = QueryOptions.Options.IncludeWait,
             IncludeLatch = QueryOptions.Options.IncludeLatch,
+            IncludeColumnstore = QueryOptions.Options.IncludeColumnstore,
             IncludeMemory = QueryOptions.Options.IncludeMemory,
             IncludeCallstack = QueryOptions.Options.IncludeCallStack,
             LockModeCategories = [.. QueryOptions.Options.IncludeLockModeCategories]
@@ -949,6 +950,7 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
                                  dto.IncludeSystemObjects,
                                  dto.IncludeWait,
                                  dto.IncludeLatch,
+                                 dto.IncludeColumnstore,
                                  dto.IncludeMemory,
                                  dto.IncludeCallstack,
                                  lockCategories);

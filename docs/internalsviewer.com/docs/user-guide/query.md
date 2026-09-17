@@ -20,7 +20,7 @@ The **Events** menu selects what the trace captures:
 
 ![Events menu](/docs/user-guide/images/query-events-menu.png)
 
-Page I/O is always captured. **Locks** opens a submenu of lock categories to capture (**Read**, **Update**, **Write**, **Schema**, **Range**, **Bulk**, or **None**/**Default**) - by default this excludes **Schema** locks, since they are held for a large part of the query's lifetime and would otherwise dominate the [Locks](/docs/user-guide/query/Locks) band. **Waits** and **Latches** can be toggled independently, as can **Memory** (grants, spills, and sort warnings) and **Call Stack** - see [Call Stack](/docs/user-guide/query/CallStack).
+Page I/O is always captured. **Locks** opens a submenu of lock categories to capture (**Read**, **Update**, **Write**, **Schema**, **Range**, **Bulk**, or **None**/**Default**) - by default this excludes **Schema** locks, since they are held for a large part of the query's lifetime and would otherwise dominate the [Locks](/docs/user-guide/query/Locks) band. **Waits** and **Latches** can be toggled independently, as can **Columnstore** (segment scans, rowgroup elimination, rowgroup reads and object pool lookups - on by default), **Memory** (grants, spills, and sort warnings) and **Call Stack** - see [Call Stack](/docs/user-guide/query/CallStack).
 
 ## Query menu
 

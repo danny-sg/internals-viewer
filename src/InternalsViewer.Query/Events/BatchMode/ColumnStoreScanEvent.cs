@@ -20,6 +20,9 @@ public sealed partial record ColumnStoreScanEvent : EngineEvent
     [EventProperty("Time To Generate", Type = EventPropertyType.Microseconds)]
     public long? TimeToGenerateUs { get; set; }
 
+    public bool IsRowGroupRead
+        => EventName is "column_store_rowgroup_read_issued" or "column_store_rowgroup_readahead_issued";
+
     public override string Name => DisplayName(EventName);
 
     public override string Description => Summary.Length == 0 ? Name : $"{Name} ({Summary})";

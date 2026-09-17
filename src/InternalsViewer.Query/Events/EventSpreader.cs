@@ -111,6 +111,7 @@ public static class EventSpreader
     /// the moments those holds start and end. Spreading them would drift them off the very lock events they line up with.
     /// </remarks>
     private static bool IsSerialWork(EngineEvent e) =>
-        e is not (QueryThreadEvent or MemoryEvent or LockEvent or LockGroup or LockEscalationEvent or TransactionEvent or SegmentScanEvent);
+        e is not (QueryThreadEvent or MemoryEvent or LockEvent or LockGroup or LockEscalationEvent or TransactionEvent
+                  or SegmentScanEvent or SegmentEliminateEvent or ObjectPoolEvent or ColumnStoreScanEvent);
 
 }

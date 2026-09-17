@@ -77,7 +77,7 @@ public sealed partial class EventTimelineControl
         var rowHeights = TimelineRowLayout.Resolve(rows,
                                                    rowsHeight,
                                                    _rows.IndexOf(typeof(SegmentScanEvent)),
-                                                   _segmentLanes.MinRowHeight(RowPadding));
+                                                   Math.Max(_segmentLanes.MinRowHeight(RowPadding), _poolLanes.MinRowHeight(RowPadding)));
 
         var rowTops = new float[rowCount];
 
@@ -104,14 +104,14 @@ public sealed partial class EventTimelineControl
 
         canvas.ClipRect(new SKRect(RowLabelWidth, 0, w, h));
 
-        _markerRenderer.Draw(canvas, frame);
-
-        _lockRenderer.Draw(canvas, frame);
-
         var operatorBars = BuildOperatorBars(rowTops, rowHeights);
 
         // Traces first so the operator bars paint over them (the rails drop from a bar's edge).
         _traceRenderer.Draw(canvas, frame, operatorBars);
+
+        _markerRenderer.Draw(canvas, frame);
+
+        _lockRenderer.Draw(canvas, frame);
 
         _operatorRenderer.Draw(canvas, frame, operatorBars);
 
@@ -132,6 +132,7 @@ public sealed partial class EventTimelineControl
         Times = _times,
         Rows = _rows,
         SegmentLanes = _segmentLanes,
+        PoolLanes = _poolLanes,
         RowTops = rowTops,
         RowHeights = rowHeights,
         CanvasWidth = CanvasWidth,

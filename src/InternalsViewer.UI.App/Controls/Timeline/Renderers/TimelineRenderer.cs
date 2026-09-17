@@ -54,7 +54,7 @@ internal sealed class TimelineRenderer(RenderResource resources) : IDisposable
             var isSplitRow = rows[r].EventType == typeof(ReadEventGroup)
                              ? TryDrawSplitRowLabels(canvas, y, rowHeight, "Buffer", "Read", "Disk")
                              : rows[r].EventType == typeof(SegmentScanEvent)
-                                 && TryDrawSplitRowLabels(canvas, y, rowHeight, "Segment", "Columnstore", "Pool");
+                                 && TryDrawSplitRowLabels(canvas, y, rowHeight, "Rowgroup", "Columnstore", "Object Pool");
 
             if (!isSplitRow)
             {

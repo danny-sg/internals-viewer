@@ -62,6 +62,11 @@ internal static class EventSql
             sessionEvents.AddRange(EventConstants.BatchModeEvents);
         }
 
+        if (eventOptions.IncludeColumnstore)
+        {
+            sessionEvents.AddRange(EventConstants.ColumnstoreEvents);
+        }
+
         if (eventOptions.IncludeCallStack)
         {
             sessionActions.AddRange(EventConstants.CallstackActions);

@@ -92,12 +92,19 @@ internal sealed class MarkerRenderer(RenderResource resources, CurrentSelection 
                     var subLaneHeight = laneHeight / frame.SegmentLanes.LaneCount;
 
                     markerTop = innerTop + frame.SegmentLanes.LaneOf(i) * subLaneHeight;
-                    markerHeight = Math.Max(2f, subLaneHeight - 1f);
+                    markerHeight = Math.Max(2f, subLaneHeight - 2f);
                 }
-                else if (sourceEvent is SegmentEliminateEvent)
+                else if (sourceEvent is SegmentEliminateEvent or ColumnStoreScanEvent { IsRowGroupRead: true })
                 {
                     markerTop = innerTop;
                     markerHeight = Math.Max(2f, laneHeight - 1f);
+                }
+                else if (sourceEvent is ObjectPoolEvent)
+                {
+                    var subLaneHeight = laneHeight / frame.PoolLanes.LaneCount;
+
+                    markerTop = innerTop + laneHeight + frame.PoolLanes.LaneOf(i) * subLaneHeight;
+                    markerHeight = Math.Max(2f, subLaneHeight - 2f);
                 }
                 else
                 {
@@ -166,13 +173,20 @@ internal sealed class MarkerRenderer(RenderResource resources, CurrentSelection 
 
         var colour = sourceEvent switch
         {
-            SegmentEliminateEvent => SegmentEliminationColour,
-            ObjectPoolEvent { IsHit: true } => ObjectPoolHitColour,
-            ObjectPoolEvent => ObjectPoolMissColour,
-            ColumnStoreScanEvent => ColumnStoreEventColour,
-            SegmentScanEvent => laneColour,
-            _ when category.HasValue => TimelineColours.TintByCategory(laneColour, (int)category.Value),
-            _ when frame.ColourProvider is { } colours => colours.GetColour(sourceEvent).ToSkColor(),
+            SegmentEliminateEvent 
+                => SegmentEliminationColour,
+            ObjectPoolEvent { IsHit: true } 
+                => ObjectPoolHitColour,
+            ObjectPoolEvent 
+                => ObjectPoolMissColour,
+            ColumnStoreScanEvent 
+                => ColumnStoreEventColour,
+            SegmentScanEvent 
+                => laneColour,
+            _ when category.HasValue 
+                => TimelineColours.TintByCategory(laneColour, (int)category.Value),
+            _ when frame.ColourProvider is { } colours 
+                => colours.GetColour(sourceEvent).ToSkColor(),
             _ => laneColour,
         };
 

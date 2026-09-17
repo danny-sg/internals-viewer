@@ -9,6 +9,9 @@ public sealed partial record ObjectPoolEvent : EngineEvent
     [EventProperty("Hit")]
     public bool IsHit { get; set; }
 
+    [EventProperty("Row Group")]
+    public long? RowGroupId { get; set; }
+
     [EventProperty("Object Type")]
     public ColumnStoreObjectType ObjectType { get; set; }
 

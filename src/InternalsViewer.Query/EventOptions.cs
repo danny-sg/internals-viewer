@@ -18,6 +18,8 @@ public sealed record EventOptions
 
     public bool IncludeBatchMode { get; set; } = true;
 
+    public bool IncludeColumnstore { get; set; } = true;
+
     public bool IncludeSystemObjects { get; set; } 
 
     /// <summary>

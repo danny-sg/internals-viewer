@@ -64,7 +64,11 @@ public static class OperatorBoundsExtender
 
             operatorEvent.DurationUs += shift;
             operatorEvent.TimeUs = start;
-            operatorEvent.Timestamp -= TimeSpan.FromMicroseconds(shift);
+
+            if (operatorEvent.Timestamp != default)
+            {
+                operatorEvent.Timestamp -= TimeSpan.FromMicroseconds(shift);
+            }
         }
 
         return operatorEvent.TimeUs;

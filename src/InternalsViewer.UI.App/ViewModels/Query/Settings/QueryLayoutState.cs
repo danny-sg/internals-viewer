@@ -24,5 +24,7 @@ public sealed class QueryLayoutState
 
     public bool IncludeCallstack { get; set; }
 
+    public bool IncludeColumnstore { get; set; } = true;
+
     public List<LockModeCategory>? LockModeCategories { get; set; }
 }

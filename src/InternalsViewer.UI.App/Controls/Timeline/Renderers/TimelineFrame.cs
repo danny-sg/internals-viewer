@@ -27,6 +27,8 @@ internal sealed class TimelineFrame
 
     public required SegmentScanLanes SegmentLanes { get; init; }
 
+    public required ObjectPoolLanes PoolLanes { get; init; }
+
     public required float[] RowTops { get; init; }
 
     public required float[] RowHeights { get; init; }

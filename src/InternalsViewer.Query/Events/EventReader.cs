@@ -206,6 +206,8 @@ public sealed class EventReader(ILogger<EventReader> logger)
 
         collapsedEvents = SegmentScanCollapser.Collapse(collapsedEvents);
 
+        RowGroupReadSpanner.Apply(collapsedEvents);
+
         collapsedEvents = LockPartitionCollapser.Collapse(collapsedEvents);
 
         Logger.LogDebug("Collapsed lock partitions in {Duration}", Stopwatch.GetElapsedTime(start));
