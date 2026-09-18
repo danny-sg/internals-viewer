@@ -26,12 +26,12 @@ internal sealed class OperatorRenderer(RenderResource resources, CurrentSelectio
     private const float MinLabelBarWidth = 26f;
 
     // Below this per-worker lane height the thread overlay falls back to a concurrency-density shade.
-    private const float MinThreadLaneHeight = 2.5f;
-    private const float ThreadLaneGap = 1f;
+    private const float MinThreadTrackHeight = 2.5f;
+    private const float ThreadTrackGap = 1f;
 
     private const float ObjectMarkerMargin = 3f;
     private const float ObjectMarkerRadius = 6f;
-    private const float ObjectMarkerBandWidth = 12f;
+    private const float ObjectMarkerStripWidth = 12f;
 
     private const float OperatorMaxFont = 12f;
     private const float OperatorMinFont = 7f;
@@ -60,7 +60,7 @@ internal sealed class OperatorRenderer(RenderResource resources, CurrentSelectio
 
         foreach (var b in bars)
         {
-            if (b.EndX < frame.RowLabelWidth || b.StartX > rightEdge)
+            if (b.EndX < frame.BandLabelWidth || b.StartX > rightEdge)
             {
                 continue;
             }
@@ -99,8 +99,8 @@ internal sealed class OperatorRenderer(RenderResource resources, CurrentSelectio
 
             DrawObjectColourMarker(canvas, frame, b);
 
-            hitRegions.Add(new HitRegion(new SKRect(b.StartX, b.SlotCentreY - b.SlotHeight / 2f, b.EndX,
-                                                    b.SlotCentreY + b.SlotHeight / 2f), b.Op, null));
+            hitRegions.Add(new HitRegion(new SKRect(b.StartX, b.LaneCentreY - b.LaneHeight / 2f, b.EndX,
+                                                    b.LaneCentreY + b.LaneHeight / 2f), b.Op, null));
         }
 
         if (selection.NodeId is { } selected)
@@ -135,7 +135,7 @@ internal sealed class OperatorRenderer(RenderResource resources, CurrentSelectio
 
         var barHeight = b.BarBottom - b.BarTop;
 
-        if (barHeight / workers.Count < MinThreadLaneHeight)
+        if (barHeight / workers.Count < MinThreadTrackHeight)
         {
             DrawThreadDensity(canvas, frame, b, workers);
             return;
@@ -150,9 +150,9 @@ internal sealed class OperatorRenderer(RenderResource resources, CurrentSelectio
         foreach (var t in workers)
         {
             var share = totalRows > 0 ? (float)t.RowsProcessed / totalRows : 1f / workers.Count;
-            var laneHeight = barHeight * share;
+            var trackHeight = barHeight * share;
 
-            if (laneHeight >= 0.5f)
+            if (trackHeight >= 0.5f)
             {
                 var x0 = Math.Max(b.StartX, frame.TimeToX(t.StartUs / frame.AxisUnitsPerMs));
                 var x1 = Math.Min(b.EndX, frame.TimeToX(t.EndUs / frame.AxisUnitsPerMs));
@@ -165,10 +165,10 @@ internal sealed class OperatorRenderer(RenderResource resources, CurrentSelectio
                 // Workers read a touch brighter than the envelope (coordinator) bar behind them.
                 resources.Fill.Color = TimelineColours.Scale(b.BarColour, 1.12f);
 
-                canvas.DrawRect(x0, y, x1 - x0, Math.Max(1f, laneHeight - ThreadLaneGap), resources.Fill);
+                canvas.DrawRect(x0, y, x1 - x0, Math.Max(1f, trackHeight - ThreadTrackGap), resources.Fill);
             }
 
-            y += laneHeight;
+            y += trackHeight;
         }
     }
 
@@ -258,9 +258,9 @@ internal sealed class OperatorRenderer(RenderResource resources, CurrentSelectio
 
         if (b.BarBottom - b.BarTop < ObjectMarkerMargin + 2 * ObjectMarkerRadius)
         {
-            var bandWidth = Math.Min(ObjectMarkerBandWidth, b.EndX - b.StartX);
+            var stripWidth = Math.Min(ObjectMarkerStripWidth, b.EndX - b.StartX);
 
-            if (bandWidth <= 0)
+            if (stripWidth <= 0)
             {
                 return;
             }
@@ -275,7 +275,7 @@ internal sealed class OperatorRenderer(RenderResource resources, CurrentSelectio
 
             resources.Fill.Color = colour.ToSkColor();
 
-            canvas.DrawRect(b.StartX, b.BarTop, bandWidth, b.BarBottom - b.BarTop, resources.Fill);
+            canvas.DrawRect(b.StartX, b.BarTop, stripWidth, b.BarBottom - b.BarTop, resources.Fill);
 
             canvas.Restore();
 
@@ -351,7 +351,7 @@ internal sealed class OperatorRenderer(RenderResource resources, CurrentSelectio
     private void DrawFlowConnector(SKCanvas canvas, TimelineFrame frame, OperatorBar child, OperatorBar parent)
     {
         // Rows flow from the child while it is emitting: [EmitStart, End].
-        var x0 = Math.Max(frame.RowLabelWidth, frame.TimeToX(child.Op.EmitStartUs / frame.AxisUnitsPerMs));
+        var x0 = Math.Max(frame.BandLabelWidth, frame.TimeToX(child.Op.EmitStartUs / frame.AxisUnitsPerMs));
 
         var x1 = Math.Min(frame.CanvasWidth, frame.TimeToX((child.Op.TimeUs + child.Op.DurationUs) / frame.AxisUnitsPerMs));
 

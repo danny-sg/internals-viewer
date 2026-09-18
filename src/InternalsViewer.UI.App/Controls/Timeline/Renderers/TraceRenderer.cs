@@ -1,9 +1,8 @@
-using System.Collections.Generic;
 using System;
-using InternalsViewer.Query.Events.Reads;
-using InternalsViewer.Query.Events.Transactions;
+using System.Collections.Generic;
 using InternalsViewer.Query.Events;
 using InternalsViewer.Query.Plans.Model;
+using InternalsViewer.UI.App.Controls.Timeline.Definition;
 using InternalsViewer.UI.App.Helpers;
 using SkiaSharp;
 
@@ -33,6 +32,13 @@ internal sealed class TraceRenderer(RenderResource resources, CurrentSelection s
 
     public void Draw(SKCanvas canvas, TimelineFrame frame, IReadOnlyList<OperatorBar> bars)
     {
+        var links = frame.Definition.Links;
+
+        if (links.Length == 0)
+        {
+            return;
+        }
+
         var byNode = new Dictionary<PlanNodeIdentifier, OperatorBar>(bars.Count);
 
         foreach (var b in bars)
@@ -43,127 +49,102 @@ internal sealed class TraceRenderer(RenderResource resources, CurrentSelection s
             }
         }
 
-        var ioRow = frame.Rows.IndexOf(typeof(ReadEventGroup));
-        var logRow = frame.Rows.IndexOf(typeof(TransactionLogEvent));
-
-        if (ioRow < 0 && logRow < 0)
-        {
-            return;
-        }
-
         var rightEdge = frame.CanvasWidth;
 
         // Composite all extensions through a single layer at reduced opacity so overlapping traces don't stack up to
         // full opacity (the layer merges them first, then fades the whole thing once). Bound the layer to just the rows
-        // traces reach â€” the operator bars plus the read/log lanes â€” so Skia allocates a band-sized offscreen rather
+        // traces reach — the operator bars plus the read/log lanes — so Skia allocates a band-sized offscreen rather
         // than a full-canvas one on every playback (the cost otherwise scales with the whole control's size).
-        canvas.SaveLayer(TraceBounds(frame, bars, ioRow, logRow, rightEdge), resources.TraceLayer);
+        canvas.SaveLayer(TraceBounds(frame, bars, rightEdge), resources.TraceLayer);
 
-        if (ioRow >= 0)
+        foreach (var link in links)
         {
-            var readTop = frame.RowTops[ioRow] + frame.RowPadding;
-
-            var readBottom = frame.RowTops[ioRow] + frame.RowHeights[ioRow] - frame.RowPadding;
-
-            var width = frame.RowMarkerWidth(ioRow);
-
-            for (var i = 0; i < frame.Events.Count; i++)
+            if (!frame.TryGetTrackBounds(link.Source, out var sourceTop, out var sourceHeight))
             {
-                if (frame.Events[i] is not ReadEventGroup io || !TryGetRailOrigin(frame, byNode, i, io, readTop, out var railOrigin))
-                {
-                    continue;
-                }
-
-                var startX = frame.TimeToX(frame.Times[i]);
-
-                var endX = io.DurationUs > 0 ? frame.TimeToX(frame.Times[i] + io.DurationUs / frame.AxisUnitsPerMs) : startX;
-
-                if (startX > rightEdge || endX < frame.RowLabelWidth - width)
-                {
-                    continue;
-                }
-
-                var colour = TraceColour(frame, io, ioRow);
-
-                // Terminate the rails at the read's own lane (cached = top half, non-cached = bottom half) so they line
-                // up with the split read band.
-                var laneHeight = (readBottom - readTop) / 2f;
-                var railTop = io.ReadType == ReadType.Cached ? readTop : readTop + laneHeight;
-                var railBottom = io.ReadType == ReadType.Cached ? readTop + laneHeight : readBottom;
-
-                // Only draw the dotted call rail when it is far enough left of the end return rail to read as distinct.
-                if (endX - startX > MinCallRailGapPx)
-                {
-                    resources.ReadCallRail.Color = colour;
-                    canvas.DrawLine(startX, railOrigin, startX, railTop, resources.ReadCallRail);
-                }
-
-                resources.ReadReturnRail.Color = colour;
-
-                // The pages land in the buffer together when the I/O completes, so â€” absent real per-page timing â€” the
-                // return rails bunch at the read's END, only slightly separated for legibility. A single-page read is
-                // therefore one rail at the end.
-                var pageCount = Math.Max(1, io.PageCount);
-
-                for (var p = 0; p < pageCount; p++)
-                {
-                    var x = Math.Max(startX, endX - p * PageRailGapPx);
-
-                    canvas.DrawLine(x, railOrigin, x, railBottom, resources.ReadReturnRail);
-                }
+                continue;
             }
-        }
 
-        if (logRow >= 0)
-        {
-            // Log writes are above the plan: extend from the log row down to the modification operator's top.
-            var logBottom = frame.RowTops[logRow] + frame.RowHeights[logRow] - frame.RowPadding;
-            var width = frame.RowMarkerWidth(logRow);
+            var sourceBottom = sourceTop + sourceHeight;
 
-            for (var i = 0; i < frame.Events.Count; i++)
+            if (!TryGetOrigin(frame, byNode, link, sourceTop, sourceBottom, out var origin))
             {
-                if (frame.Events[i] is not TransactionLogEvent { PlanNodeIdentifier: { } id } log ||
-                    !byNode.TryGetValue(id, out var b) ||
-                    b.BarTop <= logBottom)
-                {
-                    continue;
-                }
+                continue;
+            }
 
-                var x = frame.TimeToX(frame.Times[i]);
+            var item = frame.Definition.Items[link.Source];
 
-                if (x > rightEdge || x < frame.RowLabelWidth - width)
-                {
-                    continue;
-                }
+            var sourceEvent = frame.Events[link.Source];
 
-                resources.Fill.Color = TraceColour(frame, log, logRow);
-                canvas.DrawRect(x, logBottom, width, b.BarTop - logBottom, resources.Fill);
+            var width = frame.BandMarkerWidth(item.Band);
+
+            var startX = frame.TimeToX(frame.Times[link.Source]);
+
+            var endX = sourceEvent.DurationUs > 0
+                ? frame.TimeToX(frame.Times[link.Source] + sourceEvent.DurationUs / frame.AxisUnitsPerMs)
+                : startX;
+
+            if (startX > rightEdge || endX < frame.BandLabelWidth - width)
+            {
+                continue;
+            }
+
+            var colour = TraceColour(frame, sourceEvent, item);
+
+            var isAbove = origin < sourceTop;
+
+            var near = isAbove ? sourceTop : sourceBottom;
+
+            if (link.Style == TimelineLinkStyle.Bar)
+            {
+                resources.Fill.Color = colour;
+                canvas.DrawRect(startX, Math.Min(near, origin), width, Math.Abs(origin - near), resources.Fill);
+
+                continue;
+            }
+
+            var far = isAbove ? sourceBottom : sourceTop;
+
+            // Only draw the dotted call rail when it is far enough left of the end return rail to read as distinct.
+            if (endX - startX > MinCallRailGapPx)
+            {
+                resources.ReadCallRail.Color = colour;
+                canvas.DrawLine(startX, origin, startX, near, resources.ReadCallRail);
+            }
+
+            resources.ReadReturnRail.Color = colour;
+
+            // The pages land in the buffer together when the I/O completes, so — absent real per-page timing — the
+            // return rails bunch at the read's END, only slightly separated for legibility. A single-page read is
+            // therefore one rail at the end.
+            for (var p = 0; p < link.RailCount; p++)
+            {
+                var x = Math.Max(startX, endX - p * PageRailGapPx);
+
+                canvas.DrawLine(x, origin, x, far, resources.ReadReturnRail);
             }
         }
 
         canvas.Restore();
     }
 
-    private static bool TryGetRailOrigin(TimelineFrame frame,
-                                         Dictionary<PlanNodeIdentifier, OperatorBar> byNode,
-                                         int eventIndex,
-                                         ReadEventGroup read,
-                                         float readTop,
-                                         out float origin)
+    private static bool TryGetOrigin(TimelineFrame frame,
+                                     Dictionary<PlanNodeIdentifier, OperatorBar> byNode,
+                                     TimelineLink link,
+                                     float sourceTop,
+                                     float sourceBottom,
+                                     out float origin)
     {
-        var poolIndex = frame.PoolLinks.PoolIndexOf(eventIndex);
-
-        if (poolIndex >= 0 && frame.TryGetPoolMarker(poolIndex, out var poolTop, out var poolHeight) && poolTop + poolHeight < readTop)
+        if (link.TargetItem >= 0
+            && frame.TryGetMarkerBounds(link.TargetItem, out var targetTop, out var targetHeight)
+            && TryGetEdge(targetTop, targetTop + targetHeight, sourceTop, sourceBottom, out origin))
         {
-            origin = poolTop + poolHeight;
-
             return true;
         }
 
-        if (read.PlanNodeIdentifier is { } id && byNode.TryGetValue(id, out var bar) && bar.BarBottom < readTop)
+        if (link.TargetOperator is { } id
+            && byNode.TryGetValue(id, out var bar)
+            && TryGetEdge(bar.BarTop, bar.BarBottom, sourceTop, sourceBottom, out origin))
         {
-            origin = bar.BarBottom;
-
             return true;
         }
 
@@ -172,9 +153,30 @@ internal sealed class TraceRenderer(RenderResource resources, CurrentSelection s
         return false;
     }
 
+    private static bool TryGetEdge(float targetTop, float targetBottom, float sourceTop, float sourceBottom, out float edge)
+    {
+        if (targetBottom < sourceTop)
+        {
+            edge = targetBottom;
+
+            return true;
+        }
+
+        if (targetTop > sourceBottom)
+        {
+            edge = targetTop;
+
+            return true;
+        }
+
+        edge = 0;
+
+        return false;
+    }
+
     // The vertical span the rails occupy: the operator bars they drop from, plus the read and log lanes they reach.
     // Used to size the composite layer's offscreen to the band instead of the whole canvas.
-    private static SKRect TraceBounds(TimelineFrame frame, IReadOnlyList<OperatorBar> bars, int ioRow, int logRow, float rightEdge)
+    private static SKRect TraceBounds(TimelineFrame frame, IReadOnlyList<OperatorBar> bars, float rightEdge)
     {
         var top = float.MaxValue;
         var bottom = float.MinValue;
@@ -186,26 +188,42 @@ internal sealed class TraceRenderer(RenderResource resources, CurrentSelection s
             bottom = Math.Max(bottom, b.BarBottom);
         }
 
-        if (ioRow >= 0)
+        foreach (var link in frame.Definition.Links)
         {
-            bottom = Math.Max(bottom, frame.RowTops[ioRow] + frame.RowHeights[ioRow]);
+            IncludeBand(frame, link.Source, ref top, ref bottom);
+
+            IncludeBand(frame, link.TargetItem, ref top, ref bottom);
         }
 
-        if (logRow >= 0)
+        return new SKRect(frame.BandLabelWidth, top, rightEdge, bottom);
+    }
+
+    private static void IncludeBand(TimelineFrame frame, int itemIndex, ref float top, ref float bottom)
+    {
+        if (itemIndex < 0)
         {
-            top = Math.Min(top, frame.RowTops[logRow]);
+            return;
         }
 
-        return new SKRect(frame.RowLabelWidth, top, rightEdge, bottom);
+        var band = frame.Definition.Items[itemIndex].Band;
+
+        if (band < 0)
+        {
+            return;
+        }
+
+        top = Math.Min(top, frame.BandTops[band]);
+
+        bottom = Math.Max(bottom, frame.BandTops[band] + frame.BandHeights[band]);
     }
 
     // A trace takes its operator's per-node colour (or the flat lane colour when no provider is set), faded when the
     // event belongs to an operator other than the selected one.
-    private SKColor TraceColour(TimelineFrame frame, EngineEvent ev, int rowIndex)
+    private SKColor TraceColour(TimelineFrame frame, EngineEvent ev, TimelineItem item)
     {
-        var colour = frame.ColourProvider is { } colours
+        var colour = item.ColourSource == TimelineColourSource.Provider && frame.ColourProvider is { } colours
             ? colours.GetColour(ev).ToSkColor()
-            : frame.Rows.Active[rowIndex].Color;
+            : item.Colour;
 
         return colour.WithAlpha(selection.ShouldDim(ev) ? DimAlpha : RailAlpha);
     }

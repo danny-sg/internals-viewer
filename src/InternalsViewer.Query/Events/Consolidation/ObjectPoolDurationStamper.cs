@@ -75,6 +75,11 @@ public static class ObjectPoolDurationStamper
 
                     break;
 
+                case ColumnStoreScanEvent { IsRowGroupReadAhead: true }:
+                case ReadEventGroup { IsReadAhead: true }:
+                case ReadEventGroup { IsAllocationPage: true }:
+                    break;
+
                 case ObjectPoolEvent or ColumnStoreScanEvent or SegmentScanEvent or SegmentEliminateEvent:
                     ClearTask(firstReads, task);
 

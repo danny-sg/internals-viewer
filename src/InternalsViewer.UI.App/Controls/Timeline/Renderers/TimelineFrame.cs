@@ -1,7 +1,7 @@
 using System;
 using System.Collections.Generic;
 using InternalsViewer.Query.Events;
-using InternalsViewer.Query.Events.BatchMode;
+using InternalsViewer.UI.App.Controls.Timeline.Definition;
 using InternalsViewer.UI.App.ViewModels.Query;
 using SkiaSharp;
 
@@ -24,23 +24,19 @@ internal sealed class TimelineFrame
     /// </summary>
     public required IReadOnlyList<double> Times { get; init; }
 
-    public required TimelineRowSet Rows { get; init; }
+    public required TimelineBandSet Bands { get; init; }
 
-    public required SegmentScanLanes SegmentLanes { get; init; }
+    public required TimelineDefinition Definition { get; init; }
 
-    public required ObjectPoolLanes PoolLanes { get; init; }
+    public required float[] BandTops { get; init; }
 
-    public required ObjectPoolReadLinks PoolLinks { get; init; }
-
-    public required float[] RowTops { get; init; }
-
-    public required float[] RowHeights { get; init; }
+    public required float[] BandHeights { get; init; }
 
     public required float CanvasWidth { get; init; }
 
-    public required float RowLabelWidth { get; init; }
+    public required float BandLabelWidth { get; init; }
 
-    public required float RowPadding { get; init; }
+    public required float BandPadding { get; init; }
 
     /// <summary>
     /// Microseconds per millisecond: EngineEvent times are microseconds, the axis works in milliseconds.
@@ -55,7 +51,7 @@ internal sealed class TimelineFrame
     /// <summary>
     /// The tick width for a row: wider on sparse rows so their few events stay visible.
     /// </summary>
-    public required Func<int, float> RowMarkerWidth { get; init; }
+    public required Func<int, float> BandMarkerWidth { get; init; }
 
     /// <summary>
     /// The per-event/-object colour source, when one is set; null falls back to the flat lane colour.
@@ -70,12 +66,12 @@ internal sealed class TimelineFrame
     /// <summary>
     /// Alternating row-background colour (even rows)
     /// </summary>
-    public required SKColor LaneColour { get; init; }
+    public required SKColor BandColour { get; init; }
 
     /// <summary>
     /// Alternating row-background colour (odd rows)
     /// </summary>
-    public required SKColor AlternateLaneColour { get; init; }
+    public required SKColor AlternateBandColour { get; init; }
 
     /// <summary>
     /// The axis origin in milliseconds, and the 
@@ -86,30 +82,41 @@ internal sealed class TimelineFrame
     /// Inverse of TimeToX, for the ruler's tick placement
     /// </summary>
     public required Func<double, double> XToTime { get; init; }
-    /// <summary>
-    /// The vertical extent of an object pool lookup's marker within the Columnstore row's Object Pool half
-    /// </summary>
-    public bool TryGetPoolMarker(int eventIndex, out float top, out float height)
+
+    public bool TryGetMarkerBounds(int eventIndex, out float top, out float height)
+    {
+        if (!TryGetTrackBounds(eventIndex, out top, out var trackHeight))
+        {
+            height = 0;
+
+            return false;
+        }
+
+        height = Math.Max(2f, trackHeight - Definition.Items[eventIndex].Gap);
+
+        return true;
+    }
+
+    public bool TryGetTrackBounds(int eventIndex, out float top, out float height)
     {
         top = 0;
         height = 0;
 
-        var row = Rows.IndexOf(typeof(SegmentScanEvent));
-
-        if (row < 0)
+        if (eventIndex < 0 || eventIndex >= Definition.Items.Length)
         {
             return false;
         }
 
-        var innerTop = RowTops[row] + RowPadding;
+        var item = Definition.Items[eventIndex];
 
-        var laneHeight = (RowHeights[row] - RowPadding * 2) / 2f;
+        if (item.Band < 0 || item.Fill == TimelineFill.None)
+        {
+            return false;
+        }
 
-        var subLaneHeight = laneHeight / PoolLanes.LaneCount;
+        height = (BandHeights[item.Band] - BandPadding * 2) / item.TrackCount;
 
-        top = innerTop + laneHeight + PoolLanes.LaneOf(eventIndex) * subLaneHeight;
-
-        height = Math.Max(2f, subLaneHeight - 2f);
+        top = BandTops[item.Band] + BandPadding + item.Track * height;
 
         return true;
     }

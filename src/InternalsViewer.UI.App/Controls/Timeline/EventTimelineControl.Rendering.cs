@@ -1,5 +1,6 @@
 using System;
-using InternalsViewer.Query.Events.BatchMode;
+using System.Collections.Generic;
+using InternalsViewer.UI.App.Controls.Timeline.Definition;
 using InternalsViewer.UI.App.Controls.Timeline.Renderers;
 using SkiaSharp;
 using SkiaSharp.Views.Windows;
@@ -8,19 +9,19 @@ namespace InternalsViewer.UI.App.Controls.Timeline;
 
 public sealed partial class EventTimelineControl
 {
-    private const float RulerBandHeight = 18f;
-    private const float HandleBandHeight = 16f;
-    private const float MarkerStripHeight = RulerBandHeight + HandleBandHeight;
+    private const float RulerStripHeight = 18f;
+    private const float HandleStripHeight = 16f;
+    private const float MarkerStripHeight = RulerStripHeight + HandleStripHeight;
     private const float HandleHeight = 8f;
     private const float HandleGap = 13f;
     private const float TriangleHalfWidth = 9f;
-    private const float MinRowLabelWidth = 36f;
-    private const float RowLabelGutterPadding = 6f;
-    private const float RowPadding = 2f;
+    private const float MinBandLabelWidth = 36f;
+    private const float BandLabelGutterPadding = 6f;
+    private const float BandPadding = 2f;
 
-    private readonly SKColor _laneColour = new(30, 30, 30, 220);
+    private readonly SKColor _bandColour = new(30, 30, 30, 220);
 
-    private readonly SKColor _alternateLaneColour = new(44, 44, 44, 220);
+    private readonly SKColor _alternateBandColour = new(44, 44, 44, 220);
 
     private SKPicture? _staticLayer;
 
@@ -66,32 +67,34 @@ public sealed partial class EventTimelineControl
 
         var canvas = recorder.BeginRecording(new SKRect(0, 0, w, h));
 
-        var rowsTop = MarkerStripHeight;
+        var bandsTop = MarkerStripHeight;
 
-        var rowsHeight = h - rowsTop;
+        var bandsHeight = h - bandsTop;
 
-        var rows = _rows.Active;
+        var bands = _bands.Active;
 
-        var rowCount = rows.Count;
+        var bandCount = bands.Count;
 
-        var rowHeights = TimelineRowLayout.Resolve(rows,
-                                                   rowsHeight,
-                                                   _rows.IndexOf(typeof(SegmentScanEvent)),
-                                                   Math.Max(_segmentLanes.MinRowHeight(RowPadding), _poolLanes.MinRowHeight(RowPadding)));
+        var heldBand = HeldBand(bands);
 
-        var rowTops = new float[rowCount];
+        var bandHeights = TimelineBandLayout.Resolve(bands,
+                                                   bandsHeight,
+                                                   heldBand,
+                                                   heldBand >= 0 ? bands[heldBand].MinInnerHeight + BandPadding * 2 : 0f);
 
-        var totalTop = rowsTop;
+        var bandTops = new float[bandCount];
 
-        for (var r = 0; r < rowCount; r++)
+        var totalTop = bandsTop;
+
+        for (var r = 0; r < bandCount; r++)
         {
-            rowTops[r] = totalTop;
-            totalTop += rowHeights[r];
+            bandTops[r] = totalTop;
+            totalTop += bandHeights[r];
         }
 
-        var frame = BuildFrame(rowTops, rowHeights);
+        var frame = BuildFrame(bandTops, bandHeights);
 
-        _timelineRenderer.DrawRows(canvas, frame);
+        _timelineRenderer.DrawBands(canvas, frame);
 
         _hitRegions.Clear();
 
@@ -102,9 +105,9 @@ public sealed partial class EventTimelineControl
 
         canvas.Save();
 
-        canvas.ClipRect(new SKRect(RowLabelWidth, 0, w, h));
+        canvas.ClipRect(new SKRect(BandLabelWidth, 0, w, h));
 
-        var operatorBars = BuildOperatorBars(rowTops, rowHeights);
+        var operatorBars = BuildOperatorBars(bandTops, bandHeights);
 
         // Traces first so the operator bars paint over them (the rails drop from a bar's edge).
         _traceRenderer.Draw(canvas, frame, operatorBars);
@@ -126,26 +129,24 @@ public sealed partial class EventTimelineControl
     /// Snapshots the per-paint data and geometry the lane renderers draw from: the event data, this frame's row layout, and the current
     /// zoom/scroll captured in TimeToX.
     /// </remarks>
-    private TimelineFrame BuildFrame(float[] rowTops, float[] rowHeights) => new()
+    private TimelineFrame BuildFrame(float[] bandTops, float[] bandHeights) => new()
     {
         Events = _sortedEvents,
         Times = _times,
-        Rows = _rows,
-        SegmentLanes = _segmentLanes,
-        PoolLanes = _poolLanes,
-        PoolLinks = _poolLinks,
-        RowTops = rowTops,
-        RowHeights = rowHeights,
+        Bands = _bands,
+        Definition = _definition,
+        BandTops = bandTops,
+        BandHeights = bandHeights,
         CanvasWidth = CanvasWidth,
-        RowLabelWidth = RowLabelWidth,
-        RowPadding = RowPadding,
+        BandLabelWidth = BandLabelWidth,
+        BandPadding = BandPadding,
         AxisUnitsPerMs = AxisUnitsPerMs,
         TimeToX = TimeToX,
-        RowMarkerWidth = RowMarkerWidth,
+        BandMarkerWidth = BandMarkerWidth,
         ColourProvider = ColourProvider,
         ShowThreads = _showThreads,
-        LaneColour = _laneColour,
-        AlternateLaneColour = _alternateLaneColour,
+        BandColour = _bandColour,
+        AlternateBandColour = _alternateBandColour,
         MinTime = _minTime,
         XToTime = XToTime,
     };
@@ -170,7 +171,7 @@ public sealed partial class EventTimelineControl
                                           EndDrawX,
                                           PlayheadX,
                                           EffectiveToMs(_playheadTime),
-                                          RowLabelWidth);
+                                          BandLabelWidth);
 
         _overlayRenderer.Draw(canvas, w, h, overlay);
     }
@@ -185,7 +186,20 @@ public sealed partial class EventTimelineControl
                                                                     _timeRange,
                                                                     _eventsVersion);
 
-    private float RowMarkerWidth(int rowIndex) => _rows.IsSparse(rowIndex) ? SparseMarkerWidth : MarkerWidth;
+    private static int HeldBand(IReadOnlyList<TimelineBand> bands)
+    {
+        for (var r = 0; r < bands.Count; r++)
+        {
+            if (bands[r].MinInnerHeight > 0)
+            {
+                return r;
+            }
+        }
+
+        return -1;
+    }
+
+    private float BandMarkerWidth(int bandIndex) => _bands.IsSparse(bandIndex) ? SparseMarkerWidth : MarkerWidth;
 
     private readonly record struct StaticLayerKey(double Zoom,
                                                   double ScrollX,

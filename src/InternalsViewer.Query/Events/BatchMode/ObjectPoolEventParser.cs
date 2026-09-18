@@ -5,15 +5,26 @@ namespace InternalsViewer.Query.Events.BatchMode;
 
 internal static class ObjectPoolEventParser
 {
-    public static ObjectPoolEvent Map(DatabaseSource? databaseSource, EventResult e) => new()
+    public static ObjectPoolEvent Map(DatabaseSource? databaseSource, EventResult e)
     {
-        Name = e.Name,
-        Timestamp = e.Timestamp,
-        DatabaseId = e.GetDatabaseId(),
-        IsHit = e.Name.EndsWith("_hit", StringComparison.Ordinal),
-        ObjectType = (ColumnStoreObjectType)(e.GetInt("object_type") ?? 0),
-        HobtId = e.GetUlong("hobt_id") ?? 0,
-        ColumnId = (int)(e.GetUlong("column_id") ?? 0),
-        PoolObjectId = (int)(e.GetUlong("object_id") ?? 0)
-    };
+        var objectType = (ColumnStoreObjectType)(e.GetInt("object_type") ?? 0);
+
+        var objectId = (int)(e.GetUlong("object_id") ?? 0);
+
+        return new ObjectPoolEvent
+        {
+            Name = e.Name,
+            Timestamp = e.Timestamp,
+            DatabaseId = e.GetDatabaseId(),
+            IsHit = e.Name.EndsWith("_hit", StringComparison.Ordinal),
+            ObjectType = objectType,
+            HobtId = e.GetUlong("hobt_id") ?? 0,
+            ColumnId = (int)(e.GetUlong("column_id") ?? 0),
+            PoolObjectId = objectId,
+            RowGroupId = IsRowGroupObject(objectType) ? objectId : null
+        };
+    }
+
+    private static bool IsRowGroupObject(ColumnStoreObjectType objectType)
+        => objectType is ColumnStoreObjectType.ColumnSegment or ColumnStoreObjectType.DeleteBitmap;
 }

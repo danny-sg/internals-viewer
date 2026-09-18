@@ -1,5 +1,6 @@
 using System;
 using InternalsViewer.Query.Events;
+using InternalsViewer.Query.Events.Latches;
 using InternalsViewer.Query.Events.Reads;
 
 namespace InternalsViewer.UI.App.Controls.Timeline;
@@ -270,7 +271,7 @@ public sealed partial class EventTimelineControl
                     hi,
                     io => _audioPlayer.PlayPlink(TimelineAudioPlayer.FrequencyForObject(io.ObjectId)));
 
-        if (ShowLatches)
+        if (_bands.IndexOf(typeof(LatchEvent)) >= 0)
         {
             SweepEvents(_latchEventsByTime,
                         lo,

@@ -34,6 +34,8 @@ using InternalsViewer.UI.App.Services.Query.Debugging;
 using InternalsViewer.UI.App.ViewModels.Query.CallStack;
 using InternalsViewer.UI.App.ViewModels.Query.Trace;
 using InternalsViewer.UI.App.ViewModels.Columnstore;
+using InternalsViewer.UI.App.Controls.Timeline.Definition;
+using InternalsViewer.UI.App.Services.Query.Timeline;
 using InternalsViewer.UI.App.ViewModels.Index;
 using InternalsViewer.UI.App.ViewModels.Query.Events;
 using InternalsViewer.UI.App.ViewModels.Tabs;
@@ -100,6 +102,8 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
     private readonly TraceTabViewModelFactory _traceTabViewModelFactory;
 
     private readonly WinDbgService _winDbgService;
+
+    private readonly TimelineDefinitionBuilder _timelineDefinitionBuilder = TimelineDefinitionBuilder.CreateDefault();
 
     private readonly Dictionary<string, TraceTabViewModel> _openTraces = [];
 
@@ -182,6 +186,9 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
     [ObservableProperty]
     private List<EngineEvent> _planEvents = [];
+
+    [ObservableProperty]
+    private TimelineDefinition _timelineDefinition = TimelineDefinition.Empty;
 
     [ObservableProperty]
     private EventColourProvider _eventColours = new([]);
@@ -852,6 +859,15 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
     private void RefreshPlanEvents() => PlanEvents = [.. Events.Where(IsPlanEventVisible)];
 
+    private void RefreshTimelineDefinition()
+    {
+        var visibility = new TimelineBandVisibility(QueryOptions.ShowLocks, QueryOptions.ShowLatches, QueryOptions.ShowWaits);
+
+        TimelineDefinition = _timelineDefinitionBuilder.Build(FilteredEvents, visibility);
+    }
+
+    partial void OnFilteredEventsChanged(List<EngineEvent> value) => RefreshTimelineDefinition();
+
     private void OnQueryOptionChanged(object? sender, PropertyChangedEventArgs e)
     {
         if (e.PropertyName is nameof(QueryOptionsViewModel.ShowWaits)
@@ -860,6 +876,13 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
                            or nameof(QueryOptionsViewModel.IncludeMemory))
         {
             RefreshPlanEvents();
+        }
+
+        if (e.PropertyName is nameof(QueryOptionsViewModel.ShowLocks)
+                           or nameof(QueryOptionsViewModel.ShowLatches)
+                           or nameof(QueryOptionsViewModel.ShowWaits))
+        {
+            RefreshTimelineDefinition();
         }
     }
 

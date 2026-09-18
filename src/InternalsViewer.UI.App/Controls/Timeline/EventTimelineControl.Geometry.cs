@@ -17,9 +17,9 @@ public sealed partial class EventTimelineControl
     private float CanvasWidth => (float)_overlay.ActualWidth;
 
     // The gutter is sized to the widest label the shown rows carry, so a long one is not drawn over the lanes.
-    private float RowLabelWidth => Math.Max(MinRowLabelWidth, _rows.MaxLabelWidth + RowLabelGutterPadding);
+    private float BandLabelWidth => Math.Max(MinBandLabelWidth, _bands.MaxLabelWidth + BandLabelGutterPadding);
 
-    private float DrawWidth => CanvasWidth - RowLabelWidth;
+    private float DrawWidth => CanvasWidth - BandLabelWidth;
 
     private double ContentWidth => DrawWidth * _zoom;
 
@@ -51,10 +51,10 @@ public sealed partial class EventTimelineControl
     }
 
     private float TimeToX(double effectiveTimeMs)
-        => RowLabelWidth + (float)((effectiveTimeMs - _minTime) / _timeRange * ContentWidth - _scrollX);
+        => BandLabelWidth + (float)((effectiveTimeMs - _minTime) / _timeRange * ContentWidth - _scrollX);
 
     private double XToTime(double x)
-        => _minTime + (Math.Max(0, x - RowLabelWidth) + _scrollX) / ContentWidth * _timeRange;
+        => _minTime + (Math.Max(0, x - BandLabelWidth) + _scrollX) / ContentWidth * _timeRange;
 
     private void EnsurePlayheadVisible()
     {

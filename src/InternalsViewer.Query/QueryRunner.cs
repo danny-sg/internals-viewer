@@ -7,6 +7,7 @@ using InternalsViewer.Query.Events.Operators;
 using InternalsViewer.Query.Events.Splits;
 using InternalsViewer.Query.Events.Transactions;
 using InternalsViewer.Query.Events;
+using InternalsViewer.Query.Events.Reads;
 using InternalsViewer.Query.Extensions;
 using InternalsViewer.Query.Interfaces.Events;
 using InternalsViewer.Query.Plans.Model;
@@ -209,6 +210,8 @@ public sealed class QueryRunner(ILogger<QueryRunner> logger,
 
                 CallStackPlanNodeMatcher.Match(events);
 
+                ReadAheadClassifier.Classify(events);
+
                 if (Logger.IsEnabled(LogLevel.Debug) && unknownSymbols.Length > 0)
                 {
                     foreach (var symbol in unknownSymbols)
@@ -217,6 +220,8 @@ public sealed class QueryRunner(ILogger<QueryRunner> logger,
                     }
                 }
             }
+
+            AllocationPageClassifier.Classify(events);
 
             ObjectPoolReadLinker.Link(events);
 
@@ -329,6 +334,13 @@ public sealed class QueryRunner(ILogger<QueryRunner> logger,
             var index = await columnstoreService.GetIndex(unit, database, cancellationToken);
 
             var reads = await ColumnstorePageMapper.MapAsync(database, index, cancellationToken);
+
+            var secondaryDictionaries = index.CompressedRowGroups
+                                             .SelectMany(r => r.Segments)
+                                             .Where(s => s.SecondaryDictionaryId >= 0)
+                                             .Select(s => (s.Key.ColumnId, s.SecondaryDictionaryId, s.Key.RowGroupId));
+
+            ObjectPoolRowGroupResolver.Resolve(events, index.HobtId, secondaryDictionaries);
 
             ObjectPoolPageLinker.Link(events, index.HobtId, reads, index.DeleteBitmapAllocationUnit);
         }

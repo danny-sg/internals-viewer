@@ -33,6 +33,8 @@ internal static class ColourConstants
 
     public static readonly Color ExpressionFilterBitmapColour = Color.FromArgb(255, 76, 175, 80);
 
+    public static readonly Color AllocationPageColour = Color.FromArgb(255, 214, 168, 96);
+
     public static readonly Color SystemIoColour = Desaturate(IoColour, 0.20);
     public static readonly Color SystemPageColour = Desaturate(PageColour, 0.20);
     public static readonly Color SystemLockColour = Desaturate(LockColour, 0.20);

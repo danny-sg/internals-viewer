@@ -7,6 +7,7 @@ using InternalsViewer.Query.Events.Operators;
 using InternalsViewer.Query.Events.Reads;
 using InternalsViewer.Query.Events;
 using InternalsViewer.Query.Plans.Model;
+using InternalsViewer.UI.App.Controls.Timeline.Definition;
 using InternalsViewer.UI.App.Controls.Timeline.Renderers;
 using InternalsViewer.UI.App.ViewModels.Query;
 using Microsoft.UI.Xaml.Controls.Primitives;
@@ -56,38 +57,14 @@ public sealed partial class EventTimelineControl : Grid, IDisposable
         set => SetValue(EventsProperty, value);
     }
 
-    public static readonly DependencyProperty ShowLocksProperty =
-        DependencyProperty.Register(nameof(ShowLocks), typeof(bool), typeof(EventTimelineControl),
-            new PropertyMetadata(true, OnRowVisibilityChanged));
+    public static readonly DependencyProperty DefinitionProperty =
+        DependencyProperty.Register(nameof(Definition), typeof(TimelineDefinition), typeof(EventTimelineControl),
+            new PropertyMetadata(TimelineDefinition.Empty, OnDefinitionChanged));
 
-    // Lock/latch/wait events are always captured (the read grouping needs them); these decide only whether their band
-    // is shown on the timeline. Off → the band is dropped and its markers (top-level AND read-group members) are
-    // skipped, since TimelineRowSet.IndexOf returns -1 for an event whose row isn't active.
-
-    public bool ShowLocks
+    public TimelineDefinition Definition
     {
-        get => (bool)GetValue(ShowLocksProperty);
-        set => SetValue(ShowLocksProperty, value);
-    }
-
-    public static readonly DependencyProperty ShowLatchesProperty =
-        DependencyProperty.Register(nameof(ShowLatches), typeof(bool), typeof(EventTimelineControl),
-            new PropertyMetadata(true, OnRowVisibilityChanged));
-
-    public bool ShowLatches
-    {
-        get => (bool)GetValue(ShowLatchesProperty);
-        set => SetValue(ShowLatchesProperty, value);
-    }
-
-    public static readonly DependencyProperty ShowWaitsProperty =
-        DependencyProperty.Register(nameof(ShowWaits), typeof(bool), typeof(EventTimelineControl),
-            new PropertyMetadata(true, OnRowVisibilityChanged));
-
-    public bool ShowWaits
-    {
-        get => (bool)GetValue(ShowWaitsProperty);
-        set => SetValue(ShowWaitsProperty, value);
+        get => (TimelineDefinition)GetValue(DefinitionProperty);
+        set => SetValue(DefinitionProperty, value);
     }
 
     public static readonly DependencyProperty ColourProviderProperty =
@@ -111,13 +88,9 @@ public sealed partial class EventTimelineControl : Grid, IDisposable
         set => SetValue(IsAudioEnabledProperty, value);
     }
 
-    private readonly TimelineRowSet _rows = new();
+    private readonly TimelineBandSet _bands = new();
 
-    private readonly SegmentScanLanes _segmentLanes = new();
-
-    private readonly ObjectPoolLanes _poolLanes = new();
-
-    private readonly ObjectPoolReadLinks _poolLinks = new();
+    private TimelineDefinition _definition = TimelineDefinition.Empty;
 
     private readonly TimelineAudioPlayer _audioPlayer = new();
     private readonly SKXamlCanvas _skCanvas;
@@ -353,7 +326,7 @@ public sealed partial class EventTimelineControl : Grid, IDisposable
         _overlay.SizeChanged -= OnOverlaySizeChanged;
         _overlay.ContextRequested -= OnContextRequested;
 
-        _rows.Dispose();
+        _bands.Dispose();
 
         _lockRenderer.Dispose();
         _operatorRenderer.Dispose();
@@ -417,18 +390,6 @@ public sealed partial class EventTimelineControl : Grid, IDisposable
         UpdateScrollBar();
     }
 
-    private static void OnRowVisibilityChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
-    {
-        var control = (EventTimelineControl)d;
-
-        control.RebuildRows();
-
-        // Bump the version so the cached static layer is re-recorded with the new set of bands.
-        control._eventsVersion++;
-
-        control._skCanvas.Invalidate();
-    }
-
     private static void OnColourProviderChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
     {
         var control = (EventTimelineControl)d;
@@ -443,17 +404,22 @@ public sealed partial class EventTimelineControl : Grid, IDisposable
         var control = (EventTimelineControl)d;
         var events = (List<EngineEvent>)e.NewValue;
 
-        control._sortedEvents = [.. ExpandGroupedEvents(events).OrderBy(ev => ev.SequenceId)];
         control._readEventsByTime = [.. events.OfType<ReadEventGroup>().OrderBy(read => read.TimeUs)];
         control._latchEventsByTime = [.. events.OfType<LatchEvent>().OrderBy(latch => latch.TimeUs)];
         control._fileReadEventsByTime = [.. EnumerateFileReads(events).OrderBy(read => read.TimeUs)];
+    }
+
+    private static void OnDefinitionChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
+    {
+        var control = (EventTimelineControl)d;
+
+        control._definition = (TimelineDefinition)e.NewValue;
+
+        control._sortedEvents = [.. control._definition.Events];
 
         control._eventsVersion++;
 
-        control.RebuildRows();
-        control._segmentLanes.Rebuild(control._sortedEvents);
-        control._poolLanes.Rebuild(control._sortedEvents);
-        control._poolLinks.Rebuild(control._sortedEvents);
+        control.RebuildBands();
         control.BuildTimes();
         control.BuildOperatorLayout();
 

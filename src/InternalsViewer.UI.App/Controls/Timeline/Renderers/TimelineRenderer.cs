@@ -1,6 +1,5 @@
 using System;
-using InternalsViewer.Query.Events.BatchMode;
-using InternalsViewer.Query.Events.Reads;
+using InternalsViewer.UI.App.Controls.Timeline.Definition;
 using SkiaSharp;
 
 namespace InternalsViewer.UI.App.Controls.Timeline.Renderers;
@@ -13,7 +12,7 @@ namespace InternalsViewer.UI.App.Controls.Timeline.Renderers;
 /// </remarks>
 internal sealed class TimelineRenderer(RenderResource resources) : IDisposable
 {
-    private const float RulerBandHeight = 18f;
+    private const float RulerStripHeight = 18f;
 
     // The Read row shows three stacked labels only when it can fit them with at least this gap and vertical padding
     private const float MinLabelGap = 1f;
@@ -22,9 +21,11 @@ internal sealed class TimelineRenderer(RenderResource resources) : IDisposable
     // Roughly one ruler tick per this many pixels of drawable width.
     private const float PixelsPerTick = 80f;
 
-    private readonly SKPaint _rowBackground = new() { Style = SKPaintStyle.Fill };
+    private readonly SKPaint _bandBackground = new() { Style = SKPaintStyle.Fill };
 
     private readonly SKPaint _separator = new() { Color = new SKColor(60, 60, 60), StrokeWidth = 1 };
+
+    private readonly SKPaint _trackDivider = new() { Color = new SKColor(64, 64, 64), StrokeWidth = 1 };
 
     private readonly SKPaint _tick = new()
     {
@@ -37,36 +38,36 @@ internal sealed class TimelineRenderer(RenderResource resources) : IDisposable
     /// <remarks>
     /// Draws alternating row backgrounds, row labels, and separators
     /// </remarks>
-    public void DrawRows(SKCanvas canvas, TimelineFrame frame)
+    public void DrawBands(SKCanvas canvas, TimelineFrame frame)
     {
-        var rows = frame.Rows.Active;
+        var bands = frame.Bands.Active;
         var w = frame.CanvasWidth;
 
-        for (var r = 0; r < rows.Count; r++)
+        for (var r = 0; r < bands.Count; r++)
         {
-            var y = frame.RowTops[r];
-            var rowHeight = frame.RowHeights[r];
+            var y = frame.BandTops[r];
+            var bandHeight = frame.BandHeights[r];
 
-            _rowBackground.Color = r % 2 == 0 ? frame.LaneColour : frame.AlternateLaneColour;
+            _bandBackground.Color = r % 2 == 0 ? frame.BandColour : frame.AlternateBandColour;
 
-            canvas.DrawRect(0, y, w, rowHeight, _rowBackground);
+            canvas.DrawRect(0, y, w, bandHeight, _bandBackground);
 
-            var isSplitRow = rows[r].EventType == typeof(ReadEventGroup)
-                             ? TryDrawSplitRowLabels(canvas, y, rowHeight, "Buffer", "Read", "Disk")
-                             : rows[r].EventType == typeof(SegmentScanEvent)
-                                 && TryDrawSplitRowLabels(canvas, y, rowHeight, "Rowgroup", "Columnstore", "Object Pool");
+            DrawTrackDividers(canvas, frame, bands[r], y, bandHeight);
 
-            if (!isSplitRow)
+            var hasSubBandLabels = bands[r].SubBandLabels is { } labels
+                             && TryDrawSubBandLabels(canvas, y, bandHeight, labels.Top, labels.Middle, labels.Bottom);
+
+            if (!hasSubBandLabels)
             {
-                var blob = frame.Rows.LabelBlob(r);
+                var blob = frame.Bands.LabelBlob(r);
 
                 if (blob is not null)
                 {
-                    canvas.DrawText(blob, 2, y + rowHeight / 2 + resources.LabelFont.Size / 2, resources.LabelPaint);
+                    canvas.DrawText(blob, 2, y + bandHeight / 2 + resources.LabelFont.Size / 2, resources.LabelPaint);
                 }
             }
 
-            canvas.DrawLine(0, y + rowHeight, w, y + rowHeight, _separator);
+            canvas.DrawLine(0, y + bandHeight, w, y + bandHeight, _separator);
         }
     }
 
@@ -78,7 +79,7 @@ internal sealed class TimelineRenderer(RenderResource resources) : IDisposable
     /// </remarks>>
     public void DrawRuler(SKCanvas canvas, TimelineFrame frame)
     {
-        var leftMs = frame.XToTime(frame.RowLabelWidth) - frame.MinTime;
+        var leftMs = frame.XToTime(frame.BandLabelWidth) - frame.MinTime;
 
         var rightMs = frame.XToTime(frame.CanvasWidth) - frame.MinTime;
 
@@ -89,7 +90,7 @@ internal sealed class TimelineRenderer(RenderResource resources) : IDisposable
             return;
         }
 
-        var drawWidth = frame.CanvasWidth - frame.RowLabelWidth;
+        var drawWidth = frame.CanvasWidth - frame.BandLabelWidth;
 
         var targetTicks = Math.Max(2, drawWidth / PixelsPerTick);
 
@@ -106,7 +107,7 @@ internal sealed class TimelineRenderer(RenderResource resources) : IDisposable
         {
             var x = frame.TimeToX(frame.MinTime + tickMs);
 
-            canvas.DrawLine(x, RulerBandHeight - 4, x, RulerBandHeight, _tick);
+            canvas.DrawLine(x, RulerStripHeight - 4, x, RulerStripHeight, _tick);
 
             textBuffer.Clear();
 
@@ -116,36 +117,51 @@ internal sealed class TimelineRenderer(RenderResource resources) : IDisposable
 
             if (blob is not null)
             {
-                canvas.DrawText(blob, x + 2, RulerBandHeight - 6, resources.LabelPaint);
+                canvas.DrawText(blob, x + 2, RulerStripHeight - 6, resources.LabelPaint);
             }
         }
     }
 
     public void Dispose()
     {
-        _rowBackground.Dispose();
+        _bandBackground.Dispose();
         _separator.Dispose();
+        _trackDivider.Dispose();
         _tick.Dispose();
     }
 
-    private bool TryDrawSplitRowLabels(SKCanvas canvas, float rowTop, float rowHeight, string top, string middle, string bottom)
+    private void DrawTrackDividers(SKCanvas canvas, TimelineFrame frame, TimelineBand band, float bandTop, float bandHeight)
+    {
+        var innerTop = bandTop + frame.BandPadding;
+
+        var innerHeight = bandHeight - frame.BandPadding * 2;
+
+        foreach (var divider in band.TrackDividers)
+        {
+            var y = MathF.Floor(innerTop + divider.Track * innerHeight / divider.TrackCount) - 1;
+
+            canvas.DrawLine(frame.BandLabelWidth, y, frame.CanvasWidth, y, _trackDivider);
+        }
+    }
+
+    private bool TryDrawSubBandLabels(SKCanvas canvas, float bandTop, float bandHeight, string top, string middle, string bottom)
     {
         var metrics = resources.LabelFont.Metrics;
 
         var textHeight = metrics.Descent - metrics.Ascent;
 
-        if (rowHeight < textHeight * 3 + MinLabelGap * 2 + VerticalLabelPad * 2)
+        if (bandHeight < textHeight * 3 + MinLabelGap * 2 + VerticalLabelPad * 2)
         {
             return false;
         }
 
-        canvas.DrawText(top, 4, rowTop + VerticalLabelPad - metrics.Ascent, SKTextAlign.Left,
+        canvas.DrawText(top, 4, bandTop + VerticalLabelPad - metrics.Ascent, SKTextAlign.Left,
                         resources.LabelFont, resources.LabelPaint);
 
-        canvas.DrawText(middle, 2, rowTop + rowHeight / 2 - (metrics.Ascent + metrics.Descent) / 2,
+        canvas.DrawText(middle, 2, bandTop + bandHeight / 2 - (metrics.Ascent + metrics.Descent) / 2,
                         SKTextAlign.Left, resources.LabelFont, resources.LabelPaint);
 
-        canvas.DrawText(bottom, 4, rowTop + rowHeight - VerticalLabelPad - metrics.Descent, SKTextAlign.Left,
+        canvas.DrawText(bottom, 4, bandTop + bandHeight - VerticalLabelPad - metrics.Descent, SKTextAlign.Left,
                         resources.LabelFont, resources.LabelPaint);
 
         return true;

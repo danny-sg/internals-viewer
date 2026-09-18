@@ -5,30 +5,12 @@ using InternalsViewer.Query.Events.Operators;
 using InternalsViewer.Query.Events.Reads;
 using InternalsViewer.Query.Events;
 using InternalsViewer.Query.Plans.Operators;
+using InternalsViewer.UI.App.Controls.Timeline.Definition;
 
 namespace InternalsViewer.UI.App.Controls.Timeline;
 
 public sealed partial class EventTimelineControl
 {
-    private static IEnumerable<EngineEvent> ExpandGroupedEvents(List<EngineEvent> events)
-    {
-        foreach (var engineEvent in events)
-        {
-            yield return engineEvent;
-
-            if (engineEvent is ReadEventGroup readGroup)
-            {
-                foreach (var member in readGroup.Events)
-                {
-                    if (member is not FileEvent)
-                    {
-                        yield return member;
-                    }
-                }
-            }
-        }
-    }
-
     /// <summary>
     /// Enumerates the physical file reads, including those folded into a read group
     /// </summary>
@@ -132,5 +114,5 @@ public sealed partial class EventTimelineControl
             : 0;
     }
 
-    private void RebuildRows() => _rows.Rebuild(_sortedEvents, ShowLocks, ShowLatches, ShowWaits, _renderResource.LabelFont);
+    private void RebuildBands() => _bands.Rebuild(_definition, _renderResource.LabelFont);
 }

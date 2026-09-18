@@ -23,7 +23,7 @@ public class ObjectPoolPageLinkerTests
 
         var primary = new ObjectPoolEvent { HobtId = 99, ObjectType = ColumnStoreObjectType.PrimaryDictionary, RowGroupId = 1, ColumnId = 3 };
 
-        var secondary = new ObjectPoolEvent { HobtId = 99, ObjectType = ColumnStoreObjectType.SecondaryDictionary, RowGroupId = 0, ColumnId = 3 };
+        var secondary = new ObjectPoolEvent { HobtId = 99, ObjectType = ColumnStoreObjectType.SecondaryDictionary, PoolObjectId = 2, ColumnId = 3 };
 
         ObjectPoolPageLinker.Link([segment, primary, secondary], 99, Reads);
 

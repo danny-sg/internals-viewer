@@ -1,4 +1,5 @@
 ﻿using InternalsViewer.UI.App.Controls.Timeline;
+using InternalsViewer.UI.App.Controls.Timeline.Definition;
 using InternalsViewer.UI.App.Controls.Timeline.Renderers;
 using SkiaSharp;
 
@@ -17,9 +18,9 @@ public class TimelineRendererTests
 
         using var renderer = new TimelineRenderer(resources);
 
-        using var rowSet = new TimelineRowSet();
+        using var bandSet = new TimelineBandSet();
 
-        var frame = Frame(rowSet, canvasWidth: 400, rowLabelWidth: 80);
+        var frame = Frame(bandSet, canvasWidth: 400, bandLabelWidth: 80);
 
         using var bitmap = new SKBitmap(400, 50);
 
@@ -44,15 +45,26 @@ public class TimelineRendererTests
     }
 
     [Fact]
-    public void Draws_Alternating_Row_Backgrounds()
+    public void Draws_Alternating_Band_Backgrounds()
     {
         using var resources = new RenderResource();
 
         using var renderer = new TimelineRenderer(resources);
 
-        using var rowSet = new TimelineRowSet();
+        using var bandSet = new TimelineBandSet();
 
-        var frame = Frame(rowSet, canvasWidth: 400, rowLabelWidth: 80, rowHeight: 8);
+        var definition = new TimelineDefinition([],
+        [
+            new TimelineBand(typeof(object), "First", SKColors.White, 1f),
+            new TimelineBand(typeof(object), "Second", SKColors.White, 1f),
+            new TimelineBand(typeof(object), "Third", SKColors.White, 1f),
+        ],
+        [],
+        []);
+
+        bandSet.Rebuild(definition, resources.LabelFont);
+
+        var frame = Frame(bandSet, canvasWidth: 400, bandLabelWidth: 80, bandHeight: 8, definition);
 
         using var bitmap = new SKBitmap(400, 60);
 
@@ -60,42 +72,77 @@ public class TimelineRendererTests
 
         canvas.Clear(SKColors.Black);
 
-        renderer.DrawRows(canvas, frame);
+        renderer.DrawBands(canvas, frame);
 
-        Assert.Equal(frame.LaneColour, bitmap.GetPixel(200, 3));
-        Assert.Equal(frame.AlternateLaneColour, bitmap.GetPixel(200, 11));
-        Assert.Equal(frame.LaneColour, bitmap.GetPixel(200, 19));
+        Assert.Equal(frame.BandColour, bitmap.GetPixel(200, 3));
+        Assert.Equal(frame.AlternateBandColour, bitmap.GetPixel(200, 11));
+        Assert.Equal(frame.BandColour, bitmap.GetPixel(200, 19));
     }
 
-    private static TimelineFrame Frame(TimelineRowSet rowSet,
-                                       float canvasWidth,
-                                       float rowLabelWidth,
-                                       float rowHeight = 10)
+    [Fact]
+    public void Draws_A_Divider_Above_Each_Lane_In_A_Band()
     {
-        var rowCount = rowSet.Active.Count;
+        using var resources = new RenderResource();
+
+        using var renderer = new TimelineRenderer(resources);
+
+        using var bandSet = new TimelineBandSet();
+
+        var definition = new TimelineDefinition([],
+        [
+            new TimelineBand(typeof(object), "C", SKColors.White, 1f)
+            {
+                TrackDividers = [new TimelineTrackDivider(2, 4)],
+            },
+        ],
+        [],
+        []);
+
+        bandSet.Rebuild(definition, resources.LabelFont);
+
+        var frame = Frame(bandSet, canvasWidth: 400, bandLabelWidth: 80, bandHeight: 40, definition);
+
+        using var bitmap = new SKBitmap(400, 40);
+
+        using var canvas = new SKCanvas(bitmap);
+
+        canvas.Clear(SKColors.Black);
+
+        renderer.DrawBands(canvas, frame);
+
+        Assert.NotEqual(frame.BandColour, bitmap.GetPixel(200, 19));
+        Assert.Equal(frame.BandColour, bitmap.GetPixel(200, 21));
+        Assert.Equal(frame.BandColour, bitmap.GetPixel(40, 19));
+    }
+
+    private static TimelineFrame Frame(TimelineBandSet bandSet,
+                                       float canvasWidth,
+                                       float bandLabelWidth,
+                                       float bandHeight = 10,
+                                       TimelineDefinition? definition = null)
+    {
+        var bandCount = bandSet.Active.Count;
 
         return new TimelineFrame
         {
             Events = [],
             Times = [],
-            Rows = rowSet,
-            SegmentLanes = new SegmentScanLanes(),
-            PoolLanes = new ObjectPoolLanes(),
-            PoolLinks = new ObjectPoolReadLinks(),
-            RowTops = [.. Enumerable.Range(0, rowCount).Select(r => r * rowHeight)],
-            RowHeights = [.. Enumerable.Repeat(rowHeight, rowCount)],
+            Bands = bandSet,
+            Definition = definition ?? TimelineDefinition.Empty,
+            BandTops = [.. Enumerable.Range(0, bandCount).Select(r => r * bandHeight)],
+            BandHeights = [.. Enumerable.Repeat(bandHeight, bandCount)],
             CanvasWidth = canvasWidth,
-            RowLabelWidth = rowLabelWidth,
-            RowPadding = 0,
+            BandLabelWidth = bandLabelWidth,
+            BandPadding = 0,
             AxisUnitsPerMs = 1000,
-            TimeToX = ms => (float)(rowLabelWidth + ms),
-            RowMarkerWidth = _ => 1,
+            TimeToX = ms => (float)(bandLabelWidth + ms),
+            BandMarkerWidth = _ => 1,
             ColourProvider = null,
             ShowThreads = false,
-            LaneColour = new SKColor(20, 20, 20),
-            AlternateLaneColour = new SKColor(45, 45, 45),
+            BandColour = new SKColor(20, 20, 20),
+            AlternateBandColour = new SKColor(45, 45, 45),
             MinTime = 0,
-            XToTime = x => x - rowLabelWidth,
+            XToTime = x => x - bandLabelWidth,
         };
     }
 }

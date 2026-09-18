@@ -19,6 +19,6 @@ internal readonly record struct OperatorBar(ExecutionOperatorEvent Op,
                                             float BarCentreY,
                                             float LineWidth,
                                             float CornerRadius,
-                                            float SlotCentreY,
-                                            float SlotHeight,
+                                            float LaneCentreY,
+                                            float LaneHeight,
                                             SKColor BarColour);

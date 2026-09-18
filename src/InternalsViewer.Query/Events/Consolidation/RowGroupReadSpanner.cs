@@ -1,4 +1,5 @@
 using InternalsViewer.Query.Events.BatchMode;
+using InternalsViewer.Query.Events.BatchMode.Enums;
 
 namespace InternalsViewer.Query.Events.Consolidation;
 
@@ -37,14 +38,14 @@ public static class RowGroupReadSpanner
 
                     break;
 
-                case ColumnStoreScanEvent { IsRowGroupRead: true, RowGroupId: { } rowGroup } read:
+                case ColumnStoreScanEvent { IsRowGroupRead: true, IsRowGroupReadAhead: false, RowGroupId: { } rowGroup } read:
                     open[(task, rowGroup)] = read;
 
                     foreach (var lookup in Claim(pending, task))
                     {
-                        lookup.RowGroupId = rowGroup;
-
-                        if (lookup.TimeUs < read.TimeUs)
+                        if (lookup.ObjectType != ColumnStoreObjectType.PrimaryDictionary
+                            && lookup.RowGroupId == rowGroup
+                            && lookup.TimeUs < read.TimeUs)
                         {
                             read.DurationUs += read.TimeUs - lookup.TimeUs;
                             read.TimeUs = lookup.TimeUs;
@@ -54,10 +55,7 @@ public static class RowGroupReadSpanner
                     break;
 
                 case SegmentScanEvent scan:
-                    foreach (var lookup in Claim(pending, task))
-                    {
-                        lookup.RowGroupId = scan.RowGroupId;
-                    }
+                    pending.Remove(task);
 
                     if (open.TryGetValue((task, scan.RowGroupId), out var owner))
                     {
