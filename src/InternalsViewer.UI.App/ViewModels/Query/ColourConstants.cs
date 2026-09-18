@@ -27,13 +27,13 @@ internal static class ColourConstants
 
     public static readonly Color ObjectPoolHitColour = Color.FromArgb(255, 76, 180, 80);
 
-    public static readonly Color ObjectPoolMissColour = Color.FromArgb(255, 174, 128, 130);
+    public static readonly Color ObjectPoolMissColour = Color.FromArgb(255, 130, 210, 211);
 
     public static readonly Color ColumnStoreEventColour = Color.FromArgb(255, 120, 140, 170);
 
     public static readonly Color ExpressionFilterBitmapColour = Color.FromArgb(255, 76, 175, 80);
 
-    public static readonly Color AllocationPageColour = Color.FromArgb(255, 214, 168, 96);
+    public static readonly Color AllocationPageColour = Color.FromArgb(255, 169, 180, 170);
 
     public static readonly Color SystemIoColour = Desaturate(IoColour, 0.20);
     public static readonly Color SystemPageColour = Desaturate(PageColour, 0.20);

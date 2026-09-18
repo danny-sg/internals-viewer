@@ -5,6 +5,8 @@ using System.Threading;
 using System.Threading.Tasks;
 using System;
 using InternalsViewer.Query.CallStack;
+using InternalsViewer.Query.Events.Latches;
+using InternalsViewer.Query.Events.Locks;
 using InternalsViewer.Query.Events.Operators;
 using InternalsViewer.Query.Events;
 using InternalsViewer.Query.Interfaces.Events;
@@ -82,6 +84,8 @@ public sealed partial class QueryCallStackTabView : UserControl, IDocumentComman
     private ActivityColumnLayout ActivityColumn => (ActivityColumnLayout)Resources["ActivityColumn"];
 
     public QueryViewModel? ViewModel => DataContext as QueryViewModel;
+
+    private Dictionary<CallStackNode, bool> HiddenOnly { get; } = new();
 
     public bool IsMembersPaneVisible
     {
@@ -712,6 +716,8 @@ public sealed partial class QueryCallStackTabView : UserControl, IDocumentComman
         {
             _viewModel.PropertyChanged -= OnPropertyChanged;
             _viewModel.Symbols.PropertyChanged -= OnSymbolsPropertyChanged;
+            _viewModel.QueryOptions.PropertyChanged -= OnQueryOptionsPropertyChanged;
+            _viewModel.QueryOptions.FilterChanged -= OnQueryFilterChanged;
         }
 
         _viewModel = ViewModel;
@@ -720,6 +726,8 @@ public sealed partial class QueryCallStackTabView : UserControl, IDocumentComman
         {
             _viewModel.PropertyChanged += OnPropertyChanged;
             _viewModel.Symbols.PropertyChanged += OnSymbolsPropertyChanged;
+            _viewModel.QueryOptions.PropertyChanged += OnQueryOptionsPropertyChanged;
+            _viewModel.QueryOptions.FilterChanged += OnQueryFilterChanged;
         }
 
         RefreshDetailPane();
@@ -745,6 +753,16 @@ public sealed partial class QueryCallStackTabView : UserControl, IDocumentComman
             ApplyFocus(_viewModel?.SelectedEvent);
         }
     }
+
+    private void OnQueryOptionsPropertyChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName == nameof(QueryOptionsViewModel.ShowLatches))
+        {
+            ApplyFocus(_viewModel?.SelectedEvent);
+        }
+    }
+
+    private void OnQueryFilterChanged() => ApplyFocus(_viewModel?.SelectedEvent);
 
     private void OnSymbolsPropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
@@ -1110,6 +1128,8 @@ public sealed partial class QueryCallStackTabView : UserControl, IDocumentComman
 
         _nodes.Clear();
 
+        HiddenOnly.Clear();
+
         Tree.RootNodes.Clear();
     }
 
@@ -1464,5 +1484,31 @@ public sealed partial class QueryCallStackTabView : UserControl, IDocumentComman
     // A row survives a search by matching it, or by being on the way to something that does — a hit is unreadable
     // without the calls that led to it, so the ancestors come too.
     private bool Filtered(CallStackNode node, int survivingChildren)
-        => _search.Length > 0 && survivingChildren == 0 && !Matches(node);
+        => survivingChildren == 0 && ((_search.Length > 0 && !Matches(node)) || HoldsOnlyHiddenEvents(node));
+
+    private bool HoldsOnlyHiddenEvents(CallStackNode node)
+    {
+        if (_viewModel?.QueryOptions is not { } options)
+        {
+            return false;
+        }
+
+        if (HiddenOnly.TryGetValue(node, out var cached))
+        {
+            return cached;
+        }
+
+        var result = node.Events.All(e => IsHiddenKind(e, options)) && node.ChildNodes.All(HoldsOnlyHiddenEvents);
+
+        HiddenOnly[node] = result;
+
+        return result;
+    }
+
+    private static bool IsHiddenKind(EngineEvent engineEvent, QueryOptionsViewModel options) => engineEvent switch
+    {
+        LatchEvent => !options.ShowLatches,
+        LockEvent lockEvent => !options.Includes(LockModeClassifier.Categorise(lockEvent.LockMode)),
+        _ => false,
+    };
 }
