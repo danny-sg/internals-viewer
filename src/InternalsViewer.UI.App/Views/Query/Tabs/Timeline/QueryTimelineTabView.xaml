@@ -11,6 +11,5 @@
                                    VerticalAlignment="Stretch"
                                    HorizontalAlignment="Stretch"
                                    ColourProvider="{x:Bind ViewModel.EventColours, Mode=OneWay}"
-                                   Events="{x:Bind ViewModel.FilteredEvents, Mode=OneWay}"
                                    Definition="{x:Bind ViewModel.TimelineDefinition, Mode=OneWay}" />
 </UserControl>

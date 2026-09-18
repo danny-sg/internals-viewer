@@ -78,9 +78,9 @@ public sealed partial class EventTimelineControl
         var heldBand = HeldBand(bands);
 
         var bandHeights = TimelineBandLayout.Resolve(bands,
-                                                   bandsHeight,
-                                                   heldBand,
-                                                   heldBand >= 0 ? bands[heldBand].MinInnerHeight + BandPadding * 2 : 0f);
+                                                     bandsHeight,
+                                                     heldBand,
+                                                     heldBand >= 0 ? bands[heldBand].MinInnerHeight + BandPadding * 2 : 0f);
 
         var bandTops = new float[bandCount];
 
@@ -96,9 +96,14 @@ public sealed partial class EventTimelineControl
 
         _timelineRenderer.DrawBands(canvas, frame);
 
+        if (bandCount == 0)
+        {
+            _timelineRenderer.DrawEmpty(canvas, frame, bandsTop, bandsHeight);
+        }
+
         _hitRegions.Clear();
 
-        if (_sortedEvents.Count == 0)
+        if (_definition.Events.Count == 0)
         {
             return recorder.EndRecording();
         }
@@ -131,7 +136,6 @@ public sealed partial class EventTimelineControl
     /// </remarks>
     private TimelineFrame BuildFrame(float[] bandTops, float[] bandHeights) => new()
     {
-        Events = _sortedEvents,
         Times = _times,
         Bands = _bands,
         Definition = _definition,
@@ -159,7 +163,7 @@ public sealed partial class EventTimelineControl
     /// </remarks>
     private void DrawDynamicOverlay(SKCanvas canvas, int w, int h)
     {
-        if (_sortedEvents.Count == 0)
+        if (_definition.Events.Count == 0)
         {
             return;
         }

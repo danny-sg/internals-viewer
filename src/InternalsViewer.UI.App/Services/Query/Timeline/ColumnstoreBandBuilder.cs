@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using InternalsViewer.Query.Events;
 using InternalsViewer.Query.Events.BatchMode;
 using InternalsViewer.UI.App.Helpers;
@@ -11,7 +12,7 @@ namespace InternalsViewer.UI.App.Services.Query.Timeline;
 
 internal sealed class ColumnstoreBandBuilder : ITimelineBandBuilder
 {
-    private const float MinPoolHitWidth = 2f;
+    private const float MinPoolHitWidth = 4f;
 
     private const byte HitLayer = 1;
 
@@ -40,8 +41,13 @@ internal sealed class ColumnstoreBandBuilder : ITimelineBandBuilder
     public bool Claims(EngineEvent engineEvent)
         => engineEvent is SegmentScanEvent or SegmentEliminateEvent or ObjectPoolEvent or ColumnStoreScanEvent;
 
-    public TimelineBand Prepare(IReadOnlyList<EngineEvent> events)
+    public TimelineBand? Prepare(IReadOnlyList<EngineEvent> events, TimelineBandVisibility visibility)
     {
+        if (!events.Any(Claims))
+        {
+            return null;
+        }
+
         SegmentTracks.Rebuild(events);
 
         PoolTracks.Rebuild(events);
@@ -55,25 +61,12 @@ internal sealed class ColumnstoreBandBuilder : ITimelineBandBuilder
 
         return Band with
         {
-            MinInnerHeight = Math.Max(SegmentTracks.MinBandHeight(0), PoolTracks.MinBandHeight(0)),
+            MinInnerHeight = Math.Max(SegmentTracks.TrackCount, PoolTracks.TrackCount) * SegmentScanTracks.MinTrackHeight * 2,
             TrackDividers = dividers,
         };
     }
 
-    public bool IsShown(IReadOnlyList<EngineEvent> events, TimelineBandVisibility visibility)
-    {
-        for (var i = 0; i < events.Count; i++)
-        {
-            if (Claims(events[i]))
-            {
-                return true;
-            }
-        }
-
-        return false;
-    }
-
-    public TimelineItem Place(int index, EngineEvent engineEvent, int band) => engineEvent switch
+    public TimelineItem Place(int index, EngineEvent engineEvent, int band, List<TimelineLink> links) => engineEvent switch
     {
         SegmentScanEvent => new TimelineItem(band,
                                              SegmentTracks.TrackOf(index),
@@ -83,7 +76,9 @@ internal sealed class ColumnstoreBandBuilder : ITimelineBandBuilder
                                              TimelineTickAnchor.Start,
                                              TimelineColourSource.Fixed,
                                              Band.Colour,
-                                             0f),
+                                             0f,
+                                             0,
+                                             MinPoolHitWidth),
         ObjectPoolEvent pool => new TimelineItem(band,
                                                  PoolTracks.TrackCount + PoolTracks.TrackOf(index),
                                                  PoolTracks.TrackCount * 2,
@@ -98,10 +93,6 @@ internal sealed class ColumnstoreBandBuilder : ITimelineBandBuilder
         ColumnStoreScanEvent scan => Half(band, scan.IsRowGroupEvent ? 0 : 1, ScanColour(scan)),
         _ => TimelineItem.Undrawn(band),
     };
-
-    public void AddLinks(int index, EngineEvent engineEvent, List<TimelineLink> links)
-    {
-    }
 
     private static TimelineItem Half(int band, int half, SKColor colour)
         => new(band, half, 2, 1, TimelineFill.Translucent, TimelineTickAnchor.Start, TimelineColourSource.Fixed, colour, 0f);

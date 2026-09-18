@@ -99,7 +99,7 @@ public class MarkerRendererTests
     }
 
     [Fact]
-    public void Draws_An_Object_Pool_Hit_In_The_Bottom_Half_At_Least_Two_Pixels_Wide()
+    public void Draws_An_Object_Pool_Hit_In_The_Bottom_Half_At_Least_Four_Pixels_Wide()
     {
         using var render = Render([new ObjectPoolEvent { IsHit = true }], [10]);
 
@@ -108,8 +108,8 @@ public class MarkerRendererTests
         var hit = ColourConstants.ObjectPoolHitColour.ToSkColor().WithAlpha(255);
 
         Assert.Equal(hit, render.Pixel(60, top + 12));
-        Assert.Equal(hit, render.Pixel(61, top + 12));
-        Assert.Equal(SKColors.Black, render.Pixel(62, top + 12));
+        Assert.Equal(hit, render.Pixel(63, top + 12));
+        Assert.Equal(SKColors.Black, render.Pixel(64, top + 12));
         Assert.Equal(SKColors.Black, render.Pixel(60, top + 4));
     }
 
@@ -142,7 +142,6 @@ public class MarkerRendererTests
 
         var frame = new TimelineFrame
         {
-            Events = definition.Events,
             Times = timesMs,
             Bands = bands,
             Definition = definition,

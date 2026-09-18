@@ -185,9 +185,6 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
     private List<EngineEvent> _filteredEvents = [];
 
     [ObservableProperty]
-    private List<EngineEvent> _planEvents = [];
-
-    [ObservableProperty]
     private TimelineDefinition _timelineDefinition = TimelineDefinition.Empty;
 
     [ObservableProperty]
@@ -852,32 +849,20 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
     {
         FilteredEvents = [.. Events.Where(IsEventVisible)];
 
-        RefreshPlanEvents();
+        RefreshTimelineDefinition();
 
         RefreshLayers(FilteredEvents);
     }
-
-    private void RefreshPlanEvents() => PlanEvents = [.. Events.Where(IsPlanEventVisible)];
 
     private void RefreshTimelineDefinition()
     {
         var visibility = new TimelineBandVisibility(QueryOptions.ShowLocks, QueryOptions.ShowLatches, QueryOptions.ShowWaits);
 
-        TimelineDefinition = _timelineDefinitionBuilder.Build(FilteredEvents, visibility);
+        TimelineDefinition = _timelineDefinitionBuilder.Build(Events, visibility, IsEventVisible);
     }
-
-    partial void OnFilteredEventsChanged(List<EngineEvent> value) => RefreshTimelineDefinition();
 
     private void OnQueryOptionChanged(object? sender, PropertyChangedEventArgs e)
     {
-        if (e.PropertyName is nameof(QueryOptionsViewModel.ShowWaits)
-                           or nameof(QueryOptionsViewModel.ShowLatches)
-                           or nameof(QueryOptionsViewModel.IncludeColumnstore)
-                           or nameof(QueryOptionsViewModel.IncludeMemory))
-        {
-            RefreshPlanEvents();
-        }
-
         if (e.PropertyName is nameof(QueryOptionsViewModel.ShowLocks)
                            or nameof(QueryOptionsViewModel.ShowLatches)
                            or nameof(QueryOptionsViewModel.ShowWaits))
@@ -900,7 +885,7 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
         Events = [];
         FilteredEvents = [];
-        PlanEvents = [];
+        TimelineDefinition = TimelineDefinition.Empty;
         CallStack = null;
         SelectedEvent = null;
 
@@ -1817,7 +1802,7 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
         Events = [];
         FilteredEvents = [];
-        PlanEvents = [];
+        TimelineDefinition = TimelineDefinition.Empty;
         CallStack = null;
         SelectedEvent = null;
         ExecutionPlans = [];
@@ -1865,28 +1850,6 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
             LockEscalationEvent esc => QueryOptions.Includes(LockModeClassifier.Categorise(esc.LockMode)),
 
-            _ => true,
-        };
-    }
-
-    private bool IsPlanEventVisible(EngineEvent engineEvent)
-    {
-        if (engineEvent is ExecutionOperatorEvent)
-        {
-            return true;
-        }
-
-        if (!IsEventVisible(engineEvent))
-        {
-            return false;
-        }
-
-        return engineEvent switch
-        {
-            WaitEvent => QueryOptions.ShowWaits,
-            LatchEvent => QueryOptions.ShowLatches,
-            MemoryEvent => QueryOptions.IncludeMemory,
-            SegmentScanEvent or SegmentEliminateEvent or ObjectPoolEvent or ColumnStoreScanEvent => QueryOptions.IncludeColumnstore,
             _ => true,
         };
     }

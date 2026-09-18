@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using InternalsViewer.Query.Events;
 using InternalsViewer.UI.App.Controls.Timeline.Definition;
+using InternalsViewer.UI.App.Helpers;
 using InternalsViewer.UI.App.ViewModels.Query;
 using SkiaSharp;
 
@@ -17,8 +18,6 @@ namespace InternalsViewer.UI.App.Controls.Timeline.Renderers;
 /// </remarks>
 internal sealed class TimelineFrame
 {
-    public required IReadOnlyList<EngineEvent> Events { get; init; }
-
     /// <summary>
     /// Effective (min-relative) event start time in milliseconds, aligned index-for-index with Events.
     /// </summary>
@@ -82,6 +81,15 @@ internal sealed class TimelineFrame
     /// Inverse of TimeToX, for the ruler's tick placement
     /// </summary>
     public required Func<double, double> XToTime { get; init; }
+
+    public SKColor BaseColour(int eventIndex)
+    {
+        var item = Definition.Items[eventIndex];
+
+        return item.ColourSource == TimelineColourSource.Provider && ColourProvider is { } colours
+            ? colours.GetColour(Definition.Events[eventIndex]).ToSkColor()
+            : item.Colour;
+    }
 
     public bool TryGetMarkerBounds(int eventIndex, out float top, out float height)
     {

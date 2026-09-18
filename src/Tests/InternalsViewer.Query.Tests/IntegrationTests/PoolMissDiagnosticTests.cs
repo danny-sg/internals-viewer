@@ -86,7 +86,8 @@ public class PoolMissDiagnosticTests(ITestOutputHelper output)
 
         ObjectPoolPageLinker.Link(events, index.HobtId, reads, index.DeleteBitmapAllocationUnit);
 
-        events = EventFilter.Filter(events, new EventOptions { IncludeCallStack = true });
+        InternalsViewer.Query.Events.Consolidation.RowGroupReadSpanner.Apply(events);
+
 
         await InternalsViewer.Query.CallStack.CallstackProcessor.Process(callStack, @"C:\Symbols", null, CancellationToken.None);
 
@@ -173,7 +174,7 @@ public class PoolMissDiagnosticTests(ITestOutputHelper output)
 
         var ahead = events.OfType<ReadEventGroup>().Where(r => r.IsReadAhead).ToList();
 
-        output.WriteLine($"READ AHEAD {ahead.Count} of {events.OfType<ReadEventGroup>().Count()} reads, linked to pool {events.OfType<ReadEventGroup>().Count(r => r.PoolLookup is not null)}, read ahead for a lookup {ahead.Count(r => r.ReadAheadFor is not null)}");
+        output.WriteLine($"READ AHEAD {ahead.Count} of {events.OfType<ReadEventGroup>().Count()} reads, linked to pool {events.OfType<ReadEventGroup>().Count(r => r.PoolLookup is not null && !r.IsReadAhead)}, read ahead for a lookup {ahead.Count(r => r.PoolLookup is not null)}");
 
         foreach (var group in ahead.GroupBy(r => string.Join(",", r.Pages.Select(p => owners.TryGetValue(p, out var o) ? $"rg{o.RowGroupId}" : "none").Distinct().Order())))
         {

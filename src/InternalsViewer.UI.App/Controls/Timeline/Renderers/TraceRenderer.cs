@@ -73,7 +73,7 @@ internal sealed class TraceRenderer(RenderResource resources, CurrentSelection s
 
             var item = frame.Definition.Items[link.Source];
 
-            var sourceEvent = frame.Events[link.Source];
+            var sourceEvent = frame.Definition.Events[link.Source];
 
             var width = frame.BandMarkerWidth(item.Band);
 
@@ -88,7 +88,7 @@ internal sealed class TraceRenderer(RenderResource resources, CurrentSelection s
                 continue;
             }
 
-            var colour = TraceColour(frame, sourceEvent, item);
+            var colour = frame.BaseColour(link.Source).WithAlpha(selection.ShouldDim(sourceEvent) ? DimAlpha : RailAlpha);
 
             var isAbove = origin < sourceTop;
 
@@ -215,16 +215,5 @@ internal sealed class TraceRenderer(RenderResource resources, CurrentSelection s
         top = Math.Min(top, frame.BandTops[band]);
 
         bottom = Math.Max(bottom, frame.BandTops[band] + frame.BandHeights[band]);
-    }
-
-    // A trace takes its operator's per-node colour (or the flat lane colour when no provider is set), faded when the
-    // event belongs to an operator other than the selected one.
-    private SKColor TraceColour(TimelineFrame frame, EngineEvent ev, TimelineItem item)
-    {
-        var colour = item.ColourSource == TimelineColourSource.Provider && frame.ColourProvider is { } colours
-            ? colours.GetColour(ev).ToSkColor()
-            : item.Colour;
-
-        return colour.WithAlpha(selection.ShouldDim(ev) ? DimAlpha : RailAlpha);
     }
 }

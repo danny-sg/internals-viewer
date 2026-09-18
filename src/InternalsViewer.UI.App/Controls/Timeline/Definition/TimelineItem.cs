@@ -11,7 +11,8 @@ public readonly record struct TimelineItem(int Band,
                                            TimelineColourSource ColourSource,
                                            SKColor Colour,
                                            float MinWidth,
-                                           byte Layer = 0)
+                                           byte Layer = 0,
+                                           float StartInset = 0f)
 {
     public static TimelineItem Unplaced { get; } = new(-1, 0, 1, 0, TimelineFill.None, TimelineTickAnchor.Start,
                                                        TimelineColourSource.Fixed, SKColor.Empty, 0f);

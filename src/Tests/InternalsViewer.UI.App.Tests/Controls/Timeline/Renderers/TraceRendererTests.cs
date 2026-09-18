@@ -125,7 +125,6 @@ public class TraceRendererTests
 
         var frame = new TimelineFrame
         {
-            Events = definition.Events,
             Times = timesMs,
             Bands = bands,
             Definition = definition,

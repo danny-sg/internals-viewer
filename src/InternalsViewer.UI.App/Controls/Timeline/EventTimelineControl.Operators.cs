@@ -37,15 +37,7 @@ public sealed partial class EventTimelineControl
     {
         var bands = _bands.Active;
 
-        var planBand = -1;
-
-        for (var r = 0; r < bands.Count; r++)
-        {
-            if (bands[r].Key == typeof(ExecutionOperatorEvent))
-            {
-                planBand = r; break;
-            }
-        }
+        var planBand = _bands.IndexOf(typeof(ExecutionOperatorEvent));
 
         if (planBand < 0)
         {

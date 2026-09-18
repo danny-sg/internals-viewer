@@ -35,7 +35,7 @@ public static class ObjectPoolDurationStamper
 
         foreach (var engineEvent in events.OrderBy(e => e.SequenceId))
         {
-            var task = engineEvent.TaskAddress ?? engineEvent.WorkerAddress ?? (ulong)engineEvent.ThreadId;
+            var task = engineEvent.TaskKey();
 
             switch (engineEvent)
             {
@@ -99,7 +99,7 @@ public static class ObjectPoolDurationStamper
 
         foreach (var read in events.OfType<ReadEventGroup>())
         {
-            if (read.PoolLookup is not { } lookup || read.SequenceId > lookup.SequenceId)
+            if (read.PoolLookup is not { } lookup || read.IsReadAhead || read.SequenceId > lookup.SequenceId)
             {
                 continue;
             }

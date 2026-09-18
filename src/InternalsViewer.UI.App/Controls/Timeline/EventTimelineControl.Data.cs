@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System;
+using InternalsViewer.Query.Events.Latches;
 using InternalsViewer.Query.Events.Operators;
 using InternalsViewer.Query.Events.Reads;
 using InternalsViewer.Query.Events;
@@ -19,7 +20,7 @@ public sealed partial class EventTimelineControl
     /// <see cref="ReadEventGroup"/> built around it, so it only surfaces at the top level when consolidation left it
     /// unpaired.
     /// </remarks>
-    private static IEnumerable<FileEvent> EnumerateFileReads(List<EngineEvent> events)
+    private static IEnumerable<FileEvent> EnumerateFileReads(IReadOnlyList<EngineEvent> events)
     {
         foreach (var engineEvent in events)
         {
@@ -46,9 +47,9 @@ public sealed partial class EventTimelineControl
 
     private void BuildTimes()
     {
-        _times = new List<double>(_sortedEvents.Count);
+        _times = new List<double>(_definition.Events.Count);
 
-        if (_sortedEvents.Count == 0)
+        if (_definition.Events.Count == 0)
         {
             _minTime = 0;
             _maxTime = 1;
@@ -60,9 +61,9 @@ public sealed partial class EventTimelineControl
         var min = double.MaxValue;
         var max = double.MinValue;
 
-        for (var i = 0; i < _sortedEvents.Count; i++)
+        for (var i = 0; i < _definition.Events.Count; i++)
         {
-            var ev = _sortedEvents[i];
+            var ev = _definition.Events[i];
             var start = StartMs(ev);
             _times.Add(start);
 
@@ -93,9 +94,9 @@ public sealed partial class EventTimelineControl
     {
         var operators = new List<(int Index, ExecutionOperatorEvent Op)>();
 
-        for (var i = 0; i < _sortedEvents.Count; i++)
+        for (var i = 0; i < _definition.Events.Count; i++)
         {
-            if (_sortedEvents[i] is ExecutionOperatorEvent op)
+            if (_definition.Events[i] is ExecutionOperatorEvent op)
             {
                 operators.Add((i, op));
             }
@@ -115,4 +116,18 @@ public sealed partial class EventTimelineControl
     }
 
     private void RebuildBands() => _bands.Rebuild(_definition, _renderResource.LabelFont);
+
+    private void BuildAudioCues()
+    {
+        var events = _definition.Events;
+
+        var readMembers = new HashSet<EngineEvent>(events.OfType<ReadEventGroup>().SelectMany(g => g.Events),
+                                                   ReferenceEqualityComparer.Instance);
+
+        _readEventsByTime = [.. events.OfType<ReadEventGroup>().OrderBy(read => read.TimeUs)];
+
+        _latchEventsByTime = [.. events.OfType<LatchEvent>().Where(l => !readMembers.Contains(l)).OrderBy(latch => latch.TimeUs)];
+
+        _fileReadEventsByTime = [.. EnumerateFileReads(events).OrderBy(read => read.TimeUs)];
+    }
 }

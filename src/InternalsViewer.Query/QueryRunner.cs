@@ -173,12 +173,12 @@ public sealed class QueryRunner(ILogger<QueryRunner> logger,
 
             await MapColumnstorePages(database, executionPlans, events, progress, cancellationToken);
 
+            RowGroupReadSpanner.Apply(events);
+
             if (eventOptions.AutoDeleteTrace && !string.IsNullOrWhiteSpace(eventOptions.TraceDirectory))
             {
                 DeleteTraceFiles(filePath, progress);
             }
-
-            events = EventFilter.Filter(events, eventOptions);
 
             if (eventOptions.CropToQuery)
             {

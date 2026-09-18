@@ -4,6 +4,9 @@ namespace InternalsViewer.Query.Events;
 
 public static class EngineEventExtensions
 {
+    public static ulong TaskKey(this EngineEvent engineEvent)
+        => engineEvent.TaskAddress ?? engineEvent.WorkerAddress ?? (ulong)engineEvent.ThreadId;
+
     /// <summary>
     /// An event together with every event it owns — the End folded into it, and a group's raw members
     /// </summary>

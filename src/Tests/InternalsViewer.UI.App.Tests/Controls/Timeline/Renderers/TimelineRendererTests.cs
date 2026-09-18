@@ -115,6 +115,30 @@ public class TimelineRendererTests
         Assert.Equal(frame.BandColour, bitmap.GetPixel(40, 19));
     }
 
+    [Fact]
+    public void Fills_The_Band_Area_With_The_Band_Colour_When_There_Are_No_Bands()
+    {
+        using var resources = new RenderResource();
+
+        using var renderer = new TimelineRenderer(resources);
+
+        using var bandSet = new TimelineBandSet();
+
+        var frame = Frame(bandSet, canvasWidth: 400, bandLabelWidth: 80);
+
+        using var bitmap = new SKBitmap(400, 60);
+
+        using var canvas = new SKCanvas(bitmap);
+
+        canvas.Clear(SKColors.Black);
+
+        renderer.DrawEmpty(canvas, frame, top: 20, height: 40);
+
+        Assert.Equal(SKColors.Black, bitmap.GetPixel(200, 10));
+        Assert.Equal(frame.BandColour, bitmap.GetPixel(200, 30));
+        Assert.Equal(frame.BandColour, bitmap.GetPixel(10, 59));
+    }
+
     private static TimelineFrame Frame(TimelineBandSet bandSet,
                                        float canvasWidth,
                                        float bandLabelWidth,
@@ -125,7 +149,6 @@ public class TimelineRendererTests
 
         return new TimelineFrame
         {
-            Events = [],
             Times = [],
             Bands = bandSet,
             Definition = definition ?? TimelineDefinition.Empty,

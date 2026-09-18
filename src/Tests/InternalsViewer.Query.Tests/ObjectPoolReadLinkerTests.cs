@@ -67,7 +67,6 @@ public class ObjectPoolReadLinkerTests
         ObjectPoolReadLinker.Link(new EngineEvent[] { allocation, miss });
 
         Assert.Null(allocation.PoolLookup);
-        Assert.Null(allocation.ReadAheadFor);
     }
 
     [Fact]
@@ -81,8 +80,7 @@ public class ObjectPoolReadLinkerTests
 
         ObjectPoolReadLinker.Link(new EngineEvent[] { read, miss });
 
-        Assert.Null(read.PoolLookup);
-        Assert.Same(miss, read.ReadAheadFor);
+        Assert.Same(miss, read.PoolLookup);
     }
 
     [Fact]
@@ -103,10 +101,9 @@ public class ObjectPoolReadLinkerTests
         ObjectPoolReadLinker.Link(new EngineEvent[] { fetched, cached, earlier, build, owner });
 
         Assert.True(fetched.IsReadAhead);
-        Assert.Null(fetched.PoolLookup);
-        Assert.Same(owner, fetched.ReadAheadFor);
+        Assert.Same(owner, fetched.PoolLookup);
         Assert.True(cached.IsReadAhead);
-        Assert.Same(owner, cached.ReadAheadFor);
+        Assert.Same(owner, cached.PoolLookup);
         Assert.Same(owner, build.PoolLookup);
     }
 
@@ -117,24 +114,45 @@ public class ObjectPoolReadLinkerTests
 
         var columnThree = new PageAddress(1, 20);
 
-        var prefetchTwo = new ReadEventGroup { Events = [], Pages = [columnTwo], ReadType = ReadType.NonCached, SequenceId = 1, TaskAddress = 1 };
+        var prefetchTwo = new ReadEventGroup
+        {
+            Events = [],
+            Pages = [columnTwo],
+            ReadType = ReadType.NonCached,
+            SequenceId = 1,
+            TaskAddress = 1,
+        };
 
-        var prefetchThree = new ReadEventGroup { Events = [], Pages = [columnThree], ReadType = ReadType.NonCached, SequenceId = 2, TaskAddress = 1 };
+        var prefetchThree = new ReadEventGroup
+        {
+            Events = [],
+            Pages = [columnThree],
+            ReadType = ReadType.NonCached,
+            SequenceId = 2,
+            TaskAddress = 1,
+        };
 
         var buildTwo = new ReadEventGroup { Events = [], Pages = [columnTwo], ReadType = ReadType.Cached, SequenceId = 3, TaskAddress = 1 };
 
         var missTwo = new ObjectPoolEvent { Pages = [columnTwo], SequenceId = 4, TaskAddress = 1 };
 
-        var buildThree = new ReadEventGroup { Events = [], Pages = [columnThree], ReadType = ReadType.Cached, SequenceId = 5, TaskAddress = 1 };
+        var buildThree = new ReadEventGroup
+        {
+            Events = [],
+            Pages = [columnThree],
+            ReadType = ReadType.Cached,
+            SequenceId = 5,
+            TaskAddress = 1,
+        };
 
         var missThree = new ObjectPoolEvent { Pages = [columnThree], SequenceId = 6, TaskAddress = 1 };
 
         ObjectPoolReadLinker.Link(new EngineEvent[] { prefetchTwo, prefetchThree, buildTwo, missTwo, buildThree, missThree });
 
         Assert.True(prefetchTwo.IsReadAhead);
-        Assert.Same(missTwo, prefetchTwo.ReadAheadFor);
+        Assert.Same(missTwo, prefetchTwo.PoolLookup);
         Assert.True(prefetchThree.IsReadAhead);
-        Assert.Same(missThree, prefetchThree.ReadAheadFor);
+        Assert.Same(missThree, prefetchThree.PoolLookup);
         Assert.Same(missTwo, buildTwo.PoolLookup);
         Assert.Same(missThree, buildThree.PoolLookup);
     }

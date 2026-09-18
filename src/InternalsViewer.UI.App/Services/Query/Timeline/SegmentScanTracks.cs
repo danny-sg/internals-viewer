@@ -23,7 +23,20 @@ internal sealed class SegmentScanTracks
 
     public int TrackOf(int eventIndex) => eventIndex >= 0 && eventIndex < _tracks.Length ? _tracks[eventIndex] : 0;
 
-    public float MinBandHeight(float bandPadding) => TrackCount * MinTrackHeight * 2 + bandPadding * 2;
+    public static int FreeTrack(List<long> trackEnds, long start)
+    {
+        for (var track = 0; track < trackEnds.Count; track++)
+        {
+            if (trackEnds[track] <= start)
+            {
+                return track;
+            }
+        }
+
+        trackEnds.Add(start);
+
+        return trackEnds.Count - 1;
+    }
 
     public void Rebuild(IReadOnlyList<EngineEvent> events)
     {
@@ -83,20 +96,5 @@ internal sealed class SegmentScanTracks
         var byTime = a.TimeUs.CompareTo(b.TimeUs);
 
         return byTime != 0 ? byTime : a.ColumnId.CompareTo(b.ColumnId);
-    }
-
-    private static int FreeTrack(List<long> trackEnds, long start)
-    {
-        for (var track = 0; track < trackEnds.Count; track++)
-        {
-            if (trackEnds[track] <= start)
-            {
-                return track;
-            }
-        }
-
-        trackEnds.Add(start);
-
-        return trackEnds.Count - 1;
     }
 }

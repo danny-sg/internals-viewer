@@ -31,19 +31,9 @@ public static class ReadAheadClassifier
             return cached;
         }
 
-        var result = false;
-
-        for (var node = leaf; node is not null; node = node.Parent)
-        {
-            if (node.Frame?.Resolved is { } frame
-                && (frame.MethodName.Contains("ReadAhead", StringComparison.Ordinal)
-                    || frame.ClassName?.Contains("ReadAhead", StringComparison.Ordinal) == true))
-            {
-                result = true;
-
-                break;
-            }
-        }
+        var result = leaf.Path().Any(f => f.Resolved is { } frame
+                                          && (frame.MethodName.Contains("ReadAhead", StringComparison.Ordinal)
+                                              || frame.ClassName?.Contains("ReadAhead", StringComparison.Ordinal) == true));
 
         known[leaf] = result;
 

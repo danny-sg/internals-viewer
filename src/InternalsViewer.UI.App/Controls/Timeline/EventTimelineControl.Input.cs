@@ -60,7 +60,7 @@ public sealed partial class EventTimelineControl
 
     private void OnPointerPressed(object sender, PointerRoutedEventArgs e)
     {
-        if (_sortedEvents.Count == 0)
+        if (_definition.Events.Count == 0)
         {
             return;
         }
@@ -400,7 +400,7 @@ public sealed partial class EventTimelineControl
 
     private void OnPointerWheelChanged(object sender, PointerRoutedEventArgs e)
     {
-        if (_sortedEvents.Count == 0)
+        if (_definition.Events.Count == 0)
         {
             return;
         }

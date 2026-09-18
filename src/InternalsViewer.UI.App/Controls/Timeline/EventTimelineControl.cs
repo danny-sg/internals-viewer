@@ -47,16 +47,6 @@ public sealed partial class EventTimelineControl : Grid, IDisposable
 
     private static readonly TimeSpan PlayInterval = TimeSpan.FromMilliseconds(PlayTickMs);
 
-    public static readonly DependencyProperty EventsProperty =
-        DependencyProperty.Register(nameof(Events), typeof(List<EngineEvent>), typeof(EventTimelineControl),
-            new PropertyMetadata(new List<EngineEvent>(), OnEventsChanged));
-
-    public List<EngineEvent> Events
-    {
-        get => (List<EngineEvent>)GetValue(EventsProperty);
-        set => SetValue(EventsProperty, value);
-    }
-
     public static readonly DependencyProperty DefinitionProperty =
         DependencyProperty.Register(nameof(Definition), typeof(TimelineDefinition), typeof(EventTimelineControl),
             new PropertyMetadata(TimelineDefinition.Empty, OnDefinitionChanged));
@@ -120,8 +110,6 @@ public sealed partial class EventTimelineControl : Grid, IDisposable
     private TimelineTransport _transport;
     private EngineEvent? _hoverEvent;
     private string? _hoverLabel;
-
-    private List<EngineEvent> _sortedEvents = [];
 
     // Pre-filtered and TimeUs-sorted arrays of read groups / LatchEvents; built whenever _sortedEvents
     // changes. Used by PlayAudioForCurrentPosition so the per-frame audio sweep is O(log n + hits) via
@@ -342,7 +330,7 @@ public sealed partial class EventTimelineControl : Grid, IDisposable
         _hoverEvent = null;
         _selection.Clear();
 
-        _sortedEvents = [];
+        _definition = TimelineDefinition.Empty;
         _readEventsByTime = [];
         _latchEventsByTime = [];
         _fileReadEventsByTime = [];
@@ -399,23 +387,13 @@ public sealed partial class EventTimelineControl : Grid, IDisposable
         control._skCanvas.Invalidate();
     }
 
-    private static void OnEventsChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
-    {
-        var control = (EventTimelineControl)d;
-        var events = (List<EngineEvent>)e.NewValue;
-
-        control._readEventsByTime = [.. events.OfType<ReadEventGroup>().OrderBy(read => read.TimeUs)];
-        control._latchEventsByTime = [.. events.OfType<LatchEvent>().OrderBy(latch => latch.TimeUs)];
-        control._fileReadEventsByTime = [.. EnumerateFileReads(events).OrderBy(read => read.TimeUs)];
-    }
-
     private static void OnDefinitionChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
     {
         var control = (EventTimelineControl)d;
 
         control._definition = (TimelineDefinition)e.NewValue;
 
-        control._sortedEvents = [.. control._definition.Events];
+        control.BuildAudioCues();
 
         control._eventsVersion++;
 

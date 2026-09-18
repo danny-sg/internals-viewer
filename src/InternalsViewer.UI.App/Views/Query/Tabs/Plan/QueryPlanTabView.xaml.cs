@@ -102,7 +102,7 @@ public sealed partial class QueryPlanTabView : UserControl
             p.SelectedNode = ViewModel?.SelectedPlanNode;
             p.ActiveNodes = ViewModel?.ActivePlanNodes;
             p.EmittingNodes = ViewModel?.EmittingPlanNodes;
-            p.Events = ViewModel?.PlanEvents;
+            p.Events = ViewModel?.Events;
             p.HasFlameGraph = ViewModel?.IsFlameGraphVisible == true;
             p.AreAnnotationsVisible = ViewModel?.IsAnnotationsVisible == true;
         });
@@ -162,8 +162,8 @@ public sealed partial class QueryPlanTabView : UserControl
             case nameof(QueryViewModel.EmittingPlanNodes):
                 ApplyToPlans(p => p.EmittingNodes = _subscribed.EmittingPlanNodes);
                 break;
-            case nameof(QueryViewModel.PlanEvents):
-                ApplyToPlans(p => p.Events = _subscribed.PlanEvents);
+            case nameof(QueryViewModel.Events):
+                ApplyToPlans(p => p.Events = _subscribed.Events);
                 break;
         }
     }
@@ -175,7 +175,7 @@ public sealed partial class QueryPlanTabView : UserControl
             planControl.SelectedNode = viewModel.SelectedPlanNode;
             planControl.ActiveNodes = viewModel.ActivePlanNodes;
             planControl.EmittingNodes = viewModel.EmittingPlanNodes;
-            planControl.Events = viewModel.PlanEvents;
+            planControl.Events = viewModel.Events;
             planControl.HasFlameGraph = viewModel.IsFlameGraphVisible;
             planControl.AreAnnotationsVisible = viewModel.IsAnnotationsVisible;
 

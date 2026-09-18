@@ -1,5 +1,4 @@
 using InternalsViewer.Query.Events.BatchMode;
-using InternalsViewer.Query.Events.BatchMode.Enums;
 
 namespace InternalsViewer.Query.Events.Consolidation;
 
@@ -22,7 +21,7 @@ public static class RowGroupReadSpanner
 
         foreach (var engineEvent in events.OrderBy(e => e.SequenceId))
         {
-            var task = engineEvent.TaskAddress ?? engineEvent.WorkerAddress ?? (ulong)engineEvent.ThreadId;
+            var task = engineEvent.TaskKey();
 
             switch (engineEvent)
             {
@@ -38,14 +37,14 @@ public static class RowGroupReadSpanner
 
                     break;
 
-                case ColumnStoreScanEvent { IsRowGroupRead: true, IsRowGroupReadAhead: false, RowGroupId: { } rowGroup } read:
+                case ColumnStoreScanEvent { IsRowGroupRead: true, RowGroupId: { } rowGroup } read:
                     open[(task, rowGroup)] = read;
 
-                    foreach (var lookup in Claim(pending, task))
+                    pending.Remove(task, out var claimed);
+
+                    foreach (var lookup in claimed ?? [])
                     {
-                        if (lookup.ObjectType != ColumnStoreObjectType.PrimaryDictionary
-                            && lookup.RowGroupId == rowGroup
-                            && lookup.TimeUs < read.TimeUs)
+                        if (lookup.RowGroupId == rowGroup && lookup.TimeUs < read.TimeUs)
                         {
                             read.DurationUs += read.TimeUs - lookup.TimeUs;
                             read.TimeUs = lookup.TimeUs;
@@ -71,7 +70,4 @@ public static class RowGroupReadSpanner
             }
         }
     }
-
-    private static List<ObjectPoolEvent> Claim(Dictionary<ulong, List<ObjectPoolEvent>> pending, ulong task)
-        => pending.Remove(task, out var lookups) ? lookups : [];
 }

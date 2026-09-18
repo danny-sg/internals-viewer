@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using InternalsViewer.Query.Events;
 using InternalsViewer.UI.App.Controls.Timeline.Definition;
 using InternalsViewer.UI.App.Helpers;
@@ -33,22 +34,28 @@ internal sealed class MarkerRenderer(RenderResource resources, CurrentSelection 
     {
         var items = frame.Definition.Items;
 
-        var topLayer = 0;
+        List<int>? raised = null;
 
-        foreach (var item in items)
+        for (var i = 0; i < items.Length; i++)
         {
-            topLayer = Math.Max(topLayer, item.Layer);
+            if (items[i].Layer == 0)
+            {
+                DrawItem(canvas, frame, i, items[i]);
+            }
+            else
+            {
+                (raised ??= []).Add(i);
+            }
         }
 
-        for (var layer = 0; layer <= topLayer; layer++)
+        if (raised is null)
         {
-            for (var i = 0; i < items.Length; i++)
-            {
-                if (items[i].Layer == layer)
-                {
-                    DrawItem(canvas, frame, i, items[i]);
-                }
-            }
+            return;
+        }
+
+        foreach (var i in raised.OrderBy(i => items[i].Layer))
+        {
+            DrawItem(canvas, frame, i, items[i]);
         }
     }
 
@@ -59,13 +66,13 @@ internal sealed class MarkerRenderer(RenderResource resources, CurrentSelection 
             return;
         }
 
-        var sourceEvent = frame.Events[index];
+        var sourceEvent = frame.Definition.Events[index];
 
-        var markerColour = GetMarkerColour(frame, sourceEvent, item);
+        var markerColour = frame.BaseColour(index).WithAlpha(selection.ShouldDim(sourceEvent) ? DimAlpha : (byte)255);
 
         var markerWidth = Math.Max(item.MinWidth, frame.BandMarkerWidth(item.Band));
 
-        var startX = frame.TimeToX(frame.Times[index]);
+        var startX = frame.TimeToX(frame.Times[index]) + item.StartInset;
 
         var hasDuration = sourceEvent.DurationUs > 0;
 
@@ -101,14 +108,5 @@ internal sealed class MarkerRenderer(RenderResource resources, CurrentSelection 
         hitRegions.Add(new HitRegion(new SKRect(startX - HitPad, markerTop, endX + HitPad, markerTop + markerHeight),
                                       sourceEvent,
                                       null));
-    }
-
-    private SKColor GetMarkerColour(TimelineFrame frame, EngineEvent sourceEvent, TimelineItem item)
-    {
-        var colour = item.ColourSource == TimelineColourSource.Provider && frame.ColourProvider is { } colours
-            ? colours.GetColour(sourceEvent).ToSkColor()
-            : item.Colour;
-
-        return colour.WithAlpha(selection.ShouldDim(sourceEvent) ? DimAlpha : (byte)255);
     }
 }

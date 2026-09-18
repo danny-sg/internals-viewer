@@ -94,20 +94,6 @@ public class SegmentScanTracksTests
         Assert.Equal(0, tracks.TrackOf(5));
     }
 
-    [Fact]
-    public void Min_Band_Height_Grows_With_The_Track_Count()
-    {
-        var tracks = new SegmentScanTracks();
-
-        tracks.Rebuild(
-        [
-            Scan(rowGroup: 0, column: 1, timeUs: 100, durationUs: 50),
-            Scan(rowGroup: 0, column: 2, timeUs: 100, durationUs: 50),
-        ]);
-
-        Assert.Equal(2 * SegmentScanTracks.MinTrackHeight * 2 + 4, tracks.MinBandHeight(bandPadding: 2));
-    }
-
     private static SegmentScanEvent Scan(long rowGroup, int column, long timeUs, long durationUs) => new()
     {
         NodeId = 1,

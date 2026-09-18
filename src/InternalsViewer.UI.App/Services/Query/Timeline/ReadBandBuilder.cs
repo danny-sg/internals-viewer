@@ -26,7 +26,7 @@ internal sealed class ReadBandBuilder : ITimelineBandBuilder
 
     public bool Claims(EngineEvent engineEvent) => engineEvent is ReadEventGroup or IoEvent;
 
-    public TimelineBand Prepare(IReadOnlyList<EngineEvent> events)
+    public TimelineBand? Prepare(IReadOnlyList<EngineEvent> events, TimelineBandVisibility visibility)
     {
         PoolIndexes.Clear();
 
@@ -41,10 +41,10 @@ internal sealed class ReadBandBuilder : ITimelineBandBuilder
         return Band;
     }
 
-    public bool IsShown(IReadOnlyList<EngineEvent> events, TimelineBandVisibility visibility) => true;
-
-    public TimelineItem Place(int index, EngineEvent engineEvent, int band)
+    public TimelineItem Place(int index, EngineEvent engineEvent, int band, List<TimelineLink> links)
     {
+        AddLink(index, engineEvent, links);
+
         var isCached = engineEvent is ReadEventGroup { ReadType: ReadType.Cached };
 
         var isAllocationPage = engineEvent is ReadEventGroup { IsAllocationPage: true };
@@ -60,16 +60,14 @@ internal sealed class ReadBandBuilder : ITimelineBandBuilder
                                 0f);
     }
 
-    public void AddLinks(int index, EngineEvent engineEvent, List<TimelineLink> links)
+    private void AddLink(int index, EngineEvent engineEvent, List<TimelineLink> links)
     {
-        if (engineEvent is not ReadEventGroup read)
+        if (engineEvent is not ReadEventGroup { IsAllocationPage: false } read)
         {
             return;
         }
 
-        var lookup = read.PoolLookup ?? read.ReadAheadFor;
-
-        var pool = lookup is not null && PoolIndexes.TryGetValue(lookup, out var poolIndex) ? poolIndex : -1;
+        var pool = read.PoolLookup is { } lookup && PoolIndexes.TryGetValue(lookup, out var poolIndex) ? poolIndex : -1;
 
         if (pool < 0 && read.PlanNodeIdentifier is null)
         {

@@ -236,8 +236,6 @@ public sealed class EventReader(ILogger<EventReader> logger)
 
         Logger.LogDebug("Spread events in {Duration}", Stopwatch.GetElapsedTime(start));
 
-        RowGroupReadSpanner.Apply(consolidatedEvents);
-
         return consolidatedEvents;
     }
 

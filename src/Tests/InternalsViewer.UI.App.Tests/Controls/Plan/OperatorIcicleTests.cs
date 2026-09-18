@@ -1,4 +1,5 @@
 ﻿using InternalsViewer.Query.CallStack;
+using InternalsViewer.Query.CallStack.Categories;
 using InternalsViewer.Query.Events.Operators;
 using InternalsViewer.Query.Events;
 using InternalsViewer.Query.Plans.Model;
@@ -133,6 +134,38 @@ public class OperatorIcicleTests
         var segment = Assert.Single(segments);
 
         Assert.Equal("Seek::m → Child::m", segment.Symbol);
+    }
+
+    [Fact]
+    public void Leaves_Out_The_Frames_That_Fire_The_Event()
+    {
+        var id = new PlanNodeIdentifier(1, 10);
+
+        var tree = new CallStackTree();
+
+        var engineEvent = Event(id);
+
+        var publish = Frame("GenericEvent", 5) with
+        {
+            Resolved = new ResolvedCallstackFrame
+            {
+                ClassName = "GenericEvent",
+                MethodName = "m",
+                SymbolCategory = SymbolCategory.XEventInfrastructure,
+            },
+        };
+
+        tree.Add([publish, Frame("Y", 10), Frame("Seek", 20)], engineEvent);
+
+        var collapsed = tree.CollapseToFunctions();
+
+        var operatorEvent = Operator(id, NodeOf(collapsed, "Seek::m"));
+
+        var hierarchy = OperatorHierarchy.Build([operatorEvent]);
+
+        var segments = OperatorIcicle.Build(operatorEvent, hierarchy, [engineEvent], width: 120, height: 24, maxLevels: 4);
+
+        Assert.Equal("Seek::m → Y::m", Assert.Single(segments).Symbol);
     }
 
     private static EngineEvent Event(PlanNodeIdentifier id)

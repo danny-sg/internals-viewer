@@ -54,9 +54,9 @@ internal sealed class LockRenderer(RenderResource resources, CurrentSelection se
         var innerHeight = frame.BandHeights[lockBand] - frame.BandPadding * 2;
         var rightEdge = frame.CanvasWidth;
 
-        var locks = frame.Events.OfType<LockGroup>()
+        var locks = frame.Definition.Events.OfType<LockGroup>()
                                 .SelectMany(g => g.Events.OfType<LockEvent>())
-                                .Concat(frame.Events.OfType<LockEvent>());
+                                .Concat(frame.Definition.Events.OfType<LockEvent>());
 
         // Locks grouped into category and intent, ordered by category and intent, replicating lock hierarchy
         var categories = locks.GroupBy(l => (Category: LockModeClassifier.Categorise(l.LockMode),
@@ -194,7 +194,7 @@ internal sealed class LockRenderer(RenderResource resources, CurrentSelection se
     /// </summary>
     private void DrawEscalationPoints(SKCanvas canvas, TimelineFrame frame, float top, float height)
     {
-        var events = frame.Events;
+        var events = frame.Definition.Events;
 
         for (var i = 0; i < events.Count; i++)
         {

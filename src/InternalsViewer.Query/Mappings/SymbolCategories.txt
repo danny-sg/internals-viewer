@@ -563,3 +563,47 @@ sqlmin|CBatchAdapterBaseHelpers*|*|Dataset
 *|SystemThread*|*|SqlOs
 *|CModTrackingInfo*|*|Optimization
 *|CBpContext*|*|QueryExecution
+
+# Optimization: the memo, memory-grant feedback, batch-mode eligibility, missing index, and the statistics iterators the
+# cardinality estimator walks.
+*|CMemo*|*|Optimization
+*|CMemoryFeedbackManager*|*|Optimization
+*|CDetermineBatchModeEligibility*|*|Optimization
+*|CMissingIndexCompileDescription*|*|Optimization
+*|CMIterStats*|*|Optimization
+*|CBaseStatsIterator*|*|Optimization
+*|CUnfilteredStatsIterator*|*|Optimization
+
+# View resolution and OLE DB binding during algebrization.
+*|CVDManager*|*|QueryBinding
+*|CViewRep*|*|QueryBinding
+*|FsInternalOledbBinding*|*|QueryBinding
+
+# Metadata accessors: the visible HoBt catalog attributes (including columnstore dictionary and segment sizes), type
+# lookups, object iteration for binding, and the columnstore index size reads the optimizer costs from.
+*|VisibleHoBt*|*|Metadata
+*|CMIterObjects*|*|Metadata
+*|CTypeInfo*|*|Metadata
+*|CUDTTypeProvider*|*|Metadata
+*|IMEDDatabase*|*|Metadata
+*|*|FGetColumnStoreIndexSizeData*|Metadata
+*|*|GetColumnStorePageCountsForQp*|Metadata
+*|*|CreateDictionaryRowsetHelper*|Metadata
+*|*|InitializeSystemHoBtAccess*|Metadata
+
+# Columnstore index scan runtime.
+*|CSIScan*|*|ColumnStore
+
+# Batch mode setup.
+*|CBpXte*|*|ExecutionTree
+*|CBpProfiler*|*|QueryOperator
+*|*|ConstructCXVariantRowAccessor*|RowAccess
+
+# SOS synchronisation waits, the blob handle factory, database context, the id manager, and the C++ destructor helper.
+*|SOS_Mutex*|*|Scheduling
+*|SOS::Event*|*|Scheduling
+*|*|ReturnBlobHandleFactory*|LargeObjectStorage
+*|CAutoDb*|*|QueryExecution
+*|*|sqlusedb*|QueryExecution
+*|CIDMgr*|*|SqlOs
+*|*|eh vector destructor iterator|System

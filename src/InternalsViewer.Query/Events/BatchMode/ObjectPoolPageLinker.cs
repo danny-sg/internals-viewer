@@ -26,7 +26,7 @@ public static class ObjectPoolPageLinker
 
         var pages = new Dictionary<(ColumnstoreReadType Type, int RowGroup, int Column), List<PageAddress>>();
 
-        var secondaryDictionaryPages = new Dictionary<(int Column, int Dictionary), List<PageAddress>>();
+        var secondaryDictionaryPages = new Dictionary<(int Column, int Dictionary), HashSet<PageAddress>>();
 
         foreach (var read in reads)
         {
@@ -39,10 +39,7 @@ public static class ObjectPoolPageLinker
                     secondaryDictionaryPages[(read.ColumnId, read.DictionaryId)] = dictionaryList;
                 }
 
-                if (!dictionaryList.Contains(read.PageAddress))
-                {
-                    dictionaryList.Add(read.PageAddress);
-                }
+                dictionaryList.Add(read.PageAddress);
 
                 continue;
             }
@@ -72,8 +69,8 @@ public static class ObjectPoolPageLinker
             }
             else if (pool.ObjectType == ColumnStoreObjectType.SecondaryDictionary)
             {
-                pool.Pages = secondaryDictionaryPages.TryGetValue((pool.ColumnId, pool.PoolObjectId), out var dictionaryList)
-                    ? dictionaryList
+                pool.Pages = secondaryDictionaryPages.TryGetValue((pool.ColumnId, pool.PoolObjectId), out var dictionaryPages)
+                    ? [.. dictionaryPages]
                     : [];
             }
             else if (KeyOf(pool) is { } key && pages.TryGetValue(key, out var list))

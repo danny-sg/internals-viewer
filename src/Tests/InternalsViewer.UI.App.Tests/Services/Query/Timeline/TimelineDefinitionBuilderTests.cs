@@ -143,7 +143,7 @@ public class TimelineDefinitionBuilderTests
 
         Assert.Equal((2, 4), (definition.Items[0].Track, definition.Items[0].TrackCount));
         Assert.Equal((3, 4), (definition.Items[1].Track, definition.Items[1].TrackCount));
-        Assert.Equal(2f, definition.Items[0].MinWidth);
+        Assert.Equal(4f, definition.Items[0].MinWidth);
         Assert.Equal(0f, definition.Items[1].MinWidth);
     }
 
@@ -261,7 +261,7 @@ public class TimelineDefinitionBuilderTests
 
         var definition = Build(
         [
-            new ReadEventGroup { Events = [], IsReadAhead = true, ReadAheadFor = lookup, PlanNodeIdentifier = node },
+            new ReadEventGroup { Events = [], IsReadAhead = true, PoolLookup = lookup, PlanNodeIdentifier = node },
             lookup,
         ], ShowAll);
 
@@ -293,6 +293,45 @@ public class TimelineDefinitionBuilderTests
         Assert.Equal(TimelineColourSource.Fixed, definition.Items[0].ColourSource);
         Assert.Equal(ColourConstants.AllocationPageColour.ToSkColor(), definition.Items[0].Colour);
         Assert.Equal(TimelineColourSource.Provider, definition.Items[1].ColourSource);
+    }
+
+    [Fact]
+    public void Starts_A_Segment_Scan_After_A_Hit_Tick_At_The_Same_Instant()
+    {
+        var definition = Build([new SegmentScanEvent(), new ObjectPoolEvent { IsHit = true }], ShowAll);
+
+        Assert.Equal(definition.Items[1].MinWidth, definition.Items[0].StartInset);
+    }
+
+    [Fact]
+    public void Links_Nothing_From_An_Allocation_Page_Read()
+    {
+        var lookup = new ObjectPoolEvent();
+
+        var read = new ReadEventGroup
+        {
+            Events = [],
+            IsAllocationPage = true,
+            PoolLookup = lookup,
+            PlanNodeIdentifier = new PlanNodeIdentifier(1,
+            1),
+        };
+
+        var definition = Build([read, lookup], ShowAll);
+
+        Assert.Empty(definition.Links);
+    }
+
+    [Fact]
+    public void Leaves_Out_Events_The_Visibility_Filter_Rejects()
+    {
+        var wait = new WaitEvent();
+
+        var read = new ReadEventGroup { Events = [] };
+
+        var definition = TimelineDefinitionBuilder.CreateDefault().Build([wait, read], ShowAll, e => e is not WaitEvent);
+
+        Assert.Equal<EngineEvent>([read], definition.Events);
     }
 
     private static TimelineDefinition Build(EngineEvent[] events, TimelineBandVisibility visibility)

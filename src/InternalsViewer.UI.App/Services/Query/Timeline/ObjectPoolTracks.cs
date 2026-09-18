@@ -19,8 +19,6 @@ internal sealed class ObjectPoolTracks
 
     public int TrackOf(int eventIndex) => eventIndex >= 0 && eventIndex < _tracks.Length ? _tracks[eventIndex] : 0;
 
-    public float MinBandHeight(float bandPadding) => TrackCount * SegmentScanTracks.MinTrackHeight * 2 + bandPadding * 2;
-
     public void Rebuild(IReadOnlyList<EngineEvent> events)
     {
         _tracks = new int[events.Count];
@@ -89,7 +87,7 @@ internal sealed class ObjectPoolTracks
 
         foreach (var span in rowGroups.Values.OrderBy(s => s.StartUs))
         {
-            var stack = FreeStack(stackEnds, span.StartUs);
+            var stack = SegmentScanTracks.FreeTrack(stackEnds, span.StartUs);
 
             stackEnds[stack] = Math.Max(stackEnds[stack], span.EndUs);
 
@@ -102,21 +100,6 @@ internal sealed class ObjectPoolTracks
         }
 
         return stackEnds.Count * objects.Count;
-    }
-
-    private static int FreeStack(List<long> stackEnds, long startUs)
-    {
-        for (var stack = 0; stack < stackEnds.Count; stack++)
-        {
-            if (stackEnds[stack] <= startUs)
-            {
-                return stack;
-            }
-        }
-
-        stackEnds.Add(startUs);
-
-        return stackEnds.Count - 1;
     }
 
     private static bool IsDictionary(ObjectPoolEvent pool)

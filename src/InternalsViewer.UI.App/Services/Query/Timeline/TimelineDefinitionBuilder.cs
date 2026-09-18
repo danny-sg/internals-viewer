@@ -41,9 +41,11 @@ internal sealed class TimelineDefinitionBuilder(IReadOnlyList<ITimelineBandBuild
             (events, visibility) => visibility.ShowWaits && events.Any(e => e is WaitEvent)),
     ]);
 
-    public TimelineDefinition Build(IReadOnlyList<EngineEvent> source, TimelineBandVisibility visibility)
+    public TimelineDefinition Build(IReadOnlyList<EngineEvent> source,
+                                    TimelineBandVisibility visibility,
+                                    Func<EngineEvent, bool>? isVisible = null)
     {
-        IReadOnlyList<EngineEvent> events = [.. ExpandGroupedEvents(source).OrderBy(e => e.SequenceId)];
+        IReadOnlyList<EngineEvent> events = [.. ExpandGroupedEvents(source, isVisible).OrderBy(e => e.SequenceId)];
 
         var bands = new List<TimelineBand>(builders.Count);
 
@@ -51,17 +53,13 @@ internal sealed class TimelineDefinitionBuilder(IReadOnlyList<ITimelineBandBuild
 
         for (var b = 0; b < builders.Count; b++)
         {
-            var band = builders[b].Prepare(events);
+            var band = builders[b].Prepare(events, visibility);
 
-            if (builders[b].IsShown(events, visibility))
+            bandOfBuilder[b] = band is null ? -1 : bands.Count;
+
+            if (band is not null)
             {
-                bandOfBuilder[b] = bands.Count;
-
                 bands.Add(band);
-            }
-            else
-            {
-                bandOfBuilder[b] = -1;
             }
         }
 
@@ -84,9 +82,7 @@ internal sealed class TimelineDefinitionBuilder(IReadOnlyList<ITimelineBandBuild
 
                 if (bandOfBuilder[b] >= 0)
                 {
-                    items[i] = builders[b].Place(i, engineEvent, bandOfBuilder[b]);
-
-                    builders[b].AddLinks(i, engineEvent, links);
+                    items[i] = builders[b].Place(i, engineEvent, bandOfBuilder[b], links);
                 }
 
                 break;
@@ -96,10 +92,15 @@ internal sealed class TimelineDefinitionBuilder(IReadOnlyList<ITimelineBandBuild
         return new TimelineDefinition(events, bands, items, [.. links]);
     }
 
-    private static IEnumerable<EngineEvent> ExpandGroupedEvents(IReadOnlyList<EngineEvent> events)
+    private static IEnumerable<EngineEvent> ExpandGroupedEvents(IReadOnlyList<EngineEvent> events, Func<EngineEvent, bool>? isVisible)
     {
         foreach (var engineEvent in events)
         {
+            if (isVisible is not null && !isVisible(engineEvent))
+            {
+                continue;
+            }
+
             yield return engineEvent;
 
             if (engineEvent is not ReadEventGroup readGroup)

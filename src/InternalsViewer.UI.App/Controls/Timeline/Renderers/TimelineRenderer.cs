@@ -71,6 +71,13 @@ internal sealed class TimelineRenderer(RenderResource resources) : IDisposable
         }
     }
 
+    public void DrawEmpty(SKCanvas canvas, TimelineFrame frame, float top, float height)
+    {
+        _bandBackground.Color = frame.BandColour;
+
+        canvas.DrawRect(0, top, frame.CanvasWidth, height, _bandBackground);
+    }
+
     /// <summary>
     /// Draws the time ruler
     /// </summary>

@@ -23,7 +23,7 @@ public static class EventSpreader
             SpreadLane([.. lane.OrderBy(e => e.TimeUs).ThenBy(e => e.SequenceId)]);
         }
 
-        foreach (var task in events.Where(IsColumnstore).GroupBy(TaskOf))
+        foreach (var task in events.Where(IsColumnstore).GroupBy(e => e.TaskKey()))
         {
             SpreadColumnstore([.. task.OrderBy(e => e.TimeUs / BucketUs).ThenBy(e => e.SequenceId)]);
         }
@@ -162,11 +162,10 @@ public static class EventSpreader
     {
         SegmentEliminateEvent => 0,
         SegmentScanEvent => 2,
-        ColumnStoreScanEvent { IsRowGroupEvent: true, IsRowGroupRead: false } => 2,
+        ColumnStoreScanEvent { IsRowGroupEvent: true, IsRowGroupRead: false, IsRowGroupReadAhead: false } => 2,
         _ => 1
     };
 
-    private static ulong TaskOf(EngineEvent e) => e.TaskAddress ?? e.WorkerAddress ?? (ulong)e.ThreadId;
 
     private static bool IsColumnstore(EngineEvent e) =>
         e is SegmentScanEvent or SegmentEliminateEvent or ObjectPoolEvent or ColumnStoreScanEvent;

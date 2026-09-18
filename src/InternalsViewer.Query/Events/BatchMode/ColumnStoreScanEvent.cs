@@ -17,13 +17,14 @@ public sealed partial record ColumnStoreScanEvent : EngineEvent
     [EventProperty("Detail")]
     public string Summary { get; set; } = string.Empty;
 
-    public bool IsRowGroupRead
-        => EventName is "column_store_rowgroup_read_issued" or "column_store_rowgroup_readahead_issued";
+    public bool IsRowGroupRead => EventName == "column_store_rowgroup_read_issued";
 
     public bool IsRowGroupReadAhead => EventName == "column_store_rowgroup_readahead_issued";
 
     public bool IsRowGroupEvent
-        => IsRowGroupRead || EventName is "column_store_expression_filter_bitmap_set" or "column_store_rowgroup_skip_delete_buffer";
+        => IsRowGroupRead
+           || IsRowGroupReadAhead
+           || EventName is "column_store_expression_filter_bitmap_set" or "column_store_rowgroup_skip_delete_buffer";
 
     public override string Name => DisplayName(EventName);
 

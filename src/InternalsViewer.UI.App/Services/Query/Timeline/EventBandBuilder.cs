@@ -22,12 +22,16 @@ internal sealed class EventBandBuilder<TEvent>(TimelineBand band,
 {
     public bool Claims(EngineEvent engineEvent) => engineEvent is TEvent;
 
-    public TimelineBand Prepare(IReadOnlyList<EngineEvent> events) => band;
+    public TimelineBand? Prepare(IReadOnlyList<EngineEvent> events, TimelineBandVisibility visibility)
+        => isShown(events, visibility) ? band : null;
 
-    public bool IsShown(IReadOnlyList<EngineEvent> events, TimelineBandVisibility visibility) => isShown(events, visibility);
-
-    public TimelineItem Place(int index, EngineEvent engineEvent, int bandIndex)
+    public TimelineItem Place(int index, EngineEvent engineEvent, int bandIndex, List<TimelineLink> links)
     {
+        if (linksToOperator && engineEvent.PlanNodeIdentifier is { } node)
+        {
+            links.Add(new TimelineLink(index, -1, node, TimelineLinkStyle.Bar, 1));
+        }
+
         if (!drawsMarkers)
         {
             return TimelineItem.Undrawn(bandIndex);
@@ -55,13 +59,5 @@ internal sealed class EventBandBuilder<TEvent>(TimelineBand band,
                                 TimelineColourSource.Provider,
                                 band.Colour,
                                 0f);
-    }
-
-    public void AddLinks(int index, EngineEvent engineEvent, List<TimelineLink> links)
-    {
-        if (linksToOperator && engineEvent.PlanNodeIdentifier is { } node)
-        {
-            links.Add(new TimelineLink(index, -1, node, TimelineLinkStyle.Bar, 1));
-        }
     }
 }
