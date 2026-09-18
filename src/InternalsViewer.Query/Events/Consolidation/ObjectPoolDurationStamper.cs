@@ -27,11 +27,11 @@ namespace InternalsViewer.Query.Events.Consolidation;
 /// </remarks>
 public static class ObjectPoolDurationStamper
 {
-    private const string CachingDecision = "large_cache_caching_decision";
-
     public static void Stamp(IReadOnlyList<EngineEvent> events)
     {
         var firstReads = new Dictionary<(ulong Task, PlanNodeIdentifier? Node), EngineEvent>();
+
+        var linkedSpans = LinkedSpans(events);
 
         foreach (var engineEvent in events.OrderBy(e => e.SequenceId))
         {
@@ -40,18 +40,39 @@ public static class ObjectPoolDurationStamper
             switch (engineEvent)
             {
                 case ObjectPoolEvent { IsHit: false } miss:
-                    if (FirstReadFor(firstReads, task, miss) is { } read && read.TimeUs < miss.TimeUs)
+                    var end = miss.TimeUs;
+
+                    EngineEvent? first;
+
+                    if (linkedSpans.TryGetValue(miss, out var span))
                     {
-                        miss.DurationUs = miss.TimeUs - read.TimeUs;
-                        miss.TimeUs = read.TimeUs;
-                        miss.Timestamp = read.Timestamp;
+                        first = span.First;
+
+                        end = Math.Max(end, span.EndUs);
+                    }
+                    else
+                    {
+                        first = miss.Pages.Count > 0 ? null : FirstReadFor(firstReads, task, miss);
+                    }
+
+                    if (first is { } read)
+                    {
+                        var start = Math.Min(read.TimeUs, miss.TimeUs);
+
+                        if (end > start)
+                        {
+                            if (read.TimeUs < miss.TimeUs)
+                            {
+                                miss.Timestamp = read.Timestamp;
+                            }
+
+                            miss.TimeUs = start;
+                            miss.DurationUs = end - start;
+                        }
                     }
 
                     ClearTask(firstReads, task);
 
-                    break;
-
-                case ColumnStoreScanEvent { EventName: CachingDecision }:
                     break;
 
                 case ObjectPoolEvent or ColumnStoreScanEvent or SegmentScanEvent or SegmentEliminateEvent:
@@ -65,6 +86,27 @@ public static class ObjectPoolDurationStamper
                     break;
             }
         }
+    }
+
+    private static Dictionary<ObjectPoolEvent, (EngineEvent First, long EndUs)> LinkedSpans(IReadOnlyList<EngineEvent> events)
+    {
+        var spans = new Dictionary<ObjectPoolEvent, (EngineEvent First, long EndUs)>(ReferenceEqualityComparer.Instance);
+
+        foreach (var read in events.OfType<ReadEventGroup>())
+        {
+            if (read.PoolLookup is not { } lookup || read.SequenceId > lookup.SequenceId)
+            {
+                continue;
+            }
+
+            var readEnd = read.TimeUs + read.DurationUs;
+
+            spans[lookup] = spans.TryGetValue(lookup, out var current)
+                ? (read.TimeUs < current.First.TimeUs ? read : current.First, Math.Max(current.EndUs, readEnd))
+                : (read, readEnd);
+        }
+
+        return spans;
     }
 
     private static EngineEvent? FirstReadFor(Dictionary<(ulong Task, PlanNodeIdentifier? Node), EngineEvent> firstReads,

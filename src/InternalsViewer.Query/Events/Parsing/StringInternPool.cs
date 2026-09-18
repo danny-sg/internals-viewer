@@ -1,4 +1,4 @@
-namespace InternalsViewer.Query.Events.Parsers;
+namespace InternalsViewer.Query.Events.Parsing;
 
 /// <summary>
 /// Interns spans drawn from a small fixed vocabulary into shared string instances

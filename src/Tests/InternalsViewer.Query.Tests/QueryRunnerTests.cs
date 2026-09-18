@@ -3,7 +3,7 @@ using InternalsViewer.Internals.Engine.Database;
 using InternalsViewer.Internals.Readers.Pages;
 using InternalsViewer.Internals.Tests.Helpers;
 using InternalsViewer.Query.Events;
-using InternalsViewer.Query.Parsing;
+using InternalsViewer.Query.Parsing.Statements;
 using InternalsViewer.Query.Tests.Helpers;
 using InternalsViewer.TransactionLog;
 using Xunit.Abstractions;

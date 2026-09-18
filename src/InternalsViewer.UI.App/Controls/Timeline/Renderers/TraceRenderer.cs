@@ -69,9 +69,7 @@ internal sealed class TraceRenderer(RenderResource resources, CurrentSelection s
 
             for (var i = 0; i < frame.Events.Count; i++)
             {
-                if (frame.Events[i] is not ReadEventGroup { PlanNodeIdentifier: { } id } io ||
-                    !byNode.TryGetValue(id, out var b) ||
-                    b.BarBottom >= readTop)
+                if (frame.Events[i] is not ReadEventGroup io || !TryGetRailOrigin(frame, byNode, i, io, readTop, out var railOrigin))
                 {
                     continue;
                 }
@@ -97,7 +95,7 @@ internal sealed class TraceRenderer(RenderResource resources, CurrentSelection s
                 if (endX - startX > MinCallRailGapPx)
                 {
                     resources.ReadCallRail.Color = colour;
-                    canvas.DrawLine(startX, b.BarBottom, startX, railTop, resources.ReadCallRail);
+                    canvas.DrawLine(startX, railOrigin, startX, railTop, resources.ReadCallRail);
                 }
 
                 resources.ReadReturnRail.Color = colour;
@@ -111,7 +109,7 @@ internal sealed class TraceRenderer(RenderResource resources, CurrentSelection s
                 {
                     var x = Math.Max(startX, endX - p * PageRailGapPx);
 
-                    canvas.DrawLine(x, b.BarBottom, x, railBottom, resources.ReadReturnRail);
+                    canvas.DrawLine(x, railOrigin, x, railBottom, resources.ReadReturnRail);
                 }
             }
         }
@@ -144,6 +142,34 @@ internal sealed class TraceRenderer(RenderResource resources, CurrentSelection s
         }
 
         canvas.Restore();
+    }
+
+    private static bool TryGetRailOrigin(TimelineFrame frame,
+                                         Dictionary<PlanNodeIdentifier, OperatorBar> byNode,
+                                         int eventIndex,
+                                         ReadEventGroup read,
+                                         float readTop,
+                                         out float origin)
+    {
+        var poolIndex = frame.PoolLinks.PoolIndexOf(eventIndex);
+
+        if (poolIndex >= 0 && frame.TryGetPoolMarker(poolIndex, out var poolTop, out var poolHeight) && poolTop + poolHeight < readTop)
+        {
+            origin = poolTop + poolHeight;
+
+            return true;
+        }
+
+        if (read.PlanNodeIdentifier is { } id && byNode.TryGetValue(id, out var bar) && bar.BarBottom < readTop)
+        {
+            origin = bar.BarBottom;
+
+            return true;
+        }
+
+        origin = 0;
+
+        return false;
     }
 
     // The vertical span the rails occupy: the operator bars they drop from, plus the read and log lanes they reach.

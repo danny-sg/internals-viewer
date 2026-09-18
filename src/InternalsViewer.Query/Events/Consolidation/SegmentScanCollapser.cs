@@ -6,24 +6,26 @@ public static class SegmentScanCollapser
 {
     public static List<EngineEvent> Collapse(IReadOnlyList<EngineEvent> events)
     {
-        var starts = new Dictionary<(int Node, long RowGroup, int Column, int Thread), Queue<SegmentScanEvent>>();
-
-        foreach (var scan in events.OfType<SegmentScanEvent>().Where(s => s.IsScanStart))
-        {
-            if (!starts.TryGetValue(KeyOf(scan), out var queue))
-            {
-                queue = new Queue<SegmentScanEvent>();
-
-                starts[KeyOf(scan)] = queue;
-            }
-
-            queue.Enqueue(scan);
-        }
+        var starts = new Dictionary<(int Node, int Column, int Thread), Queue<SegmentScanEvent>>();
 
         var folded = new HashSet<EngineEvent>(ReferenceEqualityComparer.Instance);
 
-        foreach (var scan in events.OfType<SegmentScanEvent>().Where(s => !s.IsScanStart))
+        foreach (var scan in events.OfType<SegmentScanEvent>().OrderBy(s => s.SequenceId))
         {
+            if (scan.IsScanStart)
+            {
+                if (!starts.TryGetValue(KeyOf(scan), out var opened))
+                {
+                    opened = new Queue<SegmentScanEvent>();
+
+                    starts[KeyOf(scan)] = opened;
+                }
+
+                opened.Enqueue(scan);
+
+                continue;
+            }
+
             if (!starts.TryGetValue(KeyOf(scan), out var queue) || queue.Count == 0)
             {
                 continue;
@@ -31,6 +33,7 @@ public static class SegmentScanCollapser
 
             var start = queue.Dequeue();
 
+            start.RowGroupId = scan.RowGroupId;
             start.InputRows = scan.InputRows;
             start.OutputRows = scan.OutputRows;
             start.PureRowBuckets = scan.PureRowBuckets;
@@ -44,6 +47,6 @@ public static class SegmentScanCollapser
         return [.. events.Where(e => !folded.Contains(e))];
     }
 
-    private static (int, long, int, int) KeyOf(SegmentScanEvent scan)
-        => (scan.NodeId, scan.RowGroupId, scan.ColumnId, scan.ThreadId);
+    private static (int, int, int) KeyOf(SegmentScanEvent scan)
+        => (scan.NodeId, scan.ColumnId, scan.ThreadId);
 }

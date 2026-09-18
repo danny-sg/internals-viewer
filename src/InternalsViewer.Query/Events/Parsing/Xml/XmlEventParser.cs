@@ -1,6 +1,6 @@
 ﻿using System.Globalization;
 
-namespace InternalsViewer.Query.Events.Parsers.Xml;
+namespace InternalsViewer.Query.Events.Parsing.Xml;
 
 /// <summary>
 /// Event XML Parser
@@ -39,13 +39,8 @@ internal sealed class XmlEventParser
     }
 
     /// <summary>
-    /// Reads one event's fields, or null if the XML holds no event
+    /// Reads one event field or null if the XML holds no event
     /// </summary>
-    /// <remarks>
-    /// The result is only valid until the next call. To stay allocation free nothing here is copied: a single
-    /// <see cref="EventResult"/> is reused, and its fields are offsets into <paramref name="buffer"/> rather than strings, so both the
-    /// result and the caller's buffer are live only for as long as it takes to map the event.
-    /// </remarks>
     public EventResult? ParseEvent(char[] buffer, int length)
     {
         _result.Buffer = buffer;
@@ -88,7 +83,7 @@ internal sealed class XmlEventParser
                                            CultureInfo.InvariantCulture,
                                            DateTimeStyles.RoundtripKind);
 
-        // Self-closing <event .../> (no fields).
+        // Self-closing <event .../> (no fields)
         if (xml[eventTagEnd - 1] == '/')
         {
             return true;

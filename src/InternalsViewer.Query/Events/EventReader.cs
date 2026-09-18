@@ -6,8 +6,8 @@ using InternalsViewer.Query.Events.BatchMode;
 using InternalsViewer.Query.Events.Consolidation;
 using InternalsViewer.Query.Events.Locks;
 using InternalsViewer.Query.Events.Operators;
-using InternalsViewer.Query.Events.Parsers.Xml;
-using InternalsViewer.Query.Events.Parsers;
+using InternalsViewer.Query.Events.Parsing;
+using InternalsViewer.Query.Events.Parsing.Xml;
 using InternalsViewer.Query.Plans.Model;
 using InternalsViewer.Query.Plans.Parsers;
 using InternalsViewer.Query.Plans;
@@ -206,8 +206,6 @@ public sealed class EventReader(ILogger<EventReader> logger)
 
         collapsedEvents = SegmentScanCollapser.Collapse(collapsedEvents);
 
-        RowGroupReadSpanner.Apply(collapsedEvents);
-
         collapsedEvents = LockPartitionCollapser.Collapse(collapsedEvents);
 
         Logger.LogDebug("Collapsed lock partitions in {Duration}", Stopwatch.GetElapsedTime(start));
@@ -237,6 +235,8 @@ public sealed class EventReader(ILogger<EventReader> logger)
         EventSpreader.SpreadEvents(consolidatedEvents);
 
         Logger.LogDebug("Spread events in {Duration}", Stopwatch.GetElapsedTime(start));
+
+        RowGroupReadSpanner.Apply(consolidatedEvents);
 
         return consolidatedEvents;
     }

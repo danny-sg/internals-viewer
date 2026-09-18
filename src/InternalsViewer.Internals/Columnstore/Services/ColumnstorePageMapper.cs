@@ -14,11 +14,13 @@ public sealed class ColumnstorePageMapper(IPageService pageService,
 {
     public const long DefaultSizeLimit = 100L * 1024 * 1024;
 
-    public async Task MapAsync(DatabaseSource database,
-                               ColumnStoreIndex index,
-                               CancellationToken cancellationToken,
-                               long sizeLimit = DefaultSizeLimit)
+    public async Task<IReadOnlyList<ColumnstorePageRead>> MapAsync(DatabaseSource database,
+                                                                   ColumnStoreIndex index,
+                                                                   CancellationToken cancellationToken,
+                                                                   long sizeLimit = DefaultSizeLimit)
     {
+        var mapped = new List<ColumnstorePageRead>();
+
         var size = index.CompressedRowGroups.Sum(r => (long)r.Segments.Sum(s => s.OnDiskSize));
 
         if (sizeLimit > 0 && size > sizeLimit)
@@ -28,7 +30,7 @@ public sealed class ColumnstorePageMapper(IPageService pageService,
                                    size,
                                    sizeLimit);
 
-            return;
+            return mapped;
         }
 
         var start = Stopwatch.GetTimestamp();
@@ -41,7 +43,7 @@ public sealed class ColumnstorePageMapper(IPageService pageService,
             {
                 if (cancellationToken.IsCancellationRequested)
                 {
-                    return;
+                    return mapped;
                 }
 
                 var read = new ColumnstorePageRead(PageAddress.Empty,
@@ -51,7 +53,7 @@ public sealed class ColumnstorePageMapper(IPageService pageService,
                                                    -1,
                                                    ColumnstoreReadType.Segment);
 
-                pages += await MapChainAsync(database, segment.DataPointer, read, cancellationToken);
+                pages += await MapChainAsync(database, segment.DataPointer, read, mapped, cancellationToken);
             }
         }
 
@@ -59,7 +61,7 @@ public sealed class ColumnstorePageMapper(IPageService pageService,
         {
             if (cancellationToken.IsCancellationRequested)
             {
-                return;
+                return mapped;
             }
 
             var read = new ColumnstorePageRead(PageAddress.Empty,
@@ -69,18 +71,21 @@ public sealed class ColumnstorePageMapper(IPageService pageService,
                                                dictionary.DictionaryId,
                                                ColumnstoreReadType.Dictionary);
 
-            pages += await MapChainAsync(database, dictionary.DataPointer, read, cancellationToken);
+            pages += await MapChainAsync(database, dictionary.DataPointer, read, mapped, cancellationToken);
         }
 
         logger?.LogInformation("Mapped {Pages} columnstore pages for {Index} in {Duration}",
                                pages,
                                index.IndexName ?? index.TableName,
                                Stopwatch.GetElapsedTime(start));
+
+        return mapped;
     }
 
     private async Task<int> MapChainAsync(DatabaseSource database,
                                           LobPointer pointer,
                                           ColumnstorePageRead read,
+                                          List<ColumnstorePageRead> mapped,
                                           CancellationToken cancellationToken)
     {
         if (pointer.IsEmpty)
@@ -97,8 +102,11 @@ public sealed class ColumnstorePageMapper(IPageService pageService,
                                            new RowIdentifier(pointer.PageAddress, (ushort)pointer.Slot),
                                            (address, bytes) =>
                                            {
-                                               cache.SetPageRead(database,
-                                                                 read with { PageAddress = address, Bytes = bytes });
+                                               var pageRead = read with { PageAddress = address, Bytes = bytes };
+
+                                               cache.SetPageRead(database, pageRead);
+
+                                               mapped.Add(pageRead);
 
                                                count++;
                                            },

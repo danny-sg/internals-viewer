@@ -40,7 +40,6 @@ internal static class EventConstants
         "sqlserver.column_store_rowgroup_read_issued",
         "sqlserver.column_store_rowgroup_readahead_issued",
         "sqlserver.column_store_fast_string_equals",
-        "sqlos.large_cache_caching_decision",
     ];
 
     public static readonly string[] BatchModeEvents =

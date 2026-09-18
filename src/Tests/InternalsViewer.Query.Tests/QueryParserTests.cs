@@ -1,4 +1,4 @@
-﻿using InternalsViewer.Query.Parsing;
+﻿using InternalsViewer.Query.Parsing.Statements;
 
 namespace InternalsViewer.Query.Tests;
 

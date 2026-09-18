@@ -69,7 +69,7 @@ public static class LobChainWalker
                 continue;
             }
 
-            if (record.Level > 1)
+            if (record.Level > 0)
             {
                 await WalkAsync(pageService, database, childIdentifier, onPage, visited, reported, cancellationToken);
 

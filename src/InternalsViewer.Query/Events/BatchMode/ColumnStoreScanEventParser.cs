@@ -16,8 +16,7 @@ internal static class ColumnStoreScanEventParser
             DatabaseId = e.GetDatabaseId(),
             RowGroupId = rowGroupId,
             HobtId = e.GetUlong("hobt_id") ?? 0,
-            Summary = Summarise(e, rowGroupId),
-            TimeToGenerateUs = e.GetDouble("time_to_generate") is { } seconds ? (long)(seconds * 1_000_000) : null
+            Summary = Summarise(e, rowGroupId)
         };
     }
 
@@ -29,8 +28,6 @@ internal static class ColumnStoreScanEventParser
         "column_store_fast_string_equals" => $"Parameter {e.GetUlong("param_id") ?? 0}",
         "query_execution_wait_syncpoint"
             => $"{e.GetString("wait_type")} {(e.GetBool("start_wait") == true ? "Start" : "End")}",
-        "large_cache_caching_decision"
-            => $"{(e.GetBool("decision") == true ? "Cached" : "Not Cached")}, {e.GetUlong("size_in_pages") ?? 0:N0} pages",
         _ => rowGroupId is { } id ? $"Row Group {id}" : string.Empty
     };
 }

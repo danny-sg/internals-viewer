@@ -1,4 +1,4 @@
-﻿namespace InternalsViewer.Query.Parsing;
+﻿namespace InternalsViewer.Query.Parsing.Sql;
 
 public readonly record struct SqlToken(SqlTokenType Type, string Text)
 {

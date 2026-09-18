@@ -22,6 +22,11 @@ public static class EventSpreader
         {
             SpreadLane([.. lane.OrderBy(e => e.TimeUs).ThenBy(e => e.SequenceId)]);
         }
+
+        foreach (var task in events.Where(IsColumnstore).GroupBy(TaskOf))
+        {
+            SpreadColumnstore([.. task.OrderBy(e => e.TimeUs / BucketUs).ThenBy(e => e.SequenceId)]);
+        }
     }
 
     // Events that render at the same full-row height share one lane.
@@ -110,6 +115,62 @@ public static class EventSpreader
     /// Locks (and the escalation / transaction instants that mark their boundaries) are not serial work — they are concurrent holds and
     /// the moments those holds start and end. Spreading them would drift them off the very lock events they line up with.
     /// </remarks>
+    private static void SpreadColumnstore(List<EngineEvent> events)
+    {
+        var i = 0;
+
+        while (i < events.Count)
+        {
+            var bucket = events[i].TimeUs / BucketUs * BucketUs;
+
+            var j = i;
+
+            var runs = 0;
+
+            while (j < events.Count && events[j].TimeUs / BucketUs * BucketUs == bucket)
+            {
+                if (j == i || ColumnstoreStage(events[j]) != ColumnstoreStage(events[j - 1]))
+                {
+                    runs++;
+                }
+
+                j++;
+            }
+
+            if (runs > 1)
+            {
+                var slot = Math.Max(1, BucketUs / runs);
+
+                var run = 0;
+
+                for (var k = i; k < j; k++)
+                {
+                    if (k > i && ColumnstoreStage(events[k]) != ColumnstoreStage(events[k - 1]))
+                    {
+                        run++;
+                    }
+
+                    ShiftTo(events[k], bucket + run * slot);
+                }
+            }
+
+            i = j;
+        }
+    }
+
+    private static int ColumnstoreStage(EngineEvent e) => e switch
+    {
+        SegmentEliminateEvent => 0,
+        SegmentScanEvent => 2,
+        ColumnStoreScanEvent { IsRowGroupEvent: true, IsRowGroupRead: false } => 2,
+        _ => 1
+    };
+
+    private static ulong TaskOf(EngineEvent e) => e.TaskAddress ?? e.WorkerAddress ?? (ulong)e.ThreadId;
+
+    private static bool IsColumnstore(EngineEvent e) =>
+        e is SegmentScanEvent or SegmentEliminateEvent or ObjectPoolEvent or ColumnStoreScanEvent;
+
     private static bool IsSerialWork(EngineEvent e) =>
         e is not (QueryThreadEvent or MemoryEvent or LockEvent or LockGroup or LockEscalationEvent or TransactionEvent
                   or SegmentScanEvent or SegmentEliminateEvent or ObjectPoolEvent or ColumnStoreScanEvent);

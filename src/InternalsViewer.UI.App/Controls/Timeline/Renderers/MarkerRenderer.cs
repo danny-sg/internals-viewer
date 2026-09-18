@@ -41,6 +41,8 @@ internal sealed class MarkerRenderer(RenderResource resources, CurrentSelection 
 
     private static readonly SKColor ColumnStoreEventColour = ColourConstants.ColumnStoreEventColour.ToSkColor();
 
+    private static readonly SKColor ExpressionFilterBitmapColour = ColourConstants.ExpressionFilterBitmapColour.ToSkColor();
+
     public void Draw(SKCanvas canvas, TimelineFrame frame)
     {
         var events = frame.Events;
@@ -94,17 +96,15 @@ internal sealed class MarkerRenderer(RenderResource resources, CurrentSelection 
                     markerTop = innerTop + frame.SegmentLanes.LaneOf(i) * subLaneHeight;
                     markerHeight = Math.Max(2f, subLaneHeight - 2f);
                 }
-                else if (sourceEvent is SegmentEliminateEvent or ColumnStoreScanEvent { IsRowGroupRead: true })
+                else if (sourceEvent is SegmentEliminateEvent or ColumnStoreScanEvent { IsRowGroupEvent: true })
                 {
                     markerTop = innerTop;
                     markerHeight = Math.Max(2f, laneHeight - 1f);
                 }
-                else if (sourceEvent is ObjectPoolEvent)
+                else if (sourceEvent is ObjectPoolEvent && frame.TryGetPoolMarker(i, out var poolTop, out var poolHeight))
                 {
-                    var subLaneHeight = laneHeight / frame.PoolLanes.LaneCount;
-
-                    markerTop = innerTop + laneHeight + frame.PoolLanes.LaneOf(i) * subLaneHeight;
-                    markerHeight = Math.Max(2f, subLaneHeight - 2f);
+                    markerTop = poolTop;
+                    markerHeight = poolHeight;
                 }
                 else
                 {
@@ -150,7 +150,11 @@ internal sealed class MarkerRenderer(RenderResource resources, CurrentSelection 
 
             if (hasDuration)
             {
-                resources.Fill.Color = markerColour.WithAlpha(Math.Min(markerColour.Alpha, DurationOverlayAlpha));
+                var isSolid = sourceEvent is ObjectPoolEvent or SegmentScanEvent;
+
+                resources.Fill.Color = isSolid
+                    ? markerColour
+                    : markerColour.WithAlpha(Math.Min(markerColour.Alpha, DurationOverlayAlpha));
 
                 canvas.DrawRect(startX, markerTop, endX - startX, markerHeight, resources.Fill);
             }
@@ -179,6 +183,8 @@ internal sealed class MarkerRenderer(RenderResource resources, CurrentSelection 
                 => ObjectPoolHitColour,
             ObjectPoolEvent 
                 => ObjectPoolMissColour,
+            ColumnStoreScanEvent { EventName: "column_store_expression_filter_bitmap_set" }
+                => ExpressionFilterBitmapColour,
             ColumnStoreScanEvent 
                 => ColumnStoreEventColour,
             SegmentScanEvent 

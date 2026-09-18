@@ -1,4 +1,5 @@
 ﻿using InternalsViewer.Query.Events;
+using InternalsViewer.Query.Events.BatchMode;
 using InternalsViewer.Query.Events.Latches;
 using InternalsViewer.Query.Events.Reads;
 
@@ -142,6 +143,44 @@ public class EventSpreaderTests
 
         Assert.Equal(alone.TimeUs, cached.TimeUs);
         Assert.Equal(alone.TimeUs, physical.TimeUs);
+    }
+
+    [Fact]
+    public void Columnstore_Stages_Sharing_A_Bucket_Are_Spread_In_Captured_Order_With_Each_Stage_Kept_Flush()
+    {
+        var eliminate = new SegmentEliminateEvent { TimeUs = 5_000, SequenceId = 1, TaskAddress = 7 };
+
+        var lookup = new ObjectPoolEvent { TimeUs = 5_000, SequenceId = 2, TaskAddress = 7 };
+
+        var read = new ColumnStoreScanEvent { EventName = "column_store_rowgroup_read_issued", TimeUs = 5_000, SequenceId = 3, TaskAddress = 7 };
+
+        var firstScan = new SegmentScanEvent { TimeUs = 5_000, DurationUs = 300, SequenceId = 4, TaskAddress = 7 };
+
+        var secondScan = new SegmentScanEvent { TimeUs = 5_000, DurationUs = 400, SequenceId = 5, TaskAddress = 7 };
+
+        EventSpreader.SpreadEvents([secondScan, read, eliminate, firstScan, lookup]);
+
+        Assert.True(eliminate.TimeUs < lookup.TimeUs);
+        Assert.Equal(lookup.TimeUs, read.TimeUs);
+        Assert.True(read.TimeUs < firstScan.TimeUs);
+        Assert.Equal(firstScan.TimeUs, secondScan.TimeUs);
+        Assert.All(new EngineEvent[] { eliminate, lookup, read, firstScan, secondScan }, e => Assert.InRange(e.TimeUs, 5_000, 5_999));
+    }
+
+    [Fact]
+    public void Columnstore_Events_Of_One_Stage_Or_On_Different_Tasks_Are_Left_Where_They_Were_Captured()
+    {
+        var firstScan = new SegmentScanEvent { TimeUs = 5_000, SequenceId = 1, TaskAddress = 7 };
+
+        var secondScan = new SegmentScanEvent { TimeUs = 5_000, SequenceId = 2, TaskAddress = 7 };
+
+        var otherTaskEliminate = new SegmentEliminateEvent { TimeUs = 5_000, SequenceId = 3, TaskAddress = 8 };
+
+        EventSpreader.SpreadEvents([firstScan, secondScan, otherTaskEliminate]);
+
+        Assert.Equal(5_000, firstScan.TimeUs);
+        Assert.Equal(5_000, secondScan.TimeUs);
+        Assert.Equal(5_000, otherTaskEliminate.TimeUs);
     }
 
     private static LatchEvent Latch(long timeUs, EventCategory category) => new()

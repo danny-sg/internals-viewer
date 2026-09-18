@@ -133,6 +133,7 @@ public sealed partial class EventTimelineControl
         Rows = _rows,
         SegmentLanes = _segmentLanes,
         PoolLanes = _poolLanes,
+        PoolLinks = _poolLinks,
         RowTops = rowTops,
         RowHeights = rowHeights,
         CanvasWidth = CanvasWidth,

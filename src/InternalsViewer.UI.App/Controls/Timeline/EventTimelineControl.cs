@@ -117,6 +117,8 @@ public sealed partial class EventTimelineControl : Grid, IDisposable
 
     private readonly ObjectPoolLanes _poolLanes = new();
 
+    private readonly ObjectPoolReadLinks _poolLinks = new();
+
     private readonly TimelineAudioPlayer _audioPlayer = new();
     private readonly SKXamlCanvas _skCanvas;
     private readonly Canvas _overlay;
@@ -451,6 +453,7 @@ public sealed partial class EventTimelineControl : Grid, IDisposable
         control.RebuildRows();
         control._segmentLanes.Rebuild(control._sortedEvents);
         control._poolLanes.Rebuild(control._sortedEvents);
+        control._poolLinks.Rebuild(control._sortedEvents);
         control.BuildTimes();
         control.BuildOperatorLayout();
 

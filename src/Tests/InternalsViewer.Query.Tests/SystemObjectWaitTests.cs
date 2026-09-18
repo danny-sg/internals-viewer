@@ -1,7 +1,7 @@
 ﻿using InternalsViewer.Internals.Engine.Database;
 using InternalsViewer.Query.Events;
 using InternalsViewer.Query.Events.Latches;
-using InternalsViewer.Query.Events.Parsers;
+using InternalsViewer.Query.Events.Parsing;
 using InternalsViewer.Query.Events.Waits;
 
 namespace InternalsViewer.Query.Tests;

@@ -1,21 +1,21 @@
 ﻿using InternalsViewer.Internals.Engine.Database;
 using InternalsViewer.Internals.Extensions;
 using InternalsViewer.Query.CallStack;
-using InternalsViewer.Query.Events.Batches;
 using InternalsViewer.Query.Events.BatchMode;
 using InternalsViewer.Query.Events.Files;
 using InternalsViewer.Query.Events.Latches;
 using InternalsViewer.Query.Events.Locks;
 using InternalsViewer.Query.Events.Memory;
 using InternalsViewer.Query.Events.Operators;
-using InternalsViewer.Query.Events.Parsers.Xml;
+using InternalsViewer.Query.Events.Parsing.Xml;
+using InternalsViewer.Query.Events.Query;
 using InternalsViewer.Query.Events.Reads;
 using InternalsViewer.Query.Events.Splits;
 using InternalsViewer.Query.Events.Transactions;
 using InternalsViewer.Query.Events.Waits;
 using InternalsViewer.Query.Plans.Model;
 
-namespace InternalsViewer.Query.Events.Parsers;
+namespace InternalsViewer.Query.Events.Parsing;
 
 public sealed class EventParser
 {
@@ -69,7 +69,6 @@ public sealed class EventParser
                 or "column_store_object_pool_miss"
                 => ObjectPoolEventParser.Map(database, e),
             "query_execution_wait_syncpoint"
-                or "large_cache_caching_decision"
                 => ColumnStoreScanEventParser.Map(database, e),
             var n when n.StartsWith("column_store_")
                 => ColumnStoreScanEventParser.Map(database, e),
@@ -159,7 +158,7 @@ public sealed class EventParser
     }
 
     /// <summary>
-    /// If an event should be excluded based on the system object option
+    /// If an event should be excluded based on the include system objects option
     /// </summary>
     /// <remarks>
     /// Wait events don't include information to link back to a system object, but the latch address can be so latches excluded have their

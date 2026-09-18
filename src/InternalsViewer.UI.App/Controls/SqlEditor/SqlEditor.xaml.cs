@@ -1,6 +1,6 @@
 using CommunityToolkit.Mvvm.Messaging;
 using InternalsViewer.Query;
-using InternalsViewer.Query.Parsing;
+using InternalsViewer.Query.Parsing.Statements;
 using InternalsViewer.Query.Results;
 using InternalsViewer.UI.App.Messages;
 using InternalsViewer.UI.App.Models.Schema;

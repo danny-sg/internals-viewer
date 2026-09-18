@@ -8,7 +8,6 @@ using InternalsViewer.Query.CallStack.Categories;
 using InternalsViewer.Query.CallStack;
 using InternalsViewer.Query.Events.Operators;
 using InternalsViewer.Query.Events;
-using InternalsViewer.Query.Parsing;
 using InternalsViewer.Query.Plans.Model;
 using InternalsViewer.Query.Tests.Helpers;
 using InternalsViewer.TransactionLog;
@@ -17,6 +16,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Xunit.Abstractions;
+using InternalsViewer.Query.Parsing.Statements;
 
 namespace InternalsViewer.Query.Tests.IntegrationTests;
 

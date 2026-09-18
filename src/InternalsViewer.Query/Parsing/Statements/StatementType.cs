@@ -1,4 +1,4 @@
-﻿namespace InternalsViewer.Query.Parsing;
+﻿namespace InternalsViewer.Query.Parsing.Statements;
 
 public enum StatementType
 {

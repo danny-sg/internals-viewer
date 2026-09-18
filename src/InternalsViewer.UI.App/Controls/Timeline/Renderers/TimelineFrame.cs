@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using InternalsViewer.Query.Events;
+using InternalsViewer.Query.Events.BatchMode;
 using InternalsViewer.UI.App.ViewModels.Query;
 using SkiaSharp;
 
@@ -28,6 +29,8 @@ internal sealed class TimelineFrame
     public required SegmentScanLanes SegmentLanes { get; init; }
 
     public required ObjectPoolLanes PoolLanes { get; init; }
+
+    public required ObjectPoolReadLinks PoolLinks { get; init; }
 
     public required float[] RowTops { get; init; }
 
@@ -83,4 +86,31 @@ internal sealed class TimelineFrame
     /// Inverse of TimeToX, for the ruler's tick placement
     /// </summary>
     public required Func<double, double> XToTime { get; init; }
+    /// <summary>
+    /// The vertical extent of an object pool lookup's marker within the Columnstore row's Object Pool half
+    /// </summary>
+    public bool TryGetPoolMarker(int eventIndex, out float top, out float height)
+    {
+        top = 0;
+        height = 0;
+
+        var row = Rows.IndexOf(typeof(SegmentScanEvent));
+
+        if (row < 0)
+        {
+            return false;
+        }
+
+        var innerTop = RowTops[row] + RowPadding;
+
+        var laneHeight = (RowHeights[row] - RowPadding * 2) / 2f;
+
+        var subLaneHeight = laneHeight / PoolLanes.LaneCount;
+
+        top = innerTop + laneHeight + PoolLanes.LaneOf(eventIndex) * subLaneHeight;
+
+        height = Math.Max(2f, subLaneHeight - 2f);
+
+        return true;
+    }
 }

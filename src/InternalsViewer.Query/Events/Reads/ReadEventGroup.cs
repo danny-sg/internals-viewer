@@ -1,3 +1,4 @@
+using InternalsViewer.Query.Events.BatchMode;
 using InternalsViewer.Query.Events.Properties;
 using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Query.Interfaces.Events;
@@ -33,6 +34,8 @@ public sealed partial record ReadEventGroup : PageEngineEvent, IEventGroup
     public override PageAddress? PageAddress => Pages.Count > 0 ? Pages[0] : null;
 
     public int PageCount => Pages.Count;
+
+    public ObjectPoolEvent? PoolLookup { get; set; }
 
     public override string Description
     {

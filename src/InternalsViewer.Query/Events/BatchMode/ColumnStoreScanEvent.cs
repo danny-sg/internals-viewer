@@ -17,11 +17,11 @@ public sealed partial record ColumnStoreScanEvent : EngineEvent
     [EventProperty("Detail")]
     public string Summary { get; set; } = string.Empty;
 
-    [EventProperty("Time To Generate", Type = EventPropertyType.Microseconds)]
-    public long? TimeToGenerateUs { get; set; }
-
     public bool IsRowGroupRead
         => EventName is "column_store_rowgroup_read_issued" or "column_store_rowgroup_readahead_issued";
+
+    public bool IsRowGroupEvent
+        => IsRowGroupRead || EventName is "column_store_expression_filter_bitmap_set" or "column_store_rowgroup_skip_delete_buffer";
 
     public override string Name => DisplayName(EventName);
 
@@ -33,7 +33,6 @@ public sealed partial record ColumnStoreScanEvent : EngineEvent
         "column_store_rowgroup_readahead_issued" => "Rowgroup Read Ahead Issued",
         "column_store_fast_string_equals" => "Fast String Equals",
         "query_execution_wait_syncpoint" => "Batch Sync Point",
-        "large_cache_caching_decision" => "Object Pool Caching Decision",
         _ => FormatName(eventName)
     };
 

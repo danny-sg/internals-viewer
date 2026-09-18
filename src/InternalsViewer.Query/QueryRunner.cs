@@ -1,15 +1,14 @@
 ﻿using System.Diagnostics;
 using InternalsViewer.Internals.Engine.Database;
 using InternalsViewer.Query.CallStack;
+using InternalsViewer.Query.Events.BatchMode;
 using InternalsViewer.Query.Events.Consolidation;
-using InternalsViewer.Query.Events.Batches;
 using InternalsViewer.Query.Events.Operators;
 using InternalsViewer.Query.Events.Splits;
 using InternalsViewer.Query.Events.Transactions;
 using InternalsViewer.Query.Events;
 using InternalsViewer.Query.Extensions;
 using InternalsViewer.Query.Interfaces.Events;
-using InternalsViewer.Query.Parsing;
 using InternalsViewer.Query.Plans.Model;
 using InternalsViewer.Query.Plans;
 using InternalsViewer.Query.Results;
@@ -19,7 +18,9 @@ using Microsoft.Data.SqlClient;
 using InternalsViewer.Internals.Columnstore.Services;
 using InternalsViewer.Query.Plans.Operators;
 using InternalsViewer.Internals.Engine.Database.Enums;
+using InternalsViewer.Query.Events.Query;
 using Microsoft.Extensions.Logging;
+using InternalsViewer.Query.Parsing.Statements;
 
 namespace InternalsViewer.Query;
 
@@ -36,6 +37,8 @@ public sealed class QueryRunner(ILogger<QueryRunner> logger,
     private EventReader EventReader { get; } = eventReader;
 
     private LogRecordReader LogRecordReader { get; } = logRecordReader;
+
+    private ColumnstorePageMapper? ColumnstorePageMapper { get; } = columnstorePageMapper;
 
     public async Task<QueryResult> TraceQuery(ExecuteSqlPayload payload,
                                               DatabaseSource database,
@@ -167,7 +170,7 @@ public sealed class QueryRunner(ILogger<QueryRunner> logger,
 
             progress?.Report($"{events.Count} event(s) retrieved in {Stopwatch.GetElapsedTime(eventsStart)}");
 
-            await MapColumnstorePages(database, executionPlans, progress, cancellationToken);
+            await MapColumnstorePages(database, executionPlans, events, progress, cancellationToken);
 
             if (eventOptions.AutoDeleteTrace && !string.IsNullOrWhiteSpace(eventOptions.TraceDirectory))
             {
@@ -214,6 +217,8 @@ public sealed class QueryRunner(ILogger<QueryRunner> logger,
                     }
                 }
             }
+
+            ObjectPoolReadLinker.Link(events);
 
             ObjectPoolDurationStamper.Stamp(events);
 
@@ -293,13 +298,14 @@ public sealed class QueryRunner(ILogger<QueryRunner> logger,
 
     private async Task MapColumnstorePages(DatabaseSource database,
                                            List<ExecutionPlan>? executionPlans,
+                                           List<EngineEvent> events,
                                            IProgress<string>? progress,
                                            CancellationToken cancellationToken)
     {
         if (!ResolveColumnstorePages
             || executionPlans is null
             || columnstoreService is null
-            || columnstorePageMapper is null)
+            || ColumnstorePageMapper is null)
         {
             return;
         }
@@ -322,7 +328,9 @@ public sealed class QueryRunner(ILogger<QueryRunner> logger,
         {
             var index = await columnstoreService.GetIndex(unit, database, cancellationToken);
 
-            await columnstorePageMapper.MapAsync(database, index, cancellationToken);
+            var reads = await ColumnstorePageMapper.MapAsync(database, index, cancellationToken);
+
+            ObjectPoolPageLinker.Link(events, index.HobtId, reads, index.DeleteBitmapAllocationUnit);
         }
     }
 

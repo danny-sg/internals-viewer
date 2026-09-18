@@ -10,7 +10,7 @@ using InternalsViewer.Query.Events.Latches;
 using InternalsViewer.Query.Events.Locks;
 using InternalsViewer.Query.Events.Memory;
 using InternalsViewer.Query.Events.Reads;
-using InternalsViewer.Query.Parsing;
+using InternalsViewer.Query.Parsing.Statements;
 using InternalsViewer.Query.Tests.Helpers;
 using InternalsViewer.TransactionLog;
 using Microsoft.Data.SqlClient;

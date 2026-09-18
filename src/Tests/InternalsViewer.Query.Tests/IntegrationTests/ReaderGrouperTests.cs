@@ -3,13 +3,13 @@ using InternalsViewer.Internals.Engine.Database;
 using InternalsViewer.Internals.Readers.Pages;
 using InternalsViewer.Internals.Tests.Helpers;
 using InternalsViewer.Query.Events;
-using InternalsViewer.Query.Parsing;
 using InternalsViewer.Query.Tests.Helpers;
 using InternalsViewer.TransactionLog;
 using Microsoft.Extensions.Logging;
 using Xunit.Abstractions;
 using InternalsViewer.Query.Events.Reads;
 using InternalsViewer.Query.Events.Latches;
+using InternalsViewer.Query.Parsing.Statements;
 
 namespace InternalsViewer.Query.Tests.IntegrationTests;
 

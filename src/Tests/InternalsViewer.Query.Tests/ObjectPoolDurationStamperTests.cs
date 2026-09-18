@@ -1,3 +1,4 @@
+using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Query.Events;
 using InternalsViewer.Query.Events.BatchMode;
 using InternalsViewer.Query.Events.Consolidation;
@@ -19,19 +20,70 @@ public class ObjectPoolDurationStamperTests
 
         var secondRead = new ReadEventGroup { Events = [], SequenceId = 30, TimeUs = 1800, TaskAddress = 1, PlanNodeIdentifier = Scan };
 
-        var decision = new ColumnStoreScanEvent { EventName = "large_cache_caching_decision", SequenceId = 35, TimeUs = 2400, TaskAddress = 1 };
-
         var miss = new ObjectPoolEvent { IsHit = false, SequenceId = 40, TimeUs = 2500, TaskAddress = 1, PlanNodeIdentifier = Scan };
 
         var secondMiss = new ObjectPoolEvent { IsHit = false, SequenceId = 50, TimeUs = 2600, TaskAddress = 1, PlanNodeIdentifier = Scan };
 
-        ObjectPoolDurationStamper.Stamp([miss, secondRead, readIssued, decision, firstRead, secondMiss]);
+        ObjectPoolDurationStamper.Stamp([miss, secondRead, readIssued, firstRead, secondMiss]);
 
         Assert.Equal(1200, miss.TimeUs);
         Assert.Equal(1300, miss.DurationUs);
         Assert.Equal(firstRead.Timestamp, miss.Timestamp);
         Assert.Equal(2600, secondMiss.TimeUs);
         Assert.Equal(0, secondMiss.DurationUs);
+    }
+
+    [Fact]
+    public void Stamp_Uses_The_Reads_Of_A_Misss_Own_Pages_When_They_Are_Known()
+    {
+        var ownPage = new PageAddress(1, 100);
+
+        var otherPage = new PageAddress(1, 200);
+
+        var readAhead = new ReadEventGroup { Events = [], Pages = [ownPage], SequenceId = 1, TimeUs = 400, TaskAddress = 1, PlanNodeIdentifier = Scan };
+
+        var boundary = new ColumnStoreScanEvent { EventName = "column_store_rowgroup_read_issued", SequenceId = 2, TimeUs = 1000, TaskAddress = 1 };
+
+        var unrelated = new ReadEventGroup { Events = [], Pages = [otherPage], SequenceId = 3, TimeUs = 1200, TaskAddress = 1, PlanNodeIdentifier = Scan };
+
+        var miss = new ObjectPoolEvent { IsHit = false, Pages = [ownPage], SequenceId = 4, TimeUs = 2000, TaskAddress = 1, PlanNodeIdentifier = Scan };
+
+        var otherMiss = new ObjectPoolEvent { IsHit = false, Pages = [new PageAddress(1, 300)], SequenceId = 5, TimeUs = 2100, TaskAddress = 1, PlanNodeIdentifier = Scan };
+
+        EngineEvent[] events = [readAhead, boundary, unrelated, miss, otherMiss];
+
+        ObjectPoolReadLinker.Link(events);
+
+        ObjectPoolDurationStamper.Stamp(events);
+
+        Assert.Equal(400, miss.TimeUs);
+        Assert.Equal(1600, miss.DurationUs);
+        Assert.Equal(2100, otherMiss.TimeUs);
+        Assert.Equal(0, otherMiss.DurationUs);
+    }
+
+    [Fact]
+    public void Stamp_Stretches_A_Miss_Over_Reads_That_Preceded_It_In_Sequence_But_Were_Spread_Later()
+    {
+        var page = new PageAddress(1, 100);
+
+        var before = new ReadEventGroup { Events = [], Pages = [page], SequenceId = 1, TimeUs = 5_000, DurationUs = 50, TaskAddress = 1 };
+
+        var spreadLater = new ReadEventGroup { Events = [], Pages = [page], SequenceId = 2, TimeUs = 5_800, DurationUs = 100, TaskAddress = 1 };
+
+        var miss = new ObjectPoolEvent { IsHit = false, Pages = [page], SequenceId = 3, TimeUs = 5_500, TaskAddress = 1 };
+
+        var afterwards = new ReadEventGroup { Events = [], Pages = [page], SequenceId = 4, TimeUs = 9_000, DurationUs = 100, TaskAddress = 1 };
+
+        EngineEvent[] events = [before, spreadLater, miss, afterwards];
+
+        ObjectPoolReadLinker.Link(events);
+
+        ObjectPoolDurationStamper.Stamp(events);
+
+        Assert.Same(miss, afterwards.PoolLookup);
+        Assert.Equal(5_000, miss.TimeUs);
+        Assert.Equal(900, miss.DurationUs);
     }
 
     [Fact]

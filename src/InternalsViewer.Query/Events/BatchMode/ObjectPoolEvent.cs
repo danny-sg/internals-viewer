@@ -1,9 +1,12 @@
-using InternalsViewer.Query.Events.Properties;
+using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Query.Events.BatchMode.Enums;
+using InternalsViewer.Query.Events.Properties;
 
 namespace InternalsViewer.Query.Events.BatchMode;
 
-/// <summary>A lookup into the columnstore object pool for a segment or dictionary</summary>
+/// <summary>
+/// A lookup into the columnstore object pool for a segment or dictionary
+/// </summary>
 public sealed partial record ObjectPoolEvent : EngineEvent
 {
     [EventProperty("Hit")]
@@ -25,20 +28,33 @@ public sealed partial record ObjectPoolEvent : EngineEvent
 
     public override int ObjectId => PoolObjectId;
 
+    public IReadOnlyList<PageAddress> Pages { get; set; } = [];
+
     public override string Name => IsHit ? "Object Pool Hit" : "Object Pool Miss";
 
-    public override string Description => ColumnId < 0 ? $"{Name} ({ObjectTypeName})" : $"{Name} ({ObjectTypeName}, Column {ColumnId})";
+    public override string Description
+        => this switch
+        {
+            { ColumnId: < 0 } => $"{Name} ({ObjectTypeName})",
+            { RowGroupId: null } => $"{Name} ({ObjectTypeName}, Column {ColumnId})",
+            _ => $"{Name} ({ObjectTypeName}, Rowgroup: {RowGroupId}, Column {ColumnId})"
+        };
 
     public override string Detail
-        => $"{Description} - {(IsHit ? "Served from the columnstore object pool" : "Loaded from LOB storage into the columnstore object pool")}";
+        => $"{Description}";
 
     private string ObjectTypeName => ObjectType switch
     {
-        ColumnStoreObjectType.ColumnSegment => "Segment",
-        ColumnStoreObjectType.PrimaryDictionary => "Primary Dictionary",
-        ColumnStoreObjectType.SecondaryDictionary => "Secondary Dictionary",
-        ColumnStoreObjectType.BulkInsertDictionary => "Bulk Insert Dictionary",
-        ColumnStoreObjectType.DeleteBitmap => "Delete Bitmap",
+        ColumnStoreObjectType.ColumnSegment 
+            => "Segment",
+        ColumnStoreObjectType.PrimaryDictionary 
+            => "Primary Dictionary",
+        ColumnStoreObjectType.SecondaryDictionary 
+            => "Secondary Dictionary",
+        ColumnStoreObjectType.BulkInsertDictionary 
+            => "Bulk Insert Dictionary",
+        ColumnStoreObjectType.DeleteBitmap 
+            => "Delete Bitmap",
         _ => "Object"
     };
 }

@@ -1,13 +1,13 @@
 ﻿using InternalsViewer.Internals.Engine.Database;
 using InternalsViewer.Query.Interfaces.Events;
 
-namespace InternalsViewer.Query.Events.Batches;
+namespace InternalsViewer.Query.Events.Query;
 
-internal class BatchStartEventParser : IEventParser<BatchStartEvent>
+internal class BatchEndEventParser : IEventParser<BatchEndEvent>
 {
-    public static BatchStartEvent Map(DatabaseSource? databaseSource, EventResult e)
+    public static BatchEndEvent Map(DatabaseSource? databaseSource, EventResult e)
     {
-        return new BatchStartEvent
+        return new BatchEndEvent
         {
             Name = e.Name,
             Timestamp = e.Timestamp,

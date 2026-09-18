@@ -1,5 +1,5 @@
-﻿using InternalsViewer.Query.Events.Parsers;
-using InternalsViewer.Query.Events.Parsers.Xml;
+﻿using InternalsViewer.Query.Events.Parsing;
+using InternalsViewer.Query.Events.Parsing.Xml;
 
 namespace InternalsViewer.Query.Tests;
 

@@ -1,7 +1,7 @@
 using System.Globalization;
 using InternalsViewer.Query.CallStack;
 
-namespace InternalsViewer.Query.Events.Parsers.Xml;
+namespace InternalsViewer.Query.Events.Parsing.Xml;
 
 /// <summary>
 /// Parses call stack frames specifically for the event XML call stack format

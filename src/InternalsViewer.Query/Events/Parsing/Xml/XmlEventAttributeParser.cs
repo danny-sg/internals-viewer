@@ -1,4 +1,4 @@
-﻿namespace InternalsViewer.Query.Events.Parsers.Xml;
+﻿namespace InternalsViewer.Query.Events.Parsing.Xml;
 
 internal sealed class XmlEventAttributeParser
 {

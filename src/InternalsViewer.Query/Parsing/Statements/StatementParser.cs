@@ -1,6 +1,6 @@
 ﻿using Microsoft.SqlServer.TransactSql.ScriptDom;
 
-namespace InternalsViewer.Query.Parsing;
+namespace InternalsViewer.Query.Parsing.Statements;
 
 public sealed class StatementParser
 {

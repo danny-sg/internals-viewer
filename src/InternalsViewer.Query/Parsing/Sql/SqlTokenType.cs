@@ -1,4 +1,4 @@
-﻿namespace InternalsViewer.Query.Parsing;
+﻿namespace InternalsViewer.Query.Parsing.Sql;
 
 /// <summary>
 /// The role a piece of SQL text plays, used to drive formatting
