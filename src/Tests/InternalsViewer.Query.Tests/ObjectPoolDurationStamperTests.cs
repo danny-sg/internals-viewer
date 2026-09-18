@@ -106,4 +106,36 @@ public class ObjectPoolDurationStamperTests
         Assert.Equal(1000, hit.TimeUs);
         Assert.Equal(0, hit.DurationUs);
     }
+
+    [Fact]
+    public void Stamp_Does_Not_Stretch_A_Miss_Back_To_Its_Read_Ahead()
+    {
+        var page = new PageAddress(1, 100);
+
+        var readAhead = new ReadEventGroup
+        {
+            Events = [],
+            Pages = [page],
+            ReadType = ReadType.NonCached,
+            SequenceId = 1,
+            TimeUs = 100,
+            DurationUs = 50,
+            TaskAddress = 1,
+        };
+
+        var earlierMiss = new ObjectPoolEvent { IsHit = false, Pages = [new PageAddress(1, 300)], SequenceId = 2, TimeUs = 500, TaskAddress = 1 };
+
+        var build = new ReadEventGroup { Events = [], Pages = [page], ReadType = ReadType.Cached, SequenceId = 3, TimeUs = 9_000, TaskAddress = 1 };
+
+        var miss = new ObjectPoolEvent { IsHit = false, Pages = [page], SequenceId = 4, TimeUs = 9_400, TaskAddress = 1 };
+
+        EngineEvent[] events = [readAhead, earlierMiss, build, miss];
+
+        ObjectPoolReadLinker.Link(events);
+
+        ObjectPoolDurationStamper.Stamp(events);
+
+        Assert.Equal(9_000, miss.TimeUs);
+        Assert.Equal(400, miss.DurationUs);
+    }
 }

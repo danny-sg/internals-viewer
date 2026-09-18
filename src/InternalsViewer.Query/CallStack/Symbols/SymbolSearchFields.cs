@@ -1,4 +1,4 @@
-namespace InternalsViewer.Query.CallStack;
+namespace InternalsViewer.Query.CallStack.Symbols;
 
 /// <summary>
 /// The parts of a symbol a search text is matched against

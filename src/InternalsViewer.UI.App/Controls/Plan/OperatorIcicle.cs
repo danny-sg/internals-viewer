@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using InternalsViewer.Query.CallStack;
+using InternalsViewer.Query.CallStack.Categories;
 using InternalsViewer.Query.Events;
 using InternalsViewer.Query.Events.Operators;
 
@@ -144,7 +145,10 @@ public static class OperatorIcicle
 
         for (var i = bottom; i < path.Count; i++)
         {
-            weights[path[i]] = weights.GetValueOrDefault(path[i]) + 1;
+            if (path[i].Frame?.Resolved?.SymbolCategory != SymbolCategory.XEventInfrastructure)
+            {
+                weights[path[i]] = weights.GetValueOrDefault(path[i]) + 1;
+            }
         }
     }
 

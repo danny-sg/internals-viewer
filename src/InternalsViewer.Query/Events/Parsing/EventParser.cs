@@ -68,7 +68,11 @@ public sealed class EventParser
             "column_store_object_pool_hit"
                 or "column_store_object_pool_miss"
                 => ObjectPoolEventParser.Map(database, e),
+            ColumnstoreFilterEvent.BatchFilter
+                or ColumnstoreFilterEvent.ExpressionFilterApply
+                => ColumnstoreFilterEventParser.Map(database, e),
             "query_execution_wait_syncpoint"
+                or "query_execution_column_store_rowgroup_scan_finished"
                 => ColumnStoreScanEventParser.Map(database, e),
             var n when n.StartsWith("column_store_")
                 => ColumnStoreScanEventParser.Map(database, e),

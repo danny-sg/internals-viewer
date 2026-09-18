@@ -35,7 +35,7 @@ public static class ObjectPoolDurationStamper
 
         foreach (var engineEvent in events.OrderBy(e => e.SequenceId))
         {
-            var task = engineEvent.TaskAddress ?? engineEvent.WorkerAddress ?? (ulong)engineEvent.ThreadId;
+            var task = engineEvent.TaskKey();
 
             switch (engineEvent)
             {
@@ -75,6 +75,11 @@ public static class ObjectPoolDurationStamper
 
                     break;
 
+                case ColumnStoreScanEvent { IsRowGroupReadAhead: true }:
+                case ReadEventGroup { IsReadAhead: true }:
+                case ReadEventGroup { IsAllocationPage: true }:
+                    break;
+
                 case ObjectPoolEvent or ColumnStoreScanEvent or SegmentScanEvent or SegmentEliminateEvent:
                     ClearTask(firstReads, task);
 
@@ -94,7 +99,7 @@ public static class ObjectPoolDurationStamper
 
         foreach (var read in events.OfType<ReadEventGroup>())
         {
-            if (read.PoolLookup is not { } lookup || read.SequenceId > lookup.SequenceId)
+            if (read.PoolLookup is not { } lookup || read.IsReadAhead || read.SequenceId > lookup.SequenceId)
             {
                 continue;
             }

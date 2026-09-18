@@ -13,9 +13,6 @@ public sealed partial record BatchModeEvent : EngineEvent
     [EventProperty("Local Aggregation")]
     public bool? IsLocalAggregationUsed { get; init; }
 
-    [EventProperty("Prefiltered")]
-    public bool? IsPrefiltered { get; init; }
-
     [EventProperty("Global Dictionary")]
     public bool? IsGlobalDictionaryUsed { get; init; }
 

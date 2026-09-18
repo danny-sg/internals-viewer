@@ -34,6 +34,8 @@ using InternalsViewer.UI.App.Services.Query.Debugging;
 using InternalsViewer.UI.App.ViewModels.Query.CallStack;
 using InternalsViewer.UI.App.ViewModels.Query.Trace;
 using InternalsViewer.UI.App.ViewModels.Columnstore;
+using InternalsViewer.UI.App.Controls.Timeline.Definition;
+using InternalsViewer.UI.App.Services.Query.Timeline;
 using InternalsViewer.UI.App.ViewModels.Index;
 using InternalsViewer.UI.App.ViewModels.Query.Events;
 using InternalsViewer.UI.App.ViewModels.Tabs;
@@ -100,6 +102,8 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
     private readonly TraceTabViewModelFactory _traceTabViewModelFactory;
 
     private readonly WinDbgService _winDbgService;
+
+    private readonly TimelineDefinitionBuilder _timelineDefinitionBuilder = TimelineDefinitionBuilder.CreateDefault();
 
     private readonly Dictionary<string, TraceTabViewModel> _openTraces = [];
 
@@ -181,7 +185,7 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
     private List<EngineEvent> _filteredEvents = [];
 
     [ObservableProperty]
-    private List<EngineEvent> _planEvents = [];
+    private TimelineDefinition _timelineDefinition = TimelineDefinition.Empty;
 
     [ObservableProperty]
     private EventColourProvider _eventColours = new([]);
@@ -845,21 +849,25 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
     {
         FilteredEvents = [.. Events.Where(IsEventVisible)];
 
-        RefreshPlanEvents();
+        RefreshTimelineDefinition();
 
         RefreshLayers(FilteredEvents);
     }
 
-    private void RefreshPlanEvents() => PlanEvents = [.. Events.Where(IsPlanEventVisible)];
+    private void RefreshTimelineDefinition()
+    {
+        var visibility = new TimelineBandVisibility(QueryOptions.ShowLocks, QueryOptions.ShowLatches, QueryOptions.ShowWaits);
+
+        TimelineDefinition = _timelineDefinitionBuilder.Build(Events, visibility, IsEventVisible);
+    }
 
     private void OnQueryOptionChanged(object? sender, PropertyChangedEventArgs e)
     {
-        if (e.PropertyName is nameof(QueryOptionsViewModel.ShowWaits)
+        if (e.PropertyName is nameof(QueryOptionsViewModel.ShowLocks)
                            or nameof(QueryOptionsViewModel.ShowLatches)
-                           or nameof(QueryOptionsViewModel.IncludeColumnstore)
-                           or nameof(QueryOptionsViewModel.IncludeMemory))
+                           or nameof(QueryOptionsViewModel.ShowWaits))
         {
-            RefreshPlanEvents();
+            RefreshTimelineDefinition();
         }
     }
 
@@ -877,7 +885,7 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
         Events = [];
         FilteredEvents = [];
-        PlanEvents = [];
+        TimelineDefinition = TimelineDefinition.Empty;
         CallStack = null;
         SelectedEvent = null;
 
@@ -1794,7 +1802,7 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
         Events = [];
         FilteredEvents = [];
-        PlanEvents = [];
+        TimelineDefinition = TimelineDefinition.Empty;
         CallStack = null;
         SelectedEvent = null;
         ExecutionPlans = [];
@@ -1842,28 +1850,6 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
             LockEscalationEvent esc => QueryOptions.Includes(LockModeClassifier.Categorise(esc.LockMode)),
 
-            _ => true,
-        };
-    }
-
-    private bool IsPlanEventVisible(EngineEvent engineEvent)
-    {
-        if (engineEvent is ExecutionOperatorEvent)
-        {
-            return true;
-        }
-
-        if (!IsEventVisible(engineEvent))
-        {
-            return false;
-        }
-
-        return engineEvent switch
-        {
-            WaitEvent => QueryOptions.ShowWaits,
-            LatchEvent => QueryOptions.ShowLatches,
-            MemoryEvent => QueryOptions.IncludeMemory,
-            SegmentScanEvent or SegmentEliminateEvent or ObjectPoolEvent or ColumnStoreScanEvent => QueryOptions.IncludeColumnstore,
             _ => true,
         };
     }

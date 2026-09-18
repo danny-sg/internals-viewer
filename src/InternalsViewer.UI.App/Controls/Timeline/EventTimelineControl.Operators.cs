@@ -23,7 +23,7 @@ public sealed partial class EventTimelineControl
     private const float DataAccessMinFill = 0.15f;
 
     // Cost-weighted slot sizing: the statement band's fixed share, and the min/max weight a costed operator maps to.
-    private const float StatementBandWeight = 0.5f;
+    private const float StatementLaneWeight = 0.5f;
     private const float MinCostWeight = 0.35f;
     private const float MaxCostWeight = 1.5f;
 
@@ -33,21 +33,13 @@ public sealed partial class EventTimelineControl
     // Lays out the operator bars for this frame: a cost-weighted vertical slot per operator, with the bar sized within
     // its slot by kind (thin for buffer operators, row-count-scaled for data access, full for the rest). Shared by the
     // trace rails (which drop from a bar) and the operator bar drawing.
-    private List<OperatorBar> BuildOperatorBars(float[] rowTops, float[] rowHeights)
+    private List<OperatorBar> BuildOperatorBars(float[] bandTops, float[] bandHeights)
     {
-        var rows = _rows.Active;
+        var bands = _bands.Active;
 
-        var planRow = -1;
+        var planBand = _bands.IndexOf(typeof(ExecutionOperatorEvent));
 
-        for (var r = 0; r < rows.Count; r++)
-        {
-            if (rows[r].EventType == typeof(ExecutionOperatorEvent))
-            {
-                planRow = r; break;
-            }
-        }
-
-        if (planRow < 0)
+        if (planBand < 0)
         {
             return [];
         }
@@ -62,8 +54,8 @@ public sealed partial class EventTimelineControl
         var maxCost = _maxCost;
         var maxRows = _maxRows;
 
-        var top = rowTops[planRow] + RowPadding;
-        var height = rowHeights[planRow] - RowPadding * 2;
+        var top = bandTops[planBand] + BandPadding;
+        var height = bandHeights[planBand] - BandPadding * 2;
 
         var weights = new float[ordered.Count];
 
@@ -74,18 +66,18 @@ public sealed partial class EventTimelineControl
 
         var totalWeight = weights.Sum();
 
-        var slotHeights = OperatorSlotLayout.Resolve(weights, totalWeight, height);
+        var laneHeights = OperatorLaneLayout.Resolve(weights, totalWeight, height);
 
-        var slotByIndex = new Dictionary<int, (float Y, float Height)>(ordered.Count);
+        var laneByIndex = new Dictionary<int, (float Y, float Height)>(ordered.Count);
 
-        var slotAcc = top;
+        var laneAcc = top;
 
         for (var i = 0; i < ordered.Count; i++)
         {
-            var slot = slotHeights[i];
+            var lane = laneHeights[i];
 
-            slotByIndex[ordered[i].Index] = (slotAcc + slot / 2f, slot);
-            slotAcc += slot;
+            laneByIndex[ordered[i].Index] = (laneAcc + lane / 2f, lane);
+            laneAcc += lane;
         }
 
         var bars = new List<OperatorBar>(ordered.Count);
@@ -104,7 +96,7 @@ public sealed partial class EventTimelineControl
             endX += SparseMarkerWidth;
 
             var level = op.NodeLevel;
-            var (y, slotHeight) = slotByIndex[index];
+            var (y, laneHeight) = laneByIndex[index];
 
             SKColor barColour;
 
@@ -118,28 +110,28 @@ public sealed partial class EventTimelineControl
                 // Fall back to the row colour when there's no colour provider yet.
                 barColour = ColourProvider is { } colours
                     ? colours.GetColour(op).ToSkColor()
-                    : rows[planRow].Color;
+                    : bands[planBand].Colour;
             }
 
             // Lay the bar out within the slot. Buffer operators collapse to a thin bar; everything else
             // fills the slot less a margin.
-            var slotTop = y - slotHeight / 2f;
-            var slotBottom = y + slotHeight / 2f;
+            var laneTop = y - laneHeight / 2f;
+            var laneBottom = y + laneHeight / 2f;
 
             // In Trace mode add extra padding so stacked bars leave a gap for the trace lines to show.
             var effectiveMargin = OperatorLineMargin + TraceStackGap;
 
             var pad = effectiveMargin / 2f;
 
-            var availTop = slotTop + pad;
-            var availBottom = Math.Max(availTop + 1f, slotBottom - pad);
+            var availTop = laneTop + pad;
+            var availBottom = Math.Max(availTop + 1f, laneBottom - pad);
 
             float barTop, barBottom;
 
             if (op.Category == OperatorCategory.Buffer)
             {
                 // Collapse buffer operators (spool/sort/exchange) to a thin bar centred in the band.
-                var barHeight = Math.Max(1f, (slotHeight - effectiveMargin) * BufferHeightScale);
+                var barHeight = Math.Max(1f, (laneHeight - effectiveMargin) * BufferHeightScale);
                 var centre = (availTop + availBottom) / 2f;
                 barTop = centre - barHeight / 2f;
                 barBottom = centre + barHeight / 2f;
@@ -168,7 +160,7 @@ public sealed partial class EventTimelineControl
             var cornerRadius = Math.Min(lineWidth / 2f, 3f);
 
             bars.Add(new OperatorBar(op, startX, endX, barTop, barBottom, barCentreY,
-                                     lineWidth, cornerRadius, y, slotHeight, barColour));
+                                     lineWidth, cornerRadius, y, laneHeight, barColour));
         }
 
         return bars;
@@ -177,7 +169,7 @@ public sealed partial class EventTimelineControl
         {
             if (op.NodeLevel == 0)
             {
-                return StatementBandWeight;
+                return StatementLaneWeight;
             }
 
             if (maxCost <= 0)

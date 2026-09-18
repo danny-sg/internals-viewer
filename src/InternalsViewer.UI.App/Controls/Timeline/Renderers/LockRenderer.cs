@@ -35,7 +35,7 @@ internal sealed class LockRenderer(RenderResource resources, CurrentSelection se
 
     private const float EscalationOutlineWidth = 1.5f;
 
-    private const float BandGap = 1f;
+    private const float SubBandGap = 1f;
 
     private static readonly SKColor EscalationOutlineColour = new(10, 10, 10, 235);
 
@@ -43,20 +43,20 @@ internal sealed class LockRenderer(RenderResource resources, CurrentSelection se
 
     public void Draw(SKCanvas canvas, TimelineFrame frame)
     {
-        var lockRow = frame.Rows.IndexOf(typeof(LockEvent));
+        var lockBand = frame.Bands.IndexOf(typeof(LockEvent));
 
-        if (lockRow < 0)
+        if (lockBand < 0)
         {
             return;
         }
 
-        var innerTop = frame.RowTops[lockRow] + frame.RowPadding;
-        var innerHeight = frame.RowHeights[lockRow] - frame.RowPadding * 2;
+        var innerTop = frame.BandTops[lockBand] + frame.BandPadding;
+        var innerHeight = frame.BandHeights[lockBand] - frame.BandPadding * 2;
         var rightEdge = frame.CanvasWidth;
 
-        var locks = frame.Events.OfType<LockGroup>()
+        var locks = frame.Definition.Events.OfType<LockGroup>()
                                 .SelectMany(g => g.Events.OfType<LockEvent>())
-                                .Concat(frame.Events.OfType<LockEvent>());
+                                .Concat(frame.Definition.Events.OfType<LockEvent>());
 
         // Locks grouped into category and intent, ordered by category and intent, replicating lock hierarchy
         var categories = locks.GroupBy(l => (Category: LockModeClassifier.Categorise(l.LockMode),
@@ -71,23 +71,23 @@ internal sealed class LockRenderer(RenderResource resources, CurrentSelection se
             return;
         }
 
-        var bandHeight = (innerHeight - BandGap * (categories.Count - 1)) / categories.Count;
+        var subBandHeight = (innerHeight - SubBandGap * (categories.Count - 1)) / categories.Count;
 
         var cursorY = innerTop;
 
         foreach (var category in categories)
         {
-            var bandTop = cursorY;
+            var subBandTop = cursorY;
 
-            cursorY += bandHeight + BandGap;
+            cursorY += subBandHeight + SubBandGap;
 
-            var bandLocks = category.OrderBy(l => l.TimeUs).ToList();
+            var subBandLocks = category.OrderBy(l => l.TimeUs).ToList();
 
-            var colour = TimelineColours.LockModeColour(bandLocks[0].LockMode);
+            var colour = TimelineColours.LockModeColour(subBandLocks[0].LockMode);
 
-            var isDimmed = bandLocks.All(selection.ShouldDim);
+            var isDimmed = subBandLocks.All(selection.ShouldDim);
 
-            DrawCategory(canvas, frame, bandLocks, bandTop, bandHeight, colour, rightEdge, isDimmed, category.Key.Intent);
+            DrawCategory(canvas, frame, subBandLocks, subBandTop, subBandHeight, colour, rightEdge, isDimmed, category.Key.Intent);
         }
 
         DrawEscalationPoints(canvas, frame, innerTop, innerHeight);
@@ -98,14 +98,14 @@ internal sealed class LockRenderer(RenderResource resources, CurrentSelection se
     private void DrawCategory(SKCanvas canvas,
                               TimelineFrame frame,
                               IReadOnlyList<LockEvent> locks,
-                              float bandTop,
-                              float bandHeight,
+                              float subBandTop,
+                              float subBandHeight,
                               SKColor colour,
                               float rightEdge,
                               bool isDimmed,
                               bool intent)
     {
-        var x0 = (int)MathF.Floor(frame.RowLabelWidth);
+        var x0 = (int)MathF.Floor(frame.BandLabelWidth);
         var x1 = (int)MathF.Ceiling(rightEdge);
 
         var span = x1 - x0;
@@ -130,7 +130,7 @@ internal sealed class LockRenderer(RenderResource resources, CurrentSelection se
                 endX = startX + MarkerWidth;
             }
 
-            if (endX < frame.RowLabelWidth || startX > rightEdge)
+            if (endX < frame.BandLabelWidth || startX > rightEdge)
             {
                 continue;
             }
@@ -147,7 +147,7 @@ internal sealed class LockRenderer(RenderResource resources, CurrentSelection se
             concurrency[start]++;
             concurrency[Math.Min(end, span)]--;
 
-            hitRegions.Add(new HitRegion(new SKRect(startX - 1, bandTop, endX + 1, bandTop + bandHeight), lockEvent, null));
+            hitRegions.Add(new HitRegion(new SKRect(startX - 1, subBandTop, endX + 1, subBandTop + subBandHeight), lockEvent, null));
         }
 
         var running = 0;
@@ -170,7 +170,7 @@ internal sealed class LockRenderer(RenderResource resources, CurrentSelection se
             return;
         }
 
-        var bandBottom = bandTop + bandHeight;
+        var subBandBottom = subBandTop + subBandHeight;
 
         resources.Fill.Color = colour.WithAlpha(isDimmed ? DimAlpha : intent ? IntentLockBarAlpha : LockBarAlpha);
 
@@ -183,9 +183,9 @@ internal sealed class LockRenderer(RenderResource resources, CurrentSelection se
                 continue;
             }
 
-            var height = MinLockBarHeight + (bandHeight - MinLockBarHeight) * MathF.Sqrt((float)count / peak);
+            var height = MinLockBarHeight + (subBandHeight - MinLockBarHeight) * MathF.Sqrt((float)count / peak);
 
-            canvas.DrawRect(x0 + i, bandBottom - height, 1f, height, resources.Fill);
+            canvas.DrawRect(x0 + i, subBandBottom - height, 1f, height, resources.Fill);
         }
     }
 
@@ -194,7 +194,7 @@ internal sealed class LockRenderer(RenderResource resources, CurrentSelection se
     /// </summary>
     private void DrawEscalationPoints(SKCanvas canvas, TimelineFrame frame, float top, float height)
     {
-        var events = frame.Events;
+        var events = frame.Definition.Events;
 
         for (var i = 0; i < events.Count; i++)
         {
@@ -205,7 +205,7 @@ internal sealed class LockRenderer(RenderResource resources, CurrentSelection se
 
             var x = frame.TimeToX(frame.Times[i]);
 
-            if (x < frame.RowLabelWidth || x > frame.CanvasWidth)
+            if (x < frame.BandLabelWidth || x > frame.CanvasWidth)
             {
                 continue;
             }

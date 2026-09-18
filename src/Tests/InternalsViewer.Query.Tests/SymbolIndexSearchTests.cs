@@ -1,5 +1,5 @@
-﻿using InternalsViewer.Query.CallStack;
-using InternalsViewer.Query.CallStack.Dia;
+﻿using InternalsViewer.Query.CallStack.Dia;
+using InternalsViewer.Query.CallStack.Symbols;
 
 namespace InternalsViewer.Query.Tests;
 

@@ -37,6 +37,12 @@ public sealed partial record ReadEventGroup : PageEngineEvent, IEventGroup
 
     public ObjectPoolEvent? PoolLookup { get; set; }
 
+    [EventProperty("Read Ahead")]
+    public bool IsReadAhead { get; set; }
+
+    [EventProperty("Allocation Page")]
+    public bool IsAllocationPage { get; set; }
+
     public override string Description
     {
         get

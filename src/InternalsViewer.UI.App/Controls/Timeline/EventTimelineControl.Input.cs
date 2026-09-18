@@ -60,7 +60,7 @@ public sealed partial class EventTimelineControl
 
     private void OnPointerPressed(object sender, PointerRoutedEventArgs e)
     {
-        if (_sortedEvents.Count == 0)
+        if (_definition.Events.Count == 0)
         {
             return;
         }
@@ -232,7 +232,7 @@ public sealed partial class EventTimelineControl
             return;
         }
 
-        var x = Math.Clamp(e.GetCurrentPoint(_overlay).Position.X, RowLabelWidth, CanvasWidth);
+        var x = Math.Clamp(e.GetCurrentPoint(_overlay).Position.X, BandLabelWidth, CanvasWidth);
 
         var t = XToTime(x);
 
@@ -400,7 +400,7 @@ public sealed partial class EventTimelineControl
 
     private void OnPointerWheelChanged(object sender, PointerRoutedEventArgs e)
     {
-        if (_sortedEvents.Count == 0)
+        if (_definition.Events.Count == 0)
         {
             return;
         }
@@ -429,7 +429,7 @@ public sealed partial class EventTimelineControl
         _zoom = newZoom;
 
         // Keep the time under the cursor pinned as the axis stretches.
-        _scrollX = RowLabelWidth + (timeAtCursor - _minTime) / _timeRange * ContentWidth - cursorX;
+        _scrollX = BandLabelWidth + (timeAtCursor - _minTime) / _timeRange * ContentWidth - cursorX;
 
         ClampScroll();
 

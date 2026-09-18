@@ -2,7 +2,7 @@ using System.Collections.Generic;
 using InternalsViewer.Query.Events;
 using InternalsViewer.Query.Events.BatchMode;
 
-namespace InternalsViewer.UI.App.Controls.Timeline;
+namespace InternalsViewer.UI.App.Services.Query.Timeline;
 
 /// <summary>
 /// Assigns each segment scan a lane within the Segment Scan row so column scans of the same row group that overlap in
@@ -13,23 +13,36 @@ namespace InternalsViewer.UI.App.Controls.Timeline;
 /// scans running side by side each get their own lane while scans of different row groups share lanes freely. The lane count is the widest
 /// row group, which sets the row's minimum height.
 /// </remarks>
-internal sealed class SegmentScanLanes
+internal sealed class SegmentScanTracks
 {
-    public const float MinLaneHeight = 6f;
+    public const float MinTrackHeight = 6f;
 
-    private int[] _lanes = [];
+    private int[] _tracks = [];
 
-    public int LaneCount { get; private set; } = 1;
+    public int TrackCount { get; private set; } = 1;
 
-    public int LaneOf(int eventIndex) => eventIndex >= 0 && eventIndex < _lanes.Length ? _lanes[eventIndex] : 0;
+    public int TrackOf(int eventIndex) => eventIndex >= 0 && eventIndex < _tracks.Length ? _tracks[eventIndex] : 0;
 
-    public float MinRowHeight(float rowPadding) => LaneCount * MinLaneHeight * 2 + rowPadding * 2;
+    public static int FreeTrack(List<long> trackEnds, long start)
+    {
+        for (var track = 0; track < trackEnds.Count; track++)
+        {
+            if (trackEnds[track] <= start)
+            {
+                return track;
+            }
+        }
+
+        trackEnds.Add(start);
+
+        return trackEnds.Count - 1;
+    }
 
     public void Rebuild(IReadOnlyList<EngineEvent> events)
     {
-        _lanes = new int[events.Count];
+        _tracks = new int[events.Count];
 
-        LaneCount = 1;
+        TrackCount = 1;
 
         var rowGroups = new Dictionary<(int NodeId, long RowGroupId), List<int>>();
 
@@ -52,28 +65,28 @@ internal sealed class SegmentScanLanes
             indexes.Add(i);
         }
 
-        var laneEnds = new List<long>();
+        var trackEnds = new List<long>();
 
         foreach (var indexes in rowGroups.Values)
         {
             indexes.Sort((a, b) => CompareScans((SegmentScanEvent)events[a], (SegmentScanEvent)events[b]));
 
-            laneEnds.Clear();
+            trackEnds.Clear();
 
             foreach (var index in indexes)
             {
                 var scan = events[index];
 
-                var lane = FreeLane(laneEnds, scan.TimeUs);
+                var track = FreeTrack(trackEnds, scan.TimeUs);
 
-                _lanes[index] = lane;
+                _tracks[index] = track;
 
-                laneEnds[lane] = scan.TimeUs + scan.DurationUs;
+                trackEnds[track] = scan.TimeUs + scan.DurationUs;
             }
 
-            if (laneEnds.Count > LaneCount)
+            if (trackEnds.Count > TrackCount)
             {
-                LaneCount = laneEnds.Count;
+                TrackCount = trackEnds.Count;
             }
         }
     }
@@ -83,20 +96,5 @@ internal sealed class SegmentScanLanes
         var byTime = a.TimeUs.CompareTo(b.TimeUs);
 
         return byTime != 0 ? byTime : a.ColumnId.CompareTo(b.ColumnId);
-    }
-
-    private static int FreeLane(List<long> laneEnds, long start)
-    {
-        for (var lane = 0; lane < laneEnds.Count; lane++)
-        {
-            if (laneEnds[lane] <= start)
-            {
-                return lane;
-            }
-        }
-
-        laneEnds.Add(start);
-
-        return laneEnds.Count - 1;
     }
 }

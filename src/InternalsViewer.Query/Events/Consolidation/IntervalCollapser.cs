@@ -110,10 +110,10 @@ public static class IntervalCollapser
     }
 
     private static void FoldByKey<TKey>(IReadOnlyList<EngineEvent> events,
-                                  HashSet<EngineEvent> dropped,
-                                  Func<EngineEvent, TKey?> begin,
-                                  Func<EngineEvent, TKey?> end,
-                                  Action<EngineEvent, EngineEvent>? onPair = null)
+                                        HashSet<EngineEvent> dropped,
+                                        Func<EngineEvent, TKey?> begin,
+                                        Func<EngineEvent, TKey?> end,
+                                        Action<EngineEvent, EngineEvent>? onPair = null)
         where TKey : struct
     {
         onPair ??= static (b, e) => b.DurationUs = e.DurationUs;

@@ -11,8 +11,5 @@
                                    VerticalAlignment="Stretch"
                                    HorizontalAlignment="Stretch"
                                    ColourProvider="{x:Bind ViewModel.EventColours, Mode=OneWay}"
-                                   ShowLocks="{x:Bind ViewModel.QueryOptions.ShowLocks, Mode=OneWay}"
-                                   ShowLatches="{x:Bind ViewModel.QueryOptions.ShowLatches, Mode=OneWay}"
-                                   ShowWaits="{x:Bind ViewModel.QueryOptions.ShowWaits, Mode=OneWay}"
-                                   Events="{x:Bind ViewModel.FilteredEvents, Mode=OneWay}" />
+                                   Definition="{x:Bind ViewModel.TimelineDefinition, Mode=OneWay}" />
 </UserControl>

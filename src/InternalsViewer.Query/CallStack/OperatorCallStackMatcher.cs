@@ -109,7 +109,67 @@ public static class OperatorCallStackMatcher
             }
         }
 
+        AddFoldedEntryFrames(hierarchy, leavesByNode, subtrees, nodesByFrame, entryFrames);
+
         return entryFrames;
+    }
+
+    private static void AddFoldedEntryFrames(OperatorHierarchy hierarchy,
+                                             Dictionary<PlanNodeIdentifier, List<CallStackNode>> leavesByNode,
+                                             Dictionary<PlanNodeIdentifier, HashSet<PlanNodeIdentifier>> subtrees,
+                                             Dictionary<CallStackNode, HashSet<PlanNodeIdentifier>> nodesByFrame,
+                                             Dictionary<PlanNodeIdentifier, List<CallStackNode>> entryFrames)
+    {
+        var planOperators = hierarchy.Operators.Select(o => o.Name).Distinct().ToList();
+
+        foreach (var (node, leaves) in leavesByNode)
+        {
+            if (hierarchy.At(node) is not { } operatorEvent
+                || !entryFrames.TryGetValue(node, out var frames)
+                || frames.Count == 0)
+            {
+                continue;
+            }
+
+            List<CallStackNode> aligned = [.. frames];
+
+            foreach (var leaf in leaves)
+            {
+                if (!leaf.Ancestors().Any(aligned.Contains)
+                    && FoldedEntry(leaf, planOperators) is { } folded
+                    && Owns(folded, operatorEvent, subtrees, nodesByFrame))
+                {
+                    Assign(entryFrames, operatorEvent, folded);
+                }
+            }
+        }
+    }
+
+    private static CallStackNode? FoldedEntry(CallStackNode leaf, List<string> planOperators)
+    {
+        CallStackNode? run = null;
+
+        foreach (var frame in leaf.Ancestors())
+        {
+            if (!frame.IsOperatorBoundary)
+            {
+                if (run is not null)
+                {
+                    return run;
+                }
+
+                continue;
+            }
+
+            if (planOperators.Any(frame.IsEntryFrameFor))
+            {
+                return run;
+            }
+
+            run = frame;
+        }
+
+        return run;
     }
 
     /// <summary>

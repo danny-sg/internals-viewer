@@ -20,64 +20,54 @@ public static class ObjectPoolReadLinker
     {
         var lookupsByPage = new Dictionary<PageAddress, List<ObjectPoolEvent>>();
 
-        var missesByTask = new Dictionary<ulong, List<ObjectPoolEvent>>();
+        var lookupsByTask = new Dictionary<ulong, List<ObjectPoolEvent>>();
 
         foreach (var pool in events.OfType<ObjectPoolEvent>().OrderBy(e => e.SequenceId))
         {
+            GetOrAdd(lookupsByTask, pool.TaskKey()).Add(pool);
+
             foreach (var page in pool.Pages)
             {
-                if (!lookupsByPage.TryGetValue(page, out var lookups))
-                {
-                    lookups = [];
-
-                    lookupsByPage[page] = lookups;
-                }
-
-                lookups.Add(pool);
+                GetOrAdd(lookupsByPage, page).Add(pool);
             }
-
-            if (pool.IsHit)
-            {
-                continue;
-            }
-
-            if (!missesByTask.TryGetValue(TaskOf(pool), out var misses))
-            {
-                misses = [];
-
-                missesByTask[TaskOf(pool)] = misses;
-            }
-
-            misses.Add(pool);
         }
 
-        if (missesByTask.Count == 0 && lookupsByPage.Count == 0)
+        List<ReadEventGroup> reads = [.. events.OfType<ReadEventGroup>().OrderBy(r => r.SequenceId)];
+
+        foreach (var read in reads)
+        {
+            read.PoolLookup = read.IsAllocationPage ? null : OwnerOf(read, lookupsByPage);
+        }
+
+        if (lookupsByTask.Count == 0)
         {
             return;
         }
 
-        var iamPages = IamPages(events);
-
-        foreach (var read in events.OfType<ReadEventGroup>())
+        foreach (var task in reads.GroupBy(r => r.TaskKey()))
         {
-            read.PoolLookup = OwnerOf(read, lookupsByPage) ?? (IsAllocationRead(read, iamPages) ? NextMiss(read, missesByTask) : null);
-        }
+            List<ReadEventGroup> taskReads = [.. task];
 
-        foreach (var task in events.OfType<ReadEventGroup>().Where(r => r.ReadType != ReadType.Cached).GroupBy(TaskOf))
-        {
-            RelinkCollateralReads([.. task.OrderBy(r => r.SequenceId)], missesByTask, lookupsByPage);
+            RelinkCollateralReads([.. taskReads.Where(r => r.ReadType != ReadType.Cached)], lookupsByTask, lookupsByPage);
+
+            MarkReadAhead(taskReads, lookupsByTask.GetValueOrDefault(task.Key) ?? [], lookupsByPage);
         }
     }
 
     private static void RelinkCollateralReads(List<ReadEventGroup> reads,
-                                              Dictionary<ulong, List<ObjectPoolEvent>> missesByTask,
+                                              Dictionary<ulong, List<ObjectPoolEvent>> lookupsByTask,
                                               Dictionary<PageAddress, List<ObjectPoolEvent>> lookupsByPage)
     {
         for (var i = 0; i < reads.Count; i++)
         {
             var read = reads[i];
 
-            var building = NextMiss(read, missesByTask);
+            if (read.IsReadAhead)
+            {
+                continue;
+            }
+
+            var building = NextMiss(read, lookupsByTask);
 
             if (building is null || ReferenceEquals(read.PoolLookup, building))
             {
@@ -100,7 +90,7 @@ public static class ObjectPoolReadLinker
                                    ObjectPoolEvent building,
                                    Dictionary<PageAddress, List<ObjectPoolEvent>> lookupsByPage)
     {
-        if (neighbour is null || !ReferenceEquals(neighbour.PoolLookup, building) || read.Pages.Count == 0)
+        if (neighbour is null || neighbour.IsReadAhead || !ReferenceEquals(neighbour.PoolLookup, building) || read.Pages.Count == 0)
         {
             return false;
         }
@@ -154,60 +144,76 @@ public static class ObjectPoolReadLinker
         return next ?? previous;
     }
 
-    private static bool IsAllocationRead(ReadEventGroup read, HashSet<PageAddress> iamPages)
+    private static void MarkReadAhead(List<ReadEventGroup> reads,
+                                      List<ObjectPoolEvent> lookups,
+                                      Dictionary<PageAddress, List<ObjectPoolEvent>> lookupsByPage)
     {
-        foreach (var page in read.Pages)
+        List<EngineEvent> sequence = [.. reads.Concat<EngineEvent>(lookups).OrderBy(e => e.SequenceId)];
+
+        var ownerSequences = new int[sequence.Count];
+
+        for (var i = 0; i < sequence.Count; i++)
         {
-            if (iamPages.Contains(page) || PageNameHelper.TryGetPageName(page) is not null)
-            {
-                return true;
-            }
+            ownerSequences[i] = sequence[i] is ReadEventGroup { PoolLookup: { } owner } read && OwnsAnyPage(owner, read, lookupsByPage)
+                ? owner.SequenceId
+                : -1;
         }
 
-        return false;
-    }
-
-    private static HashSet<PageAddress> IamPages(IReadOnlyList<EngineEvent> events)
-    {
-        var pages = new HashSet<PageAddress>();
-
-        var units = new HashSet<long>();
-
-        foreach (var engineEvent in events)
+        for (var i = 0; i < sequence.Count; i++)
         {
-            if (engineEvent.AllocationUnit is not { } unit || !units.Add(unit.AllocationUnitId))
+            if (sequence[i] is not ReadEventGroup { PoolLookup: { } owner, IsReadAhead: false } read || HasCallStack(read))
             {
                 continue;
             }
 
-            foreach (var iam in unit.IamChain.Pages)
+            for (var j = i + 1; j < sequence.Count && sequence[j].SequenceId < owner.SequenceId; j++)
             {
-                pages.Add(iam.PageAddress);
+                if (sequence[j] is ObjectPoolEvent || ownerSequences[j] > owner.SequenceId)
+                {
+                    read.IsReadAhead = true;
+
+                    break;
+                }
             }
         }
-
-        return pages;
     }
 
-    private static ObjectPoolEvent? NextMiss(ReadEventGroup read, Dictionary<ulong, List<ObjectPoolEvent>> missesByTask)
+    private static bool HasCallStack(ReadEventGroup read) => read.CallStack is not null || read.Events.Any(e => e.CallStack is not null);
+
+    private static bool OwnsAnyPage(ObjectPoolEvent owner, ReadEventGroup read, Dictionary<PageAddress, List<ObjectPoolEvent>> lookupsByPage)
+        => read.Pages.Any(p => lookupsByPage.TryGetValue(p, out var lookups) && lookups.Contains(owner));
+
+    private static ObjectPoolEvent? NextMiss(ReadEventGroup read, Dictionary<ulong, List<ObjectPoolEvent>> lookupsByTask)
     {
-        if (!missesByTask.TryGetValue(TaskOf(read), out var misses))
+        if (!lookupsByTask.TryGetValue(read.TaskKey(), out var lookups))
         {
             return null;
         }
 
-        foreach (var miss in misses)
+        foreach (var lookup in lookups)
         {
-            if (miss.SequenceId > read.SequenceId
-                && (miss.PlanNodeIdentifier is null || read.PlanNodeIdentifier is null || miss.PlanNodeIdentifier == read.PlanNodeIdentifier))
+            if (!lookup.IsHit
+                && lookup.SequenceId > read.SequenceId
+                && (lookup.PlanNodeIdentifier is null
+                    || read.PlanNodeIdentifier is null
+                    || lookup.PlanNodeIdentifier == read.PlanNodeIdentifier))
             {
-                return miss;
+                return lookup;
             }
         }
 
         return null;
     }
 
-    private static ulong TaskOf(EngineEvent engineEvent)
-        => engineEvent.TaskAddress ?? engineEvent.WorkerAddress ?? (ulong)engineEvent.ThreadId;
+    private static List<ObjectPoolEvent> GetOrAdd<TKey>(Dictionary<TKey, List<ObjectPoolEvent>> dictionary, TKey key) where TKey : notnull
+    {
+        if (!dictionary.TryGetValue(key, out var list))
+        {
+            list = [];
+
+            dictionary[key] = list;
+        }
+
+        return list;
+    }
 }

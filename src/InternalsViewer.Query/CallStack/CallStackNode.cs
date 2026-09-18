@@ -152,4 +152,6 @@ public sealed class CallStackNode
             yield return node;
         }
     }
+
+    public override string ToString() => Ancestors().FirstOrDefault(node => !node.IsInfrastructure)?.Symbol ?? Symbol;
 }

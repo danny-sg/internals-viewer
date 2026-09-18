@@ -12,6 +12,8 @@ public sealed partial record LatchEvent : PageEngineEvent
     [EventProperty("Latch Class")]
     public LatchClass LatchClass { get; init; }
 
+    //public override string Name => "Latch";
+
     public override string Description => $"Latch: {LatchClass} {LatchMode} - {PageAddress}";
 
     public override string Detail

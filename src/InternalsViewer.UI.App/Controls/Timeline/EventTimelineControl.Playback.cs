@@ -1,5 +1,6 @@
 using System;
 using InternalsViewer.Query.Events;
+using InternalsViewer.Query.Events.Latches;
 using InternalsViewer.Query.Events.Reads;
 
 namespace InternalsViewer.UI.App.Controls.Timeline;
@@ -28,7 +29,7 @@ public sealed partial class EventTimelineControl
 
     public void MovePlayheadTo(long timeUs)
     {
-        if (_sortedEvents.Count == 0 || ToUs(_playheadTime) == timeUs)
+        if (_definition.Events.Count == 0 || ToUs(_playheadTime) == timeUs)
         {
             return;
         }
@@ -78,7 +79,7 @@ public sealed partial class EventTimelineControl
 
     private void StepToAdjacentEvent(bool forward)
     {
-        if (_sortedEvents.Count == 0)
+        if (_definition.Events.Count == 0)
         {
             return;
         }
@@ -89,9 +90,9 @@ public sealed partial class EventTimelineControl
         var target = -1;
         var bestTime = forward ? double.MaxValue : double.MinValue;
 
-        for (var i = 0; i < _sortedEvents.Count; i++)
+        for (var i = 0; i < _definition.Events.Count; i++)
         {
-            if (_sortedEvents[i] is not ReadEventGroup)
+            if (_definition.Events[i] is not ReadEventGroup)
             {
                 continue;
             }
@@ -122,7 +123,7 @@ public sealed partial class EventTimelineControl
 
         FirePlayhead();
 
-        EventSelected?.Invoke(_sortedEvents[target]);
+        EventSelected?.Invoke(_definition.Events[target]);
 
         EnsurePlayheadVisible();
 
@@ -131,7 +132,7 @@ public sealed partial class EventTimelineControl
 
     private void StartPlay()
     {
-        if (_sortedEvents.Count == 0)
+        if (_definition.Events.Count == 0)
         {
             return;
         }
@@ -270,7 +271,7 @@ public sealed partial class EventTimelineControl
                     hi,
                     io => _audioPlayer.PlayPlink(TimelineAudioPlayer.FrequencyForObject(io.ObjectId)));
 
-        if (ShowLatches)
+        if (_bands.IndexOf(typeof(LatchEvent)) >= 0)
         {
             SweepEvents(_latchEventsByTime,
                         lo,

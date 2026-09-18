@@ -190,6 +190,7 @@ public static class EventPlanNodeMatcher
         QueryThreadEvent thread => thread.NodeId,
         SegmentScanEvent scan => scan.NodeId,
         BatchModeEvent batch => batch.NodeId,
+        ColumnstoreFilterEvent filter => filter.NodeId,
         _ => null,
     };
 

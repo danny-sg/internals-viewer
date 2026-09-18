@@ -26,8 +26,24 @@ public static class ObjectPoolPageLinker
 
         var pages = new Dictionary<(ColumnstoreReadType Type, int RowGroup, int Column), List<PageAddress>>();
 
+        var secondaryDictionaryPages = new Dictionary<(int Column, int Dictionary), HashSet<PageAddress>>();
+
         foreach (var read in reads)
         {
+            if (read is { ReadType: ColumnstoreReadType.Dictionary, RowGroupId: >= 0 })
+            {
+                if (!secondaryDictionaryPages.TryGetValue((read.ColumnId, read.DictionaryId), out var dictionaryList))
+                {
+                    dictionaryList = [];
+
+                    secondaryDictionaryPages[(read.ColumnId, read.DictionaryId)] = dictionaryList;
+                }
+
+                dictionaryList.Add(read.PageAddress);
+
+                continue;
+            }
+
             var key = (read.ReadType, read.RowGroupId, read.ColumnId);
 
             if (!pages.TryGetValue(key, out var list))
@@ -50,6 +66,12 @@ public static class ObjectPoolPageLinker
             if (pool.ObjectType == ColumnStoreObjectType.DeleteBitmap)
             {
                 pool.Pages = deleteBitmapPages;
+            }
+            else if (pool.ObjectType == ColumnStoreObjectType.SecondaryDictionary)
+            {
+                pool.Pages = secondaryDictionaryPages.TryGetValue((pool.ColumnId, pool.PoolObjectId), out var dictionaryPages)
+                    ? [.. dictionaryPages]
+                    : [];
             }
             else if (KeyOf(pool) is { } key && pages.TryGetValue(key, out var list))
             {
@@ -91,8 +113,6 @@ public static class ObjectPoolPageLinker
     {
         { ObjectType: ColumnStoreObjectType.ColumnSegment, RowGroupId: { } rowGroup }
             => (ColumnstoreReadType.Segment, (int)rowGroup, pool.ColumnId),
-        { ObjectType: ColumnStoreObjectType.SecondaryDictionary, RowGroupId: { } rowGroup }
-            => (ColumnstoreReadType.Dictionary, (int)rowGroup, pool.ColumnId),
         { ObjectType: ColumnStoreObjectType.PrimaryDictionary }
             => (ColumnstoreReadType.Dictionary, -1, pool.ColumnId),
         _ => null
