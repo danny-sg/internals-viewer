@@ -49,6 +49,7 @@ public partial record EngineEvent
 
     public PlanNodeIdentifier? PlanNodeIdentifier { get; set; }
 
+    [EventProperty("Call Stack")]
     public CallStackNode? CallStack { get; set; }
 
     public EngineEvent? FoldedFrom { get; set; }

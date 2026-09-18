@@ -85,7 +85,7 @@ public sealed partial class QueryCallStackTabView : UserControl, IDocumentComman
 
     public QueryViewModel? ViewModel => DataContext as QueryViewModel;
 
-    private Dictionary<CallStackNode, bool> HiddenOnly { get; } = new();
+    private Dictionary<CallStackNode, EventVisibility> HiddenOnly { get; } = new();
 
     public bool IsMembersPaneVisible
     {
@@ -1493,16 +1493,45 @@ public sealed partial class QueryCallStackTabView : UserControl, IDocumentComman
             return false;
         }
 
+        return HiddenEventState(node, options) == EventVisibility.Hidden;
+    }
+
+    private EventVisibility HiddenEventState(CallStackNode node, QueryOptionsViewModel options)
+    {
         if (HiddenOnly.TryGetValue(node, out var cached))
         {
             return cached;
         }
 
-        var result = node.Events.All(e => IsHiddenKind(e, options)) && node.ChildNodes.All(HoldsOnlyHiddenEvents);
+        var state = EventVisibility.None;
 
-        HiddenOnly[node] = result;
+        foreach (var engineEvent in node.Events)
+        {
+            if (!IsHiddenKind(engineEvent, options))
+            {
+                state = EventVisibility.Shown;
 
-        return result;
+                break;
+            }
+
+            state = EventVisibility.Hidden;
+        }
+
+        foreach (var child in node.ChildNodes)
+        {
+            if (state == EventVisibility.Shown)
+            {
+                break;
+            }
+
+            var childState = HiddenEventState(child, options);
+
+            state = childState == EventVisibility.None ? state : childState;
+        }
+
+        HiddenOnly[node] = state;
+
+        return state;
     }
 
     private static bool IsHiddenKind(EngineEvent engineEvent, QueryOptionsViewModel options) => engineEvent switch
@@ -1511,4 +1540,11 @@ public sealed partial class QueryCallStackTabView : UserControl, IDocumentComman
         LockEvent lockEvent => !options.Includes(LockModeClassifier.Categorise(lockEvent.LockMode)),
         _ => false,
     };
+
+    private enum EventVisibility
+    {
+        None,
+        Hidden,
+        Shown,
+    }
 }

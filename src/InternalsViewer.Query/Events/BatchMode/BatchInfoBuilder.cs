@@ -9,6 +9,7 @@ public static class BatchInfoBuilder
     {
         var batchEvents = events.OfType<BatchModeEvent>().Cast<EngineEvent>()
                                 .Concat(events.OfType<SegmentScanEvent>())
+                                .Concat(events.OfType<ColumnstoreFilterEvent>())
                                 .ToList();
 
         if (batchEvents.Count == 0)
@@ -43,6 +44,7 @@ public static class BatchInfoBuilder
     {
         BatchModeEvent batch => batch.NodeId,
         SegmentScanEvent scan => scan.NodeId,
+        ColumnstoreFilterEvent filter => filter.NodeId,
         _ => 0
     };
 
@@ -96,13 +98,17 @@ public static class BatchInfoBuilder
         {
             MergeBatch(info, e);
         }
+
+        if (engineEvent is ColumnstoreFilterEvent { IsBatchFilter: true } filter)
+        {
+            info.IsPrefiltered = Or(info.IsPrefiltered, filter.IsPrefiltered);
+        }
     }
 
     private static void MergeBatch(BatchInfo info, BatchModeEvent e)
     {
         info.IsFastComparisonUsed = Or(info.IsFastComparisonUsed, e.IsFastComparisonUsed);
         info.IsLocalAggregationUsed = Or(info.IsLocalAggregationUsed, e.IsLocalAggregationUsed);
-        info.IsPrefiltered = Or(info.IsPrefiltered, e.IsPrefiltered);
         info.IsGlobalDictionaryUsed = Or(info.IsGlobalDictionaryUsed, e.IsGlobalDictionaryUsed);
         info.GlobalDictionaryKeyColumns ??= e.GlobalDictionaryKeyColumns;
     }

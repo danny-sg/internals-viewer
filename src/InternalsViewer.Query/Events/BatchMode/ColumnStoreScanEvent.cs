@@ -36,6 +36,7 @@ public sealed partial record ColumnStoreScanEvent : EngineEvent
         "column_store_rowgroup_readahead_issued" => "Rowgroup Read Ahead Issued",
         "column_store_fast_string_equals" => "Fast String Equals",
         "query_execution_wait_syncpoint" => "Batch Sync Point",
+        "query_execution_column_store_rowgroup_scan_finished" => "Rowgroup Read Finished",
         _ => FormatName(eventName)
     };
 

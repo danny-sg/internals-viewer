@@ -356,6 +356,25 @@ public class OperatorCallStackMatcherTests
         Assert.Equal("Seek::m", Assert.Single(seek.EntryFrames).Symbol);
     }
 
+    [Fact]
+    public void An_Operator_Folded_Out_Of_The_Plan_Enters_Through_The_Operator_It_Was_Folded_Into()
+    {
+        var tree = new CallStackTree();
+
+        var read = Event(node: 1);
+
+        var filter = Event(node: 1);
+
+        tree.Add([Frame("BufRead", 10), Operator("Scan", "Clustered Index Scan", rva: 20), Frame("Root", 50)], read);
+        tree.Add([Frame("Publish", 11), Operator("Filter", "Filter", rva: 30), Frame("Root", 50)], filter);
+
+        var scan = Operator(node: 1, physicalOperator: "Clustered Index Scan");
+
+        Match(tree, [scan, read, filter]);
+
+        Assert.Equal(["Scan::m", "Filter::m"], scan.EntryFrames.Select(f => f.Symbol));
+    }
+
     // As QueryRunner does: collapse first (which repoints the events onto the function-keyed nodes), then match — the
     // entry frames have to be nodes of the tree the events actually point at.
     private static void Match(CallStackTree tree, IReadOnlyList<EngineEvent> events)

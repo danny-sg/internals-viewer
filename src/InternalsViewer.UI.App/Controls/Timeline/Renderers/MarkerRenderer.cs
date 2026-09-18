@@ -68,7 +68,9 @@ internal sealed class MarkerRenderer(RenderResource resources, CurrentSelection 
 
         var sourceEvent = frame.Definition.Events[index];
 
-        var markerColour = frame.BaseColour(index).WithAlpha(selection.ShouldDim(sourceEvent) ? DimAlpha : (byte)255);
+        var baseColour = frame.BaseColour(index);
+
+        var markerColour = selection.ShouldDim(sourceEvent) ? baseColour.WithAlpha(Math.Min(baseColour.Alpha, DimAlpha)) : baseColour;
 
         var markerWidth = Math.Max(item.MinWidth, frame.BandMarkerWidth(item.Band));
 

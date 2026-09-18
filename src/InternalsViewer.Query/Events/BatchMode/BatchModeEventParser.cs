@@ -14,13 +14,6 @@ internal static class BatchModeEventParser
             IsFastComparisonUsed = e.GetBool("fast_comparison_used"),
             IsLocalAggregationUsed = e.GetBool("local_aggregation_used")
         },
-        "query_execution_batch_filter" => new BatchModeEvent
-        {
-            Name = e.Name,
-            Timestamp = e.Timestamp,
-            NodeId = e.GetInt("query_operator_node_id") ?? 0,
-            IsPrefiltered = e.GetBool("is_prefiltered")
-        },
         "query_execution_batch_global_string_dictionary" => new BatchModeEvent
         {
             Name = e.Name,

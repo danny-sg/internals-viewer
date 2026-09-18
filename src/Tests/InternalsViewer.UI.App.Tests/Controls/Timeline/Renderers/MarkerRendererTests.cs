@@ -81,7 +81,7 @@ public class MarkerRendererTests
     }
 
     [Fact]
-    public void Stacks_Overlapping_Segment_Scans_As_Solid_Bars_In_The_Top_Half()
+    public void Stacks_Overlapping_Segment_Scans_As_Translucent_Bars_In_The_Top_Half()
     {
         using var render = Render(
         [
@@ -92,9 +92,12 @@ public class MarkerRendererTests
 
         var top = render.BandTop(typeof(SegmentScanEvent)) + BandPadding;
 
-        Assert.Equal(SegmentColour, render.Pixel(70, top + 1));
+        var firstScan = render.Pixel(70, top + 1);
+
+        Assert.NotEqual(SKColors.Black, firstScan);
+        Assert.True(firstScan.Blue < SegmentColour.Blue);
         Assert.Equal(SKColors.Black, render.Pixel(70, top + 3));
-        Assert.Equal(SegmentColour, render.Pixel(70, top + 5));
+        Assert.Equal(firstScan, render.Pixel(70, top + 5));
         Assert.Equal(SKColors.Black, render.Pixel(70, top + 12));
     }
 

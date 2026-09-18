@@ -1,5 +1,6 @@
 ﻿using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Query.CallStack;
+using InternalsViewer.Query.Events.BatchMode;
 using InternalsViewer.Query.Events.Locks;
 using InternalsViewer.Query.Events.Memory;
 using InternalsViewer.Query.Events.Reads;
@@ -337,6 +338,56 @@ public class XmlEventParserTests
         var ev = Parse(parser, """<event name="sql_batch_starting"></event>""");
 
         Assert.Null(ev);
+    }
+
+    [Fact]
+    public void Maps_A_Batch_Filter_To_A_Columnstore_Filter_Event()
+    {
+        const string xml = """
+            <event name="query_execution_batch_filter" timestamp="2026-06-30T12:00:00.000Z">
+              <data name="input_rows"><value>900</value></data>
+              <data name="output_rows"><value>12</value></data>
+              <data name="is_prefiltered"><value>true</value></data>
+              <data name="query_operator_node_id"><value>3</value></data>
+              <data name="query_thread_id"><value>1</value></data>
+            </event>
+            """;
+
+        var filter = Assert.IsType<ColumnstoreFilterEvent>(Parse(new ParserPair(), xml));
+
+        Assert.True(filter.IsBatchFilter);
+        Assert.Equal(3, filter.NodeId);
+        Assert.Equal(1, filter.ThreadId);
+        Assert.Equal(900, filter.InputRows);
+        Assert.Equal(12, filter.OutputRows);
+        Assert.True(filter.IsPrefiltered);
+    }
+
+    [Fact]
+    public void Maps_An_Expression_Filter_Apply_To_A_Columnstore_Filter_Event()
+    {
+        const string xml = """
+            <event name="column_store_expression_filter_apply" timestamp="2026-06-30T12:00:00.000Z">
+              <data name="input_rows"><value>1000</value></data>
+              <data name="output_rows"><value>40</value></data>
+              <data name="is_pure"><value>false</value></data>
+              <data name="node_id"><value>2</value></data>
+              <data name="rowgroup_id"><value>5</value></data>
+              <data name="rowset_column_id"><value>7</value></data>
+              <data name="thread_id"><value>4</value></data>
+            </event>
+            """;
+
+        var filter = Assert.IsType<ColumnstoreFilterEvent>(Parse(new ParserPair(), xml));
+
+        Assert.False(filter.IsBatchFilter);
+        Assert.Equal(2, filter.NodeId);
+        Assert.Equal(4, filter.ThreadId);
+        Assert.Equal(5, filter.RowGroupId);
+        Assert.Equal(7, filter.ColumnId);
+        Assert.Equal(1000, filter.InputRows);
+        Assert.Equal(40, filter.OutputRows);
+        Assert.False(filter.IsPure);
     }
 
     private static string EventWithPlanHandle(string planHandle) =>

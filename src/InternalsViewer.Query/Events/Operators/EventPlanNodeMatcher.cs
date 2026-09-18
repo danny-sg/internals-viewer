@@ -86,7 +86,7 @@ public static class EventPlanNodeMatcher
     {
         foreach (var engineEvent in events)
         {
-            if (NodeIdOf(engineEvent) is { } nodeId && plan.NodesById.ContainsKey(nodeId))
+            if (NodeIdOf(engineEvent) is { } reported && PlanNodeOf(plan, engineEvent, reported) is { } nodeId)
             {
                 engineEvent.PlanNodeIdentifier = new PlanNodeIdentifier
                 {
@@ -185,11 +185,24 @@ public static class EventPlanNodeMatcher
         }
     }
 
+    private static int? PlanNodeOf(ExecutionPlan plan, EngineEvent engineEvent, int reported)
+    {
+        if (plan.NodesById.ContainsKey(reported))
+        {
+            return reported;
+        }
+
+        return engineEvent is BatchModeEvent or ColumnstoreFilterEvent && plan.NodesById.ContainsKey(reported + 1)
+            ? reported + 1
+            : null;
+    }
+
     private static int? NodeIdOf(EngineEvent engineEvent) => engineEvent switch
     {
         QueryThreadEvent thread => thread.NodeId,
         SegmentScanEvent scan => scan.NodeId,
         BatchModeEvent batch => batch.NodeId,
+        ColumnstoreFilterEvent filter => filter.NodeId,
         _ => null,
     };
 

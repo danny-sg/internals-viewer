@@ -87,7 +87,7 @@ internal sealed class TimelineFrame
         var item = Definition.Items[eventIndex];
 
         return item.ColourSource == TimelineColourSource.Provider && ColourProvider is { } colours
-            ? colours.GetColour(Definition.Events[eventIndex]).ToSkColor()
+            ? colours.GetColour(Definition.Events[eventIndex]).ToSkColor().WithAlpha(255)
             : item.Colour;
     }
 

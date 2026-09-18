@@ -33,6 +33,7 @@ internal static class EventConstants
         "sqlserver.query_execution_column_store_segment_scan_finished",
         "sqlserver.query_execution_column_store_rowgroup_scan_finished",
         "sqlserver.column_store_expression_filter_bitmap_set",
+        "sqlserver.column_store_expression_filter_apply",
         "sqlserver.column_store_segment_eliminate",
         "sqlserver.column_store_rowgroup_skip_delete_buffer",
         "sqlserver.column_store_object_pool_hit",

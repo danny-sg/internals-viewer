@@ -334,6 +334,46 @@ public class TimelineDefinitionBuilderTests
         Assert.Equal<EngineEvent>([read], definition.Events);
     }
 
+    [Fact]
+    public void Places_Batch_Filters_In_The_Rowgroup_Sub_Band_Like_Bitmap_Filters()
+    {
+        var definition = Build(
+        [
+            new ColumnstoreFilterEvent { EventName = ColumnstoreFilterEvent.BatchFilter },
+            new ColumnStoreScanEvent { EventName = "column_store_expression_filter_bitmap_set" },
+            new BatchModeEvent { Name = "query_execution_batch_hash_aggregation_finished" },
+        ], ShowAll);
+
+        Assert.Equal((0, 2), (definition.Items[0].Track, definition.Items[0].TrackCount));
+        Assert.Equal((0, 2), (definition.Items[1].Track, definition.Items[1].TrackCount));
+        Assert.Equal(definition.Items[0].Band, definition.Items[1].Band);
+        Assert.Equal(-1, definition.Items[2].Band);
+    }
+
+    [Fact]
+    public void Widens_Filter_Ticks_Only_When_That_Kind_Is_Sparse()
+    {
+        EngineEvent[] events =
+        [
+            new ColumnStoreScanEvent { EventName = "column_store_expression_filter_bitmap_set" },
+            .. Enumerable.Range(0, 30).Select(_ => new ColumnstoreFilterEvent { EventName = ColumnstoreFilterEvent.BatchFilter }),
+        ];
+
+        var definition = Build(events, ShowAll);
+
+        Assert.Equal(4f, definition.Items[0].MinWidth);
+        Assert.Equal(0f, definition.Items[1].MinWidth);
+    }
+
+    [Fact]
+    public void Places_Expression_Filter_Applies_In_The_Rowgroup_Sub_Band()
+    {
+        var definition = Build([new ColumnstoreFilterEvent { EventName = ColumnstoreFilterEvent.ExpressionFilterApply }], ShowAll);
+
+        Assert.Equal((0, 2), (definition.Items[0].Track, definition.Items[0].TrackCount));
+        Assert.Equal(4f, definition.Items[0].MinWidth);
+    }
+
     private static TimelineDefinition Build(EngineEvent[] events, TimelineBandVisibility visibility)
         => TimelineDefinitionBuilder.CreateDefault().Build(events, visibility);
 }
