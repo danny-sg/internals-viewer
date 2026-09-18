@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using InternalsViewer.Query.Events;
+using InternalsViewer.Query.Events.BatchMode;
 using InternalsViewer.Query.Events.Latches;
 using InternalsViewer.Query.Events.Locks;
 using InternalsViewer.Query.Events.Operators;
@@ -103,17 +104,16 @@ internal sealed class TimelineDefinitionBuilder(IReadOnlyList<ITimelineBandBuild
 
             yield return engineEvent;
 
-            if (engineEvent is not ReadEventGroup readGroup)
+            var members = engineEvent switch
             {
-                continue;
-            }
+                ReadEventGroup readGroup => readGroup.Events.Where(member => member is not FileEvent),
+                RowGroupScanEvent rowGroupScan => rowGroupScan.Events,
+                _ => []
+            };
 
-            foreach (var member in readGroup.Events)
+            foreach (var member in members)
             {
-                if (member is not FileEvent)
-                {
-                    yield return member;
-                }
+                yield return member;
             }
         }
     }

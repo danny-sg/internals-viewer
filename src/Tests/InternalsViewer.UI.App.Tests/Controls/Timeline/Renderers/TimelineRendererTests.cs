@@ -1,4 +1,5 @@
-﻿using InternalsViewer.UI.App.Controls.Timeline;
+﻿using InternalsViewer.Query.Events.Waits;
+using InternalsViewer.UI.App.Controls.Timeline;
 using InternalsViewer.UI.App.Controls.Timeline.Definition;
 using InternalsViewer.UI.App.Controls.Timeline.Renderers;
 using SkiaSharp;
@@ -115,6 +116,68 @@ public class TimelineRendererTests
         Assert.Equal(frame.BandColour, bitmap.GetPixel(40, 19));
     }
 
+    [Theory]
+    [InlineData(30f, 30f, 10f)]
+    [InlineData(50f, 20f, 20f)]
+    public void Collapses_The_Sub_Bands_Of_A_Band_Too_Short_To_Hold_Them(float minSubBandHeight, float top, float height)
+    {
+        using var resources = new RenderResource();
+
+        using var bandSet = new TimelineBandSet();
+
+        var definition = new TimelineDefinition([new WaitEvent()],
+        [
+            new TimelineBand(typeof(object), "C", SKColors.White, 1f)
+            {
+                SubBandLabels = new TimelineSubBandLabels("Top", "C", "Bottom"),
+            },
+        ],
+        [new TimelineItem(0, 3, 4, 0, TimelineFill.Solid, TimelineTickAnchor.Start, TimelineColourSource.Fixed, SKColors.White, 0f)],
+        []);
+
+        bandSet.Rebuild(definition, resources.LabelFont);
+
+        var frame = Frame(bandSet, canvasWidth: 400, bandLabelWidth: 80, bandHeight: 40, definition, minSubBandHeight);
+
+        Assert.True(frame.TryGetTrackBounds(0, out var trackTop, out var trackHeight));
+        Assert.Equal((top, height), (trackTop, trackHeight));
+    }
+
+    [Fact]
+    public void Leaves_Out_A_Divider_That_Collapses_Onto_The_Top_Of_The_Band()
+    {
+        using var resources = new RenderResource();
+
+        using var renderer = new TimelineRenderer(resources);
+
+        using var bandSet = new TimelineBandSet();
+
+        var definition = new TimelineDefinition([],
+        [
+            new TimelineBand(typeof(object), "C", SKColors.White, 1f)
+            {
+                SubBandLabels = new TimelineSubBandLabels("Top", "C", "Bottom"),
+                TrackDividers = [new TimelineTrackDivider(2, 4)],
+            },
+        ],
+        [],
+        []);
+
+        bandSet.Rebuild(definition, resources.LabelFont);
+
+        var frame = Frame(bandSet, canvasWidth: 400, bandLabelWidth: 80, bandHeight: 40, definition, minSubBandHeight: 50);
+
+        using var bitmap = new SKBitmap(400, 40);
+
+        using var canvas = new SKCanvas(bitmap);
+
+        canvas.Clear(SKColors.Black);
+
+        renderer.DrawBands(canvas, frame);
+
+        Assert.Equal(frame.BandColour, bitmap.GetPixel(200, 19));
+    }
+
     [Fact]
     public void Fills_The_Band_Area_With_The_Band_Colour_When_There_Are_No_Bands()
     {
@@ -143,7 +206,8 @@ public class TimelineRendererTests
                                        float canvasWidth,
                                        float bandLabelWidth,
                                        float bandHeight = 10,
-                                       TimelineDefinition? definition = null)
+                                       TimelineDefinition? definition = null,
+                                       float minSubBandHeight = 0)
     {
         var bandCount = bandSet.Active.Count;
 
@@ -166,6 +230,7 @@ public class TimelineRendererTests
             AlternateBandColour = new SKColor(45, 45, 45),
             MinTime = 0,
             XToTime = x => x - bandLabelWidth,
+            MinSubBandHeight = minSubBandHeight,
         };
     }
 }

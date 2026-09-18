@@ -86,8 +86,6 @@ public class PoolMissDiagnosticTests(ITestOutputHelper output)
 
         ObjectPoolPageLinker.Link(events, index.HobtId, reads, index.DeleteBitmapAllocationUnit);
 
-        InternalsViewer.Query.Events.Consolidation.RowGroupReadSpanner.Apply(events);
-
 
         await InternalsViewer.Query.CallStack.CallstackProcessor.Process(callStack, @"C:\Symbols", null, CancellationToken.None);
 

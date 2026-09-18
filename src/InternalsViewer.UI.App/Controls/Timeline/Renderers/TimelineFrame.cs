@@ -82,6 +82,22 @@ internal sealed class TimelineFrame
     /// </summary>
     public required Func<double, double> XToTime { get; init; }
 
+    public float MinSubBandHeight { get; init; }
+
+    public bool IsCollapsed(int band) => Bands.Active[band].SubBandLabels is not null && BandHeights[band] < MinSubBandHeight;
+
+    public (int Track, int TrackCount) TrackIn(int band, int track, int trackCount)
+    {
+        if (!IsCollapsed(band) || trackCount % 2 != 0)
+        {
+            return (track, trackCount);
+        }
+
+        var subBandCount = trackCount / 2;
+
+        return (track % subBandCount, subBandCount);
+    }
+
     public SKColor BaseColour(int eventIndex)
     {
         var item = Definition.Items[eventIndex];
@@ -122,9 +138,11 @@ internal sealed class TimelineFrame
             return false;
         }
 
-        height = (BandHeights[item.Band] - BandPadding * 2) / item.TrackCount;
+        var (track, trackCount) = TrackIn(item.Band, item.Track, item.TrackCount);
 
-        top = BandTops[item.Band] + BandPadding + item.Track * height;
+        height = (BandHeights[item.Band] - BandPadding * 2) / trackCount;
+
+        top = BandTops[item.Band] + BandPadding + track * height;
 
         return true;
     }

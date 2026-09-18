@@ -18,11 +18,11 @@ internal sealed class ColumnstoreBandBuilder : ITimelineBandBuilder
 
     private const float SparseWidth = 4f;
 
-    private const string BitmapFilterEvent = "column_store_expression_filter_bitmap_set";
-
     private const byte HitLayer = 1;
 
     private const byte SegmentScanAlpha = 160;
+
+    private const byte FilterAlpha = 160;
 
     private static readonly TimelineBand Band = new(typeof(SegmentScanEvent),
                                                     "Columnstore",
@@ -42,15 +42,13 @@ internal sealed class ColumnstoreBandBuilder : ITimelineBandBuilder
 
     private static readonly SKColor ColumnStoreEventColour = ColourConstants.ColumnStoreEventColour.ToSkColor();
 
-    private static readonly SKColor ExpressionFilterBitmapColour = ColourConstants.ExpressionFilterBitmapColour.ToSkColor();
+    private static readonly SKColor BatchFilterColour = ColourConstants.BatchFilterColour.ToSkColor().WithAlpha(FilterAlpha);
 
-    private static readonly SKColor BatchFilterColour = ColourConstants.BatchFilterColour.ToSkColor();
+    private static readonly SKColor FilterApplyColour = ColourConstants.ExpressionFilterBitmapApplyColour.ToSkColor().WithAlpha(FilterAlpha);
 
     private SegmentScanTracks SegmentTracks { get; } = new();
 
     private ObjectPoolTracks PoolTracks { get; } = new();
-
-    private float BitmapFilterWidth { get; set; }
 
     private float BatchFilterWidth { get; set; }
 
@@ -61,7 +59,8 @@ internal sealed class ColumnstoreBandBuilder : ITimelineBandBuilder
                            or SegmentEliminateEvent
                            or ObjectPoolEvent
                            or ColumnStoreScanEvent
-                           or ColumnstoreFilterEvent;
+                           or ColumnstoreFilterEvent
+                           or RowGroupScanEvent;
 
     public TimelineBand? Prepare(IReadOnlyList<EngineEvent> events, TimelineBandVisibility visibility)
     {
@@ -69,8 +68,6 @@ internal sealed class ColumnstoreBandBuilder : ITimelineBandBuilder
         {
             return null;
         }
-
-        BitmapFilterWidth = SparseWidthFor(events.Count(e => e is ColumnStoreScanEvent { EventName: BitmapFilterEvent }));
 
         BatchFilterWidth = SparseWidthFor(events.Count(e => e is ColumnstoreFilterEvent { IsBatchFilter: true }));
 
@@ -118,9 +115,10 @@ internal sealed class ColumnstoreBandBuilder : ITimelineBandBuilder
                                                  pool.IsHit ? MinPoolHitWidth : 0f,
                                                  pool.IsHit ? HitLayer : (byte)0),
         SegmentEliminateEvent => Half(band, 0, SegmentEliminationColour, 0f),
+        RowGroupScanEvent => Half(band, 0, ColumnStoreEventColour, 0f),
         ColumnstoreFilterEvent { IsBatchFilter: true } => Half(band, 0, BatchFilterColour, BatchFilterWidth),
-        ColumnstoreFilterEvent => Half(band, 0, ExpressionFilterBitmapColour, FilterApplyWidth),
-        ColumnStoreScanEvent { EventName: BitmapFilterEvent } => Half(band, 0, ExpressionFilterBitmapColour, BitmapFilterWidth),
+        ColumnstoreFilterEvent => Half(band, 0, FilterApplyColour, FilterApplyWidth),
+        ColumnStoreScanEvent { IsBitmapFilterSet: true } => TimelineItem.Undrawn(band),
         ColumnStoreScanEvent scan => Half(band, scan.IsRowGroupEvent ? 0 : 1, ColumnStoreEventColour, 0f),
         _ => TimelineItem.Undrawn(band),
     };

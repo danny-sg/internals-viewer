@@ -12,6 +12,7 @@ public sealed partial class EventTimelineControl
     private const float RulerStripHeight = 18f;
     private const float HandleStripHeight = 16f;
     private const float MarkerStripHeight = RulerStripHeight + HandleStripHeight;
+    private const float MinSubBandHeight = 20f;
     private const float HandleHeight = 8f;
     private const float HandleGap = 13f;
     private const float TriangleHalfWidth = 9f;
@@ -153,6 +154,7 @@ public sealed partial class EventTimelineControl
         AlternateBandColour = _alternateBandColour,
         MinTime = _minTime,
         XToTime = XToTime,
+        MinSubBandHeight = MinSubBandHeight,
     };
 
     /// <summary>

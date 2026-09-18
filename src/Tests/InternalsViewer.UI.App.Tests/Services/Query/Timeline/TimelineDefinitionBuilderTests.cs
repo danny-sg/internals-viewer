@@ -335,19 +335,24 @@ public class TimelineDefinitionBuilderTests
     }
 
     [Fact]
-    public void Places_Batch_Filters_In_The_Rowgroup_Sub_Band_Like_Bitmap_Filters()
+    public void Places_Batch_Filters_In_The_Rowgroup_Sub_Band()
     {
         var definition = Build(
         [
             new ColumnstoreFilterEvent { EventName = ColumnstoreFilterEvent.BatchFilter },
-            new ColumnStoreScanEvent { EventName = "column_store_expression_filter_bitmap_set" },
             new BatchModeEvent { Name = "query_execution_batch_hash_aggregation_finished" },
         ], ShowAll);
 
         Assert.Equal((0, 2), (definition.Items[0].Track, definition.Items[0].TrackCount));
-        Assert.Equal((0, 2), (definition.Items[1].Track, definition.Items[1].TrackCount));
-        Assert.Equal(definition.Items[0].Band, definition.Items[1].Band);
-        Assert.Equal(-1, definition.Items[2].Band);
+        Assert.Equal(-1, definition.Items[1].Band);
+    }
+
+    [Fact]
+    public void Leaves_Bitmap_Filter_Summaries_Undrawn()
+    {
+        var definition = Build([new ColumnStoreScanEvent { EventName = "column_store_expression_filter_bitmap_set" }], ShowAll);
+
+        Assert.Equal(TimelineFill.None, definition.Items[0].Fill);
     }
 
     [Fact]
@@ -355,7 +360,7 @@ public class TimelineDefinitionBuilderTests
     {
         EngineEvent[] events =
         [
-            new ColumnStoreScanEvent { EventName = "column_store_expression_filter_bitmap_set" },
+            new ColumnstoreFilterEvent { EventName = ColumnstoreFilterEvent.ExpressionFilterApply },
             .. Enumerable.Range(0, 30).Select(_ => new ColumnstoreFilterEvent { EventName = ColumnstoreFilterEvent.BatchFilter }),
         ];
 

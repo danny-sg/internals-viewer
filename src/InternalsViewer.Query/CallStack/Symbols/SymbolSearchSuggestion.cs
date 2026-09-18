@@ -1,6 +1,6 @@
 ﻿using InternalsViewer.Query.CallStack.Categories;
 
-namespace InternalsViewer.Query.CallStack;
+namespace InternalsViewer.Query.CallStack.Symbols;
 
 /// <summary>
 /// A named starting point for a symbol search, such as a plan operator and the frames that implement it

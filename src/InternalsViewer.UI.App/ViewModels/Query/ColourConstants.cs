@@ -33,7 +33,9 @@ internal static class ColourConstants
 
     public static readonly Color ExpressionFilterBitmapColour = Color.FromArgb(255, 76, 175, 80);
 
-    public static readonly Color BatchFilterColour = Color.FromArgb(255, 255, 190, 150);
+    public static readonly Color ExpressionFilterBitmapApplyColour = Color.FromArgb(255, 27, 90, 190);
+
+    public static readonly Color BatchFilterColour = Color.FromArgb(255, 150, 176, 219);
 
     public static readonly Color AllocationPageColour = Color.FromArgb(255, 169, 180, 170);
 

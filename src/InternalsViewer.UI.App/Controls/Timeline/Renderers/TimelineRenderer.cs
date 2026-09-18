@@ -35,6 +35,16 @@ internal sealed class TimelineRenderer(RenderResource resources) : IDisposable
         IsAntialias = false,
     };
 
+    private float SubBandLabelsHeight
+    {
+        get
+        {
+            var metrics = resources.LabelFont.Metrics;
+
+            return (metrics.Descent - metrics.Ascent) * 3 + MinLabelGap * 2 + VerticalLabelPad * 2;
+        }
+    }
+
     /// <remarks>
     /// Draws alternating row backgrounds, row labels, and separators
     /// </remarks>
@@ -52,9 +62,10 @@ internal sealed class TimelineRenderer(RenderResource resources) : IDisposable
 
             canvas.DrawRect(0, y, w, bandHeight, _bandBackground);
 
-            DrawTrackDividers(canvas, frame, bands[r], y, bandHeight);
+            DrawTrackDividers(canvas, frame, r, y, bandHeight);
 
             var hasSubBandLabels = bands[r].SubBandLabels is { } labels
+                             && !frame.IsCollapsed(r)
                              && TryDrawSubBandLabels(canvas, y, bandHeight, labels.Top, labels.Middle, labels.Bottom);
 
             if (!hasSubBandLabels)
@@ -137,15 +148,22 @@ internal sealed class TimelineRenderer(RenderResource resources) : IDisposable
         _tick.Dispose();
     }
 
-    private void DrawTrackDividers(SKCanvas canvas, TimelineFrame frame, TimelineBand band, float bandTop, float bandHeight)
+    private void DrawTrackDividers(SKCanvas canvas, TimelineFrame frame, int band, float bandTop, float bandHeight)
     {
         var innerTop = bandTop + frame.BandPadding;
 
         var innerHeight = bandHeight - frame.BandPadding * 2;
 
-        foreach (var divider in band.TrackDividers)
+        foreach (var divider in frame.Bands.Active[band].TrackDividers)
         {
-            var y = MathF.Floor(innerTop + divider.Track * innerHeight / divider.TrackCount) - 1;
+            var (track, trackCount) = frame.TrackIn(band, divider.Track, divider.TrackCount);
+
+            if (track == 0)
+            {
+                continue;
+            }
+
+            var y = MathF.Floor(innerTop + track * innerHeight / trackCount) - 1;
 
             canvas.DrawLine(frame.BandLabelWidth, y, frame.CanvasWidth, y, _trackDivider);
         }
@@ -155,9 +173,7 @@ internal sealed class TimelineRenderer(RenderResource resources) : IDisposable
     {
         var metrics = resources.LabelFont.Metrics;
 
-        var textHeight = metrics.Descent - metrics.Ascent;
-
-        if (bandHeight < textHeight * 3 + MinLabelGap * 2 + VerticalLabelPad * 2)
+        if (bandHeight < SubBandLabelsHeight)
         {
             return false;
         }

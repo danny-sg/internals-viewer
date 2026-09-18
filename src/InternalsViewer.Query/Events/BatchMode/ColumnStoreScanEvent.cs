@@ -21,10 +21,16 @@ public sealed partial record ColumnStoreScanEvent : EngineEvent
 
     public bool IsRowGroupReadAhead => EventName == "column_store_rowgroup_readahead_issued";
 
+    public bool IsRowGroupFinished => EventName == "query_execution_column_store_rowgroup_scan_finished";
+
+    public bool IsBitmapFilterSet => EventName == "column_store_expression_filter_bitmap_set";
+
     public bool IsRowGroupEvent
         => IsRowGroupRead
            || IsRowGroupReadAhead
-           || EventName is "column_store_expression_filter_bitmap_set" or "column_store_rowgroup_skip_delete_buffer";
+           || IsRowGroupFinished
+           || IsBitmapFilterSet
+           || EventName == "column_store_rowgroup_skip_delete_buffer";
 
     public override string Name => DisplayName(EventName);
 

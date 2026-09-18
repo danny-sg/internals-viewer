@@ -1,4 +1,4 @@
-namespace InternalsViewer.Query.CallStack;
+namespace InternalsViewer.Query.CallStack.Symbols;
 
 /// <summary>
 /// A public symbol found by name, described the way the Members pane describes a member

@@ -56,31 +56,6 @@ public class EventPlanNodeMatcherTests
     }
 
     [Fact]
-    public void Batch_Event_For_An_Operator_Folded_Out_Of_The_Showplan_Anchors_To_Its_Input()
-    {
-        var plan = PlanWith(Node(1, "Clustered Index Scan", table: "SegStrMod", index: "CCI"));
-
-        var filter = new ColumnstoreFilterEvent { EventName = ColumnstoreFilterEvent.BatchFilter, PlanHandleId = PlanHandleId, NodeId = 0 };
-
-        EventPlanNodeMatcher.Match([filter], [plan]);
-
-        Assert.Equal(1, filter.PlanNodeIdentifier?.NodeId);
-        Assert.Equal(0, filter.NodeId);
-    }
-
-    [Fact]
-    public void Batch_Event_With_No_Node_Near_It_Is_Left_Unmatched()
-    {
-        var plan = PlanWith(Node(1, "Clustered Index Scan", table: "SegStrMod", index: "CCI"));
-
-        var filter = new ColumnstoreFilterEvent { EventName = ColumnstoreFilterEvent.BatchFilter, PlanHandleId = PlanHandleId, NodeId = 5 };
-
-        EventPlanNodeMatcher.Match([filter], [plan]);
-
-        Assert.Null(filter.PlanNodeIdentifier);
-    }
-
-    [Fact]
     public void Storage_Event_Matches_Operator_On_Named_Index()
     {
         var plan = PlanWith(

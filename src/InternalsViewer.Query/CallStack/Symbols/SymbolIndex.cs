@@ -1,7 +1,7 @@
 ﻿using System.Text;
 using InternalsViewer.Query.CallStack.Dia;
 
-namespace InternalsViewer.Query.CallStack;
+namespace InternalsViewer.Query.CallStack.Symbols;
 
 /// <summary>
 /// The class names, names and signatures of every public symbol in a PDB, packed for search

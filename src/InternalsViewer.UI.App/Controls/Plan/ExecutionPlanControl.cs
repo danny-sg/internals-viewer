@@ -4,6 +4,7 @@ using System;
 using InternalsViewer.Query.Events.Operators;
 using InternalsViewer.Query.Events.Reads;
 using InternalsViewer.Query.Events;
+using InternalsViewer.Query.Interfaces.Events;
 using InternalsViewer.Query.Plans.Joins;
 using InternalsViewer.Query.Plans.Model;
 using InternalsViewer.Query.Plans.Operators;
@@ -280,7 +281,7 @@ public sealed class ExecutionPlanControl : Canvas
                 continue;
             }
 
-            if (e is ReadEventGroup group)
+            if (e is IEventGroup group)
             {
                 if (group.Events.Any(c => c.CallStack is not null))
                 {

@@ -173,7 +173,7 @@ public sealed class QueryRunner(ILogger<QueryRunner> logger,
 
             await MapColumnstorePages(database, executionPlans, events, progress, cancellationToken);
 
-            RowGroupReadSpanner.Apply(events);
+            events = RowGroupScanGrouper.Group(events);
 
             if (eventOptions.AutoDeleteTrace && !string.IsNullOrWhiteSpace(eventOptions.TraceDirectory))
             {
@@ -223,9 +223,13 @@ public sealed class QueryRunner(ILogger<QueryRunner> logger,
 
             AllocationPageClassifier.Classify(events);
 
-            ObjectPoolReadLinker.Link(events);
+            var flattened = RowGroupScanGrouper.Flatten(events);
 
-            ObjectPoolDurationStamper.Stamp(events);
+            ObjectPoolReadLinker.Link(flattened);
+
+            ObjectPoolDurationStamper.Stamp(flattened);
+
+            RowGroupScanGrouper.Fit(events);
 
             OperatorBoundsExtender.ExtendStarts(events);
 

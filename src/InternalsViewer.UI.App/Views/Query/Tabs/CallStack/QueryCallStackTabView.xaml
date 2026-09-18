@@ -9,6 +9,7 @@
     xmlns:operators="using:InternalsViewer.Query.Events.Operators"
     xmlns:local="using:InternalsViewer.UI.App.Views.Query.Tabs" 
     xmlns:callstack="using:InternalsViewer.Query.CallStack"
+    xmlns:symbols="using:InternalsViewer.Query.CallStack.Symbols"
     xmlns:callStack="using:InternalsViewer.UI.App.Views.Query.Tabs.CallStack"
     xmlns:controls="using:CommunityToolkit.WinUI.Controls"
     xmlns:signature="using:InternalsViewer.UI.App.Controls.CallStack"
@@ -705,7 +706,7 @@
                                             GotFocus="OnSymbolSearchGotFocus"
                                             TextChanged="OnSymbolSearchTextChanged">
                                 <AutoSuggestBox.ItemTemplate>
-                                    <DataTemplate x:DataType="callstack:SymbolSearchSuggestion">
+                                    <DataTemplate x:DataType="symbols:SymbolSearchSuggestion">
                                         <TextBlock Text="{x:Bind Display}" FontSize="12"/>
                                     </DataTemplate>
                                 </AutoSuggestBox.ItemTemplate>
