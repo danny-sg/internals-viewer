@@ -1,5 +1,9 @@
 ﻿using InternalsViewer.UI.App.Services.Query.Trace;
 using CommunityToolkit.Mvvm.ComponentModel;
+using InternalsViewer.Query.Events.BatchMode;
+using InternalsViewer.Query.Events.Memory;
+using InternalsViewer.Query.Events.Waits;
+using System.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using CommunityToolkit.Mvvm.Messaging;
 using InternalsViewer.Internals.Columnstore.Metadata.Enums;
@@ -177,6 +181,9 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
     private List<EngineEvent> _filteredEvents = [];
 
     [ObservableProperty]
+    private List<EngineEvent> _planEvents = [];
+
+    [ObservableProperty]
     private EventColourProvider _eventColours = new([]);
 
     [ObservableProperty]
@@ -346,6 +353,8 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
         ];
 
         QueryOptions.FilterChanged += RefreshFilteredEvents;
+
+        QueryOptions.PropertyChanged += OnQueryOptionChanged;
 
         QueryOptions.Changed += ScheduleSaveLayout;
 
@@ -836,7 +845,22 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
     {
         FilteredEvents = [.. Events.Where(IsEventVisible)];
 
+        RefreshPlanEvents();
+
         RefreshLayers(FilteredEvents);
+    }
+
+    private void RefreshPlanEvents() => PlanEvents = [.. Events.Where(IsPlanEventVisible)];
+
+    private void OnQueryOptionChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName is nameof(QueryOptionsViewModel.ShowWaits)
+                           or nameof(QueryOptionsViewModel.ShowLatches)
+                           or nameof(QueryOptionsViewModel.IncludeColumnstore)
+                           or nameof(QueryOptionsViewModel.IncludeMemory))
+        {
+            RefreshPlanEvents();
+        }
     }
 
     /// <summary>
@@ -845,6 +869,7 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
     public override void Dispose()
     {
         QueryOptions.FilterChanged -= RefreshFilteredEvents;
+        QueryOptions.PropertyChanged -= OnQueryOptionChanged;
         _winDbgService.StatusChanged -= OnDebuggerStatusChanged;
         QueryOptions.Changed -= ScheduleSaveLayout;
         Layout.Changed -= OnLayoutChanged;
@@ -852,6 +877,7 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
         Events = [];
         FilteredEvents = [];
+        PlanEvents = [];
         CallStack = null;
         SelectedEvent = null;
 
@@ -1768,6 +1794,7 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
         Events = [];
         FilteredEvents = [];
+        PlanEvents = [];
         CallStack = null;
         SelectedEvent = null;
         ExecutionPlans = [];
@@ -1815,6 +1842,28 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
             LockEscalationEvent esc => QueryOptions.Includes(LockModeClassifier.Categorise(esc.LockMode)),
 
+            _ => true,
+        };
+    }
+
+    private bool IsPlanEventVisible(EngineEvent engineEvent)
+    {
+        if (engineEvent is ExecutionOperatorEvent)
+        {
+            return true;
+        }
+
+        if (!IsEventVisible(engineEvent))
+        {
+            return false;
+        }
+
+        return engineEvent switch
+        {
+            WaitEvent => QueryOptions.ShowWaits,
+            LatchEvent => QueryOptions.ShowLatches,
+            MemoryEvent => QueryOptions.IncludeMemory,
+            SegmentScanEvent or SegmentEliminateEvent or ObjectPoolEvent or ColumnStoreScanEvent => QueryOptions.IncludeColumnstore,
             _ => true,
         };
     }

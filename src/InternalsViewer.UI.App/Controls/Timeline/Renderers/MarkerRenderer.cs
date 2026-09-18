@@ -33,6 +33,8 @@ internal sealed class MarkerRenderer(RenderResource resources, CurrentSelection 
     // The widest a tick can be (sparse rows): used as the left cull margin so a marker just off the label edge still culls.
     private const float MaxMarkerWidth = 4f;
 
+    private const float MinPoolHitWidth = 2f;
+
     private static readonly SKColor SegmentEliminationColour = ColourConstants.SegmentEliminationColour.ToSkColor();
 
     private static readonly SKColor ObjectPoolHitColour = ColourConstants.ObjectPoolHitColour.ToSkColor();
@@ -128,7 +130,9 @@ internal sealed class MarkerRenderer(RenderResource resources, CurrentSelection 
 
             var markerColour = GetMarkerColour(frame, sourceEvent, rowIndex, category);
 
-            var markerWidth = frame.RowMarkerWidth(rowIndex);
+            var markerWidth = sourceEvent is ObjectPoolEvent { IsHit: true }
+                ? Math.Max(MinPoolHitWidth, frame.RowMarkerWidth(rowIndex))
+                : frame.RowMarkerWidth(rowIndex);
 
             var startX = frame.TimeToX(frame.Times[i]);
 

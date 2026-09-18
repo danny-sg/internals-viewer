@@ -25,9 +25,9 @@ internal static class ColourConstants
     // Segment elimination, marked on the segment lane in a red-blue against the scans' blue.
     public static readonly Color SegmentEliminationColour = Color.FromArgb(255, 225, 225, 225);
 
-    public static readonly Color ObjectPoolHitColour = Color.FromArgb(255, 76, 175, 80);
+    public static readonly Color ObjectPoolHitColour = Color.FromArgb(255, 76, 180, 80);
 
-    public static readonly Color ObjectPoolMissColour = Color.FromArgb(255, 200, 20, 20);
+    public static readonly Color ObjectPoolMissColour = Color.FromArgb(255, 174, 128, 130);
 
     public static readonly Color ColumnStoreEventColour = Color.FromArgb(255, 120, 140, 170);
 
