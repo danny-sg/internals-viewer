@@ -379,6 +379,32 @@ public class TimelineDefinitionBuilderTests
         Assert.Equal(4f, definition.Items[0].MinWidth);
     }
 
+    [Fact]
+    public void Gives_Each_Thread_Its_Own_Lane_In_The_Rowgroup_Sub_Band()
+    {
+        var scan = new SegmentScanEvent { RowGroupId = 1, ThreadId = 3 };
+
+        var group = new RowGroupScanEvent { Events = [scan], RowGroupId = 1, ThreadId = 3 };
+
+        var otherScan = new SegmentScanEvent { RowGroupId = 2, ThreadId = 7 };
+
+        var otherGroup = new RowGroupScanEvent { Events = [otherScan], RowGroupId = 2, ThreadId = 7 };
+
+        var definition = Build([group, otherGroup], ShowAll);
+
+        Assert.Equal((0, 4), Tracks(definition, group));
+        Assert.Equal((1, 4), Tracks(definition, otherGroup));
+        Assert.Equal((0, 4), Tracks(definition, scan));
+        Assert.Equal((1, 4), Tracks(definition, otherScan));
+    }
+
+    private static (int Track, int TrackCount) Tracks(TimelineDefinition definition, EngineEvent engineEvent)
+    {
+        var item = definition.Items[definition.Events.Select((e, i) => (e, i)).First(p => ReferenceEquals(p.e, engineEvent)).i];
+
+        return (item.Track, item.TrackCount);
+    }
+
     private static TimelineDefinition Build(EngineEvent[] events, TimelineBandVisibility visibility)
         => TimelineDefinitionBuilder.CreateDefault().Build(events, visibility);
 }

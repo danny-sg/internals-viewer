@@ -1,4 +1,5 @@
 using InternalsViewer.Internals.Engine.Database;
+using InternalsViewer.Internals.Extensions;
 using InternalsViewer.Query.Events.BatchMode.Enums;
 
 namespace InternalsViewer.Query.Events.BatchMode;
@@ -11,6 +12,8 @@ internal static class ObjectPoolEventParser
 
         var objectId = (int)(e.GetUlong("object_id") ?? 0);
 
+        var hobtId = e.GetUlong("hobt_id") ?? 0;
+
         return new ObjectPoolEvent
         {
             Name = e.Name,
@@ -18,7 +21,8 @@ internal static class ObjectPoolEventParser
             DatabaseId = e.GetDatabaseId(),
             IsHit = e.Name.EndsWith("_hit", StringComparison.Ordinal),
             ObjectType = objectType,
-            HobtId = e.GetUlong("hobt_id") ?? 0,
+            HobtId = hobtId,
+            AllocationUnit = databaseSource?.FindHobtIdAllocationUnit((long)hobtId),
             ColumnId = (int)(e.GetUlong("column_id") ?? 0),
             PoolObjectId = objectId,
             RowGroupId = IsRowGroupObject(objectType) ? objectId : null

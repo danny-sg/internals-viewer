@@ -26,8 +26,6 @@ public sealed partial record ObjectPoolEvent : EngineEvent
 
     public int PoolObjectId { get; set; }
 
-    public override int ObjectId => PoolObjectId;
-
     public IReadOnlyList<PageAddress> Pages { get; set; } = [];
 
     public override string Name => IsHit ? "Object Pool Hit" : "Object Pool Miss";

@@ -1,4 +1,6 @@
 ﻿using InternalsViewer.Internals.Engine.Address;
+using InternalsViewer.Internals.Engine.Database;
+using InternalsViewer.Internals.Engine.Database.Enums;
 using InternalsViewer.Query.CallStack;
 using InternalsViewer.Query.Events.BatchMode;
 using InternalsViewer.Query.Events.Locks;
@@ -388,6 +390,43 @@ public class XmlEventParserTests
         Assert.Equal(1000, filter.InputRows);
         Assert.Equal(40, filter.OutputRows);
         Assert.False(filter.IsPure);
+    }
+
+    [Fact]
+    public void Resolves_An_Object_Pool_Lookup_To_Its_Hobt_Not_Its_Rowgroup_Number()
+    {
+        const string xml = """
+            <event name="column_store_object_pool_miss" timestamp="2026-06-30T12:00:00.000Z">
+              <data name="object_type"><value>1</value></data>
+              <data name="hobt_id"><value>72057594073448448</value></data>
+              <data name="column_id"><value>2</value></data>
+              <data name="object_id"><value>5</value></data>
+            </event>
+            """;
+
+        var database = new DatabaseSource(null!)
+        {
+            AllocationUnits =
+            {
+                [1] = new AllocationUnit { AllocationUnitId = 1, ObjectId = 5, PartitionId = 5, IsSystem = true },
+                [2] = new AllocationUnit
+                {
+                    AllocationUnitId = 2,
+                    ObjectId = 1234,
+                    PartitionId = 72057594073448448,
+                    AllocationUnitType = AllocationUnitType.InRowData
+                },
+            },
+        };
+
+        var result = new XmlEventParser().ParseEvent(xml)!;
+
+        var engineEvent = new EventParser().ToEngineEvent(result, database, new PlanHandleRegistry(), new CallStackTree());
+
+        var lookup = Assert.IsType<ObjectPoolEvent>(engineEvent);
+
+        Assert.Equal(5, lookup.RowGroupId);
+        Assert.Equal(1234, lookup.ObjectId);
     }
 
     private static string EventWithPlanHandle(string planHandle) =>

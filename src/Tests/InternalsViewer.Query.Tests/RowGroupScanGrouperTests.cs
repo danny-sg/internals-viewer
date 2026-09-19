@@ -35,17 +35,20 @@ public class RowGroupScanGrouperTests
 
         var otherTask = new ObjectPoolEvent { RowGroupId = 2, SequenceId = 7, TaskAddress = 8 };
 
+        var otherTaskFilter = new ColumnstoreFilterEvent { EventName = ColumnstoreFilterEvent.BatchFilter, SequenceId = 7, TaskAddress = 8 };
+
         var finished = new ColumnStoreScanEvent { EventName = Finished, RowGroupId = 2, SequenceId = 8, TaskAddress = 7 };
 
         var unfinished = new SegmentScanEvent { RowGroupId = 1, SequenceId = 9, TaskAddress = 7 };
 
-        var result = RowGroupScanGrouper.Group([lookup, eliminated, readAhead, scan, bitmap, filter, otherTask, finished, unfinished]);
+        var result = RowGroupScanGrouper.Group(
+            [lookup, eliminated, readAhead, scan, bitmap, filter, otherTask, otherTaskFilter, finished, unfinished]);
 
         var group = Assert.IsType<RowGroupScanEvent>(result[0]);
 
         Assert.Equal(2, group.RowGroupId);
-        Assert.Equal<EngineEvent>([lookup, scan, filter, finished], group.Events);
-        Assert.Equal<EngineEvent>([group, eliminated, readAhead, bitmap, otherTask, unfinished], result);
+        Assert.Equal<EngineEvent>([lookup, scan, filter, otherTask, finished], group.Events);
+        Assert.Equal<EngineEvent>([group, eliminated, readAhead, bitmap, otherTaskFilter, unfinished], result);
     }
 
     [Fact]
@@ -67,6 +70,48 @@ public class RowGroupScanGrouperTests
         Assert.Same(Scan, filter.PlanNodeIdentifier);
         Assert.Same(Scan, finished.PlanNodeIdentifier);
         Assert.Same(elsewhere, lookup.PlanNodeIdentifier);
+    }
+
+    [Fact]
+    public void Group_Keeps_Each_Operators_Scan_Of_A_Rowgroup_Apart()
+    {
+        var other = new PlanNodeIdentifier(1, 2);
+
+        var scan = new SegmentScanEvent { RowGroupId = 2, SequenceId = 1, PlanNodeIdentifier = Scan };
+
+        var otherScan = new SegmentScanEvent { RowGroupId = 2, SequenceId = 2, PlanNodeIdentifier = other };
+
+        var finished = new ColumnStoreScanEvent { EventName = Finished, RowGroupId = 2, SequenceId = 3, PlanNodeIdentifier = Scan };
+
+        var otherFinished = new ColumnStoreScanEvent { EventName = Finished, RowGroupId = 2, SequenceId = 4, PlanNodeIdentifier = other };
+
+        var result = RowGroupScanGrouper.Group([scan, otherScan, finished, otherFinished]);
+
+        Assert.Equal<EngineEvent>([scan, finished], Assert.IsType<RowGroupScanEvent>(result[0]).Events);
+        Assert.Equal<EngineEvent>([otherScan, otherFinished], Assert.IsType<RowGroupScanEvent>(result[1]).Events);
+    }
+
+    [Fact]
+    public void Group_Takes_The_Thread_Of_Its_Segment_Scans()
+    {
+        var lookup = new ObjectPoolEvent { RowGroupId = 2, SequenceId = 1, TaskAddress = 7 };
+
+        var scan = new SegmentScanEvent { RowGroupId = 2, SequenceId = 2, TaskAddress = 7, ThreadId = 5 };
+
+        var filter = new ColumnstoreFilterEvent
+        {
+            EventName = ColumnstoreFilterEvent.BatchFilter,
+            SequenceId = 3,
+            TaskAddress = 7,
+            ThreadId = 4
+        };
+
+        var finished = new ColumnStoreScanEvent { EventName = Finished, RowGroupId = 2, SequenceId = 4, TaskAddress = 7 };
+
+        var group = Assert.IsType<RowGroupScanEvent>(Assert.Single(RowGroupScanGrouper.Group([lookup, scan, filter, finished])));
+
+        Assert.Equal(5, group.ThreadId);
+        Assert.Equal((5, 5, 4), (lookup.ThreadId, finished.ThreadId, filter.ThreadId));
     }
 
     [Fact]

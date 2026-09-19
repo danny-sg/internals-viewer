@@ -6,37 +6,46 @@ public static class RowGroupScanGrouper
 {
     public static List<EngineEvent> Group(List<EngineEvent> events)
     {
-        var groupOf = new Dictionary<EngineEvent, RowGroupScanEvent>(ReferenceEqualityComparer.Instance);
+        List<EngineEvent> work = [.. events.Where(IsRowGroupWork).OrderBy(e => e.SequenceId)];
 
-        foreach (var task in events.Where(IsRowGroupWork).GroupBy(e => e.TaskKey()))
+        List<ColumnStoreScanEvent> finishes =
+        [
+            .. work.OfType<ColumnStoreScanEvent>().Where(e => e is { IsRowGroupFinished: true, RowGroupId: not null })
+        ];
+
+        if (finishes.Count == 0)
         {
-            var pending = new List<EngineEvent>();
+            return events;
+        }
 
-            foreach (var engineEvent in task.OrderBy(e => e.SequenceId))
+        var members = finishes.ToDictionary(f => f, _ => new List<EngineEvent>(), ReferenceEqualityComparer.Instance);
+
+        var byRowGroup = finishes.ToLookup(f => f.RowGroupId!.Value);
+
+        var byTask = finishes.ToLookup(f => f.TaskKey());
+
+        foreach (var engineEvent in work)
+        {
+            var candidates = RowGroupOf(engineEvent) is { } rowGroup ? byRowGroup[rowGroup] : byTask[engineEvent.TaskKey()];
+
+            if (OwnerOf(engineEvent, candidates) is { } owner)
             {
-                pending.Add(engineEvent);
-
-                if (engineEvent is not ColumnStoreScanEvent { IsRowGroupFinished: true, RowGroupId: { } rowGroup } finished)
-                {
-                    continue;
-                }
-
-                List<EngineEvent> owned = [.. pending.Where(e => BelongsTo(e, rowGroup))];
-
-                var group = Build(rowGroup, owned, finished);
-
-                foreach (var member in owned)
-                {
-                    groupOf[member] = group;
-                }
-
-                pending.Clear();
+                members[owner].Add(engineEvent);
             }
         }
 
-        if (groupOf.Count == 0)
+        var groupOf = new Dictionary<EngineEvent, RowGroupScanEvent>(ReferenceEqualityComparer.Instance);
+
+        foreach (var finished in finishes)
         {
-            return events;
+            var owned = members[finished];
+
+            var group = Build(finished.RowGroupId!.Value, owned, finished);
+
+            foreach (var member in owned)
+            {
+                groupOf[member] = group;
+            }
         }
 
         var emitted = new HashSet<RowGroupScanEvent>(ReferenceEqualityComparer.Instance);
@@ -92,6 +101,16 @@ public static class RowGroupScanGrouper
             member.PlanNodeIdentifier ??= node;
         }
 
+        var thread = owned.OfType<SegmentScanEvent>().Select(s => s.ThreadId).FirstOrDefault(id => id != 0);
+
+        if (thread != 0)
+        {
+            foreach (var member in owned.Where(m => m.ThreadId == 0))
+            {
+                member.ThreadId = thread;
+            }
+        }
+
         var first = owned.MinBy(e => e.TimeUs)!;
 
         return new RowGroupScanEvent
@@ -102,7 +121,7 @@ public static class RowGroupScanGrouper
             Timestamp = first.Timestamp,
             TimeUs = first.TimeUs,
             DatabaseId = finished.DatabaseId,
-            ThreadId = finished.ThreadId,
+            ThreadId = thread != 0 ? thread : finished.ThreadId,
             TaskAddress = finished.TaskAddress,
             WorkerAddress = finished.WorkerAddress,
             PlanNodeIdentifier = node
@@ -146,16 +165,36 @@ public static class RowGroupScanGrouper
         }
     }
 
-    private static bool BelongsTo(EngineEvent engineEvent, long rowGroup) => engineEvent switch
+    private static ColumnStoreScanEvent? OwnerOf(EngineEvent engineEvent, IEnumerable<ColumnStoreScanEvent> candidates)
     {
-        ObjectPoolEvent pool => pool.RowGroupId is null || pool.RowGroupId == rowGroup,
-        SegmentScanEvent scan => scan.RowGroupId == rowGroup,
-        ColumnStoreScanEvent { IsBitmapFilterSet: true } => false,
-        ColumnStoreScanEvent scan => scan.RowGroupId is null || scan.RowGroupId == rowGroup,
-        ColumnstoreFilterEvent filter => filter.RowGroupId is null || filter.RowGroupId == rowGroup,
-        _ => false
+        List<ColumnStoreScanEvent> following =
+        [
+            .. candidates.Where(f => f.SequenceId >= engineEvent.SequenceId && SameNode(engineEvent, f))
+        ];
+
+        var task = engineEvent.TaskKey();
+
+        return following.FirstOrDefault(f => f.TaskKey() == task) ?? following.FirstOrDefault();
+    }
+
+    private static bool SameNode(EngineEvent engineEvent, ColumnStoreScanEvent finished)
+        => engineEvent.PlanNodeIdentifier is null
+           || finished.PlanNodeIdentifier is null
+           || engineEvent.PlanNodeIdentifier == finished.PlanNodeIdentifier;
+
+    private static long? RowGroupOf(EngineEvent engineEvent) => engineEvent switch
+    {
+        ObjectPoolEvent pool => pool.RowGroupId,
+        SegmentScanEvent scan => scan.RowGroupId,
+        ColumnStoreScanEvent scan => scan.RowGroupId,
+        ColumnstoreFilterEvent filter => filter.RowGroupId,
+        _ => null
     };
 
-    private static bool IsRowGroupWork(EngineEvent engineEvent)
-        => engineEvent is ObjectPoolEvent or SegmentScanEvent or ColumnStoreScanEvent or ColumnstoreFilterEvent;
+    private static bool IsRowGroupWork(EngineEvent engineEvent) => engineEvent switch
+    {
+        ColumnStoreScanEvent { IsRowGroupReadAhead: true } or ColumnStoreScanEvent { IsBitmapFilterSet: true } => false,
+        ObjectPoolEvent or SegmentScanEvent or ColumnStoreScanEvent or ColumnstoreFilterEvent => true,
+        _ => false
+    };
 }

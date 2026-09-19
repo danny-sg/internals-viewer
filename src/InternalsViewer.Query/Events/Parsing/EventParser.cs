@@ -129,7 +129,7 @@ public sealed class EventParser
                     ioEvent.IsRoot = true;
                 }
             }
-            else if (engineEvent.ObjectId > 0)
+            else if (engineEvent.AllocationUnit is null && engineEvent.ObjectId > 0)
             {
                 engineEvent.AllocationUnit = database.FindObjectIdAllocationUnit(engineEvent.ObjectId);
             }

@@ -108,7 +108,7 @@ public sealed class ColumnstoreScanIterator(ColumnstoreService columnstoreServic
 
             DeletedRows = await columnstoreService.GetDeletedRows(context.Database, index, cancellationToken);
 
-            RowGroups = [.. index.CompressedRowGroups];
+            RowGroups = [.. index.CompressedRowGroups.OrderByDescending(r => r.RowGroupId)];
         }
 
         Cursor = new ColumnstoreScanRowGroupCursor(columnstoreService, Definition, Context, NodeId, ColumnIds, RowGroups);

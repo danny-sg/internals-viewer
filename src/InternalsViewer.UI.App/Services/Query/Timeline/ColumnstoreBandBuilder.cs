@@ -50,6 +50,10 @@ internal sealed class ColumnstoreBandBuilder : ITimelineBandBuilder
 
     private ObjectPoolTracks PoolTracks { get; } = new();
 
+    private Dictionary<int, int> ThreadLanes { get; } = [];
+
+    private int LaneCount => Math.Max(1, ThreadLanes.Count);
+
     private float BatchFilterWidth { get; set; }
 
     private float FilterApplyWidth { get; set; }
@@ -77,33 +81,37 @@ internal sealed class ColumnstoreBandBuilder : ITimelineBandBuilder
 
         PoolTracks.Rebuild(events);
 
-        var dividers = new TimelineTrackDivider[PoolTracks.LaneStarts.Count];
+        ThreadLanes.Clear();
 
-        for (var lane = 0; lane < dividers.Length; lane++)
+        foreach (var thread in events.OfType<RowGroupScanEvent>().Select(g => g.ThreadId).Distinct().Order())
         {
-            dividers[lane] = new TimelineTrackDivider(PoolTracks.TrackCount + PoolTracks.LaneStarts[lane], PoolTracks.TrackCount * 2);
+            ThreadLanes[thread] = ThreadLanes.Count;
         }
+
+        List<TimelineTrackDivider> dividers = [];
+
+        for (var lane = 1; lane < LaneCount; lane++)
+        {
+            dividers.Add(new TimelineTrackDivider(lane, LaneCount * 2));
+        }
+
+        foreach (var laneStart in PoolTracks.LaneStarts)
+        {
+            dividers.Add(new TimelineTrackDivider(PoolTracks.TrackCount + laneStart, PoolTracks.TrackCount * 2));
+        }
+
+        var trackCount = Math.Max(LaneCount * SegmentTracks.TrackCount, PoolTracks.TrackCount);
 
         return Band with
         {
-            MinInnerHeight = Math.Max(SegmentTracks.TrackCount, PoolTracks.TrackCount) * SegmentScanTracks.MinTrackHeight * 2,
+            MinInnerHeight = trackCount * SegmentScanTracks.MinTrackHeight * 2,
             TrackDividers = dividers,
         };
     }
 
     public TimelineItem Place(int index, EngineEvent engineEvent, int band, List<TimelineLink> links) => engineEvent switch
     {
-        SegmentScanEvent => new TimelineItem(band,
-                                             SegmentTracks.TrackOf(index),
-                                             SegmentTracks.TrackCount * 2,
-                                             2,
-                                             TimelineFill.Solid,
-                                             TimelineTickAnchor.Start,
-                                             TimelineColourSource.Fixed,
-                                             SegmentScanColour,
-                                             0f,
-                                             0,
-                                             MinPoolHitWidth),
+        SegmentScanEvent scan => SegmentScan(band, index, scan),
         ObjectPoolEvent pool => new TimelineItem(band,
                                                  PoolTracks.TrackCount + PoolTracks.TrackOf(index),
                                                  PoolTracks.TrackCount * 2,
@@ -115,13 +123,36 @@ internal sealed class ColumnstoreBandBuilder : ITimelineBandBuilder
                                                  pool.IsHit ? MinPoolHitWidth : 0f,
                                                  pool.IsHit ? HitLayer : (byte)0),
         SegmentEliminateEvent => Half(band, 0, SegmentEliminationColour, 0f),
-        RowGroupScanEvent => Half(band, 0, ColumnStoreEventColour, 0f),
-        ColumnstoreFilterEvent { IsBatchFilter: true } => Half(band, 0, BatchFilterColour, BatchFilterWidth),
-        ColumnstoreFilterEvent => Half(band, 0, FilterApplyColour, FilterApplyWidth),
+        RowGroupScanEvent => Lane(band, engineEvent, ColumnStoreEventColour, 0f),
+        ColumnstoreFilterEvent { IsBatchFilter: true } => Lane(band, engineEvent, BatchFilterColour, BatchFilterWidth),
+        ColumnstoreFilterEvent => Lane(band, engineEvent, FilterApplyColour, FilterApplyWidth),
         ColumnStoreScanEvent { IsBitmapFilterSet: true } => TimelineItem.Undrawn(band),
-        ColumnStoreScanEvent scan => Half(band, scan.IsRowGroupEvent ? 0 : 1, ColumnStoreEventColour, 0f),
+        ColumnStoreScanEvent { IsRowGroupEvent: true } => Lane(band, engineEvent, ColumnStoreEventColour, 0f),
+        ColumnStoreScanEvent => Half(band, 1, ColumnStoreEventColour, 0f),
         _ => TimelineItem.Undrawn(band),
     };
+
+    private TimelineItem SegmentScan(int band, int index, SegmentScanEvent scan)
+    {
+        var laneCount = ThreadLanes.TryGetValue(scan.ThreadId, out var lane) ? LaneCount : 1;
+
+        return new TimelineItem(band,
+                                lane * SegmentTracks.TrackCount + SegmentTracks.TrackOf(index),
+                                laneCount * SegmentTracks.TrackCount * 2,
+                                2,
+                                TimelineFill.Solid,
+                                TimelineTickAnchor.Start,
+                                TimelineColourSource.Fixed,
+                                SegmentScanColour,
+                                0f,
+                                0,
+                                MinPoolHitWidth);
+    }
+
+    private TimelineItem Lane(int band, EngineEvent engineEvent, SKColor colour, float minWidth)
+        => ThreadLanes.TryGetValue(engineEvent.ThreadId, out var lane)
+            ? Half(band, 0, colour, minWidth) with { Track = lane, TrackCount = LaneCount * 2 }
+            : Half(band, 0, colour, minWidth);
 
     private static TimelineItem Half(int band, int half, SKColor colour, float minWidth)
         => new(band, half, 2, 1, TimelineFill.Translucent, TimelineTickAnchor.Start, TimelineColourSource.Fixed, colour, minWidth);
