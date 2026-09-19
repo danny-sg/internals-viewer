@@ -17,6 +17,7 @@ public sealed partial class QueryIndexTabView : UserControl, IDisposable
 {
     private const float MinimumZoom = 0.001f;
     private const float MaximumZoom = 10f;
+    private const float ZoomToPageZoom = 1f;
 
     private bool _hasLoaded;
 
@@ -37,6 +38,8 @@ public sealed partial class QueryIndexTabView : UserControl, IDisposable
     }
 
     public IndexTabViewModel? ViewModel => DataContext as IndexTabViewModel;
+
+    public float? ZoomToPageTarget(bool isZoomToPage) => isZoomToPage ? ZoomToPageZoom : null;
 
     public void Dispose()
     {

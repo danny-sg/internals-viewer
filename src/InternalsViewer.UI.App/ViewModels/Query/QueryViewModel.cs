@@ -131,6 +131,7 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
     private bool _layoutRestored;
     private bool _layoutTouched;
     private bool _saveScheduled;
+    private bool _isClearBuferPool = true;
 
     private int? _traceTargetNodeId;
 
@@ -1560,7 +1561,7 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
     /// </summary>
     private void RefreshIndexPageSpans(List<EngineEvent> engineEvents, EventColourProvider colours)
     {
-        _pageSpans = PageSpanBuilder.GetEventsPageSpans(engineEvents, colours, StartOffset, EndOffset, Database);
+        _pageSpans = PageSpanBuilder.GetEventsPageSpans(engineEvents, colours, StartOffset, EndOffset, _isClearBuferPool, Database);
 
         foreach (var viewModel in _openIndexes.Values)
         {
@@ -1678,6 +1679,8 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
     [RelayCommand(IncludeCancelCommand = true)]
     private async Task ExecuteQuery(ExecuteSqlPayload payload, CancellationToken cancellationToken)
     {
+        _isClearBuferPool = payload.QueryOptions.ClearBufferPool;
+
         ScheduleSaveLayout();
 
         History.Add(payload.SqlText);
@@ -1875,6 +1878,7 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
                                                            colours,
                                                            startOffset,
                                                            endOffset,
+                                                           _isClearBuferPool,
                                                            Database);
 
         overlayLayer.SetPageSpans([.. pageSpans.OrderBy(s => s.StartUs)]);

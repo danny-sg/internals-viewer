@@ -18,6 +18,7 @@ internal static class PageSpanBuilder
                                                     EventColourProvider colours,
                                                     long? startOffset,
                                                     long? endOffset,
+                                                    bool isClearBufferPool,
                                                     DatabaseSource databaseSource)
     {
         var maxFileId = databaseSource.Files.Max(d => d.FileId);
@@ -35,7 +36,7 @@ internal static class PageSpanBuilder
 
             if (e is ReadEventGroup group)
             {
-                AddReadEventGroupSpans(group, e, colours, queryEndUs, maxFileId, pageSpans.Add);
+                AddReadEventGroupSpans(group, e, colours, queryEndUs, maxFileId, isClearBufferPool, pageSpans.Add);
             }
 
             if (e is TransactionLogEvent logEvent)
@@ -60,13 +61,14 @@ internal static class PageSpanBuilder
                                                EventColourProvider colours,
                                                long queryEndUs,
                                                int maxFileId,
+                                               bool isClearBufferPool,
                                                Action<PageSpan> add)
     {
         var readColour = colours.GetObjectColour(e.ObjectName) ?? colours.GetColour(e);
 
         var readAtUs = e.TimeUs + e.DurationUs;
 
-        if (group.ReadType == ReadType.Cached)
+        if (group.ReadType == ReadType.Cached && isClearBufferPool)
         {
             foreach (var readEvent in group.Events)
             {

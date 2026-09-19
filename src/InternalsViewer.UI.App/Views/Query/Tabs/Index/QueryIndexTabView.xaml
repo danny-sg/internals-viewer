@@ -63,6 +63,7 @@
                                 Nodes="{x:Bind ViewModel.Nodes, Mode=OneWay}"
                                 Zoom="{x:Bind ViewModel.Zoom, Mode=TwoWay}"
                                 IsZoomToFit="{x:Bind ViewModel.IsZoomToFit, Mode=TwoWay}"
+                                ZoomToSelectedPageAddress="{x:Bind ZoomToPageTarget(ViewModel.IsZoomToPage), Mode=OneWay}"
                                 IsTooltipEnabled="{x:Bind ViewModel.IsTooltipEnabled, Mode=OneWay}"
                                 IsLevelsVisible="{x:Bind ViewModel.IsLevelsVisible, Mode=OneWay}"
                                 PageSpans="{x:Bind ViewModel.PageSpans, Mode=OneWay}"

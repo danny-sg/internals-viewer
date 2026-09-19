@@ -52,6 +52,9 @@ public partial class IndexTabViewModel(ILogger<IndexTabViewModel> logger,
     private bool _isZoomToFit = true;
 
     [ObservableProperty]
+    private bool _isZoomToPage;
+
+    [ObservableProperty]
     private PageAddress _rootPage;
 
     [ObservableProperty]
