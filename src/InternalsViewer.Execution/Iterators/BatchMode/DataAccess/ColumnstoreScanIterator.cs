@@ -84,6 +84,9 @@ public sealed class ColumnstoreScanIterator(ColumnstoreService columnstoreServic
 
     private long VectorNumber { get; set; }
 
+    /// <summary>
+    /// Iterator open
+    /// </summary>
     public async Task OpenAsync(IteratorDefinition definition, IteratorContext context, CancellationToken cancellationToken)
     {
         Definition = definition.Expect<ColumnstoreScanDefinition>();

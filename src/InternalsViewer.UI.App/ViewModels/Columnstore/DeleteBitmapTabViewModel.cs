@@ -20,10 +20,6 @@ namespace InternalsViewer.UI.App.ViewModels.Columnstore;
 /// <summary>
 /// The rows a columnstore index has marked deleted, which stay in their segments until the row group is rebuilt
 /// </summary>
-/// <remarks>
-/// The bitmap is a B-tree of index records with two columns, read positionally: the row group with its low bit
-/// reserved, then the row within it. The record loaders decode it as they would any other index record.
-/// </remarks>
 public sealed partial class DeleteBitmapTabViewModel(IPageService pageService,
                                                      IIamChainService iamChainService,
                                                      IRecordService recordService,
@@ -89,7 +85,6 @@ public sealed partial class DeleteBitmapTabViewModel(IPageService pageService,
                     return;
                 }
 
-                // Typed loads throw on anything else, and the ranges cover allocation pages as well as data ones
                 var page = await PageService.GetPage(Database, address, cancellationToken, isMarkEnabled: false);
 
                 // A mixed extent holds pages of other objects, so the IAM's ranges are not the rowset on their own

@@ -8,7 +8,7 @@ namespace InternalsViewer.Execution.Iterators.BatchMode.DataAccess;
 /// Factory for the creation of the Execution Batch for a columnstore scan
 /// </summary>
 /// <remarks>
-/// Sizes it and builds the scan's own and pipeline vectors.
+/// Sizes it and builds the scan batch and pipeline vectors.
 /// 
 /// The scan owns a vector per projected column and a passthrough vector per pipeline column. The row count is sized from the total column
 /// count so wider batches carry fewer rows. The scan's own vectors are handed back so the iterator can expose them as its output and bind

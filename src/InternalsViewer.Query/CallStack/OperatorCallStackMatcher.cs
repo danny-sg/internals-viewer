@@ -6,38 +6,33 @@ using InternalsViewer.Query.Plans.Model;
 namespace InternalsViewer.Query.CallStack;
 
 /// <summary>
-/// Finds the call-stack frames bounding each plan operator's execution, filling
-/// <see cref="ExecutionOperatorEvent.EntryFrames"/> and <see cref="ExecutionOperatorEvent.ExitFrames"/>
+/// Matches operators to call stack frames.
 /// </summary>
 /// <remarks>
-/// Operators emit no events of their own — only the data-access leaves do — so an operator's frames cannot be found from
-/// its own events, and most operators have none at all. They are found from the leaves of its plan SUBTREE instead: a
-/// Stream Aggregate appears on the stacks of the reads its Index Scan issued, and walking up from those reaches it.
+/// Operators do not necessarily emit events of their own so <see cref="ExecutionOperatorEvent.EntryFrames"/> and 
+/// <see cref="ExecutionOperatorEvent.ExitFrames"/> must be derived from signals.
 ///
 /// Three signals, because none of them covers the others' ground:
 ///
-/// <list type="bullet">
-/// <item>The mapping file names the frame's operator. It is the only thing that separates a CHAIN — a Stream Aggregate
-/// over an Index Scan owns exactly the scan's events and nothing else, so no amount of event data tells the two
-/// apart.</item>
-/// <item>The plan's SHAPE orders those names. A name belongs to the CLASS and cannot tell instances of it apart: asked
-/// independently which frames match "Hash Match", each of six nested hash joins claims all six runs. The plan already
-/// says which order they appear in on any stack, so a run is fixed by its POSITION in the leaf's chain of ancestors
-/// instead. The names never needed to be unique, only correctly ordered.</item>
-/// <item>Ownership needs no names at all. It separates a BRANCH — where an operator has siblings, its events are its
-/// own, and the frame below which only its subtree's events appear is where it began. This is what the names are worst
-/// at: a class the file does not cover costs the parent its trim as well as the child its segment.</item>
-/// </list>
+/// - The mapping file names the frame's operator. It is the only thing that separates a chain — a Stream Aggregate over an Index Scan owns 
+///   exactly the scan's events and nothing else, so no amount of event data tells the two apart.
+///   
+/// - The plan's sha[e orders those names. A name belongs to the class and cannot tell instances of it apart: asked independently which 
+///   frames match "Hash Match", each of six nested hash joins claims all six runs. The plan already says which order they appear in on any 
+///   stack, so a run is fixed by its position in the leaf's chain of ancestors instead. The names never needed to be unique, only correctly
+///   ordered.
+/// 
+/// - Ownership needs no names at all. It separates a branch — where an operator has siblings, its events are its own, and the frame below 
+///   which only its subtree's events appear is where it began. This is what the names are worst at: a class the file does not cover costs 
+///   the parent its trim as well as the child its segment.
 ///
-/// Alignment is tried first and ownership fills its gaps, though the reverse is tempting. It was tried, and it loses on
-/// the general case: "where this node's work branches off" is not "where this node was entered" — a nested loop
-/// re-enters its inner side once per outer row, so the lookup's work branches away at every row-release and lock the
-/// loop drives, and ownership honestly reports all dozen of them. One of them is the entry; the rule cannot say which.
+/// Alignment is tried first and ownership fills its gaps, though the reverse is tempting. It was tried, and it loses on the general case:
+/// "where this node's work branches off" is not "where this node was entered" — a nested loop re-enters its inner side once per outer row, 
+/// so the lookup's work branches away at every row-release and lock the loop drives, and ownership honestly reports all dozen of them. One 
+/// of them is the entry; the rule cannot say which.
 ///
-/// Measured, not assumed: OperatorScopeIntegrationTests dumps both answers per operator against real queries.
-///
-/// Runs after <see cref="CallStackTree.CollapseToFunctions"/>, needing both resolved symbols (for the mapping match) and
-/// the final function-keyed nodes (the ones the events point at).
+/// Runs after <see cref="CallStackTree.CollapseToFunctions"/>, needing both resolved symbols (for the mapping match) and the final 
+/// function-keyed nodes (the ones the events point at).
 /// </remarks>
 public static class OperatorCallStackMatcher
 {
@@ -65,8 +60,8 @@ public static class OperatorCallStackMatcher
         {
             operatorEvent.EntryFrames = alignedByNode.GetValueOrDefault(operatorEvent.PlanNodeIdentifier!) is
                                         { Count: > 0 } aligned
-                ? aligned
-                : OwnedEntryFrames(nodesByFrame, allNodes, hierarchy.Subtree(operatorEvent));
+                                        ? aligned
+                                        : OwnedEntryFrames(nodesByFrame, allNodes, hierarchy.Subtree(operatorEvent));
         }
 
         // Exits second: an operator's segment ends where its descendants' segments start, so every entry must be known.

@@ -22,8 +22,6 @@ internal static class AllocationLayerBuilder
     private const int SystemSaturation = 100;
     private const int UserValue = 220;
     private const int SystemValue = 220;
-
-    // HsvToColor treats 256 hue steps as one revolution; we place objects across the wheel, so this is the wheel size.
     private const int HueWheel = 256;
 
     public static List<AllocationLayer> GenerateLayers(DatabaseSource database,

@@ -11,7 +11,7 @@ using InternalsViewer.Internals.Columnstore.Services;
 namespace InternalsViewer.Execution.Iterators.BatchMode.DataAccess;
 
 /// <summary>
-/// Iterates a columnstore index's compressed rowgroups, yielding the next that survives elimination with its columns bound
+/// Iterates a columnstore index rowgroups including segment elimination
 /// </summary>
 internal sealed class ColumnstoreScanRowGroupCursor(ColumnstoreService columnstoreService,
                                                     ColumnstoreScanDefinition definition,

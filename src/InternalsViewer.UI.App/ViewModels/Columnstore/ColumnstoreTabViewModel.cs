@@ -92,15 +92,9 @@ public sealed partial class ColumnstoreTabViewModel : TabViewModel
     [ObservableProperty]
     private bool _isDictionariesTabLoaded;
 
-    /// <summary>
-    /// Whether the index is the table or an index over it, which decides whether it carries a row locator
-    /// </summary>
     [ObservableProperty]
     private string _indexTypeDescription = string.Empty;
 
-    /// <summary>
-    /// Every dictionary the index holds, global ones once and local ones per row group
-    /// </summary>
     [ObservableProperty]
     private IReadOnlyList<DictionarySummary> _dictionaries = [];
 
@@ -235,9 +229,8 @@ public sealed partial class ColumnstoreTabViewModel : TabViewModel
     /// Reads the prologue of every segment blob, which the metadata does not carry
     /// </summary>
     /// <remarks>
-    /// The structure type and the RLE and bit pack counts only exist inside the blob, and a prologue costs a couple
-    /// of page reads against the whole blob's many. It still runs after the index is on screen rather than holding
-    /// it up, the drawing standing on its own without them.
+    /// The structure type and the RLE and bit pack counts only exist inside the blob, and a prologue costs a couple of page reads against
+    /// the whole blob's many. It still runs after the index is on screen rather than holding it up, the drawing standing on its own without them.
     /// </remarks>
     private async Task LoadSegmentHeaders()
     {

@@ -464,9 +464,13 @@ public sealed partial class SqlEditorControl : UserControl, IDisposable
                         _editorReady = true;
                         IsEditorLoading = false;
                         LoadingOverlay.Visibility = Visibility.Collapsed;
+                        
                         await PushSchemaToEditorAsync();
+                        
                         PushSqlTextToEditor();
+                        
                         await ApplySavedFontSizeAsync();
+                        
                         break;
 
                     case "fontSizeChanged":
@@ -579,7 +583,9 @@ public sealed partial class SqlEditorControl : UserControl, IDisposable
         IsHistoryVisible = await App.GetService<SettingsService>().ReadSettingAsync<bool?>(HistoryVisibleSettingKey) ?? false;
     }
 
-    // Applies the persisted editor font size (set by Ctrl+wheel zoom) once the editor is ready
+    /// <remarks>
+    /// Applies the persisted editor font size (set by Ctrl+wheel zoom) once the editor is ready
+    /// </remarks>
     private async Task ApplySavedFontSizeAsync()
     {
         if (!_editorReady)

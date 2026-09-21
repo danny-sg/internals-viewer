@@ -7,12 +7,12 @@ using InternalsViewer.UI.App.Models;
 namespace InternalsViewer.UI.App.ViewModels.Allocation;
 
 /// <summary>
-/// Builds a quantized version of the app logo coloured by a database's allocations
+/// Builds a quantized version of the app logo coloured by the database allocations
 /// </summary>
 /// <remarks>
-/// Object layers are apportioned across the nine cells by page count and filled left to right then top to bottom,
-/// largest first. The trailing cells are reserved for layers other than the largest, so a single dominant object
-/// cannot take the whole icon. System objects and the allocation overlay layers take no part.
+/// Object layers are apportioned across the nine cells by page count and filled left to right then top to bottom, largest first. The 
+/// trailing cells are reserved for layers other than the largest, so a single dominant object cannot take the whole icon. System objects 
+/// and the allocation overlay layers are not included.
 /// </remarks>
 internal static class DatabaseIconBuilder
 {

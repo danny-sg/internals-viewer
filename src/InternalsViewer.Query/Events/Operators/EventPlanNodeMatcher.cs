@@ -12,23 +12,19 @@ using InternalsViewer.Query.Plans;
 namespace InternalsViewer.Query.Events.Operators;
 
 /// <summary>
-/// Associates captured storage-engine events with the physical plan operator (<see cref="PlanNode"/>)
-/// that produced them, populating <see cref="EngineEvent.PlanNodeIdentifier"/>.
+/// Matches Events to Plan Nodes
 /// </summary>
 /// <remarks>
 /// Matching uses three signals, in decreasing order of confidence:
 ///
-/// 1. <c>query_thread_profile</c> events (<see cref="QueryThreadEvent"/>) already carry the
-///    operator <c>node_id</c>, which is the showplan <c>RelOp/@NodeId</c>. These are matched
-///    directly and also define a per-node execution time window.
+/// 1. query_thread_profile events (<see cref="QueryThreadEvent"/>) already carry the operator node_id, which is the showplan 
+///    RelOp/@NodeId. These are matched directly and also define a per-node execution time window.
 ///
-/// 2. Object and index identity. A page/IO/lock event resolves to a single allocation unit, so its
-///    (table, index) pair usually identifies exactly one operator - a non-clustered index seek can
-///    only ever run against its named index.
+/// 2. Object and index identity. A page/IO/lock event resolves to a single allocation unit, so its (table, index) pair usually identifies 
+///    exactly one operator - a non-clustered index seek can only ever run against its named index.
 ///
-/// 3. Timing. When object identity alone is ambiguous (e.g. the same index accessed by two
-///    operators in a self-join) the node whose execution window best contains the event timestamp
-///    is chosen.
+/// 3. Timing. When object identity alone is ambiguous (e.g. the same index accessed by two operators in a self-join) the node whose 
+///    execution window best contains the event timestamp is chosen.
 /// </remarks>
 public static class EventPlanNodeMatcher
 {
@@ -70,6 +66,7 @@ public static class EventPlanNodeMatcher
             if (!eventsByPlan.TryGetValue(plan, out var list))
             {
                 list = [];
+
                 eventsByPlan[plan] = list;
             }
 
@@ -108,8 +105,8 @@ public static class EventPlanNodeMatcher
             return;
         }
 
-        // Log writes belong to the data-modification operator itself, so they only resolve against the
-        // modification nodes (and are not pushed down to a read leaf).
+        // Log writes belong to the data-modification operator itself, so they only resolve against the modification nodes (and are not
+        // pushed down to a read leaf)
         var writeNodes = readWriteNode.Where(OperatorClassifier.IsDataModification).ToList();
 
         foreach (var readWriteEvent in events)
@@ -187,10 +184,14 @@ public static class EventPlanNodeMatcher
 
     private static int? NodeIdOf(EngineEvent engineEvent) => engineEvent switch
     {
-        QueryThreadEvent thread => thread.NodeId,
-        SegmentScanEvent scan => scan.NodeId,
-        BatchModeEvent batch => batch.NodeId,
-        ColumnstoreFilterEvent filter => filter.NodeId,
+        QueryThreadEvent thread
+            => thread.NodeId,
+        SegmentScanEvent scan 
+            => scan.NodeId,
+        BatchModeEvent batch 
+            => batch.NodeId,
+        ColumnstoreFilterEvent filter 
+            => filter.NodeId,
         _ => null,
     };
 
@@ -310,8 +311,8 @@ public static class EventPlanNodeMatcher
             return candidates[0];
         }
 
-        // Ambiguous on identity alone: disambiguate on the operator execution windows derived from
-        // the thread-profile events. Prefer a window that contains the event, else the nearest one.
+        // Ambiguous on identity alone: disambiguate on the operator execution windows derived from the thread-profile events. Prefer a
+        // window that contains the event, else the nearest one.
         PlanNode? best = null;
         var bestDistance = long.MaxValue;
         var bestContains = false;

@@ -9,13 +9,8 @@ using InternalsViewer.UI.App.Models;
 namespace InternalsViewer.UI.App.ViewModels.Columnstore;
 
 /// <summary>
-/// A window over a blob for the hex view, with the markers for whatever the window is showing
+/// A window over a blob for the hex view with the markers for whatever the window is showing
 /// </summary>
-/// <remarks>
-/// The window holds only the lines on screen, so a blob of any size costs the same to show. Markers are rebuilt
-/// after scrolling settles rather than on every step, a rebuild walking the region and the marker tree rebuilding
-/// its nodes from what comes back.
-/// </remarks>
 public sealed partial class BlobHexViewModel : ObservableObject, IDisposable
 {
     public const int BytesPerLine = 16;

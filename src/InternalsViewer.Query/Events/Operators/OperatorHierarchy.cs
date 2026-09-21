@@ -4,15 +4,8 @@ using InternalsViewer.Query.Plans.Model;
 namespace InternalsViewer.Query.Events.Operators;
 
 /// <summary>
-/// The plan's operators as a walkable tree, with each operator's subtree and the events in it
+/// Plan operators as a walkable tree
 /// </summary>
-/// <remarks>
-/// <see cref="ExecutionOperatorEvent"/> knows only its parent's node id, so everything that needs to walk DOWN the plan
-/// — an operator's descendants, the events in its subtree, the roots — has to invert that first. Inverting it here keeps
-/// the walk, and the guard against a plan that turns out not to be a tree, in one place. It was previously written once
-/// in <see cref="CallStack.OperatorCallStackMatcher"/> and again in the call-stack view, cycle guard and all, which also
-/// left the view deciding what an operator's scope is.
-/// </remarks>
 public sealed class OperatorHierarchy
 {
     private readonly ILookup<(short PlanHandleId, int NodeId), ExecutionOperatorEvent> _childrenByParent;

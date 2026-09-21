@@ -17,21 +17,22 @@ namespace InternalsViewer.Query.Events.Operators;
 /// The plan describes the operators but not when they ran; the engine events carry the timing. Timings
 /// are resolved in a single bottom-up pass (children before parents):
 ///
-/// 1. Data access - a leaf operator (scan/seek/lookup) is positioned by its own I/O and latch events: it
-///    starts at the first page access and runs for its measured duration, never ending before its last
-///    access. Latches count too because a page already in the buffer pool is only ever latched, never
-///    read - without them a fully cached scan would have no I/O to anchor it at all.
+/// 1. Data access - a leaf operator (scan/seek/lookup) is positioned by its own I/O and latch events: it starts at the first page access 
+///    and runs for its measured duration, never ending before its last  access. Latches count too because a page already in the buffer pool
+///    is only ever latched, never read - without them a fully cached scan would have no I/O to anchor it at all.
 ///
 /// 2. Blocking vs streaming - a parent is placed relative to its children by how it consumes each input:
-///    <list type="bullet">
-///    <item><b>Streaming</b> inputs flow through, so the operator runs concurrently with them.</item>
-///    <item><b>Blocking</b> inputs must be fully consumed before output, forming a consume phase.</item>
-///    </list>
-///    A hash join is the hybrid case - a blocking build and a streaming probe - modelled as one operator
-///    with a build (consume) phase and a probe (emit) phase.
+///    
+///    - Streaming - Inputs flow through, so the operator runs concurrently with them
+///    - Blocking  - Inputs must be fully consumed before output, forming a consume phase
+///  
+///    A hash join is the hybrid case - a blocking build and a streaming probe - modelled as one operator with a build (consume) phase and a
+///    probe (emit) phase.
 ///
-/// Duration and per-thread counters (rows, elapsed) come from the plan's run-time information, so they
-/// are read straight off <see cref="PlanNode"/>; the engine events only supply absolute start positions.
+/// Duration and per-thread counters (rows, elapsed) come from the plan's run-time information, so they are read straight off 
+/// <see cref="PlanNode"/>
+/// 
+/// The engine events only supply absolute start positions.
 /// </remarks>
 internal sealed class OperatorEventBuilder
 {
@@ -162,10 +163,15 @@ internal sealed class OperatorEventBuilder
     }
 
     /// <summary>
-    /// When rows first leave the operator. A leaf emits as it reads; a streaming operator emits once its
-    /// inputs are emitting (so it inherits a blocking descendant's delay); a blocking operator emits only
-    /// after consuming its blocking input(s).
+    /// When rows first leave the operator
     /// </summary>
+    /// <remarks>
+    /// Leaf operators emits as they read.
+    /// 
+    /// A streaming operator emits once its inputs are emitting (so it inherits a blocking descendant's delay). 
+    /// 
+    /// A blocking operator emits only after consuming its blocking input(s).
+    /// </remarks>
     private long ComputeEmitStart(PlanNode node, long start)
     {
         if (node.Children.Count == 0)

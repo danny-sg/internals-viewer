@@ -6,9 +6,7 @@ namespace InternalsViewer.Query.CallStack;
 /// The addresses of every class-scoped public symbol in a PDB, keyed by class
 /// </summary>
 /// <remarks>
-/// Built from one walk of the PDB so later lookups do not repeat it. Only the addresses are kept: a class's members are
-/// described again from the symbols at those addresses when it is listed, which keeps the index to a few bytes per
-/// symbol and stays exact where identical-code folding puts several symbols at one address.
+/// Built from one walk of the PDB so later lookups do not repeat it. Only the addresses are kept.
 /// </remarks>
 internal sealed class ClassMemberIndex
 {

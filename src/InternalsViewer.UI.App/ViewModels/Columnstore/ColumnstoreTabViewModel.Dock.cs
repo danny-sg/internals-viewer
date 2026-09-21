@@ -15,6 +15,7 @@ public sealed partial class ColumnstoreTabViewModel
     private DocumentViewModel? _structureDocument;
 
     private DocumentViewModel? _rowGroupsDocument;
+
     public DockLayoutViewModel Dock { get; }
 
     public override void Dispose()

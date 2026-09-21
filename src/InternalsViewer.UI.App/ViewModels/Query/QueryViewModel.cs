@@ -549,8 +549,6 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
     {
         SelectedEvent = engineEvent;
 
-        Layout.IsEventsVisible = true;
-
         DispatcherQueue.TryEnqueue(() =>
         {
             EventNavigationRequested?.Invoke(engineEvent);
