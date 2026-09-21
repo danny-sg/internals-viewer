@@ -10,7 +10,11 @@ internal class QueryCropper
 {
     private const long CropPaddingUs = 100;
 
-    private const long AdditionalPaddingUs = 500;
+    private const long MinPaddingUs = 500;
+
+    private const long MaxPaddingUs = 10_000;
+
+    private const int PaddingDivisor = 10;
 
     public static  (long? start, long? end) GetCropTiming(List<EngineEvent> events)
     {
@@ -32,11 +36,15 @@ internal class QueryCropper
 
             var windowEvents = events.Where(Overlaps).ToList();
 
-            startTimeUs = (windowEvents.Count > 0 ? Math.Min(start, windowEvents.Min(e => e.TimeUs)) : start)
-                           - AdditionalPaddingUs;
+            var windowStart = windowEvents.Count > 0 ? Math.Min(start, windowEvents.Min(e => e.TimeUs)) : start;
 
-            endTImeUs = (windowEvents.Count > 0 ? Math.Max(end, windowEvents.Max(EndUs)) : end)
-                         + AdditionalPaddingUs;
+            var windowEnd = windowEvents.Count > 0 ? Math.Max(end, windowEvents.Max(EndUs)) : end;
+
+            var padding = Math.Clamp((windowEnd - windowStart) / PaddingDivisor, MinPaddingUs, MaxPaddingUs);
+
+            startTimeUs = windowStart - padding;
+
+            endTImeUs = windowEnd + padding;
         }
 
         return (startTimeUs, endTImeUs);

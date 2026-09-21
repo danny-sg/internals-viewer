@@ -2,7 +2,7 @@
 
 public sealed record QueryOptions
 {
-    public bool ClearBufferPool { get; set; } = true;
+    public bool ClearBufferPool { get; set; } = false;
 
     public bool DisableReadAhead { get; set; } = true;
 

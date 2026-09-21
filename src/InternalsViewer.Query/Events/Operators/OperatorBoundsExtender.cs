@@ -25,7 +25,7 @@ public static class OperatorBoundsExtender
 
         foreach (var engineEvent in events)
         {
-            if (engineEvent is ExecutionOperatorEvent || engineEvent.PlanNodeIdentifier is not { } node)
+            if (!OperatorEventBuilder.IsDataAccess(engineEvent) || engineEvent.PlanNodeIdentifier is not { } node)
             {
                 continue;
             }

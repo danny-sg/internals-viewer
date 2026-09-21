@@ -40,7 +40,7 @@
             </ToggleButton>
             <ToggleButton Style="{StaticResource TabCommandToggleStyle}"
                           IsChecked="{x:Bind ViewModel.IsDetailPaneVisible, Mode=TwoWay}">
-                <TextBlock Text="Details" VerticalAlignment="Center" />
+                <TextBlock Text="Data" VerticalAlignment="Center" />
             </ToggleButton>
         </StackPanel>
     </Grid>

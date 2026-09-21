@@ -18,6 +18,7 @@ public sealed partial class QueryIndexTabView : UserControl, IDisposable
     private const float MinimumZoom = 0.001f;
     private const float MaximumZoom = 10f;
     private const float ZoomToPageZoom = 1f;
+    private const double StaleRecordsOpacity = 0.4;
 
     private bool _hasLoaded;
 
@@ -29,6 +30,17 @@ public sealed partial class QueryIndexTabView : UserControl, IDisposable
         Loaded += OnLoaded;
         PointerWheelChanged += OnPointerWheelChanged;
         IndexControl.PageClicked += OnPageClicked;
+        PreviousPageAddressLink.Click += PageAddressLink_OnClick;
+        NextPageAddressLink.Click += PageAddressLink_OnClick;
+
+        PreviousPageAddressLink.PointerEntered += PageAddressLink_PointerEntered;
+        PreviousPageAddressLink.PointerExited += PageAddressLink_PointerExited;
+
+        NextPageAddressLink.PointerEntered += PageAddressLink_PointerEntered;
+        NextPageAddressLink.PointerExited += PageAddressLink_PointerExited;
+
+        RecordGrid.PageOver += RecordGrid_PageOver;
+        RecordGrid.PageClicked += OnPageClicked;
 
         var io = ColourConstants.IoColour;
 
@@ -41,6 +53,15 @@ public sealed partial class QueryIndexTabView : UserControl, IDisposable
 
     public float? ZoomToPageTarget(bool isZoomToPage) => isZoomToPage ? ZoomToPageZoom : null;
 
+    public string FormatPageAddress(PageAddress? pageAddress) => pageAddress?.ToString() ?? string.Empty;
+
+    public double StaleOpacity(bool isStale) => isStale ? StaleRecordsOpacity : 1;
+
+    public Visibility PageTypeVisibility(string? pageType)
+        => string.IsNullOrEmpty(pageType) ? Visibility.Collapsed : Visibility.Visible;
+
+    public bool IsPageLinkEnabled(PageAddress? pageAddress) => pageAddress is not null && pageAddress != PageAddress.Empty;
+
     public void Dispose()
     {
         // x:Bind listens to the view model, which outlives the view, so the view stays rooted until
@@ -48,6 +69,17 @@ public sealed partial class QueryIndexTabView : UserControl, IDisposable
         Bindings.StopTracking();
 
         IndexControl.PageClicked -= OnPageClicked;
+        PreviousPageAddressLink.Click -= PageAddressLink_OnClick;
+        NextPageAddressLink.Click -= PageAddressLink_OnClick;
+
+        PreviousPageAddressLink.PointerEntered -= PageAddressLink_PointerEntered;
+        PreviousPageAddressLink.PointerExited -= PageAddressLink_PointerExited;
+
+        NextPageAddressLink.PointerEntered -= PageAddressLink_PointerEntered;
+        NextPageAddressLink.PointerExited -= PageAddressLink_PointerExited;
+
+        RecordGrid.PageOver -= RecordGrid_PageOver;
+        RecordGrid.PageClicked -= OnPageClicked;
         IndexControl.Dispose();
 
         RecordGrid.Dispose();
@@ -126,7 +158,57 @@ public sealed partial class QueryIndexTabView : UserControl, IDisposable
         }
     }
 
+    // ReSharper disable once AsyncVoidEventHandlerMethod
+    private async void PageAddressLink_OnClick(object sender, RoutedEventArgs e)
+    {
+        if (ViewModel is null || sender is not HyperlinkButton { Content: PageAddress pageAddress })
+        {
+            return;
+        }
+
+        try
+        {
+            ViewModel.SetHighlightedPage(PageAddress.Empty);
+
+            var isShiftPressed = InputKeyboardSource
+                .GetKeyStateForCurrentThread(VirtualKey.Shift)
+                .HasFlag(CoreVirtualKeyStates.Down);
+
+            if (isShiftPressed)
+            {
+                await WeakReferenceMessenger.Default
+                    .Send(new OpenPageMessage(new OpenPageRequest(ViewModel.Database, pageAddress)));
+            }
+            else
+            {
+                await ViewModel.LoadPage(pageAddress);
+            }
+        }
+        catch (Exception ex)
+        {
+            await WeakReferenceMessenger.Default.Send(new ExceptionMessage(ex));
+        }
+    }
+
     #pragma warning restore VSTHRD100
+
+    private void PageAddressLink_PointerEntered(object sender, PointerRoutedEventArgs e)
+    {
+        if (sender is HyperlinkButton { Content: PageAddress pageAddress })
+        {
+            ViewModel?.SetHighlightedPage(pageAddress);
+        }
+    }
+
+    private void PageAddressLink_PointerExited(object sender, PointerRoutedEventArgs e)
+    {
+        ViewModel?.SetHighlightedPage(PageAddress.Empty);
+    }
+
+    private void RecordGrid_PageOver(object? sender, PageAddressEventArgs e)
+    {
+        ViewModel?.SetHighlightedPage(e.PageAddress);
+    }
 
     private void CloseDetailPane()
     {

@@ -299,9 +299,12 @@ internal sealed class OperatorEventBuilder
     private List<EngineEvent> EventsFor(PlanNode node) =>
         _eventsByNode.TryGetValue(node.NodeId, out var list) ? list : [];
 
+    internal static bool IsDataAccess(EngineEvent engineEvent) =>
+        engineEvent is IoEvent or LatchEvent or ReadEventGroup or SegmentScanEvent or SegmentEliminateEvent or ObjectPoolEvent
+                       or ColumnStoreScanEvent;
+
     private static long? FirstDataAccess(List<EngineEvent> events) =>
-        events.Where(e => e is IoEvent or LatchEvent or ReadEventGroup or SegmentScanEvent or SegmentEliminateEvent
-                          or ObjectPoolEvent or ColumnStoreScanEvent)
+        events.Where(IsDataAccess)
               .Select(e => (long?)e.TimeUs)
               .Min();
 

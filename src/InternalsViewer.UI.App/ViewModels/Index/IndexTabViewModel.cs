@@ -45,6 +45,8 @@ public partial class IndexTabViewModel(ILogger<IndexTabViewModel> logger,
 {
     private const int RecordsSpinnerDelayMs = 100;
 
+    private const int PageLoadSettleDelayMs = 150;
+
     [ObservableProperty]
     private float _zoom = 1;
 
@@ -75,6 +77,9 @@ public partial class IndexTabViewModel(ILogger<IndexTabViewModel> logger,
 
     [ObservableProperty]
     private bool _isRecordsLoading;
+
+    [ObservableProperty]
+    private bool _isRecordsStale;
 
     [ObservableProperty]
     private bool _isTooltipEnabled;
@@ -108,6 +113,9 @@ public partial class IndexTabViewModel(ILogger<IndexTabViewModel> logger,
 
     [ObservableProperty]
     private int? _selectedLevel;
+
+    [ObservableProperty]
+    private string? _selectedPageType;
 
     [ObservableProperty]
     private int? _selectedSlot;
@@ -153,6 +161,8 @@ public partial class IndexTabViewModel(ILogger<IndexTabViewModel> logger,
     private IPageService PageService { get; } = pageService;
 
     private PageAddress? LoadingPageAddress { get; set; }
+
+    private CancellationTokenSource? PageLoadCancellation { get; set; }
 
     [RelayCommand]
     public async Task Refresh()
@@ -200,12 +210,18 @@ public partial class IndexTabViewModel(ILogger<IndexTabViewModel> logger,
         {
             Logger.LogDebug("(Page Empty)");
 
+            if (PageLoadCancellation is not null)
+            {
+                await PageLoadCancellation.CancelAsync();
+            }
+
             // Update via UI thread
             DispatcherQueue.TryEnqueue(() =>
             {
                 IsDetailPaneVisible = false;
 
                 SelectedLevel = null;
+                SelectedPageType = null;
                 SelectedNextPage = null;
                 SelectedPreviousPage = null;
                 SelectedPageAddress = pageAddress;
@@ -222,60 +238,19 @@ public partial class IndexTabViewModel(ILogger<IndexTabViewModel> logger,
             return;
         }
 
-        LoadingPageAddress = pageAddress;
+        var cancellation = BeginPageLoad();
 
-        SelectedPageAddress = pageAddress;
-
-        IsDetailPaneVisible = true;
-
-        using var spinnerDelay = new CancellationTokenSource();
-
-        _ = ShowRecordsSpinnerAfterDelay(spinnerDelay.Token);
-
-        Internals.Engine.Pages.Page? page = null;
-
-        List<IndexRecordModel> decodedRecords = [];
-
-        // Worker thread
-        await Task.Run(async () =>
-            {
-                Logger.LogDebug("Loading Page: {PageAddress}", pageAddress);
-
-                page = await PageService.GetPage(Database, pageAddress, CancellationToken, false);
-
-                if (page is IndexPage indexPage)
-                {
-                    Logger.LogDebug("Decoding Index Page records");
-
-                    decodedRecords = GetIndexRecordModels(RecordService.GetIndexRecords(indexPage));
-                }
-                else if (page is DataPage dataPage)
-                {
-                    Logger.LogDebug("Decoding Data Page records");
-
-                    decodedRecords = GetDataRecordModels(RecordService.GetDataRecords(dataPage));
-                }
-            }, CancellationToken);
-
-        Logger.LogDebug("Decoded {Count} record(s)", decodedRecords.Count);
-
-        await spinnerDelay.CancelAsync();
-
-        if (LoadingPageAddress != pageAddress)
+        try
         {
-            return;
+            await LoadPageRecords(pageAddress, cancellation.Token);
         }
-
-        LoadingPageAddress = null;
-
-        Records = new ObservableCollection<IndexRecordModel>(decodedRecords);
-        SelectedLevel = page?.PageHeader.Level;
-        SelectedNextPage = page?.PageHeader.NextPage;
-        SelectedPreviousPage = page?.PageHeader.PreviousPage;
-
-        IsRecordsLoading = false;
-
-        IsDetailPaneVisible = true;
+        catch (OperationCanceledException) when (cancellation.IsCancellationRequested)
+        {
+        }
+        finally
+        {
+            EndPageLoad(cancellation);
+        }
     }
 
     public void SetHighlightedPage(PageAddress pageAddress)
@@ -319,9 +294,12 @@ public partial class IndexTabViewModel(ILogger<IndexTabViewModel> logger,
     {
         if (pageAddress is null || pageAddress == PageAddress.Empty)
         {
+            PageLoadCancellation?.Cancel();
+
             Records.Clear();
 
             SelectedLevel = null;
+            SelectedPageType = null;
             SelectedNextPage = null;
             SelectedPreviousPage = null;
 
@@ -333,19 +311,133 @@ public partial class IndexTabViewModel(ILogger<IndexTabViewModel> logger,
             return;
         }
 
-        _ = LoadSelectedPageSafely(pageAddress.Value);
+        _ = LoadPageWhenSettled(pageAddress.Value);
     }
 
-    private async Task LoadSelectedPageSafely(PageAddress pageAddress)
+    private async Task LoadPageWhenSettled(PageAddress pageAddress)
     {
+        var isChangingRapidly = PageLoadCancellation is not null;
+
+        var cancellation = BeginPageLoad();
+
+        if (isChangingRapidly)
+        {
+            IsRecordsStale = true;
+        }
+
         try
         {
-            await LoadPage(pageAddress);
+            await Task.Delay(PageLoadSettleDelayMs, cancellation.Token);
+
+            await LoadPageRecords(pageAddress, cancellation.Token);
+        }
+        catch (OperationCanceledException) when (cancellation.IsCancellationRequested)
+        {
         }
         catch (Exception ex)
         {
             Logger.LogError(ex, "Failed to load index page {PageAddress}", pageAddress);
         }
+        finally
+        {
+            EndPageLoad(cancellation);
+        }
+    }
+
+    private CancellationTokenSource BeginPageLoad()
+    {
+        PageLoadCancellation?.Cancel();
+
+        var cancellation = CancellationTokenSource.CreateLinkedTokenSource(CancellationToken);
+
+        PageLoadCancellation = cancellation;
+
+        return cancellation;
+    }
+
+    private void EndPageLoad(CancellationTokenSource cancellation)
+    {
+        if (PageLoadCancellation == cancellation)
+        {
+            PageLoadCancellation = null;
+
+            IsRecordsStale = false;
+        }
+
+        cancellation.Dispose();
+    }
+
+    private async Task LoadPageRecords(PageAddress pageAddress, CancellationToken cancellationToken)
+    {
+        LoadingPageAddress = pageAddress;
+
+        SelectedPageAddress = pageAddress;
+
+        IsDetailPaneVisible = true;
+
+        using var spinnerDelay = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+
+        _ = ShowRecordsSpinnerAfterDelay(spinnerDelay.Token);
+
+        try
+        {
+            var (page, records) = await Task.Run(() => ReadPageRecords(pageAddress, cancellationToken), cancellationToken);
+
+            if (LoadingPageAddress != pageAddress)
+            {
+                return;
+            }
+
+            Records = records;
+            SelectedLevel = page?.PageHeader.Level;
+            SelectedPageType = page switch
+            {
+                IndexPage => "Index",
+                DataPage => "Data",
+                _ => null
+            };
+            SelectedNextPage = page?.PageHeader.NextPage;
+            SelectedPreviousPage = page?.PageHeader.PreviousPage;
+        }
+        finally
+        {
+            await spinnerDelay.CancelAsync();
+
+            if (LoadingPageAddress == pageAddress)
+            {
+                LoadingPageAddress = null;
+
+                IsRecordsLoading = false;
+            }
+        }
+    }
+
+    private async Task<(Internals.Engine.Pages.Page? Page, ObservableCollection<IndexRecordModel> Records)> ReadPageRecords(
+        PageAddress pageAddress,
+        CancellationToken cancellationToken)
+    {
+        Logger.LogDebug("Loading Page: {PageAddress}", pageAddress);
+
+        var page = await PageService.GetPage(Database, pageAddress, cancellationToken, false);
+
+        List<IndexRecordModel> records = [];
+
+        if (page is IndexPage indexPage)
+        {
+            Logger.LogDebug("Decoding Index Page records");
+
+            records = GetIndexRecordModels(RecordService.GetIndexRecords(indexPage));
+        }
+        else if (page is DataPage dataPage)
+        {
+            Logger.LogDebug("Decoding Data Page records");
+
+            records = GetDataRecordModels(RecordService.GetDataRecords(dataPage));
+        }
+
+        Logger.LogDebug("Decoded {Count} record(s)", records.Count);
+
+        return (page, new ObservableCollection<IndexRecordModel>(records));
     }
 
     partial void OnTotalPageCountChanged(long value)

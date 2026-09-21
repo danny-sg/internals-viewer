@@ -67,6 +67,7 @@
                                 IsTooltipEnabled="{x:Bind ViewModel.IsTooltipEnabled, Mode=OneWay}"
                                 IsLevelsVisible="{x:Bind ViewModel.IsLevelsVisible, Mode=OneWay}"
                                 PageSpans="{x:Bind ViewModel.PageSpans, Mode=OneWay}"
+                                HighlightedPageAddresses="{x:Bind ViewModel.HighlightedPages, Mode=OneWay}"
                                 PlayheadTimeUs="{x:Bind ViewModel.PlayheadTimeUs, Mode=OneWay}"
                                 SelectedPageAddress="{x:Bind ViewModel.SelectedPageAddress, Mode=TwoWay}"
                                 VerticalAlignment="Stretch"
@@ -99,10 +100,60 @@
                          CanDragTabs="False">
                     <TabView.TabItems>
                         <TabViewItem Header="Page Data" IsClosable="False">
-                            <index:RecordGrid x:Name="RecordGrid"
-                                              Records="{x:Bind ViewModel.Records, Mode=OneWay}"
-                                              SelectedSlot="{x:Bind ViewModel.SelectedSlot, Mode=OneWay}"
-                                              BorderThickness="0" />
+                            <Grid Opacity="{x:Bind StaleOpacity(ViewModel.IsRecordsStale), Mode=OneWay}">
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="*" />
+                                </Grid.RowDefinitions>
+                                <Grid Grid.Row="0"
+                                      Padding="8,4,4,4"
+                                      
+                                      BorderThickness="0">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <StackPanel Grid.Column="0"
+                                                Orientation="Horizontal"
+                                                VerticalAlignment="Center"
+                                                Spacing="8">
+                                        <TextBlock Margin="4,0,0,0"
+                                                   VerticalAlignment="Center"
+                                    
+                                                   Text="{x:Bind FormatPageAddress(ViewModel.SelectedPageAddress), Mode=OneWay}" />
+                                        <Border CornerRadius="4"
+                                                Padding="6,0,6,1"
+                                                VerticalAlignment="Center"
+                                                Background="#5A5A5A"
+                                                Visibility="{x:Bind PageTypeVisibility(ViewModel.SelectedPageType), Mode=OneWay}">
+                                            <TextBlock Foreground="White"
+                                                       FontSize="11"
+                                                       Text="{x:Bind ViewModel.SelectedPageType, Mode=OneWay}" />
+                                        </Border>
+                                    </StackPanel>
+                                    <StackPanel Grid.Column="1"
+                                                Orientation="Horizontal"
+                                                VerticalAlignment="Center">
+                                        <TextBlock Margin="4,0,0,1" Style="{StaticResource LabelTextBlockStyle}">Previous Page</TextBlock>
+                                        <HyperlinkButton x:Name="PreviousPageAddressLink"
+                                                         Margin="4,0,0,0"
+                                                         Style="{StaticResource PageAddressStyle}"
+                                                         IsEnabled="{x:Bind IsPageLinkEnabled(ViewModel.SelectedPreviousPage), Mode=OneWay}"
+                                                         Content="{x:Bind ViewModel.SelectedPreviousPage, Mode=OneWay, FallbackValue='(0:0)'}" />
+                                        <TextBlock Margin="4,0,0,1" Style="{StaticResource LabelTextBlockStyle}">Next Page</TextBlock>
+                                        <HyperlinkButton x:Name="NextPageAddressLink"
+                                                         Margin="4,0,0,0"
+                                                         Style="{StaticResource PageAddressStyle}"
+                                                         IsEnabled="{x:Bind IsPageLinkEnabled(ViewModel.SelectedNextPage), Mode=OneWay}"
+                                                         Content="{x:Bind ViewModel.SelectedNextPage, Mode=OneWay, FallbackValue='(0:0)'}" />
+                                    </StackPanel>
+                                </Grid>
+                                <index:RecordGrid Grid.Row="1"
+                                                  x:Name="RecordGrid"
+                                                  Records="{x:Bind ViewModel.Records, Mode=OneWay}"
+                                                  SelectedSlot="{x:Bind ViewModel.SelectedSlot, Mode=OneWay}"
+                                                  BorderThickness="0" />
+                            </Grid>
                         </TabViewItem>
                     </TabView.TabItems>
                 </TabView>

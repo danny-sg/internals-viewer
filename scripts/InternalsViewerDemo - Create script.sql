@@ -59,12 +59,10 @@ CREATE TABLE dbo.ClusteredTable
 (
     Id          INT IDENTITY(1,1) NOT NULL
    ,TextField   VARCHAR(100)      NOT NULL
-   ,CreatedDate DATETIME2         NOT NULL
+   ,RowSpacer   CHAR(800)      NOT NULL DEFAULT ''
    ,CONSTRAINT pk_ClusteredTable PRIMARY KEY CLUSTERED (Id)
 );
 GO
-
-CREATE INDEX ix_ClusteredTable_CreatedDate_Desc ON dbo.ClusteredTable (CreatedDate DESC);
 
 CREATE INDEX ix_ClusteredTable_TextField 
     ON dbo.ClusteredTable (TextField);
@@ -115,13 +113,12 @@ GO
 
 -- Data
 
--- dbo.ClusteredTable - 100,000 rows
+-- dbo.ClusteredTable - 40,000 rows
 
 INSERT INTO dbo.ClusteredTable
-        (TextField, CreatedDate)
-SELECT  TOP (100000)
+        (TextField)
+SELECT  TOP (20000)
         CONCAT('Clustered table row ', ROW_NUMBER() OVER (ORDER BY (SELECT NULL)))
-       ,SYSDATETIME()
 FROM    sys.all_columns AS c1
         CROSS JOIN sys.all_columns AS c2
 GO

@@ -1,6 +1,7 @@
 using InternalsViewer.Query.Events;
 using InternalsViewer.Query.Events.BatchMode;
 using InternalsViewer.Query.Events.Operators;
+using InternalsViewer.Query.Events.Waits;
 using InternalsViewer.Query.Plans.Model;
 using InternalsViewer.Query.Plans.Operators;
 
@@ -35,6 +36,19 @@ public class OperatorBoundsExtenderTests
         var inside = new SegmentScanEvent { TimeUs = 1200, PlanNodeIdentifier = scan.PlanNodeIdentifier };
 
         OperatorBoundsExtender.ExtendStarts([scan, inside]);
+
+        Assert.Equal(1000, scan.TimeUs);
+        Assert.Equal(500, scan.DurationUs);
+    }
+
+    [Fact]
+    public void ExtendStarts_Ignores_An_Earlier_Event_That_Is_Not_Data_Access()
+    {
+        var scan = Operator(nodeId: 2, parent: null, timeUs: 1000, durationUs: 500);
+
+        var wait = new WaitEvent { TimeUs = 200, PlanNodeIdentifier = scan.PlanNodeIdentifier };
+
+        OperatorBoundsExtender.ExtendStarts([scan, wait]);
 
         Assert.Equal(1000, scan.TimeUs);
         Assert.Equal(500, scan.DurationUs);
