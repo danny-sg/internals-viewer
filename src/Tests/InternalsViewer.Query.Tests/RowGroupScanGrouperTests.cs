@@ -52,6 +52,31 @@ public class RowGroupScanGrouperTests
     }
 
     [Fact]
+    public void Group_Folds_Push_Down_Statistics_Into_Their_Rowgroup_But_Not_The_Compile_Event()
+    {
+        var compiled = new BatchModeEvent { EventName = "query_execution_push_down_aggregate", SequenceId = 1, TaskAddress = 7 };
+
+        var scan = new SegmentScanEvent { RowGroupId = 2, SequenceId = 2, TaskAddress = 7, PlanNodeIdentifier = Scan };
+
+        var statistics = new BatchModeEvent
+        {
+            EventName = "query_execution_dynamic_push_down_statistics",
+            RowGroupId = 2,
+            SequenceId = 3,
+            TaskAddress = 7
+        };
+
+        var finished = new ColumnStoreScanEvent { EventName = Finished, RowGroupId = 2, SequenceId = 4, TaskAddress = 7 };
+
+        var result = RowGroupScanGrouper.Group([compiled, scan, statistics, finished]);
+
+        var group = Assert.IsType<RowGroupScanEvent>(result[1]);
+
+        Assert.Equal<EngineEvent>([scan, statistics, finished], group.Events);
+        Assert.Equal<EngineEvent>([compiled, group], result);
+    }
+
+    [Fact]
     public void Group_Gives_Members_Without_An_Operator_The_Operator_Of_Their_Segment_Scans()
     {
         var elsewhere = new PlanNodeIdentifier(1, 9);

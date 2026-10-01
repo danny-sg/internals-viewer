@@ -188,6 +188,7 @@ public static class RowGroupScanGrouper
         SegmentScanEvent scan => scan.RowGroupId,
         ColumnStoreScanEvent scan => scan.RowGroupId,
         ColumnstoreFilterEvent filter => filter.RowGroupId,
+        BatchModeEvent batch => batch.RowGroupId,
         _ => null
     };
 
@@ -195,6 +196,7 @@ public static class RowGroupScanGrouper
     {
         ColumnStoreScanEvent { IsRowGroupReadAhead: true } or ColumnStoreScanEvent { IsBitmapFilterSet: true } => false,
         ObjectPoolEvent or SegmentScanEvent or ColumnStoreScanEvent or ColumnstoreFilterEvent => true,
+        BatchModeEvent { RowGroupId: not null } => true,
         _ => false
     };
 }

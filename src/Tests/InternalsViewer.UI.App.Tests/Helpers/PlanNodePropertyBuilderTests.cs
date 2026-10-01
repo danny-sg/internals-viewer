@@ -108,6 +108,46 @@ public class PlanNodePropertyBuilderTests
         Assert.DoesNotContain(properties, p => p.Name == "Memory Grant");
     }
 
+    [Fact]
+    public void Rows_Pushed_Down_Are_Shown_With_Only_The_Refusal_Reasons_That_Occurred()
+    {
+        var node = new PlanNode
+        {
+            PhysicalOperator = "Columnstore Index Scan",
+            ExecutionMode = ExecutionMode.Batch,
+            BatchInfo = new BatchInfo
+            {
+                RowsPushedDown = 199800,
+                RowsNotPushedEncoding = 0,
+                RowsNotPushedOverflow = 200,
+                RowsNotPushedDisabled = 0
+            }
+        };
+
+        var batch = Group(PlanNodePropertyBuilder.Build(node), "Batch Mode");
+
+        Assert.Equal("199,800", batch.Single(p => p.Name == "Rows Pushed Down").Value);
+        Assert.True(batch.Single(p => p.Name == "Rows Not Pushed (Overflow)").IsValueHighlighted);
+        Assert.DoesNotContain(batch, p => p.Name == "Rows Not Pushed (Encoding)");
+        Assert.DoesNotContain(batch, p => p.Name == "Rows Not Pushed (Disabled)");
+    }
+
+    [Fact]
+    public void A_Batch_Node_Without_Push_Down_Statistics_Has_No_Pushed_Rows()
+    {
+        var node = new PlanNode
+        {
+            PhysicalOperator = "Hash Match",
+            ExecutionMode = ExecutionMode.Batch,
+            BatchInfo = new BatchInfo()
+        };
+
+        var batch = Group(PlanNodePropertyBuilder.Build(node), "Batch Mode");
+
+        Assert.DoesNotContain(batch, p => p.Name.StartsWith("Rows Pushed", StringComparison.Ordinal)
+                                          || p.Name.StartsWith("Rows Not Pushed", StringComparison.Ordinal));
+    }
+
     private static List<PlanNodeProperty> Group(List<PlanNodeProperty> properties, string name)
         => properties.Single(p => p.Name == name).Children;
 

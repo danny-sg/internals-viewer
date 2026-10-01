@@ -111,6 +111,10 @@ public static class BatchInfoBuilder
         info.IsLocalAggregationUsed = Or(info.IsLocalAggregationUsed, e.IsLocalAggregationUsed);
         info.IsGlobalDictionaryUsed = Or(info.IsGlobalDictionaryUsed, e.IsGlobalDictionaryUsed);
         info.GlobalDictionaryKeyColumns ??= e.GlobalDictionaryKeyColumns;
+        info.RowsPushedDown = Add(info.RowsPushedDown, e.RowsPushedDown);
+        info.RowsNotPushedEncoding = Add(info.RowsNotPushedEncoding, e.RowsNotPushedEncoding);
+        info.RowsNotPushedOverflow = Add(info.RowsNotPushedOverflow, e.RowsNotPushedOverflow);
+        info.RowsNotPushedDisabled = Add(info.RowsNotPushedDisabled, e.RowsNotPushedDisabled);
     }
 
     private static bool? Or(bool? current, bool? value) => value is null ? current : (current ?? false) || value.Value;

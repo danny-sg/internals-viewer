@@ -366,6 +366,54 @@ public class XmlEventParserTests
     }
 
     [Fact]
+    public void Maps_A_Push_Down_Aggregate_To_A_Batch_Mode_Event()
+    {
+        const string xml = """
+            <event name="query_execution_push_down_aggregate" timestamp="2026-06-30T12:00:00.000Z">
+              <data name="query_operator_node_id"><value>1</value></data>
+              <data name="aggregation_count"><value>2</value></data>
+              <data name="group_by_count"><value>0</value></data>
+            </event>
+            """;
+
+        var pushdown = Assert.IsType<BatchModeEvent>(Parse(new ParserPair(), xml));
+
+        Assert.Equal("Aggregate Pushdown", pushdown.Name);
+        Assert.Equal(1, pushdown.NodeId);
+        Assert.Equal(2, pushdown.AggregationCount);
+        Assert.Equal(0, pushdown.GroupByCount);
+        Assert.Null(pushdown.RowsPushedDown);
+    }
+
+    [Fact]
+    public void Maps_Dynamic_Push_Down_Statistics_To_A_Batch_Mode_Event()
+    {
+        const string xml = """
+            <event name="query_execution_dynamic_push_down_statistics" timestamp="2026-06-30T12:00:00.000Z">
+              <data name="thread_id"><value>3</value></data>
+              <data name="node_id"><value>2</value></data>
+              <data name="rowgroup_id"><value>13</value></data>
+              <data name="rows_pushed_down_in_thread"><value>199800</value></data>
+              <data name="rows_not_pushed_down_due_to_pushdown_disabled"><value>200</value></data>
+              <data name="rows_not_pushed_down_due_to_encoding"><value>0</value></data>
+              <data name="rows_not_pushed_down_due_to_possible_overflow"><value>5</value></data>
+            </event>
+            """;
+
+        var statistics = Assert.IsType<BatchModeEvent>(Parse(new ParserPair(), xml));
+
+        Assert.Equal("Aggregate Pushdown Statistics", statistics.Name);
+        Assert.Equal(2, statistics.NodeId);
+        Assert.Equal(3, statistics.ThreadId);
+        Assert.Equal(13, statistics.RowGroupId);
+        Assert.Equal(199800, statistics.RowsPushedDown);
+        Assert.Equal(0, statistics.RowsNotPushedEncoding);
+        Assert.Equal(5, statistics.RowsNotPushedOverflow);
+        Assert.Equal(200, statistics.RowsNotPushedDisabled);
+        Assert.Null(statistics.AggregationCount);
+    }
+
+    [Fact]
     public void Maps_An_Expression_Filter_Apply_To_A_Columnstore_Filter_Event()
     {
         const string xml = """

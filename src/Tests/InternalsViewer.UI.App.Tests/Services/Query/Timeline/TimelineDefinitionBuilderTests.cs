@@ -340,7 +340,7 @@ public class TimelineDefinitionBuilderTests
         var definition = Build(
         [
             new ColumnstoreFilterEvent { EventName = ColumnstoreFilterEvent.BatchFilter },
-            new BatchModeEvent { Name = "query_execution_batch_hash_aggregation_finished" },
+            new BatchModeEvent { EventName = "query_execution_batch_hash_aggregation_finished" },
         ], ShowAll);
 
         Assert.Equal((0, 2), (definition.Items[0].Track, definition.Items[0].TrackCount));

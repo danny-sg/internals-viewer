@@ -129,6 +129,18 @@ public static class PlanNodePropertyBuilder
             batchGroup.Children.Add(new PlanNodeProperty("Locally Aggregated Rows",
                                                          batchInfo.LocallyAggregatedRows.ToString("N0", CultureInfo.InvariantCulture)));
 
+            if (batchInfo.RowsPushedDown is { } rowsPushedDown)
+            {
+                batchGroup.Children.Add(new PlanNodeProperty("Rows Pushed Down",
+                                                             rowsPushedDown.ToString("N0", CultureInfo.InvariantCulture)));
+
+                AddRowsNotPushed(batchGroup, "Rows Not Pushed (Encoding)", batchInfo.RowsNotPushedEncoding);
+
+                AddRowsNotPushed(batchGroup, "Rows Not Pushed (Overflow)", batchInfo.RowsNotPushedOverflow);
+
+                AddRowsNotPushed(batchGroup, "Rows Not Pushed (Disabled)", batchInfo.RowsNotPushedDisabled);
+            }
+
 
             if (batchInfo.PureRowBuckets is not null || batchInfo.ImpureRowBuckets is not null)
             {
@@ -644,6 +656,19 @@ public static class PlanNodePropertyBuilder
     }
 
     private static bool IsNone(string value) => string.IsNullOrEmpty(value) || value == "None";
+
+    private static void AddRowsNotPushed(PlanNodeProperty group, string name, long? rows)
+    {
+        if (rows is not > 0)
+        {
+            return;
+        }
+
+        group.Children.Add(new PlanNodeProperty(name, rows.Value.ToString("N0", CultureInfo.InvariantCulture))
+        {
+            IsValueHighlighted = true
+        });
+    }
 
     private static PlanNodeProperty BoolProperty(string name, bool value)
     {

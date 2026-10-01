@@ -51,7 +51,9 @@ internal static class EventConstants
         "sqlserver.query_execution_batch_filter",
         "sqlserver.query_execution_batch_global_string_dictionary",
         "sqlserver.query_execution_batch_hash_aggregation_finished",
-        "sqlserver.batch_hash_join_separate_hash_column"
+        "sqlserver.batch_hash_join_separate_hash_column",
+        "sqlserver.query_execution_push_down_aggregate",
+        "sqlserver.query_execution_dynamic_push_down_statistics"
     ];
 
     public static readonly string[] LockEvents =

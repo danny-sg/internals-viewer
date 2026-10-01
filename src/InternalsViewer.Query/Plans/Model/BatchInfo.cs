@@ -10,6 +10,14 @@ public sealed class BatchInfo
 
     public long LocallyAggregatedRows { get; set; }
 
+    public long? RowsPushedDown { get; set; }
+
+    public long? RowsNotPushedEncoding { get; set; }
+
+    public long? RowsNotPushedOverflow { get; set; }
+
+    public long? RowsNotPushedDisabled { get; set; }
+
     public bool? IsFastComparisonUsed { get; set; }
 
     public bool? IsLocalAggregationUsed { get; set; }

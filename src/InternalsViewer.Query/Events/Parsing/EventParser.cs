@@ -78,6 +78,9 @@ public sealed class EventParser
                 => ColumnStoreScanEventParser.Map(database, e),
             var n when n.StartsWith("query_execution_batch_")
                 => BatchModeEventParser.Map(database, e),
+            "query_execution_push_down_aggregate"
+                or "query_execution_dynamic_push_down_statistics"
+                => BatchModeEventParser.Map(database, e),
             "sql_batch_starting"
                 => BatchStartEventParser.Map(database, e),
             "sql_batch_completed"
