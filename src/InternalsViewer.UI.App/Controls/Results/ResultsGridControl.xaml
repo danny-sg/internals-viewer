@@ -5,30 +5,34 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:tableView="using:WinUI.TableView"
     x:Name="Root">
+    <UserControl.Resources>
+        <DataTemplate x:Key="ResultsTableTemplate">
+            <tableView:TableView CanSortColumns="False"
+                                 SelectionMode="Single"
+                                 RowHeight="32"
+                                 GridLinesVisibility="All"
+                                 HorizontalGridLinesStroke="{ThemeResource ControlStrokeColorDefaultBrush}"
+                                 HorizontalGridLinesStrokeThickness="1"
+                                 VerticalGridLinesStroke="{ThemeResource ControlStrokeColorDefaultBrush}"
+                                 VerticalGridLinesStrokeThickness="1"
+                                 MinColumnWidth="20"
+                                 BorderThickness="1,0,1,0"
+                                 BorderBrush="{ThemeResource ControlStrokeColorDefaultBrush}"
+                                 Background="{ThemeResource LayerFillColorDefaultBrush}">
+                <tableView:TableView.Resources>
+                    <x:Double x:Key="ListViewItemMinHeight">0</x:Double>
+                </tableView:TableView.Resources>
+            </tableView:TableView>
+        </DataTemplate>
+    </UserControl.Resources>
     <Grid>
         <Grid.RowDefinitions>
             <RowDefinition Height="*" />
             <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
-        <tableView:TableView x:Name="ResultsTable"
-                             Grid.Row="0"
-                             CanSortColumns="False"
-                             SelectionMode="Single"
-                             RowHeight="32"
-                             GridLinesVisibility="All"
-                             HorizontalGridLinesStroke="{ThemeResource ControlStrokeColorDefaultBrush}"
-                             HorizontalGridLinesStrokeThickness="1"
-                             VerticalGridLinesStroke="{ThemeResource ControlStrokeColorDefaultBrush}"
-                             VerticalGridLinesStrokeThickness="1"
-                             MinColumnWidth="20"
-                             BorderThickness="1,0,1,0"
-                             BorderBrush="{ThemeResource ControlStrokeColorDefaultBrush}"
-                             SelectedItem="{x:Bind SelectedRow, Mode=TwoWay}"
-                             Background="{ThemeResource LayerFillColorDefaultBrush}">
-            <tableView:TableView.Resources>
-                <x:Double x:Key="ListViewItemMinHeight">0</x:Double>
-            </tableView:TableView.Resources>
-        </tableView:TableView>
+        <Border x:Name="TableHost"
+                Grid.Row="0"
+                Background="{ThemeResource LayerFillColorDefaultBrush}" />
         <Border Grid.Row="1"
                 Padding="8,4"
                 BorderThickness="0,1,0,0"

@@ -227,7 +227,7 @@
           <PrivateAssets>all</PrivateAssets>
           <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
         </PackageReference>
-        <PackageReference Include="Microsoft.WindowsAppSDK" Version="2.4.0" />
+        <PackageReference Include="Microsoft.WindowsAppSDK" Version="2.5.1" />
         <PackageReference Include="System.ServiceProcess.ServiceController" Version="10.0.12" />
         <PackageReference Include="CommunityToolkit.WinUI.Controls.HeaderedControls" Version="8.2.251219" />
         <PackageReference Include="CommunityToolkit.WinUI.Converters" Version="8.2.251219" />
@@ -240,9 +240,9 @@
         <PackageReference Include="Microsoft.Extensions.Hosting" Version="10.0.12" />
         <PackageReference Include="Microsoft.Windows.SDK.BuildTools" Version="10.0.28000.2705" />
 
-        <PackageReference Include="SkiaSharp" Version="4.152.0" />
-        <PackageReference Include="SkiaSharp.Views.WinUI" Version="4.152.0" />
-        <PackageReference Include="WinUI.TableView" Version="1.4.1" />
+        <PackageReference Include="SkiaSharp" Version="4.153.1" />
+        <PackageReference Include="SkiaSharp.Views.WinUI" Version="4.153.1" />
+        <PackageReference Include="WinUI.TableView" Version="1.5.0" />
         <PackageReference Include="WinUIEx" Version="2.9.3" />
         <Manifest Include="$(ApplicationManifest)" />
     </ItemGroup>

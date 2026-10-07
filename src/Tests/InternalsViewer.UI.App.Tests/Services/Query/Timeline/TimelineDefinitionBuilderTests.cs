@@ -162,6 +162,23 @@ public class TimelineDefinitionBuilderTests
     }
 
     [Fact]
+    public void Stacks_A_Run_Of_Eliminated_Rowgroups_On_Separate_Tracks_In_The_Top_Half()
+    {
+        var definition = Build(
+        [
+            new SegmentEliminateEvent { RowGroupId = 5, SequenceId = 1 },
+            new SegmentEliminateEvent { RowGroupId = 4, SequenceId = 2 },
+            new SegmentEliminateEvent { RowGroupId = 3, SequenceId = 3 },
+        ], ShowAll);
+
+        Assert.Equal([(0, 6), (1, 6), (2, 6)], definition.Items.Select(i => (i.Track, i.TrackCount)));
+
+        var band = definition.Bands.Single(b => b.Key == typeof(SegmentScanEvent));
+
+        Assert.Equal(3 * SegmentScanTracks.MinTrackHeight * 2, band.MinInnerHeight);
+    }
+
+    [Fact]
     public void Holds_The_Columnstore_Band_At_A_Height_That_Fits_Its_Widest_Stack()
     {
         var definition = Build(

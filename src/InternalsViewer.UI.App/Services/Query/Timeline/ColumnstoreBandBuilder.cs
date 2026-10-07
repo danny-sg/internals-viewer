@@ -24,6 +24,8 @@ internal sealed class ColumnstoreBandBuilder : ITimelineBandBuilder
 
     private const byte FilterAlpha = 160;
 
+    private const int MaxHeldEliminationTracks = 8;
+
     private static readonly TimelineBand Band = new(typeof(SegmentScanEvent),
                                                     "Columnstore",
                                                     ColourConstants.SegmentColour.ToSkColor().WithAlpha(255),
@@ -47,6 +49,8 @@ internal sealed class ColumnstoreBandBuilder : ITimelineBandBuilder
     private static readonly SKColor FilterApplyColour = ColourConstants.ExpressionFilterBitmapApplyColour.ToSkColor().WithAlpha(FilterAlpha);
 
     private SegmentScanTracks SegmentTracks { get; } = new();
+
+    private SegmentEliminationTracks EliminationTracks { get; } = new();
 
     private ObjectPoolTracks PoolTracks { get; } = new();
 
@@ -79,6 +83,8 @@ internal sealed class ColumnstoreBandBuilder : ITimelineBandBuilder
 
         SegmentTracks.Rebuild(events);
 
+        EliminationTracks.Rebuild(events);
+
         PoolTracks.Rebuild(events);
 
         ThreadLanes.Clear();
@@ -102,6 +108,8 @@ internal sealed class ColumnstoreBandBuilder : ITimelineBandBuilder
 
         var trackCount = Math.Max(LaneCount * SegmentTracks.TrackCount, PoolTracks.TrackCount);
 
+        trackCount = Math.Max(trackCount, Math.Min(EliminationTracks.TrackCount, MaxHeldEliminationTracks));
+
         return Band with
         {
             MinInnerHeight = trackCount * SegmentScanTracks.MinTrackHeight * 2,
@@ -122,7 +130,7 @@ internal sealed class ColumnstoreBandBuilder : ITimelineBandBuilder
                                                  pool.IsHit ? ObjectPoolHitColour : ObjectPoolMissColour,
                                                  pool.IsHit ? MinPoolHitWidth : 0f,
                                                  pool.IsHit ? HitLayer : (byte)0),
-        SegmentEliminateEvent => Half(band, 0, SegmentEliminationColour, 0f),
+        SegmentEliminateEvent => Elimination(band, index),
         RowGroupScanEvent => Lane(band, engineEvent, ColumnStoreEventColour, 0f),
         ColumnstoreFilterEvent { IsBatchFilter: true } => Lane(band, engineEvent, BatchFilterColour, BatchFilterWidth),
         ColumnstoreFilterEvent => Lane(band, engineEvent, FilterApplyColour, FilterApplyWidth),
@@ -148,6 +156,13 @@ internal sealed class ColumnstoreBandBuilder : ITimelineBandBuilder
                                 0,
                                 MinPoolHitWidth);
     }
+
+    private TimelineItem Elimination(int band, int index)
+        => Half(band, 0, SegmentEliminationColour, 0f) with
+        {
+            Track = EliminationTracks.TrackOf(index),
+            TrackCount = EliminationTracks.TrackCountOf(index) * 2,
+        };
 
     private TimelineItem Lane(int band, EngineEvent engineEvent, SKColor colour, float minWidth)
         => ThreadLanes.TryGetValue(engineEvent.ThreadId, out var lane)

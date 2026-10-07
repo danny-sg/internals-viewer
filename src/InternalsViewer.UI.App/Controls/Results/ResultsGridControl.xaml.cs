@@ -3,6 +3,7 @@ using Microsoft.UI.Dispatching;
 using Microsoft.UI.Xaml.Controls;
 using System;
 using Windows.Foundation;
+using WinUI.TableView;
 
 namespace InternalsViewer.UI.App.Controls.Results;
 
@@ -51,16 +52,19 @@ public sealed partial class ResultsGridControl : UserControl
 
     public event EventHandler<PageAddressEventArgs>? PageClicked;
 
+    private TableView? ResultsTable { get; set; }
+
     private void Rebuild()
     {
-        ResultsTable.Columns.Clear();
-        ResultsTable.ItemsSource = null;
+        ReleaseTable();
 
         if (ResultSet is not { Columns: var columns, Rows: var rows })
         {
             StatusText.Text = string.Empty;
             return;
         }
+
+        var table = (TableView)((DataTemplate)Resources["ResultsTableTemplate"]).LoadContent();
 
         foreach (var column in columns)
         {
@@ -73,10 +77,16 @@ public sealed partial class ResultsGridControl : UserControl
                 PageClicked = OnPageClicked,
             };
 
-            ResultsTable.Columns.Add(resultCellColumn);
+            table.Columns.Add(resultCellColumn);
         }
 
-        ResultsTable.ItemsSource = rows;
+        table.ItemsSource = rows;
+
+        table.SelectionChanged += OnSelectionChanged;
+
+        ResultsTable = table;
+
+        TableHost.Child = table;
 
         StatusText.Text = rows.Count == 1 ? "1 row" : $"{rows.Count:N0} rows";
 
@@ -98,7 +108,31 @@ public sealed partial class ResultsGridControl : UserControl
             return;
         }
 
-        ResultsTable.Measure(GetWarmSize());
+        ResultsTable?.Measure(GetWarmSize());
+    }
+
+    private void ReleaseTable()
+    {
+        if (ResultsTable is not { } table)
+        {
+            return;
+        }
+
+        table.SelectionChanged -= OnSelectionChanged;
+
+        TableHost.Child = null;
+
+        table.ItemsSource = null;
+
+        ResultsTable = null;
+    }
+
+    private void OnSelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (ReferenceEquals(sender, ResultsTable))
+        {
+            SelectedRow = ResultsTable.SelectedItem as ResultRow<long>;
+        }
     }
 
     /// <summary>
