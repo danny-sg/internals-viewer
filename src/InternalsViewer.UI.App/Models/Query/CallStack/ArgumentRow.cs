@@ -1,3 +1,5 @@
+using InternalsViewer.Query.CallStack.TimeTravel;
+
 namespace InternalsViewer.UI.App.Models.Query.CallStack;
 
 public sealed class ArgumentRow(string name,

@@ -2,13 +2,14 @@
 using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using InternalsViewer.Query.Debugging.Interfaces;
+using InternalsViewer.Query.XEvents;
 using InternalsViewer.UI.App.Services;
-using InternalsViewer.UI.App.Services.XEvents;
 
 namespace InternalsViewer.UI.App.ViewModels;
 
 public partial class SettingsViewModel(SettingsService settingsService, TraceDirectoryService traceDirectoryService)
-    : ObservableObject
+    : ObservableObject, IWinDbgSettings
 {
     private const string SymbolsPathKey = "SymbolsPath";
     private const string DefaultSymbolsPath = @"C:\Symbols";

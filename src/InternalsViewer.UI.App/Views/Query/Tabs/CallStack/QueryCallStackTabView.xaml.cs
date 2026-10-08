@@ -6,6 +6,8 @@ using System.Threading.Tasks;
 using System;
 using InternalsViewer.Query.CallStack;
 using InternalsViewer.Query.CallStack.TimeTravel;
+using InternalsViewer.Query.CallStack.WinDbg;
+using InternalsViewer.Query.Debugging;
 using InternalsViewer.Query.Events.Latches;
 using InternalsViewer.Query.Events.Locks;
 using InternalsViewer.Query.Events.Operators;
@@ -15,7 +17,6 @@ using InternalsViewer.Query.Plans.Model;
 using InternalsViewer.UI.App.Controls.CallStack;
 using InternalsViewer.UI.App.Controls.Docking;
 using InternalsViewer.UI.App.Models.Query.CallStack;
-using InternalsViewer.UI.App.Services.Query.Debugging;
 using InternalsViewer.UI.App.ViewModels.Query;
 using InternalsViewer.UI.App.ViewModels.Query.CallStack;
 using Microsoft.UI.Text;
@@ -905,8 +906,8 @@ public sealed partial class QueryCallStackTabView : UserControl, IDocumentComman
         var decoratedName = _viewModel is { } viewModel ? await viewModel.Symbols.ResolveMemberDecoratedNameAsync(member) : null;
 
         return command == "DumpArgumentsAndBreak"
-            ? WinDbgCommands.DumpArgumentsAndBreak(member, decoratedName)
-            : WinDbgCommands.DumpArguments(member, decoratedName);
+            ? WinDbgCommands.DumpArgumentsAndBreak(member.Reference, decoratedName)
+            : WinDbgCommands.DumpArguments(member.Reference, decoratedName);
     }
 
     private static string? FrameCommand(string command, CallstackFrame frame) =>
@@ -965,7 +966,7 @@ public sealed partial class QueryCallStackTabView : UserControl, IDocumentComman
     {
         if (_contextMember is not null)
         {
-            CopyText(WinDbgCommands.Symbol(_contextMember));
+            CopyText(WinDbgCommands.Symbol(_contextMember.Reference));
         }
     }
 
@@ -992,12 +993,12 @@ public sealed partial class QueryCallStackTabView : UserControl, IDocumentComman
     private static string? MemberCommand(string command, ClassMemberRow member) =>
         command switch
         {
-            "Breakpoint" => WinDbgCommands.Breakpoint(member),
-            "BreakpointWithStack" => WinDbgCommands.BreakpointWithStack(member),
-            "BreakpointOnAllOverloads" => WinDbgCommands.BreakpointOnAllOverloads(member),
-            "ExamineSymbol" => WinDbgCommands.ExamineSymbol(member),
-            "DisplayType" => WinDbgCommands.DisplayType(member),
-            "ListClassSymbols" => WinDbgCommands.ListClassSymbols(member),
+            "Breakpoint" => WinDbgCommands.Breakpoint(member.Reference),
+            "BreakpointWithStack" => WinDbgCommands.BreakpointWithStack(member.Reference),
+            "BreakpointOnAllOverloads" => WinDbgCommands.BreakpointOnAllOverloads(member.Reference),
+            "ExamineSymbol" => WinDbgCommands.ExamineSymbol(member.Reference),
+            "DisplayType" => WinDbgCommands.DisplayType(member.Reference),
+            "ListClassSymbols" => WinDbgCommands.ListClassSymbols(member.Reference),
             _ => null
         };
 

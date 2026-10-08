@@ -23,8 +23,7 @@ public class ValueUseGroupTests
 
         var groups = ValueUseGroup.Build(uses, KindOf);
 
-        Assert.Equal([ValueUseGroup.CallsOn, ValueUseGroup.Returned, ValueUseGroup.Passed, ValueUseGroup.Pointed],
-                     groups.Select(g => g.Title));
+        Assert.Equal(["Calls On It", "Returned It", "Passed It", "Held It Behind A Pointer"], groups.Select(g => g.Title));
     }
 
     [Fact]
@@ -34,7 +33,7 @@ public class ValueUseGroupTests
 
         var passed = Assert.Single(groups);
 
-        Assert.Equal(ValueUseGroup.Passed, passed.Title);
+        Assert.Equal(TimeTravelValueRole.Passed, passed.Role);
         Assert.Equal(2, passed.Rows.Count);
     }
 

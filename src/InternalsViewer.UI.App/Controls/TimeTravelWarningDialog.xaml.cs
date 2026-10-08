@@ -1,4 +1,4 @@
-using InternalsViewer.UI.App.Services.Query.Debugging;
+using InternalsViewer.Query.Debugging.TimeTravel;
 
 namespace InternalsViewer.UI.App.Controls;
 

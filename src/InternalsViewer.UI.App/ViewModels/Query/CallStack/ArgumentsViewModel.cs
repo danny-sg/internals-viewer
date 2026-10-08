@@ -309,7 +309,7 @@ public sealed partial class ArgumentsViewModel(ILogger logger, SymbolsViewModel 
 
     private static string? Identity(IReadOnlyList<ValueUseGroup> groups)
     {
-        if (groups.FirstOrDefault(g => g.Title == ValueUseGroup.CallsOn) is not { Rows: [var first, ..] })
+        if (groups.FirstOrDefault(g => g.Role == TimeTravelValueRole.CalledOn) is not { Rows: [var first, ..] })
         {
             return null;
         }

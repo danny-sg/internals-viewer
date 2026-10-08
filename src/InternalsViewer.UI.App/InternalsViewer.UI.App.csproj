@@ -228,7 +228,6 @@
           <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
         </PackageReference>
         <PackageReference Include="Microsoft.WindowsAppSDK" Version="2.5.1" />
-        <PackageReference Include="System.ServiceProcess.ServiceController" Version="10.0.12" />
         <PackageReference Include="CommunityToolkit.WinUI.Controls.HeaderedControls" Version="8.2.251219" />
         <PackageReference Include="CommunityToolkit.WinUI.Converters" Version="8.2.251219" />
         <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.2" />
@@ -279,8 +278,8 @@
     <ItemGroup>
       <ProjectReference Include="..\InternalsViewer.Connection.BackupFile\InternalsViewer.Connection.BackupFile.csproj" />
       <ProjectReference Include="..\InternalsViewer.Internals\InternalsViewer.Internals.csproj" />
-      <ProjectReference Include="..\InternalsViewer.Query\InternalsViewer.Query.csproj" />
-      <ProjectReference Include="..\InternalsViewer.Query.Debugging\InternalsViewer.Query.Debugging.csproj" />
+      <ProjectReference Include="..\Query\InternalsViewer.Query\InternalsViewer.Query.csproj" />
+      <ProjectReference Include="..\Query\InternalsViewer.Query.Debugging\InternalsViewer.Query.Debugging.csproj" />
     </ItemGroup>
 
     <ItemGroup>
