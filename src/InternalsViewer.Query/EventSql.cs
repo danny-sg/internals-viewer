@@ -35,39 +35,17 @@ internal static class EventSql
                                                bool isReplayMode,
                                                EventOptions eventOptions)
     {
-
-        var sessionEvents = new List<string>(EventConstants.Events);
+        var sessionEvents = eventOptions.RecordTimeTravel
+            ? new List<string>(EventConstants.TimeTravelEvents)
+            : TraceEvents(isReplayMode, eventOptions);
 
         var sessionActions = new List<string>(EventConstants.Actions);
 
-        if (isReplayMode)
+        if (eventOptions.RecordTimeTravel)
         {
-            sessionEvents.AddRange(EventConstants.LogEvents);
+            sessionActions.AddRange(EventConstants.TimeTravelActions);
         }
-
-        // Always include lock, wait, and latch events for event grouping
-        sessionEvents.AddRange(EventConstants.LockEvents);
-
-        sessionEvents.AddRange(EventConstants.WaitEvents);
-
-        sessionEvents.AddRange(EventConstants.LatchEvents);
-
-        if (eventOptions.IncludeMemory)
-        {
-            sessionEvents.AddRange(EventConstants.MemoryEvents);
-        }
-
-        if (eventOptions.IncludeBatchMode)
-        {
-            sessionEvents.AddRange(EventConstants.BatchModeEvents);
-        }
-
-        if (eventOptions.IncludeColumnstore)
-        {
-            sessionEvents.AddRange(EventConstants.ColumnstoreEvents);
-        }
-
-        if (eventOptions.IncludeCallStack)
+        else if (eventOptions.IncludeCallStack)
         {
             sessionActions.AddRange(EventConstants.CallstackActions);
         }
@@ -105,6 +83,11 @@ internal static class EventSql
                 stringBuilder.Append($"sqlserver.session_id = {spid}");
                 stringBuilder.Append($" AND sqlserver.sql_text NOT LIKE '%{sessionName}%'");
 
+                if (eventOptions.RecordTimeTravel && EventConstants.TimeTravelPredicates.TryGetValue(eventName, out var predicate))
+                {
+                    stringBuilder.Append($" AND {predicate}");
+                }
+
                 stringBuilder.Append(')');
 
                 stringBuilder.Append("\n)");
@@ -133,5 +116,39 @@ ADD TARGET package0.event_file
 );");
 
         return stringBuilder.ToString();
+    }
+
+    private static List<string> TraceEvents(bool isReplayMode, EventOptions eventOptions)
+    {
+        var sessionEvents = new List<string>(EventConstants.Events);
+
+        if (isReplayMode)
+        {
+            sessionEvents.AddRange(EventConstants.LogEvents);
+        }
+
+        // Always include lock, wait, and latch events for event grouping
+        sessionEvents.AddRange(EventConstants.LockEvents);
+
+        sessionEvents.AddRange(EventConstants.WaitEvents);
+
+        sessionEvents.AddRange(EventConstants.LatchEvents);
+
+        if (eventOptions.IncludeMemory)
+        {
+            sessionEvents.AddRange(EventConstants.MemoryEvents);
+        }
+
+        if (eventOptions.IncludeBatchMode)
+        {
+            sessionEvents.AddRange(EventConstants.BatchModeEvents);
+        }
+
+        if (eventOptions.IncludeColumnstore)
+        {
+            sessionEvents.AddRange(EventConstants.ColumnstoreEvents);
+        }
+
+        return sessionEvents;
     }
 }

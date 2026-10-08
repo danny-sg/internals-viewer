@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ContentDialog
+    x:Class="InternalsViewer.UI.App.Controls.TimeTravelWarningDialog"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    mc:Ignorable="d"
+    Title="Full Trace"
+    PrimaryButtonText="Turn On"
+    CloseButtonText="Cancel"
+    DefaultButton="Close">
+
+    <ScrollViewer MaxWidth="560" VerticalScrollBarVisibility="Auto">
+        <StackPanel Spacing="12">
+            <StackPanel Spacing="2">
+                <TextBlock TextWrapping="Wrap"
+                       Text="Queries are recorded with Microsoft Time Travel Debugging (TTD). This captures every call SQL Server makes, so the call stack is exact rather than sampled."/>
+                <TextBlock Padding="0,10,0,0" FontWeight="Bold" Text="Full trace should only be used on development or test instances."></TextBlock>
+            </StackPanel>
+
+            <StackPanel Spacing="2">
+                <TextBlock Text="Administrator Permission" FontWeight="SemiBold"/>
+                <TextBlock TextWrapping="Wrap"
+                           Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                           Text="Running a query will bring up a User Account Control (UAC) Dialog that must be accepted as elevated permissions are required to run the trace."/>
+            </StackPanel>
+
+            <StackPanel Spacing="2">
+                <TextBlock Text="SQL Server Restart" FontWeight="SemiBold"/>
+                <TextBlock TextWrapping="Wrap"
+                           Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                           Text="Running a query will restart the SQL Server service automatically at the start and end of the query. This is required to attach and detatch the trace."/>
+            </StackPanel>
+
+            <StackPanel Spacing="2">
+                <TextBlock Text="Large Files" FontWeight="SemiBold"/>
+                <TextBlock TextWrapping="Wrap"
+                           Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                           Text="A few seconds of recording can be several gigabytes. Traces are written to:"/>
+                <TextBlock TextWrapping="Wrap"
+                           IsTextSelectionEnabled="True"
+                           FontFamily="{StaticResource MonospaceFontFamily}"
+                           FontSize="12"
+                           Text="{x:Bind TraceDirectory}"/>
+            </StackPanel>
+
+            <CheckBox x:Name="DoNotShowAgainCheckBox" Content="Do Not Show Again"/>
+        </StackPanel>
+    </ScrollViewer>
+</ContentDialog>

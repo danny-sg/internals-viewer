@@ -35,9 +35,9 @@ public static class ActivityBandBrush
 
         var peak = node.ActivityCounts.Max();
 
-        var slices = isExpanded || content is not TreeViewNode treeNode
+        var slices = isExpanded
             ? Layer(node, peak, new Color[node.ActivityCounts.Length])
-            : Overlay(treeNode, peak);
+            : Overlay(node, peak);
 
         foreach (var bucket in band.Markers)
         {
@@ -55,6 +55,18 @@ public static class ActivityBandBrush
            || (Frame(content) is { Activity: not null } node && node.ActivityCounts.Any(count => count > 0))
             ? Microsoft.UI.Xaml.Visibility.Visible
             : Microsoft.UI.Xaml.Visibility.Collapsed;
+
+    public static string? ToolTip(object? content)
+    {
+        if (Frame(content) is not { HasCalls: true } node)
+        {
+            return null;
+        }
+
+        var total = node.ActivityCounts.Sum(count => (long)count);
+
+        return total > node.Calls ? $"{node.CallsLabel}\n{total:N0} Calls Including Children" : node.CallsLabel;
+    }
 
     private static CallStackNode? Frame(object? content) => (content as TreeViewNode)?.Content as CallStackNode;
 
@@ -74,22 +86,22 @@ public static class ActivityBandBrush
         return brush;
     }
 
-    private static Color[] Overlay(TreeViewNode treeNode, int peak)
+    private static Color[] Overlay(CallStackNode node, int peak)
     {
-        var slices = new Color[Frame(treeNode)!.ActivityCounts.Length];
+        var slices = new Color[node.ActivityCounts.Length];
 
-        Visit(treeNode);
+        Visit(node);
 
         return slices;
 
-        void Visit(TreeViewNode current)
+        void Visit(CallStackNode frame)
         {
-            if (current.Content is CallStackNode frame && frame.ActivityCounts.Length == slices.Length)
+            if (frame.ActivityCounts.Length == slices.Length)
             {
                 Layer(frame, peak, slices);
             }
 
-            foreach (var child in current.Children)
+            foreach (var child in frame.Activity?.Children ?? [])
             {
                 Visit(child);
             }

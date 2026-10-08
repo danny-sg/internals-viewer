@@ -1,6 +1,8 @@
 ﻿using InternalsViewer.Query.Results;
 using Microsoft.UI.Dispatching;
 using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Documents;
+using Microsoft.UI.Xaml.Media;
 using System;
 using Windows.Foundation;
 using WinUI.TableView;
@@ -27,7 +29,7 @@ public sealed partial class ResultsGridControl : UserControl
             nameof(SelectedRow),
             typeof(ResultRow<long>),
             typeof(ResultsGridControl),
-            new PropertyMetadata(null));
+            new PropertyMetadata(null, OnSelectedRowChanged));
 
     public ResultRow<long>? SelectedRow
     {
@@ -70,12 +72,17 @@ public sealed partial class ResultsGridControl : UserControl
         {
             var resultCellColumn = new ResultCellColumn(column.Ordinal)
             {
-                Header = column.Name,
+                Header = CreateHeader(column),
                 BackgroundColour = column.BackgroundColour,
                 Width = GetColumnWidth(column),
                 Alignment = column.Alignment,
                 PageClicked = OnPageClicked,
             };
+
+            if (CreateHeaderStyle(column) is { } headerStyle)
+            {
+                resultCellColumn.HeaderStyle = headerStyle;
+            }
 
             table.Columns.Add(resultCellColumn);
         }
@@ -164,8 +171,58 @@ public sealed partial class ResultsGridControl : UserControl
             _ => 140
         };
 
-        return new GridLength(column.Width ?? Math.Max(width, column.Name.Length * 7 + 24));
+        return new GridLength(column.Width ?? Math.Max(width, HeaderLength(column) * 7 + 24));
     }
+
+    private static object CreateHeader(ResultColumn column)
+    {
+        if (column.TypeName is null && column.Detail is null)
+        {
+            return column.Name;
+        }
+
+        var header = new TextBlock();
+
+        header.Inlines.Add(new Run { Text = column.Name });
+
+        if (column.TypeName is { } typeName)
+        {
+            header.Inlines.Add(new Run
+            {
+                Text = $"  {typeName}",
+                FontFamily = Resource<FontFamily>("MonospaceFontFamily"),
+                Foreground = Resource<Brush>("CppClassBrush")
+            });
+        }
+
+        if (column.Detail is { } detail)
+        {
+            header.Inlines.Add(new Run { Text = $"  {detail}", Foreground = Resource<Brush>("TextFillColorTertiaryBrush") });
+        }
+
+        return header;
+    }
+
+    private static Style? CreateHeaderStyle(ResultColumn column)
+    {
+        if (column.BackgroundColour is not { } colour)
+        {
+            return null;
+        }
+
+        var style = new Style(typeof(TableViewColumnHeader)) { BasedOn = Resource<Style>("TableViewColumnHeaderStyle") };
+
+        style.Setters.Add(new Setter(Control.BackgroundProperty,
+                                     new SolidColorBrush(Windows.UI.Color.FromArgb(colour.A, colour.R, colour.G, colour.B))));
+
+        return style;
+    }
+
+    private static int HeaderLength(ResultColumn column)
+        => column.Name.Length + (column.TypeName?.Length + 2 ?? 0) + (column.Detail?.Length + 2 ?? 0);
+
+    private static T? Resource<T>(string key) where T : class
+        => Application.Current.Resources.TryGetValue(key, out var resource) ? resource as T : null;
 
     private void OnPageClicked(PageAddressEventArgs e)
     {
@@ -178,5 +235,28 @@ public sealed partial class ResultsGridControl : UserControl
         
         control.SelectedRow = null;
         control.Rebuild();
+    }
+
+    private static void OnSelectedRowChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
+    {
+        var control = (ResultsGridControl)d;
+
+        if (control.ResultsTable is not { } table || ReferenceEquals(table.SelectedItem, e.NewValue))
+        {
+            return;
+        }
+
+        table.SelectedItem = e.NewValue;
+
+        if (e.NewValue is { } row)
+        {
+            control.DispatcherQueue.TryEnqueue(DispatcherQueuePriority.Low, () =>
+            {
+                if (ReferenceEquals(control.ResultsTable, table))
+                {
+                    table.ScrollIntoView(row, ScrollIntoViewAlignment.Leading);
+                }
+            });
+        }
     }
 }

@@ -1,3 +1,4 @@
+using InternalsViewer.Query.CallStack.Categories;
 using InternalsViewer.Query.Events;
 
 namespace InternalsViewer.Query.CallStack;
@@ -35,6 +36,10 @@ public sealed class CallStackNode
     /// Whether this frame is infrastructure (Extended Events, Tracing, scheduling…) rather than query code
     /// </summary>
     public bool IsInfrastructure => Frame?.Resolved?.SymbolMetadata?.IsInfrastructure ?? false;
+
+    public bool IsExtendedEvents => Frame?.Resolved?.SymbolCategory == SymbolCategory.XEventInfrastructure;
+
+    public bool IsTracing => Frame?.Resolved?.SymbolCategory == SymbolCategory.Tracing;
 
     /// <summary>
     /// The plan operator this frame implements if it is a query iterator, otherwise null
@@ -101,6 +106,14 @@ public sealed class CallStackNode
     /// Events whose innermost (event-site) frame is this node — held by reference, not duplicated
     /// </summary>
     public List<EngineEvent> Events { get; } = [];
+
+    public long Calls { get; set; }
+
+    public bool HasCalls => Calls > 0;
+
+    public string CallsLabel => Calls == 1 ? "1 Call" : $"{Calls:N0} Calls";
+
+    public int[] CallActivity { get; set; } = [];
 
     /// <summary>
     /// The frames a projection cut away directly below this one — where a segment handed off to a nested operator

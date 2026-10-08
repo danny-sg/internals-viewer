@@ -63,6 +63,18 @@
     <Build Solution="*|x86" Project="false" />
     <Build Solution="Release|x64" Project="false" />
   </Project>
+  <Project Path="InternalsViewer.Query.TimeTravelBridge/InternalsViewer.Query.TimeTravelBridge.vcxproj" Id="56d6723d-0781-4143-95b2-7bb63da795f2">
+    <BuildType Solution="Debug|x64" Project="Release" />
+    <Platform Solution="*|ARM64" Project="x64" />
+    <Build Solution="*|x86" Project="false" />
+    <Build Solution="Release|x64" Project="false" />
+  </Project>
+  <Project Path="InternalsViewer.Query.TimeTravelHost/InternalsViewer.Query.TimeTravelHost.vcxproj" Id="9c754dd0-44ea-4944-ab0e-b6d5e1ae8b34">
+    <BuildType Solution="Debug|x64" Project="Release" />
+    <Platform Solution="*|ARM64" Project="x64" />
+    <Build Solution="*|x86" Project="false" />
+    <Build Solution="Release|x64" Project="false" />
+  </Project>
   <Project Path="InternalsViewer.Query.Debugging/InternalsViewer.Query.Debugging.csproj">
     <Build Solution="Debug|x86" Project="false" />
   </Project>

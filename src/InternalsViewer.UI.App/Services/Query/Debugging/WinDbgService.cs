@@ -147,6 +147,20 @@ public sealed class WinDbgService(SettingsViewModel settings, ILogger<WinDbgServ
         }
     }
 
+    internal WinDbgInstallation ResolveInstallation()
+    {
+        if (!string.IsNullOrWhiteSpace(settings.WinDbgPath))
+        {
+            return File.Exists(settings.WinDbgPath)
+                ? WinDbgInstallation.FromExecutable(settings.WinDbgPath)
+                : throw new DebuggerException($"WinDbg was not found at {settings.WinDbgPath}. Check the WinDbg Path in Settings");
+        }
+
+        return WinDbgInstallation.Locate()
+               ?? throw new DebuggerException("WinDbg was not found. Install it from the Microsoft Store, "
+                                            + "or set the WinDbg Path in Settings");
+    }
+
     private async Task ConnectAsync(string engine, TimeSpan timeout, CancellationToken cancellationToken)
     {
         Disconnect();
@@ -190,20 +204,6 @@ public sealed class WinDbgService(SettingsViewModel settings, ILogger<WinDbgServ
                                           + "Connect to Session");
             }
         }
-    }
-
-    private WinDbgInstallation ResolveInstallation()
-    {
-        if (!string.IsNullOrWhiteSpace(settings.WinDbgPath))
-        {
-            return File.Exists(settings.WinDbgPath)
-                ? WinDbgInstallation.FromExecutable(settings.WinDbgPath)
-                : throw new DebuggerException($"WinDbg was not found at {settings.WinDbgPath}. Check the WinDbg Path in Settings");
-        }
-
-        return WinDbgInstallation.Locate()
-               ?? throw new DebuggerException("WinDbg was not found. Install it from the Microsoft Store, "
-                                            + "or set the WinDbg Path in Settings");
     }
 
     private static string PrepareEngine(WinDbgInstallation installation)

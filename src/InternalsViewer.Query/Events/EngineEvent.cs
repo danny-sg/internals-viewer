@@ -60,6 +60,9 @@ public partial record EngineEvent
     [EventProperty("Worker Address", Type = EventPropertyType.Address)]
     public ulong? WorkerAddress { get; set; }
 
+    [EventProperty("System Thread")]
+    public uint? SystemThreadId { get; set; }
+
     public virtual bool IsVisible => true;
 
     public IReadOnlyList<EventProperty> GetProperties()

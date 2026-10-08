@@ -112,6 +112,10 @@
                              PlaceholderText="WinDbgX.exe"
                              MinWidth="800"/>
                 </controls:SettingsCard>
+                <controls:SettingsCard Header="Time Travel Warning"
+                                       Description="Explain what recording a time travel trace does each time Record Time Travel Trace is turned on">
+                    <ToggleSwitch IsOn="{x:Bind ViewModel.ShowTimeTravelWarning, Mode=TwoWay}"/>
+                </controls:SettingsCard>
             </controls:SettingsExpander.Items>
         </controls:SettingsExpander>
 

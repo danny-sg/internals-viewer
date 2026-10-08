@@ -28,6 +28,7 @@ sqllang|CXStmtUpdate|XretExecute|UPDATE|UPDATE
 sqllang|CXStmtDelete|XretExecute|DELETE|DELETE
 sqllang|CXStmtInsert|XretExecute|INSERT|INSERT
 sqllang|CXStmtMerge|XretExecute|MERGE|MERGE
+sqllang|CXStmtQuery|ErsqExecuteQuery|Statement|SELECT,UPDATE,DELETE,INSERT,MERGE
 
 # Wrappers with no node of their own: a badge, never a boundary.
 sqlmin|CQueryScan|GetRow|Iterator|
@@ -71,6 +72,7 @@ sqlmin|CQScanComputeScalar*|*|Compute Scalar|Compute Scalar
 sqlmin|CQScanConcat*|*|Concatenation|Concatenation
 sqlmin|CQScanSpool*|*|Spool|*Spool
 sqlmin|CQScanExchange*|*|Parallelism|Parallelism
+sqlmin|CQScanXProducer*|*|Parallelism|Parallelism
 sqlmin|CQScanSeq*|*|Sequence|Sequence
 sqlmin|CQScanUpdate*|*|Update|*Update
 

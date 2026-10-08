@@ -1,4 +1,5 @@
 using InternalsViewer.Query.CallStack;
+using InternalsViewer.Query.CallStack.TimeTravel;
 using InternalsViewer.Query.Events;
 using InternalsViewer.Query.Plans;
 using InternalsViewer.Query.Results;
@@ -29,4 +30,6 @@ public sealed record QueryResult
     public long? CropEndUs { get; set; }
 
     public List<LogRecord> LogRecords { get; set; } = [];
+
+    public PendingFullTrace? FullTrace { get; set; }
 }

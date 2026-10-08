@@ -9,3 +9,17 @@ sqlservr|SqlServerHost
 SqlTsEs|ExpressionServices
 kernel32|System
 ntdll|System
+# Loaded alongside the engine and reached by recorded calls (time travel traces) rather than by event stacks.
+KERNELBASE|System
+ucrtbase|System
+combase|System
+rpcrt4|System
+sechost|System
+advapi32|System
+bcrypt|System
+bcryptprimitives|System
+ncrypt|System
+ncryptsslp|System
+schannel|System
+sspicli|System
+svl|SqlServerHost

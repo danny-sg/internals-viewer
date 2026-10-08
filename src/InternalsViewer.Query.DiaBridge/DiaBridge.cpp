@@ -280,7 +280,7 @@ bool ResolveRva(void *sessionHandle, unsigned int rva, wchar_t *buffer, int buff
 
     auto friendly = DemangleName(name.Get());
 
-    swprintf_s(buffer, bufferLength, L"%s+0x%lX", friendly.c_str(), displacement);
+    _snwprintf_s(buffer, bufferLength, _TRUNCATE, L"%s+0x%lX", friendly.c_str(), displacement);
 
     return true;
 }
@@ -347,7 +347,7 @@ bool NextSymbol(void *enumeratorHandle, wchar_t *buffer, int bufferLength)
         // rfind(prefix, 0) == 0 is a StartsWith test.
         if (!friendly.empty() && (enumerator->Prefix.empty() || friendly.rfind(enumerator->Prefix, 0) == 0))
         {
-            swprintf_s(buffer, bufferLength, L"%s", friendly.c_str());
+            _snwprintf_s(buffer, bufferLength, _TRUNCATE, L"%s", friendly.c_str());
 
             return true;
         }
@@ -437,6 +437,43 @@ void *BeginEnumSymbolsAtRva(void *sessionHandle, unsigned int rva)
     }
 
     return enumerator.release();
+}
+
+bool GetDecoratedName(void *sessionHandle, unsigned int rva, wchar_t *buffer, int bufferLength)
+{
+    std::unique_ptr<EnumHandle> enumerator{ static_cast<EnumHandle *>(BeginEnumSymbolsAtRva(sessionHandle, rva)) };
+
+    if (!enumerator)
+    {
+        return false;
+    }
+
+    for (;;)
+    {
+        ComPtr<IDiaSymbol> symbol;
+
+        ULONG fetched = 0;
+
+        if (FAILED(enumerator->Symbols->Next(1, symbol.GetAddressOf(), &fetched)) || fetched != 1)
+        {
+            return false;
+        }
+
+        BOOL function = FALSE;
+
+        symbol->get_function(&function);
+
+        Bstr name;
+
+        if (!function || FAILED(symbol->get_name(name.GetAddressOf())) || !name)
+        {
+            continue;
+        }
+
+        CopyTruncated(buffer, bufferLength, name.Get());
+
+        return true;
+    }
 }
 
 void EndEnumSymbols(void *enumeratorHandle)

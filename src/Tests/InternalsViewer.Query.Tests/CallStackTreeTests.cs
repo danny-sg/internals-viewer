@@ -1,4 +1,5 @@
 ﻿using InternalsViewer.Query.CallStack;
+using InternalsViewer.Query.CallStack.Categories;
 using InternalsViewer.Query.Events;
 using Xunit.Abstractions;
 
@@ -348,6 +349,144 @@ public class CallStackTreeTests(ITestOutputHelper output)
 
     private static int _sequence;
 
+    [Fact]
+    public void Replayed_Calls_Merge_With_Event_Paths_By_Function()
+    {
+        var tree = new CallStackTree();
+
+        tree.Add([Frame("Y", 10), Frame("X", 20)], Event());
+
+        var x = tree.AddCall(tree.Root, Frame("X", 0), 1);
+
+        tree.AddCall(x, Frame("Y", 0), 5);
+
+        var collapsed = tree.CollapseToFunctions();
+
+        var y = collapsed.Nodes().Single(node => node.Symbol == "Y::m");
+
+        Assert.Single(y.Events);
+        Assert.Equal(5, y.Calls);
+        Assert.Equal(1, y.Parent?.Calls);
+    }
+
+    [Fact]
+    public void Replayed_Calls_Survive_A_Crop_That_Drops_Every_Event()
+    {
+        var tree = new CallStackTree();
+
+        tree.Add([Frame("Y", 10), Frame("X", 20)], Event());
+
+        var x = tree.AddCall(tree.Root, Frame("X", 0), 2);
+
+        tree.AddCall(x, Frame("Z", 0), 3);
+
+        var collapsed = tree.CollapseToFunctions(_ => false);
+
+        Assert.DoesNotContain(collapsed.Nodes(), node => node.Symbol == "Y::m");
+        Assert.Equal(3, collapsed.Nodes().Single(node => node.Symbol == "Z::m").Calls);
+    }
+
+    [Fact]
+    public void A_Truncated_Call_Path_Grafts_With_Its_Calls()
+    {
+        var tree = new CallStackTree();
+
+        tree.Add([Frame("Y", 10), Frame("X", 20), Frame("Execute", 30)], Event());
+
+        var x = tree.AddCall(tree.Root, Frame("X", 0), 4);
+
+        tree.AddCall(x, Frame("Z", 0), 7);
+
+        var collapsed = tree.CollapseToFunctions();
+
+        output.WriteLine(collapsed.Render());
+
+        var z = collapsed.Nodes().Single(node => node.Symbol == "Z::m");
+
+        Assert.Equal(7, z.Calls);
+        Assert.Equal("X::m", z.Parent?.Symbol);
+        Assert.Equal("Execute::m", z.Parent?.Parent?.Symbol);
+        Assert.Equal(4, z.Parent?.Calls);
+    }
+
+    [Fact]
+    public void Removing_Calls_Under_Extended_Events_Keeps_Events_And_Other_Calls()
+    {
+        var tree = new CallStackTree();
+
+        tree.Add([XeFrame("Publish", 10), Frame("PreWait", 20), Frame("GetRow", 30)], Event());
+
+        var getRow = tree.AddCall(tree.Root, Frame("GetRow", 100), 1);
+
+        var preWait = tree.AddCall(getRow, Frame("PreWait", 200), 1);
+
+        var publish = tree.AddCall(preWait, XeFrame("Publish", 300), 1);
+
+        tree.AddCall(publish, Frame("memcpy", 400), 50);
+
+        tree.AddCall(getRow, Frame("ReadPage", 500), 3);
+
+        var collapsed = tree.CollapseToFunctions();
+
+        collapsed.RemoveCallsUnder(node => node.IsExtendedEvents);
+
+        output.WriteLine(collapsed.Render());
+
+        var publishNode = collapsed.Nodes().Single(node => node.Symbol == "Publish::m");
+
+        Assert.Single(publishNode.Events);
+        Assert.Equal(0, publishNode.Calls);
+        Assert.DoesNotContain(collapsed.Nodes(), node => node.Symbol == "memcpy::m");
+        Assert.Equal(3, collapsed.Nodes().Single(node => node.Symbol == "ReadPage::m").Calls);
+        Assert.Equal(1, collapsed.Nodes().Single(node => node.Symbol == "PreWait::m").Calls);
+    }
+
+    [Fact]
+    public void Trace_Activity_Survives_The_Collapse_And_Sums_Up_The_Tree()
+    {
+        var tree = new CallStackTree { ActivityFromTrace = true };
+
+        var x = tree.AddCall(tree.Root, Frame("X", 100), 1);
+
+        var y = tree.AddCall(x, Frame("Y", 200), 4);
+
+        x.CallActivity = [1, 0, 0];
+
+        y.CallActivity = [0, 3, 1];
+
+        var collapsed = tree.CollapseToFunctions();
+
+        collapsed.ComputeActivity(0, 0, 3);
+
+        var root = collapsed.Nodes().Single(node => node.Symbol == "X::m");
+
+        Assert.True(collapsed.ActivityFromTrace);
+        Assert.Equal([1, 3, 1], root.ActivityCounts);
+        Assert.Equal([0, 3, 1], collapsed.Nodes().Single(node => node.Symbol == "Y::m").ActivityCounts);
+    }
+
+    [Fact]
+    public void Removing_Calls_Under_Extended_Events_Removes_Their_Activity()
+    {
+        var tree = new CallStackTree { ActivityFromTrace = true };
+
+        var x = tree.AddCall(tree.Root, Frame("X", 100), 1);
+
+        var publish = tree.AddCall(x, XeFrame("Publish", 200), 2);
+
+        x.CallActivity = [1, 0];
+
+        publish.CallActivity = [0, 2];
+
+        var collapsed = tree.CollapseToFunctions();
+
+        collapsed.RemoveCallsUnder(node => node.IsExtendedEvents);
+
+        collapsed.ComputeActivity(0, 0, 2);
+
+        Assert.Equal([1, 0], Assert.Single(collapsed.Nodes()).ActivityCounts);
+    }
+
     private static EngineEvent Event() => new() { Name = "e", SequenceId = _sequence++ };
 
     private static CallstackFrame Frame(string name, uint rva) => new()
@@ -355,5 +494,17 @@ public class CallStackTreeTests(ITestOutputHelper output)
         Module = "sqllang",
         Rva = rva,
         Resolved = new ResolvedCallstackFrame { ClassName = name, MethodName = "m" },
+    };
+
+    private static CallstackFrame XeFrame(string name, uint rva) => new()
+    {
+        Module = "sqldk",
+        Rva = rva,
+        Resolved = new ResolvedCallstackFrame
+        {
+            ClassName = name,
+            MethodName = "m",
+            SymbolCategory = SymbolCategory.XEventInfrastructure
+        },
     };
 }

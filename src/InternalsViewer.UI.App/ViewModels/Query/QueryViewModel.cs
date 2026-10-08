@@ -15,6 +15,7 @@ using InternalsViewer.Internals.Engine.Database.Enums;
 using InternalsViewer.Internals.Extensions;
 using InternalsViewer.Query;
 using InternalsViewer.Query.CallStack;
+using InternalsViewer.Query.CallStack.TimeTravel;
 using InternalsViewer.Query.Events.Latches;
 using InternalsViewer.Query.Events.Locks;
 using InternalsViewer.Query.Events.Operators;
@@ -237,6 +238,12 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
     private bool _isSqlHistoryVisible;
 
     [ObservableProperty]
+    private bool _isFullTraceLoading;
+
+    [ObservableProperty]
+    private string? _fullTraceStatus;
+
+    [ObservableProperty]
     private DatabaseSchema? _schema;
 
     [ObservableProperty]
@@ -307,6 +314,8 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
         _winDbgService = winDbgService;
 
         Symbols = new SymbolsViewModel(logger, settingsViewModel);
+
+        Arguments = new ArgumentsViewModel(logger, Symbols);
 
         _winDbgService.StatusChanged += OnDebuggerStatusChanged;
 
@@ -397,6 +406,8 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
     /// The Call Stack document's detail pane, its members listing and symbol search
     /// </summary>
     public SymbolsViewModel Symbols { get; }
+
+    public ArgumentsViewModel Arguments { get; }
 
     /// <summary>
     /// The queries run against this database, listed beside the SQL editor
@@ -540,6 +551,8 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
     private ILogger<QueryViewModel> Logger { get; }
 
     private QueryRunner QueryRunner { get; }
+
+    private CancellationTokenSource? FullTraceLoad { get; set; }
 
     private IBufferPoolInfoProvider BufferPoolInfoProvider { get; }
 
@@ -902,7 +915,11 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
         _pageSpans = [];
 
+        CancelFullTraceLoad();
+
         Symbols.Dispose();
+
+        Arguments.Dispose();
 
         Layout.Dispose();
 
@@ -1753,7 +1770,7 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
             CallStack = results.CallStackTree;
 
-            ExecutionPlans = new ObservableCollection<ExecutionPlan>(results.ExecutionPlans.Where(p => !p.IsInternalPlan));
+            ExecutionPlans = [.. results.ExecutionPlans.Where(p => !p.IsInternalPlan)];
 
             RefreshTraceDocuments();
 
@@ -1762,6 +1779,11 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
             ShowResultTabsForFirstRun();
 
             RefreshFilteredEvents();
+
+            if (results.FullTrace is { } fullTrace)
+            {
+                _ = LoadFullTraceAsync(fullTrace);
+            }
 
             if (ShowBufferPool)
             {
@@ -1772,6 +1794,79 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
         {
             await WeakReferenceMessenger.Default.Send(new ExceptionMessage(ex));
         }
+    }
+
+    [RelayCommand]
+    private void CancelFullTrace() => CancelFullTraceLoad();
+
+    private async Task LoadFullTraceAsync(PendingFullTrace pending)
+    {
+        CancelFullTraceLoad();
+
+        var load = new CancellationTokenSource();
+
+        FullTraceLoad = load;
+
+        IsFullTraceLoading = true;
+        FullTraceStatus = "Opening Full Trace";
+
+        var progress = new Progress<string>(message =>
+        {
+            if (ReferenceEquals(FullTraceLoad, load))
+            {
+                FullTraceStatus = message;
+                Message = Message + Environment.NewLine + message;
+            }
+        });
+
+        try
+        {
+            var result = await Task.Run(() => QueryRunner.LoadFullTraceAsync(pending, progress, load.Token), load.Token);
+
+            if (load.IsCancellationRequested || result is null)
+            {
+                return;
+            }
+
+            CallStack = result.CallStack;
+
+            Arguments.SetSource(result.CallLog, IteratorTarget.Build(result.CallStack, Events));
+
+            ExecutionPlans = [.. ExecutionPlans];
+        }
+        catch (OperationCanceledException) when (load.IsCancellationRequested)
+        {
+        }
+        catch (Exception exception)
+        {
+            await WeakReferenceMessenger.Default.Send(new ExceptionMessage(exception));
+        }
+        finally
+        {
+            if (ReferenceEquals(FullTraceLoad, load))
+            {
+                FullTraceLoad = null;
+                IsFullTraceLoading = false;
+                FullTraceStatus = null;
+            }
+
+            load.Dispose();
+        }
+    }
+
+    private void CancelFullTraceLoad()
+    {
+        if (FullTraceLoad is not { } load)
+        {
+            return;
+        }
+
+        FullTraceLoad = null;
+
+        load.Cancel();
+
+        IsFullTraceLoading = false;
+        FullTraceStatus = null;
     }
 
     private void ShowResultTabsForFirstRun()
@@ -1790,6 +1885,8 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
     private void ClearResults()
     {
+        CancelFullTraceLoad();
+
         IsError = false;
         Message = string.Empty;
 
@@ -1807,6 +1904,8 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
         CallStack = null;
         SelectedEvent = null;
         ExecutionPlans = [];
+
+        Arguments.SetSource(null);
         ResultSets = [];
 
         foreach (var indexViewModel in _openIndexes.Values)

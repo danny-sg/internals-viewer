@@ -1,6 +1,7 @@
 ﻿using System.Diagnostics;
 using InternalsViewer.Internals.Engine.Database;
 using InternalsViewer.Query.CallStack;
+using InternalsViewer.Query.CallStack.TimeTravel;
 using InternalsViewer.Query.Events.BatchMode;
 using InternalsViewer.Query.Events.Consolidation;
 using InternalsViewer.Query.Events.Operators;
@@ -29,8 +30,11 @@ public sealed class QueryRunner(ILogger<QueryRunner> logger,
                                 EventReader eventReader,
                                 LogRecordReader logRecordReader,
                                 ColumnstoreService? columnstoreService = null,
-                                ColumnstorePageMapper? columnstorePageMapper = null)
+                                ColumnstorePageMapper? columnstorePageMapper = null,
+                                ITimeTravelRecorder? timeTravelRecorder = null)
 {
+    private const int ActivityBuckets = 96;
+
     public bool ResolveColumnstorePages { get; set; } = true;
 
     private ILogger<QueryRunner> Logger { get; } = logger;
@@ -40,6 +44,8 @@ public sealed class QueryRunner(ILogger<QueryRunner> logger,
     private LogRecordReader LogRecordReader { get; } = logRecordReader;
 
     private ColumnstorePageMapper? ColumnstorePageMapper { get; } = columnstorePageMapper;
+
+    private ITimeTravelRecorder? TimeTravelRecorder { get; } = timeTravelRecorder;
 
     public async Task<QueryResult> TraceQuery(ExecuteSqlPayload payload,
                                               DatabaseSource database,
@@ -145,9 +151,18 @@ public sealed class QueryRunner(ILogger<QueryRunner> logger,
             isReplayMode = true;
         }
 
+        ITimeTravelRecording? recording = null;
+
+        TimeTravelTrace? fullTrace = null;
+
         try
         {
-            (var filePath, rowCount, logRecords, resultSets)
+            if (eventOptions.RecordTimeTravel)
+            {
+                recording = await PrepareTimeTravelRecording(connectionString, progress, cancellationToken);
+            }
+
+            (var filePath, rowCount, logRecords, resultSets, var timeTravelTrace)
                 = await RunQueryWithEventSession(sessionId,
                                                  preCommands,
                                                  commands[0],
@@ -156,8 +171,11 @@ public sealed class QueryRunner(ILogger<QueryRunner> logger,
                                                  isReplayMode,
                                                  payload.QueryOptions,
                                                  eventOptions,
+                                                 recording,
                                                  progress,
                                                  cancellationToken);
+
+            fullTrace = timeTravelTrace;
 
             var eventsStart = Stopwatch.GetTimestamp();
 
@@ -196,7 +214,9 @@ public sealed class QueryRunner(ILogger<QueryRunner> logger,
                 }
             }
 
-            if (eventOptions.IncludeCallStack)
+            var includeCallStack = eventOptions.IncludeCallStack;
+
+            if (includeCallStack)
             {
                 progress?.Report($"Processing callstack frames");
 
@@ -238,12 +258,12 @@ public sealed class QueryRunner(ILogger<QueryRunner> logger,
                 events = [.. events.Where(e => e.TimeUs <= trimEnd && e.TimeUs + e.DurationUs >= trimStart)];
             }
 
-            if (eventOptions.IncludeCallStack && events.Count > 0)
+            if (includeCallStack && events.Count > 0)
             {
                 // Per-node activity histogram across the query window
                 callStack.ComputeActivity(cropStart ?? events.Min(e => e.TimeUs),
                                           cropEnd ?? events.Max(e => e.TimeUs),
-                                          buckets: 96);
+                                          buckets: ActivityBuckets);
             }
         }
         catch (OperationCanceledException)
@@ -280,6 +300,13 @@ public sealed class QueryRunner(ILogger<QueryRunner> logger,
                 SessionId = sessionId
             };
         }
+        finally
+        {
+            if (recording is not null)
+            {
+                await recording.DisposeAsync();
+            }
+        }
 
         if (logRecords.Count > 0)
         {
@@ -295,14 +322,101 @@ public sealed class QueryRunner(ILogger<QueryRunner> logger,
             IsSuccess = true,
             EngineEvents = events,
             ExecutionPlans = executionPlans,
-            CallStackTree = callStack,
+            CallStackTree = fullTrace is null ? callStack : null,
             ResultSets = resultSets,
             LogRecords = logRecords,
             SessionId = sessionId,
             RowCount = rowCount,
             CropStartUs = cropStart,
-            CropEndUs = cropEnd
+            CropEndUs = cropEnd,
+            FullTrace = fullTrace is null ? null : new PendingFullTrace(fullTrace, events, symbolsPath)
         };
+    }
+
+    public async Task<FullTraceResult?> LoadFullTraceAsync(PendingFullTrace pending,
+                                                          IProgress<string>? progress,
+                                                          CancellationToken cancellationToken)
+    {
+        var events = pending.Events;
+
+        var threadIds = events.ExpandOwned()
+                              .Select(e => e.SystemThreadId)
+                              .OfType<uint>()
+                              .Where(t => t != 0)
+                              .ToHashSet();
+
+        progress?.Report("Opening Full Trace");
+
+        var start = Stopwatch.GetTimestamp();
+
+        TimeTravelCallTree calls;
+
+        try
+        {
+            using var session = await TimeTravelSession.OpenAsync(pending.Trace, cancellationToken);
+
+            cancellationToken.ThrowIfCancellationRequested();
+
+            progress?.Report($"Full Trace opened in {Stopwatch.GetElapsedTime(start)}");
+
+            progress?.Report($"Replaying Full Trace for {threadIds.Count} thread(s)");
+
+            start = Stopwatch.GetTimestamp();
+
+            var iteratorMethods = await IteratorMethods.ResolveAsync(session.Modules, pending.SymbolsPath, progress, cancellationToken);
+
+            calls = await session.ReadCallsAsync(threadIds, iteratorMethods, logCalls: true, progress, cancellationToken);
+        }
+        catch (Exception exception) when (exception is InvalidOperationException or DllNotFoundException)
+        {
+            Logger.LogWarning(exception, "Time travel trace {TracePath} could not be replayed", pending.Trace.TracePath);
+
+            progress?.Report($"Full Trace could not be replayed: {exception.Message}");
+
+            return null;
+        }
+
+        DeleteTimeTravelTrace(pending.Trace, progress);
+
+        var callStack = new CallStackTree();
+
+        var replayed = TimeTravelCallMerger.Merge(callStack, calls, ActivityBuckets);
+
+        progress?.Report($"{calls.Nodes.Sum(n => (long)n.Calls):N0} call(s) on {calls.Nodes.Length:N0} call path(s) replayed in "
+                         + $"{Stopwatch.GetElapsedTime(start)}");
+
+        if (calls.CallLog is { } log)
+        {
+            progress?.Report($"{log.Calls:N0} call(s) of {log.FunctionCount:N0} function(s) logged in "
+                             + $"{log.Size / (1024.0 * 1024.0):N1} MB");
+        }
+
+        progress?.Report("Processing callstack frames");
+
+        await CallstackProcessor.Process(callStack, pending.SymbolsPath, progress, cancellationToken);
+
+        var collapsed = new Dictionary<CallStackNode, CallStackNode>(ReferenceEqualityComparer.Instance);
+
+        callStack = callStack.CollapseToFunctions(collapsed: (original, node) => collapsed[original] = node);
+
+        calls.CallLog?.MapNodes([.. replayed.Select(node => collapsed.GetValueOrDefault(node))]);
+
+        callStack.RemoveCallsUnder(node => node.IsExtendedEvents || node.IsTracing);
+
+        progress?.Report($"{callStack.Nodes().Sum(n => n.Calls):N0} call(s) after removing Extended Events and tracing");
+
+        var matched = IteratorInstanceMatcher.Match(callStack, events);
+
+        var operators = events.OfType<ExecutionOperatorEvent>().Count(o => o.PlanNodeIdentifier is { NodeId: >= 0 });
+
+        progress?.Report($"{matched:N0} of {operators:N0} operator(s) matched to recorded iterators");
+
+        if (events.Count > 0)
+        {
+            callStack.ComputeActivity(events.Min(e => e.TimeUs), events.Max(e => e.TimeUs), ActivityBuckets);
+        }
+
+        return new FullTraceResult(callStack, calls.CallLog);
     }
 
     private async Task MapColumnstorePages(DatabaseSource database,
@@ -409,7 +523,23 @@ public sealed class QueryRunner(ILogger<QueryRunner> logger,
     /// </remarks>
     private static HashSet<EngineEvent> KeepSet(List<EngineEvent> events) => events.ExpandOwned();
 
-    private async Task<(string, long, List<LogRecord> logRecords, List<QueryResultSet> resultSets)>
+    private void DeleteTimeTravelTrace(TimeTravelTrace trace, IProgress<string>? progress)
+    {
+        try
+        {
+            var size = new FileInfo(trace.TracePath).Length;
+
+            File.Delete(trace.TracePath);
+
+            progress?.Report($"Time travel trace deleted ({size / (1024.0 * 1024.0):N0} MB)");
+        }
+        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
+        {
+            Logger.LogWarning(exception, "Time travel trace {TracePath} could not be deleted", trace.TracePath);
+        }
+    }
+
+    private async Task<(string, long, List<LogRecord> logRecords, List<QueryResultSet> resultSets, TimeTravelTrace? timeTravelTrace)>
         RunQueryWithEventSession(string sessionName,
                                  string[] preCommandSql,
                                  string commandSql,
@@ -418,6 +548,7 @@ public sealed class QueryRunner(ILogger<QueryRunner> logger,
                                  bool isReplayMode,
                                  QueryOptions queryOptions,
                                  EventOptions eventOptions,
+                                 ITimeTravelRecording? recording,
                                  IProgress<string>? progress,
                                  CancellationToken cancellationToken)
     {
@@ -442,6 +573,8 @@ public sealed class QueryRunner(ILogger<QueryRunner> logger,
         string? startLsn = null;
 
         List<QueryResultSet> resultSets;
+
+        TimeTravelTrace? timeTravelTrace = null;
 
         if (preCommandSql.Length > 0)
         {
@@ -501,6 +634,15 @@ public sealed class QueryRunner(ILogger<QueryRunner> logger,
         // Session try/catch block that should stop the session if there is any failure
         try
         {
+            if (recording is not null)
+            {
+                progress?.Report("Starting time travel recording");
+
+                await recording.StartAsync(cancellationToken);
+
+                progress?.Report("Time travel recording started");
+            }
+
             await connection.ExecuteSql(EventSql.GetStartSessionSql(sessionName), cancellationToken, Logger);
 
             if (isReplayMode)
@@ -574,6 +716,15 @@ public sealed class QueryRunner(ILogger<QueryRunner> logger,
 
             progress?.Report($"Query executed in: {Stopwatch.GetElapsedTime(queryStart)}");
 
+            if (recording is not null)
+            {
+                timeTravelTrace = await recording.StopAsync(cancellationToken);
+
+                var traceSize = new FileInfo(timeTravelTrace.TracePath).Length / 1024d / 1024d;
+
+                progress?.Report($"Time travel trace: {timeTravelTrace.TracePath} ({traceSize:N0} MB)");
+            }
+
             if (isReplayMode)
             {
                 logRecords = await LogRecordReader.GetLogRecords(connection, startLsn, sessionName);
@@ -625,7 +776,23 @@ public sealed class QueryRunner(ILogger<QueryRunner> logger,
             }
         }
 
-        return (filePath, rowCount, logRecords, resultSets);
+        return (filePath, rowCount, logRecords, resultSets, timeTravelTrace);
+    }
+
+    private async Task<ITimeTravelRecording?> PrepareTimeTravelRecording(string connectionString,
+                                                                        IProgress<string>? progress,
+                                                                        CancellationToken cancellationToken)
+    {
+        if (TimeTravelRecorder is null)
+        {
+            progress?.Report("Time travel recording is not available");
+
+            return null;
+        }
+
+        progress?.Report("Preparing time travel recording");
+
+        return await TimeTravelRecorder.PrepareAsync(connectionString, cancellationToken);
     }
 
     private static async Task<(long RowCount, List<QueryResultSet> ResultSets)> 

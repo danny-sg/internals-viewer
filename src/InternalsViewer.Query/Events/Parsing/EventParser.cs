@@ -104,6 +104,7 @@ public sealed class EventParser
         var sequenceId = e.GetInt("event_sequence");
 
         engineEvent.WorkerAddress = workerAddress;
+        engineEvent.SystemThreadId = (uint?)e.GetUlongAction("system_thread_id");
         engineEvent.TaskAddress = taskAddress;
         engineEvent.SequenceId = sequenceId * 10 ?? e.SequenceId;
 

@@ -1,6 +1,7 @@
 ﻿using System.Collections.Generic;
 using System.Linq;
 using InternalsViewer.Query.CallStack;
+using InternalsViewer.Query.CallStack.Arguments;
 
 namespace InternalsViewer.UI.App.Models.Query.CallStack;
 
@@ -54,26 +55,26 @@ public static class WinDbgCommands
     /// <summary>
     /// Breaks on entry, prints its arguments read from the signature, and carries on
     /// </summary>
-    public static string DumpArguments(CallstackFrame frame, string? signature) =>
-        DumpArgumentsFromSignature(Target.From(frame), signature, resume: true);
+    public static string DumpArguments(CallstackFrame frame, string? signature, string? decoratedName = null) =>
+        DumpArgumentsFromSignature(Target.From(frame), signature, decoratedName, resume: true);
 
     /// <summary>
     /// Breaks on entry, prints its arguments read from the signature, and stays broken
     /// </summary>
-    public static string DumpArgumentsAndBreak(CallstackFrame frame, string? signature) =>
-        DumpArgumentsFromSignature(Target.From(frame), signature, resume: false);
+    public static string DumpArgumentsAndBreak(CallstackFrame frame, string? signature, string? decoratedName = null) =>
+        DumpArgumentsFromSignature(Target.From(frame), signature, decoratedName, resume: false);
 
     /// <summary>
     /// Breaks on entry to the member, prints its arguments read from the signature, and carries on
     /// </summary>
-    public static string DumpArguments(ClassMemberRow member) =>
-        DumpArgumentsFromSignature(Target.From(member), member.Signature, resume: true);
+    public static string DumpArguments(ClassMemberRow member, string? decoratedName = null) =>
+        DumpArgumentsFromSignature(Target.From(member), member.Signature, decoratedName, resume: true);
 
     /// <summary>
     /// Breaks on entry to the member, prints its arguments read from the signature, and stays broken
     /// </summary>
-    public static string DumpArgumentsAndBreak(ClassMemberRow member) =>
-        DumpArgumentsFromSignature(Target.From(member), member.Signature, resume: false);
+    public static string DumpArgumentsAndBreak(ClassMemberRow member, string? decoratedName = null) =>
+        DumpArgumentsFromSignature(Target.From(member), member.Signature, decoratedName, resume: false);
 
     /// <summary>
     /// Breaks at the exact address captured in this frame, the instruction after the call the frame was waiting on
@@ -144,9 +145,9 @@ public static class WinDbgCommands
     /// and the stack, floating point arguments in the matching <c>xmm</c> register, and strings dumped as text. A static
     /// member, a floating point argument past the fourth, and a by-value struct return are not accounted for.
     /// </remarks>
-    private static string DumpArgumentsFromSignature(Target target, string? signature, bool resume)
+    private static string DumpArgumentsFromSignature(Target target, string? signature, string? decoratedName, bool resume)
     {
-        if (signature is null || ArgumentDumpAction(signature) is not { } action)
+        if (signature is null || ArgumentDumpAction(signature, decoratedName) is not { } action)
         {
             return DumpArguments(target, resume);
         }
@@ -154,53 +155,45 @@ public static class WinDbgCommands
         return $"bp {Expression(target)} \"{(resume ? $"{action}; g" : action)}\"";
     }
 
-    private static string? ArgumentDumpAction(string signature)
+    private static string? ArgumentDumpAction(string signature, string? decoratedName)
     {
-        if (ParseParameters(signature) is not { } parameters)
+        if (FunctionSignature.Parse(signature, decoratedName) is not { } parsed)
         {
             return null;
         }
 
-        var parts = new List<string> { ".echo === Arguments ===", Printf("this = rcx = %p", "@rcx") };
+        var parts = new List<string> { ".echo === Arguments ===" };
 
-        for (var i = 0; i < parameters.Count; i++)
+        var argument = 0;
+
+        var function = decoratedName is null ? parsed with { Kind = FunctionKind.Member } : parsed;
+
+        foreach (var slot in ArgumentLayout.For(function).Slots)
         {
-            parts.Add(ArgumentLine(parameters[i], i + 1));
+            parts.Add(slot.Type == "this" ? Printf("this = rcx = %p", "@rcx") : ArgumentLine(slot, ++argument));
         }
 
         return string.Join("; ", parts);
     }
 
-    private static string ArgumentLine(string type, int position)
+    private static string ArgumentLine(ArgumentSlot slot, int argument)
     {
-        var pointer = type.Contains('*') || type.EndsWith('&');
+        var type = slot.Type;
 
-        var floating = !pointer && type is "float" or "double";
+        var pointer = ArgumentValue.IsPointer(type);
 
-        string location;
-
-        string expression;
-
-        if (position < 4)
+        var (location, expression) = slot.Location switch
         {
-            location = floating ? $"xmm{position}" : IntegerRegister(position);
-
-            expression = floating ? $"@xmm{position}" : $"@{IntegerRegister(position)}";
-        }
-        else
-        {
-            var offset = 0x28 + ((position - 4) * 8);
-
-            location = $"[rsp+0x{offset:X}]";
-
-            expression = $"poi(@rsp+0x{offset:X})";
-        }
+            ArgumentLocation.Register => (IntegerRegister(slot.Index), $"@{IntegerRegister(slot.Index)}"),
+            ArgumentLocation.FloatingRegister => ($"xmm{slot.Index}", $"@xmm{slot.Index}"),
+            _ => ($"[rsp+0x{ArgumentLayout.StackOffset(slot.Index):X}]", $"poi(@rsp+0x{ArgumentLayout.StackOffset(slot.Index):X})")
+        };
 
         var format = pointer
             ? IsWideString(type) ? "%mu" : IsAnsiString(type) ? "%ma" : "%p"
-            : floating ? "%f" : "%p";
+            : slot.Location == ArgumentLocation.FloatingRegister ? "%f" : "%p";
 
-        return Printf($"arg{position} ({type}) = {location} = {format}", expression);
+        return Printf($"arg{argument} ({type}) = {location} = {format}", expression);
     }
 
     private static string Printf(string format, string argument) => $".printf \\\"{format}\\\\n\\\", {argument}";
@@ -217,108 +210,6 @@ public static class WinDbgCommands
 
     private static bool IsAnsiString(string type) =>
         type.Contains("char") && !type.Contains("wchar_t") && !type.Contains("unsigned char") && type.Contains('*');
-
-    private static IReadOnlyList<string>? ParseParameters(string signature)
-    {
-        var open = FindParameterList(signature);
-
-        if (open < 0)
-        {
-            return null;
-        }
-
-        var depth = 0;
-
-        var close = -1;
-
-        for (var i = open; i < signature.Length; i++)
-        {
-            var character = signature[i];
-
-            if (character is '(' or '<' or '[')
-            {
-                depth++;
-            }
-            else if (character is ')' or '>' or ']')
-            {
-                depth--;
-
-                if (depth == 0 && character == ')')
-                {
-                    close = i;
-
-                    break;
-                }
-            }
-        }
-
-        if (close < 0)
-        {
-            return null;
-        }
-
-        var inner = signature[(open + 1)..close].Trim();
-
-        return inner is "" or "void" ? [] : SplitTopLevel(inner);
-    }
-
-    private static int FindParameterList(string signature)
-    {
-        var depth = 0;
-
-        for (var i = 0; i < signature.Length; i++)
-        {
-            var character = signature[i];
-
-            if (character == '<')
-            {
-                depth++;
-            }
-            else if (character == '>')
-            {
-                depth--;
-            }
-            else if (character == '(' && depth == 0)
-            {
-                return i;
-            }
-        }
-
-        return -1;
-    }
-
-    private static IReadOnlyList<string> SplitTopLevel(string inner)
-    {
-        var parameters = new List<string>();
-
-        var depth = 0;
-
-        var start = 0;
-
-        for (var i = 0; i < inner.Length; i++)
-        {
-            var character = inner[i];
-
-            if (character is '(' or '<' or '[')
-            {
-                depth++;
-            }
-            else if (character is ')' or '>' or ']')
-            {
-                depth--;
-            }
-            else if (character == ',' && depth == 0)
-            {
-                parameters.Add(inner[start..i].Trim());
-
-                start = i + 1;
-            }
-        }
-
-        parameters.Add(inner[start..].Trim());
-
-        return parameters;
-    }
 
     private static string ExamineSymbol(Target target) => $"x {Symbol(target)}";
 

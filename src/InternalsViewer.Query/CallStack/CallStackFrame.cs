@@ -17,5 +17,9 @@ public sealed record CallstackFrame
 
     public uint Rva { get; set; }
 
+    public ulong Instance { get; set; }
+
+    public string? Signature { get; set; }
+
     public ResolvedCallstackFrame? Resolved { get; set; }
 }

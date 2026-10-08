@@ -19,6 +19,8 @@ public sealed class CallStackTree
 {
     public CallStackNode Root { get; } = new();
 
+    public bool ActivityFromTrace { get; set; }
+
     // Incrementing so each node records the order it was first created (first seen).
     private int _order;
 
@@ -28,6 +30,15 @@ public sealed class CallStackTree
     public CallStackNode Add(IReadOnlyList<CallstackFrame> frames, EngineEvent engineEvent)
         => Insert(frames, RvaKey, engineEvent);
 
+    public CallStackNode AddCall(CallStackNode parent, CallstackFrame frame, long calls)
+    {
+        var node = Child(parent, frame, RvaKey);
+
+        node.Calls += calls;
+
+        return node;
+    }
+
     /// <summary>
     /// Rebuilds the tree keyed on the resolved function, merging a function's call sites and repointing events
     /// </summary>
@@ -35,8 +46,9 @@ public sealed class CallStackTree
     /// <paramref name="include"/> trims the tree to the query's scope: only kept events' frames are carried over, so a
     /// function reached only by dropped (out-of-window) events leaves no node. Null keeps every event.
     /// </remarks>
-    public CallStackTree CollapseToFunctions(Func<EngineEvent, bool>? include = null)
-        => Project(include, cutAt: null, repoint: true);
+    public CallStackTree CollapseToFunctions(Func<EngineEvent, bool>? include = null,
+                                             Action<CallStackNode, CallStackNode>? collapsed = null)
+        => Project(include, cutAt: null, repoint: true, collapsed: collapsed);
 
     /// <summary>
     /// Rebuilds the tree keyed on the resolved function, over the events <paramref name="include"/> selects
@@ -62,51 +74,54 @@ public sealed class CallStackTree
     public CallStackTree Project(Func<EngineEvent, bool>? include = null,
                                  Func<CallStackNode, bool>? cutAt = null,
                                  Func<CallStackNode, bool>? stopBelow = null,
-                                 bool repoint = false)
+                                 bool repoint = false,
+                                 Action<CallStackNode, CallStackNode>? collapsed = null)
     {
-        var projected = new CallStackTree();
+        var projected = new CallStackTree { ActivityFromTrace = ActivityFromTrace };
 
         var borrowed = new List<(CallStackNode Leaf, List<EngineEvent> Events)>();
 
         // Insert leaves earliest-event-first so the projected nodes are created — and thus ordered — as first seen.
         var leaves = Nodes()
-            .Where(node => node.Events.Count > 0)
+            .Where(node => node.Events.Count > 0 || node.Calls > 0)
             .Select(node => (Node: node, Events: include is null ? node.Events : node.Events.Where(include).ToList()))
-            .Where(leaf => leaf.Events.Count > 0)
-            .OrderBy(leaf => leaf.Events.Min(e => e.SequenceId));
+            .Where(leaf => leaf.Events.Count > 0 || leaf.Node.Calls > 0)
+            .OrderBy(leaf => leaf.Events.Count > 0 ? leaf.Events.Min(e => e.SequenceId) : int.MaxValue)
+            .ThenBy(leaf => leaf.Node.Order);
+
+        var segment = new Segmenter(projected, cutAt, stopBelow);
 
         foreach (var (node, events) in leaves)
         {
-            // Innermost-first, so index 0 is the leaf and the last is the outermost frame captured.
-            var ancestors = node.Ancestors().ToList();
-
-            var top = cutAt is null ? ancestors.Count - 1 : ancestors.FindIndex(frame => cutAt(frame));
-
             // A leaf the cut never reaches is not in this segment, so it is dropped rather than inserted whole —
             // otherwise a path that missed the boundary would come in rooted at the thread start, the one thing cutting
             // is meant to remove.
-            if (top < 0)
+            if (!segment.Contains(node))
             {
                 continue;
             }
 
-            var nested = HighestBelow(ancestors, top, stopBelow);
-
-            var path = ancestors.Take(top + 1).Skip(nested + 1);
-
-            var leaf = projected.Insert([.. path.Select(n => n.Frame!)], FunctionKey, engineEvent: null);
+            var nested = segment.StopOf(node);
 
             // Only a leaf reached without crossing a nested operator's frame belongs to this segment; past one, the
             // events are that operator's and just the frames above it are borrowed. Record where it was cut, so the
             // segment can show what it handed off to rather than simply stopping.
-            if (nested >= 0)
+            if (nested is not null)
             {
-                leaf.CutBelow.Add(ancestors[nested]);
+                var cut = segment.ProjectedOf(nested.Parent!);
 
-                borrowed.Add((leaf, events));
+                cut.CutBelow.Add(nested);
+
+                borrowed.Add((cut, events));
 
                 continue;
             }
+
+            var leaf = segment.ProjectedOf(node);
+
+            leaf.Calls += node.Calls;
+
+            AddCallActivity(leaf, node.CallActivity);
 
             foreach (var engineEvent in events)
             {
@@ -119,9 +134,26 @@ public sealed class CallStackTree
             }
         }
 
+        var merged = new Dictionary<CallStackNode, CallStackNode>();
+
         if (cutAt is null)
         {
-            projected.GraftTruncatedRoots();
+            projected.GraftTruncatedRoots(merged);
+        }
+
+        if (collapsed is not null)
+        {
+            foreach (var (original, node) in segment.Projections)
+            {
+                var target = node;
+
+                while (merged.TryGetValue(target, out var into))
+                {
+                    target = into;
+                }
+
+                collapsed(original, target);
+            }
         }
 
         if (ActivityBuckets > 0)
@@ -137,30 +169,12 @@ public sealed class CallStackTree
         return projected;
     }
 
-    /// <summary>
-    /// The outermost frame below <paramref name="top"/> that ends the segment, or -1 when the path reaches it unbroken
-    /// </summary>
-    /// <remarks>
-    /// The HIGHEST match, not the first one walking up: an operator's exits are the entry frames of every operator
-    /// beneath it, so a deep leaf crosses several. Stopping at the innermost would resume the segment inside a nested
-    /// operator and take everything above it — the very work being excluded.
-    /// </remarks>
-    private static int HighestBelow(List<CallStackNode> ancestors, int top, Func<CallStackNode, bool>? stopBelow)
+    public void RemoveCallsUnder(Func<CallStackNode, bool> boundary)
     {
-        if (stopBelow is null)
+        foreach (var child in Root.Children.Values.ToList())
         {
-            return -1;
+            RemoveCallsUnder(Root, child, boundary(child), boundary);
         }
-
-        for (var i = top - 1; i >= 0; i--)
-        {
-            if (stopBelow(ancestors[i]))
-            {
-                return i;
-            }
-        }
-
-        return -1;
     }
 
     private CallStackNode Insert(IReadOnlyList<CallstackFrame> frames,
@@ -171,20 +185,7 @@ public sealed class CallStackTree
 
         for (var i = frames.Count - 1; i >= 0; i--)
         {
-            var frame = frames[i];
-
-            var key = keyOf(frame);
-
-            if (!node.Children.TryGetValue(key, out var child))
-            {
-                child = new CallStackNode { Frame = frame, Parent = node, Key = key, Order = _order++ };
-
-                node.Children[key] = child;
-            }
-
-            node = child;
-
-            node.Rvas.Add(frame.Rva);
+            node = Child(node, frames[i], keyOf);
         }
 
         if (!node.IsRoot && engineEvent is not null)
@@ -195,7 +196,68 @@ public sealed class CallStackTree
         return node;
     }
 
-    private void GraftTruncatedRoots()
+    private static void AddCallActivity(CallStackNode target, int[] activity)
+    {
+        if (activity.Length == 0)
+        {
+            return;
+        }
+
+        if (target.CallActivity.Length != activity.Length)
+        {
+            target.CallActivity = new int[activity.Length];
+        }
+
+        for (var i = 0; i < activity.Length; i++)
+        {
+            target.CallActivity[i] += activity[i];
+        }
+    }
+
+    private static bool RemoveCallsUnder(CallStackNode parent,
+                                         CallStackNode node,
+                                         bool below,
+                                         Func<CallStackNode, bool> boundary)
+    {
+        if (below)
+        {
+            node.Calls = 0;
+
+            node.CallActivity = [];
+        }
+
+        var keep = node.Events.Count > 0 || node.Calls > 0;
+
+        foreach (var child in node.Children.Values.ToList())
+        {
+            keep |= RemoveCallsUnder(node, child, below || boundary(child), boundary);
+        }
+
+        if (!keep)
+        {
+            parent.Children.Remove(node.Key);
+        }
+
+        return keep;
+    }
+
+    private CallStackNode Child(CallStackNode parent, CallstackFrame frame, Func<CallstackFrame, string> keyOf)
+    {
+        var key = keyOf(frame);
+
+        if (!parent.Children.TryGetValue(key, out var child))
+        {
+            child = new CallStackNode { Frame = frame, Parent = parent, Key = key, Order = _order++ };
+
+            parent.Children[key] = child;
+        }
+
+        child.Rvas.Add(frame.Rva);
+
+        return child;
+    }
+
+    private void GraftTruncatedRoots(Dictionary<CallStackNode, CallStackNode> merged)
     {
         var deeperByKey = Nodes().Where(node => node.Parent is { IsRoot: false })
                                  .GroupBy(node => node.Key)
@@ -223,11 +285,11 @@ public sealed class CallStackTree
 
             if (GraftTarget(viable, rootChild) is { } target)
             {
-                MergeInto(target, rootChild);
+                MergeInto(target, rootChild, merged);
 
                 // Only once the merge has actually taken everything. If it has not, the root child keeps its place:
                 // visibly incomplete beats invisibly gone.
-                if (rootChild.Children.Count == 0 && rootChild.Events.Count == 0)
+                if (rootChild.Children.Count == 0 && rootChild.Events.Count == 0 && rootChild.Calls == 0)
                 {
                     Root.Children.Remove(rootChild.Key);
                 }
@@ -310,8 +372,10 @@ public sealed class CallStackTree
     // Empties the source as it goes, so "did this merge take everything?" is a question the caller can actually ask.
     // Leaving the source populated makes a partial merge indistinguishable from a complete one, and the difference is
     // whether a subtree is still reachable.
-    private static void MergeInto(CallStackNode target, CallStackNode source)
+    private static void MergeInto(CallStackNode target, CallStackNode source, Dictionary<CallStackNode, CallStackNode> merged)
     {
+        merged[source] = target;
+
         foreach (var engineEvent in source.Events)
         {
             target.Events.Add(engineEvent);
@@ -320,6 +384,14 @@ public sealed class CallStackTree
         }
 
         source.Events.Clear();
+
+        target.Calls += source.Calls;
+
+        source.Calls = 0;
+
+        AddCallActivity(target, source.CallActivity);
+
+        source.CallActivity = [];
 
         foreach (var rva in source.Rvas)
         {
@@ -330,7 +402,7 @@ public sealed class CallStackTree
         {
             if (target.Children.TryGetValue(child.Key, out var existing))
             {
-                MergeInto(existing, child);
+                MergeInto(existing, child, merged);
             }
             else
             {
@@ -357,7 +429,7 @@ public sealed class CallStackTree
         ActivityMaxUs = maxUs;
         ActivityBuckets = buckets;
 
-        if (maxUs - minUs <= 0)
+        if (maxUs - minUs <= 0 && !ActivityFromTrace)
         {
             return;
         }
@@ -413,9 +485,14 @@ public sealed class CallStackTree
     {
         var bucket = new int[buckets];
 
+        if (node.CallActivity.Length == buckets)
+        {
+            node.CallActivity.CopyTo(bucket, 0);
+        }
+
         foreach (var engineEvent in node.Events)
         {
-            if (engineEvent.TimeUs < minUs || engineEvent.TimeUs > minUs + span)
+            if (span <= 0 || engineEvent.TimeUs < minUs || engineEvent.TimeUs > minUs + span)
             {
                 continue;
             }
@@ -497,6 +574,11 @@ public sealed class CallStackTree
             builder.Append($" [{node.Events.Count}]");
         }
 
+        if (node.Calls > 0)
+        {
+            builder.Append($" ({node.Calls} calls)");
+        }
+
         builder.AppendLine();
 
         foreach (var child in node.Children.Values.OrderBy(c => c.Order))
@@ -505,8 +587,93 @@ public sealed class CallStackTree
         }
     }
 
-    private static string RvaKey(CallstackFrame frame) => $"{frame.Module}!{frame.Rva}";
+    private static string RvaKey(CallstackFrame frame)
+        => frame.Instance == 0 ? $"{frame.Module}!{frame.Rva}" : $"{frame.Module}!{frame.Rva}@{frame.Instance:X}";
 
-    private static string FunctionKey(CallstackFrame frame) =>
-        frame.Resolved is { } resolved ? $"{frame.Module}!{resolved.ClassName}::{resolved.MethodName}" : RvaKey(frame);
+    private static string FunctionKey(CallstackFrame frame)
+    {
+        if (frame.Resolved is not { } resolved)
+        {
+            return RvaKey(frame);
+        }
+
+        var function = $"{frame.Module}!{resolved.ClassName}::{resolved.MethodName}";
+
+        return frame.Instance == 0 ? function : $"{function}@{frame.Instance:X}";
+    }
+
+    private sealed class Segmenter(CallStackTree projected,
+                                   Func<CallStackNode, bool>? cutAt,
+                                   Func<CallStackNode, bool>? stopBelow)
+    {
+        private Dictionary<CallStackNode, bool> Tops { get; } = new();
+
+        private Dictionary<CallStackNode, bool> Members { get; } = new();
+
+        private Dictionary<CallStackNode, CallStackNode?> Stops { get; } = new();
+
+        private Dictionary<CallStackNode, CallStackNode> Projected { get; } = new();
+
+        public bool Contains(CallStackNode node)
+        {
+            if (cutAt is null)
+            {
+                return true;
+            }
+
+            if (!Members.TryGetValue(node, out var member))
+            {
+                member = IsTop(node) || (node.Parent is { IsRoot: false } parent && Contains(parent));
+
+                Members[node] = member;
+            }
+
+            return member;
+        }
+
+        public CallStackNode? StopOf(CallStackNode node)
+        {
+            if (stopBelow is null || IsTop(node))
+            {
+                return null;
+            }
+
+            if (!Stops.TryGetValue(node, out var stop))
+            {
+                stop = StopOf(node.Parent!) ?? (stopBelow(node) ? node : null);
+
+                Stops[node] = stop;
+            }
+
+            return stop;
+        }
+
+        public IEnumerable<KeyValuePair<CallStackNode, CallStackNode>> Projections => Projected;
+
+        public CallStackNode ProjectedOf(CallStackNode node)
+        {
+            if (!Projected.TryGetValue(node, out var result))
+            {
+                var parent = IsTop(node) ? projected.Root : ProjectedOf(node.Parent!);
+
+                result = projected.Child(parent, node.Frame!, FunctionKey);
+
+                Projected[node] = result;
+            }
+
+            return result;
+        }
+
+        private bool IsTop(CallStackNode node)
+        {
+            if (!Tops.TryGetValue(node, out var top))
+            {
+                top = cutAt?.Invoke(node) ?? node.Parent is null or { IsRoot: true };
+
+                Tops[node] = top;
+            }
+
+            return top;
+        }
+    }
 }

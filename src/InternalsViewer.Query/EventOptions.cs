@@ -14,6 +14,8 @@ public sealed record EventOptions
 
     public bool IncludeCallStack { get; set; } = true;
 
+    public bool RecordTimeTravel { get; set; }
+
     public bool IncludeLatch { get; set; } = false;
 
     public bool IncludeBatchMode { get; set; } = true;

@@ -281,6 +281,43 @@ public sealed partial class SymbolsViewModel(ILogger logger, SettingsViewModel s
         }
     }
 
+    public async Task<string?> ResolveFrameDecoratedNameAsync(CallstackFrame frame)
+    {
+        try
+        {
+            return await Task.Run(() => GetSymbolResolver().ResolveDecoratedName(frame));
+        }
+        catch (Exception exception)
+        {
+            logger.LogDebug(exception, "Resolving the decorated name for a frame failed");
+
+            return null;
+        }
+    }
+
+    public async Task<string?> ResolveMemberDecoratedNameAsync(ClassMemberRow member)
+    {
+        if (ModuleFrames().FirstOrDefault(f => string.Equals(f.Module, member.Member.Module, StringComparison.OrdinalIgnoreCase))
+            is not { } moduleFrame)
+        {
+            return null;
+        }
+
+        return await ResolveFrameDecoratedNameAsync(moduleFrame with { Rva = member.Member.Rva, Resolved = null });
+    }
+
+    public async Task ResolveFrameSignaturesAsync(IReadOnlyList<CallstackFrame> frames)
+    {
+        try
+        {
+            await Task.Run(() => GetSymbolResolver().ResolveSignatures(frames));
+        }
+        catch (Exception exception)
+        {
+            logger.LogDebug(exception, "Resolving the signatures for the call tree failed");
+        }
+    }
+
     public void Dispose()
     {
         _symbolResolver?.Dispose();

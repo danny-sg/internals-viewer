@@ -134,6 +134,28 @@ public class WinDbgCommandsTests
     }
 
     [Fact]
+    public void DumpArguments_Reads_A_Static_Members_First_Argument_From_Rcx()
+    {
+        var member = Member("GetRowOrReQualifyHelper", "GetRowOrReQualifyHelper(CQScanNew *,unsigned __int64 *,unsigned __int64 *,bool)");
+
+        var command = WinDbgCommands.DumpArguments(member, "?GetRowOrReQualifyHelper@CQScanNew@@SAJPEAV1@PEA_K1_N@Z");
+
+        Assert.DoesNotContain("this =", command);
+        Assert.Contains(".printf \\\"arg1 (CQScanNew *) = rcx = %p\\\\n\\\", @rcx", command);
+        Assert.Contains(".printf \\\"arg4 (bool) = r9 = %p\\\\n\\\", @r9", command);
+    }
+
+    [Fact]
+    public void DumpArguments_Reads_Arguments_Past_The_Eighth_From_The_Stack()
+    {
+        var member = Member("Many", "Many(int,int,int,int,int,int,int,int,int)");
+
+        var command = WinDbgCommands.DumpArguments(member, "?Many@HoBtAccess@@QEAAXHHHHHHHHH@Z");
+
+        Assert.Contains(".printf \\\"arg9 (int) = [rsp+0x50] = %p\\\\n\\\", poi(@rsp+0x50)", command);
+    }
+
+    [Fact]
     public void DumpArgumentsAndBreak_Leaves_Out_The_Resume()
     {
         var member = Member("AcquireHoBtRowGroupLock", "AcquireHoBtRowGroupLock(unsigned long)");

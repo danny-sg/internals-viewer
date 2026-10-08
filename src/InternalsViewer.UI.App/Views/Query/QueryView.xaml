@@ -135,6 +135,10 @@
                                 <MenuFlyoutItem Text="Detach"
                                                 Command="{x:Bind ViewModel.DetachDebuggerCommand}"/>
                                 <MenuFlyoutSeparator/>
+                                <ToggleMenuFlyoutItem Text="Record Full Trace"
+                                                      IsChecked="{x:Bind ViewModel.QueryOptions.RecordTimeTravel, Mode=OneWay}"
+                                                      Click="OnRecordTimeTravelClick"/>
+                                <MenuFlyoutSeparator/>
                                 <MenuFlyoutItem Text="Clear breakpoints"
                                                 Command="{x:Bind ViewModel.ClearBreakpointsCommand}"/>
                                 <MenuFlyoutSeparator/>

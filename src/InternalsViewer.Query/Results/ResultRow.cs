@@ -8,7 +8,17 @@ public sealed class ResultRow<T>(object?[] values)
     {
     }
 
-    public object? this[int ordinal] => values[ordinal];
+    public ResultRow(IResultRowSource source, int row) : this([])
+    {
+        Source = source;
+        Row = row;
+    }
 
-    public int FieldCount => values.Length;
+    public object? this[int ordinal] => Source is null ? values[ordinal] : Source.Value(Row, ordinal);
+
+    public int FieldCount => Source?.FieldCount ?? values.Length;
+
+    private IResultRowSource? Source { get; }
+
+    private int Row { get; }
 }

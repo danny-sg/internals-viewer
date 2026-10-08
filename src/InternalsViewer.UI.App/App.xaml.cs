@@ -6,6 +6,7 @@ using InternalsViewer.Internals;
 using InternalsViewer.Internals.Interfaces.Connections;
 using InternalsViewer.Internals.Services.Logging;
 using InternalsViewer.Query;
+using InternalsViewer.Query.CallStack.TimeTravel;
 using InternalsViewer.Query.Events;
 using InternalsViewer.TransactionLog;
 using InternalsViewer.UI.App.Activation;
@@ -55,6 +56,7 @@ public partial class App
             services.AddSingleton<SettingsService>();
             services.AddSingleton<TraceDirectoryService>();
             services.AddSingleton<WinDbgService>();
+            services.AddSingleton<ITimeTravelRecorder, TimeTravelRecorder>();
 
             services.AddSingleton<AppLogService>();
             services.AddSingleton<ILoggerProvider, AppLogLoggerProvider>();

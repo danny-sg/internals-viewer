@@ -27,6 +27,21 @@ internal static class EventConstants
         "sqlserver.sql_transaction",
     ];
 
+    public static readonly string[] TimeTravelEvents =
+    [
+        "sqlserver.sql_batch_starting",
+        "sqlserver.sql_batch_completed",
+        "sqlserver.query_thread_profile",
+        "sqlserver.query_post_execution_showplan",
+        "sqlos.wait_info",
+    ];
+
+    public static readonly Dictionary<string, string> TimeTravelPredicates = new()
+    {
+        ["sqlos.wait_info"] = "opcode = 1 AND (wait_type = 'CXPACKET' OR wait_type = 'CXCONSUMER' "
+                              + "OR wait_type = 'CXSYNC_PORT' OR wait_type = 'CXSYNC_CONSUMER')"
+    };
+
     public static readonly string[] ColumnstoreEvents =
     [
         "sqlserver.query_execution_column_store_segment_scan_started",
@@ -106,6 +121,11 @@ internal static class EventConstants
     public static readonly string[] CallstackActions =
     [
         "package0.callstack"
+    ];
+
+    public static readonly string[] TimeTravelActions =
+    [
+        "sqlos.system_thread_id"
     ];
 
     /// <summary>

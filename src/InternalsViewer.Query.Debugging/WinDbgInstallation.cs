@@ -1,4 +1,5 @@
 using System.Runtime.Versioning;
+using System.Security.AccessControl;
 using Microsoft.Win32;
 
 namespace InternalsViewer.Query.Debugging;
@@ -71,6 +72,39 @@ public sealed record WinDbgInstallation(string Executable, string EngineDirector
         }
 
         return Path.Combine(target, "dbgeng.dll");
+    }
+
+    public string? PrepareTimeTravel(string cacheRoot)
+    {
+        var source = new DirectoryInfo(Path.Combine(EngineDirectory, "ttd"));
+
+        if (!File.Exists(Path.Combine(source.FullName, "TTD.exe")))
+        {
+            return null;
+        }
+
+        if (!IsPackaged)
+        {
+            return source.FullName;
+        }
+
+        var target = Path.Combine(cacheRoot, Name, "ttd");
+
+        Directory.CreateDirectory(target);
+
+        ServiceAccess.Grant(target, FileSystemRights.ReadAndExecute);
+
+        foreach (var file in source.GetFiles())
+        {
+            var copy = new FileInfo(Path.Combine(target, file.Name));
+
+            if (!copy.Exists || copy.LastWriteTimeUtc != file.LastWriteTimeUtc || copy.Length != file.Length)
+            {
+                file.CopyTo(copy.FullName, overwrite: true);
+            }
+        }
+
+        return target;
     }
 
     private static WinDbgInstallation? LocatePackage()

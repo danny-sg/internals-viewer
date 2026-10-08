@@ -1,4 +1,5 @@
 ﻿using System.Collections.Concurrent;
+using InternalsViewer.Query.CallStack.Arguments;
 using InternalsViewer.Query.CallStack.Dia;
 using InternalsViewer.Query.CallStack.Symbols;
 
@@ -212,13 +213,66 @@ public sealed class CallstackResolver(string symbolsPath) : IDisposable
 
         var resolver = _resolverCache.GetOrAdd(pdbPath, path => new DiaResolver(path));
 
-        return resolver.EnumerateSymbolsAtRva(frame.Rva)
+        return resolver.EnumerateSymbolsAtRva(FunctionRva(frame))
                        .Select(detail => detail.Signature)
                        .FirstOrDefault(signature => !string.IsNullOrEmpty(signature));
     }
 
+    public string? ResolveDecoratedName(CallstackFrame frame)
+    {
+        var pdbPath = GetPdbPath(frame);
+
+        if (!HasSymbolInformation(frame) || !File.Exists(pdbPath))
+        {
+            return null;
+        }
+
+        return _resolverCache.GetOrAdd(pdbPath, path => new DiaResolver(path)).GetDecoratedName(FunctionRva(frame));
+    }
+
+    public void ResolveSignatures(IEnumerable<CallstackFrame> frames)
+    {
+        var functions = frames.Where(f => f.Signature is null && HasSymbolInformation(f))
+                              .GroupBy(f => (Path: GetPdbPath(f), Rva: FunctionRva(f)));
+
+        foreach (var function in functions)
+        {
+            if (!File.Exists(function.Key.Path))
+            {
+                continue;
+            }
+
+            var resolver = _resolverCache.GetOrAdd(function.Key.Path, path => new DiaResolver(path));
+
+            var detail = resolver.EnumerateSymbolsAtRva(function.Key.Rva)
+                                 .FirstOrDefault(d => d.IsFunction && d.Signature.Length > 0);
+
+            if (detail.Signature is not { Length: > 0 } signature)
+            {
+                continue;
+            }
+
+            var separator = ResolvedCallstackFrameParser.FindClassMethodSeparator(detail.Name);
+
+            var scoped = separator > 0 ? RemoveScope(signature, $"{detail.Name[..separator]}::") : signature;
+
+            if (FunctionSignature.Parse(signature, resolver.GetDecoratedName(function.Key.Rva)) is { Kind: FunctionKind.Static })
+            {
+                scoped = $"static {scoped}";
+            }
+
+            foreach (var frame in function)
+            {
+                frame.Signature = scoped;
+            }
+        }
+    }
+
     private static SymbolIndex BuildSearchIndex(DiaResolver resolver) =>
         SymbolIndex.Build(resolver.EnumerateSymbolDetails(string.Empty));
+
+    private static uint FunctionRva(CallstackFrame frame)
+        => frame.Resolved?.Offset is { } offset && offset <= frame.Rva ? frame.Rva - offset : frame.Rva;
 
     private static string RemoveScope(string signature, string prefix)
     {
@@ -265,12 +319,14 @@ public sealed class CallstackResolver(string symbolsPath) : IDisposable
         return resolver.Resolve(frame.Rva);
     }
 
-    private string GetPdbPath(CallstackFrame frame)
+    internal static string GetPdbPath(string symbolsPath, CallstackFrame frame)
     {
         var identifier = $"{frame.Guid.Replace("-", string.Empty)}{frame.Age}";
 
         return Path.Combine(symbolsPath, frame.Pdb, identifier.ToUpperInvariant(), frame.Pdb);
     }
+
+    private string GetPdbPath(CallstackFrame frame) => GetPdbPath(symbolsPath, frame);
 
     public void Dispose()
     {
