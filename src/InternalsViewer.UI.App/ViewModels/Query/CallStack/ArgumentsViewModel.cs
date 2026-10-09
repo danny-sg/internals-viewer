@@ -7,7 +7,8 @@ using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
 using InternalsViewer.Query.CallStack;
 using InternalsViewer.Query.CallStack.Arguments;
-using InternalsViewer.Query.CallStack.TimeTravel;
+using InternalsViewer.Query.CallStack.TimeTravel.CallLog;
+using InternalsViewer.Query.CallStack.TimeTravel.Iterators;
 using InternalsViewer.Query.Results;
 using InternalsViewer.UI.App.Models.Query.CallStack;
 using Microsoft.Extensions.Logging;
@@ -50,6 +51,9 @@ public sealed partial class ArgumentsViewModel(ILogger logger, SymbolsViewModel 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(HasCallNode))]
     private CallStackNode? _callNode;
+
+    [ObservableProperty]
+    private CallReference? _selectedCallReference;
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(HasValueSearch))]
@@ -338,6 +342,7 @@ public sealed partial class ArgumentsViewModel(ILogger logger, SymbolsViewModel 
             Rows = ArgumentRowBuilder.ForCall(layout, call, Iterators);
             CallTitle = $"Call {index + 1:N0} on Thread {call.ThreadId}";
             CallNode = Log?.NodeOf(call);
+            SelectedCallReference = CallNode is { } node ? new CallReference(node, (int)index) : null;
 
             return;
         }
@@ -345,6 +350,7 @@ public sealed partial class ArgumentsViewModel(ILogger logger, SymbolsViewModel 
         Rows = [];
         CallTitle = null;
         CallNode = null;
+        SelectedCallReference = null;
     }
 
     private void Clear()

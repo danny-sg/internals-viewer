@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="utf-8"?>
+<UserControl
+    x:Class="InternalsViewer.UI.App.Views.Query.Tabs.FlameChart.QueryFlameChartTabView"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    xmlns:flameChart="using:InternalsViewer.UI.App.Controls.FlameChart"
+    mc:Ignorable="d">
+    <Grid>
+        <flameChart:FlameChartControl x:Name="FlameChart"
+                                      VerticalAlignment="Stretch"
+                                      HorizontalAlignment="Stretch"
+                                      Background="{ThemeResource LayerFillColorDefaultBrush}"
+                                      Timeline="{x:Bind ViewModel.FlameChart, Mode=OneWay}"
+                                      RootNode="{x:Bind ViewModel.SelectedCallNode, Mode=OneWay}"
+                                      SelectedCall="{x:Bind ViewModel.Arguments.SelectedCallReference, Mode=OneWay}"/>
+
+        <StackPanel Orientation="Vertical"
+                    Spacing="8"
+                    MaxWidth="360"
+                    HorizontalAlignment="Center"
+                    VerticalAlignment="Center"
+                    Visibility="{x:Bind ViewModel.IsFullTraceLoading, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}">
+            <ProgressRing IsActive="{x:Bind ViewModel.IsFullTraceLoading, Mode=OneWay}"
+                          HorizontalAlignment="Center"/>
+            <TextBlock Text="{x:Bind ViewModel.FullTraceStatus, Mode=OneWay}"
+                       HorizontalAlignment="Center"
+                       TextAlignment="Center"
+                       TextWrapping="Wrap"/>
+        </StackPanel>
+
+        <TextBlock Text="Run a query with Full Trace on to see its calls over time"
+                   Visibility="{x:Bind ViewModel.ShowFlameChartHint, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}"
+                   FontSize="12"
+                   Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                   HorizontalAlignment="Center"
+                   VerticalAlignment="Center"/>
+    </Grid>
+</UserControl>

@@ -1,6 +1,6 @@
 using System.Collections;
 
-namespace InternalsViewer.Query.CallStack.TimeTravel;
+namespace InternalsViewer.Query.CallStack.TimeTravel.CallLog;
 
 public sealed class TimeTravelCallList : IReadOnlyList<TimeTravelArgumentCall>
 {

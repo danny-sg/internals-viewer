@@ -2,31 +2,17 @@ using System.Buffers;
 using System.IO.Compression;
 using System.Runtime.InteropServices;
 
-namespace InternalsViewer.Query.CallStack.TimeTravel;
+namespace InternalsViewer.Query.CallStack.TimeTravel.CallLog;
 
 public sealed class TimeTravelCallLog
 {
     private const int IntegerColumn = 2;
 
-    private const int EntryPointeeColumn = 14;
-
-    private const int ReturnPointeeColumn = 22;
-
-    private const int ReturnColumn = 30;
+    private const int ReturnColumn = 6;
 
     private const int FlagsColumn = 1;
 
-    private const int Slots = 8;
-
-    private const int StackSlot = 4;
-
     private const ulong ReturnedFlag = 1ul << 32;
-
-    private const ulong StackReadFlag = 1ul << 33;
-
-    private const int EntryPointeeShift = 40;
-
-    private const int ReturnPointeeShift = 48;
 
     private static readonly string[] Registers = ["RCX", "RDX", "R8", "R9"];
 
@@ -154,23 +140,11 @@ public sealed class TimeTravelCallLog
     {
         var flags = columns[FlagsColumn * calls + call];
 
-        for (var slot = 0; slot < Slots; slot++)
+        for (var slot = 0; slot < TimeTravelArgumentCall.RegisterCount; slot++)
         {
-            var readable = slot < StackSlot || (flags & StackReadFlag) != 0;
-
-            if (readable && columns[(IntegerColumn + slot) * calls + call] == value)
+            if (columns[(IntegerColumn + slot) * calls + call] == value)
             {
-                yield return Slot(slot);
-            }
-
-            if ((flags & (1ul << (EntryPointeeShift + slot))) != 0 && columns[(EntryPointeeColumn + slot) * calls + call] == value)
-            {
-                yield return $"*{Slot(slot)} On Entry";
-            }
-
-            if ((flags & (1ul << (ReturnPointeeShift + slot))) != 0 && columns[(ReturnPointeeColumn + slot) * calls + call] == value)
-            {
-                yield return $"*{Slot(slot)} On Return";
+                yield return Registers[slot];
             }
         }
 
@@ -179,9 +153,6 @@ public sealed class TimeTravelCallLog
             yield return "RAX";
         }
     }
-
-    private static string Slot(int slot)
-        => slot < StackSlot ? Registers[slot] : $"[RSP+0x{0x28 + (slot - StackSlot) * sizeof(ulong):X}]";
 
     internal sealed record Chunk(int Calls, byte[] Columns);
 

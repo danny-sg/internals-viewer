@@ -5,7 +5,8 @@ using System.Threading;
 using System.Threading.Tasks;
 using System;
 using InternalsViewer.Query.CallStack;
-using InternalsViewer.Query.CallStack.TimeTravel;
+using InternalsViewer.Query.CallStack.TimeTravel.CallLog;
+using InternalsViewer.Query.CallStack.TimeTravel.Iterators;
 using InternalsViewer.Query.CallStack.WinDbg;
 using InternalsViewer.Query.Debugging;
 using InternalsViewer.Query.Events.Latches;
@@ -17,6 +18,7 @@ using InternalsViewer.Query.Plans.Model;
 using InternalsViewer.UI.App.Controls.CallStack;
 using InternalsViewer.UI.App.Controls.Docking;
 using InternalsViewer.UI.App.Models.Query.CallStack;
+using InternalsViewer.UI.App.ViewModels;
 using InternalsViewer.UI.App.ViewModels.Query;
 using InternalsViewer.UI.App.ViewModels.Query.CallStack;
 using Microsoft.UI.Text;
@@ -46,7 +48,6 @@ public sealed partial class QueryCallStackTabView : UserControl, IDocumentComman
 
     private readonly List<TreeRow> _operatorRows = [];
 
-    private readonly HashSet<string> _hiddenCategories = new(StringComparer.Ordinal);
 
     private Button? _backButton;
 
@@ -73,6 +74,10 @@ public sealed partial class QueryCallStackTabView : UserControl, IDocumentComman
     private CallStackTree? _signaturesFor;
 
     private string? _filterPath;
+
+    private HashSet<string> _hiddenCategories = new(StringComparer.Ordinal);
+
+    private string? _hiddenCategoriesSetting;
 
     private CallStackNode? _navigatedNode;
 
@@ -180,6 +185,25 @@ public sealed partial class QueryCallStackTabView : UserControl, IDocumentComman
     public string DockToggleTooltip => IsMembersPaneDockedBottom ? "Dock Right" : "Dock Bottom";
 
     private WinDbgService WinDbg => field ??= App.GetService<WinDbgService>();
+
+    private SettingsViewModel Settings => field ??= App.GetService<SettingsViewModel>();
+
+    private HashSet<string> HiddenCategories
+    {
+        get
+        {
+            var setting = Settings.CallTreeHiddenCategories;
+
+            if (!string.Equals(setting, _hiddenCategoriesSetting, StringComparison.Ordinal))
+            {
+                _hiddenCategoriesSetting = setting;
+
+                _hiddenCategories = SettingsViewModel.SplitCategories(setting);
+            }
+
+            return _hiddenCategories;
+        }
+    }
 
     /// <summary>
     /// Builds the history and focus controls for a tab strip to host
@@ -306,7 +330,7 @@ public sealed partial class QueryCallStackTabView : UserControl, IDocumentComman
 
     private void OnFocusChanged(object sender, RoutedEventArgs e)
     {
-        _focus = _focusToggle?.IsChecked == true;
+        SetFocus(_focusToggle?.IsChecked == true);
 
         ApplyFocus(_viewModel?.SelectedEvent);
     }
@@ -320,6 +344,13 @@ public sealed partial class QueryCallStackTabView : UserControl, IDocumentComman
         ActivityHeader.Visibility = _activity ? Visibility.Visible : Visibility.Collapsed;
 
         ApplyFocus(_viewModel?.SelectedEvent);
+    }
+
+    private void SetFocus(bool focus)
+    {
+        _focus = focus;
+
+        _focusToggle?.IsChecked = focus;
     }
 
     private async void OnSignatureChanged(object sender, RoutedEventArgs e)
@@ -414,9 +445,7 @@ public sealed partial class QueryCallStackTabView : UserControl, IDocumentComman
             return;
         }
 
-        _focus = place.Focus;
-
-        _focusToggle?.IsChecked = _focus;
+        SetFocus(place.Focus);
 
         SelectQuietly(place.Event);
 
@@ -643,7 +672,7 @@ public sealed partial class QueryCallStackTabView : UserControl, IDocumentComman
         }
     }
 
-    private void ShowArguments(CallStackNode node)
+    private void ShowArguments(CallStackNode node, int? call = null)
     {
         if (_viewModel is null)
         {
@@ -659,7 +688,23 @@ public sealed partial class QueryCallStackTabView : UserControl, IDocumentComman
 
         DetailTabs.SelectedItem = ArgumentsTab;
 
-        _ = _viewModel.Arguments.ShowAsync(node);
+        _ = call is { } index ? _viewModel.Arguments.ShowAsync(node, index) : _viewModel.Arguments.ShowAsync(node);
+    }
+
+    private void OnCallNavigationRequested(CallStackNode node, int call)
+    {
+        int? index = call >= 0 ? call : null;
+
+        LeavePlace();
+
+        NavigateTo(node);
+
+        PushPlace(new CallStackPlace(_viewModel?.SelectedEvent, node, _focus, node, index));
+
+        if (CanShowArguments(node))
+        {
+            ShowArguments(node, index);
+        }
     }
 
     private bool CanShowArguments(CallStackNode node)
@@ -758,15 +803,7 @@ public sealed partial class QueryCallStackTabView : UserControl, IDocumentComman
 
     private void NavigateTo(CallStackNode target)
     {
-        if (_focus)
-        {
-            _focus = false;
-
-            if (_focusToggle is not null)
-            {
-                _focusToggle.IsChecked = false;
-            }
-        }
+        SetFocus(false);
 
         if (_filterPath is not null && !target.Ancestors().Any(a => PathOf(a) == _filterPath))
         {
@@ -790,6 +827,8 @@ public sealed partial class QueryCallStackTabView : UserControl, IDocumentComman
         ApplyActivityBands();
 
         _navigatedNode = target;
+
+        _viewModel?.SelectedCallNode = target;
     }
 
     private static IEnumerable<CallStackNode> Descendants(CallStackNode node)
@@ -828,14 +867,67 @@ public sealed partial class QueryCallStackTabView : UserControl, IDocumentComman
             return;
         }
 
-        if (!_hiddenCategories.Remove(category))
+        var hidden = HiddenCategories;
+
+        if (!hidden.Remove(category))
         {
-            _hiddenCategories.Add(category);
+            hidden.Add(category);
         }
+
+        SaveHiddenCategories(hidden);
 
         StyleCategoryBadge(badge);
 
+        UpdateAllCategoriesToggle();
+
         ApplyFocus(_viewModel?.SelectedEvent);
+    }
+
+    private void OnAllCategoriesClick(object sender, RoutedEventArgs e)
+    {
+        var hidden = HiddenCategories;
+
+        if (AllCategoriesToggle.IsChecked == true)
+        {
+            hidden.Clear();
+        }
+        else
+        {
+            foreach (var badge in CategoryBadges.Children.OfType<Border>())
+            {
+                if (badge.Tag is string category)
+                {
+                    hidden.Add(category);
+                }
+            }
+        }
+
+        SaveHiddenCategories(hidden);
+
+        foreach (var badge in CategoryBadges.Children.OfType<Border>())
+        {
+            StyleCategoryBadge(badge);
+        }
+
+        UpdateAllCategoriesToggle();
+
+        ApplyFocus(_viewModel?.SelectedEvent);
+    }
+
+    private void SaveHiddenCategories(HashSet<string> hidden)
+    {
+        _hiddenCategoriesSetting = string.Join(SettingsViewModel.CategorySeparator, hidden.Order(StringComparer.Ordinal));
+
+        Settings.CallTreeHiddenCategories = _hiddenCategoriesSetting;
+    }
+
+    private void UpdateAllCategoriesToggle()
+    {
+        var hidden = HiddenCategories;
+
+        AllCategoriesToggle.IsChecked = CategoryBadges.Children
+                                                      .OfType<Border>()
+                                                      .All(b => b.Tag is not string category || !hidden.Contains(category));
     }
 
     private void OnExpandAllClick(object sender, RoutedEventArgs e)
@@ -1181,6 +1273,7 @@ public sealed partial class QueryCallStackTabView : UserControl, IDocumentComman
             _viewModel.PropertyChanged -= OnPropertyChanged;
             _viewModel.Symbols.PropertyChanged -= OnSymbolsPropertyChanged;
             _viewModel.Arguments.PropertyChanged -= OnArgumentsPropertyChanged;
+            _viewModel.CallNavigationRequested -= OnCallNavigationRequested;
             _viewModel.QueryOptions.PropertyChanged -= OnQueryOptionsPropertyChanged;
             _viewModel.QueryOptions.FilterChanged -= OnQueryFilterChanged;
         }
@@ -1192,6 +1285,7 @@ public sealed partial class QueryCallStackTabView : UserControl, IDocumentComman
             _viewModel.PropertyChanged += OnPropertyChanged;
             _viewModel.Symbols.PropertyChanged += OnSymbolsPropertyChanged;
             _viewModel.Arguments.PropertyChanged += OnArgumentsPropertyChanged;
+            _viewModel.CallNavigationRequested += OnCallNavigationRequested;
             _viewModel.QueryOptions.PropertyChanged += OnQueryOptionsPropertyChanged;
             _viewModel.QueryOptions.FilterChanged += OnQueryFilterChanged;
         }
@@ -1499,9 +1593,14 @@ public sealed partial class QueryCallStackTabView : UserControl, IDocumentComman
             return;
         }
 
-        if (invoked.Content is CallStackNode clicked && CanShowArguments(clicked))
+        if (invoked.Content is CallStackNode clicked)
         {
-            ShowArguments(clicked);
+            _viewModel.SelectedCallNode = clicked;
+
+            if (CanShowArguments(clicked))
+            {
+                ShowArguments(clicked);
+            }
         }
 
         var selected = invoked.Content switch
@@ -2187,7 +2286,7 @@ public sealed partial class QueryCallStackTabView : UserControl, IDocumentComman
     private static string PathOf(CallStackNode node) => string.Join('\n', node.Ancestors().Select(a => a.Key));
 
     private bool IsCategoryHidden(CallStackNode node)
-        => _hiddenCategories.Count > 0 && node.Frame is not null && _hiddenCategories.Contains(node.Category);
+        => node.Frame is not null && HiddenCategories is { Count: > 0 } hidden && hidden.Contains(node.Category);
 
     private void BuildCategoryBadges()
     {
@@ -2203,6 +2302,8 @@ public sealed partial class QueryCallStackTabView : UserControl, IDocumentComman
         {
             CategoryBadges.Children.Add(CreateCategoryBadge(category, colour));
         }
+
+        UpdateAllCategoriesToggle();
     }
 
     private Border CreateCategoryBadge(string category, string colour)
@@ -2230,7 +2331,7 @@ public sealed partial class QueryCallStackTabView : UserControl, IDocumentComman
 
     private void StyleCategoryBadge(Border badge)
     {
-        var hidden = badge.Tag is string category && _hiddenCategories.Contains(category);
+        var hidden = badge.Tag is string category && HiddenCategories.Contains(category);
 
         badge.Background = hidden ? new SolidColorBrush(Microsoft.UI.Colors.Transparent) : badge.BorderBrush;
 

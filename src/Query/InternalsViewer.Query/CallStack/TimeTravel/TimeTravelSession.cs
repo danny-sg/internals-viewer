@@ -1,6 +1,10 @@
 using System.Runtime.InteropServices;
 using System.Text;
+using InternalsViewer.Internals.Engine.Loading;
 using InternalsViewer.Query.Debugging.TimeTravel;
+using InternalsViewer.Query.CallStack.TimeTravel.CallLog;
+using InternalsViewer.Query.CallStack.TimeTravel.Native;
+using InternalsViewer.Query.CallStack.TimeTravel.Timeline;
 
 namespace InternalsViewer.Query.CallStack.TimeTravel;
 
@@ -31,10 +35,11 @@ public sealed class TimeTravelSession : IDisposable
 
     public Task<TimeTravelCallTree> ReadCallsAsync(IReadOnlyCollection<uint> threadIds,
                                                    ulong[] instanceMethods,
+                                                   ulong[] excludedFunctions,
                                                    bool logCalls,
-                                                   IProgress<string>? progress,
+                                                   IProgress<ProgressDetail>? progress,
                                                    CancellationToken cancellationToken)
-        => RunAsync((callback, cancel) => ReadCalls([.. threadIds], instanceMethods, logCalls, callback, cancel),
+        => RunAsync((callback, cancel) => ReadCalls([.. threadIds], instanceMethods, excludedFunctions, logCalls, callback, cancel),
                     progress,
                     cancellationToken);
 
@@ -61,7 +66,7 @@ public sealed class TimeTravelSession : IDisposable
     }
 
     private async Task<T> RunAsync<T>(Func<TimeTravelBridge.ProgressCallback, IntPtr, T> read,
-                                      IProgress<string>? progress,
+                                      IProgress<ProgressDetail>? progress,
                                       CancellationToken cancellationToken)
     {
         await Gate.WaitAsync(cancellationToken);
@@ -77,7 +82,7 @@ public sealed class TimeTravelSession : IDisposable
     }
 
     private static T Run<T>(Func<TimeTravelBridge.ProgressCallback, IntPtr, T> read,
-                            IProgress<string>? progress,
+                            IProgress<ProgressDetail>? progress,
                             CancellationToken cancellationToken)
     {
         var cancel = Marshal.AllocHGlobal(sizeof(int));
@@ -86,7 +91,8 @@ public sealed class TimeTravelSession : IDisposable
 
         var registration = cancellationToken.Register(() => Marshal.WriteInt32(cancel, 1));
 
-        TimeTravelBridge.ProgressCallback callback = percent => progress?.Report($"Replaying time travel trace: {percent}%");
+        TimeTravelBridge.ProgressCallback callback = (thread, percent) =>
+            progress?.Report(new ProgressDetail(thread == 0 ? "Replaying Full Trace" : $"[Thread {thread}] Replaying Full Trace", percent));
 
         try
         {
@@ -108,28 +114,36 @@ public sealed class TimeTravelSession : IDisposable
 
     private TimeTravelCallTree ReadCalls(uint[] threads,
                                          ulong[] instanceMethods,
+                                         ulong[] excludedFunctions,
                                          bool logCalls,
                                          TimeTravelBridge.ProgressCallback callback,
                                          IntPtr cancel)
     {
         var builder = logCalls ? new TimeTravelCallLog.Builder() : null;
 
-        TimeTravelBridge.CallChunkCallback? chunks = builder is null
-            ? null
-            : (address, instance, columns, calls) => builder.Add(address, instance, columns, calls);
+        TimeTravelBridge.CallChunkCallback? chunks = builder is null ? null : builder.Add;
+
+        var timeline = logCalls ? new TimeTravelTimeline.Builder() : null;
+
+        TimeTravelBridge.CallSpanCallback? spans = timeline is null ? null : (span, count) => timeline.Add(span, count);
 
         var result = TimeTravelBridge.ReadCallTree(Handle,
                                                    threads,
                                                    threads.Length,
                                                    instanceMethods,
                                                    instanceMethods.Length,
+                                                   excludedFunctions,
+                                                   excludedFunctions.Length,
                                                    ActivitySlices,
                                                    chunks,
+                                                   spans,
                                                    callback,
                                                    cancel,
                                                    out var tree);
 
         GC.KeepAlive(chunks);
+
+        GC.KeepAlive(spans);
 
         ThrowOnFailure(result);
 
@@ -143,7 +157,7 @@ public sealed class TimeTravelSession : IDisposable
 
             TimeTravelBridge.GetCallActivity(tree, activity, activity.Length);
 
-            return new TimeTravelCallTree(nodes, activity, [.. Modules], builder?.Build());
+            return new TimeTravelCallTree(nodes, activity, [.. Modules], builder?.Build(), timeline?.Build(nodes));
         }
         finally
         {
@@ -180,13 +194,21 @@ public sealed class TimeTravelSession : IDisposable
 
     private static string Describe(int result, TimeTravelTrace trace) => result switch
     {
-        1 => $"The TTD replay engine could not be loaded from {trace.ReplayLibraryPath}",
-        2 => $"{trace.ReplayLibraryPath} does not export CreateReplayEngine",
-        3 => "The TTD replay engine could not be created. The replay engine may not match the API version",
-        4 => $"The time travel trace {trace.TracePath} could not be opened",
-        5 => "The TTD replay engine could not create a cursor",
-        6 => "The time travel trace could not be replayed",
-        7 => "Replay of the time travel trace was cancelled",
-        _ => $"Reading the time travel trace failed with code {result}"
+        1
+            => $"The TTD replay engine could not be loaded from {trace.ReplayLibraryPath}",
+        2
+            => $"{trace.ReplayLibraryPath} does not export CreateReplayEngine",
+        3
+            => "The TTD replay engine could not be created. The replay engine may not match the API version",
+        4
+            => $"The time travel trace {trace.TracePath} could not be opened",
+        5
+            => "The TTD replay engine could not create a cursor",
+        6
+            => "The time travel trace could not be replayed",
+        7
+            => "Replay of the time travel trace was cancelled",
+        _
+            => $"Reading the time travel trace failed with code {result}"
     };
 }

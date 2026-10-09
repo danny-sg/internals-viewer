@@ -1,6 +1,6 @@
 using Microsoft.Win32.SafeHandles;
 
-namespace InternalsViewer.Query.CallStack.TimeTravel;
+namespace InternalsViewer.Query.CallStack.TimeTravel.Native;
 
 internal sealed class TimeTravelTraceHandle() : SafeHandleZeroOrMinusOneIsInvalid(ownsHandle: true)
 {

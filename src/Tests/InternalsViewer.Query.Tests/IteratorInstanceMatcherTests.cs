@@ -1,6 +1,6 @@
 using InternalsViewer.Query.CallStack;
 using InternalsViewer.Query.CallStack.Categories;
-using InternalsViewer.Query.CallStack.TimeTravel;
+using InternalsViewer.Query.CallStack.TimeTravel.Iterators;
 using InternalsViewer.Query.Events.Operators;
 using InternalsViewer.Query.Plans.Model;
 

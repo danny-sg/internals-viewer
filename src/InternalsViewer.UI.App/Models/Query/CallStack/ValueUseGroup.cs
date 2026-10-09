@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using InternalsViewer.Query.CallStack.Arguments;
-using InternalsViewer.Query.CallStack.TimeTravel;
+using InternalsViewer.Query.CallStack.TimeTravel.CallLog;
 
 namespace InternalsViewer.UI.App.Models.Query.CallStack;
 
@@ -14,8 +14,7 @@ public sealed class ValueUseGroup(TimeTravelValueRole role, IReadOnlyList<ValueU
     {
         TimeTravelValueRole.CalledOn => "Calls On It",
         TimeTravelValueRole.Returned => "Returned It",
-        TimeTravelValueRole.Passed => "Passed It",
-        _ => "Held It Behind A Pointer"
+        _ => "Passed It"
     };
 
     public IReadOnlyList<ValueUseRow> Rows { get; } = rows;

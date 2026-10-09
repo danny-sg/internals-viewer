@@ -1,4 +1,5 @@
-﻿using System.Net;
+﻿using InternalsViewer.Internals.Engine.Loading;
+using System.Net;
 
 namespace InternalsViewer.Query.CallStack.Symbols;
 
@@ -13,7 +14,7 @@ public static class SymbolDownloader
 
     public static async Task DownloadSymbols(IEnumerable<CallstackFrame> frames,
                                              string symbolsDirectory,
-                                             IProgress<string>? progress,
+                                             IProgress<ProgressDetail>? progress,
                                              CancellationToken cancellationToken = default)
     {
         Directory.CreateDirectory(symbolsDirectory);
@@ -29,7 +30,7 @@ public static class SymbolDownloader
 
     private static async Task DownloadPdbAsync(PdbIdentity pdb,
                                                string symbolsDirectory,
-                                               IProgress<string>? progress,
+                                               IProgress<ProgressDetail>? progress,
                                                CancellationToken cancellationToken)
     {
         if (string.IsNullOrEmpty(pdb.Pdb))

@@ -2,7 +2,7 @@ using InternalsViewer.Query.Events;
 using InternalsViewer.Query.Events.Operators;
 using InternalsViewer.Query.Plans.Model;
 
-namespace InternalsViewer.Query.CallStack.TimeTravel;
+namespace InternalsViewer.Query.CallStack.TimeTravel.Iterators;
 
 public static class IteratorInstanceMatcher
 {

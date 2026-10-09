@@ -1,6 +1,6 @@
 using InternalsViewer.Query.CallStack.Arguments;
 
-namespace InternalsViewer.Query.CallStack.TimeTravel;
+namespace InternalsViewer.Query.CallStack.TimeTravel.CallLog;
 
 public sealed record TimeTravelValueUse(ulong Address,
                                         ulong Instance,
@@ -13,7 +13,6 @@ public sealed record TimeTravelValueUse(ulong Address,
     {
         "RCX" when kind == FunctionKind.Member => TimeTravelValueRole.CalledOn,
         "RAX" => TimeTravelValueRole.Returned,
-        ['*', ..] => TimeTravelValueRole.BehindPointer,
         _ => TimeTravelValueRole.Passed
     };
 }

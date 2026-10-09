@@ -40,7 +40,7 @@ namespace
 
     using GapFunction = bool(__fastcall*)(uintptr_t, GapKind, GapEventType, IThreadView const*);
 
-    constexpr size_t ValuesPerCall = 33;
+    constexpr size_t ValuesPerCall = 8;
 
     constexpr size_t SequenceValue = 0;
 
@@ -48,39 +48,29 @@ namespace
 
     constexpr size_t IntegerValues = 2;
 
-    constexpr size_t FloatingValues = 10;
+    constexpr size_t ReturnValue = 6;
 
-    constexpr size_t EntryPointeeValues = 14;
-
-    constexpr size_t ReturnPointeeValues = 22;
-
-    constexpr size_t ReturnValue = 30;
-
-    constexpr size_t FloatingReturnValue = 31;
-
-    constexpr size_t NodeValue = 32;
+    constexpr size_t NodeValue = 7;
 
     constexpr size_t ChunkCalls = 16384;
 
+    constexpr size_t IdleChunkCalls = 256;
+
+    constexpr size_t IdleFlushInterval = 262144;
+
     constexpr size_t ForcedChunkCalls = ChunkCalls * 4;
-
-    constexpr size_t IntegerSlots = 8;
-
-    constexpr size_t RegisterSlots = 4;
-
-    constexpr uint64_t StackArgumentOffset = 0x28;
 
     constexpr uint64_t ReturnedFlag = 1ull << 32;
 
-    constexpr uint64_t StackReadFlag = 1ull << 33;
+    constexpr size_t SpanChunk = 65536;
 
-    constexpr int EntryPointeeShift = 40;
+    constexpr uint32_t SpanReturned = 1;
 
-    constexpr int ReturnPointeeShift = 48;
+    constexpr uint32_t SpanStartUnknown = 2;
 
-    constexpr uint64_t LowestPointer = 0x10000;
+    constexpr uint32_t NoCall = UINT32_MAX;
 
-    constexpr uint64_t HighestPointer = 0x0000800000000000ull;
+    constexpr int32_t ExcludedNode = -2;
 
     struct NodeKey
     {
@@ -130,6 +120,7 @@ namespace
         std::vector<uint64_t> Values;
         int64_t               InFlight = 0;
         uint32_t              Chunk = 0;
+        uint32_t              Logged = 0;
     };
 
     struct StackFrame
@@ -140,6 +131,23 @@ namespace
         LoggedFunction* Function;
         int64_t         Call;
         uint32_t        Chunk;
+        Position        Start;
+        uint64_t        StartInstructions;
+        uint32_t        LoggedCall;
+        uint32_t        Flags;
+    };
+
+    struct ThreadClock
+    {
+        Position Last;
+        uint64_t Instructions = 0;
+    };
+
+    struct LoggedCall
+    {
+        LoggedFunction* Function;
+        int64_t         Call;
+        uint32_t        Index;
     };
 
     struct ModuleEntry
@@ -162,11 +170,16 @@ namespace
         std::unordered_map<uint32_t, std::vector<StackFrame>> Stacks;
         std::unordered_set<uint32_t>                        Threads;
         std::unordered_set<uint64_t>                        InstanceMethods;
+        std::unordered_set<uint64_t>                        Excluded;
         std::vector<CallActivity>                           Activity;
         std::vector<int32_t>                                LastActivity;
         std::unordered_map<FunctionKey, LoggedFunction, FunctionKeyHash> Log;
+        size_t                                              LoggedSinceFlush = 0;
         CallChunkCallback                                   LogCalls = nullptr;
         std::vector<uint64_t>                               Columns;
+        CallSpanCallback                                    LogSpans = nullptr;
+        std::vector<CallSpan>                               Spans;
+        std::unordered_map<uint32_t, ThreadClock>           Clocks;
         uint64_t                                            FirstSequence = 0;
         uint64_t                                            LastSequence = 0;
         int32_t                                             Slices = 0;
@@ -212,16 +225,84 @@ namespace
 
             Activity.push_back(CallActivity{ node, slice, 1 });
         }
+
+        ThreadClock const& Advance(uint32_t thread, Position const& position)
+        {
+            auto [entry, added] = Clocks.try_emplace(thread);
+
+            auto& clock = entry->second;
+
+            if (!added)
+            {
+                if (position.Sequence == clock.Last.Sequence)
+                {
+                    if (position.Steps > clock.Last.Steps)
+                    {
+                        clock.Instructions += static_cast<uint64_t>(position.Steps - clock.Last.Steps);
+                    }
+                }
+                else if (position.Sequence > clock.Last.Sequence)
+                {
+                    clock.Instructions += static_cast<uint64_t>(position.Steps);
+                }
+            }
+
+            clock.Last = position;
+
+            return clock;
+        }
+
+        void RecordSpan(StackFrame const& frame, uint32_t thread, ThreadClock const& end, uint32_t flags)
+        {
+            if (LogSpans == nullptr || frame.Node == ExcludedNode)
+            {
+                return;
+            }
+
+            Spans.push_back(CallSpan{ static_cast<uint64_t>(frame.Start.Sequence),
+                                      static_cast<uint64_t>(frame.Start.Steps),
+                                      static_cast<uint64_t>(end.Last.Sequence),
+                                      static_cast<uint64_t>(end.Last.Steps),
+                                      frame.StartInstructions,
+                                      end.Instructions,
+                                      frame.Node,
+                                      thread,
+                                      frame.LoggedCall,
+                                      frame.Flags | flags });
+
+            if (Spans.size() >= SpanChunk)
+            {
+                FlushSpans();
+            }
+        }
+
+        void FlushSpans()
+        {
+            if (LogSpans == nullptr || Spans.empty())
+            {
+                return;
+            }
+
+            LogSpans(Spans.data(), static_cast<int32_t>(Spans.size()));
+
+            Spans.clear();
+        }
+    };
+
+    struct ThreadProgress
+    {
+        uint32_t Thread;
+        uint64_t FirstSequence;
+        uint64_t LastSequence;
+        int32_t  LastPercent;
     };
 
     struct ReplayState
     {
-        ICursor*          Cursor;
-        ProgressCallback  Progress;
-        volatile int32_t* Cancel;
-        uint64_t          FirstSequence;
-        uint64_t          LastSequence;
-        int32_t           LastPercent;
+        ICursor*                    Cursor;
+        ProgressCallback            Progress;
+        volatile int32_t*           Cancel;
+        std::vector<ThreadProgress> Threads;
     };
 
     bool IsRecorded(std::unordered_set<uint32_t> const& threads, uint32_t threadId)
@@ -229,73 +310,17 @@ namespace
         return threads.empty() || threads.contains(threadId);
     }
 
-    bool ReadQword(IThreadView const& thread, uint64_t address, uint64_t& value)
-    {
-        value = 0;
-
-        if (address == 0)
-        {
-            return false;
-        }
-
-        auto const buffer = thread.QueryMemoryBuffer(static_cast<GuestAddress>(address), BufferView{ &value, sizeof(value) });
-
-        return buffer.Memory.Size == sizeof(value);
-    }
-
-    uint64_t InstanceOf(CallTree const& tree, uint64_t target, IThreadView const& thread)
-    {
-        if (!tree.InstanceMethods.contains(target))
-        {
-            return 0;
-        }
-
-        CROSS_PLATFORM_CONTEXT const context = thread.GetCrossPlatformContext();
-
-        return context.Amd64Context.Rcx;
-    }
-
-    bool IsPointer(uint64_t value)
-    {
-        return value >= LowestPointer && value < HighestPointer;
-    }
-
-    uint64_t ReadPointees(IThreadView const& thread, uint64_t* values, size_t target, int shift)
-    {
-        uint64_t flags = 0;
-
-        auto* pointees = values + target;
-
-        for (size_t slot = 0; slot < IntegerSlots; slot++)
-        {
-            auto const address = values[IntegerValues + slot];
-
-            if ((slot >= RegisterSlots && (values[ThreadValue] & StackReadFlag) == 0) || !IsPointer(address))
-            {
-                continue;
-            }
-
-            if (ReadQword(thread, address, pointees[slot]))
-            {
-                flags |= 1ull << (shift + slot);
-            }
-        }
-
-        return flags;
-    }
-
-    std::pair<LoggedFunction*, int64_t> LogCall(CallTree&          tree,
-                                                IThreadView const& thread,
-                                                uint32_t           threadId,
-                                                uint64_t           target,
-                                                uint64_t           instance,
-                                                int32_t            node,
-                                                uint64_t           stackPointer,
-                                                uint64_t           returnAddress)
+    LoggedCall LogCall(CallTree&            tree,
+                       AMD64_CONTEXT const& registers,
+                       uint64_t             sequence,
+                       uint32_t             threadId,
+                       uint64_t             target,
+                       uint64_t             instance,
+                       int32_t              node)
     {
         if (tree.LogCalls == nullptr)
         {
-            return { nullptr, -1 };
+            return { nullptr, -1, NoCall };
         }
 
         auto& function = tree.Log[FunctionKey{ target, instance }];
@@ -309,46 +334,21 @@ namespace
 
         auto* values = function.Values.data() + call * ValuesPerCall;
 
-        CROSS_PLATFORM_CONTEXT const context = thread.GetCrossPlatformContext();
-
-        auto const& registers = context.Amd64Context;
-
-        values[SequenceValue] = static_cast<uint64_t>(thread.GetPosition().Sequence);
+        values[SequenceValue] = sequence;
+        values[ThreadValue] = threadId;
 
         values[IntegerValues + 0] = registers.Rcx;
         values[IntegerValues + 1] = registers.Rdx;
         values[IntegerValues + 2] = registers.R8;
         values[IntegerValues + 3] = registers.R9;
 
-        values[FloatingValues + 0] = registers.Xmm0.Low;
-        values[FloatingValues + 1] = registers.Xmm1.Low;
-        values[FloatingValues + 2] = registers.Xmm2.Low;
-        values[FloatingValues + 3] = registers.Xmm3.Low;
-
-        uint64_t top = 0;
-
-        auto const entry = ReadQword(thread, stackPointer, top) && top == returnAddress
-                           ? stackPointer
-                           : stackPointer - sizeof(uint64_t);
-
-        auto stackRead = true;
-
-        for (size_t slot = RegisterSlots; slot < IntegerSlots; slot++)
-        {
-            auto const address = entry + StackArgumentOffset + (slot - RegisterSlots) * sizeof(uint64_t);
-
-            stackRead = ReadQword(thread, address, values[IntegerValues + slot]) && stackRead;
-        }
-
-        values[ThreadValue] = threadId | (stackRead ? StackReadFlag : 0);
-
-        values[ThreadValue] |= ReadPointees(thread, values, EntryPointeeValues, EntryPointeeShift);
-
         values[NodeValue] = static_cast<uint64_t>(node);
 
         function.InFlight++;
 
-        return { &function, static_cast<int64_t>(call) };
+        tree.LoggedSinceFlush++;
+
+        return { &function, static_cast<int64_t>(call), function.Logged++ };
     }
 
     void Flush(CallTree& tree, LoggedFunction& function)
@@ -377,6 +377,29 @@ namespace
         function.Chunk++;
     }
 
+    void FlushIdle(CallTree& tree)
+    {
+        tree.LoggedSinceFlush = 0;
+
+        for (auto& [key, function] : tree.Log)
+        {
+            if (function.InFlight != 0)
+            {
+                continue;
+            }
+
+            if (function.Values.size() >= IdleChunkCalls * ValuesPerCall)
+            {
+                Flush(tree, function);
+            }
+
+            if (function.Values.empty())
+            {
+                std::vector<uint64_t>().swap(function.Values);
+            }
+        }
+    }
+
     void CompleteCall(StackFrame const& frame, IThreadView const& thread)
     {
         auto* values = frame.Function->Values.data() + frame.Call * ValuesPerCall;
@@ -385,9 +408,7 @@ namespace
 
         values[ReturnValue] = context.Amd64Context.Rax;
 
-        values[FloatingReturnValue] = context.Amd64Context.Xmm0.Low;
-
-        values[ThreadValue] |= ReturnedFlag | ReadPointees(thread, values, ReturnPointeeValues, ReturnPointeeShift);
+        values[ThreadValue] |= ReturnedFlag;
     }
 
     void Release(CallTree& tree, StackFrame const& frame, IThreadView const* thread, uint64_t returnTarget)
@@ -418,13 +439,19 @@ namespace
                 std::vector<StackFrame>& stack,
                 uint64_t                 stackPointer,
                 IThreadView const*       thread,
-                uint64_t                 returnTarget)
+                uint64_t                 returnTarget,
+                uint32_t                 threadId,
+                ThreadClock const&       clock)
     {
         while (!stack.empty() && stack.back().StackPointer <= stackPointer)
         {
             auto const frame = stack.back();
 
             stack.pop_back();
+
+            auto const returned = thread != nullptr && frame.ReturnAddress == returnTarget;
+
+            tree.RecordSpan(frame, threadId, clock, returned ? SpanReturned : 0);
 
             Release(tree, frame, thread, returnTarget);
         }
@@ -450,34 +477,92 @@ namespace
 
         auto const stackPointer = static_cast<uint64_t>(thread->GetStackPointer());
 
+        auto const position = thread->GetPosition();
+
+        auto const& clock = tree.Advance(threadId, position);
+
         if (fallThroughAddress != GuestAddress{})
         {
-            Unwind(tree, stack, stackPointer, nullptr, 0);
+            Unwind(tree, stack, stackPointer, nullptr, 0, threadId, clock);
+
+            if (!stack.empty() && stack.back().Node == ExcludedNode)
+            {
+                return;
+            }
+
+            auto const returnAddress = static_cast<uint64_t>(fallThroughAddress);
+
+            if (tree.Excluded.contains(target))
+            {
+                stack.push_back(StackFrame{ stackPointer,
+                                            ExcludedNode,
+                                            returnAddress,
+                                            nullptr,
+                                            -1,
+                                            0,
+                                            position,
+                                            clock.Instructions,
+                                            NoCall,
+                                            0 });
+
+                return;
+            }
 
             auto const parent = stack.empty() ? -1 : stack.back().Node;
 
-            auto const instance = InstanceOf(tree, target, *thread);
+            CROSS_PLATFORM_CONTEXT const context = thread->GetCrossPlatformContext();
+
+            auto const& registers = context.Amd64Context;
+
+            auto const instance = tree.InstanceMethods.contains(target) ? static_cast<uint64_t>(registers.Rcx) : 0;
 
             auto const node = tree.Child(parent, target, instance);
 
             tree.Nodes[node].Calls++;
 
-            tree.RecordCall(node, static_cast<uint64_t>(thread->GetPosition().Sequence));
+            tree.RecordCall(node, static_cast<uint64_t>(position.Sequence));
 
-            auto const returnAddress = static_cast<uint64_t>(fallThroughAddress);
+            auto const logged = LogCall(tree,
+                                        registers,
+                                        static_cast<uint64_t>(position.Sequence),
+                                        threadId,
+                                        target,
+                                        instance,
+                                        node);
 
-            auto const [function, call] = LogCall(tree, *thread, threadId, target, instance, node, stackPointer, returnAddress);
+            stack.push_back(StackFrame{ stackPointer,
+                                        node,
+                                        returnAddress,
+                                        logged.Function,
+                                        logged.Call,
+                                        logged.Function ? logged.Function->Chunk : 0,
+                                        position,
+                                        clock.Instructions,
+                                        logged.Index,
+                                        0 });
 
-            stack.push_back(StackFrame{ stackPointer, node, returnAddress, function, call, function ? function->Chunk : 0 });
+            if (tree.LoggedSinceFlush >= IdleFlushInterval)
+            {
+                FlushIdle(tree);
+            }
 
             return;
         }
 
-        Unwind(tree, stack, stackPointer + sizeof(uint64_t), thread, target);
+        Unwind(tree, stack, stackPointer + sizeof(uint64_t), thread, target, threadId, clock);
 
         if (stack.empty())
         {
-            stack.push_back(StackFrame{ stackPointer + 2 * sizeof(uint64_t), tree.Child(-1, target, 0), 0, nullptr, -1, 0 });
+            stack.push_back(StackFrame{ stackPointer + 2 * sizeof(uint64_t),
+                                        tree.Child(-1, target, 0),
+                                        0,
+                                        nullptr,
+                                        -1,
+                                        0,
+                                        position,
+                                        clock.Instructions,
+                                        NoCall,
+                                        SpanStartUnknown });
         }
     }
 
@@ -491,7 +576,9 @@ namespace
         {
             auto& stack = tree.Stacks[threadId];
 
-            Unwind(tree, stack, UINT64_MAX, nullptr, 0);
+            auto const& clock = tree.Advance(threadId, thread->GetPosition());
+
+            Unwind(tree, stack, UINT64_MAX, nullptr, 0, threadId, clock);
         }
 
         return false;
@@ -508,22 +595,28 @@ namespace
             return;
         }
 
-        if (state.Progress == nullptr || state.LastSequence <= state.FirstSequence)
+        if (state.Progress == nullptr)
         {
             return;
         }
 
         auto const sequence = static_cast<uint64_t>(position.Sequence);
 
-        auto const done = sequence > state.FirstSequence ? sequence - state.FirstSequence : 0;
-
-        auto const percent = static_cast<int32_t>(done * 100 / (state.LastSequence - state.FirstSequence));
-
-        if (percent != state.LastPercent)
+        for (auto& thread : state.Threads)
         {
-            state.LastPercent = percent;
+            auto const percent = sequence >= thread.LastSequence
+                                 ? 100
+                                 : sequence <= thread.FirstSequence
+                                   ? 0
+                                   : static_cast<int32_t>((sequence - thread.FirstSequence) * 100
+                                                          / (thread.LastSequence - thread.FirstSequence));
 
-            state.Progress(percent);
+            if (percent != thread.LastPercent)
+            {
+                thread.LastPercent = percent;
+
+                state.Progress(thread.Thread, percent);
+            }
         }
     }
 
@@ -603,17 +696,34 @@ namespace
             return CursorNotCreated;
         }
 
-        ReplayState state
-        {
-            cursor.get(),
-            progress,
-            cancel,
-            static_cast<uint64_t>(engine.GetFirstPosition().Sequence),
-            static_cast<uint64_t>(engine.GetLastPosition().Sequence),
-            -1
-        };
+        ReplayState state{ cursor.get(), progress, cancel, {} };
 
-        auto flags = ReplayFlags::ReplaySegmentsSequentially | ReplayFlags::ReplayAllSegmentsWithoutFiltering;
+        if (threadFilter.empty())
+        {
+            state.Threads.push_back(ThreadProgress{ 0,
+                                                    static_cast<uint64_t>(engine.GetFirstPosition().Sequence),
+                                                    static_cast<uint64_t>(engine.GetLastPosition().Sequence),
+                                                    -1 });
+        }
+
+        auto const* threads = engine.GetThreadList();
+
+        for (size_t index = 0; index < engine.GetThreadCount() && !threadFilter.empty(); index++)
+        {
+            auto const& thread = threads[index];
+
+            if (threadFilter.contains(static_cast<uint32_t>(thread.Id)))
+            {
+                state.Threads.push_back(ThreadProgress{ static_cast<uint32_t>(thread.Id),
+                                                        static_cast<uint64_t>(thread.ActiveTime.Min.Sequence),
+                                                        static_cast<uint64_t>(thread.ActiveTime.Max.Sequence),
+                                                        -1 });
+            }
+        }
+
+        std::sort(state.Threads.begin(),
+                  state.Threads.end(),
+                  [](ThreadProgress const& left, ThreadProgress const& right) { return left.FirstSequence < right.FirstSequence; });
 
         cursor->SetEventMask(EventMask::Gap);
         cursor->SetGapKindMask(GapKindMask::Unrecorded | GapKindMask::Large);
@@ -622,31 +732,21 @@ namespace
         cursor->SetCallReturnCallback(onCallReturn, context);
         cursor->SetGapEventCallback(onGap, context);
         cursor->SetReplayProgressCallback(OnProgress, reinterpret_cast<uintptr_t>(&state));
+        cursor->SetReplayFlags(ReplayFlags::ReplaySegmentsSequentially | ReplayFlags::ReplayAllSegmentsWithoutFiltering);
+        cursor->SetPosition(engine.GetFirstPosition());
 
-        if (threadFilter.empty())
+        auto const status = ReplayToEnd(*cursor);
+
+        if (status != Success || progress == nullptr)
         {
-            cursor->SetReplayFlags(flags);
-            cursor->SetPosition(engine.GetFirstPosition());
-
-            return ReplayToEnd(*cursor);
+            return status;
         }
 
-        cursor->SetReplayFlags(flags | ReplayFlags::ReplayOnlyCurrentThread);
-
-        auto const* threads = engine.GetThreadList();
-
-        for (size_t index = 0; index < engine.GetThreadCount(); index++)
+        for (auto const& thread : state.Threads)
         {
-            if (!threadFilter.contains(static_cast<uint32_t>(threads[index].Id)))
+            if (thread.LastPercent != 100)
             {
-                continue;
-            }
-
-            cursor->SetPositionOnThread(threads[index].UniqueId, threads[index].Lifetime.Min);
-
-            if (auto const status = ReplayToEnd(*cursor); status != Success)
-            {
-                return status;
+                progress(thread.Thread, 100);
             }
         }
 
@@ -728,8 +828,11 @@ extern "C"
                          int32_t               threadCount,
                          const uint64_t*       instanceMethods,
                          int32_t               instanceMethodCount,
+                         const uint64_t*       excludedFunctions,
+                         int32_t               excludedFunctionCount,
                          int32_t               activitySlices,
                          CallChunkCallback     logCalls,
+                         CallSpanCallback      logSpans,
                          ProgressCallback      progress,
                          volatile int32_t*     cancel,
                          void**                tree)
@@ -750,7 +853,14 @@ extern "C"
             result->InstanceMethods.insert(instanceMethods[index]);
         }
 
+        for (int32_t index = 0; index < excludedFunctionCount; index++)
+        {
+            result->Excluded.insert(excludedFunctions[index]);
+        }
+
         result->LogCalls = logCalls;
+
+        result->LogSpans = logSpans;
 
         result->Slices = activitySlices;
         result->FirstSequence = static_cast<uint64_t>(engine.GetFirstPosition().Sequence);
@@ -768,6 +878,26 @@ extern "C"
         {
             return status;
         }
+
+        for (auto& [threadId, stack] : result->Stacks)
+        {
+            auto const last = result->Clocks.find(threadId);
+
+            if (last == result->Clocks.end())
+            {
+                continue;
+            }
+
+            for (auto frame = stack.rbegin(); frame != stack.rend(); ++frame)
+            {
+                result->RecordSpan(*frame, threadId, last->second, 0);
+            }
+        }
+
+        result->FlushSpans();
+
+        result->Spans = {};
+        result->Clocks.clear();
 
         result->Stacks.clear();
         result->Index.clear();

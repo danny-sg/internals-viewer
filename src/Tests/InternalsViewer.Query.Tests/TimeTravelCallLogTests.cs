@@ -1,5 +1,5 @@
 using InternalsViewer.Query.CallStack;
-using InternalsViewer.Query.CallStack.TimeTravel;
+using InternalsViewer.Query.CallStack.TimeTravel.CallLog;
 
 namespace InternalsViewer.Query.Tests;
 
@@ -7,8 +7,6 @@ namespace InternalsViewer.Query.Tests;
 public class TimeTravelCallLogTests
 {
     private const ulong ReturnedFlag = 1ul << 32;
-
-    private const ulong StackReadFlag = 1ul << 33;
 
     [Fact]
     public void The_Calls_Of_One_Function_On_One_Instance_Are_Read_Back_In_Order()
@@ -80,18 +78,6 @@ public class TimeTravelCallLogTests
     }
 
     [Fact]
-    public async Task A_Stack_Argument_Is_Only_Searched_When_The_Stack_Was_Read()
-    {
-        var builder = new TimeTravelCallLog.Builder();
-
-        builder.Add(0x1000, 0, Chunk(Row(1, stack: 0xC0), Row(2, flags: StackReadFlag, stack: 0xC0)), 2);
-
-        var use = Assert.Single(await builder.Build().FindAsync(0xC0, CancellationToken.None));
-
-        Assert.Equal(("[RSP+0x28]", 1, 1), (use.Location, use.Calls, use.First.Call));
-    }
-
-    [Fact]
     public async Task A_Return_Value_Is_Only_Searched_When_The_Call_Returned()
     {
         var builder = new TimeTravelCallLog.Builder();
@@ -157,7 +143,6 @@ public class TimeTravelCallLogTests
     private static ulong[] Row(ulong sequence,
                                ulong flags = 0,
                                ulong rcx = 0,
-                               ulong stack = 0,
                                ulong returnValue = 0,
                                int node = 0)
     {
@@ -166,9 +151,8 @@ public class TimeTravelCallLogTests
         row[0] = sequence;
         row[1] = flags;
         row[2] = rcx;
-        row[6] = stack;
-        row[30] = returnValue;
-        row[32] = (ulong)node;
+        row[6] = returnValue;
+        row[7] = (ulong)node;
 
         return row;
     }

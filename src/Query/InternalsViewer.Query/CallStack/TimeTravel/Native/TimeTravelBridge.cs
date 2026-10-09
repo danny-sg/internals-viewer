@@ -1,17 +1,20 @@
 using System.Runtime.InteropServices;
 using System.Text;
 
-namespace InternalsViewer.Query.CallStack.TimeTravel;
+namespace InternalsViewer.Query.CallStack.TimeTravel.Native;
 
 internal static class TimeTravelBridge
 {
     private const string Library = "InternalsViewer.Query.TimeTravelBridge.dll";
 
     [UnmanagedFunctionPointer(CallingConvention.StdCall)]
-    public delegate void ProgressCallback(int percent);
+    public delegate void ProgressCallback(uint thread, int percent);
 
     [UnmanagedFunctionPointer(CallingConvention.StdCall)]
     public delegate void CallChunkCallback(ulong address, ulong instance, IntPtr columns, int calls);
+
+    [UnmanagedFunctionPointer(CallingConvention.StdCall)]
+    public delegate void CallSpanCallback(IntPtr spans, int count);
 
     [DllImport(Library, CharSet = CharSet.Unicode)]
     public static extern int OpenTrace(string replayLibraryPath, string tracePath, out TimeTravelTraceHandle trace);
@@ -34,8 +37,11 @@ internal static class TimeTravelBridge
                                           int threadCount,
                                           ulong[] instanceMethods,
                                           int instanceMethodCount,
+                                          ulong[] excludedFunctions,
+                                          int excludedFunctionCount,
                                           int activitySlices,
                                           CallChunkCallback? logCalls,
+                                          CallSpanCallback? logSpans,
                                           ProgressCallback? progress,
                                           IntPtr cancel,
                                           out IntPtr tree);

@@ -1,5 +1,5 @@
 using InternalsViewer.Query.CallStack.Arguments;
-using InternalsViewer.Query.CallStack.TimeTravel;
+using InternalsViewer.Query.CallStack.TimeTravel.CallLog;
 using InternalsViewer.UI.App.Models.Query.CallStack;
 
 namespace InternalsViewer.UI.App.Tests.Models.Query.CallStack;
@@ -15,7 +15,6 @@ public class ValueUseGroupTests
     {
         TimeTravelValueUse[] uses =
         [
-            Use(Static, "*RDX On Entry"),
             Use(Static, "RDX"),
             Use(Static, "RAX"),
             Use(Member, "RCX")
@@ -23,7 +22,7 @@ public class ValueUseGroupTests
 
         var groups = ValueUseGroup.Build(uses, KindOf);
 
-        Assert.Equal(["Calls On It", "Returned It", "Passed It", "Held It Behind A Pointer"], groups.Select(g => g.Title));
+        Assert.Equal(["Calls On It", "Returned It", "Passed It"], groups.Select(g => g.Title));
     }
 
     [Fact]

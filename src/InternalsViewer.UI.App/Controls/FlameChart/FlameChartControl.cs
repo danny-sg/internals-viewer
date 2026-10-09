@@ -1,0 +1,725 @@
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using InternalsViewer.Query.CallStack;
+using InternalsViewer.Query.CallStack.TimeTravel.Timeline;
+using InternalsViewer.UI.App.Models.Query.CallStack;
+using Microsoft.UI;
+using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Controls.Primitives;
+using Microsoft.UI.Xaml.Media;
+using SkiaSharp;
+using SkiaSharp.Views.Windows;
+using Windows.UI;
+
+namespace InternalsViewer.UI.App.Controls.FlameChart;
+
+public sealed partial class FlameChartControl : Grid, IDisposable
+{
+    private const double MinimumRangeSteps = 20;
+
+    public static readonly DependencyProperty TimelineProperty =
+        DependencyProperty.Register(nameof(Timeline),
+                                    typeof(TimeTravelTimeline),
+                                    typeof(FlameChartControl),
+                                    new PropertyMetadata(null, OnTimelineChanged));
+
+    public TimeTravelTimeline? Timeline
+    {
+        get => (TimeTravelTimeline?)GetValue(TimelineProperty);
+        set => SetValue(TimelineProperty, value);
+    }
+
+    public static readonly DependencyProperty AxisProperty =
+        DependencyProperty.Register(nameof(Axis),
+                                    typeof(TimeTravelTimelineAxis),
+                                    typeof(FlameChartControl),
+                                    new PropertyMetadata(TimeTravelTimelineAxis.Position, OnAxisChanged));
+
+    public TimeTravelTimelineAxis Axis
+    {
+        get => (TimeTravelTimelineAxis)GetValue(AxisProperty);
+        set => SetValue(AxisProperty, value);
+    }
+
+    public static readonly DependencyProperty HiddenCategoriesProperty =
+        DependencyProperty.Register(nameof(HiddenCategories),
+                                    typeof(IReadOnlySet<string>),
+                                    typeof(FlameChartControl),
+                                    new PropertyMetadata(null, OnHiddenCategoriesChanged));
+
+    public IReadOnlySet<string>? HiddenCategories
+    {
+        get => (IReadOnlySet<string>?)GetValue(HiddenCategoriesProperty);
+        set => SetValue(HiddenCategoriesProperty, value);
+    }
+
+    public static readonly DependencyProperty RootNodeProperty =
+        DependencyProperty.Register(nameof(RootNode),
+                                    typeof(CallStackNode),
+                                    typeof(FlameChartControl),
+                                    new PropertyMetadata(null, OnRootNodeChanged));
+
+    public CallStackNode? RootNode
+    {
+        get => (CallStackNode?)GetValue(RootNodeProperty);
+        set => SetValue(RootNodeProperty, value);
+    }
+
+    public static readonly DependencyProperty IsLockedProperty =
+        DependencyProperty.Register(nameof(IsLocked),
+                                    typeof(bool),
+                                    typeof(FlameChartControl),
+                                    new PropertyMetadata(false, OnIsLockedChanged));
+
+    public bool IsLocked
+    {
+        get => (bool)GetValue(IsLockedProperty);
+        set => SetValue(IsLockedProperty, value);
+    }
+
+    public static readonly DependencyProperty SelectedCallProperty =
+        DependencyProperty.Register(nameof(SelectedCall),
+                                    typeof(CallReference),
+                                    typeof(FlameChartControl),
+                                    new PropertyMetadata(null, OnSelectedCallChanged));
+
+    public CallReference? SelectedCall
+    {
+        get => (CallReference?)GetValue(SelectedCallProperty);
+        set => SetValue(SelectedCallProperty, value);
+    }
+
+    private readonly SKXamlCanvas _canvas;
+
+    private readonly Canvas _overlay;
+
+    private readonly ScrollBar _horizontalScrollBar;
+
+    private readonly ScrollBar _verticalScrollBar;
+
+    private readonly Popup _toolTip;
+
+    private readonly TextBlock _toolTipText;
+
+    private readonly FlameChartPaints _paints = new();
+
+    private readonly SKPathBuilder _pathBuilder = new();
+
+    private readonly Dictionary<int, SKColor> _colours = [];
+
+    private readonly Dictionary<int, string> _labels = [];
+
+    private readonly Dictionary<string, SKColor> _parsedColours = new(StringComparer.OrdinalIgnoreCase);
+
+    private TimeTravelTimeline? _timeline;
+
+    private CallStackNode? _root;
+
+    private TimeTravelTimeline? _rooted;
+
+    private TimeTravelTimeline? _visible;
+
+    private TimeTravelTimelineAxis _axis = TimeTravelTimelineAxis.Position;
+
+    private float[] _laneTops = [];
+
+    private uint? _expandedThread;
+
+    private float _focusPadding;
+
+    private float _contentHeight;
+
+    private double _fitStart;
+
+    private double _fitEnd = 1;
+
+    private double _viewStart;
+
+    private double _viewEnd = 1;
+
+    private double _scrollY;
+
+    private int _version;
+
+    public FlameChartControl()
+    {
+        Background = new SolidColorBrush(Colors.Transparent);
+
+        RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
+        RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+
+        ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+
+        _canvas = new SKXamlCanvas { IgnorePixelScaling = true };
+        _canvas.PaintSurface += OnPaintSurface;
+
+        Children.Add(_canvas);
+
+        _overlay = new Canvas { Background = new SolidColorBrush(Colors.Transparent) };
+
+        Children.Add(_overlay);
+
+        _horizontalScrollBar = new ScrollBar
+        {
+            Orientation = Orientation.Horizontal,
+            Visibility = Visibility.Collapsed,
+            IndicatorMode = ScrollingIndicatorMode.MouseIndicator,
+            Minimum = 0
+        };
+
+        _horizontalScrollBar.Scroll += OnHorizontalScroll;
+
+        SetRow(_horizontalScrollBar, 1);
+
+        Children.Add(_horizontalScrollBar);
+
+        _verticalScrollBar = new ScrollBar
+        {
+            Orientation = Orientation.Vertical,
+            Visibility = Visibility.Collapsed,
+            IndicatorMode = ScrollingIndicatorMode.MouseIndicator,
+            Minimum = 0
+        };
+
+        _verticalScrollBar.Scroll += OnVerticalScroll;
+
+        SetColumn(_verticalScrollBar, 1);
+
+        Children.Add(_verticalScrollBar);
+
+        _toolTipText = new TextBlock
+        {
+            Foreground = new SolidColorBrush(Colors.White),
+            FontSize = 11,
+            Margin = new Thickness(6, 3, 6, 3)
+        };
+
+        _toolTip = new Popup
+        {
+            IsHitTestVisible = false,
+            Child = new Border
+            {
+                Background = new SolidColorBrush(Color.FromArgb(235, 30, 30, 30)),
+                CornerRadius = new CornerRadius(3),
+                IsHitTestVisible = false,
+                Child = _toolTipText
+            }
+        };
+
+        _overlay.Children.Add(_toolTip);
+
+        _overlay.PointerPressed += OnPointerPressed;
+        _overlay.PointerMoved += OnPointerMoved;
+        _overlay.PointerReleased += OnPointerReleased;
+        _overlay.PointerCaptureLost += OnPointerCaptureLost;
+        _overlay.PointerWheelChanged += OnPointerWheelChanged;
+        _overlay.PointerExited += OnPointerExited;
+        _overlay.SizeChanged += OnOverlaySizeChanged;
+
+        Loaded += OnLoaded;
+
+        ActualThemeChanged += OnActualThemeChanged;
+    }
+
+    public event Action<CallStackNode, int>? CallSelected;
+
+    public event Action? SelectionCleared;
+
+    private double FullStart => _fitStart;
+
+    private double FullEnd => Math.Max(_fitEnd, FullStart + MinimumRange);
+
+    private double MinimumRange => MinimumRangeSteps * (_timeline?.StepOf(_axis) ?? 1);
+
+    private double ViewportHeight => Math.Max(0, _overlay.ActualHeight - RulerHeight);
+
+    public void ZoomToFit()
+    {
+        _scrollY = 0;
+
+        SetView(FullStart, FullEnd);
+    }
+
+    public void Dispose()
+    {
+        Loaded -= OnLoaded;
+
+        ActualThemeChanged -= OnActualThemeChanged;
+
+        _canvas.PaintSurface -= OnPaintSurface;
+
+        _horizontalScrollBar.Scroll -= OnHorizontalScroll;
+        _verticalScrollBar.Scroll -= OnVerticalScroll;
+
+        _overlay.PointerPressed -= OnPointerPressed;
+        _overlay.PointerMoved -= OnPointerMoved;
+        _overlay.PointerReleased -= OnPointerReleased;
+        _overlay.PointerCaptureLost -= OnPointerCaptureLost;
+        _overlay.PointerWheelChanged -= OnPointerWheelChanged;
+        _overlay.PointerExited -= OnPointerExited;
+        _overlay.SizeChanged -= OnOverlaySizeChanged;
+
+        _staticLayer?.Dispose();
+        _staticLayer = null;
+
+        _paints.Dispose();
+
+        _pathBuilder.Dispose();
+
+        _timeline = null;
+        _rooted = null;
+        _visible = null;
+        _colours.Clear();
+        _labels.Clear();
+        _parsedColours.Clear();
+    }
+
+    private void OnLoaded(object sender, RoutedEventArgs e) => ApplyTheme();
+
+    private void OnActualThemeChanged(FrameworkElement sender, object args) => ApplyTheme();
+
+    private void ApplyTheme()
+    {
+        _paints.Apply(ActualTheme == ElementTheme.Dark);
+
+        _version++;
+
+        _canvas.Invalidate();
+    }
+
+    private void UpdateFitRange()
+    {
+        if (_rooted is { Threads.Count: > 0 } rooted)
+        {
+            _fitStart = rooted.Threads.Min(t => t.StartOf(_axis));
+
+            _fitEnd = rooted.Threads.Max(t => t.EndOf(_axis));
+
+            return;
+        }
+
+        _fitStart = _timeline?.StartOf(_axis) ?? 0;
+
+        _fitEnd = _timeline?.EndOf(_axis) ?? 1;
+    }
+
+    private void SetView(double start, double end)
+    {
+        var fullStart = FullStart;
+
+        var fullEnd = FullEnd;
+
+        var range = Math.Min(Math.Max(end - start, MinimumRange), Math.Max(fullEnd - fullStart, MinimumRange));
+
+        start = Math.Max(fullStart, Math.Min(start, fullEnd - range));
+
+        _viewStart = start;
+        _viewEnd = start + range;
+
+        ClampScroll();
+
+        UpdateScrollBars();
+
+        _canvas.Invalidate();
+    }
+
+    private void ClampScroll() => _scrollY = Math.Clamp(_scrollY, 0, Math.Max(0, _contentHeight - ViewportHeight));
+
+    private void UpdateScrollBars()
+    {
+        var fullRange = FullEnd - FullStart;
+
+        var range = _viewEnd - _viewStart;
+
+        _horizontalScrollBar.Maximum = Math.Max(0, fullRange - range);
+        _horizontalScrollBar.ViewportSize = range;
+        _horizontalScrollBar.LargeChange = range;
+        _horizontalScrollBar.SmallChange = range / 10;
+        _horizontalScrollBar.Value = _viewStart - FullStart;
+        _horizontalScrollBar.Visibility = range < fullRange ? Visibility.Visible : Visibility.Collapsed;
+
+        var viewport = ViewportHeight;
+
+        _verticalScrollBar.Maximum = Math.Max(0, _contentHeight - viewport);
+        _verticalScrollBar.ViewportSize = viewport;
+        _verticalScrollBar.LargeChange = viewport;
+        _verticalScrollBar.SmallChange = _rowHeight * 3;
+        _verticalScrollBar.Value = _scrollY;
+        _verticalScrollBar.Visibility = _contentHeight > viewport ? Visibility.Visible : Visibility.Collapsed;
+    }
+
+    private void OnHorizontalScroll(object sender, ScrollEventArgs e)
+    {
+        var range = _viewEnd - _viewStart;
+
+        SetView(FullStart + e.NewValue, FullStart + e.NewValue + range);
+    }
+
+    private void OnVerticalScroll(object sender, ScrollEventArgs e)
+    {
+        _scrollY = e.NewValue;
+
+        ClampScroll();
+
+        _canvas.Invalidate();
+    }
+
+    private void OnOverlaySizeChanged(object sender, SizeChangedEventArgs e)
+    {
+        BuildLayout();
+
+        _version++;
+
+        ClampScroll();
+
+        UpdateScrollBars();
+
+        _canvas.Invalidate();
+    }
+
+    private void BuildLayout()
+    {
+        var threads = _visible?.Threads ?? [];
+
+        if (_expandedThread is { } expanded && threads.All(t => t.ThreadId != expanded))
+        {
+            _expandedThread = null;
+        }
+
+        var rows = threads.Sum(DepthOf);
+
+        var available = (float)ViewportHeight - threads.Count * (LaneHeaderHeight + LaneGap);
+
+        var maximum = _expandedThread is null ? MaximumRowHeight : FocusedMaximumRowHeight;
+
+        _rowHeight = rows == 0 ? MaximumRowHeight : Math.Clamp(MathF.Floor(available / rows), MinimumRowHeight, maximum);
+
+        _focusPadding = _expandedThread is null ? 0 : Math.Max(0, available - rows * _rowHeight);
+
+        _laneTops = new float[threads.Count];
+
+        var top = 0f;
+
+        for (var lane = 0; lane < threads.Count; lane++)
+        {
+            _laneTops[lane] = top;
+
+            top += LaneHeight(threads[lane]);
+        }
+
+        _contentHeight = top;
+    }
+
+    private float LaneHeight(TimeTravelTimelineThread thread)
+        => LaneHeaderHeight + DepthOf(thread) * _rowHeight + (thread.ThreadId == _expandedThread ? _focusPadding : 0) + LaneGap;
+
+    private int DepthOf(TimeTravelTimelineThread thread) => IsExpanded(thread) ? thread.Depth : 0;
+
+    private bool IsExpanded(TimeTravelTimelineThread thread) => _expandedThread is not { } expanded || thread.ThreadId == expanded;
+
+    private void ToggleLane(int lane)
+    {
+        if (_visible is not { } timeline || lane >= timeline.Threads.Count)
+        {
+            return;
+        }
+
+        var thread = timeline.Threads[lane].ThreadId;
+
+        var offset = _laneTops[lane] - _scrollY;
+
+        _expandedThread = _expandedThread == thread ? null : thread;
+
+        _hover = null;
+
+        BuildLayout();
+
+        _scrollY = _laneTops[lane] - offset;
+
+        ClampScroll();
+
+        UpdateScrollBars();
+
+        _version++;
+
+        _canvas.Invalidate();
+    }
+
+    private void SetRoot(CallStackNode? root)
+    {
+        if (ReferenceEquals(root, _root))
+        {
+            return;
+        }
+
+        _root = root;
+
+        HideToolTip();
+
+        RebuildVisible();
+
+        ZoomToFit();
+    }
+
+    private void Reset()
+    {
+        _colours.Clear();
+        _labels.Clear();
+
+        _root = RootNode;
+
+        HideToolTip();
+
+        RebuildVisible();
+
+        ZoomToFit();
+    }
+
+    private void RebuildVisible()
+    {
+        _rooted = null;
+        _visible = null;
+        _hover = null;
+        _selected = null;
+
+        if (_timeline is { } timeline)
+        {
+            _rooted = _root is { } root ? RootedAt(timeline, root) : null;
+
+            var source = _rooted ?? timeline;
+
+            _visible = HiddenNodes(source) is { } hidden ? source.Where(n => n < 0 || n >= hidden.Length || !hidden[n]) : source;
+        }
+
+        UpdateFitRange();
+
+        BuildLayout();
+
+        FindSelectedCall(bringIntoView: false);
+
+        _version++;
+    }
+
+    private static TimeTravelTimeline? RootedAt(TimeTravelTimeline timeline, CallStackNode root)
+        => timeline.RootedAt(n => ReferenceEquals(n, root))
+           ?? (root.Frame is { } frame ? timeline.RootedAt(n => ReferenceEquals(n.Frame, frame)) : null);
+
+    private bool[]? HiddenNodes(TimeTravelTimeline timeline)
+    {
+        if (HiddenCategories is not { Count: > 0 } categories)
+        {
+            return null;
+        }
+
+        var hidden = new bool[timeline.NodeCount];
+
+        var any = false;
+
+        for (var node = 0; node < hidden.Length; node++)
+        {
+            var parent = timeline.ParentOf(node);
+
+            hidden[node] = (parent >= 0 && hidden[parent])
+                           || (timeline.NodeOf(node) is { Frame: not null } callNode && categories.Contains(callNode.Category));
+
+            any |= hidden[node];
+        }
+
+        return any ? hidden : null;
+    }
+
+    private static bool[]? Matches(TimeTravelTimeline timeline, Func<CallStackNode, bool> predicate)
+    {
+        var matches = new bool[timeline.NodeCount];
+
+        var any = false;
+
+        for (var node = 0; node < matches.Length; node++)
+        {
+            if (timeline.NodeOf(node) is { } callNode && predicate(callNode))
+            {
+                matches[node] = true;
+
+                any = true;
+            }
+        }
+
+        return any ? matches : null;
+    }
+
+    private void FindSelectedCall(bool bringIntoView)
+    {
+        if (SelectedCall is not { } reference
+            || _timeline is not { } timeline
+            || _visible is not { } visible
+            || Matches(timeline, n => ReferenceEquals(n, reference.Node)) is not { } nodes)
+        {
+            return;
+        }
+
+        if (_selected is { } current
+            && SpanOf(current) is { } span
+            && span.Call == reference.Call
+            && span.Node < nodes.Length
+            && nodes[span.Node])
+        {
+            if (bringIntoView)
+            {
+                BringIntoView(current);
+            }
+
+            return;
+        }
+
+        for (var lane = 0; lane < visible.Threads.Count; lane++)
+        {
+            var rows = visible.Threads[lane].Rows;
+
+            for (var depth = 0; depth < rows.Count; depth++)
+            {
+                var row = rows[depth];
+
+                for (var index = 0; index < row.Count; index++)
+                {
+                    var node = row.NodeAt(index);
+
+                    if (row.CallAt(index) != reference.Call || node < 0 || node >= nodes.Length || !nodes[node])
+                    {
+                        continue;
+                    }
+
+                    _selected = new FlameHit(lane, depth, index);
+
+                    if (bringIntoView)
+                    {
+                        BringIntoView(_selected.Value);
+                    }
+
+                    return;
+                }
+            }
+        }
+    }
+
+    private void BringIntoView(FlameHit hit)
+    {
+        if (SpanOf(hit) is not { } span)
+        {
+            return;
+        }
+
+        if (_visible is { } timeline && !IsExpanded(timeline.Threads[hit.Lane]))
+        {
+            _expandedThread = timeline.Threads[hit.Lane].ThreadId;
+
+            BuildLayout();
+
+            _version++;
+        }
+
+        var top = _laneTops[hit.Lane] + LaneHeaderHeight + hit.Depth * _rowHeight;
+
+        if (top < _scrollY || top + _rowHeight > _scrollY + ViewportHeight)
+        {
+            _scrollY = top - ViewportHeight / 3;
+        }
+
+        var range = _viewEnd - _viewStart;
+
+        if (span.End - span.Start > range)
+        {
+            var margin = (span.End - span.Start) * 0.05;
+
+            SetView(span.Start - margin, span.End + margin);
+        }
+        else if (span.End < _viewStart || span.Start > _viewEnd)
+        {
+            var start = (span.Start + span.End) / 2 - range / 2;
+
+            SetView(start, start + range);
+        }
+        else
+        {
+            ClampScroll();
+
+            UpdateScrollBars();
+
+            _canvas.Invalidate();
+        }
+    }
+
+    private static void OnTimelineChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
+    {
+        var control = (FlameChartControl)d;
+
+        control._timeline = e.NewValue as TimeTravelTimeline;
+
+        control.Reset();
+    }
+
+    private static void OnAxisChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
+    {
+        var control = (FlameChartControl)d;
+
+        control._axis = (TimeTravelTimelineAxis)e.NewValue;
+
+        control.UpdateFitRange();
+
+        control._version++;
+
+        control.ZoomToFit();
+    }
+
+    private static void OnHiddenCategoriesChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
+    {
+        var control = (FlameChartControl)d;
+
+        control.HideToolTip();
+
+        control.RebuildVisible();
+
+        control.ClampScroll();
+
+        control.UpdateScrollBars();
+
+        control._canvas.Invalidate();
+    }
+
+    private static void OnRootNodeChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
+    {
+        var control = (FlameChartControl)d;
+
+        if (!control.IsLocked)
+        {
+            control.SetRoot(e.NewValue as CallStackNode);
+        }
+    }
+
+    private static void OnIsLockedChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
+    {
+        var control = (FlameChartControl)d;
+
+        if (e.NewValue is false)
+        {
+            control.SetRoot(control.RootNode);
+        }
+    }
+
+    private static void OnSelectedCallChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
+    {
+        var control = (FlameChartControl)d;
+
+        if (e.NewValue is null)
+        {
+            control._selected = null;
+        }
+        else
+        {
+            control.FindSelectedCall(bringIntoView: true);
+        }
+
+        control._canvas.Invalidate();
+    }
+}

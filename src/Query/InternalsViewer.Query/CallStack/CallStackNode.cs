@@ -115,6 +115,20 @@ public sealed class CallStackNode
 
     public int[] CallActivity { get; set; } = [];
 
+    public long AllocatedBytes { get; set; }
+
+    public long Allocations { get; set; }
+
+    public long AllocatedBytesIncludingChildren => Allocated.Bytes;
+
+    public long AllocationsIncludingChildren => Allocated.Count;
+
+    public bool HasAllocations => Allocated.Count > 0;
+
+    public string AllocationsLabel => AllocationsIncludingChildren == 1
+        ? "1 Allocation Including Children"
+        : $"{AllocationsIncludingChildren:N0} Allocations Including Children";
+
     /// <summary>
     /// The frames a projection cut away directly below this one — where a segment handed off to a nested operator
     /// </summary>
@@ -126,6 +140,12 @@ public sealed class CallStackNode
     public HashSet<CallStackNode> CutBelow { get; } = [];
 
     public bool IsRoot => Frame is null;
+
+    private (long Bytes, long Count)? AllocatedIncludingChildren { get; set; }
+
+    private (long Bytes, long Count) Allocated => AllocatedIncludingChildren ??= (
+        AllocatedBytes + Children.Values.Sum(c => c.AllocatedBytesIncludingChildren),
+        Allocations + Children.Values.Sum(c => c.AllocationsIncludingChildren));
 
     public IEnumerable<CallStackNode> ChildNodes => Children.Values;
 

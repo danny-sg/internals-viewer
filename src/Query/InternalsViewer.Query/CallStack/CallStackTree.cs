@@ -121,6 +121,10 @@ public sealed class CallStackTree
 
             leaf.Calls += node.Calls;
 
+            leaf.AllocatedBytes += node.AllocatedBytes;
+
+            leaf.Allocations += node.Allocations;
+
             AddCallActivity(leaf, node.CallActivity);
 
             foreach (var engineEvent in events)
@@ -224,6 +228,10 @@ public sealed class CallStackTree
             node.Calls = 0;
 
             node.CallActivity = [];
+
+            node.AllocatedBytes = 0;
+
+            node.Allocations = 0;
         }
 
         var keep = node.Events.Count > 0 || node.Calls > 0;
@@ -388,6 +396,14 @@ public sealed class CallStackTree
         target.Calls += source.Calls;
 
         source.Calls = 0;
+
+        target.AllocatedBytes += source.AllocatedBytes;
+
+        target.Allocations += source.Allocations;
+
+        source.AllocatedBytes = 0;
+
+        source.Allocations = 0;
 
         AddCallActivity(target, source.CallActivity);
 

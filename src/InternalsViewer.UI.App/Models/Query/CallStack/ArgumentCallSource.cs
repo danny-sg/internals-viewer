@@ -1,6 +1,6 @@
 using System;
 using System.Collections.Generic;
-using InternalsViewer.Query.CallStack.TimeTravel;
+using InternalsViewer.Query.CallStack.TimeTravel.CallLog;
 using InternalsViewer.Query.Results;
 
 namespace InternalsViewer.UI.App.Models.Query.CallStack;

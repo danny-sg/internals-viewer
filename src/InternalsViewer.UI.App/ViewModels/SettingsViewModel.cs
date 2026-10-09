@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
@@ -11,6 +12,8 @@ namespace InternalsViewer.UI.App.ViewModels;
 public partial class SettingsViewModel(SettingsService settingsService, TraceDirectoryService traceDirectoryService)
     : ObservableObject, IWinDbgSettings
 {
+    public const char CategorySeparator = ';';
+
     private const string SymbolsPathKey = "SymbolsPath";
     private const string DefaultSymbolsPath = @"C:\Symbols";
 
@@ -27,6 +30,10 @@ public partial class SettingsViewModel(SettingsService settingsService, TraceDir
     private const string WinDbgPathKey = "WinDbgPath";
     private const string SymbolSearchExcludedModulesKey = "SymbolSearchExcludedModules";
     private const string ShowTimeTravelWarningKey = "ShowTimeTravelWarning";
+    private const string CallTreeHiddenCategoriesKey = "CallTreeHiddenCategories";
+
+    private const string DefaultCallTreeHiddenCategories =
+        "Compilation;Execution Tree;Expression Evaluation;Metadata;Networking;Query Binding;Query Store;Security";
 
     private const double DefaultMaxTraceSizeMb = 150;
 
@@ -70,6 +77,9 @@ public partial class SettingsViewModel(SettingsService settingsService, TraceDir
     private bool _showTimeTravelWarning = true;
 
     [ObservableProperty]
+    private string _callTreeHiddenCategories = DefaultCallTreeHiddenCategories;
+
+    [ObservableProperty]
     private string _memoryUsage = string.Empty;
 
     public string? ActiveTraceDirectory =>
@@ -78,6 +88,10 @@ public partial class SettingsViewModel(SettingsService settingsService, TraceDir
     private SettingsService SettingsService { get; } = settingsService;
 
     private TraceDirectoryService TraceDirectoryService { get; } = traceDirectoryService;
+
+    public static HashSet<string> SplitCategories(string value)
+        => new(value.Split(CategorySeparator, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries),
+               StringComparer.Ordinal);
 
     public void RefreshMemoryUsage()
     {
@@ -131,6 +145,9 @@ public partial class SettingsViewModel(SettingsService settingsService, TraceDir
         SymbolSearchExcludedModules = await SettingsService.ReadSettingAsync<string>(SymbolSearchExcludedModulesKey) ?? string.Empty;
 
         ShowTimeTravelWarning = await SettingsService.ReadSettingAsync<bool?>(ShowTimeTravelWarningKey) ?? true;
+
+        CallTreeHiddenCategories = await SettingsService.ReadSettingAsync<string>(CallTreeHiddenCategoriesKey)
+                                   ?? DefaultCallTreeHiddenCategories;
     }
 
     /// <summary>
@@ -167,6 +184,11 @@ public partial class SettingsViewModel(SettingsService settingsService, TraceDir
     partial void OnShowTimeTravelWarningChanged(bool value)
     {
         _ = SettingsService.SaveSettingAsync(ShowTimeTravelWarningKey, value);
+    }
+
+    partial void OnCallTreeHiddenCategoriesChanged(string value)
+    {
+        _ = SettingsService.SaveSettingAsync(CallTreeHiddenCategoriesKey, value);
     }
 
     partial void OnUseCustomTraceDirectoryChanged(bool value)

@@ -20,9 +20,25 @@ extern "C"
         uint64_t Calls;
     };
 
-    typedef void(__stdcall* ProgressCallback)(int32_t percent);
+    struct CallSpan
+    {
+        uint64_t StartSequence;
+        uint64_t StartSteps;
+        uint64_t EndSequence;
+        uint64_t EndSteps;
+        uint64_t StartInstructions;
+        uint64_t EndInstructions;
+        int32_t  Node;
+        uint32_t Thread;
+        uint32_t Call;
+        uint32_t Flags;
+    };
+
+    typedef void(__stdcall* ProgressCallback)(uint32_t thread, int32_t percent);
 
     typedef void(__stdcall* CallChunkCallback)(uint64_t address, uint64_t instance, const uint64_t* columns, int32_t calls);
+
+    typedef void(__stdcall* CallSpanCallback)(const CallSpan* spans, int32_t count);
 
     __declspec(dllexport) int32_t OpenTrace(const wchar_t* replayLibraryPath, const wchar_t* tracePath, void** trace);
 
@@ -40,8 +56,11 @@ extern "C"
                                                int32_t               threadCount,
                                                const uint64_t*       instanceMethods,
                                                int32_t               instanceMethodCount,
+                                               const uint64_t*       excludedFunctions,
+                                               int32_t               excludedFunctionCount,
                                                int32_t               activitySlices,
                                                CallChunkCallback     logCalls,
+                                               CallSpanCallback      logSpans,
                                                ProgressCallback      progress,
                                                volatile int32_t*     cancel,
                                                void**                tree);

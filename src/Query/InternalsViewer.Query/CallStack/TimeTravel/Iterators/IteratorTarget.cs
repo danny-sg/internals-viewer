@@ -1,7 +1,7 @@
 using InternalsViewer.Query.Events;
 using InternalsViewer.Query.Events.Operators;
 
-namespace InternalsViewer.Query.CallStack.TimeTravel;
+namespace InternalsViewer.Query.CallStack.TimeTravel.Iterators;
 
 public sealed class IteratorTarget(CallStackNode node, ExecutionOperatorEvent? operatorEvent)
 {

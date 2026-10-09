@@ -1,8 +1,9 @@
+using InternalsViewer.Internals.Engine.Loading;
 using InternalsViewer.Query.CallStack.Arguments;
 using InternalsViewer.Query.CallStack.Dia;
 using InternalsViewer.Query.CallStack.Symbols;
 
-namespace InternalsViewer.Query.CallStack.TimeTravel;
+namespace InternalsViewer.Query.CallStack.TimeTravel.Iterators;
 
 public static class IteratorMethods
 {
@@ -23,7 +24,7 @@ public static class IteratorMethods
 
     public static async Task<ulong[]> ResolveAsync(IReadOnlyList<TimeTravelModule> modules,
                                                    string symbolsPath,
-                                                   IProgress<string>? progress,
+                                                   IProgress<ProgressDetail>? progress,
                                                    CancellationToken cancellationToken)
     {
         var module = modules.FirstOrDefault(m => string.Equals(Path.GetFileNameWithoutExtension(m.Path),

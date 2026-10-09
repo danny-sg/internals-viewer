@@ -1,5 +1,6 @@
 using InternalsViewer.Query.CallStack;
 using InternalsViewer.Query.CallStack.TimeTravel;
+using InternalsViewer.Query.CallStack.TimeTravel.Native;
 
 namespace InternalsViewer.Query.Tests;
 

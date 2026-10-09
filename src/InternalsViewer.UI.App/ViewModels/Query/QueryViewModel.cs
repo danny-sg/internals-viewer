@@ -12,10 +12,13 @@ using InternalsViewer.Internals.Engine.Allocation;
 using InternalsViewer.Internals.Engine.Database;
 using InternalsViewer.Internals.Providers.Metadata;
 using InternalsViewer.Internals.Engine.Database.Enums;
+using InternalsViewer.Internals.Engine.Loading;
 using InternalsViewer.Internals.Extensions;
 using InternalsViewer.Query;
 using InternalsViewer.Query.CallStack;
 using InternalsViewer.Query.CallStack.TimeTravel;
+using InternalsViewer.Query.CallStack.TimeTravel.Iterators;
+using InternalsViewer.Query.CallStack.TimeTravel.Timeline;
 using InternalsViewer.Query.CallStack.WinDbg;
 using InternalsViewer.Query.Debugging;
 using InternalsViewer.Query.Events.Latches;
@@ -145,9 +148,6 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
     private bool _isError;
 
     [ObservableProperty]
-    private string _message;
-
-    [ObservableProperty]
     private string _sql = string.Empty;
 
     [ObservableProperty]
@@ -239,7 +239,15 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
     private bool _isSqlHistoryVisible;
 
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(ShowFlameChartHint))]
     private bool _isFullTraceLoading;
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(ShowFlameChartHint))]
+    private TimeTravelTimeline? _flameChart;
+
+    [ObservableProperty]
+    private CallStackNode? _selectedCallNode;
 
     [ObservableProperty]
     private string? _fullTraceStatus;
@@ -334,8 +342,6 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
         _columnstoreTabViewModelFactory = columnstoreTabViewModelFactory;
         _pageTabViewModelFactory = pageTabViewModelFactory;
         _traceDirectoryService = traceDirectoryService;
-        
-        Message = string.Empty;
 
         Name = $"{Database.Name}: Query";
 
@@ -401,6 +407,8 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
     public event Action<long>? PlayheadMoveRequested;
 
+    public event Action<CallStackNode, int>? CallNavigationRequested;
+
     public DatabaseSource Database { get; }
 
     /// <summary>
@@ -419,6 +427,8 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
     /// The query capture and display options (crop, system objects, lock categories, waits/latches/memory/call stack)
     /// </summary>
     public QueryOptionsViewModel QueryOptions { get; } = new();
+
+    public ObservableCollection<QueryMessage> Messages { get; } = [];
 
     /// <summary>
     /// The dock layout — tab documents, their menu-driven visibility, and the timeline/details rows
@@ -555,6 +565,8 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
     private CancellationTokenSource? FullTraceLoad { get; set; }
 
+    public bool ShowFlameChartHint => FlameChart is null && !IsFullTraceLoading;
+
     private IBufferPoolInfoProvider BufferPoolInfoProvider { get; }
 
     private List<AllocationLayer> ObjectLayers { get; set; }
@@ -574,7 +586,7 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
         var dto = new QueryLayoutState
         {
             Root = Layout.SerializeRoot(),
-            TimelineVisible = Layout.IsTimelineVisible,
+            TimelineVisible = Layout.IsTimelineVisibleOutsideFullTrace,
             CropToQuery = QueryOptions.CropToQuery,
             IncludeSystemObjects = QueryOptions.IncludeSystemObjects,
             IncludeLock = QueryOptions.Options.IncludeLock,
@@ -882,6 +894,10 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
         {
             RefreshTimelineDefinition();
         }
+        else if (e.PropertyName == nameof(QueryOptionsViewModel.RecordTimeTravel))
+        {
+            Layout.IsFullTrace = QueryOptions.RecordTimeTravel;
+        }
     }
 
     /// <summary>
@@ -917,6 +933,8 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
         _pageSpans = [];
 
         CancelFullTraceLoad();
+
+        FlameChart = null;
 
         Symbols.Dispose();
 
@@ -1703,9 +1721,7 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
         ClearResults();
 
-        var progress = new Progress<string>(message => Message = string.IsNullOrEmpty(Message)
-                                                                 ? message
-                                                                 : Message + Environment.NewLine + message);
+        var progress = new Progress<ProgressDetail>(AddMessage);
 
         var eventOptions = QueryOptions.Options;
 
@@ -1755,13 +1771,13 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
         if (!results.IsSuccess)
         {
             IsError = true;
-            Message = Message + Environment.NewLine + results.Message;
+            AddMessage(results.Message);
 
             return;
         }
 
         IsError = false;
-        Message = Message + Environment.NewLine + $"({results.RowCount} rows affected)";
+        AddMessage($"({results.RowCount} rows affected)");
 
         try
         {
@@ -1797,6 +1813,20 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
         }
     }
 
+    public void NavigateToCall(CallStackNode node, int call)
+    {
+        SelectedCallNode = node;
+
+        if (CallNavigationRequested is { } handler)
+        {
+            handler(node, call);
+
+            return;
+        }
+
+        _ = call >= 0 ? Arguments.ShowAsync(node, call) : Arguments.ShowAsync(node);
+    }
+
     [RelayCommand]
     private void CancelFullTrace() => CancelFullTraceLoad();
 
@@ -1811,12 +1841,13 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
         IsFullTraceLoading = true;
         FullTraceStatus = "Opening Full Trace";
 
-        var progress = new Progress<string>(message =>
+        var progress = new Progress<ProgressDetail>(detail =>
         {
             if (ReferenceEquals(FullTraceLoad, load))
             {
-                FullTraceStatus = message;
-                Message = Message + Environment.NewLine + message;
+                FullTraceStatus = detail.ToString();
+
+                AddMessage(detail);
             }
         });
 
@@ -1832,6 +1863,8 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
             CallStack = result.CallStack;
 
             Arguments.SetSource(result.CallLog, IteratorTarget.Build(result.CallStack, Events));
+
+            FlameChart = result.Timeline;
 
             ExecutionPlans = [.. ExecutionPlans];
         }
@@ -1853,6 +1886,24 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
             load.Dispose();
         }
+    }
+
+    private void AddMessage(ProgressDetail detail)
+    {
+        if (detail.Percentage is { } percentage)
+        {
+            for (var index = Messages.Count - 1; index >= 0; index--)
+            {
+                if (Messages[index] is { IsProgress: true } message && message.Text == detail.Message)
+                {
+                    message.Percentage = percentage;
+
+                    return;
+                }
+            }
+        }
+
+        Messages.Add(new QueryMessage(detail.Message, detail.Percentage));
     }
 
     private void CancelFullTraceLoad()
@@ -1888,8 +1939,12 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
     {
         CancelFullTraceLoad();
 
+        FlameChart = null;
+
+        SelectedCallNode = null;
+
         IsError = false;
-        Message = string.Empty;
+        Messages.Clear();
 
         SequenceFrom = 0;
         SequenceTo = 0;

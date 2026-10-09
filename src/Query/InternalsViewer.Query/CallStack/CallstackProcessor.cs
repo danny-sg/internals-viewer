@@ -1,4 +1,5 @@
-﻿using InternalsViewer.Query.CallStack.Categories;
+﻿using InternalsViewer.Internals.Engine.Loading;
+using InternalsViewer.Query.CallStack.Categories;
 using InternalsViewer.Query.CallStack.Symbols;
 
 namespace InternalsViewer.Query.CallStack;
@@ -35,7 +36,7 @@ internal static class CallstackProcessor
 {
     public static async Task<string[]> Process(CallStackTree callStack,
                                                string symbolsPath,
-                                               IProgress<string>? progress,
+                                               IProgress<ProgressDetail>? progress,
                                                CancellationToken cancellationToken)
     {
         var unknown = new HashSet<string>();

@@ -1,3 +1,7 @@
+using InternalsViewer.Query.CallStack.TimeTravel.CallLog;
+using InternalsViewer.Query.CallStack.TimeTravel.Native;
+using InternalsViewer.Query.CallStack.TimeTravel.Timeline;
+
 namespace InternalsViewer.Query.CallStack.TimeTravel;
 
 public sealed record TimeTravelModule(string Path, ulong Address, ulong Size);
@@ -5,4 +9,5 @@ public sealed record TimeTravelModule(string Path, ulong Address, ulong Size);
 public sealed record TimeTravelCallTree(TimeTravelCallNode[] Nodes,
                                         TimeTravelCallActivity[] Activity,
                                         TimeTravelModule[] Modules,
-                                        TimeTravelCallLog? CallLog = null);
+                                        TimeTravelCallLog? CallLog = null,
+                                        TimeTravelTimeline? Timeline = null);

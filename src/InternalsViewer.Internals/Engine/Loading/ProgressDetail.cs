@@ -13,6 +13,8 @@ public readonly record struct ProgressDetail(string Message, double? Percentage 
 {
     public bool IsIndeterminate => Percentage is null;
 
+    public static implicit operator ProgressDetail(string message) => new(message);
+
     public override string ToString() => Percentage is null
                                          ? Message
                                          : $"{Message} {Percentage:N0}%";

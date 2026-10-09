@@ -1,6 +1,7 @@
 ﻿using System.Data;
 using System.Diagnostics;
 using InternalsViewer.Internals.Engine.Database;
+using InternalsViewer.Internals.Engine.Loading;
 using InternalsViewer.Query.CallStack;
 using InternalsViewer.Query.Events.BatchMode;
 using InternalsViewer.Query.Events.Consolidation;
@@ -27,19 +28,22 @@ public sealed class EventReader(ILogger<EventReader> logger)
     /// Due to the potentially high volume of events that could be read the reader is optimized for minimal memory allocations via
     /// a buffer based read.
     /// </remarks>
-    public async Task<(List<EngineEvent>, List<ExecutionPlan>, CallStackTree)> GetEvents(string filePath,
-                                                                                         string connectionString,
-                                                                                         DatabaseSource? database,
-                                                                                         bool includeSystemObjects,
-                                                                                         IProgress<string>? progress,
-                                                                                         CancellationToken cancellationToken,
-                                                                                         Func<EngineEvent, bool>? endMarker = null)
+    public async Task<(List<EngineEvent>, List<ExecutionPlan>, CallStackTree, HashSet<uint>)> 
+        GetEvents(string filePath,
+                  string connectionString,
+                  DatabaseSource? database,
+                  bool includeSystemObjects,
+                  IProgress<ProgressDetail>? progress,
+                  CancellationToken cancellationToken,
+                  Func<EngineEvent, bool>? endMarker = null)
     {
         await using var connection = new SqlConnection(connectionString);
 
         var events = new List<EngineEvent>();
 
         var executionPlans = new List<ExecutionPlan>();
+
+        var threadIds = new HashSet<uint>();
 
         // Map plan handles to PlanHandleId
         var planHandles = new PlanHandleRegistry();
@@ -100,6 +104,11 @@ public sealed class EventReader(ILogger<EventReader> logger)
                     // The result is a view over xmlBuffer and is reused per row, so it is mapped before the next read
                     var eventResult = xmlEventParser.ParseEvent(xmlBuffer, length);
 
+                    if (eventResult?.GetUlongAction("system_thread_id") is { } threadId and > 0 and <= uint.MaxValue)
+                    {
+                        threadIds.Add((uint)threadId);
+                    }
+
                     var engineEvent = eventResult is null
                                       ? null
                                       : eventParser.ToEngineEvent(eventResult, database, planHandles, callStack);
@@ -155,7 +164,7 @@ public sealed class EventReader(ILogger<EventReader> logger)
 
         consolidatedEvents.AddRange(operatorEvents);
 
-        return (consolidatedEvents, executionPlans, callStack);
+        return (consolidatedEvents, executionPlans, callStack, threadIds);
     }
 
     /// <summary>
@@ -177,7 +186,7 @@ public sealed class EventReader(ILogger<EventReader> logger)
     /// </remarks>
     private async Task<List<EngineEvent>> PostProcessEvents(List<EngineEvent> events,
                                                             string connectionString,
-                                                            IProgress<string>? progress,
+                                                            IProgress<ProgressDetail>? progress,
                                                             CancellationToken cancellationToken)
     {
 
@@ -277,9 +286,9 @@ public sealed class EventReader(ILogger<EventReader> logger)
     }
 
     internal async Task GetEventKeyAddresses(List<EngineEvent> events,
-                                            string connectionString,
-                                            IProgress<string>? progress,
-                                            CancellationToken cancellationToken)
+                                             string connectionString,
+                                             IProgress<ProgressDetail>? progress,
+                                             CancellationToken cancellationToken)
     {
         var keyLockEvents = events.Where(e => e is LockEvent { Resource.KeyHash: not null }).Cast<LockEvent>();
 

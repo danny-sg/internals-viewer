@@ -2,7 +2,8 @@ using System.Collections.Generic;
 using System.Drawing;
 using System.Linq;
 using InternalsViewer.Query.CallStack.Arguments;
-using InternalsViewer.Query.CallStack.TimeTravel;
+using InternalsViewer.Query.CallStack.TimeTravel.CallLog;
+using InternalsViewer.Query.CallStack.TimeTravel.Iterators;
 using InternalsViewer.Query.Results;
 
 namespace InternalsViewer.UI.App.Models.Query.CallStack;
@@ -11,9 +12,7 @@ public static class ArgumentRowBuilder
 {
     private const string UnknownType = "Unknown";
 
-    private const string OnEntry = "Entry";
-
-    private const string OnReturn = "Return";
+    private const string NotCaptured = "Not Captured";
 
     private const string DidNotReturn = "Did Not Return";
 
@@ -31,9 +30,9 @@ public static class ArgumentRowBuilder
 
         foreach (var slot in layout.Slots)
         {
-            if (slot.Location == ArgumentLocation.NotCaptured)
+            if (!TimeTravelArgumentCall.IsCaptured(slot))
             {
-                rows.Add(new ArgumentRow(slot.Name, slot.Type, slot.Source, "Not Captured"));
+                rows.Add(new ArgumentRow(slot.Name, slot.Type, slot.Source, NotCaptured));
 
                 continue;
             }
@@ -44,68 +43,63 @@ public static class ArgumentRowBuilder
                                      slot.Type,
                                      slot.Source,
                                      Text(slot.Type, value),
-                                     Searchable(slot.Type, value),
+                                     value,
                                      IteratorOf(value, iterators)));
-
-            if (!slot.IsPrimitivePointer || ArgumentValue.Pointee(slot.Type) is not { } pointee)
-            {
-                continue;
-            }
-
-            rows.Add(new ArgumentRow($"*{slot.Name}", pointee, OnEntry, PointeeText(call, slot, pointee, onReturn: false)));
-
-            rows.Add(new ArgumentRow($"*{slot.Name}",
-                                     pointee,
-                                     OnReturn,
-                                     call.Returned ? PointeeText(call, slot, pointee, onReturn: true) : DidNotReturn));
         }
 
         var returnType = layout.ReturnType ?? UnknownType;
 
-        if (returnType != "void")
+        if (returnType == "void")
         {
-            var returned = call.Returned && !ArgumentValue.IsFloating(returnType) ? call.ReturnValue : (ulong?)null;
-
-            rows.Add(new ArgumentRow("Return",
-                                     returnType,
-                                     ReturnSource(returnType),
-                                     call.Returned ? ReturnText(returnType, call) : DidNotReturn,
-                                     returned,
-                                     IteratorOf(returned, iterators)));
+            return rows;
         }
+
+        if (!TimeTravelArgumentCall.IsReturnCaptured(returnType))
+        {
+            rows.Add(new ArgumentRow("Return", returnType, ReturnSource(returnType), NotCaptured));
+
+            return rows;
+        }
+
+        var returned = call.Returned ? call.ReturnValue : (ulong?)null;
+
+        rows.Add(new ArgumentRow("Return",
+                                 returnType,
+                                 ReturnSource(returnType),
+                                 call.Returned ? ArgumentValue.Format(returnType, call.ReturnValue) : DidNotReturn,
+                                 returned,
+                                 IteratorOf(returned, iterators)));
 
         return rows;
     }
 
     public static QueryResultSet Table(ArgumentLayout layout, IReadOnlyList<TimeTravelArgumentCall> calls)
     {
-        var slots = layout.Slots.Where(s => s.Location != ArgumentLocation.NotCaptured).ToList();
+        var slots = layout.Slots.Where(TimeTravelArgumentCall.IsCaptured).ToList();
 
         var returnType = layout.ReturnType ?? UnknownType;
 
+        var hasReturn = returnType != "void" && TimeTravelArgumentCall.IsReturnCaptured(returnType);
+
         var columns = new List<ResultColumn>
         {
-            new(0, "#", typeof(long), false) { Width = IndexWidth, Alignment = ResultAlignment.Right },
+            new(0, "Call", typeof(long), false) { Width = IndexWidth, Alignment = ResultAlignment.Right },
             new(1, "Thread", typeof(uint), false) { Width = ThreadWidth, Alignment = ResultAlignment.Right }
         };
 
         foreach (var slot in slots)
         {
             columns.Add(Column(columns.Count, slot.Name, slot.Type, slot.Source));
-
-            if (slot.IsPrimitivePointer && ArgumentValue.Pointee(slot.Type) is { } pointee)
-            {
-                columns.Add(Column(columns.Count, $"*{slot.Name}", pointee, OnEntry));
-                columns.Add(Column(columns.Count, $"*{slot.Name}", pointee, OnReturn, ReturnTint));
-            }
         }
 
-        if (returnType != "void")
+        if (hasReturn)
         {
             columns.Add(Column(columns.Count, "Return", returnType, ReturnSource(returnType), ReturnTint));
         }
 
-        var source = new ArgumentCallSource(calls, columns.Count, (call, index) => Values(slots, returnType, call, index));
+        var source = new ArgumentCallSource(calls,
+                                            columns.Count,
+                                            (call, index) => Values(slots, hasReturn ? returnType : null, call, index));
 
         var rows = new ResultRow<long>[calls.Count];
 
@@ -117,30 +111,22 @@ public static class ArgumentRowBuilder
         return new QueryResultSet { Columns = columns, Rows = rows };
     }
 
-    private static object?[] Values(List<ArgumentSlot> slots, string returnType, TimeTravelArgumentCall call, int index)
+    private static object?[] Values(List<ArgumentSlot> slots, string? returnType, TimeTravelArgumentCall call, int index)
     {
         var values = new List<object?> { (long)index + 1, call.ThreadId };
 
         foreach (var slot in slots)
         {
             values.Add(Text(slot.Type, call.Value(slot)));
-
-            if (slot.IsPrimitivePointer && ArgumentValue.Pointee(slot.Type) is { } pointee)
-            {
-                values.Add(PointeeText(call, slot, pointee, onReturn: false));
-                values.Add(call.Returned ? PointeeText(call, slot, pointee, onReturn: true) : DidNotReturn);
-            }
         }
 
-        if (returnType != "void")
+        if (returnType is not null)
         {
-            values.Add(call.Returned ? ReturnText(returnType, call) : DidNotReturn);
+            values.Add(call.Returned ? ArgumentValue.Format(returnType, call.ReturnValue) : DidNotReturn);
         }
 
         return [.. values];
     }
-
-    private static ulong? Searchable(string type, ulong? value) => ArgumentValue.IsFloating(type) ? null : value;
 
     private static IteratorTarget? IteratorOf(ulong? value, IReadOnlyDictionary<ulong, IteratorTarget>? iterators)
     {
@@ -158,18 +144,5 @@ public static class ArgumentRowBuilder
     private static string Text(string type, ulong? value)
         => value is { } raw ? ArgumentValue.Format(type, raw) : "Unreadable";
 
-    private static string PointeeText(TimeTravelArgumentCall call, ArgumentSlot slot, string pointee, bool onReturn)
-    {
-        if (call.Value(slot) is null or 0)
-        {
-            return "Null Pointer";
-        }
-
-        return call.Pointee(slot, onReturn) is { } value ? ArgumentValue.Format(pointee, value) : "Unreadable";
-    }
-
     private static string ReturnSource(string type) => ArgumentValue.IsFloating(type) ? "XMM0" : "RAX";
-
-    private static string ReturnText(string type, TimeTravelArgumentCall call)
-        => ArgumentValue.Format(type, ArgumentValue.IsFloating(type) ? call.FloatingReturnValue : call.ReturnValue);
 }

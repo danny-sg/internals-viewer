@@ -1,7 +1,10 @@
 ﻿using System.Diagnostics;
 using InternalsViewer.Internals.Engine.Database;
+using InternalsViewer.Internals.Engine.Loading;
 using InternalsViewer.Query.CallStack;
 using InternalsViewer.Query.CallStack.TimeTravel;
+using InternalsViewer.Query.CallStack.TimeTravel.Memory;
+using InternalsViewer.Query.CallStack.TimeTravel.Iterators;
 using InternalsViewer.Query.Debugging.TimeTravel;
 using InternalsViewer.Query.Events.BatchMode;
 using InternalsViewer.Query.Events.Consolidation;
@@ -52,7 +55,7 @@ public sealed class QueryRunner(ILogger<QueryRunner> logger,
                                               DatabaseSource database,
                                               EventOptions eventOptions,
                                               string symbolsPath,
-                                              IProgress<string>? progress,
+                                              IProgress<ProgressDetail>? progress,
                                               CancellationToken cancellationToken)
     {
         if (string.IsNullOrEmpty(payload.SqlText))
@@ -75,6 +78,7 @@ public sealed class QueryRunner(ILogger<QueryRunner> logger,
         List<EngineEvent>? events;
         List<ExecutionPlan>? executionPlans;
         CallStackTree callStack;
+        HashSet<uint> threadIds;
         List<QueryResultSet> resultSets;
         List<LogRecord> logRecords;
 
@@ -180,13 +184,13 @@ public sealed class QueryRunner(ILogger<QueryRunner> logger,
 
             var eventsStart = Stopwatch.GetTimestamp();
 
-            (events, executionPlans, callStack) = await EventReader.GetEvents(filePath,
-                                                                              connectionString,
-                                                                              database,
-                                                                              eventOptions.IncludeSystemObjects,
-                                                                              progress,
-                                                                              cancellationToken,
-                                                                              endMarker);
+            (events, executionPlans, callStack, threadIds) = await EventReader.GetEvents(filePath,
+                                                                                         connectionString,
+                                                                                         database,
+                                                                                         eventOptions.IncludeSystemObjects,
+                                                                                         progress,
+                                                                                         cancellationToken,
+                                                                                         endMarker);
 
             progress?.Report($"{events.Count} event(s) retrieved in {Stopwatch.GetElapsedTime(eventsStart)}");
 
@@ -233,13 +237,7 @@ public sealed class QueryRunner(ILogger<QueryRunner> logger,
 
                 ReadAheadClassifier.Classify(events);
 
-                if (Logger.IsEnabled(LogLevel.Debug) && unknownSymbols.Length > 0)
-                {
-                    foreach (var symbol in unknownSymbols)
-                    {
-                        Logger.LogDebug($"Unknown symbol: {symbol}");
-                    }
-                }
+                LogUnknownSymbols(unknownSymbols);
             }
 
             AllocationPageClassifier.Classify(events);
@@ -330,27 +328,25 @@ public sealed class QueryRunner(ILogger<QueryRunner> logger,
             RowCount = rowCount,
             CropStartUs = cropStart,
             CropEndUs = cropEnd,
-            FullTrace = fullTrace is null ? null : new PendingFullTrace(fullTrace, events, symbolsPath)
+            FullTrace = fullTrace is null ? null : new PendingFullTrace(fullTrace, events, threadIds, symbolsPath)
         };
     }
 
     public async Task<FullTraceResult?> LoadFullTraceAsync(PendingFullTrace pending,
-                                                          IProgress<string>? progress,
+                                                          IProgress<ProgressDetail>? progress,
                                                           CancellationToken cancellationToken)
     {
         var events = pending.Events;
 
-        var threadIds = events.ExpandOwned()
-                              .Select(e => e.SystemThreadId)
-                              .OfType<uint>()
-                              .Where(t => t != 0)
-                              .ToHashSet();
+        var threadIds = pending.ThreadIds;
 
         progress?.Report("Opening Full Trace");
 
         var start = Stopwatch.GetTimestamp();
 
         TimeTravelCallTree calls;
+
+        ReplayFunctionSet functions;
 
         try
         {
@@ -366,7 +362,17 @@ public sealed class QueryRunner(ILogger<QueryRunner> logger,
 
             var iteratorMethods = await IteratorMethods.ResolveAsync(session.Modules, pending.SymbolsPath, progress, cancellationToken);
 
-            calls = await session.ReadCallsAsync(threadIds, iteratorMethods, logCalls: true, progress, cancellationToken);
+            functions = await ReplayFunctions.ResolveAsync(session.Modules, pending.SymbolsPath, progress, cancellationToken);
+
+            progress?.Report($"{functions.Excluded.Length:N0} Extended Events and tracing function(s) excluded from the replay, "
+                             + $"{functions.Memory.Length:N0} memory function(s) tracked");
+
+            calls = await session.ReadCallsAsync(threadIds,
+                                                 iteratorMethods,
+                                                 functions.Excluded,
+                                                 logCalls: true,
+                                                 progress,
+                                                 cancellationToken);
         }
         catch (Exception exception) when (exception is InvalidOperationException or DllNotFoundException)
         {
@@ -394,17 +400,37 @@ public sealed class QueryRunner(ILogger<QueryRunner> logger,
 
         progress?.Report("Processing callstack frames");
 
-        await CallstackProcessor.Process(callStack, pending.SymbolsPath, progress, cancellationToken);
+        var unknownSymbols = await CallstackProcessor.Process(callStack, pending.SymbolsPath, progress, cancellationToken);
+
+        LogUnknownSymbols(unknownSymbols);
 
         var collapsed = new Dictionary<CallStackNode, CallStackNode>(ReferenceEqualityComparer.Instance);
 
         callStack = callStack.CollapseToFunctions(collapsed: (original, node) => collapsed[original] = node);
 
-        calls.CallLog?.MapNodes([.. replayed.Select(node => collapsed.GetValueOrDefault(node))]);
+        CallStackNode?[] mapped = [.. replayed.Select(node => collapsed.GetValueOrDefault(node))];
+
+        calls.CallLog?.MapNodes(mapped);
+
+        calls.Timeline?.MapNodes(mapped);
 
         callStack.RemoveCallsUnder(node => node.IsExtendedEvents || node.IsTracing);
 
         progress?.Report($"{callStack.Nodes().Sum(n => n.Calls):N0} call(s) after removing Extended Events and tracing");
+
+        var timeline = calls.Timeline?.WithoutCallsUnder(node => node.IsExtendedEvents || node.IsTracing);
+
+        if (timeline is not null)
+        {
+            progress?.Report($"{timeline.SpanCount:N0} call span(s) on {timeline.Threads.Count:N0} thread(s) in the flame chart");
+        }
+
+        if (calls.CallLog is { } callLog)
+        {
+            var (allocated, allocations) = TimeTravelMemory.Apply(callLog, functions.Memory, timeline);
+
+            progress?.Report($"{allocations:N0} allocation(s) of {allocated / (1024.0 * 1024.0):N1} MB attributed to call frames");
+        }
 
         var matched = IteratorInstanceMatcher.Match(callStack, events);
 
@@ -417,13 +443,13 @@ public sealed class QueryRunner(ILogger<QueryRunner> logger,
             callStack.ComputeActivity(events.Min(e => e.TimeUs), events.Max(e => e.TimeUs), ActivityBuckets);
         }
 
-        return new FullTraceResult(callStack, calls.CallLog);
+        return new FullTraceResult(callStack, calls.CallLog, timeline);
     }
 
     private async Task MapColumnstorePages(DatabaseSource database,
                                            List<ExecutionPlan>? executionPlans,
                                            List<EngineEvent> events,
-                                           IProgress<string>? progress,
+                                           IProgress<ProgressDetail>? progress,
                                            CancellationToken cancellationToken)
     {
         if (!ResolveColumnstorePages
@@ -483,7 +509,7 @@ public sealed class QueryRunner(ILogger<QueryRunner> logger,
     private static bool NameMatches(string? left, string right)
         => string.Equals(left?.Trim('[', ']'), right.Trim('[', ']'), StringComparison.OrdinalIgnoreCase);
 
-    private void DeleteTraceFiles(string filePath, IProgress<string>? progress)
+    private void DeleteTraceFiles(string filePath, IProgress<ProgressDetail>? progress)
     {
         long size = 0;
 
@@ -524,7 +550,20 @@ public sealed class QueryRunner(ILogger<QueryRunner> logger,
     /// </remarks>
     private static HashSet<EngineEvent> KeepSet(List<EngineEvent> events) => events.ExpandOwned();
 
-    private void DeleteTimeTravelTrace(TimeTravelTrace trace, IProgress<string>? progress)
+    private void LogUnknownSymbols(string[] unknownSymbols)
+    {
+        if (!Logger.IsEnabled(LogLevel.Debug))
+        {
+            return;
+        }
+
+        foreach (var symbol in unknownSymbols.Order(StringComparer.Ordinal))
+        {
+            Logger.LogDebug($"Unknown symbol: {symbol}");
+        }
+    }
+
+    private void DeleteTimeTravelTrace(TimeTravelTrace trace, IProgress<ProgressDetail>? progress)
     {
         try
         {
@@ -550,7 +589,7 @@ public sealed class QueryRunner(ILogger<QueryRunner> logger,
                                  QueryOptions queryOptions,
                                  EventOptions eventOptions,
                                  ITimeTravelRecording? recording,
-                                 IProgress<string>? progress,
+                                 IProgress<ProgressDetail>? progress,
                                  CancellationToken cancellationToken)
     {
         long rowCount = 0;
@@ -781,7 +820,7 @@ public sealed class QueryRunner(ILogger<QueryRunner> logger,
     }
 
     private async Task<ITimeTravelRecording?> PrepareTimeTravelRecording(string connectionString,
-                                                                        IProgress<string>? progress,
+                                                                        IProgress<ProgressDetail>? progress,
                                                                         CancellationToken cancellationToken)
     {
         if (TimeTravelRecorder is null)
@@ -800,7 +839,7 @@ public sealed class QueryRunner(ILogger<QueryRunner> logger,
         RunQueryDirect(string commandSql,
                        string connectionString,
                        QueryOptions queryOptions,
-                       IProgress<string>? progress,
+                       IProgress<ProgressDetail>? progress,
                        CancellationToken cancellationToken)
     {
         long rowCount = 0;

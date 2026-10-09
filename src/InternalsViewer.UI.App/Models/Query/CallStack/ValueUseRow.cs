@@ -1,4 +1,4 @@
-using InternalsViewer.Query.CallStack.TimeTravel;
+using InternalsViewer.Query.CallStack.TimeTravel.CallLog;
 
 namespace InternalsViewer.UI.App.Models.Query.CallStack;
 
