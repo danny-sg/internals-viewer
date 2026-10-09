@@ -25,7 +25,9 @@ public sealed partial class FlameChartControl
 
     private const float CompactOperatorsShare = 0.4f;
 
-    private const float MinimumOperatorsHeight = 12f;
+    private const float MinimumOperatorsHeight = 20f;
+
+    private const float OperatorsPadding = 4f;
 
     private const float MinimumLanesHeight = 60f;
 
@@ -37,7 +39,7 @@ public sealed partial class FlameChartControl
 
     private const float OperatorGradientLift = 0.04f;
 
-    private const float OperatorIdleShade = 0.45f;
+    private const float OperatorIdleShade = 0.7f;
 
     private const float OperatorMaximumFont = 12f;
 
@@ -58,6 +60,8 @@ public sealed partial class FlameChartControl
     private static readonly SKColor OperatorSelectedColour = new(255, 255, 255, 230);
 
     private static readonly SKColor OperatorHoverColour = new(255, 255, 255, 150);
+
+    private static readonly SKColor OperatorDimColour = new(0, 0, 0, 160);
 
     public static readonly DependencyProperty ShowOperatorsProperty =
         DependencyProperty.Register(nameof(ShowOperators),
@@ -124,13 +128,16 @@ public sealed partial class FlameChartControl
 
             var room = OperatorsRoom;
 
-            var wanted = _operatorsHeight ?? Math.Min(_operatorRows.Length * CompactOperatorRowHeight, room * CompactOperatorsShare);
+            var wanted = _operatorsHeight
+                         ?? Math.Min(_operatorRows.Length * CompactOperatorRowHeight + OperatorsPadding * 2, room * CompactOperatorsShare);
 
             return Math.Clamp(wanted, MinimumOperatorsHeight, room);
         }
     }
 
-    private float OperatorRowHeight => OperatorsHeight / Math.Max(_operatorRows.Length, 1);
+    private float OperatorRowHeight => Math.Max(OperatorsHeight - OperatorsPadding * 2, 1) / Math.Max(_operatorRows.Length, 1);
+
+    private float OperatorRowsTop => OperatorsTop + OperatorsPadding;
 
     private static OperatorRow[] OperatorRowsOf(TimeTravelTimeline? timeline)
     {
@@ -193,7 +200,9 @@ public sealed partial class FlameChartControl
             {
                 if (TrackRect(row, track, width, scale) is { } rect)
                 {
-                    DrawOperatorBar(canvas, _operatorRows[row], _operatorRows[row].Lifetimes[track], rect, scale);
+                    var lifetime = _operatorRows[row].Lifetimes[track];
+
+                    DrawOperatorBar(canvas, _operatorRows[row], lifetime, rect, scale, !IsRaised(lifetime));
                 }
             }
         }
@@ -203,7 +212,12 @@ public sealed partial class FlameChartControl
         DrawSplitter(canvas, top + height, width);
     }
 
-    private void DrawOperatorBar(SKCanvas canvas, OperatorRow row, TimeTravelOperatorLifetime lifetime, SKRect rect, double scale)
+    private void DrawOperatorBar(SKCanvas canvas,
+                                 OperatorRow row,
+                                 TimeTravelOperatorLifetime lifetime,
+                                 SKRect rect,
+                                 double scale,
+                                 bool labelled)
     {
         var colour = OperatorColourOf(row.Operator, lifetime);
 
@@ -243,8 +257,14 @@ public sealed partial class FlameChartControl
 
         canvas.Restore();
 
-        DrawOperatorLabel(canvas, row, rect);
+        if (labelled)
+        {
+            DrawOperatorLabel(canvas, row, rect);
+        }
     }
+
+    private bool IsRaised(TimeTravelOperatorLifetime lifetime)
+        => ShowMemory && MemoryMode == FlameChartMemoryMode.InUse && _inUseMaximum > 0 && !lifetime.InUse.IsEmpty;
 
     private void DrawActivity(SKCanvas canvas, IReadOnlyList<TimeTravelTimelineSpan> calls, float top, float bottom, double scale)
     {
@@ -394,7 +414,7 @@ public sealed partial class FlameChartControl
 
         var padding = Math.Min(OperatorBarPadding, trackHeight * OperatorBarShare);
 
-        return (OperatorsTop + row * rowHeight + track * trackHeight + padding, Math.Max(trackHeight - padding * 2, 1));
+        return (OperatorRowsTop + row * rowHeight + track * trackHeight + padding, Math.Max(trackHeight - padding * 2, 1));
     }
 
     private SKColor OperatorColourOf(ExecutionOperatorEvent operatorEvent, TimeTravelOperatorLifetime lifetime)
@@ -413,6 +433,8 @@ public sealed partial class FlameChartControl
 
         canvas.ClipRect(new SKRect(0, OperatorsTop, width, OperatorsTop + OperatorsHeight));
 
+        DimUnselectedOperators(canvas, width);
+
         if (_hoverOperator is { } hover && hover.Row < _operatorRows.Length)
         {
             OutlineTrack(canvas, hover.Row, hover.Track, width, scale, OperatorHoverColour, 1f);
@@ -430,6 +452,38 @@ public sealed partial class FlameChartControl
                 OutlineTrack(canvas, row, track, width, scale, OperatorSelectedColour, OperatorSelectedStroke);
             }
         }
+
+        canvas.Restore();
+    }
+
+    private void DimUnselectedOperators(SKCanvas canvas, int width)
+    {
+        if (_selectedOperator is null)
+        {
+            return;
+        }
+
+        var rowHeight = OperatorRowHeight;
+
+        for (var row = 0; row < _operatorRows.Length; row++)
+        {
+            if (ReferenceEquals(_operatorRows[row].Operator, _selectedOperator))
+            {
+                var top = OperatorRowsTop + row * rowHeight;
+
+                _pathBuilder.AddRect(new SKRect(0, top, width, top + rowHeight));
+            }
+        }
+
+        using var selected = _pathBuilder.Detach();
+
+        canvas.Save();
+
+        canvas.ClipPath(selected, SKClipOperation.Difference);
+
+        _paints.Fill.Color = OperatorDimColour;
+
+        canvas.DrawRect(0, OperatorsTop, width, OperatorsHeight, _paints.Fill);
 
         canvas.Restore();
     }
@@ -635,7 +689,7 @@ public sealed partial class FlameChartControl
             }
         }
 
-        FinishSurface(first, _paints.Font.MeasureText(operatorRow.Name) + LabelPadding * 2);
+        FinishSurface(first, MinimumOperatorLabelWidth + LabelPadding * 4);
     }
 
     private string TextOf(PopoutBlock block)
@@ -652,7 +706,12 @@ public sealed partial class FlameChartControl
 
         var rowHeight = OperatorRowHeight;
 
-        var y = (float)position.Y - OperatorsTop;
+        var y = (float)position.Y - OperatorRowsTop;
+
+        if (y < 0 || y >= rowHeight * _operatorRows.Length)
+        {
+            return null;
+        }
 
         var row = Math.Min((int)(y / rowHeight), _operatorRows.Length - 1);
 

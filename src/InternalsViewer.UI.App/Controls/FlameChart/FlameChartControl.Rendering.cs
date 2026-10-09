@@ -689,6 +689,13 @@ public sealed partial class FlameChartControl
     {
         var front = FrontOf(block);
 
+        if (block.Source.IsOperator)
+        {
+            DrawOperatorLabel(canvas, _operatorRows[block.Source.OperatorRow], front);
+
+            return;
+        }
+
         if (front.Width < MinimumLabelWidth || _rowHeight < MinimumLabelRowHeight)
         {
             return;
@@ -1197,7 +1204,7 @@ public sealed partial class FlameChartControl
 
     private void DrawCentreLabel(SKCanvas canvas, int first, int end, float left, float right)
     {
-        if (right - left < MinimumLabelWidth || _rowHeight < MinimumLabelRowHeight)
+        if (right - left < MinimumLabelWidth)
         {
             return;
         }
@@ -1219,6 +1226,20 @@ public sealed partial class FlameChartControl
         var dx = _directionX * run.Extrusion;
 
         var dy = _directionY * run.Extrusion;
+
+        if (run.Source.IsOperator)
+        {
+            DrawOperatorLabel(canvas,
+                              _operatorRows[run.Source.OperatorRow],
+                              new SKRect(left + dx, run.Top + dy, right + dx, run.Top + dy + run.Height));
+
+            return;
+        }
+
+        if (_rowHeight < MinimumLabelRowHeight)
+        {
+            return;
+        }
 
         var text = TextOf(run);
 
