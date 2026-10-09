@@ -77,7 +77,17 @@ internal sealed class FlameChartPaints : IDisposable
 
     public SKPaint PlayheadText { get; } = new() { IsAntialias = true, Color = SKColors.White };
 
+    public SKPaint Outline { get; } = new() { Style = SKPaintStyle.Stroke, StrokeWidth = 1f, IsAntialias = true };
+
+    public SKColor Dim { get; private set; } = new(0, 0, 0, 150);
+
     public SKFont Font { get; } = new(SKTypeface.Default, 10f);
+
+    public SKFont OperatorFont { get; } = new(SKTypeface.Default, 12f);
+
+    public SKFont OperatorBoldFont { get; } = new(BoldTypeface, 12f);
+
+    private static SKTypeface BoldTypeface { get; } = SKTypeface.FromFamilyName(SKTypeface.Default.FamilyName, SKFontStyle.Bold);
 
     public void Apply(bool isDark)
     {
@@ -95,6 +105,7 @@ internal sealed class FlameChartPaints : IDisposable
         InUseText.Color = Guide.Color;
         GrantFill.Color = Guide.Color.WithAlpha(isDark ? (byte)40 : (byte)28);
         GrantEdge.Color = Guide.Color.WithAlpha(140);
+        Dim = isDark ? new SKColor(0, 0, 0, 150) : new SKColor(255, 255, 255, 170);
     }
 
     public void Dispose()
@@ -119,6 +130,9 @@ internal sealed class FlameChartPaints : IDisposable
         Playhead.Dispose();
         PlayheadFill.Dispose();
         PlayheadText.Dispose();
+        Outline.Dispose();
         Font.Dispose();
+        OperatorFont.Dispose();
+        OperatorBoldFont.Dispose();
     }
 }

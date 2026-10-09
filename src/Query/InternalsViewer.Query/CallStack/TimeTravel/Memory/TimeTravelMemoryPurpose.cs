@@ -8,4 +8,6 @@ public sealed record TimeTravelMemoryPurpose(string Name,
                                              IReadOnlyList<TimeTravelMemoryUse> Uses)
 {
     public ulong Held => Allocated > Freed ? Allocated - Freed : 0;
+
+    public IReadOnlyList<TimeTravelMemoryPurpose> Kinds { get; init; } = [];
 }

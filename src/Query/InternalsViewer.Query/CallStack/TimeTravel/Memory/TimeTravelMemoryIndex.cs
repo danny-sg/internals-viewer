@@ -1,4 +1,6 @@
-﻿namespace InternalsViewer.Query.CallStack.TimeTravel.Memory;
+﻿using InternalsViewer.Query.CallStack.TimeTravel.Timeline;
+
+namespace InternalsViewer.Query.CallStack.TimeTravel.Memory;
 
 internal sealed class TimeTravelMemoryIndex
 {
@@ -30,7 +32,7 @@ internal sealed class TimeTravelMemoryIndex
                          .OrderBy(e => e.Start)
                          .ThenBy(e => e.IsFree ? 0 : 1);
 
-        var freedAt = Enumerable.Repeat(double.PositiveInfinity, kept.Count).ToArray();
+        var freedAt = kept.Select(a => a.Pointer == 0 ? a.Start : double.PositiveInfinity).ToArray();
 
         var matched = new List<(uint Thread, double Start, ulong Bytes)>();
 
@@ -103,6 +105,14 @@ internal sealed class TimeTravelMemoryIndex
 
     public IEnumerable<(double Position, ulong Bytes)> AllocationsOf(uint thread)
         => Threads.TryGetValue(thread, out var memory) ? memory.Allocations() : [];
+
+    public TimeTravelInUseCurve InUseWithin(uint thread, double start, double end)
+        => Threads.TryGetValue(thread, out var memory) ? memory.InUseWithin(start, end) : TimeTravelInUseCurve.Empty;
+
+    public IReadOnlyList<TimeTravelInUseCurve> InUseOwnedBy(uint thread, IReadOnlyList<IReadOnlyList<TimeTravelTimelineSpan>> owners)
+        => Threads.TryGetValue(thread, out var memory)
+            ? memory.InUseOwnedBy(owners)
+            : [.. owners.Select(_ => TimeTravelInUseCurve.Empty)];
 
     public ulong InUseAt(double position)
     {
@@ -218,6 +228,117 @@ internal sealed class TimeTravelMemoryIndex
         }
 
         public IEnumerable<(double Position, ulong Bytes)> Allocations() => AllocationStarts.Zip(AllocationBytes);
+
+        public TimeTravelInUseCurve InUseWithin(double start, double end)
+        {
+            var first = FirstFrom(AllocationStarts, start, inclusive: false);
+
+            var last = FirstFrom(AllocationStarts, end, inclusive: false);
+
+            if (last <= first)
+            {
+                return TimeTravelInUseCurve.Empty;
+            }
+
+            var changes = new List<(double Position, long Bytes)>((last - first) * 2);
+
+            for (var index = first; index < last; index++)
+            {
+                changes.Add((AllocationStarts[index], (long)AllocationBytes[index]));
+
+                if (FreedAt[index] < end)
+                {
+                    changes.Add((FreedAt[index], -(long)AllocationBytes[index]));
+                }
+            }
+
+            return CurveOf(changes);
+        }
+
+        public TimeTravelInUseCurve[] InUseOwnedBy(IReadOnlyList<IReadOnlyList<TimeTravelTimelineSpan>> owners)
+        {
+            var ownerOf = new int[AllocationStarts.Length];
+
+            Array.Fill(ownerOf, -1);
+
+            var ownerStarts = new double[AllocationStarts.Length];
+
+            for (var owner = 0; owner < owners.Count; owner++)
+            {
+                foreach (var call in owners[owner])
+                {
+                    for (var index = FirstFrom(AllocationStarts, call.Start, inclusive: false);
+                         index < AllocationStarts.Length && AllocationStarts[index] < call.End;
+                         index++)
+                    {
+                        if (ownerOf[index] < 0 || call.Start > ownerStarts[index])
+                        {
+                            ownerOf[index] = owner;
+
+                            ownerStarts[index] = call.Start;
+                        }
+                    }
+                }
+            }
+
+            var changes = new List<(double Position, long Bytes)>[owners.Count];
+
+            for (var owner = 0; owner < owners.Count; owner++)
+            {
+                changes[owner] = [];
+            }
+
+            for (var index = 0; index < ownerOf.Length; index++)
+            {
+                if (ownerOf[index] < 0)
+                {
+                    continue;
+                }
+
+                changes[ownerOf[index]].Add((AllocationStarts[index], (long)AllocationBytes[index]));
+
+                if (!double.IsPositiveInfinity(FreedAt[index]))
+                {
+                    changes[ownerOf[index]].Add((FreedAt[index], -(long)AllocationBytes[index]));
+                }
+            }
+
+            return [.. changes.Select(CurveOf)];
+        }
+
+        private static TimeTravelInUseCurve CurveOf(List<(double Position, long Bytes)> changes)
+        {
+            if (changes.Count == 0)
+            {
+                return TimeTravelInUseCurve.Empty;
+            }
+
+            changes.Sort();
+
+            var positions = new List<double>(changes.Count);
+
+            var values = new List<ulong>(changes.Count);
+
+            long inUse = 0;
+
+            foreach (var (position, bytes) in changes)
+            {
+                inUse += bytes;
+
+                if (positions.Count > 0 && positions[^1] == position)
+                {
+                    values[^1] = (ulong)Math.Max(0, inUse);
+                }
+                else
+                {
+                    positions.Add(position);
+
+                    values.Add((ulong)Math.Max(0, inUse));
+                }
+            }
+
+            return new TimeTravelInUseCurve([.. positions], [.. values]);
+        }
 
         public ulong RetainedBy(double start, double end)
         {

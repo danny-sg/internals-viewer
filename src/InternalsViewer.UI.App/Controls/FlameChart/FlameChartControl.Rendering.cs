@@ -14,7 +14,7 @@ public sealed partial class FlameChartControl
 
     private const float PlayheadStripHeight = 16f;
 
-    private const float ContentTop = RulerHeight + PlayheadStripHeight;
+    private const float MemoryBarHeight = 30f;
 
     private const float PlayheadHalfWidth = 9f;
 
@@ -76,15 +76,13 @@ public sealed partial class FlameChartControl
 
     private const float SideShade = 0.68f;
 
-    private const byte GhostAlpha = 216;
-
     private const byte LandscapeAlpha = 200;
 
     private const float SpikeMinimumWidth = 3f;
 
-    private const float GhostDesaturation = 0.5f;
+    private const float SurfaceBucketWidth = 3f;
 
-    private const float GhostWash = 0.65f;
+    private const float SurfaceEase = 6f;
 
     private float _rowHeight = MaximumRowHeight;
 
@@ -102,6 +100,8 @@ public sealed partial class FlameChartControl
 
     private readonly Dictionary<FlameHit, int> _spikeIndex = [];
 
+    private readonly List<SKPoint> _surfacePoints = [];
+
     private float _popoutX;
 
     private float _extrusionAngle = DefaultExtrusionAngle;
@@ -117,6 +117,12 @@ public sealed partial class FlameChartControl
     private float BarHeight => _rowHeight >= GappedRowHeight ? _rowHeight - 1 : _rowHeight;
 
     private string AxisUnit => _axis == TimeTravelTimelineAxis.Position ? "Trace Position" : "Instructions Per Thread";
+
+    private double EdgeTolerance => (_viewEnd - _viewStart) / Math.Max(_overlay.ActualWidth, 1);
+
+    private bool ShowsStart => _viewStart <= FullStart + EdgeTolerance;
+
+    private bool ShowsEnd => _viewEnd >= FullEnd - EdgeTolerance;
 
     private double PixelsPerUnit(int width) => width / Math.Max(_viewEnd - _viewStart, double.Epsilon);
 
@@ -177,6 +183,8 @@ public sealed partial class FlameChartControl
         {
             var scale = PixelsPerUnit(width);
 
+            DrawOperators(canvas, width, scale);
+
             canvas.Save();
 
             var lanesBottom = height - (int)BandHeight;
@@ -192,7 +200,13 @@ public sealed partial class FlameChartControl
                 DrawMemoryBand(canvas, visible, width, height, scale);
             }
 
+            canvas.Save();
+
+            canvas.Translate(0, RulerTop);
+
             DrawRuler(canvas, width, scale);
+
+            canvas.Restore();
         }
 
         return recorder.EndRecording();
@@ -207,6 +221,8 @@ public sealed partial class FlameChartControl
         _spikes.Clear();
 
         _spikeIndex.Clear();
+
+        _hoverBlock = null;
 
         if (_visible is { } visible)
         {
@@ -242,9 +258,11 @@ public sealed partial class FlameChartControl
 
             DrawLaneHeader(canvas, thread, laneTop, width, timeline.Threads.Count > 1);
 
+            var rowsTop = laneTop + LaneHeaderHeight;
+
             for (var depth = 0; depth < depthCount && depth < thread.Rows.Count; depth++)
             {
-                var top = laneTop + LaneHeaderHeight + depth * _rowHeight;
+                var top = rowsTop + depth * _rowHeight;
 
                 if (top + _rowHeight < ContentTop)
                 {
@@ -256,7 +274,7 @@ public sealed partial class FlameChartControl
                     break;
                 }
 
-                DrawRow(canvas, thread.Rows[depth], top, scale, width, ShowMemory ? _raisedRows.GetValueOrDefault((lane, depth)) : null);
+                DrawRow(canvas, thread.Rows[depth], top, scale, width, RaisedOf(thread, lane, depth));
             }
         }
     }
@@ -308,7 +326,29 @@ public sealed partial class FlameChartControl
         canvas.DrawPath(path, _paints.Label);
     }
 
-    private void DrawRow(SKCanvas canvas, TimeTravelTimelineRow row, float top, double scale, int width, RaisedRow? raised)
+    private Func<int, bool>? RaisedOf(TimeTravelTimelineThread thread, int lane, int depth)
+    {
+        if (!ShowMemory || _visible is not { } timeline)
+        {
+            return null;
+        }
+
+        if (MemoryMode == FlameChartMemoryMode.InUse)
+        {
+            var row = thread.Rows[depth];
+
+            return index =>
+            {
+                var positions = row.Span(TimeTravelTimelineAxis.Position, index);
+
+                return timeline.AllocatedDuring(thread.ThreadId, positions.Start, positions.End).Count > 0;
+            };
+        }
+
+        return _raisedRows.TryGetValue((lane, depth), out var raised) ? index => Array.BinarySearch(raised.Indexes, index) >= 0 : null;
+    }
+
+    private void DrawRow(SKCanvas canvas, TimeTravelTimelineRow row, float top, double scale, int width, Func<int, bool>? raised)
     {
         var starts = row.Starts(_axis);
 
@@ -334,7 +374,7 @@ public sealed partial class FlameChartControl
 
                 runStart = -1f;
 
-                var labelled = raised is null || Array.BinarySearch(raised.Indexes, index) < 0;
+                var labelled = raised is null || !raised(index);
 
                 DrawSpan(canvas, row.NodeAt(index), left, right, top, width, labelled);
 
@@ -415,9 +455,9 @@ public sealed partial class FlameChartControl
 
         var step = TickStep(TickSpacing / scale);
 
-        var first = Math.Ceiling(_viewStart / step) * step;
+        var first = Math.Ceiling(Math.Max(_viewStart, FullStart) / step) * step;
 
-        for (var value = first; value <= _viewEnd; value += step)
+        for (var value = first; value <= Math.Min(_viewEnd, FullEnd); value += step)
         {
             var x = (float)((value - _viewStart) * scale);
 
@@ -446,13 +486,17 @@ public sealed partial class FlameChartControl
 
         canvas.ClipRect(new SKRect(0, ContentTop, width, height - BandHeight));
 
+        DrawSelectedCalls(canvas, width, height);
+
         DrawHighlight(canvas, hover, width, _paints.Hover);
 
         DrawHighlight(canvas, selected, width, _paints.Selection);
 
         canvas.Restore();
 
-        if (ShowMemory)
+        DrawOperatorOverlay(canvas, width);
+
+        if (ShowsSpikes)
         {
             canvas.Save();
 
@@ -506,6 +550,13 @@ public sealed partial class FlameChartControl
 
         DrawBandMarker(canvas, timeline, x, width, height, scale);
 
+        if (ShowMemory)
+        {
+            DrawPlayheadHandle(canvas, x, value, width);
+
+            return;
+        }
+
         canvas.Save();
 
         canvas.ClipRect(new SKRect(0, 0, width, height - BandHeight));
@@ -545,9 +596,7 @@ public sealed partial class FlameChartControl
 
                 var positions = row.Span(TimeTravelTimelineAxis.Position, index);
 
-                var end = ShowMemory ? Math.BitIncrement(PositionAt(row, index, value)) : positions.End;
-
-                var (bytes, _) = timeline.AllocatedDuring(thread.ThreadId, positions.Start, end);
+                var (bytes, _) = timeline.AllocatedDuring(thread.ThreadId, positions.Start, positions.End);
 
                 var spanLeft = (float)((span.Start - _viewStart) * scale);
 
@@ -576,8 +625,9 @@ public sealed partial class FlameChartControl
                                                   inherited,
                                                   0,
                                                   bytes,
-                                                  ShowMemory && inheriting,
-                                                  new FlameHit(lane, depth, index)));
+                                                  false,
+                                                  new FlameHit(lane, depth, index),
+                                                  BarHeight));
             }
         }
 
@@ -599,9 +649,16 @@ public sealed partial class FlameChartControl
 
         _directionY = MathF.Sin(_extrusionAngle);
 
-        CollectSpikes(timeline, bottom, scale);
+        if (MemoryMode == FlameChartMemoryMode.InUse)
+        {
+            CollectSurfaces(timeline, width, bottom, scale);
+        }
+        else
+        {
+            CollectSpikes(timeline, bottom, scale);
+        }
 
-        var length = Math.Min(_extrusionLength, MaximumLength(_spikes, _directionX, _directionY, width, bottom, horizontal: false));
+        var length = Math.Min(_extrusionLength, MaximumLength(_spikes, _directionX, _directionY, width, bottom, popout: false));
 
         for (var index = 0; index < _spikes.Count; index++)
         {
@@ -610,11 +667,21 @@ public sealed partial class FlameChartControl
             _spikeIndex[_spikes[index].Source] = index;
         }
 
+        if (MemoryMode == FlameChartMemoryMode.InUse)
+        {
+            DrawSurfaces(canvas);
+
+            return;
+        }
+
         foreach (var spike in _spikes)
         {
             DrawBlock(canvas, spike, LandscapeAlpha, named: false);
 
-            DrawFaceLabel(canvas, spike);
+            if (spike.Named)
+            {
+                DrawFaceLabel(canvas, spike);
+            }
         }
     }
 
@@ -633,9 +700,9 @@ public sealed partial class FlameChartControl
 
         canvas.ClipRect(front);
 
-        canvas.DrawText(LabelOf(block.Node),
+        canvas.DrawText(TextOf(block),
                         Math.Max(front.Left, 0) + LabelPadding,
-                        Baseline(front.Top, BarHeight),
+                        Baseline(front.Top, block.Height),
                         SKTextAlign.Left,
                         _paints.Font,
                         _paints.Text);
@@ -661,12 +728,7 @@ public sealed partial class FlameChartControl
 
     private void DrawHover(SKCanvas canvas)
     {
-        if (_hover is not { } hover)
-        {
-            return;
-        }
-
-        var block = _hoverOnPopout ? PopoutOf(hover) : ShowMemory ? SpikeOf(hover) : null;
+        var block = _hoverOnPopout && _hover is { } hover ? PopoutOf(hover) : ShowMemory ? _hoverBlock : null;
 
         if (block is not { } hovered)
         {
@@ -676,6 +738,10 @@ public sealed partial class FlameChartControl
         if (_hoverOnPopout)
         {
             DrawWireframe(canvas, hovered, _paints.Hover);
+        }
+        else if (MemoryMode == FlameChartMemoryMode.InUse)
+        {
+            canvas.DrawRect(FrontOf(hovered), _paints.Hover);
         }
 
         if (ShowMemory && hovered.Label > 0)
@@ -699,7 +765,7 @@ public sealed partial class FlameChartControl
 
     private void DrawHighlight(SKCanvas canvas, FlameHit? hit, int width, SKPaint paint)
     {
-        if (hit is not { } highlighted || (ShowMemory && SpikeOf(highlighted) is not null))
+        if (hit is not { } highlighted || (ShowsSpikes && SpikeOf(highlighted) is not null))
         {
             return;
         }
@@ -722,9 +788,9 @@ public sealed partial class FlameChartControl
     {
         var front = FrontOf(block);
 
-        var bottom = block.Top + BarHeight;
+        var bottom = block.Top + block.Height;
 
-        canvas.DrawRect(block.Left, block.Top, block.Right - block.Left, BarHeight, paint);
+        canvas.DrawRect(block.Left, block.Top, block.Right - block.Left, block.Height, paint);
 
         canvas.DrawRect(front, paint);
 
@@ -799,7 +865,15 @@ public sealed partial class FlameChartControl
 
                     var right = Math.Max((float)((span.End - _viewStart) * scale), left + SpikeMinimumWidth);
 
-                    var spike = Spike(new FlameHit(lane, depth, index), row.NodeAt(index), left, right, top, raised.Bytes[item]);
+                    var spike = Raised(new FlameHit(lane, depth, index),
+                                       row.NodeAt(index),
+                                       left,
+                                       right,
+                                       top,
+                                       BarHeight,
+                                       raised.Bytes[item],
+                                       _selfMaximum,
+                                       true);
 
                     var last = _spikes.Count - 1;
 
@@ -807,12 +881,15 @@ public sealed partial class FlameChartControl
                     {
                         var dominant = spike.Label > _spikes[last].Label ? spike : _spikes[last];
 
-                        _spikes[last] = Spike(dominant.Source,
-                                              dominant.Node,
-                                              _spikes[last].Left,
-                                              Math.Max(_spikes[last].Right, right),
-                                              top,
-                                              _spikes[last].Label + spike.Label);
+                        _spikes[last] = Raised(dominant.Source,
+                                               dominant.Node,
+                                               _spikes[last].Left,
+                                               Math.Max(_spikes[last].Right, right),
+                                               top,
+                                               BarHeight,
+                                               _spikes[last].Label + spike.Label,
+                                               _selfMaximum,
+                                               true);
                     }
                     else
                     {
@@ -828,9 +905,380 @@ public sealed partial class FlameChartControl
         }
     }
 
-    private PopoutBlock Spike(FlameHit source, int node, float left, float right, float top, ulong bytes)
+    private void CollectSurfaces(TimeTravelTimeline timeline, int width, float bottom, double scale)
     {
-        var ratio = (float)Math.Min(Math.Log(1d + bytes) / Math.Log(1d + _selfMaximum), 1d);
+        _spikes.Clear();
+
+        if (_inUseMaximum == 0)
+        {
+            return;
+        }
+
+        var rightFirst = _directionX >= 0;
+
+        var reach = _extrusionLength * Math.Abs(_directionX);
+
+        var rise = _extrusionLength * Math.Max(0, -_directionY);
+
+        var firstPixel = rightFirst ? -reach : 0;
+
+        var lastPixel = rightFirst ? width : width + reach;
+
+        CollectOperatorSurfaces(firstPixel, lastPixel, scale, rightFirst);
+
+        for (var lane = 0; lane < timeline.Threads.Count && lane < _laneTops.Length; lane++)
+        {
+            var thread = timeline.Threads[lane];
+
+            var rowsTop = ContentTop + _laneTops[lane] - (float)_scrollY + LaneHeaderHeight;
+
+            for (var depth = 0; depth < DepthOf(thread) && depth < thread.Rows.Count; depth++)
+            {
+                var top = rowsTop + depth * _rowHeight;
+
+                if (top - rise > bottom)
+                {
+                    return;
+                }
+
+                if (top + _rowHeight < ContentTop)
+                {
+                    continue;
+                }
+
+                var row = thread.Rows[depth];
+
+                var rowStart = _spikes.Count;
+
+                var index = row.FirstEndingAfter(_axis, _viewStart + firstPixel / scale);
+
+                while (index < row.Count && row.Starts(_axis)[index] <= _viewStart + lastPixel / scale)
+                {
+                    var span = row.Span(_axis, index);
+
+                    var left = (float)((span.Start - _viewStart) * scale);
+
+                    var right = (float)((span.End - _viewStart) * scale);
+
+                    if (right - left < SurfaceBucketWidth)
+                    {
+                        index = row.FirstEndingAfter(_axis, _viewStart + (MathF.Floor(right) + 1) / scale, index + 1);
+
+                        continue;
+                    }
+
+                    AddSurface(timeline,
+                               thread.ThreadId,
+                               row,
+                               new FlameHit(lane, depth, index),
+                               top,
+                               Math.Max(left, firstPixel),
+                               Math.Min(right, lastPixel),
+                               scale);
+
+                    index++;
+                }
+
+                if (rightFirst)
+                {
+                    _spikes.Reverse(rowStart, _spikes.Count - rowStart);
+                }
+            }
+        }
+    }
+
+    private void AddSurface(TimeTravelTimeline timeline,
+                            uint threadId,
+                            TimeTravelTimelineRow row,
+                            FlameHit source,
+                            float top,
+                            float left,
+                            float right,
+                            double scale)
+    {
+        var positions = row.Span(TimeTravelTimelineAxis.Position, source.Index);
+
+        if (!_inUseCurves.TryGetValue(source, out var curve))
+        {
+            curve = timeline.InUseWithin(threadId, positions.Start, positions.End);
+
+            _inUseCurves[source] = curve;
+        }
+
+        if (curve.IsEmpty)
+        {
+            return;
+        }
+
+        var node = row.NodeAt(source.Index);
+
+        var needed = _paints.Font.MeasureText(LabelOf(node)) + LabelPadding * 2;
+
+        var first = _spikes.Count;
+
+        for (var x = left; x < right; x += SurfaceBucketWidth)
+        {
+            var end = Math.Min(x + SurfaceBucketWidth, right);
+
+            var bytes = curve.PeakDuring(PositionAt(row, source.Index, _viewStart + x / scale),
+                                         PositionAt(row, source.Index, _viewStart + end / scale));
+
+            var last = _spikes.Count - 1;
+
+            if (last >= first && _spikes[last].Label == bytes && _spikes[last].Right >= x)
+            {
+                _spikes[last] = _spikes[last] with { SpanRight = end, Right = end };
+            }
+            else
+            {
+                _spikes.Add(Raised(source, node, x, end, top, BarHeight, bytes, _inUseMaximum, false));
+            }
+        }
+
+        FinishSurface(first, needed);
+    }
+
+    private void FinishSurface(int first, float needed)
+    {
+        var widest = -1;
+
+        var raised = false;
+
+        for (var index = first; index < _spikes.Count; index++)
+        {
+            if (_spikes[index].Label == 0)
+            {
+                continue;
+            }
+
+            raised = true;
+
+            var slab = _spikes[index].Right - _spikes[index].Left;
+
+            if (slab >= needed && (widest < 0 || slab > _spikes[widest].Right - _spikes[widest].Left))
+            {
+                widest = index;
+            }
+        }
+
+        if (!raised)
+        {
+            _spikes.RemoveRange(first, _spikes.Count - first);
+
+            return;
+        }
+
+        if (widest >= 0)
+        {
+            _spikes[widest] = _spikes[widest] with { Named = true };
+        }
+    }
+
+    private void DrawSurfaces(SKCanvas canvas)
+    {
+        var first = 0;
+
+        while (first < _spikes.Count)
+        {
+            var end = first + 1;
+
+            while (end < _spikes.Count && _spikes[end].Source == _spikes[first].Source)
+            {
+                end++;
+            }
+
+            DrawSurface(canvas, first, end);
+
+            first = end;
+        }
+    }
+
+    private void DrawSurface(SKCanvas canvas, int first, int end)
+    {
+        var ascending = _spikes[first].Left <= _spikes[end - 1].Left;
+
+        var leftmost = ascending ? _spikes[first] : _spikes[end - 1];
+
+        var rightmost = ascending ? _spikes[end - 1] : _spikes[first];
+
+        var top = leftmost.Top;
+
+        _surfacePoints.Clear();
+
+        AddSurfacePoint(leftmost.Left, leftmost.Extrusion, top);
+
+        for (var item = 0; item < end - first; item++)
+        {
+            var run = _spikes[ascending ? first + item : end - 1 - item];
+
+            var ease = Math.Min(SurfaceEase, (run.Right - run.Left) / 2);
+
+            AddSurfacePoint(run.Left + ease, run.Extrusion, top);
+
+            if (run.Right - ease > run.Left + ease)
+            {
+                AddSurfacePoint(run.Right - ease, run.Extrusion, top);
+            }
+        }
+
+        AddSurfacePoint(rightmost.Right, rightmost.Extrusion, top);
+
+        var height = leftmost.Height;
+
+        var edge = _directionY > 0 ? top : top + height;
+
+        var offset = edge - top;
+
+        var last = SurfacePoint(0, offset, reversed: true);
+
+        _pathBuilder.MoveTo(leftmost.Left, edge);
+
+        _pathBuilder.LineTo(rightmost.Right, edge);
+
+        _pathBuilder.LineTo(last.X, last.Y);
+
+        CurveThrough(offset, reversed: true);
+
+        _pathBuilder.Close();
+
+        using (var face = _pathBuilder.Detach())
+        {
+            _paints.Face.Color = Shade(leftmost.Colour, _directionY > 0 ? CapShade : UnderShade).WithAlpha(LandscapeAlpha);
+
+            canvas.DrawPath(face, _paints.Face);
+        }
+
+        var side = _directionX >= 0 ? leftmost : rightmost;
+
+        FillParallelogram(canvas,
+                          Shade(leftmost.Colour, SideShade).WithAlpha(LandscapeAlpha),
+                          _directionX >= 0 ? leftmost.Left : rightmost.Right,
+                          top,
+                          0,
+                          height,
+                          _directionX * side.Extrusion,
+                          _directionY * side.Extrusion);
+
+        var start = SurfacePoint(0, 0, reversed: false);
+
+        var turn = SurfacePoint(0, height, reversed: true);
+
+        _pathBuilder.MoveTo(start.X, start.Y);
+
+        CurveThrough(0, reversed: false);
+
+        _pathBuilder.LineTo(turn.X, turn.Y);
+
+        CurveThrough(height, reversed: true);
+
+        _pathBuilder.Close();
+
+        using (var ribbon = _pathBuilder.Detach())
+        {
+            _paints.Face.Color = leftmost.Colour.WithAlpha(LandscapeAlpha);
+
+            canvas.DrawPath(ribbon, _paints.Face);
+
+            canvas.DrawPath(ribbon, _paints.Edge);
+        }
+
+        for (var index = first; index < end; index++)
+        {
+            if (_spikes[index].Named)
+            {
+                DrawFaceLabel(canvas, _spikes[index]);
+
+                return;
+            }
+        }
+
+        DrawCentreLabel(canvas, first, end, leftmost.Left, rightmost.Right);
+    }
+
+    private void DrawCentreLabel(SKCanvas canvas, int first, int end, float left, float right)
+    {
+        if (right - left < MinimumLabelWidth || _rowHeight < MinimumLabelRowHeight)
+        {
+            return;
+        }
+
+        var centre = (left + right) / 2;
+
+        var run = _spikes[first];
+
+        for (var index = first; index < end; index++)
+        {
+            if (_spikes[index].Left <= centre && centre < _spikes[index].Right)
+            {
+                run = _spikes[index];
+
+                break;
+            }
+        }
+
+        var dx = _directionX * run.Extrusion;
+
+        var dy = _directionY * run.Extrusion;
+
+        var text = TextOf(run);
+
+        var textWidth = _paints.Font.MeasureText(text);
+
+        _paints.Text.Color = IsLight(run.Colour) ? SKColors.Black : SKColors.White;
+
+        canvas.Save();
+
+        canvas.ClipRect(new SKRect(left + dx, run.Top + dy, right + dx, run.Top + dy + run.Height));
+
+        canvas.DrawText(text,
+                        Math.Max(centre + dx - textWidth / 2, left + dx + LabelPadding),
+                        Baseline(run.Top + dy, run.Height),
+                        SKTextAlign.Left,
+                        _paints.Font,
+                        _paints.Text);
+
+        canvas.Restore();
+    }
+
+    private void AddSurfacePoint(float x, float extrusion, float top)
+        => _surfacePoints.Add(new SKPoint(x + extrusion * _directionX, top + extrusion * _directionY));
+
+    private SKPoint SurfacePoint(int step, float offset, bool reversed)
+    {
+        var point = _surfacePoints[reversed ? _surfacePoints.Count - 1 - step : step];
+
+        return new SKPoint(point.X, point.Y + offset);
+    }
+
+    private void CurveThrough(float offset, bool reversed)
+    {
+        var count = _surfacePoints.Count;
+
+        for (var step = 1; step < count - 1; step++)
+        {
+            var point = SurfacePoint(step, offset, reversed);
+
+            var next = SurfacePoint(step + 1, offset, reversed);
+
+            _pathBuilder.QuadTo(point.X, point.Y, (point.X + next.X) / 2, (point.Y + next.Y) / 2);
+        }
+
+        var final = SurfacePoint(count - 1, offset, reversed);
+
+        _pathBuilder.LineTo(final.X, final.Y);
+    }
+
+    private PopoutBlock Raised(FlameHit source,
+                               int node,
+                               float left,
+                               float right,
+                               float top,
+                               float height,
+                               ulong bytes,
+                               ulong maximum,
+                               bool named)
+    {
+        var ratio = (float)Math.Min(Math.Log(1d + bytes) / Math.Log(1d + maximum), 1d);
 
         return new PopoutBlock(node,
                                ColourOf(node),
@@ -842,15 +1290,16 @@ public sealed partial class FlameChartControl
                                ratio,
                                ExtrusionOf(ratio, _extrusionLength),
                                bytes,
-                               false,
-                               source);
+                               named,
+                               source,
+                               height);
     }
 
     private void DrawPlayheadHandle(SKCanvas canvas, float x, double value, int width)
     {
         canvas.Save();
 
-        canvas.Translate(x, 0);
+        canvas.Translate(x, RulerTop);
 
         canvas.DrawPath(_playheadTriangle, _paints.PlayheadFill);
 
@@ -864,11 +1313,11 @@ public sealed partial class FlameChartControl
 
         var left = Math.Clamp(x - badgeWidth / 2, 0, Math.Max(0, width - badgeWidth));
 
-        canvas.DrawRoundRect(new SKRect(left, 0, left + badgeWidth, badgeHeight), 2, 2, _paints.PlayheadFill);
+        canvas.DrawRoundRect(new SKRect(left, RulerTop, left + badgeWidth, RulerTop + badgeHeight), 2, 2, _paints.PlayheadFill);
 
         canvas.DrawText(text,
                         left + PlayheadBadgePadding,
-                        Baseline(0, badgeHeight),
+                        Baseline(RulerTop, badgeHeight),
                         SKTextAlign.Left,
                         _paints.Font,
                         _paints.PlayheadText);
@@ -892,11 +1341,11 @@ public sealed partial class FlameChartControl
 
         var directionY = MathF.Sin(_extrusionAngle);
 
-        var length = MaximumLength(_popoutBlocks, directionX, directionY, width, bottom, horizontal: true);
+        var length = MaximumLength(_popoutBlocks, directionX, directionY, width, bottom, popout: true);
 
         if (!_isStretching && !ShowMemory && length < _extrusionLength)
         {
-            var mirrored = MaximumLength(_popoutBlocks, -directionX, directionY, width, bottom, horizontal: true);
+            var mirrored = MaximumLength(_popoutBlocks, -directionX, directionY, width, bottom, popout: true);
 
             if (mirrored > length)
             {
@@ -922,7 +1371,7 @@ public sealed partial class FlameChartControl
         }
     }
 
-    private float MaximumLength(List<PopoutBlock> blocks, float directionX, float directionY, int width, float bottom, bool horizontal)
+    private float MaximumLength(List<PopoutBlock> blocks, float directionX, float directionY, int width, float bottom, bool popout)
     {
         var maximum = float.MaxValue;
 
@@ -937,11 +1386,11 @@ public sealed partial class FlameChartControl
 
             var room = float.MaxValue;
 
-            if (horizontal && directionX != 0)
-            {
-                var (left, right) = EdgesOf(block, directionX);
+            var (left, right) = popout ? EdgesOf(block, directionX) : (block.Left, block.Right);
 
-                var label = LabelWidth(block);
+            if (directionX != 0 && (popout || (directionX > 0 ? ShowsEnd && right <= width : ShowsStart && left >= 0)))
+            {
+                var label = popout ? LabelWidth(block) : 0;
 
                 room = directionX > 0 ? (width - right - label) / directionX : (left - label) / -directionX;
             }
@@ -952,7 +1401,7 @@ public sealed partial class FlameChartControl
             }
             else if (directionY > 0)
             {
-                room = Math.Min(room, (bottom - block.Top - BarHeight) / directionY);
+                room = Math.Min(room, (bottom - block.Top - block.Height) / directionY);
             }
 
             maximum = Math.Min(maximum, MinimumExtrusion + (room - MinimumExtrusion) / share);
@@ -1174,7 +1623,7 @@ public sealed partial class FlameChartControl
 
     private void DrawBlock(SKCanvas canvas, PopoutBlock block, byte alpha = byte.MaxValue, bool named = true)
     {
-        var bottom = block.Top + BarHeight;
+        var bottom = block.Top + block.Height;
 
         var dx = _directionX * block.Extrusion;
 
@@ -1183,7 +1632,7 @@ public sealed partial class FlameChartControl
         if (block.Extrusion > 0)
         {
             FillParallelogram(canvas,
-                              Tint(Shade(block.Colour, dy > 0 ? CapShade : UnderShade), block.Ghost, alpha),
+                              Shade(block.Colour, dy > 0 ? CapShade : UnderShade).WithAlpha(alpha),
                               block.Left,
                               dy > 0 ? block.Top : bottom,
                               block.Right - block.Left,
@@ -1191,9 +1640,9 @@ public sealed partial class FlameChartControl
                               dx,
                               dy);
 
-            var side = Tint(Shade(block.Colour, SideShade), block.Ghost, alpha);
+            var side = Shade(block.Colour, SideShade).WithAlpha(alpha);
 
-            FillParallelogram(canvas, side, dx < 0 ? block.Right : block.Left, block.Top, 0, BarHeight, dx, dy);
+            FillParallelogram(canvas, side, dx < 0 ? block.Right : block.Left, block.Top, 0, block.Height, dx, dy);
 
             if (named)
             {
@@ -1203,7 +1652,7 @@ public sealed partial class FlameChartControl
 
         var front = FrontOf(block);
 
-        _paints.Face.Color = Tint(block.Colour, block.Ghost, alpha);
+        _paints.Face.Color = block.Colour.WithAlpha(alpha);
 
         canvas.DrawRect(front, _paints.Face);
 
@@ -1239,9 +1688,9 @@ public sealed partial class FlameChartControl
 
         canvas.Concat(in matrix);
 
-        canvas.ClipRect(new SKRect(0, 0, length, BarHeight));
+        canvas.ClipRect(new SKRect(0, 0, length, block.Height));
 
-        canvas.DrawText(LabelOf(block.Node), LabelPadding, Baseline(0, BarHeight), SKTextAlign.Left, _paints.Font, _paints.Text);
+        canvas.DrawText(TextOf(block), LabelPadding, Baseline(0, block.Height), SKTextAlign.Left, _paints.Font, _paints.Text);
 
         canvas.Restore();
     }
@@ -1285,7 +1734,7 @@ public sealed partial class FlameChartControl
         => new(block.Left + _directionX * block.Extrusion,
                block.Top + _directionY * block.Extrusion,
                block.Right + _directionX * block.Extrusion,
-               block.Top + BarHeight + _directionY * block.Extrusion);
+               block.Top + block.Height + _directionY * block.Extrusion);
 
     private void FillParallelogram(SKCanvas canvas, SKColor colour, float x, float y, float ax, float ay, float bx, float by)
     {
@@ -1319,25 +1768,6 @@ public sealed partial class FlameChartControl
 
     private static SKColor Shade(SKColor colour, float factor)
         => new((byte)(colour.Red * factor), (byte)(colour.Green * factor), (byte)(colour.Blue * factor), colour.Alpha);
-
-    private static SKColor Tint(SKColor colour, bool ghost, byte alpha)
-    {
-        if (!ghost)
-        {
-            return colour.WithAlpha(alpha);
-        }
-
-        var grey = colour.Red * 0.299f + colour.Green * 0.587f + colour.Blue * 0.114f;
-
-        return new SKColor(Wash(colour.Red, grey), Wash(colour.Green, grey), Wash(colour.Blue, grey), GhostAlpha);
-    }
-
-    private static byte Wash(byte channel, float grey)
-    {
-        var desaturated = channel + (grey - channel) * GhostDesaturation;
-
-        return (byte)(desaturated + (byte.MaxValue - desaturated) * GhostWash);
-    }
 
     private SKRect? SpanRect(FlameHit hit, int width)
     {
@@ -1464,8 +1894,9 @@ public sealed partial class FlameChartControl
                                                float Ratio,
                                                float Extrusion,
                                                ulong Label,
-                                               bool Ghost,
-                                               FlameHit Source);
+                                               bool Named,
+                                               FlameHit Source,
+                                               float Height);
 
     private readonly record struct LayerKey(int Width,
                                             int Height,

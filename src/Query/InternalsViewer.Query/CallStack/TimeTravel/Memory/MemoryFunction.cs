@@ -13,6 +13,14 @@ public sealed record MemoryFunction(ulong Address,
 
     private const ulong LargestAllocation = 1ul << 36;
 
+    private const ulong MemCommit = 0x1000;
+
+    private const ulong MemDecommit = 0x4000;
+
+    private const ulong MemRelease = 0x8000;
+
+    private const string MemoryObjectFactory = "MemoryObjectFactory";
+
     private static readonly HashSet<string> MemoryObjects = new(StringComparer.Ordinal)
     {
         "CMemObj",
@@ -23,7 +31,37 @@ public sealed record MemoryFunction(ulong Address,
         "PageHeapMemObj"
     };
 
+    public bool IsPage { get; init; }
+
+    public bool CarriesClerk { get; init; }
+
+    public bool IsHeap { get; init; }
+
+    public bool IsObjectCall { get; init; }
+
+    public bool IsVirtual { get; init; }
+
+    public int FlagSlot { get; init; } = -1;
+
+    public ulong FlagMask { get; init; }
+
     public bool Allocates => Operation is MemoryOperation.Allocate or MemoryOperation.Reallocate;
+
+    public static bool IsMemoryObjectClass(string? className)
+        => className is not null && (className == MemoryObjectFactory || IsMemoryObject(className));
+
+    public bool Applies(TimeTravelArgumentCall call)
+        => FlagSlot < 0 || (FlagSlot < call.IntegerSlots.Length && (call.IntegerSlots[FlagSlot] & FlagMask) != 0);
+
+    public ulong ObjectOf(TimeTravelArgumentCall call)
+    {
+        if (Operation == MemoryOperation.Create)
+        {
+            return call.Returned ? call.ReturnValue : 0;
+        }
+
+        return call.IntegerSlots.Length > 0 ? call.IntegerSlots[0] : 0;
+    }
 
     public ulong BytesOf(TimeTravelArgumentCall call)
     {
@@ -64,28 +102,55 @@ public sealed record MemoryFunction(ulong Address,
             (null, "operator delete" or "operator delete[]")
                 => new MemoryFunction(address, MemoryOperation.Free, -1, 0, 1),
             ("MemoryClerkInternal", "AllocatePages" or "AllocatePagesWithFailureMode" or "AllocateReservedPages")
-                => new MemoryFunction(address, MemoryOperation.Allocate, 1, -1, PageSize),
+                => new MemoryFunction(address, MemoryOperation.Allocate, 1, -1, PageSize) { IsPage = true, CarriesClerk = true },
             ("MemoryClerkInternal", "FreePages" or "FreeReservedPages")
-                => new MemoryFunction(address, MemoryOperation.Free, 2, 1, PageSize),
+                => new MemoryFunction(address, MemoryOperation.Free, 2, 1, PageSize) { IsPage = true, CarriesClerk = true },
             ("CQryMemManager", "AllocatePages")
-                => new MemoryFunction(address, MemoryOperation.Allocate, 1, -1, PageSize),
+                => new MemoryFunction(address, MemoryOperation.Allocate, 1, -1, PageSize) { IsPage = true },
             ("CQryMemManager", "FreePages")
-                => new MemoryFunction(address, MemoryOperation.Free, 2, 1, PageSize),
+                => new MemoryFunction(address, MemoryOperation.Free, 2, 1, PageSize) { IsPage = true },
+            (MemoryObjectFactory, "CreateMemObject")
+                => new MemoryFunction(address, MemoryOperation.Create, -1, -1, 1) { IsObjectCall = true },
             ("CHashWorkfilePartitionInstance", "PvAllocateHashBucketPage")
                 => new MemoryFunction(address, MemoryOperation.Allocate, -1, -1, PageSize),
             ("CHashWorkfilePartitionInstance", "FreeHashBucketPage")
                 => new MemoryFunction(address, MemoryOperation.Free, -1, 1, 1),
             ({ } owner, "Alloc") when IsMemoryObject(owner)
-                => new MemoryFunction(address, MemoryOperation.Allocate, 1, -1, 1),
+                => new MemoryFunction(address, MemoryOperation.Allocate, 1, -1, 1) { IsObjectCall = true },
             ({ } owner, "Realloc") when IsMemoryObject(owner)
-                => new MemoryFunction(address, MemoryOperation.Reallocate, 2, 1, 1),
+                => new MemoryFunction(address, MemoryOperation.Reallocate, 2, 1, 1) { IsObjectCall = true },
             ({ } owner, "Free") when IsMemoryObject(owner)
-                => new MemoryFunction(address, MemoryOperation.Free, -1, 1, 1),
+                => new MemoryFunction(address, MemoryOperation.Free, -1, 1, 1) { IsObjectCall = true },
             _ => null
         };
     }
 
-    internal static MemoryFunction? ClassifyExport(ulong address, string export) => export switch
+    internal static MemoryFunction? ClassifyExport(ulong address, string export)
+        => ClassifyVirtualExport(address, export)
+           ?? (ClassifyHeapExport(address, export) is { } function ? function with { IsHeap = true } : null);
+
+    private static MemoryFunction? ClassifyVirtualExport(ulong address, string export) => export switch
+    {
+        "VirtualAlloc"
+            => new MemoryFunction(address, MemoryOperation.Allocate, 1, -1, 1)
+            {
+                IsPage = true,
+                IsVirtual = true,
+                FlagSlot = 2,
+                FlagMask = MemCommit
+            },
+        "VirtualFree"
+            => new MemoryFunction(address, MemoryOperation.Free, -1, 0, 1)
+            {
+                IsPage = true,
+                IsVirtual = true,
+                FlagSlot = 2,
+                FlagMask = MemDecommit | MemRelease
+            },
+        _ => null
+    };
+
+    private static MemoryFunction? ClassifyHeapExport(ulong address, string export) => export switch
     {
         "RtlAllocateHeap" or "HeapAlloc"
             => new MemoryFunction(address, MemoryOperation.Allocate, 2, -1, 1),

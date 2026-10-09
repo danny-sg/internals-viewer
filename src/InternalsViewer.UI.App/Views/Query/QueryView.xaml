@@ -144,6 +144,9 @@
                                 <ToggleMenuFlyoutItem Text="Record Full Trace"
                                                       IsChecked="{x:Bind ViewModel.QueryOptions.RecordTimeTravel, Mode=OneWay}"
                                                       Click="OnRecordTimeTravelClick"/>
+                                <ToggleMenuFlyoutItem Text="Record Extended Events"
+                                                      IsChecked="{x:Bind ViewModel.QueryOptions.RecordFullTraceEvents, Mode=TwoWay}"
+                                                      IsEnabled="{x:Bind ViewModel.QueryOptions.RecordTimeTravel, Mode=OneWay}"/>
                                 <MenuFlyoutSeparator/>
                                 <MenuFlyoutItem Text="Clear breakpoints"
                                                 Command="{x:Bind ViewModel.ClearBreakpointsCommand}"/>

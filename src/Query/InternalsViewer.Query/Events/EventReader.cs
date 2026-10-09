@@ -28,7 +28,7 @@ public sealed class EventReader(ILogger<EventReader> logger)
     /// Due to the potentially high volume of events that could be read the reader is optimized for minimal memory allocations via
     /// a buffer based read.
     /// </remarks>
-    public async Task<(List<EngineEvent>, List<ExecutionPlan>, CallStackTree, HashSet<uint>)> 
+    public async Task<(List<EngineEvent>, List<ExecutionPlan>, CallStackTree, HashSet<uint>, List<RawEvent>)> 
         GetEvents(string filePath,
                   string connectionString,
                   DatabaseSource? database,
@@ -44,6 +44,8 @@ public sealed class EventReader(ILogger<EventReader> logger)
         var executionPlans = new List<ExecutionPlan>();
 
         var threadIds = new HashSet<uint>();
+
+        var rawEvents = new List<RawEvent>();
 
         // Map plan handles to PlanHandleId
         var planHandles = new PlanHandleRegistry();
@@ -113,6 +115,15 @@ public sealed class EventReader(ILogger<EventReader> logger)
                                       ? null
                                       : eventParser.ToEngineEvent(eventResult, database, planHandles, callStack);
 
+                    if (eventResult is not null)
+                    {
+                        rawEvents.Add(new RawEvent(new string(nameBuffer, 0, nameLength),
+                                                   (uint?)eventResult.GetUlongAction("system_thread_id"),
+                                                   eventResult.GetUlongAction("worker_address"),
+                                                   eventResult.GetUlongAction("task_address"),
+                                                   engineEvent));
+                    }
+
                     if (engineEvent is not null)
                     {
                         startTimeStamp ??= engineEvent.Timestamp;
@@ -164,7 +175,7 @@ public sealed class EventReader(ILogger<EventReader> logger)
 
         consolidatedEvents.AddRange(operatorEvents);
 
-        return (consolidatedEvents, executionPlans, callStack, threadIds);
+        return (consolidatedEvents, executionPlans, callStack, threadIds, rawEvents);
     }
 
     /// <summary>

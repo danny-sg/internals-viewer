@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using InternalsViewer.Query.CallStack;
+using InternalsViewer.Query.CallStack.TimeTravel.Memory;
 using InternalsViewer.Query.CallStack.TimeTravel.Timeline;
 using InternalsViewer.UI.App.Models.Query.CallStack;
 using Microsoft.UI;
@@ -17,6 +18,10 @@ namespace InternalsViewer.UI.App.Controls.FlameChart;
 public sealed partial class FlameChartControl : Grid, IDisposable
 {
     private const double MinimumRangeSteps = 20;
+
+    private const double FitPadding = 30;
+
+    private const string MemoryModeGroup = "MemoryMode";
 
     public static readonly DependencyProperty TimelineProperty =
         DependencyProperty.Register(nameof(Timeline),
@@ -102,6 +107,18 @@ public sealed partial class FlameChartControl : Grid, IDisposable
         set => SetValue(GrantedMemoryProperty, value);
     }
 
+    public static readonly DependencyProperty MemoryModeProperty =
+        DependencyProperty.Register(nameof(MemoryMode),
+                                    typeof(FlameChartMemoryMode),
+                                    typeof(FlameChartControl),
+                                    new PropertyMetadata(FlameChartMemoryMode.Allocated, OnMemoryModeChanged));
+
+    public FlameChartMemoryMode MemoryMode
+    {
+        get => (FlameChartMemoryMode)GetValue(MemoryModeProperty);
+        set => SetValue(MemoryModeProperty, value);
+    }
+
     public static readonly DependencyProperty SelectedCallProperty =
         DependencyProperty.Register(nameof(SelectedCall),
                                     typeof(CallReference),
@@ -124,6 +141,12 @@ public sealed partial class FlameChartControl : Grid, IDisposable
 
     private readonly Popup _toolTip;
 
+    private readonly DropDownButton _memoryModeButton;
+
+    private readonly RadioMenuFlyoutItem _allocatedItem;
+
+    private readonly RadioMenuFlyoutItem _inUseItem;
+
     private readonly TextBlock _toolTipText;
 
     private readonly FlameChartPaints _paints = new();
@@ -137,6 +160,8 @@ public sealed partial class FlameChartControl : Grid, IDisposable
     private readonly Dictionary<int, string> _labels = [];
 
     private readonly Dictionary<string, SKColor> _parsedColours = new(StringComparer.OrdinalIgnoreCase);
+
+    private readonly Dictionary<FlameHit, TimeTravelInUseCurve> _inUseCurves = [];
 
     private TimeTravelTimeline? _timeline;
 
@@ -161,6 +186,8 @@ public sealed partial class FlameChartControl : Grid, IDisposable
     private IReadOnlyList<TimeTravelSelfAllocation> _selfAllocations = [];
 
     private ulong _selfMaximum;
+
+    private ulong _inUseMaximum;
 
     private Dictionary<(int Lane, int Depth), RaisedRow> _raisedRows = [];
 
@@ -252,6 +279,44 @@ public sealed partial class FlameChartControl : Grid, IDisposable
 
         _overlay.Children.Add(_toolTip);
 
+        _allocatedItem = new RadioMenuFlyoutItem
+        {
+            Text = "Allocated",
+            GroupName = MemoryModeGroup,
+            Tag = FlameChartMemoryMode.Allocated,
+            IsChecked = true
+        };
+
+        _allocatedItem.Click += OnMemoryModeClick;
+
+        _inUseItem = new RadioMenuFlyoutItem { Text = "In Use", GroupName = MemoryModeGroup, Tag = FlameChartMemoryMode.InUse };
+
+        _inUseItem.Click += OnMemoryModeClick;
+
+        var memoryModes = new MenuFlyout();
+
+        memoryModes.Items.Add(_allocatedItem);
+        memoryModes.Items.Add(_inUseItem);
+
+        _memoryModeButton = new DropDownButton
+        {
+            Content = MemoryModeLabel(FlameChartMemoryMode.Allocated),
+            Flyout = memoryModes,
+            FontSize = 12,
+            MinHeight = 0,
+            Padding = new Thickness(8, 2, 8, 3),
+            Margin = new Thickness(LabelPadding * 2, 3, 0, 0),
+            HorizontalAlignment = HorizontalAlignment.Left,
+            VerticalAlignment = VerticalAlignment.Top,
+            Visibility = Visibility.Collapsed
+        };
+
+        ToolTipService.SetToolTip(_memoryModeButton,
+                                  "Allocated raises each call by the memory it allocated itself. In Use raises a surface along "
+                                  + "each call showing the memory it has allocated and not yet freed as it runs.");
+
+        Children.Add(_memoryModeButton);
+
         _overlay.PointerPressed += OnPointerPressed;
         _overlay.PointerMoved += OnPointerMoved;
         _overlay.PointerReleased += OnPointerReleased;
@@ -276,6 +341,12 @@ public sealed partial class FlameChartControl : Grid, IDisposable
     private double MinimumRange => MinimumRangeSteps * (_timeline?.StepOf(_axis) ?? 1);
 
     private double ViewportHeight => Math.Max(0, _overlay.ActualHeight - ContentTop - BandHeight);
+
+    private float RulerTop => ShowMemory ? MemoryBarHeight : 0;
+
+    private float ContentTop => OperatorsTop + OperatorsArea;
+
+    private bool ShowsSpikes => ShowMemory && MemoryMode == FlameChartMemoryMode.Allocated;
 
     private bool ShowsMemoryBand => ShowMemory && _axis == TimeTravelTimelineAxis.Position && _visible is { HasAllocations: true };
 
@@ -363,6 +434,9 @@ public sealed partial class FlameChartControl : Grid, IDisposable
         _landscapeLayer?.Dispose();
         _landscapeLayer = null;
 
+        _allocatedItem.Click -= OnMemoryModeClick;
+        _inUseItem.Click -= OnMemoryModeClick;
+
         _paints.Dispose();
 
         _pathBuilder.Dispose();
@@ -412,12 +486,26 @@ public sealed partial class FlameChartControl : Grid, IDisposable
 
         var fullEnd = FullEnd;
 
-        var range = Math.Min(Math.Max(end - start, MinimumRange), Math.Max(fullEnd - fullStart, MinimumRange));
+        var fullRange = Math.Max(fullEnd - fullStart, MinimumRange);
 
-        start = Math.Max(fullStart, Math.Min(start, fullEnd - range));
+        var range = Math.Min(Math.Max(end - start, MinimumRange), fullRange);
 
-        _viewStart = start;
-        _viewEnd = start + range;
+        if (range >= fullRange)
+        {
+            var content = _overlay.ActualWidth - FitPadding * 2;
+
+            var margin = content > 0 ? fullRange * FitPadding / content : 0;
+
+            _viewStart = fullStart - margin;
+            _viewEnd = fullStart + fullRange + margin;
+        }
+        else
+        {
+            start = Math.Max(fullStart, Math.Min(start, fullEnd - range));
+
+            _viewStart = start;
+            _viewEnd = start + range;
+        }
 
         ClampScroll();
 
@@ -438,7 +526,7 @@ public sealed partial class FlameChartControl : Grid, IDisposable
         _horizontalScrollBar.ViewportSize = range;
         _horizontalScrollBar.LargeChange = range;
         _horizontalScrollBar.SmallChange = range / 10;
-        _horizontalScrollBar.Value = _viewStart - FullStart;
+        _horizontalScrollBar.Value = Math.Max(0, _viewStart - FullStart);
         _horizontalScrollBar.Visibility = range < fullRange ? Visibility.Visible : Visibility.Collapsed;
 
         var viewport = ViewportHeight;
@@ -469,6 +557,11 @@ public sealed partial class FlameChartControl : Grid, IDisposable
 
     private void OnOverlaySizeChanged(object sender, SizeChangedEventArgs e)
     {
+        if (_viewEnd - _viewStart >= FullEnd - FullStart)
+        {
+            SetView(FullStart, FullEnd);
+        }
+
         BuildLayout();
 
         _version++;
@@ -569,6 +662,10 @@ public sealed partial class FlameChartControl : Grid, IDisposable
         _colours.Clear();
         _labels.Clear();
 
+        _operatorsHeight = null;
+
+        _selectedOperator = null;
+
         _root = RootNode;
 
         HideToolTip();
@@ -596,11 +693,30 @@ public sealed partial class FlameChartControl : Grid, IDisposable
             _visible = HiddenNodes(source) is { } hidden ? source.Where(n => n < 0 || n >= hidden.Length || !hidden[n]) : source;
         }
 
+        _operatorRows = OperatorRowsOf(_visible);
+
+        _operatorDetails.Clear();
+
+        _hoverOperator = null;
+
+        if (_selectedOperator is { } selected && !_operatorRows.Any(r => ReferenceEquals(r.Operator, selected)))
+        {
+            _selectedOperator = null;
+        }
+
+        FindSelectedRegions();
+
         UpdateFitRange();
 
         BuildLayout();
 
         _memoryMaximum = MemoryMaximum(_visible);
+
+        _inUseCurves.Clear();
+
+        _inUseMaximum = _visible is { HasAllocations: true } memory
+            ? memory.PeakInUseDuring(memory.StartOf(TimeTravelTimelineAxis.Position), memory.EndOf(TimeTravelTimelineAxis.Position))
+            : 0;
 
         _selfAllocations = _visible?.SelfAllocations() ?? [];
 
@@ -614,6 +730,17 @@ public sealed partial class FlameChartControl : Grid, IDisposable
 
         _version++;
     }
+
+    private void OnMemoryModeClick(object sender, RoutedEventArgs e)
+    {
+        if (sender is RadioMenuFlyoutItem { Tag: FlameChartMemoryMode mode })
+        {
+            MemoryMode = mode;
+        }
+    }
+
+    private static string MemoryModeLabel(FlameChartMemoryMode mode)
+        => mode == FlameChartMemoryMode.InUse ? "Memory: In Use" : "Memory: Allocated";
 
     private static ulong MemoryMaximum(TimeTravelTimeline? timeline)
     {
@@ -846,6 +973,8 @@ public sealed partial class FlameChartControl : Grid, IDisposable
 
         control.HideToolTip();
 
+        control._memoryModeButton.Visibility = control.ShowMemory ? Visibility.Visible : Visibility.Collapsed;
+
         control.BuildLayout();
 
         control.ClampScroll();
@@ -860,6 +989,29 @@ public sealed partial class FlameChartControl : Grid, IDisposable
     private static void OnGrantedMemoryChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
     {
         var control = (FlameChartControl)d;
+
+        control._version++;
+
+        control._canvas.Invalidate();
+    }
+
+    private static void OnMemoryModeChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
+    {
+        var control = (FlameChartControl)d;
+
+        var mode = (FlameChartMemoryMode)e.NewValue;
+
+        control._memoryModeButton.Content = MemoryModeLabel(mode);
+
+        control._allocatedItem.IsChecked = mode == FlameChartMemoryMode.Allocated;
+
+        control._inUseItem.IsChecked = mode == FlameChartMemoryMode.InUse;
+
+        control.HideToolTip();
+
+        control._hoverBlock = null;
+
+        control._hoverOperator = null;
 
         control._version++;
 

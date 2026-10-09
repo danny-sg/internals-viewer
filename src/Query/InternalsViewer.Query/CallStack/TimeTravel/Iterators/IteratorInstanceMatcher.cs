@@ -25,6 +25,8 @@ public static class IteratorInstanceMatcher
         foreach (var operatorEvent in hierarchy.Operators)
         {
             operatorEvent.EntryFrames = [];
+
+            operatorEvent.Instances = [];
         }
 
         var plan = new PlanShape(hierarchy);
@@ -41,6 +43,8 @@ public static class IteratorInstanceMatcher
         foreach (var (operatorEvent, instances) in assigned)
         {
             operatorEvent.EntryFrames = [.. instances.SelectMany(i => i.Entries).Distinct().OrderBy(e => e.Order)];
+
+            operatorEvent.Instances = [.. instances.Select(i => i.Address).Distinct()];
         }
 
         AssignStatements(plan, assigned);
@@ -101,8 +105,7 @@ public static class IteratorInstanceMatcher
     {
         foreach (var statement in plan.Statements)
         {
-            var entries = plan.Children(statement)
-                              .Where(assigned.ContainsKey)
+            var entries = NearestAssigned(plan, statement, assigned)
                               .SelectMany(o => o.EntryFrames)
                               .Select(e => e.Ancestors().Skip(1).FirstOrDefault(a => a.IsEntryFrameFor(statement.Name)))
                               .OfType<CallStackNode>()
@@ -113,6 +116,26 @@ public static class IteratorInstanceMatcher
             if (entries.Count > 0)
             {
                 statement.EntryFrames = entries;
+            }
+        }
+    }
+
+    private static IEnumerable<ExecutionOperatorEvent> NearestAssigned(PlanShape plan,
+                                                                       ExecutionOperatorEvent operatorEvent,
+                                                                       Dictionary<ExecutionOperatorEvent, List<IteratorInstance>> assigned)
+    {
+        foreach (var child in plan.Children(operatorEvent))
+        {
+            if (assigned.ContainsKey(child))
+            {
+                yield return child;
+
+                continue;
+            }
+
+            foreach (var descendant in NearestAssigned(plan, child, assigned))
+            {
+                yield return descendant;
             }
         }
     }
@@ -325,7 +348,7 @@ public static class IteratorInstanceMatcher
 
     private sealed class IteratorInstance(ulong address)
     {
-        private ulong Address { get; } = address;
+        public ulong Address { get; } = address;
 
         public List<CallStackNode> Entries { get; } = [];
 

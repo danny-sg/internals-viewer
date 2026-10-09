@@ -4,5 +4,6 @@ public enum MemoryOperation
 {
     Allocate,
     Reallocate,
-    Free
+    Free,
+    Create
 }

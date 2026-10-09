@@ -2,6 +2,7 @@ using System;
 using System.ComponentModel;
 using InternalsViewer.Query.CallStack;
 using InternalsViewer.Query.CallStack.TimeTravel.Timeline;
+using InternalsViewer.Query.Plans.Model;
 using InternalsViewer.UI.App.Controls.Docking;
 using InternalsViewer.UI.App.ViewModels;
 using InternalsViewer.UI.App.ViewModels.Query;
@@ -28,6 +29,8 @@ public sealed partial class QueryFlameChartTabView : UserControl, IDocumentComma
 
     private ToggleButton? _memoryToggle;
 
+    private ToggleButton? _operatorsToggle;
+
     private Button? _stepBackButton;
 
     private Button? _stepForwardButton;
@@ -41,6 +44,8 @@ public sealed partial class QueryFlameChartTabView : UserControl, IDocumentComma
         FlameChart.CallSelected += OnCallSelected;
 
         FlameChart.SelectionCleared += OnSelectionCleared;
+
+        FlameChart.PlanNodeSelected += OnPlanNodeSelected;
 
         Settings.PropertyChanged += OnSettingsPropertyChanged;
 
@@ -70,10 +75,24 @@ public sealed partial class QueryFlameChartTabView : UserControl, IDocumentComma
         };
 
         ToolTipService.SetToolTip(_memoryToggle,
-                                  "Label the calls under the playhead with the memory they allocated, including their callees, "
-                                  + "and show the memory allocated and in use along the bottom");
+                                  "Raise the calls by memory, either as Allocated or In Use chosen above the ruler, and show the "
+                                  + "memory allocated and in use along the bottom");
 
         _memoryToggle.Click += OnMemoryClick;
+
+        _operatorsToggle = new ToggleButton
+        {
+            Style = (Style)Application.Current.Resources["TabCommandToggleStyle"],
+            Content = new TextBlock { Text = "Operators", VerticalAlignment = VerticalAlignment.Center },
+            IsChecked = FlameChart.ShowOperators,
+            Margin = new Thickness(6, 0, 0, 0)
+        };
+
+        ToolTipService.SetToolTip(_operatorsToggle,
+                                  "Show each plan operator from its first call to its last above the threads. Drag the splitter to "
+                                  + "make the rows taller, click an operator to pick out its calls and everything they call.");
+
+        _operatorsToggle.Click += OnOperatorsClick;
 
         _stepBackButton = StepButton(StepBackGlyph, "Move the playhead back to the start of the previous frame");
 
@@ -122,6 +141,7 @@ public sealed partial class QueryFlameChartTabView : UserControl, IDocumentComma
 
         commands.Children.Add(_instructionsToggle);
         commands.Children.Add(_positionToggle);
+        commands.Children.Add(_operatorsToggle);
         commands.Children.Add(_memoryToggle);
         commands.Children.Add(_stepBackButton);
         commands.Children.Add(_stepForwardButton);
@@ -138,6 +158,8 @@ public sealed partial class QueryFlameChartTabView : UserControl, IDocumentComma
         FlameChart.CallSelected -= OnCallSelected;
 
         FlameChart.SelectionCleared -= OnSelectionCleared;
+
+        FlameChart.PlanNodeSelected -= OnPlanNodeSelected;
 
         Settings.PropertyChanged -= OnSettingsPropertyChanged;
 
@@ -192,6 +214,8 @@ public sealed partial class QueryFlameChartTabView : UserControl, IDocumentComma
 
     private void OnMemoryClick(object sender, RoutedEventArgs e) => FlameChart.ShowMemory = _memoryToggle?.IsChecked == true;
 
+    private void OnOperatorsClick(object sender, RoutedEventArgs e) => FlameChart.ShowOperators = _operatorsToggle?.IsChecked == true;
+
     private void OnStepBackClick(object sender, RoutedEventArgs e) => FlameChart.StepPlayhead(forward: false);
 
     private void OnStepForwardClick(object sender, RoutedEventArgs e) => FlameChart.StepPlayhead(forward: true);
@@ -209,6 +233,8 @@ public sealed partial class QueryFlameChartTabView : UserControl, IDocumentComma
     private void OnCallSelected(CallStackNode node, int call) => ViewModel?.NavigateToCall(node, call);
 
     private void OnSelectionCleared() => ViewModel?.SelectedCallNode = null;
+
+    private void OnPlanNodeSelected(PlanNodeIdentifier identifier) => ViewModel?.SelectPlanNode(identifier);
 
     private void OnSettingsPropertyChanged(object? sender, PropertyChangedEventArgs e)
     {

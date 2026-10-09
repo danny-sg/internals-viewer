@@ -638,6 +638,24 @@ public static class PlanNodePropertyBuilder
             tracedGroup.Children.Add(new PlanNodeProperty("Still Held", SizeFormat.Format((long)traced.Held)) { IsValueHighlighted = true });
         }
 
+        if (traced.Kinds.Count > 0)
+        {
+            var kindsGroup = new PlanNodeProperty("By Memory Clerk", string.Empty);
+
+            foreach (var kind in traced.Kinds)
+            {
+                kindsGroup.Children.Add(new PlanNodeProperty(kind.Name, $"{SizeFormat.Format((long)kind.PeakInUse)} Peak")
+                {
+                    IsNameMonospace = true,
+                    Tooltip = $"Allocated {SizeFormat.Format((long)kind.Allocated)} In "
+                              + $"{kind.Allocations.ToString("N0", CultureInfo.InvariantCulture)}, "
+                              + $"Freed {SizeFormat.Format((long)kind.Freed)}"
+                });
+            }
+
+            tracedGroup.Children.Add(kindsGroup);
+        }
+
         if (traced.Uses.Count == 0)
         {
             return tracedGroup;

@@ -16,6 +16,32 @@ public class TimeTravelMemoryIndexTests
     }
 
     [Fact]
+    public void Memory_In_Use_Within_A_Call_Counts_Only_What_It_Allocated()
+    {
+        var index = TimeTravelMemoryIndex.Build([new(7, 10, 11, 100, 0xA), new(7, 20, 21, 50, 0xB)], [new(7, 30, 31, 0xA)]);
+
+        var call = index.InUseWithin(7, 0, 40);
+
+        Assert.Equal([0ul, 100ul, 150ul, 50ul],
+                     [call.PeakDuring(0, 5), call.PeakDuring(10, 15), call.PeakDuring(15, 25), call.PeakDuring(31, 40)]);
+
+        var later = index.InUseWithin(7, 15, 40);
+
+        Assert.Equal([0ul, 50ul, 50ul], [later.PeakDuring(15, 18), later.PeakDuring(20, 25), later.PeakDuring(30, 40)]);
+    }
+
+    [Fact]
+    public void An_Allocation_Without_Its_Pointer_Is_Never_In_Use()
+    {
+        var index = TimeTravelMemoryIndex.Build([new(7, 10, 11, 100, 0), new(7, 20, 21, 50, 0xB)], []);
+
+        var call = index.InUseWithin(7, 0, 40);
+
+        Assert.Equal((0ul, 50ul), (call.PeakDuring(10, 15), call.PeakDuring(25, 40)));
+        Assert.Equal(50ul, index.RetainedBy(7, 0, 40));
+    }
+
+    [Fact]
     public void A_Free_Releases_Memory_Allocated_On_Another_Thread()
     {
         var index = TimeTravelMemoryIndex.Build([new(7, 10, 11, 100, 0xA)], [new(9, 30, 31, 0xA)]);

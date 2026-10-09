@@ -126,5 +126,7 @@ public sealed partial record ExecutionOperatorEvent : EngineEvent
     /// </remarks>
     public IReadOnlyList<CallStackNode> ExitFrames { get; set; } = [];
 
+    public IReadOnlyList<ulong> Instances { get; set; } = [];
+
     public TimeTravelMemoryPurpose? Memory { get; set; }
 }

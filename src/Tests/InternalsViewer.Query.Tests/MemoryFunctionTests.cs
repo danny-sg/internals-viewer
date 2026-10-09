@@ -17,6 +17,7 @@ public class MemoryFunctionTests
     [InlineData("MemoryClerkInternal::FreePages", MemoryOperation.Free, 2, 1, 8192ul)]
     [InlineData("MemoryClerkInternal::AllocateReservedPages", MemoryOperation.Allocate, 1, -1, 8192ul)]
     [InlineData("MemoryClerkInternal::FreeReservedPages", MemoryOperation.Free, 2, 1, 8192ul)]
+    [InlineData("MemoryObjectFactory::CreateMemObject", MemoryOperation.Create, -1, -1, 1ul)]
     [InlineData("CQryMemManager::AllocatePages", MemoryOperation.Allocate, 1, -1, 8192ul)]
     [InlineData("CQryMemManager::FreePages", MemoryOperation.Free, 2, 1, 8192ul)]
     [InlineData("CHashWorkfilePartitionInstance::PvAllocateHashBucketPage", MemoryOperation.Allocate, -1, -1, 8192ul)]
@@ -29,7 +30,8 @@ public class MemoryFunctionTests
     {
         var function = MemoryFunction.Classify(0x1000, symbol);
 
-        Assert.Equal(new MemoryFunction(0x1000, operation, sizeSlot, pointerSlot, unit), function);
+        Assert.Equal((operation, sizeSlot, pointerSlot, unit),
+                     (function!.Operation, function.SizeSlot, function.PointerSlot, function.Unit));
     }
 
     [Theory]
@@ -71,6 +73,46 @@ public class MemoryFunctionTests
         var call = new TimeTravelArgumentCall(1, 1, true, [4, 24, 0, 0], 0);
 
         Assert.Equal(96ul, MemoryFunction.ClassifyExport(0x1000, "calloc")!.BytesOf(call));
+    }
+
+    [Fact]
+    public void Clerk_Pages_Carry_The_Clerk_And_Heap_Exports_Are_Heap()
+    {
+        var pages = MemoryFunction.Classify(0x1000, "MemoryClerkInternal::AllocatePages")!;
+
+        var workspace = MemoryFunction.Classify(0x2000, "CQryMemManager::AllocatePages")!;
+
+        var heap = MemoryFunction.ClassifyExport(0x3000, "RtlAllocateHeap")!;
+
+        Assert.Equal((true, true, false), (pages.IsPage, pages.CarriesClerk, pages.IsHeap));
+        Assert.Equal((true, false), (workspace.IsPage, workspace.CarriesClerk));
+        Assert.True(heap.IsHeap);
+        Assert.True(MemoryFunction.IsMemoryObjectClass("MemoryObjectFactory"));
+        Assert.False(MemoryFunction.IsMemoryObjectClass("CQScanHash"));
+    }
+
+    [Fact]
+    public void Virtual_Memory_Counts_Commits_And_Releases_Only()
+    {
+        var allocate = MemoryFunction.ClassifyExport(0x1000, "VirtualAlloc")!;
+
+        var free = MemoryFunction.ClassifyExport(0x2000, "VirtualFree")!;
+
+        var commit = new TimeTravelArgumentCall(1, 1, true, [0, 65536, 0x3000, 4], 0x9000);
+
+        var reserve = new TimeTravelArgumentCall(2, 1, true, [0, 65536, 0x2000, 4], 0xA000);
+
+        var release = new TimeTravelArgumentCall(3, 1, true, [0x9000, 0, 0x8000, 0], 1);
+
+        Assert.Equal((true, false, true), (allocate.Applies(commit), allocate.Applies(reserve), free.Applies(release)));
+        Assert.Equal(65536ul, allocate.BytesOf(commit));
+        Assert.Equal((true, false), (allocate.IsVirtual, allocate.IsHeap));
+    }
+
+    [Fact]
+    public void A_Clerk_Address_Is_Read_Big_Endian()
+    {
+        Assert.Equal(0x000001A2B3C40040ul, MemoryClerks.AddressOf([0x00, 0x00, 0x01, 0xA2, 0xB3, 0xC4, 0x00, 0x40]));
     }
 
     [Fact]

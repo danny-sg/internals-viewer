@@ -39,9 +39,11 @@ public sealed partial class FlameChartControl
 
     private bool _isStretching;
 
-    private bool _isOverBar;
+    private InputSystemCursorShape _cursorShape = InputSystemCursorShape.Arrow;
 
     private bool _hoverOnPopout;
+
+    private PopoutBlock? _hoverBlock;
 
     private Point _stretchPress;
 
@@ -108,7 +110,7 @@ public sealed partial class FlameChartControl
         _lastPressTicks = now;
         _lastPressPoint = position;
 
-        if (position.Y < ContentTop && (IsOnPlayhead(position.X) || BlockAt(position) is null))
+        if (position.Y < OperatorsTop && (IsOnPlayhead(position.X) || BlockAt(position) is null))
         {
             if (isDoubleClick)
             {
@@ -128,11 +130,34 @@ public sealed partial class FlameChartControl
             return;
         }
 
+        if (IsOnSplitter(position))
+        {
+            BeginOperatorsResize(position);
+
+            _overlay.CapturePointer(e.Pointer);
+
+            return;
+        }
+
         if (BlockAt(position) is { } found)
         {
             BeginStretch(found.Block, found.IsPopout, position);
 
             _overlay.CapturePointer(e.Pointer);
+
+            return;
+        }
+
+        if (IsInOperators(position))
+        {
+            if (OperatorAt(position) is { } operatorHit && isDoubleClick)
+            {
+                ZoomToOperator(operatorHit);
+            }
+            else
+            {
+                ClickOperator(OperatorAt(position));
+            }
 
             return;
         }
@@ -194,6 +219,13 @@ public sealed partial class FlameChartControl
             return;
         }
 
+        if (_isResizingOperators)
+        {
+            ResizeOperators(position);
+
+            return;
+        }
+
         if (_isStretching)
         {
             Stretch(position);
@@ -220,17 +252,51 @@ public sealed partial class FlameChartControl
 
         var found = BlockAt(position);
 
-        UpdateCursor(found is not null);
+        UpdateCursor(IsOnSplitter(position)
+                         ? InputSystemCursorShape.SizeNorthSouth
+                         : found is not null
+                             ? InputSystemCursorShape.SizeAll
+                             : InputSystemCursorShape.Arrow);
 
-        var hit = found is { } block ? block.Block.Source : HitTest(position);
+        FlameHit? hit;
+
+        OperatorHit? hoverOperator;
+
+        if (found is { Block.Source: { IsOperator: true } surface })
+        {
+            hit = null;
+
+            hoverOperator = new OperatorHit(surface.OperatorRow, surface.Depth);
+        }
+        else if (found is { } block)
+        {
+            hit = block.Block.Source;
+
+            hoverOperator = null;
+        }
+        else
+        {
+            hit = HitTest(position);
+
+            hoverOperator = OperatorAt(position);
+        }
 
         var onPopout = found?.IsPopout == true;
 
-        if (hit != _hover || onPopout != _hoverOnPopout)
+        PopoutBlock? hoverBlock = found is { IsPopout: false } raised ? raised.Block : null;
+
+        if (hit != _hover
+            || onPopout != _hoverOnPopout
+            || !Nullable.Equals(hoverBlock, _hoverBlock)
+            || !Nullable.Equals(hoverOperator, _hoverOperator))
         {
             _hover = hit;
 
             _hoverOnPopout = onPopout;
+
+            _hoverBlock = hoverBlock;
+
+            _hoverOperator = hoverOperator;
 
             _canvas.Invalidate();
         }
@@ -238,6 +304,10 @@ public sealed partial class FlameChartControl
         if (hit is { } hovered)
         {
             ShowToolTip(hovered, position);
+        }
+        else if (hoverOperator is { } operatorHit)
+        {
+            ShowOperatorToolTip(operatorHit, position);
         }
         else
         {
@@ -261,7 +331,14 @@ public sealed partial class FlameChartControl
         }
         else if (_isStretching && !_hasStretched)
         {
-            Click(_stretchBlock.Source);
+            if (_stretchBlock.Source.IsOperator)
+            {
+                ClickOperator(new OperatorHit(_stretchBlock.Source.OperatorRow, _stretchBlock.Source.Depth));
+            }
+            else
+            {
+                Click(_stretchBlock.Source);
+            }
         }
 
         EndPointer();
@@ -273,16 +350,22 @@ public sealed partial class FlameChartControl
 
     private void OnPointerExited(object sender, PointerRoutedEventArgs e)
     {
-        if (_isPressed || _isPanning || _isScrubbing || _isStretching)
+        if (_isPressed || _isPanning || _isScrubbing || _isStretching || _isResizingOperators)
         {
             return;
         }
 
         HideToolTip();
 
-        if (_hover is not null)
+        UpdateCursor(InputSystemCursorShape.Arrow);
+
+        if (_hover is not null || _hoverOperator is not null || _hoverBlock is not null)
         {
             _hover = null;
+
+            _hoverOperator = null;
+
+            _hoverBlock = null;
 
             _canvas.Invalidate();
         }
@@ -402,6 +485,7 @@ public sealed partial class FlameChartControl
         _isPanning = false;
         _isScrubbing = false;
         _isStretching = false;
+        _isResizingOperators = false;
 
         if (invalidate)
         {
@@ -413,7 +497,7 @@ public sealed partial class FlameChartControl
     {
         var scale = PixelsPerUnit((int)_overlay.ActualWidth);
 
-        _playhead = Math.Clamp(_viewStart + x / scale, _viewStart, _viewEnd);
+        _playhead = Math.Clamp(_viewStart + x / scale, Math.Max(_viewStart, FullStart), Math.Min(_viewEnd, FullEnd));
 
         HideToolTip();
 
@@ -551,7 +635,7 @@ public sealed partial class FlameChartControl
                                     directionY,
                                     (int)_overlay.ActualWidth,
                                     (float)_overlay.ActualHeight - BandHeight,
-                                    horizontal: _stretchPopout);
+                                    popout: _stretchPopout);
 
         _extrusionAngle = angle;
 
@@ -560,16 +644,16 @@ public sealed partial class FlameChartControl
         _canvas.Invalidate();
     }
 
-    private void UpdateCursor(bool overBar)
+    private void UpdateCursor(InputSystemCursorShape shape)
     {
-        if (overBar == _isOverBar)
+        if (shape == _cursorShape)
         {
             return;
         }
 
-        _isOverBar = overBar;
+        _cursorShape = shape;
 
-        ProtectedCursor = InputSystemCursor.Create(overBar ? InputSystemCursorShape.SizeAll : InputSystemCursorShape.Arrow);
+        ProtectedCursor = InputSystemCursor.Create(shape);
     }
 
     private FlameHit? HitTest(Point position)
@@ -701,7 +785,12 @@ public sealed partial class FlameChartControl
             lines.Add("Did Not Return");
         }
 
-        _toolTipText.Text = string.Join(Environment.NewLine, lines);
+        OpenToolTip(string.Join(Environment.NewLine, lines), position);
+    }
+
+    private void OpenToolTip(string text, Point position)
+    {
+        _toolTipText.Text = text;
 
         _toolTip.IsOpen = true;
 
@@ -722,5 +811,12 @@ public sealed partial class FlameChartControl
 
     private static double Distance(Point a, Point b) => Math.Sqrt(Math.Pow(a.X - b.X, 2) + Math.Pow(a.Y - b.Y, 2));
 
-    private readonly record struct FlameHit(int Lane, int Depth, int Index);
+    private readonly record struct FlameHit(int Lane, int Depth, int Index)
+    {
+        public bool IsOperator => Lane < 0;
+
+        public int OperatorRow => -1 - Lane;
+
+        public static FlameHit Operator(int row, int track) => new(-1 - row, track, 0);
+    }
 }

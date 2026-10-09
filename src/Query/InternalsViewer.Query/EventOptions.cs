@@ -16,6 +16,8 @@ public sealed record EventOptions
 
     public bool RecordTimeTravel { get; set; }
 
+    public bool RecordFullTraceEvents { get; set; }
+
     public bool IncludeLatch { get; set; } = false;
 
     public bool IncludeBatchMode { get; set; } = true;

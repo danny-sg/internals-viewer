@@ -8,6 +8,14 @@ namespace InternalsViewer.Query.CallStack.TimeTravel;
 
 public static class ReplayFunctions
 {
+    private const string PackageSeparator = "Pkg::";
+
+    private const string PublishMethod = "Publish";
+
+    private const string BufferManager = "XE_BufferMgr";
+
+    private const string ReserveMethod = "Reserve";
+
     private static readonly string[] Modules = ["sqlmin", "sqllang", "sqldk"];
 
     private static readonly string[] HeapModules = ["ntdll", "kernelbase", "kernel32", "ucrtbase"];
@@ -27,7 +35,7 @@ public static class ReplayFunctions
 
         if (identities.Count == 0)
         {
-            return new ReplayFunctionSet([], [.. heap]);
+            return new ReplayFunctionSet([], [.. heap], new Dictionary<ulong, string>(), []);
         }
 
         await SymbolDownloader.DownloadSymbols([.. identities.Select(m => m.Frame(m.Address, 0))],
@@ -41,7 +49,10 @@ public static class ReplayFunctions
                                                    .ToList(),
                                    cancellationToken);
 
-        return new ReplayFunctionSet([.. found.SelectMany(f => f.Excluded)], [.. found.SelectMany(f => f.Memory), .. heap]);
+        return new ReplayFunctionSet([.. found.SelectMany(f => f.Excluded)],
+                                     [.. found.SelectMany(f => f.Memory), .. heap],
+                                     found.SelectMany(f => f.Publishers).ToDictionary(p => p.Key, p => p.Value),
+                                     [.. found.SelectMany(f => f.BufferReserves)]);
     }
 
     internal static bool IsExcluded(SymbolCategory category)
@@ -58,7 +69,7 @@ public static class ReplayFunctions
 
         if (!File.Exists(pdbPath))
         {
-            return new ReplayFunctionSet([], []);
+            return new ReplayFunctionSet([], [], new Dictionary<ulong, string>(), []);
         }
 
         using var resolver = new DiaResolver(pdbPath);
@@ -70,6 +81,10 @@ public static class ReplayFunctions
         var kept = new HashSet<uint>();
 
         var memory = new Dictionary<uint, MemoryFunction?>();
+
+        var publishers = new Dictionary<uint, string?>();
+
+        var reserves = new HashSet<uint>();
 
         foreach (var symbol in resolver.EnumerateSymbolDetails(string.Empty, includeSignature: false))
         {
@@ -89,10 +104,43 @@ public static class ReplayFunctions
             var function = MemoryFunction.Classify(module.Address + symbol.Rva, symbol.Name);
 
             memory[symbol.Rva] = memory.TryGetValue(symbol.Rva, out var existing) && existing != function ? null : function;
+
+            if (ExtendedEventOf(className, methodName) is { } eventName)
+            {
+                publishers[symbol.Rva] = publishers.TryGetValue(symbol.Rva, out var existingEvent) && existingEvent != eventName
+                    ? null
+                    : eventName;
+            }
+            else if (className == BufferManager && methodName == ReserveMethod)
+            {
+                reserves.Add(symbol.Rva);
+            }
         }
 
         excluded.ExceptWith(kept);
 
-        return new ReplayFunctionSet([.. excluded.Select(rva => module.Address + rva)], [.. memory.Values.OfType<MemoryFunction>()]);
+        return new ReplayFunctionSet([.. excluded.Select(rva => module.Address + rva)],
+                                     [.. memory.Values.OfType<MemoryFunction>()],
+                                     publishers.Where(p => p.Value is not null).ToDictionary(p => module.Address + p.Key, p => p.Value!),
+                                     [.. reserves.Select(rva => module.Address + rva)]);
+    }
+
+    private static string? ExtendedEventOf(string? className, string methodName)
+    {
+        if (methodName != PublishMethod || className is null)
+        {
+            return null;
+        }
+
+        var package = className.IndexOf(PackageSeparator, StringComparison.Ordinal);
+
+        if (package <= 0)
+        {
+            return null;
+        }
+
+        var eventName = className[(package + PackageSeparator.Length)..];
+
+        return eventName.Length > 0 && !eventName.Contains("::", StringComparison.Ordinal) ? eventName : null;
     }
 }

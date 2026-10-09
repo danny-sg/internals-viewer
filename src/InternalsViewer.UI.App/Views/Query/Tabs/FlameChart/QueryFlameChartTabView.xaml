@@ -14,6 +14,7 @@
                                       Background="{ThemeResource LayerFillColorDefaultBrush}"
                                       Timeline="{x:Bind ViewModel.FlameChart, Mode=OneWay}"
                                       GrantedMemory="{x:Bind ViewModel.GrantedMemory, Mode=OneWay}"
+                                      ColourProvider="{x:Bind ViewModel.EventColours, Mode=OneWay}"
                                       RootNode="{x:Bind ViewModel.SelectedCallNode, Mode=OneWay}"
                                       SelectedCall="{x:Bind ViewModel.Arguments.SelectedCallReference, Mode=OneWay}"/>
 

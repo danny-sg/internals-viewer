@@ -171,6 +171,7 @@ namespace
         std::unordered_set<uint32_t>                        Threads;
         std::unordered_set<uint64_t>                        InstanceMethods;
         std::unordered_set<uint64_t>                        Excluded;
+        std::unordered_set<uint64_t>                        Markers;
         std::vector<CallActivity>                           Activity;
         std::vector<int32_t>                                LastActivity;
         std::unordered_map<FunctionKey, LoggedFunction, FunctionKeyHash> Log;
@@ -304,6 +305,24 @@ namespace
         volatile int32_t*           Cancel;
         std::vector<ThreadProgress> Threads;
     };
+
+    int32_t NearestNode(std::vector<StackFrame> const& stack)
+    {
+        for (auto frame = stack.rbegin(); frame != stack.rend(); ++frame)
+        {
+            if (frame->Node != ExcludedNode)
+            {
+                return frame->Node;
+            }
+        }
+
+        return -1;
+    }
+
+    bool InsideMarker(CallTree const& tree, std::vector<StackFrame> const& stack)
+    {
+        return !stack.empty() && stack.back().Node >= 0 && tree.Markers.contains(tree.Nodes[stack.back().Node].Address);
+    }
 
     bool IsRecorded(std::unordered_set<uint32_t> const& threads, uint32_t threadId)
     {
@@ -485,14 +504,16 @@ namespace
         {
             Unwind(tree, stack, stackPointer, nullptr, 0, threadId, clock);
 
-            if (!stack.empty() && stack.back().Node == ExcludedNode)
+            auto const marker = tree.Markers.contains(target);
+
+            if (!marker && !stack.empty() && stack.back().Node == ExcludedNode)
             {
                 return;
             }
 
             auto const returnAddress = static_cast<uint64_t>(fallThroughAddress);
 
-            if (tree.Excluded.contains(target))
+            if (!marker && (tree.Excluded.contains(target) || InsideMarker(tree, stack)))
             {
                 stack.push_back(StackFrame{ stackPointer,
                                             ExcludedNode,
@@ -508,7 +529,7 @@ namespace
                 return;
             }
 
-            auto const parent = stack.empty() ? -1 : stack.back().Node;
+            auto const parent = NearestNode(stack);
 
             CROSS_PLATFORM_CONTEXT const context = thread->GetCrossPlatformContext();
 
@@ -857,6 +878,8 @@ extern "C"
                          int32_t               instanceMethodCount,
                          const uint64_t*       excludedFunctions,
                          int32_t               excludedFunctionCount,
+                         const uint64_t*       markerFunctions,
+                         int32_t               markerFunctionCount,
                          int32_t               activitySlices,
                          CallChunkCallback     logCalls,
                          CallSpanCallback      logSpans,
@@ -883,6 +906,11 @@ extern "C"
         for (int32_t index = 0; index < excludedFunctionCount; index++)
         {
             result->Excluded.insert(excludedFunctions[index]);
+        }
+
+        for (int32_t index = 0; index < markerFunctionCount; index++)
+        {
+            result->Markers.insert(markerFunctions[index]);
         }
 
         result->LogCalls = logCalls;

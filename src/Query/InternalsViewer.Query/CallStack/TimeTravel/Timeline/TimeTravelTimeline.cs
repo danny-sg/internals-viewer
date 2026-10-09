@@ -35,6 +35,7 @@ public sealed class TimeTravelTimeline
         PositionEnd = source.PositionEnd;
         InstructionEnd = source.InstructionEnd;
         Memory = source.Memory;
+        Lifetimes = source.Lifetimes;
     }
 
     public IReadOnlyList<TimeTravelTimelineThread> Threads { get; }
@@ -44,6 +45,8 @@ public sealed class TimeTravelTimeline
     public long SpanCount { get; }
 
     public bool HasAllocations => Memory.HasAllocations;
+
+    public IReadOnlyList<TimeTravelOperatorLifetime> Lifetimes { get; private set; } = [];
 
     private double PositionStart { get; }
 
@@ -79,6 +82,12 @@ public sealed class TimeTravelTimeline
     public ulong InUseAt(double position) => Memory.InUseAt(position);
 
     public ulong PeakInUseDuring(double positionStart, double positionEnd) => Memory.PeakInUseDuring(positionStart, positionEnd);
+
+    public TimeTravelInUseCurve InUseWithin(uint thread, double positionStart, double positionEnd)
+        => Memory.InUseWithin(thread, positionStart, positionEnd);
+
+    public IReadOnlyList<TimeTravelInUseCurve> InUseOwnedBy(uint thread, IReadOnlyList<IReadOnlyList<TimeTravelTimelineSpan>> calls)
+        => Memory.InUseOwnedBy(thread, calls);
 
     public IReadOnlyList<TimeTravelSelfAllocation> SelfAllocations()
     {
@@ -190,6 +199,8 @@ public sealed class TimeTravelTimeline
         => Memory = TimeTravelMemoryIndex.Build(allocations, frees);
 
     internal void MapNodes(CallStackNode?[] nodes) => Nodes = nodes;
+
+    internal void SetLifetimes(IReadOnlyList<TimeTravelOperatorLifetime> lifetimes) => Lifetimes = lifetimes;
 
     private static List<(double Start, double End)> Windows(IEnumerable<TimeTravelTimelineRow> roots)
     {

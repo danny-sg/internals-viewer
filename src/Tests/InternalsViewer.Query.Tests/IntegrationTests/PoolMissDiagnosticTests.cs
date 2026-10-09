@@ -75,7 +75,7 @@ public class PoolMissDiagnosticTests(ITestOutputHelper output)
 
         var path = @"C:\ProgramData\InternalsViewer\Traces\QueryReplay_05f9b1f209e948aea098245fe188f362_0_134342016891580000.xel";
 
-        var (events, _, callStack, _) = await reader.GetEvents(path, connectionString, database, false, null, CancellationToken.None);
+        var (events, _, callStack, _, _) = await reader.GetEvents(path, connectionString, database, false, null, CancellationToken.None);
 
         var unit = database.AllocationUnits.Values.First(a => a.TableName == "Sales"
                                                              && a.AllocationUnitType == InternalsViewer.Internals.Engine.Database.Enums.AllocationUnitType.InRowData);

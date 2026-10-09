@@ -6,4 +6,8 @@ public sealed record TimeTravelMemorySummary(ulong Bytes,
                                              long Frees,
                                              long MatchedFrees,
                                              ulong PeakInUse,
-                                             IReadOnlyList<TimeTravelMemoryPurpose> Purposes);
+                                             IReadOnlyList<TimeTravelMemoryPurpose> Purposes,
+                                             IReadOnlyList<TimeTravelMemoryPurpose> Kinds,
+                                             ulong OperatorBytes,
+                                             ulong StatementOnlyBytes,
+                                             ulong OutsideStatementBytes);

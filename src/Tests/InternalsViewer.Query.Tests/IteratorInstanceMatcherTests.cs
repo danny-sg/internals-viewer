@@ -160,6 +160,27 @@ public class IteratorInstanceMatcherTests
     }
 
     [Fact]
+    public void The_Statement_Is_Entered_Through_An_Operator_Below_An_Unmatched_One()
+    {
+        var tree = new CallStackTree();
+
+        var execute = tree.AddCall(tree.Root, Statement("CXStmtQuery", "ErsqExecuteQuery", "SELECT"), 1);
+
+        var query = tree.AddCall(execute, Wrapper("CQueryScan", "GetRow", 0x10, "Iterator"), 2);
+
+        tree.AddCall(query, Iterator("CQScanRangeNew", "GetRow", 0x100, "*Index Seek"), 2);
+
+        var select = Operator(-1, "SELECT");
+        var compute = Operator(0, "Compute Scalar", parent: -1);
+        var seek = Operator(1, "Clustered Index Seek", parent: 0);
+
+        Match(tree, [select, compute, seek]);
+
+        Assert.Empty(compute.EntryFrames);
+        Assert.Equal("CXStmtQuery::ErsqExecuteQuery", Assert.Single(select.EntryFrames).Symbol);
+    }
+
+    [Fact]
     public void An_Iterator_From_Another_Plan_Is_Not_Matched()
     {
         var tree = new CallStackTree();

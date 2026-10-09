@@ -36,10 +36,17 @@ public sealed class TimeTravelSession : IDisposable
     public Task<TimeTravelCallTree> ReadCallsAsync(IReadOnlyCollection<uint> threadIds,
                                                    ulong[] instanceMethods,
                                                    ulong[] excludedFunctions,
+                                                   ulong[] markerFunctions,
                                                    bool logCalls,
                                                    IProgress<ProgressDetail>? progress,
                                                    CancellationToken cancellationToken)
-        => RunAsync((callback, cancel) => ReadCalls([.. threadIds], instanceMethods, excludedFunctions, logCalls, callback, cancel),
+        => RunAsync((callback, cancel) => ReadCalls([.. threadIds],
+                                                    instanceMethods,
+                                                    excludedFunctions,
+                                                    markerFunctions,
+                                                    logCalls,
+                                                    callback,
+                                                    cancel),
                     progress,
                     cancellationToken);
 
@@ -115,6 +122,7 @@ public sealed class TimeTravelSession : IDisposable
     private TimeTravelCallTree ReadCalls(uint[] threads,
                                          ulong[] instanceMethods,
                                          ulong[] excludedFunctions,
+                                         ulong[] markerFunctions,
                                          bool logCalls,
                                          TimeTravelBridge.ProgressCallback callback,
                                          IntPtr cancel)
@@ -134,6 +142,8 @@ public sealed class TimeTravelSession : IDisposable
                                                    instanceMethods.Length,
                                                    excludedFunctions,
                                                    excludedFunctions.Length,
+                                                   markerFunctions,
+                                                   markerFunctions.Length,
                                                    ActivitySlices,
                                                    chunks,
                                                    spans,
