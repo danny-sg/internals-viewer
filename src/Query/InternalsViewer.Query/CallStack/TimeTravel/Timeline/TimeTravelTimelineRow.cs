@@ -45,37 +45,18 @@ public sealed class TimeTravelTimelineRow
 
     public int CallAt(int index) => Calls[index] == uint.MaxValue ? -1 : (int)Calls[index];
 
+    public TimeTravelSpanFlags FlagsAt(int index) => (TimeTravelSpanFlags)Flags[index];
+
     public TimeTravelTimelineSpan Span(TimeTravelTimelineAxis axis, int index)
-        => new(Starts(axis)[index],
-               Ends(axis)[index],
-               Nodes[index],
-               CallAt(index),
-               (TimeTravelSpanFlags)Flags[index]);
+        => new(Starts(axis)[index], Ends(axis)[index], Nodes[index], CallAt(index), FlagsAt(index));
 
-    public TimeTravelTimelineRow Where(Func<int, bool> include) => Keep(index => include(Nodes[index]));
-
-    public int FirstEndingAfter(TimeTravelTimelineAxis axis, double x, int from = 0)
-        => LowerBound(Ends(axis), x, from, inclusive: false);
-
-
-    public int FirstStartingFrom(TimeTravelTimelineAxis axis, double x, int from) => LowerBound(Starts(axis), x, from, inclusive: true);
-
-    public int FirstStartingAfter(TimeTravelTimelineAxis axis, double x) => LowerBound(Starts(axis), x, 0, inclusive: false);
-
-    public int IndexAt(TimeTravelTimelineAxis axis, double x, double tolerance)
-    {
-        var index = FirstEndingAfter(axis, x - tolerance);
-
-        return index < Count && Starts(axis)[index] <= x + tolerance ? index : -1;
-    }
-
-    private TimeTravelTimelineRow Keep(Func<int, bool> keep)
+    public TimeTravelTimelineRow Where(Func<int, bool> include)
     {
         var kept = new List<int>(Count);
 
         for (var index = 0; index < Count; index++)
         {
-            if (keep(index))
+            if (include(Nodes[index]))
             {
                 kept.Add(index);
             }
@@ -95,26 +76,16 @@ public sealed class TimeTravelTimelineRow
                                          [.. kept.Select(i => Flags[i])]);
     }
 
-    private static int LowerBound(ReadOnlySpan<double> values, double x, int from, bool inclusive)
+    public int FirstEndingAfter(TimeTravelTimelineAxis axis, double x, int from = 0) => SortedSearch.FirstAfter(Ends(axis), x, from);
+
+    public int FirstStartingFrom(TimeTravelTimelineAxis axis, double x, int from) => SortedSearch.FirstAtOrAfter(Starts(axis), x, from);
+
+    public int FirstStartingAfter(TimeTravelTimelineAxis axis, double x) => SortedSearch.FirstAfter(Starts(axis), x);
+
+    public int IndexAt(TimeTravelTimelineAxis axis, double x, double tolerance)
     {
-        var low = from;
+        var index = FirstEndingAfter(axis, x - tolerance);
 
-        var high = values.Length;
-
-        while (low < high)
-        {
-            var middle = low + (high - low) / 2;
-
-            if (inclusive ? values[middle] < x : values[middle] <= x)
-            {
-                low = middle + 1;
-            }
-            else
-            {
-                high = middle;
-            }
-        }
-
-        return low;
+        return index < Count && Starts(axis)[index] <= x + tolerance ? index : -1;
     }
 }

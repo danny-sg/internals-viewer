@@ -16,45 +16,35 @@ public static class ExtendedEventTrace
     {
         var reserveSet = reserves.ToHashSet();
 
-        var calls = new Dictionary<ulong, TimeTravelCallList?>();
+        var calls = new TimeTravelCallListCache(log);
 
         var publishes = new List<(uint Thread, double Start, double End, string Name)>();
 
         var buffers = new List<(uint Thread, double Start, ulong Buffer)>();
 
-        foreach (var thread in timeline.Threads)
+        foreach (var span in timeline.ResolvedSpans())
         {
-            foreach (var row in thread.Rows)
+            if (span.Node.Frame is not { } frame)
             {
-                var starts = row.Starts(TimeTravelTimelineAxis.Position);
+                continue;
+            }
 
-                var ends = row.Ends(TimeTravelTimelineAxis.Position);
+            var start = span.StartOf(TimeTravelTimelineAxis.Position);
 
-                for (var index = 0; index < row.Count; index++)
-                {
-                    if (timeline.NodeOf(row.NodeAt(index))?.Frame is not { } frame)
-                    {
-                        continue;
-                    }
-
-                    if (publishers.TryGetValue(frame.Address, out var name))
-                    {
-                        publishes.Add((thread.ThreadId, starts[index], ends[index], name));
-                    }
-                    else if (reserveSet.Contains(frame.Address)
-                             && row.CallAt(index) is >= 0 and var call
-                             && CallsOf(log, calls, frame.Address) is { } logged
-                             && call < logged.Count
-                             && logged[call].IntegerSlots.Length > 0)
-                    {
-                        buffers.Add((thread.ThreadId, starts[index], logged[call].IntegerSlots[0]));
-                    }
-                }
+            if (publishers.TryGetValue(frame.Address, out var name))
+            {
+                publishes.Add((span.Thread.ThreadId, start, span.EndOf(TimeTravelTimelineAxis.Position), name));
+            }
+            else if (reserveSet.Contains(frame.Address)
+                     && span.Call is >= 0 and var call
+                     && calls.Of(frame.Address) is { } logged
+                     && call < logged.Count)
+            {
+                buffers.Add((span.Thread.ThreadId, start, logged[call].Slot(0)));
             }
         }
 
-        var reservesByThread = buffers.GroupBy(b => b.Thread)
-                                      .ToDictionary(g => g.Key, g => g.OrderBy(b => b.Start).ToArray());
+        var reservesByThread = buffers.GroupBy(b => b.Thread).ToDictionary(g => g.Key, g => ReservesOf(g.OrderBy(b => b.Start)));
 
         var inside = publishes.Select(p => (Publish: p, Buffers: BuffersWithin(reservesByThread, p.Thread, p.Start, p.End)))
                               .ToList();
@@ -102,10 +92,14 @@ public static class ExtendedEventTrace
                                              tasks);
     }
 
-    private static List<ulong> BuffersWithin(Dictionary<uint, (uint Thread, double Start, ulong Buffer)[]> reservesByThread,
-                                             uint thread,
-                                             double start,
-                                             double end)
+    private static ThreadReserves ReservesOf(IEnumerable<(uint Thread, double Start, ulong Buffer)> reserves)
+    {
+        var ordered = reserves.ToList();
+
+        return new ThreadReserves([.. ordered.Select(r => r.Start)], [.. ordered.Select(r => r.Buffer)]);
+    }
+
+    private static List<ulong> BuffersWithin(Dictionary<uint, ThreadReserves> reservesByThread, uint thread, double start, double end)
     {
         var found = new List<ulong>();
 
@@ -114,41 +108,15 @@ public static class ExtendedEventTrace
             return found;
         }
 
-        var low = 0;
-
-        var high = reserves.Length;
-
-        while (low < high)
+        for (var index = SortedSearch.FirstAtOrAfter(reserves.Starts, start);
+             index < reserves.Starts.Length && reserves.Starts[index] < end;
+             index++)
         {
-            var middle = low + (high - low) / 2;
-
-            if (reserves[middle].Start < start)
-            {
-                low = middle + 1;
-            }
-            else
-            {
-                high = middle;
-            }
-        }
-
-        for (var index = low; index < reserves.Length && reserves[index].Start < end; index++)
-        {
-            found.Add(reserves[index].Buffer);
+            found.Add(reserves.Buffers[index]);
         }
 
         return found;
     }
 
-    private static TimeTravelCallList? CallsOf(TimeTravelCallLog log, Dictionary<ulong, TimeTravelCallList?> calls, ulong address)
-    {
-        if (!calls.TryGetValue(address, out var logged))
-        {
-            logged = log.CallsOf(address, 0);
-
-            calls[address] = logged;
-        }
-
-        return logged;
-    }
+    private sealed record ThreadReserves(double[] Starts, ulong[] Buffers);
 }

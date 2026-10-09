@@ -31,12 +31,5 @@
                        TextAlignment="Center"
                        TextWrapping="Wrap"/>
         </StackPanel>
-
-        <TextBlock Text="Run a query with Full Trace on to see its calls over time"
-                   Visibility="{x:Bind ViewModel.ShowFlameChartHint, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}"
-                   FontSize="12"
-                   Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                   HorizontalAlignment="Center"
-                   VerticalAlignment="Center"/>
     </Grid>
 </UserControl>

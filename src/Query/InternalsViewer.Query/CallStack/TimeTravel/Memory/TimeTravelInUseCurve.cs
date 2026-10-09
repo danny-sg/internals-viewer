@@ -10,40 +10,22 @@ public sealed class TimeTravelInUseCurve(double[] positions, ulong[] values)
 
     private ulong[] Values { get; } = values;
 
+    public ulong ValueAt(double position)
+    {
+        var index = SortedSearch.FirstAfter(Positions, position) - 1;
+
+        return index >= 0 ? Values[index] : 0;
+    }
+
     public ulong PeakDuring(double start, double end)
     {
-        var index = LastAtOrBefore(start);
+        var peak = ValueAt(start);
 
-        var peak = index >= 0 ? Values[index] : 0;
-
-        for (var next = index + 1; next < Positions.Length && Positions[next] < end; next++)
+        for (var index = SortedSearch.FirstAfter(Positions, start); index < Positions.Length && Positions[index] < end; index++)
         {
-            peak = Math.Max(peak, Values[next]);
+            peak = Math.Max(peak, Values[index]);
         }
 
         return peak;
-    }
-
-    private int LastAtOrBefore(double position)
-    {
-        var low = 0;
-
-        var high = Positions.Length;
-
-        while (low < high)
-        {
-            var middle = low + (high - low) / 2;
-
-            if (Positions[middle] <= position)
-            {
-                low = middle + 1;
-            }
-            else
-            {
-                high = middle;
-            }
-        }
-
-        return low - 1;
     }
 }

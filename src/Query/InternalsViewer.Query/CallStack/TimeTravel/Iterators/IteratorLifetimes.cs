@@ -25,30 +25,37 @@ public static class IteratorLifetimes
             return lifetimes;
         }
 
+        var callsByThread = new Dictionary<uint, Dictionary<ExecutionOperatorEvent, List<InstanceCall>>>();
+
+        foreach (var span in timeline.ResolvedSpans())
+        {
+            if (span.Node.Frame is not { Instance: not 0 } frame || !owners.TryGetValue(frame.Instance, out var owner))
+            {
+                continue;
+            }
+
+            if (!callsByThread.TryGetValue(span.Thread.ThreadId, out var calls))
+            {
+                calls = new Dictionary<ExecutionOperatorEvent, List<InstanceCall>>(ReferenceEqualityComparer.Instance);
+
+                callsByThread[span.Thread.ThreadId] = calls;
+            }
+
+            if (!calls.TryGetValue(owner, out var spans))
+            {
+                spans = [];
+
+                calls[owner] = spans;
+            }
+
+            spans.Add(new InstanceCall(span.Span(TimeTravelTimelineAxis.Position), span.Span(TimeTravelTimelineAxis.Instructions)));
+        }
+
         foreach (var thread in timeline.Threads)
         {
-            var calls = new Dictionary<ExecutionOperatorEvent, List<InstanceCall>>(ReferenceEqualityComparer.Instance);
-
-            foreach (var row in thread.Rows)
+            if (!callsByThread.TryGetValue(thread.ThreadId, out var calls))
             {
-                for (var index = 0; index < row.Count; index++)
-                {
-                    if (timeline.NodeOf(row.NodeAt(index))?.Frame is not { Instance: not 0 } frame
-                        || !owners.TryGetValue(frame.Instance, out var owner))
-                    {
-                        continue;
-                    }
-
-                    if (!calls.TryGetValue(owner, out var spans))
-                    {
-                        spans = [];
-
-                        calls[owner] = spans;
-                    }
-
-                    spans.Add(new InstanceCall(row.Span(TimeTravelTimelineAxis.Position, index),
-                                               row.Span(TimeTravelTimelineAxis.Instructions, index)));
-                }
+                continue;
             }
 
             var merged = calls.Select(c => (Operator: c.Key, Calls: Merged(c.Value))).ToList();

@@ -10,12 +10,21 @@ public sealed record TimeTravelOperatorLifetime(uint Thread,
                                                 IReadOnlyList<TimeTravelTimelineSpan> InstructionCalls,
                                                 TimeTravelInUseCurve InUse)
 {
+    private double[] PositionEnds { get; } = [.. PositionCalls.Select(c => c.End)];
+
+    private double[] InstructionStarts { get; } = [.. InstructionCalls.Select(c => c.Start)];
+
+    private double[] InstructionEnds { get; } = [.. InstructionCalls.Select(c => c.End)];
+
     public IReadOnlyList<TimeTravelTimelineSpan> Calls(TimeTravelTimelineAxis axis)
         => axis == TimeTravelTimelineAxis.Position ? PositionCalls : InstructionCalls;
 
     public double StartOf(TimeTravelTimelineAxis axis) => Calls(axis)[0].Start;
 
-    public double EndOf(TimeTravelTimelineAxis axis) => Calls(axis)[Calls(axis).Count - 1].End;
+    public double EndOf(TimeTravelTimelineAxis axis) => Calls(axis)[^1].End;
+
+    public int FirstEndingAfter(TimeTravelTimelineAxis axis, double value, int from = 0)
+        => SortedSearch.FirstAfter(axis == TimeTravelTimelineAxis.Position ? PositionEnds : InstructionEnds, value, from);
 
     public double PositionAt(TimeTravelTimelineAxis axis, double value)
     {
@@ -24,25 +33,7 @@ public sealed record TimeTravelOperatorLifetime(uint Thread,
             return value;
         }
 
-        var low = 0;
-
-        var high = InstructionCalls.Count;
-
-        while (low < high)
-        {
-            var middle = low + (high - low) / 2;
-
-            if (InstructionCalls[middle].Start <= value)
-            {
-                low = middle + 1;
-            }
-            else
-            {
-                high = middle;
-            }
-        }
-
-        var index = low - 1;
+        var index = SortedSearch.FirstAfter(InstructionStarts, value) - 1;
 
         if (index < 0)
         {

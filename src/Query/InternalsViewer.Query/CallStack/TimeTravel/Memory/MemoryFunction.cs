@@ -50,18 +50,11 @@ public sealed record MemoryFunction(ulong Address,
     public static bool IsMemoryObjectClass(string? className)
         => className is not null && (className == MemoryObjectFactory || IsMemoryObject(className));
 
-    public bool Applies(TimeTravelArgumentCall call)
-        => FlagSlot < 0 || (FlagSlot < call.IntegerSlots.Length && (call.IntegerSlots[FlagSlot] & FlagMask) != 0);
+    public bool Applies(TimeTravelArgumentCall call) => FlagSlot < 0 || (call.Slot(FlagSlot) & FlagMask) != 0;
 
-    public ulong ObjectOf(TimeTravelArgumentCall call)
-    {
-        if (Operation == MemoryOperation.Create)
-        {
-            return call.Returned ? call.ReturnValue : 0;
-        }
+    public ulong ObjectOf(TimeTravelArgumentCall call) => Operation == MemoryOperation.Create ? call.ReturnedValue : call.Slot(0);
 
-        return call.IntegerSlots.Length > 0 ? call.IntegerSlots[0] : 0;
-    }
+    public ulong PointerOf(TimeTravelArgumentCall call) => call.Slot(PointerSlot);
 
     public ulong BytesOf(TimeTravelArgumentCall call)
     {
@@ -70,14 +63,9 @@ public sealed record MemoryFunction(ulong Address,
             return Allocates ? Unit : 0;
         }
 
-        if (SizeSlot >= call.IntegerSlots.Length)
-        {
-            return 0;
-        }
+        var size = call.Slot(SizeSlot);
 
-        var size = call.IntegerSlots[SizeSlot];
-
-        var count = CountSlot >= 0 && CountSlot < call.IntegerSlots.Length ? call.IntegerSlots[CountSlot] : 1;
+        var count = CountSlot < 0 ? 1 : call.Slot(CountSlot);
 
         if (size > LargestAllocation || count > LargestAllocation || Math.BigMul(size, count, out var bytes) != 0)
         {

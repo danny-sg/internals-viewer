@@ -70,6 +70,27 @@ public sealed class TimeTravelTimeline
 
     public CallStackNode? NodeOf(int node) => node >= 0 && node < Nodes.Length ? Nodes[node] : null;
 
+    public IEnumerable<TimeTravelResolvedSpan> ResolvedSpans()
+    {
+        for (var threadIndex = 0; threadIndex < Threads.Count; threadIndex++)
+        {
+            var thread = Threads[threadIndex];
+
+            for (var depth = 0; depth < thread.Rows.Count; depth++)
+            {
+                var row = thread.Rows[depth];
+
+                for (var index = 0; index < row.Count; index++)
+                {
+                    if (NodeOf(row.NodeAt(index)) is { } node)
+                    {
+                        yield return new TimeTravelResolvedSpan(threadIndex, thread, depth, row, index, node);
+                    }
+                }
+            }
+        }
+    }
+
     public (ulong Bytes, int Count) AllocatedDuring(uint thread, double positionStart, double positionEnd)
         => Memory.AllocatedDuring(thread, positionStart, positionEnd);
 
@@ -78,8 +99,6 @@ public sealed class TimeTravelTimeline
 
     public ulong RetainedBy(uint thread, double positionStart, double positionEnd)
         => Memory.RetainedBy(thread, positionStart, positionEnd);
-
-    public ulong InUseAt(double position) => Memory.InUseAt(position);
 
     public ulong PeakInUseDuring(double positionStart, double positionEnd) => Memory.PeakInUseDuring(positionStart, positionEnd);
 
@@ -241,31 +260,13 @@ public sealed class TimeTravelTimeline
                                                    List<(double Start, double End)> windows,
                                                    int[] depths)
     {
+        double[] windowEnds = [.. windows.Select(w => w.End)];
+
         bool Overlaps(TimeTravelTimelineRow row, int index)
         {
-            var start = row.Starts(TimeTravelTimelineAxis.Position)[index];
+            var first = SortedSearch.FirstAtOrAfter(windowEnds, row.Starts(TimeTravelTimelineAxis.Position)[index]);
 
-            var end = row.Ends(TimeTravelTimelineAxis.Position)[index];
-
-            var low = 0;
-
-            var high = windows.Count;
-
-            while (low < high)
-            {
-                var middle = low + (high - low) / 2;
-
-                if (windows[middle].End < start)
-                {
-                    low = middle + 1;
-                }
-                else
-                {
-                    high = middle;
-                }
-            }
-
-            return low < windows.Count && windows[low].Start <= end;
+            return first < windows.Count && windows[first].Start <= row.Ends(TimeTravelTimelineAxis.Position)[index];
         }
 
         int DepthOf(TimeTravelTimelineRow row, int index)
@@ -342,7 +343,7 @@ public sealed class TimeTravelTimeline
                                 instructionEnds[index],
                                 row.NodeAt(index),
                                 call < 0 ? uint.MaxValue : (uint)call,
-                                (byte)row.Span(TimeTravelTimelineAxis.Position, index).Flags);
+                                (byte)row.FlagsAt(index));
             }
         }
 

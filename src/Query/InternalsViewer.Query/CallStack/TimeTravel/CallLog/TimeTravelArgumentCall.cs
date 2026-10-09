@@ -21,11 +21,15 @@ public sealed record TimeTravelArgumentCall(ulong Sequence,
 
     private const ulong ReturnedFlag = 1ul << 32;
 
+    public ulong ReturnedValue => Returned ? ReturnValue : 0;
+
     public static bool IsCaptured(ArgumentSlot slot) => slot.Location == ArgumentLocation.Register;
 
     public static bool IsReturnCaptured(string returnType) => !ArgumentValue.IsFloating(returnType);
 
     public ulong? Value(ArgumentSlot slot) => IsCaptured(slot) ? IntegerSlots[slot.Index] : null;
+
+    public ulong Slot(int index) => index >= 0 && index < IntegerSlots.Length ? IntegerSlots[index] : 0;
 
     internal static TimeTravelArgumentCall From(ReadOnlySpan<ulong> values)
     {

@@ -13,27 +13,17 @@ namespace InternalsViewer.UI.App.Views.Query.Tabs.FlameChart;
 
 public sealed partial class QueryFlameChartTabView : UserControl, IDocumentCommands, IDisposable
 {
-    private const string LockedGlyph = "";
+    private const string LockedGlyph = "\uE72E";
 
-    private const string UnlockedGlyph = "";
+    private const string UnlockedGlyph = "\uE785";
 
-    private const string StepBackGlyph = "";
+    private const string StepBackGlyph = "\uE892";
 
-    private const string StepForwardGlyph = "";
+    private const string StepForwardGlyph = "\uE893";
 
     private ToggleButton? _instructionsToggle;
 
     private ToggleButton? _positionToggle;
-
-    private ToggleButton? _lockToggle;
-
-    private ToggleButton? _memoryToggle;
-
-    private ToggleButton? _operatorsToggle;
-
-    private Button? _stepBackButton;
-
-    private Button? _stepForwardButton;
 
     public QueryFlameChartTabView()
     {
@@ -66,70 +56,6 @@ public sealed partial class QueryFlameChartTabView : UserControl, IDocumentComma
                                      TimeTravelTimelineAxis.Position,
                                      "Width is the span of trace positions, which lines threads up against each other");
 
-        _memoryToggle = new ToggleButton
-        {
-            Style = (Style)Application.Current.Resources["TabCommandToggleStyle"],
-            Content = new TextBlock { Text = "Memory", VerticalAlignment = VerticalAlignment.Center },
-            IsChecked = FlameChart.ShowMemory,
-            Margin = new Thickness(6, 0, 0, 0)
-        };
-
-        ToolTipService.SetToolTip(_memoryToggle,
-                                  "Raise the calls by memory, either as Allocated or In Use chosen above the ruler, and show the "
-                                  + "memory allocated and in use along the bottom");
-
-        _memoryToggle.Click += OnMemoryClick;
-
-        _operatorsToggle = new ToggleButton
-        {
-            Style = (Style)Application.Current.Resources["TabCommandToggleStyle"],
-            Content = new TextBlock { Text = "Operators", VerticalAlignment = VerticalAlignment.Center },
-            IsChecked = FlameChart.ShowOperators,
-            Margin = new Thickness(6, 0, 0, 0)
-        };
-
-        ToolTipService.SetToolTip(_operatorsToggle,
-                                  "Show each plan operator from its first call to its last above the threads. Drag the splitter to "
-                                  + "make the rows taller, click an operator to pick out its calls and everything they call.");
-
-        _operatorsToggle.Click += OnOperatorsClick;
-
-        _stepBackButton = StepButton(StepBackGlyph, "Move the playhead back to the start of the previous frame");
-
-        _stepBackButton.Click += OnStepBackClick;
-
-        _stepForwardButton = StepButton(StepForwardGlyph, "Move the playhead on to the start of the next frame");
-
-        _stepForwardButton.Click += OnStepForwardClick;
-
-        _lockToggle = new ToggleButton
-        {
-            Style = (Style)Application.Current.Resources["TabCommandToggleStyle"],
-            Content = new FontIcon { Glyph = FlameChart.IsLocked ? LockedGlyph : UnlockedGlyph, FontSize = 12 },
-            IsChecked = FlameChart.IsLocked,
-            Margin = new Thickness(6, 0, 0, 0)
-        };
-
-        ToolTipService.SetToolTip(_lockToggle,
-                                  "Keep the flame chart where it is. Clicking a call still selects it in the call stack, "
-                                  + "but does not change what the flame chart is rooted on.");
-
-        _lockToggle.Click += OnLockClick;
-
-        var fit = new Button
-        {
-            Style = (Style)Application.Current.Resources["TabCommandButtonStyle"],
-            Content = new TextBlock { Text = "Zoom To Fit", VerticalAlignment = VerticalAlignment.Center },
-            Margin = new Thickness(6, 0, 0, 0)
-        };
-
-        ToolTipService.SetToolTip(fit,
-                                  "Show every call. The wheel zooms, Shift+Wheel pans, Ctrl+Wheel scrolls the threads, "
-                                  + "drag a rectangle to zoom into it, middle-drag pans. Click or drag in the ruler to move the "
-                                  + "playhead, drag a call pulled out at the playhead to change the angle and length.");
-
-        fit.Click += OnZoomToFitClick;
-
         var commands = new StackPanel
         {
             Orientation = Orientation.Horizontal,
@@ -140,13 +66,35 @@ public sealed partial class QueryFlameChartTabView : UserControl, IDocumentComma
         };
 
         commands.Children.Add(_instructionsToggle);
+
         commands.Children.Add(_positionToggle);
-        commands.Children.Add(_operatorsToggle);
-        commands.Children.Add(_memoryToggle);
-        commands.Children.Add(_stepBackButton);
-        commands.Children.Add(_stepForwardButton);
-        commands.Children.Add(_lockToggle);
-        commands.Children.Add(fit);
+
+        commands.Children.Add(CommandToggle(Label("Operators"),
+                                            FlameChart.ShowOperators,
+                                            "Show each plan operator from its first call to its last above the threads. "
+                                            + "Drag the splitter to make the rows taller, click an operator to pick out its calls "
+                                            + "and everything they call.",
+                                            OnOperatorsClick));
+
+        commands.Children.Add(CommandToggle(Label("Memory"),
+                                            FlameChart.ShowMemory,
+                                            "Raise the calls by memory, either as Allocated or In Use chosen above the ruler, and show the "
+                                            + "memory allocated and in use along the bottom",
+                                            OnMemoryClick));
+
+        commands.Children.Add(CommandButton(new FontIcon { Glyph = StepBackGlyph, FontSize = 12 },
+                                            "Move the playhead back to the start of the previous frame",
+                                            OnStepBackClick));
+
+        commands.Children.Add(CommandButton(new FontIcon { Glyph = StepForwardGlyph, FontSize = 12 },
+                                            "Move the playhead on to the start of the next frame",
+                                            OnStepForwardClick));
+
+        commands.Children.Add(CommandToggle(new FontIcon { Glyph = FlameChart.IsLocked ? LockedGlyph : UnlockedGlyph, FontSize = 12 },
+                                            FlameChart.IsLocked,
+                                            "Keep the flame chart where it is. Clicking a call still selects it in the call stack, "
+                                            + "but does not change what the flame chart is rooted on.",
+                                            OnLockClick));
 
         return commands;
     }
@@ -171,7 +119,7 @@ public sealed partial class QueryFlameChartTabView : UserControl, IDocumentComma
         var toggle = new ToggleButton
         {
             Style = (Style)Application.Current.Resources["TabCommandToggleStyle"],
-            Content = new TextBlock { Text = text, VerticalAlignment = VerticalAlignment.Center },
+            Content = Label(text),
             IsChecked = FlameChart.Axis == axis,
             Tag = axis
         };
@@ -183,15 +131,37 @@ public sealed partial class QueryFlameChartTabView : UserControl, IDocumentComma
         return toggle;
     }
 
-    private Button StepButton(string glyph, string toolTip)
+    private static TextBlock Label(string text) => new() { Text = text, VerticalAlignment = VerticalAlignment.Center };
+
+    private static ToggleButton CommandToggle(UIElement content, bool isChecked, string toolTip, RoutedEventHandler onClick)
+    {
+        var toggle = new ToggleButton
+        {
+            Style = (Style)Application.Current.Resources["TabCommandToggleStyle"],
+            Content = content,
+            IsChecked = isChecked,
+            Margin = new Thickness(6, 0, 0, 0)
+        };
+
+        ToolTipService.SetToolTip(toggle, toolTip);
+
+        toggle.Click += onClick;
+
+        return toggle;
+    }
+
+    private static Button CommandButton(UIElement content, string toolTip, RoutedEventHandler onClick)
     {
         var button = new Button
         {
             Style = (Style)Application.Current.Resources["TabCommandButtonStyle"],
-            Content = new FontIcon { Glyph = glyph, FontSize = 12 }
+            Content = content,
+            Margin = new Thickness(6, 0, 0, 0)
         };
 
         ToolTipService.SetToolTip(button, toolTip);
+
+        button.Click += onClick;
 
         return button;
     }
@@ -210,11 +180,9 @@ public sealed partial class QueryFlameChartTabView : UserControl, IDocumentComma
         _positionToggle?.IsChecked = axis == TimeTravelTimelineAxis.Position;
     }
 
-    private void OnZoomToFitClick(object sender, RoutedEventArgs e) => FlameChart.ZoomToFit();
+    private void OnMemoryClick(object sender, RoutedEventArgs e) => FlameChart.ShowMemory = IsChecked(sender);
 
-    private void OnMemoryClick(object sender, RoutedEventArgs e) => FlameChart.ShowMemory = _memoryToggle?.IsChecked == true;
-
-    private void OnOperatorsClick(object sender, RoutedEventArgs e) => FlameChart.ShowOperators = _operatorsToggle?.IsChecked == true;
+    private void OnOperatorsClick(object sender, RoutedEventArgs e) => FlameChart.ShowOperators = IsChecked(sender);
 
     private void OnStepBackClick(object sender, RoutedEventArgs e) => FlameChart.StepPlayhead(forward: false);
 
@@ -222,13 +190,15 @@ public sealed partial class QueryFlameChartTabView : UserControl, IDocumentComma
 
     private void OnLockClick(object sender, RoutedEventArgs e)
     {
-        FlameChart.IsLocked = _lockToggle?.IsChecked == true;
+        FlameChart.IsLocked = IsChecked(sender);
 
-        if (_lockToggle?.Content is FontIcon icon)
+        if (sender is ToggleButton { Content: FontIcon icon })
         {
             icon.Glyph = FlameChart.IsLocked ? LockedGlyph : UnlockedGlyph;
         }
     }
+
+    private static bool IsChecked(object sender) => sender is ToggleButton { IsChecked: true };
 
     private void OnCallSelected(CallStackNode node, int call) => ViewModel?.NavigateToCall(node, call);
 

@@ -1,11 +1,9 @@
-using InternalsViewer.Internals.Engine.Loading;
 using InternalsViewer.Query.CallStack.Arguments;
 using InternalsViewer.Query.CallStack.Dia;
-using InternalsViewer.Query.CallStack.Symbols;
 
 namespace InternalsViewer.Query.CallStack.TimeTravel.Iterators;
 
-public static class IteratorMethods
+internal sealed class IteratorMethods
 {
     private const string Module = "sqlmin";
 
@@ -22,42 +20,13 @@ public static class IteratorMethods
         "BpClose"
     };
 
-    public static async Task<ulong[]> ResolveAsync(IReadOnlyList<TimeTravelModule> modules,
-                                                   string symbolsPath,
-                                                   IProgress<ProgressDetail>? progress,
-                                                   CancellationToken cancellationToken)
-    {
-        var module = modules.FirstOrDefault(m => string.Equals(Path.GetFileNameWithoutExtension(m.Path),
-                                                               Module,
-                                                               StringComparison.OrdinalIgnoreCase));
+    private HashSet<uint> Found { get; } = [];
 
-        if (module is null)
-        {
-            return [];
-        }
+    private HashSet<uint> Shared { get; } = [];
 
-        var frame = TimeTravelModuleIdentity.Describe(module).Frame(module.Address, 0);
+    public static bool AppliesTo(string module) => string.Equals(module, Module, StringComparison.OrdinalIgnoreCase);
 
-        if (frame.Pdb.Length == 0)
-        {
-            return [];
-        }
-
-        await SymbolDownloader.DownloadSymbols([frame], symbolsPath, progress, cancellationToken);
-
-        var pdbPath = CallstackResolver.GetPdbPath(symbolsPath, frame);
-
-        if (!File.Exists(pdbPath))
-        {
-            return [];
-        }
-
-        var rvas = await Task.Run(() => Find(pdbPath), cancellationToken);
-
-        return [.. rvas.Select(rva => module.Address + rva)];
-    }
-
-    internal static bool TakesIterator(string? signature, string? decoratedName)
+    public static bool TakesIterator(string? signature, string? decoratedName)
     {
         if (signature is null || decoratedName is null)
         {
@@ -72,7 +41,7 @@ public static class IteratorMethods
         };
     }
 
-    internal static bool IsIteratorMethod(string symbol)
+    public static bool IsIteratorMethod(string symbol)
     {
         var separator = ResolvedCallstackFrameParser.FindClassMethodSeparator(symbol);
 
@@ -81,34 +50,23 @@ public static class IteratorMethods
                && Methods.Contains(symbol[(separator + 2)..]);
     }
 
-    private static List<uint> Find(string pdbPath)
+    public void Add(SymbolDetail symbol)
     {
-        using var resolver = new DiaResolver(pdbPath);
-
-        var methods = new HashSet<uint>();
-
-        var shared = new HashSet<uint>();
-
-        foreach (var symbol in resolver.EnumerateSymbolDetails(string.Empty, includeSignature: false))
+        if (IsIteratorMethod(symbol.Name))
         {
-            if (!symbol.IsFunction)
-            {
-                continue;
-            }
-
-            if (IsIteratorMethod(symbol.Name))
-            {
-                methods.Add(symbol.Rva);
-            }
-            else if (!IsIteratorClass(symbol.Name))
-            {
-                shared.Add(symbol.Rva);
-            }
+            Found.Add(symbol.Rva);
         }
+        else if (!IsIteratorClass(symbol.Name))
+        {
+            Shared.Add(symbol.Rva);
+        }
+    }
 
-        methods.ExceptWith(shared);
+    public List<uint> Resolve(DiaResolver resolver)
+    {
+        Found.ExceptWith(Shared);
 
-        return [.. methods.Where(rva => TakesIterator(Signature(resolver, rva), resolver.GetDecoratedName(rva)))];
+        return [.. Found.Where(rva => TakesIterator(Signature(resolver, rva), resolver.GetDecoratedName(rva)))];
     }
 
     private static string? Signature(DiaResolver resolver, uint rva)

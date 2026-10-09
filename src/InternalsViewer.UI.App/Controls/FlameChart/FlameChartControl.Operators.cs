@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using InternalsViewer.Query.CallStack.TimeTravel;
 using InternalsViewer.Query.CallStack.TimeTravel.Timeline;
 using InternalsViewer.Query.Events.Operators;
 using InternalsViewer.Query.Plans.Model;
@@ -28,6 +29,8 @@ public sealed partial class FlameChartControl
     private const float MinimumOperatorsHeight = 20f;
 
     private const float OperatorsPadding = 4f;
+
+    private const float OperatorRowGap = 2f;
 
     private const float MinimumLanesHeight = 60f;
 
@@ -87,9 +90,13 @@ public sealed partial class FlameChartControl
         set => SetValue(ColourProviderProperty, value);
     }
 
-    private readonly Dictionary<int, SelectedRegion[]> _selectedRegions = [];
+    private readonly Dictionary<int, SelectedLane> _selectedLanes = [];
 
     private readonly Dictionary<TimeTravelOperatorLifetime, string> _operatorDetails = new(ReferenceEqualityComparer.Instance);
+
+    private readonly Dictionary<SKColor, SKShader> _operatorGradients = [];
+
+    private readonly SKRoundRect _operatorShape = new();
 
     private OperatorRow[] _operatorRows = [];
 
@@ -128,16 +135,25 @@ public sealed partial class FlameChartControl
 
             var room = OperatorsRoom;
 
-            var wanted = _operatorsHeight
-                         ?? Math.Min(_operatorRows.Length * CompactOperatorRowHeight + OperatorsPadding * 2, room * CompactOperatorsShare);
+            var compact = _operatorRows.Length * CompactOperatorRowHeight
+                          + (_operatorRows.Length - 1) * OperatorRowGap
+                          + OperatorsPadding * 2;
+
+            var wanted = _operatorsHeight ?? Math.Min(compact, room * CompactOperatorsShare);
 
             return Math.Clamp(wanted, MinimumOperatorsHeight, room);
         }
     }
 
-    private float OperatorRowHeight => Math.Max(OperatorsHeight - OperatorsPadding * 2, 1) / Math.Max(_operatorRows.Length, 1);
+    private float OperatorRowHeight
+    {
+        get
+        {
+            var rows = Math.Max(_operatorRows.Length, 1);
 
-    private float OperatorRowsTop => OperatorsTop + OperatorsPadding;
+            return Math.Max((OperatorsHeight - OperatorsPadding * 2 - (rows - 1) * OperatorRowGap) / rows, 1);
+        }
+    }
 
     private static OperatorRow[] OperatorRowsOf(TimeTravelTimeline? timeline)
     {
@@ -223,37 +239,31 @@ public sealed partial class FlameChartControl
 
         var radius = Math.Min(rect.Height / 2, OperatorCornerRadius);
 
-        using var shape = new SKRoundRect(rect, radius, radius);
+        _operatorShape.SetRect(rect, radius, radius);
 
         _paints.Fill.IsAntialias = true;
 
         _paints.Fill.Color = TimelineColours.Scale(colour, OperatorIdleShade);
 
-        canvas.DrawRoundRect(shape, _paints.Fill);
+        canvas.DrawRoundRect(_operatorShape, _paints.Fill);
 
         _paints.Fill.IsAntialias = false;
 
         canvas.Save();
 
-        canvas.ClipRoundRect(shape, antialias: true);
+        canvas.ClipRoundRect(_operatorShape, antialias: true);
 
-        using (var gradient = SKShader.CreateLinearGradient(new SKPoint(rect.Left, rect.Top),
-                                                            new SKPoint(rect.Left, rect.Bottom),
-                                                            [
-                                                                TimelineColours.Scale(colour, 1f + OperatorGradientLift),
-                                                                TimelineColours.Scale(colour, 1f - OperatorGradientLift)
-                                                            ],
-                                                            null,
-                                                            SKShaderTileMode.Clamp))
-        {
-            _paints.Fill.Color = colour;
+        canvas.Translate(0, rect.Top);
 
-            _paints.Fill.Shader = gradient;
+        canvas.Scale(1, rect.Height);
 
-            DrawActivity(canvas, lifetime.Calls(_axis), rect.Top, rect.Bottom, scale);
+        _paints.Fill.Color = colour;
 
-            _paints.Fill.Shader = null;
-        }
+        _paints.Fill.Shader = OperatorGradientOf(colour);
+
+        DrawActivity(canvas, lifetime, scale);
+
+        _paints.Fill.Shader = null;
 
         canvas.Restore();
 
@@ -266,13 +276,34 @@ public sealed partial class FlameChartControl
     private bool IsRaised(TimeTravelOperatorLifetime lifetime)
         => ShowMemory && MemoryMode == FlameChartMemoryMode.InUse && _inUseMaximum > 0 && !lifetime.InUse.IsEmpty;
 
-    private void DrawActivity(SKCanvas canvas, IReadOnlyList<TimeTravelTimelineSpan> calls, float top, float bottom, double scale)
+    private SKShader OperatorGradientOf(SKColor colour)
     {
+        if (!_operatorGradients.TryGetValue(colour, out var gradient))
+        {
+            gradient = SKShader.CreateLinearGradient(new SKPoint(0, 0),
+                                                     new SKPoint(0, 1),
+                                                     [
+                                                         TimelineColours.Scale(colour, 1f + OperatorGradientLift),
+                                                         TimelineColours.Scale(colour, 1f - OperatorGradientLift)
+                                                     ],
+                                                     null,
+                                                     SKShaderTileMode.Clamp);
+
+            _operatorGradients[colour] = gradient;
+        }
+
+        return gradient;
+    }
+
+    private void DrawActivity(SKCanvas canvas, TimeTravelOperatorLifetime lifetime, double scale)
+    {
+        var calls = lifetime.Calls(_axis);
+
         var runStart = -1f;
 
         var runEnd = -1f;
 
-        var index = FirstEndingAfter(calls, _viewStart, 0);
+        var index = lifetime.FirstEndingAfter(_axis, _viewStart);
 
         while (index < calls.Count && calls[index].Start <= _viewEnd)
         {
@@ -288,7 +319,7 @@ public sealed partial class FlameChartControl
             {
                 if (runStart >= 0)
                 {
-                    canvas.DrawRect(runStart, top, runEnd - runStart, bottom - top, _paints.Fill);
+                    canvas.DrawRect(runStart, 0, runEnd - runStart, 1, _paints.Fill);
                 }
 
                 runStart = left;
@@ -296,12 +327,12 @@ public sealed partial class FlameChartControl
                 runEnd = right;
             }
 
-            index = FirstEndingAfter(calls, _viewStart + (MathF.Floor(right) + 1f) / scale, index + 1);
+            index = lifetime.FirstEndingAfter(_axis, _viewStart + (MathF.Floor(right) + 1f) / scale, index + 1);
         }
 
         if (runStart >= 0)
         {
-            canvas.DrawRect(runStart, top, runEnd - runStart, bottom - top, _paints.Fill);
+            canvas.DrawRect(runStart, 0, runEnd - runStart, 1, _paints.Fill);
         }
     }
 
@@ -414,8 +445,10 @@ public sealed partial class FlameChartControl
 
         var padding = Math.Min(OperatorBarPadding, trackHeight * OperatorBarShare);
 
-        return (OperatorRowsTop + row * rowHeight + track * trackHeight + padding, Math.Max(trackHeight - padding * 2, 1));
+        return (OperatorRowTop(row) + track * trackHeight + padding, Math.Max(trackHeight - padding * 2, 1));
     }
+
+    private float OperatorRowTop(int row) => OperatorsTop + OperatorsPadding + row * (OperatorRowHeight + OperatorRowGap);
 
     private SKColor OperatorColourOf(ExecutionOperatorEvent operatorEvent, TimeTravelOperatorLifetime lifetime)
         => ColourProvider is { } colours ? colours.GetColour(operatorEvent).ToSkColor() : ColourOf(lifetime.Node);
@@ -469,7 +502,7 @@ public sealed partial class FlameChartControl
         {
             if (ReferenceEquals(_operatorRows[row].Operator, _selectedOperator))
             {
-                var top = OperatorRowsTop + row * rowHeight;
+                var top = OperatorRowTop(row);
 
                 _pathBuilder.AddRect(new SKRect(0, top, width, top + rowHeight));
             }
@@ -515,7 +548,7 @@ public sealed partial class FlameChartControl
 
         var bottom = height - BandHeight;
 
-        foreach (var (lane, regions) in _selectedRegions)
+        foreach (var (lane, selected) in _selectedLanes)
         {
             if (lane >= timeline.Threads.Count || lane >= _laneTops.Length || !IsExpanded(timeline.Threads[lane]))
             {
@@ -531,7 +564,9 @@ public sealed partial class FlameChartControl
                 continue;
             }
 
-            var index = FirstRegionEndingAfter(regions, _viewStart, 0);
+            var regions = selected.Regions;
+
+            var index = SortedSearch.FirstAfter(selected.Ends(_axis), _viewStart);
 
             while (index < regions.Length && regions[index].Of(_axis).Start <= _viewEnd)
             {
@@ -543,17 +578,17 @@ public sealed partial class FlameChartControl
 
                 _pathBuilder.AddRect(new SKRect(left, rowsTop + regions[index].Depth * _rowHeight, right, rowsBottom));
 
-                index = FirstRegionEndingAfter(regions, _viewStart + (MathF.Floor(right) + 1f) / scale, index + 1);
+                index = SortedSearch.FirstAfter(selected.Ends(_axis), _viewStart + (MathF.Floor(right) + 1f) / scale, index + 1);
             }
         }
 
-        using var selected = _pathBuilder.Detach();
+        using var path = _pathBuilder.Detach();
 
         canvas.Save();
 
         canvas.ClipRect(new SKRect(0, ContentTop, width, bottom));
 
-        canvas.ClipPath(selected, SKClipOperation.Difference);
+        canvas.ClipPath(path, SKClipOperation.Difference);
 
         _paints.Fill.Color = _paints.Dim;
 
@@ -564,7 +599,7 @@ public sealed partial class FlameChartControl
 
     private void FindSelectedRegions()
     {
-        _selectedRegions.Clear();
+        _selectedLanes.Clear();
 
         if (_selectedOperator is not { } selected || _visible is not { } timeline)
         {
@@ -573,37 +608,34 @@ public sealed partial class FlameChartControl
 
         var instances = new HashSet<ulong>(selected.Instances);
 
-        for (var lane = 0; lane < timeline.Threads.Count; lane++)
+        var found = new Dictionary<int, List<SelectedRegion>>();
+
+        foreach (var span in timeline.ResolvedSpans())
         {
-            var found = new List<SelectedRegion>();
-
-            var rows = timeline.Threads[lane].Rows;
-
-            for (var depth = 0; depth < rows.Count; depth++)
-            {
-                var row = rows[depth];
-
-                for (var index = 0; index < row.Count; index++)
-                {
-                    if (timeline.NodeOf(row.NodeAt(index))?.Frame is { Instance: not 0 } frame && instances.Contains(frame.Instance))
-                    {
-                        found.Add(new SelectedRegion(depth,
-                                                     row.Span(TimeTravelTimelineAxis.Position, index),
-                                                     row.Span(TimeTravelTimelineAxis.Instructions, index)));
-                    }
-                }
-            }
-
-            if (found.Count == 0)
+            if (span.Node.Frame is not { Instance: not 0 } frame || !instances.Contains(frame.Instance))
             {
                 continue;
             }
 
-            found.Sort((a, b) => a.Position.Start.CompareTo(b.Position.Start));
+            if (!found.TryGetValue(span.ThreadIndex, out var regions))
+            {
+                regions = [];
 
-            var outermost = new List<SelectedRegion>(found.Count);
+                found[span.ThreadIndex] = regions;
+            }
 
-            foreach (var region in found)
+            regions.Add(new SelectedRegion(span.Depth,
+                                           span.Span(TimeTravelTimelineAxis.Position),
+                                           span.Span(TimeTravelTimelineAxis.Instructions)));
+        }
+
+        foreach (var (lane, regions) in found)
+        {
+            regions.Sort((a, b) => a.Position.Start.CompareTo(b.Position.Start));
+
+            var outermost = new List<SelectedRegion>(regions.Count);
+
+            foreach (var region in regions)
             {
                 if (outermost.Count > 0 && region.Position.Start < outermost[^1].Position.End)
                 {
@@ -613,7 +645,9 @@ public sealed partial class FlameChartControl
                 outermost.Add(region);
             }
 
-            _selectedRegions[lane] = [.. outermost];
+            _selectedLanes[lane] = new SelectedLane([.. outermost],
+                                                    [.. outermost.Select(r => r.Position.End)],
+                                                    [.. outermost.Select(r => r.Instructions.End)]);
         }
     }
 
@@ -627,6 +661,8 @@ public sealed partial class FlameChartControl
         for (var row = 0; row < _operatorRows.Length; row++)
         {
             var rowStart = _spikes.Count;
+
+            _spikeRows.Add(rowStart);
 
             for (var track = 0; track < _operatorRows[row].Lifetimes.Length; track++)
             {
@@ -666,7 +702,7 @@ public sealed partial class FlameChartControl
 
         var colour = OperatorColourOf(operatorRow.Operator, lifetime);
 
-        var source = FlameHit.Operator(row, track);
+        var source = BlockSource.Of(new OperatorHit(row, track));
 
         var first = _spikes.Count;
 
@@ -679,22 +715,22 @@ public sealed partial class FlameChartControl
 
             var last = _spikes.Count - 1;
 
-            if (last >= first && _spikes[last].Label == bytes && _spikes[last].Right >= x)
+            if (last >= first && _spikes[last].Bytes == bytes && _spikes[last].Right >= x)
             {
-                _spikes[last] = _spikes[last] with { SpanRight = end, Right = end };
+                _spikes[last] = _spikes[last] with { Right = end };
             }
             else
             {
-                _spikes.Add(Raised(source, lifetime.Node, x, end, top, height, bytes, _inUseMaximum, false) with { Colour = colour });
+                _spikes.Add(Raised(source, lifetime.Node, x, end, top, height, bytes, _inUseMaximum) with { Colour = colour });
             }
         }
 
-        FinishSurface(first, MinimumOperatorLabelWidth + LabelPadding * 4);
+        FinishSurface(first);
     }
 
-    private string TextOf(PopoutBlock block)
-        => block.Source.IsOperator && block.Source.OperatorRow < _operatorRows.Length
-            ? _operatorRows[block.Source.OperatorRow].Name
+    private string TextOf(Block block)
+        => block.Source.Operator is { } operatorHit && operatorHit.Row < _operatorRows.Length
+            ? _operatorRows[operatorHit.Row].Name
             : LabelOf(block.Node);
 
     private OperatorHit? OperatorAt(Point position)
@@ -706,18 +742,20 @@ public sealed partial class FlameChartControl
 
         var rowHeight = OperatorRowHeight;
 
-        var y = (float)position.Y - OperatorRowsTop;
+        var y = (float)position.Y - OperatorsTop - OperatorsPadding;
 
-        if (y < 0 || y >= rowHeight * _operatorRows.Length)
+        var row = (int)Math.Floor(y / (rowHeight + OperatorRowGap));
+
+        var inRow = y - row * (rowHeight + OperatorRowGap);
+
+        if (row < 0 || row >= _operatorRows.Length || inRow >= rowHeight)
         {
             return null;
         }
 
-        var row = Math.Min((int)(y / rowHeight), _operatorRows.Length - 1);
-
         var lifetimes = _operatorRows[row].Lifetimes;
 
-        var track = Math.Clamp((int)((y - row * rowHeight) / (rowHeight / lifetimes.Length)), 0, lifetimes.Length - 1);
+        var track = Math.Clamp((int)(inRow / (rowHeight / lifetimes.Length)), 0, lifetimes.Length - 1);
 
         var scale = PixelsPerUnit((int)_overlay.ActualWidth);
 
@@ -790,19 +828,6 @@ public sealed partial class FlameChartControl
         Relayout();
     }
 
-    private void Relayout()
-    {
-        BuildLayout();
-
-        _version++;
-
-        ClampScroll();
-
-        UpdateScrollBars();
-
-        _canvas.Invalidate();
-    }
-
     private void ShowOperatorToolTip(OperatorHit hit, Point position)
     {
         var lifetime = _operatorRows[hit.Row].Lifetimes[hit.Track];
@@ -864,52 +889,6 @@ public sealed partial class FlameChartControl
         return string.Join(Environment.NewLine, lines);
     }
 
-    private static int FirstEndingAfter(IReadOnlyList<TimeTravelTimelineSpan> calls, double value, int from)
-    {
-        var low = from;
-
-        var high = calls.Count;
-
-        while (low < high)
-        {
-            var middle = low + (high - low) / 2;
-
-            if (calls[middle].End <= value)
-            {
-                low = middle + 1;
-            }
-            else
-            {
-                high = middle;
-            }
-        }
-
-        return low;
-    }
-
-    private int FirstRegionEndingAfter(SelectedRegion[] regions, double value, int from)
-    {
-        var low = from;
-
-        var high = regions.Length;
-
-        while (low < high)
-        {
-            var middle = low + (high - low) / 2;
-
-            if (regions[middle].Of(_axis).End <= value)
-            {
-                low = middle + 1;
-            }
-            else
-            {
-                high = middle;
-            }
-        }
-
-        return low;
-    }
-
     private static void OnShowOperatorsChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
     {
         var control = (FlameChartControl)d;
@@ -922,13 +901,7 @@ public sealed partial class FlameChartControl
     }
 
     private static void OnColourProviderChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
-    {
-        var control = (FlameChartControl)d;
-
-        control._version++;
-
-        control._canvas.Invalidate();
-    }
+        => ((FlameChartControl)d).Redraw();
 
     private sealed record OperatorRow(ExecutionOperatorEvent Operator,
                                       TimeTravelOperatorLifetime[] Lifetimes,
@@ -941,5 +914,11 @@ public sealed partial class FlameChartControl
     private readonly record struct SelectedRegion(int Depth, TimeTravelTimelineSpan Position, TimeTravelTimelineSpan Instructions)
     {
         public TimeTravelTimelineSpan Of(TimeTravelTimelineAxis axis) => axis == TimeTravelTimelineAxis.Position ? Position : Instructions;
+    }
+
+    private sealed record SelectedLane(SelectedRegion[] Regions, double[] PositionEnds, double[] InstructionEnds)
+    {
+        public ReadOnlySpan<double> Ends(TimeTravelTimelineAxis axis)
+            => axis == TimeTravelTimelineAxis.Position ? PositionEnds : InstructionEnds;
     }
 }

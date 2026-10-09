@@ -28,7 +28,7 @@ public sealed class EventReader(ILogger<EventReader> logger)
     /// Due to the potentially high volume of events that could be read the reader is optimized for minimal memory allocations via
     /// a buffer based read.
     /// </remarks>
-    public async Task<(List<EngineEvent>, List<ExecutionPlan>, CallStackTree, HashSet<uint>, List<RawEvent>)> 
+    public async Task<(List<EngineEvent>, List<ExecutionPlan>, CallStackTree, List<RawEvent>)>
         GetEvents(string filePath,
                   string connectionString,
                   DatabaseSource? database,
@@ -42,8 +42,6 @@ public sealed class EventReader(ILogger<EventReader> logger)
         var events = new List<EngineEvent>();
 
         var executionPlans = new List<ExecutionPlan>();
-
-        var threadIds = new HashSet<uint>();
 
         var rawEvents = new List<RawEvent>();
 
@@ -106,22 +104,18 @@ public sealed class EventReader(ILogger<EventReader> logger)
                     // The result is a view over xmlBuffer and is reused per row, so it is mapped before the next read
                     var eventResult = xmlEventParser.ParseEvent(xmlBuffer, length);
 
-                    if (eventResult?.GetUlongAction("system_thread_id") is { } threadId and > 0 and <= uint.MaxValue)
-                    {
-                        threadIds.Add((uint)threadId);
-                    }
-
                     var engineEvent = eventResult is null
                                       ? null
                                       : eventParser.ToEngineEvent(eventResult, database, planHandles, callStack);
 
                     if (eventResult is not null)
                     {
+                        var threadId = eventResult.GetUlongAction("system_thread_id");
+
                         rawEvents.Add(new RawEvent(new string(nameBuffer, 0, nameLength),
-                                                   (uint?)eventResult.GetUlongAction("system_thread_id"),
+                                                   threadId is > 0 and <= uint.MaxValue and var id ? (uint?)id : null,
                                                    eventResult.GetUlongAction("worker_address"),
-                                                   eventResult.GetUlongAction("task_address"),
-                                                   engineEvent));
+                                                   eventResult.GetUlongAction("task_address")));
                     }
 
                     if (engineEvent is not null)
@@ -175,7 +169,7 @@ public sealed class EventReader(ILogger<EventReader> logger)
 
         consolidatedEvents.AddRange(operatorEvents);
 
-        return (consolidatedEvents, executionPlans, callStack, threadIds, rawEvents);
+        return (consolidatedEvents, executionPlans, callStack, rawEvents);
     }
 
     /// <summary>

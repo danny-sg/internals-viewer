@@ -4,22 +4,19 @@ namespace InternalsViewer.Query.CallStack.TimeTravel.Memory;
 
 internal sealed class TimeTravelMemoryIndex
 {
-    private TimeTravelMemoryIndex(Dictionary<uint, ThreadMemory> threads, double[] curvePositions, ulong[] curveValues)
+    private TimeTravelMemoryIndex(Dictionary<uint, ThreadMemory> threads, TimeTravelInUseCurve inUse)
     {
         Threads = threads;
-        CurvePositions = curvePositions;
-        CurveValues = curveValues;
+        InUse = inUse;
     }
 
-    public static TimeTravelMemoryIndex Empty { get; } = new([], [], []);
+    public static TimeTravelMemoryIndex Empty { get; } = new([], TimeTravelInUseCurve.Empty);
 
     public bool HasAllocations => Threads.Count > 0;
 
     private Dictionary<uint, ThreadMemory> Threads { get; }
 
-    private double[] CurvePositions { get; }
-
-    private ulong[] CurveValues { get; }
+    private TimeTravelInUseCurve InUse { get; }
 
     public static TimeTravelMemoryIndex Build(IEnumerable<TimeTravelAllocation> allocations, IEnumerable<TimeTravelFree> frees)
     {
@@ -34,7 +31,7 @@ internal sealed class TimeTravelMemoryIndex
 
         var freedAt = kept.Select(a => a.Pointer == 0 ? a.Start : double.PositiveInfinity).ToArray();
 
-        var matched = new List<(uint Thread, double Start, ulong Bytes)>();
+        var threads = new Dictionary<uint, ThreadLists>();
 
         var live = new Dictionary<ulong, int>();
 
@@ -57,7 +54,7 @@ internal sealed class TimeTravelMemoryIndex
 
                 freedAt[allocation] = start;
 
-                matched.Add((free.Thread, start, kept[allocation].Bytes));
+                ListsOf(threads, free.Thread).Frees.Add((start, kept[allocation].Bytes));
 
                 inUse -= Math.Min(inUse, kept[allocation].Bytes);
             }
@@ -78,20 +75,14 @@ internal sealed class TimeTravelMemoryIndex
             values.Add(inUse);
         }
 
-        var threads = new Dictionary<uint, ThreadMemory>();
-
-        foreach (var group in kept.Select((a, index) => (Allocation: a, FreedAt: freedAt[index])).GroupBy(a => a.Allocation.Thread))
+        for (var index = 0; index < kept.Count; index++)
         {
-            threads[group.Key] = new ThreadMemory([.. group.OrderBy(a => a.Allocation.Start)],
-                                                  [.. matched.Where(m => m.Thread == group.Key).Select(m => (m.Start, m.Bytes))]);
+            ListsOf(threads, kept[index].Thread).Allocations.Add((kept[index], freedAt[index]));
         }
 
-        foreach (var group in matched.Where(m => !threads.ContainsKey(m.Thread)).GroupBy(m => m.Thread))
-        {
-            threads[group.Key] = new ThreadMemory([], [.. group.Select(m => (m.Start, m.Bytes))]);
-        }
+        var memory = threads.ToDictionary(t => t.Key, t => new ThreadMemory([.. t.Value.Allocations], [.. t.Value.Frees]));
 
-        return new TimeTravelMemoryIndex(threads, [.. positions], [.. values]);
+        return new TimeTravelMemoryIndex(memory, new TimeTravelInUseCurve([.. positions], [.. values]));
     }
 
     public (ulong Bytes, int Count) AllocatedDuring(uint thread, double start, double end)
@@ -114,26 +105,9 @@ internal sealed class TimeTravelMemoryIndex
             ? memory.InUseOwnedBy(owners)
             : [.. owners.Select(_ => TimeTravelInUseCurve.Empty)];
 
-    public ulong InUseAt(double position)
-    {
-        var index = FirstFrom(CurvePositions, position, inclusive: true) - 1;
+    public ulong InUseAt(double position) => InUse.ValueAt(position);
 
-        return index >= 0 ? CurveValues[index] : 0;
-    }
-
-    public ulong PeakInUseDuring(double start, double end)
-    {
-        var peak = InUseAt(start);
-
-        for (var index = FirstFrom(CurvePositions, start, inclusive: true);
-             index < CurvePositions.Length && CurvePositions[index] < end;
-             index++)
-        {
-            peak = Math.Max(peak, CurveValues[index]);
-        }
-
-        return peak;
-    }
+    public ulong PeakInUseDuring(double start, double end) => InUse.PeakDuring(start, end);
 
     private static List<T> Outermost<T>(IEnumerable<T> items, Func<T, uint> threadOf, Func<T, double> startOf, Func<T, double> endOf)
     {
@@ -159,27 +133,23 @@ internal sealed class TimeTravelMemoryIndex
         return kept;
     }
 
-    private static int FirstFrom(double[] values, double value, bool inclusive)
+    private static ThreadLists ListsOf(Dictionary<uint, ThreadLists> threads, uint thread)
     {
-        var low = 0;
-
-        var high = values.Length;
-
-        while (low < high)
+        if (!threads.TryGetValue(thread, out var lists))
         {
-            var middle = low + (high - low) / 2;
+            lists = new ThreadLists();
 
-            if (values[middle] < value || (inclusive && values[middle] == value))
-            {
-                low = middle + 1;
-            }
-            else
-            {
-                high = middle;
-            }
+            threads[thread] = lists;
         }
 
-        return low;
+        return lists;
+    }
+
+    private sealed class ThreadLists
+    {
+        public List<(TimeTravelAllocation Allocation, double FreedAt)> Allocations { get; } = [];
+
+        public List<(double Start, ulong Bytes)> Frees { get; } = [];
     }
 
     private sealed class ThreadMemory
@@ -190,11 +160,8 @@ internal sealed class TimeTravelMemoryIndex
             AllocationBytes = [.. allocations.Select(a => a.Allocation.Bytes)];
             FreedAt = [.. allocations.Select(a => a.FreedAt)];
             AllocationTotals = Totals(AllocationBytes);
-
-            var ordered = frees.OrderBy(f => f.Start).ToArray();
-
-            FreeStarts = [.. ordered.Select(f => f.Start)];
-            FreeTotals = Totals([.. ordered.Select(f => f.Bytes)]);
+            FreeStarts = [.. frees.Select(f => f.Start)];
+            FreeTotals = Totals([.. frees.Select(f => f.Bytes)]);
         }
 
         private double[] AllocationStarts { get; }
@@ -211,18 +178,18 @@ internal sealed class TimeTravelMemoryIndex
 
         public (ulong Bytes, int Count) AllocatedDuring(double start, double end)
         {
-            var first = FirstFrom(AllocationStarts, start, inclusive: false);
+            var first = SortedSearch.FirstAtOrAfter(AllocationStarts, start);
 
-            var last = FirstFrom(AllocationStarts, end, inclusive: false);
+            var last = SortedSearch.FirstAtOrAfter(AllocationStarts, end);
 
             return last > first ? (AllocationTotals[last] - AllocationTotals[first], last - first) : (0, 0);
         }
 
         public ulong FreedDuring(double start, double end)
         {
-            var first = FirstFrom(FreeStarts, start, inclusive: false);
+            var first = SortedSearch.FirstAtOrAfter(FreeStarts, start);
 
-            var last = FirstFrom(FreeStarts, end, inclusive: false);
+            var last = SortedSearch.FirstAtOrAfter(FreeStarts, end);
 
             return last > first ? FreeTotals[last] - FreeTotals[first] : 0;
         }
@@ -231,9 +198,9 @@ internal sealed class TimeTravelMemoryIndex
 
         public TimeTravelInUseCurve InUseWithin(double start, double end)
         {
-            var first = FirstFrom(AllocationStarts, start, inclusive: false);
+            var first = SortedSearch.FirstAtOrAfter(AllocationStarts, start);
 
-            var last = FirstFrom(AllocationStarts, end, inclusive: false);
+            var last = SortedSearch.FirstAtOrAfter(AllocationStarts, end);
 
             if (last <= first)
             {
@@ -267,7 +234,7 @@ internal sealed class TimeTravelMemoryIndex
             {
                 foreach (var call in owners[owner])
                 {
-                    for (var index = FirstFrom(AllocationStarts, call.Start, inclusive: false);
+                    for (var index = SortedSearch.FirstAtOrAfter(AllocationStarts, call.Start);
                          index < AllocationStarts.Length && AllocationStarts[index] < call.End;
                          index++)
                     {
@@ -306,6 +273,23 @@ internal sealed class TimeTravelMemoryIndex
             return [.. changes.Select(CurveOf)];
         }
 
+        public ulong RetainedBy(double start, double end)
+        {
+            ulong retained = 0;
+
+            for (var index = SortedSearch.FirstAtOrAfter(AllocationStarts, start);
+                 index < AllocationStarts.Length && AllocationStarts[index] < end;
+                 index++)
+            {
+                if (FreedAt[index] >= end)
+                {
+                    retained += AllocationBytes[index];
+                }
+            }
+
+            return retained;
+        }
+
         private static TimeTravelInUseCurve CurveOf(List<(double Position, long Bytes)> changes)
         {
             if (changes.Count == 0)
@@ -338,23 +322,6 @@ internal sealed class TimeTravelMemoryIndex
             }
 
             return new TimeTravelInUseCurve([.. positions], [.. values]);
-        }
-
-        public ulong RetainedBy(double start, double end)
-        {
-            ulong retained = 0;
-
-            for (var index = FirstFrom(AllocationStarts, start, inclusive: false);
-                 index < AllocationStarts.Length && AllocationStarts[index] < end;
-                 index++)
-            {
-                if (FreedAt[index] >= end)
-                {
-                    retained += AllocationBytes[index];
-                }
-            }
-
-            return retained;
         }
 
         private static ulong[] Totals(ulong[] bytes)

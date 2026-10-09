@@ -2,6 +2,7 @@
 using InternalsViewer.Query.CallStack.Categories;
 using InternalsViewer.Query.CallStack.Dia;
 using InternalsViewer.Query.CallStack.Symbols;
+using InternalsViewer.Query.CallStack.TimeTravel.Iterators;
 using InternalsViewer.Query.CallStack.TimeTravel.Memory;
 
 namespace InternalsViewer.Query.CallStack.TimeTravel;
@@ -35,7 +36,7 @@ public static class ReplayFunctions
 
         if (identities.Count == 0)
         {
-            return new ReplayFunctionSet([], [.. heap], new Dictionary<ulong, string>(), []);
+            return new ReplayFunctionSet([], [.. heap], new Dictionary<ulong, string>(), [], []);
         }
 
         await SymbolDownloader.DownloadSymbols([.. identities.Select(m => m.Frame(m.Address, 0))],
@@ -52,7 +53,8 @@ public static class ReplayFunctions
         return new ReplayFunctionSet([.. found.SelectMany(f => f.Excluded)],
                                      [.. found.SelectMany(f => f.Memory), .. heap],
                                      found.SelectMany(f => f.Publishers).ToDictionary(p => p.Key, p => p.Value),
-                                     [.. found.SelectMany(f => f.BufferReserves)]);
+                                     [.. found.SelectMany(f => f.BufferReserves)],
+                                     [.. found.SelectMany(f => f.InstanceMethods)]);
     }
 
     internal static bool IsExcluded(SymbolCategory category)
@@ -69,7 +71,7 @@ public static class ReplayFunctions
 
         if (!File.Exists(pdbPath))
         {
-            return new ReplayFunctionSet([], [], new Dictionary<ulong, string>(), []);
+            return new ReplayFunctionSet([], [], new Dictionary<ulong, string>(), [], []);
         }
 
         using var resolver = new DiaResolver(pdbPath);
@@ -86,12 +88,16 @@ public static class ReplayFunctions
 
         var reserves = new HashSet<uint>();
 
+        var iteratorMethods = IteratorMethods.AppliesTo(module.Name) ? new IteratorMethods() : null;
+
         foreach (var symbol in resolver.EnumerateSymbolDetails(string.Empty, includeSignature: false))
         {
             if (!symbol.IsFunction)
             {
                 continue;
             }
+
+            iteratorMethods?.Add(symbol);
 
             var separator = ResolvedCallstackFrameParser.FindClassMethodSeparator(symbol.Name);
 
@@ -122,7 +128,10 @@ public static class ReplayFunctions
         return new ReplayFunctionSet([.. excluded.Select(rva => module.Address + rva)],
                                      [.. memory.Values.OfType<MemoryFunction>()],
                                      publishers.Where(p => p.Value is not null).ToDictionary(p => module.Address + p.Key, p => p.Value!),
-                                     [.. reserves.Select(rva => module.Address + rva)]);
+                                     [.. reserves.Select(rva => module.Address + rva)],
+                                     iteratorMethods is null
+                                         ? []
+                                         : [.. iteratorMethods.Resolve(resolver).Select(rva => module.Address + rva)]);
     }
 
     private static string? ExtendedEventOf(string? className, string methodName)

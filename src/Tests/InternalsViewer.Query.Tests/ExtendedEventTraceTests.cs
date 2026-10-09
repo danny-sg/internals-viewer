@@ -63,7 +63,7 @@ public class ExtendedEventTraceTests
 
         var publishers = new Dictionary<ulong, string> { [LockPublish] = "lock_acquired", [WaitPublish] = "wait_info" };
 
-        RawEvent[] inFile = [new("lock_acquired", 7, 0xAA, 0xBB, null), new("lock_acquired", 7, 0xAA, 0xBB, null)];
+        RawEvent[] inFile = [new("lock_acquired", 7, 0xAA, 0xBB), new("lock_acquired", 7, 0xAA, 0xBB)];
 
         var summary = ExtendedEventTrace.Summarise(timeline, log, publishers, [Reserve], inFile);
 

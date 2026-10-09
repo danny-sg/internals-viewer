@@ -5,7 +5,8 @@ namespace InternalsViewer.Query.CallStack.TimeTravel;
 public sealed record ReplayFunctionSet(ulong[] Excluded,
                                        MemoryFunction[] Memory,
                                        IReadOnlyDictionary<ulong, string> Publishers,
-                                       ulong[] BufferReserves)
+                                       ulong[] BufferReserves,
+                                       ulong[] InstanceMethods)
 {
-    public ulong[] Markers => [.. Publishers.Keys, .. BufferReserves];
+    public ulong[] Markers { get; } = [.. Publishers.Keys, .. BufferReserves];
 }

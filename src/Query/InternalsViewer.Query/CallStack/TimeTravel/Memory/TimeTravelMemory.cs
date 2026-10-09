@@ -37,40 +37,34 @@ public static class TimeTravelMemory
                                                 IReadOnlyList<ExecutionOperatorEvent> operators,
                                                 MemoryClerkSnapshot? clerks = null)
     {
-        var allocators = functions.Where(f => f.Allocates).ToDictionary(f => f.Address);
+        var byAddress = functions.ToDictionary(f => f.Address);
 
-        var (kinds, positions) = timeline is null ? ([], []) : ScanSpans(log, functions, timeline, clerks ?? MemoryClerkSnapshot.Empty);
+        var calls = new TimeTravelCallListCache(log);
+
+        var scanned = timeline is null ? new ScannedCalls() : ScanSpans(calls, byAddress, timeline, clerks ?? MemoryClerkSnapshot.Empty);
 
         var plumbing = new Dictionary<CallStackNode, bool>(ReferenceEqualityComparer.Instance);
 
-        var sizes = new Dictionary<ulong, ulong[]>();
-
-        var returned = new Dictionary<ulong, ulong[]>();
-
-        var released = new Dictionary<ulong, ulong[]>();
+        var values = new Dictionary<ulong, CallValues>();
 
         var events = new List<MemoryEvent>();
 
-        foreach (var (address, function) in allocators)
+        foreach (var function in functions.Where(f => f.Allocates || f is { Operation: MemoryOperation.Free, PointerSlot: >= 0 }))
         {
-            if (log.CallsOf(address, 0) is not { } calls)
+            if (calls.Of(function.Address) is not { } logged)
             {
                 continue;
             }
 
-            var bytes = new ulong[calls.Count];
+            var callValues = new CallValues(function, logged.Count);
 
-            var pointers = new ulong[calls.Count];
+            var positions = scanned.Positions.GetValueOrDefault(function.Address);
 
-            var previousPointers = new ulong[calls.Count];
+            var kinds = scanned.Kinds.GetValueOrDefault(function.Address);
 
-            var callKinds = kinds.GetValueOrDefault(address);
-
-            var callPositions = positions.GetValueOrDefault(address);
-
-            for (var index = 0; index < calls.Count; index++)
+            for (var index = 0; index < logged.Count; index++)
             {
-                var call = calls[index];
+                var call = logged[index];
 
                 var node = log.NodeOf(call);
 
@@ -79,89 +73,57 @@ public static class TimeTravelMemory
                     continue;
                 }
 
-                var position = PositionOf(callPositions, index, call);
+                var position = PositionOf(positions, index, call);
 
-                bytes[index] = function.BytesOf(call);
+                var pointer = function.PointerOf(call);
 
-                pointers[index] = call.Returned ? call.ReturnValue : 0;
-
-                if (function.Operation == MemoryOperation.Reallocate && PointerOf(function, call) is not 0 and var previous)
+                if (!function.Allocates)
                 {
-                    previousPointers[index] = previous;
+                    callValues.Released[index] = pointer;
 
-                    events.Add(new MemoryEvent(position, MemoryOperation.Free, node, 0, previous, false, string.Empty));
+                    if (pointer != 0)
+                    {
+                        events.Add(FreeEvent(position, node, pointer));
+                    }
+
+                    continue;
+                }
+
+                callValues.Bytes[index] = function.BytesOf(call);
+
+                callValues.Returned[index] = call.ReturnedValue;
+
+                if (function.Operation == MemoryOperation.Reallocate && pointer != 0)
+                {
+                    callValues.Released[index] = pointer;
+
+                    events.Add(FreeEvent(position, node, pointer));
                 }
 
                 events.Add(new MemoryEvent(position,
                                            MemoryOperation.Allocate,
                                            node,
-                                           bytes[index],
-                                           call.Returned ? call.ReturnValue : 0,
+                                           callValues.Bytes[index],
+                                           call.ReturnedValue,
                                            call.Returned,
-                                           KindOf(callKinds?[index], function)));
+                                           KindOf(kinds?[index], function)));
             }
 
-            sizes[address] = bytes;
-
-            returned[address] = pointers;
-
-            if (function.Operation == MemoryOperation.Reallocate)
-            {
-                released[address] = previousPointers;
-            }
-        }
-
-        foreach (var function in functions.Where(f => f.Operation == MemoryOperation.Free && f.PointerSlot >= 0))
-        {
-            if (log.CallsOf(function.Address, 0) is not { } calls)
-            {
-                continue;
-            }
-
-            var pointers = new ulong[calls.Count];
-
-            var callPositions = positions.GetValueOrDefault(function.Address);
-
-            for (var index = 0; index < calls.Count; index++)
-            {
-                var call = calls[index];
-
-                var node = log.NodeOf(call);
-
-                if (!function.Applies(call) || (function.IsPage && IsPlumbing(node, plumbing)))
-                {
-                    continue;
-                }
-
-                pointers[index] = PointerOf(function, call);
-
-                if (pointers[index] != 0)
-                {
-                    events.Add(new MemoryEvent(PositionOf(callPositions, index, call),
-                                               MemoryOperation.Free,
-                                               node,
-                                               0,
-                                               pointers[index],
-                                               false,
-                                               string.Empty));
-                }
-            }
-
-            released[function.Address] = pointers;
+            values[function.Address] = callValues;
         }
 
         if (timeline is not null)
         {
-            var (allocations, frees) = MemoryEventsOf(timeline, sizes, returned, released);
+            var (allocations, frees) = scanned.MemoryOf(values);
 
             timeline.SetMemory(allocations, frees);
         }
 
-        return Summarise(events.OrderBy(e => e.Position).ThenBy(e => e.Operation == MemoryOperation.Free ? 0 : 1), allocators, operators);
+        return Summarise(events.OrderBy(e => e.Position).ThenBy(e => e.Operation == MemoryOperation.Free ? 0 : 1), byAddress, operators);
     }
 
     private static TimeTravelMemorySummary Summarise(IEnumerable<MemoryEvent> events,
-                                                     Dictionary<ulong, MemoryFunction> allocators,
+                                                     Dictionary<ulong, MemoryFunction> functions,
                                                      IReadOnlyList<ExecutionOperatorEvent> operators)
     {
         var purposes = new Dictionary<string, PurposeTotals>();
@@ -232,7 +194,7 @@ public static class TimeTravelMemory
 
             if (!purposeOf.TryGetValue(node, out var purpose))
             {
-                purpose = IsNested(node, allocators) ? null : PurposeOf(node);
+                purpose = IsNested(node, functions) ? null : PurposeOf(node);
 
                 purposeOf[node] = purpose;
             }
@@ -376,94 +338,86 @@ public static class TimeTravelMemory
         return null;
     }
 
-    private static (Dictionary<ulong, string?[]> Kinds, Dictionary<ulong, double[]> Positions) ScanSpans(
-        TimeTravelCallLog log,
-        IReadOnlyList<MemoryFunction> functions,
-        TimeTravelTimeline timeline,
-        MemoryClerkSnapshot snapshot)
+    private static ScannedCalls ScanSpans(TimeTravelCallListCache calls,
+                                          Dictionary<ulong, MemoryFunction> functions,
+                                          TimeTravelTimeline timeline,
+                                          MemoryClerkSnapshot snapshot)
     {
-        var byAddress = functions.ToDictionary(f => f.Address);
+        var scanned = new ScannedCalls();
 
-        var calls = new Dictionary<ulong, TimeTravelCallList?>();
+        var threads = new Dictionary<uint, ThreadCalls>();
 
-        var positions = new Dictionary<ulong, double[]>();
+        foreach (var span in timeline.ResolvedSpans())
+        {
+            if (span.Node.Frame is not { } frame
+                || !functions.TryGetValue(frame.Address, out var function)
+                || span.Call is not (>= 0 and var call)
+                || calls.Of(function.Address) is not { } logged
+                || call >= logged.Count)
+            {
+                continue;
+            }
 
-        var threads = new List<ThreadCalls>();
+            var start = span.StartOf(TimeTravelTimelineAxis.Position);
+
+            var end = span.EndOf(TimeTravelTimelineAxis.Position);
+
+            if (!scanned.Positions.TryGetValue(function.Address, out var positions))
+            {
+                positions = new double[logged.Count];
+
+                Array.Fill(positions, double.NaN);
+
+                scanned.Positions[function.Address] = positions;
+            }
+
+            positions[call] = start;
+
+            if (!threads.TryGetValue(span.Thread.ThreadId, out var thread))
+            {
+                thread = new ThreadCalls(span.Thread.ThreadId);
+
+                threads[thread.ThreadId] = thread;
+
+                scanned.Threads.Add(thread);
+            }
+
+            thread.Calls.Add((function.Address, call, start, end));
+
+            if (!function.CarriesClerk && !function.IsObjectCall)
+            {
+                continue;
+            }
+
+            var arguments = logged[call];
+
+            if (function.CarriesClerk)
+            {
+                thread.Pages.Add((start, arguments.Slot(0)));
+            }
+
+            if (function.IsObjectCall && function.ObjectOf(arguments) is not 0 and var memoryObject)
+            {
+                thread.Objects.Add((start, end, memoryObject));
+            }
+        }
 
         var objectClerks = new Dictionary<ulong, ulong>();
 
-        foreach (var thread in timeline.Threads)
-        {
-            var found = new ThreadCalls();
-
-            foreach (var row in thread.Rows)
-            {
-                var starts = row.Starts(TimeTravelTimelineAxis.Position);
-
-                var ends = row.Ends(TimeTravelTimelineAxis.Position);
-
-                for (var index = 0; index < row.Count; index++)
-                {
-                    if (timeline.NodeOf(row.NodeAt(index))?.Frame is not { } frame
-                        || !byAddress.TryGetValue(frame.Address, out var function)
-                        || row.CallAt(index) is not (>= 0 and var call)
-                        || CallsOf(log, calls, function.Address) is not { } logged
-                        || call >= logged.Count)
-                    {
-                        continue;
-                    }
-
-                    if (!positions.TryGetValue(function.Address, out var callPositions))
-                    {
-                        callPositions = new double[logged.Count];
-
-                        Array.Fill(callPositions, double.NaN);
-
-                        positions[function.Address] = callPositions;
-                    }
-
-                    callPositions[call] = starts[index];
-
-                    if (function.CarriesClerk && logged[call].IntegerSlots.Length > 0)
-                    {
-                        found.Pages.Add((starts[index], logged[call].IntegerSlots[0]));
-                    }
-
-                    if (function.IsObjectCall && function.ObjectOf(logged[call]) is not 0 and var memoryObject)
-                    {
-                        found.Objects.Add((starts[index], ends[index], memoryObject));
-                    }
-
-                    if (function.Allocates)
-                    {
-                        found.Allocations.Add((function.Address, call, starts[index], ends[index]));
-                    }
-                }
-            }
-
-            found.Pages.Sort();
-
-            found.Objects.Sort();
-
-            threads.Add(found);
-        }
-
         var objectParents = new Dictionary<ulong, ulong>();
 
-        foreach (var thread in threads)
+        foreach (var thread in scanned.Threads)
         {
-            var pageStarts = thread.Pages.Select(p => p.Start).ToArray();
-
-            var objectStarts = thread.Objects.Select(o => o.Start).ToArray();
+            thread.Sort();
 
             foreach (var (start, end, memoryObject) in thread.Objects)
             {
-                if (FirstWithin(pageStarts, start, end) is >= 0 and var page)
+                if (FirstWithin(thread.PageStarts, start, end) is >= 0 and var page)
                 {
                     objectClerks.TryAdd(memoryObject, thread.Pages[page].Clerk);
                 }
 
-                if (FirstWithin(objectStarts, Math.BitIncrement(start), end) is >= 0 and var nested
+                if (FirstWithin(thread.ObjectStarts, Math.BitIncrement(start), end) is >= 0 and var nested
                     && thread.Objects[nested].Object != memoryObject)
                 {
                     objectParents.TryAdd(memoryObject, thread.Objects[nested].Object);
@@ -471,40 +425,41 @@ public static class TimeTravelMemory
             }
         }
 
-        var kinds = new Dictionary<ulong, string?[]>();
-
-        foreach (var thread in threads)
+        foreach (var thread in scanned.Threads)
         {
-            var pageStarts = thread.Pages.Select(p => p.Start).ToArray();
-
-            var objectStarts = thread.Objects.Select(o => o.Start).ToArray();
-
-            foreach (var (address, call, start, end) in thread.Allocations)
+            foreach (var (address, call, start, end) in thread.Calls)
             {
-                var kind = FirstWithin(pageStarts, start, end) is >= 0 and var page ? ClerkType(snapshot, thread.Pages[page].Clerk) : null;
-
-                if (kind is null && FirstWithin(objectStarts, start, end) is >= 0 and var inner)
-                {
-                    kind = ObjectType(thread.Objects[inner].Object, objectClerks, objectParents, snapshot);
-                }
-
-                if (kind is null || CallsOf(log, calls, address) is not { } logged)
+                if (!functions[address].Allocates)
                 {
                     continue;
                 }
 
-                if (!kinds.TryGetValue(address, out var callKinds))
-                {
-                    callKinds = new string?[logged.Count];
+                var kind = FirstWithin(thread.PageStarts, start, end) is >= 0 and var page
+                    ? ClerkType(snapshot, thread.Pages[page].Clerk)
+                    : null;
 
-                    kinds[address] = callKinds;
+                if (kind is null && FirstWithin(thread.ObjectStarts, start, end) is >= 0 and var inner)
+                {
+                    kind = ObjectType(thread.Objects[inner].Object, objectClerks, objectParents, snapshot);
                 }
 
-                callKinds[call] = kind;
+                if (kind is null)
+                {
+                    continue;
+                }
+
+                if (!scanned.Kinds.TryGetValue(address, out var kinds))
+                {
+                    kinds = new string?[scanned.Positions[address].Length];
+
+                    scanned.Kinds[address] = kinds;
+                }
+
+                kinds[call] = kind;
             }
         }
 
-        return (kinds, positions);
+        return scanned;
     }
 
     private static string ClerkType(MemoryClerkSnapshot snapshot, ulong clerk)
@@ -536,39 +491,18 @@ public static class TimeTravelMemory
     private static double PositionOf(double[]? positions, int index, TimeTravelArgumentCall call)
         => positions is not null && index < positions.Length && !double.IsNaN(positions[index]) ? positions[index] : call.Sequence;
 
-    private static TimeTravelCallList? CallsOf(TimeTravelCallLog log, Dictionary<ulong, TimeTravelCallList?> calls, ulong address)
-    {
-        if (!calls.TryGetValue(address, out var logged))
-        {
-            logged = log.CallsOf(address, 0);
-
-            calls[address] = logged;
-        }
-
-        return logged;
-    }
-
     private static int FirstWithin(double[] starts, double start, double end)
     {
-        var index = Array.BinarySearch(starts, start);
-
-        if (index < 0)
-        {
-            index = ~index;
-        }
-        else
-        {
-            while (index > 0 && starts[index - 1] == start)
-            {
-                index--;
-            }
-        }
+        var index = SortedSearch.FirstAtOrAfter(starts, start);
 
         return index < starts.Length && starts[index] < end ? index : -1;
     }
 
     private static string KindOf(string? kind, MemoryFunction function)
         => kind ?? (function.IsHeap ? Heap : function.IsVirtual ? VirtualMemory : Unattributed);
+
+    private static MemoryEvent FreeEvent(double position, CallStackNode? node, ulong pointer)
+        => new(position, MemoryOperation.Free, node, 0, pointer, false, string.Empty);
 
     private static bool IsPlumbing(CallStackNode? node, Dictionary<CallStackNode, bool> plumbing)
     {
@@ -587,8 +521,10 @@ public static class TimeTravelMemory
         return inside;
     }
 
-    private static bool IsNested(CallStackNode node, Dictionary<ulong, MemoryFunction> allocators)
-        => node.Ancestors().Skip(1).Any(a => a.Frame is { } frame && allocators.ContainsKey(frame.Address));
+    private static bool IsNested(CallStackNode node, Dictionary<ulong, MemoryFunction> functions)
+        => node.Ancestors()
+               .Skip(1)
+               .Any(a => a.Frame is { } frame && functions.TryGetValue(frame.Address, out var function) && function.Allocates);
 
     private static bool IsBufferPool(CallStackNode node)
         => node.Frame?.Resolved?.SymbolCategory is SymbolCategory.BufferPool or SymbolCategory.BufferManager;
@@ -644,54 +580,6 @@ public static class TimeTravelMemory
     private static bool IsQueryProfiling(CallStackNode node)
         => node.Frame?.Resolved?.ClassName?.StartsWith(ProfilingClassPrefix, StringComparison.Ordinal) == true;
 
-    private static ulong PointerOf(MemoryFunction function, TimeTravelArgumentCall call)
-        => function.PointerSlot >= 0 && function.PointerSlot < call.IntegerSlots.Length ? call.IntegerSlots[function.PointerSlot] : 0;
-
-    private static (List<TimeTravelAllocation> Allocations, List<TimeTravelFree> Frees) MemoryEventsOf(
-        TimeTravelTimeline timeline,
-        Dictionary<ulong, ulong[]> sizes,
-        Dictionary<ulong, ulong[]> returned,
-        Dictionary<ulong, ulong[]> released)
-    {
-        var allocations = new List<TimeTravelAllocation>();
-
-        var frees = new List<TimeTravelFree>();
-
-        foreach (var thread in timeline.Threads)
-        {
-            foreach (var row in thread.Rows)
-            {
-                var starts = row.Starts(TimeTravelTimelineAxis.Position);
-
-                var ends = row.Ends(TimeTravelTimelineAxis.Position);
-
-                for (var index = 0; index < row.Count; index++)
-                {
-                    if (timeline.NodeOf(row.NodeAt(index))?.Frame is not { } frame || row.CallAt(index) is not (>= 0 and var call))
-                    {
-                        continue;
-                    }
-
-                    if (sizes.TryGetValue(frame.Address, out var bytes) && call < bytes.Length && bytes[call] > 0)
-                    {
-                        allocations.Add(new TimeTravelAllocation(thread.ThreadId,
-                                                                 starts[index],
-                                                                 ends[index],
-                                                                 bytes[call],
-                                                                 returned[frame.Address][call]));
-                    }
-
-                    if (released.TryGetValue(frame.Address, out var pointers) && call < pointers.Length && pointers[call] != 0)
-                    {
-                        frees.Add(new TimeTravelFree(thread.ThreadId, starts[index], ends[index], pointers[call]));
-                    }
-                }
-            }
-        }
-
-        return (allocations, frees);
-    }
-
     private readonly record struct MemoryEvent(double Position,
                                                MemoryOperation Operation,
                                                CallStackNode? Node,
@@ -707,13 +595,84 @@ public static class TimeTravelMemory
                                                   string KindName,
                                                   ulong Bytes);
 
-    private sealed class ThreadCalls
+    private sealed class CallValues(MemoryFunction function, int count)
     {
+        public ulong[] Bytes { get; } = function.Allocates ? new ulong[count] : [];
+
+        public ulong[] Returned { get; } = function.Allocates ? new ulong[count] : [];
+
+        public ulong[] Released { get; } = function.Operation is MemoryOperation.Free or MemoryOperation.Reallocate
+            ? new ulong[count]
+            : [];
+    }
+
+    private sealed class ScannedCalls
+    {
+        public Dictionary<ulong, double[]> Positions { get; } = [];
+
+        public Dictionary<ulong, string?[]> Kinds { get; } = [];
+
+        public List<ThreadCalls> Threads { get; } = [];
+
+        public (List<TimeTravelAllocation> Allocations, List<TimeTravelFree> Frees) MemoryOf(Dictionary<ulong, CallValues> values)
+        {
+            var allocations = new List<TimeTravelAllocation>();
+
+            var frees = new List<TimeTravelFree>();
+
+            foreach (var thread in Threads)
+            {
+                foreach (var (address, call, start, end) in thread.Calls)
+                {
+                    if (!values.TryGetValue(address, out var callValues))
+                    {
+                        continue;
+                    }
+
+                    if (call < callValues.Bytes.Length && callValues.Bytes[call] > 0)
+                    {
+                        allocations.Add(new TimeTravelAllocation(thread.ThreadId,
+                                                                 start,
+                                                                 end,
+                                                                 callValues.Bytes[call],
+                                                                 callValues.Returned[call]));
+                    }
+
+                    if (call < callValues.Released.Length && callValues.Released[call] != 0)
+                    {
+                        frees.Add(new TimeTravelFree(thread.ThreadId, start, end, callValues.Released[call]));
+                    }
+                }
+            }
+
+            return (allocations, frees);
+        }
+    }
+
+    private sealed class ThreadCalls(uint threadId)
+    {
+        public uint ThreadId { get; } = threadId;
+
+        public List<(ulong Address, int Call, double Start, double End)> Calls { get; } = [];
+
         public List<(double Start, ulong Clerk)> Pages { get; } = [];
 
         public List<(double Start, double End, ulong Object)> Objects { get; } = [];
 
-        public List<(ulong Address, int Call, double Start, double End)> Allocations { get; } = [];
+        public double[] PageStarts { get; private set; } = [];
+
+        public double[] ObjectStarts { get; private set; } = [];
+
+        public void Sort()
+        {
+            Pages.Sort();
+
+            Objects.Sort();
+
+            PageStarts = [.. Pages.Select(p => p.Start)];
+
+            ObjectStarts = [.. Objects.Select(o => o.Start)];
+        }
     }
 
     private sealed class PurposeTotals

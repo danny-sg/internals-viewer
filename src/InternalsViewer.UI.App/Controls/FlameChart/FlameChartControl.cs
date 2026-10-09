@@ -191,12 +191,6 @@ public sealed partial class FlameChartControl : Grid, IDisposable
 
     private Dictionary<(int Lane, int Depth), RaisedRow> _raisedRows = [];
 
-    private ulong _bandPeak;
-
-    private ulong _inUsePeak;
-
-    private ulong _inUseScale;
-
     private float _contentHeight;
 
     private double _fitStart;
@@ -443,6 +437,15 @@ public sealed partial class FlameChartControl : Grid, IDisposable
 
         _playheadTriangle.Dispose();
 
+        _operatorShape.Dispose();
+
+        foreach (var gradient in _operatorGradients.Values)
+        {
+            gradient.Dispose();
+        }
+
+        _operatorGradients.Clear();
+
         _timeline = null;
         _rooted = null;
         _visible = null;
@@ -459,9 +462,25 @@ public sealed partial class FlameChartControl : Grid, IDisposable
     {
         _paints.Apply(ActualTheme == ElementTheme.Dark);
 
+        Redraw();
+    }
+
+    private void Redraw()
+    {
         _version++;
 
         _canvas.Invalidate();
+    }
+
+    private void Relayout()
+    {
+        BuildLayout();
+
+        ClampScroll();
+
+        UpdateScrollBars();
+
+        Redraw();
     }
 
     private void UpdateFitRange()
@@ -562,15 +581,7 @@ public sealed partial class FlameChartControl : Grid, IDisposable
             SetView(FullStart, FullEnd);
         }
 
-        BuildLayout();
-
-        _version++;
-
-        ClampScroll();
-
-        UpdateScrollBars();
-
-        _canvas.Invalidate();
+        Relayout();
     }
 
     private void BuildLayout()
@@ -636,9 +647,7 @@ public sealed partial class FlameChartControl : Grid, IDisposable
 
         UpdateScrollBars();
 
-        _version++;
-
-        _canvas.Invalidate();
+        Redraw();
     }
 
     private void SetRoot(CallStackNode? root)
@@ -975,25 +984,11 @@ public sealed partial class FlameChartControl : Grid, IDisposable
 
         control._memoryModeButton.Visibility = control.ShowMemory ? Visibility.Visible : Visibility.Collapsed;
 
-        control.BuildLayout();
-
-        control.ClampScroll();
-
-        control.UpdateScrollBars();
-
-        control._version++;
-
-        control._canvas.Invalidate();
+        control.Relayout();
     }
 
     private static void OnGrantedMemoryChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
-    {
-        var control = (FlameChartControl)d;
-
-        control._version++;
-
-        control._canvas.Invalidate();
-    }
+        => ((FlameChartControl)d).Redraw();
 
     private static void OnMemoryModeChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
     {
@@ -1013,9 +1008,7 @@ public sealed partial class FlameChartControl : Grid, IDisposable
 
         control._hoverOperator = null;
 
-        control._version++;
-
-        control._canvas.Invalidate();
+        control.Redraw();
     }
 
     private static void OnIsLockedChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)

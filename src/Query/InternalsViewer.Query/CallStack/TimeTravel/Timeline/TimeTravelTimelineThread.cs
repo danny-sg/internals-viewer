@@ -30,7 +30,10 @@ public sealed class TimeTravelTimelineThread(uint threadId, IReadOnlyList<TimeTr
     public double EndOf(TimeTravelTimelineAxis axis)
         => Rows.Where(r => r.Count > 0).Select(r => r.Ends(axis)[^1]).DefaultIfEmpty(0).Max();
 
-    public TimeTravelTimelineThread Where(Func<int, bool> include) => From([.. Rows.Select(r => r.Where(include))]);
+    public TimeTravelTimelineThread Where(Func<int, bool> include)
+    {
+        TimeTravelTimelineRow[] kept = [.. Rows.Select(r => r.Where(include))];
 
-    private TimeTravelTimelineThread From(TimeTravelTimelineRow[] rows) => new(ThreadId, rows, rows.Sum(r => (long)r.Count));
+        return new TimeTravelTimelineThread(ThreadId, kept, kept.Sum(r => (long)r.Count));
+    }
 }

@@ -14,7 +14,6 @@ public sealed class TimeTravelSession : IDisposable
 
     private const int ActivitySlices = 1024;
 
-
     private TimeTravelSession(TimeTravelTrace trace, TimeTravelTraceHandle handle)
     {
         Trace = trace;
@@ -33,22 +32,22 @@ public sealed class TimeTravelSession : IDisposable
     public static Task<TimeTravelSession> OpenAsync(TimeTravelTrace trace, CancellationToken cancellationToken)
         => Task.Run(() => Open(trace), cancellationToken);
 
-    public Task<TimeTravelCallTree> ReadCallsAsync(IReadOnlyCollection<uint> threadIds,
-                                                   ulong[] instanceMethods,
-                                                   ulong[] excludedFunctions,
-                                                   ulong[] markerFunctions,
-                                                   bool logCalls,
-                                                   IProgress<ProgressDetail>? progress,
-                                                   CancellationToken cancellationToken)
-        => RunAsync((callback, cancel) => ReadCalls([.. threadIds],
-                                                    instanceMethods,
-                                                    excludedFunctions,
-                                                    markerFunctions,
-                                                    logCalls,
-                                                    callback,
-                                                    cancel),
-                    progress,
-                    cancellationToken);
+    public async Task<TimeTravelReplay> ReplayAsync(IReadOnlyCollection<uint> threadIds,
+                                                    ReplayFunctionSet functions,
+                                                    IProgress<ProgressDetail>? progress,
+                                                    CancellationToken cancellationToken)
+    {
+        await Gate.WaitAsync(cancellationToken);
+
+        try
+        {
+            return await Task.Run(() => Replay([.. threadIds], functions, progress, cancellationToken), cancellationToken);
+        }
+        finally
+        {
+            Gate.Release();
+        }
+    }
 
     public void Dispose() => Handle.Dispose();
 
@@ -72,25 +71,10 @@ public sealed class TimeTravelSession : IDisposable
         return new TimeTravelSession(trace, handle);
     }
 
-    private async Task<T> RunAsync<T>(Func<TimeTravelBridge.ProgressCallback, IntPtr, T> read,
-                                      IProgress<ProgressDetail>? progress,
-                                      CancellationToken cancellationToken)
-    {
-        await Gate.WaitAsync(cancellationToken);
-
-        try
-        {
-            return await Task.Run(() => Run(read, progress, cancellationToken), cancellationToken);
-        }
-        finally
-        {
-            Gate.Release();
-        }
-    }
-
-    private static T Run<T>(Func<TimeTravelBridge.ProgressCallback, IntPtr, T> read,
-                            IProgress<ProgressDetail>? progress,
-                            CancellationToken cancellationToken)
+    private TimeTravelReplay Replay(uint[] threads,
+                                    ReplayFunctionSet functions,
+                                    IProgress<ProgressDetail>? progress,
+                                    CancellationToken cancellationToken)
     {
         var cancel = Marshal.AllocHGlobal(sizeof(int));
 
@@ -98,88 +82,70 @@ public sealed class TimeTravelSession : IDisposable
 
         var registration = cancellationToken.Register(() => Marshal.WriteInt32(cancel, 1));
 
-        TimeTravelBridge.ProgressCallback callback = (thread, percent) =>
+        TimeTravelBridge.ProgressCallback onProgress = (thread, percent) =>
             progress?.Report(new ProgressDetail(thread == 0 ? "Replaying Full Trace" : $"[Thread {thread}] Replaying Full Trace", percent));
+
+        var log = new TimeTravelCallLog.Builder();
+
+        var timeline = new TimeTravelTimeline.Builder();
+
+        TimeTravelBridge.CallChunkCallback onChunk = log.Add;
+
+        TimeTravelBridge.CallSpanCallback onSpans = timeline.Add;
 
         try
         {
-            var result = read(callback, cancel);
+            var result = TimeTravelBridge.ReadCallTree(Handle,
+                                                       threads,
+                                                       threads.Length,
+                                                       functions.InstanceMethods,
+                                                       functions.InstanceMethods.Length,
+                                                       functions.Excluded,
+                                                       functions.Excluded.Length,
+                                                       functions.Markers,
+                                                       functions.Markers.Length,
+                                                       ActivitySlices,
+                                                       onChunk,
+                                                       onSpans,
+                                                       onProgress,
+                                                       cancel,
+                                                       out var tree);
 
-            GC.KeepAlive(callback);
+            GC.KeepAlive(onChunk);
 
-            cancellationToken.ThrowIfCancellationRequested();
+            GC.KeepAlive(onSpans);
 
-            return result;
+            GC.KeepAlive(onProgress);
+
+            if (result != 0)
+            {
+                throw new InvalidOperationException(Describe(result, Trace));
+            }
+
+            try
+            {
+                var nodes = new TimeTravelCallNode[TimeTravelBridge.GetCallNodeCount(tree)];
+
+                TimeTravelBridge.GetCallNodes(tree, nodes, nodes.Length);
+
+                var activity = new TimeTravelCallActivity[TimeTravelBridge.GetCallActivityCount(tree)];
+
+                TimeTravelBridge.GetCallActivity(tree, activity, activity.Length);
+
+                cancellationToken.ThrowIfCancellationRequested();
+
+                return new TimeTravelReplay(new TimeTravelCallTree(nodes, activity, [.. Modules]), log.Build(), timeline.Build(nodes));
+            }
+            finally
+            {
+                TimeTravelBridge.CloseCallTree(tree);
+            }
         }
         finally
         {
             registration.Dispose();
 
             Marshal.FreeHGlobal(cancel);
-        }
-    }
-
-    private TimeTravelCallTree ReadCalls(uint[] threads,
-                                         ulong[] instanceMethods,
-                                         ulong[] excludedFunctions,
-                                         ulong[] markerFunctions,
-                                         bool logCalls,
-                                         TimeTravelBridge.ProgressCallback callback,
-                                         IntPtr cancel)
-    {
-        var builder = logCalls ? new TimeTravelCallLog.Builder() : null;
-
-        TimeTravelBridge.CallChunkCallback? chunks = builder is null ? null : builder.Add;
-
-        var timeline = logCalls ? new TimeTravelTimeline.Builder() : null;
-
-        TimeTravelBridge.CallSpanCallback? spans = timeline is null ? null : (span, count) => timeline.Add(span, count);
-
-        var result = TimeTravelBridge.ReadCallTree(Handle,
-                                                   threads,
-                                                   threads.Length,
-                                                   instanceMethods,
-                                                   instanceMethods.Length,
-                                                   excludedFunctions,
-                                                   excludedFunctions.Length,
-                                                   markerFunctions,
-                                                   markerFunctions.Length,
-                                                   ActivitySlices,
-                                                   chunks,
-                                                   spans,
-                                                   callback,
-                                                   cancel,
-                                                   out var tree);
-
-        GC.KeepAlive(chunks);
-
-        GC.KeepAlive(spans);
-
-        ThrowOnFailure(result);
-
-        try
-        {
-            var nodes = new TimeTravelCallNode[TimeTravelBridge.GetCallNodeCount(tree)];
-
-            TimeTravelBridge.GetCallNodes(tree, nodes, nodes.Length);
-
-            var activity = new TimeTravelCallActivity[TimeTravelBridge.GetCallActivityCount(tree)];
-
-            TimeTravelBridge.GetCallActivity(tree, activity, activity.Length);
-
-            return new TimeTravelCallTree(nodes, activity, [.. Modules], builder?.Build(), timeline?.Build(nodes));
-        }
-        finally
-        {
-            TimeTravelBridge.CloseCallTree(tree);
-        }
-    }
-
-    private void ThrowOnFailure(int result)
-    {
-        if (result != 0)
-        {
-            throw new InvalidOperationException(Describe(result, Trace));
         }
     }
 

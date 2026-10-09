@@ -3,4 +3,4 @@ using InternalsViewer.Query.CallStack.TimeTravel.Timeline;
 
 namespace InternalsViewer.Query.CallStack.TimeTravel;
 
-public sealed record FullTraceResult(CallStackTree CallStack, TimeTravelCallLog CallLog, TimeTravelTimeline Timeline);
+public sealed record TimeTravelReplay(TimeTravelCallTree Calls, TimeTravelCallLog CallLog, TimeTravelTimeline Timeline);
