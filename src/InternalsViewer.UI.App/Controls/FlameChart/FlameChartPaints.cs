@@ -35,6 +35,48 @@ internal sealed class FlameChartPaints : IDisposable
         Color = new SKColor(80, 160, 255)
     };
 
+    public SKPaint Face { get; } = new() { Style = SKPaintStyle.Fill, IsAntialias = true };
+
+    public SKPaint Edge { get; } = new()
+    {
+        Style = SKPaintStyle.Stroke,
+        StrokeWidth = 1f,
+        IsAntialias = true,
+        Color = new SKColor(0, 0, 0, 90)
+    };
+
+    public SKPaint Guide { get; } = new() { Style = SKPaintStyle.Stroke, StrokeWidth = 1f, Color = new SKColor(80, 160, 255) };
+
+    public SKPaint LabelBackground { get; } = new() { Style = SKPaintStyle.Fill, Color = new SKColor(32, 32, 32, 200) };
+
+    public SKPaint AreaLine { get; } = new()
+    {
+        Style = SKPaintStyle.Stroke,
+        StrokeWidth = 1f,
+        IsAntialias = true,
+        Color = new SKColor(0x80, 0x80, 0x80)
+    };
+
+    public SKPaint InUseLine { get; } = new()
+    {
+        Style = SKPaintStyle.Stroke,
+        StrokeWidth = 1.5f,
+        IsAntialias = true,
+        Color = new SKColor(0, 103, 192)
+    };
+
+    public SKPaint InUseText { get; } = new() { IsAntialias = true, Color = new SKColor(0, 103, 192) };
+
+    public SKPaint GrantFill { get; } = new() { Style = SKPaintStyle.Fill, Color = new SKColor(0, 103, 192, 28) };
+
+    public SKPaint GrantEdge { get; } = new() { Style = SKPaintStyle.Stroke, StrokeWidth = 1f, Color = new SKColor(0, 103, 192, 140) };
+
+    public SKPaint Playhead { get; } = new() { Style = SKPaintStyle.Stroke, StrokeWidth = 2f, Color = new SKColor(230, 60, 60) };
+
+    public SKPaint PlayheadFill { get; } = new() { Style = SKPaintStyle.Fill, IsAntialias = true, Color = new SKColor(230, 60, 60) };
+
+    public SKPaint PlayheadText { get; } = new() { IsAntialias = true, Color = SKColors.White };
+
     public SKFont Font { get; } = new(SKTypeface.Default, 10f);
 
     public void Apply(bool isDark)
@@ -45,6 +87,14 @@ internal sealed class FlameChartPaints : IDisposable
         Tick.Color = isDark ? new SKColor(0x70, 0x70, 0x70) : new SKColor(0xA8, 0xA8, 0xA8);
         Hover.Color = isDark ? SKColors.White : SKColors.Black;
         Selection.Color = isDark ? new SKColor(255, 200, 0) : new SKColor(0xE0, 0x7A, 0x00);
+        Edge.Color = isDark ? new SKColor(255, 255, 255, 70) : new SKColor(0, 0, 0, 90);
+        Guide.Color = isDark ? new SKColor(110, 180, 255) : new SKColor(0, 103, 192);
+        LabelBackground.Color = isDark ? new SKColor(32, 32, 32, 210) : new SKColor(255, 255, 255, 220);
+        AreaLine.Color = isDark ? new SKColor(0xA0, 0xA0, 0xA0) : new SKColor(0x80, 0x80, 0x80);
+        InUseLine.Color = Guide.Color;
+        InUseText.Color = Guide.Color;
+        GrantFill.Color = Guide.Color.WithAlpha(isDark ? (byte)40 : (byte)28);
+        GrantEdge.Color = Guide.Color.WithAlpha(140);
     }
 
     public void Dispose()
@@ -57,6 +107,18 @@ internal sealed class FlameChartPaints : IDisposable
         Selection.Dispose();
         DragFill.Dispose();
         DragStroke.Dispose();
+        Face.Dispose();
+        Edge.Dispose();
+        Guide.Dispose();
+        LabelBackground.Dispose();
+        AreaLine.Dispose();
+        InUseLine.Dispose();
+        InUseText.Dispose();
+        GrantFill.Dispose();
+        GrantEdge.Dispose();
+        Playhead.Dispose();
+        PlayheadFill.Dispose();
+        PlayheadText.Dispose();
         Font.Dispose();
     }
 }

@@ -27,7 +27,12 @@ public sealed record MemoryFunction(ulong Address,
 
     public ulong BytesOf(TimeTravelArgumentCall call)
     {
-        if (SizeSlot < 0 || SizeSlot >= call.IntegerSlots.Length)
+        if (SizeSlot < 0)
+        {
+            return Allocates ? Unit : 0;
+        }
+
+        if (SizeSlot >= call.IntegerSlots.Length)
         {
             return 0;
         }
@@ -58,10 +63,18 @@ public sealed record MemoryFunction(ulong Address,
                 => new MemoryFunction(address, MemoryOperation.Allocate, 0, -1, 1),
             (null, "operator delete" or "operator delete[]")
                 => new MemoryFunction(address, MemoryOperation.Free, -1, 0, 1),
-            ("MemoryClerkInternal", "AllocatePages" or "AllocatePagesWithFailureMode")
+            ("MemoryClerkInternal", "AllocatePages" or "AllocatePagesWithFailureMode" or "AllocateReservedPages")
                 => new MemoryFunction(address, MemoryOperation.Allocate, 1, -1, PageSize),
-            ("MemoryClerkInternal", "FreePages")
+            ("MemoryClerkInternal", "FreePages" or "FreeReservedPages")
                 => new MemoryFunction(address, MemoryOperation.Free, 2, 1, PageSize),
+            ("CQryMemManager", "AllocatePages")
+                => new MemoryFunction(address, MemoryOperation.Allocate, 1, -1, PageSize),
+            ("CQryMemManager", "FreePages")
+                => new MemoryFunction(address, MemoryOperation.Free, 2, 1, PageSize),
+            ("CHashWorkfilePartitionInstance", "PvAllocateHashBucketPage")
+                => new MemoryFunction(address, MemoryOperation.Allocate, -1, -1, PageSize),
+            ("CHashWorkfilePartitionInstance", "FreeHashBucketPage")
+                => new MemoryFunction(address, MemoryOperation.Free, -1, 1, 1),
             ({ } owner, "Alloc") when IsMemoryObject(owner)
                 => new MemoryFunction(address, MemoryOperation.Allocate, 1, -1, 1),
             ({ } owner, "Realloc") when IsMemoryObject(owner)

@@ -572,14 +572,41 @@ namespace
 
         auto const threadId = static_cast<uint32_t>(thread->GetThreadInfo().Id);
 
-        if ((kind == GapKind::Large || event == GapEventType::StopEmulation) && IsRecorded(tree.Threads, threadId))
+        if (!IsRecorded(tree.Threads, threadId))
         {
-            auto& stack = tree.Stacks[threadId];
+            return false;
+        }
 
+        auto& stack = tree.Stacks[threadId];
+
+        if (kind == GapKind::Large || event == GapEventType::StopEmulation)
+        {
             auto const& clock = tree.Advance(threadId, thread->GetPosition());
 
             Unwind(tree, stack, UINT64_MAX, nullptr, 0, threadId, clock);
+
+            return false;
         }
+
+        if (kind != GapKind::Unrecorded || stack.empty())
+        {
+            return false;
+        }
+
+        auto const& frame = stack.back();
+
+        auto const programCounter = static_cast<uint64_t>(thread->GetProgramCounter());
+
+        if (frame.ReturnAddress == 0
+            || programCounter != frame.ReturnAddress
+            || static_cast<uint64_t>(thread->GetStackPointer()) < frame.StackPointer)
+        {
+            return false;
+        }
+
+        auto const& clock = tree.Advance(threadId, thread->GetPosition());
+
+        Unwind(tree, stack, frame.StackPointer, thread, programCounter, threadId, clock);
 
         return false;
     }

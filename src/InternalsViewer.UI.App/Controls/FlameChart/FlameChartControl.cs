@@ -78,6 +78,30 @@ public sealed partial class FlameChartControl : Grid, IDisposable
         set => SetValue(IsLockedProperty, value);
     }
 
+    public static readonly DependencyProperty ShowMemoryProperty =
+        DependencyProperty.Register(nameof(ShowMemory),
+                                    typeof(bool),
+                                    typeof(FlameChartControl),
+                                    new PropertyMetadata(false, OnShowMemoryChanged));
+
+    public bool ShowMemory
+    {
+        get => (bool)GetValue(ShowMemoryProperty);
+        set => SetValue(ShowMemoryProperty, value);
+    }
+
+    public static readonly DependencyProperty GrantedMemoryProperty =
+        DependencyProperty.Register(nameof(GrantedMemory),
+                                    typeof(long),
+                                    typeof(FlameChartControl),
+                                    new PropertyMetadata(0L, OnGrantedMemoryChanged));
+
+    public long GrantedMemory
+    {
+        get => (long)GetValue(GrantedMemoryProperty);
+        set => SetValue(GrantedMemoryProperty, value);
+    }
+
     public static readonly DependencyProperty SelectedCallProperty =
         DependencyProperty.Register(nameof(SelectedCall),
                                     typeof(CallReference),
@@ -106,6 +130,8 @@ public sealed partial class FlameChartControl : Grid, IDisposable
 
     private readonly SKPathBuilder _pathBuilder = new();
 
+    private readonly SKPath _playheadTriangle = PlayheadTriangle();
+
     private readonly Dictionary<int, SKColor> _colours = [];
 
     private readonly Dictionary<int, string> _labels = [];
@@ -127,6 +153,22 @@ public sealed partial class FlameChartControl : Grid, IDisposable
     private uint? _expandedThread;
 
     private float _focusPadding;
+
+    private double? _playhead;
+
+    private ulong _memoryMaximum;
+
+    private IReadOnlyList<TimeTravelSelfAllocation> _selfAllocations = [];
+
+    private ulong _selfMaximum;
+
+    private Dictionary<(int Lane, int Depth), RaisedRow> _raisedRows = [];
+
+    private ulong _bandPeak;
+
+    private ulong _inUsePeak;
+
+    private ulong _inUseScale;
 
     private float _contentHeight;
 
@@ -233,13 +275,67 @@ public sealed partial class FlameChartControl : Grid, IDisposable
 
     private double MinimumRange => MinimumRangeSteps * (_timeline?.StepOf(_axis) ?? 1);
 
-    private double ViewportHeight => Math.Max(0, _overlay.ActualHeight - RulerHeight);
+    private double ViewportHeight => Math.Max(0, _overlay.ActualHeight - ContentTop - BandHeight);
+
+    private bool ShowsMemoryBand => ShowMemory && _axis == TimeTravelTimelineAxis.Position && _visible is { HasAllocations: true };
+
+    private float BandHeight => ShowsMemoryBand ? MemoryBandHeight : 0;
 
     public void ZoomToFit()
     {
         _scrollY = 0;
 
         SetView(FullStart, FullEnd);
+    }
+
+    public void StepPlayhead(bool forward)
+    {
+        if (_visible is not { } timeline)
+        {
+            return;
+        }
+
+        var from = _playhead ?? _viewStart;
+
+        double? next = null;
+
+        foreach (var thread in timeline.Threads)
+        {
+            for (var depth = 0; depth < DepthOf(thread) && depth < thread.Rows.Count; depth++)
+            {
+                var row = thread.Rows[depth];
+
+                var index = forward ? row.FirstStartingAfter(_axis, from) : row.FirstStartingFrom(_axis, from, 0) - 1;
+
+                if (index < 0 || index >= row.Count)
+                {
+                    continue;
+                }
+
+                var start = row.Starts(_axis)[index];
+
+                if (next is not { } best || (forward ? start < best : start > best))
+                {
+                    next = start;
+                }
+            }
+        }
+
+        if (next is not { } target)
+        {
+            return;
+        }
+
+        _playhead = target;
+
+        if (target < _viewStart || target > _viewEnd)
+        {
+            var range = _viewEnd - _viewStart;
+
+            SetView(target - range / 2, target + range / 2);
+        }
+
+        _canvas.Invalidate();
     }
 
     public void Dispose()
@@ -264,9 +360,14 @@ public sealed partial class FlameChartControl : Grid, IDisposable
         _staticLayer?.Dispose();
         _staticLayer = null;
 
+        _landscapeLayer?.Dispose();
+        _landscapeLayer = null;
+
         _paints.Dispose();
 
         _pathBuilder.Dispose();
+
+        _playheadTriangle.Dispose();
 
         _timeline = null;
         _rooted = null;
@@ -475,6 +576,8 @@ public sealed partial class FlameChartControl : Grid, IDisposable
         RebuildVisible();
 
         ZoomToFit();
+
+        _playhead = null;
     }
 
     private void RebuildVisible()
@@ -497,9 +600,45 @@ public sealed partial class FlameChartControl : Grid, IDisposable
 
         BuildLayout();
 
+        _memoryMaximum = MemoryMaximum(_visible);
+
+        _selfAllocations = _visible?.SelfAllocations() ?? [];
+
+        _selfMaximum = _selfAllocations.Count == 0 ? 0 : _selfAllocations.Max(s => s.Bytes);
+
+        _raisedRows = _selfAllocations.GroupBy(s => (s.Thread, s.Depth))
+                                      .ToDictionary(g => g.Key,
+                                                    g => new RaisedRow([.. g.Select(s => s.Index)], [.. g.Select(s => s.Bytes)]));
+
         FindSelectedCall(bringIntoView: false);
 
         _version++;
+    }
+
+    private static ulong MemoryMaximum(TimeTravelTimeline? timeline)
+    {
+        if (timeline is not { HasAllocations: true })
+        {
+            return 0;
+        }
+
+        ulong maximum = 0;
+
+        foreach (var thread in timeline.Threads.Where(t => t.Rows.Count > 0))
+        {
+            var row = thread.Rows[0];
+
+            var starts = row.Starts(TimeTravelTimelineAxis.Position);
+
+            var ends = row.Ends(TimeTravelTimelineAxis.Position);
+
+            for (var index = 0; index < row.Count; index++)
+            {
+                maximum = Math.Max(maximum, timeline.AllocatedDuring(thread.ThreadId, starts[index], ends[index]).Bytes);
+            }
+        }
+
+        return maximum;
     }
 
     private static TimeTravelTimeline? RootedAt(TimeTravelTimeline timeline, CallStackNode root)
@@ -667,9 +806,13 @@ public sealed partial class FlameChartControl : Grid, IDisposable
 
         control.UpdateFitRange();
 
+        control.BuildLayout();
+
         control._version++;
 
         control.ZoomToFit();
+
+        control._playhead = null;
     }
 
     private static void OnHiddenCategoriesChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
@@ -695,6 +838,32 @@ public sealed partial class FlameChartControl : Grid, IDisposable
         {
             control.SetRoot(e.NewValue as CallStackNode);
         }
+    }
+
+    private static void OnShowMemoryChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
+    {
+        var control = (FlameChartControl)d;
+
+        control.HideToolTip();
+
+        control.BuildLayout();
+
+        control.ClampScroll();
+
+        control.UpdateScrollBars();
+
+        control._version++;
+
+        control._canvas.Invalidate();
+    }
+
+    private static void OnGrantedMemoryChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
+    {
+        var control = (FlameChartControl)d;
+
+        control._version++;
+
+        control._canvas.Invalidate();
     }
 
     private static void OnIsLockedChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)

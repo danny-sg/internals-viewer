@@ -22,6 +22,11 @@ public static class IteratorInstanceMatcher
     {
         var hierarchy = OperatorHierarchy.Build(events);
 
+        foreach (var operatorEvent in hierarchy.Operators)
+        {
+            operatorEvent.EntryFrames = [];
+        }
+
         var plan = new PlanShape(hierarchy);
 
         var matching = new Matching(plan);
@@ -96,11 +101,6 @@ public static class IteratorInstanceMatcher
     {
         foreach (var statement in plan.Statements)
         {
-            if (statement.EntryFrames.Count > 0)
-            {
-                continue;
-            }
-
             var entries = plan.Children(statement)
                               .Where(assigned.ContainsKey)
                               .SelectMany(o => o.EntryFrames)

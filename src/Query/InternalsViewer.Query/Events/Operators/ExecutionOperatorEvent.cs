@@ -1,5 +1,6 @@
 using InternalsViewer.Query.Events.Properties;
 using InternalsViewer.Query.CallStack;
+using InternalsViewer.Query.CallStack.TimeTravel.Memory;
 using InternalsViewer.Query.Plans.Operators;
 
 namespace InternalsViewer.Query.Events.Operators;
@@ -124,4 +125,6 @@ public sealed partial record ExecutionOperatorEvent : EngineEvent
     /// onto the same node) does not end its segment at its own start.
     /// </remarks>
     public IReadOnlyList<CallStackNode> ExitFrames { get; set; } = [];
+
+    public TimeTravelMemoryPurpose? Memory { get; set; }
 }

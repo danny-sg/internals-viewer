@@ -39,6 +39,12 @@ public sealed class QueryRunner(ILogger<QueryRunner> logger,
 {
     private const int ActivityBuckets = 96;
 
+    private const int MemoryPurposesReported = 10;
+
+    private const int MemoryUsesReported = 3;
+
+    private const int MemoryCandidatesReported = 8;
+
     public bool ResolveColumnstorePages { get; set; } = true;
 
     private ILogger<QueryRunner> Logger { get; } = logger;
@@ -165,6 +171,11 @@ public sealed class QueryRunner(ILogger<QueryRunner> logger,
             if (eventOptions.RecordTimeTravel)
             {
                 recording = await PrepareTimeTravelRecording(connectionString, progress, cancellationToken);
+            }
+
+            if (!payload.QueryOptions.ClearBufferPool)
+            {
+                await WarmUp(connectionString, preCommands, commands[0], progress, cancellationToken);
             }
 
             (var filePath, rowCount, logRecords, resultSets, var timeTravelTrace)
@@ -425,18 +436,43 @@ public sealed class QueryRunner(ILogger<QueryRunner> logger,
             progress?.Report($"{timeline.SpanCount:N0} call span(s) on {timeline.Threads.Count:N0} thread(s) in the flame chart");
         }
 
-        if (calls.CallLog is { } callLog)
-        {
-            var (allocated, allocations) = TimeTravelMemory.Apply(callLog, functions.Memory, timeline);
-
-            progress?.Report($"{allocations:N0} allocation(s) of {allocated / (1024.0 * 1024.0):N1} MB attributed to call frames");
-        }
-
         var matched = IteratorInstanceMatcher.Match(callStack, events);
 
         var operators = events.OfType<ExecutionOperatorEvent>().Count(o => o.PlanNodeIdentifier is { NodeId: >= 0 });
 
         progress?.Report($"{matched:N0} of {operators:N0} operator(s) matched to recorded iterators");
+
+        if (calls.CallLog is { } callLog)
+        {
+            var memory = TimeTravelMemory.Apply(callLog, functions.Memory, timeline, [.. events.OfType<ExecutionOperatorEvent>()]);
+
+            progress?.Report($"{memory.Allocations:N0} allocation(s) of {Size(memory.Bytes)} attributed to call frames, "
+                             + $"{memory.Returned:N0} with the pointer they returned, peak in use {Size(memory.PeakInUse)}");
+
+            progress?.Report($"{memory.Frees:N0} free(s), {memory.MatchedFrees:N0} matched to an allocation in the recording");
+
+            foreach (var purpose in memory.Purposes.Take(MemoryPurposesReported))
+            {
+                ReportMemory(purpose.Name, purpose, progress);
+            }
+
+            foreach (var operatorEvent in events.OfType<ExecutionOperatorEvent>()
+                                                .Where(o => o is { Memory: not null, PlanNodeIdentifier: not null })
+                                                .OrderBy(o => o.PlanNodeIdentifier!.NodeId))
+            {
+                var name = operatorEvent.PlanNodeIdentifier!.NodeId < 0
+                    ? $"{operatorEvent.OperatorDescription} (Statement)"
+                    : $"{operatorEvent.OperatorDescription} (Node {operatorEvent.PlanNodeIdentifier.NodeId})";
+
+                ReportMemory(name, operatorEvent.Memory!, progress);
+            }
+
+            foreach (var (operatorName, function, count) in TimeTravelMemory.Candidates(callStack, functions.Memory)
+                                                                              .Take(MemoryCandidatesReported))
+            {
+                progress?.Report($"Unclassified memory-like call under {operatorName}: {function} called {count:N0} time(s)");
+            }
+        }
 
         if (events.Count > 0)
         {
@@ -562,6 +598,20 @@ public sealed class QueryRunner(ILogger<QueryRunner> logger,
             Logger.LogDebug($"Unknown symbol: {symbol}");
         }
     }
+
+    private static void ReportMemory(string name, TimeTravelMemoryPurpose memory, IProgress<ProgressDetail>? progress)
+    {
+        progress?.Report($"{name}: allocated {Size(memory.Allocated)} in {memory.Allocations:N0}, "
+                         + $"freed {Size(memory.Freed)}, peak in use {Size(memory.PeakInUse)}, still held {Size(memory.Held)}");
+
+        foreach (var use in memory.Uses.Take(MemoryUsesReported))
+        {
+            progress?.Report($"    {use.Caller} allocated {Size(use.Bytes)} in {use.Allocations:N0} call(s) to {use.Allocator}");
+        }
+    }
+
+    private static string Size(ulong bytes)
+        => bytes >= 1024 * 1024 ? $"{bytes / (1024.0 * 1024.0):N1} MB" : $"{bytes / 1024.0:N1} KB";
 
     private void DeleteTimeTravelTrace(TimeTravelTrace trace, IProgress<ProgressDetail>? progress)
     {
@@ -817,6 +867,51 @@ public sealed class QueryRunner(ILogger<QueryRunner> logger,
         }
 
         return (filePath, rowCount, logRecords, resultSets, timeTravelTrace);
+    }
+
+    private async Task WarmUp(string connectionString,
+                              string[] preCommandSql,
+                              string commandSql,
+                              IProgress<ProgressDetail>? progress,
+                              CancellationToken cancellationToken)
+    {
+        progress?.Report("Warming up: running the query once, untraced and rolled back");
+
+        var start = Stopwatch.GetTimestamp();
+
+        await using var connection = new SqlConnection(connectionString);
+
+        await connection.OpenAsync(cancellationToken);
+
+        foreach (var preCommand in preCommandSql)
+        {
+            await connection.ExecuteSql(preCommand, cancellationToken, Logger);
+        }
+
+        await connection.ExecuteSql("BEGIN TRANSACTION;", cancellationToken, Logger);
+
+        try
+        {
+            await using var command = new SqlCommand(commandSql, connection);
+
+            command.CommandTimeout = 0;
+
+            await using var reader = await command.ExecuteReaderAsync(cancellationToken);
+
+            do
+            {
+                while (await reader.ReadAsync(cancellationToken))
+                {
+                }
+            }
+            while (await reader.NextResultAsync(cancellationToken));
+        }
+        finally
+        {
+            await connection.ExecuteSql("IF @@TRANCOUNT > 0 ROLLBACK TRANSACTION;", CancellationToken.None, Logger);
+        }
+
+        progress?.Report($"Warm-up finished in {Stopwatch.GetElapsedTime(start)}");
     }
 
     private async Task<ITimeTravelRecording?> PrepareTimeTravelRecording(string connectionString,

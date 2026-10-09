@@ -60,6 +60,8 @@ public sealed class TimeTravelTimelineRow
 
     public int FirstStartingFrom(TimeTravelTimelineAxis axis, double x, int from) => LowerBound(Starts(axis), x, from, inclusive: true);
 
+    public int FirstStartingAfter(TimeTravelTimelineAxis axis, double x) => LowerBound(Starts(axis), x, 0, inclusive: false);
+
     public int IndexAt(TimeTravelTimelineAxis axis, double x, double tolerance)
     {
         var index = FirstEndingAfter(axis, x - tolerance);

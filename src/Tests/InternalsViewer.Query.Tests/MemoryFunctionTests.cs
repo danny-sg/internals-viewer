@@ -15,6 +15,12 @@ public class MemoryFunctionTests
     [InlineData("operator delete[]", MemoryOperation.Free, -1, 0, 1ul)]
     [InlineData("MemoryClerkInternal::AllocatePages", MemoryOperation.Allocate, 1, -1, 8192ul)]
     [InlineData("MemoryClerkInternal::FreePages", MemoryOperation.Free, 2, 1, 8192ul)]
+    [InlineData("MemoryClerkInternal::AllocateReservedPages", MemoryOperation.Allocate, 1, -1, 8192ul)]
+    [InlineData("MemoryClerkInternal::FreeReservedPages", MemoryOperation.Free, 2, 1, 8192ul)]
+    [InlineData("CQryMemManager::AllocatePages", MemoryOperation.Allocate, 1, -1, 8192ul)]
+    [InlineData("CQryMemManager::FreePages", MemoryOperation.Free, 2, 1, 8192ul)]
+    [InlineData("CHashWorkfilePartitionInstance::PvAllocateHashBucketPage", MemoryOperation.Allocate, -1, -1, 8192ul)]
+    [InlineData("CHashWorkfilePartitionInstance::FreeHashBucketPage", MemoryOperation.Free, -1, 1, 1ul)]
     public void An_Allocator_Is_Recognised_By_Its_Name(string symbol,
                                                        MemoryOperation operation,
                                                        int sizeSlot,
@@ -65,6 +71,14 @@ public class MemoryFunctionTests
         var call = new TimeTravelArgumentCall(1, 1, true, [4, 24, 0, 0], 0);
 
         Assert.Equal(96ul, MemoryFunction.ClassifyExport(0x1000, "calloc")!.BytesOf(call));
+    }
+
+    [Fact]
+    public void A_Fixed_Size_Allocator_Allocates_Its_Unit()
+    {
+        var call = new TimeTravelArgumentCall(1, 1, true, [0xA0, 0, 0, 0], 0x5000);
+
+        Assert.Equal(8192ul, MemoryFunction.Classify(0x1000, "CHashWorkfilePartitionInstance::PvAllocateHashBucketPage")!.BytesOf(call));
     }
 
     [Fact]

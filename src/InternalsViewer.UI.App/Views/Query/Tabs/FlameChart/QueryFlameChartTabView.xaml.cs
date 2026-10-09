@@ -16,11 +16,21 @@ public sealed partial class QueryFlameChartTabView : UserControl, IDocumentComma
 
     private const string UnlockedGlyph = "";
 
+    private const string StepBackGlyph = "";
+
+    private const string StepForwardGlyph = "";
+
     private ToggleButton? _instructionsToggle;
 
     private ToggleButton? _positionToggle;
 
     private ToggleButton? _lockToggle;
+
+    private ToggleButton? _memoryToggle;
+
+    private Button? _stepBackButton;
+
+    private Button? _stepForwardButton;
 
     public QueryFlameChartTabView()
     {
@@ -51,6 +61,28 @@ public sealed partial class QueryFlameChartTabView : UserControl, IDocumentComma
                                      TimeTravelTimelineAxis.Position,
                                      "Width is the span of trace positions, which lines threads up against each other");
 
+        _memoryToggle = new ToggleButton
+        {
+            Style = (Style)Application.Current.Resources["TabCommandToggleStyle"],
+            Content = new TextBlock { Text = "Memory", VerticalAlignment = VerticalAlignment.Center },
+            IsChecked = FlameChart.ShowMemory,
+            Margin = new Thickness(6, 0, 0, 0)
+        };
+
+        ToolTipService.SetToolTip(_memoryToggle,
+                                  "Label the calls under the playhead with the memory they allocated, including their callees, "
+                                  + "and show the memory allocated and in use along the bottom");
+
+        _memoryToggle.Click += OnMemoryClick;
+
+        _stepBackButton = StepButton(StepBackGlyph, "Move the playhead back to the start of the previous frame");
+
+        _stepBackButton.Click += OnStepBackClick;
+
+        _stepForwardButton = StepButton(StepForwardGlyph, "Move the playhead on to the start of the next frame");
+
+        _stepForwardButton.Click += OnStepForwardClick;
+
         _lockToggle = new ToggleButton
         {
             Style = (Style)Application.Current.Resources["TabCommandToggleStyle"],
@@ -74,7 +106,8 @@ public sealed partial class QueryFlameChartTabView : UserControl, IDocumentComma
 
         ToolTipService.SetToolTip(fit,
                                   "Show every call. The wheel zooms, Shift+Wheel pans, Ctrl+Wheel scrolls the threads, "
-                                  + "drag a rectangle to zoom into it, middle-drag pans");
+                                  + "drag a rectangle to zoom into it, middle-drag pans. Click or drag in the ruler to move the "
+                                  + "playhead, drag a call pulled out at the playhead to change the angle and length.");
 
         fit.Click += OnZoomToFitClick;
 
@@ -89,6 +122,9 @@ public sealed partial class QueryFlameChartTabView : UserControl, IDocumentComma
 
         commands.Children.Add(_instructionsToggle);
         commands.Children.Add(_positionToggle);
+        commands.Children.Add(_memoryToggle);
+        commands.Children.Add(_stepBackButton);
+        commands.Children.Add(_stepForwardButton);
         commands.Children.Add(_lockToggle);
         commands.Children.Add(fit);
 
@@ -125,6 +161,19 @@ public sealed partial class QueryFlameChartTabView : UserControl, IDocumentComma
         return toggle;
     }
 
+    private Button StepButton(string glyph, string toolTip)
+    {
+        var button = new Button
+        {
+            Style = (Style)Application.Current.Resources["TabCommandButtonStyle"],
+            Content = new FontIcon { Glyph = glyph, FontSize = 12 }
+        };
+
+        ToolTipService.SetToolTip(button, toolTip);
+
+        return button;
+    }
+
     private void OnAxisClick(object sender, RoutedEventArgs e)
     {
         if (sender is not ToggleButton { Tag: TimeTravelTimelineAxis axis })
@@ -140,6 +189,12 @@ public sealed partial class QueryFlameChartTabView : UserControl, IDocumentComma
     }
 
     private void OnZoomToFitClick(object sender, RoutedEventArgs e) => FlameChart.ZoomToFit();
+
+    private void OnMemoryClick(object sender, RoutedEventArgs e) => FlameChart.ShowMemory = _memoryToggle?.IsChecked == true;
+
+    private void OnStepBackClick(object sender, RoutedEventArgs e) => FlameChart.StepPlayhead(forward: false);
+
+    private void OnStepForwardClick(object sender, RoutedEventArgs e) => FlameChart.StepPlayhead(forward: true);
 
     private void OnLockClick(object sender, RoutedEventArgs e)
     {

@@ -18,6 +18,7 @@ using InternalsViewer.Query;
 using InternalsViewer.Query.CallStack;
 using InternalsViewer.Query.CallStack.TimeTravel;
 using InternalsViewer.Query.CallStack.TimeTravel.Iterators;
+using InternalsViewer.Query.CallStack.TimeTravel.Memory;
 using InternalsViewer.Query.CallStack.TimeTravel.Timeline;
 using InternalsViewer.Query.CallStack.WinDbg;
 using InternalsViewer.Query.Debugging;
@@ -268,10 +269,12 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
     private EngineEvent? _selectedEvent;
 
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(GrantedMemory))]
     private ObservableCollection<ExecutionPlan> _executionPlans = [];
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(SelectedPlanNodeEventStatistics))]
+    [NotifyPropertyChangedFor(nameof(SelectedPlanNodeTracedMemory))]
     [NotifyPropertyChangedFor(nameof(SelectedPlanExpressions))]
     [NotifyPropertyChangedFor(nameof(SelectedPlanNodeScanMode))]
     [NotifyPropertyChangedFor(nameof(SelectedPlanNodeColumnNames))]
@@ -555,6 +558,34 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
             return new EventIoStatistics(reads.Count, physicalReads, readAheads);
         }
     }
+
+    public TimeTravelMemoryPurpose? SelectedPlanNodeTracedMemory
+    {
+        get
+        {
+            if (SelectedPlanNode is not { } node)
+            {
+                return null;
+            }
+
+            var plan = ExecutionPlans.FirstOrDefault(p => p.Root.Contains(node)
+                                                          || (p.NodesById.TryGetValue(node.NodeId, out var candidate)
+                                                              && ReferenceEquals(candidate, node)));
+
+            return Events.OfType<ExecutionOperatorEvent>()
+                         .FirstOrDefault(o => o.PlanNodeIdentifier is { } identifier
+                                              && identifier.NodeId == node.NodeId
+                                              && (plan is null || identifier.PlanHandleId == plan.PlanHandleId)
+                                              && o.Memory is not null)
+                         ?.Memory;
+        }
+    }
+
+    public long GrantedMemory
+        => ExecutionPlans.SelectMany(p => p.Root)
+                         .Select(n => n.QueryMemoryGrant?.GrantedKb ?? 0)
+                         .DefaultIfEmpty()
+                         .Max() * 1024;
 
     public Visibility HasEvents
         => Events.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
@@ -1867,6 +1898,8 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
             FlameChart = result.Timeline;
 
             ExecutionPlans = [.. ExecutionPlans];
+
+            OnPropertyChanged(nameof(SelectedPlanNodeTracedMemory));
         }
         catch (OperationCanceledException) when (load.IsCancellationRequested)
         {

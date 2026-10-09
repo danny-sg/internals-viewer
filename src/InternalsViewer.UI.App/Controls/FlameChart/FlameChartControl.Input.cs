@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using InternalsViewer.Query.CallStack.TimeTravel.Timeline;
 using InternalsViewer.UI.App.Helpers;
+using Microsoft.UI.Input;
 using Microsoft.UI.Xaml.Input;
 using Windows.Foundation;
 using Windows.System;
@@ -33,6 +34,28 @@ public sealed partial class FlameChartControl
     private bool _isSelecting;
 
     private bool _isPanning;
+
+    private bool _isScrubbing;
+
+    private bool _isStretching;
+
+    private bool _isOverBar;
+
+    private bool _hoverOnPopout;
+
+    private Point _stretchPress;
+
+    private float _stretchX;
+
+    private float _stretchY;
+
+    private float _stretchShare;
+
+    private bool _hasStretched;
+
+    private bool _stretchPopout;
+
+    private PopoutBlock _stretchBlock;
 
     private Point _pressPoint;
 
@@ -76,13 +99,6 @@ public sealed partial class FlameChartControl
             return;
         }
 
-        if (HeaderAt(position) is { } lane)
-        {
-            ToggleLane(lane);
-
-            return;
-        }
-
         var now = Environment.TickCount64;
 
         var isDoubleClick = now - _lastPressTicks <= DoubleClickMs
@@ -91,6 +107,42 @@ public sealed partial class FlameChartControl
 
         _lastPressTicks = now;
         _lastPressPoint = position;
+
+        if (position.Y < ContentTop && (IsOnPlayhead(position.X) || BlockAt(position) is null))
+        {
+            if (isDoubleClick)
+            {
+                _playhead = null;
+
+                _canvas.Invalidate();
+
+                return;
+            }
+
+            _isScrubbing = true;
+
+            MovePlayheadTo(position.X);
+
+            _overlay.CapturePointer(e.Pointer);
+
+            return;
+        }
+
+        if (BlockAt(position) is { } found)
+        {
+            BeginStretch(found.Block, found.IsPopout, position);
+
+            _overlay.CapturePointer(e.Pointer);
+
+            return;
+        }
+
+        if (HeaderAt(position) is { } lane)
+        {
+            ToggleLane(lane);
+
+            return;
+        }
 
         if (isDoubleClick)
         {
@@ -135,6 +187,20 @@ public sealed partial class FlameChartControl
             return;
         }
 
+        if (_isScrubbing)
+        {
+            MovePlayheadTo(position.X);
+
+            return;
+        }
+
+        if (_isStretching)
+        {
+            Stretch(position);
+
+            return;
+        }
+
         if (_isPressed)
         {
             _dragPoint = position;
@@ -152,11 +218,19 @@ public sealed partial class FlameChartControl
             return;
         }
 
-        var hit = HitTest(position);
+        var found = BlockAt(position);
 
-        if (hit != _hover)
+        UpdateCursor(found is not null);
+
+        var hit = found is { } block ? block.Block.Source : HitTest(position);
+
+        var onPopout = found?.IsPopout == true;
+
+        if (hit != _hover || onPopout != _hoverOnPopout)
         {
             _hover = hit;
+
+            _hoverOnPopout = onPopout;
 
             _canvas.Invalidate();
         }
@@ -183,19 +257,11 @@ public sealed partial class FlameChartControl
         }
         else if (_isPressed)
         {
-            var hit = HitTest(position);
-
-            if (hit is null || hit == _selected)
-            {
-                if (!IsLocked)
-                {
-                    Deselect();
-                }
-            }
-            else
-            {
-                Select(hit);
-            }
+            Click(HitTest(position));
+        }
+        else if (_isStretching && !_hasStretched)
+        {
+            Click(_stretchBlock.Source);
         }
 
         EndPointer();
@@ -207,7 +273,7 @@ public sealed partial class FlameChartControl
 
     private void OnPointerExited(object sender, PointerRoutedEventArgs e)
     {
-        if (_isPressed || _isPanning)
+        if (_isPressed || _isPanning || _isScrubbing || _isStretching)
         {
             return;
         }
@@ -279,7 +345,7 @@ public sealed partial class FlameChartControl
 
         var right = Math.Max(_pressPoint.X, _dragPoint.X);
 
-        _scrollY += Math.Max(0, Math.Min(_pressPoint.Y, _dragPoint.Y) - RulerHeight);
+        _scrollY += Math.Max(0, Math.Min(_pressPoint.Y, _dragPoint.Y) - ContentTop);
 
         if (right - left < MinimumZoomWidth)
         {
@@ -334,6 +400,8 @@ public sealed partial class FlameChartControl
         _isPressed = false;
         _isSelecting = false;
         _isPanning = false;
+        _isScrubbing = false;
+        _isStretching = false;
 
         if (invalidate)
         {
@@ -341,14 +409,177 @@ public sealed partial class FlameChartControl
         }
     }
 
-    private FlameHit? HitTest(Point position)
+    private void MovePlayheadTo(double x)
     {
-        if (_visible is not { } timeline || position.Y < RulerHeight)
+        var scale = PixelsPerUnit((int)_overlay.ActualWidth);
+
+        _playhead = Math.Clamp(_viewStart + x / scale, _viewStart, _viewEnd);
+
+        HideToolTip();
+
+        _canvas.Invalidate();
+    }
+
+    private bool IsOnPlayhead(double x)
+        => _playhead is { } playhead
+           && Math.Abs((playhead - _viewStart) * PixelsPerUnit((int)_overlay.ActualWidth) - x) <= PlayheadHalfWidth + DragThreshold;
+
+    private (PopoutBlock Block, bool IsPopout)? BlockAt(Point position)
+    {
+        if (position.Y >= _overlay.ActualHeight - BandHeight)
         {
             return null;
         }
 
-        var contentY = position.Y - RulerHeight + _scrollY;
+        for (var index = _popoutBlocks.Count - 1; index >= 0; index--)
+        {
+            var block = _popoutBlocks[DrawIndex(index)];
+
+            if (block.Extrusion > 0 && Covers(block, position))
+            {
+                return (block, true);
+            }
+        }
+
+        if (!ShowMemory)
+        {
+            return null;
+        }
+
+        for (var index = _spikes.Count - 1; index >= 0; index--)
+        {
+            if (Covers(_spikes[index], position))
+            {
+                return (_spikes[index], false);
+            }
+        }
+
+        return null;
+    }
+
+    private bool Covers(PopoutBlock block, Point position)
+    {
+        var (fromX, toX) = SweepRange((float)position.X, block.Left, block.Right, _directionX * block.Extrusion);
+
+        var (fromY, toY) = SweepRange((float)position.Y, block.Top, block.Top + BarHeight, _directionY * block.Extrusion);
+
+        return Math.Max(0, Math.Max(fromX, fromY)) <= Math.Min(1, Math.Min(toX, toY));
+    }
+
+    private static (float From, float To) SweepRange(float point, float minimum, float maximum, float distance)
+    {
+        if (distance == 0)
+        {
+            return point >= minimum && point <= maximum ? (float.MinValue, float.MaxValue) : (1, 0);
+        }
+
+        var first = (point - maximum) / distance;
+
+        var second = (point - minimum) / distance;
+
+        return (Math.Min(first, second), Math.Max(first, second));
+    }
+
+    private void Click(FlameHit? hit)
+    {
+        if (hit is null || hit == _selected)
+        {
+            if (!IsLocked)
+            {
+                Deselect();
+            }
+        }
+        else
+        {
+            Select(hit);
+        }
+    }
+
+    private void BeginStretch(PopoutBlock block, bool popout, Point position)
+    {
+        _isStretching = true;
+
+        _hasStretched = false;
+
+        _stretchPopout = popout;
+
+        _stretchBlock = block;
+
+        _stretchPress = position;
+
+        _stretchX = _directionX * block.Extrusion;
+
+        _stretchY = _directionY * block.Extrusion;
+
+        _stretchShare = ShareOf(block.Ratio);
+
+        _extrusionAngle = MathF.Atan2(_directionY, _directionX);
+
+        _extrusionLength = _drawnLength;
+
+        HideToolTip();
+    }
+
+    private void Stretch(Point position)
+    {
+        if (!_hasStretched && Distance(_stretchPress, position) <= DragThreshold)
+        {
+            return;
+        }
+
+        _hasStretched = true;
+
+        var x = _stretchX + (float)(position.X - _stretchPress.X);
+
+        var y = _stretchY + (float)(position.Y - _stretchPress.Y);
+
+        var angle = MathF.Atan2(Math.Min(y, 0f), x);
+
+        if (angle > 0)
+        {
+            angle = -MathF.PI;
+        }
+
+        var directionX = MathF.Cos(angle);
+
+        var directionY = MathF.Sin(angle);
+
+        var length = Math.Max(MinimumExtrusion, x * directionX + y * directionY);
+
+        var maximum = MaximumLength(_stretchPopout ? _popoutBlocks : _spikes,
+                                    directionX,
+                                    directionY,
+                                    (int)_overlay.ActualWidth,
+                                    (float)_overlay.ActualHeight - BandHeight,
+                                    horizontal: _stretchPopout);
+
+        _extrusionAngle = angle;
+
+        _extrusionLength = Math.Clamp(MinimumExtrusion + (length - MinimumExtrusion) / _stretchShare, MinimumExtrusion, maximum);
+
+        _canvas.Invalidate();
+    }
+
+    private void UpdateCursor(bool overBar)
+    {
+        if (overBar == _isOverBar)
+        {
+            return;
+        }
+
+        _isOverBar = overBar;
+
+        ProtectedCursor = InputSystemCursor.Create(overBar ? InputSystemCursorShape.SizeAll : InputSystemCursorShape.Arrow);
+    }
+
+    private FlameHit? HitTest(Point position)
+    {
+        if (_visible is not { } timeline || position.Y < ContentTop || position.Y >= _overlay.ActualHeight - BandHeight)
+        {
+            return null;
+        }
+
+        var contentY = position.Y - ContentTop + _scrollY;
 
         for (var lane = 0; lane < timeline.Threads.Count; lane++)
         {
@@ -380,12 +611,14 @@ public sealed partial class FlameChartControl
 
     private int? HeaderAt(Point position)
     {
-        if (_visible is not { Threads.Count: > 1 } timeline || position.Y < RulerHeight)
+        if (_visible is not { Threads.Count: > 1 } timeline
+            || position.Y < ContentTop
+            || position.Y >= _overlay.ActualHeight - BandHeight)
         {
             return null;
         }
 
-        var contentY = position.Y - RulerHeight + _scrollY;
+        var contentY = position.Y - ContentTop + _scrollY;
 
         for (var lane = 0; lane < timeline.Threads.Count && lane < _laneTops.Length; lane++)
         {
@@ -444,6 +677,18 @@ public sealed partial class FlameChartControl
         {
             lines.Add($"Allocated {SizeFormat.Format((long)allocatedBytes)} In {allocations:N0} "
                       + (allocations == 1 ? "Allocation" : "Allocations"));
+        }
+
+        if (timeline.FreedDuring(thread.ThreadId, positions.Start, positions.End) is > 0 and var freed)
+        {
+            lines.Add($"Freed {SizeFormat.Format((long)freed)}");
+        }
+
+        if (allocations > 0)
+        {
+            var retained = timeline.RetainedBy(thread.ThreadId, positions.Start, positions.End);
+
+            lines.Add($"Retained At Return {SizeFormat.Format((long)retained)}");
         }
 
         if (instructions.Flags.HasFlag(TimeTravelSpanFlags.StartUnknown))

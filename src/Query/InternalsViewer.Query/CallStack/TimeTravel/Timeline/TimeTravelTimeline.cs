@@ -34,7 +34,7 @@ public sealed class TimeTravelTimeline
         PositionStart = source.PositionStart;
         PositionEnd = source.PositionEnd;
         InstructionEnd = source.InstructionEnd;
-        Allocations = source.Allocations;
+        Memory = source.Memory;
     }
 
     public IReadOnlyList<TimeTravelTimelineThread> Threads { get; }
@@ -43,7 +43,7 @@ public sealed class TimeTravelTimeline
 
     public long SpanCount { get; }
 
-    public bool HasAllocations => Allocations.Count > 0;
+    public bool HasAllocations => Memory.HasAllocations;
 
     private double PositionStart { get; }
 
@@ -57,7 +57,7 @@ public sealed class TimeTravelTimeline
 
     private CallStackNode?[] Nodes { get; set; } = [];
 
-    private IReadOnlyDictionary<uint, AllocationIndex> Allocations { get; set; } = new Dictionary<uint, AllocationIndex>();
+    private TimeTravelMemoryIndex Memory { get; set; } = TimeTravelMemoryIndex.Empty;
 
     public double StartOf(TimeTravelTimelineAxis axis) => axis == TimeTravelTimelineAxis.Position ? PositionStart : 0;
 
@@ -68,7 +68,48 @@ public sealed class TimeTravelTimeline
     public CallStackNode? NodeOf(int node) => node >= 0 && node < Nodes.Length ? Nodes[node] : null;
 
     public (ulong Bytes, int Count) AllocatedDuring(uint thread, double positionStart, double positionEnd)
-        => Allocations.TryGetValue(thread, out var index) ? index.During(positionStart, positionEnd) : (0, 0);
+        => Memory.AllocatedDuring(thread, positionStart, positionEnd);
+
+    public ulong FreedDuring(uint thread, double positionStart, double positionEnd)
+        => Memory.FreedDuring(thread, positionStart, positionEnd);
+
+    public ulong RetainedBy(uint thread, double positionStart, double positionEnd)
+        => Memory.RetainedBy(thread, positionStart, positionEnd);
+
+    public ulong InUseAt(double position) => Memory.InUseAt(position);
+
+    public ulong PeakInUseDuring(double positionStart, double positionEnd) => Memory.PeakInUseDuring(positionStart, positionEnd);
+
+    public IReadOnlyList<TimeTravelSelfAllocation> SelfAllocations()
+    {
+        var totals = new Dictionary<(int Thread, int Depth, int Index), ulong>();
+
+        for (var thread = 0; thread < Threads.Count; thread++)
+        {
+            var rows = Threads[thread].Rows;
+
+            foreach (var (position, bytes) in Memory.AllocationsOf(Threads[thread].ThreadId))
+            {
+                for (var depth = rows.Count - 1; depth >= 0; depth--)
+                {
+                    var index = rows[depth].IndexAt(TimeTravelTimelineAxis.Position, position, 0);
+
+                    if (index < 0)
+                    {
+                        continue;
+                    }
+
+                    var key = (thread, depth, index);
+
+                    totals[key] = totals.GetValueOrDefault(key) + bytes;
+
+                    break;
+                }
+            }
+        }
+
+        return [.. totals.OrderBy(t => t.Key).Select(t => new TimeTravelSelfAllocation(t.Key.Thread, t.Key.Depth, t.Key.Index, t.Value))];
+    }
 
     public int ParentOf(int node) => node >= 0 && node < Parents.Length ? Parents[node] : -1;
 
@@ -145,8 +186,8 @@ public sealed class TimeTravelTimeline
 
     public static double PositionOf(ulong sequence, ulong steps, double stepsPerSequence) => sequence + steps / stepsPerSequence;
 
-    internal void SetAllocations(IEnumerable<TimeTravelAllocation> allocations)
-        => Allocations = allocations.GroupBy(a => a.Thread).ToDictionary(g => g.Key, g => AllocationIndex.From(g));
+    internal void SetMemory(IEnumerable<TimeTravelAllocation> allocations, IEnumerable<TimeTravelFree> frees)
+        => Memory = TimeTravelMemoryIndex.Build(allocations, frees);
 
     internal void MapNodes(CallStackNode?[] nodes) => Nodes = nodes;
 
@@ -530,70 +571,6 @@ public sealed class TimeTravelTimeline
             {
                 values[index] = copy[order[index]];
             }
-        }
-    }
-
-    private sealed class AllocationIndex(double[] starts, ulong[] totals)
-    {
-        private double[] Starts { get; } = starts;
-
-        private ulong[] Totals { get; } = totals;
-
-        public static AllocationIndex From(IEnumerable<TimeTravelAllocation> allocations)
-        {
-            var starts = new List<double>();
-
-            var totals = new List<ulong> { 0 };
-
-            var end = double.MinValue;
-
-            foreach (var allocation in allocations.OrderBy(a => a.Start))
-            {
-                if (allocation.Start < end)
-                {
-                    continue;
-                }
-
-                starts.Add(allocation.Start);
-
-                totals.Add(totals[^1] + allocation.Bytes);
-
-                end = allocation.End;
-            }
-
-            return new AllocationIndex([.. starts], [.. totals]);
-        }
-
-        public (ulong Bytes, int Count) During(double start, double end)
-        {
-            var first = FirstFrom(start);
-
-            var last = FirstFrom(end);
-
-            return last > first ? (Totals[last] - Totals[first], last - first) : (0, 0);
-        }
-
-        private int FirstFrom(double value)
-        {
-            var low = 0;
-
-            var high = Starts.Length;
-
-            while (low < high)
-            {
-                var middle = low + (high - low) / 2;
-
-                if (Starts[middle] < value)
-                {
-                    low = middle + 1;
-                }
-                else
-                {
-                    high = middle;
-                }
-            }
-
-            return low;
         }
     }
 }
