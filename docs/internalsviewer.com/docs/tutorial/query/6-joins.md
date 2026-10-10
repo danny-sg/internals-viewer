@@ -44,7 +44,7 @@ Nested Loops takes one row at a time from the outer input (the heap, read throug
 What to watch:
 
 - The Read lane shows the signature pattern - a rapid, repeating drumbeat of single-page reads, one seek per outer row
-- Right-click `PK_ClusteredTable` in the Plan lane and open the Index view: the seeks land all over the leaf level, one root-to-leaf path at a time, in whatever order the heap supplies the keys
+- Right-click `PK_ClusteredTable` in the Plan lane and choose **Open Index: PK_ClusteredTable**: the seeks land all over the leaf level, one root-to-leaf path at a time, in whatever order the heap supplies the keys
 - Nested Loops is fully streaming - rows flow out from the very first match, no waiting
 
 ## Merge join - two sorted streams

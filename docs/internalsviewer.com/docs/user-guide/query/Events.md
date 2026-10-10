@@ -4,9 +4,11 @@ The Events pane is the raw data behind the [Timeline](/docs/user-guide/query/Tim
 
 ![Events pane](/docs/user-guide/images/query-view-events.png)
 
-Each event shows its type, a description, its time and duration in milliseconds, the page it relates to, and the object that page belongs to. Columns can be sorted by clicking their headers, and the search box filters the list across every field.
+Each event shows its name, a description, its time and duration in milliseconds, the page it relates to, the object that page belongs to, and for a columnstore page the **Structure** it holds - the row group and column of a segment, a dictionary, or the delete bitmap. Columns can be sorted by clicking their headers, and the search box filters the list across every field.
 
 The status bar at the bottom counts the events by type - a quick summary of what the query did.
+
+A query recorded with [Full Trace](/docs/user-guide/query/FullTrace) has no event list - the recording is of calls, not events - so the pane is hidden while **Record Full Trace** is on.
 
 The **Details** toggle in the tab strip opens a pane beside the list showing every property of the selected event - the raw values behind the description, such as a latch's class and address, a segment scan's encoding and dictionary sizes, or the object type an object pool lookup was for.
 
@@ -14,5 +16,6 @@ The **Details** toggle in the tab strip opens a pane beside the list showing eve
 
 - **Click** an event to select it - the selection is shared with the timeline and, for operator events, the Execution Plan and Call Stack panes. Click the selected row again to deselect it
 - **Reads that cover multiple pages** (a multi-page disk read, for example) have an expander - open it to see the individual pages within the read
-- **Page addresses are links** - click to open the page as a tab within the Query view, or **Shift + click** to open it in a separate top-level tab. Pages opened this way carry the query's captured [log records](/docs/user-guide/query/LogRecords) with them
+- **Rowgroup Scan** rows group a columnstore rowgroup's segment scans and object pool lookups under one row - expand it to see each segment
+- **Page addresses and row identifiers are links** - click to open the page as a tab within the Query view, or **Shift + click** to open it in a separate top-level tab. Pages opened this way carry the query's captured [log records](/docs/user-guide/query/LogRecords) with them
 - Selecting a time range on the timeline highlights the events inside the range, scoping the list to the window being investigated

@@ -5,13 +5,17 @@ The Read band shows read operations - the database retrieving pages. It has two 
 - **Buffer** - pages retrieved from the [Buffer Pool](/docs/user-guide/allocations#buffer-pool) (memory)
 - **Disk** - pages retrieved from disk
 
-Each read shows its duration. **Click** a read once to select it in the Events pane; **double-click** to open the page in the [Page Viewer](/docs/user-guide/page-viewer).
+Each read shows its duration. **Click** a read once to select it in the Events pane. **Double-click** to open the page in the [Page Viewer](/docs/user-guide/page-viewer).
+
+A rail connects each read to what caused it - the operator's bar on the Plan band, or for a columnstore scan the [object pool](/docs/user-guide/query/Timeline#columnstore) miss it served.
+
+Reads of allocation pages - IAM pages and the database's own pages such as PFS - are drawn in grey with no rail, since they are the engine finding its way rather than the query's data.
 
 ## Buffer reads
 
 A buffer read means the page was already in memory - identified in the trace by a `BUF SH` latch, acquired to pin the page in the buffer pool while it is read.
 
-When the playhead passes a buffer read it flags briefly on the [Allocations](/docs/user-guide/query/Allocations) pane - the flag is transient, representing "this page was accessed, but the access is ephemeral".
+When the playhead passes a buffer read on a run with **Clear Buffer Pool** on, it flags briefly on the [Allocations](/docs/user-guide/query/Allocations) pane - the flag is transient, representing "this page was accessed, but the access is ephemeral". Without Clear Buffer Pool most pages start in memory, so buffer reads are the query's real reads, and they stay marked from the read to the end of the query, as disk reads do. The Query view's Index panes work the same way.
 
 ## Disk reads
 

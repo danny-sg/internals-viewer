@@ -4,26 +4,24 @@ Internals Viewer is a visualisation tool for viewing the internals of the SQL Se
 
 [Internals Viewer Medium Articles](https://medium.com/internals-viewer)
 
-## Version 4.4 - New Features
+## Version 4.6 - New Features
 
-- Columnstore View
 - Query
-  - Tracing
-    - Simulation of operators that can be stepped through
-  - Row Mode and Batch Mode
-  - Columnstore Index Scan operator
-  - Call stack
-    - Member listing and Symbols browsing
-    - WinDbg integration
-  - Execution Plan
-    - Additional operator properties
-    - Operator annotations
-- Allocations
-  - Improvements to allocation and partitions display
-- Page View
-  - Various bug fixes
-- Index View
-  - Levels overlay (root, intermediate, leaf)
+  - Full Trace - record a query with Time Travel Debugging for a complete call tree
+    - Flame Chart of the recorded calls per thread, with the plan operators above them
+    - Memory allocated per call and per plan operator
+  - Columnstore
+    - Timeline band for segment scans, rowgroup reads and elimination, object pool lookups and filters
+    - Aggregate pushdown and filter events, with plan annotations
+    - Parallel rowgroup reads shown per thread
+  - Call Stack
+    - Filter the tree to a node, and by category
+    - Activity bands and operator rows
+  - Events pane details for every property of an event
+  - Index pane - zoom to page, levels overlay, page data with previous/next navigation
+- Settings
+  - Full columnstore allocation resolution
+  - Time travel warning
 
 ## Installation
 
@@ -56,7 +54,7 @@ Steps:
 
 ### Compatibility
 
-- Windows 10 version 17763.0 or higher
+- Windows 10 version 2004 (build 19041) or higher, or Windows 11
 - Tested on SQL Server 2019 - 2025
 
 ### Technologies
@@ -71,14 +69,14 @@ Use caution when running on any database. Internals Viewer does not make any mod
 to a database, but it is not advisable to run on production servers due to the I/O
 overhead and risk of some functions.
 
-Use caution with the Query tracing as the default Clear Buffer Pool will run `DBCC FREEPROCCACHE`
-before executing a query.
+Use caution with Query tracing - the **Clear Buffer Pool** option runs `CHECKPOINT` and `DBCC DROPCLEANBUFFERS`
+before executing a query, emptying the buffer pool for the whole server.
 
 ## Usage
 
 ### Connecting to a database
 
-Internals Viewer can either connect to a live database or an offline .MDF file.
+Internals Viewer can connect to a live database, open the data files of a detached or offline database, or open a full database backup (.bak) without restoring it.
 
 #### SQL Server
 

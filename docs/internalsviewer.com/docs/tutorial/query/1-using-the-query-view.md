@@ -20,6 +20,8 @@ Click the **Query** button on the database toolbar. This opens a Query tab for t
 
 ![Query view](/docs/tutorial/images/screenshots/Query.png)
 
+<!-- Screenshot (update): a new Query tab - the SQL tab above the Timeline tab, with the menu bar's View, Events, Query, Index and Debugger menus -->
+
 ## Execute a query
 
 Enter a query and press **Execute**:
@@ -31,12 +33,12 @@ FROM   dbo.ClusteredTable
 WHERE  TextField LIKE 'This is row 123%'
 ```
 
-Internals Viewer runs the query with a trace session and captures what the engine did - physical page reads, locks acquired and released, waits, page splits, the execution plan, and more. When the query completes the captured activity is loaded into the timeline at the bottom.
+With **Track query** on the Query menu, as it is by default, Internals Viewer runs the query with a trace session and captures what the engine did - physical page reads, locks acquired and released, waits, page splits, the execution plan, and more. When the query completes the captured activity is loaded into the timeline at the bottom.
 
 **Clear Buffer Pool** and **Disable Read-Ahead** on the editor's command bar make this activity more visible - see [SQL Editor](/docs/user-guide/query/Editor) for what they do.
 
 > [!NOTE]
-> Data modification queries (INSERT / UPDATE / DELETE) are run inside a transaction that is rolled back after the trace is captured, so you can experiment without permanently changing the data.
+> Data modification queries (INSERT / UPDATE / DELETE) are run inside a transaction that is rolled back after the trace is captured, so you can experiment without permanently changing the data - as long as **Track query** is on.
 
 ## The timeline
 

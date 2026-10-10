@@ -10,11 +10,11 @@ Every index's entry points are stored in `sys.sysallocunits` (see [How the datab
 
 The tree is discovered level by level - a breadth-first walk from the root:
 
-1. **Read every page in the current level** (just the root, on the first pass). The reads within a level are independent, so they run in parallel - up to 16 pages at a time.
+1. **Read every page in the current level** (just the root, on the first pass). The reads within a level are independent, so they run in parallel - up to 16 pages at a time - sorted by file and page first so they move through the file in order.
 
-2. **Decode the index records on each page.** This is the same [index record](/docs/reference/index-records) decode the Page Viewer uses. Every record on an index page above the leaf contains a **Down Page Pointer** - the address of the child page covering that record's key range.
+2. **Decode the index records on each page.** This is a lean decode of its own rather than the full [index record](/docs/reference/index-records) decode the Page Viewer uses. It reads each page into a pooled buffer and takes only the down page pointer from each record - the six bytes before the end of the fixed length data - with a separate path for compressed records, and skips ghost records. Every record on an index page above the leaf contains a **Down Page Pointer** - the address of the child page covering that record's key range.
 
-3. **The child addresses become the next level**, in the order their parents listed them. Each child node records its parent, and the parent records its children - these links are what the view draws as connecting lines.
+3. **The child addresses become the next level**, in the order their parents listed them. Each child node records its parent - the link the view draws as a connecting line.
 
 4. **Repeat** until a level produces no children.
 
@@ -24,7 +24,7 @@ So the enumeration reads every page of the index exactly once: the tree you see 
 
 ### De-duplication
 
-Pages are tracked by address in a dictionary as they are discovered. If a page address turns up again - which can happen at the boundaries between key ranges - the existing node is reused and just gains an extra parent link, rather than appearing in the tree twice. This is also what keeps the walk safe: a page can never be read or expanded more than once.
+Pages are tracked by address in a dictionary as they are discovered. If a page address turns up again - which can happen at the boundaries between key ranges - the existing node is reused and keeps its first parent - the second is only logged - rather than appearing in the tree twice. This is also what keeps the walk safe: a page can never be read or expanded more than once.
 
 ### Two level numbers
 
@@ -37,9 +37,9 @@ They meet in the middle - a three level index has display levels 0/1/2 and heade
 
 ## Drawing and navigating
 
-Each discovered node carries what the view needs: page address, page type, level, its position within the level, and the parent/child links. Levels are laid out in discovery order - which, because children are collected in key order from their parents, is also key order across each level.
+Each discovered node carries what the view needs: page address, page type, level, its position within the level, and its parent. Levels are laid out in discovery order - which, because children are collected in key order from their parents, is also key order across each level.
 
-Clicking a page in the tree reads that page again and decodes its records in full, showing the key values and Down Page Pointers in the details panel - each one clickable to continue into the Page Viewer.
+Clicking a page in the tree reads that page again and decodes its records in full, showing the key values and Down Page Pointers in the details panel - each one a link to that page within the Index view. This is the full record decode the Page Viewer uses.
 
 During query replay the same tree becomes a canvas: `physical_page_read` events carry page addresses, and each address that belongs to the index lights its node up as the playhead passes (see [How query tracing works](/docs/deep-dives/query-tracing)).
 
@@ -49,5 +49,5 @@ During query replay the same tree becomes a canvas: `physical_page_read` events 
 ## In the source
 
 - `InternalsViewer.Internals/Services/Indexes/IndexService.cs` - the breadth-first enumeration
-- `InternalsViewer.Internals/Services/Records/RecordService.cs` - decoding index records for the down page pointers
+- `InternalsViewer.Internals/Services/Records/RecordService.cs` - decoding a selected page's records in full for the details panel
 - `InternalsViewer.UI.App/Controls/Index/IndexControl.xaml.cs` - the tree rendering

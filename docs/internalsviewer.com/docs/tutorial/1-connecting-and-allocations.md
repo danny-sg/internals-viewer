@@ -21,10 +21,11 @@ USE InternalsViewerTutorial
 GO
 ```
 
-Connect to this database in Internals Viewer:
+Connect to this database in Internals Viewer - click **Connect to SQL Server** on the Start page, fill in the instance and choose **InternalsViewerTutorial** as the **Database** (see [Connecting](/docs/user-guide/getting-started#connecting) for the details):
 
 ![01 Connect](/docs/tutorial/images/01-connect-to-database.png)
 
+<!-- Screenshot (update): connecting to InternalsViewerTutorial - the current SQL Server page, with Windows Authentication in place of Active Directory Integrated -->
 When connected the database will be empty.
 
 ![01 initial allocation view](/docs/tutorial/images/01-initial-view.png)
@@ -83,7 +84,7 @@ If you toggle the Tooltip button and put the cursor over the extent it will tell
 > [!NOTE]
 > The allocation status of each page is tracked by PFS (Page Free Space) pages. The PFS would show that only the first page of the extent is allocated.
 >
-> The PFS can be added to the allocation map by toggling the PFS toolbar button.
+> The PFS can be added to the allocation map by choosing **PFS** from the **Overlay** menu on the toolbar.
 
 ## Step 4 - Finding the data
 

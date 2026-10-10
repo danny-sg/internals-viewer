@@ -8,8 +8,8 @@ Every page starts with a 96 byte header describing the page and its place in the
 
 |Key|Name|Description|
 |---|----|-----------|
-||Allocation Unit Id|The allocation unit the page belongs to. Not stored directly in the header - derived from the Internal Object Id and Internal Index Id via the allocation metadata|
-|<MarkerKey foreground="#D50000" background="#EDE7F6">00</MarkerKey>|Page Address|Address of this page in (File Id:Page Id) format|
+|<MarkerKey foreground="#D50000" background="#EDE7F6">00</MarkerKey>|Allocation Unit|The allocation unit the page belongs to. Not stored directly in the header - derived from the Internal Object Id and Internal Index Id via the allocation metadata|
+|<MarkerKey foreground="#000080" background="#EDE7F6">00</MarkerKey>|Page Address|Address of this page in (File Id:Page Id) format|
 |<MarkerKey foreground="#C51162" background="#E3F2FD">00</MarkerKey>|Page Type|What the page is used for, e.g. Data, Index, LOB, IAM, PFS, GAM|
 |<MarkerKey foreground="#AA00FF" background="#EDE7F6">00</MarkerKey>|Next Page|Address of the next page at the same index level. `(0:0)` means no next page. Only maintained for index levels - heap pages are not linked|
 |<MarkerKey foreground="#6200EA" background="#EDE7F6">00</MarkerKey>|Previous Page|Address of the previous page at the same index level. `(0:0)` means no previous page|
@@ -24,7 +24,7 @@ Every page starts with a 96 byte header describing the page and its place in the
 |<MarkerKey foreground="#FF6D00" background="#E3F2FD">00</MarkerKey>|Transaction Reserved|The number of bytes of Reserved Count reserved by the most recently started transaction|
 |<MarkerKey foreground="#DD2C00" background="#E3F2FD">00</MarkerKey>|Torn Bits|Page verification information - torn page protection bits or the page checksum, depending on the database `PAGE_VERIFY` option|
 |<MarkerKey foreground="#212121" background="#E3F2FD">00</MarkerKey>|Flag Bits|Bit flags describing the page, including which page verification type is in use|
-|<MarkerKey foreground="#263238" background="#E3F2FD">00</MarkerKey>|LSN (Log Sequence Number)|LSN of the last log record that modified the page, used by recovery to decide if a logged change needs to be applied|
+|<MarkerKey foreground="#263238" background="#E3F2FD">00</MarkerKey>|Log Sequence Number|LSN of the last log record that modified the page, used by recovery to decide if a logged change needs to be applied|
 |<MarkerKey foreground="#455A64" background="#E3F2FD">00</MarkerKey>|Header Version|Version of the page header format - currently always 1|
 |<MarkerKey foreground="#546E7A" background="#E3F2FD">00</MarkerKey>|Ghost Record Count|Number of ghost records on the page - records logically deleted but not yet physically removed by the ghost cleanup task|
 |<MarkerKey foreground="#546E7A" background="#E3F2FD">00</MarkerKey>|Type Flag Bits|Bit flags with a meaning specific to the page type|

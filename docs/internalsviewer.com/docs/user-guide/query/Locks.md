@@ -2,9 +2,9 @@
 
 The Lock band shows [locks](https://learn.microsoft.com/en-us/sql/relational-databases/sql-server-transaction-locking-and-row-versioning-guide) acquired and released over the life of the query - how SQL Server protects data being read and modified from conflicting changes by other transactions. Locks are only captured when enabled - see the [Events menu](/docs/user-guide/query#events-menu).
 
-Locks are bucketed per object, and each object's locks are banded by category, split into **non-schema** and **schema** locks - schema locks are banded separately so they don't dominate the view, since they are typically held for longer and across a broader scope than row/page/key locks.
+The band has a row for each lock category the query took, with the most exclusive at the top - so an escalation to a coarser lock steps up - and intent locks in rows of their own below the real locks. Schema locks are just another category, left out by default because they are held for a large part of the query's lifetime and would dominate the band.
 
-Within a band, locks are drawn as a histogram - a bar chart showing the volume of locks held in that category over time.
+Each row is a bar chart of how many locks of that kind were held at each moment, so it reads the same whether two locks overlapped or thousands did.
 
 ## Categories and colours
 

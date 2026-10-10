@@ -17,4 +17,4 @@ Index records use the same FixedVar layout as data records, with a smaller heade
 |<MarkerKey foreground="#00" background="#C2D0CB">00</MarkerKey>|Variable Length Value|Variable length key and included column values, located via the offset array|
 |<MarkerKey foreground="#ffffff" background="#313240">00</MarkerKey>|Uniquifier|Value added to duplicate key values in a non-unique clustered index to make each key unique|
 |<MarkerKey foreground="#ffffff" background="#313240">00</MarkerKey>|RID|Row Identifier in (File Id:Page Id:Slot Id) format - a direct pointer to a heap row, used by non-clustered indexes on heaps|
-|<MarkerKey foreground="#ffffff" background="#313240">00</MarkerKey>|Down Page Pointer|Address of the page at the next level down in the B-Tree covering this record's key range. Present in records above the leaf level|
+|<MarkerKey foreground="#000000" background="#ffcc00">00</MarkerKey>|Down Page Pointer|Address of the page at the next level down in the B-Tree covering this record's key range. Present in records above the leaf level|

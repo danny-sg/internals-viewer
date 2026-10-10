@@ -93,6 +93,6 @@ In this part we:
 - Inserted three `VARCHAR(MAX)` values sized to land in three different places
 - Saw a small value stored in the row like a normal `VARCHAR`
 - Followed a LOB pointer to a single LOB page holding a whole value
-- Walked a LOB tree - a LargeRoot record linking to Data chunks across multiple pages
+- Walked a LOB tree - an Internal record linking to Data chunks across multiple pages
 
 That's the end of the tutorial. From here, the [Reference](/docs/reference/page-header) section covers the on-disk structures in more detail - and the best way to learn is to point Internals Viewer at a database and start exploring.
