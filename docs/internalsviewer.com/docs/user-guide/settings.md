@@ -24,6 +24,10 @@ Grants the SQL Server service permission to the Trace Path, by enumerating the s
 
 On by default. Deletes each trace's `.xel` file once it has been captured and loaded, so trace files don't accumulate in the Trace Path. Only takes effect when **Use Local Directory** is on.
 
+### Full Columnstore Allocation Resolution
+
+On by default. Maps every page chain of the columnstore indexes a query scans, so that each page read can be matched to the segment, dictionary or delete bitmap it fetched and linked to the object pool miss that caused it - see [Columnstore](/docs/user-guide/query/Timeline#columnstore). Mapping a large columnstore index takes a while, so it can be turned off when only the row store side of a query matters.
+
 ### Maximum Trace Size
 
 The maximum size, in MB, a trace file is allowed to grow to. Large or long-running queries can generate large trace files, so this can be increased if a trace is being cut short.
@@ -34,7 +38,7 @@ The folder SQL Server's debugging symbols (PDB files) are downloaded to when res
 
 ## Debugging
 
-Settings for sending commands from the [Call Stack](/docs/user-guide/query/CallStack#sending-commands-to-windbg) to a WinDbg session attached to SQL Server.
+Settings for sending commands from the [Call Stack](/docs/user-guide/query/CallStack#sending-commands-to-windbg) to a WinDbg session attached to SQL Server, and for recording with **Record Full Trace** - see [Full Trace](/docs/user-guide/query/FullTrace).
 
 ### WinDbg Password
 
@@ -42,7 +46,11 @@ The password the WinDbg session requires on its `InternalsViewer` named pipe, so
 
 ### WinDbg Path
 
-The WinDbg executable to start when attaching to SQL Server. Blank finds WinDbg from the Microsoft Store, then the Debugging Tools for Windows.
+The WinDbg executable to start when attaching to SQL Server. Blank finds WinDbg from the Microsoft Store, then the Debugging Tools for Windows. The same installation is where Record Full Trace takes its Time Travel Debugging recorder from.
+
+### Time Travel Warning
+
+On by default. Shows the dialog explaining what a recording involves - the administrator prompt, the service restart and the size of the files - each time [Record Full Trace](/docs/user-guide/query/FullTrace#turning-it-on) is turned on. Ticking **Do Not Show Again** on the dialog turns this off.
 
 ## Diagnostic Log
 

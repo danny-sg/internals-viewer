@@ -4,26 +4,24 @@ Internals Viewer is a visualisation tool for viewing the internals of the SQL Se
 
 [Internals Viewer Medium Articles](https://medium.com/internals-viewer)
 
-## Version 4.4 - New Features
+## Version 4.6 - New Features
 
-- Columnstore View
 - Query
-  - Tracing
-    - Simulation of operators that can be stepped through
-  - Row Mode and Batch Mode
-  - Columnstore Index Scan operator
-  - Call stack
-    - Member listing and Symbols browsing
-    - WinDbg integration
-  - Execution Plan
-    - Additional operator properties
-    - Operator annotations
-- Allocations
-  - Improvements to allocation and partitions display
-- Page View
-  - Various bug fixes
-- Index View
-  - Levels overlay (root, intermediate, leaf)
+  - Full Trace - record a query with Time Travel Debugging for a complete call tree
+    - Flame Chart of the recorded calls per thread, with the plan operators above them
+    - Memory allocated per call and per plan operator
+  - Columnstore
+    - Timeline band for segment scans, rowgroup reads and elimination, object pool lookups and filters
+    - Aggregate pushdown and filter events, with plan annotations
+    - Parallel rowgroup reads shown per thread
+  - Call Stack
+    - Filter the tree to a node, and by category
+    - Activity bands and operator rows
+  - Events pane details for every property of an event
+  - Index pane - zoom to page, levels overlay, page data with previous/next navigation
+- Settings
+  - Full columnstore allocation resolution
+  - Time travel warning
 
 ## Installation
 

@@ -37,6 +37,14 @@ When opened from the [Query](/docs/user-guide/query) timeline, the Index Viewer 
 
 ![Index View during query replay](/docs/user-guide/images/query-index-view-index-animation.png)
 
+The Index pane inside the Query view has its own command bar:
+
+- **Zoom to Fit** shows the whole tree, and **Zoom to Page** zooms in to page level, where each page shows its address and links
+- **Levels** overlays the index levels - root, intermediate and leaf
+- **Data** opens a **Page Data** pane with the selected page's address and type, and its **Previous** and **Next** page links. Hovering a link highlights that page in the tree
+
+<!-- Screenshot: the Query view's Index pane with Levels on and the Page Data pane open -->
+
 ::: details How this works
 The tree is discovered with a breadth-first walk from the index's root page, decoding the index records on each page for their down page pointers - reading every page of the index exactly once.
 

@@ -46,6 +46,8 @@ export default defineConfig({
                 link: "docs/user-guide/query/Allocations",
               },
               { text: "Call Stack", link: "docs/user-guide/query/CallStack" },
+              { text: "Full Trace", link: "docs/user-guide/query/FullTrace" },
+              { text: "Flame Chart", link: "docs/user-guide/query/FlameChart" },
               {
                 text: "Execution Plan",
                 link: "docs/user-guide/query/ExecutionPlan",

@@ -5,7 +5,9 @@ The Read band shows read operations - the database retrieving pages. It has two 
 - **Buffer** - pages retrieved from the [Buffer Pool](/docs/user-guide/allocations#buffer-pool) (memory)
 - **Disk** - pages retrieved from disk
 
-Each read shows its duration. **Click** a read once to select it in the Events pane; **double-click** to open the page in the [Page Viewer](/docs/user-guide/page-viewer).
+Each read shows its duration. **Click** a read once to select it in the Events pane. **Double-click** to open the page in the [Page Viewer](/docs/user-guide/page-viewer).
+
+A rail connects each read to what caused it - the operator's bar on the Plan band, or for a columnstore scan the [object pool](/docs/user-guide/query/Timeline#columnstore) miss it served.
 
 ## Buffer reads
 

@@ -4,7 +4,9 @@ The Timeline shows the captured query activity against time, and replays it like
 
 It is split into **bands**:
 
+- **Log** - the transaction log records of a traced data modification, see [Log Records](/docs/user-guide/query/LogRecords)
 - **Plan** - the execution plan operators, one bar per operator showing when it was active
+- **Columnstore** - the work of a Columnstore Index Scan, which happens on compressed segments rather than pages - see [Columnstore](#columnstore) below
 - **Read** - physical page reads, see [Reads](/docs/user-guide/query/Reads)
 - **Lock** - locks acquired and released, see [Locks](/docs/user-guide/query/Locks)
 - **Latch** - latches acquired and released, see [Latches](/docs/user-guide/query/Latches)
@@ -12,7 +14,11 @@ It is split into **bands**:
 
 Bands can be split into **lanes** that further categorize the events on the band - see each band's page for its lanes.
 
+The Log and Columnstore bands only appear when the query produced those events, and the Lock, Latch and Wait bands need their event type to have been captured. Where a band is divided in two - Buffer and Disk on the Read band - the division collapses into a single lane when the timeline is too short to show it, and comes back as it is given more room.
+
 Hovering over the timeline shows a tooltip describing the event under the pointer.
+
+A query recorded with [Full Trace](/docs/user-guide/query/FullTrace) has no timed events, so while **Record Full Trace** is on the Timeline is hidden and the [Flame Chart](/docs/user-guide/query/FlameChart) takes its place.
 
 ## Playback
 
@@ -37,3 +43,15 @@ Dragging the handles either side of the playhead selects a time range. The selec
 - **Right-click an index** in the Plan band to open it in the [Index View](/docs/user-guide/index-view), linked to the trace so pages light up as they are read
 
 ![Right-clicking an operator to open its index](/docs/user-guide/images/query-timeline-right-click-open-index-option.png)
+
+## Columnstore
+
+A Columnstore Index Scan reads compressed column segments rather than rows from pages, so its events get a band of their own, split into three:
+
+- **Rowgroup** - the top. One track per rowgroup, with a bar for each column segment scanned. The rowgroup read and read-ahead events that fetch a rowgroup's segments from disk span the time until its last segment scan finished. Rowgroup elimination - where the scan skips a rowgroup from its segment metadata without reading it - is drawn in tracks across the top of the band. A parallel scan gets a lane per thread, so the rowgroups each worker took are side by side
+- **Columnstore** - the middle, for events that belong to the scan as a whole: batch filters and bitmap filters, each labelled with how many rows survived of how many went in, and the per-rowgroup statistics of aggregate pushdown
+- **Object Pool** - the bottom. The columnstore object pool is the cache the engine keeps decompressed segments and dictionaries in. Each lookup is a tick, green for a hit and red for a miss, in a track per column within its rowgroup, with the global dictionary and the delete bitmap in tracks of their own above the rowgroups
+
+<!-- Screenshot: the Columnstore band with its Rowgroup, Columnstore and Object Pool sub-bands, and rails from the Read band up to the pool misses -->
+
+A miss is what sends the engine to disk for a segment, so a miss is drawn until the read that fetched the object began, and the [Read](/docs/user-guide/query/Reads) band's rails run from each page read up to the miss it served, where there is one, rather than to the operator. The **Details** toggle in the [Events](/docs/user-guide/query/Events) pane shows the encoding, dictionary sizes and row counts behind each segment scan.
