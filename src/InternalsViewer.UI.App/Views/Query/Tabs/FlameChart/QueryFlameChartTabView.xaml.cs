@@ -77,34 +77,30 @@ public sealed partial class QueryFlameChartTabView : UserControl, IDocumentComma
 
         commands.Children.Add(CommandToggle(Label("Operators"),
                                             FlameChart.ShowOperators,
-                                            "Show each plan operator from its first call to its last above the threads. "
-                                            + "Drag the splitter to make the rows taller, click an operator to pick out its calls "
-                                            + "and everything they call.",
+                                            "Show Plan Operators",
                                             OnOperatorsClick));
 
         commands.Children.Add(CommandToggle(Label("Memory"),
                                             FlameChart.ShowMemory,
-                                            "Raise the calls by memory, either as Allocated or In Use chosen above the ruler, and show the "
-                                            + "memory allocated and in use along the bottom",
+                                            "Display allocation/in-use memory",
                                             OnMemoryClick));
 
         commands.Children.Add(CommandButton(new FontIcon { Glyph = StepBackGlyph, FontSize = 12 },
-                                            "Move the playhead back to the start of the previous frame",
+                                            "Previous Frame",
                                             OnStepBackClick));
 
         commands.Children.Add(CommandButton(new FontIcon { Glyph = StepForwardGlyph, FontSize = 12 },
-                                            "Move the playhead on to the start of the next frame",
+                                            "Next Frame",
                                             OnStepForwardClick));
 
         commands.Children.Add(CommandToggle(new FontIcon { Glyph = FlameChart.IsLocked ? LockedGlyph : UnlockedGlyph, FontSize = 12 },
                                             FlameChart.IsLocked,
-                                            "Keep the flame chart where it is. Clicking a call still selects it in the call stack, "
-                                            + "but does not change what the flame chart is rooted on.",
+                                            "Lock chart to selection",
                                             OnLockClick));
 
         _searchToggle = CommandToggle(new FontIcon { Glyph = SearchGlyph, FontSize = 12 },
                                       false,
-                                      "Search the functions by name and dim every call that does not match",
+                                      "Search function names",
                                       OnSearchClick);
 
         commands.Children.Add(_searchToggle);
@@ -153,7 +149,8 @@ public sealed partial class QueryFlameChartTabView : UserControl, IDocumentComma
             Style = (Style)Application.Current.Resources["TabCommandToggleStyle"],
             Content = content,
             IsChecked = isChecked,
-            Margin = new Thickness(6, 0, 0, 0)
+            Margin = new Thickness(6, 0, 0, 0),
+            VerticalAlignment = VerticalAlignment.Stretch
         };
 
         ToolTipService.SetToolTip(toggle, toolTip);
@@ -169,7 +166,8 @@ public sealed partial class QueryFlameChartTabView : UserControl, IDocumentComma
         {
             Style = (Style)Application.Current.Resources["TabCommandButtonStyle"],
             Content = content,
-            Margin = new Thickness(6, 0, 0, 0)
+            Margin = new Thickness(6, 0, 0, 0),
+            VerticalAlignment = VerticalAlignment.Stretch
         };
 
         ToolTipService.SetToolTip(button, toolTip);

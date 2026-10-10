@@ -29,7 +29,7 @@ public sealed class TimeTravelRecorder(WinDbgService winDbg, ILogger<TimeTravelR
 
     private static string RecorderRoot => Path.Combine(Root, "Recorder");
 
-    public async Task<ITimeTravelRecording> PrepareAsync(string connectionString, CancellationToken cancellationToken)
+    public async Task<ITimeTravelRecording> PrepareAsync(string connectionString, string sessionId, CancellationToken cancellationToken)
     {
         var process = await SqlServerProcess.GetAsync(connectionString, cancellationToken);
 
@@ -47,7 +47,7 @@ public sealed class TimeTravelRecorder(WinDbgService winDbg, ILogger<TimeTravelR
                                       + $"\"{Path.Combine(directory, "TTD.exe")}\" once from an elevated prompt to accept it");
         }
 
-        var recording = new TimeTravelRecording(directory, CreateTraceDirectory(), process.ProcessId, logger);
+        var recording = new TimeTravelRecording(directory, CreateTraceDirectory(sessionId), process.ProcessId, sessionId, logger);
 
         try
         {
@@ -126,7 +126,7 @@ public sealed class TimeTravelRecorder(WinDbgService winDbg, ILogger<TimeTravelR
         return key?.GetValue(LicenceValue) is int and not 0;
     }
 
-    private string CreateTraceDirectory()
+    private string CreateTraceDirectory(string sessionId)
     {
         var root = Directory.CreateDirectory(TraceRoot);
 
@@ -144,6 +144,6 @@ public sealed class TimeTravelRecorder(WinDbgService winDbg, ILogger<TimeTravelR
             }
         }
 
-        return Directory.CreateDirectory(Path.Combine(root.FullName, DateTime.Now.ToString("yyyyMMdd-HHmmss"))).FullName;
+        return Directory.CreateDirectory(Path.Combine(root.FullName, sessionId)).FullName;
     }
 }

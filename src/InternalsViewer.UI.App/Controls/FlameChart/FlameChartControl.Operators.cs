@@ -22,7 +22,7 @@ public sealed partial class FlameChartControl
 
     private const float SplitterHitMargin = 2f;
 
-    private const float CompactOperatorRowHeight = 14f;
+    private const float CompactOperatorRowHeight = 28f;
 
     private const float CompactOperatorsShare = 0.4f;
 

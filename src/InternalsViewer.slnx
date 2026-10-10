@@ -55,7 +55,7 @@
       <Build Solution="*|x86" Project="false" />
       <Build Solution="Release|x64" Project="false" />
     </Project>
-    <Project Path="Query/InternalsViewer.Query.TimeTravelHost/InternalsViewer.Query.TimeTravelHost.vcxproj" Id="9c754dd0-44ea-4944-ab0e-b6d5e1ae8b34">
+    <Project Path="Query/InternalsViewer.Query.TraceHarness/InternalsViewer.Query.TraceHarness.vcxproj" Id="9c754dd0-44ea-4944-ab0e-b6d5e1ae8b34">
       <BuildType Solution="Debug|x64" Project="Release" />
       <Platform Solution="*|ARM64" Project="x64" />
       <Build Solution="*|x86" Project="false" />

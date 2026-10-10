@@ -2,7 +2,7 @@ namespace InternalsViewer.Query.Debugging.TimeTravel;
 
 public interface ITimeTravelRecorder
 {
-    Task<ITimeTravelRecording> PrepareAsync(string connectionString, CancellationToken cancellationToken);
+    Task<ITimeTravelRecording> PrepareAsync(string connectionString, string sessionId, CancellationToken cancellationToken);
 }
 
 public interface ITimeTravelRecording : IAsyncDisposable

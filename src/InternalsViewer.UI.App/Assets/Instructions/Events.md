@@ -6,6 +6,8 @@ overhead to the trace. Tick an item to change what the next trace captures:
 - [{{ShowWaits}}] [Waits](option:ShowWaits) - where the query stopped and waited for a resource
 - [{{ShowLatches}}] [Latches](option:ShowLatches) - the page-level protection around every read and modification.
   Held very briefly and in large numbers, so capturing them adds overhead
+- [{{IncludeColumnstore}}] [Columnstore](option:IncludeColumnstore) - segment scans, rowgroup reads and elimination, object
+  pool lookups, filters and aggregate pushdown, for a Columnstore Index Scan
 - [{{IncludeMemory}}] [Memory](option:IncludeMemory) - memory grants, hash spills, and sort warnings
 - [{{IncludeCallStack}}] [Call Stack](option:IncludeCallStack) - the SQL Server call stack behind every event. The
   first trace downloads the server's debugging symbols, so it takes a little longer

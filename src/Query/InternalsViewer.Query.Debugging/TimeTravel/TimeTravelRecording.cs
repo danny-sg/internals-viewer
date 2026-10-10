@@ -8,7 +8,7 @@ using Microsoft.Extensions.Logging;
 namespace InternalsViewer.Query.Debugging.TimeTravel;
 
 [SupportedOSPlatform("windows")]
-internal sealed class TimeTravelRecording(string ttdDirectory, string traceDirectory, int processId, ILogger logger)
+internal sealed class TimeTravelRecording(string ttdDirectory, string traceDirectory, int processId, string sessionId, ILogger logger)
     : ITimeTravelRecording
 {
     private const int ElevationDeclined = 1223;
@@ -17,7 +17,7 @@ internal sealed class TimeTravelRecording(string ttdDirectory, string traceDirec
 
     private const string ProcessFile = "process.txt";
 
-    private const string HostName = "Time Travel Trace.exe";
+    private const string HostName = "InternalsViewer.TraceHarness.exe";
 
     private static readonly string[] Modules = ["sqlmin.dll", "sqllang.dll"];
 
@@ -31,7 +31,7 @@ internal sealed class TimeTravelRecording(string ttdDirectory, string traceDirec
 
     public bool Restarted { get; private set; }
 
-    private string Id { get; } = Guid.NewGuid().ToString("N");
+    private string Id { get; } = sessionId;
 
     private EventWaitHandle? Prepared { get; set; }
 

@@ -173,10 +173,10 @@ public sealed class QueryRunner(ILogger<QueryRunner> logger,
         {
             if (eventOptions.RecordTimeTravel)
             {
-                recording = await PrepareTimeTravelRecording(connectionString, progress, cancellationToken);
+                recording = await PrepareTimeTravelRecording(connectionString, sessionId, progress, cancellationToken);
             }
 
-            if (!payload.QueryOptions.ClearBufferPool)
+            if (recording is not null && !payload.QueryOptions.ClearBufferPool)
             {
                 await WarmUp(connectionString, preCommands, commands[0], progress, cancellationToken);
             }
@@ -949,6 +949,7 @@ public sealed class QueryRunner(ILogger<QueryRunner> logger,
     }
 
     private async Task<ITimeTravelRecording?> PrepareTimeTravelRecording(string connectionString,
+                                                                        string sessionId,
                                                                         IProgress<ProgressDetail>? progress,
                                                                         CancellationToken cancellationToken)
     {
@@ -961,7 +962,7 @@ public sealed class QueryRunner(ILogger<QueryRunner> logger,
 
         progress?.Report("Preparing time travel recording");
 
-        return await TimeTravelRecorder.PrepareAsync(connectionString, cancellationToken);
+        return await TimeTravelRecorder.PrepareAsync(connectionString, sessionId, cancellationToken);
     }
 
     private static async Task<(long RowCount, List<QueryResultSet> ResultSets)> 

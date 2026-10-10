@@ -5,6 +5,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using InternalsViewer.Query.Debugging.Interfaces;
 using InternalsViewer.Query.XEvents;
+using InternalsViewer.UI.App.Helpers;
 using InternalsViewer.UI.App.Services;
 
 namespace InternalsViewer.UI.App.ViewModels;
@@ -136,7 +137,7 @@ public partial class SettingsViewModel(SettingsService settingsService, TraceDir
 
         PlanAnnotations = savedPlanAnnotations ?? false;
 
-        var savedWinDbgPassword = await SettingsService.ReadSettingAsync<string>(WinDbgPasswordKey);
+        var savedWinDbgPassword = PasswordProtection.Unprotect(await SettingsService.ReadSettingAsync<string>(WinDbgPasswordKey));
 
         WinDbgPassword = string.IsNullOrWhiteSpace(savedWinDbgPassword) ? Guid.NewGuid().ToString("N")[..12] : savedWinDbgPassword;
 
@@ -168,7 +169,7 @@ public partial class SettingsViewModel(SettingsService settingsService, TraceDir
 
     partial void OnWinDbgPasswordChanged(string value)
     {
-        _ = SettingsService.SaveSettingAsync(WinDbgPasswordKey, value);
+        _ = SettingsService.SaveSettingAsync(WinDbgPasswordKey, PasswordProtection.Protect(value));
     }
 
     partial void OnWinDbgPathChanged(string value)

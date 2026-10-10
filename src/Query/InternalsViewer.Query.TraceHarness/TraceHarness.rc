@@ -13,10 +13,10 @@ BEGIN
     BEGIN
         BLOCK "040904b0"
         BEGIN
-            VALUE "FileDescription", "Time Travel Trace"
+            VALUE "FileDescription", "Internals Viewer Trace Harness"
             VALUE "FileVersion", "1.0.0.0"
-            VALUE "InternalName", "Time Travel Trace"
-            VALUE "OriginalFilename", "Time Travel Trace.exe"
+            VALUE "InternalName", "InternalsViewer.TraceHarness"
+            VALUE "OriginalFilename", "InternalsViewer.TraceHarness.exe"
             VALUE "ProductName", "Internals Viewer"
             VALUE "ProductVersion", "1.0.0.0"
         END

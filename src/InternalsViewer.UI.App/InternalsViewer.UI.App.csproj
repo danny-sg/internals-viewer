@@ -241,6 +241,7 @@
 
         <PackageReference Include="SkiaSharp" Version="4.153.1" />
         <PackageReference Include="SkiaSharp.Views.WinUI" Version="4.153.1" />
+        <PackageReference Include="System.Security.Cryptography.ProtectedData" Version="10.0.12" />
         <PackageReference Include="WinUI.TableView" Version="1.5.0" />
         <PackageReference Include="WinUIEx" Version="2.9.3" />
         <Manifest Include="$(ApplicationManifest)" />

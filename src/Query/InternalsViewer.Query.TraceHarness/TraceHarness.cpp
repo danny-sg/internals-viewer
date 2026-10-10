@@ -676,7 +676,7 @@ namespace
 
     std::wstring AttachArguments(Options const& options, DWORD processId)
     {
-        std::wstring arguments = L"-noUI -out \"" + options.OutputDirectory + L"\"";
+        std::wstring arguments = L"-noUI -out \"" + options.OutputDirectory + L"\\" + options.Id + L".run\"";
 
         for (auto const& module : options.Modules)
         {

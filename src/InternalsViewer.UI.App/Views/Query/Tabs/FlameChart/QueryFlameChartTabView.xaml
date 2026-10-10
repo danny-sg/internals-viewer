@@ -16,13 +16,13 @@
         <AutoSuggestBox x:Name="SearchBox"
                         Grid.Row="0"
                         Visibility="Collapsed"
-                        PlaceholderText="Search Functions"
+                        PlaceholderText="Search"
                         QueryIcon="Find"
                         TextBoxStyle="{StaticResource SearchTextBoxStyle}"
                         BorderThickness="0"
                         FontSize="12"
                         Height="28"
-                        Margin="8,4,8,4"
+                        Margin="0"
                         TextChanged="OnSearchTextChanged"
                         KeyDown="OnSearchKeyDown"/>
 
