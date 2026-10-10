@@ -4,25 +4,30 @@ namespace InternalsViewer.Query.CallStack.TimeTravel.Memory;
 
 internal sealed class TimeTravelMemoryIndex
 {
-    private TimeTravelMemoryIndex(Dictionary<uint, ThreadMemory> threads, TimeTravelInUseCurve inUse)
+    private TimeTravelMemoryIndex(Dictionary<uint, ThreadMemory> threads, TimeTravelInUseCurve inUse, TimeTravelInUseCurve workspace)
     {
         Threads = threads;
         InUse = inUse;
+        Workspace = workspace;
     }
 
-    public static TimeTravelMemoryIndex Empty { get; } = new([], TimeTravelInUseCurve.Empty);
+    public static TimeTravelMemoryIndex Empty { get; } = new([], TimeTravelInUseCurve.Empty, TimeTravelInUseCurve.Empty);
 
     public bool HasAllocations => Threads.Count > 0;
+
+    public bool HasWorkspace => !Workspace.IsEmpty;
 
     private Dictionary<uint, ThreadMemory> Threads { get; }
 
     private TimeTravelInUseCurve InUse { get; }
 
+    private TimeTravelInUseCurve Workspace { get; }
+
     public static TimeTravelMemoryIndex Build(IEnumerable<TimeTravelAllocation> allocations, IEnumerable<TimeTravelFree> frees)
     {
-        var kept = Outermost(allocations, a => a.Thread, a => a.Start, a => a.End);
+        var kept = allocations.GroupBy(a => a.Thread).SelectMany(t => Outermost.Of(t, a => a.Start, a => a.End)).ToList();
 
-        var released = Outermost(frees, f => f.Thread, f => f.Start, f => f.End);
+        var released = frees.GroupBy(f => f.Thread).SelectMany(t => Outermost.Of(t, f => f.Start, f => f.End)).ToList();
 
         var events = kept.Select((a, index) => (a.Start, IsFree: false, Index: index))
                          .Concat(released.Select((f, index) => (f.Start, IsFree: true, Index: index)))
@@ -39,7 +44,13 @@ internal sealed class TimeTravelMemoryIndex
 
         var values = new List<ulong>();
 
+        var workspacePositions = new List<double>();
+
+        var workspaceValues = new List<ulong>();
+
         ulong inUse = 0;
+
+        ulong workspace = 0;
 
         foreach (var (start, isFree, index) in events)
         {
@@ -57,6 +68,15 @@ internal sealed class TimeTravelMemoryIndex
                 ListsOf(threads, free.Thread).Frees.Add((start, kept[allocation].Bytes));
 
                 inUse -= Math.Min(inUse, kept[allocation].Bytes);
+
+                if (kept[allocation].Workspace)
+                {
+                    workspace -= Math.Min(workspace, kept[allocation].Bytes);
+
+                    workspacePositions.Add(start);
+
+                    workspaceValues.Add(workspace);
+                }
             }
             else
             {
@@ -68,6 +88,15 @@ internal sealed class TimeTravelMemoryIndex
                 live[kept[index].Pointer] = index;
 
                 inUse += kept[index].Bytes;
+
+                if (kept[index].Workspace)
+                {
+                    workspace += kept[index].Bytes;
+
+                    workspacePositions.Add(start);
+
+                    workspaceValues.Add(workspace);
+                }
             }
 
             positions.Add(start);
@@ -82,7 +111,9 @@ internal sealed class TimeTravelMemoryIndex
 
         var memory = threads.ToDictionary(t => t.Key, t => new ThreadMemory([.. t.Value.Allocations], [.. t.Value.Frees]));
 
-        return new TimeTravelMemoryIndex(memory, new TimeTravelInUseCurve([.. positions], [.. values]));
+        return new TimeTravelMemoryIndex(memory,
+                                         new TimeTravelInUseCurve([.. positions], [.. values]),
+                                         new TimeTravelInUseCurve([.. workspacePositions], [.. workspaceValues]));
     }
 
     public (ulong Bytes, int Count) AllocatedDuring(uint thread, double start, double end)
@@ -105,33 +136,9 @@ internal sealed class TimeTravelMemoryIndex
             ? memory.InUseOwnedBy(owners)
             : [.. owners.Select(_ => TimeTravelInUseCurve.Empty)];
 
-    public ulong InUseAt(double position) => InUse.ValueAt(position);
-
     public ulong PeakInUseDuring(double start, double end) => InUse.PeakDuring(start, end);
 
-    private static List<T> Outermost<T>(IEnumerable<T> items, Func<T, uint> threadOf, Func<T, double> startOf, Func<T, double> endOf)
-    {
-        var kept = new List<T>();
-
-        foreach (var thread in items.GroupBy(threadOf))
-        {
-            var end = double.MinValue;
-
-            foreach (var item in thread.OrderBy(startOf))
-            {
-                if (startOf(item) < end)
-                {
-                    continue;
-                }
-
-                kept.Add(item);
-
-                end = endOf(item);
-            }
-        }
-
-        return kept;
-    }
+    public ulong PeakWorkspaceDuring(double start, double end) => Workspace.PeakDuring(start, end);
 
     private static ThreadLists ListsOf(Dictionary<uint, ThreadLists> threads, uint thread)
     {

@@ -23,13 +23,6 @@ internal sealed class FlameChartPaints : IDisposable
 
     public SKPaint Hover { get; } = new() { Style = SKPaintStyle.Stroke, StrokeWidth = 1f, Color = SKColors.White };
 
-    public SKPaint Selection { get; } = new()
-    {
-        Style = SKPaintStyle.Stroke,
-        StrokeWidth = 2f,
-        Color = new SKColor(255, 200, 0)
-    };
-
     public SKPaint DragFill { get; } = new() { Style = SKPaintStyle.Fill, Color = new SKColor(80, 160, 255, 50) };
 
     public SKPaint DragStroke { get; } = new()
@@ -100,7 +93,6 @@ internal sealed class FlameChartPaints : IDisposable
         Label.Color = isDark ? new SKColor(0xD8, 0xD8, 0xD8) : new SKColor(0x30, 0x30, 0x30);
         Tick.Color = isDark ? new SKColor(0x70, 0x70, 0x70) : new SKColor(0xA8, 0xA8, 0xA8);
         Hover.Color = isDark ? SKColors.White : SKColors.Black;
-        Selection.Color = isDark ? new SKColor(255, 200, 0) : new SKColor(0xE0, 0x7A, 0x00);
         Edge.Color = isDark ? new SKColor(255, 255, 255, 70) : new SKColor(0, 0, 0, 90);
         LabelBackground.Color = isDark ? new SKColor(32, 32, 32, 210) : new SKColor(255, 255, 255, 220);
         AreaLine.Color = isDark ? new SKColor(0xA0, 0xA0, 0xA0) : new SKColor(0x80, 0x80, 0x80);
@@ -117,7 +109,6 @@ internal sealed class FlameChartPaints : IDisposable
         Label.Dispose();
         Tick.Dispose();
         Hover.Dispose();
-        Selection.Dispose();
         DragFill.Dispose();
         DragStroke.Dispose();
         Face.Dispose();

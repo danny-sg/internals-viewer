@@ -96,7 +96,7 @@ public sealed partial class FlameChartControl
 
                 var node = row.NodeAt(index);
 
-                var ratio = RatioOf(bytes);
+                var ratio = LogRatio(bytes, _memoryMaximum);
 
                 var inheriting = bytes == 0 && inherited > 0;
 
@@ -249,16 +249,6 @@ public sealed partial class FlameChartControl
         }
 
         return null;
-    }
-
-    private float RatioOf(ulong bytes)
-    {
-        if (bytes == 0 || _memoryMaximum == 0)
-        {
-            return 0;
-        }
-
-        return (float)Math.Min(Math.Log(1d + bytes) / Math.Log(1d + _memoryMaximum), 1d);
     }
 
     private static SKPath PlayheadTriangle()

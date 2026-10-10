@@ -36,10 +36,13 @@ public sealed partial class FlameChartControl
 
     private Block Raised(BlockSource source, int node, float left, float right, float top, float height, ulong bytes, ulong maximum)
     {
-        var ratio = (float)Math.Min(Math.Log(1d + bytes) / Math.Log(1d + maximum), 1d);
+        var ratio = LogRatio(bytes, maximum);
 
         return new Block(source, node, ColourOf(node), left, right, top, height, ratio, ExtrusionOf(ratio, _extrusionLength), bytes);
     }
+
+    private static float LogRatio(ulong bytes, ulong maximum)
+        => bytes == 0 || maximum == 0 ? 0 : (float)Math.Min(Math.Log(1d + bytes) / Math.Log(1d + maximum), 1d);
 
     private float MaximumLength(IEnumerable<(Block Block, float Left, float Right)> blocks,
                                 float directionX,

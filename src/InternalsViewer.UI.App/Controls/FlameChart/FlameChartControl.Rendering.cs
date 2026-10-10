@@ -48,8 +48,6 @@ public sealed partial class FlameChartControl
 
     private float BarHeight => _rowHeight >= GappedRowHeight ? _rowHeight - 1 : _rowHeight;
 
-    private string AxisUnit => _axis == TimeTravelTimelineAxis.Position ? "Trace Position" : "Instructions Per Thread";
-
     private double EdgeTolerance => (_viewEnd - _viewStart) / Math.Max(_overlay.ActualWidth, 1);
 
     private bool ShowsStart => _viewStart <= FullStart + EdgeTolerance;
@@ -148,41 +146,46 @@ public sealed partial class FlameChartControl
     {
         for (var lane = 0; lane < timeline.Threads.Count && lane < _laneTops.Length; lane++)
         {
-            var thread = timeline.Threads[lane];
-
-            var depthCount = DepthOf(thread);
-
             var laneTop = ContentTop + _laneTops[lane] - (float)_scrollY;
-
-            if (laneTop + LaneHeaderHeight + depthCount * _rowHeight + LaneGap < ContentTop)
-            {
-                continue;
-            }
 
             if (laneTop > height)
             {
                 break;
             }
 
-            DrawLaneHeader(canvas, thread, laneTop, width, timeline.Threads.Count > 1);
+            if (laneTop + LaneHeaderHeight >= ContentTop)
+            {
+                DrawLaneHeader(canvas, timeline.Threads[lane], laneTop, width, timeline.Threads.Count > 1);
+            }
+        }
 
-            var rowsTop = laneTop + LaneHeaderHeight;
+        foreach (var visible in VisibleRows(timeline, height))
+        {
+            DrawRow(canvas, visible.Row, visible.Top, scale, width, RaisedOf(visible.Thread, visible.Lane, visible.Depth));
+        }
+    }
 
-            for (var depth = 0; depth < depthCount && depth < thread.Rows.Count; depth++)
+    private IEnumerable<VisibleRow> VisibleRows(TimeTravelTimeline timeline, float bottom, float rise = 0)
+    {
+        for (var lane = 0; lane < timeline.Threads.Count && lane < _laneTops.Length; lane++)
+        {
+            var thread = timeline.Threads[lane];
+
+            var rowsTop = ContentTop + _laneTops[lane] - (float)_scrollY + LaneHeaderHeight;
+
+            for (var depth = 0; depth < DepthOf(thread) && depth < thread.Rows.Count; depth++)
             {
                 var top = rowsTop + depth * _rowHeight;
 
-                if (top + _rowHeight < ContentTop)
+                if (top - rise > bottom)
                 {
-                    continue;
+                    yield break;
                 }
 
-                if (top > height)
+                if (top + _rowHeight >= ContentTop)
                 {
-                    break;
+                    yield return new VisibleRow(lane, thread, depth, thread.Rows[depth], top);
                 }
-
-                DrawRow(canvas, thread.Rows[depth], top, scale, width, RaisedOf(thread, lane, depth));
             }
         }
     }
@@ -317,7 +320,7 @@ public sealed partial class FlameChartControl
             return;
         }
 
-        _paints.Fill.Color = colour.WithAlpha(RunAlpha);
+        _paints.Fill.Color = colour.WithAlpha((byte)(colour.Alpha * RunAlpha / 255));
 
         canvas.DrawRect(start, top, Math.Max(end - start, NarrowSpan), BarHeight, _paints.Fill);
     }
@@ -341,7 +344,7 @@ public sealed partial class FlameChartControl
             return;
         }
 
-        _paints.Text.Color = IsLight(colour) ? SKColors.Black : SKColors.White;
+        _paints.Text.Color = (IsLight(colour) ? SKColors.Black : SKColors.White).WithAlpha(colour.Alpha);
 
         canvas.Save();
 
@@ -359,8 +362,6 @@ public sealed partial class FlameChartControl
 
     private void DrawRuler(SKCanvas canvas, int width, double scale)
     {
-        var unitLeft = width - _paints.Font.MeasureText(AxisUnit) - LabelPadding * 4;
-
         var step = TickStep(TickSpacing / scale);
 
         var first = Math.Ceiling(Math.Max(_viewStart, FullStart) / step) * step;
@@ -373,22 +374,18 @@ public sealed partial class FlameChartControl
 
             var label = FormatAxis(value, step);
 
-            if (x + 3 + _paints.Font.MeasureText(label) < unitLeft)
+            if (x + 3 + _paints.Font.MeasureText(label) < width)
             {
                 canvas.DrawText(label, x + 3, Baseline(0, RulerHeight - 4), SKTextAlign.Left, _paints.Font, _paints.Label);
             }
         }
 
         canvas.DrawLine(0, RulerHeight - 0.5f, width, RulerHeight - 0.5f, _paints.Tick);
-
-        canvas.DrawText(AxisUnit, width - LabelPadding * 2, Baseline(0, RulerHeight - 4), SKTextAlign.Right, _paints.Font, _paints.Label);
     }
 
     private void DrawOverlay(SKCanvas canvas, int width, int height)
     {
         var hover = _hoverOnPopout ? null : _hover;
-
-        var selected = IsLocked ? null : _selected;
 
         canvas.Save();
 
@@ -397,8 +394,6 @@ public sealed partial class FlameChartControl
         DrawSelectedCalls(canvas, width, height);
 
         DrawHighlight(canvas, hover, width, _paints.Hover);
-
-        DrawHighlight(canvas, selected, width, _paints.Selection);
 
         canvas.Restore();
 
@@ -411,8 +406,6 @@ public sealed partial class FlameChartControl
             canvas.ClipRect(new SKRect(0, 0, width, height - BandHeight));
 
             DrawSpikeHighlight(canvas, hover, _paints.Hover);
-
-            DrawSpikeHighlight(canvas, selected, _paints.Selection);
 
             canvas.Restore();
         }
@@ -519,6 +512,11 @@ public sealed partial class FlameChartControl
 
         colour = _timeline?.NodeOf(node)?.CategoryColour is { } hex ? Parse(hex) : _paints.Unknown;
 
+        if (IsDimmed(node))
+        {
+            colour = Dimmed(colour);
+        }
+
         _colours[node] = colour;
 
         return colour;
@@ -585,6 +583,8 @@ public sealed partial class FlameChartControl
             _ => $"{value:N0}"
         };
     }
+
+    private readonly record struct VisibleRow(int Lane, TimeTravelTimelineThread Thread, int Depth, TimeTravelTimelineRow Row, float Top);
 
     private readonly record struct LayerKey(int Width,
                                             int Height,

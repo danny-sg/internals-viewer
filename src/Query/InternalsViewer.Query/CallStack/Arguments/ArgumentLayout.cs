@@ -8,8 +8,6 @@ public sealed record ArgumentLayout(IReadOnlyList<ArgumentSlot> Slots, string? R
 
     private static readonly string[] Registers = ["RCX", "RDX", "R8", "R9"];
 
-    public uint PointerSlots => Slots.Where(s => s.IsPrimitivePointer).Aggregate(0u, (mask, s) => mask | (1u << s.Index));
-
     public static ArgumentLayout For(FunctionSignature signature)
     {
         var slots = new List<ArgumentSlot>();

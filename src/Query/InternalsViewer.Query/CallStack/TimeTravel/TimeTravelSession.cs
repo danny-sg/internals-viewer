@@ -12,8 +12,6 @@ public sealed class TimeTravelSession : IDisposable
 {
     private const int NameLength = 1024;
 
-    private const int ActivitySlices = 1024;
-
     private TimeTravelSession(TimeTravelTrace trace, TimeTravelTraceHandle handle)
     {
         Trace = trace;
@@ -104,7 +102,6 @@ public sealed class TimeTravelSession : IDisposable
                                                        functions.Excluded.Length,
                                                        functions.Markers,
                                                        functions.Markers.Length,
-                                                       ActivitySlices,
                                                        onChunk,
                                                        onSpans,
                                                        onProgress,
@@ -128,13 +125,9 @@ public sealed class TimeTravelSession : IDisposable
 
                 TimeTravelBridge.GetCallNodes(tree, nodes, nodes.Length);
 
-                var activity = new TimeTravelCallActivity[TimeTravelBridge.GetCallActivityCount(tree)];
-
-                TimeTravelBridge.GetCallActivity(tree, activity, activity.Length);
-
                 cancellationToken.ThrowIfCancellationRequested();
 
-                return new TimeTravelReplay(new TimeTravelCallTree(nodes, activity, [.. Modules]), log.Build(), timeline.Build(nodes));
+                return new TimeTravelReplay(new TimeTravelCallTree(nodes, [.. Modules]), log.Build(), timeline.Build(nodes));
             }
             finally
             {

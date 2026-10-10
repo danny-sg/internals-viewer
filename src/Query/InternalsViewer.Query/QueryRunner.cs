@@ -403,7 +403,7 @@ public sealed class QueryRunner(ILogger<QueryRunner> logger,
 
         var callStack = new CallStackTree();
 
-        var replayed = TimeTravelCallMerger.Merge(callStack, replay.Calls, ActivityBuckets);
+        var replayed = TimeTravelCallMerger.Merge(callStack, replay.Calls);
 
         var nodes = replay.Calls.Nodes;
 
@@ -441,6 +441,8 @@ public sealed class QueryRunner(ILogger<QueryRunner> logger,
         var timeline = replay.Timeline.WithoutCallsUnder(node => node.IsExtendedEvents || node.IsTracing);
 
         progress?.Report($"{timeline.SpanCount:N0} call span(s) on {timeline.Threads.Count:N0} thread(s) in the flame chart");
+
+        TimeTravelCallMerger.AddActivity(timeline, ActivityBuckets);
 
         var matched = IteratorInstanceMatcher.Match(callStack, events);
 

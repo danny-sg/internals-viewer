@@ -41,7 +41,6 @@ internal static class TimeTravelBridge
                                           int excludedFunctionCount,
                                           ulong[] markerFunctions,
                                           int markerFunctionCount,
-                                          int activitySlices,
                                           CallChunkCallback? logCalls,
                                           CallSpanCallback? logSpans,
                                           ProgressCallback? progress,
@@ -53,12 +52,6 @@ internal static class TimeTravelBridge
 
     [DllImport(Library)]
     public static extern void GetCallNodes(IntPtr tree, [Out] TimeTravelCallNode[] nodes, int count);
-
-    [DllImport(Library)]
-    public static extern int GetCallActivityCount(IntPtr tree);
-
-    [DllImport(Library)]
-    public static extern void GetCallActivity(IntPtr tree, [Out] TimeTravelCallActivity[] activity, int count);
 
     [DllImport(Library)]
     public static extern void CloseCallTree(IntPtr tree);

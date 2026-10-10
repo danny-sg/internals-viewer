@@ -80,35 +80,9 @@ public static class IteratorLifetimes
 
     private static (TimeTravelTimelineSpan[] Positions, TimeTravelTimelineSpan[] Instructions) Merged(List<InstanceCall> calls)
     {
-        calls.Sort((a, b) => a.Position.Start.CompareTo(b.Position.Start));
+        var outermost = Outermost.Of(calls, c => c.Position.Start, c => c.Position.End);
 
-        var positions = new List<TimeTravelTimelineSpan>(calls.Count);
-
-        var instructions = new List<TimeTravelTimelineSpan>(calls.Count);
-
-        foreach (var (position, instruction) in calls)
-        {
-            if (positions.Count > 0 && position.Start <= positions[^1].End)
-            {
-                if (position.End > positions[^1].End)
-                {
-                    positions[^1] = positions[^1] with { End = position.End };
-                }
-
-                if (instruction.End > instructions[^1].End)
-                {
-                    instructions[^1] = instructions[^1] with { End = instruction.End };
-                }
-
-                continue;
-            }
-
-            positions.Add(position);
-
-            instructions.Add(instruction);
-        }
-
-        return ([.. positions], [.. instructions]);
+        return ([.. outermost.Select(c => c.Position)], [.. outermost.Select(c => c.Instructions)]);
     }
 
     private readonly record struct InstanceCall(TimeTravelTimelineSpan Position, TimeTravelTimelineSpan Instructions);

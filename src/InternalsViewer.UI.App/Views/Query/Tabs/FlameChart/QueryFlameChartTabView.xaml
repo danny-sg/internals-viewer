@@ -8,7 +8,26 @@
     xmlns:flameChart="using:InternalsViewer.UI.App.Controls.FlameChart"
     mc:Ignorable="d">
     <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+
+        <AutoSuggestBox x:Name="SearchBox"
+                        Grid.Row="0"
+                        Visibility="Collapsed"
+                        PlaceholderText="Search Functions"
+                        QueryIcon="Find"
+                        TextBoxStyle="{StaticResource SearchTextBoxStyle}"
+                        BorderThickness="0"
+                        FontSize="12"
+                        Height="28"
+                        Margin="8,4,8,4"
+                        TextChanged="OnSearchTextChanged"
+                        KeyDown="OnSearchKeyDown"/>
+
         <flameChart:FlameChartControl x:Name="FlameChart"
+                                      Grid.Row="1"
                                       VerticalAlignment="Stretch"
                                       HorizontalAlignment="Stretch"
                                       Background="{ThemeResource LayerFillColorDefaultBrush}"
@@ -18,7 +37,8 @@
                                       RootNode="{x:Bind ViewModel.SelectedCallNode, Mode=OneWay}"
                                       SelectedCall="{x:Bind ViewModel.Arguments.SelectedCallReference, Mode=OneWay}"/>
 
-        <StackPanel Orientation="Vertical"
+        <StackPanel Grid.Row="1"
+                    Orientation="Vertical"
                     Spacing="8"
                     MaxWidth="360"
                     HorizontalAlignment="Center"

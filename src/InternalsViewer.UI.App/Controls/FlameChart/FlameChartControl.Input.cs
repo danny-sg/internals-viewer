@@ -33,6 +33,12 @@ public sealed partial class FlameChartControl
 
     private bool _isSelecting;
 
+    private bool _selectsOnDrag;
+
+    private bool _pressedOperators;
+
+    private bool _isDragging;
+
     private bool _isPanning;
 
     private bool _isScrubbing;
@@ -148,16 +154,11 @@ public sealed partial class FlameChartControl
             return;
         }
 
-        if (IsInOperators(position))
+        var inOperators = IsInOperators(position);
+
+        if (inOperators && isDoubleClick && OperatorAt(position) is { } operatorHit)
         {
-            if (OperatorAt(position) is { } operatorHit && isDoubleClick)
-            {
-                ZoomToOperator(operatorHit);
-            }
-            else
-            {
-                ClickOperator(OperatorAt(position));
-            }
+            ZoomToOperator(operatorHit);
 
             return;
         }
@@ -169,7 +170,7 @@ public sealed partial class FlameChartControl
             return;
         }
 
-        if (isDoubleClick)
+        if (!inOperators && isDoubleClick)
         {
             if (HitTest(position) is { } hit && SpanOf(hit) is { } span)
             {
@@ -187,8 +188,11 @@ public sealed partial class FlameChartControl
 
         _isPressed = true;
         _isSelecting = false;
+        _pressedOperators = inOperators;
+        _selectsOnDrag = e.KeyModifiers.HasFlag(VirtualKeyModifiers.Shift);
         _pressPoint = position;
         _dragPoint = position;
+        _panViewStart = _viewStart;
 
         _overlay.CapturePointer(e.Pointer);
     }
@@ -237,14 +241,29 @@ public sealed partial class FlameChartControl
         {
             _dragPoint = position;
 
-            if (!_isSelecting && Distance(_pressPoint, position) > DragThreshold)
+            if (!_isSelecting && !_isDragging && Distance(_pressPoint, position) > DragThreshold)
             {
-                _isSelecting = true;
+                _isSelecting = _selectsOnDrag;
+
+                _isDragging = !_selectsOnDrag;
+
+                if (_isDragging)
+                {
+                    UpdateCursor(InputSystemCursorShape.SizeWestEast);
+                }
             }
 
             if (_isSelecting)
             {
                 _canvas.Invalidate();
+            }
+            else if (_isDragging)
+            {
+                var range = _viewEnd - _viewStart;
+
+                var start = _panViewStart - (position.X - _pressPoint.X) / PixelsPerUnit((int)_overlay.ActualWidth);
+
+                SetView(start, start + range);
             }
 
             return;
@@ -325,7 +344,11 @@ public sealed partial class FlameChartControl
 
             ZoomToSelection();
         }
-        else if (_isPressed)
+        else if (_isPressed && !_isDragging && _pressedOperators)
+        {
+            ClickOperator(OperatorAt(position));
+        }
+        else if (_isPressed && !_isDragging)
         {
             Click(HitTest(position));
         }
@@ -480,8 +503,14 @@ public sealed partial class FlameChartControl
     {
         var invalidate = _isSelecting;
 
+        if (_isDragging)
+        {
+            UpdateCursor(InputSystemCursorShape.Arrow);
+        }
+
         _isPressed = false;
         _isSelecting = false;
+        _isDragging = false;
         _isPanning = false;
         _isScrubbing = false;
         _isStretching = false;

@@ -13,13 +13,6 @@ extern "C"
         uint64_t Calls;
     };
 
-    struct CallActivity
-    {
-        int32_t  Node;
-        int32_t  Slice;
-        uint64_t Calls;
-    };
-
     struct CallSpan
     {
         uint64_t StartSequence;
@@ -60,7 +53,6 @@ extern "C"
                                                int32_t               excludedFunctionCount,
                                                const uint64_t*       markerFunctions,
                                                int32_t               markerFunctionCount,
-                                               int32_t               activitySlices,
                                                CallChunkCallback     logCalls,
                                                CallSpanCallback      logSpans,
                                                ProgressCallback      progress,
@@ -70,10 +62,6 @@ extern "C"
     __declspec(dllexport) int32_t GetCallNodeCount(void* tree);
 
     __declspec(dllexport) void GetCallNodes(void* tree, CallNode* nodes, int32_t count);
-
-    __declspec(dllexport) int32_t GetCallActivityCount(void* tree);
-
-    __declspec(dllexport) void GetCallActivity(void* tree, CallActivity* activity, int32_t count);
 
     __declspec(dllexport) void CloseCallTree(void* tree);
 

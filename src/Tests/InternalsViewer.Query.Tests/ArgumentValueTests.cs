@@ -31,22 +31,4 @@ public class ArgumentValueTests
     {
         Assert.Equal("1.5", ArgumentValue.Format("double", (ulong)BitConverter.DoubleToInt64Bits(1.5)));
     }
-
-    [Theory]
-    [InlineData("unsigned __int64 *", "unsigned __int64")]
-    [InlineData("int const *", "int")]
-    [InlineData("bool &", "bool")]
-    public void The_Pointee_Drops_The_Pointer_And_Qualifiers(string type, string expected)
-    {
-        Assert.Equal(expected, ArgumentValue.Pointee(type));
-
-        Assert.True(ArgumentValue.IsPrimitivePointer(type));
-    }
-
-    [Fact]
-    public void A_Pointer_To_A_Pointer_Is_Not_A_Primitive_Pointer()
-    {
-        Assert.False(ArgumentValue.IsPrimitivePointer("char * *"));
-        Assert.False(ArgumentValue.IsPrimitivePointer("CQScanNew *"));
-    }
 }

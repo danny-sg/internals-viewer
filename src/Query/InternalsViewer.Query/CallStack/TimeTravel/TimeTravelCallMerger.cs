@@ -1,10 +1,11 @@
 using InternalsViewer.Query.CallStack.TimeTravel.Native;
+using InternalsViewer.Query.CallStack.TimeTravel.Timeline;
 
 namespace InternalsViewer.Query.CallStack.TimeTravel;
 
 public static class TimeTravelCallMerger
 {
-    public static CallStackNode[] Merge(CallStackTree callStack, TimeTravelCallTree calls, int activityBuckets)
+    public static CallStackNode[] Merge(CallStackTree callStack, TimeTravelCallTree calls)
     {
         var modules = calls.Modules.OrderBy(m => m.Address).Select(TimeTravelModuleIdentity.Describe).ToArray();
 
@@ -19,34 +20,37 @@ public static class TimeTravelCallMerger
             nodes[i] = callStack.AddCall(parent, CreateFrame(modules, call), (long)call.Calls);
         }
 
-        AddActivity(nodes, calls.Activity, activityBuckets);
-
         callStack.ActivityFromTrace = true;
 
         return nodes;
     }
 
-    private static void AddActivity(CallStackNode[] nodes, TimeTravelCallActivity[] activity, int buckets)
+    public static void AddActivity(TimeTravelTimeline timeline, int buckets)
     {
-        if (activity.Length == 0 || buckets <= 0)
+        var start = timeline.StartOf(TimeTravelTimelineAxis.Position);
+
+        var length = timeline.EndOf(TimeTravelTimelineAxis.Position) - start;
+
+        if (buckets <= 0 || length <= 0)
         {
             return;
         }
 
-        var first = activity.Min(a => a.Slice);
-
-        var span = activity.Max(a => a.Slice) - first + 1;
-
-        foreach (var run in activity)
+        foreach (var span in timeline.ResolvedSpans())
         {
-            var node = nodes[run.Node];
-
-            if (node.CallActivity.Length != buckets)
+            if (span.Row.FlagsAt(span.Index).HasFlag(TimeTravelSpanFlags.StartUnknown))
             {
-                node.CallActivity = new int[buckets];
+                continue;
             }
 
-            node.CallActivity[(run.Slice - first) * buckets / span] += (int)run.Calls;
+            if (span.Node.CallActivity.Length != buckets)
+            {
+                span.Node.CallActivity = new int[buckets];
+            }
+
+            var bucket = (int)((span.StartOf(TimeTravelTimelineAxis.Position) - start) / length * buckets);
+
+            span.Node.CallActivity[Math.Clamp(bucket, 0, buckets - 1)]++;
         }
     }
 

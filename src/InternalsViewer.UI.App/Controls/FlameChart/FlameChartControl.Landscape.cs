@@ -188,93 +188,70 @@ public sealed partial class FlameChartControl
             return;
         }
 
-        var rightFirst = _directionX >= 0;
-
         var reach = _extrusionLength * Math.Abs(_directionX) / scale;
 
-        var rise = _extrusionLength * Math.Max(0, -_directionY);
+        var from = _directionX >= 0 ? _viewStart - reach : _viewStart;
 
-        var from = rightFirst ? _viewStart - reach : _viewStart;
+        var to = _directionX >= 0 ? _viewEnd : _viewEnd + reach;
 
-        var to = rightFirst ? _viewEnd : _viewEnd + reach;
+        CollectRows(timeline, bottom, visible => CollectRowSpikes(visible, from, to, scale));
+    }
 
-        for (var lane = 0; lane < timeline.Threads.Count && lane < _laneTops.Length; lane++)
+    private void CollectRowSpikes(VisibleRow visible, double from, double to, double scale)
+    {
+        if (!_raisedRows.TryGetValue((visible.Lane, visible.Depth), out var raised))
         {
-            var thread = timeline.Threads[lane];
+            return;
+        }
 
-            var rowsTop = ContentTop + _laneTops[lane] - (float)_scrollY + LaneHeaderHeight;
+        var row = visible.Row;
 
-            for (var depth = 0; depth < DepthOf(thread) && depth < thread.Rows.Count; depth++)
+        var first = Array.BinarySearch(raised.Indexes, row.FirstEndingAfter(_axis, from));
+
+        var rowStart = _spikes.Count;
+
+        for (var item = first < 0 ? ~first : first; item < raised.Indexes.Length; item++)
+        {
+            var index = raised.Indexes[item];
+
+            var span = row.Span(_axis, index);
+
+            if (span.Start > to)
             {
-                var top = rowsTop + depth * _rowHeight;
+                break;
+            }
 
-                if (top - rise > bottom)
-                {
-                    return;
-                }
+            var left = (float)((span.Start - _viewStart) * scale);
 
-                if (top + _rowHeight < ContentTop || !_raisedRows.TryGetValue((lane, depth), out var raised))
-                {
-                    continue;
-                }
+            var right = Math.Max((float)((span.End - _viewStart) * scale), left + SpikeMinimumWidth);
 
-                var row = thread.Rows[depth];
+            var spike = Raised(BlockSource.Of(new FlameHit(visible.Lane, visible.Depth, index)),
+                               row.NodeAt(index),
+                               left,
+                               right,
+                               visible.Top,
+                               BarHeight,
+                               raised.Bytes[item],
+                               _selfMaximum);
 
-                var first = Array.BinarySearch(raised.Indexes, row.FirstEndingAfter(_axis, from));
+            var last = _spikes.Count - 1;
 
-                var rowStart = _spikes.Count;
+            if (last >= rowStart && left < _spikes[last].Right)
+            {
+                var dominant = spike.Bytes > _spikes[last].Bytes ? spike : _spikes[last];
 
-                _spikeRows.Add(rowStart);
-
-                for (var item = first < 0 ? ~first : first; item < raised.Indexes.Length; item++)
-                {
-                    var index = raised.Indexes[item];
-
-                    var span = row.Span(_axis, index);
-
-                    if (span.Start > to)
-                    {
-                        break;
-                    }
-
-                    var left = (float)((span.Start - _viewStart) * scale);
-
-                    var right = Math.Max((float)((span.End - _viewStart) * scale), left + SpikeMinimumWidth);
-
-                    var spike = Raised(BlockSource.Of(new FlameHit(lane, depth, index)),
-                                       row.NodeAt(index),
-                                       left,
-                                       right,
-                                       top,
+                _spikes[last] = Raised(dominant.Source,
+                                       dominant.Node,
+                                       _spikes[last].Left,
+                                       Math.Max(_spikes[last].Right, right),
+                                       visible.Top,
                                        BarHeight,
-                                       raised.Bytes[item],
+                                       _spikes[last].Bytes + spike.Bytes,
                                        _selfMaximum);
-
-                    var last = _spikes.Count - 1;
-
-                    if (last >= rowStart && left < _spikes[last].Right)
-                    {
-                        var dominant = spike.Bytes > _spikes[last].Bytes ? spike : _spikes[last];
-
-                        _spikes[last] = Raised(dominant.Source,
-                                               dominant.Node,
-                                               _spikes[last].Left,
-                                               Math.Max(_spikes[last].Right, right),
-                                               top,
-                                               BarHeight,
-                                               _spikes[last].Bytes + spike.Bytes,
-                                               _selfMaximum);
-                    }
-                    else
-                    {
-                        _spikes.Add(spike);
-                    }
-                }
-
-                if (rightFirst)
-                {
-                    _spikes.Reverse(rowStart, _spikes.Count - rowStart);
-                }
+            }
+            else
+            {
+                _spikes.Add(spike);
             }
         }
     }
@@ -290,78 +267,75 @@ public sealed partial class FlameChartControl
             return;
         }
 
-        var rightFirst = _directionX >= 0;
-
         var reach = _extrusionLength * Math.Abs(_directionX);
 
-        var rise = _extrusionLength * Math.Max(0, -_directionY);
+        var firstPixel = _directionX >= 0 ? -reach : 0;
 
-        var firstPixel = rightFirst ? -reach : 0;
+        var lastPixel = _directionX >= 0 ? width : width + reach;
 
-        var lastPixel = rightFirst ? width : width + reach;
+        CollectOperatorSurfaces(firstPixel, lastPixel, scale);
 
-        CollectOperatorSurfaces(firstPixel, lastPixel, scale, rightFirst);
+        CollectRows(timeline, bottom, visible => CollectRowSurfaces(timeline, visible, firstPixel, lastPixel, scale));
+    }
 
-        for (var lane = 0; lane < timeline.Threads.Count && lane < _laneTops.Length; lane++)
+    private void CollectRowSurfaces(TimeTravelTimeline timeline, VisibleRow visible, float firstPixel, float lastPixel, double scale)
+    {
+        var row = visible.Row;
+
+        var index = row.FirstEndingAfter(_axis, _viewStart + firstPixel / scale);
+
+        while (index < row.Count && row.Starts(_axis)[index] <= _viewStart + lastPixel / scale)
         {
-            var thread = timeline.Threads[lane];
+            var span = row.Span(_axis, index);
 
-            var rowsTop = ContentTop + _laneTops[lane] - (float)_scrollY + LaneHeaderHeight;
+            var left = (float)((span.Start - _viewStart) * scale);
 
-            for (var depth = 0; depth < DepthOf(thread) && depth < thread.Rows.Count; depth++)
+            var right = (float)((span.End - _viewStart) * scale);
+
+            if (right - left < SurfaceBucketWidth)
             {
-                var top = rowsTop + depth * _rowHeight;
+                index = row.FirstEndingAfter(_axis, _viewStart + (MathF.Floor(right) + 1) / scale, index + 1);
 
-                if (top - rise > bottom)
-                {
-                    return;
-                }
-
-                if (top + _rowHeight < ContentTop)
-                {
-                    continue;
-                }
-
-                var row = thread.Rows[depth];
-
-                var rowStart = _spikes.Count;
-
-                _spikeRows.Add(rowStart);
-
-                var index = row.FirstEndingAfter(_axis, _viewStart + firstPixel / scale);
-
-                while (index < row.Count && row.Starts(_axis)[index] <= _viewStart + lastPixel / scale)
-                {
-                    var span = row.Span(_axis, index);
-
-                    var left = (float)((span.Start - _viewStart) * scale);
-
-                    var right = (float)((span.End - _viewStart) * scale);
-
-                    if (right - left < SurfaceBucketWidth)
-                    {
-                        index = row.FirstEndingAfter(_axis, _viewStart + (MathF.Floor(right) + 1) / scale, index + 1);
-
-                        continue;
-                    }
-
-                    AddSurface(timeline,
-                               thread.ThreadId,
-                               row,
-                               new FlameHit(lane, depth, index),
-                               top,
-                               Math.Max(left, firstPixel),
-                               Math.Min(right, lastPixel),
-                               scale);
-
-                    index++;
-                }
-
-                if (rightFirst)
-                {
-                    _spikes.Reverse(rowStart, _spikes.Count - rowStart);
-                }
+                continue;
             }
+
+            AddSurface(timeline,
+                       visible.Thread.ThreadId,
+                       row,
+                       new FlameHit(visible.Lane, visible.Depth, index),
+                       visible.Top,
+                       Math.Max(left, firstPixel),
+                       Math.Min(right, lastPixel),
+                       scale);
+
+            index++;
+        }
+    }
+
+    private void CollectRows(TimeTravelTimeline timeline, float bottom, Action<VisibleRow> collect)
+    {
+        foreach (var visible in VisibleRows(timeline, bottom, _extrusionLength * Math.Max(0, -_directionY)))
+        {
+            var rowStart = StartSpikeRow();
+
+            collect(visible);
+
+            EndSpikeRow(rowStart);
+        }
+    }
+
+    private int StartSpikeRow()
+    {
+        _spikeRows.Add(_spikes.Count);
+
+        return _spikes.Count;
+    }
+
+    private void EndSpikeRow(int rowStart)
+    {
+        if (_directionX >= 0)
+        {
+            _spikes.Reverse(rowStart, _spikes.Count - rowStart);
         }
     }
 

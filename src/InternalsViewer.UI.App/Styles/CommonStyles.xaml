@@ -120,6 +120,10 @@
         <Setter Property="FontWeight" Value="SemiBold" />
     </Style>
 
+    <Style x:Key="SearchTextBoxStyle" TargetType="TextBox" BasedOn="{StaticResource AutoSuggestBoxTextBoxStyle}">
+        <Setter Property="IsSpellCheckEnabled" Value="False"/>
+    </Style>
+
     <Style x:Key="TabCommandToggleStyle" TargetType="ToggleButton">
         <Setter Property="MinHeight" Value="0" />
         <Setter Property="Padding" Value="8,2,8,3" />

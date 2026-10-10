@@ -958,61 +958,64 @@ public sealed partial class QueryCallStackTabView : UserControl, IDocumentComman
     {
         if (_contextNode?.Content is CallStackNode { Frame: { } frame })
         {
-            CopyText(WinDbgCommands.Symbol(frame));
+            CopyText(WinDbgCommands.Symbol(WinDbgTarget.From(frame)));
         }
     }
 
     private void OnSendWinDbgClick(object sender, RoutedEventArgs e)
     {
-        if (_contextNode?.Content is not CallStackNode { Frame: { } frame } || sender is not MenuFlyoutItem { Tag: string command })
+        if (_contextNode?.Content is CallStackNode { Frame: { } frame })
+        {
+            SendWinDbg(sender, WinDbgTarget.From(frame), () => DescribeFrameAsync(frame));
+        }
+    }
+
+    private void SendWinDbg(object sender,
+                            WinDbgTarget target,
+                            Func<Task<(WinDbgTarget Target, string? DecoratedName)>> describe)
+    {
+        if (sender is not MenuFlyoutItem { Tag: string command })
         {
             return;
         }
 
         if (command is "DumpArguments" or "DumpArgumentsAndBreak")
         {
-            RunWinDbg(async () => await WinDbg.SendAsync(await FrameArgumentsCommand(command, frame), CancellationToken.None));
+            RunWinDbg(async () =>
+            {
+                var (described, decoratedName) = await describe();
+
+                var text = command == "DumpArguments"
+                    ? WinDbgCommands.DumpArguments(described, decoratedName)
+                    : WinDbgCommands.DumpArgumentsAndBreak(described, decoratedName);
+
+                await WinDbg.SendAsync(text, CancellationToken.None);
+            });
 
             return;
         }
 
-        if (FrameCommand(command, frame) is { } text)
+        if (WinDbgCommands.For(command, target) is { } text)
         {
             RunWinDbg(() => WinDbg.SendAsync(text, CancellationToken.None));
         }
     }
 
-    private async Task<string> FrameArgumentsCommand(string command, CallstackFrame frame)
+    private async Task<(WinDbgTarget Target, string? DecoratedName)> DescribeFrameAsync(CallstackFrame frame)
     {
         var signature = _viewModel is { } viewModel ? await viewModel.Symbols.ResolveFrameSignatureAsync(frame) : null;
 
         var decoratedName = _viewModel is { } owner ? await owner.Symbols.ResolveFrameDecoratedNameAsync(frame) : null;
 
-        return command == "DumpArgumentsAndBreak"
-            ? WinDbgCommands.DumpArgumentsAndBreak(frame, signature, decoratedName)
-            : WinDbgCommands.DumpArguments(frame, signature, decoratedName);
+        return (WinDbgTarget.From(frame) with { Signature = signature }, decoratedName);
     }
 
-    private async Task<string> MemberArgumentsCommand(string command, ClassMemberRow member)
+    private async Task<(WinDbgTarget Target, string? DecoratedName)> DescribeMemberAsync(ClassMemberRow member)
     {
         var decoratedName = _viewModel is { } viewModel ? await viewModel.Symbols.ResolveMemberDecoratedNameAsync(member) : null;
 
-        return command == "DumpArgumentsAndBreak"
-            ? WinDbgCommands.DumpArgumentsAndBreak(member.Reference, decoratedName)
-            : WinDbgCommands.DumpArguments(member.Reference, decoratedName);
+        return (WinDbgTarget.From(member.Reference), decoratedName);
     }
-
-    private static string? FrameCommand(string command, CallstackFrame frame) =>
-        command switch
-        {
-            "Breakpoint" => WinDbgCommands.Breakpoint(frame),
-            "BreakpointWithStack" => WinDbgCommands.BreakpointWithStack(frame),
-            "BreakpointAtFrame" => WinDbgCommands.BreakpointAtFrame(frame),
-            "ExamineSymbol" => WinDbgCommands.ExamineSymbol(frame),
-            "DisplayType" => WinDbgCommands.DisplayType(frame),
-            "ListClassSymbols" => WinDbgCommands.ListClassSymbols(frame),
-            _ => null
-        };
 
     private void OnListMembersClick(object sender, RoutedEventArgs e)
     {
@@ -1058,41 +1061,17 @@ public sealed partial class QueryCallStackTabView : UserControl, IDocumentComman
     {
         if (_contextMember is not null)
         {
-            CopyText(WinDbgCommands.Symbol(_contextMember.Reference));
+            CopyText(WinDbgCommands.Symbol(WinDbgTarget.From(_contextMember.Reference)));
         }
     }
 
     private void OnSendMemberWinDbgClick(object sender, RoutedEventArgs e)
     {
-        if (_contextMember is not { } member || sender is not MenuFlyoutItem { Tag: string command })
+        if (_contextMember is { } member)
         {
-            return;
-        }
-
-        if (command is "DumpArguments" or "DumpArgumentsAndBreak")
-        {
-            RunWinDbg(async () => await WinDbg.SendAsync(await MemberArgumentsCommand(command, member), CancellationToken.None));
-
-            return;
-        }
-
-        if (MemberCommand(command, member) is { } text)
-        {
-            RunWinDbg(() => WinDbg.SendAsync(text, CancellationToken.None));
+            SendWinDbg(sender, WinDbgTarget.From(member.Reference), () => DescribeMemberAsync(member));
         }
     }
-
-    private static string? MemberCommand(string command, ClassMemberRow member) =>
-        command switch
-        {
-            "Breakpoint" => WinDbgCommands.Breakpoint(member.Reference),
-            "BreakpointWithStack" => WinDbgCommands.BreakpointWithStack(member.Reference),
-            "BreakpointOnAllOverloads" => WinDbgCommands.BreakpointOnAllOverloads(member.Reference),
-            "ExamineSymbol" => WinDbgCommands.ExamineSymbol(member.Reference),
-            "DisplayType" => WinDbgCommands.DisplayType(member.Reference),
-            "ListClassSymbols" => WinDbgCommands.ListClassSymbols(member.Reference),
-            _ => null
-        };
 
     private static void CopyText(string text)
     {

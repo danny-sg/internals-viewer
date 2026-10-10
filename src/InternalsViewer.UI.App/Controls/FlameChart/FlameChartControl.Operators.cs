@@ -631,19 +631,7 @@ public sealed partial class FlameChartControl
 
         foreach (var (lane, regions) in found)
         {
-            regions.Sort((a, b) => a.Position.Start.CompareTo(b.Position.Start));
-
-            var outermost = new List<SelectedRegion>(regions.Count);
-
-            foreach (var region in regions)
-            {
-                if (outermost.Count > 0 && region.Position.Start < outermost[^1].Position.End)
-                {
-                    continue;
-                }
-
-                outermost.Add(region);
-            }
+            var outermost = Outermost.Of(regions, r => r.Position.Start, r => r.Position.End);
 
             _selectedLanes[lane] = new SelectedLane([.. outermost],
                                                     [.. outermost.Select(r => r.Position.End)],
@@ -651,7 +639,7 @@ public sealed partial class FlameChartControl
         }
     }
 
-    private void CollectOperatorSurfaces(float firstPixel, float lastPixel, double scale, bool rightFirst)
+    private void CollectOperatorSurfaces(float firstPixel, float lastPixel, double scale)
     {
         if (!ShowsOperators)
         {
@@ -660,9 +648,7 @@ public sealed partial class FlameChartControl
 
         for (var row = 0; row < _operatorRows.Length; row++)
         {
-            var rowStart = _spikes.Count;
-
-            _spikeRows.Add(rowStart);
+            var rowStart = StartSpikeRow();
 
             for (var track = 0; track < _operatorRows[row].Lifetimes.Length; track++)
             {
@@ -685,10 +671,7 @@ public sealed partial class FlameChartControl
                 AddOperatorSurface(row, track, Math.Max(left, firstPixel), Math.Min(right, lastPixel), scale);
             }
 
-            if (rightFirst)
-            {
-                _spikes.Reverse(rowStart, _spikes.Count - rowStart);
-            }
+            EndSpikeRow(rowStart);
         }
     }
 

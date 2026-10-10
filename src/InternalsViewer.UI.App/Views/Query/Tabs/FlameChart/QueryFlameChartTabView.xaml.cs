@@ -8,6 +8,8 @@ using InternalsViewer.UI.App.ViewModels;
 using InternalsViewer.UI.App.ViewModels.Query;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Controls.Primitives;
+using Microsoft.UI.Xaml.Input;
+using Windows.System;
 
 namespace InternalsViewer.UI.App.Views.Query.Tabs.FlameChart;
 
@@ -21,9 +23,13 @@ public sealed partial class QueryFlameChartTabView : UserControl, IDocumentComma
 
     private const string StepForwardGlyph = "\uE893";
 
+    private const string SearchGlyph = "\uE721";
+
     private ToggleButton? _instructionsToggle;
 
     private ToggleButton? _positionToggle;
+
+    private ToggleButton? _searchToggle;
 
     public QueryFlameChartTabView()
     {
@@ -64,6 +70,13 @@ public sealed partial class QueryFlameChartTabView : UserControl, IDocumentComma
             Margin = new Thickness(0, 0, 8, 0),
             Spacing = 2
         };
+
+        _searchToggle = CommandToggle(new FontIcon { Glyph = SearchGlyph, FontSize = 12 },
+                                      false,
+                                      "Search the functions by name and dim every call that does not match",
+                                      OnSearchClick);
+
+        commands.Children.Add(_searchToggle);
 
         commands.Children.Add(_instructionsToggle);
 
@@ -199,6 +212,37 @@ public sealed partial class QueryFlameChartTabView : UserControl, IDocumentComma
     }
 
     private static bool IsChecked(object sender) => sender is ToggleButton { IsChecked: true };
+
+    private void OnSearchClick(object sender, RoutedEventArgs e) => ShowSearch(IsChecked(sender));
+
+    private void ShowSearch(bool show)
+    {
+        SearchBox.Visibility = show ? Visibility.Visible : Visibility.Collapsed;
+
+        FlameChart.SearchText = show ? SearchBox.Text : null;
+
+        _searchToggle?.IsChecked = show;
+
+        if (show)
+        {
+            SearchBox.Focus(FocusState.Programmatic);
+        }
+    }
+
+    private void OnSearchTextChanged(AutoSuggestBox sender, AutoSuggestBoxTextChangedEventArgs args)
+        => FlameChart.SearchText = sender.Text;
+
+    private void OnSearchKeyDown(object sender, KeyRoutedEventArgs e)
+    {
+        if (e.Key != VirtualKey.Escape)
+        {
+            return;
+        }
+
+        ShowSearch(false);
+
+        e.Handled = true;
+    }
 
     private void OnCallSelected(CallStackNode node, int call) => ViewModel?.NavigateToCall(node, call);
 

@@ -9,17 +9,7 @@ public static class TimeTravelMemory
 {
     private const string NoOperator = "No Operator";
 
-    private const string BufferPool = "Buffer Pool";
-
-    private const string Compilation = "Compilation";
-
-    private const string QueryProfiling = "Query Profiling";
-
-    private const string ProfilingClassPrefix = "CProfile";
-
     private const int MaximumObjectDepth = 16;
-
-    private const string Other = "Other";
 
     private const string SqlOsModule = "sqldk";
 
@@ -30,6 +20,8 @@ public static class TimeTravelMemory
     public const string Unattributed = "Unattributed";
 
     private const string VirtualMemory = "Virtual Memory";
+
+    private const string WorkspaceClerk = "MEMORYCLERK_SQLQERESERVATIONS";
 
     public static TimeTravelMemorySummary Apply(TimeTravelCallLog log,
                                                 IReadOnlyList<MemoryFunction> functions,
@@ -126,9 +118,7 @@ public static class TimeTravelMemory
                                                      Dictionary<ulong, MemoryFunction> functions,
                                                      IReadOnlyList<ExecutionOperatorEvent> operators)
     {
-        var purposes = new Dictionary<string, PurposeTotals>();
-
-        var purposeOf = new Dictionary<CallStackNode, string?>(ReferenceEqualityComparer.Instance);
+        var nestedNodes = new Dictionary<CallStackNode, bool>(ReferenceEqualityComparer.Instance);
 
         var operatorsByFrame = OwnersByFrame(operators.Where(o => o.PlanNodeIdentifier is { NodeId: >= 0 }));
 
@@ -151,31 +141,13 @@ public static class TimeTravelMemory
 
         long allocations = 0;
 
-        long returned = 0;
-
-        long frees = 0;
-
-        long matched = 0;
-
-        ulong operatorBytes = 0;
-
-        ulong statementBytes = 0;
-
-        ulong outsideBytes = 0;
-
         foreach (var memoryEvent in events)
         {
             if (memoryEvent.Operation == MemoryOperation.Free)
             {
-                frees++;
-
                 if (live.Remove(memoryEvent.Pointer, out var freed))
                 {
-                    matched++;
-
                     inUse -= freed.Bytes;
-
-                    freed.Purpose.Free(freed.Bytes, freed.KindName);
 
                     freed.Operator?.Free(freed.Bytes, freed.KindName);
 
@@ -192,14 +164,14 @@ public static class TimeTravelMemory
                 continue;
             }
 
-            if (!purposeOf.TryGetValue(node, out var purpose))
+            if (!nestedNodes.TryGetValue(node, out var nested))
             {
-                purpose = IsNested(node, functions) ? null : PurposeOf(node);
+                nested = IsNested(node, functions);
 
-                purposeOf[node] = purpose;
+                nestedNodes[node] = nested;
             }
 
-            if (purpose is null)
+            if (nested)
             {
                 continue;
             }
@@ -212,10 +184,6 @@ public static class TimeTravelMemory
 
             allocations++;
 
-            var totals = TotalsOf(purposes, purpose);
-
-            totals.Allocate(node, memoryEvent.Bytes, memoryEvent.Kind);
-
             var kindTotals = TotalsOf(kinds, memoryEvent.Kind);
 
             kindTotals.Allocate(node, memoryEvent.Bytes, null);
@@ -227,19 +195,6 @@ public static class TimeTravelMemory
                 ownersOf[node] = owners;
             }
 
-            if (owners.Operator is not null)
-            {
-                operatorBytes += memoryEvent.Bytes;
-            }
-            else if (owners.Statement is not null)
-            {
-                statementBytes += memoryEvent.Bytes;
-            }
-            else
-            {
-                outsideBytes += memoryEvent.Bytes;
-            }
-
             var operatorTotals = owners.Operator is null ? null : TotalsOf(byOperator, owners.Operator);
 
             var statementTotals = owners.Statement is null ? null : TotalsOf(byOperator, owners.Statement);
@@ -248,26 +203,16 @@ public static class TimeTravelMemory
 
             statementTotals?.Allocate(node, memoryEvent.Bytes, memoryEvent.Kind);
 
-            if (!memoryEvent.Returned)
+            if (!memoryEvent.Returned || memoryEvent.Pointer == 0)
             {
                 continue;
             }
 
-            returned++;
+            live[memoryEvent.Pointer] = new LiveAllocation(operatorTotals, statementTotals, kindTotals, memoryEvent.Kind, memoryEvent.Bytes);
 
-            if (memoryEvent.Pointer != 0)
-            {
-                live[memoryEvent.Pointer] = new LiveAllocation(totals,
-                                                               operatorTotals,
-                                                               statementTotals,
-                                                               kindTotals,
-                                                               memoryEvent.Kind,
-                                                               memoryEvent.Bytes);
+            inUse += memoryEvent.Bytes;
 
-                inUse += memoryEvent.Bytes;
-
-                peak = Math.Max(peak, inUse);
-            }
+            peak = Math.Max(peak, inUse);
         }
 
         foreach (var operatorEvent in operators)
@@ -279,15 +224,8 @@ public static class TimeTravelMemory
 
         return new TimeTravelMemorySummary(allocated,
                                            allocations,
-                                           returned,
-                                           frees,
-                                           matched,
                                            peak,
-                                           [.. purposes.OrderByDescending(p => p.Value.Allocated).Select(p => p.Value.ToPurpose(p.Key))],
-                                           [.. kinds.OrderByDescending(k => k.Value.Allocated).Select(k => k.Value.ToPurpose(k.Key))],
-                                           operatorBytes,
-                                           statementBytes,
-                                           outsideBytes);
+                                           [.. kinds.OrderByDescending(k => k.Value.Allocated).Select(k => k.Value.ToPurpose(k.Key))]);
     }
 
     private static PurposeTotals TotalsOf<TKey>(Dictionary<TKey, PurposeTotals> totals, TKey key) where TKey : notnull
@@ -547,39 +485,6 @@ public static class TimeTravelMemory
         return entry;
     }
 
-    private static string PurposeOf(CallStackNode node)
-    {
-        if (node.Ancestors().Skip(1).Any(IsQueryProfiling))
-        {
-            return QueryProfiling;
-        }
-
-        foreach (var ancestor in node.Ancestors().Skip(1))
-        {
-            if (ancestor.Operator is { } operatorName)
-            {
-                return operatorName;
-            }
-
-            if (ancestor.Frame?.Resolved?.SymbolCategory is SymbolCategory.Compilation
-                                                         or SymbolCategory.Optimization
-                                                         or SymbolCategory.QueryBinding)
-            {
-                return Compilation;
-            }
-        }
-
-        if (node.Ancestors().Skip(1).Any(IsBufferPool))
-        {
-            return BufferPool;
-        }
-
-        return CallerOf(node)?.Frame?.Resolved?.SymbolMetadata?.Name ?? Other;
-    }
-
-    private static bool IsQueryProfiling(CallStackNode node)
-        => node.Frame?.Resolved?.ClassName?.StartsWith(ProfilingClassPrefix, StringComparison.Ordinal) == true;
-
     private readonly record struct MemoryEvent(double Position,
                                                MemoryOperation Operation,
                                                CallStackNode? Node,
@@ -588,8 +493,7 @@ public static class TimeTravelMemory
                                                bool Returned,
                                                string Kind);
 
-    private readonly record struct LiveAllocation(PurposeTotals Purpose,
-                                                  PurposeTotals? Operator,
+    private readonly record struct LiveAllocation(PurposeTotals? Operator,
                                                   PurposeTotals? Statement,
                                                   PurposeTotals Kind,
                                                   string KindName,
@@ -631,11 +535,14 @@ public static class TimeTravelMemory
 
                     if (call < callValues.Bytes.Length && callValues.Bytes[call] > 0)
                     {
+                        var workspace = Kinds.TryGetValue(address, out var kinds) && kinds[call] == WorkspaceClerk;
+
                         allocations.Add(new TimeTravelAllocation(thread.ThreadId,
                                                                  start,
                                                                  end,
                                                                  callValues.Bytes[call],
-                                                                 callValues.Returned[call]));
+                                                                 callValues.Returned[call],
+                                                                 workspace));
                     }
 
                     if (call < callValues.Released.Length && callValues.Released[call] != 0)

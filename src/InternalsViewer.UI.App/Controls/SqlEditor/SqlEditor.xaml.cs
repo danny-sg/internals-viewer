@@ -260,12 +260,6 @@ public sealed partial class SqlEditorControl : UserControl, IDisposable
 
     public string ExecuteLabel => IsExecuting ? "Executing" : "Execute";
 
-    public bool IsNotExecuting => !IsExecuting;
-
-    public Visibility ExecutingVisibility => IsExecuting ? Visibility.Visible : Visibility.Collapsed;
-
-    public Visibility NotExecutingVisibility => IsExecuting ? Visibility.Collapsed : Visibility.Visible;
-
     public SolidColorBrush ResultBrush => IsError
         ? new SolidColorBrush(Colors.Red)
         : (SolidColorBrush)Application.Current.Resources["TextFillColorPrimaryBrush"];

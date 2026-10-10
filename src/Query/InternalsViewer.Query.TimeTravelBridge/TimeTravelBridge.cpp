@@ -172,8 +172,6 @@ namespace
         std::unordered_set<uint64_t>                        InstanceMethods;
         std::unordered_set<uint64_t>                        Excluded;
         std::unordered_set<uint64_t>                        Markers;
-        std::vector<CallActivity>                           Activity;
-        std::vector<int32_t>                                LastActivity;
         std::unordered_map<FunctionKey, LoggedFunction, FunctionKeyHash> Log;
         size_t                                              LoggedSinceFlush = 0;
         CallChunkCallback                                   LogCalls = nullptr;
@@ -181,9 +179,6 @@ namespace
         CallSpanCallback                                    LogSpans = nullptr;
         std::vector<CallSpan>                               Spans;
         std::unordered_map<uint32_t, ThreadClock>           Clocks;
-        uint64_t                                            FirstSequence = 0;
-        uint64_t                                            LastSequence = 0;
-        int32_t                                             Slices = 0;
 
         int32_t Child(int32_t parent, uint64_t address, uint64_t instance)
         {
@@ -193,38 +188,9 @@ namespace
             if (added)
             {
                 Nodes.push_back(CallNode{ parent, 0, address, instance, 0 });
-
-                LastActivity.push_back(-1);
             }
 
             return entry->second;
-        }
-
-        void RecordCall(int32_t node, uint64_t sequence)
-        {
-            if (Slices <= 0)
-            {
-                return;
-            }
-
-            auto const span = LastSequence > FirstSequence ? LastSequence - FirstSequence + 1 : 1;
-
-            auto const offset = sequence > FirstSequence ? sequence - FirstSequence : 0;
-
-            auto const slice = static_cast<int32_t>(std::min<uint64_t>(offset * Slices / span, Slices - 1));
-
-            auto& last = LastActivity[node];
-
-            if (last >= 0 && Activity[last].Slice == slice)
-            {
-                Activity[last].Calls++;
-
-                return;
-            }
-
-            last = static_cast<int32_t>(Activity.size());
-
-            Activity.push_back(CallActivity{ node, slice, 1 });
         }
 
         ThreadClock const& Advance(uint32_t thread, Position const& position)
@@ -540,8 +506,6 @@ namespace
             auto const node = tree.Child(parent, target, instance);
 
             tree.Nodes[node].Calls++;
-
-            tree.RecordCall(node, static_cast<uint64_t>(position.Sequence));
 
             auto const logged = LogCall(tree,
                                         registers,
@@ -880,7 +844,6 @@ extern "C"
                          int32_t               excludedFunctionCount,
                          const uint64_t*       markerFunctions,
                          int32_t               markerFunctionCount,
-                         int32_t               activitySlices,
                          CallChunkCallback     logCalls,
                          CallSpanCallback      logSpans,
                          ProgressCallback      progress,
@@ -917,10 +880,6 @@ extern "C"
 
         result->LogSpans = logSpans;
 
-        result->Slices = activitySlices;
-        result->FirstSequence = static_cast<uint64_t>(engine.GetFirstPosition().Sequence);
-        result->LastSequence = static_cast<uint64_t>(engine.GetLastPosition().Sequence);
-
         auto const status = ReplayTrace(engine,
                                         result->Threads,
                                         OnCallReturn,
@@ -956,7 +915,6 @@ extern "C"
 
         result->Stacks.clear();
         result->Index.clear();
-        result->LastActivity.clear();
 
         if (result->LogCalls != nullptr)
         {
@@ -986,20 +944,6 @@ extern "C"
         auto const copied = std::min(static_cast<size_t>(count), source.size());
 
         std::copy_n(source.begin(), copied, nodes);
-    }
-
-    int32_t GetCallActivityCount(void* tree)
-    {
-        return static_cast<int32_t>(static_cast<CallTree*>(tree)->Activity.size());
-    }
-
-    void GetCallActivity(void* tree, CallActivity* activity, int32_t count)
-    {
-        auto const& source = static_cast<CallTree*>(tree)->Activity;
-
-        auto const copied = std::min(static_cast<size_t>(count), source.size());
-
-        std::copy_n(source.begin(), copied, activity);
     }
 
     void CloseCallTree(void* tree)

@@ -49,14 +49,4 @@ public class ArgumentLayoutTests
 
         Assert.Equal(ArgumentLocation.NotCaptured, layout.Slots[8].Location);
     }
-
-    [Fact]
-    public void Only_Pointers_To_Primitives_Are_Dereferenced()
-    {
-        var layout = ArgumentLayout.For(new FunctionSignature(["unsigned __int64 *", "CQScanNew *", "int *"],
-                                                              FunctionKind.Member,
-                                                              null));
-
-        Assert.Equal(0b1010u, layout.PointerSlots);
-    }
 }

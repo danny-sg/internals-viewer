@@ -88,7 +88,9 @@ public class TimeTravelMemoryTests
 
         var summary = TimeTravelMemory.Apply(log, [Function(Allocator), new(Releaser, MemoryOperation.Free, -1, 1, 1)], null, []);
 
-        Assert.Equal((1L, 2L, 1L), (summary.Returned, summary.Frees, summary.MatchedFrees));
+        var kind = Assert.Single(summary.Kinds);
+
+        Assert.Equal((64ul, 64ul, 0ul), (kind.Allocated, kind.Freed, kind.Held));
     }
 
     [Fact]
@@ -107,11 +109,11 @@ public class TimeTravelMemoryTests
 
         log.MapNodes([caller, allocator]);
 
-        var purpose = Assert.Single(TimeTravelMemory.Apply(log, [Function(Allocator)], null, []).Purposes);
+        var kind = Assert.Single(TimeTravelMemory.Apply(log, [Function(Allocator)], null, []).Kinds);
 
-        var use = Assert.Single(purpose.Uses);
+        var use = Assert.Single(kind.Uses);
 
-        Assert.Equal(("Other", 150ul, 2L), (purpose.Name, use.Bytes, use.Allocations));
+        Assert.Equal((150ul, 2L), (use.Bytes, use.Allocations));
     }
 
     [Fact]
@@ -134,14 +136,14 @@ public class TimeTravelMemoryTests
 
         var summary = TimeTravelMemory.Apply(log, [Function(Allocator), new(Releaser, MemoryOperation.Free, -1, 1, 1)], null, []);
 
-        var purpose = Assert.Single(summary.Purposes);
+        var kind = Assert.Single(summary.Kinds);
 
-        Assert.Equal((96ul, 64ul, 96ul, 32ul), (purpose.Allocated, purpose.Freed, purpose.PeakInUse, purpose.Held));
+        Assert.Equal((96ul, 64ul, 96ul, 32ul), (kind.Allocated, kind.Freed, kind.PeakInUse, kind.Held));
         Assert.Equal(96ul, summary.PeakInUse);
     }
 
     [Fact]
-    public void Pages_Stolen_For_An_Operator_Belong_To_The_Operator()
+    public void Pages_Stolen_From_The_Buffer_Pool_Are_Used_By_The_Caller_Of_The_Steal()
     {
         var tree = new CallStackTree();
 
@@ -159,13 +161,12 @@ public class TimeTravelMemoryTests
 
         log.MapNodes([build, workfile, steal, block, pages]);
 
-        var purpose = Assert.Single(TimeTravelMemory.Apply(log, [new(Allocator, MemoryOperation.Allocate, 1, -1, 8192)], null, [])
-                                        .Purposes);
+        var kind = Assert.Single(TimeTravelMemory.Apply(log, [new(Allocator, MemoryOperation.Allocate, 1, -1, 8192)], null, [])
+                                     .Kinds);
 
-        var use = Assert.Single(purpose.Uses);
+        var use = Assert.Single(kind.Uses);
 
-        Assert.Equal(("Hash Match Build", "WORKFILE::AllocRowBufFromCrntBuf", "BPool::Steal", 8192ul),
-                     (purpose.Name, use.Caller, use.Allocator, use.Bytes));
+        Assert.Equal(("WORKFILE::AllocRowBufFromCrntBuf", "BPool::Steal", 8192ul), (use.Caller, use.Allocator, use.Bytes));
     }
 
     [Fact]
@@ -199,8 +200,6 @@ public class TimeTravelMemoryTests
                                              null,
                                              [statement, hashMatch, tableScan, unmatched]);
 
-        Assert.Equal((140ul, 0ul, 0ul), (summary.OperatorBytes, summary.StatementOnlyBytes, summary.OutsideStatementBytes));
-
         Assert.Equal((100ul, 0ul), (hashMatch.Memory!.Allocated, hashMatch.Memory.Freed));
         Assert.Equal((40ul, 40ul, 0ul), (tableScan.Memory!.Allocated, tableScan.Memory.Freed, tableScan.Memory.Held));
         Assert.Equal((140ul, 40ul, 140ul), (statement.Memory!.Allocated, statement.Memory.Freed, statement.Memory.PeakInUse));
@@ -229,33 +228,6 @@ public class TimeTravelMemoryTests
         TimeTravelMemory.Apply(log, [Function(Allocator)], null, [outer, inner]);
 
         Assert.Equal(((TimeTravelMemoryPurpose?)null, (TimeTravelMemoryPurpose?)null), (outer.Memory, inner.Memory));
-    }
-
-    [Theory]
-    [InlineData(true, "Hash Match Build")]
-    [InlineData(false, "Compilation")]
-    public void The_Nearest_Of_Operator_And_Compilation_Owns_The_Memory(bool operatorIsNearer, string expected)
-    {
-        var tree = new CallStackTree();
-
-        var operatorFrame = Resolved(0x10, "sqlmin", "CQScanHash", "ConsumeBuild", iterator: "Hash Match Build");
-        var compileFrame = Resolved(0x20, "sqllang", "CCompPlan", "Compile", SymbolCategory.Compilation);
-
-        var outer = tree.AddCall(tree.Root, operatorIsNearer ? compileFrame : operatorFrame, 1);
-        var inner = tree.AddCall(outer, operatorIsNearer ? operatorFrame : compileFrame, 1);
-        var allocator = tree.AddCall(inner, Frame(Allocator), 1);
-
-        var builder = new TimeTravelCallLog.Builder();
-
-        builder.Add(Allocator, 0, Chunk(Row(1, size: 64, node: 2)), 1);
-
-        var log = builder.Build();
-
-        log.MapNodes([outer, inner, allocator]);
-
-        var purpose = Assert.Single(TimeTravelMemory.Apply(log, [Function(Allocator)], null, []).Purposes);
-
-        Assert.Equal(expected, purpose.Name);
     }
 
     [Fact]
@@ -316,6 +288,43 @@ public class TimeTravelMemoryTests
         var kind = Assert.Single(summary.Kinds);
 
         Assert.Equal(("MEMORYCLERK_SQLQUERYEXEC", 64ul), (kind.Name, kind.Allocated));
+    }
+
+    [Theory]
+    [InlineData("MEMORYCLERK_SQLQERESERVATIONS", 64ul)]
+    [InlineData("MEMORYCLERK_SQLQUERYEXEC", 0ul)]
+    public void Only_Memory_From_The_Workspace_Clerk_Counts_Against_The_Grant(string clerk, ulong expected)
+    {
+        var tree = new CallStackTree();
+
+        var caller = tree.AddCall(tree.Root, Frame(0x10), 1);
+        var allocator = tree.AddCall(caller, Frame(Allocator), 1);
+        var pages = tree.AddCall(allocator, Resolved(Inner, "sqldk", "MemoryClerkInternal", "AllocatePages"), 1);
+
+        var builder = new TimeTravelCallLog.Builder();
+
+        builder.Add(Allocator, 0, Chunk(Row(1, size: 64, node: 1, returned: 0xA0)), 1);
+        builder.Add(Inner, 0, Chunk(Row(2, size: 1, node: 2, receiver: 0xC1)), 1);
+
+        var log = builder.Build();
+
+        log.MapNodes([caller, allocator, pages]);
+
+        var timelineBuilder = new TimeTravelTimeline.Builder();
+
+        timelineBuilder.Add([Span(0, 0, 40, uint.MaxValue), Span(1, 10, 20, 0), Span(2, 12, 13, 0)]);
+
+        var timeline = timelineBuilder.Build([new(-1, 0, 0x10, 0, 1), new(0, 0, Allocator, 0, 1), new(1, 0, Inner, 0, 1)]);
+
+        timeline.MapNodes([caller, allocator, pages]);
+
+        TimeTravelMemory.Apply(log, [Function(Allocator), ClerkPages()], timeline, [], Snapshot(clerks: new() { [0xC1] = clerk }));
+
+        var start = timeline.StartOf(TimeTravelTimelineAxis.Position);
+
+        var end = timeline.EndOf(TimeTravelTimelineAxis.Position) + 1;
+
+        Assert.Equal((64ul, expected), (timeline.PeakInUseDuring(start, end), timeline.PeakWorkspaceDuring(start, end)));
     }
 
     [Fact]
@@ -393,25 +402,6 @@ public class TimeTravelMemoryTests
                                              Snapshot(objects: new() { [0xB0] = "MEMORYCLERK_SQLGENERAL" }));
 
         Assert.Equal(("MEMORYCLERK_SQLGENERAL", 64ul), (Assert.Single(summary.Kinds).Name, summary.Bytes));
-    }
-
-    [Fact]
-    public void Query_Profiling_Memory_Is_Kept_Apart()
-    {
-        var tree = new CallStackTree();
-
-        var profile = tree.AddCall(tree.Root, Resolved(0x10, "sqlmin", "CProfileList", "SnapshotWaitstats"), 1);
-        var allocator = tree.AddCall(profile, Frame(Allocator), 1);
-
-        var builder = new TimeTravelCallLog.Builder();
-
-        builder.Add(Allocator, 0, Chunk(Row(1, size: 64, node: 1)), 1);
-
-        var log = builder.Build();
-
-        log.MapNodes([profile, allocator]);
-
-        Assert.Equal("Query Profiling", Assert.Single(TimeTravelMemory.Apply(log, [Function(Allocator)], null, []).Purposes).Name);
     }
 
     [Fact]

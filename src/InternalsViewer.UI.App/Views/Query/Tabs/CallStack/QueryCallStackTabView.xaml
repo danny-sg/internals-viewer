@@ -192,10 +192,6 @@
             </Setter>
         </Style>
 
-        <Style x:Key="SearchTextBoxStyle" TargetType="TextBox" BasedOn="{StaticResource AutoSuggestBoxTextBoxStyle}">
-            <Setter Property="IsSpellCheckEnabled" Value="False"/>
-        </Style>
-
         <DataTemplate x:Key="MemberRowTemplate" x:DataType="members:ClassMemberRow">
             <StackPanel Orientation="Horizontal" VerticalAlignment="Center" RightTapped="OnMemberRightTapped">
                 <StackPanel.ContextFlyout>

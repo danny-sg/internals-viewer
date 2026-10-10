@@ -183,8 +183,6 @@ public sealed partial class FlameChartControl : Grid, IDisposable
 
     private ulong _memoryMaximum;
 
-    private IReadOnlyList<TimeTravelSelfAllocation> _selfAllocations = [];
-
     private ulong _selfMaximum;
 
     private ulong _inUseMaximum;
@@ -671,6 +669,8 @@ public sealed partial class FlameChartControl : Grid, IDisposable
         _colours.Clear();
         _labels.Clear();
 
+        FindSearchMatches();
+
         _operatorsHeight = null;
 
         _selectedOperator = null;
@@ -727,13 +727,13 @@ public sealed partial class FlameChartControl : Grid, IDisposable
             ? memory.PeakInUseDuring(memory.StartOf(TimeTravelTimelineAxis.Position), memory.EndOf(TimeTravelTimelineAxis.Position))
             : 0;
 
-        _selfAllocations = _visible?.SelfAllocations() ?? [];
+        var selfAllocations = _visible?.SelfAllocations() ?? [];
 
-        _selfMaximum = _selfAllocations.Count == 0 ? 0 : _selfAllocations.Max(s => s.Bytes);
+        _selfMaximum = selfAllocations.Count == 0 ? 0 : selfAllocations.Max(s => s.Bytes);
 
-        _raisedRows = _selfAllocations.GroupBy(s => (s.Thread, s.Depth))
-                                      .ToDictionary(g => g.Key,
-                                                    g => new RaisedRow([.. g.Select(s => s.Index)], [.. g.Select(s => s.Bytes)]));
+        _raisedRows = selfAllocations.GroupBy(s => (s.Thread, s.Depth))
+                                     .ToDictionary(g => g.Key,
+                                                   g => new RaisedRow([.. g.Select(s => s.Index)], [.. g.Select(s => s.Bytes)]));
 
         FindSelectedCall(bringIntoView: false);
 

@@ -50,7 +50,7 @@ public sealed partial class FlameChartControl
 
             allocated[bucket] = AllocatedDuring(timeline, start, end);
 
-            inUse[bucket] = timeline.PeakInUseDuring(start, end);
+            inUse[bucket] = BandInUse(timeline, start, end);
 
             _bandPeak = Math.Max(_bandPeak, allocated[bucket]);
 
@@ -67,7 +67,7 @@ public sealed partial class FlameChartControl
 
         if (_inUsePeak > 0)
         {
-            canvas.DrawText($"In Use, Peak {SizeFormat.Format((long)_inUsePeak)}",
+            canvas.DrawText($"{InUseLabel(timeline)}, Peak {SizeFormat.Format((long)_inUsePeak)}",
                             legendRight,
                             Baseline(inUseTop, MemoryBandLabelHeight),
                             SKTextAlign.Right,
@@ -148,12 +148,12 @@ public sealed partial class FlameChartControl
 
         if (_inUsePeak > 0)
         {
-            var inUse = timeline.PeakInUseDuring(start, end);
+            var inUse = BandInUse(timeline, start, end);
 
             DrawMarker(canvas,
                        x,
                        BandY(inUse, _inUseScale, height - 1f, InUseBandHeight),
-                       $"In Use {SizeFormat.Format((long)inUse)}",
+                       $"{InUseLabel(timeline)} {SizeFormat.Format((long)inUse)}",
                        _paints.InUseLine.Color,
                        inUseTop,
                        height,
@@ -185,6 +185,13 @@ public sealed partial class FlameChartControl
                         _paints.Font,
                         _paints.Label);
     }
+
+    private bool ShowsGrantUse(TimeTravelTimeline timeline) => GrantedMemory > 0 && timeline.HasWorkspace;
+
+    private ulong BandInUse(TimeTravelTimeline timeline, double start, double end)
+        => ShowsGrantUse(timeline) ? timeline.PeakWorkspaceDuring(start, end) : timeline.PeakInUseDuring(start, end);
+
+    private string InUseLabel(TimeTravelTimeline timeline) => ShowsGrantUse(timeline) ? "Grant In Use" : "In Use";
 
     private static ulong AllocatedDuring(TimeTravelTimeline timeline, double start, double end)
         => timeline.Threads.Aggregate(0ul, (total, t) => total + timeline.AllocatedDuring(t.ThreadId, start, end).Bytes);

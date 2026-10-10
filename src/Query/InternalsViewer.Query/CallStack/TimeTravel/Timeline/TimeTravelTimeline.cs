@@ -46,6 +46,8 @@ public sealed class TimeTravelTimeline
 
     public bool HasAllocations => Memory.HasAllocations;
 
+    public bool HasWorkspace => Memory.HasWorkspace;
+
     public IReadOnlyList<TimeTravelOperatorLifetime> Lifetimes { get; private set; } = [];
 
     private double PositionStart { get; }
@@ -101,6 +103,9 @@ public sealed class TimeTravelTimeline
         => Memory.RetainedBy(thread, positionStart, positionEnd);
 
     public ulong PeakInUseDuring(double positionStart, double positionEnd) => Memory.PeakInUseDuring(positionStart, positionEnd);
+
+    public ulong PeakWorkspaceDuring(double positionStart, double positionEnd)
+        => Memory.PeakWorkspaceDuring(positionStart, positionEnd);
 
     public TimeTravelInUseCurve InUseWithin(uint thread, double positionStart, double positionEnd)
         => Memory.InUseWithin(thread, positionStart, positionEnd);

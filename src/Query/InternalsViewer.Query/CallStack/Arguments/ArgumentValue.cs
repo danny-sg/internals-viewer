@@ -6,54 +6,9 @@ public static class ArgumentValue
 {
     private const ulong HexThreshold = 0x10000;
 
-    private static readonly HashSet<string> Primitives = new(StringComparer.Ordinal)
-    {
-        "bool",
-        "char",
-        "signed char",
-        "unsigned char",
-        "__int8",
-        "unsigned __int8",
-        "short",
-        "unsigned short",
-        "__int16",
-        "unsigned __int16",
-        "wchar_t",
-        "int",
-        "unsigned int",
-        "long",
-        "unsigned long",
-        "__int32",
-        "unsigned __int32",
-        "__int64",
-        "unsigned __int64",
-        "long long",
-        "unsigned long long",
-        "float",
-        "double",
-        "long double",
-        "enum"
-    };
-
     public static bool IsFloating(string type) => Normalise(type) is "float" or "double" or "long double";
 
     public static bool IsPointer(string type) => type.TrimEnd() is { Length: > 0 } trimmed && trimmed[^1] is '*' or '&';
-
-    public static bool IsPrimitive(string type) => Primitives.Contains(Normalise(type));
-
-    public static bool IsPrimitivePointer(string type) => Pointee(type) is { } pointee && IsPrimitive(pointee);
-
-    public static string? Pointee(string type)
-    {
-        if (!IsPointer(type))
-        {
-            return null;
-        }
-
-        var trimmed = type.TrimEnd();
-
-        return Normalise(trimmed[..^1]);
-    }
 
     public static string Format(string type, ulong raw)
     {

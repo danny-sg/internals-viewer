@@ -69,7 +69,7 @@ public class WinDbgCommandsTests
     [Fact]
     public void Unresolved_Frames_Are_Addressed_By_Module_Relative_Address()
     {
-        var missingSymbols = new CallstackFrame { Module = "sqlmin", Rva = 0x2509D40 };
+        var missingSymbols = WinDbgTarget.From(new CallstackFrame { Module = "sqlmin", Rva = 0x2509D40 });
 
         Assert.Equal("sqlmin+0x2509D40", WinDbgCommands.Symbol(missingSymbols));
         Assert.Equal("bp sqlmin+0x2509D40", WinDbgCommands.Breakpoint(missingSymbols));
@@ -164,14 +164,16 @@ public class WinDbgCommandsTests
         Assert.DoesNotContain("; g\"", WinDbgCommands.DumpArgumentsAndBreak(member));
     }
 
-    private static ClassMemberReference Member(string name, string signature, uint rva = 0x1000, bool overloaded = false) =>
-        new(new ClassMember("sqlmin", name, signature, rva, IsFunction: true), "HoBtAccess", overloaded);
+    private static WinDbgTarget Member(string name, string signature, uint rva = 0x1000, bool overloaded = false) =>
+        WinDbgTarget.From(new ClassMemberReference(new ClassMember("sqlmin", name, signature, rva, IsFunction: true),
+                                                   "HoBtAccess",
+                                                   overloaded));
 
-    private static CallstackFrame Resolved(string symbol, uint rva = 0x1000) =>
-        new()
+    private static WinDbgTarget Resolved(string symbol, uint rva = 0x1000) =>
+        WinDbgTarget.From(new CallstackFrame
         {
             Module = "sqlmin",
             Rva = rva,
             Resolved = ResolvedCallstackFrameParser.Parse("sqlmin", symbol)
-        };
+        });
 }
