@@ -71,13 +71,6 @@ public sealed partial class QueryFlameChartTabView : UserControl, IDocumentComma
             Spacing = 2
         };
 
-        _searchToggle = CommandToggle(new FontIcon { Glyph = SearchGlyph, FontSize = 12 },
-                                      false,
-                                      "Search the functions by name and dim every call that does not match",
-                                      OnSearchClick);
-
-        commands.Children.Add(_searchToggle);
-
         commands.Children.Add(_instructionsToggle);
 
         commands.Children.Add(_positionToggle);
@@ -108,6 +101,13 @@ public sealed partial class QueryFlameChartTabView : UserControl, IDocumentComma
                                             "Keep the flame chart where it is. Clicking a call still selects it in the call stack, "
                                             + "but does not change what the flame chart is rooted on.",
                                             OnLockClick));
+
+        _searchToggle = CommandToggle(new FontIcon { Glyph = SearchGlyph, FontSize = 12 },
+                                      false,
+                                      "Search the functions by name and dim every call that does not match",
+                                      OnSearchClick);
+
+        commands.Children.Add(_searchToggle);
 
         return commands;
     }
