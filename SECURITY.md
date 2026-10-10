@@ -78,8 +78,11 @@ Out of scope:
 
 ## Data
 
-Internals Viewer does not collect any data. There is no telemetry, crash reporting, analytics, account or
-update check. Updates come from the Microsoft Store or from the releases in this repository.
+Internals Viewer does not collect any data. It sends no telemetry, crash reports, analytics or usage
+statistics, and has no user account or update check of its own. The Microsoft Store keeps the Store
+version up to date. Other installs update from the releases in this repository. The app keeps a technical
+log for diagnosing problems, readable inside the app. It is held in memory and is not written to disk
+unless you export it to a file yourself.
 
 The app makes two kinds of network connection:
 
