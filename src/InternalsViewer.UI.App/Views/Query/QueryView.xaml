@@ -54,17 +54,23 @@
                                 <ToggleMenuFlyoutItem Text="SQL Editor"
                                    IsChecked="{x:Bind ViewModel.Layout.IsSqlEditorVisible, Mode=TwoWay}"/>
                                 <ToggleMenuFlyoutItem Text="Allocations"
-                                   IsChecked="{x:Bind ViewModel.Layout.IsAllocationsVisible, Mode=TwoWay}"/>
+                                   IsChecked="{x:Bind ViewModel.Layout.IsAllocationsVisible, Mode=TwoWay}"
+                                   IsEnabled="{x:Bind ViewModel.Layout.CanShowEventViews, Mode=OneWay}"/>
                                 <ToggleMenuFlyoutItem Text="Execution Plan"
                                    IsChecked="{x:Bind ViewModel.Layout.IsExecutionPlanVisible, Mode=TwoWay}"/>
                                 <ToggleMenuFlyoutItem Text="Events"
-                                   IsChecked="{x:Bind ViewModel.Layout.IsEventsVisible, Mode=TwoWay}"/>
+                                   IsChecked="{x:Bind ViewModel.Layout.IsEventsVisible, Mode=TwoWay}"
+                                   IsEnabled="{x:Bind ViewModel.Layout.CanShowEventViews, Mode=OneWay}"/>
 
                                 <ToggleMenuFlyoutItem Text="Call Stack"
                                    IsChecked="{x:Bind ViewModel.Layout.IsCallstackVisible, Mode=TwoWay}"/>
                                 <MenuFlyoutSeparator/>
                                 <ToggleMenuFlyoutItem Text="Timeline"
-                                   IsChecked="{x:Bind ViewModel.Layout.IsTimelineVisible, Mode=TwoWay}"/>
+                                   IsChecked="{x:Bind ViewModel.Layout.IsTimelineVisible, Mode=TwoWay}"
+                                   IsEnabled="{x:Bind ViewModel.Layout.CanShowEventViews, Mode=OneWay}"/>
+                                <ToggleMenuFlyoutItem Text="Flame Chart"
+                                   IsChecked="{x:Bind ViewModel.Layout.IsFlameChartVisible, Mode=TwoWay}"
+                                   IsEnabled="{x:Bind ViewModel.Layout.IsFullTrace, Mode=OneWay}"/>
                                 <ToggleMenuFlyoutItem Text="Trace"
                                    IsChecked="{x:Bind ViewModel.IsTraceVisible, Mode=TwoWay}"/>
                                 <MenuFlyoutSeparator/>
@@ -134,6 +140,13 @@
                                                 Command="{x:Bind ViewModel.ConnectDebuggerCommand}"/>
                                 <MenuFlyoutItem Text="Detach"
                                                 Command="{x:Bind ViewModel.DetachDebuggerCommand}"/>
+                                <MenuFlyoutSeparator/>
+                                <ToggleMenuFlyoutItem Text="Record Full Trace"
+                                                      IsChecked="{x:Bind ViewModel.QueryOptions.RecordTimeTravel, Mode=OneWay}"
+                                                      Click="OnRecordTimeTravelClick"/>
+                                <ToggleMenuFlyoutItem Text="Record Extended Events"
+                                                      IsChecked="{x:Bind ViewModel.QueryOptions.RecordFullTraceEvents, Mode=TwoWay}"
+                                                      IsEnabled="{x:Bind ViewModel.QueryOptions.RecordTimeTravel, Mode=OneWay}"/>
                                 <MenuFlyoutSeparator/>
                                 <MenuFlyoutItem Text="Clear breakpoints"
                                                 Command="{x:Bind ViewModel.ClearBreakpointsCommand}"/>

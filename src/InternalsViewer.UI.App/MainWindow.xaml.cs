@@ -186,10 +186,9 @@ public sealed partial class MainWindow
                                            bool isPasswordRequired,
                                            bool openQuery)
     {
-        // Recent Connections don't store the password so if required it will prompt and update the connection string
         if (isPasswordRequired)
         {
-            var result = await ShowPasswordDialog();
+            var result = PasswordProtection.Unprotect(recent.ProtectedPassword) ?? await ShowPasswordDialog();
 
             if (string.IsNullOrEmpty(result))
             {
@@ -197,6 +196,8 @@ public sealed partial class MainWindow
             }
 
             connectionString = ConnectionHelper.SetPassword(connectionString, result);
+
+            recent.ProtectedPassword = PasswordProtection.Protect(result);
         }
 
         var factory = (IConnectionTypeFactory<ServerConnectionConfig>)ConnectionFactories

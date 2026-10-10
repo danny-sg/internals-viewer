@@ -186,19 +186,9 @@
             <TabViewItem Header="Messages" IsClosable="False" x:Name="MessagesTab">
                 <Border Background="White" VerticalAlignment="Stretch">
                     <Grid>
-                        <TextBox x:Name="ResultMessage"
-                                 Padding="8"
-                                 TextWrapping="Wrap"
-                                 AcceptsReturn="True"
-                                 ScrollViewer.VerticalScrollBarVisibility="Auto"
-                                 ScrollViewer.HorizontalScrollBarVisibility="Disabled"
-
-                                 FontFamily="Courier New"
-                                 Text="{x:Bind Message, Mode=OneWay}"
-                                 Foreground="{x:Bind ResultBrush, Mode=OneWay}"
-                                 IsReadOnly="True"
-                                 BorderThickness="0"
-                                 Background="Transparent" />
+                        <sqlEditor:QueryMessagesControl x:Name="ResultMessage"
+                                                        Messages="{x:Bind Messages, Mode=OneWay}"
+                                                        Foreground="{x:Bind ResultBrush, Mode=OneWay}" />
                     </Grid>
                 </Border>
             </TabViewItem>

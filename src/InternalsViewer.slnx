@@ -42,6 +42,35 @@
       <Build Solution="*|x86" Project="false" />
     </Project>
   </Folder>
+  <Folder Name="/Query/">
+    <Project Path="Query/InternalsViewer.Query.DiaBridge/InternalsViewer.Query.DiaBridge.vcxproj" Id="5ff52e36-d4c2-48d2-acd4-7d0cd1361c5d">
+      <BuildType Solution="Debug|x64" Project="Release" />
+      <Platform Solution="*|ARM64" Project="x64" />
+      <Build Solution="*|x86" Project="false" />
+      <Build Solution="Release|x64" Project="false" />
+    </Project>
+    <Project Path="Query/InternalsViewer.Query.TimeTravelBridge/InternalsViewer.Query.TimeTravelBridge.vcxproj" Id="56d6723d-0781-4143-95b2-7bb63da795f2">
+      <BuildType Solution="Debug|x64" Project="Release" />
+      <Platform Solution="*|ARM64" Project="x64" />
+      <Build Solution="*|x86" Project="false" />
+      <Build Solution="Release|x64" Project="false" />
+    </Project>
+    <Project Path="Query/InternalsViewer.Query.TraceHarness/InternalsViewer.Query.TraceHarness.vcxproj" Id="9c754dd0-44ea-4944-ab0e-b6d5e1ae8b34">
+      <BuildType Solution="Debug|x64" Project="Release" />
+      <Platform Solution="*|ARM64" Project="x64" />
+      <Build Solution="*|x86" Project="false" />
+      <Build Solution="Release|x64" Project="false" />
+    </Project>
+    <Project Path="Query/InternalsViewer.Query.Debugging/InternalsViewer.Query.Debugging.csproj">
+      <Build Solution="Debug|x86" Project="false" />
+    </Project>
+    <Project Path="Query/InternalsViewer.Query/InternalsViewer.Query.csproj">
+      <Build Solution="Debug|x86" Project="false" />
+    </Project>
+    <Project Path="Query/InternalsViewer.Query.SourceGenerators/InternalsViewer.Query.SourceGenerators.csproj">
+      <Build Solution="Debug|x86" Project="false" />
+    </Project>
+  </Folder>
   <Project Path="InternalsViewer.Connection.BackupFile/InternalsViewer.Connection.BackupFile.csproj">
     <Build Solution="Debug|x86" Project="false" />
   </Project>
@@ -55,21 +84,6 @@
     <Build Solution="Debug|x86" Project="false" />
   </Project>
   <Project Path="InternalsViewer.Internals/InternalsViewer.Internals.csproj">
-    <Build Solution="Debug|x86" Project="false" />
-  </Project>
-  <Project Path="InternalsViewer.Query.DiaBridge/InternalsViewer.Query.DiaBridge.vcxproj" Id="5ff52e36-d4c2-48d2-acd4-7d0cd1361c5d">
-    <BuildType Solution="Debug|x64" Project="Release" />
-    <Platform Solution="*|ARM64" Project="x64" />
-    <Build Solution="*|x86" Project="false" />
-    <Build Solution="Release|x64" Project="false" />
-  </Project>
-  <Project Path="InternalsViewer.Query.Debugging/InternalsViewer.Query.Debugging.csproj">
-    <Build Solution="Debug|x86" Project="false" />
-  </Project>
-  <Project Path="InternalsViewer.Query/InternalsViewer.Query.csproj">
-    <Build Solution="Debug|x86" Project="false" />
-  </Project>
-  <Project Path="InternalsViewer.Query.SourceGenerators/InternalsViewer.Query.SourceGenerators.csproj">
     <Build Solution="Debug|x86" Project="false" />
   </Project>
   <Project Path="InternalsViewer.TransactionLog/InternalsViewer.TransactionLog.csproj">

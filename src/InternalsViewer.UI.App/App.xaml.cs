@@ -6,14 +6,16 @@ using InternalsViewer.Internals;
 using InternalsViewer.Internals.Interfaces.Connections;
 using InternalsViewer.Internals.Services.Logging;
 using InternalsViewer.Query;
+using InternalsViewer.Query.Debugging;
+using InternalsViewer.Query.Debugging.Interfaces;
+using InternalsViewer.Query.Debugging.TimeTravel;
 using InternalsViewer.Query.Events;
+using InternalsViewer.Query.XEvents;
 using InternalsViewer.TransactionLog;
 using InternalsViewer.UI.App.Activation;
 using InternalsViewer.UI.App.Messages;
 using InternalsViewer.UI.App.Models;
 using InternalsViewer.UI.App.Services;
-using InternalsViewer.UI.App.Services.Query.Debugging;
-using InternalsViewer.UI.App.Services.XEvents;
 using InternalsViewer.UI.App.ViewModels;
 using InternalsViewer.UI.App.ViewModels.Columnstore;
 using InternalsViewer.UI.App.ViewModels.Connections;
@@ -54,7 +56,9 @@ public partial class App
 
             services.AddSingleton<SettingsService>();
             services.AddSingleton<TraceDirectoryService>();
+            services.AddSingleton<IWinDbgSettings>(provider => provider.GetRequiredService<SettingsViewModel>());
             services.AddSingleton<WinDbgService>();
+            services.AddSingleton<ITimeTravelRecorder, TimeTravelRecorder>();
 
             services.AddSingleton<AppLogService>();
             services.AddSingleton<ILoggerProvider, AppLogLoggerProvider>();

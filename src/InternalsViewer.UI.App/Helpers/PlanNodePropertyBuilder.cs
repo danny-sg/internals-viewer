@@ -4,6 +4,7 @@ using System.Globalization;
 using System.Text;
 using System.Linq;
 using InternalsViewer.Execution.AccessPaths.Text;
+using InternalsViewer.Query.CallStack.TimeTravel.Memory;
 using InternalsViewer.Query.Events.Operators;
 using InternalsViewer.Query.Plans.Model;
 using InternalsViewer.Query.Plans.Operators;
@@ -13,11 +14,14 @@ namespace InternalsViewer.UI.App.Helpers;
 
 public static class PlanNodePropertyBuilder
 {
+    private const int TracedMemoryUses = 8;
+
     public static List<PlanNodeProperty> Build(PlanNode node,
                                                EventIoStatistics? eventStatistics = null,
                                                ExpressionCatalog? expressions = null,
                                                ScanModeResult? scanMode = null,
-                                               IReadOnlyDictionary<int, string>? columnNames = null)
+                                               IReadOnlyDictionary<int, string>? columnNames = null,
+                                               TimeTravelMemoryPurpose? tracedMemory = null)
     {
         var result = new List<PlanNodeProperty>();
 
@@ -554,6 +558,11 @@ public static class PlanNodePropertyBuilder
             }
         }
 
+        if (tracedMemory is { } traced)
+        {
+            result.Add(TracedMemoryGroup(traced));
+        }
+
         if (eventStatistics is { } eventStats)
         {
             var eventGroup = new PlanNodeProperty("Event Statistics", string.Empty) { IsExpanded = false };
@@ -613,6 +622,60 @@ public static class PlanNodePropertyBuilder
     private static PredicateText Expand(PredicateText text, ExpressionCatalog? expressions)
     {
         return expressions is null ? text : expressions.Expand(text);
+    }
+
+    private static PlanNodeProperty TracedMemoryGroup(TimeTravelMemoryPurpose traced)
+    {
+        var tracedGroup = new PlanNodeProperty("Traced Memory", string.Empty);
+
+        tracedGroup.Children.Add(new PlanNodeProperty("Allocated", SizeFormat.Format((long)traced.Allocated)));
+        tracedGroup.Children.Add(new PlanNodeProperty("Allocations", traced.Allocations.ToString("N0", CultureInfo.InvariantCulture)));
+        tracedGroup.Children.Add(new PlanNodeProperty("Freed", SizeFormat.Format((long)traced.Freed)));
+        tracedGroup.Children.Add(new PlanNodeProperty("Peak In Use", SizeFormat.Format((long)traced.PeakInUse)));
+
+        if (traced.Held > 0)
+        {
+            tracedGroup.Children.Add(new PlanNodeProperty("Still Held", SizeFormat.Format((long)traced.Held)) { IsValueHighlighted = true });
+        }
+
+        if (traced.Kinds.Count > 0)
+        {
+            var kindsGroup = new PlanNodeProperty("By Memory Clerk", string.Empty);
+
+            foreach (var kind in traced.Kinds)
+            {
+                kindsGroup.Children.Add(new PlanNodeProperty(kind.Name, $"{SizeFormat.Format((long)kind.PeakInUse)} Peak")
+                {
+                    IsNameMonospace = true,
+                    Tooltip = $"Allocated {SizeFormat.Format((long)kind.Allocated)} In "
+                              + $"{kind.Allocations.ToString("N0", CultureInfo.InvariantCulture)}, "
+                              + $"Freed {SizeFormat.Format((long)kind.Freed)}"
+                });
+            }
+
+            tracedGroup.Children.Add(kindsGroup);
+        }
+
+        if (traced.Uses.Count == 0)
+        {
+            return tracedGroup;
+        }
+
+        var usesGroup = new PlanNodeProperty("Allocated By", string.Empty);
+
+        foreach (var use in traced.Uses.Take(TracedMemoryUses))
+        {
+            usesGroup.Children.Add(new PlanNodeProperty(use.Caller, SizeFormat.Format((long)use.Bytes))
+            {
+                IsNameMonospace = true,
+                Tooltip = $"{use.Allocations.ToString("N0", CultureInfo.InvariantCulture)} "
+                          + $"{(use.Allocations == 1 ? "Call" : "Calls")} To {use.Allocator}"
+            });
+        }
+
+        tracedGroup.Children.Add(usesGroup);
+
+        return tracedGroup;
     }
 
     private static void AddKilobytes(PlanNodeProperty group, string name, long? value)

@@ -38,24 +38,25 @@ public static class OperatorIcicle
             return [];
         }
 
-        var scope = hierarchy.ScopeOf(operatorEvent, events);
-
-        if (scope.Count == 0)
-        {
-            return [];
-        }
-
         var entries = operatorEvent.EntryFrames.ToHashSet();
 
         var exits = operatorEvent.ExitFrames.ToHashSet();
 
         var weights = new Dictionary<CallStackNode, int>();
 
-        foreach (var scoped in scope)
+        foreach (var scoped in hierarchy.ScopeOf(operatorEvent, events))
         {
             if (scoped.CallStack is { } leaf)
             {
                 Accumulate(leaf, entries, exits, weights);
+            }
+        }
+
+        if (weights.Count == 0)
+        {
+            foreach (var entry in entries)
+            {
+                AccumulateCalls(entry, isEntry: true, exits, weights);
             }
         }
 
@@ -150,6 +151,29 @@ public static class OperatorIcicle
                 weights[path[i]] = weights.GetValueOrDefault(path[i]) + 1;
             }
         }
+    }
+
+    private static long AccumulateCalls(CallStackNode node,
+                                        bool isEntry,
+                                        HashSet<CallStackNode> exits,
+                                        Dictionary<CallStackNode, int> weights)
+    {
+        var calls = node.Calls;
+
+        if (isEntry || !(exits.Contains(node) || node.IsAccessBarrier))
+        {
+            foreach (var child in node.ChildNodes)
+            {
+                calls += AccumulateCalls(child, isEntry: false, exits, weights);
+            }
+        }
+
+        if (calls > 0)
+        {
+            weights[node] = (int)Math.Min(calls, int.MaxValue);
+        }
+
+        return calls;
     }
 
     private static void Emit(CallStackNode node,

@@ -40,20 +40,26 @@ else in the solution.
   columnstore segment decoding, metadata. Everything reachable through DI via `RegisterServices()`.
 - **`InternalsViewer.Execution`** — execution simulation (Volcano-model iterators, access paths, executors)
   built on top of Internals. Registers itself with `RegisterExecutionServices()`; callers invoke both.
+Every `InternalsViewer.Query.*` project lives under `src/Query/`, on disk and as a solution folder.
+
 - **`InternalsViewer.Query`** — Extended Events capture, execution plan parsing, callstack resolution.
   Plan types live under `Plans/` (`Model/`, `Operators/`, `Joins/`, `Parsers/`); event types under `Events/`.
 - **`InternalsViewer.Query.Debugging`** — sending commands to a WinDbg session: a debugger engine remote client over the
   engine's vtables (no compile-time dependency), served from a host process (`--windbg-host`) because the engine
-  cannot share the app process with the DIA bridge's `dbghelp.dll`. Depends on nothing else in the solution.
+  cannot share the app process with the DIA bridge's `dbghelp.dll`. Also owns `WinDbgService` and the TTD recorder
+  (`TimeTravel/`). Query references it. It depends on nothing else in the solution.
 - **`InternalsViewer.Connection.BackupFile`** — reads pages straight out of `.bak` files (MTF container,
   compressed and striped backups included).
 - **`InternalsViewer.Connection.Sandbox`**, **`InternalsViewer.TransactionLog`** — supporting connection and
   log-reading layers.
 - **`InternalsViewer.Query.DiaBridge`** — native C++ (`.vcxproj`) shim over the DIA SDK for PDB symbol
   resolution. The shipped binary is the checked-in copy under `src/runtimes/win-x64/native`.
+- **`InternalsViewer.Query.TimeTravelBridge`**, **`InternalsViewer.Query.TimeTravelHost`** — native C++ over the TTD
+  replay API, and the elevated helper (`Time Travel Trace.exe`) that records SQL Server. Shipped the same way.
 - **`InternalsViewer.Internals.Metadata.SourceGenerators`** — source generator for metadata types.
 - **`InternalsViewer.UI.App`** — WinUI 3 app. MVVM: `Views/` (XAML) → `ViewModels/` → `Models/`, with
-  SkiaSharp-based custom drawing in `Controls/`. Tabs are dockable documents.
+  SkiaSharp-based custom drawing in `Controls/`. Tabs are dockable documents. Display and UI only: anything that
+  traces, records, parses or drives a debugger belongs in Query or Query.Debugging.
 
 Notes that apply to only one project live in a `CLAUDE.md` inside that project — see
 [src/InternalsViewer.UI.App/CLAUDE.md](src/InternalsViewer.UI.App/CLAUDE.md). Those load automatically when

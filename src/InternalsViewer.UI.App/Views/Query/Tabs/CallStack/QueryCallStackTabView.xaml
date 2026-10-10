@@ -13,10 +13,13 @@
     xmlns:callStack="using:InternalsViewer.UI.App.Views.Query.Tabs.CallStack"
     xmlns:controls="using:CommunityToolkit.WinUI.Controls"
     xmlns:signature="using:InternalsViewer.UI.App.Controls.CallStack"
+    xmlns:app="using:InternalsViewer.UI.App.Controls"
+    xmlns:results="using:InternalsViewer.UI.App.Controls.Results"
     xmlns:members="using:InternalsViewer.UI.App.Models.Query.CallStack"
     xmlns:selectors="using:InternalsViewer.UI.App.Helpers.Selectors"
     xmlns:converters="using:InternalsViewer.UI.App.Helpers.Converters"
     xmlns:converters1="using:InternalsViewer.UI.App.Helpers.Converters.CallStack"
+    xmlns:helpers="using:InternalsViewer.UI.App.Helpers"
     mc:Ignorable="d">
 
     <UserControl.Resources>
@@ -122,6 +125,7 @@
                                 <Border Background="#F0F0F0"
                                         Padding="1"
                                         HorizontalAlignment="Stretch"
+                                        ToolTipService.ToolTip="{x:Bind converters1:ActivityBandBrush.ToolTip(Content), Mode=OneWay}"
                                         Visibility="{x:Bind converters1:ActivityBandBrush.Visibility(Content), Mode=OneWay}">
                                     <Rectangle Height="12"
                                                Fill="{x:Bind converters1:ActivityBandBrush.Fill(Content, IsExpanded), Mode=OneWay}"/>
@@ -186,10 +190,6 @@
                     </ControlTemplate>
                 </Setter.Value>
             </Setter>
-        </Style>
-
-        <Style x:Key="SearchTextBoxStyle" TargetType="TextBox" BasedOn="{StaticResource AutoSuggestBoxTextBoxStyle}">
-            <Setter Property="IsSpellCheckEnabled" Value="False"/>
         </Style>
 
         <DataTemplate x:Key="MemberRowTemplate" x:DataType="members:ClassMemberRow">
@@ -297,32 +297,38 @@
         <!-- A call frame row: the Category | Operator badge, the resolved symbol, and (on the selected node) the
              activity histogram. Used for every node in the merged tree, and for the call frames under each operator
              when scoped. -->
-        <DataTemplate x:Key="CallFrameTemplate" x:DataType="muxc:TreeViewNode">
-            <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center" RightTapped="OnNodeRightTapped">
-                <StackPanel.ContextFlyout>
-                    <MenuFlyout>
-                        <MenuFlyoutItem Text="Expand All" Click="OnExpandAllClick"/>
-                        <MenuFlyoutItem Text="Collapse All" Click="OnCollapseAllClick"/>
-                        <MenuFlyoutSeparator/>
-                        <MenuFlyoutItem Text="Copy to Clipboard" Click="OnCopySymbolClick"/>
-                        <MenuFlyoutItem Text="Copy Call Tree to Clipboard" Click="OnCopyCallTreeClick"/>
-                        <MenuFlyoutSubItem Text="WinDbg">
-                            <MenuFlyoutItem Text="Set Breakpoint" Click="OnSendWinDbgClick" Tag="Breakpoint"/>
-                            <MenuFlyoutItem Text="Set Breakpoint With Stack" Click="OnSendWinDbgClick" Tag="BreakpointWithStack"/>
-                            <MenuFlyoutItem Text="Set Breakpoint, Dump Arguments and Continue" Click="OnSendWinDbgClick" Tag="DumpArguments"/>
-                            <MenuFlyoutItem Text="Set Breakpoint, Dump Arguments and Break" Click="OnSendWinDbgClick" Tag="DumpArgumentsAndBreak"/>
-                            <MenuFlyoutItem Text="Set Breakpoint at Frame Address" Click="OnSendWinDbgClick" Tag="BreakpointAtFrame"/>
-                            <MenuFlyoutSeparator/>
-                            <MenuFlyoutItem Text="Examine Symbol" Click="OnSendWinDbgClick" Tag="ExamineSymbol"/>
-                            <MenuFlyoutSeparator/>
-                            <MenuFlyoutItem Text="Display Type" Click="OnSendWinDbgClick" Tag="DisplayType"/>
-                            <MenuFlyoutItem Text="List Class Symbols" Click="OnSendWinDbgClick" Tag="ListClassSymbols"/>
-                        </MenuFlyoutSubItem>
-                        <MenuFlyoutSeparator/>
-                        <MenuFlyoutItem Text="List Members" Click="OnListMembersClick"/>
-                    </MenuFlyout>
-                </StackPanel.ContextFlyout>
+        <MenuFlyout x:Key="CallFrameMenu">
+            <MenuFlyoutItem Text="Expand All" Click="OnExpandAllClick"/>
+            <MenuFlyoutItem Text="Collapse All" Click="OnCollapseAllClick"/>
+            <MenuFlyoutSeparator/>
+            <MenuFlyoutItem Text="Filter To" Click="OnFilterToClick"/>
+            <MenuFlyoutItem Text="Clear Filter" Tag="ClearFilter" Click="OnClearFilterClick"/>
+            <MenuFlyoutSeparator/>
+            <MenuFlyoutItem Text="Copy to Clipboard" Click="OnCopySymbolClick"/>
+            <MenuFlyoutItem Text="Copy Call Tree to Clipboard" Click="OnCopyCallTreeClick"/>
+            <MenuFlyoutSubItem Text="WinDbg">
+                <MenuFlyoutItem Text="Set Breakpoint" Click="OnSendWinDbgClick" Tag="Breakpoint"/>
+                <MenuFlyoutItem Text="Set Breakpoint With Stack" Click="OnSendWinDbgClick" Tag="BreakpointWithStack"/>
+                <MenuFlyoutItem Text="Set Breakpoint, Dump Arguments and Continue" Click="OnSendWinDbgClick" Tag="DumpArguments"/>
+                <MenuFlyoutItem Text="Set Breakpoint, Dump Arguments and Break" Click="OnSendWinDbgClick" Tag="DumpArgumentsAndBreak"/>
+                <MenuFlyoutItem Text="Set Breakpoint at Frame Address" Click="OnSendWinDbgClick" Tag="BreakpointAtFrame"/>
+                <MenuFlyoutSeparator/>
+                <MenuFlyoutItem Text="Examine Symbol" Click="OnSendWinDbgClick" Tag="ExamineSymbol"/>
+                <MenuFlyoutSeparator/>
+                <MenuFlyoutItem Text="Display Type" Click="OnSendWinDbgClick" Tag="DisplayType"/>
+                <MenuFlyoutItem Text="List Class Symbols" Click="OnSendWinDbgClick" Tag="ListClassSymbols"/>
+            </MenuFlyoutSubItem>
+            <MenuFlyoutSeparator/>
+            <MenuFlyoutItem Text="List Members" Click="OnListMembersClick"/>
+            <MenuFlyoutItem Text="Show Arguments" Tag="ShowArguments" Click="OnShowArgumentsClick"/>
+        </MenuFlyout>
 
+        <DataTemplate x:Key="CallFrameTemplate" x:DataType="muxc:TreeViewNode">
+            <StackPanel Orientation="Horizontal"
+                        Spacing="6"
+                        VerticalAlignment="Center"
+                        RightTapped="OnNodeRightTapped"
+                        ContextFlyout="{StaticResource CallFrameMenu}">
                 <!-- Category | Operator badge: a single pill; when the frame is a plan operator a second
                      tone (the operator name) is appended, otherwise the category badge stands alone. -->
                 <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
@@ -349,6 +355,71 @@
                            FontFamily="{StaticResource MonospaceFontFamily}"
                            FontSize="11"
                            VerticalAlignment="Center"/>
+
+                <Border Background="{ThemeResource SubtleFillColorSecondaryBrush}"
+                        CornerRadius="3"
+                        Padding="5,1,5,2"
+                        VerticalAlignment="Center"
+                        ToolTipService.ToolTip="{x:Bind ((callstack:CallStackNode)Content).AllocationsLabel}"
+                        Visibility="{x:Bind ((callstack:CallStackNode)Content).HasAllocations, Converter={StaticResource BoolToVisibilityConverter}}">
+                    <TextBlock Text="{x:Bind helpers:SizeFormat.Format(((callstack:CallStackNode)Content).AllocatedBytesIncludingChildren)}"
+                               FontSize="10"
+                               Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
+                </Border>
+
+            </StackPanel>
+        </DataTemplate>
+
+        <DataTemplate x:Key="CallFrameSignatureTemplate" x:DataType="muxc:TreeViewNode">
+            <StackPanel Orientation="Horizontal"
+                        Spacing="6"
+                        VerticalAlignment="Center"
+                        RightTapped="OnNodeRightTapped"
+                        ContextFlyout="{StaticResource CallFrameMenu}">
+                <!-- Category | Operator badge: a single pill; when the frame is a plan operator a second
+                     tone (the operator name) is appended, otherwise the category badge stands alone. -->
+                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                    <Border Background="{x:Bind ((callstack:CallStackNode)Content).CategoryColour, Converter={StaticResource HexColorToBrushConverter}}"
+                            CornerRadius="{x:Bind ((callstack:CallStackNode)Content).HasOperator, Converter={StaticResource CategoryBadgeCornerConverter}}"
+                            Padding="5,2,5,3">
+                        <TextBlock Text="{x:Bind ((callstack:CallStackNode)Content).Category}"
+                                   Foreground="White"
+                                   FontSize="9"
+                                   FontWeight="SemiBold"/>
+                    </Border>
+                    <Border CornerRadius="0,3,3,0"
+                            Padding="5,2,5,3"
+                            Background="#4A4A55"
+                            Visibility="{x:Bind ((callstack:CallStackNode)Content).HasOperator, Converter={StaticResource BoolToVisibilityConverter}}">
+                        <TextBlock Text="{x:Bind ((callstack:CallStackNode)Content).Operator}"
+                                   Foreground="White"
+                                   FontSize="9"
+                                   FontWeight="SemiBold"/>
+                    </Border>
+                </StackPanel>
+
+                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                    <TextBlock Text="{x:Bind converters1:CallFrameText.ClassPrefix(Content)}"
+                               FontFamily="{StaticResource MonospaceFontFamily}"
+                               FontSize="11"
+                               Foreground="{ThemeResource CppClassBrush}"
+                               VerticalAlignment="Center"/>
+                    <TextBlock signature:SignatureText.Signature="{x:Bind converters1:CallFrameText.Signature(Content)}"
+                               FontFamily="{StaticResource MonospaceFontFamily}"
+                               FontSize="11"
+                               VerticalAlignment="Center"/>
+                </StackPanel>
+
+                <Border Background="{ThemeResource SubtleFillColorSecondaryBrush}"
+                        CornerRadius="3"
+                        Padding="5,1,5,2"
+                        VerticalAlignment="Center"
+                        ToolTipService.ToolTip="{x:Bind ((callstack:CallStackNode)Content).AllocationsLabel}"
+                        Visibility="{x:Bind ((callstack:CallStackNode)Content).HasAllocations, Converter={StaticResource BoolToVisibilityConverter}}">
+                    <TextBlock Text="{x:Bind helpers:SizeFormat.Format(((callstack:CallStackNode)Content).AllocatedBytesIncludingChildren)}"
+                               FontSize="10"
+                               Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
+                </Border>
 
             </StackPanel>
         </DataTemplate>
@@ -427,6 +498,7 @@
 
         <callStack:CallstackNodeTemplateSelector x:Key="NodeTemplateSelector"
                                              FrameTemplate="{StaticResource CallFrameTemplate}"
+                                             SignatureFrameTemplate="{StaticResource CallFrameSignatureTemplate}"
                                              LinkTemplate="{StaticResource OperatorLinkTemplate}"
                                              EventTemplate="{StaticResource EventRowTemplate}"
                                              OperatorTemplate="{StaticResource OperatorNodeTemplate}"/>
@@ -449,22 +521,98 @@
                 <RowDefinition Height="Auto"/>
                 <RowDefinition Height="Auto"/>
                 <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
                 <RowDefinition Height="*"/>
             </Grid.RowDefinitions>
 
-            <AutoSuggestBox x:Name="SearchBox"
-                            Grid.Row="0"
-                            Margin="0,0,0,4"
-                            PlaceholderText="Search"
-                            QueryIcon="Find"
-                            TextBoxStyle="{StaticResource SearchTextBoxStyle}"
-                            BorderThickness="0"
-                            FontSize="12"
-                            Height="28"
-                            TextChanged="OnSearchTextChanged"/>
+            <Grid Grid.Row="0" Margin="0,0,0,4">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+
+                <AutoSuggestBox x:Name="SearchBox"
+                                Grid.Column="0"
+                                PlaceholderText="Search"
+                                QueryIcon="Find"
+                                TextBoxStyle="{StaticResource SearchTextBoxStyle}"
+                                BorderThickness="0"
+                                FontSize="12"
+                                Height="28"
+                                TextChanged="OnSearchTextChanged"/>
+
+                <ToggleButton x:Name="CategoryFilterButton"
+                              Grid.Column="1"
+                              Style="{StaticResource TabCommandToggleStyle}"
+                              Margin="2,0,8,0"
+                              Click="OnCategoryFilterClick"
+                              ToolTipService.ToolTip="Filter by Category">
+                    <FontIcon Glyph="&#xE71C;" FontSize="12"/>
+                </ToggleButton>
+            </Grid>
+
+            <Grid x:Name="CategoryPanel"
+                  Grid.Row="1"
+                  Visibility="Collapsed"
+                  Padding="8,0,8,6"
+                  ColumnSpacing="8">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+
+                <app:WrapPanel x:Name="CategoryBadges"
+                               Grid.Column="0"
+                               HorizontalSpacing="4"
+                               VerticalSpacing="4"/>
+
+                <ToggleButton x:Name="AllCategoriesToggle"
+                              Grid.Column="1"
+                              Content="All"
+                              Style="{StaticResource TabCommandToggleStyle}"
+                              FontSize="11"
+                              VerticalAlignment="Top"
+                              Click="OnAllCategoriesClick"
+                              ToolTipService.ToolTip="Show or hide every category"/>
+            </Grid>
+
+            <Grid x:Name="FilterHeader"
+                  Grid.Row="2"
+                  Visibility="Collapsed"
+                  Padding="8,4,8,6"
+                  BorderBrush="{ThemeResource ControlStrokeColorDefaultBrush}"
+                  BorderThickness="0,0,0,1">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+
+                <TextBlock Grid.Column="0"
+                           Text="Filtered To"
+                           FontSize="11"
+                           Margin="0,0,8,0"
+                           Foreground="{ThemeResource TextFillColorTertiaryBrush}"
+                           VerticalAlignment="Center"/>
+
+                <ContentControl x:Name="FilterCurrent"
+                                Grid.Column="1"
+                                VerticalAlignment="Center"
+                                HorizontalAlignment="Left"
+                                IsTabStop="False"
+                                ContentTemplateSelector="{StaticResource NodeTemplateSelector}"/>
+
+                <HyperlinkButton Grid.Column="2"
+                                 Content="Clear Filter"
+                                 FontSize="11"
+                                 Padding="4,0,4,0"
+                                 VerticalAlignment="Center"
+                                 Click="OnClearFilterClick"/>
+            </Grid>
 
             <Grid x:Name="FocusHeader"
-                  Grid.Row="1"
+                  Grid.Row="3"
                   Visibility="Collapsed"
                   Padding="8,4,8,6"
                   BorderBrush="{ThemeResource ControlStrokeColorDefaultBrush}"
@@ -492,7 +640,7 @@
             </Grid>
 
             <Grid x:Name="ActivityHeader"
-                  Grid.Row="2"
+                  Grid.Row="4"
                   Height="10">
                 <Border x:Name="ActivitySplitter"
                         Width="7"
@@ -508,9 +656,10 @@
             </Grid>
 
             <muxc:TreeView x:Name="Tree"
-                       Grid.Row="3"
+                       Grid.Row="5"
                        SelectionMode="Single"
                        ItemInvoked="OnFrameInvoked"
+                       Expanding="OnTreeExpanding"
                        CanDragItems="False"
                        CanReorderItems="False"
                        Background="White"
@@ -518,6 +667,25 @@
                        ScrollViewer.HorizontalScrollMode="Enabled"
                        ItemTemplateSelector="{StaticResource NodeTemplateSelector}"
                        ItemContainerStyle="{StaticResource ActivityItemStyle}"/>
+
+            <StackPanel Grid.Row="5"
+                        Orientation="Vertical"
+                        Spacing="8"
+                        MaxWidth="360"
+                        HorizontalAlignment="Center"
+                        VerticalAlignment="Center"
+                        Visibility="{x:Bind ViewModel.IsFullTraceLoading, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}">
+                <ProgressRing IsActive="{x:Bind ViewModel.IsFullTraceLoading, Mode=OneWay}"
+                              HorizontalAlignment="Center"/>
+                <TextBlock Text="{x:Bind ViewModel.FullTraceStatus, Mode=OneWay}"
+                           HorizontalAlignment="Center"
+                           TextAlignment="Center"
+                           TextWrapping="Wrap"/>
+                <HyperlinkButton Content="Cancel"
+                                 FontSize="12"
+                                 HorizontalAlignment="Center"
+                                 Command="{x:Bind ViewModel.CancelFullTraceCommand, Mode=OneWay}"/>
+            </StackPanel>
         </Grid>
 
         <controls:GridSplitter Grid.Row="0"
@@ -589,7 +757,7 @@
                     </StackPanel>
                 </TabView.TabStripFooter>
 
-                <TabViewItem Header="Members" IsClosable="False">
+                <TabViewItem x:Name="MembersTab" Header="Members" IsClosable="False">
                     <Grid>
                         <Grid.RowDefinitions>
                             <RowDefinition Height="Auto"/>
@@ -679,7 +847,7 @@
                     </Grid>
                 </TabViewItem>
 
-                <TabViewItem Header="Symbols" IsClosable="False">
+                <TabViewItem x:Name="SymbolsTab" Header="Symbols" IsClosable="False">
                     <Grid>
                         <Grid.RowDefinitions>
                             <RowDefinition Height="Auto"/>
@@ -775,6 +943,243 @@
                             <ProgressRing IsActive="{x:Bind ViewModel.Symbols.IsSymbolSearchLoading, Mode=OneWay}"
                                           HorizontalAlignment="Center"/>
                             <TextBlock Text="Searching..." HorizontalAlignment="Center"/>
+                        </StackPanel>
+                    </Grid>
+                </TabViewItem>
+
+                <TabViewItem x:Name="ArgumentsTab" Header="Arguments" IsClosable="False">
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="*"/>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition x:Name="ArgumentDetailRow" Height="0"/>
+                        </Grid.RowDefinitions>
+
+                        <Grid Grid.Row="0"
+                              Padding="12,6,16,6"
+                              BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                              BorderThickness="0,0,0,1">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Grid.Column="0"
+                                       VerticalAlignment="Center"
+                                       FontFamily="{StaticResource MonospaceFontFamily}"
+                                       TextTrimming="CharacterEllipsis"
+                                       Text="{x:Bind ViewModel.Arguments.Function, Mode=OneWay}"/>
+                            <TextBlock Grid.Column="1"
+                                       Margin="10,0,8,0"
+                                       VerticalAlignment="Center"
+                                       FontSize="11"
+                                       Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                       TextTrimming="CharacterEllipsis"
+                                       Text="{x:Bind ViewModel.Arguments.Summary, Mode=OneWay}"/>
+                        </Grid>
+
+                        <Grid Grid.Row="1"
+                              Visibility="{x:Bind ViewModel.Arguments.HasValueSearch, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}"
+                              BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                              BorderThickness="0,0,0,1">
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                            </Grid.RowDefinitions>
+
+                            <Grid Grid.Row="0" Padding="12,4,8,4">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="8">
+                                    <TextBlock Text="{x:Bind ViewModel.Arguments.ValueSearch, Mode=OneWay}"
+                                               FontSize="11"
+                                               FontWeight="SemiBold"
+                                               VerticalAlignment="Center"/>
+                                    <ProgressRing Width="12"
+                                                  Height="12"
+                                                  IsActive="{x:Bind ViewModel.Arguments.IsSearching, Mode=OneWay}"
+                                                  Visibility="{x:Bind ViewModel.Arguments.IsSearching, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}"/>
+                                </StackPanel>
+                                <Button Grid.Column="1"
+                                        Style="{StaticResource TabCommandButtonStyle}"
+                                        Click="OnCloseValueSearchClick"
+                                        ToolTipService.ToolTip="Close">
+                                    <FontIcon Glyph="&#xE711;" FontSize="10"/>
+                                </Button>
+                            </Grid>
+
+                            <ScrollViewer Grid.Row="1"
+                                          MaxHeight="240"
+                                          Background="{ThemeResource LayerFillColorDefaultBrush}"
+                                          HorizontalScrollBarVisibility="Auto"
+                                          HorizontalScrollMode="Enabled">
+                                <StackPanel Padding="12,4,12,8" Spacing="8">
+                                    <TextBlock Text="{x:Bind ViewModel.Arguments.ValueIdentity, Mode=OneWay}"
+                                               Visibility="{x:Bind ViewModel.Arguments.ValueIdentity, Mode=OneWay, Converter={StaticResource NullToVisibilityConverter}}"
+                                               FontSize="11"
+                                               FontFamily="{StaticResource MonospaceFontFamily}"/>
+                                    <HyperlinkButton Content="{x:Bind ViewModel.Arguments.ValueIteratorLabel, Mode=OneWay}"
+                                                     Visibility="{x:Bind ViewModel.Arguments.ValueIteratorLabel, Mode=OneWay, Converter={StaticResource NullToVisibilityConverter}}"
+                                                     FontSize="11"
+                                                     Padding="0"
+                                                     Click="OnValueIteratorClick"
+                                                     ToolTipService.ToolTip="Show this iterator in the call tree and the plan"/>
+                                    <ItemsControl ItemsSource="{x:Bind ViewModel.Arguments.ValueGroups, Mode=OneWay}">
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate x:DataType="members:ValueUseGroup">
+                                                <StackPanel Spacing="2" Margin="0,0,0,8">
+                                                    <TextBlock Text="{x:Bind Title}"
+                                                               FontSize="11"
+                                                               FontWeight="SemiBold"
+                                                               Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
+                                                    <ItemsControl ItemsSource="{x:Bind Rows}">
+                                                        <ItemsControl.ItemTemplate>
+                                                            <DataTemplate x:DataType="members:ValueUseRow">
+                                                                <StackPanel Orientation="Horizontal" Spacing="8" Margin="12,0,0,0">
+                                                                    <TextBlock Text="{x:Bind Function}"
+                                                                               FontFamily="{StaticResource MonospaceFontFamily}"
+                                                                               FontSize="11"
+                                                                               VerticalAlignment="Center"/>
+                                                                    <TextBlock Text="{x:Bind Location}"
+                                                                               FontSize="11"
+                                                                               Foreground="{ThemeResource TextFillColorTertiaryBrush}"
+                                                                               VerticalAlignment="Center"/>
+                                                                    <TextBlock Text="{x:Bind Calls}"
+                                                                               FontSize="11"
+                                                                               Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                                                               VerticalAlignment="Center"/>
+                                                                    <HyperlinkButton Content="{x:Bind FirstLabel}"
+                                                                                     FontSize="11"
+                                                                                     Padding="4,0,4,0"
+                                                                                     VerticalAlignment="Center"
+                                                                                     Click="OnFirstUseClick"
+                                                                                     IsEnabled="{x:Bind CanShow}"/>
+                                                                    <HyperlinkButton Content="Last Call"
+                                                                                     FontSize="11"
+                                                                                     Padding="4,0,4,0"
+                                                                                     VerticalAlignment="Center"
+                                                                                     Click="OnLastUseClick"
+                                                                                     Visibility="{x:Bind HasLast, Converter={StaticResource BoolToVisibilityConverter}}"/>
+                                                                </StackPanel>
+                                                            </DataTemplate>
+                                                        </ItemsControl.ItemTemplate>
+                                                    </ItemsControl>
+                                                </StackPanel>
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+                                </StackPanel>
+                            </ScrollViewer>
+                        </Grid>
+
+                        <TextBlock Grid.Row="2"
+                                   Grid.RowSpan="3"
+                                   Text="{x:Bind ViewModel.Arguments.Message, Mode=OneWay}"
+                                   Visibility="{x:Bind ViewModel.Arguments.Message, Mode=OneWay, Converter={StaticResource NullToVisibilityConverter}}"
+                                   FontSize="12"
+                                   Margin="12,8,12,8"
+                                   TextWrapping="Wrap"
+                                   VerticalAlignment="Top"/>
+
+                        <results:ResultsGridControl Grid.Row="2"
+                                                    ResultSet="{x:Bind ViewModel.Arguments.CallTable, Mode=OneWay}"
+                                                    SelectedRow="{x:Bind ViewModel.Arguments.SelectedCall, Mode=TwoWay}"
+                                                    Visibility="{x:Bind ViewModel.Arguments.HasCalls, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}"/>
+
+                        <ScrollViewer Grid.Row="4"
+                                      Background="{ThemeResource LayerFillColorDefaultBrush}"
+                                      HorizontalScrollBarVisibility="Auto"
+                                      HorizontalScrollMode="Enabled"
+                                      Visibility="{x:Bind ViewModel.Arguments.HasCall, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}">
+                            <StackPanel Padding="12,8,12,12" Spacing="10">
+                                <StackPanel Orientation="Horizontal" Spacing="8">
+                                    <TextBlock Text="{x:Bind ViewModel.Arguments.CallTitle, Mode=OneWay}"
+                                               FontSize="11"
+                                               VerticalAlignment="Center"
+                                               Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
+                                    <HyperlinkButton Content="Go To Call"
+                                                     FontSize="11"
+                                                     Padding="4,0,4,0"
+                                                     VerticalAlignment="Center"
+                                                     Click="OnGoToCallClick"
+                                                     ToolTipService.ToolTip="Show this call in the call tree"
+                                                     Visibility="{x:Bind ViewModel.Arguments.HasCallNode, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}"/>
+                                </StackPanel>
+                                <ItemsControl ItemsSource="{x:Bind ViewModel.Arguments.Rows, Mode=OneWay}">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate x:DataType="members:ArgumentRow">
+                                            <StackPanel Spacing="2" Margin="0,0,0,10">
+                                                <StackPanel Orientation="Horizontal" Spacing="8">
+                                                    <TextBlock Text="{x:Bind Name}"
+                                                               FontSize="12"
+                                                               FontWeight="SemiBold"
+                                                               VerticalAlignment="Center"/>
+                                                    <TextBlock Text="{x:Bind Type}"
+                                                               FontFamily="{StaticResource MonospaceFontFamily}"
+                                                               FontSize="11"
+                                                               Foreground="{ThemeResource CppClassBrush}"
+                                                               VerticalAlignment="Center"/>
+                                                    <TextBlock Text="{x:Bind Source}"
+                                                               FontSize="11"
+                                                               Foreground="{ThemeResource TextFillColorTertiaryBrush}"
+                                                               VerticalAlignment="Center"/>
+                                                </StackPanel>
+                                                <StackPanel Orientation="Horizontal" Spacing="6" Margin="12,0,0,0">
+                                                    <TextBlock Text="{x:Bind Value}"
+                                                               FontFamily="{StaticResource MonospaceFontFamily}"
+                                                               FontSize="11"
+                                                               VerticalAlignment="Center"
+                                                               IsTextSelectionEnabled="True"/>
+                                                    <HyperlinkButton Content="{x:Bind IteratorLabel}"
+                                                                     FontSize="11"
+                                                                     Padding="4,0,4,0"
+                                                                     VerticalAlignment="Center"
+                                                                     Click="OnIteratorLinkClick"
+                                                                     ToolTipService.ToolTip="Show this iterator in the call tree and the plan"
+                                                                     Visibility="{x:Bind IteratorLabel, Converter={StaticResource NullToVisibilityConverter}}"/>
+                                                    <HyperlinkButton Content="Find Calls"
+                                                                     FontSize="11"
+                                                                     Padding="4,0,4,0"
+                                                                     VerticalAlignment="Center"
+                                                                     Click="OnFindValueClick"
+                                                                     ToolTipService.ToolTip="Find Calls With This Value"
+                                                                     Visibility="{x:Bind CanFind, Converter={StaticResource BoolToVisibilityConverter}}"/>
+                                                </StackPanel>
+                                            </StackPanel>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </StackPanel>
+                        </ScrollViewer>
+
+                        <controls:GridSplitter Grid.Row="3"
+                                               Height="4"
+                                               HorizontalAlignment="Stretch"
+                                               VerticalAlignment="Stretch"
+                                               ResizeBehavior="PreviousAndNext"
+                                               ResizeDirection="Rows"
+                                               Visibility="{x:Bind ViewModel.Arguments.HasCall, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}"
+                                               Background="{ThemeResource ControlStrokeColorDefaultBrush}">
+                            <controls:GridSplitter.Template>
+                                <ControlTemplate TargetType="controls:GridSplitter">
+                                    <Grid Background="{TemplateBinding Background}"/>
+                                </ControlTemplate>
+                            </controls:GridSplitter.Template>
+                        </controls:GridSplitter>
+
+                        <StackPanel Grid.Row="2"
+                                    Grid.RowSpan="3"
+                                    Orientation="Vertical"
+                                    Spacing="8"
+                                    HorizontalAlignment="Center"
+                                    VerticalAlignment="Center"
+                                    Visibility="{x:Bind ViewModel.Arguments.IsLoading, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}">
+                            <ProgressRing IsActive="{x:Bind ViewModel.Arguments.IsLoading, Mode=OneWay}"
+                                          HorizontalAlignment="Center"/>
+                            <TextBlock Text="{x:Bind ViewModel.Arguments.LoadingMessage, Mode=OneWay}" HorizontalAlignment="Center"/>
                         </StackPanel>
                     </Grid>
                 </TabViewItem>

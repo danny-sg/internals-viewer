@@ -3,6 +3,7 @@ using InternalsViewer.Query;
 using InternalsViewer.Query.Parsing.Statements;
 using InternalsViewer.Query.Results;
 using InternalsViewer.UI.App.Messages;
+using InternalsViewer.UI.App.Models.Query;
 using InternalsViewer.UI.App.Models.Schema;
 using InternalsViewer.UI.App.Services;
 using InternalsViewer.UI.App.ViewModels.Query;
@@ -12,6 +13,7 @@ using Microsoft.UI.Xaml.Input;
 using Microsoft.UI.Xaml.Media;
 using Microsoft.Web.WebView2.Core;
 using System;
+using System.Collections.ObjectModel;
 using System.Globalization;
 using System.IO;
 using System.Text.Json;
@@ -112,14 +114,24 @@ public sealed partial class SqlEditorControl : UserControl, IDisposable
         set => SetValue(ThemeProperty, value);
     }
 
-    public static readonly DependencyProperty MessageProperty =
-        DependencyProperty.Register(nameof(Message), typeof(string), typeof(SqlEditorControl),
-            new PropertyMetadata(string.Empty));
+    public static readonly DependencyProperty MessagesProperty =
+        DependencyProperty.Register(nameof(Messages), typeof(ObservableCollection<QueryMessage>), typeof(SqlEditorControl),
+            new PropertyMetadata(null));
 
-    public string Message
+    public ObservableCollection<QueryMessage>? Messages
     {
-        get => (string)GetValue(MessageProperty);
-        set => SetValue(MessageProperty, value);
+        get => (ObservableCollection<QueryMessage>?)GetValue(MessagesProperty);
+        set => SetValue(MessagesProperty, value);
+    }
+
+    public static readonly DependencyProperty StayOnMessagesProperty =
+        DependencyProperty.Register(nameof(StayOnMessages), typeof(bool), typeof(SqlEditorControl),
+            new PropertyMetadata(false));
+
+    public bool StayOnMessages
+    {
+        get => (bool)GetValue(StayOnMessagesProperty);
+        set => SetValue(StayOnMessagesProperty, value);
     }
 
     public static readonly DependencyProperty IsErrorProperty =
@@ -247,12 +259,6 @@ public sealed partial class SqlEditorControl : UserControl, IDisposable
     public bool IsEditorLoading { get; private set; } = true;
 
     public string ExecuteLabel => IsExecuting ? "Executing" : "Execute";
-
-    public bool IsNotExecuting => !IsExecuting;
-
-    public Visibility ExecutingVisibility => IsExecuting ? Visibility.Visible : Visibility.Collapsed;
-
-    public Visibility NotExecutingVisibility => IsExecuting ? Visibility.Collapsed : Visibility.Visible;
 
     public SolidColorBrush ResultBrush => IsError
         ? new SolidColorBrush(Colors.Red)
@@ -667,7 +673,7 @@ public sealed partial class SqlEditorControl : UserControl, IDisposable
         control.ApplyBottomPanelVisibility();
         control.ApplyResultsTabVisibility();
 
-        if (e.NewValue is not null && control.IsResultsVisible && !control.IsError)
+        if (e.NewValue is not null && control.IsResultsVisible && !control.IsError && !control.StayOnMessages)
         {
             control.ResultsTabView.SelectedItem = control.ResultsTab;
         }
