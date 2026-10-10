@@ -1,12 +1,12 @@
 # Log Records
 
-Trace mode captures the transaction log records behind data modification queries, and lets them be applied to a page one at a time to see exactly what changed. See [Log Records](/docs/user-guide/query/LogRecords) for how this works and what each field in the Log Operations panel means.
+A traced data modification query captures its transaction log records, and lets them be applied to a page one at a time to see exactly what changed. See [Log Records](/docs/user-guide/query/LogRecords) for how this works and what each field in the Log Operations panel means.
 
 This part deletes a single row from `dbo.HeapTable` and watches the delete happen at the byte level - on the heap page itself, on its non-clustered index, and on the PFS page that tracks it.
 
 ## Step 1 - Delete a row
 
-With **Trace** on in the SQL Editor, run:
+With **Track query** on in the Query menu, as it is by default, run:
 
 ```SQL
 DELETE FROM dbo.HeapTable WHERE NumberField = 100

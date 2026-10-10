@@ -23,7 +23,7 @@ TTD has no clock. A recording is a sequence of positions - a sequence number sha
 - **Double-click** a bar to zoom to it, or empty space to zoom back out to the whole recording
 - **Click a thread's header** to expand that thread and collapse the others to their headers, and click it again to show them all
 
-Rows shrink to fit the pane, from 16 pixels down to 2, before a scrollbar appears, and names are only drawn on rows of 11 pixels or more - zoom in, or collapse the other threads, to read them.
+The lanes shrink to fit every thread into the pane, and a call's name appears once there is room to read it - zoom in, or click a thread's header to give it the whole pane, to see more of them.
 
 ## Selecting a call
 
@@ -78,7 +78,7 @@ Click the ruler to put a playhead on the chart, and drag along the ruler to move
 With **Memory** off, the calls under the playhead pop out of the chart, each raised by the memory it allocated, so scrubbing along shows which part of the stack is allocating. Drag a raised call to change the angle and depth, as with the memory view. With Memory on, the band marks the memory allocated and in use at the playhead.
 
 ::: details How this works
-Each bar is a call span recorded during the Full Trace replay - the call's start and end positions, the instructions executed in between, its thread and its place in the call tree. Position is the sequence number plus the step count scaled within it, so it lines up across threads. Instructions is a clock kept per thread from the step counts.
+Each bar is one call recorded during the Full Trace replay, with where it started and ended in the recording, the instructions it executed, its thread and its place in the call tree. Positions are shared by every thread, which is why that axis lines them up, while each thread counts its own instructions.
 
 See [How query tracing works](/docs/deep-dives/query-tracing#full-trace) for the details.
 :::

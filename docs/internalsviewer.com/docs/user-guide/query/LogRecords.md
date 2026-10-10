@@ -1,6 +1,6 @@
 # Log Records
 
-When [Trace](/docs/user-guide/query/Editor) mode is on and a query is detected as a data modification query (INSERT / UPDATE / DELETE etc.), the query runs inside a transaction, its [transaction log](https://learn.microsoft.com/en-us/sql/relational-databases/sql-server-transaction-log-architecture-and-management-guide) records are captured, and the transaction is then rolled back - so the database is left in its pre-query state.
+When [Track query](/docs/user-guide/query/Editor#track-query) is on, as it is by default, and a query is detected as a data modification query (INSERT / UPDATE / DELETE etc.), the query runs inside a transaction, its [transaction log](https://learn.microsoft.com/en-us/sql/relational-databases/sql-server-transaction-log-architecture-and-management-guide) records are captured, and the transaction is then rolled back - so the database is left in its pre-query state.
 
 ::: tip Operations surviving rollbacks
 Not everything rolls back. For example, the next `IDENTITY` value and certain allocation flags are not restored by the rollback.
@@ -16,7 +16,7 @@ The [Buffer Pool overlay](/docs/user-guide/allocations#buffer-pool) on the Alloc
 
 Log records appear at the top of the Event Timeline, alongside the other captured activity.
 
-Trace mode captures both the log events on the timeline and the raw transaction log entries, which can be replayed on a page to show what each log operation actually changed.
+A tracked modification captures both the log events on the timeline and the raw transaction log entries, which can be replayed on a page to show what each log operation actually changed.
 
 ::: details How log records are parsed
 Internals Viewer parses log records from the raw binary rather than relying on SQL Server's own interpretation of them. Because the live transaction log file is held with an exclusive lock by the SQL Server process, Internals Viewer still needs `fn_dblog` to read it - which comes with the limitation that log records larger than 8000 bytes are truncated.
@@ -24,7 +24,7 @@ Internals Viewer parses log records from the raw binary rather than relying on S
 
 ## Page Log Operations
 
-With Trace mode on, opening a page that was touched by the traced query - via double-clicking on the Timeline, or clicking a page in the Events pane - shows a **Log Operations** panel in the bottom right of the Page Viewer, listing every log record that changed that page:
+Opening a page that was touched by the traced query - via double-clicking on the Timeline, or clicking a page in the Events pane - shows a **Log Operations** panel in the bottom right of the Page Viewer, listing every log record that changed that page:
 
 ![Page with a single log operation applied](/docs/user-guide/images/query-page-view-log-operation-applied-cropped.png)
 

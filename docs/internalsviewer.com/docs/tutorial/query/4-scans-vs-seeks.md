@@ -16,7 +16,7 @@ FROM   dbo.ClusteredTable
 The plan is a Clustered Index Scan. To watch it against the index structure:
 
 1. Find the `Clustered Index Scan dbo.ClusteredTable.PK_ClusteredTable` bar in the Plan lane of the timeline
-2. Right-click it and choose to open the index - the Index view from Part 3 opens as a pane, linked to the trace
+2. Right-click it and choose **Open Index: PK_ClusteredTable** - the Index view from Part 3 opens as a pane, linked to the trace
 3. Drag the playhead (the red cursor) slowly across the timeline
 
 ![Query with index view](/docs/tutorial/images/screenshots/Query_layout_with_index.png)

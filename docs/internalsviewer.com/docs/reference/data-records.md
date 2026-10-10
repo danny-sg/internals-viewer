@@ -17,8 +17,8 @@ The standard row format for uncompressed pages. Fixed length columns are stored 
 |<MarkerKey foreground="#ffffff" background="#8AB7BD">00</MarkerKey>|Null Bitmap|One bit per column, set to 1 if the column value is null|
 |<MarkerKey foreground="#ffffff" background="#606264">00</MarkerKey>|Variable Length Column Count|Number of variable length columns stored in the record|
 |<MarkerKey foreground="#ffffff" background="#2D563A">00</MarkerKey>|Variable Length Column Offset Array|Two bytes per variable length column giving the offset where each value ends - each value starts where the previous one ended|
-|<MarkerKey foreground="#00" background="#D6DAD4">00</MarkerKey>|Fixed Length Value|Fixed length column values, stored in column order at fixed offsets|
-|<MarkerKey foreground="#00" background="#C2D0CB">00</MarkerKey>|Variable Length Value|Variable length column values, located via the offset array|
+|<MarkerKey foreground="#2C4030" background="#ECF2EC">00</MarkerKey>|Fixed Length Value|Fixed length column values, stored in column order at fixed offsets. Shaded alternately, so neighbouring values can be told apart|
+|<MarkerKey foreground="#24403A" background="#DCE8E4">00</MarkerKey>|Variable Length Value|Variable length column values, located via the offset array. Shaded alternately, so neighbouring values can be told apart|
 |<MarkerKey foreground="#ffffff" background="#d85240">00</MarkerKey>|Forwarding Stub|Left behind when a heap row is moved to another page. Contains the RID of the row's new location so non-clustered index pointers stay valid|
 
 ## CD Format
@@ -44,10 +44,10 @@ Sparse column values are stored in a sparse vector - a structure at the end of t
 
 |Key|Name|Description|
 |---|----|-----------|
-|<MarkerKey foreground="#ffffff" background="#7ea597">00</MarkerKey>|Complex Header|Two byte header identifying the complex column type - 5 is an in row sparse vector|
-|<MarkerKey foreground="#ffffff" background="#7ea597">00</MarkerKey>|Sparse Column Count|Number of sparse columns with a value stored in the vector|
-|<MarkerKey foreground="#ffffff" background="#7ea597">00</MarkerKey>|Sparse Columns|Array of two byte column ids identifying which sparse columns are stored|
-|<MarkerKey foreground="#ffffff" background="#7ea597">00</MarkerKey>|Sparse Column Offsets|Two bytes per column giving the offset where each value ends|
+|<MarkerKey foreground="#000000" background="#F5F5F5">00</MarkerKey>|Complex Header|Two byte header identifying the complex column type - 5 is an in row sparse vector|
+|<MarkerKey foreground="#000000" background="#F5F5F5">00</MarkerKey>|Sparse Column Count|Number of sparse columns with a value stored in the vector|
+|<MarkerKey foreground="#000000" background="#F5F5F5">00</MarkerKey>|Sparse Columns|Array of two byte column ids identifying which sparse columns are stored|
+|<MarkerKey foreground="#000000" background="#F5F5F5">00</MarkerKey>|Sparse Column Offsets|Two bytes per column giving the offset where each value ends|
 
 ## LOB Pointers
 

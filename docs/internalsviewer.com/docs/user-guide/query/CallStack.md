@@ -8,7 +8,7 @@ The tree decodes one row per frame:
 - **Category** badge - what the frame is doing, classified by Internals Viewer (Query Operator, Row Access, Index Access, Page Access, Latching, Buffer Pool, etc.)
 - **Symbol** - the function itself as `module!Class::Method`, resolved from SQL Server's debugging symbols, with the offset of the call within the function
 
-Selecting a frame shows a small histogram of when that function was active across the query - a picture of whether it was a one-off or ran throughout.
+The **Activity** column, on by default, shows a small histogram for each frame of when that function was active across the query - a picture of whether it was a one-off or ran throughout - with the selection's time highlighted. Drag the column's edge to resize it. **Signature** adds each function's parameter types from the symbols, and **Symbols** opens the detail pane with its **Members**, **Symbols** and **Arguments** tabs.
 
 An operator row marked **no stack** is one whose frames could not be found - the operator is inlined into its parent, captured no events of its own, or its iterator class is not in the mappings. It keeps its place in the plan but has nothing beneath it.
 
@@ -70,7 +70,7 @@ The search box offers the symbol categories and plan operators from the call sta
 
 Plain text matches anywhere. Text with `*` or `?` is a pattern in WinDbg's style, matched against the whole name or signature, so `*XeSqlPkg::vector*` finds that class's members and `*::GetRow` every function of that name. A `module!` prefix confines the search to that module, so a symbol pasted from WinDbg such as `sqlmin!CBpQScanColumnStoreScan::BpGetNextBatch` finds exactly that function. The **Module**, **Class** and **Signature** toggles beside the box choose which parts are matched. None ticked searches all of them. Class matches the class name alone, and Signature reaches the parameter types, so `PageId` with Signature ticked lists the functions that take one.
 
-Results are a tree of module, then class, then the members found under it. Right-clicking a module or class gives **Expand All** and **Collapse All**. A module's menu also has **Exclude Module**, which leaves that module out of every search from then on, and **Clear Module Exclusions**. The exclusions are kept in Settings, and while any are in force the last row of the results is a **Clear exclusions** link, with the excluded modules in its tooltip, so the way back stays in reach even when every module is excluded. The matched text is highlighted in each row, except where the row is exactly the text searched for.
+Results are a tree of module, then class, then the members found under it. Right-clicking a module gives **Expand all** and **Collapse all**, and a class **Expand All** and **Collapse All**. A module's menu also has **Exclude module**, which leaves that module out of every search from then on, and **Clear module exclusions**. The exclusions are kept in Settings, and while any are in force the last row of the results is a **Clear exclusions** link, with the excluded modules in its tooltip, so the way back stays in reach even when every module is excluded. The matched text is highlighted in each row, except where the row is exactly the text searched for.
 
 Results are capped per module. A search needs a query with Call Stack events to have run first, since that is how the modules and their exact symbol files are known.
 

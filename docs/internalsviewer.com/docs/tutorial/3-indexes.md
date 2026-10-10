@@ -35,9 +35,9 @@ Find `dbo.ClusteredTable` / `PK_ClusteredTable` in the Allocation Info table and
 The Index view draws the index as a tree of pages - the root page at the top, connected to the pages below it, down to the leaf level. This is the actual physical structure of the index, built by following the down page pointers from the root.
 
 > [!TIP]
-> An index tree can be far bigger than the screen - zoom in and out with **Ctrl + mouse wheel**.
+> An index tree can be far bigger than the screen - zoom in and out with the **mouse wheel**, and drag to pan.
 
-The header bar shows the index name, index type, the table, and the Object / Index Ids.
+The header bar shows the index type and name, and the command bar's overflow menu has the Object / Index Ids.
 
 ## Step 3 - Navigating the index
 
@@ -55,7 +55,7 @@ Each record on this page marks the start of a key range. In the screenshot slot 
 > [!NOTE]
 > The first index record at each level often has an empty key. It marks "everything before the next key" so a seek always has somewhere to go.
 
-Clicking a Down Page Pointer or a page address opens that page in the Page Viewer. You can also **Shift + click** a page directly in the tree to open it. Try following the tree from the root:
+Clicking a Down Page Pointer or a page address moves to that page within the Index view. **Shift + click** a page in the tree, or its page address, to open it in the Page Viewer instead. Try following the tree from the root:
 
 1. Click the root page (the single page at the top) and pick a Down Page Pointer
 2. If the index has an intermediate level, that page is an Index page - `Index Level` 1, with more down page pointers
@@ -96,7 +96,7 @@ GO
 
 Refresh, open the index view for `IX_HeapTable_NumberField`, and look at a leaf level record. Along with the `NumberField` key there is a `RID` field with a value in `(File Id:Page Id:Slot Id)` format - a direct physical pointer to the row: the page it's on, and its slot.
 
-Click the RID and the Page Viewer opens the heap page with the record at that slot.
+The RID is plain text in the Index view. **Shift + click** the leaf page to open it in the Page Viewer, where the RID is a link - click it and the heap page opens with the record at that slot.
 
 This is the trade-off between the two pointer types:
 

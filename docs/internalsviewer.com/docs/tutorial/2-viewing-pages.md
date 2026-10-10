@@ -21,12 +21,12 @@ There are several ways to open a page in the Page Viewer:
 
 ![Page Viewer](/docs/tutorial/images/screenshots/Page_view.png)
 
-The toolbar has Back and Forward buttons to move through the history of pages you've viewed, and a Refresh button to re-read the page from the database.
+The toolbar has a Refresh button to re-read the page from the database.
 
-The header bar shows which object the page belongs to - the table, the index name and type, plus the Object Id and Index Id from the database metadata.
+The header bar shows the page type and which object the page belongs to, and the command bar's overflow menu has the Object Id and Index Id from the database metadata.
 
 > [!TIP]
-> The page address box accepts a few formats: `(1:704)`, `1:704`, or just `704` (which assumes File 1). This is useful for jumping to pages referenced by DBCC commands or system views.
+> The page address box accepts `(1:704)` or `1:704`. This is useful for jumping to pages referenced by DBCC commands or system views.
 
 > [!TIP]
 > Clicking a page address link in the Page Viewer opens the page in the same tab. **Shift + click** opens it in a separate tab instead - useful for keeping the current page open while following a pointer, e.g. comparing the two ends of a `Next Page` link.
@@ -80,7 +80,7 @@ The decoded information shows the parts of the record structure:
 
 This is the _FixedVar_ record format - fixed length columns are stored first at fixed offsets, then variable length columns are located via the offset array. See the [Data Records](/docs/reference/data-records) reference for the format details.
 
-Selecting a range of bytes in the raw data shows a decode of those bytes in the applicable data types, and hovering over highlighted bytes shows a tooltip with the offset range and the decoded value.
+Selecting a range of bytes in the raw data shows a popup decoding those bytes in the applicable data types, and the status bar shows the offset and structure under the pointer.
 
 The status bar at the bottom shows the current offset and which structure the cursor is over.
 

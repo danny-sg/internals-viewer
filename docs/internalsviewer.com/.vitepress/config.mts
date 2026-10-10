@@ -30,6 +30,7 @@ export default defineConfig({
           { text: "Allocations", link: "docs/user-guide/allocations" },
           { text: "Page Viewer", link: "docs/user-guide/page-viewer" },
           { text: "Index View", link: "docs/user-guide/index-view" },
+          { text: "Columnstore Viewer", link: "docs/user-guide/columnstore" },
           {
             text: "Query",
             collapsed: false,
@@ -48,6 +49,7 @@ export default defineConfig({
               { text: "Call Stack", link: "docs/user-guide/query/CallStack" },
               { text: "Full Trace", link: "docs/user-guide/query/FullTrace" },
               { text: "Flame Chart", link: "docs/user-guide/query/FlameChart" },
+              { text: "Trace", link: "docs/user-guide/query/Trace" },
               {
                 text: "Execution Plan",
                 link: "docs/user-guide/query/ExecutionPlan",

@@ -54,7 +54,7 @@ Steps:
 
 ### Compatibility
 
-- Windows 10 version 17763.0 or higher
+- Windows 10 version 2004 (build 19041) or higher, or Windows 11
 - Tested on SQL Server 2019 - 2025
 
 ### Technologies
@@ -69,14 +69,14 @@ Use caution when running on any database. Internals Viewer does not make any mod
 to a database, but it is not advisable to run on production servers due to the I/O
 overhead and risk of some functions.
 
-Use caution with the Query tracing as the default Clear Buffer Pool will run `DBCC FREEPROCCACHE`
-before executing a query.
+Use caution with Query tracing - the **Clear Buffer Pool** option runs `CHECKPOINT` and `DBCC DROPCLEANBUFFERS`
+before executing a query, emptying the buffer pool for the whole server.
 
 ## Usage
 
 ### Connecting to a database
 
-Internals Viewer can either connect to a live database or an offline .MDF file.
+Internals Viewer can connect to a live database, open the data files of a detached or offline database, or open a full database backup (.bak) without restoring it.
 
 #### SQL Server
 

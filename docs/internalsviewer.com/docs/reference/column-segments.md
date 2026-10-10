@@ -138,12 +138,15 @@ It comes from the segment's catalog metadata instead:
 
 ```
 scaled    = base_id >= 0 AND magnitude > 0
-storedMax = (max_data_id / magnitude) - base_id
-width     = scaled AND storedMax > 2147483647 ? 16 : 8
+storedMax = encoding = 4 ? max_data_id
+          : scaled       ? (max_data_id / magnitude) - base_id
+          :                0
+width     = storedMax > 2147483647 ? 16 : 8
 ```
 
-A literal run holds the data id relative to the base, in a **signed** field whose negatives mean a read run. Only
-31 bits are usable, so an id past `int.MaxValue` forces the wider entry. A dictionary encoded segment leaves
+A literal run holds the data id relative to the base, or on an encoding 4 (store by value) segment the value
+itself, in a **signed** field. An 8 byte entry uses the sign to mark a read run, leaving only 31 bits, so an id
+past `int.MaxValue` forces the wider entry. A dictionary encoded segment leaves
 `base_id` and `magnitude` at -1 and stores slot numbers, which are always small, so the guard matters. Without it
 every dictionary segment is wrongly predicted wide.
 
@@ -165,18 +168,19 @@ half and produces a negative count.
 |------|----|-----|
 |`+0x00`|8|Value, signed|
 |`+0x08`|4|Run Count|
-|`+0x0C`|4|Run Kind. 1 read, 0 repeat and terminator|
+|`+0x0C`|4|Read Flag. 1 read, 0 repeat and terminator|
 
 The 8 byte entry keeps the run kind in the **sign bit** of its value. The 16 byte entry has no spare bit, the value
-taking all 64, so the kind gets a field of its own. It is redundant with the sign in every segment measured.
+taking all 64, so the kind gets a field of its own and the sign says nothing. On an encoding 4 segment a literal
+value can be negative, so a 16 byte entry has to be read by its flag.
 
 ### Run kinds
 
-|Kind|Sign|Covers|Consumes|
-|----|----|------|--------|
-|Repeat|Value >= 0|`Run Count` rows, all reading one value|1 value|
-|Read|Value < 0|`Run Count` rows, reading consecutive values|`Run Count` values|
-|Terminator|Value 0, Count 0|Nothing|Nothing|
+|Kind|8 byte entry|16 byte entry|Covers|Consumes|
+|----|------------|-------------|------|--------|
+|Repeat|Value >= 0|Read Flag 0|`Run Count` rows, all reading one value|1 value|
+|Read|Value < 0|Read Flag 1|`Run Count` rows, reading consecutive values|`Run Count` values|
+|Terminator|Value 0, Count 0|Value 0, Count 0|Nothing|Nothing|
 
 A repeat run holds its value differently by type. On a Bit Pack segment the data id is **inline** in the entry,
 because it fits. On a VLD segment it is an **address**, because a wide value does not.
@@ -233,11 +237,12 @@ A stored value is the data id minus `Bitpack Min Id`. Literal RLE values are **n
 
 ## Variable length data
 
-Used when values are too wide to bit pack, meaning anything variable width or fixed width above 8 bytes.
+Used when values are too wide to bit pack, meaning anything variable width or fixed width above 8 bytes. Decimal
+columns use it too, on narrow pages of scaled values (see below).
 
 ```
-VLD Header       24 bytes, value count and max string size
-Page Size Array  element size and count, then one length per page
+VLD Header       12 bytes - Sub Lob Type 8, value count and max string size
+Page Size Array  12 bytes - Sub Lob Type 1, element size and element count - then one length per page
 VLD Page [0..n]  each page's length comes from that array
 ```
 
@@ -254,11 +259,18 @@ to size. The low nibble of the byte at `+0x04` selects the compression, so a pag
 |Offset|Size|Field|
 |------|----|-----|
 |`+0x00`|4|Sub Lob Type, 9 for a value page|
-|`+0x04`|1|Flags. Low nibble compression, high nibble unexplained|
+|`+0x04`|1|Flags. Low nibble compression, high nibble flags with bit 0 marking scaled values|
 |`+0x05`|1|Reserved|
 |`+0x06`|2|Value Size. Negative means variable width|
 |`+0x08`|4|Value Count|
 |`+0x0C`|2|Payload Size, compressed pages only|
+
+A compressed variable width page expands to `Payload Size + 1` bytes, and a fixed width page to
+`Value Count * Value Size`.
+
+A page with the scaled flag set holds scaled integers - every one measured is a decimal column. The low bit of
+each stored value is reserved, so the value is the stored one shifted right by one, then divided by ten to the
+power of the column's scale. Decimal is also the only type seen to fill a narrow page, 8 bytes or less.
 
 ### Locating a value on a page
 
@@ -315,5 +327,5 @@ Both have two entries. Only the unit count differs, because the width does.
 
 - `+0x0C` is `0x7FFF` on every segment measured, spanning 13 data types and all five encodings.
 - The two bytes between a VLD header and its bookmark array are always zero and break eight byte alignment.
-- The high nibble of a VLD page's `Flags` varies but nothing yet correlates with it.
+- Only bit 0 of the high nibble of a VLD page's `Flags` is explained, marking scaled values.
 - A VLD segment's bookmark count and RLE array both lay claim to the same 16 bytes.

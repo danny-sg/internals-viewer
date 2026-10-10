@@ -2,23 +2,51 @@
 
 The SQL Editor is where a query is written and run. The editor has SQL syntax highlighting and IntelliSense aware of the connected database's schema.
 
-Its command bar has **Execute**, plus a set of toggles:
+Its command bar has:
 
 ![SQL Editor command bar](/docs/user-guide/images/query-empty-default-layout-cropped.png)
 
-- **Trace** - when on, data modification queries (INSERT / UPDATE / DELETE) are traced with log recording, so their [log records](/docs/user-guide/query/LogRecords) can be inspected and applied to a page. When off, data modification queries still run and roll back as normal, but no log records are captured
-- **Clear Buffer Pool** - empties the buffer pool first (`DBCC DROPCLEANBUFFERS`) so every page the query touches is physically read. Don't use this on a server anyone else is using
-- **Disable Read-Ahead** - makes the engine read pages individually instead of [pre-fetching large blocks](https://learn.microsoft.com/en-us/sql/relational-databases/reading-pages), giving a much clearer picture of the access pattern
-- **Results** - when on, the query returns its result set, shown in the **Results** tab. When off, results are discarded - useful for cutting down noise on queries where only the storage engine activity matters
-- **Messages** - shows the **Messages** tab, e.g. row counts and other output messages
+<!-- Screenshot (update): the SQL Editor - Trace is now a button, and History, Results and Messages are on the tab strip -->
 
-While a query is running, Execute is replaced by a **Stop** button to cancel it.
+- **Execute** - runs the query. While it runs it reads **Executing** and the square **Stop** button beside it turns red - click Stop to cancel the query
+- **Trace** - opens the [Trace](/docs/user-guide/query/Trace) pane, which steps through the query's plan
+- **Clear Buffer Pool** - empties the buffer pool first (`CHECKPOINT`, then `DBCC DROPCLEANBUFFERS`) so every page the query touches is physically read. Don't use this on a server anyone else is using - it empties the buffer pool for the whole server
+- **Disable Read-Ahead** - on by default. Makes the engine read pages individually instead of [pre-fetching large blocks](https://learn.microsoft.com/en-us/sql/relational-databases/reading-pages), using trace flag 652 for the query's session, giving a much clearer picture of the access pattern
+
+**Clear Buffer Pool** and **Disable Read-Ahead** are remembered, and only apply while **Track query** is on - see [Track query](#track-query) below.
+
+The tab strip has toggles for the panes around the editor:
+
+- **History** - the [query history](#query-history)
+- **Results** - when on, the query returns its result set, shown in the **Results** tab once there is one. When off, rows are read and counted but not kept - useful for cutting down noise on queries where only the storage engine activity matters. Off by default, and remembered
+- **Messages** - the **Messages** tab, with the progress of each run, row counts and any errors. It opens by itself when a query runs
 
 ::: tip
-- **Ctrl + Enter** executes from the keyboard
+- **F5** executes from the keyboard
 - If text is selected in the editor, Execute runs just the selection
+- **Ctrl + H** shows and hides the History, and **Ctrl + R** the Results and Messages
 - **Ctrl + mouse wheel** changes the editor font size, and the size is remembered
 :::
+
+## Track query
+
+**Track query** on the Query menu, on by default, is what makes a run a trace. While it is on, **Execute** runs the query with an Extended Events session, captures the execution plan, runs a data modification inside a transaction that is rolled back, and loads everything into the [Timeline](/docs/user-guide/query/Timeline) and the other panes.
+
+With it off, the query just runs. There is no event session, no plan and no timeline, **Clear Buffer Pool** and **Disable Read-Ahead** are not applied, every `GO` batch in a script runs in turn - and a data modification is not rolled back, so it changes the data.
+
+**Track query** is not remembered - a new Query tab always starts with it on.
+
+## Query history
+
+**History** opens a panel beside the editor listing the queries run against this database, newest first. Each entry shows the start of the query, with the whole of it in its tooltip.
+
+- **Double-click** an entry to put it back in the editor
+- The run button on an entry puts it in the editor and runs it, and the cross removes it
+- **Search** filters the entries, and **Clear All** removes them all
+
+Running the same query again moves it back to the top rather than adding it twice. The history is kept for each database, and the oldest queries drop off as it fills.
+
+<!-- Screenshot: the SQL Editor with the History panel open -->
 
 ## Multi-statement queries
 

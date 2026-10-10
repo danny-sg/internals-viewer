@@ -4,7 +4,7 @@ The Events pane is the raw data behind the [Timeline](/docs/user-guide/query/Tim
 
 ![Events pane](/docs/user-guide/images/query-view-events.png)
 
-Each event shows its type, a description, its time and duration in milliseconds, the page it relates to, and the object that page belongs to. Columns can be sorted by clicking their headers, and the search box filters the list across every field.
+Each event shows its name, a description, its time and duration in milliseconds, the page it relates to, the object that page belongs to, and for a columnstore page the **Structure** it holds - the row group and column of a segment, a dictionary, or the delete bitmap. Columns can be sorted by clicking their headers, and the search box filters the list across every field.
 
 The status bar at the bottom counts the events by type - a quick summary of what the query did.
 

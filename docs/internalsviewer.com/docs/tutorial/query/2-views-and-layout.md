@@ -4,7 +4,9 @@ The **View** menu has additional panes that can be opened alongside the SQL edit
 
 ![Query view options](/docs/tutorial/images/screenshots/Query_view_options_cropped.png)
 
-Each pane opens as a tab, and tabs can be dragged into whatever layout suits the investigation - drop a tab beside another pane to split the space, or onto a pane to stack them (see [Layout](/docs/user-guide/query#layout) in the user guide). For example, you can keep the SQL editor on the left, dock the Allocations or Index view on the right to watch during replay, and put the Execution Plan below - with the timeline always along the bottom.
+<!-- Screenshot (update): the View menu - it now has Flame Chart and Trace, and no Settings item -->
+
+Each pane opens as a tab, and tabs can be dragged into whatever layout suits the investigation - drop a tab beside another pane to split the space, or onto a pane to stack them (see [Layout](/docs/user-guide/query#layout) in the user guide). For example, you can keep the SQL editor on the left, dock the Allocations or Index view on the right to watch during replay, and put the Execution Plan below. The timeline is a pane like the others, and starts along the bottom.
 
 ## Watching reads on the allocation map
 

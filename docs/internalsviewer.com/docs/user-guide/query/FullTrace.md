@@ -31,8 +31,8 @@ Turning it on also changes the layout straight away. A recording has no clock an
 
 1. **Preparing** - the UAC prompt appears and the harness starts. If SQL Server has already been recorded since it last started, the harness restarts the SQL Server service first, along with any running services that depend on it such as SQL Server Agent, and waits for the database to come back online. TTD can never be unloaded from a process once it has attached, and attaching a second time records nothing useful, so each recording needs a fresh SQL Server process. The restart drops every connection to the instance and leaves the buffer pool and plan cache empty. There is no restart at the end of the run.
 2. **Warming up** - unless [Clear Buffer Pool](/docs/user-guide/query/Editor) is on, the query runs once untraced, on its own connection, inside a transaction that is rolled back. With Clear Buffer Pool off you are not asking to see disk reads, and the warm-up keeps them out of the recording, along with compiling the plan - both would otherwise swamp the query's own work. A query with `OPTION (RECOMPILE)` still compiles inside the recording.
-3. **Recording** - just before the Extended Events session starts, TTD attaches to `sqlservr.exe`, recording only `sqlmin.dll` and `sqllang.dll` - the storage engine and the query processor. The query runs, and the recording stops as soon as its results have been read.
-4. **Replaying** - the results, messages and execution plan appear as soon as the query finishes, and the recording opens and replays in the background. The Call Stack and Flame Chart panes show its progress, with a **Cancel** link in the Call Stack, and Messages logs each step - "Opening Full Trace", "Full Trace opened in", "Replaying Full Trace for N thread(s)", the Extended Events functions excluded and memory functions tracked, the calls and call paths replayed, and the size of the call log. When it finishes, the Call Stack, Flame Chart and plan properties fill in.
+3. **Recording** - just before the Extended Events session starts, TTD attaches to SQL Server, recording only the storage engine and the query processor. The query runs, and the recording stops as soon as its results have been read.
+4. **Replaying** - the results, messages and execution plan appear as soon as the query finishes, and the recording opens and replays in the background. The Call Stack and Flame Chart panes show its progress, with a **Cancel** link in the Call Stack, and Messages logs each step as it goes, from "Opening Full Trace" to how many calls were replayed. When it finishes, the Call Stack, Flame Chart and plan properties fill in.
 
 <!-- Screenshot: the Call Stack pane while a Full Trace replays, with its progress and the Cancel link -->
 
@@ -64,13 +64,13 @@ The parallelism waits are there to find the threads. A recording holds every thr
 
 ## Limits
 
-- **Two modules** - only the storage engine and query processor are recorded. SQLOS (`sqldk.dll`), which handles scheduling, memory and synchronisation on every thread, is not. Calls into it from the recorded modules are still seen, which is how memory allocations are counted.
+- **Two modules** - only the storage engine and query processor are recorded. SQLOS, the layer that handles scheduling, memory and synchronisation on every thread, is not. Calls into it from the recorded modules are still seen, which is how memory allocations are counted.
 - **Pooled threads** - workers are pooled, so a worker's thread can run an unrelated task inside the recording - a Query Store flush, say - and those calls appear in the tree too.
 - **Unmatched operators** - an operator whose iterator is inlined into its parent, or whose methods the compiler folded away, cannot be matched. It keeps its place in the plan with nothing beneath it.
 - **No time** - TTD records instructions, not time, and the recording slows everything down anyway, so nothing in a Full Trace is in milliseconds. The Flame Chart measures in trace positions or instructions instead.
 
 ::: details How this works
-The recording is made by an elevated harness that attaches TTD to SQL Server, restarting the service first if an earlier recording is still loaded in it. The recording is then replayed once, from start to finish, through a native bridge over the TTD replay API, and every call on the query's threads goes into the call tree, the Flame Chart's spans and a compressed log of call arguments. Operators are matched by the iterator object each call ran on, and memory is counted from the calls to SQL Server's allocators.
+The recording is made by an elevated harness that attaches TTD to SQL Server, restarting the service first if an earlier recording is still loaded in it. The recording is then replayed once, from start to finish, and every call on the query's threads goes into the call tree, the Flame Chart and a log of call arguments. Operators are matched by the iterator object each call ran on, and memory is counted from the calls to SQL Server's allocators.
 
 See [How query tracing works](/docs/deep-dives/query-tracing#full-trace) for the details.
 :::
