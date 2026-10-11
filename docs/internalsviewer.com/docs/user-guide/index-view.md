@@ -10,7 +10,7 @@ The Index View visualizes an entire index as a tree of pages - the root page at 
 
 While the index loads, the view counts the pages read so far. The header bar shows the index type, such as **Clustered Index**, with an icon in the index's colour on the [Allocation Map](/docs/user-guide/allocations), and its name as `schema.table.index`. The command bar's overflow menu has its Object Id, Index Id, Allocation Unit Id and Partition Id.
 
-<!-- Screenshot (update): the Index View - the header now shows the index type and name, with Refresh and Levels on the command bar -->
+![The Index View zoomed out to the whole tree, with Levels on](/docs/user-guide/images/index-view-levels.png)
 
 ## Navigating
 
@@ -53,7 +53,7 @@ In this pane zooming is **Ctrl + mouse wheel**.
 
 A columnstore index has no B-Tree to draw, so opening one from the Query view opens the [Columnstore Viewer](/docs/user-guide/columnstore) instead.
 
-<!-- Screenshot: the Query view's Index pane with Levels on and the Page Data pane open -->
+![The Query view's Index pane with Levels on and the Page Data pane open, following the playhead](/docs/user-guide/images/query-index-pane-page-data.png)
 
 ::: details How this works
 The tree is discovered with a breadth-first walk from the index's root page, decoding the index records on each page for their down page pointers - reading every page of the index exactly once.

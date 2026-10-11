@@ -54,19 +54,25 @@
                                 <ToggleMenuFlyoutItem Text="SQL Editor"
                                    IsChecked="{x:Bind ViewModel.Layout.IsSqlEditorVisible, Mode=TwoWay}"/>
                                 <ToggleMenuFlyoutItem Text="Allocations"
-                                   IsChecked="{x:Bind ViewModel.Layout.IsAllocationsVisible, Mode=TwoWay}"/>
+                                   IsChecked="{x:Bind ViewModel.Layout.IsAllocationsVisible, Mode=TwoWay}"
+                                   IsEnabled="{x:Bind ViewModel.Layout.CanShowEventViews, Mode=OneWay}"/>
                                 <ToggleMenuFlyoutItem Text="Execution Plan"
                                    IsChecked="{x:Bind ViewModel.Layout.IsExecutionPlanVisible, Mode=TwoWay}"/>
                                 <ToggleMenuFlyoutItem Text="Events"
-                                   IsChecked="{x:Bind ViewModel.Layout.IsEventsVisible, Mode=TwoWay}"/>
+                                   IsChecked="{x:Bind ViewModel.Layout.IsEventsVisible, Mode=TwoWay}"
+                                   IsEnabled="{x:Bind ViewModel.Layout.CanShowEventViews, Mode=OneWay}"/>
 
                                 <ToggleMenuFlyoutItem Text="Call Stack"
                                    IsChecked="{x:Bind ViewModel.Layout.IsCallstackVisible, Mode=TwoWay}"/>
                                 <MenuFlyoutSeparator/>
                                 <ToggleMenuFlyoutItem Text="Timeline"
-                                   IsChecked="{x:Bind ViewModel.Layout.IsTimelineVisible, Mode=TwoWay}"/>
-                                <ToggleMenuFlyoutItem Text="Trace"
-                                   IsChecked="{x:Bind ViewModel.IsTraceVisible, Mode=TwoWay}"/>
+                                   IsChecked="{x:Bind ViewModel.Layout.IsTimelineVisible, Mode=TwoWay}"
+                                   IsEnabled="{x:Bind ViewModel.Layout.CanShowEventViews, Mode=OneWay}"/>
+                                <ToggleMenuFlyoutItem Text="Flame Chart"
+                                   IsChecked="{x:Bind ViewModel.Layout.IsFlameChartVisible, Mode=TwoWay}"
+                                   IsEnabled="{x:Bind ViewModel.Layout.IsFullTrace, Mode=OneWay}"/>
+                                <ToggleMenuFlyoutItem Text="Simulation"
+                                   IsChecked="{x:Bind ViewModel.IsSimulationVisible, Mode=TwoWay}"/>
                                 <MenuFlyoutSeparator/>
                                 <MenuFlyoutItem Text="Reset Layout"
                              Command="{x:Bind ViewModel.ResetLayoutCommand}"/>
@@ -124,22 +130,31 @@
                                    IsChecked="{x:Bind ViewModel.QueryOptions.IncludeCallStack, Mode=TwoWay}"/>
                             </MenuBarItem>
 
-                            <MenuBarItem Title="Debugger">
-                                <MenuFlyoutItem Text="{x:Bind ViewModel.DebuggerStatus, Mode=OneWay}"
-                                                IsEnabled="False"/>
+                            <MenuBarItem Title="Trace/Debug">
+                                <ToggleMenuFlyoutItem Text="Record Full Trace"
+                                                      IsChecked="{x:Bind ViewModel.QueryOptions.RecordTimeTravel, Mode=OneWay}"
+                                                      Click="OnRecordTimeTravelClick"/>
+                                <ToggleMenuFlyoutItem Text="Record Extended Events"
+                                                      IsChecked="{x:Bind ViewModel.QueryOptions.RecordFullTraceEvents, Mode=TwoWay}"
+                                                      IsEnabled="{x:Bind ViewModel.QueryOptions.RecordTimeTravel, Mode=OneWay}"/>
                                 <MenuFlyoutSeparator/>
-                                <MenuFlyoutItem Text="Attach WinDbg to SQL Server"
-                                                Command="{x:Bind ViewModel.AttachDebuggerCommand}"/>
-                                <MenuFlyoutItem Text="Connect to session"
-                                                Command="{x:Bind ViewModel.ConnectDebuggerCommand}"/>
-                                <MenuFlyoutItem Text="Detach"
-                                                Command="{x:Bind ViewModel.DetachDebuggerCommand}"/>
-                                <MenuFlyoutSeparator/>
-                                <MenuFlyoutItem Text="Clear breakpoints"
-                                                Command="{x:Bind ViewModel.ClearBreakpointsCommand}"/>
-                                <MenuFlyoutSeparator/>
-                                <MenuFlyoutItem Text="Search symbols"
-                                                Command="{x:Bind ViewModel.SearchSymbolsCommand}"/>
+                                <MenuFlyoutSubItem Text="WinDbg">
+                                    <MenuFlyoutItem Text="{x:Bind ViewModel.DebuggerStatus, Mode=OneWay}"
+                                                    IsEnabled="False"/>
+                                    <MenuFlyoutItem Text="Attach WinDbg to SQL Server"
+                                                    Command="{x:Bind ViewModel.AttachDebuggerCommand}"/>
+                                    <MenuFlyoutItem Text="Connect to session"
+                                                    Command="{x:Bind ViewModel.ConnectDebuggerCommand}"/>
+                                    <MenuFlyoutItem Text="Detach"
+                                                    Command="{x:Bind ViewModel.DetachDebuggerCommand}"/>
+                                    <MenuFlyoutSeparator/>
+                                    <MenuFlyoutItem Text="Clear breakpoints"
+                                                    Command="{x:Bind ViewModel.ClearBreakpointsCommand}"/>
+                                    <MenuFlyoutSeparator/>
+                                    <MenuFlyoutItem Text="Search symbols"
+                                                    Command="{x:Bind ViewModel.SearchSymbolsCommand}"/>
+                                </MenuFlyoutSubItem>
+                               
                             </MenuBarItem>
 
                         </MenuBar>

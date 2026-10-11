@@ -1,0 +1,450 @@
+﻿using System;
+using System.Collections.Generic;
+using CommunityToolkit.Mvvm.ComponentModel;
+using InternalsViewer.Execution.AccessPaths.Joins.Hash;
+using InternalsViewer.Execution.BatchMode.Vectors;
+using InternalsViewer.Execution.AccessPaths.Results.Steps;
+using InternalsViewer.Execution.Interfaces.Iterators.Joins;
+using InternalsViewer.UI.App.Models.Index;
+using InternalsViewer.UI.App.Models.Query.Simulation;
+using InternalsViewer.UI.App.Models.Query.Simulation.Hash;
+
+namespace InternalsViewer.UI.App.ViewModels.Query.Simulation;
+
+/// <summary>
+/// The hash table one hash match fills, and what its walk is currently doing to it
+/// </summary>
+/// <remarks>
+/// A table belongs to the operator that built it rather than to the object its build side read. A hash match reading another operator has
+/// no object to hang it on, and a trace holding two hash matches has two tables that would otherwise be written into one another.
+/// </remarks>
+public sealed partial class SimulationHashTableViewModel(RecordColumnFilter columnFilter) : ObservableObject
+{
+    private const int BucketColumn = 0;
+
+    private const int HashColumn = 1;
+
+    private const int FirstValueColumn = 2;
+
+    private const double DataIdWidth = 68;
+
+    private readonly List<HashEntryModel> _matchedEntries = [];
+
+    private List<HashBucketModel>? _bucketModels;
+
+    private int _syncedRowCount;
+
+    private HashBucketModel? _currentBucket;
+
+    private HashEntryModel? _currentEntry;
+
+    private bool _suppressResize;
+
+    private (int Rows, long Estimate, int Buckets, int LongestChain) _summaryKey = (-1, -1, -1, -1);
+
+    private IReadOnlyList<HashColumnModel>? _placeholderColumns;
+
+    [ObservableProperty]
+    private IReadOnlyList<HashBucketModel> _buckets = [];
+
+    [ObservableProperty]
+    private IReadOnlyList<HashColumnModel> _columns = HashColumnModel.CreateBaseColumns();
+
+    [ObservableProperty]
+    private string _summary = string.Empty;
+
+    [ObservableProperty]
+    private int _bucketCount = 1 << JoinHash.DefaultBucketBits;
+
+    private IHashTableSource? Iterator { get; set; }
+
+    private int IteratorNodeId { get; set; }
+
+    /// <summary>
+    /// Binds to the iterator that fills this table, which is a new one each time the trace is opened
+    /// </summary>
+    public void Attach(IHashTableSource iterator, int nodeId)
+    {
+        Iterator = iterator;
+
+        IteratorNodeId = nodeId;
+
+        _suppressResize = true;
+
+        BucketCount = iterator.Table.BucketCount;
+
+        _suppressResize = false;
+
+        Sync(null);
+    }
+
+    /// <summary>
+    /// Brings the table up to date with the step just taken, which only changes it when the step is this operator's own
+    /// </summary>
+    /// <remarks>
+    /// A nested hash match's steps flow up through the operator above it, so a step is matched on the id it carries rather than on its
+    /// kind. Matching on kind alone shows one operator's build in the other's table.
+    /// </remarks>
+    public void Sync(AccessStep? step)
+    {
+        if (Iterator is not { } iterator)
+        {
+            return;
+        }
+
+        var table = iterator.Table;
+
+        var isOwnStep = step is not null && step.NodeId == IteratorNodeId;
+
+        if (_bucketModels is null
+            || _bucketModels.Count != table.BucketCount
+            || _syncedRowCount != table.RowCount)
+        {
+            SyncBuckets(table);
+
+            Buckets = _bucketModels!;
+        }
+
+        if (!ReferenceEquals(_placeholderColumns, Columns))
+        {
+            _placeholderColumns = Columns;
+
+            RefreshEmptyBuckets();
+        }
+
+        if (isOwnStep && step is AccessStep.HashAggregate { IsNewGroup: false } folded)
+        {
+            RefreshEntry(table, folded.Bucket, folded.Entry);
+        }
+
+        if (isOwnStep)
+        {
+            UpdateHighlight(step);
+        }
+
+        UpdateSummary(iterator, table);
+    }
+
+    public void Reset()
+    {
+        Iterator = null;
+
+        _bucketModels = null;
+        _syncedRowCount = 0;
+        _placeholderColumns = null;
+        _currentBucket = null;
+        _currentEntry = null;
+        _summaryKey = (-1, -1, -1, -1);
+
+        _matchedEntries.Clear();
+
+        Buckets = [];
+        Columns = HashColumnModel.CreateBaseColumns();
+        Summary = string.Empty;
+    }
+
+    partial void OnBucketCountChanged(int value)
+    {
+        if (_suppressResize || Iterator is not { } iterator)
+        {
+            return;
+        }
+
+        iterator.SetBucketCount(value);
+
+        Sync(null);
+    }
+
+    private void RefreshEntry(HashTable table, int bucket, int entry)
+    {
+        if (_bucketModels is not { } models
+            || bucket < 0
+            || bucket >= models.Count
+            || entry < 0
+            || entry >= models[bucket].Entries.Count
+            || entry >= table.Buckets[bucket].Count)
+        {
+            return;
+        }
+
+        models[bucket].Entries[entry] = ToEntryModel(table.Buckets[bucket].Entries[entry], bucket, entry);
+    }
+
+    private void UpdateSummary(IHashTableSource iterator, HashTable table)
+    {
+        var key = (table.RowCount, iterator.BuildRowEstimate, table.BucketCount, table.LongestChain);
+
+        if (key == _summaryKey)
+        {
+            return;
+        }
+
+        _summaryKey = key;
+
+        Summary = iterator.BuildRowEstimate > 0
+            ? $"{table.RowCount:N0} rows, sized for {iterator.BuildRowEstimate:N0}, "
+              + $"{table.BucketCount} buckets, longest chain {table.LongestChain}"
+            : $"{table.RowCount:N0} rows, {table.BucketCount} buckets, longest chain {table.LongestChain}";
+    }
+
+    private void SyncBuckets(HashTable table)
+    {
+        if (_bucketModels is not { } models || models.Count != table.BucketCount)
+        {
+            RebuildBuckets(table);
+
+            return;
+        }
+
+        for (var index = 0; index < models.Count; index++)
+        {
+            FillBucket(models[index], table.Buckets[index]);
+        }
+
+        _syncedRowCount = table.RowCount;
+    }
+
+    private void RebuildBuckets(HashTable table)
+    {
+        _currentBucket = null;
+        _currentEntry = null;
+
+        _matchedEntries.Clear();
+
+        var models = new List<HashBucketModel>(table.BucketCount);
+
+        foreach (var bucket in table.Buckets)
+        {
+            var model = new HashBucketModel { Index = bucket.Index };
+
+            model.Entries.Reset(BuildEntries(bucket, bucket.Index));
+
+            models.Add(model);
+        }
+
+        _bucketModels = models;
+        _syncedRowCount = table.RowCount;
+    }
+
+    private void FillBucket(HashBucketModel model, HashBucket bucket)
+    {
+        var entries = model.Entries;
+
+        var materialised = entries is [{ IsPlaceholder: true }] ? 0 : entries.Count;
+
+        if (materialised == bucket.Count)
+        {
+            return;
+        }
+
+        if (materialised == 0 || materialised > bucket.Count)
+        {
+            entries.Reset(BuildEntries(bucket, model.Index));
+
+            return;
+        }
+
+        for (var index = materialised; index < bucket.Count; index++)
+        {
+            entries.Add(ToEntryModel(bucket.Entries[index], model.Index, index));
+        }
+    }
+
+    private List<HashEntryModel> BuildEntries(HashBucket bucket, int bucketIndex)
+    {
+        if (bucket.Count == 0)
+        {
+            return [EmptyEntryModel(bucketIndex)];
+        }
+
+        var entries = new List<HashEntryModel>(bucket.Count);
+
+        for (var index = 0; index < bucket.Count; index++)
+        {
+            entries.Add(ToEntryModel(bucket.Entries[index], bucketIndex, index));
+        }
+
+        return entries;
+    }
+
+    private void UpdateHighlight(AccessStep? step)
+    {
+        // A new probe row starts a fresh verdict, so whatever the last one matched stops being green
+        if (step is AccessStep.HashProbe or AccessStep.HashBuild or AccessStep.HashAggregate)
+        {
+            ClearMatchedEntries();
+        }
+
+        _currentBucket?.IsCurrent = false;
+        _currentBucket = null;
+
+        _currentEntry?.IsCurrent = false;
+        _currentEntry = null;
+
+        var (bucketIndex, entryIndex) = step switch
+        {
+            AccessStep.HashBuild build => (build.Bucket, build.Entry),
+            AccessStep.HashProbe probe => (probe.Bucket, -1),
+            AccessStep.HashCompare compare => (compare.Bucket, compare.Entry),
+            AccessStep.HashAggregate group => (group.Bucket, group.Entry),
+            _ => (-1, -1)
+        };
+
+        if (_bucketModels is not { } models || bucketIndex < 0 || bucketIndex >= models.Count)
+        {
+            return;
+        }
+
+        _currentBucket = models[bucketIndex];
+        _currentBucket.IsCurrent = true;
+
+        if (entryIndex < 0 || entryIndex >= _currentBucket.Entries.Count)
+        {
+            return;
+        }
+
+        _currentEntry = _currentBucket.Entries[entryIndex];
+        _currentEntry.IsCurrent = true;
+
+        // The table's own matched flag stays set for the outer join drain, so the green here follows this comparison alone
+        if (step is AccessStep.HashCompare { IsMatch: true })
+        {
+            _currentEntry.IsMatched = true;
+
+            _matchedEntries.Add(_currentEntry);
+        }
+    }
+
+    private void ClearMatchedEntries()
+    {
+        foreach (var entry in _matchedEntries)
+        {
+            entry.IsMatched = false;
+        }
+
+        _matchedEntries.Clear();
+    }
+
+    private HashEntryModel EmptyEntryModel(int bucketIndex)
+    {
+        var columns = Columns;
+
+        var cells = new List<HashCellModel>(columns.Count)
+        {
+            new() { Value = bucketIndex.ToString(), Column = columns[BucketColumn] }
+        };
+
+        for (var index = BucketColumn + 1; index < columns.Count; index++)
+        {
+            cells.Add(new HashCellModel { Column = columns[index] });
+        }
+
+        return new HashEntryModel { IsPlaceholder = true, Cells = cells };
+    }
+
+    private void RefreshEmptyBuckets()
+    {
+        if (_bucketModels is not { } models)
+        {
+            return;
+        }
+
+        foreach (var model in models)
+        {
+            if (model.Entries is [{ IsPlaceholder: true }])
+            {
+                model.Entries[0] = EmptyEntryModel(model.Index);
+            }
+        }
+    }
+
+    private HashEntryModel ToEntryModel(HashEntry entry, int bucketIndex, int entryIndex)
+    {
+        var record = SimulationVisualViewModel.ToRecordModel(entry.Record, columnFilter);
+
+        var pairs = Pair(record);
+
+        var columns = EnsureColumns(pairs);
+
+        var cells = new List<HashCellModel>(columns.Count)
+        {
+            // Only the row that opens a bucket names it, so a chain reads as one bucket rather than the number repeating
+            new() { Value = entryIndex == 0 ? bucketIndex.ToString() : string.Empty, Column = columns[BucketColumn] },
+            new() { Value = $"{entry.Hash:X8}", Column = columns[HashColumn] }
+        };
+
+        // Positional, because a build side reading two objects can carry the same column name twice and a lookup would find only the first
+        for (var index = FirstValueColumn; index < columns.Count; index++)
+        {
+            var pair = index - FirstValueColumn < pairs.Count ? pairs[index - FirstValueColumn] : default;
+
+            cells.Add(new HashCellModel
+            {
+                Value = pair.Value ?? string.Empty,
+                Prefix = pair.Prefix ?? string.Empty,
+                Column = columns[index]
+            });
+        }
+
+        return new HashEntryModel { Cells = cells };
+    }
+
+    /// <summary>
+    /// Widens the grid to the columns a build row actually carries, which are not known until the first row is read
+    /// </summary>
+    /// <remarks>
+    /// The base columns exist so the header is there before the build starts. Every row of a given build side carries the same columns, so
+    /// this settles on the first row and the rest line up under it.
+    /// </remarks>
+    private IReadOnlyList<HashColumnModel> EnsureColumns(List<(string Name, string? Prefix, string Value)> pairs)
+    {
+        if (pairs.Count == 0 || Columns.Count > FirstValueColumn)
+        {
+            return Columns;
+        }
+
+        var columns = new List<HashColumnModel>(HashColumnModel.CreateBaseColumns());
+
+        foreach (var pair in pairs)
+        {
+            columns.Add(pair.Prefix is null
+                        ? new HashColumnModel { Header = pair.Name }
+                        : new HashColumnModel { Header = pair.Name, PrefixWidth = DataIdWidth, Width = DataIdWidth + 120 });
+        }
+
+        Columns = columns;
+
+        return columns;
+    }
+
+    private static List<(string Name, string? Prefix, string Value)> Pair(IndexRecordModel record)
+    {
+        var pairs = new List<(string Name, string? Prefix, string Value)>(record.Fields.Count);
+
+        foreach (var field in record.Fields)
+        {
+            if (field.Name.EndsWith(BatchRecordBuilder.DataIdSuffix, StringComparison.Ordinal))
+            {
+                continue;
+            }
+
+            var identifier = field.Name + BatchRecordBuilder.DataIdSuffix;
+
+            string? prefix = null;
+
+            foreach (var candidate in record.Fields)
+            {
+                if (candidate.Name == identifier)
+                {
+                    prefix = candidate.Value;
+
+                    break;
+                }
+            }
+
+            pairs.Add((field.Name, prefix, field.Value));
+        }
+
+        return pairs;
+    }
+}

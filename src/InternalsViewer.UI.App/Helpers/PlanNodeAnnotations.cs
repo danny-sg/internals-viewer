@@ -71,7 +71,7 @@ public static class PlanNodeAnnotations
 
         if (node.PredicateInfo is { HasUntranslatedPredicate: true })
         {
-            annotations.Add(new PlanNodeAnnotation("Untranslated Predicate", "The trace cannot evaluate this predicate", Warning));
+            annotations.Add(new PlanNodeAnnotation("Untranslated Predicate", "The simulation cannot evaluate this predicate", Warning));
         }
 
         if (node.PredicateInfo?.RowGoal is { } rowGoal)

@@ -19,11 +19,16 @@ public sealed class CallstackNodeTemplateSelector : DataTemplateSelector
 
     public DataTemplate? FrameTemplate { get; set; }
 
+    public DataTemplate? SignatureFrameTemplate { get; set; }
+
+    public bool ShowSignatures { get; set; }
+
     protected override DataTemplate SelectTemplateCore(object item) => item switch
     {
         TreeViewNode { Content: OperatorRow } when OperatorTemplate is not null => OperatorTemplate,
         TreeViewNode { Content: OperatorLink } when LinkTemplate is not null => LinkTemplate,
         TreeViewNode { Content: EventRow } when EventTemplate is not null => EventTemplate,
+        _ when ShowSignatures && SignatureFrameTemplate is not null => SignatureFrameTemplate,
         _ => FrameTemplate!,
     };
 

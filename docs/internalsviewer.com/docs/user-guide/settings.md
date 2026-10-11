@@ -42,10 +42,6 @@ The folder SQL Server's debugging symbols (PDB files) are downloaded to when res
 
 Settings for sending commands from the [Call Stack](/docs/user-guide/query/CallStack#sending-commands-to-windbg) to a WinDbg session attached to SQL Server, and for recording with **Record Full Trace** - see [Full Trace](/docs/user-guide/query/FullTrace).
 
-### WinDbg Password
-
-The password the WinDbg session requires on its `InternalsViewer` named pipe, so nothing else on the machine can join it. A random password is generated the first time Settings is opened, and it is stored encrypted with Windows data protection (DPAPI), so only your Windows account can read it. It can be changed here, to match a WinDbg you start yourself.
-
 ### WinDbg Path
 
 The WinDbg executable to start when attaching to SQL Server. Blank finds WinDbg from the Microsoft Store, then the Debugging Tools for Windows. The same installation is where Record Full Trace takes its Time Travel Debugging recorder from.
@@ -85,7 +81,7 @@ Some choices are remembered without appearing on the Settings page, stored along
 - **Query view** - the pane layout, the timeline's visibility and the Query and Events menu options
 - **Call Stack** - the categories hidden by the [category filter](/docs/user-guide/query/CallStack#filtering-by-category), and the modules excluded from **Search symbols**
 - **Execution Plan** - whether **Annotations** are shown
-- **Trace** - whether the [Trace](/docs/user-guide/query/Trace) pane uses the nested or the flat **Layout**
+- **Simulation** - whether the [Simulation](/docs/user-guide/query/Simulation) pane uses the nested or the flat **Layout**
 - **Allocations** - whether the map's **Tooltip** is on
 
 When Internals Viewer is installed as a package, settings are kept in the package's local settings. Otherwise they are in `%LOCALAPPDATA%\InternalsViewer\ApplicationData\LocalSettings.json`.

@@ -13,23 +13,24 @@
             <Setter Property="HorizontalAlignment" Value="Right"/>
             <Setter Property="FontSize" Value="12"/>
         </Style>
+        <DataTemplate x:Key="RecordTableTemplate">
+            <tableView:TableView CanSortColumns="True"
+                                 RowHeight="32"
+                                 SelectionMode="Single"
+                                 AllowLiveShaping="False"
+                                 GridLinesVisibility="All"
+                                 HeaderGridLinesVisibility="All"
+                                 HorizontalGridLinesStroke="{ThemeResource ControlStrokeColorDefaultBrush}"
+                                 HorizontalGridLinesStrokeThickness="1"
+                                 VerticalGridLinesStroke="{ThemeResource ControlStrokeColorDefaultBrush}"
+                                 VerticalGridLinesStrokeThickness="1"
+                                 Background="{ThemeResource LayerFillColorDefaultBrush}">
+                <tableView:TableView.Resources>
+                    <x:Double x:Key="ListViewItemMinHeight">0</x:Double>
+                </tableView:TableView.Resources>
+            </tableView:TableView>
+        </DataTemplate>
     </UserControl.Resources>
-    <Grid>
-        <tableView:TableView x:Name="RecordTable"
-                             CanSortColumns="True"
-                             RowHeight="32"
-                             SelectionMode="Single"
-                             AllowLiveShaping="False"
-                             GridLinesVisibility="All"
-                             HeaderGridLinesVisibility="All"
-                             HorizontalGridLinesStroke="{ThemeResource ControlStrokeColorDefaultBrush}"
-                             HorizontalGridLinesStrokeThickness="1"
-                             VerticalGridLinesStroke="{ThemeResource ControlStrokeColorDefaultBrush}"
-                             VerticalGridLinesStrokeThickness="1"
-                             Background="{ThemeResource LayerFillColorDefaultBrush}">
-            <tableView:TableView.Resources>
-                <x:Double x:Key="ListViewItemMinHeight">0</x:Double>
-            </tableView:TableView.Resources>
-        </tableView:TableView>
-    </Grid>
+    <Border x:Name="TableHost"
+            Background="{ThemeResource LayerFillColorDefaultBrush}" />
 </UserControl>

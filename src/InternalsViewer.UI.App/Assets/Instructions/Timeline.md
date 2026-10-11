@@ -4,9 +4,11 @@ The [Timeline](view:Timeline) shows the captured activity against time and repla
 
 It is split into bands:
 
+- **Log** - the transaction log records of a traced data modification
 - **Plan** - the execution plan operators, one bar per operator showing when it was active
+- **Columnstore** - a Columnstore Index Scan's segment scans, rowgroup reads and elimination, filters, and object pool lookups
 - **Read** - physical page reads, split into Buffer (from memory) and Disk lanes
-- **Lock** - locks acquired and released, bucketed per object and coloured by category
+- **Lock** - locks acquired and released, a row per lock category with the most exclusive on top
 - **Latch** - page latches acquired and released
 - **Wait** - where the query stopped and waited for a resource
 

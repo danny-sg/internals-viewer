@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Linq;
 using InternalsViewer.Internals.Columnstore.Metadata;
+using InternalsViewer.Query.Events.BatchMode.Enums;
 using InternalsViewer.UI.App.Models.Columnstore;
 using InternalsViewer.UI.App.ViewModels.Columnstore.Dictionary;
 using InternalsViewer.UI.App.ViewModels.Columnstore.Segment;
@@ -68,11 +69,67 @@ public sealed partial class ColumnstoreTabViewModel
                     ? new DeleteBitmapTabViewModel(PageService, IamChainService, RecordService, Database, index)
                     : this);
 
+    public void Reveal(ColumnstoreObjectTarget target)
+    {
+        if (IsInitialized)
+        {
+            Open(target);
+
+            return;
+        }
+
+        PendingTarget = target;
+    }
+
     public void OpenDeltaStore(RowGroupSummary rowGroup)
         => Open($"Delta Store (Row Group {rowGroup.RowGroupId})",
                 $"DeltaStore:{rowGroup.RowGroupId}",
                 () => new ColumnstoreDeltaStoreTabView(),
                 new DeltaStoreTabViewModel(PageService, IamChainService, Database, rowGroup));
+
+    private void Open(ColumnstoreObjectTarget target)
+    {
+        switch (target.ObjectType)
+        {
+            case ColumnStoreObjectType.ColumnSegment:
+            {
+                if (Segments.FirstOrDefault(s => s.RowGroupId == target.ObjectId && s.ColumnId == target.ColumnId) is { } segment)
+                {
+                    OpenSegment(segment);
+                }
+
+                break;
+            }
+
+            case ColumnStoreObjectType.PrimaryDictionary:
+            {
+                if (Segments.Select(s => s.GlobalDictionary).FirstOrDefault(d => d?.ColumnId == target.ColumnId) is { } dictionary)
+                {
+                    OpenDictionary(dictionary);
+                }
+
+                break;
+            }
+
+            case ColumnStoreObjectType.SecondaryDictionary:
+            {
+                if (Segments.Select(s => s.LocalDictionary)
+                            .FirstOrDefault(d => d?.ColumnId == target.ColumnId && d.DictionaryId == target.ObjectId) is { } dictionary)
+                {
+                    OpenDictionary(dictionary);
+                }
+
+                break;
+            }
+
+            case ColumnStoreObjectType.DeleteBitmap:
+            {
+                OpenDeleteBitmap();
+
+                break;
+            }
+        }
+    }
 
     private DockLayoutViewModel BuildDock()
     {

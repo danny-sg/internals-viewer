@@ -4,6 +4,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using InternalsViewer.UI.App.ViewModels.Docking;
 using InternalsViewer.UI.App.Views.Query.Tabs;
 using InternalsViewer.UI.App.Views.Query.Tabs.CallStack;
+using InternalsViewer.UI.App.Views.Query.Tabs.FlameChart;
 using InternalsViewer.UI.App.Views.Query.Tabs.Timeline;
 using Microsoft.UI.Xaml.Controls;
 using QueryPlanTabCommands = InternalsViewer.UI.App.Views.Query.Tabs.Plan.QueryPlanTabCommands;
@@ -22,8 +23,13 @@ public sealed partial class QueryLayoutViewModel : ObservableObject, IDisposable
     private const string CallstackKey = "Callstack";
     private const string InstructionsKey = "Instructions";
     private const string TimelineKey = "Timeline";
+    private const string FlameChartKey = "FlameChart";
 
     private readonly Dictionary<string, DocumentViewModel> _documentsByKey;
+
+    private readonly HashSet<DocumentViewModel> _hiddenForFullTrace = [];
+
+    private DockNode? _rootBeforeFullTrace;
 
     /// <remarks>
     /// Set while SyncTabVisibility writes the flags back from the dock, so their setters don't loop back into the dock.
@@ -50,6 +56,13 @@ public sealed partial class QueryLayoutViewModel : ObservableObject, IDisposable
 
     [ObservableProperty]
     private bool _isTimelineVisible = true;
+
+    [ObservableProperty]
+    private bool _isFlameChartVisible;
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(CanShowEventViews))]
+    private bool _isFullTrace;
 
     /// <param name="content">
     /// The data context the tab document views bind to (the owning query view model)
@@ -92,10 +105,15 @@ public sealed partial class QueryLayoutViewModel : ObservableObject, IDisposable
             [TimelineKey] = DocumentViewModel.Create<QueryTimelineTabView>("Timeline",
                                                                            content,
                                                                            keepAlive: true,
-                                                                           key: TimelineKey)
+                                                                           key: TimelineKey),
+
+            [FlameChartKey] = DocumentViewModel.Create<QueryFlameChartTabView>("Flame Chart",
+                                                                               content,
+                                                                               keepAlive: true,
+                                                                               key: FlameChartKey)
         };
 
-        Dock = new DockLayoutViewModel(DefaultRoot());
+        Dock = new DockLayoutViewModel(DefaultRoot(TimelineKey));
 
         Dock.LayoutChanged += OnDockLayoutChanged;
         Dock.SelectionChanged += OnDockSelectionChanged;
@@ -110,7 +128,16 @@ public sealed partial class QueryLayoutViewModel : ObservableObject, IDisposable
 
     public DockLayoutViewModel Dock { get; }
 
-    public DockNode SerializeRoot() => DockLayoutSerializer.Serialize(Dock.Root);
+    public bool CanShowEventViews => !IsFullTrace;
+
+    public bool IsTimelineVisibleOutsideFullTrace
+        => IsTimelineVisible || _hiddenForFullTrace.Contains(_documentsByKey[TimelineKey]);
+
+    private DocumentViewModel[] EventViews =>
+        [_documentsByKey[AllocationsKey], _documentsByKey[EventsKey], _documentsByKey[TimelineKey]];
+
+    public DockNode SerializeRoot()
+        => IsFullTrace && _rootBeforeFullTrace is { } root ? root : DockLayoutSerializer.Serialize(Dock.Root);
 
     public bool RestoreRoot(DockNode? dto)
     {
@@ -125,13 +152,34 @@ public sealed partial class QueryLayoutViewModel : ObservableObject, IDisposable
 
         Dock.Activate(_documentsByKey[SqlKey]);
 
+        if (IsFullTrace)
+        {
+            HideEventViews();
+        }
+
         return true;
     }
 
     /// <summary>
     /// Resets to the default SQL-over-timeline layout
     /// </summary>
-    public void Reset() => Dock.SetRoot(DefaultRoot());
+    public void Reset()
+    {
+        if (!IsFullTrace)
+        {
+            Dock.SetRoot(DefaultRoot(TimelineKey));
+
+            return;
+        }
+
+        _hiddenForFullTrace.Clear();
+
+        _hiddenForFullTrace.Add(_documentsByKey[TimelineKey]);
+
+        _rootBeforeFullTrace = DockLayoutSerializer.Serialize(DefaultRoot(TimelineKey));
+
+        Dock.SetRoot(DefaultRoot(FlameChartKey));
+    }
 
     public bool TryGetDocument(string key, out DocumentViewModel document)
         => _documentsByKey.TryGetValue(key, out document!);
@@ -173,10 +221,10 @@ public sealed partial class QueryLayoutViewModel : ObservableObject, IDisposable
         }
     }
 
-    private LayoutNode DefaultRoot()
+    private LayoutNode DefaultRoot(string bottomKey)
         => new SplitNode(Orientation.Vertical,
                          new TabGroupNode(_documentsByKey[SqlKey]),
-                         new TabGroupNode(_documentsByKey[TimelineKey]));
+                         new TabGroupNode(_documentsByKey[bottomKey]));
 
     partial void OnIsSqlEditorVisibleChanged(bool value)
         => SetDocumentVisible(_documentsByKey[SqlKey], value);
@@ -199,10 +247,92 @@ public sealed partial class QueryLayoutViewModel : ObservableObject, IDisposable
     partial void OnIsTimelineVisibleChanged(bool value)
         => SetDocumentVisible(_documentsByKey[TimelineKey], value);
 
+    partial void OnIsFlameChartVisibleChanged(bool value)
+        => SetDocumentVisible(_documentsByKey[FlameChartKey], value);
+
+    partial void OnIsFullTraceChanged(bool value)
+    {
+        if (value)
+        {
+            HideEventViews();
+
+            return;
+        }
+
+        var flameChart = _documentsByKey[FlameChartKey];
+
+        foreach (var document in _hiddenForFullTrace)
+        {
+            if (ReferenceEquals(document, _documentsByKey[TimelineKey]))
+            {
+                Dock.ShowBeside(document, flameChart);
+            }
+            else
+            {
+                Dock.Show(document);
+            }
+        }
+
+        Dock.Close(flameChart);
+
+        _hiddenForFullTrace.Clear();
+
+        _rootBeforeFullTrace = null;
+    }
+
+    private void HideEventViews()
+    {
+        _hiddenForFullTrace.Clear();
+
+        _rootBeforeFullTrace = DockLayoutSerializer.Serialize(Dock.Root);
+
+        if (Dock.Contains(_documentsByKey[TimelineKey]))
+        {
+            Dock.ShowBeside(_documentsByKey[FlameChartKey], _documentsByKey[TimelineKey]);
+        }
+        else
+        {
+            Dock.DockBottom(_documentsByKey[FlameChartKey]);
+        }
+
+        foreach (var document in EventViews)
+        {
+            if (Dock.Contains(document))
+            {
+                _hiddenForFullTrace.Add(document);
+
+                Dock.Close(document);
+            }
+        }
+    }
+
     private void SetDocumentVisible(DocumentViewModel document, bool show)
     {
         if (_suppressVisibilitySync)
         {
+            return;
+        }
+
+        if (show && IsFullTrace && Array.IndexOf(EventViews, document) >= 0)
+        {
+            _hiddenForFullTrace.Add(document);
+
+            SyncTabVisibility();
+
+            return;
+        }
+
+        if (show && ReferenceEquals(document, _documentsByKey[FlameChartKey]))
+        {
+            if (IsFullTrace)
+            {
+                Dock.DockBottom(document);
+            }
+            else
+            {
+                SyncTabVisibility();
+            }
+
             return;
         }
 
@@ -227,6 +357,7 @@ public sealed partial class QueryLayoutViewModel : ObservableObject, IDisposable
         IsCallstackVisible = Dock.Contains(_documentsByKey[CallstackKey]);
         IsInstructionsVisible = Dock.Contains(_documentsByKey[InstructionsKey]);
         IsTimelineVisible = Dock.Contains(_documentsByKey[TimelineKey]);
+        IsFlameChartVisible = Dock.Contains(_documentsByKey[FlameChartKey]);
 
         _suppressVisibilitySync = false;
     }

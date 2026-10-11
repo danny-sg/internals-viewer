@@ -13,7 +13,7 @@ Selecting an operator (on the plan, the Timeline's Plan band, or the Events pane
 **Double-click** an operator to select it and open its **Properties**. **Right-click** an operator for:
 
 - **Open Index:** and the index's name - opens the index in the [Index View](/docs/user-guide/index-view), linked to the replay, or a columnstore index in the [Columnstore Viewer](/docs/user-guide/columnstore)
-- **Trace** - steps through the operator and everything beneath it in the [Trace](/docs/user-guide/query/Trace) pane
+- **Simulate** - steps through the operator and everything beneath it in the [Simulation](/docs/user-guide/query/Simulation) pane
 - **Call Stack** and **Properties** - open those panes for the operator
 
 ## Command bar

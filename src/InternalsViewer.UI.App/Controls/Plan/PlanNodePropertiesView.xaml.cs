@@ -1,4 +1,5 @@
 ﻿using System.Collections.Generic;
+using InternalsViewer.Query.CallStack.TimeTravel.Memory;
 using InternalsViewer.Query.Events.Operators;
 using InternalsViewer.Query.Plans.Model;
 using InternalsViewer.UI.App.Helpers;
@@ -31,6 +32,18 @@ public sealed partial class PlanNodePropertiesView : UserControl
     {
         get => (EventIoStatistics?)GetValue(EventStatisticsProperty);
         set => SetValue(EventStatisticsProperty, value);
+    }
+
+    public static readonly DependencyProperty TracedMemoryProperty =
+        DependencyProperty.Register(nameof(TracedMemory),
+                                    typeof(TimeTravelMemoryPurpose),
+                                    typeof(PlanNodePropertiesView),
+                                    new PropertyMetadata(null, OnNodeChanged));
+
+    public TimeTravelMemoryPurpose? TracedMemory
+    {
+        get => (TimeTravelMemoryPurpose?)GetValue(TracedMemoryProperty);
+        set => SetValue(TracedMemoryProperty, value);
     }
 
     public static readonly DependencyProperty ExpressionsProperty =
@@ -85,7 +98,7 @@ public sealed partial class PlanNodePropertiesView : UserControl
             return;
         }
 
-        foreach (var property in PlanNodePropertyBuilder.Build(Node, EventStatistics, Expressions, ScanMode, ColumnNames))
+        foreach (var property in PlanNodePropertyBuilder.Build(Node, EventStatistics, Expressions, ScanMode, ColumnNames, TracedMemory))
         {
             TreeView.RootNodes.Add(ToTreeNode(property, 0));
         }

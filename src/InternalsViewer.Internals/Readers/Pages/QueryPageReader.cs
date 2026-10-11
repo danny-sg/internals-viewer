@@ -55,8 +55,6 @@ public sealed partial class QueryPageReader(ILogger<QueryPageReader> logger, str
 
             progress?.Report(new ProgressDetail(message));
 
-            Logger.LogInformation(message);
-
             await using var connection = new SqlConnection(ConnectionString);
 
             await connection.OpenAsync(cancellationToken);
@@ -81,8 +79,6 @@ public sealed partial class QueryPageReader(ILogger<QueryPageReader> logger, str
                 message = $"Connected to server:\n{version} ({level}) - {edition}\nsysadmin: {isSysAdmin}";
 
                 progress?.Report(new ProgressDetail(message));
-
-                Logger.LogInformation(message);
 
                 if (!isSysAdmin)
                 {

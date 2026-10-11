@@ -184,8 +184,8 @@ public sealed partial class QueryPlanTabView : UserControl
             planControl.IndexOpenRequested += OnPlanIndexOpenRequested;
 
 
-            planControl.TraceOpenRequested -= OnPlanTraceOpenRequested;
-            planControl.TraceOpenRequested += OnPlanTraceOpenRequested;
+            planControl.SimulationOpenRequested -= OnPlanSimulationOpenRequested;
+            planControl.SimulationOpenRequested += OnPlanSimulationOpenRequested;
 
             planControl.CallStackOpenRequested -= OnPlanCallStackOpenRequested;
             planControl.CallStackOpenRequested += OnPlanCallStackOpenRequested;
@@ -218,7 +218,7 @@ public sealed partial class QueryPlanTabView : UserControl
 
     private void OnPlanIndexOpenRequested(object? sender, PlanNode node) => ViewModel?.OpenIndex(node);
 
-    private void OnPlanTraceOpenRequested(object? sender, PlanNode node) => ViewModel?.OpenTrace(node);
+    private void OnPlanSimulationOpenRequested(object? sender, PlanNode node) => ViewModel?.OpenSimulation(node);
 
     private void OnPlanCallStackOpenRequested(object? sender, PlanNode node) => ViewModel?.OpenCallStack(node);
 

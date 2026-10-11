@@ -1,15 +1,19 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using InternalsViewer.Query.Debugging.Interfaces;
+using InternalsViewer.Query.XEvents;
 using InternalsViewer.UI.App.Services;
-using InternalsViewer.UI.App.Services.XEvents;
 
 namespace InternalsViewer.UI.App.ViewModels;
 
 public partial class SettingsViewModel(SettingsService settingsService, TraceDirectoryService traceDirectoryService)
-    : ObservableObject
+    : ObservableObject, IWinDbgSettings
 {
+    public const char CategorySeparator = ';';
+
     private const string SymbolsPathKey = "SymbolsPath";
     private const string DefaultSymbolsPath = @"C:\Symbols";
 
@@ -17,7 +21,7 @@ public partial class SettingsViewModel(SettingsService settingsService, TraceDir
     private const string TraceDirectoryKey = "TraceDirectory";
     private const string MaxTraceSizeKey = "MaxTraceSizeMb";
     private const string AutoDeleteTraceKey = "AutoDeleteTrace";
-    private const string TraceNestedLayoutKey = "TraceNestedLayout";
+    private const string SimulationNestedLayoutKey = "TraceNestedLayout";
     private const string PlanAnnotationsKey = "PlanAnnotations";
 
     private const string ColumnstoreResolutionKey = "FullColumnstoreAllocationResolution";
@@ -25,6 +29,12 @@ public partial class SettingsViewModel(SettingsService settingsService, TraceDir
     private const string WinDbgPasswordKey = "WinDbgPassword";
     private const string WinDbgPathKey = "WinDbgPath";
     private const string SymbolSearchExcludedModulesKey = "SymbolSearchExcludedModules";
+    private const string ShowTimeTravelWarningKey = "ShowTimeTravelWarning";
+    private const string CallTreeHiddenCategoriesKey = "CallTreeHiddenCategories";
+    private const string CallTreePrunedCategoriesKey = "CallTreePrunedCategories";
+
+    private const string DefaultCallTreeHiddenCategories =
+        "Compilation;Execution Tree;Expression Evaluation;Metadata;Networking;Query Binding;Query Store;Security";
 
     private const double DefaultMaxTraceSizeMb = 150;
 
@@ -50,19 +60,25 @@ public partial class SettingsViewModel(SettingsService settingsService, TraceDir
     private bool _autoDeleteTrace = true;
 
     [ObservableProperty]
-    private bool _traceNestedLayout = true;
+    private bool _simulationNestedLayout = true;
 
     [ObservableProperty]
     private bool _fullColumnstoreResolution = true;
-
-    [ObservableProperty]
-    private string _winDbgPassword = string.Empty;
 
     [ObservableProperty]
     private string _winDbgPath = string.Empty;
 
     [ObservableProperty]
     private string _symbolSearchExcludedModules = string.Empty;
+
+    [ObservableProperty]
+    private bool _showTimeTravelWarning = true;
+
+    [ObservableProperty]
+    private string _callTreeHiddenCategories = DefaultCallTreeHiddenCategories;
+
+    [ObservableProperty]
+    private string _callTreePrunedCategories = string.Empty;
 
     [ObservableProperty]
     private string _memoryUsage = string.Empty;
@@ -73,6 +89,17 @@ public partial class SettingsViewModel(SettingsService settingsService, TraceDir
     private SettingsService SettingsService { get; } = settingsService;
 
     private TraceDirectoryService TraceDirectoryService { get; } = traceDirectoryService;
+
+    public void ResetCallTreeCategories()
+    {
+        CallTreeHiddenCategories = DefaultCallTreeHiddenCategories;
+
+        CallTreePrunedCategories = string.Empty;
+    }
+
+    public static HashSet<string> SplitCategories(string value)
+        => new(value.Split(CategorySeparator, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries),
+               StringComparer.Ordinal);
 
     public void RefreshMemoryUsage()
     {
@@ -105,9 +132,9 @@ public partial class SettingsViewModel(SettingsService settingsService, TraceDir
 
         AutoDeleteTrace = savedAutoDelete ?? true;
 
-        var savedNestedLayout = await SettingsService.ReadSettingAsync<bool?>(TraceNestedLayoutKey);
+        var savedNestedLayout = await SettingsService.ReadSettingAsync<bool?>(SimulationNestedLayoutKey);
 
-        TraceNestedLayout = savedNestedLayout ?? true;
+        SimulationNestedLayout = savedNestedLayout ?? true;
 
         var savedColumnstoreResolution = await SettingsService.ReadSettingAsync<bool?>(ColumnstoreResolutionKey);
 
@@ -117,13 +144,18 @@ public partial class SettingsViewModel(SettingsService settingsService, TraceDir
 
         PlanAnnotations = savedPlanAnnotations ?? false;
 
-        var savedWinDbgPassword = await SettingsService.ReadSettingAsync<string>(WinDbgPasswordKey);
-
-        WinDbgPassword = string.IsNullOrWhiteSpace(savedWinDbgPassword) ? Guid.NewGuid().ToString("N")[..12] : savedWinDbgPassword;
+        await SettingsService.RemoveSettingAsync(WinDbgPasswordKey);
 
         WinDbgPath = await SettingsService.ReadSettingAsync<string>(WinDbgPathKey) ?? string.Empty;
 
         SymbolSearchExcludedModules = await SettingsService.ReadSettingAsync<string>(SymbolSearchExcludedModulesKey) ?? string.Empty;
+
+        ShowTimeTravelWarning = await SettingsService.ReadSettingAsync<bool?>(ShowTimeTravelWarningKey) ?? true;
+
+        CallTreeHiddenCategories = await SettingsService.ReadSettingAsync<string>(CallTreeHiddenCategoriesKey)
+                                   ?? DefaultCallTreeHiddenCategories;
+
+        CallTreePrunedCategories = await SettingsService.ReadSettingAsync<string>(CallTreePrunedCategoriesKey) ?? string.Empty;
     }
 
     /// <summary>
@@ -142,11 +174,6 @@ public partial class SettingsViewModel(SettingsService settingsService, TraceDir
         _ = SettingsService.SaveSettingAsync(SymbolsPathKey, value);
     }
 
-    partial void OnWinDbgPasswordChanged(string value)
-    {
-        _ = SettingsService.SaveSettingAsync(WinDbgPasswordKey, value);
-    }
-
     partial void OnWinDbgPathChanged(string value)
     {
         _ = SettingsService.SaveSettingAsync(WinDbgPathKey, value);
@@ -155,6 +182,21 @@ public partial class SettingsViewModel(SettingsService settingsService, TraceDir
     partial void OnSymbolSearchExcludedModulesChanged(string value)
     {
         _ = SettingsService.SaveSettingAsync(SymbolSearchExcludedModulesKey, value);
+    }
+
+    partial void OnShowTimeTravelWarningChanged(bool value)
+    {
+        _ = SettingsService.SaveSettingAsync(ShowTimeTravelWarningKey, value);
+    }
+
+    partial void OnCallTreeHiddenCategoriesChanged(string value)
+    {
+        _ = SettingsService.SaveSettingAsync(CallTreeHiddenCategoriesKey, value);
+    }
+
+    partial void OnCallTreePrunedCategoriesChanged(string value)
+    {
+        _ = SettingsService.SaveSettingAsync(CallTreePrunedCategoriesKey, value);
     }
 
     partial void OnUseCustomTraceDirectoryChanged(bool value)
@@ -182,9 +224,9 @@ public partial class SettingsViewModel(SettingsService settingsService, TraceDir
         _ = SettingsService.SaveSettingAsync(ColumnstoreResolutionKey, value);
     }
 
-    partial void OnTraceNestedLayoutChanged(bool value)
+    partial void OnSimulationNestedLayoutChanged(bool value)
     {
-        _ = SettingsService.SaveSettingAsync(TraceNestedLayoutKey, value);
+        _ = SettingsService.SaveSettingAsync(SimulationNestedLayoutKey, value);
     }
 
     partial void OnPlanAnnotationsChanged(bool value)

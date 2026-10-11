@@ -1,6 +1,6 @@
 # Log Records
 
-With **Trace** on in the [SQL Editor](view:SqlEditor), a data modification query (INSERT / UPDATE / DELETE) runs
+With **Track query** on in the Query menu, as it is by default, a data modification query (INSERT / UPDATE / DELETE) runs
 inside a transaction, its transaction log records are captured, and the transaction is rolled back - so the data is
 left unchanged.
 

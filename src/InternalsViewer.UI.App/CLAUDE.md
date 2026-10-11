@@ -14,9 +14,12 @@ Documents are dockable tabs. Test folders in `InternalsViewer.UI.App.Tests` mirr
 
 ## Grids — WinUI.TableView
 
-Grids use `WinUI.TableView` (1.4.1)
+Grids use `WinUI.TableView` (1.5.0)
 
 - **Every `TableView` needs `ListViewItemMinHeight="0"`** or `RowHeight` is silently ignored.
+- **Never change the columns of a `TableView` that has had rows.** A recycled row is detached from its table and
+  misses column adds and removes, then comes back with cells for the old columns. Build a new `TableView` from a
+  `DataTemplate` instead, as `ResultsGridControl` and `RecordGrid` do.
 - Row load/unload hooks off `ContainerContentChanging`; cell recycling off `RefreshElement`.
 - `Sorting` has a `Handled` contract — set it when you sort yourself, or the control sorts again.
 - Cell population via `Binding` costs roughly 3x what `DataContextChanged` does. On wide grids that is the

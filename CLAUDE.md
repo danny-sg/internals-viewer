@@ -51,6 +51,8 @@ else in the solution.
   log-reading layers.
 - **`InternalsViewer.Query.DiaBridge`** — native C++ (`.vcxproj`) shim over the DIA SDK for PDB symbol
   resolution. The shipped binary is the checked-in copy under `src/runtimes/win-x64/native`.
+- **`InternalsViewer.Query.TimeTravelBridge`**, **`InternalsViewer.Query.TimeTravelHost`** — native C++ over the TTD
+  replay API, and the elevated helper (`Time Travel Trace.exe`) that records SQL Server. Shipped the same way.
 - **`InternalsViewer.Internals.Metadata.SourceGenerators`** — source generator for metadata types.
 - **`InternalsViewer.UI.App`** — WinUI 3 app. MVVM: `Views/` (XAML) → `ViewModels/` → `Models/`, with
   SkiaSharp-based custom drawing in `Controls/`. Tabs are dockable documents.

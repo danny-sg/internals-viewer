@@ -83,6 +83,32 @@ public class EventSqlTests
     }
 
     [Fact]
+    public void GetCreateSessionSql_Captures_Only_Batch_And_Operator_Events_When_Recording_Time_Travel()
+    {
+        var options = new EventOptions { RecordTimeTravel = true, IncludeCallStack = true, IncludeLatch = true };
+
+        var sql = EventSql.GetCreateSessionSql("Sess", @"C:\Trace\Sess.xel", 1, false, options);
+
+        var events = sql.Split('\n')
+                        .Where(l => l.StartsWith("ADD EVENT ", StringComparison.Ordinal))
+                        .Select(l => l["ADD EVENT ".Length..].Trim())
+                        .ToList();
+
+        Assert.Equal(EventConstants.TimeTravelEvents, events);
+        Assert.Contains("opcode = 1 AND (wait_type = 'CXPACKET'", sql);
+        Assert.Contains("sqlos.system_thread_id", sql);
+        Assert.DoesNotContain("package0.callstack", sql);
+    }
+
+    [Fact]
+    public void GetCreateSessionSql_Omits_System_Thread_Id_When_Not_Recording_Time_Travel()
+    {
+        var sql = EventSql.GetCreateSessionSql("Sess", @"C:\Trace\Sess.xel", 1, false, new EventOptions());
+
+        Assert.DoesNotContain("sqlos.system_thread_id", sql);
+    }
+
+    [Fact]
     public async Task GetEventKeyAddresses_With_No_Events_Completes_Without_Touching_Database()
     {
         var events = new List<EngineEvent>();

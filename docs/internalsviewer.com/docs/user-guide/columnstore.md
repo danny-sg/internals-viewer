@@ -2,7 +2,7 @@
 
 A columnstore index does not store rows in pages. Each column of each row group is compressed into a segment of its own, often with a dictionary beside it, and the segments are stored as LOB data. The Columnstore Viewer opens one index and shows it the way it is stored - its row groups, segments and dictionaries laid out as a structure - and decodes any segment or dictionary down to its bytes, with the working shown for every value.
 
-<!-- Screenshot: the Columnstore Viewer's Structure tab on an index with several row groups -->
+![The Structure tab of a clustered columnstore index with four compressed row groups, global and local dictionaries](/docs/user-guide/images/columnstore-structure.png)
 
 ## Opening it
 
@@ -23,7 +23,7 @@ The Structure tab draws the whole index on one grid - a column per column of the
 
 Each segment is a block coloured by how its values are stored - **Bit Pack** or **Variable Length Data** - with badges for **RLE**, **Bit Pack** and **VLD**, and a small **Global** or **Local** marker when it uses a dictionary. The bar down its left side is its size against the largest segment in the index, so the heavy columns stand out, and a second bar, once the segment has been read, shades its RLE runs from top to bottom. Dictionary boxes show whether they are **Numeric**, **String** or **Float**, **Huffman** when their strings are Huffman coded, and their entry count. The legend at the bottom is the key.
 
-<!-- Screenshot: a Structure row with segment tooltip showing, and a row group with an open Delta Store box -->
+![An open row group drawn as a Delta Store box, with its tooltip](/docs/user-guide/images/columnstore-structure-delta-store.png)
 
 - **Hover** over anything for its details - a segment's encoding, storage, row count, data pointer and how its values are derived, a row group's state, size and segment count, a dictionary's scope, type, entries and size. The column under the pointer lights up from top to bottom.
 - **Click** a segment, dictionary, delete bitmap or delta store to open it in its own tab.
@@ -62,9 +62,34 @@ Three toggles on the tab strip change how it reads:
 
 Selecting a row in any of the grids marks its bytes in the hex view. The [Column Segments](/docs/reference/column-segments) reference explains what each region holds - the [segment header](/docs/reference/column-segments#segment-header), the [bookmark array](/docs/reference/column-segments#bookmark-array), the [RLE array](/docs/reference/column-segments#rle-array) and [what a run points at](/docs/reference/column-segments#what-a-run-points-at), the [bit pack array](/docs/reference/column-segments#bit-pack-array) and [variable length data](/docs/reference/column-segments#variable-length-data).
 
-<!-- Screenshot: a segment's Data tab with Show Derivation on, the Data Id and Value chains at the top -->
+![A segment's Data tab with Show Derivation on - the Data Id and Value chains above each row's working](/docs/user-guide/images/columnstore-segment-data-derivation.png)
 
-<!-- Screenshot: a segment's Bit Pack tab with a unit selected, the bit ruler and its values -->
+![A segment's Bit Pack tab with a unit selected - its bits on the ruler and the values packed into it](/docs/user-guide/images/columnstore-segment-bit-pack.png)
+
+### Segment variations
+
+Two things decide what a segment looks like - its **encoding**, how the column's values are turned into data ids, and its **storage**, how those data ids are laid out in the blob. SQL Server picks both per segment, to suit the values in that row group, so two segments of the same column can differ. Both are on the bar across the top of the segment tab and in the Metadata grid.
+
+The encoding is SQL Server's own, from `sys.column_store_segments.encoding_type`:
+
+| Encoding | Used for | How a data id becomes a value |
+| --- | --- | --- |
+| **Value** | Numbers with no dictionary | `(Data Id + Base Id) × Magnitude`. The column is rebased so its data ids start near zero, and scaled down where every value shares trailing zeros, so the ids need fewer bits |
+| **Value Hash** | Numbers with a dictionary | The dictionary's entry at `Data Id - First Id` |
+| **String Hash** | Strings and binary values with a dictionary | The dictionary's entry at `Data Id - First Id` |
+| **Store By Value** | Numbers kept as they are | The data id is the value - a `float` or `real` as its raw bits, or an integer kept without a base |
+| **String Store By Value** | Values with no dictionary that are too wide or varied for a data id | Read from the segment's own variable length data - strings without a dictionary, `binary` and `uniqueidentifier` values, and some decimals |
+
+A column with nulls sets one data id aside to mean null - the segment's null value - and rows with that id decode as null.
+
+The storage is read from the blob itself:
+
+- **Bit Pack** - each row's data id, less the segment's lowest, packed into as few bits as the segment's range needs, as many to each 64-bit unit as fit. A single run in the RLE array covers every row. It suits values that change from row to row, like a key, and shows as a **Bit Pack** tab.
+- **RLE** - runs of one repeated data id, each held once with its count, and no bit pack array at all. It suits a column with few distinct values sorted into long runs, where a million rows can come down to a handful of entries. The **RLE Array** tab and its **RLE Runs** map show the runs.
+- **RLE + Bit Pack** - both at once. Where a value repeats the RLE array holds a repeat run, and where the values vary it holds a read run pointing into the bit pack array. The **RLE Runs** map shows which stretches are which, a repeat run in one track and a read run in the other.
+- **Variable Length Data** - the layout **String Store By Value** segments use. The values are stored as they are, on pages of their own after the RLE array, and the RLE array's runs address a page and slot rather than holding data ids. A page is compressed or not on its own, and the **Variable Length Data** tab's **Decode** expands it.
+
+Bit pack and RLE segments also carry **Bookmarks** - shortcuts into the RLE array every so many rows, so a reader can start partway down it rather than walk it from the top.
 
 ## Dictionaries
 
@@ -75,7 +100,16 @@ A dictionary tab decodes one dictionary. The bar gives its column and type, its 
 - **Pages** - for a string dictionary, its pages, with how each is coded and how many strings it holds. **Decode** shows a page's values beside how they were decoded - for a Huffman page the walk through the bits code by code, the **Huffman Table** of symbols and codes, and the Huffman tree. Selecting a value, a code or a leaf selects it everywhere. **Values** and **Details** on the tab strip show or hide the two halves.
 - **Dictionary Entries** - every entry with its data id, its index in the dictionary, and its value.
 
-<!-- Screenshot: a Huffman string dictionary's Pages > Decode tab, with the bit walk, the Huffman table and the tree -->
+![A Huffman coded string dictionary's Pages > Decode tab - the values, the bit walk, the Huffman table and the tree](/docs/user-guide/images/columnstore-dictionary-huffman-decode.png)
+
+### Dictionary variations
+
+- **Scope** - a **Global** dictionary, id 0, belongs to the column and is shared by every row group. A **Local** dictionary belongs to one row group, for the values the global one does not hold. A segment can use both - data ids up to the global dictionary's last id come from it, and ids beyond that from its row group's local dictionary. The Structure tab draws the global dictionaries in their own strip at the top and the local ones above their row group's segments.
+- **Numeric** - for numbers, dates and times, and decimals. Every entry is the same width, the width of the column's type, so the values sit in a plain array that a data id indexes directly, behind a **Hash Table** store. **Dictionary Entries** lists them.
+- **Float** - for `float` and `real`, laid out the same way as a numeric dictionary.
+- **String** - for character and binary columns. The entries vary in length, so a **String Store** keeps a handle for each entry - the page it is on, where on the page it starts and how long it is - and the strings themselves on pages. The **Handles** and **Pages** tabs show both halves.
+- **Huffman coding** - each page of a string dictionary is **Uncompressed** or **Huffman** coded. A Huffman page carries a table of code lengths and packs each string as variable-length codes, with the commonest symbols given the shortest codes. Every string can still be decoded on its own from where it starts, which is why a handle's offset on a Huffman page counts bits rather than bytes. The symbols are **Bytes**, or **Characters** for a Unicode column whose characters all fit in a byte, which halves the symbols there are to code. The bar shows **Huffman** when every page is coded, **Huffman** and a count such as **3/5** when only some are, and **Uncompressed** when none are.
+- **Long values** - a string too long to keep on a dictionary page is stored as LOB data instead, and its handle's **Notes** gives the LOB page, slot and length.
 
 ## Delete Bitmap and Delta Store
 

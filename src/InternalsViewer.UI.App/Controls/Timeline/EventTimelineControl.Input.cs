@@ -199,7 +199,7 @@ public sealed partial class EventTimelineControl
             flyout.Items.Add(openIndex);
         }
 
-        var canTrace = op.PlanNodeIdentifier.NodeId < 0
+        var canSimulate = op.PlanNodeIdentifier.NodeId < 0
                        || op.Name.Equals("Top", StringComparison.OrdinalIgnoreCase)
                        || op.Name.Equals("Concatenation", StringComparison.OrdinalIgnoreCase)
                        || op.Name.Equals("Sort", StringComparison.OrdinalIgnoreCase)
@@ -210,13 +210,13 @@ public sealed partial class EventTimelineControl
                                || (op.Name.Contains("Hash Match", StringComparison.OrdinalIgnoreCase)
                                    && op.LogicalOperator.Contains("Join", StringComparison.OrdinalIgnoreCase))));
 
-        if (canTrace)
+        if (canSimulate)
         {
-            var openTrace = new MenuFlyoutItem { Text = "Trace" };
+            var openSimulation = new MenuFlyoutItem { Text = "Simulate" };
 
-            openTrace.Click += (_, _) => TraceOpenRequested?.Invoke(op);
+            openSimulation.Click += (_, _) => SimulationOpenRequested?.Invoke(op);
 
-            flyout.Items.Add(openTrace);
+            flyout.Items.Add(openSimulation);
         }
 
         flyout.ShowAt(_overlay, new FlyoutShowOptions { Position = position });

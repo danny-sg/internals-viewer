@@ -1,10 +1,13 @@
 ﻿using System;
 using System.Collections.ObjectModel;
 using System.Linq;
+using System.Text;
+using System.Text.Json;
 using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using CommunityToolkit.Mvvm.Messaging;
+using InternalsViewer.UI.App.Helpers;
 using InternalsViewer.UI.App.Messages;
 using InternalsViewer.UI.App.Models.Connections;
 using InternalsViewer.UI.App.Models.Page;
@@ -16,6 +19,8 @@ namespace InternalsViewer.UI.App.ViewModels;
 public partial class MainViewModel(SettingsService settingsService)
     : TabViewModel
 {
+    private const int MaxSettingBytes = 7168;
+
     [ObservableProperty]
     private ObservableCollection<RecentConnection> _recentConnections = [];
 
@@ -33,7 +38,19 @@ public partial class MainViewModel(SettingsService settingsService)
 
         if (recent != null)
         {
+            var isChanged = false;
+
+            foreach (var connection in recent)
+            {
+                isChanged |= ConnectionHelper.ProtectStoredPassword(connection);
+            }
+
             RecentConnections = new ObservableCollection<RecentConnection>(recent);
+
+            if (isChanged)
+            {
+                await SaveRecentConnections();
+            }
         }
 
 
@@ -56,7 +73,7 @@ public partial class MainViewModel(SettingsService settingsService)
 
         RecentConnections = new ObservableCollection<RecentConnection>(existing);
 
-        await SettingsService.SaveSettingAsync("RecentConnections", RecentConnections.ToArray());
+        await SaveRecentConnections();
     }
 
     [RelayCommand]
@@ -73,6 +90,17 @@ public partial class MainViewModel(SettingsService settingsService)
         var existing = RecentConnections.Where(c => c.Id != id).ToList();
 
         RecentConnections = new ObservableCollection<RecentConnection>(existing);
+
+        await SaveRecentConnections();
+    }
+
+    private async Task SaveRecentConnections()
+    {
+        while (RecentConnections.Count > 0
+               && Encoding.UTF8.GetByteCount(JsonSerializer.Serialize(RecentConnections.ToArray())) > MaxSettingBytes)
+        {
+            RecentConnections.RemoveAt(RecentConnections.Count - 1);
+        }
 
         await SettingsService.SaveSettingAsync("RecentConnections", RecentConnections.ToArray());
     }

@@ -7,6 +7,7 @@ using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using CommunityToolkit.Mvvm.Messaging;
+using InternalsViewer.UI.App.Helpers;
 using InternalsViewer.UI.App.Messages;
 using InternalsViewer.UI.App.Models.Connections;
 using InternalsViewer.UI.App.Services;
@@ -251,8 +252,9 @@ public partial class ConnectServerViewModel(SettingsService settingsService) : O
         {
             Name = $"{InstanceName}.{Database}",
             ConnectionType = "Server",
-            Value = GetConnectionString(),
-            IsPasswordRequired = AuthenticationType == (int)SqlAuthenticationMethod.SqlPassword
+            Value = GetSafeConnectionString(),
+            IsPasswordRequired = IsPasswordEnabled,
+            ProtectedPassword = IsPasswordEnabled && !string.IsNullOrEmpty(Password) ? PasswordProtection.Protect(Password) : null
         };
 
         return recent;

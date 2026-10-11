@@ -74,6 +74,37 @@ public sealed partial class DockLayoutViewModel : ObservableObject
         OnLayoutChanged();
     }
 
+    public void ShowBeside(DocumentViewModel document, DocumentViewModel neighbour)
+    {
+        if (Contains(document))
+        {
+            Activate(document);
+            return;
+        }
+
+        if (FindGroup(neighbour) is not { } group)
+        {
+            Show(document);
+            return;
+        }
+
+        group.Documents.Insert(group.Documents.IndexOf(neighbour) + 1, document);
+        group.SelectedDocument = document;
+
+        OnLayoutChanged();
+    }
+
+    public void DockBottom(DocumentViewModel document)
+    {
+        if (Contains(document))
+        {
+            Activate(document);
+            return;
+        }
+
+        SetRoot(new SplitNode(Orientation.Vertical, Root, new TabGroupNode(document)));
+    }
+
     /// <summary>Selects <paramref name="document"/> in whichever group currently hosts it</summary>
     public void Activate(DocumentViewModel document)
     {

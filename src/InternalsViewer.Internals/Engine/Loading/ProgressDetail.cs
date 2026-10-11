@@ -11,7 +11,15 @@ namespace InternalsViewer.Internals.Engine.Loading;
 /// </remarks>
 public readonly record struct ProgressDetail(string Message, double? Percentage = null)
 {
+    public bool IsStep { get; init; }
+
+    public TimeSpan? Elapsed { get; init; }
+
+    public double? Overall { get; init; }
+
     public bool IsIndeterminate => Percentage is null;
+
+    public static implicit operator ProgressDetail(string message) => new(message);
 
     public override string ToString() => Percentage is null
                                          ? Message

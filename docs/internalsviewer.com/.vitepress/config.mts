@@ -49,7 +49,7 @@ export default defineConfig({
               { text: "Call Stack", link: "docs/user-guide/query/CallStack" },
               { text: "Full Trace", link: "docs/user-guide/query/FullTrace" },
               { text: "Flame Chart", link: "docs/user-guide/query/FlameChart" },
-              { text: "Trace", link: "docs/user-guide/query/Trace" },
+              { text: "Simulation", link: "docs/user-guide/query/Simulation" },
               {
                 text: "Execution Plan",
                 link: "docs/user-guide/query/ExecutionPlan",
@@ -119,6 +119,10 @@ export default defineConfig({
           {
             text: "How query tracing works",
             link: "docs/deep-dives/query-tracing",
+          },
+          {
+            text: "How Full Trace works",
+            link: "docs/deep-dives/full-trace",
           },
           {
             text: "How the Index view works",

@@ -28,7 +28,7 @@ public sealed partial class QueryTimelineTabView : UserControl, IDocumentCommand
         EventTimeline.EventDoubleClicked += OnEventDoubleClicked;
         EventTimeline.IndexOpenRequested += OnIndexOpenRequested;
         EventTimeline.ExecutionPlanRequested += OnExecutionPlanRequested;
-        EventTimeline.TraceOpenRequested += OnTraceOpenRequested;
+        EventTimeline.SimulationOpenRequested += OnSimulationOpenRequested;
         EventTimeline.PlayStateChanged += OnPlayStateChanged;
 
         Loaded += (_, _) => AttachStructureResolver();
@@ -64,7 +64,7 @@ public sealed partial class QueryTimelineTabView : UserControl, IDocumentCommand
         EventTimeline.EventDoubleClicked -= OnEventDoubleClicked;
         EventTimeline.IndexOpenRequested -= OnIndexOpenRequested;
         EventTimeline.ExecutionPlanRequested -= OnExecutionPlanRequested;
-        EventTimeline.TraceOpenRequested -= OnTraceOpenRequested;
+        EventTimeline.SimulationOpenRequested -= OnSimulationOpenRequested;
         EventTimeline.PlayStateChanged -= OnPlayStateChanged;
 
         if (_subscribed is not null)
@@ -123,11 +123,11 @@ public sealed partial class QueryTimelineTabView : UserControl, IDocumentCommand
 
     private void OnIndexOpenRequested(ExecutionOperatorEvent op) => ViewModel?.OpenIndex(op);
 
-    private void OnTraceOpenRequested(ExecutionOperatorEvent op)
+    private void OnSimulationOpenRequested(ExecutionOperatorEvent op)
     {
         if (op.PlanNodeIdentifier is { } identifier)
         {
-            ViewModel?.OpenTrace(identifier);
+            ViewModel?.OpenSimulation(identifier);
         }
     }
 }

@@ -1,6 +1,8 @@
 ﻿using InternalsViewer.Query.Results;
 using Microsoft.UI.Dispatching;
 using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Documents;
+using Microsoft.UI.Xaml.Media;
 using System;
 using Windows.Foundation;
 using WinUI.TableView;
@@ -27,12 +29,25 @@ public sealed partial class ResultsGridControl : UserControl
             nameof(SelectedRow),
             typeof(ResultRow<long>),
             typeof(ResultsGridControl),
-            new PropertyMetadata(null));
+            new PropertyMetadata(null, OnSelectedRowChanged));
 
     public ResultRow<long>? SelectedRow
     {
         get => (ResultRow<long>?)GetValue(SelectedRowProperty);
         set => SetValue(SelectedRowProperty, value);
+    }
+
+    public static readonly DependencyProperty RowNameProperty =
+        DependencyProperty.Register(
+            nameof(RowName),
+            typeof(string),
+            typeof(ResultsGridControl),
+            new PropertyMetadata("row", OnRowNameChanged));
+
+    public string RowName
+    {
+        get => (string)GetValue(RowNameProperty);
+        set => SetValue(RowNameProperty, value);
     }
 
     private Size _lastKnownSize = new(800, 600);
@@ -52,6 +67,8 @@ public sealed partial class ResultsGridControl : UserControl
 
     public event EventHandler<PageAddressEventArgs>? PageClicked;
 
+    public event EventHandler<ResultCellMenuEventArgs>? CellMenuOpening;
+
     private TableView? ResultsTable { get; set; }
 
     private void Rebuild()
@@ -70,12 +87,17 @@ public sealed partial class ResultsGridControl : UserControl
         {
             var resultCellColumn = new ResultCellColumn(column.Ordinal)
             {
-                Header = column.Name,
+                Header = CreateHeader(column),
                 BackgroundColour = column.BackgroundColour,
                 Width = GetColumnWidth(column),
                 Alignment = column.Alignment,
                 PageClicked = OnPageClicked,
             };
+
+            if (CreateHeaderStyle(column) is { } headerStyle)
+            {
+                resultCellColumn.HeaderStyle = headerStyle;
+            }
 
             table.Columns.Add(resultCellColumn);
         }
@@ -84,11 +106,18 @@ public sealed partial class ResultsGridControl : UserControl
 
         table.SelectionChanged += OnSelectionChanged;
 
+        if (CellMenuOpening is not null)
+        {
+            table.CellContextFlyout = new MenuFlyout();
+
+            table.CellContextFlyoutOpening += OnCellContextFlyoutOpening;
+        }
+
         ResultsTable = table;
 
         TableHost.Child = table;
 
-        StatusText.Text = rows.Count == 1 ? "1 row" : $"{rows.Count:N0} rows";
+        UpdateStatus();
 
         DispatcherQueue.TryEnqueue(DispatcherQueuePriority.Low, WarmRows);
     }
@@ -120,11 +149,41 @@ public sealed partial class ResultsGridControl : UserControl
 
         table.SelectionChanged -= OnSelectionChanged;
 
+        table.CellContextFlyoutOpening -= OnCellContextFlyoutOpening;
+
         TableHost.Child = null;
 
         table.ItemsSource = null;
 
         ResultsTable = null;
+    }
+
+    private void UpdateStatus()
+    {
+        if (ResultSet is not { Rows.Count: var count })
+        {
+            StatusText.Text = string.Empty;
+
+            return;
+        }
+
+        StatusText.Text = count == 1 ? $"1 {RowName}" : $"{count:N0} {RowName}s";
+    }
+
+    private void OnCellContextFlyoutOpening(object? sender, TableViewCellContextFlyoutEventArgs e)
+    {
+        if (e.Flyout is not MenuFlyout menu || e.Item is not ResultRow<long> row)
+        {
+            e.Handled = true;
+
+            return;
+        }
+
+        menu.Items.Clear();
+
+        CellMenuOpening?.Invoke(this, new ResultCellMenuEventArgs(row, e.Slot.Column, menu));
+
+        e.Handled = menu.Items.Count == 0;
     }
 
     private void OnSelectionChanged(object sender, SelectionChangedEventArgs e)
@@ -164,13 +223,73 @@ public sealed partial class ResultsGridControl : UserControl
             _ => 140
         };
 
-        return new GridLength(column.Width ?? Math.Max(width, column.Name.Length * 7 + 24));
+        return new GridLength(column.Width ?? Math.Max(width, HeaderLength(column) * 7 + 24));
     }
+
+    private static object CreateHeader(ResultColumn column)
+    {
+        if (column.TypeName is null && column.Detail is null)
+        {
+            return column.Name;
+        }
+
+        var header = new TextBlock();
+
+        if (column.Name.Length > 0)
+        {
+            header.Inlines.Add(new Run { Text = $"{column.Name}  " });
+        }
+
+        if (column.TypeName is { } typeName)
+        {
+            header.Inlines.Add(new Run
+            {
+                Text = typeName,
+                FontFamily = Resource<FontFamily>("MonospaceFontFamily"),
+                Foreground = Resource<Brush>("CppClassBrush")
+            });
+        }
+
+        if (column.Detail is { } detail)
+        {
+            header.Inlines.Add(new Run
+            {
+                Text = column.TypeName is null ? detail : $"  {detail}",
+                Foreground = Resource<Brush>("TextFillColorTertiaryBrush")
+            });
+        }
+
+        return header;
+    }
+
+    private static Style? CreateHeaderStyle(ResultColumn column)
+    {
+        if (column.BackgroundColour is not { } colour)
+        {
+            return null;
+        }
+
+        var style = new Style(typeof(TableViewColumnHeader)) { BasedOn = Resource<Style>("TableViewColumnHeaderStyle") };
+
+        style.Setters.Add(new Setter(Control.BackgroundProperty,
+                                     new SolidColorBrush(Windows.UI.Color.FromArgb(colour.A, colour.R, colour.G, colour.B))));
+
+        return style;
+    }
+
+    private static int HeaderLength(ResultColumn column)
+        => column.Name.Length + (column.TypeName?.Length + 2 ?? 0) + (column.Detail?.Length + 2 ?? 0);
+
+    private static T? Resource<T>(string key) where T : class
+        => Application.Current.Resources.TryGetValue(key, out var resource) ? resource as T : null;
 
     private void OnPageClicked(PageAddressEventArgs e)
     {
         PageClicked?.Invoke(this, e);
     }
+
+    private static void OnRowNameChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
+        => ((ResultsGridControl)d).UpdateStatus();
 
     private static void OnResultSetChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
     {
@@ -178,5 +297,28 @@ public sealed partial class ResultsGridControl : UserControl
         
         control.SelectedRow = null;
         control.Rebuild();
+    }
+
+    private static void OnSelectedRowChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
+    {
+        var control = (ResultsGridControl)d;
+
+        if (control.ResultsTable is not { } table || ReferenceEquals(table.SelectedItem, e.NewValue))
+        {
+            return;
+        }
+
+        table.SelectedItem = e.NewValue;
+
+        if (e.NewValue is { } row)
+        {
+            control.DispatcherQueue.TryEnqueue(DispatcherQueuePriority.Low, () =>
+            {
+                if (ReferenceEquals(control.ResultsTable, table))
+                {
+                    table.ScrollIntoView(row, ScrollIntoViewAlignment.Leading);
+                }
+            });
+        }
     }
 }

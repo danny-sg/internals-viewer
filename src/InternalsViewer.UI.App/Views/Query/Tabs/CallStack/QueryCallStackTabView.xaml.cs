@@ -5,32 +5,66 @@ using System.Threading;
 using System.Threading.Tasks;
 using System;
 using InternalsViewer.Query.CallStack;
+using InternalsViewer.Query.CallStack.Arguments;
+using InternalsViewer.Query.CallStack.TimeTravel.CallLog;
+using InternalsViewer.Query.CallStack.TimeTravel.Iterators;
+using InternalsViewer.Query.CallStack.TimeTravel.Locators;
+using InternalsViewer.Query.CallStack.WinDbg;
+using InternalsViewer.Query.Debugging;
+using InternalsViewer.Query.Debugging.Exceptions;
 using InternalsViewer.Query.Events.Latches;
 using InternalsViewer.Query.Events.Locks;
 using InternalsViewer.Query.Events.Operators;
 using InternalsViewer.Query.Events;
 using InternalsViewer.Query.Interfaces.Events;
 using InternalsViewer.Query.Plans.Model;
+using InternalsViewer.UI.App.Controls;
 using InternalsViewer.UI.App.Controls.CallStack;
+using InternalsViewer.UI.App.Controls.Results;
 using InternalsViewer.UI.App.Controls.Docking;
 using InternalsViewer.UI.App.Models.Query.CallStack;
-using InternalsViewer.UI.App.Services.Query.Debugging;
+using InternalsViewer.UI.App.Models.Columnstore;
+using InternalsViewer.UI.App.ViewModels;
 using InternalsViewer.UI.App.ViewModels.Query;
 using InternalsViewer.UI.App.ViewModels.Query.CallStack;
+using Microsoft.UI.Text;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Controls.Primitives;
+using Microsoft.UI.Xaml.Data;
 using Microsoft.UI.Xaml.Input;
+using Microsoft.UI.Xaml.Media;
 using Windows.ApplicationModel.DataTransfer;
+using Windows.UI.Text;
+using CommunityToolkit.Mvvm.Messaging;
+using InternalsViewer.Internals.Engine.Address;
+using InternalsViewer.UI.App.Controls;
+using InternalsViewer.UI.App.Messages;
+using Microsoft.UI.Input;
+using Windows.System;
+using Windows.UI.Core;
 
 namespace InternalsViewer.UI.App.Views.Query.Tabs.CallStack;
 
 public sealed partial class QueryCallStackTabView : UserControl, IDocumentCommands, ISignatureNavigator
 {
-    private readonly Dictionary<CallStackNode, TreeViewNode> _nodes = new();
+    private const int ExpandBudget = 2000;
 
-    private readonly List<EngineEvent> _history = [];
+    private const int ExpandAllBudget = 10000;
 
-    private readonly List<TreeViewNode> _operatorNodes = [];
+    private const int ListedLocators = 20;
+
+    private const double PrunedBadgeOpacity = 0.5;
+
+    private readonly Dictionary<CallStackNode, TreeRow> _rows = new();
+
+    private readonly Dictionary<TreeViewNode, TreeRow> _rowsByNode = new();
+
+    private readonly List<TreeRow> _rootRows = [];
+
+    private readonly List<CallStackPlace> _history = [];
+
+    private readonly List<TreeRow> _operatorRows = [];
+
 
     private Button? _backButton;
 
@@ -42,6 +76,8 @@ public sealed partial class QueryCallStackTabView : UserControl, IDocumentComman
 
     private ToggleButton? _symbolsToggle;
 
+    private ToggleButton? _signatureToggle;
+
     private HashSet<CallStackNode>? _visible;
 
     private bool _revealInfrastructure;
@@ -49,6 +85,22 @@ public sealed partial class QueryCallStackTabView : UserControl, IDocumentComman
     private bool _focus = true;
 
     private bool _activity = true;
+
+    private bool _signatures;
+
+    private CallStackTree? _signaturesFor;
+
+    private string? _filterPath;
+
+    private HashSet<string> _hiddenCategories = new(StringComparer.Ordinal);
+
+    private string? _hiddenCategoriesSetting;
+
+    private HashSet<string> _prunedCategories = new(StringComparer.Ordinal);
+
+    private string? _prunedCategoriesSetting;
+
+    private CallStackNode? _navigatedNode;
 
     private HashSet<int> _highlightBuckets = [];
 
@@ -59,6 +111,10 @@ public sealed partial class QueryCallStackTabView : UserControl, IDocumentComman
     private bool _navigatingHistory;
 
     private string _search = string.Empty;
+
+    private LocatorSearch? _locatorSearch;
+
+    private ColumnStoreSearch? _columnStoreSearch;
 
     private Dictionary<CallStackNode, ExecutionOperatorEvent> _nextOperator = new();
 
@@ -78,10 +134,14 @@ public sealed partial class QueryCallStackTabView : UserControl, IDocumentComman
 
         DataContextChanged += (_, _) => OnViewModelChanged();
 
+        AddHandler(PointerPressedEvent, new PointerEventHandler(OnNavigationPointerPressed), handledEventsToo: true);
+
         PositionActivitySplitter();
     }
 
     private ActivityColumnLayout ActivityColumn => (ActivityColumnLayout)Resources["ActivityColumn"];
+
+    private CallstackNodeTemplateSelector NodeTemplates => (CallstackNodeTemplateSelector)Resources["NodeTemplateSelector"];
 
     public QueryViewModel? ViewModel => DataContext as QueryViewModel;
 
@@ -149,6 +209,42 @@ public sealed partial class QueryCallStackTabView : UserControl, IDocumentComman
 
     private WinDbgService WinDbg => field ??= App.GetService<WinDbgService>();
 
+    private SettingsViewModel Settings => field ??= App.GetService<SettingsViewModel>();
+
+    private HashSet<string> HiddenCategories
+    {
+        get
+        {
+            var setting = Settings.CallTreeHiddenCategories;
+
+            if (!string.Equals(setting, _hiddenCategoriesSetting, StringComparison.Ordinal))
+            {
+                _hiddenCategoriesSetting = setting;
+
+                _hiddenCategories = SettingsViewModel.SplitCategories(setting);
+            }
+
+            return _hiddenCategories;
+        }
+    }
+
+    private HashSet<string> PrunedCategories
+    {
+        get
+        {
+            var setting = Settings.CallTreePrunedCategories;
+
+            if (!string.Equals(setting, _prunedCategoriesSetting, StringComparison.Ordinal))
+            {
+                _prunedCategoriesSetting = setting;
+
+                _prunedCategories = SettingsViewModel.SplitCategories(setting);
+            }
+
+            return _prunedCategories;
+        }
+    }
+
     /// <summary>
     /// Builds the history and focus controls for a tab strip to host
     /// </summary>
@@ -210,6 +306,18 @@ public sealed partial class QueryCallStackTabView : UserControl, IDocumentComman
 
         _activityToggle.Click += OnActivityChanged;
 
+        _signatureToggle = new ToggleButton
+        {
+            Style = (Style)Application.Current.Resources["TabCommandToggleStyle"],
+            Content = new TextBlock { Text = "Signature", VerticalAlignment = VerticalAlignment.Center },
+            Margin = new Thickness(2, 0, 0, 0),
+            IsChecked = _signatures
+        };
+
+        ToolTipService.SetToolTip(_signatureToggle, "Show each frame's function signature, with its parameter types, from the symbols.");
+
+        _signatureToggle.Click += OnSignatureChanged;
+
         _symbolsToggle = new ToggleButton
         {
             Style = (Style)Application.Current.Resources["TabCommandToggleStyle"],
@@ -233,6 +341,7 @@ public sealed partial class QueryCallStackTabView : UserControl, IDocumentComman
         commands.Children.Add(_forwardButton);
         commands.Children.Add(_focusToggle);
         commands.Children.Add(_activityToggle);
+        commands.Children.Add(_signatureToggle);
         commands.Children.Add(_symbolsToggle);
 
         return commands;
@@ -246,14 +355,17 @@ public sealed partial class QueryCallStackTabView : UserControl, IDocumentComman
         }
         catch (Exception exception)
         {
-            var dialog = new ContentDialog
-            {
-                Title = "WinDbg",
-                Content = exception.Message,
-                CloseButtonText = "OK",
-                XamlRoot = XamlRoot,
-                Style = Application.Current.Resources["DefaultContentDialogStyle"] as Style
-            };
+            var dialog = exception is WinDbgNotFoundException
+                ? new WinDbgInstallDialog(exception.Message)
+                : new ContentDialog
+                {
+                    Title = "WinDbg",
+                    Content = exception.Message,
+                    CloseButtonText = "OK"
+                };
+
+            dialog.XamlRoot = XamlRoot;
+            dialog.Style = Application.Current.Resources["DefaultContentDialogStyle"] as Style;
 
             await dialog.ShowAsync();
         }
@@ -261,7 +373,7 @@ public sealed partial class QueryCallStackTabView : UserControl, IDocumentComman
 
     private void OnFocusChanged(object sender, RoutedEventArgs e)
     {
-        _focus = _focusToggle?.IsChecked == true;
+        SetFocus(_focusToggle?.IsChecked == true);
 
         ApplyFocus(_viewModel?.SelectedEvent);
     }
@@ -273,6 +385,34 @@ public sealed partial class QueryCallStackTabView : UserControl, IDocumentComman
         Tree.ItemContainerStyle = (Style)Resources[_activity ? "ActivityItemStyle" : "PlainItemStyle"];
 
         ActivityHeader.Visibility = _activity ? Visibility.Visible : Visibility.Collapsed;
+
+        ApplyFocus(_viewModel?.SelectedEvent);
+    }
+
+    private void SetFocus(bool focus)
+    {
+        _focus = focus;
+
+        _focusToggle?.IsChecked = focus;
+    }
+
+    private async void OnSignatureChanged(object sender, RoutedEventArgs e)
+    {
+        _signatures = _signatureToggle?.IsChecked == true;
+
+        await RefreshSignaturesAsync();
+    }
+
+    private async Task RefreshSignaturesAsync()
+    {
+        if (_signatures && _viewModel?.CallStack is { } tree && !ReferenceEquals(_signaturesFor, tree))
+        {
+            _signaturesFor = tree;
+
+            await _viewModel.Symbols.ResolveFrameSignaturesAsync([.. tree.Nodes().Select(n => n.Frame).OfType<CallstackFrame>()]);
+        }
+
+        NodeTemplates.ShowSignatures = _signatures;
 
         ApplyFocus(_viewModel?.SelectedEvent);
     }
@@ -298,6 +438,24 @@ public sealed partial class QueryCallStackTabView : UserControl, IDocumentComman
 
     private void OnForwardClick(object sender, RoutedEventArgs e) => GoTo(_historyIndex + 1);
 
+    private void OnNavigationPointerPressed(object sender, PointerRoutedEventArgs e)
+    {
+        var properties = e.GetCurrentPoint(this).Properties;
+
+        if (properties.IsXButton1Pressed)
+        {
+            GoTo(_historyIndex - 1);
+
+            e.Handled = true;
+        }
+        else if (properties.IsXButton2Pressed)
+        {
+            GoTo(_historyIndex + 1);
+
+            e.Handled = true;
+        }
+    }
+
     private void GoTo(int index)
     {
         if (_viewModel is null || index < 0 || index >= _history.Count)
@@ -305,18 +463,110 @@ public sealed partial class QueryCallStackTabView : UserControl, IDocumentComman
             return;
         }
 
+        SnapshotPlace();
+
         _historyIndex = index;
 
         _navigatingHistory = true;
 
         try
         {
-            _viewModel.SelectedEvent = _history[index];
+            Restore(_history[index]);
         }
         finally
         {
             _navigatingHistory = false;
         }
+
+        UpdateHistoryButtons();
+    }
+
+    private void Restore(CallStackPlace place)
+    {
+        if (_viewModel is null)
+        {
+            return;
+        }
+
+        SetFocus(place.Focus);
+
+        SelectQuietly(place.Event);
+
+        if (place.Node is { } node)
+        {
+            NavigateTo(node);
+        }
+        else
+        {
+            ApplyFocus(place.Event);
+        }
+
+        if (place.Function is { } function)
+        {
+            _ = _viewModel.Arguments.ShowAsync(function, place.Call);
+        }
+    }
+
+    private void SelectQuietly(EngineEvent? selected)
+    {
+        if (_viewModel is null || ReferenceEquals(_viewModel.SelectedEvent, selected))
+        {
+            return;
+        }
+
+        _isSelectingFromTree = true;
+
+        try
+        {
+            _viewModel.SelectedEvent = selected;
+        }
+        finally
+        {
+            _isSelectingFromTree = false;
+        }
+    }
+
+    private CallStackPlace CurrentPlace()
+        => new(_viewModel?.SelectedEvent,
+               _navigatedNode,
+               _focus,
+               _viewModel?.Arguments.Shown,
+               _viewModel?.Arguments.SelectedCallIndex);
+
+    private void SnapshotPlace()
+    {
+        if (_historyIndex < 0 || _viewModel is null)
+        {
+            return;
+        }
+
+        _history[_historyIndex] = _history[_historyIndex] with
+        {
+            Focus = _focus,
+            Function = _viewModel.Arguments.Shown,
+            Call = _viewModel.Arguments.SelectedCallIndex
+        };
+    }
+
+    private void LeavePlace()
+    {
+        if (_historyIndex < 0)
+        {
+            PushPlace(CurrentPlace());
+
+            return;
+        }
+
+        SnapshotPlace();
+    }
+
+    private void PushPlace(CallStackPlace place)
+    {
+        _history.RemoveRange(_historyIndex + 1, _history.Count - _historyIndex - 1);
+
+        _history.Add(place);
+
+        _historyIndex = _history.Count - 1;
 
         UpdateHistoryButtons();
     }
@@ -331,18 +581,18 @@ public sealed partial class QueryCallStackTabView : UserControl, IDocumentComman
             return;
         }
 
-        if (_historyIndex >= 0 && ReferenceEquals(_history[_historyIndex], selected))
+        if (_historyIndex >= 0 && _history[_historyIndex] is { Node: null } current && ReferenceEquals(current.Event, selected))
         {
             return;
         }
 
-        _history.RemoveRange(_historyIndex + 1, _history.Count - _historyIndex - 1);
+        SnapshotPlace();
 
-        _history.Add(selected);
-
-        _historyIndex = _history.Count - 1;
-
-        UpdateHistoryButtons();
+        PushPlace(new CallStackPlace(selected,
+                                     null,
+                                     _focus,
+                                     _viewModel?.Arguments.Shown,
+                                     _viewModel?.Arguments.SelectedCallIndex));
     }
 
     private void ClearHistory()
@@ -407,11 +657,517 @@ public sealed partial class QueryCallStackTabView : UserControl, IDocumentComman
         _contextNode = (sender as FrameworkElement)?.DataContext as TreeViewNode;
 
         EnableWinDbgMenu(sender);
+
+        EnableFrameMenu(sender);
     }
 
-    private void OnExpandAllClick(object sender, RoutedEventArgs e) => SetExpanded(_contextNode, expanded: true);
+    private void EnableFrameMenu(object sender)
+    {
+        if ((sender as FrameworkElement)?.ContextFlyout is not MenuFlyout flyout)
+        {
+            return;
+        }
 
-    private void OnCollapseAllClick(object sender, RoutedEventArgs e) => SetExpanded(_contextNode, expanded: false);
+        foreach (var item in flyout.Items.OfType<MenuFlyoutItem>())
+        {
+            switch (item.Tag)
+            {
+                case "ClearFilter":
+                {
+                    item.IsEnabled = _filterPath is not null;
+
+                    break;
+                }
+                case "ShowArguments":
+                {
+                    item.IsEnabled = _contextNode?.Content is CallStackNode node && CanShowArguments(node);
+
+                    break;
+                }
+            }
+        }
+    }
+
+    private void OnFilterToClick(object sender, RoutedEventArgs e)
+    {
+        if (_contextNode?.Content is not CallStackNode node)
+        {
+            return;
+        }
+
+        _filterPath = PathOf(node);
+
+        ApplyFilter();
+    }
+
+    private void OnClearFilterClick(object sender, RoutedEventArgs e)
+    {
+        _filterPath = null;
+
+        ApplyFocus(_viewModel?.SelectedEvent);
+    }
+
+    private void OnShowArgumentsClick(object sender, RoutedEventArgs e)
+    {
+        if (_contextNode?.Content is CallStackNode node)
+        {
+            ShowArguments(node);
+        }
+    }
+
+    private void ShowArguments(CallStackNode node, int? call = null)
+    {
+        if (_viewModel is null)
+        {
+            return;
+        }
+
+        if (!IsMembersPaneVisible)
+        {
+            IsMembersPaneVisible = true;
+
+            _symbolsToggle?.IsChecked = true;
+        }
+
+        DetailTabs.SelectedItem = ArgumentsTab;
+
+        _ = call is { } index ? _viewModel.Arguments.ShowAsync(node, index) : _viewModel.Arguments.ShowAsync(node);
+    }
+
+    private void OnCallNavigationRequested(CallStackNode node, int call)
+    {
+        int? index = call >= 0 ? call : null;
+
+        LeavePlace();
+
+        NavigateTo(node);
+
+        PushPlace(new CallStackPlace(_viewModel?.SelectedEvent, node, _focus, node, index));
+
+        if (CanShowArguments(node))
+        {
+            ShowArguments(node, index);
+        }
+    }
+
+    private bool CanShowArguments(CallStackNode node)
+        => _viewModel is { CallStack.ActivityFromTrace: true } viewModel && viewModel.Arguments.CanShow(node);
+
+    private void OnArgumentCellMenuOpening(object? sender, ResultCellMenuEventArgs e)
+    {
+        if (_viewModel?.Arguments is not { } arguments)
+        {
+            return;
+        }
+
+        var index = (int)e.Row.Id;
+
+        if (arguments.NodeAt(index) is { } node)
+        {
+            e.Menu.Items.Add(MenuItem("Go To Call", () => GoToCall(node)));
+        }
+
+        var cell = arguments.CellAt(index, e.Ordinal);
+
+        if (cell.Locator is { Kind: LocatorKind.ColumnStoreObject } columnStoreObject)
+        {
+            e.Menu.Items.Add(MenuItem("Open In The Columnstore Viewer", () => OpenPage(columnStoreObject)));
+        }
+
+        if (cell.Locator is { } locator)
+        {
+            e.Menu.Items.Add(MenuItem("Search Call Tree", () => SearchBox.Text = locator.SearchText));
+        }
+
+        if (cell.Value is not { } value)
+        {
+            return;
+        }
+
+        if (cell.Type is { } type && ArgumentValue.HoBtIdOf(type, value) is { } hobtId)
+        {
+            e.Menu.Items.Add(MenuItem("Open The Index", () => _viewModel?.OpenHoBt(hobtId)));
+        }
+
+        if (arguments.IteratorOf(value) is { } iterator)
+        {
+            e.Menu.Items.Add(MenuItem($"Show The {iterator.Label} Iterator", () => NavigateToIterator(iterator)));
+        }
+
+        e.Menu.Items.Add(MenuItem("Find Calls With This Value", () => _ = arguments.FindValueAsync(value)));
+    }
+
+    private static MenuFlyoutItem MenuItem(string text, Action action)
+    {
+        var item = new MenuFlyoutItem { Text = text };
+
+        item.Click += (_, _) => action();
+
+        return item;
+    }
+
+    private void OnArgumentCallChosen(CallReference reference)
+    {
+        if (_viewModel is null)
+        {
+            return;
+        }
+
+        if (!_rows.ContainsKey(reference.Node))
+        {
+            GoToCall(reference.Node);
+
+            return;
+        }
+
+        SelectNode(reference.Node);
+    }
+
+    private void GoToCall(CallStackNode node)
+    {
+        LeavePlace();
+
+        NavigateTo(node, selectInFlameChart: false);
+
+        PushPlace(CurrentPlace());
+    }
+
+    private void OnValueIteratorClick(object sender, RoutedEventArgs e)
+    {
+        if (_viewModel?.Arguments.ValueIterator is { } target)
+        {
+            NavigateToIterator(target);
+        }
+    }
+
+    private void NavigateToIterator(IteratorTarget target)
+    {
+        if (_viewModel is null)
+        {
+            return;
+        }
+
+        LeavePlace();
+
+        if (target.Operator is { } operatorEvent)
+        {
+            SelectQuietly(operatorEvent);
+        }
+
+        NavigateTo(target.Node);
+
+        PushPlace(CurrentPlace());
+    }
+
+    private void OnArgumentPageClicked(object? sender, PageAddressEventArgs e)
+        => OpenPage(new PageAddress(e.FileId, e.PageId), e.Slot is 0 ? null : e.Slot);
+
+    private void OnNodeLocatorsClick(object sender, RoutedEventArgs e)
+    {
+        if (sender is not FrameworkElement { DataContext: TreeViewNode { Content: CallStackNode { Locators: { } locators } } } element)
+        {
+            return;
+        }
+
+        if (locators.Count == 1)
+        {
+            OpenPage(locators.Ordered().First());
+
+            return;
+        }
+
+        var menu = new MenuFlyout();
+
+        foreach (var locator in locators.Ordered().Take(ListedLocators))
+        {
+            var item = new MenuFlyoutItem { Text = locator.ToString(), Tag = locator };
+
+            item.Click += OnListedLocatorClick;
+
+            menu.Items.Add(item);
+        }
+
+        if (locators.Count > ListedLocators)
+        {
+            menu.Items.Add(new MenuFlyoutItem { Text = $"And {locators.Count - ListedLocators:N0} More", IsEnabled = false });
+        }
+
+        menu.ShowAt(element);
+    }
+
+    private void OnListedLocatorClick(object sender, RoutedEventArgs e)
+    {
+        if (sender is MenuFlyoutItem { Tag: TimeTravelLocator locator })
+        {
+            OpenPage(locator);
+        }
+    }
+
+    private void OpenPage(TimeTravelLocator locator)
+    {
+        if (locator.Kind == LocatorKind.ColumnStoreObject)
+        {
+            _viewModel?.OpenColumnstoreObject(locator.HobtId,
+                                              new ColumnstoreObjectTarget(locator.ObjectType, locator.ColumnId, locator.ObjectId));
+
+            return;
+        }
+
+        OpenPage(locator.Page, locator.Kind == LocatorKind.Row ? locator.Slot : null);
+    }
+
+    private void OpenPage(PageAddress pageAddress, ushort? slot)
+    {
+        if (_viewModel is not { } viewModel)
+        {
+            return;
+        }
+
+        var shift = InputKeyboardSource.GetKeyStateForCurrentThread(VirtualKey.Shift);
+
+        if (shift.HasFlag(CoreVirtualKeyStates.Down))
+        {
+            WeakReferenceMessenger.Default
+                                  .Send(new OpenPageMessage(new OpenPageRequest(viewModel.Database, pageAddress)
+                                  {
+                                      Slot = slot,
+                                      LogRecords = viewModel.GetPageLogRecords(pageAddress)
+                                  }));
+        }
+        else
+        {
+            viewModel.OpenPage(pageAddress, slot);
+        }
+    }
+
+    private void OnCloseValueSearchClick(object sender, RoutedEventArgs e) => _viewModel?.Arguments.CloseValueSearch();
+
+    private void OnFirstUseClick(object sender, RoutedEventArgs e)
+    {
+        if ((sender as FrameworkElement)?.DataContext is ValueUseRow row)
+        {
+            ShowUse(row.Use.First);
+        }
+    }
+
+    private void OnLastUseClick(object sender, RoutedEventArgs e)
+    {
+        if ((sender as FrameworkElement)?.DataContext is ValueUseRow row)
+        {
+            ShowUse(row.Use.Last);
+        }
+    }
+
+    private void ShowUse(TimeTravelValueMatch match)
+    {
+        if (match.Node is not { } node || _viewModel is null)
+        {
+            return;
+        }
+
+        LeavePlace();
+
+        NavigateTo(node);
+
+        PushPlace(new CallStackPlace(_viewModel.SelectedEvent, node, _focus, node, match.Call));
+
+        _ = _viewModel.Arguments.ShowAsync(node, match.Call);
+    }
+
+    private void NavigateTo(CallStackNode target, bool selectInFlameChart = true)
+    {
+        SetFocus(false);
+
+        if (_filterPath is not null && !target.Ancestors().Any(a => PathOf(a) == _filterPath))
+        {
+            _filterPath = null;
+        }
+
+        _visible = VisibleFrom([target]);
+
+        _visible.UnionWith(Descendants(target));
+
+        _revealInfrastructure = target.IsInfrastructure;
+
+        BuildTree();
+
+        ExpandWithin(_rootRows, ExpandBudget);
+
+        ApplyFilter();
+
+        SelectNode(target);
+
+        ApplyActivityBands();
+
+        _navigatedNode = target;
+
+        if (selectInFlameChart)
+        {
+            _viewModel?.SelectedCallNode = target;
+        }
+    }
+
+    private static IEnumerable<CallStackNode> Descendants(CallStackNode node)
+    {
+        var pending = new Stack<CallStackNode>(node.ChildNodes);
+
+        while (pending.Count > 0)
+        {
+            var current = pending.Pop();
+
+            yield return current;
+
+            foreach (var child in current.ChildNodes)
+            {
+                pending.Push(child);
+            }
+        }
+    }
+
+    private void OnCategoryFilterClick(object sender, RoutedEventArgs e)
+    {
+        var open = CategoryFilterButton.IsChecked == true;
+
+        CategoryPanel.Visibility = open ? Visibility.Visible : Visibility.Collapsed;
+
+        if (open)
+        {
+            BuildCategoryBadges();
+        }
+    }
+
+    private void OnCategoryBadgeTapped(object sender, TappedRoutedEventArgs e)
+    {
+        if (sender is Border { Tag: string category })
+        {
+            SetCategory(category, hide: !IsHidden(category), withCallees: false);
+        }
+    }
+
+    private void OnCategoryBadgeRightTapped(object sender, RightTappedRoutedEventArgs e)
+    {
+        if (sender is not Border { Tag: string category } badge)
+        {
+            return;
+        }
+
+        var menu = new MenuFlyout();
+
+        menu.Items.Add(CategoryMenuItem(category, "Show", hide: false, withCallees: false));
+        menu.Items.Add(CategoryMenuItem(category, "Hide", hide: true, withCallees: false));
+        menu.Items.Add(CategoryMenuItem(category, "Hide With Callees", hide: true, withCallees: true));
+
+        menu.ShowAt(badge, e.GetPosition(badge));
+
+        e.Handled = true;
+    }
+
+    private RadioMenuFlyoutItem CategoryMenuItem(string category, string text, bool hide, bool withCallees)
+    {
+        var item = new RadioMenuFlyoutItem
+        {
+            Text = text,
+            GroupName = nameof(CategoryMenuItem),
+            IsChecked = IsHidden(category) == hide && PrunedCategories.Contains(category) == withCallees
+        };
+
+        item.Click += (_, _) => SetCategory(category, hide, withCallees);
+
+        return item;
+    }
+
+    private void SetCategory(string category, bool hide, bool withCallees)
+    {
+        var hidden = HiddenCategories;
+
+        var pruned = PrunedCategories;
+
+        hidden.Remove(category);
+        pruned.Remove(category);
+
+        if (hide)
+        {
+            (withCallees ? pruned : hidden).Add(category);
+        }
+
+        SaveCategories(hidden, pruned);
+    }
+
+    private void OnAllCategoriesClick(object sender, RoutedEventArgs e)
+    {
+        var hidden = HiddenCategories;
+
+        var pruned = PrunedCategories;
+
+        pruned.Clear();
+
+        if (AllCategoriesToggle.IsChecked == true)
+        {
+            hidden.Clear();
+        }
+        else
+        {
+            foreach (var badge in CategoryBadges.Children.OfType<Border>())
+            {
+                if (badge.Tag is string category)
+                {
+                    hidden.Add(category);
+                }
+            }
+        }
+
+        SaveCategories(hidden, pruned);
+    }
+
+    private void SaveCategories(HashSet<string> hidden, HashSet<string> pruned)
+    {
+        _hiddenCategoriesSetting = string.Join(SettingsViewModel.CategorySeparator, hidden.Order(StringComparer.Ordinal));
+
+        _prunedCategoriesSetting = string.Join(SettingsViewModel.CategorySeparator, pruned.Order(StringComparer.Ordinal));
+
+        Settings.CallTreeHiddenCategories = _hiddenCategoriesSetting;
+
+        Settings.CallTreePrunedCategories = _prunedCategoriesSetting;
+
+        foreach (var badge in CategoryBadges.Children.OfType<Border>())
+        {
+            StyleCategoryBadge(badge);
+        }
+
+        UpdateAllCategoriesToggle();
+
+        ApplyFocus(_viewModel?.SelectedEvent);
+    }
+
+    private void OnDefaultCategoriesClick(object sender, RoutedEventArgs e)
+    {
+        Settings.ResetCallTreeCategories();
+
+        SaveCategories(HiddenCategories, PrunedCategories);
+    }
+
+    private void UpdateAllCategoriesToggle()
+        => AllCategoriesToggle.IsChecked = CategoryBadges.Children
+                                                         .OfType<Border>()
+                                                         .All(b => b.Tag is not string category || !IsHidden(category));
+
+    private bool IsHidden(string category) => HiddenCategories.Contains(category) || PrunedCategories.Contains(category);
+
+    private void OnExpandAllClick(object sender, RoutedEventArgs e)
+    {
+        if (_contextNode is not null && _rowsByNode.TryGetValue(_contextNode, out var row))
+        {
+            ExpandWithin([row], ExpandAllBudget);
+        }
+    }
+
+    private void OnCollapseAllClick(object sender, RoutedEventArgs e)
+    {
+        if (_contextNode is not null && _rowsByNode.TryGetValue(_contextNode, out var row))
+        {
+            Collapse(row);
+        }
+    }
 
     private void OnCopyCallTreeClick(object sender, RoutedEventArgs e)
     {
@@ -425,50 +1181,64 @@ public sealed partial class QueryCallStackTabView : UserControl, IDocumentComman
     {
         if (_contextNode?.Content is CallStackNode { Frame: { } frame })
         {
-            CopyText(WinDbgCommands.Symbol(frame));
+            CopyText(WinDbgCommands.Symbol(WinDbgTarget.From(frame)));
         }
     }
 
     private void OnSendWinDbgClick(object sender, RoutedEventArgs e)
     {
-        if (_contextNode?.Content is not CallStackNode { Frame: { } frame } || sender is not MenuFlyoutItem { Tag: string command })
+        if (_contextNode?.Content is CallStackNode { Frame: { } frame })
+        {
+            SendWinDbg(sender, WinDbgTarget.From(frame), () => DescribeFrameAsync(frame));
+        }
+    }
+
+    private void SendWinDbg(object sender,
+                            WinDbgTarget target,
+                            Func<Task<(WinDbgTarget Target, string? DecoratedName)>> describe)
+    {
+        if (sender is not MenuFlyoutItem { Tag: string command })
         {
             return;
         }
 
         if (command is "DumpArguments" or "DumpArgumentsAndBreak")
         {
-            RunWinDbg(async () => await WinDbg.SendAsync(await FrameArgumentsCommand(command, frame), CancellationToken.None));
+            RunWinDbg(async () =>
+            {
+                var (described, decoratedName) = await describe();
+
+                var text = command == "DumpArguments"
+                    ? WinDbgCommands.DumpArguments(described, decoratedName)
+                    : WinDbgCommands.DumpArgumentsAndBreak(described, decoratedName);
+
+                await WinDbg.SendAsync(text, CancellationToken.None);
+            });
 
             return;
         }
 
-        if (FrameCommand(command, frame) is { } text)
+        if (WinDbgCommands.For(command, target) is { } text)
         {
             RunWinDbg(() => WinDbg.SendAsync(text, CancellationToken.None));
         }
     }
 
-    private async Task<string> FrameArgumentsCommand(string command, CallstackFrame frame)
+    private async Task<(WinDbgTarget Target, string? DecoratedName)> DescribeFrameAsync(CallstackFrame frame)
     {
         var signature = _viewModel is { } viewModel ? await viewModel.Symbols.ResolveFrameSignatureAsync(frame) : null;
 
-        return command == "DumpArgumentsAndBreak"
-            ? WinDbgCommands.DumpArgumentsAndBreak(frame, signature)
-            : WinDbgCommands.DumpArguments(frame, signature);
+        var decoratedName = _viewModel is { } owner ? await owner.Symbols.ResolveFrameDecoratedNameAsync(frame) : null;
+
+        return (WinDbgTarget.From(frame) with { Signature = signature }, decoratedName);
     }
 
-    private static string? FrameCommand(string command, CallstackFrame frame) =>
-        command switch
-        {
-            "Breakpoint" => WinDbgCommands.Breakpoint(frame),
-            "BreakpointWithStack" => WinDbgCommands.BreakpointWithStack(frame),
-            "BreakpointAtFrame" => WinDbgCommands.BreakpointAtFrame(frame),
-            "ExamineSymbol" => WinDbgCommands.ExamineSymbol(frame),
-            "DisplayType" => WinDbgCommands.DisplayType(frame),
-            "ListClassSymbols" => WinDbgCommands.ListClassSymbols(frame),
-            _ => null
-        };
+    private async Task<(WinDbgTarget Target, string? DecoratedName)> DescribeMemberAsync(ClassMemberRow member)
+    {
+        var decoratedName = _viewModel is { } viewModel ? await viewModel.Symbols.ResolveMemberDecoratedNameAsync(member) : null;
+
+        return (WinDbgTarget.From(member.Reference), decoratedName);
+    }
 
     private void OnListMembersClick(object sender, RoutedEventArgs e)
     {
@@ -478,6 +1248,8 @@ public sealed partial class QueryCallStackTabView : UserControl, IDocumentComman
         }
 
         _ = _viewModel.Symbols.ListMembersAsync(node);
+
+        DetailTabs.SelectedItem = MembersTab;
     }
 
     private void OnMemberRightTapped(object sender, RightTappedRoutedEventArgs e)
@@ -512,33 +1284,17 @@ public sealed partial class QueryCallStackTabView : UserControl, IDocumentComman
     {
         if (_contextMember is not null)
         {
-            CopyText(WinDbgCommands.Symbol(_contextMember));
+            CopyText(WinDbgCommands.Symbol(WinDbgTarget.From(_contextMember.Reference)));
         }
     }
 
     private void OnSendMemberWinDbgClick(object sender, RoutedEventArgs e)
     {
-        if (_contextMember is { } member
-            && sender is MenuFlyoutItem { Tag: string command }
-            && MemberCommand(command, member) is { } text)
+        if (_contextMember is { } member)
         {
-            RunWinDbg(() => WinDbg.SendAsync(text, CancellationToken.None));
+            SendWinDbg(sender, WinDbgTarget.From(member.Reference), () => DescribeMemberAsync(member));
         }
     }
-
-    private static string? MemberCommand(string command, ClassMemberRow member) =>
-        command switch
-        {
-            "Breakpoint" => WinDbgCommands.Breakpoint(member),
-            "BreakpointWithStack" => WinDbgCommands.BreakpointWithStack(member),
-            "DumpArguments" => WinDbgCommands.DumpArguments(member),
-            "DumpArgumentsAndBreak" => WinDbgCommands.DumpArgumentsAndBreak(member),
-            "BreakpointOnAllOverloads" => WinDbgCommands.BreakpointOnAllOverloads(member),
-            "ExamineSymbol" => WinDbgCommands.ExamineSymbol(member),
-            "DisplayType" => WinDbgCommands.DisplayType(member),
-            "ListClassSymbols" => WinDbgCommands.ListClassSymbols(member),
-            _ => null
-        };
 
     private static void CopyText(string text)
     {
@@ -562,6 +1318,8 @@ public sealed partial class QueryCallStackTabView : UserControl, IDocumentComman
         if (_viewModel is not null)
         {
             _ = _viewModel.Symbols.ListMembersAsync(typeName);
+
+            DetailTabs.SelectedItem = MembersTab;
         }
     }
 
@@ -592,7 +1350,7 @@ public sealed partial class QueryCallStackTabView : UserControl, IDocumentComman
 
     private void OnDetailTabChanged(object sender, SelectionChangedEventArgs args)
     {
-        _viewModel?.Symbols.IsSymbolSearchSelected = sender is TabView { SelectedIndex: 1 };
+        _viewModel?.Symbols.IsSymbolSearchSelected = ReferenceEquals(DetailTabs.SelectedItem, SymbolsTab);
     }
 
     private void OnModuleRightTapped(object sender, RightTappedRoutedEventArgs e) =>
@@ -716,6 +1474,8 @@ public sealed partial class QueryCallStackTabView : UserControl, IDocumentComman
         {
             _viewModel.PropertyChanged -= OnPropertyChanged;
             _viewModel.Symbols.PropertyChanged -= OnSymbolsPropertyChanged;
+            _viewModel.CallNavigationRequested -= OnCallNavigationRequested;
+            _viewModel.Arguments.CallChosen -= OnArgumentCallChosen;
             _viewModel.QueryOptions.PropertyChanged -= OnQueryOptionsPropertyChanged;
             _viewModel.QueryOptions.FilterChanged -= OnQueryFilterChanged;
         }
@@ -726,6 +1486,8 @@ public sealed partial class QueryCallStackTabView : UserControl, IDocumentComman
         {
             _viewModel.PropertyChanged += OnPropertyChanged;
             _viewModel.Symbols.PropertyChanged += OnSymbolsPropertyChanged;
+            _viewModel.CallNavigationRequested += OnCallNavigationRequested;
+            _viewModel.Arguments.CallChosen += OnArgumentCallChosen;
             _viewModel.QueryOptions.PropertyChanged += OnQueryOptionsPropertyChanged;
             _viewModel.QueryOptions.FilterChanged += OnQueryFilterChanged;
         }
@@ -744,7 +1506,19 @@ public sealed partial class QueryCallStackTabView : UserControl, IDocumentComman
         {
             ClearHistory();
 
+            _filterPath = null;
+
+            if (CategoryPanel.Visibility == Visibility.Visible)
+            {
+                BuildCategoryBadges();
+            }
+
             ApplyFocus(_viewModel?.SelectedEvent);
+
+            if (_signatures)
+            {
+                _ = RefreshSignaturesAsync();
+            }
         }
         else if (e.PropertyName == nameof(QueryViewModel.SelectedEvent) && !_isSelectingFromTree)
         {
@@ -785,7 +1559,14 @@ public sealed partial class QueryCallStackTabView : UserControl, IDocumentComman
         }
         else if (e.PropertyName == nameof(SymbolsViewModel.IsSymbolSearchSelected))
         {
-            DetailTabs.SelectedIndex = symbols.IsSymbolSearchSelected ? 1 : 0;
+            if (symbols.IsSymbolSearchSelected)
+            {
+                DetailTabs.SelectedItem = SymbolsTab;
+            }
+            else if (ReferenceEquals(DetailTabs.SelectedItem, SymbolsTab))
+            {
+                DetailTabs.SelectedItem = MembersTab;
+            }
 
             if (symbols.IsSymbolSearchSelected)
             {
@@ -800,6 +1581,8 @@ public sealed partial class QueryCallStackTabView : UserControl, IDocumentComman
 
     private void ApplyFocus(EngineEvent? selected)
     {
+        _navigatedNode = null;
+
         SetHighlightBuckets(selected);
 
         if (_focus)
@@ -812,6 +1595,8 @@ public sealed partial class QueryCallStackTabView : UserControl, IDocumentComman
             {
                 BuildPlanTree(SelectedNodeId(selected));
             }
+
+            ApplyFilter();
 
             ApplyActivityBands();
 
@@ -828,7 +1613,7 @@ public sealed partial class QueryCallStackTabView : UserControl, IDocumentComman
 
         BuildTree();
 
-        if (_visible is not null && _nodes.Count == 0)
+        if (_visible is not null && _rows.Count == 0)
         {
             _revealInfrastructure = true;
 
@@ -837,11 +1622,10 @@ public sealed partial class QueryCallStackTabView : UserControl, IDocumentComman
 
         if (_visible is not null)
         {
-            foreach (var treeNode in _nodes.Values)
-            {
-                treeNode.IsExpanded = true;
-            }
+            ExpandWithin(_rootRows, ExpandBudget);
         }
+
+        ApplyFilter();
 
         var target = leaves.Count switch
         {
@@ -857,24 +1641,23 @@ public sealed partial class QueryCallStackTabView : UserControl, IDocumentComman
 
     private void ApplyActivityBands()
     {
-        var band = _activity ? new ActivityBand(_highlightBuckets) : null;
+        var pending = new Stack<TreeRow>(_rootRows);
 
-        foreach (var root in Tree.RootNodes)
+        while (pending.Count > 0)
         {
-            ApplyActivityBands(root, band);
-        }
-    }
+            var row = pending.Pop();
 
-    private static void ApplyActivityBands(TreeViewNode treeNode, ActivityBand? band)
-    {
-        if (treeNode.Content is CallStackNode node)
-        {
-            node.Activity = band;
-        }
+            if (row.Content is CallStackNode node)
+            {
+                node.Activity = _activity
+                    ? new ActivityBand(_highlightBuckets, [.. row.Children.Select(c => c.Content).OfType<CallStackNode>()])
+                    : null;
+            }
 
-        foreach (var child in treeNode.Children)
-        {
-            ApplyActivityBands(child, band);
+            foreach (var child in row.Children)
+            {
+                pending.Push(child);
+            }
         }
     }
 
@@ -882,7 +1665,7 @@ public sealed partial class QueryCallStackTabView : UserControl, IDocumentComman
     {
         var tree = _viewModel?.CallStack;
 
-        if (tree is null || tree.ActivityMaxUs <= tree.ActivityMinUs)
+        if (tree is null || tree.ActivityFromTrace || tree.ActivityMaxUs <= tree.ActivityMinUs)
         {
             return null;
         }
@@ -917,7 +1700,7 @@ public sealed partial class QueryCallStackTabView : UserControl, IDocumentComman
     {
         var tree = _viewModel?.CallStack;
 
-        if (selected is null or ExecutionOperatorEvent || tree is null)
+        if (selected is null or ExecutionOperatorEvent || tree is null || tree.ActivityFromTrace)
         {
             _highlightBuckets = [];
 
@@ -984,6 +1767,16 @@ public sealed partial class QueryCallStackTabView : UserControl, IDocumentComman
             return;
         }
 
+        if (invoked.Content is CallStackNode clicked)
+        {
+            _viewModel.SelectedCallNode = clicked;
+
+            if (CanShowArguments(clicked))
+            {
+                ShowArguments(clicked);
+            }
+        }
+
         var selected = invoked.Content switch
         {
             OperatorLink link => link.Operator,
@@ -1047,11 +1840,16 @@ public sealed partial class QueryCallStackTabView : UserControl, IDocumentComman
     {
         for (var node = target; node is { IsRoot: false }; node = node.Parent)
         {
-            if (_nodes.TryGetValue(node, out var treeNode))
+            if (_rows.TryGetValue(node, out var row))
             {
-                Tree.SelectedNode = treeNode;
+                if (row.Parent is { } parent)
+                {
+                    Expand(parent);
+                }
 
-                BringIntoView(treeNode);
+                Tree.SelectedNode = row.Node;
+
+                BringIntoView(row.Node!);
 
                 return node;
             }
@@ -1093,12 +1891,9 @@ public sealed partial class QueryCallStackTabView : UserControl, IDocumentComman
         // Merged: the tree is the whole query, which is not a segment of anything and so heads nothing.
         HideFocusHeader();
 
-        foreach (var root in _viewModel?.CallStackRoots ?? [])
+        foreach (var row in BuildVisible(_viewModel?.CallStackRoots ?? []))
         {
-            foreach (var treeNode in BuildVisible(root))
-            {
-                Tree.RootNodes.Add(treeNode);
-            }
+            AddRoot(row);
         }
 
         ExpandForSearch();
@@ -1113,10 +1908,7 @@ public sealed partial class QueryCallStackTabView : UserControl, IDocumentComman
             return;
         }
 
-        foreach (var root in Tree.RootNodes)
-        {
-            SetExpanded(root, expanded: true);
-        }
+        ExpandWithin(_rootRows, ExpandBudget);
     }
 
     // Drop the selection BEFORE the nodes it points into: TreeView holds SelectedNode itself, so clearing RootNodes
@@ -1126,51 +1918,168 @@ public sealed partial class QueryCallStackTabView : UserControl, IDocumentComman
     {
         Tree.SelectedNode = null;
 
-        _nodes.Clear();
+        _rows.Clear();
+
+        _rowsByNode.Clear();
+
+        _rootRows.Clear();
 
         HiddenOnly.Clear();
 
         Tree.RootNodes.Clear();
     }
 
-    private IEnumerable<TreeViewNode> BuildVisible(CallStackNode node)
+    private void AddRoot(TreeRow row)
     {
-        var children = node.ChildNodes
-                           .OrderBy(child => child.Order)
-                           .SelectMany(BuildVisible)
-                           .ToList();
+        _rootRows.Add(row);
+
+        Tree.RootNodes.Add(Realize(row));
+    }
+
+    private TreeViewNode Realize(TreeRow row)
+    {
+        if (row.Node is { } existing)
+        {
+            return existing;
+        }
+
+        var node = new TreeViewNode { Content = row.Content, HasUnrealizedChildren = row.Children.Count > 0 };
+
+        row.Node = node;
+
+        _rowsByNode[node] = row;
+
+        return node;
+    }
+
+    private void RealizeChildren(TreeRow row)
+    {
+        if (row.Node is not { HasUnrealizedChildren: true } node)
+        {
+            return;
+        }
+
+        foreach (var child in row.Children)
+        {
+            node.Children.Add(Realize(child));
+        }
+
+        node.HasUnrealizedChildren = false;
+    }
+
+    private void OnTreeExpanding(TreeView sender, TreeViewExpandingEventArgs args)
+    {
+        if (_rowsByNode.TryGetValue(args.Node, out var row))
+        {
+            RealizeChildren(row);
+        }
+    }
+
+    private void Expand(TreeRow row)
+    {
+        if (row.Parent is { } parent)
+        {
+            Expand(parent);
+        }
+
+        RealizeChildren(row);
+
+        row.Node!.IsExpanded = true;
+    }
+
+    private void ExpandWithin(IEnumerable<TreeRow> rows, int budget)
+    {
+        var pending = new Queue<TreeRow>(rows);
+
+        var shown = 0;
+
+        while (pending.Count > 0 && shown < budget)
+        {
+            var row = pending.Dequeue();
+
+            if (row.Children.Count == 0)
+            {
+                continue;
+            }
+
+            Expand(row);
+
+            shown += row.Children.Count;
+
+            foreach (var child in row.Children)
+            {
+                pending.Enqueue(child);
+            }
+        }
+    }
+
+    private static void Collapse(TreeRow row)
+    {
+        var pending = new Stack<TreeRow>();
+
+        pending.Push(row);
+
+        while (pending.Count > 0)
+        {
+            var current = pending.Pop();
+
+            if (current.Node is { IsExpanded: true } node)
+            {
+                node.IsExpanded = false;
+            }
+
+            foreach (var child in current.Children.Where(c => c.Node is not null))
+            {
+                pending.Push(child);
+            }
+        }
+    }
+
+    private List<TreeRow> BuildVisible(IEnumerable<CallStackNode> nodes)
+        => [.. nodes.SelectMany(Shown).GroupBy(n => n.Key).Select(g => BuildVisibleRow([.. g])).OfType<TreeRow>()];
+
+    private IEnumerable<CallStackNode> Shown(CallStackNode node)
+    {
+        if (IsCategoryIn(PrunedCategories, node))
+        {
+            return [];
+        }
 
         var outOfScope = _visible is not null && !_visible.Contains(node);
 
         var infrastructureHidden = node.IsInfrastructure && !_revealInfrastructure;
 
-        if (outOfScope || infrastructureHidden)
-        {
-            foreach (var child in children)
-            {
-                yield return child;
-            }
+        return outOfScope || infrastructureHidden || IsCategoryIn(HiddenCategories, node)
+            ? node.ChildNodes.OrderBy(child => child.Order).SelectMany(Shown)
+            : [node];
+    }
 
-            yield break;
-        }
+    private TreeRow? BuildVisibleRow(IReadOnlyList<CallStackNode> group)
+    {
+        var children = BuildVisible(group.SelectMany(n => n.ChildNodes.OrderBy(child => child.Order)));
+
+        var node = group.Count == 1 ? group[0] : CallStackNode.Merge(group);
 
         // Dropped outright rather than promoting its children, unlike the filters above: those hide a row that is in the
         // way, this one has already established there is nothing under it worth showing.
         if (Filtered(node, children.Count))
         {
-            yield break;
+            return null;
         }
 
-        var treeNode = new TreeViewNode { Content = node };
+        var row = new TreeRow(node);
 
-        _nodes[node] = treeNode;
+        foreach (var member in group)
+        {
+            _rows[member] = row;
+        }
 
         foreach (var child in children)
         {
-            treeNode.Children.Add(child);
+            row.Add(child);
         }
 
-        yield return treeNode;
+        return row;
     }
 
     // The plan node a selection scopes the tree to: an operator names itself, and any other event names the operator it
@@ -1189,7 +2098,7 @@ public sealed partial class QueryCallStackTabView : UserControl, IDocumentComman
         // The whole plan is on screen, so nothing is isolated for the header to name; an isolated operator puts it back.
         HideFocusHeader();
 
-        _operatorNodes.Clear();
+        _operatorRows.Clear();
 
         _hierarchy = OperatorHierarchy.Build(_viewModel?.Events ?? []);
 
@@ -1208,17 +2117,17 @@ public sealed partial class QueryCallStackTabView : UserControl, IDocumentComman
 
         foreach (var root in _hierarchy.Roots)
         {
-            if (BuildOperatorNode(root) is { } node)
+            if (BuildOperatorNode(root) is { } row)
             {
-                Tree.RootNodes.Add(node);
+                AddRoot(row);
             }
         }
 
         // Expand the operator hierarchy once the nodes are attached (WinUI can drop a subtree expanded while detached);
         // the call frames under each operator stay collapsed so the plan stays readable.
-        foreach (var operatorNode in _operatorNodes)
+        foreach (var operatorRow in _operatorRows)
         {
-            operatorNode.IsExpanded = true;
+            Expand(operatorRow);
         }
 
         ExpandForSearch();
@@ -1236,7 +2145,7 @@ public sealed partial class QueryCallStackTabView : UserControl, IDocumentComman
     {
         ClearTree();
 
-        _operatorNodes.Clear();
+        _operatorRows.Clear();
 
         if (_viewModel?.CallStack is not { } tree)
         {
@@ -1267,18 +2176,15 @@ public sealed partial class QueryCallStackTabView : UserControl, IDocumentComman
             projected = tree.Project(include: scope.Contains, cutAt: op.EntryFrames.Contains);
         }
 
-        var nodes = ProjectedCallNodes(projected, revealInfrastructure: false);
+        var rows = ProjectedCallNodes(projected, revealInfrastructure: false);
 
-        foreach (var node in nodes.Count > 0 ? nodes : ProjectedCallNodes(projected, revealInfrastructure: true))
+        foreach (var row in rows.Count > 0 ? rows : ProjectedCallNodes(projected, revealInfrastructure: true))
         {
-            Tree.RootNodes.Add(node);
+            AddRoot(row);
         }
 
         // Attached first: WinUI can drop a subtree expanded while detached.
-        foreach (var node in Tree.RootNodes)
-        {
-            SetExpanded(node, expanded: true);
-        }
+        ExpandWithin(_rootRows, ExpandBudget);
     }
 
     // One operator on its own, with its call tree expanded: the isolated stack for the selected node. No child operators
@@ -1291,28 +2197,25 @@ public sealed partial class QueryCallStackTabView : UserControl, IDocumentComman
     {
         ShowFocusHeader(_hierarchy.Parent(op), new OperatorRow(op, Unsegmented: !Segmented(op)));
 
-        foreach (var callNode in BuildOperatorCallTree(op))
+        foreach (var row in BuildOperatorCallTree(op))
         {
-            Tree.RootNodes.Add(callNode);
+            AddRoot(row);
         }
 
         // Attached first: WinUI can drop a subtree expanded while detached.
-        foreach (var node in Tree.RootNodes)
-        {
-            SetExpanded(node, expanded: true);
-        }
+        ExpandWithin(_rootRows, ExpandBudget);
     }
 
     // A tree node for an operator: its own call tree followed by its child operators, or null when neither it nor any
     // descendant captured a call stack (so empty operators do not clutter the plan).
-    private TreeViewNode? BuildOperatorNode(ExecutionOperatorEvent op)
+    private TreeRow? BuildOperatorNode(ExecutionOperatorEvent op)
     {
         var callNodes = BuildOperatorCallTree(op);
 
         var childOperatorNodes = _hierarchy.Children(op)
             .OrderBy(child => child.PlanNodeIdentifier!.NodeId)
             .Select(BuildOperatorNode)
-            .OfType<TreeViewNode>()
+            .OfType<TreeRow>()
             .ToList();
 
         // An operator the search names survives even with nothing under it: the row is itself the answer.
@@ -1323,26 +2226,26 @@ public sealed partial class QueryCallStackTabView : UserControl, IDocumentComman
             return null;
         }
 
-        var operatorNode = new TreeViewNode { Content = new OperatorRow(op, Unsegmented: !Segmented(op), OperatorSpan(op)) };
+        var operatorNode = new TreeRow(new OperatorRow(op, Unsegmented: !Segmented(op), OperatorSpan(op)));
 
         foreach (var callNode in callNodes)
         {
-            operatorNode.Children.Add(callNode);
+            operatorNode.Add(callNode);
         }
 
         foreach (var childOperatorNode in childOperatorNodes)
         {
-            operatorNode.Children.Add(childOperatorNode);
+            operatorNode.Add(childOperatorNode);
         }
 
-        _operatorNodes.Add(operatorNode);
+        _operatorRows.Add(operatorNode);
 
         return operatorNode;
     }
 
     // An operator's call tree (infrastructure hidden), or an empty list when it has no frames of its own. Falls back to
     // revealing infrastructure if hiding it would leave the operator's paths empty.
-    private List<TreeViewNode> BuildOperatorCallTree(ExecutionOperatorEvent op)
+    private List<TreeRow> BuildOperatorCallTree(ExecutionOperatorEvent op)
     {
         if (_viewModel?.CallStack is not { } tree)
         {
@@ -1361,7 +2264,7 @@ public sealed partial class QueryCallStackTabView : UserControl, IDocumentComman
 
         var scope = _hierarchy.ScopeOf(op, _viewModel?.Events ?? []);
 
-        if (scope.Count == 0)
+        if (scope.Count == 0 && !tree.ActivityFromTrace)
         {
             return [];
         }
@@ -1395,68 +2298,252 @@ public sealed partial class QueryCallStackTabView : UserControl, IDocumentComman
     // empty rather than claiming somebody else's.
     private static bool Segmented(ExecutionOperatorEvent op) => op.EntryFrames.Count > 0;
 
-    private List<TreeViewNode> ProjectedCallNodes(CallStackTree projected, bool revealInfrastructure)
-    {
-        var nodes = new List<TreeViewNode>();
-
-        foreach (var root in projected.Root.ChildNodes.OrderBy(child => child.Order))
-        {
-            nodes.AddRange(BuildProjectedCall(root, revealInfrastructure));
-        }
-
-        return nodes;
-    }
+    private List<TreeRow> ProjectedCallNodes(CallStackTree projected, bool revealInfrastructure)
+        => BuildProjected(projected.Root.ChildNodes.OrderBy(child => child.Order), revealInfrastructure);
 
     // Renders a projected node's subtree, hiding infrastructure and promoting its visible children. No scope set: the
     // projection already contains only the operator's frames.
-    private IEnumerable<TreeViewNode> BuildProjectedCall(CallStackNode node, bool revealInfrastructure)
+    private List<TreeRow> BuildProjected(IEnumerable<CallStackNode> nodes, bool revealInfrastructure)
     {
-        var children = node.ChildNodes
-                           .OrderBy(child => child.Order)
-                           .SelectMany(child => BuildProjectedCall(child, revealInfrastructure))
-                           .ToList();
+        var promotedCuts = new List<CallStackNode>();
 
+        var shown = nodes.SelectMany(n => ShownProjected(n, revealInfrastructure, promotedCuts)).ToList();
+
+        List<TreeRow> rows = [.. shown.GroupBy(n => n.Key).Select(g => BuildProjectedRow([.. g], revealInfrastructure)).OfType<TreeRow>()];
+
+        rows.AddRange(OperatorLinks(promotedCuts));
+
+        return rows;
+    }
+
+    private IEnumerable<CallStackNode> ShownProjected(CallStackNode node, bool revealInfrastructure, List<CallStackNode> promotedCuts)
+    {
+        if (IsCategoryIn(PrunedCategories, node))
+        {
+            return [];
+        }
+
+        if ((node.IsInfrastructure && !revealInfrastructure) || IsCategoryIn(HiddenCategories, node))
+        {
+            promotedCuts.AddRange(node.CutBelow);
+
+            return node.ChildNodes
+                       .OrderBy(child => child.Order)
+                       .SelectMany(child => ShownProjected(child, revealInfrastructure, promotedCuts));
+        }
+
+        return [node];
+    }
+
+    private TreeRow? BuildProjectedRow(IReadOnlyList<CallStackNode> group, bool revealInfrastructure)
+    {
+        var children = BuildProjected(group.SelectMany(n => n.ChildNodes.OrderBy(child => child.Order)), revealInfrastructure);
+
+        children.AddRange(OperatorLinks(group.SelectMany(n => n.CutBelow)));
+
+        var node = group.Count == 1 ? group[0] : CallStackNode.Merge(group);
+
+        if (Filtered(node, children.Count))
+        {
+            return null;
+        }
+
+        var row = new TreeRow(node);
+
+        foreach (var child in children)
+        {
+            row.Add(child);
+        }
+
+        return row;
+    }
+
+    private IEnumerable<TreeRow> OperatorLinks(IEnumerable<CallStackNode> cuts)
+    {
         // Where the segment stopped, name what it stopped for: a link per operator the work continues in, so the plan
         // is still walkable from inside the stack instead of the call trailing off into nothing. Searched like any other
         // row — and counted as one below, so a frame whose only answer to the search is where it led still shows.
-        foreach (var next in node.CutBelow
-                                 .Select(frame => _nextOperator.GetValueOrDefault(frame))
+        foreach (var next in cuts.Select(frame => _nextOperator.GetValueOrDefault(frame))
                                  .OfType<ExecutionOperatorEvent>()
                                  .Where(Matches)
                                  .DistinctBy(next => next.PlanNodeIdentifier)
                                  .OrderBy(next => next.PlanNodeIdentifier!.NodeId))
         {
-            children.Add(new TreeViewNode { Content = new OperatorLink(next) });
+            yield return new TreeRow(new OperatorLink(next));
+        }
+    }
+
+    private void ApplyFilter()
+    {
+        if (_filterPath is null)
+        {
+            HideFilterHeader();
+
+            return;
         }
 
-        if (node.IsInfrastructure && !revealInfrastructure)
+        if (FindRow(_rootRows, _filterPath) is not { } row)
         {
-            foreach (var child in children)
+            _filterPath = null;
+
+            HideFilterHeader();
+
+            return;
+        }
+
+        var subtree = new HashSet<TreeRow>();
+
+        var pending = new Stack<TreeRow>();
+
+        pending.Push(row);
+
+        while (pending.Count > 0)
+        {
+            var current = pending.Pop();
+
+            subtree.Add(current);
+
+            current.Node = null;
+
+            foreach (var child in current.Children)
             {
-                yield return child;
+                pending.Push(child);
+            }
+        }
+
+        foreach (var (node, mapped) in _rows.ToList())
+        {
+            if (!subtree.Contains(mapped))
+            {
+                _rows.Remove(node);
+            }
+        }
+
+        Tree.SelectedNode = null;
+
+        Tree.RootNodes.Clear();
+
+        _rootRows.Clear();
+
+        _rowsByNode.Clear();
+
+        row.Detach();
+
+        AddRoot(row);
+
+        ExpandWithin(_rootRows, ExpandBudget);
+
+        FilterCurrent.Content = new TreeViewNode { Content = row.Content };
+
+        FilterHeader.Visibility = Visibility.Visible;
+    }
+
+    private void HideFilterHeader()
+    {
+        FilterCurrent.Content = null;
+
+        FilterHeader.Visibility = Visibility.Collapsed;
+    }
+
+    private static TreeRow? FindRow(IEnumerable<TreeRow> rows, string path)
+    {
+        var pending = new Stack<TreeRow>(rows);
+
+        while (pending.Count > 0)
+        {
+            var row = pending.Pop();
+
+            if (row.Content is CallStackNode node && PathOf(node) == path)
+            {
+                return row;
             }
 
-            yield break;
+            foreach (var child in row.Children)
+            {
+                pending.Push(child);
+            }
         }
 
-        if (Filtered(node, children.Count))
+        return null;
+    }
+
+    private static string PathOf(CallStackNode node) => string.Join('\n', node.Ancestors().Select(a => a.Key));
+
+    private static bool IsCategoryIn(HashSet<string> categories, CallStackNode node)
+        => node.Frame is not null && categories.Count > 0 && categories.Contains(node.Category);
+
+    private void BuildCategoryBadges()
+    {
+        CategoryBadges.Children.Clear();
+
+        var categories = (_viewModel?.CallStack?.Nodes() ?? [])
+                         .Where(n => n.Frame is not null)
+                         .GroupBy(n => n.Category)
+                         .Select(g => (Category: g.Key, Colour: g.First().CategoryColour))
+                         .OrderBy(c => c.Category, StringComparer.OrdinalIgnoreCase);
+
+        foreach (var (category, colour) in categories)
         {
-            yield break;
+            CategoryBadges.Children.Add(CreateCategoryBadge(category, colour));
         }
 
-        var treeNode = new TreeViewNode { Content = node };
+        UpdateAllCategoriesToggle();
+    }
 
-        foreach (var child in children)
+    private Border CreateCategoryBadge(string category, string colour)
+    {
+        var converter = (IValueConverter)Application.Current.Resources["HexColorToBrushConverter"];
+
+        var brush = converter.Convert(colour, typeof(Brush), null!, string.Empty) as Brush;
+
+        var badge = new Border
         {
-            treeNode.Children.Add(child);
+            CornerRadius = new CornerRadius(3),
+            Padding = new Thickness(5, 2, 5, 3),
+            BorderThickness = new Thickness(1),
+            BorderBrush = brush,
+            Tag = category,
+            Child = new TextBlock { Text = category, FontSize = 9, FontWeight = FontWeights.SemiBold }
+        };
+
+        badge.Tapped += OnCategoryBadgeTapped;
+
+        badge.RightTapped += OnCategoryBadgeRightTapped;
+
+        StyleCategoryBadge(badge);
+
+        return badge;
+    }
+
+    private void StyleCategoryBadge(Border badge)
+    {
+        var pruned = badge.Tag is string prunedCategory && PrunedCategories.Contains(prunedCategory);
+
+        var hidden = pruned || (badge.Tag is string category && HiddenCategories.Contains(category));
+
+        badge.Background = hidden ? new SolidColorBrush(Microsoft.UI.Colors.Transparent) : badge.BorderBrush;
+
+        badge.Opacity = pruned ? PrunedBadgeOpacity : 1;
+
+        if (badge.Child is TextBlock text)
+        {
+            text.Foreground = hidden ? badge.BorderBrush : new SolidColorBrush(Microsoft.UI.Colors.White);
+
+            text.TextDecorations = hidden ? TextDecorations.Strikethrough : TextDecorations.None;
         }
 
-        yield return treeNode;
+        ToolTipService.SetToolTip(badge, pruned ? "Hidden with its callees. Click to show"
+                                         : hidden ? "Hidden, its callees move up to its caller. Click to show"
+                                         : "Hide, keeping its callees. Right-click to hide its callees too");
     }
 
     private void OnSearchTextChanged(AutoSuggestBox sender, AutoSuggestBoxTextChangedEventArgs args)
     {
         _search = sender.Text?.Trim() ?? string.Empty;
+
+        _locatorSearch = LocatorSearch.TryParse(_search, out var locator) ? locator : null;
+
+        _columnStoreSearch = ColumnStoreSearch.TryParse(_search, out var columnStore) ? columnStore : null;
 
         ApplyFocus(_viewModel?.SelectedEvent);
     }
@@ -1469,14 +2556,29 @@ public sealed partial class QueryCallStackTabView : UserControl, IDocumentComman
     /// an operator badge and a module all look like plausible things to type.
     /// </remarks>
     private bool Matches(CallStackNode node)
-        => _search.Length == 0
-           || Contains(node.Symbol)
-           || Contains(node.Category)
-           || Contains(node.Operator)
-           || Contains(node.Frame?.Module);
+    {
+        if (_locatorSearch is { } locator)
+        {
+            return node.Locators?.Contains(locator) == true;
+        }
+
+        if (_columnStoreSearch is { } columnStore)
+        {
+            return node.Locators?.Contains(columnStore) == true;
+        }
+
+        return _search.Length == 0
+               || Contains(node.Symbol)
+               || Contains(node.Category)
+               || Contains(node.Operator)
+               || Contains(node.Frame?.Module);
+    }
 
     private bool Matches(ExecutionOperatorEvent op)
-        => _search.Length == 0 || Contains(op.OperatorDescription) || Contains(op.TargetLabel) || Contains(op.Name);
+        => _search.Length == 0
+           || _locatorSearch is null
+           && _columnStoreSearch is null
+           && (Contains(op.OperatorDescription) || Contains(op.TargetLabel) || Contains(op.Name));
 
     private bool Contains(string? value)
         => value is not null && value.Contains(_search, StringComparison.OrdinalIgnoreCase);
@@ -1546,5 +2648,25 @@ public sealed partial class QueryCallStackTabView : UserControl, IDocumentComman
         None,
         Hidden,
         Shown,
+    }
+
+    private sealed class TreeRow(object content)
+    {
+        public object Content { get; } = content;
+
+        public List<TreeRow> Children { get; } = [];
+
+        public TreeRow? Parent { get; private set; }
+
+        public TreeViewNode? Node { get; set; }
+
+        public void Add(TreeRow child)
+        {
+            child.Parent = this;
+
+            Children.Add(child);
+        }
+
+        public void Detach() => Parent = null;
     }
 }

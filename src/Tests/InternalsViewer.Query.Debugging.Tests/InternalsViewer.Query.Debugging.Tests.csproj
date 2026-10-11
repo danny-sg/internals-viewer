@@ -23,7 +23,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\InternalsViewer.Query.Debugging\InternalsViewer.Query.Debugging.csproj" />
+    <ProjectReference Include="..\..\Query\InternalsViewer.Query.Debugging\InternalsViewer.Query.Debugging.csproj" />
   </ItemGroup>
 
   <ItemGroup>
