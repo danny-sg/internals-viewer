@@ -27,10 +27,6 @@ jobs:
       - name: List downloaded files
         run: ls -R artifacts
 
-      - name: Zip x86 package
-        run: |
-          zip -r artifacts/internals-viewer-msix-x86.zip artifacts/msix-package-x86/
-
       - name: Zip x64 package
         run: |
           zip -r artifacts/internals-viewer-msix-x64.zip artifacts/msix-package-x64/

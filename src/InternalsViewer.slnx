@@ -71,12 +71,14 @@
       <Build Solution="Debug|x86" Project="false" />
     </Project>
   </Folder>
-  <Project Path="InternalsViewer.Connection.BackupFile/InternalsViewer.Connection.BackupFile.csproj">
-    <Build Solution="Debug|x86" Project="false" />
-  </Project>
-  <Project Path="InternalsViewer.Connection.Sandbox/InternalsViewer.Connection.Sandbox.csproj">
-    <Build Solution="*|x86" Project="false" />
-  </Project>
+  <Folder Name="/Connections/">
+    <Project Path="Connections/InternalsViewer.Connection.BackupFile/InternalsViewer.Connection.BackupFile.csproj">
+      <Build Solution="Debug|x86" Project="false" />
+    </Project>
+    <Project Path="Connections/InternalsViewer.Connection.Sandbox/InternalsViewer.Connection.Sandbox.csproj">
+      <Build Solution="*|x86" Project="false" />
+    </Project>
+  </Folder>
   <Project Path="InternalsViewer.Execution/InternalsViewer.Execution.csproj">
     <Build Solution="Debug|x86" Project="false" />
   </Project>

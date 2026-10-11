@@ -22,7 +22,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\InternalsViewer.Connection.BackupFile\InternalsViewer.Connection.BackupFile.csproj" />
+    <ProjectReference Include="..\..\Connections\InternalsViewer.Connection.BackupFile\InternalsViewer.Connection.BackupFile.csproj" />
   </ItemGroup>
 
   <ItemGroup>

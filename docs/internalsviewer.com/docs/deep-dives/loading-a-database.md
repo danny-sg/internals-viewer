@@ -153,11 +153,11 @@ Opening a compressed backup decodes the whole file once to index it, keeping eac
 The key classes, for reading along in the [repository](https://github.com/danny-sg/internals-viewer):
 
 - `InternalsViewer.Internals/Readers/Pages/DataFilePageReader.cs` and `QueryPageReader.cs` - the data file and server page readers
-- `InternalsViewer.Connection.BackupFile/Reader/BackupPageReader.cs` - the backup page reader
-- `InternalsViewer.Connection.BackupFile/Mtf/` - the MTF block and stream parser
-- `InternalsViewer.Connection.BackupFile/Media/MediaSetReader.cs` - checking and ordering the files of a striped backup
-- `InternalsViewer.Connection.BackupFile/Mapping/PageMapper.cs` - building the page map
-- `InternalsViewer.Connection.BackupFile/Compression/` - compressed backups: the chunk chain, the Xpress and ZSTD decoders and the checkpointed reader
+- `Connections/InternalsViewer.Connection.BackupFile/Reader/BackupPageReader.cs` - the backup page reader
+- `Connections/InternalsViewer.Connection.BackupFile/Mtf/` - the MTF block and stream parser
+- `Connections/InternalsViewer.Connection.BackupFile/Media/MediaSetReader.cs` - checking and ordering the files of a striped backup
+- `Connections/InternalsViewer.Connection.BackupFile/Mapping/PageMapper.cs` - building the page map
+- `Connections/InternalsViewer.Connection.BackupFile/Compression/` - compressed backups: the chunk chain, the Xpress and ZSTD decoders and the checkpointed reader
 - `InternalsViewer.Internals/Services/Loaders/Engine/DatabaseService.cs` - orchestrates the load
 - `InternalsViewer.Internals/Services/Loaders/Engine/MetadataLoader.cs` - the base table bootstrap
 - `InternalsViewer.Internals/Metadata/Internals/Tables/` - the base table record definitions
