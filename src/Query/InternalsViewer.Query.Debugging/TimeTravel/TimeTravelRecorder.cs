@@ -1,6 +1,5 @@
 using System.Diagnostics;
 using System.Runtime.Versioning;
-using System.Security.AccessControl;
 using InternalsViewer.Query.Debugging.Exceptions;
 using Microsoft.Data.SqlClient;
 using Microsoft.Extensions.Logging;
@@ -46,7 +45,7 @@ public sealed class TimeTravelRecorder(WinDbgService winDbg, ILogger<TimeTravelR
                                       + "review and accept it");
         }
 
-        var recording = new TimeTravelRecording(directory, CreateTraceDirectory(sessionId), process.ProcessId, sessionId, logger);
+        var recording = new TimeTravelRecording(directory, CreateTraceDirectory(sessionId, process), process.ProcessId, sessionId, logger);
 
         try
         {
@@ -132,11 +131,9 @@ public sealed class TimeTravelRecorder(WinDbgService winDbg, ILogger<TimeTravelR
         }
     }
 
-    private string CreateTraceDirectory(string sessionId)
+    private string CreateTraceDirectory(string sessionId, SqlServerProcess process)
     {
         var root = Directory.CreateDirectory(TraceRoot);
-
-        ServiceAccess.Grant(root.FullName, FileSystemRights.Modify);
 
         foreach (var previous in root.GetDirectories())
         {
@@ -150,6 +147,13 @@ public sealed class TimeTravelRecorder(WinDbgService winDbg, ILogger<TimeTravelR
             }
         }
 
-        return Directory.CreateDirectory(Path.Combine(root.FullName, sessionId)).FullName;
+        var service = ServiceAccess.ServiceSid(process.ServiceName);
+
+        if (service is null)
+        {
+            logger.LogWarning("No service account found for {Service}. Every service can write the trace folder", process.ServiceName);
+        }
+
+        return ServiceAccess.CreatePrivate(Path.Combine(root.FullName, sessionId), service);
     }
 }

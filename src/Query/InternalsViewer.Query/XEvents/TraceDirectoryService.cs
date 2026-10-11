@@ -2,6 +2,7 @@ using System.Runtime.Versioning;
 using System.Security.AccessControl;
 using System.Security.Principal;
 using System.ServiceProcess;
+using InternalsViewer.Query.Debugging;
 using Microsoft.Extensions.Logging;
 
 namespace InternalsViewer.Query.XEvents;
@@ -39,11 +40,25 @@ public sealed class TraceDirectoryService(ILogger<TraceDirectoryService> logger)
         {
             Directory.CreateDirectory(directory);
 
-            var accounts = FindSqlServiceAccounts();
+            var services = FindSqlServices();
 
-            if (accounts.Count == 0)
+            if (services.Count == 0)
             {
                 return new GrantResult(false, "No local SQL Server service found to grant access to.");
+            }
+
+            var accounts = services.Select(AccountOf).ToList();
+
+            if (IsDefault(directory))
+            {
+                var identifiers = services.Select(ServiceAccess.ServiceSid).OfType<SecurityIdentifier>().ToList();
+
+                var restricted = ServiceAccess.MakePrivate(directory, identifiers);
+
+                return new GrantResult(true,
+                                       restricted
+                                           ? $"Restricted access to you and {string.Join(", ", accounts)}."
+                                           : "Access already restricted.");
             }
 
             var info = new DirectoryInfo(directory);
@@ -98,16 +113,16 @@ public sealed class TraceDirectoryService(ILogger<TraceDirectoryService> logger)
                 return false;
             }
 
-            var accounts = FindSqlServiceAccounts();
+            var services = FindSqlServices();
 
-            if (accounts.Count == 0)
+            if (services.Count == 0)
             {
                 return false;
             }
 
             var security = new DirectoryInfo(directory).GetAccessControl();
 
-            return accounts.All(a => HasModify(security, a));
+            return services.All(s => HasModify(security, AccountOf(s)));
         }
         catch (Exception ex)
         {
@@ -124,7 +139,14 @@ public sealed class TraceDirectoryService(ILogger<TraceDirectoryService> logger)
                              && rule.IdentityReference.Value.Equals(account, StringComparison.OrdinalIgnoreCase)
                              && (rule.FileSystemRights & FileSystemRights.Modify) == FileSystemRights.Modify);
 
-    private static List<string> FindSqlServiceAccounts()
+    private bool IsDefault(string directory)
+        => string.Equals(Path.TrimEndingDirectorySeparator(Path.GetFullPath(directory)),
+                         DefaultDirectory,
+                         StringComparison.OrdinalIgnoreCase);
+
+    private static string AccountOf(string service) => $"NT SERVICE\\{service}";
+
+    private static List<string> FindSqlServices()
     {
         var services = ServiceController.GetServices();
 
@@ -133,7 +155,7 @@ public sealed class TraceDirectoryService(ILogger<TraceDirectoryService> logger)
             return services
                    .Where(s => s.ServiceName.Equals("MSSQLSERVER", StringComparison.OrdinalIgnoreCase)
                                || s.ServiceName.StartsWith("MSSQL$", StringComparison.OrdinalIgnoreCase))
-                   .Select(s => $"NT SERVICE\\{s.ServiceName}")
+                   .Select(s => s.ServiceName)
                    .ToList();
         }
         finally

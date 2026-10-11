@@ -6,11 +6,19 @@ namespace InternalsViewer.Query.Debugging;
 /// <summary>
 /// SQL Server Process Id/Machine Name
 /// </summary>
-public sealed record SqlServerProcess(int ProcessId, string MachineName)
+public sealed record SqlServerProcess(int ProcessId, string MachineName, string InstanceName)
 {
-    private const string Sql = "SELECT CAST(SERVERPROPERTY('ProcessID') AS int), CAST(SERVERPROPERTY('MachineName') AS nvarchar(128))";
+    private const string DefaultInstance = "MSSQLSERVER";
+
+    private const string Sql = """
+                               SELECT CAST(SERVERPROPERTY('ProcessID') AS int),
+                                      CAST(SERVERPROPERTY('MachineName') AS nvarchar(128)),
+                                      CAST(SERVERPROPERTY('InstanceName') AS nvarchar(128))
+                               """;
 
     public bool IsLocal => string.Equals(MachineName, Environment.MachineName, StringComparison.OrdinalIgnoreCase);
+
+    public string ServiceName => InstanceName.Length == 0 ? DefaultInstance : $"MSSQL${InstanceName}";
 
     public static async Task<SqlServerProcess> GetAsync(string connectionString, CancellationToken cancellationToken)
     {
@@ -27,6 +35,8 @@ public sealed record SqlServerProcess(int ProcessId, string MachineName)
             throw new DebuggerException("SQL Server did not report its process id");
         }
 
-        return new SqlServerProcess(reader.GetInt32(0), reader.IsDBNull(1) ? string.Empty : reader.GetString(1));
+        return new SqlServerProcess(reader.GetInt32(0),
+                                    reader.IsDBNull(1) ? string.Empty : reader.GetString(1),
+                                    reader.IsDBNull(2) ? string.Empty : reader.GetString(2));
     }
 }
