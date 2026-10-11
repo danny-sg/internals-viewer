@@ -15,7 +15,29 @@ public class LocatorReadsTests
                           "?Get@BPool@@QEAAPEAUBUF@@AEAVRecoveryUnit@@AEBVPageId@@AEAHW4LATCH_TYPE@LatchBase@@"
                           + "PEAVLatchSuspendInfo@@_N@Z");
 
-        Assert.Equal([new LocatorRead(Function, 2, false, LocatorKind.Page)], reads);
+        Assert.Equal([new LocatorRead(Function, 2, false, LocatorKind.Page)], reads.Where(r => r.Kind == LocatorKind.Page));
+    }
+
+    [Fact]
+    public void A_Value_Behind_A_Reference_Is_Read_When_Called_And_On_Return()
+    {
+        var reads = Reads("BPool::Get(RecoveryUnit &,PageId const &,int &,LatchBase::LATCH_TYPE,LatchSuspendInfo *,bool)",
+                          "?Get@BPool@@QEAAPEAUBUF@@AEAVRecoveryUnit@@AEBVPageId@@AEAHW4LATCH_TYPE@LatchBase@@"
+                          + "PEAVLatchSuspendInfo@@_N@Z");
+
+        Assert.Equal([new LocatorRead(Function, 3, false, LocatorKind.Referenced),
+                      new LocatorRead(Function, 3, true, LocatorKind.Referenced)],
+                     reads.Where(r => r.Kind == LocatorKind.Referenced));
+    }
+
+    [Fact]
+    public void A_Page_Handle_Is_Followed_To_The_Page_Header_When_Called_And_On_Return()
+    {
+        var reads = Reads("IndexPageManager::ReleaseHPage(HPageHandle &)", "?ReleaseHPage@IndexPageManager@@QEAAXAEAVHPageHandle@@@Z");
+
+        Assert.Equal([new LocatorRead(Function, 1, false, LocatorKind.Page, 0x20, LocatorType.PageHandlePath),
+                      new LocatorRead(Function, 1, true, LocatorKind.Page, 0x20, LocatorType.PageHandlePath)],
+                     reads);
     }
 
     [Fact]
@@ -111,11 +133,25 @@ public class LocatorReadsTests
         => Assert.Equal(new LocatorType(kind, indirect, isConst, offset), LocatorType.Of(type));
 
     [Theory]
+    [InlineData("int &", true, false)]
+    [InlineData("unsigned long const *", true, true)]
+    [InlineData("enum LCK_MODE &", true, false)]
+    [InlineData("enum BPool::StealOption *", true, false)]
+    [InlineData("HoBtId const &", true, true)]
+    public void A_Value_Behind_A_Reference_Is_Recognised(string type, bool indirect, bool isConst)
+        => Assert.Equal(new LocatorType(LocatorKind.Referenced, indirect, isConst), LocatorType.Of(type));
+
+    [Theory]
     [InlineData("AlignedPageId *")]
     [InlineData("FullRowId const &")]
     [InlineData("PageId * *")]
     [InlineData("PageIdOrderScan &")]
     [InlineData("unsigned __int64")]
+    [InlineData("int")]
+    [InlineData("char *")]
+    [InlineData("unsigned char *")]
+    [InlineData("enum UnknownOption &")]
+    [InlineData("int * *")]
     public void Other_Types_Are_Not_Read(string type) => Assert.Null(LocatorType.Of(type));
 
     private static List<LocatorRead> Reads(string signature, string decoratedName)

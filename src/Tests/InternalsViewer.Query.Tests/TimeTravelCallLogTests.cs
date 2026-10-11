@@ -165,6 +165,46 @@ public class TimeTravelCallLogTests
     }
 
     [Fact]
+    public void A_Value_Read_On_Return_Replaces_The_One_Read_When_Called()
+    {
+        var builder = new TimeTravelCallLog.Builder([new LocatorRead(0x1000, 1, false, LocatorKind.Referenced),
+                                                     new LocatorRead(0x1000, 1, true, LocatorKind.Referenced)]);
+
+        builder.Add(0x1000, 0, Chunk(Row(1), Row(2)), 2);
+
+        builder.AddLocators([new TimeTravelMemoryValue(0x1000, 0, 3, 0, 1),
+                             new TimeTravelMemoryValue(0x1000, 0, 3, 1, 1),
+                             new TimeTravelMemoryValue(0x1000, 0, 5, 1, 1, AtReturn: 1)]);
+
+        var calls = builder.Build().CallsOf(0x1000, 0)!;
+
+        Assert.Equal(3ul, calls[0].LocatorAt(1)?.Value);
+        Assert.Equal(5ul, Assert.Single(calls[1].Locators).Value);
+    }
+
+    [Fact]
+    public void A_Value_Behind_A_Reference_Is_Not_Annotated_On_The_Call_Tree()
+    {
+        var tree = new CallStackTree();
+
+        var node = tree.AddCall(tree.Root, new CallstackFrame { Module = "sqlmin", Rva = 0x10 }, 1);
+
+        var builder = new TimeTravelCallLog.Builder([new LocatorRead(0x1000, 1, false, LocatorKind.Referenced)]);
+
+        builder.Add(0x1000, 0, Chunk(Row(10, node: 0)), 1);
+
+        builder.AddLocators([new TimeTravelMemoryValue(0x1000, 0, 3, 0, 1)]);
+
+        var log = builder.Build();
+
+        log.MapNodes([node]);
+
+        log.AnnotateNodes();
+
+        Assert.False(node.HasLocators);
+    }
+
+    [Fact]
     public void A_Value_Read_From_A_Register_With_No_Rule_Is_Ignored()
     {
         var builder = new TimeTravelCallLog.Builder([new LocatorRead(0x1000, 2, false, LocatorKind.Page)]);

@@ -5,6 +5,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using System;
 using InternalsViewer.Query.CallStack;
+using InternalsViewer.Query.CallStack.Arguments;
 using InternalsViewer.Query.CallStack.TimeTravel.CallLog;
 using InternalsViewer.Query.CallStack.TimeTravel.Iterators;
 using InternalsViewer.Query.CallStack.TimeTravel.Locators;
@@ -778,6 +779,11 @@ public sealed partial class QueryCallStackTabView : UserControl, IDocumentComman
             return;
         }
 
+        if (cell.Type is { } type && ArgumentValue.HoBtIdOf(type, value) is { } hobtId)
+        {
+            e.Menu.Items.Add(MenuItem("Open The Index", () => _viewModel?.OpenHoBt(hobtId)));
+        }
+
         if (arguments.IteratorOf(value) is { } iterator)
         {
             e.Menu.Items.Add(MenuItem($"Show The {iterator.Label} Iterator", () => NavigateToIterator(iterator)));
@@ -1125,6 +1131,13 @@ public sealed partial class QueryCallStackTabView : UserControl, IDocumentComman
         UpdateAllCategoriesToggle();
 
         ApplyFocus(_viewModel?.SelectedEvent);
+    }
+
+    private void OnDefaultCategoriesClick(object sender, RoutedEventArgs e)
+    {
+        Settings.ResetCallTreeCategories();
+
+        SaveCategories(HiddenCategories, PrunedCategories);
     }
 
     private void UpdateAllCategoriesToggle()

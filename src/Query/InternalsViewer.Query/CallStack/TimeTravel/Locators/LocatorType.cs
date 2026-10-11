@@ -1,12 +1,20 @@
+using InternalsViewer.Query.CallStack.Arguments;
+
 namespace InternalsViewer.Query.CallStack.TimeTravel.Locators;
 
-public readonly record struct LocatorType(LocatorKind Kind, bool IsIndirect, bool IsConst, int Offset = 0)
+public readonly record struct LocatorType(LocatorKind Kind, bool IsIndirect, bool IsConst, int Offset = 0, int[]? Path = null)
 {
     private const int AllocationPageIdOffset = 8;
+
+    private const int PageHeaderPageIdOffset = 0x20;
+
+    public static readonly int[] PageHandlePath = [0, 0x18, 0];
 
     private static readonly char[] Indirections = ['*', '&'];
 
     public bool IsOutput => IsIndirect && !IsConst;
+
+    public bool IsInOut => IsOutput && (Kind == LocatorKind.Referenced || Path is not null);
 
     public static LocatorType? Of(string type)
     {
@@ -17,20 +25,26 @@ public readonly record struct LocatorType(LocatorKind Kind, bool IsIndirect, boo
             return null;
         }
 
-        var words = (indirection < 0 ? type : type[..indirection]).Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        var target = indirection < 0 ? type : type[..indirection];
+
+        var words = target.Split(' ', StringSplitOptions.RemoveEmptyEntries);
 
         var names = words.Where(w => !IsQualifier(w)).ToList();
 
-        (LocatorKind Kind, int Offset)? found = names switch
+        (LocatorKind Kind, int Offset, int[]? Path)? found = names switch
         {
-            ["PageId"] => (LocatorKind.Page, 0),
-            ["AllocationPageId"] => (LocatorKind.Page, AllocationPageIdOffset),
-            ["RowId"] => (LocatorKind.Row, 0),
-            ["ColumnStoreObjectKey"] => (LocatorKind.ColumnStoreObject, 0),
+            ["PageId"] => (LocatorKind.Page, 0, null),
+            ["AllocationPageId"] => (LocatorKind.Page, AllocationPageIdOffset, null),
+            ["HPageHandle"] => (LocatorKind.Page, PageHeaderPageIdOffset, PageHandlePath),
+            ["RowId"] => (LocatorKind.Row, 0, null),
+            ["ColumnStoreObjectKey"] => (LocatorKind.ColumnStoreObject, 0, null),
+            _ when indirection >= 0 && ArgumentValue.IsReadable(target) => (LocatorKind.Referenced, 0, null),
             _ => null
         };
 
-        return found is { } match ? new LocatorType(match.Kind, indirection >= 0, words.Contains("const"), match.Offset) : null;
+        return found is { } match
+            ? new LocatorType(match.Kind, indirection >= 0, words.Contains("const"), match.Offset, match.Path)
+            : null;
     }
 
     private static bool IsQualifier(string word) => word is "const" or "volatile" or "class" or "struct" or "__unaligned";

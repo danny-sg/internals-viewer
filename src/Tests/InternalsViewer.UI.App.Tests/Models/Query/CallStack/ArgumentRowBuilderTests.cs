@@ -163,6 +163,20 @@ public class ArgumentRowBuilderTests
         Assert.Equal("Segment (Rowgroup 3, Column 2)", Assert.Single(ArgumentRowBuilder.Table(layout, [call]).Rows)[3]);
     }
 
+    [Fact]
+    public void A_Reference_Shows_The_Value_It_Refers_To_But_Is_Not_A_Locator()
+    {
+        var layout = ArgumentLayout.For(new FunctionSignature(["enum LCK_MODE &"], FunctionKind.Member, "void"));
+
+        var call = Call(0x100, 0x200) with { Locators = [new TimeTravelLocator(1, LocatorKind.Referenced, 4)] };
+
+        Assert.Equal("U", Assert.Single(ArgumentRowBuilder.Table(layout, [call]).Rows)[3]);
+
+        var cell = ArgumentRowBuilder.CellAt(layout, call, 3);
+
+        Assert.Equal((0x200ul, (LocatorKind?)null, "enum LCK_MODE &"), (cell.Value, cell.Locator?.Kind, cell.Type));
+    }
+
     private static TimeTravelArgumentCall Call(ulong self, ulong pointer, ulong returnValue = 0, bool returned = true)
         => new(1, 1, returned, [self, pointer, 0, 0], returnValue, 0);
 

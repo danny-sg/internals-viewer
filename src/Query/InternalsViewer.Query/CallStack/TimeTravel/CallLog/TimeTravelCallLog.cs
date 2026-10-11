@@ -89,6 +89,11 @@ public sealed class TimeTravelCallLog
 
             foreach (var (call, locator) in table.Entries())
             {
+                if (locator.Kind == LocatorKind.Referenced)
+                {
+                    continue;
+                }
+
                 if (call < calls.Count && NodeAt(calls.NodeIndexAt(call)) is { } node)
                 {
                     (node.Locators ??= new TimeTravelLocatorSet()).Add(locator);
@@ -232,13 +237,14 @@ public sealed class TimeTravelCallLog
     {
         private Dictionary<(ulong Address, ulong Instance), List<Task<Chunk>>> Pending { get; } = new();
 
-        private Dictionary<(ulong Function, int Register, int Offset), LocatorRead> Reads { get; }
-            = (locatorReads ?? []).DistinctBy(r => (r.Function, r.Register, r.Offset))
-                                  .ToDictionary(r => (r.Function, r.Register, r.Offset));
+        private Dictionary<(ulong Function, int Register, int Offset, bool AtReturn), LocatorRead> Reads { get; }
+            = (locatorReads ?? []).DistinctBy(r => (r.Function, r.Register, r.Offset, r.AtReturn))
+                                  .ToDictionary(r => (r.Function, r.Register, r.Offset, r.AtReturn));
 
         private Dictionary<(ulong Function, ulong Instance, uint Call, int Register), ulong[]> ObjectKeys { get; } = new();
 
-        private Dictionary<(ulong Address, ulong Instance), List<(int Call, TimeTravelLocator Locator)>> Found { get; } = new();
+        private Dictionary<(ulong Address, ulong Instance), List<(int Call, TimeTravelLocator Locator, bool AtReturn)>> Found { get; }
+            = new();
 
         private SemaphoreSlim Compressing { get; } = new(Math.Max(2, Environment.ProcessorCount));
 
@@ -294,21 +300,25 @@ public sealed class TimeTravelCallLog
         {
             foreach (var value in values)
             {
-                if (!Reads.TryGetValue((value.Function, value.Register, (int)value.Offset), out var read))
+                var atReturn = value.AtReturn != 0;
+
+                if (!Reads.TryGetValue((value.Function, value.Register, (int)value.Offset, atReturn), out var read))
                 {
                     continue;
                 }
 
                 if (read.Kind != LocatorKind.ColumnStoreObject)
                 {
-                    FoundFor(value).Add(((int)value.Call, new TimeTravelLocator(read.Register, read.Kind, value.Value)));
+                    FoundFor(value).Add(((int)value.Call, new TimeTravelLocator(read.Register, read.Kind, value.Value), atReturn));
 
                     continue;
                 }
 
                 if (AddKeyPart(value) is { } key)
                 {
-                    FoundFor(value).Add(((int)value.Call, TimeTravelLocator.ColumnStoreObject(read.Register, key[0], key[1], key[2])));
+                    FoundFor(value).Add(((int)value.Call,
+                                         TimeTravelLocator.ColumnStoreObject(read.Register, key[0], key[1], key[2]),
+                                         atReturn));
                 }
             }
         }
@@ -318,7 +328,15 @@ public sealed class TimeTravelCallLog
             Task.WaitAll([.. Pending.Values.SelectMany(c => c)]);
 
             return new TimeTravelCallLog(Pending.ToDictionary(p => p.Key, p => p.Value.Select(c => c.Result).ToArray()),
-                                         Found.ToDictionary(f => f.Key, f => TimeTravelLocatorTable.Build(f.Value)));
+                                         Found.ToDictionary(f => f.Key, f => TimeTravelLocatorTable.Build(Preferred(f.Value))));
+        }
+
+        private static List<(int Call, TimeTravelLocator Locator)> Preferred(
+            List<(int Call, TimeTravelLocator Locator, bool AtReturn)> found)
+        {
+            var returned = found.Where(f => f.AtReturn).Select(f => (f.Call, f.Locator.Register)).ToHashSet();
+
+            return [.. found.Where(f => f.AtReturn || !returned.Contains((f.Call, f.Locator.Register))).Select(f => (f.Call, f.Locator))];
         }
 
         private static Chunk Compress(ReadOnlySpan<ulong> columns, int calls)
@@ -333,7 +351,7 @@ public sealed class TimeTravelCallLog
             return new Chunk(calls, compressed.ToArray());
         }
 
-        private List<(int Call, TimeTravelLocator Locator)> FoundFor(TimeTravelMemoryValue value)
+        private List<(int Call, TimeTravelLocator Locator, bool AtReturn)> FoundFor(TimeTravelMemoryValue value)
         {
             if (!Found.TryGetValue((value.Function, value.Instance), out var found))
             {

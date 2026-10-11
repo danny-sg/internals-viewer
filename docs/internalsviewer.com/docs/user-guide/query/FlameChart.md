@@ -84,5 +84,5 @@ With **Memory** off, the calls under the playhead pop out of the chart, each rai
 ::: details How this works
 Each bar is one call recorded during the Full Trace replay, with where it started and ended in the recording, the instructions it executed, its thread and its place in the call tree. Positions are shared by every thread, which is why that axis lines them up, while each thread counts its own instructions.
 
-See [How query tracing works](/docs/deep-dives/query-tracing#full-trace) for the details.
+See [How Full Trace works](/docs/deep-dives/full-trace) for the details.
 :::

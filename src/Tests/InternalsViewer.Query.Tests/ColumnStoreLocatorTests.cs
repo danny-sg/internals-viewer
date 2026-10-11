@@ -111,7 +111,7 @@ public class ColumnStoreLocatorTests
     [Fact]
     public void The_Native_Structures_Match_The_Bridge()
     {
-        Assert.Equal(24, Marshal.SizeOf<TimeTravelMemoryRead>());
+        Assert.Equal(40, Marshal.SizeOf<TimeTravelMemoryRead>());
         Assert.Equal(40, Marshal.SizeOf<TimeTravelMemoryValue>());
     }
 

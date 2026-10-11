@@ -9,6 +9,7 @@
 #include <TTD/IReplayEngineRegisters.h>
 
 #include <algorithm>
+#include <array>
 #include <memory>
 #include <string>
 #include <unordered_map>
@@ -54,7 +55,11 @@ namespace
 
     constexpr int32_t ArgumentRegisters = 4;
 
-    constexpr int32_t ReturnRegister = 4;
+    constexpr int32_t ArgumentSlots = 8;
+
+    constexpr size_t StackArgumentCount = ArgumentSlots - ArgumentRegisters;
+
+    constexpr int32_t ReturnRegister = 8;
 
     constexpr size_t MemoryChunk = 65536;
 
@@ -141,6 +146,7 @@ namespace
         uint64_t        StartInstructions;
         uint32_t        LoggedCall;
         uint32_t        Flags;
+        std::array<uint64_t, StackArgumentCount> StackArguments;
     };
 
     struct ThreadClock
@@ -283,6 +289,21 @@ namespace
                 return;
             }
 
+            for (uint32_t hop = 0; hop < read.Hops && hop < MaximumHops; hop++)
+            {
+                uint64_t next = 0;
+
+                auto const link = thread.QueryMemoryBuffer(static_cast<GuestAddress>(pointer + read.Path[hop]),
+                                                           BufferView{ &next, sizeof(next) });
+
+                if (link.Memory.Size != sizeof(next) || next == 0)
+                {
+                    return;
+                }
+
+                pointer = next;
+            }
+
             uint64_t value = 0;
 
             auto const address = static_cast<GuestAddress>(pointer + read.Offset);
@@ -294,7 +315,7 @@ namespace
                 return;
             }
 
-            Memory.push_back(MemoryValue{ function.Address, function.Instance, value, call, read.Register, read.Offset });
+            Memory.push_back(MemoryValue{ function.Address, function.Instance, value, call, read.Register, read.Offset, read.AtReturn });
 
             if (Memory.size() >= MemoryChunk)
             {
@@ -468,13 +489,52 @@ namespace
                 continue;
             }
 
-            auto const pointer = read.Register == ReturnRegister ? values[ReturnValue] : values[IntegerValues + read.Register];
+            auto const pointer = read.Register == ReturnRegister    ? values[ReturnValue]
+                                 : read.Register < ArgumentRegisters ? values[IntegerValues + read.Register]
+                                                                     : frame.StackArguments[read.Register - ArgumentRegisters];
 
             tree.ReadMemory(thread, *frame.Function, frame.LoggedCall, read, pointer);
         }
     }
 
-    void ReadArguments(CallTree& tree, IThreadView const& thread, AMD64_CONTEXT const& registers, LoggedCall const& logged)
+    uint64_t StackArgument(IThreadView const&                         thread,
+                           uint64_t                                   stackPointer,
+                           uint64_t                                   returnAddress,
+                           int32_t                                    slot,
+                           std::array<uint64_t, StackArgumentCount>& stackArguments)
+    {
+        auto& argument = stackArguments[slot - ArgumentRegisters];
+
+        if (argument != 0)
+        {
+            return argument;
+        }
+
+        uint64_t top = 0;
+
+        auto const pushed = thread.QueryMemoryBuffer(static_cast<GuestAddress>(stackPointer), BufferView{ &top, sizeof(top) });
+
+        auto const homeSpace = pushed.Memory.Size == sizeof(top) && top == returnAddress ? stackPointer + sizeof(uint64_t) : stackPointer;
+
+        uint64_t value = 0;
+
+        auto const buffer = thread.QueryMemoryBuffer(static_cast<GuestAddress>(homeSpace + slot * sizeof(uint64_t)),
+                                                     BufferView{ &value, sizeof(value) });
+
+        if (buffer.Memory.Size == sizeof(value))
+        {
+            argument = value;
+        }
+
+        return argument;
+    }
+
+    void ReadArguments(CallTree&                                  tree,
+                       IThreadView const&                         thread,
+                       AMD64_CONTEXT const&                       registers,
+                       uint64_t                                   returnAddress,
+                       LoggedCall const&                          logged,
+                       std::array<uint64_t, StackArgumentCount>& stackArguments)
     {
         auto const* reads = logged.Function == nullptr ? nullptr : tree.ReadsOf(logged.Function->Address);
 
@@ -487,12 +547,19 @@ namespace
 
         for (auto const& read : *reads)
         {
-            if (read.AtReturn != 0 || read.Register < 0 || read.Register >= ArgumentRegisters)
+            if (read.Register < 0 || read.Register >= ArgumentSlots)
             {
                 continue;
             }
 
-            tree.ReadMemory(thread, *logged.Function, logged.Index, read, arguments[read.Register]);
+            auto const pointer = read.Register < ArgumentRegisters
+                                     ? arguments[read.Register]
+                                     : StackArgument(thread, registers.Rsp, returnAddress, read.Register, stackArguments);
+
+            if (read.AtReturn == 0)
+            {
+                tree.ReadMemory(thread, *logged.Function, logged.Index, read, pointer);
+            }
         }
     }
 
@@ -615,7 +682,9 @@ namespace
                                         instance,
                                         node);
 
-            ReadArguments(tree, *thread, registers, logged);
+            std::array<uint64_t, StackArgumentCount> stackArguments{};
+
+            ReadArguments(tree, *thread, registers, returnAddress, logged, stackArguments);
 
             stack.push_back(StackFrame{ stackPointer,
                                         node,
@@ -626,7 +695,8 @@ namespace
                                         position,
                                         clock.Instructions,
                                         logged.Index,
-                                        0 });
+                                        0,
+                                        stackArguments });
 
             if (tree.LoggedSinceFlush >= IdleFlushInterval)
             {

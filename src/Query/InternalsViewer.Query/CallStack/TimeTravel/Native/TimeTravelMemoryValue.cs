@@ -8,4 +8,5 @@ internal readonly record struct TimeTravelMemoryValue(ulong Function,
                                                       ulong Value,
                                                       uint Call,
                                                       int Register,
-                                                      uint Offset = 0);
+                                                      uint Offset = 0,
+                                                      uint AtReturn = 0);

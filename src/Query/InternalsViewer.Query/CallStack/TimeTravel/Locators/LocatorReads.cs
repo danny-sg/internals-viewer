@@ -1,17 +1,21 @@
+using System.Text.RegularExpressions;
 using InternalsViewer.Query.CallStack.Arguments;
 using InternalsViewer.Query.CallStack.Dia;
 
 namespace InternalsViewer.Query.CallStack.TimeTravel.Locators;
 
-public static class LocatorReads
+public static partial class LocatorReads
 {
     public const int ReturnRegister = 4;
 
     public const int ObjectKeyParts = 3;
 
+    public const int MaximumHops = 3;
+
     private const string Module = "sqlmin";
 
-    private static readonly string[] DecoratedTypes = ["VPageId@@", "VAllocationPageId@@", "URowId@@", "VColumnStoreObjectKey@@"];
+    private static readonly string[] DecoratedTypes =
+        ["VPageId@@", "VAllocationPageId@@", "VHPageHandle@@", "URowId@@", "VColumnStoreObjectKey@@"];
 
     public static bool AppliesTo(string module) => string.Equals(module, Module, StringComparison.OrdinalIgnoreCase);
 
@@ -26,7 +30,7 @@ public static class LocatorReads
                 continue;
             }
 
-            foreach (var read in Reads(function, slot.Index, type.IsOutput, type))
+            foreach (var read in Reads(function, slot.Index, type, returned: false))
             {
                 yield return read;
             }
@@ -34,20 +38,25 @@ public static class LocatorReads
 
         if (signature.ReturnType is { } returnType && LocatorType.Of(returnType) is { } returned)
         {
-            foreach (var read in Reads(function, ReturnRegister, true, returned))
+            foreach (var read in Reads(function, ReturnRegister, returned, returned: true))
             {
                 yield return read;
             }
         }
     }
 
-    private static IEnumerable<LocatorRead> Reads(ulong function, int register, bool atReturn, LocatorType type)
+    private static IEnumerable<LocatorRead> Reads(ulong function, int register, LocatorType type, bool returned)
     {
         var parts = type.Kind == LocatorKind.ColumnStoreObject ? ObjectKeyParts : 1;
 
-        for (var part = 0; part < parts; part++)
+        bool[] ends = returned ? [true] : type.IsInOut ? [false, true] : [type.IsOutput];
+
+        foreach (var atReturn in ends)
         {
-            yield return new LocatorRead(function, register, atReturn, type.Kind, type.Offset + part * sizeof(ulong));
+            for (var part = 0; part < parts; part++)
+            {
+                yield return new LocatorRead(function, register, atReturn, type.Kind, type.Offset + part * sizeof(ulong), type.Path);
+            }
         }
     }
 
@@ -58,7 +67,8 @@ public static class LocatorReads
         foreach (var rva in functions)
         {
             if (resolver.GetDecoratedName(rva) is not { } decoratedName
-                || !DecoratedTypes.Any(t => decoratedName.Contains(t, StringComparison.Ordinal)))
+                || (!DecoratedTypes.Any(t => decoratedName.Contains(t, StringComparison.Ordinal))
+                    && !ReferencedType().IsMatch(decoratedName)))
             {
                 continue;
             }
@@ -82,4 +92,7 @@ public static class LocatorReads
 
         return reads;
     }
+
+    [GeneratedRegex("[PQA]E[AB](?:[FGHIJKMN]|_[JKN]|W4|VHoBtId@@)")]
+    private static partial Regex ReferencedType();
 }

@@ -94,6 +94,13 @@ public partial class SettingsViewModel(SettingsService settingsService, TraceDir
 
     private TraceDirectoryService TraceDirectoryService { get; } = traceDirectoryService;
 
+    public void ResetCallTreeCategories()
+    {
+        CallTreeHiddenCategories = DefaultCallTreeHiddenCategories;
+
+        CallTreePrunedCategories = string.Empty;
+    }
+
     public static HashSet<string> SplitCategories(string value)
         => new(value.Split(CategorySeparator, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries),
                StringComparer.Ordinal);

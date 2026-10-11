@@ -27,6 +27,12 @@ public class ArgumentValueTests
     [InlineData("enum XeSqlPkg::FileIoMode", 1ul, "ScatterGather")]
     [InlineData("enum ColumnStoreObjectType", 9ul, "DeleteBitmapCollection")]
     [InlineData("enum EDisable_Rowgroup_For_FPGA", 7ul, "EDELETE_BITMAP")]
+    [InlineData("enum LCK_RESULT", 0xFFFFFFFFul, "TIMEDOUT")]
+    [InlineData("enum LCK_RESULT", 0ul, "OK")]
+    [InlineData("enum BPool::StealOption", 13ul, "ColdBuffer | ForShortTermUse | NoZeroing")]
+    [InlineData("enum BPool::StealOption", 0ul, "NoStealOption")]
+    [InlineData("enum BPool::StealOption", 0x101ul, "ColdBuffer | 0x100")]
+    [InlineData("HoBtId", 0x1000000008Eul, "72057594047234048 (0x1000000008E0000)")]
     public void A_Value_Is_Formatted_For_Its_Type(string type, ulong raw, string expected)
     {
         Assert.Equal(expected, ArgumentValue.Format(type, raw));
@@ -37,6 +43,20 @@ public class ArgumentValueTests
     {
         Assert.Equal("0x2E0114C5870", ArgumentValue.Format("unsigned __int64 *", 0x2E0114C5870));
         Assert.Equal("nullptr", ArgumentValue.Format("CQScanNew *", 0));
+    }
+
+    [Fact]
+    public void A_Value_Behind_A_Reference_Is_Formatted_For_The_Type_It_Refers_To()
+    {
+        Assert.Equal("U", ArgumentValue.FormatReferenced("enum LCK_MODE &", 4));
+        Assert.Equal("-1", ArgumentValue.FormatReferenced("int *", 0xFFFFFFFF));
+    }
+
+    [Fact]
+    public void A_HoBt_Id_Is_Only_Found_In_A_HoBtId()
+    {
+        Assert.Equal(72057594047234048ul, ArgumentValue.HoBtIdOf("HoBtId", 0x1000000008E));
+        Assert.Null(ArgumentValue.HoBtIdOf("unsigned __int64", 0x1000000008E));
     }
 
     [Fact]

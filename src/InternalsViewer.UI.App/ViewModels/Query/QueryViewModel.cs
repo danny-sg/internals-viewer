@@ -1284,19 +1284,29 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
     public void OpenColumnstoreObject(ulong hobtId, ColumnstoreObjectTarget target)
     {
-        if (Database.FindHobtIdAllocationUnit((long)hobtId) is not { } unit)
+        if (OpenHoBt(hobtId) is not { } unit)
         {
-            Logger.LogWarning("No allocation unit found for columnstore HoBt {HobtId}", hobtId);
-
             return;
         }
-
-        OpenIndex(unit.SchemaName, unit.TableName, unit.IndexName);
 
         if (_openColumnstores.TryGetValue($"Index:{unit.SchemaName}.{unit.TableName}.{unit.IndexName}", out var columnstore))
         {
             columnstore.Reveal(target);
         }
+    }
+
+    public InternalsViewer.Internals.Engine.Database.AllocationUnit? OpenHoBt(ulong hobtId)
+    {
+        if (Database.FindHobtIdAllocationUnit((long)hobtId) is not { } unit)
+        {
+            Logger.LogWarning("No allocation unit found for HoBt {HobtId}", hobtId);
+
+            return null;
+        }
+
+        OpenIndex(unit.SchemaName, unit.TableName, unit.IndexName);
+
+        return unit;
     }
 
     private void OpenIndex(string? schema, string? table, string? index)

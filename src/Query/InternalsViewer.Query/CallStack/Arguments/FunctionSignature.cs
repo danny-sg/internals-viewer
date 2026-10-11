@@ -82,7 +82,15 @@ public sealed partial record FunctionSignature(IReadOnlyList<string> Parameters,
                               .Select(m => m.Groups["name"].Value)
                               .ToHashSet(StringComparer.Ordinal);
 
-        return [.. parameters.Select(p => enums.Contains(UnqualifiedName(p)) ? $"{EnumPrefix}{p}" : p)];
+        return [.. parameters.Select(p => enums.Contains(UnqualifiedName(TargetName(p))) ? $"{EnumPrefix}{p}" : p)];
+    }
+
+    private static string TargetName(string type)
+    {
+        var indirection = type.IndexOfAny(['*', '&']);
+
+        return string.Join(' ', (indirection < 0 ? type : type[..indirection]).Split(' ', StringSplitOptions.RemoveEmptyEntries)
+                                                                              .Where(w => w is not ("const" or "volatile")));
     }
 
     private static string UnqualifiedName(string type)

@@ -4,5 +4,6 @@ public enum LocatorKind : byte
 {
     Page,
     Row,
-    ColumnStoreObject
+    ColumnStoreObject,
+    Referenced
 }

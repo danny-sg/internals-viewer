@@ -19,11 +19,18 @@ public static class ArgumentValue
 {
     private const ulong HexThreshold = 0x10000;
 
+    private const int HoBtIdShift = 16;
+
+    private const string HoBtIdType = "HoBtId";
+
+    private const string FlagSeparator = " | ";
+
     private static readonly Dictionary<string, Lazy<Dictionary<int, string>>> KnownEnums = new(StringComparer.Ordinal)
     {
         ["LatchBase::LATCH_TYPE"] = new(GetEnumNames<LatchMode>),
         ["LatchBase::LatchClass"] = new(GetEnumNames<LatchClass>),
         ["LCK_MODE"] = new(GetEnumNames<LockMode>),
+        ["LCK_RESULT"] = new(GetEnumNames<LockResult>),
         ["LockRes::LockResourceType"] = new(GetEnumNames<LockResourceType>),
         ["LockOwnerType"] = new(GetEnumNames<LockOwnerType>),
         ["PageHeader::PageType"] = new(GetEnumNames<PageType>),
@@ -38,9 +45,39 @@ public static class ArgumentValue
         ["RbpFilterType"] = new(GetEnumNames<ColumnStoreFilterType>)
     };
 
+    private static readonly Dictionary<string, Lazy<Dictionary<int, string>>> KnownFlags = new(StringComparer.Ordinal)
+    {
+        ["BPool::StealOption"] = new(GetEnumNames<StealOptions>)
+    };
+
+    private static readonly HashSet<string> ReadableTypes = new(StringComparer.Ordinal)
+    {
+        "bool", "short", "__int16", "unsigned short", "unsigned __int16", "int", "long", "__int32", "unsigned int", "unsigned long",
+        "unsigned __int32", "__int64", "long long", "unsigned __int64", "unsigned long long", "float", "double", HoBtIdType
+    };
+
     public static bool IsFloating(string type) => Normalise(type) is "float" or "double" or "long double";
 
     public static bool IsPointer(string type) => type.TrimEnd() is { Length: > 0 } trimmed && trimmed[^1] is '*' or '&';
+
+    public static bool IsReadable(string type)
+    {
+        var normalised = Normalise(type);
+
+        return normalised.StartsWith(FunctionSignature.EnumPrefix, StringComparison.Ordinal)
+            ? KnownEnums.ContainsKey(normalised[FunctionSignature.EnumPrefix.Length..])
+              || KnownFlags.ContainsKey(normalised[FunctionSignature.EnumPrefix.Length..])
+            : ReadableTypes.Contains(normalised);
+    }
+
+    public static string FormatReferenced(string type, ulong raw)
+    {
+        var indirection = type.IndexOfAny(['*', '&']);
+
+        return Format(indirection < 0 ? type : type[..indirection], raw);
+    }
+
+    public static ulong? HoBtIdOf(string type, ulong raw) => Normalise(type) == HoBtIdType ? raw << HoBtIdShift : null;
 
     public static string Format(string type, ulong raw)
     {
@@ -53,8 +90,14 @@ public static class ArgumentValue
 
         if (normalised.StartsWith(FunctionSignature.EnumPrefix, StringComparison.Ordinal))
         {
-            return KnownEnums.TryGetValue(normalised[FunctionSignature.EnumPrefix.Length..], out var names)
-                   && names.Value.TryGetValue((int)raw, out var name)
+            var enumName = normalised[FunctionSignature.EnumPrefix.Length..];
+
+            if (KnownFlags.TryGetValue(enumName, out var flags))
+            {
+                return FlagsOf(flags.Value, (int)raw);
+            }
+
+            return KnownEnums.TryGetValue(enumName, out var names) && names.Value.TryGetValue((int)raw, out var name)
                 ? name
                 : ToNumber((int)raw);
         }
@@ -72,6 +115,7 @@ public static class ArgumentValue
             "unsigned __int64" or "unsigned long long" => ToNumber(raw),
             "float" => BitConverter.Int32BitsToSingle((int)raw).ToString(CultureInfo.InvariantCulture),
             "double" or "long double" => BitConverter.Int64BitsToDouble((long)raw).ToString(CultureInfo.InvariantCulture),
+            HoBtIdType => ToNumber(raw << HoBtIdShift),
             _ => $"0x{raw:X}"
         };
     }
@@ -80,6 +124,35 @@ public static class ArgumentValue
         => Enum.GetValues<T>()
                .DistinctBy(v => Convert.ToInt32(v, CultureInfo.InvariantCulture))
                .ToDictionary(v => Convert.ToInt32(v, CultureInfo.InvariantCulture), v => v.ToString());
+
+    private static string FlagsOf(Dictionary<int, string> names, int value)
+    {
+        if (names.TryGetValue(value, out var name))
+        {
+            return name;
+        }
+
+        var parts = new List<string>();
+
+        var remaining = value;
+
+        foreach (var (flag, flagName) in names.Where(n => n.Key != 0 && (n.Key & (n.Key - 1)) == 0).OrderBy(n => n.Key))
+        {
+            if ((remaining & flag) == flag)
+            {
+                parts.Add(flagName);
+
+                remaining &= ~flag;
+            }
+        }
+
+        if (remaining != 0)
+        {
+            parts.Add($"0x{remaining:X}");
+        }
+
+        return string.Join(FlagSeparator, parts);
+    }
 
     private static string ToNumber(long value)
         => value is > -(long)HexThreshold and < (long)HexThreshold

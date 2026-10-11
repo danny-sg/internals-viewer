@@ -121,6 +121,10 @@ export default defineConfig({
             link: "docs/deep-dives/query-tracing",
           },
           {
+            text: "How Full Trace works",
+            link: "docs/deep-dives/full-trace",
+          },
+          {
             text: "How the Index view works",
             link: "docs/deep-dives/index-view",
           },

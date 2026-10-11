@@ -68,16 +68,19 @@ public static class ArgumentRowBuilder
 
         if (position >= 0 && position < slots.Count)
         {
-            return new ArgumentCell(call.Value(slots[position]), call.LocatorAt(slots[position].Index));
+            return new ArgumentCell(call.Value(slots[position]), AddressAt(call, slots[position].Index), slots[position].Type);
         }
 
-        if (position == slots.Count && HasReturn(layout.ReturnType ?? UnknownType) && call.Returned)
+        if (position == slots.Count && layout.ReturnType is { } returnType && HasReturn(returnType) && call.Returned)
         {
-            return new ArgumentCell(call.ReturnValue, call.LocatorAt(LocatorReads.ReturnRegister));
+            return new ArgumentCell(call.ReturnValue, AddressAt(call, LocatorReads.ReturnRegister), returnType);
         }
 
         return default;
     }
+
+    private static TimeTravelLocator? AddressAt(TimeTravelArgumentCall call, int register)
+        => call.LocatorAt(register) is { Kind: not LocatorKind.Referenced } locator ? locator : null;
 
     private static List<ArgumentSlot> CapturedSlots(ArgumentLayout layout) => [.. layout.Slots.Where(TimeTravelArgumentCall.IsCaptured)];
 
@@ -89,7 +92,7 @@ public static class ArgumentRowBuilder
 
         foreach (var slot in slots)
         {
-            values.Add(call.LocatorAt(slot.Index) is { } locator ? Address(locator) : Text(slot.Type, call.Value(slot)));
+            values.Add(call.LocatorAt(slot.Index) is { } locator ? Display(slot.Type, locator) : Text(slot.Type, call.Value(slot)));
         }
 
         if (returnType is not null)
@@ -97,17 +100,18 @@ public static class ArgumentRowBuilder
             values.Add(!call.Returned
                            ? DidNotReturn
                            : call.LocatorAt(LocatorReads.ReturnRegister) is { } locator
-                               ? Address(locator)
+                               ? Display(returnType, locator)
                                : ArgumentValue.Format(returnType, call.ReturnValue));
         }
 
         return [.. values];
     }
 
-    private static object Address(TimeTravelLocator locator) => locator.Kind switch
+    private static object Display(string type, TimeTravelLocator locator) => locator.Kind switch
     {
         LocatorKind.Row => locator.Row,
         LocatorKind.ColumnStoreObject => locator.ToString(),
+        LocatorKind.Referenced => ArgumentValue.FormatReferenced(type, locator.Value),
         _ => locator.Page
     };
 

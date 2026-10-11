@@ -99,10 +99,7 @@ public sealed class TimeTravelSession : IDisposable
 
         TimeTravelBridge.MemoryValueCallback onMemory = log.AddLocators;
 
-        TimeTravelMemoryRead[] reads =
-        [
-            .. functions.Locators.Select(l => new TimeTravelMemoryRead(l.Function, l.Register, l.AtReturn ? 1u : 0u, (uint)l.Offset))
-        ];
+        TimeTravelMemoryRead[] reads = [.. functions.Locators.Select(TimeTravelMemoryRead.From)];
 
         try
         {

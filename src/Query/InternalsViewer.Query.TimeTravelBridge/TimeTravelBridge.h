@@ -27,12 +27,16 @@ extern "C"
         uint32_t Flags;
     };
 
+    constexpr uint32_t MaximumHops = 3;
+
     struct MemoryRead
     {
         uint64_t Function;
         int32_t  Register;
         uint32_t AtReturn;
         uint32_t Offset;
+        uint32_t Hops;
+        uint32_t Path[MaximumHops];
     };
 
     struct MemoryValue
@@ -43,6 +47,7 @@ extern "C"
         uint32_t Call;
         int32_t  Register;
         uint32_t Offset;
+        uint32_t AtReturn;
     };
 
     typedef void(__stdcall* ProgressCallback)(uint32_t thread, int32_t percent);

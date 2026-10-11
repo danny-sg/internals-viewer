@@ -143,6 +143,17 @@ public class FunctionSignatureTests
     }
 
     [Fact]
+    public void An_Enum_Passed_By_Reference_Is_Marked_As_An_Enum()
+    {
+        var signature = FunctionSignature.Parse("GetHoBtLockInternal(XDES *,unsigned __int64,HoBtAccess &,LCK_MODE &)",
+                                                "?GetHoBtLockInternal@@YA?AW4LCK_RESULT@@PEAVXDES@@_KAEAVHoBtAccess@@AEAW4LCK_MODE@@@Z");
+
+        Assert.NotNull(signature);
+        Assert.Equal(["XDES *", "unsigned __int64", "HoBtAccess &", "enum LCK_MODE &"], signature.Parameters);
+        Assert.Equal("enum LCK_RESULT", signature.ReturnType);
+    }
+
+    [Fact]
     public void A_Signature_Without_A_Parameter_List_Is_Not_Parsed()
     {
         Assert.Null(FunctionSignature.Parse("CFoo::Bar", null));

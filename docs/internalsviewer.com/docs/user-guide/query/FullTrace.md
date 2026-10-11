@@ -32,7 +32,7 @@ Turning it on also changes the layout straight away. A recording has no clock an
 1. **Preparing** - the UAC prompt appears and the harness starts. If SQL Server has already been recorded since it last started, the harness restarts the SQL Server service first, along with any running services that depend on it such as SQL Server Agent, and waits for the database to come back online. TTD can never be unloaded from a process once it has attached, and attaching a second time records nothing useful, so each recording needs a fresh SQL Server process. The restart drops every connection to the instance and leaves the buffer pool and plan cache empty. There is no restart at the end of the run.
 2. **Warming up** - unless [Clear Buffer Pool](/docs/user-guide/query/Editor) is on, the query runs once untraced, on its own connection, inside a transaction that is rolled back. With Clear Buffer Pool off you are not asking to see disk reads, and the warm-up keeps them out of the recording, along with compiling the plan - both would otherwise swamp the query's own work. A query with `OPTION (RECOMPILE)` still compiles inside the recording.
 3. **Recording** - just before the Extended Events session starts, TTD attaches to SQL Server, recording only the storage engine and the query processor. The query runs, and the recording stops as soon as its results have been read.
-4. **Loading** - the results, messages and execution plan appear as soon as the query finishes, and the recording loads in the background - it is opened, then replayed. While it loads, the Call Stack and Flame Chart panes show its progress, with a **Cancel** link in the Call Stack, and Messages logs each step as it goes, from "Opening Full Trace" to how many calls were replayed. When it finishes, the Call Stack, Flame Chart and plan properties fill in.
+4. **Loading** - the results, messages and execution plan appear as soon as the query finishes, and the recording loads in the background - it is opened, then replayed. While it loads, the Call Stack and Flame Chart panes show its progress, with a **Cancel** link in the Call Stack. Messages and the taskbar show each step as it goes - **Opening Full Trace**, **Resolving Symbols**, **Replaying Threads**, **Building Call Tree** and **Matching Operators** - and the [Diagnostic log](/docs/user-guide/settings#diagnostic-log) records how many calls were replayed. When it finishes, the Call Stack, Flame Chart and plan properties fill in.
 
 ![The Call Stack pane while a Full Trace loads, with its progress and the Cancel link](/docs/user-guide/images/query-full-trace-loading.png)
 
@@ -47,7 +47,7 @@ The numbers get large quickly, so it is worth keeping the query small:
 ## What a recording shows
 
 - **[Call Stack](/docs/user-guide/query/CallStack)** - every call on the query's threads, merged into one tree with a count on each path. The activity band at the left of each row shows when that path ran across the recording, and its tooltip gives the count. Each frame shows the memory allocated beneath it, with the number of allocations in its tooltip. The Extended Events and tracing machinery is left out, so the tree is the query's own work.
-- **Operators matched to iterators** - each plan operator is matched to the iterator object that ran it, not just its class, so two operators of the same kind - the two seeks under a Nested Loops, say - keep their own frames. Messages reports how many of the plan's operators were matched.
+- **Operators matched to iterators** - each plan operator is matched to the iterator object that ran it, not just its class, so two operators of the same kind - the two seeks under a Nested Loops, say - keep their own frames. The [Diagnostic log](/docs/user-guide/settings#diagnostic-log) records how many of the plan's operators were matched.
 - **[Flame Chart](/docs/user-guide/query/FlameChart)** - every call drawn against the recording, one lane per thread.
 - **[Arguments](/docs/user-guide/query/CallStack#arguments)** - the values each call was passed and returned, from the Call Stack's right-click menu.
 - **[Execution Plan](/docs/user-guide/query/ExecutionPlan)** - the operator **Properties** gain a **Traced Memory** group, with the memory each operator allocated, freed and held.
@@ -60,7 +60,7 @@ A recording runs with a minimal event session: the batch start and end, the oper
 
 The parallelism waits are there to find the threads. A recording holds every thread in SQL Server, and the replay only follows the query's. Every parallel worker waits on a parallelism exchange at least once, and the wait names the thread it happened on, so those waits are how the workers are found.
 
-**Record Extended Events** puts the normal event set from the [Events menu](/docs/user-guide/query#events-menu) back, with the call stack action if **Call Stack** is on, at the cost of a larger and slower recording. The Timeline and Events panes stay hidden, but Messages compares how many events were published on the recorded threads, how many were written to the session's buffer and how many reached the trace file, with the differences by event name - a way to see what the event session itself costs.
+**Record Extended Events** puts the normal event set from the [Events menu](/docs/user-guide/query#events-menu) back, with the call stack action if **Call Stack** is on, at the cost of a larger and slower recording. The Timeline and Events panes stay hidden, but the [Diagnostic log](/docs/user-guide/settings#diagnostic-log) compares how many events were published on the recorded threads, how many were written to the session's buffer and how many reached the trace file, with the differences by event name - a way to see what the event session itself costs.
 
 ## Limits
 
@@ -72,5 +72,5 @@ The parallelism waits are there to find the threads. A recording holds every thr
 ::: details How this works
 The recording is made by an elevated harness that attaches TTD to SQL Server, restarting the service first if an earlier recording is still loaded in it. The recording is then replayed once, from start to finish, and every call on the query's threads goes into the call tree, the Flame Chart and a log of call arguments. Operators are matched by the iterator object each call ran on, and memory is counted from the calls to SQL Server's allocators.
 
-See [How query tracing works](/docs/deep-dives/query-tracing#full-trace) for the details.
+See [How Full Trace works](/docs/deep-dives/full-trace) for the details.
 :::
