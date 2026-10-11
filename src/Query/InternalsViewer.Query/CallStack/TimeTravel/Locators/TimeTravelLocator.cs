@@ -62,6 +62,6 @@ public readonly record struct TimeTravelLocator(int Register, LocatorKind Kind, 
         ColumnStoreObjectType.SecondaryDictionary => $"Secondary Dictionary {ObjectId} (Column {ColumnId})",
         ColumnStoreObjectType.BulkInsertDictionary => $"Bulk Insert Dictionary (Column {ColumnId})",
         ColumnStoreObjectType.DeleteBitmap => $"Delete Bitmap (Rowgroup {ObjectId})",
-        _ => $"Columnstore Object {(int)ObjectType} (Column {ColumnId}, Object {ObjectId})"
+        _ => $"{ObjectType} (Column {ColumnId}, Object {ObjectId})"
     };
 }

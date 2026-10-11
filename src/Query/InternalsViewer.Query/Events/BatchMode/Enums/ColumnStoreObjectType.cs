@@ -7,5 +7,9 @@ public enum ColumnStoreObjectType
     PrimaryDictionary = 2,
     SecondaryDictionary = 4,
     BulkInsertDictionary = 5,
-    DeleteBitmap = 6
+    DeleteBitmap = 6,
+    ExtendedStringPageRange = 7,
+    GlobalStringDictionary = 8,
+    DeleteBitmapCollection = 9,
+    ExternalFileMetadata = 10
 }

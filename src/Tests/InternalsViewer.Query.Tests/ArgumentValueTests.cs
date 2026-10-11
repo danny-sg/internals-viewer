@@ -20,6 +20,13 @@ public class ArgumentValueTests
     [InlineData("enum LockRes::LockResourceType", 6ul, "Page")]
     [InlineData("enum PageHeader::PageType", 10ul, "Iam")]
     [InlineData("enum PageHeader::PageType", 6ul, "6")]
+    [InlineData("enum RbpEncodingType", 8ul, "StringHash")]
+    [InlineData("enum RbpFilterType", 20ul, "InList")]
+    [InlineData("enum RbpCPUInstructionSet", 2ul, "Avx2")]
+    [InlineData("enum MDObjectType", 0x2050ul, "PROC")]
+    [InlineData("enum XeSqlPkg::FileIoMode", 1ul, "ScatterGather")]
+    [InlineData("enum ColumnStoreObjectType", 9ul, "DeleteBitmapCollection")]
+    [InlineData("enum EDisable_Rowgroup_For_FPGA", 7ul, "EDELETE_BITMAP")]
     public void A_Value_Is_Formatted_For_Its_Type(string type, ulong raw, string expected)
     {
         Assert.Equal(expected, ArgumentValue.Format(type, raw));

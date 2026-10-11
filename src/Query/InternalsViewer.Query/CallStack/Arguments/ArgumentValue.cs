@@ -1,7 +1,11 @@
 using System.Globalization;
+using InternalsViewer.Internals.Columnstore.Metadata.Enums;
+using InternalsViewer.Internals.Engine.Database.Enums;
 using InternalsViewer.Internals.Engine.Pages.Enums;
+using InternalsViewer.Query.Events.BatchMode.Enums;
 using InternalsViewer.Query.Events.Latches;
 using InternalsViewer.Query.Events.Locks;
+using InternalsViewer.Query.Events.Reads;
 
 namespace InternalsViewer.Query.CallStack.Arguments;
 
@@ -9,14 +13,23 @@ public static class ArgumentValue
 {
     private const ulong HexThreshold = 0x10000;
 
-    private static readonly Dictionary<string, Dictionary<int, string>> KnownEnums = new(StringComparer.Ordinal)
+    private static readonly Dictionary<string, Lazy<Dictionary<int, string>>> KnownEnums = new(StringComparer.Ordinal)
     {
-        ["LatchBase::LATCH_TYPE"] = GetEnumNames<LatchMode>(),
-        ["LatchBase::LatchClass"] = GetEnumNames<LatchClass>(),
-        ["LCK_MODE"] = GetEnumNames<LockMode>(),
-        ["LockRes::LockResourceType"] = GetEnumNames<LockResourceType>(),
-        ["LockOwnerType"] = GetEnumNames<LockOwnerType>(),
-        ["PageHeader::PageType"] = GetEnumNames<PageType>()
+        ["LatchBase::LATCH_TYPE"] = new(GetEnumNames<LatchMode>),
+        ["LatchBase::LatchClass"] = new(GetEnumNames<LatchClass>),
+        ["LCK_MODE"] = new(GetEnumNames<LockMode>),
+        ["LockRes::LockResourceType"] = new(GetEnumNames<LockResourceType>),
+        ["LockOwnerType"] = new(GetEnumNames<LockOwnerType>),
+        ["PageHeader::PageType"] = new(GetEnumNames<PageType>),
+        ["MDObjectType"] = new(GetEnumNames<ObjectType>),
+        ["XeSqlPkg::FileIoMode"] = new(GetEnumNames<ReadMode>),
+        ["EDisable_Rowgroup_For_FPGA"] = new(GetEnumNames<DisableRowGroupReason>),
+        ["ColumnStoreObjectType"] = new(GetEnumNames<ColumnStoreObjectType>),
+        ["RbpCPUInstructionSet"] = new(GetEnumNames<ColumnStoreInstructionSet>),
+        ["RbpDataType"] = new(GetEnumNames<ColumnStoreDataType>),
+        ["RbpEarlyFilterType"] = new(GetEnumNames<ColumnStoreEarlyFilterType>),
+        ["RbpEncodingType"] = new(GetEnumNames<ColumnStoreEncodingType>),
+        ["RbpFilterType"] = new(GetEnumNames<ColumnStoreFilterType>)
     };
 
     public static bool IsFloating(string type) => Normalise(type) is "float" or "double" or "long double";
@@ -35,7 +48,7 @@ public static class ArgumentValue
         if (normalised.StartsWith(FunctionSignature.EnumPrefix, StringComparison.Ordinal))
         {
             return KnownEnums.TryGetValue(normalised[FunctionSignature.EnumPrefix.Length..], out var names)
-                   && names.TryGetValue((int)raw, out var name)
+                   && names.Value.TryGetValue((int)raw, out var name)
                 ? name
                 : ToNumber((int)raw);
         }
