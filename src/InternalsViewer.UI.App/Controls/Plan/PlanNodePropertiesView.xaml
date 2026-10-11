@@ -6,6 +6,7 @@
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     xmlns:controls="using:CommunityToolkit.WinUI.Controls"
+    xmlns:columns="using:InternalsViewer.UI.App.Controls.Columns"
     xmlns:models="using:InternalsViewer.UI.App.Models.Query"
     xmlns:muxc="using:Microsoft.UI.Xaml.Controls"
     xmlns:predicates="using:InternalsViewer.UI.App.Controls.Predicates"
@@ -79,7 +80,7 @@
         <converters:DepthToIndentConverter x:Key="DepthToIndentConverter" />
 
         <DataTemplate x:Key="PropertyItemTemplate" x:DataType="muxc:TreeViewNode">
-            <controls:DataRow HorizontalAlignment="Stretch">
+            <columns:ColumnRow HorizontalAlignment="Stretch">
                 <TextBlock Text="{x:Bind ((models:PlanNodeProperty)Content).Name}"
                            FontSize="12"
                            Foreground="{ThemeResource TextFillColorSecondaryBrush}"
@@ -94,11 +95,11 @@
                            VerticalAlignment="Center"
                            ToolTipService.ToolTip="{x:Bind ((models:PlanNodeProperty)Content).Tooltip}"
                            TextWrapping="Wrap" />
-            </controls:DataRow>
+            </columns:ColumnRow>
         </DataTemplate>
 
         <DataTemplate x:Key="PredicateItemTemplate" x:DataType="muxc:TreeViewNode">
-            <controls:DataRow HorizontalAlignment="Stretch">
+            <columns:ColumnRow HorizontalAlignment="Stretch">
                 <TextBlock Text="{x:Bind ((models:PlanNodeProperty)Content).Name}"
                            FontSize="12"
                            Foreground="{ThemeResource TextFillColorSecondaryBrush}"
@@ -110,11 +111,11 @@
                                              HasBackground="False"
                                              HorizontalAlignment="Stretch"
                                              VerticalAlignment="Center" />
-            </controls:DataRow>
+            </columns:ColumnRow>
         </DataTemplate>
 
         <DataTemplate x:Key="ListItemTemplate" x:DataType="muxc:TreeViewNode">
-            <controls:DataRow HorizontalAlignment="Stretch">
+            <columns:ColumnRow HorizontalAlignment="Stretch">
                 <TextBlock Text="{x:Bind ((models:PlanNodeProperty)Content).Name}"
                            FontSize="12"
                            Foreground="{ThemeResource TextFillColorSecondaryBrush}"
@@ -132,7 +133,7 @@
                         </DataTemplate>
                     </ItemsControl.ItemTemplate>
                 </ItemsControl>
-            </controls:DataRow>
+            </columns:ColumnRow>
         </DataTemplate>
 
         <selectors:PlanPropertyTemplateSelector x:Key="PropertyTemplateSelector"
@@ -153,10 +154,10 @@
                                    ItemTemplateSelector="{StaticResource PropertyTemplateSelector}">
             <controls:HeaderedTreeView.Header>
                 <Border BorderThickness="0,0,0,1">
-                    <controls:DataTable ColumnSpacing="2" MinWidth="320" Margin="2">
-                        <controls:DataColumn Content="Property" MinWidth="120" CanResize="True" DesiredWidth="170" />
-                        <controls:DataColumn Content="Value" MinWidth="140" CanResize="True" DesiredWidth="*" />
-                    </controls:DataTable>
+                    <columns:ColumnHeaderPanel ColumnSpacing="2" MinWidth="320" Margin="2">
+                        <columns:ColumnHeader Content="Property" MinWidth="120" CanResize="True" DesiredWidth="170" />
+                        <columns:ColumnHeader Content="Value" MinWidth="140" CanResize="True" DesiredWidth="*" />
+                    </columns:ColumnHeaderPanel>
                 </Border>
             </controls:HeaderedTreeView.Header>
         </controls:HeaderedTreeView>

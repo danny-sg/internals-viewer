@@ -216,7 +216,6 @@
       <Page Remove="Models\Columnstore\DeleteBitmap\**" />
     </ItemGroup>
     <ItemGroup>
-        <PackageReference Include="CommunityToolkit.Labs.WinUI.Controls.DataTable" Version="0.1.251217-build.2433" />
         <PackageReference Include="CommunityToolkit.Labs.WinUI.Controls.MarkdownTextBlock" Version="0.1.251217-build.2433" />
         <PackageReference Include="GitVersion.MsBuild" Version="6.8.2">
           <PrivateAssets>all</PrivateAssets>

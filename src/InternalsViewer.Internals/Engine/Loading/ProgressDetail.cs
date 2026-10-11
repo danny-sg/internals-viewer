@@ -15,6 +15,8 @@ public readonly record struct ProgressDetail(string Message, double? Percentage 
 
     public TimeSpan? Elapsed { get; init; }
 
+    public string? Outcome { get; init; }
+
     public double? Overall { get; init; }
 
     public bool IsIndeterminate => Percentage is null;

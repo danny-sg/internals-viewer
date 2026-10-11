@@ -2063,6 +2063,7 @@ sqlmin|*|ProjectIntermediateCompile|Compilation
 *|*|dllmain_dispatch|System
 *|*|ImageTlsCallbackCaller|System
 sqlmin|CQryMemManager*|*|SqlOs
+sqlmin|CQryMemManager|*Showplan*|Tracing
 sqlmin|*|AccountForGrantedBufs|SqlOs
 sqlmin|*|AccountForReleasedBufs|SqlOs
 sqlmin|*|CBufConfigMinQueryMem|SqlOs
@@ -2081,7 +2082,7 @@ sqldk|TMemoryWorkSpace*|*|SqlOs
 sqldk|ResourceMonitor*|*|SqlOs
 sqldk|SOS_LargeCacheStore*|*|SqlOs
 *|TAutoSpinEventLock*|*|Scheduling
-sqlmin|WORKFILE*|*|Storage
+sqlmin|WORKFILE|*|Storage
 sqlmin|WFRSRCMGR*|*|Storage
 sqlmin|*|CreateWFResourceMgr|Storage
 sqlmin|*|WFMerror|Storage
@@ -2106,7 +2107,7 @@ sqlmin|*|ModifyTypeInfoForHash|ExpressionEvaluation
 *|*|PfnQPHashNotNull|ExpressionEvaluation
 *|*|I8MultI8I8|ExpressionEvaluation
 *|*|FBinaryNullCheck|ExpressionEvaluation
-*|GzipCodec*|*|ExpressionEvaluation
+*|GzipCodec*|*|System
 sqlmin|*|AdjustREEncryptionTypeToSEEncryptionType|Security
 *|*|DeduceEncryptionTypesHelper|Security
 sqllang|*|FGroupByIsOnEncryptedColumnsButGroupByIsNotAllowed|Security
@@ -2146,6 +2147,7 @@ sqllang|CCandidateStat*|*|Optimization
 sqllang|ISelCalculatorJoin*|*|Optimization
 sqllang|CPlanPersLeafOp*|*|Optimization
 sqllang|CWindowFrame*|*|Optimization
+sqllang|CWindowFrame|*Telemetry*|Tracing
 sqllang|*|CNumberOfHashBucketsToUse|Optimization
 sqllang|*|FFastHash|Optimization
 sqllang|*|FDeleteBufferJoin|Optimization

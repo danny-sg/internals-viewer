@@ -2065,6 +2065,13 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
     private static void Update(QueryMessage message, ProgressDetail detail)
     {
+        if (detail.Outcome is { } outcome)
+        {
+            message.Outcome = outcome;
+
+            return;
+        }
+
         if (detail.Elapsed is { } elapsed)
         {
             message.Outcome = $"Completed in {elapsed}";

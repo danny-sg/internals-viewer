@@ -6,14 +6,12 @@
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     xmlns:controls="using:CommunityToolkit.WinUI.Controls"
+    xmlns:columns="using:InternalsViewer.UI.App.Controls.Columns"
     xmlns:models="using:InternalsViewer.UI.App.Models.Logging"
     xmlns:selectors="using:InternalsViewer.UI.App.Helpers.Selectors"
     xmlns:muxc="using:Microsoft.UI.Xaml.Controls"
     mc:Ignorable="d">
     <UserControl.Resources>
-        <Style TargetType="controls:DataColumn">
-            <Setter Property="FontSize" Value="12" />
-        </Style>
         <Thickness x:Key="TreeViewItemPresenterMargin">0</Thickness>
         <Thickness x:Key="TreeViewItemPresenterPadding">0</Thickness>
 
@@ -122,7 +120,7 @@
         </Style>
 
         <DataTemplate x:Key="RecordTemplate" x:DataType="muxc:TreeViewNode">
-            <controls:DataRow HorizontalAlignment="Left">
+            <columns:ColumnRow HorizontalAlignment="Left">
                 <Viewbox Width="16"
                          Height="16"
                          HorizontalAlignment="Left"
@@ -153,7 +151,7 @@
                 <TextBlock Text="{x:Bind ((models:LogRecordItem)Content).Description}"
                            Style="{StaticResource ListTextBlockStyle}"
                            TextTrimming="WordEllipsis" />
-            </controls:DataRow>
+            </columns:ColumnRow>
         </DataTemplate>
 
         <DataTemplate x:Key="AnnotationTemplate" x:DataType="muxc:TreeViewNode">
@@ -252,14 +250,14 @@
                                    VerticalAlignment="Stretch"
                                    ItemTemplateSelector="{StaticResource NodeTemplateSelector}">
             <controls:HeaderedTreeView.Header>
-                <controls:DataTable ColumnSpacing="2" MinWidth="620">
-                    <controls:DataColumn Content="" MinWidth="22" DesiredWidth="26" />
-                    <controls:DataColumn Content="LSN" MinWidth="100" CanResize="True" DesiredWidth="130" />
-                    <controls:DataColumn Content="Operation" MinWidth="100" CanResize="True" DesiredWidth="170" />
-                    <controls:DataColumn Content="Context" MinWidth="80" CanResize="True" DesiredWidth="140" />
-                    <controls:DataColumn Content="Slot" MinWidth="40" CanResize="True" DesiredWidth="50" />
-                    <controls:DataColumn Content="Description" MinWidth="220" CanResize="True" DesiredWidth="220" />
-                </controls:DataTable>
+                <columns:ColumnHeaderPanel ColumnSpacing="2" MinWidth="620">
+                    <columns:ColumnHeader Content="" MinWidth="22" DesiredWidth="26" />
+                    <columns:ColumnHeader Content="LSN" MinWidth="100" CanResize="True" DesiredWidth="130" />
+                    <columns:ColumnHeader Content="Operation" MinWidth="100" CanResize="True" DesiredWidth="170" />
+                    <columns:ColumnHeader Content="Context" MinWidth="80" CanResize="True" DesiredWidth="140" />
+                    <columns:ColumnHeader Content="Slot" MinWidth="40" CanResize="True" DesiredWidth="50" />
+                    <columns:ColumnHeader Content="Description" MinWidth="220" CanResize="True" DesiredWidth="220" />
+                </columns:ColumnHeaderPanel>
             </controls:HeaderedTreeView.Header>
         </controls:HeaderedTreeView>
     </Border>

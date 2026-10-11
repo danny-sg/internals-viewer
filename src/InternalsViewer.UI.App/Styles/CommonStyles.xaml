@@ -91,10 +91,6 @@
         <Setter Property="FontSize" Value="12" />
     </Style>
 
-    <Style TargetType="toolkitControls:DataColumn">
-        <Setter Property="FontSize" Value="12" />
-    </Style>
-
     <Style TargetType="toolkitControls:HeaderedTreeView">
         <Setter Property="Background" Value="{ThemeResource LayerOnMicaBaseAltFillColorDefault}" />
     </Style>

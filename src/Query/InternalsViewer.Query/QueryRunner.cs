@@ -211,7 +211,9 @@ public sealed class QueryRunner(ILogger<QueryRunner> logger,
 
         var recordable = eventOptions.RecordTimeTravel && TimeTravelRecorder is not null;
 
-        var steps = new StepProgress(new StepLoggerProgress(progress, Logger),
+        var messages = new StepLoggerProgress(progress, Logger);
+
+        var steps = new StepProgress(messages,
                                      TraceSteps(recordable,
                                                 recordable && !payload.QueryOptions.ClearBufferPool,
                                                 eventOptions.IncludeCallStack));
@@ -298,7 +300,7 @@ public sealed class QueryRunner(ILogger<QueryRunner> logger,
 
                 steps.Begin(CallStacksStep);
 
-                var unknownSymbols = await CallstackProcessor.Process(callStack, symbolsPath, details, cancellationToken);
+                var unknownSymbols = await CallstackProcessor.Process(callStack, symbolsPath, messages, cancellationToken);
 
                 var keep = cropStart is null ? null : KeepSet(events);
 
@@ -435,7 +437,9 @@ public sealed class QueryRunner(ILogger<QueryRunner> logger,
 
         var operators = events.OfType<ExecutionOperatorEvent>().ToList();
 
-        var steps = new StepProgress(new StepLoggerProgress(progress, Logger), FullTraceSteps);
+        var messages = new StepLoggerProgress(progress, Logger);
+
+        var steps = new StepProgress(messages, FullTraceSteps);
 
         var details = new LoggerProgress(Logger);
 
@@ -455,7 +459,7 @@ public sealed class QueryRunner(ILogger<QueryRunner> logger,
 
             steps.Begin(SymbolsStep);
 
-            functions = await ReplayFunctions.ResolveAsync(session.Modules, pending.SymbolsPath, Logger, details, cancellationToken);
+            functions = await ReplayFunctions.ResolveAsync(session.Modules, pending.SymbolsPath, Logger, messages, cancellationToken);
 
             Logger.LogInformation("{Excluded} Extended Events and tracing function(s) excluded from the replay, {Memory} memory "
                                   + "function(s) tracked",
@@ -502,7 +506,7 @@ public sealed class QueryRunner(ILogger<QueryRunner> logger,
                               replay.CallLog.Size / (1024 * 1024),
                               replay.CallLog.LocatorCount);
 
-        var unknownSymbols = await CallstackProcessor.Process(callStack, pending.SymbolsPath, details, cancellationToken);
+        var unknownSymbols = await CallstackProcessor.Process(callStack, pending.SymbolsPath, messages, cancellationToken);
 
         LogUnknownSymbols(unknownSymbols);
 

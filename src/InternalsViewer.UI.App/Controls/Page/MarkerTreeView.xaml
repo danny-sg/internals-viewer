@@ -6,6 +6,7 @@
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     xmlns:controls="using:CommunityToolkit.WinUI.Controls"
+    xmlns:columns="using:InternalsViewer.UI.App.Controls.Columns"
     xmlns:models="using:InternalsViewer.UI.App.Models"
     xmlns:selectors="using:InternalsViewer.UI.App.Helpers.Selectors"
     xmlns:controls1="using:InternalsViewer.UI.App.Controls"
@@ -233,7 +234,7 @@
         </DataTemplate>
 
         <DataTemplate x:Key="TreeViewItemTemplate" x:DataType="muxc:TreeViewNode">
-            <controls:DataRow HorizontalAlignment="Left">
+            <columns:ColumnRow HorizontalAlignment="Left">
                 <!--Name Column-->
                 <Grid Padding="0" HorizontalAlignment="Left">
                     <Grid.ColumnDefinitions>
@@ -267,7 +268,7 @@
                                 VerticalAlignment="Center"
                                 VerticalContentAlignment="Center"
                                 Content="{x:Bind Content}"/>
-            </controls:DataRow>
+            </columns:ColumnRow>
         </DataTemplate>
 
         <Style TargetType="muxc:TreeViewList">
@@ -288,10 +289,10 @@
                                    VerticalAlignment="Stretch"
                                    ItemTemplate="{StaticResource TreeViewItemTemplate}">
             <controls:HeaderedTreeView.Header>
-                <controls:DataTable ColumnSpacing="2" MinWidth="480">
-                    <controls:DataColumn Content="Name" MinWidth="120" CanResize="True" DesiredWidth="200" />
-                    <controls:DataColumn Content="Value" MinWidth="160" CanResize="True" DesiredWidth="*" />
-                </controls:DataTable>
+                <columns:ColumnHeaderPanel ColumnSpacing="2" MinWidth="480">
+                    <columns:ColumnHeader Content="Name" MinWidth="120" CanResize="True" DesiredWidth="200" />
+                    <columns:ColumnHeader Content="Value" MinWidth="160" CanResize="True" DesiredWidth="*" />
+                </columns:ColumnHeaderPanel>
             </controls:HeaderedTreeView.Header>
         </controls:HeaderedTreeView>
     </Border>

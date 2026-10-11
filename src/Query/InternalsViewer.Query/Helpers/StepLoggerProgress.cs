@@ -14,7 +14,11 @@ internal sealed class StepLoggerProgress(IProgress<ProgressDetail>? progress, IL
             return;
         }
 
-        if (value.Elapsed is { } elapsed)
+        if (value.Outcome is { } outcome)
+        {
+            logger.LogInformation("{Step}: {Outcome}", value.Message, outcome);
+        }
+        else if (value.Elapsed is { } elapsed)
         {
             logger.LogInformation("{Step} finished in {Elapsed}", value.Message, elapsed);
         }
