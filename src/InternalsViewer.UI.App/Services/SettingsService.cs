@@ -65,6 +65,18 @@ public sealed class SettingsService
         }   
     }
 
+    public async Task RemoveSettingAsync(string key)
+    {
+        try
+        {
+            await RemoveSettingInternal(key);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error removing setting {Key}", key);
+        }
+    }
+
     private async Task InitializeAsync()
     {
         if (!_isInitialized)
@@ -122,6 +134,23 @@ public sealed class SettingsService
 
             _settings[key] = JsonSerializer.Serialize(value);
 
+            await FileHelpers.SaveFile(ApplicationDataFolder, LocalSettingsFile, _settings);
+        }
+    }
+
+    private async Task RemoveSettingInternal(string key)
+    {
+        if (RuntimeHelper.IsMsix)
+        {
+            ApplicationData.Current.LocalSettings.Values.Remove(key);
+
+            return;
+        }
+
+        await InitializeAsync();
+
+        if (_settings.Remove(key))
+        {
             await FileHelpers.SaveFile(ApplicationDataFolder, LocalSettingsFile, _settings);
         }
     }

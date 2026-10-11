@@ -26,6 +26,7 @@ public partial class SettingsViewModel(SettingsService settingsService, TraceDir
 
     private const string ColumnstoreResolutionKey = "FullColumnstoreAllocationResolution";
 
+    private const string WinDbgPasswordKey = "WinDbgPassword";
     private const string WinDbgPathKey = "WinDbgPath";
     private const string SymbolSearchExcludedModulesKey = "SymbolSearchExcludedModules";
     private const string ShowTimeTravelWarningKey = "ShowTimeTravelWarning";
@@ -142,6 +143,8 @@ public partial class SettingsViewModel(SettingsService settingsService, TraceDir
         var savedPlanAnnotations = await SettingsService.ReadSettingAsync<bool?>(PlanAnnotationsKey);
 
         PlanAnnotations = savedPlanAnnotations ?? false;
+
+        await SettingsService.RemoveSettingAsync(WinDbgPasswordKey);
 
         WinDbgPath = await SettingsService.ReadSettingAsync<string>(WinDbgPathKey) ?? string.Empty;
 

@@ -58,7 +58,7 @@ The **Debugger** menu on the Query document's menu bar manages the session the s
 - **Detach** clears every breakpoint, detaches WinDbg from SQL Server, and drops the app's connection. WinDbg stays open with no target, so it can be closed safely. Closing a query tab does the same, so a debugger is never left attached to the instance by accident.
 - **Clear breakpoints** removes every breakpoint the app has set in the session, leaving WinDbg attached.
 
-Commands are sent as an extra client of the session, so they and their output appear in the WinDbg window as if typed there. If the target is running when a command is sent, the app breaks in, runs it, and resumes. The pipe password is in [Settings](/docs/user-guide/settings#debugging).
+Commands are sent as an extra client of the session, so they and their output appear in the WinDbg window as if typed there. If the target is running when a command is sent, the app breaks in, runs it, and resumes. The pipe password is generated each time the app starts, and is part of the `.server` command the dialog reports.
 
 Nothing is needed until the first command is sent. WinDbg from the Microsoft Store has to be installed to attach, but a machine without it still does everything else. Without it, the first command shows the ways to install it. The Store package does not allow its debugger engine to be loaded by other programs, so the first use copies the engine into `%LOCALAPPDATA%\InternalsViewer\WinDbg`, and again whenever WinDbg updates.
 
