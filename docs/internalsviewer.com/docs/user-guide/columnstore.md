@@ -2,7 +2,7 @@
 
 A columnstore index does not store rows in pages. Each column of each row group is compressed into a segment of its own, often with a dictionary beside it, and the segments are stored as LOB data. The Columnstore Viewer opens one index and shows it the way it is stored - its row groups, segments and dictionaries laid out as a structure - and decodes any segment or dictionary down to its bytes, with the working shown for every value.
 
-<!-- Screenshot: the Columnstore Viewer's Structure tab on an index with several row groups -->
+![The Structure tab of a clustered columnstore index with four compressed row groups, global and local dictionaries](/docs/user-guide/images/columnstore-structure.png)
 
 ## Opening it
 
@@ -23,7 +23,7 @@ The Structure tab draws the whole index on one grid - a column per column of the
 
 Each segment is a block coloured by how its values are stored - **Bit Pack** or **Variable Length Data** - with badges for **RLE**, **Bit Pack** and **VLD**, and a small **Global** or **Local** marker when it uses a dictionary. The bar down its left side is its size against the largest segment in the index, so the heavy columns stand out, and a second bar, once the segment has been read, shades its RLE runs from top to bottom. Dictionary boxes show whether they are **Numeric**, **String** or **Float**, **Huffman** when their strings are Huffman coded, and their entry count. The legend at the bottom is the key.
 
-<!-- Screenshot: a Structure row with segment tooltip showing, and a row group with an open Delta Store box -->
+![An open row group drawn as a Delta Store box, with its tooltip](/docs/user-guide/images/columnstore-structure-delta-store.png)
 
 - **Hover** over anything for its details - a segment's encoding, storage, row count, data pointer and how its values are derived, a row group's state, size and segment count, a dictionary's scope, type, entries and size. The column under the pointer lights up from top to bottom.
 - **Click** a segment, dictionary, delete bitmap or delta store to open it in its own tab.
@@ -62,9 +62,9 @@ Three toggles on the tab strip change how it reads:
 
 Selecting a row in any of the grids marks its bytes in the hex view. The [Column Segments](/docs/reference/column-segments) reference explains what each region holds - the [segment header](/docs/reference/column-segments#segment-header), the [bookmark array](/docs/reference/column-segments#bookmark-array), the [RLE array](/docs/reference/column-segments#rle-array) and [what a run points at](/docs/reference/column-segments#what-a-run-points-at), the [bit pack array](/docs/reference/column-segments#bit-pack-array) and [variable length data](/docs/reference/column-segments#variable-length-data).
 
-<!-- Screenshot: a segment's Data tab with Show Derivation on, the Data Id and Value chains at the top -->
+![A segment's Data tab with Show Derivation on - the Data Id and Value chains above each row's working](/docs/user-guide/images/columnstore-segment-data-derivation.png)
 
-<!-- Screenshot: a segment's Bit Pack tab with a unit selected, the bit ruler and its values -->
+![A segment's Bit Pack tab with a unit selected - its bits on the ruler and the values packed into it](/docs/user-guide/images/columnstore-segment-bit-pack.png)
 
 ## Dictionaries
 
@@ -75,7 +75,7 @@ A dictionary tab decodes one dictionary. The bar gives its column and type, its 
 - **Pages** - for a string dictionary, its pages, with how each is coded and how many strings it holds. **Decode** shows a page's values beside how they were decoded - for a Huffman page the walk through the bits code by code, the **Huffman Table** of symbols and codes, and the Huffman tree. Selecting a value, a code or a leaf selects it everywhere. **Values** and **Details** on the tab strip show or hide the two halves.
 - **Dictionary Entries** - every entry with its data id, its index in the dictionary, and its value.
 
-<!-- Screenshot: a Huffman string dictionary's Pages > Decode tab, with the bit walk, the Huffman table and the tree -->
+![A Huffman coded string dictionary's Pages > Decode tab - the values, the bit walk, the Huffman table and the tree](/docs/user-guide/images/columnstore-dictionary-huffman-decode.png)
 
 ## Delete Bitmap and Delta Store
 

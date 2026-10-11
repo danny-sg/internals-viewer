@@ -4,8 +4,6 @@ The Page Viewer displays a single 8 KB database page, decoded. Each page opens i
 
 ![Page Viewer with the Page Header selected](/docs/user-guide/images/page-view-header-selected.png)
 
-<!-- Screenshot (update): the Page Viewer - the header now shows the page type and the object's name, with the Ids in the overflow menu -->
-
 It has three parts:
 
 - **Raw data** - the 8192 bytes of the page in hexadecimal, colour coded to show where each structure is

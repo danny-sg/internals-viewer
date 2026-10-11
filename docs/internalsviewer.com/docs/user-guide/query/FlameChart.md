@@ -43,6 +43,8 @@ Hovering over a bar describes the call:
 
 Selecting a frame in the Call Stack re-roots the chart on that function. Only its calls and everything beneath them are drawn, zoomed to fit, so a function called from all over the query can be looked at on its own. Depths count from its outermost call, so a function that calls itself does not draw over itself. A thread that never ran the function - a parallel worker never runs beneath the coordinator's frames - shows what it was doing over the same trace positions instead. Deselect to go back to the whole recording.
 
+![The Flame Chart rooted on CQScanTableScanNew::GetRow, selected in the Call Stack above it](/docs/user-guide/images/flame-chart-rooted-on-frame.png)
+
 The Call Stack's [category filter](/docs/user-guide/query/CallStack#filtering-by-category) applies here as well. A hidden category hides its calls and everything beneath them.
 
 The **Lock** toggle on the tab strip keeps the chart where it is. Selecting a frame no longer re-roots it and clicking the background no longer deselects, but clicking a bar still selects that call in the Call Stack and Arguments - so one stretch of the recording can stay in view while you look through its calls.
@@ -60,7 +62,7 @@ This shows something the lanes cannot. An operator is only on a thread's stack w
 - **Double-click** an operator to zoom to its lifetime
 - Hovering over an operator shows its thread, how many times each of its methods was called, its instructions and positions, the share of its lifetime spent inside its calls (child operators included) and its peak memory in use
 
-<!-- Screenshot: the Operators pane above the thread lanes, with an operator selected and the other calls dimmed -->
+![The Operators pane above the thread lanes, with the Table Scan selected and every call outside it dimmed](/docs/user-guide/images/flame-chart-operator-selected.png)
 
 ## Memory
 
@@ -69,7 +71,9 @@ The **Memory** toggle shows where the query allocated memory:
 - **The memory band** - along the bottom of the chart, **Allocated** is the memory allocated in each sliver of the recording, and **In Use** is the memory allocated and not yet freed, with its peak in the label. When the plan had a memory grant, the grant is drawn as a box labelled **Granted** and the line becomes **Grant In Use**, counting only the query's workspace memory so the two compare like for like. The band needs the Position axis, since each thread counts its instructions separately and they cannot be added together.
 - **Raised calls** - the calls rise off the chart in 3D. A dropdown above the ruler picks **Memory: Allocated**, which raises each call by the memory it allocated itself, or **Memory: In Use**, which raises a surface along each call showing what it had allocated and not yet freed as it ran. Hover over a raised call to see its size, and drag one to change the angle and depth of the extrusion.
 
-<!-- Screenshot: the Flame Chart with Memory on, calls raised by memory and the memory band along the bottom -->
+![Memory: Allocated - each call raised by the memory it allocated itself, with the memory band along the bottom](/docs/user-guide/images/flame-chart-memory-allocated.png)
+
+![Memory: In Use - a surface along each call showing the memory it held as it ran](/docs/user-guide/images/flame-chart-memory-in-use.png)
 
 ## Playhead
 

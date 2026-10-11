@@ -8,7 +8,7 @@ It is a simulation. Internals Viewer has its own implementation of SQL Server's 
 **Trace** here is the execution simulation. **Track query** on the Query menu is what captures a query's events for the [Timeline](/docs/user-guide/query/Timeline), and [Full Trace](/docs/user-guide/query/FullTrace) records a query with Time Travel Debugging.
 :::
 
-<!-- Screenshot: the Trace pane on a Nested Loops join in the nested layout, mid-run, with the step list and an index visual -->
+![The Trace pane on a Nested Loops join in the nested layout - the SELECT above the join, its outer and inner seeks side by side, and the step list on the right](/docs/user-guide/images/query-trace-nested-loops.png)
 
 ## Opening a trace
 

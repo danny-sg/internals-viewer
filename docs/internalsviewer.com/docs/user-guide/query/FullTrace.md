@@ -14,7 +14,7 @@ Turn on **Record Full Trace** on the Debugger menu. The first time, a dialog exp
 
 While it is on, a red **Full Trace** badge sits on the SQL Editor's tab strip, because every **Execute** in that tab is recorded until it is turned off. Click the badge to turn it off. It is not remembered - a new Query tab always starts with it off.
 
-<!-- Screenshot: the Debugger menu with Record Full Trace on, and the red Full Trace badge on the SQL Editor tab strip -->
+![The Debugger menu with Record Full Trace on, and the red Full Trace badge on the SQL Editor's tab strip](/docs/user-guide/images/query-full-trace-debugger-menu.png)
 
 Turning it on also changes the layout straight away. A recording has no clock and no event list, so the **Timeline**, **Events** and **Allocations** panes are hidden and their View menu items disabled, and the [Flame Chart](/docs/user-guide/query/FlameChart) takes the Timeline's place - at the bottom in the default layout. Turning it off puts the previous layout back.
 
@@ -32,9 +32,9 @@ Turning it on also changes the layout straight away. A recording has no clock an
 1. **Preparing** - the UAC prompt appears and the harness starts. If SQL Server has already been recorded since it last started, the harness restarts the SQL Server service first, along with any running services that depend on it such as SQL Server Agent, and waits for the database to come back online. TTD can never be unloaded from a process once it has attached, and attaching a second time records nothing useful, so each recording needs a fresh SQL Server process. The restart drops every connection to the instance and leaves the buffer pool and plan cache empty. There is no restart at the end of the run.
 2. **Warming up** - unless [Clear Buffer Pool](/docs/user-guide/query/Editor) is on, the query runs once untraced, on its own connection, inside a transaction that is rolled back. With Clear Buffer Pool off you are not asking to see disk reads, and the warm-up keeps them out of the recording, along with compiling the plan - both would otherwise swamp the query's own work. A query with `OPTION (RECOMPILE)` still compiles inside the recording.
 3. **Recording** - just before the Extended Events session starts, TTD attaches to SQL Server, recording only the storage engine and the query processor. The query runs, and the recording stops as soon as its results have been read.
-4. **Replaying** - the results, messages and execution plan appear as soon as the query finishes, and the recording opens and replays in the background. The Call Stack and Flame Chart panes show its progress, with a **Cancel** link in the Call Stack, and Messages logs each step as it goes, from "Opening Full Trace" to how many calls were replayed. When it finishes, the Call Stack, Flame Chart and plan properties fill in.
+4. **Loading** - the results, messages and execution plan appear as soon as the query finishes, and the recording loads in the background - it is opened, then replayed. While it loads, the Call Stack and Flame Chart panes show its progress, with a **Cancel** link in the Call Stack, and Messages logs each step as it goes, from "Opening Full Trace" to how many calls were replayed. When it finishes, the Call Stack, Flame Chart and plan properties fill in.
 
-<!-- Screenshot: the Call Stack pane while a Full Trace replays, with its progress and the Cancel link -->
+![The Call Stack pane while a Full Trace loads, with its progress and the Cancel link](/docs/user-guide/images/query-full-trace-loading.png)
 
 ## Time and space
 
@@ -52,7 +52,7 @@ The numbers get large quickly, so it is worth keeping the query small:
 - **[Arguments](/docs/user-guide/query/CallStack#arguments)** - the values each call was passed and returned, from the Call Stack's right-click menu.
 - **[Execution Plan](/docs/user-guide/query/ExecutionPlan)** - the operator **Properties** gain a **Traced Memory** group, with the memory each operator allocated, freed and held.
 
-<!-- Screenshot: a Full Trace call tree with call counts and memory, with the Flame Chart docked below -->
+![A Full Trace call tree, with the memory allocated beneath each frame, and the Flame Chart docked below](/docs/user-guide/images/query-full-trace-call-tree.png)
 
 ## Extended Events in a recording
 

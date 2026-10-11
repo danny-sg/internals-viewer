@@ -28,8 +28,6 @@ When the application opens, its first tab, **Internals Viewer**, shows the Start
 
 ![Start page](/docs/tutorial/images/screenshots/Start_page.png)
 
-<!-- Screenshot (update): the Start page - the current tiles Connect to SQL Server, Data files and Database backup, the Recent connections list with its Query links and Clear recent -->
-
 Each database opens in a tab of its own, named after the database for a SQL Server connection, or after the file it was opened from - the `.mdf`, or the first backup file.
 
 ### Recent connections
@@ -50,8 +48,6 @@ To connect to a SQL Server instance:
 
 ![Connect to SQL Server](/docs/tutorial/images/screenshots/Connect_sql_server.png)
 
-<!-- Screenshot (update): the SQL Server page - Windows Authentication in place of Active Directory Integrated -->
-
 The connection is tried first, and any error is shown before the database opens. The instance, authentication, database and user id are filled in again the next time the page opens.
 
 Connections are made with `TrustServerCertificate=true`, so they are encrypted but the server's certificate is not validated.
@@ -68,8 +64,6 @@ Click **Data files** on the Start page or **Data Files** in the sidebar, **Brows
 
 ![Connect to a database file](/docs/tutorial/images/screenshots/Connect_database_file.png)
 
-<!-- Screenshot (update): the Data Files page - its header now reads MDF/LDF Files -->
-
 - **Secondary files** - a database with more than one data file opens its `.ndf` files automatically. Each is looked for at the path recorded in the database, then under the same name in the `.mdf` file's folder, and checked to be the right file before it is used. If any cannot be found, the error lists them.
 - **The log** - the transaction log (`.ldf`) is not read. Everything comes from the data files.
 - **Read-only** - the files are opened read-only, and stay open until the database's tab is closed. Close the tab before attaching the database to SQL Server again.
@@ -82,7 +76,7 @@ A database can be opened straight from a full backup (`.bak`), without restoring
 
 Click **Database backup** on the Start page or **Database Backup** in the sidebar, **Add files** to choose the backup, and click **Open**. **Clear** empties the list, and the cross beside a file removes it.
 
-<!-- Screenshot: the Database Backup page with the files of a striped backup added and the progress log below -->
+![The Database Backup page with the four files of a striped backup added](/docs/tutorial/images/screenshots/Connect_database_backup.png)
 
 - **Striped backups** - a backup written to several files needs every file of the set. Add them all, in any order. A missing file, a file from a different backup, or two copies of the same file are reported before anything is read.
 - **Mirrored backups** - add one copy of each file.

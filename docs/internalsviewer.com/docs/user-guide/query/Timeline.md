@@ -44,8 +44,6 @@ Dragging the triangular handles on the ruler selects a time range, and the playh
 
 ![Right-clicking an operator to open its index](/docs/user-guide/images/query-timeline-right-click-open-index-option.png)
 
-<!-- Screenshot (update): the Plan band's right-click menu - Execution Plan, Open Index: and Trace -->
-
 ## Columnstore
 
 A Columnstore Index Scan reads compressed column segments rather than rows from pages, so its events get a band of their own, split into three:

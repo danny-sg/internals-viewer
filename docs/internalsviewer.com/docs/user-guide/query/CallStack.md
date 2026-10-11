@@ -47,7 +47,7 @@ Right-clicking a member in the Members pane gives **Copy Signature**, **Copy Sym
 
 The filter button beside the search box opens a row of category badges, one for each category found in the tree. Click a badge to hide or show that category, and **All** to show or hide every one at once. The infrastructure categories are hidden by default - Compilation, Execution Tree, Expression Evaluation, Metadata, Networking, Query Binding, Query Store and Security - so the frames doing the query's work stand out, and the choice is remembered between sessions.
 
-<!-- Screenshot: the category badges open beneath the search box, with the default categories hidden -->
+![The category badges open beneath the search box, with the hidden categories struck through](/docs/user-guide/images/call-stack-category-filter.png)
 
 ## Sending Commands to WinDbg
 
@@ -82,7 +82,7 @@ The header names the function, with a count of its calls - **2,048 Calls**, or f
 
 Selecting a call lists its arguments one to a row - **Name**, **Type**, **Source** (the register it was read from) and **Value** - with the return value last. **Go To Call** shows that call in the call tree and the [Flame Chart](/docs/user-guide/query/FlameChart), and clicking a bar in the Flame Chart selects its call here.
 
-<!-- Screenshot: the Arguments tab with a GetRow call selected, its this value linked to its operator -->
+![The Arguments tab beside a Full Trace call tree, listing the calls of CQueryScan::GetRow on one iterator](/docs/user-guide/images/call-stack-arguments.png)
 
 Only the four integer argument registers - RCX, RDX, R8 and R9 - are captured at the call, and RAX at the return. Arguments passed on the stack, from the fifth on, and floating point values, which travel in the XMM registers, show **Not Captured**, and a call the recording never saw return shows **Did Not Return**. **Set Breakpoint, Dump Arguments and Continue** on the **WinDbg** submenu reads those too, from a live session.
 

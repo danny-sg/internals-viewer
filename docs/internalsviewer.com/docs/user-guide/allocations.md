@@ -2,7 +2,7 @@
 
 A database opens to the Allocations view. It has two parts - the Allocation Map showing the physical layout of the database, and the Allocation Info table listing the objects in it, with a splitter between them.
 
-<!-- Screenshot: the Allocations view - toolbar, Allocation Map and the Allocation Info table with an index expanded -->
+![The Allocations view - the Allocation Map above the Allocation Info table, with dbo.LobTable expanded into its allocation units](/docs/user-guide/images/database-allocations-view-grid.png)
 
 ## Toolbar
 

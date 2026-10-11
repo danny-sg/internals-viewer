@@ -20,8 +20,6 @@ The **Events** menu selects what the trace captures:
 
 ![Events menu](/docs/user-guide/images/query-events-menu.png)
 
-<!-- Screenshot (update): the Events menu - it now has Columnstore, and the menu bar has Index and Debugger -->
-
 Page I/O is always captured. **Locks** opens a submenu of lock categories to capture (**Read**, **Update**, **Write**, **Schema**, **Range**, **Bulk**, or **None**/**Default**) - by default this excludes **Schema** locks, since they are held for a large part of the query's lifetime and would otherwise dominate the [Locks](/docs/user-guide/query/Locks) band. **Waits** and **Latches** can be toggled independently, as can **Columnstore** (segment scans, rowgroup reads and elimination, object pool lookups, batch and bitmap filters, and aggregate pushdown - on by default, see [Columnstore](/docs/user-guide/query/Timeline#columnstore)), **Memory** (grants, spills, and sort warnings, listed in the Events pane) and **Call Stack** - see [Call Stack](/docs/user-guide/query/CallStack).
 
 By default **Waits**, **Columnstore** and **Call Stack** are on, and **Latches** and **Memory** off.
@@ -31,8 +29,6 @@ The lock categories, **Waits** and **Latches** also filter what is already loade
 ## Query menu
 
 ![Query menu](/docs/user-guide/images/query-options-menu.png)
-
-<!-- Screenshot (update): the Query menu - Track query is now its first item -->
 
 - **Track query** - on by default. Runs the query with a trace session, so its events, plan and log records are captured. With it off the query simply runs - see [Track query](/docs/user-guide/query/Editor#track-query)
 - **Crop to query** - on by default. Limits the captured trace to the statement being run, rather than everything happening on the connection
@@ -47,8 +43,6 @@ The lock categories, **Waits** and **Latches** also filter what is already loade
 The **View** menu opens additional panes:
 
 ![View menu](/docs/user-guide/images/query-view-menu.png)
-
-<!-- Screenshot (update): the View menu - it now has Flame Chart and Trace -->
 
 - **SQL Editor** - the query [editor](/docs/user-guide/query/Editor)
 - **Allocations** - the allocation map, scoped to the query - see [Allocations](/docs/user-guide/query/Allocations)

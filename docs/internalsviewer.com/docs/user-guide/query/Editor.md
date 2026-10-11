@@ -6,8 +6,6 @@ Its command bar has:
 
 ![SQL Editor command bar](/docs/user-guide/images/query-empty-default-layout-cropped.png)
 
-<!-- Screenshot (update): the SQL Editor - Trace is now a button, and History, Results and Messages are on the tab strip -->
-
 - **Execute** - runs the query. While it runs it reads **Executing** and the square **Stop** button beside it turns red - click Stop to cancel the query
 - **Trace** - opens the [Trace](/docs/user-guide/query/Trace) pane, which steps through the query's plan
 - **Clear Buffer Pool** - empties the buffer pool first (`CHECKPOINT`, then `DBCC DROPCLEANBUFFERS`) so every page the query touches is physically read. Don't use this on a server anyone else is using - it empties the buffer pool for the whole server
@@ -46,7 +44,7 @@ With it off, the query just runs. There is no event session, no plan and no time
 
 Running the same query again moves it back to the top rather than adding it twice. The history is kept for each database, and the oldest queries drop off as it fills.
 
-<!-- Screenshot: the SQL Editor with the History panel open -->
+![The SQL Editor with the History panel open beside it](/docs/user-guide/images/query-sql-editor-history.png)
 
 ## Multi-statement queries
 
