@@ -37,7 +37,6 @@ using Windows.ApplicationModel.DataTransfer;
 using Windows.UI.Text;
 using CommunityToolkit.Mvvm.Messaging;
 using InternalsViewer.Internals.Engine.Address;
-using InternalsViewer.UI.App.Controls;
 using InternalsViewer.UI.App.Messages;
 using Microsoft.UI.Input;
 using Windows.System;
