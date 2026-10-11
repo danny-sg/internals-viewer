@@ -843,13 +843,6 @@ public sealed class QueryRunner(ILogger<QueryRunner> logger,
         // Session try/catch block that should stop the session if there is any failure
         try
         {
-            if (recording is not null)
-            {
-                await recording.StartAsync(cancellationToken);
-
-                Logger.LogInformation("Full Trace recording started");
-            }
-
             await connection.ExecuteSql(EventSql.GetStartSessionSql(sessionName), cancellationToken, Logger);
 
             if (isReplayMode)
@@ -860,6 +853,13 @@ public sealed class QueryRunner(ILogger<QueryRunner> logger,
             }
 
             await Task.Delay(250, cancellationToken);
+
+            if (recording is not null)
+            {
+                await recording.StartAsync(cancellationToken);
+
+                Logger.LogInformation("Full Trace recording started");
+            }
 
             steps.Complete();
 

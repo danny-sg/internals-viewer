@@ -120,10 +120,24 @@ public sealed class TimeTravelRecorder(WinDbgService winDbg, ILogger<TimeTravelR
     {
         var installation = winDbg.ResolveInstallation();
 
+        var source = Path.Combine(installation.EngineDirectory, "ttd");
+
+        logger.LogInformation("Looking for Time Travel Debugging in {Directory}", source);
+
         try
         {
-            return installation.PrepareTimeTravel(RecorderRoot)
-                   ?? throw new WinDbgNotFoundException($"Time Travel Debugging was not found in {installation.EngineDirectory}");
+            var directory = installation.PrepareTimeTravel(RecorderRoot);
+
+            if (directory is null)
+            {
+                logger.LogWarning("TTD.exe was not found in {Directory}", source);
+
+                throw new WinDbgNotFoundException($"Time Travel Debugging was not found in {installation.EngineDirectory}");
+            }
+
+            logger.LogInformation("Time Travel Debugging recorder: {Directory}", directory);
+
+            return directory;
         }
         catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
         {

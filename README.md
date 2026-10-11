@@ -94,8 +94,8 @@ Internals Viewer is built with the following open source projects. Thanks to the
 |---|---|---|
 | [.NET Community Toolkit](https://github.com/CommunityToolkit/dotnet) | MVVM framework | MIT |
 | [Windows Community Toolkit](https://github.com/CommunityToolkit/Windows) | Behaviours, converters, headered controls, settings controls and sizers | MIT |
-| [Windows Community Toolkit Labs](https://github.com/CommunityToolkit/Labs-Windows) | Markdown rendering. | MIT |
-| [SkiaSharp](https://github.com/mono/SkiaSharp) | Drawing the custom visualisations, built on [Skia](https://github.com/google/skia) | MIT (Skia BSD-3-Clause) |
+| [Windows Community Toolkit Labs](https://github.com/CommunityToolkit/Labs-Windows) | Markdown rendering | MIT |
+| [SkiaSharp](https://github.com/mono/SkiaSharp) | Drawing custom visualisations | MIT (Skia BSD-3-Clause) |
 | [WinUI.TableView](https://github.com/w-ahmad/WinUI.TableView) | Data grids | MIT |
-| [WinUIEx](https://github.com/dotMorten/WinUIEx) | Window management and backdrops | MIT |
+| [WinUIEx](https://github.com/dotMorten/WinUIEx) | Window management | MIT |
 | [ZstdSharp](https://github.com/oleg-st/ZstdSharp) | Reading zstd compressed backups, a port of [Zstandard](https://github.com/facebook/zstd) | MIT |

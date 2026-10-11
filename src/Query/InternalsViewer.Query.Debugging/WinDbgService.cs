@@ -150,14 +150,36 @@ public sealed class WinDbgService(IWinDbgSettings settings, ILogger<WinDbgServic
     {
         if (!string.IsNullOrWhiteSpace(settings.WinDbgPath))
         {
-            return File.Exists(settings.WinDbgPath)
-                ? WinDbgInstallation.FromExecutable(settings.WinDbgPath)
-                : throw new WinDbgNotFoundException($"WinDbg was not found at {settings.WinDbgPath}. Check the WinDbg Path in Settings");
+            logger.LogInformation("Using the WinDbg Path from Settings: {Path}", settings.WinDbgPath);
+
+            if (!File.Exists(settings.WinDbgPath))
+            {
+                logger.LogWarning("WinDbg was not found at {Path}", settings.WinDbgPath);
+
+                throw new WinDbgNotFoundException($"WinDbg was not found at {settings.WinDbgPath}. Check the WinDbg Path in Settings");
+            }
+
+            var installation = WinDbgInstallation.FromExecutable(settings.WinDbgPath);
+
+            logger.LogInformation("Using WinDbg at {Executable} with the engine in {EngineDirectory}",
+                                  installation.Executable,
+                                  installation.EngineDirectory);
+
+            return installation;
         }
 
-        return WinDbgInstallation.Locate()
-               ?? throw new WinDbgNotFoundException("WinDbg was not found. Install it from the Microsoft Store, "
-                                                  + "or set the WinDbg Path in Settings");
+        logger.LogInformation("The WinDbg Path is not set in Settings. Looking for an installation");
+
+        var located = WinDbgInstallation.Locate(logger);
+
+        if (located is null)
+        {
+            logger.LogWarning("WinDbg was not found. Install it, or set the WinDbg Path in Settings");
+
+            throw new WinDbgNotFoundException("WinDbg was not found.");
+        }
+
+        return located;
     }
 
     private async Task ConnectAsync(string engine, TimeSpan timeout, CancellationToken cancellationToken)
@@ -205,11 +227,17 @@ public sealed class WinDbgService(IWinDbgSettings settings, ILogger<WinDbgServic
         }
     }
 
-    private static string PrepareEngine(WinDbgInstallation installation)
+    private string PrepareEngine(WinDbgInstallation installation)
     {
         try
         {
-            return installation.PrepareEngine(EngineCacheRoot);
+            logger.LogInformation("Preparing the debugger engine from {EngineDirectory}", installation.EngineDirectory);
+
+            var engine = installation.PrepareEngine(EngineCacheRoot);
+
+            logger.LogInformation("Debugger engine: {Engine}", engine);
+
+            return engine;
         }
         catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
         {
