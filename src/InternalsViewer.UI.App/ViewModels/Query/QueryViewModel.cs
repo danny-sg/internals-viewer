@@ -106,6 +106,10 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
     private const string SimulationDocumentKey = "Simulation";
 
+    private const string CancelledOutcome = "Cancelled";
+
+    private const string FailedOutcome = "Failed";
+
     private readonly SimulationTabViewModelFactory _simulationTabViewModelFactory;
 
     private readonly WinDbgService _winDbgService;
@@ -1890,6 +1894,12 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
         IsFullTraceLoading = true;
         FullTraceStatus = "Opening Full Trace";
 
+        TaskbarProgress.ShowIndeterminate(load);
+
+        var firstMessage = Messages.Count;
+
+        string? outcome = null;
+
         var progress = new Progress<ProgressDetail>(detail =>
         {
             if (ReferenceEquals(FullTraceLoad, load))
@@ -1897,6 +1907,8 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
                 FullTraceStatus = detail.ToString();
 
                 AddMessage(detail);
+
+                ShowOverall(load, detail);
             }
         });
 
@@ -1906,6 +1918,8 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
             if (load.IsCancellationRequested || result is null)
             {
+                outcome = load.IsCancellationRequested ? CancelledOutcome : null;
+
                 return;
             }
 
@@ -1921,9 +1935,12 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
         }
         catch (OperationCanceledException) when (load.IsCancellationRequested)
         {
+            outcome = CancelledOutcome;
         }
         catch (Exception exception)
         {
+            outcome = FailedOutcome;
+
             await WeakReferenceMessenger.Default.Send(new ExceptionMessage(exception));
         }
         finally
@@ -1935,26 +1952,77 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
                 FullTraceStatus = null;
             }
 
+            if (outcome is not null)
+            {
+                FinishProgressMessages(firstMessage, outcome);
+            }
+
+            TaskbarProgress.Clear(load);
+
             load.Dispose();
         }
     }
 
+    private static void ShowOverall(object owner, ProgressDetail detail)
+    {
+        if (detail.Overall is not { } overall)
+        {
+            return;
+        }
+
+        if (overall <= 0 && detail is { IsStep: true, Percentage: null, Elapsed: null })
+        {
+            TaskbarProgress.ShowIndeterminate(owner);
+
+            return;
+        }
+
+        TaskbarProgress.Show(owner, overall);
+    }
+
     private void AddMessage(ProgressDetail detail)
     {
-        if (detail.Percentage is { } percentage)
+        if (detail.IsStep || detail.Percentage is not null)
         {
             for (var index = Messages.Count - 1; index >= 0; index--)
             {
-                if (Messages[index] is { IsProgress: true } message && message.Text == detail.Message)
+                if (Messages[index] is { IsProgress: true, IsFinished: false } message && message.Text == detail.Message)
                 {
-                    message.Percentage = percentage;
+                    Update(message, detail);
 
                     return;
                 }
             }
         }
 
-        Messages.Add(new QueryMessage(detail.Message, detail.Percentage));
+        var added = new QueryMessage(detail.Message, detail.Percentage, detail.IsStep);
+
+        Update(added, detail);
+
+        Messages.Add(added);
+    }
+
+    private static void Update(QueryMessage message, ProgressDetail detail)
+    {
+        if (detail.Elapsed is { } elapsed)
+        {
+            message.Outcome = elapsed.ToString();
+
+            return;
+        }
+
+        message.Percentage = detail.Percentage;
+    }
+
+    private void FinishProgressMessages(int first, string outcome)
+    {
+        for (var index = Math.Min(first, Messages.Count); index < Messages.Count; index++)
+        {
+            if (Messages[index] is { IsProgress: true, IsFinished: false } message)
+            {
+                message.Outcome = outcome;
+            }
+        }
     }
 
     private void CancelFullTraceLoad()

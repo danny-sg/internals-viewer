@@ -59,6 +59,18 @@ public sealed partial class FlameChartControl : Grid, IDisposable
         set => SetValue(HiddenCategoriesProperty, value);
     }
 
+    public static readonly DependencyProperty PrunedCategoriesProperty =
+        DependencyProperty.Register(nameof(PrunedCategories),
+                                    typeof(IReadOnlySet<string>),
+                                    typeof(FlameChartControl),
+                                    new PropertyMetadata(null, OnHiddenCategoriesChanged));
+
+    public IReadOnlySet<string>? PrunedCategories
+    {
+        get => (IReadOnlySet<string>?)GetValue(PrunedCategoriesProperty);
+        set => SetValue(PrunedCategoriesProperty, value);
+    }
+
     public static readonly DependencyProperty RootNodeProperty =
         DependencyProperty.Register(nameof(RootNode),
                                     typeof(CallStackNode),
@@ -699,7 +711,11 @@ public sealed partial class FlameChartControl : Grid, IDisposable
 
             var source = _rooted ?? timeline;
 
-            _visible = HiddenNodes(source) is { } hidden ? source.Where(n => n < 0 || n >= hidden.Length || !hidden[n]) : source;
+            var pruned = PrunedNodes(source) is { } hidden ? source.Where(n => n < 0 || n >= hidden.Length || !hidden[n]) : source;
+
+            _visible = HiddenCategories is { Count: > 0 } categories
+                ? pruned.Folded(n => n.Frame is not null && categories.Contains(n.Category))
+                : pruned;
         }
 
         _operatorRows = OperatorRowsOf(_visible);
@@ -781,9 +797,9 @@ public sealed partial class FlameChartControl : Grid, IDisposable
         => timeline.RootedAt(n => ReferenceEquals(n, root))
            ?? (root.Frame is { } frame ? timeline.RootedAt(n => ReferenceEquals(n.Frame, frame)) : null);
 
-    private bool[]? HiddenNodes(TimeTravelTimeline timeline)
+    private bool[]? PrunedNodes(TimeTravelTimeline timeline)
     {
-        if (HiddenCategories is not { Count: > 0 } categories)
+        if (PrunedCategories is not { Count: > 0 } categories)
         {
             return null;
         }

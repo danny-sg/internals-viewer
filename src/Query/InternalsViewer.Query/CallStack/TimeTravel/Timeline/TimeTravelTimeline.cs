@@ -174,12 +174,12 @@ public sealed class TimeTravelTimeline
             return null;
         }
 
-        var rooted = Threads.Select(t => Regroup(t, (row, index) => row.NodeAt(index) is var n
-                                                                    && n >= 0
-                                                                    && n < depths.Length
-                                                                    && rootDepths[n] >= 0
-                                                                        ? depths[n] - rootDepths[n]
-                                                                        : -1))
+        var rooted = Threads.Select(t => Regroup(t, (_, row, index) => row.NodeAt(index) is var n
+                                                                       && n >= 0
+                                                                       && n < depths.Length
+                                                                       && rootDepths[n] >= 0
+                                                                           ? depths[n] - rootDepths[n]
+                                                                           : -1))
                             .ToList();
 
         var windows = Windows(rooted.Where(t => t.Calls > 0 && t.Rows.Count > 0).Select(t => t.Rows[0]));
@@ -215,6 +215,57 @@ public sealed class TimeTravelTimeline
         }
 
         return any ? Where(n => n < 0 || n >= removed.Length || !removed[n]) : this;
+    }
+
+    public TimeTravelTimeline Folded(Func<CallStackNode, bool> isFolded)
+    {
+        var folded = new bool[NodeCount];
+
+        var any = false;
+
+        for (var node = 0; node < folded.Length; node++)
+        {
+            folded[node] = NodeOf(node) is { } callNode && isFolded(callNode);
+
+            any |= folded[node];
+        }
+
+        if (!any)
+        {
+            return this;
+        }
+
+        var lifts = new int[NodeCount];
+
+        int LiftOf(int node, int depth)
+        {
+            if (depth == 0 || node < 0 || node >= lifts.Length)
+            {
+                return 0;
+            }
+
+            if (lifts[node] < 0)
+            {
+                var parent = Parents[node];
+
+                lifts[node] = parent < 0 ? 0 : LiftOf(parent, depth - 1) + (folded[parent] ? 1 : 0);
+            }
+
+            return lifts[node];
+        }
+
+        var threads = new List<TimeTravelTimelineThread>(Threads.Count);
+
+        foreach (var thread in Threads)
+        {
+            Array.Fill(lifts, -1);
+
+            threads.Add(Regroup(thread, (depth, row, index) => row.NodeAt(index) is var n && n >= 0 && n < folded.Length && folded[n]
+                                                                   ? -1
+                                                                   : depth - LiftOf(n, depth)));
+        }
+
+        return new TimeTravelTimeline(threads, this);
     }
 
     public static double PositionOf(ulong sequence, ulong steps, double stepsPerSequence) => sequence + steps / stepsPerSequence;
@@ -292,18 +343,21 @@ public sealed class TimeTravelTimeline
 
         return shallowest == int.MaxValue
             ? new TimeTravelTimelineThread(thread.ThreadId, [], 0)
-            : Regroup(thread, (row, index) => Overlaps(row, index) ? DepthOf(row, index) - shallowest : -1);
+            : Regroup(thread, (_, row, index) => Overlaps(row, index) ? DepthOf(row, index) - shallowest : -1);
     }
 
-    private static TimeTravelTimelineThread Regroup(TimeTravelTimelineThread thread, Func<TimeTravelTimelineRow, int, int> depthOf)
+    private static TimeTravelTimelineThread Regroup(TimeTravelTimelineThread thread,
+                                                    Func<int, TimeTravelTimelineRow, int, int> depthOf)
     {
         var counts = new List<int>();
 
-        foreach (var row in thread.Rows)
+        for (var source = 0; source < thread.Rows.Count; source++)
         {
+            var row = thread.Rows[source];
+
             for (var index = 0; index < row.Count; index++)
             {
-                var depth = depthOf(row, index);
+                var depth = depthOf(source, row, index);
 
                 if (depth < 0)
                 {
@@ -321,8 +375,10 @@ public sealed class TimeTravelTimeline
 
         var rows = counts.Select(c => new RowArrays(c)).ToArray();
 
-        foreach (var row in thread.Rows)
+        for (var source = 0; source < thread.Rows.Count; source++)
         {
+            var row = thread.Rows[source];
+
             var positionStarts = row.Starts(TimeTravelTimelineAxis.Position);
 
             var positionEnds = row.Ends(TimeTravelTimelineAxis.Position);
@@ -333,7 +389,7 @@ public sealed class TimeTravelTimeline
 
             for (var index = 0; index < row.Count; index++)
             {
-                var depth = depthOf(row, index);
+                var depth = depthOf(source, row, index);
 
                 if (depth < 0)
                 {

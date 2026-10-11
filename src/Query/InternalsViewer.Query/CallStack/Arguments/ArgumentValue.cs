@@ -9,6 +9,12 @@ using InternalsViewer.Query.Events.Reads;
 
 namespace InternalsViewer.Query.CallStack.Arguments;
 
+/// <summary>
+/// Maps raw ulong values to a display value 
+/// </summary>
+/// <remarks>
+/// Based on type, or a recognized enum
+/// </remarks>
 public static class ArgumentValue
 {
     private const ulong HexThreshold = 0x10000;

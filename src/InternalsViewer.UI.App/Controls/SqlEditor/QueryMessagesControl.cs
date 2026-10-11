@@ -57,7 +57,9 @@ public sealed class QueryMessagesControl : UserControl
 
     private bool IsAtEnd => Scroller.VerticalOffset >= Scroller.ScrollableHeight - 1;
 
-    private static string PercentageText(QueryMessage message) => $"{(message.Percentage ?? 0):N0}%";
+    private static string PercentageText(QueryMessage message) => message.Percentage is { } percentage ? $"{percentage:N0}%" : string.Empty;
+
+    private static string FinishedText(QueryMessage message) => $"{message.Text} - {message.Outcome}";
 
     private void Attach(ObservableCollection<QueryMessage>? previous, ObservableCollection<QueryMessage>? messages)
     {
@@ -105,6 +107,13 @@ public sealed class QueryMessagesControl : UserControl
     {
         var paragraph = new Paragraph();
 
+        if (message.IsFinished)
+        {
+            paragraph.Inlines.Add(new Run { Text = FinishedText(message) });
+
+            return paragraph;
+        }
+
         paragraph.Inlines.Add(new Run { Text = message.Text });
 
         if (!message.IsProgress)
@@ -117,6 +126,7 @@ public sealed class QueryMessagesControl : UserControl
             Minimum = 0,
             Maximum = 100,
             Value = message.Percentage ?? 0,
+            IsIndeterminate = message.Percentage is null,
             VerticalAlignment = VerticalAlignment.Center
         };
 
@@ -135,7 +145,7 @@ public sealed class QueryMessagesControl : UserControl
 
         paragraph.Inlines.Add(percentage);
 
-        ProgressLines[message] = new ProgressLine(bar, percentage);
+        ProgressLines[message] = new ProgressLine(paragraph, bar, percentage);
 
         message.PropertyChanged += OnMessagePropertyChanged;
 
@@ -183,17 +193,34 @@ public sealed class QueryMessagesControl : UserControl
 
     private void OnMessagePropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
-        if (sender is QueryMessage message && ProgressLines.TryGetValue(message, out var line))
+        if (sender is not QueryMessage message || !ProgressLines.TryGetValue(message, out var line))
         {
-            line.Bar.Value = message.Percentage ?? 0;
-
-            line.Percentage.Text = PercentageText(message);
+            return;
         }
+
+        if (message.IsFinished)
+        {
+            message.PropertyChanged -= OnMessagePropertyChanged;
+
+            ProgressLines.Remove(message);
+
+            line.Paragraph.Inlines.Clear();
+
+            line.Paragraph.Inlines.Add(new Run { Text = FinishedText(message) });
+
+            return;
+        }
+
+        line.Bar.IsIndeterminate = message.Percentage is null;
+
+        line.Bar.Value = message.Percentage ?? 0;
+
+        line.Percentage.Text = PercentageText(message);
     }
 
     private static void OnMessagesChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
         => ((QueryMessagesControl)d).Attach(e.OldValue as ObservableCollection<QueryMessage>,
                                             e.NewValue as ObservableCollection<QueryMessage>);
 
-    private sealed record ProgressLine(ProgressBar Bar, Run Percentage);
+    private sealed record ProgressLine(Paragraph Paragraph, ProgressBar Bar, Run Percentage);
 }

@@ -32,7 +32,7 @@ public sealed class TimeTravelSession : IDisposable
 
     public async Task<TimeTravelReplay> ReplayAsync(IReadOnlyCollection<uint> threadIds,
                                                     ReplayFunctionSet functions,
-                                                    IProgress<ProgressDetail>? progress,
+                                                    IProgress<double>? progress,
                                                     CancellationToken cancellationToken)
     {
         await Gate.WaitAsync(cancellationToken);
@@ -71,7 +71,7 @@ public sealed class TimeTravelSession : IDisposable
 
     private TimeTravelReplay Replay(uint[] threads,
                                     ReplayFunctionSet functions,
-                                    IProgress<ProgressDetail>? progress,
+                                    IProgress<double>? progress,
                                     CancellationToken cancellationToken)
     {
         var cancel = Marshal.AllocHGlobal(sizeof(int));
@@ -80,8 +80,14 @@ public sealed class TimeTravelSession : IDisposable
 
         var registration = cancellationToken.Register(() => Marshal.WriteInt32(cancel, 1));
 
+        var percentages = new Dictionary<uint, int>();
+
         TimeTravelBridge.ProgressCallback onProgress = (thread, percent) =>
-            progress?.Report(new ProgressDetail(thread == 0 ? "Replaying Full Trace" : $"[Thread {thread}] Replaying Full Trace", percent));
+        {
+            percentages[thread] = percent;
+
+            progress?.Report(percentages.Values.Average());
+        };
 
         var log = new TimeTravelCallLog.Builder(functions.Locators);
 

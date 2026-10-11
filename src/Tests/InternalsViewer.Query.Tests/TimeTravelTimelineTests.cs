@@ -106,6 +106,51 @@ public class TimeTravelTimelineTests
     }
 
     [Fact]
+    public void Calls_Under_A_Folded_Frame_Move_Up_Into_Its_Place()
+    {
+        var timeline = Build(Span(node: 2, start: 10, end: 20),
+                             Span(node: 1, start: 5, end: 30),
+                             Span(node: 0, start: 0, end: 40));
+
+        var tree = new CallStackTree();
+
+        var root = tree.AddCall(tree.Root, new CallstackFrame { Module = "sqlmin", Rva = 0x10 }, 1);
+        var folded = tree.AddCall(root, new CallstackFrame { Module = "sqlmin", Rva = 0x20 }, 1);
+        var inner = tree.AddCall(folded, new CallstackFrame { Module = "sqlmin", Rva = 0x30 }, 1);
+
+        timeline.MapNodes([root, folded, inner]);
+
+        var thread = Assert.Single(timeline.Folded(n => ReferenceEquals(n, folded)).Threads);
+
+        Assert.Equal([0, 2], thread.Rows.Select(r => r.NodeAt(0)));
+        Assert.Equal(2, thread.Calls);
+    }
+
+    [Fact]
+    public void Folding_A_Root_Lifts_Its_Callees_To_The_Top()
+    {
+        var timeline = Build(Span(node: 2, start: 10, end: 20),
+                             Span(node: 1, start: 5, end: 30),
+                             Span(node: 0, start: 0, end: 40));
+
+        var tree = new CallStackTree();
+
+        var outer = tree.AddCall(tree.Root, new CallstackFrame { Module = "sqllang", Rva = 0x10 }, 1);
+        var execute = tree.AddCall(outer, new CallstackFrame { Module = "sqllang", Rva = 0x20 }, 1);
+        var inner = tree.AddCall(execute, new CallstackFrame { Module = "sqlmin", Rva = 0x30 }, 1);
+
+        timeline.MapNodes([outer, execute, inner]);
+
+        var rooted = timeline.RootedAt(n => ReferenceEquals(n, execute));
+
+        Assert.NotNull(rooted);
+
+        var thread = Assert.Single(rooted.Folded(n => ReferenceEquals(n, outer) || ReferenceEquals(n, execute)).Threads);
+
+        Assert.Equal([2], thread.Rows.Select(r => r.NodeAt(0)));
+    }
+
+    [Fact]
     public void Each_Call_Path_Knows_The_Path_It_Was_Called_From()
     {
         var timeline = Build(Span(node: 0, start: 0, end: 10));

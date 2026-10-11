@@ -32,6 +32,7 @@ public partial class SettingsViewModel(SettingsService settingsService, TraceDir
     private const string SymbolSearchExcludedModulesKey = "SymbolSearchExcludedModules";
     private const string ShowTimeTravelWarningKey = "ShowTimeTravelWarning";
     private const string CallTreeHiddenCategoriesKey = "CallTreeHiddenCategories";
+    private const string CallTreePrunedCategoriesKey = "CallTreePrunedCategories";
 
     private const string DefaultCallTreeHiddenCategories =
         "Compilation;Execution Tree;Expression Evaluation;Metadata;Networking;Query Binding;Query Store;Security";
@@ -79,6 +80,9 @@ public partial class SettingsViewModel(SettingsService settingsService, TraceDir
 
     [ObservableProperty]
     private string _callTreeHiddenCategories = DefaultCallTreeHiddenCategories;
+
+    [ObservableProperty]
+    private string _callTreePrunedCategories = string.Empty;
 
     [ObservableProperty]
     private string _memoryUsage = string.Empty;
@@ -149,6 +153,8 @@ public partial class SettingsViewModel(SettingsService settingsService, TraceDir
 
         CallTreeHiddenCategories = await SettingsService.ReadSettingAsync<string>(CallTreeHiddenCategoriesKey)
                                    ?? DefaultCallTreeHiddenCategories;
+
+        CallTreePrunedCategories = await SettingsService.ReadSettingAsync<string>(CallTreePrunedCategoriesKey) ?? string.Empty;
     }
 
     /// <summary>
@@ -190,6 +196,11 @@ public partial class SettingsViewModel(SettingsService settingsService, TraceDir
     partial void OnCallTreeHiddenCategoriesChanged(string value)
     {
         _ = SettingsService.SaveSettingAsync(CallTreeHiddenCategoriesKey, value);
+    }
+
+    partial void OnCallTreePrunedCategoriesChanged(string value)
+    {
+        _ = SettingsService.SaveSettingAsync(CallTreePrunedCategoriesKey, value);
     }
 
     partial void OnUseCustomTraceDirectoryChanged(bool value)

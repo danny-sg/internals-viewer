@@ -17,6 +17,7 @@ using InternalsViewer.Query.Events.Transactions;
 using InternalsViewer.Query.Events;
 using InternalsViewer.Query.Events.Reads;
 using InternalsViewer.Query.Extensions;
+using InternalsViewer.Query.Helpers;
 using InternalsViewer.Query.Interfaces.Events;
 using InternalsViewer.Query.Plans.Model;
 using InternalsViewer.Query.Plans;
@@ -45,6 +46,25 @@ public sealed class QueryRunner(ILogger<QueryRunner> logger,
     private const int EventDifferencesReported = 10;
 
     private const int EventWorkersReported = 4;
+
+    private const string OpeningStep = "Opening Full Trace";
+
+    private const string SymbolsStep = "Resolving Symbols";
+
+    private const string ReplayStep = "Replaying Threads";
+
+    private const string CallTreeStep = "Building Call Tree";
+
+    private const string OperatorsStep = "Matching Operators";
+
+    private static readonly ProgressStep[] FullTraceSteps =
+    [
+        new(OpeningStep, 25),
+        new(SymbolsStep, 5),
+        new(ReplayStep, 50),
+        new(CallTreeStep, 15),
+        new(OperatorsStep, 5)
+    ];
 
     public bool ResolveColumnstorePages { get; set; } = true;
 
@@ -363,9 +383,9 @@ public sealed class QueryRunner(ILogger<QueryRunner> logger,
 
         var operators = events.OfType<ExecutionOperatorEvent>().ToList();
 
-        progress?.Report("Opening Full Trace");
+        var steps = new StepProgress(progress, FullTraceSteps);
 
-        var start = Stopwatch.GetTimestamp();
+        var details = new LoggerProgress(Logger);
 
         TimeTravelReplay replay;
 
@@ -373,33 +393,47 @@ public sealed class QueryRunner(ILogger<QueryRunner> logger,
 
         try
         {
+            steps.Begin(OpeningStep);
+
             using var session = await TimeTravelSession.OpenAsync(pending.Trace, cancellationToken);
 
             cancellationToken.ThrowIfCancellationRequested();
 
-            progress?.Report($"Full Trace opened in {Stopwatch.GetElapsedTime(start)}");
+            steps.Complete();
 
-            progress?.Report($"Replaying Full Trace for {pending.ThreadIds.Count} thread(s)");
+            steps.Begin(SymbolsStep);
 
-            start = Stopwatch.GetTimestamp();
+            functions = await ReplayFunctions.ResolveAsync(session.Modules, pending.SymbolsPath, Logger, details, cancellationToken);
 
-            functions = await ReplayFunctions.ResolveAsync(session.Modules, pending.SymbolsPath, Logger, progress, cancellationToken);
+            Logger.LogInformation("{Excluded} Extended Events and tracing function(s) excluded from the replay, {Memory} memory "
+                                  + "function(s) tracked",
+                                  functions.Excluded.Length,
+                                  functions.Memory.Length);
 
-            progress?.Report($"{functions.Excluded.Length:N0} Extended Events and tracing function(s) excluded from the replay, "
-                             + $"{functions.Memory.Length:N0} memory function(s) tracked");
+            steps.Complete();
 
-            replay = await session.ReplayAsync(pending.ThreadIds, functions, progress, cancellationToken);
+            steps.Begin(ReplayStep);
+
+            Logger.LogInformation("Replaying Full Trace for {Threads} thread(s)", pending.ThreadIds.Count);
+
+            replay = await session.ReplayAsync(pending.ThreadIds, functions, steps, cancellationToken);
+
+            steps.Complete();
         }
         catch (Exception exception) when (exception is InvalidOperationException or DllNotFoundException)
         {
             Logger.LogWarning(exception, "Time travel trace {TracePath} could not be replayed", pending.Trace.TracePath);
+
+            steps.Complete();
 
             progress?.Report($"Full Trace could not be replayed: {exception.Message}");
 
             return null;
         }
 
-        DeleteTimeTravelTrace(pending.Trace, progress);
+        steps.Begin(CallTreeStep);
+
+        DeleteTimeTravelTrace(pending.Trace, details);
 
         var callStack = new CallStackTree();
 
@@ -407,15 +441,16 @@ public sealed class QueryRunner(ILogger<QueryRunner> logger,
 
         var nodes = replay.Calls.Nodes;
 
-        progress?.Report($"{nodes.Sum(n => (long)n.Calls):N0} call(s) on {nodes.Length:N0} call path(s) replayed in "
-                         + $"{Stopwatch.GetElapsedTime(start)}");
+        Logger.LogInformation("{Calls} call(s) on {Paths} call path(s) replayed, {Logged} call(s) of {Functions} function(s) logged in "
+                              + "{Size} MB, {Locators} page and row id(s) read",
+                              nodes.Sum(n => (long)n.Calls),
+                              nodes.Length,
+                              replay.CallLog.Calls,
+                              replay.CallLog.FunctionCount,
+                              replay.CallLog.Size / (1024 * 1024),
+                              replay.CallLog.LocatorCount);
 
-        progress?.Report($"{replay.CallLog.Calls:N0} call(s) of {replay.CallLog.FunctionCount:N0} function(s) logged in "
-                         + $"{replay.CallLog.Size / (1024.0 * 1024.0):N1} MB, {replay.CallLog.LocatorCount:N0} page and row id(s) read");
-
-        progress?.Report("Processing callstack frames");
-
-        var unknownSymbols = await CallstackProcessor.Process(callStack, pending.SymbolsPath, progress, cancellationToken);
+        var unknownSymbols = await CallstackProcessor.Process(callStack, pending.SymbolsPath, details, cancellationToken);
 
         LogUnknownSymbols(unknownSymbols);
 
@@ -433,51 +468,56 @@ public sealed class QueryRunner(ILogger<QueryRunner> logger,
 
         if (pending.RawEvents.Count > 0)
         {
-            await ReportExtendedEvents(replay.Timeline, replay.CallLog, functions, pending.RawEvents, progress, cancellationToken);
+            await ReportExtendedEvents(replay.Timeline, replay.CallLog, functions, pending.RawEvents, details, cancellationToken);
         }
 
         callStack.RemoveCallsUnder(node => node.IsExtendedEvents || node.IsTracing);
 
-        progress?.Report($"{callStack.Nodes().Sum(n => n.Calls):N0} call(s) after removing Extended Events and tracing");
-
         var timeline = replay.Timeline.WithoutCallsUnder(node => node.IsExtendedEvents || node.IsTracing);
 
-        progress?.Report($"{timeline.SpanCount:N0} call span(s) on {timeline.Threads.Count:N0} thread(s) in the flame chart");
+        Logger.LogInformation("{Calls} call(s) after removing Extended Events and tracing, {Spans} call span(s) on {Threads} "
+                              + "thread(s) in the flame chart",
+                              callStack.Nodes().Sum(n => n.Calls),
+                              timeline.SpanCount,
+                              timeline.Threads.Count);
 
         TimeTravelCallMerger.AddActivity(timeline, ActivityBuckets);
 
+        steps.Complete();
+
+        steps.Begin(OperatorsStep);
+
         var matched = IteratorInstanceMatcher.Match(callStack, events);
 
-        var planOperators = operators.Count(o => o.PlanNodeIdentifier is { NodeId: >= 0 });
-
-        progress?.Report($"{matched:N0} of {planOperators:N0} operator(s) matched to recorded iterators");
-
         var memory = TimeTravelMemory.Apply(replay.CallLog, functions.Memory, timeline, operators, pending.MemoryClerks);
-
-        progress?.Report($"{memory.Allocations:N0} allocation(s) of {Size(memory.Bytes)}, peak in use {Size(memory.PeakInUse)}");
 
         var unidentified = memory.Kinds
                                  .Where(k => k.Name.StartsWith(TimeTravelMemory.UnknownClerk, StringComparison.Ordinal)
                                              || k.Name == TimeTravelMemory.Unattributed)
                                  .Aggregate(0ul, (total, k) => total + k.Allocated);
 
-        if (unidentified > 0)
-        {
-            progress?.Report($"{Size(unidentified)} allocated with no memory clerk identified");
-        }
-
         var lifetimes = IteratorLifetimes.Build(timeline, operators);
 
         timeline.SetLifetimes(lifetimes);
 
-        var threads = lifetimes.Select(l => l.Thread).Distinct().Count();
-
-        progress?.Report($"{lifetimes.Count:N0} operator lifetime(s) on {threads:N0} thread(s)");
+        Logger.LogInformation("{Matched} of {Operators} operator(s) matched to recorded iterators, {Allocations} allocation(s) of "
+                              + "{Bytes}, peak in use {PeakInUse}, {Unidentified} with no memory clerk, {Lifetimes} operator "
+                              + "lifetime(s) on {Threads} thread(s)",
+                              matched,
+                              operators.Count(o => o.PlanNodeIdentifier is { NodeId: >= 0 }),
+                              memory.Allocations,
+                              Size(memory.Bytes),
+                              Size(memory.PeakInUse),
+                              Size(unidentified),
+                              lifetimes.Count,
+                              lifetimes.Select(l => l.Thread).Distinct().Count());
 
         if (events.Count > 0)
         {
             callStack.ComputeActivity(events.Min(e => e.TimeUs), events.Max(e => e.TimeUs), ActivityBuckets);
         }
+
+        steps.Complete();
 
         return new FullTraceResult(callStack, replay.CallLog, timeline);
     }

@@ -43,6 +43,31 @@ public class FunctionSignatureTests
     }
 
     [Fact]
+    public void An_Enum_Scoped_By_A_Name_Back_Reference_Is_Marked()
+    {
+        var signature = FunctionSignature.Parse("LatchBase::Release(LatchBase::LATCH_TYPE)", "?Release@LatchBase@@QEAA_NW4LATCH_TYPE@1@@Z");
+
+        Assert.NotNull(signature);
+        Assert.Equal(["enum LatchBase::LATCH_TYPE"], signature.Parameters);
+        Assert.Equal("bool", signature.ReturnType);
+    }
+
+    [Fact]
+    public void An_Enum_Returned_By_Value_Is_Named_With_Its_Scope()
+    {
+        var signature = FunctionSignature.Parse(
+            "LatchBase::AcquireInternal(LatchBase::LATCH_TYPE,unsigned long,LatchSuspendInfo *,LatchBase::SubLatchInfo *,"
+            + "LatchBase::Releasor,unsigned __int64 *,SOS_LsAccessCache *,LatchBase::LatchYieldBehavior)",
+            "?AcquireInternal@LatchBase@@AEAA?AW4AcquireResult@1@W4LATCH_TYPE@1@KPEAVLatchSuspendInfo@@PEAUSubLatchInfo@1@"
+            + "W4Releasor@1@PEA_KPEAVSOS_LsAccessCache@@W4LatchYieldBehavior@1@@Z");
+
+        Assert.NotNull(signature);
+        Assert.Equal("enum LatchBase::AcquireResult", signature.ReturnType);
+        Assert.Equal(["enum LatchBase::LATCH_TYPE", "enum LatchBase::Releasor", "enum LatchBase::LatchYieldBehavior"],
+                     signature.Parameters.Where(p => p.StartsWith(FunctionSignature.EnumPrefix, StringComparison.Ordinal)));
+    }
+
+    [Fact]
     public void A_Class_Returned_By_Value_Is_Named_And_Written_Through_A_Buffer()
     {
         var signature = FunctionSignature.Parse("BlobNode::ChildPID(int)", "?ChildPID@BlobNode@@QEBA?AVPageId@@H@Z");

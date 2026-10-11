@@ -50,6 +50,8 @@ public sealed partial class QueryCallStackTabView : UserControl, IDocumentComman
 
     private const int ListedLocators = 20;
 
+    private const double PrunedBadgeOpacity = 0.5;
+
     private readonly Dictionary<CallStackNode, TreeRow> _rows = new();
 
     private readonly Dictionary<TreeViewNode, TreeRow> _rowsByNode = new();
@@ -90,6 +92,10 @@ public sealed partial class QueryCallStackTabView : UserControl, IDocumentComman
     private HashSet<string> _hiddenCategories = new(StringComparer.Ordinal);
 
     private string? _hiddenCategoriesSetting;
+
+    private HashSet<string> _prunedCategories = new(StringComparer.Ordinal);
+
+    private string? _prunedCategoriesSetting;
 
     private CallStackNode? _navigatedNode;
 
@@ -216,6 +222,23 @@ public sealed partial class QueryCallStackTabView : UserControl, IDocumentComman
             }
 
             return _hiddenCategories;
+        }
+    }
+
+    private HashSet<string> PrunedCategories
+    {
+        get
+        {
+            var setting = Settings.CallTreePrunedCategories;
+
+            if (!string.Equals(setting, _prunedCategoriesSetting, StringComparison.Ordinal))
+            {
+                _prunedCategoriesSetting = setting;
+
+                _prunedCategories = SettingsViewModel.SplitCategories(setting);
+            }
+
+            return _prunedCategories;
         }
     }
 
@@ -1003,30 +1026,68 @@ public sealed partial class QueryCallStackTabView : UserControl, IDocumentComman
 
     private void OnCategoryBadgeTapped(object sender, TappedRoutedEventArgs e)
     {
+        if (sender is Border { Tag: string category })
+        {
+            SetCategory(category, hide: !IsHidden(category), withCallees: false);
+        }
+    }
+
+    private void OnCategoryBadgeRightTapped(object sender, RightTappedRoutedEventArgs e)
+    {
         if (sender is not Border { Tag: string category } badge)
         {
             return;
         }
 
+        var menu = new MenuFlyout();
+
+        menu.Items.Add(CategoryMenuItem(category, "Show", hide: false, withCallees: false));
+        menu.Items.Add(CategoryMenuItem(category, "Hide", hide: true, withCallees: false));
+        menu.Items.Add(CategoryMenuItem(category, "Hide With Callees", hide: true, withCallees: true));
+
+        menu.ShowAt(badge, e.GetPosition(badge));
+
+        e.Handled = true;
+    }
+
+    private RadioMenuFlyoutItem CategoryMenuItem(string category, string text, bool hide, bool withCallees)
+    {
+        var item = new RadioMenuFlyoutItem
+        {
+            Text = text,
+            GroupName = nameof(CategoryMenuItem),
+            IsChecked = IsHidden(category) == hide && PrunedCategories.Contains(category) == withCallees
+        };
+
+        item.Click += (_, _) => SetCategory(category, hide, withCallees);
+
+        return item;
+    }
+
+    private void SetCategory(string category, bool hide, bool withCallees)
+    {
         var hidden = HiddenCategories;
 
-        if (!hidden.Remove(category))
+        var pruned = PrunedCategories;
+
+        hidden.Remove(category);
+        pruned.Remove(category);
+
+        if (hide)
         {
-            hidden.Add(category);
+            (withCallees ? pruned : hidden).Add(category);
         }
 
-        SaveHiddenCategories(hidden);
-
-        StyleCategoryBadge(badge);
-
-        UpdateAllCategoriesToggle();
-
-        ApplyFocus(_viewModel?.SelectedEvent);
+        SaveCategories(hidden, pruned);
     }
 
     private void OnAllCategoriesClick(object sender, RoutedEventArgs e)
     {
         var hidden = HiddenCategories;
+
+        var pruned = PrunedCategories;
+
+        pruned.Clear();
 
         if (AllCategoriesToggle.IsChecked == true)
         {
@@ -1043,7 +1104,18 @@ public sealed partial class QueryCallStackTabView : UserControl, IDocumentComman
             }
         }
 
-        SaveHiddenCategories(hidden);
+        SaveCategories(hidden, pruned);
+    }
+
+    private void SaveCategories(HashSet<string> hidden, HashSet<string> pruned)
+    {
+        _hiddenCategoriesSetting = string.Join(SettingsViewModel.CategorySeparator, hidden.Order(StringComparer.Ordinal));
+
+        _prunedCategoriesSetting = string.Join(SettingsViewModel.CategorySeparator, pruned.Order(StringComparer.Ordinal));
+
+        Settings.CallTreeHiddenCategories = _hiddenCategoriesSetting;
+
+        Settings.CallTreePrunedCategories = _prunedCategoriesSetting;
 
         foreach (var badge in CategoryBadges.Children.OfType<Border>())
         {
@@ -1055,21 +1127,12 @@ public sealed partial class QueryCallStackTabView : UserControl, IDocumentComman
         ApplyFocus(_viewModel?.SelectedEvent);
     }
 
-    private void SaveHiddenCategories(HashSet<string> hidden)
-    {
-        _hiddenCategoriesSetting = string.Join(SettingsViewModel.CategorySeparator, hidden.Order(StringComparer.Ordinal));
-
-        Settings.CallTreeHiddenCategories = _hiddenCategoriesSetting;
-    }
-
     private void UpdateAllCategoriesToggle()
-    {
-        var hidden = HiddenCategories;
+        => AllCategoriesToggle.IsChecked = CategoryBadges.Children
+                                                         .OfType<Border>()
+                                                         .All(b => b.Tag is not string category || !IsHidden(category));
 
-        AllCategoriesToggle.IsChecked = CategoryBadges.Children
-                                                      .OfType<Border>()
-                                                      .All(b => b.Tag is not string category || !hidden.Contains(category));
-    }
+    private bool IsHidden(string category) => HiddenCategories.Contains(category) || PrunedCategories.Contains(category);
 
     private void OnExpandAllClick(object sender, RoutedEventArgs e)
     {
@@ -1268,7 +1331,7 @@ public sealed partial class QueryCallStackTabView : UserControl, IDocumentComman
 
     private void OnDetailTabChanged(object sender, SelectionChangedEventArgs args)
     {
-        _viewModel?.Symbols.IsSymbolSearchSelected = DetailTabs.SelectedItem == SymbolsTab;
+        _viewModel?.Symbols.IsSymbolSearchSelected = ReferenceEquals(DetailTabs.SelectedItem, SymbolsTab);
     }
 
     private void OnModuleRightTapped(object sender, RightTappedRoutedEventArgs e) =>
@@ -1481,7 +1544,7 @@ public sealed partial class QueryCallStackTabView : UserControl, IDocumentComman
             {
                 DetailTabs.SelectedItem = SymbolsTab;
             }
-            else if (DetailTabs.SelectedItem == SymbolsTab)
+            else if (ReferenceEquals(DetailTabs.SelectedItem, SymbolsTab))
             {
                 DetailTabs.SelectedItem = MembersTab;
             }
@@ -1958,7 +2021,7 @@ public sealed partial class QueryCallStackTabView : UserControl, IDocumentComman
 
     private IEnumerable<TreeRow> BuildVisible(CallStackNode node)
     {
-        if (IsCategoryHidden(node))
+        if (IsCategoryIn(PrunedCategories, node))
         {
             yield break;
         }
@@ -1972,7 +2035,7 @@ public sealed partial class QueryCallStackTabView : UserControl, IDocumentComman
 
         var infrastructureHidden = node.IsInfrastructure && !_revealInfrastructure;
 
-        if (outOfScope || infrastructureHidden)
+        if (outOfScope || infrastructureHidden || IsCategoryIn(HiddenCategories, node))
         {
             foreach (var child in children)
             {
@@ -2233,7 +2296,7 @@ public sealed partial class QueryCallStackTabView : UserControl, IDocumentComman
     // projection already contains only the operator's frames.
     private IEnumerable<TreeRow> BuildProjectedCall(CallStackNode node, bool revealInfrastructure)
     {
-        if (IsCategoryHidden(node))
+        if (IsCategoryIn(PrunedCategories, node))
         {
             yield break;
         }
@@ -2256,7 +2319,7 @@ public sealed partial class QueryCallStackTabView : UserControl, IDocumentComman
             children.Add(new TreeRow(new OperatorLink(next)));
         }
 
-        if (node.IsInfrastructure && !revealInfrastructure)
+        if ((node.IsInfrastructure && !revealInfrastructure) || IsCategoryIn(HiddenCategories, node))
         {
             foreach (var child in children)
             {
@@ -2377,8 +2440,8 @@ public sealed partial class QueryCallStackTabView : UserControl, IDocumentComman
 
     private static string PathOf(CallStackNode node) => string.Join('\n', node.Ancestors().Select(a => a.Key));
 
-    private bool IsCategoryHidden(CallStackNode node)
-        => node.Frame is not null && HiddenCategories is { Count: > 0 } hidden && hidden.Contains(node.Category);
+    private static bool IsCategoryIn(HashSet<string> categories, CallStackNode node)
+        => node.Frame is not null && categories.Count > 0 && categories.Contains(node.Category);
 
     private void BuildCategoryBadges()
     {
@@ -2416,6 +2479,8 @@ public sealed partial class QueryCallStackTabView : UserControl, IDocumentComman
 
         badge.Tapped += OnCategoryBadgeTapped;
 
+        badge.RightTapped += OnCategoryBadgeRightTapped;
+
         StyleCategoryBadge(badge);
 
         return badge;
@@ -2423,9 +2488,13 @@ public sealed partial class QueryCallStackTabView : UserControl, IDocumentComman
 
     private void StyleCategoryBadge(Border badge)
     {
-        var hidden = badge.Tag is string category && HiddenCategories.Contains(category);
+        var pruned = badge.Tag is string prunedCategory && PrunedCategories.Contains(prunedCategory);
+
+        var hidden = pruned || (badge.Tag is string category && HiddenCategories.Contains(category));
 
         badge.Background = hidden ? new SolidColorBrush(Microsoft.UI.Colors.Transparent) : badge.BorderBrush;
+
+        badge.Opacity = pruned ? PrunedBadgeOpacity : 1;
 
         if (badge.Child is TextBlock text)
         {
@@ -2434,7 +2503,9 @@ public sealed partial class QueryCallStackTabView : UserControl, IDocumentComman
             text.TextDecorations = hidden ? TextDecorations.Strikethrough : TextDecorations.None;
         }
 
-        ToolTipService.SetToolTip(badge, hidden ? "Show" : "Hide");
+        ToolTipService.SetToolTip(badge, pruned ? "Hidden with its callees. Click to show"
+                                         : hidden ? "Hidden, its callees move up to its caller. Click to show"
+                                         : "Hide, keeping its callees. Right-click to hide its callees too");
     }
 
     private void OnSearchTextChanged(AutoSuggestBox sender, AutoSuggestBoxTextChangedEventArgs args)

@@ -46,6 +46,8 @@ public sealed partial class QueryFlameChartTabView : UserControl, IDocumentComma
         Settings.PropertyChanged += OnSettingsPropertyChanged;
 
         FlameChart.HiddenCategories = SettingsViewModel.SplitCategories(Settings.CallTreeHiddenCategories);
+
+        FlameChart.PrunedCategories = SettingsViewModel.SplitCategories(Settings.CallTreePrunedCategories);
     }
 
     public QueryViewModel? ViewModel => DataContext as QueryViewModel;
@@ -253,6 +255,10 @@ public sealed partial class QueryFlameChartTabView : UserControl, IDocumentComma
         if (e.PropertyName == nameof(SettingsViewModel.CallTreeHiddenCategories))
         {
             FlameChart.HiddenCategories = SettingsViewModel.SplitCategories(Settings.CallTreeHiddenCategories);
+        }
+        else if (e.PropertyName == nameof(SettingsViewModel.CallTreePrunedCategories))
+        {
+            FlameChart.PrunedCategories = SettingsViewModel.SplitCategories(Settings.CallTreePrunedCategories);
         }
     }
 }

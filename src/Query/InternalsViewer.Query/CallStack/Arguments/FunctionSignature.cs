@@ -22,7 +22,7 @@ public sealed partial record FunctionSignature(IReadOnlyList<string> Parameters,
 
             return new FunctionSignature(MarkEnums(parameters, decoratedName),
                                          KindOf(match),
-                                         DecodeReturnType(encodedReturn),
+                                         DecodeReturnType(encodedReturn, decoratedName[1..match.Index].Split('@')),
                                          ReturnBuffer().IsMatch(encodedReturn));
         }
 
@@ -79,10 +79,17 @@ public sealed partial record FunctionSignature(IReadOnlyList<string> Parameters,
     private static List<string> MarkEnums(IReadOnlyList<string> parameters, string decoratedName)
     {
         var enums = EnumType().Matches(decoratedName)
-                              .Select(m => string.Join("::", m.Groups["name"].Value.Split('@').Reverse()))
+                              .Select(m => m.Groups["name"].Value)
                               .ToHashSet(StringComparer.Ordinal);
 
-        return [.. parameters.Select(p => enums.Contains(p) ? $"{EnumPrefix}{p}" : p)];
+        return [.. parameters.Select(p => enums.Contains(UnqualifiedName(p)) ? $"{EnumPrefix}{p}" : p)];
+    }
+
+    private static string UnqualifiedName(string type)
+    {
+        var separator = type.LastIndexOf("::", StringComparison.Ordinal);
+
+        return separator < 0 ? type : type[(separator + 2)..];
     }
 
     private static FunctionKind KindOf(Match match)
@@ -97,7 +104,7 @@ public sealed partial record FunctionSignature(IReadOnlyList<string> Parameters,
         return ResolvedCallstackFrameParser.FindClassMethodSeparator(open < 0 ? signature : signature[..open]) > 0;
     }
 
-    private static string? DecodeReturnType(string encoded)
+    private static string? DecodeReturnType(string encoded, IReadOnlyList<string> functionNames)
     {
         if (encoded.Length == 0)
         {
@@ -107,6 +114,11 @@ public sealed partial record FunctionSignature(IReadOnlyList<string> Parameters,
         if (ClassType().Match(encoded) is { Success: true } named)
         {
             return DescribeClass(named);
+        }
+
+        if (EnumReturnType().Match(encoded) is { Success: true } enumType)
+        {
+            return DescribeEnum(enumType, functionNames);
         }
 
         if (encoded[0] == '_' && encoded.Length > 1)
@@ -158,6 +170,40 @@ public sealed partial record FunctionSignature(IReadOnlyList<string> Parameters,
         var qualifier = match.Groups["qualifier"].Value is "B" or "D" ? " const" : string.Empty;
 
         return $"{name}{qualifier} {(match.Groups["indirection"].Value == "A" ? '&' : '*')}";
+    }
+
+    private static string? DescribeEnum(Match match, IReadOnlyList<string> functionNames)
+    {
+        var name = match.Groups["name"].Value;
+
+        var names = new List<string>(functionNames) { name };
+
+        var scopes = new List<string>();
+
+        foreach (Capture scope in match.Groups["scope"].Captures)
+        {
+            if (char.IsAsciiDigit(scope.Value[0]))
+            {
+                var index = scope.Value[0] - '0';
+
+                if (index >= names.Count)
+                {
+                    return EnumPrefix.TrimEnd();
+                }
+
+                scopes.Add(names[index]);
+            }
+            else
+            {
+                scopes.Add(scope.Value);
+
+                names.Add(scope.Value);
+            }
+        }
+
+        scopes.Reverse();
+
+        return $"{EnumPrefix}{string.Join("::", scopes.Append(name))}";
     }
 
     private static int FindParameterList(string signature)
@@ -227,6 +273,9 @@ public sealed partial record FunctionSignature(IReadOnlyList<string> Parameters,
     [GeneratedRegex(@"^\?[ABCD][UVT]")]
     private static partial Regex ReturnBuffer();
 
-    [GeneratedRegex(@"W4(?<name>[A-Za-z_]\w*(?:@[A-Za-z_]\w*)*)@@")]
+    [GeneratedRegex(@"W4(?<name>[A-Za-z_]\w*)@")]
     private static partial Regex EnumType();
+
+    [GeneratedRegex(@"^(?:\?[ABCD])?W4(?<name>[A-Za-z_]\w*)@(?:(?<scope>\d)|(?<scope>[A-Za-z_]\w*)@)*@")]
+    private static partial Regex EnumReturnType();
 }
