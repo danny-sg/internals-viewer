@@ -17,7 +17,14 @@ public static class ArgumentValue
             return raw == 0 ? "nullptr" : $"0x{raw:X}";
         }
 
-        return Normalise(type) switch
+        var normalised = Normalise(type);
+
+        if (normalised.StartsWith(FunctionSignature.EnumPrefix, StringComparison.Ordinal))
+        {
+            return Number((int)raw);
+        }
+
+        return normalised switch
         {
             "bool" => (raw & 0xFF) != 0 ? "true" : "false",
             "char" or "signed char" or "__int8" => Number((sbyte)raw),

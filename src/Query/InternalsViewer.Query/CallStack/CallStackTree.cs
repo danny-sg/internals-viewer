@@ -1,4 +1,5 @@
 using System.Text;
+using InternalsViewer.Query.CallStack.TimeTravel.Locators;
 using InternalsViewer.Query.Events;
 
 namespace InternalsViewer.Query.CallStack;
@@ -125,6 +126,8 @@ public sealed class CallStackTree
 
             leaf.Allocations += node.Allocations;
 
+            AddLocators(leaf, node.Locators);
+
             AddCallActivity(leaf, node.CallActivity);
 
             foreach (var engineEvent in events)
@@ -232,6 +235,8 @@ public sealed class CallStackTree
             node.AllocatedBytes = 0;
 
             node.Allocations = 0;
+
+            node.Locators = null;
         }
 
         var keep = node.Events.Count > 0 || node.Calls > 0;
@@ -380,6 +385,14 @@ public sealed class CallStackTree
     // Empties the source as it goes, so "did this merge take everything?" is a question the caller can actually ask.
     // Leaving the source populated makes a partial merge indistinguishable from a complete one, and the difference is
     // whether a subtree is still reachable.
+    private static void AddLocators(CallStackNode target, TimeTravelLocatorSet? locators)
+    {
+        if (locators is not null)
+        {
+            (target.Locators ??= new TimeTravelLocatorSet()).Add(locators);
+        }
+    }
+
     private static void MergeInto(CallStackNode target, CallStackNode source, Dictionary<CallStackNode, CallStackNode> merged)
     {
         merged[source] = target;
@@ -404,6 +417,10 @@ public sealed class CallStackTree
         source.AllocatedBytes = 0;
 
         source.Allocations = 0;
+
+        AddLocators(target, source.Locators);
+
+        source.Locators = null;
 
         AddCallActivity(target, source.CallActivity);
 

@@ -7,6 +7,7 @@ using System;
 using InternalsViewer.Query.CallStack;
 using InternalsViewer.Query.CallStack.TimeTravel.CallLog;
 using InternalsViewer.Query.CallStack.TimeTravel.Iterators;
+using InternalsViewer.Query.CallStack.TimeTravel.Locators;
 using InternalsViewer.Query.CallStack.WinDbg;
 using InternalsViewer.Query.Debugging;
 using InternalsViewer.Query.Events.Latches;
@@ -16,8 +17,10 @@ using InternalsViewer.Query.Events;
 using InternalsViewer.Query.Interfaces.Events;
 using InternalsViewer.Query.Plans.Model;
 using InternalsViewer.UI.App.Controls.CallStack;
+using InternalsViewer.UI.App.Controls.Results;
 using InternalsViewer.UI.App.Controls.Docking;
 using InternalsViewer.UI.App.Models.Query.CallStack;
+using InternalsViewer.UI.App.Models.Columnstore;
 using InternalsViewer.UI.App.ViewModels;
 using InternalsViewer.UI.App.ViewModels.Query;
 using InternalsViewer.UI.App.ViewModels.Query.CallStack;
@@ -29,6 +32,13 @@ using Microsoft.UI.Xaml.Input;
 using Microsoft.UI.Xaml.Media;
 using Windows.ApplicationModel.DataTransfer;
 using Windows.UI.Text;
+using CommunityToolkit.Mvvm.Messaging;
+using InternalsViewer.Internals.Engine.Address;
+using InternalsViewer.UI.App.Controls;
+using InternalsViewer.UI.App.Messages;
+using Microsoft.UI.Input;
+using Windows.System;
+using Windows.UI.Core;
 
 namespace InternalsViewer.UI.App.Views.Query.Tabs.CallStack;
 
@@ -37,6 +47,8 @@ public sealed partial class QueryCallStackTabView : UserControl, IDocumentComman
     private const int ExpandBudget = 2000;
 
     private const int ExpandAllBudget = 10000;
+
+    private const int ListedLocators = 20;
 
     private readonly Dictionary<CallStackNode, TreeRow> _rows = new();
 
@@ -81,8 +93,6 @@ public sealed partial class QueryCallStackTabView : UserControl, IDocumentComman
 
     private CallStackNode? _navigatedNode;
 
-    private GridLength _argumentDetailHeight = new(1, GridUnitType.Star);
-
     private HashSet<int> _highlightBuckets = [];
 
     private bool _isSelectingFromTree;
@@ -92,6 +102,10 @@ public sealed partial class QueryCallStackTabView : UserControl, IDocumentComman
     private bool _navigatingHistory;
 
     private string _search = string.Empty;
+
+    private LocatorSearch? _locatorSearch;
+
+    private ColumnStoreSearch? _columnStoreSearch;
 
     private Dictionary<CallStackNode, ExecutionOperatorEvent> _nextOperator = new();
 
@@ -710,26 +724,80 @@ public sealed partial class QueryCallStackTabView : UserControl, IDocumentComman
     private bool CanShowArguments(CallStackNode node)
         => _viewModel is { CallStack.ActivityFromTrace: true } viewModel && viewModel.Arguments.CanShow(node);
 
-    private void OnGoToCallClick(object sender, RoutedEventArgs e)
+    private void OnArgumentCellMenuOpening(object? sender, ResultCellMenuEventArgs e)
     {
-        if (_viewModel?.Arguments.CallNode is not { } node)
+        if (_viewModel?.Arguments is not { } arguments)
         {
             return;
         }
 
+        var index = (int)e.Row.Id;
+
+        if (arguments.NodeAt(index) is { } node)
+        {
+            e.Menu.Items.Add(MenuItem("Go To Call", () => GoToCall(node)));
+        }
+
+        var cell = arguments.CellAt(index, e.Ordinal);
+
+        if (cell.Locator is { Kind: LocatorKind.ColumnStoreObject } columnStoreObject)
+        {
+            e.Menu.Items.Add(MenuItem("Open In The Columnstore Viewer", () => OpenPage(columnStoreObject)));
+        }
+
+        if (cell.Locator is { } locator)
+        {
+            e.Menu.Items.Add(MenuItem("Search Call Tree", () => SearchBox.Text = locator.SearchText));
+        }
+
+        if (cell.Value is not { } value)
+        {
+            return;
+        }
+
+        if (arguments.IteratorOf(value) is { } iterator)
+        {
+            e.Menu.Items.Add(MenuItem($"Show The {iterator.Label} Iterator", () => NavigateToIterator(iterator)));
+        }
+
+        e.Menu.Items.Add(MenuItem("Find Calls With This Value", () => _ = arguments.FindValueAsync(value)));
+    }
+
+    private static MenuFlyoutItem MenuItem(string text, Action action)
+    {
+        var item = new MenuFlyoutItem { Text = text };
+
+        item.Click += (_, _) => action();
+
+        return item;
+    }
+
+    private void OnArgumentCallChosen(CallReference reference)
+    {
+        if (_viewModel is null)
+        {
+            return;
+        }
+
+        if (!_rows.ContainsKey(reference.Node))
+        {
+            GoToCall(reference.Node);
+
+            return;
+        }
+
+        SelectNode(reference.Node);
+
+        _viewModel.SelectedCallNode = reference.Node;
+    }
+
+    private void GoToCall(CallStackNode node)
+    {
         LeavePlace();
 
         NavigateTo(node);
 
         PushPlace(CurrentPlace());
-    }
-
-    private void OnIteratorLinkClick(object sender, RoutedEventArgs e)
-    {
-        if ((sender as FrameworkElement)?.DataContext is ArgumentRow { Iterator: { } target })
-        {
-            NavigateToIterator(target);
-        }
     }
 
     private void OnValueIteratorClick(object sender, RoutedEventArgs e)
@@ -759,11 +827,84 @@ public sealed partial class QueryCallStackTabView : UserControl, IDocumentComman
         PushPlace(CurrentPlace());
     }
 
-    private void OnFindValueClick(object sender, RoutedEventArgs e)
+    private void OnArgumentPageClicked(object? sender, PageAddressEventArgs e)
+        => OpenPage(new PageAddress(e.FileId, e.PageId), e.Slot is 0 ? null : e.Slot);
+
+    private void OnNodeLocatorsClick(object sender, RoutedEventArgs e)
     {
-        if ((sender as FrameworkElement)?.DataContext is ArgumentRow { Raw: { } value } && _viewModel is not null)
+        if (sender is not FrameworkElement { DataContext: TreeViewNode { Content: CallStackNode { Locators: { } locators } } } element)
         {
-            _ = _viewModel.Arguments.FindValueAsync(value);
+            return;
+        }
+
+        if (locators.Count == 1)
+        {
+            OpenPage(locators.Ordered().First());
+
+            return;
+        }
+
+        var menu = new MenuFlyout();
+
+        foreach (var locator in locators.Ordered().Take(ListedLocators))
+        {
+            var item = new MenuFlyoutItem { Text = locator.ToString(), Tag = locator };
+
+            item.Click += OnListedLocatorClick;
+
+            menu.Items.Add(item);
+        }
+
+        if (locators.Count > ListedLocators)
+        {
+            menu.Items.Add(new MenuFlyoutItem { Text = $"And {locators.Count - ListedLocators:N0} More", IsEnabled = false });
+        }
+
+        menu.ShowAt(element);
+    }
+
+    private void OnListedLocatorClick(object sender, RoutedEventArgs e)
+    {
+        if (sender is MenuFlyoutItem { Tag: TimeTravelLocator locator })
+        {
+            OpenPage(locator);
+        }
+    }
+
+    private void OpenPage(TimeTravelLocator locator)
+    {
+        if (locator.Kind == LocatorKind.ColumnStoreObject)
+        {
+            _viewModel?.OpenColumnstoreObject(locator.HobtId,
+                                              new ColumnstoreObjectTarget(locator.ObjectType, locator.ColumnId, locator.ObjectId));
+
+            return;
+        }
+
+        OpenPage(locator.Page, locator.Kind == LocatorKind.Row ? locator.Slot : null);
+    }
+
+    private void OpenPage(PageAddress pageAddress, ushort? slot)
+    {
+        if (_viewModel is not { } viewModel)
+        {
+            return;
+        }
+
+        var shift = InputKeyboardSource.GetKeyStateForCurrentThread(VirtualKey.Shift);
+
+        if (shift.HasFlag(CoreVirtualKeyStates.Down))
+        {
+            WeakReferenceMessenger.Default
+                                  .Send(new OpenPageMessage(new OpenPageRequest(viewModel.Database, pageAddress)
+                                  {
+                                      Slot = slot,
+                                      LogRecords = viewModel.GetPageLogRecords(pageAddress)
+                                  }));
+        }
+        else
+        {
+            viewModel.OpenPage(pageAddress, slot);
         }
     }
 
@@ -1251,8 +1392,8 @@ public sealed partial class QueryCallStackTabView : UserControl, IDocumentComman
         {
             _viewModel.PropertyChanged -= OnPropertyChanged;
             _viewModel.Symbols.PropertyChanged -= OnSymbolsPropertyChanged;
-            _viewModel.Arguments.PropertyChanged -= OnArgumentsPropertyChanged;
             _viewModel.CallNavigationRequested -= OnCallNavigationRequested;
+            _viewModel.Arguments.CallChosen -= OnArgumentCallChosen;
             _viewModel.QueryOptions.PropertyChanged -= OnQueryOptionsPropertyChanged;
             _viewModel.QueryOptions.FilterChanged -= OnQueryFilterChanged;
         }
@@ -1263,15 +1404,13 @@ public sealed partial class QueryCallStackTabView : UserControl, IDocumentComman
         {
             _viewModel.PropertyChanged += OnPropertyChanged;
             _viewModel.Symbols.PropertyChanged += OnSymbolsPropertyChanged;
-            _viewModel.Arguments.PropertyChanged += OnArgumentsPropertyChanged;
             _viewModel.CallNavigationRequested += OnCallNavigationRequested;
+            _viewModel.Arguments.CallChosen += OnArgumentCallChosen;
             _viewModel.QueryOptions.PropertyChanged += OnQueryOptionsPropertyChanged;
             _viewModel.QueryOptions.FilterChanged += OnQueryFilterChanged;
         }
 
         RefreshDetailPane();
-
-        RefreshArgumentDetail();
 
         BuildSymbolTree();
 
@@ -1304,32 +1443,6 @@ public sealed partial class QueryCallStackTabView : UserControl, IDocumentComman
             RecordHistory(_viewModel?.SelectedEvent);
 
             ApplyFocus(_viewModel?.SelectedEvent);
-        }
-    }
-
-    private void OnArgumentsPropertyChanged(object? sender, PropertyChangedEventArgs e)
-    {
-        if (e.PropertyName == nameof(ArgumentsViewModel.HasCall))
-        {
-            RefreshArgumentDetail();
-        }
-    }
-
-    private void RefreshArgumentDetail()
-    {
-        var hasCall = _viewModel?.Arguments.HasCall == true;
-
-        var shown = ArgumentDetailRow.Height.Value > 0;
-
-        if (hasCall && !shown)
-        {
-            ArgumentDetailRow.Height = _argumentDetailHeight;
-        }
-        else if (!hasCall && shown)
-        {
-            _argumentDetailHeight = ArgumentDetailRow.Height;
-
-            ArgumentDetailRow.Height = new GridLength(0);
         }
     }
 
@@ -2328,6 +2441,10 @@ public sealed partial class QueryCallStackTabView : UserControl, IDocumentComman
     {
         _search = sender.Text?.Trim() ?? string.Empty;
 
+        _locatorSearch = LocatorSearch.TryParse(_search, out var locator) ? locator : null;
+
+        _columnStoreSearch = ColumnStoreSearch.TryParse(_search, out var columnStore) ? columnStore : null;
+
         ApplyFocus(_viewModel?.SelectedEvent);
     }
 
@@ -2339,14 +2456,29 @@ public sealed partial class QueryCallStackTabView : UserControl, IDocumentComman
     /// an operator badge and a module all look like plausible things to type.
     /// </remarks>
     private bool Matches(CallStackNode node)
-        => _search.Length == 0
-           || Contains(node.Symbol)
-           || Contains(node.Category)
-           || Contains(node.Operator)
-           || Contains(node.Frame?.Module);
+    {
+        if (_locatorSearch is { } locator)
+        {
+            return node.Locators?.Contains(locator) == true;
+        }
+
+        if (_columnStoreSearch is { } columnStore)
+        {
+            return node.Locators?.Contains(columnStore) == true;
+        }
+
+        return _search.Length == 0
+               || Contains(node.Symbol)
+               || Contains(node.Category)
+               || Contains(node.Operator)
+               || Contains(node.Frame?.Module);
+    }
 
     private bool Matches(ExecutionOperatorEvent op)
-        => _search.Length == 0 || Contains(op.OperatorDescription) || Contains(op.TargetLabel) || Contains(op.Name);
+        => _search.Length == 0
+           || _locatorSearch is null
+           && _columnStoreSearch is null
+           && (Contains(op.OperatorDescription) || Contains(op.TargetLabel) || Contains(op.Name));
 
     private bool Contains(string? value)
         => value is not null && value.Contains(_search, StringComparison.OrdinalIgnoreCase);

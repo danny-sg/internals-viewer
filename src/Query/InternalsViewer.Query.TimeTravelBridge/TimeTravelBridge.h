@@ -27,11 +27,31 @@ extern "C"
         uint32_t Flags;
     };
 
+    struct MemoryRead
+    {
+        uint64_t Function;
+        int32_t  Register;
+        uint32_t AtReturn;
+        uint32_t Offset;
+    };
+
+    struct MemoryValue
+    {
+        uint64_t Function;
+        uint64_t Instance;
+        uint64_t Value;
+        uint32_t Call;
+        int32_t  Register;
+        uint32_t Offset;
+    };
+
     typedef void(__stdcall* ProgressCallback)(uint32_t thread, int32_t percent);
 
     typedef void(__stdcall* CallChunkCallback)(uint64_t address, uint64_t instance, const uint64_t* columns, int32_t calls);
 
     typedef void(__stdcall* CallSpanCallback)(const CallSpan* spans, int32_t count);
+
+    typedef void(__stdcall* MemoryValueCallback)(const MemoryValue* values, int32_t count);
 
     __declspec(dllexport) int32_t OpenTrace(const wchar_t* replayLibraryPath, const wchar_t* tracePath, void** trace);
 
@@ -53,8 +73,11 @@ extern "C"
                                                int32_t               excludedFunctionCount,
                                                const uint64_t*       markerFunctions,
                                                int32_t               markerFunctionCount,
+                                               const MemoryRead*     memoryReads,
+                                               int32_t               memoryReadCount,
                                                CallChunkCallback     logCalls,
                                                CallSpanCallback      logSpans,
+                                               MemoryValueCallback   logMemory,
                                                ProgressCallback      progress,
                                                volatile int32_t*     cancel,
                                                void**                tree);

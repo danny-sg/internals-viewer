@@ -4,6 +4,8 @@ public sealed record ArgumentLayout(IReadOnlyList<ArgumentSlot> Slots, string? R
 {
     public const int CapturedSlots = 8;
 
+    public const string ReturnBuffer = "Return Buffer";
+
     private const int StackArgumentOffset = 0x28;
 
     private static readonly string[] Registers = ["RCX", "RDX", "R8", "R9"];
@@ -19,6 +21,13 @@ public sealed record ArgumentLayout(IReadOnlyList<ArgumentSlot> Slots, string? R
             slots.Add(new ArgumentSlot("this", "this", ArgumentLocation.Register, 0, Registers[0]));
 
             position = 1;
+        }
+
+        if (signature.HasReturnBuffer)
+        {
+            slots.Add(Slot(ReturnBuffer, $"{signature.ReturnType ?? "void"} *", position));
+
+            position++;
         }
 
         for (var i = 0; i < signature.Parameters.Count; i++, position++)

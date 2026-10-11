@@ -395,6 +395,8 @@ public sealed partial class FlameChartControl
 
         DrawHighlight(canvas, hover, width, _paints.Hover);
 
+        DrawHighlight(canvas, ChosenCall, width, _paints.Selection);
+
         canvas.Restore();
 
         DrawOperatorOverlay(canvas, width);
@@ -406,6 +408,8 @@ public sealed partial class FlameChartControl
             canvas.ClipRect(new SKRect(0, 0, width, height - BandHeight));
 
             DrawSpikeHighlight(canvas, hover, _paints.Hover);
+
+            DrawSpikeHighlight(canvas, ChosenCall, _paints.Selection);
 
             canvas.Restore();
         }

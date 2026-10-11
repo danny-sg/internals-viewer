@@ -31,6 +31,7 @@ using InternalsViewer.Query.Results;
 using InternalsViewer.UI.App.Controls.SqlEditor;
 using InternalsViewer.UI.App.Messages;
 using InternalsViewer.UI.App.Models;
+using InternalsViewer.UI.App.Models.Columnstore;
 using InternalsViewer.UI.App.Models.Query.CallStack;
 using InternalsViewer.UI.App.Models.Schema;
 using InternalsViewer.UI.App.Services;
@@ -1275,6 +1276,23 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
                    ?? ExecutionPlans.FirstOrDefault();
 
         return plan is not null && plan.NodesById.TryGetValue(identifier.NodeId, out var node) ? node : null;
+    }
+
+    public void OpenColumnstoreObject(ulong hobtId, ColumnstoreObjectTarget target)
+    {
+        if (Database.FindHobtIdAllocationUnit((long)hobtId) is not { } unit)
+        {
+            Logger.LogWarning("No allocation unit found for columnstore HoBt {HobtId}", hobtId);
+
+            return;
+        }
+
+        OpenIndex(unit.SchemaName, unit.TableName, unit.IndexName);
+
+        if (_openColumnstores.TryGetValue($"Index:{unit.SchemaName}.{unit.TableName}.{unit.IndexName}", out var columnstore))
+        {
+            columnstore.Reveal(target);
+        }
     }
 
     private void OpenIndex(string? schema, string? table, string? index)

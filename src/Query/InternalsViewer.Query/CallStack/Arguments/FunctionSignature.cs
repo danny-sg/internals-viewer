@@ -2,8 +2,13 @@ using System.Text.RegularExpressions;
 
 namespace InternalsViewer.Query.CallStack.Arguments;
 
-public sealed partial record FunctionSignature(IReadOnlyList<string> Parameters, FunctionKind Kind, string? ReturnType)
+public sealed partial record FunctionSignature(IReadOnlyList<string> Parameters,
+                                               FunctionKind Kind,
+                                               string? ReturnType,
+                                               bool HasReturnBuffer = false)
 {
+    public const string EnumPrefix = "enum ";
+
     public static FunctionSignature? Parse(string? signature, string? decoratedName)
     {
         if (signature is null || ParseParameters(signature) is not { } parameters)
@@ -13,9 +18,12 @@ public sealed partial record FunctionSignature(IReadOnlyList<string> Parameters,
 
         if (decoratedName is not null && Decoration().Match(decoratedName) is { Success: true } match)
         {
-            return new FunctionSignature(parameters,
+            var encodedReturn = decoratedName[(match.Index + match.Length)..];
+
+            return new FunctionSignature(MarkEnums(parameters, decoratedName),
                                          KindOf(match),
-                                         DecodeReturnType(decoratedName[(match.Index + match.Length)..]));
+                                         DecodeReturnType(encodedReturn),
+                                         ReturnBuffer().IsMatch(encodedReturn));
         }
 
         return new FunctionSignature(parameters, IsScoped(signature) ? FunctionKind.Member : FunctionKind.Free, null);
@@ -68,6 +76,15 @@ public sealed partial record FunctionSignature(IReadOnlyList<string> Parameters,
         return inner is "" or "void" ? [] : SplitTopLevel(inner);
     }
 
+    private static List<string> MarkEnums(IReadOnlyList<string> parameters, string decoratedName)
+    {
+        var enums = EnumType().Matches(decoratedName)
+                              .Select(m => string.Join("::", m.Groups["name"].Value.Split('@').Reverse()))
+                              .ToHashSet(StringComparer.Ordinal);
+
+        return [.. parameters.Select(p => enums.Contains(p) ? $"{EnumPrefix}{p}" : p)];
+    }
+
     private static FunctionKind KindOf(Match match)
         => match.Groups["member"].Success ? FunctionKind.Member
            : match.Groups["static"].Success ? FunctionKind.Static
@@ -85,6 +102,11 @@ public sealed partial record FunctionSignature(IReadOnlyList<string> Parameters,
         if (encoded.Length == 0)
         {
             return null;
+        }
+
+        if (ClassType().Match(encoded) is { Success: true } named)
+        {
+            return DescribeClass(named);
         }
 
         if (encoded[0] == '_' && encoded.Length > 1)
@@ -122,6 +144,20 @@ public sealed partial record FunctionSignature(IReadOnlyList<string> Parameters,
             'P' or 'Q' => "void *",
             _ => null
         };
+    }
+
+    private static string DescribeClass(Match match)
+    {
+        var name = match.Groups["name"].Value;
+
+        if (!match.Groups["indirection"].Success)
+        {
+            return name;
+        }
+
+        var qualifier = match.Groups["qualifier"].Value is "B" or "D" ? " const" : string.Empty;
+
+        return $"{name}{qualifier} {(match.Groups["indirection"].Value == "A" ? '&' : '*')}";
     }
 
     private static int FindParameterList(string signature)
@@ -184,4 +220,13 @@ public sealed partial record FunctionSignature(IReadOnlyList<string> Parameters,
 
     [GeneratedRegex(@"@@(?:(?<member>[ABEFIJMNQRUV])E[ABCD]|(?<static>[CDKLST])|(?<free>[YZ]))[AQ]")]
     private static partial Regex Decoration();
+
+    [GeneratedRegex(@"^(?:\?[ABCD]|(?<indirection>[PQA])E[FI]*(?<qualifier>[ABCD]))[UVT](?<name>[A-Za-z_]\w*)@@")]
+    private static partial Regex ClassType();
+
+    [GeneratedRegex(@"^\?[ABCD][UVT]")]
+    private static partial Regex ReturnBuffer();
+
+    [GeneratedRegex(@"W4(?<name>[A-Za-z_]\w*(?:@[A-Za-z_]\w*)*)@@")]
+    private static partial Regex EnumType();
 }

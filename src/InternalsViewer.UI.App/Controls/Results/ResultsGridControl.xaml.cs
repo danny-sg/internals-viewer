@@ -37,6 +37,19 @@ public sealed partial class ResultsGridControl : UserControl
         set => SetValue(SelectedRowProperty, value);
     }
 
+    public static readonly DependencyProperty RowNameProperty =
+        DependencyProperty.Register(
+            nameof(RowName),
+            typeof(string),
+            typeof(ResultsGridControl),
+            new PropertyMetadata("row", OnRowNameChanged));
+
+    public string RowName
+    {
+        get => (string)GetValue(RowNameProperty);
+        set => SetValue(RowNameProperty, value);
+    }
+
     private Size _lastKnownSize = new(800, 600);
 
     public ResultsGridControl()
@@ -53,6 +66,8 @@ public sealed partial class ResultsGridControl : UserControl
     }
 
     public event EventHandler<PageAddressEventArgs>? PageClicked;
+
+    public event EventHandler<ResultCellMenuEventArgs>? CellMenuOpening;
 
     private TableView? ResultsTable { get; set; }
 
@@ -91,11 +106,18 @@ public sealed partial class ResultsGridControl : UserControl
 
         table.SelectionChanged += OnSelectionChanged;
 
+        if (CellMenuOpening is not null)
+        {
+            table.CellContextFlyout = new MenuFlyout();
+
+            table.CellContextFlyoutOpening += OnCellContextFlyoutOpening;
+        }
+
         ResultsTable = table;
 
         TableHost.Child = table;
 
-        StatusText.Text = rows.Count == 1 ? "1 row" : $"{rows.Count:N0} rows";
+        UpdateStatus();
 
         DispatcherQueue.TryEnqueue(DispatcherQueuePriority.Low, WarmRows);
     }
@@ -127,11 +149,41 @@ public sealed partial class ResultsGridControl : UserControl
 
         table.SelectionChanged -= OnSelectionChanged;
 
+        table.CellContextFlyoutOpening -= OnCellContextFlyoutOpening;
+
         TableHost.Child = null;
 
         table.ItemsSource = null;
 
         ResultsTable = null;
+    }
+
+    private void UpdateStatus()
+    {
+        if (ResultSet is not { Rows.Count: var count })
+        {
+            StatusText.Text = string.Empty;
+
+            return;
+        }
+
+        StatusText.Text = count == 1 ? $"1 {RowName}" : $"{count:N0} {RowName}s";
+    }
+
+    private void OnCellContextFlyoutOpening(object? sender, TableViewCellContextFlyoutEventArgs e)
+    {
+        if (e.Flyout is not MenuFlyout menu || e.Item is not ResultRow<long> row)
+        {
+            e.Handled = true;
+
+            return;
+        }
+
+        menu.Items.Clear();
+
+        CellMenuOpening?.Invoke(this, new ResultCellMenuEventArgs(row, e.Slot.Column, menu));
+
+        e.Handled = menu.Items.Count == 0;
     }
 
     private void OnSelectionChanged(object sender, SelectionChangedEventArgs e)
@@ -228,6 +280,9 @@ public sealed partial class ResultsGridControl : UserControl
     {
         PageClicked?.Invoke(this, e);
     }
+
+    private static void OnRowNameChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
+        => ((ResultsGridControl)d).UpdateStatus();
 
     private static void OnResultSetChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
     {

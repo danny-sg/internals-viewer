@@ -1,6 +1,8 @@
 using System.Buffers;
 using System.IO.Compression;
 using System.Runtime.InteropServices;
+using InternalsViewer.Query.CallStack.TimeTravel.Locators;
+using InternalsViewer.Query.CallStack.TimeTravel.Native;
 
 namespace InternalsViewer.Query.CallStack.TimeTravel.CallLog;
 
@@ -16,11 +18,14 @@ public sealed class TimeTravelCallLog
 
     private static readonly string[] Registers = ["RCX", "RDX", "R8", "R9"];
 
-    private TimeTravelCallLog(Dictionary<(ulong Address, ulong Instance), Chunk[]> functions)
+    private TimeTravelCallLog(Dictionary<(ulong Address, ulong Instance), Chunk[]> functions,
+                              Dictionary<(ulong Address, ulong Instance), TimeTravelLocatorTable> locators)
     {
         Functions = functions;
+        Locators = locators;
         Calls = functions.Values.Sum(f => f.Sum(c => (long)c.Calls));
         Size = functions.Values.Sum(f => f.Sum(c => (long)c.Columns.Length));
+        LocatorCount = locators.Values.Sum(l => (long)l.Count);
     }
 
     public int FunctionCount => Functions.Count;
@@ -29,20 +34,68 @@ public sealed class TimeTravelCallLog
 
     public long Size { get; }
 
+    public long LocatorCount { get; }
+
     private Dictionary<(ulong Address, ulong Instance), Chunk[]> Functions { get; }
+
+    private Dictionary<(ulong Address, ulong Instance), TimeTravelLocatorTable> Locators { get; }
 
     private CallStackNode?[] Nodes { get; set; } = [];
 
     public TimeTravelCallList? CallsOf(ulong address, ulong instance)
-        => Functions.TryGetValue((address, instance), out var chunks) ? new TimeTravelCallList(address, instance, chunks) : null;
+        => Functions.TryGetValue((address, instance), out var chunks)
+            ? new TimeTravelCallList(address, instance, chunks, Locators.GetValueOrDefault((address, instance)))
+            : null;
 
-    public CallStackNode? NodeOf(TimeTravelArgumentCall call)
-        => call.Node >= 0 && call.Node < Nodes.Length ? Nodes[call.Node] : null;
+    public CallStackNode? NodeOf(TimeTravelArgumentCall call) => NodeAt(call.Node);
+
+    public int? FirstCallOn(IReadOnlyList<TimeTravelArgumentCall> calls, CallStackNode node)
+    {
+        var matches = new Dictionary<int, bool>();
+
+        for (var index = 0; index < calls.Count; index++)
+        {
+            var raw = calls is TimeTravelCallList list ? list.NodeIndexAt(index) : calls[index].Node;
+
+            if (!matches.TryGetValue(raw, out var match))
+            {
+                match = NodeAt(raw) is { } original && EndsWith(original, node);
+
+                matches[raw] = match;
+            }
+
+            if (match)
+            {
+                return index;
+            }
+        }
+
+        return null;
+    }
 
     public Task<IReadOnlyList<TimeTravelValueUse>> FindAsync(ulong value, CancellationToken cancellationToken)
         => Task.Run<IReadOnlyList<TimeTravelValueUse>>(() => Find(value, cancellationToken), cancellationToken);
 
     internal void MapNodes(CallStackNode?[] nodes) => Nodes = nodes;
+
+    internal void AnnotateNodes()
+    {
+        foreach (var ((address, instance), table) in Locators)
+        {
+            if (CallsOf(address, instance) is not { } calls)
+            {
+                continue;
+            }
+
+            foreach (var (call, locator) in table.Entries())
+            {
+                if (call < calls.Count && NodeAt(calls.NodeIndexAt(call)) is { } node)
+                {
+                    (node.Locators ??= new TimeTravelLocatorSet()).Add(locator);
+                }
+            }
+        }
+    }
 
     internal static ulong[] Decompress(Chunk chunk)
     {
@@ -107,6 +160,25 @@ public sealed class TimeTravelCallLog
         return [.. uses.Values.OrderBy(u => u.First.Sequence)];
     }
 
+    private CallStackNode? NodeAt(int node) => node >= 0 && node < Nodes.Length ? Nodes[node] : null;
+
+    private static bool EndsWith(CallStackNode path, CallStackNode end)
+    {
+        var node = path;
+
+        for (var other = end; other is { IsRoot: false }; other = other.Parent)
+        {
+            if (node is not { IsRoot: false } || !ReferenceEquals(node.Frame, other.Frame) && node.Key != other.Key)
+            {
+                return false;
+            }
+
+            node = node.Parent;
+        }
+
+        return true;
+    }
+
     private TimeTravelValueMatch MatchAt(ulong[] columns, int calls, int call, int start)
     {
         var node = (int)columns[(TimeTravelArgumentCall.ValueCount - 1) * calls + call];
@@ -156,9 +228,17 @@ public sealed class TimeTravelCallLog
 
     internal sealed record Chunk(int Calls, byte[] Columns);
 
-    internal sealed class Builder
+    internal sealed class Builder(IEnumerable<LocatorRead>? locatorReads = null)
     {
         private Dictionary<(ulong Address, ulong Instance), List<Task<Chunk>>> Pending { get; } = new();
+
+        private Dictionary<(ulong Function, int Register, int Offset), LocatorRead> Reads { get; }
+            = (locatorReads ?? []).DistinctBy(r => (r.Function, r.Register, r.Offset))
+                                  .ToDictionary(r => (r.Function, r.Register, r.Offset));
+
+        private Dictionary<(ulong Function, ulong Instance, uint Call, int Register), ulong[]> ObjectKeys { get; } = new();
+
+        private Dictionary<(ulong Address, ulong Instance), List<(int Call, TimeTravelLocator Locator)>> Found { get; } = new();
 
         private SemaphoreSlim Compressing { get; } = new(Math.Max(2, Environment.ProcessorCount));
 
@@ -192,11 +272,53 @@ public sealed class TimeTravelCallLog
         public void Add(ulong address, ulong instance, ReadOnlySpan<ulong> columns, int calls)
             => ChunksOf(address, instance).Add(Task.FromResult(Compress(columns, calls)));
 
+        public void AddLocators(IntPtr values, int count)
+        {
+            var size = count * Marshal.SizeOf<TimeTravelMemoryValue>();
+
+            var buffer = ArrayPool<byte>.Shared.Rent(size);
+
+            try
+            {
+                Marshal.Copy(values, buffer, 0, size);
+
+                AddLocators(MemoryMarshal.Cast<byte, TimeTravelMemoryValue>(buffer.AsSpan(0, size)));
+            }
+            finally
+            {
+                ArrayPool<byte>.Shared.Return(buffer);
+            }
+        }
+
+        public void AddLocators(ReadOnlySpan<TimeTravelMemoryValue> values)
+        {
+            foreach (var value in values)
+            {
+                if (!Reads.TryGetValue((value.Function, value.Register, (int)value.Offset), out var read))
+                {
+                    continue;
+                }
+
+                if (read.Kind != LocatorKind.ColumnStoreObject)
+                {
+                    FoundFor(value).Add(((int)value.Call, new TimeTravelLocator(read.Register, read.Kind, value.Value)));
+
+                    continue;
+                }
+
+                if (AddKeyPart(value) is { } key)
+                {
+                    FoundFor(value).Add(((int)value.Call, TimeTravelLocator.ColumnStoreObject(read.Register, key[0], key[1], key[2])));
+                }
+            }
+        }
+
         public TimeTravelCallLog Build()
         {
             Task.WaitAll([.. Pending.Values.SelectMany(c => c)]);
 
-            return new TimeTravelCallLog(Pending.ToDictionary(p => p.Key, p => p.Value.Select(c => c.Result).ToArray()));
+            return new TimeTravelCallLog(Pending.ToDictionary(p => p.Key, p => p.Value.Select(c => c.Result).ToArray()),
+                                         Found.ToDictionary(f => f.Key, f => TimeTravelLocatorTable.Build(f.Value)));
         }
 
         private static Chunk Compress(ReadOnlySpan<ulong> columns, int calls)
@@ -209,6 +331,45 @@ public sealed class TimeTravelCallLog
             }
 
             return new Chunk(calls, compressed.ToArray());
+        }
+
+        private List<(int Call, TimeTravelLocator Locator)> FoundFor(TimeTravelMemoryValue value)
+        {
+            if (!Found.TryGetValue((value.Function, value.Instance), out var found))
+            {
+                found = [];
+
+                Found[(value.Function, value.Instance)] = found;
+            }
+
+            return found;
+        }
+
+        private ulong[]? AddKeyPart(TimeTravelMemoryValue value)
+        {
+            var identity = (value.Function, value.Instance, value.Call, value.Register);
+
+            if (!ObjectKeys.TryGetValue(identity, out var key))
+            {
+                key = new ulong[LocatorReads.ObjectKeyParts + 1];
+
+                ObjectKeys[identity] = key;
+            }
+
+            var part = (int)value.Offset / sizeof(ulong);
+
+            key[part] = value.Value;
+
+            key[LocatorReads.ObjectKeyParts] |= 1ul << part;
+
+            if (key[LocatorReads.ObjectKeyParts] != (1ul << LocatorReads.ObjectKeyParts) - 1)
+            {
+                return null;
+            }
+
+            ObjectKeys.Remove(identity);
+
+            return key;
         }
 
         private List<Task<Chunk>> ChunksOf(ulong address, ulong instance)

@@ -1,4 +1,5 @@
 using InternalsViewer.Query.CallStack.Arguments;
+using InternalsViewer.Query.CallStack.TimeTravel.Locators;
 
 namespace InternalsViewer.Query.CallStack.TimeTravel.CallLog;
 
@@ -21,6 +22,8 @@ public sealed record TimeTravelArgumentCall(ulong Sequence,
 
     private const ulong ReturnedFlag = 1ul << 32;
 
+    public IReadOnlyList<TimeTravelLocator> Locators { get; init; } = [];
+
     public ulong ReturnedValue => Returned ? ReturnValue : 0;
 
     public static bool IsCaptured(ArgumentSlot slot) => slot.Location == ArgumentLocation.Register;
@@ -31,7 +34,20 @@ public sealed record TimeTravelArgumentCall(ulong Sequence,
 
     public ulong Slot(int index) => index >= 0 && index < IntegerSlots.Length ? IntegerSlots[index] : 0;
 
-    internal static TimeTravelArgumentCall From(ReadOnlySpan<ulong> values)
+    public TimeTravelLocator? LocatorAt(int register)
+    {
+        foreach (var locator in Locators)
+        {
+            if (locator.Register == register)
+            {
+                return locator;
+            }
+        }
+
+        return null;
+    }
+
+    internal static TimeTravelArgumentCall From(ReadOnlySpan<ulong> values, IReadOnlyList<TimeTravelLocator>? locators = null)
     {
         var flags = values[1];
 
@@ -40,6 +56,9 @@ public sealed record TimeTravelArgumentCall(ulong Sequence,
                                           (flags & ReturnedFlag) != 0,
                                           values.Slice(IntegerOffset, RegisterCount).ToArray(),
                                           values[ReturnValueIndex],
-                                          (int)values[NodeIndex]);
+                                          (int)values[NodeIndex])
+        {
+            Locators = locators ?? []
+        };
     }
 }

@@ -52,6 +52,12 @@ namespace
 
     constexpr size_t NodeValue = 7;
 
+    constexpr int32_t ArgumentRegisters = 4;
+
+    constexpr int32_t ReturnRegister = 4;
+
+    constexpr size_t MemoryChunk = 65536;
+
     constexpr size_t ChunkCalls = 16384;
 
     constexpr size_t IdleChunkCalls = 256;
@@ -179,6 +185,9 @@ namespace
         CallSpanCallback                                    LogSpans = nullptr;
         std::vector<CallSpan>                               Spans;
         std::unordered_map<uint32_t, ThreadClock>           Clocks;
+        std::unordered_map<uint64_t, std::vector<MemoryRead>> Reads;
+        MemoryValueCallback                                 LogMemory = nullptr;
+        std::vector<MemoryValue>                            Memory;
 
         int32_t Child(int32_t parent, uint64_t address, uint64_t instance)
         {
@@ -253,6 +262,56 @@ namespace
             LogSpans(Spans.data(), static_cast<int32_t>(Spans.size()));
 
             Spans.clear();
+        }
+
+        std::vector<MemoryRead> const* ReadsOf(uint64_t function) const
+        {
+            if (LogMemory == nullptr || Reads.empty())
+            {
+                return nullptr;
+            }
+
+            auto const reads = Reads.find(function);
+
+            return reads == Reads.end() ? nullptr : &reads->second;
+        }
+
+        void ReadMemory(IThreadView const& thread, LoggedFunction const& function, uint32_t call, MemoryRead const& read, uint64_t pointer)
+        {
+            if (pointer == 0)
+            {
+                return;
+            }
+
+            uint64_t value = 0;
+
+            auto const address = static_cast<GuestAddress>(pointer + read.Offset);
+
+            auto const buffer = thread.QueryMemoryBuffer(address, BufferView{ &value, sizeof(value) });
+
+            if (buffer.Memory.Size != sizeof(value))
+            {
+                return;
+            }
+
+            Memory.push_back(MemoryValue{ function.Address, function.Instance, value, call, read.Register, read.Offset });
+
+            if (Memory.size() >= MemoryChunk)
+            {
+                FlushMemory();
+            }
+        }
+
+        void FlushMemory()
+        {
+            if (LogMemory == nullptr || Memory.empty())
+            {
+                return;
+            }
+
+            LogMemory(Memory.data(), static_cast<int32_t>(Memory.size()));
+
+            Memory.clear();
         }
     };
 
@@ -385,7 +444,7 @@ namespace
         }
     }
 
-    void CompleteCall(StackFrame const& frame, IThreadView const& thread)
+    void CompleteCall(CallTree& tree, StackFrame const& frame, IThreadView const& thread)
     {
         auto* values = frame.Function->Values.data() + frame.Call * ValuesPerCall;
 
@@ -394,6 +453,47 @@ namespace
         values[ReturnValue] = context.Amd64Context.Rax;
 
         values[ThreadValue] |= ReturnedFlag;
+
+        auto const* reads = tree.ReadsOf(frame.Function->Address);
+
+        if (reads == nullptr)
+        {
+            return;
+        }
+
+        for (auto const& read : *reads)
+        {
+            if (read.AtReturn == 0 || read.Register < 0 || read.Register > ReturnRegister)
+            {
+                continue;
+            }
+
+            auto const pointer = read.Register == ReturnRegister ? values[ReturnValue] : values[IntegerValues + read.Register];
+
+            tree.ReadMemory(thread, *frame.Function, frame.LoggedCall, read, pointer);
+        }
+    }
+
+    void ReadArguments(CallTree& tree, IThreadView const& thread, AMD64_CONTEXT const& registers, LoggedCall const& logged)
+    {
+        auto const* reads = logged.Function == nullptr ? nullptr : tree.ReadsOf(logged.Function->Address);
+
+        if (reads == nullptr)
+        {
+            return;
+        }
+
+        uint64_t const arguments[ArgumentRegisters] = { registers.Rcx, registers.Rdx, registers.R8, registers.R9 };
+
+        for (auto const& read : *reads)
+        {
+            if (read.AtReturn != 0 || read.Register < 0 || read.Register >= ArgumentRegisters)
+            {
+                continue;
+            }
+
+            tree.ReadMemory(thread, *logged.Function, logged.Index, read, arguments[read.Register]);
+        }
     }
 
     void Release(CallTree& tree, StackFrame const& frame, IThreadView const* thread, uint64_t returnTarget)
@@ -405,7 +505,7 @@ namespace
 
         if (thread != nullptr && frame.ReturnAddress == returnTarget)
         {
-            CompleteCall(frame, *thread);
+            CompleteCall(tree, frame, *thread);
         }
 
         auto& function = *frame.Function;
@@ -514,6 +614,8 @@ namespace
                                         target,
                                         instance,
                                         node);
+
+            ReadArguments(tree, *thread, registers, logged);
 
             stack.push_back(StackFrame{ stackPointer,
                                         node,
@@ -844,8 +946,11 @@ extern "C"
                          int32_t               excludedFunctionCount,
                          const uint64_t*       markerFunctions,
                          int32_t               markerFunctionCount,
+                         const MemoryRead*     memoryReads,
+                         int32_t               memoryReadCount,
                          CallChunkCallback     logCalls,
                          CallSpanCallback      logSpans,
+                         MemoryValueCallback   logMemory,
                          ProgressCallback      progress,
                          volatile int32_t*     cancel,
                          void**                tree)
@@ -876,9 +981,16 @@ extern "C"
             result->Markers.insert(markerFunctions[index]);
         }
 
+        for (int32_t index = 0; index < memoryReadCount; index++)
+        {
+            result->Reads[memoryReads[index].Function].push_back(memoryReads[index]);
+        }
+
         result->LogCalls = logCalls;
 
         result->LogSpans = logSpans;
+
+        result->LogMemory = logMemory;
 
         auto const status = ReplayTrace(engine,
                                         result->Threads,
@@ -910,7 +1022,10 @@ extern "C"
 
         result->FlushSpans();
 
+        result->FlushMemory();
+
         result->Spans = {};
+        result->Memory = {};
         result->Clocks.clear();
 
         result->Stacks.clear();

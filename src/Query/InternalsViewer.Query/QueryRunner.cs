@@ -383,7 +383,7 @@ public sealed class QueryRunner(ILogger<QueryRunner> logger,
 
             start = Stopwatch.GetTimestamp();
 
-            functions = await ReplayFunctions.ResolveAsync(session.Modules, pending.SymbolsPath, progress, cancellationToken);
+            functions = await ReplayFunctions.ResolveAsync(session.Modules, pending.SymbolsPath, Logger, progress, cancellationToken);
 
             progress?.Report($"{functions.Excluded.Length:N0} Extended Events and tracing function(s) excluded from the replay, "
                              + $"{functions.Memory.Length:N0} memory function(s) tracked");
@@ -411,7 +411,7 @@ public sealed class QueryRunner(ILogger<QueryRunner> logger,
                          + $"{Stopwatch.GetElapsedTime(start)}");
 
         progress?.Report($"{replay.CallLog.Calls:N0} call(s) of {replay.CallLog.FunctionCount:N0} function(s) logged in "
-                         + $"{replay.CallLog.Size / (1024.0 * 1024.0):N1} MB");
+                         + $"{replay.CallLog.Size / (1024.0 * 1024.0):N1} MB, {replay.CallLog.LocatorCount:N0} page and row id(s) read");
 
         progress?.Report("Processing callstack frames");
 
@@ -426,6 +426,8 @@ public sealed class QueryRunner(ILogger<QueryRunner> logger,
         CallStackNode?[] mapped = [.. replayed.Select(node => collapsed.GetValueOrDefault(node))];
 
         replay.CallLog.MapNodes(mapped);
+
+        replay.CallLog.AnnotateNodes();
 
         replay.Timeline.MapNodes(mapped);
 

@@ -44,6 +44,8 @@ public sealed partial class TraceBatchPanelView : UserControl
 
     private TraceBatchViewModel? Attached { get; set; }
 
+    private TableView? VectorTable { get; set; }
+
     public void CloseDetailPane() => Attached?.SelectSlot(null);
 
     public void CloseDeepPane()
@@ -171,9 +173,11 @@ public sealed partial class TraceBatchPanelView : UserControl
 
         _boundRows = null;
 
-        VectorTable.Columns.Clear();
+        ReleaseVectorTable();
 
-        VectorTable.Columns.Add(new TableViewTextColumn
+        var table = (TableView)((DataTemplate)Resources["VectorTableTemplate"]).LoadContent();
+
+        table.Columns.Add(new TableViewTextColumn
         {
             Header = "Index",
             Width = new GridLength(70),
@@ -182,7 +186,7 @@ public sealed partial class TraceBatchPanelView : UserControl
 
         foreach (var column in batch.Columns)
         {
-            VectorTable.Columns.Add(new BatchValueColumn(column)
+            table.Columns.Add(new BatchValueColumn(column)
             {
                 Header = BuildHeader(column),
                 Width = new GridLength(170),
@@ -190,6 +194,24 @@ public sealed partial class TraceBatchPanelView : UserControl
                 DeepDataClicked = OnDeepDataClicked
             });
         }
+
+        VectorTable = table;
+
+        VectorTableHost.Child = table;
+    }
+
+    private void ReleaseVectorTable()
+    {
+        if (VectorTable is not { } table)
+        {
+            return;
+        }
+
+        VectorTableHost.Child = null;
+
+        table.ItemsSource = null;
+
+        VectorTable = null;
     }
 
     private static object BuildHeader(BatchColumnView column)
@@ -231,14 +253,14 @@ public sealed partial class TraceBatchPanelView : UserControl
 
     private void Refresh()
     {
-        if (Attached is not { } batch || ReferenceEquals(_boundRows, batch.Rows))
+        if (Attached is not { } batch || VectorTable is not { } table || ReferenceEquals(_boundRows, batch.Rows))
         {
             return;
         }
 
         _boundRows = batch.Rows;
 
-        VectorTable.ItemsSource = batch.Rows;
+        table.ItemsSource = batch.Rows;
     }
 
     private void UpdateDetail()

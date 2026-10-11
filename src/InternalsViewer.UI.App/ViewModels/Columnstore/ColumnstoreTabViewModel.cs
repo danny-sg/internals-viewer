@@ -146,6 +146,8 @@ public sealed partial class ColumnstoreTabViewModel : TabViewModel
 
     public short DatabaseId => Database.DatabaseId;
 
+    private ColumnstoreObjectTarget? PendingTarget { get; set; }
+
     internal ColumnstoreService ColumnstoreService { get; }
 
     internal IPageService PageService { get; }
@@ -198,6 +200,13 @@ public sealed partial class ColumnstoreTabViewModel : TabViewModel
             RowGroupCount = RowGroups.Count;
 
             IsInitialized = true;
+
+            if (PendingTarget is { } target)
+            {
+                PendingTarget = null;
+
+                Open(target);
+            }
 
             _ = LoadSegmentHeaders();
         }

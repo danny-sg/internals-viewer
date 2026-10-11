@@ -17,6 +17,23 @@
         <converters:BoolToBrushConverter x:Key="PurityBrushConverter"
                                          TrueBrush="SeaGreen"
                                          FalseBrush="SlateGray" />
+        <DataTemplate x:Key="VectorTableTemplate">
+            <tableView:TableView CanSortColumns="False"
+                                 SelectionMode="Single"
+                                 RowHeight="28"
+                                 GridLinesVisibility="All"
+                                 HorizontalGridLinesStroke="{ThemeResource ControlStrokeColorDefaultBrush}"
+                                 HorizontalGridLinesStrokeThickness="1"
+                                 VerticalGridLinesStroke="{ThemeResource ControlStrokeColorDefaultBrush}"
+                                 VerticalGridLinesStrokeThickness="1"
+                                 MinColumnWidth="20"
+                                 BorderThickness="0"
+                                 Background="{ThemeResource LayerFillColorDefaultBrush}">
+                <tableView:TableView.Resources>
+                    <x:Double x:Key="ListViewItemMinHeight">0</x:Double>
+                </tableView:TableView.Resources>
+            </tableView:TableView>
+        </DataTemplate>
     </UserControl.Resources>
 
     <Grid Background="{ThemeResource LayerOnMicaBaseAltFillColorDefault}">
@@ -78,23 +95,9 @@
                         <RowDefinition x:Name="DetailRow" Height="0" />
                     </Grid.RowDefinitions>
 
-                    <tableView:TableView x:Name="VectorTable"
-                                         Grid.Row="0"
-                                         CanSortColumns="False"
-                                         SelectionMode="Single"
-                                         RowHeight="28"
-                                         GridLinesVisibility="All"
-                                         HorizontalGridLinesStroke="{ThemeResource ControlStrokeColorDefaultBrush}"
-                                         HorizontalGridLinesStrokeThickness="1"
-                                         VerticalGridLinesStroke="{ThemeResource ControlStrokeColorDefaultBrush}"
-                                         VerticalGridLinesStrokeThickness="1"
-                                         MinColumnWidth="20"
-                                         BorderThickness="0"
-                                         Background="{ThemeResource LayerFillColorDefaultBrush}">
-                        <tableView:TableView.Resources>
-                            <x:Double x:Key="ListViewItemMinHeight">0</x:Double>
-                        </tableView:TableView.Resources>
-                    </tableView:TableView>
+                    <Border x:Name="VectorTableHost"
+                            Grid.Row="0"
+                            Background="{ThemeResource LayerFillColorDefaultBrush}" />
 
                     <toolkit:GridSplitter x:Name="DetailSplitter"
                                            Grid.Row="1"

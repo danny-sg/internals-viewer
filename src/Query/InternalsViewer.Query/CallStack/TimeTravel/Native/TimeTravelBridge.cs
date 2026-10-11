@@ -16,6 +16,9 @@ internal static class TimeTravelBridge
     [UnmanagedFunctionPointer(CallingConvention.StdCall)]
     public delegate void CallSpanCallback(IntPtr spans, int count);
 
+    [UnmanagedFunctionPointer(CallingConvention.StdCall)]
+    public delegate void MemoryValueCallback(IntPtr values, int count);
+
     [DllImport(Library, CharSet = CharSet.Unicode)]
     public static extern int OpenTrace(string replayLibraryPath, string tracePath, out TimeTravelTraceHandle trace);
 
@@ -41,8 +44,11 @@ internal static class TimeTravelBridge
                                           int excludedFunctionCount,
                                           ulong[] markerFunctions,
                                           int markerFunctionCount,
+                                          TimeTravelMemoryRead[] memoryReads,
+                                          int memoryReadCount,
                                           CallChunkCallback? logCalls,
                                           CallSpanCallback? logSpans,
+                                          MemoryValueCallback? logMemory,
                                           ProgressCallback? progress,
                                           IntPtr cancel,
                                           out IntPtr tree);

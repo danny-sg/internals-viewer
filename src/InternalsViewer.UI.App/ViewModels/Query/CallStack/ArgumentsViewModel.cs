@@ -20,10 +20,7 @@ public sealed partial class ArgumentsViewModel(ILogger logger, SymbolsViewModel 
     private const string DefaultMessage = "Right click a frame in a Full Trace call tree and choose Show Arguments";
 
     [ObservableProperty]
-    private string _function = string.Empty;
-
-    [ObservableProperty]
-    private string? _summary;
+    private string _signature = string.Empty;
 
     [ObservableProperty]
     private string? _message = DefaultMessage;
@@ -35,22 +32,11 @@ public sealed partial class ArgumentsViewModel(ILogger logger, SymbolsViewModel 
     private string _loadingMessage = "Loading...";
 
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(HasCall))]
-    private IReadOnlyList<ArgumentRow> _rows = [];
-
-    [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(HasCalls))]
     private QueryResultSet? _callTable;
 
     [ObservableProperty]
     private ResultRow<long>? _selectedCall;
-
-    [ObservableProperty]
-    private string? _callTitle;
-
-    [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(HasCallNode))]
-    private CallStackNode? _callNode;
 
     [ObservableProperty]
     private CallReference? _selectedCallReference;
@@ -72,11 +58,7 @@ public sealed partial class ArgumentsViewModel(ILogger logger, SymbolsViewModel 
     [ObservableProperty]
     private bool _isSearching;
 
-    public bool HasCall => Rows.Count > 0;
-
     public bool HasCalls => CallTable is not null;
-
-    public bool HasCallNode => CallNode is not null;
 
     public bool HasValueSearch => ValueSearch is not null;
 
@@ -98,6 +80,10 @@ public sealed partial class ArgumentsViewModel(ILogger logger, SymbolsViewModel 
 
     private CancellationTokenSource? Search { get; set; }
 
+    private bool IsSelectingQuietly { get; set; }
+
+    public event Action<CallReference>? CallChosen;
+
     public bool CanShow(CallStackNode node) => Log is not null && node.Frame is { Address: not 0, Pdb.Length: > 0 };
 
     public void SetSource(TimeTravelCallLog? log, IReadOnlyDictionary<ulong, IteratorTarget>? iterators = null)
@@ -110,29 +96,52 @@ public sealed partial class ArgumentsViewModel(ILogger logger, SymbolsViewModel 
         Iterators = iterators ?? new Dictionary<ulong, IteratorTarget>();
 
         Shown = null;
-        Function = string.Empty;
-        Summary = null;
+        Signature = string.Empty;
         Message = DefaultMessage;
         Clear();
         IsLoading = false;
         CloseValueSearch();
     }
 
-    public Task ShowAsync(CallStackNode node)
-        => ReferenceEquals(Shown, node) && (IsLoading || CallTable is not null) ? Task.CompletedTask : LoadAsync(node, null);
+    public async Task ShowAsync(CallStackNode node)
+    {
+        if (IsShowing(node) && IsLoading)
+        {
+            return;
+        }
+
+        if (!IsShowing(node) || CallTable is null)
+        {
+            await LoadAsync(node, null);
+        }
+
+        Shown = node;
+
+        await SelectFirstCallOnAsync(node);
+    }
 
     public Task ShowAsync(CallStackNode node, int? call)
     {
-        if (!ReferenceEquals(Shown, node) || IsLoading || CallTable is not { } table)
+        if (!IsShowing(node) || IsLoading || CallTable is not { } table)
         {
             return LoadAsync(node, call);
         }
 
-        SelectedCall = call is { } index && index >= 0 && index < table.Rows.Count ? table.Rows[index] : null;
+        Shown = node;
+
+        SelectQuietly(call is { } index && index >= 0 && index < table.Rows.Count ? table.Rows[index] : null);
 
         return Task.CompletedTask;
     }
 
+    public ArgumentCell CellAt(int index, int ordinal)
+        => Layout is { } layout && index >= 0 && index < LoggedCalls.Count
+            ? ArgumentRowBuilder.CellAt(layout, LoggedCalls[index], ordinal)
+            : default;
+
+    public CallStackNode? NodeAt(int index) => index >= 0 && index < LoggedCalls.Count ? Log?.NodeOf(LoggedCalls[index]) : null;
+
+    public IteratorTarget? IteratorOf(ulong value) => Iterators.GetValueOrDefault(value);
 
     public async Task FindValueAsync(ulong value)
     {
@@ -221,8 +230,7 @@ public sealed partial class ArgumentsViewModel(ILogger logger, SymbolsViewModel 
         Request = request;
 
         Shown = node;
-        Function = node.Symbol;
-        Summary = null;
+        Signature = node.Symbol;
         Message = null;
         Clear();
         IsLoading = true;
@@ -248,10 +256,7 @@ public sealed partial class ArgumentsViewModel(ILogger logger, SymbolsViewModel 
 
             var layout = ArgumentLayout.For(parsed);
 
-            if (parsed.Kind == FunctionKind.Static)
-            {
-                Function = $"static {node.Symbol}";
-            }
+            Signature = Header(parsed, signature ?? node.Symbol);
 
             if (log.CallsOf(frame.Address, frame.Instance) is not { Count: > 0 } calls)
             {
@@ -264,14 +269,13 @@ public sealed partial class ArgumentsViewModel(ILogger logger, SymbolsViewModel 
 
             var table = await Task.Run(() => ArgumentRowBuilder.Table(layout, calls), request.Token);
 
-            Summary = Describe(calls.Count, frame.Instance);
             Layout = layout;
             LoggedCalls = calls;
             CallTable = table;
 
             if (select is { } index && index >= 0 && index < table.Rows.Count)
             {
-                SelectedCall = table.Rows[index];
+                SelectQuietly(table.Rows[index]);
             }
         }
         catch (OperationCanceledException) when (request.IsCancellationRequested)
@@ -279,7 +283,7 @@ public sealed partial class ArgumentsViewModel(ILogger logger, SymbolsViewModel 
         }
         catch (Exception exception) when (exception is InvalidDataException or EndOfStreamException)
         {
-            logger.LogWarning(exception, "Reading the arguments of {Function} failed", Function);
+            logger.LogWarning(exception, "Reading the arguments of {Function} failed", Signature);
 
             Message = exception.Message;
         }
@@ -289,6 +293,47 @@ public sealed partial class ArgumentsViewModel(ILogger logger, SymbolsViewModel 
             {
                 IsLoading = false;
             }
+        }
+    }
+
+    private void SelectQuietly(ResultRow<long>? row)
+    {
+        IsSelectingQuietly = true;
+
+        try
+        {
+            SelectedCall = row;
+        }
+        finally
+        {
+            IsSelectingQuietly = false;
+        }
+    }
+
+    private bool IsShowing(CallStackNode node)
+        => Shown?.Frame is { } shown && node.Frame is { } frame && shown.Address == frame.Address && shown.Instance == frame.Instance;
+
+    private async Task SelectFirstCallOnAsync(CallStackNode node)
+    {
+        if (Log is not { } log || CallTable is not { } table)
+        {
+            return;
+        }
+
+        var calls = LoggedCalls;
+
+        try
+        {
+            var first = await Task.Run(() => log.FirstCallOn(calls, node));
+
+            if (ReferenceEquals(Shown, node) && ReferenceEquals(LoggedCalls, calls) && first is { } index && index < table.Rows.Count)
+            {
+                SelectQuietly(table.Rows[index]);
+            }
+        }
+        catch (Exception exception) when (exception is InvalidDataException or EndOfStreamException)
+        {
+            logger.LogWarning(exception, "Finding the first call of {Function} on its call path failed", Signature);
         }
     }
 
@@ -321,36 +366,25 @@ public sealed partial class ArgumentsViewModel(ILogger logger, SymbolsViewModel 
         return first.Use.First.Node?.Frame?.Resolved?.ClassName is { Length: > 0 } className ? $"Is A {className}" : null;
     }
 
-    private static string Describe(int calls, ulong instance)
+    private static string Header(FunctionSignature parsed, string signature)
     {
-        var summary = calls == 1 ? "1 Call" : $"{calls:N0} Calls";
+        var header = parsed.ReturnType is { } returnType ? $"{returnType} {signature}" : signature;
 
-        if (instance != 0)
-        {
-            summary += $" on This Instance (0x{instance:X})";
-        }
-
-        return summary;
+        return parsed.Kind == FunctionKind.Static ? $"static {header}" : header;
     }
 
     partial void OnSelectedCallChanged(ResultRow<long>? value)
     {
-        if (value is { Id: var index } && Layout is { } layout && index >= 0 && index < LoggedCalls.Count)
+        var reference = value is { Id: var index } && NodeAt((int)index) is { } node
+            ? new CallReference(node, (int)index, !IsSelectingQuietly)
+            : null;
+
+        if (reference is { IsChosen: true })
         {
-            var call = LoggedCalls[(int)index];
-
-            Rows = ArgumentRowBuilder.ForCall(layout, call, Iterators);
-            CallTitle = $"Call {index + 1:N0} on Thread {call.ThreadId}";
-            CallNode = Log?.NodeOf(call);
-            SelectedCallReference = CallNode is { } node ? new CallReference(node, (int)index) : null;
-
-            return;
+            CallChosen?.Invoke(reference);
         }
 
-        Rows = [];
-        CallTitle = null;
-        CallNode = null;
-        SelectedCallReference = null;
+        SelectedCallReference = reference;
     }
 
     private void Clear()
@@ -358,9 +392,6 @@ public sealed partial class ArgumentsViewModel(ILogger logger, SymbolsViewModel 
         Layout = null;
         LoggedCalls = [];
         SelectedCall = null;
-        Rows = [];
-        CallTitle = null;
-        CallNode = null;
         CallTable = null;
     }
 

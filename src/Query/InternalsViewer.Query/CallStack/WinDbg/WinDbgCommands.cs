@@ -129,13 +129,15 @@ public static class WinDbgCommands
 
         foreach (var slot in ArgumentLayout.For(function).Slots)
         {
-            parts.Add(slot.Type == "this" ? Printf("this = rcx = %p", "@rcx") : ArgumentLine(slot, ++argument));
+            parts.Add(slot.Type == "this"
+                          ? Printf("this = rcx = %p", "@rcx")
+                          : ArgumentLine(slot, slot.Name == ArgumentLayout.ReturnBuffer ? "return buffer" : $"arg{++argument}"));
         }
 
         return string.Join("; ", parts);
     }
 
-    private static string ArgumentLine(ArgumentSlot slot, int argument)
+    private static string ArgumentLine(ArgumentSlot slot, string label)
     {
         var type = slot.Type;
 
@@ -152,7 +154,7 @@ public static class WinDbgCommands
             ? IsWideString(type) ? "%mu" : IsAnsiString(type) ? "%ma" : "%p"
             : slot.Location == ArgumentLocation.FloatingRegister ? "%f" : "%p";
 
-        return Printf($"arg{argument} ({type}) = {location} = {format}", expression);
+        return Printf($"{label} ({type}) = {location} = {format}", expression);
     }
 
     private static string Printf(string format, string argument) => $".printf \\\"{format}\\\\n\\\", {argument}";

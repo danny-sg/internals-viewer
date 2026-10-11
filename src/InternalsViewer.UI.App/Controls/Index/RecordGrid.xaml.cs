@@ -60,8 +60,6 @@ public sealed partial class RecordGrid : IDisposable
     public RecordGrid()
     {
         InitializeComponent();
-
-        RecordTable.ContainerContentChanging += OnContainerContentChanging;
     }
 
     public event EventHandler<PageAddressEventArgs>? PageOver;
@@ -73,11 +71,11 @@ public sealed partial class RecordGrid : IDisposable
 
     public bool AutoScrollToEnd { get; set; }
 
+    private TableView? RecordTable { get; set; }
+
     public void Dispose()
     {
-        RecordTable.ContainerContentChanging -= OnContainerContentChanging;
-
-        RemoveEventHandlers();
+        ReleaseTable();
 
         _scrollTimer?.Stop();
         _scrollTimer = null;
@@ -119,11 +117,37 @@ public sealed partial class RecordGrid : IDisposable
     {
         _isRebindQueued = false;
 
-        RecordTable.ItemsSource = null;
+        ReleaseTable();
 
-        AddColumns();
+        var table = (TableView)((DataTemplate)Resources["RecordTableTemplate"]).LoadContent();
 
-        RecordTable.ItemsSource = Records;
+        table.ContainerContentChanging += OnContainerContentChanging;
+
+        AddColumns(table);
+
+        table.ItemsSource = Records;
+
+        RecordTable = table;
+
+        TableHost.Child = table;
+    }
+
+    private void ReleaseTable()
+    {
+        if (RecordTable is not { } table)
+        {
+            return;
+        }
+
+        RemoveEventHandlers(table);
+
+        table.ContainerContentChanging -= OnContainerContentChanging;
+
+        TableHost.Child = null;
+
+        table.ItemsSource = null;
+
+        RecordTable = null;
     }
 
     private void OnRecordsCollectionChanged(object? sender, System.Collections.Specialized.NotifyCollectionChangedEventArgs e)
@@ -181,30 +205,31 @@ public sealed partial class RecordGrid : IDisposable
     {
         if (Records is { Count: > 0 } records)
         {
-            RecordTable.ScrollIntoView(records[^1]);
+            RecordTable?.ScrollIntoView(records[^1]);
         }
     }
 
     private void ApplySelectedSlot()
     {
+        if (RecordTable is not { } table)
+        {
+            return;
+        }
+
         var record = SelectedSlot is null
             ? null
             : Records?.FirstOrDefault(r => r.Slot == SelectedSlot);
 
-        RecordTable.SelectedItem = record;
+        table.SelectedItem = record;
 
         if (record is not null)
         {
-            RecordTable.ScrollIntoView(record);
+            table.ScrollIntoView(record);
         }
     }
 
-    private void AddColumns()
+    private void AddColumns(TableView table)
     {
-        RemoveEventHandlers();
-
-        RecordTable.Columns.Clear();
-
         _hasFieldColumns = Records?.Count > 0;
 
         if (!HideSlotColumn)
@@ -217,7 +242,7 @@ public sealed partial class RecordGrid : IDisposable
                 ElementStyle = (Style) Resources["SlotCellStyle"],
             };
 
-            RecordTable.Columns.Add(slotColumn);
+            table.Columns.Add(slotColumn);
         }
 
         var converter = new RecordValueConverter();
@@ -237,7 +262,7 @@ public sealed partial class RecordGrid : IDisposable
                     CanSort = false
                 };
 
-                RecordTable.Columns.Add(column);
+                table.Columns.Add(column);
             }
         }
 
@@ -253,11 +278,11 @@ public sealed partial class RecordGrid : IDisposable
             column.PageClicked += OnPageClicked;
             column.PageOver += OnPageOver;
 
-            RecordTable.Columns.Add(column);
+            table.Columns.Add(column);
         }
 
         // A nonclustered index of a heap stores the row identifier as a hidden column, so it is already among the fields
-        var hasRidField = RecordTable.Columns.Any(c => c.Header as string == "RID");
+        var hasRidField = table.Columns.Any(c => c.Header as string == "RID");
 
         if (!hasRidField && Records?.Any(r => r.RowIdentifier != null && r.RowIdentifier != RowIdentifier.Empty) == true)
         {
@@ -268,7 +293,7 @@ public sealed partial class RecordGrid : IDisposable
                 Width = new GridLength(140)
             };
 
-            RecordTable.Columns.Add(column);
+            table.Columns.Add(column);
         }
     }
 
@@ -298,9 +323,9 @@ public sealed partial class RecordGrid : IDisposable
     /// <summary>
     /// Cleans up the event handlers as they seem to be compound on each refresh
     /// </summary>
-    private void RemoveEventHandlers()
+    private void RemoveEventHandlers(TableView table)
     {
-        foreach (var column in RecordTable.Columns)
+        foreach (var column in table.Columns)
         {
             if (column is PageAddressLinkButtonColumn<IndexRecordModel> linkButtonColumn)
             {

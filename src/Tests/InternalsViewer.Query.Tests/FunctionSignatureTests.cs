@@ -31,6 +31,38 @@ public class FunctionSignatureTests
     }
 
     [Fact]
+    public void Enum_Parameters_Are_Marked_From_The_Decorated_Name()
+    {
+        var signature = FunctionSignature.Parse(
+            "BPool::Get(RecoveryUnit &,PageId const &,int &,LatchBase::LATCH_TYPE,LatchSuspendInfo *,bool)",
+            "?Get@BPool@@QEAAPEAUBUF@@AEAVRecoveryUnit@@AEBVPageId@@AEAHW4LATCH_TYPE@LatchBase@@PEAVLatchSuspendInfo@@_N@Z");
+
+        Assert.NotNull(signature);
+        Assert.Equal(["RecoveryUnit &", "PageId const &", "int &", "enum LatchBase::LATCH_TYPE", "LatchSuspendInfo *", "bool"],
+                     signature.Parameters);
+    }
+
+    [Fact]
+    public void A_Class_Returned_By_Value_Is_Named_And_Written_Through_A_Buffer()
+    {
+        var signature = FunctionSignature.Parse("BlobNode::ChildPID(int)", "?ChildPID@BlobNode@@QEBA?AVPageId@@H@Z");
+
+        Assert.NotNull(signature);
+        Assert.Equal("PageId", signature.ReturnType);
+        Assert.True(signature.HasReturnBuffer);
+    }
+
+    [Fact]
+    public void A_Pointer_To_A_Class_Is_Named()
+    {
+        var signature = FunctionSignature.Parse("Record::GetBackPtr(void)", "?GetBackPtr@Record@@QEBAPEFBURowId@@XZ");
+
+        Assert.NotNull(signature);
+        Assert.Equal("RowId const *", signature.ReturnType);
+        Assert.False(signature.HasReturnBuffer);
+    }
+
+    [Fact]
     public void A_Virtual_Member_Returning_Bool_Is_Decoded()
     {
         var signature = FunctionSignature.Parse("CFoo::IsReady(void)", "?IsReady@CFoo@@UEBA_NXZ");

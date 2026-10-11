@@ -5,6 +5,7 @@ using InternalsViewer.Internals.Interfaces.Services.Loaders.Engine;
 using InternalsViewer.Internals.Readers.Pages;
 using InternalsViewer.Internals.Tests.Helpers;
 using InternalsViewer.Query.CallStack;
+using InternalsViewer.Query.CallStack.Symbols;
 using InternalsViewer.Query.Events;
 using InternalsViewer.Query.Events.Latches;
 using InternalsViewer.Query.Events.Locks;
@@ -474,8 +475,7 @@ public class CallStackTreeIntegrationTests(ITestOutputHelper testOutputHelper)
         foreach (var (pdb, guid, age) in modules)
         {
             // Same layout the resolver downloads to: <symbols>\<pdb>\<GUID><AGE>\<pdb>.
-            var identifier = $"{guid.Replace("-", string.Empty)}{age}".ToUpperInvariant();
-            var pdbPath = Path.Combine(@"C:\Symbols", pdb, identifier, pdb);
+            var pdbPath = Path.Combine(@"C:\Symbols", pdb, SymbolDownloader.SymbolId(guid, age), pdb);
 
             if (File.Exists(pdbPath))
             {

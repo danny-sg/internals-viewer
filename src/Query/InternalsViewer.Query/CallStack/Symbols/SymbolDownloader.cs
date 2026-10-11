@@ -28,6 +28,8 @@ public static class SymbolDownloader
                                     async (pdb, ct) => await DownloadPdbAsync(pdb, symbolsDirectory, progress, ct));
     }
 
+    public static string SymbolId(string guid, int age) => $"{guid.Replace("-", string.Empty)}{age:X}".ToUpperInvariant();
+
     private static async Task DownloadPdbAsync(PdbIdentity pdb,
                                                string symbolsDirectory,
                                                IProgress<ProgressDetail>? progress,
@@ -38,11 +40,9 @@ public static class SymbolDownloader
             return;
         }
 
-        var symbolId = pdb.Guid.Replace("-", string.Empty) + pdb.Age;
+        var symbolId = SymbolId(pdb.Guid, pdb.Age);
 
-        var pdbFolder = Path.Combine(symbolsDirectory,
-                                     pdb.Pdb,
-                                     symbolId.ToUpperInvariant());
+        var pdbFolder = Path.Combine(symbolsDirectory, pdb.Pdb, symbolId);
 
         var pdbPath = Path.Combine(pdbFolder, pdb.Pdb);
 
@@ -54,7 +54,7 @@ public static class SymbolDownloader
         Directory.CreateDirectory(pdbFolder);
 
         var url =
-            $"https://msdl.microsoft.com/download/symbols/{pdb.Pdb}/{symbolId.ToUpperInvariant()}/{pdb.Pdb}";
+            $"https://msdl.microsoft.com/download/symbols/{pdb.Pdb}/{symbolId}/{pdb.Pdb}";
 
         progress?.Report($"Downloading {url} to {pdbPath}");
 

@@ -3,7 +3,7 @@ using System.Drawing;
 using System.Linq;
 using InternalsViewer.Query.CallStack.Arguments;
 using InternalsViewer.Query.CallStack.TimeTravel.CallLog;
-using InternalsViewer.Query.CallStack.TimeTravel.Iterators;
+using InternalsViewer.Query.CallStack.TimeTravel.Locators;
 using InternalsViewer.Query.Results;
 
 namespace InternalsViewer.UI.App.Models.Query.CallStack;
@@ -12,9 +12,9 @@ public static class ArgumentRowBuilder
 {
     private const string UnknownType = "Unknown";
 
-    private const string NotCaptured = "Not Captured";
-
     private const string DidNotReturn = "Did Not Return";
+
+    private const int FixedColumns = 2;
 
     private const int IndexWidth = 70;
 
@@ -22,64 +22,13 @@ public static class ArgumentRowBuilder
 
     private static readonly Color ReturnTint = Color.FromArgb(0x12, 0x4C, 0xA3, 0xE0);
 
-    public static IReadOnlyList<ArgumentRow> ForCall(ArgumentLayout layout,
-                                                     TimeTravelArgumentCall call,
-                                                     IReadOnlyDictionary<ulong, IteratorTarget>? iterators = null)
-    {
-        var rows = new List<ArgumentRow>();
-
-        foreach (var slot in layout.Slots)
-        {
-            if (!TimeTravelArgumentCall.IsCaptured(slot))
-            {
-                rows.Add(new ArgumentRow(slot.Name, slot.Type, slot.Source, NotCaptured));
-
-                continue;
-            }
-
-            var value = call.Value(slot);
-
-            rows.Add(new ArgumentRow(slot.Name,
-                                     slot.Type,
-                                     slot.Source,
-                                     Text(slot.Type, value),
-                                     value,
-                                     IteratorOf(value, iterators)));
-        }
-
-        var returnType = layout.ReturnType ?? UnknownType;
-
-        if (returnType == "void")
-        {
-            return rows;
-        }
-
-        if (!TimeTravelArgumentCall.IsReturnCaptured(returnType))
-        {
-            rows.Add(new ArgumentRow("Return", returnType, ReturnSource(returnType), NotCaptured));
-
-            return rows;
-        }
-
-        var returned = call.Returned ? call.ReturnValue : (ulong?)null;
-
-        rows.Add(new ArgumentRow("Return",
-                                 returnType,
-                                 ReturnSource(returnType),
-                                 call.Returned ? ArgumentValue.Format(returnType, call.ReturnValue) : DidNotReturn,
-                                 returned,
-                                 IteratorOf(returned, iterators)));
-
-        return rows;
-    }
-
     public static QueryResultSet Table(ArgumentLayout layout, IReadOnlyList<TimeTravelArgumentCall> calls)
     {
-        var slots = layout.Slots.Where(TimeTravelArgumentCall.IsCaptured).ToList();
+        var slots = CapturedSlots(layout);
 
         var returnType = layout.ReturnType ?? UnknownType;
 
-        var hasReturn = returnType != "void" && TimeTravelArgumentCall.IsReturnCaptured(returnType);
+        var hasReturn = HasReturn(returnType);
 
         var columns = new List<ResultColumn>
         {
@@ -111,32 +60,56 @@ public static class ArgumentRowBuilder
         return new QueryResultSet { Columns = columns, Rows = rows };
     }
 
+    public static ArgumentCell CellAt(ArgumentLayout layout, TimeTravelArgumentCall call, int ordinal)
+    {
+        var slots = CapturedSlots(layout);
+
+        var position = ordinal - FixedColumns;
+
+        if (position >= 0 && position < slots.Count)
+        {
+            return new ArgumentCell(call.Value(slots[position]), call.LocatorAt(slots[position].Index));
+        }
+
+        if (position == slots.Count && HasReturn(layout.ReturnType ?? UnknownType) && call.Returned)
+        {
+            return new ArgumentCell(call.ReturnValue, call.LocatorAt(LocatorReads.ReturnRegister));
+        }
+
+        return default;
+    }
+
+    private static List<ArgumentSlot> CapturedSlots(ArgumentLayout layout) => [.. layout.Slots.Where(TimeTravelArgumentCall.IsCaptured)];
+
+    private static bool HasReturn(string returnType) => returnType != "void" && TimeTravelArgumentCall.IsReturnCaptured(returnType);
+
     private static object?[] Values(List<ArgumentSlot> slots, string? returnType, TimeTravelArgumentCall call, int index)
     {
         var values = new List<object?> { (long)index + 1, call.ThreadId };
 
         foreach (var slot in slots)
         {
-            values.Add(Text(slot.Type, call.Value(slot)));
+            values.Add(call.LocatorAt(slot.Index) is { } locator ? Address(locator) : Text(slot.Type, call.Value(slot)));
         }
 
         if (returnType is not null)
         {
-            values.Add(call.Returned ? ArgumentValue.Format(returnType, call.ReturnValue) : DidNotReturn);
+            values.Add(!call.Returned
+                           ? DidNotReturn
+                           : call.LocatorAt(LocatorReads.ReturnRegister) is { } locator
+                               ? Address(locator)
+                               : ArgumentValue.Format(returnType, call.ReturnValue));
         }
 
         return [.. values];
     }
 
-    private static IteratorTarget? IteratorOf(ulong? value, IReadOnlyDictionary<ulong, IteratorTarget>? iterators)
+    private static object Address(TimeTravelLocator locator) => locator.Kind switch
     {
-        if (value is not { } address || iterators is null)
-        {
-            return null;
-        }
-
-        return iterators.TryGetValue(address, out var target) ? target : null;
-    }
+        LocatorKind.Row => locator.Row,
+        LocatorKind.ColumnStoreObject => locator.ToString(),
+        _ => locator.Page
+    };
 
     private static ResultColumn Column(int ordinal, string name, string type, string detail, Color? tint = null)
         => new(ordinal, name, typeof(string), false) { TypeName = type, Detail = detail, BackgroundColour = tint };

@@ -103,13 +103,13 @@ internal static class CallstackProcessor
 
             var module = at >= 0 ? frame.Module[..at] : frame.Module;
 
-            if (modules.TryGetValue(module, out var info) && frame.Address >= info.Base)
+            if (modules.TryGetValue(module, out var moduleInfo) && frame.Address >= moduleInfo.Base)
             {
                 frame.Module = module;
-                frame.Pdb = info.Pdb;
-                frame.Guid = info.Guid;
-                frame.Age = info.Age;
-                frame.Rva = (uint)(frame.Address - info.Base);
+                frame.Pdb = moduleInfo.Pdb;
+                frame.Guid = moduleInfo.Guid;
+                frame.Age = moduleInfo.Age;
+                frame.Rva = (uint)(frame.Address - moduleInfo.Base);
             }
         }
     }

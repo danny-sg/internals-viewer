@@ -1,8 +1,8 @@
 using System.Collections;
-using InternalsViewer.Query.CallStack;
+using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Query.CallStack.Arguments;
 using InternalsViewer.Query.CallStack.TimeTravel.CallLog;
-using InternalsViewer.Query.CallStack.TimeTravel.Iterators;
+using InternalsViewer.Query.CallStack.TimeTravel.Locators;
 using InternalsViewer.UI.App.Models.Query.CallStack;
 
 namespace InternalsViewer.UI.App.Tests.Models.Query.CallStack;
@@ -13,31 +13,21 @@ public class ArgumentRowBuilderTests
         ArgumentLayout.For(new FunctionSignature(["unsigned __int64 *"], FunctionKind.Member, "void"));
 
     [Fact]
-    public void A_Call_Lists_Each_Argument_With_Its_Value()
-    {
-        var rows = ArgumentRowBuilder.ForCall(SetRange, Call(0x100, 0x200));
-
-        Assert.Equal(["this", "Argument 1"], rows.Select(r => r.Name));
-        Assert.Equal(["0x100", "0x200"], rows.Select(r => r.Value));
-        Assert.Equal(["RCX", "RDX"], rows.Select(r => r.Source));
-    }
-
-    [Fact]
-    public void Stack_And_Floating_Arguments_Are_Not_Captured()
+    public void Stack_And_Floating_Arguments_Have_No_Column()
     {
         var layout = ArgumentLayout.For(new FunctionSignature(["double", "int", "int", "int", "int"], FunctionKind.Free, "double"));
 
-        var rows = ArgumentRowBuilder.ForCall(layout, Call(0, 7));
+        var table = ArgumentRowBuilder.Table(layout, [Call(0, 7)]);
 
-        Assert.Equal(["Not Captured", "7", "0", "0", "Not Captured", "Not Captured"], rows.Select(r => r.Value));
+        Assert.Equal(["Call", "Thread", "Argument 2", "Argument 3", "Argument 4"], table.Columns.Select(c => c.Name));
     }
 
     [Fact]
     public void A_Void_Function_Has_No_Return()
     {
-        var rows = ArgumentRowBuilder.ForCall(SetRange, Call(0x100, 0x200));
+        var table = ArgumentRowBuilder.Table(SetRange, [Call(0x100, 0x200)]);
 
-        Assert.DoesNotContain(rows, r => r.Name == "Return");
+        Assert.DoesNotContain(table.Columns, c => c.Name == "Return");
     }
 
     [Fact]
@@ -45,9 +35,9 @@ public class ArgumentRowBuilderTests
     {
         var layout = ArgumentLayout.For(new FunctionSignature([], FunctionKind.Free, "int"));
 
-        var row = Assert.Single(ArgumentRowBuilder.ForCall(layout, Call(0, 0, returned: false)));
+        var table = ArgumentRowBuilder.Table(layout, [Call(0, 0, returned: false)]);
 
-        Assert.Equal(["Return", "int", "RAX", "Did Not Return"], [row.Name, row.Type, row.Source, row.Value]);
+        Assert.Equal("Did Not Return", Assert.Single(table.Rows)[2]);
     }
 
     [Fact]
@@ -112,28 +102,65 @@ public class ArgumentRowBuilderTests
     }
 
     [Fact]
-    public void A_Value_That_Is_An_Iterator_Links_To_It()
+    public void A_Cell_Gives_The_Value_Behind_It()
     {
-        var tree = new CallStackTree();
+        var call = Call(0x100, 0x200);
 
-        var node = tree.AddCall(tree.Root, new CallstackFrame { Module = "sqlmin", Rva = 0x10, Instance = 0x100 }, 1);
+        var values = Enumerable.Range(0, 5).Select(i => ArgumentRowBuilder.CellAt(SetRange, call, i).Value);
 
-        var iterators = new Dictionary<ulong, IteratorTarget> { [0x100] = new(node, null) };
-
-        var rows = ArgumentRowBuilder.ForCall(SetRange, Call(0x100, 0x200), iterators);
-
-        Assert.Same(node, rows[0].Iterator?.Node);
-        Assert.Null(rows[1].Iterator);
+        Assert.Equal([null, null, 0x100ul, 0x200ul, null], values);
     }
 
     [Fact]
-    public void Floating_Values_Cannot_Be_Searched_For()
+    public void A_Return_Value_Is_Only_Given_When_The_Call_Returned()
     {
-        var layout = ArgumentLayout.For(new FunctionSignature(["double", "int"], FunctionKind.Free, "double"));
+        var layout = ArgumentLayout.For(new FunctionSignature([], FunctionKind.Free, "int"));
 
-        var rows = ArgumentRowBuilder.ForCall(layout, Call(0, 7));
+        Assert.Equal(7ul, ArgumentRowBuilder.CellAt(layout, Call(0, 0, returnValue: 7), 2).Value);
+        Assert.Null(ArgumentRowBuilder.CellAt(layout, Call(0, 0, returnValue: 7, returned: false), 2).Value);
+    }
 
-        Assert.Equal([false, true, false], rows.Select(r => r.CanFind));
+    [Fact]
+    public void A_Page_Argument_Shows_The_Page_It_Points_To()
+    {
+        var layout = ArgumentLayout.For(new FunctionSignature(["PageId const &"], FunctionKind.Member, "void"));
+
+        var call = Call(0x100, 0x200) with { Locators = [new TimeTravelLocator(1, LocatorKind.Page, 0x0000_0001_0000_0150)] };
+
+        var table = ArgumentRowBuilder.Table(layout, [call]);
+
+        Assert.Equal(new PageAddress(1, 336), Assert.Single(table.Rows)[3]);
+        var cell = ArgumentRowBuilder.CellAt(layout, call, 3);
+
+        Assert.Equal((0x200ul, LocatorKind.Page), (cell.Value, cell.Locator?.Kind));
+    }
+
+    [Fact]
+    public void A_Row_Returned_By_A_Call_Shows_On_The_Return()
+    {
+        var layout = ArgumentLayout.For(new FunctionSignature([], FunctionKind.Member, "RowId const *"));
+
+        var call = Call(0x100, 0, returnValue: 0x300) with
+        {
+            Locators = [new TimeTravelLocator(LocatorReads.ReturnRegister, LocatorKind.Row, 0x0005_0001_0000_0150)]
+        };
+
+        var table = ArgumentRowBuilder.Table(layout, [call]);
+
+        Assert.Equal("(1:336:5)", Assert.Single(table.Rows)[3]?.ToString());
+    }
+
+    [Fact]
+    public void A_Columnstore_Object_Shows_What_It_Names()
+    {
+        var layout = ArgumentLayout.For(new FunctionSignature(["ColumnStoreObjectKey const &"], FunctionKind.Member, "void"));
+
+        var key = TimeTravelLocator.ColumnStoreObject(1, 5 | (0x02A7ul << 32), 0x0100 | (2ul << 32), 3 | (1ul << 32));
+
+        var call = Call(0x100, 0x200) with { Locators = [key] };
+
+        Assert.Equal(LocatorKind.ColumnStoreObject, ArgumentRowBuilder.CellAt(layout, call, 3).Locator?.Kind);
+        Assert.Equal("Segment (Rowgroup 3, Column 2)", Assert.Single(ArgumentRowBuilder.Table(layout, [call]).Rows)[3]);
     }
 
     private static TimeTravelArgumentCall Call(ulong self, ulong pointer, ulong returnValue = 0, bool returned = true)

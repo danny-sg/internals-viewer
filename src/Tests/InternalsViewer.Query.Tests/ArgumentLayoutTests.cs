@@ -15,6 +15,16 @@ public class ArgumentLayoutTests
     }
 
     [Fact]
+    public void A_Class_Returned_By_Value_Takes_The_Register_After_This()
+    {
+        var layout = ArgumentLayout.For(new FunctionSignature(["int"], FunctionKind.Member, "PageId", HasReturnBuffer: true));
+
+        Assert.Equal(["this", ArgumentLayout.ReturnBuffer, "Argument 1"], layout.Slots.Select(s => s.Name));
+        Assert.Equal(["RCX", "RDX", "R8"], layout.Slots.Select(s => s.Source));
+        Assert.Equal("PageId *", layout.Slots[1].Type);
+    }
+
+    [Fact]
     public void A_Static_Function_Takes_Its_First_Argument_In_Rcx()
     {
         var layout = ArgumentLayout.For(new FunctionSignature(["CQScanNew *", "bool"], FunctionKind.Static, "long"));

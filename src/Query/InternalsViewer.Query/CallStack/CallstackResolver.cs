@@ -321,9 +321,7 @@ public sealed class CallstackResolver(string symbolsPath) : IDisposable
 
     internal static string GetPdbPath(string symbolsPath, CallstackFrame frame)
     {
-        var identifier = $"{frame.Guid.Replace("-", string.Empty)}{frame.Age}";
-
-        return Path.Combine(symbolsPath, frame.Pdb, identifier.ToUpperInvariant(), frame.Pdb);
+        return Path.Combine(symbolsPath, frame.Pdb, SymbolDownloader.SymbolId(frame.Guid, frame.Age), frame.Pdb);
     }
 
     private string GetPdbPath(CallstackFrame frame) => GetPdbPath(symbolsPath, frame);

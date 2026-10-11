@@ -1,5 +1,8 @@
 using InternalsViewer.Query.CallStack;
+using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Query.CallStack.TimeTravel.CallLog;
+using InternalsViewer.Query.CallStack.TimeTravel.Locators;
+using InternalsViewer.Query.CallStack.TimeTravel.Native;
 
 namespace InternalsViewer.Query.Tests;
 
@@ -7,6 +10,8 @@ namespace InternalsViewer.Query.Tests;
 public class TimeTravelCallLogTests
 {
     private const ulong ReturnedFlag = 1ul << 32;
+
+    private const ulong Page336 = 0x0000_0001_0000_0150;
 
     [Fact]
     public void The_Calls_Of_One_Function_On_One_Instance_Are_Read_Back_In_Order()
@@ -138,6 +143,99 @@ public class TimeTravelCallLogTests
         Assert.Same(second, log.NodeOf(calls[0]));
         Assert.Null(log.NodeOf(calls[1]));
         Assert.Same(second, Assert.Single(await log.FindAsync(0xA0, CancellationToken.None)).First.Node);
+    }
+
+    [Fact]
+    public void A_Page_Read_In_The_Replay_Is_Attached_To_Its_Call()
+    {
+        var builder = new TimeTravelCallLog.Builder([new LocatorRead(0x1000, 2, false, LocatorKind.Page)]);
+
+        builder.Add(0x1000, 0, Chunk(Row(1), Row(2)), 2);
+
+        builder.AddLocators([new TimeTravelMemoryValue(0x1000, 0, Page336, 1, 2)]);
+
+        var log = builder.Build();
+
+        var calls = log.CallsOf(0x1000, 0)!;
+
+        Assert.Empty(calls[0].Locators);
+        Assert.Equal(new PageAddress(1, 336), calls[1].LocatorAt(2)?.Page);
+        Assert.Null(calls[1].LocatorAt(1));
+        Assert.Equal(1, log.LocatorCount);
+    }
+
+    [Fact]
+    public void A_Value_Read_From_A_Register_With_No_Rule_Is_Ignored()
+    {
+        var builder = new TimeTravelCallLog.Builder([new LocatorRead(0x1000, 2, false, LocatorKind.Page)]);
+
+        builder.Add(0x1000, 0, Chunk(Row(1)), 1);
+
+        builder.AddLocators([new TimeTravelMemoryValue(0x1000, 0, Page336, 0, 1), new TimeTravelMemoryValue(0x2000, 0, Page336, 0, 2)]);
+
+        Assert.Equal(0, builder.Build().LocatorCount);
+    }
+
+    [Fact]
+    public void The_Pages_A_Call_Read_Are_Annotated_On_Its_Call_Tree_Node()
+    {
+        var tree = new CallStackTree();
+
+        var first = tree.AddCall(tree.Root, new CallstackFrame { Module = "sqlmin", Rva = 0x10 }, 1);
+        var second = tree.AddCall(tree.Root, new CallstackFrame { Module = "sqlmin", Rva = 0x20 }, 1);
+
+        var builder = new TimeTravelCallLog.Builder([new LocatorRead(0x1000, 2, false, LocatorKind.Page)]);
+
+        builder.Add(0x1000, 0, Chunk(Row(10, node: 0), Row(11, node: 1), Row(12, node: 1)), 3);
+
+        builder.AddLocators([new TimeTravelMemoryValue(0x1000, 0, Page336, 0, 2),
+                             new TimeTravelMemoryValue(0x1000, 0, Page336 + 1, 1, 2),
+                             new TimeTravelMemoryValue(0x1000, 0, Page336 + 2, 2, 2)]);
+
+        var log = builder.Build();
+
+        log.MapNodes([first, second]);
+
+        log.AnnotateNodes();
+
+        Assert.Equal("(1:336)", first.LocatorsLabel);
+        Assert.Equal("2 Pages", second.LocatorsLabel);
+        Assert.False(tree.Root.HasLocators);
+    }
+
+    [Fact]
+    public void The_First_Call_On_A_Call_Path_Is_Found()
+    {
+        var tree = new CallStackTree();
+
+        var scan = new CallstackFrame { Module = "sqlmin", Rva = 0x10 };
+
+        var seek = new CallstackFrame { Module = "sqlmin", Rva = 0x30 };
+
+        var get = new CallstackFrame { Module = "sqlmin", Rva = 0x20 };
+
+        var underScan = tree.AddCall(tree.AddCall(tree.Root, scan, 1), get, 1);
+
+        var underSeek = tree.AddCall(tree.AddCall(tree.Root, seek, 1), get, 1);
+
+        var builder = new TimeTravelCallLog.Builder();
+
+        builder.Add(0x1000, 0, Chunk(Row(1, node: 1), Row(2, node: 1), Row(3, node: 0)), 3);
+
+        var log = builder.Build();
+
+        log.MapNodes([underScan, underSeek]);
+
+        var calls = log.CallsOf(0x1000, 0)!;
+
+        Assert.Equal(2, log.FirstCallOn(calls, underScan));
+        Assert.Equal(0, log.FirstCallOn(calls, underSeek));
+
+        var projected = new CallStackTree();
+
+        var scopedGet = projected.AddCall(projected.AddCall(projected.Root, scan, 1), get, 1);
+
+        Assert.Equal(2, log.FirstCallOn(calls, scopedGet));
     }
 
     private static ulong[] Row(ulong sequence,

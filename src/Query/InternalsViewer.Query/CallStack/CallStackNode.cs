@@ -1,4 +1,5 @@
 using InternalsViewer.Query.CallStack.Categories;
+using InternalsViewer.Query.CallStack.TimeTravel.Locators;
 using InternalsViewer.Query.Events;
 
 namespace InternalsViewer.Query.CallStack;
@@ -128,6 +129,14 @@ public sealed class CallStackNode
     public string AllocationsLabel => AllocationsIncludingChildren == 1
         ? "1 Allocation Including Children"
         : $"{AllocationsIncludingChildren:N0} Allocations Including Children";
+
+    public TimeTravelLocatorSet? Locators { get; set; }
+
+    public bool HasLocators => Locators is not null;
+
+    public string LocatorsLabel => Locators?.Label ?? string.Empty;
+
+    public string LocatorsDetail => Locators?.Detail ?? string.Empty;
 
     /// <summary>
     /// The frames a projection cut away directly below this one — where a segment handed off to a nested operator

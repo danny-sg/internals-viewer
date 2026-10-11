@@ -83,13 +83,20 @@ public sealed class TimeTravelSession : IDisposable
         TimeTravelBridge.ProgressCallback onProgress = (thread, percent) =>
             progress?.Report(new ProgressDetail(thread == 0 ? "Replaying Full Trace" : $"[Thread {thread}] Replaying Full Trace", percent));
 
-        var log = new TimeTravelCallLog.Builder();
+        var log = new TimeTravelCallLog.Builder(functions.Locators);
 
         var timeline = new TimeTravelTimeline.Builder();
 
         TimeTravelBridge.CallChunkCallback onChunk = log.Add;
 
         TimeTravelBridge.CallSpanCallback onSpans = timeline.Add;
+
+        TimeTravelBridge.MemoryValueCallback onMemory = log.AddLocators;
+
+        TimeTravelMemoryRead[] reads =
+        [
+            .. functions.Locators.Select(l => new TimeTravelMemoryRead(l.Function, l.Register, l.AtReturn ? 1u : 0u, (uint)l.Offset))
+        ];
 
         try
         {
@@ -102,8 +109,11 @@ public sealed class TimeTravelSession : IDisposable
                                                        functions.Excluded.Length,
                                                        functions.Markers,
                                                        functions.Markers.Length,
+                                                       reads,
+                                                       reads.Length,
                                                        onChunk,
                                                        onSpans,
+                                                       onMemory,
                                                        onProgress,
                                                        cancel,
                                                        out var tree);
@@ -111,6 +121,8 @@ public sealed class TimeTravelSession : IDisposable
             GC.KeepAlive(onChunk);
 
             GC.KeepAlive(onSpans);
+
+            GC.KeepAlive(onMemory);
 
             GC.KeepAlive(onProgress);
 
