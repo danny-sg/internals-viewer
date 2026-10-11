@@ -14,7 +14,12 @@ public class ArgumentValueTests
     [InlineData("unsigned __int64", 0x40EC6ul, "265926 (0x40EC6)")]
     [InlineData("short", 0xFFFFul, "-1")]
     [InlineData("SCANLOC", 3ul, "0x3")]
-    [InlineData("enum LatchBase::LATCH_TYPE", 0x1_0000_0002ul, "2")]
+    [InlineData("enum CheckVisibilityOption", 0x1_0000_0002ul, "2")]
+    [InlineData("enum LatchBase::LATCH_TYPE", 2ul, "SH")]
+    [InlineData("enum LCK_MODE", 21ul, "RX_X")]
+    [InlineData("enum LockRes::LockResourceType", 6ul, "Page")]
+    [InlineData("enum PageHeader::PageType", 10ul, "Iam")]
+    [InlineData("enum PageHeader::PageType", 6ul, "6")]
     public void A_Value_Is_Formatted_For_Its_Type(string type, ulong raw, string expected)
     {
         Assert.Equal(expected, ArgumentValue.Format(type, raw));

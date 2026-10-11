@@ -68,8 +68,14 @@ public enum LockMode
     [EventItemName("Range exclusive-update")]
     RX_U = 20,
 
-    [EventItemName("Last mode sentinel")]
-    LAST_MODE = 21
+    [EventItemName("Range exclusive-exclusive")]
+    RX_X = 21,
+
+    [EventItemName("SCH_A")]
+    SCH_A = 22,
+
+    [EventItemName("SCH_C")]
+    SCH_C = 23
 }
 
 // ReSharper disable IdentifierTypo

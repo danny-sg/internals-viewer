@@ -18,7 +18,7 @@ public static class LockModeClassifier
         LockMode.BU => LockModeCategory.Bulk,
 
         // Every RS_/RI_/RX_ range mode (13..20) protects a serializable key range
-        >= LockMode.RS_S and <= LockMode.RX_U => LockModeCategory.Range,
+        >= LockMode.RS_S and <= LockMode.RX_X => LockModeCategory.Range,
 
         _ => LockModeCategory.None
     };
