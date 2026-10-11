@@ -104,11 +104,11 @@
                 <!--Trace-->
                 <AppBarElementContainer VerticalContentAlignment="Center">
                     <Button Margin="12,0,12,0"
-                            Command="{x:Bind TraceCommand, Mode=OneWay}"
+                            Command="{x:Bind SimulationCommand, Mode=OneWay}"
                             Background="Transparent"
                             BorderThickness="0"
-                            ToolTipService.ToolTip="Open the Trace tab">
-                        <TextBlock Text="Trace" VerticalAlignment="Center" />
+                            ToolTipService.ToolTip="Step through the query's plan in the Simulation tab">
+                        <TextBlock Text="Simulate" VerticalAlignment="Center" />
                     </Button>
                 </AppBarElementContainer>
 

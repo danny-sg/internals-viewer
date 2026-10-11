@@ -44,6 +44,8 @@ The **View** menu opens additional panes:
 
 ![View menu](/docs/user-guide/images/query-view-menu.png)
 
+<!-- Screenshot (update): the View menu - Trace is now Simulation -->
+
 - **SQL Editor** - the query [editor](/docs/user-guide/query/Editor)
 - **Allocations** - the allocation map, scoped to the query - see [Allocations](/docs/user-guide/query/Allocations)
 - **Execution Plan** - the captured plan, connected to the timeline - see [Execution Plan](/docs/user-guide/query/ExecutionPlan)
@@ -51,7 +53,7 @@ The **View** menu opens additional panes:
 - **Call Stack** - the decoded SQL Server call stack for the current event - see [Call Stack](/docs/user-guide/query/CallStack)
 - **Timeline** - the replay timeline - see [Timeline](/docs/user-guide/query/Timeline)
 - **Flame Chart** - every call recorded by **Record Full Trace** on the Debugger menu, which takes the Timeline's place while it is on - see [Flame Chart](/docs/user-guide/query/FlameChart)
-- **Trace** - steps through the query's plan operator by operator - see [Trace](/docs/user-guide/query/Trace)
+- **Simulation** - steps through the query's plan operator by operator - see [Simulation](/docs/user-guide/query/Simulation)
 - **Reset Layout** - restores the default pane arrangement
 - **Instructions** - a quick reference for the view, with links that open panes and switch capture options
 
@@ -67,7 +69,7 @@ Pages and indexes opened from the trace - by double-clicking a timeline event, c
 
 Panes are tabs that can be dragged into any layout - drop a tab beside or below another pane to split the space, or onto a pane to stack them. While dragging, the drop zones highlight to show where the tab will land. The default layout is the SQL Editor above the Timeline.
 
-The layout is remembered - the pane arrangement, timeline visibility, and the Events menu options, **Crop to query** and **Include system objects** are all restored the next time a Query tab is opened. **Track query** and **Record Full Trace** are not, and neither are the Index, Page, Columnstore and Trace panes opened from a query. **Reset Layout** on the View menu puts everything back to the default.
+The layout is remembered - the pane arrangement, timeline visibility, and the Events menu options, **Crop to query** and **Include system objects** are all restored the next time a Query tab is opened. **Track query** and **Record Full Trace** are not, and neither are the Index, Page, Columnstore and Simulation panes opened from a query. **Reset Layout** on the View menu puts everything back to the default.
 
 ::: details How this works
 The query runs with an Extended Events session filtered to the connection, capturing page reads, locks, waits, per-operator profiles, and the execution plan. The events are matched to plan operators to build the timeline.

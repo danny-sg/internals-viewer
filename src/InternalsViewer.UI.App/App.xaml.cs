@@ -23,7 +23,7 @@ using InternalsViewer.UI.App.ViewModels.Database;
 using InternalsViewer.UI.App.ViewModels.Index;
 using InternalsViewer.UI.App.ViewModels.Page;
 using InternalsViewer.UI.App.ViewModels.Query;
-using InternalsViewer.UI.App.ViewModels.Query.Trace;
+using InternalsViewer.UI.App.ViewModels.Query.Simulation;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
@@ -75,7 +75,7 @@ public partial class App
             services.AddTransient<PageTabViewModelFactory>();
             services.AddTransient<IndexTabViewModelFactory>();
             services.AddTransient<ColumnstoreTabViewModelFactory>();
-            services.AddTransient<TraceTabViewModelFactory>();
+            services.AddTransient<SimulationTabViewModelFactory>();
             services.AddTransient<QueryViewModelFactory>();
 
             services.AddTransient<QueryRunner>();

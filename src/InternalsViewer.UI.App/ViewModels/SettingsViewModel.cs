@@ -22,7 +22,7 @@ public partial class SettingsViewModel(SettingsService settingsService, TraceDir
     private const string TraceDirectoryKey = "TraceDirectory";
     private const string MaxTraceSizeKey = "MaxTraceSizeMb";
     private const string AutoDeleteTraceKey = "AutoDeleteTrace";
-    private const string TraceNestedLayoutKey = "TraceNestedLayout";
+    private const string SimulationNestedLayoutKey = "TraceNestedLayout";
     private const string PlanAnnotationsKey = "PlanAnnotations";
 
     private const string ColumnstoreResolutionKey = "FullColumnstoreAllocationResolution";
@@ -60,7 +60,7 @@ public partial class SettingsViewModel(SettingsService settingsService, TraceDir
     private bool _autoDeleteTrace = true;
 
     [ObservableProperty]
-    private bool _traceNestedLayout = true;
+    private bool _simulationNestedLayout = true;
 
     [ObservableProperty]
     private bool _fullColumnstoreResolution = true;
@@ -125,9 +125,9 @@ public partial class SettingsViewModel(SettingsService settingsService, TraceDir
 
         AutoDeleteTrace = savedAutoDelete ?? true;
 
-        var savedNestedLayout = await SettingsService.ReadSettingAsync<bool?>(TraceNestedLayoutKey);
+        var savedNestedLayout = await SettingsService.ReadSettingAsync<bool?>(SimulationNestedLayoutKey);
 
-        TraceNestedLayout = savedNestedLayout ?? true;
+        SimulationNestedLayout = savedNestedLayout ?? true;
 
         var savedColumnstoreResolution = await SettingsService.ReadSettingAsync<bool?>(ColumnstoreResolutionKey);
 
@@ -217,9 +217,9 @@ public partial class SettingsViewModel(SettingsService settingsService, TraceDir
         _ = SettingsService.SaveSettingAsync(ColumnstoreResolutionKey, value);
     }
 
-    partial void OnTraceNestedLayoutChanged(bool value)
+    partial void OnSimulationNestedLayoutChanged(bool value)
     {
-        _ = SettingsService.SaveSettingAsync(TraceNestedLayoutKey, value);
+        _ = SettingsService.SaveSettingAsync(SimulationNestedLayoutKey, value);
     }
 
     partial void OnPlanAnnotationsChanged(bool value)

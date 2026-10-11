@@ -1,0 +1,119 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<UserControl
+    x:Class="InternalsViewer.UI.App.Views.Query.Tabs.Simulation.SimulationTabView"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    xmlns:docking="using:InternalsViewer.UI.App.Controls.Docking"
+    mc:Ignorable="d">
+
+    <Grid KeyboardAcceleratorPlacementMode="Hidden">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="*"/>
+            <ColumnDefinition Width="*"/>
+        </Grid.ColumnDefinitions>
+
+        <Grid.KeyboardAccelerators>
+            <KeyboardAccelerator Key="F5" Invoked="OnRunAccelerator" />
+            <KeyboardAccelerator Key="F5" Modifiers="Shift" Invoked="OnRunToEndAccelerator" />
+            <KeyboardAccelerator Key="F5" Modifiers="Control,Shift" Invoked="OnRestartAccelerator" />
+            <KeyboardAccelerator Key="Pause" Modifiers="Control,Menu" Invoked="OnPauseAccelerator" />
+        </Grid.KeyboardAccelerators>
+
+        <CommandBar Grid.Row="0"
+                    IsOpen="False"
+                    Padding="8,0,0,0"
+                    DefaultLabelPosition="Right"
+                    VerticalAlignment="Center"
+                    HorizontalAlignment="Left"
+                    VerticalContentAlignment="Top"
+                    MinHeight="0"
+                    OverflowButtonVisibility="Collapsed"
+                    BorderThickness="0,0,0,1"
+                    BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                    Background="Transparent">
+            <AppBarButton Label="Step" Command="{x:Bind ViewModel.StepNextCommand}">
+                <AppBarButton.Icon>
+                    <FontIcon Glyph="&#xE8B5;" />
+                </AppBarButton.Icon>
+            </AppBarButton>
+            <AppBarElementContainer VerticalContentAlignment="Center">
+                <SplitButton Command="{x:Bind ViewModel.RunCommand}"
+                             Margin="4,0,0,0"
+                             Background="Transparent"
+                             BorderThickness="0">
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <FontIcon Glyph="{x:Bind RunGlyph(ViewModel.IsRunning), Mode=OneWay}" FontSize="16" />
+                        <TextBlock Text="{x:Bind RunLabel(ViewModel.IsRunning), Mode=OneWay}" />
+                    </StackPanel>
+                    <SplitButton.Flyout>
+                        <MenuFlyout Placement="BottomEdgeAlignedLeft">
+                            <MenuFlyoutItem Text="{x:Bind RunToEndLabel(ViewModel.IsRunningToEnd), Mode=OneWay}"
+                                            Command="{x:Bind ViewModel.RunToEndCommand}">
+                                <MenuFlyoutItem.Icon>
+                                    <FontIcon Glyph="&#xE893;" />
+                                </MenuFlyoutItem.Icon>
+                            </MenuFlyoutItem>
+                            <!--<MenuFlyoutSeparator />
+                            <MenuFlyoutItem Text="Run to next emit"
+                                            Command="{x:Bind ViewModel.RunToCommand}"
+                                            CommandParameter="Emit" />
+                            <MenuFlyoutItem Text="Run to next rebind"
+                                            Command="{x:Bind ViewModel.RunToCommand}"
+                                            CommandParameter="Rebind" />
+                            <MenuFlyoutItem Text="Run to next phase"
+                                            Command="{x:Bind ViewModel.RunToCommand}"
+                                            CommandParameter="Phase" />
+                            <MenuFlyoutItem Text="Run to next page read"
+                                            Command="{x:Bind ViewModel.RunToCommand}"
+                                            CommandParameter="PageRead" />-->
+                        </MenuFlyout>
+                    </SplitButton.Flyout>
+                </SplitButton>
+            </AppBarElementContainer>
+
+            <AppBarButton Label="Reset" Command="{x:Bind ViewModel.ResetStepCommand}"  Margin="0,0,4,0"/>
+            <AppBarSeparator />
+            <AppBarElementContainer VerticalContentAlignment="Center">
+                <StackPanel Orientation="Horizontal"
+                            Spacing="6"
+                            Margin="8,0,8,0"
+                            VerticalAlignment="Center"
+                            ToolTipService.ToolTip="Run speed">
+                    <TextBlock Text="Speed" />
+                    <Slider Width="120"
+                            Minimum="-500"
+                            Maximum="1000"
+                            StepFrequency="100"
+                            IsDirectionReversed="True"
+                            VerticalAlignment="Center"
+                            IsThumbToolTipEnabled="False"
+                            Value="{x:Bind ViewModel.RunDelayMs, Mode=TwoWay}" />
+                </StackPanel>
+            </AppBarElementContainer>
+            <AppBarSeparator Visibility="{x:Bind BoolVisibility(ViewModel.IsActiveOperatorVisible), Mode=OneWay}" />
+            <AppBarElementContainer VerticalContentAlignment="Center"
+                                    Visibility="{x:Bind BoolVisibility(ViewModel.IsActiveOperatorVisible), Mode=OneWay}">
+                <StackPanel Orientation="Horizontal"
+                            Spacing="6"
+                            Margin="8,0,8,0"
+                            VerticalAlignment="Center"
+                            ToolTipService.ToolTip="Active Operator">
+                    <TextBlock Text="Operator"
+                               Foreground="{ThemeResource TextFillColorTertiaryBrush}" />
+                    <TextBlock Text="{x:Bind ViewModel.ActiveOperatorName, Mode=OneWay}"
+                               Foreground="{ThemeResource TextFillColorPrimaryBrush}" />
+                </StackPanel>
+            </AppBarElementContainer>
+        </CommandBar>
+        <docking:DockHost Grid.Row="1"
+                          Grid.Column="0"
+                          Grid.ColumnSpan="2"
+                          Layout="{x:Bind ViewModel.Dock, Mode=OneWay}" />
+    </Grid>
+</UserControl>

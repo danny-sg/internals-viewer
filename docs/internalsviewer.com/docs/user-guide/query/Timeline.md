@@ -40,9 +40,11 @@ Dragging the triangular handles on the ruler selects a time range, and the playh
 - **Click** an event to select it - this also selects the matching row in the Events pane
 - **Double-click** an event that has a page associated with it (a read, a lock, a log operation) to open that page in the [Page Viewer](/docs/user-guide/page-viewer)
 - **Click an operator's bar** in the Plan band to select it, fade every event that does not belong to it, and highlight when it actually streamed rows - blocking operators like a Sort consume their input for most of their lifetime and only stream at the end
-- **Right-click an operator's bar** in the Plan band for **Execution Plan**, which selects it in the plan, **Open Index:** with the index's name, which opens it in the [Index View](/docs/user-guide/index-view) linked to the trace so pages light up as they are read, and **Trace**, which steps through it in the [Trace](/docs/user-guide/query/Trace) pane
+- **Right-click an operator's bar** in the Plan band for **Execution Plan**, which selects it in the plan, **Open Index:** with the index's name, which opens it in the [Index View](/docs/user-guide/index-view) linked to the trace so pages light up as they are read, and **Simulate**, which steps through it in the [Simulation](/docs/user-guide/query/Simulation) pane
 
 ![Right-clicking an operator to open its index](/docs/user-guide/images/query-timeline-right-click-open-index-option.png)
+
+<!-- Screenshot (update): the Plan band's right-click menu - Trace is now Simulate -->
 
 ## Columnstore
 

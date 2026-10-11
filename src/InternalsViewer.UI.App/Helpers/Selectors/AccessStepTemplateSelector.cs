@@ -1,5 +1,5 @@
 ﻿using InternalsViewer.Execution.AccessPaths.Results.Steps;
-using InternalsViewer.UI.App.Models.Query.Trace.Steps;
+using InternalsViewer.UI.App.Models.Query.Simulation.Steps;
 using Microsoft.UI.Xaml.Controls;
 
 namespace InternalsViewer.UI.App.Helpers.Selectors;
@@ -124,7 +124,7 @@ public sealed class AccessStepTemplateSelector : DataTemplateSelector
 
     public DataTemplate PageSkippedTemplate { get; set; } = null!;
 
-    public DataTemplate TraceCounterSpanTemplate { get; set; } = null!;
+    public DataTemplate SimulationCounterSpanTemplate { get; set; } = null!;
 
     public DataTemplate DefaultTemplate { get; set; } = null!;
 
@@ -132,7 +132,7 @@ public sealed class AccessStepTemplateSelector : DataTemplateSelector
     {
         return item switch
         {
-            TraceCounterSpan => TraceCounterSpanTemplate,
+            SimulationCounterSpan => SimulationCounterSpanTemplate,
             AccessStep.Open => OpenTemplate,
             AccessStep.Close => CloseTemplate,
             AccessStep.Output => OutputTemplate,

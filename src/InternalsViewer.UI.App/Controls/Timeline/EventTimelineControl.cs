@@ -269,7 +269,7 @@ public sealed partial class EventTimelineControl : Grid, IDisposable
 
     public event Action<ExecutionOperatorEvent>? ExecutionPlanRequested;
 
-    public event Action<ExecutionOperatorEvent>? TraceOpenRequested;
+    public event Action<ExecutionOperatorEvent>? SimulationOpenRequested;
 
     /// <summary>
     /// Builds a fresh set of play, step, speed, threads and audio controls for the caller to host

@@ -11,7 +11,7 @@
                                 IsExecuting="{x:Bind ViewModel.ExecuteQueryCommand.IsRunning, Mode=OneWay}"
                                 ExecuteCommand="{x:Bind ViewModel.ExecuteQueryCommand, Mode=OneWay}"
                                 CancelCommand="{x:Bind ViewModel.ExecuteQueryCancelCommand, Mode=OneWay}"
-                                TraceCommand="{x:Bind ViewModel.OpenTraceCommand, Mode=OneWay}"
+                                SimulationCommand="{x:Bind ViewModel.OpenSimulationCommand, Mode=OneWay}"
                                 TrackQuery="{x:Bind ViewModel.TrackQuery, Mode=TwoWay}"
                                 History="{x:Bind ViewModel.History, Mode=OneWay}"
                                 IsHistoryVisible="{x:Bind ViewModel.IsSqlHistoryVisible, Mode=TwoWay}"

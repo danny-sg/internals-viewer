@@ -190,7 +190,7 @@ public sealed class ExecutionPlanControl : Canvas
 
     public event EventHandler<PlanNode>? IndexOpenRequested;
 
-    public event EventHandler<PlanNode>? TraceOpenRequested;
+    public event EventHandler<PlanNode>? SimulationOpenRequested;
 
     public event EventHandler<PlanNode>? CallStackOpenRequested;
 
@@ -512,7 +512,7 @@ public sealed class ExecutionPlanControl : Canvas
                 flyout.Items.Add(openIndex);
             }
 
-            var canTrace = node.IsStatement
+            var canSimulate = node.IsStatement
                            || OperatorClassifier.IsTop(node)
                            || OperatorClassifier.IsConcatenation(node)
                            || OperatorClassifier.IsSort(node)
@@ -521,13 +521,13 @@ public sealed class ExecutionPlanControl : Canvas
                            || MergeJoinResolver.Resolve(node) is not null
                            || HashJoinResolver.Resolve(node) is not null;
 
-            if (canTrace)
+            if (canSimulate)
             {
-                var openTrace = new MenuFlyoutItem { Text = "Trace" };
+                var openSimulation = new MenuFlyoutItem { Text = "Simulate" };
 
-                openTrace.Click += (_, _) => TraceOpenRequested?.Invoke(this, node);
+                openSimulation.Click += (_, _) => SimulationOpenRequested?.Invoke(this, node);
 
-                flyout.Items.Add(openTrace);
+                flyout.Items.Add(openSimulation);
             }
 
             var openCallStack = new MenuFlyoutItem { Text = "Call Stack" };

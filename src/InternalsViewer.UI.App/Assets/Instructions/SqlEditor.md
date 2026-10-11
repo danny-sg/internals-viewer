@@ -5,12 +5,18 @@ execution.
 
 The command bar includes options for how the query will be executed:
 
-## Trace
+## Simulate
 
-Trace mode will detect if a query is a modification query (insert/update/delete etc.) and execute the query inside a transaction that is
-rolled back when events are captured. This allows the query to be replayed against the initial state of the database.
+**Simulate** opens the Simulation tab, which steps through the query's plan one operator at a time - the operator selected in the
+Execution Plan, or the whole statement.
 
-If Trace is off the modifcation will execute without a transaction and without log capture.
+## Track query
+
+**Track query** on the Query menu, on by default, runs the query with a trace. A modification query (insert/update/delete etc.) runs
+inside a transaction that is rolled back once its events are captured, so the query can be replayed against the initial state of the
+database.
+
+If Track query is off the query runs without a trace, and a modification runs without a transaction - so it changes the data.
 
 ## Clear Buffer Pool
 
@@ -42,13 +48,14 @@ The messages tab includes messages/errors from the query and information about t
 
 ## Tips
 
-- **Ctrl + Enter** or `F5` executes a query
+- `F5` executes a query
+- **Ctrl + H** shows and hides the History, and **Ctrl + R** the Results and Messages
 - Select text and execute to run just the selected portion of a query
 - **Ctrl + mouse wheel** changes the editor font size
 
 ## Multi-statement scripts
 
 If you have a script that requires setup/teardown and do not want to trace that part of it, select the SQL that will be traced, right click,
-and choose 'Trace Query Selection'. This will trace only the hilighted portion while still running any other parts of the query.
+and choose 'Trace query selection'. This will trace only the highlighted portion while still running any other parts of the query.
 
 Clear the selection by right clicking and choosing 'Clear query selection'.

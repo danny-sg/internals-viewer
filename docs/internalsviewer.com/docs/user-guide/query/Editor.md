@@ -6,8 +6,10 @@ Its command bar has:
 
 ![SQL Editor command bar](/docs/user-guide/images/query-empty-default-layout-cropped.png)
 
+<!-- Screenshot (update): the SQL Editor command bar - the Trace button is now Simulate -->
+
 - **Execute** - runs the query. While it runs it reads **Executing** and the square **Stop** button beside it turns red - click Stop to cancel the query
-- **Trace** - opens the [Trace](/docs/user-guide/query/Trace) pane, which steps through the query's plan
+- **Simulate** - opens the [Simulation](/docs/user-guide/query/Simulation) pane, which steps through the query's plan
 - **Clear Buffer Pool** - empties the buffer pool first (`CHECKPOINT`, then `DBCC DROPCLEANBUFFERS`) so every page the query touches is physically read. Don't use this on a server anyone else is using - it empties the buffer pool for the whole server
 - **Disable Read-Ahead** - on by default. Makes the engine read pages individually instead of [pre-fetching large blocks](https://learn.microsoft.com/en-us/sql/relational-databases/reading-pages), using trace flag 652 for the query's session, giving a much clearer picture of the access pattern
 

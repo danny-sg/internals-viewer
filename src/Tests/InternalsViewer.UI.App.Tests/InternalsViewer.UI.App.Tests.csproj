@@ -38,7 +38,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <None Include="..\..\InternalsViewer.UI.App\Controls\Trace\Steps\AccessStepTemplates.xaml">
+    <None Include="..\..\InternalsViewer.UI.App\Controls\Simulation\Steps\AccessStepTemplates.xaml">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
       <Link>Helpers\Selectors\AccessStepTemplates.xaml</Link>
     </None>
