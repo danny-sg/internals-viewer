@@ -5,7 +5,6 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using InternalsViewer.Query.Debugging.Interfaces;
 using InternalsViewer.Query.XEvents;
-using InternalsViewer.UI.App.Helpers;
 using InternalsViewer.UI.App.Services;
 
 namespace InternalsViewer.UI.App.ViewModels;
@@ -27,7 +26,6 @@ public partial class SettingsViewModel(SettingsService settingsService, TraceDir
 
     private const string ColumnstoreResolutionKey = "FullColumnstoreAllocationResolution";
 
-    private const string WinDbgPasswordKey = "WinDbgPassword";
     private const string WinDbgPathKey = "WinDbgPath";
     private const string SymbolSearchExcludedModulesKey = "SymbolSearchExcludedModules";
     private const string ShowTimeTravelWarningKey = "ShowTimeTravelWarning";
@@ -65,9 +63,6 @@ public partial class SettingsViewModel(SettingsService settingsService, TraceDir
 
     [ObservableProperty]
     private bool _fullColumnstoreResolution = true;
-
-    [ObservableProperty]
-    private string _winDbgPassword = string.Empty;
 
     [ObservableProperty]
     private string _winDbgPath = string.Empty;
@@ -148,10 +143,6 @@ public partial class SettingsViewModel(SettingsService settingsService, TraceDir
 
         PlanAnnotations = savedPlanAnnotations ?? false;
 
-        var savedWinDbgPassword = PasswordProtection.Unprotect(await SettingsService.ReadSettingAsync<string>(WinDbgPasswordKey));
-
-        WinDbgPassword = string.IsNullOrWhiteSpace(savedWinDbgPassword) ? Guid.NewGuid().ToString("N")[..12] : savedWinDbgPassword;
-
         WinDbgPath = await SettingsService.ReadSettingAsync<string>(WinDbgPathKey) ?? string.Empty;
 
         SymbolSearchExcludedModules = await SettingsService.ReadSettingAsync<string>(SymbolSearchExcludedModulesKey) ?? string.Empty;
@@ -178,11 +169,6 @@ public partial class SettingsViewModel(SettingsService settingsService, TraceDir
     partial void OnSymbolsPathChanged(string value)
     {
         _ = SettingsService.SaveSettingAsync(SymbolsPathKey, value);
-    }
-
-    partial void OnWinDbgPasswordChanged(string value)
-    {
-        _ = SettingsService.SaveSettingAsync(WinDbgPasswordKey, PasswordProtection.Protect(value));
     }
 
     partial void OnWinDbgPathChanged(string value)

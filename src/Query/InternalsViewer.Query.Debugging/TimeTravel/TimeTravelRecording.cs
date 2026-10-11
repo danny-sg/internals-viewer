@@ -19,13 +19,13 @@ internal sealed class TimeTravelRecording(string ttdDirectory, string traceDirec
 
     private const string HostName = "InternalsViewer.TraceHarness.exe";
 
-    private static readonly string[] Modules = ["sqlmin.dll", "sqllang.dll"];
-
     private static readonly TimeSpan PrepareTimeout = TimeSpan.FromMinutes(5);
     private static readonly TimeSpan StartTimeout = TimeSpan.FromMinutes(3);
     private static readonly TimeSpan StopTimeout = TimeSpan.FromMinutes(10);
     private static readonly TimeSpan DisposeTimeout = TimeSpan.FromSeconds(30);
     private static readonly TimeSpan PollInterval = TimeSpan.FromMilliseconds(250);
+
+    public static IReadOnlyList<string> Modules { get; } = ["sqlmin.dll", "sqllang.dll"];
 
     public int ProcessId { get; private set; } = processId;
 

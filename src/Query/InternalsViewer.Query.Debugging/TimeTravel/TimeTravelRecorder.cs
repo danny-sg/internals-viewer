@@ -4,23 +4,22 @@ using System.Security.AccessControl;
 using InternalsViewer.Query.Debugging.Exceptions;
 using Microsoft.Data.SqlClient;
 using Microsoft.Extensions.Logging;
-using Microsoft.Win32;
 
 namespace InternalsViewer.Query.Debugging.TimeTravel;
 
 [SupportedOSPlatform("windows")]
 public sealed class TimeTravelRecorder(WinDbgService winDbg, ILogger<TimeTravelRecorder> logger) : ITimeTravelRecorder
 {
-    private const string LicenceKey = @"Software\Microsoft\TTD";
-
-    private const string LicenceValue = "EULASigned";
-
     private const string OnlineSql = "SELECT CAST(DATABASEPROPERTYEX(DB_NAME(), 'Status') AS nvarchar(60))";
 
     private static readonly TimeSpan RestartTimeout = TimeSpan.FromMinutes(2);
     private static readonly TimeSpan RetryDelay = TimeSpan.FromSeconds(1);
 
     public static string TraceRoot => Path.Combine(Root, "Traces");
+
+    public IReadOnlyList<string> Modules => TimeTravelRecording.Modules;
+
+    public bool IsLicenceAccepted => TimeTravelLicence.IsAccepted;
 
     private static string Root =>
         Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData),
@@ -41,10 +40,10 @@ public sealed class TimeTravelRecorder(WinDbgService winDbg, ILogger<TimeTravelR
 
         var directory = PrepareTimeTravel();
 
-        if (!IsLicenceAccepted())
+        if (!TimeTravelLicence.IsAccepted)
         {
-            throw new DebuggerException("The TTD licence has not been accepted. Run "
-                                      + $"\"{Path.Combine(directory, "TTD.exe")}\" once from an elevated prompt to accept it");
+            throw new DebuggerException("The TTD licence has not been accepted. Turn Record Full Trace off and on again to "
+                                      + "review and accept it");
         }
 
         var recording = new TimeTravelRecording(directory, CreateTraceDirectory(sessionId), process.ProcessId, sessionId, logger);
@@ -67,6 +66,20 @@ public sealed class TimeTravelRecorder(WinDbgService winDbg, ILogger<TimeTravelR
 
         return recording;
     }
+
+    public void PrepareRecorder() => PrepareTimeTravel();
+
+    public string ReadLicence()
+    {
+        var directory = PrepareTimeTravel();
+
+        return TimeTravelLicence.Read(directory)
+               ?? throw new DebuggerException("The TTD licence terms could not be read. Run "
+                                            + $"\"{Path.Combine(directory, "TTD.exe")}\" once from an elevated prompt to accept it");
+    }
+
+    public Task AcceptLicenceAsync(CancellationToken cancellationToken)
+        => TimeTravelLicence.AcceptAsync(PrepareTimeTravel(), cancellationToken);
 
     private async Task WaitForDatabaseAsync(string connectionString, CancellationToken cancellationToken)
     {
@@ -111,19 +124,12 @@ public sealed class TimeTravelRecorder(WinDbgService winDbg, ILogger<TimeTravelR
         try
         {
             return installation.PrepareTimeTravel(RecorderRoot)
-                   ?? throw new DebuggerException($"Time Travel Debugging was not found in {installation.EngineDirectory}");
+                   ?? throw new WinDbgNotFoundException($"Time Travel Debugging was not found in {installation.EngineDirectory}");
         }
         catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
         {
             throw new DebuggerException($"TTD could not be copied from {installation.EngineDirectory}: {exception.Message}");
         }
-    }
-
-    private static bool IsLicenceAccepted()
-    {
-        using var key = Registry.CurrentUser.OpenSubKey(LicenceKey);
-
-        return key?.GetValue(LicenceValue) is int and not 0;
     }
 
     private string CreateTraceDirectory(string sessionId)

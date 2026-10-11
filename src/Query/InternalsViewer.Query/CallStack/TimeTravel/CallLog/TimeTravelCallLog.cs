@@ -49,30 +49,6 @@ public sealed class TimeTravelCallLog
 
     public CallStackNode? NodeOf(TimeTravelArgumentCall call) => NodeAt(call.Node);
 
-    public int? FirstCallOn(IReadOnlyList<TimeTravelArgumentCall> calls, CallStackNode node)
-    {
-        var matches = new Dictionary<int, bool>();
-
-        for (var index = 0; index < calls.Count; index++)
-        {
-            var raw = calls is TimeTravelCallList list ? list.NodeIndexAt(index) : calls[index].Node;
-
-            if (!matches.TryGetValue(raw, out var match))
-            {
-                match = NodeAt(raw) is { } original && EndsWith(original, node);
-
-                matches[raw] = match;
-            }
-
-            if (match)
-            {
-                return index;
-            }
-        }
-
-        return null;
-    }
-
     public Task<IReadOnlyList<TimeTravelValueUse>> FindAsync(ulong value, CancellationToken cancellationToken)
         => Task.Run<IReadOnlyList<TimeTravelValueUse>>(() => Find(value, cancellationToken), cancellationToken);
 
@@ -166,23 +142,6 @@ public sealed class TimeTravelCallLog
     }
 
     private CallStackNode? NodeAt(int node) => node >= 0 && node < Nodes.Length ? Nodes[node] : null;
-
-    private static bool EndsWith(CallStackNode path, CallStackNode end)
-    {
-        var node = path;
-
-        for (var other = end; other is { IsRoot: false }; other = other.Parent)
-        {
-            if (node is not { IsRoot: false } || !ReferenceEquals(node.Frame, other.Frame) && node.Key != other.Key)
-            {
-                return false;
-            }
-
-            node = node.Parent;
-        }
-
-        return true;
-    }
 
     private TimeTravelValueMatch MatchAt(ulong[] columns, int calls, int call, int start)
     {

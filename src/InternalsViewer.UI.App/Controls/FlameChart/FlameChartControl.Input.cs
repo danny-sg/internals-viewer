@@ -35,7 +35,7 @@ public sealed partial class FlameChartControl
 
     private bool _isSelecting;
 
-    private bool _selectsOnDrag;
+    private bool _isShiftPressed;
 
     private bool _pressedOperators;
 
@@ -91,6 +91,8 @@ public sealed partial class FlameChartControl
         var position = point.Position;
 
         HideToolTip();
+
+        _overlay.Focus(FocusState.Pointer);
 
         if (point.Properties.IsMiddleButtonPressed)
         {
@@ -191,7 +193,7 @@ public sealed partial class FlameChartControl
         _isPressed = true;
         _isSelecting = false;
         _pressedOperators = inOperators;
-        _selectsOnDrag = e.KeyModifiers.HasFlag(VirtualKeyModifiers.Shift);
+        _isShiftPressed = e.KeyModifiers.HasFlag(VirtualKeyModifiers.Shift);
         _pressPoint = position;
         _dragPoint = position;
         _panViewStart = _viewStart;
@@ -245,9 +247,9 @@ public sealed partial class FlameChartControl
 
             if (!_isSelecting && !_isDragging && Distance(_pressPoint, position) > DragThreshold)
             {
-                _isSelecting = _selectsOnDrag;
+                _isSelecting = _isShiftPressed;
 
-                _isDragging = !_selectsOnDrag;
+                _isDragging = !_isShiftPressed;
 
                 if (_isDragging)
                 {
@@ -349,6 +351,10 @@ public sealed partial class FlameChartControl
         else if (_isPressed && !_isDragging && _pressedOperators)
         {
             ClickOperator(OperatorAt(position));
+        }
+        else if (_isPressed && !_isDragging && _isShiftPressed)
+        {
+            RootAt(HitTest(position));
         }
         else if (_isPressed && !_isDragging)
         {
@@ -469,6 +475,103 @@ public sealed partial class FlameChartControl
         var scale = PixelsPerUnit((int)_overlay.ActualWidth);
 
         SetView(_viewStart + left / scale, _viewStart + right / scale);
+    }
+
+    private void OnKeyDown(object sender, KeyRoutedEventArgs e)
+    {
+        if (e.Key is not (VirtualKey.Up or VirtualKey.Down or VirtualKey.Left or VirtualKey.Right)
+            || _selected is not { } hit
+            || _visible is not { } timeline
+            || hit.Lane >= timeline.Threads.Count)
+        {
+            return;
+        }
+
+        e.Handled = true;
+
+        var rows = timeline.Threads[hit.Lane].Rows;
+
+        FlameHit? next = e.Key switch
+        {
+            VirtualKey.Up => CallerOf(rows, hit),
+            VirtualKey.Down => OnlyCalleeOf(rows, hit),
+            VirtualKey.Left => SiblingOf(rows, hit, forward: false),
+            _ => SiblingOf(rows, hit, forward: true)
+        };
+
+        if (next is not { } target)
+        {
+            return;
+        }
+
+        Select(target);
+
+        BringIntoView(target);
+    }
+
+    private FlameHit? CallerOf(IReadOnlyList<TimeTravelTimelineRow> rows, FlameHit hit)
+    {
+        if (hit.Depth == 0 || hit.Depth >= rows.Count)
+        {
+            return null;
+        }
+
+        var row = rows[hit.Depth];
+
+        var middle = (row.Starts(_axis)[hit.Index] + row.Ends(_axis)[hit.Index]) / 2;
+
+        var index = rows[hit.Depth - 1].IndexAt(_axis, middle, 0);
+
+        return index < 0 ? null : hit with { Depth = hit.Depth - 1, Index = index };
+    }
+
+    private FlameHit? OnlyCalleeOf(IReadOnlyList<TimeTravelTimelineRow> rows, FlameHit hit)
+    {
+        if (hit.Depth + 1 >= rows.Count)
+        {
+            return null;
+        }
+
+        var row = rows[hit.Depth];
+
+        var start = row.Starts(_axis)[hit.Index];
+
+        var end = row.Ends(_axis)[hit.Index];
+
+        var callees = rows[hit.Depth + 1];
+
+        var first = callees.FirstStartingFrom(_axis, start, 0);
+
+        var only = first < callees.Count && callees.Ends(_axis)[first] <= end;
+
+        var second = first + 1 < callees.Count && callees.Starts(_axis)[first + 1] < end;
+
+        return only && !second ? hit with { Depth = hit.Depth + 1, Index = first } : null;
+    }
+
+    private FlameHit? SiblingOf(IReadOnlyList<TimeTravelTimelineRow> rows, FlameHit hit, bool forward)
+    {
+        var row = rows[hit.Depth];
+
+        var index = forward ? hit.Index + 1 : hit.Index - 1;
+
+        if (index < 0 || index >= row.Count)
+        {
+            return null;
+        }
+
+        if (CallerOf(rows, hit) is { } caller)
+        {
+            var callerRow = rows[caller.Depth];
+
+            if (row.Starts(_axis)[index] < callerRow.Starts(_axis)[caller.Index]
+                || row.Ends(_axis)[index] > callerRow.Ends(_axis)[caller.Index])
+            {
+                return null;
+            }
+        }
+
+        return hit with { Index = index };
     }
 
     private void Select(FlameHit? hit)
@@ -595,14 +698,14 @@ public sealed partial class FlameChartControl
         return (Math.Min(first, second), Math.Max(first, second));
     }
 
+    private void RootAt(FlameHit? hit)
+        => SetRoot(hit is { } at && SpanOf(at) is { } span ? _visible?.NodeOf(span.Node) : null);
+
     private void Click(FlameHit? hit)
     {
         if (hit is null || hit == _selected)
         {
-            if (!IsLocked)
-            {
-                Deselect();
-            }
+            Deselect();
         }
         else
         {

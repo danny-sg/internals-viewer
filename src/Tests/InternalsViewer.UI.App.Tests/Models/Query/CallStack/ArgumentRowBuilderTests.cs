@@ -19,7 +19,7 @@ public class ArgumentRowBuilderTests
 
         var table = ArgumentRowBuilder.Table(layout, [Call(0, 7)]);
 
-        Assert.Equal(["Call", "Thread", "Argument 2", "Argument 3", "Argument 4"], table.Columns.Select(c => c.Name));
+        Assert.Equal(["RDX", "R8", "R9"], table.Columns.Skip(2).Select(c => c.Detail));
     }
 
     [Fact]
@@ -47,7 +47,7 @@ public class ArgumentRowBuilderTests
 
         var table = ArgumentRowBuilder.Table(SetRange, calls);
 
-        Assert.Equal(["Call", "Thread", "this", "Argument 1"], table.Columns.Select(c => c.Name));
+        Assert.Equal(["Call", "Thread", "this", ""], table.Columns.Select(c => c.Name));
 
         var row = Assert.Single(table.Rows);
 

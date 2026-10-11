@@ -98,12 +98,6 @@ public static class WinDbgCommands
     /// <summary>
     /// A breakpoint that reads each argument from the signature, falling back to the registers when it cannot
     /// </summary>
-    /// <remarks>
-    /// The types come from the undecorated signature, so the routine maps them onto the x64 calling convention itself:
-    /// an assumed <c>this</c> in <c>rcx</c>, then integer and pointer arguments across <c>rdx</c>/<c>r8</c>/<c>r9</c>
-    /// and the stack, floating point arguments in the matching <c>xmm</c> register, and strings dumped as text. A static
-    /// member, a floating point argument past the fourth, and a by-value struct return are not accounted for.
-    /// </remarks>
     private static string DumpArgumentsFromSignature(WinDbgTarget target, string? decoratedName, bool resume)
     {
         if (target.Signature is not { } signature || ArgumentDumpAction(signature, decoratedName) is not { } action)

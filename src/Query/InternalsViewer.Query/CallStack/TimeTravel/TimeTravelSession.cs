@@ -110,8 +110,6 @@ public sealed class TimeTravelSession : IDisposable
                                                        functions.InstanceMethods.Length,
                                                        functions.Excluded,
                                                        functions.Excluded.Length,
-                                                       functions.Markers,
-                                                       functions.Markers.Length,
                                                        reads,
                                                        reads.Length,
                                                        onChunk,

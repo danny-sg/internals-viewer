@@ -1,5 +1,6 @@
 ﻿using System.ComponentModel;
 using System.Diagnostics;
+using System.Security.Cryptography;
 using System.Runtime.Versioning;
 using InternalsViewer.Query.Debugging.Exceptions;
 using InternalsViewer.Query.Debugging.Interfaces;
@@ -41,8 +42,9 @@ public sealed class WinDbgService(IWinDbgSettings settings, ILogger<WinDbgServic
 
     public bool IsConnected => _host is not null;
 
-    public WinDbgServerOptions ServerOptions =>
-        new(PipeName, string.IsNullOrWhiteSpace(settings.WinDbgPassword) ? null : settings.WinDbgPassword);
+    public WinDbgServerOptions ServerOptions => new(PipeName, Password);
+
+    private string Password { get; } = RandomNumberGenerator.GetHexString(16, lowercase: true);
 
     private static string EngineCacheRoot =>
         Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "InternalsViewer", "WinDbg");
@@ -150,12 +152,12 @@ public sealed class WinDbgService(IWinDbgSettings settings, ILogger<WinDbgServic
         {
             return File.Exists(settings.WinDbgPath)
                 ? WinDbgInstallation.FromExecutable(settings.WinDbgPath)
-                : throw new DebuggerException($"WinDbg was not found at {settings.WinDbgPath}. Check the WinDbg Path in Settings");
+                : throw new WinDbgNotFoundException($"WinDbg was not found at {settings.WinDbgPath}. Check the WinDbg Path in Settings");
         }
 
         return WinDbgInstallation.Locate()
-               ?? throw new DebuggerException("WinDbg was not found. Install it from the Microsoft Store, "
-                                            + "or set the WinDbg Path in Settings");
+               ?? throw new WinDbgNotFoundException("WinDbg was not found. Install it from the Microsoft Store, "
+                                                  + "or set the WinDbg Path in Settings");
     }
 
     private async Task ConnectAsync(string engine, TimeSpan timeout, CancellationToken cancellationToken)

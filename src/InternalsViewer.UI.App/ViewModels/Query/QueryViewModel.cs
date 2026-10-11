@@ -387,6 +387,8 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
         QueryOptions.Changed += ScheduleSaveLayout;
 
+        PrepareFullTrace();
+
         Schema = SchemaHelper.ToSqlSchema(database);
 
         Layout = new QueryLayoutViewModel(this);
@@ -933,6 +935,25 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
         else if (e.PropertyName == nameof(QueryOptionsViewModel.RecordTimeTravel))
         {
             Layout.IsFullTrace = QueryOptions.RecordTimeTravel;
+
+            PrepareFullTrace();
+        }
+    }
+
+    private async void PrepareFullTrace()
+    {
+        if (!QueryOptions.RecordTimeTravel)
+        {
+            return;
+        }
+
+        try
+        {
+            await QueryRunner.PrepareFullTraceAsync(Database, _settingsViewModel.SymbolsPath, CancellationToken.None);
+        }
+        catch (Exception exception)
+        {
+            Logger.LogWarning(exception, "Preparing the Full Trace symbols failed, they will be resolved when the trace is loaded");
         }
     }
 
@@ -1784,7 +1805,18 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
         ClearResults();
 
-        var progress = new Progress<ProgressDetail>(AddMessage);
+        var run = new object();
+
+        TaskbarProgress.ShowIndeterminate(run);
+
+        var firstMessage = Messages.Count;
+
+        var progress = new Progress<ProgressDetail>(detail =>
+        {
+            AddMessage(detail);
+
+            ShowOverall(run, detail);
+        });
 
         var eventOptions = QueryOptions.Options;
 
@@ -1798,6 +1830,23 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
         QueryRunner.ResolveColumnstorePages = _settingsViewModel.FullColumnstoreResolution;
 
+        try
+        {
+            await RunQueryAsync(payload, eventOptions, traceDirectory, progress, firstMessage, cancellationToken);
+        }
+        finally
+        {
+            TaskbarProgress.Clear(run);
+        }
+    }
+
+    private async Task RunQueryAsync(ExecuteSqlPayload payload,
+                                     EventOptions eventOptions,
+                                     string? traceDirectory,
+                                     IProgress<ProgressDetail> progress,
+                                     int firstMessage,
+                                     CancellationToken cancellationToken)
+    {
         // Run full trace on background thread
         var (results, colours, startOffset, endOffset) =
             await Task.Run(async () =>
@@ -1833,6 +1882,8 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
         if (!results.IsSuccess)
         {
+            FinishProgressMessages(firstMessage, cancellationToken.IsCancellationRequested ? CancelledOutcome : FailedOutcome);
+
             IsError = true;
             AddMessage(results.Message);
 
@@ -2016,7 +2067,7 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
     {
         if (detail.Elapsed is { } elapsed)
         {
-            message.Outcome = elapsed.ToString();
+            message.Outcome = $"Completed in {elapsed}";
 
             return;
         }

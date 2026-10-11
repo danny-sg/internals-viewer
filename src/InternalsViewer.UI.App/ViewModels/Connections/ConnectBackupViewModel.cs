@@ -10,6 +10,7 @@ using CommunityToolkit.Mvvm.Messaging;
 using InternalsViewer.Internals.Engine.Loading;
 using InternalsViewer.UI.App.Messages;
 using InternalsViewer.UI.App.Models.Connections;
+using InternalsViewer.UI.App.Services;
 
 namespace InternalsViewer.UI.App.ViewModels.Connections;
 
@@ -20,8 +21,6 @@ public static class ConnectBackupViewModelFactory
 
 public partial class ConnectBackupViewModel : ObservableObject
 {
-    private string _lastMessage = string.Empty;
-
     [ObservableProperty]
     private bool _isValid;
 
@@ -47,6 +46,10 @@ public partial class ConnectBackupViewModel : ObservableObject
     public bool HasError => !string.IsNullOrEmpty(ErrorMessage);
 
     public bool HasProgress => !string.IsNullOrEmpty(ProgressLog);
+
+    private List<string> ProgressLines { get; } = [];
+
+    private bool IsLastLineRunning { get; set; }
 
     public void AddFiles(IEnumerable<string> paths)
     {
@@ -90,7 +93,11 @@ public partial class ConnectBackupViewModel : ObservableObject
 
         ProgressLog = string.Empty;
 
-        _lastMessage = string.Empty;
+        ProgressLines.Clear();
+
+        IsLastLineRunning = false;
+
+        TaskbarProgress.ShowIndeterminate(this);
 
         IsProgressIndeterminate = true;
 
@@ -124,6 +131,8 @@ public partial class ConnectBackupViewModel : ObservableObject
             IsBusy = false;
 
             IsProgressIndeterminate = false;
+
+            TaskbarProgress.Clear(this);
         }
     }
 
@@ -139,18 +148,31 @@ public partial class ConnectBackupViewModel : ObservableObject
     /// </remarks>
     private void Report(ProgressDetail detail)
     {
-        if (detail.Message != _lastMessage)
-        {
-            _lastMessage = detail.Message;
+        var running = IsLastLineRunning && ProgressLines[^1] == detail.Message;
 
-            ProgressLog = ProgressLog.Length == 0
-                          ? detail.Message
-                          : $"{ProgressLog}{Environment.NewLine}{detail.Message}";
+        if (detail.Elapsed is { } elapsed && running)
+        {
+            ProgressLines[^1] = $"{detail.Message} - Completed in {elapsed}";
+
+            IsLastLineRunning = false;
+        }
+        else if (!running)
+        {
+            ProgressLines.Add(detail.Message);
+
+            IsLastLineRunning = detail.Elapsed is null;
         }
 
-        IsProgressIndeterminate = detail.IsIndeterminate;
+        ProgressLog = string.Join(Environment.NewLine, ProgressLines);
 
-        ProgressPercentage = detail.Percentage ?? 0;
+        IsProgressIndeterminate = detail.Overall is null && detail.IsIndeterminate;
+
+        ProgressPercentage = detail.Overall ?? detail.Percentage ?? 0;
+
+        if (detail.Overall is { } overall)
+        {
+            TaskbarProgress.Show(this, overall);
+        }
     }
 
     private void Validate()

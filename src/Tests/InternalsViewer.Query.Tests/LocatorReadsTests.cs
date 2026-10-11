@@ -115,9 +115,24 @@ public class LocatorReadsTests
     }
 
     [Fact]
-    public void A_Parameter_After_The_Fourth_Register_Is_Not_Read()
+    public void A_Parameter_On_The_Stack_Is_Read_From_Its_Slot()
     {
-        var signature = new FunctionSignature(["int", "int", "int", "PageId const &"], FunctionKind.Member, "void");
+        var reads = Reads("IndexPageManager::GetPageWithKey(SEBindings const *,BTreeMgr::BTREE_SEEK_OPTION,AccessMode,HPageHandle &,"
+                          + "SearchInfo &,SEBindings *,unsigned char *,unsigned long,HPageIdVersionId *,bool)",
+                          "?GetPageWithKey@IndexPageManager@@QEAAXPEBVSEBindings@@W4BTREE_SEEK_OPTION@BTreeMgr@@W4AccessMode@@"
+                          + "AEAVHPageHandle@@AEAVSearchInfo@@PEAV2@PEAEKPEAVHPageIdVersionId@@_N@Z");
+
+        Assert.Equal([new LocatorRead(Function, 4, false, LocatorKind.Page, 0x20, LocatorType.PageHandlePath),
+                      new LocatorRead(Function, 4, true, LocatorKind.Page, 0x20, LocatorType.PageHandlePath)],
+                     reads);
+    }
+
+    [Fact]
+    public void A_Parameter_Past_The_Captured_Slots_Is_Not_Read()
+    {
+        var signature = new FunctionSignature(["int", "int", "int", "int", "int", "int", "int", "PageId const &"],
+                                              FunctionKind.Member,
+                                              "void");
 
         Assert.Empty(LocatorReads.For(Function, signature));
     }

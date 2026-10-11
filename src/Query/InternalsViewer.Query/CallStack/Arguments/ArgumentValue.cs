@@ -1,10 +1,12 @@
 using System.Globalization;
 using InternalsViewer.Internals.Columnstore.Metadata.Enums;
 using InternalsViewer.Internals.Engine.Database.Enums;
+using InternalsViewer.Internals.Engine.Indexes.Enums;
 using InternalsViewer.Internals.Engine.Pages.Enums;
 using InternalsViewer.Query.Events.BatchMode.Enums;
 using InternalsViewer.Query.Events.Latches;
 using InternalsViewer.Query.Events.Locks;
+using InternalsViewer.Query.Events.Properties;
 using InternalsViewer.Query.Events.Reads;
 
 namespace InternalsViewer.Query.CallStack.Arguments;
@@ -29,6 +31,7 @@ public static class ArgumentValue
     {
         ["LatchBase::LATCH_TYPE"] = new(GetEnumNames<LatchMode>),
         ["LatchBase::LatchClass"] = new(GetEnumNames<LatchClass>),
+        ["BTreeMgr::VR_STATUS"] = new(GetEnumNames<BTreeRootStatus>),
         ["LCK_MODE"] = new(GetEnumNames<LockMode>),
         ["LCK_RESULT"] = new(GetEnumNames<LockResult>),
         ["LockRes::LockResourceType"] = new(GetEnumNames<LockResourceType>),
@@ -123,7 +126,7 @@ public static class ArgumentValue
     private static Dictionary<int, string> GetEnumNames<T>() where T : struct, Enum
         => Enum.GetValues<T>()
                .DistinctBy(v => Convert.ToInt32(v, CultureInfo.InvariantCulture))
-               .ToDictionary(v => Convert.ToInt32(v, CultureInfo.InvariantCulture), v => v.ToString());
+               .ToDictionary(v => Convert.ToInt32(v, CultureInfo.InvariantCulture), v => EventPropertyFormatter.SplitWords(v.ToString()));
 
     private static string FlagsOf(Dictionary<int, string> names, int value)
     {

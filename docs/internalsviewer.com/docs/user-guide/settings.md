@@ -42,10 +42,6 @@ The folder SQL Server's debugging symbols (PDB files) are downloaded to when res
 
 Settings for sending commands from the [Call Stack](/docs/user-guide/query/CallStack#sending-commands-to-windbg) to a WinDbg session attached to SQL Server, and for recording with **Record Full Trace** - see [Full Trace](/docs/user-guide/query/FullTrace).
 
-### WinDbg Password
-
-The password the WinDbg session requires on its `InternalsViewer` named pipe, so nothing else on the machine can join it. A random password is generated the first time Settings is opened, and it is stored encrypted with Windows data protection (DPAPI), so only your Windows account can read it. It can be changed here, to match a WinDbg you start yourself.
-
 ### WinDbg Path
 
 The WinDbg executable to start when attaching to SQL Server. Blank finds WinDbg from the Microsoft Store, then the Debugging Tools for Windows. The same installation is where Record Full Trace takes its Time Travel Debugging recorder from.

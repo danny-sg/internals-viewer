@@ -8,6 +8,7 @@ using InternalsViewer.Internals.Engine.Database;
 using InternalsViewer.Internals.Interfaces.Connections;
 using InternalsViewer.Internals.Interfaces.Services.Loaders.Engine;
 using InternalsViewer.Internals.Readers.Pages;
+using InternalsViewer.Query.Debugging.Exceptions;
 using InternalsViewer.UI.App.Controls;
 using InternalsViewer.UI.App.Helpers;
 using InternalsViewer.UI.App.Messages;
@@ -151,6 +152,19 @@ public sealed partial class MainWindow
 
     private async Task<bool> ShowExceptionDialog(Exception exception)
     {
+        if (exception is WinDbgNotFoundException)
+        {
+            var install = new WinDbgInstallDialog(exception.Message)
+            {
+                XamlRoot = Content.XamlRoot,
+                Style = Application.Current.Resources["DefaultContentDialogStyle"] as Style
+            };
+
+            await install.ShowAsync();
+
+            return true;
+        }
+
         var dialog = new ExceptionDialog();
 
         dialog.Message = exception.Message;

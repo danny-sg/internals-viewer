@@ -82,6 +82,8 @@ public sealed partial class ArgumentsViewModel(ILogger logger, SymbolsViewModel 
 
     private bool IsSelectingQuietly { get; set; }
 
+    private bool IsChoosingQuietly { get; set; }
+
     public event Action<CallReference>? CallChosen;
 
     public bool CanShow(CallStackNode node) => Log is not null && node.Frame is { Address: not 0, Pdb.Length: > 0 };
@@ -117,7 +119,7 @@ public sealed partial class ArgumentsViewModel(ILogger logger, SymbolsViewModel 
 
         Shown = node;
 
-        await SelectFirstCallOnAsync(node);
+        SelectQuietly(null);
     }
 
     public Task ShowAsync(CallStackNode node, int? call)
@@ -129,7 +131,7 @@ public sealed partial class ArgumentsViewModel(ILogger logger, SymbolsViewModel 
 
         Shown = node;
 
-        SelectQuietly(call is { } index && index >= 0 && index < table.Rows.Count ? table.Rows[index] : null);
+        SelectQuietly(call is { } index && index >= 0 && index < table.Rows.Count ? table.Rows[index] : null, chosen: true);
 
         return Task.CompletedTask;
     }
@@ -275,7 +277,7 @@ public sealed partial class ArgumentsViewModel(ILogger logger, SymbolsViewModel 
 
             if (select is { } index && index >= 0 && index < table.Rows.Count)
             {
-                SelectQuietly(table.Rows[index]);
+                SelectQuietly(table.Rows[index], chosen: true);
             }
         }
         catch (OperationCanceledException) when (request.IsCancellationRequested)
@@ -296,9 +298,11 @@ public sealed partial class ArgumentsViewModel(ILogger logger, SymbolsViewModel 
         }
     }
 
-    private void SelectQuietly(ResultRow<long>? row)
+    private void SelectQuietly(ResultRow<long>? row, bool chosen = false)
     {
         IsSelectingQuietly = true;
+
+        IsChoosingQuietly = chosen;
 
         try
         {
@@ -307,35 +311,13 @@ public sealed partial class ArgumentsViewModel(ILogger logger, SymbolsViewModel 
         finally
         {
             IsSelectingQuietly = false;
+
+            IsChoosingQuietly = false;
         }
     }
 
     private bool IsShowing(CallStackNode node)
         => Shown?.Frame is { } shown && node.Frame is { } frame && shown.Address == frame.Address && shown.Instance == frame.Instance;
-
-    private async Task SelectFirstCallOnAsync(CallStackNode node)
-    {
-        if (Log is not { } log || CallTable is not { } table)
-        {
-            return;
-        }
-
-        var calls = LoggedCalls;
-
-        try
-        {
-            var first = await Task.Run(() => log.FirstCallOn(calls, node));
-
-            if (ReferenceEquals(Shown, node) && ReferenceEquals(LoggedCalls, calls) && first is { } index && index < table.Rows.Count)
-            {
-                SelectQuietly(table.Rows[index]);
-            }
-        }
-        catch (Exception exception) when (exception is InvalidDataException or EndOfStreamException)
-        {
-            logger.LogWarning(exception, "Finding the first call of {Function} on its call path failed", Signature);
-        }
-    }
 
     private async Task<Dictionary<ulong, FunctionKind?>> ResolveKindsAsync(IEnumerable<TimeTravelValueUse> uses)
     {
@@ -376,10 +358,10 @@ public sealed partial class ArgumentsViewModel(ILogger logger, SymbolsViewModel 
     partial void OnSelectedCallChanged(ResultRow<long>? value)
     {
         var reference = value is { Id: var index } && NodeAt((int)index) is { } node
-            ? new CallReference(node, (int)index, !IsSelectingQuietly)
+            ? new CallReference(node, (int)index, !IsSelectingQuietly || IsChoosingQuietly)
             : null;
 
-        if (reference is { IsChosen: true })
+        if (reference is { IsChosen: true } && !IsSelectingQuietly)
         {
             CallChosen?.Invoke(reference);
         }

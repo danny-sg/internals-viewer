@@ -1,5 +1,8 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
+using InternalsViewer.Query.CallStack;
+using InternalsViewer.Query.CallStack.TimeTravel.Timeline;
 using Microsoft.UI.Xaml;
 using SkiaSharp;
 
@@ -22,6 +25,8 @@ public sealed partial class FlameChartControl
     }
 
     private bool[]? _searchMatches;
+
+    private bool[]? _nodeMatches;
 
     private void FindSearchMatches()
     {
@@ -48,7 +53,44 @@ public sealed partial class FlameChartControl
         _searchMatches = matches;
     }
 
-    private bool IsDimmed(int node) => _searchMatches is { } matches && node >= 0 && node < matches.Length && !matches[node];
+    private void FindNodeMatches(CallStackNode? selected)
+    {
+        _colours.Clear();
+
+        _nodeMatches = null;
+
+        if (selected is null || _timeline is not { } timeline)
+        {
+            return;
+        }
+
+        HashSet<CallStackNode> members = [.. selected.MergedFrom.Count > 0 ? selected.MergedFrom : [selected]];
+
+        _nodeMatches = CallsUnder(timeline, members.Contains)
+                       ?? (selected.Frame is { } frame ? CallsUnder(timeline, n => ReferenceEquals(n.Frame, frame)) : null);
+    }
+
+    private static bool[]? CallsUnder(TimeTravelTimeline timeline, Func<CallStackNode, bool> isSelected)
+    {
+        var under = new bool[timeline.NodeCount];
+
+        var any = false;
+
+        for (var node = 0; node < under.Length; node++)
+        {
+            var parent = timeline.ParentOf(node);
+
+            under[node] = (parent >= 0 && under[parent]) || (timeline.NodeOf(node) is { } callNode && isSelected(callNode));
+
+            any |= under[node];
+        }
+
+        return any ? under : null;
+    }
+
+    private bool IsDimmed(int node) => Excludes(_searchMatches, node) || Excludes(_nodeMatches, node);
+
+    private static bool Excludes(bool[]? matches, int node) => matches is not null && node >= 0 && node < matches.Length && !matches[node];
 
     private static SKColor Dimmed(SKColor colour)
     {

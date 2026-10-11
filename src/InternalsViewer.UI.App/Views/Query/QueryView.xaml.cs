@@ -1,4 +1,8 @@
 ﻿using System;
+using System.Threading;
+using System.Threading.Tasks;
+using InternalsViewer.Query.Debugging.Exceptions;
+using InternalsViewer.Query.Debugging.TimeTravel;
 using InternalsViewer.UI.App.Controls;
 using InternalsViewer.UI.App.ViewModels;
 using InternalsViewer.UI.App.ViewModels.Query;
@@ -20,6 +24,8 @@ public sealed partial class QueryView : Page, IDisposable
     public QueryViewModel ViewModel => (QueryViewModel)DataContext;
 
     private static SettingsViewModel Settings => App.GetService<SettingsViewModel>();
+
+    private static ITimeTravelRecorder TimeTravel => App.GetService<ITimeTravelRecorder>();
 
     public void Dispose()
     {
@@ -68,8 +74,59 @@ public sealed partial class QueryView : Page, IDisposable
             }
         }
 
+        if (record)
+        {
+            record = await PrepareTimeTravelAsync();
+        }
+
         ViewModel.QueryOptions.RecordTimeTravel = record;
 
         item.IsChecked = record;
+    }
+
+    private async Task<bool> PrepareTimeTravelAsync()
+    {
+        try
+        {
+            TimeTravel.PrepareRecorder();
+
+            if (TimeTravel.IsLicenceAccepted)
+            {
+                return true;
+            }
+
+            var dialog = new TimeTravelLicenceDialog(TimeTravel.ReadLicence())
+            {
+                XamlRoot = XamlRoot,
+                Style = Application.Current.Resources["DefaultContentDialogStyle"] as Style
+            };
+
+            if (await dialog.ShowAsync() != ContentDialogResult.Primary)
+            {
+                return false;
+            }
+
+            await TimeTravel.AcceptLicenceAsync(CancellationToken.None);
+
+            return true;
+        }
+        catch (DebuggerException exception)
+        {
+            var dialog = exception is WinDbgNotFoundException
+                ? new WinDbgInstallDialog(exception.Message)
+                : new ContentDialog
+                {
+                    Title = "Time Travel Debugging Licence",
+                    Content = exception.Message,
+                    CloseButtonText = "OK"
+                };
+
+            dialog.XamlRoot = XamlRoot;
+            dialog.Style = Application.Current.Resources["DefaultContentDialogStyle"] as Style;
+
+            await dialog.ShowAsync();
+
+            return false;
+        }
     }
 }

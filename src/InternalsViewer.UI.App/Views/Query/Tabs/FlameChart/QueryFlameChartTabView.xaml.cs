@@ -25,11 +25,17 @@ public sealed partial class QueryFlameChartTabView : UserControl, IDocumentComma
 
     private const string SearchGlyph = "\uE721";
 
+    private const string PlayGlyph = "\uE768";
+
+    private const string PauseGlyph = "\uE769";
+
     private ToggleButton? _instructionsToggle;
 
     private ToggleButton? _positionToggle;
 
     private ToggleButton? _searchToggle;
+
+    private Button? _playButton;
 
     public QueryFlameChartTabView()
     {
@@ -42,6 +48,8 @@ public sealed partial class QueryFlameChartTabView : UserControl, IDocumentComma
         FlameChart.SelectionCleared += OnSelectionCleared;
 
         FlameChart.PlanNodeSelected += OnPlanNodeSelected;
+
+        FlameChart.PlayStateChanged += OnPlayStateChanged;
 
         Settings.PropertyChanged += OnSettingsPropertyChanged;
 
@@ -87,6 +95,12 @@ public sealed partial class QueryFlameChartTabView : UserControl, IDocumentComma
                                             "Display allocation/in-use memory",
                                             OnMemoryClick));
 
+        _playButton = CommandButton(new FontIcon { Glyph = FlameChart.IsPlaying ? PauseGlyph : PlayGlyph, FontSize = 12 },
+                                    FlameChart.IsPlaying ? "Pause" : "Play",
+                                    OnPlayClick);
+
+        commands.Children.Add(_playButton);
+
         commands.Children.Add(CommandButton(new FontIcon { Glyph = StepBackGlyph, FontSize = 12 },
                                             "Previous Frame",
                                             OnStepBackClick));
@@ -119,6 +133,8 @@ public sealed partial class QueryFlameChartTabView : UserControl, IDocumentComma
         FlameChart.SelectionCleared -= OnSelectionCleared;
 
         FlameChart.PlanNodeSelected -= OnPlanNodeSelected;
+
+        FlameChart.PlayStateChanged -= OnPlayStateChanged;
 
         Settings.PropertyChanged -= OnSettingsPropertyChanged;
 
@@ -197,6 +213,20 @@ public sealed partial class QueryFlameChartTabView : UserControl, IDocumentComma
 
     private void OnOperatorsClick(object sender, RoutedEventArgs e) => FlameChart.ShowOperators = IsChecked(sender);
 
+    private void OnPlayClick(object sender, RoutedEventArgs e) => FlameChart.TogglePlay();
+
+    private void OnPlayStateChanged(bool isPlaying)
+    {
+        if (_playButton is not { Content: FontIcon icon } button)
+        {
+            return;
+        }
+
+        icon.Glyph = isPlaying ? PauseGlyph : PlayGlyph;
+
+        ToolTipService.SetToolTip(button, isPlaying ? "Pause" : "Play");
+    }
+
     private void OnStepBackClick(object sender, RoutedEventArgs e) => FlameChart.StepPlayhead(forward: false);
 
     private void OnStepForwardClick(object sender, RoutedEventArgs e) => FlameChart.StepPlayhead(forward: true);
@@ -246,7 +276,20 @@ public sealed partial class QueryFlameChartTabView : UserControl, IDocumentComma
 
     private void OnCallSelected(CallStackNode node, int call) => ViewModel?.NavigateToCall(node, call);
 
-    private void OnSelectionCleared() => ViewModel?.SelectedCallNode = null;
+    private void OnSelectionCleared()
+    {
+        if (ViewModel is not { } viewModel)
+        {
+            return;
+        }
+
+        viewModel.Arguments.SelectedCall = null;
+
+        if (!FlameChart.IsLocked)
+        {
+            viewModel.SelectedCallNode = null;
+        }
+    }
 
     private void OnPlanNodeSelected(PlanNodeIdentifier identifier) => ViewModel?.SelectPlanNode(identifier);
 

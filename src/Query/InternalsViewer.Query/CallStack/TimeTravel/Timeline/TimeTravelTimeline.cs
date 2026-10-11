@@ -24,7 +24,7 @@ public sealed class TimeTravelTimeline
         InstructionEnd = threads.Max(t => t.EndOf(TimeTravelTimelineAxis.Instructions));
     }
 
-    private TimeTravelTimeline(IReadOnlyList<TimeTravelTimelineThread> threads, TimeTravelTimeline source)
+    private TimeTravelTimeline(IReadOnlyList<TimeTravelTimelineThread> threads, TimeTravelTimeline source, bool fit = false)
     {
         Threads = threads;
         Parents = source.Parents;
@@ -33,9 +33,20 @@ public sealed class TimeTravelTimeline
         SpanCount = threads.Sum(t => t.Calls);
         PositionStart = source.PositionStart;
         PositionEnd = source.PositionEnd;
+        InstructionStart = source.InstructionStart;
         InstructionEnd = source.InstructionEnd;
         Memory = source.Memory;
         Lifetimes = source.Lifetimes;
+
+        if (!fit || threads.Count == 0)
+        {
+            return;
+        }
+
+        PositionStart = threads.Min(t => t.StartOf(TimeTravelTimelineAxis.Position));
+        PositionEnd = threads.Max(t => t.EndOf(TimeTravelTimelineAxis.Position));
+        InstructionStart = threads.Min(t => t.StartOf(TimeTravelTimelineAxis.Instructions));
+        InstructionEnd = threads.Max(t => t.EndOf(TimeTravelTimelineAxis.Instructions));
     }
 
     public IReadOnlyList<TimeTravelTimelineThread> Threads { get; }
@@ -54,6 +65,8 @@ public sealed class TimeTravelTimeline
 
     private double PositionEnd { get; }
 
+    private double InstructionStart { get; }
+
     private double InstructionEnd { get; }
 
     private double StepsPerSequence { get; }
@@ -64,7 +77,7 @@ public sealed class TimeTravelTimeline
 
     private TimeTravelMemoryIndex Memory { get; set; } = TimeTravelMemoryIndex.Empty;
 
-    public double StartOf(TimeTravelTimelineAxis axis) => axis == TimeTravelTimelineAxis.Position ? PositionStart : 0;
+    public double StartOf(TimeTravelTimelineAxis axis) => axis == TimeTravelTimelineAxis.Position ? PositionStart : InstructionStart;
 
     public double EndOf(TimeTravelTimelineAxis axis) => axis == TimeTravelTimelineAxis.Position ? PositionEnd : InstructionEnd;
 
@@ -198,6 +211,9 @@ public sealed class TimeTravelTimeline
 
         return new TimeTravelTimeline(threads, this);
     }
+
+    public TimeTravelTimeline? CroppedTo(Func<CallStackNode, bool> isRoot)
+        => RootedAt(isRoot) is { Threads.Count: > 0 } rooted ? new TimeTravelTimeline(rooted.Threads, rooted, fit: true) : null;
 
     public TimeTravelTimeline WithoutCallsUnder(Func<CallStackNode, bool> boundary)
     {

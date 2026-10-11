@@ -71,16 +71,16 @@ public sealed partial class FlameChartControl : Grid, IDisposable
         set => SetValue(PrunedCategoriesProperty, value);
     }
 
-    public static readonly DependencyProperty RootNodeProperty =
-        DependencyProperty.Register(nameof(RootNode),
+    public static readonly DependencyProperty SelectedNodeProperty =
+        DependencyProperty.Register(nameof(SelectedNode),
                                     typeof(CallStackNode),
                                     typeof(FlameChartControl),
-                                    new PropertyMetadata(null, OnRootNodeChanged));
+                                    new PropertyMetadata(null, OnSelectedNodeChanged));
 
-    public CallStackNode? RootNode
+    public CallStackNode? SelectedNode
     {
-        get => (CallStackNode?)GetValue(RootNodeProperty);
-        set => SetValue(RootNodeProperty, value);
+        get => (CallStackNode?)GetValue(SelectedNodeProperty);
+        set => SetValue(SelectedNodeProperty, value);
     }
 
     public static readonly DependencyProperty IsLockedProperty =
@@ -177,6 +177,8 @@ public sealed partial class FlameChartControl : Grid, IDisposable
 
     private TimeTravelTimeline? _timeline;
 
+    private CallStackNode? _highlightedNode;
+
     private CallStackNode? _root;
 
     private TimeTravelTimeline? _rooted;
@@ -225,12 +227,17 @@ public sealed partial class FlameChartControl : Grid, IDisposable
         ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
         ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
 
-        _canvas = new SKXamlCanvas { IgnorePixelScaling = true };
+        _canvas = new SKXamlCanvas { IgnorePixelScaling = false };
         _canvas.PaintSurface += OnPaintSurface;
 
         Children.Add(_canvas);
 
-        _overlay = new Canvas { Background = new SolidColorBrush(Colors.Transparent) };
+        _overlay = new Canvas
+        {
+            Background = new SolidColorBrush(Colors.Transparent),
+            IsTabStop = true,
+            UseSystemFocusVisuals = false
+        };
 
         Children.Add(_overlay);
 
@@ -322,6 +329,8 @@ public sealed partial class FlameChartControl : Grid, IDisposable
         Children.Add(_memoryModeButton);
 
         _overlay.PointerPressed += OnPointerPressed;
+
+        _overlay.KeyDown += OnKeyDown;
         _overlay.PointerMoved += OnPointerMoved;
         _overlay.PointerReleased += OnPointerReleased;
         _overlay.PointerCaptureLost += OnPointerCaptureLost;
@@ -415,6 +424,13 @@ public sealed partial class FlameChartControl : Grid, IDisposable
 
     public void Dispose()
     {
+        StopPlay();
+
+        if (_playTimer is not null)
+        {
+            _playTimer.Tick -= OnPlayTick;
+        }
+
         Loaded -= OnLoaded;
 
         ActualThemeChanged -= OnActualThemeChanged;
@@ -425,6 +441,8 @@ public sealed partial class FlameChartControl : Grid, IDisposable
         _verticalScrollBar.Scroll -= OnVerticalScroll;
 
         _overlay.PointerPressed -= OnPointerPressed;
+
+        _overlay.KeyDown -= OnKeyDown;
         _overlay.PointerMoved -= OnPointerMoved;
         _overlay.PointerReleased -= OnPointerReleased;
         _overlay.PointerCaptureLost -= OnPointerCaptureLost;
@@ -660,6 +678,32 @@ public sealed partial class FlameChartControl : Grid, IDisposable
         Redraw();
     }
 
+    private void Reset()
+    {
+        _colours.Clear();
+        _labels.Clear();
+
+        FindSearchMatches();
+
+        FindNodeMatches(_highlightedNode);
+
+        _operatorsHeight = null;
+
+        _selectedOperator = null;
+
+        _root = null;
+
+        HideToolTip();
+
+        RebuildVisible();
+
+        ZoomToFit();
+
+        StopPlay();
+
+        _playhead = null;
+    }
+
     private void SetRoot(CallStackNode? root)
     {
         if (ReferenceEquals(root, _root))
@@ -676,28 +720,6 @@ public sealed partial class FlameChartControl : Grid, IDisposable
         ZoomToFit();
     }
 
-    private void Reset()
-    {
-        _colours.Clear();
-        _labels.Clear();
-
-        FindSearchMatches();
-
-        _operatorsHeight = null;
-
-        _selectedOperator = null;
-
-        _root = RootNode;
-
-        HideToolTip();
-
-        RebuildVisible();
-
-        ZoomToFit();
-
-        _playhead = null;
-    }
-
     private void RebuildVisible()
     {
         _rooted = null;
@@ -707,11 +729,13 @@ public sealed partial class FlameChartControl : Grid, IDisposable
 
         if (_timeline is { } timeline)
         {
-            _rooted = _root is { } root ? RootedAt(timeline, root) : null;
+            _rooted = _root is { } root ? timeline.RootedAt(n => ReferenceEquals(n, root)) : null;
 
             var source = _rooted ?? timeline;
 
-            var pruned = PrunedNodes(source) is { } hidden ? source.Where(n => n < 0 || n >= hidden.Length || !hidden[n]) : source;
+            var pruned = PrunedNodes(source) is { } hidden
+                ? source.Where(n => n < 0 || n >= hidden.Length || !hidden[n])
+                : source;
 
             _visible = HiddenCategories is { Count: > 0 } categories
                 ? pruned.Folded(n => n.Frame is not null && categories.Contains(n.Category))
@@ -792,10 +816,6 @@ public sealed partial class FlameChartControl : Grid, IDisposable
 
         return maximum;
     }
-
-    private static TimeTravelTimeline? RootedAt(TimeTravelTimeline timeline, CallStackNode root)
-        => timeline.RootedAt(n => ReferenceEquals(n, root))
-           ?? (root.Frame is { } frame ? timeline.RootedAt(n => ReferenceEquals(n.Frame, frame)) : null);
 
     private bool[]? PrunedNodes(TimeTravelTimeline timeline)
     {
@@ -964,6 +984,8 @@ public sealed partial class FlameChartControl : Grid, IDisposable
 
         control.ZoomToFit();
 
+        control.StopPlay();
+
         control._playhead = null;
     }
 
@@ -982,14 +1004,20 @@ public sealed partial class FlameChartControl : Grid, IDisposable
         control._canvas.Invalidate();
     }
 
-    private static void OnRootNodeChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
+    private static void OnSelectedNodeChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
     {
         var control = (FlameChartControl)d;
 
-        if (!control.IsLocked)
+        if (control.IsLocked)
         {
-            control.SetRoot(e.NewValue as CallStackNode);
+            return;
         }
+
+        control._highlightedNode = e.NewValue as CallStackNode;
+
+        control.FindNodeMatches(control._highlightedNode);
+
+        control.Redraw();
     }
 
     private static void OnShowMemoryChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
@@ -1033,7 +1061,11 @@ public sealed partial class FlameChartControl : Grid, IDisposable
 
         if (e.NewValue is false)
         {
-            control.SetRoot(control.RootNode);
+            control._highlightedNode = control.SelectedNode;
+
+            control.FindNodeMatches(control._highlightedNode);
+
+            control.Redraw();
         }
     }
 
@@ -1041,15 +1073,30 @@ public sealed partial class FlameChartControl : Grid, IDisposable
     {
         var control = (FlameChartControl)d;
 
-        if (e.NewValue is null)
+        var reference = e.NewValue as CallReference;
+
+        if (reference is null)
         {
             control._selected = null;
         }
         else
         {
             control.FindSelectedCall(bringIntoView: true);
+
+            if (reference.IsChosen && control._selected is null && control._root is not null)
+            {
+                control.SetRoot(null);
+
+                control.FindSelectedCall(bringIntoView: true);
+            }
         }
 
-        control._canvas.Invalidate();
+        var highlighted = reference is { IsChosen: true }
+            ? control._selected is null ? reference.Node : null
+            : control._highlightedNode;
+
+        control.FindNodeMatches(highlighted);
+
+        control.Redraw();
     }
 }

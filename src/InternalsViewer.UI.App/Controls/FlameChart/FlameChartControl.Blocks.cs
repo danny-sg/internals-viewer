@@ -162,7 +162,7 @@ public sealed partial class FlameChartControl
 
         canvas.ClipRect(new SKRect(0, 0, length, block.Height));
 
-        canvas.DrawText(TextOf(block), LabelPadding, Baseline(0, block.Height), SKTextAlign.Left, _paints.Font, _paints.Text);
+        canvas.DrawText(TextOf(block), LabelPadding, Baseline(0, block.Height), SKTextAlign.Left, _paints.TiltedFont, _paints.Text);
 
         canvas.Restore();
     }

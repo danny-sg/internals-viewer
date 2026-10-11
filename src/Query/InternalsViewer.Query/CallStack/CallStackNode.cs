@@ -148,6 +148,8 @@ public sealed class CallStackNode
     /// </remarks>
     public HashSet<CallStackNode> CutBelow { get; } = [];
 
+    public IReadOnlyList<CallStackNode> MergedFrom { get; private init; } = [];
+
     public bool IsRoot => Frame is null;
 
     private (long Bytes, long Count)? AllocatedIncludingChildren { get; set; }
@@ -187,6 +189,45 @@ public sealed class CallStackNode
     /// The node-level <see cref="Path()"/>, for callers that need to test the nodes themselves rather than their frames
     /// — cutting the path at an operator boundary
     /// </remarks>
+    public static CallStackNode Merge(IReadOnlyList<CallStackNode> nodes)
+    {
+        var first = nodes[0];
+
+        var merged = new CallStackNode
+        {
+            Frame = first.Frame,
+            Key = first.Key,
+            Order = nodes.Min(n => n.Order),
+            Parent = first.Parent,
+            MergedFrom = nodes,
+            Calls = nodes.Sum(n => n.Calls),
+            AllocatedBytes = nodes.Sum(n => n.AllocatedBytes),
+            Allocations = nodes.Sum(n => n.Allocations),
+            AllocatedIncludingChildren = (nodes.Sum(n => n.AllocatedBytesIncludingChildren),
+                                          nodes.Sum(n => n.AllocationsIncludingChildren))
+        };
+
+        foreach (var node in nodes)
+        {
+            merged.Events.AddRange(node.Events);
+
+            merged.Rvas.UnionWith(node.Rvas);
+
+            merged.CutBelow.UnionWith(node.CutBelow);
+
+            if (node.Locators is { } locators)
+            {
+                (merged.Locators ??= new TimeTravelLocatorSet()).Add(locators);
+            }
+
+            merged.CallActivity = Sum(merged.CallActivity, node.CallActivity);
+
+            merged.ActivityCounts = Sum(merged.ActivityCounts, node.ActivityCounts);
+        }
+
+        return merged;
+    }
+
     public IEnumerable<CallStackNode> Ancestors()
     {
         for (var node = this; node is { Frame: not null }; node = node.Parent)
@@ -196,4 +237,24 @@ public sealed class CallStackNode
     }
 
     public override string ToString() => Ancestors().FirstOrDefault(node => !node.IsInfrastructure)?.Symbol ?? Symbol;
+
+    private static int[] Sum(int[] total, int[] counts)
+    {
+        if (counts.Length == 0)
+        {
+            return total;
+        }
+
+        if (total.Length != counts.Length)
+        {
+            return [.. counts];
+        }
+
+        for (var index = 0; index < total.Length; index++)
+        {
+            total[index] += counts[index];
+        }
+
+        return total;
+    }
 }

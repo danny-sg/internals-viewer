@@ -243,41 +243,6 @@ public class TimeTravelCallLogTests
         Assert.False(tree.Root.HasLocators);
     }
 
-    [Fact]
-    public void The_First_Call_On_A_Call_Path_Is_Found()
-    {
-        var tree = new CallStackTree();
-
-        var scan = new CallstackFrame { Module = "sqlmin", Rva = 0x10 };
-
-        var seek = new CallstackFrame { Module = "sqlmin", Rva = 0x30 };
-
-        var get = new CallstackFrame { Module = "sqlmin", Rva = 0x20 };
-
-        var underScan = tree.AddCall(tree.AddCall(tree.Root, scan, 1), get, 1);
-
-        var underSeek = tree.AddCall(tree.AddCall(tree.Root, seek, 1), get, 1);
-
-        var builder = new TimeTravelCallLog.Builder();
-
-        builder.Add(0x1000, 0, Chunk(Row(1, node: 1), Row(2, node: 1), Row(3, node: 0)), 3);
-
-        var log = builder.Build();
-
-        log.MapNodes([underScan, underSeek]);
-
-        var calls = log.CallsOf(0x1000, 0)!;
-
-        Assert.Equal(2, log.FirstCallOn(calls, underScan));
-        Assert.Equal(0, log.FirstCallOn(calls, underSeek));
-
-        var projected = new CallStackTree();
-
-        var scopedGet = projected.AddCall(projected.AddCall(projected.Root, scan, 1), get, 1);
-
-        Assert.Equal(2, log.FirstCallOn(calls, scopedGet));
-    }
-
     private static ulong[] Row(ulong sequence,
                                ulong flags = 0,
                                ulong rcx = 0,

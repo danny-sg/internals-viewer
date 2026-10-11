@@ -8,7 +8,7 @@ namespace InternalsViewer.UI.App.Controls.FlameChart;
 
 public sealed partial class FlameChartControl
 {
-    private const float RulerHeight = 20f;
+    private const float RulerHeight = 18f;
 
     private const float PlayheadStripHeight = 16f;
 
@@ -62,9 +62,13 @@ public sealed partial class FlameChartControl
 
         canvas.Clear(SKColors.Transparent);
 
-        var width = e.Info.Width;
+        var scale = (float)_canvas.Dpi;
 
-        var height = e.Info.Height;
+        canvas.Scale(scale);
+
+        var width = (int)(e.Info.Width / scale);
+
+        var height = (int)(e.Info.Height / scale);
 
         if (width <= 0 || height <= 0)
         {
@@ -159,9 +163,16 @@ public sealed partial class FlameChartControl
             }
         }
 
+        var focus = FocusOf(timeline);
+
         foreach (var visible in VisibleRows(timeline, height))
         {
-            DrawRow(canvas, visible.Row, visible.Top, scale, width, RaisedOf(visible.Thread, visible.Lane, visible.Depth));
+            DrawRow(canvas,
+                    visible,
+                    scale,
+                    width,
+                    RaisedOf(visible.Thread, visible.Lane, visible.Depth),
+                    focus);
         }
     }
 
@@ -259,8 +270,27 @@ public sealed partial class FlameChartControl
         return _raisedRows.TryGetValue((lane, depth), out var raised) ? index => Array.BinarySearch(raised.Indexes, index) >= 0 : null;
     }
 
-    private void DrawRow(SKCanvas canvas, TimeTravelTimelineRow row, float top, double scale, int width, Func<int, bool>? raised)
+    private CallFocus? FocusOf(TimeTravelTimeline timeline)
     {
+        if (SelectedCall is not { IsChosen: true }
+            || _selected is not { } hit
+            || hit.Lane >= timeline.Threads.Count
+            || hit.Depth >= timeline.Threads[hit.Lane].Rows.Count)
+        {
+            return null;
+        }
+
+        var row = timeline.Threads[hit.Lane].Rows[hit.Depth];
+
+        return new CallFocus(hit.Lane, hit.Depth, row.Starts(_axis)[hit.Index], row.Ends(_axis)[hit.Index]);
+    }
+
+    private void DrawRow(SKCanvas canvas, VisibleRow visible, double scale, int width, Func<int, bool>? raised, CallFocus? focus)
+    {
+        var row = visible.Row;
+
+        var top = visible.Top;
+
         var starts = row.Starts(_axis);
 
         var ends = row.Ends(_axis);
@@ -287,7 +317,9 @@ public sealed partial class FlameChartControl
 
                 var labelled = raised is null || !raised(index);
 
-                DrawSpan(canvas, row.NodeAt(index), left, right, top, width, labelled);
+                var outside = focus is { } wide && wide.Excludes(visible.Lane, visible.Depth, starts[index], ends[index]);
+
+                DrawSpan(canvas, row.NodeAt(index), left, right, top, width, labelled, outside);
 
                 index++;
 
@@ -301,6 +333,11 @@ public sealed partial class FlameChartControl
                 runStart = left;
 
                 runColour = ColourOf(row.NodeAt(index));
+
+                if (focus is { } narrow && narrow.Excludes(visible.Lane, visible.Depth, starts[index], ends[index]))
+                {
+                    runColour = Dimmed(runColour);
+                }
             }
 
             var boundary = MathF.Floor(Math.Max(right, left)) + 1f;
@@ -325,9 +362,9 @@ public sealed partial class FlameChartControl
         canvas.DrawRect(start, top, Math.Max(end - start, NarrowSpan), BarHeight, _paints.Fill);
     }
 
-    private void DrawSpan(SKCanvas canvas, int node, float left, float right, float top, int width, bool labelled)
+    private void DrawSpan(SKCanvas canvas, int node, float left, float right, float top, int width, bool labelled, bool outside)
     {
-        var colour = ColourOf(node);
+        var colour = outside ? Dimmed(ColourOf(node)) : ColourOf(node);
 
         var visibleLeft = Math.Max(left, -1f);
 
@@ -370,17 +407,17 @@ public sealed partial class FlameChartControl
         {
             var x = (float)((value - _viewStart) * scale);
 
-            canvas.DrawLine(x, RulerHeight - 6, x, RulerHeight, _paints.Tick);
+            canvas.DrawLine(x, RulerHeight - 4, x, RulerHeight, _paints.Tick);
 
             var label = FormatAxis(value, step);
 
             if (x + 3 + _paints.Font.MeasureText(label) < width)
             {
-                canvas.DrawText(label, x + 3, Baseline(0, RulerHeight - 4), SKTextAlign.Left, _paints.Font, _paints.Label);
+                canvas.DrawText(label, x + 4, Baseline(0, RulerHeight - 4), SKTextAlign.Left, _paints.Font, _paints.Label);
             }
         }
 
-        canvas.DrawLine(0, RulerHeight - 0.5f, width, RulerHeight - 0.5f, _paints.Tick);
+        canvas.DrawLine(0, RulerHeight, width, RulerHeight, _paints.Tick);
     }
 
     private void DrawOverlay(SKCanvas canvas, int width, int height)
@@ -589,6 +626,12 @@ public sealed partial class FlameChartControl
     }
 
     private readonly record struct VisibleRow(int Lane, TimeTravelTimelineThread Thread, int Depth, TimeTravelTimelineRow Row, float Top);
+
+    private readonly record struct CallFocus(int Lane, int Depth, double Start, double End)
+    {
+        public bool Excludes(int lane, int depth, double start, double end)
+            => lane != Lane || depth < Depth || start < Start || end > End;
+    }
 
     private readonly record struct LayerKey(int Width,
                                             int Height,

@@ -183,7 +183,6 @@ namespace
         std::unordered_set<uint32_t>                        Threads;
         std::unordered_set<uint64_t>                        InstanceMethods;
         std::unordered_set<uint64_t>                        Excluded;
-        std::unordered_set<uint64_t>                        Markers;
         std::unordered_map<FunctionKey, LoggedFunction, FunctionKeyHash> Log;
         size_t                                              LoggedSinceFlush = 0;
         CallChunkCallback                                   LogCalls = nullptr;
@@ -363,11 +362,6 @@ namespace
         }
 
         return -1;
-    }
-
-    bool InsideMarker(CallTree const& tree, std::vector<StackFrame> const& stack)
-    {
-        return !stack.empty() && stack.back().Node >= 0 && tree.Markers.contains(tree.Nodes[stack.back().Node].Address);
     }
 
     bool IsRecorded(std::unordered_set<uint32_t> const& threads, uint32_t threadId)
@@ -637,16 +631,14 @@ namespace
         {
             Unwind(tree, stack, stackPointer, nullptr, 0, threadId, clock);
 
-            auto const marker = tree.Markers.contains(target);
-
-            if (!marker && !stack.empty() && stack.back().Node == ExcludedNode)
+            if (!stack.empty() && stack.back().Node == ExcludedNode)
             {
                 return;
             }
 
             auto const returnAddress = static_cast<uint64_t>(fallThroughAddress);
 
-            if (!marker && (tree.Excluded.contains(target) || InsideMarker(tree, stack)))
+            if (tree.Excluded.contains(target))
             {
                 stack.push_back(StackFrame{ stackPointer,
                                             ExcludedNode,
@@ -1014,8 +1006,6 @@ extern "C"
                          int32_t               instanceMethodCount,
                          const uint64_t*       excludedFunctions,
                          int32_t               excludedFunctionCount,
-                         const uint64_t*       markerFunctions,
-                         int32_t               markerFunctionCount,
                          const MemoryRead*     memoryReads,
                          int32_t               memoryReadCount,
                          CallChunkCallback     logCalls,
@@ -1044,11 +1034,6 @@ extern "C"
         for (int32_t index = 0; index < excludedFunctionCount; index++)
         {
             result->Excluded.insert(excludedFunctions[index]);
-        }
-
-        for (int32_t index = 0; index < markerFunctionCount; index++)
-        {
-            result->Markers.insert(markerFunctions[index]);
         }
 
         for (int32_t index = 0; index < memoryReadCount; index++)

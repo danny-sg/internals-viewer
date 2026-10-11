@@ -106,6 +106,29 @@ public class TimeTravelTimelineTests
     }
 
     [Fact]
+    public void A_Cropped_Timeline_Fits_To_The_Calls_Under_Its_Root()
+    {
+        var timeline = Build(Span(node: 2, start: 10, end: 20),
+                             Span(node: 1, start: 5, end: 30),
+                             Span(node: 0, start: 0, end: 40));
+
+        var tree = new CallStackTree();
+
+        var outer = tree.AddCall(tree.Root, new CallstackFrame { Module = "sqllang", Rva = 0x10 }, 1);
+        var execute = tree.AddCall(outer, new CallstackFrame { Module = "sqllang", Rva = 0x20 }, 1);
+        var inner = tree.AddCall(execute, new CallstackFrame { Module = "sqlmin", Rva = 0x30 }, 1);
+
+        timeline.MapNodes([outer, execute, inner]);
+
+        var cropped = timeline.CroppedTo(n => ReferenceEquals(n, execute));
+
+        Assert.NotNull(cropped);
+
+        Assert.Equal((5d, 30d), (cropped.StartOf(Instructions), cropped.EndOf(Instructions)));
+        Assert.Equal((0d, 40d), (timeline.StartOf(Instructions), timeline.EndOf(Instructions)));
+    }
+
+    [Fact]
     public void Calls_Under_A_Folded_Frame_Move_Up_Into_Its_Place()
     {
         var timeline = Build(Span(node: 2, start: 10, end: 20),

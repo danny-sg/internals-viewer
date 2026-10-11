@@ -235,13 +235,16 @@ public sealed partial class ResultsGridControl : UserControl
 
         var header = new TextBlock();
 
-        header.Inlines.Add(new Run { Text = column.Name });
+        if (column.Name.Length > 0)
+        {
+            header.Inlines.Add(new Run { Text = $"{column.Name}  " });
+        }
 
         if (column.TypeName is { } typeName)
         {
             header.Inlines.Add(new Run
             {
-                Text = $"  {typeName}",
+                Text = typeName,
                 FontFamily = Resource<FontFamily>("MonospaceFontFamily"),
                 Foreground = Resource<Brush>("CppClassBrush")
             });
@@ -249,7 +252,11 @@ public sealed partial class ResultsGridControl : UserControl
 
         if (column.Detail is { } detail)
         {
-            header.Inlines.Add(new Run { Text = $"  {detail}", Foreground = Resource<Brush>("TextFillColorTertiaryBrush") });
+            header.Inlines.Add(new Run
+            {
+                Text = column.TypeName is null ? detail : $"  {detail}",
+                Foreground = Resource<Brush>("TextFillColorTertiaryBrush")
+            });
         }
 
         return header;

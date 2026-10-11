@@ -13,19 +13,24 @@ namespace InternalsViewer.Query.CallStack.TimeTravel;
 
 public static class ReplayFunctions
 {
-    private const string PackageSeparator = "Pkg::";
-
-    private const string PublishMethod = "Publish";
-
-    private const string BufferManager = "XE_BufferMgr";
-
-    private const string ReserveMethod = "Reserve";
-
     private static readonly string[] Modules = ["sqlmin", "sqllang", "sqldk"];
 
     private static readonly string[] HeapModules = ["ntdll", "kernelbase", "kernel32", "ucrtbase"];
 
     private static ConcurrentDictionary<(string Pdb, string Guid, int Age), ReplayFunctionSet> Cache { get; } = new();
+
+    private static ConcurrentDictionary<(string Pdb, string Guid, int Age), Lazy<Task>> Resolving { get; } = new();
+
+    public static Task PrepareAsync(IEnumerable<string> modulePaths,
+                                    string symbolsPath,
+                                    ILogger? logger,
+                                    CancellationToken cancellationToken)
+        => EnsureResolvedAsync([.. modulePaths.Select(p => TimeTravelModuleIdentity.Describe(new TimeTravelModule(p, 0, 0)))
+                                              .Where(IsReplayed)],
+                               symbolsPath,
+                               logger,
+                               null,
+                               cancellationToken);
 
     public static async Task<ReplayFunctionSet> ResolveAsync(IReadOnlyList<TimeTravelModule> modules,
                                                              string symbolsPath,
@@ -40,28 +45,17 @@ public static class ReplayFunctions
                           .ToList();
 
         var identities = modules.Select(TimeTravelModuleIdentity.Describe)
-                                .Where(m => m.Pdb.Length > 0 && Modules.Contains(m.Name, StringComparer.OrdinalIgnoreCase))
+                                .Where(IsReplayed)
                                 .ToList();
 
         if (identities.Count == 0)
         {
-            return new ReplayFunctionSet([], [.. heap], new Dictionary<ulong, string>(), [], [], []);
+            return new ReplayFunctionSet([], [.. heap], [], []);
         }
 
-        var missing = identities.Where(m => !Cache.ContainsKey(KeyOf(m))).ToList();
+        var missing = identities.Count(m => !Cache.ContainsKey(KeyOf(m)));
 
-        if (missing.Count > 0)
-        {
-            await SymbolDownloader.DownloadSymbols([.. missing.Select(m => m.Frame(m.Address, 0))],
-                                                   symbolsPath,
-                                                   progress,
-                                                   cancellationToken);
-
-            await Task.Run(() => missing.AsParallel()
-                                        .WithCancellation(cancellationToken)
-                                        .ForAll(m => Resolve(m, symbolsPath, logger)),
-                           cancellationToken);
-        }
+        await EnsureResolvedAsync(identities, symbolsPath, logger, progress, cancellationToken);
 
         var found = identities.Select(m => Cache.TryGetValue(KeyOf(m), out var relative) ? relative.Rebase(m.Address) : null)
                               .OfType<ReplayFunctionSet>()
@@ -70,13 +64,11 @@ public static class ReplayFunctions
         logger?.LogInformation("Replay functions for {Modules} resolved in {Elapsed} ({Cached} of {Count} from the cache)",
                                string.Join(", ", identities.Select(m => m.Name)),
                                Stopwatch.GetElapsedTime(start),
-                               identities.Count - missing.Count,
+                               identities.Count - missing,
                                identities.Count);
 
         return new ReplayFunctionSet([.. found.SelectMany(f => f.Excluded)],
                                      [.. found.SelectMany(f => f.Memory), .. heap],
-                                     found.SelectMany(f => f.Publishers).ToDictionary(p => p.Key, p => p.Value),
-                                     [.. found.SelectMany(f => f.BufferReserves)],
                                      [.. found.SelectMany(f => f.InstanceMethods)],
                                      [.. found.SelectMany(f => f.Locators)]);
     }
@@ -90,6 +82,48 @@ public static class ReplayFunctions
                         .OfType<MemoryFunction>();
 
     private static (string Pdb, string Guid, int Age) KeyOf(TimeTravelModuleIdentity module) => (module.Pdb, module.Guid, module.Age);
+
+    private static bool IsReplayed(TimeTravelModuleIdentity module)
+        => module.Pdb.Length > 0 && Modules.Contains(module.Name, StringComparer.OrdinalIgnoreCase);
+
+    private static Task EnsureResolvedAsync(IEnumerable<TimeTravelModuleIdentity> modules,
+                                            string symbolsPath,
+                                            ILogger? logger,
+                                            IProgress<ProgressDetail>? progress,
+                                            CancellationToken cancellationToken)
+        => Task.WhenAll(modules.Where(m => !Cache.ContainsKey(KeyOf(m)))
+                               .Select(m => ResolvingOf(m, symbolsPath, logger, progress)))
+               .WaitAsync(cancellationToken);
+
+    private static Task ResolvingOf(TimeTravelModuleIdentity module,
+                                    string symbolsPath,
+                                    ILogger? logger,
+                                    IProgress<ProgressDetail>? progress)
+        => Resolving.GetOrAdd(KeyOf(module),
+                              key => new Lazy<Task>(() => Task.Run(() => DownloadAndResolveAsync(key,
+                                                                                                 module,
+                                                                                                 symbolsPath,
+                                                                                                 logger,
+                                                                                                 progress))))
+                    .Value;
+
+    private static async Task DownloadAndResolveAsync((string Pdb, string Guid, int Age) key,
+                                                      TimeTravelModuleIdentity module,
+                                                      string symbolsPath,
+                                                      ILogger? logger,
+                                                      IProgress<ProgressDetail>? progress)
+    {
+        try
+        {
+            await SymbolDownloader.DownloadSymbols([module.Frame(module.Address, 0)], symbolsPath, progress);
+
+            Resolve(module, symbolsPath, logger);
+        }
+        finally
+        {
+            Resolving.TryRemove(key, out _);
+        }
+    }
 
     private static void Resolve(TimeTravelModuleIdentity module, string symbolsPath, ILogger? logger)
     {
@@ -105,12 +139,11 @@ public static class ReplayFunctions
         Cache[KeyOf(module)] = relative;
 
         logger?.LogInformation("Replay functions for {Module} resolved from {Pdb} in {Elapsed}: {Excluded} excluded, "
-                               + "{Publishers} Extended Events publishers, {Iterators} iterator methods, {Locators} locator reads",
+                               + "{Iterators} iterator methods, {Locators} locator reads",
                                module.Name,
                                module.Pdb,
                                Stopwatch.GetElapsedTime(start),
                                relative.Excluded.Length,
-                               relative.Publishers.Count,
                                relative.InstanceMethods.Length,
                                relative.Locators.Length);
     }
@@ -133,10 +166,6 @@ public static class ReplayFunctions
         var kept = new HashSet<uint>();
 
         var memory = new Dictionary<uint, MemoryFunction?>();
-
-        var publishers = new Dictionary<uint, string?>();
-
-        var reserves = new HashSet<uint>();
 
         var iteratorMethods = IteratorMethods.AppliesTo(module.Name) ? new IteratorMethods() : null;
 
@@ -164,17 +193,6 @@ public static class ReplayFunctions
             var function = MemoryFunction.Classify(module.Address + symbol.Rva, symbol.Name);
 
             memory[symbol.Rva] = memory.TryGetValue(symbol.Rva, out var existing) && existing != function ? null : function;
-
-            if (ExtendedEventOf(className, methodName) is { } eventName)
-            {
-                publishers[symbol.Rva] = publishers.TryGetValue(symbol.Rva, out var existingEvent) && existingEvent != eventName
-                    ? null
-                    : eventName;
-            }
-            else if (className == BufferManager && methodName == ReserveMethod)
-            {
-                reserves.Add(symbol.Rva);
-            }
         }
 
         excluded.ExceptWith(kept);
@@ -183,30 +201,9 @@ public static class ReplayFunctions
 
         return new ReplayFunctionSet([.. excluded.Select(rva => module.Address + rva)],
                                      [.. memory.Values.OfType<MemoryFunction>()],
-                                     publishers.Where(p => p.Value is not null).ToDictionary(p => module.Address + p.Key, p => p.Value!),
-                                     [.. reserves.Select(rva => module.Address + rva)],
                                      iteratorMethods is null
                                          ? []
                                          : [.. iteratorMethods.Resolve(resolver).Select(rva => module.Address + rva)],
                                      locatorFunctions is null ? [] : [.. LocatorReads.Find(resolver, module.Address, locatorFunctions)]);
-    }
-
-    private static string? ExtendedEventOf(string? className, string methodName)
-    {
-        if (methodName != PublishMethod || className is null)
-        {
-            return null;
-        }
-
-        var package = className.IndexOf(PackageSeparator, StringComparison.Ordinal);
-
-        if (package <= 0)
-        {
-            return null;
-        }
-
-        var eventName = className[(package + PackageSeparator.Length)..];
-
-        return eventName.Length > 0 && !eventName.Contains("::", StringComparison.Ordinal) ? eventName : null;
     }
 }

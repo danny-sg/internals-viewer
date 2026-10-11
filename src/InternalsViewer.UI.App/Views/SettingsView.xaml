@@ -101,11 +101,6 @@
         <controls:SettingsExpander Header="Debugging"
                                    Description="Sending commands from the Call Stack to a WinDbg session attached to SQL Server">
             <controls:SettingsExpander.Items>
-                <controls:SettingsCard Header="WinDbg Password"
-                                       Description="Password the WinDbg session requires on its InternalsViewer named pipe. Generated once, stored in plain text with the other settings">
-                    <TextBox Text="{x:Bind ViewModel.WinDbgPassword, Mode=TwoWay, UpdateSourceTrigger=LostFocus}"
-                             MinWidth="300"/>
-                </controls:SettingsCard>
                 <controls:SettingsCard Header="WinDbg Path"
                                        Description="WinDbg executable to start when attaching. Leave blank to use the Microsoft Store WinDbg or the Debugging Tools for Windows">
                     <TextBox Text="{x:Bind ViewModel.WinDbgPath, Mode=TwoWay, UpdateSourceTrigger=LostFocus}"

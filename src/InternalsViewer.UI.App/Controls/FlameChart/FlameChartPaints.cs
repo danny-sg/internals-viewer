@@ -19,7 +19,7 @@ internal sealed class FlameChartPaints : IDisposable
 
     public SKPaint Label { get; } = new() { IsAntialias = true, Color = SKColors.LightGray };
 
-    public SKPaint Tick { get; } = new() { Style = SKPaintStyle.Stroke, StrokeWidth = 1f, Color = new SKColor(90, 90, 90) };
+    public SKPaint Tick { get; } = new() { Style = SKPaintStyle.Stroke, StrokeWidth = 1f, Color = new SKColor(60, 60, 60) };
 
     public SKPaint Hover { get; } = new() { Style = SKPaintStyle.Stroke, StrokeWidth = 1f, Color = SKColors.White };
 
@@ -78,6 +78,15 @@ internal sealed class FlameChartPaints : IDisposable
 
     public SKFont Font { get; } = new(SKTypeface.Default, 10f);
 
+    public SKFont TiltedFont { get; } = new(SKTypeface.Default, 10f)
+    {
+        Edging = SKFontEdging.Antialias,
+        Hinting = SKFontHinting.None,
+        Subpixel = true,
+        BaselineSnap = false,
+        LinearMetrics = true
+    };
+
     public SKFont OperatorFont { get; } = new(SKTypeface.Default, 12f);
 
     public SKFont OperatorBoldFont { get; } = new(BoldTypeface, 12f);
@@ -93,7 +102,7 @@ internal sealed class FlameChartPaints : IDisposable
         Dim = isDark ? new SKColor(0, 0, 0, 150) : new SKColor(255, 255, 255, 170);
 
         Label.Color = isDark ? new SKColor(0xD8, 0xD8, 0xD8) : new SKColor(0x30, 0x30, 0x30);
-        Tick.Color = isDark ? new SKColor(0x70, 0x70, 0x70) : new SKColor(0xA8, 0xA8, 0xA8);
+        Tick.Color = isDark ? new SKColor(0x70, 0x70, 0x70) : SKColors.LightGray;
         Hover.Color = isDark ? SKColors.White : SKColors.Black;
         Selection.Color = isDark ? new SKColor(255, 200, 0) : new SKColor(0xE0, 0x7A, 0x00);
         Edge.Color = isDark ? new SKColor(255, 255, 255, 70) : new SKColor(0, 0, 0, 90);
@@ -128,6 +137,7 @@ internal sealed class FlameChartPaints : IDisposable
         PlayheadText.Dispose();
         Outline.Dispose();
         Font.Dispose();
+        TiltedFont.Dispose();
         OperatorFont.Dispose();
         OperatorBoldFont.Dispose();
     }

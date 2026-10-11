@@ -20,6 +20,7 @@ TTD has no clock. A recording is a sequence of positions - a sequence number sha
 - **Ctrl + mouse wheel** scrolls through the threads
 - **Drag** pans sideways, and a **middle-button drag** pans in both directions
 - **Shift + drag** draws a rectangle and zooms to it
+- **Shift + click** a bar to root the chart on its function, or empty space to go back to the whole recording
 - **Double-click** a bar to zoom to it, or empty space to zoom back out to the whole recording
 - **Click a thread's header** to expand that thread and collapse the others to their headers, and click it again to show them all
 
@@ -27,7 +28,7 @@ The lanes shrink to fit every thread into the pane, and a call's name appears on
 
 ## Selecting a call
 
-**Click** a bar to select the call. The Call Stack goes to its frame, and the [Arguments](/docs/user-guide/query/CallStack#arguments) tab follows with that call selected. Click the selected bar again, or the background, to deselect.
+**Click** a bar to select the call. The Call Stack goes to its frame, the [Arguments](/docs/user-guide/query/CallStack#arguments) tab follows with that call selected, and the chart dims everything except that function's calls and the calls beneath them. Click the selected bar again, or the background, to deselect.
 
 Hovering over a bar describes the call:
 
@@ -41,13 +42,25 @@ Hovering over a bar describes the call:
 
 ## Following the Call Stack
 
-Selecting a frame in the Call Stack re-roots the chart on that function. Only its calls and everything beneath them are drawn, zoomed to fit, so a function called from all over the query can be looked at on its own. Depths count from its outermost call, so a function that calls itself does not draw over itself. A thread that never ran the function - a parallel worker never runs beneath the coordinator's frames - shows what it was doing over the same trace positions instead. Deselect to go back to the whole recording.
+Selecting a frame in the Call Stack highlights that function in the chart. Its calls and everything beneath them stay in colour and the rest is dimmed, the same way a search dims, so you can see everywhere it ran without the chart moving.
 
-![The Flame Chart rooted on CQScanTableScanNew::GetRow, selected in the Call Stack above it](/docs/user-guide/images/flame-chart-rooted-on-frame.png)
+<!-- Screenshot: a frame selected in the Call Stack, with its calls highlighted in the Flame Chart and the rest dimmed -->
 
-The Call Stack's [category filter](/docs/user-guide/query/CallStack#filtering-by-category) applies here as well. A hidden category hides its calls and everything beneath them.
+A frame stands for every call made down that path, so selecting one does not pick a call in the [Arguments](/docs/user-guide/query/CallStack#arguments) tab. Choosing a call there narrows the highlight to that one call - it is outlined, and only it and the calls it made stay in colour. If the chart is rooted somewhere that call is not, it goes back to the whole recording to show it. Clicking the background clears the call.
 
-The **Lock** toggle on the tab strip keeps the chart where it is. Selecting a frame no longer re-roots it and clicking the background no longer deselects, but clicking a bar still selects that call in the Call Stack and Arguments - so one stretch of the recording can stay in view while you look through its calls.
+<!-- Screenshot: one call chosen in the Arguments tab, outlined in the Flame Chart with everything outside it dimmed -->
+
+The Call Stack's [category filter](/docs/user-guide/query/CallStack#filtering-by-category) applies here as well. A hidden category's calls are taken out and the calls they made move up into their place, so a category you have kept is never lost beneath one you have hidden. A category hidden with **Hide With Callees** takes everything beneath its calls with it.
+
+The **Lock** toggle on the tab strip holds the highlight. Selecting a frame in the Call Stack no longer changes it, but clicking a bar still selects that call in the Call Stack and Arguments - so one function can stay highlighted while you look through other calls.
+
+## Rooting on a function
+
+**Shift + click** a bar to root the chart on its function. Only that function's calls and everything beneath them are drawn, zoomed to fit, so a function called from all over the query can be looked at on its own. Depths count from its outermost call, so a function that calls itself does not draw over itself. A thread that never ran the function - a parallel worker never runs beneath the coordinator's frames - shows what it was doing over the same trace positions instead.
+
+**Shift + click** empty space to go back to the whole recording.
+
+![The Flame Chart rooted on CQScanTableScanNew::GetRow](/docs/user-guide/images/flame-chart-rooted-on-frame.png)
 
 The **Search** toggle opens a box above the chart. Calls whose function name does not contain every word typed are dimmed, so the matches stand out. **Escape** closes it.
 

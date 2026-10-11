@@ -9,6 +9,34 @@ namespace InternalsViewer.Query.Tests;
 public class CallStackTreeTests(ITestOutputHelper output)
 {
     [Fact]
+    public void Merged_Nodes_Add_Up_Their_Calls_And_Allocations_And_Keep_Their_Members()
+    {
+        var tree = new CallStackTree();
+
+        var first = tree.AddCall(tree.AddCall(tree.Root, new CallstackFrame { Module = "sqlmin", Rva = 0x10 }, 1),
+                                 new CallstackFrame { Module = "sqlmin", Rva = 0x30 },
+                                 2);
+
+        var second = tree.AddCall(tree.AddCall(tree.Root, new CallstackFrame { Module = "sqlmin", Rva = 0x20 }, 1),
+                                  new CallstackFrame { Module = "sqlmin", Rva = 0x30 },
+                                  3);
+
+        var callee = tree.AddCall(second, new CallstackFrame { Module = "sqlmin", Rva = 0x40 }, 1);
+
+        first.AllocatedBytes = 100;
+        first.Allocations = 1;
+        callee.AllocatedBytes = 50;
+        callee.Allocations = 2;
+
+        var merged = CallStackNode.Merge([first, second]);
+
+        Assert.Equal((5L, 150L, 3L), (merged.Calls, merged.AllocatedBytesIncludingChildren, merged.AllocationsIncludingChildren));
+        Assert.Equal([first, second], merged.MergedFrom);
+        Assert.Equal(first.Key, merged.Key);
+        Assert.Empty(merged.Children);
+    }
+
+    [Fact]
     public void Truncated_Stack_Merges_Onto_The_Fuller_Path()
     {
         var tree = new CallStackTree();

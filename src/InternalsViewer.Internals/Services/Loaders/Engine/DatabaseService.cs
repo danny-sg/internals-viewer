@@ -31,6 +31,22 @@ public sealed partial class DatabaseService(ILogger<DatabaseService> logger,
     /// </summary>
     private const int MaxParallelChainLoads = 16;
 
+    private const string OpeningStep = "Opening Database";
+
+    private const string BootPageStep = "Loading Boot Page";
+
+    private const string MetadataStep = "Loading Metadata";
+
+    private const string AllocationsStep = "Reading Allocations";
+
+    private static readonly ProgressStep[] LoadSteps =
+    [
+        new(OpeningStep, 40),
+        new(BootPageStep, 5),
+        new(MetadataStep, 25),
+        new(AllocationsStep, 30)
+    ];
+
     private ILogger<DatabaseService> Logger { get; } = logger;
 
     private IMetadataLoader MetadataLoader { get; } = metadataLoader;
@@ -57,6 +73,8 @@ public sealed partial class DatabaseService(ILogger<DatabaseService> logger,
 
         Logger.LogInformation("Loading database {DatabaseName}", name);
 
+        var steps = new StepProgress(progress, LoadSteps);
+
         var database = new DatabaseSource(connection)
         {
             Name = name
@@ -64,9 +82,13 @@ public sealed partial class DatabaseService(ILogger<DatabaseService> logger,
 
         Logger.LogDebug("Initializing page reader");
 
-        await connection.PageReader.Initialize(cancellationToken, progress);
+        steps.Begin(OpeningStep);
 
-        progress?.Report(new ProgressDetail("Loading boot page"));
+        await connection.PageReader.Initialize(cancellationToken, new SubStepProgress(steps, Logger));
+
+        steps.Complete();
+
+        steps.Begin(BootPageStep);
 
         Logger.LogDebug("Loading Boot Page: {BootPageAddress}", BootPage.BootPageAddress);
 
@@ -78,7 +100,9 @@ public sealed partial class DatabaseService(ILogger<DatabaseService> logger,
             database.DatabaseId = (short)bootPage.DatabaseId;
         }
 
-        progress?.Report(new ProgressDetail("Loading metadata"));
+        steps.Complete();
+
+        steps.Begin(MetadataStep);
 
         Logger.LogDebug("Booting database from internal tables/metadata");
 
@@ -91,7 +115,9 @@ public sealed partial class DatabaseService(ILogger<DatabaseService> logger,
 
         database.Files = FileProvider.GetFiles(database.Metadata);
 
-        progress?.Report(new ProgressDetail("Reading allocations"));
+        steps.Complete();
+
+        steps.Begin(AllocationsStep);
 
         Logger.LogDebug("Reading allocations");
 
@@ -106,7 +132,7 @@ public sealed partial class DatabaseService(ILogger<DatabaseService> logger,
             Logger.LogError(ex, "Error resolving delta store row groups");
         }
 
-        progress?.Report(new ProgressDetail($"Loaded in {Stopwatch.GetElapsedTime(startTimestamp).TotalSeconds:N1}s"));
+        steps.Complete();
 
         Logger.LogInformation("Database loaded in {Duration}", Stopwatch.GetElapsedTime(startTimestamp));
 

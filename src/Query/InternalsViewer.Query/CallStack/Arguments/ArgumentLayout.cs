@@ -32,7 +32,7 @@ public sealed record ArgumentLayout(IReadOnlyList<ArgumentSlot> Slots, string? R
 
         for (var i = 0; i < signature.Parameters.Count; i++, position++)
         {
-            slots.Add(Slot($"Argument {i + 1}", signature.Parameters[i], position));
+            slots.Add(Slot(string.Empty, signature.Parameters[i], position));
         }
 
         return new ArgumentLayout(slots, signature.ReturnType);

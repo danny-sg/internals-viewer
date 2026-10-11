@@ -42,8 +42,6 @@ internal static class TimeTravelBridge
                                           int instanceMethodCount,
                                           ulong[] excludedFunctions,
                                           int excludedFunctionCount,
-                                          ulong[] markerFunctions,
-                                          int markerFunctionCount,
                                           TimeTravelMemoryRead[] memoryReads,
                                           int memoryReadCount,
                                           CallChunkCallback? logCalls,

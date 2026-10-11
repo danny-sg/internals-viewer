@@ -11,12 +11,14 @@ using InternalsViewer.Query.CallStack.TimeTravel.Iterators;
 using InternalsViewer.Query.CallStack.TimeTravel.Locators;
 using InternalsViewer.Query.CallStack.WinDbg;
 using InternalsViewer.Query.Debugging;
+using InternalsViewer.Query.Debugging.Exceptions;
 using InternalsViewer.Query.Events.Latches;
 using InternalsViewer.Query.Events.Locks;
 using InternalsViewer.Query.Events.Operators;
 using InternalsViewer.Query.Events;
 using InternalsViewer.Query.Interfaces.Events;
 using InternalsViewer.Query.Plans.Model;
+using InternalsViewer.UI.App.Controls;
 using InternalsViewer.UI.App.Controls.CallStack;
 using InternalsViewer.UI.App.Controls.Results;
 using InternalsViewer.UI.App.Controls.Docking;
@@ -353,14 +355,17 @@ public sealed partial class QueryCallStackTabView : UserControl, IDocumentComman
         }
         catch (Exception exception)
         {
-            var dialog = new ContentDialog
-            {
-                Title = "WinDbg",
-                Content = exception.Message,
-                CloseButtonText = "OK",
-                XamlRoot = XamlRoot,
-                Style = Application.Current.Resources["DefaultContentDialogStyle"] as Style
-            };
+            var dialog = exception is WinDbgNotFoundException
+                ? new WinDbgInstallDialog(exception.Message)
+                : new ContentDialog
+                {
+                    Title = "WinDbg",
+                    Content = exception.Message,
+                    CloseButtonText = "OK"
+                };
+
+            dialog.XamlRoot = XamlRoot;
+            dialog.Style = Application.Current.Resources["DefaultContentDialogStyle"] as Style;
 
             await dialog.ShowAsync();
         }
@@ -816,15 +821,13 @@ public sealed partial class QueryCallStackTabView : UserControl, IDocumentComman
         }
 
         SelectNode(reference.Node);
-
-        _viewModel.SelectedCallNode = reference.Node;
     }
 
     private void GoToCall(CallStackNode node)
     {
         LeavePlace();
 
-        NavigateTo(node);
+        NavigateTo(node, selectInFlameChart: false);
 
         PushPlace(CurrentPlace());
     }
@@ -971,7 +974,7 @@ public sealed partial class QueryCallStackTabView : UserControl, IDocumentComman
         _ = _viewModel.Arguments.ShowAsync(node, match.Call);
     }
 
-    private void NavigateTo(CallStackNode target)
+    private void NavigateTo(CallStackNode target, bool selectInFlameChart = true)
     {
         SetFocus(false);
 
@@ -998,7 +1001,10 @@ public sealed partial class QueryCallStackTabView : UserControl, IDocumentComman
 
         _navigatedNode = target;
 
-        _viewModel?.SelectedCallNode = target;
+        if (selectInFlameChart)
+        {
+            _viewModel?.SelectedCallNode = target;
+        }
     }
 
     private static IEnumerable<CallStackNode> Descendants(CallStackNode node)
@@ -1885,12 +1891,9 @@ public sealed partial class QueryCallStackTabView : UserControl, IDocumentComman
         // Merged: the tree is the whole query, which is not a segment of anything and so heads nothing.
         HideFocusHeader();
 
-        foreach (var root in _viewModel?.CallStackRoots ?? [])
+        foreach (var row in BuildVisible(_viewModel?.CallStackRoots ?? []))
         {
-            foreach (var row in BuildVisible(root))
-            {
-                AddRoot(row);
-            }
+            AddRoot(row);
         }
 
         ExpandForSearch();
@@ -2032,49 +2035,51 @@ public sealed partial class QueryCallStackTabView : UserControl, IDocumentComman
         }
     }
 
-    private IEnumerable<TreeRow> BuildVisible(CallStackNode node)
+    private List<TreeRow> BuildVisible(IEnumerable<CallStackNode> nodes)
+        => [.. nodes.SelectMany(Shown).GroupBy(n => n.Key).Select(g => BuildVisibleRow([.. g])).OfType<TreeRow>()];
+
+    private IEnumerable<CallStackNode> Shown(CallStackNode node)
     {
         if (IsCategoryIn(PrunedCategories, node))
         {
-            yield break;
+            return [];
         }
-
-        var children = node.ChildNodes
-                           .OrderBy(child => child.Order)
-                           .SelectMany(BuildVisible)
-                           .ToList();
 
         var outOfScope = _visible is not null && !_visible.Contains(node);
 
         var infrastructureHidden = node.IsInfrastructure && !_revealInfrastructure;
 
-        if (outOfScope || infrastructureHidden || IsCategoryIn(HiddenCategories, node))
-        {
-            foreach (var child in children)
-            {
-                yield return child;
-            }
+        return outOfScope || infrastructureHidden || IsCategoryIn(HiddenCategories, node)
+            ? node.ChildNodes.OrderBy(child => child.Order).SelectMany(Shown)
+            : [node];
+    }
 
-            yield break;
-        }
+    private TreeRow? BuildVisibleRow(IReadOnlyList<CallStackNode> group)
+    {
+        var children = BuildVisible(group.SelectMany(n => n.ChildNodes.OrderBy(child => child.Order)));
+
+        var node = group.Count == 1 ? group[0] : CallStackNode.Merge(group);
 
         // Dropped outright rather than promoting its children, unlike the filters above: those hide a row that is in the
         // way, this one has already established there is nothing under it worth showing.
         if (Filtered(node, children.Count))
         {
-            yield break;
+            return null;
         }
 
         var row = new TreeRow(node);
 
-        _rows[node] = row;
+        foreach (var member in group)
+        {
+            _rows[member] = row;
+        }
 
         foreach (var child in children)
         {
             row.Add(child);
         }
 
-        yield return row;
+        return row;
     }
 
     // The plan node a selection scopes the tree to: an operator names itself, and any other event names the operator it
@@ -2294,57 +2299,53 @@ public sealed partial class QueryCallStackTabView : UserControl, IDocumentComman
     private static bool Segmented(ExecutionOperatorEvent op) => op.EntryFrames.Count > 0;
 
     private List<TreeRow> ProjectedCallNodes(CallStackTree projected, bool revealInfrastructure)
-    {
-        var nodes = new List<TreeRow>();
-
-        foreach (var root in projected.Root.ChildNodes.OrderBy(child => child.Order))
-        {
-            nodes.AddRange(BuildProjectedCall(root, revealInfrastructure));
-        }
-
-        return nodes;
-    }
+        => BuildProjected(projected.Root.ChildNodes.OrderBy(child => child.Order), revealInfrastructure);
 
     // Renders a projected node's subtree, hiding infrastructure and promoting its visible children. No scope set: the
     // projection already contains only the operator's frames.
-    private IEnumerable<TreeRow> BuildProjectedCall(CallStackNode node, bool revealInfrastructure)
+    private List<TreeRow> BuildProjected(IEnumerable<CallStackNode> nodes, bool revealInfrastructure)
+    {
+        var promotedCuts = new List<CallStackNode>();
+
+        var shown = nodes.SelectMany(n => ShownProjected(n, revealInfrastructure, promotedCuts)).ToList();
+
+        List<TreeRow> rows = [.. shown.GroupBy(n => n.Key).Select(g => BuildProjectedRow([.. g], revealInfrastructure)).OfType<TreeRow>()];
+
+        rows.AddRange(OperatorLinks(promotedCuts));
+
+        return rows;
+    }
+
+    private IEnumerable<CallStackNode> ShownProjected(CallStackNode node, bool revealInfrastructure, List<CallStackNode> promotedCuts)
     {
         if (IsCategoryIn(PrunedCategories, node))
         {
-            yield break;
-        }
-
-        var children = node.ChildNodes
-                           .OrderBy(child => child.Order)
-                           .SelectMany(child => BuildProjectedCall(child, revealInfrastructure))
-                           .ToList();
-
-        // Where the segment stopped, name what it stopped for: a link per operator the work continues in, so the plan
-        // is still walkable from inside the stack instead of the call trailing off into nothing. Searched like any other
-        // row — and counted as one below, so a frame whose only answer to the search is where it led still shows.
-        foreach (var next in node.CutBelow
-                                 .Select(frame => _nextOperator.GetValueOrDefault(frame))
-                                 .OfType<ExecutionOperatorEvent>()
-                                 .Where(Matches)
-                                 .DistinctBy(next => next.PlanNodeIdentifier)
-                                 .OrderBy(next => next.PlanNodeIdentifier!.NodeId))
-        {
-            children.Add(new TreeRow(new OperatorLink(next)));
+            return [];
         }
 
         if ((node.IsInfrastructure && !revealInfrastructure) || IsCategoryIn(HiddenCategories, node))
         {
-            foreach (var child in children)
-            {
-                yield return child;
-            }
+            promotedCuts.AddRange(node.CutBelow);
 
-            yield break;
+            return node.ChildNodes
+                       .OrderBy(child => child.Order)
+                       .SelectMany(child => ShownProjected(child, revealInfrastructure, promotedCuts));
         }
+
+        return [node];
+    }
+
+    private TreeRow? BuildProjectedRow(IReadOnlyList<CallStackNode> group, bool revealInfrastructure)
+    {
+        var children = BuildProjected(group.SelectMany(n => n.ChildNodes.OrderBy(child => child.Order)), revealInfrastructure);
+
+        children.AddRange(OperatorLinks(group.SelectMany(n => n.CutBelow)));
+
+        var node = group.Count == 1 ? group[0] : CallStackNode.Merge(group);
 
         if (Filtered(node, children.Count))
         {
-            yield break;
+            return null;
         }
 
         var row = new TreeRow(node);
@@ -2354,7 +2355,22 @@ public sealed partial class QueryCallStackTabView : UserControl, IDocumentComman
             row.Add(child);
         }
 
-        yield return row;
+        return row;
+    }
+
+    private IEnumerable<TreeRow> OperatorLinks(IEnumerable<CallStackNode> cuts)
+    {
+        // Where the segment stopped, name what it stopped for: a link per operator the work continues in, so the plan
+        // is still walkable from inside the stack instead of the call trailing off into nothing. Searched like any other
+        // row — and counted as one below, so a frame whose only answer to the search is where it led still shows.
+        foreach (var next in cuts.Select(frame => _nextOperator.GetValueOrDefault(frame))
+                                 .OfType<ExecutionOperatorEvent>()
+                                 .Where(Matches)
+                                 .DistinctBy(next => next.PlanNodeIdentifier)
+                                 .OrderBy(next => next.PlanNodeIdentifier!.NodeId))
+        {
+            yield return new TreeRow(new OperatorLink(next));
+        }
     }
 
     private void ApplyFilter()

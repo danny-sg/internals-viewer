@@ -6,7 +6,7 @@ namespace InternalsViewer.Query.CallStack.TimeTravel.Locators;
 
 public static partial class LocatorReads
 {
-    public const int ReturnRegister = 4;
+    public const int ReturnRegister = 8;
 
     public const int ObjectKeyParts = 3;
 
@@ -23,9 +23,10 @@ public static partial class LocatorReads
     {
         foreach (var slot in ArgumentLayout.For(signature).Slots)
         {
-            if (slot.Location != ArgumentLocation.Register
+            if (slot.Location is not (ArgumentLocation.Register or ArgumentLocation.Stack)
                 || slot.Name == ArgumentLayout.ReturnBuffer
-                || LocatorType.Of(slot.Type) is not { } type)
+                || LocatorType.Of(slot.Type) is not { } type
+                || (slot.Location == ArgumentLocation.Stack && type.Kind == LocatorKind.Referenced))
             {
                 continue;
             }

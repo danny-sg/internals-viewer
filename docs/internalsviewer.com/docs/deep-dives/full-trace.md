@@ -1,5 +1,48 @@
 # How Full Trace works
 
+Full Trace records SQL Server running a query, then reads back every function call the query made. This page explains how. It starts with what a call and a stack frame are, because everything after that is about capturing them.
+
+## Calls, frames and stacks
+
+SQL Server is a C++ program, and like any program it does its work by functions calling other functions. Running a query is a handful of functions at the top - receive the batch, run the statement, run the plan - and beneath them thousands or millions of calls into the query processor, the storage engine and SQLOS, SQL Server's own layer over the operating system.
+
+**A function call** has the same shape every time:
+
+1. The caller puts the arguments where the function expects them, and calls it.
+2. The call saves the return address - the instruction after the call, where the caller will carry on - and jumps to the function.
+3. The function runs, perhaps calling others along the way, and leaves its result where the caller expects it.
+4. It returns to the saved address, and the caller picks up from there.
+
+On 64-bit Windows, where the function expects its arguments is fixed by the x64 calling convention. The first four integer or pointer arguments travel in the RCX, RDX, R8 and R9 registers, floating point values in the XMM registers, any more go on the stack, and the result comes back in RAX. A C++ method gets one more argument than it declares - `this`, the object it was called on - and it goes first, in RCX. That detail turns out to matter a great deal - see [Operators by iterator](#operators-by-iterator).
+
+**A stack frame** is the space a call takes on its thread's stack. It holds the return address, the registers the function has to put back, its local variables and any arguments beyond the fourth. Each call pushes a frame and each return pops one, so the stack always holds exactly the calls still in progress.
+
+**A call stack** is that chain of frames at one moment, read from the function running now back to where the thread started. Each frame is the reason for the one above it. A stack caught as a page is fetched might read, innermost first:
+
+- `BPool::Get` - the buffer pool, finding the page in memory or reading it from disk
+- the storage engine code reading a row from that page
+- the Index Seek's iterator, asked for its next row
+- the operator above it, asking for its own next row
+- the statement, running its plan
+- the worker thread that picked up the batch
+
+Read that way, a stack answers two questions at once - what the code was doing, and why. The same `BPool::Get` called from a different operator, or from a different place in the same one, is a different stack.
+
+**A call tree** merges many stacks. Each distinct path from a thread's starting point down to a function appears once, with a count of how often it was seen. The part every stack shares - the statement and the plan's operators - forms the trunk, and the query's work spreads out into the branches beneath. That is what the [Call Stack](/docs/user-guide/query/CallStack) pane shows.
+
+## Why capture it
+
+The execution plan says what SQL Server decided to do, and the counters say how much - rows, reads, CPU time. Neither says how. The calls do:
+
+- **Which code ran** - the functions behind each operator, in the storage engine as well as the query processor. The plan shows an Index Seek, and the calls show the B-tree navigation, the pages fixed in the buffer pool, the latches and the row reads beneath it.
+- **How often** - a count on every path, so a loop that runs once per row shows up as a call per row, and an operator doing more work than expected stands out.
+- **In what order** - each thread's calls one after another, as execution actually unfolded. That is what the [Flame Chart](/docs/user-guide/query/FlameChart) draws.
+- **What each call worked on** - its arguments and its return value. `BPool::Get` is passed a pointer to the id of the page it fetches, an allocation is passed a size and returns the address of the memory, and an iterator method is called on its operator's object. That is how a call is tied to a page, a row, a block of memory or an operator in the plan.
+
+Showing the storage engine at work is what Internals Viewer is for, and the calls are the most direct record of that work there is.
+
+## Sampling and recording
+
 The rest of the Query view is built from samples. A call stack is captured when an Extended Event fires, so the call tree only holds the code that was on the stack at those moments - and the relational operators fire no events of their own (see [How operator matching works](/docs/deep-dives/operator-matching)). Full Trace swaps sampling for a recording. Every instruction SQL Server's storage engine and query processor execute is recorded, the recording is replayed, and every call the query made is read back in order - with its arguments, its return value and the memory it allocated.
 
 A sampling profiler such as ETW cannot do that. It sees where the CPU was at intervals, not every call, and it captures no memory, so there is nothing to read an argument's value from. A recording has both.

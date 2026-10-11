@@ -8,7 +8,8 @@ public sealed record PendingFullTrace(TimeTravelTrace Trace,
                                       IReadOnlyList<EngineEvent> Events,
                                       string SymbolsPath,
                                       MemoryClerkSnapshot MemoryClerks,
-                                      IReadOnlyList<RawEvent> RawEvents)
+                                      IReadOnlyList<RawEvent> RawEvents,
+                                      bool CropToQuery = false)
 {
     public IReadOnlySet<uint> ThreadIds { get; } = RawEvents.Where(e => e.SystemThreadId is not null)
                                                             .Select(e => e.SystemThreadId!.Value)

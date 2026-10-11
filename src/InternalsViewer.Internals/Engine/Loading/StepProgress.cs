@@ -5,7 +5,7 @@ namespace InternalsViewer.Internals.Engine.Loading;
 public sealed class StepProgress(IProgress<ProgressDetail>? progress, IReadOnlyList<ProgressStep> steps) : IProgress<double>
 {
     public double Overall
-        => Total <= 0 ? 0 : Math.Clamp((Completed + (Current?.Weight ?? 0) * (Percentage ?? 0) / 100) / Total * 100, 0, 100);
+        => Total <= 0 ? 0 : Math.Clamp((Completed + ((Current?.Weight ?? 0) * (Percentage ?? 0) / 100)) / Total * 100, 0, 100);
 
     private double Total { get; } = steps.Sum(s => s.Weight);
 

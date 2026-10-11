@@ -10,7 +10,7 @@ public class ArgumentLayoutTests
     {
         var layout = ArgumentLayout.For(new FunctionSignature(["unsigned __int64 *"], FunctionKind.Member, "void"));
 
-        Assert.Equal(["this", "Argument 1"], layout.Slots.Select(s => s.Name));
+        Assert.Equal(["this", ""], layout.Slots.Select(s => s.Name));
         Assert.Equal(["RCX", "RDX"], layout.Slots.Select(s => s.Source));
     }
 
@@ -19,7 +19,7 @@ public class ArgumentLayoutTests
     {
         var layout = ArgumentLayout.For(new FunctionSignature(["int"], FunctionKind.Member, "PageId", HasReturnBuffer: true));
 
-        Assert.Equal(["this", ArgumentLayout.ReturnBuffer, "Argument 1"], layout.Slots.Select(s => s.Name));
+        Assert.Equal(["this", ArgumentLayout.ReturnBuffer, ""], layout.Slots.Select(s => s.Name));
         Assert.Equal(["RCX", "RDX", "R8"], layout.Slots.Select(s => s.Source));
         Assert.Equal("PageId *", layout.Slots[1].Type);
     }

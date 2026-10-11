@@ -571,7 +571,7 @@
                 <ToggleButton x:Name="CategoryFilterButton"
                               Grid.Column="1"
                               Style="{StaticResource TabCommandToggleStyle}"
-                              Margin="2,0,8,0"
+                              Margin="2,2,8,0"
                               Click="OnCategoryFilterClick"
                               ToolTipService.ToolTip="Filter by Category">
                     <FontIcon Glyph="&#xE71C;" FontSize="12"/>
@@ -676,6 +676,7 @@
 
             <Grid x:Name="ActivityHeader"
                   Grid.Row="4"
+                  Visibility="Collapsed"
                   Height="10">
                 <Border x:Name="ActivitySplitter"
                         Width="7"

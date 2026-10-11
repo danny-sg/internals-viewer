@@ -76,8 +76,6 @@ extern "C"
                                                int32_t               instanceMethodCount,
                                                const uint64_t*       excludedFunctions,
                                                int32_t               excludedFunctionCount,
-                                               const uint64_t*       markerFunctions,
-                                               int32_t               markerFunctionCount,
                                                const MemoryRead*     memoryReads,
                                                int32_t               memoryReadCount,
                                                CallChunkCallback     logCalls,

@@ -46,7 +46,7 @@ public static class EventPropertyFormatter
     public static string Number(double? value, EventPropertyType type, string? format)
         => value is { } number ? Number(number, type, format) : string.Empty;
 
-    private static string SplitWords(string name)
+    internal static string SplitWords(string name)
     {
         if (name.Length < 2 || name.Contains(' ') || name.Contains('_') || name.All(c => !char.IsLower(c)))
         {
