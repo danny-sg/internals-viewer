@@ -4,7 +4,7 @@ Internals Viewer is a visualisation tool for viewing the internals of the SQL Se
 
 [Internals Viewer Medium Articles](https://medium.com/internals-viewer)
 
-## Version 4.6 - New Features
+## Version 4.8 - New Features
 
 - Query
   - Full Trace - record a query with Time Travel Debugging for a complete call tree
@@ -83,3 +83,19 @@ Internals Viewer can connect to a live database, open the data files of a detach
 The `sysadmin` role is required.
 
 Set the instance name, authentication type, User Id and Password if required for the authentication type, select the database to connect to and click **Connect**.
+
+## Open Source Projects
+
+Internals Viewer is built with the following open source projects. Thanks to their authors and contributors.
+
+### Application
+
+| Project | Used For | Licence |
+|---|---|---|
+| [.NET Community Toolkit](https://github.com/CommunityToolkit/dotnet) | MVVM framework | MIT |
+| [Windows Community Toolkit](https://github.com/CommunityToolkit/Windows) | Behaviours, converters, headered controls, settings controls and sizers | MIT |
+| [Windows Community Toolkit Labs](https://github.com/CommunityToolkit/Labs-Windows) | Markdown rendering. | MIT |
+| [SkiaSharp](https://github.com/mono/SkiaSharp) | Drawing the custom visualisations, built on [Skia](https://github.com/google/skia) | MIT (Skia BSD-3-Clause) |
+| [WinUI.TableView](https://github.com/w-ahmad/WinUI.TableView) | Data grids | MIT |
+| [WinUIEx](https://github.com/dotMorten/WinUIEx) | Window management and backdrops | MIT |
+| [ZstdSharp](https://github.com/oleg-st/ZstdSharp) | Reading zstd compressed backups, a port of [Zstandard](https://github.com/facebook/zstd) | MIT |
