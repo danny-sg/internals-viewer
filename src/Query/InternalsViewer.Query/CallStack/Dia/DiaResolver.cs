@@ -96,6 +96,9 @@ public sealed class DiaResolver : IDisposable
     internal IEnumerable<SymbolDetail> EnumerateSymbolsAtRva(uint rva)
         => EnumerateDetails(DiaBridge.BeginEnumSymbolsAtRva(_session, rva), includeSignature: true);
 
+    internal IEnumerable<string> SignaturesAt(uint rva)
+        => EnumerateSymbolsAtRva(rva).Where(s => s.IsFunction && s.Signature.Length > 0).Select(s => s.Signature);
+
     internal string? GetDecoratedName(uint rva)
     {
         var buffer = new StringBuilder(4096);

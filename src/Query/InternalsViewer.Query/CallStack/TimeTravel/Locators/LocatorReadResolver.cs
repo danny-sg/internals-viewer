@@ -12,12 +12,8 @@ public static partial class LocatorReadResolver
 
     public const int MaximumHops = 3;
 
-    private const string Module = "sqlmin";
-
     private static readonly string[] DecoratedTypes =
         ["VPageId@@", "VAllocationPageId@@", "VHPageHandle@@", "URowId@@", "VColumnStoreObjectKey@@"];
-
-    internal static bool AppliesTo(string module) => string.Equals(module, Module, StringComparison.OrdinalIgnoreCase);
 
     internal static IEnumerable<LocatorRead> For(ulong function, FunctionSignature signature)
     {
@@ -61,7 +57,7 @@ public static partial class LocatorReadResolver
         }
     }
 
-    internal static List<LocatorRead> Find(DiaResolver resolver, ulong moduleAddress, IEnumerable<uint> functions)
+    internal static List<LocatorRead> Find(DiaResolver resolver, IEnumerable<uint> functions)
     {
         var reads = new List<LocatorRead>();
 
@@ -74,10 +70,7 @@ public static partial class LocatorReadResolver
                 continue;
             }
 
-            var signatures = resolver.EnumerateSymbolsAtRva(rva)
-                                     .Where(s => s.IsFunction && s.Signature.Length > 0)
-                                     .Select(s => s.Signature)
-                                     .ToList();
+            var signatures = resolver.SignaturesAt(rva).ToList();
 
             var parameterLists = signatures.Select(s => string.Join(',', FunctionSignature.ParseParameters(s) ?? []))
                                            .Distinct()
@@ -88,7 +81,7 @@ public static partial class LocatorReadResolver
                 continue;
             }
 
-            reads.AddRange(For(moduleAddress + rva, signature));
+            reads.AddRange(For(rva, signature));
         }
 
         return reads;

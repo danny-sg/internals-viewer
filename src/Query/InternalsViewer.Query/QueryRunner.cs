@@ -449,6 +449,8 @@ public sealed class QueryRunner(ILogger<QueryRunner> logger,
 
         ReplayFunctionSet functions;
 
+        IReadOnlyList<MemoryFunction> memoryFunctions;
+
         try
         {
             steps.Begin(OpeningStep);
@@ -461,16 +463,16 @@ public sealed class QueryRunner(ILogger<QueryRunner> logger,
 
             steps.Begin(SymbolsStep);
 
-            functions = await ReplayFunctionResolver.ResolveAsync(session.Modules,
-                                                                  request.SymbolsPath,
-                                                                  Logger,
-                                                                  messages,
-                                                                  cancellationToken);
+            (functions, memoryFunctions) = await ReplayFunctionResolver.ResolveAsync(session.Modules,
+                                                                                     request.SymbolsPath,
+                                                                                     Logger,
+                                                                                     messages,
+                                                                                     cancellationToken);
 
             Logger.LogInformation("{Excluded} Extended Events and tracing function(s) excluded from the replay, {Memory} memory "
                                   + "function(s) tracked",
                                   functions.Excluded.Length,
-                                  functions.Memory.Length);
+                                  memoryFunctions.Count);
 
             steps.Complete();
 
@@ -573,7 +575,7 @@ public sealed class QueryRunner(ILogger<QueryRunner> logger,
                               operators.Count(o => o.PlanNodeIdentifier is { NodeId: >= 0 }),
                               planLink.Instances.Count);
 
-        var memory = TimeTravelMemoryMapper.Map(replay.CallLog, functions.Memory, timeline, operators, request.MemoryClerks);
+        var memory = TimeTravelMemoryMapper.Map(replay.CallLog, memoryFunctions, timeline, operators, request.MemoryClerks);
 
         var unidentified = memory.Kinds
                                  .Where(k => k.Name.StartsWith(TimeTravelMemoryMapper.UnknownClerk, StringComparison.Ordinal)

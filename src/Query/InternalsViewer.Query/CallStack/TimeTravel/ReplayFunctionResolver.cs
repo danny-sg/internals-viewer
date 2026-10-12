@@ -63,11 +63,13 @@ internal static class ReplayFunctionResolver
 
     private const string ReserveMethod = "Reserve";
 
+    private const string IteratorModule = "sqlmin";
+
     private static readonly string[] Modules = ["sqlmin", "sqllang", "sqldk"];
 
     private static readonly string[] HeapModules = ["ntdll", "kernelbase", "kernel32", "ucrtbase"];
 
-    private static ConcurrentDictionary<(string Pdb, string Guid, int Age), ReplayFunctionSet> Cache { get; } = new();
+    private static ConcurrentDictionary<(string Pdb, string Guid, int Age), ModuleFunctions> Cache { get; } = new();
 
     private static ConcurrentDictionary<(string Pdb, string Guid, int Age), Lazy<Task>> Resolving { get; } = new();
 
@@ -81,23 +83,22 @@ internal static class ReplayFunctionResolver
                                null,
                                cancellationToken);
 
-    public static async Task<ReplayFunctionSet> ResolveAsync(IReadOnlyList<TimeTravelModule> modules,
-                                                             string symbolsPath,
-                                                             ILogger? logger,
-                                                             IProgress<ProgressDetail>? progress,
-                                                             CancellationToken cancellationToken)
+    public static async Task<(ReplayFunctionSet Replay, IReadOnlyList<MemoryFunction> Memory)> ResolveAsync(
+        IReadOnlyList<TimeTravelModule> modules,
+        string symbolsPath,
+        ILogger? logger,
+        IProgress<ProgressDetail>? progress,
+        CancellationToken cancellationToken)
     {
         var start = Stopwatch.GetTimestamp();
 
-        var heap = modules.Where(m => HeapModules.Contains(Path.GetFileNameWithoutExtension(m.Path), StringComparer.OrdinalIgnoreCase))
-                          .SelectMany(HeapFunctions)
-                          .ToList();
+        List<MemoryFunction> heap = [.. modules.Where(IsHeap).SelectMany(HeapFunctions)];
 
         var identities = modules.Where(IsReplayed).ToList();
 
         if (identities.Count == 0)
         {
-            return new ReplayFunctionSet([], [.. heap], [], [], [], []);
+            return (ReplayFunctionSet.Empty, heap);
         }
 
         var missing = identities.Count(m => !Cache.ContainsKey(KeyOf(m)));
@@ -105,7 +106,7 @@ internal static class ReplayFunctionResolver
         await EnsureResolvedAsync(identities, symbolsPath, logger, progress, cancellationToken);
 
         var found = identities.Select(m => Cache.TryGetValue(KeyOf(m), out var relative) ? relative.Rebase(m.StartAddress) : null)
-                              .OfType<ReplayFunctionSet>()
+                              .OfType<ModuleFunctions>()
                               .ToList();
 
         logger?.LogInformation("Replay functions for {Modules} resolved in {Elapsed} ({Cached} of {Count} from the cache)",
@@ -114,26 +115,28 @@ internal static class ReplayFunctionResolver
                                identities.Count - missing,
                                identities.Count);
 
-        return new ReplayFunctionSet([.. found.SelectMany(f => f.Excluded)],
-                                     [.. found.SelectMany(f => f.Memory), .. heap],
-                                     [.. found.SelectMany(f => f.InstanceMethods)],
-                                     [.. found.SelectMany(f => f.Locators)],
-                                     [.. found.SelectMany(f => f.Publishers)],
-                                     [.. found.SelectMany(f => f.Reserves)]);
+        return (ReplayFunctionSet.Merge([.. found.Select(f => f.Replay)]), [.. found.SelectMany(f => f.Memory), .. heap]);
     }
 
     internal static bool IsExcluded(SymbolCategory category, string? iterator)
         => category is SymbolCategory.XEventInfrastructure || (category is SymbolCategory.Tracing && iterator is null);
 
     private static IEnumerable<MemoryFunction> HeapFunctions(TimeTravelModule module)
-        => ModuleExportReader.Read(module.Path)
-                             .Select(e => MemoryFunction.ClassifyExport(module.StartAddress + e.Rva, e.Name))
-                             .OfType<MemoryFunction>();
+        => RebaseMemory(ModuleExportReader.Read(module.Path)
+                                          .Select(e => MemoryFunction.ClassifyExport(e.Rva, e.Name))
+                                          .OfType<MemoryFunction>(),
+                        module.StartAddress);
+
+    private static IEnumerable<MemoryFunction> RebaseMemory(IEnumerable<MemoryFunction> functions, ulong address)
+        => functions.Select(f => f with { Address = f.Address + address });
 
     private static (string Pdb, string Guid, int Age) KeyOf(TimeTravelModule module) => (module.Pdb, module.Guid, module.Age);
 
     private static bool IsReplayed(TimeTravelModule module)
         => module.Pdb.Length > 0 && Modules.Contains(module.Name, StringComparer.OrdinalIgnoreCase);
+
+    private static bool IsHeap(TimeTravelModule module)
+        => HeapModules.Contains(Path.GetFileNameWithoutExtension(module.Path), StringComparer.OrdinalIgnoreCase);
 
     private static Task EnsureResolvedAsync(IEnumerable<TimeTravelModule> modules,
                                             string symbolsPath,
@@ -178,7 +181,7 @@ internal static class ReplayFunctionResolver
     {
         var start = Stopwatch.GetTimestamp();
 
-        if (Find(module with { StartAddress = 0 }, symbolsPath) is not { } relative)
+        if (Find(module, symbolsPath) is not { } relative)
         {
             logger?.LogWarning("Replay functions for {Module} not resolved, {Pdb} was not found", module.Name, module.Pdb);
 
@@ -188,17 +191,19 @@ internal static class ReplayFunctionResolver
         Cache[KeyOf(module)] = relative;
 
         logger?.LogInformation("Replay functions for {Module} resolved from {Pdb} in {Elapsed}: {Excluded} excluded, "
-                               + "{Iterators} iterator methods, {Locators} locator reads, {Publishers} event publishers",
+                               + "{Iterators} iterator methods, {Locators} locator reads, {Publishers} event publishers, "
+                               + "{Memory} memory functions",
                                module.Name,
                                module.Pdb,
                                Stopwatch.GetElapsedTime(start),
-                               relative.Excluded.Length,
-                               relative.InstanceMethods.Length,
-                               relative.Locators.Length,
-                               relative.Publishers.Length);
+                               relative.Replay.Excluded.Length,
+                               relative.Replay.InstanceMethods.Length,
+                               relative.Replay.Locators.Length,
+                               relative.Replay.Publishers.Length,
+                               relative.Memory.Length);
     }
 
-    private static ReplayFunctionSet? Find(TimeTravelModule module, string symbolsPath)
+    private static ModuleFunctions? Find(TimeTravelModule module, string symbolsPath)
     {
         var pdbPath = CallstackResolver.GetPdbPath(symbolsPath, module.Frame(module.StartAddress, 0));
 
@@ -209,81 +214,41 @@ internal static class ReplayFunctionResolver
 
         using var resolver = new DiaResolver(pdbPath);
 
+        var symbols = ModuleSymbols.Read(resolver);
+
         var mappings = CategoryMappings.Default;
 
-        var excluded = new HashSet<uint>();
+        HashSet<uint> excluded = [.. symbols.Where(names => names.All(n => IsExcluded(mappings, module.Name, n)))];
 
-        var kept = new HashSet<uint>();
+        var iterates = string.Equals(module.Name, IteratorModule, StringComparison.OrdinalIgnoreCase);
 
-        var memory = new Dictionary<uint, MemoryFunction?>();
+        InstanceMethod[] instanceMethods = iterates ? [.. InstanceMethodCollector.Find(symbols, resolver)] : [];
 
-        var instanceMethods = InstanceMethodCollector.AppliesTo(module.Name) ? new InstanceMethodCollector() : null;
+        var kept = symbols.Addresses.Where(a => !excluded.Contains(a));
 
-        var locatorFunctions = LocatorReadResolver.AppliesTo(module.Name) ? new HashSet<uint>() : null;
+        LocatorRead[] locators = iterates ? [.. LocatorReadResolver.Find(resolver, kept)] : [];
 
-        var publishers = new Dictionary<uint, string?>();
+        var replay = new ReplayFunctionSet([.. excluded.Select(rva => (ulong)rva)],
+                                           instanceMethods,
+                                           locators,
+                                           [.. symbols.Agreed((_, name) => EventOf(name)).Select(p => new EventPublisher(p.Rva, p.Value))],
+                                           [.. symbols.Where(names => names.All(IsReserve)).Select(rva => (ulong)rva)]);
 
-        var reserves = new HashSet<uint>();
-
-        foreach (var symbol in resolver.EnumerateSymbolDetails(string.Empty, includeSignature: false))
-        {
-            if (!symbol.IsFunction)
-            {
-                continue;
-            }
-
-            instanceMethods?.Add(symbol);
-
-            locatorFunctions?.Add(symbol.Rva);
-
-            var separator = ResolvedCallstackFrameParser.FindClassMethodSeparator(symbol.Name);
-
-            var className = separator >= 0 ? symbol.Name[..separator] : null;
-
-            var methodName = separator >= 0 ? symbol.Name[(separator + 2)..] : symbol.Name;
-
-            var category = mappings.Classify(module.Name, className, methodName);
-
-            var iterator = mappings.ClassifyOperator(module.Name, className, methodName).Iterator;
-
-            (IsExcluded(category, iterator) ? excluded : kept).Add(symbol.Rva);
-
-            var function = MemoryFunction.Classify(module.StartAddress + symbol.Rva, symbol.Name);
-
-            memory[symbol.Rva] = memory.TryGetValue(symbol.Rva, out var existing) && existing != function ? null : function;
-
-            if (EventOf(className, methodName) is { } eventName)
-            {
-                publishers[symbol.Rva] = publishers.TryGetValue(symbol.Rva, out var existingEvent) && existingEvent != eventName
-                    ? null
-                    : eventName;
-            }
-            else if (className == BufferManager && methodName == ReserveMethod)
-            {
-                reserves.Add(symbol.Rva);
-            }
-        }
-
-        excluded.ExceptWith(kept);
-
-        locatorFunctions?.ExceptWith(excluded);
-
-        return new ReplayFunctionSet([.. excluded.Select(rva => module.StartAddress + rva)],
-                                     [.. memory.Values.OfType<MemoryFunction>()],
-                                     instanceMethods is null
-                                         ? []
-                                         : [.. instanceMethods.Resolve(resolver)
-                                                              .Select(m => m with { Address = module.StartAddress + m.Address })],
-                                     locatorFunctions is null
-                                         ? []
-                                         : [.. LocatorReadResolver.Find(resolver, module.StartAddress, locatorFunctions)],
-                                     [.. publishers.Where(p => p.Value is not null)
-                                                   .Select(p => new EventPublisher(module.StartAddress + p.Key, p.Value!))],
-                                     [.. reserves.Select(rva => module.StartAddress + rva)]);
+        return new ModuleFunctions(replay, [.. symbols.Agreed((rva, name) => MemoryFunction.Classify(rva, name)).Select(p => p.Value)]);
     }
 
-    private static string? EventOf(string? className, string methodName)
+    private static bool IsExcluded(CategoryMappings mappings, string module, string symbol)
     {
+        var (className, methodName) = Split(symbol);
+
+        return IsExcluded(mappings.Classify(module, className, methodName),
+                          mappings.ClassifyOperator(module, className, methodName).Iterator);
+    }
+
+    private static string? EventOf(string symbol)
+    {
+        var (className, methodName) = Split(symbol);
+
         if (methodName != PublishMethod || className is null)
         {
             return null;
@@ -299,5 +264,19 @@ internal static class ReplayFunctionResolver
         var eventName = className[(package + PackageSeparator.Length)..];
 
         return eventName.Length > 0 && !eventName.Contains("::", StringComparison.Ordinal) ? eventName : null;
+    }
+
+    private static bool IsReserve(string symbol) => Split(symbol) is (BufferManager, ReserveMethod);
+
+    private static (string? Class, string Method) Split(string symbol)
+    {
+        var separator = ResolvedCallstackFrameParser.FindClassMethodSeparator(symbol);
+
+        return separator >= 0 ? (symbol[..separator], symbol[(separator + 2)..]) : (null, symbol);
+    }
+
+    private sealed record ModuleFunctions(ReplayFunctionSet Replay, MemoryFunction[] Memory)
+    {
+        public ModuleFunctions Rebase(ulong address) => new(Replay.Rebase(address), [.. RebaseMemory(Memory, address)]);
     }
 }

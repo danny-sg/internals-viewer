@@ -3,10 +3,8 @@ using InternalsViewer.Query.CallStack.Dia;
 
 namespace InternalsViewer.Query.CallStack.TimeTravel.Iterators;
 
-internal sealed class InstanceMethodCollector
+internal static class InstanceMethodCollector
 {
-    private const string Module = "sqlmin";
-
     private const int RegisterCount = 4;
 
     private static readonly string[] ClassPrefixes = ["CQScan", "CBpQScan", "CQueryScan"];
@@ -23,12 +21,6 @@ internal sealed class InstanceMethodCollector
         "BpGetNextBatch",
         "BpClose"
     };
-
-    private HashSet<uint> Found { get; } = [];
-
-    private HashSet<uint> Shared { get; } = [];
-
-    public static bool AppliesTo(string module) => string.Equals(module, Module, StringComparison.OrdinalIgnoreCase);
 
     public static int? InstanceRegister(string? signature, string? decoratedName)
     {
@@ -60,27 +52,13 @@ internal sealed class InstanceMethodCollector
     public static bool IsPlanObjectClass(string? className)
         => className is not null && PlanObjectPrefixes.Any(prefix => className.StartsWith(prefix, StringComparison.Ordinal));
 
-    public void Add(SymbolDetail symbol)
+    public static List<InstanceMethod> Find(ModuleSymbols symbols, DiaResolver resolver)
     {
-        if (IsIteratorMethod(symbol.Name) || IsPlanObjectMethod(symbol.Name))
-        {
-            Found.Add(symbol.Rva);
-        }
-        else if (!IsIteratorClass(symbol.Name) && !IsPlanObjectClass(symbol.Name))
-        {
-            Shared.Add(symbol.Rva);
-        }
-    }
-
-    public List<InstanceMethod> Resolve(DiaResolver resolver)
-    {
-        Found.ExceptWith(Shared);
-
         var methods = new List<InstanceMethod>();
 
-        foreach (var rva in Found)
+        foreach (var rva in symbols.Where(IsInstanceMethod))
         {
-            if (InstanceRegister(Signature(resolver, rva), resolver.GetDecoratedName(rva)) is { } register)
+            if (InstanceRegister(resolver.SignaturesAt(rva).FirstOrDefault(), resolver.GetDecoratedName(rva)) is { } register)
             {
                 methods.Add(new InstanceMethod(rva, register));
             }
@@ -88,6 +66,9 @@ internal sealed class InstanceMethodCollector
 
         return methods;
     }
+
+    private static bool IsInstanceMethod(IReadOnlyList<string> names)
+        => names.Any(n => IsIteratorMethod(n) || IsPlanObjectMethod(n)) && names.All(n => IsIteratorClass(n) || IsPlanObjectClass(n));
 
     private static int? KeyedParameter(IReadOnlyList<string> parameters)
     {
@@ -103,12 +84,6 @@ internal sealed class InstanceMethodCollector
 
         return null;
     }
-
-    private static string? Signature(DiaResolver resolver, uint rva)
-        => resolver.EnumerateSymbolsAtRva(rva)
-                   .Where(s => s.IsFunction && s.Signature.Length > 0)
-                   .Select(s => s.Signature)
-                   .FirstOrDefault();
 
     private static bool IsIteratorClass(string symbol)
         => ClassPrefixes.Any(prefix => symbol.StartsWith(prefix, StringComparison.Ordinal));
