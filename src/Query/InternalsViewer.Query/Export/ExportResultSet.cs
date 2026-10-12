@@ -1,3 +1,3 @@
 namespace InternalsViewer.Query.Export;
 
-internal sealed record ExportResultSet(int RowCount, IReadOnlyList<ExportColumn> Columns);
+internal sealed record ExportResultSet(IReadOnlyList<ExportColumn> Columns);

@@ -143,6 +143,18 @@ public class RunExportTests
     }
 
     [Fact]
+    public async Task A_Node_Removed_From_The_Full_Trace_Tree_Stays_Out_Of_It_On_Import()
+    {
+        var fullTrace = (await Import(await Export(Content()))).FullTrace!;
+
+        var publish = fullTrace.Timeline.NodeOf(2)!;
+
+        Assert.Equal("XeSqlPkg::lock_acquired::Publish", publish.Symbol);
+        Assert.Same(fullTrace.Timeline.NodeOf(0), publish.Parent);
+        Assert.DoesNotContain(publish, fullTrace.CallStack.Nodes());
+    }
+
+    [Fact]
     public async Task An_Imported_Plan_Keeps_Its_Handle_Batch_Info_And_Columns()
     {
         var imported = await Import(await Export(Content()));
@@ -332,13 +344,19 @@ public class RunExportTests
 
         scan.EntryFrames = [getRow];
 
+        var publish = tree.AddCall(caller, Frame(0x50, "XeSqlPkg::lock_acquired::Publish+0x0"), 1);
+
         var builder = new TimeTravelTimeline.Builder();
 
-        builder.Add([Span(0, 0, 100), Span(1, 20, 25), Span(1, 30, 35)]);
+        builder.Add([Span(0, 0, 100), Span(1, 20, 25), Span(1, 30, 35), Span(2, 40, 41)]);
 
-        var timeline = builder.Build([new(-1, 0, 0x10, 0, 1), new(0, 0, 0x30, Scan, 2)]);
+        var replayed = builder.Build([new(-1, 0, 0x10, 0, 1), new(0, 0, 0x30, Scan, 2), new(0, 0, 0x50, 0, 1)]);
 
-        timeline.MapNodes([caller, getRow]);
+        replayed.MapNodes([caller, getRow, publish]);
+
+        tree.RemoveCallsUnder(node => node.IsExtendedEvents);
+
+        var timeline = replayed.WithoutCallsUnder(node => node.IsExtendedEvents);
 
         timeline.SetMemory([new TimeTravelAllocation(7, 22, 23, 100, 0xA)], [new TimeTravelFree(7, 31, 32, 0xA)]);
 
@@ -352,7 +370,7 @@ public class RunExportTests
 
         var callLog = log.Build();
 
-        callLog.MapNodes([caller, getRow]);
+        callLog.MapNodes([caller, getRow, publish]);
 
         return new FullTraceResult(tree, callLog, timeline);
     }

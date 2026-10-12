@@ -414,7 +414,7 @@ internal static class RunExportWriter
             CropEndUs = result.CropEndUs,
             QueryOptions = content.QueryOptions,
             EventOptions = content.EventOptions,
-            ResultSets = [.. result.ResultSets.Select(s => new ExportResultSet(s.Rows.Count, [.. s.Columns.Select(ColumnOf)]))],
+            ResultSets = [.. result.ResultSets.Select(s => new ExportResultSet([.. s.Columns.Select(ColumnOf)]))],
             Plans = plans,
             CallTrees = [.. trees.Select(t => t.Tree with { RootId = t.Tree.IsDetached ? -1 : references.Nodes.IdOf(t.Roots[0]) })],
             ResultLogRecords = [.. result.LogRecords.Select(references.LogRecords.IdOf)],

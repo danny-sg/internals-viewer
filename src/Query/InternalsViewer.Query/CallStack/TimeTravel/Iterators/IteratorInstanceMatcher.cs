@@ -18,7 +18,7 @@ public static class IteratorInstanceMatcher
 
     private const string Parallelism = "Parallelism";
 
-    public static int Match(CallStackTree callStack, IReadOnlyList<EngineEvent> events)
+    public static int Match(CallStackTree callStack, IReadOnlyList<EngineEvent> events, IteratorPlanLink? planLink = null)
     {
         var hierarchy = OperatorHierarchy.Build(events);
 
@@ -31,13 +31,22 @@ public static class IteratorInstanceMatcher
 
         var plan = new PlanShape(hierarchy);
 
-        var matching = new Matching(plan);
-
         var assigned = new Dictionary<ExecutionOperatorEvent, List<IteratorInstance>>(ReferenceEqualityComparer.Instance);
 
-        foreach (var (root, operatorEvent, choice) in AcceptedRoots(IteratorInstance.Build(callStack), plan, matching))
+        var (roots, recorded) = IteratorInstance.Build(callStack);
+
+        if (planLink is { Instances.Count: > 0 })
         {
-            matching.Assign(root, operatorEvent, choice, assigned);
+            AssignLinked(recorded, hierarchy, planLink, assigned);
+        }
+        else
+        {
+            var matching = new Matching(plan);
+
+            foreach (var (root, operatorEvent, choice) in AcceptedRoots(roots, plan, matching))
+            {
+                matching.Assign(root, operatorEvent, choice, assigned);
+            }
         }
 
         foreach (var (operatorEvent, instances) in assigned)
@@ -55,6 +64,30 @@ public static class IteratorInstanceMatcher
         }
 
         return assigned.Count;
+    }
+
+    private static void AssignLinked(IEnumerable<IteratorInstance> instances,
+                                     OperatorHierarchy hierarchy,
+                                     IteratorPlanLink planLink,
+                                     Dictionary<ExecutionOperatorEvent, List<IteratorInstance>> assigned)
+    {
+        foreach (var instance in instances.Where(i => i.Kind != InstanceKind.Wrapper))
+        {
+            if (planLink.NodeOf(instance.Address) is not { } node
+                || hierarchy.At(node) is not { PlanNodeIdentifier.NodeId: >= 0 } operatorEvent)
+            {
+                continue;
+            }
+
+            if (!assigned.TryGetValue(operatorEvent, out var linked))
+            {
+                linked = [];
+
+                assigned[operatorEvent] = linked;
+            }
+
+            linked.Add(instance);
+        }
     }
 
     private static IEnumerable<(IteratorInstance Root, ExecutionOperatorEvent Operator, Choice Choice)> AcceptedRoots(
@@ -366,7 +399,7 @@ public static class IteratorInstanceMatcher
 
         public IReadOnlyList<IteratorInstance> EffectiveChildren { get; private set; } = [];
 
-        public static IReadOnlyList<IteratorInstance> Build(CallStackTree callStack)
+        public static (IReadOnlyList<IteratorInstance> Roots, IReadOnlyCollection<IteratorInstance> All) Build(CallStackTree callStack)
         {
             var instances = new Dictionary<ulong, IteratorInstance>();
 
@@ -422,7 +455,7 @@ public static class IteratorInstanceMatcher
                 instance.EffectiveChildren = Flatten(instance.Children);
             }
 
-            return Flatten(instances.Values.Where(i => i.Parent is null));
+            return (Flatten(instances.Values.Where(i => i.Parent is null)), instances.Values);
         }
 
         private static List<IteratorInstance> Flatten(IEnumerable<IteratorInstance> instances)

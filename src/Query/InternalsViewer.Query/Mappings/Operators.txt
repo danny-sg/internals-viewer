@@ -32,8 +32,8 @@ sqllang|CXStmtQuery|ErsqExecuteQuery|Statement|SELECT,UPDATE,DELETE,INSERT,MERGE
 
 # Wrappers with no node of their own: a badge, never a boundary.
 sqlmin|CQueryScan|GetRow|Iterator|
-sqlmin|CQScanProfileNew|GetRow|Profiling|
-sqlmin|CQScanLightProfileNew|GetRow|Profiling|
+sqlmin|CQScanProfileNew|*|Profiling|
+sqlmin|CQScanLightProfileNew|*|Profiling|
 sqlmin|Rowset*|*FetchNextRow|Row Iterator|
 *|IndexDataSetSession*|*|Index|
 *|HeapDataSetSession*|*|Heap|

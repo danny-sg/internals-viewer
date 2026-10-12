@@ -1,4 +1,5 @@
 using InternalsViewer.Query.CallStack;
+using InternalsViewer.Query.CallStack.Categories;
 using InternalsViewer.Query.CallStack.TimeTravel;
 
 namespace InternalsViewer.Query.Tests;
@@ -41,13 +42,30 @@ public class QueryExecutionCropTests
 
         var worker = tree.AddCall(tree.Root, Frame("SubprocEntrypoint", "m", 0x60), 1);
 
-        tree.AddCall(worker, Frame("CQScanXProducerNew", "GetRow", 0x70), 3);
+        tree.AddCall(worker, Frame("CQScanXProducerNew", "GetRow", 0x70, SymbolCategory.QueryOperator), 3);
 
         var crop = QueryExecutionCrop.Crop(tree);
 
         Assert.NotNull(crop);
         Assert.Equal(["CMsqlExecContext::FExecute", "SubprocEntrypoint::m"],
                      crop.Value.Tree.Root.ChildNodes.Select(n => n.Symbol).Order());
+    }
+
+    [Fact]
+    public void A_Root_That_Neither_Executes_The_Query_Nor_Runs_The_Plan_Is_Dropped()
+    {
+        var tree = new CallStackTree();
+
+        tree.AddCall(tree.AddCall(tree.Root, Frame("ThreadEntry", "m", 0x10), 1), Frame("CMsqlExecContext", "FExecute", 0x40), 1);
+
+        tree.AddCall(tree.Root, Frame("CXStmtQuery", "XretSchemaChanged", 0x80), 2);
+
+        tree.AddCall(tree.AddCall(tree.Root, Frame("SystemTaskEntryPoint", "m", 0x90), 1), Frame("CheckpointTask", "Run", 0xA0), 4);
+
+        var crop = QueryExecutionCrop.Crop(tree);
+
+        Assert.NotNull(crop);
+        Assert.Equal(["CMsqlExecContext::FExecute"], crop.Value.Tree.Root.ChildNodes.Select(n => n.Symbol));
     }
 
     [Fact]
@@ -60,10 +78,13 @@ public class QueryExecutionCropTests
         Assert.Null(QueryExecutionCrop.Crop(tree));
     }
 
-    private static CallstackFrame Frame(string className, string methodName, uint rva) => new()
+    private static CallstackFrame Frame(string className,
+                                        string methodName,
+                                        uint rva,
+                                        SymbolCategory category = SymbolCategory.Unknown) => new()
     {
         Module = "sqllang",
         Rva = rva,
-        Resolved = new ResolvedCallstackFrame { ClassName = className, MethodName = methodName }
+        Resolved = new ResolvedCallstackFrame { ClassName = className, MethodName = methodName, SymbolCategory = category }
     };
 }

@@ -1,6 +1,7 @@
 using InternalsViewer.Query.CallStack.Categories;
 using InternalsViewer.Query.CallStack.TimeTravel.Locators;
 using InternalsViewer.Query.Events;
+using InternalsViewer.Query.Events.Operators;
 
 namespace InternalsViewer.Query.CallStack;
 
@@ -138,6 +139,18 @@ public sealed class CallStackNode
 
     public string LocatorsDetail => Locators?.Detail ?? string.Empty;
 
+    public IReadOnlyList<ExecutionOperatorEvent> PlanOperators { get; internal set; } = [];
+
+    public bool HasTarget => TargetLabel.Length > 0;
+
+    public bool HasOperatorOrTarget => HasOperator || HasTarget;
+
+    public string TargetLabel => string.Join(", ", PlanOperators.Select(o => o.TargetLabel).Where(l => l.Length > 0).Distinct());
+
+    public string TargetDetail => string.Join(Environment.NewLine,
+                                              PlanOperators.Select(o => $"{o.OperatorDescription} (Node {o.PlanNodeIdentifier?.NodeId}) "
+                                                                        + o.TargetLabel));
+
     /// <summary>
     /// The frames a projection cut away directly below this one — where a segment handed off to a nested operator
     /// </summary>
@@ -204,7 +217,8 @@ public sealed class CallStackNode
             AllocatedBytes = nodes.Sum(n => n.AllocatedBytes),
             Allocations = nodes.Sum(n => n.Allocations),
             AllocatedIncludingChildren = (nodes.Sum(n => n.AllocatedBytesIncludingChildren),
-                                          nodes.Sum(n => n.AllocationsIncludingChildren))
+                                          nodes.Sum(n => n.AllocationsIncludingChildren)),
+            PlanOperators = [.. nodes.SelectMany(n => n.PlanOperators).Distinct<ExecutionOperatorEvent>(ReferenceEqualityComparer.Instance)]
         };
 
         foreach (var node in nodes)
@@ -237,6 +251,14 @@ public sealed class CallStackNode
     }
 
     public override string ToString() => Ancestors().FirstOrDefault(node => !node.IsInfrastructure)?.Symbol ?? Symbol;
+
+    internal void AddPlanOperators(IReadOnlyList<ExecutionOperatorEvent> operators)
+    {
+        if (operators.Count > 0)
+        {
+            PlanOperators = [.. PlanOperators.Concat(operators).Distinct<ExecutionOperatorEvent>(ReferenceEqualityComparer.Instance)];
+        }
+    }
 
     private static int[] Sum(int[] total, int[] counts)
     {

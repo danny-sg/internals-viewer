@@ -32,6 +32,38 @@ public class IteratorInstanceMatcherTests
     }
 
     [Fact]
+    public void Linked_Iterators_Take_Their_Linked_Plan_Nodes_Over_The_Plan_Shape()
+    {
+        var tree = new CallStackTree();
+
+        var join = tree.AddCall(tree.Root, Iterator("CQScanNLJoinNew", "GetRow", 0x100, "Nested Loops"), 6);
+
+        Seek(tree, join, profile: 0x200, seek: 0x300, rows: 5);
+        Seek(tree, join, profile: 0x400, seek: 0x500, rows: 7);
+
+        var loops = Operator(0, "Nested Loops");
+        var outer = Operator(1, "Index Seek", parent: 0);
+        var inner = Operator(2, "Index Seek", parent: 0);
+
+        var link = new IteratorPlanLink(new Dictionary<ulong, PlanNodeIdentifier>(),
+                                        new Dictionary<ulong, PlanNodeIdentifier>
+                                        {
+                                            [0x100] = new(1, 0),
+                                            [0x200] = new(1, 2),
+                                            [0x300] = new(1, 2),
+                                            [0x400] = new(1, 1),
+                                            [0x500] = new(1, 1)
+                                        });
+
+        var matched = IteratorInstanceMatcher.Match(tree.CollapseToFunctions(), [loops, outer, inner], link);
+
+        Assert.Equal(3, matched);
+        Assert.Equal([0x500ul], outer.Instances);
+        Assert.Equal([0x300ul], inner.Instances);
+        Assert.Equal(0x300ul, Assert.Single(inner.EntryFrames).Frame?.Instance);
+    }
+
+    [Fact]
     public void An_Operator_Exits_Where_Its_Children_Are_Entered()
     {
         var tree = new CallStackTree();

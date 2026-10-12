@@ -234,8 +234,25 @@ public sealed class TimeTravelTimeline
         return new TimeTravelTimeline(threads, this);
     }
 
-    public TimeTravelTimeline? CroppedTo(Func<CallStackNode, bool> isRoot)
-        => RootedAt(isRoot) is { Threads.Count: > 0 } rooted ? new TimeTravelTimeline(rooted.Threads, rooted, fit: true) : null;
+    public TimeTravelTimeline? CroppedTo(CallStackTree tree)
+    {
+        var known = new Dictionary<CallStackNode, int>(ReferenceEqualityComparer.Instance);
+
+        var depths = new int[NodeCount];
+
+        for (var node = 0; node < depths.Length; node++)
+        {
+            depths[node] = NodeOf(node) is { } callNode ? DepthIn(tree, callNode, known) : -1;
+        }
+
+        int DepthOf(TimeTravelTimelineRow row, int index)
+            => row.NodeAt(index) is var node && node >= 0 && node < depths.Length ? depths[node] : -1;
+
+        List<TimeTravelTimelineThread> threads = [.. Threads.Select(t => Regroup(t, (_, row, index) => DepthOf(row, index)))
+                                                            .Where(t => t.Calls > 0)];
+
+        return threads.Count > 0 ? new TimeTravelTimeline(threads, this, fit: true) : null;
+    }
 
     public TimeTravelTimeline WithoutCallsUnder(Func<CallStackNode, bool> boundary)
     {
@@ -416,6 +433,33 @@ public sealed class TimeTravelTimeline
         }
 
         return merged;
+    }
+
+    private static int DepthIn(CallStackTree tree, CallStackNode node, Dictionary<CallStackNode, int> known)
+    {
+        if (known.TryGetValue(node, out var depth))
+        {
+            return depth;
+        }
+
+        if (node.Parent is not { } parent || !parent.Children.TryGetValue(node.Key, out var child) || !ReferenceEquals(child, node))
+        {
+            depth = -1;
+        }
+        else if (ReferenceEquals(parent, tree.Root))
+        {
+            depth = 0;
+        }
+        else
+        {
+            var parentDepth = DepthIn(tree, parent, known);
+
+            depth = parentDepth < 0 ? -1 : parentDepth + 1;
+        }
+
+        known[node] = depth;
+
+        return depth;
     }
 
     private static TimeTravelTimelineThread During(TimeTravelTimelineThread thread,

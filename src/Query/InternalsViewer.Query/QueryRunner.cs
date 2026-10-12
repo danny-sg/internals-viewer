@@ -310,6 +310,8 @@ public sealed class QueryRunner(ILogger<QueryRunner> logger,
 
                 CallStackPlanNodeMatcher.Match(events);
 
+                OperatorEntryLabels.Apply(events);
+
                 ReadAheadClassifier.Classify(events);
 
                 LogUnknownSymbols(unknownSymbols);
@@ -516,7 +518,9 @@ public sealed class QueryRunner(ILogger<QueryRunner> logger,
 
         CallStackNode?[] mapped = [.. replayed.Select(node => collapsed.GetValueOrDefault(node))];
 
-        HashSet<CallStackNode> queryRoots = [];
+        var planLink = IteratorPlanLinker.Link(replay.CallLog, mapped, events);
+
+        var cropped = false;
 
         if (pending.CropToQuery && QueryExecutionCrop.Crop(callStack) is { } crop)
         {
@@ -524,7 +528,7 @@ public sealed class QueryRunner(ILogger<QueryRunner> logger,
 
             mapped = [.. mapped.Select(node => node is null ? null : crop.Projected.GetValueOrDefault(node))];
 
-            queryRoots = [.. callStack.Root.ChildNodes.Where(QueryExecutionCrop.IsQueryExecution)];
+            cropped = true;
 
             Logger.LogInformation("Call tree cropped to the query's execution, {Roots} root(s)", callStack.Root.Children.Count);
         }
@@ -535,13 +539,13 @@ public sealed class QueryRunner(ILogger<QueryRunner> logger,
 
         replay.Timeline.MapNodes(mapped);
 
-        callStack.RemoveCallsUnder(node => node.IsExtendedEvents || node.IsTracing);
+        callStack.RemoveCallsUnder(IsInstrumentation);
 
-        var timeline = replay.Timeline.WithoutCallsUnder(node => node.IsExtendedEvents || node.IsTracing);
+        var timeline = replay.Timeline.WithoutCallsUnder(IsInstrumentation);
 
-        if (queryRoots.Count > 0)
+        if (cropped)
         {
-            timeline = timeline.CroppedTo(queryRoots.Contains) ?? timeline;
+            timeline = timeline.CroppedTo(callStack) ?? timeline;
         }
 
         Logger.LogInformation("{Calls} call(s) after removing Extended Events and tracing, {Spans} call span(s) on {Threads} "
@@ -556,7 +560,16 @@ public sealed class QueryRunner(ILogger<QueryRunner> logger,
 
         steps.Begin(OperatorsStep);
 
-        var matched = IteratorInstanceMatcher.Match(callStack, events);
+        var matched = IteratorInstanceMatcher.Match(callStack, events, planLink);
+
+        OperatorEntryLabels.Apply(events);
+
+        Logger.LogInformation("{PlanObjects} plan object(s) linked to {PlanNodes} of {Operators} plan node(s), {Instances} iterator "
+                              + "instance(s) linked to their plan node",
+                              planLink.PlanObjects.Count,
+                              planLink.PlanObjects.Values.Distinct().Count(),
+                              operators.Count(o => o.PlanNodeIdentifier is { NodeId: >= 0 }),
+                              planLink.Instances.Count);
 
         var memory = TimeTravelMemory.Apply(replay.CallLog, functions.Memory, timeline, operators, pending.MemoryClerks);
 
@@ -588,7 +601,7 @@ public sealed class QueryRunner(ILogger<QueryRunner> logger,
 
         steps.Complete();
 
-        return new FullTraceResult(callStack, replay.CallLog, timeline);
+        return new FullTraceResult(callStack, replay.CallLog, timeline) { PlanLink = planLink };
     }
 
     private async Task MapColumnstorePages(DatabaseSource database,
@@ -725,6 +738,8 @@ public sealed class QueryRunner(ILogger<QueryRunner> logger,
             return MemoryClerkSnapshot.Empty;
         }
     }
+
+    private static bool IsInstrumentation(CallStackNode node) => node.IsExtendedEvents || (node.IsTracing && !node.HasOperator);
 
     private static string Size(ulong bytes)
         => bytes >= 1024 * 1024 ? $"{bytes / (1024.0 * 1024.0):N1} MB" : $"{bytes / 1024.0:N1} KB";

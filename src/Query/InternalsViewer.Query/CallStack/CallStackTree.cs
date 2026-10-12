@@ -699,6 +699,8 @@ public sealed class CallStackTree
 
                 result = projected.Child(parent, node.Frame!, FunctionKey);
 
+                result.AddPlanOperators(node.PlanOperators);
+
                 Projected[node] = result;
             }
 

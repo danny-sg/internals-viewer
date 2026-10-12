@@ -92,6 +92,8 @@ internal static class RunExportReader
             ? ReadFullTrace(zip, fullTraceTree, references, result.EngineEvents)
             : null;
 
+        OperatorEntryLabels.Apply(result.EngineEvents);
+
         return new RunExportContent
         {
             ServerName = manifest.ServerName,
@@ -180,7 +182,7 @@ internal static class RunExportReader
 
         timeline.SetLifetimes(IteratorLifetimes.Build(timeline, [.. events.OfType<ExecutionOperatorEvent>()]));
 
-        return new FullTraceResult(tree, callLog, timeline);
+        return new FullTraceResult(tree, callLog, timeline) { PlanLink = IteratorPlanLinker.Link(callLog, timeline.MappedNodes, events) };
     }
 
     private static List<ExecutionPlan> ReadPlans(ZipArchive zip, IReadOnlyList<ExportPlan> exported)

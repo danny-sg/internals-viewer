@@ -73,8 +73,8 @@ public static class ReplayFunctions
                                      [.. found.SelectMany(f => f.Locators)]);
     }
 
-    internal static bool IsExcluded(SymbolCategory category)
-        => category is SymbolCategory.XEventInfrastructure or SymbolCategory.Tracing;
+    internal static bool IsExcluded(SymbolCategory category, string? iterator)
+        => category is SymbolCategory.XEventInfrastructure || (category is SymbolCategory.Tracing && iterator is null);
 
     private static IEnumerable<MemoryFunction> HeapFunctions(TimeTravelModule module)
         => ModuleExports.Read(module.Path)
@@ -188,7 +188,11 @@ public static class ReplayFunctions
 
             var methodName = separator >= 0 ? symbol.Name[(separator + 2)..] : symbol.Name;
 
-            (IsExcluded(mappings.Classify(module.Name, className, methodName)) ? excluded : kept).Add(symbol.Rva);
+            var category = mappings.Classify(module.Name, className, methodName);
+
+            var iterator = mappings.ClassifyOperator(module.Name, className, methodName).Iterator;
+
+            (IsExcluded(category, iterator) ? excluded : kept).Add(symbol.Rva);
 
             var function = MemoryFunction.Classify(module.Address + symbol.Rva, symbol.Name);
 

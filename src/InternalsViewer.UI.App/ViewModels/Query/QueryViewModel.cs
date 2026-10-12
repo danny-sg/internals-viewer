@@ -75,6 +75,7 @@ using System.Diagnostics;
 using System.IO;
 using System.Text.Json;
 using InternalsViewer.Query.Export;
+using InternalsViewer.UI.App.Helpers;
 using Windows.Storage.Pickers;
 
 namespace InternalsViewer.UI.App.ViewModels.Query;
@@ -2064,7 +2065,7 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
             await RunExport.WriteAsync(stream, run with { Messages = [.. Messages.Select(MessageText)] }, CancellationToken.None);
 
-            AddMessage($"Run exported to {file.Path}");
+            AddMessage($"Run exported to {file.Path} ({SizeFormat.Format(stream.Length)})");
         }
         catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
         {
@@ -2100,7 +2101,7 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
         var import = new object();
 
-        var step = $"Importing {file.Name}";
+        var step = $"Importing {file.Name} ({SizeFormat.Format(new FileInfo(file.Path).Length)})";
 
         var started = Stopwatch.GetTimestamp();
 

@@ -21,8 +21,8 @@ sqllang|CXStmtMerge|XretExecute|StatementExecution
 # Query operators
 # -----------------------------------------------------------------------------------------------------------------------------------------
 sqlmin|CQueryScan|GetRow|QueryOperator
-sqlmin|CQScanProfileNew|GetRow|QueryOperator
-sqlmin|CQScanLightProfileNew|GetRow|QueryOperator
+sqlmin|CQScanProfileNew|*|Tracing
+sqlmin|CQScanLightProfileNew|*|Tracing
 
 sqlmin|CQScanHashAgg*|*|PhysicalOperator
 
@@ -1948,11 +1948,11 @@ sqlmin|CBatchAdapterBaseHelpers*|*|Dataset
 *|trRoot*|*|Compilation
 *|CStaticStateNode*|*|Compilation
 *|CRunningAvg*|*|Optimization
-*|CProfileList*|*|QueryOperator
-*|GlobalProfileList*|*|QueryOperator
-*|TSizedProfileList*|*|QueryOperator
-*|TProfileHashTable*|*|QueryOperator
-*|CProfileHashTableSlot*|*|QueryOperator
+*|CProfileList*|*|Tracing
+*|GlobalProfileList*|*|Tracing
+*|TSizedProfileList*|*|Tracing
+*|TProfileHashTable*|*|Tracing
+*|CProfileHashTableSlot*|*|Tracing
 *|CUpdUtil*|*|QueryOperator
 *|Validator*|*|QueryExecution
 *|CSqlSortManager_80*|*|ExpressionEvaluation
@@ -2166,3 +2166,13 @@ sqllang|*|CbAddQuotesSafe|System
 *|*|ex_vcallprint|System
 sqlmin|CQueryScan|GetExecutionTelemetryPackageContainer|XEventInfrastructure
 sqlmin|CQueryScan|Publish*|XEventInfrastructure
+sqlmin|CQueryScan|Fire*|XEventInfrastructure
+sqlmin|CQueryScan|*XEvent*|XEventInfrastructure
+sqlmin|CQueryScan|*Showplan*|Tracing
+sqlmin|CQuery|*XEvent*|XEventInfrastructure
+sqlmin|CQScanNew|SetParentProfileRecursive|Tracing
+SqlTsEs|*|GetData|ExpressionEvaluation
+SqlTsEs|*|GetDataFromXvar*|ExpressionEvaluation
+SqlTsEs|*|SetDataWithPop|ExpressionEvaluation
+SqlTsEs|*|SetMultData|ExpressionEvaluation
+SqlTsEs|CTEs*|*|ExpressionEvaluation

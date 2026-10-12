@@ -114,18 +114,80 @@ public class TimeTravelTimelineTests
 
         var tree = new CallStackTree();
 
-        var outer = tree.AddCall(tree.Root, new CallstackFrame { Module = "sqllang", Rva = 0x10 }, 1);
-        var execute = tree.AddCall(outer, new CallstackFrame { Module = "sqllang", Rva = 0x20 }, 1);
+        var execute = tree.AddCall(tree.Root, new CallstackFrame { Module = "sqllang", Rva = 0x20 }, 1);
         var inner = tree.AddCall(execute, new CallstackFrame { Module = "sqlmin", Rva = 0x30 }, 1);
 
-        timeline.MapNodes([outer, execute, inner]);
+        timeline.MapNodes([null, execute, inner]);
 
-        var cropped = timeline.CroppedTo(n => ReferenceEquals(n, execute));
+        var cropped = timeline.CroppedTo(tree);
 
         Assert.NotNull(cropped);
 
+        var thread = Assert.Single(cropped.Threads);
+
+        Assert.Equal([1, 2], thread.Rows.Select(r => r.NodeAt(0)));
         Assert.Equal((5d, 30d), (cropped.StartOf(Instructions), cropped.EndOf(Instructions)));
         Assert.Equal((0d, 40d), (timeline.StartOf(Instructions), timeline.EndOf(Instructions)));
+    }
+
+    [Fact]
+    public void A_Cropped_Timeline_Keeps_Calls_After_A_Recording_Gap_Where_The_Tree_Grafted_Them()
+    {
+        TimeTravelCallNode[] nodes =
+        [
+            new(-1, 0, 0x1000, 0, 1),
+            new(0, 0, 0x2000, 0, 1),
+            new(-1, 0, 0x3000, 0, 1),
+            new(2, 0, 0x4000, 0, 1)
+        ];
+
+        var builder = new TimeTravelTimeline.Builder();
+
+        builder.Add([Span(node: 0, start: 0, end: 100),
+                     Span(node: 1, start: 10, end: 90),
+                     Span(node: 2, start: 20, end: 40),
+                     Span(node: 3, start: 25, end: 30)]);
+
+        var timeline = builder.Build(nodes);
+
+        var tree = new CallStackTree();
+
+        var execute = tree.AddCall(tree.Root, new CallstackFrame { Module = "sqllang", Rva = 0x20 }, 1);
+        var scan = tree.AddCall(execute, new CallstackFrame { Module = "sqlmin", Rva = 0x30 }, 1);
+        var read = tree.AddCall(scan, new CallstackFrame { Module = "sqlmin", Rva = 0x40 }, 1);
+
+        timeline.MapNodes([null, execute, scan, read]);
+
+        var cropped = timeline.CroppedTo(tree);
+
+        Assert.NotNull(cropped);
+
+        var thread = Assert.Single(cropped.Threads);
+
+        Assert.Equal([1, 2, 3], thread.Rows.Select(r => r.NodeAt(0)));
+        Assert.Equal((10d, 90d), (cropped.StartOf(Instructions), cropped.EndOf(Instructions)));
+    }
+
+    [Fact]
+    public void A_Cropped_Timeline_Drops_Threads_Outside_The_Cropped_Tree()
+    {
+        var timeline = Build(Span(node: 1, start: 5, end: 30),
+                             Span(node: 0, start: 0, end: 40, thread: 9));
+
+        var tree = new CallStackTree();
+
+        var execute = tree.AddCall(tree.Root, new CallstackFrame { Module = "sqllang", Rva = 0x20 }, 1);
+
+        var uncropped = new CallStackTree();
+
+        var elsewhere = uncropped.AddCall(uncropped.Root, new CallstackFrame { Module = "sqlmin", Rva = 0x90 }, 1);
+
+        timeline.MapNodes([elsewhere, execute, null]);
+
+        var cropped = timeline.CroppedTo(tree);
+
+        Assert.NotNull(cropped);
+        Assert.Equal([7u], cropped.Threads.Select(t => t.ThreadId));
     }
 
     [Fact]
