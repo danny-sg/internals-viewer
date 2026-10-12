@@ -76,6 +76,31 @@ public class IteratorPlanLinkerTests
     }
 
     [Fact]
+    public void Factory_Calls_Keyed_By_Their_Plan_Object_Link_From_Their_Own_Call_Paths()
+    {
+        var recording = new Recording();
+
+        var merge = recording.Factory(recording.Root, "CXteMergeJoin", sequence: 10, planObject: 0xA0, keyed: true);
+
+        var mergeIterator = recording.Constructor(merge, "CQScanMergeJoinNew", 11, instance: 0xA1, planObject: 0xA0, "Merge Join");
+
+        var outer = recording.Factory(mergeIterator, "CXteRange", sequence: 12, planObject: 0xB0, keyed: true);
+
+        recording.Constructor(outer, "CQScanRangeNew", sequence: 13, instance: 0xB1, planObject: 0xB0, "*Index Scan");
+
+        var inner = recording.Factory(mergeIterator, "CXteRange", sequence: 14, planObject: 0xC0, keyed: true);
+
+        recording.Constructor(inner, "CQScanRangeNew", sequence: 15, instance: 0xC1, planObject: 0xC0, "*Index Scan");
+
+        Assert.NotSame(outer, inner);
+
+        var link = recording.Link(Operator(0, "Merge Join"), Operator(1, "Clustered Index Scan", 0), Operator(2, "Index Scan", 0));
+
+        Assert.Equal([(0xA0ul, 0), (0xB0ul, 1), (0xC0ul, 2)], NodesOf(link.PlanObjects));
+        Assert.Equal([(0xA1ul, 0), (0xB1ul, 1), (0xC1ul, 2)], NodesOf(link.Instances));
+    }
+
+    [Fact]
     public void An_Iterator_Built_On_Another_Thread_Links_Through_Its_Constructor()
     {
         var recording = new Recording();
@@ -197,10 +222,22 @@ public class IteratorPlanLinkerTests
 
         private Dictionary<CallStackNode, int> Indexes { get; } = new(ReferenceEqualityComparer.Instance);
 
-        private Dictionary<ulong, List<ulong[]>> Rows { get; } = new();
+        private Dictionary<(ulong Address, ulong Instance), List<ulong[]>> Rows { get; } = new();
 
-        public CallStackNode Factory(CallStackNode parent, string className, ulong sequence, ulong planObject, ulong returned = 0)
-            => Call(parent, FrameOf(className, "QScanGet", SymbolCategory.QueryOperator), sequence, 1, planObject, 0, 0, returned);
+        public CallStackNode Factory(CallStackNode parent,
+                                     string className,
+                                     ulong sequence,
+                                     ulong planObject,
+                                     ulong returned = 0,
+                                     bool keyed = false)
+            => Call(parent,
+                    FrameOf(className, "QScanGet", SymbolCategory.QueryOperator) with { Instance = keyed ? planObject : 0 },
+                    sequence,
+                    1,
+                    planObject,
+                    0,
+                    0,
+                    returned);
 
         public CallStackNode BatchFactory(CallStackNode parent, ulong sequence, ulong planObject)
             => Call(parent, FrameOf("CBpXte", "CreateBatchIterators", SymbolCategory.QueryOperator), sequence, 1, 0, planObject, 0, 0);
@@ -240,9 +277,9 @@ public class IteratorPlanLinkerTests
         {
             var builder = new TimeTravelCallLog.Builder();
 
-            foreach (var (address, rows) in Rows)
+            foreach (var ((address, instance), rows) in Rows)
             {
-                builder.Add(address, 0, Chunk(rows), rows.Count);
+                builder.Add(address, instance, Chunk(rows), rows.Count);
             }
 
             return IteratorPlanLinker.Link(builder.Build(), Nodes, operators);
@@ -261,11 +298,11 @@ public class IteratorPlanLinkerTests
 
             var flags = thread | (returned != 0 ? ReturnedFlag : 0);
 
-            if (!Rows.TryGetValue(frame.Address, out var rows))
+            if (!Rows.TryGetValue((frame.Address, frame.Instance), out var rows))
             {
                 rows = [];
 
-                Rows[frame.Address] = rows;
+                Rows[(frame.Address, frame.Instance)] = rows;
             }
 
             rows.Add([sequence, flags, rcx, rdx, r8, 0, returned, (ulong)Indexes[node]]);

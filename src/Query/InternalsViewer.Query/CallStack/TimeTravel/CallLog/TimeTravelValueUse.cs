@@ -11,8 +11,10 @@ public sealed record TimeTravelValueUse(ulong Address,
 {
     public TimeTravelValueRole RoleFor(FunctionKind? kind) => Location switch
     {
-        "RCX" when kind == FunctionKind.Member => TimeTravelValueRole.CalledOn,
-        "RAX" => TimeTravelValueRole.Returned,
+        "RCX" when kind == FunctionKind.Member 
+            => TimeTravelValueRole.CalledOn,
+        "RAX" 
+            => TimeTravelValueRole.Returned,
         _ => TimeTravelValueRole.Passed
     };
 }

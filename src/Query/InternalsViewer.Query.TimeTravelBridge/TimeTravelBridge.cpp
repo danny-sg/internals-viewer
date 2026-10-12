@@ -83,6 +83,10 @@ namespace
 
     constexpr int32_t ExcludedNode = -2;
 
+    constexpr int InstanceRegisterShift = 60;
+
+    constexpr uint64_t InstanceAddressMask = (1ull << InstanceRegisterShift) - 1;
+
     struct NodeKey
     {
         int32_t  Parent;
@@ -181,7 +185,7 @@ namespace
         std::unordered_map<NodeKey, int32_t, NodeKeyHash>   Index;
         std::unordered_map<uint32_t, std::vector<StackFrame>> Stacks;
         std::unordered_set<uint32_t>                        Threads;
-        std::unordered_set<uint64_t>                        InstanceMethods;
+        std::unordered_map<uint64_t, uint8_t>               InstanceMethods;
         std::unordered_set<uint64_t>                        Excluded;
         std::unordered_map<FunctionKey, LoggedFunction, FunctionKeyHash> Log;
         size_t                                              LoggedSinceFlush = 0;
@@ -660,7 +664,11 @@ namespace
 
             auto const& registers = context.Amd64Context;
 
-            auto const instance = tree.InstanceMethods.contains(target) ? static_cast<uint64_t>(registers.Rcx) : 0;
+            auto const method = tree.InstanceMethods.find(target);
+
+            uint64_t const arguments[ArgumentRegisters] = { registers.Rcx, registers.Rdx, registers.R8, registers.R9 };
+
+            auto const instance = method == tree.InstanceMethods.end() ? 0 : arguments[method->second % ArgumentRegisters];
 
             auto const node = tree.Child(parent, target, instance);
 
@@ -1028,7 +1036,8 @@ extern "C"
 
         for (int32_t index = 0; index < instanceMethodCount; index++)
         {
-            result->InstanceMethods.insert(instanceMethods[index]);
+            result->InstanceMethods[instanceMethods[index] & InstanceAddressMask]
+                = static_cast<uint8_t>(instanceMethods[index] >> InstanceRegisterShift);
         }
 
         for (int32_t index = 0; index < excludedFunctionCount; index++)

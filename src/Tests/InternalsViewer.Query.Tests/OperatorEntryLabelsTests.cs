@@ -1,4 +1,5 @@
 using InternalsViewer.Query.CallStack;
+using InternalsViewer.Query.CallStack.Categories;
 using InternalsViewer.Query.Events.Operators;
 using InternalsViewer.Query.Plans.Model;
 
@@ -18,7 +19,7 @@ public class OperatorEntryLabelsTests
 
         Assert.True(open.HasTarget);
         Assert.Equal("HeapTable.ix_HeapTable_Id", open.TargetLabel);
-        Assert.Equal("Index Scan (Node 1) HeapTable.ix_HeapTable_Id", open.TargetDetail);
+        Assert.Equal("Physical Operator · Index Scan (Node 1) HeapTable.ix_HeapTable_Id", open.TargetDetail);
     }
 
     [Fact]
@@ -81,6 +82,11 @@ public class OperatorEntryLabelsTests
     {
         Module = "sqlmin",
         Rva = rva,
-        Resolved = new ResolvedCallstackFrame { ClassName = className, MethodName = method }
+        Resolved = new ResolvedCallstackFrame
+        {
+            ClassName = className,
+            MethodName = method,
+            SymbolCategory = SymbolCategory.PhysicalOperator
+        }
     };
 }

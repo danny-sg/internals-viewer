@@ -88,11 +88,11 @@ public static class IteratorPlanLinker
     {
         var calls = new List<LoggedCall>();
 
-        var addresses = nodes.OfType<CallStackNode>().Where(predicate).Select(n => n.Frame!.Address).Distinct();
+        var functions = nodes.OfType<CallStackNode>().Where(predicate).Select(n => (n.Frame!.Address, n.Frame.Instance)).Distinct();
 
-        foreach (var address in addresses)
+        foreach (var (address, instance) in functions)
         {
-            if (callLog.CallsOf(address, 0) is not { } list)
+            if (callLog.CallsOf(address, instance) is not { } list)
             {
                 continue;
             }

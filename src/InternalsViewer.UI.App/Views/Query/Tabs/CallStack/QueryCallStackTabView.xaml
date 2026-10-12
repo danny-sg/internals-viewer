@@ -332,29 +332,32 @@
                 <!-- Category | Operator badge: a single pill; when the frame is a plan operator a second
                      tone (the operator name) is appended, otherwise the category badge stands alone. -->
                 <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                    <Border Background="{x:Bind ((callstack:CallStackNode)Content).CategoryColour, Converter={StaticResource HexColorToBrushConverter}}"
-                            CornerRadius="{x:Bind ((callstack:CallStackNode)Content).HasOperatorOrTarget, Converter={StaticResource CategoryBadgeCornerConverter}}"
-                            Padding="5,2,5,3">
-                        <TextBlock Text="{x:Bind ((callstack:CallStackNode)Content).Category}"
+                    <Border Background="#61B0E3"
+                            CornerRadius="{x:Bind ((callstack:CallStackNode)Content).HasOperator, Converter={StaticResource CategoryBadgeCornerConverter}}"
+                            Padding="5,2,5,3"
+                            ToolTipService.ToolTip="{x:Bind ((callstack:CallStackNode)Content).TargetDetail}"
+                            Visibility="{x:Bind ((callstack:CallStackNode)Content).HasTarget, Converter={StaticResource BoolToVisibilityConverter}}">
+                        <TextBlock Text="{x:Bind ((callstack:CallStackNode)Content).TargetLabel}"
+                                   MaxWidth="320"
+                                   TextTrimming="CharacterEllipsis"
                                    Foreground="White"
                                    FontSize="9"
                                    FontWeight="SemiBold"/>
                     </Border>
-                    <Border CornerRadius="{x:Bind ((callstack:CallStackNode)Content).HasTarget, Converter={StaticResource OperatorBadgeCornerConverter}}"
+                    <Border Background="{x:Bind ((callstack:CallStackNode)Content).CategoryColour, Converter={StaticResource HexColorToBrushConverter}}"
+                            CornerRadius="{x:Bind ((callstack:CallStackNode)Content).HasOperator, Converter={StaticResource CategoryBadgeCornerConverter}}"
                             Padding="5,2,5,3"
-                            Background="#4A4A55"
-                            Visibility="{x:Bind ((callstack:CallStackNode)Content).HasOperator, Converter={StaticResource BoolToVisibilityConverter}}">
-                        <TextBlock Text="{x:Bind ((callstack:CallStackNode)Content).Operator}"
+                            Visibility="{x:Bind ((callstack:CallStackNode)Content).HasTarget, Converter={StaticResource InverseBoolToVisibilityConverter}}">
+                        <TextBlock Text="{x:Bind ((callstack:CallStackNode)Content).Category}"
                                    Foreground="White"
                                    FontSize="9"
                                    FontWeight="SemiBold"/>
                     </Border>
                     <Border CornerRadius="0,3,3,0"
                             Padding="5,2,5,3"
-                            Background="#3A3A44"
-                            ToolTipService.ToolTip="{x:Bind ((callstack:CallStackNode)Content).TargetDetail}"
-                            Visibility="{x:Bind ((callstack:CallStackNode)Content).HasTarget, Converter={StaticResource BoolToVisibilityConverter}}">
-                        <TextBlock Text="{x:Bind ((callstack:CallStackNode)Content).TargetLabel}"
+                            Background="#4A4A55"
+                            Visibility="{x:Bind ((callstack:CallStackNode)Content).HasOperator, Converter={StaticResource BoolToVisibilityConverter}}">
+                        <TextBlock Text="{x:Bind ((callstack:CallStackNode)Content).Operator}"
                                    Foreground="White"
                                    FontSize="9"
                                    FontWeight="SemiBold"/>
@@ -402,29 +405,32 @@
                 <!-- Category | Operator badge: a single pill; when the frame is a plan operator a second
                      tone (the operator name) is appended, otherwise the category badge stands alone. -->
                 <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                    <Border Background="{x:Bind ((callstack:CallStackNode)Content).CategoryColour, Converter={StaticResource HexColorToBrushConverter}}"
-                            CornerRadius="{x:Bind ((callstack:CallStackNode)Content).HasOperatorOrTarget, Converter={StaticResource CategoryBadgeCornerConverter}}"
-                            Padding="5,2,5,3">
-                        <TextBlock Text="{x:Bind ((callstack:CallStackNode)Content).Category}"
+                    <Border Background="#61B0E3"
+                            CornerRadius="{x:Bind ((callstack:CallStackNode)Content).HasOperator, Converter={StaticResource CategoryBadgeCornerConverter}}"
+                            Padding="5,2,5,3"
+                            ToolTipService.ToolTip="{x:Bind ((callstack:CallStackNode)Content).TargetDetail}"
+                            Visibility="{x:Bind ((callstack:CallStackNode)Content).HasTarget, Converter={StaticResource BoolToVisibilityConverter}}">
+                        <TextBlock Text="{x:Bind ((callstack:CallStackNode)Content).TargetLabel}"
+                                   MaxWidth="320"
+                                   TextTrimming="CharacterEllipsis"
                                    Foreground="White"
                                    FontSize="9"
                                    FontWeight="SemiBold"/>
                     </Border>
-                    <Border CornerRadius="{x:Bind ((callstack:CallStackNode)Content).HasTarget, Converter={StaticResource OperatorBadgeCornerConverter}}"
+                    <Border Background="{x:Bind ((callstack:CallStackNode)Content).CategoryColour, Converter={StaticResource HexColorToBrushConverter}}"
+                            CornerRadius="{x:Bind ((callstack:CallStackNode)Content).HasOperator, Converter={StaticResource CategoryBadgeCornerConverter}}"
                             Padding="5,2,5,3"
-                            Background="#4A4A55"
-                            Visibility="{x:Bind ((callstack:CallStackNode)Content).HasOperator, Converter={StaticResource BoolToVisibilityConverter}}">
-                        <TextBlock Text="{x:Bind ((callstack:CallStackNode)Content).Operator}"
+                            Visibility="{x:Bind ((callstack:CallStackNode)Content).HasTarget, Converter={StaticResource InverseBoolToVisibilityConverter}}">
+                        <TextBlock Text="{x:Bind ((callstack:CallStackNode)Content).Category}"
                                    Foreground="White"
                                    FontSize="9"
                                    FontWeight="SemiBold"/>
                     </Border>
                     <Border CornerRadius="0,3,3,0"
                             Padding="5,2,5,3"
-                            Background="#3A3A44"
-                            ToolTipService.ToolTip="{x:Bind ((callstack:CallStackNode)Content).TargetDetail}"
-                            Visibility="{x:Bind ((callstack:CallStackNode)Content).HasTarget, Converter={StaticResource BoolToVisibilityConverter}}">
-                        <TextBlock Text="{x:Bind ((callstack:CallStackNode)Content).TargetLabel}"
+                            Background="#4A4A55"
+                            Visibility="{x:Bind ((callstack:CallStackNode)Content).HasOperator, Converter={StaticResource BoolToVisibilityConverter}}">
+                        <TextBlock Text="{x:Bind ((callstack:CallStackNode)Content).Operator}"
                                    Foreground="White"
                                    FontSize="9"
                                    FontWeight="SemiBold"/>

@@ -34,9 +34,6 @@
             <converters:BoolToCornerRadiusConverter x:Key="CategoryBadgeCornerConverter"
                                                     TrueRadius="3,0,0,3"
                                                     FalseRadius="3"/>
-            <converters:BoolToCornerRadiusConverter x:Key="OperatorBadgeCornerConverter"
-                                                    TrueRadius="0"
-                                                    FalseRadius="0,3,3,0"/>
             <page:PageAddressToStringConverter x:Key="StringToPageAddressConverter"/>
             <models:MarkStyle Name="Data" x:Key="MarkerStyleValue" ForeColour="Gray" BackColour="LemonChiffon" />
 

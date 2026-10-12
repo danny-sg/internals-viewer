@@ -143,13 +143,11 @@ public sealed class CallStackNode
 
     public bool HasTarget => TargetLabel.Length > 0;
 
-    public bool HasOperatorOrTarget => HasOperator || HasTarget;
-
     public string TargetLabel => string.Join(", ", PlanOperators.Select(o => o.TargetLabel).Where(l => l.Length > 0).Distinct());
 
     public string TargetDetail => string.Join(Environment.NewLine,
-                                              PlanOperators.Select(o => $"{o.OperatorDescription} (Node {o.PlanNodeIdentifier?.NodeId}) "
-                                                                        + o.TargetLabel));
+                                              PlanOperators.Select(o => $"{Category} · {o.OperatorDescription} "
+                                                                        + $"(Node {o.PlanNodeIdentifier?.NodeId}) {o.TargetLabel}"));
 
     /// <summary>
     /// The frames a projection cut away directly below this one — where a segment handed off to a nested operator

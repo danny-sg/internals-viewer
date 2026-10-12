@@ -416,7 +416,9 @@ public static class IteratorInstanceMatcher
             {
                 var (node, context) = pending.Pop();
 
-                if (node.Frame is { Instance: not 0 } frame && frame.Instance != context?.Address)
+                if (node.Frame is { Instance: not 0 } frame
+                    && frame.Instance != context?.Address
+                    && !IteratorMethods.IsPlanObjectClass(frame.Resolved?.ClassName))
                 {
                     if (!instances.TryGetValue(frame.Instance, out var instance))
                     {
