@@ -2,6 +2,7 @@
 using InternalsViewer.Query.CallStack.TimeTravel.CallLog;
 using InternalsViewer.Query.CallStack.TimeTravel.Timeline;
 using InternalsViewer.Query.Events.Operators;
+using InternalsViewer.Query.Helpers;
 
 namespace InternalsViewer.Query.CallStack.TimeTravel.Memory;
 
@@ -21,19 +22,24 @@ public static class TimeTravelMemory
 
     private const string VirtualMemory = "Virtual Memory";
 
+    private const string Total = "Total";
+
     private const string WorkspaceClerk = "MEMORYCLERK_SQLQERESERVATIONS";
 
-    public static TimeTravelMemorySummary Apply(TimeTravelCallLog log,
-                                                IReadOnlyList<MemoryFunction> functions,
-                                                TimeTravelTimeline? timeline,
-                                                IReadOnlyList<ExecutionOperatorEvent> operators,
-                                                MemoryClerkSnapshot? clerks = null)
+    public static TimeTravelMemoryPurpose Apply(TimeTravelCallLog log,
+                                               IReadOnlyList<MemoryFunction> functions,
+                                               TimeTravelTimeline? timeline,
+                                               IReadOnlyList<ExecutionOperatorEvent> operators,
+                                               MemoryClerkSnapshot? clerks = null)
     {
         var byAddress = functions.ToDictionary(f => f.Address);
 
-        var calls = new TimeTravelCallListCache(log);
+        var lists = new Dictionary<ulong, TimeTravelCallList?>();
 
-        var scanned = timeline is null ? new ScannedCalls() : ScanSpans(calls, byAddress, timeline, clerks ?? MemoryClerkSnapshot.Empty);
+        TimeTravelCallList? CallsOf(ulong address)
+            => lists.TryGetValue(address, out var list) ? list : lists[address] = log.CallsOf(address, 0);
+
+        var scanned = timeline is null ? new ScannedCalls() : ScanSpans(CallsOf, byAddress, timeline, clerks ?? MemoryClerkSnapshot.Empty);
 
         var plumbing = new Dictionary<CallStackNode, bool>(ReferenceEqualityComparer.Instance);
 
@@ -43,7 +49,7 @@ public static class TimeTravelMemory
 
         foreach (var function in functions.Where(f => f.Allocates || f is { Operation: MemoryOperation.Free, PointerSlot: >= 0 }))
         {
-            if (calls.Of(function.Address) is not { } logged)
+            if (CallsOf(function.Address) is not { } logged)
             {
                 continue;
             }
@@ -114,7 +120,7 @@ public static class TimeTravelMemory
         return Summarise(events.OrderBy(e => e.Position).ThenBy(e => e.Operation == MemoryOperation.Free ? 0 : 1), byAddress, operators);
     }
 
-    private static TimeTravelMemorySummary Summarise(IEnumerable<MemoryEvent> events,
+    private static TimeTravelMemoryPurpose Summarise(IEnumerable<MemoryEvent> events,
                                                      Dictionary<ulong, MemoryFunction> functions,
                                                      IReadOnlyList<ExecutionOperatorEvent> operators)
     {
@@ -222,10 +228,15 @@ public static class TimeTravelMemory
                 : null;
         }
 
-        return new TimeTravelMemorySummary(allocated,
-                                           allocations,
-                                           peak,
-                                           [.. kinds.OrderByDescending(k => k.Value.Allocated).Select(k => k.Value.ToPurpose(k.Key))]);
+        List<TimeTravelMemoryPurpose> purposes = [.. kinds.OrderByDescending(k => k.Value.Allocated)
+                                                          .Select(k => k.Value.ToPurpose(k.Key))];
+
+        var released = purposes.Aggregate(0ul, (total, k) => total + k.Freed);
+
+        return new TimeTravelMemoryPurpose(Total, allocated, allocations, released, peak, [])
+        {
+            Kinds = purposes
+        };
     }
 
     private static PurposeTotals TotalsOf<TKey>(Dictionary<TKey, PurposeTotals> totals, TKey key) where TKey : notnull
@@ -276,7 +287,7 @@ public static class TimeTravelMemory
         return null;
     }
 
-    private static ScannedCalls ScanSpans(TimeTravelCallListCache calls,
+    private static ScannedCalls ScanSpans(Func<ulong, TimeTravelCallList?> callsOf,
                                           Dictionary<ulong, MemoryFunction> functions,
                                           TimeTravelTimeline timeline,
                                           MemoryClerkSnapshot snapshot)
@@ -290,7 +301,7 @@ public static class TimeTravelMemory
             if (span.Node.Frame is not { } frame
                 || !functions.TryGetValue(frame.Address, out var function)
                 || span.Call is not (>= 0 and var call)
-                || calls.Of(function.Address) is not { } logged
+                || callsOf(function.Address) is not { } logged
                 || call >= logged.Count)
             {
                 continue;

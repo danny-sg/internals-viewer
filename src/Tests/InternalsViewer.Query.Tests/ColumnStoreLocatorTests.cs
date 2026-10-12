@@ -47,9 +47,9 @@ public class ColumnStoreLocatorTests
     [InlineData("Column:2", null, 2)]
     public void A_Rowgroup_Or_Column_Search_Is_Read(string text, int? rowGroup, int? column)
     {
-        Assert.True(ColumnStoreSearch.TryParse(text, out var search));
+        Assert.True(LocatorSearch.TryParse(text, out var search));
 
-        Assert.Equal(new ColumnStoreSearch(rowGroup, column), search);
+        Assert.Equal(LocatorSearch.ForColumnStore(rowGroup, column), search);
     }
 
     [Theory]
@@ -58,17 +58,18 @@ public class ColumnStoreLocatorTests
     [InlineData("rowgroup:x")]
     [InlineData("segment:3")]
     [InlineData("1:336")]
-    public void Anything_Else_Is_Not_A_Columnstore_Search(string text) => Assert.False(ColumnStoreSearch.TryParse(text, out _));
+    public void Anything_Else_Is_Not_A_Columnstore_Search(string text)
+        => Assert.False(LocatorSearch.TryParse(text, out var search) && search.IsColumnStore);
 
     [Fact]
     public void A_Search_Matches_On_Every_Part_It_Names()
     {
         var segment = Key(ColumnStoreObjectType.ColumnSegment, 2, 3);
 
-        Assert.True(new ColumnStoreSearch(3, null).Matches(segment));
-        Assert.True(new ColumnStoreSearch(3, 2).Matches(segment));
-        Assert.False(new ColumnStoreSearch(3, 1).Matches(segment));
-        Assert.False(new ColumnStoreSearch(3, null).Matches(Key(ColumnStoreObjectType.SecondaryDictionary, 2, 3)));
+        Assert.True(LocatorSearch.ForColumnStore(3, null).Matches(segment));
+        Assert.True(LocatorSearch.ForColumnStore(3, 2).Matches(segment));
+        Assert.False(LocatorSearch.ForColumnStore(3, 1).Matches(segment));
+        Assert.False(LocatorSearch.ForColumnStore(3, null).Matches(Key(ColumnStoreObjectType.SecondaryDictionary, 2, 3)));
     }
 
     [Fact]
@@ -84,8 +85,8 @@ public class ColumnStoreLocatorTests
         set.Add(Key(ColumnStoreObjectType.PrimaryDictionary, 2, 0));
 
         Assert.Equal("2 Columnstore Objects", set.Label);
-        Assert.True(set.Contains(new ColumnStoreSearch(3, 2)));
-        Assert.False(set.Contains(new ColumnStoreSearch(4, null)));
+        Assert.True(set.Contains(LocatorSearch.ForColumnStore(3, 2)));
+        Assert.False(set.Contains(LocatorSearch.ForColumnStore(4, null)));
     }
 
     [Fact]

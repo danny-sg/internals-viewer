@@ -38,7 +38,7 @@ public class TimeTravelMemoryTests
 
         var summary = TimeTravelMemory.Apply(log, [Function(Allocator)], null, []);
 
-        Assert.Equal((300ul, 2L), (summary.Bytes, summary.Allocations));
+        Assert.Equal((300ul, 2L), (summary.Allocated, summary.Allocations));
         Assert.Equal((300L, 2L), (allocator.AllocatedBytes, allocator.Allocations));
         Assert.Equal((300L, 2L), (caller.AllocatedBytesIncludingChildren, caller.AllocationsIncludingChildren));
         Assert.Equal(0L, caller.AllocatedBytes);
@@ -64,7 +64,7 @@ public class TimeTravelMemoryTests
 
         var summary = TimeTravelMemory.Apply(log, [Function(Allocator), Function(Inner)], null, []);
 
-        Assert.Equal(64ul, summary.Bytes);
+        Assert.Equal(64ul, summary.Allocated);
         Assert.Equal(64L, caller.AllocatedBytesIncludingChildren);
     }
 
@@ -250,7 +250,7 @@ public class TimeTravelMemoryTests
 
         var summary = TimeTravelMemory.Apply(log, [ClerkPages()], null, []);
 
-        Assert.Equal(16384ul, summary.Bytes);
+        Assert.Equal(16384ul, summary.Allocated);
     }
 
     [Fact]
@@ -401,7 +401,7 @@ public class TimeTravelMemoryTests
                                              [],
                                              Snapshot(objects: new() { [0xB0] = "MEMORYCLERK_SQLGENERAL" }));
 
-        Assert.Equal(("MEMORYCLERK_SQLGENERAL", 64ul), (Assert.Single(summary.Kinds).Name, summary.Bytes));
+        Assert.Equal(("MEMORYCLERK_SQLGENERAL", 64ul), (Assert.Single(summary.Kinds).Name, summary.Allocated));
     }
 
     [Fact]

@@ -4,6 +4,7 @@ using System.Linq;
 using InternalsViewer.Query.CallStack.TimeTravel;
 using InternalsViewer.Query.CallStack.TimeTravel.Timeline;
 using InternalsViewer.Query.Events.Operators;
+using InternalsViewer.Query.Helpers;
 using InternalsViewer.Query.Plans.Model;
 using InternalsViewer.UI.App.Controls.Timeline;
 using InternalsViewer.UI.App.Helpers;

@@ -495,9 +495,9 @@ public sealed class QueryRunner(ILogger<QueryRunner> logger,
 
         var callStack = new CallStackTree();
 
-        var replayed = TimeTravelCallMerger.Merge(callStack, replay.Calls);
+        var replayed = TimeTravelCallMerger.Merge(callStack, replay.Nodes, replay.Modules);
 
-        var nodes = replay.Calls.Nodes;
+        var nodes = replay.Nodes;
 
         Logger.LogInformation("{Calls} call(s) on {Paths} call path(s) replayed, {Logged} call(s) of {Functions} function(s) logged in "
                               + "{Size} MB, {Locators} page and row id(s) read",
@@ -588,7 +588,7 @@ public sealed class QueryRunner(ILogger<QueryRunner> logger,
                               matched,
                               operators.Count(o => o.PlanNodeIdentifier is { NodeId: >= 0 }),
                               memory.Allocations,
-                              Size(memory.Bytes),
+                              Size(memory.Allocated),
                               Size(memory.PeakInUse),
                               Size(unidentified),
                               lifetimes.Count,

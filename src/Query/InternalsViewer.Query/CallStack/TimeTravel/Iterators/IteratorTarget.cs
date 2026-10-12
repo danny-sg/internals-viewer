@@ -1,42 +1,59 @@
 using InternalsViewer.Query.Events;
 using InternalsViewer.Query.Events.Operators;
+using InternalsViewer.Query.Plans.Model;
 
 namespace InternalsViewer.Query.CallStack.TimeTravel.Iterators;
 
-public sealed class IteratorTarget(CallStackNode node, ExecutionOperatorEvent? operatorEvent)
+public sealed class IteratorTarget(CallStackNode node, ExecutionOperatorEvent? operatorEvent, bool isPlanObject = false)
 {
     public CallStackNode Node { get; } = node;
 
     public ExecutionOperatorEvent? Operator { get; } = operatorEvent;
 
+    public bool IsPlanObject { get; } = isPlanObject;
+
     public string Label => Operator is { PlanNodeIdentifier: { } id } operatorEvent
         ? $"{operatorEvent.OperatorDescription} (Node {id.NodeId})"
         : Node.Frame?.Resolved?.ClassName is { Length: > 0 } className ? className : Node.Symbol;
 
-    public static IReadOnlyDictionary<ulong, IteratorTarget> Build(CallStackTree? tree, IReadOnlyList<EngineEvent> events)
+    public static IReadOnlyDictionary<ulong, IteratorTarget> Build(CallStackTree? tree,
+                                                                   IReadOnlyList<EngineEvent> events,
+                                                                   IteratorPlanLink planLink)
     {
+        var hierarchy = OperatorHierarchy.Build(events);
+
+        var outermost = OutermostFrames(tree);
+
         var targets = new Dictionary<ulong, IteratorTarget>();
 
-        var operators = events.OfType<ExecutionOperatorEvent>()
-                              .OrderBy(o => o.PlanNodeIdentifier is { NodeId: < 0 })
-                              .ToList();
-
-        foreach (var operatorEvent in operators)
+        foreach (var (address, planNode, isPlanObject) in Linked(planLink))
         {
-            foreach (var entry in operatorEvent.EntryFrames.OrderBy(e => e.Order))
+            var operatorEvent = hierarchy.At(planNode);
+
+            if ((outermost.GetValueOrDefault(address) ?? operatorEvent?.EntryFrames.FirstOrDefault()) is { } frame)
             {
-                if (entry.Frame is { Instance: not 0 and var instance })
-                {
-                    targets.TryAdd(instance, new IteratorTarget(entry, operatorEvent));
-                }
+                targets.TryAdd(address, new IteratorTarget(frame, operatorEvent, isPlanObject));
             }
         }
 
+        foreach (var (address, frame) in outermost)
+        {
+            targets.TryAdd(address, new IteratorTarget(frame, null));
+        }
+
+        return targets;
+    }
+
+    private static IEnumerable<(ulong Address, PlanNodeIdentifier Node, bool IsPlanObject)> Linked(IteratorPlanLink planLink)
+        => planLink.Instances.Select(i => (i.Key, i.Value, false)).Concat(planLink.PlanObjects.Select(p => (p.Key, p.Value, true)));
+
+    private static Dictionary<ulong, CallStackNode> OutermostFrames(CallStackTree? tree)
+    {
         var shallowest = new Dictionary<ulong, (CallStackNode Node, int Depth)>();
 
         foreach (var node in tree?.Nodes() ?? [])
         {
-            if (node.Frame is not { Instance: not 0 and var instance } || targets.ContainsKey(instance))
+            if (node.Frame is not { Instance: not 0 and var instance })
             {
                 continue;
             }
@@ -51,11 +68,6 @@ public sealed class IteratorTarget(CallStackNode node, ExecutionOperatorEvent? o
             }
         }
 
-        foreach (var (instance, (node, _)) in shallowest)
-        {
-            targets[instance] = new IteratorTarget(node, null);
-        }
-
-        return targets;
+        return shallowest.ToDictionary(s => s.Key, s => s.Value.Node);
     }
 }

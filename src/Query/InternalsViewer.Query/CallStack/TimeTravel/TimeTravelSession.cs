@@ -140,7 +140,7 @@ public sealed class TimeTravelSession : IDisposable
 
                 cancellationToken.ThrowIfCancellationRequested();
 
-                return new TimeTravelReplay(new TimeTravelCallTree(nodes, [.. Modules]), log.Build(), timeline.Build(nodes));
+                return new TimeTravelReplay(nodes, Modules, log.Build(), timeline.Build(nodes));
             }
             finally
             {
@@ -167,7 +167,7 @@ public sealed class TimeTravelSession : IDisposable
         {
             if (TimeTravelBridge.GetModule(handle, i, name, name.Capacity, out var address, out var size))
             {
-                modules.Add(new TimeTravelModule(name.ToString(), address, size));
+                modules.Add(TimeTravelModule.Describe(name.ToString(), address, size));
             }
         }
 

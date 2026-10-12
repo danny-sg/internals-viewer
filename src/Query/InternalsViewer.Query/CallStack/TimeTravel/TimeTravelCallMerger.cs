@@ -5,19 +5,21 @@ namespace InternalsViewer.Query.CallStack.TimeTravel;
 
 public static class TimeTravelCallMerger
 {
-    public static CallStackNode[] Merge(CallStackTree callStack, TimeTravelCallTree calls)
+    public static CallStackNode[] Merge(CallStackTree callStack,
+                                        IReadOnlyList<TimeTravelCallNode> calls,
+                                        IReadOnlyList<TimeTravelModule> modules)
     {
-        var modules = calls.Modules.OrderBy(m => m.Address).Select(TimeTravelModuleIdentity.Describe).ToArray();
+        var ordered = modules.OrderBy(m => m.Address).ToArray();
 
-        var nodes = new CallStackNode[calls.Nodes.Length];
+        var nodes = new CallStackNode[calls.Count];
 
-        for (var i = 0; i < calls.Nodes.Length; i++)
+        for (var i = 0; i < calls.Count; i++)
         {
-            var call = calls.Nodes[i];
+            var call = calls[i];
 
             var parent = call.Parent < 0 ? callStack.Root : nodes[call.Parent];
 
-            nodes[i] = callStack.AddCall(parent, CreateFrame(modules, call), (long)call.Calls);
+            nodes[i] = callStack.AddCall(parent, CreateFrame(ordered, call), (long)call.Calls);
         }
 
         callStack.ActivityFromTrace = true;
@@ -54,7 +56,7 @@ public static class TimeTravelCallMerger
         }
     }
 
-    private static CallstackFrame CreateFrame(TimeTravelModuleIdentity[] modules, TimeTravelCallNode call)
+    private static CallstackFrame CreateFrame(TimeTravelModule[] modules, TimeTravelCallNode call)
     {
         var module = Find(modules, call.Address);
 
@@ -66,7 +68,7 @@ public static class TimeTravelCallMerger
         return module.Frame(call.Address, call.Instance);
     }
 
-    private static TimeTravelModuleIdentity? Find(TimeTravelModuleIdentity[] modules, ulong address)
+    private static TimeTravelModule? Find(TimeTravelModule[] modules, ulong address)
     {
         var low = 0;
         var high = modules.Length - 1;

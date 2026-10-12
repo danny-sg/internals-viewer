@@ -10,29 +10,7 @@ namespace InternalsViewer.Query.Tests;
 public class IteratorInstanceMatcherTests
 {
     [Fact]
-    public void Iterators_Of_One_Class_Are_Matched_To_Their_Own_Plan_Nodes()
-    {
-        var tree = new CallStackTree();
-
-        var join = tree.AddCall(tree.Root, Iterator("CQScanNLJoinNew", "GetRow", 0x100, "Nested Loops"), 6);
-
-        Seek(tree, join, profile: 0x200, seek: 0x300, rows: 5);
-        Seek(tree, join, profile: 0x400, seek: 0x500, rows: 7);
-
-        var loops = Operator(0, "Nested Loops");
-        var outer = Operator(1, "Index Seek", parent: 0);
-        var inner = Operator(2, "Clustered Index Seek", parent: 0);
-
-        var matched = Match(tree, [loops, outer, inner]);
-
-        Assert.Equal(3, matched);
-        Assert.Equal(0x100ul, Assert.Single(loops.EntryFrames).Frame?.Instance);
-        Assert.Equal(0x300ul, Assert.Single(outer.EntryFrames).Frame?.Instance);
-        Assert.Equal(0x500ul, Assert.Single(inner.EntryFrames).Frame?.Instance);
-    }
-
-    [Fact]
-    public void Linked_Iterators_Take_Their_Linked_Plan_Nodes_Over_The_Plan_Shape()
+    public void Each_Iterator_Takes_Its_Linked_Plan_Node_And_Wrappers_Are_Passed_Over()
     {
         var tree = new CallStackTree();
 
@@ -45,17 +23,7 @@ public class IteratorInstanceMatcherTests
         var outer = Operator(1, "Index Seek", parent: 0);
         var inner = Operator(2, "Index Seek", parent: 0);
 
-        var link = new IteratorPlanLink(new Dictionary<ulong, PlanNodeIdentifier>(),
-                                        new Dictionary<ulong, PlanNodeIdentifier>
-                                        {
-                                            [0x100] = new(1, 0),
-                                            [0x200] = new(1, 2),
-                                            [0x300] = new(1, 2),
-                                            [0x400] = new(1, 1),
-                                            [0x500] = new(1, 1)
-                                        });
-
-        var matched = IteratorInstanceMatcher.Match(tree.CollapseToFunctions(), [loops, outer, inner], link);
+        var matched = Match(tree, [loops, outer, inner], (0x100, 0), (0x200, 2), (0x300, 2), (0x400, 1), (0x500, 1));
 
         Assert.Equal(3, matched);
         Assert.Equal([0x500ul], outer.Instances);
@@ -75,7 +43,11 @@ public class IteratorInstanceMatcherTests
 
         var loops = Operator(0, "Nested Loops");
 
-        Match(tree, [loops, Operator(1, "Index Seek", parent: 0), Operator(2, "Index Seek", parent: 0)]);
+        Match(tree,
+              [loops, Operator(1, "Index Seek", parent: 0), Operator(2, "Index Seek", parent: 0)],
+              (0x100, 0),
+              (0x300, 1),
+              (0x500, 2));
 
         Assert.Equal([0x300ul, 0x500ul], loops.ExitFrames.Select(f => f.Frame!.Instance).Order());
     }
@@ -95,7 +67,7 @@ public class IteratorInstanceMatcherTests
 
         var seek = Operator(1, "Index Seek", parent: 0);
 
-        Match(tree, [Operator(0, "Nested Loops"), seek]);
+        Match(tree, [Operator(0, "Nested Loops"), seek], (0x100, 0), (0x300, 1));
 
         Assert.Equal(["CQScanRangeNew::Open", "CQScanNew::GetRowOrReQualifyHelper"], seek.EntryFrames.Select(f => f.Symbol));
     }
@@ -119,7 +91,7 @@ public class IteratorInstanceMatcherTests
         var gather = Operator(0, "Parallelism");
         var tableScan = Operator(1, "Table Scan", parent: 0);
 
-        Match(tree, [gather, tableScan]);
+        Match(tree, [gather, tableScan], (0x100, 0), (0x200, 0), (0x400, 0), (0x300, 1), (0x500, 1));
 
         Assert.Equal([0x100ul, 0x200ul, 0x400ul], gather.EntryFrames.Select(f => f.Frame!.Instance).Order());
         Assert.Equal([0x300ul, 0x500ul], tableScan.EntryFrames.Select(f => f.Frame!.Instance).Order());
@@ -135,7 +107,7 @@ public class IteratorInstanceMatcherTests
         var compute = Operator(0, "Compute Scalar");
         var scan = Operator(1, "Index Scan", parent: 0);
 
-        Match(tree, [compute, scan]);
+        Match(tree, [compute, scan], (0x100, 1));
 
         Assert.Empty(compute.EntryFrames);
         Assert.Equal(0x100ul, Assert.Single(scan.EntryFrames).Frame?.Instance);
@@ -155,7 +127,7 @@ public class IteratorInstanceMatcherTests
         var select = Operator(-1, "SELECT");
         var seek = Operator(0, "Clustered Index Seek", parent: -1);
 
-        Match(tree, [select, seek]);
+        Match(tree, [select, seek], (0x100, 0));
 
         Assert.Equal("CXStmtQuery::ErsqExecuteQuery", Assert.Single(select.EntryFrames).Symbol);
         Assert.Equal(0x100ul, Assert.Single(select.ExitFrames).Frame?.Instance);
@@ -185,7 +157,7 @@ public class IteratorInstanceMatcherTests
 
         var collapsed = tree.CollapseToFunctions();
 
-        IteratorInstanceMatcher.Match(collapsed, [select, seek, unmatched]);
+        IteratorInstanceMatcher.Match(collapsed, [select, seek, unmatched], LinkOf((0x100, 0)));
 
         Assert.Same(collapsed.Root, Assert.Single(select.EntryFrames).Parent);
         Assert.Empty(unmatched.EntryFrames);
@@ -206,14 +178,14 @@ public class IteratorInstanceMatcherTests
         var compute = Operator(0, "Compute Scalar", parent: -1);
         var seek = Operator(1, "Clustered Index Seek", parent: 0);
 
-        Match(tree, [select, compute, seek]);
+        Match(tree, [select, compute, seek], (0x100, 1));
 
         Assert.Empty(compute.EntryFrames);
         Assert.Equal("CXStmtQuery::ErsqExecuteQuery", Assert.Single(select.EntryFrames).Symbol);
     }
 
     [Fact]
-    public void An_Iterator_From_Another_Plan_Is_Not_Matched()
+    public void An_Unlinked_Iterator_Is_Not_Matched()
     {
         var tree = new CallStackTree();
 
@@ -227,31 +199,18 @@ public class IteratorInstanceMatcherTests
         var outer = Operator(1, "Index Seek", parent: 0);
         var inner = Operator(2, "Index Seek", parent: 0);
 
-        Match(tree, [Operator(0, "Nested Loops"), outer, inner]);
+        Match(tree, [Operator(0, "Nested Loops"), outer, inner], (0x100, 0), (0x300, 1), (0x500, 2));
 
         Assert.DoesNotContain(0x900ul, outer.EntryFrames.Concat(inner.EntryFrames).Select(f => f.Frame!.Instance));
     }
 
-    [Fact]
-    public void Only_The_Best_Fitting_Tree_Claims_A_Serial_Plan()
-    {
-        var tree = new CallStackTree();
+    private static int Match(CallStackTree tree,
+                             IReadOnlyList<ExecutionOperatorEvent> operators,
+                             params (ulong Instance, int Node)[] links)
+        => IteratorInstanceMatcher.Match(tree.CollapseToFunctions(), operators, LinkOf(links));
 
-        tree.AddCall(tree.Root, Iterator("CQScanRangeNew", "GetRow", 0x900, "*Index Seek"), 2);
-
-        var join = tree.AddCall(tree.Root, Iterator("CQScanNLJoinNew", "GetRow", 0x100, "Nested Loops"), 6);
-
-        Seek(tree, join, profile: 0x200, seek: 0x300, rows: 5);
-
-        var loops = Operator(0, "Nested Loops");
-
-        Match(tree, [loops, Operator(1, "Index Seek", parent: 0)]);
-
-        Assert.Equal(0x100ul, Assert.Single(loops.EntryFrames).Frame?.Instance);
-    }
-
-    private static int Match(CallStackTree tree, IReadOnlyList<ExecutionOperatorEvent> operators)
-        => IteratorInstanceMatcher.Match(tree.CollapseToFunctions(), operators);
+    private static IteratorPlanLink LinkOf(params (ulong Instance, int Node)[] links)
+        => new(new Dictionary<ulong, PlanNodeIdentifier>(), links.ToDictionary(l => l.Instance, l => new PlanNodeIdentifier(1, l.Node)));
 
     private static void Seek(CallStackTree tree, CallStackNode parent, ulong profile, ulong seek, long rows)
     {

@@ -1,5 +1,6 @@
 using InternalsViewer.Query.CallStack.TimeTravel.Memory;
 using InternalsViewer.Query.Events.Operators;
+using InternalsViewer.Query.Helpers;
 
 namespace InternalsViewer.Query.CallStack.TimeTravel.Timeline;
 

@@ -3,6 +3,7 @@ using System.Runtime.InteropServices;
 using InternalsViewer.Query.Export;
 using InternalsViewer.Query.CallStack.TimeTravel.Memory;
 using InternalsViewer.Query.CallStack.TimeTravel.Native;
+using InternalsViewer.Query.Helpers;
 
 namespace InternalsViewer.Query.CallStack.TimeTravel.Timeline;
 

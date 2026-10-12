@@ -1,6 +1,6 @@
 using System.Numerics;
 
-namespace InternalsViewer.Query.CallStack.TimeTravel;
+namespace InternalsViewer.Query.Helpers;
 
 public static class SortedSearch
 {

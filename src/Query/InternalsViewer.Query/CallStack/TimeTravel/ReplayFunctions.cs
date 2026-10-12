@@ -7,6 +7,7 @@ using InternalsViewer.Query.CallStack.Symbols;
 using InternalsViewer.Query.CallStack.TimeTravel.Iterators;
 using InternalsViewer.Query.CallStack.TimeTravel.Locators;
 using InternalsViewer.Query.CallStack.TimeTravel.Memory;
+using InternalsViewer.Query.Helpers;
 using Microsoft.Extensions.Logging;
 
 namespace InternalsViewer.Query.CallStack.TimeTravel;
@@ -25,8 +26,7 @@ public static class ReplayFunctions
                                     string symbolsPath,
                                     ILogger? logger,
                                     CancellationToken cancellationToken)
-        => EnsureResolvedAsync([.. modulePaths.Select(p => TimeTravelModuleIdentity.Describe(new TimeTravelModule(p, 0, 0)))
-                                              .Where(IsReplayed)],
+        => EnsureResolvedAsync([.. modulePaths.Select(p => TimeTravelModule.Describe(p, 0, 0)).Where(IsReplayed)],
                                symbolsPath,
                                logger,
                                null,
@@ -44,9 +44,7 @@ public static class ReplayFunctions
                           .SelectMany(HeapFunctions)
                           .ToList();
 
-        var identities = modules.Select(TimeTravelModuleIdentity.Describe)
-                                .Where(IsReplayed)
-                                .ToList();
+        var identities = modules.Where(IsReplayed).ToList();
 
         if (identities.Count == 0)
         {
@@ -81,12 +79,12 @@ public static class ReplayFunctions
                         .Select(e => MemoryFunction.ClassifyExport(module.Address + e.Rva, e.Name))
                         .OfType<MemoryFunction>();
 
-    private static (string Pdb, string Guid, int Age) KeyOf(TimeTravelModuleIdentity module) => (module.Pdb, module.Guid, module.Age);
+    private static (string Pdb, string Guid, int Age) KeyOf(TimeTravelModule module) => (module.Pdb, module.Guid, module.Age);
 
-    private static bool IsReplayed(TimeTravelModuleIdentity module)
+    private static bool IsReplayed(TimeTravelModule module)
         => module.Pdb.Length > 0 && Modules.Contains(module.Name, StringComparer.OrdinalIgnoreCase);
 
-    private static Task EnsureResolvedAsync(IEnumerable<TimeTravelModuleIdentity> modules,
+    private static Task EnsureResolvedAsync(IEnumerable<TimeTravelModule> modules,
                                             string symbolsPath,
                                             ILogger? logger,
                                             IProgress<ProgressDetail>? progress,
@@ -95,7 +93,7 @@ public static class ReplayFunctions
                                .Select(m => ResolvingOf(m, symbolsPath, logger, progress)))
                .WaitAsync(cancellationToken);
 
-    private static Task ResolvingOf(TimeTravelModuleIdentity module,
+    private static Task ResolvingOf(TimeTravelModule module,
                                     string symbolsPath,
                                     ILogger? logger,
                                     IProgress<ProgressDetail>? progress)
@@ -108,7 +106,7 @@ public static class ReplayFunctions
                     .Value;
 
     private static async Task DownloadAndResolveAsync((string Pdb, string Guid, int Age) key,
-                                                      TimeTravelModuleIdentity module,
+                                                      TimeTravelModule module,
                                                       string symbolsPath,
                                                       ILogger? logger,
                                                       IProgress<ProgressDetail>? progress)
@@ -125,7 +123,7 @@ public static class ReplayFunctions
         }
     }
 
-    private static void Resolve(TimeTravelModuleIdentity module, string symbolsPath, ILogger? logger)
+    private static void Resolve(TimeTravelModule module, string symbolsPath, ILogger? logger)
     {
         var start = Stopwatch.GetTimestamp();
 
@@ -148,7 +146,7 @@ public static class ReplayFunctions
                                relative.Locators.Length);
     }
 
-    private static ReplayFunctionSet? Find(TimeTravelModuleIdentity module, string symbolsPath)
+    private static ReplayFunctionSet? Find(TimeTravelModule module, string symbolsPath)
     {
         var pdbPath = CallstackResolver.GetPdbPath(symbolsPath, module.Frame(module.Address, 0));
 

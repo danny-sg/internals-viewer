@@ -54,7 +54,7 @@ public sealed record TimeTravelArgumentCall(ulong Sequence,
         return new TimeTravelArgumentCall(values[0],
                                           (uint)flags,
                                           (flags & ReturnedFlag) != 0,
-                                          values.Slice(IntegerOffset, RegisterCount).ToArray(),
+                                          [.. values.Slice(IntegerOffset, RegisterCount)],
                                           values[ReturnValueIndex],
                                           (int)values[NodeIndex])
         {

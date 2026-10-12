@@ -2,7 +2,7 @@
 using System.Reflection.PortableExecutable;
 using System.Text;
 
-namespace InternalsViewer.Query.CallStack.TimeTravel.Memory;
+namespace InternalsViewer.Query.Helpers;
 
 internal static class ModuleExports
 {

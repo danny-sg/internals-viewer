@@ -62,7 +62,9 @@ public sealed partial class ArgumentsViewModel(ILogger logger, SymbolsViewModel 
 
     public bool HasValueSearch => ValueSearch is not null;
 
-    public string? ValueIteratorLabel => ValueIterator is { } iterator ? $"Is The {iterator.Label} Iterator" : null;
+    public string? ValueIteratorLabel => ValueIterator is { } iterator
+        ? $"Is The {iterator.Label} {(iterator.IsPlanObject ? "Plan Object" : "Iterator")}"
+        : null;
 
     public CallStackNode? Shown { get; private set; }
 

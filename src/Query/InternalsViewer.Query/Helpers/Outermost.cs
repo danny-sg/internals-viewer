@@ -1,4 +1,4 @@
-namespace InternalsViewer.Query.CallStack.TimeTravel;
+namespace InternalsViewer.Query.Helpers;
 
 public static class Outermost
 {

@@ -113,8 +113,6 @@ public sealed partial class QueryCallStackTabView : UserControl, IDocumentComman
 
     private LocatorSearch? _locatorSearch;
 
-    private ColumnStoreSearch? _columnStoreSearch;
-
     private Dictionary<CallStackNode, ExecutionOperatorEvent> _nextOperator = new();
 
     private OperatorHierarchy _hierarchy = OperatorHierarchy.Build([]);
@@ -2542,8 +2540,6 @@ public sealed partial class QueryCallStackTabView : UserControl, IDocumentComman
 
         _locatorSearch = LocatorSearch.TryParse(_search, out var locator) ? locator : null;
 
-        _columnStoreSearch = ColumnStoreSearch.TryParse(_search, out var columnStore) ? columnStore : null;
-
         ApplyFocus(_viewModel?.SelectedEvent);
     }
 
@@ -2561,11 +2557,6 @@ public sealed partial class QueryCallStackTabView : UserControl, IDocumentComman
             return node.Locators?.Contains(locator) == true;
         }
 
-        if (_columnStoreSearch is { } columnStore)
-        {
-            return node.Locators?.Contains(columnStore) == true;
-        }
-
         return _search.Length == 0
                || Contains(node.Symbol)
                || Contains(node.Category)
@@ -2576,7 +2567,6 @@ public sealed partial class QueryCallStackTabView : UserControl, IDocumentComman
     private bool Matches(ExecutionOperatorEvent op)
         => _search.Length == 0
            || _locatorSearch is null
-           && _columnStoreSearch is null
            && (Contains(op.OperatorDescription) || Contains(op.TargetLabel) || Contains(op.Name));
 
     private bool Contains(string? value)

@@ -2191,7 +2191,7 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
     {
         CallStack = result.CallStack;
 
-        Arguments.SetSource(result.CallLog, IteratorTarget.Build(result.CallStack, Events));
+        Arguments.SetSource(result.CallLog, IteratorTarget.Build(result.CallStack, Events, result.PlanLink));
 
         FlameChart = result.Timeline;
 

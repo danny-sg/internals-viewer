@@ -23,7 +23,10 @@ public class IteratorTargetTests
             EntryFrames = [scan]
         };
 
-        var target = IteratorTarget.Build(tree, [seek])[0x100];
+        var link = new IteratorPlanLink(new Dictionary<ulong, PlanNodeIdentifier>(),
+                                        new Dictionary<ulong, PlanNodeIdentifier> { [0x100] = new(1, 2) });
+
+        var target = IteratorTarget.Build(tree, [seek], link)[0x100];
 
         Assert.Same(seek, target.Operator);
         Assert.Same(scan, target.Node);
@@ -39,10 +42,35 @@ public class IteratorTargetTests
 
         tree.AddCall(open, Iterator(0x20, 0x200), 1);
 
-        var target = IteratorTarget.Build(tree, [])[0x200];
+        var target = IteratorTarget.Build(tree, [], IteratorPlanLink.Empty)[0x200];
 
         Assert.Null(target.Operator);
         Assert.Same(open, target.Node);
+    }
+
+    [Fact]
+    public void A_Plan_Object_Leads_To_Its_Operator_Even_Without_A_Frame_Of_Its_Own()
+    {
+        var tree = new CallStackTree();
+
+        var scan = tree.AddCall(tree.Root, Iterator(0x10, 0x100), 1);
+
+        var seek = new ExecutionOperatorEvent
+        {
+            Name = "Index Seek",
+            OperatorDescription = "Index Seek",
+            PlanNodeIdentifier = new PlanNodeIdentifier { PlanHandleId = 1, NodeId = 2 },
+            EntryFrames = [scan]
+        };
+
+        var link = new IteratorPlanLink(new Dictionary<ulong, PlanNodeIdentifier> { [0xA0] = new(1, 2) },
+                                        new Dictionary<ulong, PlanNodeIdentifier>());
+
+        var target = IteratorTarget.Build(tree, [seek], link)[0xA0];
+
+        Assert.True(target.IsPlanObject);
+        Assert.Same(seek, target.Operator);
+        Assert.Same(scan, target.Node);
     }
 
     private static CallstackFrame Iterator(uint rva, ulong instance) => new()

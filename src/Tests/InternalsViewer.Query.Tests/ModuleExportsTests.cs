@@ -1,4 +1,5 @@
 ﻿using InternalsViewer.Query.CallStack.TimeTravel.Memory;
+using InternalsViewer.Query.Helpers;
 
 namespace InternalsViewer.Query.Tests;
 

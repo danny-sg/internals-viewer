@@ -84,11 +84,13 @@ public sealed class TimeTravelLocatorSet
                 .Concat(Rows.Order().Select(r => new TimeTravelLocator(0, LocatorKind.Row, r)))
                 .Concat(Objects.Order().Select(o => new TimeTravelLocator(0, LocatorKind.ColumnStoreObject, o.Value, o.Detail)));
 
-    public bool Contains(LocatorSearch search)
-        => search.Slot is not null ? Rows.Contains(search.Key) : Pages.Contains(search.Key) || RowPages.Contains(search.Key);
-
-    public bool Contains(ColumnStoreSearch search)
-        => Objects.Any(o => search.Matches(new TimeTravelLocator(0, LocatorKind.ColumnStoreObject, o.Value, o.Detail)));
+    public bool Contains(LocatorSearch search) => search switch
+    {
+        { IsColumnStore: true }
+            => Objects.Any(o => search.Matches(new TimeTravelLocator(0, LocatorKind.ColumnStoreObject, o.Value, o.Detail))),
+        { Slot: not null } => Rows.Contains(search.Key),
+        _ => Pages.Contains(search.Key) || RowPages.Contains(search.Key)
+    };
 
     private static string Counted(int count, string noun) => count switch
     {

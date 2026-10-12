@@ -31,9 +31,12 @@ public readonly record struct TimeTravelLocator(int Register, LocatorKind Kind, 
 
     public string SearchText => Kind switch
     {
-        LocatorKind.ColumnStoreObject when RowGroupId is { } rowGroup && ColumnId >= 0 => $"rowgroup:{rowGroup} column:{ColumnId}",
-        LocatorKind.ColumnStoreObject when RowGroupId is { } rowGroup => $"rowgroup:{rowGroup}",
-        LocatorKind.ColumnStoreObject => $"column:{ColumnId}",
+        LocatorKind.ColumnStoreObject when RowGroupId is { } rowGroup && ColumnId >= 0 
+            => $"rowgroup:{rowGroup} column:{ColumnId}",
+        LocatorKind.ColumnStoreObject when RowGroupId is { } rowGroup 
+            => $"rowgroup:{rowGroup}",
+        LocatorKind.ColumnStoreObject 
+            => $"column:{ColumnId}",
         _ => ToString()
     };
 
@@ -50,18 +53,25 @@ public readonly record struct TimeTravelLocator(int Register, LocatorKind Kind, 
 
     public override string ToString() => Kind switch
     {
-        LocatorKind.Row => $"({Page.FileId}:{Page.PageId}:{Slot})",
-        LocatorKind.ColumnStoreObject => ObjectLabel(),
+        LocatorKind.Row 
+            => $"({Page.FileId}:{Page.PageId}:{Slot})",
+        LocatorKind.ColumnStoreObject 
+            => ObjectLabel(),
         _ => Page.ToString()
     };
 
     private string ObjectLabel() => ObjectType switch
     {
-        ColumnStoreObjectType.ColumnSegment => $"Segment (Rowgroup {ObjectId}, Column {ColumnId})",
-        ColumnStoreObjectType.PrimaryDictionary => $"Primary Dictionary (Column {ColumnId})",
-        ColumnStoreObjectType.SecondaryDictionary => $"Secondary Dictionary {ObjectId} (Column {ColumnId})",
-        ColumnStoreObjectType.BulkInsertDictionary => $"Bulk Insert Dictionary (Column {ColumnId})",
-        ColumnStoreObjectType.DeleteBitmap => $"Delete Bitmap (Rowgroup {ObjectId})",
+        ColumnStoreObjectType.ColumnSegment 
+            => $"Segment (Rowgroup {ObjectId}, Column {ColumnId})",
+        ColumnStoreObjectType.PrimaryDictionary 
+            => $"Primary Dictionary (Column {ColumnId})",
+        ColumnStoreObjectType.SecondaryDictionary 
+            => $"Secondary Dictionary {ObjectId} (Column {ColumnId})",
+        ColumnStoreObjectType.BulkInsertDictionary 
+            => $"Bulk Insert Dictionary (Column {ColumnId})",
+        ColumnStoreObjectType.DeleteBitmap 
+            => $"Delete Bitmap (Rowgroup {ObjectId})",
         _ => $"{ObjectType} (Column {ColumnId}, Object {ObjectId})"
     };
 }

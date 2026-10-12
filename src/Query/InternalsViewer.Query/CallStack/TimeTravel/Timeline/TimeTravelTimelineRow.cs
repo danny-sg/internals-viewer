@@ -1,4 +1,5 @@
 using InternalsViewer.Query.Export;
+using InternalsViewer.Query.Helpers;
 
 namespace InternalsViewer.Query.CallStack.TimeTravel.Timeline;
 

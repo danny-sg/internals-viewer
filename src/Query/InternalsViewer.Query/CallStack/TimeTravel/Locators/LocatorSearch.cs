@@ -3,15 +3,38 @@ using InternalsViewer.Internals.Engine.Address;
 
 namespace InternalsViewer.Query.CallStack.TimeTravel.Locators;
 
-public readonly record struct LocatorSearch(PageAddress Page, ushort? Slot)
+public readonly record struct LocatorSearch(PageAddress Page, ushort? Slot, int? RowGroupId, int? ColumnId)
 {
     private const string HexPrefix = "0x";
 
     private static readonly char[] Separators = [':', ','];
 
+    private static readonly string[] RowGroupNames = ["rowgroup", "rg"];
+
+    private static readonly string[] ColumnNames = ["column", "col"];
+
+    public bool IsColumnStore => RowGroupId is not null || ColumnId is not null;
+
     public ulong Key => ((ulong)(ushort)Page.FileId << 32) | (uint)Page.PageId | ((ulong)(Slot ?? 0) << 48);
 
+    public static LocatorSearch ForPage(PageAddress page, ushort? slot) => new(page, slot, null, null);
+
+    public static LocatorSearch ForColumnStore(int? rowGroupId, int? columnId) => new(default, null, rowGroupId, columnId);
+
     public static bool TryParse(string? text, out LocatorSearch search)
+        => TryParsePage(text, out search) || TryParseColumnStore(text, out search);
+
+    public bool Matches(TimeTravelLocator locator) => locator.Kind switch
+    {
+        LocatorKind.ColumnStoreObject => IsColumnStore
+                                         && (RowGroupId is not { } rowGroup || locator.RowGroupId == rowGroup)
+                                         && (ColumnId is not { } column || locator.ColumnId == column),
+        LocatorKind.Page => !IsColumnStore && Slot is null && locator.PageKey == Key,
+        LocatorKind.Row => !IsColumnStore && (Slot is null ? locator.PageKey == Key : locator.Value == Key),
+        _ => false
+    };
+
+    private static bool TryParsePage(string? text, out LocatorSearch search)
     {
         search = default;
 
@@ -43,7 +66,7 @@ public readonly record struct LocatorSearch(PageAddress Page, ushort? Slot)
             slot = parsed;
         }
 
-        search = new LocatorSearch(new PageAddress(file, page), slot);
+        search = ForPage(new PageAddress(file, page), slot);
 
         return true;
     }
@@ -60,7 +83,51 @@ public readonly record struct LocatorSearch(PageAddress Page, ushort? Slot)
 
         var row = new RowIdentifier(Convert.FromHexString(hex));
 
-        search = new LocatorSearch(row.PageAddress, hex.Length == RowIdentifier.Size * 2 ? row.SlotId : null);
+        search = ForPage(row.PageAddress, hex.Length == RowIdentifier.Size * 2 ? row.SlotId : null);
+
+        return true;
+    }
+
+    private static bool TryParseColumnStore(string? text, out LocatorSearch search)
+    {
+        search = default;
+
+        int? rowGroup = null;
+
+        int? column = null;
+
+        foreach (var term in (text ?? string.Empty).Split(' ', StringSplitOptions.RemoveEmptyEntries))
+        {
+            var separator = term.IndexOf(':');
+
+            if (separator <= 0
+                || !int.TryParse(term[(separator + 1)..], NumberStyles.None, CultureInfo.InvariantCulture, out var value))
+            {
+                return false;
+            }
+
+            var name = term[..separator];
+
+            if (RowGroupNames.Contains(name, StringComparer.OrdinalIgnoreCase))
+            {
+                rowGroup = value;
+            }
+            else if (ColumnNames.Contains(name, StringComparer.OrdinalIgnoreCase))
+            {
+                column = value;
+            }
+            else
+            {
+                return false;
+            }
+        }
+
+        if (rowGroup is null && column is null)
+        {
+            return false;
+        }
+
+        search = ForColumnStore(rowGroup, column);
 
         return true;
     }

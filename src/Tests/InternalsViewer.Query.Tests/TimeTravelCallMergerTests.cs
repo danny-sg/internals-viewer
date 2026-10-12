@@ -12,16 +12,17 @@ public class TimeTravelCallMergerTests
 
     private const int ActivityBuckets = 4;
 
+    private static readonly TimeTravelModule[] Modules = [new(@"Z:\Missing\sqlmin.dll", SqlMinBase, 0x10000)];
+
     [Fact]
     public void Merge_Adds_Each_Call_Under_Its_Caller()
     {
         var tree = new CallStackTree();
 
-        var calls = new TimeTravelCallTree([new TimeTravelCallNode(-1, 0, SqlMinBase + 0x100, 0, 1),
-                                            new TimeTravelCallNode(0, 0, SqlMinBase + 0x200, 0, 12)],
-                                           [new TimeTravelModule(@"Z:\Missing\sqlmin.dll", SqlMinBase, 0x10000)]);
+        TimeTravelCallNode[] calls = [new TimeTravelCallNode(-1, 0, SqlMinBase + 0x100, 0, 1),
+                                      new TimeTravelCallNode(0, 0, SqlMinBase + 0x200, 0, 12)];
 
-        TimeTravelCallMerger.Merge(tree, calls);
+        TimeTravelCallMerger.Merge(tree, calls, Modules);
 
         var root = Assert.Single(tree.Root.ChildNodes);
         var child = Assert.Single(root.ChildNodes);
@@ -38,12 +39,11 @@ public class TimeTravelCallMergerTests
     {
         var tree = new CallStackTree();
 
-        var calls = new TimeTravelCallTree([new TimeTravelCallNode(-1, 0, SqlMinBase + 0x100, 0, 1),
-                                            new TimeTravelCallNode(0, 0, SqlMinBase + 0x200, 0xA0, 3),
-                                            new TimeTravelCallNode(0, 0, SqlMinBase + 0x200, 0xB0, 4)],
-                                           [new TimeTravelModule(@"Z:\Missing\sqlmin.dll", SqlMinBase, 0x10000)]);
+        TimeTravelCallNode[] calls = [new TimeTravelCallNode(-1, 0, SqlMinBase + 0x100, 0, 1),
+                                      new TimeTravelCallNode(0, 0, SqlMinBase + 0x200, 0xA0, 3),
+                                      new TimeTravelCallNode(0, 0, SqlMinBase + 0x200, 0xB0, 4)];
 
-        TimeTravelCallMerger.Merge(tree, calls);
+        TimeTravelCallMerger.Merge(tree, calls, Modules);
 
         var children = Assert.Single(tree.Root.ChildNodes).ChildNodes.OrderBy(c => c.Order).ToList();
 
@@ -56,10 +56,9 @@ public class TimeTravelCallMergerTests
     {
         var tree = new CallStackTree();
 
-        var calls = new TimeTravelCallTree([new TimeTravelCallNode(-1, 0, 0x1234, 0, 1)],
-                                           [new TimeTravelModule(@"Z:\Missing\sqlmin.dll", SqlMinBase, 0x10000)]);
+        TimeTravelCallNode[] calls = [new TimeTravelCallNode(-1, 0, 0x1234, 0, 1)];
 
-        TimeTravelCallMerger.Merge(tree, calls);
+        TimeTravelCallMerger.Merge(tree, calls, Modules);
 
         var node = Assert.Single(tree.Root.ChildNodes);
 
