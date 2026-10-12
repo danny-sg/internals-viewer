@@ -160,8 +160,8 @@ public class FullTraceCallLogTests
         var calls = log.CallsOf(0x1000, 0)!;
 
         Assert.Empty(calls[0].Locators);
-        Assert.Equal(new PageAddress(1, 336), calls[1].LocatorAt(2)?.Page);
-        Assert.Null(calls[1].LocatorAt(1));
+        Assert.Equal(new PageAddress(1, 336), calls[1].GetLocator(2)?.Page);
+        Assert.Null(calls[1].GetLocator(1));
         Assert.Equal(1, log.LocatorCount);
     }
 
@@ -179,7 +179,7 @@ public class FullTraceCallLogTests
 
         var calls = builder.Build().CallsOf(0x1000, 0)!;
 
-        Assert.Equal(3ul, calls[0].LocatorAt(1)?.Value);
+        Assert.Equal(3ul, calls[0].GetLocator(1)?.Value);
         Assert.Equal(5ul, Assert.Single(calls[1].Locators).Value);
     }
 

@@ -227,7 +227,7 @@ internal static class ReplayFunctionResolver
 
         var kept = symbols.Addresses.Where(a => !excluded.Contains(a));
 
-        LocatorRead[] locators = iterates ? [.. LocatorReadResolver.Find(resolver, kept)] : [];
+        LocatorRead[] locators = iterates ? [.. LocatorReadResolver.FindReads(resolver, kept)] : [];
 
         var replay = new ReplayFunctionSet([.. excluded.Select(rva => (ulong)rva)],
                                            instanceMethods,

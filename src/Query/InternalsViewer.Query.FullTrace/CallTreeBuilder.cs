@@ -36,7 +36,7 @@ internal static class CallTreeBuilder
 
     private static CallstackFrame CreateFrame(TraceModule[] modules, ulong[] starts, CallNode call)
     {
-        var module = Find(modules, starts, call.Address);
+        var module = FindModule(modules, starts, call.Address);
 
         if (module is null)
         {
@@ -49,7 +49,7 @@ internal static class CallTreeBuilder
     /// <summary>
     /// Find a module from an address in a list of modules + start addresses
     /// </summary>
-    private static TraceModule? Find(TraceModule[] modules, ulong[] starts, ulong address)
+    private static TraceModule? FindModule(TraceModule[] modules, ulong[] starts, ulong address)
     {
         var index = Array.BinarySearch(starts, address);
 

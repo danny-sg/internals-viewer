@@ -259,7 +259,7 @@ public sealed partial class ArgumentsViewModel(ILogger logger, SymbolsViewModel 
                 return;
             }
 
-            var layout = ArgumentLayout.For(parsed);
+            var layout = ArgumentLayout.LayoutOf(parsed);
 
             Signature = Header(parsed, signature ?? node.Symbol);
 

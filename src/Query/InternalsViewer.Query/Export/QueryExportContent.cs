@@ -1,6 +1,6 @@
 namespace InternalsViewer.Query.Export;
 
-public sealed record RunExportContent
+public sealed record QueryExportContent
 {
     public required string ServerName { get; init; }
 

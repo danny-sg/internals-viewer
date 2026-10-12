@@ -17,9 +17,9 @@ internal sealed class FullTraceExportSection : IQueryExportSection
 
     internal const string EventLinksEntry = "fulltrace/eventlinks.bin";
 
-    public bool CanExport(RunExportContent content) => content.ExtraOf<FullTraceResult>() is not null;
+    public bool CanExport(QueryExportContent content) => content.ExtraOf<FullTraceResult>() is not null;
 
-    public void Collect(QueryExportCollector collector, RunExportContent content)
+    public void Collect(QueryExportCollector collector, QueryExportContent content)
     {
         var fullTrace = content.ExtraOf<FullTraceResult>()!;
 
@@ -28,7 +28,7 @@ internal sealed class FullTraceExportSection : IQueryExportSection
         collector.AddReferencedNodes(fullTrace.Timeline.MappedNodes);
     }
 
-    public void Write(RunExportWriter writer, RunExportContent content)
+    public void Write(QueryExportWriter writer, QueryExportContent content)
     {
         var fullTrace = content.ExtraOf<FullTraceResult>()!;
 
@@ -39,7 +39,7 @@ internal sealed class FullTraceExportSection : IQueryExportSection
         writer.WriteBinary(EventLinksEntry, CompressionLevel.Fastest, w => fullTrace.Timeline.WriteEventLinks(w, writer.IdOf));
     }
 
-    public IRunExtra? Read(RunExportReader reader)
+    public IRunExtra? Read(QueryExportReader reader)
     {
         if (reader.CallTree(CallTreeName) is not { } tree)
         {

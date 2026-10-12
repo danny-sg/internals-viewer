@@ -17,34 +17,34 @@ public static partial class LocatorReadResolver
     private static readonly string[] DecoratedTypes =
         ["VPageId@@", "VAllocationPageId@@", "VHPageHandle@@", "URowId@@", "VColumnStoreObjectKey@@"];
 
-    internal static IEnumerable<LocatorRead> For(ulong function, FunctionSignature signature)
+    internal static IEnumerable<LocatorRead> ReadsOf(ulong function, FunctionSignature signature)
     {
-        foreach (var slot in ArgumentLayout.For(signature).Slots)
+        foreach (var slot in ArgumentLayout.LayoutOf(signature).Slots)
         {
             if (slot.Location is not (ArgumentLocation.Register or ArgumentLocation.Stack)
                 || slot.Name == ArgumentLayout.ReturnBuffer
-                || LocatorType.Of(slot.Type) is not { } type
+                || LocatorType.LocatorTypeOf(slot.Type) is not { } type
                 || (slot.Location == ArgumentLocation.Stack && type.Kind == LocatorKind.Referenced))
             {
                 continue;
             }
 
-            foreach (var read in Reads(function, slot.Index, type, returned: false))
+            foreach (var read in GetReads(function, slot.Index, type, returned: false))
             {
                 yield return read;
             }
         }
 
-        if (signature.ReturnType is { } returnType && LocatorType.Of(returnType) is { } returned)
+        if (signature.ReturnType is { } returnType && LocatorType.LocatorTypeOf(returnType) is { } returned)
         {
-            foreach (var read in Reads(function, ReturnRegister, returned, returned: true))
+            foreach (var read in GetReads(function, ReturnRegister, returned, returned: true))
             {
                 yield return read;
             }
         }
     }
 
-    private static IEnumerable<LocatorRead> Reads(ulong function, int register, LocatorType type, bool returned)
+    private static IEnumerable<LocatorRead> GetReads(ulong function, int register, LocatorType type, bool returned)
     {
         var parts = type.Kind == LocatorKind.ColumnStoreObject ? ObjectKeyParts : 1;
 
@@ -59,7 +59,7 @@ public static partial class LocatorReadResolver
         }
     }
 
-    internal static List<LocatorRead> Find(DiaResolver resolver, IEnumerable<uint> functions)
+    internal static List<LocatorRead> FindReads(DiaResolver resolver, IEnumerable<uint> functions)
     {
         var reads = new List<LocatorRead>();
 
@@ -83,7 +83,7 @@ public static partial class LocatorReadResolver
                 continue;
             }
 
-            reads.AddRange(For(rva, signature));
+            reads.AddRange(ReadsOf(rva, signature));
         }
 
         return reads;

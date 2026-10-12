@@ -13,14 +13,14 @@ using InternalsViewer.Query.CallStack.Locators;
 
 namespace InternalsViewer.Query.Export;
 
-public sealed class RunExportReader
+public sealed class QueryExportReader
 {
     private const int BufferSize = 1 << 16;
 
-    private RunExportReader(ZipArchive zip,
-                            ExportReferences references,
-                            List<(ExportCallTree Exported, CallStackTree? Tree)> trees,
-                            IReadOnlyList<EngineEvent> events)
+    private QueryExportReader(ZipArchive zip,
+                              ExportReferences references,
+                              List<(ExportCallTree Exported, CallStackTree? Tree)> trees,
+                              IReadOnlyList<EngineEvent> events)
     {
         Zip = zip;
         References = references;
@@ -48,14 +48,14 @@ public sealed class RunExportReader
 
         using var reader = new BinaryReader(new BufferedStream(entry.Open(), BufferSize));
 
-        if (reader.ReadUInt32() != RunExport.BinaryMagic)
+        if (reader.ReadUInt32() != QueryExport.BinaryMagic)
         {
             throw new InvalidDataException($"{name} is not an Internals Viewer binary section");
         }
 
         var version = reader.ReadInt32();
 
-        if (version > RunExport.FormatVersion)
+        if (version > QueryExport.FormatVersion)
         {
             throw new InvalidDataException($"{name} was exported by a newer version of Internals Viewer (format {version})");
         }
@@ -63,23 +63,23 @@ public sealed class RunExportReader
         return read(reader);
     }
 
-    internal static RunExportContent Read(Stream stream,
-                                          Func<long, AllocationUnit?> allocationUnitOf,
-                                          IReadOnlyList<IQueryExportSection> sections,
-                                          CancellationToken cancellationToken)
+    internal static QueryExportContent Read(Stream stream,
+                                            Func<long, AllocationUnit?> allocationUnitOf,
+                                            IReadOnlyList<IQueryExportSection> sections,
+                                            CancellationToken cancellationToken)
     {
         using var zip = new ZipArchive(stream, ZipArchiveMode.Read, leaveOpen: true);
 
-        var manifest = ReadJson<ExportManifest>(zip, RunExport.ManifestEntry, ExportPackage.Plain);
+        var manifest = ReadJson<ExportManifest>(zip, QueryExport.ManifestEntry, ExportPackage.Plain);
 
-        if (manifest.FormatVersion > RunExport.FormatVersion)
+        if (manifest.FormatVersion > QueryExport.FormatVersion)
         {
             throw new InvalidDataException($"The run was exported by a newer version of Internals Viewer (format {manifest.FormatVersion})");
         }
 
         var references = new ExportReferences(allocationUnitOf);
 
-        foreach (var frame in ReadLines<ExportedFrame>(zip, RunExport.FramesEntry, ExportPackage.Plain))
+        foreach (var frame in ReadLines<ExportedFrame>(zip, QueryExport.FramesEntry, ExportPackage.Plain))
         {
             references.Frames.Register(frame.Id, FrameOf(frame));
         }
@@ -92,9 +92,9 @@ public sealed class RunExportReader
 
         var options = ExportPackage.For(references);
 
-        var logRecordCount = ReadLines<LogRecord>(zip, RunExport.LogRecordsEntry, options).Count();
+        var logRecordCount = ReadLines<LogRecord>(zip, QueryExport.LogRecordsEntry, options).Count();
 
-        var eventCount = ReadLines<EngineEvent>(zip, RunExport.EventsEntry, options).Count();
+        var eventCount = ReadLines<EngineEvent>(zip, QueryExport.EventsEntry, options).Count();
 
         if (logRecordCount != manifest.LogRecordCount || eventCount != manifest.EventCount)
         {
@@ -130,7 +130,7 @@ public sealed class RunExportReader
             LogRecords = [.. manifest.ResultLogRecords.Select(id => references.LogRecords[id])]
         };
 
-        var reader = new RunExportReader(zip, references, trees, result.EngineEvents);
+        var reader = new QueryExportReader(zip, references, trees, result.EngineEvents);
 
         var extras = new List<IRunExtra>();
 
@@ -146,14 +146,14 @@ public sealed class RunExportReader
 
         OperatorEntryLabels.Apply(result.EngineEvents);
 
-        return new RunExportContent
+        return new QueryExportContent
         {
             ServerName = manifest.ServerName,
             DatabaseName = manifest.DatabaseName,
-            SqlText = ReadText(zip, RunExport.QueryEntry),
+            SqlText = ReadText(zip, QueryExport.QueryEntry),
             QueryOptions = manifest.QueryOptions,
             EventOptions = manifest.EventOptions,
-            Messages = ReadText(zip, RunExport.MessagesEntry).Split(Environment.NewLine, StringSplitOptions.RemoveEmptyEntries),
+            Messages = ReadText(zip, QueryExport.MessagesEntry).Split(Environment.NewLine, StringSplitOptions.RemoveEmptyEntries),
             Result = result,
             Extras = extras,
             ExportedAt = manifest.ExportedAt

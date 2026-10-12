@@ -12,7 +12,7 @@ public sealed record ArgumentLayout(IReadOnlyList<ArgumentSlot> Slots, string? R
 
     private static readonly string[] Registers = ["RCX", "RDX", "R8", "R9"];
 
-    public static ArgumentLayout For(FunctionSignature signature)
+    public static ArgumentLayout LayoutOf(FunctionSignature signature)
     {
         var slots = new List<ArgumentSlot>();
 
@@ -27,14 +27,14 @@ public sealed record ArgumentLayout(IReadOnlyList<ArgumentSlot> Slots, string? R
 
         if (signature.HasReturnBuffer)
         {
-            slots.Add(Slot(ReturnBuffer, $"{signature.ReturnType ?? "void"} *", position));
+            slots.Add(GetSlot(ReturnBuffer, $"{signature.ReturnType ?? "void"} *", position));
 
             position++;
         }
 
         for (var i = 0; i < signature.Parameters.Count; i++, position++)
         {
-            slots.Add(Slot(string.Empty, signature.Parameters[i], position));
+            slots.Add(GetSlot(string.Empty, signature.Parameters[i], position));
         }
 
         return new ArgumentLayout(slots, signature.ReturnType);
@@ -42,7 +42,7 @@ public sealed record ArgumentLayout(IReadOnlyList<ArgumentSlot> Slots, string? R
 
     public static int StackOffset(int position) => StackArgumentOffset + (position - Registers.Length) * sizeof(ulong);
 
-    private static ArgumentSlot Slot(string name, string type, int position)
+    private static ArgumentSlot GetSlot(string name, string type, int position)
     {
         if (position >= CapturedSlots || type == "...")
         {

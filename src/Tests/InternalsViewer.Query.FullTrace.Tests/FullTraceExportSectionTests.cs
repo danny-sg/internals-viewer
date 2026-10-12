@@ -24,9 +24,9 @@ public class FullTraceExportSectionTests
 
     private const ulong Page336 = 0x0000_0001_0000_0150;
 
-    private static RunExport WithFullTrace { get; } = new([new FullTraceExportSection()]);
+    private static QueryExport WithFullTrace { get; } = new([new FullTraceExportSection()]);
 
-    private static RunExport WithoutFullTrace { get; } = new([]);
+    private static QueryExport WithoutFullTrace { get; } = new([]);
 
     [Fact]
     public async Task Exporting_An_Imported_Full_Trace_Writes_The_Same_File()
@@ -60,7 +60,7 @@ public class FullTraceExportSectionTests
         Assert.Equal(2, calls.Count);
         Assert.Equal(6ul, calls[1].IntegerSlots[0]);
         Assert.Same(getRow, fullTrace.CallLog.NodeOf(calls[1]));
-        Assert.Equal(new PageAddress(1, 336), calls[1].LocatorAt(2)?.Page);
+        Assert.Equal(new PageAddress(1, 336), calls[1].GetLocator(2)?.Page);
         Assert.Equal("(1:336), (1:336:4)", getRow.LocatorsDetail);
         Assert.Equal(3, fullTrace.Timeline.SpanCount);
         Assert.Equal(100ul, fullTrace.Timeline.PeakInUseDuring(0, 100));
@@ -111,7 +111,7 @@ public class FullTraceExportSectionTests
         Assert.Single(imported.Result.EngineEvents.OfType<ExecutionOperatorEvent>());
     }
 
-    private static async Task<byte[]> Export(RunExportContent content)
+    private static async Task<byte[]> Export(QueryExportContent content)
     {
         using var stream = new MemoryStream();
 
@@ -120,7 +120,7 @@ public class FullTraceExportSectionTests
         return stream.ToArray();
     }
 
-    private static async Task<RunExportContent> Import(byte[] export)
+    private static async Task<QueryExportContent> Import(byte[] export)
     {
         using var stream = new MemoryStream(export);
 
@@ -141,7 +141,7 @@ public class FullTraceExportSectionTests
 
             stream.CopyTo(copy);
 
-            entries[entry.FullName] = entry.FullName == RunExport.ManifestEntry ? WithoutExportTime(copy.ToArray()) : copy.ToArray();
+            entries[entry.FullName] = entry.FullName == QueryExport.ManifestEntry ? WithoutExportTime(copy.ToArray()) : copy.ToArray();
         }
 
         return entries;
@@ -156,7 +156,7 @@ public class FullTraceExportSectionTests
         return System.Text.Encoding.UTF8.GetBytes(json.ToJsonString());
     }
 
-    private static RunExportContent Content()
+    private static QueryExportContent Content()
     {
         var scan = new ExecutionOperatorEvent
         {
@@ -180,7 +180,7 @@ public class FullTraceExportSectionTests
             CropEndUs = 30
         };
 
-        return new RunExportContent
+        return new QueryExportContent
         {
             ServerName = ".\\SQL2025",
             DatabaseName = "Sales",

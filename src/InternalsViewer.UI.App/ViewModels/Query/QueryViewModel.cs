@@ -82,7 +82,7 @@ namespace InternalsViewer.UI.App.ViewModels.Query;
 public sealed class QueryViewModelFactory(ILogger<QueryViewModel> logger,
                                           QueryRunner queryRunner,
                                           FullTraceLoader fullTraceLoader,
-                                          RunExport runExport,
+                                          QueryExport queryExport,
                                           SettingsService settingsService,
                                           SettingsViewModel settingsViewModel,
                                           IndexTabViewModelFactory indexTabViewModelFactory,
@@ -95,7 +95,7 @@ public sealed class QueryViewModelFactory(ILogger<QueryViewModel> logger,
     public QueryViewModel Create(DatabaseSource database) => new(logger,
                                                                  queryRunner,
                                                                  fullTraceLoader,
-                                                                 runExport,
+                                                                 queryExport,
                                                                  settingsService,
                                                                  settingsViewModel,
                                                                  indexTabViewModelFactory,
@@ -320,7 +320,7 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
     public QueryViewModel(ILogger<QueryViewModel> logger,
                           QueryRunner queryRunner,
                           FullTraceLoader fullTraceLoader,
-                          RunExport runExport,
+                          QueryExport queryExport,
                           SettingsService settingsService,
                           SettingsViewModel settingsViewModel,
                           IndexTabViewModelFactory indexTabViewModelFactory,
@@ -340,7 +340,7 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
         Logger = logger;
         QueryRunner = queryRunner;
         FullTraceLoader = fullTraceLoader;
-        RunExport = runExport;
+        QueryExport = queryExport;
         BufferPoolInfoProvider = bufferPoolInfoProvider;
         Database = database;
         _settingsService = settingsService;
@@ -608,11 +608,11 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
     private FullTraceLoader FullTraceLoader { get; }
 
-    private RunExport RunExport { get; }
+    private QueryExport QueryExport { get; }
 
     private CancellationTokenSource? FullTraceLoad { get; set; }
 
-    private RunExportContent? LastRun
+    private QueryExportContent? LastRun
     {
         get;
         set
@@ -1900,7 +1900,7 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
         {
             ShowResults(results, colours);
 
-            LastRun = new RunExportContent
+            LastRun = new QueryExportContent
             {
                 ServerName = Database.Connection.Name,
                 DatabaseName = Database.Name,
@@ -2031,7 +2031,7 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
         picker.SuggestedStartLocation = PickerLocationId.DocumentsLibrary;
         picker.SuggestedFileName = $"{Database.Name} {DateTime.Now:yyyy-MM-dd HH-mm-ss}";
-        picker.FileTypeChoices.Add(RunFileType, [RunExport.Extension]);
+        picker.FileTypeChoices.Add(RunFileType, [QueryExport.Extension]);
 
         var file = await picker.PickSaveFileAsync();
 
@@ -2044,7 +2044,7 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
         {
             await using var stream = File.Create(file.Path);
 
-            await RunExport.WriteAsync(stream, run with { Messages = [.. Messages.Select(MessageText)] }, CancellationToken.None);
+            await QueryExport.WriteAsync(stream, run with { Messages = [.. Messages.Select(MessageText)] }, CancellationToken.None);
 
             AddMessage($"Run exported to {file.Path} ({SizeFormat.Format(stream.Length)})");
         }
@@ -2069,7 +2069,7 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
         WinRT.Interop.InitializeWithWindow.Initialize(picker, WinRT.Interop.WindowNative.GetWindowHandle(App.MainWindow));
 
         picker.SuggestedStartLocation = PickerLocationId.DocumentsLibrary;
-        picker.FileTypeFilter.Add(RunExport.Extension);
+        picker.FileTypeFilter.Add(QueryExport.Extension);
 
         var file = await picker.PickSingleFileAsync();
 
@@ -2094,7 +2094,7 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
         {
             await using var stream = File.OpenRead(file.Path);
 
-            var run = await RunExport.ReadAsync(stream, id => Database.AllocationUnits.GetValueOrDefault(id), CancellationToken.None);
+            var run = await QueryExport.ReadAsync(stream, id => Database.AllocationUnits.GetValueOrDefault(id), CancellationToken.None);
 
             AddMessage(new ProgressDetail(step) { IsStep = true, Elapsed = Stopwatch.GetElapsedTime(started) });
 
@@ -2114,7 +2114,7 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
         }
     }
 
-    private void ShowImportedRun(RunExportContent run)
+    private void ShowImportedRun(QueryExportContent run)
     {
         var exported = run.ExportedAt is { } exportedAt ? $" on {exportedAt:g}" : string.Empty;
 

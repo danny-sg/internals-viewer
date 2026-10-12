@@ -9,7 +9,7 @@ using InternalsViewer.Query.CallStack.Locators;
 
 namespace InternalsViewer.Query.Export;
 
-public sealed class RunExportWriter
+public sealed class QueryExportWriter
 {
     private const int BufferSize = 1 << 16;
 
@@ -17,7 +17,7 @@ public sealed class RunExportWriter
 
     private const string DetachedTree = "detached";
 
-    private RunExportWriter(ZipArchive zip, ExportReferences references)
+    private QueryExportWriter(ZipArchive zip, ExportReferences references)
     {
         Zip = zip;
         References = references;
@@ -35,15 +35,15 @@ public sealed class RunExportWriter
 
         using var writer = new BinaryWriter(stream);
 
-        writer.Write(RunExport.BinaryMagic);
+        writer.Write(QueryExport.BinaryMagic);
 
-        writer.Write(RunExport.FormatVersion);
+        writer.Write(QueryExport.FormatVersion);
 
         write(writer);
     }
 
     internal static void Write(Stream stream,
-                               RunExportContent content,
+                               QueryExportContent content,
                                IReadOnlyList<IQueryExportSection> sections,
                                CancellationToken cancellationToken)
     {
@@ -62,13 +62,13 @@ public sealed class RunExportWriter
 
         using var zip = new ZipArchive(stream, ZipArchiveMode.Create, leaveOpen: true);
 
-        WriteText(zip, RunExport.QueryEntry, content.SqlText);
+        WriteText(zip, QueryExport.QueryEntry, content.SqlText);
 
-        WriteText(zip, RunExport.MessagesEntry, string.Join(Environment.NewLine, content.Messages));
+        WriteText(zip, QueryExport.MessagesEntry, string.Join(Environment.NewLine, content.Messages));
 
         var plans = WritePlans(zip, content.Result.ExecutionPlans);
 
-        WriteLines(zip, RunExport.FramesEntry, references.Frames.InOrder().Select(f => FrameOf(f, references)), ExportPackage.Plain);
+        WriteLines(zip, QueryExport.FramesEntry, references.Frames.InOrder().Select(f => FrameOf(f, references)), ExportPackage.Plain);
 
         foreach (var (tree, roots) in trees)
         {
@@ -79,11 +79,11 @@ public sealed class RunExportWriter
 
         var options = ExportPackage.For(references);
 
-        WriteLines(zip, RunExport.LogRecordsEntry, references.LogRecords.InOrder(), options);
+        WriteLines(zip, QueryExport.LogRecordsEntry, references.LogRecords.InOrder(), options);
 
-        WriteLines(zip, RunExport.EventsEntry, references.Events.InOrder(), options);
+        WriteLines(zip, QueryExport.EventsEntry, references.Events.InOrder(), options);
 
-        var writer = new RunExportWriter(zip, references);
+        var writer = new QueryExportWriter(zip, references);
 
         foreach (var section in sections)
         {
@@ -92,10 +92,10 @@ public sealed class RunExportWriter
             section.Write(writer, content);
         }
 
-        WriteJson(zip, RunExport.ManifestEntry, ManifestOf(content, trees, plans, references), ExportPackage.Indented);
+        WriteJson(zip, QueryExport.ManifestEntry, ManifestOf(content, trees, plans, references), ExportPackage.Indented);
     }
 
-    private static List<(ExportCallTree Tree, IReadOnlyList<CallStackNode> Roots)> Collect(RunExportContent content,
+    private static List<(ExportCallTree Tree, IReadOnlyList<CallStackNode> Roots)> Collect(QueryExportContent content,
                                                                                          QueryExportCollector collector,
                                                                                          ExportReferences references)
     {
@@ -432,7 +432,7 @@ public sealed class RunExportWriter
         return exported;
     }
 
-    private static ExportManifest ManifestOf(RunExportContent content,
+    private static ExportManifest ManifestOf(QueryExportContent content,
                                               List<(ExportCallTree Tree, IReadOnlyList<CallStackNode> Roots)> trees,
                                               List<ExportPlan> plans,
                                               ExportReferences references)
@@ -441,7 +441,7 @@ public sealed class RunExportWriter
 
         return new ExportManifest
         {
-            FormatVersion = RunExport.FormatVersion,
+            FormatVersion = QueryExport.FormatVersion,
             ExportedAt = DateTimeOffset.Now,
             ServerName = content.ServerName,
             DatabaseName = content.DatabaseName,

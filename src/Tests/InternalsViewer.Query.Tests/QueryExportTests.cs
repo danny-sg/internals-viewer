@@ -23,7 +23,7 @@ using InternalsViewer.Query.Memory;
 namespace InternalsViewer.Query.Tests;
 
 [Trait("Category", "Unit")]
-public class RunExportTests
+public class QueryExportTests
 {
     private const ulong Scan = 0x9000;
 
@@ -130,20 +130,20 @@ public class RunExportTests
         Assert.Equal(["Running Query - Completed in 00:00:01"], imported.Messages);
     }
 
-    private static async Task<byte[]> Export(RunExportContent content)
+    private static async Task<byte[]> Export(QueryExportContent content)
     {
         using var stream = new MemoryStream();
 
-        await new RunExport([]).WriteAsync(stream, content, CancellationToken.None);
+        await new QueryExport([]).WriteAsync(stream, content, CancellationToken.None);
 
         return stream.ToArray();
     }
 
-    private static async Task<RunExportContent> Import(byte[] export)
+    private static async Task<QueryExportContent> Import(byte[] export)
     {
         using var stream = new MemoryStream(export);
 
-        return await new RunExport([]).ReadAsync(stream, id => id == Orders.AllocationUnitId ? Orders : null, CancellationToken.None);
+        return await new QueryExport([]).ReadAsync(stream, id => id == Orders.AllocationUnitId ? Orders : null, CancellationToken.None);
     }
 
     private static Dictionary<string, byte[]> Entries(byte[] export)
@@ -160,7 +160,7 @@ public class RunExportTests
 
             stream.CopyTo(copy);
 
-            entries[entry.FullName] = entry.FullName == RunExport.ManifestEntry ? WithoutExportTime(copy.ToArray()) : copy.ToArray();
+            entries[entry.FullName] = entry.FullName == QueryExport.ManifestEntry ? WithoutExportTime(copy.ToArray()) : copy.ToArray();
         }
 
         return entries;
@@ -175,7 +175,7 @@ public class RunExportTests
         return System.Text.Encoding.UTF8.GetBytes(json.ToJsonString());
     }
 
-    private static RunExportContent Content()
+    private static QueryExportContent Content()
     {
         var tree = new CallStackTree();
 
@@ -267,7 +267,7 @@ public class RunExportTests
             LogRecords = [insert]
         };
 
-        return new RunExportContent
+        return new QueryExportContent
         {
             ServerName = ".\\SQL2025",
             DatabaseName = "Sales",

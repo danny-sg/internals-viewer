@@ -78,7 +78,7 @@ public partial class App
             services.AddTransient<QueryViewModelFactory>();
 
             services.AddTransient<QueryRunner>();
-            services.AddSingleton<RunExport>();
+            services.AddSingleton<QueryExport>();
             services.AddTransient<LogRecordReader>();
             services.AddTransient<EventReader>();
 

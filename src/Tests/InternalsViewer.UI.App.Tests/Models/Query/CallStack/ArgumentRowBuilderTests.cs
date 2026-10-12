@@ -12,12 +12,12 @@ namespace InternalsViewer.UI.App.Tests.Models.Query.CallStack;
 public class ArgumentRowBuilderTests
 {
     private static readonly ArgumentLayout SetRange =
-        ArgumentLayout.For(new FunctionSignature(["unsigned __int64 *"], FunctionKind.Member, "void"));
+        ArgumentLayout.LayoutOf(new FunctionSignature(["unsigned __int64 *"], FunctionKind.Member, "void"));
 
     [Fact]
     public void Stack_And_Floating_Arguments_Have_No_Column()
     {
-        var layout = ArgumentLayout.For(new FunctionSignature(["double", "int", "int", "int", "int"], FunctionKind.Free, "double"));
+        var layout = ArgumentLayout.LayoutOf(new FunctionSignature(["double", "int", "int", "int", "int"], FunctionKind.Free, "double"));
 
         var table = ArgumentRowBuilder.Table(layout, [Call(0, 7)]);
 
@@ -35,7 +35,7 @@ public class ArgumentRowBuilderTests
     [Fact]
     public void A_Call_That_Did_Not_Return_Says_So()
     {
-        var layout = ArgumentLayout.For(new FunctionSignature([], FunctionKind.Free, "int"));
+        var layout = ArgumentLayout.LayoutOf(new FunctionSignature([], FunctionKind.Free, "int"));
 
         var table = ArgumentRowBuilder.Table(layout, [Call(0, 0, returned: false)]);
 
@@ -69,7 +69,7 @@ public class ArgumentRowBuilderTests
     [Fact]
     public void Values_At_Return_Are_Tinted()
     {
-        var layout = ArgumentLayout.For(new FunctionSignature(["unsigned __int64 *"], FunctionKind.Member, "int"));
+        var layout = ArgumentLayout.LayoutOf(new FunctionSignature(["unsigned __int64 *"], FunctionKind.Member, "int"));
 
         var table = ArgumentRowBuilder.Table(layout, [Call(0x100, 0x200, returnValue: 3)]);
 
@@ -116,7 +116,7 @@ public class ArgumentRowBuilderTests
     [Fact]
     public void A_Return_Value_Is_Only_Given_When_The_Call_Returned()
     {
-        var layout = ArgumentLayout.For(new FunctionSignature([], FunctionKind.Free, "int"));
+        var layout = ArgumentLayout.LayoutOf(new FunctionSignature([], FunctionKind.Free, "int"));
 
         Assert.Equal(7ul, ArgumentRowBuilder.CellAt(layout, Call(0, 0, returnValue: 7), 2).Value);
         Assert.Null(ArgumentRowBuilder.CellAt(layout, Call(0, 0, returnValue: 7, returned: false), 2).Value);
@@ -125,7 +125,7 @@ public class ArgumentRowBuilderTests
     [Fact]
     public void A_Page_Argument_Shows_The_Page_It_Points_To()
     {
-        var layout = ArgumentLayout.For(new FunctionSignature(["PageId const &"], FunctionKind.Member, "void"));
+        var layout = ArgumentLayout.LayoutOf(new FunctionSignature(["PageId const &"], FunctionKind.Member, "void"));
 
         var call = Call(0x100, 0x200) with { Locators = [new Locator(1, LocatorKind.Page, 0x0000_0001_0000_0150)] };
 
@@ -140,7 +140,7 @@ public class ArgumentRowBuilderTests
     [Fact]
     public void A_Row_Returned_By_A_Call_Shows_On_The_Return()
     {
-        var layout = ArgumentLayout.For(new FunctionSignature([], FunctionKind.Member, "RowId const *"));
+        var layout = ArgumentLayout.LayoutOf(new FunctionSignature([], FunctionKind.Member, "RowId const *"));
 
         var call = Call(0x100, 0, returnValue: 0x300) with
         {
@@ -155,7 +155,7 @@ public class ArgumentRowBuilderTests
     [Fact]
     public void A_Columnstore_Object_Shows_What_It_Names()
     {
-        var layout = ArgumentLayout.For(new FunctionSignature(["ColumnStoreObjectKey const &"], FunctionKind.Member, "void"));
+        var layout = ArgumentLayout.LayoutOf(new FunctionSignature(["ColumnStoreObjectKey const &"], FunctionKind.Member, "void"));
 
         var key = Locator.ColumnStoreObject(1, 5 | (0x02A7ul << 32), 0x0100 | (2ul << 32), 3 | (1ul << 32));
 
@@ -168,7 +168,7 @@ public class ArgumentRowBuilderTests
     [Fact]
     public void A_Reference_Shows_The_Value_It_Refers_To_But_Is_Not_A_Locator()
     {
-        var layout = ArgumentLayout.For(new FunctionSignature(["enum LCK_MODE &"], FunctionKind.Member, "void"));
+        var layout = ArgumentLayout.LayoutOf(new FunctionSignature(["enum LCK_MODE &"], FunctionKind.Member, "void"));
 
         var call = Call(0x100, 0x200) with { Locators = [new Locator(1, LocatorKind.Referenced, 4)] };
 

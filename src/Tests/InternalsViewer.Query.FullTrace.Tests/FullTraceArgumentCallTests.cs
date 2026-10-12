@@ -18,7 +18,7 @@ public class FullTraceArgumentCallTests
         values[4] = 0xC0;
         values[6] = 42;
 
-        var call = FullTraceArgumentCall.From(values);
+        var call = FullTraceArgumentCall.Decode(values);
 
         var layout = ArgumentLayout.For(new FunctionSignature(["unsigned __int64 *", "int", "int"], FunctionKind.Static, "int"));
 
@@ -37,13 +37,13 @@ public class FullTraceArgumentCallTests
 
         values[7] = 7;
 
-        Assert.Equal(7, FullTraceArgumentCall.From(values).Node);
+        Assert.Equal(7, FullTraceArgumentCall.Decode(values).Node);
     }
 
     [Fact]
     public void Only_Integer_Register_Arguments_Are_Captured()
     {
-        var call = FullTraceArgumentCall.From(new ulong[FullTraceArgumentCall.ValueCount]);
+        var call = FullTraceArgumentCall.Decode(new ulong[FullTraceArgumentCall.ValueCount]);
 
         var layout = ArgumentLayout.For(new FunctionSignature(["double", "int", "int", "int", "int"], FunctionKind.Free, null));
 

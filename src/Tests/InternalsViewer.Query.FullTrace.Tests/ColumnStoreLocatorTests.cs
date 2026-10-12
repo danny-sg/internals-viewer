@@ -106,7 +106,7 @@ public class ColumnStoreLocatorTests
 
         var calls = builder.Build().CallsOf(0x1000, 0)!;
 
-        Assert.Equal("Segment (Rowgroup 3, Column 2)", calls[0].LocatorAt(1)?.ToString());
+        Assert.Equal("Segment (Rowgroup 3, Column 2)", calls[0].GetLocator(1)?.ToString());
         Assert.Empty(calls[1].Locators);
     }
 
