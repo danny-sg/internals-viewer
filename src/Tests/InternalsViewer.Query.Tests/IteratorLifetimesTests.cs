@@ -2,6 +2,7 @@ using InternalsViewer.Query.CallStack;
 using InternalsViewer.Query.CallStack.TimeTravel.Iterators;
 using InternalsViewer.Query.CallStack.TimeTravel.Native;
 using InternalsViewer.Query.CallStack.TimeTravel.Timeline;
+using InternalsViewer.Query.CallStack.TimeTravel.Timeline.Enums;
 using InternalsViewer.Query.Events.Operators;
 using InternalsViewer.Query.Plans.Model;
 

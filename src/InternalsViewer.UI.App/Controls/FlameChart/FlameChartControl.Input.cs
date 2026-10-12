@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using InternalsViewer.Query.CallStack.TimeTravel.Timeline;
+using InternalsViewer.Query.CallStack.TimeTravel.Timeline.Enums;
 using InternalsViewer.UI.App.Helpers;
 using Microsoft.UI.Input;
 using Microsoft.UI.Xaml.Input;

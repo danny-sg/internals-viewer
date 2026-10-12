@@ -1,7 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using InternalsViewer.Query.CallStack.TimeTravel.Timeline;
+using InternalsViewer.Query.CallStack.TimeTravel.Timeline.Enums;
 using SkiaSharp;
 
 namespace InternalsViewer.UI.App.Controls.FlameChart;

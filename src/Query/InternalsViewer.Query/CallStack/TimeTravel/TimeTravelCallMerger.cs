@@ -1,5 +1,6 @@
 using InternalsViewer.Query.CallStack.TimeTravel.Native;
 using InternalsViewer.Query.CallStack.TimeTravel.Timeline;
+using InternalsViewer.Query.CallStack.TimeTravel.Timeline.Enums;
 
 namespace InternalsViewer.Query.CallStack.TimeTravel;
 

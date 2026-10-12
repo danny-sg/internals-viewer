@@ -1,6 +1,5 @@
 using System.Runtime.InteropServices;
 using System.Text;
-using InternalsViewer.Internals.Engine.Loading;
 using InternalsViewer.Query.Debugging.TimeTravel;
 using InternalsViewer.Query.CallStack.TimeTravel.CallLog;
 using InternalsViewer.Query.CallStack.TimeTravel.Native;

@@ -1,5 +1,3 @@
-using InternalsViewer.Query.Plans.Model;
-
 namespace InternalsViewer.Query.Plans.Parsers.Predicates;
 
 /// <summary>

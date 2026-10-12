@@ -1,8 +1,6 @@
 using InternalsViewer.Query.Events.Latches;
-using InternalsViewer.Query.Events.Operators;
 using InternalsViewer.Query.Events.Reads;
 using InternalsViewer.Query.Events.Transactions;
-using InternalsViewer.Query.Events;
 using InternalsViewer.Query.Events.BatchMode;
 using InternalsViewer.Query.Plans.Model;
 using InternalsViewer.Query.Plans.Operators;

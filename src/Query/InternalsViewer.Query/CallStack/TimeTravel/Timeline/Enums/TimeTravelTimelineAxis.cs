@@ -1,4 +1,4 @@
-namespace InternalsViewer.Query.CallStack.TimeTravel.Timeline;
+namespace InternalsViewer.Query.CallStack.TimeTravel.Timeline.Enums;
 
 public enum TimeTravelTimelineAxis
 {

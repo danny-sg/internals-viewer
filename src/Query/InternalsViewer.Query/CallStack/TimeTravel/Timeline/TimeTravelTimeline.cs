@@ -4,6 +4,7 @@ using InternalsViewer.Query.Export;
 using InternalsViewer.Query.CallStack.TimeTravel.Memory;
 using InternalsViewer.Query.CallStack.TimeTravel.Native;
 using InternalsViewer.Query.Helpers;
+using InternalsViewer.Query.CallStack.TimeTravel.Timeline.Enums;
 
 namespace InternalsViewer.Query.CallStack.TimeTravel.Timeline;
 

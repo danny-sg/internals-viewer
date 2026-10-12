@@ -1,3 +1,5 @@
+using InternalsViewer.Query.CallStack.TimeTravel.Timeline.Enums;
+
 namespace InternalsViewer.Query.CallStack.TimeTravel.Timeline;
 
 public sealed class TimeTravelTimelineThread(uint threadId, IReadOnlyList<TimeTravelTimelineRow> rows, long calls)

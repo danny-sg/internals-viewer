@@ -1,5 +1,4 @@
-﻿using InternalsViewer.Execution.AccessPaths.Search;
-using System.Data;
+﻿using System.Data;
 using System.Xml.Linq;
 using InternalsViewer.Execution.AccessPaths.Aggregation;
 using InternalsViewer.Execution.AccessPaths.Predicates;
@@ -8,7 +7,6 @@ using InternalsViewer.Execution.AccessPaths.Windowing;
 using InternalsViewer.Query.Plans.Model;
 using InternalsViewer.Query.Plans.Operators;
 using InternalsViewer.Query.Plans.Parsers.Predicates;
-using InternalsViewer.Query.Plans;
 
 namespace InternalsViewer.Query.Plans.Parsers;
 

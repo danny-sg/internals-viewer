@@ -4,6 +4,7 @@ using InternalsViewer.Query.CallStack.TimeTravel.CallLog;
 using InternalsViewer.Query.CallStack.TimeTravel.Memory;
 using InternalsViewer.Query.CallStack.TimeTravel.Native;
 using InternalsViewer.Query.CallStack.TimeTravel.Timeline;
+using InternalsViewer.Query.CallStack.TimeTravel.Timeline.Enums;
 using InternalsViewer.Query.Events.Operators;
 using InternalsViewer.Query.Plans.Model;
 

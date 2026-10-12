@@ -4,6 +4,7 @@ using System.Linq;
 using InternalsViewer.Query.CallStack;
 using InternalsViewer.Query.CallStack.TimeTravel.Memory;
 using InternalsViewer.Query.CallStack.TimeTravel.Timeline;
+using InternalsViewer.Query.CallStack.TimeTravel.Timeline.Enums;
 using InternalsViewer.UI.App.Models.Query.CallStack;
 using Microsoft.UI;
 using Microsoft.UI.Xaml.Controls;

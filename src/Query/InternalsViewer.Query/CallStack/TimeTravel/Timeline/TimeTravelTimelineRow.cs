@@ -1,3 +1,4 @@
+using InternalsViewer.Query.CallStack.TimeTravel.Timeline.Enums;
 using InternalsViewer.Query.Export;
 using InternalsViewer.Query.Helpers;
 

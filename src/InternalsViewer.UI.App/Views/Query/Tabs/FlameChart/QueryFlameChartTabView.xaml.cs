@@ -1,7 +1,7 @@
 using System;
 using System.ComponentModel;
 using InternalsViewer.Query.CallStack;
-using InternalsViewer.Query.CallStack.TimeTravel.Timeline;
+using InternalsViewer.Query.CallStack.TimeTravel.Timeline.Enums;
 using InternalsViewer.Query.Plans.Model;
 using InternalsViewer.UI.App.Controls.Docking;
 using InternalsViewer.UI.App.ViewModels;

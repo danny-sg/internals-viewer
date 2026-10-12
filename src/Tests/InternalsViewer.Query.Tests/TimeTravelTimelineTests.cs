@@ -2,6 +2,7 @@ using InternalsViewer.Query.CallStack;
 using InternalsViewer.Query.CallStack.TimeTravel.Memory;
 using InternalsViewer.Query.CallStack.TimeTravel.Native;
 using InternalsViewer.Query.CallStack.TimeTravel.Timeline;
+using InternalsViewer.Query.CallStack.TimeTravel.Timeline.Enums;
 
 namespace InternalsViewer.Query.Tests;
 

@@ -1,4 +1,5 @@
 using InternalsViewer.Query.CallStack.TimeTravel.Timeline;
+using InternalsViewer.Query.CallStack.TimeTravel.Timeline.Enums;
 using InternalsViewer.Query.Events.Operators;
 using InternalsViewer.Query.Helpers;
 

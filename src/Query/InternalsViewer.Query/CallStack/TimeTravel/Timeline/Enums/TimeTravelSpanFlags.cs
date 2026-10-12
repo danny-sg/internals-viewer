@@ -1,4 +1,4 @@
-namespace InternalsViewer.Query.CallStack.TimeTravel.Timeline;
+namespace InternalsViewer.Query.CallStack.TimeTravel.Timeline.Enums;
 
 [Flags]
 public enum TimeTravelSpanFlags : byte
