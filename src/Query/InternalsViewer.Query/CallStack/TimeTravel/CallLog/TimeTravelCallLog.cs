@@ -308,7 +308,7 @@ public sealed class TimeTravelCallLog
 
         public void AddLocators(IntPtr values, int count)
         {
-            var size = count * Marshal.SizeOf<TimeTravelMemoryValue>();
+            var size = count * Marshal.SizeOf<TimeTravelPointerValue>();
 
             var buffer = ArrayPool<byte>.Shared.Rent(size);
 
@@ -316,7 +316,7 @@ public sealed class TimeTravelCallLog
             {
                 Marshal.Copy(values, buffer, 0, size);
 
-                AddLocators(MemoryMarshal.Cast<byte, TimeTravelMemoryValue>(buffer.AsSpan(0, size)));
+                AddLocators(MemoryMarshal.Cast<byte, TimeTravelPointerValue>(buffer.AsSpan(0, size)));
             }
             finally
             {
@@ -324,7 +324,7 @@ public sealed class TimeTravelCallLog
             }
         }
 
-        public void AddLocators(ReadOnlySpan<TimeTravelMemoryValue> values)
+        public void AddLocators(ReadOnlySpan<TimeTravelPointerValue> values)
         {
             foreach (var value in values)
             {
@@ -379,7 +379,7 @@ public sealed class TimeTravelCallLog
             return new Chunk(calls, compressed.ToArray());
         }
 
-        private List<(int Call, TimeTravelLocator Locator, bool AtReturn)> FoundFor(TimeTravelMemoryValue value)
+        private List<(int Call, TimeTravelLocator Locator, bool AtReturn)> FoundFor(TimeTravelPointerValue value)
         {
             if (!Found.TryGetValue((value.Function, value.Instance), out var found))
             {
@@ -391,7 +391,7 @@ public sealed class TimeTravelCallLog
             return found;
         }
 
-        private ulong[]? AddKeyPart(TimeTravelMemoryValue value)
+        private ulong[]? AddKeyPart(TimeTravelPointerValue value)
         {
             var identity = (value.Function, value.Instance, value.Call, value.Register);
 

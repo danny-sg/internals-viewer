@@ -61,7 +61,7 @@ namespace
 
     constexpr int32_t ReturnRegister = 8;
 
-    constexpr size_t MemoryChunk = 65536;
+    constexpr size_t PointerValueChunk = 65536;
 
     constexpr size_t ChunkCalls = 16384;
 
@@ -194,9 +194,9 @@ namespace
         CallSpanCallback                                    LogSpans = nullptr;
         std::vector<CallSpan>                               Spans;
         std::unordered_map<uint32_t, ThreadClock>           Clocks;
-        std::unordered_map<uint64_t, std::vector<MemoryRead>> Reads;
-        MemoryValueCallback                                 LogMemory = nullptr;
-        std::vector<MemoryValue>                            Memory;
+        std::unordered_map<uint64_t, std::vector<PointerRead>> Reads;
+        PointerValueCallback                                LogPointerValues = nullptr;
+        std::vector<PointerValue>                           PointerValues;
 
         int32_t Child(int32_t parent, uint64_t address, uint64_t instance)
         {
@@ -273,9 +273,9 @@ namespace
             Spans.clear();
         }
 
-        std::vector<MemoryRead> const* ReadsOf(uint64_t function) const
+        std::vector<PointerRead> const* ReadsOf(uint64_t function) const
         {
-            if (LogMemory == nullptr || Reads.empty())
+            if (LogPointerValues == nullptr || Reads.empty())
             {
                 return nullptr;
             }
@@ -285,7 +285,11 @@ namespace
             return reads == Reads.end() ? nullptr : &reads->second;
         }
 
-        void ReadMemory(IThreadView const& thread, LoggedFunction const& function, uint32_t call, MemoryRead const& read, uint64_t pointer)
+        void ReadPointer(IThreadView const&    thread,
+                         LoggedFunction const& function,
+                         uint32_t              call,
+                         PointerRead const&    read,
+                         uint64_t              pointer)
         {
             if (pointer == 0)
             {
@@ -318,24 +322,30 @@ namespace
                 return;
             }
 
-            Memory.push_back(MemoryValue{ function.Address, function.Instance, value, call, read.Register, read.Offset, read.AtReturn });
+            PointerValues.push_back(PointerValue{ function.Address,
+                                                  function.Instance,
+                                                  value,
+                                                  call,
+                                                  read.Register,
+                                                  read.Offset,
+                                                  read.AtReturn });
 
-            if (Memory.size() >= MemoryChunk)
+            if (PointerValues.size() >= PointerValueChunk)
             {
-                FlushMemory();
+                FlushPointerValues();
             }
         }
 
-        void FlushMemory()
+        void FlushPointerValues()
         {
-            if (LogMemory == nullptr || Memory.empty())
+            if (LogPointerValues == nullptr || PointerValues.empty())
             {
                 return;
             }
 
-            LogMemory(Memory.data(), static_cast<int32_t>(Memory.size()));
+            LogPointerValues(PointerValues.data(), static_cast<int32_t>(PointerValues.size()));
 
-            Memory.clear();
+            PointerValues.clear();
         }
     };
 
@@ -491,7 +501,7 @@ namespace
                                  : read.Register < ArgumentRegisters ? values[IntegerValues + read.Register]
                                                                      : frame.StackArguments[read.Register - ArgumentRegisters];
 
-            tree.ReadMemory(thread, *frame.Function, frame.LoggedCall, read, pointer);
+            tree.ReadPointer(thread, *frame.Function, frame.LoggedCall, read, pointer);
         }
     }
 
@@ -556,7 +566,7 @@ namespace
 
             if (read.AtReturn == 0)
             {
-                tree.ReadMemory(thread, *logged.Function, logged.Index, read, pointer);
+                tree.ReadPointer(thread, *logged.Function, logged.Index, read, pointer);
             }
         }
     }
@@ -1014,11 +1024,11 @@ extern "C"
                          int32_t               instanceMethodCount,
                          const uint64_t*       excludedFunctions,
                          int32_t               excludedFunctionCount,
-                         const MemoryRead*     memoryReads,
-                         int32_t               memoryReadCount,
+                         const PointerRead*    pointerReads,
+                         int32_t               pointerReadCount,
                          CallChunkCallback     logCalls,
                          CallSpanCallback      logSpans,
-                         MemoryValueCallback   logMemory,
+                         PointerValueCallback  logPointerValues,
                          ProgressCallback      progress,
                          volatile int32_t*     cancel,
                          void**                tree)
@@ -1045,16 +1055,16 @@ extern "C"
             result->Excluded.insert(excludedFunctions[index]);
         }
 
-        for (int32_t index = 0; index < memoryReadCount; index++)
+        for (int32_t index = 0; index < pointerReadCount; index++)
         {
-            result->Reads[memoryReads[index].Function].push_back(memoryReads[index]);
+            result->Reads[pointerReads[index].Function].push_back(pointerReads[index]);
         }
 
         result->LogCalls = logCalls;
 
         result->LogSpans = logSpans;
 
-        result->LogMemory = logMemory;
+        result->LogPointerValues = logPointerValues;
 
         auto const status = ReplayTrace(engine,
                                         result->Threads,
@@ -1086,10 +1096,10 @@ extern "C"
 
         result->FlushSpans();
 
-        result->FlushMemory();
+        result->FlushPointerValues();
 
         result->Spans = {};
-        result->Memory = {};
+        result->PointerValues = {};
         result->Clocks.clear();
 
         result->Stacks.clear();

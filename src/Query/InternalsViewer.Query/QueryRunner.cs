@@ -495,9 +495,7 @@ public sealed class QueryRunner(ILogger<QueryRunner> logger,
 
         DeleteTimeTravelTrace(request.TraceFile, details);
 
-        var callStack = new CallStackTree();
-
-        var replayed = TimeTravelCallMerger.Merge(callStack, replay.Nodes, replay.Modules);
+        var (callStack, replayed) = TimeTravelCallTreeBuilder.Build(replay.Nodes, replay.Modules);
 
         var nodes = replay.Nodes;
 
@@ -556,7 +554,7 @@ public sealed class QueryRunner(ILogger<QueryRunner> logger,
                               timeline.SpanCount,
                               timeline.Threads.Count);
 
-        TimeTravelCallMerger.AddActivity(timeline, ActivityBuckets);
+        timeline.AddCallActivity(ActivityBuckets);
 
         steps.Complete();
 

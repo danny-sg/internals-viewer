@@ -152,7 +152,7 @@ public class TimeTravelCallLogTests
 
         builder.Add(0x1000, 0, Chunk(Row(1), Row(2)), 2);
 
-        builder.AddLocators([new TimeTravelMemoryValue(0x1000, 0, Page336, 1, 2)]);
+        builder.AddLocators([new TimeTravelPointerValue(0x1000, 0, Page336, 1, 2)]);
 
         var log = builder.Build();
 
@@ -172,9 +172,9 @@ public class TimeTravelCallLogTests
 
         builder.Add(0x1000, 0, Chunk(Row(1), Row(2)), 2);
 
-        builder.AddLocators([new TimeTravelMemoryValue(0x1000, 0, 3, 0, 1),
-                             new TimeTravelMemoryValue(0x1000, 0, 3, 1, 1),
-                             new TimeTravelMemoryValue(0x1000, 0, 5, 1, 1, AtReturn: 1)]);
+        builder.AddLocators([new TimeTravelPointerValue(0x1000, 0, 3, 0, 1),
+                             new TimeTravelPointerValue(0x1000, 0, 3, 1, 1),
+                             new TimeTravelPointerValue(0x1000, 0, 5, 1, 1, AtReturn: 1)]);
 
         var calls = builder.Build().CallsOf(0x1000, 0)!;
 
@@ -193,7 +193,7 @@ public class TimeTravelCallLogTests
 
         builder.Add(0x1000, 0, Chunk(Row(10, node: 0)), 1);
 
-        builder.AddLocators([new TimeTravelMemoryValue(0x1000, 0, 3, 0, 1)]);
+        builder.AddLocators([new TimeTravelPointerValue(0x1000, 0, 3, 0, 1)]);
 
         var log = builder.Build();
 
@@ -211,7 +211,7 @@ public class TimeTravelCallLogTests
 
         builder.Add(0x1000, 0, Chunk(Row(1)), 1);
 
-        builder.AddLocators([new TimeTravelMemoryValue(0x1000, 0, Page336, 0, 1), new TimeTravelMemoryValue(0x2000, 0, Page336, 0, 2)]);
+        builder.AddLocators([new TimeTravelPointerValue(0x1000, 0, Page336, 0, 1), new TimeTravelPointerValue(0x2000, 0, Page336, 0, 2)]);
 
         Assert.Equal(0, builder.Build().LocatorCount);
     }
@@ -228,9 +228,9 @@ public class TimeTravelCallLogTests
 
         builder.Add(0x1000, 0, Chunk(Row(10, node: 0), Row(11, node: 1), Row(12, node: 1)), 3);
 
-        builder.AddLocators([new TimeTravelMemoryValue(0x1000, 0, Page336, 0, 2),
-                             new TimeTravelMemoryValue(0x1000, 0, Page336 + 1, 1, 2),
-                             new TimeTravelMemoryValue(0x1000, 0, Page336 + 2, 2, 2)]);
+        builder.AddLocators([new TimeTravelPointerValue(0x1000, 0, Page336, 0, 2),
+                             new TimeTravelPointerValue(0x1000, 0, Page336 + 1, 1, 2),
+                             new TimeTravelPointerValue(0x1000, 0, Page336 + 2, 2, 2)]);
 
         var log = builder.Build();
 

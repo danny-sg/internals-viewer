@@ -366,7 +366,7 @@ public class RunExportTests
 
         log.Add(0x30, Scan, Columns(Call(1, 5), Call(2, 6)), 2);
 
-        log.AddLocators([new TimeTravelMemoryValue(0x30, Scan, Page336, 1, 2)]);
+        log.AddLocators([new TimeTravelPointerValue(0x30, Scan, Page336, 1, 2)]);
 
         var callLog = log.Build();
 

@@ -98,10 +98,10 @@ public class ColumnStoreLocatorTests
 
         var (first, second, third) = Words(ColumnStoreObjectType.ColumnSegment, 2, 3);
 
-        builder.AddLocators([new TimeTravelMemoryValue(0x1000, 0, first, 0, 1, 0),
-                             new TimeTravelMemoryValue(0x1000, 0, second, 0, 1, 8),
-                             new TimeTravelMemoryValue(0x1000, 0, third, 0, 1, 16),
-                             new TimeTravelMemoryValue(0x1000, 0, first, 1, 1, 0)]);
+        builder.AddLocators([new TimeTravelPointerValue(0x1000, 0, first, 0, 1, 0),
+                             new TimeTravelPointerValue(0x1000, 0, second, 0, 1, 8),
+                             new TimeTravelPointerValue(0x1000, 0, third, 0, 1, 16),
+                             new TimeTravelPointerValue(0x1000, 0, first, 1, 1, 0)]);
 
         var calls = builder.Build().CallsOf(0x1000, 0)!;
 
@@ -112,8 +112,8 @@ public class ColumnStoreLocatorTests
     [Fact]
     public void The_Native_Structures_Match_The_Bridge()
     {
-        Assert.Equal(40, Marshal.SizeOf<TimeTravelMemoryRead>());
-        Assert.Equal(40, Marshal.SizeOf<TimeTravelMemoryValue>());
+        Assert.Equal(40, Marshal.SizeOf<TimeTravelPointerRead>());
+        Assert.Equal(40, Marshal.SizeOf<TimeTravelPointerValue>());
     }
 
     private static CallStack.Arguments.FunctionSignature Fix()

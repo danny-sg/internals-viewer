@@ -20,6 +20,6 @@ namespace InternalsViewer.Query.CallStack.TimeTravel;
 /// Hierarchical/row layout start and end position for each call per thread
 /// </param>
 internal sealed record TimeTravelReplay(TimeTravelCallNode[] Nodes,
-                                      IReadOnlyList<TimeTravelModule> Modules,
-                                      TimeTravelCallLog CallLog,
-                                      TimeTravelTimeline Timeline);
+                                        IReadOnlyList<TimeTravelModule> Modules,
+                                        TimeTravelCallLog CallLog,
+                                        TimeTravelTimeline Timeline);

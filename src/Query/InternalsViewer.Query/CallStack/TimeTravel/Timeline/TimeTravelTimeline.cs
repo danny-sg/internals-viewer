@@ -402,6 +402,35 @@ public sealed class TimeTravelTimeline
 
     internal void SetLifetimes(IReadOnlyList<TimeTravelOperatorLifetime> lifetimes) => Lifetimes = lifetimes;
 
+    internal void AddCallActivity(int buckets)
+    {
+        var start = StartOf(TimeTravelTimelineAxis.Position);
+
+        var length = EndOf(TimeTravelTimelineAxis.Position) - start;
+
+        if (buckets <= 0 || length <= 0)
+        {
+            return;
+        }
+
+        foreach (var span in ResolvedSpans())
+        {
+            if (span.Row.FlagsAt(span.Index).HasFlag(TimeTravelSpanFlags.StartUnknown))
+            {
+                continue;
+            }
+
+            if (span.Node.CallActivity.Length != buckets)
+            {
+                span.Node.CallActivity = new int[buckets];
+            }
+
+            var bucket = (int)((span.StartOf(TimeTravelTimelineAxis.Position) - start) / length * buckets);
+
+            span.Node.CallActivity[Math.Clamp(bucket, 0, buckets - 1)]++;
+        }
+    }
+
     private static List<(double Start, double End)> Windows(IEnumerable<TimeTravelTimelineRow> roots)
     {
         var windows = new List<(double Start, double End)>();

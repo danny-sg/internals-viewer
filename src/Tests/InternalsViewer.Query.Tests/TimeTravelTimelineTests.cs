@@ -391,6 +391,28 @@ public class TimeTravelTimelineTests
                      timeline.SelfAllocations().OrderBy(s => s.Depth).Select(s => (s.Depth, s.Bytes)));
     }
 
+    [Fact]
+    public void Call_Activity_Counts_Each_Call_In_The_Bucket_Where_It_Starts()
+    {
+        var tree = new CallStackTree();
+
+        var root = tree.AddCall(tree.Root, new CallstackFrame { Module = "sqlmin", Rva = 0x100 }, 3);
+        var child = tree.AddCall(root, new CallstackFrame { Module = "sqlmin", Rva = 0x200 }, 2);
+
+        var timeline = Build(Span(node: 0, start: 0, end: 10),
+                             Span(node: 0, start: 80, end: 85),
+                             Span(node: 0, start: 90, end: 100),
+                             Span(node: 1, start: 30, end: 35),
+                             Span(node: 1, start: 31, end: 32, flags: 3));
+
+        timeline.MapNodes([root, child, null]);
+
+        timeline.AddCallActivity(4);
+
+        Assert.Equal([1, 0, 0, 2], root.CallActivity);
+        Assert.Equal([0, 1, 0, 0], child.CallActivity);
+    }
+
     private static TimeTravelTimeline Build(params TimeTravelCallSpan[] spans)
     {
         var builder = new TimeTravelTimeline.Builder();

@@ -128,9 +128,9 @@ internal sealed class TimeTravelSession : IDisposable
 
         TimeTravelBridge.CallSpanCallback onSpans = timeline.Add;
 
-        TimeTravelBridge.MemoryValueCallback onMemory = log.AddLocators;
+        TimeTravelBridge.PointerValueCallback onPointerValues = log.AddLocators;
 
-        TimeTravelMemoryRead[] reads = [.. functions.Locators.Select(TimeTravelMemoryRead.From)];
+        TimeTravelPointerRead[] reads = [.. functions.Locators.Select(TimeTravelPointerRead.From)];
 
         ulong[] instanceMethods = [.. functions.InstanceMethods.Select(TimeTravelBridge.PackInstanceMethod)];
 
@@ -147,7 +147,7 @@ internal sealed class TimeTravelSession : IDisposable
                                                        reads.Length,
                                                        onChunk,
                                                        onSpans,
-                                                       onMemory,
+                                                       onPointerValues,
                                                        onProgress,
                                                        cancel,
                                                        out var tree);
@@ -157,7 +157,7 @@ internal sealed class TimeTravelSession : IDisposable
 
             GC.KeepAlive(onSpans);
 
-            GC.KeepAlive(onMemory);
+            GC.KeepAlive(onPointerValues);
 
             GC.KeepAlive(onProgress);
 

@@ -29,7 +29,7 @@ extern "C"
 
     constexpr uint32_t MaximumHops = 3;
 
-    struct MemoryRead
+    struct PointerRead
     {
         uint64_t Function;
         int32_t  Register;
@@ -39,7 +39,7 @@ extern "C"
         uint32_t Path[MaximumHops];
     };
 
-    struct MemoryValue
+    struct PointerValue
     {
         uint64_t Function;
         uint64_t Instance;
@@ -56,7 +56,7 @@ extern "C"
 
     typedef void(__stdcall* CallSpanCallback)(const CallSpan* spans, int32_t count);
 
-    typedef void(__stdcall* MemoryValueCallback)(const MemoryValue* values, int32_t count);
+    typedef void(__stdcall* PointerValueCallback)(const PointerValue* values, int32_t count);
 
     __declspec(dllexport) int32_t OpenTrace(const wchar_t* replayLibraryPath, const wchar_t* tracePath, void** trace);
 
@@ -76,11 +76,11 @@ extern "C"
                                                int32_t               instanceMethodCount,
                                                const uint64_t*       excludedFunctions,
                                                int32_t               excludedFunctionCount,
-                                               const MemoryRead*     memoryReads,
-                                               int32_t               memoryReadCount,
+                                               const PointerRead*    pointerReads,
+                                               int32_t               pointerReadCount,
                                                CallChunkCallback     logCalls,
                                                CallSpanCallback      logSpans,
-                                               MemoryValueCallback   logMemory,
+                                               PointerValueCallback  logPointerValues,
                                                ProgressCallback      progress,
                                                volatile int32_t*     cancel,
                                                void**                tree);
