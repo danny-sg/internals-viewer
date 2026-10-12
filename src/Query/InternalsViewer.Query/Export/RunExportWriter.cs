@@ -204,8 +204,12 @@ public sealed class RunExportWriter
             references.LogRecords.Add(logRecord);
         }
 
-        var sectionTrees = collector.Trees.ToDictionary<(string Name, CallStackTree Tree), CallStackNode>(t => t.Tree.Root,
-                                                                                                           ReferenceEqualityComparer.Instance);
+        var sectionTrees = new Dictionary<CallStackNode, (string Name, CallStackTree Tree)>(ReferenceEqualityComparer.Instance);
+
+        foreach (var sectionTree in collector.Trees)
+        {
+            sectionTrees[sectionTree.Tree.Root] = sectionTree;
+        }
 
         var trees = new List<(ExportCallTree Tree, IReadOnlyList<CallStackNode> Roots)>(roots.Count + 1);
 
