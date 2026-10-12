@@ -5,6 +5,7 @@ using InternalsViewer.Query.CallStack.TimeTravel.Memory;
 using InternalsViewer.Query.CallStack.TimeTravel.Native;
 using InternalsViewer.Query.Helpers;
 using InternalsViewer.Query.CallStack.TimeTravel.Timeline.Enums;
+using InternalsViewer.Query.Events;
 
 namespace InternalsViewer.Query.CallStack.TimeTravel.Timeline;
 
@@ -40,6 +41,8 @@ public sealed class TimeTravelTimeline
         InstructionEnd = source.InstructionEnd;
         Memory = source.Memory;
         Lifetimes = source.Lifetimes;
+        EventLinks = source.EventLinks;
+        EventLinksBySequence = source.EventLinksBySequence;
 
         if (!fit || threads.Count == 0)
         {
@@ -83,6 +86,8 @@ public sealed class TimeTravelTimeline
 
     public IReadOnlyList<TimeTravelOperatorLifetime> Lifetimes { get; private set; } = [];
 
+    public IReadOnlyList<TimeTravelEventLink> EventLinks { get; private set; } = [];
+
     internal CallStackNode?[] MappedNodes => Nodes;
 
     private double PositionStart { get; }
@@ -101,6 +106,8 @@ public sealed class TimeTravelTimeline
 
     private TimeTravelMemoryIndex Memory { get; set; } = TimeTravelMemoryIndex.Empty;
 
+    private Dictionary<int, TimeTravelEventLink> EventLinksBySequence { get; set; } = [];
+
     public double StartOf(TimeTravelTimelineAxis axis) => axis == TimeTravelTimelineAxis.Position ? PositionStart : InstructionStart;
 
     public double EndOf(TimeTravelTimelineAxis axis) => axis == TimeTravelTimelineAxis.Position ? PositionEnd : InstructionEnd;
@@ -108,6 +115,19 @@ public sealed class TimeTravelTimeline
     public double StepOf(TimeTravelTimelineAxis axis) => axis == TimeTravelTimelineAxis.Position ? 1 / StepsPerSequence : 1;
 
     public CallStackNode? NodeOf(int node) => node >= 0 && node < Nodes.Length ? Nodes[node] : null;
+
+    public TimeTravelEventLink? EventLinkOf(EngineEvent engineEvent)
+    {
+        foreach (var owned in engineEvent.SelfAndOwned())
+        {
+            if (EventLinksBySequence.TryGetValue(owned.SequenceId, out var link))
+            {
+                return link;
+            }
+        }
+
+        return null;
+    }
 
     public IEnumerable<TimeTravelResolvedSpan> ResolvedSpans()
     {
@@ -401,6 +421,74 @@ public sealed class TimeTravelTimeline
     internal void MapNodes(CallStackNode?[] nodes) => Nodes = nodes;
 
     internal void SetLifetimes(IReadOnlyList<TimeTravelOperatorLifetime> lifetimes) => Lifetimes = lifetimes;
+
+    internal void SetEventLinks(IReadOnlyList<TimeTravelEventLink> links)
+    {
+        EventLinks = links;
+
+        EventLinksBySequence = [];
+
+        foreach (var link in links)
+        {
+            EventLinksBySequence.TryAdd(link.Event.SequenceId, link);
+        }
+    }
+
+    internal double PositionOf(ulong sequence, ulong steps)
+        => PositionOf(sequence, Math.Min(steps, (ulong)Math.Max(StepsPerSequence - 1, 0)), StepsPerSequence);
+
+    internal void WriteEventLinks(BinaryWriter writer, Func<CallStackNode, int> idOf)
+    {
+        writer.Write(EventLinks.Count);
+
+        foreach (var link in EventLinks)
+        {
+            writer.Write(link.Event.SequenceId);
+
+            writer.Write(link.Node is { } node ? idOf(node) : -1);
+
+            writer.Write(link.ThreadId);
+
+            writer.Write(link.Position);
+
+            writer.Write(link.Instructions);
+        }
+    }
+
+    internal static List<TimeTravelEventLink> ReadEventLinks(BinaryReader reader,
+                                                             IReadOnlyList<CallStackNode> nodesById,
+                                                             IEnumerable<EngineEvent> events)
+    {
+        var bySequence = events.BySequence();
+
+        var count = reader.ReadInt32();
+
+        var links = new List<TimeTravelEventLink>(count);
+
+        for (var index = 0; index < count; index++)
+        {
+            var sequence = reader.ReadInt32();
+
+            var node = reader.ReadInt32();
+
+            var thread = reader.ReadUInt32();
+
+            var position = reader.ReadDouble();
+
+            var instructions = reader.ReadDouble();
+
+            if (bySequence.TryGetValue(sequence, out var engineEvent))
+            {
+                links.Add(new TimeTravelEventLink(engineEvent,
+                                                  node >= 0 && node < nodesById.Count ? nodesById[node] : null,
+                                                  thread,
+                                                  position,
+                                                  instructions));
+            }
+        }
+
+        return links;
+    }
 
     internal void AddCallActivity(int buckets)
     {

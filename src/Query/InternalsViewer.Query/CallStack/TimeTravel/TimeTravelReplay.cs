@@ -22,4 +22,5 @@ namespace InternalsViewer.Query.CallStack.TimeTravel;
 internal sealed record TimeTravelReplay(TimeTravelCallNode[] Nodes,
                                         IReadOnlyList<TimeTravelModule> Modules,
                                         TimeTravelCallLog CallLog,
-                                        TimeTravelTimeline Timeline);
+                                        TimeTravelTimeline Timeline,
+                                        TimeTravelMarker[] Markers);

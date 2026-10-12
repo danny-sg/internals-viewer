@@ -72,9 +72,9 @@ internal static class IteratorPlanLinker
 
         foreach (var iterator in batchIterators)
         {
-            if (planObjects.TryGetValue(iterator.PlanObject, out var node))
+            if (planObjects.TryGetValue(iterator.PlanObjectId, out var node))
             {
-                planObjects.TryAdd(iterator.BatchObject, node);
+                planObjects.TryAdd(iterator.BatchObjectId, node);
             }
         }
 
@@ -134,7 +134,7 @@ internal static class IteratorPlanLinker
 
         foreach (var constructor in constructors)
         {
-            AddOperators(operators, constructor.PlanObject, constructor.Node.Frame?.Resolved?.PlanOperator ?? []);
+            AddOperators(operators, constructor.PlanObjectId, constructor.Node.Frame?.Resolved?.PlanOperator ?? []);
         }
 
         var frames = nodes.OfType<CallStackNode>().Where(n => n.Frame is { Instance: not 0 }).ToLookup(n => n.Frame!.Instance);
@@ -143,7 +143,7 @@ internal static class IteratorPlanLinker
         {
             foreach (var node in frames[iterator.Instance])
             {
-                AddOperators(operators, iterator.PlanObject, node.Frame?.Resolved?.PlanOperator ?? []);
+                AddOperators(operators, iterator.PlanObjectId, node.Frame?.Resolved?.PlanOperator ?? []);
             }
         }
 
@@ -267,7 +267,7 @@ internal static class IteratorPlanLinker
 
         foreach (var constructor in constructors)
         {
-            if (planObjects.TryGetValue(constructor.PlanObject, out var node))
+            if (planObjects.TryGetValue(constructor.PlanObjectId, out var node))
             {
                 instances.TryAdd(constructor.Object, node);
             }
@@ -275,7 +275,7 @@ internal static class IteratorPlanLinker
 
         foreach (var iterator in batchIterators)
         {
-            if (planObjects.TryGetValue(iterator.PlanObject, out var node))
+            if (planObjects.TryGetValue(iterator.PlanObjectId, out var node))
             {
                 instances.TryAdd(iterator.Instance, node);
             }
@@ -306,7 +306,7 @@ internal static class IteratorPlanLinker
                                  ChoiceKind Kind,
                                  IReadOnlyList<(PlanObject PlanObject, ExecutionOperatorEvent Operator)> Pairs);
 
-    private sealed record BatchIterator(ulong Instance, ulong BatchObject, ulong PlanObject);
+    private sealed record BatchIterator(ulong Instance, ulong BatchObjectId, ulong PlanObjectId);
 
     private sealed class LoggedCall(CallStackNode node, int index, TimeTravelArgumentCall call, int objectRegister)
     {
@@ -322,7 +322,7 @@ internal static class IteratorPlanLinker
 
         public ulong Object => Call.Slot(ObjectRegister);
 
-        public ulong PlanObject => Call.Slot(PlanObjectRegister);
+        public ulong PlanObjectId => Call.Slot(PlanObjectRegister);
 
         private int ObjectRegister { get; } = objectRegister;
 
@@ -341,16 +341,14 @@ internal static class IteratorPlanLinker
         }
     }
 
-    private sealed class PlanObject(ulong address, LoggedCall first, IReadOnlyList<GlobPattern> operators)
+    private sealed class PlanObject(ulong address, LoggedCall first, IReadOnlyList<GlobPattern> objectOperators)
     {
         public static IComparer<PlanObject> ByFirstCall { get; }
             = Comparer<PlanObject>.Create((x, y) => LoggedCall.Compare(x.First, y.First));
 
         public ulong Address { get; } = address;
 
-        public LoggedCall First { get; } = first;
-
-        public IReadOnlyList<GlobPattern> Operators { get; } = operators;
+        public IReadOnlyList<GlobPattern> ObjectOperators { get; } = objectOperators;
 
         public List<PlanObject> Children { get; } = [];
 
@@ -359,6 +357,8 @@ internal static class IteratorPlanLinker
         public int Depth => Parent is null ? 0 : Parent.Depth + 1;
 
         private LoggedCall? Linked { get; set; }
+
+        private LoggedCall First { get; } = first;
 
         public static Dictionary<ulong, PlanObject> Build(IReadOnlyList<LoggedCall> factories,
                                                           ILookup<CallStackNode, LoggedCall> factoryNodes,
@@ -480,7 +480,7 @@ internal static class IteratorPlanLinker
                 choice = new Choice(skipPlanNode.Score - SkippedPlanNode, ChoiceKind.SkipPlanNode, [(planObject, onlyNode)]);
             }
 
-            if (planObject.Operators.Count == 0
+            if (planObject.ObjectOperators.Count == 0
                 && planObject.Children is [var onlyObject]
                 && Fit(onlyObject, operatorEvent) is var skipPlanObject
                 && skipPlanObject.Score - SkippedPlanObject > choice.Score)
@@ -580,12 +580,12 @@ internal static class IteratorPlanLinker
 
         private static int NameScore(PlanObject planObject, ExecutionOperatorEvent operatorEvent)
         {
-            if (planObject.Operators.Count == 0)
+            if (planObject.ObjectOperators.Count == 0)
             {
                 return 0;
             }
 
-            return planObject.Operators.Any(o => o.Matches(operatorEvent.Name)) ? NameMatch : NameMismatch;
+            return planObject.ObjectOperators.Any(o => o.Matches(operatorEvent.Name)) ? NameMatch : NameMismatch;
         }
     }
 }

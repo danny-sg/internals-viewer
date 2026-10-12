@@ -402,7 +402,9 @@ public sealed partial class FlameChartControl
     {
         var step = TickStep(TickSpacing / scale);
 
-        var first = Math.Ceiling(Math.Max(_viewStart, FullStart) / step) * step;
+        var origin = OriginOf(_axis);
+
+        var first = Math.Ceiling((Math.Max(_viewStart, FullStart) - origin) / step) * step + origin;
 
         for (var value = first; value <= Math.Min(_viewEnd, FullEnd); value += step)
         {
@@ -410,7 +412,7 @@ public sealed partial class FlameChartControl
 
             canvas.DrawLine(x, RulerHeight - 4, x, RulerHeight, _paints.Tick);
 
-            var label = FormatAxis(value, step);
+            var label = FormatAxis(value - origin, step);
 
             if (x + 3 + _paints.Font.MeasureText(label) < width)
             {

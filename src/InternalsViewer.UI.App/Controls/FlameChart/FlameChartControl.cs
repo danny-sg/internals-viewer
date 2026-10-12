@@ -144,6 +144,30 @@ public sealed partial class FlameChartControl : Grid, IDisposable
         set => SetValue(SelectedCallProperty, value);
     }
 
+    public static readonly DependencyProperty CurrentEventLinkProperty =
+        DependencyProperty.Register(nameof(CurrentEventLink),
+                                    typeof(TimeTravelEventLink),
+                                    typeof(FlameChartControl),
+                                    new PropertyMetadata(null, OnCurrentEventLinkChanged));
+
+    public TimeTravelEventLink? CurrentEventLink
+    {
+        get => (TimeTravelEventLink?)GetValue(CurrentEventLinkProperty);
+        set => SetValue(CurrentEventLinkProperty, value);
+    }
+
+    public static readonly DependencyProperty SweepBetweenEventsProperty =
+        DependencyProperty.Register(nameof(SweepBetweenEvents),
+                                    typeof(bool),
+                                    typeof(FlameChartControl),
+                                    new PropertyMetadata(false));
+
+    public bool SweepBetweenEvents
+    {
+        get => (bool)GetValue(SweepBetweenEventsProperty);
+        set => SetValue(SweepBetweenEventsProperty, value);
+    }
+
     private readonly SKXamlCanvas _canvas;
 
     private readonly Canvas _overlay;
@@ -380,6 +404,8 @@ public sealed partial class FlameChartControl : Grid, IDisposable
             return;
         }
 
+        StopTransition();
+
         var from = _playhead ?? _viewStart;
 
         double? next = null;
@@ -411,25 +437,23 @@ public sealed partial class FlameChartControl : Grid, IDisposable
             return;
         }
 
-        _playhead = target;
-
-        if (target < _viewStart || target > _viewEnd)
-        {
-            var range = _viewEnd - _viewStart;
-
-            SetView(target - range / 2, target + range / 2);
-        }
-
-        _canvas.Invalidate();
+        PlacePlayhead(target);
     }
 
     public void Dispose()
     {
         StopPlay();
 
+        StopTransition();
+
         if (_playTimer is not null)
         {
             _playTimer.Tick -= OnPlayTick;
+        }
+
+        if (_transitionTimer is not null)
+        {
+            _transitionTimer.Tick -= OnTransitionTick;
         }
 
         Loaded -= OnLoaded;
@@ -481,6 +505,43 @@ public sealed partial class FlameChartControl : Grid, IDisposable
         _colours.Clear();
         _labels.Clear();
         _parsedColours.Clear();
+    }
+
+    private double OriginOf(TimeTravelTimelineAxis axis) => _timeline?.StartOf(axis) ?? 0;
+
+    private void PlacePlayhead(double target)
+    {
+        _playhead = target;
+
+        if (target < _viewStart || target > _viewEnd)
+        {
+            var range = _viewEnd - _viewStart;
+
+            SetView(target - range / 2, target + range / 2);
+        }
+
+        _canvas.Invalidate();
+    }
+
+    private void FollowLink(TimeTravelEventLink? link)
+    {
+        if (_visible is null || link is null)
+        {
+            return;
+        }
+
+        StopPlay();
+
+        if (SweepBetweenEvents)
+        {
+            TransitionPlayhead(link.StartOf(_axis));
+
+            return;
+        }
+
+        StopTransition();
+
+        PlacePlayhead(link.StartOf(_axis));
     }
 
     private void OnLoaded(object sender, RoutedEventArgs e) => ApplyTheme();
@@ -701,6 +762,8 @@ public sealed partial class FlameChartControl : Grid, IDisposable
         ZoomToFit();
 
         StopPlay();
+
+        StopTransition();
 
         _playhead = null;
     }
@@ -987,6 +1050,8 @@ public sealed partial class FlameChartControl : Grid, IDisposable
 
         control.StopPlay();
 
+        control.StopTransition();
+
         control._playhead = null;
     }
 
@@ -1100,4 +1165,7 @@ public sealed partial class FlameChartControl : Grid, IDisposable
 
         control.Redraw();
     }
+
+    private static void OnCurrentEventLinkChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
+        => ((FlameChartControl)d).FollowLink(e.NewValue as TimeTravelEventLink);
 }

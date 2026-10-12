@@ -108,6 +108,12 @@ public sealed class EventReader(ILogger<EventReader> logger)
                                       ? null
                                       : eventParser.ToEngineEvent(eventResult, database, planHandles, callStack);
 
+                    if (engineEvent is not null)
+                    {
+                        // Gaps in sequence ids to allow the plan nodes to be slotted in
+                        engineEvent.SequenceId = sequenceId += 100;
+                    }
+
                     if (eventResult is not null)
                     {
                         var threadId = eventResult.GetUlongAction("system_thread_id");
@@ -115,15 +121,13 @@ public sealed class EventReader(ILogger<EventReader> logger)
                         rawEvents.Add(new RawEvent(new string(nameBuffer, 0, nameLength),
                                                    threadId is > 0 and <= uint.MaxValue and var id ? (uint?)id : null,
                                                    eventResult.GetUlongAction("worker_address"),
-                                                   eventResult.GetUlongAction("task_address")));
+                                                   eventResult.GetUlongAction("task_address"),
+                                                   engineEvent?.SequenceId));
                     }
 
                     if (engineEvent is not null)
                     {
                         startTimeStamp ??= engineEvent.Timestamp;
-
-                        // Gaps in sequence ids to allow the plan nodes to be slotted in
-                        engineEvent.SequenceId = sequenceId += 100;
 
                         engineEvent.TimeUs = (long)(engineEvent.Timestamp - startTimeStamp.Value).TotalMicroseconds;
 

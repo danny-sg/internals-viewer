@@ -126,6 +126,12 @@ public sealed partial class EventTimelineControl
 
         _readEventsByTime = [.. events.OfType<ReadEventGroup>().OrderBy(read => read.TimeUs)];
 
+        _eventsByTime = [.. events.Where(e => e is not ExecutionOperatorEvent).OrderBy(e => e.TimeUs)];
+
+        _eventStarts = [.. _eventsByTime.Select(StartMs)];
+
+        _currentEvent = -1;
+
         _latchEventsByTime = [.. events.OfType<LatchEvent>().Where(l => !readMembers.Contains(l)).OrderBy(latch => latch.TimeUs)];
 
         _fileReadEventsByTime = [.. EnumerateFileReads(events).OrderBy(read => read.TimeUs)];

@@ -164,14 +164,16 @@ public sealed partial class FlameChartControl
 
     private string PlayheadLabel(double value)
     {
+        var relative = value - OriginOf(_axis);
+
         if (_axis != TimeTravelTimelineAxis.Position || _timeline is not { } timeline)
         {
-            return $"{value:N0}";
+            return $"{relative:N0}";
         }
 
-        var sequence = Math.Floor(value);
+        var sequence = Math.Floor(relative);
 
-        return $"{sequence:N0}:{Math.Round((value - sequence) / timeline.StepOf(_axis)):N0}";
+        return $"{sequence:N0}:{Math.Round((relative - sequence) / timeline.StepOf(_axis)):N0}";
     }
 
     private void Orient(int width, float bottom)

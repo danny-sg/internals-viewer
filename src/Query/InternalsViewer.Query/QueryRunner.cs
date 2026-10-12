@@ -6,6 +6,8 @@ using InternalsViewer.Query.CallStack.Symbols;
 using InternalsViewer.Query.CallStack.TimeTravel;
 using InternalsViewer.Query.CallStack.TimeTravel.Memory;
 using InternalsViewer.Query.CallStack.TimeTravel.Iterators;
+using InternalsViewer.Query.CallStack.TimeTravel.Markers;
+using InternalsViewer.Query.CallStack.TimeTravel.Timeline;
 using InternalsViewer.Query.Debugging.TimeTravel;
 using InternalsViewer.Query.Events.BatchMode;
 using InternalsViewer.Query.Events.Consolidation;
@@ -581,6 +583,20 @@ public sealed class QueryRunner(ILogger<QueryRunner> logger,
         var lifetimes = IteratorLifetimeBuilder.Build(timeline, operators);
 
         timeline.SetLifetimes(lifetimes);
+
+        var expanded = events.ExpandOwned();
+
+        var marked = TimeTravelMarkerLinker.Link(replay.Markers, functions.Publishers, request.RawEvents, expanded, timeline);
+
+        timeline.SetEventLinks(marked.Links);
+
+        Logger.LogInformation("{Linked} of {Events} event(s) linked to their trace position: {Written} of {Markers} published "
+                              + "event(s) written to the session, {Paired} paired with an event",
+                              timeline.EventLinks.Count,
+                              request.RawEvents.Count,
+                              marked.Written,
+                              marked.Markers,
+                              marked.Paired);
 
         Logger.LogInformation("{Matched} of {Operators} operator(s) matched to recorded iterators, {Allocations} allocation(s) of "
                               + "{Bytes}, peak in use {PeakInUse}, {Unidentified} with no memory clerk, {Lifetimes} operator "

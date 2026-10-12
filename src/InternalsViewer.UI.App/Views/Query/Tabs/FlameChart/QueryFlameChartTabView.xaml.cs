@@ -51,6 +51,8 @@ public sealed partial class QueryFlameChartTabView : UserControl, IDocumentComma
 
         FlameChart.PlayStateChanged += OnPlayStateChanged;
 
+        SearchBar.SearchTextChanged += OnSearchTextChanged;
+
         Settings.PropertyChanged += OnSettingsPropertyChanged;
 
         FlameChart.HiddenCategories = SettingsViewModel.SplitCategories(Settings.CallTreeHiddenCategories);
@@ -135,6 +137,8 @@ public sealed partial class QueryFlameChartTabView : UserControl, IDocumentComma
         FlameChart.PlanNodeSelected -= OnPlanNodeSelected;
 
         FlameChart.PlayStateChanged -= OnPlayStateChanged;
+
+        SearchBar.SearchTextChanged -= OnSearchTextChanged;
 
         Settings.PropertyChanged -= OnSettingsPropertyChanged;
 
@@ -247,20 +251,19 @@ public sealed partial class QueryFlameChartTabView : UserControl, IDocumentComma
 
     private void ShowSearch(bool show)
     {
-        SearchBox.Visibility = show ? Visibility.Visible : Visibility.Collapsed;
+        SearchBar.Visibility = show ? Visibility.Visible : Visibility.Collapsed;
 
-        FlameChart.SearchText = show ? SearchBox.Text : null;
+        FlameChart.SearchText = show ? SearchBar.Text : null;
 
         _searchToggle?.IsChecked = show;
 
         if (show)
         {
-            SearchBox.Focus(FocusState.Programmatic);
+            SearchBar.FocusSearch();
         }
     }
 
-    private void OnSearchTextChanged(AutoSuggestBox sender, AutoSuggestBoxTextChangedEventArgs args)
-        => FlameChart.SearchText = sender.Text;
+    private void OnSearchTextChanged(string text) => FlameChart.SearchText = text;
 
     private void OnSearchKeyDown(object sender, KeyRoutedEventArgs e)
     {

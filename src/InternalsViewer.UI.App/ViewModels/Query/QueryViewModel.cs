@@ -262,6 +262,9 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
     private TimeTravelTimeline? _flameChart;
 
     [ObservableProperty]
+    private TimeTravelEventLink? _currentEventLink;
+
+    [ObservableProperty]
     private CallStackNode? _selectedCallNode;
 
     [ObservableProperty]
@@ -745,6 +748,14 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
         SyncIndexPage(timeUs);
     }
 
+    public void SetCurrentEvent(EngineEvent? engineEvent)
+    {
+        if (engineEvent is not null && FlameChart?.EventLinkOf(engineEvent) is { } link)
+        {
+            CurrentEventLink = link;
+        }
+    }
+
     public void SelectPlanNode(PlanNodeIdentifier identifier)
     {
         SelectedPlanNode = ResolvePlanNode(identifier);
@@ -808,7 +819,13 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
     }
 
     partial void OnSelectedEventChanged(EngineEvent? value)
-        => SelectedEventProperties = value?.GetProperties() ?? [];
+    {
+        SelectedEventProperties = value?.GetProperties() ?? [];
+
+        SetCurrentEvent(value);
+    }
+
+    partial void OnFlameChartChanged(TimeTravelTimeline? value) => CurrentEventLink = null;
 
     partial void OnCallStackChanged(CallStackTree? value) => Symbols.CallStack = value;
 

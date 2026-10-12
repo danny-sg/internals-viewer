@@ -57,6 +57,11 @@ internal static class RunExportWriter
             WriteBinary(zip, RunExport.CallLogEntry, CompressionLevel.NoCompression, fullTrace.CallLog.Write);
 
             WriteBinary(zip, RunExport.TimelineEntry, CompressionLevel.Fastest, w => fullTrace.Timeline.Write(w, references.Nodes.IdOf));
+
+            WriteBinary(zip,
+                        RunExport.EventLinksEntry,
+                        CompressionLevel.Fastest,
+                        w => fullTrace.Timeline.WriteEventLinks(w, references.Nodes.IdOf));
         }
 
         WriteJson(zip, RunExport.ManifestEntry, ManifestOf(content, trees, plans, references), ExportPackage.Indented);

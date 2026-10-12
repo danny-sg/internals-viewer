@@ -2,6 +2,7 @@ using System.Runtime.InteropServices;
 using System.Text;
 using InternalsViewer.Query.Debugging.TimeTravel;
 using InternalsViewer.Query.CallStack.TimeTravel.CallLog;
+using InternalsViewer.Query.CallStack.TimeTravel.Markers;
 using InternalsViewer.Query.CallStack.TimeTravel.Native;
 using InternalsViewer.Query.CallStack.TimeTravel.Timeline;
 
@@ -130,6 +131,12 @@ internal sealed class TimeTravelSession : IDisposable
 
         TimeTravelBridge.PointerValueCallback onPointerValues = log.AddLocators;
 
+        var markers = new TimeTravelMarkerLog();
+
+        TimeTravelBridge.MarkerCallback onMarkers = markers.Add;
+
+        ulong[] publishers = [.. functions.Publishers.Select(p => p.Address)];
+
         TimeTravelPointerRead[] reads = [.. functions.Locators.Select(TimeTravelPointerRead.From)];
 
         ulong[] instanceMethods = [.. functions.InstanceMethods.Select(TimeTravelBridge.PackInstanceMethod)];
@@ -145,9 +152,14 @@ internal sealed class TimeTravelSession : IDisposable
                                                        functions.Excluded.Length,
                                                        reads,
                                                        reads.Length,
+                                                       publishers,
+                                                       publishers.Length,
+                                                       functions.Reserves,
+                                                       functions.Reserves.Length,
                                                        onChunk,
                                                        onSpans,
                                                        onPointerValues,
+                                                       onMarkers,
                                                        onProgress,
                                                        cancel,
                                                        out var tree);
@@ -158,6 +170,8 @@ internal sealed class TimeTravelSession : IDisposable
             GC.KeepAlive(onSpans);
 
             GC.KeepAlive(onPointerValues);
+
+            GC.KeepAlive(onMarkers);
 
             GC.KeepAlive(onProgress);
 
@@ -174,7 +188,7 @@ internal sealed class TimeTravelSession : IDisposable
 
                 cancellationToken.ThrowIfCancellationRequested();
 
-                return new TimeTravelReplay(nodes, Modules, log.Build(), timeline.Build(nodes));
+                return new TimeTravelReplay(nodes, Modules, log.Build(), timeline.Build(nodes), markers.Build());
             }
             finally
             {

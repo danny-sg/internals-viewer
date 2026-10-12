@@ -125,6 +125,8 @@ public sealed partial class FlameChartControl
         {
             if (isDoubleClick)
             {
+                StopTransition();
+
                 _playhead = null;
 
                 _canvas.Invalidate();
@@ -632,6 +634,8 @@ public sealed partial class FlameChartControl
     {
         var scale = PixelsPerUnit((int)_overlay.ActualWidth);
 
+        StopTransition();
+
         _playhead = Math.Clamp(_viewStart + x / scale, Math.Max(_viewStart, FullStart), Math.Min(_viewEnd, FullEnd));
 
         HideToolTip();
@@ -887,7 +891,8 @@ public sealed partial class FlameChartControl
                 ? $"Thread {thread.ThreadId}  ·  Call {instructions.Call + 1:N0}  ·  Depth {hit.Depth}"
                 : $"Thread {thread.ThreadId}  ·  Depth {hit.Depth}",
             $"Instructions {instructions.End - instructions.Start:N0}",
-            $"Position {Math.Floor(positions.Start):N0} to {Math.Floor(positions.End):N0}"
+            $"Position {Math.Floor(positions.Start - OriginOf(TimeTravelTimelineAxis.Position)):N0} "
+            + $"to {Math.Floor(positions.End - OriginOf(TimeTravelTimelineAxis.Position)):N0}"
         };
 
         var (allocatedBytes, allocations) = timeline.AllocatedDuring(thread.ThreadId, positions.Start, positions.End);

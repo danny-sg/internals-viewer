@@ -848,9 +848,11 @@ public sealed partial class FlameChartControl
 
         var instructions = lifetime.EndOf(TimeTravelTimelineAxis.Instructions) - lifetime.StartOf(TimeTravelTimelineAxis.Instructions);
 
-        var start = lifetime.StartOf(TimeTravelTimelineAxis.Position);
+        var origin = OriginOf(TimeTravelTimelineAxis.Position);
 
-        var end = lifetime.EndOf(TimeTravelTimelineAxis.Position);
+        var start = lifetime.StartOf(TimeTravelTimelineAxis.Position) - origin;
+
+        var end = lifetime.EndOf(TimeTravelTimelineAxis.Position) - origin;
 
         var lines = new List<string>
         {

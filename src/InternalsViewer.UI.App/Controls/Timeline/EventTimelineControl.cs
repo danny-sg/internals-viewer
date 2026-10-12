@@ -120,6 +120,12 @@ public sealed partial class EventTimelineControl : Grid, IDisposable
 
     private FileEvent[] _fileReadEventsByTime = [];
 
+    private EngineEvent[] _eventsByTime = [];
+
+    private double[] _eventStarts = [];
+
+    private int _currentEvent = -1;
+
     // The markers/operators/traces/ruler don't change as the playhead sweeps, so they're recorded once
     // into a picture and replayed each frame; only the playhead, handles and selection dim are redrawn
     // live. The picture (and the _hitRegions built alongside it) is re-recorded only when an input that
@@ -263,6 +269,8 @@ public sealed partial class EventTimelineControl : Grid, IDisposable
 
     public event Action<EngineEvent>? EventSelected;
 
+    public event Action<EngineEvent?>? CurrentEventChanged;
+
     public event Action<EngineEvent>? EventDoubleClicked;
 
     public event Action<ExecutionOperatorEvent>? IndexOpenRequested;
@@ -334,6 +342,9 @@ public sealed partial class EventTimelineControl : Grid, IDisposable
         _readEventsByTime = [];
         _latchEventsByTime = [];
         _fileReadEventsByTime = [];
+        _eventsByTime = [];
+        _eventStarts = [];
+        _currentEvent = -1;
         _times = [];
         _orderedOperators = [];
     }

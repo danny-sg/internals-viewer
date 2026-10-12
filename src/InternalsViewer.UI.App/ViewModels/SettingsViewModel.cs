@@ -34,7 +34,7 @@ public partial class SettingsViewModel(SettingsService settingsService, TraceDir
     private const string CallTreePrunedCategoriesKey = "CallTreePrunedCategories";
 
     private const string DefaultCallTreeHiddenCategories =
-        "Compilation;Execution Tree;Expression Evaluation;Metadata;Networking;Query Binding;Query Store;Security";
+        "Compilation;Execution Tree;Expression Evaluation;Metadata;Networking;Query Binding;Query Store;Security;Tracing";
 
     private const double DefaultMaxTraceSizeMb = 150;
 

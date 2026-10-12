@@ -1,4 +1,5 @@
 using System;
+using System.Diagnostics;
 using Microsoft.UI.Xaml;
 
 namespace InternalsViewer.UI.App.Controls.FlameChart;
@@ -9,7 +10,17 @@ public sealed partial class FlameChartControl
 
     private const double SweepDurationMs = 30_000;
 
+    private const double TransitionMs = 250;
+
     private DispatcherTimer? _playTimer;
+
+    private DispatcherTimer? _transitionTimer;
+
+    private double _transitionFrom;
+
+    private double _transitionTo;
+
+    private long _transitionStart;
 
     public event Action<bool>? PlayStateChanged;
 
@@ -33,6 +44,8 @@ public sealed partial class FlameChartControl
         {
             return;
         }
+
+        StopTransition();
 
         if (_playhead is not { } playhead || playhead >= FullEnd)
         {
@@ -90,6 +103,47 @@ public sealed partial class FlameChartControl
         if (next >= FullEnd)
         {
             StopPlay();
+        }
+    }
+
+    private void TransitionPlayhead(double target)
+    {
+        if (_playhead is not { } from || from == target)
+        {
+            StopTransition();
+
+            PlacePlayhead(target);
+
+            return;
+        }
+
+        _transitionFrom = from;
+
+        _transitionTo = target;
+
+        _transitionStart = Stopwatch.GetTimestamp();
+
+        if (_transitionTimer is null)
+        {
+            _transitionTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(PlayTickMs) };
+
+            _transitionTimer.Tick += OnTransitionTick;
+        }
+
+        _transitionTimer.Start();
+    }
+
+    private void StopTransition() => _transitionTimer?.Stop();
+
+    private void OnTransitionTick(object? sender, object e)
+    {
+        var progress = Math.Min(Stopwatch.GetElapsedTime(_transitionStart).TotalMilliseconds / TransitionMs, 1);
+
+        PlacePlayhead(_transitionFrom + (_transitionTo - _transitionFrom) * progress);
+
+        if (progress >= 1)
+        {
+            StopTransition();
         }
     }
 }

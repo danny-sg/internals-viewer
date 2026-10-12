@@ -63,6 +63,12 @@ namespace
 
     constexpr size_t PointerValueChunk = 65536;
 
+    constexpr size_t MarkerChunk = 65536;
+
+    constexpr uint8_t PublishMarker = 1;
+
+    constexpr uint8_t ReserveMarker = 2;
+
     constexpr size_t ChunkCalls = 16384;
 
     constexpr size_t IdleChunkCalls = 256;
@@ -166,6 +172,16 @@ namespace
         uint32_t        Index;
     };
 
+    struct PendingPublish
+    {
+        uint64_t Function;
+        uint64_t StackPointer;
+        Position Start;
+        uint64_t Instructions;
+        int32_t  Node;
+        uint64_t Buffer;
+    };
+
     struct ModuleEntry
     {
         std::wstring Name;
@@ -197,6 +213,11 @@ namespace
         std::unordered_map<uint64_t, std::vector<PointerRead>> Reads;
         PointerValueCallback                                LogPointerValues = nullptr;
         std::vector<PointerValue>                           PointerValues;
+        std::unordered_map<uint64_t, uint8_t>               MarkerFunctions;
+        std::unordered_map<uint32_t, std::vector<PendingPublish>> Publishing;
+        size_t                                              PendingPublishes = 0;
+        MarkerCallback                                      LogMarkers = nullptr;
+        std::vector<MarkerValue>                            Markers;
 
         int32_t Child(int32_t parent, uint64_t address, uint64_t instance)
         {
@@ -346,6 +367,75 @@ namespace
             LogPointerValues(PointerValues.data(), static_cast<int32_t>(PointerValues.size()));
 
             PointerValues.clear();
+        }
+
+        void BeginPublish(uint32_t thread, PendingPublish const& publish)
+        {
+            EndPublishes(thread, publish.StackPointer);
+
+            Publishing[thread].push_back(publish);
+
+            PendingPublishes++;
+        }
+
+        void EndPublishes(uint32_t thread, uint64_t stackPointer)
+        {
+            auto const found = Publishing.find(thread);
+
+            if (found == Publishing.end())
+            {
+                return;
+            }
+
+            auto& publishing = found->second;
+
+            while (!publishing.empty() && publishing.back().StackPointer <= stackPointer)
+            {
+                publishing.pop_back();
+
+                PendingPublishes--;
+            }
+        }
+
+        void MarkWritten(uint32_t thread, uint64_t stackPointer, uint64_t buffer)
+        {
+            EndPublishes(thread, stackPointer);
+
+            auto const found = Publishing.find(thread);
+
+            if (found == Publishing.end() || found->second.empty() || found->second.back().Buffer == buffer)
+            {
+                return;
+            }
+
+            auto& publish = found->second.back();
+
+            publish.Buffer = buffer;
+
+            Markers.push_back(MarkerValue{ publish.Function,
+                                           buffer,
+                                           static_cast<uint64_t>(publish.Start.Sequence),
+                                           static_cast<uint64_t>(publish.Start.Steps),
+                                           publish.Instructions,
+                                           publish.Node,
+                                           thread });
+
+            if (Markers.size() >= MarkerChunk)
+            {
+                FlushMarkers();
+            }
+        }
+
+        void FlushMarkers()
+        {
+            if (LogMarkers == nullptr || Markers.empty())
+            {
+                return;
+            }
+
+            LogMarkers(Markers.data(), static_cast<int32_t>(Markers.size()));
+
+            Markers.clear();
         }
     };
 
@@ -617,6 +707,34 @@ namespace
         }
     }
 
+    void TrackMarker(CallTree&                      tree,
+                     IThreadView const&             thread,
+                     uint32_t                       threadId,
+                     uint64_t                       target,
+                     uint64_t                       stackPointer,
+                     Position const&                position,
+                     ThreadClock const&             clock,
+                     std::vector<StackFrame> const& stack)
+    {
+        auto const marker = tree.MarkerFunctions.find(target);
+
+        if (marker == tree.MarkerFunctions.end())
+        {
+            return;
+        }
+
+        if (marker->second == PublishMarker)
+        {
+            tree.BeginPublish(threadId, PendingPublish{ target, stackPointer, position, clock.Instructions, NearestNode(stack), 0 });
+        }
+        else if (tree.PendingPublishes > 0)
+        {
+            CROSS_PLATFORM_CONTEXT const context = thread.GetCrossPlatformContext();
+
+            tree.MarkWritten(threadId, stackPointer, context.Amd64Context.Rcx);
+        }
+    }
+
     void __fastcall OnCallReturn(uintptr_t          context,
                                  GuestAddress       instructionAddress,
                                  GuestAddress       fallThroughAddress,
@@ -644,6 +762,11 @@ namespace
         if (fallThroughAddress != GuestAddress{})
         {
             Unwind(tree, stack, stackPointer, nullptr, 0, threadId, clock);
+
+            if (!tree.MarkerFunctions.empty())
+            {
+                TrackMarker(tree, *thread, threadId, target, stackPointer, position, clock, stack);
+            }
 
             if (!stack.empty() && stack.back().Node == ExcludedNode)
             {
@@ -716,6 +839,11 @@ namespace
             return;
         }
 
+        if (tree.PendingPublishes > 0)
+        {
+            tree.EndPublishes(threadId, stackPointer + sizeof(uint64_t));
+        }
+
         Unwind(tree, stack, stackPointer + sizeof(uint64_t), thread, target, threadId, clock);
 
         if (stack.empty())
@@ -749,6 +877,8 @@ namespace
         if (kind == GapKind::Large || event == GapEventType::StopEmulation)
         {
             auto const& clock = tree.Advance(threadId, thread->GetPosition());
+
+            tree.EndPublishes(threadId, UINT64_MAX);
 
             Unwind(tree, stack, UINT64_MAX, nullptr, 0, threadId, clock);
 
@@ -1026,9 +1156,14 @@ extern "C"
                          int32_t               excludedFunctionCount,
                          const PointerRead*    pointerReads,
                          int32_t               pointerReadCount,
+                         const uint64_t*       publishFunctions,
+                         int32_t               publishFunctionCount,
+                         const uint64_t*       reserveFunctions,
+                         int32_t               reserveFunctionCount,
                          CallChunkCallback     logCalls,
                          CallSpanCallback      logSpans,
                          PointerValueCallback  logPointerValues,
+                         MarkerCallback        logMarkers,
                          ProgressCallback      progress,
                          volatile int32_t*     cancel,
                          void**                tree)
@@ -1066,6 +1201,18 @@ extern "C"
 
         result->LogPointerValues = logPointerValues;
 
+        result->LogMarkers = logMarkers;
+
+        for (int32_t index = 0; index < publishFunctionCount && logMarkers != nullptr; index++)
+        {
+            result->MarkerFunctions[publishFunctions[index]] = PublishMarker;
+        }
+
+        for (int32_t index = 0; index < reserveFunctionCount && logMarkers != nullptr; index++)
+        {
+            result->MarkerFunctions[reserveFunctions[index]] = ReserveMarker;
+        }
+
         auto const status = ReplayTrace(engine,
                                         result->Threads,
                                         OnCallReturn,
@@ -1098,8 +1245,12 @@ extern "C"
 
         result->FlushPointerValues();
 
+        result->FlushMarkers();
+
         result->Spans = {};
         result->PointerValues = {};
+        result->Markers = {};
+        result->Publishing.clear();
         result->Clocks.clear();
 
         result->Stacks.clear();

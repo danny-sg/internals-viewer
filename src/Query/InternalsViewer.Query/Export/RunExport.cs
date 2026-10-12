@@ -26,6 +26,8 @@ public static class RunExport
 
     internal const string TimelineEntry = "fulltrace/timeline.bin";
 
+    internal const string EventLinksEntry = "fulltrace/eventlinks.bin";
+
     public static Task WriteAsync(Stream stream, RunExportContent content, CancellationToken cancellationToken)
         => Task.Run(() => RunExportWriter.Write(stream, content, cancellationToken), cancellationToken);
 

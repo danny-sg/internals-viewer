@@ -6,6 +6,7 @@ using InternalsViewer.Query.CallStack.Dia;
 using InternalsViewer.Query.CallStack.Symbols;
 using InternalsViewer.Query.CallStack.TimeTravel.Iterators;
 using InternalsViewer.Query.CallStack.TimeTravel.Locators;
+using InternalsViewer.Query.CallStack.TimeTravel.Markers;
 using InternalsViewer.Query.CallStack.TimeTravel.Memory;
 using InternalsViewer.Query.Helpers;
 using Microsoft.Extensions.Logging;
@@ -54,6 +55,14 @@ namespace InternalsViewer.Query.CallStack.TimeTravel;
 /// </remarks>
 internal static class ReplayFunctionResolver
 {
+    private const string PackageSeparator = "Pkg::";
+
+    private const string PublishMethod = "Publish";
+
+    private const string BufferManager = "XE_BufferMgr";
+
+    private const string ReserveMethod = "Reserve";
+
     private static readonly string[] Modules = ["sqlmin", "sqllang", "sqldk"];
 
     private static readonly string[] HeapModules = ["ntdll", "kernelbase", "kernel32", "ucrtbase"];
@@ -88,7 +97,7 @@ internal static class ReplayFunctionResolver
 
         if (identities.Count == 0)
         {
-            return new ReplayFunctionSet([], [.. heap], [], []);
+            return new ReplayFunctionSet([], [.. heap], [], [], [], []);
         }
 
         var missing = identities.Count(m => !Cache.ContainsKey(KeyOf(m)));
@@ -108,7 +117,9 @@ internal static class ReplayFunctionResolver
         return new ReplayFunctionSet([.. found.SelectMany(f => f.Excluded)],
                                      [.. found.SelectMany(f => f.Memory), .. heap],
                                      [.. found.SelectMany(f => f.InstanceMethods)],
-                                     [.. found.SelectMany(f => f.Locators)]);
+                                     [.. found.SelectMany(f => f.Locators)],
+                                     [.. found.SelectMany(f => f.Publishers)],
+                                     [.. found.SelectMany(f => f.Reserves)]);
     }
 
     internal static bool IsExcluded(SymbolCategory category, string? iterator)
@@ -177,13 +188,14 @@ internal static class ReplayFunctionResolver
         Cache[KeyOf(module)] = relative;
 
         logger?.LogInformation("Replay functions for {Module} resolved from {Pdb} in {Elapsed}: {Excluded} excluded, "
-                               + "{Iterators} iterator methods, {Locators} locator reads",
+                               + "{Iterators} iterator methods, {Locators} locator reads, {Publishers} event publishers",
                                module.Name,
                                module.Pdb,
                                Stopwatch.GetElapsedTime(start),
                                relative.Excluded.Length,
                                relative.InstanceMethods.Length,
-                               relative.Locators.Length);
+                               relative.Locators.Length,
+                               relative.Publishers.Length);
     }
 
     private static ReplayFunctionSet? Find(TimeTravelModule module, string symbolsPath)
@@ -208,6 +220,10 @@ internal static class ReplayFunctionResolver
         var instanceMethods = InstanceMethodCollector.AppliesTo(module.Name) ? new InstanceMethodCollector() : null;
 
         var locatorFunctions = LocatorReadResolver.AppliesTo(module.Name) ? new HashSet<uint>() : null;
+
+        var publishers = new Dictionary<uint, string?>();
+
+        var reserves = new HashSet<uint>();
 
         foreach (var symbol in resolver.EnumerateSymbolDetails(string.Empty, includeSignature: false))
         {
@@ -235,6 +251,17 @@ internal static class ReplayFunctionResolver
             var function = MemoryFunction.Classify(module.StartAddress + symbol.Rva, symbol.Name);
 
             memory[symbol.Rva] = memory.TryGetValue(symbol.Rva, out var existing) && existing != function ? null : function;
+
+            if (EventOf(className, methodName) is { } eventName)
+            {
+                publishers[symbol.Rva] = publishers.TryGetValue(symbol.Rva, out var existingEvent) && existingEvent != eventName
+                    ? null
+                    : eventName;
+            }
+            else if (className == BufferManager && methodName == ReserveMethod)
+            {
+                reserves.Add(symbol.Rva);
+            }
         }
 
         excluded.ExceptWith(kept);
@@ -249,6 +276,28 @@ internal static class ReplayFunctionResolver
                                                               .Select(m => m with { Address = module.StartAddress + m.Address })],
                                      locatorFunctions is null
                                          ? []
-                                         : [.. LocatorReadResolver.Find(resolver, module.StartAddress, locatorFunctions)]);
+                                         : [.. LocatorReadResolver.Find(resolver, module.StartAddress, locatorFunctions)],
+                                     [.. publishers.Where(p => p.Value is not null)
+                                                   .Select(p => new EventPublisher(module.StartAddress + p.Key, p.Value!))],
+                                     [.. reserves.Select(rva => module.StartAddress + rva)]);
+    }
+
+    private static string? EventOf(string? className, string methodName)
+    {
+        if (methodName != PublishMethod || className is null)
+        {
+            return null;
+        }
+
+        var package = className.IndexOf(PackageSeparator, StringComparison.Ordinal);
+
+        if (package <= 0)
+        {
+            return null;
+        }
+
+        var eventName = className[(package + PackageSeparator.Length)..];
+
+        return eventName.Length > 0 && !eventName.Contains("::", StringComparison.Ordinal) ? eventName : null;
     }
 }

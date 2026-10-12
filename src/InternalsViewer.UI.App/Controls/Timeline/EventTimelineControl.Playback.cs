@@ -1,7 +1,7 @@
 using System;
 using InternalsViewer.Query.Events;
 using InternalsViewer.Query.Events.Latches;
-using InternalsViewer.Query.Events.Reads;
+using InternalsViewer.Query.Helpers;
 
 namespace InternalsViewer.UI.App.Controls.Timeline;
 
@@ -26,6 +26,8 @@ public sealed partial class EventTimelineControl
     /// Raised when auto-play starts (true) or stops (false)
     /// </summary>
     public event Action<bool>? PlayStateChanged;
+
+    private bool IsCurrentEventAtPlayhead => _currentEvent >= 0 && _eventStarts[_currentEvent] == _playheadTime;
 
     public void MovePlayheadTo(long timeUs)
     {
@@ -79,55 +81,63 @@ public sealed partial class EventTimelineControl
 
     private void StepToAdjacentEvent(bool forward)
     {
-        if (_definition.Events.Count == 0)
+        if (_eventStarts.Length == 0)
         {
             return;
         }
 
         var (lo, hi) = ActiveRange;
 
-        // The nearest read (by time) on the requested side of the playhead, within the active range.
-        var target = -1;
-        var bestTime = forward ? double.MaxValue : double.MinValue;
+        var from = IsCurrentEventAtPlayhead
+            ? _currentEvent
+            : forward
+                ? SortedSearch.FirstAfter(_eventStarts, _playheadTime) - 1
+                : SortedSearch.FirstAtOrAfter(_eventStarts, _playheadTime);
 
-        for (var i = 0; i < _definition.Events.Count; i++)
-        {
-            if (_definition.Events[i] is not ReadEventGroup)
-            {
-                continue;
-            }
+        var target = forward
+            ? Math.Max(from + 1, SortedSearch.FirstAtOrAfter(_eventStarts, lo))
+            : Math.Min(from - 1, SortedSearch.FirstAfter(_eventStarts, hi) - 1);
 
-            var t = _times[i];
-
-            if (t < lo || t > hi)
-            {
-                continue;
-            }
-
-            if (forward ? t > _playheadTime && t < bestTime
-                        : t < _playheadTime && t > bestTime)
-            {
-                bestTime = t;
-                target = i;
-            }
-        }
-
-        if (target < 0)
+        if (target < 0 || target >= _eventStarts.Length || _eventStarts[target] < lo || _eventStarts[target] > hi)
         {
             return;
         }
 
-        _playheadTime = _times[target];
+        SetCurrentEvent(target);
+
+        _playheadTime = _eventStarts[target];
 
         SyncHandlesToPlayhead();
 
         FirePlayhead();
 
-        EventSelected?.Invoke(_definition.Events[target]);
+        EventSelected?.Invoke(_eventsByTime[target]);
 
         EnsurePlayheadVisible();
 
         _skCanvas.Invalidate();
+    }
+
+    private void UpdateCurrentEvent()
+    {
+        if (IsCurrentEventAtPlayhead)
+        {
+            return;
+        }
+
+        SetCurrentEvent(SortedSearch.FirstAfter(_eventStarts, _playheadTime) - 1);
+    }
+
+    private void SetCurrentEvent(int index)
+    {
+        if (index == _currentEvent)
+        {
+            return;
+        }
+
+        _currentEvent = index;
+
+        CurrentEventChanged?.Invoke(index >= 0 ? _eventsByTime[index] : null);
     }
 
     private void StartPlay()
@@ -245,6 +255,8 @@ public sealed partial class EventTimelineControl
     {
         // Emit the scope first so a consumer reacting to the playhead sees the current window
         EmitScope();
+
+        UpdateCurrentEvent();
 
         var playheadUs = ToUs(_playheadTime);
 

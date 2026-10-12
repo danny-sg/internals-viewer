@@ -3,6 +3,8 @@ using InternalsViewer.Query.CallStack.TimeTravel.Memory;
 using InternalsViewer.Query.CallStack.TimeTravel.Native;
 using InternalsViewer.Query.CallStack.TimeTravel.Timeline;
 using InternalsViewer.Query.CallStack.TimeTravel.Timeline.Enums;
+using InternalsViewer.Query.Events.Latches;
+using InternalsViewer.Query.Events.Reads;
 
 namespace InternalsViewer.Query.Tests;
 
@@ -411,6 +413,31 @@ public class TimeTravelTimelineTests
 
         Assert.Equal([1, 0, 0, 2], root.CallActivity);
         Assert.Equal([0, 1, 0, 0], child.CallActivity);
+    }
+
+    [Fact]
+    public void Event_Link_Of_A_Linked_Event_Is_Its_Own_Link()
+    {
+        var timeline = Build(Span(node: 0, start: 0, end: 40));
+
+        LatchEvent[] latches = [new() { SequenceId = 1 }, new() { SequenceId = 2 }];
+
+        timeline.SetEventLinks([new TimeTravelEventLink(latches[0], null, 7, 10, 10), new TimeTravelEventLink(latches[1], null, 7, 20, 20)]);
+
+        Assert.Equal(20d, timeline.EventLinkOf(latches[1])?.Position);
+        Assert.Null(timeline.EventLinkOf(new LatchEvent { SequenceId = 3 }));
+    }
+
+    [Fact]
+    public void Event_Link_Of_A_Group_Is_The_Link_Of_An_Event_It_Owns()
+    {
+        var timeline = Build(Span(node: 0, start: 0, end: 40));
+
+        var latch = new LatchEvent { SequenceId = 1 };
+
+        timeline.SetEventLinks([new TimeTravelEventLink(latch, null, 7, 10, 10)]);
+
+        Assert.Same(latch, timeline.EventLinkOf(new ReadEventGroup { SequenceId = 2, Events = [latch] })?.Event);
     }
 
     private static TimeTravelTimeline Build(params TimeTravelCallSpan[] spans)

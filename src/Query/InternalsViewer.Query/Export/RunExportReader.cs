@@ -182,6 +182,13 @@ internal static class RunExportReader
 
         timeline.SetLifetimes(IteratorLifetimeBuilder.Build(timeline, [.. events.OfType<ExecutionOperatorEvent>()]));
 
+        if (zip.GetEntry(RunExport.EventLinksEntry) is not null)
+        {
+            timeline.SetEventLinks(ReadBinary(zip,
+                                              RunExport.EventLinksEntry,
+                                              reader => TimeTravelTimeline.ReadEventLinks(reader, nodes, events)));
+        }
+
         return new FullTraceResult(tree, callLog, timeline) { PlanLink = IteratorPlanLinker.Link(callLog, timeline.MappedNodes, events) };
     }
 

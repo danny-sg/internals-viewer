@@ -56,7 +56,20 @@ extern "C"
 
     typedef void(__stdcall* CallSpanCallback)(const CallSpan* spans, int32_t count);
 
+    struct MarkerValue
+    {
+        uint64_t Function;
+        uint64_t Buffer;
+        uint64_t Sequence;
+        uint64_t Steps;
+        uint64_t Instructions;
+        int32_t  Node;
+        uint32_t Thread;
+    };
+
     typedef void(__stdcall* PointerValueCallback)(const PointerValue* values, int32_t count);
+
+    typedef void(__stdcall* MarkerCallback)(const MarkerValue* markers, int32_t count);
 
     __declspec(dllexport) int32_t OpenTrace(const wchar_t* replayLibraryPath, const wchar_t* tracePath, void** trace);
 
@@ -78,9 +91,14 @@ extern "C"
                                                int32_t               excludedFunctionCount,
                                                const PointerRead*    pointerReads,
                                                int32_t               pointerReadCount,
+                                               const uint64_t*       publishFunctions,
+                                               int32_t               publishFunctionCount,
+                                               const uint64_t*       reserveFunctions,
+                                               int32_t               reserveFunctionCount,
                                                CallChunkCallback     logCalls,
                                                CallSpanCallback      logSpans,
                                                PointerValueCallback  logPointerValues,
+                                               MarkerCallback        logMarkers,
                                                ProgressCallback      progress,
                                                volatile int32_t*     cancel,
                                                void**                tree);
