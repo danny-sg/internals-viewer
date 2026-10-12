@@ -2,7 +2,7 @@ using InternalsViewer.Query.CallStack.Arguments;
 
 namespace InternalsViewer.Query.CallStack.TimeTravel.Locators;
 
-public readonly record struct LocatorType(LocatorKind Kind, bool IsIndirect, bool IsConst, int Offset = 0, int[]? Path = null)
+internal readonly record struct LocatorType(LocatorKind Kind, bool IsIndirect, bool IsConst, int Offset = 0, int[]? Path = null)
 {
     private const int AllocationPageIdOffset = 8;
 

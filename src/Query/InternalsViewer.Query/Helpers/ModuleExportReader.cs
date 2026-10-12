@@ -3,7 +3,7 @@ using System.Text;
 
 namespace InternalsViewer.Query.Helpers;
 
-internal static class ModuleExports
+internal static class ModuleExportReader
 {
     private const int NameCountOffset = 24;
 

@@ -9,7 +9,7 @@ using InternalsViewer.Query.Plans.Model;
 namespace InternalsViewer.Query.Tests;
 
 [Trait("Category", "Unit")]
-public class IteratorLifetimesTests
+public class IteratorLifetimeBuilderTests
 {
     private const ulong Hash = 0x100;
 
@@ -51,7 +51,7 @@ public class IteratorLifetimesTests
             Instances = [Hash]
         };
 
-        var lifetime = Assert.Single(IteratorLifetimes.Build(timeline, [hashMatch]));
+        var lifetime = Assert.Single(IteratorLifetimeBuilder.Build(timeline, [hashMatch]));
 
         var calls = lifetime.Calls(TimeTravelTimelineAxis.Instructions);
 
@@ -94,7 +94,7 @@ public class IteratorLifetimesTests
 
         var scan = Operator("Index Scan", 2, Scan);
 
-        var lifetimes = IteratorLifetimes.Build(timeline, [hashMatch, scan]);
+        var lifetimes = IteratorLifetimeBuilder.Build(timeline, [hashMatch, scan]);
 
         var hashLifetime = lifetimes.Single(l => ReferenceEquals(l.Operator, hashMatch));
 

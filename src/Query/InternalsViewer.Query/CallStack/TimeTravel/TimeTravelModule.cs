@@ -2,11 +2,44 @@ using System.Reflection.PortableExecutable;
 
 namespace InternalsViewer.Query.CallStack.TimeTravel;
 
-public sealed record TimeTravelModule(string Path, ulong Address, ulong Size, string Pdb = "", string Guid = "", int Age = 0)
+/// <summary>
+/// Module loaded for Time Travel Debug trace
+/// </summary>
+internal sealed record TimeTravelModule
 {
+    private TimeTravelModule(string path, ulong startAddress, ulong size, string pdb = "", string guid = "", int age = 0)
+    {
+        Path = path;
+        StartAddress = startAddress;
+        Size = size;
+        Pdb = pdb;
+        Guid = guid;
+        Age = age;
+    }
+
+    public string Path { get; init; }
+
+    public ulong StartAddress { get; init; }
+
+    public ulong Size { get; init; }
+
+    public string Pdb { get; init; }
+
+    public string Guid { get; init; }
+
+    public int Age { get; init; }
+
     public string Name => System.IO.Path.GetFileNameWithoutExtension(Path);
 
-    public static TimeTravelModule Describe(string path, ulong address, ulong size)
+    /// <summary>
+    /// Reads a module from a path and returns a TimeTravelModule with the PDB information if available
+    /// </summary>
+    /// <remarks>
+    /// This will attempt to read the file PE Header -> CodeView directory to extract the PDB information if available (name, GUID, age).
+    ///
+    /// If the file is not a valid PE file or cannot be read, it will return a TimeTravelModule with only the path, address, and size.
+    /// </remarks>
+    public static TimeTravelModule Read(string path, ulong address, ulong size)
     {
         try
         {
@@ -35,11 +68,18 @@ public sealed record TimeTravelModule(string Path, ulong Address, ulong Size, st
         return new TimeTravelModule(path, address, size);
     }
 
+    /// <summary>
+    /// Creates a CallstackFrame for this module with the given address and instance
+    /// </summary>
+    /// <remarks>
+    /// RVA (Relative Virtual Address) is calculated from the given address minus the module's base address (as RVA is relative to the
+    /// module).
+    /// </remarks>
     internal CallstackFrame Frame(ulong address, ulong instance) => new()
     {
         Module = Name,
         Address = address,
-        Rva = (uint)(address - Address),
+        Rva = (uint)(address - StartAddress),
         Pdb = Pdb,
         Guid = Guid,
         Age = Age,

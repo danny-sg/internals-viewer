@@ -64,6 +64,10 @@ public sealed partial class QueryLayoutViewModel : ObservableObject, IDisposable
     [NotifyPropertyChangedFor(nameof(CanShowEventViews))]
     private bool _isFullTrace;
 
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(CanShowEventViews))]
+    private bool _hasFullTraceEvents;
+
     /// <param name="content">
     /// The data context the tab document views bind to (the owning query view model)
     /// </param>
@@ -128,7 +132,7 @@ public sealed partial class QueryLayoutViewModel : ObservableObject, IDisposable
 
     public DockLayoutViewModel Dock { get; }
 
-    public bool CanShowEventViews => !IsFullTrace;
+    public bool CanShowEventViews => !IsFullTrace || HasFullTraceEvents;
 
     public bool IsTimelineVisibleOutsideFullTrace
         => IsTimelineVisible || _hiddenForFullTrace.Contains(_documentsByKey[TimelineKey]);
@@ -154,7 +158,7 @@ public sealed partial class QueryLayoutViewModel : ObservableObject, IDisposable
 
         if (IsFullTrace)
         {
-            HideEventViews();
+            EnterFullTrace();
         }
 
         return true;
@@ -174,9 +178,18 @@ public sealed partial class QueryLayoutViewModel : ObservableObject, IDisposable
 
         _hiddenForFullTrace.Clear();
 
-        _hiddenForFullTrace.Add(_documentsByKey[TimelineKey]);
-
         _rootBeforeFullTrace = DockLayoutSerializer.Serialize(DefaultRoot(TimelineKey));
+
+        if (CanShowEventViews)
+        {
+            Dock.SetRoot(DefaultRoot(TimelineKey));
+
+            Dock.ShowBeside(_documentsByKey[FlameChartKey], _documentsByKey[TimelineKey]);
+
+            return;
+        }
+
+        _hiddenForFullTrace.Add(_documentsByKey[TimelineKey]);
 
         Dock.SetRoot(DefaultRoot(FlameChartKey));
     }
@@ -254,33 +267,36 @@ public sealed partial class QueryLayoutViewModel : ObservableObject, IDisposable
     {
         if (value)
         {
-            HideEventViews();
+            EnterFullTrace();
 
             return;
         }
 
-        var flameChart = _documentsByKey[FlameChartKey];
+        RestoreEventViews();
 
-        foreach (var document in _hiddenForFullTrace)
-        {
-            if (ReferenceEquals(document, _documentsByKey[TimelineKey]))
-            {
-                Dock.ShowBeside(document, flameChart);
-            }
-            else
-            {
-                Dock.Show(document);
-            }
-        }
-
-        Dock.Close(flameChart);
-
-        _hiddenForFullTrace.Clear();
+        Dock.Close(_documentsByKey[FlameChartKey]);
 
         _rootBeforeFullTrace = null;
     }
 
-    private void HideEventViews()
+    partial void OnHasFullTraceEventsChanged(bool value)
+    {
+        if (!IsFullTrace)
+        {
+            return;
+        }
+
+        if (value)
+        {
+            RestoreEventViews();
+        }
+        else
+        {
+            HideEventViews();
+        }
+    }
+
+    private void EnterFullTrace()
     {
         _hiddenForFullTrace.Clear();
 
@@ -295,6 +311,31 @@ public sealed partial class QueryLayoutViewModel : ObservableObject, IDisposable
             Dock.DockBottom(_documentsByKey[FlameChartKey]);
         }
 
+        if (!CanShowEventViews)
+        {
+            HideEventViews();
+        }
+    }
+
+    private void RestoreEventViews()
+    {
+        foreach (var document in _hiddenForFullTrace)
+        {
+            if (ReferenceEquals(document, _documentsByKey[TimelineKey]))
+            {
+                Dock.ShowBeside(document, _documentsByKey[FlameChartKey]);
+            }
+            else
+            {
+                Dock.Show(document);
+            }
+        }
+
+        _hiddenForFullTrace.Clear();
+    }
+
+    private void HideEventViews()
+    {
         foreach (var document in EventViews)
         {
             if (Dock.Contains(document))
@@ -313,7 +354,7 @@ public sealed partial class QueryLayoutViewModel : ObservableObject, IDisposable
             return;
         }
 
-        if (show && IsFullTrace && Array.IndexOf(EventViews, document) >= 0)
+        if (show && !CanShowEventViews && Array.IndexOf(EventViews, document) >= 0)
         {
             _hiddenForFullTrace.Add(document);
 

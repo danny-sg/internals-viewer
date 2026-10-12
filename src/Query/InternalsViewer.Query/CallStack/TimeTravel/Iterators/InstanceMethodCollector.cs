@@ -3,10 +3,8 @@ using InternalsViewer.Query.CallStack.Dia;
 
 namespace InternalsViewer.Query.CallStack.TimeTravel.Iterators;
 
-internal sealed class IteratorMethods
+internal sealed class InstanceMethodCollector
 {
-    internal const int RegisterShift = 60;
-
     private const string Module = "sqlmin";
 
     private const int RegisterCount = 4;
@@ -74,17 +72,17 @@ internal sealed class IteratorMethods
         }
     }
 
-    public List<ulong> Resolve(DiaResolver resolver)
+    public List<InstanceMethod> Resolve(DiaResolver resolver)
     {
         Found.ExceptWith(Shared);
 
-        var methods = new List<ulong>();
+        var methods = new List<InstanceMethod>();
 
         foreach (var rva in Found)
         {
             if (InstanceRegister(Signature(resolver, rva), resolver.GetDecoratedName(rva)) is { } register)
             {
-                methods.Add(rva | ((ulong)register << RegisterShift));
+                methods.Add(new InstanceMethod(rva, register));
             }
         }
 

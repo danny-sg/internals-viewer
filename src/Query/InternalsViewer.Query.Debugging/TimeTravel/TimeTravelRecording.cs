@@ -92,7 +92,7 @@ internal sealed class TimeTravelRecording(string ttdDirectory, string traceDirec
         await WaitAsync(() => Ready.WaitOne(0) || IsTracing(), StartTimeout, "TTD did not start recording", cancellationToken);
     }
 
-    public async Task<TimeTravelTrace> StopAsync(CancellationToken cancellationToken)
+    public async Task<TimeTravelTraceFile> StopAsync(CancellationToken cancellationToken)
     {
         if (Host is null || Stop is null)
         {
@@ -114,7 +114,7 @@ internal sealed class TimeTravelRecording(string ttdDirectory, string traceDirec
 
         logger.LogInformation("TTD trace written to {TracePath} ({Size:N0} bytes)", trace.FullName, trace.Length);
 
-        return new TimeTravelTrace(trace.FullName, Path.Combine(ttdDirectory, "TTDReplay.dll"));
+        return new TimeTravelTraceFile(trace.FullName, Path.Combine(ttdDirectory, "TTDReplay.dll"));
     }
 
     public async ValueTask DisposeAsync()

@@ -12,7 +12,47 @@ using Microsoft.Extensions.Logging;
 
 namespace InternalsViewer.Query.CallStack.TimeTravel;
 
-public static class ReplayFunctions
+/// <summary>
+/// Resolves a ReplayFunctionSet for the trace
+/// </summary>
+/// <remarks>
+/// ReplayFunctionSet provides functions that are excluded from the call stack, memory functions, instance methods, and locator reads per
+/// module.
+///
+/// Results are prepared and cached per module as the derivation of the function sets is expensive, but won't change from run to run.
+///
+/// To make decisions about the category of a function debug symbols must translate from a module + RVA to a function name. This is done by
+/// downloading the symbols and using the DIA bridge for name resolution.
+///
+/// Exclusions
+///
+///     Excluded functions based on mapped category (e.g. XEventInfrastructure, Tracing) using CategoryMappings.
+///
+/// Memory Functions
+///
+///     Memory allocation and deallocations functions.
+///
+///     SQL Server memory functions are identified by mapped category.
+///
+///     Windows heap + C Runtime memory function names are resolved using ModuleExportReader that reads the PE export table to get the name
+///     from an address and classifies the function via MemoryFunction.ClassifyExport. The reason this is done instead of downloading
+///     symbols is that first the data is available directly, and second a Windows Update could bump the age of the module requiring
+///     frequent downloads of new files.
+///
+///    are identified via MemoryFunction.ClassifyExport.
+///
+/// Instance Methods
+///
+///     Functions keyed from a class instance pointer. These are identified via InstanceMethodCollector that uses CategoryMappings to
+///     identify the class and method.
+///
+/// Locators
+///
+///     Functions that read page/row id via their arguments.
+///     
+///     
+/// </remarks>
+internal static class ReplayFunctionResolver
 {
     private static readonly string[] Modules = ["sqlmin", "sqllang", "sqldk"];
 
@@ -26,7 +66,7 @@ public static class ReplayFunctions
                                     string symbolsPath,
                                     ILogger? logger,
                                     CancellationToken cancellationToken)
-        => EnsureResolvedAsync([.. modulePaths.Select(p => TimeTravelModule.Describe(p, 0, 0)).Where(IsReplayed)],
+        => EnsureResolvedAsync([.. modulePaths.Select(p => TimeTravelModule.Read(p, 0, 0)).Where(IsReplayed)],
                                symbolsPath,
                                logger,
                                null,
@@ -55,7 +95,7 @@ public static class ReplayFunctions
 
         await EnsureResolvedAsync(identities, symbolsPath, logger, progress, cancellationToken);
 
-        var found = identities.Select(m => Cache.TryGetValue(KeyOf(m), out var relative) ? relative.Rebase(m.Address) : null)
+        var found = identities.Select(m => Cache.TryGetValue(KeyOf(m), out var relative) ? relative.Rebase(m.StartAddress) : null)
                               .OfType<ReplayFunctionSet>()
                               .ToList();
 
@@ -75,9 +115,9 @@ public static class ReplayFunctions
         => category is SymbolCategory.XEventInfrastructure || (category is SymbolCategory.Tracing && iterator is null);
 
     private static IEnumerable<MemoryFunction> HeapFunctions(TimeTravelModule module)
-        => ModuleExports.Read(module.Path)
-                        .Select(e => MemoryFunction.ClassifyExport(module.Address + e.Rva, e.Name))
-                        .OfType<MemoryFunction>();
+        => ModuleExportReader.Read(module.Path)
+                             .Select(e => MemoryFunction.ClassifyExport(module.StartAddress + e.Rva, e.Name))
+                             .OfType<MemoryFunction>();
 
     private static (string Pdb, string Guid, int Age) KeyOf(TimeTravelModule module) => (module.Pdb, module.Guid, module.Age);
 
@@ -113,7 +153,7 @@ public static class ReplayFunctions
     {
         try
         {
-            await SymbolDownloader.DownloadSymbols([module.Frame(module.Address, 0)], symbolsPath, progress);
+            await SymbolDownloader.DownloadSymbols([module.Frame(module.StartAddress, 0)], symbolsPath, progress);
 
             Resolve(module, symbolsPath, logger);
         }
@@ -127,7 +167,7 @@ public static class ReplayFunctions
     {
         var start = Stopwatch.GetTimestamp();
 
-        if (Find(module with { Address = 0 }, symbolsPath) is not { } relative)
+        if (Find(module with { StartAddress = 0 }, symbolsPath) is not { } relative)
         {
             logger?.LogWarning("Replay functions for {Module} not resolved, {Pdb} was not found", module.Name, module.Pdb);
 
@@ -148,7 +188,7 @@ public static class ReplayFunctions
 
     private static ReplayFunctionSet? Find(TimeTravelModule module, string symbolsPath)
     {
-        var pdbPath = CallstackResolver.GetPdbPath(symbolsPath, module.Frame(module.Address, 0));
+        var pdbPath = CallstackResolver.GetPdbPath(symbolsPath, module.Frame(module.StartAddress, 0));
 
         if (!File.Exists(pdbPath))
         {
@@ -165,9 +205,9 @@ public static class ReplayFunctions
 
         var memory = new Dictionary<uint, MemoryFunction?>();
 
-        var iteratorMethods = IteratorMethods.AppliesTo(module.Name) ? new IteratorMethods() : null;
+        var instanceMethods = InstanceMethodCollector.AppliesTo(module.Name) ? new InstanceMethodCollector() : null;
 
-        var locatorFunctions = LocatorReads.AppliesTo(module.Name) ? new HashSet<uint>() : null;
+        var locatorFunctions = LocatorReadResolver.AppliesTo(module.Name) ? new HashSet<uint>() : null;
 
         foreach (var symbol in resolver.EnumerateSymbolDetails(string.Empty, includeSignature: false))
         {
@@ -176,7 +216,7 @@ public static class ReplayFunctions
                 continue;
             }
 
-            iteratorMethods?.Add(symbol);
+            instanceMethods?.Add(symbol);
 
             locatorFunctions?.Add(symbol.Rva);
 
@@ -192,7 +232,7 @@ public static class ReplayFunctions
 
             (IsExcluded(category, iterator) ? excluded : kept).Add(symbol.Rva);
 
-            var function = MemoryFunction.Classify(module.Address + symbol.Rva, symbol.Name);
+            var function = MemoryFunction.Classify(module.StartAddress + symbol.Rva, symbol.Name);
 
             memory[symbol.Rva] = memory.TryGetValue(symbol.Rva, out var existing) && existing != function ? null : function;
         }
@@ -201,11 +241,14 @@ public static class ReplayFunctions
 
         locatorFunctions?.ExceptWith(excluded);
 
-        return new ReplayFunctionSet([.. excluded.Select(rva => module.Address + rva)],
+        return new ReplayFunctionSet([.. excluded.Select(rva => module.StartAddress + rva)],
                                      [.. memory.Values.OfType<MemoryFunction>()],
-                                     iteratorMethods is null
+                                     instanceMethods is null
                                          ? []
-                                         : [.. iteratorMethods.Resolve(resolver).Select(rva => module.Address + rva)],
-                                     locatorFunctions is null ? [] : [.. LocatorReads.Find(resolver, module.Address, locatorFunctions)]);
+                                         : [.. instanceMethods.Resolve(resolver)
+                                                              .Select(m => m with { Address = module.StartAddress + m.Address })],
+                                     locatorFunctions is null
+                                         ? []
+                                         : [.. LocatorReadResolver.Find(resolver, module.StartAddress, locatorFunctions)]);
     }
 }

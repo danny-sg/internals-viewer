@@ -4,7 +4,7 @@ using InternalsViewer.Query.CallStack.TimeTravel;
 namespace InternalsViewer.Query.Tests;
 
 [Trait("Category", "Unit")]
-public class ReplayFunctionsTests
+public class ReplayFunctionResolverTests
 {
     [Theory]
     [InlineData(SymbolCategory.XEventInfrastructure, null, true)]
@@ -13,7 +13,7 @@ public class ReplayFunctionsTests
     [InlineData(SymbolCategory.Tracing, "Profiling", false)]
     [InlineData(SymbolCategory.QueryOperator, null, false)]
     public void Tracing_Is_Left_Out_Of_The_Replay_Unless_It_Is_An_Iterator(SymbolCategory category, string? iterator, bool excluded)
-        => Assert.Equal(excluded, ReplayFunctions.IsExcluded(category, iterator));
+        => Assert.Equal(excluded, ReplayFunctionResolver.IsExcluded(category, iterator));
 
     [Theory]
     [InlineData("CQScanProfileNew", "GetRow")]
@@ -26,6 +26,6 @@ public class ReplayFunctionsTests
         var iterator = CategoryMappings.Default.ClassifyOperator("sqlmin", className, methodName).Iterator;
 
         Assert.Equal(SymbolCategory.Tracing, category);
-        Assert.False(ReplayFunctions.IsExcluded(category, iterator));
+        Assert.False(ReplayFunctionResolver.IsExcluded(category, iterator));
     }
 }

@@ -14,9 +14,11 @@ public sealed record EventOptions
 
     public bool IncludeCallStack { get; set; } = true;
 
+    public bool CapturesCallStacks => IncludeCallStack && !RecordTimeTravel;
+
     public bool RecordTimeTravel { get; set; }
 
-    public bool RecordFullTraceEvents { get; set; }
+    public bool RecordFullTraceEvents { get; set; } = true;
 
     public bool IncludeLatch { get; set; } = false;
 

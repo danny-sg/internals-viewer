@@ -142,7 +142,7 @@ public class ArgumentRowBuilderTests
 
         var call = Call(0x100, 0, returnValue: 0x300) with
         {
-            Locators = [new TimeTravelLocator(LocatorReads.ReturnRegister, LocatorKind.Row, 0x0005_0001_0000_0150)]
+            Locators = [new TimeTravelLocator(LocatorReadResolver.ReturnRegister, LocatorKind.Row, 0x0005_0001_0000_0150)]
         };
 
         var table = ArgumentRowBuilder.Table(layout, [call]);

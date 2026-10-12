@@ -2176,3 +2176,4 @@ SqlTsEs|*|GetDataFromXvar*|ExpressionEvaluation
 SqlTsEs|*|SetDataWithPop|ExpressionEvaluation
 SqlTsEs|*|SetMultData|ExpressionEvaluation
 SqlTsEs|CTEs*|*|ExpressionEvaluation
+*|CQDS*|operator()|QueryStore

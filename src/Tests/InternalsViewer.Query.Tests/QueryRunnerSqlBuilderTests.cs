@@ -85,7 +85,13 @@ public class EventSqlTests
     [Fact]
     public void GetCreateSessionSql_Captures_Only_Batch_And_Operator_Events_When_Recording_Time_Travel()
     {
-        var options = new EventOptions { RecordTimeTravel = true, IncludeCallStack = true, IncludeLatch = true };
+        var options = new EventOptions
+        {
+            RecordTimeTravel = true,
+            RecordFullTraceEvents = false,
+            IncludeCallStack = true,
+            IncludeLatch = true
+        };
 
         var sql = EventSql.GetCreateSessionSql("Sess", @"C:\Trace\Sess.xel", 1, false, options);
 
@@ -97,6 +103,17 @@ public class EventSqlTests
         Assert.Equal(EventConstants.TimeTravelEvents, events);
         Assert.Contains("opcode = 1 AND (wait_type = 'CXPACKET'", sql);
         Assert.Contains("sqlos.system_thread_id", sql);
+        Assert.DoesNotContain("package0.callstack", sql);
+    }
+
+    [Fact]
+    public void GetCreateSessionSql_Records_Events_Without_Callstacks_When_Recording_Time_Travel()
+    {
+        var options = new EventOptions { RecordTimeTravel = true, IncludeCallStack = true, IncludeLatch = true };
+
+        var sql = EventSql.GetCreateSessionSql("Sess", @"C:\Trace\Sess.xel", 1, false, options);
+
+        Assert.Contains("latch_acquired", sql);
         Assert.DoesNotContain("package0.callstack", sql);
     }
 

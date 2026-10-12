@@ -4,13 +4,13 @@ using InternalsViewer.Query.CallStack.TimeTravel.Timeline.Enums;
 
 namespace InternalsViewer.Query.CallStack.TimeTravel;
 
-public static class TimeTravelCallMerger
+internal static class TimeTravelCallMerger
 {
     public static CallStackNode[] Merge(CallStackTree callStack,
                                         IReadOnlyList<TimeTravelCallNode> calls,
                                         IReadOnlyList<TimeTravelModule> modules)
     {
-        var ordered = modules.OrderBy(m => m.Address).ToArray();
+        var ordered = modules.OrderBy(m => m.StartAddress).ToArray();
 
         var nodes = new CallStackNode[calls.Count];
 
@@ -80,11 +80,11 @@ public static class TimeTravelCallMerger
 
             var module = modules[middle];
 
-            if (address < module.Address)
+            if (address < module.StartAddress)
             {
                 high = middle - 1;
             }
-            else if (address >= module.Address + module.Size)
+            else if (address >= module.StartAddress + module.Size)
             {
                 low = middle + 1;
             }

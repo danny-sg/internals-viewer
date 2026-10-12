@@ -112,7 +112,7 @@ public class MemoryFunctionTests
     [Fact]
     public void A_Clerk_Address_Is_Read_Big_Endian()
     {
-        Assert.Equal(0x000001A2B3C40040ul, MemoryClerks.AddressOf([0x00, 0x00, 0x01, 0xA2, 0xB3, 0xC4, 0x00, 0x40]));
+        Assert.Equal(0x000001A2B3C40040ul, MemoryClerkReader.AddressOf([0x00, 0x00, 0x01, 0xA2, 0xB3, 0xC4, 0x00, 0x40]));
     }
 
     [Fact]

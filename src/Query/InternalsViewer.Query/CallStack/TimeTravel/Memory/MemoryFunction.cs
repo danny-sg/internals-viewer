@@ -2,7 +2,7 @@
 
 namespace InternalsViewer.Query.CallStack.TimeTravel.Memory;
 
-public sealed record MemoryFunction(ulong Address,
+internal sealed record MemoryFunction(ulong Address,
                                     MemoryOperation Operation,
                                     int SizeSlot,
                                     int PointerSlot,

@@ -397,7 +397,7 @@ public sealed class TimeTravelCallLog
 
             if (!ObjectKeys.TryGetValue(identity, out var key))
             {
-                key = new ulong[LocatorReads.ObjectKeyParts + 1];
+                key = new ulong[LocatorReadResolver.ObjectKeyParts + 1];
 
                 ObjectKeys[identity] = key;
             }
@@ -406,9 +406,9 @@ public sealed class TimeTravelCallLog
 
             key[part] = value.Value;
 
-            key[LocatorReads.ObjectKeyParts] |= 1ul << part;
+            key[LocatorReadResolver.ObjectKeyParts] |= 1ul << part;
 
-            if (key[LocatorReads.ObjectKeyParts] != (1ul << LocatorReads.ObjectKeyParts) - 1)
+            if (key[LocatorReadResolver.ObjectKeyParts] != (1ul << LocatorReadResolver.ObjectKeyParts) - 1)
             {
                 return null;
             }

@@ -1,10 +1,13 @@
 using System.Runtime.InteropServices;
 using System.Text;
+using InternalsViewer.Query.CallStack.TimeTravel.Iterators;
 
 namespace InternalsViewer.Query.CallStack.TimeTravel.Native;
 
 internal static class TimeTravelBridge
 {
+    private const int InstanceRegisterShift = 60;
+
     private const string Library = "InternalsViewer.Query.TimeTravelBridge.dll";
 
     [UnmanagedFunctionPointer(CallingConvention.StdCall)]
@@ -62,4 +65,6 @@ internal static class TimeTravelBridge
 
     [DllImport(Library)]
     public static extern void CloseTrace(IntPtr trace);
+
+    internal static ulong PackInstanceMethod(InstanceMethod method) => method.Address | ((ulong)method.Register << InstanceRegisterShift);
 }

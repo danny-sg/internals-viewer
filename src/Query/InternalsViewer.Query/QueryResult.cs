@@ -31,5 +31,5 @@ public sealed record QueryResult
 
     public List<LogRecord> LogRecords { get; set; } = [];
 
-    public PendingFullTrace? FullTrace { get; set; }
+    public FullTraceRequest? FullTraceRequest { get; set; }
 }

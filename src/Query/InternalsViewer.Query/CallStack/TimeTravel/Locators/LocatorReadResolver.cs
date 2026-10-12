@@ -4,7 +4,7 @@ using InternalsViewer.Query.CallStack.Dia;
 
 namespace InternalsViewer.Query.CallStack.TimeTravel.Locators;
 
-public static partial class LocatorReads
+public static partial class LocatorReadResolver
 {
     public const int ReturnRegister = 8;
 
@@ -17,9 +17,9 @@ public static partial class LocatorReads
     private static readonly string[] DecoratedTypes =
         ["VPageId@@", "VAllocationPageId@@", "VHPageHandle@@", "URowId@@", "VColumnStoreObjectKey@@"];
 
-    public static bool AppliesTo(string module) => string.Equals(module, Module, StringComparison.OrdinalIgnoreCase);
+    internal static bool AppliesTo(string module) => string.Equals(module, Module, StringComparison.OrdinalIgnoreCase);
 
-    public static IEnumerable<LocatorRead> For(ulong function, FunctionSignature signature)
+    internal static IEnumerable<LocatorRead> For(ulong function, FunctionSignature signature)
     {
         foreach (var slot in ArgumentLayout.For(signature).Slots)
         {

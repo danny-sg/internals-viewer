@@ -7,7 +7,7 @@ using InternalsViewer.Query.Helpers;
 
 namespace InternalsViewer.Query.CallStack.TimeTravel.Memory;
 
-public static class TimeTravelMemory
+internal static class TimeTravelMemoryMapper
 {
     private const string NoOperator = "No Operator";
 
@@ -27,11 +27,11 @@ public static class TimeTravelMemory
 
     private const string WorkspaceClerk = "MEMORYCLERK_SQLQERESERVATIONS";
 
-    public static TimeTravelMemoryPurpose Apply(TimeTravelCallLog log,
-                                               IReadOnlyList<MemoryFunction> functions,
-                                               TimeTravelTimeline? timeline,
-                                               IReadOnlyList<ExecutionOperatorEvent> operators,
-                                               MemoryClerkSnapshot? clerks = null)
+    public static TimeTravelMemoryPurpose Map(TimeTravelCallLog log,
+                                              IReadOnlyList<MemoryFunction> functions,
+                                              TimeTravelTimeline? timeline,
+                                              IReadOnlyList<ExecutionOperatorEvent> operators,
+                                              MemoryClerkSnapshot? clerks = null)
     {
         var byAddress = functions.ToDictionary(f => f.Address);
 

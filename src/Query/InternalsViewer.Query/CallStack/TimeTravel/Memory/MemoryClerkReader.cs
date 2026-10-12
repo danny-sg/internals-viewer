@@ -2,7 +2,7 @@ using Microsoft.Data.SqlClient;
 
 namespace InternalsViewer.Query.CallStack.TimeTravel.Memory;
 
-public static class MemoryClerks
+internal static class MemoryClerkReader
 {
     private const string SnapshotSql = """
                                        SELECT memory_clerk_address, type

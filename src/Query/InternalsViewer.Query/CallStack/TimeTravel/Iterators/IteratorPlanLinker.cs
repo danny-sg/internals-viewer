@@ -6,7 +6,7 @@ using InternalsViewer.Query.Plans.Model;
 
 namespace InternalsViewer.Query.CallStack.TimeTravel.Iterators;
 
-public static class IteratorPlanLinker
+internal static class IteratorPlanLinker
 {
     private const string RowFactoryClass = "CXte";
 

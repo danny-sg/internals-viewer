@@ -203,7 +203,7 @@ public sealed class QueryRunner(ILogger<QueryRunner> logger,
 
         ITimeTravelRecording? recording = null;
 
-        TimeTravelTrace? fullTrace = null;
+        TimeTravelTraceFile? fullTrace = null;
 
         var memoryClerks = MemoryClerkSnapshot.Empty;
 
@@ -214,7 +214,7 @@ public sealed class QueryRunner(ILogger<QueryRunner> logger,
         var steps = new StepProgress(messages,
                                      TraceSteps(recordable,
                                                 recordable && !payload.QueryOptions.ClearBufferPool,
-                                                eventOptions.IncludeCallStack));
+                                                eventOptions.CapturesCallStacks));
 
         try
         {
@@ -290,7 +290,7 @@ public sealed class QueryRunner(ILogger<QueryRunner> logger,
                 }
             }
 
-            var includeCallStack = eventOptions.IncludeCallStack;
+            var includeCallStack = eventOptions.CapturesCallStacks;
 
             if (includeCallStack)
             {
@@ -405,9 +405,9 @@ public sealed class QueryRunner(ILogger<QueryRunner> logger,
             RowCount = rowCount,
             CropStartUs = cropStart,
             CropEndUs = cropEnd,
-            FullTrace = fullTrace is null
+            FullTraceRequest = fullTrace is null
                 ? null
-                : new PendingFullTrace(fullTrace, events, symbolsPath, memoryClerks, rawEvents, eventOptions.CropToQuery)
+                : new FullTraceRequest(fullTrace, events, symbolsPath, memoryClerks, rawEvents, eventOptions.CropToQuery)
         };
     }
 
@@ -422,18 +422,18 @@ public sealed class QueryRunner(ILogger<QueryRunner> logger,
 
         var paths = await LoadedModules.PathsOfAsync(database.Connection.GetConnectionString(), [.. recorder.Modules], cancellationToken);
 
-        await ReplayFunctions.PrepareAsync(paths, symbolsPath, Logger, cancellationToken);
+        await ReplayFunctionResolver.PrepareAsync(paths, symbolsPath, Logger, cancellationToken);
 
         Logger.LogInformation("Full Trace symbols for {Modules} prepared in {Elapsed}",
                               string.Join(", ", paths.Select(Path.GetFileName)),
                               Stopwatch.GetElapsedTime(start));
     }
 
-    public async Task<FullTraceResult?> LoadFullTraceAsync(PendingFullTrace pending,
+    public async Task<FullTraceResult?> LoadFullTraceAsync(FullTraceRequest request,
                                                           IProgress<ProgressDetail>? progress,
                                                           CancellationToken cancellationToken)
     {
-        var events = pending.Events;
+        var events = request.Events;
 
         var operators = events.OfType<ExecutionOperatorEvent>().ToList();
 
@@ -451,7 +451,7 @@ public sealed class QueryRunner(ILogger<QueryRunner> logger,
         {
             steps.Begin(OpeningStep);
 
-            using var session = await TimeTravelSession.OpenAsync(pending.Trace, cancellationToken);
+            using var session = await TimeTravelSession.OpenAsync(request.TraceFile, cancellationToken);
 
             cancellationToken.ThrowIfCancellationRequested();
 
@@ -459,7 +459,11 @@ public sealed class QueryRunner(ILogger<QueryRunner> logger,
 
             steps.Begin(SymbolsStep);
 
-            functions = await ReplayFunctions.ResolveAsync(session.Modules, pending.SymbolsPath, Logger, messages, cancellationToken);
+            functions = await ReplayFunctionResolver.ResolveAsync(session.Modules,
+                                                                  request.SymbolsPath,
+                                                                  Logger,
+                                                                  messages,
+                                                                  cancellationToken);
 
             Logger.LogInformation("{Excluded} Extended Events and tracing function(s) excluded from the replay, {Memory} memory "
                                   + "function(s) tracked",
@@ -470,15 +474,15 @@ public sealed class QueryRunner(ILogger<QueryRunner> logger,
 
             steps.Begin(ReplayStep);
 
-            Logger.LogInformation("Replaying Full Trace for {Threads} thread(s)", pending.ThreadIds.Count);
+            Logger.LogInformation("Replaying Full Trace for {Threads} thread(s)", request.ThreadIds.Count);
 
-            replay = await session.ReplayAsync(pending.ThreadIds, functions, steps, cancellationToken);
+            replay = await session.ReplayAsync(request.ThreadIds, functions, steps, cancellationToken);
 
             steps.Complete();
         }
         catch (Exception exception) when (exception is InvalidOperationException or DllNotFoundException)
         {
-            Logger.LogWarning(exception, "Time travel trace {TracePath} could not be replayed", pending.Trace.TracePath);
+            Logger.LogWarning(exception, "Time travel trace {TracePath} could not be replayed", request.TraceFile.Path);
 
             steps.Complete();
 
@@ -489,7 +493,7 @@ public sealed class QueryRunner(ILogger<QueryRunner> logger,
 
         steps.Begin(CallTreeStep);
 
-        DeleteTimeTravelTrace(pending.Trace, details);
+        DeleteTimeTravelTrace(request.TraceFile, details);
 
         var callStack = new CallStackTree();
 
@@ -506,7 +510,7 @@ public sealed class QueryRunner(ILogger<QueryRunner> logger,
                               replay.CallLog.Size / (1024 * 1024),
                               replay.CallLog.LocatorCount);
 
-        var unknownSymbols = await CallstackProcessor.Process(callStack, pending.SymbolsPath, messages, cancellationToken);
+        var unknownSymbols = await CallstackProcessor.Process(callStack, request.SymbolsPath, messages, cancellationToken);
 
         LogUnknownSymbols(unknownSymbols);
 
@@ -520,7 +524,7 @@ public sealed class QueryRunner(ILogger<QueryRunner> logger,
 
         var cropped = false;
 
-        if (pending.CropToQuery && QueryExecutionCrop.Crop(callStack) is { } crop)
+        if (request.CropToQuery && QueryExecutionCropper.Crop(callStack) is { } crop)
         {
             callStack = crop.Tree;
 
@@ -569,14 +573,14 @@ public sealed class QueryRunner(ILogger<QueryRunner> logger,
                               operators.Count(o => o.PlanNodeIdentifier is { NodeId: >= 0 }),
                               planLink.Instances.Count);
 
-        var memory = TimeTravelMemory.Apply(replay.CallLog, functions.Memory, timeline, operators, pending.MemoryClerks);
+        var memory = TimeTravelMemoryMapper.Map(replay.CallLog, functions.Memory, timeline, operators, request.MemoryClerks);
 
         var unidentified = memory.Kinds
-                                 .Where(k => k.Name.StartsWith(TimeTravelMemory.UnknownClerk, StringComparison.Ordinal)
-                                             || k.Name == TimeTravelMemory.Unattributed)
+                                 .Where(k => k.Name.StartsWith(TimeTravelMemoryMapper.UnknownClerk, StringComparison.Ordinal)
+                                             || k.Name == TimeTravelMemoryMapper.Unattributed)
                                  .Aggregate(0ul, (total, k) => total + k.Allocated);
 
-        var lifetimes = IteratorLifetimes.Build(timeline, operators);
+        var lifetimes = IteratorLifetimeBuilder.Build(timeline, operators);
 
         timeline.SetLifetimes(lifetimes);
 
@@ -725,7 +729,7 @@ public sealed class QueryRunner(ILogger<QueryRunner> logger,
     {
         try
         {
-            return await MemoryClerks.ReadAsync(connectionString, cancellationToken);
+            return await MemoryClerkReader.ReadAsync(connectionString, cancellationToken);
         }
         catch (SqlException exception)
         {
@@ -742,23 +746,23 @@ public sealed class QueryRunner(ILogger<QueryRunner> logger,
     private static string Size(ulong bytes)
         => bytes >= 1024 * 1024 ? $"{bytes / (1024.0 * 1024.0):N1} MB" : $"{bytes / 1024.0:N1} KB";
 
-    private void DeleteTimeTravelTrace(TimeTravelTrace trace, IProgress<ProgressDetail>? progress)
+    private void DeleteTimeTravelTrace(TimeTravelTraceFile trace, IProgress<ProgressDetail>? progress)
     {
         try
         {
-            var size = new FileInfo(trace.TracePath).Length;
+            var size = new FileInfo(trace.Path).Length;
 
-            File.Delete(trace.TracePath);
+            File.Delete(trace.Path);
 
             progress?.Report($"Time travel trace deleted ({size / (1024.0 * 1024.0):N0} MB)");
         }
         catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
         {
-            Logger.LogWarning(exception, "Time travel trace {TracePath} could not be deleted", trace.TracePath);
+            Logger.LogWarning(exception, "Time travel trace {TracePath} could not be deleted", trace.Path);
         }
     }
 
-    private async Task<(string, long, List<LogRecord> logRecords, List<QueryResultSet> resultSets, TimeTravelTrace? timeTravelTrace)>
+    private async Task<(string, long, List<LogRecord> logRecords, List<QueryResultSet> resultSets, TimeTravelTraceFile? timeTravelTrace)>
         RunQueryWithEventSession(string sessionName,
                                  string[] preCommandSql,
                                  string commandSql,
@@ -796,7 +800,7 @@ public sealed class QueryRunner(ILogger<QueryRunner> logger,
 
         List<QueryResultSet> resultSets;
 
-        TimeTravelTrace? timeTravelTrace = null;
+        TimeTravelTraceFile? timeTravelTrace = null;
 
         if (preCommandSql.Length > 0)
         {
@@ -948,9 +952,9 @@ public sealed class QueryRunner(ILogger<QueryRunner> logger,
             {
                 timeTravelTrace = await recording.StopAsync(cancellationToken);
 
-                var traceSize = new FileInfo(timeTravelTrace.TracePath).Length / 1024d / 1024d;
+                var traceSize = new FileInfo(timeTravelTrace.Path).Length / 1024d / 1024d;
 
-                Logger.LogInformation("Full Trace recording: {TracePath} ({TraceSize:N0} MB)", timeTravelTrace.TracePath, traceSize);
+                Logger.LogInformation("Full Trace recording: {TracePath} ({TraceSize:N0} MB)", timeTravelTrace.Path, traceSize);
             }
 
             if (isReplayMode)

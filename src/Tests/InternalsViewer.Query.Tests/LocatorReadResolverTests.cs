@@ -4,7 +4,7 @@ using InternalsViewer.Query.CallStack.TimeTravel.Locators;
 namespace InternalsViewer.Query.Tests;
 
 [Trait("Category", "Unit")]
-public class LocatorReadsTests
+public class LocatorReadResolverTests
 {
     private const ulong Function = 0x1000;
 
@@ -80,7 +80,7 @@ public class LocatorReadsTests
     {
         var reads = Reads("BlobNode::ChildPID(int)", "?ChildPID@BlobNode@@QEBA?AVPageId@@H@Z");
 
-        Assert.Equal([new LocatorRead(Function, LocatorReads.ReturnRegister, true, LocatorKind.Page)], reads);
+        Assert.Equal([new LocatorRead(Function, LocatorReadResolver.ReturnRegister, true, LocatorKind.Page)], reads);
     }
 
     [Fact]
@@ -88,7 +88,7 @@ public class LocatorReadsTests
     {
         var reads = Reads("Record::GetBackPtr(void)", "?GetBackPtr@Record@@QEBAPEFBURowId@@XZ");
 
-        Assert.Equal([new LocatorRead(Function, LocatorReads.ReturnRegister, true, LocatorKind.Row)], reads);
+        Assert.Equal([new LocatorRead(Function, LocatorReadResolver.ReturnRegister, true, LocatorKind.Row)], reads);
     }
 
     [Fact]
@@ -134,7 +134,7 @@ public class LocatorReadsTests
                                               FunctionKind.Member,
                                               "void");
 
-        Assert.Empty(LocatorReads.For(Function, signature));
+        Assert.Empty(LocatorReadResolver.For(Function, signature));
     }
 
     [Theory]
@@ -170,5 +170,5 @@ public class LocatorReadsTests
     public void Other_Types_Are_Not_Read(string type) => Assert.Null(LocatorType.Of(type));
 
     private static List<LocatorRead> Reads(string signature, string decoratedName)
-        => [.. LocatorReads.For(Function, FunctionSignature.Parse(signature, decoratedName)!)];
+        => [.. LocatorReadResolver.For(Function, FunctionSignature.Parse(signature, decoratedName)!)];
 }

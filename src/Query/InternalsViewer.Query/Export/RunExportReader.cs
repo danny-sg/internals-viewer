@@ -180,7 +180,7 @@ internal static class RunExportReader
 
         callLog.MapNodes(timeline.MappedNodes);
 
-        timeline.SetLifetimes(IteratorLifetimes.Build(timeline, [.. events.OfType<ExecutionOperatorEvent>()]));
+        timeline.SetLifetimes(IteratorLifetimeBuilder.Build(timeline, [.. events.OfType<ExecutionOperatorEvent>()]));
 
         return new FullTraceResult(tree, callLog, timeline) { PlanLink = IteratorPlanLinker.Link(callLog, timeline.MappedNodes, events) };
     }

@@ -360,7 +360,7 @@ public class RunExportTests
 
         timeline.SetMemory([new TimeTravelAllocation(7, 22, 23, 100, 0xA)], [new TimeTravelFree(7, 31, 32, 0xA)]);
 
-        timeline.SetLifetimes(IteratorLifetimes.Build(timeline, [scan]));
+        timeline.SetLifetimes(IteratorLifetimeBuilder.Build(timeline, [scan]));
 
         var log = new TimeTravelCallLog.Builder([new LocatorRead(0x30, 2, false, LocatorKind.Page)]);
 

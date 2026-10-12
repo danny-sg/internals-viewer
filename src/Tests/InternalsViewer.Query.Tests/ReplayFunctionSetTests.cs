@@ -1,4 +1,5 @@
 using InternalsViewer.Query.CallStack.TimeTravel;
+using InternalsViewer.Query.CallStack.TimeTravel.Iterators;
 using InternalsViewer.Query.CallStack.TimeTravel.Locators;
 using InternalsViewer.Query.CallStack.TimeTravel.Memory;
 
@@ -14,14 +15,14 @@ public class ReplayFunctionSetTests
     {
         var relative = new ReplayFunctionSet([0x10],
                                              [new MemoryFunction(0x20, MemoryOperation.Create, 1, -1, 1) { IsPage = true }],
-                                             [0x50],
+                                             [new InstanceMethod(0x50, 1)],
                                              [new LocatorRead(0x60, 2, false, LocatorKind.Page)]);
 
         var rebased = relative.Rebase(Base);
 
         Assert.Equal([Base + 0x10], rebased.Excluded);
         Assert.Equal((Base + 0x20, true), (rebased.Memory[0].Address, rebased.Memory[0].IsPage));
-        Assert.Equal([Base + 0x50], rebased.InstanceMethods);
+        Assert.Equal([new InstanceMethod(Base + 0x50, 1)], rebased.InstanceMethods);
         Assert.Equal(new LocatorRead(Base + 0x60, 2, false, LocatorKind.Page), rebased.Locators[0]);
     }
 }

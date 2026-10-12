@@ -5,7 +5,7 @@ using InternalsViewer.Query.Helpers;
 
 namespace InternalsViewer.Query.CallStack.TimeTravel.Iterators;
 
-public static class IteratorLifetimes
+internal static class IteratorLifetimeBuilder
 {
     public static IReadOnlyList<TimeTravelOperatorLifetime> Build(TimeTravelTimeline timeline,
                                                                   IReadOnlyList<ExecutionOperatorEvent> operators)

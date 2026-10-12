@@ -17,9 +17,9 @@ internal readonly record struct TimeTravelMemoryRead(ulong Function,
     {
         var path = read.Path ?? [];
 
-        if (path.Length > LocatorReads.MaximumHops)
+        if (path.Length > LocatorReadResolver.MaximumHops)
         {
-            throw new ArgumentException($"A read follows at most {LocatorReads.MaximumHops} pointers", nameof(read));
+            throw new ArgumentException($"A read follows at most {LocatorReadResolver.MaximumHops} pointers", nameof(read));
         }
 
         uint HopAt(int index) => index < path.Length ? (uint)path[index] : 0;

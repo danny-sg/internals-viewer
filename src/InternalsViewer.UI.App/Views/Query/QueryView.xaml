@@ -27,7 +27,8 @@
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="Auto"></ColumnDefinition>
                             <ColumnDefinition Width="*"></ColumnDefinition>
-                            <ColumnDefinition Width="*"></ColumnDefinition>
+                            <ColumnDefinition Width="Auto"></ColumnDefinition>
+                            <ColumnDefinition Width="Auto"></ColumnDefinition>
                         </Grid.ColumnDefinitions>
                         <StackPanel Grid.Column="0"
                                     Orientation="Horizontal"
@@ -139,7 +140,7 @@
                                 <ToggleMenuFlyoutItem Text="Record Full Trace"
                                                       IsChecked="{x:Bind ViewModel.QueryOptions.RecordTimeTravel, Mode=OneWay}"
                                                       Click="OnRecordTimeTravelClick"/>
-                                <ToggleMenuFlyoutItem Text="Record Extended Events"
+                                <ToggleMenuFlyoutItem Text="Record Events"
                                                       IsChecked="{x:Bind ViewModel.QueryOptions.RecordFullTraceEvents, Mode=TwoWay}"
                                                       IsEnabled="{x:Bind ViewModel.QueryOptions.RecordTimeTravel, Mode=OneWay}"/>
                                 <MenuFlyoutSeparator/>
@@ -162,14 +163,9 @@
                             </MenuBarItem>
 
                         </MenuBar>
-                    </Grid>
-
-                </CommandBar.Content>
-
-                <CommandBar.PrimaryCommands>
-                    <AppBarElementContainer VerticalContentAlignment="Center"
-                                            Margin="0,-8,2,0">
-                        <ToggleButton Style="{StaticResource TabCommandToggleStyle}"
+                        <ToggleButton Grid.Column="3"
+                                      Margin="-4,0,0,0"
+                                      Style="{StaticResource TabCommandToggleStyle}"
                                       IsChecked="{x:Bind ViewModel.QueryOptions.RecordTimeTravel, Mode=TwoWay}"
                                       Visibility="{x:Bind ViewModel.QueryOptions.RecordTimeTravel, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}"
                                       ToolTipService.ToolTip="Full Trace is on for the next run. Click to turn it off.">
@@ -186,8 +182,9 @@
                             </ToggleButton.Resources>
                             <TextBlock Text="Full Trace" FontWeight="SemiBold" VerticalAlignment="Center" />
                         </ToggleButton>
-                    </AppBarElementContainer>
-                </CommandBar.PrimaryCommands>
+                    </Grid>
+
+                </CommandBar.Content>
             </CommandBar>
         </Border>
 

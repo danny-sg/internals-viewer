@@ -5,7 +5,7 @@ using InternalsViewer.Query.CallStack.TimeTravel;
 namespace InternalsViewer.Query.Tests;
 
 [Trait("Category", "Unit")]
-public class QueryExecutionCropTests
+public class QueryExecutionCropperTests
 {
     [Fact]
     public void The_Tree_Starts_At_The_Query_Execution_And_Drops_Compilation()
@@ -20,7 +20,7 @@ public class QueryExecutionCropTests
 
         var getRow = tree.AddCall(execute, Frame("CQScanTableScanNew", "GetRow", 0x50), 5);
 
-        var crop = QueryExecutionCrop.Crop(tree);
+        var crop = QueryExecutionCropper.Crop(tree);
 
         Assert.NotNull(crop);
 
@@ -44,7 +44,7 @@ public class QueryExecutionCropTests
 
         tree.AddCall(worker, Frame("CQScanXProducerNew", "GetRow", 0x70, SymbolCategory.QueryOperator), 3);
 
-        var crop = QueryExecutionCrop.Crop(tree);
+        var crop = QueryExecutionCropper.Crop(tree);
 
         Assert.NotNull(crop);
         Assert.Equal(["CMsqlExecContext::FExecute", "SubprocEntrypoint::m"],
@@ -62,7 +62,7 @@ public class QueryExecutionCropTests
 
         tree.AddCall(tree.AddCall(tree.Root, Frame("SystemTaskEntryPoint", "m", 0x90), 1), Frame("CheckpointTask", "Run", 0xA0), 4);
 
-        var crop = QueryExecutionCrop.Crop(tree);
+        var crop = QueryExecutionCropper.Crop(tree);
 
         Assert.NotNull(crop);
         Assert.Equal(["CMsqlExecContext::FExecute"], crop.Value.Tree.Root.ChildNodes.Select(n => n.Symbol));
@@ -75,7 +75,7 @@ public class QueryExecutionCropTests
 
         tree.AddCall(tree.Root, Frame("ThreadEntry", "m", 0x10), 1);
 
-        Assert.Null(QueryExecutionCrop.Crop(tree));
+        Assert.Null(QueryExecutionCropper.Crop(tree));
     }
 
     private static CallstackFrame Frame(string className,

@@ -402,6 +402,8 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
         Layout = new QueryLayoutViewModel(this);
 
+        Layout.HasFullTraceEvents = QueryOptions.RecordFullTraceEvents;
+
         Layout.Changed += OnLayoutChanged;
         Layout.SelectionChanged += ScheduleSaveLayout;
 
@@ -959,6 +961,10 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
             Layout.IsFullTrace = QueryOptions.RecordTimeTravel;
 
             PrepareFullTrace();
+        }
+        else if (e.PropertyName == nameof(QueryOptionsViewModel.RecordFullTraceEvents))
+        {
+            Layout.HasFullTraceEvents = QueryOptions.RecordFullTraceEvents;
         }
     }
 
@@ -1929,9 +1935,9 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
                 Result = results
             };
 
-            if (results.FullTrace is { } fullTrace)
+            if (results.FullTraceRequest is { } request)
             {
-                _ = LoadFullTraceAsync(fullTrace);
+                _ = LoadFullTraceAsync(request);
             }
 
             if (ShowBufferPool)
@@ -1962,7 +1968,7 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
     [RelayCommand]
     private void CancelFullTrace() => CancelFullTraceLoad();
 
-    private async Task LoadFullTraceAsync(PendingFullTrace pending)
+    private async Task LoadFullTraceAsync(FullTraceRequest request)
     {
         CancelFullTraceLoad();
 
@@ -1993,7 +1999,7 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
         try
         {
-            var result = await Task.Run(() => QueryRunner.LoadFullTraceAsync(pending, progress, load.Token), load.Token);
+            var result = await Task.Run(() => QueryRunner.LoadFullTraceAsync(request, progress, load.Token), load.Token);
 
             if (load.IsCancellationRequested || result is null)
             {
@@ -2158,6 +2164,8 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
         if (run.FullTrace is { } fullTrace)
         {
+            Layout.HasFullTraceEvents = run.EventOptions.RecordFullTraceEvents;
+
             Layout.IsFullTrace = true;
 
             ShowFullTrace(fullTrace);

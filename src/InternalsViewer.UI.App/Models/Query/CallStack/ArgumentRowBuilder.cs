@@ -73,7 +73,7 @@ public static class ArgumentRowBuilder
 
         if (position == slots.Count && layout.ReturnType is { } returnType && HasReturn(returnType) && call.Returned)
         {
-            return new ArgumentCell(call.ReturnValue, AddressAt(call, LocatorReads.ReturnRegister), returnType);
+            return new ArgumentCell(call.ReturnValue, AddressAt(call, LocatorReadResolver.ReturnRegister), returnType);
         }
 
         return default;
@@ -99,7 +99,7 @@ public static class ArgumentRowBuilder
         {
             values.Add(!call.Returned
                            ? DidNotReturn
-                           : call.LocatorAt(LocatorReads.ReturnRegister) is { } locator
+                           : call.LocatorAt(LocatorReadResolver.ReturnRegister) is { } locator
                                ? Display(returnType, locator)
                                : ArgumentValue.Format(returnType, call.ReturnValue));
         }

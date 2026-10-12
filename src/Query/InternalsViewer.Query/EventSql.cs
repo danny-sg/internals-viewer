@@ -48,7 +48,7 @@ internal static class EventSql
             sessionActions.AddRange(EventConstants.TimeTravelActions);
         }
 
-        if (!minimal && eventOptions.IncludeCallStack)
+        if (eventOptions.CapturesCallStacks)
         {
             sessionActions.AddRange(EventConstants.CallstackActions);
         }

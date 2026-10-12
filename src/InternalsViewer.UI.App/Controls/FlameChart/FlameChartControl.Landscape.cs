@@ -512,9 +512,9 @@ public sealed partial class FlameChartControl
             canvas.DrawPath(ribbon, _paints.Edge);
         }
 
-        if (NamedRun(first, end) is >= 0 and var named)
+        if (NamedSlab(first, end) is { } named)
         {
-            DrawFaceLabel(canvas, _spikes[named]);
+            DrawFaceLabel(canvas, named);
 
             return;
         }
@@ -522,22 +522,43 @@ public sealed partial class FlameChartControl
         DrawCentreLabel(canvas, first, end, leftmost.Left, rightmost.Right);
     }
 
-    private int NamedRun(int first, int end)
+    private Block? NamedSlab(int first, int end)
     {
         var needed = _spikes[first].Source.Operator is not null
             ? MinimumOperatorLabelWidth + LabelPadding * 4
             : _paints.Font.MeasureText(TextOf(_spikes[first])) + LabelPadding * 2;
 
-        var widest = -1;
+        var devicePixel = 1f / (float)Math.Max(_canvas.Dpi, 1);
 
-        for (var index = first; index < end; index++)
+        Block? widest = null;
+
+        var start = first;
+
+        while (start < end)
         {
-            var slab = _spikes[index].Right - _spikes[index].Left;
+            var slab = _spikes[start];
 
-            if (_spikes[index].Bytes > 0 && slab >= needed && (widest < 0 || slab > _spikes[widest].Right - _spikes[widest].Left))
+            var stop = start + 1;
+
+            while (stop < end && Math.Abs(_spikes[stop].Extrusion - _spikes[start].Extrusion) < devicePixel)
             {
-                widest = index;
+                slab = slab with
+                {
+                    Left = Math.Min(slab.Left, _spikes[stop].Left),
+                    Right = Math.Max(slab.Right, _spikes[stop].Right)
+                };
+
+                stop++;
             }
+
+            var width = slab.Right - slab.Left;
+
+            if (slab.Bytes > 0 && width >= needed && (widest is not { } current || width > current.Right - current.Left))
+            {
+                widest = slab;
+            }
+
+            start = stop;
         }
 
         return widest;

@@ -11,7 +11,7 @@ using InternalsViewer.Query.Plans.Model;
 namespace InternalsViewer.Query.Tests;
 
 [Trait("Category", "Unit")]
-public class TimeTravelMemoryTests
+public class TimeTravelMemoryMapperTests
 {
     private const ulong Allocator = 0x5000;
 
@@ -37,7 +37,7 @@ public class TimeTravelMemoryTests
 
         log.MapNodes([caller, allocator]);
 
-        var summary = TimeTravelMemory.Apply(log, [Function(Allocator)], null, []);
+        var summary = TimeTravelMemoryMapper.Map(log, [Function(Allocator)], null, []);
 
         Assert.Equal((300ul, 2L), (summary.Allocated, summary.Allocations));
         Assert.Equal((300L, 2L), (allocator.AllocatedBytes, allocator.Allocations));
@@ -63,7 +63,7 @@ public class TimeTravelMemoryTests
 
         log.MapNodes([caller, outer, inner]);
 
-        var summary = TimeTravelMemory.Apply(log, [Function(Allocator), Function(Inner)], null, []);
+        var summary = TimeTravelMemoryMapper.Map(log, [Function(Allocator), Function(Inner)], null, []);
 
         Assert.Equal(64ul, summary.Allocated);
         Assert.Equal(64L, caller.AllocatedBytesIncludingChildren);
@@ -87,7 +87,7 @@ public class TimeTravelMemoryTests
 
         log.MapNodes([caller, allocator, free]);
 
-        var summary = TimeTravelMemory.Apply(log, [Function(Allocator), new(Releaser, MemoryOperation.Free, -1, 1, 1)], null, []);
+        var summary = TimeTravelMemoryMapper.Map(log, [Function(Allocator), new(Releaser, MemoryOperation.Free, -1, 1, 1)], null, []);
 
         var kind = Assert.Single(summary.Kinds);
 
@@ -110,7 +110,7 @@ public class TimeTravelMemoryTests
 
         log.MapNodes([caller, allocator]);
 
-        var kind = Assert.Single(TimeTravelMemory.Apply(log, [Function(Allocator)], null, []).Kinds);
+        var kind = Assert.Single(TimeTravelMemoryMapper.Map(log, [Function(Allocator)], null, []).Kinds);
 
         var use = Assert.Single(kind.Uses);
 
@@ -135,7 +135,7 @@ public class TimeTravelMemoryTests
 
         log.MapNodes([caller, allocator, free]);
 
-        var summary = TimeTravelMemory.Apply(log, [Function(Allocator), new(Releaser, MemoryOperation.Free, -1, 1, 1)], null, []);
+        var summary = TimeTravelMemoryMapper.Map(log, [Function(Allocator), new(Releaser, MemoryOperation.Free, -1, 1, 1)], null, []);
 
         var kind = Assert.Single(summary.Kinds);
 
@@ -162,7 +162,7 @@ public class TimeTravelMemoryTests
 
         log.MapNodes([build, workfile, steal, block, pages]);
 
-        var kind = Assert.Single(TimeTravelMemory.Apply(log, [new(Allocator, MemoryOperation.Allocate, 1, -1, 8192)], null, [])
+        var kind = Assert.Single(TimeTravelMemoryMapper.Map(log, [new(Allocator, MemoryOperation.Allocate, 1, -1, 8192)], null, [])
                                      .Kinds);
 
         var use = Assert.Single(kind.Uses);
@@ -196,10 +196,10 @@ public class TimeTravelMemoryTests
         var tableScan = Operator(2, scan);
         var unmatched = Operator(3);
 
-        var summary = TimeTravelMemory.Apply(log,
-                                             [Function(Allocator), new(Releaser, MemoryOperation.Free, -1, 1, 1)],
-                                             null,
-                                             [statement, hashMatch, tableScan, unmatched]);
+        var summary = TimeTravelMemoryMapper.Map(log,
+                                                 [Function(Allocator), new(Releaser, MemoryOperation.Free, -1, 1, 1)],
+                                                 null,
+                                                 [statement, hashMatch, tableScan, unmatched]);
 
         Assert.Equal((100ul, 0ul), (hashMatch.Memory!.Allocated, hashMatch.Memory.Freed));
         Assert.Equal((40ul, 40ul, 0ul), (tableScan.Memory!.Allocated, tableScan.Memory.Freed, tableScan.Memory.Held));
@@ -226,7 +226,7 @@ public class TimeTravelMemoryTests
         var outer = Operator(1, scan);
         var inner = Operator(2, scan);
 
-        TimeTravelMemory.Apply(log, [Function(Allocator)], null, [outer, inner]);
+        TimeTravelMemoryMapper.Map(log, [Function(Allocator)], null, [outer, inner]);
 
         Assert.Equal(((TimeTravelMemoryPurpose?)null, (TimeTravelMemoryPurpose?)null), (outer.Memory, inner.Memory));
     }
@@ -249,7 +249,7 @@ public class TimeTravelMemoryTests
 
         log.MapNodes([caller, create, objectPages, workspacePages]);
 
-        var summary = TimeTravelMemory.Apply(log, [ClerkPages()], null, []);
+        var summary = TimeTravelMemoryMapper.Map(log, [ClerkPages()], null, []);
 
         Assert.Equal(16384ul, summary.Allocated);
     }
@@ -280,11 +280,11 @@ public class TimeTravelMemoryTests
 
         timeline.MapNodes([caller, allocator, pages]);
 
-        var summary = TimeTravelMemory.Apply(log,
-                                             [Function(Allocator), ClerkPages()],
-                                             timeline,
-                                             [],
-                                             Snapshot(clerks: new() { [0xC1] = "MEMORYCLERK_SQLQUERYEXEC" }));
+        var summary = TimeTravelMemoryMapper.Map(log,
+                                                 [Function(Allocator), ClerkPages()],
+                                                 timeline,
+                                                 [],
+                                                 Snapshot(clerks: new() { [0xC1] = "MEMORYCLERK_SQLQUERYEXEC" }));
 
         var kind = Assert.Single(summary.Kinds);
 
@@ -319,7 +319,7 @@ public class TimeTravelMemoryTests
 
         timeline.MapNodes([caller, allocator, pages]);
 
-        TimeTravelMemory.Apply(log, [Function(Allocator), ClerkPages()], timeline, [], Snapshot(clerks: new() { [0xC1] = clerk }));
+        TimeTravelMemoryMapper.Map(log, [Function(Allocator), ClerkPages()], timeline, [], Snapshot(clerks: new() { [0xC1] = clerk }));
 
         var start = timeline.StartOf(TimeTravelTimelineAxis.Position);
 
@@ -352,11 +352,11 @@ public class TimeTravelMemoryTests
 
         timeline.MapNodes([caller, allocator]);
 
-        var summary = TimeTravelMemory.Apply(log,
-                                             [new(Allocator, MemoryOperation.Allocate, 1, -1, 1) { IsObjectCall = true }],
-                                             timeline,
-                                             [],
-                                             Snapshot(objects: new() { [0xB0] = "MEMORYCLERK_SQLGENERAL" }));
+        var summary = TimeTravelMemoryMapper.Map(log,
+                                                 [new(Allocator, MemoryOperation.Allocate, 1, -1, 1) { IsObjectCall = true }],
+                                                 timeline,
+                                                 [],
+                                                 Snapshot(objects: new() { [0xB0] = "MEMORYCLERK_SQLGENERAL" }));
 
         Assert.Equal("MEMORYCLERK_SQLGENERAL", Assert.Single(summary.Kinds).Name);
     }
@@ -394,8 +394,8 @@ public class TimeTravelMemoryTests
 
         timeline.MapNodes([caller, allocator, child, parent]);
 
-        var summary = TimeTravelMemory.Apply(log,
-                                             [Function(Allocator),
+        var summary = TimeTravelMemoryMapper.Map(log,
+                                                 [Function(Allocator),
                                               new(Inner, MemoryOperation.Allocate, 1, -1, 1) { IsObjectCall = true },
                                               new(Parent, MemoryOperation.Allocate, 1, -1, 1) { IsObjectCall = true }],
                                              timeline,

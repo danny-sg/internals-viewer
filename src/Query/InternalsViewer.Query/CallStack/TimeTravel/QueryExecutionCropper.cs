@@ -2,7 +2,7 @@ using InternalsViewer.Query.CallStack.Categories;
 
 namespace InternalsViewer.Query.CallStack.TimeTravel;
 
-public static class QueryExecutionCrop
+internal static class QueryExecutionCropper
 {
     private const string Module = "sqllang";
 

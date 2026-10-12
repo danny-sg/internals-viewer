@@ -4,7 +4,16 @@ using InternalsViewer.Query.Events;
 
 namespace InternalsViewer.Query.CallStack.TimeTravel;
 
-public sealed record PendingFullTrace(TimeTravelTrace Trace,
+/// <summary>
+/// Pre-parsed Full Trace
+/// </summary>
+/// <remarks>
+/// Pre-parsed trace containing information for parsing, including the trace file, engine events, symbols path, memory clerk snapshot,
+/// and raw events.
+///
+/// Scoped threads are derived from the raw events where the event has SystemThreadId - this is important for parallel workers.
+/// </remarks>
+public sealed record FullTraceRequest(TimeTravelTraceFile TraceFile,
                                       IReadOnlyList<EngineEvent> Events,
                                       string SymbolsPath,
                                       MemoryClerkSnapshot MemoryClerks,

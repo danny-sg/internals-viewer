@@ -19,5 +19,5 @@ public interface ITimeTravelRecording : IAsyncDisposable
 {
     Task StartAsync(CancellationToken cancellationToken);
 
-    Task<TimeTravelTrace> StopAsync(CancellationToken cancellationToken);
+    Task<TimeTravelTraceFile> StopAsync(CancellationToken cancellationToken);
 }

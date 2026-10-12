@@ -3,7 +3,7 @@ using InternalsViewer.Query.Events.Operators;
 
 namespace InternalsViewer.Query.CallStack.TimeTravel.Iterators;
 
-public static class IteratorInstanceMatcher
+internal static class IteratorInstanceMatcher
 {
     public static int Match(CallStackTree callStack, IReadOnlyList<EngineEvent> events, IteratorPlanLink planLink)
     {
@@ -124,7 +124,7 @@ public static class IteratorInstanceMatcher
 
                 if (node.Frame is { Instance: not 0 } frame
                     && frame.Instance != context
-                    && !IteratorMethods.IsPlanObjectClass(frame.Resolved?.ClassName))
+                    && !InstanceMethodCollector.IsPlanObjectClass(frame.Resolved?.ClassName))
                 {
                     if (!instances.TryGetValue(frame.Instance, out var instance))
                     {

@@ -12,7 +12,7 @@ public class TimeTravelCallMergerTests
 
     private const int ActivityBuckets = 4;
 
-    private static readonly TimeTravelModule[] Modules = [new(@"Z:\Missing\sqlmin.dll", SqlMinBase, 0x10000)];
+    private static readonly TimeTravelModule[] Modules = [TimeTravelModule.Read(@"Z:\Missing\sqlmin.dll", SqlMinBase, 0x10000)];
 
     [Fact]
     public void Merge_Adds_Each_Call_Under_Its_Caller()
