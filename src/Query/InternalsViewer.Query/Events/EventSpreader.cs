@@ -7,7 +7,7 @@ using InternalsViewer.Query.Events.Transactions;
 
 namespace InternalsViewer.Query.Events;
 
-public static class EventSpreader
+internal static class EventSpreader
 {
     // Timestamps resolve only to the millisecond (a true time is within +/-500us of its bucket); durations are the microsecond-accurate
     // signal. Events sharing a bucket are spread across it rather than left stacked.

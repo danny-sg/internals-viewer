@@ -5,7 +5,7 @@ using InternalsViewer.Query.Interfaces.Events;
 
 namespace InternalsViewer.Query.Events.Files;
 
-public class IoEventParser : IEventParser<IoEvent>
+internal class IoEventParser : IEventParser<IoEvent>
 {
     public static IoEvent Map(DatabaseSource? databaseSource, EventResult e)
     {

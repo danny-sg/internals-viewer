@@ -1,6 +1,6 @@
 namespace InternalsViewer.Query.Plans.Operators;
 
-public enum OperatorKind
+internal enum OperatorKind
 {
     DataAccess,
     HashJoin,

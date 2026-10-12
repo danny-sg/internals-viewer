@@ -11,7 +11,7 @@ namespace InternalsViewer.Query.Plans.Parsers.Predicates;
 /// recorded once in the plan's ParameterList. Resolving that value is what lets a seek on an auto parameterized query show the range it
 /// actually sought.
 /// </remarks>
-public sealed class PlanParameters
+internal sealed class PlanParameters
 {
     private Dictionary<string, AccessValue> Values { get; } = new(StringComparer.OrdinalIgnoreCase);
 

@@ -18,7 +18,6 @@ using InternalsViewer.Query.Plans.Parsers;
 using InternalsViewer.Query.Results;
 using InternalsViewer.TransactionLog;
 using InternalsViewer.TransactionLog.LogRecords;
-using InternalsViewer.Query.Memory;
 
 namespace InternalsViewer.Query.Tests;
 
@@ -109,7 +108,6 @@ public class QueryExportTests
         Assert.Same(transactionLog.LogRecord, imported.Result.LogRecords[0]);
         Assert.Equal(new RowIdentifier(1, 336, 4), transactionLog.RowIdentifier);
         Assert.Same(AllocationUnit.Unknown, events.Single(e => e.Name == "custom_event").AllocationUnit);
-        Assert.Equal(100ul, scan.Memory!.Allocated);
     }
 
     [Fact]
@@ -237,8 +235,7 @@ public class QueryExportTests
             OperatorDescription = "Clustered Index Scan",
             PlanNodeIdentifier = new PlanNodeIdentifier { PlanHandleId = 1, NodeId = 0 },
             Threads = [new OperatorThread(0, 10, 20, 5)],
-            Instances = [Scan],
-            Memory = new FullTraceMemoryPurpose("Clustered Index Scan", 100, 2, 50, 80, [new FullTraceMemoryUse("GetRow", "new", 100, 2)])
+            Instances = [Scan]
         };
 
         var plan = ExecutionPlanParser.Parse(PlanXml, (short)3);

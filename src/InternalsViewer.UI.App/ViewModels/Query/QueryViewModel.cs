@@ -18,7 +18,6 @@ using InternalsViewer.Query;
 using InternalsViewer.Query.CallStack;
 using InternalsViewer.Query.FullTrace;
 using InternalsViewer.Query.FullTrace.Iterators;
-using InternalsViewer.Query.FullTrace.Memory;
 using InternalsViewer.Query.FullTrace.Timeline;
 using InternalsViewer.Query.Events.Latches;
 using InternalsViewer.Query.Events.Locks;
@@ -75,7 +74,6 @@ using System.Text.Json;
 using InternalsViewer.Query.Export;
 using InternalsViewer.UI.App.Helpers;
 using Windows.Storage.Pickers;
-using InternalsViewer.Query.Memory;
 
 namespace InternalsViewer.UI.App.ViewModels.Query;
 
@@ -290,7 +288,6 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(SelectedPlanNodeEventStatistics))]
-    [NotifyPropertyChangedFor(nameof(SelectedPlanNodeTracedMemory))]
     [NotifyPropertyChangedFor(nameof(SelectedPlanExpressions))]
     [NotifyPropertyChangedFor(nameof(SelectedPlanNodeScanMode))]
     [NotifyPropertyChangedFor(nameof(SelectedPlanNodeColumnNames))]
@@ -568,28 +565,6 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
                                   .Sum(r => (long)r.Pages.Count);
 
             return new EventIoStatistics(reads.Count, physicalReads, readAheads);
-        }
-    }
-
-    public FullTraceMemoryPurpose? SelectedPlanNodeTracedMemory
-    {
-        get
-        {
-            if (SelectedPlanNode is not { } node)
-            {
-                return null;
-            }
-
-            var plan = ExecutionPlans.FirstOrDefault(p => p.Root.Contains(node)
-                                                          || (p.NodesById.TryGetValue(node.NodeId, out var candidate)
-                                                              && ReferenceEquals(candidate, node)));
-
-            return Events.OfType<ExecutionOperatorEvent>()
-                         .FirstOrDefault(o => o.PlanNodeIdentifier is { } identifier
-                                              && identifier.NodeId == node.NodeId
-                                              && (plan is null || identifier.PlanHandleId == plan.PlanHandleId)
-                                              && o.Memory is not null)
-                         ?.Memory;
         }
     }
 
@@ -2179,8 +2154,6 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
         FlameChart = result.Timeline;
 
         ExecutionPlans = [.. ExecutionPlans];
-
-        OnPropertyChanged(nameof(SelectedPlanNodeTracedMemory));
     }
 
     private static string MessageText(QueryMessage message) => message.IsFinished ? $"{message.Text} - {message.Outcome}" : message.Text;

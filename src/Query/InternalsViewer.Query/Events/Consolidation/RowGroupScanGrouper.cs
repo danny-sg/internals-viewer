@@ -2,7 +2,7 @@ using InternalsViewer.Query.Events.BatchMode;
 
 namespace InternalsViewer.Query.Events.Consolidation;
 
-public static class RowGroupScanGrouper
+internal static class RowGroupScanGrouper
 {
     public static List<EngineEvent> Group(List<EngineEvent> events)
     {

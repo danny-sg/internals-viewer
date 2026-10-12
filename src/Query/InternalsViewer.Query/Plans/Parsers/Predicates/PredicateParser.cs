@@ -13,7 +13,7 @@ namespace InternalsViewer.Query.Plans.Parsers.Predicates;
 /// describes, and one that silently became false would let fewer through, so an unrepresentable
 /// predicate is reported as absent and the caller decides what to do.
 /// </remarks>
-public sealed class PredicateParser(ColumnOrdinalResolver? resolveOrdinal = null,
+internal sealed class PredicateParser(ColumnOrdinalResolver? resolveOrdinal = null,
                                     ParameterValueResolver? resolveParameter = null)
 {
     private ScalarOperatorParser? _expressions;

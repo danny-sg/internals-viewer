@@ -1,9 +1,7 @@
 ﻿using InternalsViewer.Query.CallStack;
-using InternalsViewer.Query.CallStack.Categories;
 using InternalsViewer.Query.FullTrace.CallLog;
 using InternalsViewer.Query.FullTrace.Timeline;
 using InternalsViewer.Query.FullTrace.Timeline.Enums;
-using InternalsViewer.Query.Events.Operators;
 using InternalsViewer.Query.Helpers;
 using InternalsViewer.Query.Memory;
 
@@ -11,29 +9,16 @@ namespace InternalsViewer.Query.FullTrace.Memory;
 
 internal static class MemoryMapper
 {
-    private const string NoOperator = "No Operator";
-
     private const int MaximumObjectDepth = 16;
 
-    private const string SqlOsModule = "sqldk";
-
-    public const string UnknownClerk = "Unknown Clerk";
-
-    private const string Heap = "Heap";
-
-    public const string Unattributed = "Unattributed";
-
-    private const string VirtualMemory = "Virtual Memory";
-
-    private const string Total = "Total";
+    private const string UnknownClerk = "Unknown Clerk";
 
     private const string WorkspaceClerk = "MEMORYCLERK_SQLQERESERVATIONS";
 
-    public static FullTraceMemoryPurpose Map(FullTraceCallLog log,
-                                             IReadOnlyList<MemoryFunction> functions,
-                                             FullTraceTimeline? timeline,
-                                             IReadOnlyList<ExecutionOperatorEvent> operators,
-                                             MemoryClerkSnapshot? clerks = null)
+    public static (long Allocations, ulong Bytes) Map(FullTraceCallLog log,
+                                                      IReadOnlyList<MemoryFunction> functions,
+                                                      FullTraceTimeline? timeline,
+                                                      MemoryClerkSnapshot? clerks = null)
     {
         var byAddress = functions.ToDictionary(f => f.Address);
 
@@ -46,9 +31,13 @@ internal static class MemoryMapper
 
         var plumbing = new Dictionary<CallStackNode, bool>(ReferenceEqualityComparer.Instance);
 
+        var nested = new Dictionary<CallStackNode, bool>(ReferenceEqualityComparer.Instance);
+
         var values = new Dictionary<ulong, CallValues>();
 
-        var events = new List<MemoryEvent>();
+        long count = 0;
+
+        ulong bytes = 0;
 
         foreach (var function in functions.Where(f => f.Allocates || f is { Operation: MemoryOperation.Free, PointerSlot: >= 0 }))
         {
@@ -58,10 +47,6 @@ internal static class MemoryMapper
             }
 
             var callValues = new CallValues(function, logged.Count);
-
-            var positions = scanned.Positions.GetValueOrDefault(function.Address);
-
-            var kinds = scanned.Kinds.GetValueOrDefault(function.Address);
 
             for (var index = 0; index < logged.Count; index++)
             {
@@ -74,18 +59,11 @@ internal static class MemoryMapper
                     continue;
                 }
 
-                var position = PositionOf(positions, index, call);
-
                 var pointer = function.PointerOf(call);
 
                 if (!function.Allocates)
                 {
                     callValues.Released[index] = pointer;
-
-                    if (pointer != 0)
-                    {
-                        events.Add(FreeEvent(position, node, pointer));
-                    }
 
                     continue;
                 }
@@ -97,17 +75,20 @@ internal static class MemoryMapper
                 if (function.Operation == MemoryOperation.Reallocate && pointer != 0)
                 {
                     callValues.Released[index] = pointer;
-
-                    events.Add(FreeEvent(position, node, pointer));
                 }
 
-                events.Add(new MemoryEvent(position,
-                                           MemoryOperation.Allocate,
-                                           node,
-                                           callValues.Bytes[index],
-                                           call.ReturnedValue,
-                                           call.Returned,
-                                           KindOf(kinds?[index], function)));
+                if (node is null || IsNested(node, byAddress, nested))
+                {
+                    continue;
+                }
+
+                node.AllocatedBytes += (long)callValues.Bytes[index];
+
+                node.Allocations++;
+
+                bytes += callValues.Bytes[index];
+
+                count++;
             }
 
             values[function.Address] = callValues;
@@ -120,174 +101,7 @@ internal static class MemoryMapper
             timeline.SetMemory(allocations, frees);
         }
 
-        return Summarise(events.OrderBy(e => e.Position).ThenBy(e => e.Operation == MemoryOperation.Free ? 0 : 1), byAddress, operators);
-    }
-
-    private static FullTraceMemoryPurpose Summarise(IEnumerable<MemoryEvent> events,
-                                                    Dictionary<ulong, MemoryFunction> functions,
-                                                    IReadOnlyList<ExecutionOperatorEvent> operators)
-    {
-        var nestedNodes = new Dictionary<CallStackNode, bool>(ReferenceEqualityComparer.Instance);
-
-        var operatorsByFrame = OwnersByFrame(operators.Where(o => o.PlanNodeIdentifier is { NodeId: >= 0 }));
-
-        var statementsByFrame = OwnersByFrame(operators.Where(o => o.PlanNodeIdentifier is { NodeId: < 0 }));
-
-        var ownersOf = new Dictionary<CallStackNode, (ExecutionOperatorEvent? Operator, ExecutionOperatorEvent? Statement)>(
-            ReferenceEqualityComparer.Instance);
-
-        var byOperator = new Dictionary<ExecutionOperatorEvent, PurposeTotals>(ReferenceEqualityComparer.Instance);
-
-        var kinds = new Dictionary<string, PurposeTotals>();
-
-        var live = new Dictionary<ulong, LiveAllocation>();
-
-        ulong allocated = 0;
-
-        ulong inUse = 0;
-
-        ulong peak = 0;
-
-        long allocations = 0;
-
-        foreach (var memoryEvent in events)
-        {
-            if (memoryEvent.Operation == MemoryOperation.Free)
-            {
-                if (live.Remove(memoryEvent.Pointer, out var freed))
-                {
-                    inUse -= freed.Bytes;
-
-                    freed.Operator?.Free(freed.Bytes, freed.KindName);
-
-                    freed.Statement?.Free(freed.Bytes, freed.KindName);
-
-                    freed.Kind.Free(freed.Bytes, null);
-                }
-
-                continue;
-            }
-
-            if (memoryEvent.Node is not { } node)
-            {
-                continue;
-            }
-
-            if (!nestedNodes.TryGetValue(node, out var nested))
-            {
-                nested = IsNested(node, functions);
-
-                nestedNodes[node] = nested;
-            }
-
-            if (nested)
-            {
-                continue;
-            }
-
-            node.AllocatedBytes += (long)memoryEvent.Bytes;
-
-            node.Allocations++;
-
-            allocated += memoryEvent.Bytes;
-
-            allocations++;
-
-            var kindTotals = TotalsOf(kinds, memoryEvent.Kind);
-
-            kindTotals.Allocate(node, memoryEvent.Bytes, null);
-
-            if (!ownersOf.TryGetValue(node, out var owners))
-            {
-                owners = (OwnerOf(node, operatorsByFrame), OwnerOf(node, statementsByFrame));
-
-                ownersOf[node] = owners;
-            }
-
-            var operatorTotals = owners.Operator is null ? null : TotalsOf(byOperator, owners.Operator);
-
-            var statementTotals = owners.Statement is null ? null : TotalsOf(byOperator, owners.Statement);
-
-            operatorTotals?.Allocate(node, memoryEvent.Bytes, memoryEvent.Kind);
-
-            statementTotals?.Allocate(node, memoryEvent.Bytes, memoryEvent.Kind);
-
-            if (!memoryEvent.Returned || memoryEvent.Pointer == 0)
-            {
-                continue;
-            }
-
-            live[memoryEvent.Pointer] = new LiveAllocation(operatorTotals, statementTotals, kindTotals, memoryEvent.Kind, memoryEvent.Bytes);
-
-            inUse += memoryEvent.Bytes;
-
-            peak = Math.Max(peak, inUse);
-        }
-
-        foreach (var operatorEvent in operators)
-        {
-            operatorEvent.Memory = byOperator.TryGetValue(operatorEvent, out var ownerTotals)
-                ? ownerTotals.ToPurpose(operatorEvent.OperatorDescription)
-                : null;
-        }
-
-        List<FullTraceMemoryPurpose> purposes = [.. kinds.OrderByDescending(k => k.Value.Allocated)
-                                                         .Select(k => k.Value.ToPurpose(k.Key))];
-
-        var released = purposes.Aggregate(0ul, (total, k) => total + k.Freed);
-
-        return new FullTraceMemoryPurpose(Total, allocated, allocations, released, peak, [])
-        {
-            Kinds = purposes
-        };
-    }
-
-    private static PurposeTotals TotalsOf<TKey>(Dictionary<TKey, PurposeTotals> totals, TKey key) where TKey : notnull
-    {
-        if (!totals.TryGetValue(key, out var keyTotals))
-        {
-            keyTotals = new PurposeTotals();
-
-            totals[key] = keyTotals;
-        }
-
-        return keyTotals;
-    }
-
-    private static Dictionary<CallStackNode, List<ExecutionOperatorEvent>> OwnersByFrame(IEnumerable<ExecutionOperatorEvent> operators)
-    {
-        var ownersByFrame = new Dictionary<CallStackNode, List<ExecutionOperatorEvent>>(ReferenceEqualityComparer.Instance);
-
-        foreach (var operatorEvent in operators)
-        {
-            foreach (var frame in operatorEvent.EntryFrames)
-            {
-                if (!ownersByFrame.TryGetValue(frame, out var owners))
-                {
-                    owners = [];
-
-                    ownersByFrame[frame] = owners;
-                }
-
-                owners.Add(operatorEvent);
-            }
-        }
-
-        return ownersByFrame;
-    }
-
-    private static ExecutionOperatorEvent? OwnerOf(CallStackNode node,
-                                                   Dictionary<CallStackNode, List<ExecutionOperatorEvent>> ownersByFrame)
-    {
-        foreach (var frame in node.Ancestors())
-        {
-            if (ownersByFrame.TryGetValue(frame, out var owners))
-            {
-                return owners.Count == 1 ? owners[0] : null;
-            }
-        }
-
-        return null;
+        return (count, bytes);
     }
 
     private static ScannedCalls ScanSpans(Func<ulong, FullTraceCallList?> callsOf,
@@ -313,17 +127,6 @@ internal static class MemoryMapper
             var start = span.StartOf(FullTraceTimelineAxis.Position);
 
             var end = span.EndOf(FullTraceTimelineAxis.Position);
-
-            if (!scanned.Positions.TryGetValue(function.Address, out var positions))
-            {
-                positions = new double[logged.Count];
-
-                Array.Fill(positions, double.NaN);
-
-                scanned.Positions[function.Address] = positions;
-            }
-
-            positions[call] = start;
 
             if (!threads.TryGetValue(span.Thread.ThreadId, out var thread))
             {
@@ -402,7 +205,7 @@ internal static class MemoryMapper
 
                 if (!scanned.Kinds.TryGetValue(address, out var kinds))
                 {
-                    kinds = new string?[scanned.Positions[address].Length];
+                    kinds = new string?[callsOf(address)!.Count];
 
                     scanned.Kinds[address] = kinds;
                 }
@@ -440,21 +243,12 @@ internal static class MemoryMapper
         return null;
     }
 
-    private static double PositionOf(double[]? positions, int index, FullTraceArgumentCall call)
-        => positions is not null && index < positions.Length && !double.IsNaN(positions[index]) ? positions[index] : call.Sequence;
-
     private static int FirstWithin(double[] starts, double start, double end)
     {
         var index = SortedSearch.FirstAtOrAfter(starts, start);
 
         return index < starts.Length && starts[index] < end ? index : -1;
     }
-
-    private static string KindOf(string? kind, MemoryFunction function)
-        => kind ?? (function.IsHeap ? Heap : function.IsVirtual ? VirtualMemory : Unattributed);
-
-    private static MemoryEvent FreeEvent(double position, CallStackNode? node, ulong pointer)
-        => new(position, MemoryOperation.Free, node, 0, pointer, false, string.Empty);
 
     private static bool IsPlumbing(CallStackNode? node, Dictionary<CallStackNode, bool> plumbing)
     {
@@ -473,45 +267,19 @@ internal static class MemoryMapper
         return inside;
     }
 
-    private static bool IsNested(CallStackNode node, Dictionary<ulong, MemoryFunction> functions)
-        => node.Ancestors()
-               .Skip(1)
-               .Any(a => a.Frame is { } frame && functions.TryGetValue(frame.Address, out var function) && function.Allocates);
-
-    private static bool IsBufferPool(CallStackNode node)
-        => node.Frame?.Resolved?.SymbolCategory is SymbolCategory.BufferPool or SymbolCategory.BufferManager;
-
-    private static bool IsMemoryPlumbing(CallStackNode node)
-        => string.Equals(node.Frame?.Module, SqlOsModule, StringComparison.OrdinalIgnoreCase) || IsBufferPool(node);
-
-    private static CallStackNode? CallerOf(CallStackNode node)
-        => node.Ancestors().Skip(1).FirstOrDefault(a => !IsMemoryPlumbing(a)) ?? node.Parent;
-
-    private static CallStackNode EntryOf(CallStackNode node, CallStackNode? caller)
+    private static bool IsNested(CallStackNode node, Dictionary<ulong, MemoryFunction> functions, Dictionary<CallStackNode, bool> nested)
     {
-        var entry = node;
-
-        while (entry.Parent is { IsRoot: false } parent && !ReferenceEquals(parent, caller))
+        if (!nested.TryGetValue(node, out var inside))
         {
-            entry = parent;
+            inside = node.Ancestors()
+                         .Skip(1)
+                         .Any(a => a.Frame is { } frame && functions.TryGetValue(frame.Address, out var function) && function.Allocates);
+
+            nested[node] = inside;
         }
 
-        return entry;
+        return inside;
     }
-
-    private readonly record struct MemoryEvent(double Position,
-                                               MemoryOperation Operation,
-                                               CallStackNode? Node,
-                                               ulong Bytes,
-                                               ulong Pointer,
-                                               bool Returned,
-                                               string Kind);
-
-    private readonly record struct LiveAllocation(PurposeTotals? Operator,
-                                                  PurposeTotals? Statement,
-                                                  PurposeTotals Kind,
-                                                  string KindName,
-                                                  ulong Bytes);
 
     private sealed class CallValues(MemoryFunction function, int count)
     {
@@ -526,8 +294,6 @@ internal static class MemoryMapper
 
     private sealed class ScannedCalls
     {
-        public Dictionary<ulong, double[]> Positions { get; } = [];
-
         public Dictionary<ulong, string?[]> Kinds { get; } = [];
 
         public List<ThreadCalls> Threads { get; } = [];
@@ -594,68 +360,5 @@ internal static class MemoryMapper
 
             ObjectStarts = [.. Objects.Select(o => o.Start)];
         }
-    }
-
-    private sealed class PurposeTotals
-    {
-        public ulong Allocated { get; private set; }
-
-        private ulong InUse { get; set; }
-
-        private ulong Peak { get; set; }
-
-        private ulong Freed { get; set; }
-
-        private long Count { get; set; }
-
-        private Dictionary<(string Caller, string Allocator), (ulong Bytes, long Count)> Uses { get; } = [];
-
-        private Dictionary<string, PurposeTotals> Kinds { get; } = [];
-
-        public void Allocate(CallStackNode node, ulong bytes, string? kind)
-        {
-            if (kind is not null)
-            {
-                TotalsOf(Kinds, kind).Allocate(node, bytes, null);
-            }
-
-            Allocated += bytes;
-
-            Count++;
-
-            InUse += bytes;
-
-            Peak = Math.Max(Peak, InUse);
-
-            var caller = CallerOf(node);
-
-            var key = (caller is { IsRoot: false } ? caller.Symbol : NoOperator, EntryOf(node, caller).Symbol);
-
-            Uses[key] = Uses.TryGetValue(key, out var use) ? (use.Bytes + bytes, use.Count + 1) : (bytes, 1);
-        }
-
-        public void Free(ulong bytes, string? kind)
-        {
-            if (kind is not null && Kinds.TryGetValue(kind, out var kindTotals))
-            {
-                kindTotals.Free(bytes, null);
-            }
-
-            Freed += bytes;
-
-            InUse -= Math.Min(InUse, bytes);
-        }
-
-        public FullTraceMemoryPurpose ToPurpose(string name)
-            => new(name,
-                   Allocated,
-                   Count,
-                   Freed,
-                   Peak,
-                   [.. Uses.OrderByDescending(u => u.Value.Bytes)
-                           .Select(u => new FullTraceMemoryUse(u.Key.Caller, u.Key.Allocator, u.Value.Bytes, u.Value.Count))])
-            {
-                Kinds = [.. Kinds.OrderByDescending(k => k.Value.Peak).Select(k => k.Value.ToPurpose(k.Key))]
-            };
     }
 }

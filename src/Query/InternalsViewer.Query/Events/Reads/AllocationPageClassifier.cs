@@ -2,7 +2,7 @@ using InternalsViewer.Internals.Engine.Address;
 
 namespace InternalsViewer.Query.Events.Reads;
 
-public static class AllocationPageClassifier
+internal static class AllocationPageClassifier
 {
     public static void Classify(IReadOnlyList<EngineEvent> events)
     {

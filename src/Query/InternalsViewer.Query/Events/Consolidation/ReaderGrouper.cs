@@ -56,7 +56,7 @@ namespace InternalsViewer.Query.Events.Consolidation;
 /// This suspend is when the page(s) are not in the buffer pool, and it switches to file based read - either contiguous or scatter/gather,
 /// then the physical_page_read events should be at the end to show that the pages have been read from disk, and the read is complete.
 /// </remarks>
-public static class ReaderGrouper
+internal static class ReaderGrouper
 {
     public static List<EngineEvent> Group(IReadOnlyList<EngineEvent> events)
     {

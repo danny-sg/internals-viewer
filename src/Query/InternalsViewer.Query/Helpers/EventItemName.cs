@@ -3,7 +3,7 @@ using System.Reflection;
 
 namespace InternalsViewer.Query.Helpers;
 
-public static class EventItemName
+internal static class EventItemName
 {
     private static readonly ConcurrentDictionary<MemberInfo, string> Cache = new();
 

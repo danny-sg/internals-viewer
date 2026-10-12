@@ -22,7 +22,7 @@ namespace InternalsViewer.Query.Events.Consolidation;
 /// before <see cref="ReaderGrouper"/>/<see cref="LockGrouper"/> and the group span then reflects the closed holds. Paired locks (a real
 /// release was captured) are left untouched.
 /// </remarks>
-public static class HeldLockCloser
+internal static class HeldLockCloser
 {
     public static void Close(IReadOnlyList<EngineEvent> events)
     {

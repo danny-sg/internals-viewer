@@ -2,7 +2,7 @@ using InternalsViewer.Query.CallStack;
 
 namespace InternalsViewer.Query.Events.Reads;
 
-public static class ReadAheadClassifier
+internal static class ReadAheadClassifier
 {
     public static void Classify(IReadOnlyList<EngineEvent> events)
     {

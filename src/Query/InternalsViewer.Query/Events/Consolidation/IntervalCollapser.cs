@@ -32,7 +32,7 @@ namespace InternalsViewer.Query.Events.Consolidation;
 /// Duration is taken from the End's SQL-measured value rather than a timestamp delta, so the fold is immune to the quantised, out-of-order
 /// capture timestamps.
 /// </remarks>
-public static class IntervalCollapser
+internal static class IntervalCollapser
 {
     public static List<EngineEvent> Collapse(IReadOnlyList<EngineEvent> events)
     {

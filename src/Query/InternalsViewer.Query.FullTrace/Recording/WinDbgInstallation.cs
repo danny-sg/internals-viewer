@@ -16,7 +16,7 @@ namespace InternalsViewer.Query.FullTrace.Recording;
 /// refuses a client built from a different engine.
 /// </remarks>
 [SupportedOSPlatform("windows")]
-public sealed record WinDbgInstallation(string Executable, string EngineDirectory, string Name, bool IsPackaged)
+internal sealed record WinDbgInstallation(string Executable, string EngineDirectory, string Name, bool IsPackaged)
 {
     private const string PackagesKey =
         @"Software\Classes\Local Settings\Software\Microsoft\Windows\CurrentVersion\AppModel\Repository\Packages";

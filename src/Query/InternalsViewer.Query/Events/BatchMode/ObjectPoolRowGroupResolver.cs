@@ -2,7 +2,7 @@ using InternalsViewer.Query.Events.BatchMode.Enums;
 
 namespace InternalsViewer.Query.Events.BatchMode;
 
-public static class ObjectPoolRowGroupResolver
+internal static class ObjectPoolRowGroupResolver
 {
     public static void Resolve(IReadOnlyList<EngineEvent> events,
                                long hobtId,

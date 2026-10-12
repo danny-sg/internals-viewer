@@ -13,12 +13,12 @@ namespace InternalsViewer.Query.Plans.Parsers.Predicates;
 /// An auto parameterized plan replaces literals with parameters, so the value a seek compares against is held in the plan's ParameterList
 /// rather than at the point of use.
 /// </remarks>
-public delegate AccessValue? ParameterValueResolver(string parameterName);
+internal delegate AccessValue? ParameterValueResolver(string parameterName);
 
 /// <summary>
 /// Builds access path expressions from a showplan ScalarOperator tree
 /// </summary>
-public sealed class ScalarOperatorParser(ColumnOrdinalResolver? resolveOrdinal = null,
+internal sealed class ScalarOperatorParser(ColumnOrdinalResolver? resolveOrdinal = null,
                                          ParameterValueResolver? resolveParameter = null,
                                          Func<XElement?, AccessPredicate?>? resolvePredicate = null)
 {

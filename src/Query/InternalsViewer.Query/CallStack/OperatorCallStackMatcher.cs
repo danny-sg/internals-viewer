@@ -34,7 +34,7 @@ namespace InternalsViewer.Query.CallStack;
 /// Runs after <see cref="CallStackTree.CollapseToFunctions"/>, needing both resolved symbols (for the mapping match) and the final 
 /// function-keyed nodes (the ones the events point at).
 /// </remarks>
-public static class OperatorCallStackMatcher
+internal static class OperatorCallStackMatcher
 {
     public static void Match(IReadOnlyList<EngineEvent> events)
     {

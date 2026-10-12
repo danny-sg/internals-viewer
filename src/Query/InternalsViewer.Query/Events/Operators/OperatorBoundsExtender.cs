@@ -10,7 +10,7 @@ namespace InternalsViewer.Query.Events.Operators;
 /// construction spans, so an operator can end up starting after work that belongs to it. An operator always bounds its
 /// own events and its children, so the start moves and the end stays where it was measured.
 /// </remarks>
-public static class OperatorBoundsExtender
+internal static class OperatorBoundsExtender
 {
     public static void ExtendStarts(IReadOnlyList<EngineEvent> events)
     {

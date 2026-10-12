@@ -4,7 +4,7 @@ using Microsoft.Extensions.Logging;
 
 namespace InternalsViewer.Query;
 
-public sealed class KeyHashLookup(ILogger<KeyHashLookup> logger)
+internal sealed class KeyHashLookup(ILogger<KeyHashLookup> logger)
 {
     private const int BatchSize = 2000;
 

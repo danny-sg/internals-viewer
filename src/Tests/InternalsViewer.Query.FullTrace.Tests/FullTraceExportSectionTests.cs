@@ -12,7 +12,6 @@ using InternalsViewer.Query.FullTrace.Locators;
 using InternalsViewer.Query.FullTrace.Memory;
 using InternalsViewer.Query.FullTrace.Native;
 using InternalsViewer.Query.FullTrace.Timeline;
-using InternalsViewer.Query.Memory;
 using InternalsViewer.Query.Plans.Model;
 
 namespace InternalsViewer.Query.FullTrace.Tests;
@@ -164,8 +163,7 @@ public class FullTraceExportSectionTests
             OperatorDescription = "Clustered Index Scan",
             PlanNodeIdentifier = new PlanNodeIdentifier { PlanHandleId = 1, NodeId = 0 },
             Threads = [new OperatorThread(0, 10, 20, 5)],
-            Instances = [Scan],
-            Memory = new FullTraceMemoryPurpose("Clustered Index Scan", 100, 2, 50, 80, [new FullTraceMemoryUse("GetRow", "new", 100, 2)])
+            Instances = [Scan]
         };
 
         var fullTrace = FullTrace(scan);

@@ -201,12 +201,7 @@ public sealed class FullTraceLoader(ILogger<FullTraceLoader> logger, ITimeTravel
                               operators.Count(o => o.PlanNodeIdentifier is { NodeId: >= 0 }),
                               planLink.Instances.Count);
 
-        var memory = MemoryMapper.Map(replay.CallLog, memoryFunctions, timeline, operators, request.MemoryClerks);
-
-        var unidentified = memory.Kinds
-                                 .Where(k => k.Name.StartsWith(MemoryMapper.UnknownClerk, StringComparison.Ordinal)
-                                             || k.Name == MemoryMapper.Unattributed)
-                                 .Aggregate(0ul, (total, k) => total + k.Allocated);
+        var memory = MemoryMapper.Map(replay.CallLog, memoryFunctions, timeline, request.MemoryClerks);
 
         var lifetimes = IteratorLifetimeBuilder.Build(timeline, operators);
 
@@ -227,14 +222,11 @@ public sealed class FullTraceLoader(ILogger<FullTraceLoader> logger, ITimeTravel
                               marked.Paired);
 
         Logger.LogInformation("{Matched} of {Operators} operator(s) matched to recorded iterators, {Allocations} allocation(s) of "
-                              + "{Bytes}, peak in use {PeakInUse}, {Unidentified} with no memory clerk, {Lifetimes} operator "
-                              + "lifetime(s) on {Threads} thread(s)",
+                              + "{Bytes}, {Lifetimes} operator lifetime(s) on {Threads} thread(s)",
                               matched,
                               operators.Count(o => o.PlanNodeIdentifier is { NodeId: >= 0 }),
                               memory.Allocations,
-                              Size(memory.Allocated),
-                              Size(memory.PeakInUse),
-                              Size(unidentified),
+                              Size(memory.Bytes),
                               lifetimes.Count,
                               lifetimes.Select(l => l.Thread).Distinct().Count());
 

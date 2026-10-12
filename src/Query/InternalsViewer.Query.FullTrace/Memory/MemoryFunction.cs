@@ -4,11 +4,11 @@ using InternalsViewer.Query.FullTrace.CallLog;
 namespace InternalsViewer.Query.FullTrace.Memory;
 
 internal sealed record MemoryFunction(ulong Address,
-                                    MemoryOperation Operation,
-                                    int SizeSlot,
-                                    int PointerSlot,
-                                    ulong Unit,
-                                    int CountSlot = -1)
+                                      MemoryOperation Operation,
+                                      int SizeSlot,
+                                      int PointerSlot,
+                                      ulong Unit,
+                                      int CountSlot = -1)
 {
     private const ulong PageSize = 8192;
 

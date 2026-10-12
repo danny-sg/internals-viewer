@@ -15,7 +15,7 @@ namespace InternalsViewer.Query.CallStack;
 /// Where one entry frame is shared by several operators, the merged-sibling case, the thread profile windows arbitrate by
 /// time. If they cannot, the event is left unattributed rather than guessed.
 /// </remarks>
-public static class CallStackPlanNodeMatcher
+internal static class CallStackPlanNodeMatcher
 {
     public static void Match(IReadOnlyList<EngineEvent> events)
     {

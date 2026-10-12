@@ -5,7 +5,7 @@ namespace InternalsViewer.Query.Plans.Joins;
 /// <summary>
 /// Reads the logical join a plan operator states it is carrying out
 /// </summary>
-public static class JoinTypeParser
+internal static class JoinTypeParser
 {
     public static JoinType Parse(string? logicalOperator)
     {

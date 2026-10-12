@@ -14,7 +14,7 @@ namespace InternalsViewer.Query.Events.BatchMode;
 /// An allocation page is owned by no object. Opening a LOB checks the page's allocation status, which reads the PFS and
 /// IAM pages, so a read that owns nothing and touches an allocation page belongs to the next miss on the same task.
 /// </remarks>
-public static class ObjectPoolReadLinker
+internal static class ObjectPoolReadLinker
 {
     public static void Link(IReadOnlyList<EngineEvent> events)
     {

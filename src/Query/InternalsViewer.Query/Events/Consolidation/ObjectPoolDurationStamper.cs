@@ -25,7 +25,7 @@ namespace InternalsViewer.Query.Events.Consolidation;
 ///
 /// A miss without a plan node falls back to any read on the same task.
 /// </remarks>
-public static class ObjectPoolDurationStamper
+internal static class ObjectPoolDurationStamper
 {
     public static void Stamp(IReadOnlyList<EngineEvent> events)
     {

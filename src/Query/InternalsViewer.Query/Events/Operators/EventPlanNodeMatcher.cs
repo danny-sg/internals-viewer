@@ -24,7 +24,7 @@ namespace InternalsViewer.Query.Events.Operators;
 /// 3. Timing. When object identity alone is ambiguous (e.g. the same index accessed by two operators in a self-join) the node whose 
 ///    execution window best contains the event timestamp is chosen.
 /// </remarks>
-public static class EventPlanNodeMatcher
+internal static class EventPlanNodeMatcher
 {
     public static void Match(IReadOnlyList<EngineEvent> events, IReadOnlyList<ExecutionPlan> plans)
     {

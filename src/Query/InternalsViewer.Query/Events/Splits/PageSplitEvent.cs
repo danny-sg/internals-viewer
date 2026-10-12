@@ -15,7 +15,7 @@ namespace InternalsViewer.Query.Events.Splits;
 ///
 /// Different split operations are recorded in the event's SplitOperation property, and the new page allocated by the split is in NewPage.
 /// </remarks>
-public sealed partial record PageSplitEvent : PageEngineEvent
+internal sealed partial record PageSplitEvent : PageEngineEvent
 {
     [EventProperty("Operation")]
     public PageSplitOperation SplitOperation { get; init; }

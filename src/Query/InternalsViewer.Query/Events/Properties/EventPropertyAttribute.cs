@@ -1,7 +1,7 @@
 namespace InternalsViewer.Query.Events.Properties;
 
 [AttributeUsage(AttributeTargets.Property)]
-public sealed class EventPropertyAttribute(string name) : Attribute
+internal sealed class EventPropertyAttribute(string name) : Attribute
 {
     public string Name { get; } = name;
 

@@ -19,7 +19,7 @@ namespace InternalsViewer.Query.Events.Consolidation;
 /// Must run after <see cref="IntervalCollapser"/>, which is what gives the suspend its folded duration, and before
 /// <see cref="ReaderGrouper"/>, which matches waits to reads on those timings.
 /// </remarks>
-public static class WaitAligner
+internal static class WaitAligner
 {
     public static void Align(IReadOnlyList<EngineEvent> events)
     {

@@ -3,7 +3,7 @@ using InternalsViewer.Query.Plans.Model;
 
 namespace InternalsViewer.Query.Events.BatchMode;
 
-public static class BatchInfoBuilder
+internal static class BatchInfoBuilder
 {
     public static void Apply(IReadOnlyList<EngineEvent> events, IReadOnlyList<ExecutionPlan> plans)
     {

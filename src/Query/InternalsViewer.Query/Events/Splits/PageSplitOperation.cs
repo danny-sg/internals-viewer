@@ -2,7 +2,7 @@ namespace InternalsViewer.Query.Events.Splits;
 
 // ReSharper disable InconsistentNaming
 // ReSharper disable IdentifierTypo
-public enum PageSplitOperation
+internal enum PageSplitOperation
 {
     SPLIT_FOR_INSERT = 0,
     SPLIT_FOR_GHOST = 1,

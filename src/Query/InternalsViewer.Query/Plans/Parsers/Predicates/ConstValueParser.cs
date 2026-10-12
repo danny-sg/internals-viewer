@@ -13,7 +13,7 @@ namespace InternalsViewer.Query.Plans.Parsers.Predicates;
 /// the way the literal is written. Strings arrive quoted with doubled inner quotes, unicode strings carry an N prefix, binary arrives
 /// with a 0x prefix, and money carries a currency symbol.
 /// </remarks>
-public static class ConstValueParser
+internal static class ConstValueParser
 {
     /// <summary>
     /// Parses a constant literal, returning a null value when the literal cannot be interpreted

@@ -135,7 +135,7 @@ public class LocatorReadResolverTests
                                               FunctionKind.Member,
                                               "void");
 
-        Assert.Empty(LocatorReadResolver.For(Function, signature));
+        Assert.Empty(LocatorReadResolver.ReadsOf(Function, signature));
     }
 
     [Theory]
@@ -146,7 +146,7 @@ public class LocatorReadResolverTests
     [InlineData("ColumnStoreObjectKey const &", LocatorKind.ColumnStoreObject, true, true)]
     [InlineData("AllocationPageId const *", LocatorKind.Page, true, true, 8)]
     public void A_Page_Or_Row_Type_Is_Recognised(string type, LocatorKind kind, bool indirect, bool isConst, int offset = 0)
-        => Assert.Equal(new LocatorType(kind, indirect, isConst, offset), LocatorType.Of(type));
+        => Assert.Equal(new LocatorType(kind, indirect, isConst, offset), LocatorType.LocatorTypeOf(type));
 
     [Theory]
     [InlineData("int &", true, false)]
@@ -155,7 +155,7 @@ public class LocatorReadResolverTests
     [InlineData("enum BPool::StealOption *", true, false)]
     [InlineData("HoBtId const &", true, true)]
     public void A_Value_Behind_A_Reference_Is_Recognised(string type, bool indirect, bool isConst)
-        => Assert.Equal(new LocatorType(LocatorKind.Referenced, indirect, isConst), LocatorType.Of(type));
+        => Assert.Equal(new LocatorType(LocatorKind.Referenced, indirect, isConst), LocatorType.LocatorTypeOf(type));
 
     [Theory]
     [InlineData("AlignedPageId *")]
@@ -168,8 +168,8 @@ public class LocatorReadResolverTests
     [InlineData("unsigned char *")]
     [InlineData("enum UnknownOption &")]
     [InlineData("int * *")]
-    public void Other_Types_Are_Not_Read(string type) => Assert.Null(LocatorType.Of(type));
+    public void Other_Types_Are_Not_Read(string type) => Assert.Null(LocatorType.LocatorTypeOf(type));
 
     private static List<LocatorRead> Reads(string signature, string decoratedName)
-        => [.. LocatorReadResolver.For(Function, FunctionSignature.Parse(signature, decoratedName)!)];
+        => [.. LocatorReadResolver.ReadsOf(Function, FunctionSignature.Parse(signature, decoratedName)!)];
 }

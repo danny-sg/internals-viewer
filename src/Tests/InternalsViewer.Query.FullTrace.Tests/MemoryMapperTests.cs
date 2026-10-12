@@ -5,8 +5,6 @@ using InternalsViewer.Query.FullTrace.Memory;
 using InternalsViewer.Query.FullTrace.Native;
 using InternalsViewer.Query.FullTrace.Timeline;
 using InternalsViewer.Query.FullTrace.Timeline.Enums;
-using InternalsViewer.Query.Events.Operators;
-using InternalsViewer.Query.Plans.Model;
 using InternalsViewer.Query.Memory;
 
 namespace InternalsViewer.Query.FullTrace.Tests;
@@ -18,9 +16,9 @@ public class MemoryMapperTests
 
     private const ulong Inner = 0x6000;
 
-    private const ulong Releaser = 0x7000;
-
     private const ulong ReturnedFlag = 1ul << 32;
+
+    private const string WorkspaceClerk = "MEMORYCLERK_SQLQERESERVATIONS";
 
     [Fact]
     public void Allocations_Are_Attributed_To_Their_Frame_And_Its_Callers()
@@ -38,9 +36,9 @@ public class MemoryMapperTests
 
         log.MapNodes([caller, allocator]);
 
-        var summary = MemoryMapper.Map(log, [Function(Allocator)], null, []);
+        var (allocations, bytes) = MemoryMapper.Map(log, [Function(Allocator)], null);
 
-        Assert.Equal((300ul, 2L), (summary.Allocated, summary.Allocations));
+        Assert.Equal((300ul, 2L), (bytes, allocations));
         Assert.Equal((300L, 2L), (allocator.AllocatedBytes, allocator.Allocations));
         Assert.Equal((300L, 2L), (caller.AllocatedBytesIncludingChildren, caller.AllocationsIncludingChildren));
         Assert.Equal(0L, caller.AllocatedBytes);
@@ -64,172 +62,10 @@ public class MemoryMapperTests
 
         log.MapNodes([caller, outer, inner]);
 
-        var summary = MemoryMapper.Map(log, [Function(Allocator), Function(Inner)], null, []);
+        var (_, bytes) = MemoryMapper.Map(log, [Function(Allocator), Function(Inner)], null);
 
-        Assert.Equal(64ul, summary.Allocated);
+        Assert.Equal(64ul, bytes);
         Assert.Equal(64L, caller.AllocatedBytesIncludingChildren);
-    }
-
-    [Fact]
-    public void A_Free_Is_Matched_By_The_Pointer_An_Allocation_Returned()
-    {
-        var tree = new CallStackTree();
-
-        var caller = tree.AddCall(tree.Root, Frame(0x10), 1);
-        var allocator = tree.AddCall(caller, Frame(Allocator), 1);
-        var free = tree.AddCall(caller, Frame(Releaser), 2);
-
-        var builder = new FullTraceCallLog.Builder();
-
-        builder.Add(Allocator, 0, Chunk(Row(1, size: 64, node: 1, returned: 0xABC0)), 1);
-        builder.Add(Releaser, 0, Chunk(Row(2, size: 0xABC0, node: 2), Row(3, size: 0xDEF0, node: 2)), 2);
-
-        var log = builder.Build();
-
-        log.MapNodes([caller, allocator, free]);
-
-        var summary = MemoryMapper.Map(log, [Function(Allocator), new(Releaser, MemoryOperation.Free, -1, 1, 1)], null, []);
-
-        var kind = Assert.Single(summary.Kinds);
-
-        Assert.Equal((64ul, 64ul, 0ul), (kind.Allocated, kind.Freed, kind.Held));
-    }
-
-    [Fact]
-    public void Uses_Are_Grouped_By_Caller_And_Allocator()
-    {
-        var tree = new CallStackTree();
-
-        var caller = tree.AddCall(tree.Root, Frame(0x10), 1);
-        var allocator = tree.AddCall(caller, Frame(Allocator), 2);
-
-        var builder = new FullTraceCallLog.Builder();
-
-        builder.Add(Allocator, 0, Chunk(Row(1, size: 100, node: 1), Row(2, size: 50, node: 1)), 2);
-
-        var log = builder.Build();
-
-        log.MapNodes([caller, allocator]);
-
-        var kind = Assert.Single(MemoryMapper.Map(log, [Function(Allocator)], null, []).Kinds);
-
-        var use = Assert.Single(kind.Uses);
-
-        Assert.Equal((150ul, 2L), (use.Bytes, use.Allocations));
-    }
-
-    [Fact]
-    public void Memory_Still_In_Use_Is_What_Was_Allocated_And_Not_Freed()
-    {
-        var tree = new CallStackTree();
-
-        var caller = tree.AddCall(tree.Root, Frame(0x10), 1);
-        var allocator = tree.AddCall(caller, Frame(Allocator), 2);
-        var free = tree.AddCall(caller, Frame(Releaser), 1);
-
-        var builder = new FullTraceCallLog.Builder();
-
-        builder.Add(Allocator, 0, Chunk(Row(1, size: 64, node: 1, returned: 0xA0), Row(2, size: 32, node: 1, returned: 0xB0)), 2);
-        builder.Add(Releaser, 0, Chunk(Row(3, size: 0xA0, node: 2)), 1);
-
-        var log = builder.Build();
-
-        log.MapNodes([caller, allocator, free]);
-
-        var summary = MemoryMapper.Map(log, [Function(Allocator), new(Releaser, MemoryOperation.Free, -1, 1, 1)], null, []);
-
-        var kind = Assert.Single(summary.Kinds);
-
-        Assert.Equal((96ul, 64ul, 96ul, 32ul), (kind.Allocated, kind.Freed, kind.PeakInUse, kind.Held));
-        Assert.Equal(96ul, summary.PeakInUse);
-    }
-
-    [Fact]
-    public void Pages_Stolen_From_The_Buffer_Pool_Are_Used_By_The_Caller_Of_The_Steal()
-    {
-        var tree = new CallStackTree();
-
-        var build = tree.AddCall(tree.Root, Resolved(0x10, "sqlmin", "CQScanHash", "ConsumeBuild", iterator: "Hash Match Build"), 1);
-        var workfile = tree.AddCall(build, Resolved(0x20, "sqlmin", "WORKFILE", "AllocRowBufFromCrntBuf"), 1);
-        var steal = tree.AddCall(workfile, Resolved(0x30, "sqlmin", "BPool", "Steal", SymbolCategory.BufferPool), 1);
-        var block = tree.AddCall(steal, Resolved(0x40, "sqldk", "SOS_MemoryBlockAllocator", "AllocateBlock"), 1);
-        var pages = tree.AddCall(block, Resolved(Allocator, "sqldk", "MemoryClerkInternal", "AllocateReservedPages"), 1);
-
-        var builder = new FullTraceCallLog.Builder();
-
-        builder.Add(Allocator, 0, Chunk(Row(1, size: 1, node: 4)), 1);
-
-        var log = builder.Build();
-
-        log.MapNodes([build, workfile, steal, block, pages]);
-
-        var kind = Assert.Single(MemoryMapper.Map(log, [new(Allocator, MemoryOperation.Allocate, 1, -1, 8192)], null, [])
-                                     .Kinds);
-
-        var use = Assert.Single(kind.Uses);
-
-        Assert.Equal(("WORKFILE::AllocRowBufFromCrntBuf", "BPool::Steal", 8192ul), (use.Caller, use.Allocator, use.Bytes));
-    }
-
-    [Fact]
-    public void Memory_Belongs_To_The_Innermost_Operator_And_Its_Statement()
-    {
-        var tree = new CallStackTree();
-
-        var query = tree.AddCall(tree.Root, Frame(0x10), 1);
-        var join = tree.AddCall(query, Frame(0x20), 1);
-        var scan = tree.AddCall(join, Frame(0x30), 1);
-        var joinAllocator = tree.AddCall(join, Frame(Allocator), 1);
-        var scanAllocator = tree.AddCall(scan, Frame(Allocator), 1);
-        var free = tree.AddCall(scan, Frame(Releaser), 1);
-
-        var builder = new FullTraceCallLog.Builder();
-
-        builder.Add(Allocator, 0, Chunk(Row(1, size: 100, node: 3, returned: 0xA0), Row(2, size: 40, node: 4, returned: 0xB0)), 2);
-        builder.Add(Releaser, 0, Chunk(Row(3, size: 0xB0, node: 5)), 1);
-
-        var log = builder.Build();
-
-        log.MapNodes([query, join, scan, joinAllocator, scanAllocator, free]);
-
-        var statement = Operator(-1, query);
-        var hashMatch = Operator(1, join);
-        var tableScan = Operator(2, scan);
-        var unmatched = Operator(3);
-
-        var summary = MemoryMapper.Map(log,
-                                       [Function(Allocator), new(Releaser, MemoryOperation.Free, -1, 1, 1)],
-                                       null,
-                                       [statement, hashMatch, tableScan, unmatched]);
-
-        Assert.Equal((100ul, 0ul), (hashMatch.Memory!.Allocated, hashMatch.Memory.Freed));
-        Assert.Equal((40ul, 40ul, 0ul), (tableScan.Memory!.Allocated, tableScan.Memory.Freed, tableScan.Memory.Held));
-        Assert.Equal((140ul, 40ul, 140ul), (statement.Memory!.Allocated, statement.Memory.Freed, statement.Memory.PeakInUse));
-        Assert.Null(unmatched.Memory);
-    }
-
-    [Fact]
-    public void Memory_Under_A_Shared_Entry_Frame_Is_Not_Guessed()
-    {
-        var tree = new CallStackTree();
-
-        var scan = tree.AddCall(tree.Root, Frame(0x10), 1);
-        var allocator = tree.AddCall(scan, Frame(Allocator), 1);
-
-        var builder = new FullTraceCallLog.Builder();
-
-        builder.Add(Allocator, 0, Chunk(Row(1, size: 100, node: 1)), 1);
-
-        var log = builder.Build();
-
-        log.MapNodes([scan, allocator]);
-
-        var outer = Operator(1, scan);
-        var inner = Operator(2, scan);
-
-        MemoryMapper.Map(log, [Function(Allocator)], null, [outer, inner]);
-
-        Assert.Equal(((FullTraceMemoryPurpose?)null, (FullTraceMemoryPurpose?)null), (outer.Memory, inner.Memory));
     }
 
     [Fact]
@@ -250,46 +86,9 @@ public class MemoryMapperTests
 
         log.MapNodes([caller, create, objectPages, workspacePages]);
 
-        var summary = MemoryMapper.Map(log, [ClerkPages()], null, []);
+        var (_, bytes) = MemoryMapper.Map(log, [ClerkPages()], null);
 
-        Assert.Equal(16384ul, summary.Allocated);
-    }
-
-    [Fact]
-    public void Memory_Belongs_To_The_Clerk_Whose_Pages_It_Took()
-    {
-        var tree = new CallStackTree();
-
-        var caller = tree.AddCall(tree.Root, Frame(0x10), 1);
-        var allocator = tree.AddCall(caller, Frame(Allocator), 1);
-        var pages = tree.AddCall(allocator, Resolved(Inner, "sqldk", "MemoryClerkInternal", "AllocatePages"), 1);
-
-        var builder = new FullTraceCallLog.Builder();
-
-        builder.Add(Allocator, 0, Chunk(Row(1, size: 64, node: 1, returned: 0xA0)), 1);
-        builder.Add(Inner, 0, Chunk(Row(2, size: 1, node: 2, receiver: 0xC1)), 1);
-
-        var log = builder.Build();
-
-        log.MapNodes([caller, allocator, pages]);
-
-        var timelineBuilder = new FullTraceTimeline.Builder();
-
-        timelineBuilder.Add([Span(0, 0, 40, uint.MaxValue), Span(1, 10, 20, 0), Span(2, 12, 13, 0)]);
-
-        var timeline = timelineBuilder.Build([new(-1, 0, 0x10, 0, 1), new(0, 0, Allocator, 0, 1), new(1, 0, Inner, 0, 1)]);
-
-        timeline.MapNodes([caller, allocator, pages]);
-
-        var summary = MemoryMapper.Map(log,
-                                       [Function(Allocator), ClerkPages()],
-                                       timeline,
-                                       [],
-                                       Snapshot(clerks: new() { [0xC1] = "MEMORYCLERK_SQLQUERYEXEC" }));
-
-        var kind = Assert.Single(summary.Kinds);
-
-        Assert.Equal(("MEMORYCLERK_SQLQUERYEXEC", 64ul), (kind.Name, kind.Allocated));
+        Assert.Equal(16384ul, bytes);
     }
 
     [Theory]
@@ -320,7 +119,7 @@ public class MemoryMapperTests
 
         timeline.MapNodes([caller, allocator, pages]);
 
-        MemoryMapper.Map(log, [Function(Allocator), ClerkPages()], timeline, [], Snapshot(clerks: new() { [0xC1] = clerk }));
+        MemoryMapper.Map(log, [Function(Allocator), ClerkPages()], timeline, Snapshot(clerks: new() { [0xC1] = clerk }));
 
         var start = timeline.StartOf(FullTraceTimelineAxis.Position);
 
@@ -353,13 +152,12 @@ public class MemoryMapperTests
 
         timeline.MapNodes([caller, allocator]);
 
-        var summary = MemoryMapper.Map(log,
-                                       [new(Allocator, MemoryOperation.Allocate, 1, -1, 1) { IsObjectCall = true }],
-                                       timeline,
-                                       [],
-                                       Snapshot(objects: new() { [0xB0] = "MEMORYCLERK_SQLGENERAL" }));
+        MemoryMapper.Map(log,
+                         [new(Allocator, MemoryOperation.Allocate, 1, -1, 1) { IsObjectCall = true }],
+                         timeline,
+                         Snapshot(objects: new() { [0xB0] = WorkspaceClerk }));
 
-        Assert.Equal("MEMORYCLERK_SQLGENERAL", Assert.Single(summary.Kinds).Name);
+        Assert.Equal(48ul, PeakWorkspace(timeline));
     }
 
     [Fact]
@@ -395,15 +193,14 @@ public class MemoryMapperTests
 
         timeline.MapNodes([caller, allocator, child, parent]);
 
-        var summary = MemoryMapper.Map(log,
-                                       [Function(Allocator),
-                                              new(Inner, MemoryOperation.Allocate, 1, -1, 1) { IsObjectCall = true },
-                                              new(Parent, MemoryOperation.Allocate, 1, -1, 1) { IsObjectCall = true }],
-                                             timeline,
-                                             [],
-                                             Snapshot(objects: new() { [0xB0] = "MEMORYCLERK_SQLGENERAL" }));
+        var (_, bytes) = MemoryMapper.Map(log,
+                                          [Function(Allocator),
+                                           new(Inner, MemoryOperation.Allocate, 1, -1, 1) { IsObjectCall = true },
+                                           new(Parent, MemoryOperation.Allocate, 1, -1, 1) { IsObjectCall = true }],
+                                          timeline,
+                                          Snapshot(objects: new() { [0xB0] = WorkspaceClerk }));
 
-        Assert.Equal(("MEMORYCLERK_SQLGENERAL", 64ul), (Assert.Single(summary.Kinds).Name, summary.Allocated));
+        Assert.Equal((64ul, 64ul), (PeakWorkspace(timeline), bytes));
     }
 
     [Fact]
@@ -423,13 +220,8 @@ public class MemoryMapperTests
     private static CallSpan Span(int node, ulong start, ulong end, uint call)
         => new(1, start, 1, end, start, end, node, 7, call, 1);
 
-    private static ExecutionOperatorEvent Operator(int nodeId, params CallStackNode[] entryFrames) => new()
-    {
-        Name = "Operator",
-        OperatorDescription = "Operator",
-        PlanNodeIdentifier = new PlanNodeIdentifier { PlanHandleId = 1, NodeId = nodeId },
-        EntryFrames = entryFrames
-    };
+    private static ulong PeakWorkspace(FullTraceTimeline timeline)
+        => timeline.PeakWorkspaceDuring(timeline.StartOf(FullTraceTimelineAxis.Position), timeline.EndOf(FullTraceTimelineAxis.Position) + 1);
 
     private static CallstackFrame Resolved(ulong address,
                                            string module,

@@ -2,7 +2,7 @@
 
 namespace InternalsViewer.Query.Events.Memory;
 
-public sealed partial record MemoryEvent : EngineEvent
+internal sealed partial record MemoryEvent : EngineEvent
 {
     [EventProperty("Used Memory", Type = EventPropertyType.Kilobytes)]
     public long? UsedMemoryKb { get; set; }

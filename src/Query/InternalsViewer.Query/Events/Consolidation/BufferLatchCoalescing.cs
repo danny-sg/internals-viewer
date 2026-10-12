@@ -15,7 +15,7 @@ namespace InternalsViewer.Query.Events.Consolidation;
 /// Runs on the collapsed stream (after <see cref="IntervalCollapser"/> folds acquire/release) and before <see cref="ReaderGrouper"/>, so
 /// the read grouping then forms one buffer-pool read per page visit.
 /// </remarks>
-public static class BufferLatchCoalescing
+internal static class BufferLatchCoalescing
 {
     // Buffer accesses within this gap on one page are the same visit; a genuine later re-read (further apart) stays
     // separate, so a page read twice in a query still shows as two reads.

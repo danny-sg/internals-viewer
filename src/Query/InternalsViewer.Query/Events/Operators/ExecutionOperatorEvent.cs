@@ -1,7 +1,6 @@
 using InternalsViewer.Query.Events.Properties;
 using InternalsViewer.Query.CallStack;
 using InternalsViewer.Query.Plans.Operators;
-using InternalsViewer.Query.Memory;
 
 namespace InternalsViewer.Query.Events.Operators;
 
@@ -127,6 +126,4 @@ public sealed partial record ExecutionOperatorEvent : EngineEvent
     public IReadOnlyList<CallStackNode> ExitFrames { get; set; } = [];
 
     public IReadOnlyList<ulong> Instances { get; set; } = [];
-
-    public FullTraceMemoryPurpose? Memory { get; set; }
 }

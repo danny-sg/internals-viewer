@@ -15,7 +15,7 @@ namespace InternalsViewer.Query.Plans.Parsers.Predicates;
 /// ends of the range, so a seek on a composite index with an equality prefix and a trailing range produces start and end keys sharing
 /// their leading values.
 /// </remarks>
-public sealed class SeekPredicateParser(ColumnOrdinalResolver? resolveOrdinal = null,
+internal sealed class SeekPredicateParser(ColumnOrdinalResolver? resolveOrdinal = null,
                                         ParameterValueResolver? resolveParameter = null)
 {
     private ScalarOperatorParser Expressions { get; } = new(resolveOrdinal, resolveParameter);

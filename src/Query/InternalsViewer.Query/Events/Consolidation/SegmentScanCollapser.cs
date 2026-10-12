@@ -2,7 +2,7 @@
 
 namespace InternalsViewer.Query.Events.Consolidation;
 
-public static class SegmentScanCollapser
+internal static class SegmentScanCollapser
 {
     public static List<EngineEvent> Collapse(IReadOnlyList<EngineEvent> events)
     {

@@ -1,6 +1,6 @@
 ﻿namespace InternalsViewer.Query.Events.Waits;
 
-public static class WaitTypeExtensions
+internal static class WaitTypeExtensions
 {
     public static bool IsPageLatchWait(this WaitType waitType)
     {

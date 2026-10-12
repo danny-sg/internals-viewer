@@ -2,7 +2,7 @@ using System.Data;
 
 namespace InternalsViewer.Query.Plans.Parsers.Predicates;
 
-public static class ShowplanDataType
+internal static class ShowplanDataType
 {
     public static SqlDbType? Parse(string? name)
     {

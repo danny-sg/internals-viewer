@@ -7,7 +7,7 @@ namespace InternalsViewer.Query.CallStack.Categories;
 /// Blank lines, <c>#</c> comments and the header row are skipped; cells are trimmed. A row whose category cell is not a
 /// known enum name (a bad row, or the header) is skipped rather than throwing, so one malformed line can't break loading.
 /// </remarks>
-public static class MappingParser
+internal static class MappingParser
 {
     public static IEnumerable<(string Module, ModuleCategory Category)> ParseModules(TextReader reader)
     {

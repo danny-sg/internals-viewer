@@ -18,7 +18,7 @@ namespace InternalsViewer.Query.Events.Consolidation;
 /// when a partition's event is missing. It is microseconds wider than the "held on every partition" window, which is
 /// what the timeline and allocation map want.
 /// </remarks>
-public static class LockPartitionCollapser
+internal static class LockPartitionCollapser
 {
     public static List<EngineEvent> Collapse(IReadOnlyList<EngineEvent> events)
     {

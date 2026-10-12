@@ -15,7 +15,7 @@ namespace InternalsViewer.Query.Events.BatchMode;
 /// so its pages are the ones read from its own allocation unit. Column ids need no translation: the pool event and the
 /// page map both use the columnstore's own column numbering, one ahead of the catalog's.
 /// </remarks>
-public static class ObjectPoolPageLinker
+internal static class ObjectPoolPageLinker
 {
     public static void Link(IReadOnlyList<EngineEvent> events,
                             long hobtId,

@@ -4,7 +4,7 @@
                 AttributeTargets.Struct |
                 AttributeTargets.Enum |
                 AttributeTargets.Field)]
-public sealed class EventItemNameAttribute(string name) : Attribute
+internal sealed class EventItemNameAttribute(string name) : Attribute
 {
     public string Name { get; set; } = name;
 

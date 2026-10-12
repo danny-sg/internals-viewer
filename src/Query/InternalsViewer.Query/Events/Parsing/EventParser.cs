@@ -17,7 +17,7 @@ using InternalsViewer.Query.Plans.Model;
 
 namespace InternalsViewer.Query.Events.Parsing;
 
-public sealed class EventParser
+internal sealed class EventParser
 {
     private readonly StringInternPool _frameStrings = new();
 

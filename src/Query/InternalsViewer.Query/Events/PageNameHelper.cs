@@ -6,7 +6,7 @@ namespace InternalsViewer.Query.Events;
 /// <summary>
 /// Names for special pages that belong to no object (allocation maps, the file header, …)
 /// </summary>
-public static class PageNameHelper
+internal static class PageNameHelper
 {
     /// <summary>
     /// The display name for a special page, or null when the page is ordinary object data
