@@ -4,11 +4,12 @@ using System.Globalization;
 using System.Text;
 using System.Linq;
 using InternalsViewer.Execution.AccessPaths.Text;
-using InternalsViewer.Query.CallStack.TimeTravel.Memory;
+using InternalsViewer.Query.FullTrace.Memory;
 using InternalsViewer.Query.Events.Operators;
 using InternalsViewer.Query.Plans.Model;
 using InternalsViewer.Query.Plans.Operators;
 using InternalsViewer.UI.App.Models.Query;
+using InternalsViewer.Query.Memory;
 
 namespace InternalsViewer.UI.App.Helpers;
 
@@ -21,7 +22,7 @@ public static class PlanNodePropertyBuilder
                                                ExpressionCatalog? expressions = null,
                                                ScanModeResult? scanMode = null,
                                                IReadOnlyDictionary<int, string>? columnNames = null,
-                                               TimeTravelMemoryPurpose? tracedMemory = null)
+                                               FullTraceMemoryPurpose? tracedMemory = null)
     {
         var result = new List<PlanNodeProperty>();
 
@@ -624,7 +625,7 @@ public static class PlanNodePropertyBuilder
         return expressions is null ? text : expressions.Expand(text);
     }
 
-    private static PlanNodeProperty TracedMemoryGroup(TimeTravelMemoryPurpose traced)
+    private static PlanNodeProperty TracedMemoryGroup(FullTraceMemoryPurpose traced)
     {
         var tracedGroup = new PlanNodeProperty("Traced Memory", string.Empty);
 

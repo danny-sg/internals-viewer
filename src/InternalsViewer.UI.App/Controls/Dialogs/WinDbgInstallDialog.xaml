@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ContentDialog
+    x:Class="InternalsViewer.UI.App.Controls.Dialogs.WinDbgInstallDialog"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:local="using:InternalsViewer.UI.App.Controls"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    mc:Ignorable="d"
+    Title="Install WinDbg (Windows Debugger)"
+    CloseButtonText="Close"
+    DefaultButton="Close">
+
+    <ScrollViewer MaxWidth="560" VerticalScrollBarVisibility="Auto">
+        <StackPanel Spacing="12">
+            <StackPanel Spacing="8">
+                <TextBlock TextWrapping="Wrap" Text="{x:Bind Reason}"/>
+                <TextBlock TextWrapping="Wrap"
+                           Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                           Text="Full Trace and the WinDbg commands require Microsoft WinDbg (Windows Debugger). WinDbg includes Time Travel Debugging (TTD) used for Full Trace recording. Install it using one of the options below."/>
+            </StackPanel>
+
+            <StackPanel Spacing="2">
+                <TextBlock Text="Microsoft Store" FontWeight="SemiBold"/>
+                <TextBlock TextWrapping="Wrap"
+                           Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                           Text="Installed from the Store, WinDbg keeps itself up to date."/>
+                <HyperlinkButton Padding="0,4"
+                                 Content="Open WinDbg in the Microsoft Store"
+                                 Click="StoreLink_Click"/>
+            </StackPanel>
+
+            <StackPanel Spacing="2">
+                <TextBlock Text="Windows Package Manager" FontWeight="SemiBold"/>
+                <TextBlock TextWrapping="Wrap"
+                           Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                           Text="Run this from a command prompt or PowerShell:"/>
+                <local:CopyTextBlock Margin="-5,10,0,0"
+                                     FontFamily="{StaticResource MonospaceFontFamily}"
+                                     Value="winget install Microsoft.WinDbg"/>
+            </StackPanel>
+
+            <StackPanel Spacing="2">
+                <TextBlock Text="Other Options" FontWeight="SemiBold"/>
+                <TextBlock TextWrapping="Wrap"
+                           Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                           Text="Install via Microsoft direct download. If WinDbg is installed in a folder Internals Viewer does not find, set the WinDbg Path in Settings."/>
+                <HyperlinkButton Padding="0,4"
+                                 Content="Install WinDbg on Microsoft Learn"
+                                 NavigateUri="https://learn.microsoft.com/windows-hardware/drivers/debugger/"/>
+            </StackPanel>
+        </StackPanel>
+    </ScrollViewer>
+</ContentDialog>

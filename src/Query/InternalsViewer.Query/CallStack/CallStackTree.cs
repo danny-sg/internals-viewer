@@ -1,6 +1,6 @@
 using System.Text;
-using InternalsViewer.Query.CallStack.TimeTravel.Locators;
 using InternalsViewer.Query.Events;
+using InternalsViewer.Query.CallStack.Locators;
 
 namespace InternalsViewer.Query.CallStack;
 
@@ -385,11 +385,11 @@ public sealed class CallStackTree
     // Empties the source as it goes, so "did this merge take everything?" is a question the caller can actually ask.
     // Leaving the source populated makes a partial merge indistinguishable from a complete one, and the difference is
     // whether a subtree is still reachable.
-    private static void AddLocators(CallStackNode target, TimeTravelLocatorSet? locators)
+    private static void AddLocators(CallStackNode target, LocatorSet? locators)
     {
         if (locators is not null)
         {
-            (target.Locators ??= new TimeTravelLocatorSet()).Add(locators);
+            (target.Locators ??= new LocatorSet()).Add(locators);
         }
     }
 

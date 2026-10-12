@@ -1,13 +1,13 @@
 using System;
 using System.Collections.Generic;
-using InternalsViewer.Query.CallStack.TimeTravel.CallLog;
+using InternalsViewer.Query.FullTrace.CallLog;
 using InternalsViewer.Query.Results;
 
 namespace InternalsViewer.UI.App.Models.Query.CallStack;
 
-internal sealed class ArgumentCallSource(IReadOnlyList<TimeTravelArgumentCall> calls,
+internal sealed class ArgumentCallSource(IReadOnlyList<FullTraceArgumentCall> calls,
                                          int fieldCount,
-                                         Func<TimeTravelArgumentCall, int, object?[]> values) : IResultRowSource
+                                         Func<FullTraceArgumentCall, int, object?[]> values) : IResultRowSource
 {
     private const int CachedRows = 512;
 

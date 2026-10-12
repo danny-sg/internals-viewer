@@ -1,10 +1,10 @@
-using InternalsViewer.Query.CallStack.TimeTravel.CallLog;
+using InternalsViewer.Query.FullTrace.CallLog;
 
 namespace InternalsViewer.UI.App.Models.Query.CallStack;
 
-public sealed class ValueUseRow(TimeTravelValueUse use)
+public sealed class ValueUseRow(FullTraceValueUse use)
 {
-    public TimeTravelValueUse Use { get; } = use;
+    public FullTraceValueUse Use { get; } = use;
 
     public string Function => Use.First.Node?.Symbol is { Length: > 0 } symbol ? symbol : $"0x{Use.Address:X}";
 

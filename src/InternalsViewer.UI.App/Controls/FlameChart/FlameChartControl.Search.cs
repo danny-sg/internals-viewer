@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using InternalsViewer.Query.CallStack;
-using InternalsViewer.Query.CallStack.TimeTravel.Timeline;
+using InternalsViewer.Query.FullTrace.Timeline;
 using Microsoft.UI.Xaml;
 using SkiaSharp;
 
@@ -70,7 +70,7 @@ public sealed partial class FlameChartControl
                        ?? (selected.Frame is { } frame ? CallsUnder(timeline, n => ReferenceEquals(n.Frame, frame)) : null);
     }
 
-    private static bool[]? CallsUnder(TimeTravelTimeline timeline, Func<CallStackNode, bool> isSelected)
+    private static bool[]? CallsUnder(FullTraceTimeline timeline, Func<CallStackNode, bool> isSelected)
     {
         var under = new bool[timeline.NodeCount];
 

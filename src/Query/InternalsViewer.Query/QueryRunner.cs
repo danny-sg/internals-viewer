@@ -3,11 +3,6 @@ using InternalsViewer.Internals.Engine.Database;
 using InternalsViewer.Internals.Engine.Loading;
 using InternalsViewer.Query.CallStack;
 using InternalsViewer.Query.CallStack.Symbols;
-using InternalsViewer.Query.CallStack.TimeTravel;
-using InternalsViewer.Query.CallStack.TimeTravel.Memory;
-using InternalsViewer.Query.CallStack.TimeTravel.Iterators;
-using InternalsViewer.Query.CallStack.TimeTravel.Markers;
-using InternalsViewer.Query.CallStack.TimeTravel.Timeline;
 using InternalsViewer.Query.Debugging.TimeTravel;
 using InternalsViewer.Query.Events.BatchMode;
 using InternalsViewer.Query.Events.Consolidation;
@@ -31,6 +26,7 @@ using InternalsViewer.Internals.Engine.Database.Enums;
 using InternalsViewer.Query.Events.Query;
 using Microsoft.Extensions.Logging;
 using InternalsViewer.Query.Parsing.Statements;
+using InternalsViewer.Query.Memory;
 
 namespace InternalsViewer.Query;
 
@@ -41,17 +37,7 @@ public sealed class QueryRunner(ILogger<QueryRunner> logger,
                                 ColumnstorePageMapper? columnstorePageMapper = null,
                                 ITimeTravelRecorder? timeTravelRecorder = null)
 {
-    private const int ActivityBuckets = 96;
-
-    private const string OpeningStep = "Opening Full Trace";
-
-    private const string SymbolsStep = "Resolving Symbols";
-
-    private const string ReplayStep = "Replaying Threads";
-
-    private const string CallTreeStep = "Building Call Tree";
-
-    private const string OperatorsStep = "Matching Operators";
+    internal const int ActivityBuckets = 96;
 
     private const string PreparingRecordingStep = "Preparing Full Trace Recording";
 
@@ -68,15 +54,6 @@ public sealed class QueryRunner(ILogger<QueryRunner> logger,
     private const string CallStacksStep = "Resolving Call Stacks";
 
     private static readonly ProgressStep[] DirectSteps = [new(RunningStep, 100)];
-
-    private static readonly ProgressStep[] FullTraceSteps =
-    [
-        new(OpeningStep, 25),
-        new(SymbolsStep, 5),
-        new(ReplayStep, 50),
-        new(CallTreeStep, 15),
-        new(OperatorsStep, 5)
-    ];
 
     public bool ResolveColumnstorePages { get; set; } = true;
 
@@ -413,215 +390,6 @@ public sealed class QueryRunner(ILogger<QueryRunner> logger,
         };
     }
 
-    public async Task PrepareFullTraceAsync(DatabaseSource database, string symbolsPath, CancellationToken cancellationToken)
-    {
-        if (TimeTravelRecorder is not { } recorder)
-        {
-            return;
-        }
-
-        var start = Stopwatch.GetTimestamp();
-
-        var paths = await LoadedModules.PathsOfAsync(database.Connection.GetConnectionString(), [.. recorder.Modules], cancellationToken);
-
-        await ReplayFunctionResolver.PrepareAsync(paths, symbolsPath, Logger, cancellationToken);
-
-        Logger.LogInformation("Full Trace symbols for {Modules} prepared in {Elapsed}",
-                              string.Join(", ", paths.Select(Path.GetFileName)),
-                              Stopwatch.GetElapsedTime(start));
-    }
-
-    public async Task<FullTraceResult?> LoadFullTraceAsync(FullTraceRequest request,
-                                                          IProgress<ProgressDetail>? progress,
-                                                          CancellationToken cancellationToken)
-    {
-        var events = request.Events;
-
-        var operators = events.OfType<ExecutionOperatorEvent>().ToList();
-
-        var messages = new StepLoggerProgress(progress, Logger);
-
-        var steps = new StepProgress(messages, FullTraceSteps);
-
-        var details = new LoggerProgress(Logger);
-
-        TimeTravelReplay replay;
-
-        ReplayFunctionSet functions;
-
-        IReadOnlyList<MemoryFunction> memoryFunctions;
-
-        try
-        {
-            steps.Begin(OpeningStep);
-
-            using var session = await TimeTravelSession.OpenAsync(request.TraceFile, cancellationToken);
-
-            cancellationToken.ThrowIfCancellationRequested();
-
-            steps.Complete();
-
-            steps.Begin(SymbolsStep);
-
-            (functions, memoryFunctions) = await ReplayFunctionResolver.ResolveAsync(session.Modules,
-                                                                                     request.SymbolsPath,
-                                                                                     Logger,
-                                                                                     messages,
-                                                                                     cancellationToken);
-
-            Logger.LogInformation("{Excluded} Extended Events and tracing function(s) excluded from the replay, {Memory} memory "
-                                  + "function(s) tracked",
-                                  functions.Excluded.Length,
-                                  memoryFunctions.Count);
-
-            steps.Complete();
-
-            steps.Begin(ReplayStep);
-
-            Logger.LogInformation("Replaying Full Trace for {Threads} thread(s)", request.ThreadIds.Count);
-
-            replay = await session.ReplayAsync(request.ThreadIds, functions, steps, cancellationToken);
-
-            steps.Complete();
-        }
-        catch (Exception exception) when (exception is InvalidOperationException or DllNotFoundException)
-        {
-            Logger.LogWarning(exception, "Time travel trace {TracePath} could not be replayed", request.TraceFile.Path);
-
-            steps.Complete();
-
-            progress?.Report($"Full Trace could not be replayed: {exception.Message}");
-
-            return null;
-        }
-
-        steps.Begin(CallTreeStep);
-
-        DeleteTimeTravelTrace(request.TraceFile, details);
-
-        var (callStack, replayed) = TimeTravelCallTreeBuilder.Build(replay.Nodes, replay.Modules);
-
-        var nodes = replay.Nodes;
-
-        Logger.LogInformation("{Calls} call(s) on {Paths} call path(s) replayed, {Logged} call(s) of {Functions} function(s) logged in "
-                              + "{Size} MB, {Locators} page and row id(s) read",
-                              nodes.Sum(n => (long)n.Calls),
-                              nodes.Length,
-                              replay.CallLog.Calls,
-                              replay.CallLog.FunctionCount,
-                              replay.CallLog.Size / (1024 * 1024),
-                              replay.CallLog.LocatorCount);
-
-        var unknownSymbols = await CallstackProcessor.Process(callStack, request.SymbolsPath, messages, cancellationToken);
-
-        LogUnknownSymbols(unknownSymbols);
-
-        var collapsed = new Dictionary<CallStackNode, CallStackNode>(ReferenceEqualityComparer.Instance);
-
-        callStack = callStack.CollapseToFunctions(collapsed: (original, node) => collapsed[original] = node);
-
-        CallStackNode?[] mapped = [.. replayed.Select(node => collapsed.GetValueOrDefault(node))];
-
-        var planLink = IteratorPlanLinker.Link(replay.CallLog, mapped, events);
-
-        var cropped = false;
-
-        if (request.CropToQuery && QueryExecutionCropper.Crop(callStack) is { } crop)
-        {
-            callStack = crop.Tree;
-
-            mapped = [.. mapped.Select(node => node is null ? null : crop.Projected.GetValueOrDefault(node))];
-
-            cropped = true;
-
-            Logger.LogInformation("Call tree cropped to the query's execution, {Roots} root(s)", callStack.Root.Children.Count);
-        }
-
-        replay.CallLog.MapNodes(mapped);
-
-        replay.CallLog.AnnotateNodes();
-
-        replay.Timeline.MapNodes(mapped);
-
-        callStack.RemoveCallsUnder(IsInstrumentation);
-
-        var timeline = replay.Timeline.WithoutCallsUnder(IsInstrumentation);
-
-        if (cropped)
-        {
-            timeline = timeline.CroppedTo(callStack) ?? timeline;
-        }
-
-        Logger.LogInformation("{Calls} call(s) after removing Extended Events and tracing, {Spans} call span(s) on {Threads} "
-                              + "thread(s) in the flame chart",
-                              callStack.Nodes().Sum(n => n.Calls),
-                              timeline.SpanCount,
-                              timeline.Threads.Count);
-
-        timeline.AddCallActivity(ActivityBuckets);
-
-        steps.Complete();
-
-        steps.Begin(OperatorsStep);
-
-        var matched = IteratorInstanceMatcher.Match(callStack, events, planLink);
-
-        OperatorEntryLabels.Apply(events);
-
-        Logger.LogInformation("{PlanObjects} plan object(s) linked to {PlanNodes} of {Operators} plan node(s), {Instances} iterator "
-                              + "instance(s) linked to their plan node",
-                              planLink.PlanObjects.Count,
-                              planLink.PlanObjects.Values.Distinct().Count(),
-                              operators.Count(o => o.PlanNodeIdentifier is { NodeId: >= 0 }),
-                              planLink.Instances.Count);
-
-        var memory = TimeTravelMemoryMapper.Map(replay.CallLog, memoryFunctions, timeline, operators, request.MemoryClerks);
-
-        var unidentified = memory.Kinds
-                                 .Where(k => k.Name.StartsWith(TimeTravelMemoryMapper.UnknownClerk, StringComparison.Ordinal)
-                                             || k.Name == TimeTravelMemoryMapper.Unattributed)
-                                 .Aggregate(0ul, (total, k) => total + k.Allocated);
-
-        var lifetimes = IteratorLifetimeBuilder.Build(timeline, operators);
-
-        timeline.SetLifetimes(lifetimes);
-
-        var expanded = events.ExpandOwned();
-
-        var marked = TimeTravelMarkerLinker.Link(replay.Markers, functions.Publishers, request.RawEvents, expanded, timeline);
-
-        timeline.SetEventLinks(marked.Links);
-
-        Logger.LogInformation("{Linked} of {Events} event(s) linked to their trace position: {Written} of {Markers} published "
-                              + "event(s) written to the session, {Paired} paired with an event",
-                              timeline.EventLinks.Count,
-                              request.RawEvents.Count,
-                              marked.Written,
-                              marked.Markers,
-                              marked.Paired);
-
-        Logger.LogInformation("{Matched} of {Operators} operator(s) matched to recorded iterators, {Allocations} allocation(s) of "
-                              + "{Bytes}, peak in use {PeakInUse}, {Unidentified} with no memory clerk, {Lifetimes} operator "
-                              + "lifetime(s) on {Threads} thread(s)",
-                              matched,
-                              operators.Count(o => o.PlanNodeIdentifier is { NodeId: >= 0 }),
-                              memory.Allocations,
-                              Size(memory.Allocated),
-                              Size(memory.PeakInUse),
-                              Size(unidentified),
-                              lifetimes.Count,
-                              lifetimes.Select(l => l.Thread).Distinct().Count());
-
-        if (events.Count > 0)
-        {
-            callStack.ComputeActivity(events.Min(e => e.TimeUs), events.Max(e => e.TimeUs), ActivityBuckets);
-        }
-
-        steps.Complete();
-
-        return new FullTraceResult(callStack, replay.CallLog, timeline) { PlanLink = planLink };
-    }
-
     private async Task MapColumnstorePages(DatabaseSource database,
                                            List<ExecutionPlan>? executionPlans,
                                            List<EngineEvent> events,
@@ -754,27 +522,6 @@ public sealed class QueryRunner(ILogger<QueryRunner> logger,
             progress?.Report($"Memory clerks could not be read: {exception.Message}");
 
             return MemoryClerkSnapshot.Empty;
-        }
-    }
-
-    private static bool IsInstrumentation(CallStackNode node) => node.IsExtendedEvents || (node.IsTracing && !node.HasOperator);
-
-    private static string Size(ulong bytes)
-        => bytes >= 1024 * 1024 ? $"{bytes / (1024.0 * 1024.0):N1} MB" : $"{bytes / 1024.0:N1} KB";
-
-    private void DeleteTimeTravelTrace(TimeTravelTraceFile trace, IProgress<ProgressDetail>? progress)
-    {
-        try
-        {
-            var size = new FileInfo(trace.Path).Length;
-
-            File.Delete(trace.Path);
-
-            progress?.Report($"Time travel trace deleted ({size / (1024.0 * 1024.0):N0} MB)");
-        }
-        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
-        {
-            Logger.LogWarning(exception, "Time travel trace {TracePath} could not be deleted", trace.Path);
         }
     }
 

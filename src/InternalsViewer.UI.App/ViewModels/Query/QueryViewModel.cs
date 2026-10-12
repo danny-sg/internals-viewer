@@ -16,10 +16,10 @@ using InternalsViewer.Internals.Engine.Loading;
 using InternalsViewer.Internals.Extensions;
 using InternalsViewer.Query;
 using InternalsViewer.Query.CallStack;
-using InternalsViewer.Query.CallStack.TimeTravel;
-using InternalsViewer.Query.CallStack.TimeTravel.Iterators;
-using InternalsViewer.Query.CallStack.TimeTravel.Memory;
-using InternalsViewer.Query.CallStack.TimeTravel.Timeline;
+using InternalsViewer.Query.FullTrace;
+using InternalsViewer.Query.FullTrace.Iterators;
+using InternalsViewer.Query.FullTrace.Memory;
+using InternalsViewer.Query.FullTrace.Timeline;
 using InternalsViewer.Query.CallStack.WinDbg;
 using InternalsViewer.Query.Debugging;
 using InternalsViewer.Query.Events.Latches;
@@ -74,14 +74,16 @@ using LogRecordItem = InternalsViewer.UI.App.Models.Logging.LogRecordItem;
 using System.Diagnostics;
 using System.IO;
 using System.Text.Json;
-using InternalsViewer.Query.Export;
+using InternalsViewer.Query.FullTrace.Export;
 using InternalsViewer.UI.App.Helpers;
 using Windows.Storage.Pickers;
+using InternalsViewer.Query.Memory;
 
 namespace InternalsViewer.UI.App.ViewModels.Query;
 
 public sealed class QueryViewModelFactory(ILogger<QueryViewModel> logger,
                                           QueryRunner queryRunner,
+                                          FullTraceLoader fullTraceLoader,
                                           SettingsService settingsService,
                                           SettingsViewModel settingsViewModel,
                                           IndexTabViewModelFactory indexTabViewModelFactory,
@@ -94,6 +96,7 @@ public sealed class QueryViewModelFactory(ILogger<QueryViewModel> logger,
 {
     public QueryViewModel Create(DatabaseSource database) => new(logger,
                                                                  queryRunner,
+                                                                 fullTraceLoader,
                                                                  settingsService,
                                                                  settingsViewModel,
                                                                  indexTabViewModelFactory,
@@ -259,10 +262,10 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(ShowFlameChartHint))]
-    private TimeTravelTimeline? _flameChart;
+    private FullTraceTimeline? _flameChart;
 
     [ObservableProperty]
-    private TimeTravelEventLink? _currentEventLink;
+    private FullTraceEventLink? _currentEventLink;
 
     [ObservableProperty]
     private CallStackNode? _selectedCallNode;
@@ -328,6 +331,7 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
     public QueryViewModel(ILogger<QueryViewModel> logger,
                           QueryRunner queryRunner,
+                          FullTraceLoader fullTraceLoader,
                           SettingsService settingsService,
                           SettingsViewModel settingsViewModel,
                           IndexTabViewModelFactory indexTabViewModelFactory,
@@ -352,6 +356,7 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
         DebuggerStatus = _winDbgService.Status;
         Logger = logger;
         QueryRunner = queryRunner;
+        FullTraceLoader = fullTraceLoader;
         BufferPoolInfoProvider = bufferPoolInfoProvider;
         Database = database;
         _settingsService = settingsService;
@@ -582,7 +587,7 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
         }
     }
 
-    public TimeTravelMemoryPurpose? SelectedPlanNodeTracedMemory
+    public FullTraceMemoryPurpose? SelectedPlanNodeTracedMemory
     {
         get
         {
@@ -616,6 +621,8 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
     private ILogger<QueryViewModel> Logger { get; }
 
     private QueryRunner QueryRunner { get; }
+
+    private FullTraceLoader FullTraceLoader { get; }
 
     private CancellationTokenSource? FullTraceLoad { get; set; }
 
@@ -825,7 +832,7 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
         SetCurrentEvent(value);
     }
 
-    partial void OnFlameChartChanged(TimeTravelTimeline? value) => CurrentEventLink = null;
+    partial void OnFlameChartChanged(FullTraceTimeline? value) => CurrentEventLink = null;
 
     partial void OnCallStackChanged(CallStackTree? value) => Symbols.CallStack = value;
 
@@ -994,7 +1001,7 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
         try
         {
-            await QueryRunner.PrepareFullTraceAsync(Database, _settingsViewModel.SymbolsPath, CancellationToken.None);
+            await FullTraceLoader.PrepareAsync(Database, _settingsViewModel.SymbolsPath, CancellationToken.None);
         }
         catch (Exception exception)
         {
@@ -2016,7 +2023,7 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
         try
         {
-            var result = await Task.Run(() => QueryRunner.LoadFullTraceAsync(request, progress, load.Token), load.Token);
+            var result = await Task.Run(() => FullTraceLoader.LoadAsync(request, progress, load.Token), load.Token);
 
             if (load.IsCancellationRequested || result is null)
             {

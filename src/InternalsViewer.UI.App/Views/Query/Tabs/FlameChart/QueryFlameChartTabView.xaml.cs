@@ -1,7 +1,7 @@
 using System;
 using System.ComponentModel;
 using InternalsViewer.Query.CallStack;
-using InternalsViewer.Query.CallStack.TimeTravel.Timeline.Enums;
+using InternalsViewer.Query.FullTrace.Timeline.Enums;
 using InternalsViewer.Query.Plans.Model;
 using InternalsViewer.UI.App.Controls.Docking;
 using InternalsViewer.UI.App.ViewModels;
@@ -67,11 +67,11 @@ public sealed partial class QueryFlameChartTabView : UserControl, IDocumentComma
     public FrameworkElement CreateCommands()
     {
         _instructionsToggle = AxisToggle("Instructions",
-                                         TimeTravelTimelineAxis.Instructions,
+                                         FullTraceTimelineAxis.Instructions,
                                          "Width is the instructions each call executed, so it shows how long each call took");
 
         _positionToggle = AxisToggle("Position",
-                                     TimeTravelTimelineAxis.Position,
+                                     FullTraceTimelineAxis.Position,
                                      "Width is the span of trace positions, which lines threads up against each other");
 
         var commands = new StackPanel
@@ -145,7 +145,7 @@ public sealed partial class QueryFlameChartTabView : UserControl, IDocumentComma
         FlameChart.Dispose();
     }
 
-    private ToggleButton AxisToggle(string text, TimeTravelTimelineAxis axis, string toolTip)
+    private ToggleButton AxisToggle(string text, FullTraceTimelineAxis axis, string toolTip)
     {
         var toggle = new ToggleButton
         {
@@ -201,16 +201,16 @@ public sealed partial class QueryFlameChartTabView : UserControl, IDocumentComma
 
     private void OnAxisClick(object sender, RoutedEventArgs e)
     {
-        if (sender is not ToggleButton { Tag: TimeTravelTimelineAxis axis })
+        if (sender is not ToggleButton { Tag: FullTraceTimelineAxis axis })
         {
             return;
         }
 
         FlameChart.Axis = axis;
 
-        _instructionsToggle?.IsChecked = axis == TimeTravelTimelineAxis.Instructions;
+        _instructionsToggle?.IsChecked = axis == FullTraceTimelineAxis.Instructions;
 
-        _positionToggle?.IsChecked = axis == TimeTravelTimelineAxis.Position;
+        _positionToggle?.IsChecked = axis == FullTraceTimelineAxis.Position;
     }
 
     private void OnMemoryClick(object sender, RoutedEventArgs e) => FlameChart.ShowMemory = IsChecked(sender);

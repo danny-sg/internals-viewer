@@ -10,6 +10,7 @@ using InternalsViewer.Query.Debugging;
 using InternalsViewer.Query.Debugging.Interfaces;
 using InternalsViewer.Query.Debugging.TimeTravel;
 using InternalsViewer.Query.Events;
+using InternalsViewer.Query.FullTrace;
 using InternalsViewer.Query.XEvents;
 using InternalsViewer.TransactionLog;
 using InternalsViewer.UI.App.Activation;
@@ -79,6 +80,7 @@ public partial class App
             services.AddTransient<QueryViewModelFactory>();
 
             services.AddTransient<QueryRunner>();
+            services.AddTransient<FullTraceLoader>();
             services.AddTransient<LogRecordReader>();
             services.AddTransient<EventReader>();
 

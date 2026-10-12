@@ -1,7 +1,7 @@
 using System;
 using System.Collections.Generic;
-using InternalsViewer.Query.CallStack.TimeTravel.Timeline;
-using InternalsViewer.Query.CallStack.TimeTravel.Timeline.Enums;
+using InternalsViewer.Query.FullTrace.Timeline;
+using InternalsViewer.Query.FullTrace.Timeline.Enums;
 using SkiaSharp;
 using SkiaSharp.Views.Windows;
 
@@ -147,7 +147,7 @@ public sealed partial class FlameChartControl
         return recorder.EndRecording();
     }
 
-    private void DrawLanes(SKCanvas canvas, TimeTravelTimeline timeline, int height, int width, double scale)
+    private void DrawLanes(SKCanvas canvas, FullTraceTimeline timeline, int height, int width, double scale)
     {
         for (var lane = 0; lane < timeline.Threads.Count && lane < _laneTops.Length; lane++)
         {
@@ -177,7 +177,7 @@ public sealed partial class FlameChartControl
         }
     }
 
-    private IEnumerable<VisibleRow> VisibleRows(TimeTravelTimeline timeline, float bottom, float rise = 0)
+    private IEnumerable<VisibleRow> VisibleRows(FullTraceTimeline timeline, float bottom, float rise = 0)
     {
         for (var lane = 0; lane < timeline.Threads.Count && lane < _laneTops.Length; lane++)
         {
@@ -202,7 +202,7 @@ public sealed partial class FlameChartControl
         }
     }
 
-    private void DrawLaneHeader(SKCanvas canvas, TimeTravelTimelineThread thread, float top, int width, bool collapsible)
+    private void DrawLaneHeader(SKCanvas canvas, FullTraceTimelineThread thread, float top, int width, bool collapsible)
     {
         _paints.Fill.Color = _paints.LaneHeader;
 
@@ -249,7 +249,7 @@ public sealed partial class FlameChartControl
         canvas.DrawPath(path, _paints.Label);
     }
 
-    private Func<int, bool>? RaisedOf(TimeTravelTimelineThread thread, int lane, int depth)
+    private Func<int, bool>? RaisedOf(FullTraceTimelineThread thread, int lane, int depth)
     {
         if (!ShowMemory || _visible is not { } timeline)
         {
@@ -262,7 +262,7 @@ public sealed partial class FlameChartControl
 
             return index =>
             {
-                var positions = row.Span(TimeTravelTimelineAxis.Position, index);
+                var positions = row.Span(FullTraceTimelineAxis.Position, index);
 
                 return timeline.AllocatedDuring(thread.ThreadId, positions.Start, positions.End).Count > 0;
             };
@@ -271,7 +271,7 @@ public sealed partial class FlameChartControl
         return _raisedRows.TryGetValue((lane, depth), out var raised) ? index => Array.BinarySearch(raised.Indexes, index) >= 0 : null;
     }
 
-    private CallFocus? FocusOf(TimeTravelTimeline timeline)
+    private CallFocus? FocusOf(FullTraceTimeline timeline)
     {
         if (SelectedCall is not { IsChosen: true }
             || _selected is not { } hit
@@ -614,7 +614,7 @@ public sealed partial class FlameChartControl
 
     private string FormatAxis(double value, double step)
     {
-        if (_axis == TimeTravelTimelineAxis.Position)
+        if (_axis == FullTraceTimelineAxis.Position)
         {
             return step >= 1 ? $"{value:N0}" : $"{value:N3}";
         }
@@ -628,7 +628,7 @@ public sealed partial class FlameChartControl
         };
     }
 
-    private readonly record struct VisibleRow(int Lane, TimeTravelTimelineThread Thread, int Depth, TimeTravelTimelineRow Row, float Top);
+    private readonly record struct VisibleRow(int Lane, FullTraceTimelineThread Thread, int Depth, FullTraceTimelineRow Row, float Top);
 
     private readonly record struct CallFocus(int Lane, int Depth, double Start, double End)
     {

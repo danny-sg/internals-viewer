@@ -1,5 +1,5 @@
 using InternalsViewer.Internals.Engine.Address;
-using InternalsViewer.Query.CallStack.TimeTravel.Locators;
+using InternalsViewer.Query.CallStack.Locators;
 
 namespace InternalsViewer.Query.Tests;
 
@@ -43,7 +43,7 @@ public class LocatorSearchTests
     [Fact]
     public void A_Page_Is_Read_From_The_Low_Six_Bytes_Whatever_Follows()
     {
-        var locator = new TimeTravelLocator(1, LocatorKind.Page, 0xABCD_0000_0000_0000 | Page336);
+        var locator = new Locator(1, LocatorKind.Page, 0xABCD_0000_0000_0000 | Page336);
 
         Assert.Equal(new PageAddress(1, 336), locator.Page);
         Assert.Equal("(1:336)", locator.ToString());
@@ -52,7 +52,7 @@ public class LocatorSearchTests
     [Fact]
     public void A_Row_Carries_Its_Slot_In_The_Top_Two_Bytes()
     {
-        var locator = new TimeTravelLocator(4, LocatorKind.Row, 0x0005_0000_0000_0000 | Page336);
+        var locator = new Locator(4, LocatorKind.Row, 0x0005_0000_0000_0000 | Page336);
 
         Assert.Equal("(1:336:5)", locator.ToString());
     }

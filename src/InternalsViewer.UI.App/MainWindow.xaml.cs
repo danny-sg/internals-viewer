@@ -40,7 +40,10 @@ using WinUIEx;
 using QueryView = InternalsViewer.UI.App.Views.Query.QueryView;
 using InternalsViewer.Connection.BackupFile.Media;
 using InternalsViewer.Internals.Engine.Loading;
+using ExceptionDialog = InternalsViewer.UI.App.Controls.Dialogs.ExceptionDialog;
 using LogRecordItem = InternalsViewer.UI.App.Models.Logging.LogRecordItem;
+using PasswordDialog = InternalsViewer.UI.App.Controls.Dialogs.PasswordDialog;
+using WinDbgInstallDialog = InternalsViewer.UI.App.Controls.Dialogs.WinDbgInstallDialog;
 
 namespace InternalsViewer.UI.App;
 

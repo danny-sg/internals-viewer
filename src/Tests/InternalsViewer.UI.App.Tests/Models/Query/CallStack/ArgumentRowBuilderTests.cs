@@ -1,9 +1,10 @@
 using System.Collections;
 using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Query.CallStack.Arguments;
-using InternalsViewer.Query.CallStack.TimeTravel.CallLog;
-using InternalsViewer.Query.CallStack.TimeTravel.Locators;
+using InternalsViewer.Query.FullTrace.CallLog;
+using InternalsViewer.Query.FullTrace.Locators;
 using InternalsViewer.UI.App.Models.Query.CallStack;
+using InternalsViewer.Query.CallStack.Locators;
 
 namespace InternalsViewer.UI.App.Tests.Models.Query.CallStack;
 
@@ -43,7 +44,7 @@ public class ArgumentRowBuilderTests
     [Fact]
     public void Each_Call_Is_A_Row_With_A_Column_Per_Value()
     {
-        List<TimeTravelArgumentCall> calls = [Call(0x100, 0x200)];
+        List<FullTraceArgumentCall> calls = [Call(0x100, 0x200)];
 
         var table = ArgumentRowBuilder.Table(SetRange, calls);
 
@@ -77,7 +78,7 @@ public class ArgumentRowBuilderTests
     [Fact]
     public void Every_Call_Becomes_A_Row()
     {
-        List<TimeTravelArgumentCall> calls = [.. Enumerable.Range(1, 5).Select(i => Call((ulong)i, 0))];
+        List<FullTraceArgumentCall> calls = [.. Enumerable.Range(1, 5).Select(i => Call((ulong)i, 0))];
 
         var table = ArgumentRowBuilder.Table(SetRange, calls);
 
@@ -125,7 +126,7 @@ public class ArgumentRowBuilderTests
     {
         var layout = ArgumentLayout.For(new FunctionSignature(["PageId const &"], FunctionKind.Member, "void"));
 
-        var call = Call(0x100, 0x200) with { Locators = [new TimeTravelLocator(1, LocatorKind.Page, 0x0000_0001_0000_0150)] };
+        var call = Call(0x100, 0x200) with { Locators = [new Locator(1, LocatorKind.Page, 0x0000_0001_0000_0150)] };
 
         var table = ArgumentRowBuilder.Table(layout, [call]);
 
@@ -142,7 +143,7 @@ public class ArgumentRowBuilderTests
 
         var call = Call(0x100, 0, returnValue: 0x300) with
         {
-            Locators = [new TimeTravelLocator(LocatorReadResolver.ReturnRegister, LocatorKind.Row, 0x0005_0001_0000_0150)]
+            Locators = [new Locator(LocatorReadResolver.ReturnRegister, LocatorKind.Row, 0x0005_0001_0000_0150)]
         };
 
         var table = ArgumentRowBuilder.Table(layout, [call]);
@@ -155,7 +156,7 @@ public class ArgumentRowBuilderTests
     {
         var layout = ArgumentLayout.For(new FunctionSignature(["ColumnStoreObjectKey const &"], FunctionKind.Member, "void"));
 
-        var key = TimeTravelLocator.ColumnStoreObject(1, 5 | (0x02A7ul << 32), 0x0100 | (2ul << 32), 3 | (1ul << 32));
+        var key = Locator.ColumnStoreObject(1, 5 | (0x02A7ul << 32), 0x0100 | (2ul << 32), 3 | (1ul << 32));
 
         var call = Call(0x100, 0x200) with { Locators = [key] };
 
@@ -168,7 +169,7 @@ public class ArgumentRowBuilderTests
     {
         var layout = ArgumentLayout.For(new FunctionSignature(["enum LCK_MODE &"], FunctionKind.Member, "void"));
 
-        var call = Call(0x100, 0x200) with { Locators = [new TimeTravelLocator(1, LocatorKind.Referenced, 4)] };
+        var call = Call(0x100, 0x200) with { Locators = [new Locator(1, LocatorKind.Referenced, 4)] };
 
         Assert.Equal("U", Assert.Single(ArgumentRowBuilder.Table(layout, [call]).Rows)[3]);
 
@@ -177,16 +178,16 @@ public class ArgumentRowBuilderTests
         Assert.Equal((0x200ul, (LocatorKind?)null, "enum LCK_MODE &"), (cell.Value, cell.Locator?.Kind, cell.Type));
     }
 
-    private static TimeTravelArgumentCall Call(ulong self, ulong pointer, ulong returnValue = 0, bool returned = true)
+    private static FullTraceArgumentCall Call(ulong self, ulong pointer, ulong returnValue = 0, bool returned = true)
         => new(1, 1, returned, [self, pointer, 0, 0], returnValue, 0);
 
-    private sealed class CountingCalls(int count) : IReadOnlyList<TimeTravelArgumentCall>
+    private sealed class CountingCalls(int count) : IReadOnlyList<FullTraceArgumentCall>
     {
         public int Count { get; } = count;
 
         public int Reads { get; private set; }
 
-        public TimeTravelArgumentCall this[int index]
+        public FullTraceArgumentCall this[int index]
         {
             get
             {
@@ -196,7 +197,7 @@ public class ArgumentRowBuilderTests
             }
         }
 
-        public IEnumerator<TimeTravelArgumentCall> GetEnumerator()
+        public IEnumerator<FullTraceArgumentCall> GetEnumerator()
         {
             for (var index = 0; index < Count; index++)
             {

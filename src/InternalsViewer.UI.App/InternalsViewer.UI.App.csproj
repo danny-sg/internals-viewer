@@ -279,6 +279,7 @@
       <ProjectReference Include="..\Connections\InternalsViewer.Connection.BackupFile\InternalsViewer.Connection.BackupFile.csproj" />
       <ProjectReference Include="..\InternalsViewer.Internals\InternalsViewer.Internals.csproj" />
       <ProjectReference Include="..\Query\InternalsViewer.Query\InternalsViewer.Query.csproj" />
+      <ProjectReference Include="..\Query\InternalsViewer.Query.FullTrace\InternalsViewer.Query.FullTrace.csproj" />
       <ProjectReference Include="..\Query\InternalsViewer.Query.Debugging\InternalsViewer.Query.Debugging.csproj" />
     </ItemGroup>
 
@@ -563,6 +564,7 @@
       <Folder Include="Controls\Columnstore\Structure\" />
       <Folder Include="Controls\Columnstore\Segment\" />
       <Folder Include="Controls\Logging\" />
+      <Folder Include="Controls\Dialogs\" />
       <Folder Include="ViewModels\Columnstore\Segment\" />
       <Folder Include="Views\Query\Tabs\Index\" />
       <Folder Include="Views\Query\Tabs\Plan\" />

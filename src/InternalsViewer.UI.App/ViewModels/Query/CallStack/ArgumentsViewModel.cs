@@ -7,8 +7,8 @@ using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
 using InternalsViewer.Query.CallStack;
 using InternalsViewer.Query.CallStack.Arguments;
-using InternalsViewer.Query.CallStack.TimeTravel.CallLog;
-using InternalsViewer.Query.CallStack.TimeTravel.Iterators;
+using InternalsViewer.Query.FullTrace.CallLog;
+using InternalsViewer.Query.FullTrace.Iterators;
 using InternalsViewer.Query.Results;
 using InternalsViewer.UI.App.Models.Query.CallStack;
 using Microsoft.Extensions.Logging;
@@ -70,13 +70,13 @@ public sealed partial class ArgumentsViewModel(ILogger logger, SymbolsViewModel 
 
     public int? SelectedCallIndex => SelectedCall is { Id: var index } ? (int)index : null;
 
-    private TimeTravelCallLog? Log { get; set; }
+    private FullTraceCallLog? Log { get; set; }
 
     private IReadOnlyDictionary<ulong, IteratorTarget> Iterators { get; set; } = new Dictionary<ulong, IteratorTarget>();
 
     private ArgumentLayout? Layout { get; set; }
 
-    private IReadOnlyList<TimeTravelArgumentCall> LoggedCalls { get; set; } = [];
+    private IReadOnlyList<FullTraceArgumentCall> LoggedCalls { get; set; } = [];
 
     private CancellationTokenSource? Request { get; set; }
 
@@ -90,7 +90,7 @@ public sealed partial class ArgumentsViewModel(ILogger logger, SymbolsViewModel 
 
     public bool CanShow(CallStackNode node) => Log is not null && node.Frame is { Address: not 0, Pdb.Length: > 0 };
 
-    public void SetSource(TimeTravelCallLog? log, IReadOnlyDictionary<ulong, IteratorTarget>? iterators = null)
+    public void SetSource(FullTraceCallLog? log, IReadOnlyDictionary<ulong, IteratorTarget>? iterators = null)
     {
         Cancel();
 
@@ -321,7 +321,7 @@ public sealed partial class ArgumentsViewModel(ILogger logger, SymbolsViewModel 
     private bool IsShowing(CallStackNode node)
         => Shown?.Frame is { } shown && node.Frame is { } frame && shown.Address == frame.Address && shown.Instance == frame.Instance;
 
-    private async Task<Dictionary<ulong, FunctionKind?>> ResolveKindsAsync(IEnumerable<TimeTravelValueUse> uses)
+    private async Task<Dictionary<ulong, FunctionKind?>> ResolveKindsAsync(IEnumerable<FullTraceValueUse> uses)
     {
         var kinds = new Dictionary<ulong, FunctionKind?>();
 
@@ -342,7 +342,7 @@ public sealed partial class ArgumentsViewModel(ILogger logger, SymbolsViewModel 
 
     private static string? Identity(IReadOnlyList<ValueUseGroup> groups)
     {
-        if (groups.FirstOrDefault(g => g.Role == TimeTravelValueRole.CalledOn) is not { Rows: [var first, ..] })
+        if (groups.FirstOrDefault(g => g.Role == FullTraceValueRole.CalledOn) is not { Rows: [var first, ..] })
         {
             return null;
         }

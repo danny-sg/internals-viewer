@@ -7,8 +7,8 @@ public static class LoadedModules
     private const string Sql = "SELECT name FROM sys.dm_os_loaded_modules";
 
     public static async Task<IReadOnlyList<string>> PathsOfAsync(string connectionString,
-                                                                IReadOnlyCollection<string> fileNames,
-                                                                CancellationToken cancellationToken)
+                                                                 IReadOnlyCollection<string> fileNames,
+                                                                 CancellationToken cancellationToken)
     {
         await using var connection = new SqlConnection(connectionString);
 

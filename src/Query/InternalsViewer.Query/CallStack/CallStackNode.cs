@@ -1,7 +1,7 @@
 using InternalsViewer.Query.CallStack.Categories;
-using InternalsViewer.Query.CallStack.TimeTravel.Locators;
 using InternalsViewer.Query.Events;
 using InternalsViewer.Query.Events.Operators;
+using InternalsViewer.Query.CallStack.Locators;
 
 namespace InternalsViewer.Query.CallStack;
 
@@ -131,7 +131,7 @@ public sealed class CallStackNode
         ? "1 Allocation Including Children"
         : $"{AllocationsIncludingChildren:N0} Allocations Including Children";
 
-    public TimeTravelLocatorSet? Locators { get; set; }
+    public LocatorSet? Locators { get; set; }
 
     public bool HasLocators => Locators is not null;
 
@@ -229,7 +229,7 @@ public sealed class CallStackNode
 
             if (node.Locators is { } locators)
             {
-                (merged.Locators ??= new TimeTravelLocatorSet()).Add(locators);
+                (merged.Locators ??= new LocatorSet()).Add(locators);
             }
 
             merged.CallActivity = Sum(merged.CallActivity, node.CallActivity);

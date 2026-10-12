@@ -6,9 +6,9 @@ using System.Threading.Tasks;
 using System;
 using InternalsViewer.Query.CallStack;
 using InternalsViewer.Query.CallStack.Arguments;
-using InternalsViewer.Query.CallStack.TimeTravel.CallLog;
-using InternalsViewer.Query.CallStack.TimeTravel.Iterators;
-using InternalsViewer.Query.CallStack.TimeTravel.Locators;
+using InternalsViewer.Query.FullTrace.CallLog;
+using InternalsViewer.Query.FullTrace.Iterators;
+using InternalsViewer.Query.FullTrace.Locators;
 using InternalsViewer.Query.CallStack.WinDbg;
 using InternalsViewer.Query.Debugging;
 using InternalsViewer.Query.Debugging.Exceptions;
@@ -41,6 +41,8 @@ using InternalsViewer.UI.App.Messages;
 using Microsoft.UI.Input;
 using Windows.System;
 using Windows.UI.Core;
+using InternalsViewer.Query.CallStack.Locators;
+using WinDbgInstallDialog = InternalsViewer.UI.App.Controls.Dialogs.WinDbgInstallDialog;
 
 namespace InternalsViewer.UI.App.Views.Query.Tabs.CallStack;
 
@@ -907,13 +909,13 @@ public sealed partial class QueryCallStackTabView : UserControl, IDocumentComman
 
     private void OnListedLocatorClick(object sender, RoutedEventArgs e)
     {
-        if (sender is MenuFlyoutItem { Tag: TimeTravelLocator locator })
+        if (sender is MenuFlyoutItem { Tag: Locator locator })
         {
             OpenPage(locator);
         }
     }
 
-    private void OpenPage(TimeTravelLocator locator)
+    private void OpenPage(Locator locator)
     {
         if (locator.Kind == LocatorKind.ColumnStoreObject)
         {
@@ -968,7 +970,7 @@ public sealed partial class QueryCallStackTabView : UserControl, IDocumentComman
         }
     }
 
-    private void ShowUse(TimeTravelValueMatch match)
+    private void ShowUse(FullTraceValueMatch match)
     {
         if (match.Node is not { } node || _viewModel is null)
         {

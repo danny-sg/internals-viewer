@@ -1,7 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using InternalsViewer.Query.CallStack.TimeTravel.Timeline.Enums;
+using InternalsViewer.Query.FullTrace.Timeline.Enums;
 using SkiaSharp;
 
 namespace InternalsViewer.UI.App.Controls.FlameChart;
@@ -86,7 +86,7 @@ public sealed partial class FlameChartControl
 
                 var span = row.Span(_axis, index);
 
-                var positions = row.Span(TimeTravelTimelineAxis.Position, index);
+                var positions = row.Span(FullTraceTimelineAxis.Position, index);
 
                 var (bytes, _) = timeline.AllocatedDuring(thread.ThreadId, positions.Start, positions.End);
 
@@ -166,7 +166,7 @@ public sealed partial class FlameChartControl
     {
         var relative = value - OriginOf(_axis);
 
-        if (_axis != TimeTravelTimelineAxis.Position || _timeline is not { } timeline)
+        if (_axis != FullTraceTimelineAxis.Position || _timeline is not { } timeline)
         {
             return $"{relative:N0}";
         }

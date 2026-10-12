@@ -29,6 +29,10 @@
       <Build Solution="*|x64" Project="false" />
       <Build Solution="*|x86" Project="false" />
     </Project>
+    <Project Path="Tests/InternalsViewer.Query.FullTrace.Tests/InternalsViewer.Query.FullTrace.Tests.csproj">
+      <Build Solution="*|x64" Project="false" />
+      <Build Solution="*|x86" Project="false" />
+    </Project>
     <Project Path="Tests/InternalsViewer.Query.Tests/InternalsViewer.Query.Tests.csproj">
       <Build Solution="*|x64" Project="false" />
       <Build Solution="*|x86" Project="false" />
@@ -65,6 +69,9 @@
       <Build Solution="Debug|x86" Project="false" />
     </Project>
     <Project Path="Query/InternalsViewer.Query/InternalsViewer.Query.csproj">
+      <Build Solution="Debug|x86" Project="false" />
+    </Project>
+    <Project Path="Query/InternalsViewer.Query.FullTrace/InternalsViewer.Query.FullTrace.csproj">
       <Build Solution="Debug|x86" Project="false" />
     </Project>
     <Project Path="Query/InternalsViewer.Query.SourceGenerators/InternalsViewer.Query.SourceGenerators.csproj">

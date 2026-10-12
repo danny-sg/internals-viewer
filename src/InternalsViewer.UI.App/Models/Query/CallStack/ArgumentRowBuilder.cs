@@ -2,9 +2,10 @@ using System.Collections.Generic;
 using System.Drawing;
 using System.Linq;
 using InternalsViewer.Query.CallStack.Arguments;
-using InternalsViewer.Query.CallStack.TimeTravel.CallLog;
-using InternalsViewer.Query.CallStack.TimeTravel.Locators;
+using InternalsViewer.Query.FullTrace.CallLog;
+using InternalsViewer.Query.FullTrace.Locators;
 using InternalsViewer.Query.Results;
+using InternalsViewer.Query.CallStack.Locators;
 
 namespace InternalsViewer.UI.App.Models.Query.CallStack;
 
@@ -22,7 +23,7 @@ public static class ArgumentRowBuilder
 
     private static readonly Color ReturnTint = Color.FromArgb(0x12, 0x4C, 0xA3, 0xE0);
 
-    public static QueryResultSet Table(ArgumentLayout layout, IReadOnlyList<TimeTravelArgumentCall> calls)
+    public static QueryResultSet Table(ArgumentLayout layout, IReadOnlyList<FullTraceArgumentCall> calls)
     {
         var slots = CapturedSlots(layout);
 
@@ -60,7 +61,7 @@ public static class ArgumentRowBuilder
         return new QueryResultSet { Columns = columns, Rows = rows };
     }
 
-    public static ArgumentCell CellAt(ArgumentLayout layout, TimeTravelArgumentCall call, int ordinal)
+    public static ArgumentCell CellAt(ArgumentLayout layout, FullTraceArgumentCall call, int ordinal)
     {
         var slots = CapturedSlots(layout);
 
@@ -79,14 +80,14 @@ public static class ArgumentRowBuilder
         return default;
     }
 
-    private static TimeTravelLocator? AddressAt(TimeTravelArgumentCall call, int register)
+    private static Locator? AddressAt(FullTraceArgumentCall call, int register)
         => call.LocatorAt(register) is { Kind: not LocatorKind.Referenced } locator ? locator : null;
 
-    private static List<ArgumentSlot> CapturedSlots(ArgumentLayout layout) => [.. layout.Slots.Where(TimeTravelArgumentCall.IsCaptured)];
+    private static List<ArgumentSlot> CapturedSlots(ArgumentLayout layout) => [.. layout.Slots.Where(FullTraceArgumentCall.IsCaptured)];
 
-    private static bool HasReturn(string returnType) => returnType != "void" && TimeTravelArgumentCall.IsReturnCaptured(returnType);
+    private static bool HasReturn(string returnType) => returnType != "void" && FullTraceArgumentCall.IsReturnCaptured(returnType);
 
-    private static object?[] Values(List<ArgumentSlot> slots, string? returnType, TimeTravelArgumentCall call, int index)
+    private static object?[] Values(List<ArgumentSlot> slots, string? returnType, FullTraceArgumentCall call, int index)
     {
         var values = new List<object?> { (long)index + 1, call.ThreadId };
 
@@ -107,7 +108,7 @@ public static class ArgumentRowBuilder
         return [.. values];
     }
 
-    private static object Display(string type, TimeTravelLocator locator) => locator.Kind switch
+    private static object Display(string type, Locator locator) => locator.Kind switch
     {
         LocatorKind.Row => locator.Row,
         LocatorKind.ColumnStoreObject => locator.ToString(),
@@ -121,5 +122,5 @@ public static class ArgumentRowBuilder
     private static string Text(string type, ulong? value)
         => value is { } raw ? ArgumentValue.Format(type, raw) : "Unreadable";
 
-    private static string ReturnSource(string type) => ArgumentValue.IsFloating(type) ? "XMM0" : "RAX";
+    private static string ReturnSource(string type) => ArgumentType.IsFloating(type) ? "XMM0" : "RAX";
 }

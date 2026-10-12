@@ -7,6 +7,9 @@ using InternalsViewer.UI.App.Controls;
 using InternalsViewer.UI.App.ViewModels;
 using InternalsViewer.UI.App.ViewModels.Query;
 using Microsoft.UI.Xaml.Controls;
+using TimeTravelLicenceDialog = InternalsViewer.UI.App.Controls.Dialogs.TimeTravelLicenceDialog;
+using TimeTravelWarningDialog = InternalsViewer.UI.App.Controls.Dialogs.TimeTravelWarningDialog;
+using WinDbgInstallDialog = InternalsViewer.UI.App.Controls.Dialogs.WinDbgInstallDialog;
 
 namespace InternalsViewer.UI.App.Views.Query;
 

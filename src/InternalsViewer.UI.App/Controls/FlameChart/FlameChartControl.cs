@@ -2,9 +2,9 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using InternalsViewer.Query.CallStack;
-using InternalsViewer.Query.CallStack.TimeTravel.Memory;
-using InternalsViewer.Query.CallStack.TimeTravel.Timeline;
-using InternalsViewer.Query.CallStack.TimeTravel.Timeline.Enums;
+using InternalsViewer.Query.FullTrace.Memory;
+using InternalsViewer.Query.FullTrace.Timeline;
+using InternalsViewer.Query.FullTrace.Timeline.Enums;
 using InternalsViewer.UI.App.Models.Query.CallStack;
 using Microsoft.UI;
 using Microsoft.UI.Xaml.Controls;
@@ -26,25 +26,25 @@ public sealed partial class FlameChartControl : Grid, IDisposable
 
     public static readonly DependencyProperty TimelineProperty =
         DependencyProperty.Register(nameof(Timeline),
-                                    typeof(TimeTravelTimeline),
+                                    typeof(FullTraceTimeline),
                                     typeof(FlameChartControl),
                                     new PropertyMetadata(null, OnTimelineChanged));
 
-    public TimeTravelTimeline? Timeline
+    public FullTraceTimeline? Timeline
     {
-        get => (TimeTravelTimeline?)GetValue(TimelineProperty);
+        get => (FullTraceTimeline?)GetValue(TimelineProperty);
         set => SetValue(TimelineProperty, value);
     }
 
     public static readonly DependencyProperty AxisProperty =
         DependencyProperty.Register(nameof(Axis),
-                                    typeof(TimeTravelTimelineAxis),
+                                    typeof(FullTraceTimelineAxis),
                                     typeof(FlameChartControl),
-                                    new PropertyMetadata(TimeTravelTimelineAxis.Position, OnAxisChanged));
+                                    new PropertyMetadata(FullTraceTimelineAxis.Position, OnAxisChanged));
 
-    public TimeTravelTimelineAxis Axis
+    public FullTraceTimelineAxis Axis
     {
-        get => (TimeTravelTimelineAxis)GetValue(AxisProperty);
+        get => (FullTraceTimelineAxis)GetValue(AxisProperty);
         set => SetValue(AxisProperty, value);
     }
 
@@ -146,13 +146,13 @@ public sealed partial class FlameChartControl : Grid, IDisposable
 
     public static readonly DependencyProperty CurrentEventLinkProperty =
         DependencyProperty.Register(nameof(CurrentEventLink),
-                                    typeof(TimeTravelEventLink),
+                                    typeof(FullTraceEventLink),
                                     typeof(FlameChartControl),
                                     new PropertyMetadata(null, OnCurrentEventLinkChanged));
 
-    public TimeTravelEventLink? CurrentEventLink
+    public FullTraceEventLink? CurrentEventLink
     {
-        get => (TimeTravelEventLink?)GetValue(CurrentEventLinkProperty);
+        get => (FullTraceEventLink?)GetValue(CurrentEventLinkProperty);
         set => SetValue(CurrentEventLinkProperty, value);
     }
 
@@ -198,19 +198,19 @@ public sealed partial class FlameChartControl : Grid, IDisposable
 
     private readonly Dictionary<string, SKColor> _parsedColours = new(StringComparer.OrdinalIgnoreCase);
 
-    private readonly Dictionary<FlameHit, TimeTravelInUseCurve> _inUseCurves = [];
+    private readonly Dictionary<FlameHit, FullTraceInUseCurve> _inUseCurves = [];
 
-    private TimeTravelTimeline? _timeline;
+    private FullTraceTimeline? _timeline;
 
     private CallStackNode? _highlightedNode;
 
     private CallStackNode? _root;
 
-    private TimeTravelTimeline? _rooted;
+    private FullTraceTimeline? _rooted;
 
-    private TimeTravelTimeline? _visible;
+    private FullTraceTimeline? _visible;
 
-    private TimeTravelTimelineAxis _axis = TimeTravelTimelineAxis.Position;
+    private FullTraceTimelineAxis _axis = FullTraceTimelineAxis.Position;
 
     private float[] _laneTops = [];
 
@@ -386,7 +386,7 @@ public sealed partial class FlameChartControl : Grid, IDisposable
 
     private bool ShowsSpikes => ShowMemory && MemoryMode == FlameChartMemoryMode.Allocated;
 
-    private bool ShowsMemoryBand => ShowMemory && _axis == TimeTravelTimelineAxis.Position && _visible is { HasAllocations: true };
+    private bool ShowsMemoryBand => ShowMemory && _axis == FullTraceTimelineAxis.Position && _visible is { HasAllocations: true };
 
     private float BandHeight => ShowsMemoryBand ? MemoryBandHeight : 0;
 
@@ -507,7 +507,7 @@ public sealed partial class FlameChartControl : Grid, IDisposable
         _parsedColours.Clear();
     }
 
-    private double OriginOf(TimeTravelTimelineAxis axis) => _timeline?.StartOf(axis) ?? 0;
+    private double OriginOf(FullTraceTimelineAxis axis) => _timeline?.StartOf(axis) ?? 0;
 
     private void PlacePlayhead(double target)
     {
@@ -523,7 +523,7 @@ public sealed partial class FlameChartControl : Grid, IDisposable
         _canvas.Invalidate();
     }
 
-    private void FollowLink(TimeTravelEventLink? link)
+    private void FollowLink(FullTraceEventLink? link)
     {
         if (_visible is null || link is null)
         {
@@ -707,12 +707,12 @@ public sealed partial class FlameChartControl : Grid, IDisposable
         _contentHeight = top;
     }
 
-    private float LaneHeight(TimeTravelTimelineThread thread)
+    private float LaneHeight(FullTraceTimelineThread thread)
         => LaneHeaderHeight + DepthOf(thread) * _rowHeight + (thread.ThreadId == _expandedThread ? _focusPadding : 0) + LaneGap;
 
-    private int DepthOf(TimeTravelTimelineThread thread) => IsExpanded(thread) ? thread.Depth : 0;
+    private int DepthOf(FullTraceTimelineThread thread) => IsExpanded(thread) ? thread.Depth : 0;
 
-    private bool IsExpanded(TimeTravelTimelineThread thread) => _expandedThread is not { } expanded || thread.ThreadId == expanded;
+    private bool IsExpanded(FullTraceTimelineThread thread) => _expandedThread is not { } expanded || thread.ThreadId == expanded;
 
     private void ToggleLane(int lane)
     {
@@ -828,7 +828,7 @@ public sealed partial class FlameChartControl : Grid, IDisposable
         _inUseCurves.Clear();
 
         _inUseMaximum = _visible is { HasAllocations: true } memory
-            ? memory.PeakInUseDuring(memory.StartOf(TimeTravelTimelineAxis.Position), memory.EndOf(TimeTravelTimelineAxis.Position))
+            ? memory.PeakInUseDuring(memory.StartOf(FullTraceTimelineAxis.Position), memory.EndOf(FullTraceTimelineAxis.Position))
             : 0;
 
         var selfAllocations = _visible?.SelfAllocations() ?? [];
@@ -855,7 +855,7 @@ public sealed partial class FlameChartControl : Grid, IDisposable
     private static string MemoryModeLabel(FlameChartMemoryMode mode)
         => mode == FlameChartMemoryMode.InUse ? "Memory: In Use" : "Memory: Allocated";
 
-    private static ulong MemoryMaximum(TimeTravelTimeline? timeline)
+    private static ulong MemoryMaximum(FullTraceTimeline? timeline)
     {
         if (timeline is not { HasAllocations: true })
         {
@@ -868,9 +868,9 @@ public sealed partial class FlameChartControl : Grid, IDisposable
         {
             var row = thread.Rows[0];
 
-            var starts = row.Starts(TimeTravelTimelineAxis.Position);
+            var starts = row.Starts(FullTraceTimelineAxis.Position);
 
-            var ends = row.Ends(TimeTravelTimelineAxis.Position);
+            var ends = row.Ends(FullTraceTimelineAxis.Position);
 
             for (var index = 0; index < row.Count; index++)
             {
@@ -881,7 +881,7 @@ public sealed partial class FlameChartControl : Grid, IDisposable
         return maximum;
     }
 
-    private bool[]? PrunedNodes(TimeTravelTimeline timeline)
+    private bool[]? PrunedNodes(FullTraceTimeline timeline)
     {
         if (PrunedCategories is not { Count: > 0 } categories)
         {
@@ -905,7 +905,7 @@ public sealed partial class FlameChartControl : Grid, IDisposable
         return any ? hidden : null;
     }
 
-    private static bool[]? Matches(TimeTravelTimeline timeline, Func<CallStackNode, bool> predicate)
+    private static bool[]? Matches(FullTraceTimeline timeline, Func<CallStackNode, bool> predicate)
     {
         var matches = new bool[timeline.NodeCount];
 
@@ -1029,7 +1029,7 @@ public sealed partial class FlameChartControl : Grid, IDisposable
     {
         var control = (FlameChartControl)d;
 
-        control._timeline = e.NewValue as TimeTravelTimeline;
+        control._timeline = e.NewValue as FullTraceTimeline;
 
         control.Reset();
     }
@@ -1038,7 +1038,7 @@ public sealed partial class FlameChartControl : Grid, IDisposable
     {
         var control = (FlameChartControl)d;
 
-        control._axis = (TimeTravelTimelineAxis)e.NewValue;
+        control._axis = (FullTraceTimelineAxis)e.NewValue;
 
         control.UpdateFitRange();
 
@@ -1167,5 +1167,5 @@ public sealed partial class FlameChartControl : Grid, IDisposable
     }
 
     private static void OnCurrentEventLinkChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
-        => ((FlameChartControl)d).FollowLink(e.NewValue as TimeTravelEventLink);
+        => ((FlameChartControl)d).FollowLink(e.NewValue as FullTraceEventLink);
 }

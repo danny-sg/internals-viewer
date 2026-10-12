@@ -1,10 +1,11 @@
 ﻿using System.Collections.Generic;
-using InternalsViewer.Query.CallStack.TimeTravel.Memory;
+using InternalsViewer.Query.FullTrace.Memory;
 using InternalsViewer.Query.Events.Operators;
 using InternalsViewer.Query.Plans.Model;
 using InternalsViewer.UI.App.Helpers;
 using InternalsViewer.UI.App.Models.Query;
 using Microsoft.UI.Xaml.Controls;
+using InternalsViewer.Query.Memory;
 
 namespace InternalsViewer.UI.App.Controls.Plan;
 
@@ -36,13 +37,13 @@ public sealed partial class PlanNodePropertiesView : UserControl
 
     public static readonly DependencyProperty TracedMemoryProperty =
         DependencyProperty.Register(nameof(TracedMemory),
-                                    typeof(TimeTravelMemoryPurpose),
+                                    typeof(FullTraceMemoryPurpose),
                                     typeof(PlanNodePropertiesView),
                                     new PropertyMetadata(null, OnNodeChanged));
 
-    public TimeTravelMemoryPurpose? TracedMemory
+    public FullTraceMemoryPurpose? TracedMemory
     {
-        get => (TimeTravelMemoryPurpose?)GetValue(TracedMemoryProperty);
+        get => (FullTraceMemoryPurpose?)GetValue(TracedMemoryProperty);
         set => SetValue(TracedMemoryProperty, value);
     }
 

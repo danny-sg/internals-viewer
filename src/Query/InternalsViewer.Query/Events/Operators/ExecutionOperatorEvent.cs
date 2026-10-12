@@ -1,7 +1,7 @@
 using InternalsViewer.Query.Events.Properties;
 using InternalsViewer.Query.CallStack;
-using InternalsViewer.Query.CallStack.TimeTravel.Memory;
 using InternalsViewer.Query.Plans.Operators;
+using InternalsViewer.Query.Memory;
 
 namespace InternalsViewer.Query.Events.Operators;
 
@@ -128,5 +128,5 @@ public sealed partial record ExecutionOperatorEvent : EngineEvent
 
     public IReadOnlyList<ulong> Instances { get; set; } = [];
 
-    public TimeTravelMemoryPurpose? Memory { get; set; }
+    public FullTraceMemoryPurpose? Memory { get; set; }
 }

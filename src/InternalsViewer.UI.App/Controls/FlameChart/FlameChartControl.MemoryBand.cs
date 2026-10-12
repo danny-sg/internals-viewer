@@ -1,6 +1,6 @@
 using System;
 using System.Linq;
-using InternalsViewer.Query.CallStack.TimeTravel.Timeline;
+using InternalsViewer.Query.FullTrace.Timeline;
 using InternalsViewer.UI.App.Helpers;
 using SkiaSharp;
 
@@ -28,7 +28,7 @@ public sealed partial class FlameChartControl
 
     private ulong _inUseScale;
 
-    private void DrawMemoryBand(SKCanvas canvas, TimeTravelTimeline timeline, int width, int height, double scale)
+    private void DrawMemoryBand(SKCanvas canvas, FullTraceTimeline timeline, int width, int height, double scale)
     {
         var top = height - MemoryBandHeight;
 
@@ -121,7 +121,7 @@ public sealed partial class FlameChartControl
         canvas.DrawPath(line, paint);
     }
 
-    private void DrawBandMarker(SKCanvas canvas, TimeTravelTimeline timeline, float x, int width, int height, double scale)
+    private void DrawBandMarker(SKCanvas canvas, FullTraceTimeline timeline, float x, int width, int height, double scale)
     {
         if (!ShowsMemoryBand || x < 0 || x >= width)
         {
@@ -186,14 +186,14 @@ public sealed partial class FlameChartControl
                         _paints.Label);
     }
 
-    private bool ShowsGrantUse(TimeTravelTimeline timeline) => GrantedMemory > 0 && timeline.HasWorkspace;
+    private bool ShowsGrantUse(FullTraceTimeline timeline) => GrantedMemory > 0 && timeline.HasWorkspace;
 
-    private ulong BandInUse(TimeTravelTimeline timeline, double start, double end)
+    private ulong BandInUse(FullTraceTimeline timeline, double start, double end)
         => ShowsGrantUse(timeline) ? timeline.PeakWorkspaceDuring(start, end) : timeline.PeakInUseDuring(start, end);
 
-    private string InUseLabel(TimeTravelTimeline timeline) => ShowsGrantUse(timeline) ? "Grant In Use" : "In Use";
+    private string InUseLabel(FullTraceTimeline timeline) => ShowsGrantUse(timeline) ? "Grant In Use" : "In Use";
 
-    private static ulong AllocatedDuring(TimeTravelTimeline timeline, double start, double end)
+    private static ulong AllocatedDuring(FullTraceTimeline timeline, double start, double end)
         => timeline.Threads.Aggregate(0ul, (total, t) => total + timeline.AllocatedDuring(t.ThreadId, start, end).Bytes);
 
     private (double Start, double End) BucketRange(int bucket, double scale)

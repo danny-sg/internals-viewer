@@ -22,6 +22,8 @@
     </ItemGroup>
     <ItemGroup>
         <InternalsVisibleTo Include="$(AssemblyName).Tests" />
+        <InternalsVisibleTo Include="$(AssemblyName).FullTrace" />
+        <InternalsVisibleTo Include="$(AssemblyName).FullTrace.Tests" />
     </ItemGroup>
 
 

@@ -1,9 +1,9 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using InternalsViewer.Query.CallStack.TimeTravel;
-using InternalsViewer.Query.CallStack.TimeTravel.Timeline;
-using InternalsViewer.Query.CallStack.TimeTravel.Timeline.Enums;
+using InternalsViewer.Query.FullTrace;
+using InternalsViewer.Query.FullTrace.Timeline;
+using InternalsViewer.Query.FullTrace.Timeline.Enums;
 using InternalsViewer.Query.Events.Operators;
 using InternalsViewer.Query.Helpers;
 using InternalsViewer.Query.Plans.Model;
@@ -94,7 +94,7 @@ public sealed partial class FlameChartControl
 
     private readonly Dictionary<int, SelectedLane> _selectedLanes = [];
 
-    private readonly Dictionary<TimeTravelOperatorLifetime, string> _operatorDetails = new(ReferenceEqualityComparer.Instance);
+    private readonly Dictionary<FullTraceOperatorLifetime, string> _operatorDetails = new(ReferenceEqualityComparer.Instance);
 
     private readonly Dictionary<SKColor, SKShader> _operatorGradients = [];
 
@@ -157,7 +157,7 @@ public sealed partial class FlameChartControl
         }
     }
 
-    private static OperatorRow[] OperatorRowsOf(TimeTravelTimeline? timeline)
+    private static OperatorRow[] OperatorRowsOf(FullTraceTimeline? timeline)
     {
         if (timeline is null)
         {
@@ -176,11 +176,11 @@ public sealed partial class FlameChartControl
                            .GroupBy(l => l.Operator, ReferenceEqualityComparer.Instance)
                            .Select(g => RowOf((ExecutionOperatorEvent)g.Key!, [.. g.OrderBy(l => lanes[l.Thread])]))
                            .OrderBy(r => r.Operator.NodeLevel)
-                           .ThenBy(r => r.Lifetimes.Min(l => l.StartOf(TimeTravelTimelineAxis.Position)))
+                           .ThenBy(r => r.Lifetimes.Min(l => l.StartOf(FullTraceTimelineAxis.Position)))
                            .ThenBy(r => r.Operator.PlanNodeIdentifier?.NodeId ?? 0)];
     }
 
-    private static OperatorRow RowOf(ExecutionOperatorEvent operatorEvent, TimeTravelOperatorLifetime[] lifetimes)
+    private static OperatorRow RowOf(ExecutionOperatorEvent operatorEvent, FullTraceOperatorLifetime[] lifetimes)
     {
         var target = operatorEvent.ObjectName.Length > 0
             ? operatorEvent.ObjectName
@@ -232,7 +232,7 @@ public sealed partial class FlameChartControl
 
     private void DrawOperatorBar(SKCanvas canvas,
                                  OperatorRow row,
-                                 TimeTravelOperatorLifetime lifetime,
+                                 FullTraceOperatorLifetime lifetime,
                                  SKRect rect,
                                  double scale,
                                  bool labelled)
@@ -275,7 +275,7 @@ public sealed partial class FlameChartControl
         }
     }
 
-    private bool IsRaised(TimeTravelOperatorLifetime lifetime)
+    private bool IsRaised(FullTraceOperatorLifetime lifetime)
         => ShowMemory && MemoryMode == FlameChartMemoryMode.InUse && _inUseMaximum > 0 && !lifetime.InUse.IsEmpty;
 
     private SKShader OperatorGradientOf(SKColor colour)
@@ -297,7 +297,7 @@ public sealed partial class FlameChartControl
         return gradient;
     }
 
-    private void DrawActivity(SKCanvas canvas, TimeTravelOperatorLifetime lifetime, double scale)
+    private void DrawActivity(SKCanvas canvas, FullTraceOperatorLifetime lifetime, double scale)
     {
         var calls = lifetime.Calls(_axis);
 
@@ -452,7 +452,7 @@ public sealed partial class FlameChartControl
 
     private float OperatorRowTop(int row) => OperatorsTop + OperatorsPadding + row * (OperatorRowHeight + OperatorRowGap);
 
-    private SKColor OperatorColourOf(ExecutionOperatorEvent operatorEvent, TimeTravelOperatorLifetime lifetime)
+    private SKColor OperatorColourOf(ExecutionOperatorEvent operatorEvent, FullTraceOperatorLifetime lifetime)
         => ColourProvider is { } colours ? colours.GetColour(operatorEvent).ToSkColor() : ColourOf(lifetime.Node);
 
     private void DrawOperatorOverlay(SKCanvas canvas, int width)
@@ -627,8 +627,8 @@ public sealed partial class FlameChartControl
             }
 
             regions.Add(new SelectedRegion(span.Depth,
-                                           span.Span(TimeTravelTimelineAxis.Position),
-                                           span.Span(TimeTravelTimelineAxis.Instructions)));
+                                           span.Span(FullTraceTimelineAxis.Position),
+                                           span.Span(FullTraceTimelineAxis.Instructions)));
         }
 
         foreach (var (lane, regions) in found)
@@ -827,7 +827,7 @@ public sealed partial class FlameChartControl
         OpenToolTip(details, position);
     }
 
-    private string DetailsOf(OperatorRow row, TimeTravelOperatorLifetime lifetime)
+    private string DetailsOf(OperatorRow row, FullTraceOperatorLifetime lifetime)
     {
         var methods = new Dictionary<string, int>();
 
@@ -846,13 +846,13 @@ public sealed partial class FlameChartControl
             active += call.End - call.Start;
         }
 
-        var instructions = lifetime.EndOf(TimeTravelTimelineAxis.Instructions) - lifetime.StartOf(TimeTravelTimelineAxis.Instructions);
+        var instructions = lifetime.EndOf(FullTraceTimelineAxis.Instructions) - lifetime.StartOf(FullTraceTimelineAxis.Instructions);
 
-        var origin = OriginOf(TimeTravelTimelineAxis.Position);
+        var origin = OriginOf(FullTraceTimelineAxis.Position);
 
-        var start = lifetime.StartOf(TimeTravelTimelineAxis.Position) - origin;
+        var start = lifetime.StartOf(FullTraceTimelineAxis.Position) - origin;
 
-        var end = lifetime.EndOf(TimeTravelTimelineAxis.Position) - origin;
+        var end = lifetime.EndOf(FullTraceTimelineAxis.Position) - origin;
 
         var lines = new List<string>
         {
@@ -891,21 +891,21 @@ public sealed partial class FlameChartControl
         => ((FlameChartControl)d).Redraw();
 
     private sealed record OperatorRow(ExecutionOperatorEvent Operator,
-                                      TimeTravelOperatorLifetime[] Lifetimes,
+                                      FullTraceOperatorLifetime[] Lifetimes,
                                       string Name,
                                       string Target,
                                       string Title);
 
     private readonly record struct OperatorHit(int Row, int Track);
 
-    private readonly record struct SelectedRegion(int Depth, TimeTravelTimelineSpan Position, TimeTravelTimelineSpan Instructions)
+    private readonly record struct SelectedRegion(int Depth, FullTraceTimelineSpan Position, FullTraceTimelineSpan Instructions)
     {
-        public TimeTravelTimelineSpan Of(TimeTravelTimelineAxis axis) => axis == TimeTravelTimelineAxis.Position ? Position : Instructions;
+        public FullTraceTimelineSpan Of(FullTraceTimelineAxis axis) => axis == FullTraceTimelineAxis.Position ? Position : Instructions;
     }
 
     private sealed record SelectedLane(SelectedRegion[] Regions, double[] PositionEnds, double[] InstructionEnds)
     {
-        public ReadOnlySpan<double> Ends(TimeTravelTimelineAxis axis)
-            => axis == TimeTravelTimelineAxis.Position ? PositionEnds : InstructionEnds;
+        public ReadOnlySpan<double> Ends(FullTraceTimelineAxis axis)
+            => axis == FullTraceTimelineAxis.Position ? PositionEnds : InstructionEnds;
     }
 }

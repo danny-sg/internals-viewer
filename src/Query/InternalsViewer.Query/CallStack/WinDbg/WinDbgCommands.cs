@@ -135,7 +135,7 @@ public static class WinDbgCommands
     {
         var type = slot.Type;
 
-        var pointer = ArgumentValue.IsPointer(type);
+        var pointer = ArgumentType.IsPointer(type);
 
         var (location, expression) = slot.Location switch
         {
