@@ -1,5 +1,6 @@
 using System.Runtime.Versioning;
 using System.Security.AccessControl;
+using InternalsViewer.Query.Debugging.Exceptions;
 using Microsoft.Extensions.Logging;
 using Microsoft.Win32;
 
@@ -24,9 +25,6 @@ public sealed record WinDbgInstallation(string Executable, string EngineDirector
 
     private const string PackageSuffix = "_8wekyb3d8bbwe";
 
-    private static readonly string[] EngineFiles =
-        ["dbgeng.dll", "dbghelp.dll", "dbgcore.dll", "dbgmodel.dll", "symsrv.dll", "srcsrv.dll"];
-
     /// <summary>
     /// Finds the Store WinDbg, or failing that the Debugging Tools for Windows
     /// </summary>
@@ -46,33 +44,40 @@ public sealed record WinDbgInstallation(string Executable, string EngineDirector
         return new WinDbgInstallation(executable, engineDirectory, Path.GetFileName(directory), packaged);
     }
 
-    /// <summary>
-    /// Returns the path of a loadable <c>dbgeng.dll</c>
-    /// </summary>
-    public string PrepareEngine(string cacheRoot)
+    public static WinDbgInstallation Resolve(string path, ILogger logger)
     {
-        if (!IsPackaged)
+        if (!string.IsNullOrWhiteSpace(path))
         {
-            return Path.Combine(EngineDirectory, "dbgeng.dll");
-        }
+            logger.LogInformation("Using the WinDbg Path from Settings: {Path}", path);
 
-        var target = Path.Combine(cacheRoot, Name);
-
-        Directory.CreateDirectory(target);
-
-        foreach (var file in EngineFiles)
-        {
-            var source = new FileInfo(Path.Combine(EngineDirectory, file));
-
-            var copy = new FileInfo(Path.Combine(target, file));
-
-            if (source.Exists && (!copy.Exists || copy.LastWriteTimeUtc != source.LastWriteTimeUtc || copy.Length != source.Length))
+            if (!File.Exists(path))
             {
-                source.CopyTo(copy.FullName, overwrite: true);
+                logger.LogWarning("WinDbg was not found at {Path}", path);
+
+                throw new WinDbgNotFoundException($"WinDbg was not found at {path}. Check the WinDbg Path in Settings");
             }
+
+            var installation = FromExecutable(path);
+
+            logger.LogInformation("Using WinDbg at {Executable} with the engine in {EngineDirectory}",
+                                  installation.Executable,
+                                  installation.EngineDirectory);
+
+            return installation;
         }
 
-        return Path.Combine(target, "dbgeng.dll");
+        logger.LogInformation("The WinDbg Path is not set in Settings. Looking for an installation");
+
+        var located = Locate(logger);
+
+        if (located is null)
+        {
+            logger.LogWarning("WinDbg was not found. Install it, or set the WinDbg Path in Settings");
+
+            throw new WinDbgNotFoundException("WinDbg was not found.");
+        }
+
+        return located;
     }
 
     public string? PrepareTimeTravel(string cacheRoot)

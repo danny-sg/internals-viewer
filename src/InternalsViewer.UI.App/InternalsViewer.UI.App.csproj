@@ -29,8 +29,6 @@
         <HoursBetweenUpdateChecks>0</HoursBetweenUpdateChecks>
         <AppxPackageDir>D:\package\InternalsViewer</AppxPackageDir>
         <EnforceCodeStyleInBuild>True</EnforceCodeStyleInBuild>
-        <DefineConstants>$(DefineConstants);DISABLE_XAML_GENERATED_MAIN</DefineConstants>
-        <WindowsAppSdkDeploymentManagerInitialize>false</WindowsAppSdkDeploymentManagerInitialize>
         
         
     </PropertyGroup>

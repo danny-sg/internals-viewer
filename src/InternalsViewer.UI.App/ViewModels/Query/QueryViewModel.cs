@@ -20,8 +20,6 @@ using InternalsViewer.Query.FullTrace;
 using InternalsViewer.Query.FullTrace.Iterators;
 using InternalsViewer.Query.FullTrace.Memory;
 using InternalsViewer.Query.FullTrace.Timeline;
-using InternalsViewer.Query.CallStack.WinDbg;
-using InternalsViewer.Query.Debugging;
 using InternalsViewer.Query.Events.Latches;
 using InternalsViewer.Query.Events.Locks;
 using InternalsViewer.Query.Events.Operators;
@@ -92,8 +90,7 @@ public sealed class QueryViewModelFactory(ILogger<QueryViewModel> logger,
                                           PageTabViewModelFactory pageTabViewModelFactory,
                                           TraceDirectoryService traceDirectoryService,
                                           IBufferPoolInfoProvider bufferPoolInfoProvider,
-                                          SimulationTabViewModelFactory simulationTabViewModelFactory,
-                                          WinDbgService winDbgService)
+                                          SimulationTabViewModelFactory simulationTabViewModelFactory)
 {
     public QueryViewModel Create(DatabaseSource database) => new(logger,
                                                                  queryRunner,
@@ -107,7 +104,6 @@ public sealed class QueryViewModelFactory(ILogger<QueryViewModel> logger,
                                                                  traceDirectoryService,
                                                                  bufferPoolInfoProvider,
                                                                  simulationTabViewModelFactory,
-                                                                 winDbgService,
                                                                  database);
 }
 
@@ -124,8 +120,6 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
     private const string RunFileType = "Internals Viewer Run";
 
     private readonly SimulationTabViewModelFactory _simulationTabViewModelFactory;
-
-    private readonly WinDbgService _winDbgService;
 
     private readonly TimelineDefinitionBuilder _timelineDefinitionBuilder = TimelineDefinitionBuilder.CreateDefault();
 
@@ -323,14 +317,6 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
     [ObservableProperty]
     private bool _isPlanPropertiesDockedBottom;
 
-    [ObservableProperty]
-    [NotifyCanExecuteChangedFor(nameof(DetachDebuggerCommand))]
-    [NotifyCanExecuteChangedFor(nameof(ClearBreakpointsCommand))]
-    private bool _isDebuggerConnected;
-
-    [ObservableProperty]
-    private string _debuggerStatus = "Not Connected";
-
     public QueryViewModel(ILogger<QueryViewModel> logger,
                           QueryRunner queryRunner,
                           FullTraceLoader fullTraceLoader,
@@ -343,20 +329,14 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
                           TraceDirectoryService traceDirectoryService,
                           IBufferPoolInfoProvider bufferPoolInfoProvider,
                           SimulationTabViewModelFactory simulationTabViewModelFactory,
-                          WinDbgService winDbgService,
                           DatabaseSource database)
     {
         _simulationTabViewModelFactory = simulationTabViewModelFactory;
-        _winDbgService = winDbgService;
 
         Symbols = new SymbolsViewModel(logger, settingsViewModel);
 
         Arguments = new ArgumentsViewModel(logger, Symbols);
 
-        _winDbgService.StatusChanged += OnDebuggerStatusChanged;
-
-        IsDebuggerConnected = _winDbgService.IsConnected;
-        DebuggerStatus = _winDbgService.Status;
         Logger = logger;
         QueryRunner = queryRunner;
         FullTraceLoader = fullTraceLoader;
@@ -805,32 +785,6 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
         Symbols.ShowSymbolSearch();
     }
 
-    [RelayCommand]
-    private Task AttachDebuggerAsync() =>
-        RunDebuggerAsync(() => _winDbgService.AttachAsync(Database.Connection.GetConnectionString(), CancellationToken.None));
-
-    [RelayCommand]
-    private Task ConnectDebuggerAsync() => RunDebuggerAsync(() => _winDbgService.ConnectAsync(CancellationToken.None));
-
-    [RelayCommand(CanExecute = nameof(IsDebuggerConnected))]
-    private Task DetachDebuggerAsync() => RunDebuggerAsync(_winDbgService.DetachAsync);
-
-    [RelayCommand(CanExecute = nameof(IsDebuggerConnected))]
-    private Task ClearBreakpointsAsync() =>
-        RunDebuggerAsync(() => _winDbgService.SendAsync(WinDbgCommands.ClearBreakpoints, CancellationToken.None));
-
-    private async Task RunDebuggerAsync(Func<Task> action)
-    {
-        try
-        {
-            await action();
-        }
-        catch (Exception exception)
-        {
-            await WeakReferenceMessenger.Default.Send(new ExceptionMessage(exception));
-        }
-    }
-
     partial void OnSelectedEventChanged(EngineEvent? value)
     {
         SelectedEventProperties = value?.GetProperties() ?? [];
@@ -841,12 +795,6 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
     partial void OnFlameChartChanged(FullTraceTimeline? value) => CurrentEventLink = null;
 
     partial void OnCallStackChanged(CallStackTree? value) => Symbols.CallStack = value;
-
-    private void OnDebuggerStatusChanged(object? sender, EventArgs e)
-    {
-        IsDebuggerConnected = _winDbgService.IsConnected;
-        DebuggerStatus = _winDbgService.Status;
-    }
 
     public void OpenExecutionPlan(PlanNodeIdentifier identifier)
     {
@@ -1022,7 +970,6 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
     {
         QueryOptions.FilterChanged -= RefreshFilteredEvents;
         QueryOptions.PropertyChanged -= OnQueryOptionChanged;
-        _winDbgService.StatusChanged -= OnDebuggerStatusChanged;
         QueryOptions.Changed -= ScheduleSaveLayout;
         Layout.Changed -= OnLayoutChanged;
         Layout.SelectionChanged -= ScheduleSaveLayout;
@@ -1056,8 +1003,6 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
         Arguments.Dispose();
 
         Layout.Dispose();
-
-        _ = _winDbgService.DetachAsync();
 
         base.Dispose();
     }

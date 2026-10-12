@@ -505,7 +505,7 @@ public sealed partial class FlameChartControl
 
         using (var ribbon = _pathBuilder.Detach())
         {
-            _paints.Face.Color = leftmost.Colour.WithAlpha(LandscapeAlpha);
+            _paints.Face.Color = leftmost.Colour.WithAlpha(leftmost.Source.Operator is null ? LandscapeAlpha : byte.MaxValue);
 
             canvas.DrawPath(ribbon, _paints.Face);
 

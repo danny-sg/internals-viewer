@@ -1,13 +1,14 @@
 using System.Diagnostics;
 using System.Runtime.Versioning;
 using InternalsViewer.Query.Debugging.Exceptions;
+using InternalsViewer.Query.Debugging.Interfaces;
 using Microsoft.Data.SqlClient;
 using Microsoft.Extensions.Logging;
 
 namespace InternalsViewer.Query.Debugging.TimeTravel;
 
 [SupportedOSPlatform("windows")]
-public sealed class TimeTravelRecorder(WinDbgService winDbg, ILogger<TimeTravelRecorder> logger) : ITimeTravelRecorder
+public sealed class TimeTravelRecorder(IWinDbgSettings settings, ILogger<TimeTravelRecorder> logger) : ITimeTravelRecorder
 {
     private const string OnlineSql = "SELECT CAST(DATABASEPROPERTYEX(DB_NAME(), 'Status') AS nvarchar(60))";
 
@@ -118,7 +119,7 @@ public sealed class TimeTravelRecorder(WinDbgService winDbg, ILogger<TimeTravelR
 
     private string PrepareTimeTravel()
     {
-        var installation = winDbg.ResolveInstallation();
+        var installation = WinDbgInstallation.Resolve(settings.WinDbgPath, logger);
 
         var source = Path.Combine(installation.EngineDirectory, "ttd");
 

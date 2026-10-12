@@ -136,27 +136,13 @@
                                    IsChecked="{x:Bind ViewModel.QueryOptions.IncludeCallStack, Mode=TwoWay}"/>
                             </MenuBarItem>
 
-                            <MenuBarItem Title="Trace/Debug">
+                            <MenuBarItem Title="Trace">
                                 <ToggleMenuFlyoutItem Text="Record Full Trace"
                                                       IsChecked="{x:Bind ViewModel.QueryOptions.RecordTimeTravel, Mode=OneWay}"
                                                       Click="OnRecordTimeTravelClick"/>
                                 <ToggleMenuFlyoutItem Text="Record Events"
                                                       IsChecked="{x:Bind ViewModel.QueryOptions.RecordFullTraceEvents, Mode=TwoWay}"
                                                       IsEnabled="{x:Bind ViewModel.QueryOptions.RecordTimeTravel, Mode=OneWay}"/>
-                                <MenuFlyoutSeparator/>
-                                <MenuFlyoutSubItem Text="WinDbg">
-                                    <MenuFlyoutItem Text="{x:Bind ViewModel.DebuggerStatus, Mode=OneWay}"
-                                                    IsEnabled="False"/>
-                                    <MenuFlyoutItem Text="Attach WinDbg to SQL Server"
-                                                    Command="{x:Bind ViewModel.AttachDebuggerCommand}"/>
-                                    <MenuFlyoutItem Text="Connect to session"
-                                                    Command="{x:Bind ViewModel.ConnectDebuggerCommand}"/>
-                                    <MenuFlyoutItem Text="Detach"
-                                                    Command="{x:Bind ViewModel.DetachDebuggerCommand}"/>
-                                    <MenuFlyoutSeparator/>
-                                    <MenuFlyoutItem Text="Clear breakpoints"
-                                                    Command="{x:Bind ViewModel.ClearBreakpointsCommand}"/>
-                                </MenuFlyoutSubItem>
                                 <MenuFlyoutSeparator/>
                                 <MenuFlyoutItem Text="Search symbols"
                                                 Command="{x:Bind ViewModel.SearchSymbolsCommand}"/>

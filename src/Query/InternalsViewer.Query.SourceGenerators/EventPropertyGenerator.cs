@@ -131,9 +131,12 @@ public sealed class EventPropertyGenerator : IIncrementalGenerator
 
         return type.SpecialType switch
         {
-            SpecialType.System_Boolean => $"EventPropertyFormatter.Bool({property.Name})",
-            SpecialType.System_DateTime when !nullable => $"EventPropertyFormatter.Time({property.Name})",
-            SpecialType.System_String => $"EventPropertyFormatter.Text({property.Name})",
+            SpecialType.System_Boolean 
+                => $"EventPropertyFormatter.Bool({property.Name})",
+            SpecialType.System_DateTime when !nullable 
+                => $"EventPropertyFormatter.Time({property.Name})",
+            SpecialType.System_String 
+                => $"EventPropertyFormatter.Text({property.Name})",
             SpecialType.System_Int64 or SpecialType.System_Int32 or SpecialType.System_Int16 or SpecialType.System_Byte
                 => $"EventPropertyFormatter.Number((long{suffix}){property.Name}, TYPE, FORMAT)",
             SpecialType.System_UInt64 or SpecialType.System_UInt32 or SpecialType.System_UInt16

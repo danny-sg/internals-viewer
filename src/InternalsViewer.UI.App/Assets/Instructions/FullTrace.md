@@ -1,6 +1,6 @@
 # Full Trace
 
-**Record Full Trace** on the **Trace/Debug** menu records the query with Microsoft's Time Travel Debugging (TTD), then
+**Record Full Trace** on the **Trace** menu records the query with Microsoft's Time Travel Debugging (TTD), then
 replays the recording. Instead of the call stacks captured when events fire, the [Call Stack](view:Callstack) holds
 every call the query made - how many times it was made, the memory it allocated and the values it was passed.
 

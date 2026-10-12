@@ -9,7 +9,6 @@ using InternalsViewer.Query.CallStack.Arguments;
 using InternalsViewer.Query.FullTrace.CallLog;
 using InternalsViewer.Query.FullTrace.Iterators;
 using InternalsViewer.Query.FullTrace.Locators;
-using InternalsViewer.Query.CallStack.WinDbg;
 using InternalsViewer.Query.Debugging;
 using InternalsViewer.Query.Debugging.Exceptions;
 using InternalsViewer.Query.Events.Latches;
@@ -42,7 +41,6 @@ using Microsoft.UI.Input;
 using Windows.System;
 using Windows.UI.Core;
 using InternalsViewer.Query.CallStack.Locators;
-using WinDbgInstallDialog = InternalsViewer.UI.App.Controls.Dialogs.WinDbgInstallDialog;
 
 namespace InternalsViewer.UI.App.Views.Query.Tabs.CallStack;
 
@@ -212,8 +210,6 @@ public sealed partial class QueryCallStackTabView : UserControl, IDocumentComman
 
     public string DockToggleTooltip => IsMembersPaneDockedBottom ? "Dock Right" : "Dock Bottom";
 
-    private WinDbgService WinDbg => field ??= App.GetService<WinDbgService>();
-
     private SettingsViewModel Settings { get; } = App.GetService<SettingsViewModel>();
 
     private HashSet<string> HiddenCategories
@@ -357,30 +353,6 @@ public sealed partial class QueryCallStackTabView : UserControl, IDocumentComman
         SearchBar.SearchTextChanged -= OnSearchTextChanged;
 
         Settings.PropertyChanged -= OnSettingsPropertyChanged;
-    }
-
-    private async void RunWinDbg(Func<Task> action)
-    {
-        try
-        {
-            await action();
-        }
-        catch (Exception exception)
-        {
-            var dialog = exception is WinDbgNotFoundException
-                ? new WinDbgInstallDialog(exception.Message)
-                : new ContentDialog
-                {
-                    Title = "WinDbg",
-                    Content = exception.Message,
-                    CloseButtonText = "OK"
-                };
-
-            dialog.XamlRoot = XamlRoot;
-            dialog.Style = Application.Current.Resources["DefaultContentDialogStyle"] as Style;
-
-            await dialog.ShowAsync();
-        }
     }
 
     private void OnFocusChanged(object sender, RoutedEventArgs e)
@@ -667,8 +639,6 @@ public sealed partial class QueryCallStackTabView : UserControl, IDocumentComman
     private void OnNodeRightTapped(object sender, RightTappedRoutedEventArgs e)
     {
         _contextNode = (sender as FrameworkElement)?.DataContext as TreeViewNode;
-
-        EnableWinDbgMenu(sender);
 
         EnableFrameMenu(sender);
     }
@@ -1101,63 +1071,8 @@ public sealed partial class QueryCallStackTabView : UserControl, IDocumentComman
     {
         if (_contextNode?.Content is CallStackNode { Frame: { } frame })
         {
-            CopyText(WinDbgCommands.Symbol(WinDbgTarget.From(frame)));
+            CopyText(QualifiedSymbol.Of(frame));
         }
-    }
-
-    private void OnSendWinDbgClick(object sender, RoutedEventArgs e)
-    {
-        if (_contextNode?.Content is CallStackNode { Frame: { } frame })
-        {
-            SendWinDbg(sender, WinDbgTarget.From(frame), () => DescribeFrameAsync(frame));
-        }
-    }
-
-    private void SendWinDbg(object sender,
-                            WinDbgTarget target,
-                            Func<Task<(WinDbgTarget Target, string? DecoratedName)>> describe)
-    {
-        if (sender is not MenuFlyoutItem { Tag: string command })
-        {
-            return;
-        }
-
-        if (command is "DumpArguments" or "DumpArgumentsAndBreak")
-        {
-            RunWinDbg(async () =>
-            {
-                var (described, decoratedName) = await describe();
-
-                var text = command == "DumpArguments"
-                    ? WinDbgCommands.DumpArguments(described, decoratedName)
-                    : WinDbgCommands.DumpArgumentsAndBreak(described, decoratedName);
-
-                await WinDbg.SendAsync(text, CancellationToken.None);
-            });
-
-            return;
-        }
-
-        if (WinDbgCommands.For(command, target) is { } text)
-        {
-            RunWinDbg(() => WinDbg.SendAsync(text, CancellationToken.None));
-        }
-    }
-
-    private async Task<(WinDbgTarget Target, string? DecoratedName)> DescribeFrameAsync(CallstackFrame frame)
-    {
-        var signature = _viewModel is { } viewModel ? await viewModel.Symbols.ResolveFrameSignatureAsync(frame) : null;
-
-        var decoratedName = _viewModel is { } owner ? await owner.Symbols.ResolveFrameDecoratedNameAsync(frame) : null;
-
-        return (WinDbgTarget.From(frame) with { Signature = signature }, decoratedName);
-    }
-
-    private async Task<(WinDbgTarget Target, string? DecoratedName)> DescribeMemberAsync(ClassMemberRow member)
-    {
-        var decoratedName = _viewModel is { } viewModel ? await viewModel.Symbols.ResolveMemberDecoratedNameAsync(member) : null;
-
-        return (WinDbgTarget.From(member.Reference), decoratedName);
     }
 
     private void OnListMembersClick(object sender, RoutedEventArgs e)
@@ -1175,21 +1090,6 @@ public sealed partial class QueryCallStackTabView : UserControl, IDocumentComman
     private void OnMemberRightTapped(object sender, RightTappedRoutedEventArgs e)
     {
         _contextMember = (sender as FrameworkElement)?.DataContext as ClassMemberRow;
-
-        EnableWinDbgMenu(sender);
-    }
-
-    private void EnableWinDbgMenu(object sender)
-    {
-        if ((sender as FrameworkElement)?.ContextFlyout is not MenuFlyout flyout)
-        {
-            return;
-        }
-
-        foreach (var item in flyout.Items.OfType<MenuFlyoutSubItem>().Where(i => i.Text == "WinDbg"))
-        {
-            item.IsEnabled = WinDbg.IsConnected;
-        }
     }
 
     private void OnCopySignatureClick(object sender, RoutedEventArgs e)
@@ -1204,15 +1104,7 @@ public sealed partial class QueryCallStackTabView : UserControl, IDocumentComman
     {
         if (_contextMember is not null)
         {
-            CopyText(WinDbgCommands.Symbol(WinDbgTarget.From(_contextMember.Reference)));
-        }
-    }
-
-    private void OnSendMemberWinDbgClick(object sender, RoutedEventArgs e)
-    {
-        if (_contextMember is { } member)
-        {
-            SendWinDbg(sender, WinDbgTarget.From(member.Reference), () => DescribeMemberAsync(member));
+            CopyText(QualifiedSymbol.Of(_contextMember.Reference));
         }
     }
 

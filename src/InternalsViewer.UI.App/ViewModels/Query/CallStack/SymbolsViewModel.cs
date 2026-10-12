@@ -295,17 +295,6 @@ public sealed partial class SymbolsViewModel(ILogger logger, SettingsViewModel s
         }
     }
 
-    public async Task<string?> ResolveMemberDecoratedNameAsync(ClassMemberRow member)
-    {
-        if (ModuleFrames().FirstOrDefault(f => string.Equals(f.Module, member.Member.Module, StringComparison.OrdinalIgnoreCase))
-            is not { } moduleFrame)
-        {
-            return null;
-        }
-
-        return await ResolveFrameDecoratedNameAsync(moduleFrame with { Rva = member.Member.Rva, Resolved = null });
-    }
-
     public async Task ResolveFrameSignaturesAsync(IReadOnlyList<CallstackFrame> frames)
     {
         try

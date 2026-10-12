@@ -197,18 +197,6 @@
                     <MenuFlyout>
                         <MenuFlyoutItem Text="Copy Signature" Click="OnCopySignatureClick"/>
                         <MenuFlyoutItem Text="Copy Symbol" Click="OnCopyMemberSymbolClick"/>
-                        <MenuFlyoutSubItem Text="WinDbg">
-                            <MenuFlyoutItem Text="Set Breakpoint" Click="OnSendMemberWinDbgClick" Tag="Breakpoint" IsEnabled="{x:Bind IsFunction}"/>
-                            <MenuFlyoutItem Text="Set Breakpoint With Stack" Click="OnSendMemberWinDbgClick" Tag="BreakpointWithStack" IsEnabled="{x:Bind IsFunction}"/>
-                            <MenuFlyoutItem Text="Set Breakpoint, Dump Arguments and Continue" Click="OnSendMemberWinDbgClick" Tag="DumpArguments" IsEnabled="{x:Bind IsFunction}"/>
-                            <MenuFlyoutItem Text="Set Breakpoint, Dump Arguments and Break" Click="OnSendMemberWinDbgClick" Tag="DumpArgumentsAndBreak" IsEnabled="{x:Bind IsFunction}"/>
-                            <MenuFlyoutItem Text="Set Breakpoint on All Overloads" Click="OnSendMemberWinDbgClick" Tag="BreakpointOnAllOverloads" IsEnabled="{x:Bind IsOverloadedFunction}"/>
-                            <MenuFlyoutSeparator/>
-                            <MenuFlyoutItem Text="Examine Symbol" Click="OnSendMemberWinDbgClick" Tag="ExamineSymbol"/>
-                            <MenuFlyoutSeparator/>
-                            <MenuFlyoutItem Text="Display Type" Click="OnSendMemberWinDbgClick" Tag="DisplayType"/>
-                            <MenuFlyoutItem Text="List Class Symbols" Click="OnSendMemberWinDbgClick" Tag="ListClassSymbols"/>
-                        </MenuFlyoutSubItem>
                     </MenuFlyout>
                 </StackPanel.ContextFlyout>
                 <TextBlock Text="{x:Bind Prefix}"
@@ -305,18 +293,6 @@
             <MenuFlyoutSeparator/>
             <MenuFlyoutItem Text="Copy to Clipboard" Click="OnCopySymbolClick"/>
             <MenuFlyoutItem Text="Copy Call Tree to Clipboard" Click="OnCopyCallTreeClick"/>
-            <MenuFlyoutSubItem Text="WinDbg">
-                <MenuFlyoutItem Text="Set Breakpoint" Click="OnSendWinDbgClick" Tag="Breakpoint"/>
-                <MenuFlyoutItem Text="Set Breakpoint With Stack" Click="OnSendWinDbgClick" Tag="BreakpointWithStack"/>
-                <MenuFlyoutItem Text="Set Breakpoint, Dump Arguments and Continue" Click="OnSendWinDbgClick" Tag="DumpArguments"/>
-                <MenuFlyoutItem Text="Set Breakpoint, Dump Arguments and Break" Click="OnSendWinDbgClick" Tag="DumpArgumentsAndBreak"/>
-                <MenuFlyoutItem Text="Set Breakpoint at Frame Address" Click="OnSendWinDbgClick" Tag="BreakpointAtFrame"/>
-                <MenuFlyoutSeparator/>
-                <MenuFlyoutItem Text="Examine Symbol" Click="OnSendWinDbgClick" Tag="ExamineSymbol"/>
-                <MenuFlyoutSeparator/>
-                <MenuFlyoutItem Text="Display Type" Click="OnSendWinDbgClick" Tag="DisplayType"/>
-                <MenuFlyoutItem Text="List Class Symbols" Click="OnSendWinDbgClick" Tag="ListClassSymbols"/>
-            </MenuFlyoutSubItem>
             <MenuFlyoutSeparator/>
             <MenuFlyoutItem Text="List Members" Click="OnListMembersClick"/>
             <MenuFlyoutItem Text="Show Arguments" Tag="ShowArguments" Click="OnShowArgumentsClick"/>

@@ -13,9 +13,5 @@ public sealed record ClassMemberRow(string Prefix, ClassMember Member, string Cl
 
     public string Signature => Member.Signature;
 
-    public bool IsFunction => Member.IsFunction;
-
-    public bool IsOverloadedFunction => Member.IsFunction && IsOverloaded;
-
     public ClassMemberReference Reference => new(Member, ClassName, IsOverloaded);
 }
