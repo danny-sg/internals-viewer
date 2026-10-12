@@ -3,7 +3,7 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using InternalsViewer.Internals.Engine.Address;
 
-namespace InternalsViewer.Query.FullTrace.Export.Converters;
+namespace InternalsViewer.Query.Export.Converters;
 
 internal sealed class LogSequenceNumberConverter : JsonConverter<LogSequenceNumber>
 {

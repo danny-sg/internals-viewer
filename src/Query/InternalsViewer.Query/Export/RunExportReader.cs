@@ -3,13 +3,7 @@ using System.IO.Compression;
 using System.Text.Json;
 using InternalsViewer.Internals.Engine.Database;
 using InternalsViewer.Query.CallStack;
-using InternalsViewer.Query.FullTrace;
-using InternalsViewer.Query.FullTrace.CallLog;
-using InternalsViewer.Query.FullTrace.Iterators;
-using InternalsViewer.Query.FullTrace.Locators;
-using InternalsViewer.Query.FullTrace.Timeline;
 using InternalsViewer.Query.Events;
-using InternalsViewer.Query.Events.Operators;
 using InternalsViewer.Query.Plans;
 using InternalsViewer.Query.Plans.Model;
 using InternalsViewer.Query.Plans.Parsers;
@@ -17,13 +11,62 @@ using InternalsViewer.Query.Results;
 using InternalsViewer.TransactionLog.LogRecords;
 using InternalsViewer.Query.CallStack.Locators;
 
-namespace InternalsViewer.Query.FullTrace.Export;
+namespace InternalsViewer.Query.Export;
 
-internal static class RunExportReader
+public sealed class RunExportReader
 {
     private const int BufferSize = 1 << 16;
 
-    public static RunExportContent Read(Stream stream, Func<long, AllocationUnit?> allocationUnitOf, CancellationToken cancellationToken)
+    private RunExportReader(ZipArchive zip,
+                            ExportReferences references,
+                            List<(ExportCallTree Exported, CallStackTree? Tree)> trees,
+                            IReadOnlyList<EngineEvent> events)
+    {
+        Zip = zip;
+        References = references;
+        Trees = trees;
+        Events = events;
+    }
+
+    public IReadOnlyList<EngineEvent> Events { get; }
+
+    public IReadOnlyList<CallStackNode> Nodes => field ??= [.. References.Nodes.InOrder()];
+
+    private ZipArchive Zip { get; }
+
+    private ExportReferences References { get; }
+
+    private List<(ExportCallTree Exported, CallStackTree? Tree)> Trees { get; }
+
+    public CallStackTree? CallTree(string name) => Trees.FirstOrDefault(t => t.Exported.Name == name).Tree;
+
+    public bool HasEntry(string name) => Zip.GetEntry(name) is not null;
+
+    public T ReadBinary<T>(string name, Func<BinaryReader, T> read)
+    {
+        var entry = Zip.GetEntry(name) ?? throw new InvalidDataException($"The run file has no {name}");
+
+        using var reader = new BinaryReader(new BufferedStream(entry.Open(), BufferSize));
+
+        if (reader.ReadUInt32() != RunExport.BinaryMagic)
+        {
+            throw new InvalidDataException($"{name} is not an Internals Viewer binary section");
+        }
+
+        var version = reader.ReadInt32();
+
+        if (version > RunExport.FormatVersion)
+        {
+            throw new InvalidDataException($"{name} was exported by a newer version of Internals Viewer (format {version})");
+        }
+
+        return read(reader);
+    }
+
+    internal static RunExportContent Read(Stream stream,
+                                          Func<long, AllocationUnit?> allocationUnitOf,
+                                          IReadOnlyList<IRunExportSection> sections,
+                                          CancellationToken cancellationToken)
     {
         using var zip = new ZipArchive(stream, ZipArchiveMode.Read, leaveOpen: true);
 
@@ -87,11 +130,19 @@ internal static class RunExportReader
             LogRecords = [.. manifest.ResultLogRecords.Select(id => references.LogRecords[id])]
         };
 
-        var fullTraceTree = trees.FirstOrDefault(t => t.Exported.IsFullTrace).Tree;
+        var reader = new RunExportReader(zip, references, trees, result.EngineEvents);
 
-        var fullTrace = manifest.HasFullTrace && fullTraceTree is not null
-            ? ReadFullTrace(zip, fullTraceTree, references, result.EngineEvents)
-            : null;
+        var extras = new List<IRunExtra>();
+
+        foreach (var section in sections)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+
+            if (section.Read(reader) is { } extra)
+            {
+                extras.Add(extra);
+            }
+        }
 
         OperatorEntryLabels.Apply(result.EngineEvents);
 
@@ -104,7 +155,7 @@ internal static class RunExportReader
             EventOptions = manifest.EventOptions,
             Messages = ReadText(zip, RunExport.MessagesEntry).Split(Environment.NewLine, StringSplitOptions.RemoveEmptyEntries),
             Result = result,
-            FullTrace = fullTrace,
+            Extras = extras,
             ExportedAt = manifest.ExportedAt
         };
     }
@@ -166,31 +217,6 @@ internal static class RunExportReader
         }
 
         return tree;
-    }
-
-    private static FullTraceResult ReadFullTrace(ZipArchive zip,
-                                                 CallStackTree tree,
-                                                 ExportReferences references,
-                                                 IReadOnlyList<EngineEvent> events)
-    {
-        List<CallStackNode> nodes = [.. references.Nodes.InOrder()];
-
-        var callLog = ReadBinary(zip, RunExport.CallLogEntry, FullTraceCallLog.Read);
-
-        var timeline = ReadBinary(zip, RunExport.TimelineEntry, reader => FullTraceTimeline.Read(reader, nodes));
-
-        callLog.MapNodes(timeline.MappedNodes);
-
-        timeline.SetLifetimes(IteratorLifetimeBuilder.Build(timeline, [.. events.OfType<ExecutionOperatorEvent>()]));
-
-        if (zip.GetEntry(RunExport.EventLinksEntry) is not null)
-        {
-            timeline.SetEventLinks(ReadBinary(zip,
-                                              RunExport.EventLinksEntry,
-                                              reader => FullTraceTimeline.ReadEventLinks(reader, nodes, events)));
-        }
-
-        return new FullTraceResult(tree, callLog, timeline) { PlanLink = IteratorPlanLinker.Link(callLog, timeline.MappedNodes, events) };
     }
 
     private static List<ExecutionPlan> ReadPlans(ZipArchive zip, IReadOnlyList<ExportPlan> exported)
@@ -336,26 +362,5 @@ internal static class RunExportReader
                 yield return JsonSerializer.Deserialize<T>(line, options)!;
             }
         }
-    }
-
-    private static T ReadBinary<T>(ZipArchive zip, string name, Func<BinaryReader, T> read)
-    {
-        var entry = zip.GetEntry(name) ?? throw new InvalidDataException($"The run file has no {name}");
-
-        using var reader = new BinaryReader(new BufferedStream(entry.Open(), BufferSize));
-
-        if (reader.ReadUInt32() != RunExport.BinaryMagic)
-        {
-            throw new InvalidDataException($"{name} is not an Internals Viewer Full Trace section");
-        }
-
-        var version = reader.ReadInt32();
-
-        if (version > RunExport.FormatVersion)
-        {
-            throw new InvalidDataException($"{name} was exported by a newer version of Internals Viewer (format {version})");
-        }
-
-        return read(reader);
     }
 }

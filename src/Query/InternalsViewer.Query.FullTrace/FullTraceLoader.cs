@@ -9,7 +9,6 @@ using InternalsViewer.Query.Events.Operators;
 using InternalsViewer.Query.FullTrace.Iterators;
 using InternalsViewer.Query.FullTrace.Markers;
 using InternalsViewer.Query.FullTrace.Memory;
-using InternalsViewer.Query.FullTrace.Timeline;
 using InternalsViewer.Query.Helpers;
 using Microsoft.Extensions.Logging;
 
@@ -59,8 +58,8 @@ public sealed class FullTraceLoader(ILogger<FullTraceLoader> logger, ITimeTravel
     }
 
     public async Task<FullTraceResult?> LoadAsync(FullTraceRequest request,
-                                                IProgress<ProgressDetail>? progress,
-                                                CancellationToken cancellationToken)
+                                                  IProgress<ProgressDetail>? progress,
+                                                  CancellationToken cancellationToken)
     {
         var events = request.Events;
 

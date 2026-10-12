@@ -1,4 +1,4 @@
-namespace InternalsViewer.Query.FullTrace.Export;
+namespace InternalsViewer.Query.Export;
 
 internal sealed record ExportManifest
 {
@@ -33,8 +33,6 @@ internal sealed record ExportManifest
     public IReadOnlyList<ExportCallTree> CallTrees { get; init; } = [];
 
     public IReadOnlyList<int> ResultLogRecords { get; init; } = [];
-
-    public bool HasFullTrace { get; init; }
 
     public int EventCount { get; init; }
 

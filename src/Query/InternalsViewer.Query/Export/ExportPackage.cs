@@ -4,12 +4,12 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Text.Json.Serialization.Metadata;
 using InternalsViewer.Internals.Engine.Database;
-using InternalsViewer.Query.FullTrace.Export.Converters;
+using InternalsViewer.Query.Export.Converters;
 using InternalsViewer.Query.CallStack;
 using InternalsViewer.Query.Events;
 using InternalsViewer.TransactionLog.LogRecords;
 
-namespace InternalsViewer.Query.FullTrace.Export;
+namespace InternalsViewer.Query.Export;
 
 internal static class ExportPackage
 {

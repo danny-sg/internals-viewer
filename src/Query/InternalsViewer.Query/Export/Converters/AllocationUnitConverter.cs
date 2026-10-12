@@ -2,7 +2,7 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using InternalsViewer.Internals.Engine.Database;
 
-namespace InternalsViewer.Query.FullTrace.Export.Converters;
+namespace InternalsViewer.Query.Export.Converters;
 
 internal sealed class AllocationUnitConverter(Func<long, AllocationUnit?> allocationUnitOf) : JsonConverter<AllocationUnit>
 {

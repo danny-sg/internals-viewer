@@ -1,30 +1,62 @@
 using System.IO.Compression;
 using System.Text.Json;
 using InternalsViewer.Query.CallStack;
-using InternalsViewer.Query.FullTrace.Locators;
 using InternalsViewer.Query.Events;
 using InternalsViewer.Query.Plans;
 using InternalsViewer.Query.Results;
 using InternalsViewer.TransactionLog.LogRecords;
 using InternalsViewer.Query.CallStack.Locators;
 
-namespace InternalsViewer.Query.FullTrace.Export;
+namespace InternalsViewer.Query.Export;
 
-internal static class RunExportWriter
+public sealed class RunExportWriter
 {
     private const int BufferSize = 1 << 16;
 
     private const string EventsTree = "events";
 
-    private const string FullTraceTree = "fulltrace";
-
     private const string DetachedTree = "detached";
 
-    public static void Write(Stream stream, RunExportContent content, CancellationToken cancellationToken)
+    private RunExportWriter(ZipArchive zip, ExportReferences references)
+    {
+        Zip = zip;
+        References = references;
+    }
+
+    private ZipArchive Zip { get; }
+
+    private ExportReferences References { get; }
+
+    public int IdOf(CallStackNode node) => References.Nodes.IdOf(node);
+
+    public void WriteBinary(string name, CompressionLevel compression, Action<BinaryWriter> write)
+    {
+        using var stream = new BufferedStream(Zip.CreateEntry(name, compression).Open(), BufferSize);
+
+        using var writer = new BinaryWriter(stream);
+
+        writer.Write(RunExport.BinaryMagic);
+
+        writer.Write(RunExport.FormatVersion);
+
+        write(writer);
+    }
+
+    internal static void Write(Stream stream,
+                               RunExportContent content,
+                               IReadOnlyList<IRunExportSection> sections,
+                               CancellationToken cancellationToken)
     {
         var references = new ExportReferences(_ => null);
 
-        var trees = Collect(content, references);
+        var collector = new RunExportCollector();
+
+        foreach (var section in sections)
+        {
+            section.Collect(collector, content);
+        }
+
+        var trees = Collect(content, collector, references);
 
         cancellationToken.ThrowIfCancellationRequested();
 
@@ -51,24 +83,20 @@ internal static class RunExportWriter
 
         WriteLines(zip, RunExport.EventsEntry, references.Events.InOrder(), options);
 
-        if (content.FullTrace is { } fullTrace)
+        var writer = new RunExportWriter(zip, references);
+
+        foreach (var section in sections)
         {
             cancellationToken.ThrowIfCancellationRequested();
 
-            WriteBinary(zip, RunExport.CallLogEntry, CompressionLevel.NoCompression, fullTrace.CallLog.Write);
-
-            WriteBinary(zip, RunExport.TimelineEntry, CompressionLevel.Fastest, w => fullTrace.Timeline.Write(w, references.Nodes.IdOf));
-
-            WriteBinary(zip,
-                        RunExport.EventLinksEntry,
-                        CompressionLevel.Fastest,
-                        w => fullTrace.Timeline.WriteEventLinks(w, references.Nodes.IdOf));
+            section.Write(writer, content);
         }
 
         WriteJson(zip, RunExport.ManifestEntry, ManifestOf(content, trees, plans, references), ExportPackage.Indented);
     }
 
     private static List<(ExportCallTree Tree, IReadOnlyList<CallStackNode> Roots)> Collect(RunExportContent content,
+                                                                                         RunExportCollector collector,
                                                                                          ExportReferences references)
     {
         var result = content.Result;
@@ -109,7 +137,10 @@ internal static class RunExportWriter
 
         AddNode(result.CallStackTree?.Root);
 
-        AddNode(content.FullTrace?.CallStack.Root);
+        foreach (var (_, tree) in collector.Trees)
+        {
+            AddNode(tree.Root);
+        }
 
         var added = new List<EngineEvent>();
 
@@ -121,7 +152,7 @@ internal static class RunExportWriter
 
         var scannedDetached = 0;
 
-        var mappedScanned = content.FullTrace is null;
+        var referencedScanned = collector.ReferencedNodes.Count == 0;
 
         while (true)
         {
@@ -155,14 +186,14 @@ internal static class RunExportWriter
                 continue;
             }
 
-            if (mappedScanned)
+            if (referencedScanned)
             {
                 break;
             }
 
-            mappedScanned = true;
+            referencedScanned = true;
 
-            foreach (var node in content.FullTrace!.Timeline.MappedNodes)
+            foreach (var node in collector.ReferencedNodes.SelectMany(n => n))
             {
                 AddNode(node);
             }
@@ -173,19 +204,31 @@ internal static class RunExportWriter
             references.LogRecords.Add(logRecord);
         }
 
+        var sectionTrees = collector.Trees.ToDictionary<(string Name, CallStackTree Tree), CallStackNode>(t => t.Tree.Root,
+                                                                                                           ReferenceEqualityComparer.Instance);
+
         var trees = new List<(ExportCallTree Tree, IReadOnlyList<CallStackNode> Roots)>(roots.Count + 1);
 
         var named = false;
 
         for (var index = 0; index < roots.Count; index++)
         {
-            var isFullTrace = ReferenceEquals(roots[index], content.FullTrace?.CallStack.Root);
+            var root = roots[index];
 
-            var name = isFullTrace ? FullTraceTree : named ? $"tree-{index}" : EventsTree;
+            if (sectionTrees.TryGetValue(root, out var sectionTree))
+            {
+                trees.Add((TreeOf(sectionTree.Name, sectionTree.Tree, false), [root]));
 
-            named |= !isFullTrace;
+                continue;
+            }
 
-            trees.Add((TreeOf(roots[index], name, content), [roots[index]]));
+            var isResultTree = ReferenceEquals(root, result.CallStackTree?.Root);
+
+            var name = named ? $"tree-{index}" : EventsTree;
+
+            named = true;
+
+            trees.Add((TreeOf(name, isResultTree ? result.CallStackTree : null, isResultTree), [root]));
         }
 
         if (detached.Count > 0)
@@ -267,32 +310,18 @@ internal static class RunExportWriter
         }
     }
 
-    private static ExportCallTree TreeOf(CallStackNode root, string name, RunExportContent content)
+    private static ExportCallTree TreeOf(string name, CallStackTree? tree, bool isResultTree) => new()
     {
-        var resultTree = content.Result.CallStackTree;
-
-        var fullTraceTree = content.FullTrace?.CallStack;
-
-        var isResultTree = ReferenceEquals(root, resultTree?.Root);
-
-        var isFullTrace = ReferenceEquals(root, fullTraceTree?.Root);
-
-        var tree = isFullTrace ? fullTraceTree : isResultTree ? resultTree : null;
-
-        return new ExportCallTree
-        {
-            Name = name,
-            File = $"calltree-{name}.jsonl",
-            RootId = 0,
-            IsResultTree = isResultTree,
-            IsFullTrace = isFullTrace,
-            ActivityFromTrace = tree?.ActivityFromTrace ?? false,
-            ActivityMinUs = tree?.ActivityMinUs ?? 0,
-            ActivityMaxUs = tree?.ActivityMaxUs ?? 0,
-            ActivityBuckets = tree?.ActivityBuckets ?? 0,
-            ActivityBusiest = tree?.ActivityBusiest ?? 0
-        };
-    }
+        Name = name,
+        File = $"calltree-{name}.jsonl",
+        RootId = 0,
+        IsResultTree = isResultTree,
+        ActivityFromTrace = tree?.ActivityFromTrace ?? false,
+        ActivityMinUs = tree?.ActivityMinUs ?? 0,
+        ActivityMaxUs = tree?.ActivityMaxUs ?? 0,
+        ActivityBuckets = tree?.ActivityBuckets ?? 0,
+        ActivityBusiest = tree?.ActivityBusiest ?? 0
+    };
 
     private static IEnumerable<CallStackNode> PreOrder(CallStackNode root)
     {
@@ -424,7 +453,6 @@ internal static class RunExportWriter
             Plans = plans,
             CallTrees = [.. trees.Select(t => t.Tree with { RootId = t.Tree.IsDetached ? -1 : references.Nodes.IdOf(t.Roots[0]) })],
             ResultLogRecords = [.. result.LogRecords.Select(references.LogRecords.IdOf)],
-            HasFullTrace = content.FullTrace is not null,
             EventCount = references.Events.Count,
             LogRecordCount = references.LogRecords.Count,
             NodeCount = references.Nodes.Count
@@ -464,18 +492,5 @@ internal static class RunExportWriter
 
             stream.WriteByte((byte)'\n');
         }
-    }
-
-    private static void WriteBinary(ZipArchive zip, string name, CompressionLevel compression, Action<BinaryWriter> write)
-    {
-        using var stream = new BufferedStream(zip.CreateEntry(name, compression).Open(), BufferSize);
-
-        using var writer = new BinaryWriter(stream);
-
-        writer.Write(RunExport.BinaryMagic);
-
-        writer.Write(RunExport.FormatVersion);
-
-        write(writer);
     }
 }

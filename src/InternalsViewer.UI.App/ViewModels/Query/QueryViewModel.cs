@@ -74,7 +74,7 @@ using LogRecordItem = InternalsViewer.UI.App.Models.Logging.LogRecordItem;
 using System.Diagnostics;
 using System.IO;
 using System.Text.Json;
-using InternalsViewer.Query.FullTrace.Export;
+using InternalsViewer.Query.Export;
 using InternalsViewer.UI.App.Helpers;
 using Windows.Storage.Pickers;
 using InternalsViewer.Query.Memory;
@@ -84,6 +84,7 @@ namespace InternalsViewer.UI.App.ViewModels.Query;
 public sealed class QueryViewModelFactory(ILogger<QueryViewModel> logger,
                                           QueryRunner queryRunner,
                                           FullTraceLoader fullTraceLoader,
+                                          RunExport runExport,
                                           SettingsService settingsService,
                                           SettingsViewModel settingsViewModel,
                                           IndexTabViewModelFactory indexTabViewModelFactory,
@@ -97,6 +98,7 @@ public sealed class QueryViewModelFactory(ILogger<QueryViewModel> logger,
     public QueryViewModel Create(DatabaseSource database) => new(logger,
                                                                  queryRunner,
                                                                  fullTraceLoader,
+                                                                 runExport,
                                                                  settingsService,
                                                                  settingsViewModel,
                                                                  indexTabViewModelFactory,
@@ -332,6 +334,7 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
     public QueryViewModel(ILogger<QueryViewModel> logger,
                           QueryRunner queryRunner,
                           FullTraceLoader fullTraceLoader,
+                          RunExport runExport,
                           SettingsService settingsService,
                           SettingsViewModel settingsViewModel,
                           IndexTabViewModelFactory indexTabViewModelFactory,
@@ -357,6 +360,7 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
         Logger = logger;
         QueryRunner = queryRunner;
         FullTraceLoader = fullTraceLoader;
+        RunExport = runExport;
         BufferPoolInfoProvider = bufferPoolInfoProvider;
         Database = database;
         _settingsService = settingsService;
@@ -623,6 +627,8 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
     private QueryRunner QueryRunner { get; }
 
     private FullTraceLoader FullTraceLoader { get; }
+
+    private RunExport RunExport { get; }
 
     private CancellationTokenSource? FullTraceLoad { get; set; }
 
@@ -2034,7 +2040,7 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
             ShowFullTrace(result);
 
-            LastRun = LastRun is { } run ? run with { FullTrace = result } : null;
+            LastRun = LastRun is { } run ? run with { Extras = [.. run.Extras, result] } : null;
         }
         catch (OperationCanceledException) when (load.IsCancellationRequested)
         {
@@ -2186,7 +2192,7 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
         ShowResults(run.Result, new EventColourProvider(run.Result.ExecutionPlans, _objectColoursByName));
 
-        if (run.FullTrace is { } fullTrace)
+        if (run.ExtraOf<FullTraceResult>() is { } fullTrace)
         {
             Layout.HasFullTraceEvents = run.EventOptions.RecordFullTraceEvents;
 

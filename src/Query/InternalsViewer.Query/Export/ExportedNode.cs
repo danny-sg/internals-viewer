@@ -1,6 +1,6 @@
 using System.Text.Json.Serialization;
 
-namespace InternalsViewer.Query.FullTrace.Export;
+namespace InternalsViewer.Query.Export;
 
 internal sealed record ExportedNode
 {

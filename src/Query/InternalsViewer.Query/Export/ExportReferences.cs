@@ -3,7 +3,7 @@ using InternalsViewer.Query.CallStack;
 using InternalsViewer.Query.Events;
 using InternalsViewer.TransactionLog.LogRecords;
 
-namespace InternalsViewer.Query.FullTrace.Export;
+namespace InternalsViewer.Query.Export;
 
 internal sealed class ExportReferences(Func<long, AllocationUnit?> allocationUnitOf)
 {

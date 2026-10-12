@@ -1,4 +1,4 @@
-namespace InternalsViewer.Query.FullTrace.Export;
+namespace InternalsViewer.Query.Export;
 
 internal sealed record ExportCallTree
 {
@@ -9,8 +9,6 @@ internal sealed record ExportCallTree
     public int RootId { get; init; }
 
     public bool IsResultTree { get; init; }
-
-    public bool IsFullTrace { get; init; }
 
     public bool IsDetached { get; init; }
 

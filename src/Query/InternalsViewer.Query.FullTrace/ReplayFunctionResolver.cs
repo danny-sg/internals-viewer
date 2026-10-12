@@ -9,7 +9,6 @@ using InternalsViewer.Query.FullTrace.Iterators;
 using InternalsViewer.Query.FullTrace.Locators;
 using InternalsViewer.Query.FullTrace.Markers;
 using InternalsViewer.Query.FullTrace.Memory;
-using InternalsViewer.Query.Helpers;
 using Microsoft.Extensions.Logging;
 using InternalsViewer.Query.FullTrace.Helpers;
 
@@ -216,11 +215,11 @@ internal static class ReplayFunctionResolver
 
         using var resolver = new DiaResolver(pdbPath);
 
-        var symbols = ModuleSymbols.Read(resolver);
+        var symbols = ModuleSymbols.Load(resolver);
 
         var mappings = CategoryMappings.Default;
 
-        HashSet<uint> excluded = [.. symbols.Where(names => names.All(n => IsExcluded(mappings, module.Name, n)))];
+        HashSet<uint> excluded = [.. symbols.FindAddresses(names => names.All(n => IsExcluded(mappings, module.Name, n)))];
 
         var iterates = string.Equals(module.Name, IteratorModule, StringComparison.OrdinalIgnoreCase);
 
@@ -233,10 +232,10 @@ internal static class ReplayFunctionResolver
         var replay = new ReplayFunctionSet([.. excluded.Select(rva => (ulong)rva)],
                                            instanceMethods,
                                            locators,
-                                           [.. symbols.Agreed((_, name) => EventOf(name)).Select(p => new EventPublisher(p.Rva, p.Value))],
-                                           [.. symbols.Where(names => names.All(IsReserve)).Select(rva => (ulong)rva)]);
+                                           [.. symbols.ClassifyStrict((_, name) => EventOf(name)).Select(p => new EventPublisher(p.Rva, p.Value))],
+                                           [.. symbols.FindAddresses(names => names.All(IsReserve)).Select(rva => (ulong)rva)]);
 
-        return new ModuleFunctions(replay, [.. symbols.Agreed((rva, name) => MemoryFunction.Classify(rva, name)).Select(p => p.Value)]);
+        return new ModuleFunctions(replay, [.. symbols.ClassifyStrict((rva, name) => MemoryFunction.Classify(rva, name)).Select(p => p.Value)]);
     }
 
     private static bool IsExcluded(CategoryMappings mappings, string module, string symbol)

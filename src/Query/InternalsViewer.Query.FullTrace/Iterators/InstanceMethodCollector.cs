@@ -57,7 +57,7 @@ internal static class InstanceMethodCollector
     {
         var methods = new List<InstanceMethod>();
 
-        foreach (var rva in symbols.Where(IsInstanceMethod))
+        foreach (var rva in symbols.FindAddresses(IsInstanceMethod))
         {
             if (InstanceRegister(resolver.SignaturesAt(rva).FirstOrDefault(), resolver.GetDecoratedName(rva)) is { } register)
             {

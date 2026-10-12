@@ -1,7 +1,7 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
-namespace InternalsViewer.Query.FullTrace.Export.Converters;
+namespace InternalsViewer.Query.Export.Converters;
 
 internal sealed class ReferenceListConverter<TCollection, T, TBase>(ReferenceTable<TBase> table) : JsonConverter<TCollection>
     where TCollection : class, IEnumerable<T>

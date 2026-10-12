@@ -1,6 +1,4 @@
-using InternalsViewer.Query.FullTrace;
-
-namespace InternalsViewer.Query.FullTrace.Export;
+namespace InternalsViewer.Query.Export;
 
 public sealed record RunExportContent
 {
@@ -18,7 +16,9 @@ public sealed record RunExportContent
 
     public required QueryResult Result { get; init; }
 
-    public FullTraceResult? FullTrace { get; init; }
+    public IReadOnlyList<IRunExtra> Extras { get; init; } = [];
 
     public DateTimeOffset? ExportedAt { get; init; }
+
+    public T? ExtraOf<T>() where T : class, IRunExtra => Extras.OfType<T>().FirstOrDefault();
 }

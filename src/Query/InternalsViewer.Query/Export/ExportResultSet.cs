@@ -1,3 +1,3 @@
-namespace InternalsViewer.Query.FullTrace.Export;
+namespace InternalsViewer.Query.Export;
 
 internal sealed record ExportResultSet(IReadOnlyList<ExportColumn> Columns);

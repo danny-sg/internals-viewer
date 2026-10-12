@@ -1,6 +1,6 @@
 using System.Text.Json;
 
-namespace InternalsViewer.Query.FullTrace.Export.Converters;
+namespace InternalsViewer.Query.Export.Converters;
 
 internal static class AddressParts
 {

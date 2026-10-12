@@ -1,6 +1,6 @@
 using InternalsViewer.Query.Results;
 
-namespace InternalsViewer.Query.FullTrace.Export;
+namespace InternalsViewer.Query.Export;
 
 internal sealed record ExportColumn(int Ordinal,
                                      string Name,

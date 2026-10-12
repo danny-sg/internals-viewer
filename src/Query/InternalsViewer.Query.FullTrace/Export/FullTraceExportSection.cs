@@ -1,0 +1,68 @@
+using System.IO.Compression;
+using InternalsViewer.Query.Events.Operators;
+using InternalsViewer.Query.Export;
+using InternalsViewer.Query.FullTrace.CallLog;
+using InternalsViewer.Query.FullTrace.Iterators;
+using InternalsViewer.Query.FullTrace.Timeline;
+
+namespace InternalsViewer.Query.FullTrace.Export;
+
+internal sealed class FullTraceExportSection : IRunExportSection
+{
+    internal const string CallTreeName = "fulltrace";
+
+    internal const string CallLogEntry = "fulltrace/calllog.bin";
+
+    internal const string TimelineEntry = "fulltrace/timeline.bin";
+
+    internal const string EventLinksEntry = "fulltrace/eventlinks.bin";
+
+    public bool CanExport(RunExportContent content) => content.ExtraOf<FullTraceResult>() is not null;
+
+    public void Collect(RunExportCollector collector, RunExportContent content)
+    {
+        var fullTrace = content.ExtraOf<FullTraceResult>()!;
+
+        collector.AddTree(CallTreeName, fullTrace.CallStack);
+
+        collector.AddReferencedNodes(fullTrace.Timeline.MappedNodes);
+    }
+
+    public void Write(RunExportWriter writer, RunExportContent content)
+    {
+        var fullTrace = content.ExtraOf<FullTraceResult>()!;
+
+        writer.WriteBinary(CallLogEntry, CompressionLevel.NoCompression, fullTrace.CallLog.Write);
+
+        writer.WriteBinary(TimelineEntry, CompressionLevel.Fastest, w => fullTrace.Timeline.Write(w, writer.IdOf));
+
+        writer.WriteBinary(EventLinksEntry, CompressionLevel.Fastest, w => fullTrace.Timeline.WriteEventLinks(w, writer.IdOf));
+    }
+
+    public IRunExtra? Read(RunExportReader reader)
+    {
+        if (reader.CallTree(CallTreeName) is not { } tree)
+        {
+            return null;
+        }
+
+        var nodes = reader.Nodes;
+
+        var events = reader.Events;
+
+        var callLog = reader.ReadBinary(CallLogEntry, FullTraceCallLog.Read);
+
+        var timeline = reader.ReadBinary(TimelineEntry, r => FullTraceTimeline.Read(r, nodes));
+
+        callLog.MapNodes(timeline.MappedNodes);
+
+        timeline.SetLifetimes(IteratorLifetimeBuilder.Build(timeline, [.. events.OfType<ExecutionOperatorEvent>()]));
+
+        if (reader.HasEntry(EventLinksEntry))
+        {
+            timeline.SetEventLinks(reader.ReadBinary(EventLinksEntry, r => FullTraceTimeline.ReadEventLinks(r, nodes, events)));
+        }
+
+        return new FullTraceResult(tree, callLog, timeline) { PlanLink = IteratorPlanLinker.Link(callLog, timeline.MappedNodes, events) };
+    }
+}
