@@ -1,7 +1,7 @@
-using InternalsViewer.Query.Debugging.Exceptions;
 using Microsoft.Data.SqlClient;
+using InternalsViewer.Query.Recording;
 
-namespace InternalsViewer.Query.Debugging;
+namespace InternalsViewer.Query.Server;
 
 /// <summary>
 /// SQL Server Process Id/Machine Name

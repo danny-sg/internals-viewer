@@ -25,10 +25,6 @@
       <Build Solution="*|x86" Project="false" />
       <Build Solution="Release|x64" Project="false" />
     </Project>
-    <Project Path="Tests/InternalsViewer.Query.Debugging.Tests/InternalsViewer.Query.Debugging.Tests.csproj">
-      <Build Solution="*|x64" Project="false" />
-      <Build Solution="*|x86" Project="false" />
-    </Project>
     <Project Path="Tests/InternalsViewer.Query.FullTrace.Tests/InternalsViewer.Query.FullTrace.Tests.csproj">
       <Build Solution="*|x64" Project="false" />
       <Build Solution="*|x86" Project="false" />
@@ -64,9 +60,6 @@
       <Platform Solution="*|ARM64" Project="x64" />
       <Build Solution="*|x86" Project="false" />
       <Build Solution="Release|x64" Project="false" />
-    </Project>
-    <Project Path="Query/InternalsViewer.Query.Debugging/InternalsViewer.Query.Debugging.csproj">
-      <Build Solution="Debug|x86" Project="false" />
     </Project>
     <Project Path="Query/InternalsViewer.Query/InternalsViewer.Query.csproj">
       <Build Solution="Debug|x86" Project="false" />

@@ -1,11 +1,11 @@
 using System.Diagnostics;
 using System.Runtime.Versioning;
-using InternalsViewer.Query.Debugging.Exceptions;
-using InternalsViewer.Query.Debugging.Interfaces;
 using Microsoft.Data.SqlClient;
 using Microsoft.Extensions.Logging;
+using InternalsViewer.Query.Recording;
+using InternalsViewer.Query.Server;
 
-namespace InternalsViewer.Query.Debugging.TimeTravel;
+namespace InternalsViewer.Query.FullTrace.Recording;
 
 [SupportedOSPlatform("windows")]
 public sealed class TimeTravelRecorder(IWinDbgSettings settings, ILogger<TimeTravelRecorder> logger) : ITimeTravelRecorder

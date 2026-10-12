@@ -6,8 +6,6 @@ using InternalsViewer.Internals;
 using InternalsViewer.Internals.Interfaces.Connections;
 using InternalsViewer.Internals.Services.Logging;
 using InternalsViewer.Query;
-using InternalsViewer.Query.Debugging.Interfaces;
-using InternalsViewer.Query.Debugging.TimeTravel;
 using InternalsViewer.Query.Events;
 using InternalsViewer.Query.Export;
 using InternalsViewer.Query.FullTrace;
@@ -29,6 +27,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using LaunchActivatedEventArgs = Microsoft.UI.Xaml.LaunchActivatedEventArgs;
+using InternalsViewer.Query.FullTrace.Recording;
 
 namespace InternalsViewer.UI.App;
 
@@ -58,7 +57,6 @@ public partial class App
             services.AddSingleton<SettingsService>();
             services.AddSingleton<TraceDirectoryService>();
             services.AddSingleton<IWinDbgSettings>(provider => provider.GetRequiredService<SettingsViewModel>());
-            services.AddSingleton<ITimeTravelRecorder, TimeTravelRecorder>();
 
             services.AddSingleton<AppLogService>();
             services.AddSingleton<ILoggerProvider, AppLogLoggerProvider>();

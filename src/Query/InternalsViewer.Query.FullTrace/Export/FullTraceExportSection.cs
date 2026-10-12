@@ -7,7 +7,7 @@ using InternalsViewer.Query.FullTrace.Timeline;
 
 namespace InternalsViewer.Query.FullTrace.Export;
 
-internal sealed class FullTraceExportSection : IRunExportSection
+internal sealed class FullTraceExportSection : IQueryExportSection
 {
     internal const string CallTreeName = "fulltrace";
 
@@ -19,7 +19,7 @@ internal sealed class FullTraceExportSection : IRunExportSection
 
     public bool CanExport(RunExportContent content) => content.ExtraOf<FullTraceResult>() is not null;
 
-    public void Collect(RunExportCollector collector, RunExportContent content)
+    public void Collect(QueryExportCollector collector, RunExportContent content)
     {
         var fullTrace = content.ExtraOf<FullTraceResult>()!;
 

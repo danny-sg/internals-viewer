@@ -1,4 +1,6 @@
-namespace InternalsViewer.Query.CallStack.Arguments;
+using InternalsViewer.Query.CallStack.Arguments;
+
+namespace InternalsViewer.Query.FullTrace.Arguments;
 
 public sealed record ArgumentLayout(IReadOnlyList<ArgumentSlot> Slots, string? ReturnType)
 {
@@ -54,7 +56,7 @@ public sealed record ArgumentLayout(IReadOnlyList<ArgumentSlot> Slots, string? R
             return new ArgumentSlot(name, type, ArgumentLocation.Stack, position, $"[RSP+0x{StackOffset(position):X}]");
         }
 
-        return ArgumentType.IsFloating(type)
+        return ArgumentValue.IsFloating(type)
             ? new ArgumentSlot(name, type, ArgumentLocation.FloatingRegister, position, $"XMM{position}")
             : new ArgumentSlot(name, type, ArgumentLocation.Register, position, Registers[position]);
     }

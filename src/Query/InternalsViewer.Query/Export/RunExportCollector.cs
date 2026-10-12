@@ -2,7 +2,7 @@ using InternalsViewer.Query.CallStack;
 
 namespace InternalsViewer.Query.Export;
 
-public sealed class RunExportCollector
+public sealed class QueryExportCollector
 {
     internal List<(string Name, CallStackTree Tree)> Trees { get; } = [];
 

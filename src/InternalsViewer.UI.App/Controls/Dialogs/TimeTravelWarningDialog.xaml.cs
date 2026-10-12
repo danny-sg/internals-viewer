@@ -1,4 +1,4 @@
-using InternalsViewer.Query.Debugging.TimeTravel;
+using InternalsViewer.Query.FullTrace.Recording;
 
 namespace InternalsViewer.UI.App.Controls.Dialogs;
 

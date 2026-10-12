@@ -1,11 +1,11 @@
 using System.Collections.Generic;
 using System.Drawing;
 using System.Linq;
-using InternalsViewer.Query.CallStack.Arguments;
 using InternalsViewer.Query.FullTrace.CallLog;
 using InternalsViewer.Query.FullTrace.Locators;
 using InternalsViewer.Query.Results;
 using InternalsViewer.Query.CallStack.Locators;
+using InternalsViewer.Query.FullTrace.Arguments;
 
 namespace InternalsViewer.UI.App.Models.Query.CallStack;
 
@@ -81,7 +81,7 @@ public static class ArgumentRowBuilder
     }
 
     private static Locator? AddressAt(FullTraceArgumentCall call, int register)
-        => call.LocatorAt(register) is { Kind: not LocatorKind.Referenced } locator ? locator : null;
+        => call.GetLocator(register) is { Kind: not LocatorKind.Referenced } locator ? locator : null;
 
     private static List<ArgumentSlot> CapturedSlots(ArgumentLayout layout) => [.. layout.Slots.Where(FullTraceArgumentCall.IsCaptured)];
 
@@ -93,14 +93,14 @@ public static class ArgumentRowBuilder
 
         foreach (var slot in slots)
         {
-            values.Add(call.LocatorAt(slot.Index) is { } locator ? Display(slot.Type, locator) : Text(slot.Type, call.Value(slot)));
+            values.Add(call.GetLocator(slot.Index) is { } locator ? Display(slot.Type, locator) : Text(slot.Type, call.Value(slot)));
         }
 
         if (returnType is not null)
         {
             values.Add(!call.Returned
                            ? DidNotReturn
-                           : call.LocatorAt(LocatorReadResolver.ReturnRegister) is { } locator
+                           : call.GetLocator(LocatorReadResolver.ReturnRegister) is { } locator
                                ? Display(returnType, locator)
                                : ArgumentValue.Format(returnType, call.ReturnValue));
         }
@@ -122,5 +122,5 @@ public static class ArgumentRowBuilder
     private static string Text(string type, ulong? value)
         => value is { } raw ? ArgumentValue.Format(type, raw) : "Unreadable";
 
-    private static string ReturnSource(string type) => ArgumentType.IsFloating(type) ? "XMM0" : "RAX";
+    private static string ReturnSource(string type) => ArgumentValue.IsFloating(type) ? "XMM0" : "RAX";
 }

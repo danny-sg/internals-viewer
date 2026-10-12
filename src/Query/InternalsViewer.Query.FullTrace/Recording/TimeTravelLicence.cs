@@ -3,10 +3,10 @@ using System.Diagnostics;
 using System.Runtime.InteropServices;
 using System.Runtime.Versioning;
 using System.Text;
-using InternalsViewer.Query.Debugging.Exceptions;
 using Microsoft.Win32;
+using InternalsViewer.Query.Recording;
 
-namespace InternalsViewer.Query.Debugging.TimeTravel;
+namespace InternalsViewer.Query.FullTrace.Recording;
 
 [SupportedOSPlatform("windows")]
 internal static partial class TimeTravelLicence

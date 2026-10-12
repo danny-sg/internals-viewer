@@ -1,5 +1,5 @@
-using InternalsViewer.Query.CallStack.Arguments;
 using InternalsViewer.Query.CallStack.Locators;
+using InternalsViewer.Query.FullTrace.Arguments;
 
 namespace InternalsViewer.Query.FullTrace.CallLog;
 
@@ -28,13 +28,14 @@ public sealed record FullTraceArgumentCall(ulong Sequence,
 
     public static bool IsCaptured(ArgumentSlot slot) => slot.Location == ArgumentLocation.Register;
 
-    public static bool IsReturnCaptured(string returnType) => !ArgumentType.IsFloating(returnType);
+    public static bool IsReturnCaptured(string returnType) => !ArgumentValue.IsFloating(returnType);
 
-    public ulong? Value(ArgumentSlot slot) => IsCaptured(slot) ? IntegerSlots[slot.Index] : null;
+    public ulong? Value(ArgumentSlot slot) 
+        => IsCaptured(slot) ? IntegerSlots[slot.Index] : null;
 
     public ulong Slot(int index) => index >= 0 && index < IntegerSlots.Length ? IntegerSlots[index] : 0;
 
-    public Locator? LocatorAt(int register)
+    public Locator? GetLocator(int register)
     {
         foreach (var locator in Locators)
         {
@@ -47,7 +48,7 @@ public sealed record FullTraceArgumentCall(ulong Sequence,
         return null;
     }
 
-    internal static FullTraceArgumentCall From(ReadOnlySpan<ulong> values, IReadOnlyList<Locator>? locators = null)
+    internal static FullTraceArgumentCall Decode(ReadOnlySpan<ulong> values, IReadOnlyList<Locator>? locators = null)
     {
         var flags = values[1];
 

@@ -10,7 +10,7 @@ using InternalsViewer.Query.Events.Locks;
 using InternalsViewer.Query.Events.Properties;
 using InternalsViewer.Query.Events.Reads;
 
-namespace InternalsViewer.Query.FullTrace.CallLog;
+namespace InternalsViewer.Query.FullTrace.Arguments;
 
 /// <summary>
 /// Maps raw ulong values to a display value 
@@ -60,9 +60,13 @@ public static class ArgumentValue
         "unsigned __int32", "__int64", "long long", "unsigned __int64", "unsigned long long", "float", "double", HoBtIdType
     };
 
+    public static bool IsFloating(string type) => Normalise(type) is "float" or "double" or "long double";
+
+    public static bool IsPointer(string type) => type.TrimEnd() is { Length: > 0 } trimmed && trimmed[^1] is '*' or '&';
+
     public static bool IsReadable(string type)
     {
-        var normalised = ArgumentType.Normalise(type);
+        var normalised = Normalise(type);
 
         return normalised.StartsWith(FunctionSignature.EnumPrefix, StringComparison.Ordinal)
             ? KnownEnums.ContainsKey(normalised[FunctionSignature.EnumPrefix.Length..])
@@ -77,16 +81,16 @@ public static class ArgumentValue
         return Format(indirection < 0 ? type : type[..indirection], raw);
     }
 
-    public static ulong? HoBtIdOf(string type, ulong raw) => ArgumentType.Normalise(type) == HoBtIdType ? raw << HoBtIdShift : null;
+    public static ulong? HoBtIdOf(string type, ulong raw) => Normalise(type) == HoBtIdType ? raw << HoBtIdShift : null;
 
     public static string Format(string type, ulong raw)
     {
-        if (type == "this" || ArgumentType.IsPointer(type))
+        if (type == "this" || IsPointer(type))
         {
             return raw == 0 ? "nullptr" : $"0x{raw:X}";
         }
 
-        var normalised = ArgumentType.Normalise(type);
+        var normalised = Normalise(type);
 
         if (normalised.StartsWith(FunctionSignature.EnumPrefix, StringComparison.Ordinal))
         {
@@ -163,4 +167,8 @@ public static class ArgumentValue
         => value < HexThreshold
             ? value.ToString(CultureInfo.InvariantCulture)
             : $"{value.ToString(CultureInfo.InvariantCulture)} (0x{value:X})";
+
+    private static string Normalise(string type)
+        => string.Join(' ', type.Split(' ', StringSplitOptions.RemoveEmptyEntries)
+                                .Where(part => part is not ("const" or "volatile" or "__ptr64")));
 }

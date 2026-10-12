@@ -1,6 +1,6 @@
-using InternalsViewer.Query.Debugging;
+using InternalsViewer.Query.FullTrace.Recording;
 
-namespace InternalsViewer.Query.Debugging.Tests;
+namespace InternalsViewer.Query.FullTrace.Tests;
 
 public class WinDbgInstallationTests
 {

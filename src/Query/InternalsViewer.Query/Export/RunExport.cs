@@ -2,7 +2,7 @@ using InternalsViewer.Internals.Engine.Database;
 
 namespace InternalsViewer.Query.Export;
 
-public sealed class RunExport(IEnumerable<IRunExportSection> sections)
+public sealed class RunExport(IEnumerable<IQueryExportSection> sections)
 {
     public const string Extension = ".ivtrace";
 
@@ -22,11 +22,11 @@ public sealed class RunExport(IEnumerable<IRunExportSection> sections)
 
     internal const string LogRecordsEntry = "log-records.jsonl";
 
-    private IReadOnlyList<IRunExportSection> Sections { get; } = [.. sections];
+    private IReadOnlyList<IQueryExportSection> Sections { get; } = [.. sections];
 
     public Task WriteAsync(Stream stream, RunExportContent content, CancellationToken cancellationToken)
     {
-        IRunExportSection[] exporting = [.. Sections.Where(s => s.CanExport(content))];
+        IQueryExportSection[] exporting = [.. Sections.Where(s => s.CanExport(content))];
 
         return Task.Run(() => RunExportWriter.Write(stream, content, exporting, cancellationToken), cancellationToken);
     }

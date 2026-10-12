@@ -1,4 +1,6 @@
-namespace InternalsViewer.Query.Debugging.Tests;
+using InternalsViewer.Query.Server;
+
+namespace InternalsViewer.Query.Tests;
 
 public class SqlServerProcessTests
 {

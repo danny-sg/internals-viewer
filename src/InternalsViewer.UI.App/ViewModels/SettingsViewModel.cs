@@ -3,9 +3,9 @@ using System.Collections.Generic;
 using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
-using InternalsViewer.Query.Debugging.Interfaces;
 using InternalsViewer.Query.XEvents;
 using InternalsViewer.UI.App.Services;
+using InternalsViewer.Query.FullTrace.Recording;
 
 namespace InternalsViewer.UI.App.ViewModels;
 

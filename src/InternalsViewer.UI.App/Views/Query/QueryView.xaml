@@ -150,8 +150,9 @@
 
                         </MenuBar>
                         <ToggleButton Grid.Column="3"
-                                      Margin="-4,0,0,0"
+                                      Margin="-6,1,0,0"
                                       Style="{StaticResource TabCommandToggleStyle}"
+                                      Padding="4,0,4,2"
                                       IsChecked="{x:Bind ViewModel.QueryOptions.RecordTimeTravel, Mode=TwoWay}"
                                       Visibility="{x:Bind ViewModel.QueryOptions.RecordTimeTravel, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}"
                                       ToolTipService.ToolTip="Full Trace is on for the next run. Click to turn it off.">

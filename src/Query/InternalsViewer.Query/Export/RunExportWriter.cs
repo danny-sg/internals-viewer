@@ -44,12 +44,12 @@ public sealed class RunExportWriter
 
     internal static void Write(Stream stream,
                                RunExportContent content,
-                               IReadOnlyList<IRunExportSection> sections,
+                               IReadOnlyList<IQueryExportSection> sections,
                                CancellationToken cancellationToken)
     {
         var references = new ExportReferences(_ => null);
 
-        var collector = new RunExportCollector();
+        var collector = new QueryExportCollector();
 
         foreach (var section in sections)
         {
@@ -96,7 +96,7 @@ public sealed class RunExportWriter
     }
 
     private static List<(ExportCallTree Tree, IReadOnlyList<CallStackNode> Roots)> Collect(RunExportContent content,
-                                                                                         RunExportCollector collector,
+                                                                                         QueryExportCollector collector,
                                                                                          ExportReferences references)
     {
         var result = content.Result;

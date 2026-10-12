@@ -2,7 +2,7 @@ using System.Runtime.Versioning;
 using System.Security.AccessControl;
 using System.Security.Principal;
 
-namespace InternalsViewer.Query.Debugging;
+namespace InternalsViewer.Query.Server;
 
 [SupportedOSPlatform("windows")]
 public static class ServiceAccess

@@ -5,12 +5,9 @@ using System.Threading;
 using System.Threading.Tasks;
 using System;
 using InternalsViewer.Query.CallStack;
-using InternalsViewer.Query.CallStack.Arguments;
 using InternalsViewer.Query.FullTrace.CallLog;
 using InternalsViewer.Query.FullTrace.Iterators;
 using InternalsViewer.Query.FullTrace.Locators;
-using InternalsViewer.Query.Debugging;
-using InternalsViewer.Query.Debugging.Exceptions;
 using InternalsViewer.Query.Events.Latches;
 using InternalsViewer.Query.Events.Locks;
 using InternalsViewer.Query.Events.Operators;
@@ -41,6 +38,7 @@ using Microsoft.UI.Input;
 using Windows.System;
 using Windows.UI.Core;
 using InternalsViewer.Query.CallStack.Locators;
+using InternalsViewer.Query.FullTrace.Arguments;
 
 namespace InternalsViewer.UI.App.Views.Query.Tabs.CallStack;
 

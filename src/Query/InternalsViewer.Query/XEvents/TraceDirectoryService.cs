@@ -2,8 +2,8 @@ using System.Runtime.Versioning;
 using System.Security.AccessControl;
 using System.Security.Principal;
 using System.ServiceProcess;
-using InternalsViewer.Query.Debugging;
 using Microsoft.Extensions.Logging;
+using InternalsViewer.Query.Server;
 
 namespace InternalsViewer.Query.XEvents;
 

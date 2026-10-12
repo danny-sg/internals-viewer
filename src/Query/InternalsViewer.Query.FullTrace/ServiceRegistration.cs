@@ -2,6 +2,8 @@ using System.Diagnostics.CodeAnalysis;
 using InternalsViewer.Query.Export;
 using InternalsViewer.Query.FullTrace.Export;
 using Microsoft.Extensions.DependencyInjection;
+using InternalsViewer.Query.FullTrace.Recording;
+using InternalsViewer.Query.Recording;
 
 namespace InternalsViewer.Query.FullTrace;
 
@@ -12,6 +14,8 @@ public static class ServiceRegistration
     {
         services.AddTransient<FullTraceLoader>();
 
-        services.AddSingleton<IRunExportSection, FullTraceExportSection>();
+        services.AddSingleton<IQueryExportSection, FullTraceExportSection>();
+
+        services.AddSingleton<ITimeTravelRecorder, TimeTravelRecorder>();
     }
 }

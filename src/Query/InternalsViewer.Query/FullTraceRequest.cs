@@ -1,6 +1,6 @@
-using InternalsViewer.Query.Debugging.TimeTravel;
 using InternalsViewer.Query.Events;
 using InternalsViewer.Query.Memory;
+using InternalsViewer.Query.Recording;
 
 namespace InternalsViewer.Query;
 

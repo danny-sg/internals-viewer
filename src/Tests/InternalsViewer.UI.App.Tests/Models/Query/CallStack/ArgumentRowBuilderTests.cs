@@ -5,6 +5,7 @@ using InternalsViewer.Query.FullTrace.CallLog;
 using InternalsViewer.Query.FullTrace.Locators;
 using InternalsViewer.UI.App.Models.Query.CallStack;
 using InternalsViewer.Query.CallStack.Locators;
+using InternalsViewer.Query.FullTrace.Arguments;
 
 namespace InternalsViewer.UI.App.Tests.Models.Query.CallStack;
 

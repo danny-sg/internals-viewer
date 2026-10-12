@@ -3,7 +3,6 @@ using InternalsViewer.Internals.Engine.Database;
 using InternalsViewer.Internals.Engine.Loading;
 using InternalsViewer.Query.CallStack;
 using InternalsViewer.Query.CallStack.Symbols;
-using InternalsViewer.Query.Debugging.TimeTravel;
 using InternalsViewer.Query.Events.BatchMode;
 using InternalsViewer.Query.Events.Consolidation;
 using InternalsViewer.Query.Events.Operators;
@@ -27,6 +26,7 @@ using InternalsViewer.Query.Events.Query;
 using Microsoft.Extensions.Logging;
 using InternalsViewer.Query.Parsing.Statements;
 using InternalsViewer.Query.Memory;
+using InternalsViewer.Query.Recording;
 
 namespace InternalsViewer.Query;
 

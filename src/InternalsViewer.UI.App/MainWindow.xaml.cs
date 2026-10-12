@@ -8,7 +8,6 @@ using InternalsViewer.Internals.Engine.Database;
 using InternalsViewer.Internals.Interfaces.Connections;
 using InternalsViewer.Internals.Interfaces.Services.Loaders.Engine;
 using InternalsViewer.Internals.Readers.Pages;
-using InternalsViewer.Query.Debugging.Exceptions;
 using InternalsViewer.UI.App.Controls;
 using InternalsViewer.UI.App.Helpers;
 using InternalsViewer.UI.App.Messages;
@@ -44,6 +43,7 @@ using ExceptionDialog = InternalsViewer.UI.App.Controls.Dialogs.ExceptionDialog;
 using LogRecordItem = InternalsViewer.UI.App.Models.Logging.LogRecordItem;
 using PasswordDialog = InternalsViewer.UI.App.Controls.Dialogs.PasswordDialog;
 using WinDbgInstallDialog = InternalsViewer.UI.App.Controls.Dialogs.WinDbgInstallDialog;
+using InternalsViewer.Query.FullTrace.Recording;
 
 namespace InternalsViewer.UI.App;
 

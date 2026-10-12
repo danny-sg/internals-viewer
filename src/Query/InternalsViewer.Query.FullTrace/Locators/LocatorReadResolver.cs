@@ -2,6 +2,7 @@ using System.Text.RegularExpressions;
 using InternalsViewer.Query.CallStack.Arguments;
 using InternalsViewer.Query.CallStack.Dia;
 using InternalsViewer.Query.CallStack.Locators;
+using InternalsViewer.Query.FullTrace.Arguments;
 
 namespace InternalsViewer.Query.FullTrace.Locators;
 

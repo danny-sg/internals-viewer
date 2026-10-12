@@ -1,4 +1,4 @@
-namespace InternalsViewer.Query.Debugging.TimeTravel;
+namespace InternalsViewer.Query.Recording;
 
 public interface ITimeTravelRecorder
 {

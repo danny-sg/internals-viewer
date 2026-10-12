@@ -65,7 +65,7 @@ public sealed class RunExportReader
 
     internal static RunExportContent Read(Stream stream,
                                           Func<long, AllocationUnit?> allocationUnitOf,
-                                          IReadOnlyList<IRunExportSection> sections,
+                                          IReadOnlyList<IQueryExportSection> sections,
                                           CancellationToken cancellationToken)
     {
         using var zip = new ZipArchive(stream, ZipArchiveMode.Read, leaveOpen: true);

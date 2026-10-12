@@ -12,6 +12,7 @@ using InternalsViewer.Query.FullTrace.Iterators;
 using InternalsViewer.Query.Results;
 using InternalsViewer.UI.App.Models.Query.CallStack;
 using Microsoft.Extensions.Logging;
+using InternalsViewer.Query.FullTrace.Arguments;
 
 namespace InternalsViewer.UI.App.ViewModels.Query.CallStack;
 

@@ -1,4 +1,4 @@
-using InternalsViewer.Query.FullTrace.CallLog;
+using InternalsViewer.Query.FullTrace.Arguments;
 
 namespace InternalsViewer.Query.FullTrace.Tests;
 

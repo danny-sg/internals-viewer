@@ -1,10 +1,10 @@
 using System.Runtime.InteropServices;
 using System.Text;
-using InternalsViewer.Query.Debugging.TimeTravel;
 using InternalsViewer.Query.FullTrace.CallLog;
 using InternalsViewer.Query.FullTrace.Markers;
 using InternalsViewer.Query.FullTrace.Native;
 using InternalsViewer.Query.FullTrace.Timeline;
+using InternalsViewer.Query.Recording;
 
 namespace InternalsViewer.Query.FullTrace;
 

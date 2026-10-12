@@ -1,10 +1,10 @@
 using System.Runtime.Versioning;
 using System.Security.AccessControl;
-using InternalsViewer.Query.Debugging.Exceptions;
 using Microsoft.Extensions.Logging;
 using Microsoft.Win32;
+using InternalsViewer.Query.Server;
 
-namespace InternalsViewer.Query.Debugging;
+namespace InternalsViewer.Query.FullTrace.Recording;
 
 /// <summary>
 /// WinDbg installation location + debugger engine

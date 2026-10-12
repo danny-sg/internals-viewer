@@ -42,9 +42,10 @@ else in the solution.
   built on top of Internals. Registers itself with `RegisterExecutionServices()`; callers invoke both.
 - **`InternalsViewer.Query`** — Extended Events capture, execution plan parsing, callstack resolution.
   Plan types live under `Plans/` (`Model/`, `Operators/`, `Joins/`, `Parsers/`); event types under `Events/`.
-- **`InternalsViewer.Query.Debugging`** — sending commands to a WinDbg session: a debugger engine remote client over the
-  engine's vtables (no compile-time dependency), served from a host process (`--windbg-host`) because the engine
-  cannot share the app process with the DIA bridge's `dbghelp.dll`. Depends on nothing else in the solution.
+- **`InternalsViewer.Query.FullTrace`** — Full Trace: records SQL Server with Time Travel Debugging (TTD is found in the
+  WinDbg installation), replays the trace through the native bridge and builds the call tree, timeline and call log.
+  Query owns the recorder interfaces and the run export, and FullTrace plugs into both through
+  `RegisterFullTraceServices()`.
 - **`InternalsViewer.Connection.BackupFile`** — reads pages straight out of `.bak` files (MTF container,
   compressed and striped backups included).
 - **`InternalsViewer.Connection.Sandbox`**, **`InternalsViewer.TransactionLog`** — supporting connection and

@@ -1,7 +1,8 @@
 using System.Security.AccessControl;
 using System.Security.Principal;
+using InternalsViewer.Query.Server;
 
-namespace InternalsViewer.Query.Debugging.Tests;
+namespace InternalsViewer.Query.Tests;
 
 public class ServiceAccessTests
 {

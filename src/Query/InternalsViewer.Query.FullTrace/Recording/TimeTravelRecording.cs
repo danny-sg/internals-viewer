@@ -2,10 +2,10 @@ using System.ComponentModel;
 using System.Diagnostics;
 using System.Runtime.Versioning;
 using System.Text;
-using InternalsViewer.Query.Debugging.Exceptions;
 using Microsoft.Extensions.Logging;
+using InternalsViewer.Query.Recording;
 
-namespace InternalsViewer.Query.Debugging.TimeTravel;
+namespace InternalsViewer.Query.FullTrace.Recording;
 
 [SupportedOSPlatform("windows")]
 internal sealed class TimeTravelRecording(string ttdDirectory, string traceDirectory, int processId, string sessionId, ILogger logger)

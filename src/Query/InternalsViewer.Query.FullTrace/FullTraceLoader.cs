@@ -3,7 +3,6 @@ using InternalsViewer.Internals.Engine.Database;
 using InternalsViewer.Internals.Engine.Loading;
 using InternalsViewer.Query.CallStack;
 using InternalsViewer.Query.CallStack.Symbols;
-using InternalsViewer.Query.Debugging.TimeTravel;
 using InternalsViewer.Query.Events;
 using InternalsViewer.Query.Events.Operators;
 using InternalsViewer.Query.FullTrace.Iterators;
@@ -11,6 +10,7 @@ using InternalsViewer.Query.FullTrace.Markers;
 using InternalsViewer.Query.FullTrace.Memory;
 using InternalsViewer.Query.Helpers;
 using Microsoft.Extensions.Logging;
+using InternalsViewer.Query.Recording;
 
 namespace InternalsViewer.Query.FullTrace;
 

@@ -1,6 +1,7 @@
 using InternalsViewer.Query.CallStack.Arguments;
+using InternalsViewer.Query.FullTrace.Arguments;
 
-namespace InternalsViewer.Query.Tests;
+namespace InternalsViewer.Query.FullTrace.Tests;
 
 [Trait("Category", "Unit")]
 public class ArgumentLayoutTests

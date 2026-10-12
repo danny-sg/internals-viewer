@@ -50,7 +50,7 @@ public sealed class FullTraceCallList : IReadOnlyList<FullTraceArgumentCall>
     {
         get
         {
-            var (columns, calls, call) = Locate(index);
+            var (columns, calls, call) = GetLocation(index);
 
             var row = new ulong[FullTraceArgumentCall.ValueCount];
 
@@ -59,7 +59,7 @@ public sealed class FullTraceCallList : IReadOnlyList<FullTraceArgumentCall>
                 row[column] = columns[column * calls + call];
             }
 
-            return FullTraceArgumentCall.From(row, Locators?.Of(index));
+            return FullTraceArgumentCall.Decode(row, Locators?.Of(index));
         }
     }
 
@@ -75,12 +75,12 @@ public sealed class FullTraceCallList : IReadOnlyList<FullTraceArgumentCall>
 
     internal int NodeIndexAt(int index)
     {
-        var (columns, calls, call) = Locate(index);
+        var (columns, calls, call) = GetLocation(index);
 
         return (int)columns[(FullTraceArgumentCall.ValueCount - 1) * calls + call];
     }
 
-    private (ulong[] Columns, int Calls, int Call) Locate(int index)
+    private (ulong[] Columns, int Calls, int Call) GetLocation(int index)
     {
         ArgumentOutOfRangeException.ThrowIfNegative(index);
         ArgumentOutOfRangeException.ThrowIfGreaterThanOrEqual(index, Count);
@@ -89,10 +89,10 @@ public sealed class FullTraceCallList : IReadOnlyList<FullTraceArgumentCall>
 
         chunk = chunk >= 0 ? chunk : ~chunk - 1;
 
-        return (ColumnsOf(chunk), Chunks[chunk].Calls, index - Starts[chunk]);
+        return (GetChunkColumns(chunk), Chunks[chunk].Calls, index - Starts[chunk]);
     }
 
-    private ulong[] ColumnsOf(int chunk)
+    private ulong[] GetChunkColumns(int chunk)
     {
         lock (Sync)
         {

@@ -1,3 +1,3 @@
-namespace InternalsViewer.Query.Debugging.Exceptions;
+namespace InternalsViewer.Query.Recording;
 
 public class DebuggerException(string message) : Exception(message);
