@@ -18,15 +18,26 @@ public static class ExecutionPlanParser
     {
         var doc = XDocument.Parse(xml);
 
-        var queryPlan = doc.Descendants()
-                           .FirstOrDefault(e => e.Name.LocalName == "QueryPlan")
-                        ?? throw new InvalidOperationException("QueryPlan element not found.");
+        var queryPlan = QueryPlanOf(doc);
 
-        var planHandleId = planHandles.GetOrAdd(GetPlanHandle(doc));
+        return Parse(xml, queryPlan, planHandles.GetOrAdd(GetPlanHandle(doc)));
+    }
 
+    internal static ExecutionPlan Parse(string xml, short planHandleId) => Parse(xml, QueryPlanOf(XDocument.Parse(xml)), planHandleId);
+
+    private static XElement QueryPlanOf(XDocument doc)
+        => doc.Descendants().FirstOrDefault(e => e.Name.LocalName == "QueryPlan")
+           ?? throw new InvalidOperationException("QueryPlan element not found.");
+
+    private static ExecutionPlan Parse(string xml, XElement queryPlan, short planHandleId)
+    {
         var statementElement = queryPlan.Parent;
 
-        var plan = new ExecutionPlan(planHandleId) { IsInternalPlan = IsInternalStatement(statementElement ?? queryPlan) };
+        var plan = new ExecutionPlan(planHandleId)
+        {
+            IsInternalPlan = IsInternalStatement(statementElement ?? queryPlan),
+            Xml = xml
+        };
 
         var parameters = PlanParameters.Parse(statementElement ?? queryPlan);
 

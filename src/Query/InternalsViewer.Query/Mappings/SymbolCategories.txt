@@ -2164,3 +2164,5 @@ sqllang|*|FireXeventForJoinConditionType|XEventInfrastructure
 sqllang|*|CbAddQuotesSafe|System
 *|*|ex_callprint|System
 *|*|ex_vcallprint|System
+sqlmin|CQueryScan|GetExecutionTelemetryPackageContainer|XEventInfrastructure
+sqlmin|CQueryScan|Publish*|XEventInfrastructure

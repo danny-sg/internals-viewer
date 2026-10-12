@@ -89,12 +89,16 @@
                                    IsChecked="{x:Bind ViewModel.QueryOptions.CropToQuery, Mode=TwoWay}"/>
                                 <ToggleMenuFlyoutItem Text="Include system objects"
                                    IsChecked="{x:Bind ViewModel.QueryOptions.IncludeSystemObjects, Mode=TwoWay}"/>
-                            </MenuBarItem>
-                            <MenuBarItem Title="Index">
+                                <MenuFlyoutSeparator/>
                                 <MenuFlyoutItem Text="Open all indexes"
-                             Command="{x:Bind ViewModel.OpenIndexesCommand}"/>
-
+                                                Command="{x:Bind ViewModel.OpenIndexesCommand}"/>
+                                <MenuFlyoutSeparator/>
+                                <MenuFlyoutItem Text="Export to file"
+                                                Command="{x:Bind ViewModel.ExportRunCommand}"/>
+                                <MenuFlyoutItem Text="Import from file"
+                                                Command="{x:Bind ViewModel.ImportRunCommand}"/>
                             </MenuBarItem>
+               
 
                             <MenuBarItem Title="Events">
                                 <MenuFlyoutSubItem Text="Locks">
@@ -113,7 +117,7 @@
                                        IsChecked="{x:Bind ViewModel.QueryOptions.ShowRangeLocks, Mode=TwoWay}"/>
                                     <ToggleMenuFlyoutItem Text="Bulk"
                                        IsChecked="{x:Bind ViewModel.QueryOptions.ShowBulkLocks, Mode=TwoWay}"/>
-                                    <MenuFlyoutSeparator/>
+                     
                                     <MenuFlyoutItem Text="Default"
                                  Command="{x:Bind ViewModel.QueryOptions.DefaultLockModeCategoriesCommand}"/>
                                 </MenuFlyoutSubItem>
@@ -150,11 +154,10 @@
                                     <MenuFlyoutSeparator/>
                                     <MenuFlyoutItem Text="Clear breakpoints"
                                                     Command="{x:Bind ViewModel.ClearBreakpointsCommand}"/>
-                                    <MenuFlyoutSeparator/>
-                                    <MenuFlyoutItem Text="Search symbols"
-                                                    Command="{x:Bind ViewModel.SearchSymbolsCommand}"/>
                                 </MenuFlyoutSubItem>
-                               
+                                <MenuFlyoutSeparator/>
+                                <MenuFlyoutItem Text="Search symbols"
+                                                Command="{x:Bind ViewModel.SearchSymbolsCommand}"/>
                             </MenuBarItem>
 
                         </MenuBar>

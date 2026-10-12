@@ -24,14 +24,22 @@ public sealed partial class QueryInstructionsTabView : UserControl
         ["IncludeSystemObjects"] = (o => o.IncludeSystemObjects, o => o.IncludeSystemObjects = !o.IncludeSystemObjects)
     };
 
-    private static readonly Dictionary<string, Action<QueryLayoutViewModel>> ViewLinks = new()
+    private static readonly Dictionary<string, Action<QueryViewModel>> ViewLinks = new(StringComparer.OrdinalIgnoreCase)
     {
-        ["SqlEditor"] = l => l.IsSqlEditorVisible = true,
-        ["Allocations"] = l => l.IsAllocationsVisible = true,
-        ["ExecutionPlan"] = l => l.IsExecutionPlanVisible = true,
-        ["Events"] = l => l.IsEventsVisible = true,
-        ["Callstack"] = l => l.IsCallstackVisible = true,
-        ["Timeline"] = l => l.IsTimelineVisible = true
+        ["SqlEditor"] = q => q.Layout.IsSqlEditorVisible = true,
+        ["Allocations"] = q => q.Layout.IsAllocationsVisible = true,
+        ["ExecutionPlan"] = q => q.Layout.IsExecutionPlanVisible = true,
+        ["Events"] = q => q.Layout.IsEventsVisible = true,
+        ["Callstack"] = q => q.Layout.IsCallstackVisible = true,
+        ["Timeline"] = q => q.Layout.IsTimelineVisible = true,
+        ["FlameChart"] = q =>
+        {
+            if (q.Layout.IsFullTrace)
+            {
+                q.Layout.IsFlameChartVisible = true;
+            }
+        },
+        ["Simulation"] = q => q.IsSimulationVisible = true
     };
 
     private QueryOptionsViewModel? _subscribedOptions;
@@ -140,7 +148,7 @@ public sealed partial class QueryInstructionsTabView : UserControl
             case InstructionsLinkKind.OpenView:
                 if (ViewModel is not null && ViewLinks.TryGetValue(link.Target, out var open))
                 {
-                    open(ViewModel.Layout);
+                    open(ViewModel);
                 }
 
                 break;

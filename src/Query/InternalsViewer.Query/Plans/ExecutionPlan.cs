@@ -15,5 +15,7 @@ public sealed class ExecutionPlan(short planHandleId)
 
     public bool IsInternalPlan { get; set; }
 
+    public string? Xml { get; init; }
+
     public ExpressionCatalog? Expressions { get; set; }
 }

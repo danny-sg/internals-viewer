@@ -71,6 +71,11 @@ using DatabaseFile = InternalsViewer.UI.App.Models.DatabaseFile;
 using InternalsViewer.UI.App.Models.Allocations;
 using InternalsViewer.UI.App.Models.Query;
 using LogRecordItem = InternalsViewer.UI.App.Models.Logging.LogRecordItem;
+using System.Diagnostics;
+using System.IO;
+using System.Text.Json;
+using InternalsViewer.Query.Export;
+using Windows.Storage.Pickers;
 
 namespace InternalsViewer.UI.App.ViewModels.Query;
 
@@ -109,6 +114,8 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
     private const string CancelledOutcome = "Cancelled";
 
     private const string FailedOutcome = "Failed";
+
+    private const string RunFileType = "Internals Viewer Run";
 
     private readonly SimulationTabViewModelFactory _simulationTabViewModelFactory;
 
@@ -246,6 +253,7 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(ShowFlameChartHint))]
+    [NotifyCanExecuteChangedFor(nameof(ExportRunCommand))]
     private bool _isFullTraceLoading;
 
     [ObservableProperty]
@@ -418,6 +426,8 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
     public event Action<long>? PlayheadMoveRequested;
 
     public event Action<CallStackNode, int>? CallNavigationRequested;
+
+    public event Action<string>? SqlTextImported;
 
     public DatabaseSource Database { get; }
 
@@ -602,6 +612,17 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
     private QueryRunner QueryRunner { get; }
 
     private CancellationTokenSource? FullTraceLoad { get; set; }
+
+    private RunExportContent? LastRun
+    {
+        get;
+        set
+        {
+            field = value;
+
+            ExportRunCommand.NotifyCanExecuteChanged();
+        }
+    }
 
     public bool ShowFlameChartHint => FlameChart is null && !IsFullTraceLoading;
 
@@ -1895,21 +1916,17 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
         try
         {
-            EventColours = colours;
+            ShowResults(results, colours);
 
-            Events = results.EngineEvents;
-
-            CallStack = results.CallStackTree;
-
-            ExecutionPlans = [.. results.ExecutionPlans.Where(p => !p.IsInternalPlan)];
-
-            RefreshSimulationDocuments();
-
-            ResultSets = results.ResultSets;
-
-            ShowResultTabsForFirstRun();
-
-            RefreshFilteredEvents();
+            LastRun = new RunExportContent
+            {
+                ServerName = Database.Connection.Name,
+                DatabaseName = Database.Name,
+                SqlText = payload.SqlText,
+                QueryOptions = payload.QueryOptions,
+                EventOptions = eventOptions with { IncludeLockModeCategories = [.. eventOptions.IncludeLockModeCategories] },
+                Result = results
+            };
 
             if (results.FullTrace is { } fullTrace)
             {
@@ -1984,15 +2001,9 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
                 return;
             }
 
-            CallStack = result.CallStack;
+            ShowFullTrace(result);
 
-            Arguments.SetSource(result.CallLog, IteratorTarget.Build(result.CallStack, Events));
-
-            FlameChart = result.Timeline;
-
-            ExecutionPlans = [.. ExecutionPlans];
-
-            OnPropertyChanged(nameof(SelectedPlanNodeTracedMemory));
+            LastRun = LastRun is { } run ? run with { FullTrace = result } : null;
         }
         catch (OperationCanceledException) when (load.IsCancellationRequested)
         {
@@ -2023,6 +2034,172 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
             load.Dispose();
         }
     }
+
+    [RelayCommand(CanExecute = nameof(CanExportRun))]
+    private async Task ExportRun()
+    {
+        if (LastRun is not { } run)
+        {
+            return;
+        }
+
+        var picker = new FileSavePicker();
+
+        WinRT.Interop.InitializeWithWindow.Initialize(picker, WinRT.Interop.WindowNative.GetWindowHandle(App.MainWindow));
+
+        picker.SuggestedStartLocation = PickerLocationId.DocumentsLibrary;
+        picker.SuggestedFileName = $"{Database.Name} {DateTime.Now:yyyy-MM-dd HH-mm-ss}";
+        picker.FileTypeChoices.Add(RunFileType, [RunExport.Extension]);
+
+        var file = await picker.PickSaveFileAsync();
+
+        if (file is null)
+        {
+            return;
+        }
+
+        try
+        {
+            await using var stream = File.Create(file.Path);
+
+            await RunExport.WriteAsync(stream, run with { Messages = [.. Messages.Select(MessageText)] }, CancellationToken.None);
+
+            AddMessage($"Run exported to {file.Path}");
+        }
+        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
+        {
+            AddMessage($"The run could not be exported: {exception.Message}");
+        }
+    }
+
+    private bool CanExportRun() => LastRun is not null && !IsFullTraceLoading;
+
+    [RelayCommand]
+    private async Task ImportRun()
+    {
+        if (ExecuteQueryCommand.IsRunning)
+        {
+            return;
+        }
+
+        var picker = new FileOpenPicker();
+
+        WinRT.Interop.InitializeWithWindow.Initialize(picker, WinRT.Interop.WindowNative.GetWindowHandle(App.MainWindow));
+
+        picker.SuggestedStartLocation = PickerLocationId.DocumentsLibrary;
+        picker.FileTypeFilter.Add(RunExport.Extension);
+
+        var file = await picker.PickSingleFileAsync();
+
+        if (file is null)
+        {
+            return;
+        }
+
+        ClearResults();
+
+        var import = new object();
+
+        var step = $"Importing {file.Name}";
+
+        var started = Stopwatch.GetTimestamp();
+
+        AddMessage(new ProgressDetail(step) { IsStep = true });
+
+        TaskbarProgress.ShowIndeterminate(import);
+
+        try
+        {
+            await using var stream = File.OpenRead(file.Path);
+
+            var run = await RunExport.ReadAsync(stream, id => Database.AllocationUnits.GetValueOrDefault(id), CancellationToken.None);
+
+            AddMessage(new ProgressDetail(step) { IsStep = true, Elapsed = Stopwatch.GetElapsedTime(started) });
+
+            ShowImportedRun(run);
+        }
+        catch (Exception exception) when (exception is IOException or InvalidDataException or JsonException or UnauthorizedAccessException)
+        {
+            AddMessage(new ProgressDetail(step) { IsStep = true, Outcome = FailedOutcome });
+
+            IsError = true;
+
+            AddMessage($"The run could not be imported: {exception.Message}");
+        }
+        finally
+        {
+            TaskbarProgress.Clear(import);
+        }
+    }
+
+    private void ShowImportedRun(RunExportContent run)
+    {
+        var exported = run.ExportedAt is { } exportedAt ? $" on {exportedAt:g}" : string.Empty;
+
+        AddMessage($"Run exported from {run.ServerName} {run.DatabaseName}{exported}:");
+
+        foreach (var message in run.Messages)
+        {
+            AddMessage(message);
+        }
+
+        if (!string.Equals(run.DatabaseName, Database.Name, StringComparison.OrdinalIgnoreCase))
+        {
+            AddMessage($"The run was exported from {run.DatabaseName}, not {Database.Name}, so its objects and pages may not match");
+        }
+
+        StartOffset = run.Result.CropStartUs;
+        EndOffset = run.Result.CropEndUs;
+
+        IsError = !run.Result.IsSuccess;
+
+        ShowResults(run.Result, new EventColourProvider(run.Result.ExecutionPlans, _objectColoursByName));
+
+        if (run.FullTrace is { } fullTrace)
+        {
+            Layout.IsFullTrace = true;
+
+            ShowFullTrace(fullTrace);
+        }
+
+        LastRun = run;
+
+        SqlTextImported?.Invoke(run.SqlText);
+    }
+
+    private void ShowResults(QueryResult results, EventColourProvider colours)
+    {
+        EventColours = colours;
+
+        Events = results.EngineEvents;
+
+        CallStack = results.CallStackTree;
+
+        ExecutionPlans = [.. results.ExecutionPlans.Where(p => !p.IsInternalPlan)];
+
+        RefreshSimulationDocuments();
+
+        ResultSets = results.ResultSets;
+
+        ShowResultTabsForFirstRun();
+
+        RefreshFilteredEvents();
+    }
+
+    private void ShowFullTrace(FullTraceResult result)
+    {
+        CallStack = result.CallStack;
+
+        Arguments.SetSource(result.CallLog, IteratorTarget.Build(result.CallStack, Events));
+
+        FlameChart = result.Timeline;
+
+        ExecutionPlans = [.. ExecutionPlans];
+
+        OnPropertyChanged(nameof(SelectedPlanNodeTracedMemory));
+    }
+
+    private static string MessageText(QueryMessage message) => message.IsFinished ? $"{message.Text} - {message.Outcome}" : message.Text;
 
     private static void ShowOverall(object owner, ProgressDetail detail)
     {
@@ -2125,6 +2302,8 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
     private void ClearResults()
     {
         CancelFullTraceLoad();
+
+        LastRun = null;
 
         FlameChart = null;
 

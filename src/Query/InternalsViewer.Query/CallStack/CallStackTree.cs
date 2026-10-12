@@ -475,6 +475,14 @@ public sealed class CallStackTree
         ActivityBusiest = Nodes().SelectMany(node => node.ActivityCounts).DefaultIfEmpty(0).Max();
     }
 
+    internal void RestoreActivity(long minUs, long maxUs, int buckets, int busiest)
+    {
+        ActivityMinUs = minUs;
+        ActivityMaxUs = maxUs;
+        ActivityBuckets = buckets;
+        ActivityBusiest = busiest;
+    }
+
     /// <summary>
     /// Counts events against a frame and every frame above it without linking them to it
     /// </summary>

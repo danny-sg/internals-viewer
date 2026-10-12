@@ -1,3 +1,5 @@
+using InternalsViewer.Query.Export;
+
 namespace InternalsViewer.Query.CallStack.TimeTravel.Memory;
 
 public sealed class TimeTravelInUseCurve(double[] positions, ulong[] values)
@@ -27,5 +29,15 @@ public sealed class TimeTravelInUseCurve(double[] positions, ulong[] values)
         }
 
         return peak;
+    }
+
+    internal static TimeTravelInUseCurve Read(BinaryReader reader)
+        => new(ExportBinary.ReadArray<double>(reader), ExportBinary.ReadArray<ulong>(reader));
+
+    internal void Write(BinaryWriter writer)
+    {
+        ExportBinary.WriteArray(writer, Positions);
+
+        ExportBinary.WriteArray(writer, Values);
     }
 }

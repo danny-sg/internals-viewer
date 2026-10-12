@@ -1,6 +1,7 @@
 using System.Buffers;
 using System.IO.Compression;
 using System.Runtime.InteropServices;
+using InternalsViewer.Query.Export;
 using InternalsViewer.Query.CallStack.TimeTravel.Locators;
 using InternalsViewer.Query.CallStack.TimeTravel.Native;
 
@@ -51,6 +52,74 @@ public sealed class TimeTravelCallLog
 
     public Task<IReadOnlyList<TimeTravelValueUse>> FindAsync(ulong value, CancellationToken cancellationToken)
         => Task.Run<IReadOnlyList<TimeTravelValueUse>>(() => Find(value, cancellationToken), cancellationToken);
+
+    internal static TimeTravelCallLog Read(BinaryReader reader)
+    {
+        var functions = new Dictionary<(ulong Address, ulong Instance), Chunk[]>();
+
+        var functionCount = reader.ReadInt32();
+
+        for (var index = 0; index < functionCount; index++)
+        {
+            var key = (reader.ReadUInt64(), reader.ReadUInt64());
+
+            var chunks = new Chunk[reader.ReadInt32()];
+
+            for (var chunk = 0; chunk < chunks.Length; chunk++)
+            {
+                var calls = reader.ReadInt32();
+
+                chunks[chunk] = new Chunk(calls, ExportBinary.ReadArray<byte>(reader));
+            }
+
+            functions[key] = chunks;
+        }
+
+        var locators = new Dictionary<(ulong Address, ulong Instance), TimeTravelLocatorTable>();
+
+        var tableCount = reader.ReadInt32();
+
+        for (var index = 0; index < tableCount; index++)
+        {
+            var key = (reader.ReadUInt64(), reader.ReadUInt64());
+
+            locators[key] = TimeTravelLocatorTable.Read(reader);
+        }
+
+        return new TimeTravelCallLog(functions, locators);
+    }
+
+    internal void Write(BinaryWriter writer)
+    {
+        writer.Write(Functions.Count);
+
+        foreach (var ((address, instance), chunks) in Functions)
+        {
+            writer.Write(address);
+
+            writer.Write(instance);
+
+            writer.Write(chunks.Length);
+
+            foreach (var chunk in chunks)
+            {
+                writer.Write(chunk.Calls);
+
+                ExportBinary.WriteArray(writer, chunk.Columns);
+            }
+        }
+
+        writer.Write(Locators.Count);
+
+        foreach (var ((address, instance), table) in Locators)
+        {
+            writer.Write(address);
+
+            writer.Write(instance);
+
+            table.Write(writer);
+        }
+    }
 
     internal void MapNodes(CallStackNode?[] nodes) => Nodes = nodes;
 

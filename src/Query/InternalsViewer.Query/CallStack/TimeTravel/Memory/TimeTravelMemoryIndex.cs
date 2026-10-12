@@ -1,4 +1,5 @@
-﻿using InternalsViewer.Query.CallStack.TimeTravel.Timeline;
+﻿using InternalsViewer.Query.Export;
+using InternalsViewer.Query.CallStack.TimeTravel.Timeline;
 
 namespace InternalsViewer.Query.CallStack.TimeTravel.Memory;
 
@@ -140,6 +141,40 @@ internal sealed class TimeTravelMemoryIndex
 
     public ulong PeakWorkspaceDuring(double start, double end) => Workspace.PeakDuring(start, end);
 
+    internal static TimeTravelMemoryIndex Read(BinaryReader reader)
+    {
+        var count = reader.ReadInt32();
+
+        var threads = new Dictionary<uint, ThreadMemory>(count);
+
+        for (var index = 0; index < count; index++)
+        {
+            var thread = reader.ReadUInt32();
+
+            threads[thread] = ThreadMemory.Read(reader);
+        }
+
+        var inUse = TimeTravelInUseCurve.Read(reader);
+
+        return new TimeTravelMemoryIndex(threads, inUse, TimeTravelInUseCurve.Read(reader));
+    }
+
+    internal void Write(BinaryWriter writer)
+    {
+        writer.Write(Threads.Count);
+
+        foreach (var (thread, memory) in Threads)
+        {
+            writer.Write(thread);
+
+            memory.Write(writer);
+        }
+
+        InUse.Write(writer);
+
+        Workspace.Write(writer);
+    }
+
     private static ThreadLists ListsOf(Dictionary<uint, ThreadLists> threads, uint thread)
     {
         if (!threads.TryGetValue(thread, out var lists))
@@ -169,6 +204,16 @@ internal sealed class TimeTravelMemoryIndex
             AllocationTotals = Totals(AllocationBytes);
             FreeStarts = [.. frees.Select(f => f.Start)];
             FreeTotals = Totals([.. frees.Select(f => f.Bytes)]);
+        }
+
+        private ThreadMemory(double[] allocationStarts, ulong[] allocationBytes, double[] freedAt, double[] freeStarts, ulong[] freeTotals)
+        {
+            AllocationStarts = allocationStarts;
+            AllocationBytes = allocationBytes;
+            FreedAt = freedAt;
+            AllocationTotals = Totals(allocationBytes);
+            FreeStarts = freeStarts;
+            FreeTotals = freeTotals;
         }
 
         private double[] AllocationStarts { get; }
@@ -295,6 +340,26 @@ internal sealed class TimeTravelMemoryIndex
             }
 
             return retained;
+        }
+
+        public static ThreadMemory Read(BinaryReader reader)
+            => new(ExportBinary.ReadArray<double>(reader),
+                   ExportBinary.ReadArray<ulong>(reader),
+                   ExportBinary.ReadArray<double>(reader),
+                   ExportBinary.ReadArray<double>(reader),
+                   ExportBinary.ReadArray<ulong>(reader));
+
+        public void Write(BinaryWriter writer)
+        {
+            ExportBinary.WriteArray(writer, AllocationStarts);
+
+            ExportBinary.WriteArray(writer, AllocationBytes);
+
+            ExportBinary.WriteArray(writer, FreedAt);
+
+            ExportBinary.WriteArray(writer, FreeStarts);
+
+            ExportBinary.WriteArray(writer, FreeTotals);
         }
 
         private static TimeTravelInUseCurve CurveOf(List<(double Position, long Bytes)> changes)

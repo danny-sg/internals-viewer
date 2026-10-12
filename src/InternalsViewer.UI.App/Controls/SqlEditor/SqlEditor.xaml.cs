@@ -278,6 +278,8 @@ public sealed partial class SqlEditorControl : UserControl, IDisposable
         WebView.Close();
     }
 
+    public void LoadQuery(string sql) => TakeHistoryQuery(sql);
+
     private void ApplyBottomPanelVisibility()
     {
         var hasResults = ResultSet is not null && IsResultsVisible;

@@ -15,16 +15,42 @@ public sealed partial class QuerySqlTabView : UserControl, IDisposable
 
     public QueryViewModel? ViewModel => DataContext as QueryViewModel;
 
+    private QueryViewModel? Subscribed { get; set; }
+
     public void Dispose()
     {
         DataContextChanged -= OnDataContextChanged;
+
+        Subscribe(null);
 
         Bindings.StopTracking();
 
         SqlEditor.Dispose();
     }
 
-    private void OnDataContextChanged(FrameworkElement sender, DataContextChangedEventArgs args) => Bindings.Update();
+    private void OnDataContextChanged(FrameworkElement sender, DataContextChangedEventArgs args)
+    {
+        Subscribe(ViewModel);
+
+        Bindings.Update();
+    }
+
+    private void Subscribe(QueryViewModel? viewModel)
+    {
+        if (Subscribed is not null)
+        {
+            Subscribed.SqlTextImported -= OnSqlTextImported;
+        }
+
+        Subscribed = viewModel;
+
+        if (viewModel is not null)
+        {
+            viewModel.SqlTextImported += OnSqlTextImported;
+        }
+    }
+
+    private void OnSqlTextImported(string sql) => SqlEditor.LoadQuery(sql);
 
     private void OnOpenAllocations(object sender, RoutedEventArgs e)
     {
