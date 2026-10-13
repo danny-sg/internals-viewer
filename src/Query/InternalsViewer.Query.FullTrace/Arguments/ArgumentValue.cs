@@ -26,6 +26,8 @@ public static class ArgumentValue
 
     private const string HoBtIdType = "HoBtId";
 
+    private const int MaximumStackType = 256;
+
     private const string FlagSeparator = " | ";
 
     private static readonly Dictionary<string, Lazy<Dictionary<int, string>>> KnownEnums = new(StringComparer.Ordinal)
@@ -60,18 +62,34 @@ public static class ArgumentValue
         "unsigned __int32", "__int64", "long long", "unsigned __int64", "unsigned long long", "float", "double", HoBtIdType
     };
 
-    public static bool IsFloating(string type) => Normalise(type) is "float" or "double" or "long double";
+    private static readonly Dictionary<string, Lazy<Dictionary<int, string>>>.AlternateLookup<ReadOnlySpan<char>> KnownEnumLookup =
+        KnownEnums.GetAlternateLookup<ReadOnlySpan<char>>();
+
+    private static readonly Dictionary<string, Lazy<Dictionary<int, string>>>.AlternateLookup<ReadOnlySpan<char>> KnownFlagLookup =
+        KnownFlags.GetAlternateLookup<ReadOnlySpan<char>>();
+
+    private static readonly HashSet<string>.AlternateLookup<ReadOnlySpan<char>> ReadableTypeLookup =
+        ReadableTypes.GetAlternateLookup<ReadOnlySpan<char>>();
+
+    public static bool IsFloating(string type)
+    {
+        Span<char> buffer = type.Length <= MaximumStackType ? stackalloc char[type.Length] : new char[type.Length];
+
+        return Normalise(type, buffer) is "float" or "double" or "long double";
+    }
 
     public static bool IsPointer(string type) => type.TrimEnd() is { Length: > 0 } trimmed && trimmed[^1] is '*' or '&';
 
-    public static bool IsReadable(string type)
+    public static bool IsReadable(ReadOnlySpan<char> type)
     {
-        var normalised = Normalise(type);
+        Span<char> buffer = type.Length <= MaximumStackType ? stackalloc char[type.Length] : new char[type.Length];
+
+        var normalised = Normalise(type, buffer);
 
         return normalised.StartsWith(FunctionSignature.EnumPrefix, StringComparison.Ordinal)
-            ? KnownEnums.ContainsKey(normalised[FunctionSignature.EnumPrefix.Length..])
-              || KnownFlags.ContainsKey(normalised[FunctionSignature.EnumPrefix.Length..])
-            : ReadableTypes.Contains(normalised);
+            ? KnownEnumLookup.ContainsKey(normalised[FunctionSignature.EnumPrefix.Length..])
+              || KnownFlagLookup.ContainsKey(normalised[FunctionSignature.EnumPrefix.Length..])
+            : ReadableTypeLookup.Contains(normalised);
     }
 
     public static string FormatReferenced(string type, ulong raw)
@@ -81,7 +99,12 @@ public static class ArgumentValue
         return Format(indirection < 0 ? type : type[..indirection], raw);
     }
 
-    public static ulong? HoBtIdOf(string type, ulong raw) => Normalise(type) == HoBtIdType ? raw << HoBtIdShift : null;
+    public static ulong? HoBtIdOf(string type, ulong raw)
+    {
+        Span<char> buffer = type.Length <= MaximumStackType ? stackalloc char[type.Length] : new char[type.Length];
+
+        return Normalise(type, buffer) is HoBtIdType ? raw << HoBtIdShift : null;
+    }
 
     public static string Format(string type, ulong raw)
     {
@@ -169,6 +192,35 @@ public static class ArgumentValue
             : $"{value.ToString(CultureInfo.InvariantCulture)} (0x{value:X})";
 
     private static string Normalise(string type)
-        => string.Join(' ', type.Split(' ', StringSplitOptions.RemoveEmptyEntries)
-                                .Where(part => part is not ("const" or "volatile" or "__ptr64")));
+    {
+        Span<char> buffer = type.Length <= MaximumStackType ? stackalloc char[type.Length] : new char[type.Length];
+
+        return Normalise(type, buffer).ToString();
+    }
+
+    private static ReadOnlySpan<char> Normalise(ReadOnlySpan<char> type, Span<char> destination)
+    {
+        var length = 0;
+
+        foreach (var range in type.Split(' '))
+        {
+            var part = type[range];
+
+            if (part.IsEmpty || part is "const" or "volatile" or "__ptr64")
+            {
+                continue;
+            }
+
+            if (length > 0)
+            {
+                destination[length++] = ' ';
+            }
+
+            part.CopyTo(destination[length..]);
+
+            length += part.Length;
+        }
+
+        return destination[..length];
+    }
 }

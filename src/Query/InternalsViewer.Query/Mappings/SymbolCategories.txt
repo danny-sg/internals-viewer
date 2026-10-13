@@ -598,6 +598,35 @@ sqlmin|CBpNormalizationHelper*|*|ExpressionEvaluation
 sqlmin|CBatchToRowDeserializer*|*|Dataset
 sqlmin|CBatchAdapterBaseHelpers*|*|Dataset
 
+sqlmin|IBpScanner*|*|QueryOperator
+sqlmin|CBpChildIteratorScanner*|*|QueryOperator
+sqlmin|CAutoShutdown<CBpQScan*|*|PhysicalOperator
+sqlmin|CBpagBufferedHashTable*|*|PhysicalOperator
+sqlmin|CBpagConcurrentHashTable*|*|PhysicalOperator
+sqlmin|CBpagLocalAggregate*|*|PhysicalOperator
+sqlmin|CBpagRepartitioning*|*|PhysicalOperator
+sqlmin|CBprlSpilledHardPartition*|*|PhysicalOperator
+sqlmin|CBpagDeepData*|*|Dataset
+sqlmin|CBpParallelCoordinator*|*|QueryExecution
+sqlmin|CBpWorkfileMgr*|*|Storage
+sqlmin|CAutoShutdown<CBpWorkfileMgr>|*|Storage
+sqlmin|CBpWorkfileSharedContext*|*|Storage
+sqlmin|CBpSpillWriter*|*|Storage
+sqlmin|CBpMalloc*|*|SqlOs
+sqlmin|CBpMemoryGroup*|*|SqlOs
+sqlmin|CBpPerCpuRoundUpCounter*|*|SqlOs
+sqlmin|CBpagMultiPageAllocator*|*|SqlOs
+sqlmin|CBpagPageAllocator*|*|SqlOs
+sqlmin|*|PmoNewFromGrantUsageHandle|SqlOs
+sqlmin|*|BpLog2*|System
+sqlmin|CBpPushdownAggregateContext*|*|ColumnStore
+sqlmin|*|FindMostCompressedColumn*|ColumnStore
+sqlmin|CBpStringDictConfigCompileTime*|*|Compilation
+sqllang|CProcCache*|*|Compilation
+sqllang|*|FOffsetsAnyOn|QueryExecution
+*|XeCloudMinPkg*|*|XEventInfrastructure
+sqlmin|*|traceTransactionEvent|XEventInfrastructure
+
 # Metadata the optimizer reads before any of this: row counts and index sizes, which for a columnstore go through
 # the row group collection rather than a b-tree root.
 *|HoBtFactory*|*|Metadata

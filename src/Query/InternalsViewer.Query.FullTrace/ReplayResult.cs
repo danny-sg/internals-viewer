@@ -23,4 +23,4 @@ internal sealed record ReplayResult(CallNode[] Nodes,
                                     IReadOnlyList<TraceModule> Modules,
                                     FullTraceCallLog CallLog,
                                     FullTraceTimeline Timeline,
-                                    EventMarker[] Markers);
+                                    PublishedEvent[] PublishedEvents);

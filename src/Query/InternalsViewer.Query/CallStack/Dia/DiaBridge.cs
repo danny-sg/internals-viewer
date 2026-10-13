@@ -34,12 +34,22 @@ internal static class DiaBridge
                                                out uint rva,
                                                out int isFunction);
 
+    [DllImport("InternalsViewer.Query.DiaBridge.dll", CharSet = CharSet.Unicode)]
+    [return: MarshalAs(UnmanagedType.U1)]
+    public static extern unsafe bool NextSymbolDetail(IntPtr enumerator,
+                                                      char* nameBuffer,
+                                                      int nameLength,
+                                                      char* signatureBuffer,
+                                                      int signatureLength,
+                                                      out uint rva,
+                                                      out int isFunction);
+
     [DllImport("InternalsViewer.Query.DiaBridge.dll")]
     public static extern IntPtr BeginEnumSymbolsAtRva(IntPtr session, uint rva);
 
     [DllImport("InternalsViewer.Query.DiaBridge.dll", CharSet = CharSet.Unicode)]
     [return: MarshalAs(UnmanagedType.U1)]
-    public static extern bool GetDecoratedName(IntPtr session, uint rva, StringBuilder buffer, int bufferLength);
+    public static extern unsafe bool GetDecoratedName(IntPtr session, uint rva, char* buffer, int bufferLength);
 
     [DllImport("InternalsViewer.Query.DiaBridge.dll")]
     public static extern void EndEnumSymbols(IntPtr enumerator);

@@ -10,7 +10,7 @@ public sealed record FullTraceOperatorLifetime(uint Thread,
                                                int Node,
                                                IReadOnlyList<FullTraceTimelineSpan> PositionCalls,
                                                IReadOnlyList<FullTraceTimelineSpan> InstructionCalls,
-                                               FullTraceInUseCurve InUse)
+                                               MemoryInUseCurve InUse)
 {
     private double[] PositionEnds { get; } = [.. PositionCalls.Select(c => c.End)];
 

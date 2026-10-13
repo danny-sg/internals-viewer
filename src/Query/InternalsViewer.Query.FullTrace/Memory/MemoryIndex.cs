@@ -6,14 +6,14 @@ namespace InternalsViewer.Query.FullTrace.Memory;
 
 internal sealed class MemoryIndex
 {
-    private MemoryIndex(Dictionary<uint, ThreadMemory> threads, FullTraceInUseCurve inUse, FullTraceInUseCurve workspace)
+    private MemoryIndex(Dictionary<uint, ThreadMemory> threads, MemoryInUseCurve inUse, MemoryInUseCurve workspace)
     {
         Threads = threads;
         InUse = inUse;
         Workspace = workspace;
     }
 
-    public static MemoryIndex Empty { get; } = new([], FullTraceInUseCurve.Empty, FullTraceInUseCurve.Empty);
+    public static MemoryIndex Empty { get; } = new([], MemoryInUseCurve.Empty, MemoryInUseCurve.Empty);
 
     public bool HasAllocations => Threads.Count > 0;
 
@@ -21,9 +21,9 @@ internal sealed class MemoryIndex
 
     private Dictionary<uint, ThreadMemory> Threads { get; }
 
-    private FullTraceInUseCurve InUse { get; }
+    private MemoryInUseCurve InUse { get; }
 
-    private FullTraceInUseCurve Workspace { get; }
+    private MemoryInUseCurve Workspace { get; }
 
     public static MemoryIndex Build(IEnumerable<MemoryAllocation> allocations, IEnumerable<MemoryFree> frees)
     {
@@ -114,8 +114,8 @@ internal sealed class MemoryIndex
         var memory = threads.ToDictionary(t => t.Key, t => new ThreadMemory([.. t.Value.Allocations], [.. t.Value.Frees]));
 
         return new MemoryIndex(memory,
-                               new FullTraceInUseCurve([.. positions], [.. values]),
-                               new FullTraceInUseCurve([.. workspacePositions], [.. workspaceValues]));
+                               new MemoryInUseCurve([.. positions], [.. values]),
+                               new MemoryInUseCurve([.. workspacePositions], [.. workspaceValues]));
     }
 
     public (ulong Bytes, int Count) AllocatedDuring(uint thread, double start, double end)
@@ -130,13 +130,13 @@ internal sealed class MemoryIndex
     public IEnumerable<(double Position, ulong Bytes)> AllocationsOf(uint thread)
         => Threads.TryGetValue(thread, out var memory) ? memory.Allocations() : [];
 
-    public FullTraceInUseCurve InUseWithin(uint thread, double start, double end)
-        => Threads.TryGetValue(thread, out var memory) ? memory.InUseWithin(start, end) : FullTraceInUseCurve.Empty;
+    public MemoryInUseCurve InUseWithin(uint thread, double start, double end)
+        => Threads.TryGetValue(thread, out var memory) ? memory.InUseWithin(start, end) : MemoryInUseCurve.Empty;
 
-    public IReadOnlyList<FullTraceInUseCurve> InUseOwnedBy(uint thread, IReadOnlyList<IReadOnlyList<FullTraceTimelineSpan>> owners)
+    public IReadOnlyList<MemoryInUseCurve> InUseOwnedBy(uint thread, IReadOnlyList<IReadOnlyList<FullTraceTimelineSpan>> owners)
         => Threads.TryGetValue(thread, out var memory)
             ? memory.InUseOwnedBy(owners)
-            : [.. owners.Select(_ => FullTraceInUseCurve.Empty)];
+            : [.. owners.Select(_ => MemoryInUseCurve.Empty)];
 
     public ulong PeakInUseDuring(double start, double end) => InUse.PeakDuring(start, end);
 
@@ -155,9 +155,9 @@ internal sealed class MemoryIndex
             threads[thread] = ThreadMemory.Read(reader);
         }
 
-        var inUse = FullTraceInUseCurve.Read(reader);
+        var inUse = MemoryInUseCurve.Read(reader);
 
-        return new MemoryIndex(threads, inUse, FullTraceInUseCurve.Read(reader));
+        return new MemoryIndex(threads, inUse, MemoryInUseCurve.Read(reader));
     }
 
     internal void Write(BinaryWriter writer)
@@ -249,7 +249,7 @@ internal sealed class MemoryIndex
 
         public IEnumerable<(double Position, ulong Bytes)> Allocations() => AllocationStarts.Zip(AllocationBytes);
 
-        public FullTraceInUseCurve InUseWithin(double start, double end)
+        public MemoryInUseCurve InUseWithin(double start, double end)
         {
             var first = SortedSearch.FirstAtOrAfter(AllocationStarts, start);
 
@@ -257,7 +257,7 @@ internal sealed class MemoryIndex
 
             if (last <= first)
             {
-                return FullTraceInUseCurve.Empty;
+                return MemoryInUseCurve.Empty;
             }
 
             var changes = new List<(double Position, long Bytes)>((last - first) * 2);
@@ -275,7 +275,7 @@ internal sealed class MemoryIndex
             return CurveOf(changes);
         }
 
-        public FullTraceInUseCurve[] InUseOwnedBy(IReadOnlyList<IReadOnlyList<FullTraceTimelineSpan>> owners)
+        public MemoryInUseCurve[] InUseOwnedBy(IReadOnlyList<IReadOnlyList<FullTraceTimelineSpan>> owners)
         {
             var ownerOf = new int[AllocationStarts.Length];
 
@@ -363,11 +363,11 @@ internal sealed class MemoryIndex
             ExportBinary.WriteArray(writer, FreeTotals);
         }
 
-        private static FullTraceInUseCurve CurveOf(List<(double Position, long Bytes)> changes)
+        private static MemoryInUseCurve CurveOf(List<(double Position, long Bytes)> changes)
         {
             if (changes.Count == 0)
             {
-                return FullTraceInUseCurve.Empty;
+                return MemoryInUseCurve.Empty;
             }
 
             changes.Sort();
@@ -394,7 +394,7 @@ internal sealed class MemoryIndex
                 }
             }
 
-            return new FullTraceInUseCurve([.. positions], [.. values]);
+            return new MemoryInUseCurve([.. positions], [.. values]);
         }
 
         private static ulong[] Totals(ulong[] bytes)

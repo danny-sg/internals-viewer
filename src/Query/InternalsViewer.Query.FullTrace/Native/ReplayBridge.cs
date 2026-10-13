@@ -13,6 +13,14 @@ namespace InternalsViewer.Query.FullTrace.Native;
 /// The native bridge is built from the C++ source in the InternalsViewer.Query.TimeTravelBridge project, which is a C++ project that
 /// wraps the TTD replay library and exposes a C-style API for use in this managed code.
 ///
+/// High level, the API takes a trace and replays it forward allowing stack frames, arguments, and return values to be captured and
+/// buffered locally before being flushed. The flat forward read uses a local stack to replicate the entry/exit (push/pop) of nested
+/// functions as return values are only available at the exit point.
+///
+/// The replay uses several function indicators to dictate behaviour, excluded functions to ignore, instance methods, value locators where
+/// arguments and return results are pointers which should be followed in the trace memory at the current position for actual values, and
+/// functions that are used as event markers, not recorded in the call stack but generate separate events for that point.
+///
 /// All addresses passed to and from the bridge are absolute addresses in the recorded process.
 ///
 /// The bridge does the following:
@@ -128,7 +136,7 @@ internal static class ReplayBridge
     public delegate void PointerValueCallback(IntPtr values, int count);
 
     [UnmanagedFunctionPointer(CallingConvention.StdCall)]
-    public delegate void MarkerCallback(IntPtr markers, int count);
+    public delegate void PublishedEventCallback(IntPtr publishedEvents, int count);
 
     [DllImport(Library, CharSet = CharSet.Unicode)]
     public static extern int OpenTrace(string replayLibraryPath, string tracePath, out TraceHandle trace);
@@ -155,14 +163,14 @@ internal static class ReplayBridge
                                           int excludedFunctionCount,
                                           PointerRead[] pointerReads,
                                           int pointerReadCount,
-                                          ulong[] publishFunctions,
-                                          int publishFunctionCount,
-                                          ulong[] reserveFunctions,
-                                          int reserveFunctionCount,
+                                          ulong[] publisherFunctions,
+                                          int publisherFunctionCount,
+                                          ulong[] writerFunctions,
+                                          int writerFunctionCount,
                                           CallChunkCallback? logCalls,
                                           CallSpanCallback? logSpans,
                                           PointerValueCallback? logPointerValues,
-                                          MarkerCallback? logMarkers,
+                                          PublishedEventCallback? logPublishedEvents,
                                           ProgressCallback? progress,
                                           IntPtr cancel,
                                           out IntPtr tree);

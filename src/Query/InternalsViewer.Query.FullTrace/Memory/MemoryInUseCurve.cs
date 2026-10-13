@@ -3,9 +3,9 @@ using InternalsViewer.Query.Helpers;
 
 namespace InternalsViewer.Query.FullTrace.Memory;
 
-public sealed class FullTraceInUseCurve(double[] positions, ulong[] values)
+public sealed class MemoryInUseCurve(double[] positions, ulong[] values)
 {
-    public static FullTraceInUseCurve Empty { get; } = new([], []);
+    public static MemoryInUseCurve Empty { get; } = new([], []);
 
     public bool IsEmpty => Positions.Length == 0;
 
@@ -32,7 +32,7 @@ public sealed class FullTraceInUseCurve(double[] positions, ulong[] values)
         return peak;
     }
 
-    internal static FullTraceInUseCurve Read(BinaryReader reader)
+    internal static MemoryInUseCurve Read(BinaryReader reader)
         => new(ExportBinary.ReadArray<double>(reader), ExportBinary.ReadArray<ulong>(reader));
 
     internal void Write(BinaryWriter writer)

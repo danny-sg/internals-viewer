@@ -165,10 +165,10 @@ public sealed class FullTraceTimeline
     public ulong PeakWorkspaceDuring(double positionStart, double positionEnd)
         => Memory.PeakWorkspaceDuring(positionStart, positionEnd);
 
-    public FullTraceInUseCurve InUseWithin(uint thread, double positionStart, double positionEnd)
+    public MemoryInUseCurve InUseWithin(uint thread, double positionStart, double positionEnd)
         => Memory.InUseWithin(thread, positionStart, positionEnd);
 
-    public IReadOnlyList<FullTraceInUseCurve> InUseOwnedBy(uint thread, IReadOnlyList<IReadOnlyList<FullTraceTimelineSpan>> calls)
+    public IReadOnlyList<MemoryInUseCurve> InUseOwnedBy(uint thread, IReadOnlyList<IReadOnlyList<FullTraceTimelineSpan>> calls)
         => Memory.InUseOwnedBy(thread, calls);
 
     public IReadOnlyList<FullTraceSelfAllocation> SelfAllocations()

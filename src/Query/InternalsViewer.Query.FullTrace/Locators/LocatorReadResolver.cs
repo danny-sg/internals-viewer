@@ -1,3 +1,4 @@
+using System.Buffers;
 using System.Text.RegularExpressions;
 using InternalsViewer.Query.CallStack.Arguments;
 using InternalsViewer.Query.CallStack.Dia;
@@ -14,8 +15,9 @@ public static partial class LocatorReadResolver
 
     public const int MaximumHops = 3;
 
-    private static readonly string[] DecoratedTypes =
-        ["VPageId@@", "VAllocationPageId@@", "VHPageHandle@@", "URowId@@", "VColumnStoreObjectKey@@"];
+    private static readonly SearchValues<string> DecoratedTypes =
+        SearchValues.Create(["VPageId@@", "VAllocationPageId@@", "VHPageHandle@@", "URowId@@", "VColumnStoreObjectKey@@"],
+                            StringComparison.Ordinal);
 
     internal static IEnumerable<LocatorRead> ReadsOf(ulong function, FunctionSignature signature)
     {
@@ -63,22 +65,21 @@ public static partial class LocatorReadResolver
     {
         var reads = new List<LocatorRead>();
 
+        Span<char> buffer = stackalloc char[DiaResolver.MaximumNameLength];
+
         foreach (var rva in functions)
         {
-            if (resolver.GetDecoratedName(rva) is not { } decoratedName
-                || (!DecoratedTypes.Any(t => decoratedName.Contains(t, StringComparison.Ordinal))
-                    && !ReferencedType().IsMatch(decoratedName)))
+            if (!resolver.TryGetDecoratedName(rva, buffer, out var name)
+                || (!name.ContainsAny(DecoratedTypes) && !ReferencedType().IsMatch(name)))
             {
                 continue;
             }
 
-            var signatures = resolver.SignaturesAt(rva).ToList();
+            var decoratedName = new string(name);
 
-            var parameterLists = signatures.Select(s => string.Join(',', FunctionSignature.ParseParameters(s) ?? []))
-                                           .Distinct()
-                                           .Count();
+            var signatures = resolver.SignaturesAt(rva);
 
-            if (parameterLists != 1 || FunctionSignature.Parse(signatures[0], decoratedName) is not { } signature)
+            if (!HasOneParameterList(signatures) || FunctionSignature.Parse(signatures[0], decoratedName) is not { } signature)
             {
                 continue;
             }
@@ -88,6 +89,11 @@ public static partial class LocatorReadResolver
 
         return reads;
     }
+
+    private static bool HasOneParameterList(IReadOnlyList<string> signatures)
+        => signatures.Count == 1
+           || (signatures.Count > 1
+               && signatures.Select(s => string.Join(',', FunctionSignature.ParseParameters(s) ?? [])).Distinct().Count() == 1);
 
     [GeneratedRegex("[PQA]E[AB](?:[FGHIJKMN]|_[JKN]|W4|VHoBtId@@)")]
     private static partial Regex ReferencedType();

@@ -16,6 +16,8 @@ public class GlobPatternTests
     [InlineData("*Scan", "ScanX", false)]
     [InlineData("*QDS*", "CAutoQdsDBLock", true)] // contains, case-insensitive
     [InlineData("*QDS*", "NoMatch", false)]
+    [InlineData("CQ*Hash", "CQScanHash", true)]
+    [InlineData("CQ*Hash", "CQScanHashAgg", false)]
     [InlineData("*", "anything", true)]           // wildcard
     [InlineData("*", null, true)]
     [InlineData("CQScan", null, false)]

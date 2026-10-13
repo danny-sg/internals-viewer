@@ -6,11 +6,12 @@ using InternalsViewer.Query.CallStack.Symbols;
 using InternalsViewer.Query.Events;
 using InternalsViewer.Query.Events.Operators;
 using InternalsViewer.Query.FullTrace.Iterators;
-using InternalsViewer.Query.FullTrace.Markers;
+using InternalsViewer.Query.FullTrace.PublishedEvents;
 using InternalsViewer.Query.FullTrace.Memory;
 using InternalsViewer.Query.Helpers;
 using Microsoft.Extensions.Logging;
 using InternalsViewer.Query.Recording;
+using InternalsViewer.Query.FullTrace.Functions;
 
 namespace InternalsViewer.Query.FullTrace;
 
@@ -73,9 +74,7 @@ public sealed class FullTraceLoader(ILogger<FullTraceLoader> logger, ITimeTravel
 
         ReplayResult replay;
 
-        ReplayFunctionSet functions;
-
-        IReadOnlyList<MemoryFunction> memoryFunctions;
+        ReplayFunctions functions;
 
         try
         {
@@ -89,16 +88,16 @@ public sealed class FullTraceLoader(ILogger<FullTraceLoader> logger, ITimeTravel
 
             steps.Begin(SymbolsStep);
 
-            (functions, memoryFunctions) = await ReplayFunctionResolver.ResolveAsync(session.Modules,
-                                                                                     request.SymbolsPath,
-                                                                                     Logger,
-                                                                                     messages,
-                                                                                     cancellationToken);
+            functions = await ReplayFunctionResolver.ResolveAsync(session.Modules,
+                                                                  request.SymbolsPath,
+                                                                  Logger,
+                                                                  messages,
+                                                                  cancellationToken);
 
             Logger.LogInformation("{Excluded} Extended Events and tracing function(s) excluded from the replay, {Memory} memory "
                                   + "function(s) tracked",
-                                  functions.Excluded.Length,
-                                  memoryFunctions.Count);
+                                  functions.ExcludedFunctions.Length,
+                                  functions.MemoryFunctions.Length);
 
             steps.Complete();
 
@@ -201,7 +200,7 @@ public sealed class FullTraceLoader(ILogger<FullTraceLoader> logger, ITimeTravel
                               operators.Count(o => o.PlanNodeIdentifier is { NodeId: >= 0 }),
                               planLink.Instances.Count);
 
-        var memory = MemoryMapper.Map(replay.CallLog, memoryFunctions, timeline, request.MemoryClerks);
+        var memory = MemoryMapper.Map(replay.CallLog, functions.MemoryFunctions, timeline, request.MemoryClerks);
 
         var lifetimes = IteratorLifetimeBuilder.Build(timeline, operators);
 
@@ -209,17 +208,21 @@ public sealed class FullTraceLoader(ILogger<FullTraceLoader> logger, ITimeTravel
 
         var expanded = events.ExpandOwned();
 
-        var marked = MarkerLinker.Link(replay.Markers, functions.Publishers, request.RawEvents, expanded, timeline);
+        var linked = PublishedEventLinker.Link(replay.PublishedEvents,
+                                               functions.PublishedEvents.Publishers,
+                                               request.RawEvents,
+                                               expanded,
+                                               timeline);
 
-        timeline.SetEventLinks(marked.Links);
+        timeline.SetEventLinks(linked.Links);
 
-        Logger.LogInformation("{Linked} of {Events} event(s) linked to their trace position: {Written} of {Markers} published "
+        Logger.LogInformation("{Linked} of {Events} event(s) linked to their trace position: {Written} of {Published} published "
                               + "event(s) written to the session, {Paired} paired with an event",
                               timeline.EventLinks.Count,
                               request.RawEvents.Count,
-                              marked.Written,
-                              marked.Markers,
-                              marked.Paired);
+                              linked.Written,
+                              linked.Published,
+                              linked.Paired);
 
         Logger.LogInformation("{Matched} of {Operators} operator(s) matched to recorded iterators, {Allocations} allocation(s) of "
                               + "{Bytes}, {Lifetimes} operator lifetime(s) on {Threads} thread(s)",

@@ -1,3 +1,5 @@
+using InternalsViewer.Query.Helpers;
+
 namespace InternalsViewer.Query.CallStack;
 
 public static class QualifiedSymbol
@@ -17,8 +19,8 @@ public static class QualifiedSymbol
             return null;
         }
 
-        var plusIndex = resolved.RawSymbol.LastIndexOf('+');
+        SymbolsHelper.SplitOffset(resolved.RawSymbol, out var name, out _);
 
-        return plusIndex > 0 ? resolved.RawSymbol[..plusIndex] : resolved.RawSymbol;
+        return name.Length > 0 ? name : null;
     }
 }

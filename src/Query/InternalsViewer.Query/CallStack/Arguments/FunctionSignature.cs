@@ -1,4 +1,5 @@
 using System.Text.RegularExpressions;
+using InternalsViewer.Query.Helpers;
 
 namespace InternalsViewer.Query.CallStack.Arguments;
 
@@ -22,7 +23,7 @@ public sealed partial record FunctionSignature(IReadOnlyList<string> Parameters,
 
             return new FunctionSignature(MarkEnums(parameters, decoratedName),
                                          KindOf(match),
-                                         DecodeReturnType(encodedReturn, decoratedName[1..match.Index].Split('@')),
+                                         DecodeReturnType(encodedReturn, decoratedName.AsSpan()[1..match.Index]),
                                          ReturnBuffer().IsMatch(encodedReturn));
         }
 
@@ -71,13 +72,18 @@ public sealed partial record FunctionSignature(IReadOnlyList<string> Parameters,
             return null;
         }
 
-        var inner = signature[(open + 1)..close].Trim();
+        var inner = signature.AsSpan()[(open + 1)..close].Trim();
 
         return inner is "" or "void" ? [] : SplitTopLevel(inner);
     }
 
     private static List<string> MarkEnums(IReadOnlyList<string> parameters, string decoratedName)
     {
+        if (!EnumType().IsMatch(decoratedName))
+        {
+            return [.. parameters];
+        }
+
         var enums = EnumType().Matches(decoratedName)
                               .Select(m => m.Groups["name"].Value)
                               .ToHashSet(StringComparer.Ordinal);
@@ -109,10 +115,10 @@ public sealed partial record FunctionSignature(IReadOnlyList<string> Parameters,
     {
         var open = FindParameterList(signature);
 
-        return ResolvedCallstackFrameParser.FindClassMethodSeparator(open < 0 ? signature : signature[..open]) > 0;
+        return SymbolsHelper.FindClassMethodSeparator(open < 0 ? signature : signature.AsSpan(0, open)) > 0;
     }
 
-    private static string? DecodeReturnType(string encoded, IReadOnlyList<string> functionNames)
+    private static string? DecodeReturnType(string encoded, ReadOnlySpan<char> functionNames)
     {
         if (encoded.Length == 0)
         {
@@ -180,11 +186,11 @@ public sealed partial record FunctionSignature(IReadOnlyList<string> Parameters,
         return $"{name}{qualifier} {(match.Groups["indirection"].Value == "A" ? '&' : '*')}";
     }
 
-    private static string? DescribeEnum(Match match, IReadOnlyList<string> functionNames)
+    private static string? DescribeEnum(Match match, ReadOnlySpan<char> functionNames)
     {
         var name = match.Groups["name"].Value;
 
-        var names = new List<string>(functionNames) { name };
+        var names = new List<string>(functionNames.ToString().Split('@')) { name };
 
         var scopes = new List<string>();
 
@@ -239,7 +245,7 @@ public sealed partial record FunctionSignature(IReadOnlyList<string> Parameters,
         return -1;
     }
 
-    private static List<string> SplitTopLevel(string inner)
+    private static List<string> SplitTopLevel(ReadOnlySpan<char> inner)
     {
         var parameters = new List<string>();
 
@@ -261,13 +267,13 @@ public sealed partial record FunctionSignature(IReadOnlyList<string> Parameters,
             }
             else if (character == ',' && depth == 0)
             {
-                parameters.Add(inner[start..i].Trim());
+                parameters.Add(inner[start..i].Trim().ToString());
 
                 start = i + 1;
             }
         }
 
-        parameters.Add(inner[start..].Trim());
+        parameters.Add(inner[start..].Trim().ToString());
 
         return parameters;
     }

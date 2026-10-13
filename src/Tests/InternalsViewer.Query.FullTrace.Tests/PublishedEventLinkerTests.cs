@@ -1,5 +1,5 @@
 using InternalsViewer.Query.CallStack;
-using InternalsViewer.Query.FullTrace.Markers;
+using InternalsViewer.Query.FullTrace.PublishedEvents;
 using InternalsViewer.Query.FullTrace.Native;
 using InternalsViewer.Query.FullTrace.Timeline;
 using InternalsViewer.Query.Events;
@@ -8,7 +8,7 @@ using InternalsViewer.Query.Events.Latches;
 namespace InternalsViewer.Query.FullTrace.Tests;
 
 [Trait("Category", "Unit")]
-public class MarkerLinkerTests
+public class PublishedEventLinkerTests
 {
     private const uint Thread = 7;
 
@@ -24,13 +24,13 @@ public class MarkerLinkerTests
     ];
 
     [Fact]
-    public void Link_Pairs_Each_Written_Marker_With_The_Event_Of_The_Same_Name_In_Order()
+    public void Link_Pairs_Each_Written_Published_Event_With_The_Event_Of_The_Same_Name_In_Order()
     {
         var timeline = Timeline();
 
         var events = Events(100, 200, 300);
 
-        var result = MarkerLinker.Link([Marker(0x10, 10), Marker(0x20, 20), Marker(0x30, 30)],
+        var result = PublishedEventLinker.Link([Published(0x10, 10), Published(0x20, 20), Published(0x30, 30)],
                                        Publishers,
                                        [Raw("latch_acquired", 100), Raw("lock_acquired", 200), Raw("wait_info", 300)],
                                        events,
@@ -41,9 +41,9 @@ public class MarkerLinkerTests
     }
 
     [Fact]
-    public void Link_Skips_An_Event_With_No_Marker_And_Keeps_Pairing_The_Rest()
+    public void Link_Skips_An_Event_That_Was_Not_Published_And_Keeps_Pairing_The_Rest()
     {
-        var result = MarkerLinker.Link([Marker(0x10, 10), Marker(0x20, 20), Marker(0x30, 30)],
+        var result = PublishedEventLinker.Link([Published(0x10, 10), Published(0x20, 20), Published(0x30, 30)],
                                        Publishers,
                                        [Raw("latch_acquired", 100),
                                         Raw("lock_acquired", 200),
@@ -57,9 +57,9 @@ public class MarkerLinkerTests
     }
 
     [Fact]
-    public void Link_Only_Uses_Markers_Written_To_The_Busiest_Session()
+    public void Link_Only_Uses_Events_Written_To_The_Busiest_Session()
     {
-        var result = MarkerLinker.Link([Marker(0x10, 10), Marker(0x20, 15, OtherSession), Marker(0x20, 20)],
+        var result = PublishedEventLinker.Link([Published(0x10, 10), Published(0x20, 15, OtherSession), Published(0x20, 20)],
                                        Publishers,
                                        [Raw("latch_acquired", 100), Raw("lock_acquired", 200)],
                                        Events(100, 200),
@@ -78,7 +78,7 @@ public class MarkerLinkerTests
 
         timeline.MapNodes([node]);
 
-        var result = MarkerLinker.Link([Marker(0x10, 10)], Publishers, [Raw("latch_acquired", 100)], Events(100), timeline);
+        var result = PublishedEventLinker.Link([Published(0x10, 10)], Publishers, [Raw("latch_acquired", 100)], Events(100), timeline);
 
         Assert.Same(node, result.Links.Single().Node);
     }
@@ -92,8 +92,8 @@ public class MarkerLinkerTests
         return builder.Build([new CallNode(-1, 0, 0x1000, 0, 1)]);
     }
 
-    private static EventMarker Marker(ulong function, ulong sequence, ulong buffer = Session)
-        => new(function, buffer, sequence, 0, sequence, 0, Thread);
+    private static PublishedEvent Published(ulong publisher, ulong sequence, ulong buffer = Session)
+        => new(publisher, buffer, sequence, 0, sequence, 0, Thread);
 
     private static RawEvent Raw(string name, int sequence) => new(name, Thread, null, null, sequence);
 

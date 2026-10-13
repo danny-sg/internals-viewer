@@ -32,7 +32,7 @@ public sealed record OperatorRule
     /// </summary>
     public int DefinitionOrder { get; init; }
 
-    public bool TryScore(string? module, string? className, string? methodName, out RuleScore score)
+    public bool TryScore(string? module, ReadOnlySpan<char> className, ReadOnlySpan<char> methodName, out RuleScore score)
     {
         if (!Module.Matches(module) || !Class.Matches(className) || !Function.Matches(methodName))
         {

@@ -13,10 +13,6 @@ public readonly struct GlobPattern
 {
     private readonly string _pattern;
 
-    private readonly bool _isAny;
-
-    private readonly bool _isExact;
-
     /// <summary>
     /// Specificity of this pattern — higher is more specific (exact ≫ literal-length glob &gt; wildcard)
     /// </summary>
@@ -30,16 +26,20 @@ public readonly struct GlobPattern
     /// <summary>
     /// Whether the pattern matches anything at all, being blank or the lone wildcard
     /// </summary>
-    public bool IsAny => _isAny;
+    public bool IsAny => Shape == GlobShape.Any;
+
+    internal GlobShape Shape { get; }
+
+    internal string Literal { get; }
 
     // An exact match is always more specific than any glob, however long, so it starts far above literal-length scores.
     private const int ExactBonus = 1_000_000;
 
-    private GlobPattern(string pattern, bool isAny, bool isExact, int score)
+    private GlobPattern(string pattern, GlobShape shape, string literal, int score)
     {
         _pattern = pattern;
-        _isAny = isAny;
-        _isExact = isExact;
+        Shape = shape;
+        Literal = literal;
         Score = score;
     }
 
@@ -49,36 +49,56 @@ public readonly struct GlobPattern
 
         if (pattern.Length == 0 || pattern == "*")
         {
-            return new GlobPattern(pattern, isAny: true, isExact: false, score: 0);
+            return new GlobPattern(pattern, GlobShape.Any, string.Empty, score: 0);
         }
 
         if (!pattern.Contains('*'))
         {
-            return new GlobPattern(pattern, isAny: false, isExact: true, score: ExactBonus + pattern.Length);
+            return new GlobPattern(pattern, GlobShape.Exact, pattern, score: ExactBonus + pattern.Length);
         }
 
         var literalLength = pattern.Count(c => c != '*');
 
-        return new GlobPattern(pattern, isAny: false, isExact: false, score: literalLength);
+        var (shape, literal) = ShapeOf(pattern);
+
+        return new GlobPattern(pattern, shape, literal, score: literalLength);
     }
 
-    public bool Matches(string? value)
-    {
-        if (_isAny)
+    public bool Matches(ReadOnlySpan<char> value)
+        => Shape switch
         {
-            return true;
+            GlobShape.Any => true,
+            GlobShape.Exact => value.Equals(Literal, StringComparison.OrdinalIgnoreCase),
+            GlobShape.Prefix => value.StartsWith(Literal, StringComparison.OrdinalIgnoreCase),
+            GlobShape.Suffix => value.EndsWith(Literal, StringComparison.OrdinalIgnoreCase),
+            GlobShape.Contains => value.Contains(Literal, StringComparison.OrdinalIgnoreCase),
+            _ => GlobMatch(_pattern, value)
+        };
+
+    private static (GlobShape Shape, string Literal) ShapeOf(string pattern)
+    {
+        var leading = pattern[0] == '*';
+
+        var trailing = pattern[^1] == '*';
+
+        var literal = pattern[(leading ? 1 : 0)..(trailing ? ^1 : ^0)];
+
+        if (literal.Length == 0 || literal.Contains('*'))
+        {
+            return (GlobShape.General, string.Empty);
         }
 
-        value ??= string.Empty;
-
-        return _isExact
-            ? string.Equals(value, _pattern, StringComparison.OrdinalIgnoreCase)
-            : GlobMatch(_pattern, value);
+        return (leading, trailing) switch
+        {
+            (false, true) => (GlobShape.Prefix, literal),
+            (true, false) => (GlobShape.Suffix, literal),
+            _ => (GlobShape.Contains, literal)
+        };
     }
 
     // Case-insensitive glob: '*' matches any run (including empty). Two-pointer walk with a remembered star position, so
     // no regex and no catastrophic backtracking on the simple patterns the mapping files use.
-    private static bool GlobMatch(string pattern, string value)
+    private static bool GlobMatch(string pattern, ReadOnlySpan<char> value)
     {
         int p = 0, v = 0, star = -1, mark = 0;
 

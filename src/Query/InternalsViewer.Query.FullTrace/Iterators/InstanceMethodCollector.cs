@@ -1,6 +1,7 @@
 using InternalsViewer.Query.CallStack;
 using InternalsViewer.Query.CallStack.Arguments;
 using InternalsViewer.Query.CallStack.Dia;
+using InternalsViewer.Query.Helpers;
 
 namespace InternalsViewer.Query.FullTrace.Iterators;
 
@@ -23,6 +24,9 @@ internal static class InstanceMethodCollector
         "BpClose"
     };
 
+    private static readonly HashSet<string>.AlternateLookup<ReadOnlySpan<char>> MethodLookup =
+        Methods.GetAlternateLookup<ReadOnlySpan<char>>();
+
     public static int? InstanceRegister(string? signature, string? decoratedName)
     {
         if (signature is null || decoratedName is null)
@@ -38,26 +42,29 @@ internal static class InstanceMethodCollector
         };
     }
 
-    public static bool IsIteratorMethod(string symbol)
+    public static bool IsIteratorMethod(ReadOnlySpan<char> symbol)
     {
-        var separator = ResolvedCallstackFrameParser.FindClassMethodSeparator(symbol);
+        var separator = SymbolsHelper.FindClassMethodSeparator(symbol);
 
         return separator > 0
                && IsIteratorClass(symbol)
-               && Methods.Contains(symbol[(separator + 2)..]);
+               && MethodLookup.Contains(symbol[(separator + 2)..]);
     }
 
-    public static bool IsPlanObjectMethod(string symbol)
-        => ResolvedCallstackFrameParser.FindClassMethodSeparator(symbol) > 0 && IsPlanObjectClass(symbol);
+    public static bool IsPlanObjectMethod(ReadOnlySpan<char> symbol)
+        => SymbolsHelper.FindClassMethodSeparator(symbol) > 0 && IsPlanObjectClass(symbol);
 
-    public static bool IsPlanObjectClass(string? className)
-        => className is not null && PlanObjectPrefixes.Any(prefix => className.StartsWith(prefix, StringComparison.Ordinal));
+    public static bool IsPlanObjectClass(ReadOnlySpan<char> className) => StartsWithAny(className, PlanObjectPrefixes);
 
-    public static List<InstanceMethod> Find(ModuleSymbols symbols, DiaResolver resolver)
+    public static bool IsInstanceMethod(ReadOnlySpan<char> symbol) => IsIteratorMethod(symbol) || IsPlanObjectMethod(symbol);
+
+    public static bool IsInstanceClass(ReadOnlySpan<char> symbol) => IsIteratorClass(symbol) || IsPlanObjectClass(symbol);
+
+    public static List<InstanceMethod> FindInstanceMethods(IEnumerable<uint> addresses, DiaResolver resolver)
     {
         var methods = new List<InstanceMethod>();
 
-        foreach (var rva in symbols.FindAddresses(IsInstanceMethod))
+        foreach (var rva in addresses)
         {
             if (InstanceRegister(resolver.SignaturesAt(rva).FirstOrDefault(), resolver.GetDecoratedName(rva)) is { } register)
             {
@@ -68,16 +75,13 @@ internal static class InstanceMethodCollector
         return methods;
     }
 
-    private static bool IsInstanceMethod(IReadOnlyList<string> names)
-        => names.Any(n => IsIteratorMethod(n) || IsPlanObjectMethod(n)) && names.All(n => IsIteratorClass(n) || IsPlanObjectClass(n));
-
     private static int? KeyedParameter(IReadOnlyList<string> parameters)
     {
         for (var index = 0; index < Math.Min(parameters.Count, RegisterCount); index++)
         {
             var parameter = parameters[index].TrimEnd();
 
-            if ((IsIteratorClass(parameter) || IsPlanObjectClass(parameter)) && parameter.EndsWith('*'))
+            if (IsInstanceClass(parameter) && parameter.EndsWith('*'))
             {
                 return index;
             }
@@ -86,6 +90,18 @@ internal static class InstanceMethodCollector
         return null;
     }
 
-    private static bool IsIteratorClass(string symbol)
-        => ClassPrefixes.Any(prefix => symbol.StartsWith(prefix, StringComparison.Ordinal));
+    private static bool IsIteratorClass(ReadOnlySpan<char> symbol) => StartsWithAny(symbol, ClassPrefixes);
+
+    private static bool StartsWithAny(ReadOnlySpan<char> value, string[] prefixes)
+    {
+        foreach (var prefix in prefixes)
+        {
+            if (value.StartsWith(prefix, StringComparison.Ordinal))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
 }

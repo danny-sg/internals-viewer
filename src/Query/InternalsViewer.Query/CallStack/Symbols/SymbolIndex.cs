@@ -1,5 +1,6 @@
 ﻿using System.Text;
 using InternalsViewer.Query.CallStack.Dia;
+using InternalsViewer.Query.Helpers;
 
 namespace InternalsViewer.Query.CallStack.Symbols;
 
@@ -59,7 +60,7 @@ internal sealed class SymbolIndex
                 continue;
             }
 
-            var separator = ResolvedCallstackFrameParser.FindClassMethodSeparator(symbol.Name);
+            var separator = SymbolsHelper.FindClassMethodSeparator(symbol.Name);
 
             classes.Add(separator > 0 ? symbol.Name[..separator] : string.Empty);
 

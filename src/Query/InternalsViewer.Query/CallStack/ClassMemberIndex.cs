@@ -1,4 +1,5 @@
 using InternalsViewer.Query.CallStack.Dia;
+using InternalsViewer.Query.Helpers;
 
 namespace InternalsViewer.Query.CallStack;
 
@@ -28,7 +29,7 @@ internal sealed class ClassMemberIndex
                 continue;
             }
 
-            var separator = ResolvedCallstackFrameParser.FindClassMethodSeparator(symbol.Name);
+            var separator = SymbolsHelper.FindClassMethodSeparator(symbol.Name);
 
             if (separator <= 0)
             {

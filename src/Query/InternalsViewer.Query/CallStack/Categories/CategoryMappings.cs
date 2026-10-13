@@ -21,6 +21,10 @@ public sealed class CategoryMappings
         _rules = rules;
         _operators = operators;
         _barriers = barriers;
+
+        RuleIndex = new RuleIndex([.. rules.Select(r => (r.Class, r.Function))]);
+
+        OperatorIndex = new RuleIndex([.. operators.Select(o => (o.Class, o.Function))]);
     }
 
     /// <summary>
@@ -33,28 +37,32 @@ public sealed class CategoryMappings
 
     public IReadOnlyList<OperatorRule> Operators => _operators;
 
+    private RuleIndex RuleIndex { get; }
+
+    private RuleIndex OperatorIndex { get; }
+
     public ModuleCategory GetModuleCategory(string? module) =>
         !string.IsNullOrWhiteSpace(module) && _modules.TryGetValue(module, out var category)
             ? category
             : ModuleCategory.Unknown;
 
-    public SymbolCategory Classify(string? module, string? className, string? methodName)
+    public SymbolCategory Classify(string? module, ReadOnlySpan<char> className, ReadOnlySpan<char> methodName)
     {
-        SymbolCategoryRule? best = null;
+        var best = -1;
 
         var bestScore = default(RuleScore);
 
-        foreach (var rule in _rules)
+        foreach (var index in RuleIndex.Candidates(className, methodName))
         {
-            if (rule.TryScore(module, className, methodName, out var score) && (best is null || score.IsBetterThan(bestScore)))
+            if (_rules[index].TryScore(module, className, methodName, out var score) && Improves(index, score, best, bestScore))
             {
-                best = rule;
+                best = index;
 
                 bestScore = score;
             }
         }
 
-        return best?.Category ?? SymbolCategory.Unknown;
+        return best >= 0 ? _rules[best].Category : SymbolCategory.Unknown;
     }
 
     /// <summary>
@@ -70,38 +78,40 @@ public sealed class CategoryMappings
     /// rule that won on CATEGORY specificity carried the boundary, so adding a rule to colour a frame could delete one.
     /// </remarks>
     public (string? Iterator, IReadOnlyList<GlobPattern> PlanOperator) ClassifyOperator(string? module,
-                                                                                        string? className,
-                                                                                        string? methodName)
+                                                                                        ReadOnlySpan<char> className,
+                                                                                        ReadOnlySpan<char> methodName)
     {
-        OperatorRule? badge = null;
-        OperatorRule? boundary = null;
+        var badge = -1;
+        var boundary = -1;
 
         var badgeScore = default(RuleScore);
         var boundaryScore = default(RuleScore);
 
-        foreach (var rule in _operators)
+        foreach (var index in OperatorIndex.Candidates(className, methodName))
         {
+            var rule = _operators[index];
+
             if (!rule.TryScore(module, className, methodName, out var score))
             {
                 continue;
             }
 
-            if (rule.Iterator is not null && (badge is null || score.IsBetterThan(badgeScore)))
+            if (rule.Iterator is not null && Improves(index, score, badge, badgeScore))
             {
-                badge = rule;
+                badge = index;
 
                 badgeScore = score;
             }
 
-            if (rule.PlanOperator.Count > 0 && (boundary is null || score.IsBetterThan(boundaryScore)))
+            if (rule.PlanOperator.Count > 0 && Improves(index, score, boundary, boundaryScore))
             {
-                boundary = rule;
+                boundary = index;
 
                 boundaryScore = score;
             }
         }
 
-        return (badge?.Iterator, boundary?.PlanOperator ?? []);
+        return (badge >= 0 ? _operators[badge].Iterator : null, boundary >= 0 ? _operators[boundary].PlanOperator : []);
     }
 
     public static CategoryMappings Load(TextReader modules,
@@ -170,6 +180,9 @@ public sealed class CategoryMappings
 
         return Load(modules, symbols, operators, barriers);
     }
+
+    private static bool Improves(int index, RuleScore score, int best, RuleScore bestScore)
+        => best < 0 || score.IsBetterThan(bestScore) || (!bestScore.IsBetterThan(score) && index < best);
 
     private static StreamReader OpenResource(Assembly assembly, string fileName)
     {

@@ -1,3 +1,3 @@
-namespace InternalsViewer.Query.FullTrace.Markers;
+namespace InternalsViewer.Query.FullTrace.PublishedEvents;
 
 internal readonly record struct EventPublisher(ulong Address, string Event);

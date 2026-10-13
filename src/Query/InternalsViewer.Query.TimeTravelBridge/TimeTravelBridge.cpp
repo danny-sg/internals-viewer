@@ -63,11 +63,11 @@ namespace
 
     constexpr size_t PointerValueChunk = 65536;
 
-    constexpr size_t MarkerChunk = 65536;
+    constexpr size_t PublishedEventChunk = 65536;
 
-    constexpr uint8_t PublishMarker = 1;
+    constexpr uint8_t PublisherFunction = 1;
 
-    constexpr uint8_t ReserveMarker = 2;
+    constexpr uint8_t WriterFunction = 2;
 
     constexpr size_t ChunkCalls = 16384;
 
@@ -174,12 +174,12 @@ namespace
 
     struct PendingPublish
     {
-        uint64_t Function;
+        uint64_t Publisher;
         uint64_t StackPointer;
         Position Start;
         uint64_t Instructions;
         int32_t  Node;
-        uint64_t Buffer;
+        uint64_t SessionBuffer;
     };
 
     struct ModuleEntry
@@ -213,11 +213,11 @@ namespace
         std::unordered_map<uint64_t, std::vector<PointerRead>> Reads;
         PointerValueCallback                                LogPointerValues = nullptr;
         std::vector<PointerValue>                           PointerValues;
-        std::unordered_map<uint64_t, uint8_t>               MarkerFunctions;
+        std::unordered_map<uint64_t, uint8_t>               PublishedEventFunctions;
         std::unordered_map<uint32_t, std::vector<PendingPublish>> Publishing;
         size_t                                              PendingPublishes = 0;
-        MarkerCallback                                      LogMarkers = nullptr;
-        std::vector<MarkerValue>                            Markers;
+        PublishedEventCallback                              LogPublishedEvents = nullptr;
+        std::vector<PublishedEvent>                         PublishedEvents;
 
         int32_t Child(int32_t parent, uint64_t address, uint64_t instance)
         {
@@ -397,45 +397,45 @@ namespace
             }
         }
 
-        void MarkWritten(uint32_t thread, uint64_t stackPointer, uint64_t buffer)
+        void RecordWrite(uint32_t thread, uint64_t stackPointer, uint64_t buffer)
         {
             EndPublishes(thread, stackPointer);
 
             auto const found = Publishing.find(thread);
 
-            if (found == Publishing.end() || found->second.empty() || found->second.back().Buffer == buffer)
+            if (found == Publishing.end() || found->second.empty() || found->second.back().SessionBuffer == buffer)
             {
                 return;
             }
 
             auto& publish = found->second.back();
 
-            publish.Buffer = buffer;
+            publish.SessionBuffer = buffer;
 
-            Markers.push_back(MarkerValue{ publish.Function,
-                                           buffer,
-                                           static_cast<uint64_t>(publish.Start.Sequence),
-                                           static_cast<uint64_t>(publish.Start.Steps),
-                                           publish.Instructions,
-                                           publish.Node,
-                                           thread });
+            PublishedEvents.push_back(PublishedEvent{ publish.Publisher,
+                                                      buffer,
+                                                      static_cast<uint64_t>(publish.Start.Sequence),
+                                                      static_cast<uint64_t>(publish.Start.Steps),
+                                                      publish.Instructions,
+                                                      publish.Node,
+                                                      thread });
 
-            if (Markers.size() >= MarkerChunk)
+            if (PublishedEvents.size() >= PublishedEventChunk)
             {
-                FlushMarkers();
+                FlushPublishedEvents();
             }
         }
 
-        void FlushMarkers()
+        void FlushPublishedEvents()
         {
-            if (LogMarkers == nullptr || Markers.empty())
+            if (LogPublishedEvents == nullptr || PublishedEvents.empty())
             {
                 return;
             }
 
-            LogMarkers(Markers.data(), static_cast<int32_t>(Markers.size()));
+            LogPublishedEvents(PublishedEvents.data(), static_cast<int32_t>(PublishedEvents.size()));
 
-            Markers.clear();
+            PublishedEvents.clear();
         }
     };
 
@@ -707,23 +707,23 @@ namespace
         }
     }
 
-    void TrackMarker(CallTree&                      tree,
-                     IThreadView const&             thread,
-                     uint32_t                       threadId,
-                     uint64_t                       target,
-                     uint64_t                       stackPointer,
-                     Position const&                position,
-                     ThreadClock const&             clock,
-                     std::vector<StackFrame> const& stack)
+    void TrackPublishedEvent(CallTree&                      tree,
+                             IThreadView const&             thread,
+                             uint32_t                       threadId,
+                             uint64_t                       target,
+                             uint64_t                       stackPointer,
+                             Position const&                position,
+                             ThreadClock const&             clock,
+                             std::vector<StackFrame> const& stack)
     {
-        auto const marker = tree.MarkerFunctions.find(target);
+        auto const function = tree.PublishedEventFunctions.find(target);
 
-        if (marker == tree.MarkerFunctions.end())
+        if (function == tree.PublishedEventFunctions.end())
         {
             return;
         }
 
-        if (marker->second == PublishMarker)
+        if (function->second == PublisherFunction)
         {
             tree.BeginPublish(threadId, PendingPublish{ target, stackPointer, position, clock.Instructions, NearestNode(stack), 0 });
         }
@@ -731,7 +731,7 @@ namespace
         {
             CROSS_PLATFORM_CONTEXT const context = thread.GetCrossPlatformContext();
 
-            tree.MarkWritten(threadId, stackPointer, context.Amd64Context.Rcx);
+            tree.RecordWrite(threadId, stackPointer, context.Amd64Context.Rcx);
         }
     }
 
@@ -763,9 +763,9 @@ namespace
         {
             Unwind(tree, stack, stackPointer, nullptr, 0, threadId, clock);
 
-            if (!tree.MarkerFunctions.empty())
+            if (!tree.PublishedEventFunctions.empty())
             {
-                TrackMarker(tree, *thread, threadId, target, stackPointer, position, clock, stack);
+                TrackPublishedEvent(tree, *thread, threadId, target, stackPointer, position, clock, stack);
             }
 
             if (!stack.empty() && stack.back().Node == ExcludedNode)
@@ -1147,26 +1147,26 @@ extern "C"
         return true;
     }
 
-    int32_t ReadCallTree(void*                 trace,
-                         const uint32_t*       threadIds,
-                         int32_t               threadCount,
-                         const uint64_t*       instanceMethods,
-                         int32_t               instanceMethodCount,
-                         const uint64_t*       excludedFunctions,
-                         int32_t               excludedFunctionCount,
-                         const PointerRead*    pointerReads,
-                         int32_t               pointerReadCount,
-                         const uint64_t*       publishFunctions,
-                         int32_t               publishFunctionCount,
-                         const uint64_t*       reserveFunctions,
-                         int32_t               reserveFunctionCount,
-                         CallChunkCallback     logCalls,
-                         CallSpanCallback      logSpans,
-                         PointerValueCallback  logPointerValues,
-                         MarkerCallback        logMarkers,
-                         ProgressCallback      progress,
-                         volatile int32_t*     cancel,
-                         void**                tree)
+    int32_t ReadCallTree(void*                  trace,
+                         const uint32_t*        threadIds,
+                         int32_t                threadCount,
+                         const uint64_t*        instanceMethods,
+                         int32_t                instanceMethodCount,
+                         const uint64_t*        excludedFunctions,
+                         int32_t                excludedFunctionCount,
+                         const PointerRead*     pointerReads,
+                         int32_t                pointerReadCount,
+                         const uint64_t*        publisherFunctions,
+                         int32_t                publisherFunctionCount,
+                         const uint64_t*        writerFunctions,
+                         int32_t                writerFunctionCount,
+                         CallChunkCallback      logCalls,
+                         CallSpanCallback       logSpans,
+                         PointerValueCallback   logPointerValues,
+                         PublishedEventCallback logPublishedEvents,
+                         ProgressCallback       progress,
+                         volatile int32_t*      cancel,
+                         void**                 tree)
     {
         *tree = nullptr;
 
@@ -1201,16 +1201,16 @@ extern "C"
 
         result->LogPointerValues = logPointerValues;
 
-        result->LogMarkers = logMarkers;
+        result->LogPublishedEvents = logPublishedEvents;
 
-        for (int32_t index = 0; index < publishFunctionCount && logMarkers != nullptr; index++)
+        for (int32_t index = 0; index < publisherFunctionCount && logPublishedEvents != nullptr; index++)
         {
-            result->MarkerFunctions[publishFunctions[index]] = PublishMarker;
+            result->PublishedEventFunctions[publisherFunctions[index]] = PublisherFunction;
         }
 
-        for (int32_t index = 0; index < reserveFunctionCount && logMarkers != nullptr; index++)
+        for (int32_t index = 0; index < writerFunctionCount && logPublishedEvents != nullptr; index++)
         {
-            result->MarkerFunctions[reserveFunctions[index]] = ReserveMarker;
+            result->PublishedEventFunctions[writerFunctions[index]] = WriterFunction;
         }
 
         auto const status = ReplayTrace(engine,
@@ -1245,11 +1245,11 @@ extern "C"
 
         result->FlushPointerValues();
 
-        result->FlushMarkers();
+        result->FlushPublishedEvents();
 
         result->Spans = {};
         result->PointerValues = {};
-        result->Markers = {};
+        result->PublishedEvents = {};
         result->Publishing.clear();
         result->Clocks.clear();
 

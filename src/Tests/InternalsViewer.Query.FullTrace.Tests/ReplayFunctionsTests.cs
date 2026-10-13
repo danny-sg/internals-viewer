@@ -1,31 +1,34 @@
-using InternalsViewer.Query.CallStack.Categories;
 using InternalsViewer.Query.FullTrace;
+using InternalsViewer.Query.FullTrace.Iterators;
+using InternalsViewer.Query.FullTrace.Locators;
+using InternalsViewer.Query.FullTrace.Memory;
+using InternalsViewer.Query.FullTrace.PublishedEvents;
+using InternalsViewer.Query.CallStack.Locators;
+using InternalsViewer.Query.FullTrace.Functions;
 
 namespace InternalsViewer.Query.FullTrace.Tests;
 
 [Trait("Category", "Unit")]
-public class ReplayFunctionResolverTests
+public class ReplayFunctionsTests
 {
-    [Theory]
-    [InlineData(SymbolCategory.XEventInfrastructure, null, true)]
-    [InlineData(SymbolCategory.XEventInfrastructure, "Profiling", true)]
-    [InlineData(SymbolCategory.Tracing, null, true)]
-    [InlineData(SymbolCategory.Tracing, "Profiling", false)]
-    [InlineData(SymbolCategory.QueryOperator, null, false)]
-    public void Tracing_Is_Left_Out_Of_The_Replay_Unless_It_Is_An_Iterator(SymbolCategory category, string? iterator, bool excluded)
-        => Assert.Equal(excluded, ReplayFunctionResolver.IsExcluded(category, iterator));
+    private const ulong Base = 0x7FF8_0000_0000;
 
-    [Theory]
-    [InlineData("CQScanProfileNew", "GetRow")]
-    [InlineData("CQScanProfileNew", "Open")]
-    [InlineData("CQScanLightProfileNew", "GetRow")]
-    public void A_Profile_Wrapper_Is_Tracing_But_Its_Calls_Stay_In_The_Replay(string className, string methodName)
+    [Fact]
+    public void Every_Function_Moves_To_The_Module_Base()
     {
-        var category = CategoryMappings.Default.Classify("sqlmin", className, methodName);
+        var relative = new ReplayFunctions([0x10],
+                                           [new InstanceMethod(0x50, 1)],
+                                           [new LocatorRead(0x60, 2, false, LocatorKind.Page)],
+                                           new PublishedEventFunctions([new EventPublisher(0x70, "latch_acquired")], [0x80]),
+                                           [new MemoryFunction(0x90, MemoryOperation.Allocate, 1, -1, 1)]);
 
-        var iterator = CategoryMappings.Default.ClassifyOperator("sqlmin", className, methodName).Iterator;
+        var rebased = relative.Rebase(Base);
 
-        Assert.Equal(SymbolCategory.Tracing, category);
-        Assert.False(ReplayFunctionResolver.IsExcluded(category, iterator));
+        Assert.Equal([Base + 0x10], rebased.ExcludedFunctions);
+        Assert.Equal([new InstanceMethod(Base + 0x50, 1)], rebased.InstanceMethods);
+        Assert.Equal(new LocatorRead(Base + 0x60, 2, false, LocatorKind.Page), rebased.LocatorReads[0]);
+        Assert.Equal([new EventPublisher(Base + 0x70, "latch_acquired")], rebased.PublishedEvents.Publishers);
+        Assert.Equal([Base + 0x80], rebased.PublishedEvents.Writers);
+        Assert.Equal(Base + 0x90, Assert.Single(rebased.MemoryFunctions).Address);
     }
 }

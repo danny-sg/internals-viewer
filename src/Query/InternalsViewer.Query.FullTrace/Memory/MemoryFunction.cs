@@ -1,5 +1,6 @@
 ﻿using InternalsViewer.Query.CallStack;
 using InternalsViewer.Query.FullTrace.CallLog;
+using InternalsViewer.Query.Helpers;
 
 namespace InternalsViewer.Query.FullTrace.Memory;
 
@@ -31,6 +32,9 @@ internal sealed record MemoryFunction(ulong Address,
         "CMemLargePageObj",
         "PageHeapMemObj"
     };
+
+    private static readonly HashSet<string>.AlternateLookup<ReadOnlySpan<char>> MemoryObjectLookup =
+        MemoryObjects.GetAlternateLookup<ReadOnlySpan<char>>();
 
     public bool IsPage { get; init; }
 
@@ -76,40 +80,58 @@ internal sealed record MemoryFunction(ulong Address,
         return bytes <= LargestAllocation / Unit ? bytes * Unit : 0;
     }
 
-    internal static MemoryFunction? Classify(ulong address, string symbol)
+    internal static MemoryFunction? Classify(ulong address, ReadOnlySpan<char> symbol)
     {
-        var separator = ResolvedCallstackFrameParser.FindClassMethodSeparator(symbol);
+        var separator = SymbolsHelper.FindClassMethodSeparator(symbol);
 
-        var className = separator >= 0 ? symbol[..separator] : null;
-
-        var methodName = separator >= 0 ? symbol[(separator + 2)..] : symbol;
-
-        return (className, methodName) switch
+        if (separator < 0)
         {
-            (null, "operator new" or "operator new[]")
-                => new MemoryFunction(address, MemoryOperation.Allocate, 0, -1, 1),
-            (null, "operator delete" or "operator delete[]")
-                => new MemoryFunction(address, MemoryOperation.Free, -1, 0, 1),
-            ("MemoryClerkInternal", "AllocatePages" or "AllocatePagesWithFailureMode" or "AllocateReservedPages")
-                => new MemoryFunction(address, MemoryOperation.Allocate, 1, -1, PageSize) { IsPage = true, CarriesClerk = true },
-            ("MemoryClerkInternal", "FreePages" or "FreeReservedPages")
-                => new MemoryFunction(address, MemoryOperation.Free, 2, 1, PageSize) { IsPage = true, CarriesClerk = true },
-            ("CQryMemManager", "AllocatePages")
-                => new MemoryFunction(address, MemoryOperation.Allocate, 1, -1, PageSize) { IsPage = true },
-            ("CQryMemManager", "FreePages")
-                => new MemoryFunction(address, MemoryOperation.Free, 2, 1, PageSize) { IsPage = true },
-            (MemoryObjectFactory, "CreateMemObject")
-                => new MemoryFunction(address, MemoryOperation.Create, -1, -1, 1) { IsObjectCall = true },
-            ("CHashWorkfilePartitionInstance", "PvAllocateHashBucketPage")
-                => new MemoryFunction(address, MemoryOperation.Allocate, -1, -1, PageSize),
-            ("CHashWorkfilePartitionInstance", "FreeHashBucketPage")
-                => new MemoryFunction(address, MemoryOperation.Free, -1, 1, 1),
-            ({ } owner, "Alloc") when IsMemoryObject(owner)
-                => new MemoryFunction(address, MemoryOperation.Allocate, 1, -1, 1) { IsObjectCall = true },
-            ({ } owner, "Realloc") when IsMemoryObject(owner)
-                => new MemoryFunction(address, MemoryOperation.Reallocate, 2, 1, 1) { IsObjectCall = true },
-            ({ } owner, "Free") when IsMemoryObject(owner)
-                => new MemoryFunction(address, MemoryOperation.Free, -1, 1, 1) { IsObjectCall = true },
+            return symbol switch
+            {
+                "operator new" or "operator new[]"
+                    => new MemoryFunction(address, MemoryOperation.Allocate, 0, -1, 1),
+                "operator delete" or "operator delete[]"
+                    => new MemoryFunction(address, MemoryOperation.Free, -1, 0, 1),
+                _ => null
+            };
+        }
+
+        var className = symbol[..separator];
+
+        var methodName = symbol[(separator + 2)..];
+
+        return className switch
+        {
+            "MemoryClerkInternal" => methodName switch
+            {
+                "AllocatePages" or "AllocatePagesWithFailureMode" or "AllocateReservedPages"
+                    => new MemoryFunction(address, MemoryOperation.Allocate, 1, -1, PageSize) { IsPage = true, CarriesClerk = true },
+                "FreePages" or "FreeReservedPages"
+                    => new MemoryFunction(address, MemoryOperation.Free, 2, 1, PageSize) { IsPage = true, CarriesClerk = true },
+                _ => null
+            },
+            "CQryMemManager" => methodName switch
+            {
+                "AllocatePages" => new MemoryFunction(address, MemoryOperation.Allocate, 1, -1, PageSize) { IsPage = true },
+                "FreePages" => new MemoryFunction(address, MemoryOperation.Free, 2, 1, PageSize) { IsPage = true },
+                _ => null
+            },
+            MemoryObjectFactory => methodName is "CreateMemObject"
+                ? new MemoryFunction(address, MemoryOperation.Create, -1, -1, 1) { IsObjectCall = true }
+                : null,
+            "CHashWorkfilePartitionInstance" => methodName switch
+            {
+                "PvAllocateHashBucketPage" => new MemoryFunction(address, MemoryOperation.Allocate, -1, -1, PageSize),
+                "FreeHashBucketPage" => new MemoryFunction(address, MemoryOperation.Free, -1, 1, 1),
+                _ => null
+            },
+            _ when IsMemoryObject(className) => methodName switch
+            {
+                "Alloc" => new MemoryFunction(address, MemoryOperation.Allocate, 1, -1, 1) { IsObjectCall = true },
+                "Realloc" => new MemoryFunction(address, MemoryOperation.Reallocate, 2, 1, 1) { IsObjectCall = true },
+                "Free" => new MemoryFunction(address, MemoryOperation.Free, -1, 1, 1) { IsObjectCall = true },
+                _ => null
+            },
             _ => null
         };
     }
@@ -166,6 +188,6 @@ internal sealed record MemoryFunction(ulong Address,
         _ => null
     };
 
-    private static bool IsMemoryObject(string className)
-        => className.StartsWith("CMemThread<", StringComparison.Ordinal) || MemoryObjects.Contains(className);
+    private static bool IsMemoryObject(ReadOnlySpan<char> className)
+        => className.StartsWith("CMemThread<", StringComparison.Ordinal) || MemoryObjectLookup.Contains(className);
 }

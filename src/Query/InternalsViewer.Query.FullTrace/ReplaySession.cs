@@ -1,10 +1,11 @@
 using System.Runtime.InteropServices;
 using System.Text;
 using InternalsViewer.Query.FullTrace.CallLog;
-using InternalsViewer.Query.FullTrace.Markers;
+using InternalsViewer.Query.FullTrace.PublishedEvents;
 using InternalsViewer.Query.FullTrace.Native;
 using InternalsViewer.Query.FullTrace.Timeline;
 using InternalsViewer.Query.Recording;
+using InternalsViewer.Query.FullTrace.Functions;
 
 namespace InternalsViewer.Query.FullTrace;
 
@@ -63,7 +64,7 @@ internal sealed class ReplaySession : IDisposable
         => Task.Run(() => Open(trace), cancellationToken);
 
     public async Task<ReplayResult> ReplayAsync(IReadOnlyCollection<uint> threadIds,
-                                                ReplayFunctionSet functions,
+                                                ReplayFunctions functions,
                                                 IProgress<double>? progress,
                                                 CancellationToken cancellationToken)
     {
@@ -102,7 +103,7 @@ internal sealed class ReplaySession : IDisposable
     }
 
     private ReplayResult Replay(uint[] threads,
-                                ReplayFunctionSet functions,
+                                ReplayFunctions functions,
                                 IProgress<double>? progress,
                                 CancellationToken cancellationToken)
     {
@@ -121,7 +122,7 @@ internal sealed class ReplaySession : IDisposable
             progress?.Report(percentages.Values.Average());
         };
 
-        var log = new FullTraceCallLog.Builder(functions.Locators);
+        var log = new FullTraceCallLog.Builder(functions.LocatorReads);
 
         var timeline = new FullTraceTimeline.Builder();
 
@@ -131,13 +132,13 @@ internal sealed class ReplaySession : IDisposable
 
         ReplayBridge.PointerValueCallback onPointerValues = log.AddLocators;
 
-        var markers = new MarkerLog();
+        var publishedEvents = new PublishedEventLog();
 
-        ReplayBridge.MarkerCallback onMarkers = markers.Add;
+        ReplayBridge.PublishedEventCallback onPublishedEvents = publishedEvents.Add;
 
-        ulong[] publishers = [.. functions.Publishers.Select(p => p.Address)];
+        ulong[] publishers = [.. functions.PublishedEvents.Publishers.Select(p => p.Address)];
 
-        PointerRead[] reads = [.. functions.Locators.Select(PointerRead.From)];
+        PointerRead[] reads = [.. functions.LocatorReads.Select(PointerRead.From)];
 
         ulong[] instanceMethods = [.. functions.InstanceMethods.Select(ReplayBridge.PackInstanceMethod)];
 
@@ -148,18 +149,18 @@ internal sealed class ReplaySession : IDisposable
                                                    threads.Length,
                                                    instanceMethods,
                                                    instanceMethods.Length,
-                                                   functions.Excluded,
-                                                   functions.Excluded.Length,
+                                                   functions.ExcludedFunctions,
+                                                   functions.ExcludedFunctions.Length,
                                                    reads,
                                                    reads.Length,
                                                    publishers,
                                                    publishers.Length,
-                                                   functions.Reserves,
-                                                   functions.Reserves.Length,
+                                                   functions.PublishedEvents.Writers,
+                                                   functions.PublishedEvents.Writers.Length,
                                                    onChunk,
                                                    onSpans,
                                                    onPointerValues,
-                                                   onMarkers,
+                                                   onPublishedEvents,
                                                    onProgress,
                                                    cancel,
                                                    out var tree);
@@ -171,7 +172,7 @@ internal sealed class ReplaySession : IDisposable
 
             GC.KeepAlive(onPointerValues);
 
-            GC.KeepAlive(onMarkers);
+            GC.KeepAlive(onPublishedEvents);
 
             GC.KeepAlive(onProgress);
 
@@ -188,7 +189,7 @@ internal sealed class ReplaySession : IDisposable
 
                 cancellationToken.ThrowIfCancellationRequested();
 
-                return new ReplayResult(nodes, Modules, log.Build(), timeline.Build(nodes), markers.Build());
+                return new ReplayResult(nodes, Modules, log.Build(), timeline.Build(nodes), publishedEvents.Build());
             }
             finally
             {

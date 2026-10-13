@@ -2,6 +2,7 @@
 using InternalsViewer.Query.CallStack.Arguments;
 using InternalsViewer.Query.CallStack.Dia;
 using InternalsViewer.Query.CallStack.Symbols;
+using InternalsViewer.Query.Helpers;
 
 namespace InternalsViewer.Query.CallStack;
 
@@ -132,7 +133,7 @@ public sealed class CallstackResolver(string symbolsPath) : IDisposable
                     continue;
                 }
 
-                var separator = ResolvedCallstackFrameParser.FindClassMethodSeparator(detail.Name);
+                var separator = SymbolsHelper.FindClassMethodSeparator(detail.Name);
 
                 var className = separator > 0 ? detail.Name[..separator] : string.Empty;
 
@@ -186,7 +187,7 @@ public sealed class CallstackResolver(string symbolsPath) : IDisposable
                            .SelectMany(resolver.EnumerateSymbolsAtRva)
                            .Where(s => s.Name.StartsWith(prefix, StringComparison.Ordinal)
                                        && !s.Name.Contains('`')
-                                       && ResolvedCallstackFrameParser.FindClassMethodSeparator(s.Name) == className.Length)
+                                       && SymbolsHelper.FindClassMethodSeparator(s.Name) == className.Length)
                            .Select(s => new ClassMember(frame.Module,
                                                         s.Name[prefix.Length..],
                                                         RemoveScope(s.Signature, prefix),
@@ -252,7 +253,7 @@ public sealed class CallstackResolver(string symbolsPath) : IDisposable
                 continue;
             }
 
-            var separator = ResolvedCallstackFrameParser.FindClassMethodSeparator(detail.Name);
+            var separator = SymbolsHelper.FindClassMethodSeparator(detail.Name);
 
             var scoped = separator > 0 ? RemoveScope(signature, $"{detail.Name[..separator]}::") : signature;
 

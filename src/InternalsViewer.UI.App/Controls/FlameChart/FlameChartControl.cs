@@ -198,7 +198,7 @@ public sealed partial class FlameChartControl : Grid, IDisposable
 
     private readonly Dictionary<string, SKColor> _parsedColours = new(StringComparer.OrdinalIgnoreCase);
 
-    private readonly Dictionary<FlameHit, FullTraceInUseCurve> _inUseCurves = [];
+    private readonly Dictionary<FlameHit, MemoryInUseCurve> _inUseCurves = [];
 
     private FullTraceTimeline? _timeline;
 

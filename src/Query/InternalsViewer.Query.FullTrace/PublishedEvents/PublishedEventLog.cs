@@ -2,15 +2,15 @@ using System.Buffers;
 using System.Runtime.InteropServices;
 using InternalsViewer.Query.FullTrace.Native;
 
-namespace InternalsViewer.Query.FullTrace.Markers;
+namespace InternalsViewer.Query.FullTrace.PublishedEvents;
 
-internal sealed class MarkerLog
+internal sealed class PublishedEventLog
 {
-    private List<EventMarker> Markers { get; } = [];
+    private List<PublishedEvent> PublishedEvents { get; } = [];
 
     public void Add(IntPtr values, int count)
     {
-        var size = count * Marshal.SizeOf<EventMarker>();
+        var size = count * Marshal.SizeOf<PublishedEvent>();
 
         var buffer = ArrayPool<byte>.Shared.Rent(size);
 
@@ -18,7 +18,7 @@ internal sealed class MarkerLog
         {
             Marshal.Copy(values, buffer, 0, size);
 
-            Markers.AddRange(MemoryMarshal.Cast<byte, EventMarker>(buffer.AsSpan(0, size)));
+            PublishedEvents.AddRange(MemoryMarshal.Cast<byte, PublishedEvent>(buffer.AsSpan(0, size)));
         }
         finally
         {
@@ -26,5 +26,5 @@ internal sealed class MarkerLog
         }
     }
 
-    public EventMarker[] Build() => [.. Markers];
+    public PublishedEvent[] Build() => [.. PublishedEvents];
 }
