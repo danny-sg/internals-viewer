@@ -35,6 +35,10 @@ public sealed partial class QueryFlameChartTabView : UserControl, IDocumentComma
 
     private ToggleButton? _searchToggle;
 
+    private ToggleButton? _lockToggle;
+
+    private ToggleButton? _memoryToggle;
+
     private Button? _playButton;
 
     public QueryFlameChartTabView()
@@ -47,9 +51,13 @@ public sealed partial class QueryFlameChartTabView : UserControl, IDocumentComma
 
         FlameChart.SelectionCleared += OnSelectionCleared;
 
+        FlameChart.CallStackOpenRequested += OnCallStackOpenRequested;
+
         FlameChart.PlanNodeSelected += OnPlanNodeSelected;
 
         FlameChart.PlayStateChanged += OnPlayStateChanged;
+
+        FlameChart.LockChanged += OnLockChanged;
 
         SearchBar.SearchTextChanged += OnSearchTextChanged;
 
@@ -92,10 +100,12 @@ public sealed partial class QueryFlameChartTabView : UserControl, IDocumentComma
                                             "Show Plan Operators",
                                             OnOperatorsClick));
 
-        commands.Children.Add(CommandToggle(Label("Memory"),
-                                            FlameChart.ShowMemory,
-                                            "Display allocation/in-use memory",
-                                            OnMemoryClick));
+        _memoryToggle = CommandToggle(Label("Memory"),
+                                      Settings.FlameChartShowMemory,
+                                      "Display allocation/in-use memory",
+                                      OnMemoryClick);
+
+        commands.Children.Add(_memoryToggle);
 
         _playButton = CommandButton(new FontIcon { Glyph = FlameChart.IsPlaying ? PauseGlyph : PlayGlyph, FontSize = 12 },
                                     FlameChart.IsPlaying ? "Pause" : "Play",
@@ -111,10 +121,12 @@ public sealed partial class QueryFlameChartTabView : UserControl, IDocumentComma
                                             "Next Frame",
                                             OnStepForwardClick));
 
-        commands.Children.Add(CommandToggle(new FontIcon { Glyph = FlameChart.IsLocked ? LockedGlyph : UnlockedGlyph, FontSize = 12 },
-                                            FlameChart.IsLocked,
-                                            "Lock chart to selection",
-                                            OnLockClick));
+        _lockToggle = CommandToggle(new FontIcon { Glyph = FlameChart.IsLocked ? LockedGlyph : UnlockedGlyph, FontSize = 12 },
+                                    FlameChart.IsLocked,
+                                    "Lock chart to selection",
+                                    OnLockClick);
+
+        commands.Children.Add(_lockToggle);
 
         _searchToggle = CommandToggle(new FontIcon { Glyph = SearchGlyph, FontSize = 12 },
                                       false,
@@ -134,9 +146,13 @@ public sealed partial class QueryFlameChartTabView : UserControl, IDocumentComma
 
         FlameChart.SelectionCleared -= OnSelectionCleared;
 
+        FlameChart.CallStackOpenRequested -= OnCallStackOpenRequested;
+
         FlameChart.PlanNodeSelected -= OnPlanNodeSelected;
 
         FlameChart.PlayStateChanged -= OnPlayStateChanged;
+
+        FlameChart.LockChanged -= OnLockChanged;
 
         SearchBar.SearchTextChanged -= OnSearchTextChanged;
 
@@ -213,7 +229,7 @@ public sealed partial class QueryFlameChartTabView : UserControl, IDocumentComma
         _positionToggle?.IsChecked = axis == TraceTimelineAxis.Position;
     }
 
-    private void OnMemoryClick(object sender, RoutedEventArgs e) => FlameChart.ShowMemory = IsChecked(sender);
+    private void OnMemoryClick(object sender, RoutedEventArgs e) => Settings.FlameChartShowMemory = IsChecked(sender);
 
     private void OnOperatorsClick(object sender, RoutedEventArgs e) => FlameChart.ShowOperators = IsChecked(sender);
 
@@ -235,14 +251,18 @@ public sealed partial class QueryFlameChartTabView : UserControl, IDocumentComma
 
     private void OnStepForwardClick(object sender, RoutedEventArgs e) => FlameChart.StepPlayhead(forward: true);
 
-    private void OnLockClick(object sender, RoutedEventArgs e)
-    {
-        FlameChart.IsLocked = IsChecked(sender);
+    private void OnLockClick(object sender, RoutedEventArgs e) => FlameChart.IsLocked = IsChecked(sender);
 
-        if (sender is ToggleButton { Content: FontIcon icon })
+    private void OnLockChanged(bool isLocked)
+    {
+        if (_lockToggle is not { Content: FontIcon icon } toggle)
         {
-            icon.Glyph = FlameChart.IsLocked ? LockedGlyph : UnlockedGlyph;
+            return;
         }
+
+        toggle.IsChecked = isLocked;
+
+        icon.Glyph = isLocked ? LockedGlyph : UnlockedGlyph;
     }
 
     private static bool IsChecked(object sender) => sender is ToggleButton { IsChecked: true };
@@ -279,6 +299,8 @@ public sealed partial class QueryFlameChartTabView : UserControl, IDocumentComma
 
     private void OnCallSelected(CallStackNode node, int call) => ViewModel?.NavigateToCall(node, call);
 
+    private void OnCallStackOpenRequested(CallStackNode? node, int call) => ViewModel?.OpenCallStack(node, call);
+
     private void OnSelectionCleared()
     {
         if (ViewModel is not { } viewModel)
@@ -305,6 +327,10 @@ public sealed partial class QueryFlameChartTabView : UserControl, IDocumentComma
         else if (e.PropertyName == nameof(SettingsViewModel.CallTreePrunedCategories))
         {
             FlameChart.PrunedCategories = SettingsViewModel.SplitCategories(Settings.CallTreePrunedCategories);
+        }
+        else if (e.PropertyName == nameof(SettingsViewModel.FlameChartShowMemory) && _memoryToggle is { } toggle)
+        {
+            toggle.IsChecked = Settings.FlameChartShowMemory;
         }
     }
 }

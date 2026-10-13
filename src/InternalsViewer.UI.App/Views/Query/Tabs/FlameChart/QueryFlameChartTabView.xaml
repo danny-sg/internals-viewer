@@ -27,6 +27,8 @@
                                       Background="{ThemeResource LayerFillColorDefaultBrush}"
                                       Timeline="{x:Bind ViewModel.FlameChart, Mode=OneWay}"
                                       GrantedMemory="{x:Bind ViewModel.GrantedMemory, Mode=OneWay}"
+                                      ShowMemory="{x:Bind Settings.FlameChartShowMemory, Mode=OneWay}"
+                                      MemoryMode="{x:Bind Settings.FlameChartMemoryMode, Mode=TwoWay}"
                                       ColourProvider="{x:Bind ViewModel.EventColours, Mode=OneWay}"
                                       SelectedNode="{x:Bind ViewModel.SelectedCallNode, Mode=OneWay}"
                                       SelectedCall="{x:Bind ViewModel.Arguments.SelectedCallReference, Mode=OneWay}"

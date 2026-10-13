@@ -604,6 +604,8 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
     private List<AllocationLayer> ObjectLayers { get; set; }
 
+    private (CallStackNode Node, int Call)? PendingCallNavigation { get; set; }
+
     public void NavigateToEvent(EngineEvent engineEvent)
     {
         SelectedEvent = engineEvent;
@@ -747,6 +749,36 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
         {
             SelectedEvent = op;
         }
+    }
+
+    public void OpenCallStack(CallStackNode? node, int call)
+    {
+        Layout.ShowCallStack();
+
+        if (node is null)
+        {
+            return;
+        }
+
+        if (CallNavigationRequested is null)
+        {
+            SelectedCallNode = node;
+
+            PendingCallNavigation = (node, call);
+
+            return;
+        }
+
+        NavigateToCall(node, call);
+    }
+
+    public (CallStackNode Node, int Call)? TakePendingCallNavigation()
+    {
+        var pending = PendingCallNavigation;
+
+        PendingCallNavigation = null;
+
+        return pending;
     }
 
     /// <summary>
@@ -2265,6 +2297,8 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
         FlameChart = null;
 
         SelectedCallNode = null;
+
+        PendingCallNavigation = null;
 
         IsError = false;
         Messages.Clear();

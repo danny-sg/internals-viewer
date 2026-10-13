@@ -354,6 +354,7 @@ public sealed partial class FlameChartControl : Grid, IDisposable
         Children.Add(_memoryModeButton);
 
         _overlay.PointerPressed += OnPointerPressed;
+        _overlay.ContextRequested += OnContextRequested;
 
         _overlay.KeyDown += OnKeyDown;
         _overlay.PointerMoved += OnPointerMoved;
@@ -371,6 +372,10 @@ public sealed partial class FlameChartControl : Grid, IDisposable
     public event Action<CallStackNode, int>? CallSelected;
 
     public event Action? SelectionCleared;
+
+    public event Action<CallStackNode?, int>? CallStackOpenRequested;
+
+    public event Action<bool>? LockChanged;
 
     private double FullStart => _fitStart;
 
@@ -466,6 +471,7 @@ public sealed partial class FlameChartControl : Grid, IDisposable
         _verticalScrollBar.Scroll -= OnVerticalScroll;
 
         _overlay.PointerPressed -= OnPointerPressed;
+        _overlay.ContextRequested -= OnContextRequested;
 
         _overlay.KeyDown -= OnKeyDown;
         _overlay.PointerMoved -= OnPointerMoved;
@@ -1133,6 +1139,8 @@ public sealed partial class FlameChartControl : Grid, IDisposable
 
             control.Redraw();
         }
+
+        control.LockChanged?.Invoke(control.IsLocked);
     }
 
     private static void OnSelectedCallChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
@@ -1149,7 +1157,7 @@ public sealed partial class FlameChartControl : Grid, IDisposable
         {
             control.FindSelectedCall(bringIntoView: true);
 
-            if (reference.IsChosen && control._selected is null && control._root is not null)
+            if (reference.IsChosen && control._selected is null && control._root is not null && !control.IsLocked)
             {
                 control.SetRoot(null);
 

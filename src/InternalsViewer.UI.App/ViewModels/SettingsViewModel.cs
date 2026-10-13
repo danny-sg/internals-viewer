@@ -4,6 +4,7 @@ using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using InternalsViewer.Query.XEvents;
+using InternalsViewer.UI.App.Controls.FlameChart;
 using InternalsViewer.UI.App.Services;
 using InternalsViewer.Query.FullTrace.Recording;
 
@@ -32,9 +33,12 @@ public partial class SettingsViewModel(SettingsService settingsService, TraceDir
     private const string ShowTimeTravelWarningKey = "ShowTimeTravelWarning";
     private const string CallTreeHiddenCategoriesKey = "CallTreeHiddenCategories";
     private const string CallTreePrunedCategoriesKey = "CallTreePrunedCategories";
+    private const string FlameChartShowMemoryKey = "FlameChartShowMemory";
+    private const string FlameChartMemoryModeKey = "FlameChartMemoryMode";
 
     private const string DefaultCallTreeHiddenCategories =
-        "Compilation;Execution Tree;Expression Evaluation;Metadata;Networking;Query Binding;Query Store;Security;Tracing";
+        "Compilation;Execution Tree;Expression Evaluation;Metadata;Networking;Query Binding;Query Store;Security;Tracing;" +
+        "Transaction Management";
 
     private const double DefaultMaxTraceSizeMb = 150;
 
@@ -79,6 +83,12 @@ public partial class SettingsViewModel(SettingsService settingsService, TraceDir
 
     [ObservableProperty]
     private string _callTreePrunedCategories = string.Empty;
+
+    [ObservableProperty]
+    private bool _flameChartShowMemory;
+
+    [ObservableProperty]
+    private FlameChartMemoryMode _flameChartMemoryMode;
 
     [ObservableProperty]
     private string _memoryUsage = string.Empty;
@@ -156,6 +166,11 @@ public partial class SettingsViewModel(SettingsService settingsService, TraceDir
                                    ?? DefaultCallTreeHiddenCategories;
 
         CallTreePrunedCategories = await SettingsService.ReadSettingAsync<string>(CallTreePrunedCategoriesKey) ?? string.Empty;
+
+        FlameChartShowMemory = await SettingsService.ReadSettingAsync<bool?>(FlameChartShowMemoryKey) ?? false;
+
+        FlameChartMemoryMode = await SettingsService.ReadSettingAsync<FlameChartMemoryMode?>(FlameChartMemoryModeKey)
+                               ?? FlameChartMemoryMode.Allocated;
     }
 
     /// <summary>
@@ -197,6 +212,16 @@ public partial class SettingsViewModel(SettingsService settingsService, TraceDir
     partial void OnCallTreePrunedCategoriesChanged(string value)
     {
         _ = SettingsService.SaveSettingAsync(CallTreePrunedCategoriesKey, value);
+    }
+
+    partial void OnFlameChartShowMemoryChanged(bool value)
+    {
+        _ = SettingsService.SaveSettingAsync(FlameChartShowMemoryKey, value);
+    }
+
+    partial void OnFlameChartMemoryModeChanged(FlameChartMemoryMode value)
+    {
+        _ = SettingsService.SaveSettingAsync(FlameChartMemoryModeKey, value);
     }
 
     partial void OnUseCustomTraceDirectoryChanged(bool value)

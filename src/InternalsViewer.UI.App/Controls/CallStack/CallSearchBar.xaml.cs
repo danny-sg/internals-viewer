@@ -29,11 +29,7 @@ public sealed partial class CallSearchBar : UserControl
         set => SetValue(CallStackProperty, value);
     }
 
-    private HashSet<string> _hiddenCategories = new(StringComparer.Ordinal);
-
     private string? _hiddenCategoriesSetting;
-
-    private HashSet<string> _prunedCategories = new(StringComparer.Ordinal);
 
     private string? _prunedCategoriesSetting;
 
@@ -66,12 +62,12 @@ public sealed partial class CallSearchBar : UserControl
             {
                 _hiddenCategoriesSetting = setting;
 
-                _hiddenCategories = SettingsViewModel.SplitCategories(setting);
+                field = SettingsViewModel.SplitCategories(setting);
             }
 
-            return _hiddenCategories;
+            return field;
         }
-    }
+    } = new(StringComparer.Ordinal);
 
     private HashSet<string> PrunedCategories
     {
@@ -83,12 +79,12 @@ public sealed partial class CallSearchBar : UserControl
             {
                 _prunedCategoriesSetting = setting;
 
-                _prunedCategories = SettingsViewModel.SplitCategories(setting);
+                field = SettingsViewModel.SplitCategories(setting);
             }
 
-            return _prunedCategories;
+            return field;
         }
-    }
+    } = new(StringComparer.Ordinal);
 
     public void FocusSearch() => SearchBox.Focus(FocusState.Programmatic);
 

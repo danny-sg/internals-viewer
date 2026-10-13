@@ -1,9 +1,12 @@
 using System;
 using System.Collections.Generic;
+using InternalsViewer.Query.CallStack;
 using InternalsViewer.Query.FullTrace.Timeline;
 using InternalsViewer.Query.FullTrace.Timeline.Enums;
 using InternalsViewer.UI.App.Helpers;
 using Microsoft.UI.Input;
+using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Controls.Primitives;
 using Microsoft.UI.Xaml.Input;
 using Windows.Foundation;
 using Windows.System;
@@ -575,6 +578,87 @@ public sealed partial class FlameChartControl
         }
 
         return hit with { Index = index };
+    }
+
+    private void OnContextRequested(UIElement sender, ContextRequestedEventArgs e)
+    {
+        if (_timeline is null)
+        {
+            return;
+        }
+
+        HideToolTip();
+
+        var hasPosition = e.TryGetPosition(_overlay, out var position);
+
+        var hit = hasPosition ? HitTest(position) : _selected;
+
+        CallStackNode? node = null;
+
+        var call = -1;
+
+        if (hit is { } target && SpanOf(target) is { } span)
+        {
+            node = _visible?.NodeOf(span.Node);
+            call = span.Call;
+        }
+
+        var flyout = new MenuFlyout();
+
+        if (node is not null)
+        {
+            var scope = new MenuFlyoutItem { Text = "Scope" };
+
+            scope.Click += (_, _) => SetRoot(node);
+
+            var scopeAndLock = new MenuFlyoutItem { Text = "Scope and Lock" };
+
+            scopeAndLock.Click += (_, _) =>
+            {
+                SetRoot(node);
+
+                IsLocked = true;
+            };
+
+            flyout.Items.Add(scope);
+            flyout.Items.Add(scopeAndLock);
+        }
+
+        if (_root is not null)
+        {
+            var clearScope = new MenuFlyoutItem { Text = "Clear Scope" };
+
+            clearScope.Click += (_, _) =>
+            {
+                SetRoot(null);
+
+                IsLocked = false;
+            };
+
+            flyout.Items.Add(clearScope);
+        }
+
+        if (flyout.Items.Count > 0)
+        {
+            flyout.Items.Add(new MenuFlyoutSeparator());
+        }
+
+        var openCallStack = new MenuFlyoutItem { Text = "Open Call Stack" };
+
+        openCallStack.Click += (_, _) => CallStackOpenRequested?.Invoke(node, call);
+
+        flyout.Items.Add(openCallStack);
+
+        if (hasPosition)
+        {
+            flyout.ShowAt(_overlay, new FlyoutShowOptions { Position = position });
+        }
+        else
+        {
+            flyout.ShowAt(_overlay);
+        }
+
+        e.Handled = true;
     }
 
     private void Select(FlameHit? hit)

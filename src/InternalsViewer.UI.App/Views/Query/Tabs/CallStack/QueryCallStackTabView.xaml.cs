@@ -1307,6 +1307,11 @@ public sealed partial class QueryCallStackTabView : UserControl, IDocumentComman
         BuildSymbolTree();
 
         ApplyFocus(_viewModel?.SelectedEvent);
+
+        if (_viewModel?.TakePendingCallNavigation() is { } pending)
+        {
+            OnCallNavigationRequested(pending.Node, pending.Call);
+        }
     }
 
     private void OnPropertyChanged(object? sender, PropertyChangedEventArgs e)
