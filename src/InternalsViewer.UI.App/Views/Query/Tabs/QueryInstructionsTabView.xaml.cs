@@ -34,7 +34,7 @@ public sealed partial class QueryInstructionsTabView : UserControl
         ["Timeline"] = q => q.Layout.IsTimelineVisible = true,
         ["FlameChart"] = q =>
         {
-            if (q.Layout.IsFullTrace)
+            if (q.Layout.IsTrace)
             {
                 q.Layout.IsFlameChartVisible = true;
             }

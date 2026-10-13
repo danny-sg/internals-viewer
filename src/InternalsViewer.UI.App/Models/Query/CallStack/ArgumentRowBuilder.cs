@@ -23,7 +23,7 @@ public static class ArgumentRowBuilder
 
     private static readonly Color ReturnTint = Color.FromArgb(0x12, 0x4C, 0xA3, 0xE0);
 
-    public static QueryResultSet Table(ArgumentLayout layout, IReadOnlyList<FullTraceArgumentCall> calls)
+    public static QueryResultSet Table(ArgumentLayout layout, IReadOnlyList<TraceArgumentCall> calls)
     {
         var slots = CapturedSlots(layout);
 
@@ -61,7 +61,7 @@ public static class ArgumentRowBuilder
         return new QueryResultSet { Columns = columns, Rows = rows };
     }
 
-    public static ArgumentCell CellAt(ArgumentLayout layout, FullTraceArgumentCall call, int ordinal)
+    public static ArgumentCell CellAt(ArgumentLayout layout, TraceArgumentCall call, int ordinal)
     {
         var slots = CapturedSlots(layout);
 
@@ -80,14 +80,14 @@ public static class ArgumentRowBuilder
         return default;
     }
 
-    private static Locator? AddressAt(FullTraceArgumentCall call, int register)
+    private static Locator? AddressAt(TraceArgumentCall call, int register)
         => call.GetLocator(register) is { Kind: not LocatorKind.Referenced } locator ? locator : null;
 
-    private static List<ArgumentSlot> CapturedSlots(ArgumentLayout layout) => [.. layout.Slots.Where(FullTraceArgumentCall.IsCaptured)];
+    private static List<ArgumentSlot> CapturedSlots(ArgumentLayout layout) => [.. layout.Slots.Where(TraceArgumentCall.IsCaptured)];
 
-    private static bool HasReturn(string returnType) => returnType != "void" && FullTraceArgumentCall.IsReturnCaptured(returnType);
+    private static bool HasReturn(string returnType) => returnType != "void" && TraceArgumentCall.IsReturnCaptured(returnType);
 
-    private static object?[] Values(List<ArgumentSlot> slots, string? returnType, FullTraceArgumentCall call, int index)
+    private static object?[] Values(List<ArgumentSlot> slots, string? returnType, TraceArgumentCall call, int index)
     {
         var values = new List<object?> { (long)index + 1, call.ThreadId };
 

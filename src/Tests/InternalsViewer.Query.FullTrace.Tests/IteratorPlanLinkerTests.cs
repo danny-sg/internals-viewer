@@ -275,7 +275,7 @@ public class IteratorPlanLinkerTests
 
         public IteratorPlanLink Link(params ExecutionOperatorEvent[] operators)
         {
-            var builder = new FullTraceCallLog.Builder();
+            var builder = new TraceCallLog.Builder();
 
             foreach (var ((address, instance), rows) in Rows)
             {
@@ -350,11 +350,11 @@ public class IteratorPlanLinkerTests
 
         private static ulong[] Chunk(List<ulong[]> rows)
         {
-            var columns = new ulong[rows.Count * FullTraceArgumentCall.ValueCount];
+            var columns = new ulong[rows.Count * TraceArgumentCall.ValueCount];
 
             for (var call = 0; call < rows.Count; call++)
             {
-                for (var value = 0; value < FullTraceArgumentCall.ValueCount; value++)
+                for (var value = 0; value < TraceArgumentCall.ValueCount; value++)
                 {
                     columns[value * rows.Count + call] = rows[call][value];
                 }

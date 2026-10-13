@@ -25,17 +25,17 @@ public class FunctionClassificationTests
 
         var same = MemoryFunction.Classify(0x10, "CMemObj::Alloc");
 
-        Assert.Equal(function, Fold(Classification(memory: function), Classification(memory: same)).Memory);
+        Assert.Equal(function, Fold(Classification(memory: function), Classification(memory: same)).MemoryFunction);
 
-        Assert.Null(Fold(Classification(memory: function), Classification()).Memory);
+        Assert.Null(Fold(Classification(memory: function), Classification()).MemoryFunction);
     }
 
     [Fact]
     public void Excludes_Only_When_Every_Symbol_Is_Excluded()
     {
-        Assert.True(Fold(Classification(excluded: true), Classification(excluded: true)).Excluded);
+        Assert.True(Fold(Classification(excluded: true), Classification(excluded: true)).IsExcluded);
 
-        Assert.False(Fold(Classification(excluded: true), Classification()).Excluded);
+        Assert.False(Fold(Classification(excluded: true), Classification()).IsExcluded);
     }
 
     [Fact]

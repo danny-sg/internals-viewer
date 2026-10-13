@@ -7,8 +7,8 @@ namespace InternalsViewer.Query.FullTrace.Iterators;
 
 internal static class IteratorLifetimeBuilder
 {
-    public static IReadOnlyList<FullTraceOperatorLifetime> Build(FullTraceTimeline timeline,
-                                                                 IReadOnlyList<ExecutionOperatorEvent> operators)
+    public static IReadOnlyList<TraceOperatorLifetime> Build(TraceTimeline timeline,
+                                                             IReadOnlyList<ExecutionOperatorEvent> operators)
     {
         var owners = new Dictionary<ulong, ExecutionOperatorEvent>();
 
@@ -20,7 +20,7 @@ internal static class IteratorLifetimeBuilder
             }
         }
 
-        var lifetimes = new List<FullTraceOperatorLifetime>();
+        var lifetimes = new List<TraceOperatorLifetime>();
 
         if (owners.Count == 0)
         {
@@ -50,7 +50,7 @@ internal static class IteratorLifetimeBuilder
                 calls[owner] = spans;
             }
 
-            spans.Add(new InstanceCall(span.Span(FullTraceTimelineAxis.Position), span.Span(FullTraceTimelineAxis.Instructions)));
+            spans.Add(new InstanceCall(span.Span(TraceTimelineAxis.Position), span.Span(TraceTimelineAxis.Instructions)));
         }
 
         foreach (var thread in timeline.Threads)
@@ -68,24 +68,24 @@ internal static class IteratorLifetimeBuilder
             {
                 var (owner, (positions, instructions)) = merged[index];
 
-                lifetimes.Add(new FullTraceOperatorLifetime(thread.ThreadId,
-                                                            owner,
-                                                            positions[0].Node,
-                                                            positions,
-                                                            instructions,
-                                                            curves[index]));
+                lifetimes.Add(new TraceOperatorLifetime(thread.ThreadId,
+                                                        owner,
+                                                        positions[0].Node,
+                                                        positions,
+                                                        instructions,
+                                                        curves[index]));
             }
         }
 
         return lifetimes;
     }
 
-    private static (FullTraceTimelineSpan[] Positions, FullTraceTimelineSpan[] Instructions) Merged(List<InstanceCall> calls)
+    private static (TraceTimelineSpan[] Positions, TraceTimelineSpan[] Instructions) Merged(List<InstanceCall> calls)
     {
         var outermost = Outermost.Of(calls, c => c.Position.Start, c => c.Position.End);
 
         return ([.. outermost.Select(c => c.Position)], [.. outermost.Select(c => c.Instructions)]);
     }
 
-    private readonly record struct InstanceCall(FullTraceTimelineSpan Position, FullTraceTimelineSpan Instructions);
+    private readonly record struct InstanceCall(TraceTimelineSpan Position, TraceTimelineSpan Instructions);
 }

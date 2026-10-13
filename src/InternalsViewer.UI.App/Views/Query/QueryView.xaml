@@ -72,7 +72,7 @@
                                    IsEnabled="{x:Bind ViewModel.Layout.CanShowEventViews, Mode=OneWay}"/>
                                 <ToggleMenuFlyoutItem Text="Flame Chart"
                                    IsChecked="{x:Bind ViewModel.Layout.IsFlameChartVisible, Mode=TwoWay}"
-                                   IsEnabled="{x:Bind ViewModel.Layout.IsFullTrace, Mode=OneWay}"/>
+                                   IsEnabled="{x:Bind ViewModel.Layout.IsTrace, Mode=OneWay}"/>
                                 <ToggleMenuFlyoutItem Text="Simulation"
                                    IsChecked="{x:Bind ViewModel.IsSimulationVisible, Mode=TwoWay}"/>
                                 <MenuFlyoutSeparator/>
@@ -141,7 +141,7 @@
                                                       IsChecked="{x:Bind ViewModel.QueryOptions.RecordTimeTravel, Mode=OneWay}"
                                                       Click="OnRecordTimeTravelClick"/>
                                 <ToggleMenuFlyoutItem Text="Record Events"
-                                                      IsChecked="{x:Bind ViewModel.QueryOptions.RecordFullTraceEvents, Mode=TwoWay}"
+                                                      IsChecked="{x:Bind ViewModel.QueryOptions.RecordTraceEvents, Mode=TwoWay}"
                                                       IsEnabled="{x:Bind ViewModel.QueryOptions.RecordTimeTravel, Mode=OneWay}"/>
                                 <MenuFlyoutSeparator/>
                                 <MenuFlyoutItem Text="Search symbols"

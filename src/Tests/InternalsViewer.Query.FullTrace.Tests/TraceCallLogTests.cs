@@ -8,7 +8,7 @@ using InternalsViewer.Query.CallStack.Locators;
 namespace InternalsViewer.Query.FullTrace.Tests;
 
 [Trait("Category", "Unit")]
-public class FullTraceCallLogTests
+public class TraceCallLogTests
 {
     private const ulong ReturnedFlag = 1ul << 32;
 
@@ -17,7 +17,7 @@ public class FullTraceCallLogTests
     [Fact]
     public void The_Calls_Of_One_Function_On_One_Instance_Are_Read_Back_In_Order()
     {
-        var builder = new FullTraceCallLog.Builder();
+        var builder = new TraceCallLog.Builder();
 
         builder.Add(0x1000, 0, Chunk(Row(7, rcx: 0xA0)), 1);
         builder.Add(0x2000, 0xB0, Chunk(Row(8, rcx: 0xB0), Row(9, rcx: 0xB0)), 2);
@@ -32,7 +32,7 @@ public class FullTraceCallLogTests
     [Fact]
     public void Calls_Logged_In_Several_Chunks_Read_As_One_List()
     {
-        var builder = new FullTraceCallLog.Builder();
+        var builder = new TraceCallLog.Builder();
 
         builder.Add(0x1000, 0, Chunk(Row(1), Row(2)), 2);
         builder.Add(0x1000, 0, Chunk(Row(3)), 1);
@@ -48,7 +48,7 @@ public class FullTraceCallLogTests
     [Fact]
     public void A_Function_With_No_Logged_Calls_Reads_As_Nothing()
     {
-        var builder = new FullTraceCallLog.Builder();
+        var builder = new TraceCallLog.Builder();
 
         builder.Add(0x1000, 0, Chunk(Row(7, rcx: 0xA0)), 1);
 
@@ -58,7 +58,7 @@ public class FullTraceCallLogTests
     [Fact]
     public void Repeated_Values_Compress_Well()
     {
-        var builder = new FullTraceCallLog.Builder();
+        var builder = new TraceCallLog.Builder();
 
         var calls = 1_000;
 
@@ -67,13 +67,13 @@ public class FullTraceCallLogTests
         var log = builder.Build();
 
         Assert.Equal(calls, log.Calls);
-        Assert.True(log.Size < calls * FullTraceArgumentCall.ValueCount * sizeof(ulong) / 10);
+        Assert.True(log.Size < calls * TraceArgumentCall.ValueCount * sizeof(ulong) / 10);
     }
 
     [Fact]
     public async Task A_Value_Is_Found_In_The_Calls_Of_Every_Function()
     {
-        var builder = new FullTraceCallLog.Builder();
+        var builder = new TraceCallLog.Builder();
 
         builder.Add(0x1000, 0, Chunk(Row(1, rcx: 0xA0), Row(2, rcx: 0xB0)), 2);
         builder.Add(0x2000, 0, Chunk(Row(3, rcx: 0xB0)), 1);
@@ -86,7 +86,7 @@ public class FullTraceCallLogTests
     [Fact]
     public async Task A_Return_Value_Is_Only_Searched_When_The_Call_Returned()
     {
-        var builder = new FullTraceCallLog.Builder();
+        var builder = new TraceCallLog.Builder();
 
         builder.Add(0x1000, 0, Chunk(Row(1, returnValue: 0xD0), Row(2, flags: ReturnedFlag, returnValue: 0xD0)), 2);
 
@@ -98,7 +98,7 @@ public class FullTraceCallLogTests
     [Fact]
     public async Task Every_Use_In_One_Place_Is_Counted_From_Its_First_Call_To_Its_Last()
     {
-        var builder = new FullTraceCallLog.Builder();
+        var builder = new TraceCallLog.Builder();
 
         builder.Add(0x1000, 0, Chunk([.. Enumerable.Range(0, 10).Select(i => Row((ulong)i + 100, rcx: 0xA0))]), 10);
         builder.Add(0x1000, 0, Chunk([.. Enumerable.Range(10, 10).Select(i => Row((ulong)i + 100, rcx: 0xA0))]), 10);
@@ -113,7 +113,7 @@ public class FullTraceCallLogTests
     [Fact]
     public async Task Uses_Are_Listed_In_The_Order_They_First_Happened()
     {
-        var builder = new FullTraceCallLog.Builder();
+        var builder = new TraceCallLog.Builder();
 
         builder.Add(0x1000, 0, Chunk(Row(50, rcx: 0xA0)), 1);
         builder.Add(0x2000, 0, Chunk(Row(10, flags: ReturnedFlag, returnValue: 0xA0)), 1);
@@ -131,7 +131,7 @@ public class FullTraceCallLogTests
         var first = tree.AddCall(tree.Root, new CallstackFrame { Module = "sqlmin", Rva = 0x10 }, 1);
         var second = tree.AddCall(tree.Root, new CallstackFrame { Module = "sqlmin", Rva = 0x20 }, 1);
 
-        var builder = new FullTraceCallLog.Builder();
+        var builder = new TraceCallLog.Builder();
 
         builder.Add(0x1000, 0, Chunk(Row(1, rcx: 0xA0, node: 1), Row(2, node: -1)), 2);
 
@@ -149,7 +149,7 @@ public class FullTraceCallLogTests
     [Fact]
     public void A_Page_Read_In_The_Replay_Is_Attached_To_Its_Call()
     {
-        var builder = new FullTraceCallLog.Builder([new LocatorRead(0x1000, 2, false, LocatorKind.Page)]);
+        var builder = new TraceCallLog.Builder([new LocatorRead(0x1000, 2, false, LocatorKind.Page)]);
 
         builder.Add(0x1000, 0, Chunk(Row(1), Row(2)), 2);
 
@@ -168,14 +168,14 @@ public class FullTraceCallLogTests
     [Fact]
     public void A_Value_Read_On_Return_Replaces_The_One_Read_When_Called()
     {
-        var builder = new FullTraceCallLog.Builder([new LocatorRead(0x1000, 1, false, LocatorKind.Referenced),
-                                                    new LocatorRead(0x1000, 1, true, LocatorKind.Referenced)]);
+        var builder = new TraceCallLog.Builder([new LocatorRead(0x1000, 1, false, LocatorKind.Referenced),
+                                                new LocatorRead(0x1000, 1, true, LocatorKind.Referenced)]);
 
         builder.Add(0x1000, 0, Chunk(Row(1), Row(2)), 2);
 
         builder.AddLocators([new PointerValue(0x1000, 0, 3, 0, 1),
                              new PointerValue(0x1000, 0, 3, 1, 1),
-                             new PointerValue(0x1000, 0, 5, 1, 1, AtReturn: 1)]);
+                             new PointerValue(0x1000, 0, 5, 1, 1, IsReadAtReturn: 1)]);
 
         var calls = builder.Build().CallsOf(0x1000, 0)!;
 
@@ -190,7 +190,7 @@ public class FullTraceCallLogTests
 
         var node = tree.AddCall(tree.Root, new CallstackFrame { Module = "sqlmin", Rva = 0x10 }, 1);
 
-        var builder = new FullTraceCallLog.Builder([new LocatorRead(0x1000, 1, false, LocatorKind.Referenced)]);
+        var builder = new TraceCallLog.Builder([new LocatorRead(0x1000, 1, false, LocatorKind.Referenced)]);
 
         builder.Add(0x1000, 0, Chunk(Row(10, node: 0)), 1);
 
@@ -208,7 +208,7 @@ public class FullTraceCallLogTests
     [Fact]
     public void A_Value_Read_From_A_Register_With_No_Rule_Is_Ignored()
     {
-        var builder = new FullTraceCallLog.Builder([new LocatorRead(0x1000, 2, false, LocatorKind.Page)]);
+        var builder = new TraceCallLog.Builder([new LocatorRead(0x1000, 2, false, LocatorKind.Page)]);
 
         builder.Add(0x1000, 0, Chunk(Row(1)), 1);
 
@@ -225,7 +225,7 @@ public class FullTraceCallLogTests
         var first = tree.AddCall(tree.Root, new CallstackFrame { Module = "sqlmin", Rva = 0x10 }, 1);
         var second = tree.AddCall(tree.Root, new CallstackFrame { Module = "sqlmin", Rva = 0x20 }, 1);
 
-        var builder = new FullTraceCallLog.Builder([new LocatorRead(0x1000, 2, false, LocatorKind.Page)]);
+        var builder = new TraceCallLog.Builder([new LocatorRead(0x1000, 2, false, LocatorKind.Page)]);
 
         builder.Add(0x1000, 0, Chunk(Row(10, node: 0), Row(11, node: 1), Row(12, node: 1)), 3);
 
@@ -250,7 +250,7 @@ public class FullTraceCallLogTests
                                ulong returnValue = 0,
                                int node = 0)
     {
-        var row = new ulong[FullTraceArgumentCall.ValueCount];
+        var row = new ulong[TraceArgumentCall.ValueCount];
 
         row[0] = sequence;
         row[1] = flags;
@@ -263,11 +263,11 @@ public class FullTraceCallLogTests
 
     private static ulong[] Chunk(params ulong[][] rows)
     {
-        var columns = new ulong[rows.Length * FullTraceArgumentCall.ValueCount];
+        var columns = new ulong[rows.Length * TraceArgumentCall.ValueCount];
 
         for (var call = 0; call < rows.Length; call++)
         {
-            for (var value = 0; value < FullTraceArgumentCall.ValueCount; value++)
+            for (var value = 0; value < TraceArgumentCall.ValueCount; value++)
             {
                 columns[value * rows.Length + call] = rows[call][value];
             }

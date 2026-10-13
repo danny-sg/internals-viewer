@@ -86,7 +86,7 @@ public sealed partial class FlameChartControl
 
                 var span = row.Span(_axis, index);
 
-                var positions = row.Span(FullTraceTimelineAxis.Position, index);
+                var positions = row.Span(TraceTimelineAxis.Position, index);
 
                 var (bytes, _) = timeline.AllocatedDuring(thread.ThreadId, positions.Start, positions.End);
 
@@ -166,7 +166,7 @@ public sealed partial class FlameChartControl
     {
         var relative = value - OriginOf(_axis);
 
-        if (_axis != FullTraceTimelineAxis.Position || _timeline is not { } timeline)
+        if (_axis != TraceTimelineAxis.Position || _timeline is not { } timeline)
         {
             return $"{relative:N0}";
         }

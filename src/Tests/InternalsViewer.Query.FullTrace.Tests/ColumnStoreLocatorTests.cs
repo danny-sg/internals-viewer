@@ -93,7 +93,7 @@ public class ColumnStoreLocatorTests
     [Fact]
     public void A_Key_Is_Only_Kept_Once_All_Three_Words_Arrive()
     {
-        var builder = new FullTraceCallLog.Builder(LocatorReadResolver.ReadsOf(0x1000, Fix()));
+        var builder = new TraceCallLog.Builder(LocatorReadResolver.ReadsOf(0x1000, Fix()));
 
         builder.Add(0x1000, 0, Columns(2), 2);
 
@@ -141,5 +141,5 @@ public class ColumnStoreLocatorTests
                 (uint)objectId | ((ulong)(uint)type << 32));
     }
 
-    private static ulong[] Columns(int calls) => new ulong[calls * FullTraceArgumentCall.ValueCount];
+    private static ulong[] Columns(int calls) => new ulong[calls * TraceArgumentCall.ValueCount];
 }

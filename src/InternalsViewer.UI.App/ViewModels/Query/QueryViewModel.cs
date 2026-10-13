@@ -79,7 +79,7 @@ namespace InternalsViewer.UI.App.ViewModels.Query;
 
 public sealed class QueryViewModelFactory(ILogger<QueryViewModel> logger,
                                           QueryRunner queryRunner,
-                                          FullTraceLoader fullTraceLoader,
+                                          TraceLoader traceLoader,
                                           QueryExport queryExport,
                                           SettingsService settingsService,
                                           SettingsViewModel settingsViewModel,
@@ -92,7 +92,7 @@ public sealed class QueryViewModelFactory(ILogger<QueryViewModel> logger,
 {
     public QueryViewModel Create(DatabaseSource database) => new(logger,
                                                                  queryRunner,
-                                                                 fullTraceLoader,
+                                                                 traceLoader,
                                                                  queryExport,
                                                                  settingsService,
                                                                  settingsViewModel,
@@ -252,20 +252,20 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(ShowFlameChartHint))]
     [NotifyCanExecuteChangedFor(nameof(ExportRunCommand))]
-    private bool _isFullTraceLoading;
+    private bool _isTraceLoading;
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(ShowFlameChartHint))]
-    private FullTraceTimeline? _flameChart;
+    private TraceTimeline? _flameChart;
 
     [ObservableProperty]
-    private FullTraceEventLink? _currentEventLink;
+    private TraceEventLink? _currentEventLink;
 
     [ObservableProperty]
     private CallStackNode? _selectedCallNode;
 
     [ObservableProperty]
-    private string? _fullTraceStatus;
+    private string? _traceStatus;
 
     [ObservableProperty]
     private DatabaseSchema? _schema;
@@ -316,7 +316,7 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
     public QueryViewModel(ILogger<QueryViewModel> logger,
                           QueryRunner queryRunner,
-                          FullTraceLoader fullTraceLoader,
+                          TraceLoader traceLoader,
                           QueryExport queryExport,
                           SettingsService settingsService,
                           SettingsViewModel settingsViewModel,
@@ -336,7 +336,7 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
         Logger = logger;
         QueryRunner = queryRunner;
-        FullTraceLoader = fullTraceLoader;
+        TraceLoader = traceLoader;
         QueryExport = queryExport;
         BufferPoolInfoProvider = bufferPoolInfoProvider;
         Database = database;
@@ -385,13 +385,13 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
         QueryOptions.Changed += ScheduleSaveLayout;
 
-        PrepareFullTrace();
+        PrepareTrace();
 
         Schema = SchemaHelper.ToSqlSchema(database);
 
         Layout = new QueryLayoutViewModel(this);
 
-        Layout.HasFullTraceEvents = QueryOptions.RecordFullTraceEvents;
+        Layout.HasTraceEvents = QueryOptions.RecordTraceEvents;
 
         Layout.Changed += OnLayoutChanged;
         Layout.SelectionChanged += ScheduleSaveLayout;
@@ -581,11 +581,11 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
     private QueryRunner QueryRunner { get; }
 
-    private FullTraceLoader FullTraceLoader { get; }
+    private TraceLoader TraceLoader { get; }
 
     private QueryExport QueryExport { get; }
 
-    private CancellationTokenSource? FullTraceLoad { get; set; }
+    private CancellationTokenSource? TraceLoad { get; set; }
 
     private QueryExportContent? LastRun
     {
@@ -598,7 +598,7 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
         }
     }
 
-    public bool ShowFlameChartHint => FlameChart is null && !IsFullTraceLoading;
+    public bool ShowFlameChartHint => FlameChart is null && !IsTraceLoading;
 
     private IBufferPoolInfoProvider BufferPoolInfoProvider { get; }
 
@@ -619,7 +619,7 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
         var dto = new QueryLayoutState
         {
             Root = Layout.SerializeRoot(),
-            TimelineVisible = Layout.IsTimelineVisibleOutsideFullTrace,
+            TimelineVisible = Layout.IsTimelineVisibleOutsideTrace,
             CropToQuery = QueryOptions.CropToQuery,
             IncludeSystemObjects = QueryOptions.IncludeSystemObjects,
             IncludeLock = QueryOptions.Options.IncludeLock,
@@ -767,7 +767,7 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
         SetCurrentEvent(value);
     }
 
-    partial void OnFlameChartChanged(FullTraceTimeline? value) => CurrentEventLink = null;
+    partial void OnFlameChartChanged(TraceTimeline? value) => CurrentEventLink = null;
 
     partial void OnCallStackChanged(CallStackTree? value) => Symbols.CallStack = value;
 
@@ -911,17 +911,17 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
         }
         else if (e.PropertyName == nameof(QueryOptionsViewModel.RecordTimeTravel))
         {
-            Layout.IsFullTrace = QueryOptions.RecordTimeTravel;
+            Layout.IsTrace = QueryOptions.RecordTimeTravel;
 
-            PrepareFullTrace();
+            PrepareTrace();
         }
-        else if (e.PropertyName == nameof(QueryOptionsViewModel.RecordFullTraceEvents))
+        else if (e.PropertyName == nameof(QueryOptionsViewModel.RecordTraceEvents))
         {
-            Layout.HasFullTraceEvents = QueryOptions.RecordFullTraceEvents;
+            Layout.HasTraceEvents = QueryOptions.RecordTraceEvents;
         }
     }
 
-    private async void PrepareFullTrace()
+    private async void PrepareTrace()
     {
         if (!QueryOptions.RecordTimeTravel)
         {
@@ -930,7 +930,7 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
         try
         {
-            await FullTraceLoader.PrepareAsync(Database, _settingsViewModel.SymbolsPath, CancellationToken.None);
+            await TraceLoader.PrepareAsync(Database, _settingsViewModel.SymbolsPath, CancellationToken.None);
         }
         catch (Exception exception)
         {
@@ -969,7 +969,7 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
         _pageSpans = [];
 
-        CancelFullTraceLoad();
+        CancelTraceLoad();
 
         FlameChart = null;
 
@@ -1885,9 +1885,9 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
                 Result = results
             };
 
-            if (results.FullTraceRequest is { } request)
+            if (results.TraceRequest is { } request)
             {
-                _ = LoadFullTraceAsync(request);
+                _ = LoadTraceAsync(request);
             }
 
             if (ShowBufferPool)
@@ -1916,18 +1916,18 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
     }
 
     [RelayCommand]
-    private void CancelFullTrace() => CancelFullTraceLoad();
+    private void CancelTrace() => CancelTraceLoad();
 
-    private async Task LoadFullTraceAsync(FullTraceRequest request)
+    private async Task LoadTraceAsync(TraceRequest request)
     {
-        CancelFullTraceLoad();
+        CancelTraceLoad();
 
         var load = new CancellationTokenSource();
 
-        FullTraceLoad = load;
+        TraceLoad = load;
 
-        IsFullTraceLoading = true;
-        FullTraceStatus = "Opening Full Trace";
+        IsTraceLoading = true;
+        TraceStatus = "Opening Full Trace";
 
         TaskbarProgress.ShowIndeterminate(load);
 
@@ -1937,9 +1937,9 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
         var progress = new Progress<ProgressDetail>(detail =>
         {
-            if (ReferenceEquals(FullTraceLoad, load))
+            if (ReferenceEquals(TraceLoad, load))
             {
-                FullTraceStatus = detail.ToString();
+                TraceStatus = detail.ToString();
 
                 AddMessage(detail);
 
@@ -1949,7 +1949,7 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
         try
         {
-            var result = await Task.Run(() => FullTraceLoader.LoadAsync(request, progress, load.Token), load.Token);
+            var result = await Task.Run(() => TraceLoader.LoadAsync(request, progress, load.Token), load.Token);
 
             if (load.IsCancellationRequested || result is null)
             {
@@ -1958,7 +1958,7 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
                 return;
             }
 
-            ShowFullTrace(result);
+            ShowTrace(result);
 
             LastRun = LastRun is { } run ? run with { Extras = [.. run.Extras, result] } : null;
         }
@@ -1974,11 +1974,11 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
         }
         finally
         {
-            if (ReferenceEquals(FullTraceLoad, load))
+            if (ReferenceEquals(TraceLoad, load))
             {
-                FullTraceLoad = null;
-                IsFullTraceLoading = false;
-                FullTraceStatus = null;
+                TraceLoad = null;
+                IsTraceLoading = false;
+                TraceStatus = null;
             }
 
             if (outcome is not null)
@@ -2029,7 +2029,7 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
         }
     }
 
-    private bool CanExportRun() => LastRun is not null && !IsFullTraceLoading;
+    private bool CanExportRun() => LastRun is not null && !IsTraceLoading;
 
     [RelayCommand]
     private async Task ImportRun()
@@ -2112,13 +2112,13 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
         ShowResults(run.Result, new EventColourProvider(run.Result.ExecutionPlans, _objectColoursByName));
 
-        if (run.ExtraOf<FullTraceResult>() is { } fullTrace)
+        if (run.ExtraOf<TraceResult>() is { } fullTrace)
         {
-            Layout.HasFullTraceEvents = run.EventOptions.RecordFullTraceEvents;
+            Layout.HasTraceEvents = run.EventOptions.RecordTraceEvents;
 
-            Layout.IsFullTrace = true;
+            Layout.IsTrace = true;
 
-            ShowFullTrace(fullTrace);
+            ShowTrace(fullTrace);
         }
 
         LastRun = run;
@@ -2145,7 +2145,7 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
         RefreshFilteredEvents();
     }
 
-    private void ShowFullTrace(FullTraceResult result)
+    private void ShowTrace(TraceResult result)
     {
         CallStack = result.CallStack;
 
@@ -2227,19 +2227,19 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
         }
     }
 
-    private void CancelFullTraceLoad()
+    private void CancelTraceLoad()
     {
-        if (FullTraceLoad is not { } load)
+        if (TraceLoad is not { } load)
         {
             return;
         }
 
-        FullTraceLoad = null;
+        TraceLoad = null;
 
         load.Cancel();
 
-        IsFullTraceLoading = false;
-        FullTraceStatus = null;
+        IsTraceLoading = false;
+        TraceStatus = null;
     }
 
     private void ShowResultTabsForFirstRun()
@@ -2258,7 +2258,7 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
     private void ClearResults()
     {
-        CancelFullTraceLoad();
+        CancelTraceLoad();
 
         LastRun = null;
 

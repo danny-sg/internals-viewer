@@ -6,7 +6,7 @@ namespace InternalsViewer.Query.FullTrace.Native;
 [StructLayout(LayoutKind.Sequential)]
 internal readonly record struct PointerRead(ulong Function,
                                             int Register,
-                                            uint AtReturn,
+                                            uint IsReadAtReturn,
                                             uint Offset,
                                             uint Hops = 0,
                                             uint FirstHop = 0,
@@ -24,7 +24,7 @@ internal readonly record struct PointerRead(ulong Function,
 
         return new PointerRead(read.Function,
                                read.Register,
-                               read.AtReturn ? 1u : 0u,
+                               read.IsReadAtReturn ? 1u : 0u,
                                (uint)read.Offset,
                                (uint)path.Length,
                                HopAt(0),

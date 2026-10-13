@@ -9,9 +9,9 @@ using InternalsViewer.Query.Events.Reads;
 namespace InternalsViewer.Query.FullTrace.Tests;
 
 [Trait("Category", "Unit")]
-public class FullTraceTimelineTests
+public class TraceTimelineTests
 {
-    private const FullTraceTimelineAxis Instructions = FullTraceTimelineAxis.Instructions;
+    private const TraceTimelineAxis Instructions = TraceTimelineAxis.Instructions;
 
     private static readonly CallNode[] Nodes =
     [
@@ -70,7 +70,7 @@ public class FullTraceTimelineTests
         var span = Build(Span(node: 0, start: 0, end: 10, call: uint.MaxValue, flags: 2)).Threads[0].Rows[0].Span(Instructions, 0);
 
         Assert.Equal(-1, span.Call);
-        Assert.Equal(FullTraceSpanFlags.StartUnknown, span.Flags);
+        Assert.Equal(TraceSpanFlags.StartUnknown, span.Flags);
     }
 
     [Fact]
@@ -144,7 +144,7 @@ public class FullTraceTimelineTests
             new(2, 0, 0x4000, 0, 1)
         ];
 
-        var builder = new FullTraceTimeline.Builder();
+        var builder = new TraceTimeline.Builder();
 
         builder.Add([Span(node: 0, start: 0, end: 100),
                      Span(node: 1, start: 10, end: 90),
@@ -283,7 +283,7 @@ public class FullTraceTimelineTests
             new(2, 0, 0x4000, 0, 1)
         ];
 
-        var builder = new FullTraceTimeline.Builder();
+        var builder = new TraceTimeline.Builder();
 
         builder.Add([Span(node: 1, start: 10, end: 50),
                      Span(node: 0, start: 0, end: 60),
@@ -326,8 +326,8 @@ public class FullTraceTimelineTests
     [Fact]
     public void Positions_Order_By_Sequence_Then_Steps()
     {
-        Assert.True(FullTraceTimeline.PositionOf(5, 1, 1000) > FullTraceTimeline.PositionOf(5, 0, 1000));
-        Assert.True(FullTraceTimeline.PositionOf(6, 0, 1000) > FullTraceTimeline.PositionOf(5, 999, 1000));
+        Assert.True(TraceTimeline.PositionOf(5, 1, 1000) > TraceTimeline.PositionOf(5, 0, 1000));
+        Assert.True(TraceTimeline.PositionOf(6, 0, 1000) > TraceTimeline.PositionOf(5, 999, 1000));
     }
 
     [Fact]
@@ -337,9 +337,9 @@ public class FullTraceTimelineTests
                              Span(node: 0, start: 100_020, end: 100_030),
                              Span(node: 0, start: 999_990, end: 999_999));
 
-        var starts = timeline.Threads[0].Rows[0].Starts(FullTraceTimelineAxis.Position).ToArray();
+        var starts = timeline.Threads[0].Rows[0].Starts(TraceTimelineAxis.Position).ToArray();
 
-        var step = timeline.StepOf(FullTraceTimelineAxis.Position);
+        var step = timeline.StepOf(TraceTimelineAxis.Position);
 
         Assert.Equal(20, (starts[1] - starts[0]) / step, 6);
         Assert.Equal(899_990, (starts[2] - starts[0]) / step, 3);
@@ -377,9 +377,9 @@ public class FullTraceTimelineTests
 
         var rows = timeline.Threads[0].Rows;
 
-        var outer = rows[0].Span(FullTraceTimelineAxis.Position, 0);
-        var middle = rows[1].Span(FullTraceTimelineAxis.Position, 0);
-        var inner = rows[2].Span(FullTraceTimelineAxis.Position, 0);
+        var outer = rows[0].Span(TraceTimelineAxis.Position, 0);
+        var middle = rows[1].Span(TraceTimelineAxis.Position, 0);
+        var inner = rows[2].Span(TraceTimelineAxis.Position, 0);
 
         var inMiddle = (inner.End + middle.End) / 2;
         var inOuter = (middle.End + outer.End) / 2;
@@ -422,7 +422,7 @@ public class FullTraceTimelineTests
 
         LatchEvent[] latches = [new() { SequenceId = 1 }, new() { SequenceId = 2 }];
 
-        timeline.SetEventLinks([new FullTraceEventLink(latches[0], null, 7, 10, 10), new FullTraceEventLink(latches[1], null, 7, 20, 20)]);
+        timeline.SetEventLinks([new TraceEventLink(latches[0], null, 7, 10, 10), new TraceEventLink(latches[1], null, 7, 20, 20)]);
 
         Assert.Equal(20d, timeline.EventLinkOf(latches[1])?.Position);
         Assert.Null(timeline.EventLinkOf(new LatchEvent { SequenceId = 3 }));
@@ -435,14 +435,14 @@ public class FullTraceTimelineTests
 
         var latch = new LatchEvent { SequenceId = 1 };
 
-        timeline.SetEventLinks([new FullTraceEventLink(latch, null, 7, 10, 10)]);
+        timeline.SetEventLinks([new TraceEventLink(latch, null, 7, 10, 10)]);
 
         Assert.Same(latch, timeline.EventLinkOf(new ReadEventGroup { SequenceId = 2, Events = [latch] })?.Event);
     }
 
-    private static FullTraceTimeline Build(params CallSpan[] spans)
+    private static TraceTimeline Build(params CallSpan[] spans)
     {
-        var builder = new FullTraceTimeline.Builder();
+        var builder = new TraceTimeline.Builder();
 
         builder.Add(spans);
 

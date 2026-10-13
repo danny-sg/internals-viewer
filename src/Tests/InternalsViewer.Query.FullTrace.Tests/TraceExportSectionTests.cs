@@ -17,15 +17,15 @@ using InternalsViewer.Query.Plans.Model;
 namespace InternalsViewer.Query.FullTrace.Tests;
 
 [Trait("Category", "Unit")]
-public class FullTraceExportSectionTests
+public class TraceExportSectionTests
 {
     private const ulong Scan = 0x9000;
 
     private const ulong Page336 = 0x0000_0001_0000_0150;
 
-    private static QueryExport WithFullTrace { get; } = new([new FullTraceExportSection()]);
+    private static QueryExport WithTrace { get; } = new([new TraceExportSection()]);
 
-    private static QueryExport WithoutFullTrace { get; } = new([]);
+    private static QueryExport WithoutTrace { get; } = new([]);
 
     [Fact]
     public async Task Exporting_An_Imported_Full_Trace_Writes_The_Same_File()
@@ -38,7 +38,7 @@ public class FullTraceExportSectionTests
 
         var secondEntries = Entries(second);
 
-        Assert.Contains(FullTraceExportSection.CallLogEntry, firstEntries.Keys);
+        Assert.Contains(TraceExportSection.CallLogEntry, firstEntries.Keys);
         Assert.Equal(firstEntries.Keys.Order(), secondEntries.Keys.Order());
 
         foreach (var (name, content) in firstEntries)
@@ -50,7 +50,7 @@ public class FullTraceExportSectionTests
     [Fact]
     public async Task An_Imported_Full_Trace_Has_Its_Calls_Spans_And_Memory()
     {
-        var fullTrace = (await Import(await Export(Content()))).ExtraOf<FullTraceResult>()!;
+        var fullTrace = (await Import(await Export(Content()))).ExtraOf<TraceResult>()!;
 
         var calls = fullTrace.CallLog.CallsOf(0x30, Scan)!;
 
@@ -73,13 +73,13 @@ public class FullTraceExportSectionTests
 
         var scan = Assert.Single(imported.Result.EngineEvents.OfType<ExecutionOperatorEvent>());
 
-        Assert.Same(imported.ExtraOf<FullTraceResult>()!.CallStack.Root, scan.EntryFrames[0].Parent!.Parent);
+        Assert.Same(imported.ExtraOf<TraceResult>()!.CallStack.Root, scan.EntryFrames[0].Parent!.Parent);
     }
 
     [Fact]
     public async Task A_Node_Removed_From_The_Full_Trace_Tree_Stays_Out_Of_It_On_Import()
     {
-        var fullTrace = (await Import(await Export(Content()))).ExtraOf<FullTraceResult>()!;
+        var fullTrace = (await Import(await Export(Content()))).ExtraOf<TraceResult>()!;
 
         var publish = fullTrace.Timeline.NodeOf(2)!;
 
@@ -95,8 +95,8 @@ public class FullTraceExportSectionTests
 
         var imported = await Import(export);
 
-        Assert.DoesNotContain(Entries(export).Keys, k => k.Contains(FullTraceExportSection.CallTreeName, StringComparison.Ordinal));
-        Assert.Null(imported.ExtraOf<FullTraceResult>());
+        Assert.DoesNotContain(Entries(export).Keys, k => k.Contains(TraceExportSection.CallTreeName, StringComparison.Ordinal));
+        Assert.Null(imported.ExtraOf<TraceResult>());
     }
 
     [Fact]
@@ -104,7 +104,7 @@ public class FullTraceExportSectionTests
     {
         using var stream = new MemoryStream(await Export(Content()));
 
-        var imported = await WithoutFullTrace.ReadAsync(stream, _ => null, CancellationToken.None);
+        var imported = await WithoutTrace.ReadAsync(stream, _ => null, CancellationToken.None);
 
         Assert.Empty(imported.Extras);
         Assert.Single(imported.Result.EngineEvents.OfType<ExecutionOperatorEvent>());
@@ -114,7 +114,7 @@ public class FullTraceExportSectionTests
     {
         using var stream = new MemoryStream();
 
-        await WithFullTrace.WriteAsync(stream, content, CancellationToken.None);
+        await WithTrace.WriteAsync(stream, content, CancellationToken.None);
 
         return stream.ToArray();
     }
@@ -123,7 +123,7 @@ public class FullTraceExportSectionTests
     {
         using var stream = new MemoryStream(export);
 
-        return await WithFullTrace.ReadAsync(stream, _ => null, CancellationToken.None);
+        return await WithTrace.ReadAsync(stream, _ => null, CancellationToken.None);
     }
 
     private static Dictionary<string, byte[]> Entries(byte[] export)
@@ -188,7 +188,7 @@ public class FullTraceExportSectionTests
         };
     }
 
-    private static FullTraceResult FullTrace(ExecutionOperatorEvent scan)
+    private static TraceResult FullTrace(ExecutionOperatorEvent scan)
     {
         var tree = new CallStackTree();
 
@@ -212,7 +212,7 @@ public class FullTraceExportSectionTests
 
         var publish = tree.AddCall(caller, Frame(0x50, "XeSqlPkg::lock_acquired::Publish+0x0"), 1);
 
-        var builder = new FullTraceTimeline.Builder();
+        var builder = new TraceTimeline.Builder();
 
         builder.Add([Span(0, 0, 100), Span(1, 20, 25), Span(1, 30, 35), Span(2, 40, 41)]);
 
@@ -228,7 +228,7 @@ public class FullTraceExportSectionTests
 
         timeline.SetLifetimes(IteratorLifetimeBuilder.Build(timeline, [scan]));
 
-        var log = new FullTraceCallLog.Builder([new LocatorRead(0x30, 2, false, LocatorKind.Page)]);
+        var log = new TraceCallLog.Builder([new LocatorRead(0x30, 2, false, LocatorKind.Page)]);
 
         log.Add(0x30, Scan, Columns(Call(1, 5), Call(2, 6)), 2);
 
@@ -238,7 +238,7 @@ public class FullTraceExportSectionTests
 
         callLog.MapNodes([caller, getRow, publish]);
 
-        return new FullTraceResult(tree, callLog, timeline);
+        return new TraceResult(tree, callLog, timeline);
     }
 
     private static CallstackFrame Frame(ulong rva, string symbol, ulong instance = 0) => new()
@@ -258,7 +258,7 @@ public class FullTraceExportSectionTests
 
     private static ulong[] Call(ulong sequence, ulong rcx)
     {
-        var row = new ulong[FullTraceArgumentCall.ValueCount];
+        var row = new ulong[TraceArgumentCall.ValueCount];
 
         row[0] = sequence;
         row[2] = rcx;
@@ -269,11 +269,11 @@ public class FullTraceExportSectionTests
 
     private static ulong[] Columns(params ulong[][] rows)
     {
-        var columns = new ulong[rows.Length * FullTraceArgumentCall.ValueCount];
+        var columns = new ulong[rows.Length * TraceArgumentCall.ValueCount];
 
         for (var call = 0; call < rows.Length; call++)
         {
-            for (var value = 0; value < FullTraceArgumentCall.ValueCount; value++)
+            for (var value = 0; value < TraceArgumentCall.ValueCount; value++)
             {
                 columns[value * rows.Length + call] = rows[call][value];
             }

@@ -71,11 +71,13 @@ internal static class ReplayFunctionResolver
                                     string symbolsPath,
                                     ILogger? logger,
                                     CancellationToken cancellationToken)
-        => EnsureResolvedAsync([.. modulePaths.Select(p => TraceModule.Read(p, 0, 0)).Where(IsReplayed)],
-                               symbolsPath,
-                               logger,
-                               null,
-                               cancellationToken);
+    {
+        return EnsureResolvedAsync([.. modulePaths.Select(p => TraceModule.Read(p, 0, 0)).Where(IsReplayed)],
+                                   symbolsPath,
+                                   logger,
+                                   null,
+                                   cancellationToken);
+    }
 
     public static async Task<ReplayFunctions> ResolveAsync(IReadOnlyList<TraceModule> modules,
                                                            string symbolsPath,
@@ -136,9 +138,11 @@ internal static class ReplayFunctionResolver
                                             ILogger? logger,
                                             IProgress<ProgressDetail>? progress,
                                             CancellationToken cancellationToken)
-        => Task.WhenAll(modules.Where(m => !Cache.ContainsKey(KeyOf(m)))
-                               .Select(m => ResolvingOf(m, symbolsPath, logger, progress)))
-               .WaitAsync(cancellationToken);
+    {
+        return Task.WhenAll(modules.Where(m => !Cache.ContainsKey(KeyOf(m)))
+                                   .Select(m => ResolvingOf(m, symbolsPath, logger, progress)))
+                   .WaitAsync(cancellationToken);
+    }
 
     private static Task ResolvingOf(TraceModule module,
                                     string symbolsPath,
@@ -162,7 +166,7 @@ internal static class ReplayFunctionResolver
         {
             await SymbolDownloader.DownloadSymbols([module.Frame(module.StartAddress, 0)], symbolsPath, progress);
 
-            Resolve(module, symbolsPath, logger);
+            ResolveModule(module, symbolsPath, logger);
         }
         finally
         {
@@ -170,7 +174,7 @@ internal static class ReplayFunctionResolver
         }
     }
 
-    private static void Resolve(TraceModule module, string symbolsPath, ILogger? logger)
+    private static void ResolveModule(TraceModule module, string symbolsPath, ILogger? logger)
     {
         var start = Stopwatch.GetTimestamp();
 
@@ -211,7 +215,7 @@ internal static class ReplayFunctionResolver
 
         var moduleName = module.Name;
 
-        var functions = ModuleSymbols.Load(resolver, (rva, name) => Classify(mappings, moduleName, rva, name));
+        var functions = ModuleSymbols.Load(resolver, (rva, name) => ClassifyFunction(mappings, moduleName, rva, name));
 
         var iterates = string.Equals(moduleName, IteratorModule, StringComparison.OrdinalIgnoreCase);
 
@@ -219,20 +223,20 @@ internal static class ReplayFunctionResolver
             ? [.. InstanceMethodCollector.FindInstanceMethods(functions.Where(f => f.Value.IsInstanceMethod).Select(f => f.Key), resolver)]
             : [];
 
-        var kept = functions.Where(f => !f.Value.Excluded).Select(f => f.Key);
+        var kept = functions.Where(f => !f.Value.IsExcluded).Select(f => f.Key);
 
         LocatorRead[] locators = iterates ? [.. LocatorReadResolver.FindReads(resolver, kept)] : [];
 
-        ulong[] excluded = [.. functions.Where(f => f.Value.Excluded).Select(f => (ulong)f.Key)];
+        ulong[] excluded = [.. functions.Where(f => f.Value.IsExcluded).Select(f => (ulong)f.Key)];
 
         return new ReplayFunctions(excluded,
                                    instanceMethods,
                                    locators,
                                    PublishedEventFunctions.From(functions),
-                                   [.. functions.Values.Select(f => f.Memory).OfType<MemoryFunction>()]);
+                                   [.. functions.Values.Select(f => f.MemoryFunction).OfType<MemoryFunction>()]);
     }
 
-    private static FunctionClassification Classify(CategoryMappings mappings, string module, uint rva, ReadOnlySpan<char> symbol)
+    private static FunctionClassification ClassifyFunction(CategoryMappings mappings, string module, uint rva, ReadOnlySpan<char> symbol)
     {
         SymbolsHelper.Split(symbol, out var className, out var methodName);
 

@@ -27,9 +27,9 @@ public sealed partial class QueryLayoutViewModel : ObservableObject, IDisposable
 
     private readonly Dictionary<string, DocumentViewModel> _documentsByKey;
 
-    private readonly HashSet<DocumentViewModel> _hiddenForFullTrace = [];
+    private readonly HashSet<DocumentViewModel> _hiddenForTrace = [];
 
-    private DockNode? _rootBeforeFullTrace;
+    private DockNode? _rootBeforeTrace;
 
     /// <remarks>
     /// Set while SyncTabVisibility writes the flags back from the dock, so their setters don't loop back into the dock.
@@ -62,11 +62,11 @@ public sealed partial class QueryLayoutViewModel : ObservableObject, IDisposable
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(CanShowEventViews))]
-    private bool _isFullTrace;
+    private bool _isTrace;
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(CanShowEventViews))]
-    private bool _hasFullTraceEvents;
+    private bool _hasTraceEvents;
 
     /// <param name="content">
     /// The data context the tab document views bind to (the owning query view model)
@@ -132,16 +132,16 @@ public sealed partial class QueryLayoutViewModel : ObservableObject, IDisposable
 
     public DockLayoutViewModel Dock { get; }
 
-    public bool CanShowEventViews => !IsFullTrace || HasFullTraceEvents;
+    public bool CanShowEventViews => !IsTrace || HasTraceEvents;
 
-    public bool IsTimelineVisibleOutsideFullTrace
-        => IsTimelineVisible || _hiddenForFullTrace.Contains(_documentsByKey[TimelineKey]);
+    public bool IsTimelineVisibleOutsideTrace
+        => IsTimelineVisible || _hiddenForTrace.Contains(_documentsByKey[TimelineKey]);
 
     private DocumentViewModel[] EventViews =>
         [_documentsByKey[AllocationsKey], _documentsByKey[EventsKey], _documentsByKey[TimelineKey]];
 
     public DockNode SerializeRoot()
-        => IsFullTrace && _rootBeforeFullTrace is { } root ? root : DockLayoutSerializer.Serialize(Dock.Root);
+        => IsTrace && _rootBeforeTrace is { } root ? root : DockLayoutSerializer.Serialize(Dock.Root);
 
     public bool RestoreRoot(DockNode? dto)
     {
@@ -156,9 +156,9 @@ public sealed partial class QueryLayoutViewModel : ObservableObject, IDisposable
 
         Dock.Activate(_documentsByKey[SqlKey]);
 
-        if (IsFullTrace)
+        if (IsTrace)
         {
-            EnterFullTrace();
+            EnterTrace();
         }
 
         return true;
@@ -169,16 +169,16 @@ public sealed partial class QueryLayoutViewModel : ObservableObject, IDisposable
     /// </summary>
     public void Reset()
     {
-        if (!IsFullTrace)
+        if (!IsTrace)
         {
             Dock.SetRoot(DefaultRoot(TimelineKey));
 
             return;
         }
 
-        _hiddenForFullTrace.Clear();
+        _hiddenForTrace.Clear();
 
-        _rootBeforeFullTrace = DockLayoutSerializer.Serialize(DefaultRoot(TimelineKey));
+        _rootBeforeTrace = DockLayoutSerializer.Serialize(DefaultRoot(TimelineKey));
 
         if (CanShowEventViews)
         {
@@ -189,7 +189,7 @@ public sealed partial class QueryLayoutViewModel : ObservableObject, IDisposable
             return;
         }
 
-        _hiddenForFullTrace.Add(_documentsByKey[TimelineKey]);
+        _hiddenForTrace.Add(_documentsByKey[TimelineKey]);
 
         Dock.SetRoot(DefaultRoot(FlameChartKey));
     }
@@ -263,11 +263,11 @@ public sealed partial class QueryLayoutViewModel : ObservableObject, IDisposable
     partial void OnIsFlameChartVisibleChanged(bool value)
         => SetDocumentVisible(_documentsByKey[FlameChartKey], value);
 
-    partial void OnIsFullTraceChanged(bool value)
+    partial void OnIsTraceChanged(bool value)
     {
         if (value)
         {
-            EnterFullTrace();
+            EnterTrace();
 
             return;
         }
@@ -276,12 +276,12 @@ public sealed partial class QueryLayoutViewModel : ObservableObject, IDisposable
 
         Dock.Close(_documentsByKey[FlameChartKey]);
 
-        _rootBeforeFullTrace = null;
+        _rootBeforeTrace = null;
     }
 
-    partial void OnHasFullTraceEventsChanged(bool value)
+    partial void OnHasTraceEventsChanged(bool value)
     {
-        if (!IsFullTrace)
+        if (!IsTrace)
         {
             return;
         }
@@ -296,11 +296,11 @@ public sealed partial class QueryLayoutViewModel : ObservableObject, IDisposable
         }
     }
 
-    private void EnterFullTrace()
+    private void EnterTrace()
     {
-        _hiddenForFullTrace.Clear();
+        _hiddenForTrace.Clear();
 
-        _rootBeforeFullTrace = DockLayoutSerializer.Serialize(Dock.Root);
+        _rootBeforeTrace = DockLayoutSerializer.Serialize(Dock.Root);
 
         if (Dock.Contains(_documentsByKey[TimelineKey]))
         {
@@ -319,7 +319,7 @@ public sealed partial class QueryLayoutViewModel : ObservableObject, IDisposable
 
     private void RestoreEventViews()
     {
-        foreach (var document in _hiddenForFullTrace)
+        foreach (var document in _hiddenForTrace)
         {
             if (ReferenceEquals(document, _documentsByKey[TimelineKey]))
             {
@@ -331,7 +331,7 @@ public sealed partial class QueryLayoutViewModel : ObservableObject, IDisposable
             }
         }
 
-        _hiddenForFullTrace.Clear();
+        _hiddenForTrace.Clear();
     }
 
     private void HideEventViews()
@@ -340,7 +340,7 @@ public sealed partial class QueryLayoutViewModel : ObservableObject, IDisposable
         {
             if (Dock.Contains(document))
             {
-                _hiddenForFullTrace.Add(document);
+                _hiddenForTrace.Add(document);
 
                 Dock.Close(document);
             }
@@ -356,7 +356,7 @@ public sealed partial class QueryLayoutViewModel : ObservableObject, IDisposable
 
         if (show && !CanShowEventViews && Array.IndexOf(EventViews, document) >= 0)
         {
-            _hiddenForFullTrace.Add(document);
+            _hiddenForTrace.Add(document);
 
             SyncTabVisibility();
 
@@ -365,7 +365,7 @@ public sealed partial class QueryLayoutViewModel : ObservableObject, IDisposable
 
         if (show && ReferenceEquals(document, _documentsByKey[FlameChartKey]))
         {
-            if (IsFullTrace)
+            if (IsTrace)
             {
                 Dock.DockBottom(document);
             }

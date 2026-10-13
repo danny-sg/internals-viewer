@@ -45,7 +45,7 @@ public class MemoryFunctionTests
     [Fact]
     public void Bytes_Are_Read_From_The_Size_Argument()
     {
-        var call = new FullTraceArgumentCall(1, 1, true, [0xA0, 3, 100, 0], 0);
+        var call = new TraceArgumentCall(1, 1, true, [0xA0, 3, 100, 0], 0);
 
         Assert.Equal(3ul, MemoryFunction.Classify(0x1000, "CMemObj::Alloc")!.BytesOf(call));
         Assert.Equal(100ul, MemoryFunction.Classify(0x1000, "CMemObj::Realloc")!.BytesOf(call));
@@ -71,7 +71,7 @@ public class MemoryFunctionTests
     [Fact]
     public void Calloc_Allocates_Its_Count_Times_Its_Size()
     {
-        var call = new FullTraceArgumentCall(1, 1, true, [4, 24, 0, 0], 0);
+        var call = new TraceArgumentCall(1, 1, true, [4, 24, 0, 0], 0);
 
         Assert.Equal(96ul, MemoryFunction.ClassifyExport(0x1000, "calloc")!.BytesOf(call));
     }
@@ -99,11 +99,11 @@ public class MemoryFunctionTests
 
         var free = MemoryFunction.ClassifyExport(0x2000, "VirtualFree")!;
 
-        var commit = new FullTraceArgumentCall(1, 1, true, [0, 65536, 0x3000, 4], 0x9000);
+        var commit = new TraceArgumentCall(1, 1, true, [0, 65536, 0x3000, 4], 0x9000);
 
-        var reserve = new FullTraceArgumentCall(2, 1, true, [0, 65536, 0x2000, 4], 0xA000);
+        var reserve = new TraceArgumentCall(2, 1, true, [0, 65536, 0x2000, 4], 0xA000);
 
-        var release = new FullTraceArgumentCall(3, 1, true, [0x9000, 0, 0x8000, 0], 1);
+        var release = new TraceArgumentCall(3, 1, true, [0x9000, 0, 0x8000, 0], 1);
 
         Assert.Equal((true, false, true), (allocate.Applies(commit), allocate.Applies(reserve), free.Applies(release)));
         Assert.Equal(65536ul, allocate.BytesOf(commit));
@@ -119,7 +119,7 @@ public class MemoryFunctionTests
     [Fact]
     public void A_Fixed_Size_Allocator_Allocates_Its_Unit()
     {
-        var call = new FullTraceArgumentCall(1, 1, true, [0xA0, 0, 0, 0], 0x5000);
+        var call = new TraceArgumentCall(1, 1, true, [0xA0, 0, 0, 0], 0x5000);
 
         Assert.Equal(8192ul, MemoryFunction.Classify(0x1000, "CHashWorkfilePartitionInstance::PvAllocateHashBucketPage")!.BytesOf(call));
     }
@@ -127,7 +127,7 @@ public class MemoryFunctionTests
     [Fact]
     public void An_Impossible_Size_Counts_As_Nothing()
     {
-        var call = new FullTraceArgumentCall(1, 1, true, [0xA0, ulong.MaxValue, 0, 0], 0);
+        var call = new TraceArgumentCall(1, 1, true, [0xA0, ulong.MaxValue, 0, 0], 0);
 
         Assert.Equal(0ul, MemoryFunction.Classify(0x1000, "CMemObj::Alloc")!.BytesOf(call));
     }

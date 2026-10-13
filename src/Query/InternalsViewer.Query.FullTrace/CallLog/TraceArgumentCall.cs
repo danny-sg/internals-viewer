@@ -3,12 +3,12 @@ using InternalsViewer.Query.FullTrace.Arguments;
 
 namespace InternalsViewer.Query.FullTrace.CallLog;
 
-public sealed record FullTraceArgumentCall(ulong Sequence,
-                                           uint ThreadId,
-                                           bool Returned,
-                                           ulong[] IntegerSlots,
-                                           ulong ReturnValue,
-                                           int Node = -1)
+public sealed record TraceArgumentCall(ulong Sequence,
+                                       uint ThreadId,
+                                       bool Returned,
+                                       ulong[] IntegerSlots,
+                                       ulong ReturnValue,
+                                       int Node = -1)
 {
     internal const int ValueCount = 8;
 
@@ -48,16 +48,16 @@ public sealed record FullTraceArgumentCall(ulong Sequence,
         return null;
     }
 
-    internal static FullTraceArgumentCall Decode(ReadOnlySpan<ulong> values, IReadOnlyList<Locator>? locators = null)
+    internal static TraceArgumentCall Decode(ReadOnlySpan<ulong> values, IReadOnlyList<Locator>? locators = null)
     {
         var flags = values[1];
 
-        return new FullTraceArgumentCall(values[0],
-                                         (uint)flags,
-                                         (flags & ReturnedFlag) != 0,
-                                         [.. values.Slice(IntegerOffset, RegisterCount)],
-                                         values[ReturnValueIndex],
-                                         (int)values[NodeIndex])
+        return new TraceArgumentCall(values[0],
+                                     (uint)flags,
+                                     (flags & ReturnedFlag) != 0,
+                                     [.. values.Slice(IntegerOffset, RegisterCount)],
+                                     values[ReturnValueIndex],
+                                     (int)values[NodeIndex])
         {
             Locators = locators ?? []
         };

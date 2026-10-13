@@ -28,7 +28,7 @@ public class MemoryMapperTests
         var caller = tree.AddCall(tree.Root, Frame(0x10), 1);
         var allocator = tree.AddCall(caller, Frame(Allocator), 2);
 
-        var builder = new FullTraceCallLog.Builder();
+        var builder = new TraceCallLog.Builder();
 
         builder.Add(Allocator, 0, Chunk(Row(1, size: 100, node: 1), Row(2, size: 200, node: 1)), 2);
 
@@ -53,7 +53,7 @@ public class MemoryMapperTests
         var outer = tree.AddCall(caller, Frame(Allocator), 1);
         var inner = tree.AddCall(outer, Frame(Inner), 1);
 
-        var builder = new FullTraceCallLog.Builder();
+        var builder = new TraceCallLog.Builder();
 
         builder.Add(Allocator, 0, Chunk(Row(1, size: 64, node: 1)), 1);
         builder.Add(Inner, 0, Chunk(Row(2, size: 8192, node: 2)), 1);
@@ -78,7 +78,7 @@ public class MemoryMapperTests
         var objectPages = tree.AddCall(create, Resolved(Inner, "sqldk", "MemoryClerkInternal", "AllocatePages"), 1);
         var workspacePages = tree.AddCall(caller, Resolved(Inner, "sqldk", "MemoryClerkInternal", "AllocatePages"), 1);
 
-        var builder = new FullTraceCallLog.Builder();
+        var builder = new TraceCallLog.Builder();
 
         builder.Add(Inner, 0, Chunk(Row(1, size: 1, node: 2), Row(2, size: 2, node: 3)), 2);
 
@@ -102,7 +102,7 @@ public class MemoryMapperTests
         var allocator = tree.AddCall(caller, Frame(Allocator), 1);
         var pages = tree.AddCall(allocator, Resolved(Inner, "sqldk", "MemoryClerkInternal", "AllocatePages"), 1);
 
-        var builder = new FullTraceCallLog.Builder();
+        var builder = new TraceCallLog.Builder();
 
         builder.Add(Allocator, 0, Chunk(Row(1, size: 64, node: 1, returned: 0xA0)), 1);
         builder.Add(Inner, 0, Chunk(Row(2, size: 1, node: 2, receiver: 0xC1)), 1);
@@ -111,7 +111,7 @@ public class MemoryMapperTests
 
         log.MapNodes([caller, allocator, pages]);
 
-        var timelineBuilder = new FullTraceTimeline.Builder();
+        var timelineBuilder = new TraceTimeline.Builder();
 
         timelineBuilder.Add([Span(0, 0, 40, uint.MaxValue), Span(1, 10, 20, 0), Span(2, 12, 13, 0)]);
 
@@ -121,9 +121,9 @@ public class MemoryMapperTests
 
         MemoryMapper.Map(log, [Function(Allocator), ClerkPages()], timeline, Snapshot(clerks: new() { [0xC1] = clerk }));
 
-        var start = timeline.StartOf(FullTraceTimelineAxis.Position);
+        var start = timeline.StartOf(TraceTimelineAxis.Position);
 
-        var end = timeline.EndOf(FullTraceTimelineAxis.Position) + 1;
+        var end = timeline.EndOf(TraceTimelineAxis.Position) + 1;
 
         Assert.Equal((64ul, expected), (timeline.PeakInUseDuring(start, end), timeline.PeakWorkspaceDuring(start, end)));
     }
@@ -136,7 +136,7 @@ public class MemoryMapperTests
         var caller = tree.AddCall(tree.Root, Frame(0x10), 1);
         var allocator = tree.AddCall(caller, Resolved(Allocator, "sqldk", "CMemObj", "Alloc"), 1);
 
-        var builder = new FullTraceCallLog.Builder();
+        var builder = new TraceCallLog.Builder();
 
         builder.Add(Allocator, 0, Chunk(Row(1, size: 48, node: 1, returned: 0xA0, receiver: 0xB0)), 1);
 
@@ -144,7 +144,7 @@ public class MemoryMapperTests
 
         log.MapNodes([caller, allocator]);
 
-        var timelineBuilder = new FullTraceTimeline.Builder();
+        var timelineBuilder = new TraceTimeline.Builder();
 
         timelineBuilder.Add([Span(0, 0, 40, uint.MaxValue), Span(1, 10, 20, 0)]);
 
@@ -172,7 +172,7 @@ public class MemoryMapperTests
         var child = tree.AddCall(allocator, Resolved(Inner, "sqldk", "CMemThread<CMemObj>", "Alloc"), 1);
         var parent = tree.AddCall(child, Resolved(Parent, "sqldk", "CMemObj", "Alloc"), 1);
 
-        var builder = new FullTraceCallLog.Builder();
+        var builder = new TraceCallLog.Builder();
 
         builder.Add(Allocator, 0, Chunk(Row(1, size: 64, node: 1, returned: 0xA0)), 1);
         builder.Add(Inner, 0, Chunk(Row(2, size: 64, node: 2, receiver: 0xB1)), 1);
@@ -182,7 +182,7 @@ public class MemoryMapperTests
 
         log.MapNodes([caller, allocator, child, parent]);
 
-        var timelineBuilder = new FullTraceTimeline.Builder();
+        var timelineBuilder = new TraceTimeline.Builder();
 
         timelineBuilder.Add([Span(0, 0, 40, uint.MaxValue), Span(1, 10, 20, 0), Span(2, 11, 19, 0), Span(3, 12, 18, 0)]);
 
@@ -220,8 +220,8 @@ public class MemoryMapperTests
     private static CallSpan Span(int node, ulong start, ulong end, uint call)
         => new(1, start, 1, end, start, end, node, 7, call, 1);
 
-    private static ulong PeakWorkspace(FullTraceTimeline timeline)
-        => timeline.PeakWorkspaceDuring(timeline.StartOf(FullTraceTimelineAxis.Position), timeline.EndOf(FullTraceTimelineAxis.Position) + 1);
+    private static ulong PeakWorkspace(TraceTimeline timeline)
+        => timeline.PeakWorkspaceDuring(timeline.StartOf(TraceTimelineAxis.Position), timeline.EndOf(TraceTimelineAxis.Position) + 1);
 
     private static CallstackFrame Resolved(ulong address,
                                            string module,
@@ -250,7 +250,7 @@ public class MemoryMapperTests
 
     private static ulong[] Row(ulong sequence, ulong size, int node, ulong returned = 0, ulong receiver = 0)
     {
-        var row = new ulong[FullTraceArgumentCall.ValueCount];
+        var row = new ulong[TraceArgumentCall.ValueCount];
 
         row[0] = sequence;
         row[1] = returned != 0 ? ReturnedFlag : 0;
@@ -264,11 +264,11 @@ public class MemoryMapperTests
 
     private static ulong[] Chunk(params ulong[][] rows)
     {
-        var columns = new ulong[rows.Length * FullTraceArgumentCall.ValueCount];
+        var columns = new ulong[rows.Length * TraceArgumentCall.ValueCount];
 
         for (var call = 0; call < rows.Length; call++)
         {
-            for (var value = 0; value < FullTraceArgumentCall.ValueCount; value++)
+            for (var value = 0; value < TraceArgumentCall.ValueCount; value++)
             {
                 columns[value * rows.Length + call] = rows[call][value];
             }

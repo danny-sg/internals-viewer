@@ -1,7 +1,7 @@
 namespace InternalsViewer.Query.FullTrace.Timeline.Enums;
 
 [Flags]
-public enum FullTraceSpanFlags : byte
+public enum TraceSpanFlags : byte
 {
     None = 0,
     Returned = 1,

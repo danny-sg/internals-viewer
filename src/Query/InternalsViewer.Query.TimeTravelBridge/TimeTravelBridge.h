@@ -33,7 +33,7 @@ extern "C"
     {
         uint64_t Function;
         int32_t  Register;
-        uint32_t AtReturn;
+        uint32_t IsReadAtReturn;
         uint32_t Offset;
         uint32_t Hops;
         uint32_t Path[MaximumHops];
@@ -47,7 +47,7 @@ extern "C"
         uint32_t Call;
         int32_t  Register;
         uint32_t Offset;
-        uint32_t AtReturn;
+        uint32_t IsReadAtReturn;
     };
 
     typedef void(__stdcall* ProgressCallback)(uint32_t thread, int32_t percent);
@@ -91,10 +91,10 @@ extern "C"
                                                int32_t                excludedFunctionCount,
                                                const PointerRead*     pointerReads,
                                                int32_t                pointerReadCount,
-                                               const uint64_t*        publisherFunctions,
-                                               int32_t                publisherFunctionCount,
-                                               const uint64_t*        writerFunctions,
-                                               int32_t                writerFunctionCount,
+                                               const uint64_t*        eventPublisherFunctions,
+                                               int32_t                eventPublisherFunctionCount,
+                                               const uint64_t*        eventWriterFunctions,
+                                               int32_t                eventWriterFunctionCount,
                                                CallChunkCallback      logCalls,
                                                CallSpanCallback       logSpans,
                                                PointerValueCallback   logPointerValues,

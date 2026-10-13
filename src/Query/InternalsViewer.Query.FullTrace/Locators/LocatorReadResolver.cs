@@ -52,11 +52,11 @@ public static partial class LocatorReadResolver
 
         bool[] ends = returned ? [true] : type.IsInOut ? [false, true] : [type.IsOutput];
 
-        foreach (var atReturn in ends)
+        foreach (var isReadAtReturn in ends)
         {
             for (var part = 0; part < parts; part++)
             {
-                yield return new LocatorRead(function, register, atReturn, type.Kind, type.Offset + part * sizeof(ulong), type.Path);
+                yield return new LocatorRead(function, register, isReadAtReturn, type.Kind, type.Offset + part * sizeof(ulong), type.Path);
             }
         }
     }

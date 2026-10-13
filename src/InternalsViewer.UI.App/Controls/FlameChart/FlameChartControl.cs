@@ -26,25 +26,25 @@ public sealed partial class FlameChartControl : Grid, IDisposable
 
     public static readonly DependencyProperty TimelineProperty =
         DependencyProperty.Register(nameof(Timeline),
-                                    typeof(FullTraceTimeline),
+                                    typeof(TraceTimeline),
                                     typeof(FlameChartControl),
                                     new PropertyMetadata(null, OnTimelineChanged));
 
-    public FullTraceTimeline? Timeline
+    public TraceTimeline? Timeline
     {
-        get => (FullTraceTimeline?)GetValue(TimelineProperty);
+        get => (TraceTimeline?)GetValue(TimelineProperty);
         set => SetValue(TimelineProperty, value);
     }
 
     public static readonly DependencyProperty AxisProperty =
         DependencyProperty.Register(nameof(Axis),
-                                    typeof(FullTraceTimelineAxis),
+                                    typeof(TraceTimelineAxis),
                                     typeof(FlameChartControl),
-                                    new PropertyMetadata(FullTraceTimelineAxis.Position, OnAxisChanged));
+                                    new PropertyMetadata(TraceTimelineAxis.Position, OnAxisChanged));
 
-    public FullTraceTimelineAxis Axis
+    public TraceTimelineAxis Axis
     {
-        get => (FullTraceTimelineAxis)GetValue(AxisProperty);
+        get => (TraceTimelineAxis)GetValue(AxisProperty);
         set => SetValue(AxisProperty, value);
     }
 
@@ -146,13 +146,13 @@ public sealed partial class FlameChartControl : Grid, IDisposable
 
     public static readonly DependencyProperty CurrentEventLinkProperty =
         DependencyProperty.Register(nameof(CurrentEventLink),
-                                    typeof(FullTraceEventLink),
+                                    typeof(TraceEventLink),
                                     typeof(FlameChartControl),
                                     new PropertyMetadata(null, OnCurrentEventLinkChanged));
 
-    public FullTraceEventLink? CurrentEventLink
+    public TraceEventLink? CurrentEventLink
     {
-        get => (FullTraceEventLink?)GetValue(CurrentEventLinkProperty);
+        get => (TraceEventLink?)GetValue(CurrentEventLinkProperty);
         set => SetValue(CurrentEventLinkProperty, value);
     }
 
@@ -200,17 +200,17 @@ public sealed partial class FlameChartControl : Grid, IDisposable
 
     private readonly Dictionary<FlameHit, MemoryInUseCurve> _inUseCurves = [];
 
-    private FullTraceTimeline? _timeline;
+    private TraceTimeline? _timeline;
 
     private CallStackNode? _highlightedNode;
 
     private CallStackNode? _root;
 
-    private FullTraceTimeline? _rooted;
+    private TraceTimeline? _rooted;
 
-    private FullTraceTimeline? _visible;
+    private TraceTimeline? _visible;
 
-    private FullTraceTimelineAxis _axis = FullTraceTimelineAxis.Position;
+    private TraceTimelineAxis _axis = TraceTimelineAxis.Position;
 
     private float[] _laneTops = [];
 
@@ -386,7 +386,7 @@ public sealed partial class FlameChartControl : Grid, IDisposable
 
     private bool ShowsSpikes => ShowMemory && MemoryMode == FlameChartMemoryMode.Allocated;
 
-    private bool ShowsMemoryBand => ShowMemory && _axis == FullTraceTimelineAxis.Position && _visible is { HasAllocations: true };
+    private bool ShowsMemoryBand => ShowMemory && _axis == TraceTimelineAxis.Position && _visible is { HasAllocations: true };
 
     private float BandHeight => ShowsMemoryBand ? MemoryBandHeight : 0;
 
@@ -507,7 +507,7 @@ public sealed partial class FlameChartControl : Grid, IDisposable
         _parsedColours.Clear();
     }
 
-    private double OriginOf(FullTraceTimelineAxis axis) => _timeline?.StartOf(axis) ?? 0;
+    private double OriginOf(TraceTimelineAxis axis) => _timeline?.StartOf(axis) ?? 0;
 
     private void PlacePlayhead(double target)
     {
@@ -523,7 +523,7 @@ public sealed partial class FlameChartControl : Grid, IDisposable
         _canvas.Invalidate();
     }
 
-    private void FollowLink(FullTraceEventLink? link)
+    private void FollowLink(TraceEventLink? link)
     {
         if (_visible is null || link is null)
         {
@@ -707,12 +707,12 @@ public sealed partial class FlameChartControl : Grid, IDisposable
         _contentHeight = top;
     }
 
-    private float LaneHeight(FullTraceTimelineThread thread)
+    private float LaneHeight(TraceTimelineThread thread)
         => LaneHeaderHeight + DepthOf(thread) * _rowHeight + (thread.ThreadId == _expandedThread ? _focusPadding : 0) + LaneGap;
 
-    private int DepthOf(FullTraceTimelineThread thread) => IsExpanded(thread) ? thread.Depth : 0;
+    private int DepthOf(TraceTimelineThread thread) => IsExpanded(thread) ? thread.Depth : 0;
 
-    private bool IsExpanded(FullTraceTimelineThread thread) => _expandedThread is not { } expanded || thread.ThreadId == expanded;
+    private bool IsExpanded(TraceTimelineThread thread) => _expandedThread is not { } expanded || thread.ThreadId == expanded;
 
     private void ToggleLane(int lane)
     {
@@ -828,7 +828,7 @@ public sealed partial class FlameChartControl : Grid, IDisposable
         _inUseCurves.Clear();
 
         _inUseMaximum = _visible is { HasAllocations: true } memory
-            ? memory.PeakInUseDuring(memory.StartOf(FullTraceTimelineAxis.Position), memory.EndOf(FullTraceTimelineAxis.Position))
+            ? memory.PeakInUseDuring(memory.StartOf(TraceTimelineAxis.Position), memory.EndOf(TraceTimelineAxis.Position))
             : 0;
 
         var selfAllocations = _visible?.SelfAllocations() ?? [];
@@ -855,7 +855,7 @@ public sealed partial class FlameChartControl : Grid, IDisposable
     private static string MemoryModeLabel(FlameChartMemoryMode mode)
         => mode == FlameChartMemoryMode.InUse ? "Memory: In Use" : "Memory: Allocated";
 
-    private static ulong MemoryMaximum(FullTraceTimeline? timeline)
+    private static ulong MemoryMaximum(TraceTimeline? timeline)
     {
         if (timeline is not { HasAllocations: true })
         {
@@ -868,9 +868,9 @@ public sealed partial class FlameChartControl : Grid, IDisposable
         {
             var row = thread.Rows[0];
 
-            var starts = row.Starts(FullTraceTimelineAxis.Position);
+            var starts = row.Starts(TraceTimelineAxis.Position);
 
-            var ends = row.Ends(FullTraceTimelineAxis.Position);
+            var ends = row.Ends(TraceTimelineAxis.Position);
 
             for (var index = 0; index < row.Count; index++)
             {
@@ -881,7 +881,7 @@ public sealed partial class FlameChartControl : Grid, IDisposable
         return maximum;
     }
 
-    private bool[]? PrunedNodes(FullTraceTimeline timeline)
+    private bool[]? PrunedNodes(TraceTimeline timeline)
     {
         if (PrunedCategories is not { Count: > 0 } categories)
         {
@@ -905,7 +905,7 @@ public sealed partial class FlameChartControl : Grid, IDisposable
         return any ? hidden : null;
     }
 
-    private static bool[]? Matches(FullTraceTimeline timeline, Func<CallStackNode, bool> predicate)
+    private static bool[]? Matches(TraceTimeline timeline, Func<CallStackNode, bool> predicate)
     {
         var matches = new bool[timeline.NodeCount];
 
@@ -1029,7 +1029,7 @@ public sealed partial class FlameChartControl : Grid, IDisposable
     {
         var control = (FlameChartControl)d;
 
-        control._timeline = e.NewValue as FullTraceTimeline;
+        control._timeline = e.NewValue as TraceTimeline;
 
         control.Reset();
     }
@@ -1038,7 +1038,7 @@ public sealed partial class FlameChartControl : Grid, IDisposable
     {
         var control = (FlameChartControl)d;
 
-        control._axis = (FullTraceTimelineAxis)e.NewValue;
+        control._axis = (TraceTimelineAxis)e.NewValue;
 
         control.UpdateFitRange();
 
@@ -1167,5 +1167,5 @@ public sealed partial class FlameChartControl : Grid, IDisposable
     }
 
     private static void OnCurrentEventLinkChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
-        => ((FlameChartControl)d).FollowLink(e.NewValue as FullTraceEventLink);
+        => ((FlameChartControl)d).FollowLink(e.NewValue as TraceEventLink);
 }

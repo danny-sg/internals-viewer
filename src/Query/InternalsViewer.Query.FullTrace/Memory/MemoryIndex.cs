@@ -133,7 +133,7 @@ internal sealed class MemoryIndex
     public MemoryInUseCurve InUseWithin(uint thread, double start, double end)
         => Threads.TryGetValue(thread, out var memory) ? memory.InUseWithin(start, end) : MemoryInUseCurve.Empty;
 
-    public IReadOnlyList<MemoryInUseCurve> InUseOwnedBy(uint thread, IReadOnlyList<IReadOnlyList<FullTraceTimelineSpan>> owners)
+    public IReadOnlyList<MemoryInUseCurve> InUseOwnedBy(uint thread, IReadOnlyList<IReadOnlyList<TraceTimelineSpan>> owners)
         => Threads.TryGetValue(thread, out var memory)
             ? memory.InUseOwnedBy(owners)
             : [.. owners.Select(_ => MemoryInUseCurve.Empty)];
@@ -275,7 +275,7 @@ internal sealed class MemoryIndex
             return CurveOf(changes);
         }
 
-        public MemoryInUseCurve[] InUseOwnedBy(IReadOnlyList<IReadOnlyList<FullTraceTimelineSpan>> owners)
+        public MemoryInUseCurve[] InUseOwnedBy(IReadOnlyList<IReadOnlyList<TraceTimelineSpan>> owners)
         {
             var ownerOf = new int[AllocationStarts.Length];
 

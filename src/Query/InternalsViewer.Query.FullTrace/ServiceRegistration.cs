@@ -10,11 +10,11 @@ namespace InternalsViewer.Query.FullTrace;
 [ExcludeFromCodeCoverage]
 public static class ServiceRegistration
 {
-    public static void RegisterFullTraceServices(this IServiceCollection services)
+    public static void RegisterTraceServices(this IServiceCollection services)
     {
-        services.AddTransient<FullTraceLoader>();
+        services.AddTransient<TraceLoader>();
 
-        services.AddSingleton<IQueryExportSection, FullTraceExportSection>();
+        services.AddSingleton<IQueryExportSection, TraceExportSection>();
 
         services.AddSingleton<ITimeTravelRecorder, TimeTravelRecorder>();
     }

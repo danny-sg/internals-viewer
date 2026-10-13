@@ -4,15 +4,15 @@ using InternalsViewer.Query.Helpers;
 
 namespace InternalsViewer.Query.FullTrace.Timeline;
 
-public sealed class FullTraceTimelineRow
+public sealed class TraceTimelineRow
 {
-    internal FullTraceTimelineRow(double[] positionStarts,
-                                  double[] positionEnds,
-                                  double[] instructionStarts,
-                                  double[] instructionEnds,
-                                  int[] nodes,
-                                  uint[] calls,
-                                  byte[] flags)
+    internal TraceTimelineRow(double[] positionStarts,
+                              double[] positionEnds,
+                              double[] instructionStarts,
+                              double[] instructionEnds,
+                              int[] nodes,
+                              uint[] calls,
+                              byte[] flags)
     {
         PositionStarts = positionStarts;
         PositionEnds = positionEnds;
@@ -39,22 +39,22 @@ public sealed class FullTraceTimelineRow
 
     private byte[] Flags { get; }
 
-    public ReadOnlySpan<double> Starts(FullTraceTimelineAxis axis)
-        => axis == FullTraceTimelineAxis.Position ? PositionStarts : InstructionStarts;
+    public ReadOnlySpan<double> Starts(TraceTimelineAxis axis)
+        => axis == TraceTimelineAxis.Position ? PositionStarts : InstructionStarts;
 
-    public ReadOnlySpan<double> Ends(FullTraceTimelineAxis axis)
-        => axis == FullTraceTimelineAxis.Position ? PositionEnds : InstructionEnds;
+    public ReadOnlySpan<double> Ends(TraceTimelineAxis axis)
+        => axis == TraceTimelineAxis.Position ? PositionEnds : InstructionEnds;
 
     public int NodeAt(int index) => Nodes[index];
 
     public int CallAt(int index) => Calls[index] == uint.MaxValue ? -1 : (int)Calls[index];
 
-    public FullTraceSpanFlags FlagsAt(int index) => (FullTraceSpanFlags)Flags[index];
+    public TraceSpanFlags FlagsAt(int index) => (TraceSpanFlags)Flags[index];
 
-    public FullTraceTimelineSpan Span(FullTraceTimelineAxis axis, int index)
+    public TraceTimelineSpan Span(TraceTimelineAxis axis, int index)
         => new(Starts(axis)[index], Ends(axis)[index], Nodes[index], CallAt(index), FlagsAt(index));
 
-    public FullTraceTimelineRow Where(Func<int, bool> include)
+    public TraceTimelineRow Where(Func<int, bool> include)
     {
         var kept = new List<int>(Count);
 
@@ -71,29 +71,29 @@ public sealed class FullTraceTimelineRow
             return this;
         }
 
-        return new FullTraceTimelineRow([.. kept.Select(i => PositionStarts[i])],
-                                        [.. kept.Select(i => PositionEnds[i])],
-                                        [.. kept.Select(i => InstructionStarts[i])],
-                                        [.. kept.Select(i => InstructionEnds[i])],
-                                        [.. kept.Select(i => Nodes[i])],
-                                        [.. kept.Select(i => Calls[i])],
-                                        [.. kept.Select(i => Flags[i])]);
+        return new TraceTimelineRow([.. kept.Select(i => PositionStarts[i])],
+                                    [.. kept.Select(i => PositionEnds[i])],
+                                    [.. kept.Select(i => InstructionStarts[i])],
+                                    [.. kept.Select(i => InstructionEnds[i])],
+                                    [.. kept.Select(i => Nodes[i])],
+                                    [.. kept.Select(i => Calls[i])],
+                                    [.. kept.Select(i => Flags[i])]);
     }
 
-    public int FirstEndingAfter(FullTraceTimelineAxis axis, double x, int from = 0) => SortedSearch.FirstAfter(Ends(axis), x, from);
+    public int FirstEndingAfter(TraceTimelineAxis axis, double x, int from = 0) => SortedSearch.FirstAfter(Ends(axis), x, from);
 
-    public int FirstStartingFrom(FullTraceTimelineAxis axis, double x, int from) => SortedSearch.FirstAtOrAfter(Starts(axis), x, from);
+    public int FirstStartingFrom(TraceTimelineAxis axis, double x, int from) => SortedSearch.FirstAtOrAfter(Starts(axis), x, from);
 
-    public int FirstStartingAfter(FullTraceTimelineAxis axis, double x) => SortedSearch.FirstAfter(Starts(axis), x);
+    public int FirstStartingAfter(TraceTimelineAxis axis, double x) => SortedSearch.FirstAfter(Starts(axis), x);
 
-    public int IndexAt(FullTraceTimelineAxis axis, double x, double tolerance)
+    public int IndexAt(TraceTimelineAxis axis, double x, double tolerance)
     {
         var index = FirstEndingAfter(axis, x - tolerance);
 
         return index < Count && Starts(axis)[index] <= x + tolerance ? index : -1;
     }
 
-    internal static FullTraceTimelineRow Read(BinaryReader reader)
+    internal static TraceTimelineRow Read(BinaryReader reader)
         => new(ExportBinary.ReadArray<double>(reader),
                ExportBinary.ReadArray<double>(reader),
                ExportBinary.ReadArray<double>(reader),

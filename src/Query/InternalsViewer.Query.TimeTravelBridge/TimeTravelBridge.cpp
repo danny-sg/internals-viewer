@@ -65,9 +65,9 @@ namespace
 
     constexpr size_t PublishedEventChunk = 65536;
 
-    constexpr uint8_t PublisherFunction = 1;
+    constexpr uint8_t EventPublisherFunction = 1;
 
-    constexpr uint8_t WriterFunction = 2;
+    constexpr uint8_t EventWriterFunction = 2;
 
     constexpr size_t ChunkCalls = 16384;
 
@@ -349,7 +349,7 @@ namespace
                                                   call,
                                                   read.Register,
                                                   read.Offset,
-                                                  read.AtReturn });
+                                                  read.IsReadAtReturn });
 
             if (PointerValues.size() >= PointerValueChunk)
             {
@@ -582,7 +582,7 @@ namespace
 
         for (auto const& read : *reads)
         {
-            if (read.AtReturn == 0 || read.Register < 0 || read.Register > ReturnRegister)
+            if (read.IsReadAtReturn == 0 || read.Register < 0 || read.Register > ReturnRegister)
             {
                 continue;
             }
@@ -654,7 +654,7 @@ namespace
                                      ? arguments[read.Register]
                                      : StackArgument(thread, registers.Rsp, returnAddress, read.Register, stackArguments);
 
-            if (read.AtReturn == 0)
+            if (read.IsReadAtReturn == 0)
             {
                 tree.ReadPointer(thread, *logged.Function, logged.Index, read, pointer);
             }
@@ -723,7 +723,7 @@ namespace
             return;
         }
 
-        if (function->second == PublisherFunction)
+        if (function->second == EventPublisherFunction)
         {
             tree.BeginPublish(threadId, PendingPublish{ target, stackPointer, position, clock.Instructions, NearestNode(stack), 0 });
         }
@@ -1156,10 +1156,10 @@ extern "C"
                          int32_t                excludedFunctionCount,
                          const PointerRead*     pointerReads,
                          int32_t                pointerReadCount,
-                         const uint64_t*        publisherFunctions,
-                         int32_t                publisherFunctionCount,
-                         const uint64_t*        writerFunctions,
-                         int32_t                writerFunctionCount,
+                         const uint64_t*        eventPublisherFunctions,
+                         int32_t                eventPublisherFunctionCount,
+                         const uint64_t*        eventWriterFunctions,
+                         int32_t                eventWriterFunctionCount,
                          CallChunkCallback      logCalls,
                          CallSpanCallback       logSpans,
                          PointerValueCallback   logPointerValues,
@@ -1203,14 +1203,14 @@ extern "C"
 
         result->LogPublishedEvents = logPublishedEvents;
 
-        for (int32_t index = 0; index < publisherFunctionCount && logPublishedEvents != nullptr; index++)
+        for (int32_t index = 0; index < eventPublisherFunctionCount && logPublishedEvents != nullptr; index++)
         {
-            result->PublishedEventFunctions[publisherFunctions[index]] = PublisherFunction;
+            result->PublishedEventFunctions[eventPublisherFunctions[index]] = EventPublisherFunction;
         }
 
-        for (int32_t index = 0; index < writerFunctionCount && logPublishedEvents != nullptr; index++)
+        for (int32_t index = 0; index < eventWriterFunctionCount && logPublishedEvents != nullptr; index++)
         {
-            result->PublishedEventFunctions[writerFunctions[index]] = WriterFunction;
+            result->PublishedEventFunctions[eventWriterFunctions[index]] = EventWriterFunction;
         }
 
         auto const status = ReplayTrace(engine,

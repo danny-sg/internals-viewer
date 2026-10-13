@@ -5,9 +5,9 @@ using InternalsViewer.Query.Results;
 
 namespace InternalsViewer.UI.App.Models.Query.CallStack;
 
-internal sealed class ArgumentCallSource(IReadOnlyList<FullTraceArgumentCall> calls,
+internal sealed class ArgumentCallSource(IReadOnlyList<TraceArgumentCall> calls,
                                          int fieldCount,
-                                         Func<FullTraceArgumentCall, int, object?[]> values) : IResultRowSource
+                                         Func<TraceArgumentCall, int, object?[]> values) : IResultRowSource
 {
     private const int CachedRows = 512;
 

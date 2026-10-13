@@ -6,7 +6,7 @@ using InternalsViewer.Query.FullTrace.Timeline;
 
 namespace InternalsViewer.Query.FullTrace;
 
-public sealed record FullTraceResult(CallStackTree CallStack, FullTraceCallLog CallLog, FullTraceTimeline Timeline) : IRunExtra
+public sealed record TraceResult(CallStackTree CallStack, TraceCallLog CallLog, TraceTimeline Timeline) : IRunExtra
 {
     public IteratorPlanLink PlanLink { get; init; } = IteratorPlanLink.Empty;
 }

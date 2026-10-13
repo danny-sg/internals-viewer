@@ -13,7 +13,7 @@ public class ValueUseGroupTests
     [Fact]
     public void Uses_Are_Grouped_By_How_The_Value_Was_Held()
     {
-        FullTraceValueUse[] uses =
+        TraceValueUse[] uses =
         [
             Use(Static, "RDX"),
             Use(Static, "RAX"),
@@ -32,17 +32,17 @@ public class ValueUseGroupTests
 
         var passed = Assert.Single(groups);
 
-        Assert.Equal(FullTraceValueRole.Passed, passed.Role);
+        Assert.Equal(TraceValueRole.Passed, passed.Role);
         Assert.Equal(2, passed.Rows.Count);
     }
 
-    private static FunctionKind? KindOf(FullTraceValueUse use) => use.Address switch
+    private static FunctionKind? KindOf(TraceValueUse use) => use.Address switch
     {
         Member => FunctionKind.Member,
         Static => FunctionKind.Static,
         _ => null
     };
 
-    private static FullTraceValueUse Use(ulong address, string location)
-        => new(address, 0, location, 1, new FullTraceValueMatch(0, 1, null), new FullTraceValueMatch(0, 1, null));
+    private static TraceValueUse Use(ulong address, string location)
+        => new(address, 0, location, 1, new TraceValueMatch(0, 1, null), new TraceValueMatch(0, 1, null));
 }

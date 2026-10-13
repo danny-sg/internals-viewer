@@ -55,13 +55,13 @@ internal sealed record MemoryFunction(ulong Address,
     public static bool IsMemoryObjectClass(string? className)
         => className is not null && (className == MemoryObjectFactory || IsMemoryObject(className));
 
-    public bool Applies(FullTraceArgumentCall call) => FlagSlot < 0 || (call.Slot(FlagSlot) & FlagMask) != 0;
+    public bool Applies(TraceArgumentCall call) => FlagSlot < 0 || (call.Slot(FlagSlot) & FlagMask) != 0;
 
-    public ulong ObjectOf(FullTraceArgumentCall call) => Operation == MemoryOperation.Create ? call.ReturnedValue : call.Slot(0);
+    public ulong ObjectOf(TraceArgumentCall call) => Operation == MemoryOperation.Create ? call.ReturnedValue : call.Slot(0);
 
-    public ulong PointerOf(FullTraceArgumentCall call) => call.Slot(PointerSlot);
+    public ulong PointerOf(TraceArgumentCall call) => call.Slot(PointerSlot);
 
-    public ulong BytesOf(FullTraceArgumentCall call)
+    public ulong BytesOf(TraceArgumentCall call)
     {
         if (SizeSlot < 0)
         {

@@ -88,7 +88,7 @@ public class EventSqlTests
         var options = new EventOptions
         {
             RecordTimeTravel = true,
-            RecordFullTraceEvents = false,
+            RecordTraceEvents = false,
             IncludeCallStack = true,
             IncludeLatch = true
         };

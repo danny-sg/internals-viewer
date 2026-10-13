@@ -19,7 +19,9 @@ namespace InternalsViewer.Query.FullTrace.Native;
 ///
 /// The replay uses several function indicators to dictate behaviour, excluded functions to ignore, instance methods, value locators where
 /// arguments and return results are pointers which should be followed in the trace memory at the current position for actual values, and
-/// functions that are used as event markers, not recorded in the call stack but generate separate events for that point.
+/// functions that publish extended events.
+///
+/// The replay also reports progress through a callback, and stops when the caller sets the cancellation flag.
 ///
 /// All addresses passed to and from the bridge are absolute addresses in the recorded process.
 ///
@@ -49,7 +51,7 @@ namespace InternalsViewer.Query.FullTrace.Native;
 ///
 ///      Only calls on these threads are recorded. An empty list records every thread.
 ///
-///    - Excluded
+///    - Excluded Functions
 ///
 ///      If an address is in the excluded list, the call and everything it calls are not added to the tree, the call log or the timeline.
 ///      The replay still runs through it, but nested calls are ignored until it returns, and its time is counted in the parent's span.
@@ -71,6 +73,17 @@ namespace InternalsViewer.Query.FullTrace.Native;
 ///
 ///      The read can be performed at the time of the call or the return. An at-return read of an argument uses the pointer captured at the
 ///      call, which is how out parameters are read.
+///
+///    - Event Writer/Publisher Functions
+///
+///      Extended events are excluded from the call tracing and tracked separately to allow the trace to be matched against the .xel events
+///      tracked in general query execution.
+///
+///      An extended event is first published, then written into the buffer of each session collecting it by a shared writer. Entering a
+///      publisher (an event's Publish) starts a pending event, and entering the shared writer (XE_BufferMgr::Reserve) while one is pending
+///      records it as a published event: the publisher's position and the session buffer it was written to. Both are checked before
+///      exclusion, so they are seen even though the extended events code is excluded from the tree. Published events are buffered and
+///      passed back in chunks, then matched in order to the .xel events, giving each event its position in the trace.
 ///
 ///    The callbacks are:
 ///
@@ -107,6 +120,12 @@ namespace InternalsViewer.Query.FullTrace.Native;
 ///      The values read by the pointer reads, with the function, instance and call they belong to, so they can be joined to the call
 ///      log. Nothing is returned if the pointer is zero or the trace has no value for the memory. Values are flushed every 65,536
 ///      values and at the end.
+///
+///    - Published Events
+///
+///      Each publish that reached a session buffer: the publisher's address, the session buffer (the writer's RCX), the position, the
+///      thread's instruction count, the call tree node of the nearest recorded caller, and the thread. A publish written to two sessions
+///      is passed back twice. Published events are flushed every 65,536 and at the end.
 ///
 ///    - Progress
 ///
@@ -163,10 +182,10 @@ internal static class ReplayBridge
                                           int excludedFunctionCount,
                                           PointerRead[] pointerReads,
                                           int pointerReadCount,
-                                          ulong[] publisherFunctions,
-                                          int publisherFunctionCount,
-                                          ulong[] writerFunctions,
-                                          int writerFunctionCount,
+                                          ulong[] eventPublisherFunctions,
+                                          int eventPublisherFunctionCount,
+                                          ulong[] eventWriterFunctions,
+                                          int eventWriterFunctionCount,
                                           CallChunkCallback? logCalls,
                                           CallSpanCallback? logSpans,
                                           PointerValueCallback? logPointerValues,

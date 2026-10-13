@@ -10,9 +10,9 @@ using InternalsViewer.Query.Events;
 
 namespace InternalsViewer.Query.FullTrace.Timeline;
 
-public sealed class FullTraceTimeline
+public sealed class TraceTimeline
 {
-    internal FullTraceTimeline(IReadOnlyList<FullTraceTimelineThread> threads, int[] parents, double stepsPerSequence)
+    internal TraceTimeline(IReadOnlyList<TraceTimelineThread> threads, int[] parents, double stepsPerSequence)
     {
         Threads = threads;
         Parents = parents;
@@ -24,12 +24,12 @@ public sealed class FullTraceTimeline
             return;
         }
 
-        PositionStart = threads.Min(t => t.StartOf(FullTraceTimelineAxis.Position));
-        PositionEnd = threads.Max(t => t.EndOf(FullTraceTimelineAxis.Position));
-        InstructionEnd = threads.Max(t => t.EndOf(FullTraceTimelineAxis.Instructions));
+        PositionStart = threads.Min(t => t.StartOf(TraceTimelineAxis.Position));
+        PositionEnd = threads.Max(t => t.EndOf(TraceTimelineAxis.Position));
+        InstructionEnd = threads.Max(t => t.EndOf(TraceTimelineAxis.Instructions));
     }
 
-    private FullTraceTimeline(IReadOnlyList<FullTraceTimelineThread> threads, FullTraceTimeline source, bool fit = false)
+    private TraceTimeline(IReadOnlyList<TraceTimelineThread> threads, TraceTimeline source, bool fit = false)
     {
         Threads = threads;
         Parents = source.Parents;
@@ -50,18 +50,18 @@ public sealed class FullTraceTimeline
             return;
         }
 
-        PositionStart = threads.Min(t => t.StartOf(FullTraceTimelineAxis.Position));
-        PositionEnd = threads.Max(t => t.EndOf(FullTraceTimelineAxis.Position));
-        InstructionStart = threads.Min(t => t.StartOf(FullTraceTimelineAxis.Instructions));
-        InstructionEnd = threads.Max(t => t.EndOf(FullTraceTimelineAxis.Instructions));
+        PositionStart = threads.Min(t => t.StartOf(TraceTimelineAxis.Position));
+        PositionEnd = threads.Max(t => t.EndOf(TraceTimelineAxis.Position));
+        InstructionStart = threads.Min(t => t.StartOf(TraceTimelineAxis.Instructions));
+        InstructionEnd = threads.Max(t => t.EndOf(TraceTimelineAxis.Instructions));
     }
 
-    private FullTraceTimeline(IReadOnlyList<FullTraceTimelineThread> threads,
-                              int[] parents,
-                              CallStackNode?[] nodes,
-                              double stepsPerSequence,
-                              (double PositionStart, double PositionEnd, double InstructionStart, double InstructionEnd) bounds,
-                              MemoryIndex memory)
+    private TraceTimeline(IReadOnlyList<TraceTimelineThread> threads,
+                          int[] parents,
+                          CallStackNode?[] nodes,
+                          double stepsPerSequence,
+                          (double PositionStart, double PositionEnd, double InstructionStart, double InstructionEnd) bounds,
+                          MemoryIndex memory)
     {
         Threads = threads;
         Parents = parents;
@@ -75,7 +75,7 @@ public sealed class FullTraceTimeline
         Memory = memory;
     }
 
-    public IReadOnlyList<FullTraceTimelineThread> Threads { get; }
+    public IReadOnlyList<TraceTimelineThread> Threads { get; }
 
     public int NodeCount => Parents.Length;
 
@@ -85,9 +85,9 @@ public sealed class FullTraceTimeline
 
     public bool HasWorkspace => Memory.HasWorkspace;
 
-    public IReadOnlyList<FullTraceOperatorLifetime> Lifetimes { get; private set; } = [];
+    public IReadOnlyList<TraceOperatorLifetime> Lifetimes { get; private set; } = [];
 
-    public IReadOnlyList<FullTraceEventLink> EventLinks { get; private set; } = [];
+    public IReadOnlyList<TraceEventLink> EventLinks { get; private set; } = [];
 
     internal CallStackNode?[] MappedNodes => Nodes;
 
@@ -107,17 +107,17 @@ public sealed class FullTraceTimeline
 
     private MemoryIndex Memory { get; set; } = MemoryIndex.Empty;
 
-    private Dictionary<int, FullTraceEventLink> EventLinksBySequence { get; set; } = [];
+    private Dictionary<int, TraceEventLink> EventLinksBySequence { get; set; } = [];
 
-    public double StartOf(FullTraceTimelineAxis axis) => axis == FullTraceTimelineAxis.Position ? PositionStart : InstructionStart;
+    public double StartOf(TraceTimelineAxis axis) => axis == TraceTimelineAxis.Position ? PositionStart : InstructionStart;
 
-    public double EndOf(FullTraceTimelineAxis axis) => axis == FullTraceTimelineAxis.Position ? PositionEnd : InstructionEnd;
+    public double EndOf(TraceTimelineAxis axis) => axis == TraceTimelineAxis.Position ? PositionEnd : InstructionEnd;
 
-    public double StepOf(FullTraceTimelineAxis axis) => axis == FullTraceTimelineAxis.Position ? 1 / StepsPerSequence : 1;
+    public double StepOf(TraceTimelineAxis axis) => axis == TraceTimelineAxis.Position ? 1 / StepsPerSequence : 1;
 
     public CallStackNode? NodeOf(int node) => node >= 0 && node < Nodes.Length ? Nodes[node] : null;
 
-    public FullTraceEventLink? EventLinkOf(EngineEvent engineEvent)
+    public TraceEventLink? EventLinkOf(EngineEvent engineEvent)
     {
         foreach (var owned in engineEvent.SelfAndOwned())
         {
@@ -130,7 +130,7 @@ public sealed class FullTraceTimeline
         return null;
     }
 
-    public IEnumerable<FullTraceResolvedSpan> ResolvedSpans()
+    public IEnumerable<TraceResolvedSpan> ResolvedSpans()
     {
         for (var threadIndex = 0; threadIndex < Threads.Count; threadIndex++)
         {
@@ -144,7 +144,7 @@ public sealed class FullTraceTimeline
                 {
                     if (NodeOf(row.NodeAt(index)) is { } node)
                     {
-                        yield return new FullTraceResolvedSpan(threadIndex, thread, depth, row, index, node);
+                        yield return new TraceResolvedSpan(threadIndex, thread, depth, row, index, node);
                     }
                 }
             }
@@ -168,10 +168,10 @@ public sealed class FullTraceTimeline
     public MemoryInUseCurve InUseWithin(uint thread, double positionStart, double positionEnd)
         => Memory.InUseWithin(thread, positionStart, positionEnd);
 
-    public IReadOnlyList<MemoryInUseCurve> InUseOwnedBy(uint thread, IReadOnlyList<IReadOnlyList<FullTraceTimelineSpan>> calls)
+    public IReadOnlyList<MemoryInUseCurve> InUseOwnedBy(uint thread, IReadOnlyList<IReadOnlyList<TraceTimelineSpan>> calls)
         => Memory.InUseOwnedBy(thread, calls);
 
-    public IReadOnlyList<FullTraceSelfAllocation> SelfAllocations()
+    public IReadOnlyList<TraceSelfAllocation> SelfAllocations()
     {
         var totals = new Dictionary<(int Thread, int Depth, int Index), ulong>();
 
@@ -183,7 +183,7 @@ public sealed class FullTraceTimeline
             {
                 for (var depth = rows.Count - 1; depth >= 0; depth--)
                 {
-                    var index = rows[depth].IndexAt(FullTraceTimelineAxis.Position, position, 0);
+                    var index = rows[depth].IndexAt(TraceTimelineAxis.Position, position, 0);
 
                     if (index < 0)
                     {
@@ -199,14 +199,14 @@ public sealed class FullTraceTimeline
             }
         }
 
-        return [.. totals.OrderBy(t => t.Key).Select(t => new FullTraceSelfAllocation(t.Key.Thread, t.Key.Depth, t.Key.Index, t.Value))];
+        return [.. totals.OrderBy(t => t.Key).Select(t => new TraceSelfAllocation(t.Key.Thread, t.Key.Depth, t.Key.Index, t.Value))];
     }
 
     public int ParentOf(int node) => node >= 0 && node < Parents.Length ? Parents[node] : -1;
 
-    public FullTraceTimeline Where(Func<int, bool> include) => new([.. Threads.Select(t => t.Where(include))], this);
+    public TraceTimeline Where(Func<int, bool> include) => new([.. Threads.Select(t => t.Where(include))], this);
 
-    public FullTraceTimeline? RootedAt(Func<CallStackNode, bool> isRoot)
+    public TraceTimeline? RootedAt(Func<CallStackNode, bool> isRoot)
     {
         var depths = new int[NodeCount];
 
@@ -242,7 +242,7 @@ public sealed class FullTraceTimeline
 
         var windows = Windows(rooted.Where(t => t.Calls > 0 && t.Rows.Count > 0).Select(t => t.Rows[0]));
 
-        var threads = new List<FullTraceTimelineThread>();
+        var threads = new List<TraceTimelineThread>();
 
         for (var lane = 0; lane < Threads.Count; lane++)
         {
@@ -254,10 +254,10 @@ public sealed class FullTraceTimeline
             }
         }
 
-        return new FullTraceTimeline(threads, this);
+        return new TraceTimeline(threads, this);
     }
 
-    public FullTraceTimeline? CroppedTo(CallStackTree tree)
+    public TraceTimeline? CroppedTo(CallStackTree tree)
     {
         var known = new Dictionary<CallStackNode, int>(ReferenceEqualityComparer.Instance);
 
@@ -268,16 +268,16 @@ public sealed class FullTraceTimeline
             depths[node] = NodeOf(node) is { } callNode ? DepthIn(tree, callNode, known) : -1;
         }
 
-        int DepthOf(FullTraceTimelineRow row, int index)
+        int DepthOf(TraceTimelineRow row, int index)
             => row.NodeAt(index) is var node && node >= 0 && node < depths.Length ? depths[node] : -1;
 
-        List<FullTraceTimelineThread> threads = [.. Threads.Select(t => Regroup(t, (_, row, index) => DepthOf(row, index)))
-                                                           .Where(t => t.Calls > 0)];
+        List<TraceTimelineThread> threads = [.. Threads.Select(t => Regroup(t, (_, row, index) => DepthOf(row, index)))
+                                                       .Where(t => t.Calls > 0)];
 
-        return threads.Count > 0 ? new FullTraceTimeline(threads, this, fit: true) : null;
+        return threads.Count > 0 ? new TraceTimeline(threads, this, fit: true) : null;
     }
 
-    public FullTraceTimeline WithoutCallsUnder(Func<CallStackNode, bool> boundary)
+    public TraceTimeline WithoutCallsUnder(Func<CallStackNode, bool> boundary)
     {
         var removed = new bool[NodeCount];
 
@@ -295,7 +295,7 @@ public sealed class FullTraceTimeline
         return any ? Where(n => n < 0 || n >= removed.Length || !removed[n]) : this;
     }
 
-    public FullTraceTimeline Folded(Func<CallStackNode, bool> isFolded)
+    public TraceTimeline Folded(Func<CallStackNode, bool> isFolded)
     {
         var folded = new bool[NodeCount];
 
@@ -332,7 +332,7 @@ public sealed class FullTraceTimeline
             return lifts[node];
         }
 
-        var threads = new List<FullTraceTimelineThread>(Threads.Count);
+        var threads = new List<TraceTimelineThread>(Threads.Count);
 
         foreach (var thread in Threads)
         {
@@ -343,12 +343,12 @@ public sealed class FullTraceTimeline
                                                                    : depth - LiftOf(n, depth)));
         }
 
-        return new FullTraceTimeline(threads, this);
+        return new TraceTimeline(threads, this);
     }
 
     public static double PositionOf(ulong sequence, ulong steps, double stepsPerSequence) => sequence + steps / stepsPerSequence;
 
-    internal static FullTraceTimeline Read(BinaryReader reader, IReadOnlyList<CallStackNode> nodesById)
+    internal static TraceTimeline Read(BinaryReader reader, IReadOnlyList<CallStackNode> nodesById)
     {
         var stepsPerSequence = reader.ReadDouble();
 
@@ -358,7 +358,7 @@ public sealed class FullTraceTimeline
 
         CallStackNode?[] nodes = [.. ExportBinary.ReadArray<int>(reader).Select(id => id < 0 ? null : nodesById[id])];
 
-        var threads = new FullTraceTimelineThread[reader.ReadInt32()];
+        var threads = new TraceTimelineThread[reader.ReadInt32()];
 
         for (var index = 0; index < threads.Length; index++)
         {
@@ -366,19 +366,19 @@ public sealed class FullTraceTimeline
 
             var calls = reader.ReadInt64();
 
-            var rows = new FullTraceTimelineRow[reader.ReadInt32()];
+            var rows = new TraceTimelineRow[reader.ReadInt32()];
 
             for (var depth = 0; depth < rows.Length; depth++)
             {
-                rows[depth] = FullTraceTimelineRow.Read(reader);
+                rows[depth] = TraceTimelineRow.Read(reader);
             }
 
-            threads[index] = new FullTraceTimelineThread(threadId, rows, calls);
+            threads[index] = new TraceTimelineThread(threadId, rows, calls);
         }
 
         var memory = MemoryIndex.Read(reader);
 
-        return new FullTraceTimeline(threads, parents, nodes, stepsPerSequence, bounds, memory);
+        return new TraceTimeline(threads, parents, nodes, stepsPerSequence, bounds, memory);
     }
 
     internal void Write(BinaryWriter writer, Func<CallStackNode, int> idOf)
@@ -421,9 +421,9 @@ public sealed class FullTraceTimeline
 
     internal void MapNodes(CallStackNode?[] nodes) => Nodes = nodes;
 
-    internal void SetLifetimes(IReadOnlyList<FullTraceOperatorLifetime> lifetimes) => Lifetimes = lifetimes;
+    internal void SetLifetimes(IReadOnlyList<TraceOperatorLifetime> lifetimes) => Lifetimes = lifetimes;
 
-    internal void SetEventLinks(IReadOnlyList<FullTraceEventLink> links)
+    internal void SetEventLinks(IReadOnlyList<TraceEventLink> links)
     {
         EventLinks = links;
 
@@ -456,15 +456,15 @@ public sealed class FullTraceTimeline
         }
     }
 
-    internal static List<FullTraceEventLink> ReadEventLinks(BinaryReader reader,
-                                                            IReadOnlyList<CallStackNode> nodesById,
-                                                            IEnumerable<EngineEvent> events)
+    internal static List<TraceEventLink> ReadEventLinks(BinaryReader reader,
+                                                        IReadOnlyList<CallStackNode> nodesById,
+                                                        IEnumerable<EngineEvent> events)
     {
         var bySequence = events.BySequence();
 
         var count = reader.ReadInt32();
 
-        var links = new List<FullTraceEventLink>(count);
+        var links = new List<TraceEventLink>(count);
 
         for (var index = 0; index < count; index++)
         {
@@ -480,11 +480,11 @@ public sealed class FullTraceTimeline
 
             if (bySequence.TryGetValue(sequence, out var engineEvent))
             {
-                links.Add(new FullTraceEventLink(engineEvent,
-                                                 node >= 0 && node < nodesById.Count ? nodesById[node] : null,
-                                                 thread,
-                                                 position,
-                                                 instructions));
+                links.Add(new TraceEventLink(engineEvent,
+                                             node >= 0 && node < nodesById.Count ? nodesById[node] : null,
+                                             thread,
+                                             position,
+                                             instructions));
             }
         }
 
@@ -493,9 +493,9 @@ public sealed class FullTraceTimeline
 
     internal void AddCallActivity(int buckets)
     {
-        var start = StartOf(FullTraceTimelineAxis.Position);
+        var start = StartOf(TraceTimelineAxis.Position);
 
-        var length = EndOf(FullTraceTimelineAxis.Position) - start;
+        var length = EndOf(TraceTimelineAxis.Position) - start;
 
         if (buckets <= 0 || length <= 0)
         {
@@ -504,7 +504,7 @@ public sealed class FullTraceTimeline
 
         foreach (var span in ResolvedSpans())
         {
-            if (span.Row.FlagsAt(span.Index).HasFlag(FullTraceSpanFlags.StartUnknown))
+            if (span.Row.FlagsAt(span.Index).HasFlag(TraceSpanFlags.StartUnknown))
             {
                 continue;
             }
@@ -514,21 +514,21 @@ public sealed class FullTraceTimeline
                 span.Node.CallActivity = new int[buckets];
             }
 
-            var bucket = (int)((span.StartOf(FullTraceTimelineAxis.Position) - start) / length * buckets);
+            var bucket = (int)((span.StartOf(TraceTimelineAxis.Position) - start) / length * buckets);
 
             span.Node.CallActivity[Math.Clamp(bucket, 0, buckets - 1)]++;
         }
     }
 
-    private static List<(double Start, double End)> Windows(IEnumerable<FullTraceTimelineRow> roots)
+    private static List<(double Start, double End)> Windows(IEnumerable<TraceTimelineRow> roots)
     {
         var windows = new List<(double Start, double End)>();
 
         foreach (var row in roots)
         {
-            var starts = row.Starts(FullTraceTimelineAxis.Position);
+            var starts = row.Starts(TraceTimelineAxis.Position);
 
-            var ends = row.Ends(FullTraceTimelineAxis.Position);
+            var ends = row.Ends(TraceTimelineAxis.Position);
 
             for (var index = 0; index < row.Count; index++)
             {
@@ -582,20 +582,20 @@ public sealed class FullTraceTimeline
         return depth;
     }
 
-    private static FullTraceTimelineThread During(FullTraceTimelineThread thread,
-                                                  List<(double Start, double End)> windows,
-                                                  int[] depths)
+    private static TraceTimelineThread During(TraceTimelineThread thread,
+                                              List<(double Start, double End)> windows,
+                                              int[] depths)
     {
         double[] windowEnds = [.. windows.Select(w => w.End)];
 
-        bool Overlaps(FullTraceTimelineRow row, int index)
+        bool Overlaps(TraceTimelineRow row, int index)
         {
-            var first = SortedSearch.FirstAtOrAfter(windowEnds, row.Starts(FullTraceTimelineAxis.Position)[index]);
+            var first = SortedSearch.FirstAtOrAfter(windowEnds, row.Starts(TraceTimelineAxis.Position)[index]);
 
-            return first < windows.Count && windows[first].Start <= row.Ends(FullTraceTimelineAxis.Position)[index];
+            return first < windows.Count && windows[first].Start <= row.Ends(TraceTimelineAxis.Position)[index];
         }
 
-        int DepthOf(FullTraceTimelineRow row, int index)
+        int DepthOf(TraceTimelineRow row, int index)
             => row.NodeAt(index) is var node && node >= 0 && node < depths.Length ? depths[node] : 0;
 
         var shallowest = int.MaxValue;
@@ -612,12 +612,12 @@ public sealed class FullTraceTimeline
         }
 
         return shallowest == int.MaxValue
-            ? new FullTraceTimelineThread(thread.ThreadId, [], 0)
+            ? new TraceTimelineThread(thread.ThreadId, [], 0)
             : Regroup(thread, (_, row, index) => Overlaps(row, index) ? DepthOf(row, index) - shallowest : -1);
     }
 
-    private static FullTraceTimelineThread Regroup(FullTraceTimelineThread thread,
-                                                   Func<int, FullTraceTimelineRow, int, int> depthOf)
+    private static TraceTimelineThread Regroup(TraceTimelineThread thread,
+                                               Func<int, TraceTimelineRow, int, int> depthOf)
     {
         var counts = new List<int>();
 
@@ -649,13 +649,13 @@ public sealed class FullTraceTimeline
         {
             var row = thread.Rows[source];
 
-            var positionStarts = row.Starts(FullTraceTimelineAxis.Position);
+            var positionStarts = row.Starts(TraceTimelineAxis.Position);
 
-            var positionEnds = row.Ends(FullTraceTimelineAxis.Position);
+            var positionEnds = row.Ends(TraceTimelineAxis.Position);
 
-            var instructionStarts = row.Starts(FullTraceTimelineAxis.Instructions);
+            var instructionStarts = row.Starts(TraceTimelineAxis.Instructions);
 
-            var instructionEnds = row.Ends(FullTraceTimelineAxis.Instructions);
+            var instructionEnds = row.Ends(TraceTimelineAxis.Instructions);
 
             for (var index = 0; index < row.Count; index++)
             {
@@ -678,7 +678,7 @@ public sealed class FullTraceTimeline
             }
         }
 
-        return new FullTraceTimelineThread(thread.ThreadId, [.. rows.Select(r => r.Build())], counts.Sum());
+        return new TraceTimelineThread(thread.ThreadId, [.. rows.Select(r => r.Build())], counts.Sum());
     }
 
     internal sealed class Builder
@@ -718,7 +718,7 @@ public sealed class FullTraceTimeline
             }
         }
 
-        public FullTraceTimeline Build(CallNode[] nodes)
+        public TraceTimeline Build(CallNode[] nodes)
         {
             var depths = new int[nodes.Length];
 
@@ -737,10 +737,10 @@ public sealed class FullTraceTimeline
 
             var threads = Threads.Select(t => t.Value.Build(t.Key, depths, stepsPerSequence))
                                  .Where(t => t.Calls > 0)
-                                 .OrderBy(t => t.StartOf(FullTraceTimelineAxis.Position))
+                                 .OrderBy(t => t.StartOf(TraceTimelineAxis.Position))
                                  .ToList();
 
-            return new FullTraceTimeline(threads, parents, stepsPerSequence);
+            return new TraceTimeline(threads, parents, stepsPerSequence);
         }
     }
 
@@ -772,7 +772,7 @@ public sealed class FullTraceTimeline
             MaximumSteps = Math.Max(MaximumSteps, Math.Max(span.StartSteps, span.EndSteps));
         }
 
-        public FullTraceTimelineThread Build(uint threadId, int[] depths, double stepsPerSequence)
+        public TraceTimelineThread Build(uint threadId, int[] depths, double stepsPerSequence)
         {
             var count = Count;
 
@@ -826,7 +826,7 @@ public sealed class FullTraceTimeline
 
             Count = 0;
 
-            return new FullTraceTimelineThread(threadId, [.. rows.Select(r => r.Build())], count);
+            return new TraceTimelineThread(threadId, [.. rows.Select(r => r.Build())], count);
         }
     }
 
@@ -867,7 +867,7 @@ public sealed class FullTraceTimeline
             Filled++;
         }
 
-        public FullTraceTimelineRow Build()
+        public TraceTimelineRow Build()
         {
             if (!IsSorted())
             {
@@ -884,13 +884,13 @@ public sealed class FullTraceTimeline
                 Reorder(Flags, order);
             }
 
-            return new FullTraceTimelineRow(PositionStarts,
-                                            PositionEnds,
-                                            InstructionStarts,
-                                            InstructionEnds,
-                                            Nodes,
-                                            Calls,
-                                            Flags);
+            return new TraceTimelineRow(PositionStarts,
+                                        PositionEnds,
+                                        InstructionStarts,
+                                        InstructionEnds,
+                                        Nodes,
+                                        Calls,
+                                        Flags);
         }
 
         private bool IsSorted()

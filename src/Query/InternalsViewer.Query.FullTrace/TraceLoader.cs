@@ -15,7 +15,7 @@ using InternalsViewer.Query.FullTrace.Functions;
 
 namespace InternalsViewer.Query.FullTrace;
 
-public sealed class FullTraceLoader(ILogger<FullTraceLoader> logger, ITimeTravelRecorder? timeTravelRecorder = null)
+public sealed class TraceLoader(ILogger<TraceLoader> logger, ITimeTravelRecorder? timeTravelRecorder = null)
 {
     private const string OpeningStep = "Opening Full Trace";
 
@@ -36,7 +36,7 @@ public sealed class FullTraceLoader(ILogger<FullTraceLoader> logger, ITimeTravel
         new(OperatorsStep, 5)
     ];
 
-    private ILogger<FullTraceLoader> Logger { get; } = logger;
+    private ILogger<TraceLoader> Logger { get; } = logger;
 
     private ITimeTravelRecorder? TimeTravelRecorder { get; } = timeTravelRecorder;
 
@@ -58,9 +58,9 @@ public sealed class FullTraceLoader(ILogger<FullTraceLoader> logger, ITimeTravel
                               Stopwatch.GetElapsedTime(start));
     }
 
-    public async Task<FullTraceResult?> LoadAsync(FullTraceRequest request,
-                                                  IProgress<ProgressDetail>? progress,
-                                                  CancellationToken cancellationToken)
+    public async Task<TraceResult?> LoadAsync(TraceRequest request,
+                                              IProgress<ProgressDetail>? progress,
+                                              CancellationToken cancellationToken)
     {
         var events = request.Events;
 
@@ -240,7 +240,7 @@ public sealed class FullTraceLoader(ILogger<FullTraceLoader> logger, ITimeTravel
 
         steps.Complete();
 
-        return new FullTraceResult(callStack, replay.CallLog, timeline) { PlanLink = planLink };
+        return new TraceResult(callStack, replay.CallLog, timeline) { PlanLink = planLink };
     }
 
     private void LogUnknownSymbols(string[] unknownSymbols)

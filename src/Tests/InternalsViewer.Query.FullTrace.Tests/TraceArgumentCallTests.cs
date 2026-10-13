@@ -5,12 +5,12 @@ using InternalsViewer.Query.FullTrace.Arguments;
 namespace InternalsViewer.Query.FullTrace.Tests;
 
 [Trait("Category", "Unit")]
-public class FullTraceArgumentCallTests
+public class TraceArgumentCallTests
 {
     [Fact]
     public void A_Captured_Call_Is_Decoded_From_Its_Values()
     {
-        var values = new ulong[FullTraceArgumentCall.ValueCount];
+        var values = new ulong[TraceArgumentCall.ValueCount];
 
         values[0] = 99;
         values[1] = 1234u | (1ul << 32);
@@ -18,7 +18,7 @@ public class FullTraceArgumentCallTests
         values[4] = 0xC0;
         values[6] = 42;
 
-        var call = FullTraceArgumentCall.Decode(values);
+        var call = TraceArgumentCall.Decode(values);
 
         var layout = ArgumentLayout.LayoutOf(new FunctionSignature(["unsigned __int64 *", "int", "int"], FunctionKind.Static, "int"));
 
@@ -33,21 +33,21 @@ public class FullTraceArgumentCallTests
     [Fact]
     public void A_Call_Records_The_Call_Tree_Node_It_Was_Made_On()
     {
-        var values = new ulong[FullTraceArgumentCall.ValueCount];
+        var values = new ulong[TraceArgumentCall.ValueCount];
 
         values[7] = 7;
 
-        Assert.Equal(7, FullTraceArgumentCall.Decode(values).Node);
+        Assert.Equal(7, TraceArgumentCall.Decode(values).Node);
     }
 
     [Fact]
     public void Only_Integer_Register_Arguments_Are_Captured()
     {
-        var call = FullTraceArgumentCall.Decode(new ulong[FullTraceArgumentCall.ValueCount]);
+        var call = TraceArgumentCall.Decode(new ulong[TraceArgumentCall.ValueCount]);
 
         var layout = ArgumentLayout.LayoutOf(new FunctionSignature(["double", "int", "int", "int", "int"], FunctionKind.Free, null));
 
-        Assert.Equal([false, true, true, true, false], layout.Slots.Select(FullTraceArgumentCall.IsCaptured));
+        Assert.Equal([false, true, true, true, false], layout.Slots.Select(TraceArgumentCall.IsCaptured));
         Assert.Null(call.Value(layout.Slots[0]));
         Assert.Null(call.Value(layout.Slots[4]));
     }

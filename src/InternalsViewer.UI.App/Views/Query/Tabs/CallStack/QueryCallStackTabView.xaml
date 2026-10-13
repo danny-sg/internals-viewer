@@ -654,17 +654,17 @@
                         MaxWidth="360"
                         HorizontalAlignment="Center"
                         VerticalAlignment="Center"
-                        Visibility="{x:Bind ViewModel.IsFullTraceLoading, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}">
-                <ProgressRing IsActive="{x:Bind ViewModel.IsFullTraceLoading, Mode=OneWay}"
+                        Visibility="{x:Bind ViewModel.IsTraceLoading, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}">
+                <ProgressRing IsActive="{x:Bind ViewModel.IsTraceLoading, Mode=OneWay}"
                               HorizontalAlignment="Center"/>
-                <TextBlock Text="{x:Bind ViewModel.FullTraceStatus, Mode=OneWay}"
+                <TextBlock Text="{x:Bind ViewModel.TraceStatus, Mode=OneWay}"
                            HorizontalAlignment="Center"
                            TextAlignment="Center"
                            TextWrapping="Wrap"/>
                 <HyperlinkButton Content="Cancel"
                                  FontSize="12"
                                  HorizontalAlignment="Center"
-                                 Command="{x:Bind ViewModel.CancelFullTraceCommand, Mode=OneWay}"/>
+                                 Command="{x:Bind ViewModel.CancelTraceCommand, Mode=OneWay}"/>
             </StackPanel>
         </Grid>
 

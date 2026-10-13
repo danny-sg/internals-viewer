@@ -35,7 +35,7 @@ internal static class EventSql
                                                bool isReplayMode,
                                                EventOptions eventOptions)
     {
-        var minimal = eventOptions is { RecordTimeTravel: true, RecordFullTraceEvents: false };
+        var minimal = eventOptions is { RecordTimeTravel: true, RecordTraceEvents: false };
 
         var sessionEvents = minimal
             ? new List<string>(EventConstants.TimeTravelEvents)

@@ -938,7 +938,7 @@ public sealed partial class QueryCallStackTabView : UserControl, IDocumentComman
         }
     }
 
-    private void ShowUse(FullTraceValueMatch match)
+    private void ShowUse(TraceValueMatch match)
     {
         if (match.Node is not { } node || _viewModel is null)
         {

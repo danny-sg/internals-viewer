@@ -45,7 +45,7 @@ public class ArgumentRowBuilderTests
     [Fact]
     public void Each_Call_Is_A_Row_With_A_Column_Per_Value()
     {
-        List<FullTraceArgumentCall> calls = [Call(0x100, 0x200)];
+        List<TraceArgumentCall> calls = [Call(0x100, 0x200)];
 
         var table = ArgumentRowBuilder.Table(SetRange, calls);
 
@@ -79,7 +79,7 @@ public class ArgumentRowBuilderTests
     [Fact]
     public void Every_Call_Becomes_A_Row()
     {
-        List<FullTraceArgumentCall> calls = [.. Enumerable.Range(1, 5).Select(i => Call((ulong)i, 0))];
+        List<TraceArgumentCall> calls = [.. Enumerable.Range(1, 5).Select(i => Call((ulong)i, 0))];
 
         var table = ArgumentRowBuilder.Table(SetRange, calls);
 
@@ -179,16 +179,16 @@ public class ArgumentRowBuilderTests
         Assert.Equal((0x200ul, (LocatorKind?)null, "enum LCK_MODE &"), (cell.Value, cell.Locator?.Kind, cell.Type));
     }
 
-    private static FullTraceArgumentCall Call(ulong self, ulong pointer, ulong returnValue = 0, bool returned = true)
+    private static TraceArgumentCall Call(ulong self, ulong pointer, ulong returnValue = 0, bool returned = true)
         => new(1, 1, returned, [self, pointer, 0, 0], returnValue, 0);
 
-    private sealed class CountingCalls(int count) : IReadOnlyList<FullTraceArgumentCall>
+    private sealed class CountingCalls(int count) : IReadOnlyList<TraceArgumentCall>
     {
         public int Count { get; } = count;
 
         public int Reads { get; private set; }
 
-        public FullTraceArgumentCall this[int index]
+        public TraceArgumentCall this[int index]
         {
             get
             {
@@ -198,7 +198,7 @@ public class ArgumentRowBuilderTests
             }
         }
 
-        public IEnumerator<FullTraceArgumentCall> GetEnumerator()
+        public IEnumerator<TraceArgumentCall> GetEnumerator()
         {
             for (var index = 0; index < Count; index++)
             {

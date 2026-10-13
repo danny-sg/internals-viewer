@@ -5,12 +5,12 @@ using InternalsViewer.Query.Helpers;
 
 namespace InternalsViewer.Query.FullTrace.Timeline;
 
-public sealed record FullTraceOperatorLifetime(uint Thread,
-                                               ExecutionOperatorEvent Operator,
-                                               int Node,
-                                               IReadOnlyList<FullTraceTimelineSpan> PositionCalls,
-                                               IReadOnlyList<FullTraceTimelineSpan> InstructionCalls,
-                                               MemoryInUseCurve InUse)
+public sealed record TraceOperatorLifetime(uint Thread,
+                                           ExecutionOperatorEvent Operator,
+                                           int Node,
+                                           IReadOnlyList<TraceTimelineSpan> PositionCalls,
+                                           IReadOnlyList<TraceTimelineSpan> InstructionCalls,
+                                           MemoryInUseCurve InUse)
 {
     private double[] PositionEnds { get; } = [.. PositionCalls.Select(c => c.End)];
 
@@ -18,19 +18,19 @@ public sealed record FullTraceOperatorLifetime(uint Thread,
 
     private double[] InstructionEnds { get; } = [.. InstructionCalls.Select(c => c.End)];
 
-    public IReadOnlyList<FullTraceTimelineSpan> Calls(FullTraceTimelineAxis axis)
-        => axis == FullTraceTimelineAxis.Position ? PositionCalls : InstructionCalls;
+    public IReadOnlyList<TraceTimelineSpan> Calls(TraceTimelineAxis axis)
+        => axis == TraceTimelineAxis.Position ? PositionCalls : InstructionCalls;
 
-    public double StartOf(FullTraceTimelineAxis axis) => Calls(axis)[0].Start;
+    public double StartOf(TraceTimelineAxis axis) => Calls(axis)[0].Start;
 
-    public double EndOf(FullTraceTimelineAxis axis) => Calls(axis)[^1].End;
+    public double EndOf(TraceTimelineAxis axis) => Calls(axis)[^1].End;
 
-    public int FirstEndingAfter(FullTraceTimelineAxis axis, double value, int from = 0)
-        => SortedSearch.FirstAfter(axis == FullTraceTimelineAxis.Position ? PositionEnds : InstructionEnds, value, from);
+    public int FirstEndingAfter(TraceTimelineAxis axis, double value, int from = 0)
+        => SortedSearch.FirstAfter(axis == TraceTimelineAxis.Position ? PositionEnds : InstructionEnds, value, from);
 
-    public double PositionAt(FullTraceTimelineAxis axis, double value)
+    public double PositionAt(TraceTimelineAxis axis, double value)
     {
-        if (axis == FullTraceTimelineAxis.Position)
+        if (axis == TraceTimelineAxis.Position)
         {
             return value;
         }

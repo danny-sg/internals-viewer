@@ -9,7 +9,7 @@ using InternalsViewer.Query.CallStack.Locators;
 
 namespace InternalsViewer.Query.FullTrace.CallLog;
 
-public sealed class FullTraceCallLog
+public sealed class TraceCallLog
 {
     private const int IntegerColumn = 2;
 
@@ -21,8 +21,8 @@ public sealed class FullTraceCallLog
 
     private static readonly string[] Registers = ["RCX", "RDX", "R8", "R9"];
 
-    private FullTraceCallLog(Dictionary<(ulong Address, ulong Instance), Chunk[]> functions,
-                             Dictionary<(ulong Address, ulong Instance), LocatorTable> locators)
+    private TraceCallLog(Dictionary<(ulong Address, ulong Instance), Chunk[]> functions,
+                         Dictionary<(ulong Address, ulong Instance), LocatorTable> locators)
     {
         Functions = functions;
         Locators = locators;
@@ -45,17 +45,17 @@ public sealed class FullTraceCallLog
 
     private CallStackNode?[] Nodes { get; set; } = [];
 
-    public FullTraceCallList? CallsOf(ulong address, ulong instance)
+    public TraceCallList? CallsOf(ulong address, ulong instance)
         => Functions.TryGetValue((address, instance), out var chunks)
-            ? new FullTraceCallList(address, instance, chunks, Locators.GetValueOrDefault((address, instance)))
+            ? new TraceCallList(address, instance, chunks, Locators.GetValueOrDefault((address, instance)))
             : null;
 
-    public CallStackNode? NodeOf(FullTraceArgumentCall call) => NodeAt(call.Node);
+    public CallStackNode? NodeOf(TraceArgumentCall call) => NodeAt(call.Node);
 
-    public Task<IReadOnlyList<FullTraceValueUse>> FindAsync(ulong value, CancellationToken cancellationToken)
-        => Task.Run<IReadOnlyList<FullTraceValueUse>>(() => Find(value, cancellationToken), cancellationToken);
+    public Task<IReadOnlyList<TraceValueUse>> FindAsync(ulong value, CancellationToken cancellationToken)
+        => Task.Run<IReadOnlyList<TraceValueUse>>(() => Find(value, cancellationToken), cancellationToken);
 
-    internal static FullTraceCallLog Read(BinaryReader reader)
+    internal static TraceCallLog Read(BinaryReader reader)
     {
         var functions = new Dictionary<(ulong Address, ulong Instance), Chunk[]>();
 
@@ -88,7 +88,7 @@ public sealed class FullTraceCallLog
             locators[key] = LocatorTable.Read(reader);
         }
 
-        return new FullTraceCallLog(functions, locators);
+        return new TraceCallLog(functions, locators);
     }
 
     internal void Write(BinaryWriter writer)
@@ -151,7 +151,7 @@ public sealed class FullTraceCallLog
 
     internal static ulong[] Decompress(Chunk chunk)
     {
-        var columns = new ulong[chunk.Calls * FullTraceArgumentCall.ValueCount];
+        var columns = new ulong[chunk.Calls * TraceArgumentCall.ValueCount];
 
         using var stream = new ZLibStream(new MemoryStream(chunk.Columns), CompressionMode.Decompress);
 
@@ -160,9 +160,9 @@ public sealed class FullTraceCallLog
         return columns;
     }
 
-    private List<FullTraceValueUse> Find(ulong value, CancellationToken cancellationToken)
+    private List<TraceValueUse> Find(ulong value, CancellationToken cancellationToken)
     {
-        var uses = new Dictionary<(ulong Address, ulong Instance, string Location), FullTraceValueUse>();
+        var uses = new Dictionary<(ulong Address, ulong Instance, string Location), TraceValueUse>();
 
         var sync = new Lock();
 
@@ -195,12 +195,12 @@ public sealed class FullTraceCallLog
             {
                 foreach (var (location, (calls, first, last)) in found)
                 {
-                    var use = new FullTraceValueUse(address,
-                                                    instance,
-                                                    location,
-                                                    calls,
-                                                    MatchAt(columns, chunk.Calls, first, start),
-                                                    MatchAt(columns, chunk.Calls, last, start));
+                    var use = new TraceValueUse(address,
+                                                instance,
+                                                location,
+                                                calls,
+                                                MatchAt(columns, chunk.Calls, first, start),
+                                                MatchAt(columns, chunk.Calls, last, start));
 
                     uses[(address, instance, location)] = uses.TryGetValue((address, instance, location), out var existing)
                         ? Merge(existing, use)
@@ -214,14 +214,14 @@ public sealed class FullTraceCallLog
 
     private CallStackNode? NodeAt(int node) => node >= 0 && node < Nodes.Length ? Nodes[node] : null;
 
-    private FullTraceValueMatch MatchAt(ulong[] columns, int calls, int call, int start)
+    private TraceValueMatch MatchAt(ulong[] columns, int calls, int call, int start)
     {
-        var node = (int)columns[(FullTraceArgumentCall.ValueCount - 1) * calls + call];
+        var node = (int)columns[(TraceArgumentCall.ValueCount - 1) * calls + call];
 
-        return new FullTraceValueMatch(start + call, columns[call], node >= 0 && node < Nodes.Length ? Nodes[node] : null);
+        return new TraceValueMatch(start + call, columns[call], node >= 0 && node < Nodes.Length ? Nodes[node] : null);
     }
 
-    private static FullTraceValueUse Merge(FullTraceValueUse existing, FullTraceValueUse use) => existing with
+    private static TraceValueUse Merge(TraceValueUse existing, TraceValueUse use) => existing with
     {
         Calls = existing.Calls + use.Calls,
         First = use.First.Sequence < existing.First.Sequence ? use.First : existing.First,
@@ -247,7 +247,7 @@ public sealed class FullTraceCallLog
     {
         var flags = columns[FlagsColumn * calls + call];
 
-        for (var slot = 0; slot < FullTraceArgumentCall.RegisterCount; slot++)
+        for (var slot = 0; slot < TraceArgumentCall.RegisterCount; slot++)
         {
             if (columns[(IntegerColumn + slot) * calls + call] == value)
             {
@@ -267,20 +267,20 @@ public sealed class FullTraceCallLog
     {
         private Dictionary<(ulong Address, ulong Instance), List<Task<Chunk>>> Pending { get; } = new();
 
-        private Dictionary<(ulong Function, int Register, int Offset, bool AtReturn), LocatorRead> Reads { get; }
-            = (locatorReads ?? []).DistinctBy(r => (r.Function, r.Register, r.Offset, r.AtReturn))
-                                  .ToDictionary(r => (r.Function, r.Register, r.Offset, r.AtReturn));
+        private Dictionary<(ulong Function, int Register, int Offset, bool IsReadAtReturn), LocatorRead> Reads { get; }
+            = (locatorReads ?? []).DistinctBy(r => (r.Function, r.Register, r.Offset, r.IsReadAtReturn))
+                                  .ToDictionary(r => (r.Function, r.Register, r.Offset, r.IsReadAtReturn));
 
         private Dictionary<(ulong Function, ulong Instance, uint Call, int Register), ulong[]> ObjectKeys { get; } = new();
 
-        private Dictionary<(ulong Address, ulong Instance), List<(int Call, Locator Locator, bool AtReturn)>> Found { get; }
+        private Dictionary<(ulong Address, ulong Instance), List<(int Call, Locator Locator, bool IsReadAtReturn)>> Found { get; }
             = new();
 
         private SemaphoreSlim Compressing { get; } = new(Math.Max(2, Environment.ProcessorCount));
 
         public void Add(ulong address, ulong instance, IntPtr columns, int calls)
         {
-            var count = calls * FullTraceArgumentCall.ValueCount;
+            var count = calls * TraceArgumentCall.ValueCount;
 
             var buffer = ArrayPool<long>.Shared.Rent(count);
 
@@ -330,16 +330,16 @@ public sealed class FullTraceCallLog
         {
             foreach (var value in values)
             {
-                var atReturn = value.AtReturn != 0;
+                var isReadAtReturn = value.IsReadAtReturn != 0;
 
-                if (!Reads.TryGetValue((value.Function, value.Register, (int)value.Offset, atReturn), out var read))
+                if (!Reads.TryGetValue((value.Function, value.Register, (int)value.Offset, isReadAtReturn), out var read))
                 {
                     continue;
                 }
 
                 if (read.Kind != LocatorKind.ColumnStoreObject)
                 {
-                    FoundFor(value).Add(((int)value.Call, new Locator(read.Register, read.Kind, value.Value), atReturn));
+                    FoundFor(value).Add(((int)value.Call, new Locator(read.Register, read.Kind, value.Value), isReadAtReturn));
 
                     continue;
                 }
@@ -348,25 +348,26 @@ public sealed class FullTraceCallLog
                 {
                     FoundFor(value).Add(((int)value.Call,
                                          Locator.ColumnStoreObject(read.Register, key[0], key[1], key[2]),
-                                         atReturn));
+                                         isReadAtReturn));
                 }
             }
         }
 
-        public FullTraceCallLog Build()
+        public TraceCallLog Build()
         {
             Task.WaitAll([.. Pending.Values.SelectMany(c => c)]);
 
-            return new FullTraceCallLog(Pending.ToDictionary(p => p.Key, p => p.Value.Select(c => c.Result).ToArray()),
-                                        Found.ToDictionary(f => f.Key, f => LocatorTable.Build(Preferred(f.Value))));
+            return new TraceCallLog(Pending.ToDictionary(p => p.Key, p => p.Value.Select(c => c.Result).ToArray()),
+                                    Found.ToDictionary(f => f.Key, f => LocatorTable.Build(Preferred(f.Value))));
         }
 
         private static List<(int Call, Locator Locator)> Preferred(
-            List<(int Call, Locator Locator, bool AtReturn)> found)
+            List<(int Call, Locator Locator, bool IsReadAtReturn)> found)
         {
-            var returned = found.Where(f => f.AtReturn).Select(f => (f.Call, f.Locator.Register)).ToHashSet();
+            var returned = found.Where(f => f.IsReadAtReturn).Select(f => (f.Call, f.Locator.Register)).ToHashSet();
 
-            return [.. found.Where(f => f.AtReturn || !returned.Contains((f.Call, f.Locator.Register))).Select(f => (f.Call, f.Locator))];
+            return [.. found.Where(f => f.IsReadAtReturn || !returned.Contains((f.Call, f.Locator.Register)))
+                            .Select(f => (f.Call, f.Locator))];
         }
 
         private static Chunk Compress(ReadOnlySpan<ulong> columns, int calls)
@@ -381,7 +382,7 @@ public sealed class FullTraceCallLog
             return new Chunk(calls, compressed.ToArray());
         }
 
-        private List<(int Call, Locator Locator, bool AtReturn)> FoundFor(PointerValue value)
+        private List<(int Call, Locator Locator, bool IsReadAtReturn)> FoundFor(PointerValue value)
         {
             if (!Found.TryGetValue((value.Function, value.Instance), out var found))
             {

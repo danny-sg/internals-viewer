@@ -67,11 +67,11 @@ public sealed partial class QueryFlameChartTabView : UserControl, IDocumentComma
     public FrameworkElement CreateCommands()
     {
         _instructionsToggle = AxisToggle("Instructions",
-                                         FullTraceTimelineAxis.Instructions,
+                                         TraceTimelineAxis.Instructions,
                                          "Width is the instructions each call executed, so it shows how long each call took");
 
         _positionToggle = AxisToggle("Position",
-                                     FullTraceTimelineAxis.Position,
+                                     TraceTimelineAxis.Position,
                                      "Width is the span of trace positions, which lines threads up against each other");
 
         var commands = new StackPanel
@@ -145,7 +145,7 @@ public sealed partial class QueryFlameChartTabView : UserControl, IDocumentComma
         FlameChart.Dispose();
     }
 
-    private ToggleButton AxisToggle(string text, FullTraceTimelineAxis axis, string toolTip)
+    private ToggleButton AxisToggle(string text, TraceTimelineAxis axis, string toolTip)
     {
         var toggle = new ToggleButton
         {
@@ -201,16 +201,16 @@ public sealed partial class QueryFlameChartTabView : UserControl, IDocumentComma
 
     private void OnAxisClick(object sender, RoutedEventArgs e)
     {
-        if (sender is not ToggleButton { Tag: FullTraceTimelineAxis axis })
+        if (sender is not ToggleButton { Tag: TraceTimelineAxis axis })
         {
             return;
         }
 
         FlameChart.Axis = axis;
 
-        _instructionsToggle?.IsChecked = axis == FullTraceTimelineAxis.Instructions;
+        _instructionsToggle?.IsChecked = axis == TraceTimelineAxis.Instructions;
 
-        _positionToggle?.IsChecked = axis == FullTraceTimelineAxis.Position;
+        _positionToggle?.IsChecked = axis == TraceTimelineAxis.Position;
     }
 
     private void OnMemoryClick(object sender, RoutedEventArgs e) => FlameChart.ShowMemory = IsChecked(sender);

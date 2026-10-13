@@ -15,17 +15,14 @@ internal static class MemoryMapper
 
     private const string WorkspaceClerk = "MEMORYCLERK_SQLQERESERVATIONS";
 
-    public static (long Allocations, ulong Bytes) Map(FullTraceCallLog log,
+    public static (long Allocations, ulong Bytes) Map(TraceCallLog log,
                                                       IReadOnlyList<MemoryFunction> functions,
-                                                      FullTraceTimeline? timeline,
+                                                      TraceTimeline? timeline,
                                                       MemoryClerkSnapshot? clerks = null)
     {
         var byAddress = functions.ToDictionary(f => f.Address);
 
-        var lists = new Dictionary<ulong, FullTraceCallList?>();
-
-        FullTraceCallList? CallsOf(ulong address)
-            => lists.TryGetValue(address, out var list) ? list : lists[address] = log.CallsOf(address, 0);
+        var lists = new Dictionary<ulong, TraceCallList?>();
 
         var scanned = timeline is null ? new ScannedCalls() : ScanSpans(CallsOf, byAddress, timeline, clerks ?? MemoryClerkSnapshot.Empty);
 
@@ -102,11 +99,14 @@ internal static class MemoryMapper
         }
 
         return (count, bytes);
+
+        TraceCallList? CallsOf(ulong address)
+            => lists.TryGetValue(address, out var list) ? list : lists[address] = log.CallsOf(address, 0);
     }
 
-    private static ScannedCalls ScanSpans(Func<ulong, FullTraceCallList?> callsOf,
+    private static ScannedCalls ScanSpans(Func<ulong, TraceCallList?> callsOf,
                                           Dictionary<ulong, MemoryFunction> functions,
-                                          FullTraceTimeline timeline,
+                                          TraceTimeline timeline,
                                           MemoryClerkSnapshot snapshot)
     {
         var scanned = new ScannedCalls();
@@ -124,9 +124,9 @@ internal static class MemoryMapper
                 continue;
             }
 
-            var start = span.StartOf(FullTraceTimelineAxis.Position);
+            var start = span.StartOf(TraceTimelineAxis.Position);
 
-            var end = span.EndOf(FullTraceTimelineAxis.Position);
+            var end = span.EndOf(TraceTimelineAxis.Position);
 
             if (!threads.TryGetValue(span.Thread.ThreadId, out var thread))
             {
@@ -139,7 +139,7 @@ internal static class MemoryMapper
 
             thread.Calls.Add((function.Address, call, start, end));
 
-            if (!function.CarriesClerk && !function.IsObjectCall)
+            if (function is { CarriesClerk: false, IsObjectCall: false })
             {
                 continue;
             }

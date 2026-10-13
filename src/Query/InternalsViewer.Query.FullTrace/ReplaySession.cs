@@ -122,9 +122,9 @@ internal sealed class ReplaySession : IDisposable
             progress?.Report(percentages.Values.Average());
         };
 
-        var log = new FullTraceCallLog.Builder(functions.LocatorReads);
+        var log = new TraceCallLog.Builder(functions.LocatorReads);
 
-        var timeline = new FullTraceTimeline.Builder();
+        var timeline = new TraceTimeline.Builder();
 
         ReplayBridge.CallChunkCallback onChunk = log.Add;
 

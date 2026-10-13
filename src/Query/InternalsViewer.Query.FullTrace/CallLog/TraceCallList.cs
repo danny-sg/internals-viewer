@@ -3,14 +3,14 @@ using InternalsViewer.Query.FullTrace.Locators;
 
 namespace InternalsViewer.Query.FullTrace.CallLog;
 
-public sealed class FullTraceCallList : IReadOnlyList<FullTraceArgumentCall>
+public sealed class TraceCallList : IReadOnlyList<TraceArgumentCall>
 {
     private const int CachedChunks = 2;
 
-    internal FullTraceCallList(ulong address,
-                               ulong instance,
-                               FullTraceCallLog.Chunk[] chunks,
-                               LocatorTable? locators = null)
+    internal TraceCallList(ulong address,
+                           ulong instance,
+                           TraceCallLog.Chunk[] chunks,
+                           LocatorTable? locators = null)
     {
         Address = address;
         Instance = instance;
@@ -36,7 +36,7 @@ public sealed class FullTraceCallList : IReadOnlyList<FullTraceArgumentCall>
 
     public int Count { get; }
 
-    private FullTraceCallLog.Chunk[] Chunks { get; }
+    private TraceCallLog.Chunk[] Chunks { get; }
 
     private int[] Starts { get; }
 
@@ -46,24 +46,24 @@ public sealed class FullTraceCallList : IReadOnlyList<FullTraceArgumentCall>
 
     private Lock Sync { get; } = new();
 
-    public FullTraceArgumentCall this[int index]
+    public TraceArgumentCall this[int index]
     {
         get
         {
             var (columns, calls, call) = GetLocation(index);
 
-            var row = new ulong[FullTraceArgumentCall.ValueCount];
+            var row = new ulong[TraceArgumentCall.ValueCount];
 
             for (var column = 0; column < row.Length; column++)
             {
                 row[column] = columns[column * calls + call];
             }
 
-            return FullTraceArgumentCall.Decode(row, Locators?.LocatorsOf(index));
+            return TraceArgumentCall.Decode(row, Locators?.LocatorsOf(index));
         }
     }
 
-    public IEnumerator<FullTraceArgumentCall> GetEnumerator()
+    public IEnumerator<TraceArgumentCall> GetEnumerator()
     {
         for (var index = 0; index < Count; index++)
         {
@@ -77,7 +77,7 @@ public sealed class FullTraceCallList : IReadOnlyList<FullTraceArgumentCall>
     {
         var (columns, calls, call) = GetLocation(index);
 
-        return (int)columns[(FullTraceArgumentCall.ValueCount - 1) * calls + call];
+        return (int)columns[(TraceArgumentCall.ValueCount - 1) * calls + call];
     }
 
     private (ulong[] Columns, int Calls, int Call) GetLocation(int index)
@@ -104,7 +104,7 @@ public sealed class FullTraceCallList : IReadOnlyList<FullTraceArgumentCall>
                 }
             }
 
-            var decompressed = FullTraceCallLog.Decompress(Chunks[chunk]);
+            var decompressed = TraceCallLog.Decompress(Chunks[chunk]);
 
             Cache.Insert(0, (chunk, decompressed));
 

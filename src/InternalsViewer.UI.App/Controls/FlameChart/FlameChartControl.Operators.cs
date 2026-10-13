@@ -94,7 +94,7 @@ public sealed partial class FlameChartControl
 
     private readonly Dictionary<int, SelectedLane> _selectedLanes = [];
 
-    private readonly Dictionary<FullTraceOperatorLifetime, string> _operatorDetails = new(ReferenceEqualityComparer.Instance);
+    private readonly Dictionary<TraceOperatorLifetime, string> _operatorDetails = new(ReferenceEqualityComparer.Instance);
 
     private readonly Dictionary<SKColor, SKShader> _operatorGradients = [];
 
@@ -157,7 +157,7 @@ public sealed partial class FlameChartControl
         }
     }
 
-    private static OperatorRow[] OperatorRowsOf(FullTraceTimeline? timeline)
+    private static OperatorRow[] OperatorRowsOf(TraceTimeline? timeline)
     {
         if (timeline is null)
         {
@@ -176,11 +176,11 @@ public sealed partial class FlameChartControl
                            .GroupBy(l => l.Operator, ReferenceEqualityComparer.Instance)
                            .Select(g => RowOf((ExecutionOperatorEvent)g.Key!, [.. g.OrderBy(l => lanes[l.Thread])]))
                            .OrderBy(r => r.Operator.NodeLevel)
-                           .ThenBy(r => r.Lifetimes.Min(l => l.StartOf(FullTraceTimelineAxis.Position)))
+                           .ThenBy(r => r.Lifetimes.Min(l => l.StartOf(TraceTimelineAxis.Position)))
                            .ThenBy(r => r.Operator.PlanNodeIdentifier?.NodeId ?? 0)];
     }
 
-    private static OperatorRow RowOf(ExecutionOperatorEvent operatorEvent, FullTraceOperatorLifetime[] lifetimes)
+    private static OperatorRow RowOf(ExecutionOperatorEvent operatorEvent, TraceOperatorLifetime[] lifetimes)
     {
         var target = operatorEvent.ObjectName.Length > 0
             ? operatorEvent.ObjectName
@@ -232,7 +232,7 @@ public sealed partial class FlameChartControl
 
     private void DrawOperatorBar(SKCanvas canvas,
                                  OperatorRow row,
-                                 FullTraceOperatorLifetime lifetime,
+                                 TraceOperatorLifetime lifetime,
                                  SKRect rect,
                                  double scale,
                                  bool labelled)
@@ -275,7 +275,7 @@ public sealed partial class FlameChartControl
         }
     }
 
-    private bool IsRaised(FullTraceOperatorLifetime lifetime)
+    private bool IsRaised(TraceOperatorLifetime lifetime)
         => ShowMemory && MemoryMode == FlameChartMemoryMode.InUse && _inUseMaximum > 0 && !lifetime.InUse.IsEmpty;
 
     private SKShader OperatorGradientOf(SKColor colour)
@@ -297,7 +297,7 @@ public sealed partial class FlameChartControl
         return gradient;
     }
 
-    private void DrawActivity(SKCanvas canvas, FullTraceOperatorLifetime lifetime, double scale)
+    private void DrawActivity(SKCanvas canvas, TraceOperatorLifetime lifetime, double scale)
     {
         var calls = lifetime.Calls(_axis);
 
@@ -452,7 +452,7 @@ public sealed partial class FlameChartControl
 
     private float OperatorRowTop(int row) => OperatorsTop + OperatorsPadding + row * (OperatorRowHeight + OperatorRowGap);
 
-    private SKColor OperatorColourOf(ExecutionOperatorEvent operatorEvent, FullTraceOperatorLifetime lifetime)
+    private SKColor OperatorColourOf(ExecutionOperatorEvent operatorEvent, TraceOperatorLifetime lifetime)
         => ColourProvider is { } colours ? colours.GetColour(operatorEvent).ToSkColor() : ColourOf(lifetime.Node);
 
     private void DrawOperatorOverlay(SKCanvas canvas, int width)
@@ -627,8 +627,8 @@ public sealed partial class FlameChartControl
             }
 
             regions.Add(new SelectedRegion(span.Depth,
-                                           span.Span(FullTraceTimelineAxis.Position),
-                                           span.Span(FullTraceTimelineAxis.Instructions)));
+                                           span.Span(TraceTimelineAxis.Position),
+                                           span.Span(TraceTimelineAxis.Instructions)));
         }
 
         foreach (var (lane, regions) in found)
@@ -827,7 +827,7 @@ public sealed partial class FlameChartControl
         OpenToolTip(details, position);
     }
 
-    private string DetailsOf(OperatorRow row, FullTraceOperatorLifetime lifetime)
+    private string DetailsOf(OperatorRow row, TraceOperatorLifetime lifetime)
     {
         var methods = new Dictionary<string, int>();
 
@@ -846,13 +846,13 @@ public sealed partial class FlameChartControl
             active += call.End - call.Start;
         }
 
-        var instructions = lifetime.EndOf(FullTraceTimelineAxis.Instructions) - lifetime.StartOf(FullTraceTimelineAxis.Instructions);
+        var instructions = lifetime.EndOf(TraceTimelineAxis.Instructions) - lifetime.StartOf(TraceTimelineAxis.Instructions);
 
-        var origin = OriginOf(FullTraceTimelineAxis.Position);
+        var origin = OriginOf(TraceTimelineAxis.Position);
 
-        var start = lifetime.StartOf(FullTraceTimelineAxis.Position) - origin;
+        var start = lifetime.StartOf(TraceTimelineAxis.Position) - origin;
 
-        var end = lifetime.EndOf(FullTraceTimelineAxis.Position) - origin;
+        var end = lifetime.EndOf(TraceTimelineAxis.Position) - origin;
 
         var lines = new List<string>
         {
@@ -891,21 +891,21 @@ public sealed partial class FlameChartControl
         => ((FlameChartControl)d).Redraw();
 
     private sealed record OperatorRow(ExecutionOperatorEvent Operator,
-                                      FullTraceOperatorLifetime[] Lifetimes,
+                                      TraceOperatorLifetime[] Lifetimes,
                                       string Name,
                                       string Target,
                                       string Title);
 
     private readonly record struct OperatorHit(int Row, int Track);
 
-    private readonly record struct SelectedRegion(int Depth, FullTraceTimelineSpan Position, FullTraceTimelineSpan Instructions)
+    private readonly record struct SelectedRegion(int Depth, TraceTimelineSpan Position, TraceTimelineSpan Instructions)
     {
-        public FullTraceTimelineSpan Of(FullTraceTimelineAxis axis) => axis == FullTraceTimelineAxis.Position ? Position : Instructions;
+        public TraceTimelineSpan Of(TraceTimelineAxis axis) => axis == TraceTimelineAxis.Position ? Position : Instructions;
     }
 
     private sealed record SelectedLane(SelectedRegion[] Regions, double[] PositionEnds, double[] InstructionEnds)
     {
-        public ReadOnlySpan<double> Ends(FullTraceTimelineAxis axis)
-            => axis == FullTraceTimelineAxis.Position ? PositionEnds : InstructionEnds;
+        public ReadOnlySpan<double> Ends(TraceTimelineAxis axis)
+            => axis == TraceTimelineAxis.Position ? PositionEnds : InstructionEnds;
     }
 }

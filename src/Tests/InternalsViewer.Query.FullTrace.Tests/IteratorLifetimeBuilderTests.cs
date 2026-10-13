@@ -26,7 +26,7 @@ public class IteratorLifetimeBuilderTests
         var helper = tree.AddCall(getRow, Frame(0x40, Hash), 1);
         var close = tree.AddCall(caller, Frame(0x50, Hash), 1);
 
-        var builder = new FullTraceTimeline.Builder();
+        var builder = new TraceTimeline.Builder();
 
         builder.Add([Span(0, 0, 100),
                      Span(1, 0, 10),
@@ -53,9 +53,9 @@ public class IteratorLifetimeBuilderTests
 
         var lifetime = Assert.Single(IteratorLifetimeBuilder.Build(timeline, [hashMatch]));
 
-        var calls = lifetime.Calls(FullTraceTimelineAxis.Instructions);
+        var calls = lifetime.Calls(TraceTimelineAxis.Instructions);
 
-        var axis = FullTraceTimelineAxis.Instructions;
+        var axis = TraceTimelineAxis.Instructions;
 
         Assert.Same(hashMatch, lifetime.Operator);
         Assert.Equal((0d, 45d, 4), (lifetime.StartOf(axis), lifetime.EndOf(axis), calls.Count));
@@ -72,7 +72,7 @@ public class IteratorLifetimeBuilderTests
         var scanRow = tree.AddCall(getRow, Frame(0x60, Scan), 1);
         var close = tree.AddCall(caller, Frame(0x50, Hash), 1);
 
-        var builder = new FullTraceTimeline.Builder();
+        var builder = new TraceTimeline.Builder();
 
         builder.Add([Span(0, 0, 100),
                      Span(1, 0, 10),

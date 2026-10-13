@@ -7,7 +7,7 @@ using InternalsViewer.Query.FullTrace.Timeline;
 
 namespace InternalsViewer.Query.FullTrace.Export;
 
-internal sealed class FullTraceExportSection : IQueryExportSection
+internal sealed class TraceExportSection : IQueryExportSection
 {
     internal const string CallTreeName = "fulltrace";
 
@@ -17,11 +17,11 @@ internal sealed class FullTraceExportSection : IQueryExportSection
 
     internal const string EventLinksEntry = "fulltrace/eventlinks.bin";
 
-    public bool CanExport(QueryExportContent content) => content.ExtraOf<FullTraceResult>() is not null;
+    public bool CanExport(QueryExportContent content) => content.ExtraOf<TraceResult>() is not null;
 
     public void Collect(QueryExportCollector collector, QueryExportContent content)
     {
-        var fullTrace = content.ExtraOf<FullTraceResult>()!;
+        var fullTrace = content.ExtraOf<TraceResult>()!;
 
         collector.AddTree(CallTreeName, fullTrace.CallStack);
 
@@ -30,7 +30,7 @@ internal sealed class FullTraceExportSection : IQueryExportSection
 
     public void Write(QueryExportWriter writer, QueryExportContent content)
     {
-        var fullTrace = content.ExtraOf<FullTraceResult>()!;
+        var fullTrace = content.ExtraOf<TraceResult>()!;
 
         writer.WriteBinary(CallLogEntry, CompressionLevel.NoCompression, fullTrace.CallLog.Write);
 
@@ -50,9 +50,9 @@ internal sealed class FullTraceExportSection : IQueryExportSection
 
         var events = reader.Events;
 
-        var callLog = reader.ReadBinary(CallLogEntry, FullTraceCallLog.Read);
+        var callLog = reader.ReadBinary(CallLogEntry, TraceCallLog.Read);
 
-        var timeline = reader.ReadBinary(TimelineEntry, r => FullTraceTimeline.Read(r, nodes));
+        var timeline = reader.ReadBinary(TimelineEntry, r => TraceTimeline.Read(r, nodes));
 
         callLog.MapNodes(timeline.MappedNodes);
 
@@ -60,9 +60,9 @@ internal sealed class FullTraceExportSection : IQueryExportSection
 
         if (reader.HasEntry(EventLinksEntry))
         {
-            timeline.SetEventLinks(reader.ReadBinary(EventLinksEntry, r => FullTraceTimeline.ReadEventLinks(r, nodes, events)));
+            timeline.SetEventLinks(reader.ReadBinary(EventLinksEntry, r => TraceTimeline.ReadEventLinks(r, nodes, events)));
         }
 
-        return new FullTraceResult(tree, callLog, timeline) { PlanLink = IteratorPlanLinker.Link(callLog, timeline.MappedNodes, events) };
+        return new TraceResult(tree, callLog, timeline) { PlanLink = IteratorPlanLinker.Link(callLog, timeline.MappedNodes, events) };
     }
 }

@@ -71,13 +71,13 @@ public sealed partial class ArgumentsViewModel(ILogger logger, SymbolsViewModel 
 
     public int? SelectedCallIndex => SelectedCall is { Id: var index } ? (int)index : null;
 
-    private FullTraceCallLog? Log { get; set; }
+    private TraceCallLog? Log { get; set; }
 
     private IReadOnlyDictionary<ulong, IteratorTarget> Iterators { get; set; } = new Dictionary<ulong, IteratorTarget>();
 
     private ArgumentLayout? Layout { get; set; }
 
-    private IReadOnlyList<FullTraceArgumentCall> LoggedCalls { get; set; } = [];
+    private IReadOnlyList<TraceArgumentCall> LoggedCalls { get; set; } = [];
 
     private CancellationTokenSource? Request { get; set; }
 
@@ -91,7 +91,7 @@ public sealed partial class ArgumentsViewModel(ILogger logger, SymbolsViewModel 
 
     public bool CanShow(CallStackNode node) => Log is not null && node.Frame is { Address: not 0, Pdb.Length: > 0 };
 
-    public void SetSource(FullTraceCallLog? log, IReadOnlyDictionary<ulong, IteratorTarget>? iterators = null)
+    public void SetSource(TraceCallLog? log, IReadOnlyDictionary<ulong, IteratorTarget>? iterators = null)
     {
         Cancel();
 
@@ -322,7 +322,7 @@ public sealed partial class ArgumentsViewModel(ILogger logger, SymbolsViewModel 
     private bool IsShowing(CallStackNode node)
         => Shown?.Frame is { } shown && node.Frame is { } frame && shown.Address == frame.Address && shown.Instance == frame.Instance;
 
-    private async Task<Dictionary<ulong, FunctionKind?>> ResolveKindsAsync(IEnumerable<FullTraceValueUse> uses)
+    private async Task<Dictionary<ulong, FunctionKind?>> ResolveKindsAsync(IEnumerable<TraceValueUse> uses)
     {
         var kinds = new Dictionary<ulong, FunctionKind?>();
 
@@ -343,7 +343,7 @@ public sealed partial class ArgumentsViewModel(ILogger logger, SymbolsViewModel 
 
     private static string? Identity(IReadOnlyList<ValueUseGroup> groups)
     {
-        if (groups.FirstOrDefault(g => g.Role == FullTraceValueRole.CalledOn) is not { Rows: [var first, ..] })
+        if (groups.FirstOrDefault(g => g.Role == TraceValueRole.CalledOn) is not { Rows: [var first, ..] })
         {
             return null;
         }

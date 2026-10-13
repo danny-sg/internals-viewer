@@ -63,7 +63,7 @@ public partial class App
 
             services.RegisterServices();
             services.RegisterExecutionServices();
-            services.RegisterFullTraceServices();
+            services.RegisterTraceServices();
 
             services.AddTransient<IConnectionTypeFactory, BackupConnectionFactory>();
 

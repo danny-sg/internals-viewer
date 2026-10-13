@@ -83,9 +83,9 @@ public class PublishedEventLinkerTests
         Assert.Same(node, result.Links.Single().Node);
     }
 
-    private static FullTraceTimeline Timeline()
+    private static TraceTimeline Timeline()
     {
-        var builder = new FullTraceTimeline.Builder();
+        var builder = new TraceTimeline.Builder();
 
         builder.Add([new CallSpan(0, 0, 100, 0, 0, 100, 0, Thread, 0, 1)]);
 

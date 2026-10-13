@@ -54,7 +54,7 @@ public sealed partial class FlameChartControl
         return recorder.EndRecording();
     }
 
-    private void DrawLandscape(SKCanvas canvas, FullTraceTimeline timeline, int width, float bottom, double scale)
+    private void DrawLandscape(SKCanvas canvas, TraceTimeline timeline, int width, float bottom, double scale)
     {
         _directionX = MathF.Cos(_extrusionAngle);
 
@@ -152,16 +152,16 @@ public sealed partial class FlameChartControl
         canvas.Restore();
     }
 
-    private double PositionAt(FullTraceTimelineRow row, int index, double value)
+    private double PositionAt(TraceTimelineRow row, int index, double value)
     {
-        var positions = row.Span(FullTraceTimelineAxis.Position, index);
+        var positions = row.Span(TraceTimelineAxis.Position, index);
 
-        if (_axis == FullTraceTimelineAxis.Position)
+        if (_axis == TraceTimelineAxis.Position)
         {
             return Math.Min(value, positions.End);
         }
 
-        var instructions = row.Span(FullTraceTimelineAxis.Instructions, index);
+        var instructions = row.Span(TraceTimelineAxis.Instructions, index);
 
         var fraction = instructions.End > instructions.Start ? (value - instructions.Start) / (instructions.End - instructions.Start) : 1;
 
@@ -178,7 +178,7 @@ public sealed partial class FlameChartControl
 
     private Block? SpikeOf(FlameHit hit) => _spikeIndex.TryGetValue(hit, out var index) ? _spikes[index] : null;
 
-    private void CollectSpikes(FullTraceTimeline timeline, float bottom, double scale)
+    private void CollectSpikes(TraceTimeline timeline, float bottom, double scale)
     {
         _spikes.Clear();
 
@@ -257,7 +257,7 @@ public sealed partial class FlameChartControl
         }
     }
 
-    private void CollectSurfaces(FullTraceTimeline timeline, int width, float bottom, double scale)
+    private void CollectSurfaces(TraceTimeline timeline, int width, float bottom, double scale)
     {
         _spikes.Clear();
 
@@ -279,7 +279,7 @@ public sealed partial class FlameChartControl
         CollectRows(timeline, bottom, visible => CollectRowSurfaces(timeline, visible, firstPixel, lastPixel, scale));
     }
 
-    private void CollectRowSurfaces(FullTraceTimeline timeline, VisibleRow visible, float firstPixel, float lastPixel, double scale)
+    private void CollectRowSurfaces(TraceTimeline timeline, VisibleRow visible, float firstPixel, float lastPixel, double scale)
     {
         var row = visible.Row;
 
@@ -313,7 +313,7 @@ public sealed partial class FlameChartControl
         }
     }
 
-    private void CollectRows(FullTraceTimeline timeline, float bottom, Action<VisibleRow> collect)
+    private void CollectRows(TraceTimeline timeline, float bottom, Action<VisibleRow> collect)
     {
         foreach (var visible in VisibleRows(timeline, bottom, _extrusionLength * Math.Max(0, -_directionY)))
         {
@@ -340,16 +340,16 @@ public sealed partial class FlameChartControl
         }
     }
 
-    private void AddSurface(FullTraceTimeline timeline,
+    private void AddSurface(TraceTimeline timeline,
                             uint threadId,
-                            FullTraceTimelineRow row,
+                            TraceTimelineRow row,
                             FlameHit source,
                             float top,
                             float left,
                             float right,
                             double scale)
     {
-        var positions = row.Span(FullTraceTimelineAxis.Position, source.Index);
+        var positions = row.Span(TraceTimelineAxis.Position, source.Index);
 
         if (!_inUseCurves.TryGetValue(source, out var curve))
         {

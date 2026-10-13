@@ -512,7 +512,7 @@ public sealed partial class FlameChartControl
         BringIntoView(target);
     }
 
-    private FlameHit? CallerOf(IReadOnlyList<FullTraceTimelineRow> rows, FlameHit hit)
+    private FlameHit? CallerOf(IReadOnlyList<TraceTimelineRow> rows, FlameHit hit)
     {
         if (hit.Depth == 0 || hit.Depth >= rows.Count)
         {
@@ -528,7 +528,7 @@ public sealed partial class FlameChartControl
         return index < 0 ? null : hit with { Depth = hit.Depth - 1, Index = index };
     }
 
-    private FlameHit? OnlyCalleeOf(IReadOnlyList<FullTraceTimelineRow> rows, FlameHit hit)
+    private FlameHit? OnlyCalleeOf(IReadOnlyList<TraceTimelineRow> rows, FlameHit hit)
     {
         if (hit.Depth + 1 >= rows.Count)
         {
@@ -552,7 +552,7 @@ public sealed partial class FlameChartControl
         return only && !second ? hit with { Depth = hit.Depth + 1, Index = first } : null;
     }
 
-    private FlameHit? SiblingOf(IReadOnlyList<FullTraceTimelineRow> rows, FlameHit hit, bool forward)
+    private FlameHit? SiblingOf(IReadOnlyList<TraceTimelineRow> rows, FlameHit hit, bool forward)
     {
         var row = rows[hit.Depth];
 
@@ -854,7 +854,7 @@ public sealed partial class FlameChartControl
         return null;
     }
 
-    private FullTraceTimelineSpan? SpanOf(FlameHit hit)
+    private TraceTimelineSpan? SpanOf(FlameHit hit)
     {
         if (_visible is not { } timeline || hit.Lane >= timeline.Threads.Count)
         {
@@ -877,9 +877,9 @@ public sealed partial class FlameChartControl
 
         var row = thread.Rows[hit.Depth];
 
-        var instructions = row.Span(FullTraceTimelineAxis.Instructions, hit.Index);
+        var instructions = row.Span(TraceTimelineAxis.Instructions, hit.Index);
 
-        var positions = row.Span(FullTraceTimelineAxis.Position, hit.Index);
+        var positions = row.Span(TraceTimelineAxis.Position, hit.Index);
 
         var node = timeline.NodeOf(instructions.Node);
 
@@ -891,8 +891,8 @@ public sealed partial class FlameChartControl
                 ? $"Thread {thread.ThreadId}  ·  Call {instructions.Call + 1:N0}  ·  Depth {hit.Depth}"
                 : $"Thread {thread.ThreadId}  ·  Depth {hit.Depth}",
             $"Instructions {instructions.End - instructions.Start:N0}",
-            $"Position {Math.Floor(positions.Start - OriginOf(FullTraceTimelineAxis.Position)):N0} "
-            + $"to {Math.Floor(positions.End - OriginOf(FullTraceTimelineAxis.Position)):N0}"
+            $"Position {Math.Floor(positions.Start - OriginOf(TraceTimelineAxis.Position)):N0} "
+            + $"to {Math.Floor(positions.End - OriginOf(TraceTimelineAxis.Position)):N0}"
         };
 
         var (allocatedBytes, allocations) = timeline.AllocatedDuring(thread.ThreadId, positions.Start, positions.End);
@@ -915,12 +915,12 @@ public sealed partial class FlameChartControl
             lines.Add($"Retained At Return {SizeFormat.Format((long)retained)}");
         }
 
-        if (instructions.Flags.HasFlag(FullTraceSpanFlags.StartUnknown))
+        if (instructions.Flags.HasFlag(TraceSpanFlags.StartUnknown))
         {
             lines.Add("Started Before The Recorded Call");
         }
 
-        if (!instructions.Flags.HasFlag(FullTraceSpanFlags.Returned))
+        if (!instructions.Flags.HasFlag(TraceSpanFlags.Returned))
         {
             lines.Add("Did Not Return");
         }

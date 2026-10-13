@@ -1,6 +1,6 @@
 namespace InternalsViewer.Query.FullTrace.Timeline.Enums;
 
-public enum FullTraceTimelineAxis
+public enum TraceTimelineAxis
 {
     Instructions,
     Position

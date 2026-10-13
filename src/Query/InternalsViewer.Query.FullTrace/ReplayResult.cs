@@ -21,6 +21,6 @@ namespace InternalsViewer.Query.FullTrace;
 /// </param>
 internal sealed record ReplayResult(CallNode[] Nodes,
                                     IReadOnlyList<TraceModule> Modules,
-                                    FullTraceCallLog CallLog,
-                                    FullTraceTimeline Timeline,
+                                    TraceCallLog CallLog,
+                                    TraceTimeline Timeline,
                                     PublishedEvent[] PublishedEvents);

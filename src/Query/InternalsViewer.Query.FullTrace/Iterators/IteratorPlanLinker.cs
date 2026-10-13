@@ -33,7 +33,7 @@ internal static class IteratorPlanLinker
 
     private const int SkippedPlanObject = 4;
 
-    public static IteratorPlanLink Link(FullTraceCallLog callLog, IReadOnlyList<CallStackNode?> nodes, IEnumerable<EngineEvent> events)
+    public static IteratorPlanLink Link(TraceCallLog callLog, IReadOnlyList<CallStackNode?> nodes, IEnumerable<EngineEvent> events)
     {
         List<LoggedCall> factories = [.. LoggedCalls(callLog, nodes, IsRowFactory, FirstRegister),
                                       .. LoggedCalls(callLog, nodes, IsBatchFactory, SecondRegister)];
@@ -82,7 +82,7 @@ internal static class IteratorPlanLinker
         return new IteratorPlanLink(planObjects, instances);
     }
 
-    private static List<LoggedCall> LoggedCalls(FullTraceCallLog callLog,
+    private static List<LoggedCall> LoggedCalls(TraceCallLog callLog,
                                                 IReadOnlyList<CallStackNode?> nodes,
                                                 Func<CallStackNode, bool> predicate,
                                                 int objectRegister)
@@ -309,13 +309,13 @@ internal static class IteratorPlanLinker
 
     private sealed record BatchIterator(ulong Instance, ulong BatchObjectId, ulong PlanObjectId);
 
-    private sealed class LoggedCall(CallStackNode node, int index, FullTraceArgumentCall call, int objectRegister)
+    private sealed class LoggedCall(CallStackNode node, int index, TraceArgumentCall call, int objectRegister)
     {
         public CallStackNode Node { get; } = node;
 
         public int Index { get; } = index;
 
-        public FullTraceArgumentCall Call { get; } = call;
+        public TraceArgumentCall Call { get; } = call;
 
         public uint Thread => Call.ThreadId;
 

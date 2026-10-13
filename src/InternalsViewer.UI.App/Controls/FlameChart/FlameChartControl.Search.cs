@@ -70,7 +70,7 @@ public sealed partial class FlameChartControl
                        ?? (selected.Frame is { } frame ? CallsUnder(timeline, n => ReferenceEquals(n.Frame, frame)) : null);
     }
 
-    private static bool[]? CallsUnder(FullTraceTimeline timeline, Func<CallStackNode, bool> isSelected)
+    private static bool[]? CallsUnder(TraceTimeline timeline, Func<CallStackNode, bool> isSelected)
     {
         var under = new bool[timeline.NodeCount];
 

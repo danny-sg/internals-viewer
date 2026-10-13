@@ -12,7 +12,7 @@ internal static class PublishedEventLinker
                               IReadOnlyList<EventPublisher> publishers,
                               IReadOnlyList<RawEvent> rawEvents,
                               IEnumerable<EngineEvent> events,
-                              FullTraceTimeline timeline)
+                              TraceTimeline timeline)
     {
         var names = publishers.DistinctBy(p => p.Address).ToDictionary(p => p.Address, p => p.Event);
 
@@ -31,7 +31,7 @@ internal static class PublishedEventLinker
 
         var eventsBySequence = events.BySequence();
 
-        var links = new List<FullTraceEventLink>();
+        var links = new List<TraceEventLink>();
 
         var paired = 0;
 
@@ -63,11 +63,11 @@ internal static class PublishedEventLinker
 
                 var found = threadPublished[publishedIndex];
 
-                links.Add(new FullTraceEventLink(engineEvent,
-                                                 timeline.NodeOf(found.Node),
-                                                 thread,
-                                                 positions[publishedIndex],
-                                                 found.Instructions));
+                links.Add(new TraceEventLink(engineEvent,
+                                             timeline.NodeOf(found.Node),
+                                             thread,
+                                             positions[publishedIndex],
+                                             found.Instructions));
             }
         }
 
@@ -129,5 +129,5 @@ internal static class PublishedEventLinker
         return (1, 1);
     }
 
-    internal sealed record Result(IReadOnlyList<FullTraceEventLink> Links, int Published, int Written, int Paired);
+    internal sealed record Result(IReadOnlyList<TraceEventLink> Links, int Published, int Written, int Paired);
 }
