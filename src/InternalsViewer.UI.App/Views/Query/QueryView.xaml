@@ -87,7 +87,7 @@
                                 <ToggleMenuFlyoutItem Text="Track query"
                                    IsChecked="{x:Bind ViewModel.TrackQuery, Mode=TwoWay}"/>
                                 <MenuFlyoutSeparator/>
-                                <ToggleMenuFlyoutItem Text="Crop to query"
+                                <ToggleMenuFlyoutItem Text="Crop To Query"
                                    IsChecked="{x:Bind ViewModel.QueryOptions.CropToQuery, Mode=TwoWay}"/>
                                 <ToggleMenuFlyoutItem Text="Include system objects"
                                    IsChecked="{x:Bind ViewModel.QueryOptions.IncludeSystemObjects, Mode=TwoWay}"/>

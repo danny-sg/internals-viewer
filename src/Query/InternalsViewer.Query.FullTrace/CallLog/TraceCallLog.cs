@@ -2,6 +2,7 @@ using InternalsViewer.Query.CallStack;
 using System.Buffers;
 using System.IO.Compression;
 using System.Runtime.InteropServices;
+using InternalsViewer.Query.FullTrace.Arguments;
 using InternalsViewer.Query.FullTrace.Export;
 using InternalsViewer.Query.FullTrace.Locators;
 using InternalsViewer.Query.FullTrace.Native;
@@ -16,6 +17,8 @@ public sealed class TraceCallLog
     private const int ReturnColumn = 6;
 
     private const int FlagsColumn = 1;
+
+    private const int NodeColumn = 7;
 
     private const ulong ReturnedFlag = 1ul << 32;
 
@@ -52,8 +55,36 @@ public sealed class TraceCallLog
 
     public CallStackNode? NodeOf(TraceArgumentCall call) => NodeAt(call.Node);
 
-    public Task<IReadOnlyList<TraceValueUse>> FindAsync(ulong value, CancellationToken cancellationToken)
-        => Task.Run<IReadOnlyList<TraceValueUse>>(() => Find(value, cancellationToken), cancellationToken);
+    public Task<IReadOnlyList<TraceValueUse>> FindAsync(ulong value,
+                                                        CancellationToken cancellationToken,
+                                                        Func<CallStackNode?, bool>? include = null)
+        => Task.Run<IReadOnlyList<TraceValueUse>>(() => Find(value, include, cancellationToken), cancellationToken);
+
+    public Task<IReadOnlyList<TraceValueMatch>> FindCallsAsync(TraceValueUse use,
+                                                               ulong value,
+                                                               CancellationToken cancellationToken,
+                                                               Func<CallStackNode?, bool>? include = null)
+        => Task.Run<IReadOnlyList<TraceValueMatch>>(() => FindCalls(use, value, include, cancellationToken), cancellationToken);
+
+    public IReadOnlyList<int> IncludedCalls(TraceCallList calls, Func<CallStackNode?, bool> include, CancellationToken cancellationToken)
+    {
+        var included = new List<int>(calls.Count);
+
+        for (var index = 0; index < calls.Count; index++)
+        {
+            if ((index & 0xFFF) == 0)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+            }
+
+            if (include(NodeAt(calls.NodeIndexAt(index))))
+            {
+                included.Add(index);
+            }
+        }
+
+        return included;
+    }
 
     internal static TraceCallLog Read(BinaryReader reader)
     {
@@ -125,6 +156,26 @@ public sealed class TraceCallLog
 
     internal void MapNodes(CallStackNode?[] nodes) => Nodes = nodes;
 
+    internal IEnumerable<(ulong Address, ulong Instance)> FunctionKeys => Functions.Keys;
+
+    internal IEnumerable<(ulong Sequence, int Node, ulong Self)> GetSelves(ulong address, ulong instance)
+    {
+        if (!Functions.TryGetValue((address, instance), out var chunks))
+        {
+            yield break;
+        }
+
+        foreach (var chunk in chunks)
+        {
+            var columns = Decompress(chunk);
+
+            for (var call = 0; call < chunk.Calls; call++)
+            {
+                yield return (columns[call], (int)columns[NodeColumn * chunk.Calls + call], columns[IntegerColumn * chunk.Calls + call]);
+            }
+        }
+    }
+
     internal void AnnotateNodes()
     {
         foreach (var ((address, instance), table) in Locators)
@@ -136,7 +187,7 @@ public sealed class TraceCallLog
 
             foreach (var (call, locator) in table.Entries())
             {
-                if (locator.Kind == LocatorKind.Referenced)
+                if (locator.Kind is not (LocatorKind.Page or LocatorKind.Row or LocatorKind.ColumnStoreObject))
                 {
                     continue;
                 }
@@ -160,7 +211,7 @@ public sealed class TraceCallLog
         return columns;
     }
 
-    private List<TraceValueUse> Find(ulong value, CancellationToken cancellationToken)
+    private List<TraceValueUse> Find(ulong value, Func<CallStackNode?, bool>? include, CancellationToken cancellationToken)
     {
         var uses = new Dictionary<(ulong Address, ulong Instance, string Location), TraceValueUse>();
 
@@ -178,6 +229,11 @@ public sealed class TraceCallLog
 
             for (var call = 0; call < chunk.Calls; call++)
             {
+                if (!IsIncluded(columns, chunk.Calls, call, include))
+                {
+                    continue;
+                }
+
                 foreach (var location in Locations(columns, chunk.Calls, call, value))
                 {
                     found[location] = found.TryGetValue(location, out var counted)
@@ -209,16 +265,156 @@ public sealed class TraceCallLog
             }
         });
 
+        AddStackUses(uses, value, include, cancellationToken);
+
         return [.. uses.Values.OrderBy(u => u.First.Sequence)];
     }
 
+    private List<TraceValueMatch> FindCalls(TraceValueUse use,
+                                            ulong value,
+                                            Func<CallStackNode?, bool>? include,
+                                            CancellationToken cancellationToken)
+    {
+        if (GetStackPosition(use.Location) is { } position)
+        {
+            return FindStackCalls(use, value, position, include, cancellationToken);
+        }
+
+        var matches = new List<TraceValueMatch>();
+
+        if (!Functions.TryGetValue((use.Address, use.Instance), out var chunks))
+        {
+            return matches;
+        }
+
+        var start = 0;
+
+        foreach (var chunk in chunks)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+
+            var columns = Decompress(chunk);
+
+            for (var call = 0; call < chunk.Calls; call++)
+            {
+                if (IsIncluded(columns, chunk.Calls, call, include) && Locations(columns, chunk.Calls, call, value).Contains(use.Location))
+                {
+                    matches.Add(MatchAt(columns, chunk.Calls, call, start));
+                }
+            }
+
+            start += chunk.Calls;
+        }
+
+        return matches;
+    }
+
     private CallStackNode? NodeAt(int node) => node >= 0 && node < Nodes.Length ? Nodes[node] : null;
+
+    private static string GetStackLocation(int position) => $"[RSP+0x{ArgumentLayout.StackOffset(position):X}]";
+
+    private static int? GetStackPosition(string location)
+    {
+        for (var position = TraceArgumentCall.RegisterCount; position < ArgumentLayout.CapturedSlots; position++)
+        {
+            if (location == GetStackLocation(position))
+            {
+                return position;
+            }
+        }
+
+        return null;
+    }
+
+    private void AddStackUses(Dictionary<(ulong Address, ulong Instance, string Location), TraceValueUse> uses,
+                              ulong value,
+                              Func<CallStackNode?, bool>? include,
+                              CancellationToken cancellationToken)
+    {
+        foreach (var ((address, instance), table) in Locators)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+
+            TraceCallList? calls = null;
+
+            foreach (var (call, locator) in table.Entries())
+            {
+                if (locator.Kind != LocatorKind.Argument || locator.Value != value)
+                {
+                    continue;
+                }
+
+                calls ??= CallsOf(address, instance);
+
+                if (GetStackMatch(calls, call, include) is not { } match)
+                {
+                    continue;
+                }
+
+                var location = GetStackLocation(locator.Register);
+
+                var use = new TraceValueUse(address, instance, location, 1, match, match);
+
+                uses[(address, instance, location)] = uses.TryGetValue((address, instance, location), out var existing)
+                    ? Merge(existing, use)
+                    : use;
+            }
+        }
+    }
+
+    private List<TraceValueMatch> FindStackCalls(TraceValueUse use,
+                                                 ulong value,
+                                                 int position,
+                                                 Func<CallStackNode?, bool>? include,
+                                                 CancellationToken cancellationToken)
+    {
+        var matches = new List<TraceValueMatch>();
+
+        if (!Locators.TryGetValue((use.Address, use.Instance), out var table) || CallsOf(use.Address, use.Instance) is not { } calls)
+        {
+            return matches;
+        }
+
+        foreach (var (call, locator) in table.Entries())
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+
+            if (locator.Kind == LocatorKind.Argument
+                && locator.Register == position
+                && locator.Value == value
+                && GetStackMatch(calls, call, include) is { } match)
+            {
+                matches.Add(match);
+            }
+        }
+
+        return matches;
+    }
+
+    private TraceValueMatch? GetStackMatch(TraceCallList? calls, int call, Func<CallStackNode?, bool>? include)
+    {
+        if (calls is null || call >= calls.Count)
+        {
+            return null;
+        }
+
+        var argument = calls[call];
+
+        var node = NodeAt(argument.Node);
+
+        return include is null || include(node) ? new TraceValueMatch(call, argument.Sequence, node, argument.ThreadId) : null;
+    }
+
+    private bool IsIncluded(ulong[] columns, int calls, int call, Func<CallStackNode?, bool>? include)
+        => include is null || include(NodeAt((int)columns[(TraceArgumentCall.ValueCount - 1) * calls + call]));
 
     private TraceValueMatch MatchAt(ulong[] columns, int calls, int call, int start)
     {
         var node = (int)columns[(TraceArgumentCall.ValueCount - 1) * calls + call];
 
-        return new TraceValueMatch(start + call, columns[call], node >= 0 && node < Nodes.Length ? Nodes[node] : null);
+        var thread = (uint)columns[FlagsColumn * calls + call];
+
+        return new TraceValueMatch(start + call, columns[call], node >= 0 && node < Nodes.Length ? Nodes[node] : null, thread);
     }
 
     private static TraceValueUse Merge(TraceValueUse existing, TraceValueUse use) => existing with
@@ -267,14 +463,17 @@ public sealed class TraceCallLog
     {
         private Dictionary<(ulong Address, ulong Instance), List<Task<Chunk>>> Pending { get; } = new();
 
-        private Dictionary<(ulong Function, int Register, int Offset, bool IsReadAtReturn), LocatorRead> Reads { get; }
-            = (locatorReads ?? []).DistinctBy(r => (r.Function, r.Register, r.Offset, r.IsReadAtReturn))
-                                  .ToDictionary(r => (r.Function, r.Register, r.Offset, r.IsReadAtReturn));
+        private Dictionary<(ulong Function, int Register, int Offset, bool IsReadAtReturn, uint Mode), LocatorRead> Reads { get; }
+            = (locatorReads ?? []).DistinctBy(KeyOf).ToDictionary(KeyOf);
 
-        private Dictionary<(ulong Function, ulong Instance, uint Call, int Register), ulong[]> ObjectKeys { get; } = new();
+        private Dictionary<(ulong Function, ulong Instance, uint Call, int Register, uint IsReadAtReturn), ulong[]> ObjectKeys { get; }
+            = new();
 
         private Dictionary<(ulong Address, ulong Instance), List<(int Call, Locator Locator, bool IsReadAtReturn)>> Found { get; }
             = new();
+
+        private Dictionary<(ulong Function, ulong Instance, uint Call, int Register, uint IsReadAtReturn),
+                           (LocatorKind Kind, SortedList<uint, ulong> Parts)> TextParts { get; } = new();
 
         private SemaphoreSlim Compressing { get; } = new(Math.Max(2, Environment.ProcessorCount));
 
@@ -332,43 +531,149 @@ public sealed class TraceCallLog
             {
                 var isReadAtReturn = value.IsReadAtReturn != 0;
 
-                if (!Reads.TryGetValue((value.Function, value.Register, (int)value.Offset, isReadAtReturn), out var read))
+                if (!Reads.TryGetValue((value.Function, value.Register, (int)value.Offset, isReadAtReturn, value.Mode), out var read))
                 {
                     continue;
                 }
 
-                if (read.Kind != LocatorKind.ColumnStoreObject)
+                if (read.Kind is LocatorKind.Text or LocatorKind.WideText)
+                {
+                    AddTextPart(value, read.Kind);
+
+                    continue;
+                }
+
+                var parts = LocatorReadResolver.GetParts(read.Kind);
+
+                if (parts == 1)
                 {
                     FoundFor(value).Add(((int)value.Call, new Locator(read.Register, read.Kind, value.Value), isReadAtReturn));
 
                     continue;
                 }
 
-                if (AddKeyPart(value) is { } key)
+                if (AddKeyPart(value, parts) is not { } key)
                 {
-                    FoundFor(value).Add(((int)value.Call,
-                                         Locator.ColumnStoreObject(read.Register, key[0], key[1], key[2]),
-                                         isReadAtReturn));
+                    continue;
                 }
+
+                var locator = read.Kind == LocatorKind.LogSequenceNumber
+                    ? Locator.CreateLogSequenceNumber(read.Register, key[0], key[1])
+                    : Locator.ColumnStoreObject(read.Register, key[0], key[1], key[2]);
+
+                FoundFor(value).Add(((int)value.Call, locator, isReadAtReturn));
             }
         }
 
-        public TraceCallLog Build()
+        public TraceCallLog Build(ImageText? images = null)
         {
             Task.WaitAll([.. Pending.Values.SelectMany(c => c)]);
+
+            var texts = new Dictionary<(ulong Function, ulong Instance, uint Call, int Register, uint IsReadAtReturn), Locator>();
+
+            foreach (var (identity, (kind, parts)) in TextParts)
+            {
+                var text = TextDecoder.Decode(parts, kind == LocatorKind.WideText, out var isTruncated);
+
+                texts[identity] = new Locator(identity.Register, kind, (ulong)text.Length, isTruncated ? 1ul : 0, text);
+            }
+
+            if (images is not null)
+            {
+                AddImageTexts(images, texts);
+            }
+
+            foreach (var ((function, instance, call, _, isReadAtReturn), locator) in texts)
+            {
+                FoundFor(function, instance).Add(((int)call, locator, isReadAtReturn != 0));
+            }
+
+            TextParts.Clear();
 
             return new TraceCallLog(Pending.ToDictionary(p => p.Key, p => p.Value.Select(c => c.Result).ToArray()),
                                     Found.ToDictionary(f => f.Key, f => LocatorTable.Build(Preferred(f.Value))));
         }
 
+        private void AddImageTexts(ImageText images,
+                                   Dictionary<(ulong Function, ulong Instance, uint Call, int Register, uint IsReadAtReturn), Locator> texts)
+        {
+            var functions = Pending.Keys.ToLookup(k => k.Address);
+
+            foreach (var read in Reads.Values.Where(IsImageText))
+            {
+                foreach (var (address, instance) in functions[read.Function])
+                {
+                    var stackValues = read.Register is >= TraceArgumentCall.RegisterCount and not LocatorReadResolver.ReturnRegister
+                        ? GetStackValues(address, instance, read.Register)
+                        : null;
+
+                    var call = 0u;
+
+                    foreach (var chunk in Pending[(address, instance)].Select(c => c.Result))
+                    {
+                        var columns = Decompress(chunk);
+
+                        for (var index = 0; index < chunk.Calls; index++, call++)
+                        {
+                            var identity = (address, instance, call, read.Register, read.IsReadAtReturn ? 1u : 0u);
+
+                            if (texts.TryGetValue(identity, out var existing) && existing.Detail == 0)
+                            {
+                                continue;
+                            }
+
+                            var pointer = GetPointer(read, columns, chunk.Calls, index, stackValues, call);
+
+                            if (pointer is not 0
+                                && images.Read(pointer + (ulong)read.Offset, read.Kind == LocatorKind.WideText) is { } text)
+                            {
+                                texts[identity] = new Locator(read.Register, read.Kind, (ulong)text.Length, 0, text);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        private static bool IsImageText(LocatorRead read)
+            => read.Kind is LocatorKind.Text or LocatorKind.WideText && read.Path is not { Length: > 0 };
+
+        private static ulong GetPointer(LocatorRead read,
+                                        ulong[] columns,
+                                        int calls,
+                                        int index,
+                                        Dictionary<uint, ulong>? stackValues,
+                                        uint call)
+        {
+            if (read.Register == LocatorReadResolver.ReturnRegister)
+            {
+                return (columns[FlagsColumn * calls + index] & ReturnedFlag) != 0 ? columns[ReturnColumn * calls + index] : 0;
+            }
+
+            if (read.Register < TraceArgumentCall.RegisterCount)
+            {
+                return columns[(IntegerColumn + read.Register) * calls + index];
+            }
+
+            return stackValues?.GetValueOrDefault(call) ?? 0;
+        }
+
+        private Dictionary<uint, ulong> GetStackValues(ulong address, ulong instance, int register)
+            => FoundFor(address, instance).Where(f => f.Locator is { Kind: LocatorKind.Argument } && f.Locator.Register == register)
+                                          .GroupBy(f => (uint)f.Call)
+                                          .ToDictionary(g => g.Key, g => g.First().Locator.Value);
+
         private static List<(int Call, Locator Locator)> Preferred(
             List<(int Call, Locator Locator, bool IsReadAtReturn)> found)
         {
-            var returned = found.Where(f => f.IsReadAtReturn).Select(f => (f.Call, f.Locator.Register)).ToHashSet();
+            var returned = found.Where(f => f.IsReadAtReturn).Select(f => (f.Call, f.Locator.Register, f.Locator.Kind)).ToHashSet();
 
-            return [.. found.Where(f => f.IsReadAtReturn || !returned.Contains((f.Call, f.Locator.Register)))
+            return [.. found.Where(f => f.IsReadAtReturn || !returned.Contains((f.Call, f.Locator.Register, f.Locator.Kind)))
                             .Select(f => (f.Call, f.Locator))];
         }
+
+        private static (ulong Function, int Register, int Offset, bool IsReadAtReturn, uint Mode) KeyOf(LocatorRead read)
+            => (read.Function, read.Register, read.Offset, read.IsReadAtReturn, PointerRead.ModeOf(read.Kind));
 
         private static Chunk Compress(ReadOnlySpan<ulong> columns, int calls)
         {
@@ -383,35 +688,57 @@ public sealed class TraceCallLog
         }
 
         private List<(int Call, Locator Locator, bool IsReadAtReturn)> FoundFor(PointerValue value)
+            => FoundFor(value.Function, value.Instance);
+
+        private List<(int Call, Locator Locator, bool IsReadAtReturn)> FoundFor(ulong function, ulong instance)
         {
-            if (!Found.TryGetValue((value.Function, value.Instance), out var found))
+            if (!Found.TryGetValue((function, instance), out var found))
             {
                 found = [];
 
-                Found[(value.Function, value.Instance)] = found;
+                Found[(function, instance)] = found;
             }
 
             return found;
         }
 
-        private ulong[]? AddKeyPart(PointerValue value)
+        private void AddTextPart(PointerValue value, LocatorKind kind)
         {
-            var identity = (value.Function, value.Instance, value.Call, value.Register);
+            var identity = (value.Function, value.Instance, value.Call, value.Register, value.IsReadAtReturn);
+
+            if (!TextParts.TryGetValue(identity, out var text))
+            {
+                text = (kind, new SortedList<uint, ulong>());
+
+                TextParts[identity] = text;
+            }
+
+            text.Parts[value.Part] = value.Value;
+        }
+
+        private ulong[]? AddKeyPart(PointerValue value, int parts)
+        {
+            var identity = (value.Function, value.Instance, value.Call, value.Register, value.IsReadAtReturn);
 
             if (!ObjectKeys.TryGetValue(identity, out var key))
             {
-                key = new ulong[LocatorReadResolver.ObjectKeyParts + 1];
+                key = new ulong[parts + 1];
 
                 ObjectKeys[identity] = key;
             }
 
             var part = (int)value.Offset / sizeof(ulong);
 
+            if (part >= parts)
+            {
+                return null;
+            }
+
             key[part] = value.Value;
 
-            key[LocatorReadResolver.ObjectKeyParts] |= 1ul << part;
+            key[parts] |= 1ul << part;
 
-            if (key[LocatorReadResolver.ObjectKeyParts] != (1ul << LocatorReadResolver.ObjectKeyParts) - 1)
+            if (key[parts] != (1ul << parts) - 1)
             {
                 return null;
             }

@@ -3,9 +3,11 @@ using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Query.CallStack.Arguments;
 using InternalsViewer.Query.FullTrace.CallLog;
 using InternalsViewer.Query.FullTrace.Locators;
+using InternalsViewer.UI.App.Models;
 using InternalsViewer.UI.App.Models.Query.CallStack;
 using InternalsViewer.Query.CallStack.Locators;
 using InternalsViewer.Query.FullTrace.Arguments;
+using InternalsViewer.Query.Results;
 
 namespace InternalsViewer.UI.App.Tests.Models.Query.CallStack;
 
@@ -15,13 +17,32 @@ public class ArgumentRowBuilderTests
         ArgumentLayout.LayoutOf(new FunctionSignature(["unsigned __int64 *"], FunctionKind.Member, "void"));
 
     [Fact]
-    public void Stack_And_Floating_Arguments_Have_No_Column()
+    public void Floating_Arguments_Have_No_Column_And_Stack_Arguments_Do()
     {
         var layout = ArgumentLayout.LayoutOf(new FunctionSignature(["double", "int", "int", "int", "int"], FunctionKind.Free, "double"));
 
         var table = ArgumentRowBuilder.Table(layout, [Call(0, 7)]);
 
-        Assert.Equal(["RDX", "R8", "R9"], table.Columns.Skip(2).Select(c => c.Detail));
+        Assert.Equal(["RDX", "R8", "R9", "[RSP+0x28]"], table.Columns.Skip(2).Select(c => c.Detail));
+    }
+
+    [Fact]
+    public void A_Stack_Argument_Takes_Its_Place_In_The_Signature_And_The_Table()
+    {
+        var layout = ArgumentLayout.LayoutOf(new FunctionSignature(["int", "int", "int", "int"], FunctionKind.Member, "void"));
+
+        var call = Call(0x1_0000, 1) with { Locators = [new Locator(4, LocatorKind.Argument, 7)] };
+
+        Assert.Equal("F(this 0x10000, 1, 0, 0, 7)", Text(ArgumentRowBuilder.Signature("F", layout, call)));
+        Assert.Equal("7", Assert.Single(ArgumentRowBuilder.Table(layout, [call]).Rows)[6]);
+    }
+
+    [Fact]
+    public void A_Stack_Argument_That_Was_Not_Read_Says_So()
+    {
+        var layout = ArgumentLayout.LayoutOf(new FunctionSignature(["int", "int", "int", "int"], FunctionKind.Member, "void"));
+
+        Assert.Equal("Not Captured", Assert.Single(ArgumentRowBuilder.Table(layout, [Call(0x1_0000, 1)]).Rows)[6]);
     }
 
     [Fact]
@@ -178,6 +199,170 @@ public class ArgumentRowBuilderTests
 
         Assert.Equal((0x200ul, (LocatorKind?)null, "enum LCK_MODE &"), (cell.Value, cell.Locator?.Kind, cell.Type));
     }
+
+    [Fact]
+    public void A_Call_Reads_As_Its_Signature_With_The_Values_In_Place()
+    {
+        var layout = ArgumentLayout.LayoutOf(new FunctionSignature(["unsigned __int64 *", "int"], FunctionKind.Member, "void"));
+
+        var call = new TraceArgumentCall(1, 1, true, [0x1_F000, 0x2_F000, 5, 0], 0, 0);
+
+        var parts = ArgumentRowBuilder.Signature("HoBtAccess::Init", layout, call);
+
+        Assert.Equal("HoBtAccess::Init(this 0x1F000, 0x2F000, 5)", Text(parts));
+    }
+
+    [Fact]
+    public void Pointers_Can_Be_Found_But_Small_Values_Cannot()
+    {
+        var layout = ArgumentLayout.LayoutOf(new FunctionSignature(["unsigned __int64 *", "int"], FunctionKind.Member, "void"));
+
+        var call = new TraceArgumentCall(1, 1, true, [0x1_F000, 0x2_F000, 5, 0], 0, 0);
+
+        var found = ArgumentRowBuilder.Signature("F", layout, call).Where(p => p.CanFind).Select(p => p.Value);
+
+        Assert.Equal([0x1_F000ul, 0x2_F000ul], found);
+    }
+
+    [Fact]
+    public void A_Null_Pointer_Has_Nothing_To_Find()
+    {
+        Assert.DoesNotContain(ArgumentRowBuilder.Signature("F", SetRange, Call(0, 0)), p => p.CanFind);
+    }
+
+    [Fact]
+    public void A_Returned_Pointer_Follows_The_Call()
+    {
+        var layout = ArgumentLayout.LayoutOf(new FunctionSignature([], FunctionKind.Member, "HoBtAccess *"));
+
+        var parts = ArgumentRowBuilder.Signature("F", layout, Call(0x1_0000, 0, returnValue: 0x3_0000));
+
+        Assert.Equal("F(this 0x10000)  \u2192  0x30000", Text(parts));
+        Assert.True(parts[^1].CanFind);
+    }
+
+    [Fact]
+    public void An_Argument_That_Was_Not_Captured_Shows_Its_Type()
+    {
+        var layout = ArgumentLayout.LayoutOf(new FunctionSignature(["double"], FunctionKind.Free, "void"));
+
+        var parameter = ArgumentRowBuilder.Signature("F", layout, Call(0, 0))[2];
+
+        Assert.Equal(("double", CallSignaturePartKind.NotCaptured), (parameter.Text, parameter.Kind));
+    }
+
+    [Fact]
+    public void Without_A_Signature_The_Registers_Are_Listed_Raw()
+    {
+        var parts = ArgumentRowBuilder.Signature("F", null, Call(0x2_0000, 5, returnValue: 0x3_0000));
+
+        Assert.Equal("F(0x20000, 0x5, 0x0, 0x0)  \u2192  0x30000", Text(parts));
+    }
+
+    [Fact]
+    public void A_Described_Value_Shows_What_It_Stands_For()
+    {
+        var layout = KnownParameters.Apply(ArgumentLayout.LayoutOf(new FunctionSignature(["unsigned __int64"], FunctionKind.Member, "void")),
+                                           "HoBtAccess",
+                                           "Init");
+
+        var table = ArgumentRowBuilder.Table(layout, [Call(0x100, 72057594043236352)], (_, _, _) => "dbo.T.PK");
+
+        Assert.Equal("dbo.T.PK", Assert.Single(table.Rows)[3]);
+    }
+
+    [Fact]
+    public void Excluded_Calls_Are_Left_Out_Of_The_Table()
+    {
+        List<TraceArgumentCall> calls = [.. Enumerable.Range(0, 5).Select(i => Call((ulong)i, 0))];
+
+        var table = ArgumentRowBuilder.Table(SetRange, calls, included: [1, 3]);
+
+        Assert.Equal([1L, 3L], table.Rows.Select(r => ((ResultRow<long>)r).Id));
+        Assert.Equal([2L, 4L], table.Rows.Select(r => r[0]));
+    }
+
+    [Fact]
+    public void A_Pointer_To_Another_Object_Is_Decoded_With_Its_Class()
+    {
+        var layout = ArgumentLayout.LayoutOf(new FunctionSignature(["HoBtAccess *"], FunctionKind.Member, "void"));
+
+        var parts = ArgumentRowBuilder.Signature("F", layout, Call(0x1_0000, 0x2_0000), (slot, _, _) => slot.Type == "this" ? null : "dbo.T.PK");
+
+        Assert.Equal("F(this 0x10000, HoBtAccess dbo.T.PK)", Text(parts));
+    }
+
+    [Fact]
+    public void A_Page_Is_Decoded_Without_A_Class()
+    {
+        var layout = ArgumentLayout.LayoutOf(new FunctionSignature(["PageId const &"], FunctionKind.Member, "void"));
+
+        var call = Call(0x100, 0x200) with { Locators = [new Locator(1, LocatorKind.Page, 0x0000_0001_0000_0150)] };
+
+        var page = ArgumentRowBuilder.Signature("F", layout, call)[^2];
+
+        Assert.Equal((new PageAddress(1, 336).ToString(), (string?)null), (page.GetText(decode: true), page.DecodedClass));
+    }
+
+    [Fact]
+    public void A_Pointer_To_A_Known_Object_Takes_The_Object_Class()
+    {
+        var layout = ArgumentLayout.LayoutOf(new FunctionSignature(["CQScanNew *"], FunctionKind.Member, "void"));
+
+        var parts = ArgumentRowBuilder.Signature("F",
+                                                 layout,
+                                                 Call(0x1_0000, 0x2_0000),
+                                                 (slot, _, _) => slot.Type == "this" ? null : new ValueDescription("#1", "CQScanRangeNew"));
+
+        Assert.Equal("F(this 0x10000, CQScanRangeNew #1)", Text(parts));
+    }
+
+    [Fact]
+    public void This_Is_Decoded_Without_Its_Class()
+    {
+        var layout = ArgumentLayout.LayoutOf(new FunctionSignature([], FunctionKind.Member, "void"));
+
+        var parts = ArgumentRowBuilder.Signature("HoBtAccess::Close", layout, Call(0x1_0000, 0), (_, _, _) => "dbo.T.PK");
+
+        Assert.Equal("HoBtAccess::Close(this dbo.T.PK)", Text(parts));
+    }
+
+    [Fact]
+    public void Without_Decoding_Every_Value_Is_Hex()
+    {
+        var layout = ArgumentLayout.LayoutOf(new FunctionSignature(["HoBtAccess *", "int"], FunctionKind.Member, "void"));
+
+        var call = new TraceArgumentCall(1, 1, true, [0x1_0000, 0x2_0000, 5, 0], 0, 0);
+
+        var parts = ArgumentRowBuilder.Signature("F", layout, call, (_, _, _) => "dbo.T.PK");
+
+        Assert.Equal("F(this 0x10000, 0x20000, 0x5)", Text(parts, decode: false));
+    }
+
+    [Fact]
+    public void Without_Decoding_A_Cell_Is_Hex()
+    {
+        var layout = KnownParameters.Apply(ArgumentLayout.LayoutOf(new FunctionSignature(["unsigned __int64"], FunctionKind.Member, "void")),
+                                           "HoBtAccess",
+                                           "Init");
+
+        var table = ArgumentRowBuilder.Table(layout, [Call(0x100, 72057594043236352)], (_, _, _) => "dbo.T.PK", decode: false);
+
+        Assert.Equal("0x100000000510000", Assert.Single(table.Rows)[3]);
+    }
+
+    [Fact]
+    public void A_Cell_Pointing_At_Another_Object_Carries_Its_Class()
+    {
+        var layout = ArgumentLayout.LayoutOf(new FunctionSignature(["HoBtAccess *"], FunctionKind.Member, "void"));
+
+        var table = ArgumentRowBuilder.Table(layout, [Call(0x100, 0x2_0000)], (slot, _, _) => slot.Type == "this" ? null : "dbo.T.PK");
+
+        Assert.Equal(new ObjectValue("HoBtAccess", "dbo.T.PK"), Assert.Single(table.Rows)[3]);
+    }
+
+    private static string Text(IEnumerable<CallSignaturePart> parts, bool decode = true)
+        => string.Concat(parts.Select(p => p.GetText(decode)));
 
     private static TraceArgumentCall Call(ulong self, ulong pointer, ulong returnValue = 0, bool returned = true)
         => new(1, 1, returned, [self, pointer, 0, 0], returnValue, 0);

@@ -41,13 +41,13 @@ public class TraceArgumentCallTests
     }
 
     [Fact]
-    public void Only_Integer_Register_Arguments_Are_Captured()
+    public void Integer_Register_And_Stack_Arguments_Are_Captured()
     {
         var call = TraceArgumentCall.Decode(new ulong[TraceArgumentCall.ValueCount]);
 
         var layout = ArgumentLayout.LayoutOf(new FunctionSignature(["double", "int", "int", "int", "int"], FunctionKind.Free, null));
 
-        Assert.Equal([false, true, true, true, false], layout.Slots.Select(TraceArgumentCall.IsCaptured));
+        Assert.Equal([false, true, true, true, true], layout.Slots.Select(TraceArgumentCall.IsCaptured));
         Assert.Null(call.Value(layout.Slots[0]));
         Assert.Null(call.Value(layout.Slots[4]));
     }

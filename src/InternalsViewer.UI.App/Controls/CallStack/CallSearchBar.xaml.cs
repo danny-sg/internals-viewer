@@ -4,6 +4,7 @@ using System.ComponentModel;
 using System.Linq;
 using InternalsViewer.Query.CallStack;
 using InternalsViewer.UI.App.ViewModels;
+using Microsoft.UI.Dispatching;
 using Microsoft.UI.Text;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Data;
@@ -16,6 +17,8 @@ namespace InternalsViewer.UI.App.Controls.CallStack;
 public sealed partial class CallSearchBar : UserControl
 {
     private const double PrunedBadgeOpacity = 0.5;
+
+    private const int SearchDelayMilliseconds = 300;
 
     public static readonly DependencyProperty CallStackProperty =
         DependencyProperty.Register(nameof(CallStack),
@@ -51,6 +54,10 @@ public sealed partial class CallSearchBar : UserControl
     }
 
     private SettingsViewModel Settings => field ??= App.GetService<SettingsViewModel>();
+
+    private DispatcherQueueTimer SearchTimer => field ??= CreateSearchTimer();
+
+    private string PublishedSearch { get; set; } = string.Empty;
 
     private HashSet<string> HiddenCategories
     {
@@ -88,6 +95,15 @@ public sealed partial class CallSearchBar : UserControl
 
     public void FocusSearch() => SearchBox.Focus(FocusState.Programmatic);
 
+    public void Clear()
+    {
+        SearchTimer.Stop();
+
+        PublishedSearch = string.Empty;
+
+        SearchBox.Text = string.Empty;
+    }
+
     private void OnLoaded(object sender, RoutedEventArgs e)
     {
         Settings.PropertyChanged += OnSettingsPropertyChanged;
@@ -105,8 +121,49 @@ public sealed partial class CallSearchBar : UserControl
         }
     }
 
+    private DispatcherQueueTimer CreateSearchTimer()
+    {
+        var timer = DispatcherQueue.CreateTimer();
+
+        timer.Interval = TimeSpan.FromMilliseconds(SearchDelayMilliseconds);
+        timer.IsRepeating = false;
+
+        timer.Tick += OnSearchTimerTick;
+
+        return timer;
+    }
+
     private void OnSearchTextChanged(AutoSuggestBox sender, AutoSuggestBoxTextChangedEventArgs args)
-        => SearchTextChanged?.Invoke(sender.Text ?? string.Empty);
+    {
+        if (args.Reason == AutoSuggestionBoxTextChangeReason.UserInput)
+        {
+            SearchTimer.Start();
+
+            return;
+        }
+
+        PublishSearch();
+    }
+
+    private void OnSearchQuerySubmitted(AutoSuggestBox sender, AutoSuggestBoxQuerySubmittedEventArgs args) => PublishSearch();
+
+    private void OnSearchTimerTick(DispatcherQueueTimer sender, object args) => PublishSearch();
+
+    private void PublishSearch()
+    {
+        SearchTimer.Stop();
+
+        var text = SearchBox.Text ?? string.Empty;
+
+        if (string.Equals(text, PublishedSearch, StringComparison.Ordinal))
+        {
+            return;
+        }
+
+        PublishedSearch = text;
+
+        SearchTextChanged?.Invoke(text);
+    }
 
     private void OnCategoryFilterClick(object sender, RoutedEventArgs e)
     {

@@ -16,8 +16,6 @@ public sealed partial class SettingsView : Page
     {
         InitializeComponent();
 
-        _ = ViewModel.LoadAsync();
-
         ViewModel.RefreshMemoryUsage();
 
         _memoryTimer.Tick += (_, _) => ViewModel.RefreshMemoryUsage();

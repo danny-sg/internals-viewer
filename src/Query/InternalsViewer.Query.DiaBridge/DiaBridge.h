@@ -20,7 +20,8 @@ extern "C"
 
     __declspec(dllexport) void *BeginEnumSymbolsAtRva(void *session, unsigned int rva);
 
-    __declspec(dllexport) bool GetDecoratedName(void *session, unsigned int rva, wchar_t *buffer, int bufferLength);
+    __declspec(dllexport) bool GetDecoratedName(void *session, unsigned int rva, const wchar_t *name, wchar_t *buffer,
+                                                int bufferLength);
 
     __declspec(dllexport) void EndEnumSymbols(void *enumerator);
 

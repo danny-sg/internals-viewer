@@ -18,10 +18,10 @@ every call the query made - how many times it was made, the memory it allocated 
 ## Turning it on
 
 Turning on **Record Full Trace** shows a dialog explaining what a recording involves. While it is on, a red
-**Full Trace** badge sits on the SQL Editor's tab strip - every **Execute** in this tab is recorded, and clicking the
+**Full Trace** badge sits at the end of the menu bar - every **Execute** in this tab is recorded, and clicking the
 badge turns it off.
 
-A recording has no clock and no event list, so the Timeline, Events and Allocations panes are hidden, and the
+A recording has no clock, so the Timeline, Events and Allocations panes are hidden, and the
 [Flame Chart](view:FlameChart) takes the Timeline's place. Turning Full Trace off puts the previous layout back.
 
 ## On Execute
@@ -43,8 +43,10 @@ Keep the query small - the larger the recording, the longer it takes to load.
 - [Flame Chart](view:FlameChart) - every call as a bar on its thread, in the order it happened
 - **Arguments** - right-click a frame in the Call Stack and choose **Show Arguments** to see what each call was
   passed and returned
-- [Execution Plan](view:ExecutionPlan) - each operator is matched to the code that ran it, and its **Properties** gain
-  a **Traced Memory** group
+- [Execution Plan](view:ExecutionPlan) - each operator is matched to the code that ran it
 
-**Record Extended Events**, on the same menu, puts the normal event set back into the recording, at the cost of a
-larger and slower recording.
+**Record Events**, on the same menu, puts the normal event set back into the recording, at the cost of a larger and
+slower recording. The Timeline, Events and Allocations panes then stay, and as the Timeline's current event changes
+the Flame Chart's playhead moves to where that event happened in the recording.
+
+**Export to file** on the **Query** menu keeps a Full Trace for later, without the recording itself.

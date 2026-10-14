@@ -29,15 +29,6 @@ public sealed partial class SymbolsViewModel(ILogger logger, SettingsViewModel s
     private readonly List<(CallstackFrame Frame, string ClassName)> _membersHistory = [];
 
     [ObservableProperty]
-    private bool _isPaneVisible;
-
-    [ObservableProperty]
-    private bool _isPaneDockedBottom;
-
-    [ObservableProperty]
-    private bool _isSymbolSearchSelected;
-
-    [ObservableProperty]
     private bool _isMembersLoading;
 
     [ObservableProperty]
@@ -169,15 +160,6 @@ public sealed partial class SymbolsViewModel(ILogger logger, SettingsViewModel s
         Suggestions.Value.Where(s => s.Matches(text)).ToList();
 
     /// <summary>
-    /// Shows the pane on the symbol search
-    /// </summary>
-    public void ShowSymbolSearch()
-    {
-        IsPaneVisible = true;
-        IsSymbolSearchSelected = true;
-    }
-
-    /// <summary>
     /// Leaves a module out of every symbol search from now on
     /// </summary>
     public void ExcludeModule(string module)
@@ -219,9 +201,6 @@ public sealed partial class SymbolsViewModel(ILogger logger, SettingsViewModel s
         {
             return NavigateMembersAsync(frame, className);
         }
-
-        IsPaneVisible = true;
-        IsSymbolSearchSelected = false;
 
         _membersRequest++;
 
@@ -344,9 +323,6 @@ public sealed partial class SymbolsViewModel(ILogger logger, SettingsViewModel s
 
     private async Task ListMembersAsync(CallstackFrame frame, string className)
     {
-        IsPaneVisible = true;
-        IsSymbolSearchSelected = false;
-
         var request = ++_membersRequest;
 
         _currentMembers = (frame, className);

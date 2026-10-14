@@ -214,9 +214,7 @@ public sealed class CallstackResolver(string symbolsPath) : IDisposable
 
         var resolver = _resolverCache.GetOrAdd(pdbPath, path => new DiaResolver(path));
 
-        return resolver.EnumerateSymbolsAtRva(FunctionRva(frame))
-                       .Select(detail => detail.Signature)
-                       .FirstOrDefault(signature => !string.IsNullOrEmpty(signature));
+        return GetFunctionDetail(resolver, FunctionRva(frame), GetFunctionName(frame))?.Signature;
     }
 
     public string? ResolveDecoratedName(CallstackFrame frame)
@@ -228,7 +226,21 @@ public sealed class CallstackResolver(string symbolsPath) : IDisposable
             return null;
         }
 
-        return _resolverCache.GetOrAdd(pdbPath, path => new DiaResolver(path)).GetDecoratedName(FunctionRva(frame));
+        return _resolverCache.GetOrAdd(pdbPath, path => new DiaResolver(path)).GetDecoratedName(FunctionRva(frame), GetFunctionName(frame));
+    }
+
+    public bool IsFolded(CallstackFrame frame)
+    {
+        var pdbPath = GetPdbPath(frame);
+
+        if (!HasSymbolInformation(frame) || !File.Exists(pdbPath))
+        {
+            return false;
+        }
+
+        var resolver = _resolverCache.GetOrAdd(pdbPath, path => new DiaResolver(path));
+
+        return resolver.EnumerateSymbolsAtRva(FunctionRva(frame)).Where(d => d.IsFunction).Select(d => d.Name).Distinct().Skip(1).Any();
     }
 
     public void ResolveSignatures(IEnumerable<CallstackFrame> frames)
@@ -245,10 +257,7 @@ public sealed class CallstackResolver(string symbolsPath) : IDisposable
 
             var resolver = _resolverCache.GetOrAdd(function.Key.Path, path => new DiaResolver(path));
 
-            var detail = resolver.EnumerateSymbolsAtRva(function.Key.Rva)
-                                 .FirstOrDefault(d => d.IsFunction && d.Signature.Length > 0);
-
-            if (detail.Signature is not { Length: > 0 } signature)
+            if (GetFunctionDetail(resolver, function.Key.Rva, GetFunctionName(function.First())) is not { Signature: var signature } detail)
             {
                 continue;
             }
@@ -257,7 +266,7 @@ public sealed class CallstackResolver(string symbolsPath) : IDisposable
 
             var scoped = separator > 0 ? RemoveScope(signature, $"{detail.Name[..separator]}::") : signature;
 
-            if (FunctionSignature.Parse(signature, resolver.GetDecoratedName(function.Key.Rva)) is { Kind: FunctionKind.Static })
+            if (FunctionSignature.Parse(signature, resolver.GetDecoratedName(function.Key.Rva, detail.Name)) is { Kind: FunctionKind.Static })
             {
                 scoped = $"static {scoped}";
             }
@@ -271,6 +280,25 @@ public sealed class CallstackResolver(string symbolsPath) : IDisposable
 
     private static SymbolIndex BuildSearchIndex(DiaResolver resolver) =>
         SymbolIndex.Build(resolver.EnumerateSymbolDetails(string.Empty));
+
+    private static SymbolDetail? GetFunctionDetail(DiaResolver resolver, uint rva, string? name)
+    {
+        var details = resolver.EnumerateSymbolsAtRva(rva).Where(d => d.IsFunction && d.Signature.Length > 0).ToList();
+
+        return details.Count == 0 ? null : details.FirstOrDefault(d => d.Name == name, details[0]);
+    }
+
+    private static string? GetFunctionName(CallstackFrame frame)
+    {
+        if (frame.Resolved is not { RawSymbol.Length: > 0 } resolved)
+        {
+            return null;
+        }
+
+        SymbolsHelper.SplitOffset(resolved.RawSymbol, out var name, out _);
+
+        return name.Length > 0 ? name : null;
+    }
 
     private static uint FunctionRva(CallstackFrame frame)
         => frame.Resolved?.Offset is { } offset && offset <= frame.Rva ? frame.Rva - offset : frame.Rva;

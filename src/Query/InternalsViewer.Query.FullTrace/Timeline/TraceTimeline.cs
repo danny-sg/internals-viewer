@@ -1,6 +1,7 @@
 using InternalsViewer.Query.CallStack;
 using System.Buffers;
 using System.Runtime.InteropServices;
+using InternalsViewer.Query.FullTrace.CallLog;
 using InternalsViewer.Query.FullTrace.Export;
 using InternalsViewer.Query.FullTrace.Memory;
 using InternalsViewer.Query.FullTrace.Native;
@@ -257,7 +258,7 @@ public sealed class TraceTimeline
         return new TraceTimeline(threads, this);
     }
 
-    public TraceTimeline? CroppedTo(CallStackTree tree)
+    public TraceTimeline? CroppedTo(IReadOnlySet<CallStackNode> roots)
     {
         var known = new Dictionary<CallStackNode, int>(ReferenceEqualityComparer.Instance);
 
@@ -265,7 +266,7 @@ public sealed class TraceTimeline
 
         for (var node = 0; node < depths.Length; node++)
         {
-            depths[node] = NodeOf(node) is { } callNode ? DepthIn(tree, callNode, known) : -1;
+            depths[node] = NodeOf(node) is { } callNode ? DepthUnder(roots, callNode, known) : -1;
         }
 
         int DepthOf(TraceTimelineRow row, int index)
@@ -435,6 +436,31 @@ public sealed class TraceTimeline
         }
     }
 
+    public double GetPosition(TraceArgumentCall call)
+    {
+        if (call.Index < 0 || Threads.FirstOrDefault(t => t.ThreadId == call.ThreadId) is not { } thread)
+        {
+            return call.Sequence;
+        }
+
+        foreach (var row in thread.Rows)
+        {
+            var starts = row.Starts(TraceTimelineAxis.Position);
+
+            var end = call.Sequence + 1d;
+
+            for (var index = SortedSearch.FirstAtOrAfter(starts, call.Sequence); index < starts.Length && starts[index] < end; index++)
+            {
+                if (row.NodeAt(index) == call.Node && row.CallAt(index) == call.Index)
+                {
+                    return starts[index];
+                }
+            }
+        }
+
+        return call.Sequence;
+    }
+
     internal double PositionOf(ulong sequence, ulong steps)
         => PositionOf(sequence, Math.Min(steps, (ulong)Math.Max(StepsPerSequence - 1, 0)), StepsPerSequence);
 
@@ -555,7 +581,7 @@ public sealed class TraceTimeline
         return merged;
     }
 
-    private static int DepthIn(CallStackTree tree, CallStackNode node, Dictionary<CallStackNode, int> known)
+    private static int DepthUnder(IReadOnlySet<CallStackNode> roots, CallStackNode node, Dictionary<CallStackNode, int> known)
     {
         if (known.TryGetValue(node, out var depth))
         {
@@ -566,13 +592,13 @@ public sealed class TraceTimeline
         {
             depth = -1;
         }
-        else if (ReferenceEquals(parent, tree.Root))
+        else if (roots.Contains(node))
         {
             depth = 0;
         }
         else
         {
-            var parentDepth = DepthIn(tree, parent, known);
+            var parentDepth = DepthUnder(roots, parent, known);
 
             depth = parentDepth < 0 ? -1 : parentDepth + 1;
         }

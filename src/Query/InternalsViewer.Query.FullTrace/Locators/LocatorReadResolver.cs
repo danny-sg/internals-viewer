@@ -13,10 +13,15 @@ public static partial class LocatorReadResolver
 
     public const int ObjectKeyParts = 3;
 
+    public const int LogSequenceNumberParts = 2;
+
     public const int MaximumHops = 3;
 
+    private const int StackCandidateParameters = 4;
+
     private static readonly SearchValues<string> DecoratedTypes =
-        SearchValues.Create(["VPageId@@", "VAllocationPageId@@", "VHPageHandle@@", "URowId@@", "VColumnStoreObjectKey@@"],
+        SearchValues.Create(["VPageId@@", "VAllocationPageId@@", "VHPageHandle@@", "URowId@@", "VColumnStoreObjectKey@@",
+                             "ULSN@@", "VLSN@@", "PEBD", "PEB_W"],
                             StringComparison.Ordinal);
 
     internal static IEnumerable<LocatorRead> ReadsOf(ulong function, FunctionSignature signature)
@@ -46,9 +51,46 @@ public static partial class LocatorReadResolver
         }
     }
 
+    public static int GetParts(LocatorKind kind) => kind switch
+    {
+        LocatorKind.ColumnStoreObject => ObjectKeyParts,
+        LocatorKind.LogSequenceNumber => LogSequenceNumberParts,
+        _ => 1
+    };
+
+    internal static IEnumerable<LocatorRead> GetStackReads(ulong function, FunctionSignature signature)
+        => ArgumentLayout.LayoutOf(signature)
+                         .Slots
+                         .Where(s => s.Location == ArgumentLocation.Stack)
+                         .Select(s => new LocatorRead(function, s.Index, false, LocatorKind.Argument));
+
+    internal static List<LocatorRead> FindStackReads(DiaResolver resolver, IEnumerable<uint> functions)
+    {
+        var kept = functions.ToHashSet();
+
+        var reads = new List<LocatorRead>();
+
+        Span<char> buffer = stackalloc char[DiaResolver.MaximumNameLength];
+
+        foreach (var detail in resolver.EnumerateSymbolDetails(string.Empty).Where(d => d.IsFunction && kept.Contains(d.Rva)))
+        {
+            if (FunctionSignature.ParseParameters(detail.Signature) is not { Count: >= StackCandidateParameters }
+                || !kept.Remove(detail.Rva)
+                || !resolver.TryGetDecoratedName(detail.Rva, buffer, out var decoratedName, detail.Name)
+                || FunctionSignature.Parse(detail.Signature, new string(decoratedName)) is not { } signature)
+            {
+                continue;
+            }
+
+            reads.AddRange(GetStackReads(detail.Rva, signature));
+        }
+
+        return reads;
+    }
+
     private static IEnumerable<LocatorRead> GetReads(ulong function, int register, LocatorType type, bool returned)
     {
-        var parts = type.Kind == LocatorKind.ColumnStoreObject ? ObjectKeyParts : 1;
+        var parts = GetParts(type.Kind);
 
         bool[] ends = returned ? [true] : type.IsInOut ? [false, true] : [type.IsOutput];
 

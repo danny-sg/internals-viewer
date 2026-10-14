@@ -5,5 +5,9 @@ public enum LocatorKind : byte
     Page,
     Row,
     ColumnStoreObject,
-    Referenced
+    Referenced,
+    Argument,
+    LogSequenceNumber,
+    Text,
+    WideText
 }

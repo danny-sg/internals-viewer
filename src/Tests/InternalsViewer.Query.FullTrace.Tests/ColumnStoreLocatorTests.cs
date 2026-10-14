@@ -114,7 +114,7 @@ public class ColumnStoreLocatorTests
     public void The_Native_Structures_Match_The_Bridge()
     {
         Assert.Equal(40, Marshal.SizeOf<PointerRead>());
-        Assert.Equal(40, Marshal.SizeOf<PointerValue>());
+        Assert.Equal(48, Marshal.SizeOf<PointerValue>());
     }
 
     private static CallStack.Arguments.FunctionSignature Fix()

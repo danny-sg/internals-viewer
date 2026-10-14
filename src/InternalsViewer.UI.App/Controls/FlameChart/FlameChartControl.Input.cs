@@ -605,6 +605,15 @@ public sealed partial class FlameChartControl
 
         var flyout = new MenuFlyout();
 
+        if (_selected is not null)
+        {
+            var zoomToSelection = new MenuFlyoutItem { Text = "Zoom to Selection" };
+
+            zoomToSelection.Click += (_, _) => ZoomToSelectedCall();
+
+            flyout.Items.Add(zoomToSelection);
+        }
+
         if (node is not null)
         {
             var scope = new MenuFlyoutItem { Text = "Scope" };
@@ -785,6 +794,20 @@ public sealed partial class FlameChartControl
         var second = (point - minimum) / distance;
 
         return (Math.Min(first, second), Math.Max(first, second));
+    }
+
+    private void ZoomToSelectedCall()
+    {
+        if (_selected is not { } selected || SpanOf(selected) is not { } span)
+        {
+            return;
+        }
+
+        BringIntoView(selected);
+
+        var margin = (span.End - span.Start) * 0.05;
+
+        SetView(span.Start - margin, span.End + margin);
     }
 
     private void RootAt(FlameHit? hit)

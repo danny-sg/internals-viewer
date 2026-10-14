@@ -1,6 +1,6 @@
 using InternalsViewer.Query.Events.Operators;
 
-namespace InternalsViewer.UI.App.Views.Query.Tabs.CallStack;
+namespace InternalsViewer.UI.App.Models.Query.CallStack;
 
 public sealed record OperatorLink(ExecutionOperatorEvent Operator, bool Back = false)
 {

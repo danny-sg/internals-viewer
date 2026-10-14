@@ -35,6 +35,7 @@ public partial class SettingsViewModel(SettingsService settingsService, TraceDir
     private const string CallTreePrunedCategoriesKey = "CallTreePrunedCategories";
     private const string FlameChartShowMemoryKey = "FlameChartShowMemory";
     private const string FlameChartMemoryModeKey = "FlameChartMemoryMode";
+    private const string DecodeValuesKey = "DecodeValues";
 
     private const string DefaultCallTreeHiddenCategories =
         "Compilation;Execution Tree;Expression Evaluation;Metadata;Networking;Query Binding;Query Store;Security;Tracing;" +
@@ -89,6 +90,9 @@ public partial class SettingsViewModel(SettingsService settingsService, TraceDir
 
     [ObservableProperty]
     private FlameChartMemoryMode _flameChartMemoryMode;
+
+    [ObservableProperty]
+    private bool _decodeValues = true;
 
     [ObservableProperty]
     private string _memoryUsage = string.Empty;
@@ -171,6 +175,8 @@ public partial class SettingsViewModel(SettingsService settingsService, TraceDir
 
         FlameChartMemoryMode = await SettingsService.ReadSettingAsync<FlameChartMemoryMode?>(FlameChartMemoryModeKey)
                                ?? FlameChartMemoryMode.Allocated;
+
+        DecodeValues = await SettingsService.ReadSettingAsync<bool?>(DecodeValuesKey) ?? true;
     }
 
     /// <summary>
@@ -222,6 +228,11 @@ public partial class SettingsViewModel(SettingsService settingsService, TraceDir
     partial void OnFlameChartMemoryModeChanged(FlameChartMemoryMode value)
     {
         _ = SettingsService.SaveSettingAsync(FlameChartMemoryModeKey, value);
+    }
+
+    partial void OnDecodeValuesChanged(bool value)
+    {
+        _ = SettingsService.SaveSettingAsync(DecodeValuesKey, value);
     }
 
     partial void OnUseCustomTraceDirectoryChanged(bool value)

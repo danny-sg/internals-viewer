@@ -1,4 +1,5 @@
 using System.Runtime.InteropServices;
+using InternalsViewer.Query.CallStack.Locators;
 using InternalsViewer.Query.FullTrace.Locators;
 
 namespace InternalsViewer.Query.FullTrace.Native;
@@ -11,7 +12,8 @@ internal readonly record struct PointerRead(ulong Function,
                                             uint Hops = 0,
                                             uint FirstHop = 0,
                                             uint SecondHop = 0,
-                                            uint ThirdHop = 0)
+                                            uint ThirdHop = 0,
+                                            uint Mode = 0)
 {
     public static PointerRead From(LocatorRead read)
     {
@@ -29,8 +31,17 @@ internal readonly record struct PointerRead(ulong Function,
                                (uint)path.Length,
                                HopAt(0),
                                HopAt(1),
-                               HopAt(2));
+                               HopAt(2),
+                               ModeOf(read.Kind));
 
         uint HopAt(int index) => index < path.Length ? (uint)path[index] : 0;
     }
+
+    public static uint ModeOf(LocatorKind kind) => kind switch
+    {
+        LocatorKind.Argument => 1,
+        LocatorKind.Text => 2,
+        LocatorKind.WideText => 3,
+        _ => 0
+    };
 }

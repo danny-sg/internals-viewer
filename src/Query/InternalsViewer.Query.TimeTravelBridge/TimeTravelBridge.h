@@ -37,6 +37,7 @@ extern "C"
         uint32_t Offset;
         uint32_t Hops;
         uint32_t Path[MaximumHops];
+        uint32_t Mode;
     };
 
     struct PointerValue
@@ -48,6 +49,8 @@ extern "C"
         int32_t  Register;
         uint32_t Offset;
         uint32_t IsReadAtReturn;
+        uint32_t Mode;
+        uint32_t Part;
     };
 
     typedef void(__stdcall* ProgressCallback)(uint32_t thread, int32_t percent);

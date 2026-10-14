@@ -3,7 +3,9 @@ using System.Drawing;
 using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Query.Results;
 using InternalsViewer.UI.App.Helpers.Converters.Results;
+using InternalsViewer.UI.App.Models;
 using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Documents;
 using Microsoft.UI.Xaml.Media;
 using WinUI.TableView;
 
@@ -86,6 +88,10 @@ internal sealed class ResultCellColumn(int ordinal) : TableViewColumn
                 ApplyLink(host, rowIdentifier.ToString(), rowIdentifier.PageAddress, rowIdentifier.SlotId);
                 break;
 
+            case ObjectValue objectValue:
+                ApplyObject(host, objectValue);
+                break;
+
             default:
                 ApplyText(host, ResultRowConverter.FormatValue(value));
                 break;
@@ -100,18 +106,42 @@ internal sealed class ResultCellColumn(int ordinal) : TableViewColumn
         {
             if (textBlock.Text != text)
             {
-                textBlock.Text = text;
+                HexText.Apply(textBlock, text);
             }
 
             return;
         }
 
-        host.Content = new TextBlock
+        var block = new TextBlock
         {
-            Text = text,
             Padding = new Thickness(8, 0, 4, 0),
             VerticalAlignment = VerticalAlignment.Center
         };
+
+        HexText.Apply(block, text);
+
+        host.Content = block;
+    }
+
+    private static void ApplyObject(ContentControl host, ObjectValue value)
+    {
+        if (host.Content is not TextBlock textBlock)
+        {
+            textBlock = new TextBlock
+            {
+                Padding = new Thickness(8, 0, 4, 0),
+                VerticalAlignment = VerticalAlignment.Center
+            };
+
+            host.Content = textBlock;
+        }
+
+        textBlock.Inlines.Clear();
+
+        textBlock.Inlines.Add(new Run { Text = value.ClassName, Foreground = Resource("CppClassBrush") });
+        textBlock.Inlines.Add(new Run { Text = " " });
+
+        HexText.AddRuns(textBlock.Inlines, value.Text);
     }
 
     private void ApplyLink(ContentControl host, string text, PageAddress pageAddress, ushort? slot)
@@ -166,6 +196,9 @@ internal sealed class ResultCellColumn(int ordinal) : TableViewColumn
         ResultAlignment.Right => HorizontalAlignment.Right,
         _ => HorizontalAlignment.Left
     };
+
+    private static Brush? Resource(string key)
+        => Application.Current.Resources.TryGetValue(key, out var resource) ? resource as Brush : null;
 
     private static SolidColorBrush CreateBrush(Color color)
     {

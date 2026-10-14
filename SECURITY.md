@@ -1,7 +1,7 @@
 # Security Policy
 
-Internals Viewer reads SQL Server storage structures directly, attaches a debugger to SQL Server and runs
-helpers that need administrator rights. It is a tool for people who already have full control of the server
+Internals Viewer reads SQL Server storage structures directly, records SQL Server with Time Travel Debugging
+and runs a helper that needs administrator rights. It is a tool for people who already have full control of the server
 they point it at. This policy sets out what counts as a vulnerability, how to report one, and what the app
 does with your data and credentials.
 
@@ -15,10 +15,9 @@ adds I/O load, and some features go further:
 
 - Clear Buffer Pool, on by default for a traced query, runs `CHECKPOINT` and then `DBCC DROPCLEANBUFFERS`,
   so every database on the instance loses its cached pages.
-- Attach WinDbg sets breakpoints in the SQL Server process. The whole instance pauses each time one is hit.
-  If the debugger exits without detaching, Windows ends the SQL Server process with it.
-- Full Trace restarts the SQL Server service to record it with Time Travel Debugging, which drops every
-  connection, and the instance runs many times slower while recording.
+- Full Trace restarts the SQL Server service before recording it with Time Travel Debugging, when an earlier
+  recording is still loaded in it, which drops every connection, and the instance runs many times slower
+  while recording.
 
 Harm caused by running the tool against a server you depend on is not a vulnerability and will not get an
 advisory. If you think the app could have warned you better, open an ordinary issue.
@@ -44,8 +43,8 @@ Include:
 
 - The version, and whether it was installed from the Microsoft Store or a GitHub release.
 - What you did and what happened.
-- Optionally, a file that triggers the problem if there is one (`.mdf`, `.bak`, `.xel`, an execution plan, a `.pdb` or a
-  Time Travel Debugging trace), as long as it contains nothing confidential.
+- Optionally, a file that triggers the problem if there is one (`.mdf`, `.bak`, `.xel`, `.ivtrace`, an execution plan, a
+  `.pdb` or a Time Travel Debugging trace), as long as it contains nothing confidential.
 
 Internals Viewer is maintained by one person. You should get an acknowledgement within 7 days. A confirmed
 problem is fixed in the next release and published as a GitHub security advisory, with credit to the
@@ -58,10 +57,9 @@ In scope:
 
 - Opening a crafted file causes memory corruption, code execution, or reads outside that file. The backup
   file reader (MTF, MS_XPRESS and zstd decompression), the transaction log reader, the Extended Events
-  parser, the execution plan parser and the native DIA and Time Travel Debugging bridges are the main
-  surface.
-- Gaining more privilege than you already have through the elevated helpers, the WinDbg launch or the named
-  pipe to the WinDbg session.
+  parser, the execution plan parser, the exported run (`.ivtrace`) reader and the native DIA and Time Travel
+  Debugging bridges are the main surface.
+- Gaining more privilege than you already have through the elevated trace harness.
 - A password or connection string written anywhere it should not be, or sent anywhere other than the SQL
   Server you connected to.
 - A network connection other than the ones listed under Data.
@@ -71,9 +69,9 @@ Out of scope:
 
 - Anything that needs `sysadmin` on the instance or local administrator on the machine to begin with, where
   the outcome is something that access already allows. The app needs `sysadmin` to read pages and local
-  administrator to attach a debugger or record a trace. That access is the point of the tool.
+  administrator to record a trace. That access is the point of the tool.
 - Harm from running the tool against a production server. See Use at Your Own Risk above.
-- Vulnerabilities in SQL Server, WinDbg, Time Travel Debugging, the Windows App SDK or a NuGet package.
+- Vulnerabilities in SQL Server, Time Travel Debugging, the Windows App SDK or a NuGet package.
   Report those to their maintainers.
 
 ## Data
@@ -98,7 +96,9 @@ Everything else stays on your machine:
 - Extended Events traces are in `%ProgramData%\InternalsViewer\Traces` by default. The folder is set in
   Settings.
 - Time Travel Debugging recordings are in `%ProgramData%\InternalsViewer\TimeTravel`.
-- WinDbg engine files are in `%LOCALAPPDATA%\InternalsViewer\WinDbg`.
+- Exported runs are wherever you save them. They hold the query, its plan and events, the rows in any log
+  records, and for a Full Trace the values each call was passed and returned, so treat them as containing
+  your data.
 
 The documentation site at internalsviewer.com is a static site on GitHub Pages with no analytics scripts.
 
@@ -110,23 +110,17 @@ The documentation site at internalsviewer.com is a static site on GitHub Pages w
   Protection API (DPAPI) for the current user, so only the same Windows account on the same machine can
   decrypt it. If it cannot be decrypted you are prompted for it. The stored connection string never contains
   the password.
-- The password for the WinDbg named pipe is generated afresh each time the app starts and is held in memory
-  only. It is never stored. It guards the pipe to a debugger attached to SQL Server. It also appears on the
-  command line of the WinDbg process the app starts, so anyone who can read your process list can join that
-  session while the app is running.
 - The app connects to SQL Server with `TrustServerCertificate=true`. The connection is encrypted but the
   server certificate is not validated, so the app will not detect a server impersonating yours. Connect
   over a network you trust.
 
 ## Elevated Components
 
-Attaching WinDbg and recording with Time Travel Debugging need administrator rights and show a UAC prompt.
-Both run Microsoft's own tools:
-
-- WinDbg is started elevated as a named pipe server and the app joins the session as a client.
-- `InternalsViewer.TraceHarness.exe` is started elevated to record SQL Server with TTD. It checks that the
-  TTD binaries are signed by Microsoft before running them, stops and starts the SQL Server service to begin
-  and end the recording, and writes the recording under `%ProgramData%\InternalsViewer\TimeTravel`.
+Recording with Time Travel Debugging needs administrator rights and shows a UAC prompt.
+`InternalsViewer.TraceHarness.exe` is started elevated to record SQL Server with Microsoft's TTD. It checks
+that the TTD binaries are signed by Microsoft before running them, restarts the SQL Server service before
+attaching when an earlier recording is still loaded in it, and writes the recording under
+`%ProgramData%\InternalsViewer\TimeTravel`.
 
 Nothing else in the app runs elevated.
 

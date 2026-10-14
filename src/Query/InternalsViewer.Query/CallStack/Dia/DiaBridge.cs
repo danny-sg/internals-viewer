@@ -49,7 +49,7 @@ internal static class DiaBridge
 
     [DllImport("InternalsViewer.Query.DiaBridge.dll", CharSet = CharSet.Unicode)]
     [return: MarshalAs(UnmanagedType.U1)]
-    public static extern unsafe bool GetDecoratedName(IntPtr session, uint rva, char* buffer, int bufferLength);
+    public static extern unsafe bool GetDecoratedName(IntPtr session, uint rva, string? name, char* buffer, int bufferLength);
 
     [DllImport("InternalsViewer.Query.DiaBridge.dll")]
     public static extern void EndEnumSymbols(IntPtr enumerator);

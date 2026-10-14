@@ -3,7 +3,7 @@ using InternalsViewer.Query.Events.BatchMode.Enums;
 
 namespace InternalsViewer.Query.CallStack.Locators;
 
-public readonly record struct Locator(int Register, LocatorKind Kind, ulong Value, ulong Detail = 0)
+public readonly record struct Locator(int Register, LocatorKind Kind, ulong Value, ulong Detail = 0, string? Text = null)
 {
     private const ulong PageMask = 0xFFFF_FFFF_FFFF;
 
@@ -20,6 +20,8 @@ public readonly record struct Locator(int Register, LocatorKind Kind, ulong Valu
     public ulong HobtId => Value & ~ObjectTypeMask;
 
     public ColumnStoreObjectType ObjectType => (ColumnStoreObjectType)(Value & ObjectTypeMask);
+
+    public LogSequenceNumber Lsn => new((int)(uint)Value, (int)(Value >> 32), (short)(ushort)Detail);
 
     public int ColumnId => (int)(uint)Detail;
 
@@ -40,6 +42,9 @@ public readonly record struct Locator(int Register, LocatorKind Kind, ulong Valu
         _ => ToString()
     };
 
+    public static Locator CreateLogSequenceNumber(int register, ulong first, ulong second)
+        => new(register, LocatorKind.LogSequenceNumber, first, (ushort)second);
+
     public static Locator ColumnStoreObject(int register, ulong first, ulong second, ulong third)
     {
         var hobtId = (((ulong)(ushort)second << 32) | (uint)(first >> 32)) << 16;
@@ -57,6 +62,10 @@ public readonly record struct Locator(int Register, LocatorKind Kind, ulong Valu
             => $"({Page.FileId}:{Page.PageId}:{Slot})",
         LocatorKind.ColumnStoreObject 
             => ObjectLabel(),
+        LocatorKind.LogSequenceNumber
+            => Lsn.ToString(),
+        LocatorKind.Text or LocatorKind.WideText
+            => Detail == 0 ? $"\"{Text}\"" : $"\"{Text}\" (Truncated)",
         _ => Page.ToString()
     };
 

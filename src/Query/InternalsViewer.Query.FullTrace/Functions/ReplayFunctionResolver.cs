@@ -61,6 +61,8 @@ internal static class ReplayFunctionResolver
 
     private static readonly string[] Modules = ["sqlmin", "sqllang", "sqldk"];
 
+    private static readonly string[] ArgumentModules = ["sqlmin", "sqldk"];
+
     private static readonly string[] HeapModules = ["ntdll", "kernelbase", "kernel32", "ucrtbase"];
 
     private static ConcurrentDictionary<(string Pdb, string Guid, int Age), ReplayFunctions> Cache { get; } = new();
@@ -225,7 +227,11 @@ internal static class ReplayFunctionResolver
 
         var kept = functions.Where(f => !f.Value.IsExcluded).Select(f => f.Key);
 
-        LocatorRead[] locators = iterates ? [.. LocatorReadResolver.FindReads(resolver, kept)] : [];
+        var readsArguments = ArgumentModules.Contains(moduleName, StringComparer.OrdinalIgnoreCase);
+
+        LocatorRead[] locators = readsArguments
+            ? [.. LocatorReadResolver.FindReads(resolver, kept), .. LocatorReadResolver.FindStackReads(resolver, kept)]
+            : [];
 
         ulong[] excluded = [.. functions.Where(f => f.Value.IsExcluded).Select(f => (ulong)f.Key)];
 

@@ -115,6 +115,8 @@ public partial class App
 
         MainWindow.Activate();
 
+        await Host.Services.GetRequiredService<SettingsViewModel>().LoadAsync();
+
         await MainWindow.InitializeAsync();
     }
 #pragma warning restore VSTHRD100

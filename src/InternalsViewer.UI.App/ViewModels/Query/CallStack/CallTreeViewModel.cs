@@ -1,0 +1,574 @@
+using System;
+using System.Collections.Generic;
+using System.ComponentModel;
+using System.Linq;
+using System.Threading.Tasks;
+using CommunityToolkit.Mvvm.ComponentModel;
+using InternalsViewer.Query.CallStack;
+using InternalsViewer.Query.CallStack.Locators;
+using InternalsViewer.Query.Events;
+using InternalsViewer.Query.Events.Operators;
+using InternalsViewer.Query.FullTrace.Iterators;
+using InternalsViewer.UI.App.Models.Query.CallStack;
+
+namespace InternalsViewer.UI.App.ViewModels.Query.CallStack;
+
+public sealed partial class CallTreeViewModel : ObservableObject, IDisposable
+{
+    [ObservableProperty]
+    private CallTreeLayout _layout = CallTreeLayout.Empty;
+
+    [ObservableProperty]
+    private bool _canGoBack;
+
+    [ObservableProperty]
+    private bool _canGoForward;
+
+    [ObservableProperty]
+    private bool _isFocused = true;
+
+    [ObservableProperty]
+    private bool _isActivityShown = true;
+
+    [ObservableProperty]
+    private bool _isSignatureShown;
+
+    [ObservableProperty]
+    private string _highlight = string.Empty;
+
+    public CallTreeViewModel(CallStackTabViewModel owner, SettingsViewModel settings)
+    {
+        Owner = owner;
+        Settings = settings;
+
+        Query.PropertyChanged += OnQueryPropertyChanged;
+        Query.CallNavigationRequested += OnCallNavigationRequested;
+        Query.Arguments.CallChosen += OnArgumentCallChosen;
+        Query.QueryOptions.PropertyChanged += OnQueryOptionsPropertyChanged;
+        Query.QueryOptions.FilterChanged += OnQueryFilterChanged;
+        Settings.PropertyChanged += OnSettingsPropertyChanged;
+
+        ApplyFocus(Query.SelectedEvent);
+    }
+
+    public event Action<CallTreeRow>? RowSelectionRequested;
+
+    public event Action<string>? SearchRequested;
+
+    public CallStackTree? CallStack => Query.CallStack;
+
+    private CallStackTabViewModel Owner { get; }
+
+    private QueryViewModel Query => Owner.Query;
+
+    private SettingsViewModel Settings { get; }
+
+    private List<CallStackPlace> History { get; } = [];
+
+    private int HistoryIndex { get; set; } = -1;
+
+    private bool IsNavigatingHistory { get; set; }
+
+    private bool IsSelectingFromTree { get; set; }
+
+    private CallStackNode? NavigatedNode { get; set; }
+
+    private CallStackTree? SignaturesFor { get; set; }
+
+    public bool CanShowArguments(CallStackNode node)
+        => Query is { CallStack.ActivityFromTrace: true } && Query.Arguments.CanShow(node);
+
+    public void SetFocused(bool focused)
+    {
+        IsFocused = focused;
+
+        ApplyFocus(Query.SelectedEvent);
+    }
+
+    public void SetActivityShown(bool shown)
+    {
+        IsActivityShown = shown;
+
+        ApplyFocus(Query.SelectedEvent);
+    }
+
+    public async Task SetSignatureShownAsync(bool shown)
+    {
+        IsSignatureShown = shown;
+
+        await RefreshSignaturesAsync();
+    }
+
+    public void SetSearch(string text)
+    {
+        ApplySearch(text);
+
+        ApplyFocus(Query.SelectedEvent);
+    }
+
+    public void RequestSearch(string text) => SearchRequested?.Invoke(text);
+
+    public void GoBack() => GoTo(HistoryIndex - 1);
+
+    public void GoForward() => GoTo(HistoryIndex + 1);
+
+    public void Reset()
+    {
+        LeavePlace();
+
+        FilterPath = null;
+
+        ApplySearch(string.Empty);
+
+        SelectQuietly(null);
+
+        Query.SelectedCallNode = null;
+
+        ApplyFocus(null);
+
+        PushPlace(CurrentPlace());
+    }
+
+    public void FilterTo(CallStackNode node)
+    {
+        FilterPath = GetPath(node);
+
+        ApplyFilter();
+
+        Publish();
+    }
+
+    public void ClearFilter()
+    {
+        FilterPath = null;
+
+        ApplyFocus(Query.SelectedEvent);
+    }
+
+    public void ListMembers(CallStackNode node) => Owner.ListMembers(node);
+
+    public void ShowArguments(CallStackNode node, int? call = null)
+    {
+        Owner.ShowArguments();
+
+        _ = call is { } index ? Query.Arguments.ShowAsync(node, index) : Query.Arguments.ShowAsync(node);
+    }
+
+    public void ShowCall(CallStackNode node, int call)
+    {
+        LeavePlace();
+
+        NavigateTo(node);
+
+        PushPlace(new CallStackPlace(Query.SelectedEvent, node, IsFocused, node, call));
+
+        _ = Query.Arguments.ShowAsync(node, call);
+    }
+
+    public void GoToCall(CallStackNode node)
+    {
+        LeavePlace();
+
+        NavigateTo(node, selectInFlameChart: false);
+
+        PushPlace(CurrentPlace());
+    }
+
+    public void NavigateToIterator(IteratorTarget target)
+    {
+        LeavePlace();
+
+        if (target.Operator is { } operatorEvent)
+        {
+            SelectQuietly(operatorEvent);
+        }
+
+        NavigateTo(target.Node);
+
+        PushPlace(CurrentPlace());
+    }
+
+    // Following the header's parent link, like following one in the tree: a request to go there, so it rebuilds around
+    // the parent rather than leaving the current segment on screen with the selection moved out from under it.
+    public void FollowParent()
+    {
+        if (Layout.FocusParent is { } link)
+        {
+            Query.SelectedEvent = link.Operator;
+        }
+    }
+
+    // Clicking a frame selects the event it came from, so the grid, details and timeline all answer "what is this frame
+    // doing here?" — the question the tree cannot answer on its own, and the one every diagnosis of the scoping has
+    // needed. A frame with no events of its own reports the earliest beneath it: that is still the work it led to.
+    public void Invoke(object content)
+    {
+        if (content is CallStackNode clicked)
+        {
+            Query.SelectedCallNode = clicked;
+
+            if (CanShowArguments(clicked))
+            {
+                ShowArguments(clicked);
+            }
+        }
+
+        var selected = content switch
+        {
+            OperatorLink link => link.Operator,
+            OperatorRow row => row.Operator,
+            CallStackNode frame => EarliestEvent(frame),
+            _ => null,
+        };
+
+        if (selected is null)
+        {
+            return;
+        }
+
+        // A hand-off link is a request to GO somewhere, so it must rebuild — that is the whole of what it does. Every
+        // other row is just reporting what it already shows, and rebuilding under the click would throw away the
+        // expansion the user opened to get there.
+        var navigating = content is OperatorLink;
+
+        IsSelectingFromTree = !navigating;
+
+        try
+        {
+            Query.SelectedEvent = selected;
+        }
+        finally
+        {
+            IsSelectingFromTree = false;
+        }
+    }
+
+    public void Dispose()
+    {
+        Query.PropertyChanged -= OnQueryPropertyChanged;
+        Query.CallNavigationRequested -= OnCallNavigationRequested;
+        Query.Arguments.CallChosen -= OnArgumentCallChosen;
+        Query.QueryOptions.PropertyChanged -= OnQueryOptionsPropertyChanged;
+        Query.QueryOptions.FilterChanged -= OnQueryFilterChanged;
+        Settings.PropertyChanged -= OnSettingsPropertyChanged;
+    }
+
+    private void OnCallNavigationRequested(CallStackNode node, int call)
+    {
+        int? index = call >= 0 ? call : null;
+
+        LeavePlace();
+
+        NavigateTo(node);
+
+        PushPlace(new CallStackPlace(Query.SelectedEvent, node, IsFocused, node, index));
+
+        if (CanShowArguments(node))
+        {
+            ShowArguments(node, index);
+        }
+    }
+
+    private void OnArgumentCallChosen(CallReference reference)
+    {
+        if (!Rows.ContainsKey(reference.Node))
+        {
+            GoToCall(reference.Node);
+
+            return;
+        }
+
+        if (GetRow(reference.Node) is { } row)
+        {
+            RowSelectionRequested?.Invoke(row);
+        }
+    }
+
+    private void OnQueryPropertyChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        // A new query's events are new objects, so nowhere the history points at exists any more.
+        if (e.PropertyName == nameof(QueryViewModel.CallStack))
+        {
+            ClearHistory();
+
+            FilterPath = null;
+
+            ApplyFocus(Query.SelectedEvent);
+
+            OnPropertyChanged(nameof(CallStack));
+
+            if (IsSignatureShown)
+            {
+                _ = RefreshSignaturesAsync();
+            }
+        }
+        else if (e.PropertyName == nameof(QueryViewModel.SelectedEvent) && !IsSelectingFromTree)
+        {
+            RecordHistory(Query.SelectedEvent);
+
+            ApplyFocus(Query.SelectedEvent);
+        }
+    }
+
+    private void OnQueryOptionsPropertyChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName is nameof(QueryOptionsViewModel.ShowLatches) or nameof(QueryOptionsViewModel.CropToQuery))
+        {
+            ApplyFocus(Query.SelectedEvent);
+        }
+    }
+
+    private void OnQueryFilterChanged() => ApplyFocus(Query.SelectedEvent);
+
+    private void OnSettingsPropertyChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName is nameof(SettingsViewModel.CallTreeHiddenCategories) or nameof(SettingsViewModel.CallTreePrunedCategories))
+        {
+            ApplyFocus(Query.SelectedEvent);
+        }
+    }
+
+    private async Task RefreshSignaturesAsync()
+    {
+        if (IsSignatureShown && Query.CallStack is { } tree && !ReferenceEquals(SignaturesFor, tree))
+        {
+            SignaturesFor = tree;
+
+            await Query.Symbols.ResolveFrameSignaturesAsync([.. tree.Nodes().Select(n => n.Frame).OfType<CallstackFrame>()]);
+        }
+
+        ApplyFocus(Query.SelectedEvent);
+    }
+
+    private void GoTo(int index)
+    {
+        if (index < 0 || index >= History.Count)
+        {
+            return;
+        }
+
+        SnapshotPlace();
+
+        HistoryIndex = index;
+
+        IsNavigatingHistory = true;
+
+        try
+        {
+            Restore(History[index]);
+        }
+        finally
+        {
+            IsNavigatingHistory = false;
+        }
+
+        UpdateHistory();
+    }
+
+    private void Restore(CallStackPlace place)
+    {
+        IsFocused = place.Focus;
+
+        SelectQuietly(place.Event);
+
+        if (place.Node is { } node)
+        {
+            NavigateTo(node);
+        }
+        else
+        {
+            ApplyFocus(place.Event);
+        }
+
+        if (place.Function is { } function)
+        {
+            _ = Query.Arguments.ShowAsync(function, place.Call);
+        }
+    }
+
+    private void SelectQuietly(EngineEvent? selected)
+    {
+        if (ReferenceEquals(Query.SelectedEvent, selected))
+        {
+            return;
+        }
+
+        IsSelectingFromTree = true;
+
+        try
+        {
+            Query.SelectedEvent = selected;
+        }
+        finally
+        {
+            IsSelectingFromTree = false;
+        }
+    }
+
+    private CallStackPlace CurrentPlace()
+        => new(Query.SelectedEvent, NavigatedNode, IsFocused, Query.Arguments.Shown, Query.Arguments.SelectedCallIndex);
+
+    private void SnapshotPlace()
+    {
+        if (HistoryIndex < 0)
+        {
+            return;
+        }
+
+        History[HistoryIndex] = History[HistoryIndex] with
+        {
+            Focus = IsFocused,
+            Function = Query.Arguments.Shown,
+            Call = Query.Arguments.SelectedCallIndex
+        };
+    }
+
+    private void LeavePlace()
+    {
+        if (HistoryIndex < 0)
+        {
+            PushPlace(CurrentPlace());
+
+            return;
+        }
+
+        SnapshotPlace();
+    }
+
+    private void PushPlace(CallStackPlace place)
+    {
+        History.RemoveRange(HistoryIndex + 1, History.Count - HistoryIndex - 1);
+
+        History.Add(place);
+
+        HistoryIndex = History.Count - 1;
+
+        UpdateHistory();
+    }
+
+    /// <summary>
+    /// Records a selection as a place that can be returned to
+    /// </summary>
+    private void RecordHistory(EngineEvent? selected)
+    {
+        if (selected is null || IsNavigatingHistory)
+        {
+            return;
+        }
+
+        if (HistoryIndex >= 0 && History[HistoryIndex] is { Node: null } current && ReferenceEquals(current.Event, selected))
+        {
+            return;
+        }
+
+        SnapshotPlace();
+
+        PushPlace(new CallStackPlace(selected, null, IsFocused, Query.Arguments.Shown, Query.Arguments.SelectedCallIndex));
+    }
+
+    private void ClearHistory()
+    {
+        History.Clear();
+
+        HistoryIndex = -1;
+
+        UpdateHistory();
+    }
+
+    private void UpdateHistory()
+    {
+        CanGoBack = HistoryIndex > 0;
+
+        CanGoForward = HistoryIndex >= 0 && HistoryIndex < History.Count - 1;
+    }
+
+    private void NavigateTo(CallStackNode target, bool selectInFlameChart = true)
+    {
+        IsFocused = false;
+
+        if (FilterPath is not null && !target.Ancestors().Any(a => GetPath(a) == FilterPath))
+        {
+            FilterPath = null;
+        }
+
+        Visible = VisibleFrom([target]);
+
+        Visible.UnionWith(Descendants(target));
+
+        RevealInfrastructure = target.IsInfrastructure;
+
+        BuildTree();
+
+        ExpandRoots = true;
+
+        ApplyFilter();
+
+        SelectNode(target);
+
+        ApplyActivityBands();
+
+        Publish();
+
+        NavigatedNode = target;
+
+        if (selectInFlameChart)
+        {
+            Query.SelectedCallNode = target;
+        }
+    }
+
+    private static EngineEvent? EarliestEvent(CallStackNode node)
+    {
+        EngineEvent? earliest = null;
+
+        var pending = new Stack<CallStackNode>();
+
+        pending.Push(node);
+
+        while (pending.Count > 0)
+        {
+            var current = pending.Pop();
+
+            foreach (var engineEvent in current.Events)
+            {
+                if (earliest is null || engineEvent.SequenceId < earliest.SequenceId)
+                {
+                    earliest = engineEvent;
+                }
+            }
+
+            foreach (var child in current.ChildNodes)
+            {
+                pending.Push(child);
+            }
+        }
+
+        return earliest;
+    }
+
+    private static IEnumerable<CallStackNode> Descendants(CallStackNode node)
+    {
+        var pending = new Stack<CallStackNode>(node.ChildNodes);
+
+        while (pending.Count > 0)
+        {
+            var current = pending.Pop();
+
+            yield return current;
+
+            foreach (var child in current.ChildNodes)
+            {
+                pending.Push(child);
+            }
+        }
+    }
+
+    private void ApplySearch(string text)
+    {
+        Search = text.Trim();
+
+        SearchedLocator = LocatorSearch.TryParse(Search, out var locator) ? locator : null;
+
+        Highlight = SearchedLocator is null ? Search : string.Empty;
+    }
+}

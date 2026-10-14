@@ -24,14 +24,33 @@ public sealed record TraceArgumentCall(ulong Sequence,
 
     public IReadOnlyList<Locator> Locators { get; init; } = [];
 
+    public int Index { get; init; } = -1;
+
     public ulong ReturnedValue => Returned ? ReturnValue : 0;
 
-    public static bool IsCaptured(ArgumentSlot slot) => slot.Location == ArgumentLocation.Register;
+    public static bool IsCaptured(ArgumentSlot slot) => slot.Location is ArgumentLocation.Register or ArgumentLocation.Stack;
 
     public static bool IsReturnCaptured(string returnType) => !ArgumentValue.IsFloating(returnType);
 
-    public ulong? Value(ArgumentSlot slot) 
-        => IsCaptured(slot) ? IntegerSlots[slot.Index] : null;
+    public ulong? Value(ArgumentSlot slot) => slot.Location switch
+    {
+        ArgumentLocation.Register => IntegerSlots[slot.Index],
+        ArgumentLocation.Stack => GetStackValue(slot.Index),
+        _ => null
+    };
+
+    public ulong? GetStackValue(int position)
+    {
+        foreach (var locator in Locators)
+        {
+            if (locator.Register == position && locator.Kind == LocatorKind.Argument)
+            {
+                return locator.Value;
+            }
+        }
+
+        return null;
+    }
 
     public ulong Slot(int index) => index >= 0 && index < IntegerSlots.Length ? IntegerSlots[index] : 0;
 
@@ -39,7 +58,7 @@ public sealed record TraceArgumentCall(ulong Sequence,
     {
         foreach (var locator in Locators)
         {
-            if (locator.Register == register)
+            if (locator.Register == register && locator.Kind != LocatorKind.Argument)
             {
                 return locator;
             }
@@ -48,7 +67,7 @@ public sealed record TraceArgumentCall(ulong Sequence,
         return null;
     }
 
-    internal static TraceArgumentCall Decode(ReadOnlySpan<ulong> values, IReadOnlyList<Locator>? locators = null)
+    internal static TraceArgumentCall Decode(ReadOnlySpan<ulong> values, IReadOnlyList<Locator>? locators = null, int index = -1)
     {
         var flags = values[1];
 
@@ -59,7 +78,8 @@ public sealed record TraceArgumentCall(ulong Sequence,
                                      values[ReturnValueIndex],
                                      (int)values[NodeIndex])
         {
-            Locators = locators ?? []
+            Locators = locators ?? [],
+            Index = index
         };
     }
 }

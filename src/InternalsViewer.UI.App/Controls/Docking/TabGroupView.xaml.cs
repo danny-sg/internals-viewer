@@ -195,10 +195,11 @@ public sealed partial class TabGroupView : UserControl
     {
         var title = new TextBlock
         {
-            Text = document.Title,
             Margin = new Thickness(4, 0, 4, 0),
             FontWeight = HeaderWeight(document)
         };
+
+        HexText.Apply(title, document.Title);
 
         void OnDocumentPropertyChanged(object? sender, PropertyChangedEventArgs e)
         {

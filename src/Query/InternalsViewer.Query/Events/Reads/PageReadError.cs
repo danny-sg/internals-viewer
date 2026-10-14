@@ -1,0 +1,24 @@
+namespace InternalsViewer.Query.Events.Reads;
+
+// ReSharper disable InconsistentNaming
+public enum PageReadError
+{
+    BUFFER_MAX_ERROR = -17,
+    BUFFER_AUX_REPLICA_INVALID_IO = -16,
+    BUFFER_INVALID_FCB = -15,
+    BUFFER_MISSING_KEY = -14,
+    BUFERR_ENCRYPTION_CHECKSUM = -13,
+    BUFERR_BAD_KEY = -12,
+    BUFERR_CANT_DECRYPT = -11,
+    BUFERR_BAD_PROTECTION = -10,
+    BUFERR_OFFLINE_FILE = -9,
+    BUFERR_AUDITFAILURE = -8,
+    BUFERR_STALEREAD = -7,
+    BUFERR_RESTORE_PENDING = -6,
+    BUFERR_SIMULATED = -5,
+    BUFERR_BADCHECKSUM = -4,
+    BUFERR_BADPAGEID = -3,
+    BUFERR_SHORTTRANSFER = -2,
+    BUFERR_TORNPAGE = -1,
+    BUFERR_OK = 0
+}

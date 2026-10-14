@@ -22,7 +22,7 @@ public class ValueUseGroupTests
 
         var groups = ValueUseGroup.Build(uses, KindOf);
 
-        Assert.Equal(["Calls On It", "Returned It", "Passed It"], groups.Select(g => g.Title));
+        Assert.Equal(["Called by", "Returned by", "Referenced by"], groups.Select(g => g.Title));
     }
 
     [Fact]
@@ -36,6 +36,25 @@ public class ValueUseGroupTests
         Assert.Equal(2, passed.Rows.Count);
     }
 
+    [Fact]
+    public void A_Group_Counts_Its_Functions_And_Their_Calls()
+    {
+        var group = Assert.Single(ValueUseGroup.Build([Use(Static, "RDX", calls: 3), Use(0x3000, "R8", calls: 1_200)], KindOf));
+
+        Assert.Equal("2 Functions, 1,203 Calls", group.CountLabel);
+    }
+
+    [Fact]
+    public void More_Calls_Are_Offered_From_Where_The_Last_Page_Ended()
+    {
+        TraceValueMatch[] matches = [.. Enumerable.Range(0, 1_250).Select(i => new TraceValueMatch(i, (ulong)i, null))];
+
+        var more = ValueNoteRow.More(matches, 500);
+
+        Assert.Equal("Show More (750 Remaining)", more.Label);
+        Assert.Equal(500, more.From);
+    }
+
     private static FunctionKind? KindOf(TraceValueUse use) => use.Address switch
     {
         Member => FunctionKind.Member,
@@ -43,6 +62,6 @@ public class ValueUseGroupTests
         _ => null
     };
 
-    private static TraceValueUse Use(ulong address, string location)
-        => new(address, 0, location, 1, new TraceValueMatch(0, 1, null), new TraceValueMatch(0, 1, null));
+    private static TraceValueUse Use(ulong address, string location, int calls = 1)
+        => new(address, 0, location, calls, new TraceValueMatch(0, 1, null), new TraceValueMatch(0, 1, null));
 }

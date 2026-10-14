@@ -184,7 +184,7 @@ public sealed partial class QueryLayoutViewModel : ObservableObject, IDisposable
         {
             Dock.SetRoot(DefaultRoot(TimelineKey));
 
-            Dock.ShowBeside(_documentsByKey[FlameChartKey], _documentsByKey[TimelineKey]);
+            Dock.ShowBeside(_documentsByKey[FlameChartKey], _documentsByKey[TimelineKey], select: false);
 
             return;
         }
@@ -302,9 +302,13 @@ public sealed partial class QueryLayoutViewModel : ObservableObject, IDisposable
 
         _rootBeforeTrace = DockLayoutSerializer.Serialize(Dock.Root);
 
-        if (Dock.Contains(_documentsByKey[TimelineKey]))
+        var timeline = _documentsByKey[TimelineKey];
+
+        if (Dock.FindGroup(timeline) is { } group)
         {
-            Dock.ShowBeside(_documentsByKey[FlameChartKey], _documentsByKey[TimelineKey]);
+            var replacesTimeline = !CanShowEventViews && ReferenceEquals(group.SelectedDocument, timeline);
+
+            Dock.ShowBeside(_documentsByKey[FlameChartKey], timeline, select: replacesTimeline);
         }
         else
         {

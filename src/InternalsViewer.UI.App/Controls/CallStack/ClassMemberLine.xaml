@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<UserControl
+    x:Class="InternalsViewer.UI.App.Controls.CallStack.ClassMemberLine"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:callStack="using:InternalsViewer.UI.App.Controls.CallStack">
+
+    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+        <StackPanel.ContextFlyout>
+            <MenuFlyout>
+                <MenuFlyoutItem Text="Copy Signature" Click="OnCopySignatureClick"/>
+                <MenuFlyoutItem Text="Copy Symbol" Click="OnCopySymbolClick"/>
+            </MenuFlyout>
+        </StackPanel.ContextFlyout>
+        <TextBlock Text="{x:Bind Member.Prefix}"
+                   callStack:SearchHighlight.Search="{x:Bind Member.Highlight}"
+                   FontFamily="{StaticResource MonospaceFontFamily}"
+                   FontSize="11"
+                   Foreground="{ThemeResource SqlKeywordBrush}"
+                   VerticalAlignment="Center"/>
+        <TextBlock Text="{x:Bind Member.ClassPrefix}"
+                   callStack:SearchHighlight.Search="{x:Bind Member.Highlight}"
+                   FontFamily="{StaticResource MonospaceFontFamily}"
+                   FontSize="11"
+                   Foreground="{ThemeResource CppClassBrush}"
+                   VerticalAlignment="Center"/>
+        <TextBlock callStack:SignatureText.Signature="{x:Bind Member.Signature}"
+                   callStack:SearchHighlight.Search="{x:Bind Member.Highlight}"
+                   FontFamily="{StaticResource MonospaceFontFamily}"
+                   FontSize="11"
+                   VerticalAlignment="Center"/>
+    </StackPanel>
+</UserControl>

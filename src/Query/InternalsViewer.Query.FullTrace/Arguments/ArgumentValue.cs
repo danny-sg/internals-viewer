@@ -3,12 +3,16 @@ using InternalsViewer.Internals.Columnstore.Metadata.Enums;
 using InternalsViewer.Internals.Engine.Database.Enums;
 using InternalsViewer.Internals.Engine.Indexes.Enums;
 using InternalsViewer.Internals.Engine.Pages.Enums;
+using InternalsViewer.Internals.Engine.Records.CdRecordType;
 using InternalsViewer.Query.CallStack.Arguments;
 using InternalsViewer.Query.Events.BatchMode.Enums;
 using InternalsViewer.Query.Events.Latches;
 using InternalsViewer.Query.Events.Locks;
 using InternalsViewer.Query.Events.Properties;
 using InternalsViewer.Query.Events.Reads;
+using InternalsViewer.Query.Events.Scheduling;
+using InternalsViewer.Query.Plans.Enums;
+using InternalsViewer.Query.QueryStore;
 
 namespace InternalsViewer.Query.FullTrace.Arguments;
 
@@ -48,12 +52,35 @@ public static class ArgumentValue
         ["RbpDataType"] = new(GetEnumNames<ColumnStoreDataType>),
         ["RbpEarlyFilterType"] = new(GetEnumNames<ColumnStoreEarlyFilterType>),
         ["RbpEncodingType"] = new(GetEnumNames<ColumnStoreEncodingType>),
-        ["RbpFilterType"] = new(GetEnumNames<ColumnStoreFilterType>)
+        ["RbpFilterType"] = new(GetEnumNames<ColumnStoreFilterType>),
+        ["SOS_Scheduler::Transition"] = new(GetEnumNames<TaskTransition>),
+        ["Worker::CallbackType"] = new(GetEnumNames<WorkerCallbackType>),
+        ["PHYOP"] = new(GetEnumNames<PhysicalOperatorType>),
+        ["LOGOP"] = new(GetEnumNames<LogicalOperatorType>),
+        ["QTETYPE"] = new(GetEnumNames<ExecutionElementType>),
+        ["EPlanNotCachedReason"] = new(GetEnumNames<PlanNotCachedReason>),
+        ["PageReadError"] = new(GetEnumNames<PageReadError>),
+        ["EMDCompressLevel"] = new(GetEnumNames<CompressionType>),
+        ["HoBtFactoryRingBufferRecord::HOBT_ALLOCATION_PAGE"] = new(GetEnumNames<HoBtAllocationPage>),
+        ["EQDSResourceType"] = new(GetEnumNames<QueryStoreResourceType>),
+        ["EQDSOperationalState"] = new(GetEnumNames<QueryStoreState>),
+        ["EQDSExecType"] = new(GetEnumNames<QueryStoreExecutionType>)
     };
 
     private static readonly Dictionary<string, Lazy<Dictionary<int, string>>> KnownFlags = new(StringComparer.Ordinal)
     {
         ["BPool::StealOption"] = new(GetEnumNames<StealOptions>)
+    };
+
+    private static readonly HashSet<string> UnnamedEnums = new(StringComparer.Ordinal)
+    {
+        "ACCESSTYPE",
+        "AccessMode",
+        "BPool::ShortageOption",
+        "BTreeMgr::BTREE_SEEK_OPTION",
+        "BTreeMgr::BTREE_TRAVERSAL_MODE",
+        "LatchBase::AcquireResult",
+        "std::align_val_t"
     };
 
     private static readonly HashSet<string> ReadableTypes = new(StringComparer.Ordinal)
@@ -92,6 +119,22 @@ public static class ArgumentValue
             : ReadableTypeLookup.Contains(normalised);
     }
 
+    public static string? GetUnknownEnum(string type)
+    {
+        var indirection = type.IndexOfAny(['*', '&']);
+
+        var target = Normalise(indirection < 0 ? type : type[..indirection]);
+
+        if (!target.StartsWith(FunctionSignature.EnumPrefix, StringComparison.Ordinal))
+        {
+            return null;
+        }
+
+        var name = target[FunctionSignature.EnumPrefix.Length..];
+
+        return KnownEnums.ContainsKey(name) || KnownFlags.ContainsKey(name) || UnnamedEnums.Contains(name) ? null : name;
+    }
+
     public static string FormatReferenced(string type, ulong raw)
     {
         var indirection = type.IndexOfAny(['*', '&']);
@@ -99,7 +142,7 @@ public static class ArgumentValue
         return Format(indirection < 0 ? type : type[..indirection], raw);
     }
 
-    public static ulong? HoBtIdOf(string type, ulong raw)
+    public static ulong? GetHoBtId(string type, ulong raw)
     {
         Span<char> buffer = type.Length <= MaximumStackType ? stackalloc char[type.Length] : new char[type.Length];
 
@@ -113,6 +156,21 @@ public static class ArgumentValue
             return raw == 0 ? "nullptr" : $"0x{raw:X}";
         }
 
+        return Read(type, raw, withHex: true) ?? $"0x{raw:X}";
+    }
+
+    public static string? Decode(string type, ulong raw)
+    {
+        if (type == "this" || IsPointer(type))
+        {
+            return raw == 0 ? "nullptr" : null;
+        }
+
+        return Read(type, raw, withHex: false);
+    }
+
+    private static string? Read(string type, ulong raw, bool withHex)
+    {
         var normalised = Normalise(type);
 
         if (normalised.StartsWith(FunctionSignature.EnumPrefix, StringComparison.Ordinal))
@@ -126,24 +184,24 @@ public static class ArgumentValue
 
             return KnownEnums.TryGetValue(enumName, out var names) && names.Value.TryGetValue((int)raw, out var name)
                 ? name
-                : ToNumber((int)raw);
+                : ToNumber((int)raw, withHex);
         }
 
         return normalised switch
         {
             "bool" => (raw & 0xFF) != 0 ? "true" : "false",
-            "char" or "signed char" or "__int8" => ToNumber((sbyte)raw),
-            "unsigned char" or "unsigned __int8" => ToNumber((byte)raw),
-            "short" or "__int16" => ToNumber((short)raw),
-            "unsigned short" or "unsigned __int16" or "wchar_t" => ToNumber((ushort)raw),
-            "int" or "long" or "__int32" or "enum" => ToNumber((int)raw),
-            "unsigned int" or "unsigned long" or "unsigned __int32" => ToNumber((uint)raw),
-            "__int64" or "long long" => ToNumber((long)raw),
-            "unsigned __int64" or "unsigned long long" => ToNumber(raw),
+            "char" or "signed char" or "__int8" => ToNumber((sbyte)raw, withHex),
+            "unsigned char" or "unsigned __int8" => ToNumber((byte)raw, withHex),
+            "short" or "__int16" => ToNumber((short)raw, withHex),
+            "unsigned short" or "unsigned __int16" or "wchar_t" => ToNumber((ushort)raw, withHex),
+            "int" or "long" or "__int32" or "enum" => ToNumber((int)raw, withHex),
+            "unsigned int" or "unsigned long" or "unsigned __int32" => ToNumber((uint)raw, withHex),
+            "__int64" or "long long" => ToNumber((long)raw, withHex),
+            "unsigned __int64" or "unsigned long long" => ToNumber(raw, withHex),
             "float" => BitConverter.Int32BitsToSingle((int)raw).ToString(CultureInfo.InvariantCulture),
             "double" or "long double" => BitConverter.Int64BitsToDouble((long)raw).ToString(CultureInfo.InvariantCulture),
-            HoBtIdType => ToNumber(raw << HoBtIdShift),
-            _ => $"0x{raw:X}"
+            HoBtIdType => ToNumber(raw << HoBtIdShift, withHex),
+            _ => null
         };
     }
 
@@ -181,13 +239,13 @@ public static class ArgumentValue
         return string.Join(FlagSeparator, parts);
     }
 
-    private static string ToNumber(long value)
-        => value is > -(long)HexThreshold and < (long)HexThreshold
+    private static string ToNumber(long value, bool withHex)
+        => !withHex || value is > -(long)HexThreshold and < (long)HexThreshold
             ? value.ToString(CultureInfo.InvariantCulture)
             : $"{value.ToString(CultureInfo.InvariantCulture)} (0x{value:X})";
 
-    private static string ToNumber(ulong value)
-        => value < HexThreshold
+    private static string ToNumber(ulong value, bool withHex)
+        => !withHex || value < HexThreshold
             ? value.ToString(CultureInfo.InvariantCulture)
             : $"{value.ToString(CultureInfo.InvariantCulture)} (0x{value:X})";
 

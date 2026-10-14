@@ -89,8 +89,6 @@ The visual follows the read:
 
 The circle at the left of an operator tab's header sets a breakpoint, turning red when set. **Run** and **Run to end** stop just after that operator's next step, and a single **Step** ignores it. Breakpoints are kept by **Reset**, but not when the simulation is rebuilt.
 
-These are the simulation's own breakpoints, nothing to do with WinDbg's - **Clear breakpoints** on the Debugger menu does not touch them.
-
 ## Batches
 
 Batch mode operators pass batches of rows rather than single rows. A **Batch** tab follows the batch an operator owns - a Columnstore Index Scan or a batch mode Hash Match (Aggregate) - with its number, how many of its rows are still selected, how many of its vectors are pure, and **Complete** once it is used up.

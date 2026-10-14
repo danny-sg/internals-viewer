@@ -166,20 +166,20 @@ public sealed class DiaResolver : IDisposable
         return signatures;
     }
 
-    internal string? GetDecoratedName(uint rva)
+    internal string? GetDecoratedName(uint rva, string? name = null)
     {
         Span<char> buffer = stackalloc char[MaximumNameLength];
 
-        return TryGetDecoratedName(rva, buffer, out var decoratedName) ? new string(decoratedName) : null;
+        return TryGetDecoratedName(rva, buffer, out var decoratedName, name) ? new string(decoratedName) : null;
     }
 
-    internal unsafe bool TryGetDecoratedName(uint rva, Span<char> buffer, out ReadOnlySpan<char> decoratedName)
+    internal unsafe bool TryGetDecoratedName(uint rva, Span<char> buffer, out ReadOnlySpan<char> decoratedName, string? name = null)
     {
         decoratedName = default;
 
         fixed (char* destination = buffer)
         {
-            if (!DiaBridge.GetDecoratedName(_session, rva, destination, buffer.Length))
+            if (!DiaBridge.GetDecoratedName(_session, rva, name, destination, buffer.Length))
             {
                 return false;
             }

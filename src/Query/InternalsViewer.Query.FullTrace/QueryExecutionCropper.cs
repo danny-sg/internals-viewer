@@ -14,24 +14,18 @@ internal static class QueryExecutionCropper
            && string.Equals(frame.Module, Module, StringComparison.OrdinalIgnoreCase)
            && node.Symbol == Function;
 
-    public static (CallStackTree Tree, Dictionary<CallStackNode, CallStackNode> Projected)? Crop(CallStackTree tree)
+    public static IReadOnlyList<CallStackNode> GetRoots(CallStackTree tree)
     {
         var executing = RootsOf(tree, IsQueryExecution);
 
         if (executing.Count == 0)
         {
-            return null;
+            return [];
         }
 
         var working = RootsOf(tree, IsIterator);
 
-        var projected = new Dictionary<CallStackNode, CallStackNode>(ReferenceEqualityComparer.Instance);
-
-        var cropped = tree.Project(cutAt: n => IsOutermostExecution(n) || IsWorker(n, executing, working),
-                                   repoint: true,
-                                   collapsed: (original, node) => projected[original] = node);
-
-        return (cropped, projected);
+        return [.. tree.Nodes().Where(n => IsOutermostExecution(n) || IsWorker(n, executing, working)).OrderBy(n => n.Order)];
     }
 
     private static HashSet<CallStackNode> RootsOf(CallStackTree tree, Func<CallStackNode, bool> predicate)

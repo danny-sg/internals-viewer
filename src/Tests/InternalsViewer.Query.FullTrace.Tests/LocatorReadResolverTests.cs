@@ -129,6 +129,48 @@ public class LocatorReadResolverTests
     }
 
     [Fact]
+    public void A_Log_Sequence_Number_Is_Read_As_Two_Words_When_Passed_And_On_Return_When_Filled_In()
+    {
+        var reads = Reads("WritePageRecorder2::HaveStaleLsnInternal(PageId const &,LSN const &,bool,bool,LSN &)",
+                          "?HaveStaleLsnInternal@WritePageRecorder2@@AEAAHAEBVPageId@@AEBVLSN@@_N2AEAV3@@Z");
+
+        Assert.Equal([new LocatorRead(Function, 2, false, LocatorKind.LogSequenceNumber, 0),
+                      new LocatorRead(Function, 2, false, LocatorKind.LogSequenceNumber, 8),
+                      new LocatorRead(Function, 5, true, LocatorKind.LogSequenceNumber, 0),
+                      new LocatorRead(Function, 5, true, LocatorKind.LogSequenceNumber, 8)],
+                     reads.Where(r => r.Kind == LocatorKind.LogSequenceNumber));
+    }
+
+    [Fact]
+    public void A_Character_Pointer_That_Can_Be_Written_To_Is_Not_Read_As_Text()
+    {
+        Assert.Null(LocatorType.LocatorTypeOf("char *"));
+    }
+
+    [Fact]
+    public void The_Stack_Arguments_Of_A_Function_Are_Read_As_Values()
+    {
+        var signature = FunctionSignature.Parse("IndexPageManager::GetPageWithKey(SEBindings const *,BTreeMgr::BTREE_SEEK_OPTION,AccessMode,"
+                                                + "HPageHandle &,SearchInfo &,SEBindings *,unsigned char *,unsigned long,"
+                                                + "HPageIdVersionId *,bool)",
+                                                "?GetPageWithKey@IndexPageManager@@QEAAXPEBVSEBindings@@W4BTREE_SEEK_OPTION@BTreeMgr@@"
+                                                + "W4AccessMode@@AEAVHPageHandle@@AEAVSearchInfo@@PEAV2@PEAEKPEAVHPageIdVersionId@@_N@Z")!;
+
+        var reads = LocatorReadResolver.GetStackReads(Function, signature).ToList();
+
+        Assert.Equal([4, 5, 6, 7], reads.Select(r => r.Register));
+        Assert.All(reads, r => Assert.Equal((LocatorKind.Argument, false), (r.Kind, r.IsReadAtReturn)));
+    }
+
+    [Fact]
+    public void A_Function_With_Four_Arguments_Has_Nothing_On_The_Stack()
+    {
+        var signature = new FunctionSignature(["int", "int", "int"], FunctionKind.Member, "void");
+
+        Assert.Empty(LocatorReadResolver.GetStackReads(Function, signature));
+    }
+
+    [Fact]
     public void A_Parameter_Past_The_Captured_Slots_Is_Not_Read()
     {
         var signature = new FunctionSignature(["int", "int", "int", "int", "int", "int", "int", "PageId const &"],
@@ -143,6 +185,8 @@ public class LocatorReadResolverTests
     [InlineData("PageId", LocatorKind.Page, false, false)]
     [InlineData("RowId &", LocatorKind.Row, true, false)]
     [InlineData("RowId const __unaligned *", LocatorKind.Row, true, true)]
+    [InlineData("char const *", LocatorKind.Text, true, true)]
+    [InlineData("wchar_t const *", LocatorKind.WideText, true, true)]
     [InlineData("ColumnStoreObjectKey const &", LocatorKind.ColumnStoreObject, true, true)]
     [InlineData("AllocationPageId const *", LocatorKind.Page, true, true, 8)]
     public void A_Page_Or_Row_Type_Is_Recognised(string type, LocatorKind kind, bool indirect, bool isConst, int offset = 0)

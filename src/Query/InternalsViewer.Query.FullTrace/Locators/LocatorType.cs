@@ -53,6 +53,11 @@ internal readonly record struct LocatorType(LocatorKind Kind, bool IsIndirect, b
             }
         }
 
+        if (indirection >= 0 && isConst && names == 1 && TextKind(name) is { } textKind)
+        {
+            return new LocatorType(textKind, true, true);
+        }
+
         var found = (names == 1 ? KnownLocator(name) : null)
                     ?? (indirection >= 0 && ArgumentValue.IsReadable(target) ? (LocatorKind.Referenced, 0, null) : null);
 
@@ -68,6 +73,14 @@ internal readonly record struct LocatorType(LocatorKind Kind, bool IsIndirect, b
         "HPageHandle" => (LocatorKind.Page, PageHeaderPageIdOffset, PageHandlePath),
         "RowId" => (LocatorKind.Row, 0, null),
         "ColumnStoreObjectKey" => (LocatorKind.ColumnStoreObject, 0, null),
+        "LSN" => (LocatorKind.LogSequenceNumber, 0, null),
+        _ => null
+    };
+
+    private static LocatorKind? TextKind(ReadOnlySpan<char> name) => name switch
+    {
+        "char" => LocatorKind.Text,
+        "wchar_t" => LocatorKind.WideText,
         _ => null
     };
 

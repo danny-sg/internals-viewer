@@ -74,13 +74,13 @@ public sealed partial class QueryFlameChartTabView : UserControl, IDocumentComma
 
     public FrameworkElement CreateCommands()
     {
-        _instructionsToggle = AxisToggle("Instructions",
-                                         TraceTimelineAxis.Instructions,
-                                         "Width is the instructions each call executed, so it shows how long each call took");
-
         _positionToggle = AxisToggle("Position",
                                      TraceTimelineAxis.Position,
                                      "Width is the span of trace positions, which lines threads up against each other");
+
+        _instructionsToggle = AxisToggle("Instructions",
+                                         TraceTimelineAxis.Instructions,
+                                         "Width is the instructions each call executed, so it shows how long each call took");
 
         var commands = new StackPanel
         {
@@ -91,9 +91,9 @@ public sealed partial class QueryFlameChartTabView : UserControl, IDocumentComma
             Spacing = 2
         };
 
-        commands.Children.Add(_instructionsToggle);
-
         commands.Children.Add(_positionToggle);
+
+        commands.Children.Add(_instructionsToggle);
 
         commands.Children.Add(CommandToggle(Label("Operators"),
                                             FlameChart.ShowOperators,

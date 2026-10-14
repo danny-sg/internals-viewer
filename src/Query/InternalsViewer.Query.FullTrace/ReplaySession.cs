@@ -1,6 +1,7 @@
 using System.Runtime.InteropServices;
 using System.Text;
 using InternalsViewer.Query.FullTrace.CallLog;
+using InternalsViewer.Query.FullTrace.Locators;
 using InternalsViewer.Query.FullTrace.PublishedEvents;
 using InternalsViewer.Query.FullTrace.Native;
 using InternalsViewer.Query.FullTrace.Timeline;
@@ -189,7 +190,9 @@ internal sealed class ReplaySession : IDisposable
 
                 cancellationToken.ThrowIfCancellationRequested();
 
-                return new ReplayResult(nodes, Modules, log.Build(), timeline.Build(nodes), publishedEvents.Build());
+                using var images = new ImageText(Modules);
+
+                return new ReplayResult(nodes, Modules, log.Build(images), timeline.Build(nodes), publishedEvents.Build());
             }
             finally
             {

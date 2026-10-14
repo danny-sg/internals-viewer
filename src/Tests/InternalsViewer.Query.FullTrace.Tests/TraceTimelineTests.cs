@@ -122,7 +122,7 @@ public class TraceTimelineTests
 
         timeline.MapNodes([null, execute, inner]);
 
-        var cropped = timeline.CroppedTo(tree);
+        var cropped = timeline.CroppedTo(new HashSet<CallStackNode>(ReferenceEqualityComparer.Instance) { execute });
 
         Assert.NotNull(cropped);
 
@@ -161,7 +161,7 @@ public class TraceTimelineTests
 
         timeline.MapNodes([null, execute, scan, read]);
 
-        var cropped = timeline.CroppedTo(tree);
+        var cropped = timeline.CroppedTo(new HashSet<CallStackNode>(ReferenceEqualityComparer.Instance) { execute });
 
         Assert.NotNull(cropped);
 
@@ -187,7 +187,7 @@ public class TraceTimelineTests
 
         timeline.MapNodes([elsewhere, execute, null]);
 
-        var cropped = timeline.CroppedTo(tree);
+        var cropped = timeline.CroppedTo(new HashSet<CallStackNode>(ReferenceEqualityComparer.Instance) { execute });
 
         Assert.NotNull(cropped);
         Assert.Equal([7u], cropped.Threads.Select(t => t.ThreadId));

@@ -1,3 +1,5 @@
+using System.Reflection.PortableExecutable;
+using System.Text;
 using InternalsViewer.Query.CallStack;
 using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Query.FullTrace.CallLog;
@@ -108,6 +110,135 @@ public class TraceCallLogTests
         Assert.Equal(20, use.Calls);
         Assert.Equal((0, 100ul), (use.First.Call, use.First.Sequence));
         Assert.Equal((19, 119ul), (use.Last.Call, use.Last.Sequence));
+    }
+
+    [Fact]
+    public async Task The_Calls_Behind_One_Use_Are_Listed_With_Their_Threads()
+    {
+        var builder = new TraceCallLog.Builder();
+
+        builder.Add(0x1000, 0, Chunk(Row(10, flags: 7, rcx: 0xA0), Row(11, flags: 7, rcx: 0xB0)), 2);
+        builder.Add(0x1000, 0, Chunk(Row(12, flags: 8 | ReturnedFlag, rcx: 0xA0, returnValue: 0xA0)), 1);
+
+        var log = builder.Build();
+
+        var use = (await log.FindAsync(0xA0, CancellationToken.None)).Single(u => u.Location == "RCX");
+
+        var calls = await log.FindCallsAsync(use, 0xA0, CancellationToken.None);
+
+        Assert.Equal([(0, 10ul, 7u), (2, 12ul, 8u)], calls.Select(c => (c.Call, c.Sequence, c.Thread)));
+    }
+
+    [Fact]
+    public async Task Calls_The_Filter_Leaves_Out_Are_Not_Found()
+    {
+        var tree = new CallStackTree();
+
+        var kept = tree.AddCall(tree.Root, new CallstackFrame { Module = "sqlmin", Rva = 0x10 }, 1);
+        var dropped = tree.AddCall(tree.Root, new CallstackFrame { Module = "sqlmin", Rva = 0x20 }, 1);
+
+        var builder = new TraceCallLog.Builder();
+
+        builder.Add(0x1000, 0, Chunk(Row(1, rcx: 0xA0, node: 0), Row(2, rcx: 0xA0, node: 1), Row(3, rcx: 0xA0, node: 0)), 3);
+
+        var log = builder.Build();
+
+        log.MapNodes([kept, dropped]);
+
+        bool Include(CallStackNode? node) => !ReferenceEquals(node, dropped);
+
+        var use = Assert.Single(await log.FindAsync(0xA0, CancellationToken.None, Include));
+
+        var calls = await log.FindCallsAsync(use, 0xA0, CancellationToken.None, Include);
+
+        Assert.Equal(2, use.Calls);
+        Assert.Equal([0, 2], calls.Select(c => c.Call));
+        Assert.Equal([0, 2], log.IncludedCalls(log.CallsOf(0x1000, 0)!, Include, CancellationToken.None));
+    }
+
+    [Fact]
+    public void A_String_The_Trace_Never_Read_Is_Read_From_The_Module_File()
+    {
+        const ulong imageBase = 0x7FF0_0000_0000;
+
+        var path = Path.Combine(Environment.SystemDirectory, "kernel32.dll");
+
+        var builder = new TraceCallLog.Builder([new LocatorRead(0x1000, 0, false, LocatorKind.Text)]);
+
+        builder.Add(0x1000, 0, Chunk(Row(1, rcx: imageBase + GetRva(path, "CreateFileW\0"u8))), 1);
+
+        using var images = new ImageText([TraceModule.Read(path, imageBase, 0x1000_0000)]);
+
+        Assert.Equal("\"CreateFileW\"", builder.Build(images).CallsOf(0x1000, 0)![0].GetLocator(0)?.ToString());
+    }
+
+    [Fact]
+    public void A_String_Is_Put_Together_From_Its_Parts_And_Kept_When_Written()
+    {
+        var builder = new TraceCallLog.Builder([new LocatorRead(0x1000, 1, false, LocatorKind.WideText)]);
+
+        builder.Add(0x1000, 0, Chunk(Row(1)), 1);
+
+        var parts = TextDecoderTests.Parts(Encoding.Unicode.GetBytes("dbo.Orders\0"));
+
+        builder.AddLocators([.. parts.Select(p => new PointerValue(0x1000, 0, p.Value, 0, 1, Mode: 3, Part: p.Key))]);
+
+        using var stream = new MemoryStream();
+
+        using (var writer = new BinaryWriter(stream, Encoding.UTF8, leaveOpen: true))
+        {
+            builder.Build().Write(writer);
+        }
+
+        stream.Position = 0;
+
+        using var reader = new BinaryReader(stream);
+
+        var locator = TraceCallLog.Read(reader).CallsOf(0x1000, 0)![0].GetLocator(1);
+
+        Assert.Equal((LocatorKind.WideText, "\"dbo.Orders\""), (locator?.Kind, locator?.ToString()));
+    }
+
+    [Fact]
+    public void A_Log_Sequence_Number_Is_Put_Together_From_Its_Two_Words()
+    {
+        var builder = new TraceCallLog.Builder([new LocatorRead(0x1000, 2, false, LocatorKind.LogSequenceNumber, 0),
+                                                new LocatorRead(0x1000, 2, false, LocatorKind.LogSequenceNumber, 8)]);
+
+        builder.Add(0x1000, 0, Chunk(Row(1)), 1);
+
+        builder.AddLocators([new PointerValue(0x1000, 0, 37 | (152ul << 32), 0, 2),
+                             new PointerValue(0x1000, 0, 0xFFFF_0000_0002, 0, 2, 8)]);
+
+        var log = builder.Build();
+
+        var locator = log.CallsOf(0x1000, 0)![0].GetLocator(2);
+
+        Assert.Equal((new LogSequenceNumber(37, 152, 2), "(37:152:2)"), (locator?.Lsn, locator?.ToString()));
+    }
+
+    [Fact]
+    public async Task A_Stack_Argument_Is_Kept_As_A_Value_Beside_The_Page_It_Points_To()
+    {
+        var builder = new TraceCallLog.Builder([new LocatorRead(0x1000, 4, false, LocatorKind.Argument),
+                                                new LocatorRead(0x1000, 4, false, LocatorKind.Page)]);
+
+        builder.Add(0x1000, 0, Chunk(Row(1), Row(2)), 2);
+
+        builder.AddLocators([new PointerValue(0x1000, 0, 0x5_0000, 1, 4, Mode: 1),
+                             new PointerValue(0x1000, 0, Page336, 1, 4)]);
+
+        var log = builder.Build();
+
+        var call = log.CallsOf(0x1000, 0)![1];
+
+        Assert.Equal(0x5_0000ul, call.GetStackValue(4));
+        Assert.Equal(new PageAddress(1, 336), call.GetLocator(4)?.Page);
+
+        var use = Assert.Single(await log.FindAsync(0x5_0000, CancellationToken.None));
+
+        Assert.Equal(("[RSP+0x28]", 1), (use.Location, use.First.Call));
+        Assert.Equal([1], (await log.FindCallsAsync(use, 0x5_0000, CancellationToken.None)).Select(c => c.Call));
     }
 
     [Fact]
@@ -259,6 +390,18 @@ public class TraceCallLogTests
         row[7] = (ulong)node;
 
         return row;
+    }
+
+    private static uint GetRva(string path, ReadOnlySpan<byte> text)
+    {
+        var offset = File.ReadAllBytes(path).AsSpan().IndexOf(text);
+
+        using var stream = File.OpenRead(path);
+
+        var section = new PEHeaders(stream).SectionHeaders.First(s => offset >= s.PointerToRawData
+                                                                      && offset < s.PointerToRawData + s.SizeOfRawData);
+
+        return (uint)(section.VirtualAddress + offset - section.PointerToRawData);
     }
 
     private static ulong[] Chunk(params ulong[][] rows)

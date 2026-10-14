@@ -63,6 +63,18 @@ namespace
 
     constexpr size_t PointerValueChunk = 65536;
 
+    constexpr uint32_t ReadPointerMode = 0;
+
+    constexpr uint32_t ReadValueMode = 1;
+
+    constexpr uint32_t ReadTextMode = 2;
+
+    constexpr uint32_t ReadWideTextMode = 3;
+
+    constexpr size_t MaximumTextBytes = 128;
+
+    constexpr uint64_t PageSize = 0x1000;
+
     constexpr size_t PublishedEventChunk = 65536;
 
     constexpr uint8_t EventPublisherFunction = 1;
@@ -332,6 +344,13 @@ namespace
                 pointer = next;
             }
 
+            if (read.Mode == ReadTextMode || read.Mode == ReadWideTextMode)
+            {
+                ReadText(thread, function, call, read, pointer + read.Offset);
+
+                return;
+            }
+
             uint64_t value = 0;
 
             auto const address = static_cast<GuestAddress>(pointer + read.Offset);
@@ -343,13 +362,70 @@ namespace
                 return;
             }
 
+            RecordValue(function, call, read, value);
+        }
+
+        void ReadText(IThreadView const& thread, LoggedFunction const& function, uint32_t call, PointerRead const& read, uint64_t address)
+        {
+            std::array<uint64_t, MaximumTextBytes / sizeof(uint64_t)> words{};
+
+            auto const toPageEnd = PageSize - (address & (PageSize - 1));
+
+            auto length = (std::min)(MaximumTextBytes, static_cast<size_t>(toPageEnd));
+
+            auto buffer = thread.QueryMemoryBuffer(static_cast<GuestAddress>(address), BufferView{ words.data(), length });
+
+            auto bytes = static_cast<size_t>(buffer.Memory.Size);
+
+            if (bytes == length && length < MaximumTextBytes)
+            {
+                auto const rest = thread.QueryMemoryBuffer(static_cast<GuestAddress>(address + length),
+                                                           BufferView{ reinterpret_cast<uint8_t*>(words.data()) + length,
+                                                                       MaximumTextBytes - length });
+
+                bytes += static_cast<size_t>(rest.Memory.Size);
+            }
+
+            if (bytes == 0)
+            {
+                return;
+            }
+
+            auto const* characters = reinterpret_cast<uint8_t const*>(words.data());
+
+            auto const width = read.Mode == ReadWideTextMode ? size_t{ 2 } : size_t{ 1 };
+
+            auto end = bytes;
+
+            for (size_t index = 0; index + width <= bytes; index += width)
+            {
+                if (characters[index] == 0 && (width == 1 || characters[index + 1] == 0))
+                {
+                    end = index + width;
+
+                    break;
+                }
+            }
+
+            auto const parts = (end + sizeof(uint64_t) - 1) / sizeof(uint64_t);
+
+            for (size_t part = 0; part < parts; part++)
+            {
+                RecordValue(function, call, read, words[part], static_cast<uint32_t>(part));
+            }
+        }
+
+        void RecordValue(LoggedFunction const& function, uint32_t call, PointerRead const& read, uint64_t value, uint32_t part = 0)
+        {
             PointerValues.push_back(PointerValue{ function.Address,
                                                   function.Instance,
                                                   value,
                                                   call,
                                                   read.Register,
                                                   read.Offset,
-                                                  read.IsReadAtReturn });
+                                                  read.IsReadAtReturn,
+                                                  read.Mode,
+                                                  part });
 
             if (PointerValues.size() >= PointerValueChunk)
             {
@@ -595,36 +671,26 @@ namespace
         }
     }
 
-    uint64_t StackArgument(IThreadView const&                         thread,
-                           uint64_t                                   stackPointer,
-                           uint64_t                                   returnAddress,
-                           int32_t                                    slot,
-                           std::array<uint64_t, StackArgumentCount>& stackArguments)
+    void LoadStackArguments(IThreadView const&                         thread,
+                            uint64_t                                   stackPointer,
+                            uint64_t                                   returnAddress,
+                            std::array<uint64_t, StackArgumentCount>& stackArguments)
     {
-        auto& argument = stackArguments[slot - ArgumentRegisters];
-
-        if (argument != 0)
-        {
-            return argument;
-        }
-
         uint64_t top = 0;
 
         auto const pushed = thread.QueryMemoryBuffer(static_cast<GuestAddress>(stackPointer), BufferView{ &top, sizeof(top) });
 
         auto const homeSpace = pushed.Memory.Size == sizeof(top) && top == returnAddress ? stackPointer + sizeof(uint64_t) : stackPointer;
 
-        uint64_t value = 0;
+        auto const buffer = thread.QueryMemoryBuffer(static_cast<GuestAddress>(homeSpace + ArgumentRegisters * sizeof(uint64_t)),
+                                                     BufferView{ stackArguments.data(), sizeof(stackArguments) });
 
-        auto const buffer = thread.QueryMemoryBuffer(static_cast<GuestAddress>(homeSpace + slot * sizeof(uint64_t)),
-                                                     BufferView{ &value, sizeof(value) });
+        auto const read = (std::min)(static_cast<size_t>(buffer.Memory.Size), sizeof(stackArguments)) / sizeof(uint64_t);
 
-        if (buffer.Memory.Size == sizeof(value))
+        for (auto slot = read; slot < StackArgumentCount; slot++)
         {
-            argument = value;
+            stackArguments[slot] = 0;
         }
-
-        return argument;
     }
 
     void ReadArguments(CallTree&                                  tree,
@@ -643,6 +709,8 @@ namespace
 
         uint64_t const arguments[ArgumentRegisters] = { registers.Rcx, registers.Rdx, registers.R8, registers.R9 };
 
+        auto stackLoaded = false;
+
         for (auto const& read : *reads)
         {
             if (read.Register < 0 || read.Register >= ArgumentSlots)
@@ -650,11 +718,21 @@ namespace
                 continue;
             }
 
-            auto const pointer = read.Register < ArgumentRegisters
-                                     ? arguments[read.Register]
-                                     : StackArgument(thread, registers.Rsp, returnAddress, read.Register, stackArguments);
+            if (read.Register >= ArgumentRegisters && !stackLoaded)
+            {
+                LoadStackArguments(thread, registers.Rsp, returnAddress, stackArguments);
 
-            if (read.IsReadAtReturn == 0)
+                stackLoaded = true;
+            }
+
+            auto const pointer = read.Register < ArgumentRegisters ? arguments[read.Register]
+                                                                   : stackArguments[read.Register - ArgumentRegisters];
+
+            if (read.Mode == ReadValueMode)
+            {
+                tree.RecordValue(*logged.Function, logged.Index, read, pointer);
+            }
+            else if (read.IsReadAtReturn == 0)
             {
                 tree.ReadPointer(thread, *logged.Function, logged.Index, read, pointer);
             }

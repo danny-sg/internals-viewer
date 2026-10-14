@@ -1,6 +1,6 @@
 # Privacy Policy
 
-Last updated: 10 October 2026
+Last updated: 13 October 2026
 
 Internals Viewer is a desktop tool for looking inside SQL Server databases. It does not collect, store or
 share any personal data. This policy explains what the app does with the information it handles, where that
@@ -48,14 +48,19 @@ machine through the app.
   Server process does while it runs, including data held in memory. Treat it as containing the data in
   your databases.
 - **Symbol files** downloaded from Microsoft.
+- **Exported runs**, only when you choose Export to file. An exported run holds the query text, its
+  execution plan, the events raised while it ran and their call stacks, and the rows in any log records it
+  wrote. A Full Trace run also holds the values each recorded call was passed and returned, some of them
+  read from SQL Server's memory. Treat it as containing the data in your databases, and check it before sharing it.
 
 Where each of these lives is listed in [SECURITY.md](SECURITY.md). You can delete them at any time. Recent
 Connections and Query History can be cleared from inside the app. Uninstalling the Microsoft Store version
-removes its settings. Trace files, recordings and symbol files are left in place for you to delete.
+removes its settings. Trace files, recordings, exported runs and symbol files are left in place for you to
+delete.
 
 ## Tools the App Starts
 
-Attach WinDbg and Full Trace start Microsoft's WinDbg and Time Travel Debugging on your machine with
+Full Trace starts Microsoft's Time Travel Debugging, from your WinDbg installation, on your machine with
 administrator rights. Those tools are Microsoft's. The Microsoft Privacy Statement applies to them,
 including any diagnostic data they send to Microsoft under their own settings.
 

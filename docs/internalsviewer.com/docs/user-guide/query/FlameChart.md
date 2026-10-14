@@ -2,16 +2,34 @@
 
 The Flame Chart draws every call recorded by a [Full Trace](/docs/user-guide/query/FullTrace) - one lane per thread, one bar per call, each call nested beneath the call that made it. The bars use the [Call Stack](/docs/user-guide/query/CallStack)'s category colours.
 
-The Call Stack merges every call down the same path into one row with a count. The Flame Chart keeps each call apart, in the order it happened, so a scan's `GetRow` calls show as a run of short bars, one per row, and a function called once for a long time as a single wide one. It takes the Timeline's place while **Record Full Trace** is on, and the **Flame Chart** item on the View menu, enabled only then, brings it back if it is closed.
+The Call Stack merges every call down the same path into one row with a count. The Flame Chart keeps each call apart, in the order it happened, so a scan's `GetRow` calls show as a run of short bars, one per row, and a function called once for a long time as a single wide one. It takes the Timeline's place while **Record Full Trace** is on, or sits beside it when **Record Events** is on too, and the **Flame Chart** item on the View menu, enabled only then, brings it back if it is closed.
 
 <!-- Screenshot: the Flame Chart for a parallel query, with a lane per thread and the Operators pane open above them -->
+
+## Reading the chart
+
+From top to bottom:
+
+- **The ruler** - how far through the recording, in trace positions or instructions - see [Position and instructions](#position-and-instructions). Click it to put down the [playhead](#playhead)
+- **The Operators pane** - with **Operators** on, a row per plan operator - see [Operators](#operators)
+- **A lane per thread** - headed **Thread** and the operating system thread id
+- **The memory band** - with **Memory** on, the memory allocated and in use along the bottom - see [Memory](#memory)
+
+In a lane, each call is a bar running from where it started to where it ended. The calls it made sit directly beneath it, inside its width, so the outermost call is at the top of the lane and each row down is one level deeper in the stack. That is the reverse of a classic flame graph, which grows upwards, but it reads the same way as the Call Stack's tree. A bar is coloured by its function's category and labelled with the function's name once it is wide enough to read.
+
+- **A wide bar** - a call that ran for a long stretch, and on the Instructions axis, one that executed a lot of code
+- **A run of thin bars** - the same function called over and over, such as a scan's `GetRow` once per row
+- **A gap beneath a bar** - the call working in its own code rather than in a call it made, or in Extended Events and tracing code, which is left out of the chart
+- **A pale strip** - calls too narrow to draw one by one, merged into a single strip. Zoom in to pull them apart
+
+The Flame Chart is not the [Flame Graph](/docs/user-guide/query/ExecutionPlan#flame-graph) on the Execution Plan, which breaks each operator's bar down into the calls sampled from its events.
 
 ## Position and instructions
 
 TTD has no clock. A recording is a sequence of positions - a sequence number shared by every thread, plus the number of instructions the thread has executed since - so the ruler is never in milliseconds. The two toggles on the tab strip choose what a bar's width means:
 
-- **Position** - the default. Width is the span of trace positions a call covered. Positions are shared by every thread, so the lanes line up against each other and parallel workers can be compared.
-- **Instructions** - width is the number of instructions the call executed, which is the closest the recording has to how long a call took. Each thread counts its own instructions from zero, so every lane starts at the left and the lanes do not line up.
+- **Position** - the default. Width is the span of trace positions a call covered. Positions are shared by every thread, so the lanes line up against each other and parallel workers can be compared. A position moves on by one whole step at each point where a thread synchronises with another or leaves the recorded code, however many instructions came before it. So short calls that cross one of those points come out about the same width, and calls that stay inside the recorded code without crossing one are thin.
+- **Instructions** - width is the number of x64 machine instructions the call executed, including the calls beneath it, which is the closest the recording has to how long a call took. Only the storage engine and query processor are recorded, so time spent in SQLOS or Windows - allocating memory, waiting, reading from disk - adds next to nothing. Each thread counts its own instructions from zero, so every lane starts at the left and the lanes do not line up.
 
 ## Moving around
 
@@ -20,11 +38,23 @@ TTD has no clock. A recording is a sequence of positions - a sequence number sha
 - **Ctrl + mouse wheel** scrolls through the threads
 - **Drag** pans sideways, and a **middle-button drag** pans in both directions
 - **Shift + drag** draws a rectangle and zooms to it
-- **Shift + click** a bar to root the chart on its function, or empty space to go back to the whole recording
+- **Shift + click** a bar to scope the chart to its function, or empty space to go back to the whole recording
 - **Double-click** a bar to zoom to it, or empty space to zoom back out to the whole recording
 - **Click a thread's header** to expand that thread and collapse the others to their headers, and click it again to show them all
 
 The lanes shrink to fit every thread into the pane, and a call's name appears once there is room to read it - zoom in, or click a thread's header to give it the whole pane, to see more of them.
+
+## Right-click menu
+
+Right-clicking a bar gives:
+
+- **Zoom to Selection** - only while a call is selected, wherever you right-click. Zooms to the selected call, as double-clicking it does, and scrolls its thread into view
+- **Scope** - scopes the chart to the call's function, as **Shift + click** does - see [Scoping to a function](#scoping-to-a-function)
+- **Scope and Lock** - scopes the chart and turns on the **Lock**, so the scope stays while you look around the other panes
+- **Clear Scope** - only while the chart is scoped, wherever you right-click. Goes back to the whole recording and turns the **Lock** off
+- **Open Call Stack** - opens the [Call Stack](/docs/user-guide/query/CallStack) pane at the call's frame, with the call selected in the [Arguments](/docs/user-guide/query/CallStack#arguments) tab. Right-clicking empty space just opens the pane, and if it is already open its tab is selected
+
+<!-- Screenshot: the Flame Chart's right-click menu over a call, with Scope, Scope and Lock and Open Call Stack -->
 
 ## Selecting a call
 
@@ -46,23 +76,27 @@ Selecting a frame in the Call Stack highlights that function in the chart. Its c
 
 <!-- Screenshot: a frame selected in the Call Stack, with its calls highlighted in the Flame Chart and the rest dimmed -->
 
-A frame stands for every call made down that path, so selecting one does not pick a call in the [Arguments](/docs/user-guide/query/CallStack#arguments) tab. Choosing a call there narrows the highlight to that one call - it is outlined, and only it and the calls it made stay in colour. If the chart is rooted somewhere that call is not, it goes back to the whole recording to show it. Clicking the background clears the call.
+A frame stands for every call made down that path, so selecting one does not pick a call in the [Arguments](/docs/user-guide/query/CallStack#arguments) tab. Choosing a call there narrows the highlight to that one call - it is outlined, and only it and the calls it made stay in colour. If the chart is scoped somewhere that call is not, it goes back to the whole recording to show it, unless the chart is locked. Clicking the background clears the call.
 
 <!-- Screenshot: one call chosen in the Arguments tab, outlined in the Flame Chart with everything outside it dimmed -->
 
 The Call Stack's [category filter](/docs/user-guide/query/CallStack#filtering-by-category) applies here as well. A hidden category's calls are taken out and the calls they made move up into their place, so a category you have kept is never lost beneath one you have hidden. A category hidden with **Hide With Callees** takes everything beneath its calls with it.
 
-The **Lock** toggle on the tab strip holds the highlight. Selecting a frame in the Call Stack no longer changes it, but clicking a bar still selects that call in the Call Stack and Arguments - so one function can stay highlighted while you look through other calls.
+The **Lock** toggle on the tab strip holds the highlight and the scope. Selecting a frame in the Call Stack no longer changes the highlight, and choosing a call elsewhere no longer takes the chart out of its scope, but clicking a bar still selects that call in the Call Stack and Arguments - so one function can stay highlighted while you look through other calls.
 
-## Rooting on a function
+## Scoping to a function
 
-**Shift + click** a bar to root the chart on its function. Only that function's calls and everything beneath them are drawn, zoomed to fit, so a function called from all over the query can be looked at on its own. Depths count from its outermost call, so a function that calls itself does not draw over itself. A thread that never ran the function - a parallel worker never runs beneath the coordinator's frames - shows what it was doing over the same trace positions instead.
+**Shift + click** a bar, or right-click it and choose **Scope**, to scope the chart to its function. Only that function's calls and everything beneath them are drawn, zoomed to fit, so a function called from all over the query can be looked at on its own. Depths count from its outermost call, so a function that calls itself does not draw over itself. A thread that never ran the function - a parallel worker never runs beneath the coordinator's frames - shows what it was doing over the same trace positions instead.
 
-**Shift + click** empty space to go back to the whole recording.
+**Shift + click** empty space, or choose **Clear Scope** from the right-click menu, to go back to the whole recording.
 
-![The Flame Chart rooted on CQScanTableScanNew::GetRow](/docs/user-guide/images/flame-chart-rooted-on-frame.png)
+![The Flame Chart scoped to CQScanTableScanNew::GetRow](/docs/user-guide/images/flame-chart-rooted-on-frame.png)
 
-The **Search** toggle opens a box above the chart. Calls whose function name does not contain every word typed are dimmed, so the matches stand out. **Escape** closes it.
+## Search
+
+The **Search** toggle opens a bar above the chart. Calls whose function name does not contain every word typed are dimmed, so the matches stand out. **Escape** closes it.
+
+The filter button beside the box opens the same category badges as the Call Stack's [category filter](/docs/user-guide/query/CallStack#filtering-by-category), and they are one setting - hiding a category here hides it in the Call Stack too.
 
 ## Operators
 
@@ -88,9 +122,15 @@ The **Memory** toggle shows where the query allocated memory:
 
 ![Memory: In Use - a surface along each call showing the memory it held as it ran](/docs/user-guide/images/flame-chart-memory-in-use.png)
 
+The **Memory** toggle and the **Allocated** or **In Use** choice are remembered between sessions, and shared by every Flame Chart.
+
 ## Playhead
 
 Click the ruler to put a playhead on the chart, and drag along the ruler to move it. Its badge gives the position, as `sequence:steps` on the Position axis. The step back and step forward buttons move it to the start of the previous or next call on any visible thread, and double-clicking the ruler hides it again.
+
+**Play** moves the playhead steadily along the chart, scrolling the view on when it reaches the edge, and stops at the end of the recording. It starts from the playhead, or from the left of the view when there is none or the playhead is already at the end. Click it again to pause.
+
+With **Record Events** on, the Timeline drives the playhead too. As its current event changes, the playhead moves to where that event happened in the recording - see [Extended Events in a recording](/docs/user-guide/query/FullTrace#extended-events-in-a-recording).
 
 With **Memory** off, the calls under the playhead pop out of the chart, each raised by the memory it allocated, so scrubbing along shows which part of the stack is allocating. Drag a raised call to change the angle and depth, as with the memory view. With Memory on, the band marks the memory allocated and in use at the playhead.
 

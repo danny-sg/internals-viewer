@@ -58,7 +58,11 @@ internal sealed class LocatorTable
 
             var value = reader.ReadUInt64();
 
-            locators[index] = new Locator(register, kind, value, reader.ReadUInt64());
+            var detail = reader.ReadUInt64();
+
+            var text = kind is LocatorKind.Text or LocatorKind.WideText ? reader.ReadString() : null;
+
+            locators[index] = new Locator(register, kind, value, detail, text);
         }
 
         return new LocatorTable(calls, locators);
@@ -77,6 +81,11 @@ internal sealed class LocatorTable
             writer.Write(locator.Value);
 
             writer.Write(locator.Detail);
+
+            if (locator.Kind is LocatorKind.Text or LocatorKind.WideText)
+            {
+                writer.Write(locator.Text ?? string.Empty);
+            }
         }
     }
 }

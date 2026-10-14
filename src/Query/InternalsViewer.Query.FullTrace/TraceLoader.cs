@@ -2,7 +2,9 @@ using System.Diagnostics;
 using InternalsViewer.Internals.Engine.Database;
 using InternalsViewer.Internals.Engine.Loading;
 using InternalsViewer.Query.CallStack;
+using InternalsViewer.Query.CallStack.Arguments;
 using InternalsViewer.Query.CallStack.Symbols;
+using InternalsViewer.Query.FullTrace.Arguments;
 using InternalsViewer.Query.Events;
 using InternalsViewer.Query.Events.Operators;
 using InternalsViewer.Query.FullTrace.Iterators;
@@ -141,6 +143,8 @@ public sealed class TraceLoader(ILogger<TraceLoader> logger, ITimeTravelRecorder
 
         LogUnknownSymbols(unknownSymbols);
 
+        LogUnknownEnums(callStack, request.SymbolsPath);
+
         var collapsed = new Dictionary<CallStackNode, CallStackNode>(ReferenceEqualityComparer.Instance);
 
         callStack = callStack.CollapseToFunctions(collapsed: (original, node) => collapsed[original] = node);
@@ -149,18 +153,7 @@ public sealed class TraceLoader(ILogger<TraceLoader> logger, ITimeTravelRecorder
 
         var planLink = IteratorPlanLinker.Link(replay.CallLog, mapped, events);
 
-        var cropped = false;
-
-        if (request.CropToQuery && QueryExecutionCropper.Crop(callStack) is { } crop)
-        {
-            callStack = crop.Tree;
-
-            mapped = [.. mapped.Select(node => node is null ? null : crop.Projected.GetValueOrDefault(node))];
-
-            cropped = true;
-
-            Logger.LogInformation("Call tree cropped to the query's execution, {Roots} root(s)", callStack.Root.Children.Count);
-        }
+        var hobtAccess = HoBtAccessMap.Build(replay.CallLog, mapped);
 
         replay.CallLog.MapNodes(mapped);
 
@@ -172,11 +165,6 @@ public sealed class TraceLoader(ILogger<TraceLoader> logger, ITimeTravelRecorder
 
         var timeline = replay.Timeline.WithoutCallsUnder(IsInstrumentation);
 
-        if (cropped)
-        {
-            timeline = timeline.CroppedTo(callStack) ?? timeline;
-        }
-
         Logger.LogInformation("{Calls} call(s) after removing Extended Events and tracing, {Spans} call span(s) on {Threads} "
                               + "thread(s) in the flame chart",
                               callStack.Nodes().Sum(n => n.Calls),
@@ -184,6 +172,8 @@ public sealed class TraceLoader(ILogger<TraceLoader> logger, ITimeTravelRecorder
                               timeline.Threads.Count);
 
         timeline.AddCallActivity(QueryRunner.ActivityBuckets);
+
+        var objects = ObjectMap.Build(replay.CallLog, timeline, ObjectFunctionResolver.Resolve(mapped, request.SymbolsPath));
 
         steps.Complete();
 
@@ -240,7 +230,11 @@ public sealed class TraceLoader(ILogger<TraceLoader> logger, ITimeTravelRecorder
 
         steps.Complete();
 
-        return new TraceResult(callStack, replay.CallLog, timeline) { PlanLink = planLink };
+        Logger.LogInformation("{Objects} HoBt access object(s) linked to their HoBt", hobtAccess.Count);
+
+        Logger.LogInformation("{Objects} object(s) placed at their addresses from member calls", objects.Count);
+
+        return new TraceResult(callStack, replay.CallLog, timeline) { PlanLink = planLink, HoBtAccess = hobtAccess, Objects = objects };
     }
 
     private void LogUnknownSymbols(string[] unknownSymbols)
@@ -253,6 +247,51 @@ public sealed class TraceLoader(ILogger<TraceLoader> logger, ITimeTravelRecorder
         foreach (var symbol in unknownSymbols.Order(StringComparer.Ordinal))
         {
             Logger.LogDebug($"Unknown symbol: {symbol}");
+        }
+    }
+
+    private void LogUnknownEnums(CallStackTree callStack, string symbolsPath)
+    {
+        if (!Logger.IsEnabled(LogLevel.Debug))
+        {
+            return;
+        }
+
+        using var resolver = new CallstackResolver(symbolsPath);
+
+        var functions = new HashSet<string>(StringComparer.Ordinal);
+
+        var unknown = new SortedDictionary<string, string>(StringComparer.Ordinal);
+
+        foreach (var node in callStack.Nodes())
+        {
+            if (node.Frame is not { } frame)
+            {
+                continue;
+            }
+
+            var symbol = QualifiedSymbol.Of(frame);
+
+            if (!functions.Add(symbol)
+                || FunctionSignature.Parse(resolver.ResolveSignature(frame), resolver.ResolveDecoratedName(frame)) is not { } signature)
+            {
+                continue;
+            }
+
+            var types = signature.ReturnType is { } returnType ? signature.Parameters.Append(returnType) : signature.Parameters;
+
+            foreach (var type in types)
+            {
+                if (ArgumentValue.GetUnknownEnum(type) is { } name)
+                {
+                    unknown.TryAdd(name, symbol);
+                }
+            }
+        }
+
+        foreach (var (name, function) in unknown)
+        {
+            Logger.LogDebug($"Unknown enum: {name} ({function})");
         }
     }
 

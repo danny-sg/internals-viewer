@@ -64,6 +64,8 @@ struct EnumHandle
 {
     ComPtr<IDiaEnumSymbols> Symbols;
     std::wstring Prefix;
+    bool HasRva = false;
+    DWORD Rva = 0;
 };
 
 // Owns a BSTR returned from DIA - get_name and friends hand ownership to the caller.
@@ -154,6 +156,18 @@ static std::wstring DemangleSignature(const wchar_t *name)
     }
 
     return name;
+}
+
+static bool IsAtRva(const EnumHandle *enumerator, IDiaSymbol *symbol)
+{
+    if (!enumerator->HasRva)
+    {
+        return true;
+    }
+
+    DWORD symbolRva = 0;
+
+    return SUCCEEDED(symbol->get_relativeVirtualAddress(&symbolRva)) && symbolRva == enumerator->Rva;
 }
 
 static void CopyTruncated(wchar_t *buffer, int bufferLength, const std::wstring &value)
@@ -335,6 +349,11 @@ bool NextSymbol(void *enumeratorHandle, wchar_t *buffer, int bufferLength)
             return false;
         }
 
+        if (!IsAtRva(enumerator, symbol.Get()))
+        {
+            continue;
+        }
+
         Bstr name;
 
         std::wstring friendly;
@@ -373,6 +392,11 @@ bool NextSymbolDetail(void *enumeratorHandle, wchar_t *nameBuffer, int nameLengt
         if (FAILED(enumerator->Symbols->Next(1, symbol.GetAddressOf(), &fetched)) || fetched != 1)
         {
             return false;
+        }
+
+        if (!IsAtRva(enumerator, symbol.Get()))
+        {
+            continue;
         }
 
         Bstr name;
@@ -429,6 +453,9 @@ void *BeginEnumSymbolsAtRva(void *sessionHandle, unsigned int rva)
 
     auto enumerator = std::make_unique<EnumHandle>();
 
+    enumerator->HasRva = true;
+    enumerator->Rva = rva;
+
     if (FAILED(handle->Session->findChildrenExByRVA(global.Get(), SymTagPublicSymbol, nullptr, nsNone, rva,
                                                     enumerator->Symbols.GetAddressOf())) ||
         !enumerator->Symbols)
@@ -439,7 +466,7 @@ void *BeginEnumSymbolsAtRva(void *sessionHandle, unsigned int rva)
     return enumerator.release();
 }
 
-bool GetDecoratedName(void *sessionHandle, unsigned int rva, wchar_t *buffer, int bufferLength)
+bool GetDecoratedName(void *sessionHandle, unsigned int rva, const wchar_t *name, wchar_t *buffer, int bufferLength)
 {
     std::unique_ptr<EnumHandle> enumerator{ static_cast<EnumHandle *>(BeginEnumSymbolsAtRva(sessionHandle, rva)) };
 
@@ -447,6 +474,8 @@ bool GetDecoratedName(void *sessionHandle, unsigned int rva, wchar_t *buffer, in
     {
         return false;
     }
+
+    std::wstring first;
 
     for (;;)
     {
@@ -456,24 +485,42 @@ bool GetDecoratedName(void *sessionHandle, unsigned int rva, wchar_t *buffer, in
 
         if (FAILED(enumerator->Symbols->Next(1, symbol.GetAddressOf(), &fetched)) || fetched != 1)
         {
-            return false;
+            break;
         }
 
         BOOL function = FALSE;
 
         symbol->get_function(&function);
 
-        Bstr name;
+        Bstr decorated;
 
-        if (!function || FAILED(symbol->get_name(name.GetAddressOf())) || !name)
+        if (!function || !IsAtRva(enumerator.get(), symbol.Get()) || FAILED(symbol->get_name(decorated.GetAddressOf())) ||
+            !decorated)
         {
             continue;
         }
 
-        CopyTruncated(buffer, bufferLength, name.Get());
+        if (!name || !*name || DemangleName(decorated.Get()) == name)
+        {
+            CopyTruncated(buffer, bufferLength, decorated.Get());
 
-        return true;
+            return true;
+        }
+
+        if (first.empty())
+        {
+            first = decorated.Get();
+        }
     }
+
+    if (first.empty())
+    {
+        return false;
+    }
+
+    CopyTruncated(buffer, bufferLength, first);
+
+    return true;
 }
 
 void EndEnumSymbols(void *enumeratorHandle)
