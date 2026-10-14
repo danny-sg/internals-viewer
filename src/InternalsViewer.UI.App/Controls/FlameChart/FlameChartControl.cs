@@ -422,7 +422,7 @@ public sealed partial class FlameChartControl : Grid, IPlayheadChart, IDisposabl
 
     private bool ShowsSpikes => ShowMemory && MemoryMode == FlameChartMemoryMode.Allocated;
 
-    private bool ShowsMemoryBand => ShowMemory && _axis == TraceTimelineAxis.Position && _visible is { HasAllocations: true };
+    private bool ShowsMemoryBand => ShowMemory && _axis == TraceTimelineAxis.Position && _visible is { Memory.HasAllocations: true };
 
     private float BandHeight => ShowsMemoryBand ? MemoryBandHeight : 0;
 
@@ -910,8 +910,8 @@ public sealed partial class FlameChartControl : Grid, IPlayheadChart, IDisposabl
 
         _inUseCurves.Clear();
 
-        _inUseMaximum = _visible is { HasAllocations: true } memory
-            ? memory.PeakInUseDuring(memory.StartOf(TraceTimelineAxis.Position), memory.EndOf(TraceTimelineAxis.Position))
+        _inUseMaximum = _visible is { Memory.HasAllocations: true } visible
+            ? visible.Memory.PeakInUseDuring(visible.StartOf(TraceTimelineAxis.Position), visible.EndOf(TraceTimelineAxis.Position))
             : 0;
 
         var selfAllocations = _visible?.SelfAllocations() ?? [];
@@ -940,7 +940,7 @@ public sealed partial class FlameChartControl : Grid, IPlayheadChart, IDisposabl
 
     private static ulong MemoryMaximum(TraceTimeline? timeline)
     {
-        if (timeline is not { HasAllocations: true })
+        if (timeline is not { Memory.HasAllocations: true })
         {
             return 0;
         }
@@ -957,7 +957,7 @@ public sealed partial class FlameChartControl : Grid, IPlayheadChart, IDisposabl
 
             for (var index = 0; index < row.Count; index++)
             {
-                maximum = Math.Max(maximum, timeline.AllocatedDuring(thread.ThreadId, starts[index], ends[index]).Bytes);
+                maximum = Math.Max(maximum, timeline.Memory.AllocatedDuring(thread.ThreadId, starts[index], ends[index]).Bytes);
             }
         }
 

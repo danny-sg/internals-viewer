@@ -150,7 +150,7 @@ internal sealed class ReplaySession : IDisposable
 
         MemoryMapFunction[] memoryMapFunctions = [.. functions.MemoryMapFunctions,
                                                   .. functions.MemoryFunctions
-                                                              .Where(f => f is { Allocates: true, IsVirtual: false })
+                                                              .Where(f => f is { IsAllocation: true, IsVirtual: false })
                                                               .Select(f => new MemoryMapFunction(f.Address,
                                                                                                  (uint)MemoryMapOperation.Allocated))];
 

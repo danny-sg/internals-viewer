@@ -941,7 +941,7 @@ public sealed partial class FlameChartControl
         return null;
     }
 
-    private TraceTimelineSpan? SpanOf(FlameHit hit)
+    private TraceSpan? SpanOf(FlameHit hit)
     {
         if (_visible is not { } timeline || hit.Lane >= timeline.Threads.Count)
         {
@@ -982,7 +982,7 @@ public sealed partial class FlameChartControl
             + $"to {Math.Floor(positions.End - OriginOf(TraceTimelineAxis.Position)):N0}"
         };
 
-        var (allocatedBytes, allocations) = timeline.AllocatedDuring(thread.ThreadId, positions.Start, positions.End);
+        var (allocatedBytes, allocations) = timeline.Memory.AllocatedDuring(thread.ThreadId, positions.Start, positions.End);
 
         if (allocations > 0)
         {
@@ -990,14 +990,14 @@ public sealed partial class FlameChartControl
                       + (allocations == 1 ? "Allocation" : "Allocations"));
         }
 
-        if (timeline.FreedDuring(thread.ThreadId, positions.Start, positions.End) is > 0 and var freed)
+        if (timeline.Memory.FreedDuring(thread.ThreadId, positions.Start, positions.End) is > 0 and var freed)
         {
             lines.Add($"Freed {SizeFormat.Format((long)freed)}");
         }
 
         if (allocations > 0)
         {
-            var retained = timeline.RetainedBy(thread.ThreadId, positions.Start, positions.End);
+            var retained = timeline.Memory.RetainedBy(thread.ThreadId, positions.Start, positions.End);
 
             lines.Add($"Retained At Return {SizeFormat.Format((long)retained)}");
         }

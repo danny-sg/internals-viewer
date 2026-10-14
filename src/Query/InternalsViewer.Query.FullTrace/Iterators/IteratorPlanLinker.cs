@@ -118,7 +118,7 @@ internal static class IteratorPlanLinker
 
         foreach (var getter in getters)
         {
-            if (getter.Call is { Returned: true, ReturnValue: not 0 } && ParentOf(getter, factoryNodes) is { } factory)
+            if (getter.Call is { Returned: true, ReturnValue: not 0 } && GetParent(getter, factoryNodes) is { } factory)
             {
                 iterators.Add(new BatchIterator(getter.Call.ReturnValue, getter.Object, factory.Object));
             }
@@ -163,7 +163,7 @@ internal static class IteratorPlanLinker
         list.AddRange(patterns.Where(p => !list.Contains(p)));
     }
 
-    private static LoggedCall? ParentOf(LoggedCall call, ILookup<CallStackNode, LoggedCall> factoryNodes)
+    private static LoggedCall? GetParent(LoggedCall call, ILookup<CallStackNode, LoggedCall> factoryNodes)
     {
         for (var ancestor = call.Node.Parent; ancestor is { IsRoot: false }; ancestor = ancestor.Parent)
         {
@@ -296,7 +296,7 @@ internal static class IteratorPlanLinker
         return instances;
     }
 
-    private enum ChoiceKind
+    private enum ChoiceType
     {
         Direct,
         SkipPlanNode,
@@ -304,7 +304,7 @@ internal static class IteratorPlanLinker
     }
 
     private sealed record Choice(int Score,
-                                 ChoiceKind Kind,
+                                 ChoiceType Type,
                                  IReadOnlyList<(PlanObject PlanObject, ExecutionOperatorEvent Operator)> Pairs);
 
     private sealed record BatchIterator(ulong Instance, ulong BatchObjectId, ulong PlanObjectId);
@@ -374,16 +374,16 @@ internal static class IteratorPlanLinker
 
             foreach (var factory in ordered)
             {
-                var planObject = ObjectAt(factory, objects, operators);
+                var planObject = GetObject(factory, objects, operators);
 
                 if (planObject.Parent is not null
-                    || ParentOf(factory, factoryNodes) is not { } parentCall
+                    || GetParent(factory, factoryNodes) is not { } parentCall
                     || parentCall.Object == factory.Object)
                 {
                     continue;
                 }
 
-                var parent = ObjectAt(parentCall, objects, operators);
+                var parent = GetObject(parentCall, objects, operators);
 
                 if (parent.IsWithin(planObject))
                 {
@@ -405,7 +405,7 @@ internal static class IteratorPlanLinker
             return objects;
         }
 
-        private static PlanObject ObjectAt(LoggedCall factory,
+        private static PlanObject GetObject(LoggedCall factory,
                                            Dictionary<ulong, PlanObject> objects,
                                            Dictionary<ulong, List<GlobPattern>> operators)
         {
@@ -478,7 +478,7 @@ internal static class IteratorPlanLinker
                 && Fit(planObject, onlyNode) is var skipPlanNode
                 && skipPlanNode.Score - SkippedPlanNode > choice.Score)
             {
-                choice = new Choice(skipPlanNode.Score - SkippedPlanNode, ChoiceKind.SkipPlanNode, [(planObject, onlyNode)]);
+                choice = new Choice(skipPlanNode.Score - SkippedPlanNode, ChoiceType.SkipPlanNode, [(planObject, onlyNode)]);
             }
 
             if (planObject.ObjectOperators.Count == 0
@@ -486,7 +486,7 @@ internal static class IteratorPlanLinker
                 && Fit(onlyObject, operatorEvent) is var skipPlanObject
                 && skipPlanObject.Score - SkippedPlanObject > choice.Score)
             {
-                choice = new Choice(skipPlanObject.Score - SkippedPlanObject, ChoiceKind.SkipPlanObject, [(onlyObject, operatorEvent)]);
+                choice = new Choice(skipPlanObject.Score - SkippedPlanObject, ChoiceType.SkipPlanObject, [(onlyObject, operatorEvent)]);
             }
 
             Choices[(planObject, operatorEvent.PlanNodeIdentifier!)] = choice;
@@ -499,7 +499,7 @@ internal static class IteratorPlanLinker
                            Choice choice,
                            Dictionary<ulong, PlanNodeIdentifier> planObjects)
         {
-            if (choice.Kind == ChoiceKind.Direct)
+            if (choice.Type == ChoiceType.Direct)
             {
                 planObjects.TryAdd(planObject.Address, operatorEvent.PlanNodeIdentifier!);
             }
@@ -514,7 +514,7 @@ internal static class IteratorPlanLinker
         {
             var (score, pairs) = Align(planObject.Children, plan.Children(operatorEvent));
 
-            return new Choice(score + NameScore(planObject, operatorEvent), ChoiceKind.Direct, pairs);
+            return new Choice(score + NameScore(planObject, operatorEvent), ChoiceType.Direct, pairs);
         }
 
         private (int Score, List<(PlanObject, ExecutionOperatorEvent)> Pairs) Align(IReadOnlyList<PlanObject> planObjects,

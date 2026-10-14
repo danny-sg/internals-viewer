@@ -72,7 +72,7 @@ public class IteratorPlanLinkerTests
                                   Operator(5, "Index Scan", 4));
 
         Assert.Equal([(0xA0ul, 0), (0xD0ul, 1), (0xD5ul, 2), (0xE0ul, 3), (0xE5ul, 4), (0xE7ul, 5)], NodesOf(link.PlanObjects));
-        Assert.Equal(5, link.NodeOf(0xE9)?.NodeId);
+        Assert.Equal(5, link.GetNode(0xE9)?.NodeId);
     }
 
     [Fact]
@@ -121,8 +121,8 @@ public class IteratorPlanLinkerTests
 
         var link = recording.Link(Operator(0, "Parallelism"), Operator(1, "Table Scan", 0));
 
-        Assert.Equal(0, link.NodeOf(0xF1)?.NodeId);
-        Assert.Equal(1, link.NodeOf(0xF2)?.NodeId);
+        Assert.Equal(0, link.GetNode(0xF1)?.NodeId);
+        Assert.Equal(1, link.GetNode(0xF2)?.NodeId);
     }
 
     [Fact]
@@ -142,8 +142,8 @@ public class IteratorPlanLinkerTests
 
         var link = recording.Link(Operator(0, "Table Scan"));
 
-        Assert.Equal(0, link.NodeOf(0x95)?.NodeId);
-        Assert.Null(link.NodeOf(0x90));
+        Assert.Equal(0, link.GetNode(0x95)?.NodeId);
+        Assert.Null(link.GetNode(0x90));
     }
 
     [Fact]

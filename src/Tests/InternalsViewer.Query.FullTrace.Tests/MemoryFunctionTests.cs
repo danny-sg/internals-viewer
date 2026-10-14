@@ -47,10 +47,10 @@ public class MemoryFunctionTests
     {
         var call = new TraceArgumentCall(1, 1, true, [0xA0, 3, 100, 0], 0);
 
-        Assert.Equal(3ul, MemoryFunction.Classify(0x1000, "CMemObj::Alloc")!.BytesOf(call));
-        Assert.Equal(100ul, MemoryFunction.Classify(0x1000, "CMemObj::Realloc")!.BytesOf(call));
-        Assert.Equal(3ul * 8192, MemoryFunction.Classify(0x1000, "MemoryClerkInternal::AllocatePages")!.BytesOf(call));
-        Assert.Equal(0ul, MemoryFunction.Classify(0x1000, "CMemObj::Free")!.BytesOf(call));
+        Assert.Equal(3ul, MemoryFunction.Classify(0x1000, "CMemObj::Alloc")!.GetByteCount(call));
+        Assert.Equal(100ul, MemoryFunction.Classify(0x1000, "CMemObj::Realloc")!.GetByteCount(call));
+        Assert.Equal(3ul * 8192, MemoryFunction.Classify(0x1000, "MemoryClerkInternal::AllocatePages")!.GetByteCount(call));
+        Assert.Equal(0ul, MemoryFunction.Classify(0x1000, "CMemObj::Free")!.GetByteCount(call));
     }
 
     [Theory]
@@ -73,7 +73,7 @@ public class MemoryFunctionTests
     {
         var call = new TraceArgumentCall(1, 1, true, [4, 24, 0, 0], 0);
 
-        Assert.Equal(96ul, MemoryFunction.ClassifyExport(0x1000, "calloc")!.BytesOf(call));
+        Assert.Equal(96ul, MemoryFunction.ClassifyExport(0x1000, "calloc")!.GetByteCount(call));
     }
 
     [Fact]
@@ -105,8 +105,8 @@ public class MemoryFunctionTests
 
         var release = new TraceArgumentCall(3, 1, true, [0x9000, 0, 0x8000, 0], 1);
 
-        Assert.Equal((true, false, true), (allocate.Applies(commit), allocate.Applies(reserve), free.Applies(release)));
-        Assert.Equal(65536ul, allocate.BytesOf(commit));
+        Assert.Equal((true, false, true), (allocate.IsCounted(commit), allocate.IsCounted(reserve), free.IsCounted(release)));
+        Assert.Equal(65536ul, allocate.GetByteCount(commit));
         Assert.Equal((true, false), (allocate.IsVirtual, allocate.IsHeap));
     }
 
@@ -121,7 +121,9 @@ public class MemoryFunctionTests
     {
         var call = new TraceArgumentCall(1, 1, true, [0xA0, 0, 0, 0], 0x5000);
 
-        Assert.Equal(8192ul, MemoryFunction.Classify(0x1000, "CHashWorkfilePartitionInstance::PvAllocateHashBucketPage")!.BytesOf(call));
+        var function = MemoryFunction.Classify(0x1000, "CHashWorkfilePartitionInstance::PvAllocateHashBucketPage")!;
+
+        Assert.Equal(8192ul, function.GetByteCount(call));
     }
 
     [Fact]
@@ -129,6 +131,6 @@ public class MemoryFunctionTests
     {
         var call = new TraceArgumentCall(1, 1, true, [0xA0, ulong.MaxValue, 0, 0], 0);
 
-        Assert.Equal(0ul, MemoryFunction.Classify(0x1000, "CMemObj::Alloc")!.BytesOf(call));
+        Assert.Equal(0ul, MemoryFunction.Classify(0x1000, "CMemObj::Alloc")!.GetByteCount(call));
     }
 }

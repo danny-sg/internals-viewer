@@ -3,7 +3,7 @@ using InternalsViewer.Query.FullTrace.Timeline.Enums;
 
 namespace InternalsViewer.Query.FullTrace.Timeline;
 
-public readonly record struct TraceResolvedSpan(int ThreadIndex,
+public readonly record struct TraceSpanLocation(int ThreadIndex,
                                                 TraceTimelineThread Thread,
                                                 int Depth,
                                                 TraceTimelineRow Row,
@@ -16,5 +16,5 @@ public readonly record struct TraceResolvedSpan(int ThreadIndex,
 
     public double EndOf(TraceTimelineAxis axis) => Row.Ends(axis)[Index];
 
-    public TraceTimelineSpan Span(TraceTimelineAxis axis) => Row.Span(axis, Index);
+    public TraceSpan Span(TraceTimelineAxis axis) => Row.Span(axis, Index);
 }

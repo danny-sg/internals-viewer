@@ -21,7 +21,7 @@ internal static class IteratorInstanceMatcher
 
         foreach (var instance in IteratorInstance.Build(callStack).Where(i => !i.IsWrapper))
         {
-            if (planLink.NodeOf(instance.Address) is not { } node
+            if (planLink.GetNode(instance.Address) is not { } node
                 || hierarchy.At(node) is not { PlanNodeIdentifier.NodeId: >= 0 } operatorEvent)
             {
                 continue;
@@ -46,10 +46,7 @@ internal static class IteratorInstanceMatcher
 
         AssignStatements(hierarchy, assigned);
 
-        foreach (var operatorEvent in hierarchy.Operators)
-        {
-            operatorEvent.ExitFrames = ExitFrames(operatorEvent, hierarchy);
-        }
+        hierarchy.SetExitFrames();
 
         return assigned.Count;
     }
@@ -93,12 +90,6 @@ internal static class IteratorInstanceMatcher
             }
         }
     }
-
-    private static List<CallStackNode> ExitFrames(ExecutionOperatorEvent operatorEvent, OperatorHierarchy hierarchy)
-        => [.. hierarchy.Descendants(operatorEvent)
-                        .SelectMany(d => d.EntryFrames)
-                        .Where(e => !operatorEvent.EntryFrames.Contains(e))
-                        .Distinct()];
 
     private sealed class IteratorInstance(ulong address)
     {

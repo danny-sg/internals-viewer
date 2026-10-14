@@ -88,7 +88,7 @@ public sealed partial class FlameChartControl
 
                 var positions = row.Span(TraceTimelineAxis.Position, index);
 
-                var (bytes, _) = timeline.AllocatedDuring(thread.ThreadId, positions.Start, positions.End);
+                var (bytes, _) = timeline.Memory.AllocatedDuring(thread.ThreadId, positions.Start, positions.End);
 
                 var spanLeft = (float)((span.Start - _viewStart) * scale);
 

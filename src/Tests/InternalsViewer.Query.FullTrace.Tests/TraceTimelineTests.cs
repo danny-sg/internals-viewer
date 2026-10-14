@@ -370,10 +370,10 @@ public class TraceTimelineTests
 
         timeline.SetMemory([new(7, 10, 15, 100, 0xA), new(7, 12, 13, 40, 0xB), new(7, 20, 25, 50, 0xC), new(9, 10, 11, 5, 0xD)], []);
 
-        Assert.Equal((150ul, 2), timeline.AllocatedDuring(7, 0, 30));
-        Assert.Equal((50ul, 1), timeline.AllocatedDuring(7, 15, 30));
-        Assert.Equal((100ul, 1), timeline.AllocatedDuring(7, 10, 15));
-        Assert.Equal((0ul, 0), timeline.AllocatedDuring(8, 0, 30));
+        Assert.Equal((150ul, 2), timeline.Memory.AllocatedDuring(7, 0, 30));
+        Assert.Equal((50ul, 1), timeline.Memory.AllocatedDuring(7, 15, 30));
+        Assert.Equal((100ul, 1), timeline.Memory.AllocatedDuring(7, 10, 15));
+        Assert.Equal((0ul, 0), timeline.Memory.AllocatedDuring(8, 0, 30));
     }
 
     [Fact]
@@ -383,7 +383,7 @@ public class TraceTimelineTests
 
         timeline.SetMemory([new(7, 1, 2, 64, 0xA)], []);
 
-        Assert.Equal((64ul, 1), timeline.Where(_ => true).AllocatedDuring(7, 0, 5));
+        Assert.Equal((64ul, 1), timeline.Where(_ => true).Memory.AllocatedDuring(7, 0, 5));
     }
 
     [Fact]

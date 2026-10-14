@@ -266,7 +266,7 @@ public sealed partial class FlameChartControl
             {
                 var positions = row.Span(TraceTimelineAxis.Position, index);
 
-                return timeline.AllocatedDuring(thread.ThreadId, positions.Start, positions.End).Count > 0;
+                return timeline.Memory.AllocatedDuring(thread.ThreadId, positions.Start, positions.End).Count > 0;
             };
         }
 

@@ -61,9 +61,7 @@ public sealed partial class TraceTimeline
 
     public long SpanCount { get; }
 
-    public bool HasAllocations => Memory.HasAllocations;
-
-    public bool HasWorkspace => Memory.HasWorkspace;
+    public MemoryIndex Memory { get; private set; } = MemoryIndex.Empty;
 
     public IReadOnlyList<TraceOperatorLifetime> Lifetimes { get; private set; } = [];
 
@@ -84,8 +82,6 @@ public sealed partial class TraceTimeline
     private int[] Parents { get; }
 
     private CallStackNode?[] Nodes { get; set; } = [];
-
-    private MemoryIndex Memory { get; set; } = MemoryIndex.Empty;
 
     private Dictionary<int, TraceEventLink> EventLinksBySequence { get; set; } = [];
 
@@ -143,7 +139,7 @@ public sealed partial class TraceTimeline
         return null;
     }
 
-    public IEnumerable<TraceResolvedSpan> ResolvedSpans()
+    public IEnumerable<TraceSpanLocation> GetSpanLocations()
     {
         for (var threadIndex = 0; threadIndex < Threads.Count; threadIndex++)
         {
@@ -157,32 +153,12 @@ public sealed partial class TraceTimeline
                 {
                     if (NodeOf(row.NodeAt(index)) is { } node)
                     {
-                        yield return new TraceResolvedSpan(threadIndex, thread, depth, row, index, node);
+                        yield return new TraceSpanLocation(threadIndex, thread, depth, row, index, node);
                     }
                 }
             }
         }
     }
-
-    public (ulong Bytes, int Count) AllocatedDuring(uint thread, double positionStart, double positionEnd)
-        => Memory.AllocatedDuring(thread, positionStart, positionEnd);
-
-    public ulong FreedDuring(uint thread, double positionStart, double positionEnd)
-        => Memory.FreedDuring(thread, positionStart, positionEnd);
-
-    public ulong RetainedBy(uint thread, double positionStart, double positionEnd)
-        => Memory.RetainedBy(thread, positionStart, positionEnd);
-
-    public ulong PeakInUseDuring(double positionStart, double positionEnd) => Memory.PeakInUseDuring(positionStart, positionEnd);
-
-    public ulong PeakWorkspaceDuring(double positionStart, double positionEnd)
-        => Memory.PeakWorkspaceDuring(positionStart, positionEnd);
-
-    public MemoryInUseCurve InUseWithin(uint thread, double positionStart, double positionEnd)
-        => Memory.InUseWithin(thread, positionStart, positionEnd);
-
-    public IReadOnlyList<MemoryInUseCurve> InUseOwnedBy(uint thread, IReadOnlyList<IReadOnlyList<TraceTimelineSpan>> calls)
-        => Memory.InUseOwnedBy(thread, calls);
 
     public IReadOnlyList<TraceSelfAllocation> SelfAllocations()
     {
@@ -192,7 +168,7 @@ public sealed partial class TraceTimeline
         {
             var rows = Threads[thread].Rows;
 
-            foreach (var (position, bytes) in Memory.AllocationsOf(Threads[thread].ThreadId))
+            foreach (var (position, bytes) in Memory.GetAllocations(Threads[thread].ThreadId))
             {
                 for (var depth = rows.Count - 1; depth >= 0; depth--)
                 {
@@ -404,7 +380,7 @@ public sealed partial class TraceTimeline
             return activity;
         }
 
-        foreach (var span in ResolvedSpans())
+        foreach (var span in GetSpanLocations())
         {
             if (span.Row.FlagsAt(span.Index).HasFlag(TraceSpanFlags.StartUnknown))
             {

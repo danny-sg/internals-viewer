@@ -62,7 +62,7 @@ public class TraceExportSectionTests
         Assert.Equal(new PageAddress(1, 336), calls[1].GetLocator(2)?.Page);
         Assert.Equal("(1:336), (1:336:4)", getRow.LocatorsDetail);
         Assert.Equal(3, fullTrace.Timeline.SpanCount);
-        Assert.Equal(100ul, fullTrace.Timeline.PeakInUseDuring(0, 100));
+        Assert.Equal(100ul, fullTrace.Timeline.Memory.PeakInUseDuring(0, 100));
         Assert.Single(fullTrace.Timeline.Lifetimes);
     }
 

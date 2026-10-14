@@ -50,22 +50,22 @@ internal sealed record MemoryFunction(ulong Address,
 
     public ulong FlagMask { get; init; }
 
-    public bool Allocates => Operation is AllocationOperation.Allocate or AllocationOperation.Reallocate;
+    public bool IsAllocation => Operation is AllocationOperation.Allocate or AllocationOperation.Reallocate;
 
     public static bool IsMemoryObjectClass(string? className)
         => className is not null && (className == MemoryObjectFactory || IsMemoryObject(className));
 
-    public bool Applies(TraceArgumentCall call) => FlagSlot < 0 || (call.Slot(FlagSlot) & FlagMask) != 0;
+    public bool IsCounted(TraceArgumentCall call) => FlagSlot < 0 || (call.Slot(FlagSlot) & FlagMask) != 0;
 
-    public ulong ObjectOf(TraceArgumentCall call) => Operation == AllocationOperation.Create ? call.ReturnedValue : call.Slot(0);
+    public ulong GetObject(TraceArgumentCall call) => Operation == AllocationOperation.Create ? call.ReturnedValue : call.Slot(0);
 
-    public ulong PointerOf(TraceArgumentCall call) => call.Slot(PointerSlot);
+    public ulong GetPointer(TraceArgumentCall call) => call.Slot(PointerSlot);
 
-    public ulong BytesOf(TraceArgumentCall call)
+    public ulong GetByteCount(TraceArgumentCall call)
     {
         if (SizeSlot < 0)
         {
-            return Allocates ? Unit : 0;
+            return IsAllocation ? Unit : 0;
         }
 
         var size = call.Slot(SizeSlot);

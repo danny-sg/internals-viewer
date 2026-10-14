@@ -36,7 +36,7 @@ internal static class AllocationMapper
 
         ulong bytes = 0;
 
-        foreach (var function in functions.Where(f => f.Allocates || f is { Operation: AllocationOperation.Free, PointerSlot: >= 0 }))
+        foreach (var function in functions.Where(f => f.IsAllocation || f is { Operation: AllocationOperation.Free, PointerSlot: >= 0 }))
         {
             if (GetCalls(function.Address) is not { } logged)
             {
@@ -51,21 +51,21 @@ internal static class AllocationMapper
 
                 var node = store.GetNode(call);
 
-                if (!function.Applies(call) || (function.IsPage && IsPlumbing(node, plumbing)))
+                if (!function.IsCounted(call) || (function.IsPage && IsPlumbing(node, plumbing)))
                 {
                     continue;
                 }
 
-                var pointer = function.PointerOf(call);
+                var pointer = function.GetPointer(call);
 
-                if (!function.Allocates)
+                if (!function.IsAllocation)
                 {
                     callValues.Released[index] = pointer;
 
                     continue;
                 }
 
-                callValues.Bytes[index] = function.BytesOf(call);
+                callValues.Bytes[index] = function.GetByteCount(call);
 
                 callValues.Returned[index] = call.ReturnedValue;
 
@@ -113,7 +113,7 @@ internal static class AllocationMapper
 
         var threads = new Dictionary<uint, ThreadCalls>();
 
-        foreach (var span in timeline.ResolvedSpans())
+        foreach (var span in timeline.GetSpanLocations())
         {
             if (span.Node.Frame is not { } frame
                 || !functions.TryGetValue(frame.Address, out var function)
@@ -151,7 +151,7 @@ internal static class AllocationMapper
                 thread.Pages.Add((start, arguments.Slot(0)));
             }
 
-            if (function.IsObjectCall && function.ObjectOf(arguments) is not 0 and var memoryObject)
+            if (function.IsObjectCall && function.GetObject(arguments) is not 0 and var memoryObject)
             {
                 thread.Objects.Add((start, end, memoryObject));
             }
@@ -184,7 +184,7 @@ internal static class AllocationMapper
         {
             foreach (var (address, call, start, end) in thread.Calls)
             {
-                if (!functions[address].Allocates)
+                if (!functions[address].IsAllocation)
                 {
                     continue;
                 }
@@ -273,7 +273,7 @@ internal static class AllocationMapper
         {
             inside = node.Ancestors()
                          .Skip(1)
-                         .Any(a => a.Frame is { } frame && functions.TryGetValue(frame.Address, out var function) && function.Allocates);
+                         .Any(a => a.Frame is { } frame && functions.TryGetValue(frame.Address, out var function) && function.IsAllocation);
 
             nested[node] = inside;
         }
@@ -283,9 +283,9 @@ internal static class AllocationMapper
 
     private sealed class CallValues(MemoryFunction function, int count)
     {
-        public ulong[] Bytes { get; } = function.Allocates ? new ulong[count] : [];
+        public ulong[] Bytes { get; } = function.IsAllocation ? new ulong[count] : [];
 
-        public ulong[] Returned { get; } = function.Allocates ? new ulong[count] : [];
+        public ulong[] Returned { get; } = function.IsAllocation ? new ulong[count] : [];
 
         public ulong[] Released { get; } = function.Operation is AllocationOperation.Free or AllocationOperation.Reallocate
             ? new ulong[count]

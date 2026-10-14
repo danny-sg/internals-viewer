@@ -220,5 +220,5 @@ public sealed partial class FlameChartControl
         return new MarkedCall(thread.Rows[hit.Depth].Span(_axis, hit.Index), thread.ThreadId, hit.Lane, hit.Depth);
     }
 
-    private readonly record struct MarkedCall(TraceTimelineSpan Span, uint ThreadId, int Lane, int Depth);
+    private readonly record struct MarkedCall(TraceSpan Span, uint ThreadId, int Lane, int Depth);
 }

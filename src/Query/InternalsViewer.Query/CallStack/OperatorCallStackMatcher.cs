@@ -65,10 +65,7 @@ internal static class OperatorCallStackMatcher
         }
 
         // Exits second: an operator's segment ends where its descendants' segments start, so every entry must be known.
-        foreach (var operatorEvent in hierarchy.Operators)
-        {
-            operatorEvent.ExitFrames = ExitFrames(operatorEvent, hierarchy);
-        }
+        hierarchy.SetExitFrames();
     }
 
     /// <summary>
@@ -365,24 +362,6 @@ internal static class OperatorCallStackMatcher
         }
 
         return entryFrames;
-    }
-
-    private static List<CallStackNode> ExitFrames(ExecutionOperatorEvent operatorEvent, OperatorHierarchy hierarchy)
-    {
-        var exitFrames = new List<CallStackNode>();
-
-        foreach (var descendant in hierarchy.Descendants(operatorEvent))
-        {
-            foreach (var entry in descendant.EntryFrames)
-            {
-                if (!operatorEvent.EntryFrames.Contains(entry) && !exitFrames.Contains(entry))
-                {
-                    exitFrames.Add(entry);
-                }
-            }
-        }
-
-        return exitFrames;
     }
 
     /// <summary>

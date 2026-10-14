@@ -2,7 +2,7 @@ using InternalsViewer.Query.FullTrace.Export;
 
 namespace InternalsViewer.Query.FullTrace.Memory;
 
-internal sealed partial class MemoryIndex
+public sealed partial class MemoryIndex
 {
     internal static MemoryIndex Read(BinaryReader reader)
     {
@@ -45,7 +45,7 @@ internal sealed partial class MemoryIndex
             AllocationStarts = allocationStarts;
             AllocationBytes = allocationBytes;
             FreedAt = freedAt;
-            AllocationTotals = Totals(allocationBytes);
+            AllocationTotals = GetRunningTotals(allocationBytes);
             FreeStarts = freeStarts;
             FreeTotals = freeTotals;
         }

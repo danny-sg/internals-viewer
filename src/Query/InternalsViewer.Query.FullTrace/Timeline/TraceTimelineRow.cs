@@ -50,7 +50,7 @@ public sealed partial class TraceTimelineRow
 
     public TraceSpanFlags FlagsAt(int index) => (TraceSpanFlags)Flags[index];
 
-    public TraceTimelineSpan Span(TraceTimelineAxis axis, int index)
+    public TraceSpan Span(TraceTimelineAxis axis, int index)
         => new(Starts(axis)[index], Ends(axis)[index], Nodes[index], CallAt(index), FlagsAt(index));
 
     public TraceTimelineRow Where(Func<int, bool> include)

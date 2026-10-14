@@ -97,6 +97,16 @@ public sealed class OperatorHierarchy
                      .ExpandOwned();
     }
 
+    public void SetExitFrames()
+    {
+        foreach (var operatorEvent in Operators)
+        {
+            operatorEvent.ExitFrames = [.. Descendants(operatorEvent).SelectMany(d => d.EntryFrames)
+                                                                     .Where(e => !operatorEvent.EntryFrames.Contains(e))
+                                                                     .Distinct()];
+        }
+    }
+
     private List<ExecutionOperatorEvent> Collect(ExecutionOperatorEvent operatorEvent)
     {
         var collected = new List<ExecutionOperatorEvent>();

@@ -125,7 +125,7 @@ public class AllocationMapperTests
 
         var end = timeline.EndOf(TraceTimelineAxis.Position) + 1;
 
-        Assert.Equal((64ul, expected), (timeline.PeakInUseDuring(start, end), timeline.PeakWorkspaceDuring(start, end)));
+        Assert.Equal((64ul, expected), (timeline.Memory.PeakInUseDuring(start, end), timeline.Memory.PeakWorkspaceDuring(start, end)));
     }
 
     [Fact]
@@ -221,7 +221,8 @@ public class AllocationMapperTests
         => new(1, start, 1, end, start, end, node, 7, call, 1);
 
     private static ulong PeakWorkspace(TraceTimeline timeline)
-        => timeline.PeakWorkspaceDuring(timeline.StartOf(TraceTimelineAxis.Position), timeline.EndOf(TraceTimelineAxis.Position) + 1);
+        => timeline.Memory.PeakWorkspaceDuring(timeline.StartOf(TraceTimelineAxis.Position),
+                                               timeline.EndOf(TraceTimelineAxis.Position) + 1);
 
     private static CallstackFrame Resolved(ulong address,
                                            string module,

@@ -612,7 +612,7 @@ public sealed partial class FlameChartControl
 
         var found = new Dictionary<int, List<SelectedRegion>>();
 
-        foreach (var span in timeline.ResolvedSpans())
+        foreach (var span in timeline.GetSpanLocations())
         {
             if (span.Node.Frame is not { Instance: not 0 } frame || !instances.Contains(frame.Instance))
             {
@@ -892,9 +892,9 @@ public sealed partial class FlameChartControl
 
     private readonly record struct OperatorHit(int Row, int Track);
 
-    private readonly record struct SelectedRegion(int Depth, TraceTimelineSpan Position, TraceTimelineSpan Instructions)
+    private readonly record struct SelectedRegion(int Depth, TraceSpan Position, TraceSpan Instructions)
     {
-        public TraceTimelineSpan Of(TraceTimelineAxis axis) => axis == TraceTimelineAxis.Position ? Position : Instructions;
+        public TraceSpan Of(TraceTimelineAxis axis) => axis == TraceTimelineAxis.Position ? Position : Instructions;
     }
 
     private sealed record SelectedLane(SelectedRegion[] Regions, double[] PositionEnds, double[] InstructionEnds)
