@@ -246,7 +246,9 @@ public class SourcePathTests
             parts.Add(value);
         }
 
-        return new PlayheadCallRow(node, new TraceTimelineSpan(0, 1, 0, 0, default), new CallSignature(parts, self, null), id, false);
+        var call = new TraceStackCall(new TraceTimelineSpan(0, 1, 0, 0, default), 0, 0, 0);
+
+        return new PlayheadCallRow(node, call, new CallSignature(parts, self, null), id, false);
     }
 
     private static CallstackFrame Frame(string className, string methodName, uint rva)

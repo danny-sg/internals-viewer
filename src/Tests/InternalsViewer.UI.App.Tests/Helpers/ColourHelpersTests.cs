@@ -8,6 +8,21 @@ namespace InternalsViewer.UI.App.Tests.Helpers;
 public class ColourHelpersTests
 {
     [Fact]
+    public void A_Hex_Colour_Is_Read_With_Or_Without_Its_Hash()
+    {
+        Assert.Equal(Windows.UI.Color.FromArgb(0xFF, 0x44, 0x72, 0xC4), ColourHelpers.FromHex("#4472C4"));
+        Assert.Equal(Windows.UI.Color.FromArgb(0xFF, 0x44, 0x72, 0xC4), ColourHelpers.FromHex("4472C4"));
+    }
+
+    [Fact]
+    public void A_Hex_Colour_That_Is_Not_Six_Digits_Is_Not_Read()
+    {
+        Assert.Null(ColourHelpers.FromHex(null));
+        Assert.Null(ColourHelpers.FromHex("#FFF"));
+        Assert.Null(ColourHelpers.FromHex("#GGGGGG"));
+    }
+
+    [Fact]
     public void A_Colour_Far_From_Its_Background_Is_Kept()
     {
         var slot = Color.Red.ContrastingWith(Color.Navy);

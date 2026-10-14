@@ -103,9 +103,7 @@ public sealed partial class TraceTimeline
 
         foreach (var thread in Threads)
         {
-            var calls = new List<TraceTimelineSpan>();
-
-            var extents = new List<TraceCallExtent>();
+            var calls = new List<TraceStackCall>();
 
             foreach (var row in thread.Rows)
             {
@@ -116,18 +114,16 @@ public sealed partial class TraceTimeline
                     continue;
                 }
 
-                calls.Add(row.Span(axis, index));
-
                 var positions = row.Span(TraceTimelineAxis.Position, index);
 
                 var instructions = row.Span(TraceTimelineAxis.Instructions, index);
 
-                extents.Add(new TraceCallExtent(positions.Start, positions.End, instructions.End - instructions.Start));
+                calls.Add(new TraceStackCall(row.Span(axis, index), positions.Start, positions.End, instructions.End - instructions.Start));
             }
 
             if (calls.Count > 0)
             {
-                stacks.Add(new TraceThreadStack(thread.ThreadId, calls, extents));
+                stacks.Add(new TraceThreadStack(thread.ThreadId, calls));
             }
         }
 

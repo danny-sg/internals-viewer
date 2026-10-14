@@ -28,7 +28,7 @@ public sealed class CallLogLookup(TraceCallLog log,
 
     public TraceCallLog Log { get; } = log;
 
-    private Dictionary<ulong, Task<ArgumentLayout?>> Layouts { get; } = [];
+    private Dictionary<ulong, Task<ResolvedSignature?>> Signatures { get; } = [];
 
     private Lazy<Dictionary<ulong, CallstackFrame>> Frames { get; } = new(() => GetFrames(tree));
 
@@ -97,7 +97,7 @@ public sealed class CallLogLookup(TraceCallLog log,
 
     public async Task<CallSignature?> GetSignatureAsync(CallStackNode node, int call)
     {
-        if (node.Frame is not { } frame || Log.CallsOf(frame.Address, frame.Instance) is not { } calls || call < 0 || call >= calls.Count)
+        if (node.Frame is not { } frame || CallsOf(node) is not { } calls || call < 0 || call >= calls.Count)
         {
             return null;
         }
@@ -123,38 +123,30 @@ public sealed class CallLogLookup(TraceCallLog log,
     }
 
     public ulong GetCallId(CallStackNode node, int call)
-        => node.Frame is { } frame && Log.CallsOf(frame.Address, frame.Instance) is { } calls && call >= 0 && call < calls.Count
-            ? calls.IdAt(call)
-            : 0;
+        => CallsOf(node) is { } calls && call >= 0 && call < calls.Count ? calls.IdAt(call) : 0;
 
-    public int GetEnclosingCall(CallStackNode node, ulong id)
-        => node.Frame is { } frame && Log.CallsOf(frame.Address, frame.Instance) is { } calls ? calls.IndexOfEnclosing(id) : -1;
+    public int GetEnclosingCall(CallStackNode node, ulong id) => CallsOf(node)?.IndexOfEnclosing(id) ?? -1;
 
     public CallReference? GetOrigin(MemoryMapEntry origin)
+        => Log.NodeAt(origin.Node) is { Frame: not null } node ? new CallReference(node, CallsOf(node)?.IndexOf(origin.Call) ?? -1) : null;
+
+    public Task<ResolvedSignature?> ResolveAsync(CallstackFrame frame)
     {
-        if (Log.NodeAt(origin.Node) is not { Frame: { } frame } node)
+        if (!Signatures.TryGetValue(frame.Address, out var resolved))
         {
-            return null;
+            resolved = ResolveSignatureAsync(frame);
+
+            Signatures[frame.Address] = resolved;
         }
 
-        return new CallReference(node, Log.CallsOf(frame.Address, frame.Instance)?.IndexOf(origin.Call) ?? -1);
+        return resolved;
     }
 
-    public Task<ArgumentLayout?> GetLayoutAsync(CallstackFrame frame)
+    public async Task<ArgumentLayout?> GetLayoutAsync(CallstackFrame frame) => (await ResolveAsync(frame))?.Layout;
+
+    public async Task<ValueReferences> GetReferencesAsync(ulong value, CancellationToken cancellationToken)
     {
-        if (!Layouts.TryGetValue(frame.Address, out var layout))
-        {
-            layout = ResolveLayoutAsync(frame);
-
-            Layouts[frame.Address] = layout;
-        }
-
-        return layout;
-    }
-
-    public async Task<ValueReferences> GetReferencesAsync(ulong value, CallExclusions exclusions, CancellationToken cancellationToken)
-    {
-        var uses = await Log.FindAsync(value, cancellationToken, exclusions.IsEmpty ? null : exclusions.Includes);
+        var uses = await Log.FindAsync(value, cancellationToken);
 
         var kinds = await ResolveKindsAsync(uses.Where(u => u.Location == "RCX"));
 
@@ -167,10 +159,8 @@ public sealed class CallLogLookup(TraceCallLog log,
         return new ValueReferences(GetTypeName(value, iterator, groups), iterator, groups);
     }
 
-    public Task<IReadOnlyList<TraceValueMatch>> FindCallsAsync(ValueUseRow row,
-                                                               CallExclusions exclusions,
-                                                               CancellationToken cancellationToken)
-        => Log.FindCallsAsync(row.Use, row.Value, cancellationToken, exclusions.IsEmpty ? null : exclusions.Includes);
+    public Task<IReadOnlyList<TraceValueMatch>> FindCallsAsync(ValueUseRow row, CancellationToken cancellationToken)
+        => Log.FindCallsAsync(row.Use, row.Value, cancellationToken);
 
     public async Task<IReadOnlyList<ValueCallRow>> CallRowsAsync(TraceValueUse use,
                                                                  IReadOnlyList<TraceValueMatch> matches,
@@ -195,6 +185,8 @@ public sealed class CallLogLookup(TraceCallLog log,
             () => [.. Enumerable.Range(from, Math.Max(0, end - from)).Select(i => GetCallRow(matches[i], use, function, layout, calls))],
             cancellationToken);
     }
+
+    private TraceCallList? CallsOf(CallStackNode node) => node.Frame is { } frame ? Log.CallsOf(frame.Address, frame.Instance) : null;
 
     private static string FunctionName(CallstackFrame? frame, ulong address)
     {
@@ -232,15 +224,20 @@ public sealed class CallLogLookup(TraceCallLog log,
         return frames;
     }
 
-    private async Task<ArgumentLayout?> ResolveLayoutAsync(CallstackFrame frame)
+    private async Task<ResolvedSignature?> ResolveSignatureAsync(CallstackFrame frame)
     {
         var signature = await symbols.ResolveFrameSignatureAsync(frame);
 
         var decoratedName = await symbols.ResolveFrameDecoratedNameAsync(frame);
 
-        return FunctionSignature.Parse(signature, decoratedName) is { } parsed
-            ? KnownParameters.Apply(ArgumentLayout.LayoutOf(parsed), frame.Resolved?.ClassName, frame.Resolved?.MethodName)
-            : null;
+        if (FunctionSignature.Parse(signature, decoratedName) is not { } parsed)
+        {
+            return null;
+        }
+
+        var layout = KnownParameters.Apply(ArgumentLayout.LayoutOf(parsed), frame.Resolved?.ClassName, frame.Resolved?.MethodName);
+
+        return new ResolvedSignature(parsed, signature, layout);
     }
 
     private async Task<Dictionary<ulong, FunctionKind?>> ResolveKindsAsync(IEnumerable<TraceValueUse> uses)

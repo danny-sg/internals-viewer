@@ -136,12 +136,22 @@ public sealed partial class FlameChartControl
 
     private void ReportPlayhead()
     {
-        if (_playhead == _reportedPlayhead && _version == _reportedVersion && _axis == _reportedAxis)
+        if (_playhead is not null)
+        {
+            _stackPosition = null;
+        }
+
+        if (_playhead == _reportedPlayhead
+            && _stackPosition == _reportedStackPosition
+            && _version == _reportedVersion
+            && _axis == _reportedAxis)
         {
             return;
         }
 
         _reportedPlayhead = _playhead;
+
+        _reportedStackPosition = _stackPosition;
 
         _reportedVersion = _version;
 

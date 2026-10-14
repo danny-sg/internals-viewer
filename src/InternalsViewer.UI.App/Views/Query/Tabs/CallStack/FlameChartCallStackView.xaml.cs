@@ -2,25 +2,24 @@ using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Linq;
+using CommunityToolkit.WinUI;
 using InternalsViewer.UI.App.Controls.CallStack;
+using InternalsViewer.UI.App.Helpers;
+using InternalsViewer.UI.App.Helpers.Converters.Page;
 using InternalsViewer.UI.App.Models.Query.CallStack;
 using InternalsViewer.UI.App.ViewModels;
 using InternalsViewer.UI.App.ViewModels.Query.CallStack;
-using InternalsViewer.UI.App.Helpers;
-using InternalsViewer.UI.App.Helpers.Converters.Page;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Documents;
 using Microsoft.UI.Xaml.Input;
 using Microsoft.UI.Xaml.Media;
 using Microsoft.UI.Xaml.Media.Animation;
 
-namespace InternalsViewer.UI.App.Views.Query.Tabs.FlameChart;
+namespace InternalsViewer.UI.App.Views.Query.Tabs.CallStack;
 
 public sealed partial class FlameChartCallStackView : UserControl, IValueFinder, IDisposable
 {
     private const double DetailsWidth = 420;
-
-    private const string ThisLabel = "this";
 
     public FlameChartCallStackView()
     {
@@ -31,8 +30,6 @@ public sealed partial class FlameChartCallStackView : UserControl, IValueFinder,
         StackTree.Loaded += OnStackTreeLoaded;
 
         Settings.PropertyChanged += OnSettingsPropertyChanged;
-
-        Display.IsDecoded = Settings.DecodeValues;
     }
 
     public PlayheadCallStackViewModel? ViewModel => DataContext as PlayheadCallStackViewModel;
@@ -40,16 +37,6 @@ public sealed partial class FlameChartCallStackView : UserControl, IValueFinder,
     private PlayheadCallStackViewModel? Attached { get; set; }
 
     private SettingsViewModel Settings { get; } = App.GetService<SettingsViewModel>();
-
-    private ValueDisplay Display => (ValueDisplay)Resources["ValueDisplay"];
-
-    private HexColorToBrushConverter CategoryBrushes { get; } = new();
-
-    private static Brush? SecondaryBrush
-        => Application.Current.Resources.TryGetValue("TextFillColorSecondaryBrush", out var brush) ? brush as Brush : null;
-
-    private static Brush? SourceHoverBrush
-        => Application.Current.Resources.TryGetValue("SystemFillColorSuccessBackgroundBrush", out var brush) ? brush as Brush : null;
 
     private static Brush TransparentBrush { get; } = new SolidColorBrush(Microsoft.UI.Colors.Transparent);
 
@@ -62,9 +49,9 @@ public sealed partial class FlameChartCallStackView : UserControl, IValueFinder,
     private bool IsBuilding { get; set; }
 
     public static Brush? RowBackground(bool isCurrent)
-        => isCurrent && Application.Current.Resources.TryGetValue("SolidBackgroundFillColorQuarternaryBrush", out var brush)
-            ? brush as Brush
-            : null;
+        => isCurrent ? AppResources.Get<Brush>("SolidBackgroundFillColorQuarternaryBrush") : null;
+
+    public static string ArgumentLabel(string? label, string? location) => label ?? location ?? string.Empty;
 
     public void Find(ulong value) => ViewModel?.Find(value);
 
@@ -77,18 +64,17 @@ public sealed partial class FlameChartCallStackView : UserControl, IValueFinder,
         Detach();
     }
 
-    private Visibility IsEmpty(IReadOnlyList<PlayheadThreadRow>? threads)
-        => threads is { Count: > 0 } ? Visibility.Collapsed : Visibility.Visible;
+    private static Visibility Show(bool shown) => shown ? Visibility.Visible : Visibility.Collapsed;
 
-    private Visibility IsShown(object? value) => value is null ? Visibility.Collapsed : Visibility.Visible;
+    private Visibility IsShown(object? value) => Show(value is not null);
 
-    private Visibility IsFunctionShown(object? value, CallSignaturePart? selected)
-        => value is null || selected is not null ? Visibility.Collapsed : Visibility.Visible;
+    private Visibility IsEmpty(IReadOnlyList<PlayheadThreadRow>? threads) => Show(threads is not { Count: > 0 });
 
-    public static string ArgumentLabel(string? label, string? location) => label ?? location ?? string.Empty;
+    private Visibility IsFunctionShown(PlayheadCallRow? row, CallSignaturePart? selected) => Show(row is not null && selected is null);
 
-    private Visibility AreArgumentsShown(PlayheadCallRow? row, CallSignaturePart? selected)
-        => row is { Arguments.Count: > 0 } && selected is null ? Visibility.Visible : Visibility.Collapsed;
+    private Visibility AreArgumentsShown(PlayheadCallRow? row) => Show(row is { Arguments.Count: > 0 });
+
+    private Visibility IsSourceShown(IReadOnlyList<SourceStep>? steps) => Show(steps is { Count: > 0 });
 
     private string CallIdText(PlayheadCallRow? row) => row is { Id: > 0 } ? $"{row.Id}" : "None";
 
@@ -98,39 +84,13 @@ public sealed partial class FlameChartCallStackView : UserControl, IValueFinder,
 
     private string InstructionsText(PlayheadCallRow? row) => row is null ? string.Empty : $"{row.Instructions:N0}";
 
-    private Visibility IsSourceShown(IReadOnlyList<SourceStep>? steps)
-        => steps is { Count: > 0 } ? Visibility.Visible : Visibility.Collapsed;
-
-    private Brush? CategoryBrush(PlayheadCallRow? row)
-        => row is null ? null : CategoryBrushes.Convert(row.Node.CategoryColour, typeof(Brush), null!, string.Empty) as Brush;
+    private Brush? CategoryBrush(PlayheadCallRow? row) => row is null ? null : HexColorToBrushConverter.ToBrush(row.Node.CategoryColour);
 
     private string ThisText(PlayheadCallRow? row)
         => row?.This is { } self ? (self.Decoded is { } decoded && decoded != self.Text ? $"{self.Text}  {decoded}" : self.Text) : "None";
 
     private string ReturnText(PlayheadCallRow? row)
-        => row?.Return is { } returned
-            ? $"{returned.TypeName} {returned.GetText(Display.IsDecoded)}".Trim()
-            : "None";
-
-    private static T? FindDescendant<T>(DependencyObject parent) where T : DependencyObject
-    {
-        for (var index = 0; index < VisualTreeHelper.GetChildrenCount(parent); index++)
-        {
-            var child = VisualTreeHelper.GetChild(parent, index);
-
-            if (child is T found)
-            {
-                return found;
-            }
-
-            if (FindDescendant<T>(child) is { } nested)
-            {
-                return nested;
-            }
-        }
-
-        return null;
-    }
+        => row?.Return is { } returned ? $"{returned.TypeName} {returned.GetText(Settings.DecodeValues)}".Trim() : "None";
 
     private void OnViewModelChanged()
     {
@@ -143,10 +103,7 @@ public sealed partial class FlameChartCallStackView : UserControl, IValueFinder,
 
         Attached = ViewModel;
 
-        if (Attached is { } viewModel)
-        {
-            viewModel.PropertyChanged += OnViewModelPropertyChanged;
-        }
+        Attached?.PropertyChanged += OnViewModelPropertyChanged;
 
         Bindings.Update();
 
@@ -157,10 +114,7 @@ public sealed partial class FlameChartCallStackView : UserControl, IValueFinder,
 
     private void Detach()
     {
-        if (Attached is { } viewModel)
-        {
-            viewModel.PropertyChanged -= OnViewModelPropertyChanged;
-        }
+        Attached?.PropertyChanged -= OnViewModelPropertyChanged;
 
         Attached = null;
     }
@@ -249,7 +203,11 @@ public sealed partial class FlameChartCallStackView : UserControl, IValueFinder,
 
         if (Attached?.SelectedValue is { Label: { } label } value)
         {
-            DetailsTitle.Inlines.Add(new Run { Text = $"  [{label}]", Foreground = SecondaryBrush });
+            DetailsTitle.Inlines.Add(new Run
+            {
+                Text = $"  [{label}]",
+                Foreground = AppResources.Get<Brush>("TextFillColorSecondaryBrush")
+            });
 
             if (value.DeclaredType is { } type)
             {
@@ -273,7 +231,7 @@ public sealed partial class FlameChartCallStackView : UserControl, IValueFinder,
             return;
         }
 
-        if ((value.DeclaredType ?? (value.Label == ThisLabel ? ThisLabel : null)) is { } type)
+        if ((value.DeclaredType ?? (value.IsThis ? CallSignaturePart.ThisLabel : null)) is { } type)
         {
             SignatureRuns.AddType(ValueTypeText.Inlines, type);
         }
@@ -283,13 +241,13 @@ public sealed partial class FlameChartCallStackView : UserControl, IValueFinder,
             ValueTypeText.Inlines.Add(new Run
             {
                 Text = ValueTypeText.Inlines.Count > 0 ? $" ({location})" : location,
-                Foreground = SecondaryBrush
+                Foreground = AppResources.Get<Brush>("TextFillColorSecondaryBrush")
             });
         }
 
         if (value.Decoded is not null)
         {
-            SignatureRuns.AddDecoded(ValueDecodedText.Inlines, value);
+            SignatureRuns.AddValue(ValueDecodedText.Inlines, value, decode: true);
         }
     }
 
@@ -332,24 +290,26 @@ public sealed partial class FlameChartCallStackView : UserControl, IValueFinder,
         viewModel.SelectedValue = part;
     }
 
+    private void OnArgumentTapped(object sender, TappedRoutedEventArgs e)
+    {
+        if ((sender as FrameworkElement)?.DataContext is CallSignaturePart part && Attached is { } viewModel)
+        {
+            viewModel.SelectedValue = part;
+        }
+    }
+
     private void OnCloseDetailsClick(object sender, RoutedEventArgs e) => Attached?.ClearSelection();
 
     private void OnSourceStepPointerEntered(object sender, PointerRoutedEventArgs e)
     {
-        if (sender is Panel panel)
-        {
-            panel.Background = SourceHoverBrush;
-        }
+        SetSourceHover(sender, true);
 
         Attached?.Mark((sender as FrameworkElement)?.DataContext as SourceStep);
     }
 
     private void OnSourceFramePointerEntered(object sender, PointerRoutedEventArgs e)
     {
-        if (sender is Panel panel)
-        {
-            panel.Background = SourceHoverBrush;
-        }
+        SetSourceHover(sender, true);
 
         if ((sender as FrameworkElement)?.DataContext is SourceFrame frame)
         {
@@ -359,19 +319,16 @@ public sealed partial class FlameChartCallStackView : UserControl, IValueFinder,
 
     private void OnSourcePointerExited(object sender, PointerRoutedEventArgs e)
     {
-        if (sender is Panel panel)
-        {
-            panel.Background = TransparentBrush;
-        }
+        SetSourceHover(sender, false);
 
         Attached?.Mark(null);
     }
 
-    private void OnArgumentTapped(object sender, TappedRoutedEventArgs e)
+    private static void SetSourceHover(object sender, bool hovered)
     {
-        if ((sender as FrameworkElement)?.DataContext is CallSignaturePart part && Attached is { } viewModel)
+        if (sender is Panel panel)
         {
-            viewModel.SelectedValue = part;
+            panel.Background = hovered ? AppResources.Get<Brush>("SystemFillColorSuccessBackgroundBrush") : TransparentBrush;
         }
     }
 
@@ -395,41 +352,27 @@ public sealed partial class FlameChartCallStackView : UserControl, IValueFinder,
     private void OnCallRowRightTapped(object sender, RightTappedRoutedEventArgs e)
         => ContextRow = (sender as FrameworkElement)?.DataContext is TreeViewNode { Content: PlayheadCallRow row } ? row : null;
 
-    private void OnOpenInCallTreeClick(object sender, RoutedEventArgs e)
-    {
-        if (ContextRow is { } row)
-        {
-            Attached?.OpenInCallTree(row);
-        }
-    }
+    private void OnOpenInCallTreeClick(object sender, RoutedEventArgs e) => WithContextRow((stack, row) => stack.OpenInCallTree(row));
 
-    private void OnZoomClick(object sender, RoutedEventArgs e)
-    {
-        if (ContextRow is { } row)
-        {
-            Attached?.Zoom(row);
-        }
-    }
+    private void OnZoomClick(object sender, RoutedEventArgs e) => WithContextRow((stack, row) => stack.Zoom(row));
 
-    private void OnScopeClick(object sender, RoutedEventArgs e)
-    {
-        if (ContextRow is { } row)
-        {
-            Attached?.Scope(row);
-        }
-    }
+    private void OnScopeClick(object sender, RoutedEventArgs e) => WithContextRow((stack, row) => stack.Scope(row));
 
-    private void OnCopySignatureClick(object sender, RoutedEventArgs e)
+    private void OnCopySignatureClick(object sender, RoutedEventArgs e) => WithContextRow((_, row) => ClipboardText.Copy(DisplayText(row)));
+
+    private string DisplayText(PlayheadCallRow row) => string.Concat(row.Signature.Select(p => p.GetDisplayText(Settings.DecodeValues)));
+
+    private void WithContextRow(Action<PlayheadCallStackViewModel, PlayheadCallRow> action)
     {
-        if (ContextRow is { } row)
+        if (Attached is { } stack && ContextRow is { } row)
         {
-            ClipboardText.Copy(string.Concat(row.Signature.Select(p => p.GetDisplayText(Display.IsDecoded))));
+            action(stack, row);
         }
     }
 
     private void OnStackTreeLoaded(object sender, RoutedEventArgs e)
     {
-        if (FindDescendant<TreeViewList>(StackTree) is { } list)
+        if (StackTree.FindDescendant<TreeViewList>() is { } list)
         {
             list.ItemContainerTransitions = new TransitionCollection();
         }
@@ -439,10 +382,7 @@ public sealed partial class FlameChartCallStackView : UserControl, IValueFinder,
     {
         if (e.PropertyName == nameof(SettingsViewModel.DecodeValues))
         {
-            Display.IsDecoded = Settings.DecodeValues;
-
             Bindings.Update();
         }
-
     }
 }

@@ -16,6 +16,8 @@ public sealed class CallSignaturePart(string text,
                                      MemoryMapEntry? origin = null,
                                      string? location = null)
 {
+    public const string ThisLabel = "this";
+
     public string Text { get; } = text;
 
     public CallSignaturePartKind Kind { get; } = kind;
@@ -41,6 +43,8 @@ public sealed class CallSignaturePart(string text,
     public MemoryMapEntry? Origin { get; } = origin;
 
     public string? Location { get; } = location;
+
+    public bool IsThis => Label == ThisLabel;
 
     public bool IsDecodedFor(bool decode) => decode && Decoded is not null;
 

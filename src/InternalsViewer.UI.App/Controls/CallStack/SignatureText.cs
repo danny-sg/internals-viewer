@@ -1,17 +1,10 @@
-﻿using InternalsViewer.UI.App.Models.Query.CallStack;
+﻿using InternalsViewer.UI.App.Helpers;
+using InternalsViewer.UI.App.Models.Query.CallStack;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Documents;
 using Microsoft.UI.Xaml.Media;
 
 namespace InternalsViewer.UI.App.Controls.CallStack;
-
-/// <summary>
-/// Something that a type followed from a signature can hand the click back to
-/// </summary>
-public interface ISignatureNavigator
-{
-    void OnTypeInvoked(string typeName);
-}
 
 /// <summary>
 /// Draws a member signature into a text block as coloured runs, with each type a link
@@ -66,7 +59,8 @@ public static class SignatureText
 
                 link.Inlines.Add(new Run { Text = token.Text });
 
-                link.Click += (sender, _) => Navigator(sender)?.OnTypeInvoked(token.Text);
+                link.Click += (sender, _) => LayoutHelpers.FindParent<ISignatureNavigator>(sender.ContentStart.VisualParent)
+                                                          ?.OnTypeInvoked(token.Text);
 
                 return link;
 
@@ -75,25 +69,7 @@ public static class SignatureText
         }
     }
 
-    private static ISignatureNavigator? Navigator(Hyperlink link)
-    {
-        DependencyObject? current = link.ContentStart.VisualParent;
-
-        while (current is not null)
-        {
-            if (current is ISignatureNavigator navigator)
-            {
-                return navigator;
-            }
-
-            current = VisualTreeHelper.GetParent(current);
-        }
-
-        return null;
-    }
-
-    private static Brush? Brush(string key)
-        => Application.Current.Resources.TryGetValue(key, out var resource) ? resource as Brush : null;
+    private static Brush? Brush(string key) => AppResources.Get<Brush>(key);
 
     private static void OnChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
     {

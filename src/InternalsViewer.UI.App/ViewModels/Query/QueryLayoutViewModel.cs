@@ -4,7 +4,6 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using InternalsViewer.UI.App.ViewModels.Docking;
 using InternalsViewer.UI.App.Views.Query.Tabs;
 using InternalsViewer.UI.App.Views.Query.Tabs.CallStack;
-using InternalsViewer.UI.App.Views.Query.Tabs.FlameChart;
 using InternalsViewer.UI.App.Views.Query.Tabs.Timeline;
 using Microsoft.UI.Xaml.Controls;
 using QueryPlanTabCommands = InternalsViewer.UI.App.Views.Query.Tabs.Plan.QueryPlanTabCommands;

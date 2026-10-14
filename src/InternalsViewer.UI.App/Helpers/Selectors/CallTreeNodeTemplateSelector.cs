@@ -2,7 +2,7 @@ using System;
 using InternalsViewer.UI.App.Models.Query.CallStack;
 using Microsoft.UI.Xaml.Controls;
 
-namespace InternalsViewer.UI.App.Views.Query.Tabs.CallStack;
+namespace InternalsViewer.UI.App.Helpers.Selectors;
 
 /// <summary>
 /// Picks the row template for the Call Tree — a plan operator (when scoped) or a call frame

@@ -1,4 +1,5 @@
 using System;
+using InternalsViewer.UI.App.Helpers;
 using InternalsViewer.UI.App.Models.Query.CallStack;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Documents;
@@ -28,22 +29,39 @@ public static class SignatureRuns
 
     public static void SetArgument(DependencyObject element, CallSignaturePart? value) => element.SetValue(ArgumentProperty, value);
 
+    public static readonly DependencyProperty StepProperty
+        = DependencyProperty.RegisterAttached("Step",
+                                              typeof(SourceStep),
+                                              typeof(SignatureRuns),
+                                              new PropertyMetadata(null, OnStepChanged));
+
+    public static SourceStep? GetStep(DependencyObject element) => (SourceStep?)element.GetValue(StepProperty);
+
+    public static void SetStep(DependencyObject element, SourceStep? value) => element.SetValue(StepProperty, value);
+
     public static void AddFunction(InlineCollection inlines, string function)
     {
         var separator = function.LastIndexOf("::", StringComparison.Ordinal);
 
         if (separator > 0)
         {
-            inlines.Add(new Run { Text = function[..(separator + 2)], Foreground = Resource("CppClassBrush") });
+            inlines.Add(new Run { Text = function[..(separator + 2)], Foreground = AppResources.Get<Brush>("CppClassBrush") });
         }
 
         var method = separator > 0 ? function[(separator + 2)..] : function;
 
-        inlines.Add(new Run { Text = method, Foreground = Resource("CppFunctionBrush") });
+        inlines.Add(new Run { Text = method, Foreground = AppResources.Get<Brush>("CppFunctionBrush") });
     }
 
-    public static void AddDecoded(InlineCollection inlines, CallSignaturePart part)
+    public static void AddValue(InlineCollection inlines, CallSignaturePart part, bool decode)
     {
+        if (!part.IsDecodedFor(decode))
+        {
+            HexText.AddRuns(inlines, part.Text);
+
+            return;
+        }
+
         if (part.DecodedString is { } decodedString)
         {
             StringText.AddRuns(inlines, decodedString);
@@ -53,12 +71,12 @@ public static class SignatureRuns
 
         if (part.DecodedClass is { } className)
         {
-            inlines.Add(new Run { Text = className, Foreground = Resource("CppClassBrush") });
+            inlines.Add(new Run { Text = className, Foreground = AppResources.Get<Brush>("CppClassBrush") });
 
             inlines.Add(new Run { Text = " " });
         }
 
-        HexText.AddRuns(inlines, part.Decoded ?? part.Text);
+        HexText.AddRuns(inlines, part.Decoded!);
     }
 
     public static void AddType(InlineCollection inlines, string type)
@@ -72,58 +90,61 @@ public static class SignatureRuns
                 _ => "SqlIdentifierBrush"
             };
 
-            inlines.Add(new Run { Text = token.Text, Foreground = Resource(brush) });
+            inlines.Add(new Run { Text = token.Text, Foreground = AppResources.Get<Brush>(brush) });
         }
     }
 
-    private static Brush? Resource(string key)
-        => Application.Current.Resources.TryGetValue(key, out var resource) ? resource as Brush : null;
-
-    private static void OnFunctionChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
+    private static InlineCollection? Cleared(DependencyObject d)
     {
         if (d is not TextBlock text)
         {
-            return;
+            return null;
         }
 
         text.Inlines.Clear();
 
-        if (e.NewValue is string function)
+        return text.Inlines;
+    }
+
+    private static void OnFunctionChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
+    {
+        if (Cleared(d) is { } inlines && e.NewValue is string function)
         {
-            AddFunction(text.Inlines, function);
+            AddFunction(inlines, function);
         }
 
-        ToolTipService.SetToolTip(text, e.NewValue);
+        ToolTipService.SetToolTip(d, e.NewValue);
     }
 
     private static void OnArgumentChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
     {
-        if (d is not TextBlock text)
-        {
-            return;
-        }
-
-        text.Inlines.Clear();
-
-        if (e.NewValue is not CallSignaturePart part)
+        if (Cleared(d) is not { } inlines || e.NewValue is not CallSignaturePart part)
         {
             return;
         }
 
         if (part.DeclaredType is { } type)
         {
-            AddType(text.Inlines, type);
+            AddType(inlines, type);
 
-            text.Inlines.Add(new Run { Text = "  " });
+            inlines.Add(new Run { Text = "  " });
         }
 
-        if (part.Decoded is not null)
+        AddValue(inlines, part, decode: true);
+    }
+
+    private static void OnStepChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
+    {
+        if (Cleared(d) is not { } inlines || e.NewValue is not SourceStep step)
         {
-            AddDecoded(text.Inlines, part);
+            return;
         }
-        else
+
+        AddFunction(inlines, step.Node.Symbol);
+
+        if (step.Id != 0)
         {
-            HexText.AddRuns(text.Inlines, part.Text);
+            inlines.Add(new Run { Text = $"  [{step.Id}]", Foreground = AppResources.Get<Brush>("TextFillColorSecondaryBrush") });
         }
     }
 }

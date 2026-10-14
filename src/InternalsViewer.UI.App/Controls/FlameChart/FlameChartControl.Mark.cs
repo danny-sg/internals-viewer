@@ -148,7 +148,7 @@ public sealed partial class FlameChartControl
         _minimap.Scope = _rooted ?? _minimap.Crop;
         _minimap.Margin = new Thickness(0, 0, MinimapMargin, MinimapMargin + BandHeight);
 
-        var current = _playhead ?? double.NaN;
+        var current = CallStackPosition ?? double.NaN;
 
         var colour = _paints.Mark.Color;
 
@@ -187,7 +187,7 @@ public sealed partial class FlameChartControl
 
         if (!_markedCalls.TryGetValue(key, out var found))
         {
-            found = FindCall(timeline, node, call);
+            found = FindCall(timeline, node, call) is { } hit ? MarkedCallAt(timeline, hit) : null;
 
             _markedCalls[key] = found;
         }
@@ -195,39 +195,11 @@ public sealed partial class FlameChartControl
         return found;
     }
 
-    private MarkedCall? FindCall(TraceTimeline timeline, CallStackNode node, int call)
+    private MarkedCall MarkedCallAt(TraceTimeline timeline, FlameHit hit)
     {
-        if (Matches(timeline, n => ReferenceEquals(n, node)) is not { } nodes)
-        {
-            return null;
-        }
+        var thread = timeline.Threads[hit.Lane];
 
-        for (var lane = 0; lane < timeline.Threads.Count; lane++)
-        {
-            var thread = timeline.Threads[lane];
-
-            for (var depth = 0; depth < thread.Rows.Count; depth++)
-            {
-                var row = thread.Rows[depth];
-
-                for (var index = 0; index < row.Count; index++)
-                {
-                    if (row.CallAt(index) != call)
-                    {
-                        continue;
-                    }
-
-                    var spanNode = row.NodeAt(index);
-
-                    if (spanNode >= 0 && spanNode < nodes.Length && nodes[spanNode])
-                    {
-                        return new MarkedCall(row.Span(_axis, index), thread.ThreadId, lane, depth);
-                    }
-                }
-            }
-        }
-
-        return null;
+        return new MarkedCall(thread.Rows[hit.Depth].Span(_axis, hit.Index), thread.ThreadId, hit.Lane, hit.Depth);
     }
 
     private readonly record struct MarkedCall(TraceTimelineSpan Span, uint ThreadId, int Lane, int Depth);

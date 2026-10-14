@@ -18,7 +18,7 @@ public sealed partial class ValueReferencesViewModel(ulong value,
     public const int CallPage = 500;
 
     [ObservableProperty]
-    private string _heading = $"References To 0x{value:X}";
+    private string _heading = ReferencesTo(value);
 
     [ObservableProperty]
     private bool _isSearching;
@@ -46,16 +46,16 @@ public sealed partial class ValueReferencesViewModel(ulong value,
 
         Cancellation = cancellation;
 
-        Heading = $"References To 0x{Value:X}";
+        Heading = ReferencesTo(Value);
         References = null;
         IsSearching = true;
 
         try
         {
-            var references = await Lookup.GetReferencesAsync(Value, Owner.Exclusions, cancellation.Token);
+            var references = await Lookup.GetReferencesAsync(Value, cancellation.Token);
 
             References = references;
-            Heading = references.Groups.Count == 0 ? $"No References To 0x{Value:X}" : $"References To 0x{Value:X}";
+            Heading = references.Groups.Count == 0 ? $"No {ReferencesTo(Value)}" : ReferencesTo(Value);
         }
         catch (OperationCanceledException) when (cancellation.IsCancellationRequested)
         {
@@ -75,46 +75,41 @@ public sealed partial class ValueReferencesViewModel(ulong value,
         }
     }
 
-    public async Task<IReadOnlyList<TraceValueMatch>> FindCallsAsync(ValueUseRow row)
-    {
-        try
-        {
-            return await Lookup.FindCallsAsync(row, Owner.Exclusions, Cancellation.Token);
-        }
-        catch (OperationCanceledException)
-        {
-            return [];
-        }
-        catch (Exception exception) when (exception is InvalidDataException or EndOfStreamException)
-        {
-            logger.LogWarning(exception, "Listing the calls of {Function} with {Value} failed", row.Function, row.Value);
+    public Task<IReadOnlyList<TraceValueMatch>> FindCallsAsync(ValueUseRow row)
+        => ReadAsync(token => Lookup.FindCallsAsync(row, token),
+                     exception => logger.LogWarning(exception,
+                                                    "Listing the calls of {Function} with {Value} failed",
+                                                    row.Function,
+                                                    row.Value));
 
-            return [];
-        }
-    }
-
-    public async Task<IReadOnlyList<ValueCallRow>> CallRowsAsync(TraceValueUse use, IReadOnlyList<TraceValueMatch> matches, int from)
-    {
-        try
-        {
-            return await Lookup.CallRowsAsync(use, matches, from, CallPage, Cancellation.Token);
-        }
-        catch (OperationCanceledException)
-        {
-            return [];
-        }
-        catch (Exception exception) when (exception is InvalidDataException or EndOfStreamException)
-        {
-            logger.LogWarning(exception, "Reading the calls of 0x{Function:X} failed", use.Address);
-
-            return [];
-        }
-    }
+    public Task<IReadOnlyList<ValueCallRow>> CallRowsAsync(TraceValueUse use, IReadOnlyList<TraceValueMatch> matches, int from)
+        => ReadAsync(token => Lookup.CallRowsAsync(use, matches, from, CallPage, token),
+                     exception => logger.LogWarning(exception, "Reading the calls of 0x{Function:X} failed", use.Address));
 
     public void Dispose()
     {
         Cancellation.Cancel();
 
         Cancellation.Dispose();
+    }
+
+    private static string ReferencesTo(ulong value) => $"References To 0x{value:X}";
+
+    private async Task<IReadOnlyList<T>> ReadAsync<T>(Func<CancellationToken, Task<IReadOnlyList<T>>> read, Action<Exception> warn)
+    {
+        try
+        {
+            return await read(Cancellation.Token);
+        }
+        catch (OperationCanceledException)
+        {
+            return [];
+        }
+        catch (Exception exception) when (exception is InvalidDataException or EndOfStreamException)
+        {
+            warn(exception);
+
+            return [];
+        }
     }
 }

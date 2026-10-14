@@ -6,7 +6,6 @@ using System.Threading.Tasks;
 using InternalsViewer.Query.FullTrace.CallLog;
 using InternalsViewer.UI.App.Controls.CallStack;
 using InternalsViewer.UI.App.Controls.Docking;
-using InternalsViewer.UI.App.ViewModels;
 using InternalsViewer.UI.App.Models.Query.CallStack;
 using InternalsViewer.UI.App.ViewModels.Query.CallStack;
 using Microsoft.UI.Xaml.Controls;
@@ -20,35 +19,18 @@ public sealed partial class CallTreeReferencesPanelView : UserControl, IValueFin
         InitializeComponent();
 
         DataContextChanged += (_, _) => OnViewModelChanged();
-
-        Display.IsDecoded = Settings.DecodeValues;
-
-        Settings.PropertyChanged += OnSettingsPropertyChanged;
     }
 
     public ValueReferencesViewModel? ViewModel => DataContext as ValueReferencesViewModel;
 
     private ValueReferencesViewModel? Attached { get; set; }
 
-    private SettingsViewModel Settings { get; } = App.GetService<SettingsViewModel>();
-
-    private ValueDisplay Display => (ValueDisplay)Resources["ValueDisplay"];
-
     public void Find(ulong value) => ViewModel?.Owner.Find(value);
 
-    public FrameworkElement CreateCommands() => new StackPanel
-    {
-        Orientation = Orientation.Horizontal,
-        HorizontalAlignment = HorizontalAlignment.Right,
-        VerticalAlignment = VerticalAlignment.Center,
-        Margin = new Thickness(0, 0, 8, 0),
-        Children = { new DecodeToggle() }
-    };
+    public FrameworkElement CreateCommands() => TabCommands.Panel(0, new DecodeToggle());
 
     public void Dispose()
     {
-        Settings.PropertyChanged -= OnSettingsPropertyChanged;
-
         Attached?.PropertyChanged -= OnReferencesPropertyChanged;
 
         Attached = null;
@@ -94,14 +76,6 @@ public sealed partial class CallTreeReferencesPanelView : UserControl, IValueFin
         Bindings.Update();
 
         BuildTree();
-    }
-
-    private void OnSettingsPropertyChanged(object? sender, PropertyChangedEventArgs e)
-    {
-        if (e.PropertyName == nameof(SettingsViewModel.DecodeValues))
-        {
-            Display.IsDecoded = Settings.DecodeValues;
-        }
     }
 
     private void OnReferencesPropertyChanged(object? sender, PropertyChangedEventArgs e)

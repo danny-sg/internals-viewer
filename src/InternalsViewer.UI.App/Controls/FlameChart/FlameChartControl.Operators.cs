@@ -788,13 +788,7 @@ public sealed partial class FlameChartControl
     {
         var lifetime = _operatorRows[hit.Row].Lifetimes[hit.Track];
 
-        var start = lifetime.StartOf(_axis);
-
-        var end = lifetime.EndOf(_axis);
-
-        var margin = (end - start) * 0.05;
-
-        SetView(start - margin, end + margin);
+        ZoomTo(lifetime.StartOf(_axis), lifetime.EndOf(_axis));
     }
 
     private void BeginOperatorsResize(Point position)

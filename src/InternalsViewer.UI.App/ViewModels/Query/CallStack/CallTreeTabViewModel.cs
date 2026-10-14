@@ -27,7 +27,6 @@ public sealed class CallTreeTabViewModel : IDisposable
         Query = query;
         Settings = settings;
         Logger = logger;
-        Exclusions = GetExclusions();
 
         TreeDocument = DocumentViewModel.Create<CallTreePanelView>("Call Tree", this, canClose: false, keepAlive: true, key: "CallTree");
         MembersDocument = DocumentViewModel.Create<CallTreeMembersPanelView>("Members", this, keepAlive: true, key: "Members");
@@ -50,7 +49,7 @@ public sealed class CallTreeTabViewModel : IDisposable
 
         Arguments.SourceChanged += OnArgumentsSourceChanged;
 
-        Arguments.SetExclusions(Exclusions);
+        Arguments.SetExclusions(GetExclusions());
 
         Arguments.SetDecoded(Settings.DecodeValues);
 
@@ -78,8 +77,6 @@ public sealed class CallTreeTabViewModel : IDisposable
     public ArgumentsViewModel Arguments => Query.Arguments;
 
     public DockLayoutViewModel Dock { get; }
-
-    public CallExclusions Exclusions { get; private set; }
 
     private SettingsViewModel Settings { get; }
 
@@ -156,7 +153,9 @@ public sealed class CallTreeTabViewModel : IDisposable
     {
         if (locator.Kind == LocatorKind.ColumnStoreObject)
         {
-            Query.OpenColumnstoreObject(locator.HobtId, new ColumnstoreObjectTarget(locator.ObjectType, locator.ColumnId, locator.ObjectId));
+            var target = new ColumnstoreObjectTarget(locator.ObjectType, locator.ColumnId, locator.ObjectId);
+
+            Query.OpenColumnstoreObject(locator.HobtId, target);
 
             return;
         }
@@ -207,8 +206,8 @@ public sealed class CallTreeTabViewModel : IDisposable
     }
 
     private CallExclusions GetExclusions()
-        => new(SettingsViewModel.SplitCategories(Settings.CallTreeHiddenCategories),
-               SettingsViewModel.SplitCategories(Settings.CallTreePrunedCategories),
+        => new(Settings.CallTreeHiddenCategorySet,
+               Settings.CallTreePrunedCategorySet,
                Query.CroppedRoots?.ToHashSet<CallStackNode>(ReferenceEqualityComparer.Instance));
 
     private void ShowPanel(DocumentViewModel document, DocumentViewModel neighbour)
@@ -298,19 +297,16 @@ public sealed class CallTreeTabViewModel : IDisposable
 
     private void OnSettingsPropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
-        if (e.PropertyName == nameof(SettingsViewModel.DecodeValues))
+        switch (e.PropertyName)
         {
-            Arguments.SetDecoded(Settings.DecodeValues);
+            case nameof(SettingsViewModel.DecodeValues):
+                Arguments.SetDecoded(Settings.DecodeValues);
+                break;
 
-            return;
+            case nameof(SettingsViewModel.CallTreeHiddenCategories) or nameof(SettingsViewModel.CallTreePrunedCategories):
+                RefreshExclusions();
+                break;
         }
-
-        if (e.PropertyName is not (nameof(SettingsViewModel.CallTreeHiddenCategories) or nameof(SettingsViewModel.CallTreePrunedCategories)))
-        {
-            return;
-        }
-
-        RefreshExclusions();
     }
 
     private void OnQueryPropertyChanged(object? sender, PropertyChangedEventArgs e)
@@ -329,20 +325,5 @@ public sealed class CallTreeTabViewModel : IDisposable
         }
     }
 
-    private void RefreshExclusions()
-    {
-        Exclusions = GetExclusions();
-
-        Arguments.SetExclusions(Exclusions);
-
-        Arguments.SetDecoded(Settings.DecodeValues);
-
-        foreach (var find in Finds)
-        {
-            if (find.Content is ValueReferencesViewModel references)
-            {
-                _ = references.LoadAsync();
-            }
-        }
-    }
+    private void RefreshExclusions() => Arguments.SetExclusions(GetExclusions());
 }

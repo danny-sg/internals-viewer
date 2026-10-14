@@ -1,4 +1,3 @@
-using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
@@ -24,15 +23,7 @@ public sealed partial class PlayheadCallStackViewModel(QueryViewModel query) : O
     [ObservableProperty]
     private IReadOnlyList<SourceStep> _source = [];
 
-    public event Action<double, double>? ZoomRequested;
-
-    public event Action<CallStackNode>? ScopeRequested;
-
-    public event Action<bool>? StepRequested;
-
-    public event Action<CallStackNode?, int>? MarkRequested;
-
-    public event Action<CallStackNode, int>? GoToRequested;
+    public IPlayheadChart? Chart { get; set; }
 
     private IReadOnlyList<TraceThreadStack>? Pending { get; set; }
 
@@ -74,19 +65,6 @@ public sealed partial class PlayheadCallStackViewModel(QueryViewModel query) : O
         }
     }
 
-    public void OpenInCallTree(PlayheadCallRow row) => query.OpenCallTree(row.Node, row.Call);
-
-    public void Zoom(PlayheadCallRow row) => ZoomRequested?.Invoke(row.Start, row.End);
-
-    public void Scope(PlayheadCallRow row) => ScopeRequested?.Invoke(row.Node);
-
-    public void Step(bool forward)
-    {
-        ClearSelection();
-
-        StepRequested?.Invoke(forward);
-    }
-
     public void ClearSelection()
     {
         SelectedValue = null;
@@ -94,12 +72,25 @@ public sealed partial class PlayheadCallStackViewModel(QueryViewModel query) : O
         SelectedCall = null;
     }
 
-    public void Mark(SourceStep? step) => MarkRequested?.Invoke(step?.Node, step?.Call ?? -1);
+    public void OpenInCallTree(PlayheadCallRow row) => query.OpenCallTree(row.Node, row.Call);
+
+    public void Zoom(PlayheadCallRow row) => Chart?.ZoomTo(row.Start, row.End);
+
+    public void Scope(PlayheadCallRow row) => Chart?.ScopeTo(row.Node);
+
+    public void Step(bool forward)
+    {
+        ClearSelection();
+
+        Chart?.StepPlayhead(forward);
+    }
+
+    public void Mark(SourceStep? step) => Chart?.MarkCall(step?.Node, step?.Call ?? -1);
 
     public void MarkFrame(SourceFrame frame)
-        => MarkRequested?.Invoke(frame.Node, query.Arguments.Lookup?.GetEnclosingCall(frame.Node, frame.Moment) ?? -1);
+        => Chart?.MarkCall(frame.Node, query.Arguments.Lookup?.GetEnclosingCall(frame.Node, frame.Moment) ?? -1);
 
-    public void GoTo(SourceStep step) => GoToRequested?.Invoke(step.Node, step.Call);
+    public void GoTo(SourceStep step) => Chart?.MovePlayheadTo(step.Node, step.Call);
 
     public void Find(ulong value)
     {
@@ -141,38 +132,12 @@ public sealed partial class PlayheadCallStackViewModel(QueryViewModel query) : O
     }
 
     private PlayheadCallRow? FindRow(PlayheadCallRow selected)
-    {
-        foreach (var thread in Threads)
-        {
-            foreach (var row in thread.Calls)
-            {
-                if (ReferenceEquals(row, selected) || (ReferenceEquals(row.Node, selected.Node) && row.Call == selected.Call))
-                {
-                    return row;
-                }
-            }
-        }
-
-        return null;
-    }
+        => Threads.SelectMany(t => t.Calls)
+                  .FirstOrDefault(r => ReferenceEquals(r, selected) || (ReferenceEquals(r.Node, selected.Node) && r.Call == selected.Call));
 
     private static bool IsSame(IReadOnlyList<TraceThreadStack> current, IReadOnlyList<TraceThreadStack> next)
-    {
-        if (current.Count != next.Count)
-        {
-            return false;
-        }
-
-        for (var index = 0; index < current.Count; index++)
-        {
-            if (current[index].ThreadId != next[index].ThreadId || !current[index].Calls.SequenceEqual(next[index].Calls))
-            {
-                return false;
-            }
-        }
-
-        return true;
-    }
+        => current.Count == next.Count
+           && current.Zip(next).All(p => p.First.ThreadId == p.Second.ThreadId && p.First.Calls.SequenceEqual(p.Second.Calls));
 
     private static int IndexOf(IReadOnlyList<CallSignaturePart> parts, CallSignaturePart part)
     {
@@ -224,8 +189,6 @@ public sealed partial class PlayheadCallStackViewModel(QueryViewModel query) : O
 
     private async Task<IReadOnlyList<PlayheadThreadRow>> BuildAsync(IReadOnlyList<TraceThreadStack> stacks)
     {
-        var lookup = query.Arguments.Lookup;
-
         var timeline = query.FlameChart;
 
         var origin = timeline?.StartOf(TraceTimelineAxis.Position) ?? 0;
@@ -234,42 +197,42 @@ public sealed partial class PlayheadCallStackViewModel(QueryViewModel query) : O
 
         foreach (var stack in stacks)
         {
-            var found = new List<(CallStackNode Node, TraceTimelineSpan Span, TraceCallExtent Extent, CallSignature Signature, ulong Id)>();
+            var found = new List<(TraceStackCall Call, CallStackNode Node)>();
 
-            for (var index = 0; index < stack.Calls.Count; index++)
+            foreach (var call in stack.Calls)
             {
-                var span = stack.Calls[index];
-
-                if (timeline?.NodeOf(span.Node) is not { } node)
+                if (timeline?.NodeOf(call.Span.Node) is { } node)
                 {
-                    continue;
+                    found.Add((call, node));
                 }
-
-                var signature = lookup is not null && span.Call >= 0 ? await lookup.GetSignatureAsync(node, span.Call) : null;
-
-                signature ??= new CallSignature([new CallSignaturePart(node.Symbol, CallSignaturePartKind.Function)], null, null);
-
-                var id = lookup is not null && span.Call >= 0 ? lookup.GetCallId(node, span.Call) : 0;
-
-                found.Add((node, span, stack.Extents[index], signature, id));
             }
 
-            var rows = found.Select((f, depth) => new PlayheadCallRow(f.Node,
-                                                                      f.Span,
-                                                                      f.Signature,
-                                                                      f.Id,
-                                                                      depth == found.Count - 1,
-                                                                      f.Extent,
-                                                                      origin));
+            var rows = new List<PlayheadCallRow>();
 
-            List<PlayheadCallRow> calls = [.. rows.Reverse()];
-
-            if (calls.Count > 0)
+            for (var index = found.Count - 1; index >= 0; index--)
             {
-                threads.Add(new PlayheadThreadRow(stack.ThreadId, calls));
+                rows.Add(await BuildRowAsync(found[index].Node, found[index].Call, index == found.Count - 1, origin));
+            }
+
+            if (rows.Count > 0)
+            {
+                threads.Add(new PlayheadThreadRow(stack.ThreadId, rows));
             }
         }
 
         return threads;
+    }
+
+    private async Task<PlayheadCallRow> BuildRowAsync(CallStackNode node, TraceStackCall call, bool isCurrent, double origin)
+    {
+        var index = call.Span.Call;
+
+        var lookup = index >= 0 ? query.Arguments.Lookup : null;
+
+        var signature = lookup is null ? null : await lookup.GetSignatureAsync(node, index);
+
+        signature ??= new CallSignature([new CallSignaturePart(node.Symbol, CallSignaturePartKind.Function)], null, null);
+
+        return new PlayheadCallRow(node, call, signature, lookup?.GetCallId(node, index) ?? 0, isCurrent, origin);
     }
 }

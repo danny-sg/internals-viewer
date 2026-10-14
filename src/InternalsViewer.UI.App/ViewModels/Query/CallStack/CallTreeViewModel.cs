@@ -98,7 +98,7 @@ public sealed partial class CallTreeViewModel : ObservableObject, IDisposable
     {
         IsActivityShown = shown;
 
-        ApplyFocus(Query.SelectedEvent, keepSelection: true);
+        Refresh();
     }
 
     public async Task SetSignatureShownAsync(bool shown)
@@ -112,7 +112,7 @@ public sealed partial class CallTreeViewModel : ObservableObject, IDisposable
     {
         ApplySearch(text);
 
-        ApplyFocus(Query.SelectedEvent, keepSelection: true);
+        Refresh();
     }
 
     public void RequestSearch(string text) => SearchRequested?.Invoke(text);
@@ -155,7 +155,7 @@ public sealed partial class CallTreeViewModel : ObservableObject, IDisposable
     {
         FilterPath = null;
 
-        ApplyFocus(Query.SelectedEvent, keepSelection: true);
+        Refresh();
     }
 
     public void ListMembers(CallStackNode node) => Owner.ListMembers(node);
@@ -169,11 +169,7 @@ public sealed partial class CallTreeViewModel : ObservableObject, IDisposable
 
     public void ShowCall(CallStackNode node, int call)
     {
-        LeaveLocation();
-
-        NavigateTo(node);
-
-        PushLocation(new CallTreeLocation(Query.SelectedEvent, node, IsFocused, node, call));
+        VisitCall(node, call);
 
         _ = Query.Arguments.ShowAsync(node, call);
     }
@@ -294,16 +290,21 @@ public sealed partial class CallTreeViewModel : ObservableObject, IDisposable
     {
         int? index = call >= 0 ? call : null;
 
-        LeaveLocation();
-
-        NavigateTo(node);
-
-        PushLocation(new CallTreeLocation(Query.SelectedEvent, node, IsFocused, node, index));
+        VisitCall(node, index);
 
         if (CanShowArguments(node))
         {
             ShowArguments(node, index);
         }
+    }
+
+    private void VisitCall(CallStackNode node, int? call)
+    {
+        LeaveLocation();
+
+        NavigateTo(node);
+
+        PushLocation(new CallTreeLocation(Query.SelectedEvent, node, IsFocused, node, call));
     }
 
     private void OnArgumentCallSelected(CallReference reference)
@@ -360,19 +361,21 @@ public sealed partial class CallTreeViewModel : ObservableObject, IDisposable
     {
         if (e.PropertyName is nameof(QueryOptionsViewModel.ShowLatches) or nameof(QueryOptionsViewModel.CropToQuery))
         {
-            ApplyFocus(Query.SelectedEvent, keepSelection: true);
+            Refresh();
         }
     }
 
-    private void OnQueryFilterChanged() => ApplyFocus(Query.SelectedEvent, keepSelection: true);
+    private void OnQueryFilterChanged() => Refresh();
 
     private void OnSettingsPropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
         if (e.PropertyName is nameof(SettingsViewModel.CallTreeHiddenCategories) or nameof(SettingsViewModel.CallTreePrunedCategories))
         {
-            ApplyFocus(Query.SelectedEvent, keepSelection: true);
+            Refresh();
         }
     }
+
+    private void Refresh() => ApplyFocus(Query.SelectedEvent, keepSelection: true);
 
     private async Task RefreshSignaturesAsync()
     {
@@ -383,7 +386,7 @@ public sealed partial class CallTreeViewModel : ObservableObject, IDisposable
             await Query.Symbols.ResolveFrameSignaturesAsync([.. tree.Nodes().Select(n => n.Frame).OfType<CallstackFrame>()]);
         }
 
-        ApplyFocus(Query.SelectedEvent, keepSelection: true);
+        Refresh();
     }
 
     private void GoTo(int index)
@@ -536,7 +539,7 @@ public sealed partial class CallTreeViewModel : ObservableObject, IDisposable
 
         SnapshotLocation();
 
-        PushLocation(new CallTreeLocation(selected, null, IsFocused, Query.Arguments.Shown, Query.Arguments.SelectedCallReference?.Call));
+        PushLocation(CurrentLocation() with { Event = selected, Node = null });
     }
 
     private void ClearHistory()

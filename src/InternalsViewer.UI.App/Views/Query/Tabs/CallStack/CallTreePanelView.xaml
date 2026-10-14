@@ -4,7 +4,7 @@
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:muxc="using:Microsoft.UI.Xaml.Controls"
-    xmlns:local="using:InternalsViewer.UI.App.Views.Query.Tabs.CallStack"
+    xmlns:selectors="using:InternalsViewer.UI.App.Helpers.Selectors"
     xmlns:model="using:InternalsViewer.Query.CallStack"
     xmlns:callStack="using:InternalsViewer.UI.App.Controls.CallStack"
     xmlns:members="using:InternalsViewer.UI.App.Models.Query.CallStack"
@@ -452,7 +452,7 @@
                             IsTabStop="False"/>
         </DataTemplate>
 
-        <local:CallTreeNodeTemplateSelector x:Key="NodeTemplateSelector"
+        <selectors:CallTreeNodeTemplateSelector x:Key="NodeTemplateSelector"
                                              FrameTemplate="{StaticResource CallFrameTemplate}"
                                              SignatureFrameTemplate="{StaticResource CallFrameSignatureTemplate}"
                                              RevealedFrameTemplate="{StaticResource RevealedCallFrameTemplate}"

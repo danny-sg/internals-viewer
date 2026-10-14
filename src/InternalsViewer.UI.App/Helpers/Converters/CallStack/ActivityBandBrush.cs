@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Globalization;
 using System.Linq;
 using Windows.Foundation;
 using Windows.UI;
@@ -162,15 +161,5 @@ public static class ActivityBandBrush
         return brush;
     }
 
-    private static Color ParseColour(string hex)
-    {
-        var digits = hex.TrimStart('#');
-
-        if (digits.Length == 6 && uint.TryParse(digits, NumberStyles.HexNumber, null, out var rgb))
-        {
-            return Color.FromArgb(0xFF, (byte)((rgb >> 16) & 0xFF), (byte)((rgb >> 8) & 0xFF), (byte)(rgb & 0xFF));
-        }
-
-        return Colors.Gray;
-    }
+    private static Color ParseColour(string hex) => ColourHelpers.FromHex(hex) ?? Colors.Gray;
 }

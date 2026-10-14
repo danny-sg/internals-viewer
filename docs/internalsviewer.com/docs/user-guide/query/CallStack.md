@@ -92,7 +92,7 @@ Some values are read further than the register:
 
 **Decode**, on the tab strip, switches the table between what the values stand for and their hex. Decoded, a value shows its reading - a table and index, an operator, a page, a name or a number. A pointer to another object, such as a `HoBtAccess` or an iterator, is shown with its class first, in the class colour, as `HoBtAccess dbo.T.PK`. Pages, rows and names are shown as they are, and `this` without its class, since the function already names it. A value with nothing to decode stays in hex. The setting is shared with the [Find](#finding-a-value) tabs and remembered between sessions.
 
-Calls the [category filter](#filtering-by-category) leaves out of the call tree are left out here too, and in **Find**. A hidden category drops the calls of its own functions, and a category hidden with its callees drops every call made beneath it. With **Crop To Query** on, calls made outside the query, such as those made while it was compiled, are left out as well. A call reached by following an object to where it was created is listed even when it would otherwise be left out.
+Calls the [category filter](#filtering-by-category) leaves out of the call tree are left out here too. A hidden category drops the calls of its own functions, and a category hidden with its callees drops every call made beneath it. With **Crop To Query** on, calls made outside the query, such as those made while it was compiled, are left out as well. A call reached by following an object to where it was created is listed even when it would otherwise be left out.
 
 Decoded, an object whose address is in the trace's map is a link. Clicking it goes to the call that created the object, or to the first call made on it when it was created before the recording began. The call tree selects that function and **Arguments** selects that call.
 
@@ -110,7 +110,7 @@ Right-click a cell for what can be done with its call and value:
 
 ## Finding a value
 
-**Find** opens a tab for the value beside **Arguments**, named after the value, with one tab per value. The tab lists everywhere the value appears in the log, under the heading **References To** and the value, as a tree:
+**Find** opens a tab for the value beside **Arguments**, named after the value, with one tab per value. The tab lists everywhere the value appears in the log, under the heading **References To** and the value, as a tree. It searches every call in the trace, including those the category filter and **Crop To Query** leave out of the call tree, so following a value never loses part of its trail:
 
 - **Type** - what the value is, where it can be identified: **Hash Match (Aggregate) (Node 1) Iterator** for an iterator, the operator and **Plan Object** for the object in the compiled plan that SQL Server builds an operator's iterator from, **HoBtAccess** and its table and index for an access object, the class of the object it held when it was first used, such as **CQScanRangeNew**, or otherwise the class of the functions called on it. Clicking an iterator or plan object selects it in the call tree and the plan
 - **Called by** - member functions called with the value as `this`

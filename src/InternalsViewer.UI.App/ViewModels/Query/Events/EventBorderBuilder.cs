@@ -97,8 +97,6 @@ internal static class EventBorderBuilder
 
     private static bool IsIntentLock(LockMode mode) => LockModeClassifier.IsIntent(mode);
 
-    // The category colour, lightened for intent modes: an intent lock only flags finer locks below the resource, so it
-    // reads as a paler shade of the real S/U/X lock's colour rather than a distinct one.
     private static Color LockCategoryColour(LockMode mode, bool isIntent)
     {
         var colour = TimelineColours.LockModeColour(mode);

@@ -81,9 +81,11 @@ public partial class SettingsViewModel(SettingsService settingsService, TraceDir
     private bool _showTimeTravelWarning = true;
 
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(CallTreeHiddenCategorySet))]
     private string _callTreeHiddenCategories = DefaultCallTreeHiddenCategories;
 
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(CallTreePrunedCategorySet))]
     private string _callTreePrunedCategories = string.Empty;
 
     [ObservableProperty]
@@ -104,6 +106,10 @@ public partial class SettingsViewModel(SettingsService settingsService, TraceDir
     public string? ActiveTraceDirectory =>
         UseCustomTraceDirectory && !string.IsNullOrWhiteSpace(TraceDirectory) ? TraceDirectory : null;
 
+    public IReadOnlySet<string> CallTreeHiddenCategorySet { get; private set; } = SplitCategories(DefaultCallTreeHiddenCategories);
+
+    public IReadOnlySet<string> CallTreePrunedCategorySet { get; private set; } = SplitCategories(string.Empty);
+
     private SettingsService SettingsService { get; } = settingsService;
 
     private TraceDirectoryService TraceDirectoryService { get; } = traceDirectoryService;
@@ -114,10 +120,6 @@ public partial class SettingsViewModel(SettingsService settingsService, TraceDir
 
         CallTreePrunedCategories = string.Empty;
     }
-
-    public static HashSet<string> SplitCategories(string value)
-        => new(value.Split(CategorySeparator, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries),
-               StringComparer.Ordinal);
 
     public void RefreshMemoryUsage()
     {
@@ -216,13 +218,21 @@ public partial class SettingsViewModel(SettingsService settingsService, TraceDir
         _ = SettingsService.SaveSettingAsync(ShowTimeTravelWarningKey, value);
     }
 
+    private static HashSet<string> SplitCategories(string value)
+        => new(value.Split(CategorySeparator, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries),
+               StringComparer.Ordinal);
+
     partial void OnCallTreeHiddenCategoriesChanged(string value)
     {
+        CallTreeHiddenCategorySet = SplitCategories(value);
+
         _ = SettingsService.SaveSettingAsync(CallTreeHiddenCategoriesKey, value);
     }
 
     partial void OnCallTreePrunedCategoriesChanged(string value)
     {
+        CallTreePrunedCategorySet = SplitCategories(value);
+
         _ = SettingsService.SaveSettingAsync(CallTreePrunedCategoriesKey, value);
     }
 

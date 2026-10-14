@@ -1,7 +1,10 @@
 using System;
 using System.Collections.Generic;
+using System.ComponentModel;
+using System.Linq;
 using InternalsViewer.UI.App.Helpers;
 using InternalsViewer.UI.App.Models.Query.CallStack;
+using InternalsViewer.UI.App.ViewModels;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Documents;
 using Microsoft.UI.Xaml.Media;
@@ -20,18 +23,6 @@ public sealed partial class CallSignatureLine : UserControl
     {
         get => (IReadOnlyList<CallSignaturePart>?)GetValue(PartsProperty);
         set => SetValue(PartsProperty, value);
-    }
-
-    public static readonly DependencyProperty IsDecodedProperty =
-        DependencyProperty.Register(nameof(IsDecoded),
-                                    typeof(bool),
-                                    typeof(CallSignatureLine),
-                                    new PropertyMetadata(true, OnPartsChanged));
-
-    public bool IsDecoded
-    {
-        get => (bool)GetValue(IsDecodedProperty);
-        set => SetValue(IsDecodedProperty, value);
     }
 
     public static readonly DependencyProperty TextSizeProperty =
@@ -61,14 +52,24 @@ public sealed partial class CallSignatureLine : UserControl
     public CallSignatureLine()
     {
         Content = Line;
+
+        Loaded += OnLoaded;
+
+        Unloaded += (_, _) => Settings.PropertyChanged -= OnSettingsPropertyChanged;
     }
 
     public event EventHandler<CallSignaturePart>? ValueSelected;
 
     private StackPanel Line { get; } = new() { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center };
 
+    private SettingsViewModel Settings { get; } = App.GetService<SettingsViewModel>();
+
+    private bool IsDecoded { get; set; }
+
     private void Build()
     {
+        IsDecoded = Settings.DecodeValues;
+
         Line.Children.Clear();
 
         foreach (var part in Parts ?? [])
@@ -85,22 +86,20 @@ public sealed partial class CallSignatureLine : UserControl
         {
             FontSize = TextSize,
             VerticalAlignment = VerticalAlignment.Center,
-            Foreground = part.Kind switch
+            Foreground = AppResources.Get<Brush>(part.Kind switch
             {
-                CallSignaturePartKind.Function => Resource<Brush>("CppClassBrush"),
-                CallSignaturePartKind.Punctuation => Resource<Brush>("SqlPunctuationBrush"),
-                CallSignaturePartKind.Name => Resource<Brush>("TextFillColorSecondaryBrush"),
-                CallSignaturePartKind.NotCaptured => Resource<Brush>("TextFillColorTertiaryBrush"),
-                _ when part.CanFind => Resource<Brush>("AccentTextFillColorPrimaryBrush"),
-                _ => Resource<Brush>("TextFillColorPrimaryBrush")
-            }
+                CallSignaturePartKind.Function => "CppClassBrush",
+                CallSignaturePartKind.Punctuation => "SqlPunctuationBrush",
+                CallSignaturePartKind.Name => "TextFillColorSecondaryBrush",
+                CallSignaturePartKind.NotCaptured => "TextFillColorTertiaryBrush",
+                _ when part.CanFind => "AccentTextFillColorPrimaryBrush",
+                _ => "TextFillColorPrimaryBrush"
+            })
         };
 
-        var typeName = part.ShowsTypeFor(IsDecoded) ? part.TypeName : null;
-
-        if (typeName is not null)
+        if (part.ShowsTypeFor(IsDecoded))
         {
-            SignatureRuns.AddType(text.Inlines, typeName);
+            SignatureRuns.AddType(text.Inlines, part.TypeName!);
 
             text.Inlines.Add(new Run { Text = " " });
         }
@@ -109,30 +108,24 @@ public sealed partial class CallSignatureLine : UserControl
         {
             SignatureRuns.AddFunction(text.Inlines, part.Text);
         }
-        else if (isDecoded && (part.DecodedString is not null || part.DecodedClass is not null))
-        {
-            SignatureRuns.AddDecoded(text.Inlines, part);
-        }
-        else if (typeName is not null)
-        {
-            HexText.AddRuns(text.Inlines, part.GetText(IsDecoded));
-        }
         else
         {
-            HexText.Apply(text, part.GetText(IsDecoded));
+            SignatureRuns.AddValue(text.Inlines, part, IsDecoded);
         }
 
-        if (!isDecoded && Resource<FontFamily>("MonospaceFontFamily") is { } monospace)
+        if (!isDecoded && AppResources.Get<FontFamily>("MonospaceFontFamily") is { } monospace)
         {
             text.FontFamily = monospace;
         }
 
-        if (ReferenceEquals(part, HighlightedPart))
+        if (ReferenceEquals(part, HighlightedPart) && text.Inlines.OfType<Run>().Sum(r => r.Text.Length) is > 0 and var length)
         {
-            Highlight(text);
+            SearchHighlight.Highlight(text, [(0, length)]);
         }
 
-        var alternative = part.Kind != CallSignaturePartKind.Value ? null : isDecoded ? part.Text : part.Decoded is null ? null : part.GetText(true);
+        var alternative = part.Kind != CallSignaturePartKind.Value ? null
+                          : isDecoded ? part.Text
+                          : part.Decoded is null ? null : part.GetText(true);
 
         if (part.ToolTip is { } toolTip)
         {
@@ -143,83 +136,52 @@ public sealed partial class CallSignatureLine : UserControl
         {
             text.Tapped += (_, _) => ValueSelected?.Invoke(this, part);
 
-            var menu = new MenuFlyout();
-
-            if (part.Decoded is not null)
-            {
-                menu.Items.Add(MenuItem("Copy Decoded", () => ClipboardText.Copy(part.GetText(true))));
-            }
-
-            menu.Items.Add(MenuItem("Copy Value", () => ClipboardText.Copy(part.Text)));
-
-            if (part.CanFind)
-            {
-                menu.Items.Add(new MenuFlyoutSeparator());
-
-                menu.Items.Add(MenuItem("Find", () => Finder()?.Find(value)));
-            }
-
-            text.ContextFlyout = menu;
+            text.ContextFlyout = ValueMenu(part, value);
         }
 
         return text;
     }
 
-    private static void Highlight(TextBlock text)
+    private MenuFlyout ValueMenu(CallSignaturePart part, ulong value)
     {
-        var length = 0;
+        var menu = new MenuFlyout();
 
-        foreach (var inline in text.Inlines)
+        if (part.Decoded is not null)
         {
-            length += inline is Run run ? run.Text.Length : 0;
+            menu.Items.Add(MenuItems.Create("Copy Decoded", () => ClipboardText.Copy(part.GetText(true))));
         }
 
-        length = length > 0 ? length : text.Text.Length;
+        menu.Items.Add(MenuItems.Create("Copy Value", () => ClipboardText.Copy(part.Text)));
 
-        if (length == 0)
+        if (part.CanFind)
         {
-            return;
+            menu.Items.Add(new MenuFlyoutSeparator());
+
+            menu.Items.Add(MenuItems.Create("Find", () => LayoutHelpers.FindParent<IValueFinder>(this)?.Find(value)));
         }
 
-        var highlighter = new TextHighlighter
-        {
-            Background = Resource<Brush>("SearchHighlightBrush"),
-            Foreground = Resource<Brush>("SearchHighlightForegroundBrush")
-        };
-
-        highlighter.Ranges.Add(new TextRange { StartIndex = 0, Length = length });
-
-        text.TextHighlighters.Add(highlighter);
+        return menu;
     }
 
-    private static MenuFlyoutItem MenuItem(string text, Action action)
+    private void OnLoaded(object sender, RoutedEventArgs e)
     {
-        var item = new MenuFlyoutItem { Text = text };
+        Settings.PropertyChanged -= OnSettingsPropertyChanged;
 
-        item.Click += (_, _) => action();
+        Settings.PropertyChanged += OnSettingsPropertyChanged;
 
-        return item;
-    }
-
-    private IValueFinder? Finder()
-    {
-        DependencyObject? current = this;
-
-        while (current is not null)
+        if (IsDecoded != Settings.DecodeValues)
         {
-            if (current is IValueFinder finder)
-            {
-                return finder;
-            }
-
-            current = VisualTreeHelper.GetParent(current);
+            Build();
         }
-
-        return null;
     }
 
-    private static T? Resource<T>(string key) where T : class
-        => Application.Current.Resources.TryGetValue(key, out var resource) ? resource as T : null;
+    private void OnSettingsPropertyChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName == nameof(SettingsViewModel.DecodeValues))
+        {
+            Build();
+        }
+    }
 
     private static void OnPartsChanged(DependencyObject d, DependencyPropertyChangedEventArgs e) => ((CallSignatureLine)d).Build();
 }

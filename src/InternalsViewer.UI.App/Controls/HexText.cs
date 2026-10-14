@@ -1,4 +1,5 @@
 using System.Text.RegularExpressions;
+using InternalsViewer.UI.App.Helpers;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Documents;
 using Microsoft.UI.Xaml.Media;
@@ -39,7 +40,7 @@ public static partial class HexText
                 inlines.Add(new Run { Text = text[start..match.Index] });
             }
 
-            inlines.Add(new Run { Text = match.Value, FontFamily = Monospace });
+            inlines.Add(new Run { Text = match.Value, FontFamily = AppResources.Get<FontFamily>("MonospaceFontFamily") });
 
             start = match.Index + match.Length;
         }
@@ -49,9 +50,6 @@ public static partial class HexText
             inlines.Add(new Run { Text = text[start..] });
         }
     }
-
-    private static FontFamily? Monospace
-        => Application.Current.Resources.TryGetValue("MonospaceFontFamily", out var resource) ? resource as FontFamily : null;
 
     [GeneratedRegex(@"\b0x[0-9A-Fa-f]+\b")]
     private static partial Regex HexValue();

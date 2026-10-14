@@ -3,11 +3,11 @@ using System.Collections.Generic;
 using System.ComponentModel;
 using System.Linq;
 using InternalsViewer.Query.CallStack;
+using InternalsViewer.UI.App.Helpers.Converters.Page;
 using InternalsViewer.UI.App.ViewModels;
 using Microsoft.UI.Dispatching;
 using Microsoft.UI.Text;
 using Microsoft.UI.Xaml.Controls;
-using Microsoft.UI.Xaml.Data;
 using Microsoft.UI.Xaml.Input;
 using Microsoft.UI.Xaml.Media;
 using Windows.UI.Text;
@@ -32,10 +32,6 @@ public sealed partial class CallSearchBar : UserControl
         set => SetValue(CallStackProperty, value);
     }
 
-    private string? _hiddenCategoriesSetting;
-
-    private string? _prunedCategoriesSetting;
-
     public CallSearchBar()
     {
         InitializeComponent();
@@ -59,39 +55,9 @@ public sealed partial class CallSearchBar : UserControl
 
     private string PublishedSearch { get; set; } = string.Empty;
 
-    private HashSet<string> HiddenCategories
-    {
-        get
-        {
-            var setting = Settings.CallTreeHiddenCategories;
+    private IReadOnlySet<string> HiddenCategories => Settings.CallTreeHiddenCategorySet;
 
-            if (!string.Equals(setting, _hiddenCategoriesSetting, StringComparison.Ordinal))
-            {
-                _hiddenCategoriesSetting = setting;
-
-                field = SettingsViewModel.SplitCategories(setting);
-            }
-
-            return field;
-        }
-    } = new(StringComparer.Ordinal);
-
-    private HashSet<string> PrunedCategories
-    {
-        get
-        {
-            var setting = Settings.CallTreePrunedCategories;
-
-            if (!string.Equals(setting, _prunedCategoriesSetting, StringComparison.Ordinal))
-            {
-                _prunedCategoriesSetting = setting;
-
-                field = SettingsViewModel.SplitCategories(setting);
-            }
-
-            return field;
-        }
-    } = new(StringComparer.Ordinal);
+    private IReadOnlySet<string> PrunedCategories => Settings.CallTreePrunedCategorySet;
 
     public void FocusSearch() => SearchBox.Focus(FocusState.Programmatic);
 
@@ -219,9 +185,9 @@ public sealed partial class CallSearchBar : UserControl
 
     private void SetCategory(string category, bool hide, bool withCallees)
     {
-        var hidden = HiddenCategories;
+        var hidden = new HashSet<string>(HiddenCategories, StringComparer.Ordinal);
 
-        var pruned = PrunedCategories;
+        var pruned = new HashSet<string>(PrunedCategories, StringComparer.Ordinal);
 
         hidden.Remove(category);
         pruned.Remove(category);
@@ -236,11 +202,9 @@ public sealed partial class CallSearchBar : UserControl
 
     private void OnAllCategoriesClick(object sender, RoutedEventArgs e)
     {
-        var hidden = HiddenCategories;
+        var hidden = new HashSet<string>(HiddenCategories, StringComparer.Ordinal);
 
-        var pruned = PrunedCategories;
-
-        pruned.Clear();
+        var pruned = new HashSet<string>(StringComparer.Ordinal);
 
         if (AllCategoriesToggle.IsChecked == true)
         {
@@ -264,13 +228,9 @@ public sealed partial class CallSearchBar : UserControl
 
     private void SaveCategories(HashSet<string> hidden, HashSet<string> pruned)
     {
-        _hiddenCategoriesSetting = string.Join(SettingsViewModel.CategorySeparator, hidden.Order(StringComparer.Ordinal));
+        Settings.CallTreeHiddenCategories = string.Join(SettingsViewModel.CategorySeparator, hidden.Order(StringComparer.Ordinal));
 
-        _prunedCategoriesSetting = string.Join(SettingsViewModel.CategorySeparator, pruned.Order(StringComparer.Ordinal));
-
-        Settings.CallTreeHiddenCategories = _hiddenCategoriesSetting;
-
-        Settings.CallTreePrunedCategories = _prunedCategoriesSetting;
+        Settings.CallTreePrunedCategories = string.Join(SettingsViewModel.CategorySeparator, pruned.Order(StringComparer.Ordinal));
 
         StyleCategoryBadges();
     }
@@ -297,9 +257,7 @@ public sealed partial class CallSearchBar : UserControl
 
     private Border CreateCategoryBadge(string category, string colour)
     {
-        var converter = (IValueConverter)Application.Current.Resources["HexColorToBrushConverter"];
-
-        var brush = converter.Convert(colour, typeof(Brush), null!, string.Empty) as Brush;
+        var brush = HexColorToBrushConverter.ToBrush(colour);
 
         var badge = new Border
         {

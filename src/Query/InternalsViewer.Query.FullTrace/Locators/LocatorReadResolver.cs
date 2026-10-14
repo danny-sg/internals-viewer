@@ -81,7 +81,7 @@ public static partial class LocatorReadResolver
 
         Span<char> buffer = stackalloc char[DiaResolver.MaximumNameLength];
 
-        foreach (var detail in resolver.EnumerateSymbolDetails(string.Empty).Where(d => d.IsFunction && kept.Contains(d.Rva)))
+        foreach (var detail in resolver.EnumerateFunctions(kept.Contains))
         {
             if (FunctionSignature.ParseParameters(detail.Signature) is not { Count: >= StackCandidateParameters }
                 || !kept.Remove(detail.Rva)

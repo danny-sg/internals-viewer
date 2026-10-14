@@ -95,7 +95,7 @@ public sealed partial class FlameChartControl
 
         if (next > _viewEnd)
         {
-            SetView(next, next + range);
+            ScrollViewTo(next);
         }
 
         _canvas.Invalidate();

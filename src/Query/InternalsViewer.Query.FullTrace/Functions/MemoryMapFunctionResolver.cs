@@ -34,5 +34,5 @@ internal static class MemoryMapFunctionResolver
     }
 
     private static bool IsFolded(DiaResolver resolver, uint rva)
-        => resolver.EnumerateSymbolsAtRva(rva).Where(d => d.IsFunction).Select(d => d.Name).Distinct().Skip(1).Any();
+        => resolver.EnumerateFunctionsAtRva(rva, includeSignature: false).Select(d => d.Name).Distinct().Skip(1).Any();
 }

@@ -1,3 +1,4 @@
+using InternalsViewer.UI.App.Helpers;
 using InternalsViewer.UI.App.Models;
 using Microsoft.UI.Xaml.Documents;
 using Microsoft.UI.Xaml.Media;
@@ -10,14 +11,11 @@ public static class StringText
 
     public static void AddRuns(InlineCollection inlines, StringValue value)
     {
-        inlines.Add(new Run { Text = value.Text, Foreground = Resource("SqlLiteralBrush") });
+        inlines.Add(new Run { Text = value.Text, Foreground = AppResources.Get<Brush>("SqlLiteralBrush") });
 
         if (value.IsTruncated)
         {
-            inlines.Add(new Run { Text = TruncatedSuffix, Foreground = Resource("TextFillColorSecondaryBrush") });
+            inlines.Add(new Run { Text = TruncatedSuffix, Foreground = AppResources.Get<Brush>("TextFillColorSecondaryBrush") });
         }
     }
-
-    private static Brush? Resource(string key)
-        => Application.Current.Resources.TryGetValue(key, out var resource) ? resource as Brush : null;
 }

@@ -170,33 +170,28 @@ public sealed partial class ArgumentsViewModel(ILogger logger, SymbolsViewModel 
     }
 
     public ArgumentCell CellAt(int index, int ordinal)
-        => Layout is { } layout && index >= 0 && index < LoggedCalls.Count
-            ? ArgumentRowBuilder.CellAt(layout, LoggedCalls[index], ordinal)
-            : default;
+        => Layout is { } layout && LoggedAt(index) is { } call ? ArgumentRowBuilder.CellAt(layout, call, ordinal) : default;
 
     public string? DecodedTextAt(int index, int ordinal)
-        => Layout is { } layout && Lookup is { } lookup && index >= 0 && index < LoggedCalls.Count
-            ? ArgumentRowBuilder.DecodedTextAt(layout, LoggedCalls[index], ordinal, lookup.Describe)
+        => Layout is { } layout && Lookup is { } lookup && LoggedAt(index) is { } call
+            ? ArgumentRowBuilder.DecodedTextAt(layout, call, ordinal, lookup.Describe)
             : null;
 
     public MemoryMapEntry? OriginAt(int index, int ordinal)
-        => Layout is { } layout && Lookup is { } lookup && index >= 0 && index < LoggedCalls.Count
-            ? ArgumentRowBuilder.OriginAt(layout, LoggedCalls[index], ordinal, lookup.Describe)
+        => Layout is { } layout && Lookup is { } lookup && LoggedAt(index) is { } call
+            ? ArgumentRowBuilder.OriginAt(layout, call, ordinal, lookup.Describe)
             : null;
 
-    public CallStackNode? NodeAt(int index)
-        => index >= 0 && index < LoggedCalls.Count ? Lookup?.Log.NodeOf(LoggedCalls[index]) : null;
+    public CallStackNode? NodeAt(int index) => LoggedAt(index) is { } call ? Lookup?.Log.NodeOf(call) : null;
 
     public IteratorTarget? GetIterator(ulong value) => Lookup?.GetIterator(value);
 
     public ulong? HoBtIdAt(int index, int ordinal)
     {
-        if (Layout is not { } layout || Lookup is not { } lookup || index < 0 || index >= LoggedCalls.Count)
+        if (Layout is not { } layout || Lookup is not { } lookup || LoggedAt(index) is not { } call)
         {
             return null;
         }
-
-        var call = LoggedCalls[index];
 
         if (ArgumentRowBuilder.SlotAt(layout, ordinal) is { } slot)
         {
@@ -232,25 +227,23 @@ public sealed partial class ArgumentsViewModel(ILogger logger, SymbolsViewModel 
 
         try
         {
-            var signature = await symbols.ResolveFrameSignatureAsync(frame);
-
-            var decoratedName = await symbols.ResolveFrameDecoratedNameAsync(frame);
+            var resolved = await lookup.ResolveAsync(frame);
 
             if (request.IsCancellationRequested)
             {
                 return;
             }
 
-            if (FunctionSignature.Parse(signature, decoratedName) is not { } parsed)
+            if (resolved is null)
             {
                 Message = "The function's signature could not be resolved from its symbols";
 
                 return;
             }
 
-            var layout = KnownParameters.Apply(ArgumentLayout.LayoutOf(parsed), frame.Resolved?.ClassName, frame.Resolved?.MethodName);
+            var layout = resolved.Layout;
 
-            Signature = Header(parsed, signature ?? node.Symbol);
+            Signature = Header(resolved.Parsed, resolved.Text ?? node.Symbol);
 
             if (lookup.Log.CallsOf(frame.Address, frame.Instance) is not { Count: > 0 } calls)
             {
@@ -306,6 +299,8 @@ public sealed partial class ArgumentsViewModel(ILogger logger, SymbolsViewModel 
             }
         }
     }
+
+    private TraceArgumentCall? LoggedAt(int index) => index >= 0 && index < LoggedCalls.Count ? LoggedCalls[index] : null;
 
     private static IReadOnlyList<int> Include(IReadOnlyList<int> included, int? call)
     {

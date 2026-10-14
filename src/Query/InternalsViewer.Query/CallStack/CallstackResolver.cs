@@ -269,7 +269,7 @@ public sealed class CallstackResolver(string symbolsPath) : IDisposable
 
     private static SymbolDetail? GetFunctionDetail(DiaResolver resolver, uint rva, string? name)
     {
-        var details = resolver.EnumerateSymbolsAtRva(rva).Where(d => d.IsFunction && d.Signature.Length > 0).ToList();
+        var details = resolver.EnumerateFunctionsAtRva(rva).Where(d => d.Signature.Length > 0).ToList();
 
         return details.Count == 0 ? null : details.FirstOrDefault(d => d.Name == name, details[0]);
     }

@@ -1,6 +1,7 @@
 using System;
 using System.ComponentModel;
 using InternalsViewer.UI.App.Controls.CallStack;
+using InternalsViewer.UI.App.Helpers;
 using InternalsViewer.UI.App.Models.Query.CallStack;
 using InternalsViewer.UI.App.ViewModels.Query.CallStack;
 using Microsoft.UI.Xaml.Controls;
@@ -27,21 +28,6 @@ public sealed partial class CallTreeSymbolsPanelView : UserControl, ISignatureNa
     public void OnTypeInvoked(string typeName) => ViewModel?.ListMembers(typeName);
 
     public void Dispose() => Detach();
-
-    private static void SetExpanded(TreeViewNode? node, bool expanded)
-    {
-        if (node is null)
-        {
-            return;
-        }
-
-        node.IsExpanded = expanded;
-
-        foreach (var child in node.Children)
-        {
-            SetExpanded(child, expanded);
-        }
-    }
 
     private void OnViewModelChanged()
     {
@@ -162,7 +148,7 @@ public sealed partial class CallTreeSymbolsPanelView : UserControl, ISignatureNa
     {
         foreach (var node in SymbolTree.RootNodes)
         {
-            SetExpanded(node, expanded);
+            LayoutHelpers.SetExpanded(node, expanded);
         }
     }
 

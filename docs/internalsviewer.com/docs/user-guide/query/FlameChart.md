@@ -52,6 +52,7 @@ Right-clicking a bar gives:
 - **Scope** - scopes the chart to the call's function, as **Shift + click** does - see [Scoping to a function](#scoping-to-a-function)
 - **Clear Scope** - only while the chart is scoped, wherever you right-click. Goes back to the whole recording
 - **Open Call Tree** - opens the [Call Tree](/docs/user-guide/query/CallStack) at the call's frame, with the call selected in the [Arguments](/docs/user-guide/query/CallStack#arguments) tab. Right-clicking empty space just opens the pane, and if it is already open its tab is selected
+- **Open Call Stack** - only over a call. Opens the [Call Stack](#call-stack) pane at the start of the call, listing the calls that led to it with the values they were passed, without putting a playhead on the chart. Placing the playhead takes the pane back to following it
 
 <!-- Screenshot: the Flame Chart's right-click menu over a call, with Scope and Open Call Tree -->
 

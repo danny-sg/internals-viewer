@@ -55,47 +55,9 @@ public sealed partial class CallTreeViewModel
 
     private OperatorHierarchy Hierarchy { get; set; } = OperatorHierarchy.Build([]);
 
-    private HashSet<string> HiddenCategories
-    {
-        get
-        {
-            var setting = Settings.CallTreeHiddenCategories;
+    private IReadOnlySet<string> HiddenCategories => Settings.CallTreeHiddenCategorySet;
 
-            if (!string.Equals(setting, HiddenCategoriesSetting, StringComparison.Ordinal))
-            {
-                HiddenCategoriesSetting = setting;
-
-                HiddenCategoriesCache = SettingsViewModel.SplitCategories(setting);
-            }
-
-            return HiddenCategoriesCache;
-        }
-    }
-
-    private HashSet<string> PrunedCategories
-    {
-        get
-        {
-            var setting = Settings.CallTreePrunedCategories;
-
-            if (!string.Equals(setting, PrunedCategoriesSetting, StringComparison.Ordinal))
-            {
-                PrunedCategoriesSetting = setting;
-
-                PrunedCategoriesCache = SettingsViewModel.SplitCategories(setting);
-            }
-
-            return PrunedCategoriesCache;
-        }
-    }
-
-    private string? HiddenCategoriesSetting { get; set; }
-
-    private HashSet<string> HiddenCategoriesCache { get; set; } = new(StringComparer.Ordinal);
-
-    private string? PrunedCategoriesSetting { get; set; }
-
-    private HashSet<string> PrunedCategoriesCache { get; set; } = new(StringComparer.Ordinal);
+    private IReadOnlySet<string> PrunedCategories => Settings.CallTreePrunedCategorySet;
 
     public CallTreeRow? GetRow(CallStackNode? target)
     {
@@ -196,22 +158,13 @@ public sealed partial class CallTreeViewModel
 
     private void ApplyActivityBands()
     {
-        var pending = new Stack<CallTreeRow>(Roots);
-
-        while (pending.Count > 0)
+        foreach (var row in CallTreeRow.Walk(Roots))
         {
-            var row = pending.Pop();
-
             if (row.Content is CallStackNode node)
             {
                 node.Activity = IsActivityShown
                     ? new ActivityBand(HighlightBuckets, [.. row.Children.Select(c => c.Content).OfType<CallStackNode>()])
                     : null;
-            }
-
-            foreach (var child in row.Children)
-            {
-                pending.Push(child);
             }
         }
     }
@@ -327,7 +280,7 @@ public sealed partial class CallTreeViewModel
 
         foreach (var row in BuildVisible(Query.CallStackRoots, Reveal.None))
         {
-            AddRoot(row);
+            Roots.Add(row);
         }
 
         if (GetRevealedRoot() is { } outside)
@@ -426,8 +379,6 @@ public sealed partial class CallTreeViewModel
 
         return path.Any(cropped.Contains) ? null : path[^1];
     }
-
-    private void AddRoot(CallTreeRow row) => Roots.Add(row);
 
     /// <summary>
     /// Shows what the tree below is a segment of, and the way back up to the operator that drove it
@@ -577,7 +528,7 @@ public sealed partial class CallTreeViewModel
         {
             if (BuildOperatorNode(root) is { } row)
             {
-                AddRoot(row);
+                Roots.Add(row);
             }
         }
 
@@ -635,7 +586,7 @@ public sealed partial class CallTreeViewModel
 
         foreach (var row in rows.Count > 0 ? rows : ProjectedCallNodes(projected, revealInfrastructure: true))
         {
-            AddRoot(row);
+            Roots.Add(row);
         }
 
         // Attached first: WinUI can drop a subtree expanded while detached.
@@ -656,7 +607,7 @@ public sealed partial class CallTreeViewModel
 
         foreach (var row in BuildOperatorCallTree(op))
         {
-            AddRoot(row);
+            Roots.Add(row);
         }
 
         // Attached first: WinUI can drop a subtree expanded while detached.
@@ -863,23 +814,7 @@ public sealed partial class CallTreeViewModel
             return;
         }
 
-        var subtree = new HashSet<CallTreeRow>();
-
-        var pending = new Stack<CallTreeRow>();
-
-        pending.Push(row);
-
-        while (pending.Count > 0)
-        {
-            var current = pending.Pop();
-
-            subtree.Add(current);
-
-            foreach (var child in current.Children)
-            {
-                pending.Push(child);
-            }
-        }
+        var subtree = CallTreeRow.Walk([row]).ToHashSet();
 
         foreach (var (node, mapped) in Rows.ToList())
         {
@@ -903,26 +838,7 @@ public sealed partial class CallTreeViewModel
     }
 
     private static CallTreeRow? FindRow(IEnumerable<CallTreeRow> rows, string path)
-    {
-        var pending = new Stack<CallTreeRow>(rows);
-
-        while (pending.Count > 0)
-        {
-            var row = pending.Pop();
-
-            if (row.Content is CallStackNode node && GetPath(node) == path)
-            {
-                return row;
-            }
-
-            foreach (var child in row.Children)
-            {
-                pending.Push(child);
-            }
-        }
-
-        return null;
-    }
+        => CallTreeRow.Walk(rows).FirstOrDefault(r => r.Content is CallStackNode node && GetPath(node) == path);
 
     private static string GetPath(CallStackNode node) => string.Join('\n', node.Ancestors().Select(a => a.Key));
 
@@ -950,24 +866,15 @@ public sealed partial class CallTreeViewModel
     {
         var rows = new Dictionary<string, CallTreeRow>(StringComparer.Ordinal);
 
-        var pending = new Stack<CallTreeRow>(Roots);
-
-        while (pending.Count > 0)
+        foreach (var row in CallTreeRow.Walk(Roots))
         {
-            var row = pending.Pop();
-
             rows.TryAdd(GetRowPath(row), row);
-
-            foreach (var child in row.Children)
-            {
-                pending.Push(child);
-            }
         }
 
         return rows;
     }
 
-    private static bool IsCategoryIn(HashSet<string> categories, CallStackNode node)
+    private static bool IsCategoryIn(IReadOnlySet<string> categories, CallStackNode node)
         => node.Frame is not null && categories.Count > 0 && categories.Contains(node.Category);
 
     /// <summary>

@@ -10,7 +10,7 @@ namespace InternalsViewer.UI.App.Controls.FlameChart;
 
 public sealed class FlameChartMinimap : UserControl, IDisposable
 {
-    private const float Padding = 3f;
+    private const float InnerPadding = 3f;
 
     private const float Radius = 3f;
 
@@ -209,9 +209,9 @@ public sealed class FlameChartMinimap : UserControl, IDisposable
 
         var height = e.Info.Height / scale;
 
-        var innerWidth = width - Padding * 2;
+        var innerWidth = width - InnerPadding * 2;
 
-        var innerHeight = height - Padding * 2;
+        var innerHeight = height - InnerPadding * 2;
 
         if (innerWidth <= 0 || innerHeight <= 0)
         {
@@ -224,7 +224,7 @@ public sealed class FlameChartMinimap : UserControl, IDisposable
         {
             canvas.Save();
 
-            canvas.Translate(Padding, Padding);
+            canvas.Translate(InnerPadding, InnerPadding);
 
             canvas.ClipRect(new SKRect(0, 0, innerWidth, innerHeight));
 

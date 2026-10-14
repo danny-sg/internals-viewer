@@ -110,28 +110,10 @@ public static class ArgumentRowBuilder
     }
 
     public static string? DecodedTextAt(ArgumentLayout layout, TraceArgumentCall call, int ordinal, ValueDescriber? describe)
-    {
-        if (SlotAt(layout, ordinal) is { } slot)
-        {
-            return call.Value(slot) is { } value ? Cell(slot, value, call, describe, decode: true).ToString() : null;
-        }
-
-        return CellAt(layout, call, ordinal) is { Value: { } returned, Type: { } type }
-            ? Cell(ReturnSlot(type), returned, call, describe, decode: true).ToString()
-            : null;
-    }
+        => ValueAt(layout, call, ordinal) is { } found ? Cell(found.Slot, found.Value, call, describe, decode: true).ToString() : null;
 
     public static MemoryMapEntry? OriginAt(ArgumentLayout layout, TraceArgumentCall call, int ordinal, ValueDescriber describe)
-    {
-        if (SlotAt(layout, ordinal) is { } slot)
-        {
-            return call.Value(slot) is { } value ? GetDecoded(slot, value, call, describe).Origin : null;
-        }
-
-        return CellAt(layout, call, ordinal) is { Value: { } returned, Type: { } type }
-            ? GetDecoded(ReturnSlot(type), returned, call, describe).Origin
-            : null;
-    }
+        => ValueAt(layout, call, ordinal) is { } found ? GetDecoded(found.Slot, found.Value, call, describe).Origin : null;
 
     public static IReadOnlyList<CallSignaturePart> Signature(string function,
                                                              ArgumentLayout? layout,
@@ -176,7 +158,9 @@ public static class ArgumentRowBuilder
 
             AddSeparator(parts, index);
 
-            var label = slot.Type == ThisType ? ThisType : slot.Name == ArgumentLayout.ReturnBuffer ? slot.Name : $"{++argument}";
+            var label = slot.Type == ThisType ? CallSignaturePart.ThisLabel
+                        : slot.Name == ArgumentLayout.ReturnBuffer ? slot.Name
+                        : $"{++argument}";
 
             var part = call.Value(slot) is { } value
                 ? ValuePart(slot, value, call, describe, includeTypes, label)
@@ -211,7 +195,7 @@ public static class ArgumentRowBuilder
 
     public static CallSignaturePart? ThisOf(ArgumentLayout? layout, TraceArgumentCall call, ValueDescriber? describe = null)
         => layout?.Slots.FirstOrDefault(s => s.Type == ThisType) is { } slot && call.Value(slot) is { } value
-            ? ValuePart(slot, value, call, describe, label: ThisType)
+            ? ValuePart(slot, value, call, describe, label: CallSignaturePart.ThisLabel)
             : null;
 
     public static CallSignaturePart? ReturnOf(ArgumentLayout? layout,
@@ -236,6 +220,16 @@ public static class ArgumentRowBuilder
 
     public static bool CanFind(string type, ulong value)
         => value != 0 && (type == ThisType || ArgumentValue.IsPointer(type) || value >= SmallestAddress);
+
+    private static (ArgumentSlot Slot, ulong Value)? ValueAt(ArgumentLayout layout, TraceArgumentCall call, int ordinal)
+    {
+        if (SlotAt(layout, ordinal) is { } slot)
+        {
+            return call.Value(slot) is { } value ? (slot, value) : null;
+        }
+
+        return CellAt(layout, call, ordinal) is { Value: { } returned, Type: { } type } ? (ReturnSlot(type), returned) : null;
+    }
 
     private static CallSignaturePart ValuePart(ArgumentSlot slot,
                                                ulong value,

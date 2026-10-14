@@ -10,7 +10,6 @@
     xmlns:selectors="using:InternalsViewer.UI.App.Helpers.Selectors">
 
     <UserControl.Resources>
-        <members:ValueDisplay x:Key="ValueDisplay"/>
 
         <DataTemplate x:Key="ValueTypeTemplate" x:DataType="muxc:TreeViewNode">
             <StackPanel Orientation="Horizontal"
@@ -70,8 +69,7 @@
                            FontSize="11"
                            Foreground="{ThemeResource TextFillColorTertiaryBrush}"
                            VerticalAlignment="Center"/>
-                <callStack:CallSignatureLine Parts="{x:Bind ((members:ValueCallRow)Content).Signature}"
-                                             IsDecoded="{Binding IsDecoded, Source={StaticResource ValueDisplay}, Mode=OneWay}"/>
+                <callStack:CallSignatureLine Parts="{x:Bind ((members:ValueCallRow)Content).Signature}"/>
             </StackPanel>
         </DataTemplate>
 

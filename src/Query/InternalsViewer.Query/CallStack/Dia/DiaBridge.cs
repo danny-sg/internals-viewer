@@ -26,16 +26,6 @@ internal static class DiaBridge
 
     [DllImport("InternalsViewer.Query.DiaBridge.dll", CharSet = CharSet.Unicode)]
     [return: MarshalAs(UnmanagedType.U1)]
-    public static extern bool NextSymbolDetail(IntPtr enumerator,
-                                               StringBuilder nameBuffer,
-                                               int nameLength,
-                                               StringBuilder? signatureBuffer,
-                                               int signatureLength,
-                                               out uint rva,
-                                               out int isFunction);
-
-    [DllImport("InternalsViewer.Query.DiaBridge.dll", CharSet = CharSet.Unicode)]
-    [return: MarshalAs(UnmanagedType.U1)]
     public static extern unsafe bool NextSymbolDetail(IntPtr enumerator,
                                                       char* nameBuffer,
                                                       int nameLength,

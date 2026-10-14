@@ -7,14 +7,12 @@ using InternalsViewer.Query.CallStack.Locators;
 using InternalsViewer.UI.App.Controls.CallStack;
 using InternalsViewer.UI.App.Controls.Docking;
 using InternalsViewer.UI.App.Helpers;
+using InternalsViewer.UI.App.Helpers.Selectors;
 using InternalsViewer.UI.App.Models.Query.CallStack;
 using InternalsViewer.UI.App.ViewModels.Query.CallStack;
-using Microsoft.UI.Input;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Controls.Primitives;
 using Microsoft.UI.Xaml.Input;
-using Windows.System;
-using Windows.UI.Core;
 
 namespace InternalsViewer.UI.App.Views.Query.Tabs.CallStack;
 
@@ -25,6 +23,8 @@ public sealed partial class CallTreePanelView : UserControl, IDocumentCommands, 
     private const int ExpandAllBudget = 10000;
 
     private const int ListedLocators = 20;
+
+    private const double CommandSpacing = 4;
 
     private const string BackGlyph = "";
 
@@ -88,68 +88,34 @@ public sealed partial class CallTreePanelView : UserControl, IDocumentCommands, 
     /// </remarks>
     public FrameworkElement CreateCommands()
     {
-        BackButton = new Button
-        {
-            Style = (Style)Application.Current.Resources["TabCommandButtonStyle"],
-            Content = new FontIcon { Glyph = BackGlyph, FontSize = 12 },
-            IsEnabled = CallTree?.CanGoBack == true
-        };
+        BackButton = TabCommands.Button(TabCommands.Glyph(BackGlyph), "Back", (_, _) => CallTree?.GoBack());
 
-        ToolTipService.SetToolTip(BackButton, "Back");
+        BackButton.IsEnabled = CallTree?.CanGoBack == true;
 
-        BackButton.Click += (_, _) => CallTree?.GoBack();
+        ForwardButton = TabCommands.Button(TabCommands.Glyph(ForwardGlyph), "Forward", (_, _) => CallTree?.GoForward());
 
-        ForwardButton = new Button
-        {
-            Style = (Style)Application.Current.Resources["TabCommandButtonStyle"],
-            Content = new FontIcon { Glyph = ForwardGlyph, FontSize = 12 },
-            IsEnabled = CallTree?.CanGoForward == true
-        };
+        ForwardButton.IsEnabled = CallTree?.CanGoForward == true;
 
-        ToolTipService.SetToolTip(ForwardButton, "Forward");
+        FocusToggle = TabCommands.Toggle(TabCommands.Label("Focus"),
+                                         CallTree?.IsFocused ?? true,
+                                         "Show the selection's own call tree on its own: an operator from the frame where it "
+                                         + "starts executing down to the ones it hands off to, an event from where its work "
+                                         + "begins. With nothing selected, the plan's operators. Off shows every stack the "
+                                         + "query captured merged into one tree.",
+                                         (sender, _) => CallTree?.SetFocused(TabCommands.IsChecked(sender)));
 
-        ForwardButton.Click += (_, _) => CallTree?.GoForward();
+        ActivityToggle = TabCommands.Toggle(TabCommands.Label("Activity"),
+                                            CallTree?.IsActivityShown ?? true,
+                                            "Show each frame's activity over the query window as a histogram: taller is hotter, "
+                                            + "with the selection's time highlighted.",
+                                            (sender, _) => CallTree?.SetActivityShown(TabCommands.IsChecked(sender)));
 
-        FocusToggle = Toggle("Focus", CallTree?.IsFocused ?? true);
+        SignatureToggle = TabCommands.Toggle(TabCommands.Label("Signature"),
+                                             CallTree?.IsSignatureShown ?? false,
+                                             "Show each frame's function signature, with its parameter types, from the symbols.",
+                                             OnSignatureClick);
 
-        ToolTipService.SetToolTip(FocusToggle,
-                                  "Show the selection's own call tree on its own: an operator from the frame where it "
-                                  + "starts executing down to the ones it hands off to, an event from where its work "
-                                  + "begins. With nothing selected, the plan's operators. Off shows every stack the "
-                                  + "query captured merged into one tree.");
-
-        FocusToggle.Click += (_, _) => CallTree?.SetFocused(FocusToggle.IsChecked == true);
-
-        ActivityToggle = Toggle("Activity", CallTree?.IsActivityShown ?? true);
-
-        ToolTipService.SetToolTip(ActivityToggle,
-                                  "Show each frame's activity over the query window as a histogram: taller is hotter, "
-                                  + "with the selection's time highlighted.");
-
-        ActivityToggle.Click += (_, _) => CallTree?.SetActivityShown(ActivityToggle.IsChecked == true);
-
-        SignatureToggle = Toggle("Signature", CallTree?.IsSignatureShown ?? false);
-
-        ToolTipService.SetToolTip(SignatureToggle, "Show each frame's function signature, with its parameter types, from the symbols.");
-
-        SignatureToggle.Click += OnSignatureClick;
-
-        var commands = new StackPanel
-        {
-            Orientation = Orientation.Horizontal,
-            HorizontalAlignment = HorizontalAlignment.Right,
-            VerticalAlignment = VerticalAlignment.Center,
-            Margin = new Thickness(0, 0, 8, 0),
-            Spacing = 2
-        };
-
-        commands.Children.Add(BackButton);
-        commands.Children.Add(ForwardButton);
-        commands.Children.Add(FocusToggle);
-        commands.Children.Add(ActivityToggle);
-        commands.Children.Add(SignatureToggle);
-
-        return commands;
+        return TabCommands.Panel(CommandSpacing, BackButton, ForwardButton, FocusToggle, ActivityToggle, SignatureToggle);
     }
 
     public void OnTypeInvoked(string typeName) => ViewModel?.ListMembers(typeName);
@@ -159,39 +125,6 @@ public sealed partial class CallTreePanelView : UserControl, IDocumentCommands, 
         SearchBar.SearchTextChanged -= OnSearchTextChanged;
 
         Detach();
-    }
-
-    private static ToggleButton Toggle(string text, bool isChecked) => new()
-    {
-        Style = (Style)Application.Current.Resources["TabCommandToggleStyle"],
-        Content = new TextBlock { Text = text, VerticalAlignment = VerticalAlignment.Center },
-        Margin = new Thickness(2, 0, 0, 0),
-        IsChecked = isChecked
-    };
-
-    private static bool IsShiftDown()
-        => InputKeyboardSource.GetKeyStateForCurrentThread(VirtualKey.Shift).HasFlag(CoreVirtualKeyStates.Down);
-
-    private static void Collapse(TreeViewNode node)
-    {
-        var pending = new Stack<TreeViewNode>();
-
-        pending.Push(node);
-
-        while (pending.Count > 0)
-        {
-            var current = pending.Pop();
-
-            if (current.IsExpanded)
-            {
-                current.IsExpanded = false;
-            }
-
-            foreach (var child in current.Children)
-            {
-                pending.Push(child);
-            }
-        }
     }
 
     private void OnViewModelChanged()
@@ -460,7 +393,7 @@ public sealed partial class CallTreePanelView : UserControl, IDocumentCommands, 
     {
         if (CallTree is { } callTree)
         {
-            await callTree.SetSignatureShownAsync(SignatureToggle?.IsChecked == true);
+            await callTree.SetSignatureShownAsync(TabCommands.IsChecked(sender));
         }
     }
 
@@ -606,7 +539,7 @@ public sealed partial class CallTreePanelView : UserControl, IDocumentCommands, 
     {
         if (ContextNode is not null)
         {
-            Collapse(ContextNode);
+            LayoutHelpers.SetExpanded(ContextNode, false);
         }
     }
 
@@ -635,7 +568,7 @@ public sealed partial class CallTreePanelView : UserControl, IDocumentCommands, 
 
         if (locators.Count == 1)
         {
-            ViewModel?.OpenLocator(locators.Ordered().First(), IsShiftDown());
+            OpenLocator(locators.Ordered().First());
 
             return;
         }
@@ -644,11 +577,7 @@ public sealed partial class CallTreePanelView : UserControl, IDocumentCommands, 
 
         foreach (var locator in locators.Ordered().Take(ListedLocators))
         {
-            var item = new MenuFlyoutItem { Text = locator.ToString(), Tag = locator };
-
-            item.Click += OnListedLocatorClick;
-
-            menu.Items.Add(item);
+            menu.Items.Add(MenuItems.Create(locator.ToString(), () => OpenLocator(locator)));
         }
 
         if (locators.Count > ListedLocators)
@@ -659,11 +588,5 @@ public sealed partial class CallTreePanelView : UserControl, IDocumentCommands, 
         menu.ShowAt(element);
     }
 
-    private void OnListedLocatorClick(object sender, RoutedEventArgs e)
-    {
-        if (sender is MenuFlyoutItem { Tag: Locator locator })
-        {
-            ViewModel?.OpenLocator(locator, IsShiftDown());
-        }
-    }
+    private void OpenLocator(Locator locator) => ViewModel?.OpenLocator(locator, KeyboardState.IsShiftDown());
 }

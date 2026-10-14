@@ -8,15 +8,12 @@ using InternalsViewer.Query.FullTrace.Timeline;
 namespace InternalsViewer.UI.App.Models.Query.CallStack;
 
 public sealed partial class PlayheadCallRow(CallStackNode node,
-                                            TraceTimelineSpan span,
+                                            TraceStackCall stackCall,
                                             CallSignature signature,
                                             ulong id,
                                             bool isCurrent,
-                                            TraceCallExtent extent = default,
                                             double positionOrigin = 0) : ObservableObject
 {
-    private const string ThisLabel = "this";
-
     [ObservableProperty]
     private CallSignaturePart? _highlighted;
 
@@ -24,11 +21,11 @@ public sealed partial class PlayheadCallRow(CallStackNode node,
 
     public ulong Id { get; } = id;
 
-    public int Call => span.Call;
+    public int Call => stackCall.Span.Call;
 
-    public double Start => span.Start;
+    public double Start => stackCall.Span.Start;
 
-    public double End => span.End;
+    public double End => stackCall.Span.End;
 
     public IReadOnlyList<CallSignaturePart> Signature => signature.Parts;
 
@@ -38,12 +35,12 @@ public sealed partial class PlayheadCallRow(CallStackNode node,
 
     public bool IsCurrent { get; } = isCurrent;
 
-    public long PositionStart => (long)Math.Floor(extent.PositionStart - positionOrigin);
+    public long PositionStart => (long)Math.Floor(stackCall.PositionStart - positionOrigin);
 
-    public long PositionEnd => (long)Math.Floor(extent.PositionEnd - positionOrigin);
+    public long PositionEnd => (long)Math.Floor(stackCall.PositionEnd - positionOrigin);
 
-    public long Instructions => (long)extent.Instructions;
+    public long Instructions => (long)stackCall.Instructions;
 
     public IReadOnlyList<CallSignaturePart> Arguments
-        => field ??= [.. Signature.Where(p => p.Kind == CallSignaturePartKind.Value && p.Label != ThisLabel)];
+        => field ??= [.. Signature.Where(p => p.Kind == CallSignaturePartKind.Value && !p.IsThis)];
 }

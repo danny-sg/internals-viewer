@@ -65,7 +65,7 @@ public class TraceTimelineTests
         var stacks = timeline.StackAt(Instructions, 25);
 
         Assert.Equal([(7u, "0:4 1:5"), (9u, "0:7")],
-                     stacks.Select(s => (s.ThreadId, string.Join(' ', s.Calls.Select(c => $"{c.Node}:{c.Call}")))));
+                     stacks.Select(s => (s.ThreadId, string.Join(' ', s.Calls.Select(c => $"{c.Span.Node}:{c.Span.Call}")))));
     }
 
     [Fact]
