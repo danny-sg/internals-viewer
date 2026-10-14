@@ -457,10 +457,12 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
     /// <summary>
     /// The top-level frames (thread starts) of the query's merged call stack tree, for the call tree view
     /// </summary>
-    public IEnumerable<CallStackNode> CallStackRoots
+    public IEnumerable<CallStackNode> CallStackRoots => CroppedRoots ?? CallStack?.Root.ChildNodes ?? [];
+
+    public IReadOnlyList<CallStackNode>? CroppedRoots
         => QueryOptions.CropToQuery && Trace is { QueryRoots.Count: > 0 } trace && ReferenceEquals(trace.CallStack, CallStack)
             ? trace.QueryRoots
-            : CallStack?.Root.ChildNodes ?? [];
+            : null;
 
     // The selected event's path is recovered by walking its leaf node up the shared call stack tree.
     public List<CallstackFrame> SelectedCallstack

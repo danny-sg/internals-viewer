@@ -73,11 +73,48 @@ public sealed class TraceCallList : IReadOnlyList<TraceArgumentCall>
 
     IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
 
+    public int IndexOf(ulong id)
+    {
+        var low = 0;
+
+        var high = Count - 1;
+
+        while (low <= high)
+        {
+            var middle = low + (high - low) / 2;
+
+            var current = IdAt(middle);
+
+            if (current == id)
+            {
+                return middle;
+            }
+
+            if (current < id)
+            {
+                low = middle + 1;
+            }
+            else
+            {
+                high = middle - 1;
+            }
+        }
+
+        return -1;
+    }
+
     internal int NodeIndexAt(int index)
     {
         var (columns, calls, call) = GetLocation(index);
 
         return (int)columns[TraceArgumentCall.NodeIndex * calls + call];
+    }
+
+    private ulong IdAt(int index)
+    {
+        var (columns, calls, call) = GetLocation(index);
+
+        return columns[TraceArgumentCall.IdIndex * calls + call];
     }
 
     private (ulong[] Columns, int Calls, int Call) GetLocation(int index)

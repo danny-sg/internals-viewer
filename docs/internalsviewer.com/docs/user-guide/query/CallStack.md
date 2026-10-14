@@ -31,7 +31,11 @@ Turning Focus off shows the full call tree for the whole query, from the top-lev
 
 ## Search and navigation
 
-The search box filters the tree to matching frames. Right-clicking a node gives:
+The search box filters the tree to matching frames and the calls that lead to them. A match keeps everything beneath it, collapsed, so its callees are still there to open. The tree opens down to each match, and further only where there is a deeper match. Clearing the search keeps the selected frame, with the tree open down to it.
+
+Going to a call - from **Arguments**, a **Find** tab or the [Flame Chart](/docs/user-guide/query/FlameChart) - turns Focus off, selects the frame and opens the tree down to it. Nothing else is hidden, so the rest of the tree stays where it was. A frame the tree does not normally show, because its category is hidden or because it ran outside the query while **Crop To Query** is on, is shown dimmed along with the calls that lead to it. The dimmed frames go again when you select something outside them.
+
+Right-clicking a node gives:
 
 - **Expand All** / **Collapse All** - from that node down
 - **Filter To** - crops the tree to that node and everything beneath it, with the node shown in the header as **Filtered To**. **Clear Filter**, in the menu or beside the header, puts the tree back
@@ -88,11 +92,16 @@ Some values are read further than the register:
 
 **Decode**, on the tab strip, switches the table between what the values stand for and their hex. Decoded, a value shows its reading - a table and index, an operator, a page, a name or a number. A pointer to another object, such as a `HoBtAccess` or an iterator, is shown with its class first, in the class colour, as `HoBtAccess dbo.T.PK`. Pages, rows and names are shown as they are, and `this` without its class, since the function already names it. A value with nothing to decode stays in hex. The setting is shared with the [Find](#finding-a-value) tabs and remembered between sessions.
 
-Calls the [category filter](#filtering-by-category) leaves out of the call tree are left out here too, and in **Find**. A hidden category drops the calls of its own functions, and a category hidden with its callees drops every call made beneath it.
+Calls the [category filter](#filtering-by-category) leaves out of the call tree are left out here too, and in **Find**. A hidden category drops the calls of its own functions, and a category hidden with its callees drops every call made beneath it. With **Crop To Query** on, calls made outside the query, such as those made while it was compiled, are left out as well. A call reached by following an object to where it was created is listed even when it would otherwise be left out.
+
+Decoded, an object whose address is in the trace's map is a link. Clicking it goes to the call that created the object, or to the first call made on it when it was created before the recording began. The call tree selects that function and **Arguments** selects that call.
+
+Right-click the signature above the table and choose **Copy Signature** to copy it.
 
 Right-click a cell for what can be done with its call and value:
 
 - **Go To Call** - shows the call in the call tree and the Flame Chart
+- **Go To Origin** - for an object in the trace's map, goes to the call that created it, the same as clicking the link
 - **Open In The Columnstore Viewer** - for a columnstore object
 - **Search Call Tree** - for a page, a row or a columnstore object, searches the call tree for the frames that touched it
 - **Open The Index** - for a HoBt id or a `HoBtAccess`, opens the index it belongs to

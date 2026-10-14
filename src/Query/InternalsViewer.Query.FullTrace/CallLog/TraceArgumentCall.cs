@@ -20,7 +20,7 @@ public sealed record TraceArgumentCall(ulong Sequence,
 
     internal const int NodeIndex = 7;
 
-    private const int IdIndex = 8;
+    internal const int IdIndex = 8;
 
     private const int EndIdIndex = 9;
 

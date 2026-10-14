@@ -67,7 +67,7 @@ public readonly record struct Locator(int Register, LocatorKind Kind, ulong Valu
         LocatorKind.LogSequenceNumber
             => Lsn.ToString(),
         LocatorKind.Text or LocatorKind.WideText
-            => Detail == 0 ? $"\"{Text}\"" : $"\"{Text}\" (Truncated)",
+            => Detail == 0 ? Text ?? string.Empty : $"{Text} (Truncated)",
         LocatorKind.TypeInfo
             => TypeInfo.ToString(),
         _ => Page.ToString()

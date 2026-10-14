@@ -7,6 +7,7 @@ using InternalsViewer.UI.App.Models;
 using InternalsViewer.UI.App.Models.Query.CallStack;
 using InternalsViewer.Query.CallStack.Locators;
 using InternalsViewer.Query.FullTrace.Arguments;
+using InternalsViewer.Query.FullTrace.Memory;
 using InternalsViewer.Query.Results;
 
 namespace InternalsViewer.UI.App.Tests.Models.Query.CallStack;
@@ -305,6 +306,19 @@ public class ArgumentRowBuilderTests
     }
 
     [Fact]
+    public void A_String_Is_Shown_Without_Quotes()
+    {
+        var layout = ArgumentLayout.LayoutOf(new FunctionSignature(["char const *"], FunctionKind.Static, "void"));
+
+        var call = Call(0x1_0000, 0) with { Locators = [new Locator(0, LocatorKind.Text, 0x1_0000, 1, "dbo.Orders")] };
+
+        var table = ArgumentRowBuilder.Table(layout, [call]);
+
+        Assert.Equal(new StringValue("dbo.Orders", IsTruncated: true), Assert.Single(table.Rows)[2]);
+        Assert.Equal("dbo.Orders (Truncated)", ArgumentRowBuilder.Signature("F", layout, call)[^2].GetText(decode: true));
+    }
+
+    [Fact]
     public void A_Pointer_To_A_Known_Object_Takes_The_Object_Class()
     {
         var layout = ArgumentLayout.LayoutOf(new FunctionSignature(["CQScanNew *"], FunctionKind.Member, "void"));
@@ -359,6 +373,21 @@ public class ArgumentRowBuilderTests
         var table = ArgumentRowBuilder.Table(layout, [Call(0x100, 0x2_0000)], (slot, _, _) => slot.Type == "this" ? null : "dbo.T.PK");
 
         Assert.Equal(new ObjectValue("HoBtAccess", "dbo.T.PK"), Assert.Single(table.Rows)[3]);
+    }
+
+    [Fact]
+    public void A_Cell_Whose_Object_Is_Mapped_Links_To_Its_Origin()
+    {
+        var layout = ArgumentLayout.LayoutOf(new FunctionSignature([], FunctionKind.Member, "void"));
+
+        var origin = new MemoryMapEntry(0x1_0000, MemoryMapOperation.Constructed, 5, 0, 0, 1, 3, "CQScanNew", null);
+
+        var call = Call(0x1_0000, 0);
+
+        var table = ArgumentRowBuilder.Table(layout, [call], (_, _, _) => new ValueDescription("0x10000") { Origin = origin });
+
+        Assert.Equal(new ObjectValue(null, "0x10000") { Origin = origin }, Assert.Single(table.Rows)[2]);
+        Assert.Same(origin, ArgumentRowBuilder.OriginAt(layout, call, 2, (_, _, _) => new ValueDescription("0x10000") { Origin = origin }));
     }
 
     private static string Text(IEnumerable<CallSignaturePart> parts, bool decode = true)

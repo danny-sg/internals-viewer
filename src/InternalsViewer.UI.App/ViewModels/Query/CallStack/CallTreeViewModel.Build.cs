@@ -35,9 +35,13 @@ public sealed partial class CallTreeViewModel
 
     private object? FilterCurrent { get; set; }
 
-    private HashSet<CallStackNode>? Visible { get; set; }
+    private CallStackNode? RevealTarget { get; set; }
 
-    private bool RevealInfrastructure { get; set; }
+    private HashSet<CallStackNode>? Revealed { get; set; }
+
+    private HashSet<CallTreeRow> SearchHits { get; } = [];
+
+    private string? SelectedPath { get; set; }
 
     private string? FilterPath { get; set; }
 
@@ -109,7 +113,7 @@ public sealed partial class CallTreeViewModel
     private void Publish()
         => Layout = new CallTreeLayout([.. Roots], [.. Expanded], ExpandRoots, Selected, FocusCurrent, FocusParent, FilterCurrent);
 
-    private void ApplyFocus(EngineEvent? selected)
+    private void ApplyFocus(EngineEvent? selected, bool keepSelection = false)
     {
         NavigatedNode = null;
 
@@ -128,6 +132,11 @@ public sealed partial class CallTreeViewModel
 
             ApplyFilter();
 
+            if (keepSelection)
+            {
+                KeepSelection();
+            }
+
             ApplyActivityBands();
 
             Publish();
@@ -139,38 +148,50 @@ public sealed partial class CallTreeViewModel
 
         var leaves = events.Where(e => e.CallStack is not null).Select(e => e.CallStack!).Distinct().ToList();
 
-        Visible = leaves.Count == 0 ? null : VisibleFrom(leaves);
-
-        RevealInfrastructure = false;
-
         BuildTree();
-
-        if (Visible is not null && Rows.Count == 0)
-        {
-            RevealInfrastructure = true;
-
-            BuildTree();
-        }
-
-        if (Visible is not null)
-        {
-            ExpandRoots = true;
-        }
 
         ApplyFilter();
 
-        var target = leaves.Count switch
-        {
-            0 => null,
-            1 => leaves[0],
-            _ => CommonAncestor(leaves),
-        };
+        ExpandTo(leaves);
 
-        SelectNode(target);
+        if (!keepSelection || !KeepSelection())
+        {
+            var target = leaves.Count switch
+            {
+                0 => null,
+                1 => leaves[0],
+                _ => CommonAncestor(leaves),
+            };
+
+            SelectNode(target);
+        }
 
         ApplyActivityBands();
 
         Publish();
+    }
+
+    private void ExpandTo(List<CallStackNode> leaves)
+    {
+        foreach (var row in leaves.Select(GetRow).OfType<CallTreeRow>().Distinct().Take(ExpandedLeaves))
+        {
+            if (row.Parent is { } parent)
+            {
+                Expanded.Add(parent);
+            }
+        }
+    }
+
+    private bool KeepSelection()
+    {
+        if (SelectedPath is not { } path || FindRow(Roots, path) is not { } row)
+        {
+            return false;
+        }
+
+        Selected = row;
+
+        return true;
     }
 
     private void ApplyActivityBands()
@@ -244,21 +265,6 @@ public sealed partial class CallTreeViewModel
         HighlightBuckets = ScopeEvents(selected).Select(e => tree.BucketOf(e.TimeUs)).ToHashSet();
     }
 
-    private static HashSet<CallStackNode> VisibleFrom(List<CallStackNode> leaves)
-    {
-        var visible = new HashSet<CallStackNode>();
-
-        foreach (var leaf in leaves)
-        {
-            for (var node = leaf; node is { IsRoot: false }; node = node.Parent)
-            {
-                visible.Add(node);
-            }
-        }
-
-        return visible;
-    }
-
     private static CallStackNode? CommonAncestor(List<CallStackNode> leaves)
     {
         var common = AncestorsAndSelf(leaves[0]).ToHashSet();
@@ -291,7 +297,12 @@ public sealed partial class CallTreeViewModel
         return depth;
     }
 
-    private void SelectNode(CallStackNode? target) => Selected = GetRow(target);
+    private void SelectNode(CallStackNode? target)
+    {
+        Selected = GetRow(target);
+
+        SelectedPath = Selected?.Content is CallStackNode node ? GetPath(node) : null;
+    }
 
     private IEnumerable<EngineEvent> ScopeEvents(EngineEvent selected)
     {
@@ -317,9 +328,19 @@ public sealed partial class CallTreeViewModel
         // Merged: the tree is the whole query, which is not a segment of anything and so heads nothing.
         HideFocusHeader();
 
-        foreach (var row in BuildVisible(Query.CallStackRoots))
+        foreach (var row in BuildVisible(Query.CallStackRoots, Reveal.None))
         {
             AddRoot(row);
+        }
+
+        if (GetRevealedRoot() is { } outside)
+        {
+            foreach (var row in BuildVisible([outside], Reveal.Path))
+            {
+                var position = Roots.FindIndex(r => r.Content is CallStackNode { Order: var order } && order > outside.Order);
+
+                Roots.Insert(position < 0 ? Roots.Count : position, row);
+            }
         }
 
         ExpandForSearch();
@@ -334,7 +355,30 @@ public sealed partial class CallTreeViewModel
             return;
         }
 
-        ExpandRoots = true;
+        ExpandRoots = false;
+
+        var pending = new Queue<CallTreeRow>(Roots);
+
+        var shown = 0;
+
+        while (pending.Count > 0 && shown < SearchExpandBudget)
+        {
+            var row = pending.Dequeue();
+
+            if (!row.Children.Any(SearchHits.Contains))
+            {
+                continue;
+            }
+
+            Expanded.Add(row);
+
+            shown += row.Children.Count;
+
+            foreach (var child in row.Children)
+            {
+                pending.Enqueue(child);
+            }
+        }
     }
 
     private void ClearTree()
@@ -350,6 +394,42 @@ public sealed partial class CallTreeViewModel
         ExpandRoots = false;
 
         HiddenOnly.Clear();
+
+        SearchHits.Clear();
+    }
+
+    private void RevealPath(CallStackNode target)
+    {
+        var path = target.Ancestors().ToList();
+
+        var outside = Query.CroppedRoots is { } cropped && !path.Any(cropped.Contains);
+
+        RevealTarget = outside || path.Any(IsConcealed) ? target : null;
+
+        Revealed = RevealTarget is null ? null : [.. path];
+    }
+
+    private void ClearReveal()
+    {
+        RevealTarget = null;
+
+        Revealed = null;
+    }
+
+    private bool IsRevealed(CallStackNode node)
+        => RevealTarget is { } target
+           && (node.MergedFrom.Count > 0 ? node.MergedFrom : [node]).Any(n => Revealed!.Contains(n) || n.Ancestors().Contains(target));
+
+    private CallStackNode? GetRevealedRoot()
+    {
+        if (RevealTarget is not { } target || Query.CroppedRoots is not { } cropped)
+        {
+            return null;
+        }
+
+        var path = target.Ancestors().ToList();
+
+        return path.Any(cropped.Contains) ? null : path[^1];
     }
 
     private void AddRoot(CallTreeRow row) => Roots.Add(row);
@@ -375,39 +455,49 @@ public sealed partial class CallTreeViewModel
         FocusCurrent = null;
     }
 
-    private List<CallTreeRow> BuildVisible(IEnumerable<CallStackNode> nodes)
-        => [.. nodes.SelectMany(Shown).GroupBy(n => n.Key).Select(g => BuildVisibleRow([.. g])).OfType<CallTreeRow>()];
+    private List<CallTreeRow> BuildVisible(IEnumerable<CallStackNode> nodes, Reveal reveal, bool underMatch = false)
+        => [.. nodes.SelectMany(n => Shown(n, reveal))
+                    .GroupBy(n => n.Key)
+                    .Select(g => BuildVisibleRow([.. g], reveal, underMatch))
+                    .OfType<CallTreeRow>()];
 
-    private IEnumerable<CallStackNode> Shown(CallStackNode node)
+    private IEnumerable<CallStackNode> Shown(CallStackNode node, Reveal reveal)
     {
-        if (IsCategoryIn(PrunedCategories, node))
+        if (Revealed?.Contains(node) == true)
+        {
+            return [node];
+        }
+
+        if (reveal == Reveal.Path || IsCategoryIn(PrunedCategories, node))
         {
             return [];
         }
 
-        var outOfScope = Visible is not null && !Visible.Contains(node);
-
-        var infrastructureHidden = node.IsInfrastructure && !RevealInfrastructure;
-
-        return outOfScope || infrastructureHidden || IsCategoryIn(HiddenCategories, node)
-            ? node.ChildNodes.OrderBy(child => child.Order).SelectMany(Shown)
+        return IsHidden(node)
+            ? node.ChildNodes.OrderBy(child => child.Order).SelectMany(child => Shown(child, reveal))
             : [node];
     }
 
-    private CallTreeRow? BuildVisibleRow(IReadOnlyList<CallStackNode> group)
+    private CallTreeRow? BuildVisibleRow(IReadOnlyList<CallStackNode> group, Reveal reveal, bool underMatch)
     {
-        var children = BuildVisible(group.SelectMany(n => n.ChildNodes.OrderBy(child => child.Order)));
-
         var node = group.Count == 1 ? group[0] : CallStackNode.Merge(group);
+
+        var matched = IsSearchMatch(node);
+
+        var revealed = Revealed is { } path && group.Any(path.Contains);
+
+        var children = BuildVisible(group.SelectMany(n => n.ChildNodes.OrderBy(child => child.Order)),
+                                    GetChildReveal(group, reveal),
+                                    underMatch || matched);
 
         // Dropped outright rather than promoting its children, unlike the filters above: those hide a row that is in the
         // way, this one has already established there is nothing under it worth showing.
-        if (Filtered(node, children.Count))
+        if (!revealed && Filtered(node, children.Count, underMatch || matched))
         {
             return null;
         }
 
-        var row = new CallTreeRow(node);
+        var row = new CallTreeRow(node) { IsRevealed = reveal != Reveal.None || (revealed && group.All(IsConcealed)) };
 
         foreach (var member in group)
         {
@@ -419,7 +509,40 @@ public sealed partial class CallTreeViewModel
             row.Add(child);
         }
 
+        AddSearchHit(row, matched);
+
         return row;
+    }
+
+    private Reveal GetChildReveal(IReadOnlyList<CallStackNode> group, Reveal reveal)
+    {
+        if (reveal == Reveal.Under)
+        {
+            return Reveal.Under;
+        }
+
+        var cut = reveal == Reveal.Path || group.Any(n => Revealed?.Contains(n) == true && IsCategoryIn(PrunedCategories, n));
+
+        if (!cut)
+        {
+            return Reveal.None;
+        }
+
+        return RevealTarget is { } target && group.Contains(target) ? Reveal.Under : Reveal.Path;
+    }
+
+    private bool IsHidden(CallStackNode node) => node.IsInfrastructure || IsCategoryIn(HiddenCategories, node);
+
+    private bool IsConcealed(CallStackNode node) => IsHidden(node) || IsCategoryIn(PrunedCategories, node);
+
+    private bool IsSearchMatch(CallStackNode node) => Search.Length > 0 && Matches(node);
+
+    private void AddSearchHit(CallTreeRow row, bool matched)
+    {
+        if (Search.Length > 0 && (matched || row.Children.Any(SearchHits.Contains)))
+        {
+            SearchHits.Add(row);
+        }
     }
 
     // The plan node a selection scopes the tree to: an operator names itself, and any other event names the operator it
@@ -522,6 +645,8 @@ public sealed partial class CallTreeViewModel
 
         // Attached first: WinUI can drop a subtree expanded while detached.
         ExpandRoots = true;
+
+        ExpandForSearch();
     }
 
     // One operator on its own, with its call tree expanded: the isolated stack for the selected node. No child operators
@@ -541,6 +666,8 @@ public sealed partial class CallTreeViewModel
 
         // Attached first: WinUI can drop a subtree expanded while detached.
         ExpandRoots = true;
+
+        ExpandForSearch();
     }
 
     // A tree node for an operator: its own call tree followed by its child operators, or null when neither it nor any
@@ -576,6 +703,8 @@ public sealed partial class CallTreeViewModel
         }
 
         OperatorRows.Add(operatorNode);
+
+        AddSearchHit(operatorNode, searched);
 
         return operatorNode;
     }
@@ -636,20 +765,20 @@ public sealed partial class CallTreeViewModel
     private static bool Segmented(ExecutionOperatorEvent op) => op.EntryFrames.Count > 0;
 
     private List<CallTreeRow> ProjectedCallNodes(CallStackTree projected, bool revealInfrastructure)
-        => BuildProjected(projected.Root.ChildNodes.OrderBy(child => child.Order), revealInfrastructure);
+        => BuildProjected(projected.Root.ChildNodes.OrderBy(child => child.Order), revealInfrastructure, underMatch: false);
 
     // Renders a projected node's subtree, hiding infrastructure and promoting its visible children. No scope set: the
     // projection already contains only the operator's frames.
-    private List<CallTreeRow> BuildProjected(IEnumerable<CallStackNode> nodes, bool revealInfrastructure)
+    private List<CallTreeRow> BuildProjected(IEnumerable<CallStackNode> nodes, bool revealInfrastructure, bool underMatch)
     {
         var promotedCuts = new List<CallStackNode>();
 
         var shown = nodes.SelectMany(n => ShownProjected(n, revealInfrastructure, promotedCuts)).ToList();
 
         List<CallTreeRow> rows =
-            [.. shown.GroupBy(n => n.Key).Select(g => BuildProjectedRow([.. g], revealInfrastructure)).OfType<CallTreeRow>()];
+            [.. shown.GroupBy(n => n.Key).Select(g => BuildProjectedRow([.. g], revealInfrastructure, underMatch)).OfType<CallTreeRow>()];
 
-        rows.AddRange(OperatorLinks(promotedCuts));
+        rows.AddRange(OperatorLinks(promotedCuts, underMatch));
 
         return rows;
     }
@@ -673,15 +802,19 @@ public sealed partial class CallTreeViewModel
         return [node];
     }
 
-    private CallTreeRow? BuildProjectedRow(IReadOnlyList<CallStackNode> group, bool revealInfrastructure)
+    private CallTreeRow? BuildProjectedRow(IReadOnlyList<CallStackNode> group, bool revealInfrastructure, bool underMatch)
     {
-        var children = BuildProjected(group.SelectMany(n => n.ChildNodes.OrderBy(child => child.Order)), revealInfrastructure);
-
-        children.AddRange(OperatorLinks(group.SelectMany(n => n.CutBelow)));
-
         var node = group.Count == 1 ? group[0] : CallStackNode.Merge(group);
 
-        if (Filtered(node, children.Count))
+        var matched = IsSearchMatch(node);
+
+        var children = BuildProjected(group.SelectMany(n => n.ChildNodes.OrderBy(child => child.Order)),
+                                      revealInfrastructure,
+                                      underMatch || matched);
+
+        children.AddRange(OperatorLinks(group.SelectMany(n => n.CutBelow), underMatch || matched));
+
+        if (Filtered(node, children.Count, underMatch || matched))
         {
             return null;
         }
@@ -693,21 +826,27 @@ public sealed partial class CallTreeViewModel
             row.Add(child);
         }
 
+        AddSearchHit(row, matched);
+
         return row;
     }
 
-    private IEnumerable<CallTreeRow> OperatorLinks(IEnumerable<CallStackNode> cuts)
+    private IEnumerable<CallTreeRow> OperatorLinks(IEnumerable<CallStackNode> cuts, bool underMatch)
     {
         // Where the segment stopped, name what it stopped for: a link per operator the work continues in, so the plan
         // is still walkable from inside the stack instead of the call trailing off into nothing. Searched like any other
         // row — and counted as one below, so a frame whose only answer to the search is where it led still shows.
         foreach (var next in cuts.Select(frame => NextOperator.GetValueOrDefault(frame))
                                  .OfType<ExecutionOperatorEvent>()
-                                 .Where(Matches)
+                                 .Where(next => underMatch || Matches(next))
                                  .DistinctBy(next => next.PlanNodeIdentifier)
                                  .OrderBy(next => next.PlanNodeIdentifier!.NodeId))
         {
-            yield return new CallTreeRow(new OperatorLink(next));
+            var row = new CallTreeRow(new OperatorLink(next));
+
+            AddSearchHit(row, Matches(next));
+
+            yield return row;
         }
     }
 
@@ -757,13 +896,13 @@ public sealed partial class CallTreeViewModel
 
         Selected = null;
 
-        Expanded.Clear();
+        Expanded.RemoveAll(r => !subtree.Contains(r));
 
         row.Detach();
 
         Roots = [row];
 
-        ExpandRoots = true;
+        ExpandRoots = Search.Length == 0;
 
         FilterCurrent = row.Content;
     }
@@ -826,8 +965,8 @@ public sealed partial class CallTreeViewModel
 
     // A row survives a search by matching it, or by being on the way to something that does — a hit is unreadable
     // without the calls that led to it, so the ancestors come too.
-    private bool Filtered(CallStackNode node, int survivingChildren)
-        => survivingChildren == 0 && ((Search.Length > 0 && !Matches(node)) || HoldsOnlyHiddenEvents(node));
+    private bool Filtered(CallStackNode node, int survivingChildren, bool searched)
+        => survivingChildren == 0 && ((Search.Length > 0 && !searched) || HoldsOnlyHiddenEvents(node));
 
     private bool HoldsOnlyHiddenEvents(CallStackNode node) => HiddenEventState(node, Query.QueryOptions) == EventVisibility.Hidden;
 
@@ -881,5 +1020,12 @@ public sealed partial class CallTreeViewModel
         None,
         Hidden,
         Shown,
+    }
+
+    private enum Reveal
+    {
+        None,
+        Path,
+        Under,
     }
 }

@@ -27,7 +27,7 @@ public sealed class CallStackTabViewModel : IDisposable
         Query = query;
         Settings = settings;
         Logger = logger;
-        Exclusions = GetExclusions(settings);
+        Exclusions = GetExclusions();
 
         TreeDocument = DocumentViewModel.Create<CallStackTreePanelView>("Call Tree", this, canClose: false, keepAlive: true, key: "CallTree");
         MembersDocument = DocumentViewModel.Create<CallStackMembersPanelView>("Members", this, keepAlive: true, key: "Members");
@@ -45,6 +45,10 @@ public sealed class CallStackTabViewModel : IDisposable
         Dock.DocumentClosed += OnDocumentClosed;
 
         Settings.PropertyChanged += OnSettingsPropertyChanged;
+
+        Query.PropertyChanged += OnQueryPropertyChanged;
+
+        Query.QueryOptions.PropertyChanged += OnQueryOptionsPropertyChanged;
 
         Arguments.SourceChanged += OnArgumentsSourceChanged;
 
@@ -174,6 +178,10 @@ public sealed class CallStackTabViewModel : IDisposable
 
         Settings.PropertyChanged -= OnSettingsPropertyChanged;
 
+        Query.PropertyChanged -= OnQueryPropertyChanged;
+
+        Query.QueryOptions.PropertyChanged -= OnQueryOptionsPropertyChanged;
+
         Arguments.SourceChanged -= OnArgumentsSourceChanged;
 
         Tree.Dispose();
@@ -186,9 +194,10 @@ public sealed class CallStackTabViewModel : IDisposable
         Finds.Clear();
     }
 
-    private static CallExclusions GetExclusions(SettingsViewModel settings)
-        => new(SettingsViewModel.SplitCategories(settings.CallTreeHiddenCategories),
-               SettingsViewModel.SplitCategories(settings.CallTreePrunedCategories));
+    private CallExclusions GetExclusions()
+        => new(SettingsViewModel.SplitCategories(Settings.CallTreeHiddenCategories),
+               SettingsViewModel.SplitCategories(Settings.CallTreePrunedCategories),
+               Query.CroppedRoots?.ToHashSet<CallStackNode>(ReferenceEqualityComparer.Instance));
 
     private void ShowPanel(DocumentViewModel document, DocumentViewModel neighbour)
     {
@@ -247,7 +256,28 @@ public sealed class CallStackTabViewModel : IDisposable
             return;
         }
 
-        Exclusions = GetExclusions(Settings);
+        RefreshExclusions();
+    }
+
+    private void OnQueryPropertyChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName == nameof(QueryViewModel.CallStack))
+        {
+            RefreshExclusions();
+        }
+    }
+
+    private void OnQueryOptionsPropertyChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName == nameof(QueryOptionsViewModel.CropToQuery))
+        {
+            RefreshExclusions();
+        }
+    }
+
+    private void RefreshExclusions()
+    {
+        Exclusions = GetExclusions();
 
         Arguments.SetExclusions(Exclusions);
 

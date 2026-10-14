@@ -5,7 +5,7 @@ using InternalsViewer.Query.Helpers;
 namespace InternalsViewer.Query.FullTrace.Memory;
 
 internal sealed record MemoryFunction(ulong Address,
-                                      MemoryOperation Operation,
+                                      AllocationOperation Operation,
                                       int SizeSlot,
                                       int PointerSlot,
                                       ulong Unit,
@@ -50,14 +50,14 @@ internal sealed record MemoryFunction(ulong Address,
 
     public ulong FlagMask { get; init; }
 
-    public bool Allocates => Operation is MemoryOperation.Allocate or MemoryOperation.Reallocate;
+    public bool Allocates => Operation is AllocationOperation.Allocate or AllocationOperation.Reallocate;
 
     public static bool IsMemoryObjectClass(string? className)
         => className is not null && (className == MemoryObjectFactory || IsMemoryObject(className));
 
     public bool Applies(TraceArgumentCall call) => FlagSlot < 0 || (call.Slot(FlagSlot) & FlagMask) != 0;
 
-    public ulong ObjectOf(TraceArgumentCall call) => Operation == MemoryOperation.Create ? call.ReturnedValue : call.Slot(0);
+    public ulong ObjectOf(TraceArgumentCall call) => Operation == AllocationOperation.Create ? call.ReturnedValue : call.Slot(0);
 
     public ulong PointerOf(TraceArgumentCall call) => call.Slot(PointerSlot);
 
@@ -89,9 +89,9 @@ internal sealed record MemoryFunction(ulong Address,
             return symbol switch
             {
                 "operator new" or "operator new[]"
-                    => new MemoryFunction(address, MemoryOperation.Allocate, 0, -1, 1),
+                    => new MemoryFunction(address, AllocationOperation.Allocate, 0, -1, 1),
                 "operator delete" or "operator delete[]"
-                    => new MemoryFunction(address, MemoryOperation.Free, -1, 0, 1),
+                    => new MemoryFunction(address, AllocationOperation.Free, -1, 0, 1),
                 _ => null
             };
         }
@@ -105,31 +105,31 @@ internal sealed record MemoryFunction(ulong Address,
             "MemoryClerkInternal" => methodName switch
             {
                 "AllocatePages" or "AllocatePagesWithFailureMode" or "AllocateReservedPages"
-                    => new MemoryFunction(address, MemoryOperation.Allocate, 1, -1, PageSize) { IsPage = true, CarriesClerk = true },
+                    => new MemoryFunction(address, AllocationOperation.Allocate, 1, -1, PageSize) { IsPage = true, CarriesClerk = true },
                 "FreePages" or "FreeReservedPages"
-                    => new MemoryFunction(address, MemoryOperation.Free, 2, 1, PageSize) { IsPage = true, CarriesClerk = true },
+                    => new MemoryFunction(address, AllocationOperation.Free, 2, 1, PageSize) { IsPage = true, CarriesClerk = true },
                 _ => null
             },
             "CQryMemManager" => methodName switch
             {
-                "AllocatePages" => new MemoryFunction(address, MemoryOperation.Allocate, 1, -1, PageSize) { IsPage = true },
-                "FreePages" => new MemoryFunction(address, MemoryOperation.Free, 2, 1, PageSize) { IsPage = true },
+                "AllocatePages" => new MemoryFunction(address, AllocationOperation.Allocate, 1, -1, PageSize) { IsPage = true },
+                "FreePages" => new MemoryFunction(address, AllocationOperation.Free, 2, 1, PageSize) { IsPage = true },
                 _ => null
             },
             MemoryObjectFactory => methodName is "CreateMemObject"
-                ? new MemoryFunction(address, MemoryOperation.Create, -1, -1, 1) { IsObjectCall = true }
+                ? new MemoryFunction(address, AllocationOperation.Create, -1, -1, 1) { IsObjectCall = true }
                 : null,
             "CHashWorkfilePartitionInstance" => methodName switch
             {
-                "PvAllocateHashBucketPage" => new MemoryFunction(address, MemoryOperation.Allocate, -1, -1, PageSize),
-                "FreeHashBucketPage" => new MemoryFunction(address, MemoryOperation.Free, -1, 1, 1),
+                "PvAllocateHashBucketPage" => new MemoryFunction(address, AllocationOperation.Allocate, -1, -1, PageSize),
+                "FreeHashBucketPage" => new MemoryFunction(address, AllocationOperation.Free, -1, 1, 1),
                 _ => null
             },
             _ when IsMemoryObject(className) => methodName switch
             {
-                "Alloc" => new MemoryFunction(address, MemoryOperation.Allocate, 1, -1, 1) { IsObjectCall = true },
-                "Realloc" => new MemoryFunction(address, MemoryOperation.Reallocate, 2, 1, 1) { IsObjectCall = true },
-                "Free" => new MemoryFunction(address, MemoryOperation.Free, -1, 1, 1) { IsObjectCall = true },
+                "Alloc" => new MemoryFunction(address, AllocationOperation.Allocate, 1, -1, 1) { IsObjectCall = true },
+                "Realloc" => new MemoryFunction(address, AllocationOperation.Reallocate, 2, 1, 1) { IsObjectCall = true },
+                "Free" => new MemoryFunction(address, AllocationOperation.Free, -1, 1, 1) { IsObjectCall = true },
                 _ => null
             },
             _ => null
@@ -143,7 +143,7 @@ internal sealed record MemoryFunction(ulong Address,
     private static MemoryFunction? ClassifyVirtualExport(ulong address, string export) => export switch
     {
         "VirtualAlloc"
-            => new MemoryFunction(address, MemoryOperation.Allocate, 1, -1, 1)
+            => new MemoryFunction(address, AllocationOperation.Allocate, 1, -1, 1)
             {
                 IsPage = true,
                 IsVirtual = true,
@@ -151,7 +151,7 @@ internal sealed record MemoryFunction(ulong Address,
                 FlagMask = MemCommit
             },
         "VirtualFree"
-            => new MemoryFunction(address, MemoryOperation.Free, -1, 0, 1)
+            => new MemoryFunction(address, AllocationOperation.Free, -1, 0, 1)
             {
                 IsPage = true,
                 IsVirtual = true,
@@ -164,27 +164,27 @@ internal sealed record MemoryFunction(ulong Address,
     private static MemoryFunction? ClassifyHeapExport(ulong address, string export) => export switch
     {
         "RtlAllocateHeap" or "HeapAlloc"
-            => new MemoryFunction(address, MemoryOperation.Allocate, 2, -1, 1),
+            => new MemoryFunction(address, AllocationOperation.Allocate, 2, -1, 1),
         "RtlReAllocateHeap" or "HeapReAlloc"
-            => new MemoryFunction(address, MemoryOperation.Reallocate, 3, 2, 1),
+            => new MemoryFunction(address, AllocationOperation.Reallocate, 3, 2, 1),
         "RtlFreeHeap" or "HeapFree"
-            => new MemoryFunction(address, MemoryOperation.Free, -1, 2, 1),
+            => new MemoryFunction(address, AllocationOperation.Free, -1, 2, 1),
         "LocalAlloc" or "GlobalAlloc"
-            => new MemoryFunction(address, MemoryOperation.Allocate, 1, -1, 1),
+            => new MemoryFunction(address, AllocationOperation.Allocate, 1, -1, 1),
         "LocalReAlloc" or "GlobalReAlloc"
-            => new MemoryFunction(address, MemoryOperation.Reallocate, 1, 0, 1),
+            => new MemoryFunction(address, AllocationOperation.Reallocate, 1, 0, 1),
         "LocalFree" or "GlobalFree"
-            => new MemoryFunction(address, MemoryOperation.Free, -1, 0, 1),
+            => new MemoryFunction(address, AllocationOperation.Free, -1, 0, 1),
         "malloc" or "_aligned_malloc"
-            => new MemoryFunction(address, MemoryOperation.Allocate, 0, -1, 1),
+            => new MemoryFunction(address, AllocationOperation.Allocate, 0, -1, 1),
         "calloc"
-            => new MemoryFunction(address, MemoryOperation.Allocate, 1, -1, 1, CountSlot: 0),
+            => new MemoryFunction(address, AllocationOperation.Allocate, 1, -1, 1, CountSlot: 0),
         "realloc" or "_aligned_realloc"
-            => new MemoryFunction(address, MemoryOperation.Reallocate, 1, 0, 1),
+            => new MemoryFunction(address, AllocationOperation.Reallocate, 1, 0, 1),
         "_recalloc"
-            => new MemoryFunction(address, MemoryOperation.Reallocate, 2, 0, 1, CountSlot: 1),
+            => new MemoryFunction(address, AllocationOperation.Reallocate, 2, 0, 1, CountSlot: 1),
         "free" or "_aligned_free"
-            => new MemoryFunction(address, MemoryOperation.Free, -1, 0, 1),
+            => new MemoryFunction(address, AllocationOperation.Free, -1, 0, 1),
         _ => null
     };
 

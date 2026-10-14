@@ -1157,7 +1157,7 @@ public sealed partial class FlameChartControl : Grid, IDisposable
         {
             control.FindSelectedCall(bringIntoView: true);
 
-            if (reference.IsChosen && control._selected is null && control._root is not null && !control.IsLocked)
+            if (reference.IsSelected && control._selected is null && control._root is not null && !control.IsLocked)
             {
                 control.SetRoot(null);
 
@@ -1165,7 +1165,7 @@ public sealed partial class FlameChartControl : Grid, IDisposable
             }
         }
 
-        var highlighted = reference is { IsChosen: true }
+        var highlighted = reference is { IsSelected: true }
             ? control._selected is null ? reference.Node : null
             : control._highlightedNode;
 

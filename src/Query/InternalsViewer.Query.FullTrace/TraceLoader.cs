@@ -190,7 +190,7 @@ public sealed class TraceLoader(ILogger<TraceLoader> logger, ITimeTravelRecorder
                               operators.Count(o => o.PlanNodeIdentifier is { NodeId: >= 0 }),
                               planLink.Instances.Count);
 
-        var memory = MemoryMapper.Map(replay.CallLog, functions.MemoryFunctions, timeline, request.MemoryClerks);
+        var memory = AllocationMapper.Map(replay.CallLog, functions.MemoryFunctions, timeline, request.MemoryClerks);
 
         var lifetimes = IteratorLifetimeBuilder.Build(timeline, operators);
 

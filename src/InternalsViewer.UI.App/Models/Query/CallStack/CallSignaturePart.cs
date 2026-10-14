@@ -6,7 +6,8 @@ public sealed class CallSignaturePart(string text,
                                      string? toolTip = null,
                                      bool canFind = false,
                                      string? decoded = null,
-                                     string? decodedClass = null)
+                                     string? decodedClass = null,
+                                     StringValue? decodedString = null)
 {
     public string Text { get; } = text;
 
@@ -21,6 +22,8 @@ public sealed class CallSignaturePart(string text,
     public string? Decoded { get; } = decoded;
 
     public string? DecodedClass { get; } = decodedClass;
+
+    public StringValue? DecodedString { get; } = decodedString;
 
     public bool IsDecodedFor(bool decode) => decode && Decoded is not null;
 

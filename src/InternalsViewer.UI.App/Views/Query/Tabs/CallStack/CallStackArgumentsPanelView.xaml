@@ -14,8 +14,15 @@
 
         <Border Grid.Row="0"
                 Padding="12,6,16,6"
+                Background="Transparent"
                 BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
                 BorderThickness="0,0,0,1">
+            <Border.ContextFlyout>
+                <MenuFlyout>
+                    <MenuFlyoutItem Text="Copy Signature" Click="OnCopySignatureClick"/>
+                </MenuFlyout>
+            </Border.ContextFlyout>
+
             <TextBlock VerticalAlignment="Center"
                        FontFamily="{StaticResource MonospaceFontFamily}"
                        FontSize="12"
@@ -36,7 +43,9 @@
                                     ResultSet="{x:Bind ViewModel.Arguments.CallTable, Mode=OneWay}"
                                     SelectedRow="{x:Bind ViewModel.Arguments.SelectedCall, Mode=TwoWay}"
                                     PageClicked="OnArgumentPageClicked"
+                                    ObjectClicked="OnArgumentObjectClicked"
                                     CellMenuOpening="OnArgumentCellMenuOpening"
+                                    FitColumnsToFirstRow="True"
                                     RowName="call"
                                     Visibility="{x:Bind ViewModel.Arguments.HasCalls, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}"/>
 

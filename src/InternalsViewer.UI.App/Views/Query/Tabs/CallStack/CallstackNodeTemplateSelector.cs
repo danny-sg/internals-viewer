@@ -1,3 +1,4 @@
+using System;
 using InternalsViewer.UI.App.Models.Query.CallStack;
 using Microsoft.UI.Xaml.Controls;
 
@@ -22,16 +23,27 @@ public sealed class CallstackNodeTemplateSelector : DataTemplateSelector
 
     public DataTemplate? SignatureFrameTemplate { get; set; }
 
+    public DataTemplate? RevealedFrameTemplate { get; set; }
+
+    public DataTemplate? RevealedSignatureFrameTemplate { get; set; }
+
     public bool ShowSignatures { get; set; }
+
+    public Func<TreeViewNode, bool>? IsRevealed { get; set; }
 
     protected override DataTemplate SelectTemplateCore(object item) => item switch
     {
         TreeViewNode { Content: OperatorRow } when OperatorTemplate is not null => OperatorTemplate,
         TreeViewNode { Content: OperatorLink } when LinkTemplate is not null => LinkTemplate,
         TreeViewNode { Content: EventRow } when EventTemplate is not null => EventTemplate,
+        TreeViewNode node when IsRevealed?.Invoke(node) == true => SelectRevealedTemplate(),
         _ when ShowSignatures && SignatureFrameTemplate is not null => SignatureFrameTemplate,
         _ => FrameTemplate!,
     };
+
+    private DataTemplate SelectRevealedTemplate()
+        => (ShowSignatures ? RevealedSignatureFrameTemplate : RevealedFrameTemplate)
+           ?? (ShowSignatures && SignatureFrameTemplate is not null ? SignatureFrameTemplate : FrameTemplate!);
 
     protected override DataTemplate SelectTemplateCore(object item, DependencyObject container) =>
         SelectTemplateCore(item);

@@ -29,7 +29,7 @@ The functions the replay treats specially, grouped by role. It's built per modul
 | `InstanceMethods` | `InstanceMethod[]` | Calls keyed by the object they run on |
 | `LocatorReads` | `LocatorRead[]` | Pointers to follow for page, row, columnstore and referenced values |
 | `PublishedEvents` | `PublishedEventFunctions` | Event publishers and the event writer |
-| `MemoryFunctions` | `MemoryFunction[]` | Allocators and frees. Never passed to the bridge. `MemoryMapper` uses them after the replay. |
+| `MemoryFunctions` | `MemoryFunction[]` | Allocators and frees. Never passed to the bridge. `AllocationMapper` uses them after the replay. |
 
 **Where it comes from:**
 

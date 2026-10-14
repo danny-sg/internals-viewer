@@ -7,7 +7,7 @@ using InternalsViewer.Query.Memory;
 
 namespace InternalsViewer.Query.FullTrace.Memory;
 
-internal static class MemoryMapper
+internal static class AllocationMapper
 {
     private const int MaximumObjectDepth = 16;
 
@@ -36,7 +36,7 @@ internal static class MemoryMapper
 
         ulong bytes = 0;
 
-        foreach (var function in functions.Where(f => f.Allocates || f is { Operation: MemoryOperation.Free, PointerSlot: >= 0 }))
+        foreach (var function in functions.Where(f => f.Allocates || f is { Operation: AllocationOperation.Free, PointerSlot: >= 0 }))
         {
             if (CallsOf(function.Address) is not { } logged)
             {
@@ -69,7 +69,7 @@ internal static class MemoryMapper
 
                 callValues.Returned[index] = call.ReturnedValue;
 
-                if (function.Operation == MemoryOperation.Reallocate && pointer != 0)
+                if (function.Operation == AllocationOperation.Reallocate && pointer != 0)
                 {
                     callValues.Released[index] = pointer;
                 }
@@ -287,7 +287,7 @@ internal static class MemoryMapper
 
         public ulong[] Returned { get; } = function.Allocates ? new ulong[count] : [];
 
-        public ulong[] Released { get; } = function.Operation is MemoryOperation.Free or MemoryOperation.Reallocate
+        public ulong[] Released { get; } = function.Operation is AllocationOperation.Free or AllocationOperation.Reallocate
             ? new ulong[count]
             : [];
     }

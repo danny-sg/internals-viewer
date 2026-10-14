@@ -65,9 +65,9 @@ public sealed partial class ArgumentsViewModel(ILogger logger, SymbolsViewModel 
 
     private bool IsSelectingQuietly { get; set; }
 
-    private bool IsChoosingQuietly { get; set; }
+    private bool IsQuietlySelected { get; set; }
 
-    public event Action<CallReference>? CallChosen;
+    public event Action<CallReference>? CallSelected;
 
     public event Action? SourceChanged;
 
@@ -155,9 +155,16 @@ public sealed partial class ArgumentsViewModel(ILogger logger, SymbolsViewModel 
             return LoadAsync(node, call);
         }
 
+        var row = RowFor(table, call);
+
+        if (row is null && call is >= 0)
+        {
+            return LoadAsync(node, call);
+        }
+
         Shown = node;
 
-        SelectQuietly(RowFor(table, call), chosen: true);
+        SelectQuietly(row, selected: true);
 
         return Task.CompletedTask;
     }
@@ -170,6 +177,11 @@ public sealed partial class ArgumentsViewModel(ILogger logger, SymbolsViewModel 
     public string? DecodedTextAt(int index, int ordinal)
         => Layout is { } layout && Lookup is { } lookup && index >= 0 && index < LoggedCalls.Count
             ? ArgumentRowBuilder.DecodedTextAt(layout, LoggedCalls[index], ordinal, lookup.Describe)
+            : null;
+
+    public MemoryMapEntry? OriginAt(int index, int ordinal)
+        => Layout is { } layout && Lookup is { } lookup && index >= 0 && index < LoggedCalls.Count
+            ? ArgumentRowBuilder.OriginAt(layout, LoggedCalls[index], ordinal, lookup.Describe)
             : null;
 
     public CallStackNode? NodeAt(int index)
@@ -253,7 +265,8 @@ public sealed partial class ArgumentsViewModel(ILogger logger, SymbolsViewModel 
 
             var included = exclusions.IsEmpty
                 ? null
-                : await Task.Run(() => lookup.Log.IncludedCalls(calls, exclusions.Includes, request.Token), request.Token);
+                : Include(await Task.Run(() => lookup.Log.IncludedCalls(calls, exclusions.Includes, request.Token), request.Token),
+                          select);
 
             if (included is { Count: 0 })
             {
@@ -273,7 +286,7 @@ public sealed partial class ArgumentsViewModel(ILogger logger, SymbolsViewModel 
 
             if (RowFor(table, select) is { } row)
             {
-                SelectQuietly(row, chosen: true);
+                SelectQuietly(row, selected: true);
             }
         }
         catch (OperationCanceledException) when (request.IsCancellationRequested)
@@ -292,6 +305,25 @@ public sealed partial class ArgumentsViewModel(ILogger logger, SymbolsViewModel 
                 IsLoading = false;
             }
         }
+    }
+
+    private static IReadOnlyList<int> Include(IReadOnlyList<int> included, int? call)
+    {
+        if (call is not { } index || index < 0)
+        {
+            return included;
+        }
+
+        var calls = included as List<int> ?? [.. included];
+
+        var position = calls.BinarySearch(index);
+
+        if (position < 0)
+        {
+            calls.Insert(~position, index);
+        }
+
+        return calls;
     }
 
     private static ResultRow<long>? RowFor(QueryResultSet table, int? call)
@@ -329,11 +361,11 @@ public sealed partial class ArgumentsViewModel(ILogger logger, SymbolsViewModel 
         return null;
     }
 
-    private void SelectQuietly(ResultRow<long>? row, bool chosen = false)
+    private void SelectQuietly(ResultRow<long>? row, bool selected = false)
     {
         IsSelectingQuietly = true;
 
-        IsChoosingQuietly = chosen;
+        IsQuietlySelected = selected;
 
         try
         {
@@ -343,7 +375,7 @@ public sealed partial class ArgumentsViewModel(ILogger logger, SymbolsViewModel 
         {
             IsSelectingQuietly = false;
 
-            IsChoosingQuietly = false;
+            IsQuietlySelected = false;
         }
     }
 
@@ -360,12 +392,12 @@ public sealed partial class ArgumentsViewModel(ILogger logger, SymbolsViewModel 
     partial void OnSelectedCallChanged(ResultRow<long>? value)
     {
         var reference = value is { Id: var index } && NodeAt((int)index) is { } node
-            ? new CallReference(node, (int)index, !IsSelectingQuietly || IsChoosingQuietly)
+            ? new CallReference(node, (int)index, !IsSelectingQuietly || IsQuietlySelected)
             : null;
 
-        if (reference is { IsChosen: true } && !IsSelectingQuietly)
+        if (reference is { IsSelected: true } && !IsSelectingQuietly)
         {
-            CallChosen?.Invoke(reference);
+            CallSelected?.Invoke(reference);
         }
 
         SelectedCallReference = reference;

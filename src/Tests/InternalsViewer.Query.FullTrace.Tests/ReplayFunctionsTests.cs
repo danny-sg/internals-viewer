@@ -21,7 +21,7 @@ public class ReplayFunctionsTests
                                            [new InstanceMethod(0x50, 1)],
                                            [new LocatorRead(0x60, 2, false, LocatorKind.Page)],
                                            new PublishedEventFunctions([new EventPublisher(0x70, "latch_acquired")], [0x80]),
-                                           [new MemoryFunction(0x90, MemoryOperation.Allocate, 1, -1, 1)],
+                                           [new MemoryFunction(0x90, AllocationOperation.Allocate, 1, -1, 1)],
                                            [new MemoryMapFunction(0xA0, (uint)MemoryMapOperation.Visited)]);
 
         var rebased = relative.Rebase(Base);

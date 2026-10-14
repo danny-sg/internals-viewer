@@ -13,6 +13,10 @@ namespace InternalsViewer.UI.App.Controls.Results;
 
 internal sealed class ResultCellColumn(int ordinal) : TableViewColumn
 {
+    private static readonly Thickness CellPadding = new(8, 0, 4, 0);
+
+    private static readonly Thickness ClassMargin = new(0, 0, 4, 0);
+
     public Color? BackgroundColour { get; init; }
 
     public ResultAlignment Alignment { get; init; } = ResultAlignment.Left;
@@ -22,11 +26,28 @@ internal sealed class ResultCellColumn(int ordinal) : TableViewColumn
     /// </summary>
     public Action<PageAddressEventArgs>? PageClicked { get; init; }
 
+    public Action<ObjectValue>? ObjectClicked { get; init; }
+
     private SolidColorBrush? BackgroundBrushField { get; set; }
 
     private SolidColorBrush? BackgroundBrush => BackgroundColour.HasValue
         ? BackgroundBrushField ??= CreateBrush(BackgroundColour.Value)
         : null;
+
+    public static double MeasureWidth(object? value, double fontSize)
+    {
+        var block = new TextBlock { Padding = CellPadding, FontSize = fontSize };
+
+        var text = value is PageAddress or RowIdentifier or ObjectValue or StringValue
+            ? value.ToString()
+            : ResultRowConverter.FormatValue(value);
+
+        HexText.Apply(block, text);
+
+        block.Measure(new Windows.Foundation.Size(double.PositiveInfinity, double.PositiveInfinity));
+
+        return block.DesiredSize.Width;
+    }
 
     public override FrameworkElement GenerateElement(TableViewCell cell, object? dataItem)
     {
@@ -92,6 +113,10 @@ internal sealed class ResultCellColumn(int ordinal) : TableViewColumn
                 ApplyObject(host, objectValue);
                 break;
 
+            case StringValue stringValue:
+                ApplyString(host, stringValue);
+                break;
+
             default:
                 ApplyText(host, ResultRowConverter.FormatValue(value));
                 break;
@@ -114,7 +139,7 @@ internal sealed class ResultCellColumn(int ordinal) : TableViewColumn
 
         var block = new TextBlock
         {
-            Padding = new Thickness(8, 0, 4, 0),
+            Padding = CellPadding,
             VerticalAlignment = VerticalAlignment.Center
         };
 
@@ -123,13 +148,13 @@ internal sealed class ResultCellColumn(int ordinal) : TableViewColumn
         host.Content = block;
     }
 
-    private static void ApplyObject(ContentControl host, ObjectValue value)
+    private static void ApplyString(ContentControl host, StringValue value)
     {
         if (host.Content is not TextBlock textBlock)
         {
             textBlock = new TextBlock
             {
-                Padding = new Thickness(8, 0, 4, 0),
+                Padding = CellPadding,
                 VerticalAlignment = VerticalAlignment.Center
             };
 
@@ -138,10 +163,79 @@ internal sealed class ResultCellColumn(int ordinal) : TableViewColumn
 
         textBlock.Inlines.Clear();
 
-        textBlock.Inlines.Add(new Run { Text = value.ClassName, Foreground = Resource("CppClassBrush") });
-        textBlock.Inlines.Add(new Run { Text = " " });
+        StringText.AddRuns(textBlock.Inlines, value);
+    }
+
+    private void ApplyObject(ContentControl host, ObjectValue value)
+    {
+        if (value.Origin is not null && ObjectClicked is not null)
+        {
+            ApplyObjectLink(host, value);
+
+            return;
+        }
+
+        if (host.Content is not TextBlock textBlock)
+        {
+            textBlock = new TextBlock
+            {
+                Padding = CellPadding,
+                VerticalAlignment = VerticalAlignment.Center
+            };
+
+            host.Content = textBlock;
+        }
+
+        textBlock.Inlines.Clear();
+
+        if (value.ClassName is { } className)
+        {
+            textBlock.Inlines.Add(new Run { Text = className, Foreground = Resource("CppClassBrush") });
+            textBlock.Inlines.Add(new Run { Text = " " });
+        }
 
         HexText.AddRuns(textBlock.Inlines, value.Text);
+    }
+
+    private void ApplyObjectLink(ContentControl host, ObjectValue value)
+    {
+        if (host.Content is not StackPanel { Children: [TextBlock classText, TextBlock linkText] })
+        {
+            classText = new TextBlock
+            {
+                Foreground = Resource("CppClassBrush"),
+                Margin = ClassMargin,
+                VerticalAlignment = VerticalAlignment.Center
+            };
+
+            linkText = new TextBlock { VerticalAlignment = VerticalAlignment.Center };
+
+            HoverUnderline.Attach(linkText);
+
+            host.Content = new StackPanel
+            {
+                Orientation = Orientation.Horizontal,
+                Padding = CellPadding,
+                VerticalAlignment = VerticalAlignment.Center,
+                Children = { classText, linkText }
+            };
+        }
+
+        classText.Text = value.ClassName ?? string.Empty;
+
+        classText.Visibility = value.ClassName is null ? Visibility.Collapsed : Visibility.Visible;
+
+        var link = new Hyperlink { UnderlineStyle = UnderlineStyle.None };
+
+        HexText.AddRuns(link.Inlines, value.Text);
+
+        ToolTipService.SetToolTip(link, "Go To Origin");
+
+        link.Click += (_, _) => ObjectClicked?.Invoke(value);
+
+        linkText.Inlines.Clear();
+
+        linkText.Inlines.Add(link);
     }
 
     private void ApplyLink(ContentControl host, string text, PageAddress pageAddress, ushort? slot)

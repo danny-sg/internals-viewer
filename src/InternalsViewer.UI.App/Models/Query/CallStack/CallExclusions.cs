@@ -4,31 +4,32 @@ using InternalsViewer.Query.CallStack;
 
 namespace InternalsViewer.UI.App.Models.Query.CallStack;
 
-public sealed class CallExclusions(IReadOnlySet<string> hidden, IReadOnlySet<string> pruned)
+public sealed class CallExclusions(IReadOnlySet<string> hidden, IReadOnlySet<string> pruned, IReadOnlySet<CallStackNode>? scope = null)
 {
     public static CallExclusions None { get; } = new(new HashSet<string>(), new HashSet<string>());
 
-    public bool IsEmpty => hidden.Count == 0 && pruned.Count == 0;
+    public bool IsEmpty => hidden.Count == 0 && pruned.Count == 0 && scope is null;
 
-    private ConcurrentDictionary<CallStackNode, bool> Pruned { get; } = new(ReferenceEqualityComparer.Instance);
+    private ConcurrentDictionary<CallStackNode, bool> Cut { get; } = new(ReferenceEqualityComparer.Instance);
 
-    public bool Includes(CallStackNode? node) => node is null || IsEmpty || !(IsIn(hidden, node) || IsPruned(node));
+    public bool Includes(CallStackNode? node) => node is null || IsEmpty || !(IsIn(hidden, node) || IsCut(node));
 
-    private bool IsPruned(CallStackNode node)
+    private bool IsCut(CallStackNode node)
     {
-        if (pruned.Count == 0)
+        if (pruned.Count == 0 && scope is null)
         {
             return false;
         }
 
-        if (Pruned.TryGetValue(node, out var cached))
+        if (Cut.TryGetValue(node, out var cached))
         {
             return cached;
         }
 
-        var result = IsIn(pruned, node) || (node.Parent is { } parent && IsPruned(parent));
+        var result = IsIn(pruned, node)
+                     || (scope?.Contains(node) != true && (node.Parent is { IsRoot: false } parent ? IsCut(parent) : scope is not null));
 
-        Pruned[node] = result;
+        Cut[node] = result;
 
         return result;
     }

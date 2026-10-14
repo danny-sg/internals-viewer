@@ -1,6 +1,6 @@
 ﻿namespace InternalsViewer.Query.FullTrace.Memory;
 
-public enum MemoryOperation
+public enum AllocationOperation
 {
     Allocate,
     Reallocate,

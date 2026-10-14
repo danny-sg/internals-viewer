@@ -8,23 +8,23 @@ namespace InternalsViewer.Query.FullTrace.Tests;
 public class MemoryFunctionTests
 {
     [Theory]
-    [InlineData("CMemThread<CMemObj>::Alloc", MemoryOperation.Allocate, 1, -1, 1ul)]
-    [InlineData("CMemObj::Alloc", MemoryOperation.Allocate, 1, -1, 1ul)]
-    [InlineData("CMemThread<CMemProc>::Realloc", MemoryOperation.Reallocate, 2, 1, 1ul)]
-    [InlineData("CMemThread<CMemAligned<CMemObj> >::Free", MemoryOperation.Free, -1, 1, 1ul)]
-    [InlineData("operator new", MemoryOperation.Allocate, 0, -1, 1ul)]
-    [InlineData("operator delete[]", MemoryOperation.Free, -1, 0, 1ul)]
-    [InlineData("MemoryClerkInternal::AllocatePages", MemoryOperation.Allocate, 1, -1, 8192ul)]
-    [InlineData("MemoryClerkInternal::FreePages", MemoryOperation.Free, 2, 1, 8192ul)]
-    [InlineData("MemoryClerkInternal::AllocateReservedPages", MemoryOperation.Allocate, 1, -1, 8192ul)]
-    [InlineData("MemoryClerkInternal::FreeReservedPages", MemoryOperation.Free, 2, 1, 8192ul)]
-    [InlineData("MemoryObjectFactory::CreateMemObject", MemoryOperation.Create, -1, -1, 1ul)]
-    [InlineData("CQryMemManager::AllocatePages", MemoryOperation.Allocate, 1, -1, 8192ul)]
-    [InlineData("CQryMemManager::FreePages", MemoryOperation.Free, 2, 1, 8192ul)]
-    [InlineData("CHashWorkfilePartitionInstance::PvAllocateHashBucketPage", MemoryOperation.Allocate, -1, -1, 8192ul)]
-    [InlineData("CHashWorkfilePartitionInstance::FreeHashBucketPage", MemoryOperation.Free, -1, 1, 1ul)]
+    [InlineData("CMemThread<CMemObj>::Alloc", AllocationOperation.Allocate, 1, -1, 1ul)]
+    [InlineData("CMemObj::Alloc", AllocationOperation.Allocate, 1, -1, 1ul)]
+    [InlineData("CMemThread<CMemProc>::Realloc", AllocationOperation.Reallocate, 2, 1, 1ul)]
+    [InlineData("CMemThread<CMemAligned<CMemObj> >::Free", AllocationOperation.Free, -1, 1, 1ul)]
+    [InlineData("operator new", AllocationOperation.Allocate, 0, -1, 1ul)]
+    [InlineData("operator delete[]", AllocationOperation.Free, -1, 0, 1ul)]
+    [InlineData("MemoryClerkInternal::AllocatePages", AllocationOperation.Allocate, 1, -1, 8192ul)]
+    [InlineData("MemoryClerkInternal::FreePages", AllocationOperation.Free, 2, 1, 8192ul)]
+    [InlineData("MemoryClerkInternal::AllocateReservedPages", AllocationOperation.Allocate, 1, -1, 8192ul)]
+    [InlineData("MemoryClerkInternal::FreeReservedPages", AllocationOperation.Free, 2, 1, 8192ul)]
+    [InlineData("MemoryObjectFactory::CreateMemObject", AllocationOperation.Create, -1, -1, 1ul)]
+    [InlineData("CQryMemManager::AllocatePages", AllocationOperation.Allocate, 1, -1, 8192ul)]
+    [InlineData("CQryMemManager::FreePages", AllocationOperation.Free, 2, 1, 8192ul)]
+    [InlineData("CHashWorkfilePartitionInstance::PvAllocateHashBucketPage", AllocationOperation.Allocate, -1, -1, 8192ul)]
+    [InlineData("CHashWorkfilePartitionInstance::FreeHashBucketPage", AllocationOperation.Free, -1, 1, 1ul)]
     public void An_Allocator_Is_Recognised_By_Its_Name(string symbol,
-                                                       MemoryOperation operation,
+                                                       AllocationOperation operation,
                                                        int sizeSlot,
                                                        int pointerSlot,
                                                        ulong unit)
@@ -54,14 +54,14 @@ public class MemoryFunctionTests
     }
 
     [Theory]
-    [InlineData("RtlAllocateHeap", MemoryOperation.Allocate, 2, -1)]
-    [InlineData("RtlReAllocateHeap", MemoryOperation.Reallocate, 3, 2)]
-    [InlineData("RtlFreeHeap", MemoryOperation.Free, -1, 2)]
-    [InlineData("LocalAlloc", MemoryOperation.Allocate, 1, -1)]
-    [InlineData("malloc", MemoryOperation.Allocate, 0, -1)]
-    [InlineData("realloc", MemoryOperation.Reallocate, 1, 0)]
-    [InlineData("free", MemoryOperation.Free, -1, 0)]
-    public void A_Heap_Function_Is_Recognised_By_Its_Export(string export, MemoryOperation operation, int sizeSlot, int pointerSlot)
+    [InlineData("RtlAllocateHeap", AllocationOperation.Allocate, 2, -1)]
+    [InlineData("RtlReAllocateHeap", AllocationOperation.Reallocate, 3, 2)]
+    [InlineData("RtlFreeHeap", AllocationOperation.Free, -1, 2)]
+    [InlineData("LocalAlloc", AllocationOperation.Allocate, 1, -1)]
+    [InlineData("malloc", AllocationOperation.Allocate, 0, -1)]
+    [InlineData("realloc", AllocationOperation.Reallocate, 1, 0)]
+    [InlineData("free", AllocationOperation.Free, -1, 0)]
+    public void A_Heap_Function_Is_Recognised_By_Its_Export(string export, AllocationOperation operation, int sizeSlot, int pointerSlot)
     {
         var function = MemoryFunction.ClassifyExport(0x1000, export);
 

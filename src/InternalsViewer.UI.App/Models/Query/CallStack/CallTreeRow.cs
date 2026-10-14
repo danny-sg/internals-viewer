@@ -10,6 +10,8 @@ public sealed class CallTreeRow(object content)
 
     public CallTreeRow? Parent { get; private set; }
 
+    public bool IsRevealed { get; init; }
+
     public void Add(CallTreeRow child)
     {
         child.Parent = this;

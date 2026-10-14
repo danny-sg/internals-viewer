@@ -55,6 +55,8 @@ public sealed class TraceCallLog
 
     public CallStackNode? NodeOf(TraceArgumentCall call) => NodeAt(call.Node);
 
+    public CallStackNode? NodeAt(int node) => node >= 0 && node < Nodes.Length ? Nodes[node] : null;
+
     public Task<IReadOnlyList<TraceValueUse>> FindAsync(ulong value,
                                                         CancellationToken cancellationToken,
                                                         Func<CallStackNode?, bool>? include = null)
@@ -312,8 +314,6 @@ public sealed class TraceCallLog
 
         return matches;
     }
-
-    private CallStackNode? NodeAt(int node) => node >= 0 && node < Nodes.Length ? Nodes[node] : null;
 
     private static string GetStackLocation(int position) => $"[RSP+0x{ArgumentLayout.StackOffset(position):X}]";
 

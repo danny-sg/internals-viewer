@@ -177,6 +177,19 @@ public class TraceCallLogTests
     }
 
     [Fact]
+    public void A_Call_Is_Found_By_Its_Id_Across_Chunks()
+    {
+        var builder = new TraceCallLog.Builder();
+
+        builder.Add(0x1000, 0, Chunk(WithId(Row(1), 3), WithId(Row(2), 8)), 2);
+        builder.Add(0x1000, 0, Chunk(WithId(Row(3), 20)), 1);
+
+        var calls = builder.Build().CallsOf(0x1000, 0)!;
+
+        Assert.Equal([1, 2, -1, -1], new ulong[] { 8, 20, 9, 1 }.Select(calls.IndexOf));
+    }
+
+    [Fact]
     public void A_Chunk_Recorded_Before_Call_Ids_Reads_Without_Them()
     {
         const int calls = 542;
@@ -215,7 +228,7 @@ public class TraceCallLogTests
 
         using var images = new ImageText([TraceModule.Read(path, imageBase, 0x1000_0000)]);
 
-        Assert.Equal("\"CreateFileW\"", builder.Build(images).CallsOf(0x1000, 0)![0].GetLocator(0)?.ToString());
+        Assert.Equal("CreateFileW", builder.Build(images).CallsOf(0x1000, 0)![0].GetLocator(0)?.ToString());
     }
 
     [Fact]
@@ -242,7 +255,7 @@ public class TraceCallLogTests
 
         var locator = TraceCallLog.Read(reader).CallsOf(0x1000, 0)![0].GetLocator(1);
 
-        Assert.Equal((LocatorKind.WideText, "\"dbo.Orders\""), (locator?.Kind, locator?.ToString()));
+        Assert.Equal((LocatorKind.WideText, "dbo.Orders"), (locator?.Kind, locator?.ToString()));
     }
 
     [Fact]
@@ -461,6 +474,13 @@ public class TraceCallLogTests
         row[2] = rcx;
         row[6] = returnValue;
         row[7] = (ulong)node;
+
+        return row;
+    }
+
+    private static ulong[] WithId(ulong[] row, ulong id)
+    {
+        row[8] = id;
 
         return row;
     }

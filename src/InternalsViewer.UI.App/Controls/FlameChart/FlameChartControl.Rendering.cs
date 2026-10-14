@@ -273,7 +273,7 @@ public sealed partial class FlameChartControl
 
     private CallFocus? FocusOf(TraceTimeline timeline)
     {
-        if (SelectedCall is not { IsChosen: true }
+        if (SelectedCall is not { IsSelected: true }
             || _selected is not { } hit
             || hit.Lane >= timeline.Threads.Count
             || hit.Depth >= timeline.Threads[hit.Lane].Rows.Count)
@@ -435,7 +435,7 @@ public sealed partial class FlameChartControl
 
         DrawHighlight(canvas, hover, width, _paints.Hover);
 
-        DrawHighlight(canvas, ChosenCall, width, _paints.Selection);
+        DrawHighlight(canvas, SelectedHit, width, _paints.Selection);
 
         canvas.Restore();
 
@@ -449,7 +449,7 @@ public sealed partial class FlameChartControl
 
             DrawSpikeHighlight(canvas, hover, _paints.Hover);
 
-            DrawSpikeHighlight(canvas, ChosenCall, _paints.Selection);
+            DrawSpikeHighlight(canvas, SelectedHit, _paints.Selection);
 
             canvas.Restore();
         }

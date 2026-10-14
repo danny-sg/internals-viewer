@@ -42,6 +42,8 @@ public sealed partial class CallStackTreePanelView : UserControl, IDocumentComma
 
         SearchBar.SearchTextChanged += OnSearchTextChanged;
 
+        NodeTemplates.IsRevealed = node => RowsByNode.TryGetValue(node, out var row) && row.IsRevealed;
+
         Loaded += OnLoaded;
     }
 

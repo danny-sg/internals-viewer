@@ -54,41 +54,55 @@ public sealed class CallLogLookup(TraceCallLog log,
 
     public ValueDescription? Describe(ArgumentSlot slot, ulong value, TraceArgumentCall call)
     {
+        var isObject = slot.Type == ThisType || ArgumentValue.IsPointer(slot.Type);
+
+        var entry = isObject && value != 0 ? memoryMap.GetEntry(value, GetMoment(slot, call)) : null;
+
         if (GetHoBtId(slot, value, call) is { } hobtId && getHoBtName(hobtId) is { } name)
         {
-            return name;
+            return new ValueDescription(name) { Origin = entry };
         }
 
-        if (slot.Type != ThisType && !ArgumentValue.IsPointer(slot.Type))
+        if (!isObject)
         {
             return null;
         }
-
-        var entry = value == 0 ? null : memoryMap.GetEntry(value, GetMoment(slot, call));
 
         var className = entry?.ClassName;
 
         if (GetIterator(value) is { } iterator)
         {
-            return new ValueDescription(IteratorLabel(iterator), className);
+            return new ValueDescription(IteratorLabel(iterator), className) { Origin = entry };
         }
+
+        var address = $"0x{value:X}";
 
         if (className is not null)
         {
-            return new ValueDescription($"0x{value:X}", className);
+            return new ValueDescription(address, className) { Origin = entry };
         }
 
         if (slot.Type == ThisType || value == 0)
         {
-            return null;
+            return entry is null ? null : new ValueDescription(address) { Origin = entry };
         }
 
         if (ArgumentValue.GetPointeeClass(slot.Type) is { } declared)
         {
-            return new ValueDescription($"0x{value:X}", declared);
+            return new ValueDescription(address, declared) { Origin = entry };
         }
 
-        return entry?.Allocator is { } allocator ? new ValueDescription($"0x{value:X}", allocator) : null;
+        return entry?.Allocator is { } allocator ? new ValueDescription(address, allocator) { Origin = entry } : null;
+    }
+
+    public CallReference? GetOrigin(MemoryMapEntry origin)
+    {
+        if (Log.NodeAt(origin.Node) is not { Frame: { } frame } node)
+        {
+            return null;
+        }
+
+        return new CallReference(node, Log.CallsOf(frame.Address, frame.Instance)?.IndexOf(origin.Call) ?? -1);
     }
 
     public Task<ArgumentLayout?> GetLayoutAsync(CallstackFrame frame)

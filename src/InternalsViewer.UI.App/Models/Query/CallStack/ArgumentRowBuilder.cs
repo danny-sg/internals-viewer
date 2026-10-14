@@ -7,6 +7,7 @@ using InternalsViewer.Query.FullTrace.Locators;
 using InternalsViewer.Query.Results;
 using InternalsViewer.Query.CallStack.Locators;
 using InternalsViewer.Query.FullTrace.Arguments;
+using InternalsViewer.Query.FullTrace.Memory;
 
 namespace InternalsViewer.UI.App.Models.Query.CallStack;
 
@@ -120,6 +121,18 @@ public static class ArgumentRowBuilder
             : null;
     }
 
+    public static MemoryMapEntry? OriginAt(ArgumentLayout layout, TraceArgumentCall call, int ordinal, ValueDescriber describe)
+    {
+        if (SlotAt(layout, ordinal) is { } slot)
+        {
+            return call.Value(slot) is { } value ? GetDecoded(slot, value, call, describe).Origin : null;
+        }
+
+        return CellAt(layout, call, ordinal) is { Value: { } returned, Type: { } type }
+            ? GetDecoded(ReturnSlot(type), returned, call, describe).Origin
+            : null;
+    }
+
     public static IReadOnlyList<CallSignaturePart> Signature(string function,
                                                              ArgumentLayout? layout,
                                                              TraceArgumentCall call,
@@ -188,7 +201,7 @@ public static class ArgumentRowBuilder
                                                TraceArgumentCall call,
                                                ValueDescriber? describe)
     {
-        var (reading, className) = GetDecoded(slot, value, call, describe);
+        var (reading, className, _) = GetDecoded(slot, value, call, describe);
 
         return new CallSignaturePart($"0x{value:X}",
                                      CallSignaturePartKind.Value,
@@ -196,30 +209,32 @@ public static class ArgumentRowBuilder
                                      $"{slot.Type} ({slot.Source})",
                                      CanFind(slot.Type, value),
                                      reading,
-                                     className);
+                                     className,
+                                     call.GetLocator(slot.Index) is { } locator ? Display(slot.Type, locator) as StringValue : null);
     }
 
-    private static (string? Reading, string? ClassName) GetDecoded(ArgumentSlot slot,
-                                                                   ulong value,
-                                                                   TraceArgumentCall call,
-                                                                   ValueDescriber? describe)
+    private static (string? Reading, string? ClassName, MemoryMapEntry? Origin) GetDecoded(ArgumentSlot slot,
+                                                                                           ulong value,
+                                                                                           TraceArgumentCall call,
+                                                                                           ValueDescriber? describe)
     {
         var locator = call.GetLocator(slot.Index);
 
         if (locator is { Kind: not LocatorKind.Referenced } typed)
         {
-            return (Display(slot.Type, typed).ToString(), null);
+            return (Display(slot.Type, typed).ToString(), null, null);
         }
 
         if (describe?.Invoke(slot, value, call) is { } description)
         {
             return (description.Text,
-                    value != 0 && ArgumentValue.IsPointer(slot.Type) ? description.ClassName ?? GetClassName(slot.Type) : null);
+                    value != 0 && ArgumentValue.IsPointer(slot.Type) ? description.ClassName ?? GetClassName(slot.Type) : null,
+                    description.Origin);
         }
 
         return locator is { } referenced
-            ? (Display(slot.Type, referenced).ToString(), null)
-            : (ArgumentValue.Decode(slot.Type, value), null);
+            ? (Display(slot.Type, referenced).ToString(), null, null)
+            : (ArgumentValue.Decode(slot.Type, value), null, null);
     }
 
     private static string GetClassName(string type)
@@ -291,14 +306,14 @@ public static class ArgumentRowBuilder
             return Display(slot.Type, locator);
         }
 
-        var (reading, className) = GetDecoded(slot, value, call, describe);
+        var (reading, className, origin) = GetDecoded(slot, value, call, describe);
 
         if (reading is null)
         {
             return $"0x{value:X}";
         }
 
-        return className is null ? reading : new ObjectValue(className, reading);
+        return className is null && origin is null ? reading : new ObjectValue(className, reading) { Origin = origin };
     }
 
     private static ArgumentSlot ReturnSlot(string returnType)
@@ -307,8 +322,8 @@ public static class ArgumentRowBuilder
     private static object Display(string type, Locator locator) => locator.Kind switch
     {
         LocatorKind.Row => locator.Row,
-        LocatorKind.ColumnStoreObject or LocatorKind.LogSequenceNumber or LocatorKind.Text or LocatorKind.WideText or LocatorKind.TypeInfo
-            => locator.ToString(),
+        LocatorKind.Text or LocatorKind.WideText => new StringValue(locator.Text ?? string.Empty, locator.Detail != 0),
+        LocatorKind.ColumnStoreObject or LocatorKind.LogSequenceNumber or LocatorKind.TypeInfo => locator.ToString(),
         LocatorKind.Referenced => ArgumentValue.FormatReferenced(type, locator.Value),
         _ => locator.Page
     };

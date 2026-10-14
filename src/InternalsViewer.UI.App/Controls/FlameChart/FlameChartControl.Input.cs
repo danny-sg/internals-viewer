@@ -33,7 +33,7 @@ public sealed partial class FlameChartControl
 
     private FlameHit? _selected;
 
-    private FlameHit? ChosenCall => SelectedCall is { IsChosen: true } && !IsLocked ? _selected : null;
+    private FlameHit? SelectedHit => SelectedCall is { IsSelected: true } && !IsLocked ? _selected : null;
 
     private bool _isPressed;
 

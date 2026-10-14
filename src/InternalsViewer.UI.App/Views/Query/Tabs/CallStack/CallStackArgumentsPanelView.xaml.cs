@@ -6,6 +6,7 @@ using InternalsViewer.UI.App.Controls.CallStack;
 using InternalsViewer.UI.App.Controls.Docking;
 using InternalsViewer.UI.App.Controls.Results;
 using InternalsViewer.UI.App.Helpers;
+using InternalsViewer.UI.App.Models;
 using InternalsViewer.UI.App.Models.Query.CallStack;
 using InternalsViewer.UI.App.ViewModels.Query.CallStack;
 using Microsoft.UI.Input;
@@ -64,6 +65,22 @@ public sealed partial class CallStackArgumentsPanelView : UserControl, IDocument
     private void OnArgumentPageClicked(object? sender, PageAddressEventArgs e)
         => ViewModel?.OpenPage(new PageAddress(e.FileId, e.PageId), e.Slot is 0 ? null : e.Slot, IsShiftDown());
 
+    private void OnArgumentObjectClicked(object? sender, ObjectValue value)
+    {
+        if (value.Origin is { } origin)
+        {
+            ViewModel?.Tree.ShowOrigin(origin);
+        }
+    }
+
+    private void OnCopySignatureClick(object sender, RoutedEventArgs e)
+    {
+        if (ViewModel?.Arguments.Signature is { Length: > 0 } signature)
+        {
+            ClipboardText.Copy(signature);
+        }
+    }
+
     private void OnArgumentCellMenuOpening(object? sender, ResultCellMenuEventArgs e)
     {
         if (ViewModel is not { } viewModel)
@@ -95,6 +112,11 @@ public sealed partial class CallStackArgumentsPanelView : UserControl, IDocument
         if (cell.Value is not { } value)
         {
             return;
+        }
+
+        if (arguments.OriginAt(index, e.Ordinal) is { } origin)
+        {
+            e.Menu.Items.Add(MenuItem("Go To Origin", () => viewModel.Tree.ShowOrigin(origin)));
         }
 
         AddCopyItems(e.Menu, value, arguments.DecodedTextAt(index, e.Ordinal));

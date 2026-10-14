@@ -438,9 +438,25 @@
             </StackPanel>
         </DataTemplate>
 
+        <DataTemplate x:Key="RevealedCallFrameTemplate" x:DataType="muxc:TreeViewNode">
+            <ContentControl Content="{x:Bind}"
+                            ContentTemplate="{StaticResource CallFrameTemplate}"
+                            Opacity="0.5"
+                            IsTabStop="False"/>
+        </DataTemplate>
+
+        <DataTemplate x:Key="RevealedCallFrameSignatureTemplate" x:DataType="muxc:TreeViewNode">
+            <ContentControl Content="{x:Bind}"
+                            ContentTemplate="{StaticResource CallFrameSignatureTemplate}"
+                            Opacity="0.5"
+                            IsTabStop="False"/>
+        </DataTemplate>
+
         <local:CallstackNodeTemplateSelector x:Key="NodeTemplateSelector"
                                              FrameTemplate="{StaticResource CallFrameTemplate}"
                                              SignatureFrameTemplate="{StaticResource CallFrameSignatureTemplate}"
+                                             RevealedFrameTemplate="{StaticResource RevealedCallFrameTemplate}"
+                                             RevealedSignatureFrameTemplate="{StaticResource RevealedCallFrameSignatureTemplate}"
                                              LinkTemplate="{StaticResource OperatorLinkTemplate}"
                                              EventTemplate="{StaticResource EventRowTemplate}"
                                              OperatorTemplate="{StaticResource OperatorNodeTemplate}"/>

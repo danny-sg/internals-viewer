@@ -10,7 +10,7 @@ using InternalsViewer.Query.Memory;
 namespace InternalsViewer.Query.FullTrace.Tests;
 
 [Trait("Category", "Unit")]
-public class MemoryMapperTests
+public class AllocationMapperTests
 {
     private const ulong Allocator = 0x5000;
 
@@ -36,7 +36,7 @@ public class MemoryMapperTests
 
         log.MapNodes([caller, allocator]);
 
-        var (allocations, bytes) = MemoryMapper.Map(log, [Function(Allocator)], null);
+        var (allocations, bytes) = AllocationMapper.Map(log, [Function(Allocator)], null);
 
         Assert.Equal((300ul, 2L), (bytes, allocations));
         Assert.Equal((300L, 2L), (allocator.AllocatedBytes, allocator.Allocations));
@@ -62,7 +62,7 @@ public class MemoryMapperTests
 
         log.MapNodes([caller, outer, inner]);
 
-        var (_, bytes) = MemoryMapper.Map(log, [Function(Allocator), Function(Inner)], null);
+        var (_, bytes) = AllocationMapper.Map(log, [Function(Allocator), Function(Inner)], null);
 
         Assert.Equal(64ul, bytes);
         Assert.Equal(64L, caller.AllocatedBytesIncludingChildren);
@@ -86,7 +86,7 @@ public class MemoryMapperTests
 
         log.MapNodes([caller, create, objectPages, workspacePages]);
 
-        var (_, bytes) = MemoryMapper.Map(log, [ClerkPages()], null);
+        var (_, bytes) = AllocationMapper.Map(log, [ClerkPages()], null);
 
         Assert.Equal(16384ul, bytes);
     }
@@ -119,7 +119,7 @@ public class MemoryMapperTests
 
         timeline.MapNodes([caller, allocator, pages]);
 
-        MemoryMapper.Map(log, [Function(Allocator), ClerkPages()], timeline, Snapshot(clerks: new() { [0xC1] = clerk }));
+        AllocationMapper.Map(log, [Function(Allocator), ClerkPages()], timeline, Snapshot(clerks: new() { [0xC1] = clerk }));
 
         var start = timeline.StartOf(TraceTimelineAxis.Position);
 
@@ -152,8 +152,8 @@ public class MemoryMapperTests
 
         timeline.MapNodes([caller, allocator]);
 
-        MemoryMapper.Map(log,
-                         [new(Allocator, MemoryOperation.Allocate, 1, -1, 1) { IsObjectCall = true }],
+        AllocationMapper.Map(log,
+                         [new(Allocator, AllocationOperation.Allocate, 1, -1, 1) { IsObjectCall = true }],
                          timeline,
                          Snapshot(objects: new() { [0xB0] = WorkspaceClerk }));
 
@@ -193,10 +193,10 @@ public class MemoryMapperTests
 
         timeline.MapNodes([caller, allocator, child, parent]);
 
-        var (_, bytes) = MemoryMapper.Map(log,
+        var (_, bytes) = AllocationMapper.Map(log,
                                           [Function(Allocator),
-                                           new(Inner, MemoryOperation.Allocate, 1, -1, 1) { IsObjectCall = true },
-                                           new(Parent, MemoryOperation.Allocate, 1, -1, 1) { IsObjectCall = true }],
+                                           new(Inner, AllocationOperation.Allocate, 1, -1, 1) { IsObjectCall = true },
+                                           new(Parent, AllocationOperation.Allocate, 1, -1, 1) { IsObjectCall = true }],
                                           timeline,
                                           Snapshot(objects: new() { [0xB0] = WorkspaceClerk }));
 
@@ -215,7 +215,7 @@ public class MemoryMapperTests
         => new(clerks ?? [], objects ?? []);
 
     private static MemoryFunction ClerkPages()
-        => new(Inner, MemoryOperation.Allocate, 1, -1, 8192) { IsPage = true, CarriesClerk = true };
+        => new(Inner, AllocationOperation.Allocate, 1, -1, 8192) { IsPage = true, CarriesClerk = true };
 
     private static CallSpan Span(int node, ulong start, ulong end, uint call)
         => new(1, start, 1, end, start, end, node, 7, call, 1);
@@ -244,7 +244,7 @@ public class MemoryMapperTests
             }
         };
 
-    private static MemoryFunction Function(ulong address) => new(address, MemoryOperation.Allocate, 1, -1, 1);
+    private static MemoryFunction Function(ulong address) => new(address, AllocationOperation.Allocate, 1, -1, 1);
 
     private static CallstackFrame Frame(ulong address) => new() { Module = "sqldk", Rva = (uint)address, Address = address };
 

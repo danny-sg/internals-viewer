@@ -1,4 +1,5 @@
 ﻿using InternalsViewer.Query.Results;
+using InternalsViewer.UI.App.Models;
 using Microsoft.UI.Dispatching;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Documents;
@@ -11,6 +12,10 @@ namespace InternalsViewer.UI.App.Controls.Results;
 
 public sealed partial class ResultsGridControl : UserControl
 {
+    private const double CellMargin = 12;
+
+    private const double MaximumFitWidth = 640;
+
     public static readonly DependencyProperty ResultSetProperty =
         DependencyProperty.Register(
             nameof(ResultSet),
@@ -50,6 +55,19 @@ public sealed partial class ResultsGridControl : UserControl
         set => SetValue(RowNameProperty, value);
     }
 
+    public static readonly DependencyProperty FitColumnsToFirstRowProperty =
+        DependencyProperty.Register(
+            nameof(FitColumnsToFirstRow),
+            typeof(bool),
+            typeof(ResultsGridControl),
+            new PropertyMetadata(false));
+
+    public bool FitColumnsToFirstRow
+    {
+        get => (bool)GetValue(FitColumnsToFirstRowProperty);
+        set => SetValue(FitColumnsToFirstRowProperty, value);
+    }
+
     private Size _lastKnownSize = new(800, 600);
 
     public ResultsGridControl()
@@ -67,6 +85,8 @@ public sealed partial class ResultsGridControl : UserControl
 
     public event EventHandler<PageAddressEventArgs>? PageClicked;
 
+    public event EventHandler<ObjectValue>? ObjectClicked;
+
     public event EventHandler<ResultCellMenuEventArgs>? CellMenuOpening;
 
     private TableView? ResultsTable { get; set; }
@@ -83,15 +103,18 @@ public sealed partial class ResultsGridControl : UserControl
 
         var table = (TableView)((DataTemplate)Resources["ResultsTableTemplate"]).LoadContent();
 
+        var first = FitColumnsToFirstRow && rows.Count > 0 ? rows[0] : null;
+
         foreach (var column in columns)
         {
             var resultCellColumn = new ResultCellColumn(column.Ordinal)
             {
                 Header = CreateHeader(column),
                 BackgroundColour = column.BackgroundColour,
-                Width = GetColumnWidth(column),
+                Width = GetColumnWidth(column, first, table.FontSize),
                 Alignment = column.Alignment,
                 PageClicked = OnPageClicked,
+                ObjectClicked = ObjectClicked is null ? null : OnObjectClicked,
             };
 
             if (CreateHeaderStyle(column) is { } headerStyle)
@@ -212,8 +235,15 @@ public sealed partial class ResultsGridControl : UserControl
         return _lastKnownSize;
     }
 
-    private static GridLength GetColumnWidth(ResultColumn column)
+    private static GridLength GetColumnWidth(ResultColumn column, ResultRow<long>? first, double fontSize)
     {
+        if (column.Width is null && first is not null)
+        {
+            var content = ResultCellColumn.MeasureWidth(first[column.Ordinal], fontSize) + CellMargin;
+
+            return new GridLength(Math.Min(Math.Max(content, HeaderWidth(column)), MaximumFitWidth));
+        }
+
         var width = Type.GetTypeCode(column.ClrType) switch
         {
             TypeCode.Boolean or TypeCode.Byte or TypeCode.SByte or TypeCode.Int16 or TypeCode.UInt16 => 60,
@@ -223,8 +253,10 @@ public sealed partial class ResultsGridControl : UserControl
             _ => 140
         };
 
-        return new GridLength(column.Width ?? Math.Max(width, HeaderLength(column) * 7 + 24));
+        return new GridLength(column.Width ?? Math.Max(width, HeaderWidth(column)));
     }
+
+    private static int HeaderWidth(ResultColumn column) => HeaderLength(column) * 7 + 24;
 
     private static object CreateHeader(ResultColumn column)
     {
@@ -287,6 +319,8 @@ public sealed partial class ResultsGridControl : UserControl
     {
         PageClicked?.Invoke(this, e);
     }
+
+    private void OnObjectClicked(ObjectValue value) => ObjectClicked?.Invoke(this, value);
 
     private static void OnRowNameChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
         => ((ResultsGridControl)d).UpdateStatus();

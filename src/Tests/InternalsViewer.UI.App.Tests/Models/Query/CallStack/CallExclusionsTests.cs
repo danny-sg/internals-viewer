@@ -36,6 +36,22 @@ public class CallExclusionsTests
     }
 
     [Fact]
+    public void A_Crop_Excludes_Every_Call_Outside_Its_Roots()
+    {
+        var tree = new CallStackTree();
+
+        var thread = tree.AddCall(tree.Root, Frame("sqldk", 0x10), 1);
+        var compile = tree.AddCall(thread, Frame("sqllang", 0x20), 1);
+        var compiled = tree.AddCall(compile, Frame("sqlmin", 0x30), 1);
+        var execute = tree.AddCall(thread, Frame("sqllang", 0x40), 1);
+        var executed = tree.AddCall(execute, Frame("sqlmin", 0x50), 1);
+
+        var exclusions = new CallExclusions(new HashSet<string>(), new HashSet<string>(), new HashSet<CallStackNode> { execute });
+
+        Assert.Equal([false, false, false, true, true], new[] { thread, compile, compiled, execute, executed }.Select(exclusions.Includes));
+    }
+
+    [Fact]
     public void A_Call_Not_Placed_In_The_Tree_Is_Kept()
     {
         var exclusions = new CallExclusions(new HashSet<string> { "Compilation" }, new HashSet<string> { "Compilation" });

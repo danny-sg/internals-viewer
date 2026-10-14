@@ -72,7 +72,11 @@ public sealed partial class CallSignatureLine : UserControl
             }
         };
 
-        if (isDecoded && part.DecodedClass is { } className)
+        if (isDecoded && part.DecodedString is { } decodedString)
+        {
+            StringText.AddRuns(text.Inlines, decodedString);
+        }
+        else if (isDecoded && part.DecodedClass is { } className)
         {
             text.Inlines.Add(new Run { Text = className, Foreground = Resource<Brush>("CppClassBrush") });
             text.Inlines.Add(new Run { Text = " " });
