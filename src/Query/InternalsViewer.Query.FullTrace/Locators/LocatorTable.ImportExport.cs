@@ -5,7 +5,7 @@ namespace InternalsViewer.Query.FullTrace.Locators;
 
 internal sealed partial class LocatorTable
 {
-    public static LocatorTable Read(BinaryReader reader)
+    public static LocatorTable Read(BinaryReader reader, int? legacyReturnRegister = null)
     {
         var calls = ExportBinary.ReadArray<int>(reader);
 
@@ -14,6 +14,11 @@ internal sealed partial class LocatorTable
         for (var index = 0; index < locators.Length; index++)
         {
             var register = reader.ReadInt32();
+
+            if (register == legacyReturnRegister)
+            {
+                register = LocatorReadResolver.ReturnRegister;
+            }
 
             var kind = (LocatorKind)reader.ReadByte();
 

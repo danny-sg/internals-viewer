@@ -262,7 +262,7 @@ public sealed partial class CallTreeViewModel
             return;
         }
 
-        HighlightBuckets = ScopeEvents(selected).Select(e => tree.BucketOf(e.TimeUs)).ToHashSet();
+        HighlightBuckets = [.. ScopeEvents(selected).Select(e => tree.BucketOf(e.TimeUs))];
     }
 
     private static CallStackNode? CommonAncestor(List<CallStackNode> leaves)
@@ -311,8 +311,6 @@ public sealed partial class CallTreeViewModel
             return (Query.Events ?? []).Where(e => e.PlanNodeIdentifier == id);
         }
 
-        // Any consolidated group (a read, a lock group) scopes to the raw events it owns, merging their stacks into one
-        // tree — the group itself carries no call stack, its members do.
         if (selected is IEventGroup group)
         {
             return group.Events;
@@ -325,7 +323,6 @@ public sealed partial class CallTreeViewModel
     {
         ClearTree();
 
-        // Merged: the tree is the whole query, which is not a segment of anything and so heads nothing.
         HideFocusHeader();
 
         foreach (var row in BuildVisible(Query.CallStackRoots, Reveal.None))
@@ -346,8 +343,6 @@ public sealed partial class CallTreeViewModel
         ExpandForSearch();
     }
 
-    // A filtered tree left collapsed hides the very rows the search kept, so a search opens what it found. Attached
-    // first: WinUI can drop a subtree expanded while detached.
     private void ExpandForSearch()
     {
         if (Search.Length == 0)
@@ -930,6 +925,47 @@ public sealed partial class CallTreeViewModel
     }
 
     private static string GetPath(CallStackNode node) => string.Join('\n', node.Ancestors().Select(a => a.Key));
+
+    private static string GetRowPath(CallTreeRow row)
+    {
+        var keys = new List<string>();
+
+        for (var current = row; current is not null; current = current.Parent)
+        {
+            keys.Add(GetRowKey(current));
+        }
+
+        return string.Join('\n', keys);
+    }
+
+    private static string GetRowKey(CallTreeRow row) => row.Content switch
+    {
+        CallStackNode node => node.Key,
+        OperatorRow operatorRow => $"Operator {operatorRow.Operator.PlanNodeIdentifier}",
+        OperatorLink link => $"Link {link.Operator.PlanNodeIdentifier}",
+        _ => string.Empty
+    };
+
+    private Dictionary<string, CallTreeRow> GetRowsByPath()
+    {
+        var rows = new Dictionary<string, CallTreeRow>(StringComparer.Ordinal);
+
+        var pending = new Stack<CallTreeRow>(Roots);
+
+        while (pending.Count > 0)
+        {
+            var row = pending.Pop();
+
+            rows.TryAdd(GetRowPath(row), row);
+
+            foreach (var child in row.Children)
+            {
+                pending.Push(child);
+            }
+        }
+
+        return rows;
+    }
 
     private static bool IsCategoryIn(HashSet<string> categories, CallStackNode node)
         => node.Frame is not null && categories.Count > 0 && categories.Contains(node.Category);

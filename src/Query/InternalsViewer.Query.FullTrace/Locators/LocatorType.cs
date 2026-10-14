@@ -9,7 +9,11 @@ internal readonly record struct LocatorType(LocatorKind Kind, bool IsIndirect, b
 
     private const int PageHeaderPageIdOffset = 0x20;
 
+    private const int BufferPageIdOffset = 0x70;
+
     public static readonly int[] PageHandlePath = [0, 0x18, 0];
+
+    public static readonly int[] PageRefPath = [0];
 
     private static readonly char[] Indirections = ['*', '&'];
 
@@ -71,6 +75,8 @@ internal readonly record struct LocatorType(LocatorKind Kind, bool IsIndirect, b
         "PageId" => (LocatorKind.Page, 0, null),
         "AllocationPageId" => (LocatorKind.Page, AllocationPageIdOffset, null),
         "HPageHandle" => (LocatorKind.Page, PageHeaderPageIdOffset, PageHandlePath),
+        "PageRef" or "BTreeHPage" or "IndexPageRef" or "HeapPageRef" or "TextPageRef" or "IAMPageRef" or "GAMPageRef"
+            or "SGAMPageRef" or "PFSPageRef" or "PSPageRef" => (LocatorKind.Page, BufferPageIdOffset, PageRefPath),
         "RowId" => (LocatorKind.Row, 0, null),
         "ColumnStoreObjectKey" => (LocatorKind.ColumnStoreObject, 0, null),
         "LSN" => (LocatorKind.LogSequenceNumber, 0, null),

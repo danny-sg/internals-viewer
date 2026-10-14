@@ -97,6 +97,43 @@ public sealed partial class TraceTimeline
 
     public CallStackNode? NodeOf(int node) => node >= 0 && node < Nodes.Length ? Nodes[node] : null;
 
+    public IReadOnlyList<TraceThreadStack> StackAt(TraceTimelineAxis axis, double position)
+    {
+        var stacks = new List<TraceThreadStack>();
+
+        foreach (var thread in Threads)
+        {
+            var calls = new List<TraceTimelineSpan>();
+
+            var extents = new List<TraceCallExtent>();
+
+            foreach (var row in thread.Rows)
+            {
+                var index = row.IndexAt(axis, position, 0);
+
+                if (index < 0)
+                {
+                    continue;
+                }
+
+                calls.Add(row.Span(axis, index));
+
+                var positions = row.Span(TraceTimelineAxis.Position, index);
+
+                var instructions = row.Span(TraceTimelineAxis.Instructions, index);
+
+                extents.Add(new TraceCallExtent(positions.Start, positions.End, instructions.End - instructions.Start));
+            }
+
+            if (calls.Count > 0)
+            {
+                stacks.Add(new TraceThreadStack(thread.ThreadId, calls, extents));
+            }
+        }
+
+        return stacks;
+    }
+
     public TraceEventLink? EventLinkOf(EngineEvent engineEvent)
     {
         foreach (var owned in engineEvent.SelfAndOwned())
@@ -248,13 +285,13 @@ public sealed partial class TraceTimeline
             depths[node] = NodeOf(node) is { } callNode ? DepthUnder(roots, callNode, known) : -1;
         }
 
-        int DepthOf(TraceTimelineRow row, int index)
-            => row.NodeAt(index) is var node && node >= 0 && node < depths.Length ? depths[node] : -1;
-
         List<TraceTimelineThread> threads = [.. Threads.Select(t => Regroup(t, (_, row, index) => DepthOf(row, index)))
                                                        .Where(t => t.Calls > 0)];
 
         return threads.Count > 0 ? new TraceTimeline(threads, this, fit: true) : null;
+
+        int DepthOf(TraceTimelineRow row, int index)
+            => row.NodeAt(index) is var node && node >= 0 && node < depths.Length ? depths[node] : -1;
     }
 
     public TraceTimeline WithoutCallsUnder(Func<CallStackNode, bool> boundary)

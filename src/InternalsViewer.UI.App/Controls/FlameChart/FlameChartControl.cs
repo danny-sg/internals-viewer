@@ -36,6 +36,18 @@ public sealed partial class FlameChartControl : Grid, IDisposable
         set => SetValue(TimelineProperty, value);
     }
 
+    public static readonly DependencyProperty FullTimelineProperty =
+        DependencyProperty.Register(nameof(FullTimeline),
+                                    typeof(TraceTimeline),
+                                    typeof(FlameChartControl),
+                                    new PropertyMetadata(null, OnFullTimelineChanged));
+
+    public TraceTimeline? FullTimeline
+    {
+        get => (TraceTimeline?)GetValue(FullTimelineProperty);
+        set => SetValue(FullTimelineProperty, value);
+    }
+
     public static readonly DependencyProperty AxisProperty =
         DependencyProperty.Register(nameof(Axis),
                                     typeof(TraceTimelineAxis),
@@ -84,18 +96,6 @@ public sealed partial class FlameChartControl : Grid, IDisposable
         set => SetValue(SelectedNodeProperty, value);
     }
 
-    public static readonly DependencyProperty IsLockedProperty =
-        DependencyProperty.Register(nameof(IsLocked),
-                                    typeof(bool),
-                                    typeof(FlameChartControl),
-                                    new PropertyMetadata(false, OnIsLockedChanged));
-
-    public bool IsLocked
-    {
-        get => (bool)GetValue(IsLockedProperty);
-        set => SetValue(IsLockedProperty, value);
-    }
-
     public static readonly DependencyProperty ShowMemoryProperty =
         DependencyProperty.Register(nameof(ShowMemory),
                                     typeof(bool),
@@ -106,6 +106,18 @@ public sealed partial class FlameChartControl : Grid, IDisposable
     {
         get => (bool)GetValue(ShowMemoryProperty);
         set => SetValue(ShowMemoryProperty, value);
+    }
+
+    public static readonly DependencyProperty ShowCallStackProperty =
+        DependencyProperty.Register(nameof(ShowCallStack),
+                                    typeof(bool),
+                                    typeof(FlameChartControl),
+                                    new PropertyMetadata(false, OnShowCallStackChanged));
+
+    public bool ShowCallStack
+    {
+        get => (bool)GetValue(ShowCallStackProperty);
+        set => SetValue(ShowCallStackProperty, value);
     }
 
     public static readonly DependencyProperty GrantedMemoryProperty =
@@ -220,6 +232,12 @@ public sealed partial class FlameChartControl : Grid, IDisposable
 
     private double? _playhead;
 
+    private double? _reportedPlayhead;
+
+    private int _reportedVersion = -1;
+
+    private TraceTimelineAxis _reportedAxis;
+
     private ulong _memoryMaximum;
 
     private ulong _selfMaximum;
@@ -265,6 +283,8 @@ public sealed partial class FlameChartControl : Grid, IDisposable
         };
 
         Children.Add(_overlay);
+
+        Children.Add(_minimap);
 
         _horizontalScrollBar = new ScrollBar
         {
@@ -375,7 +395,9 @@ public sealed partial class FlameChartControl : Grid, IDisposable
 
     public event Action<CallStackNode?, int>? CallTreeOpenRequested;
 
-    public event Action<bool>? LockChanged;
+    public event Action? PlayheadChanged;
+
+    public bool HasPlayhead => _playhead is not null;
 
     private double FullStart => _fitStart;
 
@@ -401,6 +423,18 @@ public sealed partial class FlameChartControl : Grid, IDisposable
 
         SetView(FullStart, FullEnd);
     }
+
+    public void ZoomTo(double start, double end)
+    {
+        var margin = (end - start) * 0.05;
+
+        SetView(start - margin, end + margin);
+    }
+
+    public void ScopeTo(CallStackNode node) => SetRoot(node);
+
+    public IReadOnlyList<TraceThreadStack> GetPlayheadStack()
+        => _playhead is { } position && _visible is { } timeline ? timeline.StackAt(_axis, position) : [];
 
     public void StepPlayhead(bool forward)
     {
@@ -486,6 +520,8 @@ public sealed partial class FlameChartControl : Grid, IDisposable
 
         _landscapeLayer?.Dispose();
         _landscapeLayer = null;
+
+        _minimap.Dispose();
 
         _allocatedItem.Click -= OnMemoryModeClick;
         _inUseItem.Click -= OnMemoryModeClick;
@@ -1037,7 +1073,18 @@ public sealed partial class FlameChartControl : Grid, IDisposable
 
         control._timeline = e.NewValue as TraceTimeline;
 
+        control.ClearMark();
+
         control.Reset();
+    }
+
+    private static void OnFullTimelineChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
+    {
+        var control = (FlameChartControl)d;
+
+        control._markedCalls.Clear();
+
+        control._canvas.Invalidate();
     }
 
     private static void OnAxisChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
@@ -1080,11 +1127,6 @@ public sealed partial class FlameChartControl : Grid, IDisposable
     {
         var control = (FlameChartControl)d;
 
-        if (control.IsLocked)
-        {
-            return;
-        }
-
         control._highlightedNode = e.NewValue as CallStackNode;
 
         control.FindNodeMatches(control._highlightedNode);
@@ -1104,6 +1146,9 @@ public sealed partial class FlameChartControl : Grid, IDisposable
     }
 
     private static void OnGrantedMemoryChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
+        => ((FlameChartControl)d).Redraw();
+
+    private static void OnShowCallStackChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
         => ((FlameChartControl)d).Redraw();
 
     private static void OnMemoryModeChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
@@ -1127,22 +1172,6 @@ public sealed partial class FlameChartControl : Grid, IDisposable
         control.Redraw();
     }
 
-    private static void OnIsLockedChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
-    {
-        var control = (FlameChartControl)d;
-
-        if (e.NewValue is false)
-        {
-            control._highlightedNode = control.SelectedNode;
-
-            control.FindNodeMatches(control._highlightedNode);
-
-            control.Redraw();
-        }
-
-        control.LockChanged?.Invoke(control.IsLocked);
-    }
-
     private static void OnSelectedCallChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
     {
         var control = (FlameChartControl)d;
@@ -1157,7 +1186,7 @@ public sealed partial class FlameChartControl : Grid, IDisposable
         {
             control.FindSelectedCall(bringIntoView: true);
 
-            if (reference.IsSelected && control._selected is null && control._root is not null && !control.IsLocked)
+            if (reference.IsSelected && control._selected is null && control._root is not null)
             {
                 control.SetRoot(null);
 

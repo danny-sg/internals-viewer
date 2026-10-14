@@ -71,11 +71,11 @@ namespace
 
     constexpr int32_t ArgumentRegisters = 4;
 
-    constexpr int32_t ArgumentSlots = 8;
+    constexpr int32_t ArgumentSlots = 16;
 
     constexpr size_t StackArgumentCount = ArgumentSlots - ArgumentRegisters;
 
-    constexpr int32_t ReturnRegister = 8;
+    constexpr int32_t ReturnRegister = 16;
 
     constexpr size_t PointerValueChunk = 65536;
 

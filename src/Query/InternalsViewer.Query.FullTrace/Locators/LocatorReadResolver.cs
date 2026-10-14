@@ -9,7 +9,7 @@ namespace InternalsViewer.Query.FullTrace.Locators;
 
 public static partial class LocatorReadResolver
 {
-    public const int ReturnRegister = 8;
+    public const int ReturnRegister = 16;
 
     public const int ObjectKeyParts = 3;
 
@@ -24,8 +24,9 @@ public static partial class LocatorReadResolver
     private const int StackCandidateParameters = 4;
 
     private static readonly SearchValues<string> DecoratedTypes =
-        SearchValues.Create(["VPageId@@", "VAllocationPageId@@", "VHPageHandle@@", "URowId@@", "VColumnStoreObjectKey@@",
-                             "ULSN@@", "VLSN@@", "PEBD", "PEB_W", "VCTypeInfo@@"],
+        SearchValues.Create(["VPageId@@", "VAllocationPageId@@", "VHPageHandle@@", "VPageRef@@", "VBTreeHPage@@", "VIndexPageRef@@",
+                             "VHeapPageRef@@", "VTextPageRef@@", "VIAMPageRef@@", "VGAMPageRef@@", "VSGAMPageRef@@", "VPFSPageRef@@",
+                             "VPSPageRef@@", "URowId@@", "VColumnStoreObjectKey@@", "ULSN@@", "VLSN@@", "PEBD", "PEB_W", "VCTypeInfo@@"],
                             StringComparison.Ordinal);
 
     internal static IEnumerable<LocatorRead> ReadsOf(ulong function, FunctionSignature signature)

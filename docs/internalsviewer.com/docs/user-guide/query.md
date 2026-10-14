@@ -62,7 +62,7 @@ The **View** menu opens additional panes:
 - **Allocations** - the allocation map, scoped to the query - see [Allocations](/docs/user-guide/query/Allocations)
 - **Execution Plan** - the captured plan, connected to the timeline - see [Execution Plan](/docs/user-guide/query/ExecutionPlan)
 - **Events** - the raw list of captured events behind the timeline - see [Events](/docs/user-guide/query/Events)
-- **Call Tree** - the query's call stacks merged into one tree - see [Call Stack](/docs/user-guide/query/CallStack)
+- **Call Tree** - the query's call stacks merged into one tree, with **Members** and **Symbols** beside it on its submenu - see [Call Stack](/docs/user-guide/query/CallStack)
 - **Timeline** - the replay timeline - see [Timeline](/docs/user-guide/query/Timeline)
 - **Flame Chart** - every call recorded by **Record Full Trace** on the Trace menu, which takes the Timeline's place while it is on - see [Flame Chart](/docs/user-guide/query/FlameChart)
 - **Simulation** - steps through the query's plan operator by operator - see [Simulation](/docs/user-guide/query/Simulation)

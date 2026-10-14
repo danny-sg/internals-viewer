@@ -55,6 +55,24 @@ public class TraceTimelineTests
     }
 
     [Fact]
+    public void The_Stack_At_A_Position_Is_Each_Threads_Calls_In_Progress_Outermost_First()
+    {
+        var timeline = Build(Span(node: 0, start: 0, end: 40, call: 4),
+                             Span(node: 1, start: 5, end: 30, call: 5),
+                             Span(node: 2, start: 10, end: 20, call: 6),
+                             Span(node: 0, start: 0, end: 40, thread: 9, sequence: 2, call: 7));
+
+        var stacks = timeline.StackAt(Instructions, 25);
+
+        Assert.Equal([(7u, "0:4 1:5"), (9u, "0:7")],
+                     stacks.Select(s => (s.ThreadId, string.Join(' ', s.Calls.Select(c => $"{c.Node}:{c.Call}")))));
+    }
+
+    [Fact]
+    public void A_Position_No_Call_Covers_Has_No_Stack()
+        => Assert.Empty(Build(Span(node: 0, start: 0, end: 10)).StackAt(Instructions, 15));
+
+    [Fact]
     public void Each_Thread_Has_Its_Own_Lane_In_The_Order_It_Started()
     {
         var timeline = Build(Span(node: 0, start: 0, end: 10, thread: 9, sequence: 5),

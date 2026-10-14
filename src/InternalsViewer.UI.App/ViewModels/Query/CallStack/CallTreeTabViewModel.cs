@@ -34,15 +34,13 @@ public sealed class CallTreeTabViewModel : IDisposable
         SymbolsDocument = DocumentViewModel.Create<CallTreeSymbolsPanelView>("Symbols", this, keepAlive: true, key: "Symbols");
         ArgumentsDocument = DocumentViewModel.Create<CallTreeArgumentsPanelView>("Arguments", this, keepAlive: true, key: "Arguments");
 
-        Dock = new DockLayoutViewModel(new SplitNode(Orientation.Horizontal,
-                                                     new TabGroupNode(TreeDocument),
-                                                     new TabGroupNode(MembersDocument, SymbolsDocument, ArgumentsDocument))
-        {
-            FirstStar = TreeStar,
-            SecondStar = PanelStar
-        });
+        Dock = new DockLayoutViewModel(new TabGroupNode(TreeDocument));
 
         Dock.DocumentClosed += OnDocumentClosed;
+
+        Dock.LayoutChanged += OnDockLayoutChanged;
+
+        Query.Layout.PropertyChanged += OnLayoutPropertyChanged;
 
         Settings.PropertyChanged += OnSettingsPropertyChanged;
 
@@ -57,6 +55,16 @@ public sealed class CallTreeTabViewModel : IDisposable
         Arguments.SetDecoded(Settings.DecodeValues);
 
         Tree = new CallTreeViewModel(this, settings);
+
+        var members = Query.Layout.IsCallTreeMembersVisible;
+
+        var symbols = Query.Layout.IsCallTreeSymbolsVisible;
+
+        SetPanelVisible(ArgumentsDocument, Query.Layout.IsTrace);
+
+        SetPanelVisible(MembersDocument, members);
+
+        SetPanelVisible(SymbolsDocument, symbols);
     }
 
     public event Action? SymbolSearchRequested;
@@ -165,7 +173,7 @@ public sealed class CallTreeTabViewModel : IDisposable
             return;
         }
 
-        WeakReferenceMessenger.Default.Send(new OpenPageMessage(new OpenPageRequest(Query.Database, pageAddress)
+        _ = WeakReferenceMessenger.Default.Send(new OpenPageMessage(new OpenPageRequest(Query.Database, pageAddress)
         {
             Slot = slot,
             LogRecords = Query.GetPageLogRecords(pageAddress)
@@ -175,6 +183,10 @@ public sealed class CallTreeTabViewModel : IDisposable
     public void Dispose()
     {
         Dock.DocumentClosed -= OnDocumentClosed;
+
+        Dock.LayoutChanged -= OnDockLayoutChanged;
+
+        Query.Layout.PropertyChanged -= OnLayoutPropertyChanged;
 
         Settings.PropertyChanged -= OnSettingsPropertyChanged;
 
@@ -225,6 +237,48 @@ public sealed class CallTreeTabViewModel : IDisposable
     }
 
     private IEnumerable<DocumentViewModel> PanelDocuments() => [ArgumentsDocument, SymbolsDocument, MembersDocument, .. Finds];
+
+    private void SetPanelVisible(DocumentViewModel document, bool visible)
+    {
+        if (visible == Dock.Contains(document))
+        {
+            return;
+        }
+
+        if (visible)
+        {
+            ShowPanel(document, document);
+        }
+        else
+        {
+            Dock.Close(document);
+        }
+    }
+
+    private void OnLayoutPropertyChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        switch (e.PropertyName)
+        {
+            case nameof(QueryLayoutViewModel.IsTrace):
+                SetPanelVisible(ArgumentsDocument, Query.Layout.IsTrace);
+                break;
+
+            case nameof(QueryLayoutViewModel.IsCallTreeMembersVisible):
+                SetPanelVisible(MembersDocument, Query.Layout.IsCallTreeMembersVisible);
+                break;
+
+            case nameof(QueryLayoutViewModel.IsCallTreeSymbolsVisible):
+                SetPanelVisible(SymbolsDocument, Query.Layout.IsCallTreeSymbolsVisible);
+                break;
+        }
+    }
+
+    private void OnDockLayoutChanged(object? sender, EventArgs e)
+    {
+        Query.Layout.IsCallTreeMembersVisible = Dock.Contains(MembersDocument);
+
+        Query.Layout.IsCallTreeSymbolsVisible = Dock.Contains(SymbolsDocument);
+    }
 
     private void OnDocumentClosed(object? sender, DocumentViewModel document)
     {

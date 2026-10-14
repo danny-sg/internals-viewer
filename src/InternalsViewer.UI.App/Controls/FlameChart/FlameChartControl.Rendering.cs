@@ -59,6 +59,8 @@ public sealed partial class FlameChartControl
 
     private void OnPaintSurface(object? sender, SKPaintSurfaceEventArgs e)
     {
+        ReportPlayhead();
+
         var canvas = e.Surface.Canvas;
 
         canvas.Clear(SKColors.Transparent);
@@ -457,6 +459,8 @@ public sealed partial class FlameChartControl
         DrawPopout(canvas, width, height);
 
         DrawHover(canvas);
+
+        DrawMark(canvas, width, height);
 
         if (_isSelecting)
         {

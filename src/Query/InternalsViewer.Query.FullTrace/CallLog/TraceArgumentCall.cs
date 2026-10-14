@@ -22,7 +22,7 @@ public sealed record TraceArgumentCall(ulong Sequence,
 
     internal const int IdIndex = 8;
 
-    private const int EndIdIndex = 9;
+    internal const int EndIdIndex = 9;
 
     private const ulong ReturnedFlag = 1ul << 32;
 

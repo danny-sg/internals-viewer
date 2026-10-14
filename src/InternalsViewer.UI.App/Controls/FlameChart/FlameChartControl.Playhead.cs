@@ -42,7 +42,7 @@ public sealed partial class FlameChartControl
 
         DrawBandMarker(canvas, timeline, x, width, height, scale);
 
-        if (ShowMemory)
+        if (ShowMemory || ShowCallStack)
         {
             DrawPlayheadHandle(canvas, x, value, width);
 
@@ -132,6 +132,22 @@ public sealed partial class FlameChartControl
         canvas.Restore();
 
         DrawPlayheadHandle(canvas, x, value, width);
+    }
+
+    private void ReportPlayhead()
+    {
+        if (_playhead == _reportedPlayhead && _version == _reportedVersion && _axis == _reportedAxis)
+        {
+            return;
+        }
+
+        _reportedPlayhead = _playhead;
+
+        _reportedVersion = _version;
+
+        _reportedAxis = _axis;
+
+        DispatcherQueue.TryEnqueue(() => PlayheadChanged?.Invoke());
     }
 
     private void DrawPlayheadHandle(SKCanvas canvas, float x, double value, int width)

@@ -53,6 +53,12 @@ public sealed partial class QueryLayoutViewModel : ObservableObject, IDisposable
     private bool _isCallTreeVisible;
 
     [ObservableProperty]
+    private bool _isCallTreeMembersVisible;
+
+    [ObservableProperty]
+    private bool _isCallTreeSymbolsVisible;
+
+    [ObservableProperty]
     private bool _isInstructionsVisible;
 
     [ObservableProperty]
@@ -255,6 +261,10 @@ public sealed partial class QueryLayoutViewModel : ObservableObject, IDisposable
 
     partial void OnIsCallTreeVisibleChanged(bool value)
         => SetDocumentVisible(_documentsByKey[CallTreeKey], value);
+
+    partial void OnIsCallTreeMembersVisibleChanged(bool value) => IsCallTreeVisible |= value;
+
+    partial void OnIsCallTreeSymbolsVisibleChanged(bool value) => IsCallTreeVisible |= value;
 
     partial void OnIsInstructionsVisibleChanged(bool value)
         => SetDocumentVisible(_documentsByKey[InstructionsKey], value);

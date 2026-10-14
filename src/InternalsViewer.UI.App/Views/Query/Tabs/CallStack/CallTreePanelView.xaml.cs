@@ -18,7 +18,7 @@ using Windows.UI.Core;
 
 namespace InternalsViewer.UI.App.Views.Query.Tabs.CallStack;
 
-public sealed partial class CallTreePanelView : UserControl, IDocumentCommands, ISignatureNavigator, IDisposable
+public sealed partial class CallTreePanelView : UserControl, IDocumentCommands, ISignatureNavigator, ICallTreeState, IDisposable
 {
     private const int ExpandBudget = 2000;
 
@@ -36,8 +36,6 @@ public sealed partial class CallTreePanelView : UserControl, IDocumentCommands, 
 
         DataContextChanged += (_, _) => OnViewModelChanged();
 
-        AddHandler(PointerPressedEvent, new PointerEventHandler(OnNavigationPointerPressed), handledEventsToo: true);
-
         PositionActivitySplitter();
 
         SearchBar.SearchTextChanged += OnSearchTextChanged;
@@ -48,6 +46,10 @@ public sealed partial class CallTreePanelView : UserControl, IDocumentCommands, 
     }
 
     public CallTreeTabViewModel? ViewModel => DataContext as CallTreeTabViewModel;
+
+    public IReadOnlyList<CallTreeRow> ExpandedRows => [.. Nodes.Where(n => n.Value.IsExpanded && IsShown(n.Key)).Select(n => n.Key)];
+
+    public CallTreeRow? SelectedRow => Tree.SelectedNode is { } node && RowsByNode.TryGetValue(node, out var row) ? row : null;
 
     private CallTreeViewModel? CallTree { get; set; }
 
@@ -194,6 +196,11 @@ public sealed partial class CallTreePanelView : UserControl, IDocumentCommands, 
 
     private void OnViewModelChanged()
     {
+        if (CallTree is not null && ReferenceEquals(ViewModel?.Tree, CallTree))
+        {
+            return;
+        }
+
         Detach();
 
         CallTree = ViewModel?.Tree;
@@ -203,6 +210,8 @@ public sealed partial class CallTreePanelView : UserControl, IDocumentCommands, 
             callTree.PropertyChanged += OnCallTreePropertyChanged;
             callTree.RowSelectionRequested += OnRowSelectionRequested;
             callTree.SearchRequested += OnSearchRequested;
+
+            callTree.State = this;
 
             TreeHighlight.Text = callTree.Highlight;
 
@@ -224,6 +233,11 @@ public sealed partial class CallTreePanelView : UserControl, IDocumentCommands, 
         callTree.PropertyChanged -= OnCallTreePropertyChanged;
         callTree.RowSelectionRequested -= OnRowSelectionRequested;
         callTree.SearchRequested -= OnSearchRequested;
+
+        if (ReferenceEquals(callTree.State, this))
+        {
+            callTree.State = null;
+        }
 
         CallTree = null;
     }
@@ -474,22 +488,17 @@ public sealed partial class CallTreePanelView : UserControl, IDocumentCommands, 
 
     private void OnHeaderParentTapped(object sender, TappedRoutedEventArgs e) => CallTree?.FollowParent();
 
-    private void OnNavigationPointerPressed(object sender, PointerRoutedEventArgs e)
+    private bool IsShown(CallTreeRow row)
     {
-        var properties = e.GetCurrentPoint(this).Properties;
-
-        if (properties.IsXButton1Pressed)
+        for (var parent = row.Parent; parent is not null; parent = parent.Parent)
         {
-            CallTree?.GoBack();
-
-            e.Handled = true;
+            if (!Nodes.TryGetValue(parent, out var node) || !node.IsExpanded)
+            {
+                return false;
+            }
         }
-        else if (properties.IsXButton2Pressed)
-        {
-            CallTree?.GoForward();
 
-            e.Handled = true;
-        }
+        return true;
     }
 
     private void OnActivitySplitterDelta(object sender, ManipulationDeltaRoutedEventArgs e)

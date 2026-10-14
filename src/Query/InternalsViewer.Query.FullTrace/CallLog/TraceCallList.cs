@@ -103,6 +103,50 @@ public sealed class TraceCallList : IReadOnlyList<TraceArgumentCall>
         return -1;
     }
 
+    public int IndexOfEnclosing(ulong id)
+    {
+        var low = 0;
+
+        var high = Count - 1;
+
+        var latest = -1;
+
+        while (low <= high)
+        {
+            var middle = low + (high - low) / 2;
+
+            if (IdAt(middle) <= id)
+            {
+                latest = middle;
+
+                low = middle + 1;
+            }
+            else
+            {
+                high = middle - 1;
+            }
+        }
+
+        for (var index = latest; index >= 0; index--)
+        {
+            var end = EndIdAt(index);
+
+            if (end == 0 || end >= id)
+            {
+                return index;
+            }
+        }
+
+        return -1;
+    }
+
+    public ulong IdAt(int index)
+    {
+        var (columns, calls, call) = GetLocation(index);
+
+        return columns[TraceArgumentCall.IdIndex * calls + call];
+    }
+
     internal int NodeIndexAt(int index)
     {
         var (columns, calls, call) = GetLocation(index);
@@ -110,11 +154,11 @@ public sealed class TraceCallList : IReadOnlyList<TraceArgumentCall>
         return (int)columns[TraceArgumentCall.NodeIndex * calls + call];
     }
 
-    private ulong IdAt(int index)
+    private ulong EndIdAt(int index)
     {
         var (columns, calls, call) = GetLocation(index);
 
-        return columns[TraceArgumentCall.IdIndex * calls + call];
+        return columns[TraceArgumentCall.EndIdIndex * calls + call];
     }
 
     private (ulong[] Columns, int Calls, int Call) GetLocation(int index)

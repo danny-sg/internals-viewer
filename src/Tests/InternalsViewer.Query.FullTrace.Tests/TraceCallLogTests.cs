@@ -190,6 +190,18 @@ public class TraceCallLogTests
     }
 
     [Fact]
+    public void The_Enclosing_Call_Is_The_Latest_Started_That_Has_Not_Ended()
+    {
+        var builder = new TraceCallLog.Builder();
+
+        builder.Add(0x1000, 0, Chunk(WithIds(Row(1), 3, 40), WithIds(Row(2), 5, 9), WithIds(Row(3), 50, 0)), 3);
+
+        var calls = builder.Build().CallsOf(0x1000, 0)!;
+
+        Assert.Equal([0, 1, 0, -1, 2], new ulong[] { 4, 7, 12, 2, 60 }.Select(calls.IndexOfEnclosing));
+    }
+
+    [Fact]
     public void A_Chunk_Recorded_Before_Call_Ids_Reads_Without_Them()
     {
         const int calls = 542;
@@ -256,6 +268,31 @@ public class TraceCallLogTests
         var locator = TraceCallLog.Read(reader).CallsOf(0x1000, 0)![0].GetLocator(1);
 
         Assert.Equal((LocatorKind.WideText, "dbo.Orders"), (locator?.Kind, locator?.ToString()));
+    }
+
+    [Fact]
+    public void A_Log_Written_With_Eight_Slots_Reads_Its_Return_From_The_Return_Slot()
+    {
+        var register = LocatorReadResolver.ReturnRegister;
+
+        var builder = new TraceCallLog.Builder([new LocatorRead(0x1000, register, true, LocatorKind.Page)]);
+
+        builder.Add(0x1000, 0, Chunk(Row(1, flags: ReturnedFlag)), 1);
+
+        builder.AddLocators([new PointerValue(0x1000, 0, Page336, 0, register, IsReadAtReturn: 1)]);
+
+        using var stream = new MemoryStream();
+
+        using (var writer = new BinaryWriter(stream, Encoding.UTF8, leaveOpen: true))
+        {
+            builder.Build().Write(writer);
+        }
+
+        using var reader = new BinaryReader(new MemoryStream(ToEightSlots(stream.ToArray())));
+
+        var locator = TraceCallLog.Read(reader).CallsOf(0x1000, 0)![0].GetLocator(register);
+
+        Assert.Equal((LocatorKind.Page, Page336), (locator?.Kind, locator?.Value));
     }
 
     [Fact]
@@ -483,6 +520,29 @@ public class TraceCallLogTests
         row[8] = id;
 
         return row;
+    }
+
+    private static ulong[] WithIds(ulong[] row, ulong id, ulong endId)
+    {
+        row[8] = id;
+        row[9] = endId;
+
+        return row;
+    }
+
+    private static byte[] ToEightSlots(byte[] written)
+    {
+        Assert.Equal(-2, BitConverter.ToInt32(written));
+
+        var bytes = written[sizeof(int)..];
+
+        byte[] returned = [(byte)LocatorReadResolver.ReturnRegister, 0, 0, 0, (byte)LocatorKind.Page];
+
+        var register = bytes.AsSpan().LastIndexOf(returned);
+
+        bytes[register] = 8;
+
+        return bytes;
     }
 
     private static uint GetRva(string path, ReadOnlySpan<byte> text)

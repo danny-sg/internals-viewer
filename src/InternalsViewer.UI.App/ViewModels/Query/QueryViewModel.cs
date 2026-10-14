@@ -262,6 +262,9 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
     private TraceTimeline? _flameChart;
 
     [ObservableProperty]
+    private TraceTimeline? _fullFlameChart;
+
+    [ObservableProperty]
     private TraceEventLink? _currentEventLink;
 
     [ObservableProperty]
@@ -434,6 +437,8 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
     public ArgumentsViewModel Arguments { get; }
 
     public CallTreeTabViewModel CallTreeTab => CreatedCallTreeTab ??= new CallTreeTabViewModel(this, _settingsViewModel, Logger);
+
+    public PlayheadCallStackViewModel PlayheadStack => CreatedPlayheadStack ??= new PlayheadCallStackViewModel(this);
 
     /// <summary>
     /// The queries run against this database, listed beside the SQL editor
@@ -617,6 +622,8 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
     private List<AllocationLayer> ObjectLayers { get; set; }
 
     private CallTreeTabViewModel? CreatedCallTreeTab { get; set; }
+
+    private PlayheadCallStackViewModel? CreatedPlayheadStack { get; set; }
 
     public void NavigateToEvent(EngineEvent engineEvent)
     {
@@ -1014,6 +1021,8 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
         CancelTraceLoad();
 
         FlameChart = null;
+
+        FullFlameChart = null;
 
         CreatedCallTreeTab?.Dispose();
 
@@ -2209,6 +2218,8 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
                             IteratorTarget.Build(result.CallStack, Events, result.PlanLink),
                             result.HoBtAccess,
                             result.MemoryMap);
+
+        FullFlameChart = result.Timeline;
 
         FlameChart = GetFlameChart(result);
 

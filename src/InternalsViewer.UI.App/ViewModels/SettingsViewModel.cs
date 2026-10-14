@@ -34,6 +34,7 @@ public partial class SettingsViewModel(SettingsService settingsService, TraceDir
     private const string CallTreeHiddenCategoriesKey = "CallTreeHiddenCategories";
     private const string CallTreePrunedCategoriesKey = "CallTreePrunedCategories";
     private const string FlameChartShowMemoryKey = "FlameChartShowMemory";
+    private const string FlameChartShowCallStackKey = "FlameChartShowCallStack";
     private const string FlameChartMemoryModeKey = "FlameChartMemoryMode";
     private const string DecodeValuesKey = "DecodeValues";
 
@@ -87,6 +88,9 @@ public partial class SettingsViewModel(SettingsService settingsService, TraceDir
 
     [ObservableProperty]
     private bool _flameChartShowMemory;
+
+    [ObservableProperty]
+    private bool _flameChartShowCallStack;
 
     [ObservableProperty]
     private FlameChartMemoryMode _flameChartMemoryMode;
@@ -173,6 +177,8 @@ public partial class SettingsViewModel(SettingsService settingsService, TraceDir
 
         FlameChartShowMemory = await SettingsService.ReadSettingAsync<bool?>(FlameChartShowMemoryKey) ?? false;
 
+        FlameChartShowCallStack = await SettingsService.ReadSettingAsync<bool?>(FlameChartShowCallStackKey) ?? false;
+
         FlameChartMemoryMode = await SettingsService.ReadSettingAsync<FlameChartMemoryMode?>(FlameChartMemoryModeKey)
                                ?? FlameChartMemoryMode.Allocated;
 
@@ -223,6 +229,11 @@ public partial class SettingsViewModel(SettingsService settingsService, TraceDir
     partial void OnFlameChartShowMemoryChanged(bool value)
     {
         _ = SettingsService.SaveSettingAsync(FlameChartShowMemoryKey, value);
+    }
+
+    partial void OnFlameChartShowCallStackChanged(bool value)
+    {
+        _ = SettingsService.SaveSettingAsync(FlameChartShowCallStackKey, value);
     }
 
     partial void OnFlameChartMemoryModeChanged(FlameChartMemoryMode value)

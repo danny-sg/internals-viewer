@@ -319,6 +319,72 @@ public class ArgumentRowBuilderTests
     }
 
     [Fact]
+    public void Types_Are_Carried_With_The_Values_But_Not_With_This()
+    {
+        var layout = ArgumentLayout.LayoutOf(new FunctionSignature(["bool", "int"], FunctionKind.Member, "void"));
+
+        var call = new TraceArgumentCall(1, 1, true, [0x1_0000, 1, 5, 0], 0, 0);
+
+        var parts = ArgumentRowBuilder.Signature("F", layout, call, includeTypes: true);
+
+        Assert.Equal([null, "bool", "int"], parts.Where(p => p.Kind == CallSignaturePartKind.Value).Select(p => p.TypeName));
+    }
+
+    [Theory]
+    [InlineData(null, "F(this, 0x5)")]
+    [InlineData("dbo.T.PK", "F(this dbo.T.PK, 0x5)")]
+    public void This_Shows_Only_What_It_Decodes_To(string? reading, string expected)
+    {
+        var layout = ArgumentLayout.LayoutOf(new FunctionSignature(["int"], FunctionKind.Member, "void"));
+
+        var call = new TraceArgumentCall(1, 1, true, [0x1_0000, 5, 0, 0], 0, 0);
+
+        ValueDescription? Describe(ArgumentSlot slot, ulong value, TraceArgumentCall _) => slot.Type == "this" ? reading : null;
+
+        var parts = ArgumentRowBuilder.Signature("F", layout, call, Describe, showThisAddress: false);
+
+        Assert.Equal((expected, "0x10000"), (Text(parts, decode: true), ArgumentRowBuilder.ThisOf(layout, call, Describe)?.Text));
+    }
+
+    [Fact]
+    public void A_Signature_Reads_With_Its_Types_As_It_Is_Shown()
+    {
+        var layout = ArgumentLayout.LayoutOf(new FunctionSignature(["bool", "int"], FunctionKind.Member, "void"));
+
+        var call = new TraceArgumentCall(1, 1, true, [0x1_0000, 1, 5, 0], 0, 0);
+
+        var parts = ArgumentRowBuilder.Signature("F", layout, call, includeTypes: true);
+
+        Assert.Equal("F(this 0x10000, bool 0x1, int 0x5)", string.Concat(parts.Select(p => p.GetDisplayText(decode: false))));
+    }
+
+    [Fact]
+    public void Each_Value_Is_Labelled_With_Its_Argument_Number()
+    {
+        var layout = ArgumentLayout.LayoutOf(new FunctionSignature(["bool", "int"], FunctionKind.Member, "int"));
+
+        var call = new TraceArgumentCall(1, 1, true, [0x1_0000, 1, 5, 0], 9, 0);
+
+        var parts = ArgumentRowBuilder.Signature("F", layout, call);
+
+        Assert.Equal(["this", "1", "2", "Return"], parts.Where(p => p.Kind == CallSignaturePartKind.Value).Select(p => p.Label));
+    }
+
+    [Fact]
+    public void A_Return_Left_Off_The_Signature_Is_Still_Found()
+    {
+        var layout = ArgumentLayout.LayoutOf(new FunctionSignature([], FunctionKind.Member, "int"));
+
+        var call = Call(0x1_0000, 0, returnValue: 7);
+
+        var parts = ArgumentRowBuilder.Signature("F", layout, call, includeReturn: false);
+
+        Assert.Equal(("F(this 0x10000)", "0x7", "int"),
+                     (Text(parts, decode: false), ArgumentRowBuilder.ReturnOf(layout, call, includeType: true)?.Text,
+                      ArgumentRowBuilder.ReturnOf(layout, call, includeType: true)?.TypeName));
+    }
+
+    [Fact]
     public void A_Pointer_To_A_Known_Object_Takes_The_Object_Class()
     {
         var layout = ArgumentLayout.LayoutOf(new FunctionSignature(["CQScanNew *"], FunctionKind.Member, "void"));

@@ -6,6 +6,7 @@ using InternalsViewer.Query.Plans.Model;
 using InternalsViewer.UI.App.Controls.Docking;
 using InternalsViewer.UI.App.ViewModels;
 using InternalsViewer.UI.App.ViewModels.Query;
+using InternalsViewer.UI.App.ViewModels.Query.CallStack;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Controls.Primitives;
 using Microsoft.UI.Xaml.Input;
@@ -15,10 +16,6 @@ namespace InternalsViewer.UI.App.Views.Query.Tabs.FlameChart;
 
 public sealed partial class QueryFlameChartTabView : UserControl, IDocumentCommands, IDisposable
 {
-    private const string LockedGlyph = "\uE72E";
-
-    private const string UnlockedGlyph = "\uE785";
-
     private const string StepBackGlyph = "\uE892";
 
     private const string StepForwardGlyph = "\uE893";
@@ -29,15 +26,19 @@ public sealed partial class QueryFlameChartTabView : UserControl, IDocumentComma
 
     private const string PauseGlyph = "\uE769";
 
+    private const double StackStar = 0.5;
+
     private ToggleButton? _instructionsToggle;
 
     private ToggleButton? _positionToggle;
 
     private ToggleButton? _searchToggle;
 
-    private ToggleButton? _lockToggle;
-
     private ToggleButton? _memoryToggle;
+
+    private ToggleButton? _callStackToggle;
+
+    private GridLength _stackHeight = new(StackStar, GridUnitType.Star);
 
     private Button? _playButton;
 
@@ -45,7 +46,7 @@ public sealed partial class QueryFlameChartTabView : UserControl, IDocumentComma
     {
         InitializeComponent();
 
-        DataContextChanged += (_, _) => Bindings.Update();
+        DataContextChanged += (_, _) => OnViewModelChanged();
 
         FlameChart.CallSelected += OnCallSelected;
 
@@ -57,7 +58,7 @@ public sealed partial class QueryFlameChartTabView : UserControl, IDocumentComma
 
         FlameChart.PlayStateChanged += OnPlayStateChanged;
 
-        FlameChart.LockChanged += OnLockChanged;
+        FlameChart.PlayheadChanged += OnPlayheadChanged;
 
         SearchBar.SearchTextChanged += OnSearchTextChanged;
 
@@ -71,6 +72,8 @@ public sealed partial class QueryFlameChartTabView : UserControl, IDocumentComma
     public QueryViewModel? ViewModel => DataContext as QueryViewModel;
 
     private SettingsViewModel Settings { get; } = App.GetService<SettingsViewModel>();
+
+    private PlayheadCallStackViewModel? Stack { get; set; }
 
     public FrameworkElement CreateCommands()
     {
@@ -107,6 +110,13 @@ public sealed partial class QueryFlameChartTabView : UserControl, IDocumentComma
 
         commands.Children.Add(_memoryToggle);
 
+        _callStackToggle = CommandToggle(Label("Call Stack"),
+                                         Settings.FlameChartShowCallStack,
+                                         "Show the calls in progress at the playhead, with the values they were passed",
+                                         OnCallStackClick);
+
+        commands.Children.Add(_callStackToggle);
+
         _playButton = CommandButton(new FontIcon { Glyph = FlameChart.IsPlaying ? PauseGlyph : PlayGlyph, FontSize = 12 },
                                     FlameChart.IsPlaying ? "Pause" : "Play",
                                     OnPlayClick);
@@ -120,13 +130,6 @@ public sealed partial class QueryFlameChartTabView : UserControl, IDocumentComma
         commands.Children.Add(CommandButton(new FontIcon { Glyph = StepForwardGlyph, FontSize = 12 },
                                             "Next Frame",
                                             OnStepForwardClick));
-
-        _lockToggle = CommandToggle(new FontIcon { Glyph = FlameChart.IsLocked ? LockedGlyph : UnlockedGlyph, FontSize = 12 },
-                                    FlameChart.IsLocked,
-                                    "Lock chart to selection",
-                                    OnLockClick);
-
-        commands.Children.Add(_lockToggle);
 
         _searchToggle = CommandToggle(new FontIcon { Glyph = SearchGlyph, FontSize = 12 },
                                       false,
@@ -152,14 +155,77 @@ public sealed partial class QueryFlameChartTabView : UserControl, IDocumentComma
 
         FlameChart.PlayStateChanged -= OnPlayStateChanged;
 
-        FlameChart.LockChanged -= OnLockChanged;
+        FlameChart.PlayheadChanged -= OnPlayheadChanged;
 
         SearchBar.SearchTextChanged -= OnSearchTextChanged;
 
         Settings.PropertyChanged -= OnSettingsPropertyChanged;
 
         FlameChart.Dispose();
+
+        StackView.Dispose();
+
+        if (Stack is { } stack)
+        {
+            stack.ZoomRequested -= OnStackZoomRequested;
+
+            stack.ScopeRequested -= OnStackScopeRequested;
+
+            stack.StepRequested -= OnStackStepRequested;
+
+            stack.MarkRequested -= OnStackMarkRequested;
+
+            stack.GoToRequested -= OnStackGoToRequested;
+        }
     }
+
+    private void OnViewModelChanged()
+    {
+        Bindings.Update();
+
+        if (ReferenceEquals(Stack, ViewModel?.PlayheadStack))
+        {
+            return;
+        }
+
+        if (Stack is { } previous)
+        {
+            previous.ZoomRequested -= OnStackZoomRequested;
+
+            previous.ScopeRequested -= OnStackScopeRequested;
+
+            previous.StepRequested -= OnStackStepRequested;
+
+            previous.MarkRequested -= OnStackMarkRequested;
+
+            previous.GoToRequested -= OnStackGoToRequested;
+        }
+
+        Stack = ViewModel?.PlayheadStack;
+
+        if (Stack is { } current)
+        {
+            current.ZoomRequested += OnStackZoomRequested;
+
+            current.ScopeRequested += OnStackScopeRequested;
+
+            current.StepRequested += OnStackStepRequested;
+
+            current.MarkRequested += OnStackMarkRequested;
+
+            current.GoToRequested += OnStackGoToRequested;
+        }
+    }
+
+    private void OnStackZoomRequested(double start, double end) => FlameChart.ZoomTo(start, end);
+
+    private void OnStackScopeRequested(CallStackNode node) => FlameChart.ScopeTo(node);
+
+    private void OnStackStepRequested(bool forward) => FlameChart.StepPlayhead(forward);
+
+    private void OnStackMarkRequested(CallStackNode? node, int call) => FlameChart.MarkCall(node, call);
+
+    private void OnStackGoToRequested(CallStackNode node, int call) => FlameChart.MovePlayheadTo(node, call);
 
     private ToggleButton AxisToggle(string text, TraceTimelineAxis axis, string toolTip)
     {
@@ -231,6 +297,41 @@ public sealed partial class QueryFlameChartTabView : UserControl, IDocumentComma
 
     private void OnMemoryClick(object sender, RoutedEventArgs e) => Settings.FlameChartShowMemory = IsChecked(sender);
 
+    private void OnCallStackClick(object sender, RoutedEventArgs e) => Settings.FlameChartShowCallStack = IsChecked(sender);
+
+    private void OnPlayheadChanged()
+    {
+        var stack = Settings.FlameChartShowCallStack ? FlameChart.GetPlayheadStack() : [];
+
+        ShowStack(Settings.FlameChartShowCallStack && FlameChart.HasPlayhead);
+
+        if (Settings.FlameChartShowCallStack)
+        {
+            ViewModel?.PlayheadStack.SetStack(stack);
+        }
+    }
+
+    private void ShowStack(bool show)
+    {
+        if (show == (StackView.Visibility == Visibility.Visible))
+        {
+            return;
+        }
+
+        if (!show && StackRow.Height.Value > 0)
+        {
+            _stackHeight = StackRow.Height;
+        }
+
+        StackView.Visibility = show ? Visibility.Visible : Visibility.Collapsed;
+
+        StackSplitter.Visibility = StackView.Visibility;
+
+        StackSplitterRow.Height = show ? GridLength.Auto : new GridLength(0);
+
+        StackRow.Height = show ? _stackHeight : new GridLength(0);
+    }
+
     private void OnOperatorsClick(object sender, RoutedEventArgs e) => FlameChart.ShowOperators = IsChecked(sender);
 
     private void OnPlayClick(object sender, RoutedEventArgs e) => FlameChart.TogglePlay();
@@ -247,23 +348,20 @@ public sealed partial class QueryFlameChartTabView : UserControl, IDocumentComma
         ToolTipService.SetToolTip(button, isPlaying ? "Pause" : "Play");
     }
 
-    private void OnStepBackClick(object sender, RoutedEventArgs e) => FlameChart.StepPlayhead(forward: false);
+    private void OnStepBackClick(object sender, RoutedEventArgs e) => Step(forward: false);
 
-    private void OnStepForwardClick(object sender, RoutedEventArgs e) => FlameChart.StepPlayhead(forward: true);
+    private void OnStepForwardClick(object sender, RoutedEventArgs e) => Step(forward: true);
 
-    private void OnLockClick(object sender, RoutedEventArgs e) => FlameChart.IsLocked = IsChecked(sender);
-
-    private void OnLockChanged(bool isLocked)
+    private void Step(bool forward)
     {
-        if (_lockToggle is not { Content: FontIcon icon } toggle)
-        {
-            return;
-        }
+        Stack?.ClearSelection();
 
-        toggle.IsChecked = isLocked;
-
-        icon.Glyph = isLocked ? LockedGlyph : UnlockedGlyph;
+        FlameChart.StepPlayhead(forward);
     }
+
+    private void OnPreviousMatchClick(object sender, RoutedEventArgs e) => FlameChart.StepSearch(forward: false);
+
+    private void OnNextMatchClick(object sender, RoutedEventArgs e) => FlameChart.StepSearch(forward: true);
 
     private static bool IsChecked(object sender) => sender is ToggleButton { IsChecked: true };
 
@@ -271,7 +369,7 @@ public sealed partial class QueryFlameChartTabView : UserControl, IDocumentComma
 
     private void ShowSearch(bool show)
     {
-        SearchBar.Visibility = show ? Visibility.Visible : Visibility.Collapsed;
+        SearchRow.Visibility = show ? Visibility.Visible : Visibility.Collapsed;
 
         FlameChart.SearchText = show ? SearchBar.Text : null;
 
@@ -310,10 +408,7 @@ public sealed partial class QueryFlameChartTabView : UserControl, IDocumentComma
 
         viewModel.Arguments.SelectedCall = null;
 
-        if (!FlameChart.IsLocked)
-        {
-            viewModel.SelectedCallNode = null;
-        }
+        viewModel.SelectedCallNode = null;
     }
 
     private void OnPlanNodeSelected(PlanNodeIdentifier identifier) => ViewModel?.SelectPlanNode(identifier);
@@ -331,6 +426,12 @@ public sealed partial class QueryFlameChartTabView : UserControl, IDocumentComma
         else if (e.PropertyName == nameof(SettingsViewModel.FlameChartShowMemory) && _memoryToggle is { } toggle)
         {
             toggle.IsChecked = Settings.FlameChartShowMemory;
+        }
+        else if (e.PropertyName == nameof(SettingsViewModel.FlameChartShowCallStack))
+        {
+            _callStackToggle?.IsChecked = Settings.FlameChartShowCallStack;
+
+            OnPlayheadChanged();
         }
     }
 }

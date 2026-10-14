@@ -1,3 +1,5 @@
+using InternalsViewer.Query.FullTrace.Memory;
+
 namespace InternalsViewer.UI.App.Models.Query.CallStack;
 
 public sealed class CallSignaturePart(string text,
@@ -7,7 +9,12 @@ public sealed class CallSignaturePart(string text,
                                      bool canFind = false,
                                      string? decoded = null,
                                      string? decodedClass = null,
-                                     StringValue? decodedString = null)
+                                     StringValue? decodedString = null,
+                                     string? typeName = null,
+                                     string? label = null,
+                                     string? declaredType = null,
+                                     MemoryMapEntry? origin = null,
+                                     string? location = null)
 {
     public string Text { get; } = text;
 
@@ -25,7 +32,21 @@ public sealed class CallSignaturePart(string text,
 
     public StringValue? DecodedString { get; } = decodedString;
 
+    public string? TypeName { get; } = typeName;
+
+    public string? Label { get; } = label;
+
+    public string? DeclaredType { get; } = declaredType;
+
+    public MemoryMapEntry? Origin { get; } = origin;
+
+    public string? Location { get; } = location;
+
     public bool IsDecodedFor(bool decode) => decode && Decoded is not null;
+
+    public bool ShowsTypeFor(bool decode) => TypeName is not null && (!IsDecodedFor(decode) || DecodedClass is null);
+
+    public string GetDisplayText(bool decode) => ShowsTypeFor(decode) ? $"{TypeName} {GetText(decode)}" : GetText(decode);
 
     public string GetText(bool decode)
     {

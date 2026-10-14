@@ -11,7 +11,7 @@ The tree decodes one row per frame:
 
 The **Activity** column, on by default, shows a small histogram for each frame of when that function was active across the query - a picture of whether it was a one-off or ran throughout - with the selection's time highlighted. Drag the column's edge to resize it. **Signature** adds each function's parameter types from the symbols.
 
-The **Call Tree** tab is laid out as a dock, with the tree on the left and **Members**, **Symbols** and **Arguments** on the right. Drag a tab to move it to another group or to an edge. Members, Symbols and Arguments can be closed, and come back when something opens them: **List Members**, **Search symbols** or **Show Arguments**.
+The **Call Tree** tab is laid out as a dock. It starts with the tree on its own, with **Arguments** beside it while [Full Trace](/docs/user-guide/query/FullTrace) is on. **Members** and **Symbols** are added from the **Call Tree** submenu of the View menu, or when something opens them: **List Members** or **Search symbols**. Drag a tab to move it to another group or to an edge. The panels beside the tree can be closed, which also clears them on the View menu, and come back when something opens them.
 
 <!-- Screenshot (new): the Call Tree tab's dock - the tree on the left, Members, Symbols and Arguments on the right -->
 
@@ -23,7 +23,7 @@ The tree gives visibility into the engine functions behind each event. Reading d
 
 ![Call Tree with Focus on](/docs/user-guide/images/query-view-call-tree.png)
 
-**Focus**, on by default, crops the tree to the event or operator currently selected - via the [Timeline](/docs/user-guide/query/Timeline), the [Execution Plan](/docs/user-guide/query/ExecutionPlan), or the Events pane. The header shows the selected event as a chip, with a **←** link to the right showing its parent (e.g. the statement it belongs to) - click it to navigate up to the parent's call stack. The **Back** and **Forward** buttons on the command bar undo/redo this navigation.
+**Focus**, on by default, crops the tree to the event or operator currently selected - via the [Timeline](/docs/user-guide/query/Timeline), the [Execution Plan](/docs/user-guide/query/ExecutionPlan), or the Events pane. The header shows the selected event as a chip, with a **←** link to the right showing its parent (e.g. the statement it belongs to) - click it to navigate up to the parent's call stack. The **Back** and **Forward** buttons on the command bar, or the back and forward buttons on the mouse anywhere in the tab, undo/redo this navigation. Each step returns the tree with the frames that were open and the row that was selected, and the call that was selected in **Arguments**. Selecting a call in **Arguments** is a step of its own.
 
 Turning Focus off shows the full call tree for the whole query, from the top-level statement execution down:
 
@@ -80,7 +80,7 @@ The four integer argument registers - RCX, RDX, R8 and R9 - are captured at the 
 
 Some values are read further than the register:
 
-- **Pages, rows and columnstore objects** - an argument that points at a page id, a row id or a columnstore object key shows the page, row or object instead of the address. Click a page to open it.
+- **Pages, rows and columnstore objects** - an argument that points at a page id, a row id or a columnstore object key, or at a handle or reference to a page in the buffer pool, shows the page, row or object instead of the address. Click a page to open it.
 - **Log sequence numbers** - an argument that points at an `LSN` shows the LSN, such as `(37:152:2)`, in the same form as a page header's `m_lsn`.
 - **Strings** - a `char const *` or `wchar_t const *` argument shows the text it points at, such as `dbo.Orders`, in the string colour the query editor uses. Only the start of a long string is read, and it is marked **Truncated**. Text the recording never read is taken from the SQL Server file it was compiled into, such as a source file name passed to an allocation. Any other text the recording had not seen shows as the address.
 - **Data types** - an argument that points at a `CTypeInfo`, SQL Server's description of a column or expression type, shows the type as it is written in T-SQL, such as `nvarchar(128)`, `decimal(38,0)` or `int NOT NULL`.

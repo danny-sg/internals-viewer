@@ -56,8 +56,8 @@ public class ArgumentLayoutTests
     [Fact]
     public void Arguments_Past_The_Captured_Slots_Are_Not_Captured()
     {
-        var layout = ArgumentLayout.LayoutOf(new FunctionSignature([.. Enumerable.Repeat("int", 9)], FunctionKind.Free, null));
+        var layout = ArgumentLayout.LayoutOf(new FunctionSignature([.. Enumerable.Repeat("int", 17)], FunctionKind.Free, null));
 
-        Assert.Equal(ArgumentLocation.NotCaptured, layout.Slots[8].Location);
+        Assert.Equal((ArgumentLocation.Stack, ArgumentLocation.NotCaptured), (layout.Slots[15].Location, layout.Slots[16].Location));
     }
 }

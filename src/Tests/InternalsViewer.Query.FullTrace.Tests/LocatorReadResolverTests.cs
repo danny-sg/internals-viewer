@@ -42,6 +42,29 @@ public class LocatorReadResolverTests
     }
 
     [Fact]
+    public void A_Page_Reference_Is_Followed_To_Its_Buffer_When_Called_And_On_Return()
+    {
+        var reads = Reads("SMOLockOrder::Add(PageRef &)", "?Add@SMOLockOrder@@QEAAXAEAVPageRef@@@Z");
+
+        Assert.Equal([new LocatorRead(Function, 1, false, LocatorKind.Page, 0x70, LocatorType.PageRefPath),
+                      new LocatorRead(Function, 1, true, LocatorKind.Page, 0x70, LocatorType.PageRefPath)],
+                     reads);
+    }
+
+    [Fact]
+    public void A_BTree_Page_Is_Read_Like_The_Page_Reference_It_Starts_With()
+    {
+        var reads = Reads("BTreeMgr::HandleRoot(BTreeMgr::BTREE_TRAVERSAL_MODE,int,int &,PageRef &,BTreeHPage *)",
+                          "?HandleRoot@BTreeMgr@@AEAA?AW4VR_STATUS@1@W4BTREE_TRAVERSAL_MODE@1@HAEAHAEAVPageRef@@PEAVBTreeHPage@@@Z");
+
+        Assert.Equal([new LocatorRead(Function, 4, false, LocatorKind.Page, 0x70, LocatorType.PageRefPath),
+                      new LocatorRead(Function, 4, true, LocatorKind.Page, 0x70, LocatorType.PageRefPath),
+                      new LocatorRead(Function, 5, false, LocatorKind.Page, 0x70, LocatorType.PageRefPath),
+                      new LocatorRead(Function, 5, true, LocatorKind.Page, 0x70, LocatorType.PageRefPath)],
+                     reads.Where(r => r.Kind == LocatorKind.Page));
+    }
+
+    [Fact]
     public void A_Page_Filled_In_Through_A_Reference_Is_Read_On_Return()
     {
         var reads = Reads("IAM_BmapScan::GetNext(PageId &)", "?GetNext@IAM_BmapScan@@QEAAHAEAVPageId@@@Z");
@@ -170,7 +193,7 @@ public class LocatorReadResolverTests
 
         var reads = LocatorReadResolver.GetStackReads(Function, signature).ToList();
 
-        Assert.Equal([4, 5, 6, 7], reads.Select(r => r.Register));
+        Assert.Equal([4, 5, 6, 7, 8, 9, 10], reads.Select(r => r.Register));
         Assert.All(reads, r => Assert.Equal((LocatorKind.Argument, false), (r.Kind, r.IsReadAtReturn)));
     }
 
@@ -185,11 +208,17 @@ public class LocatorReadResolverTests
     [Fact]
     public void A_Parameter_Past_The_Captured_Slots_Is_Not_Read()
     {
-        var signature = new FunctionSignature(["int", "int", "int", "int", "int", "int", "int", "PageId const &"],
-                                              FunctionKind.Member,
-                                              "void");
+        var signature = new FunctionSignature([.. Enumerable.Repeat("int", 15), "PageId const &"], FunctionKind.Member, "void");
 
         Assert.Empty(LocatorReadResolver.ReadsOf(Function, signature));
+    }
+
+    [Fact]
+    public void A_Parameter_In_The_Last_Captured_Slot_Is_Read_From_The_Stack()
+    {
+        var signature = new FunctionSignature([.. Enumerable.Repeat("int", 14), "PageId const &"], FunctionKind.Member, "void");
+
+        Assert.Equal([new LocatorRead(Function, 15, false, LocatorKind.Page)], LocatorReadResolver.ReadsOf(Function, signature));
     }
 
     [Theory]
@@ -205,6 +234,21 @@ public class LocatorReadResolverTests
     [InlineData("class CTypeInfo const &", LocatorKind.TypeInfo, true, true)]
     public void A_Page_Or_Row_Type_Is_Recognised(string type, LocatorKind kind, bool indirect, bool isConst, int offset = 0)
         => Assert.Equal(new LocatorType(kind, indirect, isConst, offset), LocatorType.LocatorTypeOf(type));
+
+    [Theory]
+    [InlineData("PageRef &")]
+    [InlineData("BTreeHPage *")]
+    [InlineData("IndexPageRef &")]
+    [InlineData("HeapPageRef *")]
+    [InlineData("TextPageRef &")]
+    [InlineData("IAMPageRef *")]
+    [InlineData("GAMPageRef *")]
+    [InlineData("SGAMPageRef &")]
+    [InlineData("PFSPageRef *")]
+    [InlineData("PSPageRef &")]
+    public void A_Page_Reference_Is_Read_Through_Its_Buffer(string type)
+        => Assert.True(LocatorType.LocatorTypeOf(type) is { Kind: LocatorKind.Page, Offset: 0x70, IsIndirect: true, IsConst: false } found
+                       && ReferenceEquals(found.Path, LocatorType.PageRefPath));
 
     [Theory]
     [InlineData("int &", true, false)]

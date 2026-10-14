@@ -5,11 +5,19 @@ namespace InternalsViewer.Query.FullTrace.CallLog;
 
 public sealed partial class TraceCallLog
 {
+    private const int FormatVersion = 2;
+
+    private const int LegacyReturnRegister = 8;
+
     internal static TraceCallLog Read(BinaryReader reader)
     {
         var functions = new Dictionary<(ulong Address, ulong Instance), Chunk[]>();
 
-        var functionCount = reader.ReadInt32();
+        var first = reader.ReadInt32();
+
+        var version = first < 0 ? -first : 1;
+
+        var functionCount = first < 0 ? reader.ReadInt32() : first;
 
         for (var index = 0; index < functionCount; index++)
         {
@@ -35,7 +43,7 @@ public sealed partial class TraceCallLog
         {
             var key = (reader.ReadUInt64(), reader.ReadUInt64());
 
-            locators[key] = LocatorTable.Read(reader);
+            locators[key] = LocatorTable.Read(reader, version < FormatVersion ? LegacyReturnRegister : null);
         }
 
         return new TraceCallLog(functions, locators);
@@ -43,6 +51,8 @@ public sealed partial class TraceCallLog
 
     internal void Write(BinaryWriter writer)
     {
+        writer.Write(-FormatVersion);
+
         writer.Write(Functions.Count);
 
         foreach (var ((address, instance), chunks) in Functions)

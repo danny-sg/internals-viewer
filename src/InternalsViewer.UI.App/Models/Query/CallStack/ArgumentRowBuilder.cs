@@ -136,7 +136,10 @@ public static class ArgumentRowBuilder
     public static IReadOnlyList<CallSignaturePart> Signature(string function,
                                                              ArgumentLayout? layout,
                                                              TraceArgumentCall call,
-                                                             ValueDescriber? describe = null)
+                                                             ValueDescriber? describe = null,
+                                                             bool includeReturn = true,
+                                                             bool includeTypes = false,
+                                                             bool showThisAddress = true)
     {
         var parts = new List<CallSignaturePart>
         {
@@ -155,15 +158,17 @@ public static class ArgumentRowBuilder
 
             parts.Add(new CallSignaturePart(")", CallSignaturePartKind.Punctuation));
 
-            if (call.Returned)
+            if (includeReturn && ReturnOf(layout, call, describe, includeTypes) is { } returned)
             {
                 parts.Add(new CallSignaturePart(ReturnArrow, CallSignaturePartKind.Punctuation));
 
-                parts.Add(RawPart(call.ReturnValue, "RAX"));
+                parts.Add(returned);
             }
 
             return parts;
         }
+
+        var argument = 0;
 
         for (var index = 0; index < layout.Slots.Count; index++)
         {
@@ -171,26 +176,62 @@ public static class ArgumentRowBuilder
 
             AddSeparator(parts, index);
 
+            var label = slot.Type == ThisType ? ThisType : slot.Name == ArgumentLayout.ReturnBuffer ? slot.Name : $"{++argument}";
+
+            var part = call.Value(slot) is { } value
+                ? ValuePart(slot, value, call, describe, includeTypes, label)
+                : new CallSignaturePart(slot.Type, CallSignaturePartKind.NotCaptured, toolTip: $"Not Captured ({slot.Source})");
+
+            if (!showThisAddress && slot.Type == ThisType && (part.Decoded is null || part.Decoded == part.Text))
+            {
+                parts.Add(new CallSignaturePart(slot.Name, CallSignaturePartKind.Name));
+
+                continue;
+            }
+
             if (slot.Name.Length > 0)
             {
                 parts.Add(new CallSignaturePart($"{slot.Name} ", CallSignaturePartKind.Name));
             }
 
-            parts.Add(call.Value(slot) is { } value
-                          ? ValuePart(slot, value, call, describe)
-                          : new CallSignaturePart(slot.Type, CallSignaturePartKind.NotCaptured, toolTip: $"Not Captured ({slot.Source})"));
+            parts.Add(part);
         }
 
         parts.Add(new CallSignaturePart(")", CallSignaturePartKind.Punctuation));
 
-        if (layout.ReturnType is { } returnType && HasReturn(returnType) && call.Returned)
+        if (includeReturn && ReturnOf(layout, call, describe, includeTypes) is { } returnValue)
         {
             parts.Add(new CallSignaturePart(ReturnArrow, CallSignaturePartKind.Punctuation));
 
-            parts.Add(ValuePart(ReturnSlot(returnType), call.ReturnValue, call, describe));
+            parts.Add(returnValue);
         }
 
         return parts;
+    }
+
+    public static CallSignaturePart? ThisOf(ArgumentLayout? layout, TraceArgumentCall call, ValueDescriber? describe = null)
+        => layout?.Slots.FirstOrDefault(s => s.Type == ThisType) is { } slot && call.Value(slot) is { } value
+            ? ValuePart(slot, value, call, describe, label: ThisType)
+            : null;
+
+    public static CallSignaturePart? ReturnOf(ArgumentLayout? layout,
+                                              TraceArgumentCall call,
+                                              ValueDescriber? describe = null,
+                                              bool includeType = false)
+    {
+        if (!call.Returned)
+        {
+            return null;
+        }
+
+        if (layout is null)
+        {
+            return RawPart(call.ReturnValue, "RAX");
+        }
+
+        return layout.ReturnType is { } returnType && HasReturn(returnType)
+            ? ValuePart(ReturnSlot(returnType), call.ReturnValue, call, describe, includeType, ReturnName)
+            : null;
     }
 
     public static bool CanFind(string type, ulong value)
@@ -199,9 +240,11 @@ public static class ArgumentRowBuilder
     private static CallSignaturePart ValuePart(ArgumentSlot slot,
                                                ulong value,
                                                TraceArgumentCall call,
-                                               ValueDescriber? describe)
+                                               ValueDescriber? describe,
+                                               bool includeType = false,
+                                               string? label = null)
     {
-        var (reading, className, _) = GetDecoded(slot, value, call, describe);
+        var (reading, className, origin) = GetDecoded(slot, value, call, describe);
 
         return new CallSignaturePart($"0x{value:X}",
                                      CallSignaturePartKind.Value,
@@ -210,7 +253,12 @@ public static class ArgumentRowBuilder
                                      CanFind(slot.Type, value),
                                      reading,
                                      className,
-                                     call.GetLocator(slot.Index) is { } locator ? Display(slot.Type, locator) as StringValue : null);
+                                     call.GetLocator(slot.Index) is { } locator ? Display(slot.Type, locator) as StringValue : null,
+                                     includeType && slot.Type != ThisType ? slot.Type : null,
+                                     label,
+                                     slot.Type == ThisType ? null : slot.Type,
+                                     origin,
+                                     slot.Source);
     }
 
     private static (string? Reading, string? ClassName, MemoryMapEntry? Origin) GetDecoded(ArgumentSlot slot,
@@ -257,7 +305,7 @@ public static class ArgumentRowBuilder
     }
 
     private static CallSignaturePart RawPart(ulong value, string register)
-        => new($"0x{value:X}", CallSignaturePartKind.Value, value, register, value >= SmallestAddress);
+        => new($"0x{value:X}", CallSignaturePartKind.Value, value, register, value >= SmallestAddress, location: register);
 
     private static Locator? AddressAt(TraceArgumentCall call, int register)
         => call.GetLocator(register) is { Kind: LocatorKind.Page or LocatorKind.Row or LocatorKind.ColumnStoreObject } locator

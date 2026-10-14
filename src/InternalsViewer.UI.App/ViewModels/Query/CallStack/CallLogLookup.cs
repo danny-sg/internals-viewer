@@ -95,6 +95,41 @@ public sealed class CallLogLookup(TraceCallLog log,
         return entry?.Allocator is { } allocator ? new ValueDescription(address, allocator) { Origin = entry } : null;
     }
 
+    public async Task<CallSignature?> GetSignatureAsync(CallStackNode node, int call)
+    {
+        if (node.Frame is not { } frame || Log.CallsOf(frame.Address, frame.Instance) is not { } calls || call < 0 || call >= calls.Count)
+        {
+            return null;
+        }
+
+        var layout = await GetLayoutAsync(frame);
+
+        var function = FunctionName(frame, frame.Address);
+
+        return await Task.Run(() =>
+        {
+            var logged = calls[call];
+
+            return new CallSignature(ArgumentRowBuilder.Signature(function,
+                                                                  layout,
+                                                                  logged,
+                                                                  Describe,
+                                                                  includeReturn: false,
+                                                                  includeTypes: true,
+                                                                  showThisAddress: false),
+                                     ArgumentRowBuilder.ThisOf(layout, logged, Describe),
+                                     ArgumentRowBuilder.ReturnOf(layout, logged, Describe, includeType: true));
+        });
+    }
+
+    public ulong GetCallId(CallStackNode node, int call)
+        => node.Frame is { } frame && Log.CallsOf(frame.Address, frame.Instance) is { } calls && call >= 0 && call < calls.Count
+            ? calls.IdAt(call)
+            : 0;
+
+    public int GetEnclosingCall(CallStackNode node, ulong id)
+        => node.Frame is { } frame && Log.CallsOf(frame.Address, frame.Instance) is { } calls ? calls.IndexOfEnclosing(id) : -1;
+
     public CallReference? GetOrigin(MemoryMapEntry origin)
     {
         if (Log.NodeAt(origin.Node) is not { Frame: { } frame } node)

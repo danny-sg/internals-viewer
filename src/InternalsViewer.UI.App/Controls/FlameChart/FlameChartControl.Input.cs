@@ -33,7 +33,7 @@ public sealed partial class FlameChartControl
 
     private FlameHit? _selected;
 
-    private FlameHit? SelectedHit => SelectedCall is { IsSelected: true } && !IsLocked ? _selected : null;
+    private FlameHit? SelectedHit => SelectedCall is { IsSelected: true } ? _selected : null;
 
     private bool _isPressed;
 
@@ -620,29 +620,14 @@ public sealed partial class FlameChartControl
 
             scope.Click += (_, _) => SetRoot(node);
 
-            var scopeAndLock = new MenuFlyoutItem { Text = "Scope and Lock" };
-
-            scopeAndLock.Click += (_, _) =>
-            {
-                SetRoot(node);
-
-                IsLocked = true;
-            };
-
             flyout.Items.Add(scope);
-            flyout.Items.Add(scopeAndLock);
         }
 
         if (_root is not null)
         {
             var clearScope = new MenuFlyoutItem { Text = "Clear Scope" };
 
-            clearScope.Click += (_, _) =>
-            {
-                SetRoot(null);
-
-                IsLocked = false;
-            };
+            clearScope.Click += (_, _) => SetRoot(null);
 
             flyout.Items.Add(clearScope);
         }
@@ -805,9 +790,7 @@ public sealed partial class FlameChartControl
 
         BringIntoView(selected);
 
-        var margin = (span.End - span.Start) * 0.05;
-
-        SetView(span.Start - margin, span.End + margin);
+        ZoomTo(span.Start, span.End);
     }
 
     private void RootAt(FlameHit? hit)

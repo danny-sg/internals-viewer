@@ -28,6 +28,75 @@ public sealed partial class FlameChartControl
 
     private bool[]? _nodeMatches;
 
+    public void StepSearch(bool forward)
+    {
+        if (_visible is not { } timeline || _searchMatches is not { } matches)
+        {
+            return;
+        }
+
+        StopTransition();
+
+        var from = _playhead ?? _viewStart;
+
+        double? next = null;
+
+        foreach (var thread in timeline.Threads)
+        {
+            foreach (var row in thread.Rows)
+            {
+                var found = forward ? FindMatchAfter(row, matches, from, next) : FindMatchBefore(row, matches, from, next);
+
+                next = found ?? next;
+            }
+        }
+
+        if (next is { } target)
+        {
+            PlacePlayhead(target);
+        }
+    }
+
+    private double? FindMatchAfter(TraceTimelineRow row, bool[] matches, double from, double? best)
+    {
+        var starts = row.Starts(_axis);
+
+        for (var index = row.FirstStartingAfter(_axis, from); index >= 0 && index < row.Count; index++)
+        {
+            if (best is { } limit && starts[index] >= limit)
+            {
+                return null;
+            }
+
+            if (!Excludes(matches, row.NodeAt(index)))
+            {
+                return starts[index];
+            }
+        }
+
+        return null;
+    }
+
+    private double? FindMatchBefore(TraceTimelineRow row, bool[] matches, double from, double? best)
+    {
+        var starts = row.Starts(_axis);
+
+        for (var index = row.FirstStartingFrom(_axis, from, 0) - 1; index >= 0 && index < row.Count; index--)
+        {
+            if (best is { } limit && starts[index] <= limit)
+            {
+                return null;
+            }
+
+            if (!Excludes(matches, row.NodeAt(index)))
+            {
+                return starts[index];
+            }
+        }
+
+        return null;
+    }
+
     private void FindSearchMatches()
     {
         _colours.Clear();

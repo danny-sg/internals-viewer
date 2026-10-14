@@ -62,6 +62,8 @@ public sealed partial class CallTreeViewModel : ObservableObject, IDisposable
 
     public CallStackTree? CallStack => Query.CallStack;
 
+    public ICallTreeState? State { get; set; }
+
     private CallTreeTabViewModel Owner { get; }
 
     private QueryViewModel Query => Owner.Query;
@@ -306,14 +308,20 @@ public sealed partial class CallTreeViewModel : ObservableObject, IDisposable
 
     private void OnArgumentCallSelected(CallReference reference)
     {
+        LeaveLocation();
+
         if (IsFocused || !Rows.TryGetValue(reference.Node, out var row) || (RevealTarget is not null && !IsRevealed(reference.Node)))
         {
-            GoToCall(reference.Node);
+            NavigateTo(reference.Node, selectInFlameChart: false);
+        }
+        else
+        {
+            SelectRow(row, reference.Node);
 
-            return;
+            NavigatedNode = reference.Node;
         }
 
-        SelectRow(row, reference.Node);
+        PushLocation(new CallTreeLocation(Query.SelectedEvent, reference.Node, IsFocused, Query.Arguments.Shown, reference.Call));
     }
 
     private void OnQueryPropertyChanged(object? sender, PropertyChangedEventArgs e)
@@ -418,10 +426,37 @@ public sealed partial class CallTreeViewModel : ObservableObject, IDisposable
             ApplyFocus(location.Event);
         }
 
+        RestoreView(location);
+
         if (location.Function is { } function)
         {
             _ = Query.Arguments.ShowAsync(function, location.Call);
         }
+    }
+
+    private void RestoreView(CallTreeLocation location)
+    {
+        if (location.Expanded is not { } expanded)
+        {
+            return;
+        }
+
+        var rows = GetRowsByPath();
+
+        Expanded.Clear();
+
+        Expanded.AddRange(expanded.Select(rows.GetValueOrDefault).OfType<CallTreeRow>());
+
+        ExpandRoots = false;
+
+        if (location.Selected is { } selected && rows.TryGetValue(selected, out var row))
+        {
+            Selected = row;
+
+            SelectedPath = row.Content is CallStackNode node ? GetPath(node) : null;
+        }
+
+        Publish();
     }
 
     private void SelectQuietly(EngineEvent? selected)
@@ -444,7 +479,7 @@ public sealed partial class CallTreeViewModel : ObservableObject, IDisposable
     }
 
     private CallTreeLocation CurrentLocation()
-        => new(Query.SelectedEvent, NavigatedNode, IsFocused, Query.Arguments.Shown, Query.Arguments.SelectedCallIndex);
+        => new(Query.SelectedEvent, NavigatedNode, IsFocused, Query.Arguments.Shown, Query.Arguments.SelectedCallReference?.Call);
 
     private void SnapshotLocation()
     {
@@ -457,7 +492,9 @@ public sealed partial class CallTreeViewModel : ObservableObject, IDisposable
         {
             Focus = IsFocused,
             Function = Query.Arguments.Shown,
-            Call = Query.Arguments.SelectedCallIndex
+            Call = Query.Arguments.SelectedCallReference?.Call,
+            Expanded = State is { } state ? [.. state.ExpandedRows.Select(GetRowPath)] : null,
+            Selected = State?.SelectedRow is { } selected ? GetRowPath(selected) : null
         };
     }
 
@@ -466,8 +503,6 @@ public sealed partial class CallTreeViewModel : ObservableObject, IDisposable
         if (HistoryIndex < 0)
         {
             PushLocation(CurrentLocation());
-
-            return;
         }
 
         SnapshotLocation();
@@ -501,7 +536,7 @@ public sealed partial class CallTreeViewModel : ObservableObject, IDisposable
 
         SnapshotLocation();
 
-        PushLocation(new CallTreeLocation(selected, null, IsFocused, Query.Arguments.Shown, Query.Arguments.SelectedCallIndex));
+        PushLocation(new CallTreeLocation(selected, null, IsFocused, Query.Arguments.Shown, Query.Arguments.SelectedCallReference?.Call));
     }
 
     private void ClearHistory()

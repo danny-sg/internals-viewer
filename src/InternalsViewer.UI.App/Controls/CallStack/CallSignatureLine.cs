@@ -10,8 +10,6 @@ namespace InternalsViewer.UI.App.Controls.CallStack;
 
 public sealed partial class CallSignatureLine : UserControl
 {
-    private const double TextSize = 11;
-
     public static readonly DependencyProperty PartsProperty =
         DependencyProperty.Register(nameof(Parts),
                                     typeof(IReadOnlyList<CallSignaturePart>),
@@ -36,10 +34,36 @@ public sealed partial class CallSignatureLine : UserControl
         set => SetValue(IsDecodedProperty, value);
     }
 
+    public static readonly DependencyProperty TextSizeProperty =
+        DependencyProperty.Register(nameof(TextSize),
+                                    typeof(double),
+                                    typeof(CallSignatureLine),
+                                    new PropertyMetadata(11d, OnPartsChanged));
+
+    public double TextSize
+    {
+        get => (double)GetValue(TextSizeProperty);
+        set => SetValue(TextSizeProperty, value);
+    }
+
+    public static readonly DependencyProperty HighlightedPartProperty =
+        DependencyProperty.Register(nameof(HighlightedPart),
+                                    typeof(CallSignaturePart),
+                                    typeof(CallSignatureLine),
+                                    new PropertyMetadata(null, OnPartsChanged));
+
+    public CallSignaturePart? HighlightedPart
+    {
+        get => (CallSignaturePart?)GetValue(HighlightedPartProperty);
+        set => SetValue(HighlightedPartProperty, value);
+    }
+
     public CallSignatureLine()
     {
         Content = Line;
     }
+
+    public event EventHandler<CallSignaturePart>? ValueSelected;
 
     private StackPanel Line { get; } = new() { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center };
 
@@ -72,16 +96,26 @@ public sealed partial class CallSignatureLine : UserControl
             }
         };
 
-        if (isDecoded && part.DecodedString is { } decodedString)
-        {
-            StringText.AddRuns(text.Inlines, decodedString);
-        }
-        else if (isDecoded && part.DecodedClass is { } className)
-        {
-            text.Inlines.Add(new Run { Text = className, Foreground = Resource<Brush>("CppClassBrush") });
-            text.Inlines.Add(new Run { Text = " " });
+        var typeName = part.ShowsTypeFor(IsDecoded) ? part.TypeName : null;
 
-            HexText.AddRuns(text.Inlines, part.Decoded!);
+        if (typeName is not null)
+        {
+            SignatureRuns.AddType(text.Inlines, typeName);
+
+            text.Inlines.Add(new Run { Text = " " });
+        }
+
+        if (part.Kind == CallSignaturePartKind.Function)
+        {
+            SignatureRuns.AddFunction(text.Inlines, part.Text);
+        }
+        else if (isDecoded && (part.DecodedString is not null || part.DecodedClass is not null))
+        {
+            SignatureRuns.AddDecoded(text.Inlines, part);
+        }
+        else if (typeName is not null)
+        {
+            HexText.AddRuns(text.Inlines, part.GetText(IsDecoded));
         }
         else
         {
@@ -93,6 +127,11 @@ public sealed partial class CallSignatureLine : UserControl
             text.FontFamily = monospace;
         }
 
+        if (ReferenceEquals(part, HighlightedPart))
+        {
+            Highlight(text);
+        }
+
         var alternative = part.Kind != CallSignaturePartKind.Value ? null : isDecoded ? part.Text : part.Decoded is null ? null : part.GetText(true);
 
         if (part.ToolTip is { } toolTip)
@@ -102,6 +141,8 @@ public sealed partial class CallSignatureLine : UserControl
 
         if (part is { Kind: CallSignaturePartKind.Value, Value: { } value })
         {
+            text.Tapped += (_, _) => ValueSelected?.Invoke(this, part);
+
             var menu = new MenuFlyout();
 
             if (part.Decoded is not null)
@@ -122,6 +163,33 @@ public sealed partial class CallSignatureLine : UserControl
         }
 
         return text;
+    }
+
+    private static void Highlight(TextBlock text)
+    {
+        var length = 0;
+
+        foreach (var inline in text.Inlines)
+        {
+            length += inline is Run run ? run.Text.Length : 0;
+        }
+
+        length = length > 0 ? length : text.Text.Length;
+
+        if (length == 0)
+        {
+            return;
+        }
+
+        var highlighter = new TextHighlighter
+        {
+            Background = Resource<Brush>("SearchHighlightBrush"),
+            Foreground = Resource<Brush>("SearchHighlightForegroundBrush")
+        };
+
+        highlighter.Ranges.Add(new TextRange { StartIndex = 0, Length = length });
+
+        text.TextHighlighters.Add(highlighter);
     }
 
     private static MenuFlyoutItem MenuItem(string text, Action action)
