@@ -36,8 +36,8 @@ internal static class InstanceMethodCollector
 
         return FunctionSignature.Parse(signature, decoratedName) switch
         {
-            { Kind: FunctionKind.Member } => 0,
-            { Kind: FunctionKind.Static, Parameters: var parameters } => KeyedParameter(parameters),
+            { Type: FunctionType.Member } => 0,
+            { Type: FunctionType.Static, Parameters: var parameters } => KeyedParameter(parameters),
             _ => null
         };
     }
@@ -66,7 +66,7 @@ internal static class InstanceMethodCollector
 
         foreach (var rva in addresses)
         {
-            if (InstanceRegister(resolver.SignaturesAt(rva).FirstOrDefault(), resolver.GetDecoratedName(rva)) is { } register)
+            if (InstanceRegister(resolver.GetSignature(rva), resolver.GetDecoratedName(rva)) is { } register)
             {
                 methods.Add(new InstanceMethod(rva, register));
             }

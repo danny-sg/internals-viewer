@@ -12,7 +12,7 @@ public class FunctionSignatureTests
                                                 "?SetRange@CQScanRangeNew@@IEAAXPEA_K@Z");
 
         Assert.NotNull(signature);
-        Assert.Equal(FunctionKind.Member, signature.Kind);
+        Assert.Equal(FunctionType.Member, signature.Type);
         Assert.Equal("void", signature.ReturnType);
         Assert.Equal(["unsigned __int64 *"], signature.Parameters);
     }
@@ -25,7 +25,7 @@ public class FunctionSignatureTests
             "?GetRowOrReQualifyHelper@CQScanNew@@SAJPEAV1@PEA_K1_N@Z");
 
         Assert.NotNull(signature);
-        Assert.Equal(FunctionKind.Static, signature.Kind);
+        Assert.Equal(FunctionType.Static, signature.Type);
         Assert.Equal("long", signature.ReturnType);
         Assert.Equal(["CQScanNew *", "unsigned __int64 *", "unsigned __int64 *", "bool"], signature.Parameters);
     }
@@ -93,7 +93,7 @@ public class FunctionSignatureTests
         var signature = FunctionSignature.Parse("CFoo::IsReady(void)", "?IsReady@CFoo@@UEBA_NXZ");
 
         Assert.NotNull(signature);
-        Assert.Equal(FunctionKind.Member, signature.Kind);
+        Assert.Equal(FunctionType.Member, signature.Type);
         Assert.Equal("bool", signature.ReturnType);
         Assert.Empty(signature.Parameters);
     }
@@ -104,7 +104,7 @@ public class FunctionSignatureTests
         var signature = FunctionSignature.Parse("GetHoBtLockInternal(int)", "?GetHoBtLockInternal@@YAHH@Z");
 
         Assert.NotNull(signature);
-        Assert.Equal(FunctionKind.Free, signature.Kind);
+        Assert.Equal(FunctionType.Free, signature.Type);
         Assert.Equal("int", signature.ReturnType);
     }
 
@@ -114,7 +114,7 @@ public class FunctionSignatureTests
         var signature = FunctionSignature.Parse("Filter<int>::Apply(int)", "?Apply@?$Filter@H@@SAXH@Z");
 
         Assert.NotNull(signature);
-        Assert.Equal(FunctionKind.Static, signature.Kind);
+        Assert.Equal(FunctionType.Static, signature.Type);
     }
 
     [Fact]
@@ -123,17 +123,17 @@ public class FunctionSignatureTests
         var signature = FunctionSignature.Parse("CFoo::Bar(int)", null);
 
         Assert.NotNull(signature);
-        Assert.Equal(FunctionKind.Member, signature.Kind);
+        Assert.Equal(FunctionType.Member, signature.Type);
         Assert.Null(signature.ReturnType);
     }
 
     [Fact]
-    public void The_Kind_Of_A_Function_Is_Read_From_Its_Decorated_Name()
+    public void The_Type_Of_A_Function_Is_Read_From_Its_Decorated_Name()
     {
-        Assert.Equal(FunctionKind.Member, FunctionSignature.KindOf("?IsReady@CFoo@@UEBA_NXZ"));
-        Assert.Equal(FunctionKind.Static, FunctionSignature.KindOf("?GetRowOrReQualifyHelper@CQScanNew@@SAJPEAV1@PEA_K1_N@Z"));
-        Assert.Equal(FunctionKind.Free, FunctionSignature.KindOf("?GetHoBtLockInternal@@YAHH@Z"));
-        Assert.Null(FunctionSignature.KindOf("GetHoBtLockInternal"));
+        Assert.Equal(FunctionType.Member, FunctionSignature.GetFunctionType("?IsReady@CFoo@@UEBA_NXZ"));
+        Assert.Equal(FunctionType.Static, FunctionSignature.GetFunctionType("?GetRowOrReQualifyHelper@CQScanNew@@SAJPEAV1@PEA_K1_N@Z"));
+        Assert.Equal(FunctionType.Free, FunctionSignature.GetFunctionType("?GetHoBtLockInternal@@YAHH@Z"));
+        Assert.Null(FunctionSignature.GetFunctionType("GetHoBtLockInternal"));
     }
 
     [Fact]

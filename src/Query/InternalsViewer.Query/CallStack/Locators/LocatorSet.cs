@@ -40,9 +40,9 @@ public sealed class LocatorSet
 
     public void Add(Locator locator)
     {
-        switch (locator.Kind)
+        switch (locator.ValueType)
         {
-            case LocatorKind.Row:
+            case LocatorValueType.Row:
             {
                 Rows.Add(locator.Value);
 
@@ -51,7 +51,7 @@ public sealed class LocatorSet
                 break;
             }
 
-            case LocatorKind.ColumnStoreObject:
+            case LocatorValueType.ColumnStoreObject:
             {
                 Objects.Add((locator.Value, locator.Detail));
 
@@ -80,14 +80,14 @@ public sealed class LocatorSet
 
     public IEnumerable<Locator> Ordered()
         => Pages.Order()
-                .Select(p => new Locator(0, LocatorKind.Page, p))
-                .Concat(Rows.Order().Select(r => new Locator(0, LocatorKind.Row, r)))
-                .Concat(Objects.Order().Select(o => new Locator(0, LocatorKind.ColumnStoreObject, o.Value, o.Detail)));
+                .Select(p => new Locator(0, LocatorValueType.Page, p))
+                .Concat(Rows.Order().Select(r => new Locator(0, LocatorValueType.Row, r)))
+                .Concat(Objects.Order().Select(o => new Locator(0, LocatorValueType.ColumnStoreObject, o.Value, o.Detail)));
 
     public bool Contains(LocatorSearch search) => search switch
     {
         { IsColumnStore: true }
-            => Objects.Any(o => search.Matches(new Locator(0, LocatorKind.ColumnStoreObject, o.Value, o.Detail))),
+            => Objects.Any(o => search.Matches(new Locator(0, LocatorValueType.ColumnStoreObject, o.Value, o.Detail))),
         { Slot: not null } => Rows.Contains(search.Key),
         _ => Pages.Contains(search.Key) || RowPages.Contains(search.Key)
     };

@@ -29,7 +29,7 @@ internal static class IteratorLifetimeBuilder
 
         var callsByThread = new Dictionary<uint, Dictionary<ExecutionOperatorEvent, List<InstanceCall>>>();
 
-        foreach (var span in timeline.ResolvedSpans())
+        foreach (var span in timeline.GetSpanLocations())
         {
             if (span.Node.Frame is not { Instance: not 0 } frame || !owners.TryGetValue(frame.Instance, out var owner))
             {
@@ -62,7 +62,7 @@ internal static class IteratorLifetimeBuilder
 
             var merged = calls.Select(c => (Operator: c.Key, Calls: Merged(c.Value))).ToList();
 
-            var curves = timeline.InUseOwnedBy(thread.ThreadId, [.. merged.Select(m => m.Calls.Positions)]);
+            var curves = timeline.Memory.InUseOwnedBy(thread.ThreadId, [.. merged.Select(m => m.Calls.Positions)]);
 
             for (var index = 0; index < merged.Count; index++)
             {
@@ -80,12 +80,12 @@ internal static class IteratorLifetimeBuilder
         return lifetimes;
     }
 
-    private static (TraceTimelineSpan[] Positions, TraceTimelineSpan[] Instructions) Merged(List<InstanceCall> calls)
+    private static (TraceSpan[] Positions, TraceSpan[] Instructions) Merged(List<InstanceCall> calls)
     {
         var outermost = Outermost.Of(calls, c => c.Position.Start, c => c.Position.End);
 
         return ([.. outermost.Select(c => c.Position)], [.. outermost.Select(c => c.Instructions)]);
     }
 
-    private readonly record struct InstanceCall(TraceTimelineSpan Position, TraceTimelineSpan Instructions);
+    private readonly record struct InstanceCall(TraceSpan Position, TraceSpan Instructions);
 }

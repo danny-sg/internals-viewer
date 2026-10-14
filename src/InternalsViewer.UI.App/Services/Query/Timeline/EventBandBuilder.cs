@@ -15,7 +15,7 @@ namespace InternalsViewer.UI.App.Services.Query.Timeline;
 ///     Band → Sub Band → Lane → Track
 /// </remarks>
 internal sealed class EventBandBuilder<TEvent>(TimelineBand band,
-                                               Func<IReadOnlyList<EngineEvent>, TimelineBandVisibility, bool> isShown,
+                                               Func<IReadOnlyList<EngineEvent>, TimelineBandVisibility, bool> isVisible,
                                                bool drawsMarkers = true,
                                                bool linksToOperator = false) : ITimelineBandBuilder
     where TEvent : EngineEvent
@@ -23,7 +23,7 @@ internal sealed class EventBandBuilder<TEvent>(TimelineBand band,
     public bool Claims(EngineEvent engineEvent) => engineEvent is TEvent;
 
     public TimelineBand? Prepare(IReadOnlyList<EngineEvent> events, TimelineBandVisibility visibility)
-        => isShown(events, visibility) ? band : null;
+        => isVisible(events, visibility) ? band : null;
 
     public TimelineItem Place(int index, EngineEvent engineEvent, int bandIndex, List<TimelineLink> links)
     {

@@ -74,11 +74,15 @@ public sealed partial class DockLayoutViewModel : ObservableObject
         OnLayoutChanged();
     }
 
-    public void ShowBeside(DocumentViewModel document, DocumentViewModel neighbour)
+    public void ShowBeside(DocumentViewModel document, DocumentViewModel neighbour, bool select = true)
     {
         if (Contains(document))
         {
-            Activate(document);
+            if (select)
+            {
+                Activate(document);
+            }
+
             return;
         }
 
@@ -89,7 +93,11 @@ public sealed partial class DockLayoutViewModel : ObservableObject
         }
 
         group.Documents.Insert(group.Documents.IndexOf(neighbour) + 1, document);
-        group.SelectedDocument = document;
+
+        if (select || group.SelectedDocument is null)
+        {
+            group.SelectedDocument = document;
+        }
 
         OnLayoutChanged();
     }

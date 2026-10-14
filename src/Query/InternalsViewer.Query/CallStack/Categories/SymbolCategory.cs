@@ -144,6 +144,13 @@ public enum SymbolCategory : byte
     SqlOs,
 
     [Category(
+        "Memory",
+        Description = "Memory objects, allocators, clerks and query memory grants",
+        ForegroundColor = "#A05EB5",
+        IsInfrastructure = true)]
+    Memory,
+
+    [Category(
     "LOB Storage",
     Description = "Large object (LOB) and off-row data access",
     ForegroundColor = "#4BACC6")]

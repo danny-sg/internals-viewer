@@ -59,7 +59,7 @@ internal static class ReplayFunctionResolver
 {
     private const string IteratorModule = "sqlmin";
 
-    private static readonly string[] Modules = ["sqlmin", "sqllang", "sqldk"];
+    private static readonly string[] Modules = ["sqlmin", "sqllang", "sqldk", "sqltses"];
 
     private static readonly string[] HeapModules = ["ntdll", "kernelbase", "kernel32", "ucrtbase"];
 
@@ -96,11 +96,11 @@ internal static class ReplayFunctionResolver
             return ReplayFunctions.Merge(heap);
         }
 
-        var missing = identities.Count(m => !Cache.ContainsKey(KeyOf(m)));
+        var missing = identities.Count(m => !Cache.ContainsKey(GetKey(m)));
 
         await EnsureResolvedAsync(identities, symbolsPath, logger, progress, cancellationToken);
 
-        var found = identities.Select(m => Cache.TryGetValue(KeyOf(m), out var relative) ? relative.Rebase(m.StartAddress) : null)
+        var found = identities.Select(m => Cache.TryGetValue(GetKey(m), out var relative) ? relative.Rebase(m.StartAddress) : null)
                               .OfType<ReplayFunctions>()
                               .ToList();
 
@@ -125,7 +125,7 @@ internal static class ReplayFunctionResolver
         return (ReplayFunctions.Empty with { MemoryFunctions = memory }).Rebase(module.StartAddress);
     }
 
-    private static (string Pdb, string Guid, int Age) KeyOf(TraceModule module) => (module.Pdb, module.Guid, module.Age);
+    private static (string Pdb, string Guid, int Age) GetKey(TraceModule module) => (module.Pdb, module.Guid, module.Age);
 
     private static bool IsReplayed(TraceModule module)
         => module.Pdb.Length > 0 && Modules.Contains(module.Name, StringComparer.OrdinalIgnoreCase);
@@ -139,7 +139,7 @@ internal static class ReplayFunctionResolver
                                             IProgress<ProgressDetail>? progress,
                                             CancellationToken cancellationToken)
     {
-        return Task.WhenAll(modules.Where(m => !Cache.ContainsKey(KeyOf(m)))
+        return Task.WhenAll(modules.Where(m => !Cache.ContainsKey(GetKey(m)))
                                    .Select(m => ResolvingOf(m, symbolsPath, logger, progress)))
                    .WaitAsync(cancellationToken);
     }
@@ -148,7 +148,7 @@ internal static class ReplayFunctionResolver
                                     string symbolsPath,
                                     ILogger? logger,
                                     IProgress<ProgressDetail>? progress)
-        => Resolving.GetOrAdd(KeyOf(module),
+        => Resolving.GetOrAdd(GetKey(module),
                               key => new Lazy<Task>(() => Task.Run(() => DownloadAndResolveAsync(key,
                                                                                                  module,
                                                                                                  symbolsPath,
@@ -178,18 +178,18 @@ internal static class ReplayFunctionResolver
     {
         var start = Stopwatch.GetTimestamp();
 
-        if (Find(module, symbolsPath) is not { } relative)
+        if (GetFunctions(module, symbolsPath) is not { } relative)
         {
             logger?.LogWarning("Replay functions for {Module} not resolved, {Pdb} was not found", module.Name, module.Pdb);
 
             return;
         }
 
-        Cache[KeyOf(module)] = relative;
+        Cache[GetKey(module)] = relative;
 
         logger?.LogInformation("Replay functions for {Module} resolved from {Pdb} in {Elapsed}: {Excluded} excluded, "
                                + "{Iterators} iterator methods, {Locators} locator reads, {Publishers} event publishers, "
-                               + "{Memory} memory functions",
+                               + "{Memory} memory functions, {Members} member functions",
                                module.Name,
                                module.Pdb,
                                Stopwatch.GetElapsedTime(start),
@@ -197,10 +197,11 @@ internal static class ReplayFunctionResolver
                                relative.InstanceMethods.Length,
                                relative.LocatorReads.Length,
                                relative.PublishedEvents.Publishers.Length,
-                               relative.MemoryFunctions.Length);
+                               relative.MemoryFunctions.Length,
+                               relative.MemoryMapFunctions.Length);
     }
 
-    private static ReplayFunctions? Find(TraceModule module, string symbolsPath)
+    private static ReplayFunctions? GetFunctions(TraceModule module, string symbolsPath)
     {
         var pdbPath = CallstackResolver.GetPdbPath(symbolsPath, module.Frame(module.StartAddress, 0));
 
@@ -223,9 +224,9 @@ internal static class ReplayFunctionResolver
             ? [.. InstanceMethodCollector.FindInstanceMethods(functions.Where(f => f.Value.IsInstanceMethod).Select(f => f.Key), resolver)]
             : [];
 
-        var kept = functions.Where(f => !f.Value.IsExcluded).Select(f => f.Key);
+        uint[] kept = [.. functions.Where(f => !f.Value.IsExcluded).Select(f => f.Key)];
 
-        LocatorRead[] locators = iterates ? [.. LocatorReadResolver.FindReads(resolver, kept)] : [];
+        LocatorRead[] locators = [.. LocatorReadResolver.FindReads(resolver, kept), .. LocatorReadResolver.FindStackReads(resolver, kept)];
 
         ulong[] excluded = [.. functions.Where(f => f.Value.IsExcluded).Select(f => (ulong)f.Key)];
 
@@ -233,7 +234,8 @@ internal static class ReplayFunctionResolver
                                    instanceMethods,
                                    locators,
                                    PublishedEventFunctions.From(functions),
-                                   [.. functions.Values.Select(f => f.MemoryFunction).OfType<MemoryFunction>()]);
+                                   [.. functions.Values.Select(f => f.MemoryFunction).OfType<MemoryFunction>()],
+                                   [.. MemoryMapFunctionResolver.Find(resolver, kept)]);
     }
 
     private static FunctionClassification ClassifyFunction(CategoryMappings mappings, string module, uint rva, ReadOnlySpan<char> symbol)

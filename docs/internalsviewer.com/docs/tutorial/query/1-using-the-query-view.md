@@ -20,7 +20,7 @@ Click the **Query** button on the database toolbar. This opens a Query tab for t
 
 ![Query view](/docs/tutorial/images/screenshots/Query.png)
 
-<!-- Screenshot (update): a new Query tab - the SQL tab above the Timeline tab, with the menu bar's View, Events, Query, Index and Debugger menus -->
+<!-- Screenshot (update): a new Query tab - the SQL tab above the Timeline tab, with the menu bar's View, Query, Events and Trace menus -->
 
 ## Execute a query
 

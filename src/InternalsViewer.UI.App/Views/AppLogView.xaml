@@ -75,6 +75,9 @@
                     <Setter Property="MinHeight" Value="0"/>
                 </Style>
             </ListView.ItemContainerStyle>
+            <ListView.ItemContainerTransitions>
+                <TransitionCollection />
+            </ListView.ItemContainerTransitions>
             <ListView.ItemTemplate>
                 <DataTemplate x:DataType="logging:LogEntry">
                     <Grid ColumnSpacing="8">

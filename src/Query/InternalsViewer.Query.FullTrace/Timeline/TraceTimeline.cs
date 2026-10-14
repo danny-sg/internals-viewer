@@ -1,7 +1,6 @@
 using InternalsViewer.Query.CallStack;
 using System.Buffers;
 using System.Runtime.InteropServices;
-using InternalsViewer.Query.FullTrace.Export;
 using InternalsViewer.Query.FullTrace.Memory;
 using InternalsViewer.Query.FullTrace.Native;
 using InternalsViewer.Query.Helpers;
@@ -10,7 +9,7 @@ using InternalsViewer.Query.Events;
 
 namespace InternalsViewer.Query.FullTrace.Timeline;
 
-public sealed class TraceTimeline
+public sealed partial class TraceTimeline
 {
     internal TraceTimeline(IReadOnlyList<TraceTimelineThread> threads, int[] parents, double stepsPerSequence)
     {
@@ -56,34 +55,13 @@ public sealed class TraceTimeline
         InstructionEnd = threads.Max(t => t.EndOf(TraceTimelineAxis.Instructions));
     }
 
-    private TraceTimeline(IReadOnlyList<TraceTimelineThread> threads,
-                          int[] parents,
-                          CallStackNode?[] nodes,
-                          double stepsPerSequence,
-                          (double PositionStart, double PositionEnd, double InstructionStart, double InstructionEnd) bounds,
-                          MemoryIndex memory)
-    {
-        Threads = threads;
-        Parents = parents;
-        Nodes = nodes;
-        StepsPerSequence = stepsPerSequence;
-        SpanCount = threads.Sum(t => t.Calls);
-        PositionStart = bounds.PositionStart;
-        PositionEnd = bounds.PositionEnd;
-        InstructionStart = bounds.InstructionStart;
-        InstructionEnd = bounds.InstructionEnd;
-        Memory = memory;
-    }
-
     public IReadOnlyList<TraceTimelineThread> Threads { get; }
 
     public int NodeCount => Parents.Length;
 
     public long SpanCount { get; }
 
-    public bool HasAllocations => Memory.HasAllocations;
-
-    public bool HasWorkspace => Memory.HasWorkspace;
+    public MemoryIndex Memory { get; private set; } = MemoryIndex.Empty;
 
     public IReadOnlyList<TraceOperatorLifetime> Lifetimes { get; private set; } = [];
 
@@ -105,8 +83,6 @@ public sealed class TraceTimeline
 
     private CallStackNode?[] Nodes { get; set; } = [];
 
-    private MemoryIndex Memory { get; set; } = MemoryIndex.Empty;
-
     private Dictionary<int, TraceEventLink> EventLinksBySequence { get; set; } = [];
 
     public double StartOf(TraceTimelineAxis axis) => axis == TraceTimelineAxis.Position ? PositionStart : InstructionStart;
@@ -116,6 +92,39 @@ public sealed class TraceTimeline
     public double StepOf(TraceTimelineAxis axis) => axis == TraceTimelineAxis.Position ? 1 / StepsPerSequence : 1;
 
     public CallStackNode? NodeOf(int node) => node >= 0 && node < Nodes.Length ? Nodes[node] : null;
+
+    public IReadOnlyList<TraceThreadStack> StackAt(TraceTimelineAxis axis, double position)
+    {
+        var stacks = new List<TraceThreadStack>();
+
+        foreach (var thread in Threads)
+        {
+            var calls = new List<TraceStackCall>();
+
+            foreach (var row in thread.Rows)
+            {
+                var index = row.IndexAt(axis, position, 0);
+
+                if (index < 0)
+                {
+                    continue;
+                }
+
+                var positions = row.Span(TraceTimelineAxis.Position, index);
+
+                var instructions = row.Span(TraceTimelineAxis.Instructions, index);
+
+                calls.Add(new TraceStackCall(row.Span(axis, index), positions.Start, positions.End, instructions.End - instructions.Start));
+            }
+
+            if (calls.Count > 0)
+            {
+                stacks.Add(new TraceThreadStack(thread.ThreadId, calls));
+            }
+        }
+
+        return stacks;
+    }
 
     public TraceEventLink? EventLinkOf(EngineEvent engineEvent)
     {
@@ -130,7 +139,7 @@ public sealed class TraceTimeline
         return null;
     }
 
-    public IEnumerable<TraceResolvedSpan> ResolvedSpans()
+    public IEnumerable<TraceSpanLocation> GetSpanLocations()
     {
         for (var threadIndex = 0; threadIndex < Threads.Count; threadIndex++)
         {
@@ -144,32 +153,12 @@ public sealed class TraceTimeline
                 {
                     if (NodeOf(row.NodeAt(index)) is { } node)
                     {
-                        yield return new TraceResolvedSpan(threadIndex, thread, depth, row, index, node);
+                        yield return new TraceSpanLocation(threadIndex, thread, depth, row, index, node);
                     }
                 }
             }
         }
     }
-
-    public (ulong Bytes, int Count) AllocatedDuring(uint thread, double positionStart, double positionEnd)
-        => Memory.AllocatedDuring(thread, positionStart, positionEnd);
-
-    public ulong FreedDuring(uint thread, double positionStart, double positionEnd)
-        => Memory.FreedDuring(thread, positionStart, positionEnd);
-
-    public ulong RetainedBy(uint thread, double positionStart, double positionEnd)
-        => Memory.RetainedBy(thread, positionStart, positionEnd);
-
-    public ulong PeakInUseDuring(double positionStart, double positionEnd) => Memory.PeakInUseDuring(positionStart, positionEnd);
-
-    public ulong PeakWorkspaceDuring(double positionStart, double positionEnd)
-        => Memory.PeakWorkspaceDuring(positionStart, positionEnd);
-
-    public MemoryInUseCurve InUseWithin(uint thread, double positionStart, double positionEnd)
-        => Memory.InUseWithin(thread, positionStart, positionEnd);
-
-    public IReadOnlyList<MemoryInUseCurve> InUseOwnedBy(uint thread, IReadOnlyList<IReadOnlyList<TraceTimelineSpan>> calls)
-        => Memory.InUseOwnedBy(thread, calls);
 
     public IReadOnlyList<TraceSelfAllocation> SelfAllocations()
     {
@@ -179,7 +168,7 @@ public sealed class TraceTimeline
         {
             var rows = Threads[thread].Rows;
 
-            foreach (var (position, bytes) in Memory.AllocationsOf(Threads[thread].ThreadId))
+            foreach (var (position, bytes) in Memory.GetAllocations(Threads[thread].ThreadId))
             {
                 for (var depth = rows.Count - 1; depth >= 0; depth--)
                 {
@@ -257,7 +246,7 @@ public sealed class TraceTimeline
         return new TraceTimeline(threads, this);
     }
 
-    public TraceTimeline? CroppedTo(CallStackTree tree)
+    public TraceTimeline? CroppedTo(IReadOnlySet<CallStackNode> roots)
     {
         var known = new Dictionary<CallStackNode, int>(ReferenceEqualityComparer.Instance);
 
@@ -265,16 +254,16 @@ public sealed class TraceTimeline
 
         for (var node = 0; node < depths.Length; node++)
         {
-            depths[node] = NodeOf(node) is { } callNode ? DepthIn(tree, callNode, known) : -1;
+            depths[node] = NodeOf(node) is { } callNode ? DepthUnder(roots, callNode, known) : -1;
         }
-
-        int DepthOf(TraceTimelineRow row, int index)
-            => row.NodeAt(index) is var node && node >= 0 && node < depths.Length ? depths[node] : -1;
 
         List<TraceTimelineThread> threads = [.. Threads.Select(t => Regroup(t, (_, row, index) => DepthOf(row, index)))
                                                        .Where(t => t.Calls > 0)];
 
         return threads.Count > 0 ? new TraceTimeline(threads, this, fit: true) : null;
+
+        int DepthOf(TraceTimelineRow row, int index)
+            => row.NodeAt(index) is var node && node >= 0 && node < depths.Length ? depths[node] : -1;
     }
 
     public TraceTimeline WithoutCallsUnder(Func<CallStackNode, bool> boundary)
@@ -348,74 +337,6 @@ public sealed class TraceTimeline
 
     public static double PositionOf(ulong sequence, ulong steps, double stepsPerSequence) => sequence + steps / stepsPerSequence;
 
-    internal static TraceTimeline Read(BinaryReader reader, IReadOnlyList<CallStackNode> nodesById)
-    {
-        var stepsPerSequence = reader.ReadDouble();
-
-        var bounds = (reader.ReadDouble(), reader.ReadDouble(), reader.ReadDouble(), reader.ReadDouble());
-
-        var parents = ExportBinary.ReadArray<int>(reader);
-
-        CallStackNode?[] nodes = [.. ExportBinary.ReadArray<int>(reader).Select(id => id < 0 ? null : nodesById[id])];
-
-        var threads = new TraceTimelineThread[reader.ReadInt32()];
-
-        for (var index = 0; index < threads.Length; index++)
-        {
-            var threadId = reader.ReadUInt32();
-
-            var calls = reader.ReadInt64();
-
-            var rows = new TraceTimelineRow[reader.ReadInt32()];
-
-            for (var depth = 0; depth < rows.Length; depth++)
-            {
-                rows[depth] = TraceTimelineRow.Read(reader);
-            }
-
-            threads[index] = new TraceTimelineThread(threadId, rows, calls);
-        }
-
-        var memory = MemoryIndex.Read(reader);
-
-        return new TraceTimeline(threads, parents, nodes, stepsPerSequence, bounds, memory);
-    }
-
-    internal void Write(BinaryWriter writer, Func<CallStackNode, int> idOf)
-    {
-        writer.Write(StepsPerSequence);
-
-        writer.Write(PositionStart);
-
-        writer.Write(PositionEnd);
-
-        writer.Write(InstructionStart);
-
-        writer.Write(InstructionEnd);
-
-        ExportBinary.WriteArray(writer, Parents);
-
-        ExportBinary.WriteArray(writer, [.. Nodes.Select(node => node is null ? -1 : idOf(node))]);
-
-        writer.Write(Threads.Count);
-
-        foreach (var thread in Threads)
-        {
-            writer.Write(thread.ThreadId);
-
-            writer.Write(thread.Calls);
-
-            writer.Write(thread.Rows.Count);
-
-            foreach (var row in thread.Rows)
-            {
-                row.Write(writer);
-            }
-        }
-
-        Memory.Write(writer);
-    }
-
     internal void SetMemory(IEnumerable<MemoryAllocation> allocations, IEnumerable<MemoryFree> frees)
         => Memory = MemoryIndex.Build(allocations, frees);
 
@@ -438,86 +359,44 @@ public sealed class TraceTimeline
     internal double PositionOf(ulong sequence, ulong steps)
         => PositionOf(sequence, Math.Min(steps, (ulong)Math.Max(StepsPerSequence - 1, 0)), StepsPerSequence);
 
-    internal void WriteEventLinks(BinaryWriter writer, Func<CallStackNode, int> idOf)
-    {
-        writer.Write(EventLinks.Count);
-
-        foreach (var link in EventLinks)
-        {
-            writer.Write(link.Event.SequenceId);
-
-            writer.Write(link.Node is { } node ? idOf(node) : -1);
-
-            writer.Write(link.ThreadId);
-
-            writer.Write(link.Position);
-
-            writer.Write(link.Instructions);
-        }
-    }
-
-    internal static List<TraceEventLink> ReadEventLinks(BinaryReader reader,
-                                                        IReadOnlyList<CallStackNode> nodesById,
-                                                        IEnumerable<EngineEvent> events)
-    {
-        var bySequence = events.BySequence();
-
-        var count = reader.ReadInt32();
-
-        var links = new List<TraceEventLink>(count);
-
-        for (var index = 0; index < count; index++)
-        {
-            var sequence = reader.ReadInt32();
-
-            var node = reader.ReadInt32();
-
-            var thread = reader.ReadUInt32();
-
-            var position = reader.ReadDouble();
-
-            var instructions = reader.ReadDouble();
-
-            if (bySequence.TryGetValue(sequence, out var engineEvent))
-            {
-                links.Add(new TraceEventLink(engineEvent,
-                                             node >= 0 && node < nodesById.Count ? nodesById[node] : null,
-                                             thread,
-                                             position,
-                                             instructions));
-            }
-        }
-
-        return links;
-    }
-
     internal void AddCallActivity(int buckets)
     {
+        foreach (var (node, activity) in GetCallActivity(buckets))
+        {
+            node.CallActivity = activity;
+        }
+    }
+
+    internal Dictionary<CallStackNode, int[]> GetCallActivity(int buckets)
+    {
+        var activity = new Dictionary<CallStackNode, int[]>(ReferenceEqualityComparer.Instance);
+
         var start = StartOf(TraceTimelineAxis.Position);
 
         var length = EndOf(TraceTimelineAxis.Position) - start;
 
         if (buckets <= 0 || length <= 0)
         {
-            return;
+            return activity;
         }
 
-        foreach (var span in ResolvedSpans())
+        foreach (var span in GetSpanLocations())
         {
             if (span.Row.FlagsAt(span.Index).HasFlag(TraceSpanFlags.StartUnknown))
             {
                 continue;
             }
 
-            if (span.Node.CallActivity.Length != buckets)
-            {
-                span.Node.CallActivity = new int[buckets];
-            }
+            ref var counts = ref CollectionsMarshal.GetValueRefOrAddDefault(activity, span.Node, out _);
+
+            counts ??= new int[buckets];
 
             var bucket = (int)((span.StartOf(TraceTimelineAxis.Position) - start) / length * buckets);
 
-            span.Node.CallActivity[Math.Clamp(bucket, 0, buckets - 1)]++;
+            counts[Math.Clamp(bucket, 0, buckets - 1)]++;
         }
+
+        return activity;
     }
 
     private static List<(double Start, double End)> Windows(IEnumerable<TraceTimelineRow> roots)
@@ -555,7 +434,7 @@ public sealed class TraceTimeline
         return merged;
     }
 
-    private static int DepthIn(CallStackTree tree, CallStackNode node, Dictionary<CallStackNode, int> known)
+    private static int DepthUnder(IReadOnlySet<CallStackNode> roots, CallStackNode node, Dictionary<CallStackNode, int> known)
     {
         if (known.TryGetValue(node, out var depth))
         {
@@ -566,13 +445,13 @@ public sealed class TraceTimeline
         {
             depth = -1;
         }
-        else if (ReferenceEquals(parent, tree.Root))
+        else if (roots.Contains(node))
         {
             depth = 0;
         }
         else
         {
-            var parentDepth = DepthIn(tree, parent, known);
+            var parentDepth = DepthUnder(roots, parent, known);
 
             depth = parentDepth < 0 ? -1 : parentDepth + 1;
         }

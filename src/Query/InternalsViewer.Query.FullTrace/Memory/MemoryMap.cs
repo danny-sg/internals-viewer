@@ -1,0 +1,135 @@
+using System.Buffers;
+using System.Runtime.InteropServices;
+using InternalsViewer.Query.CallStack;
+using InternalsViewer.Query.FullTrace.Native;
+
+namespace InternalsViewer.Query.FullTrace.Memory;
+
+public sealed partial class MemoryMap
+{
+    private MemoryMap(Dictionary<ulong, MemoryMapEntry[]> entries)
+    {
+        Entries = entries;
+    }
+
+    public static MemoryMap Empty { get; } = new([]);
+
+    public int Count => Entries.Values.Sum(e => e.Length);
+
+    private Dictionary<ulong, MemoryMapEntry[]> Entries { get; }
+
+    public MemoryMapEntry? GetEntry(ulong address, ulong call)
+    {
+        if (call == 0 || !Entries.TryGetValue(address, out var entries))
+        {
+            return null;
+        }
+
+        var index = GetLatest(entries, call);
+
+        if (index < 0)
+        {
+            return entries[0] is { Operation: MemoryMapOperation.Visited, Owner: 0 } first ? first : null;
+        }
+
+        var entry = entries[index];
+
+        return entry.Until != 0 && call > entry.Until ? null : entry;
+    }
+
+    internal static MemoryMap Build(IEnumerable<AddressEntry> entries, Func<int, CallStackNode?> nodeOf)
+        => new(entries.Select(e => GetEntry(e, nodeOf))
+                      .GroupBy(e => e.Address)
+                      .ToDictionary(g => g.Key, g => Link([.. g.OrderBy(e => e.Call)])));
+
+    private static MemoryMapEntry GetEntry(AddressEntry entry, Func<int, CallStackNode?> nodeOf)
+    {
+        var operation = (MemoryMapOperation)entry.Operation;
+
+        var node = nodeOf(entry.Node);
+
+        var allocates = operation == MemoryMapOperation.Allocated;
+
+        return new MemoryMapEntry(entry.Address,
+                                  operation,
+                                  entry.Call,
+                                  entry.Owner,
+                                  entry.Until,
+                                  entry.Thread,
+                                  entry.Node,
+                                  allocates ? null : GetName(node?.Frame?.Resolved?.ClassName),
+                                  allocates ? GetName(node?.Symbol) : null);
+    }
+
+    private static MemoryMapEntry[] Link(MemoryMapEntry[] entries)
+    {
+        for (var index = 0; index + 1 < entries.Length; index++)
+        {
+            if (entries[index] is not { Operation: MemoryMapOperation.Allocated } allocation
+                || entries[index + 1] is not { Operation: not MemoryMapOperation.Allocated } built)
+            {
+                continue;
+            }
+
+            entries[index] = allocation with { ClassName = built.ClassName };
+
+            entries[index + 1] = built with { Allocator = allocation.Allocator };
+        }
+
+        return entries;
+    }
+
+    private static string? GetName(string? name) => name is { Length: > 0 } ? name : null;
+
+    private static int GetLatest(MemoryMapEntry[] entries, ulong call)
+    {
+        var low = 0;
+
+        var high = entries.Length - 1;
+
+        var found = -1;
+
+        while (low <= high)
+        {
+            var middle = low + (high - low) / 2;
+
+            if (entries[middle].Call <= call)
+            {
+                found = middle;
+
+                low = middle + 1;
+            }
+            else
+            {
+                high = middle - 1;
+            }
+        }
+
+        return found;
+    }
+
+    internal sealed class Log
+    {
+        private List<AddressEntry> Entries { get; } = [];
+
+        public void Add(IntPtr values, int count)
+        {
+            var size = count * Marshal.SizeOf<AddressEntry>();
+
+            var buffer = ArrayPool<byte>.Shared.Rent(size);
+
+            try
+            {
+                Marshal.Copy(values, buffer, 0, size);
+
+                Entries.AddRange(MemoryMarshal.Cast<byte, AddressEntry>(buffer.AsSpan(0, size)));
+            }
+            finally
+            {
+                ArrayPool<byte>.Shared.Return(buffer);
+            }
+        }
+
+        public AddressEntry[] Build() => [.. Entries];
+    }
+}

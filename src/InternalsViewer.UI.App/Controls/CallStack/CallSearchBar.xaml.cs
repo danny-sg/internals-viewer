@@ -3,10 +3,11 @@ using System.Collections.Generic;
 using System.ComponentModel;
 using System.Linq;
 using InternalsViewer.Query.CallStack;
+using InternalsViewer.UI.App.Helpers.Converters.Page;
 using InternalsViewer.UI.App.ViewModels;
+using Microsoft.UI.Dispatching;
 using Microsoft.UI.Text;
 using Microsoft.UI.Xaml.Controls;
-using Microsoft.UI.Xaml.Data;
 using Microsoft.UI.Xaml.Input;
 using Microsoft.UI.Xaml.Media;
 using Windows.UI.Text;
@@ -16,6 +17,8 @@ namespace InternalsViewer.UI.App.Controls.CallStack;
 public sealed partial class CallSearchBar : UserControl
 {
     private const double PrunedBadgeOpacity = 0.5;
+
+    private const int SearchDelayMilliseconds = 300;
 
     public static readonly DependencyProperty CallStackProperty =
         DependencyProperty.Register(nameof(CallStack),
@@ -28,10 +31,6 @@ public sealed partial class CallSearchBar : UserControl
         get => (CallStackTree?)GetValue(CallStackProperty);
         set => SetValue(CallStackProperty, value);
     }
-
-    private string? _hiddenCategoriesSetting;
-
-    private string? _prunedCategoriesSetting;
 
     public CallSearchBar()
     {
@@ -52,41 +51,24 @@ public sealed partial class CallSearchBar : UserControl
 
     private SettingsViewModel Settings => field ??= App.GetService<SettingsViewModel>();
 
-    private HashSet<string> HiddenCategories
-    {
-        get
-        {
-            var setting = Settings.CallTreeHiddenCategories;
+    private DispatcherQueueTimer SearchTimer => field ??= CreateSearchTimer();
 
-            if (!string.Equals(setting, _hiddenCategoriesSetting, StringComparison.Ordinal))
-            {
-                _hiddenCategoriesSetting = setting;
+    private string PublishedSearch { get; set; } = string.Empty;
 
-                field = SettingsViewModel.SplitCategories(setting);
-            }
+    private IReadOnlySet<string> HiddenCategories => Settings.CallTreeHiddenCategorySet;
 
-            return field;
-        }
-    } = new(StringComparer.Ordinal);
-
-    private HashSet<string> PrunedCategories
-    {
-        get
-        {
-            var setting = Settings.CallTreePrunedCategories;
-
-            if (!string.Equals(setting, _prunedCategoriesSetting, StringComparison.Ordinal))
-            {
-                _prunedCategoriesSetting = setting;
-
-                field = SettingsViewModel.SplitCategories(setting);
-            }
-
-            return field;
-        }
-    } = new(StringComparer.Ordinal);
+    private IReadOnlySet<string> PrunedCategories => Settings.CallTreePrunedCategorySet;
 
     public void FocusSearch() => SearchBox.Focus(FocusState.Programmatic);
+
+    public void Clear()
+    {
+        SearchTimer.Stop();
+
+        PublishedSearch = string.Empty;
+
+        SearchBox.Text = string.Empty;
+    }
 
     private void OnLoaded(object sender, RoutedEventArgs e)
     {
@@ -105,8 +87,49 @@ public sealed partial class CallSearchBar : UserControl
         }
     }
 
+    private DispatcherQueueTimer CreateSearchTimer()
+    {
+        var timer = DispatcherQueue.CreateTimer();
+
+        timer.Interval = TimeSpan.FromMilliseconds(SearchDelayMilliseconds);
+        timer.IsRepeating = false;
+
+        timer.Tick += OnSearchTimerTick;
+
+        return timer;
+    }
+
     private void OnSearchTextChanged(AutoSuggestBox sender, AutoSuggestBoxTextChangedEventArgs args)
-        => SearchTextChanged?.Invoke(sender.Text ?? string.Empty);
+    {
+        if (args.Reason == AutoSuggestionBoxTextChangeReason.UserInput)
+        {
+            SearchTimer.Start();
+
+            return;
+        }
+
+        PublishSearch();
+    }
+
+    private void OnSearchQuerySubmitted(AutoSuggestBox sender, AutoSuggestBoxQuerySubmittedEventArgs args) => PublishSearch();
+
+    private void OnSearchTimerTick(DispatcherQueueTimer sender, object args) => PublishSearch();
+
+    private void PublishSearch()
+    {
+        SearchTimer.Stop();
+
+        var text = SearchBox.Text ?? string.Empty;
+
+        if (string.Equals(text, PublishedSearch, StringComparison.Ordinal))
+        {
+            return;
+        }
+
+        PublishedSearch = text;
+
+        SearchTextChanged?.Invoke(text);
+    }
 
     private void OnCategoryFilterClick(object sender, RoutedEventArgs e)
     {
@@ -124,7 +147,7 @@ public sealed partial class CallSearchBar : UserControl
     {
         if (sender is Border { Tag: string category })
         {
-            SetCategory(category, hide: !IsHidden(category), withCallees: false);
+            SetCategory(category, isHidden: !IsHidden(category), withCallees: false);
         }
     }
 
@@ -137,39 +160,39 @@ public sealed partial class CallSearchBar : UserControl
 
         var menu = new MenuFlyout();
 
-        menu.Items.Add(CategoryMenuItem(category, "Show", hide: false, withCallees: false));
-        menu.Items.Add(CategoryMenuItem(category, "Hide", hide: true, withCallees: false));
-        menu.Items.Add(CategoryMenuItem(category, "Hide With Callees", hide: true, withCallees: true));
+        menu.Items.Add(CategoryMenuItem(category, "Show", isHidden: false, withCallees: false));
+        menu.Items.Add(CategoryMenuItem(category, "Hide", isHidden: true, withCallees: false));
+        menu.Items.Add(CategoryMenuItem(category, "Hide With Callees", isHidden: true, withCallees: true));
 
         menu.ShowAt(badge, e.GetPosition(badge));
 
         e.Handled = true;
     }
 
-    private RadioMenuFlyoutItem CategoryMenuItem(string category, string text, bool hide, bool withCallees)
+    private RadioMenuFlyoutItem CategoryMenuItem(string category, string text, bool isHidden, bool withCallees)
     {
         var item = new RadioMenuFlyoutItem
         {
             Text = text,
             GroupName = nameof(CategoryMenuItem),
-            IsChecked = IsHidden(category) == hide && PrunedCategories.Contains(category) == withCallees
+            IsChecked = IsHidden(category) == isHidden && PrunedCategories.Contains(category) == withCallees
         };
 
-        item.Click += (_, _) => SetCategory(category, hide, withCallees);
+        item.Click += (_, _) => SetCategory(category, isHidden, withCallees);
 
         return item;
     }
 
-    private void SetCategory(string category, bool hide, bool withCallees)
+    private void SetCategory(string category, bool isHidden, bool withCallees)
     {
-        var hidden = HiddenCategories;
+        var hidden = new HashSet<string>(HiddenCategories, StringComparer.Ordinal);
 
-        var pruned = PrunedCategories;
+        var pruned = new HashSet<string>(PrunedCategories, StringComparer.Ordinal);
 
         hidden.Remove(category);
         pruned.Remove(category);
 
-        if (hide)
+        if (isHidden)
         {
             (withCallees ? pruned : hidden).Add(category);
         }
@@ -179,11 +202,9 @@ public sealed partial class CallSearchBar : UserControl
 
     private void OnAllCategoriesClick(object sender, RoutedEventArgs e)
     {
-        var hidden = HiddenCategories;
+        var hidden = new HashSet<string>(HiddenCategories, StringComparer.Ordinal);
 
-        var pruned = PrunedCategories;
-
-        pruned.Clear();
+        var pruned = new HashSet<string>(StringComparer.Ordinal);
 
         if (AllCategoriesToggle.IsChecked == true)
         {
@@ -207,13 +228,9 @@ public sealed partial class CallSearchBar : UserControl
 
     private void SaveCategories(HashSet<string> hidden, HashSet<string> pruned)
     {
-        _hiddenCategoriesSetting = string.Join(SettingsViewModel.CategorySeparator, hidden.Order(StringComparer.Ordinal));
+        Settings.CallTreeHiddenCategories = string.Join(SettingsViewModel.CategorySeparator, hidden.Order(StringComparer.Ordinal));
 
-        _prunedCategoriesSetting = string.Join(SettingsViewModel.CategorySeparator, pruned.Order(StringComparer.Ordinal));
-
-        Settings.CallTreeHiddenCategories = _hiddenCategoriesSetting;
-
-        Settings.CallTreePrunedCategories = _prunedCategoriesSetting;
+        Settings.CallTreePrunedCategories = string.Join(SettingsViewModel.CategorySeparator, pruned.Order(StringComparer.Ordinal));
 
         StyleCategoryBadges();
     }
@@ -240,9 +257,7 @@ public sealed partial class CallSearchBar : UserControl
 
     private Border CreateCategoryBadge(string category, string colour)
     {
-        var converter = (IValueConverter)Application.Current.Resources["HexColorToBrushConverter"];
-
-        var brush = converter.Convert(colour, typeof(Brush), null!, string.Empty) as Brush;
+        var brush = HexColorToBrushConverter.ToBrush(colour);
 
         var badge = new Border
         {

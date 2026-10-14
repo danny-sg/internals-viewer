@@ -7,8 +7,13 @@ The tree decodes one row per frame:
 - **Module** badge - which part of SQL Server the frame belongs to (Storage Engine, Query Processor, SQL OS, etc.)
 - **Category** badge - what the frame is doing, classified by Internals Viewer (Query Operator, Row Access, Index Access, Page Access, Latching, Buffer Pool, etc.)
 - **Symbol** - the function itself as `module!Class::Method`, resolved from SQL Server's debugging symbols, with the offset of the call within the function
+- **Target** badge - on an operator's frames, the table or index the operator works on, so two scans or seeks running the same code can be told apart. Its tooltip names the operator and its node in the plan
 
-The **Activity** column, on by default, shows a small histogram for each frame of when that function was active across the query - a picture of whether it was a one-off or ran throughout - with the selection's time highlighted. Drag the column's edge to resize it. **Signature** adds each function's parameter types from the symbols, and **Symbols** opens the detail pane with its **Members**, **Symbols** and **Arguments** tabs.
+The **Activity** column, on by default, shows a small histogram for each frame of when that function was active across the query - a picture of whether it was a one-off or ran throughout - with the selection's time highlighted. Drag the column's edge to resize it. **Signature** adds each function's parameter types from the symbols.
+
+The **Call Tree** tab is laid out as a dock. It starts with the tree on its own, with **Arguments** beside it while [Full Trace](/docs/user-guide/query/FullTrace) is on. **Members** and **Symbols** are added from the **Call Tree** submenu of the View menu, or when something opens them: **List Members** or **Search symbols**. Drag a tab to move it to another group or to an edge. The panels beside the tree can be closed, which also clears them on the View menu, and come back when something opens them.
+
+<!-- Screenshot (new): the Call Tree tab's dock - the tree on the left, Members, Symbols and Arguments on the right -->
 
 An operator row marked **no stack** is one whose frames could not be found - the operator is inlined into its parent, captured no events of its own, or its iterator class is not in the mappings. It keeps its place in the plan but has nothing beneath it.
 
@@ -16,9 +21,9 @@ The tree gives visibility into the engine functions behind each event. Reading d
 
 ## Focus
 
-![Call Stack pane with Focus on](/docs/user-guide/images/query-view-call-tree.png)
+![Call Tree with Focus on](/docs/user-guide/images/query-view-call-tree.png)
 
-**Focus**, on by default, crops the tree to the event or operator currently selected - via the [Timeline](/docs/user-guide/query/Timeline), the [Execution Plan](/docs/user-guide/query/ExecutionPlan), or the Events pane. The header shows the selected event as a chip, with a **←** link to the right showing its parent (e.g. the statement it belongs to) - click it to navigate up to the parent's call stack. The **Back** and **Forward** buttons on the command bar undo/redo this navigation.
+**Focus**, on by default, crops the tree to the event or operator currently selected - via the [Timeline](/docs/user-guide/query/Timeline), the [Execution Plan](/docs/user-guide/query/ExecutionPlan), or the Events pane. The header shows the selected event as a chip, with a **←** link to the right showing its parent (e.g. the statement it belongs to) - click it to navigate up to the parent's call stack. The **Back** and **Forward** buttons on the command bar, or the back and forward buttons on the mouse anywhere in the tab, undo/redo this navigation. Each step returns the tree with the frames that were open and the row that was selected, and the call that was selected in **Arguments**. Selecting a call in **Arguments** is a step of its own.
 
 Turning Focus off shows the full call tree for the whole query, from the top-level statement execution down:
 
@@ -26,45 +31,30 @@ Turning Focus off shows the full call tree for the whole query, from the top-lev
 
 ## Search and navigation
 
-The search box filters the tree to matching frames. Right-clicking a node gives:
+The search box filters the tree to matching frames and the calls that lead to them. A match keeps everything beneath it, collapsed, so its callees are still there to open. The tree opens down to each match, and further only where there is a deeper match. Clearing the search keeps the selected frame, with the tree open down to it.
+
+Going to a call - from **Arguments**, a **Find** tab or the [Flame Chart](/docs/user-guide/query/FlameChart) - turns Focus off, selects the frame and opens the tree down to it. Nothing else is hidden, so the rest of the tree stays where it was. A frame the tree does not normally show because its category is hidden is shown dimmed along with the calls that lead to it. The dimmed frames go again when you select something outside them. With **Crop To Query** on, the tree stays cropped. A call that ran outside the query, such as one found by **Find** during compilation, opens in **Arguments** but is not added to the tree.
+
+Right-clicking a node gives:
 
 - **Expand All** / **Collapse All** - from that node down
 - **Filter To** - crops the tree to that node and everything beneath it, with the node shown in the header as **Filtered To**. **Clear Filter**, in the menu or beside the header, puts the tree back
 - **Copy to Clipboard** - copies the frame's symbol as `module!Class::Method`
 - **Copy Call Tree to Clipboard** - copies a formatted, nested text representation of the stack from that node down
-- **WinDbg** - runs a debugger command aimed at the frame in the WinDbg session attached to `sqlservr.exe` (see [Sending Commands to WinDbg](#sending-commands-to-windbg)):
-  - **Set Breakpoint** (`bp`) breaks whenever the function is entered. **Set Breakpoint With Stack** prints the stack on each hit and continues, so a run can be logged without stopping it. **Set Breakpoint, Dump Arguments and Continue** prints the function's arguments on each hit, read according to its signature - including the stack and floating point arguments that [Arguments](#arguments) shows as **Not Captured** - and continues, and **Set Breakpoint, Dump Arguments and Break** prints them and stays broken. **Set Breakpoint at Frame Address** breaks at the exact return address the trace captured, the instruction after the call this frame was waiting on.
-  - **Examine Symbol** (`x`) lists the function's address and any overloads.
-  - **Display Type** (`dt`) dumps the class layout and **List Class Symbols** lists every symbol the class declares.
-
-  A frame whose symbol did not resolve is addressed as `module+offset`, so the commands still land on the right code.
 - **List Members** - lists the members the symbols declare on the frame's class
 - **Show Arguments** - for a Full Trace run, lists every call of the function with its arguments and return value - see [Arguments](#arguments)
 
-Right-clicking a member in the Members pane gives **Copy Signature**, **Copy Symbol** (the member as `module!Class::Member`, without its parameters) and the same **WinDbg** submenu. Debugger commands take a symbol name rather than a signature, so the parameters are dropped. Where the name is overloaded, the breakpoint commands use the member's address so the overload chosen is the one hit, and **Set Breakpoint on All Overloads** (`bm`) covers every overload at once.
+A frame whose symbol did not resolve is copied as `module+offset`. Right-clicking a member in the Members pane gives **Copy Signature** and **Copy Symbol** - the member as `module!Class::Member`, without its parameters.
 
 ## Filtering by category
 
-The filter button beside the search box opens a row of category badges, one for each category found in the tree. Click a badge to hide or show that category, and **All** to show or hide every one at once. The infrastructure categories are hidden by default - Compilation, Execution Tree, Expression Evaluation, Metadata, Networking, Query Binding, Query Store and Security - so the frames doing the query's work stand out, and the choice is remembered between sessions.
+The filter button beside the search box opens a row of category badges, one for each category found in the tree. Click a badge to hide or show that category, **All** to show or hide every one at once, and **Defaults** to go back to the categories hidden by default. Those are the infrastructure categories - Compilation, Execution Tree, Expression Evaluation, Metadata, Networking, Query Binding, Query Store, Security, Tracing and Transaction Management - so the frames doing the query's work stand out. The choice is remembered between sessions, and the [Flame Chart](/docs/user-guide/query/FlameChart#search)'s search bar shares it.
 
 ![The category badges open beneath the search box, with the hidden categories struck through](/docs/user-guide/images/call-stack-category-filter.png)
 
-## Sending Commands to WinDbg
-
-The **Debugger** menu on the Query document's menu bar manages the session the submenus send their commands to. Its first line shows the connection state, and the items that need a session are disabled until one is connected, as are the **WinDbg** submenus:
-
-- **Attach WinDbg to SQL Server** looks up the instance's process id with `SERVERPROPERTY('ProcessID')`, starts WinDbg elevated attached to it and listening on a named pipe for Internals Viewer, then connects. Windows asks for administrator consent, since WinDbg has to run elevated to attach to SQL Server. The instance has to be on the same machine.
-- **Connect to session** joins a WinDbg you already have attached. It has to be listening first: choosing it with nothing to connect to reports the exact `.server` command to type into that WinDbg, and the dialog's copy button takes it to the clipboard. Type it rather than passing it with `-c`: a server WinDbg starts from a startup script listens but refuses every client.
-- **Detach** clears every breakpoint, detaches WinDbg from SQL Server, and drops the app's connection. WinDbg stays open with no target, so it can be closed safely. Closing a query tab does the same, so a debugger is never left attached to the instance by accident.
-- **Clear breakpoints** removes every breakpoint the app has set in the session, leaving WinDbg attached.
-
-Commands are sent as an extra client of the session, so they and their output appear in the WinDbg window as if typed there. If the target is running when a command is sent, the app breaks in, runs it, and resumes. The pipe password is generated each time the app starts, and is part of the `.server` command the dialog reports.
-
-Nothing is needed until the first command is sent. WinDbg from the Microsoft Store has to be installed to attach, but a machine without it still does everything else. Without it, the first command shows the ways to install it. The Store package does not allow its debugger engine to be loaded by other programs, so the first use copies the engine into `%LOCALAPPDATA%\InternalsViewer\WinDbg`, and again whenever WinDbg updates.
-
 ## Searching Symbols
 
-**Search symbols** on the Debugger menu opens the detail pane on its **Symbols** tab, beside **Members**. Typing three or more characters searches every public symbol in the modules the query's call stacks came from, so a function or class that never appeared in a stack can still be found and used. Each result has the same right-click actions as a member: copy its signature or symbol, or set a breakpoint on it in WinDbg. The first search of a module packs its PDB into an index, which takes a few seconds, and later searches are immediate.
+**Search symbols** on the Trace menu opens the **Symbols** tab. Typing three or more characters searches every public symbol in the modules the query's call stacks came from, so a function or class that never appeared in a stack can still be found. Each result has the same right-click actions as a member, to copy its signature or symbol. The first search of a module packs its PDB into an index, which takes a few seconds, and later searches are immediate.
 
 The search box offers the symbol categories and plan operators from the call stack mappings as starting points: an empty box lists them all, categories first, and typing narrows them, so `Hash` offers **Hash Match**, **Hash Match (Aggregate)** and the build and probe phases. Choosing one puts its frame pattern in the box, such as `sqlmin!CQScanHash*`. A category, such as **Category: Query Operator**, searches every class and function the mappings file assigns to it. An operator with several implementations gets them all, joined with `|`: Sort searches `sqlmin!CBpQScanSort*|sqlmin!CQScanSort*|sqlmin!CQScanTopSort*`, and `|` works the same way in anything typed by hand, as an OR of searches.
 
@@ -76,25 +66,68 @@ Results are capped per module. A search needs a query with Call Stack events to 
 
 ## Arguments
 
-A [Full Trace](/docs/user-guide/query/FullTrace) logs every call it replays, with the values in the argument registers when the call was made and the return value when it came back. Right-click a frame and choose **Show Arguments** to open them on the **Arguments** tab of the detail pane, beside **Members** and **Symbols**. Until a frame is chosen the tab reads "Right click a frame in a Full Trace call tree and choose Show Arguments".
+A [Full Trace](/docs/user-guide/query/FullTrace) logs every call it replays, with the values in the argument registers when the call was made and the return value when it came back. Right-click a frame and choose **Show Arguments** to open them on the **Arguments** tab. Until a frame is chosen the tab reads "Right click a frame in a Full Trace call tree and choose Show Arguments".
 
-The header names the function, with a count of its calls - **2,048 Calls**, or for an iterator method **2,048 Calls on This Instance (0x1E4A2F80C0)**, because an iterator's calls are kept apart per object so that two operators of the same class stay separate. Below it a table lists every call - **Call**, **Thread**, a column for each argument named from the function's signature (`this` first for a member function) and **Return**.
+The header gives the function's signature, with its return type. Below it a table lists every call - **Call**, **Thread**, a column for each argument named from the signature (`this` first for a member function) and **Return**. Each argument's column header gives its type and the register it was read from. An iterator's calls are kept apart per object, so that two operators of the same class stay separate, and for an iterator method the table holds the calls on that frame's object only.
 
-Selecting a call lists its arguments one to a row - **Name**, **Type**, **Source** (the register it was read from) and **Value** - with the return value last. **Go To Call** shows that call in the call tree and the [Flame Chart](/docs/user-guide/query/FlameChart), and clicking a bar in the Flame Chart selects its call here.
+Selecting a call outlines it in the [Flame Chart](/docs/user-guide/query/FlameChart), and clicking a bar in the Flame Chart, or choosing **Open Call Tree** on its right-click menu, selects its call here.
 
 ![The Arguments tab beside a Full Trace call tree, listing the calls of CQueryScan::GetRow on one iterator](/docs/user-guide/images/call-stack-arguments.png)
 
-Only the four integer argument registers - RCX, RDX, R8 and R9 - are captured at the call, and RAX at the return. Arguments passed on the stack, from the fifth on, and floating point values, which travel in the XMM registers, show **Not Captured**, and a call the recording never saw return shows **Did Not Return**. **Set Breakpoint, Dump Arguments and Continue** on the **WinDbg** submenu reads those too, from a live session.
+<!-- Screenshot (update): the Arguments tab - the signature header, and the column headers with each argument's type and register -->
 
-A value that is an iterator's address links to it - the operator it was matched to, such as **Clustered Index Seek (Node 3)**, or the iterator's class when it was not matched - and clicking the link selects that iterator in the call tree and the plan. So the `this` of a `GetRow` call says which operator it belongs to.
+The four integer argument registers - RCX, RDX, R8 and R9 - are captured at the call, and RAX at the return. For functions in sqlmin and sqldk, the fifth to eighth arguments, which are passed on the stack, are read at the call too, and each one's column gives its place on the stack, such as `[RSP+0x28]`. Elsewhere those columns read **Not Captured**. Floating point values, which travel in the XMM registers, are left out, as is a floating point return value and anything after the eighth argument. A call the recording never saw return shows **Did Not Return**.
 
-**Find Calls** beside a value searches the whole log for it, under the heading **References To** and the value:
+Some values are read further than the register:
 
-- **Calls On It** - member functions called with the value as `this`
-- **Returned It** - functions that returned it
-- **Passed It** - functions it was passed to as an argument
+- **Pages, rows and columnstore objects** - an argument that points at a page id, a row id or a columnstore object key, or at a handle or reference to a page in the buffer pool, shows the page, row or object instead of the address. Click a page to open it.
+- **Log sequence numbers** - an argument that points at an `LSN` shows the LSN, such as `(37:152:2)`, in the same form as a page header's `m_lsn`.
+- **Strings** - a `char const *` or `wchar_t const *` argument shows the text it points at, such as `dbo.Orders`, in the string colour the query editor uses. Only the start of a long string is read, and it is marked **Truncated**. Text the recording never read is taken from the SQL Server file it was compiled into, such as a source file name passed to an allocation. Any other text the recording had not seen shows as the address.
+- **Data types** - an argument that points at a `CTypeInfo`, SQL Server's description of a column or expression type, shows the type as it is written in T-SQL, such as `nvarchar(128)`, `decimal(38,0)` or `int NOT NULL`.
+- **Values behind a pointer** - a pointer or reference to a simple value, such as a number, a flag or an enum, shows the value it points at rather than the address.
+- **Tables and indexes** - a HoBt id is followed by the table and index it belongs to. So is the address of a `HoBtAccess`, the object SQL Server uses to read one table or index, whether it is the `this` of a call or passed as an argument. The trace knows which HoBt each one was set up for, from its `Init` call to its destructor, and `HoBtAccess::Init`'s full HoBt id parameter is named **hobt_id**.
+- **Iterators** - the address of an iterator, or of the plan object it was built from, is followed by the operator it was matched to.
+- **Objects** - the trace keeps a map of what each address holds, from the calls that allocated memory there, constructed an object there, or first called a member function on it. A value is shown with the class of the object its address held at the time of the call, such as **CQScanRangeNew** followed by the address, until something else takes the address over. Memory allocated for an object shows its class from the moment it is allocated, before any member function is called on it. An address on the stack holds its object only while the function it belongs to is running. Memory from before the recording takes the class of the first member function called on it.
+- **Other pointers** - a pointer with no object known at that moment shows the class its declared type points to, such as **LckInfo** for a `LckInfo const *`. A pointer to memory with no object in it, such as an `unsigned __int64 *`, shows the call that allocated the memory, such as **OperatorNew**.
 
-Each row gives the function, the register, the number of calls and links to the **First Call** and **Last Call**, or **Show Call** when there was only one. Above the groups the value is identified where it can be - **Is The Hash Match (Aggregate) (Node 1) Iterator** for an iterator, or **Is A** and the class of the functions called on it. Following a pointer like this traces an object through the query - what created it, what was done to it and what it was handed to. When nothing matches, the heading reads **No References To** and the value.
+**Decode**, on the tab strip, switches the table between what the values stand for and their hex. Decoded, a value shows its reading - a table and index, an operator, a page, a name or a number. A pointer to another object, such as a `HoBtAccess` or an iterator, is shown with its class first, in the class colour, as `HoBtAccess dbo.T.PK`. Pages, rows and names are shown as they are, and `this` without its class, since the function already names it. A value with nothing to decode stays in hex. The setting is shared with the [Find](#finding-a-value) tabs and remembered between sessions.
+
+Calls the [category filter](#filtering-by-category) leaves out of the call tree are left out here too. A hidden category drops the calls of its own functions, and a category hidden with its callees drops every call made beneath it. With **Crop To Query** on, calls made outside the query, such as those made while it was compiled, are left out as well. A call reached by following an object to where it was created is listed even when it would otherwise be left out.
+
+Decoded, an object whose address is in the trace's map is a link. Clicking it goes to the call that created the object, or to the first call made on it when it was created before the recording began. The call tree selects that function and **Arguments** selects that call.
+
+Right-click the signature above the table and choose **Copy Signature** to copy it.
+
+Right-click a cell for what can be done with its call and value:
+
+- **Go To Call** - shows the call in the call tree and the Flame Chart
+- **Open In Call Stack** - opens the Flame Chart's call stack at the start of the call, without moving the playhead
+- **Scope** - scopes the Flame Chart to the call's function
+- **Go To Origin** - for an object in the trace's map, goes to the call that created it, the same as clicking the link
+- **Open In The Columnstore Viewer** - for a columnstore object
+- **Search Call Tree** - for a page, a row or a columnstore object, searches the call tree for the frames that touched it
+- **Open The Index** - for a HoBt id or a `HoBtAccess`, opens the index it belongs to
+- **Show The** iterator - for an iterator's address, names the operator it was matched to, such as **Show The Clustered Index Seek (Node 3) Iterator**, or the iterator's class when it was not matched, and selects it in the call tree and the plan. So the `this` of a `GetRow` call says which operator it belongs to
+- **Find** - for a pointer, a `this` or a large value, searches the whole log for it
+
+## Finding a value
+
+**Find** opens a tab for the value beside **Arguments**, named after the value, with one tab per value. The tab lists everywhere the value appears in the log, under the heading **References To** and the value, as a tree. It searches every call in the trace, including those the category filter and **Crop To Query** leave out of the call tree, so following a value never loses part of its trail:
+
+- **Type** - what the value is, where it can be identified: **Hash Match (Aggregate) (Node 1) Iterator** for an iterator, the operator and **Plan Object** for the object in the compiled plan that SQL Server builds an operator's iterator from, **HoBtAccess** and its table and index for an access object, the class of the object it held when it was first used, such as **CQScanRangeNew**, or otherwise the class of the functions called on it. Clicking an iterator or plan object selects it in the call tree and the plan
+- **Called by** - member functions called with the value as `this`
+- **Returned by** - functions that returned it
+- **Referenced by** - functions it was passed to as an argument
+
+Each group gives its number of functions and calls, and lists the functions with the register the value was in. Expanding a function lists its calls, loaded as you open it, with **Show More** for the rest.
+
+Each call reads as the function's signature with the values it was passed in place of its parameters, then the value it returned after the arrow. A parameter the trace did not capture shows its type, and hovering over a value gives its type and register. When the function's signature cannot be resolved, the four argument registers and RAX are shown instead.
+
+**Decode** works here as it does in the Arguments table, and the two share the setting. Decoded readings are in the normal font and hex in monospace, and hovering over a value shows its other form.
+
+Right-click a value in a call and choose **Find** to open a tab for that value in turn. Clicking a call shows it in the call tree and the [Flame Chart](/docs/user-guide/query/FlameChart), and selects it in **Arguments**. Following a pointer like this traces an object through the query - what created it, what was done to it and what it was handed to - and then the same for every object it met along the way. When nothing matches, the heading reads **No References To** and the value.
+
+<!-- Screenshot (new): a Find tab beside Arguments - Type, Called by and Referenced by, with one function expanded to its calls, each a signature with its values in place -->
 
 ## Flame Graph
 

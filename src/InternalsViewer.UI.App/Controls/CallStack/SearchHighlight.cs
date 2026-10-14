@@ -1,4 +1,6 @@
 ﻿using System;
+using System.Collections.Generic;
+using InternalsViewer.UI.App.Helpers;
 using InternalsViewer.UI.App.Models.Query.CallStack;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Documents;
@@ -30,8 +32,11 @@ public static class SearchHighlight
 
         var source = SignatureText.GetSignature(text) ?? text.Text;
 
-        var ranges = SearchHighlightRanges.Find(source, GetSearch(text));
+        Highlight(text, SearchHighlightRanges.Find(source, GetSearch(text)));
+    }
 
+    public static void Highlight(TextBlock text, IReadOnlyList<(int Start, int Length)> ranges)
+    {
         if (ranges.Count == 0)
         {
             return;
@@ -39,8 +44,8 @@ public static class SearchHighlight
 
         var highlighter = new TextHighlighter
         {
-            Background = Brush("SearchHighlightBrush"),
-            Foreground = Brush("SearchHighlightForegroundBrush")
+            Background = AppResources.Get<Brush>("SearchHighlightBrush"),
+            Foreground = AppResources.Get<Brush>("SearchHighlightForegroundBrush")
         };
 
         try
@@ -57,9 +62,6 @@ public static class SearchHighlight
             text.TextHighlighters.Clear();
         }
     }
-
-    private static Brush? Brush(string key)
-        => Application.Current.Resources.TryGetValue(key, out var resource) ? resource as Brush : null;
 
     private static void OnChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
     {

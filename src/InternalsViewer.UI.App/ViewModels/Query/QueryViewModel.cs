@@ -17,6 +17,7 @@ using InternalsViewer.Internals.Extensions;
 using InternalsViewer.Query;
 using InternalsViewer.Query.CallStack;
 using InternalsViewer.Query.FullTrace;
+using InternalsViewer.Query.FullTrace.Arguments;
 using InternalsViewer.Query.FullTrace.Iterators;
 using InternalsViewer.Query.FullTrace.Timeline;
 using InternalsViewer.Query.Events.Latches;
@@ -114,6 +115,8 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
     private const string CancelledOutcome = "Cancelled";
 
     private const string FailedOutcome = "Failed";
+
+    private const string TraceLoadedStep = "Loading Full Trace";
 
     private const string RunFileType = "Internals Viewer Run";
 
@@ -259,6 +262,9 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
     private TraceTimeline? _flameChart;
 
     [ObservableProperty]
+    private TraceTimeline? _fullFlameChart;
+
+    [ObservableProperty]
     private TraceEventLink? _currentEventLink;
 
     [ObservableProperty]
@@ -332,7 +338,7 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
         Symbols = new SymbolsViewModel(logger, settingsViewModel);
 
-        Arguments = new ArgumentsViewModel(logger, Symbols);
+        Arguments = new ArgumentsViewModel(logger, Symbols, GetHoBtName);
 
         Logger = logger;
         QueryRunner = queryRunner;
@@ -424,11 +430,15 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
     public DatabaseSource Database { get; }
 
     /// <summary>
-    /// The Call Stack document's detail pane, its members listing and symbol search
+    /// The Call Tree document's detail pane, its members listing and symbol search
     /// </summary>
     public SymbolsViewModel Symbols { get; }
 
     public ArgumentsViewModel Arguments { get; }
+
+    public CallTreeTabViewModel CallTreeTab => CreatedCallTreeTab ??= new CallTreeTabViewModel(this, _settingsViewModel, Logger);
+
+    public PlayheadCallStackViewModel PlayheadStack => CreatedPlayheadStack ??= new PlayheadCallStackViewModel(this);
 
     /// <summary>
     /// The queries run against this database, listed beside the SQL editor
@@ -452,7 +462,12 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
     /// <summary>
     /// The top-level frames (thread starts) of the query's merged call stack tree, for the call tree view
     /// </summary>
-    public IEnumerable<CallStackNode> CallStackRoots => CallStack?.Root.ChildNodes ?? [];
+    public IEnumerable<CallStackNode> CallStackRoots => CroppedRoots ?? CallStack?.Root.ChildNodes ?? [];
+
+    public IReadOnlyList<CallStackNode>? CroppedRoots
+        => QueryOptions.CropToQuery && Trace is { QueryRoots.Count: > 0 } trace && ReferenceEquals(trace.CallStack, CallStack)
+            ? trace.QueryRoots
+            : null;
 
     // The selected event's path is recovered by walking its leaf node up the shared call stack tree.
     public List<CallstackFrame> SelectedCallstack
@@ -505,7 +520,7 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
     /// </summary>
     public bool IsSimulationVisible
     {
-        get => Layout.IsShown(SimulationDocumentKey);
+        get => Layout.IsVisible(SimulationDocumentKey);
         set
         {
             if (value)
@@ -587,6 +602,8 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
     private CancellationTokenSource? TraceLoad { get; set; }
 
+    private TraceResult? Trace { get; set; }
+
     private QueryExportContent? LastRun
     {
         get;
@@ -604,7 +621,9 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
     private List<AllocationLayer> ObjectLayers { get; set; }
 
-    private (CallStackNode Node, int Call)? PendingCallNavigation { get; set; }
+    private CallTreeTabViewModel? CreatedCallTreeTab { get; set; }
+
+    private PlayheadCallStackViewModel? CreatedPlayheadStack { get; set; }
 
     public void NavigateToEvent(EngineEvent engineEvent)
     {
@@ -739,9 +758,9 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
     /// <summary>
     /// Opens the call stack focused on an operator
     /// </summary>
-    public void OpenCallStack(PlanNode node)
+    public void OpenCallTree(PlanNode node)
     {
-        Layout.ShowCallStack();
+        Layout.ShowCallTree();
 
         SelectedPlanNode = node;
 
@@ -751,45 +770,29 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
         }
     }
 
-    public void OpenCallStack(CallStackNode? node, int call)
+    public void OpenCallTree(CallStackNode? node, int call)
     {
-        Layout.ShowCallStack();
+        Layout.ShowCallTree();
 
         if (node is null)
         {
             return;
         }
 
-        if (CallNavigationRequested is null)
-        {
-            SelectedCallNode = node;
-
-            PendingCallNavigation = (node, call);
-
-            return;
-        }
+        _ = CallTreeTab;
 
         NavigateToCall(node, call);
     }
 
-    public (CallStackNode Node, int Call)? TakePendingCallNavigation()
-    {
-        var pending = PendingCallNavigation;
-
-        PendingCallNavigation = null;
-
-        return pending;
-    }
-
     /// <summary>
-    /// Opens the Call Stack document's detail pane on the symbol search
+    /// Opens the Call Tree document's detail pane on the symbol search
     /// </summary>
     [RelayCommand]
     private void SearchSymbols()
     {
-        Layout.ShowCallStack();
+        Layout.ShowCallTree();
 
-        Symbols.ShowSymbolSearch();
+        CallTreeTab.ShowSymbols();
     }
 
     partial void OnSelectedEventChanged(EngineEvent? value)
@@ -801,7 +804,15 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
     partial void OnFlameChartChanged(TraceTimeline? value) => CurrentEventLink = null;
 
-    partial void OnCallStackChanged(CallStackTree? value) => Symbols.CallStack = value;
+    partial void OnCallStackChanged(CallStackTree? value)
+    {
+        Symbols.CallStack = value;
+
+        if (Trace is { } trace && !ReferenceEquals(trace.CallStack, value))
+        {
+            Trace = null;
+        }
+    }
 
     public void OpenExecutionPlan(PlanNodeIdentifier identifier)
     {
@@ -951,6 +962,12 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
         {
             Layout.HasTraceEvents = QueryOptions.RecordTraceEvents;
         }
+        else if (e.PropertyName == nameof(QueryOptionsViewModel.CropToQuery)
+                 && Trace is { } trace
+                 && ReferenceEquals(trace.CallStack, CallStack))
+        {
+            FlameChart = ApplyCrop(trace);
+        }
     }
 
     private async void PrepareTrace()
@@ -1004,6 +1021,10 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
         CancelTraceLoad();
 
         FlameChart = null;
+
+        FullFlameChart = null;
+
+        CreatedCallTreeTab?.Dispose();
 
         Symbols.Dispose();
 
@@ -1340,6 +1361,11 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
         return unit;
     }
 
+    private string? GetHoBtName(ulong hobtId)
+        => Database.FindHobtIdAllocationUnit((long)hobtId) is { TableName.Length: > 0 } unit
+            ? unit.IndexName.Length == 0 ? unit.TableName : $"{unit.TableName}.{unit.IndexName}"
+            : null;
+
     private void OpenIndex(string? schema, string? table, string? index)
     {
         if (string.IsNullOrEmpty(index))
@@ -1482,7 +1508,7 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
         }
 
         var closed = _openColumnstores.Keys
-            .Where(k => !Layout.IsShown(k))
+            .Where(k => !Layout.IsVisible(k))
             .ToList();
 
         foreach (var key in closed)
@@ -1507,7 +1533,7 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
         }
 
         var closed = _openPages.Keys
-            .Where(k => !Layout.IsShown(k))
+            .Where(k => !Layout.IsVisible(k))
             .ToList();
 
         foreach (var key in closed)
@@ -1532,7 +1558,7 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
         }
 
         var closed = _openIndexes.Keys
-            .Where(k => !Layout.IsShown(k))
+            .Where(k => !Layout.IsVisible(k))
             .ToList();
 
         foreach (var key in closed)
@@ -1555,7 +1581,7 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
         }
 
         var closed = _openSimulations.Keys
-            .Where(k => !Layout.IsShown(k))
+            .Where(k => !Layout.IsVisible(k))
             .ToList();
 
         foreach (var key in closed)
@@ -1965,6 +1991,8 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
         var firstMessage = Messages.Count;
 
+        var started = Stopwatch.GetTimestamp();
+
         string? outcome = null;
 
         var progress = new Progress<ProgressDetail>(detail =>
@@ -1993,6 +2021,8 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
             ShowTrace(result);
 
             LastRun = LastRun is { } run ? run with { Extras = [.. run.Extras, result] } : null;
+
+            AddMessage(new ProgressDetail(TraceLoadedStep) { IsStep = true, Elapsed = Stopwatch.GetElapsedTime(started) });
         }
         catch (OperationCanceledException) when (load.IsCancellationRequested)
         {
@@ -2179,13 +2209,32 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
     private void ShowTrace(TraceResult result)
     {
+        Trace = result;
+
+        var flameChart = ApplyCrop(result);
+
         CallStack = result.CallStack;
 
-        Arguments.SetSource(result.CallLog, IteratorTarget.Build(result.CallStack, Events, result.PlanLink));
+        Arguments.SetSource(result.CallStore,
+                            result.CallStack,
+                            IteratorTarget.Build(result.CallStack, Events, result.PlanLink),
+                            result.HoBtAccess,
+                            result.MemoryMap);
 
-        FlameChart = result.Timeline;
+        FullFlameChart = result.Timeline;
+
+        FlameChart = flameChart;
 
         ExecutionPlans = [.. ExecutionPlans];
+    }
+
+    private TraceTimeline ApplyCrop(TraceResult result)
+    {
+        var timeline = QueryOptions.CropToQuery ? result.QueryTimeline : result.Timeline;
+
+        result.SetActivityWindow(timeline);
+
+        return timeline;
     }
 
     private static string MessageText(QueryMessage message) => message.IsFinished ? $"{message.Text} - {message.Outcome}" : message.Text;
@@ -2297,8 +2346,6 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
         FlameChart = null;
 
         SelectedCallNode = null;
-
-        PendingCallNavigation = null;
 
         IsError = false;
         Messages.Clear();

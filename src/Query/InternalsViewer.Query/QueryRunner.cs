@@ -386,7 +386,7 @@ public sealed class QueryRunner(ILogger<QueryRunner> logger,
             CropEndUs = cropEnd,
             TraceRequest = fullTrace is null
                 ? null
-                : new TraceRequest(fullTrace, events, symbolsPath, memoryClerks, rawEvents, eventOptions.CropToQuery)
+                : new TraceRequest(fullTrace, events, symbolsPath, memoryClerks, rawEvents)
         };
     }
 

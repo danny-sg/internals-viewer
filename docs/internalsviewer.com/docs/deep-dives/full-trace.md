@@ -28,7 +28,7 @@ On 64-bit Windows, where the function expects its arguments is fixed by the x64 
 
 Read that way, a stack answers two questions at once - what the code was doing, and why. The same `BPool::Get` called from a different operator, or from a different place in the same one, is a different stack.
 
-**A call tree** merges many stacks. Each distinct path from a thread's starting point down to a function appears once, with a count of how often it was seen. The part every stack shares - the statement and the plan's operators - forms the trunk, and the query's work spreads out into the branches beneath. That is what the [Call Stack](/docs/user-guide/query/CallStack) pane shows.
+**A call tree** merges many stacks. Each distinct path from a thread's starting point down to a function appears once, with a count of how often it was seen. The part every stack shares - the statement and the plan's operators - forms the trunk, and the query's work spreads out into the branches beneath. That is what the [Call Tree](/docs/user-guide/query/CallStack) shows.
 
 ## Why capture it
 
@@ -113,15 +113,15 @@ Extended Events is code that runs on the query's own thread, so under a recordin
 
 The waits are about threads. A recording holds every thread in the process and the replay should only follow the query's, so Full Trace adds the `sqlos.system_thread_id` action - the operating system thread each event fired on. The query's own thread is on every event. Parallel workers are harder - `query_thread_profile` only fires on the coordinator, and `sqlos.task_started` never fires with the session's context. What every worker does do is wait on its exchange at least once, with a `CXSYNC_PORT` wait as it starts, so the filtered waits name every worker's thread. The thread ids are taken straight from the raw rows of the event file, before any other processing, since the processed events lose the workers' waits.
 
-**Record Extended Events** turns the normal event set back on, so the recording can be compared with what the event session saw - see [The Extended Events comparison](#the-extended-events-comparison).
+**Record Events** turns the normal event set back on, and each event is then found in the recording - see [Placing events](#placing-events).
 
 ## Opening the recording
 
-When the query finishes the app has a `.run` file and the list of the query's threads. Everything from here happens in the background, in five steps that Messages and the taskbar show progress through - **Opening Full Trace**, **Resolving Symbols**, **Replaying Threads**, **Building Call Tree** and **Matching Operators**. The counts along the way - functions excluded, calls replayed, operators matched, memory allocated - go to the [Diagnostic log](/docs/user-guide/settings#diagnostic-log).
+When the query finishes the app has a `.run` file and the list of the query's threads. Everything from here happens in the background, in five steps that Messages and the taskbar show progress through - **Opening Full Trace**, **Resolving Symbols**, **Replaying Threads**, **Building Call Tree** and **Matching Operators**. The counts along the way - functions excluded, calls replayed, operators matched, memory allocated, events linked - go to the [Diagnostic log](/docs/user-guide/settings#diagnostic-log).
 
 ### Opening
 
-`TimeTravelSession` loads the bridge, `InternalsViewer.Query.TimeTravelBridge.dll`, from the app's `runtimes` folder and asks it to open the recording. The bridge loads `TTDReplay.dll` from the same TTD copy that made the recording, so the two always match, creates the replay engine and calls `Initialize`.
+`ReplaySession` loads the bridge, `InternalsViewer.Query.TimeTravelBridge.dll`, from the app's `runtimes` folder and asks it to open the recording. The bridge loads `TTDReplay.dll` from the same TTD copy that made the recording, so the two always match, creates the replay engine and calls `Initialize`.
 
 That is the slow part. The engine indexes the whole file before it will replay anything, which uses about as much memory as the file is large, and it has no lazy or partial open. The bridge then reads the module list - name, base address and size - which is what turns any address in the recording into a module and an offset into it.
 
@@ -132,12 +132,14 @@ A recording knows addresses, not names, so the replay needs to know some functio
 Then one walk over each PDB of `sqlmin.dll`, `sqllang.dll` and `sqldk.dll` sorts functions into the sets the replay needs:
 
 - **Excluded functions** - every function the Call Stack's category mappings put in Extended Events or tracing, around 9,000 of them, so the replay can skip them
-- **Markers** - each event's `Publish` function, such as `XeSqlPkg::lock_acquired::Publish`, and `XE_BufferMgr::Reserve`, which writes an event into a session's buffer, so the events published can still be counted
-- **Iterator methods** - `Open`, `GetRow`, `Close` and their batch mode and helper forms on every `CQScan*`, `CBpQScan*` and `CQueryScan*` class, for matching operators by object
+- **Event publishers and the event writer** - each event's `Publish` function, such as `XeSqlPkg::lock_acquired::Publish`, and `XE_BufferMgr::Reserve`, which writes an event into a session's buffer, for [placing events](#placing-events)
+- **Instance methods** - `Open`, `GetRow`, `Close` and their batch mode and helper forms on every `CQScan*`, `CBpQScan*` and `CQueryScan*` class, and the methods of the plan's own `CXte*` and `CBpXte*` objects, whose calls are kept apart by the object they ran on
 - **Memory functions** - the allocators and frees, for counting memory
-- **Locator reads** - functions that take or return a page id, row id, page handle or columnstore object key, for reading those values as the replay passes
+- **Locator reads** - functions that take or return a page id, row id, page handle or page reference, columnstore object key, LSN or string, and pointer or reference arguments to simple values, for reading those values as the replay passes
 
-The Windows heap and C runtime allocators are classified separately, from the export tables of `ntdll.dll`, `kernelbase.dll`, `kernel32.dll` and `ucrtbase.dll`. The sets are cached per PDB, relative to the module's base address, so a second recording on the same SQL Server build skips the walk and only rebases them.
+A function only gets a role when every symbol at its address agrees on it, since identical code folding can put several functions at one address. The Windows heap and C runtime allocators are classified separately, from the export tables of `ntdll.dll`, `kernelbase.dll`, `kernel32.dll` and `ucrtbase.dll`. The sets are cached per PDB, relative to the module's base address, so a second recording on the same SQL Server build skips the walk and only rebases them.
+
+The walk usually happens before there is anything to replay. Turning on **Record Full Trace** reads the paths of the modules SQL Server has loaded from `sys.dm_os_loaded_modules` and prepares their sets in the background, so by the time a recording finishes the cache is already warm.
 
 ## The bridge
 
@@ -147,11 +149,11 @@ The replay API is C++ interfaces, which .NET cannot call directly, so `Internals
 | --- | --- |
 | `OpenTrace` | Loads the replay engine, opens and indexes the recording, reads the modules |
 | `GetModuleCount` / `GetModule` | The recording's modules |
-| `ReadCallTree` | The replay itself - takes the threads, the function sets and the locator reads, streams calls, spans and values back through callbacks, and returns a call tree |
+| `ReadCallTree` | The replay itself - takes the threads, the function sets and the locator reads, streams calls, spans, values and published events back through callbacks, and returns a call tree |
 | `GetCallNodeCount` / `GetCallNodes` | The call tree's nodes - parent, address, object and call count |
 | `CloseCallTree` / `CloseTrace` | Frees them |
 
-Results come back while the replay runs rather than at the end - call log chunks, call spans and memory values each through a callback, and progress per thread. Cancelling writes a flag the bridge checks as it reports progress, and interrupts the replay.
+Results come back while the replay runs rather than at the end - call log chunks, call spans, the values read through pointers and published events each through a callback, and progress per thread. Cancelling writes a flag the bridge checks as it reports progress, and interrupts the replay.
 
 ### One pass
 
@@ -172,23 +174,27 @@ TTD reports calls and returns, not a call tree, so the bridge keeps a shadow sta
 - **A large gap**, or the end of recording, clears the stack.
 - **A return with nothing on the stack** belongs to a call that started before the recording did. The frame is kept, marked as having an unknown start.
 
-Calls under an excluded function are not logged at all - an excluded frame is pushed and everything beneath it skipped - except the markers, which are logged even inside excluded code with nothing beneath them.
+Calls under an excluded function are not logged at all - an excluded frame is pushed and everything beneath it skipped. The event publishers and the event writer are checked before that, so they are still seen inside the Extended Events code that is excluded - see [Placing events](#placing-events).
 
 ### What the replay streams back
 
 Each call produces three things:
 
 - **A node count** - the call tree is the node table, with a count on each node, and comes back when the replay ends.
-- **A call log row** - eight 64-bit values per call, logged per function and object: its sequence position, its thread and whether it returned, RCX, RDX, R8 and R9 at the call, RAX at the return, and its node. Each function's calls are kept in chunks of 16,384 and handed over column by column - every call's RCX together, then every RDX - and the app compresses each chunk with zlib on the thread pool while the replay carries on. Columns, because the values repeat: 41% of them are zero, and only 12% of a column's non-zero values are distinct, so a column compresses to around 6.5% of its raw size against 8.7% for rows. The log lives in memory and is read lazily.
+- **A call log row** - ten 64-bit values per call, logged per function and object: its sequence position, its thread and whether it returned, RCX, RDX, R8 and R9 at the call, RAX at the return, its node, and the call ids at its start and end. Each function's calls are kept in chunks of 16,384 and handed over column by column - every call's RCX together, then every RDX - and the app compresses each chunk with zlib on the thread pool while the replay carries on. Columns, because the values repeat: 41% of them are zero, and only 12% of a column's non-zero values are distinct, so a column compresses to around 6.5% of its raw size against 8.7% for rows. The log lives in memory and is read lazily.
 - **A span** - when a frame closes, its start and end positions, the instructions the thread executed in between, its thread, its node, its call number and whether it returned or started before the recording. Spans are streamed 65,536 at a time and become the Flame Chart.
 
-Only the four integer argument registers and RAX are logged. Stack arguments, the floating point registers and memory behind pointers are not, which is why those show as **Not Captured** in the [Arguments](/docs/user-guide/query/CallStack#arguments) tab.
+The call log row holds only the four integer argument registers and RAX. Stack arguments come in alongside the locator reads below: for each function in the resolved modules with more than four arguments, the fifth to sixteenth are read from the stack at the call, in one memory read per call, and kept with the locators as argument values rather than pages or rows. The floating point registers are not logged, which is why the [Arguments](/docs/user-guide/query/CallStack#arguments) tab has no column for them, and memory behind pointers is only read by the locator reads.
+
+Alongside the calls come **published events** - an event published and written to an event session, with the position it was published at - see [Placing events](#placing-events).
 
 ### Locator reads
 
-There is one exception to not reading memory. For the functions found to take or return a page id, a row id, a page handle or a columnstore object key, the bridge reads the value the argument points at while the replay is at the call - or at the return, for a value the function fills in - following a pointer or two where the value sits further away, as a page id does behind a page handle. These are thread-local reads inside the callback, so they cost almost nothing, where reading the same memory after the replay would mean a seek per call.
+There is one exception to not reading memory. For the functions found to take or return a page id, a row id, a page handle or page reference, a columnstore object key, an LSN or a string, the bridge reads the value the argument points at while the replay is at the call - or at the return, for a value the function fills in - following a pointer or two where the value sits further away, as a page id does behind a page handle. These are thread-local reads inside the callback, so they cost almost nothing, where reading the same memory after the replay would mean a seek per call.
 
 The values become **locators** - the pages, rows and columnstore segments, dictionaries and delete bitmaps that each call touched.
+
+The same reads cover a pointer or reference argument to a simple value, such as a number, a flag or an enum. The bridge reads the value behind it, so the Arguments tab can show what was pointed at rather than an address that means nothing once the query is over.
 
 ## Mapping the replay onto SQL Server
 
@@ -198,7 +204,9 @@ The replay hands back addresses, counts, spans and values. The rest turns them i
 
 Each node's address is looked up in the module ranges and becomes a frame - module, offset, PDB and object - added to a call tree with its count. The frames are resolved to names with the same DIA bridge as sampled stacks, and calls from different places in the same function are merged into one node per function. A map from each raw node to its merged node is kept, so a call log row or a Flame Chart bar always knows its frame - which is what **Go To Call** follows.
 
-Anything left beneath Extended Events or tracing frames is then removed from the tree and the Flame Chart. Each node's activity band counts when its calls started, bucketed by trace position, and its locators are gathered from the call log, so a frame can show the pages and rows it read and the Call Stack's search can find frames by a page address, a RID or `rowgroup:N column:M`.
+The whole recording is kept, compilation included, so what is worked out from it - objects, allocations, memory and event links - sees every call. **Crop To Query** only changes what is shown, and can be switched without tracing again. Each thread's calls start well above the query - receiving the batch, compiling and setting up the statement - so with it on the Call Tree starts at the outermost `CMsqlExecContext::FExecute`, the statement's execution in `sqllang.dll`. A parallel worker's thread never runs beneath that frame, so a thread running operator code without it is shown from its top. The Flame Chart is cropped to match.
+
+Anything left beneath Extended Events or tracing frames is then removed from the tree and the Flame Chart. Each node's activity band counts when its calls started, bucketed by trace position, and its locators are gathered from the call log, so a frame can show the pages and rows it read and the Call Tree's search can find frames by a page address, a RID or `rowgroup:N column:M`.
 
 ### Operators by iterator
 
@@ -206,9 +214,11 @@ Sampled stacks have to work out which frames belong to which operator from the s
 
 The compiler gets in the way in one place. With profile-guided optimisation, `CQScanProfileNew::GetRow` - the wrapper that counts rows for the actual plan - does not call its child's `GetRow`. It calls `CQScanNew::GetRowOrReQualifyHelper` with the child iterator as its first parameter and the child's `GetRow` inlined into it, so for an Index Seek `CQScanRangeNew::GetRow` is never called at all. The helper is treated as an iterator method too, which works because its first parameter arrives in RCX just as `this` would. The statement's own frame is folded away in the same way, which is why a statement's entry is `CXStmtQuery::ErsqExecuteQuery`.
 
-The objects then form a tree - each one's parent is the object that was running when it was first entered - and that tree is aligned with the plan. An object scores against an operator for a matching iterator class, from the mappings, and for a `GetRow` count that matches the operator's actual rows, allowing an extra call per `Open` for the call that finds no more rows. Skipping an object or a plan node costs points, and wrappers such as the profiling iterator are looked through. A root object can only match a top operator, or a Parallelism operator, where each worker's producer is a root of its own.
+Which object belongs to which operator comes from how the plan is built. Before the first row, `CQueryScan::Setup` walks the compiled plan, and each of the plan's own objects - a `CXte*` class in row mode, `CBpXte*` in batch mode - builds the iterator for its operator. In row mode `CXte*::QScanGet` builds it and returns it, and in batch mode `CBpXte::CreateBatchIterators` and each `CBpXte*::PbpqsGet` build them. These calls nest exactly as the plan does, so the plan objects form a tree with the plan's shape, and their calls are kept apart by object just as the iterators' are.
 
-The matched objects give each operator its entry frames - for the Call Stack's operator view and for memory - and its lifetime, from its object's first method call to its last, for the Flame Chart's Operators pane.
+That tree is aligned with the plan. A plan object scores against an operator when the iterator classes it constructed are ones the mappings give that operator, and loses points when they are not. Skipping a plan node or a plan object costs points too. The iterator each plan object built - its return value, or the object its constructor ran on - then takes that plan object's operator, and wrappers such as the profiling iterator are looked through to the iterator inside. This needs no row counts and no guesswork about stack shapes, only the calls that build the plan.
+
+The linked objects give each operator its entry frames - for the Call Tree's operator view and its target badge - and its lifetime, from its object's first method call to its last, for the Flame Chart's Operators pane. The Arguments tab uses the same link to name an iterator or a plan object when its address turns up as a value.
 
 ### Memory
 
@@ -219,19 +229,23 @@ SQL Server allocates through SQLOS, which is not recorded. But every allocation 
 - **Outermost only** - an allocator called inside another is not counted again. Page allocations made by the memory object machinery are its plumbing, since the memory object's own `Alloc` has already counted them.
 - **Frees by pointer** - frees are matched to allocations by pointer, across threads, in trace position order, with frees first where they tie so an in-place reallocation works. That gives memory in use and its peak.
 - **Clerks** - the first argument of a `MemoryClerkInternal` call is its memory clerk, and the two clerk snapshots name it. `MEMORYCLERK_SQLQERESERVATIONS` is the query's workspace memory, which is what the Flame Chart's **Grant In Use** line draws against the grant.
-- **Operators** - each allocation belongs to the innermost operator whose entry frame is on its stack, so a child's memory stays with the child, and to the statement above it. A frame shared by more than one operator is not guessed at.
+- **Operators** - an operator's memory in use is what was allocated inside its own calls on its thread and not yet freed, which is what the Flame Chart's Operators pane draws and gives the peak of.
 
 The known gap is a memory object released as a whole. Its pages go back through the plumbing, so its memory is never seen to be freed, and in use only climbs for it.
 
-### The Extended Events comparison
+### Placing events
 
-The markers are kept for one more comparison. Each `Publish` call on a recorded thread is an event published. The `XE_BufferMgr::Reserve` calls inside it name the buffer it was written to, as their first argument, and the buffer most of them share is taken to be this session's - those are the events written. The event file gives the events that arrived from the same threads. The Diagnostic log reports the three totals, then each event whose written and stored counts differ, along with the workers and tasks the events name.
+The events in the `.xel` file have a timestamp, but no position in the recording, and an Extended Events timestamp is only accurate to a millisecond - far too coarse to find one call among millions. So events are placed by the calls that produced them rather than by time.
 
-With **Record Extended Events** on, the comparison covers the normal event set, which is a way to see what the event session itself costs.
+Every event is published through its own `Publish` function, such as `XeSqlPkg::lock_acquired::Publish`, and each session collecting it has the event written into its buffer by `XE_BufferMgr::Reserve`, with that session's buffer manager as its first argument. The bridge watches for both, even inside the Extended Events code that is otherwise excluded. Entering a publisher starts a pending event on that thread, and entering the writer while one is pending records a **published event** - the event's name, the session buffer it went to, the position and instruction count of the publish, and the nearest recorded frame above it. A publish that no session collects, or whose predicate rejects it, never reaches the writer and leaves nothing behind.
+
+Other sessions are running too, `system_health` among them, so the buffer that most published events went to is taken to be this session's, and the rest are dropped. What is left is paired, thread by thread and in order, with the raw events read from the `.xel` file, matching on the event name. The order is the same on both sides, since a thread publishes one event at a time, and when a name does not match the pairing skips ahead a short way to get back in step. Each pair links an event to its place in the recording, which is how the Timeline's current event moves the Flame Chart's playhead.
+
+The [Diagnostic log](/docs/user-guide/settings#diagnostic-log) records how many events were published, how many were written to the session and how many were paired and linked.
 
 ### No clock
 
-TTD records instructions, not time. There is no timestamp, and the recording slows everything down, and not evenly, so a millisecond figure would not mean much anyway. This is why the Timeline is hidden for a Full Trace and the Flame Chart measures in positions or instructions instead:
+TTD records instructions, not time. There is no timestamp, and the recording slows everything down, and not evenly, so a millisecond figure would not mean much anyway. This is why the Flame Chart measures in positions or instructions, and why events are placed by their publish calls rather than by time:
 
 - **Position** is `sequence + steps / (largest step count + 1)`, which lines up across threads and is linear within a sequence. An earlier encoding squashed late steps together, and merged a hundred `GetRow` calls into one bar.
 - **Instructions** is a clock kept for each thread, adding up the steps between callbacks. It is the closest the recording has to how long a call took, but it is counted separately for each thread, so the lanes do not line up.
@@ -240,17 +254,18 @@ TTD records instructions, not time. There is no timestamp, and the recording slo
 
 | Extracted | Where it shows |
 | --- | --- |
-| Every call path, with its call count | The [Call Stack](/docs/user-guide/query/CallStack) |
-| When each path ran across the recording | The Call Stack's activity band |
-| Memory allocated beneath each frame | The Call Stack, and the [Flame Chart](/docs/user-guide/query/FlameChart)'s Memory view |
+| Every call path, with its call count | The [Call Tree](/docs/user-guide/query/CallStack) |
+| When each path ran across the recording | The Call Tree's activity band |
+| Memory allocated beneath each frame | The Call Tree, and the [Flame Chart](/docs/user-guide/query/FlameChart)'s Memory view |
 | Every call as a span on its thread | The Flame Chart |
-| Each operator's frames and lifetime | The Call Stack's operator view and the Flame Chart's Operators pane |
-| Memory per operator, by clerk and by caller | **Traced Memory** in the [Execution Plan](/docs/user-guide/query/ExecutionPlan)'s properties |
-| Every call's register arguments and return value | The [Arguments](/docs/user-guide/query/CallStack#arguments) tab and **Find Calls** |
-| The pages, rows and columnstore objects each call touched | The Call Stack's frames and search |
-| Calls replayed, operators matched, memory allocated, and events published, written and stored | The [Diagnostic log](/docs/user-guide/settings#diagnostic-log) |
+| Each operator's frames, target and lifetime | The Call Tree's operator view and target badges, and the Flame Chart's Operators pane |
+| Memory in use per operator | The Flame Chart's Operators pane |
+| Every call's register arguments and return value | The [Arguments](/docs/user-guide/query/CallStack#arguments) tab and **Find** |
+| The pages, rows and columnstore objects each call touched | The Call Tree's frames and search, and the Arguments tab |
+| Where each event happened in the recording | The Flame Chart's playhead, following the Timeline |
+| Calls replayed, operators matched, memory allocated, and events published, written and linked | The [Diagnostic log](/docs/user-guide/settings#diagnostic-log) |
 
-The recording itself is deleted once it has replayed successfully. Everything above lives in memory for as long as the Query tab holds the result, and running the query again makes a new recording.
+The recording itself is deleted once it has replayed successfully. Everything above lives in memory for as long as the Query tab holds the result, and running the query again makes a new recording. **Export to file** saves it all - the call tree, the call log, the spans, the memory and the event links - so a run can be opened again without the recording. See [Exporting a run](/docs/user-guide/query#exporting-a-run).
 
 ## Limits
 
@@ -262,16 +277,18 @@ The recording itself is deleted once it has replayed successfully. Everything ab
 ## In the source
 
 - `src/Query/InternalsViewer.Query.TraceHarness/TraceHarness.cpp` - the elevated harness: the signature checks, the service restart, and attaching and stopping TTD
-- `src/Query/InternalsViewer.Query.Debugging/TimeTravel/` - preparing a recording: the TTD copy, the licence check, the trace folder, starting the harness and the events it signals
-- `src/Query/InternalsViewer.Query.TimeTravelBridge/` - the native bridge over the TTD replay API: the shadow stacks, the call tree, the spans, the call log and the locator reads
-- `src/Query/InternalsViewer.Query/CallStack/TimeTravel/` - the managed side:
-  - `TimeTravelSession.cs` and `Native/` - opening the recording and calling the bridge
-  - `ReplayFunctions.cs` - the function sets the replay needs, from the PDBs
-  - `TimeTravelCallMerger.cs` - mapping nodes to frames
-  - `CallLog/` - the compressed argument log
-  - `Locators/` - the page, row and columnstore object reads
-  - `Iterators/` - matching operators by object, and their lifetimes
-  - `Memory/` - allocations, frees, clerks and memory per operator
+- `src/Query/InternalsViewer.Query.TimeTravelBridge/` - the native bridge over the TTD replay API: the shadow stacks, the call tree, the spans, the call log, the locator reads and the published events
+- `src/Query/InternalsViewer.Query.FullTrace/` - the managed side:
+  - `Recording/` - preparing a recording: finding WinDbg, the TTD copy, the licence check, the trace folder, starting the harness and the events it signals
+  - `TraceLoader.cs` - the load that ties the steps together
+  - `ReplaySession.cs` and `Native/` - opening the recording and calling the bridge
+  - `Functions/` - the function sets the replay needs, from the PDBs
+  - `CallTreeBuilder.cs` - mapping nodes to frames, and `QueryExecutionCropper.cs` - finding where the query's execution starts
+  - `CallLog/` and `Arguments/` - the compressed argument log, and reading its values by the function's signature
+  - `Locators/` - the page, row, columnstore object and referenced value reads
+  - `Iterators/` - linking plan objects and iterators to the plan, and their lifetimes
+  - `Memory/` - allocations, frees, clerks and memory in use
+  - `PublishedEvents/` - placing events in the recording
   - `Timeline/` - the Flame Chart's spans and axes
-  - `Events/` - the Extended Events comparison
-- `src/Query/InternalsViewer.Query/QueryRunner.cs` - the run sequence and the load that ties it together
+  - `Export/` - the Full Trace part of an exported run
+- `src/Query/InternalsViewer.Query/QueryRunner.cs` - the run sequence, and `Export/` - exporting and importing a run

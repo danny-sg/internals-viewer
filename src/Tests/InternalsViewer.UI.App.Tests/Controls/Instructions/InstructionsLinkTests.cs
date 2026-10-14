@@ -11,7 +11,7 @@ public class InstructionsLinkTests
         var result = InstructionsLink.TryParse(new Uri("guide:ChoosingEvents"), out var link);
 
         Assert.True(result);
-        Assert.Equal(InstructionsLinkKind.Page, link.Kind);
+        Assert.Equal(InstructionsLinkType.Page, link.Type);
         Assert.Equal("ChoosingEvents", link.Target);
     }
 
@@ -21,7 +21,7 @@ public class InstructionsLinkTests
         var result = InstructionsLink.TryParse(new Uri("option:ShowLatches"), out var link);
 
         Assert.True(result);
-        Assert.Equal(InstructionsLinkKind.ToggleOption, link.Kind);
+        Assert.Equal(InstructionsLinkType.ToggleOption, link.Type);
         Assert.Equal("ShowLatches", link.Target);
     }
 
@@ -31,7 +31,7 @@ public class InstructionsLinkTests
         var result = InstructionsLink.TryParse(new Uri("view:Allocations"), out var link);
 
         Assert.True(result);
-        Assert.Equal(InstructionsLinkKind.OpenView, link.Kind);
+        Assert.Equal(InstructionsLinkType.OpenView, link.Type);
         Assert.Equal("Allocations", link.Target);
     }
 
@@ -41,7 +41,7 @@ public class InstructionsLinkTests
         var result = InstructionsLink.TryParse(new Uri("https://internalsviewer.com/docs"), out var link);
 
         Assert.True(result);
-        Assert.Equal(InstructionsLinkKind.External, link.Kind);
+        Assert.Equal(InstructionsLinkType.External, link.Type);
         Assert.Equal("https://internalsviewer.com/docs", link.Target);
     }
 

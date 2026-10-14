@@ -6,6 +6,7 @@ using InternalsViewer.Query.FullTrace.Memory;
 using InternalsViewer.Query.FullTrace.Timeline;
 using InternalsViewer.Query.FullTrace.Timeline.Enums;
 using InternalsViewer.UI.App.Models.Query.CallStack;
+using InternalsViewer.UI.App.ViewModels.Query.CallStack;
 using Microsoft.UI;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Controls.Primitives;
@@ -16,7 +17,7 @@ using Windows.UI;
 
 namespace InternalsViewer.UI.App.Controls.FlameChart;
 
-public sealed partial class FlameChartControl : Grid, IDisposable
+public sealed partial class FlameChartControl : Grid, IPlayheadChart, IDisposable
 {
     private const double MinimumRangeSteps = 20;
 
@@ -34,6 +35,18 @@ public sealed partial class FlameChartControl : Grid, IDisposable
     {
         get => (TraceTimeline?)GetValue(TimelineProperty);
         set => SetValue(TimelineProperty, value);
+    }
+
+    public static readonly DependencyProperty FullTimelineProperty =
+        DependencyProperty.Register(nameof(FullTimeline),
+                                    typeof(TraceTimeline),
+                                    typeof(FlameChartControl),
+                                    new PropertyMetadata(null, OnFullTimelineChanged));
+
+    public TraceTimeline? FullTimeline
+    {
+        get => (TraceTimeline?)GetValue(FullTimelineProperty);
+        set => SetValue(FullTimelineProperty, value);
     }
 
     public static readonly DependencyProperty AxisProperty =
@@ -84,18 +97,6 @@ public sealed partial class FlameChartControl : Grid, IDisposable
         set => SetValue(SelectedNodeProperty, value);
     }
 
-    public static readonly DependencyProperty IsLockedProperty =
-        DependencyProperty.Register(nameof(IsLocked),
-                                    typeof(bool),
-                                    typeof(FlameChartControl),
-                                    new PropertyMetadata(false, OnIsLockedChanged));
-
-    public bool IsLocked
-    {
-        get => (bool)GetValue(IsLockedProperty);
-        set => SetValue(IsLockedProperty, value);
-    }
-
     public static readonly DependencyProperty ShowMemoryProperty =
         DependencyProperty.Register(nameof(ShowMemory),
                                     typeof(bool),
@@ -106,6 +107,18 @@ public sealed partial class FlameChartControl : Grid, IDisposable
     {
         get => (bool)GetValue(ShowMemoryProperty);
         set => SetValue(ShowMemoryProperty, value);
+    }
+
+    public static readonly DependencyProperty ShowCallStackProperty =
+        DependencyProperty.Register(nameof(ShowCallStack),
+                                    typeof(bool),
+                                    typeof(FlameChartControl),
+                                    new PropertyMetadata(false, OnShowCallStackChanged));
+
+    public bool ShowCallStack
+    {
+        get => (bool)GetValue(ShowCallStackProperty);
+        set => SetValue(ShowCallStackProperty, value);
     }
 
     public static readonly DependencyProperty GrantedMemoryProperty =
@@ -220,6 +233,16 @@ public sealed partial class FlameChartControl : Grid, IDisposable
 
     private double? _playhead;
 
+    private double? _reportedPlayhead;
+
+    private double? _stackPosition;
+
+    private double? _reportedStackPosition;
+
+    private int _reportedVersion = -1;
+
+    private TraceTimelineAxis _reportedAxis;
+
     private ulong _memoryMaximum;
 
     private ulong _selfMaximum;
@@ -265,6 +288,8 @@ public sealed partial class FlameChartControl : Grid, IDisposable
         };
 
         Children.Add(_overlay);
+
+        Children.Add(_minimap);
 
         _horizontalScrollBar = new ScrollBar
         {
@@ -373,15 +398,21 @@ public sealed partial class FlameChartControl : Grid, IDisposable
 
     public event Action? SelectionCleared;
 
-    public event Action<CallStackNode?, int>? CallStackOpenRequested;
+    public event Action<CallStackNode?, int>? CallTreeOpenRequested;
 
-    public event Action<bool>? LockChanged;
+    public event Action? CallStackOpenRequested;
+
+    public event Action? PlayheadChanged;
+
+    public bool HasCallStack => CallStackPosition is not null;
 
     private double FullStart => _fitStart;
 
     private double FullEnd => Math.Max(_fitEnd, FullStart + MinimumRange);
 
     private double MinimumRange => MinimumRangeSteps * (_timeline?.StepOf(_axis) ?? 1);
+
+    private double? CallStackPosition => _playhead ?? _stackPosition;
 
     private double ViewportHeight => Math.Max(0, _overlay.ActualHeight - ContentTop - BandHeight);
 
@@ -391,7 +422,7 @@ public sealed partial class FlameChartControl : Grid, IDisposable
 
     private bool ShowsSpikes => ShowMemory && MemoryMode == FlameChartMemoryMode.Allocated;
 
-    private bool ShowsMemoryBand => ShowMemory && _axis == TraceTimelineAxis.Position && _visible is { HasAllocations: true };
+    private bool ShowsMemoryBand => ShowMemory && _axis == TraceTimelineAxis.Position && _visible is { Memory.HasAllocations: true };
 
     private float BandHeight => ShowsMemoryBand ? MemoryBandHeight : 0;
 
@@ -402,48 +433,19 @@ public sealed partial class FlameChartControl : Grid, IDisposable
         SetView(FullStart, FullEnd);
     }
 
-    public void StepPlayhead(bool forward)
+    public void ZoomTo(double start, double end)
     {
-        if (_visible is not { } timeline)
-        {
-            return;
-        }
+        var margin = (end - start) * 0.05;
 
-        StopTransition();
-
-        var from = _playhead ?? _viewStart;
-
-        double? next = null;
-
-        foreach (var thread in timeline.Threads)
-        {
-            for (var depth = 0; depth < DepthOf(thread) && depth < thread.Rows.Count; depth++)
-            {
-                var row = thread.Rows[depth];
-
-                var index = forward ? row.FirstStartingAfter(_axis, from) : row.FirstStartingFrom(_axis, from, 0) - 1;
-
-                if (index < 0 || index >= row.Count)
-                {
-                    continue;
-                }
-
-                var start = row.Starts(_axis)[index];
-
-                if (next is not { } best || (forward ? start < best : start > best))
-                {
-                    next = start;
-                }
-            }
-        }
-
-        if (next is not { } target)
-        {
-            return;
-        }
-
-        PlacePlayhead(target);
+        SetView(start - margin, end + margin);
     }
+
+    public void ScopeTo(CallStackNode node) => SetRoot(node);
+
+    public IReadOnlyList<TraceThreadStack> GetCallStack()
+        => CallStackPosition is { } position && _visible is { } timeline ? timeline.StackAt(_axis, position) : [];
+
+    public void StepPlayhead(bool forward) => StepTo(forward, matches: null, allRows: false);
 
     public void Dispose()
     {
@@ -487,6 +489,8 @@ public sealed partial class FlameChartControl : Grid, IDisposable
         _landscapeLayer?.Dispose();
         _landscapeLayer = null;
 
+        _minimap.Dispose();
+
         _allocatedItem.Click -= OnMemoryModeClick;
         _inUseItem.Click -= OnMemoryModeClick;
 
@@ -515,15 +519,82 @@ public sealed partial class FlameChartControl : Grid, IDisposable
 
     private double OriginOf(TraceTimelineAxis axis) => _timeline?.StartOf(axis) ?? 0;
 
+    private void StepTo(bool forward, bool[]? matches, bool allRows)
+    {
+        if (_visible is not { } timeline)
+        {
+            return;
+        }
+
+        StopTransition();
+
+        var from = CallStackPosition ?? _viewStart;
+
+        double? next = null;
+
+        foreach (var thread in timeline.Threads)
+        {
+            var depth = allRows ? thread.Rows.Count : Math.Min(DepthOf(thread), thread.Rows.Count);
+
+            foreach (var row in thread.Rows.Take(depth))
+            {
+                next = (forward ? FindStartAfter(row, matches, from, next) : FindStartBefore(row, matches, from, next)) ?? next;
+            }
+        }
+
+        if (next is { } target)
+        {
+            PlacePlayhead(target);
+        }
+    }
+
+    private double? FindStartAfter(TraceTimelineRow row, bool[]? matches, double from, double? best)
+    {
+        var starts = row.Starts(_axis);
+
+        for (var index = row.FirstStartingAfter(_axis, from); index >= 0 && index < row.Count; index++)
+        {
+            if (best is { } limit && starts[index] >= limit)
+            {
+                return null;
+            }
+
+            if (!Excludes(matches, row.NodeAt(index)))
+            {
+                return starts[index];
+            }
+        }
+
+        return null;
+    }
+
+    private double? FindStartBefore(TraceTimelineRow row, bool[]? matches, double from, double? best)
+    {
+        var starts = row.Starts(_axis);
+
+        for (var index = row.FirstStartingFrom(_axis, from, 0) - 1; index >= 0 && index < row.Count; index--)
+        {
+            if (best is { } limit && starts[index] <= limit)
+            {
+                return null;
+            }
+
+            if (!Excludes(matches, row.NodeAt(index)))
+            {
+                return starts[index];
+            }
+        }
+
+        return null;
+    }
+
     private void PlacePlayhead(double target)
     {
         _playhead = target;
 
         if (target < _viewStart || target > _viewEnd)
         {
-            var range = _viewEnd - _viewStart;
-
-            SetView(target - range / 2, target + range / 2);
+            CentreViewOn(target);
         }
 
         _canvas.Invalidate();
@@ -622,6 +693,15 @@ public sealed partial class FlameChartControl : Grid, IDisposable
             _viewEnd = start + range;
         }
 
+        ApplyScroll();
+    }
+
+    private void ScrollViewTo(double start) => SetView(start, start + (_viewEnd - _viewStart));
+
+    private void CentreViewOn(double position) => ScrollViewTo(position - (_viewEnd - _viewStart) / 2);
+
+    private void ApplyScroll()
+    {
         ClampScroll();
 
         UpdateScrollBars();
@@ -654,12 +734,7 @@ public sealed partial class FlameChartControl : Grid, IDisposable
         _verticalScrollBar.Visibility = _contentHeight > viewport ? Visibility.Visible : Visibility.Collapsed;
     }
 
-    private void OnHorizontalScroll(object sender, ScrollEventArgs e)
-    {
-        var range = _viewEnd - _viewStart;
-
-        SetView(FullStart + e.NewValue, FullStart + e.NewValue + range);
-    }
+    private void OnHorizontalScroll(object sender, ScrollEventArgs e) => ScrollViewTo(FullStart + e.NewValue);
 
     private void OnVerticalScroll(object sender, ScrollEventArgs e)
     {
@@ -772,6 +847,8 @@ public sealed partial class FlameChartControl : Grid, IDisposable
         StopTransition();
 
         _playhead = null;
+
+        _stackPosition = null;
     }
 
     private void SetRoot(CallStackNode? root)
@@ -833,8 +910,8 @@ public sealed partial class FlameChartControl : Grid, IDisposable
 
         _inUseCurves.Clear();
 
-        _inUseMaximum = _visible is { HasAllocations: true } memory
-            ? memory.PeakInUseDuring(memory.StartOf(TraceTimelineAxis.Position), memory.EndOf(TraceTimelineAxis.Position))
+        _inUseMaximum = _visible is { Memory.HasAllocations: true } visible
+            ? visible.Memory.PeakInUseDuring(visible.StartOf(TraceTimelineAxis.Position), visible.EndOf(TraceTimelineAxis.Position))
             : 0;
 
         var selfAllocations = _visible?.SelfAllocations() ?? [];
@@ -863,7 +940,7 @@ public sealed partial class FlameChartControl : Grid, IDisposable
 
     private static ulong MemoryMaximum(TraceTimeline? timeline)
     {
-        if (timeline is not { HasAllocations: true })
+        if (timeline is not { Memory.HasAllocations: true })
         {
             return 0;
         }
@@ -880,7 +957,7 @@ public sealed partial class FlameChartControl : Grid, IDisposable
 
             for (var index = 0; index < row.Count; index++)
             {
-                maximum = Math.Max(maximum, timeline.AllocatedDuring(thread.ThreadId, starts[index], ends[index]).Bytes);
+                maximum = Math.Max(maximum, timeline.Memory.AllocatedDuring(thread.ThreadId, starts[index], ends[index]).Bytes);
             }
         }
 
@@ -930,33 +1007,16 @@ public sealed partial class FlameChartControl : Grid, IDisposable
         return any ? matches : null;
     }
 
-    private void FindSelectedCall(bool bringIntoView)
+    private static FlameHit? FindCall(TraceTimeline timeline, CallStackNode node, int call)
     {
-        if (SelectedCall is not { } reference
-            || _timeline is not { } timeline
-            || _visible is not { } visible
-            || Matches(timeline, n => ReferenceEquals(n, reference.Node)) is not { } nodes)
+        if (Matches(timeline, n => ReferenceEquals(n, node)) is not { } nodes)
         {
-            return;
+            return null;
         }
 
-        if (_selected is { } current
-            && SpanOf(current) is { } span
-            && span.Call == reference.Call
-            && span.Node < nodes.Length
-            && nodes[span.Node])
+        for (var lane = 0; lane < timeline.Threads.Count; lane++)
         {
-            if (bringIntoView)
-            {
-                BringIntoView(current);
-            }
-
-            return;
-        }
-
-        for (var lane = 0; lane < visible.Threads.Count; lane++)
-        {
-            var rows = visible.Threads[lane].Rows;
+            var rows = timeline.Threads[lane].Rows;
 
             for (var depth = 0; depth < rows.Count; depth++)
             {
@@ -964,25 +1024,46 @@ public sealed partial class FlameChartControl : Grid, IDisposable
 
                 for (var index = 0; index < row.Count; index++)
                 {
-                    var node = row.NodeAt(index);
+                    var spanNode = row.NodeAt(index);
 
-                    if (row.CallAt(index) != reference.Call || node < 0 || node >= nodes.Length || !nodes[node])
+                    if (row.CallAt(index) == call && spanNode >= 0 && spanNode < nodes.Length && nodes[spanNode])
                     {
-                        continue;
+                        return new FlameHit(lane, depth, index);
                     }
-
-                    _selected = new FlameHit(lane, depth, index);
-
-                    if (bringIntoView)
-                    {
-                        BringIntoView(_selected.Value);
-                    }
-
-                    return;
                 }
             }
         }
+
+        return null;
     }
+
+    private void FindSelectedCall(bool bringIntoView)
+    {
+        if (SelectedCall is not { } reference || _visible is not { } visible)
+        {
+            return;
+        }
+
+        var found = IsCall(_selected, reference) ? _selected : FindCall(visible, reference.Node, reference.Call);
+
+        if (found is not { } hit)
+        {
+            return;
+        }
+
+        _selected = hit;
+
+        if (bringIntoView)
+        {
+            BringIntoView(hit);
+        }
+    }
+
+    private bool IsCall(FlameHit? hit, CallReference reference)
+        => hit is { } at
+           && SpanOf(at) is { } span
+           && span.Call == reference.Call
+           && ReferenceEquals(_visible?.NodeOf(span.Node), reference.Node);
 
     private void BringIntoView(FlameHit hit)
     {
@@ -1007,27 +1088,17 @@ public sealed partial class FlameChartControl : Grid, IDisposable
             _scrollY = top - ViewportHeight / 3;
         }
 
-        var range = _viewEnd - _viewStart;
-
-        if (span.End - span.Start > range)
+        if (span.End - span.Start > _viewEnd - _viewStart)
         {
-            var margin = (span.End - span.Start) * 0.05;
-
-            SetView(span.Start - margin, span.End + margin);
+            ZoomTo(span.Start, span.End);
         }
         else if (span.End < _viewStart || span.Start > _viewEnd)
         {
-            var start = (span.Start + span.End) / 2 - range / 2;
-
-            SetView(start, start + range);
+            CentreViewOn((span.Start + span.End) / 2);
         }
         else
         {
-            ClampScroll();
-
-            UpdateScrollBars();
-
-            _canvas.Invalidate();
+            ApplyScroll();
         }
     }
 
@@ -1037,7 +1108,18 @@ public sealed partial class FlameChartControl : Grid, IDisposable
 
         control._timeline = e.NewValue as TraceTimeline;
 
+        control.ClearMark();
+
         control.Reset();
+    }
+
+    private static void OnFullTimelineChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
+    {
+        var control = (FlameChartControl)d;
+
+        control._markedCalls.Clear();
+
+        control._canvas.Invalidate();
     }
 
     private static void OnAxisChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
@@ -1059,6 +1141,8 @@ public sealed partial class FlameChartControl : Grid, IDisposable
         control.StopTransition();
 
         control._playhead = null;
+
+        control._stackPosition = null;
     }
 
     private static void OnHiddenCategoriesChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
@@ -1069,21 +1153,12 @@ public sealed partial class FlameChartControl : Grid, IDisposable
 
         control.RebuildVisible();
 
-        control.ClampScroll();
-
-        control.UpdateScrollBars();
-
-        control._canvas.Invalidate();
+        control.ApplyScroll();
     }
 
     private static void OnSelectedNodeChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
     {
         var control = (FlameChartControl)d;
-
-        if (control.IsLocked)
-        {
-            return;
-        }
 
         control._highlightedNode = e.NewValue as CallStackNode;
 
@@ -1104,6 +1179,9 @@ public sealed partial class FlameChartControl : Grid, IDisposable
     }
 
     private static void OnGrantedMemoryChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
+        => ((FlameChartControl)d).Redraw();
+
+    private static void OnShowCallStackChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
         => ((FlameChartControl)d).Redraw();
 
     private static void OnMemoryModeChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
@@ -1127,22 +1205,6 @@ public sealed partial class FlameChartControl : Grid, IDisposable
         control.Redraw();
     }
 
-    private static void OnIsLockedChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
-    {
-        var control = (FlameChartControl)d;
-
-        if (e.NewValue is false)
-        {
-            control._highlightedNode = control.SelectedNode;
-
-            control.FindNodeMatches(control._highlightedNode);
-
-            control.Redraw();
-        }
-
-        control.LockChanged?.Invoke(control.IsLocked);
-    }
-
     private static void OnSelectedCallChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
     {
         var control = (FlameChartControl)d;
@@ -1157,7 +1219,7 @@ public sealed partial class FlameChartControl : Grid, IDisposable
         {
             control.FindSelectedCall(bringIntoView: true);
 
-            if (reference.IsChosen && control._selected is null && control._root is not null && !control.IsLocked)
+            if (reference.IsSelected && control._selected is null && control._root is not null)
             {
                 control.SetRoot(null);
 
@@ -1165,7 +1227,7 @@ public sealed partial class FlameChartControl : Grid, IDisposable
             }
         }
 
-        var highlighted = reference is { IsChosen: true }
+        var highlighted = reference is { IsSelected: true }
             ? control._selected is null ? reference.Node : null
             : control._highlightedNode;
 

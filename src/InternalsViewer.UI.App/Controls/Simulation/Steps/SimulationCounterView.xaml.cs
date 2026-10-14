@@ -26,11 +26,11 @@ public sealed partial class SimulationCounterView : UserControl
 
         counter.PropertyChanged += OnCounterChanged;
 
-        PairPanel.Visibility = counter.Kind == SimulationCounterKind.Pair ? Visibility.Visible : Visibility.Collapsed;
+        PairPanel.Visibility = counter.DisplayType == CounterDisplayType.Pair ? Visibility.Visible : Visibility.Collapsed;
 
-        TextOnly.Visibility = counter.Kind == SimulationCounterKind.Text ? Visibility.Visible : Visibility.Collapsed;
+        TextOnly.Visibility = counter.DisplayType == CounterDisplayType.Text ? Visibility.Visible : Visibility.Collapsed;
 
-        Badge.Visibility = counter.Kind is SimulationCounterKind.Badge or SimulationCounterKind.Pill
+        Badge.Visibility = counter.DisplayType is CounterDisplayType.Badge or CounterDisplayType.Pill
                            ? Visibility.Visible
                            : Visibility.Collapsed;
 
@@ -40,7 +40,7 @@ public sealed partial class SimulationCounterView : UserControl
 
         Badge.BadgeColour = counter.Colour;
 
-        Badge.BadgeName = counter.Kind == SimulationCounterKind.Pill ? counter.Text : counter.Name;
+        Badge.BadgeName = counter.DisplayType == CounterDisplayType.Pill ? counter.Text : counter.Name;
 
         Apply();
     }
@@ -54,7 +54,7 @@ public sealed partial class SimulationCounterView : UserControl
 
         PairValue.Text = counter.Text;
 
-        if (counter.Kind == SimulationCounterKind.Pill)
+        if (counter.DisplayType == CounterDisplayType.Pill)
         {
             Badge.BadgeName = counter.Text;
 

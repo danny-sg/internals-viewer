@@ -33,7 +33,7 @@ public sealed partial class FlameChartControl
 
     private FlameHit? _selected;
 
-    private FlameHit? ChosenCall => SelectedCall is { IsChosen: true } && !IsLocked ? _selected : null;
+    private FlameHit? SelectedHit => SelectedCall is { IsSelected: true } ? _selected : null;
 
     private bool _isPressed;
 
@@ -184,9 +184,7 @@ public sealed partial class FlameChartControl
         {
             if (HitTest(position) is { } hit && SpanOf(hit) is { } span)
             {
-                var margin = (span.End - span.Start) * 0.05;
-
-                SetView(span.Start - margin, span.End + margin);
+                ZoomTo(span.Start, span.End);
             }
             else
             {
@@ -213,15 +211,9 @@ public sealed partial class FlameChartControl
 
         if (_isPanning)
         {
-            var scale = PixelsPerUnit((int)_overlay.ActualWidth);
-
-            var range = _viewEnd - _viewStart;
-
             _scrollY = _panScrollY - (position.Y - _pressPoint.Y);
 
-            var start = _panViewStart - (position.X - _pressPoint.X) / scale;
-
-            SetView(start, start + range);
+            PanTo(position);
 
             return;
         }
@@ -269,16 +261,20 @@ public sealed partial class FlameChartControl
             }
             else if (_isDragging)
             {
-                var range = _viewEnd - _viewStart;
-
-                var start = _panViewStart - (position.X - _pressPoint.X) / PixelsPerUnit((int)_overlay.ActualWidth);
-
-                SetView(start, start + range);
+                PanTo(position);
             }
 
             return;
         }
 
+        UpdateHover(position);
+    }
+
+    private void PanTo(Point position)
+        => ScrollViewTo(_panViewStart - (position.X - _pressPoint.X) / PixelsPerUnit((int)_overlay.ActualWidth));
+
+    private void UpdateHover(Point position)
+    {
         var found = BlockAt(position);
 
         UpdateCursor(IsOnSplitter(position)
@@ -425,19 +421,13 @@ public sealed partial class FlameChartControl
 
         if (point.Properties.IsHorizontalMouseWheel || modifiers.HasFlag(VirtualKeyModifiers.Shift))
         {
-            var shift = -Math.Sign(delta) * range * WheelPan;
-
-            SetView(_viewStart + shift, _viewEnd + shift);
+            ScrollViewTo(_viewStart - Math.Sign(delta) * range * WheelPan);
         }
         else if (modifiers.HasFlag(VirtualKeyModifiers.Control))
         {
             _scrollY -= delta;
 
-            ClampScroll();
-
-            UpdateScrollBars();
-
-            _canvas.Invalidate();
+            ApplyScroll();
         }
         else
         {
@@ -469,11 +459,7 @@ public sealed partial class FlameChartControl
 
         if (right - left < MinimumZoomWidth)
         {
-            ClampScroll();
-
-            UpdateScrollBars();
-
-            _canvas.Invalidate();
+            ApplyScroll();
 
             return;
         }
@@ -597,45 +583,29 @@ public sealed partial class FlameChartControl
 
         var call = -1;
 
-        if (hit is { } target && SpanOf(target) is { } span)
+        var span = hit is { } target ? SpanOf(target) : null;
+
+        if (span is { } found)
         {
-            node = _visible?.NodeOf(span.Node);
-            call = span.Call;
+            node = _visible?.NodeOf(found.Node);
+            call = found.Call;
         }
 
         var flyout = new MenuFlyout();
 
+        if (_selected is not null)
+        {
+            flyout.Items.Add(MenuItems.Create("Zoom to Selection", ZoomToSelectedCall));
+        }
+
         if (node is not null)
         {
-            var scope = new MenuFlyoutItem { Text = "Scope" };
-
-            scope.Click += (_, _) => SetRoot(node);
-
-            var scopeAndLock = new MenuFlyoutItem { Text = "Scope and Lock" };
-
-            scopeAndLock.Click += (_, _) =>
-            {
-                SetRoot(node);
-
-                IsLocked = true;
-            };
-
-            flyout.Items.Add(scope);
-            flyout.Items.Add(scopeAndLock);
+            flyout.Items.Add(MenuItems.Create("Scope", () => SetRoot(node)));
         }
 
         if (_root is not null)
         {
-            var clearScope = new MenuFlyoutItem { Text = "Clear Scope" };
-
-            clearScope.Click += (_, _) =>
-            {
-                SetRoot(null);
-
-                IsLocked = false;
-            };
-
-            flyout.Items.Add(clearScope);
+            flyout.Items.Add(MenuItems.Create("Clear Scope", () => SetRoot(null)));
         }
 
         if (flyout.Items.Count > 0)
@@ -643,11 +613,12 @@ public sealed partial class FlameChartControl
             flyout.Items.Add(new MenuFlyoutSeparator());
         }
 
-        var openCallStack = new MenuFlyoutItem { Text = "Open Call Stack" };
+        flyout.Items.Add(MenuItems.Create("Open Call Tree", () => CallTreeOpenRequested?.Invoke(node, call)));
 
-        openCallStack.Click += (_, _) => CallStackOpenRequested?.Invoke(node, call);
-
-        flyout.Items.Add(openCallStack);
+        if (span is { } opened)
+        {
+            flyout.Items.Add(MenuItems.Create("Open Call Stack", () => OpenCallStackAt(opened.Start)));
+        }
 
         if (hasPosition)
         {
@@ -659,6 +630,26 @@ public sealed partial class FlameChartControl
         }
 
         e.Handled = true;
+    }
+
+    private void OpenCallStackAt(double position)
+    {
+        StopPlay();
+
+        StopTransition();
+
+        _playhead = null;
+
+        _stackPosition = position;
+
+        if (position < _viewStart || position > _viewEnd)
+        {
+            CentreViewOn(position);
+        }
+
+        _canvas.Invalidate();
+
+        CallStackOpenRequested?.Invoke();
     }
 
     private void Select(FlameHit? hit)
@@ -785,6 +776,18 @@ public sealed partial class FlameChartControl
         var second = (point - minimum) / distance;
 
         return (Math.Min(first, second), Math.Max(first, second));
+    }
+
+    private void ZoomToSelectedCall()
+    {
+        if (_selected is not { } selected || SpanOf(selected) is not { } span)
+        {
+            return;
+        }
+
+        BringIntoView(selected);
+
+        ZoomTo(span.Start, span.End);
     }
 
     private void RootAt(FlameHit? hit)
@@ -938,7 +941,7 @@ public sealed partial class FlameChartControl
         return null;
     }
 
-    private TraceTimelineSpan? SpanOf(FlameHit hit)
+    private TraceSpan? SpanOf(FlameHit hit)
     {
         if (_visible is not { } timeline || hit.Lane >= timeline.Threads.Count)
         {
@@ -979,7 +982,7 @@ public sealed partial class FlameChartControl
             + $"to {Math.Floor(positions.End - OriginOf(TraceTimelineAxis.Position)):N0}"
         };
 
-        var (allocatedBytes, allocations) = timeline.AllocatedDuring(thread.ThreadId, positions.Start, positions.End);
+        var (allocatedBytes, allocations) = timeline.Memory.AllocatedDuring(thread.ThreadId, positions.Start, positions.End);
 
         if (allocations > 0)
         {
@@ -987,14 +990,14 @@ public sealed partial class FlameChartControl
                       + (allocations == 1 ? "Allocation" : "Allocations"));
         }
 
-        if (timeline.FreedDuring(thread.ThreadId, positions.Start, positions.End) is > 0 and var freed)
+        if (timeline.Memory.FreedDuring(thread.ThreadId, positions.Start, positions.End) is > 0 and var freed)
         {
             lines.Add($"Freed {SizeFormat.Format((long)freed)}");
         }
 
         if (allocations > 0)
         {
-            var retained = timeline.RetainedBy(thread.ThreadId, positions.Start, positions.End);
+            var retained = timeline.Memory.RetainedBy(thread.ThreadId, positions.Start, positions.End);
 
             lines.Add($"Retained At Return {SizeFormat.Format((long)retained)}");
         }

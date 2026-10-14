@@ -28,6 +28,14 @@ public sealed partial class FlameChartControl
 
     private bool[]? _nodeMatches;
 
+    public void StepSearch(bool forward)
+    {
+        if (_searchMatches is { } matches)
+        {
+            StepTo(forward, matches, allRows: true);
+        }
+    }
+
     private void FindSearchMatches()
     {
         _colours.Clear();

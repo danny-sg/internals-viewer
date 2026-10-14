@@ -8,5 +8,5 @@ public sealed record IteratorPlanLink(IReadOnlyDictionary<ulong, PlanNodeIdentif
     public static IteratorPlanLink Empty { get; } = new(new Dictionary<ulong, PlanNodeIdentifier>(),
                                                         new Dictionary<ulong, PlanNodeIdentifier>());
 
-    public PlanNodeIdentifier? NodeOf(ulong instance) => Instances.GetValueOrDefault(instance);
+    public PlanNodeIdentifier? GetNode(ulong instance) => Instances.GetValueOrDefault(instance);
 }

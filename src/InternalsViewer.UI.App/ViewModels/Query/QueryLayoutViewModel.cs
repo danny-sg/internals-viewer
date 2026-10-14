@@ -4,7 +4,6 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using InternalsViewer.UI.App.ViewModels.Docking;
 using InternalsViewer.UI.App.Views.Query.Tabs;
 using InternalsViewer.UI.App.Views.Query.Tabs.CallStack;
-using InternalsViewer.UI.App.Views.Query.Tabs.FlameChart;
 using InternalsViewer.UI.App.Views.Query.Tabs.Timeline;
 using Microsoft.UI.Xaml.Controls;
 using QueryPlanTabCommands = InternalsViewer.UI.App.Views.Query.Tabs.Plan.QueryPlanTabCommands;
@@ -20,7 +19,8 @@ public sealed partial class QueryLayoutViewModel : ObservableObject, IDisposable
     private const string AllocationsKey = "Allocations";
     private const string PlanKey = "Plan";
     private const string EventsKey = "Events";
-    private const string CallstackKey = "Callstack";
+    private const string CallTreeKey = "CallTree";
+    private const string LegacyCallTreeKey = "Callstack";
     private const string InstructionsKey = "Instructions";
     private const string TimelineKey = "Timeline";
     private const string FlameChartKey = "FlameChart";
@@ -49,7 +49,13 @@ public sealed partial class QueryLayoutViewModel : ObservableObject, IDisposable
     private bool _isEventsVisible;
 
     [ObservableProperty]
-    private bool _isCallstackVisible;
+    private bool _isCallTreeVisible;
+
+    [ObservableProperty]
+    private bool _isCallTreeMembersVisible;
+
+    [ObservableProperty]
+    private bool _isCallTreeSymbolsVisible;
 
     [ObservableProperty]
     private bool _isInstructionsVisible;
@@ -96,10 +102,10 @@ public sealed partial class QueryLayoutViewModel : ObservableObject, IDisposable
                                                                                             keepAlive: true,
                                                                                             key: EventsKey),
 
-            [CallstackKey] = DocumentViewModel.Create<QueryCallStackTabView>("Call Stack",
+            [CallTreeKey] = DocumentViewModel.Create<QueryCallTreeTabView>("Call Tree",
                                                                              content,
                                                                              keepAlive: true,
-                                                                             key: CallstackKey),
+                                                                             key: CallTreeKey),
 
             [InstructionsKey] = DocumentViewModel.Create<QueryInstructionsTabView>("Instructions",
                                                                                    content,
@@ -145,7 +151,8 @@ public sealed partial class QueryLayoutViewModel : ObservableObject, IDisposable
 
     public bool RestoreRoot(DockNode? dto)
     {
-        var root = DockLayoutSerializer.Deserialize(dto, key => _documentsByKey.GetValueOrDefault(key));
+        var root = DockLayoutSerializer.Deserialize(dto,
+                                                    key => _documentsByKey.GetValueOrDefault(key == LegacyCallTreeKey ? CallTreeKey : key));
 
         if (root is null)
         {
@@ -184,7 +191,7 @@ public sealed partial class QueryLayoutViewModel : ObservableObject, IDisposable
         {
             Dock.SetRoot(DefaultRoot(TimelineKey));
 
-            Dock.ShowBeside(_documentsByKey[FlameChartKey], _documentsByKey[TimelineKey]);
+            Dock.ShowBeside(_documentsByKey[FlameChartKey], _documentsByKey[TimelineKey], select: false);
 
             return;
         }
@@ -208,14 +215,21 @@ public sealed partial class QueryLayoutViewModel : ObservableObject, IDisposable
         Show(_documentsByKey[PlanKey]);
     }
 
-    public void ShowCallStack()
+    public void ShowCallTree()
     {
-        IsCallstackVisible = true;
+        IsCallTreeVisible = true;
 
-        Show(_documentsByKey[CallstackKey]);
+        Show(_documentsByKey[CallTreeKey]);
     }
 
-    public bool IsShown(string key) 
+    public void ShowFlameChart()
+    {
+        IsFlameChartVisible = true;
+
+        Show(_documentsByKey[FlameChartKey]);
+    }
+
+    public bool IsVisible(string key) 
         => _documentsByKey.TryGetValue(key, out var document) && Dock.Contains(document);
 
     public bool RemoveDocument(string key, out DocumentViewModel document)
@@ -251,8 +265,12 @@ public sealed partial class QueryLayoutViewModel : ObservableObject, IDisposable
     partial void OnIsEventsVisibleChanged(bool value)
         => SetDocumentVisible(_documentsByKey[EventsKey], value);
 
-    partial void OnIsCallstackVisibleChanged(bool value)
-        => SetDocumentVisible(_documentsByKey[CallstackKey], value);
+    partial void OnIsCallTreeVisibleChanged(bool value)
+        => SetDocumentVisible(_documentsByKey[CallTreeKey], value);
+
+    partial void OnIsCallTreeMembersVisibleChanged(bool value) => IsCallTreeVisible |= value;
+
+    partial void OnIsCallTreeSymbolsVisibleChanged(bool value) => IsCallTreeVisible |= value;
 
     partial void OnIsInstructionsVisibleChanged(bool value)
         => SetDocumentVisible(_documentsByKey[InstructionsKey], value);
@@ -302,9 +320,13 @@ public sealed partial class QueryLayoutViewModel : ObservableObject, IDisposable
 
         _rootBeforeTrace = DockLayoutSerializer.Serialize(Dock.Root);
 
-        if (Dock.Contains(_documentsByKey[TimelineKey]))
+        var timeline = _documentsByKey[TimelineKey];
+
+        if (Dock.FindGroup(timeline) is { } group)
         {
-            Dock.ShowBeside(_documentsByKey[FlameChartKey], _documentsByKey[TimelineKey]);
+            var replacesTimeline = !CanShowEventViews && ReferenceEquals(group.SelectedDocument, timeline);
+
+            Dock.ShowBeside(_documentsByKey[FlameChartKey], timeline, select: replacesTimeline);
         }
         else
         {
@@ -347,14 +369,14 @@ public sealed partial class QueryLayoutViewModel : ObservableObject, IDisposable
         }
     }
 
-    private void SetDocumentVisible(DocumentViewModel document, bool show)
+    private void SetDocumentVisible(DocumentViewModel document, bool isVisible)
     {
         if (_suppressVisibilitySync)
         {
             return;
         }
 
-        if (show && !CanShowEventViews && Array.IndexOf(EventViews, document) >= 0)
+        if (isVisible && !CanShowEventViews && Array.IndexOf(EventViews, document) >= 0)
         {
             _hiddenForTrace.Add(document);
 
@@ -363,7 +385,7 @@ public sealed partial class QueryLayoutViewModel : ObservableObject, IDisposable
             return;
         }
 
-        if (show && ReferenceEquals(document, _documentsByKey[FlameChartKey]))
+        if (isVisible && ReferenceEquals(document, _documentsByKey[FlameChartKey]))
         {
             if (IsTrace)
             {
@@ -377,7 +399,7 @@ public sealed partial class QueryLayoutViewModel : ObservableObject, IDisposable
             return;
         }
 
-        if (show)
+        if (isVisible)
         {
             Dock.Show(document);
         }
@@ -395,7 +417,7 @@ public sealed partial class QueryLayoutViewModel : ObservableObject, IDisposable
         IsAllocationsVisible = Dock.Contains(_documentsByKey[AllocationsKey]);
         IsExecutionPlanVisible = Dock.Contains(_documentsByKey[PlanKey]);
         IsEventsVisible = Dock.Contains(_documentsByKey[EventsKey]);
-        IsCallstackVisible = Dock.Contains(_documentsByKey[CallstackKey]);
+        IsCallTreeVisible = Dock.Contains(_documentsByKey[CallTreeKey]);
         IsInstructionsVisible = Dock.Contains(_documentsByKey[InstructionsKey]);
         IsTimelineVisible = Dock.Contains(_documentsByKey[TimelineKey]);
         IsFlameChartVisible = Dock.Contains(_documentsByKey[FlameChartKey]);

@@ -55,6 +55,24 @@ public class TraceTimelineTests
     }
 
     [Fact]
+    public void The_Stack_At_A_Position_Is_Each_Threads_Calls_In_Progress_Outermost_First()
+    {
+        var timeline = Build(Span(node: 0, start: 0, end: 40, call: 4),
+                             Span(node: 1, start: 5, end: 30, call: 5),
+                             Span(node: 2, start: 10, end: 20, call: 6),
+                             Span(node: 0, start: 0, end: 40, thread: 9, sequence: 2, call: 7));
+
+        var stacks = timeline.StackAt(Instructions, 25);
+
+        Assert.Equal([(7u, "0:4 1:5"), (9u, "0:7")],
+                     stacks.Select(s => (s.ThreadId, string.Join(' ', s.Calls.Select(c => $"{c.Span.Node}:{c.Span.Call}")))));
+    }
+
+    [Fact]
+    public void A_Position_No_Call_Covers_Has_No_Stack()
+        => Assert.Empty(Build(Span(node: 0, start: 0, end: 10)).StackAt(Instructions, 15));
+
+    [Fact]
     public void Each_Thread_Has_Its_Own_Lane_In_The_Order_It_Started()
     {
         var timeline = Build(Span(node: 0, start: 0, end: 10, thread: 9, sequence: 5),
@@ -122,7 +140,7 @@ public class TraceTimelineTests
 
         timeline.MapNodes([null, execute, inner]);
 
-        var cropped = timeline.CroppedTo(tree);
+        var cropped = timeline.CroppedTo(new HashSet<CallStackNode>(ReferenceEqualityComparer.Instance) { execute });
 
         Assert.NotNull(cropped);
 
@@ -161,7 +179,7 @@ public class TraceTimelineTests
 
         timeline.MapNodes([null, execute, scan, read]);
 
-        var cropped = timeline.CroppedTo(tree);
+        var cropped = timeline.CroppedTo(new HashSet<CallStackNode>(ReferenceEqualityComparer.Instance) { execute });
 
         Assert.NotNull(cropped);
 
@@ -187,7 +205,7 @@ public class TraceTimelineTests
 
         timeline.MapNodes([elsewhere, execute, null]);
 
-        var cropped = timeline.CroppedTo(tree);
+        var cropped = timeline.CroppedTo(new HashSet<CallStackNode>(ReferenceEqualityComparer.Instance) { execute });
 
         Assert.NotNull(cropped);
         Assert.Equal([7u], cropped.Threads.Select(t => t.ThreadId));
@@ -352,10 +370,10 @@ public class TraceTimelineTests
 
         timeline.SetMemory([new(7, 10, 15, 100, 0xA), new(7, 12, 13, 40, 0xB), new(7, 20, 25, 50, 0xC), new(9, 10, 11, 5, 0xD)], []);
 
-        Assert.Equal((150ul, 2), timeline.AllocatedDuring(7, 0, 30));
-        Assert.Equal((50ul, 1), timeline.AllocatedDuring(7, 15, 30));
-        Assert.Equal((100ul, 1), timeline.AllocatedDuring(7, 10, 15));
-        Assert.Equal((0ul, 0), timeline.AllocatedDuring(8, 0, 30));
+        Assert.Equal((150ul, 2), timeline.Memory.AllocatedDuring(7, 0, 30));
+        Assert.Equal((50ul, 1), timeline.Memory.AllocatedDuring(7, 15, 30));
+        Assert.Equal((100ul, 1), timeline.Memory.AllocatedDuring(7, 10, 15));
+        Assert.Equal((0ul, 0), timeline.Memory.AllocatedDuring(8, 0, 30));
     }
 
     [Fact]
@@ -365,7 +383,7 @@ public class TraceTimelineTests
 
         timeline.SetMemory([new(7, 1, 2, 64, 0xA)], []);
 
-        Assert.Equal((64ul, 1), timeline.Where(_ => true).AllocatedDuring(7, 0, 5));
+        Assert.Equal((64ul, 1), timeline.Where(_ => true).Memory.AllocatedDuring(7, 0, 5));
     }
 
     [Fact]

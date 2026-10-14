@@ -42,7 +42,7 @@ public sealed partial class FlameChartControl
 
         DrawBandMarker(canvas, timeline, x, width, height, scale);
 
-        if (ShowMemory)
+        if (ShowMemory || ShowCallStack)
         {
             DrawPlayheadHandle(canvas, x, value, width);
 
@@ -88,7 +88,7 @@ public sealed partial class FlameChartControl
 
                 var positions = row.Span(TraceTimelineAxis.Position, index);
 
-                var (bytes, _) = timeline.AllocatedDuring(thread.ThreadId, positions.Start, positions.End);
+                var (bytes, _) = timeline.Memory.AllocatedDuring(thread.ThreadId, positions.Start, positions.End);
 
                 var spanLeft = (float)((span.Start - _viewStart) * scale);
 
@@ -132,6 +132,32 @@ public sealed partial class FlameChartControl
         canvas.Restore();
 
         DrawPlayheadHandle(canvas, x, value, width);
+    }
+
+    private void ReportPlayhead()
+    {
+        if (_playhead is not null)
+        {
+            _stackPosition = null;
+        }
+
+        if (_playhead == _reportedPlayhead
+            && _stackPosition == _reportedStackPosition
+            && _version == _reportedVersion
+            && _axis == _reportedAxis)
+        {
+            return;
+        }
+
+        _reportedPlayhead = _playhead;
+
+        _reportedStackPosition = _stackPosition;
+
+        _reportedVersion = _version;
+
+        _reportedAxis = _axis;
+
+        DispatcherQueue.TryEnqueue(() => PlayheadChanged?.Invoke());
     }
 
     private void DrawPlayheadHandle(SKCanvas canvas, float x, double value, int width)

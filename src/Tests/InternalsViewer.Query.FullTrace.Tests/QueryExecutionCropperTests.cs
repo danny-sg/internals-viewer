@@ -1,6 +1,9 @@
 using InternalsViewer.Query.CallStack;
 using InternalsViewer.Query.CallStack.Categories;
 using InternalsViewer.Query.FullTrace;
+using InternalsViewer.Query.FullTrace.Calls;
+using InternalsViewer.Query.FullTrace.Native;
+using InternalsViewer.Query.FullTrace.Timeline;
 
 namespace InternalsViewer.Query.FullTrace.Tests;
 
@@ -8,7 +11,7 @@ namespace InternalsViewer.Query.FullTrace.Tests;
 public class QueryExecutionCropperTests
 {
     [Fact]
-    public void The_Tree_Starts_At_The_Query_Execution_And_Drops_Compilation()
+    public void The_Query_Is_Rooted_At_Its_Execution_Leaving_Out_Compilation()
     {
         var tree = new CallStackTree();
 
@@ -18,19 +21,9 @@ public class QueryExecutionCropperTests
 
         var execute = tree.AddCall(source, Frame("CMsqlExecContext", "FExecute", 0x40), 1);
 
-        var getRow = tree.AddCall(execute, Frame("CQScanTableScanNew", "GetRow", 0x50), 5);
+        tree.AddCall(execute, Frame("CQScanTableScanNew", "GetRow", 0x50), 5);
 
-        var crop = QueryExecutionCropper.Crop(tree);
-
-        Assert.NotNull(crop);
-
-        var root = Assert.Single(crop.Value.Tree.Root.ChildNodes);
-
-        Assert.Equal("CMsqlExecContext::FExecute", root.Symbol);
-        Assert.Equal(["CQScanTableScanNew::GetRow"], root.ChildNodes.Select(n => n.Symbol));
-        Assert.Same(root, crop.Value.Projected[execute]);
-        Assert.Equal(5, crop.Value.Projected[getRow].Calls);
-        Assert.False(crop.Value.Projected.ContainsKey(source));
+        Assert.Same(execute, Assert.Single(QueryExecutionCropper.GetRoots(tree)));
     }
 
     [Fact]
@@ -44,11 +37,8 @@ public class QueryExecutionCropperTests
 
         tree.AddCall(worker, Frame("CQScanXProducerNew", "GetRow", 0x70, SymbolCategory.QueryOperator), 3);
 
-        var crop = QueryExecutionCropper.Crop(tree);
-
-        Assert.NotNull(crop);
         Assert.Equal(["CMsqlExecContext::FExecute", "SubprocEntrypoint::m"],
-                     crop.Value.Tree.Root.ChildNodes.Select(n => n.Symbol).Order());
+                     QueryExecutionCropper.GetRoots(tree).Select(n => n.Symbol).Order());
     }
 
     [Fact]
@@ -62,10 +52,7 @@ public class QueryExecutionCropperTests
 
         tree.AddCall(tree.AddCall(tree.Root, Frame("SystemTaskEntryPoint", "m", 0x90), 1), Frame("CheckpointTask", "Run", 0xA0), 4);
 
-        var crop = QueryExecutionCropper.Crop(tree);
-
-        Assert.NotNull(crop);
-        Assert.Equal(["CMsqlExecContext::FExecute"], crop.Value.Tree.Root.ChildNodes.Select(n => n.Symbol));
+        Assert.Equal(["CMsqlExecContext::FExecute"], QueryExecutionCropper.GetRoots(tree).Select(n => n.Symbol));
     }
 
     [Fact]
@@ -75,8 +62,69 @@ public class QueryExecutionCropperTests
 
         tree.AddCall(tree.Root, Frame("ThreadEntry", "m", 0x10), 1);
 
-        Assert.Null(QueryExecutionCropper.Crop(tree));
+        Assert.Empty(QueryExecutionCropper.GetRoots(tree));
     }
+
+    [Fact]
+    public void A_Trace_Keeps_Compilation_While_Its_Query_Timeline_Starts_At_The_Execution()
+    {
+        var tree = new CallStackTree();
+
+        var source = tree.AddCall(tree.Root, Frame("CSQLSource", "Execute", 0x20), 1);
+
+        var transform = tree.AddCall(source, Frame("CSQLSource", "Transform", 0x30), 1);
+
+        var execute = tree.AddCall(source, Frame("CMsqlExecContext", "FExecute", 0x40), 1);
+
+        var builder = new TraceTimeline.Builder();
+
+        builder.Add([Span(0, 0, 100), Span(1, 10, 20), Span(2, 30, 90)]);
+
+        var timeline = builder.Build([new(-1, 0, 0x20, 0, 1), new(0, 0, 0x30, 0, 1), new(0, 0, 0x40, 0, 1)]);
+
+        timeline.MapNodes([source, transform, execute]);
+
+        var trace = new TraceResult(tree, new TraceCallStore.Builder().Build(), timeline);
+
+        Assert.Equal((3L, 1L), (trace.Timeline.SpanCount, trace.QueryTimeline.SpanCount));
+    }
+
+    [Fact]
+    public void Activity_Is_Spread_Over_The_Window_It_Is_Set_To()
+    {
+        var tree = new CallStackTree { ActivityFromTrace = true };
+
+        var source = tree.AddCall(tree.Root, Frame("CSQLSource", "Execute", 0x20), 1);
+
+        var transform = tree.AddCall(source, Frame("CSQLSource", "Transform", 0x30), 1);
+
+        var execute = tree.AddCall(source, Frame("CMsqlExecContext", "FExecute", 0x40), 1);
+
+        var scan = tree.AddCall(execute, Frame("CQScanTableScanNew", "GetRow", 0x50), 2);
+
+        var builder = new TraceTimeline.Builder();
+
+        builder.Add([Span(0, 0, 100), Span(1, 10, 20), Span(2, 30, 90), Span(3, 32, 35), Span(3, 80, 85)]);
+
+        var timeline = builder.Build([new(-1, 0, 0x20, 0, 1), new(0, 0, 0x30, 0, 1), new(0, 0, 0x40, 0, 1), new(2, 0, 0x50, 0, 1)]);
+
+        timeline.MapNodes([source, transform, execute, scan]);
+
+        var trace = new TraceResult(tree, new TraceCallStore.Builder().Build(), timeline);
+
+        trace.SetActivityWindow(trace.QueryTimeline);
+
+        Assert.Equal([0, 3, 80], Buckets(execute));
+
+        trace.SetActivityWindow(trace.Timeline);
+
+        Assert.Equal([28, 30, 76], Buckets(execute));
+    }
+
+    private static CallSpan Span(int node, ulong start, ulong end) => new(1, start, 1, end, start, end, node, 7, 0, 1);
+
+    private static int[] Buckets(CallStackNode node)
+        => [.. Enumerable.Range(0, node.ActivityCounts.Length).Where(i => node.ActivityCounts[i] > 0)];
 
     private static CallstackFrame Frame(string className,
                                         string methodName,

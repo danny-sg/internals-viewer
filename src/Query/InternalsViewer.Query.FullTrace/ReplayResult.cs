@@ -1,4 +1,4 @@
-using InternalsViewer.Query.FullTrace.CallLog;
+using InternalsViewer.Query.FullTrace.Calls;
 using InternalsViewer.Query.FullTrace.Native;
 using InternalsViewer.Query.FullTrace.Timeline;
 
@@ -13,7 +13,7 @@ namespace InternalsViewer.Query.FullTrace;
 /// <param name="Modules">
 /// Modules loaded during the trace recording
 /// </param>
-/// <param name="CallLog">
+/// <param name="CallStore">
 /// Function calls including sequence, thread, registers, return value, and raw node index
 /// </param>
 /// <param name="Timeline">
@@ -21,6 +21,7 @@ namespace InternalsViewer.Query.FullTrace;
 /// </param>
 internal sealed record ReplayResult(CallNode[] Nodes,
                                     IReadOnlyList<TraceModule> Modules,
-                                    TraceCallLog CallLog,
+                                    TraceCallStore CallStore,
                                     TraceTimeline Timeline,
-                                    PublishedEvent[] PublishedEvents);
+                                    PublishedEvent[] PublishedEvents,
+                                    AddressEntry[] MemoryMap);

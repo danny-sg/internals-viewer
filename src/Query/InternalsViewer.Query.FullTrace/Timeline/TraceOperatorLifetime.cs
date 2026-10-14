@@ -8,8 +8,8 @@ namespace InternalsViewer.Query.FullTrace.Timeline;
 public sealed record TraceOperatorLifetime(uint Thread,
                                            ExecutionOperatorEvent Operator,
                                            int Node,
-                                           IReadOnlyList<TraceTimelineSpan> PositionCalls,
-                                           IReadOnlyList<TraceTimelineSpan> InstructionCalls,
+                                           IReadOnlyList<TraceSpan> PositionCalls,
+                                           IReadOnlyList<TraceSpan> InstructionCalls,
                                            MemoryInUseCurve InUse)
 {
     private double[] PositionEnds { get; } = [.. PositionCalls.Select(c => c.End)];
@@ -18,7 +18,7 @@ public sealed record TraceOperatorLifetime(uint Thread,
 
     private double[] InstructionEnds { get; } = [.. InstructionCalls.Select(c => c.End)];
 
-    public IReadOnlyList<TraceTimelineSpan> Calls(TraceTimelineAxis axis)
+    public IReadOnlyList<TraceSpan> Calls(TraceTimelineAxis axis)
         => axis == TraceTimelineAxis.Position ? PositionCalls : InstructionCalls;
 
     public double StartOf(TraceTimelineAxis axis) => Calls(axis)[0].Start;

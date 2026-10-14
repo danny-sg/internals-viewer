@@ -1,4 +1,4 @@
-﻿using InternalsViewer.Query.FullTrace.CallLog;
+﻿using InternalsViewer.Query.FullTrace.Calls;
 using InternalsViewer.Query.FullTrace.Memory;
 using InternalsViewer.Query.Memory;
 
@@ -8,23 +8,23 @@ namespace InternalsViewer.Query.FullTrace.Tests;
 public class MemoryFunctionTests
 {
     [Theory]
-    [InlineData("CMemThread<CMemObj>::Alloc", MemoryOperation.Allocate, 1, -1, 1ul)]
-    [InlineData("CMemObj::Alloc", MemoryOperation.Allocate, 1, -1, 1ul)]
-    [InlineData("CMemThread<CMemProc>::Realloc", MemoryOperation.Reallocate, 2, 1, 1ul)]
-    [InlineData("CMemThread<CMemAligned<CMemObj> >::Free", MemoryOperation.Free, -1, 1, 1ul)]
-    [InlineData("operator new", MemoryOperation.Allocate, 0, -1, 1ul)]
-    [InlineData("operator delete[]", MemoryOperation.Free, -1, 0, 1ul)]
-    [InlineData("MemoryClerkInternal::AllocatePages", MemoryOperation.Allocate, 1, -1, 8192ul)]
-    [InlineData("MemoryClerkInternal::FreePages", MemoryOperation.Free, 2, 1, 8192ul)]
-    [InlineData("MemoryClerkInternal::AllocateReservedPages", MemoryOperation.Allocate, 1, -1, 8192ul)]
-    [InlineData("MemoryClerkInternal::FreeReservedPages", MemoryOperation.Free, 2, 1, 8192ul)]
-    [InlineData("MemoryObjectFactory::CreateMemObject", MemoryOperation.Create, -1, -1, 1ul)]
-    [InlineData("CQryMemManager::AllocatePages", MemoryOperation.Allocate, 1, -1, 8192ul)]
-    [InlineData("CQryMemManager::FreePages", MemoryOperation.Free, 2, 1, 8192ul)]
-    [InlineData("CHashWorkfilePartitionInstance::PvAllocateHashBucketPage", MemoryOperation.Allocate, -1, -1, 8192ul)]
-    [InlineData("CHashWorkfilePartitionInstance::FreeHashBucketPage", MemoryOperation.Free, -1, 1, 1ul)]
+    [InlineData("CMemThread<CMemObj>::Alloc", AllocationOperation.Allocate, 1, -1, 1ul)]
+    [InlineData("CMemObj::Alloc", AllocationOperation.Allocate, 1, -1, 1ul)]
+    [InlineData("CMemThread<CMemProc>::Realloc", AllocationOperation.Reallocate, 2, 1, 1ul)]
+    [InlineData("CMemThread<CMemAligned<CMemObj> >::Free", AllocationOperation.Free, -1, 1, 1ul)]
+    [InlineData("operator new", AllocationOperation.Allocate, 0, -1, 1ul)]
+    [InlineData("operator delete[]", AllocationOperation.Free, -1, 0, 1ul)]
+    [InlineData("MemoryClerkInternal::AllocatePages", AllocationOperation.Allocate, 1, -1, 8192ul)]
+    [InlineData("MemoryClerkInternal::FreePages", AllocationOperation.Free, 2, 1, 8192ul)]
+    [InlineData("MemoryClerkInternal::AllocateReservedPages", AllocationOperation.Allocate, 1, -1, 8192ul)]
+    [InlineData("MemoryClerkInternal::FreeReservedPages", AllocationOperation.Free, 2, 1, 8192ul)]
+    [InlineData("MemoryObjectFactory::CreateMemObject", AllocationOperation.Create, -1, -1, 1ul)]
+    [InlineData("CQryMemManager::AllocatePages", AllocationOperation.Allocate, 1, -1, 8192ul)]
+    [InlineData("CQryMemManager::FreePages", AllocationOperation.Free, 2, 1, 8192ul)]
+    [InlineData("CHashWorkfilePartitionInstance::PvAllocateHashBucketPage", AllocationOperation.Allocate, -1, -1, 8192ul)]
+    [InlineData("CHashWorkfilePartitionInstance::FreeHashBucketPage", AllocationOperation.Free, -1, 1, 1ul)]
     public void An_Allocator_Is_Recognised_By_Its_Name(string symbol,
-                                                       MemoryOperation operation,
+                                                       AllocationOperation operation,
                                                        int sizeSlot,
                                                        int pointerSlot,
                                                        ulong unit)
@@ -47,21 +47,21 @@ public class MemoryFunctionTests
     {
         var call = new TraceArgumentCall(1, 1, true, [0xA0, 3, 100, 0], 0);
 
-        Assert.Equal(3ul, MemoryFunction.Classify(0x1000, "CMemObj::Alloc")!.BytesOf(call));
-        Assert.Equal(100ul, MemoryFunction.Classify(0x1000, "CMemObj::Realloc")!.BytesOf(call));
-        Assert.Equal(3ul * 8192, MemoryFunction.Classify(0x1000, "MemoryClerkInternal::AllocatePages")!.BytesOf(call));
-        Assert.Equal(0ul, MemoryFunction.Classify(0x1000, "CMemObj::Free")!.BytesOf(call));
+        Assert.Equal(3ul, MemoryFunction.Classify(0x1000, "CMemObj::Alloc")!.GetByteCount(call));
+        Assert.Equal(100ul, MemoryFunction.Classify(0x1000, "CMemObj::Realloc")!.GetByteCount(call));
+        Assert.Equal(3ul * 8192, MemoryFunction.Classify(0x1000, "MemoryClerkInternal::AllocatePages")!.GetByteCount(call));
+        Assert.Equal(0ul, MemoryFunction.Classify(0x1000, "CMemObj::Free")!.GetByteCount(call));
     }
 
     [Theory]
-    [InlineData("RtlAllocateHeap", MemoryOperation.Allocate, 2, -1)]
-    [InlineData("RtlReAllocateHeap", MemoryOperation.Reallocate, 3, 2)]
-    [InlineData("RtlFreeHeap", MemoryOperation.Free, -1, 2)]
-    [InlineData("LocalAlloc", MemoryOperation.Allocate, 1, -1)]
-    [InlineData("malloc", MemoryOperation.Allocate, 0, -1)]
-    [InlineData("realloc", MemoryOperation.Reallocate, 1, 0)]
-    [InlineData("free", MemoryOperation.Free, -1, 0)]
-    public void A_Heap_Function_Is_Recognised_By_Its_Export(string export, MemoryOperation operation, int sizeSlot, int pointerSlot)
+    [InlineData("RtlAllocateHeap", AllocationOperation.Allocate, 2, -1)]
+    [InlineData("RtlReAllocateHeap", AllocationOperation.Reallocate, 3, 2)]
+    [InlineData("RtlFreeHeap", AllocationOperation.Free, -1, 2)]
+    [InlineData("LocalAlloc", AllocationOperation.Allocate, 1, -1)]
+    [InlineData("malloc", AllocationOperation.Allocate, 0, -1)]
+    [InlineData("realloc", AllocationOperation.Reallocate, 1, 0)]
+    [InlineData("free", AllocationOperation.Free, -1, 0)]
+    public void A_Heap_Function_Is_Recognised_By_Its_Export(string export, AllocationOperation operation, int sizeSlot, int pointerSlot)
     {
         var function = MemoryFunction.ClassifyExport(0x1000, export);
 
@@ -73,7 +73,7 @@ public class MemoryFunctionTests
     {
         var call = new TraceArgumentCall(1, 1, true, [4, 24, 0, 0], 0);
 
-        Assert.Equal(96ul, MemoryFunction.ClassifyExport(0x1000, "calloc")!.BytesOf(call));
+        Assert.Equal(96ul, MemoryFunction.ClassifyExport(0x1000, "calloc")!.GetByteCount(call));
     }
 
     [Fact]
@@ -105,8 +105,8 @@ public class MemoryFunctionTests
 
         var release = new TraceArgumentCall(3, 1, true, [0x9000, 0, 0x8000, 0], 1);
 
-        Assert.Equal((true, false, true), (allocate.Applies(commit), allocate.Applies(reserve), free.Applies(release)));
-        Assert.Equal(65536ul, allocate.BytesOf(commit));
+        Assert.Equal((true, false, true), (allocate.IsCounted(commit), allocate.IsCounted(reserve), free.IsCounted(release)));
+        Assert.Equal(65536ul, allocate.GetByteCount(commit));
         Assert.Equal((true, false), (allocate.IsVirtual, allocate.IsHeap));
     }
 
@@ -121,7 +121,9 @@ public class MemoryFunctionTests
     {
         var call = new TraceArgumentCall(1, 1, true, [0xA0, 0, 0, 0], 0x5000);
 
-        Assert.Equal(8192ul, MemoryFunction.Classify(0x1000, "CHashWorkfilePartitionInstance::PvAllocateHashBucketPage")!.BytesOf(call));
+        var function = MemoryFunction.Classify(0x1000, "CHashWorkfilePartitionInstance::PvAllocateHashBucketPage")!;
+
+        Assert.Equal(8192ul, function.GetByteCount(call));
     }
 
     [Fact]
@@ -129,6 +131,6 @@ public class MemoryFunctionTests
     {
         var call = new TraceArgumentCall(1, 1, true, [0xA0, ulong.MaxValue, 0, 0], 0);
 
-        Assert.Equal(0ul, MemoryFunction.Classify(0x1000, "CMemObj::Alloc")!.BytesOf(call));
+        Assert.Equal(0ul, MemoryFunction.Classify(0x1000, "CMemObj::Alloc")!.GetByteCount(call));
     }
 }

@@ -1,11 +1,13 @@
 using System.Runtime.InteropServices;
 using System.Text;
-using InternalsViewer.Query.FullTrace.CallLog;
+using InternalsViewer.Query.FullTrace.Calls;
+using InternalsViewer.Query.FullTrace.Locators;
 using InternalsViewer.Query.FullTrace.PublishedEvents;
 using InternalsViewer.Query.FullTrace.Native;
 using InternalsViewer.Query.FullTrace.Timeline;
 using InternalsViewer.Query.Recording;
 using InternalsViewer.Query.FullTrace.Functions;
+using InternalsViewer.Query.FullTrace.Memory;
 
 namespace InternalsViewer.Query.FullTrace;
 
@@ -122,15 +124,15 @@ internal sealed class ReplaySession : IDisposable
             progress?.Report(percentages.Values.Average());
         };
 
-        var log = new TraceCallLog.Builder(functions.LocatorReads);
+        var store = new TraceCallStore.Builder(functions.LocatorReads);
 
         var timeline = new TraceTimeline.Builder();
 
-        ReplayBridge.CallChunkCallback onChunk = log.Add;
+        ReplayBridge.CallChunkCallback onChunk = store.Add;
 
         ReplayBridge.CallSpanCallback onSpans = timeline.Add;
 
-        ReplayBridge.PointerValueCallback onPointerValues = log.AddLocators;
+        ReplayBridge.PointerValueCallback onPointerValues = store.AddLocators;
 
         var publishedEvents = new PublishedEventLog();
 
@@ -141,6 +143,16 @@ internal sealed class ReplaySession : IDisposable
         PointerRead[] reads = [.. functions.LocatorReads.Select(PointerRead.From)];
 
         ulong[] instanceMethods = [.. functions.InstanceMethods.Select(ReplayBridge.PackInstanceMethod)];
+
+        var memoryMap = new MemoryMap.Log();
+
+        ReplayBridge.MemoryMapCallback onMemoryMap = memoryMap.Add;
+
+        MemoryMapFunction[] memoryMapFunctions = [.. functions.MemoryMapFunctions,
+                                                  .. functions.MemoryFunctions
+                                                              .Where(f => f is { IsAllocation: true, IsVirtual: false })
+                                                              .Select(f => new MemoryMapFunction(f.Address,
+                                                                                                 (uint)MemoryMapOperation.Allocated))];
 
         try
         {
@@ -157,10 +169,13 @@ internal sealed class ReplaySession : IDisposable
                                                    publishers.Length,
                                                    functions.PublishedEvents.Writers,
                                                    functions.PublishedEvents.Writers.Length,
+                                                   memoryMapFunctions,
+                                                   memoryMapFunctions.Length,
                                                    onChunk,
                                                    onSpans,
                                                    onPointerValues,
                                                    onPublishedEvents,
+                                                   onMemoryMap,
                                                    onProgress,
                                                    cancel,
                                                    out var tree);
@@ -173,6 +188,8 @@ internal sealed class ReplaySession : IDisposable
             GC.KeepAlive(onPointerValues);
 
             GC.KeepAlive(onPublishedEvents);
+
+            GC.KeepAlive(onMemoryMap);
 
             GC.KeepAlive(onProgress);
 
@@ -189,7 +206,14 @@ internal sealed class ReplaySession : IDisposable
 
                 cancellationToken.ThrowIfCancellationRequested();
 
-                return new ReplayResult(nodes, Modules, log.Build(), timeline.Build(nodes), publishedEvents.Build());
+                using var images = new ImageText(Modules);
+
+                return new ReplayResult(nodes,
+                                        Modules,
+                                        store.Build(images),
+                                        timeline.Build(nodes),
+                                        publishedEvents.Build(),
+                                        memoryMap.Build());
             }
             finally
             {

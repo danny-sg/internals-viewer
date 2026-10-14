@@ -3,7 +3,7 @@ using Windows.UI;
 
 namespace InternalsViewer.UI.App.Models.Query.Simulation.Steps;
 
-public enum SimulationCounterKind
+public enum CounterDisplayType
 {
     Pair,
     Badge,
@@ -18,7 +18,7 @@ public sealed partial class SimulationCounter : ObservableObject
 
     public required string Name { get; init; }
 
-    public SimulationCounterKind Kind { get; init; }
+    public CounterDisplayType DisplayType { get; init; }
 
     public Color Colour { get; init; } = SimulationCounterColours.Neutral;
 
@@ -32,10 +32,14 @@ public sealed partial class SimulationCounter : ObservableObject
 
         Text = value switch
         {
-            null => string.Empty,
-            long number => number.ToString(format ?? "N0", System.Globalization.CultureInfo.CurrentCulture),
-            int number => number.ToString(format ?? "N0", System.Globalization.CultureInfo.CurrentCulture),
-            _ => value.ToString() ?? string.Empty
+            null 
+                => string.Empty,
+            long number 
+                => number.ToString(format ?? "N0", System.Globalization.CultureInfo.CurrentCulture),
+            int number 
+                => number.ToString(format ?? "N0", System.Globalization.CultureInfo.CurrentCulture),
+            _ 
+                => value.ToString() ?? string.Empty
         };
     }
 }

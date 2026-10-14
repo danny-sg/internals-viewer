@@ -90,96 +90,75 @@ public sealed class DiaResolver : IDisposable
     /// Enumerate all symbols with a given prefix, with their address and kind, and their signature when asked for
     /// </summary>
     internal IEnumerable<SymbolDetail> EnumerateSymbolDetails(string prefix, bool includeSignature = true)
-        => EnumerateDetails(DiaBridge.BeginEnumSymbols(_session, prefix), includeSignature);
+        => EnumerateDetails(DiaBridge.BeginEnumSymbols(_session, prefix), includeSignature, functionsOnly: false);
 
     /// <summary>
     /// Enumerate the symbols at one address
     /// </summary>
     internal IEnumerable<SymbolDetail> EnumerateSymbolsAtRva(uint rva)
-        => EnumerateDetails(DiaBridge.BeginEnumSymbolsAtRva(_session, rva), includeSignature: true);
+        => EnumerateDetails(DiaBridge.BeginEnumSymbolsAtRva(_session, rva), includeSignature: true, functionsOnly: false);
 
-    internal unsafe void VisitFunctions(Action<uint, ReadOnlySpan<char>> visit)
+    internal IEnumerable<SymbolDetail> EnumerateFunctionsAtRva(uint rva, bool includeSignature = true)
+        => EnumerateDetails(DiaBridge.BeginEnumSymbolsAtRva(_session, rva), includeSignature, functionsOnly: true);
+
+    internal SymbolReader ReadSymbols(bool includeSignature = true)
+        => new(DiaBridge.BeginEnumSymbols(_session, string.Empty), includeSignature);
+
+    internal SymbolReader ReadSymbolsAtRva(uint rva, bool includeSignature = true)
+        => new(DiaBridge.BeginEnumSymbolsAtRva(_session, rva), includeSignature);
+
+    internal void VisitFunctions(Action<uint, ReadOnlySpan<char>> visit)
     {
-        var enumerator = DiaBridge.BeginEnumSymbols(_session, string.Empty);
+        using var symbols = ReadSymbols(includeSignature: false);
 
-        if (enumerator == IntPtr.Zero)
+        while (symbols.MoveNext())
         {
-            return;
-        }
-
-        try
-        {
-            Span<char> buffer = stackalloc char[MaximumNameLength];
-
-            fixed (char* destination = buffer)
+            if (symbols.IsFunction)
             {
-                while (DiaBridge.NextSymbolDetail(enumerator, destination, buffer.Length, null, 0, out var rva, out var isFunction))
-                {
-                    var length = buffer.IndexOf('\0');
-
-                    if (isFunction != 0 && length >= 0)
-                    {
-                        visit(rva, buffer[..length]);
-                    }
-                }
+                visit(symbols.Rva, symbols.Name);
             }
-        }
-        finally
-        {
-            DiaBridge.EndEnumSymbols(enumerator);
         }
     }
 
-    internal unsafe IReadOnlyList<string> SignaturesAt(uint rva)
+    internal string? GetSignature(uint rva)
     {
-        var signatures = new List<string>();
+        using var symbols = ReadSymbolsAtRva(rva);
 
-        var enumerator = DiaBridge.BeginEnumSymbolsAtRva(_session, rva);
-
-        if (enumerator == IntPtr.Zero)
+        while (symbols.MoveNext())
         {
-            return signatures;
-        }
-
-        try
-        {
-            Span<char> buffer = stackalloc char[MaximumNameLength];
-
-            fixed (char* destination = buffer)
+            if (symbols.IsFunction && !symbols.Signature.IsEmpty)
             {
-                while (DiaBridge.NextSymbolDetail(enumerator, null, 0, destination, buffer.Length, out _, out var isFunction))
-                {
-                    var length = buffer.IndexOf('\0');
-
-                    if (isFunction != 0 && length > 0)
-                    {
-                        signatures.Add(new string(buffer[..length]));
-                    }
-                }
+                return symbols.Signature.ToString();
             }
         }
-        finally
-        {
-            DiaBridge.EndEnumSymbols(enumerator);
-        }
 
-        return signatures;
+        return null;
     }
 
-    internal string? GetDecoratedName(uint rva)
+    internal string? GetDecoratedName(uint rva, ReadOnlySpan<char> name = default)
     {
         Span<char> buffer = stackalloc char[MaximumNameLength];
 
-        return TryGetDecoratedName(rva, buffer, out var decoratedName) ? new string(decoratedName) : null;
+        return TryGetDecoratedName(rva, buffer, out var decoratedName, name) ? new string(decoratedName) : null;
     }
 
-    internal unsafe bool TryGetDecoratedName(uint rva, Span<char> buffer, out ReadOnlySpan<char> decoratedName)
+    internal unsafe bool TryGetDecoratedName(uint rva,
+                                             Span<char> buffer,
+                                             out ReadOnlySpan<char> decoratedName,
+                                             ReadOnlySpan<char> name = default)
     {
         decoratedName = default;
 
+        Span<char> terminatedName = stackalloc char[name.Length + 1];
+
+        name.CopyTo(terminatedName);
+
+        terminatedName[^1] = '\0';
+
+        fixed (char* namePointer = terminatedName)
         fixed (char* destination = buffer)
         {
-            if (!DiaBridge.GetDecoratedName(_session, rva, destination, buffer.Length))
+            if (!DiaBridge.GetDecoratedName(_session, rva, namePointer, destination, buffer.Length))
             {
                 return false;
             }
@@ -197,33 +176,18 @@ public sealed class DiaResolver : IDisposable
         return true;
     }
 
-    private static IEnumerable<SymbolDetail> EnumerateDetails(IntPtr enumerator, bool includeSignature)
+    private static IEnumerable<SymbolDetail> EnumerateDetails(IntPtr enumerator, bool includeSignature, bool functionsOnly)
     {
-        if (enumerator == IntPtr.Zero)
+        using var symbols = new SymbolReader(enumerator, includeSignature);
+
+        while (symbols.MoveNext())
         {
-            yield break;
-        }
-
-        try
-        {
-            var name = new StringBuilder(4096);
-
-            var signature = includeSignature ? new StringBuilder(4096) : null;
-
-            while (DiaBridge.NextSymbolDetail(enumerator,
-                                              name,
-                                              name.Capacity,
-                                              signature,
-                                              signature?.Capacity ?? 0,
-                                              out var rva,
-                                              out var isFunction))
+            if (functionsOnly && !symbols.IsFunction)
             {
-                yield return new SymbolDetail(name.ToString(), signature?.ToString() ?? string.Empty, rva, isFunction != 0);
+                continue;
             }
-        }
-        finally
-        {
-            DiaBridge.EndEnumSymbols(enumerator);
+
+            yield return new SymbolDetail(symbols.Name.ToString(), symbols.Signature.ToString(), symbols.Rva, symbols.IsFunction);
         }
     }
 

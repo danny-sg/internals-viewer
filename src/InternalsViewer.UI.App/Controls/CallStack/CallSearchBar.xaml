@@ -27,7 +27,8 @@
                             BorderThickness="0"
                             FontSize="12"
                             Height="28"
-                            TextChanged="OnSearchTextChanged"/>
+                            TextChanged="OnSearchTextChanged"
+                            QuerySubmitted="OnSearchQuerySubmitted"/>
 
             <ToggleButton x:Name="CategoryFilterButton"
                           Grid.Column="1"

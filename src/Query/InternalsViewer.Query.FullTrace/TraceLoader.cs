@@ -2,7 +2,9 @@ using System.Diagnostics;
 using InternalsViewer.Internals.Engine.Database;
 using InternalsViewer.Internals.Engine.Loading;
 using InternalsViewer.Query.CallStack;
+using InternalsViewer.Query.CallStack.Arguments;
 using InternalsViewer.Query.CallStack.Symbols;
+using InternalsViewer.Query.FullTrace.Arguments;
 using InternalsViewer.Query.Events;
 using InternalsViewer.Query.Events.Operators;
 using InternalsViewer.Query.FullTrace.Iterators;
@@ -132,14 +134,16 @@ public sealed class TraceLoader(ILogger<TraceLoader> logger, ITimeTravelRecorder
                               + "{Size} MB, {Locators} page and row id(s) read",
                               nodes.Sum(n => (long)n.Calls),
                               nodes.Length,
-                              replay.CallLog.Calls,
-                              replay.CallLog.FunctionCount,
-                              replay.CallLog.Size / (1024 * 1024),
-                              replay.CallLog.LocatorCount);
+                              replay.CallStore.Calls,
+                              replay.CallStore.FunctionCount,
+                              replay.CallStore.Size / (1024 * 1024),
+                              replay.CallStore.LocatorCount);
 
         var unknownSymbols = await CallstackProcessor.Process(callStack, request.SymbolsPath, messages, cancellationToken);
 
         LogUnknownSymbols(unknownSymbols);
+
+        LogUnknownEnums(callStack, request.SymbolsPath);
 
         var collapsed = new Dictionary<CallStackNode, CallStackNode>(ReferenceEqualityComparer.Instance);
 
@@ -147,35 +151,19 @@ public sealed class TraceLoader(ILogger<TraceLoader> logger, ITimeTravelRecorder
 
         CallStackNode?[] mapped = [.. replayed.Select(node => collapsed.GetValueOrDefault(node))];
 
-        var planLink = IteratorPlanLinker.Link(replay.CallLog, mapped, events);
+        var planLink = IteratorPlanLinker.Link(replay.CallStore, mapped, events);
 
-        var cropped = false;
+        var hobtAccess = HoBtAccessMap.Build(replay.CallStore, mapped);
 
-        if (request.CropToQuery && QueryExecutionCropper.Crop(callStack) is { } crop)
-        {
-            callStack = crop.Tree;
+        replay.CallStore.MapNodes(mapped);
 
-            mapped = [.. mapped.Select(node => node is null ? null : crop.Projected.GetValueOrDefault(node))];
-
-            cropped = true;
-
-            Logger.LogInformation("Call tree cropped to the query's execution, {Roots} root(s)", callStack.Root.Children.Count);
-        }
-
-        replay.CallLog.MapNodes(mapped);
-
-        replay.CallLog.AnnotateNodes();
+        replay.CallStore.AnnotateNodes();
 
         replay.Timeline.MapNodes(mapped);
 
         callStack.RemoveCallsUnder(IsInstrumentation);
 
         var timeline = replay.Timeline.WithoutCallsUnder(IsInstrumentation);
-
-        if (cropped)
-        {
-            timeline = timeline.CroppedTo(callStack) ?? timeline;
-        }
 
         Logger.LogInformation("{Calls} call(s) after removing Extended Events and tracing, {Spans} call span(s) on {Threads} "
                               + "thread(s) in the flame chart",
@@ -184,6 +172,8 @@ public sealed class TraceLoader(ILogger<TraceLoader> logger, ITimeTravelRecorder
                               timeline.Threads.Count);
 
         timeline.AddCallActivity(QueryRunner.ActivityBuckets);
+
+        var memoryMap = MemoryMap.Build(replay.MemoryMap, replay.Timeline.NodeOf);
 
         steps.Complete();
 
@@ -200,7 +190,7 @@ public sealed class TraceLoader(ILogger<TraceLoader> logger, ITimeTravelRecorder
                               operators.Count(o => o.PlanNodeIdentifier is { NodeId: >= 0 }),
                               planLink.Instances.Count);
 
-        var memory = MemoryMapper.Map(replay.CallLog, functions.MemoryFunctions, timeline, request.MemoryClerks);
+        var memory = AllocationMapper.Map(replay.CallStore, functions.MemoryFunctions, timeline, request.MemoryClerks);
 
         var lifetimes = IteratorLifetimeBuilder.Build(timeline, operators);
 
@@ -240,7 +230,11 @@ public sealed class TraceLoader(ILogger<TraceLoader> logger, ITimeTravelRecorder
 
         steps.Complete();
 
-        return new TraceResult(callStack, replay.CallLog, timeline) { PlanLink = planLink };
+        Logger.LogInformation("{Objects} HoBt access object(s) linked to their HoBt", hobtAccess.Count);
+
+        Logger.LogInformation("{Entries} memory map entr(ies) from allocations, constructors and member calls", memoryMap.Count);
+
+        return new TraceResult(callStack, replay.CallStore, timeline) { PlanLink = planLink, HoBtAccess = hobtAccess, MemoryMap = memoryMap };
     }
 
     private void LogUnknownSymbols(string[] unknownSymbols)
@@ -253,6 +247,51 @@ public sealed class TraceLoader(ILogger<TraceLoader> logger, ITimeTravelRecorder
         foreach (var symbol in unknownSymbols.Order(StringComparer.Ordinal))
         {
             Logger.LogDebug($"Unknown symbol: {symbol}");
+        }
+    }
+
+    private void LogUnknownEnums(CallStackTree callStack, string symbolsPath)
+    {
+        if (!Logger.IsEnabled(LogLevel.Debug))
+        {
+            return;
+        }
+
+        using var resolver = new CallstackResolver(symbolsPath);
+
+        var functions = new HashSet<string>(StringComparer.Ordinal);
+
+        var unknown = new SortedDictionary<string, string>(StringComparer.Ordinal);
+
+        foreach (var node in callStack.Nodes())
+        {
+            if (node.Frame is not { } frame)
+            {
+                continue;
+            }
+
+            var symbol = QualifiedSymbol.Of(frame);
+
+            if (!functions.Add(symbol)
+                || FunctionSignature.Parse(resolver.ResolveSignature(frame), resolver.ResolveDecoratedName(frame)) is not { } signature)
+            {
+                continue;
+            }
+
+            var types = signature.ReturnType is { } returnType ? signature.Parameters.Append(returnType) : signature.Parameters;
+
+            foreach (var type in types)
+            {
+                if (ArgumentValue.GetUnknownEnum(type) is { } name)
+                {
+                    unknown.TryAdd(name, symbol);
+                }
+            }
+        }
+
+        foreach (var (name, function) in unknown)
+        {
+            Logger.LogDebug($"Unknown enum: {name} ({function})");
         }
     }
 

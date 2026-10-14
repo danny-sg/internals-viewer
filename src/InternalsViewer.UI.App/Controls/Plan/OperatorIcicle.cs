@@ -12,7 +12,7 @@ namespace InternalsViewer.UI.App.Controls.Plan;
 /// Builds a mini icicle (flame graph) of the call stack an operator executed
 /// </summary>
 /// <remarks>
-/// The same segment the Callstack view isolates, drawn: rooted at the operator's entry frames, weighted by the events
+/// The same segment the Call Tree view isolates, drawn: rooted at the operator's entry frames, weighted by the events
 /// its plan subtree drove, and stopping where a child operator or a page fetch takes over. Each frame's width is the
 /// share of those events that flowed through it.
 ///

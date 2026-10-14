@@ -29,15 +29,6 @@ public sealed partial class SymbolsViewModel(ILogger logger, SettingsViewModel s
     private readonly List<(CallstackFrame Frame, string ClassName)> _membersHistory = [];
 
     [ObservableProperty]
-    private bool _isPaneVisible;
-
-    [ObservableProperty]
-    private bool _isPaneDockedBottom;
-
-    [ObservableProperty]
-    private bool _isSymbolSearchSelected;
-
-    [ObservableProperty]
     private bool _isMembersLoading;
 
     [ObservableProperty]
@@ -169,15 +160,6 @@ public sealed partial class SymbolsViewModel(ILogger logger, SettingsViewModel s
         Suggestions.Value.Where(s => s.Matches(text)).ToList();
 
     /// <summary>
-    /// Shows the pane on the symbol search
-    /// </summary>
-    public void ShowSymbolSearch()
-    {
-        IsPaneVisible = true;
-        IsSymbolSearchSelected = true;
-    }
-
-    /// <summary>
     /// Leaves a module out of every symbol search from now on
     /// </summary>
     public void ExcludeModule(string module)
@@ -220,9 +202,6 @@ public sealed partial class SymbolsViewModel(ILogger logger, SettingsViewModel s
             return NavigateMembersAsync(frame, className);
         }
 
-        IsPaneVisible = true;
-        IsSymbolSearchSelected = false;
-
         _membersRequest++;
 
         _currentMembers = null;
@@ -260,13 +239,6 @@ public sealed partial class SymbolsViewModel(ILogger logger, SettingsViewModel s
         return ListMembersAsync(frame, className);
     }
 
-    /// <summary>
-    /// Resolves the signature of the function a call stack frame is in, off the UI thread
-    /// </summary>
-    /// <remarks>
-    /// Best effort: a signature is a nicety over the register dump, so a resolver failure returns null and lets the
-    /// caller fall back rather than failing the command.
-    /// </remarks>
     public async Task<string?> ResolveFrameSignatureAsync(CallstackFrame frame)
     {
         try
@@ -344,9 +316,6 @@ public sealed partial class SymbolsViewModel(ILogger logger, SettingsViewModel s
 
     private async Task ListMembersAsync(CallstackFrame frame, string className)
     {
-        IsPaneVisible = true;
-        IsSymbolSearchSelected = false;
-
         var request = ++_membersRequest;
 
         _currentMembers = (frame, className);
@@ -464,13 +433,6 @@ public sealed partial class SymbolsViewModel(ILogger logger, SettingsViewModel s
         }
     }
 
-    /// <summary>
-    /// The matches as a module per node, a class per node beneath, and the members under each class
-    /// </summary>
-    /// <remarks>
-    /// Modules start expanded. Classes start expanded only when there are few enough to take in at once. A member
-    /// that is exactly what was searched for is not highlighted, as colouring all of it says nothing.
-    /// </remarks>
     private static IReadOnlyList<SymbolModuleRow> SymbolModules(IReadOnlyList<SymbolMatch> matches, string query)
     {
         var highlight = query;

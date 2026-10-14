@@ -14,7 +14,7 @@ The **Details** toggle in the tab strip opens a pane beside the list showing eve
 
 ## Working with events
 
-- **Click** an event to select it - the selection is shared with the timeline and, for operator events, the Execution Plan and Call Stack panes. Click the selected row again to deselect it
+- **Click** an event to select it - the selection is shared with the timeline and, for operator events, the Execution Plan and Call Tree panes. Click the selected row again to deselect it
 - **Reads that cover multiple pages** (a multi-page disk read, for example) have an expander - open it to see the individual pages within the read
 - **Rowgroup Scan** rows group a columnstore rowgroup's segment scans and object pool lookups under one row - expand it to see each segment
 - **Page addresses and row identifiers are links** - click to open the page as a tab within the Query view, or **Shift + click** to open it in a separate top-level tab. Pages opened this way carry the query's captured [log records](/docs/user-guide/query/LogRecords) with them

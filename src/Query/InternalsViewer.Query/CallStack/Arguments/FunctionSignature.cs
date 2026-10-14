@@ -1,50 +1,92 @@
-using System.Text.RegularExpressions;
 using InternalsViewer.Query.Helpers;
 
 namespace InternalsViewer.Query.CallStack.Arguments;
 
-public sealed partial record FunctionSignature(IReadOnlyList<string> Parameters,
-                                               FunctionKind Kind,
-                                               string? ReturnType,
-                                               bool HasReturnBuffer = false)
+public sealed record FunctionSignature(IReadOnlyList<string> Parameters,
+                                       FunctionType Type,
+                                       string? ReturnType,
+                                       bool HasReturnBuffer = false)
 {
     public const string EnumPrefix = "enum ";
 
-    public static FunctionSignature? Parse(string? signature, string? decoratedName)
+    private const string EnumCode = "W4";
+
+    private const string NameEnd = "@@";
+
+    private const string MemberAccessCodes = "ABEFIJMNQRUV";
+
+    private const string StaticAccessCodes = "CDKLST";
+
+    public static FunctionSignature? Parse(ReadOnlySpan<char> signature, ReadOnlySpan<char> decoratedName)
     {
-        if (signature is null || ParseParameters(signature) is not { } parameters)
+        if (ParseParameters(signature) is not { } parameters)
         {
             return null;
         }
 
-        if (decoratedName is not null && Decoration().Match(decoratedName) is { Success: true } match)
+        if (FindFunctionCode(decoratedName) is { } code)
         {
-            var encodedReturn = decoratedName[(match.Index + match.Length)..];
+            var encodedReturn = decoratedName[code.End..];
 
             return new FunctionSignature(MarkEnums(parameters, decoratedName),
-                                         KindOf(match),
-                                         DecodeReturnType(encodedReturn, decoratedName.AsSpan()[1..match.Index]),
-                                         ReturnBuffer().IsMatch(encodedReturn));
+                                         code.Type,
+                                         DecodeReturnType(encodedReturn, decoratedName[1..code.Start]),
+                                         IsClassReturnedByValue(encodedReturn));
         }
 
-        return new FunctionSignature(parameters, IsScoped(signature) ? FunctionKind.Member : FunctionKind.Free, null);
+        return new FunctionSignature(parameters, IsScoped(signature) ? FunctionType.Member : FunctionType.Free, null);
     }
 
-    public static FunctionKind? KindOf(string decoratedName)
-        => Decoration().Match(decoratedName) is { Success: true } match ? KindOf(match) : null;
+    public static FunctionType? GetFunctionType(ReadOnlySpan<char> decoratedName) => FindFunctionCode(decoratedName)?.Type;
 
-    public static IReadOnlyList<string>? ParseParameters(string signature)
+    public static IReadOnlyList<string>? ParseParameters(ReadOnlySpan<char> signature)
+        => TryGetParameterList(signature, out var parameters) ? SplitParameters(parameters) : null;
+
+    public static int? CountParameters(ReadOnlySpan<char> signature)
     {
+        if (!TryGetParameterList(signature, out var parameters))
+        {
+            return null;
+        }
+
+        if (parameters.IsEmpty)
+        {
+            return 0;
+        }
+
+        var count = 1;
+
+        while (FindTopLevelComma(parameters) is var comma and >= 0)
+        {
+            count++;
+
+            parameters = parameters[(comma + 1)..];
+        }
+
+        return count;
+    }
+
+    public static bool HasSameParameters(ReadOnlySpan<char> signature, ReadOnlySpan<char> other)
+    {
+        TryGetParameterList(signature, out var parameters);
+
+        TryGetParameterList(other, out var otherParameters);
+
+        return parameters.SequenceEqual(otherParameters);
+    }
+
+    private static bool TryGetParameterList(ReadOnlySpan<char> signature, out ReadOnlySpan<char> parameters)
+    {
+        parameters = default;
+
         var open = FindParameterList(signature);
 
         if (open < 0)
         {
-            return null;
+            return false;
         }
 
         var depth = 0;
-
-        var close = -1;
 
         for (var i = open; i < signature.Length; i++)
         {
@@ -60,35 +102,86 @@ public sealed partial record FunctionSignature(IReadOnlyList<string> Parameters,
 
                 if (depth == 0 && character == ')')
                 {
-                    close = i;
+                    var inner = signature[(open + 1)..i].Trim();
 
-                    break;
+                    parameters = inner is "void" ? [] : inner;
+
+                    return true;
                 }
             }
         }
 
-        if (close < 0)
-        {
-            return null;
-        }
-
-        var inner = signature.AsSpan()[(open + 1)..close].Trim();
-
-        return inner is "" or "void" ? [] : SplitTopLevel(inner);
+        return false;
     }
 
-    private static List<string> MarkEnums(IReadOnlyList<string> parameters, string decoratedName)
+    private static (int Start, int End, FunctionType Type)? FindFunctionCode(ReadOnlySpan<char> decoratedName)
     {
-        if (!EnumType().IsMatch(decoratedName))
+        var offset = 0;
+
+        while (decoratedName[offset..].IndexOf(NameEnd) is var found and >= 0)
         {
-            return [.. parameters];
+            var start = offset + found;
+
+            offset = start + 1;
+
+            var code = decoratedName[(start + NameEnd.Length)..];
+
+            if (code is [var access, 'E', 'A' or 'B' or 'C' or 'D', 'A' or 'Q', ..] && MemberAccessCodes.Contains(access))
+            {
+                return (start, start + NameEnd.Length + 4, FunctionType.Member);
+            }
+
+            if (code is [var staticAccess, 'A' or 'Q', ..] && StaticAccessCodes.Contains(staticAccess))
+            {
+                return (start, start + NameEnd.Length + 2, FunctionType.Static);
+            }
+
+            if (code is ['Y' or 'Z', 'A' or 'Q', ..])
+            {
+                return (start, start + NameEnd.Length + 2, FunctionType.Free);
+            }
         }
 
-        var enums = EnumType().Matches(decoratedName)
-                              .Select(m => m.Groups["name"].Value)
-                              .ToHashSet(StringComparer.Ordinal);
+        return null;
+    }
+
+    private static IReadOnlyList<string> MarkEnums(IReadOnlyList<string> parameters, ReadOnlySpan<char> decoratedName)
+    {
+        if (GetEnumNames(decoratedName) is not { } enums)
+        {
+            return parameters;
+        }
 
         return [.. parameters.Select(p => enums.Contains(UnqualifiedName(TargetName(p))) ? $"{EnumPrefix}{p}" : p)];
+    }
+
+    private static HashSet<string>? GetEnumNames(ReadOnlySpan<char> decoratedName)
+    {
+        HashSet<string>? names = null;
+
+        var position = decoratedName.IndexOf(EnumCode);
+
+        while (position >= 0)
+        {
+            var name = ReadIdentifier(decoratedName[(position + EnumCode.Length)..]);
+
+            var end = position + EnumCode.Length + name.Length;
+
+            var found = !name.IsEmpty && end < decoratedName.Length && decoratedName[end] == '@';
+
+            if (found)
+            {
+                (names ??= new HashSet<string>(StringComparer.Ordinal)).Add(name.ToString());
+            }
+
+            var next = found ? end + 1 : position + 1;
+
+            var offset = decoratedName[next..].IndexOf(EnumCode);
+
+            position = offset < 0 ? -1 : next + offset;
+        }
+
+        return names;
     }
 
     private static string TargetName(string type)
@@ -106,38 +199,36 @@ public sealed partial record FunctionSignature(IReadOnlyList<string> Parameters,
         return separator < 0 ? type : type[(separator + 2)..];
     }
 
-    private static FunctionKind KindOf(Match match)
-        => match.Groups["member"].Success ? FunctionKind.Member
-           : match.Groups["static"].Success ? FunctionKind.Static
-           : FunctionKind.Free;
-
-    private static bool IsScoped(string signature)
+    private static bool IsScoped(ReadOnlySpan<char> signature)
     {
         var open = FindParameterList(signature);
 
-        return SymbolsHelper.FindClassMethodSeparator(open < 0 ? signature : signature.AsSpan(0, open)) > 0;
+        return SymbolsHelper.FindClassMethodSeparator(open < 0 ? signature : signature[..open]) > 0;
     }
 
-    private static string? DecodeReturnType(string encoded, ReadOnlySpan<char> functionNames)
+    private static bool IsClassReturnedByValue(ReadOnlySpan<char> encoded)
+        => encoded is ['?', 'A' or 'B' or 'C' or 'D', 'U' or 'V' or 'T', ..];
+
+    private static string? DecodeReturnType(ReadOnlySpan<char> encoded, ReadOnlySpan<char> functionNames)
     {
-        if (encoded.Length == 0)
+        if (encoded.IsEmpty)
         {
             return null;
         }
 
-        if (ClassType().Match(encoded) is { Success: true } named)
+        if (DecodeClass(encoded) is { } className)
         {
-            return DescribeClass(named);
+            return className;
         }
 
-        if (EnumReturnType().Match(encoded) is { Success: true } enumType)
+        if (DecodeEnum(encoded, functionNames) is { } enumName)
         {
-            return DescribeEnum(enumType, functionNames);
+            return enumName;
         }
 
-        if (encoded[0] == '_' && encoded.Length > 1)
+        if (encoded is ['_', var extended, ..])
         {
-            return encoded[1] switch
+            return extended switch
             {
                 'N' => "bool",
                 'J' => "__int64",
@@ -147,7 +238,7 @@ public sealed partial record FunctionSignature(IReadOnlyList<string> Parameters,
             };
         }
 
-        if (encoded.StartsWith("W4", StringComparison.Ordinal))
+        if (encoded.StartsWith(EnumCode))
         {
             return "enum";
         }
@@ -172,33 +263,115 @@ public sealed partial record FunctionSignature(IReadOnlyList<string> Parameters,
         };
     }
 
-    private static string DescribeClass(Match match)
+    private static string? DecodeClass(ReadOnlySpan<char> encoded)
     {
-        var name = match.Groups["name"].Value;
+        var position = 2;
 
-        if (!match.Groups["indirection"].Success)
+        char? indirection = null;
+
+        var isConst = false;
+
+        if (encoded is ['P' or 'Q' or 'A', 'E', ..])
         {
-            return name;
+            while (position < encoded.Length && encoded[position] is 'F' or 'I')
+            {
+                position++;
+            }
+
+            if (position >= encoded.Length || encoded[position] is not ('A' or 'B' or 'C' or 'D'))
+            {
+                return null;
+            }
+
+            indirection = encoded[0];
+
+            isConst = encoded[position] is 'B' or 'D';
+
+            position++;
+        }
+        else if (encoded is not ['?', 'A' or 'B' or 'C' or 'D', ..])
+        {
+            return null;
         }
 
-        var qualifier = match.Groups["qualifier"].Value is "B" or "D" ? " const" : string.Empty;
+        if (position >= encoded.Length || encoded[position] is not ('U' or 'V' or 'T'))
+        {
+            return null;
+        }
 
-        return $"{name}{qualifier} {(match.Groups["indirection"].Value == "A" ? '&' : '*')}";
+        var name = ReadIdentifier(encoded[(position + 1)..]);
+
+        if (name.IsEmpty || !encoded[(position + 1 + name.Length)..].StartsWith(NameEnd))
+        {
+            return null;
+        }
+
+        return indirection is { } pointer ? $"{name}{(isConst ? " const" : "")} {(pointer == 'A' ? '&' : '*')}" : name.ToString();
     }
 
-    private static string? DescribeEnum(Match match, ReadOnlySpan<char> functionNames)
+    private static string? DecodeEnum(ReadOnlySpan<char> encoded, ReadOnlySpan<char> functionNames)
     {
-        var name = match.Groups["name"].Value;
+        var text = encoded is ['?', 'A' or 'B' or 'C' or 'D', ..] ? encoded[2..] : encoded;
 
+        if (!text.StartsWith(EnumCode))
+        {
+            return null;
+        }
+
+        var name = ReadIdentifier(text[EnumCode.Length..]);
+
+        var position = EnumCode.Length + name.Length;
+
+        if (name.IsEmpty || position >= text.Length || text[position] != '@')
+        {
+            return null;
+        }
+
+        position++;
+
+        var scopes = new List<Range>();
+
+        while (position < text.Length && text[position] != '@')
+        {
+            if (char.IsAsciiDigit(text[position]))
+            {
+                scopes.Add(position..(position + 1));
+
+                position++;
+
+                continue;
+            }
+
+            var scope = ReadIdentifier(text[position..]);
+
+            var end = position + scope.Length;
+
+            if (scope.IsEmpty || end >= text.Length || text[end] != '@')
+            {
+                return null;
+            }
+
+            scopes.Add(position..end);
+
+            position = end + 1;
+        }
+
+        return position < text.Length ? NameEnum(name.ToString(), text, scopes, functionNames) : null;
+    }
+
+    private static string NameEnum(string name, ReadOnlySpan<char> text, List<Range> scopeRanges, ReadOnlySpan<char> functionNames)
+    {
         var names = new List<string>(functionNames.ToString().Split('@')) { name };
 
         var scopes = new List<string>();
 
-        foreach (Capture scope in match.Groups["scope"].Captures)
+        foreach (var range in scopeRanges)
         {
-            if (char.IsAsciiDigit(scope.Value[0]))
+            var scope = text[range];
+
+            if (scope is [var digit] && char.IsAsciiDigit(digit))
             {
-                var index = scope.Value[0] - '0';
+                var index = digit - '0';
 
                 if (index >= names.Count)
                 {
@@ -209,9 +382,11 @@ public sealed partial record FunctionSignature(IReadOnlyList<string> Parameters,
             }
             else
             {
-                scopes.Add(scope.Value);
+                var value = scope.ToString();
 
-                names.Add(scope.Value);
+                scopes.Add(value);
+
+                names.Add(value);
             }
         }
 
@@ -220,7 +395,24 @@ public sealed partial record FunctionSignature(IReadOnlyList<string> Parameters,
         return $"{EnumPrefix}{string.Join("::", scopes.Append(name))}";
     }
 
-    private static int FindParameterList(string signature)
+    private static ReadOnlySpan<char> ReadIdentifier(ReadOnlySpan<char> text)
+    {
+        if (text.IsEmpty || !(char.IsAsciiLetter(text[0]) || text[0] == '_'))
+        {
+            return [];
+        }
+
+        var length = 1;
+
+        while (length < text.Length && (char.IsAsciiLetterOrDigit(text[length]) || text[length] == '_'))
+        {
+            length++;
+        }
+
+        return text[..length];
+    }
+
+    private static int FindParameterList(ReadOnlySpan<char> signature)
     {
         var depth = 0;
 
@@ -245,17 +437,34 @@ public sealed partial record FunctionSignature(IReadOnlyList<string> Parameters,
         return -1;
     }
 
-    private static List<string> SplitTopLevel(ReadOnlySpan<char> inner)
+    private static List<string> SplitParameters(ReadOnlySpan<char> parameters)
     {
-        var parameters = new List<string>();
+        var split = new List<string>();
 
+        if (parameters.IsEmpty)
+        {
+            return split;
+        }
+
+        while (FindTopLevelComma(parameters) is var comma and >= 0)
+        {
+            split.Add(parameters[..comma].Trim().ToString());
+
+            parameters = parameters[(comma + 1)..];
+        }
+
+        split.Add(parameters.Trim().ToString());
+
+        return split;
+    }
+
+    private static int FindTopLevelComma(ReadOnlySpan<char> parameters)
+    {
         var depth = 0;
 
-        var start = 0;
-
-        for (var i = 0; i < inner.Length; i++)
+        for (var i = 0; i < parameters.Length; i++)
         {
-            var character = inner[i];
+            var character = parameters[i];
 
             if (character is '(' or '<' or '[')
             {
@@ -267,29 +476,10 @@ public sealed partial record FunctionSignature(IReadOnlyList<string> Parameters,
             }
             else if (character == ',' && depth == 0)
             {
-                parameters.Add(inner[start..i].Trim().ToString());
-
-                start = i + 1;
+                return i;
             }
         }
 
-        parameters.Add(inner[start..].Trim().ToString());
-
-        return parameters;
+        return -1;
     }
-
-    [GeneratedRegex(@"@@(?:(?<member>[ABEFIJMNQRUV])E[ABCD]|(?<static>[CDKLST])|(?<free>[YZ]))[AQ]")]
-    private static partial Regex Decoration();
-
-    [GeneratedRegex(@"^(?:\?[ABCD]|(?<indirection>[PQA])E[FI]*(?<qualifier>[ABCD]))[UVT](?<name>[A-Za-z_]\w*)@@")]
-    private static partial Regex ClassType();
-
-    [GeneratedRegex(@"^\?[ABCD][UVT]")]
-    private static partial Regex ReturnBuffer();
-
-    [GeneratedRegex(@"W4(?<name>[A-Za-z_]\w*)@")]
-    private static partial Regex EnumType();
-
-    [GeneratedRegex(@"^(?:\?[ABCD])?W4(?<name>[A-Za-z_]\w*)@(?:(?<scope>\d)|(?<scope>[A-Za-z_]\w*)@)*@")]
-    private static partial Regex EnumReturnType();
 }

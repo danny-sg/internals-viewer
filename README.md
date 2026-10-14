@@ -10,6 +10,8 @@ Internals Viewer is a visualisation tool for viewing the internals of the SQL Se
   - Full Trace - record a query with Time Travel Debugging for a complete call tree
     - Flame Chart of the recorded calls per thread, with the plan operators above them
     - Memory allocated per call and per plan operator
+    - Events placed in the recording, so the Timeline drives the Flame Chart
+  - Export a run to a file and import it again, Full Trace included
   - Columnstore
     - Timeline band for segment scans, rowgroup reads and elimination, object pool lookups and filters
     - Aggregate pushdown and filter events, with plan annotations
@@ -17,6 +19,7 @@ Internals Viewer is a visualisation tool for viewing the internals of the SQL Se
   - Call Stack
     - Filter the tree to a node, and by category
     - Activity bands and operator rows
+    - Table and index names on operator frames
   - Events pane details for every property of an event
   - Index pane - zoom to page, levels overlay, page data with previous/next navigation
 - Settings

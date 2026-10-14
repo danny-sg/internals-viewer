@@ -1,22 +1,23 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
-using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
 using InternalsViewer.Query.CallStack;
 using InternalsViewer.Query.CallStack.Arguments;
-using InternalsViewer.Query.FullTrace.CallLog;
+using InternalsViewer.Query.FullTrace.Calls;
 using InternalsViewer.Query.FullTrace.Iterators;
 using InternalsViewer.Query.Results;
 using InternalsViewer.UI.App.Models.Query.CallStack;
 using Microsoft.Extensions.Logging;
 using InternalsViewer.Query.FullTrace.Arguments;
+using InternalsViewer.Query.FullTrace.Memory;
 
 namespace InternalsViewer.UI.App.ViewModels.Query.CallStack;
 
-public sealed partial class ArgumentsViewModel(ILogger logger, SymbolsViewModel symbols) : ObservableObject, IDisposable
+public sealed partial class ArgumentsViewModel(ILogger logger, SymbolsViewModel symbols, Func<ulong, string?> getHoBtName)
+    : ObservableObject, IDisposable
 {
     private const string DefaultMessage = "Right click a frame in a Full Trace call tree and choose Show Arguments";
 
@@ -42,38 +43,19 @@ public sealed partial class ArgumentsViewModel(ILogger logger, SymbolsViewModel 
     [ObservableProperty]
     private CallReference? _selectedCallReference;
 
-    [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(HasValueSearch))]
-    private string? _valueSearch;
-
-    [ObservableProperty]
-    private IReadOnlyList<ValueUseGroup> _valueGroups = [];
-
-    [ObservableProperty]
-    private string? _valueIdentity;
-
-    [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(ValueIteratorLabel))]
-    private IteratorTarget? _valueIterator;
-
-    [ObservableProperty]
-    private bool _isSearching;
-
     public bool HasCalls => CallTable is not null;
-
-    public bool HasValueSearch => ValueSearch is not null;
-
-    public string? ValueIteratorLabel => ValueIterator is { } iterator
-        ? $"Is The {iterator.Label} {(iterator.IsPlanObject ? "Plan Object" : "Iterator")}"
-        : null;
 
     public CallStackNode? Shown { get; private set; }
 
     public int? SelectedCallIndex => SelectedCall is { Id: var index } ? (int)index : null;
 
-    private TraceCallLog? Log { get; set; }
+    public CallStoreLookup? Lookup { get; private set; }
 
-    private IReadOnlyDictionary<ulong, IteratorTarget> Iterators { get; set; } = new Dictionary<ulong, IteratorTarget>();
+    private CallExclusions Exclusions { get; set; } = CallExclusions.None;
+
+    private bool IsDecoded { get; set; } = true;
+
+    private IReadOnlyList<int>? Included { get; set; }
 
     private ArgumentLayout? Layout { get; set; }
 
@@ -81,31 +63,72 @@ public sealed partial class ArgumentsViewModel(ILogger logger, SymbolsViewModel 
 
     private CancellationTokenSource? Request { get; set; }
 
-    private CancellationTokenSource? Search { get; set; }
-
     private bool IsSelectingQuietly { get; set; }
 
-    private bool IsChoosingQuietly { get; set; }
+    private bool IsQuietlySelected { get; set; }
 
-    public event Action<CallReference>? CallChosen;
+    public event Action<CallReference>? CallSelected;
 
-    public bool CanShow(CallStackNode node) => Log is not null && node.Frame is { Address: not 0, Pdb.Length: > 0 };
+    public event Action? SourceChanged;
 
-    public void SetSource(TraceCallLog? log, IReadOnlyDictionary<ulong, IteratorTarget>? iterators = null)
+    public bool CanShow(CallStackNode node) => Lookup is not null && node.Frame is { Address: not 0, Pdb.Length: > 0 };
+
+    public void SetSource(TraceCallStore? store,
+                          CallStackTree? tree = null,
+                          IReadOnlyDictionary<ulong, IteratorTarget>? iterators = null,
+                          HoBtAccessMap? hobtAccess = null,
+                          MemoryMap? memoryMap = null)
     {
         Cancel();
 
-        CancelSearch();
-
-        Log = log;
-        Iterators = iterators ?? new Dictionary<ulong, IteratorTarget>();
+        Lookup = store is null
+            ? null
+            : new CallStoreLookup(store,
+                                tree,
+                                iterators ?? new Dictionary<ulong, IteratorTarget>(),
+                                hobtAccess ?? HoBtAccessMap.Empty,
+                                memoryMap ?? MemoryMap.Empty,
+                                symbols,
+                                getHoBtName);
 
         Shown = null;
         Signature = string.Empty;
         Message = DefaultMessage;
         Clear();
         IsLoading = false;
-        CloseValueSearch();
+
+        SourceChanged?.Invoke();
+    }
+
+    public void SetExclusions(CallExclusions exclusions)
+    {
+        Exclusions = exclusions;
+
+        if (Shown is { } shown && !IsLoading)
+        {
+            _ = LoadAsync(shown, SelectedCallIndex);
+        }
+    }
+
+    public void SetDecoded(bool decoded)
+    {
+        if (IsDecoded == decoded)
+        {
+            return;
+        }
+
+        IsDecoded = decoded;
+
+        if (Layout is not { } layout || Lookup is not { } lookup || CallTable is null)
+        {
+            return;
+        }
+
+        var selected = SelectedCallIndex;
+
+        CallTable = ArgumentRowBuilder.BuildTable(layout, LoggedCalls, lookup.Describe, Included, decoded);
+
+        SelectQuietly(GetRow(CallTable, selected));
     }
 
     public async Task ShowAsync(CallStackNode node)
@@ -132,98 +155,59 @@ public sealed partial class ArgumentsViewModel(ILogger logger, SymbolsViewModel 
             return LoadAsync(node, call);
         }
 
+        var row = GetRow(table, call);
+
+        if (row is null && call is >= 0)
+        {
+            return LoadAsync(node, call);
+        }
+
         Shown = node;
 
-        SelectQuietly(call is { } index && index >= 0 && index < table.Rows.Count ? table.Rows[index] : null, chosen: true);
+        SelectQuietly(row, selected: true);
 
         return Task.CompletedTask;
     }
 
-    public ArgumentCell CellAt(int index, int ordinal)
-        => Layout is { } layout && index >= 0 && index < LoggedCalls.Count
-            ? ArgumentRowBuilder.CellAt(layout, LoggedCalls[index], ordinal)
-            : default;
+    public ArgumentCell GetCell(int index, int ordinal)
+        => Layout is { } layout && GetCall(index) is { } call ? ArgumentRowBuilder.GetCellAt(layout, call, ordinal) : default;
 
-    public CallStackNode? NodeAt(int index) => index >= 0 && index < LoggedCalls.Count ? Log?.NodeOf(LoggedCalls[index]) : null;
+    public string? GetDecodedText(int index, int ordinal)
+        => Layout is { } layout && Lookup is { } lookup && GetCall(index) is { } call
+            ? ArgumentRowBuilder.DecodedTextAt(layout, call, ordinal, lookup.Describe)
+            : null;
 
-    public IteratorTarget? IteratorOf(ulong value) => Iterators.GetValueOrDefault(value);
+    public MemoryMapEntry? GetOrigin(int index, int ordinal)
+        => Layout is { } layout && Lookup is { } lookup && GetCall(index) is { } call
+            ? ArgumentRowBuilder.OriginAt(layout, call, ordinal, lookup.Describe)
+            : null;
 
-    public async Task FindValueAsync(ulong value)
+    public CallStackNode? GetNode(int index) => GetCall(index) is { } call ? Lookup?.Store.GetNode(call) : null;
+
+    public IteratorTarget? GetIterator(ulong value) => Lookup?.GetIterator(value);
+
+    public ulong? GetHoBtId(int index, int ordinal)
     {
-        if (Log is not { } log)
+        if (Layout is not { } layout || Lookup is not { } lookup || GetCall(index) is not { } call)
         {
-            return;
+            return null;
         }
 
-        CancelSearch();
-
-        var search = new CancellationTokenSource();
-
-        Search = search;
-
-        ValueSearch = $"References To 0x{value:X}";
-        ValueGroups = [];
-        ValueIdentity = null;
-        ValueIterator = null;
-        IsSearching = true;
-
-        try
+        if (ArgumentRowBuilder.FindSlotAt(layout, ordinal) is { } slot)
         {
-            var uses = await log.FindAsync(value, search.Token);
-
-            var kinds = await ResolveKindsAsync(uses.Where(u => u.Location == "RCX"));
-
-            if (search.IsCancellationRequested)
-            {
-                return;
-            }
-
-            var groups = ValueUseGroup.Build(uses, u => kinds.GetValueOrDefault(u.Address));
-
-            ValueGroups = groups;
-            ValueIterator = Iterators.GetValueOrDefault(value);
-            ValueIdentity = ValueIterator is null ? Identity(groups) : null;
-            ValueSearch = uses.Count == 0 ? $"No References To 0x{value:X}" : $"References To 0x{value:X}";
+            return call.GetValue(slot) is { } value ? lookup.GetHoBtId(slot, value, call) : null;
         }
-        catch (OperationCanceledException) when (search.IsCancellationRequested)
-        {
-        }
-        catch (Exception exception) when (exception is InvalidDataException or EndOfStreamException)
-        {
-            logger.LogWarning(exception, "Searching the call log for {Value} failed", value);
 
-            ValueSearch = exception.Message;
-        }
-        finally
-        {
-            if (ReferenceEquals(Search, search))
-            {
-                IsSearching = false;
-            }
-        }
+        return ArgumentRowBuilder.GetCellAt(layout, call, ordinal) is { Value: { } returned, Type: { } type }
+            ? ArgumentValue.GetHoBtId(type, returned)
+            : null;
     }
 
-    public void CloseValueSearch()
-    {
-        CancelSearch();
-
-        ValueSearch = null;
-        ValueGroups = [];
-        ValueIdentity = null;
-        ValueIterator = null;
-        IsSearching = false;
-    }
-
-    public void Dispose()
-    {
-        Cancel();
-
-        CancelSearch();
-    }
+    public void Dispose() => Cancel();
 
     private async Task LoadAsync(CallStackNode node, int? select)
     {
-        if (Log is not { } log || node.Frame is not { } frame)
+        if (Lookup is not { } lookup || node.Frame is not { } frame)
         {
             return;
         }
@@ -243,27 +227,25 @@ public sealed partial class ArgumentsViewModel(ILogger logger, SymbolsViewModel 
 
         try
         {
-            var signature = await symbols.ResolveFrameSignatureAsync(frame);
-
-            var decoratedName = await symbols.ResolveFrameDecoratedNameAsync(frame);
+            var resolved = await lookup.ResolveAsync(frame);
 
             if (request.IsCancellationRequested)
             {
                 return;
             }
 
-            if (FunctionSignature.Parse(signature, decoratedName) is not { } parsed)
+            if (resolved is null)
             {
                 Message = "The function's signature could not be resolved from its symbols";
 
                 return;
             }
 
-            var layout = ArgumentLayout.LayoutOf(parsed);
+            var layout = resolved.Layout;
 
-            Signature = Header(parsed, signature ?? node.Symbol);
+            Signature = GetHeader(resolved.Parsed, resolved.Text ?? node.Symbol);
 
-            if (log.CallsOf(frame.Address, frame.Instance) is not { Count: > 0 } calls)
+            if (lookup.Store.GetCallList(frame.Address, frame.Instance) is not { Count: > 0 } calls)
             {
                 Message = "The function was not called on the query's threads";
 
@@ -272,15 +254,32 @@ public sealed partial class ArgumentsViewModel(ILogger logger, SymbolsViewModel 
 
             LoadingMessage = "Reading Call Log";
 
-            var table = await Task.Run(() => ArgumentRowBuilder.Table(layout, calls), request.Token);
+            var exclusions = Exclusions;
+
+            var included = exclusions.IsEmpty
+                ? null
+                : Include(await Task.Run(() => lookup.Store.GetIncludedCalls(calls, exclusions.Includes, request.Token), request.Token),
+                          select);
+
+            if (included is { Count: 0 })
+            {
+                Message = "Every call of the function is excluded by the category filter";
+
+                return;
+            }
+
+            var decoded = IsDecoded;
+
+            var table = await Task.Run(() => ArgumentRowBuilder.BuildTable(layout, calls, lookup.Describe, included, decoded), request.Token);
 
             Layout = layout;
             LoggedCalls = calls;
+            Included = included;
             CallTable = table;
 
-            if (select is { } index && index >= 0 && index < table.Rows.Count)
+            if (GetRow(table, select) is { } row)
             {
-                SelectQuietly(table.Rows[index], chosen: true);
+                SelectQuietly(row, selected: true);
             }
         }
         catch (OperationCanceledException) when (request.IsCancellationRequested)
@@ -301,11 +300,67 @@ public sealed partial class ArgumentsViewModel(ILogger logger, SymbolsViewModel 
         }
     }
 
-    private void SelectQuietly(ResultRow<long>? row, bool chosen = false)
+    private TraceArgumentCall? GetCall(int index) => index >= 0 && index < LoggedCalls.Count ? LoggedCalls[index] : null;
+
+    private static IReadOnlyList<int> Include(IReadOnlyList<int> included, int? call)
+    {
+        if (call is not { } index || index < 0)
+        {
+            return included;
+        }
+
+        var calls = included as List<int> ?? [.. included];
+
+        var position = calls.BinarySearch(index);
+
+        if (position < 0)
+        {
+            calls.Insert(~position, index);
+        }
+
+        return calls;
+    }
+
+    private static ResultRow<long>? GetRow(QueryResultSet table, int? call)
+    {
+        if (call is not { } target || target < 0)
+        {
+            return null;
+        }
+
+        var low = 0;
+
+        var high = table.Rows.Count - 1;
+
+        while (low <= high)
+        {
+            var middle = low + (high - low) / 2;
+
+            var row = (ResultRow<long>)table.Rows[middle];
+
+            if (row.Id == target)
+            {
+                return row;
+            }
+
+            if (row.Id < target)
+            {
+                low = middle + 1;
+            }
+            else
+            {
+                high = middle - 1;
+            }
+        }
+
+        return null;
+    }
+
+    private void SelectQuietly(ResultRow<long>? row, bool selected = false)
     {
         IsSelectingQuietly = true;
 
-        IsChoosingQuietly = chosen;
+        IsQuietlySelected = selected;
 
         try
         {
@@ -315,58 +370,29 @@ public sealed partial class ArgumentsViewModel(ILogger logger, SymbolsViewModel 
         {
             IsSelectingQuietly = false;
 
-            IsChoosingQuietly = false;
+            IsQuietlySelected = false;
         }
     }
 
     private bool IsShowing(CallStackNode node)
         => Shown?.Frame is { } shown && node.Frame is { } frame && shown.Address == frame.Address && shown.Instance == frame.Instance;
 
-    private async Task<Dictionary<ulong, FunctionKind?>> ResolveKindsAsync(IEnumerable<TraceValueUse> uses)
-    {
-        var kinds = new Dictionary<ulong, FunctionKind?>();
-
-        foreach (var use in uses)
-        {
-            if (kinds.ContainsKey(use.Address) || use.First.Node?.Frame is not { } frame)
-            {
-                continue;
-            }
-
-            var decoratedName = await symbols.ResolveFrameDecoratedNameAsync(frame);
-
-            kinds[use.Address] = decoratedName is null ? null : FunctionSignature.KindOf(decoratedName);
-        }
-
-        return kinds;
-    }
-
-    private static string? Identity(IReadOnlyList<ValueUseGroup> groups)
-    {
-        if (groups.FirstOrDefault(g => g.Role == TraceValueRole.CalledOn) is not { Rows: [var first, ..] })
-        {
-            return null;
-        }
-
-        return first.Use.First.Node?.Frame?.Resolved?.ClassName is { Length: > 0 } className ? $"Is A {className}" : null;
-    }
-
-    private static string Header(FunctionSignature parsed, string signature)
+    private static string GetHeader(FunctionSignature parsed, string signature)
     {
         var header = parsed.ReturnType is { } returnType ? $"{returnType} {signature}" : signature;
 
-        return parsed.Kind == FunctionKind.Static ? $"static {header}" : header;
+        return parsed.Type == FunctionType.Static ? $"static {header}" : header;
     }
 
     partial void OnSelectedCallChanged(ResultRow<long>? value)
     {
-        var reference = value is { Id: var index } && NodeAt((int)index) is { } node
-            ? new CallReference(node, (int)index, !IsSelectingQuietly || IsChoosingQuietly)
+        var reference = value is { Id: var index } && GetNode((int)index) is { } node
+            ? new CallReference(node, (int)index, !IsSelectingQuietly || IsQuietlySelected)
             : null;
 
-        if (reference is { IsChosen: true } && !IsSelectingQuietly)
+        if (reference is { IsSelected: true } && !IsSelectingQuietly)
         {
-            CallChosen?.Invoke(reference);
+            CallSelected?.Invoke(reference);
         }
 
         SelectedCallReference = reference;
@@ -376,6 +402,7 @@ public sealed partial class ArgumentsViewModel(ILogger logger, SymbolsViewModel 
     {
         Layout = null;
         LoggedCalls = [];
+        Included = null;
         SelectedCall = null;
         CallTable = null;
     }
@@ -387,14 +414,5 @@ public sealed partial class ArgumentsViewModel(ILogger logger, SymbolsViewModel 
         Request?.Dispose();
 
         Request = null;
-    }
-
-    private void CancelSearch()
-    {
-        Search?.Cancel();
-
-        Search?.Dispose();
-
-        Search = null;
     }
 }

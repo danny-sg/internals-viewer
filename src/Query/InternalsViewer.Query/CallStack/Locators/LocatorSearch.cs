@@ -24,13 +24,13 @@ public readonly record struct LocatorSearch(PageAddress Page, ushort? Slot, int?
     public static bool TryParse(string? text, out LocatorSearch search)
         => TryParsePage(text, out search) || TryParseColumnStore(text, out search);
 
-    public bool Matches(Locator locator) => locator.Kind switch
+    public bool Matches(Locator locator) => locator.ValueType switch
     {
-        LocatorKind.ColumnStoreObject => IsColumnStore
+        LocatorValueType.ColumnStoreObject => IsColumnStore
                                          && (RowGroupId is not { } rowGroup || locator.RowGroupId == rowGroup)
                                          && (ColumnId is not { } column || locator.ColumnId == column),
-        LocatorKind.Page => !IsColumnStore && Slot is null && locator.PageKey == Key,
-        LocatorKind.Row => !IsColumnStore && (Slot is null ? locator.PageKey == Key : locator.Value == Key),
+        LocatorValueType.Page => !IsColumnStore && Slot is null && locator.PageKey == Key,
+        LocatorValueType.Row => !IsColumnStore && (Slot is null ? locator.PageKey == Key : locator.Value == Key),
         _ => false
     };
 

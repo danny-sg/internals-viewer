@@ -2,7 +2,7 @@ using System;
 
 namespace InternalsViewer.UI.App.Controls.Instructions;
 
-public enum InstructionsLinkKind
+public enum InstructionsLinkType
 {
     Page,
     ToggleOption,
@@ -10,7 +10,7 @@ public enum InstructionsLinkKind
     External
 }
 
-public readonly record struct InstructionsLink(InstructionsLinkKind Kind, string Target)
+public readonly record struct InstructionsLink(InstructionsLinkType Type, string Target)
 {
     public static bool TryParse(Uri? uri, out InstructionsLink link)
     {
@@ -24,20 +24,20 @@ public readonly record struct InstructionsLink(InstructionsLinkKind Kind, string
         switch (uri.Scheme)
         {
             case "guide":
-                link = new InstructionsLink(InstructionsLinkKind.Page, uri.AbsolutePath);
+                link = new InstructionsLink(InstructionsLinkType.Page, uri.AbsolutePath);
                 return true;
 
             case "option":
-                link = new InstructionsLink(InstructionsLinkKind.ToggleOption, uri.AbsolutePath);
+                link = new InstructionsLink(InstructionsLinkType.ToggleOption, uri.AbsolutePath);
                 return true;
 
             case "view":
-                link = new InstructionsLink(InstructionsLinkKind.OpenView, uri.AbsolutePath);
+                link = new InstructionsLink(InstructionsLinkType.OpenView, uri.AbsolutePath);
                 return true;
 
             case "http":
             case "https":
-                link = new InstructionsLink(InstructionsLinkKind.External, uri.AbsoluteUri);
+                link = new InstructionsLink(InstructionsLinkType.External, uri.AbsoluteUri);
                 return true;
 
             default:

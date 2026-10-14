@@ -17,7 +17,7 @@
                 <TextBlock TextWrapping="Wrap" Text="{x:Bind Reason}"/>
                 <TextBlock TextWrapping="Wrap"
                            Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                           Text="Full Trace and the WinDbg commands require Microsoft WinDbg (Windows Debugger). WinDbg includes Time Travel Debugging (TTD) used for Full Trace recording. Install it using one of the options below."/>
+                           Text="Full Trace requires Time Travel Debugging (TTD), which is installed as part of Microsoft WinDbg (Windows Debugger). Install WinDbg using one of the options below."/>
             </StackPanel>
 
             <StackPanel Spacing="2">

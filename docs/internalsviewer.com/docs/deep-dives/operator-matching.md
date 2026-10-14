@@ -1,6 +1,6 @@
 # How operator matching works
 
-The Callstack view can show you one plan operator's call stack on its own - the frames that Hash Match executed, without
+The Call Tree can show you one plan operator's call stack on its own - the frames that Hash Match executed, without
 the thread startup above it or the Index Scan's work below it. Doing that means answering a question SQL Server does not
 answer for you: **which part of this call stack belongs to which operator?**
 

@@ -353,7 +353,7 @@ public sealed partial class FlameChartControl
 
         if (!_inUseCurves.TryGetValue(source, out var curve))
         {
-            curve = timeline.InUseWithin(threadId, positions.Start, positions.End);
+            curve = timeline.Memory.InUseWithin(threadId, positions.Start, positions.End);
 
             _inUseCurves[source] = curve;
         }

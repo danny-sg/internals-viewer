@@ -101,6 +101,7 @@ sqlmin|Rowset*|*|RowAccess
 
 *|CMsqlExecContext*|*|QueryExecution
 *|CSQLSource*|*|QueryExecution
+sqllang|*|PsqlGetSqlSourceFromPcp|QueryExecution
 *|CXStmt*|*|QueryExecution
 *|CLanguageExecEnv*|*|QueryExecution
 *|CExecuteStatement*|*|QueryExecution
@@ -236,6 +237,7 @@ sqlmin|AllocScan|*|PageAccess
 *|CRcsSecurityInfo*|*|Security
 
 *|CQDS*|*|QueryStore
+qds|*|Clone|QueryStore
 *|CDBQDS*|*|QueryStore
 *|CLAQFeedbackManager*|*|QueryStore
 *|CQDSHintsApplier*|*|QueryStore
@@ -587,6 +589,8 @@ sqlmin|CBpCompute*|*|ExpressionEvaluation
 sqlmin|CBpHashTable*|*|PhysicalOperator
 sqlmin|CBpBatchScanAccessor*|*|RowAccess
 sqlmin|RbpExpression*|*|ExpressionEvaluation
+*|RbpExpr*|*|ExpressionEvaluation
+*|RbpExprFilter*|*|ColumnStore
 
 # The batch itself, its vectors, and the off-batch memory a value too wide for a vector slot is held in.
 sqlmin|CBpBatch*|*|Dataset
@@ -612,12 +616,12 @@ sqlmin|CBpWorkfileMgr*|*|Storage
 sqlmin|CAutoShutdown<CBpWorkfileMgr>|*|Storage
 sqlmin|CBpWorkfileSharedContext*|*|Storage
 sqlmin|CBpSpillWriter*|*|Storage
-sqlmin|CBpMalloc*|*|SqlOs
-sqlmin|CBpMemoryGroup*|*|SqlOs
+sqlmin|CBpMalloc*|*|Memory
+sqlmin|CBpMemoryGroup*|*|Memory
 sqlmin|CBpPerCpuRoundUpCounter*|*|SqlOs
-sqlmin|CBpagMultiPageAllocator*|*|SqlOs
-sqlmin|CBpagPageAllocator*|*|SqlOs
-sqlmin|*|PmoNewFromGrantUsageHandle|SqlOs
+sqlmin|CBpagMultiPageAllocator*|*|Memory
+sqlmin|CBpagPageAllocator*|*|Memory
+sqlmin|*|PmoNewFromGrantUsageHandle|Memory
 sqlmin|*|BpLog2*|System
 sqlmin|CBpPushdownAggregateContext*|*|ColumnStore
 sqlmin|*|FindMostCompressedColumn*|ColumnStore
@@ -649,7 +653,7 @@ sqlmin|*|traceTransactionEvent|XEventInfrastructure
 # Optimization: the memo, memory-grant feedback, batch-mode eligibility, missing index, and the statistics iterators the
 # cardinality estimator walks.
 *|CMemo*|*|Optimization
-*|CMemoryFeedbackManager*|*|Optimization
+*|CMemoryFeedbackManager*|*|Memory
 *|CDetermineBatchModeEligibility*|*|Optimization
 *|CMissingIndexCompileDescription*|*|Optimization
 *|CMIterStats*|*|Optimization
@@ -675,6 +679,7 @@ sqlmin|*|traceTransactionEvent|XEventInfrastructure
 
 # Columnstore index scan runtime.
 *|CSIScan*|*|ColumnStore
+sqlmin|*|GetCSIScanColumnBindingTypeInfo|ColumnStore
 
 # Batch mode setup.
 *|CBpXte*|*|ExecutionTree
@@ -683,6 +688,7 @@ sqlmin|*|traceTransactionEvent|XEventInfrastructure
 
 # SOS synchronisation waits, the blob handle factory, database context, the id manager, and the C++ destructor helper.
 *|SOS_Mutex*|*|Scheduling
+*|SOS_Semaphore*|*|Scheduling
 *|SOS::Event*|*|Scheduling
 *|*|ReturnBlobHandleFactory*|LargeObjectStorage
 *|CAutoDb*|*|QueryExecution
@@ -706,7 +712,11 @@ sqlmin|*|traceTransactionEvent|XEventInfrastructure
 *|*|`*|System
 *|*|operator *|System
 *|*|operator*|System
-*|*|OperatorNew|System
+*|*|OperatorNew|Memory
+*|*|operator new|Memory
+*|*|operator new[]|Memory
+*|*|operator delete|Memory
+*|*|operator delete[]|Memory
 *|*|commondelete|System
 *|*|common_*|System
 *|*|fp_format_*|System
@@ -902,9 +912,9 @@ sqlmin|*|traceTransactionEvent|XEventInfrastructure
 *|*|StoragePerfCountersRecord|IoInfrastructure
 
 # --- SQLOS memory -------------------------------------------------------------------------------------------------------
-*|SOS_Memory*|*|SqlOs
+*|SOS_Memory*|*|Memory
 *|SOS_ParentBlockDescriptor*|*|SqlOs
-*|SOS_PartitionedHeap*|*|SqlOs
+*|SOS_PartitionedHeap*|*|Memory
 *|SOS_PartitionedCounterBase*|*|SqlOs
 *|SOS_CacheStore*|*|SqlOs
 *|SOS_UserStore*|*|SqlOs
@@ -921,32 +931,32 @@ sqlmin|*|traceTransactionEvent|XEventInfrastructure
 *|SOS_FeatureSwitches*|*|SqlOs
 *|SOS_Atomic*|*|SqlOs
 *|ISOS*|*|SqlOs
-*|SOSHost_MemObj*|*|SqlOs
+*|SOSHost_MemObj*|*|Memory
 *|SOSHost_CacheStore*|*|SqlOs
 *|ISOSHost*|*|SqlOs
-*|MemoryNode*|*|SqlOs
-*|MemoryClerkInternal*|*|SqlOs
-*|MemoryObjectFactory*|*|SqlOs
-*|TMemoryBlockAllocator*|*|SqlOs
-*|DescriptorAllocator*|*|SqlOs
-*|AlignedSmallPageAllocator*|*|SqlOs
-*|LargePageAllocator*|*|SqlOs
-*|PmoAllocator*|*|SqlOs
-*|IMemObj*|*|SqlOs
-*|CMemObj*|*|SqlOs
-*|CMemThread*|*|SqlOs
-*|CMemProc*|*|SqlOs
-*|CMemFixed*|*|SqlOs
-*|CMemPartitioned*|*|SqlOs
-*|MemObjCache*|*|SqlOs
-*|CRawMemObjAlloc*|*|SqlOs
-*|StdAlloc*|*|SqlOs
-*|SqlMemoryObjectWrapper*|*|SqlOs
-*|CPvArrayAllocator*|*|SqlOs
-*|PFIAllocator*|*|SqlOs
-*|HkCsPFIAllocator*|*|SqlOs
-*|CInMemCacheAllocationStack*|*|SqlOs
-*|CCacheStoreWrappingPageAllocator*|*|SqlOs
+*|MemoryNode*|*|Memory
+*|MemoryClerkInternal*|*|Memory
+*|MemoryObjectFactory*|*|Memory
+*|TMemoryBlockAllocator*|*|Memory
+*|DescriptorAllocator*|*|Memory
+*|AlignedSmallPageAllocator*|*|Memory
+*|LargePageAllocator*|*|Memory
+*|PmoAllocator*|*|Memory
+*|IMemObj*|*|Memory
+*|CMemObj*|*|Memory
+*|CMemThread*|*|Memory
+*|CMemProc*|*|Memory
+*|CMemFixed*|*|Memory
+*|CMemPartitioned*|*|Memory
+*|MemObjCache*|*|Memory
+*|CRawMemObjAlloc*|*|Memory
+*|StdAlloc*|*|Memory
+*|SqlMemoryObjectWrapper*|*|Memory
+*|CPvArrayAllocator*|*|Memory
+*|PFIAllocator*|*|Memory
+*|HkCsPFIAllocator*|*|Memory
+*|CInMemCacheAllocationStack*|*|Memory
+*|CCacheStoreWrappingPageAllocator*|*|Memory
 *|TPartitionedDescriptorList*|*|SqlOs
 *|TDelayedPartitionedStack*|*|SqlOs
 *|TCacheStore*|*|SqlOs
@@ -964,28 +974,31 @@ sqlmin|*|traceTransactionEvent|XEventInfrastructure
 *|OsInfo*|*|SqlOs
 *|AutoCPUId*|*|SqlOs
 *|ThreadResourceOwner*|*|SqlOs
-*|OomIndicator*|*|SqlOs
+*|OomIndicator*|*|Memory
 *|PollingMonitor*|*|SqlOs
 *|LongTermSchedulerEnum*|*|SqlOs
 *|WorkDispatcher*|*|SqlOs
-*|CMallocSpy*|*|SqlOs
+*|CMallocSpy*|*|Memory
 *|CCache*|*|SqlOs
 *|CCacheObject*|*|SqlOs
 *|CInMemCache*|*|SqlOs
 *|CXCacheMgr*|*|SqlOs
-*|ResourceSemaphore*|*|SqlOs
-*|CQryMemQueue*|*|SqlOs
+*|ResourceSemaphore*|*|Memory
+*|CQryMemQueue*|*|Memory
 *|ResQueueBase*|*|SqlOs
 *|QuotaController*|*|SqlOs
 *|CExternalGovernanceManager*|*|SqlOs
 *|CAutoAccountGroupUsage*|*|SqlOs
-*|CAutoMeasureMemory*|*|SqlOs
-*|*|PmoGetOwner|SqlOs
-*|*|PmoNewMemObj|SqlOs
-*|*|GetMemoryClerk|SqlOs
-*|*|GetIncrementalProfilePmo|SqlOs
-*|*|GetXactPmo|SqlOs
-*|*|AllocateRaw*|SqlOs
+*|CAutoMeasureMemory*|*|Memory
+*|*|PmoGetOwner|Memory
+*|*|PmoNewMemObj|Memory
+*|*|GetMemoryClerk|Memory
+*|*|GetIncrementalProfilePmo|Memory
+*|*|GetXactPmo|Memory
+*|*|AllocateRaw*|Memory
+*|CMemory*|*|Memory
+*|CQueryResourceGrantManager*|*|Memory
+*|ISOS_Malloc*|*|Memory
 *|*|AccountForQueryThreadUsage|SqlOs
 *|*|CalculateCPUDiff|SqlOs
 *|*|IsFeatureSwitchEnabled|SqlOs
@@ -1721,6 +1734,7 @@ sqlmin|*|traceTransactionEvent|XEventInfrastructure
 
 # --- Expression services: values, conversion and collation -------------------------------------------------------------
 *|CXVariant*|*|ExpressionEvaluation
+sqllang|*|InitXVarWithBH|ExpressionEvaluation
 *|CXVarFunc*|*|ExpressionEvaluation
 *|CTEsConvert*|*|ExpressionEvaluation
 *|CEs*|*|ExpressionEvaluation
@@ -1917,7 +1931,7 @@ sqlmin|*|traceTransactionEvent|XEventInfrastructure
 *|CBpQueryDictionaryManager*|*|ColumnStore
 *|CBpBitmapReferenceCollection*|*|ColumnStore
 *|CBpDeepDataStore*|*|Dataset
-*|CBpMemoryManager*|*|SqlOs
+*|CBpMemoryManager*|*|Memory
 *|CBpVectorIdArray*|*|Dataset
 *|CMultiDataIntermediateResults*|*|ExpressionEvaluation
 *|CNativeShuffleWriteBuffer*|*|Dataset
@@ -2077,8 +2091,11 @@ sqllang|*|MultiOrdinalFromSingleOrd|Compilation
 sqllang|*|alg_LeftRight|Compilation
 sqlmin|CBpBitmapCollectionProbeCompileTime*|*|Compilation
 sqlmin|CBpExpr*|*|ExpressionEvaluation
+sqlmin|CBpUnaryExpr|*|ExpressionEvaluation
+sqlmin|*|BitCountPopCnt|ExpressionEvaluation
 sqlmin|CBpUtility*|*|Compilation
 sqlmin|*|ProjectIntermediateCompile|Compilation
+sqlmin|*|CompileBitCount|Compilation
 *|*|GetNthData|ExpressionEvaluation
 *|CDefaultRunTimeProvider_IXCodeProvider*|*|ExpressionEvaluation
 *|CMultidataFuncEvalTracker*|*|ExpressionEvaluation
@@ -2091,23 +2108,23 @@ sqlmin|*|ProjectIntermediateCompile|Compilation
 *|*|dllmain_crt_dispatch|System
 *|*|dllmain_dispatch|System
 *|*|ImageTlsCallbackCaller|System
-sqlmin|CQryMemManager*|*|SqlOs
+sqlmin|CQryMemManager*|*|Memory
 sqlmin|CQryMemManager|*Showplan*|Tracing
-sqlmin|*|AccountForGrantedBufs|SqlOs
+sqlmin|*|AccountForGrantedBufs|Memory
 sqlmin|*|AccountForReleasedBufs|SqlOs
-sqlmin|*|CBufConfigMinQueryMem|SqlOs
-sqlmin|*|GetMemoryClerkForGrants|SqlOs
-sqlmin|*|PbufGetGrantedBufs|SqlOs
-sqlmin|*|PvGetGrantedPage|SqlOs
-sqlmin|*|ReleaseGrantedBufs|SqlOs
-sqlmin|*|ReleaseGrantedPage|SqlOs
+sqlmin|*|CBufConfigMinQueryMem|Memory
+sqlmin|*|GetMemoryClerkForGrants|Memory
+sqlmin|*|PbufGetGrantedBufs|Memory
+sqlmin|*|PvGetGrantedPage|Memory
+sqlmin|*|ReleaseGrantedBufs|Memory
+sqlmin|*|ReleaseGrantedPage|Memory
 sqlmin|*|ToDWORD|SqlOs
-*|*|PreGrantEvent|SqlOs
-*|*|PostGrantEvent|SqlOs
+*|*|PreGrantEvent|Memory
+*|*|PostGrantEvent|Memory
 sqlmin|CAutoMemoryGrantWaitEventPublisher*|*|XEventInfrastructure
 sqlmin|PartitionedCounter*|*|SqlOs
-sqldk|MemoryWorkSpaceVersion*|*|SqlOs
-sqldk|TMemoryWorkSpace*|*|SqlOs
+sqldk|MemoryWorkSpaceVersion*|*|Memory
+sqldk|TMemoryWorkSpace*|*|Memory
 sqldk|ResourceMonitor*|*|SqlOs
 sqldk|SOS_LargeCacheStore*|*|SqlOs
 *|TAutoSpinEventLock*|*|Scheduling

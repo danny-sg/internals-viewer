@@ -4,7 +4,7 @@ namespace InternalsViewer.Query.FullTrace.Arguments;
 
 public sealed record ArgumentLayout(IReadOnlyList<ArgumentSlot> Slots, string? ReturnType)
 {
-    public const int CapturedSlots = 8;
+    public const int CapturedSlots = 16;
 
     public const string ReturnBuffer = "Return Buffer";
 
@@ -18,7 +18,7 @@ public sealed record ArgumentLayout(IReadOnlyList<ArgumentSlot> Slots, string? R
 
         var position = 0;
 
-        if (signature.Kind == FunctionKind.Member)
+        if (signature.Type == FunctionType.Member)
         {
             slots.Add(new ArgumentSlot("this", "this", ArgumentLocation.Register, 0, Registers[0]));
 

@@ -45,4 +45,27 @@ public class QueryLayoutViewModelTests
         Assert.Equal("Sql", Assert.IsType<TabGroupNode>(split.First).SelectedDocument?.Key);
         Assert.Equal("Events", Assert.IsType<TabGroupNode>(split.Second).SelectedDocument?.Key);
     }
+
+    [Fact]
+    public void RestoreRoot_Restores_The_Call_Tree_Saved_Under_Its_Old_Key()
+    {
+        var layout = new QueryLayoutViewModel(new object());
+
+        Assert.True(layout.RestoreRoot(new DockNode { IsSplit = false, Documents = ["Sql", "Callstack"], Selected = "Sql" }));
+
+        Assert.True(layout.IsVisible("CallTree"));
+    }
+
+    [Theory]
+    [InlineData(true, false)]
+    [InlineData(false, true)]
+    public void Showing_A_Call_Tree_Panel_Shows_The_Call_Tree(bool members, bool symbols)
+    {
+        var layout = new QueryLayoutViewModel(new object());
+
+        layout.IsCallTreeMembersVisible = members;
+        layout.IsCallTreeSymbolsVisible = symbols;
+
+        Assert.True(layout.IsCallTreeVisible && layout.IsVisible("CallTree"));
+    }
 }

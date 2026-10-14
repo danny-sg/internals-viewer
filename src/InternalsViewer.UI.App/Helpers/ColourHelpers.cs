@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Drawing;
+using System.Globalization;
 using SkiaSharp;
 
 namespace InternalsViewer.UI.App.Helpers;
@@ -27,6 +28,11 @@ internal static class ColourHelpers
     {
         return Color.FromArgb(color.A, color.R, color.G, color.B);
     }
+
+    public static Windows.UI.Color? FromHex(string? hex)
+        => hex?.TrimStart('#') is { Length: 6 } digits && uint.TryParse(digits, NumberStyles.HexNumber, null, out var rgb)
+            ? Windows.UI.Color.FromArgb(0xFF, (byte)(rgb >> 16), (byte)(rgb >> 8), (byte)rgb)
+            : null;
 
     /// <summary>
     /// Return the background colour for a given colour, used for gradients

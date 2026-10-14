@@ -186,15 +186,15 @@ public sealed partial class FlameChartControl
                         _paints.Label);
     }
 
-    private bool ShowsGrantUse(TraceTimeline timeline) => GrantedMemory > 0 && timeline.HasWorkspace;
+    private bool ShowsGrantUse(TraceTimeline timeline) => GrantedMemory > 0 && timeline.Memory.HasWorkspace;
 
     private ulong BandInUse(TraceTimeline timeline, double start, double end)
-        => ShowsGrantUse(timeline) ? timeline.PeakWorkspaceDuring(start, end) : timeline.PeakInUseDuring(start, end);
+        => ShowsGrantUse(timeline) ? timeline.Memory.PeakWorkspaceDuring(start, end) : timeline.Memory.PeakInUseDuring(start, end);
 
     private string InUseLabel(TraceTimeline timeline) => ShowsGrantUse(timeline) ? "Grant In Use" : "In Use";
 
     private static ulong AllocatedDuring(TraceTimeline timeline, double start, double end)
-        => timeline.Threads.Aggregate(0ul, (total, t) => total + timeline.AllocatedDuring(t.ThreadId, start, end).Bytes);
+        => timeline.Threads.Aggregate(0ul, (total, t) => total + timeline.Memory.AllocatedDuring(t.ThreadId, start, end).Bytes);
 
     private (double Start, double End) BucketRange(int bucket, double scale)
     {

@@ -9,4 +9,6 @@ internal readonly record struct PointerValue(ulong Function,
                                              uint Call,
                                              int Register,
                                              uint Offset = 0,
-                                             uint IsReadAtReturn = 0);
+                                             uint IsReadAtReturn = 0,
+                                             uint Mode = 0,
+                                             uint Part = 0);
