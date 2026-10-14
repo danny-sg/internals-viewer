@@ -381,7 +381,7 @@ public sealed partial class ArgumentsViewModel(ILogger logger, SymbolsViewModel 
     {
         var header = parsed.ReturnType is { } returnType ? $"{returnType} {signature}" : signature;
 
-        return parsed.Kind == FunctionKind.Static ? $"static {header}" : header;
+        return parsed.Type == FunctionType.Static ? $"static {header}" : header;
     }
 
     partial void OnSelectedCallChanged(ResultRow<long>? value)

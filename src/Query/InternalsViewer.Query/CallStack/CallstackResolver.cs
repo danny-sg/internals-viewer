@@ -252,7 +252,7 @@ public sealed class CallstackResolver(string symbolsPath) : IDisposable
 
             var scoped = separator > 0 ? RemoveScope(signature, $"{detail.Name[..separator]}::") : signature;
 
-            if (FunctionSignature.Parse(signature, resolver.GetDecoratedName(function.Key.Rva, detail.Name)) is { Kind: FunctionKind.Static })
+            if (FunctionSignature.Parse(signature, resolver.GetDecoratedName(function.Key.Rva, detail.Name)) is { Type: FunctionType.Static })
             {
                 scoped = $"static {scoped}";
             }

@@ -81,17 +81,20 @@ public static partial class LocatorReadResolver
 
         Span<char> buffer = stackalloc char[DiaResolver.MaximumNameLength];
 
-        foreach (var detail in resolver.EnumerateFunctions(kept.Contains))
+        using var symbols = resolver.ReadSymbols();
+
+        while (symbols.MoveNext())
         {
-            if (FunctionSignature.ParseParameters(detail.Signature) is not { Count: >= StackCandidateParameters }
-                || !kept.Remove(detail.Rva)
-                || !resolver.TryGetDecoratedName(detail.Rva, buffer, out var decoratedName, detail.Name)
-                || FunctionSignature.Parse(detail.Signature, new string(decoratedName)) is not { } signature)
+            if (!symbols.IsFunction
+                || FunctionSignature.CountParameters(symbols.Signature) is not >= StackCandidateParameters
+                || !kept.Remove(symbols.Rva)
+                || !resolver.TryGetDecoratedName(symbols.Rva, buffer, out var decoratedName, symbols.Name)
+                || FunctionSignature.Parse(symbols.Signature, decoratedName) is not { } signature)
             {
                 continue;
             }
 
-            reads.AddRange(GetStackReads(detail.Rva, signature));
+            reads.AddRange(GetStackReads(symbols.Rva, signature));
         }
 
         return reads;
@@ -118,21 +121,16 @@ public static partial class LocatorReadResolver
     {
         var reads = new List<LocatorRead>();
 
-        Span<char> buffer = stackalloc char[DiaResolver.MaximumNameLength];
+        Span<char> nameBuffer = stackalloc char[DiaResolver.MaximumNameLength];
+
+        Span<char> signatureBuffer = stackalloc char[DiaResolver.MaximumNameLength];
 
         foreach (var rva in functions)
         {
-            if (!resolver.TryGetDecoratedName(rva, buffer, out var name)
-                || (!name.ContainsAny(DecoratedTypes) && !ReferencedType().IsMatch(name)))
-            {
-                continue;
-            }
-
-            var decoratedName = new string(name);
-
-            var signatures = resolver.SignaturesAt(rva);
-
-            if (!HasOneParameterList(signatures) || FunctionSignature.Parse(signatures[0], decoratedName) is not { } signature)
+            if (!resolver.TryGetDecoratedName(rva, nameBuffer, out var decoratedName)
+                || (!decoratedName.ContainsAny(DecoratedTypes) && !ReferencedType().IsMatch(decoratedName))
+                || !TryGetSignature(resolver, rva, signatureBuffer, out var text)
+                || FunctionSignature.Parse(text, decoratedName) is not { } signature)
             {
                 continue;
             }
@@ -143,10 +141,35 @@ public static partial class LocatorReadResolver
         return reads;
     }
 
-    private static bool HasOneParameterList(IReadOnlyList<string> signatures)
-        => signatures.Count == 1
-           || (signatures.Count > 1
-               && signatures.Select(s => string.Join(',', FunctionSignature.ParseParameters(s) ?? [])).Distinct().Count() == 1);
+    private static bool TryGetSignature(DiaResolver resolver, uint rva, Span<char> buffer, out ReadOnlySpan<char> signature)
+    {
+        signature = default;
+
+        using var symbols = resolver.ReadSymbolsAtRva(rva);
+
+        while (symbols.MoveNext())
+        {
+            if (!symbols.IsFunction || symbols.Signature.IsEmpty)
+            {
+                continue;
+            }
+
+            if (signature.IsEmpty)
+            {
+                symbols.Signature.CopyTo(buffer);
+
+                signature = buffer[..symbols.Signature.Length];
+            }
+            else if (!FunctionSignature.HasSameParameters(signature, symbols.Signature))
+            {
+                signature = default;
+
+                return false;
+            }
+        }
+
+        return !signature.IsEmpty;
+    }
 
     [GeneratedRegex("[PQA]E[AB](?:[FGHIJKMN]|_[JKN]|W4|VHoBtId@@)")]
     private static partial Regex ReferencedType();

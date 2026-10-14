@@ -200,7 +200,7 @@ public class LocatorReadResolverTests
     [Fact]
     public void A_Function_With_Four_Arguments_Has_Nothing_On_The_Stack()
     {
-        var signature = new FunctionSignature(["int", "int", "int"], FunctionKind.Member, "void");
+        var signature = new FunctionSignature(["int", "int", "int"], FunctionType.Member, "void");
 
         Assert.Empty(LocatorReadResolver.GetStackReads(Function, signature));
     }
@@ -208,7 +208,7 @@ public class LocatorReadResolverTests
     [Fact]
     public void A_Parameter_Past_The_Captured_Slots_Is_Not_Read()
     {
-        var signature = new FunctionSignature([.. Enumerable.Repeat("int", 15), "PageId const &"], FunctionKind.Member, "void");
+        var signature = new FunctionSignature([.. Enumerable.Repeat("int", 15), "PageId const &"], FunctionType.Member, "void");
 
         Assert.Empty(LocatorReadResolver.ReadsOf(Function, signature));
     }
@@ -216,7 +216,7 @@ public class LocatorReadResolverTests
     [Fact]
     public void A_Parameter_In_The_Last_Captured_Slot_Is_Read_From_The_Stack()
     {
-        var signature = new FunctionSignature([.. Enumerable.Repeat("int", 14), "PageId const &"], FunctionKind.Member, "void");
+        var signature = new FunctionSignature([.. Enumerable.Repeat("int", 14), "PageId const &"], FunctionType.Member, "void");
 
         Assert.Equal([new LocatorRead(Function, 15, false, LocatorKind.Page)], LocatorReadResolver.ReadsOf(Function, signature));
     }

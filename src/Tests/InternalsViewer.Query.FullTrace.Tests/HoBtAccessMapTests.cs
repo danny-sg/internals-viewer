@@ -73,7 +73,7 @@ public class HoBtAccessMapTests
     [Fact]
     public void The_Full_HoBt_Id_Parameter_Of_Init_Is_Named_And_Marked()
     {
-        var signature = new FunctionSignature(["enum ACCESSTYPE", "unsigned __int64", "XDES *"], FunctionKind.Member, "void");
+        var signature = new FunctionSignature(["enum ACCESSTYPE", "unsigned __int64", "XDES *"], FunctionType.Member, "void");
 
         var layout = KnownParameters.Apply(ArgumentLayout.LayoutOf(signature), "HoBtAccess", "Init");
 
@@ -84,9 +84,9 @@ public class HoBtAccessMapTests
     [Fact]
     public void Other_Functions_And_The_HoBtId_Overload_Are_Left_Alone()
     {
-        var packed = new FunctionSignature(["enum ACCESSTYPE", "HoBtId", "XDES *", "CreateHoBtInfo *"], FunctionKind.Member, "void");
+        var packed = new FunctionSignature(["enum ACCESSTYPE", "HoBtId", "XDES *", "CreateHoBtInfo *"], FunctionType.Member, "void");
 
-        var other = new FunctionSignature(["unsigned __int64"], FunctionKind.Member, "void");
+        var other = new FunctionSignature(["unsigned __int64"], FunctionType.Member, "void");
 
         Assert.DoesNotContain(KnownParameters.Apply(ArgumentLayout.LayoutOf(packed), "HoBtAccess", "Init").Slots, s => s.IsHoBtId);
         Assert.DoesNotContain(KnownParameters.Apply(ArgumentLayout.LayoutOf(other), "HoBtAccess", "GetDbId").Slots, s => s.IsHoBtId);

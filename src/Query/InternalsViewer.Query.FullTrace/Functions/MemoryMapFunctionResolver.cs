@@ -18,7 +18,7 @@ internal static class MemoryMapFunctionResolver
         foreach (var rva in functions)
         {
             if (!resolver.TryGetDecoratedName(rva, buffer, out var name)
-                || FunctionSignature.KindOf(new string(name)) != FunctionKind.Member)
+                || FunctionSignature.GetFunctionType(name) != FunctionType.Member)
             {
                 continue;
             }
@@ -34,5 +34,32 @@ internal static class MemoryMapFunctionResolver
     }
 
     private static bool IsFolded(DiaResolver resolver, uint rva)
-        => resolver.EnumerateFunctionsAtRva(rva, includeSignature: false).Select(d => d.Name).Distinct().Skip(1).Any();
+    {
+        Span<char> first = stackalloc char[DiaResolver.MaximumNameLength];
+
+        var firstLength = -1;
+
+        using var symbols = resolver.ReadSymbolsAtRva(rva, includeSignature: false);
+
+        while (symbols.MoveNext())
+        {
+            if (!symbols.IsFunction)
+            {
+                continue;
+            }
+
+            if (firstLength < 0)
+            {
+                symbols.Name.CopyTo(first);
+
+                firstLength = symbols.Name.Length;
+            }
+            else if (!symbols.Name.SequenceEqual(first[..firstLength]))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
 }

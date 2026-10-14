@@ -20,7 +20,7 @@ public class ValueUseGroupTests
             Use(Member, "RCX")
         ];
 
-        var groups = ValueUseGroup.Build(uses, KindOf);
+        var groups = ValueUseGroup.Build(uses, GetFunctionType);
 
         Assert.Equal(["Called by", "Returned by", "Referenced by"], groups.Select(g => g.Title));
     }
@@ -28,7 +28,7 @@ public class ValueUseGroupTests
     [Fact]
     public void Only_A_Member_Function_Is_Called_On_The_Value_In_RCX()
     {
-        var groups = ValueUseGroup.Build([Use(Static, "RCX"), Use(0x3000, "RCX")], KindOf);
+        var groups = ValueUseGroup.Build([Use(Static, "RCX"), Use(0x3000, "RCX")], GetFunctionType);
 
         var passed = Assert.Single(groups);
 
@@ -39,7 +39,7 @@ public class ValueUseGroupTests
     [Fact]
     public void A_Group_Counts_Its_Functions_And_Their_Calls()
     {
-        var group = Assert.Single(ValueUseGroup.Build([Use(Static, "RDX", calls: 3), Use(0x3000, "R8", calls: 1_200)], KindOf));
+        var group = Assert.Single(ValueUseGroup.Build([Use(Static, "RDX", calls: 3), Use(0x3000, "R8", calls: 1_200)], GetFunctionType));
 
         Assert.Equal("2 Functions, 1,203 Calls", group.CountLabel);
     }
@@ -55,10 +55,10 @@ public class ValueUseGroupTests
         Assert.Equal(500, more.From);
     }
 
-    private static FunctionKind? KindOf(TraceValueUse use) => use.Address switch
+    private static FunctionType? GetFunctionType(TraceValueUse use) => use.Address switch
     {
-        Member => FunctionKind.Member,
-        Static => FunctionKind.Static,
+        Member => FunctionType.Member,
+        Static => FunctionType.Static,
         _ => null
     };
 

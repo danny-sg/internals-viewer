@@ -15,12 +15,12 @@ namespace InternalsViewer.UI.App.Tests.Models.Query.CallStack;
 public class ArgumentRowBuilderTests
 {
     private static readonly ArgumentLayout SetRange =
-        ArgumentLayout.LayoutOf(new FunctionSignature(["unsigned __int64 *"], FunctionKind.Member, "void"));
+        ArgumentLayout.LayoutOf(new FunctionSignature(["unsigned __int64 *"], FunctionType.Member, "void"));
 
     [Fact]
     public void Floating_Arguments_Have_No_Column_And_Stack_Arguments_Do()
     {
-        var layout = ArgumentLayout.LayoutOf(new FunctionSignature(["double", "int", "int", "int", "int"], FunctionKind.Free, "double"));
+        var layout = ArgumentLayout.LayoutOf(new FunctionSignature(["double", "int", "int", "int", "int"], FunctionType.Free, "double"));
 
         var table = ArgumentRowBuilder.Table(layout, [Call(0, 7)]);
 
@@ -30,7 +30,7 @@ public class ArgumentRowBuilderTests
     [Fact]
     public void A_Stack_Argument_Takes_Its_Place_In_The_Signature_And_The_Table()
     {
-        var layout = ArgumentLayout.LayoutOf(new FunctionSignature(["int", "int", "int", "int"], FunctionKind.Member, "void"));
+        var layout = ArgumentLayout.LayoutOf(new FunctionSignature(["int", "int", "int", "int"], FunctionType.Member, "void"));
 
         var call = Call(0x1_0000, 1) with { Locators = [new Locator(4, LocatorKind.Argument, 7)] };
 
@@ -41,7 +41,7 @@ public class ArgumentRowBuilderTests
     [Fact]
     public void A_Stack_Argument_That_Was_Not_Read_Says_So()
     {
-        var layout = ArgumentLayout.LayoutOf(new FunctionSignature(["int", "int", "int", "int"], FunctionKind.Member, "void"));
+        var layout = ArgumentLayout.LayoutOf(new FunctionSignature(["int", "int", "int", "int"], FunctionType.Member, "void"));
 
         Assert.Equal("Not Captured", Assert.Single(ArgumentRowBuilder.Table(layout, [Call(0x1_0000, 1)]).Rows)[6]);
     }
@@ -57,7 +57,7 @@ public class ArgumentRowBuilderTests
     [Fact]
     public void A_Call_That_Did_Not_Return_Says_So()
     {
-        var layout = ArgumentLayout.LayoutOf(new FunctionSignature([], FunctionKind.Free, "int"));
+        var layout = ArgumentLayout.LayoutOf(new FunctionSignature([], FunctionType.Free, "int"));
 
         var table = ArgumentRowBuilder.Table(layout, [Call(0, 0, returned: false)]);
 
@@ -91,7 +91,7 @@ public class ArgumentRowBuilderTests
     [Fact]
     public void Values_At_Return_Are_Tinted()
     {
-        var layout = ArgumentLayout.LayoutOf(new FunctionSignature(["unsigned __int64 *"], FunctionKind.Member, "int"));
+        var layout = ArgumentLayout.LayoutOf(new FunctionSignature(["unsigned __int64 *"], FunctionType.Member, "int"));
 
         var table = ArgumentRowBuilder.Table(layout, [Call(0x100, 0x200, returnValue: 3)]);
 
@@ -138,7 +138,7 @@ public class ArgumentRowBuilderTests
     [Fact]
     public void A_Return_Value_Is_Only_Given_When_The_Call_Returned()
     {
-        var layout = ArgumentLayout.LayoutOf(new FunctionSignature([], FunctionKind.Free, "int"));
+        var layout = ArgumentLayout.LayoutOf(new FunctionSignature([], FunctionType.Free, "int"));
 
         Assert.Equal(7ul, ArgumentRowBuilder.CellAt(layout, Call(0, 0, returnValue: 7), 2).Value);
         Assert.Null(ArgumentRowBuilder.CellAt(layout, Call(0, 0, returnValue: 7, returned: false), 2).Value);
@@ -147,7 +147,7 @@ public class ArgumentRowBuilderTests
     [Fact]
     public void A_Page_Argument_Shows_The_Page_It_Points_To()
     {
-        var layout = ArgumentLayout.LayoutOf(new FunctionSignature(["PageId const &"], FunctionKind.Member, "void"));
+        var layout = ArgumentLayout.LayoutOf(new FunctionSignature(["PageId const &"], FunctionType.Member, "void"));
 
         var call = Call(0x100, 0x200) with { Locators = [new Locator(1, LocatorKind.Page, 0x0000_0001_0000_0150)] };
 
@@ -162,7 +162,7 @@ public class ArgumentRowBuilderTests
     [Fact]
     public void A_Row_Returned_By_A_Call_Shows_On_The_Return()
     {
-        var layout = ArgumentLayout.LayoutOf(new FunctionSignature([], FunctionKind.Member, "RowId const *"));
+        var layout = ArgumentLayout.LayoutOf(new FunctionSignature([], FunctionType.Member, "RowId const *"));
 
         var call = Call(0x100, 0, returnValue: 0x300) with
         {
@@ -177,7 +177,7 @@ public class ArgumentRowBuilderTests
     [Fact]
     public void A_Columnstore_Object_Shows_What_It_Names()
     {
-        var layout = ArgumentLayout.LayoutOf(new FunctionSignature(["ColumnStoreObjectKey const &"], FunctionKind.Member, "void"));
+        var layout = ArgumentLayout.LayoutOf(new FunctionSignature(["ColumnStoreObjectKey const &"], FunctionType.Member, "void"));
 
         var key = Locator.ColumnStoreObject(1, 5 | (0x02A7ul << 32), 0x0100 | (2ul << 32), 3 | (1ul << 32));
 
@@ -190,7 +190,7 @@ public class ArgumentRowBuilderTests
     [Fact]
     public void A_Reference_Shows_The_Value_It_Refers_To_But_Is_Not_A_Locator()
     {
-        var layout = ArgumentLayout.LayoutOf(new FunctionSignature(["enum LCK_MODE &"], FunctionKind.Member, "void"));
+        var layout = ArgumentLayout.LayoutOf(new FunctionSignature(["enum LCK_MODE &"], FunctionType.Member, "void"));
 
         var call = Call(0x100, 0x200) with { Locators = [new Locator(1, LocatorKind.Referenced, 4)] };
 
@@ -204,7 +204,7 @@ public class ArgumentRowBuilderTests
     [Fact]
     public void A_Call_Reads_As_Its_Signature_With_The_Values_In_Place()
     {
-        var layout = ArgumentLayout.LayoutOf(new FunctionSignature(["unsigned __int64 *", "int"], FunctionKind.Member, "void"));
+        var layout = ArgumentLayout.LayoutOf(new FunctionSignature(["unsigned __int64 *", "int"], FunctionType.Member, "void"));
 
         var call = new TraceArgumentCall(1, 1, true, [0x1_F000, 0x2_F000, 5, 0], 0, 0);
 
@@ -216,7 +216,7 @@ public class ArgumentRowBuilderTests
     [Fact]
     public void Pointers_Can_Be_Found_But_Small_Values_Cannot()
     {
-        var layout = ArgumentLayout.LayoutOf(new FunctionSignature(["unsigned __int64 *", "int"], FunctionKind.Member, "void"));
+        var layout = ArgumentLayout.LayoutOf(new FunctionSignature(["unsigned __int64 *", "int"], FunctionType.Member, "void"));
 
         var call = new TraceArgumentCall(1, 1, true, [0x1_F000, 0x2_F000, 5, 0], 0, 0);
 
@@ -234,7 +234,7 @@ public class ArgumentRowBuilderTests
     [Fact]
     public void A_Returned_Pointer_Follows_The_Call()
     {
-        var layout = ArgumentLayout.LayoutOf(new FunctionSignature([], FunctionKind.Member, "HoBtAccess *"));
+        var layout = ArgumentLayout.LayoutOf(new FunctionSignature([], FunctionType.Member, "HoBtAccess *"));
 
         var parts = ArgumentRowBuilder.Signature("F", layout, Call(0x1_0000, 0, returnValue: 0x3_0000));
 
@@ -245,7 +245,7 @@ public class ArgumentRowBuilderTests
     [Fact]
     public void An_Argument_That_Was_Not_Captured_Shows_Its_Type()
     {
-        var layout = ArgumentLayout.LayoutOf(new FunctionSignature(["double"], FunctionKind.Free, "void"));
+        var layout = ArgumentLayout.LayoutOf(new FunctionSignature(["double"], FunctionType.Free, "void"));
 
         var parameter = ArgumentRowBuilder.Signature("F", layout, Call(0, 0))[2];
 
@@ -263,7 +263,7 @@ public class ArgumentRowBuilderTests
     [Fact]
     public void A_Described_Value_Shows_What_It_Stands_For()
     {
-        var layout = KnownParameters.Apply(ArgumentLayout.LayoutOf(new FunctionSignature(["unsigned __int64"], FunctionKind.Member, "void")),
+        var layout = KnownParameters.Apply(ArgumentLayout.LayoutOf(new FunctionSignature(["unsigned __int64"], FunctionType.Member, "void")),
                                            "HoBtAccess",
                                            "Init");
 
@@ -286,7 +286,7 @@ public class ArgumentRowBuilderTests
     [Fact]
     public void A_Pointer_To_Another_Object_Is_Decoded_With_Its_Class()
     {
-        var layout = ArgumentLayout.LayoutOf(new FunctionSignature(["HoBtAccess *"], FunctionKind.Member, "void"));
+        var layout = ArgumentLayout.LayoutOf(new FunctionSignature(["HoBtAccess *"], FunctionType.Member, "void"));
 
         var parts = ArgumentRowBuilder.Signature("F", layout, Call(0x1_0000, 0x2_0000), (slot, _, _) => slot.Type == "this" ? null : "dbo.T.PK");
 
@@ -296,7 +296,7 @@ public class ArgumentRowBuilderTests
     [Fact]
     public void A_Page_Is_Decoded_Without_A_Class()
     {
-        var layout = ArgumentLayout.LayoutOf(new FunctionSignature(["PageId const &"], FunctionKind.Member, "void"));
+        var layout = ArgumentLayout.LayoutOf(new FunctionSignature(["PageId const &"], FunctionType.Member, "void"));
 
         var call = Call(0x100, 0x200) with { Locators = [new Locator(1, LocatorKind.Page, 0x0000_0001_0000_0150)] };
 
@@ -308,7 +308,7 @@ public class ArgumentRowBuilderTests
     [Fact]
     public void A_String_Is_Shown_Without_Quotes()
     {
-        var layout = ArgumentLayout.LayoutOf(new FunctionSignature(["char const *"], FunctionKind.Static, "void"));
+        var layout = ArgumentLayout.LayoutOf(new FunctionSignature(["char const *"], FunctionType.Static, "void"));
 
         var call = Call(0x1_0000, 0) with { Locators = [new Locator(0, LocatorKind.Text, 0x1_0000, 1, "dbo.Orders")] };
 
@@ -321,7 +321,7 @@ public class ArgumentRowBuilderTests
     [Fact]
     public void Types_Are_Carried_With_The_Values_But_Not_With_This()
     {
-        var layout = ArgumentLayout.LayoutOf(new FunctionSignature(["bool", "int"], FunctionKind.Member, "void"));
+        var layout = ArgumentLayout.LayoutOf(new FunctionSignature(["bool", "int"], FunctionType.Member, "void"));
 
         var call = new TraceArgumentCall(1, 1, true, [0x1_0000, 1, 5, 0], 0, 0);
 
@@ -335,7 +335,7 @@ public class ArgumentRowBuilderTests
     [InlineData("dbo.T.PK", "F(this dbo.T.PK, 0x5)")]
     public void This_Shows_Only_What_It_Decodes_To(string? reading, string expected)
     {
-        var layout = ArgumentLayout.LayoutOf(new FunctionSignature(["int"], FunctionKind.Member, "void"));
+        var layout = ArgumentLayout.LayoutOf(new FunctionSignature(["int"], FunctionType.Member, "void"));
 
         var call = new TraceArgumentCall(1, 1, true, [0x1_0000, 5, 0, 0], 0, 0);
 
@@ -349,7 +349,7 @@ public class ArgumentRowBuilderTests
     [Fact]
     public void A_Signature_Reads_With_Its_Types_As_It_Is_Shown()
     {
-        var layout = ArgumentLayout.LayoutOf(new FunctionSignature(["bool", "int"], FunctionKind.Member, "void"));
+        var layout = ArgumentLayout.LayoutOf(new FunctionSignature(["bool", "int"], FunctionType.Member, "void"));
 
         var call = new TraceArgumentCall(1, 1, true, [0x1_0000, 1, 5, 0], 0, 0);
 
@@ -361,7 +361,7 @@ public class ArgumentRowBuilderTests
     [Fact]
     public void Each_Value_Is_Labelled_With_Its_Argument_Number()
     {
-        var layout = ArgumentLayout.LayoutOf(new FunctionSignature(["bool", "int"], FunctionKind.Member, "int"));
+        var layout = ArgumentLayout.LayoutOf(new FunctionSignature(["bool", "int"], FunctionType.Member, "int"));
 
         var call = new TraceArgumentCall(1, 1, true, [0x1_0000, 1, 5, 0], 9, 0);
 
@@ -373,7 +373,7 @@ public class ArgumentRowBuilderTests
     [Fact]
     public void A_Return_Left_Off_The_Signature_Is_Still_Found()
     {
-        var layout = ArgumentLayout.LayoutOf(new FunctionSignature([], FunctionKind.Member, "int"));
+        var layout = ArgumentLayout.LayoutOf(new FunctionSignature([], FunctionType.Member, "int"));
 
         var call = Call(0x1_0000, 0, returnValue: 7);
 
@@ -387,7 +387,7 @@ public class ArgumentRowBuilderTests
     [Fact]
     public void A_Pointer_To_A_Known_Object_Takes_The_Object_Class()
     {
-        var layout = ArgumentLayout.LayoutOf(new FunctionSignature(["CQScanNew *"], FunctionKind.Member, "void"));
+        var layout = ArgumentLayout.LayoutOf(new FunctionSignature(["CQScanNew *"], FunctionType.Member, "void"));
 
         var parts = ArgumentRowBuilder.Signature("F",
                                                  layout,
@@ -400,7 +400,7 @@ public class ArgumentRowBuilderTests
     [Fact]
     public void This_Is_Decoded_Without_Its_Class()
     {
-        var layout = ArgumentLayout.LayoutOf(new FunctionSignature([], FunctionKind.Member, "void"));
+        var layout = ArgumentLayout.LayoutOf(new FunctionSignature([], FunctionType.Member, "void"));
 
         var parts = ArgumentRowBuilder.Signature("HoBtAccess::Close", layout, Call(0x1_0000, 0), (_, _, _) => "dbo.T.PK");
 
@@ -410,7 +410,7 @@ public class ArgumentRowBuilderTests
     [Fact]
     public void Without_Decoding_Every_Value_Is_Hex()
     {
-        var layout = ArgumentLayout.LayoutOf(new FunctionSignature(["HoBtAccess *", "int"], FunctionKind.Member, "void"));
+        var layout = ArgumentLayout.LayoutOf(new FunctionSignature(["HoBtAccess *", "int"], FunctionType.Member, "void"));
 
         var call = new TraceArgumentCall(1, 1, true, [0x1_0000, 0x2_0000, 5, 0], 0, 0);
 
@@ -422,7 +422,7 @@ public class ArgumentRowBuilderTests
     [Fact]
     public void Without_Decoding_A_Cell_Is_Hex()
     {
-        var layout = KnownParameters.Apply(ArgumentLayout.LayoutOf(new FunctionSignature(["unsigned __int64"], FunctionKind.Member, "void")),
+        var layout = KnownParameters.Apply(ArgumentLayout.LayoutOf(new FunctionSignature(["unsigned __int64"], FunctionType.Member, "void")),
                                            "HoBtAccess",
                                            "Init");
 
@@ -434,7 +434,7 @@ public class ArgumentRowBuilderTests
     [Fact]
     public void A_Cell_Pointing_At_Another_Object_Carries_Its_Class()
     {
-        var layout = ArgumentLayout.LayoutOf(new FunctionSignature(["HoBtAccess *"], FunctionKind.Member, "void"));
+        var layout = ArgumentLayout.LayoutOf(new FunctionSignature(["HoBtAccess *"], FunctionType.Member, "void"));
 
         var table = ArgumentRowBuilder.Table(layout, [Call(0x100, 0x2_0000)], (slot, _, _) => slot.Type == "this" ? null : "dbo.T.PK");
 
@@ -444,7 +444,7 @@ public class ArgumentRowBuilderTests
     [Fact]
     public void A_Cell_Whose_Object_Is_Mapped_Links_To_Its_Origin()
     {
-        var layout = ArgumentLayout.LayoutOf(new FunctionSignature([], FunctionKind.Member, "void"));
+        var layout = ArgumentLayout.LayoutOf(new FunctionSignature([], FunctionType.Member, "void"));
 
         var origin = new MemoryMapEntry(0x1_0000, MemoryMapOperation.Constructed, 5, 0, 0, 1, 3, "CQScanNew", null);
 

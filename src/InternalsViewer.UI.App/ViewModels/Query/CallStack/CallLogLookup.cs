@@ -148,11 +148,11 @@ public sealed class CallLogLookup(TraceCallLog log,
     {
         var uses = await Log.FindAsync(value, cancellationToken);
 
-        var kinds = await ResolveKindsAsync(uses.Where(u => u.Location == "RCX"));
+        var functionTypes = await ResolveFunctionTypesAsync(uses.Where(u => u.Location == "RCX"));
 
         cancellationToken.ThrowIfCancellationRequested();
 
-        var groups = ValueUseGroup.Build(uses, u => kinds.GetValueOrDefault(u.Address), GetFrame, value);
+        var groups = ValueUseGroup.Build(uses, u => functionTypes.GetValueOrDefault(u.Address), GetFrame, value);
 
         var iterator = GetIterator(value);
 
@@ -240,23 +240,23 @@ public sealed class CallLogLookup(TraceCallLog log,
         return new ResolvedSignature(parsed, signature, layout);
     }
 
-    private async Task<Dictionary<ulong, FunctionKind?>> ResolveKindsAsync(IEnumerable<TraceValueUse> uses)
+    private async Task<Dictionary<ulong, FunctionType?>> ResolveFunctionTypesAsync(IEnumerable<TraceValueUse> uses)
     {
-        var kinds = new Dictionary<ulong, FunctionKind?>();
+        var functionTypes = new Dictionary<ulong, FunctionType?>();
 
         foreach (var use in uses)
         {
-            if (kinds.ContainsKey(use.Address) || GetFrame(use) is not { } frame)
+            if (functionTypes.ContainsKey(use.Address) || GetFrame(use) is not { } frame)
             {
                 continue;
             }
 
             var decoratedName = await symbols.ResolveFrameDecoratedNameAsync(frame);
 
-            kinds[use.Address] = decoratedName is null ? null : FunctionSignature.KindOf(decoratedName);
+            functionTypes[use.Address] = decoratedName is null ? null : FunctionSignature.GetFunctionType(decoratedName);
         }
 
-        return kinds;
+        return functionTypes;
     }
 
     private string? GetTypeName(ulong value, IteratorTarget? iterator, IReadOnlyList<ValueUseGroup> groups)

@@ -90,104 +90,75 @@ public sealed class DiaResolver : IDisposable
     /// Enumerate all symbols with a given prefix, with their address and kind, and their signature when asked for
     /// </summary>
     internal IEnumerable<SymbolDetail> EnumerateSymbolDetails(string prefix, bool includeSignature = true)
-        => EnumerateDetails(DiaBridge.BeginEnumSymbols(_session, prefix), includeSignature, include: null);
-
-    internal IEnumerable<SymbolDetail> EnumerateFunctions(Func<uint, bool> include)
-        => EnumerateDetails(DiaBridge.BeginEnumSymbols(_session, string.Empty),
-                            includeSignature: true,
-                            (rva, isFunction) => isFunction && include(rva));
+        => EnumerateDetails(DiaBridge.BeginEnumSymbols(_session, prefix), includeSignature, functionsOnly: false);
 
     /// <summary>
     /// Enumerate the symbols at one address
     /// </summary>
     internal IEnumerable<SymbolDetail> EnumerateSymbolsAtRva(uint rva)
-        => EnumerateDetails(DiaBridge.BeginEnumSymbolsAtRva(_session, rva), includeSignature: true, include: null);
+        => EnumerateDetails(DiaBridge.BeginEnumSymbolsAtRva(_session, rva), includeSignature: true, functionsOnly: false);
 
     internal IEnumerable<SymbolDetail> EnumerateFunctionsAtRva(uint rva, bool includeSignature = true)
-        => EnumerateDetails(DiaBridge.BeginEnumSymbolsAtRva(_session, rva), includeSignature, (_, isFunction) => isFunction);
+        => EnumerateDetails(DiaBridge.BeginEnumSymbolsAtRva(_session, rva), includeSignature, functionsOnly: true);
 
-    internal unsafe void VisitFunctions(Action<uint, ReadOnlySpan<char>> visit)
+    internal SymbolReader ReadSymbols(bool includeSignature = true)
+        => new(DiaBridge.BeginEnumSymbols(_session, string.Empty), includeSignature);
+
+    internal SymbolReader ReadSymbolsAtRva(uint rva, bool includeSignature = true)
+        => new(DiaBridge.BeginEnumSymbolsAtRva(_session, rva), includeSignature);
+
+    internal void VisitFunctions(Action<uint, ReadOnlySpan<char>> visit)
     {
-        var enumerator = DiaBridge.BeginEnumSymbols(_session, string.Empty);
+        using var symbols = ReadSymbols(includeSignature: false);
 
-        if (enumerator == IntPtr.Zero)
+        while (symbols.MoveNext())
         {
-            return;
-        }
-
-        try
-        {
-            Span<char> buffer = stackalloc char[MaximumNameLength];
-
-            fixed (char* destination = buffer)
+            if (symbols.IsFunction)
             {
-                while (DiaBridge.NextSymbolDetail(enumerator, destination, buffer.Length, null, 0, out var rva, out var isFunction))
-                {
-                    var length = buffer.IndexOf('\0');
-
-                    if (isFunction != 0 && length >= 0)
-                    {
-                        visit(rva, buffer[..length]);
-                    }
-                }
+                visit(symbols.Rva, symbols.Name);
             }
-        }
-        finally
-        {
-            DiaBridge.EndEnumSymbols(enumerator);
         }
     }
 
-    internal unsafe IReadOnlyList<string> SignaturesAt(uint rva)
+    internal string? GetSignature(uint rva)
     {
-        var signatures = new List<string>();
+        using var symbols = ReadSymbolsAtRva(rva);
 
-        var enumerator = DiaBridge.BeginEnumSymbolsAtRva(_session, rva);
-
-        if (enumerator == IntPtr.Zero)
+        while (symbols.MoveNext())
         {
-            return signatures;
-        }
-
-        try
-        {
-            Span<char> buffer = stackalloc char[MaximumNameLength];
-
-            fixed (char* destination = buffer)
+            if (symbols.IsFunction && !symbols.Signature.IsEmpty)
             {
-                while (DiaBridge.NextSymbolDetail(enumerator, null, 0, destination, buffer.Length, out _, out var isFunction))
-                {
-                    var length = buffer.IndexOf('\0');
-
-                    if (isFunction != 0 && length > 0)
-                    {
-                        signatures.Add(new string(buffer[..length]));
-                    }
-                }
+                return symbols.Signature.ToString();
             }
         }
-        finally
-        {
-            DiaBridge.EndEnumSymbols(enumerator);
-        }
 
-        return signatures;
+        return null;
     }
 
-    internal string? GetDecoratedName(uint rva, string? name = null)
+    internal string? GetDecoratedName(uint rva, ReadOnlySpan<char> name = default)
     {
         Span<char> buffer = stackalloc char[MaximumNameLength];
 
         return TryGetDecoratedName(rva, buffer, out var decoratedName, name) ? new string(decoratedName) : null;
     }
 
-    internal unsafe bool TryGetDecoratedName(uint rva, Span<char> buffer, out ReadOnlySpan<char> decoratedName, string? name = null)
+    internal unsafe bool TryGetDecoratedName(uint rva,
+                                             Span<char> buffer,
+                                             out ReadOnlySpan<char> decoratedName,
+                                             ReadOnlySpan<char> name = default)
     {
         decoratedName = default;
 
+        Span<char> terminatedName = stackalloc char[name.Length + 1];
+
+        name.CopyTo(terminatedName);
+
+        terminatedName[^1] = '\0';
+
+        fixed (char* namePointer = terminatedName)
         fixed (char* destination = buffer)
         {
-            if (!DiaBridge.GetDecoratedName(_session, rva, name, destination, buffer.Length))
+            if (!DiaBridge.GetDecoratedName(_session, rva, namePointer, destination, buffer.Length))
             {
                 return false;
             }
@@ -205,59 +176,19 @@ public sealed class DiaResolver : IDisposable
         return true;
     }
 
-    private static IEnumerable<SymbolDetail> EnumerateDetails(IntPtr enumerator, bool includeSignature, Func<uint, bool, bool>? include)
+    private static IEnumerable<SymbolDetail> EnumerateDetails(IntPtr enumerator, bool includeSignature, bool functionsOnly)
     {
-        if (enumerator == IntPtr.Zero)
+        using var symbols = new SymbolReader(enumerator, includeSignature);
+
+        while (symbols.MoveNext())
         {
-            yield break;
-        }
-
-        try
-        {
-            var name = new char[MaximumNameLength];
-
-            var signature = includeSignature ? new char[MaximumNameLength] : null;
-
-            while (NextSymbolDetail(enumerator, name, signature, out var rva, out var isFunction))
+            if (functionsOnly && !symbols.IsFunction)
             {
-                if (include?.Invoke(rva, isFunction) == false)
-                {
-                    continue;
-                }
-
-                yield return new SymbolDetail(GetText(name), signature is null ? string.Empty : GetText(signature), rva, isFunction);
+                continue;
             }
+
+            yield return new SymbolDetail(symbols.Name.ToString(), symbols.Signature.ToString(), symbols.Rva, symbols.IsFunction);
         }
-        finally
-        {
-            DiaBridge.EndEnumSymbols(enumerator);
-        }
-    }
-
-    private static unsafe bool NextSymbolDetail(IntPtr enumerator, char[] name, char[]? signature, out uint rva, out bool isFunction)
-    {
-        fixed (char* namePointer = name)
-        fixed (char* signaturePointer = signature)
-        {
-            var found = DiaBridge.NextSymbolDetail(enumerator,
-                                                   namePointer,
-                                                   name.Length,
-                                                   signaturePointer,
-                                                   signature?.Length ?? 0,
-                                                   out rva,
-                                                   out var function);
-
-            isFunction = function != 0;
-
-            return found;
-        }
-    }
-
-    private static string GetText(char[] buffer)
-    {
-        var length = Array.IndexOf(buffer, '\0');
-
-        return new string(buffer, 0, length < 0 ? buffer.Length : length);
     }
 
     public void Dispose()

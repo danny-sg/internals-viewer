@@ -9,9 +9,9 @@ public sealed record TraceValueUse(ulong Address,
                                    TraceValueMatch First,
                                    TraceValueMatch Last)
 {
-    public TraceValueRole RoleFor(FunctionKind? kind) => Location switch
+    public TraceValueRole GetRole(FunctionType? type) => Location switch
     {
-        "RCX" when kind == FunctionKind.Member 
+        "RCX" when type == FunctionType.Member 
             => TraceValueRole.CalledOn,
         "RAX" 
             => TraceValueRole.Returned,

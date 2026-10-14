@@ -31,10 +31,10 @@ public sealed class ValueUseGroup(TraceValueRole role, IReadOnlyList<ValueUseRow
     }
 
     public static IReadOnlyList<ValueUseGroup> Build(IReadOnlyList<TraceValueUse> uses,
-                                                     Func<TraceValueUse, FunctionKind?> getKind,
+                                                     Func<TraceValueUse, FunctionType?> getFunctionType,
                                                      Func<TraceValueUse, CallstackFrame?>? getFrame = null,
                                                      ulong value = 0)
-        => [.. uses.GroupBy(u => u.RoleFor(getKind(u)))
+        => [.. uses.GroupBy(u => u.GetRole(getFunctionType(u)))
                    .OrderBy(g => g.Key)
                    .Select(g => new ValueUseGroup(g.Key, [.. g.Select(u => new ValueUseRow(u, value, getFrame?.Invoke(u)))]))];
 }

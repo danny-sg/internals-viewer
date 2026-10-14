@@ -1,6 +1,6 @@
 namespace InternalsViewer.Query.CallStack.Arguments;
 
-public enum FunctionKind
+public enum FunctionType
 {
     Member,
     Static,
