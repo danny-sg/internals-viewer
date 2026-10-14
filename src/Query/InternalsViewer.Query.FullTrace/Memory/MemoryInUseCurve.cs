@@ -1,9 +1,8 @@
-using InternalsViewer.Query.FullTrace.Export;
 using InternalsViewer.Query.Helpers;
 
 namespace InternalsViewer.Query.FullTrace.Memory;
 
-public sealed class MemoryInUseCurve(double[] positions, ulong[] values)
+public sealed partial class MemoryInUseCurve(double[] positions, ulong[] values)
 {
     public static MemoryInUseCurve Empty { get; } = new([], []);
 
@@ -30,15 +29,5 @@ public sealed class MemoryInUseCurve(double[] positions, ulong[] values)
         }
 
         return peak;
-    }
-
-    internal static MemoryInUseCurve Read(BinaryReader reader)
-        => new(ExportBinary.ReadArray<double>(reader), ExportBinary.ReadArray<ulong>(reader));
-
-    internal void Write(BinaryWriter writer)
-    {
-        ExportBinary.WriteArray(writer, Positions);
-
-        ExportBinary.WriteArray(writer, Values);
     }
 }

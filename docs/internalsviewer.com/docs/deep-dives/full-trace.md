@@ -28,7 +28,7 @@ On 64-bit Windows, where the function expects its arguments is fixed by the x64 
 
 Read that way, a stack answers two questions at once - what the code was doing, and why. The same `BPool::Get` called from a different operator, or from a different place in the same one, is a different stack.
 
-**A call tree** merges many stacks. Each distinct path from a thread's starting point down to a function appears once, with a count of how often it was seen. The part every stack shares - the statement and the plan's operators - forms the trunk, and the query's work spreads out into the branches beneath. That is what the [Call Stack](/docs/user-guide/query/CallStack) pane shows.
+**A call tree** merges many stacks. Each distinct path from a thread's starting point down to a function appears once, with a count of how often it was seen. The part every stack shares - the statement and the plan's operators - forms the trunk, and the query's work spreads out into the branches beneath. That is what the [Call Tree](/docs/user-guide/query/CallStack) shows.
 
 ## Why capture it
 
@@ -204,9 +204,9 @@ The replay hands back addresses, counts, spans and values. The rest turns them i
 
 Each node's address is looked up in the module ranges and becomes a frame - module, offset, PDB and object - added to a call tree with its count. The frames are resolved to names with the same DIA bridge as sampled stacks, and calls from different places in the same function are merged into one node per function. A map from each raw node to its merged node is kept, so a call log row or a Flame Chart bar always knows its frame - which is what **Go To Call** follows.
 
-The whole recording is kept, compilation included, so what is worked out from it - objects, allocations, memory and event links - sees every call. **Crop To Query** only changes what is shown, and can be switched without tracing again. Each thread's calls start well above the query - receiving the batch, compiling and setting up the statement - so with it on the Call Stack starts at the outermost `CMsqlExecContext::FExecute`, the statement's execution in `sqllang.dll`. A parallel worker's thread never runs beneath that frame, so a thread running operator code without it is shown from its top. The Flame Chart is cropped to match.
+The whole recording is kept, compilation included, so what is worked out from it - objects, allocations, memory and event links - sees every call. **Crop To Query** only changes what is shown, and can be switched without tracing again. Each thread's calls start well above the query - receiving the batch, compiling and setting up the statement - so with it on the Call Tree starts at the outermost `CMsqlExecContext::FExecute`, the statement's execution in `sqllang.dll`. A parallel worker's thread never runs beneath that frame, so a thread running operator code without it is shown from its top. The Flame Chart is cropped to match.
 
-Anything left beneath Extended Events or tracing frames is then removed from the tree and the Flame Chart. Each node's activity band counts when its calls started, bucketed by trace position, and its locators are gathered from the call log, so a frame can show the pages and rows it read and the Call Stack's search can find frames by a page address, a RID or `rowgroup:N column:M`.
+Anything left beneath Extended Events or tracing frames is then removed from the tree and the Flame Chart. Each node's activity band counts when its calls started, bucketed by trace position, and its locators are gathered from the call log, so a frame can show the pages and rows it read and the Call Tree's search can find frames by a page address, a RID or `rowgroup:N column:M`.
 
 ### Operators by iterator
 
@@ -218,7 +218,7 @@ Which object belongs to which operator comes from how the plan is built. Before 
 
 That tree is aligned with the plan. A plan object scores against an operator when the iterator classes it constructed are ones the mappings give that operator, and loses points when they are not. Skipping a plan node or a plan object costs points too. The iterator each plan object built - its return value, or the object its constructor ran on - then takes that plan object's operator, and wrappers such as the profiling iterator are looked through to the iterator inside. This needs no row counts and no guesswork about stack shapes, only the calls that build the plan.
 
-The linked objects give each operator its entry frames - for the Call Stack's operator view and its target badge - and its lifetime, from its object's first method call to its last, for the Flame Chart's Operators pane. The Arguments tab uses the same link to name an iterator or a plan object when its address turns up as a value.
+The linked objects give each operator its entry frames - for the Call Tree's operator view and its target badge - and its lifetime, from its object's first method call to its last, for the Flame Chart's Operators pane. The Arguments tab uses the same link to name an iterator or a plan object when its address turns up as a value.
 
 ### Memory
 
@@ -254,14 +254,14 @@ TTD records instructions, not time. There is no timestamp, and the recording slo
 
 | Extracted | Where it shows |
 | --- | --- |
-| Every call path, with its call count | The [Call Stack](/docs/user-guide/query/CallStack) |
-| When each path ran across the recording | The Call Stack's activity band |
-| Memory allocated beneath each frame | The Call Stack, and the [Flame Chart](/docs/user-guide/query/FlameChart)'s Memory view |
+| Every call path, with its call count | The [Call Tree](/docs/user-guide/query/CallStack) |
+| When each path ran across the recording | The Call Tree's activity band |
+| Memory allocated beneath each frame | The Call Tree, and the [Flame Chart](/docs/user-guide/query/FlameChart)'s Memory view |
 | Every call as a span on its thread | The Flame Chart |
-| Each operator's frames, target and lifetime | The Call Stack's operator view and target badges, and the Flame Chart's Operators pane |
+| Each operator's frames, target and lifetime | The Call Tree's operator view and target badges, and the Flame Chart's Operators pane |
 | Memory in use per operator | The Flame Chart's Operators pane |
 | Every call's register arguments and return value | The [Arguments](/docs/user-guide/query/CallStack#arguments) tab and **Find** |
-| The pages, rows and columnstore objects each call touched | The Call Stack's frames and search, and the Arguments tab |
+| The pages, rows and columnstore objects each call touched | The Call Tree's frames and search, and the Arguments tab |
 | Where each event happened in the recording | The Flame Chart's playhead, following the Timeline |
 | Calls replayed, operators matched, memory allocated, and events published, written and linked | The [Diagnostic log](/docs/user-guide/settings#diagnostic-log) |
 

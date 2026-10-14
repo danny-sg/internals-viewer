@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <UserControl
-    x:Class="InternalsViewer.UI.App.Views.Query.Tabs.CallStack.CallStackTreePanelView"
+    x:Class="InternalsViewer.UI.App.Views.Query.Tabs.CallStack.CallTreePanelView"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:muxc="using:Microsoft.UI.Xaml.Controls"
@@ -452,7 +452,7 @@
                             IsTabStop="False"/>
         </DataTemplate>
 
-        <local:CallstackNodeTemplateSelector x:Key="NodeTemplateSelector"
+        <local:CallTreeNodeTemplateSelector x:Key="NodeTemplateSelector"
                                              FrameTemplate="{StaticResource CallFrameTemplate}"
                                              SignatureFrameTemplate="{StaticResource CallFrameSignatureTemplate}"
                                              RevealedFrameTemplate="{StaticResource RevealedCallFrameTemplate}"

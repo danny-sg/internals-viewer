@@ -16,16 +16,16 @@ using Windows.UI.Core;
 
 namespace InternalsViewer.UI.App.Views.Query.Tabs.CallStack;
 
-public sealed partial class CallStackArgumentsPanelView : UserControl, IDocumentCommands
+public sealed partial class CallTreeArgumentsPanelView : UserControl, IDocumentCommands
 {
-    public CallStackArgumentsPanelView()
+    public CallTreeArgumentsPanelView()
     {
         InitializeComponent();
 
         DataContextChanged += (_, _) => Bindings.Update();
     }
 
-    public CallStackTabViewModel? ViewModel => DataContext as CallStackTabViewModel;
+    public CallTreeTabViewModel? ViewModel => DataContext as CallTreeTabViewModel;
 
     public FrameworkElement CreateCommands() => new StackPanel
     {

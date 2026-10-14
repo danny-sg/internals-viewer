@@ -1,8 +1,8 @@
 # Flame Chart
 
-The Flame Chart draws every call recorded by a [Full Trace](/docs/user-guide/query/FullTrace) - one lane per thread, one bar per call, each call nested beneath the call that made it. The bars use the [Call Stack](/docs/user-guide/query/CallStack)'s category colours.
+The Flame Chart draws every call recorded by a [Full Trace](/docs/user-guide/query/FullTrace) - one lane per thread, one bar per call, each call nested beneath the call that made it. The bars use the [Call Tree](/docs/user-guide/query/CallStack)'s category colours.
 
-The Call Stack merges every call down the same path into one row with a count. The Flame Chart keeps each call apart, in the order it happened, so a scan's `GetRow` calls show as a run of short bars, one per row, and a function called once for a long time as a single wide one. It takes the Timeline's place while **Record Full Trace** is on, or sits beside it when **Record Events** is on too, and the **Flame Chart** item on the View menu, enabled only then, brings it back if it is closed.
+The Call Tree merges every call down the same path into one row with a count. The Flame Chart keeps each call apart, in the order it happened, so a scan's `GetRow` calls show as a run of short bars, one per row, and a function called once for a long time as a single wide one. It takes the Timeline's place while **Record Full Trace** is on, or sits beside it when **Record Events** is on too, and the **Flame Chart** item on the View menu, enabled only then, brings it back if it is closed.
 
 <!-- Screenshot: the Flame Chart for a parallel query, with a lane per thread and the Operators pane open above them -->
 
@@ -15,7 +15,7 @@ From top to bottom:
 - **A lane per thread** - headed **Thread** and the operating system thread id
 - **The memory band** - with **Memory** on, the memory allocated and in use along the bottom - see [Memory](#memory)
 
-In a lane, each call is a bar running from where it started to where it ended. The calls it made sit directly beneath it, inside its width, so the outermost call is at the top of the lane and each row down is one level deeper in the stack. That is the reverse of a classic flame graph, which grows upwards, but it reads the same way as the Call Stack's tree. A bar is coloured by its function's category and labelled with the function's name once it is wide enough to read.
+In a lane, each call is a bar running from where it started to where it ended. The calls it made sit directly beneath it, inside its width, so the outermost call is at the top of the lane and each row down is one level deeper in the stack. That is the reverse of a classic flame graph, which grows upwards, but it reads the same way as the Call Tree. A bar is coloured by its function's category and labelled with the function's name once it is wide enough to read.
 
 - **A wide bar** - a call that ran for a long stretch, and on the Instructions axis, one that executed a lot of code
 - **A run of thin bars** - the same function called over and over, such as a scan's `GetRow` once per row
@@ -52,13 +52,13 @@ Right-clicking a bar gives:
 - **Scope** - scopes the chart to the call's function, as **Shift + click** does - see [Scoping to a function](#scoping-to-a-function)
 - **Scope and Lock** - scopes the chart and turns on the **Lock**, so the scope stays while you look around the other panes
 - **Clear Scope** - only while the chart is scoped, wherever you right-click. Goes back to the whole recording and turns the **Lock** off
-- **Open Call Stack** - opens the [Call Stack](/docs/user-guide/query/CallStack) pane at the call's frame, with the call selected in the [Arguments](/docs/user-guide/query/CallStack#arguments) tab. Right-clicking empty space just opens the pane, and if it is already open its tab is selected
+- **Open Call Tree** - opens the [Call Tree](/docs/user-guide/query/CallStack) at the call's frame, with the call selected in the [Arguments](/docs/user-guide/query/CallStack#arguments) tab. Right-clicking empty space just opens the pane, and if it is already open its tab is selected
 
-<!-- Screenshot: the Flame Chart's right-click menu over a call, with Scope, Scope and Lock and Open Call Stack -->
+<!-- Screenshot: the Flame Chart's right-click menu over a call, with Scope, Scope and Lock and Open Call Tree -->
 
 ## Selecting a call
 
-**Click** a bar to select the call. The Call Stack goes to its frame, the [Arguments](/docs/user-guide/query/CallStack#arguments) tab follows with that call selected, and the chart dims everything except that function's calls and the calls beneath them. Click the selected bar again, or the background, to deselect.
+**Click** a bar to select the call. The Call Tree goes to its frame, the [Arguments](/docs/user-guide/query/CallStack#arguments) tab follows with that call selected, and the chart dims everything except that function's calls and the calls beneath them. Click the selected bar again, or the background, to deselect.
 
 Hovering over a bar describes the call:
 
@@ -70,19 +70,19 @@ Hovering over a bar describes the call:
 - **Started Before The Recorded Call** - the call was already running when its part of the recording began, so its start is not known
 - **Did Not Return** - the call had not returned when the recording stopped, or the recording lost it in a gap
 
-## Following the Call Stack
+## Following the Call Tree
 
-Selecting a frame in the Call Stack highlights that function in the chart. Its calls and everything beneath them stay in colour and the rest is dimmed, the same way a search dims, so you can see everywhere it ran without the chart moving.
+Selecting a frame in the Call Tree highlights that function in the chart. Its calls and everything beneath them stay in colour and the rest is dimmed, the same way a search dims, so you can see everywhere it ran without the chart moving.
 
-<!-- Screenshot: a frame selected in the Call Stack, with its calls highlighted in the Flame Chart and the rest dimmed -->
+<!-- Screenshot: a frame selected in the Call Tree, with its calls highlighted in the Flame Chart and the rest dimmed -->
 
 A frame stands for every call made down that path, so selecting one does not pick a call in the [Arguments](/docs/user-guide/query/CallStack#arguments) tab. Choosing a call there narrows the highlight to that one call - it is outlined, and only it and the calls it made stay in colour. If the chart is scoped somewhere that call is not, it goes back to the whole recording to show it, unless the chart is locked. Clicking the background clears the call.
 
 <!-- Screenshot: one call chosen in the Arguments tab, outlined in the Flame Chart with everything outside it dimmed -->
 
-The Call Stack's [category filter](/docs/user-guide/query/CallStack#filtering-by-category) applies here as well. A hidden category's calls are taken out and the calls they made move up into their place, so a category you have kept is never lost beneath one you have hidden. A category hidden with **Hide With Callees** takes everything beneath its calls with it.
+The Call Tree's [category filter](/docs/user-guide/query/CallStack#filtering-by-category) applies here as well. A hidden category's calls are taken out and the calls they made move up into their place, so a category you have kept is never lost beneath one you have hidden. A category hidden with **Hide With Callees** takes everything beneath its calls with it.
 
-The **Lock** toggle on the tab strip holds the highlight and the scope. Selecting a frame in the Call Stack no longer changes the highlight, and choosing a call elsewhere no longer takes the chart out of its scope, but clicking a bar still selects that call in the Call Stack and Arguments - so one function can stay highlighted while you look through other calls.
+The **Lock** toggle on the tab strip holds the highlight and the scope. Selecting a frame in the Call Tree no longer changes the highlight, and choosing a call elsewhere no longer takes the chart out of its scope, but clicking a bar still selects that call in the Call Tree and Arguments - so one function can stay highlighted while you look through other calls.
 
 ## Scoping to a function
 
@@ -96,7 +96,7 @@ The **Lock** toggle on the tab strip holds the highlight and the scope. Selectin
 
 The **Search** toggle opens a bar above the chart. Calls whose function name does not contain every word typed are dimmed, so the matches stand out. **Escape** closes it.
 
-The filter button beside the box opens the same category badges as the Call Stack's [category filter](/docs/user-guide/query/CallStack#filtering-by-category), and they are one setting - hiding a category here hides it in the Call Stack too.
+The filter button beside the box opens the same category badges as the Call Tree's [category filter](/docs/user-guide/query/CallStack#filtering-by-category), and they are one setting - hiding a category here hides it in the Call Tree too.
 
 ## Operators
 

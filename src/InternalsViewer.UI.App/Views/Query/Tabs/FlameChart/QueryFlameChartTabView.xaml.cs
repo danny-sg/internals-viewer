@@ -51,7 +51,7 @@ public sealed partial class QueryFlameChartTabView : UserControl, IDocumentComma
 
         FlameChart.SelectionCleared += OnSelectionCleared;
 
-        FlameChart.CallStackOpenRequested += OnCallStackOpenRequested;
+        FlameChart.CallTreeOpenRequested += OnCallTreeOpenRequested;
 
         FlameChart.PlanNodeSelected += OnPlanNodeSelected;
 
@@ -146,7 +146,7 @@ public sealed partial class QueryFlameChartTabView : UserControl, IDocumentComma
 
         FlameChart.SelectionCleared -= OnSelectionCleared;
 
-        FlameChart.CallStackOpenRequested -= OnCallStackOpenRequested;
+        FlameChart.CallTreeOpenRequested -= OnCallTreeOpenRequested;
 
         FlameChart.PlanNodeSelected -= OnPlanNodeSelected;
 
@@ -299,7 +299,7 @@ public sealed partial class QueryFlameChartTabView : UserControl, IDocumentComma
 
     private void OnCallSelected(CallStackNode node, int call) => ViewModel?.NavigateToCall(node, call);
 
-    private void OnCallStackOpenRequested(CallStackNode? node, int call) => ViewModel?.OpenCallStack(node, call);
+    private void OnCallTreeOpenRequested(CallStackNode? node, int call) => ViewModel?.OpenCallTree(node, call);
 
     private void OnSelectionCleared()
     {

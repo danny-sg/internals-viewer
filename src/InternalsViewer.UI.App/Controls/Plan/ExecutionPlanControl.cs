@@ -192,7 +192,7 @@ public sealed class ExecutionPlanControl : Canvas
 
     public event EventHandler<PlanNode>? SimulationOpenRequested;
 
-    public event EventHandler<PlanNode>? CallStackOpenRequested;
+    public event EventHandler<PlanNode>? CallTreeOpenRequested;
 
     public event EventHandler<PlanNode>? PropertiesOpenRequested;
     
@@ -530,11 +530,11 @@ public sealed class ExecutionPlanControl : Canvas
                 flyout.Items.Add(openSimulation);
             }
 
-            var openCallStack = new MenuFlyoutItem { Text = "Call Stack" };
+            var openCallTree = new MenuFlyoutItem { Text = "Call Tree" };
 
-            openCallStack.Click += (_, _) => CallStackOpenRequested?.Invoke(this, node);
+            openCallTree.Click += (_, _) => CallTreeOpenRequested?.Invoke(this, node);
 
-            flyout.Items.Add(openCallStack);
+            flyout.Items.Add(openCallTree);
 
             var openProperties = new MenuFlyoutItem { Text = $"Properties" };
 

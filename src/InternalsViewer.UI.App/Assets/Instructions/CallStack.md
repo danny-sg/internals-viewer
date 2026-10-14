@@ -1,7 +1,7 @@
 # Call Stack
 
 Capture [Call Stack](option:IncludeCallStack) events and every event carries the chain of internal SQL Server
-functions that produced it. The [Call Stack](view:Callstack) pane merges them into a single tree for the query, each
+functions that produced it. The [Call Tree](view:CallTree) pane merges them into a single tree for the query, each
 frame classified with a module and category badge and resolved to a `module!Class::Method` symbol.
 
 - **Focus**, on by default, crops the tree to the selected event or operator - Back and Forward retrace the navigation

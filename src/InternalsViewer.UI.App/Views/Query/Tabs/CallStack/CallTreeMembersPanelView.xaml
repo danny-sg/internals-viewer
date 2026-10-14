@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <UserControl
-    x:Class="InternalsViewer.UI.App.Views.Query.Tabs.CallStack.CallStackMembersPanelView"
+    x:Class="InternalsViewer.UI.App.Views.Query.Tabs.CallStack.CallTreeMembersPanelView"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:callStack="using:InternalsViewer.UI.App.Controls.CallStack"

@@ -373,7 +373,7 @@ public sealed partial class FlameChartControl : Grid, IDisposable
 
     public event Action? SelectionCleared;
 
-    public event Action<CallStackNode?, int>? CallStackOpenRequested;
+    public event Action<CallStackNode?, int>? CallTreeOpenRequested;
 
     public event Action<bool>? LockChanged;
 

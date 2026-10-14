@@ -16,23 +16,23 @@ using Microsoft.UI.Xaml.Controls;
 
 namespace InternalsViewer.UI.App.ViewModels.Query.CallStack;
 
-public sealed class CallStackTabViewModel : IDisposable
+public sealed class CallTreeTabViewModel : IDisposable
 {
     private const double TreeStar = 3;
 
     private const double PanelStar = 2;
 
-    public CallStackTabViewModel(QueryViewModel query, SettingsViewModel settings, ILogger logger)
+    public CallTreeTabViewModel(QueryViewModel query, SettingsViewModel settings, ILogger logger)
     {
         Query = query;
         Settings = settings;
         Logger = logger;
         Exclusions = GetExclusions();
 
-        TreeDocument = DocumentViewModel.Create<CallStackTreePanelView>("Call Tree", this, canClose: false, keepAlive: true, key: "CallTree");
-        MembersDocument = DocumentViewModel.Create<CallStackMembersPanelView>("Members", this, keepAlive: true, key: "Members");
-        SymbolsDocument = DocumentViewModel.Create<CallStackSymbolsPanelView>("Symbols", this, keepAlive: true, key: "Symbols");
-        ArgumentsDocument = DocumentViewModel.Create<CallStackArgumentsPanelView>("Arguments", this, keepAlive: true, key: "Arguments");
+        TreeDocument = DocumentViewModel.Create<CallTreePanelView>("Call Tree", this, canClose: false, keepAlive: true, key: "CallTree");
+        MembersDocument = DocumentViewModel.Create<CallTreeMembersPanelView>("Members", this, keepAlive: true, key: "Members");
+        SymbolsDocument = DocumentViewModel.Create<CallTreeSymbolsPanelView>("Symbols", this, keepAlive: true, key: "Symbols");
+        ArgumentsDocument = DocumentViewModel.Create<CallTreeArgumentsPanelView>("Arguments", this, keepAlive: true, key: "Arguments");
 
         Dock = new DockLayoutViewModel(new SplitNode(Orientation.Horizontal,
                                                      new TabGroupNode(TreeDocument),
@@ -130,7 +130,7 @@ public sealed class CallStackTabViewModel : IDisposable
 
         var document = new DocumentViewModel(references.Title,
                                              references,
-                                             static () => new CallStackReferencesPanelView(),
+                                             static () => new CallTreeReferencesPanelView(),
                                              keepAlive: true,
                                              key: $"Find{value:X}",
                                              persist: false);

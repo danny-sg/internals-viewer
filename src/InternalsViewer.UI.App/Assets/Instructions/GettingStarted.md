@@ -19,7 +19,7 @@ on the timeline and view different visualization tabs for the query execution in
 
 - [Allocations](view:Allocations)
 - [Execution Plan](view:ExecutionPlan)
-- [Call Stack](view:CallStack)
+- [Call Tree](view:CallTree)
 - Indexes
 
 Tabs can be grouped into different layouts. Drag the tab headers to dock and group.

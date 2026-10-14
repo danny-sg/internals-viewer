@@ -11,9 +11,9 @@ The tree decodes one row per frame:
 
 The **Activity** column, on by default, shows a small histogram for each frame of when that function was active across the query - a picture of whether it was a one-off or ran throughout - with the selection's time highlighted. Drag the column's edge to resize it. **Signature** adds each function's parameter types from the symbols.
 
-The tab is laid out as a dock, with the **Call Tree** on the left and **Members**, **Symbols** and **Arguments** on the right. Drag a tab to move it to another group or to an edge. Members, Symbols and Arguments can be closed, and come back when something opens them: **List Members**, **Search symbols** or **Show Arguments**.
+The **Call Tree** tab is laid out as a dock, with the tree on the left and **Members**, **Symbols** and **Arguments** on the right. Drag a tab to move it to another group or to an edge. Members, Symbols and Arguments can be closed, and come back when something opens them: **List Members**, **Search symbols** or **Show Arguments**.
 
-<!-- Screenshot (new): the Call Stack tab's dock - the Call Tree on the left, Members, Symbols and Arguments on the right -->
+<!-- Screenshot (new): the Call Tree tab's dock - the tree on the left, Members, Symbols and Arguments on the right -->
 
 An operator row marked **no stack** is one whose frames could not be found - the operator is inlined into its parent, captured no events of its own, or its iterator class is not in the mappings. It keeps its place in the plan but has nothing beneath it.
 
@@ -21,7 +21,7 @@ The tree gives visibility into the engine functions behind each event. Reading d
 
 ## Focus
 
-![Call Stack pane with Focus on](/docs/user-guide/images/query-view-call-tree.png)
+![Call Tree with Focus on](/docs/user-guide/images/query-view-call-tree.png)
 
 **Focus**, on by default, crops the tree to the event or operator currently selected - via the [Timeline](/docs/user-guide/query/Timeline), the [Execution Plan](/docs/user-guide/query/ExecutionPlan), or the Events pane. The header shows the selected event as a chip, with a **←** link to the right showing its parent (e.g. the statement it belongs to) - click it to navigate up to the parent's call stack. The **Back** and **Forward** buttons on the command bar undo/redo this navigation.
 
@@ -70,7 +70,7 @@ A [Full Trace](/docs/user-guide/query/FullTrace) logs every call it replays, wit
 
 The header gives the function's signature, with its return type. Below it a table lists every call - **Call**, **Thread**, a column for each argument named from the signature (`this` first for a member function) and **Return**. Each argument's column header gives its type and the register it was read from. An iterator's calls are kept apart per object, so that two operators of the same class stay separate, and for an iterator method the table holds the calls on that frame's object only.
 
-Selecting a call outlines it in the [Flame Chart](/docs/user-guide/query/FlameChart), and clicking a bar in the Flame Chart, or choosing **Open Call Stack** on its right-click menu, selects its call here.
+Selecting a call outlines it in the [Flame Chart](/docs/user-guide/query/FlameChart), and clicking a bar in the Flame Chart, or choosing **Open Call Tree** on its right-click menu, selects its call here.
 
 ![The Arguments tab beside a Full Trace call tree, listing the calls of CQueryScan::GetRow on one iterator](/docs/user-guide/images/call-stack-arguments.png)
 
@@ -82,7 +82,7 @@ Some values are read further than the register:
 
 - **Pages, rows and columnstore objects** - an argument that points at a page id, a row id or a columnstore object key shows the page, row or object instead of the address. Click a page to open it.
 - **Log sequence numbers** - an argument that points at an `LSN` shows the LSN, such as `(37:152:2)`, in the same form as a page header's `m_lsn`.
-- **Strings** - a `char const *` or `wchar_t const *` argument shows the text it points at, in quotes, such as `"dbo.Orders"`. Only the start of a long string is read, and it is marked **Truncated**. Text the recording never read is taken from the SQL Server file it was compiled into, such as a source file name passed to an allocation. Any other text the recording had not seen shows as the address.
+- **Strings** - a `char const *` or `wchar_t const *` argument shows the text it points at, such as `dbo.Orders`, in the string colour the query editor uses. Only the start of a long string is read, and it is marked **Truncated**. Text the recording never read is taken from the SQL Server file it was compiled into, such as a source file name passed to an allocation. Any other text the recording had not seen shows as the address.
 - **Data types** - an argument that points at a `CTypeInfo`, SQL Server's description of a column or expression type, shows the type as it is written in T-SQL, such as `nvarchar(128)`, `decimal(38,0)` or `int NOT NULL`.
 - **Values behind a pointer** - a pointer or reference to a simple value, such as a number, a flag or an enum, shows the value it points at rather than the address.
 - **Tables and indexes** - a HoBt id is followed by the table and index it belongs to. So is the address of a `HoBtAccess`, the object SQL Server uses to read one table or index, whether it is the `this` of a call or passed as an argument. The trace knows which HoBt each one was set up for, from its `Init` call to its destructor, and `HoBtAccess::Init`'s full HoBt id parameter is named **hobt_id**.

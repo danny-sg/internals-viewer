@@ -13,9 +13,9 @@ using Microsoft.UI.Xaml.Controls;
 
 namespace InternalsViewer.UI.App.Views.Query.Tabs.CallStack;
 
-public sealed partial class CallStackReferencesPanelView : UserControl, IValueFinder, IDocumentCommands, IDisposable
+public sealed partial class CallTreeReferencesPanelView : UserControl, IValueFinder, IDocumentCommands, IDisposable
 {
-    public CallStackReferencesPanelView()
+    public CallTreeReferencesPanelView()
     {
         InitializeComponent();
 

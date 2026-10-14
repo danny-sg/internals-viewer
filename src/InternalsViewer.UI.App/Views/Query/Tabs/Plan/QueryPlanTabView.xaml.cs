@@ -187,8 +187,8 @@ public sealed partial class QueryPlanTabView : UserControl
             planControl.SimulationOpenRequested -= OnPlanSimulationOpenRequested;
             planControl.SimulationOpenRequested += OnPlanSimulationOpenRequested;
 
-            planControl.CallStackOpenRequested -= OnPlanCallStackOpenRequested;
-            planControl.CallStackOpenRequested += OnPlanCallStackOpenRequested;
+            planControl.CallTreeOpenRequested -= OnPlanCallTreeOpenRequested;
+            planControl.CallTreeOpenRequested += OnPlanCallTreeOpenRequested;
 
             planControl.PropertiesOpenRequested -= OnPropertiesOpenRequested;
             planControl.PropertiesOpenRequested += OnPropertiesOpenRequested;
@@ -220,7 +220,7 @@ public sealed partial class QueryPlanTabView : UserControl
 
     private void OnPlanSimulationOpenRequested(object? sender, PlanNode node) => ViewModel?.OpenSimulation(node);
 
-    private void OnPlanCallStackOpenRequested(object? sender, PlanNode node) => ViewModel?.OpenCallStack(node);
+    private void OnPlanCallTreeOpenRequested(object? sender, PlanNode node) => ViewModel?.OpenCallTree(node);
 
     private void OnPropertiesOpenRequested(object? sender, PlanNode node)
     {

@@ -5,7 +5,7 @@ using InternalsViewer.Query.FullTrace.Native;
 
 namespace InternalsViewer.Query.FullTrace.Memory;
 
-public sealed class MemoryMap
+public sealed partial class MemoryMap
 {
     private MemoryMap(Dictionary<ulong, MemoryMapEntry[]> entries)
     {
@@ -41,46 +41,6 @@ public sealed class MemoryMap
         => new(entries.Select(e => GetEntry(e, nodeOf))
                       .GroupBy(e => e.Address)
                       .ToDictionary(g => g.Key, g => Link([.. g.OrderBy(e => e.Call)])));
-
-    internal void Write(BinaryWriter writer)
-    {
-        writer.Write(Count);
-
-        foreach (var entry in Entries.Values.SelectMany(e => e))
-        {
-            writer.Write(entry.Address);
-
-            writer.Write(entry.Call);
-
-            writer.Write(entry.Owner);
-
-            writer.Write(entry.Until);
-
-            writer.Write(entry.Node);
-
-            writer.Write(entry.Thread);
-
-            writer.Write((byte)entry.Operation);
-        }
-    }
-
-    internal static MemoryMap Read(BinaryReader reader, Func<int, CallStackNode?> nodeOf)
-    {
-        var entries = new AddressEntry[reader.ReadInt32()];
-
-        for (var index = 0; index < entries.Length; index++)
-        {
-            entries[index] = new AddressEntry(reader.ReadUInt64(),
-                                              reader.ReadUInt64(),
-                                              reader.ReadUInt64(),
-                                              reader.ReadUInt64(),
-                                              reader.ReadInt32(),
-                                              reader.ReadUInt32(),
-                                              reader.ReadByte());
-        }
-
-        return Build(entries, nodeOf);
-    }
 
     private static MemoryMapEntry GetEntry(AddressEntry entry, Func<int, CallStackNode?> nodeOf)
     {

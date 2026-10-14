@@ -18,7 +18,7 @@ using Windows.UI.Core;
 
 namespace InternalsViewer.UI.App.Views.Query.Tabs.CallStack;
 
-public sealed partial class CallStackTreePanelView : UserControl, IDocumentCommands, ISignatureNavigator, IDisposable
+public sealed partial class CallTreePanelView : UserControl, IDocumentCommands, ISignatureNavigator, IDisposable
 {
     private const int ExpandBudget = 2000;
 
@@ -30,7 +30,7 @@ public sealed partial class CallStackTreePanelView : UserControl, IDocumentComma
 
     private const string ForwardGlyph = "";
 
-    public CallStackTreePanelView()
+    public CallTreePanelView()
     {
         InitializeComponent();
 
@@ -47,7 +47,7 @@ public sealed partial class CallStackTreePanelView : UserControl, IDocumentComma
         Loaded += OnLoaded;
     }
 
-    public CallStackTabViewModel? ViewModel => DataContext as CallStackTabViewModel;
+    public CallTreeTabViewModel? ViewModel => DataContext as CallTreeTabViewModel;
 
     private CallTreeViewModel? CallTree { get; set; }
 
@@ -57,7 +57,7 @@ public sealed partial class CallStackTreePanelView : UserControl, IDocumentComma
 
     private MenuFlyout TreeBackgroundMenu => (MenuFlyout)Resources["TreeBackgroundMenu"];
 
-    private CallstackNodeTemplateSelector NodeTemplates => (CallstackNodeTemplateSelector)Resources["NodeTemplateSelector"];
+    private CallTreeNodeTemplateSelector NodeTemplates => (CallTreeNodeTemplateSelector)Resources["NodeTemplateSelector"];
 
     private Dictionary<CallTreeRow, TreeViewNode> Nodes { get; } = new();
 

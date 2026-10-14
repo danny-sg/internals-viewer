@@ -12,7 +12,7 @@ namespace InternalsViewer.UI.App.ViewModels.Query.CallStack;
 
 public sealed partial class ValueReferencesViewModel(ulong value,
                                                      CallLogLookup lookup,
-                                                     CallStackTabViewModel owner,
+                                                     CallTreeTabViewModel owner,
                                                      ILogger logger) : ObservableObject, IDisposable
 {
     public const int CallPage = 500;
@@ -30,7 +30,7 @@ public sealed partial class ValueReferencesViewModel(ulong value,
 
     public string Title => $"0x{Value:X}";
 
-    public CallStackTabViewModel Owner { get; } = owner;
+    public CallTreeTabViewModel Owner { get; } = owner;
 
     public CallLogLookup Lookup { get; } = lookup;
 

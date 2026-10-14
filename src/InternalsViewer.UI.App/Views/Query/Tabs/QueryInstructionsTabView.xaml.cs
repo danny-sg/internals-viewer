@@ -30,7 +30,7 @@ public sealed partial class QueryInstructionsTabView : UserControl
         ["Allocations"] = q => q.Layout.IsAllocationsVisible = true,
         ["ExecutionPlan"] = q => q.Layout.IsExecutionPlanVisible = true,
         ["Events"] = q => q.Layout.IsEventsVisible = true,
-        ["Callstack"] = q => q.Layout.IsCallstackVisible = true,
+        ["CallTree"] = q => q.Layout.IsCallTreeVisible = true,
         ["Timeline"] = q => q.Layout.IsTimelineVisible = true,
         ["FlameChart"] = q =>
         {

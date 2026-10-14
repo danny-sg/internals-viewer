@@ -427,13 +427,13 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
     public DatabaseSource Database { get; }
 
     /// <summary>
-    /// The Call Stack document's detail pane, its members listing and symbol search
+    /// The Call Tree document's detail pane, its members listing and symbol search
     /// </summary>
     public SymbolsViewModel Symbols { get; }
 
     public ArgumentsViewModel Arguments { get; }
 
-    public CallStackTabViewModel CallStackTab => CreatedCallStackTab ??= new CallStackTabViewModel(this, _settingsViewModel, Logger);
+    public CallTreeTabViewModel CallTreeTab => CreatedCallTreeTab ??= new CallTreeTabViewModel(this, _settingsViewModel, Logger);
 
     /// <summary>
     /// The queries run against this database, listed beside the SQL editor
@@ -616,7 +616,7 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
     private List<AllocationLayer> ObjectLayers { get; set; }
 
-    private CallStackTabViewModel? CreatedCallStackTab { get; set; }
+    private CallTreeTabViewModel? CreatedCallTreeTab { get; set; }
 
     public void NavigateToEvent(EngineEvent engineEvent)
     {
@@ -751,9 +751,9 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
     /// <summary>
     /// Opens the call stack focused on an operator
     /// </summary>
-    public void OpenCallStack(PlanNode node)
+    public void OpenCallTree(PlanNode node)
     {
-        Layout.ShowCallStack();
+        Layout.ShowCallTree();
 
         SelectedPlanNode = node;
 
@@ -763,29 +763,29 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
         }
     }
 
-    public void OpenCallStack(CallStackNode? node, int call)
+    public void OpenCallTree(CallStackNode? node, int call)
     {
-        Layout.ShowCallStack();
+        Layout.ShowCallTree();
 
         if (node is null)
         {
             return;
         }
 
-        _ = CallStackTab;
+        _ = CallTreeTab;
 
         NavigateToCall(node, call);
     }
 
     /// <summary>
-    /// Opens the Call Stack document's detail pane on the symbol search
+    /// Opens the Call Tree document's detail pane on the symbol search
     /// </summary>
     [RelayCommand]
     private void SearchSymbols()
     {
-        Layout.ShowCallStack();
+        Layout.ShowCallTree();
 
-        CallStackTab.ShowSymbols();
+        CallTreeTab.ShowSymbols();
     }
 
     partial void OnSelectedEventChanged(EngineEvent? value)
@@ -1015,7 +1015,7 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
         FlameChart = null;
 
-        CreatedCallStackTab?.Dispose();
+        CreatedCallTreeTab?.Dispose();
 
         Symbols.Dispose();
 

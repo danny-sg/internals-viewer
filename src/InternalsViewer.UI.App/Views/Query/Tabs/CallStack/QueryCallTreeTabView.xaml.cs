@@ -3,9 +3,9 @@ using Microsoft.UI.Xaml.Controls;
 
 namespace InternalsViewer.UI.App.Views.Query.Tabs.CallStack;
 
-public sealed partial class QueryCallStackTabView : UserControl
+public sealed partial class QueryCallTreeTabView : UserControl
 {
-    public QueryCallStackTabView()
+    public QueryCallTreeTabView()
     {
         InitializeComponent();
 

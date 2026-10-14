@@ -652,11 +652,11 @@ public sealed partial class FlameChartControl
             flyout.Items.Add(new MenuFlyoutSeparator());
         }
 
-        var openCallStack = new MenuFlyoutItem { Text = "Open Call Stack" };
+        var openCallTree = new MenuFlyoutItem { Text = "Open Call Tree" };
 
-        openCallStack.Click += (_, _) => CallStackOpenRequested?.Invoke(node, call);
+        openCallTree.Click += (_, _) => CallTreeOpenRequested?.Invoke(node, call);
 
-        flyout.Items.Add(openCallStack);
+        flyout.Items.Add(openCallTree);
 
         if (hasPosition)
         {

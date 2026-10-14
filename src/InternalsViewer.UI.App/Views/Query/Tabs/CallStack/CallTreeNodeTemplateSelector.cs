@@ -5,13 +5,13 @@ using Microsoft.UI.Xaml.Controls;
 namespace InternalsViewer.UI.App.Views.Query.Tabs.CallStack;
 
 /// <summary>
-/// Picks the row template for the Callstack tree — a plan operator (when scoped) or a call frame
+/// Picks the row template for the Call Tree — a plan operator (when scoped) or a call frame
 /// </summary>
 /// <remarks>
 /// Also drives the scope header, whose rows are the same things drawn the same way. Every item is a TreeViewNode
 /// because that is what a TreeView hands its template selector, so the header wraps its content in one to match.
 /// </remarks>
-public sealed class CallstackNodeTemplateSelector : DataTemplateSelector
+public sealed class CallTreeNodeTemplateSelector : DataTemplateSelector
 {
     public DataTemplate? OperatorTemplate { get; set; }
 

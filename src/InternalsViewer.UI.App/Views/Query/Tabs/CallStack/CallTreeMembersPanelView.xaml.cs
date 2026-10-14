@@ -6,16 +6,16 @@ using Microsoft.UI.Xaml.Controls;
 
 namespace InternalsViewer.UI.App.Views.Query.Tabs.CallStack;
 
-public sealed partial class CallStackMembersPanelView : UserControl, ISignatureNavigator, IDisposable
+public sealed partial class CallTreeMembersPanelView : UserControl, ISignatureNavigator, IDisposable
 {
-    public CallStackMembersPanelView()
+    public CallTreeMembersPanelView()
     {
         InitializeComponent();
 
         DataContextChanged += (_, _) => OnViewModelChanged();
     }
 
-    public CallStackTabViewModel? ViewModel => DataContext as CallStackTabViewModel;
+    public CallTreeTabViewModel? ViewModel => DataContext as CallTreeTabViewModel;
 
     private SymbolsViewModel? Symbols { get; set; }
 

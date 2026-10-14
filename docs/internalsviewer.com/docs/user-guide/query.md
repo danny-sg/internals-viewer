@@ -62,7 +62,7 @@ The **View** menu opens additional panes:
 - **Allocations** - the allocation map, scoped to the query - see [Allocations](/docs/user-guide/query/Allocations)
 - **Execution Plan** - the captured plan, connected to the timeline - see [Execution Plan](/docs/user-guide/query/ExecutionPlan)
 - **Events** - the raw list of captured events behind the timeline - see [Events](/docs/user-guide/query/Events)
-- **Call Stack** - the decoded SQL Server call stack for the current event - see [Call Stack](/docs/user-guide/query/CallStack)
+- **Call Tree** - the query's call stacks merged into one tree - see [Call Stack](/docs/user-guide/query/CallStack)
 - **Timeline** - the replay timeline - see [Timeline](/docs/user-guide/query/Timeline)
 - **Flame Chart** - every call recorded by **Record Full Trace** on the Trace menu, which takes the Timeline's place while it is on - see [Flame Chart](/docs/user-guide/query/FlameChart)
 - **Simulation** - steps through the query's plan operator by operator - see [Simulation](/docs/user-guide/query/Simulation)
@@ -73,7 +73,7 @@ Pages and indexes opened from the trace - by double-clicking a timeline event, c
 
 ## Trace menu
 
-**Record Full Trace** records each run with Microsoft's Time Travel Debugging while it is on, so the [Call Stack](/docs/user-guide/query/CallStack) holds every call the query made rather than the stacks sampled at each event - see [Full Trace](/docs/user-guide/query/FullTrace). It is for development and test instances only: it needs administrator consent, can restart the SQL Server service, slows the recorded query down considerably and writes very large files. The dialog shown when it is turned on explains the requirements, and the **Time Travel Warning** [setting](/docs/user-guide/settings#time-travel-warning) brings the dialog back once it has been dismissed. While it is on, a red **Full Trace** badge sits at the end of the menu bar - click it to turn recording off again.
+**Record Full Trace** records each run with Microsoft's Time Travel Debugging while it is on, so the [Call Tree](/docs/user-guide/query/CallStack) holds every call the query made rather than the stacks sampled at each event - see [Full Trace](/docs/user-guide/query/FullTrace). It is for development and test instances only: it needs administrator consent, can restart the SQL Server service, slows the recorded query down considerably and writes very large files. The dialog shown when it is turned on explains the requirements, and the **Time Travel Warning** [setting](/docs/user-guide/settings#time-travel-warning) brings the dialog back once it has been dismissed. While it is on, a red **Full Trace** badge sits at the end of the menu bar - click it to turn recording off again.
 
 **Record Events** adds the normal event set to the recording, at the cost of a larger trace, and keeps the Timeline alongside the Flame Chart - see [Extended Events in a recording](/docs/user-guide/query/FullTrace#extended-events-in-a-recording).
 

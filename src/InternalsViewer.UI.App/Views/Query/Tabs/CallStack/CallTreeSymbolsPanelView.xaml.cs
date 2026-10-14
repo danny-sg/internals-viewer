@@ -9,18 +9,18 @@ using Microsoft.UI.Xaml.Input;
 
 namespace InternalsViewer.UI.App.Views.Query.Tabs.CallStack;
 
-public sealed partial class CallStackSymbolsPanelView : UserControl, ISignatureNavigator, IDisposable
+public sealed partial class CallTreeSymbolsPanelView : UserControl, ISignatureNavigator, IDisposable
 {
-    public CallStackSymbolsPanelView()
+    public CallTreeSymbolsPanelView()
     {
         InitializeComponent();
 
         DataContextChanged += (_, _) => OnViewModelChanged();
     }
 
-    public CallStackTabViewModel? ViewModel => DataContext as CallStackTabViewModel;
+    public CallTreeTabViewModel? ViewModel => DataContext as CallTreeTabViewModel;
 
-    private CallStackTabViewModel? Attached { get; set; }
+    private CallTreeTabViewModel? Attached { get; set; }
 
     private SymbolModuleRow? ContextModule { get; set; }
 

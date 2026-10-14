@@ -1,10 +1,9 @@
 using InternalsViewer.Query.FullTrace.Timeline.Enums;
-using InternalsViewer.Query.FullTrace.Export;
 using InternalsViewer.Query.Helpers;
 
 namespace InternalsViewer.Query.FullTrace.Timeline;
 
-public sealed class TraceTimelineRow
+public sealed partial class TraceTimelineRow
 {
     internal TraceTimelineRow(double[] positionStarts,
                               double[] positionEnds,
@@ -91,31 +90,5 @@ public sealed class TraceTimelineRow
         var index = FirstEndingAfter(axis, x - tolerance);
 
         return index < Count && Starts(axis)[index] <= x + tolerance ? index : -1;
-    }
-
-    internal static TraceTimelineRow Read(BinaryReader reader)
-        => new(ExportBinary.ReadArray<double>(reader),
-               ExportBinary.ReadArray<double>(reader),
-               ExportBinary.ReadArray<double>(reader),
-               ExportBinary.ReadArray<double>(reader),
-               ExportBinary.ReadArray<int>(reader),
-               ExportBinary.ReadArray<uint>(reader),
-               ExportBinary.ReadArray<byte>(reader));
-
-    internal void Write(BinaryWriter writer)
-    {
-        ExportBinary.WriteArray(writer, PositionStarts);
-
-        ExportBinary.WriteArray(writer, PositionEnds);
-
-        ExportBinary.WriteArray(writer, InstructionStarts);
-
-        ExportBinary.WriteArray(writer, InstructionEnds);
-
-        ExportBinary.WriteArray(writer, Nodes);
-
-        ExportBinary.WriteArray(writer, Calls);
-
-        ExportBinary.WriteArray(writer, Flags);
     }
 }

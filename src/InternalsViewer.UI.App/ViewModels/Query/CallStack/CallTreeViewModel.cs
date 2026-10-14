@@ -41,7 +41,7 @@ public sealed partial class CallTreeViewModel : ObservableObject, IDisposable
     [ObservableProperty]
     private string _highlight = string.Empty;
 
-    public CallTreeViewModel(CallStackTabViewModel owner, SettingsViewModel settings)
+    public CallTreeViewModel(CallTreeTabViewModel owner, SettingsViewModel settings)
     {
         Owner = owner;
         Settings = settings;
@@ -62,13 +62,13 @@ public sealed partial class CallTreeViewModel : ObservableObject, IDisposable
 
     public CallStackTree? CallStack => Query.CallStack;
 
-    private CallStackTabViewModel Owner { get; }
+    private CallTreeTabViewModel Owner { get; }
 
     private QueryViewModel Query => Owner.Query;
 
     private SettingsViewModel Settings { get; }
 
-    private List<CallStackPlace> History { get; } = [];
+    private List<CallTreeLocation> History { get; } = [];
 
     private int HistoryIndex { get; set; } = -1;
 
@@ -121,7 +121,7 @@ public sealed partial class CallTreeViewModel : ObservableObject, IDisposable
 
     public void Reset()
     {
-        LeavePlace();
+        LeaveLocation();
 
         FilterPath = null;
 
@@ -137,7 +137,7 @@ public sealed partial class CallTreeViewModel : ObservableObject, IDisposable
 
         ApplyFocus(null);
 
-        PushPlace(CurrentPlace());
+        PushLocation(CurrentLocation());
     }
 
     public void FilterTo(CallStackNode node)
@@ -167,22 +167,22 @@ public sealed partial class CallTreeViewModel : ObservableObject, IDisposable
 
     public void ShowCall(CallStackNode node, int call)
     {
-        LeavePlace();
+        LeaveLocation();
 
         NavigateTo(node);
 
-        PushPlace(new CallStackPlace(Query.SelectedEvent, node, IsFocused, node, call));
+        PushLocation(new CallTreeLocation(Query.SelectedEvent, node, IsFocused, node, call));
 
         _ = Query.Arguments.ShowAsync(node, call);
     }
 
     public void GoToCall(CallStackNode node)
     {
-        LeavePlace();
+        LeaveLocation();
 
         NavigateTo(node, selectInFlameChart: false);
 
-        PushPlace(CurrentPlace());
+        PushLocation(CurrentLocation());
     }
 
     public void ShowOrigin(MemoryMapEntry origin)
@@ -204,7 +204,7 @@ public sealed partial class CallTreeViewModel : ObservableObject, IDisposable
 
     public void NavigateToIterator(IteratorTarget target)
     {
-        LeavePlace();
+        LeaveLocation();
 
         if (target.Operator is { } operatorEvent)
         {
@@ -213,7 +213,7 @@ public sealed partial class CallTreeViewModel : ObservableObject, IDisposable
 
         NavigateTo(target.Node);
 
-        PushPlace(CurrentPlace());
+        PushLocation(CurrentLocation());
     }
 
     // Following the header's parent link, like following one in the tree: a request to go there, so it rebuilds around
@@ -292,11 +292,11 @@ public sealed partial class CallTreeViewModel : ObservableObject, IDisposable
     {
         int? index = call >= 0 ? call : null;
 
-        LeavePlace();
+        LeaveLocation();
 
         NavigateTo(node);
 
-        PushPlace(new CallStackPlace(Query.SelectedEvent, node, IsFocused, node, index));
+        PushLocation(new CallTreeLocation(Query.SelectedEvent, node, IsFocused, node, index));
 
         if (CanShowArguments(node))
         {
@@ -385,7 +385,7 @@ public sealed partial class CallTreeViewModel : ObservableObject, IDisposable
             return;
         }
 
-        SnapshotPlace();
+        SnapshotLocation();
 
         HistoryIndex = index;
 
@@ -403,24 +403,24 @@ public sealed partial class CallTreeViewModel : ObservableObject, IDisposable
         UpdateHistory();
     }
 
-    private void Restore(CallStackPlace place)
+    private void Restore(CallTreeLocation location)
     {
-        IsFocused = place.Focus;
+        IsFocused = location.Focus;
 
-        SelectQuietly(place.Event);
+        SelectQuietly(location.Event);
 
-        if (place.Node is { } node)
+        if (location.Node is { } node)
         {
             NavigateTo(node);
         }
         else
         {
-            ApplyFocus(place.Event);
+            ApplyFocus(location.Event);
         }
 
-        if (place.Function is { } function)
+        if (location.Function is { } function)
         {
-            _ = Query.Arguments.ShowAsync(function, place.Call);
+            _ = Query.Arguments.ShowAsync(function, location.Call);
         }
     }
 
@@ -443,10 +443,10 @@ public sealed partial class CallTreeViewModel : ObservableObject, IDisposable
         }
     }
 
-    private CallStackPlace CurrentPlace()
+    private CallTreeLocation CurrentLocation()
         => new(Query.SelectedEvent, NavigatedNode, IsFocused, Query.Arguments.Shown, Query.Arguments.SelectedCallIndex);
 
-    private void SnapshotPlace()
+    private void SnapshotLocation()
     {
         if (HistoryIndex < 0)
         {
@@ -461,23 +461,23 @@ public sealed partial class CallTreeViewModel : ObservableObject, IDisposable
         };
     }
 
-    private void LeavePlace()
+    private void LeaveLocation()
     {
         if (HistoryIndex < 0)
         {
-            PushPlace(CurrentPlace());
+            PushLocation(CurrentLocation());
 
             return;
         }
 
-        SnapshotPlace();
+        SnapshotLocation();
     }
 
-    private void PushPlace(CallStackPlace place)
+    private void PushLocation(CallTreeLocation location)
     {
         History.RemoveRange(HistoryIndex + 1, History.Count - HistoryIndex - 1);
 
-        History.Add(place);
+        History.Add(location);
 
         HistoryIndex = History.Count - 1;
 
@@ -499,9 +499,9 @@ public sealed partial class CallTreeViewModel : ObservableObject, IDisposable
             return;
         }
 
-        SnapshotPlace();
+        SnapshotLocation();
 
-        PushPlace(new CallStackPlace(selected, null, IsFocused, Query.Arguments.Shown, Query.Arguments.SelectedCallIndex));
+        PushLocation(new CallTreeLocation(selected, null, IsFocused, Query.Arguments.Shown, Query.Arguments.SelectedCallIndex));
     }
 
     private void ClearHistory()

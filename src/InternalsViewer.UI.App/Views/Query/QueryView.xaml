@@ -64,8 +64,8 @@
                                    IsChecked="{x:Bind ViewModel.Layout.IsEventsVisible, Mode=TwoWay}"
                                    IsEnabled="{x:Bind ViewModel.Layout.CanShowEventViews, Mode=OneWay}"/>
 
-                                <ToggleMenuFlyoutItem Text="Call Stack"
-                                   IsChecked="{x:Bind ViewModel.Layout.IsCallstackVisible, Mode=TwoWay}"/>
+                                <ToggleMenuFlyoutItem Text="Call Tree"
+                                   IsChecked="{x:Bind ViewModel.Layout.IsCallTreeVisible, Mode=TwoWay}"/>
                                 <MenuFlyoutSeparator/>
                                 <ToggleMenuFlyoutItem Text="Timeline"
                                    IsChecked="{x:Bind ViewModel.Layout.IsTimelineVisible, Mode=TwoWay}"
