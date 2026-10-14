@@ -53,7 +53,7 @@ public class QueryLayoutViewModelTests
 
         Assert.True(layout.RestoreRoot(new DockNode { IsSplit = false, Documents = ["Sql", "Callstack"], Selected = "Sql" }));
 
-        Assert.True(layout.IsShown("CallTree"));
+        Assert.True(layout.IsVisible("CallTree"));
     }
 
     [Theory]
@@ -66,6 +66,6 @@ public class QueryLayoutViewModelTests
         layout.IsCallTreeMembersVisible = members;
         layout.IsCallTreeSymbolsVisible = symbols;
 
-        Assert.True(layout.IsCallTreeVisible && layout.IsShown("CallTree"));
+        Assert.True(layout.IsCallTreeVisible && layout.IsVisible("CallTree"));
     }
 }

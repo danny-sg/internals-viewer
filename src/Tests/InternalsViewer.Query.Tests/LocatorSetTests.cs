@@ -81,9 +81,9 @@ public class LocatorSetTests
         Assert.Equal("1 Page, 1 Row", set.Label);
     }
 
-    private static Locator Page(ulong value) => new(2, LocatorKind.Page, value);
+    private static Locator Page(ulong value) => new(2, LocatorValueType.Page, value);
 
-    private static Locator Row(ulong value) => new(1, LocatorKind.Row, value);
+    private static Locator Row(ulong value) => new(1, LocatorValueType.Row, value);
 
     private static LocatorSet Set(params Locator[] locators)
     {

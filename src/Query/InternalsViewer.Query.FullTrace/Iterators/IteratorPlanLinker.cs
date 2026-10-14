@@ -1,6 +1,6 @@
 using InternalsViewer.Query.CallStack;
 using InternalsViewer.Query.CallStack.Categories;
-using InternalsViewer.Query.FullTrace.CallLog;
+using InternalsViewer.Query.FullTrace.Calls;
 using InternalsViewer.Query.Events;
 using InternalsViewer.Query.Events.Operators;
 using InternalsViewer.Query.Plans.Model;
@@ -33,10 +33,10 @@ internal static class IteratorPlanLinker
 
     private const int SkippedPlanObject = 4;
 
-    public static IteratorPlanLink Link(TraceCallLog callLog, IReadOnlyList<CallStackNode?> nodes, IEnumerable<EngineEvent> events)
+    public static IteratorPlanLink Link(TraceCallStore callStore, IReadOnlyList<CallStackNode?> nodes, IEnumerable<EngineEvent> events)
     {
-        List<LoggedCall> factories = [.. LoggedCalls(callLog, nodes, IsRowFactory, FirstRegister),
-                                      .. LoggedCalls(callLog, nodes, IsBatchFactory, SecondRegister)];
+        List<LoggedCall> factories = [.. LoggedCalls(callStore, nodes, IsRowFactory, FirstRegister),
+                                      .. LoggedCalls(callStore, nodes, IsBatchFactory, SecondRegister)];
 
         if (factories.Count == 0)
         {
@@ -45,9 +45,9 @@ internal static class IteratorPlanLinker
 
         var factoryNodes = factories.ToLookup<LoggedCall, CallStackNode>(f => f.Node, ReferenceEqualityComparer.Instance);
 
-        var batchIterators = BatchIterators(LoggedCalls(callLog, nodes, IsBatchIterator, FirstRegister), factoryNodes);
+        var batchIterators = BatchIterators(LoggedCalls(callStore, nodes, IsBatchIterator, FirstRegister), factoryNodes);
 
-        var constructors = LoggedCalls(callLog, nodes, IsIteratorConstructor, FirstRegister);
+        var constructors = LoggedCalls(callStore, nodes, IsIteratorConstructor, FirstRegister);
 
         var objects = PlanObject.Build(factories, factoryNodes, Operators(nodes, constructors, batchIterators));
 
@@ -82,7 +82,7 @@ internal static class IteratorPlanLinker
         return new IteratorPlanLink(planObjects, instances);
     }
 
-    private static List<LoggedCall> LoggedCalls(TraceCallLog callLog,
+    private static List<LoggedCall> LoggedCalls(TraceCallStore callStore,
                                                 IReadOnlyList<CallStackNode?> nodes,
                                                 Func<CallStackNode, bool> predicate,
                                                 int objectRegister)
@@ -93,7 +93,7 @@ internal static class IteratorPlanLinker
 
         foreach (var (address, instance) in functions)
         {
-            if (callLog.CallsOf(address, instance) is not { } list)
+            if (callStore.GetCallList(address, instance) is not { } list)
             {
                 continue;
             }

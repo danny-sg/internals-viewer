@@ -222,7 +222,14 @@ public sealed partial class QueryLayoutViewModel : ObservableObject, IDisposable
         Show(_documentsByKey[CallTreeKey]);
     }
 
-    public bool IsShown(string key) 
+    public void ShowFlameChart()
+    {
+        IsFlameChartVisible = true;
+
+        Show(_documentsByKey[FlameChartKey]);
+    }
+
+    public bool IsVisible(string key) 
         => _documentsByKey.TryGetValue(key, out var document) && Dock.Contains(document);
 
     public bool RemoveDocument(string key, out DocumentViewModel document)
@@ -362,14 +369,14 @@ public sealed partial class QueryLayoutViewModel : ObservableObject, IDisposable
         }
     }
 
-    private void SetDocumentVisible(DocumentViewModel document, bool show)
+    private void SetDocumentVisible(DocumentViewModel document, bool isVisible)
     {
         if (_suppressVisibilitySync)
         {
             return;
         }
 
-        if (show && !CanShowEventViews && Array.IndexOf(EventViews, document) >= 0)
+        if (isVisible && !CanShowEventViews && Array.IndexOf(EventViews, document) >= 0)
         {
             _hiddenForTrace.Add(document);
 
@@ -378,7 +385,7 @@ public sealed partial class QueryLayoutViewModel : ObservableObject, IDisposable
             return;
         }
 
-        if (show && ReferenceEquals(document, _documentsByKey[FlameChartKey]))
+        if (isVisible && ReferenceEquals(document, _documentsByKey[FlameChartKey]))
         {
             if (IsTrace)
             {
@@ -392,7 +399,7 @@ public sealed partial class QueryLayoutViewModel : ObservableObject, IDisposable
             return;
         }
 
-        if (show)
+        if (isVisible)
         {
             Dock.Show(document);
         }

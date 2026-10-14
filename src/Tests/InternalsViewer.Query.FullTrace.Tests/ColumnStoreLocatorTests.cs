@@ -1,5 +1,5 @@
 using System.Runtime.InteropServices;
-using InternalsViewer.Query.FullTrace.CallLog;
+using InternalsViewer.Query.FullTrace.Calls;
 using InternalsViewer.Query.FullTrace.Locators;
 using InternalsViewer.Query.FullTrace.Native;
 using InternalsViewer.Query.Events.BatchMode.Enums;
@@ -93,7 +93,7 @@ public class ColumnStoreLocatorTests
     [Fact]
     public void A_Key_Is_Only_Kept_Once_All_Three_Words_Arrive()
     {
-        var builder = new TraceCallLog.Builder(LocatorReadResolver.ReadsOf(0x1000, Fix()));
+        var builder = new TraceCallStore.Builder(LocatorReadResolver.ReadsOf(0x1000, Fix()));
 
         builder.Add(0x1000, 0, Columns(2), 2);
 
@@ -104,7 +104,7 @@ public class ColumnStoreLocatorTests
                              new PointerValue(0x1000, 0, third, 0, 1, 16),
                              new PointerValue(0x1000, 0, first, 1, 1, 0)]);
 
-        var calls = builder.Build().CallsOf(0x1000, 0)!;
+        var calls = builder.Build().GetCallList(0x1000, 0)!;
 
         Assert.Equal("Segment (Rowgroup 3, Column 2)", calls[0].GetLocator(1)?.ToString());
         Assert.Empty(calls[1].Locators);

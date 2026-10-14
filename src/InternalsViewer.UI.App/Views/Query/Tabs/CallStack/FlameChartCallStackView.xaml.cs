@@ -17,7 +17,7 @@ using Microsoft.UI.Xaml.Media.Animation;
 
 namespace InternalsViewer.UI.App.Views.Query.Tabs.CallStack;
 
-public sealed partial class FlameChartCallStackView : UserControl, IValueFinder, IDisposable
+public sealed partial class FlameChartCallStackView : UserControl, IReferenceFinder, IDisposable
 {
     private const double DetailsWidth = 420;
 
@@ -53,7 +53,7 @@ public sealed partial class FlameChartCallStackView : UserControl, IValueFinder,
 
     public static string ArgumentLabel(string? label, string? location) => label ?? location ?? string.Empty;
 
-    public void Find(ulong value) => ViewModel?.Find(value);
+    public void FindReferences(ulong value) => ViewModel?.FindReferences(value);
 
     public void Dispose()
     {
@@ -64,17 +64,17 @@ public sealed partial class FlameChartCallStackView : UserControl, IValueFinder,
         Detach();
     }
 
-    private static Visibility Show(bool shown) => shown ? Visibility.Visible : Visibility.Collapsed;
+    private static Visibility GetVisibility(bool isVisible) => isVisible ? Visibility.Visible : Visibility.Collapsed;
 
-    private Visibility IsShown(object? value) => Show(value is not null);
+    private Visibility IsVisible(object? value) => GetVisibility(value is not null);
 
-    private Visibility IsEmpty(IReadOnlyList<PlayheadThreadRow>? threads) => Show(threads is not { Count: > 0 });
+    private Visibility IsEmpty(IReadOnlyList<PlayheadThreadRow>? threads) => GetVisibility(threads is not { Count: > 0 });
 
-    private Visibility IsFunctionShown(PlayheadCallRow? row, CallSignaturePart? selected) => Show(row is not null && selected is null);
+    private Visibility IsFunctionVisible(PlayheadCallRow? row, CallSignaturePart? selected) => GetVisibility(row is not null && selected is null);
 
-    private Visibility AreArgumentsShown(PlayheadCallRow? row) => Show(row is { Arguments.Count: > 0 });
+    private Visibility AreArgumentsVisible(PlayheadCallRow? row) => GetVisibility(row is { Arguments.Count: > 0 });
 
-    private Visibility IsSourceShown(IReadOnlyList<SourceStep>? steps) => Show(steps is { Count: > 0 });
+    private Visibility IsSourceVisible(IReadOnlyList<SourceStep>? steps) => GetVisibility(steps is { Count: > 0 });
 
     private string CallIdText(PlayheadCallRow? row) => row is { Id: > 0 } ? $"{row.Id}" : "None";
 
@@ -177,15 +177,15 @@ public sealed partial class FlameChartCallStackView : UserControl, IValueFinder,
 
     private void ShowDetails()
     {
-        var shown = Attached is { SelectedValue: not null } or { SelectedCall: not null };
+        var isVisible = Attached is { SelectedValue: not null } or { SelectedCall: not null };
 
-        DetailsPane.Visibility = shown ? Visibility.Visible : Visibility.Collapsed;
+        DetailsPane.Visibility = isVisible ? Visibility.Visible : Visibility.Collapsed;
 
         DetailsSplitter.Visibility = DetailsPane.Visibility;
 
-        SplitterColumn.Width = shown ? GridLength.Auto : new GridLength(0);
+        SplitterColumn.Width = isVisible ? GridLength.Auto : new GridLength(0);
 
-        DetailsColumn.Width = new GridLength(shown ? DetailsWidth : 0);
+        DetailsColumn.Width = new GridLength(isVisible ? DetailsWidth : 0);
 
         ShowDetailsTitle();
 

@@ -277,17 +277,17 @@ public sealed class QueryExportReader
 
         foreach (var page in exported.Pages ?? [])
         {
-            locators.Add(new Locator(0, LocatorKind.Page, LocatorValue(page, 2)));
+            locators.Add(new Locator(0, LocatorValueType.Page, LocatorValue(page, 2)));
         }
 
         foreach (var row in exported.Rows ?? [])
         {
-            locators.Add(new Locator(0, LocatorKind.Row, LocatorValue(row, 3)));
+            locators.Add(new Locator(0, LocatorValueType.Row, LocatorValue(row, 3)));
         }
 
         foreach (var columnStoreObject in exported.Objects ?? [])
         {
-            locators.Add(new Locator(0, LocatorKind.ColumnStoreObject, columnStoreObject[0], columnStoreObject[1]));
+            locators.Add(new Locator(0, LocatorValueType.ColumnStoreObject, columnStoreObject[0], columnStoreObject[1]));
         }
 
         return locators;

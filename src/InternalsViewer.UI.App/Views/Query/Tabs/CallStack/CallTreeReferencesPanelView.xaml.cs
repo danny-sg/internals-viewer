@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.ComponentModel;
 using System.Linq;
 using System.Threading.Tasks;
-using InternalsViewer.Query.FullTrace.CallLog;
+using InternalsViewer.Query.FullTrace.Calls;
 using InternalsViewer.UI.App.Controls.CallStack;
 using InternalsViewer.UI.App.Controls.Docking;
 using InternalsViewer.UI.App.Models.Query.CallStack;
@@ -12,7 +12,7 @@ using Microsoft.UI.Xaml.Controls;
 
 namespace InternalsViewer.UI.App.Views.Query.Tabs.CallStack;
 
-public sealed partial class CallTreeReferencesPanelView : UserControl, IValueFinder, IDocumentCommands, IDisposable
+public sealed partial class CallTreeReferencesPanelView : UserControl, IReferenceFinder, IDocumentCommands, IDisposable
 {
     public CallTreeReferencesPanelView()
     {
@@ -25,7 +25,7 @@ public sealed partial class CallTreeReferencesPanelView : UserControl, IValueFin
 
     private ValueReferencesViewModel? Attached { get; set; }
 
-    public void Find(ulong value) => ViewModel?.Owner.Find(value);
+    public void FindReferences(ulong value) => ViewModel?.Owner.FindReferences(value);
 
     public FrameworkElement CreateCommands() => TabCommands.Panel(0, new DecodeToggle());
 
@@ -109,9 +109,9 @@ public sealed partial class CallTreeReferencesPanelView : UserControl, IValueFin
 
         node.Children.Add(loading);
 
-        var matches = await references.FindCallsAsync(row);
+        var valueCalls = await references.FindCallsAsync(row);
 
-        var calls = await CallNodesAsync(references, row.Use, matches, 0);
+        var calls = await CallNodesAsync(references, row.Use, valueCalls, 0);
 
         node.Children.Remove(loading);
 
@@ -135,19 +135,19 @@ public sealed partial class CallTreeReferencesPanelView : UserControl, IValueFin
 
         switch (node.Content)
         {
-            case ValueCallRow { Match.Node: { } callNode } call:
-                references.Owner.Tree.ShowCall(callNode, call.Match.Call);
+            case ValueCallRow { ValueCall.Node: { } callNode } call:
+                references.Owner.Tree.ShowCall(callNode, call.ValueCall.Call);
                 break;
 
             case ValueTypeRow { Iterator: { } iterator }:
                 references.Owner.Tree.NavigateToIterator(iterator);
                 break;
 
-            case ValueNoteRow { Matches: { } matches } more when node.Parent is { Content: ValueUseRow row } parent:
+            case ValueNoteRow { ValueCalls: { } valueCalls } more when node.Parent is { Content: ValueUseRow row } parent:
             {
                 parent.Children.Remove(node);
 
-                foreach (var call in await CallNodesAsync(references, row.Use, matches, more.From))
+                foreach (var call in await CallNodesAsync(references, row.Use, valueCalls, more.From))
                 {
                     parent.Children.Add(call);
                 }
@@ -159,18 +159,18 @@ public sealed partial class CallTreeReferencesPanelView : UserControl, IValueFin
 
     private static async Task<List<TreeViewNode>> CallNodesAsync(ValueReferencesViewModel references,
                                                                  TraceValueUse use,
-                                                                 IReadOnlyList<TraceValueMatch> matches,
+                                                                 IReadOnlyList<TraceValueCall> valueCalls,
                                                                  int from)
     {
-        var rows = await references.CallRowsAsync(use, matches, from);
+        var rows = await references.CallRowsAsync(use, valueCalls, from);
 
         var nodes = rows.Select(r => new TreeViewNode { Content = r }).ToList();
 
         var end = from + rows.Count;
 
-        if (end < matches.Count)
+        if (end < valueCalls.Count)
         {
-            nodes.Add(new TreeViewNode { Content = ValueNoteRow.More(matches, end) });
+            nodes.Add(new TreeViewNode { Content = ValueNoteRow.More(valueCalls, end) });
         }
 
         return nodes;

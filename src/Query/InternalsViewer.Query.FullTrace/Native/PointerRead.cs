@@ -32,17 +32,17 @@ internal readonly record struct PointerRead(ulong Function,
                                HopAt(0),
                                HopAt(1),
                                HopAt(2),
-                               ModeOf(read.Kind));
+                               ModeOf(read.ValueType));
 
         uint HopAt(int index) => index < path.Length ? (uint)path[index] : 0;
     }
 
-    public static uint ModeOf(LocatorKind kind) => kind switch
+    public static uint ModeOf(LocatorValueType valueType) => valueType switch
     {
-        LocatorKind.Argument => 1,
-        LocatorKind.Text => 2,
-        LocatorKind.WideText => 3,
-        LocatorKind.TypeInfo => 4,
+        LocatorValueType.Argument => 1,
+        LocatorValueType.Text => 2,
+        LocatorValueType.WideText => 3,
+        LocatorValueType.TypeInfo => 4,
         _ => 0
     };
 }

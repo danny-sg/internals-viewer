@@ -70,14 +70,18 @@ public sealed partial class CallTreeArgumentsPanelView : UserControl, IDocumentC
 
         var index = (int)e.Row.Id;
 
-        if (arguments.NodeAt(index) is { } node)
+        if (arguments.GetNode(index) is { } node)
         {
             e.Menu.Items.Add(MenuItems.Create("Go To Call", () => viewModel.Tree.GoToCall(node)));
+
+            e.Menu.Items.Add(MenuItems.Create("Open In Call Stack", () => viewModel.Query.PlayheadStack.Open(node, index)));
+
+            e.Menu.Items.Add(MenuItems.Create("Scope", () => viewModel.Query.PlayheadStack.Scope(node)));
         }
 
-        var cell = arguments.CellAt(index, e.Ordinal);
+        var cell = arguments.GetCell(index, e.Ordinal);
 
-        if (cell.Locator is { Kind: LocatorKind.ColumnStoreObject } columnStoreObject)
+        if (cell.Locator is { ValueType: LocatorValueType.ColumnStoreObject } columnStoreObject)
         {
             e.Menu.Items.Add(MenuItems.Create("Open In The Columnstore Viewer",
                                               () => viewModel.OpenLocator(columnStoreObject, KeyboardState.IsShiftDown())));
@@ -93,14 +97,14 @@ public sealed partial class CallTreeArgumentsPanelView : UserControl, IDocumentC
             return;
         }
 
-        if (arguments.OriginAt(index, e.Ordinal) is { } origin)
+        if (arguments.GetOrigin(index, e.Ordinal) is { } origin)
         {
             e.Menu.Items.Add(MenuItems.Create("Go To Origin", () => viewModel.Tree.ShowOrigin(origin)));
         }
 
-        AddCopyItems(e.Menu, value, arguments.DecodedTextAt(index, e.Ordinal));
+        AddCopyItems(e.Menu, value, arguments.GetDecodedText(index, e.Ordinal));
 
-        if (arguments.HoBtIdAt(index, e.Ordinal) is { } hobtId)
+        if (arguments.GetHoBtId(index, e.Ordinal) is { } hobtId)
         {
             e.Menu.Items.Add(MenuItems.Create("Open The Index", () => viewModel.Query.OpenHoBt(hobtId)));
         }
@@ -112,7 +116,7 @@ public sealed partial class CallTreeArgumentsPanelView : UserControl, IDocumentC
 
         if (cell.Type is { } type && ArgumentRowBuilder.CanFind(type, value))
         {
-            e.Menu.Items.Add(MenuItems.Create("Find", () => viewModel.Find(value)));
+            e.Menu.Items.Add(MenuItems.Create("Find", () => viewModel.FindReferences(value)));
         }
     }
 }

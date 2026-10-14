@@ -520,7 +520,7 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
     /// </summary>
     public bool IsSimulationVisible
     {
-        get => Layout.IsShown(SimulationDocumentKey);
+        get => Layout.IsVisible(SimulationDocumentKey);
         set
         {
             if (value)
@@ -966,7 +966,7 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
                  && Trace is { } trace
                  && ReferenceEquals(trace.CallStack, CallStack))
         {
-            FlameChart = GetFlameChart(trace);
+            FlameChart = ApplyCrop(trace);
         }
     }
 
@@ -1508,7 +1508,7 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
         }
 
         var closed = _openColumnstores.Keys
-            .Where(k => !Layout.IsShown(k))
+            .Where(k => !Layout.IsVisible(k))
             .ToList();
 
         foreach (var key in closed)
@@ -1533,7 +1533,7 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
         }
 
         var closed = _openPages.Keys
-            .Where(k => !Layout.IsShown(k))
+            .Where(k => !Layout.IsVisible(k))
             .ToList();
 
         foreach (var key in closed)
@@ -1558,7 +1558,7 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
         }
 
         var closed = _openIndexes.Keys
-            .Where(k => !Layout.IsShown(k))
+            .Where(k => !Layout.IsVisible(k))
             .ToList();
 
         foreach (var key in closed)
@@ -1581,7 +1581,7 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
         }
 
         var closed = _openSimulations.Keys
-            .Where(k => !Layout.IsShown(k))
+            .Where(k => !Layout.IsVisible(k))
             .ToList();
 
         foreach (var key in closed)
@@ -2211,9 +2211,11 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
     {
         Trace = result;
 
+        var flameChart = ApplyCrop(result);
+
         CallStack = result.CallStack;
 
-        Arguments.SetSource(result.CallLog,
+        Arguments.SetSource(result.CallStore,
                             result.CallStack,
                             IteratorTarget.Build(result.CallStack, Events, result.PlanLink),
                             result.HoBtAccess,
@@ -2221,12 +2223,19 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
         FullFlameChart = result.Timeline;
 
-        FlameChart = GetFlameChart(result);
+        FlameChart = flameChart;
 
         ExecutionPlans = [.. ExecutionPlans];
     }
 
-    private TraceTimeline GetFlameChart(TraceResult result) => QueryOptions.CropToQuery ? result.QueryTimeline : result.Timeline;
+    private TraceTimeline ApplyCrop(TraceResult result)
+    {
+        var timeline = QueryOptions.CropToQuery ? result.QueryTimeline : result.Timeline;
+
+        result.SetActivityWindow(timeline);
+
+        return timeline;
+    }
 
     private static string MessageText(QueryMessage message) => message.IsFinished ? $"{message.Text} - {message.Outcome}" : message.Text;
 

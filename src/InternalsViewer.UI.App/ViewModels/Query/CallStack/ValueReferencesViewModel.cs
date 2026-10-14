@@ -4,14 +4,14 @@ using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
-using InternalsViewer.Query.FullTrace.CallLog;
+using InternalsViewer.Query.FullTrace.Calls;
 using InternalsViewer.UI.App.Models.Query.CallStack;
 using Microsoft.Extensions.Logging;
 
 namespace InternalsViewer.UI.App.ViewModels.Query.CallStack;
 
 public sealed partial class ValueReferencesViewModel(ulong value,
-                                                     CallLogLookup lookup,
+                                                     CallStoreLookup lookup,
                                                      CallTreeTabViewModel owner,
                                                      ILogger logger) : ObservableObject, IDisposable
 {
@@ -28,11 +28,11 @@ public sealed partial class ValueReferencesViewModel(ulong value,
 
     public ulong Value { get; } = value;
 
-    public string Title => $"0x{Value:X}";
+    public string Title => $"Memory Address 0x{Value:X}";
 
     public CallTreeTabViewModel Owner { get; } = owner;
 
-    public CallLogLookup Lookup { get; } = lookup;
+    public CallStoreLookup Lookup { get; } = lookup;
 
     private CancellationTokenSource Cancellation { get; set; } = new();
 
@@ -55,6 +55,7 @@ public sealed partial class ValueReferencesViewModel(ulong value,
             var references = await Lookup.GetReferencesAsync(Value, cancellation.Token);
 
             References = references;
+
             Heading = references.Groups.Count == 0 ? $"No {ReferencesTo(Value)}" : ReferencesTo(Value);
         }
         catch (OperationCanceledException) when (cancellation.IsCancellationRequested)
@@ -75,15 +76,15 @@ public sealed partial class ValueReferencesViewModel(ulong value,
         }
     }
 
-    public Task<IReadOnlyList<TraceValueMatch>> FindCallsAsync(ValueUseRow row)
+    public Task<IReadOnlyList<TraceValueCall>> FindCallsAsync(ValueUseRow row)
         => ReadAsync(token => Lookup.FindCallsAsync(row, token),
                      exception => logger.LogWarning(exception,
                                                     "Listing the calls of {Function} with {Value} failed",
                                                     row.Function,
                                                     row.Value));
 
-    public Task<IReadOnlyList<ValueCallRow>> CallRowsAsync(TraceValueUse use, IReadOnlyList<TraceValueMatch> matches, int from)
-        => ReadAsync(token => Lookup.CallRowsAsync(use, matches, from, CallPage, token),
+    public Task<IReadOnlyList<ValueCallRow>> CallRowsAsync(TraceValueUse use, IReadOnlyList<TraceValueCall> valueCalls, int from)
+        => ReadAsync(token => Lookup.CallRowsAsync(use, valueCalls, from, CallPage, token),
                      exception => logger.LogWarning(exception, "Reading the calls of 0x{Function:X} failed", use.Address));
 
     public void Dispose()

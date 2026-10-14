@@ -374,11 +374,11 @@ public sealed class QueryExportWriter
 
         var ordered = locators.Ordered().ToList();
 
-        List<string> pages = [.. ordered.Where(l => l.Kind == LocatorKind.Page).Select(l => $"{l.Page.FileId}:{l.Page.PageId}")];
+        List<string> pages = [.. ordered.Where(l => l.ValueType == LocatorValueType.Page).Select(l => $"{l.Page.FileId}:{l.Page.PageId}")];
 
-        List<string> rows = [.. ordered.Where(l => l.Kind == LocatorKind.Row).Select(l => $"{l.Page.FileId}:{l.Page.PageId}:{l.Slot}")];
+        List<string> rows = [.. ordered.Where(l => l.ValueType == LocatorValueType.Row).Select(l => $"{l.Page.FileId}:{l.Page.PageId}:{l.Slot}")];
 
-        List<ulong[]> objects = [.. ordered.Where(l => l.Kind == LocatorKind.ColumnStoreObject).Select(l => new[] { l.Value, l.Detail })];
+        List<ulong[]> objects = [.. ordered.Where(l => l.ValueType == LocatorValueType.ColumnStoreObject).Select(l => new[] { l.Value, l.Detail })];
 
         return new ExportedLocators
         {

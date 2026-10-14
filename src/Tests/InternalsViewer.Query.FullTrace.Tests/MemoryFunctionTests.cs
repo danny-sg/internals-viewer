@@ -1,4 +1,4 @@
-﻿using InternalsViewer.Query.FullTrace.CallLog;
+﻿using InternalsViewer.Query.FullTrace.Calls;
 using InternalsViewer.Query.FullTrace.Memory;
 using InternalsViewer.Query.Memory;
 

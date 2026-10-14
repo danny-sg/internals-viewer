@@ -1,6 +1,6 @@
 using System.Runtime.InteropServices;
 using System.Text;
-using InternalsViewer.Query.FullTrace.CallLog;
+using InternalsViewer.Query.FullTrace.Calls;
 using InternalsViewer.Query.FullTrace.Locators;
 using InternalsViewer.Query.FullTrace.PublishedEvents;
 using InternalsViewer.Query.FullTrace.Native;
@@ -124,15 +124,15 @@ internal sealed class ReplaySession : IDisposable
             progress?.Report(percentages.Values.Average());
         };
 
-        var log = new TraceCallLog.Builder(functions.LocatorReads);
+        var store = new TraceCallStore.Builder(functions.LocatorReads);
 
         var timeline = new TraceTimeline.Builder();
 
-        ReplayBridge.CallChunkCallback onChunk = log.Add;
+        ReplayBridge.CallChunkCallback onChunk = store.Add;
 
         ReplayBridge.CallSpanCallback onSpans = timeline.Add;
 
-        ReplayBridge.PointerValueCallback onPointerValues = log.AddLocators;
+        ReplayBridge.PointerValueCallback onPointerValues = store.AddLocators;
 
         var publishedEvents = new PublishedEventLog();
 
@@ -210,7 +210,7 @@ internal sealed class ReplaySession : IDisposable
 
                 return new ReplayResult(nodes,
                                         Modules,
-                                        log.Build(images),
+                                        store.Build(images),
                                         timeline.Build(nodes),
                                         publishedEvents.Build(),
                                         memoryMap.Build());

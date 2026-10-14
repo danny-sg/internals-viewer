@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
@@ -23,7 +24,23 @@ public sealed partial class PlayheadCallStackViewModel(QueryViewModel query) : O
     [ObservableProperty]
     private IReadOnlyList<SourceStep> _source = [];
 
-    public IPlayheadChart? Chart { get; set; }
+    public IPlayheadChart? Chart
+    {
+        get;
+        set
+        {
+            field = value;
+
+            if (value is not null && ChartRequest is { } request)
+            {
+                ChartRequest = null;
+
+                request(value);
+            }
+        }
+    }
+
+    private Action<IPlayheadChart>? ChartRequest { get; set; }
 
     private IReadOnlyList<TraceThreadStack>? Pending { get; set; }
 
@@ -76,7 +93,11 @@ public sealed partial class PlayheadCallStackViewModel(QueryViewModel query) : O
 
     public void Zoom(PlayheadCallRow row) => Chart?.ZoomTo(row.Start, row.End);
 
-    public void Scope(PlayheadCallRow row) => Chart?.ScopeTo(row.Node);
+    public void Scope(PlayheadCallRow row) => Scope(row.Node);
+
+    public void Scope(CallStackNode node) => RequestChart(c => c.ScopeTo(node));
+
+    public void Open(CallStackNode node, int call) => RequestChart(c => c.OpenCallStack(node, call));
 
     public void Step(bool forward)
     {
@@ -92,11 +113,11 @@ public sealed partial class PlayheadCallStackViewModel(QueryViewModel query) : O
 
     public void GoTo(SourceStep step) => Chart?.MovePlayheadTo(step.Node, step.Call);
 
-    public void Find(ulong value)
+    public void FindReferences(ulong value)
     {
         query.Layout.ShowCallTree();
 
-        query.CallTreeTab.Find(value);
+        query.CallTreeTab.FindReferences(value);
     }
 
     partial void OnSelectedValueChanged(CallSignaturePart? value)
@@ -129,6 +150,20 @@ public sealed partial class PlayheadCallStackViewModel(QueryViewModel query) : O
         row.Highlighted = index >= 0 && index < row.Signature.Count
             ? row.Signature[index]
             : row.Signature.FirstOrDefault(p => p.Kind == CallSignaturePartKind.Function);
+    }
+
+    private void RequestChart(Action<IPlayheadChart> request)
+    {
+        query.Layout.ShowFlameChart();
+
+        if (Chart is { } chart)
+        {
+            request(chart);
+        }
+        else
+        {
+            ChartRequest = request;
+        }
     }
 
     private PlayheadCallRow? FindRow(PlayheadCallRow selected)

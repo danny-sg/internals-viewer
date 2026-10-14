@@ -134,10 +134,10 @@ public sealed class TraceLoader(ILogger<TraceLoader> logger, ITimeTravelRecorder
                               + "{Size} MB, {Locators} page and row id(s) read",
                               nodes.Sum(n => (long)n.Calls),
                               nodes.Length,
-                              replay.CallLog.Calls,
-                              replay.CallLog.FunctionCount,
-                              replay.CallLog.Size / (1024 * 1024),
-                              replay.CallLog.LocatorCount);
+                              replay.CallStore.Calls,
+                              replay.CallStore.FunctionCount,
+                              replay.CallStore.Size / (1024 * 1024),
+                              replay.CallStore.LocatorCount);
 
         var unknownSymbols = await CallstackProcessor.Process(callStack, request.SymbolsPath, messages, cancellationToken);
 
@@ -151,13 +151,13 @@ public sealed class TraceLoader(ILogger<TraceLoader> logger, ITimeTravelRecorder
 
         CallStackNode?[] mapped = [.. replayed.Select(node => collapsed.GetValueOrDefault(node))];
 
-        var planLink = IteratorPlanLinker.Link(replay.CallLog, mapped, events);
+        var planLink = IteratorPlanLinker.Link(replay.CallStore, mapped, events);
 
-        var hobtAccess = HoBtAccessMap.Build(replay.CallLog, mapped);
+        var hobtAccess = HoBtAccessMap.Build(replay.CallStore, mapped);
 
-        replay.CallLog.MapNodes(mapped);
+        replay.CallStore.MapNodes(mapped);
 
-        replay.CallLog.AnnotateNodes();
+        replay.CallStore.AnnotateNodes();
 
         replay.Timeline.MapNodes(mapped);
 
@@ -190,7 +190,7 @@ public sealed class TraceLoader(ILogger<TraceLoader> logger, ITimeTravelRecorder
                               operators.Count(o => o.PlanNodeIdentifier is { NodeId: >= 0 }),
                               planLink.Instances.Count);
 
-        var memory = AllocationMapper.Map(replay.CallLog, functions.MemoryFunctions, timeline, request.MemoryClerks);
+        var memory = AllocationMapper.Map(replay.CallStore, functions.MemoryFunctions, timeline, request.MemoryClerks);
 
         var lifetimes = IteratorLifetimeBuilder.Build(timeline, operators);
 
@@ -234,7 +234,7 @@ public sealed class TraceLoader(ILogger<TraceLoader> logger, ITimeTravelRecorder
 
         Logger.LogInformation("{Entries} memory map entr(ies) from allocations, constructors and member calls", memoryMap.Count);
 
-        return new TraceResult(callStack, replay.CallLog, timeline) { PlanLink = planLink, HoBtAccess = hobtAccess, MemoryMap = memoryMap };
+        return new TraceResult(callStack, replay.CallStore, timeline) { PlanLink = planLink, HoBtAccess = hobtAccess, MemoryMap = memoryMap };
     }
 
     private void LogUnknownSymbols(string[] unknownSymbols)

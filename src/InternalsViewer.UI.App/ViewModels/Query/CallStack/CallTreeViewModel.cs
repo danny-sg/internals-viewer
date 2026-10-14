@@ -33,10 +33,10 @@ public sealed partial class CallTreeViewModel : ObservableObject, IDisposable
     private bool _isFocused = true;
 
     [ObservableProperty]
-    private bool _isActivityShown = true;
+    private bool _isActivityVisible = true;
 
     [ObservableProperty]
-    private bool _isSignatureShown;
+    private bool _isSignatureVisible;
 
     [ObservableProperty]
     private string _highlight = string.Empty;
@@ -94,16 +94,16 @@ public sealed partial class CallTreeViewModel : ObservableObject, IDisposable
         ApplyFocus(Query.SelectedEvent);
     }
 
-    public void SetActivityShown(bool shown)
+    public void SetActivityVisible(bool isVisible)
     {
-        IsActivityShown = shown;
+        IsActivityVisible = isVisible;
 
         Refresh();
     }
 
-    public async Task SetSignatureShownAsync(bool shown)
+    public async Task SetSignatureVisibleAsync(bool isVisible)
     {
-        IsSignatureShown = shown;
+        IsSignatureVisible = isVisible;
 
         await RefreshSignaturesAsync();
     }
@@ -214,8 +214,6 @@ public sealed partial class CallTreeViewModel : ObservableObject, IDisposable
         PushLocation(CurrentLocation());
     }
 
-    // Following the header's parent link, like following one in the tree: a request to go there, so it rebuilds around
-    // the parent rather than leaving the current segment on screen with the selection moved out from under it.
     public void FollowParent()
     {
         if (Layout.FocusParent is { } link)
@@ -224,9 +222,6 @@ public sealed partial class CallTreeViewModel : ObservableObject, IDisposable
         }
     }
 
-    // Clicking a frame selects the event it came from, so the grid, details and timeline all answer "what is this frame
-    // doing here?" — the question the tree cannot answer on its own, and the one every diagnosis of the scoping has
-    // needed. A frame with no events of its own reports the earliest beneath it: that is still the work it led to.
     public void Invoke(object content)
     {
         if (content is CallStackNode clicked)
@@ -248,9 +243,12 @@ public sealed partial class CallTreeViewModel : ObservableObject, IDisposable
 
         var selected = content switch
         {
-            OperatorLink link => link.Operator,
-            OperatorRow row => row.Operator,
-            CallStackNode frame => EarliestEvent(frame),
+            OperatorLink link 
+                => link.Operator,
+            OperatorRow row 
+                => row.Operator,
+            CallStackNode frame 
+                => EarliestEvent(frame),
             _ => null,
         };
 
@@ -259,9 +257,6 @@ public sealed partial class CallTreeViewModel : ObservableObject, IDisposable
             return;
         }
 
-        // A hand-off link is a request to GO somewhere, so it must rebuild — that is the whole of what it does. Every
-        // other row is just reporting what it already shows, and rebuilding under the click would throw away the
-        // expansion the user opened to get there.
         var navigating = content is OperatorLink;
 
         IsSelectingFromTree = !navigating;
@@ -327,7 +322,6 @@ public sealed partial class CallTreeViewModel : ObservableObject, IDisposable
 
     private void OnQueryPropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
-        // A new query's events are new objects, so nowhere the history points at exists any more.
         if (e.PropertyName == nameof(QueryViewModel.CallStack))
         {
             ClearHistory();
@@ -342,7 +336,7 @@ public sealed partial class CallTreeViewModel : ObservableObject, IDisposable
 
             OnPropertyChanged(nameof(CallStack));
 
-            if (IsSignatureShown)
+            if (IsSignatureVisible)
             {
                 _ = RefreshSignaturesAsync();
             }
@@ -379,7 +373,7 @@ public sealed partial class CallTreeViewModel : ObservableObject, IDisposable
 
     private async Task RefreshSignaturesAsync()
     {
-        if (IsSignatureShown && Query.CallStack is { } tree && !ReferenceEquals(SignaturesFor, tree))
+        if (IsSignatureVisible && Query.CallStack is { } tree && !ReferenceEquals(SignaturesFor, tree))
         {
             SignaturesFor = tree;
 
@@ -560,30 +554,9 @@ public sealed partial class CallTreeViewModel : ObservableObject, IDisposable
 
     private void NavigateTo(CallStackNode target, bool selectInFlameChart = true)
     {
-        if (!IsFocused && Rows.TryGetValue(target, out var row) && (RevealTarget is null || IsRevealed(target)))
+        if (!IsOutsideCrop(target))
         {
-            SelectRow(row, target);
-        }
-        else
-        {
-            IsFocused = false;
-
-            if (FilterPath is not null && !target.Ancestors().Any(a => GetPath(a) == FilterPath))
-            {
-                FilterPath = null;
-            }
-
-            RevealPath(target);
-
-            BuildTree();
-
-            ApplyFilter();
-
-            SelectNode(target);
-
-            ApplyActivityBands();
-
-            Publish();
+            ShowInTree(target);
         }
 
         NavigatedNode = target;
@@ -592,6 +565,35 @@ public sealed partial class CallTreeViewModel : ObservableObject, IDisposable
         {
             Query.SelectedCallNode = target;
         }
+    }
+
+    private void ShowInTree(CallStackNode target)
+    {
+        if (!IsFocused && Rows.TryGetValue(target, out var row) && (RevealTarget is null || IsRevealed(target)))
+        {
+            SelectRow(row, target);
+
+            return;
+        }
+
+        IsFocused = false;
+
+        if (FilterPath is not null && target.Ancestors().All(a => GetPath(a) != FilterPath))
+        {
+            FilterPath = null;
+        }
+
+        RevealPath(target);
+
+        BuildTree();
+
+        ApplyFilter();
+
+        SelectNode(target);
+
+        ApplyActivityBands();
+
+        Publish();
     }
 
     private void SelectRow(CallTreeRow row, CallStackNode node)

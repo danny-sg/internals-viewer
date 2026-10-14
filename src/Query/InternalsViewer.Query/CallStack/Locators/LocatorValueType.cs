@@ -1,6 +1,6 @@
 namespace InternalsViewer.Query.CallStack.Locators;
 
-public enum LocatorKind : byte
+public enum LocatorValueType : byte
 {
     Page,
     Row,

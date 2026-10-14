@@ -109,12 +109,12 @@ public sealed partial class DictionaryTabViewModel
     public IReadOnlyList<HuffmanCodeDetail> Codes
         => _codes ??= SelectedPage?.Codes.Select(c => new HuffmanCodeDetail { Code = c }).ToList() ?? [];
 
-    private bool IsHandleSelectionShown => SelectedTabIndex == HandlesTabIndex;
+    private bool IsHandleSelectionVisible => SelectedTabIndex == HandlesTabIndex;
 
     /// <summary>
     /// Whether an entry is on show, which is the entry list or a page opened on its decode
     /// </summary>
-    private bool IsEntrySelectionShown => SelectedTabIndex == EntriesTabIndex
+    private bool IsEntrySelectionVisible => SelectedTabIndex == EntriesTabIndex
                                           || (SelectedTabIndex == PagesTabIndex
                                               && SelectedPageTabIndex == DecodeTabIndex);
 
@@ -206,11 +206,11 @@ public sealed partial class DictionaryTabViewModel
             return;
         }
 
-        if (IsHandleSelectionShown && SelectedHandle is not null)
+        if (IsHandleSelectionVisible && SelectedHandle is not null)
         {
             SelectMarker(ItemType.DictionaryHandle);
         }
-        else if (IsEntrySelectionShown && SelectedEntry is not null)
+        else if (IsEntrySelectionVisible && SelectedEntry is not null)
         {
             SelectMarker(GetEntryItemType());
         }
@@ -417,10 +417,10 @@ public sealed partial class DictionaryTabViewModel
             // A selection is made on a tab and means nothing on another, so it is marked only while that tab shows
             List<Marker> selection =
             [
-                .. IsEntrySelectionShown
+                .. IsEntrySelectionVisible
                        ? DictionaryMarkerBuilder.EntryMarkers(Blob, SelectedPage, SelectedEntry, DecodeSteps)
                        : [],
-                .. IsHandleSelectionShown
+                .. IsHandleSelectionVisible
                        ? DictionaryMarkerBuilder.SelectedHandleMarkers(Blob, SelectedHandle)
                        : []
             ];

@@ -157,7 +157,7 @@ public sealed partial class CallSignatureLine : UserControl
         {
             menu.Items.Add(new MenuFlyoutSeparator());
 
-            menu.Items.Add(MenuItems.Create("Find", () => LayoutHelpers.FindParent<IValueFinder>(this)?.Find(value)));
+            menu.Items.Add(MenuItems.Create("Find", () => LayoutHelpers.FindParent<IReferenceFinder>(this)?.FindReferences(value)));
         }
 
         return menu;

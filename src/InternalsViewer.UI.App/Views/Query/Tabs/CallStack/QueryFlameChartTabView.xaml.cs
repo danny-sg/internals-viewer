@@ -102,7 +102,7 @@ public sealed partial class QueryFlameChartTabView : UserControl, IDocumentComma
         _searchToggle = TabCommands.Toggle(TabCommands.Glyph(SearchGlyph),
                                            false,
                                            "Search function names",
-                                           (sender, _) => ShowSearch(TabCommands.IsChecked(sender)));
+                                           (sender, _) => SetSearchVisible(TabCommands.IsChecked(sender)));
 
         return TabCommands.Panel(CommandSpacing,
                                  _positionToggle,
@@ -197,35 +197,35 @@ public sealed partial class QueryFlameChartTabView : UserControl, IDocumentComma
 
     private void OnPlayheadChanged()
     {
-        var shown = Settings.FlameChartShowCallStack;
+        var isVisible = Settings.FlameChartShowCallStack;
 
-        ShowStack(shown && FlameChart.HasCallStack);
+        SetStackVisible(isVisible && FlameChart.HasCallStack);
 
-        if (shown)
+        if (isVisible)
         {
             ViewModel?.PlayheadStack.SetStack(FlameChart.GetCallStack());
         }
     }
 
-    private void ShowStack(bool show)
+    private void SetStackVisible(bool isVisible)
     {
-        if (show == (StackView.Visibility == Visibility.Visible))
+        if (isVisible == (StackView.Visibility == Visibility.Visible))
         {
             return;
         }
 
-        if (!show && StackRow.Height.Value > 0)
+        if (!isVisible && StackRow.Height.Value > 0)
         {
             _stackHeight = StackRow.Height;
         }
 
-        StackView.Visibility = show ? Visibility.Visible : Visibility.Collapsed;
+        StackView.Visibility = isVisible ? Visibility.Visible : Visibility.Collapsed;
 
         StackSplitter.Visibility = StackView.Visibility;
 
-        StackSplitterRow.Height = show ? GridLength.Auto : new GridLength(0);
+        StackSplitterRow.Height = isVisible ? GridLength.Auto : new GridLength(0);
 
-        StackRow.Height = show ? _stackHeight : new GridLength(0);
+        StackRow.Height = isVisible ? _stackHeight : new GridLength(0);
     }
 
     private void OnPlayStateChanged(bool isPlaying)
@@ -251,15 +251,15 @@ public sealed partial class QueryFlameChartTabView : UserControl, IDocumentComma
 
     private void OnNextMatchClick(object sender, RoutedEventArgs e) => FlameChart.StepSearch(forward: true);
 
-    private void ShowSearch(bool show)
+    private void SetSearchVisible(bool isVisible)
     {
-        SearchRow.Visibility = show ? Visibility.Visible : Visibility.Collapsed;
+        SearchRow.Visibility = isVisible ? Visibility.Visible : Visibility.Collapsed;
 
-        FlameChart.SearchText = show ? SearchBar.Text : null;
+        FlameChart.SearchText = isVisible ? SearchBar.Text : null;
 
-        _searchToggle?.IsChecked = show;
+        _searchToggle?.IsChecked = isVisible;
 
-        if (show)
+        if (isVisible)
         {
             SearchBar.FocusSearch();
         }
@@ -274,7 +274,7 @@ public sealed partial class QueryFlameChartTabView : UserControl, IDocumentComma
             return;
         }
 
-        ShowSearch(false);
+        SetSearchVisible(false);
 
         e.Handled = true;
     }

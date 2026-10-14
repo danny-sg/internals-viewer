@@ -617,7 +617,7 @@ public sealed partial class FlameChartControl
 
         if (span is { } opened)
         {
-            flyout.Items.Add(MenuItems.Create("Open Call Stack", () => OpenCallStack(opened)));
+            flyout.Items.Add(MenuItems.Create("Open Call Stack", () => OpenCallStackAt(opened.Start)));
         }
 
         if (hasPosition)
@@ -632,7 +632,7 @@ public sealed partial class FlameChartControl
         e.Handled = true;
     }
 
-    private void OpenCallStack(TraceTimelineSpan span)
+    private void OpenCallStackAt(double position)
     {
         StopPlay();
 
@@ -640,7 +640,12 @@ public sealed partial class FlameChartControl
 
         _playhead = null;
 
-        _stackPosition = span.Start;
+        _stackPosition = position;
+
+        if (position < _viewStart || position > _viewEnd)
+        {
+            CentreViewOn(position);
+        }
 
         _canvas.Invalidate();
 

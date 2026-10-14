@@ -1,5 +1,5 @@
 using InternalsViewer.Query.CallStack;
-using InternalsViewer.Query.FullTrace.CallLog;
+using InternalsViewer.Query.FullTrace.Calls;
 
 namespace InternalsViewer.UI.App.Models.Query.CallStack;
 

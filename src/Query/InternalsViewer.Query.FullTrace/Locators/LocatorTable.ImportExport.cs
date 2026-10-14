@@ -20,15 +20,15 @@ internal sealed partial class LocatorTable
                 register = LocatorReadResolver.ReturnRegister;
             }
 
-            var kind = (LocatorKind)reader.ReadByte();
+            var valueType = (LocatorValueType)reader.ReadByte();
 
             var value = reader.ReadUInt64();
 
             var detail = reader.ReadUInt64();
 
-            var text = kind is LocatorKind.Text or LocatorKind.WideText ? reader.ReadString() : null;
+            var text = valueType is LocatorValueType.Text or LocatorValueType.WideText ? reader.ReadString() : null;
 
-            locators[index] = new Locator(register, kind, value, detail, text);
+            locators[index] = new Locator(register, valueType, value, detail, text);
         }
 
         return new LocatorTable(calls, locators);
@@ -42,13 +42,13 @@ internal sealed partial class LocatorTable
         {
             writer.Write(locator.Register);
 
-            writer.Write((byte)locator.Kind);
+            writer.Write((byte)locator.ValueType);
 
             writer.Write(locator.Value);
 
             writer.Write(locator.Detail);
 
-            if (locator.Kind is LocatorKind.Text or LocatorKind.WideText)
+            if (locator.ValueType is LocatorValueType.Text or LocatorValueType.WideText)
             {
                 writer.Write(locator.Text ?? string.Empty);
             }

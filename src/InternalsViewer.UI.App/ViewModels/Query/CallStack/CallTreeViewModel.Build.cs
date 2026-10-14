@@ -162,7 +162,7 @@ public sealed partial class CallTreeViewModel
         {
             if (row.Content is CallStackNode node)
             {
-                node.Activity = IsActivityShown
+                node.Activity = IsActivityVisible
                     ? new ActivityBand(HighlightBuckets, [.. row.Children.Select(c => c.Content).OfType<CallStackNode>()])
                     : null;
             }
@@ -283,16 +283,6 @@ public sealed partial class CallTreeViewModel
             Roots.Add(row);
         }
 
-        if (GetRevealedRoot() is { } outside)
-        {
-            foreach (var row in BuildVisible([outside], Reveal.Path))
-            {
-                var position = Roots.FindIndex(r => r.Content is CallStackNode { Order: var order } && order > outside.Order);
-
-                Roots.Insert(position < 0 ? Roots.Count : position, row);
-            }
-        }
-
         ExpandForSearch();
     }
 
@@ -350,12 +340,12 @@ public sealed partial class CallTreeViewModel
     {
         var path = target.Ancestors().ToList();
 
-        var outside = Query.CroppedRoots is { } cropped && !path.Any(cropped.Contains);
-
-        RevealTarget = outside || path.Any(IsConcealed) ? target : null;
+        RevealTarget = path.Any(IsConcealed) ? target : null;
 
         Revealed = RevealTarget is null ? null : [.. path];
     }
+
+    private bool IsOutsideCrop(CallStackNode node) => Query.CroppedRoots is { } cropped && !node.Ancestors().Any(cropped.Contains);
 
     private void ClearReveal()
     {
@@ -367,18 +357,6 @@ public sealed partial class CallTreeViewModel
     private bool IsRevealed(CallStackNode node)
         => RevealTarget is { } target
            && (node.MergedFrom.Count > 0 ? node.MergedFrom : [node]).Any(n => Revealed!.Contains(n) || n.Ancestors().Contains(target));
-
-    private CallStackNode? GetRevealedRoot()
-    {
-        if (RevealTarget is not { } target || Query.CroppedRoots is not { } cropped)
-        {
-            return null;
-        }
-
-        var path = target.Ancestors().ToList();
-
-        return path.Any(cropped.Contains) ? null : path[^1];
-    }
 
     /// <summary>
     /// Shows what the tree below is a segment of, and the way back up to the operator that drove it
@@ -402,12 +380,12 @@ public sealed partial class CallTreeViewModel
     }
 
     private List<CallTreeRow> BuildVisible(IEnumerable<CallStackNode> nodes, Reveal reveal, bool underMatch = false)
-        => [.. nodes.SelectMany(n => Shown(n, reveal))
+        => [.. nodes.SelectMany(n => GetVisibleNodes(n, reveal))
                     .GroupBy(n => n.Key)
                     .Select(g => BuildVisibleRow([.. g], reveal, underMatch))
                     .OfType<CallTreeRow>()];
 
-    private IEnumerable<CallStackNode> Shown(CallStackNode node, Reveal reveal)
+    private IEnumerable<CallStackNode> GetVisibleNodes(CallStackNode node, Reveal reveal)
     {
         if (Revealed?.Contains(node) == true)
         {
@@ -420,7 +398,7 @@ public sealed partial class CallTreeViewModel
         }
 
         return IsHidden(node)
-            ? node.ChildNodes.OrderBy(child => child.Order).SelectMany(child => Shown(child, reveal))
+            ? node.ChildNodes.OrderBy(child => child.Order).SelectMany(child => GetVisibleNodes(child, reveal))
             : [node];
     }
 
@@ -719,17 +697,17 @@ public sealed partial class CallTreeViewModel
     {
         var promotedCuts = new List<CallStackNode>();
 
-        var shown = nodes.SelectMany(n => ShownProjected(n, revealInfrastructure, promotedCuts)).ToList();
+        var visible = nodes.SelectMany(n => GetVisibleProjectedNodes(n, revealInfrastructure, promotedCuts)).ToList();
 
         List<CallTreeRow> rows =
-            [.. shown.GroupBy(n => n.Key).Select(g => BuildProjectedRow([.. g], revealInfrastructure, underMatch)).OfType<CallTreeRow>()];
+            [.. visible.GroupBy(n => n.Key).Select(g => BuildProjectedRow([.. g], revealInfrastructure, underMatch)).OfType<CallTreeRow>()];
 
         rows.AddRange(OperatorLinks(promotedCuts, underMatch));
 
         return rows;
     }
 
-    private IEnumerable<CallStackNode> ShownProjected(CallStackNode node, bool revealInfrastructure, List<CallStackNode> promotedCuts)
+    private IEnumerable<CallStackNode> GetVisibleProjectedNodes(CallStackNode node, bool revealInfrastructure, List<CallStackNode> promotedCuts)
     {
         if (IsCategoryIn(PrunedCategories, node))
         {
@@ -742,7 +720,7 @@ public sealed partial class CallTreeViewModel
 
             return node.ChildNodes
                        .OrderBy(child => child.Order)
-                       .SelectMany(child => ShownProjected(child, revealInfrastructure, promotedCuts));
+                       .SelectMany(child => GetVisibleProjectedNodes(child, revealInfrastructure, promotedCuts));
         }
 
         return [node];
@@ -926,7 +904,7 @@ public sealed partial class CallTreeViewModel
         {
             if (!IsHiddenKind(engineEvent, options))
             {
-                state = EventVisibility.Shown;
+                state = EventVisibility.Visible;
 
                 break;
             }
@@ -936,7 +914,7 @@ public sealed partial class CallTreeViewModel
 
         foreach (var child in node.ChildNodes)
         {
-            if (state == EventVisibility.Shown)
+            if (state == EventVisibility.Visible)
             {
                 break;
             }
@@ -962,7 +940,7 @@ public sealed partial class CallTreeViewModel
     {
         None,
         Hidden,
-        Shown,
+        Visible,
     }
 
     private enum Reveal

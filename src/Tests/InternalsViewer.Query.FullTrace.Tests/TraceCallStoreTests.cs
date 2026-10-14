@@ -4,15 +4,17 @@ using System.Runtime.InteropServices;
 using System.Text;
 using InternalsViewer.Query.CallStack;
 using InternalsViewer.Internals.Engine.Address;
-using InternalsViewer.Query.FullTrace.CallLog;
+using InternalsViewer.Query.FullTrace.Calls;
 using InternalsViewer.Query.FullTrace.Locators;
 using InternalsViewer.Query.FullTrace.Native;
 using InternalsViewer.Query.CallStack.Locators;
 
+using static InternalsViewer.Query.FullTrace.Tests.TraceCallRows;
+
 namespace InternalsViewer.Query.FullTrace.Tests;
 
 [Trait("Category", "Unit")]
-public class TraceCallLogTests
+public class TraceCallStoreTests
 {
     private const ulong ReturnedFlag = 1ul << 32;
 
@@ -21,12 +23,12 @@ public class TraceCallLogTests
     [Fact]
     public void The_Calls_Of_One_Function_On_One_Instance_Are_Read_Back_In_Order()
     {
-        var builder = new TraceCallLog.Builder();
+        var builder = new TraceCallStore.Builder();
 
         builder.Add(0x1000, 0, Chunk(Row(7, rcx: 0xA0)), 1);
         builder.Add(0x2000, 0xB0, Chunk(Row(8, rcx: 0xB0), Row(9, rcx: 0xB0)), 2);
 
-        var calls = builder.Build().CallsOf(0x2000, 0xB0);
+        var calls = builder.Build().GetCallList(0x2000, 0xB0);
 
         Assert.NotNull(calls);
         Assert.Equal([8ul, 9ul], calls.Select(c => c.Sequence));
@@ -36,12 +38,12 @@ public class TraceCallLogTests
     [Fact]
     public void Calls_Logged_In_Several_Chunks_Read_As_One_List()
     {
-        var builder = new TraceCallLog.Builder();
+        var builder = new TraceCallStore.Builder();
 
         builder.Add(0x1000, 0, Chunk(Row(1), Row(2)), 2);
         builder.Add(0x1000, 0, Chunk(Row(3)), 1);
 
-        var calls = builder.Build().CallsOf(0x1000, 0);
+        var calls = builder.Build().GetCallList(0x1000, 0);
 
         Assert.NotNull(calls);
         Assert.Equal(3, calls.Count);
@@ -52,110 +54,26 @@ public class TraceCallLogTests
     [Fact]
     public void A_Function_With_No_Logged_Calls_Reads_As_Nothing()
     {
-        var builder = new TraceCallLog.Builder();
+        var builder = new TraceCallStore.Builder();
 
         builder.Add(0x1000, 0, Chunk(Row(7, rcx: 0xA0)), 1);
 
-        Assert.Null(builder.Build().CallsOf(0x1000, 0xB0));
+        Assert.Null(builder.Build().GetCallList(0x1000, 0xB0));
     }
 
     [Fact]
     public void Repeated_Values_Compress_Well()
     {
-        var builder = new TraceCallLog.Builder();
+        var builder = new TraceCallStore.Builder();
 
         var calls = 1_000;
 
         builder.Add(0x1000, 0, Chunk([.. Enumerable.Range(0, calls).Select(i => Row((ulong)i, rcx: 0xA0))]), calls);
 
-        var log = builder.Build();
+        var store = builder.Build();
 
-        Assert.Equal(calls, log.Calls);
-        Assert.True(log.Size < calls * TraceArgumentCall.ValueCount * sizeof(ulong) / 10);
-    }
-
-    [Fact]
-    public async Task A_Value_Is_Found_In_The_Calls_Of_Every_Function()
-    {
-        var builder = new TraceCallLog.Builder();
-
-        builder.Add(0x1000, 0, Chunk(Row(1, rcx: 0xA0), Row(2, rcx: 0xB0)), 2);
-        builder.Add(0x2000, 0, Chunk(Row(3, rcx: 0xB0)), 1);
-
-        var uses = await builder.Build().FindAsync(0xB0, CancellationToken.None);
-
-        Assert.Equal([(0x1000ul, "RCX", 1), (0x2000ul, "RCX", 0)], uses.Select(u => (u.Address, u.Location, u.First.Call)));
-    }
-
-    [Fact]
-    public async Task A_Return_Value_Is_Only_Searched_When_The_Call_Returned()
-    {
-        var builder = new TraceCallLog.Builder();
-
-        builder.Add(0x1000, 0, Chunk(Row(1, returnValue: 0xD0), Row(2, flags: ReturnedFlag, returnValue: 0xD0)), 2);
-
-        var use = Assert.Single(await builder.Build().FindAsync(0xD0, CancellationToken.None));
-
-        Assert.Equal(("RAX", 1, 1), (use.Location, use.Calls, use.First.Call));
-    }
-
-    [Fact]
-    public async Task Every_Use_In_One_Place_Is_Counted_From_Its_First_Call_To_Its_Last()
-    {
-        var builder = new TraceCallLog.Builder();
-
-        builder.Add(0x1000, 0, Chunk([.. Enumerable.Range(0, 10).Select(i => Row((ulong)i + 100, rcx: 0xA0))]), 10);
-        builder.Add(0x1000, 0, Chunk([.. Enumerable.Range(10, 10).Select(i => Row((ulong)i + 100, rcx: 0xA0))]), 10);
-
-        var use = Assert.Single(await builder.Build().FindAsync(0xA0, CancellationToken.None));
-
-        Assert.Equal(20, use.Calls);
-        Assert.Equal((0, 100ul), (use.First.Call, use.First.Sequence));
-        Assert.Equal((19, 119ul), (use.Last.Call, use.Last.Sequence));
-    }
-
-    [Fact]
-    public async Task The_Calls_Behind_One_Use_Are_Listed_With_Their_Threads()
-    {
-        var builder = new TraceCallLog.Builder();
-
-        builder.Add(0x1000, 0, Chunk(Row(10, flags: 7, rcx: 0xA0), Row(11, flags: 7, rcx: 0xB0)), 2);
-        builder.Add(0x1000, 0, Chunk(Row(12, flags: 8 | ReturnedFlag, rcx: 0xA0, returnValue: 0xA0)), 1);
-
-        var log = builder.Build();
-
-        var use = (await log.FindAsync(0xA0, CancellationToken.None)).Single(u => u.Location == "RCX");
-
-        var calls = await log.FindCallsAsync(use, 0xA0, CancellationToken.None);
-
-        Assert.Equal([(0, 10ul, 7u), (2, 12ul, 8u)], calls.Select(c => (c.Call, c.Sequence, c.Thread)));
-    }
-
-    [Fact]
-    public async Task Calls_The_Filter_Leaves_Out_Are_Not_Found()
-    {
-        var tree = new CallStackTree();
-
-        var kept = tree.AddCall(tree.Root, new CallstackFrame { Module = "sqlmin", Rva = 0x10 }, 1);
-        var dropped = tree.AddCall(tree.Root, new CallstackFrame { Module = "sqlmin", Rva = 0x20 }, 1);
-
-        var builder = new TraceCallLog.Builder();
-
-        builder.Add(0x1000, 0, Chunk(Row(1, rcx: 0xA0, node: 0), Row(2, rcx: 0xA0, node: 1), Row(3, rcx: 0xA0, node: 0)), 3);
-
-        var log = builder.Build();
-
-        log.MapNodes([kept, dropped]);
-
-        bool Include(CallStackNode? node) => !ReferenceEquals(node, dropped);
-
-        var use = Assert.Single(await log.FindAsync(0xA0, CancellationToken.None, Include));
-
-        var calls = await log.FindCallsAsync(use, 0xA0, CancellationToken.None, Include);
-
-        Assert.Equal(2, use.Calls);
-        Assert.Equal([0, 2], calls.Select(c => c.Call));
-        Assert.Equal([0, 2], log.IncludedCalls(log.CallsOf(0x1000, 0)!, Include, CancellationToken.None));
+        Assert.Equal(calls, store.Calls);
+        Assert.True(store.Size < calls * TraceArgumentCall.ValueCount * sizeof(ulong) / 10);
     }
 
     [Fact]
@@ -167,11 +85,11 @@ public class TraceCallLogTests
 
         row[9] = 57;
 
-        var builder = new TraceCallLog.Builder();
+        var builder = new TraceCallStore.Builder();
 
         builder.Add(0x1000, 0, Chunk(row), 1);
 
-        var call = builder.Build().CallsOf(0x1000, 0)![0];
+        var call = builder.Build().GetCallList(0x1000, 0)![0];
 
         Assert.Equal((41ul, 57ul), (call.Id, call.EndId));
     }
@@ -179,12 +97,12 @@ public class TraceCallLogTests
     [Fact]
     public void A_Call_Is_Found_By_Its_Id_Across_Chunks()
     {
-        var builder = new TraceCallLog.Builder();
+        var builder = new TraceCallStore.Builder();
 
         builder.Add(0x1000, 0, Chunk(WithId(Row(1), 3), WithId(Row(2), 8)), 2);
         builder.Add(0x1000, 0, Chunk(WithId(Row(3), 20)), 1);
 
-        var calls = builder.Build().CallsOf(0x1000, 0)!;
+        var calls = builder.Build().GetCallList(0x1000, 0)!;
 
         Assert.Equal([1, 2, -1, -1], new ulong[] { 8, 20, 9, 1 }.Select(calls.IndexOf));
     }
@@ -192,11 +110,11 @@ public class TraceCallLogTests
     [Fact]
     public void The_Enclosing_Call_Is_The_Latest_Started_That_Has_Not_Ended()
     {
-        var builder = new TraceCallLog.Builder();
+        var builder = new TraceCallStore.Builder();
 
         builder.Add(0x1000, 0, Chunk(WithIds(Row(1), 3, 40), WithIds(Row(2), 5, 9), WithIds(Row(3), 50, 0)), 3);
 
-        var calls = builder.Build().CallsOf(0x1000, 0)!;
+        var calls = builder.Build().GetCallList(0x1000, 0)!;
 
         Assert.Equal([0, 1, 0, -1, 2], new ulong[] { 4, 7, 12, 2, 60 }.Select(calls.IndexOfEnclosing));
     }
@@ -222,7 +140,7 @@ public class TraceCallLogTests
             stream.Write(MemoryMarshal.AsBytes(columns.AsSpan()));
         }
 
-        var read = TraceCallLog.Decompress(new TraceCallLog.Chunk(calls, compressed.ToArray()));
+        var read = TraceCallStore.Decompress(new TraceCallStore.Chunk(calls, compressed.ToArray()));
 
         Assert.Equal((columns[^1], 0), (read[calls * 8 - 1], read.Skip(calls * 8).Count(v => v != 0)));
     }
@@ -234,19 +152,19 @@ public class TraceCallLogTests
 
         var path = Path.Combine(Environment.SystemDirectory, "kernel32.dll");
 
-        var builder = new TraceCallLog.Builder([new LocatorRead(0x1000, 0, false, LocatorKind.Text)]);
+        var builder = new TraceCallStore.Builder([new LocatorRead(0x1000, 0, false, LocatorValueType.Text)]);
 
         builder.Add(0x1000, 0, Chunk(Row(1, rcx: imageBase + GetRva(path, "CreateFileW\0"u8))), 1);
 
         using var images = new ImageText([TraceModule.Read(path, imageBase, 0x1000_0000)]);
 
-        Assert.Equal("CreateFileW", builder.Build(images).CallsOf(0x1000, 0)![0].GetLocator(0)?.ToString());
+        Assert.Equal("CreateFileW", builder.Build(images).GetCallList(0x1000, 0)![0].GetLocator(0)?.ToString());
     }
 
     [Fact]
     public void A_String_Is_Put_Together_From_Its_Parts_And_Kept_When_Written()
     {
-        var builder = new TraceCallLog.Builder([new LocatorRead(0x1000, 1, false, LocatorKind.WideText)]);
+        var builder = new TraceCallStore.Builder([new LocatorRead(0x1000, 1, false, LocatorValueType.WideText)]);
 
         builder.Add(0x1000, 0, Chunk(Row(1)), 1);
 
@@ -265,9 +183,9 @@ public class TraceCallLogTests
 
         using var reader = new BinaryReader(stream);
 
-        var locator = TraceCallLog.Read(reader).CallsOf(0x1000, 0)![0].GetLocator(1);
+        var locator = TraceCallStore.Read(reader).GetCallList(0x1000, 0)![0].GetLocator(1);
 
-        Assert.Equal((LocatorKind.WideText, "dbo.Orders"), (locator?.Kind, locator?.ToString()));
+        Assert.Equal((LocatorValueType.WideText, "dbo.Orders"), (locator?.ValueType, locator?.ToString()));
     }
 
     [Fact]
@@ -275,7 +193,7 @@ public class TraceCallLogTests
     {
         var register = LocatorReadResolver.ReturnRegister;
 
-        var builder = new TraceCallLog.Builder([new LocatorRead(0x1000, register, true, LocatorKind.Page)]);
+        var builder = new TraceCallStore.Builder([new LocatorRead(0x1000, register, true, LocatorValueType.Page)]);
 
         builder.Add(0x1000, 0, Chunk(Row(1, flags: ReturnedFlag)), 1);
 
@@ -290,52 +208,52 @@ public class TraceCallLogTests
 
         using var reader = new BinaryReader(new MemoryStream(ToEightSlots(stream.ToArray())));
 
-        var locator = TraceCallLog.Read(reader).CallsOf(0x1000, 0)![0].GetLocator(register);
+        var locator = TraceCallStore.Read(reader).GetCallList(0x1000, 0)![0].GetLocator(register);
 
-        Assert.Equal((LocatorKind.Page, Page336), (locator?.Kind, locator?.Value));
+        Assert.Equal((LocatorValueType.Page, Page336), (locator?.ValueType, locator?.Value));
     }
 
     [Fact]
     public void A_Type_Info_Is_Put_Together_From_Its_Type_And_Its_Length()
     {
-        var builder = new TraceCallLog.Builder([new LocatorRead(0x1000, 1, false, LocatorKind.TypeInfo, 0),
-                                                new LocatorRead(0x1000, 1, false, LocatorKind.TypeInfo, 16)]);
+        var builder = new TraceCallStore.Builder([new LocatorRead(0x1000, 1, false, LocatorValueType.TypeInfo, 0),
+                                                new LocatorRead(0x1000, 1, false, LocatorValueType.TypeInfo, 16)]);
 
         builder.Add(0x1000, 0, Chunk(Row(1)), 1);
 
         builder.AddLocators([new PointerValue(0x1000, 0, 0x0000_00E7_0000_00E7, 0, 1, Mode: 4, Part: 8),
                              new PointerValue(0x1000, 0, 0xFFFF_FFFF_0000_0100, 0, 1, 16, Mode: 4, Part: 8)]);
 
-        Assert.Equal("nvarchar(128)", builder.Build().CallsOf(0x1000, 0)![0].GetLocator(1)?.ToString());
+        Assert.Equal("nvarchar(128)", builder.Build().GetCallList(0x1000, 0)![0].GetLocator(1)?.ToString());
     }
 
     [Fact]
     public void A_Type_Info_Whose_Length_Was_Never_Read_Shows_Its_Type()
     {
-        var builder = new TraceCallLog.Builder([new LocatorRead(0x1000, 1, false, LocatorKind.TypeInfo, 0),
-                                                new LocatorRead(0x1000, 1, false, LocatorKind.TypeInfo, 16)]);
+        var builder = new TraceCallStore.Builder([new LocatorRead(0x1000, 1, false, LocatorValueType.TypeInfo, 0),
+                                                new LocatorRead(0x1000, 1, false, LocatorValueType.TypeInfo, 16)]);
 
         builder.Add(0x1000, 0, Chunk(Row(1)), 1);
 
         builder.AddLocators([new PointerValue(0x1000, 0, 0x0138, 0, 1, Mode: 4, Part: 2)]);
 
-        Assert.Equal("int NOT NULL", builder.Build().CallsOf(0x1000, 0)![0].GetLocator(1)?.ToString());
+        Assert.Equal("int NOT NULL", builder.Build().GetCallList(0x1000, 0)![0].GetLocator(1)?.ToString());
     }
 
     [Fact]
     public void A_Log_Sequence_Number_Is_Put_Together_From_Its_Two_Words()
     {
-        var builder = new TraceCallLog.Builder([new LocatorRead(0x1000, 2, false, LocatorKind.LogSequenceNumber, 0),
-                                                new LocatorRead(0x1000, 2, false, LocatorKind.LogSequenceNumber, 8)]);
+        var builder = new TraceCallStore.Builder([new LocatorRead(0x1000, 2, false, LocatorValueType.LogSequenceNumber, 0),
+                                                new LocatorRead(0x1000, 2, false, LocatorValueType.LogSequenceNumber, 8)]);
 
         builder.Add(0x1000, 0, Chunk(Row(1)), 1);
 
         builder.AddLocators([new PointerValue(0x1000, 0, 37 | (152ul << 32), 0, 2),
                              new PointerValue(0x1000, 0, 0xFFFF_0000_0002, 0, 2, 8)]);
 
-        var log = builder.Build();
+        var store = builder.Build();
 
-        var locator = log.CallsOf(0x1000, 0)![0].GetLocator(2);
+        var locator = store.GetCallList(0x1000, 0)![0].GetLocator(2);
 
         Assert.Equal((new LogSequenceNumber(37, 152, 2), "(37:152:2)"), (locator?.Lsn, locator?.ToString()));
     }
@@ -343,38 +261,27 @@ public class TraceCallLogTests
     [Fact]
     public async Task A_Stack_Argument_Is_Kept_As_A_Value_Beside_The_Page_It_Points_To()
     {
-        var builder = new TraceCallLog.Builder([new LocatorRead(0x1000, 4, false, LocatorKind.Argument),
-                                                new LocatorRead(0x1000, 4, false, LocatorKind.Page)]);
+        var builder = new TraceCallStore.Builder([new LocatorRead(0x1000, 4, false, LocatorValueType.Argument),
+                                                new LocatorRead(0x1000, 4, false, LocatorValueType.Page)]);
 
         builder.Add(0x1000, 0, Chunk(Row(1), Row(2)), 2);
 
         builder.AddLocators([new PointerValue(0x1000, 0, 0x5_0000, 1, 4, Mode: 1),
                              new PointerValue(0x1000, 0, Page336, 1, 4)]);
 
-        var log = builder.Build();
+        var store = builder.Build();
 
-        var call = log.CallsOf(0x1000, 0)![1];
+        var call = store.GetCallList(0x1000, 0)![1];
 
         Assert.Equal(0x5_0000ul, call.GetStackValue(4));
         Assert.Equal(new PageAddress(1, 336), call.GetLocator(4)?.Page);
 
-        var use = Assert.Single(await log.FindAsync(0x5_0000, CancellationToken.None));
+        var search = new TraceValueSearch(store);
+
+        var use = Assert.Single(await search.GetValueUsesAsync(0x5_0000, CancellationToken.None));
 
         Assert.Equal(("[RSP+0x28]", 1), (use.Location, use.First.Call));
-        Assert.Equal([1], (await log.FindCallsAsync(use, 0x5_0000, CancellationToken.None)).Select(c => c.Call));
-    }
-
-    [Fact]
-    public async Task Uses_Are_Listed_In_The_Order_They_First_Happened()
-    {
-        var builder = new TraceCallLog.Builder();
-
-        builder.Add(0x1000, 0, Chunk(Row(50, rcx: 0xA0)), 1);
-        builder.Add(0x2000, 0, Chunk(Row(10, flags: ReturnedFlag, returnValue: 0xA0)), 1);
-
-        var uses = await builder.Build().FindAsync(0xA0, CancellationToken.None);
-
-        Assert.Equal(["RAX", "RCX"], uses.Select(u => u.Location));
+        Assert.Equal([1], (await search.GetTraceValueCallsAsync(use, 0x5_0000, CancellationToken.None)).Select(c => c.Call));
     }
 
     [Fact]
@@ -385,45 +292,45 @@ public class TraceCallLogTests
         var first = tree.AddCall(tree.Root, new CallstackFrame { Module = "sqlmin", Rva = 0x10 }, 1);
         var second = tree.AddCall(tree.Root, new CallstackFrame { Module = "sqlmin", Rva = 0x20 }, 1);
 
-        var builder = new TraceCallLog.Builder();
+        var builder = new TraceCallStore.Builder();
 
         builder.Add(0x1000, 0, Chunk(Row(1, rcx: 0xA0, node: 1), Row(2, node: -1)), 2);
 
-        var log = builder.Build();
+        var store = builder.Build();
 
-        log.MapNodes([first, second]);
+        store.MapNodes([first, second]);
 
-        var calls = log.CallsOf(0x1000, 0)!;
+        var calls = store.GetCallList(0x1000, 0)!;
 
-        Assert.Same(second, log.NodeOf(calls[0]));
-        Assert.Null(log.NodeOf(calls[1]));
-        Assert.Same(second, Assert.Single(await log.FindAsync(0xA0, CancellationToken.None)).First.Node);
+        Assert.Same(second, store.GetNode(calls[0]));
+        Assert.Null(store.GetNode(calls[1]));
+        Assert.Same(second, Assert.Single(await new TraceValueSearch(store).GetValueUsesAsync(0xA0, CancellationToken.None)).First.Node);
     }
 
     [Fact]
     public void A_Page_Read_In_The_Replay_Is_Attached_To_Its_Call()
     {
-        var builder = new TraceCallLog.Builder([new LocatorRead(0x1000, 2, false, LocatorKind.Page)]);
+        var builder = new TraceCallStore.Builder([new LocatorRead(0x1000, 2, false, LocatorValueType.Page)]);
 
         builder.Add(0x1000, 0, Chunk(Row(1), Row(2)), 2);
 
         builder.AddLocators([new PointerValue(0x1000, 0, Page336, 1, 2)]);
 
-        var log = builder.Build();
+        var store = builder.Build();
 
-        var calls = log.CallsOf(0x1000, 0)!;
+        var calls = store.GetCallList(0x1000, 0)!;
 
         Assert.Empty(calls[0].Locators);
         Assert.Equal(new PageAddress(1, 336), calls[1].GetLocator(2)?.Page);
         Assert.Null(calls[1].GetLocator(1));
-        Assert.Equal(1, log.LocatorCount);
+        Assert.Equal(1, store.LocatorCount);
     }
 
     [Fact]
     public void A_Value_Read_On_Return_Replaces_The_One_Read_When_Called()
     {
-        var builder = new TraceCallLog.Builder([new LocatorRead(0x1000, 1, false, LocatorKind.Referenced),
-                                                new LocatorRead(0x1000, 1, true, LocatorKind.Referenced)]);
+        var builder = new TraceCallStore.Builder([new LocatorRead(0x1000, 1, false, LocatorValueType.Referenced),
+                                                new LocatorRead(0x1000, 1, true, LocatorValueType.Referenced)]);
 
         builder.Add(0x1000, 0, Chunk(Row(1), Row(2)), 2);
 
@@ -431,7 +338,7 @@ public class TraceCallLogTests
                              new PointerValue(0x1000, 0, 3, 1, 1),
                              new PointerValue(0x1000, 0, 5, 1, 1, IsReadAtReturn: 1)]);
 
-        var calls = builder.Build().CallsOf(0x1000, 0)!;
+        var calls = builder.Build().GetCallList(0x1000, 0)!;
 
         Assert.Equal(3ul, calls[0].GetLocator(1)?.Value);
         Assert.Equal(5ul, Assert.Single(calls[1].Locators).Value);
@@ -444,17 +351,17 @@ public class TraceCallLogTests
 
         var node = tree.AddCall(tree.Root, new CallstackFrame { Module = "sqlmin", Rva = 0x10 }, 1);
 
-        var builder = new TraceCallLog.Builder([new LocatorRead(0x1000, 1, false, LocatorKind.Referenced)]);
+        var builder = new TraceCallStore.Builder([new LocatorRead(0x1000, 1, false, LocatorValueType.Referenced)]);
 
         builder.Add(0x1000, 0, Chunk(Row(10, node: 0)), 1);
 
         builder.AddLocators([new PointerValue(0x1000, 0, 3, 0, 1)]);
 
-        var log = builder.Build();
+        var store = builder.Build();
 
-        log.MapNodes([node]);
+        store.MapNodes([node]);
 
-        log.AnnotateNodes();
+        store.AnnotateNodes();
 
         Assert.False(node.HasLocators);
     }
@@ -462,7 +369,7 @@ public class TraceCallLogTests
     [Fact]
     public void A_Value_Read_From_A_Register_With_No_Rule_Is_Ignored()
     {
-        var builder = new TraceCallLog.Builder([new LocatorRead(0x1000, 2, false, LocatorKind.Page)]);
+        var builder = new TraceCallStore.Builder([new LocatorRead(0x1000, 2, false, LocatorValueType.Page)]);
 
         builder.Add(0x1000, 0, Chunk(Row(1)), 1);
 
@@ -479,7 +386,7 @@ public class TraceCallLogTests
         var first = tree.AddCall(tree.Root, new CallstackFrame { Module = "sqlmin", Rva = 0x10 }, 1);
         var second = tree.AddCall(tree.Root, new CallstackFrame { Module = "sqlmin", Rva = 0x20 }, 1);
 
-        var builder = new TraceCallLog.Builder([new LocatorRead(0x1000, 2, false, LocatorKind.Page)]);
+        var builder = new TraceCallStore.Builder([new LocatorRead(0x1000, 2, false, LocatorValueType.Page)]);
 
         builder.Add(0x1000, 0, Chunk(Row(10, node: 0), Row(11, node: 1), Row(12, node: 1)), 3);
 
@@ -487,32 +394,15 @@ public class TraceCallLogTests
                              new PointerValue(0x1000, 0, Page336 + 1, 1, 2),
                              new PointerValue(0x1000, 0, Page336 + 2, 2, 2)]);
 
-        var log = builder.Build();
+        var store = builder.Build();
 
-        log.MapNodes([first, second]);
+        store.MapNodes([first, second]);
 
-        log.AnnotateNodes();
+        store.AnnotateNodes();
 
         Assert.Equal("(1:336)", first.LocatorsLabel);
         Assert.Equal("2 Pages", second.LocatorsLabel);
         Assert.False(tree.Root.HasLocators);
-    }
-
-    private static ulong[] Row(ulong sequence,
-                               ulong flags = 0,
-                               ulong rcx = 0,
-                               ulong returnValue = 0,
-                               int node = 0)
-    {
-        var row = new ulong[TraceArgumentCall.ValueCount];
-
-        row[0] = sequence;
-        row[1] = flags;
-        row[2] = rcx;
-        row[6] = returnValue;
-        row[7] = (ulong)node;
-
-        return row;
     }
 
     private static ulong[] WithId(ulong[] row, ulong id)
@@ -536,7 +426,7 @@ public class TraceCallLogTests
 
         var bytes = written[sizeof(int)..];
 
-        byte[] returned = [(byte)LocatorReadResolver.ReturnRegister, 0, 0, 0, (byte)LocatorKind.Page];
+        byte[] returned = [(byte)LocatorReadResolver.ReturnRegister, 0, 0, 0, (byte)LocatorValueType.Page];
 
         var register = bytes.AsSpan().LastIndexOf(returned);
 
@@ -555,20 +445,5 @@ public class TraceCallLogTests
                                                                       && offset < s.PointerToRawData + s.SizeOfRawData);
 
         return (uint)(section.VirtualAddress + offset - section.PointerToRawData);
-    }
-
-    private static ulong[] Chunk(params ulong[][] rows)
-    {
-        var columns = new ulong[rows.Length * TraceArgumentCall.ValueCount];
-
-        for (var call = 0; call < rows.Length; call++)
-        {
-            for (var value = 0; value < TraceArgumentCall.ValueCount; value++)
-            {
-                columns[value * rows.Length + call] = rows[call][value];
-            }
-        }
-
-        return columns;
     }
 }

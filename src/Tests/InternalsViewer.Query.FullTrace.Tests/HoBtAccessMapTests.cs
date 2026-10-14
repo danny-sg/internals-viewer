@@ -2,7 +2,7 @@ using InternalsViewer.Query.CallStack;
 using InternalsViewer.Query.CallStack.Arguments;
 using InternalsViewer.Query.CallStack.Categories;
 using InternalsViewer.Query.FullTrace.Arguments;
-using InternalsViewer.Query.FullTrace.CallLog;
+using InternalsViewer.Query.FullTrace.Calls;
 
 namespace InternalsViewer.Query.FullTrace.Tests;
 
@@ -108,7 +108,7 @@ public class HoBtAccessMapTests
 
         public HoBtAccessMap Build()
         {
-            var builder = new TraceCallLog.Builder();
+            var builder = new TraceCallStore.Builder();
 
             foreach (var (frame, rows) in Functions.Values)
             {

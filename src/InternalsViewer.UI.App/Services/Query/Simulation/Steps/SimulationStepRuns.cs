@@ -111,18 +111,18 @@ public static class SimulationStepRuns
             case AccessStep.SortCollect sortCollect:
                 SpanFor(sortCollect, "Collect", history)
                     .Set("Row", sortCollect.Number)
-                    .Set("→ Sort Table", null, SimulationCounterKind.Badge, SimulationCounterColours.Success);
+                    .Set("→ Sort Table", null, CounterDisplayType.Badge, SimulationCounterColours.Success);
                 return true;
 
             case AccessStep.AggregateRow aggregateRow:
-                Accumulate(aggregateRow, history).Set("Values", aggregateRow.Running, SimulationCounterKind.Pill);
+                Accumulate(aggregateRow, history).Set("Values", aggregateRow.Running, CounterDisplayType.Pill);
                 return true;
 
             case AccessStep.HashAggregate hashAggregate:
                 var hashed = Accumulate(hashAggregate, history);
 
                 hashed.Set("Bucket", (long)hashAggregate.Bucket)
-                      .Set("Values", hashAggregate.Running, SimulationCounterKind.Pill);
+                      .Set("Values", hashAggregate.Running, CounterDisplayType.Pill);
 
                 if (hashAggregate.IsNewGroup)
                 {
@@ -137,7 +137,7 @@ public static class SimulationStepRuns
 
                 accumulate.Set("Batches", batch.Number)
                           .Set("Groups", batch.Groups)
-                          .Set("Values", batch.Running, SimulationCounterKind.Pill);
+                          .Set("Values", batch.Running, CounterDisplayType.Pill);
 
                 accumulate.Fill.Set(batch.Fill);
                 return true;
@@ -148,13 +148,13 @@ public static class SimulationStepRuns
                 segment.Increment("Rows");
 
                 segment.Set("Segments", segmentRow.SegmentCount)
-                       .Set("Key", segmentRow.Key, SimulationCounterKind.Pill);
+                       .Set("Key", segmentRow.Key, CounterDisplayType.Pill);
                 return true;
 
             case AccessStep.RankRow rankRow:
                 SpanFor(rankRow, "Rank", history)
                     .Set("Row", rankRow.Number)
-                    .Set("Values", rankRow.Values, SimulationCounterKind.Pill);
+                    .Set("Values", rankRow.Values, CounterDisplayType.Pill);
                 return true;
 
             case AccessStep.BatchProduced produced:
@@ -162,7 +162,7 @@ public static class SimulationStepRuns
 
                 batchSpan.Set("Batch", produced.Number)
                          .Add("Rows", produced.RowCount)
-                         .Add("Match", produced.QualifyingCount, SimulationCounterKind.Badge)
+                         .Add("Match", produced.QualifyingCount, CounterDisplayType.Badge)
                          .Add("Filter Operations", produced.FilterOperations)
                          .Add("RLE Entries", produced.FilterRleEntries)
                          .Add("Pure", produced.PureColumns)
@@ -177,7 +177,7 @@ public static class SimulationStepRuns
                 skippedSpan.Add("Rows", skipped.RowCount)
                            .Add("Filter Operations", skipped.FilterOperations)
                            .Add("RLE Entries", skipped.FilterRleEntries)
-                           .Add("Skipped", 1, SimulationCounterKind.Badge);
+                           .Add("Skipped", 1, CounterDisplayType.Badge);
 
                 Filters(skippedSpan, skipped.HasCompressedFilter, skipped.HasPredicate);
                 return true;
@@ -206,13 +206,13 @@ public static class SimulationStepRuns
 
             case AccessStep.ComputeVector computeVector:
                 SpanFor(computeVector, "Compute Vector", history)
-                    .Set("Columns", computeVector.Columns, SimulationCounterKind.Pill)
+                    .Set("Columns", computeVector.Columns, CounterDisplayType.Pill)
                     .Add("Rows Computed", computeVector.RowCount);
                 return true;
 
             case AccessStep.FilterVector filterVector:
                 SpanFor(filterVector, "Filter Vector", history)
-                    .Set("Columns", filterVector.Columns, SimulationCounterKind.Pill)
+                    .Set("Columns", filterVector.Columns, CounterDisplayType.Pill)
                     .Add("Rows Evaluated", filterVector.RowsEvaluated)
                     .Add("Selected", filterVector.Matches);
                 return true;
@@ -221,7 +221,7 @@ public static class SimulationStepRuns
                 SpanFor(batchFiltered, "Get Batch", history)
                     .Set("Batch", batchFiltered.Number)
                     .Set("Rows", batchFiltered.RowCount)
-                    .Set("Passed", batchFiltered.PassedCount, SimulationCounterKind.Pill);
+                    .Set("Passed", batchFiltered.PassedCount, CounterDisplayType.Pill);
                 return true;
 
             default:
@@ -233,7 +233,7 @@ public static class SimulationStepRuns
     {
         var span = SpanFor(step, "Get Row", history);
 
-        span.Set("Row", rows).Set(badge, null, SimulationCounterKind.Badge, SimulationCounterColours.Success);
+        span.Set("Row", rows).Set(badge, null, CounterDisplayType.Badge, SimulationCounterColours.Success);
 
         if (limit > 0)
         {
@@ -247,17 +247,17 @@ public static class SimulationStepRuns
     {
         if (hasCompressedFilter)
         {
-            span.SetOnce("Compressed Filter", null, SimulationCounterKind.Badge, SimulationCounterColours.Success);
+            span.SetOnce("Compressed Filter", null, CounterDisplayType.Badge, SimulationCounterColours.Success);
         }
 
         if (hasPredicate)
         {
-            span.SetOnce("Predicate", null, SimulationCounterKind.Badge, SimulationCounterColours.Caution);
+            span.SetOnce("Predicate", null, CounterDisplayType.Badge, SimulationCounterColours.Caution);
         }
 
         if (!hasCompressedFilter && !hasPredicate)
         {
-            span.SetOnce("No Filter", null, SimulationCounterKind.Badge);
+            span.SetOnce("No Filter", null, CounterDisplayType.Badge);
         }
     }
 
@@ -301,11 +301,11 @@ public static class SimulationStepRuns
 
         var moved = direction < 0 ? compare.OuterKey : compare.InnerKey;
 
-        span.SetOnce("Advance", direction < 0 ? "Outer" : "Inner", SimulationCounterKind.Pill)
+        span.SetOnce("Advance", direction < 0 ? "Outer" : "Inner", CounterDisplayType.Pill)
             .SetOnce("From", moved)
             .Set("To", moved)
             .Set("Against", direction < 0 ? compare.InnerKey : compare.OuterKey)
-            .Increment("Compares", SimulationCounterKind.Badge);
+            .Increment("Compares", CounterDisplayType.Badge);
 
         return true;
     }
@@ -317,7 +317,7 @@ public static class SimulationStepRuns
         span.Set("Bucket", (long)hashBuild.Bucket)
             .Set("Hash", $"0x{hashBuild.Hash:X8}")
             .Set("Chain Entry Item", (long)hashBuild.ChainLength)
-            .Increment("Rows", SimulationCounterKind.Badge);
+            .Increment("Rows", CounterDisplayType.Badge);
 
         span.Fill.Land(hashBuild.Bucket, hashBuild.ChainLength, hashBuild.BucketCount);
 
@@ -342,7 +342,7 @@ public static class SimulationStepRuns
 
         span.Set("Bucket", (long)hashProbe.Bucket)
             .Set("Hash", $"0x{hashProbe.Hash:X8}")
-            .Increment("Rows", SimulationCounterKind.Badge);
+            .Increment("Rows", CounterDisplayType.Badge);
 
         span.Fill.Touch(hashProbe.Bucket, false);
 
@@ -379,21 +379,21 @@ public static class SimulationStepRuns
         {
             emitSpan.Increment("Emits");
 
-            MatchSpan(history, top, joinEmit).Increment(EmitRowsBadge, SimulationCounterKind.Badge, SimulationCounterColours.Success);
+            MatchSpan(history, top, joinEmit).Increment(EmitRowsBadge, CounterDisplayType.Badge, SimulationCounterColours.Success);
 
             return true;
         }
 
         if (FindSpan(history, top, joinEmit.NodeId, "Match") is { } mergeMatch)
         {
-            mergeMatch.Increment(EmitRowsBadge, SimulationCounterKind.Badge, SimulationCounterColours.Success);
+            mergeMatch.Increment(EmitRowsBadge, CounterDisplayType.Badge, SimulationCounterColours.Success);
 
             return true;
         }
 
         if (FindSpan(history, top, joinEmit.NodeId, "Compare") is not null)
         {
-            MergeMatch(history, joinEmit).Increment(EmitRowsBadge, SimulationCounterKind.Badge, SimulationCounterColours.Success);
+            MergeMatch(history, joinEmit).Increment(EmitRowsBadge, CounterDisplayType.Badge, SimulationCounterColours.Success);
 
             return true;
         }

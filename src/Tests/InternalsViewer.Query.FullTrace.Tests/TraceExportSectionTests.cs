@@ -5,7 +5,7 @@ using InternalsViewer.Query.CallStack;
 using InternalsViewer.Query.CallStack.Locators;
 using InternalsViewer.Query.Events.Operators;
 using InternalsViewer.Query.Export;
-using InternalsViewer.Query.FullTrace.CallLog;
+using InternalsViewer.Query.FullTrace.Calls;
 using InternalsViewer.Query.FullTrace.Export;
 using InternalsViewer.Query.FullTrace.Iterators;
 using InternalsViewer.Query.FullTrace.Locators;
@@ -38,7 +38,7 @@ public class TraceExportSectionTests
 
         var secondEntries = Entries(second);
 
-        Assert.Contains(TraceExportSection.CallLogEntry, firstEntries.Keys);
+        Assert.Contains(TraceExportSection.CallStoreEntry, firstEntries.Keys);
         Assert.Equal(firstEntries.Keys.Order(), secondEntries.Keys.Order());
 
         foreach (var (name, content) in firstEntries)
@@ -52,13 +52,13 @@ public class TraceExportSectionTests
     {
         var fullTrace = (await Import(await Export(Content()))).ExtraOf<TraceResult>()!;
 
-        var calls = fullTrace.CallLog.CallsOf(0x30, Scan)!;
+        var calls = fullTrace.CallStore.GetCallList(0x30, Scan)!;
 
         var getRow = fullTrace.CallStack.Root.ChildNodes.Single().ChildNodes.Single();
 
         Assert.Equal(2, calls.Count);
         Assert.Equal(6ul, calls[1].IntegerSlots[0]);
-        Assert.Same(getRow, fullTrace.CallLog.NodeOf(calls[1]));
+        Assert.Same(getRow, fullTrace.CallStore.GetNode(calls[1]));
         Assert.Equal(new PageAddress(1, 336), calls[1].GetLocator(2)?.Page);
         Assert.Equal("(1:336), (1:336:4)", getRow.LocatorsDetail);
         Assert.Equal(3, fullTrace.Timeline.SpanCount);
@@ -198,9 +198,9 @@ public class TraceExportSectionTests
 
         getRow.Locators = new LocatorSet();
 
-        getRow.Locators.Add(new Locator(0, LocatorKind.Page, Page336));
+        getRow.Locators.Add(new Locator(0, LocatorValueType.Page, Page336));
 
-        getRow.Locators.Add(new Locator(0, LocatorKind.Row, Page336 | (4ul << 48)));
+        getRow.Locators.Add(new Locator(0, LocatorValueType.Row, Page336 | (4ul << 48)));
 
         getRow.AllocatedBytes = 100;
 
@@ -228,17 +228,17 @@ public class TraceExportSectionTests
 
         timeline.SetLifetimes(IteratorLifetimeBuilder.Build(timeline, [scan]));
 
-        var log = new TraceCallLog.Builder([new LocatorRead(0x30, 2, false, LocatorKind.Page)]);
+        var storeBuilder = new TraceCallStore.Builder([new LocatorRead(0x30, 2, false, LocatorValueType.Page)]);
 
-        log.Add(0x30, Scan, Columns(Call(1, 5), Call(2, 6)), 2);
+        storeBuilder.Add(0x30, Scan, Columns(Call(1, 5), Call(2, 6)), 2);
 
-        log.AddLocators([new PointerValue(0x30, Scan, Page336, 1, 2)]);
+        storeBuilder.AddLocators([new PointerValue(0x30, Scan, Page336, 1, 2)]);
 
-        var callLog = log.Build();
+        var callStore = storeBuilder.Build();
 
-        callLog.MapNodes([caller, getRow, publish]);
+        callStore.MapNodes([caller, getRow, publish]);
 
-        return new TraceResult(tree, callLog, timeline);
+        return new TraceResult(tree, callStore, timeline);
     }
 
     private static CallstackFrame Frame(ulong rva, string symbol, ulong instance = 0) => new()

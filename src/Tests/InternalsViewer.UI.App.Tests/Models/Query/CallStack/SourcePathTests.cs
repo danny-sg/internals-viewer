@@ -188,7 +188,7 @@ public class SourcePathTests
 
         step.Toggle();
 
-        Assert.Empty(step.ShownStack);
+        Assert.Empty(step.VisibleStack);
     }
 
     [Fact]
@@ -210,11 +210,11 @@ public class SourcePathTests
         Assert.True(step.CanExpand);
         Assert.Equal(["IndexDataSetSession::GetRowByKeyValue"], step.Stack.Select(f => f.Symbol));
         Assert.All(step.Stack, f => Assert.Equal(15ul, f.Moment));
-        Assert.Empty(step.ShownStack);
+        Assert.Empty(step.VisibleStack);
 
         step.Toggle();
 
-        Assert.Equal(step.Stack, step.ShownStack);
+        Assert.Equal(step.Stack, step.VisibleStack);
     }
 
     private static MemoryMapEntry Origin(MemoryMapOperation operation, ulong call)

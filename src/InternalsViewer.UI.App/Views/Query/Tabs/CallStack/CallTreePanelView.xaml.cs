@@ -47,7 +47,7 @@ public sealed partial class CallTreePanelView : UserControl, IDocumentCommands, 
 
     public CallTreeTabViewModel? ViewModel => DataContext as CallTreeTabViewModel;
 
-    public IReadOnlyList<CallTreeRow> ExpandedRows => [.. Nodes.Where(n => n.Value.IsExpanded && IsShown(n.Key)).Select(n => n.Key)];
+    public IReadOnlyList<CallTreeRow> ExpandedRows => [.. Nodes.Where(n => n.Value.IsExpanded && IsRowVisible(n.Key)).Select(n => n.Key)];
 
     public CallTreeRow? SelectedRow => Tree.SelectedNode is { } node && RowsByNode.TryGetValue(node, out var row) ? row : null;
 
@@ -105,13 +105,13 @@ public sealed partial class CallTreePanelView : UserControl, IDocumentCommands, 
                                          (sender, _) => CallTree?.SetFocused(TabCommands.IsChecked(sender)));
 
         ActivityToggle = TabCommands.Toggle(TabCommands.Label("Activity"),
-                                            CallTree?.IsActivityShown ?? true,
+                                            CallTree?.IsActivityVisible ?? true,
                                             "Show each frame's activity over the query window as a histogram: taller is hotter, "
                                             + "with the selection's time highlighted.",
-                                            (sender, _) => CallTree?.SetActivityShown(TabCommands.IsChecked(sender)));
+                                            (sender, _) => CallTree?.SetActivityVisible(TabCommands.IsChecked(sender)));
 
         SignatureToggle = TabCommands.Toggle(TabCommands.Label("Signature"),
-                                             CallTree?.IsSignatureShown ?? false,
+                                             CallTree?.IsSignatureVisible ?? false,
                                              "Show each frame's function signature, with its parameter types, from the symbols.",
                                              OnSignatureClick);
 
@@ -148,7 +148,7 @@ public sealed partial class CallTreePanelView : UserControl, IDocumentCommands, 
 
             TreeHighlight.Text = callTree.Highlight;
 
-            NodeTemplates.ShowSignatures = callTree.IsSignatureShown;
+            NodeTemplates.ShowSignatures = callTree.IsSignatureVisible;
         }
 
         Bindings.Update();
@@ -200,17 +200,17 @@ public sealed partial class CallTreePanelView : UserControl, IDocumentCommands, 
                 FocusToggle?.IsChecked = callTree.IsFocused;
                 break;
 
-            case nameof(CallTreeViewModel.IsActivityShown):
+            case nameof(CallTreeViewModel.IsActivityVisible):
             {
-                Tree.ItemContainerStyle = (Style)Resources[callTree.IsActivityShown ? "ActivityItemStyle" : "PlainItemStyle"];
+                Tree.ItemContainerStyle = (Style)Resources[callTree.IsActivityVisible ? "ActivityItemStyle" : "PlainItemStyle"];
 
-                ActivityHeader.Visibility = callTree.IsActivityShown ? Visibility.Visible : Visibility.Collapsed;
+                ActivityHeader.Visibility = callTree.IsActivityVisible ? Visibility.Visible : Visibility.Collapsed;
 
                 break;
             }
 
-            case nameof(CallTreeViewModel.IsSignatureShown):
-                NodeTemplates.ShowSignatures = callTree.IsSignatureShown;
+            case nameof(CallTreeViewModel.IsSignatureVisible):
+                NodeTemplates.ShowSignatures = callTree.IsSignatureVisible;
                 break;
 
             case nameof(CallTreeViewModel.Highlight):
@@ -393,7 +393,7 @@ public sealed partial class CallTreePanelView : UserControl, IDocumentCommands, 
     {
         if (CallTree is { } callTree)
         {
-            await callTree.SetSignatureShownAsync(TabCommands.IsChecked(sender));
+            await callTree.SetSignatureVisibleAsync(TabCommands.IsChecked(sender));
         }
     }
 
@@ -421,7 +421,7 @@ public sealed partial class CallTreePanelView : UserControl, IDocumentCommands, 
 
     private void OnHeaderParentTapped(object sender, TappedRoutedEventArgs e) => CallTree?.FollowParent();
 
-    private bool IsShown(CallTreeRow row)
+    private bool IsRowVisible(CallTreeRow row)
     {
         for (var parent = row.Parent; parent is not null; parent = parent.Parent)
         {

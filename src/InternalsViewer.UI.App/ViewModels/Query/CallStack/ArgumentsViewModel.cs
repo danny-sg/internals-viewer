@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
 using InternalsViewer.Query.CallStack;
 using InternalsViewer.Query.CallStack.Arguments;
-using InternalsViewer.Query.FullTrace.CallLog;
+using InternalsViewer.Query.FullTrace.Calls;
 using InternalsViewer.Query.FullTrace.Iterators;
 using InternalsViewer.Query.Results;
 using InternalsViewer.UI.App.Models.Query.CallStack;
@@ -49,7 +49,7 @@ public sealed partial class ArgumentsViewModel(ILogger logger, SymbolsViewModel 
 
     public int? SelectedCallIndex => SelectedCall is { Id: var index } ? (int)index : null;
 
-    public CallLogLookup? Lookup { get; private set; }
+    public CallStoreLookup? Lookup { get; private set; }
 
     private CallExclusions Exclusions { get; set; } = CallExclusions.None;
 
@@ -73,7 +73,7 @@ public sealed partial class ArgumentsViewModel(ILogger logger, SymbolsViewModel 
 
     public bool CanShow(CallStackNode node) => Lookup is not null && node.Frame is { Address: not 0, Pdb.Length: > 0 };
 
-    public void SetSource(TraceCallLog? log,
+    public void SetSource(TraceCallStore? store,
                           CallStackTree? tree = null,
                           IReadOnlyDictionary<ulong, IteratorTarget>? iterators = null,
                           HoBtAccessMap? hobtAccess = null,
@@ -81,9 +81,9 @@ public sealed partial class ArgumentsViewModel(ILogger logger, SymbolsViewModel 
     {
         Cancel();
 
-        Lookup = log is null
+        Lookup = store is null
             ? null
-            : new CallLogLookup(log,
+            : new CallStoreLookup(store,
                                 tree,
                                 iterators ?? new Dictionary<ulong, IteratorTarget>(),
                                 hobtAccess ?? HoBtAccessMap.Empty,
@@ -126,9 +126,9 @@ public sealed partial class ArgumentsViewModel(ILogger logger, SymbolsViewModel 
 
         var selected = SelectedCallIndex;
 
-        CallTable = ArgumentRowBuilder.Table(layout, LoggedCalls, lookup.Describe, Included, decoded);
+        CallTable = ArgumentRowBuilder.BuildTable(layout, LoggedCalls, lookup.Describe, Included, decoded);
 
-        SelectQuietly(RowFor(CallTable, selected));
+        SelectQuietly(GetRow(CallTable, selected));
     }
 
     public async Task ShowAsync(CallStackNode node)
@@ -155,7 +155,7 @@ public sealed partial class ArgumentsViewModel(ILogger logger, SymbolsViewModel 
             return LoadAsync(node, call);
         }
 
-        var row = RowFor(table, call);
+        var row = GetRow(table, call);
 
         if (row is null && call is >= 0)
         {
@@ -169,36 +169,36 @@ public sealed partial class ArgumentsViewModel(ILogger logger, SymbolsViewModel 
         return Task.CompletedTask;
     }
 
-    public ArgumentCell CellAt(int index, int ordinal)
-        => Layout is { } layout && LoggedAt(index) is { } call ? ArgumentRowBuilder.CellAt(layout, call, ordinal) : default;
+    public ArgumentCell GetCell(int index, int ordinal)
+        => Layout is { } layout && GetCall(index) is { } call ? ArgumentRowBuilder.GetCellAt(layout, call, ordinal) : default;
 
-    public string? DecodedTextAt(int index, int ordinal)
-        => Layout is { } layout && Lookup is { } lookup && LoggedAt(index) is { } call
+    public string? GetDecodedText(int index, int ordinal)
+        => Layout is { } layout && Lookup is { } lookup && GetCall(index) is { } call
             ? ArgumentRowBuilder.DecodedTextAt(layout, call, ordinal, lookup.Describe)
             : null;
 
-    public MemoryMapEntry? OriginAt(int index, int ordinal)
-        => Layout is { } layout && Lookup is { } lookup && LoggedAt(index) is { } call
+    public MemoryMapEntry? GetOrigin(int index, int ordinal)
+        => Layout is { } layout && Lookup is { } lookup && GetCall(index) is { } call
             ? ArgumentRowBuilder.OriginAt(layout, call, ordinal, lookup.Describe)
             : null;
 
-    public CallStackNode? NodeAt(int index) => LoggedAt(index) is { } call ? Lookup?.Log.NodeOf(call) : null;
+    public CallStackNode? GetNode(int index) => GetCall(index) is { } call ? Lookup?.Store.GetNode(call) : null;
 
     public IteratorTarget? GetIterator(ulong value) => Lookup?.GetIterator(value);
 
-    public ulong? HoBtIdAt(int index, int ordinal)
+    public ulong? GetHoBtId(int index, int ordinal)
     {
-        if (Layout is not { } layout || Lookup is not { } lookup || LoggedAt(index) is not { } call)
+        if (Layout is not { } layout || Lookup is not { } lookup || GetCall(index) is not { } call)
         {
             return null;
         }
 
-        if (ArgumentRowBuilder.SlotAt(layout, ordinal) is { } slot)
+        if (ArgumentRowBuilder.FindSlotAt(layout, ordinal) is { } slot)
         {
-            return call.Value(slot) is { } value ? lookup.GetHoBtId(slot, value, call) : null;
+            return call.GetValue(slot) is { } value ? lookup.GetHoBtId(slot, value, call) : null;
         }
 
-        return ArgumentRowBuilder.CellAt(layout, call, ordinal) is { Value: { } returned, Type: { } type }
+        return ArgumentRowBuilder.GetCellAt(layout, call, ordinal) is { Value: { } returned, Type: { } type }
             ? ArgumentValue.GetHoBtId(type, returned)
             : null;
     }
@@ -243,9 +243,9 @@ public sealed partial class ArgumentsViewModel(ILogger logger, SymbolsViewModel 
 
             var layout = resolved.Layout;
 
-            Signature = Header(resolved.Parsed, resolved.Text ?? node.Symbol);
+            Signature = GetHeader(resolved.Parsed, resolved.Text ?? node.Symbol);
 
-            if (lookup.Log.CallsOf(frame.Address, frame.Instance) is not { Count: > 0 } calls)
+            if (lookup.Store.GetCallList(frame.Address, frame.Instance) is not { Count: > 0 } calls)
             {
                 Message = "The function was not called on the query's threads";
 
@@ -258,7 +258,7 @@ public sealed partial class ArgumentsViewModel(ILogger logger, SymbolsViewModel 
 
             var included = exclusions.IsEmpty
                 ? null
-                : Include(await Task.Run(() => lookup.Log.IncludedCalls(calls, exclusions.Includes, request.Token), request.Token),
+                : Include(await Task.Run(() => lookup.Store.GetIncludedCalls(calls, exclusions.Includes, request.Token), request.Token),
                           select);
 
             if (included is { Count: 0 })
@@ -270,14 +270,14 @@ public sealed partial class ArgumentsViewModel(ILogger logger, SymbolsViewModel 
 
             var decoded = IsDecoded;
 
-            var table = await Task.Run(() => ArgumentRowBuilder.Table(layout, calls, lookup.Describe, included, decoded), request.Token);
+            var table = await Task.Run(() => ArgumentRowBuilder.BuildTable(layout, calls, lookup.Describe, included, decoded), request.Token);
 
             Layout = layout;
             LoggedCalls = calls;
             Included = included;
             CallTable = table;
 
-            if (RowFor(table, select) is { } row)
+            if (GetRow(table, select) is { } row)
             {
                 SelectQuietly(row, selected: true);
             }
@@ -300,7 +300,7 @@ public sealed partial class ArgumentsViewModel(ILogger logger, SymbolsViewModel 
         }
     }
 
-    private TraceArgumentCall? LoggedAt(int index) => index >= 0 && index < LoggedCalls.Count ? LoggedCalls[index] : null;
+    private TraceArgumentCall? GetCall(int index) => index >= 0 && index < LoggedCalls.Count ? LoggedCalls[index] : null;
 
     private static IReadOnlyList<int> Include(IReadOnlyList<int> included, int? call)
     {
@@ -321,7 +321,7 @@ public sealed partial class ArgumentsViewModel(ILogger logger, SymbolsViewModel 
         return calls;
     }
 
-    private static ResultRow<long>? RowFor(QueryResultSet table, int? call)
+    private static ResultRow<long>? GetRow(QueryResultSet table, int? call)
     {
         if (call is not { } target || target < 0)
         {
@@ -377,7 +377,7 @@ public sealed partial class ArgumentsViewModel(ILogger logger, SymbolsViewModel 
     private bool IsShowing(CallStackNode node)
         => Shown?.Frame is { } shown && node.Frame is { } frame && shown.Address == frame.Address && shown.Instance == frame.Instance;
 
-    private static string Header(FunctionSignature parsed, string signature)
+    private static string GetHeader(FunctionSignature parsed, string signature)
     {
         var header = parsed.ReturnType is { } returnType ? $"{returnType} {signature}" : signature;
 
@@ -386,7 +386,7 @@ public sealed partial class ArgumentsViewModel(ILogger logger, SymbolsViewModel 
 
     partial void OnSelectedCallChanged(ResultRow<long>? value)
     {
-        var reference = value is { Id: var index } && NodeAt((int)index) is { } node
+        var reference = value is { Id: var index } && GetNode((int)index) is { } node
             ? new CallReference(node, (int)index, !IsSelectingQuietly || IsQuietlySelected)
             : null;
 

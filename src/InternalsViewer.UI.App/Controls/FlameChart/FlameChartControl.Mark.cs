@@ -44,9 +44,31 @@ public sealed partial class FlameChartControl
 
     public void MovePlayheadTo(CallStackNode node, int call)
     {
-        if (GetCall(node, call) is not { } found)
+        if (RevealCall(node, call) is not { } start)
         {
             return;
+        }
+
+        StopPlay();
+
+        StopTransition();
+
+        PlacePlayhead(start);
+    }
+
+    public void OpenCallStack(CallStackNode node, int call)
+    {
+        if (RevealCall(node, call) is { } start)
+        {
+            OpenCallStackAt(start);
+        }
+    }
+
+    private double? RevealCall(CallStackNode node, int call)
+    {
+        if (GetCall(node, call) is not { } found)
+        {
+            return null;
         }
 
         if (_root is not null && GetMarkedTop(found) is null)
@@ -54,11 +76,7 @@ public sealed partial class FlameChartControl
             SetRoot(null);
         }
 
-        StopPlay();
-
-        StopTransition();
-
-        PlacePlayhead(found.Span.Start);
+        return found.Span.Start;
     }
 
     private void ClearMark()

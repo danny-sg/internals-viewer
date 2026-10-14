@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Drawing;
 using System.Linq;
-using InternalsViewer.Query.FullTrace.CallLog;
+using InternalsViewer.Query.FullTrace.Calls;
 using InternalsViewer.Query.FullTrace.Locators;
 using InternalsViewer.Query.Results;
 using InternalsViewer.Query.CallStack.Locators;
@@ -37,11 +37,11 @@ public static class ArgumentRowBuilder
 
     private static readonly string[] Registers = ["RCX", "RDX", "R8", "R9"];
 
-    public static QueryResultSet Table(ArgumentLayout layout,
-                                       IReadOnlyList<TraceArgumentCall> calls,
-                                       ValueDescriber? describe = null,
-                                       IReadOnlyList<int>? included = null,
-                                       bool decode = true)
+    public static QueryResultSet BuildTable(ArgumentLayout layout,
+                                            IReadOnlyList<TraceArgumentCall> calls,
+                                            ValueDescriber? describe = null,
+                                            IReadOnlyList<int>? included = null,
+                                            bool decode = true)
     {
         var slots = CapturedSlots(layout);
 
@@ -57,17 +57,17 @@ public static class ArgumentRowBuilder
 
         foreach (var slot in slots)
         {
-            columns.Add(Column(columns.Count, slot.Name, slot.Type, slot.Source));
+            columns.Add(BuildColumn(columns.Count, slot.Name, slot.Type, slot.Source));
         }
 
         if (hasReturn)
         {
-            columns.Add(Column(columns.Count, ReturnName, returnType, ReturnSource(returnType), ReturnTint));
+            columns.Add(BuildColumn(columns.Count, ReturnName, returnType, GetReturnSource(returnType), ReturnTint));
         }
 
         var source = new ArgumentCallSource(calls,
                                             columns.Count,
-                                            (call, index) => Values(slots, hasReturn ? returnType : null, call, index, describe, decode));
+                                            (call, index) => GetValues(slots, hasReturn ? returnType : null, call, index, describe, decode));
 
         var rows = new ResultRow<long>[included?.Count ?? calls.Count];
 
@@ -81,7 +81,7 @@ public static class ArgumentRowBuilder
         return new QueryResultSet { Columns = columns, Rows = rows };
     }
 
-    public static ArgumentSlot? SlotAt(ArgumentLayout layout, int ordinal)
+    public static ArgumentSlot? FindSlotAt(ArgumentLayout layout, int ordinal)
     {
         var slots = CapturedSlots(layout);
 
@@ -90,7 +90,7 @@ public static class ArgumentRowBuilder
         return position >= 0 && position < slots.Count ? slots[position] : null;
     }
 
-    public static ArgumentCell CellAt(ArgumentLayout layout, TraceArgumentCall call, int ordinal)
+    public static ArgumentCell GetCellAt(ArgumentLayout layout, TraceArgumentCall call, int ordinal)
     {
         var slots = CapturedSlots(layout);
 
@@ -98,7 +98,7 @@ public static class ArgumentRowBuilder
 
         if (position >= 0 && position < slots.Count)
         {
-            return new ArgumentCell(call.Value(slots[position]), AddressAt(call, slots[position].Index), slots[position].Type);
+            return new ArgumentCell(call.GetValue(slots[position]), AddressAt(call, slots[position].Index), slots[position].Type);
         }
 
         if (position == slots.Count && layout.ReturnType is { } returnType && HasReturn(returnType) && call.Returned)
@@ -110,18 +110,18 @@ public static class ArgumentRowBuilder
     }
 
     public static string? DecodedTextAt(ArgumentLayout layout, TraceArgumentCall call, int ordinal, ValueDescriber? describe)
-        => ValueAt(layout, call, ordinal) is { } found ? Cell(found.Slot, found.Value, call, describe, decode: true).ToString() : null;
+        => FindValueAt(layout, call, ordinal) is { } found ? GetCellValue(found.Slot, found.Value, call, describe, decode: true).ToString() : null;
 
     public static MemoryMapEntry? OriginAt(ArgumentLayout layout, TraceArgumentCall call, int ordinal, ValueDescriber describe)
-        => ValueAt(layout, call, ordinal) is { } found ? GetDecoded(found.Slot, found.Value, call, describe).Origin : null;
+        => FindValueAt(layout, call, ordinal) is { } found ? GetDecoded(found.Slot, found.Value, call, describe).Origin : null;
 
-    public static IReadOnlyList<CallSignaturePart> Signature(string function,
-                                                             ArgumentLayout? layout,
-                                                             TraceArgumentCall call,
-                                                             ValueDescriber? describe = null,
-                                                             bool includeReturn = true,
-                                                             bool includeTypes = false,
-                                                             bool showThisAddress = true)
+    public static IReadOnlyList<CallSignaturePart> GetSignature(string function,
+                                                                ArgumentLayout? layout,
+                                                                TraceArgumentCall call,
+                                                                ValueDescriber? describe = null,
+                                                                bool includeReturn = true,
+                                                                bool includeTypes = false,
+                                                                bool showThisAddress = true)
     {
         var parts = new List<CallSignaturePart>
         {
@@ -162,7 +162,7 @@ public static class ArgumentRowBuilder
                         : slot.Name == ArgumentLayout.ReturnBuffer ? slot.Name
                         : $"{++argument}";
 
-            var part = call.Value(slot) is { } value
+            var part = call.GetValue(slot) is { } value
                 ? ValuePart(slot, value, call, describe, includeTypes, label)
                 : new CallSignaturePart(slot.Type, CallSignaturePartKind.NotCaptured, toolTip: $"Not Captured ({slot.Source})");
 
@@ -194,7 +194,7 @@ public static class ArgumentRowBuilder
     }
 
     public static CallSignaturePart? ThisOf(ArgumentLayout? layout, TraceArgumentCall call, ValueDescriber? describe = null)
-        => layout?.Slots.FirstOrDefault(s => s.Type == ThisType) is { } slot && call.Value(slot) is { } value
+        => layout?.Slots.FirstOrDefault(s => s.Type == ThisType) is { } slot && call.GetValue(slot) is { } value
             ? ValuePart(slot, value, call, describe, label: CallSignaturePart.ThisLabel)
             : null;
 
@@ -214,21 +214,21 @@ public static class ArgumentRowBuilder
         }
 
         return layout.ReturnType is { } returnType && HasReturn(returnType)
-            ? ValuePart(ReturnSlot(returnType), call.ReturnValue, call, describe, includeType, ReturnName)
+            ? ValuePart(BuildReturnSlot(returnType), call.ReturnValue, call, describe, includeType, ReturnName)
             : null;
     }
 
     public static bool CanFind(string type, ulong value)
         => value != 0 && (type == ThisType || ArgumentValue.IsPointer(type) || value >= SmallestAddress);
 
-    private static (ArgumentSlot Slot, ulong Value)? ValueAt(ArgumentLayout layout, TraceArgumentCall call, int ordinal)
+    private static (ArgumentSlot Slot, ulong Value)? FindValueAt(ArgumentLayout layout, TraceArgumentCall call, int ordinal)
     {
-        if (SlotAt(layout, ordinal) is { } slot)
+        if (FindSlotAt(layout, ordinal) is { } slot)
         {
-            return call.Value(slot) is { } value ? (slot, value) : null;
+            return call.GetValue(slot) is { } value ? (slot, value) : null;
         }
 
-        return CellAt(layout, call, ordinal) is { Value: { } returned, Type: { } type } ? (ReturnSlot(type), returned) : null;
+        return GetCellAt(layout, call, ordinal) is { Value: { } returned, Type: { } type } ? (BuildReturnSlot(type), returned) : null;
     }
 
     private static CallSignaturePart ValuePart(ArgumentSlot slot,
@@ -247,7 +247,7 @@ public static class ArgumentRowBuilder
                                      CanFind(slot.Type, value),
                                      reading,
                                      className,
-                                     call.GetLocator(slot.Index) is { } locator ? Display(slot.Type, locator) as StringValue : null,
+                                     call.GetLocator(slot.Index) is { } locator ? GetDisplayValue(slot.Type, locator) as StringValue : null,
                                      includeType && slot.Type != ThisType ? slot.Type : null,
                                      label,
                                      slot.Type == ThisType ? null : slot.Type,
@@ -262,9 +262,9 @@ public static class ArgumentRowBuilder
     {
         var locator = call.GetLocator(slot.Index);
 
-        if (locator is { Kind: not LocatorKind.Referenced } typed)
+        if (locator is { ValueType: not LocatorValueType.Referenced } typed)
         {
-            return (Display(slot.Type, typed).ToString(), null, null);
+            return (GetDisplayValue(slot.Type, typed).ToString(), null, null);
         }
 
         if (describe?.Invoke(slot, value, call) is { } description)
@@ -275,7 +275,7 @@ public static class ArgumentRowBuilder
         }
 
         return locator is { } referenced
-            ? (Display(slot.Type, referenced).ToString(), null, null)
+            ? (GetDisplayValue(slot.Type, referenced).ToString(), null, null)
             : (ArgumentValue.Decode(slot.Type, value), null, null);
     }
 
@@ -302,7 +302,7 @@ public static class ArgumentRowBuilder
         => new($"0x{value:X}", CallSignaturePartKind.Value, value, register, value >= SmallestAddress, location: register);
 
     private static Locator? AddressAt(TraceArgumentCall call, int register)
-        => call.GetLocator(register) is { Kind: LocatorKind.Page or LocatorKind.Row or LocatorKind.ColumnStoreObject } locator
+        => call.GetLocator(register) is { ValueType: LocatorValueType.Page or LocatorValueType.Row or LocatorValueType.ColumnStoreObject } locator
             ? locator
             : null;
 
@@ -310,42 +310,42 @@ public static class ArgumentRowBuilder
 
     private static bool HasReturn(string returnType) => returnType != "void" && TraceArgumentCall.IsReturnCaptured(returnType);
 
-    private static object?[] Values(List<ArgumentSlot> slots,
-                                    string? returnType,
-                                    TraceArgumentCall call,
-                                    int index,
-                                    ValueDescriber? describe,
-                                    bool decode)
+    private static object?[] GetValues(List<ArgumentSlot> slots,
+                                       string? returnType,
+                                       TraceArgumentCall call,
+                                       int index,
+                                       ValueDescriber? describe,
+                                       bool decode)
     {
         var values = new List<object?> { (long)index + 1, call.ThreadId };
 
         foreach (var slot in slots)
         {
-            values.Add(call.Value(slot) is { } value ? Cell(slot, value, call, describe, decode) : NotCaptured);
+            values.Add(call.GetValue(slot) is { } value ? GetCellValue(slot, value, call, describe, decode) : NotCaptured);
         }
 
         if (returnType is not null)
         {
-            values.Add(call.Returned ? Cell(ReturnSlot(returnType), call.ReturnValue, call, describe, decode) : DidNotReturn);
+            values.Add(call.Returned ? GetCellValue(BuildReturnSlot(returnType), call.ReturnValue, call, describe, decode) : DidNotReturn);
         }
 
         return [.. values];
     }
 
-    private static object Cell(ArgumentSlot slot,
-                               ulong value,
-                               TraceArgumentCall call,
-                               ValueDescriber? describe,
-                               bool decode)
+    private static object GetCellValue(ArgumentSlot slot,
+                                       ulong value,
+                                       TraceArgumentCall call,
+                                       ValueDescriber? describe,
+                                       bool decode)
     {
         if (!decode)
         {
             return $"0x{value:X}";
         }
 
-        if (call.GetLocator(slot.Index) is { Kind: not LocatorKind.Referenced } locator)
+        if (call.GetLocator(slot.Index) is { ValueType: not LocatorValueType.Referenced } locator)
         {
-            return Display(slot.Type, locator);
+            return GetDisplayValue(slot.Type, locator);
         }
 
         var (reading, className, origin) = GetDecoded(slot, value, call, describe);
@@ -358,21 +358,24 @@ public static class ArgumentRowBuilder
         return className is null && origin is null ? reading : new ObjectValue(className, reading) { Origin = origin };
     }
 
-    private static ArgumentSlot ReturnSlot(string returnType)
-        => new(ReturnName, returnType, ArgumentLocation.Register, LocatorReadResolver.ReturnRegister, ReturnSource(returnType));
+    private static ArgumentSlot BuildReturnSlot(string returnType)
+        => new(ReturnName, returnType, ArgumentLocation.Register, LocatorReadResolver.ReturnRegister, GetReturnSource(returnType));
 
-    private static object Display(string type, Locator locator) => locator.Kind switch
+    private static object GetDisplayValue(string type, Locator locator) => locator.ValueType switch
     {
-        LocatorKind.Row => locator.Row,
-        LocatorKind.Text or LocatorKind.WideText => new StringValue(locator.Text ?? string.Empty, locator.Detail != 0),
-        LocatorKind.ColumnStoreObject or LocatorKind.LogSequenceNumber or LocatorKind.TypeInfo => locator.ToString(),
-        LocatorKind.Referenced => ArgumentValue.FormatReferenced(type, locator.Value),
+        LocatorValueType.Row
+            => locator.Row,
+        LocatorValueType.Text or LocatorValueType.WideText
+            => new StringValue(locator.Text ?? string.Empty, locator.Detail != 0),
+        LocatorValueType.ColumnStoreObject or LocatorValueType.LogSequenceNumber or LocatorValueType.TypeInfo
+            => locator.ToString(),
+        LocatorValueType.Referenced => ArgumentValue.FormatReferenced(type, locator.Value),
         _ => locator.Page
     };
 
-    private static ResultColumn Column(int ordinal, string name, string type, string detail, Color? tint = null)
+    private static ResultColumn BuildColumn(int ordinal, string name, string type, string detail, Color? tint = null)
         => new(ordinal, name, typeof(string), false) { TypeName = type, Detail = detail, BackgroundColour = tint };
 
-    private static string ReturnSource(string type) => ArgumentValue.IsFloating(type) ? "XMM0" : "RAX";
+    private static string GetReturnSource(string type) => ArgumentValue.IsFloating(type) ? "XMM0" : "RAX";
 
 }

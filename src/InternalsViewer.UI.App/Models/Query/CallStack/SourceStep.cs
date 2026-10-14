@@ -17,7 +17,7 @@ public sealed partial class SourceStep(CallStackNode node,
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(ExpanderGlyph))]
-    [NotifyPropertyChangedFor(nameof(ShownStack))]
+    [NotifyPropertyChangedFor(nameof(VisibleStack))]
     private bool _isExpanded;
 
     public CallStackNode Node { get; } = node;
@@ -39,7 +39,7 @@ public sealed partial class SourceStep(CallStackNode node,
     public IReadOnlyList<SourceFrame> Stack
         => field ??= [.. Node.Ancestors().Skip(1).Where(n => n.Symbol.Length > 0).Select(n => new SourceFrame(n, Id))];
 
-    public IReadOnlyList<SourceFrame> ShownStack => IsExpanded ? Stack : [];
+    public IReadOnlyList<SourceFrame> VisibleStack => IsExpanded ? Stack : [];
 
     public Thickness Indent => new(Depth * IndentWidth, 0, 0, 0);
 

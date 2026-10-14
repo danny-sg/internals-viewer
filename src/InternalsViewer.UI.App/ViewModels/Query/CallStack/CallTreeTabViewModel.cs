@@ -117,7 +117,7 @@ public sealed class CallTreeTabViewModel : IDisposable
         ShowMembers();
     }
 
-    public void Find(ulong value)
+    public void FindReferences(ulong value)
     {
         if (Arguments.Lookup is not { } lookup)
         {
@@ -151,7 +151,7 @@ public sealed class CallTreeTabViewModel : IDisposable
 
     public void OpenLocator(Locator locator, bool detached)
     {
-        if (locator.Kind == LocatorKind.ColumnStoreObject)
+        if (locator.ValueType == LocatorValueType.ColumnStoreObject)
         {
             var target = new ColumnstoreObjectTarget(locator.ObjectType, locator.ColumnId, locator.ObjectId);
 
@@ -160,7 +160,7 @@ public sealed class CallTreeTabViewModel : IDisposable
             return;
         }
 
-        OpenPage(locator.Page, locator.Kind == LocatorKind.Row ? locator.Slot : null, detached);
+        OpenPage(locator.Page, locator.ValueType == LocatorValueType.Row ? locator.Slot : null, detached);
     }
 
     public void OpenPage(PageAddress pageAddress, ushort? slot, bool detached)
@@ -237,14 +237,14 @@ public sealed class CallTreeTabViewModel : IDisposable
 
     private IEnumerable<DocumentViewModel> PanelDocuments() => [ArgumentsDocument, SymbolsDocument, MembersDocument, .. Finds];
 
-    private void SetPanelVisible(DocumentViewModel document, bool visible)
+    private void SetPanelVisible(DocumentViewModel document, bool isVisible)
     {
-        if (visible == Dock.Contains(document))
+        if (isVisible == Dock.Contains(document))
         {
             return;
         }
 
-        if (visible)
+        if (isVisible)
         {
             ShowPanel(document, document);
         }

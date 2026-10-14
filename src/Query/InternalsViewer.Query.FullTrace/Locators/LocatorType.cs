@@ -3,7 +3,7 @@ using InternalsViewer.Query.FullTrace.Arguments;
 
 namespace InternalsViewer.Query.FullTrace.Locators;
 
-internal readonly record struct LocatorType(LocatorKind Kind, bool IsIndirect, bool IsConst, int Offset = 0, int[]? Path = null)
+internal readonly record struct LocatorType(LocatorValueType ValueType, bool IsIndirect, bool IsConst, int Offset = 0, int[]? Path = null)
 {
     private const int AllocationPageIdOffset = 8;
 
@@ -19,7 +19,7 @@ internal readonly record struct LocatorType(LocatorKind Kind, bool IsIndirect, b
 
     public bool IsOutput => IsIndirect && !IsConst;
 
-    public bool IsInOut => IsOutput && (Kind == LocatorKind.Referenced || Path is not null);
+    public bool IsInOut => IsOutput && (ValueType == LocatorValueType.Referenced || Path is not null);
 
     public static LocatorType? LocatorTypeOf(string type)
     {
@@ -57,37 +57,37 @@ internal readonly record struct LocatorType(LocatorKind Kind, bool IsIndirect, b
             }
         }
 
-        if (indirection >= 0 && isConst && names == 1 && TextKind(name) is { } textKind)
+        if (indirection >= 0 && isConst && names == 1 && GetTextValueType(name) is { } textValueType)
         {
-            return new LocatorType(textKind, true, true);
+            return new LocatorType(textValueType, true, true);
         }
 
         var found = (names == 1 ? KnownLocator(name) : null)
-                    ?? (indirection >= 0 && ArgumentValue.IsReadable(target) ? (LocatorKind.Referenced, 0, null) : null);
+                    ?? (indirection >= 0 && ArgumentValue.IsReadable(target) ? (LocatorValueType.Referenced, 0, null) : null);
 
         return found is { } match
-            ? new LocatorType(match.Kind, indirection >= 0, isConst, match.Offset, match.Path)
+            ? new LocatorType(match.ValueType, indirection >= 0, isConst, match.Offset, match.Path)
             : null;
     }
 
-    private static (LocatorKind Kind, int Offset, int[]? Path)? KnownLocator(ReadOnlySpan<char> name) => name switch
+    private static (LocatorValueType ValueType, int Offset, int[]? Path)? KnownLocator(ReadOnlySpan<char> name) => name switch
     {
-        "PageId" => (LocatorKind.Page, 0, null),
-        "AllocationPageId" => (LocatorKind.Page, AllocationPageIdOffset, null),
-        "HPageHandle" => (LocatorKind.Page, PageHeaderPageIdOffset, PageHandlePath),
+        "PageId" => (LocatorValueType.Page, 0, null),
+        "AllocationPageId" => (LocatorValueType.Page, AllocationPageIdOffset, null),
+        "HPageHandle" => (LocatorValueType.Page, PageHeaderPageIdOffset, PageHandlePath),
         "PageRef" or "BTreeHPage" or "IndexPageRef" or "HeapPageRef" or "TextPageRef" or "IAMPageRef" or "GAMPageRef"
-            or "SGAMPageRef" or "PFSPageRef" or "PSPageRef" => (LocatorKind.Page, BufferPageIdOffset, PageRefPath),
-        "RowId" => (LocatorKind.Row, 0, null),
-        "ColumnStoreObjectKey" => (LocatorKind.ColumnStoreObject, 0, null),
-        "LSN" => (LocatorKind.LogSequenceNumber, 0, null),
-        "CTypeInfo" => (LocatorKind.TypeInfo, 0, null),
+            or "SGAMPageRef" or "PFSPageRef" or "PSPageRef" => (LocatorValueType.Page, BufferPageIdOffset, PageRefPath),
+        "RowId" => (LocatorValueType.Row, 0, null),
+        "ColumnStoreObjectKey" => (LocatorValueType.ColumnStoreObject, 0, null),
+        "LSN" => (LocatorValueType.LogSequenceNumber, 0, null),
+        "CTypeInfo" => (LocatorValueType.TypeInfo, 0, null),
         _ => null
     };
 
-    private static LocatorKind? TextKind(ReadOnlySpan<char> name) => name switch
+    private static LocatorValueType? GetTextValueType(ReadOnlySpan<char> name) => name switch
     {
-        "char" => LocatorKind.Text,
-        "wchar_t" => LocatorKind.WideText,
+        "char" => LocatorValueType.Text,
+        "wchar_t" => LocatorValueType.WideText,
         _ => null
     };
 

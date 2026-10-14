@@ -1,4 +1,4 @@
-namespace InternalsViewer.Query.FullTrace.CallLog;
+namespace InternalsViewer.Query.FullTrace.Calls;
 
 public enum TraceValueRole
 {

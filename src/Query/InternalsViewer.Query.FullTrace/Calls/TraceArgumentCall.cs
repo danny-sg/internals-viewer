@@ -1,7 +1,7 @@
 using InternalsViewer.Query.CallStack.Locators;
 using InternalsViewer.Query.FullTrace.Arguments;
 
-namespace InternalsViewer.Query.FullTrace.CallLog;
+namespace InternalsViewer.Query.FullTrace.Calls;
 
 public sealed record TraceArgumentCall(ulong Sequence,
                                        uint ThreadId,
@@ -14,9 +14,11 @@ public sealed record TraceArgumentCall(ulong Sequence,
 
     internal const int RegisterCount = 4;
 
-    private const int IntegerOffset = 2;
+    internal const int FlagsIndex = 1;
 
-    private const int ReturnValueIndex = 6;
+    internal const int IntegerOffset = 2;
+
+    internal const int ReturnValueIndex = 6;
 
     internal const int NodeIndex = 7;
 
@@ -24,7 +26,7 @@ public sealed record TraceArgumentCall(ulong Sequence,
 
     internal const int EndIdIndex = 9;
 
-    private const ulong ReturnedFlag = 1ul << 32;
+    internal const ulong ReturnedFlag = 1ul << 32;
 
     public IReadOnlyList<Locator> Locators { get; init; } = [];
 
@@ -38,10 +40,12 @@ public sealed record TraceArgumentCall(ulong Sequence,
 
     public static bool IsReturnCaptured(string returnType) => !ArgumentValue.IsFloating(returnType);
 
-    public ulong? Value(ArgumentSlot slot) => slot.Location switch
+    public ulong? GetValue(ArgumentSlot slot) => slot.Location switch
     {
-        ArgumentLocation.Register => IntegerSlots[slot.Index],
-        ArgumentLocation.Stack => GetStackValue(slot.Index),
+        ArgumentLocation.Register 
+            => IntegerSlots[slot.Index],
+        ArgumentLocation.Stack 
+            => GetStackValue(slot.Index),
         _ => null
     };
 
@@ -49,7 +53,7 @@ public sealed record TraceArgumentCall(ulong Sequence,
     {
         foreach (var locator in Locators)
         {
-            if (locator.Register == position && locator.Kind == LocatorKind.Argument)
+            if (locator.Register == position && locator.ValueType == LocatorValueType.Argument)
             {
                 return locator.Value;
             }
@@ -64,7 +68,7 @@ public sealed record TraceArgumentCall(ulong Sequence,
     {
         foreach (var locator in Locators)
         {
-            if (locator.Register == register && locator.Kind != LocatorKind.Argument)
+            if (locator.Register == register && locator.ValueType != LocatorValueType.Argument)
             {
                 return locator;
             }
@@ -75,7 +79,7 @@ public sealed record TraceArgumentCall(ulong Sequence,
 
     internal static TraceArgumentCall Decode(ReadOnlySpan<ulong> values, IReadOnlyList<Locator>? locators = null)
     {
-        var flags = values[1];
+        var flags = values[FlagsIndex];
 
         return new TraceArgumentCall(values[0],
                                      (uint)flags,

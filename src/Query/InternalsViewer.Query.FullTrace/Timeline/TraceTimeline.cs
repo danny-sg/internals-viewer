@@ -385,13 +385,23 @@ public sealed partial class TraceTimeline
 
     internal void AddCallActivity(int buckets)
     {
+        foreach (var (node, activity) in GetCallActivity(buckets))
+        {
+            node.CallActivity = activity;
+        }
+    }
+
+    internal Dictionary<CallStackNode, int[]> GetCallActivity(int buckets)
+    {
+        var activity = new Dictionary<CallStackNode, int[]>(ReferenceEqualityComparer.Instance);
+
         var start = StartOf(TraceTimelineAxis.Position);
 
         var length = EndOf(TraceTimelineAxis.Position) - start;
 
         if (buckets <= 0 || length <= 0)
         {
-            return;
+            return activity;
         }
 
         foreach (var span in ResolvedSpans())
@@ -401,15 +411,16 @@ public sealed partial class TraceTimeline
                 continue;
             }
 
-            if (span.Node.CallActivity.Length != buckets)
-            {
-                span.Node.CallActivity = new int[buckets];
-            }
+            ref var counts = ref CollectionsMarshal.GetValueRefOrAddDefault(activity, span.Node, out _);
+
+            counts ??= new int[buckets];
 
             var bucket = (int)((span.StartOf(TraceTimelineAxis.Position) - start) / length * buckets);
 
-            span.Node.CallActivity[Math.Clamp(bucket, 0, buckets - 1)]++;
+            counts[Math.Clamp(bucket, 0, buckets - 1)]++;
         }
+
+        return activity;
     }
 
     private static List<(double Start, double End)> Windows(IEnumerable<TraceTimelineRow> roots)

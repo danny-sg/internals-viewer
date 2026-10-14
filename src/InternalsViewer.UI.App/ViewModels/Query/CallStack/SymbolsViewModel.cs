@@ -239,13 +239,6 @@ public sealed partial class SymbolsViewModel(ILogger logger, SettingsViewModel s
         return ListMembersAsync(frame, className);
     }
 
-    /// <summary>
-    /// Resolves the signature of the function a call stack frame is in, off the UI thread
-    /// </summary>
-    /// <remarks>
-    /// Best effort: a signature is a nicety over the register dump, so a resolver failure returns null and lets the
-    /// caller fall back rather than failing the command.
-    /// </remarks>
     public async Task<string?> ResolveFrameSignatureAsync(CallstackFrame frame)
     {
         try
@@ -440,13 +433,6 @@ public sealed partial class SymbolsViewModel(ILogger logger, SettingsViewModel s
         }
     }
 
-    /// <summary>
-    /// The matches as a module per node, a class per node beneath, and the members under each class
-    /// </summary>
-    /// <remarks>
-    /// Modules start expanded. Classes start expanded only when there are few enough to take in at once. A member
-    /// that is exactly what was searched for is not highlighted, as colouring all of it says nothing.
-    /// </remarks>
     private static IReadOnlyList<SymbolModuleRow> SymbolModules(IReadOnlyList<SymbolMatch> matches, string query)
     {
         var highlight = query;

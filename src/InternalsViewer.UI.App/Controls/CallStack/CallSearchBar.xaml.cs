@@ -147,7 +147,7 @@ public sealed partial class CallSearchBar : UserControl
     {
         if (sender is Border { Tag: string category })
         {
-            SetCategory(category, hide: !IsHidden(category), withCallees: false);
+            SetCategory(category, isHidden: !IsHidden(category), withCallees: false);
         }
     }
 
@@ -160,30 +160,30 @@ public sealed partial class CallSearchBar : UserControl
 
         var menu = new MenuFlyout();
 
-        menu.Items.Add(CategoryMenuItem(category, "Show", hide: false, withCallees: false));
-        menu.Items.Add(CategoryMenuItem(category, "Hide", hide: true, withCallees: false));
-        menu.Items.Add(CategoryMenuItem(category, "Hide With Callees", hide: true, withCallees: true));
+        menu.Items.Add(CategoryMenuItem(category, "Show", isHidden: false, withCallees: false));
+        menu.Items.Add(CategoryMenuItem(category, "Hide", isHidden: true, withCallees: false));
+        menu.Items.Add(CategoryMenuItem(category, "Hide With Callees", isHidden: true, withCallees: true));
 
         menu.ShowAt(badge, e.GetPosition(badge));
 
         e.Handled = true;
     }
 
-    private RadioMenuFlyoutItem CategoryMenuItem(string category, string text, bool hide, bool withCallees)
+    private RadioMenuFlyoutItem CategoryMenuItem(string category, string text, bool isHidden, bool withCallees)
     {
         var item = new RadioMenuFlyoutItem
         {
             Text = text,
             GroupName = nameof(CategoryMenuItem),
-            IsChecked = IsHidden(category) == hide && PrunedCategories.Contains(category) == withCallees
+            IsChecked = IsHidden(category) == isHidden && PrunedCategories.Contains(category) == withCallees
         };
 
-        item.Click += (_, _) => SetCategory(category, hide, withCallees);
+        item.Click += (_, _) => SetCategory(category, isHidden, withCallees);
 
         return item;
     }
 
-    private void SetCategory(string category, bool hide, bool withCallees)
+    private void SetCategory(string category, bool isHidden, bool withCallees)
     {
         var hidden = new HashSet<string>(HiddenCategories, StringComparer.Ordinal);
 
@@ -192,7 +192,7 @@ public sealed partial class CallSearchBar : UserControl
         hidden.Remove(category);
         pruned.Remove(category);
 
-        if (hide)
+        if (isHidden)
         {
             (withCallees ? pruned : hidden).Add(category);
         }

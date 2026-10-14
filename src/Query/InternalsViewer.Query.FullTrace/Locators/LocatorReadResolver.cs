@@ -36,7 +36,7 @@ public static partial class LocatorReadResolver
             if (slot.Location is not (ArgumentLocation.Register or ArgumentLocation.Stack)
                 || slot.Name == ArgumentLayout.ReturnBuffer
                 || LocatorType.LocatorTypeOf(slot.Type) is not { } type
-                || (slot.Location == ArgumentLocation.Stack && type.Kind == LocatorKind.Referenced))
+                || (slot.Location == ArgumentLocation.Stack && type.ValueType == LocatorValueType.Referenced))
             {
                 continue;
             }
@@ -56,22 +56,22 @@ public static partial class LocatorReadResolver
         }
     }
 
-    public static int GetParts(LocatorKind kind) => kind switch
+    public static int GetParts(LocatorValueType valueType) => valueType switch
     {
-        LocatorKind.ColumnStoreObject => ObjectKeyParts,
-        LocatorKind.LogSequenceNumber => LogSequenceNumberParts,
-        LocatorKind.TypeInfo => TypeInfoParts,
+        LocatorValueType.ColumnStoreObject => ObjectKeyParts,
+        LocatorValueType.LogSequenceNumber => LogSequenceNumberParts,
+        LocatorValueType.TypeInfo => TypeInfoParts,
         _ => 1
     };
 
-    private static int GetPartOffset(LocatorKind kind, int part)
-        => kind == LocatorKind.TypeInfo ? part * TypeInfoDetailOffset : part * sizeof(ulong);
+    private static int GetPartOffset(LocatorValueType valueType, int part)
+        => valueType == LocatorValueType.TypeInfo ? part * TypeInfoDetailOffset : part * sizeof(ulong);
 
     internal static IEnumerable<LocatorRead> GetStackReads(ulong function, FunctionSignature signature)
         => ArgumentLayout.LayoutOf(signature)
                          .Slots
                          .Where(s => s.Location == ArgumentLocation.Stack)
-                         .Select(s => new LocatorRead(function, s.Index, false, LocatorKind.Argument));
+                         .Select(s => new LocatorRead(function, s.Index, false, LocatorValueType.Argument));
 
     internal static List<LocatorRead> FindStackReads(DiaResolver resolver, IEnumerable<uint> functions)
     {
@@ -102,7 +102,7 @@ public static partial class LocatorReadResolver
 
     private static IEnumerable<LocatorRead> GetReads(ulong function, int register, LocatorType type, bool returned)
     {
-        var parts = GetParts(type.Kind);
+        var parts = GetParts(type.ValueType);
 
         bool[] ends = returned ? [true] : type.IsInOut ? [false, true] : [type.IsOutput];
 
@@ -110,9 +110,9 @@ public static partial class LocatorReadResolver
         {
             for (var part = 0; part < parts; part++)
             {
-                var offset = type.Offset + GetPartOffset(type.Kind, part);
+                var offset = type.Offset + GetPartOffset(type.ValueType, part);
 
-                yield return new LocatorRead(function, register, isReadAtReturn, type.Kind, offset, type.Path);
+                yield return new LocatorRead(function, register, isReadAtReturn, type.ValueType, offset, type.Path);
             }
         }
     }

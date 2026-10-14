@@ -1,5 +1,5 @@
 using InternalsViewer.Query.CallStack.Arguments;
-using InternalsViewer.Query.FullTrace.CallLog;
+using InternalsViewer.Query.FullTrace.Calls;
 using InternalsViewer.Query.FullTrace.Arguments;
 
 namespace InternalsViewer.Query.FullTrace.Tests;
@@ -25,8 +25,8 @@ public class TraceArgumentCallTests
         Assert.Equal(99ul, call.Sequence);
         Assert.Equal(1234u, call.ThreadId);
         Assert.True(call.Returned);
-        Assert.Equal(0xA0ul, call.Value(layout.Slots[0]));
-        Assert.Equal(0xC0ul, call.Value(layout.Slots[2]));
+        Assert.Equal(0xA0ul, call.GetValue(layout.Slots[0]));
+        Assert.Equal(0xC0ul, call.GetValue(layout.Slots[2]));
         Assert.Equal(42ul, call.ReturnValue);
     }
 
@@ -48,7 +48,7 @@ public class TraceArgumentCallTests
         var layout = ArgumentLayout.LayoutOf(new FunctionSignature(["double", "int", "int", "int", "int"], FunctionType.Free, null));
 
         Assert.Equal([false, true, true, true, true], layout.Slots.Select(TraceArgumentCall.IsCaptured));
-        Assert.Null(call.Value(layout.Slots[0]));
-        Assert.Null(call.Value(layout.Slots[4]));
+        Assert.Null(call.GetValue(layout.Slots[0]));
+        Assert.Null(call.GetValue(layout.Slots[4]));
     }
 }

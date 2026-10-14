@@ -1,15 +1,15 @@
 using InternalsViewer.Query.FullTrace.Export;
 using InternalsViewer.Query.FullTrace.Locators;
 
-namespace InternalsViewer.Query.FullTrace.CallLog;
+namespace InternalsViewer.Query.FullTrace.Calls;
 
-public sealed partial class TraceCallLog
+public sealed partial class TraceCallStore
 {
     private const int FormatVersion = 2;
 
     private const int LegacyReturnRegister = 8;
 
-    internal static TraceCallLog Read(BinaryReader reader)
+    internal static TraceCallStore Read(BinaryReader reader)
     {
         var functions = new Dictionary<(ulong Address, ulong Instance), Chunk[]>();
 
@@ -46,7 +46,7 @@ public sealed partial class TraceCallLog
             locators[key] = LocatorTable.Read(reader, version < FormatVersion ? LegacyReturnRegister : null);
         }
 
-        return new TraceCallLog(functions, locators);
+        return new TraceCallStore(functions, locators);
     }
 
     internal void Write(BinaryWriter writer)

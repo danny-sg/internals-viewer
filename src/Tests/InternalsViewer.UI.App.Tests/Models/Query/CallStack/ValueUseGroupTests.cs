@@ -1,5 +1,5 @@
 using InternalsViewer.Query.CallStack.Arguments;
-using InternalsViewer.Query.FullTrace.CallLog;
+using InternalsViewer.Query.FullTrace.Calls;
 using InternalsViewer.UI.App.Models.Query.CallStack;
 
 namespace InternalsViewer.UI.App.Tests.Models.Query.CallStack;
@@ -47,9 +47,9 @@ public class ValueUseGroupTests
     [Fact]
     public void More_Calls_Are_Offered_From_Where_The_Last_Page_Ended()
     {
-        TraceValueMatch[] matches = [.. Enumerable.Range(0, 1_250).Select(i => new TraceValueMatch(i, (ulong)i, null))];
+        TraceValueCall[] valueCalls = [.. Enumerable.Range(0, 1_250).Select(i => new TraceValueCall(i, (ulong)i, null))];
 
-        var more = ValueNoteRow.More(matches, 500);
+        var more = ValueNoteRow.More(valueCalls, 500);
 
         Assert.Equal("Show More (750 Remaining)", more.Label);
         Assert.Equal(500, more.From);
@@ -63,5 +63,5 @@ public class ValueUseGroupTests
     };
 
     private static TraceValueUse Use(ulong address, string location, int calls = 1)
-        => new(address, 0, location, calls, new TraceValueMatch(0, 1, null), new TraceValueMatch(0, 1, null));
+        => new(address, 0, location, calls, new TraceValueCall(0, 1, null), new TraceValueCall(0, 1, null));
 }

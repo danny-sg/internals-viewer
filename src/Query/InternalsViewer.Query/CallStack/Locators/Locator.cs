@@ -3,7 +3,7 @@ using InternalsViewer.Query.Events.BatchMode.Enums;
 
 namespace InternalsViewer.Query.CallStack.Locators;
 
-public readonly record struct Locator(int Register, LocatorKind Kind, ulong Value, ulong Detail = 0, string? Text = null)
+public readonly record struct Locator(int Register, LocatorValueType ValueType, ulong Value, ulong Detail = 0, string? Text = null)
 {
     private const ulong PageMask = 0xFFFF_FFFF_FFFF;
 
@@ -33,19 +33,19 @@ public readonly record struct Locator(int Register, LocatorKind Kind, ulong Valu
         ? ObjectId
         : null;
 
-    public string SearchText => Kind switch
+    public string SearchText => ValueType switch
     {
-        LocatorKind.ColumnStoreObject when RowGroupId is { } rowGroup && ColumnId >= 0 
+        LocatorValueType.ColumnStoreObject when RowGroupId is { } rowGroup && ColumnId >= 0 
             => $"rowgroup:{rowGroup} column:{ColumnId}",
-        LocatorKind.ColumnStoreObject when RowGroupId is { } rowGroup 
+        LocatorValueType.ColumnStoreObject when RowGroupId is { } rowGroup 
             => $"rowgroup:{rowGroup}",
-        LocatorKind.ColumnStoreObject 
+        LocatorValueType.ColumnStoreObject 
             => $"column:{ColumnId}",
         _ => ToString()
     };
 
     public static Locator CreateLogSequenceNumber(int register, ulong first, ulong second)
-        => new(register, LocatorKind.LogSequenceNumber, first, (ushort)second);
+        => new(register, LocatorValueType.LogSequenceNumber, first, (ushort)second);
 
     public static Locator ColumnStoreObject(int register, ulong first, ulong second, ulong third)
     {
@@ -55,20 +55,20 @@ public readonly record struct Locator(int Register, LocatorKind Kind, ulong Valu
 
         var detail = ((ulong)(uint)third << 32) | (uint)(second >> 32);
 
-        return new Locator(register, LocatorKind.ColumnStoreObject, hobtId | objectType, detail);
+        return new Locator(register, LocatorValueType.ColumnStoreObject, hobtId | objectType, detail);
     }
 
-    public override string ToString() => Kind switch
+    public override string ToString() => ValueType switch
     {
-        LocatorKind.Row 
+        LocatorValueType.Row 
             => $"({Page.FileId}:{Page.PageId}:{Slot})",
-        LocatorKind.ColumnStoreObject 
+        LocatorValueType.ColumnStoreObject 
             => ObjectLabel(),
-        LocatorKind.LogSequenceNumber
+        LocatorValueType.LogSequenceNumber
             => Lsn.ToString(),
-        LocatorKind.Text or LocatorKind.WideText
+        LocatorValueType.Text or LocatorValueType.WideText
             => Detail == 0 ? Text ?? string.Empty : $"{Text} (Truncated)",
-        LocatorKind.TypeInfo
+        LocatorValueType.TypeInfo
             => TypeInfo.ToString(),
         _ => Page.ToString()
     };

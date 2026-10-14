@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using InternalsViewer.Query.CallStack;
 using InternalsViewer.Query.CallStack.Arguments;
-using InternalsViewer.Query.FullTrace.CallLog;
+using InternalsViewer.Query.FullTrace.Calls;
 
 namespace InternalsViewer.UI.App.Models.Query.CallStack;
 

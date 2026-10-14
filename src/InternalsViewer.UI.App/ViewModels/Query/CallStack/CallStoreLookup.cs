@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 using InternalsViewer.Query.CallStack;
 using InternalsViewer.Query.CallStack.Arguments;
 using InternalsViewer.Query.FullTrace.Arguments;
-using InternalsViewer.Query.FullTrace.CallLog;
+using InternalsViewer.Query.FullTrace.Calls;
 using InternalsViewer.Query.FullTrace.Iterators;
 using InternalsViewer.Query.FullTrace.Locators;
 using InternalsViewer.Query.FullTrace.Memory;
@@ -14,7 +14,7 @@ using InternalsViewer.UI.App.Models.Query.CallStack;
 
 namespace InternalsViewer.UI.App.ViewModels.Query.CallStack;
 
-public sealed class CallLogLookup(TraceCallLog log,
+public sealed class CallStoreLookup(TraceCallStore store,
                                   CallStackTree? tree,
                                   IReadOnlyDictionary<ulong, IteratorTarget> iterators,
                                   HoBtAccessMap hobtAccess,
@@ -26,7 +26,9 @@ public sealed class CallLogLookup(TraceCallLog log,
 
     private const string ReturnLocation = "RAX";
 
-    public TraceCallLog Log { get; } = log;
+    public TraceCallStore Store { get; } = store;
+
+    private TraceValueSearch Search { get; } = new(store);
 
     private Dictionary<ulong, Task<ResolvedSignature?>> Signatures { get; } = [];
 
@@ -110,7 +112,7 @@ public sealed class CallLogLookup(TraceCallLog log,
         {
             var logged = calls[call];
 
-            return new CallSignature(ArgumentRowBuilder.Signature(function,
+            return new CallSignature(ArgumentRowBuilder.GetSignature(function,
                                                                   layout,
                                                                   logged,
                                                                   Describe,
@@ -123,12 +125,12 @@ public sealed class CallLogLookup(TraceCallLog log,
     }
 
     public ulong GetCallId(CallStackNode node, int call)
-        => CallsOf(node) is { } calls && call >= 0 && call < calls.Count ? calls.IdAt(call) : 0;
+        => CallsOf(node) is { } calls && call >= 0 && call < calls.Count ? calls.GetId(call) : 0;
 
     public int GetEnclosingCall(CallStackNode node, ulong id) => CallsOf(node)?.IndexOfEnclosing(id) ?? -1;
 
     public CallReference? GetOrigin(MemoryMapEntry origin)
-        => Log.NodeAt(origin.Node) is { Frame: not null } node ? new CallReference(node, CallsOf(node)?.IndexOf(origin.Call) ?? -1) : null;
+        => Store.GetNode(origin.Node) is { Frame: not null } node ? new CallReference(node, CallsOf(node)?.IndexOf(origin.Call) ?? -1) : null;
 
     public Task<ResolvedSignature?> ResolveAsync(CallstackFrame frame)
     {
@@ -146,7 +148,7 @@ public sealed class CallLogLookup(TraceCallLog log,
 
     public async Task<ValueReferences> GetReferencesAsync(ulong value, CancellationToken cancellationToken)
     {
-        var uses = await Log.FindAsync(value, cancellationToken);
+        var uses = await Search.GetValueUsesAsync(value, cancellationToken);
 
         var functionTypes = await ResolveFunctionTypesAsync(uses.Where(u => u.Location == "RCX"));
 
@@ -159,16 +161,16 @@ public sealed class CallLogLookup(TraceCallLog log,
         return new ValueReferences(GetTypeName(value, iterator, groups), iterator, groups);
     }
 
-    public Task<IReadOnlyList<TraceValueMatch>> FindCallsAsync(ValueUseRow row, CancellationToken cancellationToken)
-        => Log.FindCallsAsync(row.Use, row.Value, cancellationToken);
+    public Task<IReadOnlyList<TraceValueCall>> FindCallsAsync(ValueUseRow row, CancellationToken cancellationToken)
+        => Search.GetTraceValueCallsAsync(row.Use, row.Value, cancellationToken);
 
     public async Task<IReadOnlyList<ValueCallRow>> CallRowsAsync(TraceValueUse use,
-                                                                 IReadOnlyList<TraceValueMatch> matches,
+                                                                 IReadOnlyList<TraceValueCall> valueCalls,
                                                                  int from,
                                                                  int count,
                                                                  CancellationToken cancellationToken)
     {
-        if (Log.CallsOf(use.Address, use.Instance) is not { } calls)
+        if (Store.GetCallList(use.Address, use.Instance) is not { } calls)
         {
             return [];
         }
@@ -179,14 +181,14 @@ public sealed class CallLogLookup(TraceCallLog log,
 
         var function = FunctionName(frame, use.Address);
 
-        var end = Math.Min(from + count, matches.Count);
+        var end = Math.Min(from + count, valueCalls.Count);
 
         return await Task.Run<IReadOnlyList<ValueCallRow>>(
-            () => [.. Enumerable.Range(from, Math.Max(0, end - from)).Select(i => GetCallRow(matches[i], use, function, layout, calls))],
+            () => [.. Enumerable.Range(from, Math.Max(0, end - from)).Select(i => GetCallRow(valueCalls[i], use, function, layout, calls))],
             cancellationToken);
     }
 
-    private TraceCallList? CallsOf(CallStackNode node) => node.Frame is { } frame ? Log.CallsOf(frame.Address, frame.Instance) : null;
+    private TraceCallList? CallsOf(CallStackNode node) => node.Frame is { } frame ? Store.GetCallList(frame.Address, frame.Instance) : null;
 
     private static string FunctionName(CallstackFrame? frame, ulong address)
     {
@@ -206,8 +208,12 @@ public sealed class CallLogLookup(TraceCallLog log,
     private static string IteratorLabel(IteratorTarget iterator)
         => $"{iterator.Label} {(iterator.IsPlanObject ? "Plan Object" : "Iterator")}";
 
-    private ValueCallRow GetCallRow(TraceValueMatch match, TraceValueUse use, string function, ArgumentLayout? layout, TraceCallList calls)
-        => new(match, use, ArgumentRowBuilder.Signature(function, layout, calls[match.Call], Describe));
+    private ValueCallRow GetCallRow(TraceValueCall valueCall,
+                                    TraceValueUse use,
+                                    string function,
+                                    ArgumentLayout? layout,
+                                    TraceCallList calls)
+        => new(valueCall, use, ArgumentRowBuilder.GetSignature(function, layout, calls[valueCall.Call], Describe));
 
     private static Dictionary<ulong, CallstackFrame> GetFrames(CallStackTree? tree)
     {
@@ -274,7 +280,7 @@ public sealed class CallLogLookup(TraceCallLog log,
         var firstUse = groups.SelectMany(g => g.Rows).Select(r => r.Use).MinBy(u => u.First.Sequence);
 
         if (firstUse is not null
-            && Log.CallsOf(firstUse.Address, firstUse.Instance) is { } calls
+            && Store.GetCallList(firstUse.Address, firstUse.Instance) is { } calls
             && firstUse.First.Call < calls.Count)
         {
             var call = calls[firstUse.First.Call];

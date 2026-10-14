@@ -1,5 +1,5 @@
 using InternalsViewer.Query.CallStack;
-using InternalsViewer.Query.FullTrace.CallLog;
+using InternalsViewer.Query.FullTrace.Calls;
 
 namespace InternalsViewer.Query.FullTrace.Arguments;
 
@@ -30,13 +30,13 @@ public sealed class HoBtAccessMap
 
     private Dictionary<ulong, Lifetime[]> Lifetimes { get; }
 
-    public static HoBtAccessMap Build(TraceCallLog callLog, IReadOnlyList<CallStackNode?> nodes)
+    public static HoBtAccessMap Build(TraceCallStore callStore, IReadOnlyList<CallStackNode?> nodes)
     {
-        var destroyed = CallsOf(callLog, nodes, DestructorMethod).ToLookup(c => c.Slot(ObjectSlot), c => c.Sequence);
+        var destroyed = CallsOf(callStore, nodes, DestructorMethod).ToLookup(c => c.Slot(ObjectSlot), c => c.Sequence);
 
         var lifetimes = new Dictionary<ulong, Lifetime[]>();
 
-        foreach (var calls in CallsOf(callLog, nodes, InitMethod).GroupBy(c => c.Slot(ObjectSlot)))
+        foreach (var calls in CallsOf(callStore, nodes, InitMethod).GroupBy(c => c.Slot(ObjectSlot)))
         {
             var ends = destroyed[calls.Key].Order().ToArray();
 
@@ -87,7 +87,7 @@ public sealed class HoBtAccessMap
         return values[0] >> FullHoBtIdShift == 0 ? values[0] << PackedShift : values[0];
     }
 
-    private static IEnumerable<TraceArgumentCall> CallsOf(TraceCallLog callLog, IReadOnlyList<CallStackNode?> nodes, string method)
+    private static IEnumerable<TraceArgumentCall> CallsOf(TraceCallStore callStore, IReadOnlyList<CallStackNode?> nodes, string method)
     {
         var functions = nodes.OfType<CallStackNode>()
                              .Where(n => n.Frame?.Resolved is { ClassName: ClassName } resolved && resolved.MethodName == method)
@@ -96,7 +96,7 @@ public sealed class HoBtAccessMap
 
         foreach (var (address, instance) in functions)
         {
-            if (callLog.CallsOf(address, instance) is not { } calls)
+            if (callStore.GetCallList(address, instance) is not { } calls)
             {
                 continue;
             }

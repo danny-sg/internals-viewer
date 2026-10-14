@@ -1,6 +1,6 @@
 ﻿using InternalsViewer.Query.CallStack;
 using InternalsViewer.Query.CallStack.Categories;
-using InternalsViewer.Query.FullTrace.CallLog;
+using InternalsViewer.Query.FullTrace.Calls;
 using InternalsViewer.Query.FullTrace.Memory;
 using InternalsViewer.Query.FullTrace.Native;
 using InternalsViewer.Query.FullTrace.Timeline;
@@ -28,15 +28,15 @@ public class AllocationMapperTests
         var caller = tree.AddCall(tree.Root, Frame(0x10), 1);
         var allocator = tree.AddCall(caller, Frame(Allocator), 2);
 
-        var builder = new TraceCallLog.Builder();
+        var builder = new TraceCallStore.Builder();
 
         builder.Add(Allocator, 0, Chunk(Row(1, size: 100, node: 1), Row(2, size: 200, node: 1)), 2);
 
-        var log = builder.Build();
+        var store = builder.Build();
 
-        log.MapNodes([caller, allocator]);
+        store.MapNodes([caller, allocator]);
 
-        var (allocations, bytes) = AllocationMapper.Map(log, [Function(Allocator)], null);
+        var (allocations, bytes) = AllocationMapper.Map(store, [Function(Allocator)], null);
 
         Assert.Equal((300ul, 2L), (bytes, allocations));
         Assert.Equal((300L, 2L), (allocator.AllocatedBytes, allocator.Allocations));
@@ -53,16 +53,16 @@ public class AllocationMapperTests
         var outer = tree.AddCall(caller, Frame(Allocator), 1);
         var inner = tree.AddCall(outer, Frame(Inner), 1);
 
-        var builder = new TraceCallLog.Builder();
+        var builder = new TraceCallStore.Builder();
 
         builder.Add(Allocator, 0, Chunk(Row(1, size: 64, node: 1)), 1);
         builder.Add(Inner, 0, Chunk(Row(2, size: 8192, node: 2)), 1);
 
-        var log = builder.Build();
+        var store = builder.Build();
 
-        log.MapNodes([caller, outer, inner]);
+        store.MapNodes([caller, outer, inner]);
 
-        var (_, bytes) = AllocationMapper.Map(log, [Function(Allocator), Function(Inner)], null);
+        var (_, bytes) = AllocationMapper.Map(store, [Function(Allocator), Function(Inner)], null);
 
         Assert.Equal(64ul, bytes);
         Assert.Equal(64L, caller.AllocatedBytesIncludingChildren);
@@ -78,15 +78,15 @@ public class AllocationMapperTests
         var objectPages = tree.AddCall(create, Resolved(Inner, "sqldk", "MemoryClerkInternal", "AllocatePages"), 1);
         var workspacePages = tree.AddCall(caller, Resolved(Inner, "sqldk", "MemoryClerkInternal", "AllocatePages"), 1);
 
-        var builder = new TraceCallLog.Builder();
+        var builder = new TraceCallStore.Builder();
 
         builder.Add(Inner, 0, Chunk(Row(1, size: 1, node: 2), Row(2, size: 2, node: 3)), 2);
 
-        var log = builder.Build();
+        var store = builder.Build();
 
-        log.MapNodes([caller, create, objectPages, workspacePages]);
+        store.MapNodes([caller, create, objectPages, workspacePages]);
 
-        var (_, bytes) = AllocationMapper.Map(log, [ClerkPages()], null);
+        var (_, bytes) = AllocationMapper.Map(store, [ClerkPages()], null);
 
         Assert.Equal(16384ul, bytes);
     }
@@ -102,14 +102,14 @@ public class AllocationMapperTests
         var allocator = tree.AddCall(caller, Frame(Allocator), 1);
         var pages = tree.AddCall(allocator, Resolved(Inner, "sqldk", "MemoryClerkInternal", "AllocatePages"), 1);
 
-        var builder = new TraceCallLog.Builder();
+        var builder = new TraceCallStore.Builder();
 
         builder.Add(Allocator, 0, Chunk(Row(1, size: 64, node: 1, returned: 0xA0)), 1);
         builder.Add(Inner, 0, Chunk(Row(2, size: 1, node: 2, receiver: 0xC1)), 1);
 
-        var log = builder.Build();
+        var store = builder.Build();
 
-        log.MapNodes([caller, allocator, pages]);
+        store.MapNodes([caller, allocator, pages]);
 
         var timelineBuilder = new TraceTimeline.Builder();
 
@@ -119,7 +119,7 @@ public class AllocationMapperTests
 
         timeline.MapNodes([caller, allocator, pages]);
 
-        AllocationMapper.Map(log, [Function(Allocator), ClerkPages()], timeline, Snapshot(clerks: new() { [0xC1] = clerk }));
+        AllocationMapper.Map(store, [Function(Allocator), ClerkPages()], timeline, Snapshot(clerks: new() { [0xC1] = clerk }));
 
         var start = timeline.StartOf(TraceTimelineAxis.Position);
 
@@ -136,13 +136,13 @@ public class AllocationMapperTests
         var caller = tree.AddCall(tree.Root, Frame(0x10), 1);
         var allocator = tree.AddCall(caller, Resolved(Allocator, "sqldk", "CMemObj", "Alloc"), 1);
 
-        var builder = new TraceCallLog.Builder();
+        var builder = new TraceCallStore.Builder();
 
         builder.Add(Allocator, 0, Chunk(Row(1, size: 48, node: 1, returned: 0xA0, receiver: 0xB0)), 1);
 
-        var log = builder.Build();
+        var store = builder.Build();
 
-        log.MapNodes([caller, allocator]);
+        store.MapNodes([caller, allocator]);
 
         var timelineBuilder = new TraceTimeline.Builder();
 
@@ -152,7 +152,7 @@ public class AllocationMapperTests
 
         timeline.MapNodes([caller, allocator]);
 
-        AllocationMapper.Map(log,
+        AllocationMapper.Map(store,
                          [new(Allocator, AllocationOperation.Allocate, 1, -1, 1) { IsObjectCall = true }],
                          timeline,
                          Snapshot(objects: new() { [0xB0] = WorkspaceClerk }));
@@ -172,15 +172,15 @@ public class AllocationMapperTests
         var child = tree.AddCall(allocator, Resolved(Inner, "sqldk", "CMemThread<CMemObj>", "Alloc"), 1);
         var parent = tree.AddCall(child, Resolved(Parent, "sqldk", "CMemObj", "Alloc"), 1);
 
-        var builder = new TraceCallLog.Builder();
+        var builder = new TraceCallStore.Builder();
 
         builder.Add(Allocator, 0, Chunk(Row(1, size: 64, node: 1, returned: 0xA0)), 1);
         builder.Add(Inner, 0, Chunk(Row(2, size: 64, node: 2, receiver: 0xB1)), 1);
         builder.Add(Parent, 0, Chunk(Row(3, size: 64, node: 3, receiver: 0xB0)), 1);
 
-        var log = builder.Build();
+        var store = builder.Build();
 
-        log.MapNodes([caller, allocator, child, parent]);
+        store.MapNodes([caller, allocator, child, parent]);
 
         var timelineBuilder = new TraceTimeline.Builder();
 
@@ -193,7 +193,7 @@ public class AllocationMapperTests
 
         timeline.MapNodes([caller, allocator, child, parent]);
 
-        var (_, bytes) = AllocationMapper.Map(log,
+        var (_, bytes) = AllocationMapper.Map(store,
                                           [Function(Allocator),
                                            new(Inner, AllocationOperation.Allocate, 1, -1, 1) { IsObjectCall = true },
                                            new(Parent, AllocationOperation.Allocate, 1, -1, 1) { IsObjectCall = true }],

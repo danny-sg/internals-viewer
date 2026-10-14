@@ -2,7 +2,7 @@ using System.IO.Compression;
 using InternalsViewer.Query.Events.Operators;
 using InternalsViewer.Query.Export;
 using InternalsViewer.Query.FullTrace.Arguments;
-using InternalsViewer.Query.FullTrace.CallLog;
+using InternalsViewer.Query.FullTrace.Calls;
 using InternalsViewer.Query.FullTrace.Iterators;
 using InternalsViewer.Query.FullTrace.Timeline;
 using InternalsViewer.Query.FullTrace.Memory;
@@ -13,7 +13,7 @@ internal sealed class TraceExportSection : IQueryExportSection
 {
     internal const string CallTreeName = "fulltrace";
 
-    internal const string CallLogEntry = "fulltrace/calllog.bin";
+    internal const string CallStoreEntry = "fulltrace/calllog.bin";
 
     internal const string TimelineEntry = "fulltrace/timeline.bin";
 
@@ -36,7 +36,7 @@ internal sealed class TraceExportSection : IQueryExportSection
     {
         var fullTrace = content.ExtraOf<TraceResult>()!;
 
-        writer.WriteBinary(CallLogEntry, CompressionLevel.NoCompression, fullTrace.CallLog.Write);
+        writer.WriteBinary(CallStoreEntry, CompressionLevel.NoCompression, fullTrace.CallStore.Write);
 
         writer.WriteBinary(TimelineEntry, CompressionLevel.Fastest, w => fullTrace.Timeline.Write(w, writer.IdOf));
 
@@ -56,11 +56,11 @@ internal sealed class TraceExportSection : IQueryExportSection
 
         var events = reader.Events;
 
-        var callLog = reader.ReadBinary(CallLogEntry, TraceCallLog.Read);
+        var callStore = reader.ReadBinary(CallStoreEntry, TraceCallStore.Read);
 
         var timeline = reader.ReadBinary(TimelineEntry, r => TraceTimeline.Read(r, nodes));
 
-        callLog.MapNodes(timeline.MappedNodes);
+        callStore.MapNodes(timeline.MappedNodes);
 
         timeline.SetLifetimes(IteratorLifetimeBuilder.Build(timeline, [.. events.OfType<ExecutionOperatorEvent>()]));
 
@@ -69,10 +69,10 @@ internal sealed class TraceExportSection : IQueryExportSection
             timeline.SetEventLinks(reader.ReadBinary(EventLinksEntry, r => TraceTimeline.ReadEventLinks(r, nodes, events)));
         }
 
-        return new TraceResult(tree, callLog, timeline)
+        return new TraceResult(tree, callStore, timeline)
         {
-            PlanLink = IteratorPlanLinker.Link(callLog, timeline.MappedNodes, events),
-            HoBtAccess = HoBtAccessMap.Build(callLog, timeline.MappedNodes),
+            PlanLink = IteratorPlanLinker.Link(callStore, timeline.MappedNodes, events),
+            HoBtAccess = HoBtAccessMap.Build(callStore, timeline.MappedNodes),
             MemoryMap = reader.HasEntry(MemoryMapEntry)
                 ? reader.ReadBinary(MemoryMapEntry, r => MemoryMap.Read(r, timeline.NodeOf))
                 : MemoryMap.Empty

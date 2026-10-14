@@ -33,7 +33,7 @@ Turning Focus off shows the full call tree for the whole query, from the top-lev
 
 The search box filters the tree to matching frames and the calls that lead to them. A match keeps everything beneath it, collapsed, so its callees are still there to open. The tree opens down to each match, and further only where there is a deeper match. Clearing the search keeps the selected frame, with the tree open down to it.
 
-Going to a call - from **Arguments**, a **Find** tab or the [Flame Chart](/docs/user-guide/query/FlameChart) - turns Focus off, selects the frame and opens the tree down to it. Nothing else is hidden, so the rest of the tree stays where it was. A frame the tree does not normally show, because its category is hidden or because it ran outside the query while **Crop To Query** is on, is shown dimmed along with the calls that lead to it. The dimmed frames go again when you select something outside them.
+Going to a call - from **Arguments**, a **Find** tab or the [Flame Chart](/docs/user-guide/query/FlameChart) - turns Focus off, selects the frame and opens the tree down to it. Nothing else is hidden, so the rest of the tree stays where it was. A frame the tree does not normally show because its category is hidden is shown dimmed along with the calls that lead to it. The dimmed frames go again when you select something outside them. With **Crop To Query** on, the tree stays cropped. A call that ran outside the query, such as one found by **Find** during compilation, opens in **Arguments** but is not added to the tree.
 
 Right-clicking a node gives:
 
@@ -101,6 +101,8 @@ Right-click the signature above the table and choose **Copy Signature** to copy 
 Right-click a cell for what can be done with its call and value:
 
 - **Go To Call** - shows the call in the call tree and the Flame Chart
+- **Open In Call Stack** - opens the Flame Chart's call stack at the start of the call, without moving the playhead
+- **Scope** - scopes the Flame Chart to the call's function
 - **Go To Origin** - for an object in the trace's map, goes to the call that created it, the same as clicking the link
 - **Open In The Columnstore Viewer** - for a columnstore object
 - **Search Call Tree** - for a page, a row or a columnstore object, searches the call tree for the frames that touched it

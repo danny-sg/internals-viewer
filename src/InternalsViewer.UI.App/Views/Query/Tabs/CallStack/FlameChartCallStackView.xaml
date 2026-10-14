@@ -147,7 +147,7 @@
                                callStack:SignatureRuns.Step="{x:Bind}"/>
                 </Grid>
 
-                <ItemsControl ItemsSource="{x:Bind ShownStack, Mode=OneWay}" Margin="20,0,0,0">
+                <ItemsControl ItemsSource="{x:Bind VisibleStack, Mode=OneWay}" Margin="20,0,0,0">
                     <ItemsControl.ItemTemplate>
                         <DataTemplate x:DataType="members:SourceFrame">
                             <Grid Background="Transparent"
@@ -403,7 +403,7 @@
                 <StackPanel Padding="12,8,12,8" Spacing="4" VerticalAlignment="Top">
                     <Grid ColumnSpacing="12"
                           RowSpacing="4"
-                          Visibility="{x:Bind IsFunctionShown(ViewModel.SelectedCall, ViewModel.SelectedValue), Mode=OneWay}">
+                          Visibility="{x:Bind IsFunctionVisible(ViewModel.SelectedCall, ViewModel.SelectedValue), Mode=OneWay}">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="Auto"/>
                             <ColumnDefinition Width="*"/>
@@ -442,12 +442,12 @@
                         <TextBlock Grid.Row="2"
                                    Text="This"
                                    Style="{StaticResource DetailLabelStyle}"
-                                   Visibility="{x:Bind IsShown(ViewModel.SelectedCall.This), Mode=OneWay}"/>
+                                   Visibility="{x:Bind IsVisible(ViewModel.SelectedCall.This), Mode=OneWay}"/>
                         <TextBlock Grid.Row="2"
                                    Grid.Column="1"
                                    Style="{StaticResource DetailValueStyle}"
                                    controls:HexText.Text="{x:Bind ThisText(ViewModel.SelectedCall), Mode=OneWay}"
-                                   Visibility="{x:Bind IsShown(ViewModel.SelectedCall.This), Mode=OneWay}"/>
+                                   Visibility="{x:Bind IsVisible(ViewModel.SelectedCall.This), Mode=OneWay}"/>
 
                         <TextBlock Grid.Row="3" Text="Returns" Style="{StaticResource DetailLabelStyle}"/>
                         <TextBlock Grid.Row="3"
@@ -485,17 +485,17 @@
                                    Style="{StaticResource DetailLabelStyle}"
                                    Margin="0,1,0,0"
                                    VerticalAlignment="Top"
-                                   Visibility="{x:Bind AreArgumentsShown(ViewModel.SelectedCall), Mode=OneWay}"/>
+                                   Visibility="{x:Bind AreArgumentsVisible(ViewModel.SelectedCall), Mode=OneWay}"/>
                         <ItemsControl Grid.Row="8"
                                       Grid.Column="1"
                                       ItemsSource="{x:Bind ViewModel.SelectedCall.Arguments, Mode=OneWay}"
                                       ItemTemplate="{StaticResource ArgumentTemplate}"
-                                      Visibility="{x:Bind AreArgumentsShown(ViewModel.SelectedCall), Mode=OneWay}"/>
+                                      Visibility="{x:Bind AreArgumentsVisible(ViewModel.SelectedCall), Mode=OneWay}"/>
                     </Grid>
 
                     <Grid ColumnSpacing="12"
                           RowSpacing="4"
-                          Visibility="{x:Bind IsShown(ViewModel.SelectedValue), Mode=OneWay}">
+                          Visibility="{x:Bind IsVisible(ViewModel.SelectedValue), Mode=OneWay}">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="Auto"/>
                             <ColumnDefinition Width="*"/>
@@ -529,7 +529,7 @@
                     <TextBlock Text="Source"
                                Style="{StaticResource DetailLabelStyle}"
                                Margin="0,8,0,0"
-                               Visibility="{x:Bind IsSourceShown(ViewModel.Source), Mode=OneWay}"/>
+                               Visibility="{x:Bind IsSourceVisible(ViewModel.Source), Mode=OneWay}"/>
                     <ItemsControl ItemsSource="{x:Bind ViewModel.Source, Mode=OneWay}"
                                   ItemTemplate="{StaticResource SourceStepTemplate}"/>
                 </StackPanel>

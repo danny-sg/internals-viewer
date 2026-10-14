@@ -131,13 +131,13 @@ public sealed partial class QueryInstructionsTabView : UserControl
 
         e.Handled = true;
 
-        switch (link.Kind)
+        switch (link.Type)
         {
-            case InstructionsLinkKind.Page:
+            case InstructionsLinkType.Page:
                 SelectPage(link.Target);
                 break;
 
-            case InstructionsLinkKind.ToggleOption:
+            case InstructionsLinkType.ToggleOption:
                 if (ViewModel is not null && OptionLinks.TryGetValue(link.Target, out var option))
                 {
                     option.Toggle(ViewModel.QueryOptions);
@@ -145,7 +145,7 @@ public sealed partial class QueryInstructionsTabView : UserControl
 
                 break;
 
-            case InstructionsLinkKind.OpenView:
+            case InstructionsLinkType.OpenView:
                 if (ViewModel is not null && ViewLinks.TryGetValue(link.Target, out var open))
                 {
                     open(ViewModel);
@@ -153,7 +153,7 @@ public sealed partial class QueryInstructionsTabView : UserControl
 
                 break;
 
-            case InstructionsLinkKind.External:
+            case InstructionsLinkType.External:
                 _ = Launcher.LaunchUriAsync(new Uri(link.Target));
                 break;
         }

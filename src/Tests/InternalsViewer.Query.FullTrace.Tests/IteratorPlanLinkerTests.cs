@@ -1,6 +1,6 @@
 using InternalsViewer.Query.CallStack;
 using InternalsViewer.Query.CallStack.Categories;
-using InternalsViewer.Query.FullTrace.CallLog;
+using InternalsViewer.Query.FullTrace.Calls;
 using InternalsViewer.Query.FullTrace.Iterators;
 using InternalsViewer.Query.Events.Operators;
 using InternalsViewer.Query.Plans.Model;
@@ -275,7 +275,7 @@ public class IteratorPlanLinkerTests
 
         public IteratorPlanLink Link(params ExecutionOperatorEvent[] operators)
         {
-            var builder = new TraceCallLog.Builder();
+            var builder = new TraceCallStore.Builder();
 
             foreach (var ((address, instance), rows) in Rows)
             {

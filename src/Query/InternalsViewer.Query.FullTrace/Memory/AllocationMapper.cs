@@ -1,5 +1,5 @@
 ﻿using InternalsViewer.Query.CallStack;
-using InternalsViewer.Query.FullTrace.CallLog;
+using InternalsViewer.Query.FullTrace.Calls;
 using InternalsViewer.Query.FullTrace.Timeline;
 using InternalsViewer.Query.FullTrace.Timeline.Enums;
 using InternalsViewer.Query.Helpers;
@@ -15,7 +15,7 @@ internal static class AllocationMapper
 
     private const string WorkspaceClerk = "MEMORYCLERK_SQLQERESERVATIONS";
 
-    public static (long Allocations, ulong Bytes) Map(TraceCallLog log,
+    public static (long Allocations, ulong Bytes) Map(TraceCallStore store,
                                                       IReadOnlyList<MemoryFunction> functions,
                                                       TraceTimeline? timeline,
                                                       MemoryClerkSnapshot? clerks = null)
@@ -24,7 +24,7 @@ internal static class AllocationMapper
 
         var lists = new Dictionary<ulong, TraceCallList?>();
 
-        var scanned = timeline is null ? new ScannedCalls() : ScanSpans(CallsOf, byAddress, timeline, clerks ?? MemoryClerkSnapshot.Empty);
+        var scanned = timeline is null ? new ScannedCalls() : ScanSpans(GetCalls, byAddress, timeline, clerks ?? MemoryClerkSnapshot.Empty);
 
         var plumbing = new Dictionary<CallStackNode, bool>(ReferenceEqualityComparer.Instance);
 
@@ -38,7 +38,7 @@ internal static class AllocationMapper
 
         foreach (var function in functions.Where(f => f.Allocates || f is { Operation: AllocationOperation.Free, PointerSlot: >= 0 }))
         {
-            if (CallsOf(function.Address) is not { } logged)
+            if (GetCalls(function.Address) is not { } logged)
             {
                 continue;
             }
@@ -49,7 +49,7 @@ internal static class AllocationMapper
             {
                 var call = logged[index];
 
-                var node = log.NodeOf(call);
+                var node = store.GetNode(call);
 
                 if (!function.Applies(call) || (function.IsPage && IsPlumbing(node, plumbing)))
                 {
@@ -100,11 +100,11 @@ internal static class AllocationMapper
 
         return (count, bytes);
 
-        TraceCallList? CallsOf(ulong address)
-            => lists.TryGetValue(address, out var list) ? list : lists[address] = log.CallsOf(address, 0);
+        TraceCallList? GetCalls(ulong address)
+            => lists.TryGetValue(address, out var list) ? list : lists[address] = store.GetCallList(address, 0);
     }
 
-    private static ScannedCalls ScanSpans(Func<ulong, TraceCallList?> callsOf,
+    private static ScannedCalls ScanSpans(Func<ulong, TraceCallList?> getCalls,
                                           Dictionary<ulong, MemoryFunction> functions,
                                           TraceTimeline timeline,
                                           MemoryClerkSnapshot snapshot)
@@ -118,7 +118,7 @@ internal static class AllocationMapper
             if (span.Node.Frame is not { } frame
                 || !functions.TryGetValue(frame.Address, out var function)
                 || span.Call is not (>= 0 and var call)
-                || callsOf(function.Address) is not { } logged
+                || getCalls(function.Address) is not { } logged
                 || call >= logged.Count)
             {
                 continue;
@@ -205,7 +205,7 @@ internal static class AllocationMapper
 
                 if (!scanned.Kinds.TryGetValue(address, out var kinds))
                 {
-                    kinds = new string?[callsOf(address)!.Count];
+                    kinds = new string?[getCalls(address)!.Count];
 
                     scanned.Kinds[address] = kinds;
                 }
