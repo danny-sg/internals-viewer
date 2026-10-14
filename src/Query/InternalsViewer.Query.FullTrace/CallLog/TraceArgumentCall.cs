@@ -10,7 +10,7 @@ public sealed record TraceArgumentCall(ulong Sequence,
                                        ulong ReturnValue,
                                        int Node = -1)
 {
-    internal const int ValueCount = 8;
+    internal const int ValueCount = 10;
 
     internal const int RegisterCount = 4;
 
@@ -18,13 +18,19 @@ public sealed record TraceArgumentCall(ulong Sequence,
 
     private const int ReturnValueIndex = 6;
 
-    private const int NodeIndex = 7;
+    internal const int NodeIndex = 7;
+
+    private const int IdIndex = 8;
+
+    private const int EndIdIndex = 9;
 
     private const ulong ReturnedFlag = 1ul << 32;
 
     public IReadOnlyList<Locator> Locators { get; init; } = [];
 
-    public int Index { get; init; } = -1;
+    public ulong Id { get; init; }
+
+    public ulong EndId { get; init; }
 
     public ulong ReturnedValue => Returned ? ReturnValue : 0;
 
@@ -67,7 +73,7 @@ public sealed record TraceArgumentCall(ulong Sequence,
         return null;
     }
 
-    internal static TraceArgumentCall Decode(ReadOnlySpan<ulong> values, IReadOnlyList<Locator>? locators = null, int index = -1)
+    internal static TraceArgumentCall Decode(ReadOnlySpan<ulong> values, IReadOnlyList<Locator>? locators = null)
     {
         var flags = values[1];
 
@@ -79,7 +85,8 @@ public sealed record TraceArgumentCall(ulong Sequence,
                                      (int)values[NodeIndex])
         {
             Locators = locators ?? [],
-            Index = index
+            Id = values[IdIndex],
+            EndId = values[EndIdIndex]
         };
     }
 }

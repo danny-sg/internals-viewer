@@ -1,4 +1,6 @@
+using System.IO.Compression;
 using System.Reflection.PortableExecutable;
+using System.Runtime.InteropServices;
 using System.Text;
 using InternalsViewer.Query.CallStack;
 using InternalsViewer.Internals.Engine.Address;
@@ -157,6 +159,50 @@ public class TraceCallLogTests
     }
 
     [Fact]
+    public void A_Call_Carries_Its_Id_And_The_Id_Current_When_It_Returned()
+    {
+        var row = Row(1);
+
+        row[8] = 41;
+
+        row[9] = 57;
+
+        var builder = new TraceCallLog.Builder();
+
+        builder.Add(0x1000, 0, Chunk(row), 1);
+
+        var call = builder.Build().CallsOf(0x1000, 0)![0];
+
+        Assert.Equal((41ul, 57ul), (call.Id, call.EndId));
+    }
+
+    [Fact]
+    public void A_Chunk_Recorded_Before_Call_Ids_Reads_Without_Them()
+    {
+        const int calls = 542;
+
+        var random = new Random(1);
+
+        var columns = new ulong[calls * 8];
+
+        for (var index = 0; index < columns.Length; index++)
+        {
+            columns[index] = (ulong)random.NextInt64(0, 1L << 40);
+        }
+
+        using var compressed = new MemoryStream();
+
+        using (var stream = new ZLibStream(compressed, CompressionLevel.Fastest, leaveOpen: true))
+        {
+            stream.Write(MemoryMarshal.AsBytes(columns.AsSpan()));
+        }
+
+        var read = TraceCallLog.Decompress(new TraceCallLog.Chunk(calls, compressed.ToArray()));
+
+        Assert.Equal((columns[^1], 0), (read[calls * 8 - 1], read.Skip(calls * 8).Count(v => v != 0)));
+    }
+
+    [Fact]
     public void A_String_The_Trace_Never_Read_Is_Read_From_The_Module_File()
     {
         const ulong imageBase = 0x7FF0_0000_0000;
@@ -197,6 +243,33 @@ public class TraceCallLogTests
         var locator = TraceCallLog.Read(reader).CallsOf(0x1000, 0)![0].GetLocator(1);
 
         Assert.Equal((LocatorKind.WideText, "\"dbo.Orders\""), (locator?.Kind, locator?.ToString()));
+    }
+
+    [Fact]
+    public void A_Type_Info_Is_Put_Together_From_Its_Type_And_Its_Length()
+    {
+        var builder = new TraceCallLog.Builder([new LocatorRead(0x1000, 1, false, LocatorKind.TypeInfo, 0),
+                                                new LocatorRead(0x1000, 1, false, LocatorKind.TypeInfo, 16)]);
+
+        builder.Add(0x1000, 0, Chunk(Row(1)), 1);
+
+        builder.AddLocators([new PointerValue(0x1000, 0, 0x0000_00E7_0000_00E7, 0, 1, Mode: 4, Part: 8),
+                             new PointerValue(0x1000, 0, 0xFFFF_FFFF_0000_0100, 0, 1, 16, Mode: 4, Part: 8)]);
+
+        Assert.Equal("nvarchar(128)", builder.Build().CallsOf(0x1000, 0)![0].GetLocator(1)?.ToString());
+    }
+
+    [Fact]
+    public void A_Type_Info_Whose_Length_Was_Never_Read_Shows_Its_Type()
+    {
+        var builder = new TraceCallLog.Builder([new LocatorRead(0x1000, 1, false, LocatorKind.TypeInfo, 0),
+                                                new LocatorRead(0x1000, 1, false, LocatorKind.TypeInfo, 16)]);
+
+        builder.Add(0x1000, 0, Chunk(Row(1)), 1);
+
+        builder.AddLocators([new PointerValue(0x1000, 0, 0x0138, 0, 1, Mode: 4, Part: 2)]);
+
+        Assert.Equal("int NOT NULL", builder.Build().CallsOf(0x1000, 0)![0].GetLocator(1)?.ToString());
     }
 
     [Fact]

@@ -12,6 +12,7 @@ using InternalsViewer.Query.Results;
 using InternalsViewer.UI.App.Models.Query.CallStack;
 using Microsoft.Extensions.Logging;
 using InternalsViewer.Query.FullTrace.Arguments;
+using InternalsViewer.Query.FullTrace.Memory;
 
 namespace InternalsViewer.UI.App.ViewModels.Query.CallStack;
 
@@ -76,7 +77,7 @@ public sealed partial class ArgumentsViewModel(ILogger logger, SymbolsViewModel 
                           CallStackTree? tree = null,
                           IReadOnlyDictionary<ulong, IteratorTarget>? iterators = null,
                           HoBtAccessMap? hobtAccess = null,
-                          ObjectMap? objects = null)
+                          MemoryMap? memoryMap = null)
     {
         Cancel();
 
@@ -86,7 +87,7 @@ public sealed partial class ArgumentsViewModel(ILogger logger, SymbolsViewModel 
                                 tree,
                                 iterators ?? new Dictionary<ulong, IteratorTarget>(),
                                 hobtAccess ?? HoBtAccessMap.Empty,
-                                objects ?? ObjectMap.Empty,
+                                memoryMap ?? MemoryMap.Empty,
                                 symbols,
                                 getHoBtName);
 
@@ -165,6 +166,11 @@ public sealed partial class ArgumentsViewModel(ILogger logger, SymbolsViewModel 
         => Layout is { } layout && index >= 0 && index < LoggedCalls.Count
             ? ArgumentRowBuilder.CellAt(layout, LoggedCalls[index], ordinal)
             : default;
+
+    public string? DecodedTextAt(int index, int ordinal)
+        => Layout is { } layout && Lookup is { } lookup && index >= 0 && index < LoggedCalls.Count
+            ? ArgumentRowBuilder.DecodedTextAt(layout, LoggedCalls[index], ordinal, lookup.Describe)
+            : null;
 
     public CallStackNode? NodeAt(int index)
         => index >= 0 && index < LoggedCalls.Count ? Lookup?.Log.NodeOf(LoggedCalls[index]) : null;

@@ -142,6 +142,18 @@ public class LocatorReadResolverTests
     }
 
     [Fact]
+    public void A_Type_Info_Is_Read_At_Its_Type_And_At_Its_Length()
+    {
+        var reads = Reads("ComputeConvertFlags(CTypeInfo const &,CTypeInfo const &)", "?ComputeConvertFlags@@YAKAEBVCTypeInfo@@0@Z");
+
+        Assert.Equal([new LocatorRead(Function, 0, false, LocatorKind.TypeInfo, 0),
+                      new LocatorRead(Function, 0, false, LocatorKind.TypeInfo, 16),
+                      new LocatorRead(Function, 1, false, LocatorKind.TypeInfo, 0),
+                      new LocatorRead(Function, 1, false, LocatorKind.TypeInfo, 16)],
+                     reads);
+    }
+
+    [Fact]
     public void A_Character_Pointer_That_Can_Be_Written_To_Is_Not_Read_As_Text()
     {
         Assert.Null(LocatorType.LocatorTypeOf("char *"));
@@ -189,6 +201,8 @@ public class LocatorReadResolverTests
     [InlineData("wchar_t const *", LocatorKind.WideText, true, true)]
     [InlineData("ColumnStoreObjectKey const &", LocatorKind.ColumnStoreObject, true, true)]
     [InlineData("AllocationPageId const *", LocatorKind.Page, true, true, 8)]
+    [InlineData("CTypeInfo const *", LocatorKind.TypeInfo, true, true)]
+    [InlineData("class CTypeInfo const &", LocatorKind.TypeInfo, true, true)]
     public void A_Page_Or_Row_Type_Is_Recognised(string type, LocatorKind kind, bool indirect, bool isConst, int offset = 0)
         => Assert.Equal(new LocatorType(kind, indirect, isConst, offset), LocatorType.LocatorTypeOf(type));
 

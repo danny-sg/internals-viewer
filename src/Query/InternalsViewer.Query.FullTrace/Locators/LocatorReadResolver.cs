@@ -15,13 +15,17 @@ public static partial class LocatorReadResolver
 
     public const int LogSequenceNumberParts = 2;
 
+    public const int TypeInfoParts = 2;
+
+    public const int TypeInfoDetailOffset = 16;
+
     public const int MaximumHops = 3;
 
     private const int StackCandidateParameters = 4;
 
     private static readonly SearchValues<string> DecoratedTypes =
         SearchValues.Create(["VPageId@@", "VAllocationPageId@@", "VHPageHandle@@", "URowId@@", "VColumnStoreObjectKey@@",
-                             "ULSN@@", "VLSN@@", "PEBD", "PEB_W"],
+                             "ULSN@@", "VLSN@@", "PEBD", "PEB_W", "VCTypeInfo@@"],
                             StringComparison.Ordinal);
 
     internal static IEnumerable<LocatorRead> ReadsOf(ulong function, FunctionSignature signature)
@@ -55,8 +59,12 @@ public static partial class LocatorReadResolver
     {
         LocatorKind.ColumnStoreObject => ObjectKeyParts,
         LocatorKind.LogSequenceNumber => LogSequenceNumberParts,
+        LocatorKind.TypeInfo => TypeInfoParts,
         _ => 1
     };
+
+    private static int GetPartOffset(LocatorKind kind, int part)
+        => kind == LocatorKind.TypeInfo ? part * TypeInfoDetailOffset : part * sizeof(ulong);
 
     internal static IEnumerable<LocatorRead> GetStackReads(ulong function, FunctionSignature signature)
         => ArgumentLayout.LayoutOf(signature)
@@ -98,7 +106,9 @@ public static partial class LocatorReadResolver
         {
             for (var part = 0; part < parts; part++)
             {
-                yield return new LocatorRead(function, register, isReadAtReturn, type.Kind, type.Offset + part * sizeof(ulong), type.Path);
+                var offset = type.Offset + GetPartOffset(type.Kind, part);
+
+                yield return new LocatorRead(function, register, isReadAtReturn, type.Kind, offset, type.Path);
             }
         }
     }

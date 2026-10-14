@@ -5,6 +5,7 @@ using InternalsViewer.UI.App.Controls;
 using InternalsViewer.UI.App.Controls.CallStack;
 using InternalsViewer.UI.App.Controls.Docking;
 using InternalsViewer.UI.App.Controls.Results;
+using InternalsViewer.UI.App.Helpers;
 using InternalsViewer.UI.App.Models.Query.CallStack;
 using InternalsViewer.UI.App.ViewModels.Query.CallStack;
 using Microsoft.UI.Input;
@@ -46,6 +47,20 @@ public sealed partial class CallStackArgumentsPanelView : UserControl, IDocument
         return item;
     }
 
+    private static void AddCopyItems(MenuFlyout menu, ulong value, string? decoded)
+    {
+        var hex = $"0x{value:X}";
+
+        if (decoded is not null && decoded != hex)
+        {
+            menu.Items.Add(MenuItem("Copy Decoded", () => ClipboardText.Copy(decoded)));
+        }
+
+        menu.Items.Add(MenuItem("Copy Value", () => ClipboardText.Copy(hex)));
+
+        menu.Items.Add(new MenuFlyoutSeparator());
+    }
+
     private void OnArgumentPageClicked(object? sender, PageAddressEventArgs e)
         => ViewModel?.OpenPage(new PageAddress(e.FileId, e.PageId), e.Slot is 0 ? null : e.Slot, IsShiftDown());
 
@@ -81,6 +96,8 @@ public sealed partial class CallStackArgumentsPanelView : UserControl, IDocument
         {
             return;
         }
+
+        AddCopyItems(e.Menu, value, arguments.DecodedTextAt(index, e.Ordinal));
 
         if (arguments.HoBtIdAt(index, e.Ordinal) is { } hobtId)
         {

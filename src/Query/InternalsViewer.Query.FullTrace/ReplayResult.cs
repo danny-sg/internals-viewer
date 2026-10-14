@@ -23,4 +23,5 @@ internal sealed record ReplayResult(CallNode[] Nodes,
                                     IReadOnlyList<TraceModule> Modules,
                                     TraceCallLog CallLog,
                                     TraceTimeline Timeline,
-                                    PublishedEvent[] PublishedEvents);
+                                    PublishedEvent[] PublishedEvents,
+                                    AddressEntry[] MemoryMap);

@@ -8,6 +8,8 @@ using InternalsViewer.Query.CallStack.Arguments;
 using InternalsViewer.Query.FullTrace.Arguments;
 using InternalsViewer.Query.FullTrace.CallLog;
 using InternalsViewer.Query.FullTrace.Iterators;
+using InternalsViewer.Query.FullTrace.Locators;
+using InternalsViewer.Query.FullTrace.Memory;
 using InternalsViewer.UI.App.Models.Query.CallStack;
 
 namespace InternalsViewer.UI.App.ViewModels.Query.CallStack;
@@ -16,11 +18,13 @@ public sealed class CallLogLookup(TraceCallLog log,
                                   CallStackTree? tree,
                                   IReadOnlyDictionary<ulong, IteratorTarget> iterators,
                                   HoBtAccessMap hobtAccess,
-                                  ObjectMap objects,
+                                  MemoryMap memoryMap,
                                   SymbolsViewModel symbols,
                                   Func<ulong, string?> getHoBtName)
 {
     private const string ThisType = "this";
+
+    private const string ReturnLocation = "RAX";
 
     public TraceCallLog Log { get; } = log;
 
@@ -60,21 +64,31 @@ public sealed class CallLogLookup(TraceCallLog log,
             return null;
         }
 
-        var traceObject = objects.GetObject(value, call);
+        var entry = value == 0 ? null : memoryMap.GetEntry(value, GetMoment(slot, call));
+
+        var className = entry?.ClassName;
 
         if (GetIterator(value) is { } iterator)
         {
-            return new ValueDescription(IteratorLabel(iterator), traceObject?.ClassName);
+            return new ValueDescription(IteratorLabel(iterator), className);
         }
 
-        if (traceObject is not null)
+        if (className is not null)
         {
-            return new ValueDescription($"0x{value:X}", traceObject.ClassName);
+            return new ValueDescription($"0x{value:X}", className);
         }
 
-        return slot.Type != ThisType && objects.GetAllocation(value, call) is { } allocation
-            ? new ValueDescription($"0x{value:X}", allocation.Allocator)
-            : null;
+        if (slot.Type == ThisType || value == 0)
+        {
+            return null;
+        }
+
+        if (ArgumentValue.GetPointeeClass(slot.Type) is { } declared)
+        {
+            return new ValueDescription($"0x{value:X}", declared);
+        }
+
+        return entry?.Allocator is { } allocator ? new ValueDescription($"0x{value:X}", allocator) : null;
     }
 
     public Task<ArgumentLayout?> GetLayoutAsync(CallstackFrame frame)
@@ -142,6 +156,11 @@ public sealed class CallLogLookup(TraceCallLog log,
 
         return frame is null ? $"0x{address:X}" : QualifiedSymbol.Of(frame);
     }
+
+    private static string? GetAllocationName(MemoryMapEntry entry) => entry.Allocator is { } allocator ? $"{allocator} Allocation" : null;
+
+    private static ulong GetMoment(ArgumentSlot slot, TraceArgumentCall call)
+        => slot.Index == LocatorReadResolver.ReturnRegister ? call.EndId : call.Id;
 
     private static string IteratorLabel(IteratorTarget iterator)
         => $"{iterator.Label} {(iterator.IsPlanObject ? "Plan Object" : "Iterator")}";
@@ -214,14 +233,11 @@ public sealed class CallLogLookup(TraceCallLog log,
         {
             var call = calls[firstUse.First.Call];
 
-            if (objects.GetObject(value, call) is { } traceObject)
-            {
-                return traceObject.ClassName;
-            }
+            var moment = firstUse.Location == ReturnLocation ? call.EndId : call.Id;
 
-            if (objects.GetAllocation(value, call) is { } allocation)
+            if (memoryMap.GetEntry(value, moment) is { } entry && (entry.ClassName ?? GetAllocationName(entry)) is { } typeName)
             {
-                return $"{allocation.Allocator} Allocation";
+                return typeName;
             }
         }
 

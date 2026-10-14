@@ -70,7 +70,28 @@ extern "C"
         uint32_t Thread;
     };
 
+    struct MemoryMapFunction
+    {
+        uint64_t Address;
+        uint32_t Operation;
+        uint32_t Reserved;
+    };
+
+    struct MemoryMapEntry
+    {
+        uint64_t Address;
+        uint64_t Call;
+        uint64_t Owner;
+        uint64_t Until;
+        int32_t  Node;
+        uint32_t Thread;
+        uint32_t Operation;
+        uint32_t Reserved;
+    };
+
     typedef void(__stdcall* PointerValueCallback)(const PointerValue* values, int32_t count);
+
+    typedef void(__stdcall* MemoryMapCallback)(const MemoryMapEntry* entries, int32_t count);
 
     typedef void(__stdcall* PublishedEventCallback)(const PublishedEvent* publishedEvents, int32_t count);
 
@@ -98,10 +119,13 @@ extern "C"
                                                int32_t                eventPublisherFunctionCount,
                                                const uint64_t*        eventWriterFunctions,
                                                int32_t                eventWriterFunctionCount,
+                                               const MemoryMapFunction* memoryMapFunctions,
+                                               int32_t                memoryMapFunctionCount,
                                                CallChunkCallback      logCalls,
                                                CallSpanCallback       logSpans,
                                                PointerValueCallback   logPointerValues,
                                                PublishedEventCallback logPublishedEvents,
+                                               MemoryMapCallback      logMemoryMap,
                                                ProgressCallback       progress,
                                                volatile int32_t*      cancel,
                                                void**                 tree);

@@ -59,9 +59,7 @@ internal static class ReplayFunctionResolver
 {
     private const string IteratorModule = "sqlmin";
 
-    private static readonly string[] Modules = ["sqlmin", "sqllang", "sqldk"];
-
-    private static readonly string[] ArgumentModules = ["sqlmin", "sqldk"];
+    private static readonly string[] Modules = ["sqlmin", "sqllang", "sqldk", "sqltses"];
 
     private static readonly string[] HeapModules = ["ntdll", "kernelbase", "kernel32", "ucrtbase"];
 
@@ -191,7 +189,7 @@ internal static class ReplayFunctionResolver
 
         logger?.LogInformation("Replay functions for {Module} resolved from {Pdb} in {Elapsed}: {Excluded} excluded, "
                                + "{Iterators} iterator methods, {Locators} locator reads, {Publishers} event publishers, "
-                               + "{Memory} memory functions",
+                               + "{Memory} memory functions, {Members} member functions",
                                module.Name,
                                module.Pdb,
                                Stopwatch.GetElapsedTime(start),
@@ -199,7 +197,8 @@ internal static class ReplayFunctionResolver
                                relative.InstanceMethods.Length,
                                relative.LocatorReads.Length,
                                relative.PublishedEvents.Publishers.Length,
-                               relative.MemoryFunctions.Length);
+                               relative.MemoryFunctions.Length,
+                               relative.MemoryMapFunctions.Length);
     }
 
     private static ReplayFunctions? Find(TraceModule module, string symbolsPath)
@@ -227,11 +226,7 @@ internal static class ReplayFunctionResolver
 
         var kept = functions.Where(f => !f.Value.IsExcluded).Select(f => f.Key);
 
-        var readsArguments = ArgumentModules.Contains(moduleName, StringComparer.OrdinalIgnoreCase);
-
-        LocatorRead[] locators = readsArguments
-            ? [.. LocatorReadResolver.FindReads(resolver, kept), .. LocatorReadResolver.FindStackReads(resolver, kept)]
-            : [];
+        LocatorRead[] locators = [.. LocatorReadResolver.FindReads(resolver, kept), .. LocatorReadResolver.FindStackReads(resolver, kept)];
 
         ulong[] excluded = [.. functions.Where(f => f.Value.IsExcluded).Select(f => (ulong)f.Key)];
 
@@ -239,7 +234,8 @@ internal static class ReplayFunctionResolver
                                    instanceMethods,
                                    locators,
                                    PublishedEventFunctions.From(functions),
-                                   [.. functions.Values.Select(f => f.MemoryFunction).OfType<MemoryFunction>()]);
+                                   [.. functions.Values.Select(f => f.MemoryFunction).OfType<MemoryFunction>()],
+                                   [.. MemoryMapFunctionResolver.Find(resolver, kept)]);
     }
 
     private static FunctionClassification ClassifyFunction(CategoryMappings mappings, string module, uint rva, ReadOnlySpan<char> symbol)

@@ -89,6 +89,13 @@ public static class ArgumentValue
         "unsigned __int32", "__int64", "long long", "unsigned __int64", "unsigned long long", "float", "double", HoBtIdType
     };
 
+    private static readonly HashSet<string> BufferTypes = new(StringComparer.Ordinal)
+    {
+        "void", "char", "signed char", "unsigned char", "wchar_t", "char8_t", "char16_t", "char32_t", "__int8", "unsigned __int8"
+    };
+
+    private static readonly string[] ClassKeywords = ["class ", "struct "];
+
     private static readonly Dictionary<string, Lazy<Dictionary<int, string>>>.AlternateLookup<ReadOnlySpan<char>> KnownEnumLookup =
         KnownEnums.GetAlternateLookup<ReadOnlySpan<char>>();
 
@@ -106,6 +113,33 @@ public static class ArgumentValue
     }
 
     public static bool IsPointer(string type) => type.TrimEnd() is { Length: > 0 } trimmed && trimmed[^1] is '*' or '&';
+
+    public static string? GetPointeeClass(string type)
+    {
+        var indirection = type.IndexOfAny(['*', '&']);
+
+        if (indirection <= 0 || type.AsSpan(indirection + 1).IndexOfAny('*', '&') >= 0 || type.Contains('('))
+        {
+            return null;
+        }
+
+        var target = Normalise(type[..indirection]);
+
+        foreach (var keyword in ClassKeywords)
+        {
+            if (target.StartsWith(keyword, StringComparison.Ordinal))
+            {
+                target = target[keyword.Length..];
+            }
+        }
+
+        return target.Length == 0
+               || target.StartsWith(FunctionSignature.EnumPrefix, StringComparison.Ordinal)
+               || ReadableTypes.Contains(target)
+               || BufferTypes.Contains(target)
+            ? null
+            : target;
+    }
 
     public static bool IsReadable(ReadOnlySpan<char> type)
     {

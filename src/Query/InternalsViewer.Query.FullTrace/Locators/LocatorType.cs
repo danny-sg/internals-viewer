@@ -74,6 +74,7 @@ internal readonly record struct LocatorType(LocatorKind Kind, bool IsIndirect, b
         "RowId" => (LocatorKind.Row, 0, null),
         "ColumnStoreObjectKey" => (LocatorKind.ColumnStoreObject, 0, null),
         "LSN" => (LocatorKind.LogSequenceNumber, 0, null),
+        "CTypeInfo" => (LocatorKind.TypeInfo, 0, null),
         _ => null
     };
 

@@ -9,5 +9,6 @@ public enum LocatorKind : byte
     Argument,
     LogSequenceNumber,
     Text,
-    WideText
+    WideText,
+    TypeInfo
 }

@@ -41,7 +41,7 @@ namespace
 
     using GapFunction = bool(__fastcall*)(uintptr_t, GapKind, GapEventType, IThreadView const*);
 
-    constexpr size_t ValuesPerCall = 8;
+    constexpr size_t ValuesPerCall = 10;
 
     constexpr size_t SequenceValue = 0;
 
@@ -52,6 +52,22 @@ namespace
     constexpr size_t ReturnValue = 6;
 
     constexpr size_t NodeValue = 7;
+
+    constexpr size_t IdValue = 8;
+
+    constexpr size_t EndValue = 9;
+
+    constexpr uint32_t AllocatedOperation = 0;
+
+    constexpr uint32_t ConstructedOperation = 1;
+
+    constexpr uint32_t VisitedOperation = 2;
+
+    constexpr uint32_t NoOperation = UINT32_MAX;
+
+    constexpr uint64_t SmallestAddress = 0x10000;
+
+    constexpr size_t MemoryMapChunk = 65536;
 
     constexpr int32_t ArgumentRegisters = 4;
 
@@ -70,6 +86,8 @@ namespace
     constexpr uint32_t ReadTextMode = 2;
 
     constexpr uint32_t ReadWideTextMode = 3;
+
+    constexpr uint32_t ReadBytesMode = 4;
 
     constexpr size_t MaximumTextBytes = 128;
 
@@ -169,7 +187,39 @@ namespace
         uint32_t        LoggedCall;
         uint32_t        Flags;
         std::array<uint64_t, StackArgumentCount> StackArguments;
+        uint64_t        Id;
     };
+
+    uint64_t OwnerOf(std::vector<StackFrame> const& stack, uint64_t address, uint64_t stackPointer)
+    {
+        if (address < stackPointer)
+        {
+            return 0;
+        }
+
+        for (auto frame = stack.rbegin(); frame != stack.rend(); ++frame)
+        {
+            if (frame->StackPointer > address)
+            {
+                return frame->Id;
+            }
+        }
+
+        return 0;
+    }
+
+    bool IsActive(std::vector<StackFrame> const& stack, uint64_t call)
+    {
+        for (auto frame = stack.rbegin(); frame != stack.rend(); ++frame)
+        {
+            if (frame->Id == call)
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
 
     struct ThreadClock
     {
@@ -230,6 +280,113 @@ namespace
         size_t                                              PendingPublishes = 0;
         PublishedEventCallback                              LogPublishedEvents = nullptr;
         std::vector<PublishedEvent>                         PublishedEvents;
+        uint64_t                                            CallCount = 0;
+        std::unordered_map<uint64_t, uint32_t>              MemoryMapFunctions;
+        MemoryMapCallback                                   LogMemoryMap = nullptr;
+        std::vector<MemoryMapEntry>                         MemoryMap;
+        std::unordered_map<uint64_t, uint32_t>              LatestEntries;
+        std::unordered_map<uint64_t, std::vector<uint32_t>> OwnedEntries;
+
+        uint64_t NextCall()
+        {
+            return ++CallCount;
+        }
+
+        uint32_t OperationOf(uint64_t function) const
+        {
+            auto const found = MemoryMapFunctions.find(function);
+
+            return found == MemoryMapFunctions.end() ? NoOperation : found->second;
+        }
+
+        void RecordAddress(uint32_t                       operation,
+                           uint64_t                       address,
+                           uint64_t                       call,
+                           int32_t                        node,
+                           uint32_t                       thread,
+                           std::vector<StackFrame> const& stack,
+                           uint64_t                       stackPointer)
+        {
+            if (LogMemoryMap == nullptr || address < SmallestAddress)
+            {
+                return;
+            }
+
+            auto const latest = LatestEntries.find(address);
+
+            if (latest != LatestEntries.end() && MemoryMap[latest->second].Until == 0)
+            {
+                auto& entry = MemoryMap[latest->second];
+
+                if (operation == VisitedOperation && entry.Operation != AllocatedOperation)
+                {
+                    return;
+                }
+
+                if (operation == ConstructedOperation && entry.Operation == ConstructedOperation && IsActive(stack, entry.Call))
+                {
+                    return;
+                }
+
+                if (operation == AllocatedOperation && entry.Operation == AllocatedOperation && entry.Call > call)
+                {
+                    entry.Call = call;
+                    entry.Node = node;
+
+                    return;
+                }
+            }
+
+            auto const owner = OwnerOf(stack, address, stackPointer);
+
+            auto const index = static_cast<uint32_t>(MemoryMap.size());
+
+            MemoryMap.push_back(MemoryMapEntry{ address, call, owner, 0, node, thread, operation, 0 });
+
+            LatestEntries[address] = index;
+
+            if (owner != 0)
+            {
+                OwnedEntries[owner].push_back(index);
+            }
+        }
+
+        void EndScope(uint64_t owner)
+        {
+            if (owner == 0 || OwnedEntries.empty())
+            {
+                return;
+            }
+
+            auto const found = OwnedEntries.find(owner);
+
+            if (found == OwnedEntries.end())
+            {
+                return;
+            }
+
+            for (auto const index : found->second)
+            {
+                MemoryMap[index].Until = CallCount;
+            }
+
+            OwnedEntries.erase(found);
+        }
+
+        void FlushMemoryMap()
+        {
+            if (LogMemoryMap == nullptr)
+            {
+                return;
+            }
+
+            for (size_t start = 0; start < MemoryMap.size(); start += MemoryMapChunk)
+            {
+                auto const count = (std::min)(MemoryMapChunk, MemoryMap.size() - start);
+
+                LogMemoryMap(MemoryMap.data() + start, static_cast<int32_t>(count));
+            }
+        }
 
         int32_t Child(int32_t parent, uint64_t address, uint64_t instance)
         {
@@ -357,12 +514,21 @@ namespace
 
             auto const buffer = thread.QueryMemoryBuffer(address, BufferView{ &value, sizeof(value) });
 
-            if (buffer.Memory.Size != sizeof(value))
+            auto const known = static_cast<size_t>(buffer.Memory.Size);
+
+            if (read.Mode == ReadBytesMode && known > 0 && known < sizeof(value))
+            {
+                RecordValue(function, call, read, value & ((1ull << (known * 8)) - 1), static_cast<uint32_t>(known));
+
+                return;
+            }
+
+            if (known != sizeof(value))
             {
                 return;
             }
 
-            RecordValue(function, call, read, value);
+            RecordValue(function, call, read, value, read.Mode == ReadBytesMode ? static_cast<uint32_t>(known) : 0);
         }
 
         void ReadText(IThreadView const& thread, LoggedFunction const& function, uint32_t call, PointerRead const& read, uint64_t address)
@@ -555,7 +721,8 @@ namespace
                        uint32_t             threadId,
                        uint64_t             target,
                        uint64_t             instance,
-                       int32_t              node)
+                       int32_t              node,
+                       uint64_t             id)
     {
         if (tree.LogCalls == nullptr)
         {
@@ -582,6 +749,8 @@ namespace
         values[IntegerValues + 3] = registers.R9;
 
         values[NodeValue] = static_cast<uint64_t>(node);
+
+        values[IdValue] = id;
 
         function.InFlight++;
 
@@ -746,6 +915,8 @@ namespace
             return;
         }
 
+        frame.Function->Values[frame.Call * ValuesPerCall + EndValue] = tree.CallCount;
+
         if (thread != nullptr && frame.ReturnAddress == returnTarget)
         {
             CompleteCall(tree, frame, *thread);
@@ -779,9 +950,18 @@ namespace
 
             auto const returned = thread != nullptr && frame.ReturnAddress == returnTarget;
 
+            if (returned && frame.Function != nullptr && tree.OperationOf(frame.Function->Address) == AllocatedOperation)
+            {
+                CROSS_PLATFORM_CONTEXT const context = thread->GetCrossPlatformContext();
+
+                tree.RecordAddress(AllocatedOperation, context.Amd64Context.Rax, frame.Id, frame.Node, threadId, stack, stackPointer);
+            }
+
             tree.RecordSpan(frame, threadId, clock, returned ? SpanReturned : 0);
 
             Release(tree, frame, thread, returnTarget);
+
+            tree.EndScope(frame.Id);
         }
     }
 
@@ -864,7 +1044,9 @@ namespace
                                             position,
                                             clock.Instructions,
                                             NoCall,
-                                            0 });
+                                            0,
+                                            {},
+                                            tree.NextCall() });
 
                 return;
             }
@@ -885,13 +1067,21 @@ namespace
 
             tree.Nodes[node].Calls++;
 
+            auto const id = tree.NextCall();
+
             auto const logged = LogCall(tree,
                                         registers,
                                         static_cast<uint64_t>(position.Sequence),
                                         threadId,
                                         target,
                                         instance,
-                                        node);
+                                        node,
+                                        id);
+
+            if (auto const operation = tree.OperationOf(target); operation == ConstructedOperation || operation == VisitedOperation)
+            {
+                tree.RecordAddress(operation, registers.Rcx, id, node, threadId, stack, stackPointer);
+            }
 
             std::array<uint64_t, StackArgumentCount> stackArguments{};
 
@@ -907,7 +1097,8 @@ namespace
                                         clock.Instructions,
                                         logged.Index,
                                         0,
-                                        stackArguments });
+                                        stackArguments,
+                                        id });
 
             if (tree.LoggedSinceFlush >= IdleFlushInterval)
             {
@@ -935,7 +1126,9 @@ namespace
                                         position,
                                         clock.Instructions,
                                         NoCall,
-                                        SpanStartUnknown });
+                                        SpanStartUnknown,
+                                        {},
+                                        tree.NextCall() });
         }
     }
 
@@ -1238,10 +1431,13 @@ extern "C"
                          int32_t                eventPublisherFunctionCount,
                          const uint64_t*        eventWriterFunctions,
                          int32_t                eventWriterFunctionCount,
+                         const MemoryMapFunction* memoryMapFunctions,
+                         int32_t                memoryMapFunctionCount,
                          CallChunkCallback      logCalls,
                          CallSpanCallback       logSpans,
                          PointerValueCallback   logPointerValues,
                          PublishedEventCallback logPublishedEvents,
+                         MemoryMapCallback      logMemoryMap,
                          ProgressCallback       progress,
                          volatile int32_t*      cancel,
                          void**                 tree)
@@ -1280,6 +1476,13 @@ extern "C"
         result->LogPointerValues = logPointerValues;
 
         result->LogPublishedEvents = logPublishedEvents;
+
+        result->LogMemoryMap = logMemoryMap;
+
+        for (int32_t index = 0; index < memoryMapFunctionCount && logMemoryMap != nullptr; index++)
+        {
+            result->MemoryMapFunctions[memoryMapFunctions[index].Address] = memoryMapFunctions[index].Operation;
+        }
 
         for (int32_t index = 0; index < eventPublisherFunctionCount && logPublishedEvents != nullptr; index++)
         {
@@ -1324,6 +1527,12 @@ extern "C"
         result->FlushPointerValues();
 
         result->FlushPublishedEvents();
+
+        result->FlushMemoryMap();
+
+        result->MemoryMap = {};
+        result->LatestEntries.clear();
+        result->OwnedEntries.clear();
 
         result->Spans = {};
         result->PointerValues = {};

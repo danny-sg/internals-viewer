@@ -206,7 +206,11 @@ public sealed class TraceCallLog
 
         using var stream = new ZLibStream(new MemoryStream(chunk.Columns), CompressionMode.Decompress);
 
-        stream.ReadExactly(MemoryMarshal.AsBytes(columns.AsSpan()));
+        var bytes = MemoryMarshal.AsBytes(columns.AsSpan());
+
+        var read = stream.ReadAtLeast(bytes, bytes.Length, throwOnEndOfStream: false);
+
+        bytes[read..].Clear();
 
         return columns;
     }
@@ -406,11 +410,11 @@ public sealed class TraceCallLog
     }
 
     private bool IsIncluded(ulong[] columns, int calls, int call, Func<CallStackNode?, bool>? include)
-        => include is null || include(NodeAt((int)columns[(TraceArgumentCall.ValueCount - 1) * calls + call]));
+        => include is null || include(NodeAt((int)columns[TraceArgumentCall.NodeIndex * calls + call]));
 
     private TraceValueMatch MatchAt(ulong[] columns, int calls, int call, int start)
     {
-        var node = (int)columns[(TraceArgumentCall.ValueCount - 1) * calls + call];
+        var node = (int)columns[TraceArgumentCall.NodeIndex * calls + call];
 
         var thread = (uint)columns[FlagsColumn * calls + call];
 
@@ -474,6 +478,9 @@ public sealed class TraceCallLog
 
         private Dictionary<(ulong Function, ulong Instance, uint Call, int Register, uint IsReadAtReturn),
                            (LocatorKind Kind, SortedList<uint, ulong> Parts)> TextParts { get; } = new();
+
+        private Dictionary<(ulong Function, ulong Instance, uint Call, int Register, uint IsReadAtReturn),
+                           (ulong Header, ulong Details, bool HasHeader)> TypeInfoParts { get; } = new();
 
         private SemaphoreSlim Compressing { get; } = new(Math.Max(2, Environment.ProcessorCount));
 
@@ -543,6 +550,13 @@ public sealed class TraceCallLog
                     continue;
                 }
 
+                if (read.Kind is LocatorKind.TypeInfo)
+                {
+                    AddTypeInfoPart(value);
+
+                    continue;
+                }
+
                 var parts = LocatorReadResolver.GetParts(read.Kind);
 
                 if (parts == 1)
@@ -582,6 +596,16 @@ public sealed class TraceCallLog
             {
                 AddImageTexts(images, texts);
             }
+
+            foreach (var (identity, (header, details, hasHeader)) in TypeInfoParts)
+            {
+                if (hasHeader)
+                {
+                    texts[identity] = new Locator(identity.Register, LocatorKind.TypeInfo, header, details);
+                }
+            }
+
+            TypeInfoParts.Clear();
 
             foreach (var ((function, instance, call, _, isReadAtReturn), locator) in texts)
             {
@@ -714,6 +738,17 @@ public sealed class TraceCallLog
             }
 
             text.Parts[value.Part] = value.Value;
+        }
+
+        private void AddTypeInfoPart(PointerValue value)
+        {
+            var identity = (value.Function, value.Instance, value.Call, value.Register, value.IsReadAtReturn);
+
+            var parts = TypeInfoParts.GetValueOrDefault(identity);
+
+            TypeInfoParts[identity] = value.Offset < LocatorReadResolver.TypeInfoDetailOffset
+                ? parts with { Header = value.Value, HasHeader = true }
+                : parts with { Details = value.Value };
         }
 
         private ulong[]? AddKeyPart(PointerValue value, int parts)

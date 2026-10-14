@@ -23,6 +23,8 @@ public readonly record struct Locator(int Register, LocatorKind Kind, ulong Valu
 
     public LogSequenceNumber Lsn => new((int)(uint)Value, (int)(Value >> 32), (short)(ushort)Detail);
 
+    public SqlTypeInfo TypeInfo => SqlTypeInfo.From(Value, Detail);
+
     public int ColumnId => (int)(uint)Detail;
 
     public int ObjectId => (int)(Detail >> 32);
@@ -66,6 +68,8 @@ public readonly record struct Locator(int Register, LocatorKind Kind, ulong Valu
             => Lsn.ToString(),
         LocatorKind.Text or LocatorKind.WideText
             => Detail == 0 ? $"\"{Text}\"" : $"\"{Text}\" (Truncated)",
+        LocatorKind.TypeInfo
+            => TypeInfo.ToString(),
         _ => Page.ToString()
     };
 

@@ -42,6 +42,7 @@ internal readonly record struct PointerRead(ulong Function,
         LocatorKind.Argument => 1,
         LocatorKind.Text => 2,
         LocatorKind.WideText => 3,
+        LocatorKind.TypeInfo => 4,
         _ => 0
     };
 }

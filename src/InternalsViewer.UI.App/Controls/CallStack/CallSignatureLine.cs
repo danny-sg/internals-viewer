@@ -1,4 +1,6 @@
+using System;
 using System.Collections.Generic;
+using InternalsViewer.UI.App.Helpers;
 using InternalsViewer.UI.App.Models.Query.CallStack;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Documents;
@@ -94,16 +96,37 @@ public sealed partial class CallSignatureLine : UserControl
             ToolTipService.SetToolTip(text, alternative is null ? toolTip : $"{toolTip}\n{alternative}");
         }
 
-        if (part is { CanFind: true, Value: { } value })
+        if (part is { Kind: CallSignaturePartKind.Value, Value: { } value })
         {
-            var find = new MenuFlyoutItem { Text = "Find" };
+            var menu = new MenuFlyout();
 
-            find.Click += (_, _) => Finder()?.Find(value);
+            if (part.Decoded is not null)
+            {
+                menu.Items.Add(MenuItem("Copy Decoded", () => ClipboardText.Copy(part.GetText(true))));
+            }
 
-            text.ContextFlyout = new MenuFlyout { Items = { find } };
+            menu.Items.Add(MenuItem("Copy Value", () => ClipboardText.Copy(part.Text)));
+
+            if (part.CanFind)
+            {
+                menu.Items.Add(new MenuFlyoutSeparator());
+
+                menu.Items.Add(MenuItem("Find", () => Finder()?.Find(value)));
+            }
+
+            text.ContextFlyout = menu;
         }
 
         return text;
+    }
+
+    private static MenuFlyoutItem MenuItem(string text, Action action)
+    {
+        var item = new MenuFlyoutItem { Text = text };
+
+        item.Click += (_, _) => action();
+
+        return item;
     }
 
     private IValueFinder? Finder()

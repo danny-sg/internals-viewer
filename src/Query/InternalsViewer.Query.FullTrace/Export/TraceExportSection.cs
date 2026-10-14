@@ -5,6 +5,7 @@ using InternalsViewer.Query.FullTrace.Arguments;
 using InternalsViewer.Query.FullTrace.CallLog;
 using InternalsViewer.Query.FullTrace.Iterators;
 using InternalsViewer.Query.FullTrace.Timeline;
+using InternalsViewer.Query.FullTrace.Memory;
 
 namespace InternalsViewer.Query.FullTrace.Export;
 
@@ -18,7 +19,7 @@ internal sealed class TraceExportSection : IQueryExportSection
 
     internal const string EventLinksEntry = "fulltrace/eventlinks.bin";
 
-    internal const string ObjectsEntry = "fulltrace/objects.bin";
+    internal const string MemoryMapEntry = "fulltrace/memorymap.bin";
 
     public bool CanExport(QueryExportContent content) => content.ExtraOf<TraceResult>() is not null;
 
@@ -41,7 +42,7 @@ internal sealed class TraceExportSection : IQueryExportSection
 
         writer.WriteBinary(EventLinksEntry, CompressionLevel.Fastest, w => fullTrace.Timeline.WriteEventLinks(w, writer.IdOf));
 
-        writer.WriteBinary(ObjectsEntry, CompressionLevel.Fastest, fullTrace.Objects.Write);
+        writer.WriteBinary(MemoryMapEntry, CompressionLevel.Fastest, fullTrace.MemoryMap.Write);
     }
 
     public IRunExtra? Read(QueryExportReader reader)
@@ -72,7 +73,9 @@ internal sealed class TraceExportSection : IQueryExportSection
         {
             PlanLink = IteratorPlanLinker.Link(callLog, timeline.MappedNodes, events),
             HoBtAccess = HoBtAccessMap.Build(callLog, timeline.MappedNodes),
-            Objects = reader.HasEntry(ObjectsEntry) ? reader.ReadBinary(ObjectsEntry, r => ObjectMap.Read(r, callLog, timeline)) : ObjectMap.Empty
+            MemoryMap = reader.HasEntry(MemoryMapEntry)
+                ? reader.ReadBinary(MemoryMapEntry, r => MemoryMap.Read(r, timeline.NodeOf))
+                : MemoryMap.Empty
         };
     }
 }

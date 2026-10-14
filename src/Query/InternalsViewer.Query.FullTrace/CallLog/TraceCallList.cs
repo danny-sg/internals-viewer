@@ -59,7 +59,7 @@ public sealed class TraceCallList : IReadOnlyList<TraceArgumentCall>
                 row[column] = columns[column * calls + call];
             }
 
-            return TraceArgumentCall.Decode(row, Locators?.LocatorsOf(index), index);
+            return TraceArgumentCall.Decode(row, Locators?.LocatorsOf(index));
         }
     }
 
@@ -77,7 +77,7 @@ public sealed class TraceCallList : IReadOnlyList<TraceArgumentCall>
     {
         var (columns, calls, call) = GetLocation(index);
 
-        return (int)columns[(TraceArgumentCall.ValueCount - 1) * calls + call];
+        return (int)columns[TraceArgumentCall.NodeIndex * calls + call];
     }
 
     private (ulong[] Columns, int Calls, int Call) GetLocation(int index)

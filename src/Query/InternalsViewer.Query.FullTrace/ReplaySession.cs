@@ -7,6 +7,7 @@ using InternalsViewer.Query.FullTrace.Native;
 using InternalsViewer.Query.FullTrace.Timeline;
 using InternalsViewer.Query.Recording;
 using InternalsViewer.Query.FullTrace.Functions;
+using InternalsViewer.Query.FullTrace.Memory;
 
 namespace InternalsViewer.Query.FullTrace;
 
@@ -143,6 +144,16 @@ internal sealed class ReplaySession : IDisposable
 
         ulong[] instanceMethods = [.. functions.InstanceMethods.Select(ReplayBridge.PackInstanceMethod)];
 
+        var memoryMap = new MemoryMap.Log();
+
+        ReplayBridge.MemoryMapCallback onMemoryMap = memoryMap.Add;
+
+        MemoryMapFunction[] memoryMapFunctions = [.. functions.MemoryMapFunctions,
+                                                  .. functions.MemoryFunctions
+                                                              .Where(f => f is { Allocates: true, IsVirtual: false })
+                                                              .Select(f => new MemoryMapFunction(f.Address,
+                                                                                                 (uint)MemoryMapOperation.Allocated))];
+
         try
         {
             var result = ReplayBridge.ReadCallTree(Handle,
@@ -158,10 +169,13 @@ internal sealed class ReplaySession : IDisposable
                                                    publishers.Length,
                                                    functions.PublishedEvents.Writers,
                                                    functions.PublishedEvents.Writers.Length,
+                                                   memoryMapFunctions,
+                                                   memoryMapFunctions.Length,
                                                    onChunk,
                                                    onSpans,
                                                    onPointerValues,
                                                    onPublishedEvents,
+                                                   onMemoryMap,
                                                    onProgress,
                                                    cancel,
                                                    out var tree);
@@ -174,6 +188,8 @@ internal sealed class ReplaySession : IDisposable
             GC.KeepAlive(onPointerValues);
 
             GC.KeepAlive(onPublishedEvents);
+
+            GC.KeepAlive(onMemoryMap);
 
             GC.KeepAlive(onProgress);
 
@@ -192,7 +208,12 @@ internal sealed class ReplaySession : IDisposable
 
                 using var images = new ImageText(Modules);
 
-                return new ReplayResult(nodes, Modules, log.Build(images), timeline.Build(nodes), publishedEvents.Build());
+                return new ReplayResult(nodes,
+                                        Modules,
+                                        log.Build(images),
+                                        timeline.Build(nodes),
+                                        publishedEvents.Build(),
+                                        memoryMap.Build());
             }
             finally
             {

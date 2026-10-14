@@ -104,4 +104,19 @@ public class ArgumentValueTests
     {
         Assert.Equal(expected, ArgumentValue.GetUnknownEnum(type));
     }
+
+    [Theory]
+    [InlineData("LckInfo const *", "LckInfo")]
+    [InlineData("class CMemObj &", "CMemObj")]
+    [InlineData("CMemPartitioned<CMemThread<CMemObj> > *", "CMemPartitioned<CMemThread<CMemObj> >")]
+    [InlineData("unsigned __int64 *", null)]
+    [InlineData("char const *", null)]
+    [InlineData("void *", null)]
+    [InlineData("enum OperationType *", null)]
+    [InlineData("LckInfo * *", null)]
+    [InlineData("LckInfo", null)]
+    public void A_Pointer_Names_The_Class_It_Points_To(string type, string? expected)
+    {
+        Assert.Equal(expected, ArgumentValue.GetPointeeClass(type));
+    }
 }

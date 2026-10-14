@@ -108,6 +108,18 @@ public static class ArgumentRowBuilder
         return default;
     }
 
+    public static string? DecodedTextAt(ArgumentLayout layout, TraceArgumentCall call, int ordinal, ValueDescriber? describe)
+    {
+        if (SlotAt(layout, ordinal) is { } slot)
+        {
+            return call.Value(slot) is { } value ? Cell(slot, value, call, describe, decode: true).ToString() : null;
+        }
+
+        return CellAt(layout, call, ordinal) is { Value: { } returned, Type: { } type }
+            ? Cell(ReturnSlot(type), returned, call, describe, decode: true).ToString()
+            : null;
+    }
+
     public static IReadOnlyList<CallSignaturePart> Signature(string function,
                                                              ArgumentLayout? layout,
                                                              TraceArgumentCall call,
@@ -205,7 +217,9 @@ public static class ArgumentRowBuilder
                     value != 0 && ArgumentValue.IsPointer(slot.Type) ? description.ClassName ?? GetClassName(slot.Type) : null);
         }
 
-        return locator is { } referenced ? (Display(slot.Type, referenced).ToString(), null) : (ArgumentValue.Decode(slot.Type, value), null);
+        return locator is { } referenced
+            ? (Display(slot.Type, referenced).ToString(), null)
+            : (ArgumentValue.Decode(slot.Type, value), null);
     }
 
     private static string GetClassName(string type)
@@ -293,7 +307,8 @@ public static class ArgumentRowBuilder
     private static object Display(string type, Locator locator) => locator.Kind switch
     {
         LocatorKind.Row => locator.Row,
-        LocatorKind.ColumnStoreObject or LocatorKind.LogSequenceNumber or LocatorKind.Text or LocatorKind.WideText => locator.ToString(),
+        LocatorKind.ColumnStoreObject or LocatorKind.LogSequenceNumber or LocatorKind.Text or LocatorKind.WideText or LocatorKind.TypeInfo
+            => locator.ToString(),
         LocatorKind.Referenced => ArgumentValue.FormatReferenced(type, locator.Value),
         _ => locator.Page
     };

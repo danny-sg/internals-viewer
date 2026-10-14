@@ -229,20 +229,6 @@ public sealed class CallstackResolver(string symbolsPath) : IDisposable
         return _resolverCache.GetOrAdd(pdbPath, path => new DiaResolver(path)).GetDecoratedName(FunctionRva(frame), GetFunctionName(frame));
     }
 
-    public bool IsFolded(CallstackFrame frame)
-    {
-        var pdbPath = GetPdbPath(frame);
-
-        if (!HasSymbolInformation(frame) || !File.Exists(pdbPath))
-        {
-            return false;
-        }
-
-        var resolver = _resolverCache.GetOrAdd(pdbPath, path => new DiaResolver(path));
-
-        return resolver.EnumerateSymbolsAtRva(FunctionRva(frame)).Where(d => d.IsFunction).Select(d => d.Name).Distinct().Skip(1).Any();
-    }
-
     public void ResolveSignatures(IEnumerable<CallstackFrame> frames)
     {
         var functions = frames.Where(f => f.Signature is null && HasSymbolInformation(f))

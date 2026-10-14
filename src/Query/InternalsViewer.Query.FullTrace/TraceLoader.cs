@@ -173,7 +173,7 @@ public sealed class TraceLoader(ILogger<TraceLoader> logger, ITimeTravelRecorder
 
         timeline.AddCallActivity(QueryRunner.ActivityBuckets);
 
-        var objects = ObjectMap.Build(replay.CallLog, timeline, ObjectFunctionResolver.Resolve(mapped, request.SymbolsPath));
+        var memoryMap = MemoryMap.Build(replay.MemoryMap, replay.Timeline.NodeOf);
 
         steps.Complete();
 
@@ -232,9 +232,9 @@ public sealed class TraceLoader(ILogger<TraceLoader> logger, ITimeTravelRecorder
 
         Logger.LogInformation("{Objects} HoBt access object(s) linked to their HoBt", hobtAccess.Count);
 
-        Logger.LogInformation("{Objects} object(s) placed at their addresses from member calls", objects.Count);
+        Logger.LogInformation("{Entries} memory map entr(ies) from allocations, constructors and member calls", memoryMap.Count);
 
-        return new TraceResult(callStack, replay.CallLog, timeline) { PlanLink = planLink, HoBtAccess = hobtAccess, Objects = objects };
+        return new TraceResult(callStack, replay.CallLog, timeline) { PlanLink = planLink, HoBtAccess = hobtAccess, MemoryMap = memoryMap };
     }
 
     private void LogUnknownSymbols(string[] unknownSymbols)

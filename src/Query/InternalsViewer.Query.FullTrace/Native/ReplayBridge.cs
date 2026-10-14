@@ -157,6 +157,9 @@ internal static class ReplayBridge
     [UnmanagedFunctionPointer(CallingConvention.StdCall)]
     public delegate void PublishedEventCallback(IntPtr publishedEvents, int count);
 
+    [UnmanagedFunctionPointer(CallingConvention.StdCall)]
+    public delegate void MemoryMapCallback(IntPtr entries, int count);
+
     [DllImport(Library, CharSet = CharSet.Unicode)]
     public static extern int OpenTrace(string replayLibraryPath, string tracePath, out TraceHandle trace);
 
@@ -186,10 +189,13 @@ internal static class ReplayBridge
                                           int eventPublisherFunctionCount,
                                           ulong[] eventWriterFunctions,
                                           int eventWriterFunctionCount,
+                                          MemoryMapFunction[] memoryMapFunctions,
+                                          int memoryMapFunctionCount,
                                           CallChunkCallback? logCalls,
                                           CallSpanCallback? logSpans,
                                           PointerValueCallback? logPointerValues,
                                           PublishedEventCallback? logPublishedEvents,
+                                          MemoryMapCallback? logMemoryMap,
                                           ProgressCallback? progress,
                                           IntPtr cancel,
                                           out IntPtr tree);

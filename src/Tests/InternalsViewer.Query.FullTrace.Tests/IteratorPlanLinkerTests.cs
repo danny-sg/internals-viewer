@@ -354,7 +354,7 @@ public class IteratorPlanLinkerTests
 
             for (var call = 0; call < rows.Count; call++)
             {
-                for (var value = 0; value < TraceArgumentCall.ValueCount; value++)
+                for (var value = 0; value < rows[call].Length; value++)
                 {
                     columns[value * rows.Count + call] = rows[call][value];
                 }

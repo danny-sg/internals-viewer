@@ -2202,13 +2202,11 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
         CallStack = result.CallStack;
 
-        var objects = result.Objects.Count > 0 ? result.Objects : ObjectMap.Resolve(result, _settingsViewModel.SymbolsPath);
-
         Arguments.SetSource(result.CallLog,
                             result.CallStack,
                             IteratorTarget.Build(result.CallStack, Events, result.PlanLink),
                             result.HoBtAccess,
-                            objects);
+                            result.MemoryMap);
 
         FlameChart = GetFlameChart(result);
 

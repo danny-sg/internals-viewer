@@ -1,7 +1,6 @@
 using InternalsViewer.Query.CallStack;
 using System.Buffers;
 using System.Runtime.InteropServices;
-using InternalsViewer.Query.FullTrace.CallLog;
 using InternalsViewer.Query.FullTrace.Export;
 using InternalsViewer.Query.FullTrace.Memory;
 using InternalsViewer.Query.FullTrace.Native;
@@ -434,31 +433,6 @@ public sealed class TraceTimeline
         {
             EventLinksBySequence.TryAdd(link.Event.SequenceId, link);
         }
-    }
-
-    public double GetPosition(TraceArgumentCall call)
-    {
-        if (call.Index < 0 || Threads.FirstOrDefault(t => t.ThreadId == call.ThreadId) is not { } thread)
-        {
-            return call.Sequence;
-        }
-
-        foreach (var row in thread.Rows)
-        {
-            var starts = row.Starts(TraceTimelineAxis.Position);
-
-            var end = call.Sequence + 1d;
-
-            for (var index = SortedSearch.FirstAtOrAfter(starts, call.Sequence); index < starts.Length && starts[index] < end; index++)
-            {
-                if (row.NodeAt(index) == call.Node && row.CallAt(index) == call.Index)
-                {
-                    return starts[index];
-                }
-            }
-        }
-
-        return call.Sequence;
     }
 
     internal double PositionOf(ulong sequence, ulong steps)
