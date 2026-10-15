@@ -10,6 +10,7 @@ using InternalsViewer.Query.Events.Operators;
 using InternalsViewer.Query.FullTrace.Iterators;
 using InternalsViewer.Query.FullTrace.PublishedEvents;
 using InternalsViewer.Query.FullTrace.Memory;
+using InternalsViewer.Query.FullTrace.Timeline;
 using InternalsViewer.Query.Helpers;
 using Microsoft.Extensions.Logging;
 using InternalsViewer.Query.Recording;
@@ -124,8 +125,6 @@ public sealed class TraceLoader(ILogger<TraceLoader> logger, ITimeTravelRecorder
 
         steps.Begin(CallTreeStep);
 
-        DeleteTimeTravelTrace(request.TraceFile, details);
-
         var (callStack, replayed) = CallTreeBuilder.Build(replay.Nodes, replay.Modules);
 
         var nodes = replay.Nodes;
@@ -158,6 +157,8 @@ public sealed class TraceLoader(ILogger<TraceLoader> logger, ITimeTravelRecorder
         replay.CallStore.MapNodes(mapped);
 
         replay.CallStore.AnnotateNodes();
+
+        replay.RowBuffers.AnnotateNodes(replay.CallStore);
 
         replay.Timeline.MapNodes(mapped);
 
@@ -234,7 +235,16 @@ public sealed class TraceLoader(ILogger<TraceLoader> logger, ITimeTravelRecorder
 
         Logger.LogInformation("{Entries} memory map entr(ies) from allocations, constructors and member calls", memoryMap.Count);
 
-        return new TraceResult(callStack, replay.CallStore, timeline) { PlanLink = planLink, HoBtAccess = hobtAccess, MemoryMap = memoryMap };
+        Logger.LogInformation("{Rows} row buffer(s) read from iterator GetRow calls", replay.RowBuffers.Count);
+
+        return new TraceResult(callStack, replay.CallStore, timeline)
+        {
+            PlanLink = planLink,
+            HoBtAccess = hobtAccess,
+            MemoryMap = memoryMap,
+            RowBuffers = replay.RowBuffers,
+            RowBufferMarks = TraceRowBufferMarks.Build(timeline, replay.RowBuffers)
+        };
     }
 
     private void LogUnknownSymbols(string[] unknownSymbols)

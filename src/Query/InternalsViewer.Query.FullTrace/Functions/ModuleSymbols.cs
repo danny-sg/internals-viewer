@@ -6,11 +6,24 @@ namespace InternalsViewer.Query.FullTrace.Functions;
 internal static class ModuleSymbols
 {
     public static Dictionary<uint, FunctionClassification> Load(DiaResolver resolver,
-                                                                Func<uint, ReadOnlySpan<char>, FunctionClassification> classify)
+                                                                Func<uint, ReadOnlySpan<char>, FunctionClassification> classify,
+                                                                Action<uint, ReadOnlySpan<char>> visitData)
     {
         var functions = new Dictionary<uint, FunctionClassification>();
 
-        resolver.VisitFunctions((rva, name) => Add(functions, rva, classify(rva, name)));
+        using var symbols = resolver.ReadSymbols(includeSignature: false);
+
+        while (symbols.MoveNext())
+        {
+            if (symbols.IsFunction)
+            {
+                Add(functions, symbols.Rva, classify(symbols.Rva, symbols.Name));
+            }
+            else
+            {
+                visitData(symbols.Rva, symbols.Name);
+            }
+        }
 
         return functions;
     }

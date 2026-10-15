@@ -68,7 +68,7 @@ public sealed partial class FlameChartControl
 
             for (var depth = 0; depth < DepthOf(thread) && depth < thread.Rows.Count; depth++)
             {
-                var top = laneTop + LaneHeaderHeight + depth * _rowHeight;
+                var top = laneTop + RowsOffset + depth * _rowHeight;
 
                 if (top > height)
                 {

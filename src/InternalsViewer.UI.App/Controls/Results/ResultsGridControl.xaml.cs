@@ -5,6 +5,8 @@ using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Documents;
 using Microsoft.UI.Xaml.Media;
 using System;
+using System.Collections.Generic;
+using InternalsViewer.Query.FullTrace.RowBuffers;
 using Windows.Foundation;
 using WinUI.TableView;
 
@@ -15,6 +17,7 @@ public sealed partial class ResultsGridControl : UserControl
     private const double CellMargin = 12;
 
     private const double MaximumFitWidth = 640;
+
 
     public static readonly DependencyProperty ResultSetProperty =
         DependencyProperty.Register(
@@ -68,6 +71,45 @@ public sealed partial class ResultsGridControl : UserControl
         set => SetValue(FitColumnsToFirstRowProperty, value);
     }
 
+    public static readonly DependencyProperty RowDetailsProperty =
+        DependencyProperty.Register(
+            nameof(RowDetails),
+            typeof(Func<ResultRow<long>, ResultDetails>),
+            typeof(ResultsGridControl),
+            new PropertyMetadata(null, OnRowDetailsChanged));
+
+    public Func<ResultRow<long>, ResultDetails>? RowDetails
+    {
+        get => (Func<ResultRow<long>, ResultDetails>?)GetValue(RowDetailsProperty);
+        set => SetValue(RowDetailsProperty, value);
+    }
+
+    public static readonly DependencyProperty IsStatusBarVisibleProperty =
+        DependencyProperty.Register(
+            nameof(IsStatusBarVisible),
+            typeof(bool),
+            typeof(ResultsGridControl),
+            new PropertyMetadata(true, OnIsStatusBarVisibleChanged));
+
+    public bool IsStatusBarVisible
+    {
+        get => (bool)GetValue(IsStatusBarVisibleProperty);
+        set => SetValue(IsStatusBarVisibleProperty, value);
+    }
+
+    public static readonly DependencyProperty VersionProperty =
+        DependencyProperty.Register(
+            nameof(Version),
+            typeof(int),
+            typeof(ResultsGridControl),
+            new PropertyMetadata(0, OnVersionChanged));
+
+    public int Version
+    {
+        get => (int)GetValue(VersionProperty);
+        set => SetValue(VersionProperty, value);
+    }
+
     private Size _lastKnownSize = new(800, 600);
 
     public ResultsGridControl()
@@ -87,9 +129,15 @@ public sealed partial class ResultsGridControl : UserControl
 
     public event EventHandler<ObjectValue>? ObjectClicked;
 
+    public event EventHandler<CallValue>? CallClicked;
+
+    public event EventHandler<RowBufferPage>? PagePointerClicked;
+
     public event EventHandler<ResultCellMenuEventArgs>? CellMenuOpening;
 
     private TableView? ResultsTable { get; set; }
+
+    private HashSet<Panel> DetailHosts { get; } = [];
 
     private void Rebuild()
     {
@@ -115,6 +163,8 @@ public sealed partial class ResultsGridControl : UserControl
                 Alignment = column.Alignment,
                 PageClicked = OnPageClicked,
                 ObjectClicked = ObjectClicked is null ? null : OnObjectClicked,
+                CallClicked = CallClicked is null ? null : OnCallClicked,
+                PagePointerClicked = PagePointerClicked is null ? null : OnPagePointerClicked,
             };
 
             if (CreateHeaderStyle(column) is { } headerStyle)
@@ -123,6 +173,15 @@ public sealed partial class ResultsGridControl : UserControl
             }
 
             table.Columns.Add(resultCellColumn);
+        }
+
+        if (RowDetails is not null)
+        {
+            table.RowDetailsTemplate = (DataTemplate)Resources["RowDetailsTemplate"];
+
+            table.RowDetailsVisibilityMode = TableViewRowDetailsVisibilityMode.VisibleWhenExpanded;
+
+            table.HeadersVisibility = TableViewHeadersVisibility.All;
         }
 
         table.ItemsSource = rows;
@@ -163,8 +222,20 @@ public sealed partial class ResultsGridControl : UserControl
         ResultsTable?.Measure(GetWarmSize());
     }
 
+    private void Refresh()
+    {
+        ResultsTable?.RefreshView();
+
+        foreach (var host in DetailHosts)
+        {
+            FillDetails(host);
+        }
+    }
+
     private void ReleaseTable()
     {
+        DetailHosts.Clear();
+
         if (ResultsTable is not { } table)
         {
             return;
@@ -322,8 +393,57 @@ public sealed partial class ResultsGridControl : UserControl
 
     private void OnObjectClicked(ObjectValue value) => ObjectClicked?.Invoke(this, value);
 
+    private void OnCallClicked(CallValue value) => CallClicked?.Invoke(this, value);
+
+    private void OnPagePointerClicked(RowBufferPage pointer) => PagePointerClicked?.Invoke(this, pointer);
+
+    private void OnRowDetailsDataContextChanged(FrameworkElement sender, DataContextChangedEventArgs args)
+    {
+        if (sender is not Panel host)
+        {
+            return;
+        }
+
+        DetailHosts.Add(host);
+
+        FillDetails(host);
+    }
+
+    private void OnRowDetailsUnloaded(object sender, RoutedEventArgs e)
+    {
+        if (sender is Panel host)
+        {
+            DetailHosts.Remove(host);
+        }
+    }
+
+    private void FillDetails(Panel host)
+    {
+        if (host.DataContext is not ResultRow<long> row || RowDetails is not { } details)
+        {
+            host.Children.Clear();
+
+            return;
+        }
+
+        ResultDetailsPanel.Fill(host, details(row), PagePointerClicked is null ? null : OnPagePointerClicked);
+    }
+
     private static void OnRowNameChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
         => ((ResultsGridControl)d).UpdateStatus();
+
+    private static void OnRowDetailsChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
+        => ((ResultsGridControl)d).Rebuild();
+
+    private static void OnVersionChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
+        => ((ResultsGridControl)d).Refresh();
+
+    private static void OnIsStatusBarVisibleChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
+    {
+        var control = (ResultsGridControl)d;
+
+        control.StatusBar.Visibility = control.IsStatusBarVisible ? Visibility.Visible : Visibility.Collapsed;
+    }
 
     private static void OnResultSetChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
     {

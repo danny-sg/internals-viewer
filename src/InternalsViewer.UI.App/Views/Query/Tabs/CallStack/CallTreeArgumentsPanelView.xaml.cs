@@ -1,6 +1,7 @@
 using System;
 using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Query.CallStack.Locators;
+using InternalsViewer.Query.FullTrace.RowBuffers;
 using InternalsViewer.UI.App.Controls;
 using InternalsViewer.UI.App.Controls.CallStack;
 using InternalsViewer.UI.App.Controls.Docking;
@@ -51,6 +52,9 @@ public sealed partial class CallTreeArgumentsPanelView : UserControl, IDocumentC
         }
     }
 
+    private void OnPagePointerClicked(object? sender, RowBufferPage pointer)
+        => _ = ViewModel?.OpenPagePointerAsync(pointer, KeyboardState.IsShiftDown());
+
     private void OnCopySignatureClick(object sender, RoutedEventArgs e)
     {
         if (ViewModel?.Arguments.Signature is { Length: > 0 } signature)
@@ -75,6 +79,8 @@ public sealed partial class CallTreeArgumentsPanelView : UserControl, IDocumentC
             e.Menu.Items.Add(MenuItems.Create("Go To Call", () => viewModel.Tree.GoToCall(node)));
 
             e.Menu.Items.Add(MenuItems.Create("Open In Call Stack", () => viewModel.Query.PlayheadStack.Open(node, index)));
+
+            e.Menu.Items.Add(MenuItems.Create("Call Stack", () => viewModel.ShowCallStack(node, index)));
 
             e.Menu.Items.Add(MenuItems.Create("Scope", () => viewModel.Query.PlayheadStack.Scope(node)));
         }

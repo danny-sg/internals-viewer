@@ -21,8 +21,13 @@
                                  Background="{ThemeResource LayerFillColorDefaultBrush}">
                 <tableView:TableView.Resources>
                     <x:Double x:Key="ListViewItemMinHeight">0</x:Double>
+                    <Thickness x:Key="TableViewDetailsPadding">0</Thickness>
                 </tableView:TableView.Resources>
             </tableView:TableView>
+        </DataTemplate>
+        <DataTemplate x:Key="RowDetailsTemplate">
+            <StackPanel DataContextChanged="OnRowDetailsDataContextChanged"
+                        Unloaded="OnRowDetailsUnloaded"/>
         </DataTemplate>
     </UserControl.Resources>
     <Grid>
@@ -33,7 +38,8 @@
         <Border x:Name="TableHost"
                 Grid.Row="0"
                 Background="{ThemeResource LayerFillColorDefaultBrush}" />
-        <Border Grid.Row="1"
+        <Border x:Name="StatusBar"
+                Grid.Row="1"
                 Padding="8,4"
                 BorderThickness="0,1,0,0"
                 BorderBrush="{ThemeResource ControlStrokeColorDefaultBrush}">

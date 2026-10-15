@@ -107,19 +107,6 @@ public sealed class DiaResolver : IDisposable
     internal SymbolReader ReadSymbolsAtRva(uint rva, bool includeSignature = true)
         => new(DiaBridge.BeginEnumSymbolsAtRva(_session, rva), includeSignature);
 
-    internal void VisitFunctions(Action<uint, ReadOnlySpan<char>> visit)
-    {
-        using var symbols = ReadSymbols(includeSignature: false);
-
-        while (symbols.MoveNext())
-        {
-            if (symbols.IsFunction)
-            {
-                visit(symbols.Rva, symbols.Name);
-            }
-        }
-    }
-
     internal string? GetSignature(uint rva)
     {
         using var symbols = ReadSymbolsAtRva(rva);

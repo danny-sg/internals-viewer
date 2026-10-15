@@ -426,7 +426,10 @@ public class ArgumentRowBuilderTests
                                            "HoBtAccess",
                                            "Init");
 
-        var table = ArgumentRowBuilder.BuildTable(layout, [Call(0x100, 72057594043236352)], (_, _, _) => "dbo.T.PK", decode: false);
+        var table = ArgumentRowBuilder.BuildTable(layout,
+                                                  [Call(0x100, 72057594043236352)],
+                                                  (_, _, _) => "dbo.T.PK",
+                                                  isDecoded: () => false);
 
         Assert.Equal("0x100000000510000", Assert.Single(table.Rows)[3]);
     }

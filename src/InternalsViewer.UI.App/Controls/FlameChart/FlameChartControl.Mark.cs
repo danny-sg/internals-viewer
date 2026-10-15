@@ -66,7 +66,17 @@ public sealed partial class FlameChartControl
         }
     }
 
-    private double? RevealCall(CallStackNode node, int call)
+    public void ZoomToCall(CallStackNode node, int call)
+    {
+        if (RevealSpan(node, call) is { } span)
+        {
+            ZoomTo(span.Start, span.End);
+        }
+    }
+
+    private double? RevealCall(CallStackNode node, int call) => RevealSpan(node, call)?.Start;
+
+    private TraceSpan? RevealSpan(CallStackNode node, int call)
     {
         if (GetCall(node, call) is not { } found)
         {
@@ -78,7 +88,7 @@ public sealed partial class FlameChartControl
             SetRoot(null);
         }
 
-        return found.Span.Start;
+        return found.Span;
     }
 
     private void ClearMark()
@@ -140,7 +150,7 @@ public sealed partial class FlameChartControl
                     continue;
                 }
 
-                return ContentTop + _laneTops[lane] - (float)_scrollY + LaneHeaderHeight + Math.Min(depth, DepthOf(thread)) * _rowHeight;
+                return ContentTop + _laneTops[lane] - (float)_scrollY + RowsOffset + Math.Min(depth, DepthOf(thread)) * _rowHeight;
             }
 
             return null;

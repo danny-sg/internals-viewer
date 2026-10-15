@@ -41,7 +41,7 @@ public static class ArgumentRowBuilder
                                             IReadOnlyList<TraceArgumentCall> calls,
                                             ValueDescriber? describe = null,
                                             IReadOnlyList<int>? included = null,
-                                            bool decode = true)
+                                            Func<bool>? isDecoded = null)
     {
         var slots = CapturedSlots(layout);
 
@@ -65,9 +65,16 @@ public static class ArgumentRowBuilder
             columns.Add(BuildColumn(columns.Count, ReturnName, returnType, GetReturnSource(returnType), ReturnTint));
         }
 
-        var source = new ArgumentCallSource(calls,
-                                            columns.Count,
-                                            (call, index) => GetValues(slots, hasReturn ? returnType : null, call, index, describe, decode));
+        var returned = hasReturn ? returnType : null;
+
+        var source = new CachedRowSource<TraceArgumentCall>(calls,
+                                                            columns.Count,
+                                                            (call, index) => GetValues(slots,
+                                                                                       returned,
+                                                                                       call,
+                                                                                       index,
+                                                                                       describe,
+                                                                                       isDecoded?.Invoke() ?? true));
 
         var rows = new ResultRow<long>[included?.Count ?? calls.Count];
 
@@ -78,7 +85,7 @@ public static class ArgumentRowBuilder
             rows[index] = new ResultRow<long>(source, call) { Id = call };
         }
 
-        return new QueryResultSet { Columns = columns, Rows = rows };
+        return new QueryResultSet { Columns = columns, Rows = rows, Source = source };
     }
 
     public static ArgumentSlot? FindSlotAt(ArgumentLayout layout, int ordinal)

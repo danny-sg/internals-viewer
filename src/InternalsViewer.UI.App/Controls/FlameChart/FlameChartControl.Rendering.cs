@@ -160,9 +160,11 @@ public sealed partial class FlameChartControl
                 break;
             }
 
-            if (laneTop + LaneHeaderHeight >= ContentTop)
+            if (laneTop + RowsOffset >= ContentTop)
             {
                 DrawLaneHeader(canvas, timeline.Threads[lane], laneTop, width, timeline.Threads.Count > 1);
+
+                DrawRowBufferBar(canvas, timeline.Threads[lane], laneTop + LaneHeaderHeight, width, scale);
             }
         }
 
@@ -185,7 +187,7 @@ public sealed partial class FlameChartControl
         {
             var thread = timeline.Threads[lane];
 
-            var rowsTop = ContentTop + _laneTops[lane] - (float)_scrollY + LaneHeaderHeight;
+            var rowsTop = ContentTop + _laneTops[lane] - (float)_scrollY + RowsOffset;
 
             for (var depth = 0; depth < DepthOf(thread) && depth < thread.Rows.Count; depth++)
             {
@@ -223,7 +225,7 @@ public sealed partial class FlameChartControl
                         left,
                         Baseline(top, LaneHeaderHeight),
                         SKTextAlign.Left,
-                        _paints.Font,
+                        _paints.HeaderFont,
                         _paints.Label);
     }
 
@@ -539,7 +541,7 @@ public sealed partial class FlameChartControl
 
         var right = (float)((row.Ends(_axis)[hit.Index] - _viewStart) * scale);
 
-        var top = ContentTop + _laneTops[hit.Lane] - (float)_scrollY + LaneHeaderHeight + hit.Depth * _rowHeight;
+        var top = ContentTop + _laneTops[hit.Lane] - (float)_scrollY + RowsOffset + hit.Depth * _rowHeight;
 
         return new SKRect(Math.Max(left, -2f), top, Math.Min(Math.Max(right, left + NarrowSpan), width + 2f), top + BarHeight);
     }

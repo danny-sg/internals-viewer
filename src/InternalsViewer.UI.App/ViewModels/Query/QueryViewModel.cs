@@ -17,6 +17,7 @@ using InternalsViewer.Internals.Extensions;
 using InternalsViewer.Query;
 using InternalsViewer.Query.CallStack;
 using InternalsViewer.Query.FullTrace;
+using InternalsViewer.Query.FullTrace.RowBuffers;
 using InternalsViewer.Query.FullTrace.Arguments;
 using InternalsViewer.Query.FullTrace.Iterators;
 using InternalsViewer.Query.FullTrace.Timeline;
@@ -89,7 +90,8 @@ public sealed class QueryViewModelFactory(ILogger<QueryViewModel> logger,
                                           PageTabViewModelFactory pageTabViewModelFactory,
                                           TraceDirectoryService traceDirectoryService,
                                           IBufferPoolInfoProvider bufferPoolInfoProvider,
-                                          SimulationTabViewModelFactory simulationTabViewModelFactory)
+                                          SimulationTabViewModelFactory simulationTabViewModelFactory,
+                                          RowBufferPageResolverFactory rowBufferPageResolverFactory)
 {
     public QueryViewModel Create(DatabaseSource database) => new(logger,
                                                                  queryRunner,
@@ -103,6 +105,7 @@ public sealed class QueryViewModelFactory(ILogger<QueryViewModel> logger,
                                                                  traceDirectoryService,
                                                                  bufferPoolInfoProvider,
                                                                  simulationTabViewModelFactory,
+                                                                 rowBufferPageResolverFactory,
                                                                  database);
 }
 
@@ -145,6 +148,8 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
     private readonly PageTabViewModelFactory _pageTabViewModelFactory;
 
     private readonly TraceDirectoryService _traceDirectoryService;
+
+    private readonly RowBufferPageResolverFactory _rowBufferPageResolverFactory;
 
     private bool _isRestoringLayout;
     private bool _layoutRestored;
@@ -265,6 +270,9 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
     private TraceTimeline? _fullFlameChart;
 
     [ObservableProperty]
+    private TraceRowBufferMarks? _rowBufferMarks;
+
+    [ObservableProperty]
     private TraceEventLink? _currentEventLink;
 
     [ObservableProperty]
@@ -332,9 +340,12 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
                           TraceDirectoryService traceDirectoryService,
                           IBufferPoolInfoProvider bufferPoolInfoProvider,
                           SimulationTabViewModelFactory simulationTabViewModelFactory,
+                          RowBufferPageResolverFactory rowBufferPageResolverFactory,
                           DatabaseSource database)
     {
         _simulationTabViewModelFactory = simulationTabViewModelFactory;
+
+        _rowBufferPageResolverFactory = rowBufferPageResolverFactory;
 
         Symbols = new SymbolsViewModel(logger, settingsViewModel);
 
@@ -954,6 +965,11 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
         }
         else if (e.PropertyName == nameof(QueryOptionsViewModel.RecordTimeTravel))
         {
+            if (!ExecuteQueryCommand.IsRunning)
+            {
+                ClearResults();
+            }
+
             Layout.IsTrace = QueryOptions.RecordTimeTravel;
 
             PrepareTrace();
@@ -1023,6 +1039,8 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
         FlameChart = null;
 
         FullFlameChart = null;
+
+        RowBufferMarks = null;
 
         CreatedCallTreeTab?.Dispose();
 
@@ -1130,19 +1148,7 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
     }
 
     private Internals.Engine.Database.AllocationUnit? FindAllocationUnit(PlanNode node)
-    {
-        if (string.IsNullOrEmpty(node.Table))
-        {
-            return null;
-        }
-
-        return Database.AllocationUnits
-                       .Values
-                       .FirstOrDefault(a => NameMatches(a.IndexName, node.Index ?? string.Empty)
-                                            && NameMatches(a.TableName, node.Table)
-                                            && (string.IsNullOrEmpty(node.Schema) || NameMatches(a.SchemaName, node.Schema))
-                                            && a.AllocationUnitType == AllocationUnitType.InRowData);
-    }
+        => AllocationUnitProvider.FindAllocationUnit(Database, node.Schema, node.Table, node.Index);
 
     private bool OpenSimulationCore(PlanNode node, bool wrapInSelect)
     {
@@ -1385,12 +1391,7 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
             return;
         }
 
-        var candidates = Database.AllocationUnits
-                                 .Values
-                                 .Where(a => NameMatches(a.IndexName, index)
-                                             && NameMatches(a.TableName, table)
-                                             && (schema.Length == 0 || NameMatches(a.SchemaName, schema)))
-                                 .ToList();
+        var candidates = AllocationUnitProvider.GetAllocationUnits(Database, schema, table, index);
 
         if (FindColumnstoreUnit(candidates) is { } columnstoreUnit)
         {
@@ -1779,9 +1780,6 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
         return lo;
     }
-
-    private static bool NameMatches(string? a, string? b) =>
-        string.Equals(a?.Trim('[', ']'), b?.Trim('[', ']'), StringComparison.OrdinalIgnoreCase);
 
     // Generating the object layers walks the whole allocation map, so build them off the UI thread and
     // apply the results back on it.
@@ -2215,13 +2213,20 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
         CallStack = result.CallStack;
 
+        var iterators = IteratorTarget.Build(result.CallStack, Events, result.PlanLink);
+
         Arguments.SetSource(result.CallStore,
                             result.CallStack,
-                            IteratorTarget.Build(result.CallStack, Events, result.PlanLink),
+                            iterators,
                             result.HoBtAccess,
-                            result.MemoryMap);
+                            result.MemoryMap,
+                            result.RowBuffers,
+                            _rowBufferPageResolverFactory.Create(Database),
+                            new RowBufferDecoder(Database, i => iterators.GetValueOrDefault(i)?.Operator));
 
         FullFlameChart = result.Timeline;
+
+        RowBufferMarks = result.RowBufferMarks;
 
         FlameChart = flameChart;
 
@@ -2344,6 +2349,10 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
         LastRun = null;
 
         FlameChart = null;
+
+        FullFlameChart = null;
+
+        RowBufferMarks = null;
 
         SelectedCallNode = null;
 

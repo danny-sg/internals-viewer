@@ -128,6 +128,8 @@ public sealed class CallStackTree
 
             AddLocators(leaf, node.Locators);
 
+            leaf.HasRowBuffers |= node.HasRowBuffers;
+
             AddCallActivity(leaf, node.CallActivity);
 
             foreach (var engineEvent in events)
@@ -237,6 +239,8 @@ public sealed class CallStackTree
             node.Allocations = 0;
 
             node.Locators = null;
+
+            node.HasRowBuffers = false;
         }
 
         var keep = node.Events.Count > 0 || node.Calls > 0;
@@ -421,6 +425,10 @@ public sealed class CallStackTree
         AddLocators(target, source.Locators);
 
         source.Locators = null;
+
+        target.HasRowBuffers |= source.HasRowBuffers;
+
+        source.HasRowBuffers = false;
 
         AddCallActivity(target, source.CallActivity);
 

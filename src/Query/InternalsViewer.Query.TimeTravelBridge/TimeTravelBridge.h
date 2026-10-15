@@ -89,9 +89,55 @@ extern "C"
         uint32_t Reserved;
     };
 
+    struct RowBufferRead
+    {
+        uint64_t Function;
+        int32_t  Register;
+        uint32_t Reserved;
+    };
+
+    struct RowBufferLayout
+    {
+        uint64_t VTable;
+        uint32_t BufferOffset;
+        uint32_t BindingsOffset;
+    };
+
+    struct RowBufferRow
+    {
+        uint64_t Function;
+        uint64_t Instance;
+        uint64_t Iterator;
+        uint64_t Buffer;
+        uint64_t Id;
+        uint32_t Call;
+        uint32_t FirstColumn;
+        uint32_t ColumnCount;
+        uint32_t Reserved;
+    };
+
+    struct RowBufferColumn
+    {
+        uint32_t Data;
+        uint32_t Length;
+        uint32_t Captured;
+        int32_t  RecordOffset;
+        uint32_t BindingFlags;
+        uint16_t FixedLength;
+        uint8_t  Status;
+        uint8_t  Flags;
+    };
+
     typedef void(__stdcall* PointerValueCallback)(const PointerValue* values, int32_t count);
 
     typedef void(__stdcall* MemoryMapCallback)(const MemoryMapEntry* entries, int32_t count);
+
+    typedef void(__stdcall* RowBufferCallback)(const RowBufferRow*    rows,
+                                               int32_t                rowCount,
+                                               const RowBufferColumn* columns,
+                                               int32_t                columnCount,
+                                               const uint8_t*         data,
+                                               int32_t                dataLength);
 
     typedef void(__stdcall* PublishedEventCallback)(const PublishedEvent* publishedEvents, int32_t count);
 
@@ -121,11 +167,16 @@ extern "C"
                                                int32_t                eventWriterFunctionCount,
                                                const MemoryMapFunction* memoryMapFunctions,
                                                int32_t                memoryMapFunctionCount,
+                                               const RowBufferRead*   rowBufferReads,
+                                               int32_t                rowBufferReadCount,
+                                               const RowBufferLayout* rowBufferLayouts,
+                                               int32_t                rowBufferLayoutCount,
                                                CallChunkCallback      logCalls,
                                                CallSpanCallback       logSpans,
                                                PointerValueCallback   logPointerValues,
                                                PublishedEventCallback logPublishedEvents,
                                                MemoryMapCallback      logMemoryMap,
+                                               RowBufferCallback      logRowBuffers,
                                                ProgressCallback       progress,
                                                volatile int32_t*      cancel,
                                                void**                 tree);

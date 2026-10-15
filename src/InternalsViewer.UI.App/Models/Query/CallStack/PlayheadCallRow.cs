@@ -35,6 +35,10 @@ public sealed partial class PlayheadCallRow(CallStackNode node,
 
     public bool IsCurrent { get; } = isCurrent;
 
+    public string CurrentText { get; set; } = string.Empty;
+
+    public bool HasRowBuffer { get; set; }
+
     public long PositionStart => (long)Math.Floor(stackCall.PositionStart - positionOrigin);
 
     public long PositionEnd => (long)Math.Floor(stackCall.PositionEnd - positionOrigin);

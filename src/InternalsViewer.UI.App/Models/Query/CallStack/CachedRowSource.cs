@@ -1,13 +1,10 @@
 using System;
 using System.Collections.Generic;
-using InternalsViewer.Query.FullTrace.Calls;
 using InternalsViewer.Query.Results;
 
 namespace InternalsViewer.UI.App.Models.Query.CallStack;
 
-internal sealed class ArgumentCallSource(IReadOnlyList<TraceArgumentCall> calls,
-                                         int fieldCount,
-                                         Func<TraceArgumentCall, int, object?[]> values) : IResultRowSource
+internal sealed class CachedRowSource<T>(IReadOnlyList<T> items, int fieldCount, Func<T, int, object?[]> values) : IResultRowSource
 {
     private const int CachedRows = 512;
 
@@ -21,7 +18,7 @@ internal sealed class ArgumentCallSource(IReadOnlyList<TraceArgumentCall> calls,
     {
         if (!Cache.TryGetValue(row, out var rowValues))
         {
-            rowValues = values(calls[row], row);
+            rowValues = values(items[row], row);
 
             Cache[row] = rowValues;
 
@@ -34,5 +31,12 @@ internal sealed class ArgumentCallSource(IReadOnlyList<TraceArgumentCall> calls,
         }
 
         return rowValues[ordinal];
+    }
+
+    public void Invalidate()
+    {
+        Cache.Clear();
+
+        Cached.Clear();
     }
 }

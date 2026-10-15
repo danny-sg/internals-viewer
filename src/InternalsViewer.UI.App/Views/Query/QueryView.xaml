@@ -64,7 +64,7 @@
                                    IsChecked="{x:Bind ViewModel.Layout.IsEventsVisible, Mode=TwoWay}"
                                    IsEnabled="{x:Bind ViewModel.Layout.CanShowEventViews, Mode=OneWay}"/>
 
-                                <MenuFlyoutSubItem Text="Call Tree">
+                                <MenuFlyoutSubItem Text="Calls">
                                     <ToggleMenuFlyoutItem Text="Call Tree"
                                        IsChecked="{x:Bind ViewModel.Layout.IsCallTreeVisible, Mode=TwoWay}"/>
                                     <MenuFlyoutSeparator/>

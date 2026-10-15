@@ -557,7 +557,7 @@ public sealed partial class FlameChartControl
                 continue;
             }
 
-            var rowsTop = ContentTop + _laneTops[lane] - (float)_scrollY + LaneHeaderHeight;
+            var rowsTop = ContentTop + _laneTops[lane] - (float)_scrollY + RowsOffset;
 
             var rowsBottom = rowsTop + DepthOf(timeline.Threads[lane]) * _rowHeight;
 

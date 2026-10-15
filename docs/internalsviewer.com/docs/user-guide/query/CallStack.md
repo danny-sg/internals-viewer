@@ -102,6 +102,7 @@ Right-click a cell for what can be done with its call and value:
 
 - **Go To Call** - shows the call in the call tree and the Flame Chart
 - **Open In Call Stack** - opens the Flame Chart's call stack at the start of the call, without moving the playhead
+- **Call Stack** - opens a tab beside **Arguments** listing the calls in progress at the start of the call, on every thread, as the Flame Chart's [Call Stack](/docs/user-guide/query/FlameChart#call-stack) does. The tab stays at that point, so several can be open side by side
 - **Scope** - scopes the Flame Chart to the call's function
 - **Go To Origin** - for an object in the trace's map, goes to the call that created it, the same as clicking the link
 - **Open In The Columnstore Viewer** - for a columnstore object

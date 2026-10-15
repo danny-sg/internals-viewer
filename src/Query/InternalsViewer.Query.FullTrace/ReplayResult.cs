@@ -1,5 +1,6 @@
 using InternalsViewer.Query.FullTrace.Calls;
 using InternalsViewer.Query.FullTrace.Native;
+using InternalsViewer.Query.FullTrace.RowBuffers;
 using InternalsViewer.Query.FullTrace.Timeline;
 
 namespace InternalsViewer.Query.FullTrace;
@@ -24,4 +25,5 @@ internal sealed record ReplayResult(CallNode[] Nodes,
                                     TraceCallStore CallStore,
                                     TraceTimeline Timeline,
                                     PublishedEvent[] PublishedEvents,
-                                    AddressEntry[] MemoryMap);
+                                    AddressEntry[] MemoryMap,
+                                    RowBufferIndex RowBuffers);

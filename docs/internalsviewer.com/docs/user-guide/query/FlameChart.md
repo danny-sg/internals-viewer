@@ -11,8 +11,8 @@ The Call Tree merges every call down the same path into one row with a count. Th
 From top to bottom:
 
 - **The ruler** - how far through the recording, in trace positions or instructions - see [Position and instructions](#position-and-instructions). Click it to put down the [playhead](#playhead)
-- **The Operators pane** - with **Operators** on, a row per plan operator - see [Operators](#operators)
-- **A lane per thread** - headed **Thread** and the operating system thread id
+- **The Operators pane** - with **View > Operators** on, a row per plan operator - see [Operators](#operators)
+- **A lane per thread** - headed **Thread** and the operating system thread id, with the [row buffer](#row-buffers) marks under the header when **View > Row Buffers** is on
 - **The memory band** - with **Memory** on, the memory allocated and in use along the bottom - see [Memory](#memory)
 
 In a lane, each call is a bar running from where it started to where it ended. The calls it made sit directly beneath it, inside its width, so the outermost call is at the top of the lane and each row down is one level deeper in the stack. That is the reverse of a classic flame graph, which grows upwards, but it reads the same way as the Call Tree. A bar is coloured by its function's category and labelled with the function's name once it is wide enough to read.
@@ -26,7 +26,7 @@ The Flame Chart is not the [Flame Graph](/docs/user-guide/query/ExecutionPlan#fl
 
 ## Position and instructions
 
-TTD has no clock. A recording is a sequence of positions - a sequence number shared by every thread, plus the number of instructions the thread has executed since - so the ruler is never in milliseconds. The two toggles on the tab strip choose what a bar's width means:
+TTD has no clock. A recording is a sequence of positions - a sequence number shared by every thread, plus the number of instructions the thread has executed since - so the ruler is never in milliseconds. **View > Scale** chooses what a bar's width means:
 
 - **Position** - the default. Width is the span of trace positions a call covered. Positions are shared by every thread, so the lanes line up against each other and parallel workers can be compared. A position moves on by one whole step at each point where a thread synchronises with another or leaves the recorded code, however many instructions came before it. So short calls that cross one of those points come out about the same width, and calls that stay inside the recorded code without crossing one are thin.
 - **Instructions** - width is the number of x64 machine instructions the call executed, including the calls beneath it, which is the closest the recording has to how long a call took. Only the storage engine and query processor are recorded, so time spent in SQLOS or Windows - allocating memory, waiting, reading from disk - adds next to nothing. Each thread counts its own instructions from zero, so every lane starts at the left and the lanes do not line up.
@@ -59,6 +59,8 @@ Right-clicking a bar gives:
 ## Selecting a call
 
 **Click** a bar to select the call. The Call Tree goes to its frame, the [Arguments](/docs/user-guide/query/CallStack#arguments) tab follows with that call selected, and the chart dims everything except that function's calls and the calls beneath them. Click the selected bar again, or the background, to deselect.
+
+With **View > Auto-Zoom** on, the chart zooms to fit the selected call whenever the selection changes, whether it was clicked here or selected in the Call Tree or **Arguments**.
 
 Hovering over a bar describes the call:
 
@@ -98,7 +100,7 @@ The filter button beside the box opens the same category badges as the Call Tree
 
 ## Operators
 
-The **Operators** toggle adds a pane above the threads, with a row per plan operator in the same order and colours as the Timeline's Plan band. Each row runs from the operator's first call to its last. The stretches where one of its methods was on the stack are drawn in full colour and the rest shaded, and an operator that ran on several threads gets a track per thread.
+**View > Operators** adds a pane above the threads, with a row per plan operator in the same order and colours as the Timeline's Plan band. Each row runs from the operator's first call to its last. The stretches where one of its methods was on the stack are drawn in full colour and the rest shaded, and an operator that ran on several threads gets a track per thread.
 
 This shows something the lanes cannot. An operator is only on a thread's stack while one of its methods runs, so a Hash Match sits beside its scans in the lanes rather than above them - but its iterator object, and the hash table it owns, live from its first call to its last. The Operators pane draws that lifetime.
 
@@ -108,6 +110,10 @@ This shows something the lanes cannot. An operator is only on a thread's stack w
 - Hovering over an operator shows its thread, how many times each of its methods was called, its instructions and positions, the share of its lifetime spent inside its calls (child operators included) and its peak memory in use
 
 ![The Operators pane above the thread lanes, with the Table Scan selected and every call outside it dimmed](/docs/user-guide/images/flame-chart-operator-selected.png)
+
+## Row buffers
+
+**View > Row Buffers** adds a strip under each thread header with a mark for every row a scan, seek, sort or spool handed back, at the point its `GetRow` call returned it. When one `GetRow` calls another for the same row, only the innermost call is marked, so each row is marked once. The values in each row are on the Call Tree's **Row Buffers** tab, opened from the red square beside a call that captured rows - see [Call Tree](/docs/user-guide/query/CallStack).
 
 ## Memory
 
@@ -140,7 +146,9 @@ See [How Full Trace works](/docs/deep-dives/full-trace) for the details.
 
 ## Call Stack
 
-**Call Stack** on the tab strip opens a pane beneath the chart, while there is a playhead, listing the calls in progress at the playhead. Its header has the same step back and step forward buttons as the tab strip, to move the playhead from one call to the next without leaving the pane, and an **X** that closes it again. Stepping, from either place, closes the details. Each thread with a call there is a row of its own, and opening it shows its calls, each as the function's signature with each parameter's type and the value it was passed, coloured as in the Call Tree's signatures. A dot before each call shows its category's colour, and hovering over it names the category. A value that decodes to an object shows the object's class instead of its declared type. `this` is shown without its address, unless it decodes to something such as an operator or an index, and its address is in the call's details. The call running at the playhead, the innermost, comes first, highlighted and marked with a red arrow, and each call below it is the one that called it, as a debugger lists a stack. The values decode as they do in [Arguments](/docs/user-guide/query/CallStack#arguments), and the **Decode** setting is shared. The first thread is open to begin with, and a thread you open or close stays that way as the playhead moves. The pane follows the playhead as it is clicked, dragged, stepped or played, and drag the splitter above it to resize it. The setting is remembered between sessions.
+**Call Stack** on the tab strip opens a pane beneath the chart, while there is a playhead, listing the calls in progress at the playhead. It is greyed out until there is a playhead, or until **Open Call Stack** opens the pane without one, so it can be closed again. Its header has the same step back and step forward buttons as the tab strip, to move the playhead from one call to the next without leaving the pane, and an **X** that closes it again. Stepping, from either place, closes the details. Each thread with a call there is a row of its own, and opening it shows its calls, each as the function's signature with each parameter's type and the value it was passed, coloured as in the Call Tree's signatures. A dot before each call shows its category's colour, and hovering over it names the category. A value that decodes to an object shows the object's class instead of its declared type. `this` is shown without its address, unless it decodes to something such as an operator or an index, and its address is in the call's details. The call running at the playhead, the innermost, comes first, highlighted and marked with a red arrow, and each call below it is the one that called it, as a debugger lists a stack. The values decode as they do in [Arguments](/docs/user-guide/query/CallStack#arguments), and the **Decode** setting is shared. The first thread is open to begin with, and a thread you open or close stays that way as the playhead moves. The pane follows the playhead as it is clicked, dragged, stepped or played, and drag the splitter above it to resize it. The setting is remembered between sessions.
+
+A red square before a call means it handed back a row, the same as the red square in the Call Tree. Clicking it shows the [row buffer](#row-buffers) in the details, as a table with a column for each of the row's columns, headed by the column's name where the table could be found.
 
 The pane takes the place of the raised calls at the playhead, which show the same stack without its values. It follows the [category filter](/docs/user-guide/query/CallStack#filtering-by-category) and **Scope**, so its calls are the ones drawn in the chart above it.
 

@@ -6,6 +6,7 @@ using InternalsViewer.Query.FullTrace.Calls;
 using InternalsViewer.Query.FullTrace.Iterators;
 using InternalsViewer.Query.FullTrace.Timeline;
 using InternalsViewer.Query.FullTrace.Memory;
+using InternalsViewer.Query.FullTrace.RowBuffers;
 
 namespace InternalsViewer.Query.FullTrace.Export;
 
@@ -20,6 +21,8 @@ internal sealed class TraceExportSection : IQueryExportSection
     internal const string EventLinksEntry = "fulltrace/eventlinks.bin";
 
     internal const string MemoryMapEntry = "fulltrace/memorymap.bin";
+
+    internal const string RowBuffersEntry = "fulltrace/rowbuffers.bin";
 
     public bool CanExport(QueryExportContent content) => content.ExtraOf<TraceResult>() is not null;
 
@@ -43,6 +46,8 @@ internal sealed class TraceExportSection : IQueryExportSection
         writer.WriteBinary(EventLinksEntry, CompressionLevel.Fastest, w => fullTrace.Timeline.WriteEventLinks(w, writer.IdOf));
 
         writer.WriteBinary(MemoryMapEntry, CompressionLevel.Fastest, fullTrace.MemoryMap.Write);
+
+        writer.WriteBinary(RowBuffersEntry, CompressionLevel.Fastest, fullTrace.RowBuffers.Write);
     }
 
     public IRunExtra? Read(QueryExportReader reader)
@@ -62,6 +67,10 @@ internal sealed class TraceExportSection : IQueryExportSection
 
         callStore.MapNodes(timeline.MappedNodes);
 
+        var rowBuffers = reader.HasEntry(RowBuffersEntry) ? reader.ReadBinary(RowBuffersEntry, RowBufferIndex.Read) : RowBufferIndex.Empty;
+
+        rowBuffers.AnnotateNodes(callStore);
+
         timeline.SetLifetimes(IteratorLifetimeBuilder.Build(timeline, [.. events.OfType<ExecutionOperatorEvent>()]));
 
         if (reader.HasEntry(EventLinksEntry))
@@ -75,7 +84,9 @@ internal sealed class TraceExportSection : IQueryExportSection
             HoBtAccess = HoBtAccessMap.Build(callStore, timeline.MappedNodes),
             MemoryMap = reader.HasEntry(MemoryMapEntry)
                 ? reader.ReadBinary(MemoryMapEntry, r => MemoryMap.Read(r, timeline.NodeOf))
-                : MemoryMap.Empty
+                : MemoryMap.Empty,
+            RowBuffers = rowBuffers,
+            RowBufferMarks = TraceRowBufferMarks.Build(timeline, rowBuffers)
         };
     }
 }

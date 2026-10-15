@@ -121,6 +121,18 @@ public sealed partial class FlameChartControl : Grid, IPlayheadChart, IDisposabl
         set => SetValue(ShowCallStackProperty, value);
     }
 
+    public static readonly DependencyProperty AutoZoomProperty =
+        DependencyProperty.Register(nameof(AutoZoom),
+                                    typeof(bool),
+                                    typeof(FlameChartControl),
+                                    new PropertyMetadata(false));
+
+    public bool AutoZoom
+    {
+        get => (bool)GetValue(AutoZoomProperty);
+        set => SetValue(AutoZoomProperty, value);
+    }
+
     public static readonly DependencyProperty GrantedMemoryProperty =
         DependencyProperty.Register(nameof(GrantedMemory),
                                     typeof(long),
@@ -766,7 +778,7 @@ public sealed partial class FlameChartControl : Grid, IPlayheadChart, IDisposabl
 
         var rows = threads.Sum(DepthOf);
 
-        var available = (float)ViewportHeight - threads.Count * (LaneHeaderHeight + LaneGap);
+        var available = (float)ViewportHeight - threads.Count * (RowsOffset + LaneGap);
 
         var maximum = _expandedThread is null ? MaximumRowHeight : FocusedMaximumRowHeight;
 
@@ -789,7 +801,7 @@ public sealed partial class FlameChartControl : Grid, IPlayheadChart, IDisposabl
     }
 
     private float LaneHeight(TraceTimelineThread thread)
-        => LaneHeaderHeight + DepthOf(thread) * _rowHeight + (thread.ThreadId == _expandedThread ? _focusPadding : 0) + LaneGap;
+        => RowsOffset + DepthOf(thread) * _rowHeight + (thread.ThreadId == _expandedThread ? _focusPadding : 0) + LaneGap;
 
     private int DepthOf(TraceTimelineThread thread) => IsExpanded(thread) ? thread.Depth : 0;
 
@@ -1081,7 +1093,7 @@ public sealed partial class FlameChartControl : Grid, IPlayheadChart, IDisposabl
             _version++;
         }
 
-        var top = _laneTops[hit.Lane] + LaneHeaderHeight + hit.Depth * _rowHeight;
+        var top = _laneTops[hit.Lane] + RowsOffset + hit.Depth * _rowHeight;
 
         if (top < _scrollY || top + _rowHeight > _scrollY + ViewportHeight)
         {
@@ -1224,6 +1236,11 @@ public sealed partial class FlameChartControl : Grid, IPlayheadChart, IDisposabl
                 control.SetRoot(null);
 
                 control.FindSelectedCall(bringIntoView: true);
+            }
+
+            if (control.AutoZoom)
+            {
+                control.ZoomToSelectedCall();
             }
         }
 

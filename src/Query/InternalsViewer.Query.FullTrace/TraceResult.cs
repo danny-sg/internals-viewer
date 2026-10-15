@@ -4,6 +4,7 @@ using InternalsViewer.Query.FullTrace.Arguments;
 using InternalsViewer.Query.FullTrace.Calls;
 using InternalsViewer.Query.FullTrace.Iterators;
 using InternalsViewer.Query.FullTrace.Memory;
+using InternalsViewer.Query.FullTrace.RowBuffers;
 using InternalsViewer.Query.FullTrace.Timeline;
 
 namespace InternalsViewer.Query.FullTrace;
@@ -15,6 +16,10 @@ public sealed record TraceResult(CallStackTree CallStack, TraceCallStore CallSto
     public HoBtAccessMap HoBtAccess { get; init; } = HoBtAccessMap.Empty;
 
     public MemoryMap MemoryMap { get; init; } = MemoryMap.Empty;
+
+    public RowBufferIndex RowBuffers { get; init; } = RowBufferIndex.Empty;
+
+    public TraceRowBufferMarks RowBufferMarks { get; init; } = TraceRowBufferMarks.Empty;
 
     public IReadOnlyList<CallStackNode> QueryRoots => Roots ??= QueryExecutionCropper.GetRoots(CallStack);
 

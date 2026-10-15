@@ -6,6 +6,8 @@ using CommunityToolkit.Mvvm.Messaging;
 using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Query.CallStack;
 using InternalsViewer.Query.CallStack.Locators;
+using InternalsViewer.UI.App.Controls.CallStack;
+using InternalsViewer.UI.App.Controls.Docking;
 using InternalsViewer.UI.App.Messages;
 using InternalsViewer.UI.App.Models.Columnstore;
 using InternalsViewer.UI.App.Models.Query.CallStack;
@@ -13,6 +15,9 @@ using InternalsViewer.UI.App.ViewModels.Docking;
 using InternalsViewer.UI.App.Views.Query.Tabs.CallStack;
 using Microsoft.Extensions.Logging;
 using Microsoft.UI.Xaml.Controls;
+using System.Threading;
+using System.Threading.Tasks;
+using InternalsViewer.Query.FullTrace.RowBuffers;
 
 namespace InternalsViewer.UI.App.ViewModels.Query.CallStack;
 
@@ -90,7 +95,7 @@ public sealed class CallTreeTabViewModel : IDisposable
 
     private DocumentViewModel ArgumentsDocument { get; }
 
-    private List<DocumentViewModel> Finds { get; } = [];
+    private List<DocumentViewModel> AddedDocuments { get; } = [];
 
     public void ShowMembers() => ShowPanel(MembersDocument, MembersDocument);
 
@@ -124,7 +129,9 @@ public sealed class CallTreeTabViewModel : IDisposable
             return;
         }
 
-        if (Finds.FirstOrDefault(f => f.Content is ValueReferencesViewModel { Value: var found } && found == value) is { } existing)
+        var shown = AddedDocuments.FirstOrDefault(d => d.Content is ValueReferencesViewModel { Value: var found } && found == value);
+
+        if (shown is { } existing)
         {
             Dock.Activate(existing);
 
@@ -133,20 +140,62 @@ public sealed class CallTreeTabViewModel : IDisposable
 
         var references = new ValueReferencesViewModel(value, lookup, this, Logger);
 
-        var document = new DocumentViewModel(references.Title,
-                                             references,
-                                             static () => new CallTreeReferencesPanelView(),
-                                             keepAlive: true,
-                                             key: $"Find{value:X}",
-                                             persist: false);
-
-        var neighbour = Finds.LastOrDefault(Dock.Contains) ?? ArgumentsDocument;
-
-        Finds.Add(document);
-
-        ShowPanel(document, neighbour);
+        AddDocument(new DocumentViewModel(references.Title,
+                                          references,
+                                          static () => new CallTreeReferencesPanelView(),
+                                          keepAlive: true,
+                                          key: $"Find{value:X}",
+                                          persist: false));
 
         _ = references.LoadAsync();
+    }
+
+    public void ShowRowBuffers(CallStackNode node)
+    {
+        if (Arguments.Lookup is not { } lookup || node.Frame is not { } frame)
+        {
+            return;
+        }
+
+        if (AddedDocuments.FirstOrDefault(f => f.Content is RowBuffersViewModel shown && shown.IsShowing(node)) is { } existing)
+        {
+            Dock.Activate(existing);
+
+            return;
+        }
+
+        var rowBuffers = new RowBuffersViewModel(node, lookup, this, Logger, Settings.DecodeValues);
+
+        AddDocument(new DocumentViewModel(rowBuffers.Title,
+                                          rowBuffers,
+                                          static () => new CallTreeRowBuffersPanelView(),
+                                          keepAlive: true,
+                                          key: $"RowBuffers{frame.Address:X}{frame.Instance:X}",
+                                          persist: false));
+
+        _ = rowBuffers.LoadAsync();
+    }
+
+    public void ShowCallStack(CallStackNode node, int call)
+    {
+        if (AddedDocuments.FirstOrDefault(d => d.Content is CallStackViewModel shown && shown.IsShowing(node, call)) is { } existing)
+        {
+            Dock.Activate(existing);
+
+            return;
+        }
+
+        var stack = new CallStackViewModel(Query);
+
+        _ = stack.OpenAsync(node, call);
+
+        AddDocument(new DocumentViewModel(stack.Title,
+                                          stack,
+                                          static () => new CallStackControl(),
+                                          keepAlive: true,
+                                          key: $"CallStack{node.Frame?.Address:X}{node.Frame?.Instance:X}{call}",
+                                          persist: false,
+                                          commandsFactory: static () => TabCommands.Panel(0, new DecodeToggle())));
     }
 
     public void OpenLocator(Locator locator, bool detached)
@@ -161,6 +210,13 @@ public sealed class CallTreeTabViewModel : IDisposable
         }
 
         OpenPage(locator.Page, locator.ValueType == LocatorValueType.Row ? locator.Slot : null, detached);
+    }
+
+    public async Task OpenPagePointerAsync(RowBufferPage pointer, bool detached)
+    {
+        var slot = Arguments.Lookup?.RowBufferPages is { } pages ? await pages.GetSlotAsync(pointer, CancellationToken.None) : null;
+
+        OpenPage(pointer.Page, slot is { } found ? (ushort)found : null, detached);
     }
 
     public void OpenPage(PageAddress pageAddress, ushort? slot, bool detached)
@@ -197,12 +253,21 @@ public sealed class CallTreeTabViewModel : IDisposable
 
         Tree.Dispose();
 
-        foreach (var find in Finds)
+        foreach (var document in AddedDocuments)
         {
-            (find.Content as IDisposable)?.Dispose();
+            (document.Content as IDisposable)?.Dispose();
         }
 
-        Finds.Clear();
+        AddedDocuments.Clear();
+    }
+
+    private void AddDocument(DocumentViewModel document)
+    {
+        var neighbour = AddedDocuments.LastOrDefault(Dock.Contains) ?? ArgumentsDocument;
+
+        AddedDocuments.Add(document);
+
+        ShowPanel(document, neighbour);
     }
 
     private CallExclusions GetExclusions()
@@ -235,7 +300,7 @@ public sealed class CallTreeTabViewModel : IDisposable
         });
     }
 
-    private IEnumerable<DocumentViewModel> PanelDocuments() => [ArgumentsDocument, SymbolsDocument, MembersDocument, .. Finds];
+    private IEnumerable<DocumentViewModel> PanelDocuments() => [ArgumentsDocument, SymbolsDocument, MembersDocument, .. AddedDocuments];
 
     private void SetPanelVisible(DocumentViewModel document, bool isVisible)
     {
@@ -281,7 +346,7 @@ public sealed class CallTreeTabViewModel : IDisposable
 
     private void OnDocumentClosed(object? sender, DocumentViewModel document)
     {
-        if (Finds.Remove(document))
+        if (AddedDocuments.Remove(document))
         {
             (document.Content as IDisposable)?.Dispose();
         }
@@ -289,9 +354,9 @@ public sealed class CallTreeTabViewModel : IDisposable
 
     private void OnArgumentsSourceChanged()
     {
-        foreach (var find in Finds.ToList())
+        foreach (var document in AddedDocuments.ToList())
         {
-            Dock.Close(find);
+            Dock.Close(document);
         }
     }
 
@@ -301,6 +366,12 @@ public sealed class CallTreeTabViewModel : IDisposable
         {
             case nameof(SettingsViewModel.DecodeValues):
                 Arguments.SetDecoded(Settings.DecodeValues);
+
+                foreach (var rowBuffers in AddedDocuments.Select(d => d.Content).OfType<RowBuffersViewModel>())
+                {
+                    rowBuffers.SetDecoded(Settings.DecodeValues);
+                }
+
                 break;
 
             case nameof(SettingsViewModel.CallTreeHiddenCategories) or nameof(SettingsViewModel.CallTreePrunedCategories):

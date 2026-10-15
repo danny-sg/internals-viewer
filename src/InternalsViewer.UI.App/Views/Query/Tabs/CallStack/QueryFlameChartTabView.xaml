@@ -50,6 +50,7 @@
                                       Background="{ThemeResource LayerFillColorDefaultBrush}"
                                       Timeline="{x:Bind ViewModel.FlameChart, Mode=OneWay}"
                                       FullTimeline="{x:Bind ViewModel.FullFlameChart, Mode=OneWay}"
+                                      RowBufferMarks="{x:Bind ViewModel.RowBufferMarks, Mode=OneWay}"
                                       HiddenCategories="{x:Bind Settings.CallTreeHiddenCategorySet, Mode=OneWay}"
                                       PrunedCategories="{x:Bind Settings.CallTreePrunedCategorySet, Mode=OneWay}"
                                       GrantedMemory="{x:Bind ViewModel.GrantedMemory, Mode=OneWay}"

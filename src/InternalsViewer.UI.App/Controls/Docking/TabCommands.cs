@@ -6,6 +6,12 @@ namespace InternalsViewer.UI.App.Controls.Docking;
 
 public static class TabCommands
 {
+    private const string ChevronGlyph = "\uE70D";
+
+    private const double ChevronSize = 8;
+
+    private const double MenuSpacing = 6;
+
     public static StackPanel Panel(double spacing, params UIElement[] commands)
     {
         var panel = new StackPanel
@@ -56,6 +62,27 @@ public static class TabCommands
         toggle.Click += click;
 
         return toggle;
+    }
+
+    public static Button Menu(string text, string toolTip, MenuFlyout flyout)
+    {
+        var content = new StackPanel { Orientation = Orientation.Horizontal, Spacing = MenuSpacing };
+
+        content.Children.Add(Label(text));
+
+        content.Children.Add(new FontIcon { Glyph = ChevronGlyph, FontSize = ChevronSize, VerticalAlignment = VerticalAlignment.Center });
+
+        var button = new Button
+        {
+            Style = AppResources.Get<Style>("TabCommandButtonStyle"),
+            Content = content,
+            Flyout = flyout,
+            VerticalAlignment = VerticalAlignment.Stretch
+        };
+
+        ToolTipService.SetToolTip(button, toolTip);
+
+        return button;
     }
 
     public static TextBlock Label(string text) => new() { Text = text, VerticalAlignment = VerticalAlignment.Center };

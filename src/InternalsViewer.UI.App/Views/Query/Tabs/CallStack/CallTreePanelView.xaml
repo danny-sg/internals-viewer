@@ -193,11 +193,15 @@
             <MenuFlyoutItem Text="Filter To" Click="OnFilterToClick"/>
             <MenuFlyoutItem Text="Clear Filter" Tag="ClearFilter" Click="OnClearFilterClick"/>
             <MenuFlyoutSeparator/>
-            <MenuFlyoutItem Text="Copy to Clipboard" Click="OnCopySymbolClick"/>
-            <MenuFlyoutItem Text="Copy Call Tree to Clipboard" Click="OnCopyCallTreeClick"/>
+            <MenuFlyoutSubItem Text="Copy">
+                <MenuFlyoutItem Text="Copy to Clipboard" Click="OnCopySymbolClick"/>
+                <MenuFlyoutItem Text="Copy Call Tree to Clipboard" Click="OnCopyCallTreeClick"/>
+            </MenuFlyoutSubItem>
             <MenuFlyoutSeparator/>
             <MenuFlyoutItem Text="List Members" Click="OnListMembersClick"/>
+            <MenuFlyoutSeparator/>
             <MenuFlyoutItem Text="Show Arguments" Tag="ShowArguments" Click="OnShowArgumentsClick"/>
+            <MenuFlyoutItem Text="Show Row Buffers" Tag="ShowRowBuffers" Click="OnShowRowBuffersClick"/>
         </MenuFlyout>
 
         <MenuFlyout x:Key="TreeBackgroundMenu">
@@ -210,6 +214,14 @@
                         VerticalAlignment="Center"
                         RightTapped="OnNodeRightTapped"
                         ContextFlyout="{StaticResource CallFrameMenu}">
+                <Border Width="8"
+                        Height="8"
+                        VerticalAlignment="Center"
+                        Background="{ThemeResource SystemFillColorCriticalBrush}"
+                        ToolTipService.ToolTip="Row Buffers"
+                        Tapped="OnNodeRowBuffersTapped"
+                        Visibility="{x:Bind ((model:CallStackNode)Content).HasRowBuffers, Converter={StaticResource BoolToVisibilityConverter}}"/>
+
                 <!-- Category | Operator badge: a single pill; when the frame is a plan operator a second
                      tone (the operator name) is appended, otherwise the category badge stands alone. -->
                 <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
@@ -285,6 +297,14 @@
                         VerticalAlignment="Center"
                         RightTapped="OnNodeRightTapped"
                         ContextFlyout="{StaticResource CallFrameMenu}">
+                <Border Width="8"
+                        Height="8"
+                        VerticalAlignment="Center"
+                        Background="{ThemeResource SystemFillColorCriticalBrush}"
+                        ToolTipService.ToolTip="Row Buffers"
+                        Tapped="OnNodeRowBuffersTapped"
+                        Visibility="{x:Bind ((model:CallStackNode)Content).HasRowBuffers, Converter={StaticResource BoolToVisibilityConverter}}"/>
+
                 <!-- Category | Operator badge: a single pill; when the frame is a plan operator a second
                      tone (the operator name) is appended, otherwise the category badge stands alone. -->
                 <StackPanel Orientation="Horizontal" VerticalAlignment="Center">

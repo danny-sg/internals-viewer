@@ -9,6 +9,7 @@ using InternalsViewer.Query.FullTrace.Iterators;
 using InternalsViewer.Query.FullTrace.Locators;
 using InternalsViewer.Query.FullTrace.PublishedEvents;
 using InternalsViewer.Query.FullTrace.Memory;
+using InternalsViewer.Query.FullTrace.RowBuffers;
 using Microsoft.Extensions.Logging;
 using InternalsViewer.Query.FullTrace.Helpers;
 using InternalsViewer.Query.Helpers;
@@ -189,7 +190,7 @@ internal static class ReplayFunctionResolver
 
         logger?.LogInformation("Replay functions for {Module} resolved from {Pdb} in {Elapsed}: {Excluded} excluded, "
                                + "{Iterators} iterator methods, {Locators} locator reads, {Publishers} event publishers, "
-                               + "{Memory} memory functions, {Members} member functions",
+                               + "{Memory} memory functions, {Members} member functions, {RowBuffers} row buffer reads",
                                module.Name,
                                module.Pdb,
                                Stopwatch.GetElapsedTime(start),
@@ -198,7 +199,8 @@ internal static class ReplayFunctionResolver
                                relative.LocatorReads.Length,
                                relative.PublishedEvents.Publishers.Length,
                                relative.MemoryFunctions.Length,
-                               relative.MemoryMapFunctions.Length);
+                               relative.MemoryMapFunctions.Length,
+                               relative.RowBuffers.Reads.Length);
     }
 
     private static ReplayFunctions? GetFunctions(TraceModule module, string symbolsPath)
@@ -216,7 +218,16 @@ internal static class ReplayFunctionResolver
 
         var moduleName = module.Name;
 
-        var functions = ModuleSymbols.Load(resolver, (rva, name) => ClassifyFunction(mappings, moduleName, rva, name));
+        var rowBuffers = new RowBufferFunctions.Collector();
+
+        var functions = ModuleSymbols.Load(resolver,
+                                           (rva, name) =>
+                                           {
+                                               rowBuffers.VisitFunction(rva, name);
+
+                                               return ClassifyFunction(mappings, moduleName, rva, name);
+                                           },
+                                           rowBuffers.VisitData);
 
         var iterates = string.Equals(moduleName, IteratorModule, StringComparison.OrdinalIgnoreCase);
 
@@ -235,7 +246,8 @@ internal static class ReplayFunctionResolver
                                    locators,
                                    PublishedEventFunctions.From(functions),
                                    [.. functions.Values.Select(f => f.MemoryFunction).OfType<MemoryFunction>()],
-                                   [.. MemoryMapFunctionResolver.Find(resolver, kept)]);
+                                   [.. MemoryMapFunctionResolver.Find(resolver, kept)],
+                                   rowBuffers.Build(ClassHierarchyReader.Read(module.Path, rowBuffers.Hierarchies)));
     }
 
     private static FunctionClassification ClassifyFunction(CategoryMappings mappings, string module, uint rva, ReadOnlySpan<char> symbol)

@@ -471,6 +471,14 @@ public sealed partial class CallTreePanelView : UserControl, IDocumentCommands, 
 
                     break;
                 }
+                case "ShowRowBuffers":
+                {
+                    item.Visibility = ContextNode?.Content is CallStackNode { HasRowBuffers: true }
+                        ? Visibility.Visible
+                        : Visibility.Collapsed;
+
+                    break;
+                }
             }
         }
     }
@@ -516,6 +524,24 @@ public sealed partial class CallTreePanelView : UserControl, IDocumentCommands, 
         if (ContextNode?.Content is CallStackNode node)
         {
             CallTree?.ShowArguments(node);
+        }
+    }
+
+    private void OnShowRowBuffersClick(object sender, RoutedEventArgs e)
+    {
+        if (ContextNode?.Content is CallStackNode node)
+        {
+            ViewModel?.ShowRowBuffers(node);
+        }
+    }
+
+    private void OnNodeRowBuffersTapped(object sender, TappedRoutedEventArgs e)
+    {
+        if (sender is FrameworkElement { DataContext: TreeViewNode { Content: CallStackNode node } })
+        {
+            e.Handled = true;
+
+            ViewModel?.ShowRowBuffers(node);
         }
     }
 

@@ -80,6 +80,8 @@ internal sealed class FlameChartPaints : IDisposable
 
     public SKFont Font { get; } = new(SKTypeface.Default, 10f);
 
+    public SKFont HeaderFont { get; } = new(SKTypeface.Default, 11f);
+
     public SKFont TiltedFont { get; } = new(SKTypeface.Default, 10f)
     {
         Edging = SKFontEdging.Antialias,

@@ -663,6 +663,11 @@ public sealed partial class FlameChartControl
             return;
         }
 
+        if (AutoZoom)
+        {
+            ZoomToSelectedCall();
+        }
+
         CallSelected?.Invoke(node, span.Call);
     }
 
@@ -895,7 +900,7 @@ public sealed partial class FlameChartControl
         {
             var thread = timeline.Threads[lane];
 
-            var inLane = contentY - _laneTops[lane] - LaneHeaderHeight;
+            var inLane = contentY - _laneTops[lane] - RowsOffset;
 
             if (contentY < _laneTops[lane] || contentY >= _laneTops[lane] + LaneHeight(thread))
             {

@@ -10,6 +10,7 @@ using InternalsViewer.Query.FullTrace.Calls;
 using InternalsViewer.Query.FullTrace.Iterators;
 using InternalsViewer.Query.FullTrace.Locators;
 using InternalsViewer.Query.FullTrace.Memory;
+using InternalsViewer.Query.FullTrace.RowBuffers;
 using InternalsViewer.UI.App.Models.Query.CallStack;
 
 namespace InternalsViewer.UI.App.ViewModels.Query.CallStack;
@@ -19,6 +20,9 @@ public sealed class CallStoreLookup(TraceCallStore store,
                                   IReadOnlyDictionary<ulong, IteratorTarget> iterators,
                                   HoBtAccessMap hobtAccess,
                                   MemoryMap memoryMap,
+                                  RowBufferIndex rowBuffers,
+                                  RowBufferPageResolver? rowBufferPages,
+                                  RowBufferDecoder? rowBufferDecoder,
                                   SymbolsViewModel symbols,
                                   Func<ulong, string?> getHoBtName)
 {
@@ -27,6 +31,12 @@ public sealed class CallStoreLookup(TraceCallStore store,
     private const string ReturnLocation = "RAX";
 
     public TraceCallStore Store { get; } = store;
+
+    public RowBufferIndex RowBuffers { get; } = rowBuffers;
+
+    public RowBufferPageResolver? RowBufferPages { get; } = rowBufferPages;
+
+    public RowBufferDecoder? RowBufferDecoder { get; } = rowBufferDecoder;
 
     private TraceValueSearch Search { get; } = new(store);
 

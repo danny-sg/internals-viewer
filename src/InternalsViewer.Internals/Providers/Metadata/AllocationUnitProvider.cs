@@ -71,4 +71,25 @@ public static class AllocationUnitProvider
 
         return allocationUnit;
     }
+
+    public static List<AllocationUnit> GetAllocationUnits(DatabaseSource database, string? schemaName, string? tableName, string? indexName)
+        => [.. database.AllocationUnits
+                       .Values
+                       .Where(a => IsName(a.IndexName, indexName)
+                                   && IsName(a.TableName, tableName)
+                                   && (string.IsNullOrEmpty(schemaName) || IsName(a.SchemaName, schemaName)))];
+
+    public static AllocationUnit? FindAllocationUnit(DatabaseSource database, string? schemaName, string? tableName, string? indexName)
+    {
+        if (string.IsNullOrEmpty(tableName))
+        {
+            return null;
+        }
+
+        return GetAllocationUnits(database, schemaName, tableName, indexName)
+            .FirstOrDefault(a => a.AllocationUnitType == AllocationUnitType.InRowData);
+    }
+
+    private static bool IsName(string? name, string? other)
+        => string.Equals(name?.Trim('[', ']') ?? string.Empty, other?.Trim('[', ']') ?? string.Empty, StringComparison.OrdinalIgnoreCase);
 }

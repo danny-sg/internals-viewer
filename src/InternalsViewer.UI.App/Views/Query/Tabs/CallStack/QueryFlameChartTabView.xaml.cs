@@ -30,9 +30,7 @@ public sealed partial class QueryFlameChartTabView : UserControl, IDocumentComma
 
     private const double CommandSpacing = 8;
 
-    private ToggleButton? _instructionsToggle;
-
-    private ToggleButton? _positionToggle;
+    private const string ScaleGroup = "FlameChartScale";
 
     private ToggleButton? _searchToggle;
 
@@ -77,14 +75,6 @@ public sealed partial class QueryFlameChartTabView : UserControl, IDocumentComma
 
     public FrameworkElement CreateCommands()
     {
-        _positionToggle = AxisToggle("Position",
-                                     TraceTimelineAxis.Position,
-                                     "Width is the span of trace positions, which lines threads up against each other");
-
-        _instructionsToggle = AxisToggle("Instructions",
-                                         TraceTimelineAxis.Instructions,
-                                         "Width is the instructions each call executed, so it shows how long each call took");
-
         _memoryToggle = TabCommands.Toggle(TabCommands.Label("Memory"),
                                            Settings.FlameChartShowMemory,
                                            "Display allocation/in-use memory",
@@ -94,6 +84,8 @@ public sealed partial class QueryFlameChartTabView : UserControl, IDocumentComma
                                               Settings.FlameChartShowCallStack,
                                               "Show the calls in progress at the playhead, with the values they were passed",
                                               (sender, _) => Settings.FlameChartShowCallStack = TabCommands.IsChecked(sender));
+
+        _callStackToggle.IsEnabled = FlameChart.HasCallStack;
 
         _playButton = TabCommands.Button(TabCommands.Glyph(FlameChart.IsPlaying ? PauseGlyph : PlayGlyph),
                                          FlameChart.IsPlaying ? "Pause" : "Play",
@@ -105,12 +97,7 @@ public sealed partial class QueryFlameChartTabView : UserControl, IDocumentComma
                                            (sender, _) => SetSearchVisible(TabCommands.IsChecked(sender)));
 
         return TabCommands.Panel(CommandSpacing,
-                                 _positionToggle,
-                                 _instructionsToggle,
-                                 TabCommands.Toggle(TabCommands.Label("Operators"),
-                                                    FlameChart.ShowOperators,
-                                                    "Show Plan Operators",
-                                                    (sender, _) => FlameChart.ShowOperators = TabCommands.IsChecked(sender)),
+                                 TabCommands.Menu("View", "Choose the chart's scale and the lanes it shows", CreateViewMenu()),
                                  _memoryToggle,
                                  _callStackToggle,
                                  _playButton,
@@ -172,31 +159,65 @@ public sealed partial class QueryFlameChartTabView : UserControl, IDocumentComma
         Stack?.Chart = FlameChart;
     }
 
-    private ToggleButton AxisToggle(string text, TraceTimelineAxis axis, string toolTip)
+    private MenuFlyout CreateViewMenu()
     {
-        var toggle = TabCommands.Toggle(TabCommands.Label(text), FlameChart.Axis == axis, toolTip, OnAxisClick);
+        var scale = new MenuFlyoutSubItem { Text = "Scale" };
 
-        toggle.Tag = axis;
+        scale.Items.Add(ScaleItem("Position",
+                                  TraceTimelineAxis.Position,
+                                  "Width is the span of trace positions, which lines threads up against each other"));
 
-        return toggle;
+        scale.Items.Add(ScaleItem("Instructions",
+                                  TraceTimelineAxis.Instructions,
+                                  "Width is the instructions each call executed, so it shows how long each call took"));
+
+        var menu = new MenuFlyout();
+
+        menu.Items.Add(scale);
+
+        menu.Items.Add(ToggleItem("Operators", FlameChart.ShowOperators, isChecked => FlameChart.ShowOperators = isChecked));
+
+        menu.Items.Add(ToggleItem("Row Buffers", FlameChart.ShowRowBuffers, isChecked => FlameChart.ShowRowBuffers = isChecked));
+
+        menu.Items.Add(new MenuFlyoutSeparator());
+
+        menu.Items.Add(ToggleItem("Auto-Zoom", FlameChart.AutoZoom, isChecked => FlameChart.AutoZoom = isChecked));
+
+        return menu;
     }
 
-    private void OnAxisClick(object sender, RoutedEventArgs e)
+    private RadioMenuFlyoutItem ScaleItem(string text, TraceTimelineAxis axis, string toolTip)
     {
-        if (sender is not ToggleButton { Tag: TraceTimelineAxis axis })
+        var item = new RadioMenuFlyoutItem { Text = text, GroupName = ScaleGroup, Tag = axis, IsChecked = FlameChart.Axis == axis };
+
+        ToolTipService.SetToolTip(item, toolTip);
+
+        item.Click += OnScaleClick;
+
+        return item;
+    }
+
+    private static ToggleMenuFlyoutItem ToggleItem(string text, bool isChecked, Action<bool> setChecked)
+    {
+        var item = new ToggleMenuFlyoutItem { Text = text, IsChecked = isChecked };
+
+        item.Click += (sender, _) => setChecked(sender is ToggleMenuFlyoutItem { IsChecked: true });
+
+        return item;
+    }
+
+    private void OnScaleClick(object sender, RoutedEventArgs e)
+    {
+        if (sender is RadioMenuFlyoutItem { Tag: TraceTimelineAxis axis })
         {
-            return;
+            FlameChart.Axis = axis;
         }
-
-        FlameChart.Axis = axis;
-
-        _instructionsToggle?.IsChecked = axis == TraceTimelineAxis.Instructions;
-
-        _positionToggle?.IsChecked = axis == TraceTimelineAxis.Position;
     }
 
     private void OnPlayheadChanged()
     {
+        _callStackToggle?.IsEnabled = FlameChart.HasCallStack;
+
         var isVisible = Settings.FlameChartShowCallStack;
 
         SetStackVisible(isVisible && FlameChart.HasCallStack);

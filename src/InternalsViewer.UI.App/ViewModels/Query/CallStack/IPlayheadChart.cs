@@ -6,6 +6,8 @@ public interface IPlayheadChart
 {
     void ZoomTo(double start, double end);
 
+    void ZoomToCall(CallStackNode node, int call);
+
     void ScopeTo(CallStackNode node);
 
     void StepPlayhead(bool forward);

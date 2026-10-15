@@ -3,6 +3,7 @@ using InternalsViewer.Query.FullTrace.Locators;
 using InternalsViewer.Query.FullTrace.Memory;
 using InternalsViewer.Query.FullTrace.Native;
 using InternalsViewer.Query.FullTrace.PublishedEvents;
+using InternalsViewer.Query.FullTrace.RowBuffers;
 
 namespace InternalsViewer.Query.FullTrace.Functions;
 
@@ -11,9 +12,10 @@ internal sealed record ReplayFunctions(ulong[] ExcludedFunctions,
                                        LocatorRead[] LocatorReads,
                                        PublishedEventFunctions PublishedEvents,
                                        MemoryFunction[] MemoryFunctions,
-                                       MemoryMapFunction[] MemoryMapFunctions)
+                                       MemoryMapFunction[] MemoryMapFunctions,
+                                       RowBufferFunctions RowBuffers)
 {
-    public static ReplayFunctions Empty { get; } = new([], [], [], PublishedEventFunctions.Empty, [], []);
+    public static ReplayFunctions Empty { get; } = new([], [], [], PublishedEventFunctions.Empty, [], [], RowBufferFunctions.Empty);
 
     public static ReplayFunctions Merge(IReadOnlyList<ReplayFunctions> functions)
         => new([.. functions.SelectMany(f => f.ExcludedFunctions)],
@@ -21,7 +23,8 @@ internal sealed record ReplayFunctions(ulong[] ExcludedFunctions,
                [.. functions.SelectMany(f => f.LocatorReads)],
                PublishedEventFunctions.Merge(functions.Select(f => f.PublishedEvents)),
                [.. functions.SelectMany(f => f.MemoryFunctions)],
-               [.. functions.SelectMany(f => f.MemoryMapFunctions)]);
+               [.. functions.SelectMany(f => f.MemoryMapFunctions)],
+               RowBufferFunctions.Merge(functions.Select(f => f.RowBuffers)));
 
     public ReplayFunctions Rebase(ulong address)
         => new([.. ExcludedFunctions.Select(f => f + address)],
@@ -29,5 +32,6 @@ internal sealed record ReplayFunctions(ulong[] ExcludedFunctions,
                [.. LocatorReads.Select(l => l with { Function = l.Function + address })],
                PublishedEvents.Rebase(address),
                [.. MemoryFunctions.Select(f => f with { Address = f.Address + address })],
-               [.. MemoryMapFunctions.Select(f => f with { Address = f.Address + address })]);
+               [.. MemoryMapFunctions.Select(f => f with { Address = f.Address + address })],
+               RowBuffers.Rebase(address));
 }
