@@ -1,5 +1,6 @@
 using InternalsViewer.Query.FullTrace.Hooks;
 using InternalsViewer.Query.FullTrace.Interfaces.Hooks;
+using InternalsViewer.Query.FullTrace.Hooks.Enums;
 
 namespace InternalsViewer.Query.FullTrace.PublishedEvents;
 

@@ -202,7 +202,7 @@ internal static class ReplayFunctionResolver
                                relative.PublishedEvents.Publishers.Length,
                                relative.MemoryFunctions.Length,
                                relative.MemoryMapFunctions.Length,
-                               relative.RowBuffers.Reads.Length,
+                               relative.RowBuffers.Functions.Length,
                                relative.Batches.Functions.Length);
     }
 

@@ -1,4 +1,4 @@
-namespace InternalsViewer.Query.FullTrace.Batches;
+namespace InternalsViewer.Query.FullTrace.Batches.Enums;
 
 [Flags]
 public enum BatchCaptureFlags : byte

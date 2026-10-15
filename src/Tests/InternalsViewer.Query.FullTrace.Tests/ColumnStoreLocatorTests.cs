@@ -1,4 +1,5 @@
 using InternalsViewer.Query.FullTrace.Calls;
+using InternalsViewer.Query.FullTrace.Hooks;
 using InternalsViewer.Query.FullTrace.Locators;
 using InternalsViewer.Query.Events.BatchMode.Enums;
 using InternalsViewer.Query.CallStack.Locators;
@@ -89,18 +90,27 @@ public class ColumnStoreLocatorTests
     }
 
     [Fact]
-    public void A_Key_Is_Only_Kept_Once_All_Three_Words_Arrive()
+    public void A_Key_Is_Only_Kept_When_All_Three_Words_Are_In_The_Trace()
     {
-        var builder = new TraceCallStore.Builder(LocatorReadResolver.ReadsOf(0x1000, Fix()));
+        const ulong complete = 0x21C_0BB4_C180;
+
+        const ulong partial = 0x21C_0BB4_D180;
+
+        var builder = new TraceCallStore.Builder();
 
         builder.Add(0x1000, 0, Columns(2), 2);
 
         var (first, second, third) = Words(ColumnStoreObjectType.ColumnSegment, 2, 3);
 
-        builder.AddLocators([new PointerValue(0x1000, 0, first, 0, 1, 0),
-                             new PointerValue(0x1000, 0, second, 0, 1, 8),
-                             new PointerValue(0x1000, 0, third, 0, 1, 16),
-                             new PointerValue(0x1000, 0, first, 1, 1, 0)]);
+        var replay = new FakeTraceReplay().Write(complete, first)
+                                          .Write(complete + 8, second)
+                                          .Write(complete + 16, third)
+                                          .Write(partial, first);
+
+        var hook = new LocatorHook(LocatorReadResolver.GetReads(0x1000, Fix()), builder);
+
+        hook.OnEntry(new TraceHookCall { Function = 0x1000, Call = 0, Arguments = new[] { 0ul, complete, 0ul, 0ul } }, replay);
+        hook.OnEntry(new TraceHookCall { Function = 0x1000, Call = 1, Arguments = new[] { 0ul, partial, 0ul, 0ul } }, replay);
 
         var calls = builder.Build().GetCallList(0x1000, 0)!;
 

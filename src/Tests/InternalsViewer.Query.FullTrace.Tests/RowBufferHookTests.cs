@@ -1,6 +1,8 @@
 using System.Text;
+using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Query.FullTrace.Hooks;
 using InternalsViewer.Query.FullTrace.RowBuffers;
+using InternalsViewer.Query.FullTrace.RowBuffers.Enums;
 
 namespace InternalsViewer.Query.FullTrace.Tests;
 
@@ -83,8 +85,60 @@ public class RowBufferHookTests
         var row = Replay(memory)!;
 
         Assert.Equal(RowBufferFormat.Bindings, row.Format);
-        Assert.Equal((4, 4), (row.Columns[0].RecordOffset, row.Columns[0].FixedLength));
+        Assert.Equal(new RowBufferBinding(4, 2, 4), row.Columns[0].Binding);
         Assert.Equal([0x20, 0x28, 0x30, 0], row.Columns[0].Data);
+    }
+
+    [Fact]
+    public void A_Value_On_A_Data_Page_Is_Kept_As_A_Page_Reference()
+    {
+        const ulong page = 0x21C_0BB9_0000;
+
+        var memory = new FakeTraceReplay().Write(Iterator, BindingTable)
+                                          .Write(Iterator + 0x80, Buffer)
+                                          .Write(Iterator + 0x88, Bindings)
+                                          .Write(Bindings + 0x62, (ushort)1)
+                                          .Write(Bindings + 0x70, BindingArray)
+                                          .Write(BindingArray, -1)
+                                          .Write(BindingArray + 0x28, 0x10ul)
+                                          .Write(BindingArray + 0x30, 0x08ul)
+                                          .Write(BindingArray + 0x3C, (ushort)8000)
+                                          .Write(BindingArray + 0x40, 0x902u)
+                                          .Write(BindingArray + 0x48, BindingInfo)
+                                          .Write(BindingInfo + 0x18, 0x18ul)
+                                          .Write(BindingInfo + 0x2A, (byte)0)
+                                          .Write(Buffer + 0x08, (byte)0)
+                                          .Write(Buffer + 0x10, page + 416)
+                                          .Write(Buffer + 0x18, 5ul)
+                                          .Write(page, (byte)1)
+                                          .Write(page + 0x20, (byte[])[0x50, 0x01, 0, 0, 1, 0])
+                                          .Write(page + 0x28, (byte[])[0x2A, 0, 0, 0, 0x10, 0, 0, 0, 0x03, 0]);
+
+        var column = Replay(memory)!.Columns[0];
+
+        Assert.Equal(new RowBufferPage(new PageAddress(1, 336), 416, new LogSequenceNumber(42, 16, 3)), column.Page);
+        Assert.Empty(column.Data);
+        Assert.Equal("Page (1:336) Offset 416", column.ToString());
+    }
+
+    [Fact]
+    public void A_Row_Its_Iterator_Repeats_Shares_The_Columns_Of_The_Last()
+    {
+        var hook = CreateHook();
+
+        var memory = ValueRow();
+
+        hook.OnEntry(Call(), memory);
+
+        hook.OnReturn(Call(), memory);
+
+        hook.OnEntry(Call(id: 101, index: 4), memory);
+
+        hook.OnReturn(Call(id: 101, index: 4), memory);
+
+        var rows = hook.Build();
+
+        Assert.Same(rows.GetRow(Function, Iterator, 3)!.Columns, rows.GetRow(Function, Iterator, 4)!.Columns);
     }
 
     [Fact]
@@ -98,9 +152,7 @@ public class RowBufferHookTests
     [Fact]
     public void A_Call_Left_Without_Returning_Has_No_Row()
     {
-        var log = new RowBufferIndex.Log();
-
-        var hook = CreateHook(log);
+        var hook = CreateHook();
 
         var memory = ValueRow();
 
@@ -110,7 +162,7 @@ public class RowBufferHookTests
 
         hook.OnReturn(Call(), memory);
 
-        Assert.Equal(0, log.Build().Count);
+        Assert.Equal(0, hook.Build().Count);
     }
 
     private static FakeTraceReplay ValueRow()
@@ -123,9 +175,7 @@ public class RowBufferHookTests
 
     private static RowBuffer? Replay(FakeTraceReplay memory, uint count = 1)
     {
-        var log = new RowBufferIndex.Log();
-
-        var hook = CreateHook(log);
+        var hook = CreateHook();
 
         memory.Write(Iterator + 0x50, count);
 
@@ -133,23 +183,20 @@ public class RowBufferHookTests
 
         hook.OnReturn(Call(), memory);
 
-        return log.Build().GetRow(Function, Iterator, 3);
+        return hook.Build().GetRow(Function, Iterator, 3);
     }
 
-    private static RowBufferHook CreateHook(RowBufferIndex.Log log)
-        => new(new RowBufferFunctions([new RowBufferRead(Function, 0)],
-                                      [new RowBufferLayout(ValueTable, 0x78, 0, 0x50, RowBufferFormat.Values),
-                                       new RowBufferLayout(BindingTable, 0x80, 0x88)]),
-               log);
+    private static RowBufferHook CreateHook()
+        => new(new RowBufferFunctions([Function], [(ValueTable, RowBufferFormat.Values), (BindingTable, RowBufferFormat.Bindings)]));
 
-    private static TraceHookCall Call()
+    private static TraceHookCall Call(ulong id = 100, uint index = 3)
         => new()
         {
             Function = Function,
             Instance = Iterator,
-            Id = 100,
-            CallCount = 120,
-            Call = 3,
+            Id = id,
+            CallCount = 20 + id,
+            Call = index,
             Arguments = new[] { Iterator, 0ul, 0ul, 0ul }
         };
 }

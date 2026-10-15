@@ -134,7 +134,7 @@ public sealed partial class RowBuffersViewModel(CallStackNode node,
 
     private QueryResultSet BuildTable(ulong address, ulong instance, CancellationToken cancellationToken)
     {
-        var calls = lookup.RowBuffers.GetCalls(address, instance);
+        var rowBuffers = lookup.RowBuffers.GetRows(address, instance);
 
         var callList = lookup.Store.GetCallList(address, instance);
 
@@ -142,7 +142,7 @@ public sealed partial class RowBuffersViewModel(CallStackNode node,
 
         var decoder = lookup.RowBufferDecoder;
 
-        var first = calls.Count > 0 ? lookup.RowBuffers.GetRow(address, instance, calls[0]) : null;
+        var first = rowBuffers.Count > 0 ? rowBuffers[0] : null;
 
         cancellationToken.ThrowIfCancellationRequested();
 
@@ -161,42 +161,31 @@ public sealed partial class RowBuffersViewModel(CallStackNode node,
             columns.Add(new ResultColumn(columns.Count, name, typeof(string), true));
         }
 
-        var source = new CachedRowSource<int>(calls,
-                                              columns.Count,
-                                              (call, _) => GetValues(address, instance, callList, call, columns.Count, decoder, IsDecoded));
+        var source = new CachedRowSource<RowBuffer>(rowBuffers,
+                                                    columns.Count,
+                                                    (row, _) => GetValues(callList, row, columns.Count, decoder, IsDecoded));
 
-        var rows = new ResultRow<long>[calls.Count];
+        var rows = new ResultRow<long>[rowBuffers.Count];
 
         for (var index = 0; index < rows.Length; index++)
         {
-            rows[index] = new ResultRow<long>(source, index) { Id = calls[index] };
+            rows[index] = new ResultRow<long>(source, index) { Id = rowBuffers[index].Call };
         }
 
         return new QueryResultSet { Columns = columns, Rows = rows, Source = source };
     }
 
-    private object?[] GetValues(ulong address,
-                                ulong instance,
-                                TraceCallList? callList,
-                                int rowCall,
-                                int fieldCount,
-                                RowBufferDecoder? decoder,
-                                bool decode)
+    private object?[] GetValues(TraceCallList? callList, RowBuffer row, int fieldCount, RowBufferDecoder? decoder, bool decode)
     {
         var values = new object?[fieldCount];
 
-        var call = callList is not null && rowCall < callList.Count ? callList[rowCall] : null;
+        var call = callList is not null && row.Call < callList.Count ? callList[row.Call] : null;
 
         values[0] = call is not null && lookup.Store.GetNode(call) is { } callNode
-            ? new CallValue(callNode, rowCall)
-            : (long)rowCall + 1;
+            ? new CallValue(callNode, row.Call)
+            : (long)row.Call + 1;
 
         values[1] = call?.ThreadId;
-
-        if (lookup.RowBuffers.GetRow(address, instance, rowCall) is not { } row)
-        {
-            return values;
-        }
 
         for (var ordinal = 0; ordinal < row.Columns.Count && FixedColumns + ordinal < fieldCount; ordinal++)
         {

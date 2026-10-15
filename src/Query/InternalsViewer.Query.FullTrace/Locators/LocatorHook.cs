@@ -1,5 +1,5 @@
 using System.Buffers.Binary;
-using System.Runtime.InteropServices;
+using System.Text;
 using InternalsViewer.Query.CallStack.Locators;
 using InternalsViewer.Query.FullTrace.Calls;
 using InternalsViewer.Query.FullTrace.Hooks;
@@ -7,188 +7,137 @@ using InternalsViewer.Query.FullTrace.Interfaces.Hooks;
 
 namespace InternalsViewer.Query.FullTrace.Locators;
 
-internal sealed class LocatorHook(IReadOnlyList<LocatorRead> reads, TraceCallStore.Builder store) : ITraceHook
+internal sealed class LocatorHook(IEnumerable<LocatorRead> reads, TraceCallStore.Builder store, ImageText? images = null)
+    : ArgumentHook<LocatorRead>(reads.Select(r => (r.Function, r)))
 {
-    private const int ArgumentRegisters = 4;
-
-    private const int ArgumentSlots = 16;
-
-    private const int ReturnRegister = 16;
-
     private const int MaximumTextBytes = 128;
 
-    public IEnumerable<TraceHookFunction> Functions
-        => Reads.Keys.Select(f => new TraceHookFunction(f, ReturnReads.Contains(f)
-                                                               ? TraceHookEvents.Entry | TraceHookEvents.Return
-                                                               : TraceHookEvents.Entry));
+    private const int TypeInfoDetailOffset = 16;
 
-    private Dictionary<ulong, LocatorRead[]> Reads { get; } = reads.GroupBy(r => r.Function).ToDictionary(g => g.Key, g => g.ToArray());
-
-    private HashSet<ulong> ReturnReads { get; } = [.. reads.Where(r => r.IsReadAtReturn).Select(r => r.Function)];
-
-    private Dictionary<ulong, LocatorStart> Starts { get; } = [];
-
-    public void OnEntry(in TraceHookCall call, ITraceReplay replay)
+    protected override void Read(ITraceReplay replay, in TraceHookCall call, LocatorRead read, ulong pointer)
     {
-        if (!Reads.TryGetValue(call.Function, out var functionReads))
+        var locator = read.ValueType == LocatorValueType.Argument
+            ? new Locator(read.Register, read.ValueType, pointer)
+            : ReadValue(replay, read, pointer);
+
+        if (locator is { } found)
         {
-            return;
-        }
-
-        ulong[]? stackArguments = null;
-
-        foreach (var read in functionReads)
-        {
-            if (read.Register is < 0 or >= ArgumentSlots)
-            {
-                continue;
-            }
-
-            if (read.Register >= ArgumentRegisters && stackArguments is null)
-            {
-                stackArguments = HookArguments.LoadStack(replay, call.StackPointer, call.ReturnAddress);
-            }
-
-            var pointer = read.Register < ArgumentRegisters
-                ? call.Arguments[read.Register]
-                : stackArguments![read.Register - ArgumentRegisters];
-
-            if (read.ValueType == LocatorValueType.Argument)
-            {
-                Record(call, read, pointer, 0);
-            }
-            else if (!read.IsReadAtReturn)
-            {
-                ReadPointer(replay, call, read, pointer);
-            }
-        }
-
-        if (ReturnReads.Contains(call.Function))
-        {
-            Starts[call.Id] = new LocatorStart([.. call.Arguments], stackArguments);
+            store.AddLocator(call.Function, call.Instance, (int)call.Call, found, read.IsReadAtReturn);
         }
     }
 
-    public void OnReturn(in TraceHookCall call, ITraceReplay replay)
+    private static bool TryFollow(ITraceReplay replay, int[]? path, ref ulong pointer)
     {
-        if (!Starts.Remove(call.Id, out var start) || !Reads.TryGetValue(call.Function, out var functionReads))
-        {
-            return;
-        }
-
-        foreach (var read in functionReads)
-        {
-            if (!read.IsReadAtReturn || read.Register is < 0 or > ReturnRegister)
-            {
-                continue;
-            }
-
-            var pointer = read.Register == ReturnRegister ? call.ReturnValue
-                          : read.Register < ArgumentRegisters ? start.Arguments[read.Register]
-                          : start.StackArguments?[read.Register - ArgumentRegisters] ?? 0;
-
-            ReadPointer(replay, call, read, pointer);
-        }
-    }
-
-    public void OnAbandoned(in TraceHookCall call) => Starts.Remove(call.Id);
-
-    private void ReadPointer(ITraceReplay replay, in TraceHookCall call, LocatorRead read, ulong pointer)
-    {
-        if (pointer == 0)
-        {
-            return;
-        }
-
-        foreach (var hop in read.Path ?? [])
+        foreach (var hop in path ?? [])
         {
             if (!replay.TryRead(pointer + (uint)hop, out ulong next) || next == 0)
             {
-                return;
+                return false;
             }
 
             pointer = next;
         }
 
-        if (read.ValueType is LocatorValueType.Text or LocatorValueType.WideText)
-        {
-            ReadText(replay, call, read, pointer + (uint)read.Offset);
+        return true;
+    }
 
-            return;
-        }
+    private static Locator? ReadTypeInfo(ITraceReplay replay, int register, ulong address)
+        => ReadBytes(replay, address) is { } header
+            ? new Locator(register, LocatorValueType.TypeInfo, header, ReadBytes(replay, address + TypeInfoDetailOffset) ?? 0)
+            : null;
 
+    private static Locator? ReadLogSequenceNumber(ITraceReplay replay, int register, ulong address)
+        => replay.TryRead(address, out ulong first) && replay.TryRead(address + sizeof(ulong), out ulong second)
+            ? Locator.CreateLogSequenceNumber(register, first, second)
+            : null;
+
+    private static Locator? ReadColumnStoreObject(ITraceReplay replay, int register, ulong address)
+        => replay.TryRead(address, out ulong first)
+           && replay.TryRead(address + sizeof(ulong), out ulong second)
+           && replay.TryRead(address + 2 * sizeof(ulong), out ulong third)
+            ? Locator.ColumnStoreObject(register, first, second, third)
+            : null;
+
+    private static ulong? ReadBytes(ITraceReplay replay, ulong address)
+    {
         Span<byte> bytes = stackalloc byte[sizeof(ulong)];
 
         bytes.Clear();
 
-        var known = replay.Read(pointer + (uint)read.Offset, bytes);
+        var known = replay.Read(address, bytes);
 
         var value = BinaryPrimitives.ReadUInt64LittleEndian(bytes);
 
-        var isBytes = read.ValueType == LocatorValueType.TypeInfo;
-
-        if (isBytes && known is > 0 and < sizeof(ulong))
+        return known switch
         {
-            Record(call, read, value & ((1ul << (known * 8)) - 1), (uint)known);
-
-            return;
-        }
-
-        if (known != sizeof(ulong))
-        {
-            return;
-        }
-
-        Record(call, read, value, isBytes ? (uint)known : 0);
+            0 => null,
+            < sizeof(ulong) => value & ((1ul << (known * 8)) - 1),
+            _ => value
+        };
     }
 
-    private void ReadText(ITraceReplay replay, in TraceHookCall call, LocatorRead read, ulong address)
+    private static int FindTerminator(ReadOnlySpan<byte> bytes, int width)
     {
-        Span<ulong> words = stackalloc ulong[MaximumTextBytes / sizeof(ulong)];
-
-        words.Clear();
-
-        var characters = MemoryMarshal.AsBytes(words);
-
-        var bytes = replay.Read(address, characters);
-
-        if (bytes == 0)
+        for (var index = 0; index + width <= bytes.Length; index += width)
         {
-            return;
-        }
-
-        var width = read.ValueType == LocatorValueType.WideText ? 2 : 1;
-
-        var end = bytes;
-
-        for (var index = 0; index + width <= bytes; index += width)
-        {
-            if (characters[index] == 0 && (width == 1 || characters[index + 1] == 0))
+            if (bytes[index] == 0 && (width == 1 || bytes[index + 1] == 0))
             {
-                end = index + width;
-
-                break;
+                return index;
             }
         }
 
-        var parts = (end + sizeof(ulong) - 1) / sizeof(ulong);
-
-        for (var part = 0; part < parts; part++)
-        {
-            Record(call, read, words[part], (uint)part);
-        }
+        return -1;
     }
 
-    private void Record(in TraceHookCall call, LocatorRead read, ulong value, uint part)
-        => store.AddLocators([new PointerValue(call.Function,
-                                               call.Instance,
-                                               value,
-                                               call.Call,
-                                               read.Register,
-                                               (uint)read.Offset,
-                                               read.IsReadAtReturn ? 1u : 0u,
-                                               read.Mode,
-                                               part)]);
+    private Locator? ReadValue(ITraceReplay replay, LocatorRead read, ulong pointer)
+    {
+        if (pointer == 0 || !TryFollow(replay, read.Path, ref pointer))
+        {
+            return null;
+        }
 
-    private sealed record LocatorStart(ulong[] Arguments, ulong[]? StackArguments);
+        var address = pointer + (uint)read.Offset;
+
+        return read.ValueType switch
+        {
+            LocatorValueType.Text or LocatorValueType.WideText => ReadText(replay, read, address),
+            LocatorValueType.TypeInfo => ReadTypeInfo(replay, read.Register, address),
+            LocatorValueType.LogSequenceNumber => ReadLogSequenceNumber(replay, read.Register, address),
+            LocatorValueType.ColumnStoreObject => ReadColumnStoreObject(replay, read.Register, address),
+            _ => replay.TryRead(address, out ulong value) ? new Locator(read.Register, read.ValueType, value) : null
+        };
+    }
+
+    private Locator? ReadText(ITraceReplay replay, LocatorRead read, ulong address)
+    {
+        var isWide = read.ValueType == LocatorValueType.WideText;
+
+        Span<byte> bytes = stackalloc byte[MaximumTextBytes];
+
+        bytes.Clear();
+
+        var count = replay.Read(address, bytes);
+
+        var data = bytes[..((count + sizeof(ulong) - 1) / sizeof(ulong) * sizeof(ulong))];
+
+        var end = FindTerminator(data, isWide ? 2 : 1);
+
+        if ((count == 0 || end < 0)
+            && read.Path is not { Length: > 0 }
+            && images?.Read(address, isWide) is { } imageText)
+        {
+            return new Locator(read.Register, read.ValueType, (ulong)imageText.Length, 0, imageText);
+        }
+
+        if (count == 0)
+        {
+            return null;
+        }
+
+        var characters = end < 0 ? data : data[..end];
+
+        var text = isWide ? Encoding.Unicode.GetString(characters) : Encoding.Latin1.GetString(characters);
+
+        return new Locator(read.Register, read.ValueType, (ulong)text.Length, end < 0 ? 1ul : 0, text);
+    }
 }

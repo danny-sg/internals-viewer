@@ -1,3 +1,5 @@
+using InternalsViewer.Query.FullTrace.Memory.Enums;
+
 namespace InternalsViewer.Query.FullTrace.Memory;
 
-internal readonly record struct MemoryMapFunction(ulong Address, uint Operation);
+internal readonly record struct MemoryMapFunction(ulong Address, MemoryMapOperation Operation);

@@ -1,11 +1,12 @@
-using System.Buffers;
 using System.Runtime.InteropServices;
 using InternalsViewer.Query.FullTrace.Hooks;
 using InternalsViewer.Query.FullTrace.Interfaces.Hooks;
+using InternalsViewer.Query.FullTrace.Batches.Enums;
+using InternalsViewer.Query.FullTrace.Hooks.Enums;
 
 namespace InternalsViewer.Query.FullTrace.Batches;
 
-internal sealed class BatchHook(BatchFunctions functions, BatchIndex.Log log) : ITraceHook
+internal sealed class BatchHook(BatchFunctions functions) : ITraceHook
 {
     private const ulong SmallestAddress = 0x10000;
 
@@ -44,15 +45,9 @@ internal sealed class BatchHook(BatchFunctions functions, BatchIndex.Log log) : 
 
     private Dictionary<ulong, BatchStart> Starts { get; } = [];
 
-    private List<ushort> Selection { get; } = [];
+    private List<BatchCapture> Batches { get; } = [];
 
-    private List<RawVector> Vectors { get; } = [];
-
-    private List<ulong> Slots { get; } = [];
-
-    private List<RawDeepValue> DeepValues { get; } = [];
-
-    private ArrayBufferWriter<byte> Data { get; } = new();
+    public BatchIndex Build() => new(Batches);
 
     public void OnEntry(in TraceHookCall call, ITraceReplay replay)
     {
@@ -92,47 +87,46 @@ internal sealed class BatchHook(BatchFunctions functions, BatchIndex.Log log) : 
             return;
         }
 
-        var capacity = replay.TryRead(batch + BatchCapacityOffset, out int value) && value is > 0 and <= MaximumBatchSelection
-            ? (uint)value
-            : 0;
+        var capacity = replay.TryRead(batch + BatchCapacityOffset, out int value) && value is > 0 and <= MaximumBatchSelection ? value : 0;
 
-        var raw = new RawBatch(call.Function,
-                                         call.Instance,
-                                         start.Iterator,
-                                         batch,
-                                         start.Consumer,
-                                         call.CallCount,
-                                         call.Call,
-                                         0,
-                                         0,
-                                         0,
-                                         0,
-                                         0,
-                                         capacity);
+        var flags = BatchCaptureFlags.Unreadable;
 
-        if (!replay.TryRead(batch + BatchVectorsOffset, out ulong vectors)
-            || !replay.TryRead(batch + BatchPureOffset, out ulong pure)
-            || !replay.TryRead(batch + BatchVectorCountOffset, out int vectorCount)
-            || !replay.TryRead(batch + BatchRowCountOffset, out int rowCount)
-            || !replay.TryRead(batch + BatchSelectionOffset, out ulong selection)
-            || rowCount < 0
-            || rowCount > MaximumBatchSelection
-            || vectorCount < 0
-            || vectors < SmallestAddress)
+        ushort[] selection = [];
+
+        BatchCaptureVector[] vectors = [];
+
+        if (replay.TryRead(batch + BatchVectorsOffset, out ulong vectorTable)
+            && replay.TryRead(batch + BatchPureOffset, out ulong pure)
+            && replay.TryRead(batch + BatchVectorCountOffset, out int vectorCount)
+            && replay.TryRead(batch + BatchRowCountOffset, out int rowCount)
+            && replay.TryRead(batch + BatchSelectionOffset, out ulong selected)
+            && rowCount is >= 0 and <= MaximumBatchSelection
+            && vectorCount >= 0
+            && vectorTable >= SmallestAddress)
         {
-            Add(raw with { Flags = (uint)BatchCaptureFlags.Unreadable });
+            (selection, flags) = ReadSelection(replay, selected, rowCount);
 
-            return;
+            var slotCount = selection.Length == 0 ? 0 : selection.Max() + 1;
+
+            vectors = new BatchCaptureVector[vectorIds.Length];
+
+            for (var index = 0; index < vectors.Length; index++)
+            {
+                vectors[index] = ReadVector(replay, vectorIds[index], vectorTable, pure, vectorCount, slotCount);
+            }
         }
 
-        raw = ReadSelection(replay, selection, rowCount, raw);
-
-        foreach (var vectorId in vectorIds)
-        {
-            Vectors.Add(ReadVector(replay, vectorId, vectors, pure, vectorCount));
-        }
-
-        Add(raw with { VectorCount = idCount });
+        Batches.Add(new BatchCapture(call.Function,
+                                     call.Instance,
+                                     (int)call.Call,
+                                     call.CallCount,
+                                     start.Iterator,
+                                     batch,
+                                     start.Consumer,
+                                     flags,
+                                     selection,
+                                     vectors,
+                                     capacity));
     }
 
     public void OnAbandoned(in TraceHookCall call) => Starts.Remove(call.Id);
@@ -150,166 +144,114 @@ internal sealed class BatchHook(BatchFunctions functions, BatchIndex.Log log) : 
         return 0;
     }
 
-    private RawBatch ReadSelection(ITraceReplay replay, ulong selection, int rowCount, RawBatch raw)
+    private static (ushort[] Selection, BatchCaptureFlags Flags) ReadSelection(ITraceReplay replay, ulong address, int rowCount)
     {
-        if (selection < SmallestAddress)
+        if (address < SmallestAddress)
         {
-            for (var index = 0; index < rowCount; index++)
-            {
-                Selection.Add((ushort)index);
-            }
-
-            return raw with { SelectedCount = (uint)rowCount, Flags = raw.Flags | (uint)BatchCaptureFlags.ImplicitSelection };
+            return ([.. Enumerable.Range(0, rowCount).Select(i => (ushort)i)], BatchCaptureFlags.ImplicitSelection);
         }
 
-        if (rowCount > 0)
-        {
-            CollectionsMarshal.SetCount(Selection, rowCount);
+        var selection = new ushort[rowCount];
 
-            if (replay.Read(selection, MemoryMarshal.AsBytes(CollectionsMarshal.AsSpan(Selection))) != rowCount * sizeof(ushort))
-            {
-                Selection.Clear();
-
-                return raw with { Flags = raw.Flags | (uint)BatchCaptureFlags.UnreadableSelection };
-            }
-        }
-
-        return raw with { SelectedCount = (uint)rowCount };
+        return replay.Read(address, MemoryMarshal.AsBytes(selection.AsSpan())) == rowCount * sizeof(ushort)
+            ? (selection, BatchCaptureFlags.None)
+            : ([], BatchCaptureFlags.UnreadableSelection);
     }
 
-    private RawVector ReadVector(ITraceReplay replay, ushort vectorId, ulong vectors, ulong pure, int vectorCount)
+    private static BatchCaptureVector ReadVector(ITraceReplay replay,
+                                                 ushort vectorId,
+                                                 ulong vectors,
+                                                 ulong pure,
+                                                 int vectorCount,
+                                                 int slotCount)
     {
-        var firstSlot = Slots.Count;
-
-        var firstDeepValue = DeepValues.Count;
-
         if (vectorId == 0 || vectorId > vectorCount)
         {
-            return new RawVector((uint)firstSlot, 0, (uint)firstDeepValue, 0, vectorId, (ushort)BatchVectorFlags.Missing);
+            return new BatchCaptureVector(vectorId, BatchVectorFlags.Missing, [], new Dictionary<int, BatchDeepValue>());
         }
 
         var index = (ulong)vectorId - 1;
 
         if (!replay.TryRead(vectors + index * BatchVectorEntrySize, out ulong buffer) || buffer < SmallestAddress)
         {
-            return new RawVector((uint)firstSlot, 0, (uint)firstDeepValue, 0, vectorId, (ushort)BatchVectorFlags.Unreadable);
+            return new BatchCaptureVector(vectorId, BatchVectorFlags.Unreadable, [], new Dictionary<int, BatchDeepValue>());
         }
 
         var flags = BatchVectorFlags.None;
+
+        ulong[] slots;
 
         if (pure >= SmallestAddress && replay.TryRead(pure + index / 8, out byte pureBits) && ((pureBits >> (int)(index % 8)) & 1) != 0)
         {
-            flags |= BatchVectorFlags.Pure;
-
             if (!replay.TryRead(buffer, out ulong slot))
             {
-                flags |= BatchVectorFlags.Unreadable;
-
-                return new RawVector((uint)firstSlot, 0, (uint)firstDeepValue, 0, vectorId, (ushort)flags);
+                return new BatchCaptureVector(vectorId,
+                                              BatchVectorFlags.Pure | BatchVectorFlags.Unreadable,
+                                              [],
+                                              new Dictionary<int, BatchDeepValue>());
             }
 
-            Slots.Add(slot);
+            flags = BatchVectorFlags.Pure;
+
+            slots = [slot];
         }
         else
         {
-            flags |= ReadSlots(replay, buffer);
+            slots = ReadSlots(replay, buffer, slotCount, ref flags);
         }
 
-        var slotCount = Slots.Count - firstSlot;
-
-        for (var slot = 0; slot < slotCount; slot++)
-        {
-            ReadDeepValue(replay, (uint)slot, Slots[firstSlot + slot]);
-        }
-
-        return new RawVector((uint)firstSlot,
-                                  (uint)slotCount,
-                                  (uint)firstDeepValue,
-                                  (uint)(DeepValues.Count - firstDeepValue),
-                                  vectorId,
-                                  (ushort)flags);
+        return new BatchCaptureVector(vectorId, flags, slots, ReadDeepValues(replay, slots));
     }
 
-    private BatchVectorFlags ReadSlots(ITraceReplay replay, ulong buffer)
+    private static ulong[] ReadSlots(ITraceReplay replay, ulong buffer, int slotCount, ref BatchVectorFlags flags)
     {
-        if (Selection.Count == 0)
-        {
-            return BatchVectorFlags.None;
-        }
+        var slots = new ulong[slotCount];
 
-        var rowCount = 0;
+        var read = replay.Read(buffer, MemoryMarshal.AsBytes(slots.AsSpan())) / sizeof(ulong);
 
-        foreach (var row in Selection)
-        {
-            rowCount = Math.Max(rowCount, row + 1);
-        }
-
-        var first = Slots.Count;
-
-        CollectionsMarshal.SetCount(Slots, first + rowCount);
-
-        var block = CollectionsMarshal.AsSpan(Slots)[first..];
-
-        var read = replay.Read(buffer, MemoryMarshal.AsBytes(block)) / sizeof(ulong);
-
-        var flags = BatchVectorFlags.None;
-
-        for (var row = read; row < rowCount; row++)
+        for (var row = read; row < slots.Length; row++)
         {
             if (!replay.TryRead(buffer + (ulong)row * sizeof(ulong), out ulong slot))
             {
                 flags |= BatchVectorFlags.UnreadableSlots;
             }
 
-            block[row] = slot;
+            slots[row] = slot;
         }
 
-        return flags;
+        return slots;
     }
 
-    private void ReadDeepValue(ITraceReplay replay, uint slot, ulong value)
+    private static Dictionary<int, BatchDeepValue> ReadDeepValues(ITraceReplay replay, ulong[] slots)
     {
-        if ((value & 1) == 0 || value <= LargestInlineTag)
+        var deepValues = new Dictionary<int, BatchDeepValue>();
+
+        for (var slot = 0; slot < slots.Length; slot++)
         {
-            return;
+            var value = slots[slot];
+
+            if ((value & 1) == 0 || value <= LargestInlineTag)
+            {
+                continue;
+            }
+
+            var pointer = value & ~1ul;
+
+            if (pointer < SmallestAddress || !replay.TryRead(pointer - DeepLengthOffset, out ushort length))
+            {
+                deepValues[slot] = new BatchDeepValue(0, []);
+
+                continue;
+            }
+
+            var data = new byte[(int)Math.Min(length, MaximumValueBytes)];
+
+            var captured = data.Length == 0 ? 0 : replay.Read(pointer, data);
+
+            deepValues[slot] = new BatchDeepValue(length, captured == data.Length ? data : data[..captured]);
         }
 
-        var pointer = value & ~1ul;
-
-        var deepValue = new RawDeepValue(slot, (uint)Data.WrittenCount, 0, 0);
-
-        if (pointer >= SmallestAddress && replay.TryRead(pointer - DeepLengthOffset, out ushort length))
-        {
-            var wanted = (int)Math.Min(length, MaximumValueBytes);
-
-            var captured = wanted == 0 ? 0 : replay.Read(pointer, Data.GetSpan(wanted)[..wanted]);
-
-            Data.Advance(captured);
-
-            deepValue = deepValue with { Length = length, Captured = (uint)captured };
-        }
-
-        DeepValues.Add(deepValue);
-    }
-
-    private void Add(RawBatch raw)
-    {
-        log.Add([raw],
-                CollectionsMarshal.AsSpan(Vectors),
-                CollectionsMarshal.AsSpan(Selection),
-                CollectionsMarshal.AsSpan(Slots),
-                CollectionsMarshal.AsSpan(DeepValues),
-                Data.WrittenSpan);
-
-        Vectors.Clear();
-
-        Selection.Clear();
-
-        Slots.Clear();
-
-        DeepValues.Clear();
-
-        Data.ResetWrittenCount();
+        return deepValues;
     }
 
     private readonly record struct BatchStart(ulong Iterator, ulong Data, ulong Consumer);

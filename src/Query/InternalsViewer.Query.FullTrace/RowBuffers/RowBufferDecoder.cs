@@ -5,6 +5,7 @@ using InternalsViewer.Internals.Engine.Database;
 using InternalsViewer.Internals.Metadata.Structures;
 using InternalsViewer.Internals.Providers.Metadata;
 using InternalsViewer.Query.Events.Operators;
+using InternalsViewer.Query.FullTrace.RowBuffers.Enums;
 
 namespace InternalsViewer.Query.FullTrace.RowBuffers;
 
@@ -21,7 +22,7 @@ public sealed class RowBufferDecoder(DatabaseSource database,
     public ColumnStructure? GetColumn(RowBuffer row, RowBufferColumn column)
         => row.Format == RowBufferFormat.Values
             ? getOutputColumn?.Invoke(row.Iterator, column.Ordinal)
-            : GetColumns(row.Iterator)?.GetValueOrDefault(column.RecordOffset);
+            : GetColumns(row.Iterator)?.GetValueOrDefault(column.Binding.RecordOffset);
 
     public string? Decode(RowBuffer row, RowBufferColumn column)
     {

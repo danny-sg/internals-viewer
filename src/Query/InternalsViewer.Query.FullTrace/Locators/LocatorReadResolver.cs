@@ -4,22 +4,13 @@ using InternalsViewer.Query.CallStack.Arguments;
 using InternalsViewer.Query.CallStack.Dia;
 using InternalsViewer.Query.CallStack.Locators;
 using InternalsViewer.Query.FullTrace.Arguments;
+using InternalsViewer.Query.FullTrace.Arguments.Enums;
 
 namespace InternalsViewer.Query.FullTrace.Locators;
 
 public static partial class LocatorReadResolver
 {
     public const int ReturnRegister = 16;
-
-    public const int ObjectKeyParts = 3;
-
-    public const int LogSequenceNumberParts = 2;
-
-    public const int TypeInfoParts = 2;
-
-    public const int TypeInfoDetailOffset = 16;
-
-    public const int MaximumHops = 3;
 
     private const int StackCandidateParameters = 4;
 
@@ -29,43 +20,32 @@ public static partial class LocatorReadResolver
                              "VPSPageRef@@", "URowId@@", "VColumnStoreObjectKey@@", "ULSN@@", "VLSN@@", "PEBD", "PEB_W", "VCTypeInfo@@"],
                             StringComparison.Ordinal);
 
-    internal static IEnumerable<LocatorRead> ReadsOf(ulong function, FunctionSignature signature)
+    internal static IEnumerable<LocatorRead> GetReads(ulong function, FunctionSignature signature)
     {
         foreach (var slot in ArgumentLayout.LayoutOf(signature).Slots)
         {
             if (slot.Location is not (ArgumentLocation.Register or ArgumentLocation.Stack)
                 || slot.Name == ArgumentLayout.ReturnBuffer
-                || LocatorType.LocatorTypeOf(slot.Type) is not { } type
+                || LocatorType.GetLocatorType(slot.Type) is not { } type
                 || (slot.Location == ArgumentLocation.Stack && type.ValueType == LocatorValueType.Referenced))
             {
                 continue;
             }
 
-            foreach (var read in GetReads(function, slot.Index, type, returned: false))
+            foreach (var read in CreateReads(function, slot.Index, type, returned: false))
             {
                 yield return read;
             }
         }
 
-        if (signature.ReturnType is { } returnType && LocatorType.LocatorTypeOf(returnType) is { } returned)
+        if (signature.ReturnType is { } returnType && LocatorType.GetLocatorType(returnType) is { } returned)
         {
-            foreach (var read in GetReads(function, ReturnRegister, returned, returned: true))
+            foreach (var read in CreateReads(function, ReturnRegister, returned, returned: true))
             {
                 yield return read;
             }
         }
     }
-
-    public static int GetParts(LocatorValueType valueType) => valueType switch
-    {
-        LocatorValueType.ColumnStoreObject => ObjectKeyParts,
-        LocatorValueType.LogSequenceNumber => LogSequenceNumberParts,
-        LocatorValueType.TypeInfo => TypeInfoParts,
-        _ => 1
-    };
-
-    private static int GetPartOffset(LocatorValueType valueType, int part)
-        => valueType == LocatorValueType.TypeInfo ? part * TypeInfoDetailOffset : part * sizeof(ulong);
 
     internal static IEnumerable<LocatorRead> GetStackReads(ulong function, FunctionSignature signature)
         => ArgumentLayout.LayoutOf(signature)
@@ -100,23 +80,6 @@ public static partial class LocatorReadResolver
         return reads;
     }
 
-    private static IEnumerable<LocatorRead> GetReads(ulong function, int register, LocatorType type, bool returned)
-    {
-        var parts = GetParts(type.ValueType);
-
-        bool[] ends = returned ? [true] : type.IsInOut ? [false, true] : [type.IsOutput];
-
-        foreach (var isReadAtReturn in ends)
-        {
-            for (var part = 0; part < parts; part++)
-            {
-                var offset = type.Offset + GetPartOffset(type.ValueType, part);
-
-                yield return new LocatorRead(function, register, isReadAtReturn, type.ValueType, offset, type.Path);
-            }
-        }
-    }
-
     internal static List<LocatorRead> FindReads(DiaResolver resolver, IEnumerable<uint> functions)
     {
         var reads = new List<LocatorRead>();
@@ -135,10 +98,17 @@ public static partial class LocatorReadResolver
                 continue;
             }
 
-            reads.AddRange(ReadsOf(rva, signature));
+            reads.AddRange(GetReads(rva, signature));
         }
 
         return reads;
+    }
+
+    private static IEnumerable<LocatorRead> CreateReads(ulong function, int register, LocatorType type, bool returned)
+    {
+        bool[] ends = returned ? [true] : type.IsInOut ? [false, true] : [type.IsOutput];
+
+        return ends.Select(e => new LocatorRead(function, register, e, type.ValueType, type.Offset, type.Path));
     }
 
     private static bool TryGetSignature(DiaResolver resolver, uint rva, Span<char> buffer, out ReadOnlySpan<char> signature)

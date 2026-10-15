@@ -4,6 +4,7 @@ using InternalsViewer.Query.FullTrace.Native;
 using InternalsViewer.Query.FullTrace.RowBuffers;
 using InternalsViewer.Query.FullTrace.Timeline;
 using InternalsViewer.Query.FullTrace.Timeline.Enums;
+using InternalsViewer.Query.FullTrace.Batches.Enums;
 
 namespace InternalsViewer.Query.FullTrace.Tests;
 
@@ -61,11 +62,9 @@ public class TraceRowBufferMarksTests
         var timeline = Build(Span(node: 0, start: 0, end: 100),
                              Span(node: 1, start: 10, end: 90));
 
-        var batches = new BatchIndex.Log();
+        var batch = new BatchCapture(GetRow, Iterator, 0, 100, Iterator, 0x20F_0CA6_ECA0, 0, BatchCaptureFlags.None, [], []);
 
-        batches.Add([new RawBatch(GetRow, Iterator, Iterator, 0x20F_0CA6_ECA0, 0, 100, 0, 0, 0, 0, 0, 0)], [], [], [], [], []);
-
-        var marks = TraceRowBufferMarks.Build(timeline, RowBufferIndex.Empty, batches.Build());
+        var marks = TraceRowBufferMarks.Build(timeline, RowBufferIndex.Empty, new BatchIndex([batch]));
 
         Assert.Equal([GetEnd(timeline, depth: 1, index: 0)], marks.GetBatchMarks(Thread, TraceTimelineAxis.Position).ToArray());
         Assert.True(marks.GetMarks(Thread, TraceTimelineAxis.Position).IsEmpty);
@@ -107,16 +106,15 @@ public class TraceRowBufferMarksTests
 
     private static RowBufferIndex Capture(params (ulong Function, ulong Instance, uint Call)[] calls)
     {
-        var log = new RowBufferIndex.Log();
+        RowBufferColumn[] columns = [new RowBufferColumn(0, new RowBufferBinding(4, 2, 4), 0, 0, 4, [1, 0, 0, 0])];
 
-        foreach (var (function, instance, call) in calls)
-        {
-            log.Add([new RawRow(function, instance, Iterator, 0x1F4_EEAE_2000, 100 + call, call, 0, 1)],
-                    [new RawColumn(0, 4, 4, 4, 2, 4, 0, 0)],
-                    [1, 0, 0, 0]);
-        }
-
-        return log.Build();
+        return new RowBufferIndex(calls.Select(c => new RowBuffer(c.Function,
+                                                                  c.Instance,
+                                                                  (int)c.Call,
+                                                                  100 + c.Call,
+                                                                  Iterator,
+                                                                  0x1F4_EEAE_2000,
+                                                                  columns)));
     }
 
     private static double GetEnd(TraceTimeline timeline, int depth, int index)

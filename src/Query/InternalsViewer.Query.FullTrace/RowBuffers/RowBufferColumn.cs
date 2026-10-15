@@ -1,12 +1,12 @@
+using InternalsViewer.Query.FullTrace.RowBuffers.Enums;
+
 namespace InternalsViewer.Query.FullTrace.RowBuffers;
 
 public sealed record RowBufferColumn(int Ordinal,
+                                     RowBufferBinding Binding,
                                      byte Status,
                                      RowBufferColumnFlags Flags,
                                      int Length,
-                                     int RecordOffset,
-                                     uint BindingFlags,
-                                     int FixedLength,
                                      byte[] Data)
 {
     public RowBufferPage? Page { get; init; }

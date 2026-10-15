@@ -1,83 +1,67 @@
-using System.Runtime.InteropServices;
 using InternalsViewer.Query.FullTrace.Calls;
+using InternalsViewer.Query.Helpers;
 
 namespace InternalsViewer.Query.FullTrace.Batches;
 
 public sealed partial class BatchIndex
 {
-    private BatchIndex(Dictionary<(ulong Address, ulong Instance), BatchTable> tables)
-    {
-        Tables = tables;
-
-        Count = tables.Values.Sum(t => t.Count);
-    }
-
-    public static BatchIndex Empty { get; } = new([]);
-
-    public int Count { get; }
-
     private const int MaximumLineage = 64;
 
     private const string ProducerMethod = "BpGetNextBatch";
 
-    private Dictionary<(ulong Address, ulong Instance), BatchTable> Tables { get; }
+    internal BatchIndex(IEnumerable<BatchCapture> captures)
+    {
+        Captures = [.. captures];
 
-    private Dictionary<(ulong Address, ulong Instance), Production[]> Productions { get; set; } = [];
+        Batches = Captures.GroupBy(c => (c.Function, c.Instance)).ToDictionary(g => g.Key, g => g.OrderBy(c => c.Call).ToArray());
 
-    private Dictionary<(ulong Batch, ulong Consumer), Handoff[]> Handoffs => field ??= BuildHandoffs();
+        Handoffs = Captures.Where(c => c.Consumer != 0)
+                           .GroupBy(c => (c.Address, c.Consumer))
+                           .ToDictionary(g => g.Key, g => g.OrderBy(c => c.Id).ToArray());
 
-    private Dictionary<ulong, ulong> Producers => field ??= BuildProducers();
+        foreach (var capture in Batches.Values.SelectMany(b => b).Where(c => c.Consumer != 0))
+        {
+            Producers.TryAdd(capture.Consumer, capture.Instance);
+        }
+    }
 
-    public bool HasBatches(ulong address, ulong instance)
-        => Tables.ContainsKey((address, instance)) || Productions.ContainsKey((address, instance));
+    public static BatchIndex Empty { get; } = new([]);
 
-    public bool HasBatch(ulong address, ulong instance, int call)
-        => Tables.TryGetValue((address, instance), out var table)
-            ? table.HasBatch(call)
-            : FindProduction(address, instance, call) is not null;
+    public int Count => Captures.Length;
+
+    private BatchCapture[] Captures { get; }
+
+    private Dictionary<(ulong Function, ulong Instance), BatchCapture[]> Batches { get; }
+
+    private Dictionary<(ulong Batch, ulong Consumer), BatchCapture[]> Handoffs { get; }
+
+    private Dictionary<ulong, ulong> Producers { get; } = [];
+
+    public bool HasBatches(ulong address, ulong instance) => Batches.ContainsKey((address, instance));
+
+    public bool HasBatch(ulong address, ulong instance, int call) => GetBatch(address, instance, call) is not null;
+
+    public IReadOnlyList<BatchCapture> GetBatches(ulong address, ulong instance) => Batches.GetValueOrDefault((address, instance)) ?? [];
 
     public BatchCapture? GetBatch(ulong address, ulong instance, int call)
     {
-        if (Tables.TryGetValue((address, instance), out var table))
-        {
-            return table.GetBatch(call);
-        }
+        var batches = GetBatches(address, instance);
 
-        return FindProduction(address, instance, call) is { } production ? CreateBatch(address, production) : null;
+        var index = SortedSearch.FirstAtOrAfter(batches, call, b => b.Call);
+
+        return index < batches.Count && batches[index].Call == call ? batches[index] : null;
     }
 
-    public IReadOnlyList<int> GetCalls(ulong address, ulong instance)
+    public BatchCapture? GetInput(BatchCapture capture)
     {
-        if (Tables.TryGetValue((address, instance), out var table))
+        if (!Handoffs.TryGetValue((capture.Address, capture.Iterator), out var handoffs))
         {
-            return table.GetCalls();
+            return null;
         }
 
-        return Productions.TryGetValue((address, instance), out var productions) ? [.. productions.Select(p => p.Call)] : [];
-    }
+        var index = SortedSearch.FirstAtOrAfter(handoffs, capture.Id, h => h.Id) - 1;
 
-    public IReadOnlyList<BatchCapture> GetBatches(ulong address, ulong instance)
-    {
-        if (Tables.TryGetValue((address, instance), out var table))
-        {
-            return [.. table.GetBatches()];
-        }
-
-        return Productions.TryGetValue((address, instance), out var productions)
-            ? [.. productions.Select(p => CreateBatch(address, p))]
-            : [];
-    }
-
-    public IReadOnlyList<BatchSummary> GetSummaries(ulong address, ulong instance)
-    {
-        if (Tables.TryGetValue((address, instance), out var table))
-        {
-            return [.. Enumerable.Range(0, table.Count).Select(index => GetSummary(table, index))];
-        }
-
-        return Productions.TryGetValue((address, instance), out var productions)
-            ? [.. productions.Select(p => GetSummary(p.Table, p.Index) with { Call = p.Call })]
-            : [];
+        return index < 0 ? null : handoffs[index];
     }
 
     public ulong? GetProducer(ulong consumer) => Producers.TryGetValue(consumer, out var producer) ? producer : null;
@@ -93,213 +77,57 @@ public sealed partial class BatchIndex
 
         var current = capture;
 
-        while (inputs.Count < MaximumLineage
-               && FindInput((current.Address, current.Consumer, current.Id), current.Iterator) is { } input)
+        while (inputs.Count < MaximumLineage && GetInput(current) is { } input)
         {
-            current = input.Table.CreateBatch(input.Index);
+            current = input;
 
-            inputs.Add(current);
+            inputs.Add(input);
         }
 
         return new BatchLineage(capture, inputs);
     }
 
-    private static BatchCapture CreateBatch(ulong address, Production production)
-        => production.Table.CreateBatch(production.Index) with { Function = address, Call = production.Call };
-
-    private BatchSummary GetSummary(BatchTable table, int index)
-    {
-        var summary = table.GetSummary(index);
-
-        return FindInput(table.GetHandoff(index), summary.Iterator) is { } input
-            ? summary with { InputSelectedCount = input.Table.GetSelectedCount(input.Index) }
-            : summary;
-    }
-
-    private Production? FindProduction(ulong address, ulong instance, int call)
-    {
-        if (!Productions.TryGetValue((address, instance), out var productions))
-        {
-            return null;
-        }
-
-        var low = 0;
-
-        var high = productions.Length - 1;
-
-        while (low <= high)
-        {
-            var middle = low + (high - low) / 2;
-
-            if (productions[middle].Call == call)
-            {
-                return productions[middle];
-            }
-
-            if (productions[middle].Call < call)
-            {
-                low = middle + 1;
-            }
-            else
-            {
-                high = middle - 1;
-            }
-        }
-
-        return null;
-    }
-
-    private Handoff? FindInput((ulong Batch, ulong Consumer, ulong Id) handoff, ulong iterator)
-    {
-        if (!Handoffs.TryGetValue((handoff.Batch, iterator), out var handoffs))
-        {
-            return null;
-        }
-
-        var low = 0;
-
-        var high = handoffs.Length - 1;
-
-        Handoff? found = null;
-
-        while (low <= high)
-        {
-            var middle = low + (high - low) / 2;
-
-            if (handoffs[middle].Id < handoff.Id)
-            {
-                found = handoffs[middle];
-
-                low = middle + 1;
-            }
-            else
-            {
-                high = middle - 1;
-            }
-        }
-
-        return found;
-    }
-
-    private Dictionary<(ulong Batch, ulong Consumer), Handoff[]> BuildHandoffs()
-    {
-        var handoffs = new Dictionary<(ulong Batch, ulong Consumer), List<Handoff>>();
-
-        foreach (var table in Tables.Values)
-        {
-            for (var index = 0; index < table.Count; index++)
-            {
-                var (batch, consumer, id) = table.GetHandoff(index);
-
-                if (consumer == 0)
-                {
-                    continue;
-                }
-
-                ref var list = ref CollectionsMarshal.GetValueRefOrAddDefault(handoffs, (batch, consumer), out _);
-
-                (list ??= []).Add(new Handoff(id, table, index));
-            }
-        }
-
-        return handoffs.ToDictionary(h => h.Key, h => h.Value.OrderBy(v => v.Id).ToArray());
-    }
-
-    private Dictionary<ulong, ulong> BuildProducers()
-    {
-        var producers = new Dictionary<ulong, ulong>();
-
-        foreach (var table in Tables.Values)
-        {
-            for (var index = 0; index < table.Count; index++)
-            {
-                if (table.GetHandoff(index).Consumer is not 0 and var consumer)
-                {
-                    producers.TryAdd(consumer, table.Instance);
-                }
-            }
-        }
-
-        return producers;
-    }
-
     internal void AnnotateNodes(TraceCallStore store)
     {
-        Productions = BuildProductions(store);
-
-        foreach (var table in Tables.Values)
-        {
-            Annotate(store, table.Function, table.Instance, table.GetCalls());
-        }
-
-        foreach (var ((address, instance), productions) in Productions)
-        {
-            Annotate(store, address, instance, [.. productions.Select(p => p.Call)]);
-        }
-    }
-
-    private static void Annotate(TraceCallStore store, ulong address, ulong instance, IReadOnlyList<int> calls)
-    {
-        if (store.GetCallList(address, instance) is not { } callList)
-        {
-            return;
-        }
-
-        foreach (var call in calls)
-        {
-            if (call < callList.Count && store.GetNode(callList.GetNodeIndex(call)) is { } node)
-            {
-                node.HasBatches = true;
-            }
-        }
-    }
-
-    private Dictionary<(ulong Address, ulong Instance), Production[]> BuildProductions(TraceCallStore store)
-    {
-        var handoffs = new Dictionary<ulong, List<Handoff>>();
-
-        foreach (var table in Tables.Values)
-        {
-            ref var list = ref CollectionsMarshal.GetValueRefOrAddDefault(handoffs, table.Instance, out _);
-
-            list ??= [];
-
-            for (var index = 0; index < table.Count; index++)
-            {
-                list.Add(new Handoff(table.GetHandoff(index).Id, table, index));
-            }
-        }
-
-        foreach (var list in handoffs.Values)
-        {
-            list.Sort((left, right) => left.Id.CompareTo(right.Id));
-        }
-
-        var productions = new Dictionary<(ulong Address, ulong Instance), Production[]>();
+        var produced = Captures.GroupBy(c => c.Instance).ToDictionary(g => g.Key, g => g.OrderBy(c => c.Id).ToArray());
 
         foreach (var (address, instance) in store.FunctionKeys)
         {
-            if (!handoffs.TryGetValue(instance, out var list)
+            if (!produced.TryGetValue(instance, out var handoffs)
                 || store.GetCallList(address, instance) is not { Count: > 0 } calls
                 || store.GetNode(calls.GetNodeIndex(0))?.Frame?.Resolved?.MethodName != ProducerMethod)
             {
                 continue;
             }
 
-            var found = GetProductions(calls, list);
+            var productions = GetProductions(address, calls, handoffs);
 
-            if (found.Length > 0)
+            if (productions.Length > 0)
             {
-                productions[(address, instance)] = found;
+                Batches[(address, instance)] = productions;
             }
         }
 
-        return productions;
+        foreach (var ((address, instance), batches) in Batches)
+        {
+            if (store.GetCallList(address, instance) is not { } calls)
+            {
+                continue;
+            }
+
+            foreach (var batch in batches)
+            {
+                if (batch.Call < calls.Count && store.GetNode(calls.GetNodeIndex(batch.Call)) is { } node)
+                {
+                    node.HasBatches = true;
+                }
+            }
+        }
     }
 
-    private static Production[] GetProductions(TraceCallList calls, List<Handoff> handoffs)
+    private static BatchCapture[] GetProductions(ulong address, TraceCallList calls, BatchCapture[] handoffs)
     {
-        var productions = new List<Production>();
+        var productions = new List<BatchCapture>();
 
         var next = 0;
 
@@ -314,83 +142,17 @@ public sealed partial class BatchIndex
 
             var limit = call + 1 < calls.Count ? calls.GetId(call + 1) : ulong.MaxValue;
 
-            while (next < handoffs.Count && handoffs[next].Id <= end)
+            while (next < handoffs.Length && handoffs[next].Id <= end)
             {
                 next++;
             }
 
-            if (next < handoffs.Count && handoffs[next].Id < limit)
+            if (next < handoffs.Length && handoffs[next].Id < limit)
             {
-                productions.Add(new Production(call, handoffs[next].Table, handoffs[next].Index));
+                productions.Add(handoffs[next] with { Function = address, Call = call });
             }
         }
 
         return [.. productions];
-    }
-
-    private sealed record Handoff(ulong Id, BatchTable Table, int Index);
-
-    private sealed record Production(int Call, BatchTable Table, int Index);
-
-    internal sealed class Log
-    {
-        private Dictionary<(ulong Address, ulong Instance), BatchTable.Builder> Builders { get; } = [];
-
-        public void Add(ReadOnlySpan<RawBatch> batches,
-                        ReadOnlySpan<RawVector> vectors,
-                        ReadOnlySpan<ushort> selection,
-                        ReadOnlySpan<ulong> slots,
-                        ReadOnlySpan<RawDeepValue> deepValues,
-                        ReadOnlySpan<byte> data)
-        {
-            foreach (var batch in batches)
-            {
-                if (!IsValid(batch, vectors, selection.Length, slots.Length, deepValues, data.Length))
-                {
-                    continue;
-                }
-
-                ref var builder = ref CollectionsMarshal.GetValueRefOrAddDefault(Builders, (batch.Function, batch.Instance), out _);
-
-                builder ??= new BatchTable.Builder(batch.Function, batch.Instance);
-
-                builder.Add(batch, vectors, selection, slots, deepValues, data);
-            }
-        }
-
-        public BatchIndex Build() => new(Builders.ToDictionary(b => b.Key, b => b.Value.Build()));
-
-        private static bool IsValid(RawBatch batch,
-                                    ReadOnlySpan<RawVector> vectors,
-                                    int selectionCount,
-                                    int slotCount,
-                                    ReadOnlySpan<RawDeepValue> deepValues,
-                                    int dataLength)
-        {
-            if ((ulong)batch.FirstSelected + batch.SelectedCount > (ulong)selectionCount
-                || (ulong)batch.FirstVector + batch.VectorCount > (ulong)vectors.Length)
-            {
-                return false;
-            }
-
-            foreach (var vector in vectors.Slice((int)batch.FirstVector, (int)batch.VectorCount))
-            {
-                if ((ulong)vector.FirstSlot + vector.SlotCount > (ulong)slotCount
-                    || (ulong)vector.FirstDeepValue + vector.DeepValueCount > (ulong)deepValues.Length)
-                {
-                    return false;
-                }
-
-                foreach (var deep in deepValues.Slice((int)vector.FirstDeepValue, (int)vector.DeepValueCount))
-                {
-                    if ((ulong)deep.Data + deep.Captured > (ulong)dataLength || deep.Slot >= vector.SlotCount)
-                    {
-                        return false;
-                    }
-                }
-            }
-
-            return true;
-        }
     }
 }

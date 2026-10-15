@@ -205,7 +205,7 @@ public sealed partial class BatchesViewModel(CallStackNode node, CallStoreLookup
 
     private QueryResultSet BuildTable(ulong address, ulong instance)
     {
-        var summaries = lookup.Batches.GetSummaries(address, instance);
+        var batches = lookup.Batches.GetBatches(address, instance);
 
         var callList = lookup.Store.GetCallList(address, instance);
 
@@ -218,27 +218,27 @@ public sealed partial class BatchesViewModel(CallStackNode node, CallStoreLookup
             new(4, "Selected", typeof(string), false) { Width = SelectedWidth, Alignment = ResultAlignment.Right }
         };
 
-        var rows = new ResultRow<long>[summaries.Count];
+        var rows = new ResultRow<long>[batches.Count];
 
         for (var index = 0; index < rows.Length; index++)
         {
-            var summary = summaries[index];
+            var batch = batches[index];
 
-            var call = callList is not null && summary.Call < callList.Count ? callList[summary.Call] : null;
+            var call = callList is not null && batch.Call < callList.Count ? callList[batch.Call] : null;
 
             object? callValue = call is not null && lookup.Store.GetNode(call) is { } callNode
-                ? new CallValue(callNode, summary.Call)
-                : (long)summary.Call + 1;
+                ? new CallValue(callNode, batch.Call)
+                : (long)batch.Call + 1;
 
-            var selected = summary.InputSelectedCount is { } input
-                ? $"{summary.SelectedCount:N0}/{input:N0}"
-                : summary.SelectedCount.ToString("N0", CultureInfo.InvariantCulture);
+            var selected = lookup.Batches.GetInput(batch) is { } input
+                ? $"{batch.SelectedCount:N0}/{input.SelectedCount:N0}"
+                : batch.SelectedCount.ToString("N0", CultureInfo.InvariantCulture);
 
-            int? capacity = summary.Capacity > 0 ? summary.Capacity : null;
+            int? capacity = batch.Capacity > 0 ? batch.Capacity : null;
 
-            rows[index] = new ResultRow<long>([callValue, call?.ThreadId, capacity, summary.VectorCount, selected])
+            rows[index] = new ResultRow<long>([callValue, call?.ThreadId, capacity, batch.Vectors.Count, selected])
             {
-                Id = summary.Call
+                Id = batch.Call
             };
         }
 

@@ -1,3 +1,5 @@
+using InternalsViewer.Query.FullTrace.Interfaces.Hooks;
+
 namespace InternalsViewer.Query.FullTrace.CustomHooks;
 
 public sealed record CustomHookDefinition(string Name,
@@ -11,4 +13,4 @@ public sealed record CustomHookDefinition(string Name,
                                           bool IsReadAtReturn,
                                           int Offset,
                                           int Length,
-                                          bool IsPaused = false);
+                                          bool IsPaused = false) : IArgumentRead;

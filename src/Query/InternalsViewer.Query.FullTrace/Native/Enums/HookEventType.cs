@@ -1,4 +1,4 @@
-namespace InternalsViewer.Query.FullTrace.Native;
+namespace InternalsViewer.Query.FullTrace.Native.Enums;
 
 internal enum HookEventType : uint
 {

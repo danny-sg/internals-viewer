@@ -1,5 +1,7 @@
 using InternalsViewer.Query.FullTrace.Interfaces.Hooks;
 using InternalsViewer.Query.FullTrace.Native;
+using InternalsViewer.Query.FullTrace.Hooks.Enums;
+using InternalsViewer.Query.FullTrace.Native.Enums;
 
 namespace InternalsViewer.Query.FullTrace.Hooks;
 

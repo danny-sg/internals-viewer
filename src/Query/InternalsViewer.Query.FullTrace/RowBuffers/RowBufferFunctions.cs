@@ -1,8 +1,9 @@
 using InternalsViewer.Query.Helpers;
+using InternalsViewer.Query.FullTrace.RowBuffers.Enums;
 
 namespace InternalsViewer.Query.FullTrace.RowBuffers;
 
-internal sealed record RowBufferFunctions(RowBufferRead[] Reads, RowBufferLayout[] Layouts)
+internal sealed record RowBufferFunctions(ulong[] Functions, (ulong VTable, RowBufferFormat Format)[] Formats)
 {
     public static RowBufferFunctions Empty { get; } = new([], []);
 
@@ -10,25 +11,14 @@ internal sealed record RowBufferFunctions(RowBufferRead[] Reads, RowBufferLayout
     {
         var all = functions.ToList();
 
-        return new([.. all.SelectMany(f => f.Reads)], [.. all.SelectMany(f => f.Layouts)]);
+        return new([.. all.SelectMany(f => f.Functions)], [.. all.SelectMany(f => f.Formats)]);
     }
 
     public RowBufferFunctions Rebase(ulong address)
-        => new([.. Reads.Select(r => r with { Function = r.Function + address })],
-               [.. Layouts.Select(l => l with { VTable = l.VTable + address })]);
+        => new([.. Functions.Select(f => f + address)], [.. Formats.Select(f => (f.VTable + address, f.Format))]);
 
     internal sealed class Collector
     {
-        private const int InstanceRegister = 0;
-
-        private const uint BufferOffset = 0x80;
-
-        private const uint BindingsOffset = 0x88;
-
-        private const uint ValueRowOffset = 0x78;
-
-        private const uint ValueCountOffset = 0x50;
-
         private const string RowsetClass = "CQScanRowsetNew";
 
         private const string ValueRowClass = "CQScanBatchHelper";
@@ -92,14 +82,13 @@ internal sealed record RowBufferFunctions(RowBufferRead[] Reads, RowBufferLayout
 
             HashSet<string> valueRows = [.. bases.Where(b => b.Value.Contains(ValueRowClass)).Select(b => b.Key)];
 
-            RowBufferLayout[] layouts =
+            (ulong VTable, RowBufferFormat Format)[] formats =
             [
-                .. rowsets.Where(VTables.ContainsKey).Select(c => new RowBufferLayout(VTables[c], BufferOffset, BindingsOffset)),
-                .. valueRows.Where(VTables.ContainsKey)
-                            .Select(c => new RowBufferLayout(VTables[c], ValueRowOffset, 0, ValueCountOffset, RowBufferFormat.Values))
+                .. rowsets.Where(VTables.ContainsKey).Select(c => ((ulong)VTables[c], RowBufferFormat.Bindings)),
+                .. valueRows.Where(VTables.ContainsKey).Select(c => ((ulong)VTables[c], RowBufferFormat.Values))
             ];
 
-            if (layouts.Length == 0)
+            if (formats.Length == 0)
             {
                 return Empty;
             }
@@ -110,7 +99,7 @@ internal sealed record RowBufferFunctions(RowBufferRead[] Reads, RowBufferLayout
                 .. Helpers
             ];
 
-            return functions.Count == 0 ? Empty : new([.. functions.Select(f => new RowBufferRead(f, InstanceRegister))], layouts);
+            return functions.Count == 0 ? Empty : new([.. functions.Select(f => (ulong)f)], formats);
         }
 
         private static bool IsRowMethod(ReadOnlySpan<char> name)

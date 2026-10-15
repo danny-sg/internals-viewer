@@ -228,11 +228,11 @@ public class TraceExportSectionTests
 
         timeline.SetLifetimes(IteratorLifetimeBuilder.Build(timeline, [scan]));
 
-        var storeBuilder = new TraceCallStore.Builder([new LocatorRead(0x30, 2, false, LocatorValueType.Page)]);
+        var storeBuilder = new TraceCallStore.Builder();
 
         storeBuilder.Add(0x30, Scan, Columns(Call(1, 5), Call(2, 6)), 2);
 
-        storeBuilder.AddLocators([new PointerValue(0x30, Scan, Page336, 1, 2)]);
+        storeBuilder.AddLocator(0x30, Scan, 1, new Locator(2, LocatorValueType.Page, Page336), false);
 
         var callStore = storeBuilder.Build();
 

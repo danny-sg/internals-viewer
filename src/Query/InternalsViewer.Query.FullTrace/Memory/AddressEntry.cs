@@ -1,3 +1,5 @@
+using InternalsViewer.Query.FullTrace.Memory.Enums;
+
 namespace InternalsViewer.Query.FullTrace.Memory;
 
 internal readonly record struct AddressEntry(ulong Address,
@@ -6,4 +8,4 @@ internal readonly record struct AddressEntry(ulong Address,
                                              ulong Until,
                                              int Node,
                                              uint Thread,
-                                             uint Operation);
+                                             MemoryMapOperation Operation);

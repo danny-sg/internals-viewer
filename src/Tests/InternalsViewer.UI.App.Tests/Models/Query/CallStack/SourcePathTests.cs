@@ -2,6 +2,7 @@ using InternalsViewer.Query.CallStack;
 using InternalsViewer.Query.FullTrace.Memory;
 using InternalsViewer.Query.FullTrace.Timeline;
 using InternalsViewer.UI.App.Models.Query.CallStack;
+using InternalsViewer.Query.FullTrace.Memory.Enums;
 
 namespace InternalsViewer.UI.App.Tests.Models.Query.CallStack;
 

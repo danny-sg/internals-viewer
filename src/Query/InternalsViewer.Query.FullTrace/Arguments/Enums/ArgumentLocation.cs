@@ -1,4 +1,4 @@
-namespace InternalsViewer.Query.FullTrace.Arguments;
+namespace InternalsViewer.Query.FullTrace.Arguments.Enums;
 
 public enum ArgumentLocation
 {

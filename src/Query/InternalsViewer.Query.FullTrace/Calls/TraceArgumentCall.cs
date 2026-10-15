@@ -1,5 +1,6 @@
 using InternalsViewer.Query.CallStack.Locators;
 using InternalsViewer.Query.FullTrace.Arguments;
+using InternalsViewer.Query.FullTrace.Arguments.Enums;
 
 namespace InternalsViewer.Query.FullTrace.Calls;
 

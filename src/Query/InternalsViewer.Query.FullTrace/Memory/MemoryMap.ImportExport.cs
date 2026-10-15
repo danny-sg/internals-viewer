@@ -1,4 +1,5 @@
 using InternalsViewer.Query.CallStack;
+using InternalsViewer.Query.FullTrace.Memory.Enums;
 
 namespace InternalsViewer.Query.FullTrace.Memory;
 
@@ -38,7 +39,7 @@ public sealed partial class MemoryMap
                                               reader.ReadUInt64(),
                                               reader.ReadInt32(),
                                               reader.ReadUInt32(),
-                                              reader.ReadByte());
+                                              (MemoryMapOperation)reader.ReadByte());
         }
 
         return Build(entries, nodeOf);

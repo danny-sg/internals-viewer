@@ -9,6 +9,7 @@ using InternalsViewer.Query.CallStack.Locators;
 using InternalsViewer.Query.FullTrace.Arguments;
 using InternalsViewer.Query.FullTrace.Memory;
 using InternalsViewer.Query.Results;
+using InternalsViewer.Query.FullTrace.Memory.Enums;
 
 namespace InternalsViewer.UI.App.Tests.Models.Query.CallStack;
 

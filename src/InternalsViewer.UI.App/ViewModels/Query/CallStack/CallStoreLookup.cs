@@ -13,6 +13,7 @@ using InternalsViewer.Query.FullTrace.Locators;
 using InternalsViewer.Query.FullTrace.Memory;
 using InternalsViewer.Query.FullTrace.RowBuffers;
 using InternalsViewer.UI.App.Models.Query.CallStack;
+using InternalsViewer.Query.FullTrace.Calls.Enums;
 
 namespace InternalsViewer.UI.App.ViewModels.Query.CallStack;
 

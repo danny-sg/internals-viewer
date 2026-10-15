@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using System.Linq;
 using InternalsViewer.Query.CallStack;
 using InternalsViewer.Query.FullTrace.Memory;
+using InternalsViewer.Query.FullTrace.Memory.Enums;
 
 namespace InternalsViewer.UI.App.Models.Query.CallStack;
 

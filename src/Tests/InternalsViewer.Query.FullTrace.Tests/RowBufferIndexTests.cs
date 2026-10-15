@@ -3,6 +3,7 @@ using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Query.CallStack;
 using InternalsViewer.Query.FullTrace.Calls;
 using InternalsViewer.Query.FullTrace.RowBuffers;
+using InternalsViewer.Query.FullTrace.RowBuffers.Enums;
 
 using static InternalsViewer.Query.FullTrace.Tests.TraceCallRows;
 
@@ -25,6 +26,10 @@ public class RowBufferIndexTests
 
     private const uint VariableBinding = 0x902;
 
+    private static readonly RowBufferBinding Fixed = new(4, FixedBinding, 4);
+
+    private static readonly RowBufferBinding Variable = new(-1, VariableBinding, 8000);
+
     [Fact]
     public void A_Call_Reads_Back_Its_Row()
     {
@@ -40,8 +45,8 @@ public class RowBufferIndexTests
     {
         var columns = Build().GetRow(Function, Instance, 1)!.Columns;
 
-        Assert.Equal((4, 4, FixedBinding, false), Describe(columns[0]));
-        Assert.Equal((-1, 8000, VariableBinding, true), Describe(columns[1]));
+        Assert.Equal((new RowBufferBinding(4, FixedBinding, 4), false), (columns[0].Binding, columns[0].IsByReference));
+        Assert.Equal((new RowBufferBinding(-1, VariableBinding, 8000), true), (columns[1].Binding, columns[1].IsByReference));
     }
 
     [Fact]
@@ -85,13 +90,10 @@ public class RowBufferIndexTests
     [Fact]
     public void Every_Function_Writing_An_Iterator_Buffer_Shares_One_Timeline()
     {
-        var log = new RowBufferIndex.Log();
+        var index = new RowBufferIndex([CreateRow(Function, call: 1, id: 100, number: 1, "First"),
+                                        CreateRow(DirectSelect, call: 1, id: 300, number: 3, "Third")]);
 
-        Add(log, Function, call: 1, id: 100, number: 1, "First");
-
-        Add(log, DirectSelect, call: 1, id: 300, number: 3, "Third");
-
-        var row = log.Build().GetRowAt(Iterator, 301);
+        var row = index.GetRowAt(Iterator, 301);
 
         Assert.Equal((DirectSelect, "Third"), (row?.Function, Encoding.ASCII.GetString(row!.Columns[1].Data)));
     }
@@ -113,71 +115,45 @@ public class RowBufferIndexTests
 
         store.MapNodes([other, scan]);
 
-        var log = new RowBufferIndex.Log();
-
-        Add(log, Function, call: 2, id: 100, number: 1, "First");
-
-        log.Build().AnnotateNodes(store);
+        new RowBufferIndex([CreateRow(Function, call: 2, id: 100, number: 1, "First")]).AnnotateNodes(store);
 
         Assert.Equal((true, false), (scan.HasRowBuffers, other.HasRowBuffers));
     }
 
     [Fact]
-    public void A_Null_Column_Has_No_Data()
+    public void A_Null_Column_Shows_Its_Status()
     {
-        var log = new RowBufferIndex.Log();
+        var column = new RowBufferColumn(0, Fixed, 3, RowBufferColumnFlags.None, 0, []);
 
-        log.Add([new RawRow(Function, Instance, Iterator, Buffer, 100, 1, 0, 1)],
-                [new RawColumn(0, 0, 0, 4, FixedBinding, 4, 3, 0)],
-                []);
-
-        var column = log.Build().GetRow(Function, Instance, 1)!.Columns[0];
-
-        Assert.Equal((3, 0, "Status 3"), (column.Status, column.Data.Length, column.ToString()));
+        Assert.Equal("Status 3", column.ToString());
     }
 
     [Fact]
     public void A_Value_Row_Keeps_Its_Format_Through_Export()
     {
-        var log = new RowBufferIndex.Log();
+        var column = new RowBufferColumn(0, RowBufferBinding.None, 0, RowBufferColumnFlags.None, 8, [0x20, 0x28, 0x30, 0, 0, 0, 0, 0]);
 
-        log.Add([new RawRow(Function, Instance, Iterator, Buffer, 100, 1, 0, 1, RowBufferFormat.Values)],
-                [new RawColumn(0, 8, 8, -1, 0, 0, 0, 0)],
-                [0x20, 0x28, 0x30, 0, 0, 0, 0, 0]);
+        var index = new RowBufferIndex([new RowBuffer(Function, Instance, 1, 100, Iterator, Buffer, [column], RowBufferFormat.Values)]);
 
-        using var stream = new MemoryStream();
-
-        using (var writer = new BinaryWriter(stream, Encoding.UTF8, leaveOpen: true))
-        {
-            log.Build().Write(writer);
-        }
-
-        stream.Position = 0;
-
-        using var reader = new BinaryReader(stream);
-
-        var row = RowBufferIndex.Read(reader).GetRow(Function, Instance, 1)!;
+        var row = Export(index).GetRow(Function, Instance, 1)!;
 
         Assert.Equal(RowBufferFormat.Values, row.Format);
         Assert.Equal([0x20, 0x28, 0x30, 0, 0, 0, 0, 0], row.Columns[0].Data);
     }
 
     [Fact]
-    public void A_Value_On_A_Page_Is_Kept_As_A_Page_Reference()
+    public void A_Page_Reference_Survives_Export_And_Import()
     {
-        var log = new RowBufferIndex.Log();
+        var flags = RowBufferColumnFlags.ByReference | RowBufferColumnFlags.HasLength | RowBufferColumnFlags.PageReference;
 
-        var flags = (byte)(RowBufferColumnFlags.ByReference | RowBufferColumnFlags.HasLength | RowBufferColumnFlags.PageReference);
+        var page = new RowBufferPage(new PageAddress(1, 336), 416, new LogSequenceNumber(42, 16, 3));
 
-        byte[] reference = [0xA0, 0x01, 0x50, 0x01, 0, 0, 1, 0, 0x2A, 0, 0, 0, 0x10, 0, 0, 0, 0x03, 0];
+        var column = new RowBufferColumn(0, Variable, 0, flags, 5, []) { Page = page };
 
-        log.Add([new RawRow(Function, Instance, Iterator, Buffer, 100, 1, 0, 1)],
-                [new RawColumn(0, 5, (uint)reference.Length, -1, VariableBinding, 8000, 0, flags)],
-                reference);
+        column = Export(new RowBufferIndex([new RowBuffer(Function, Instance, 1, 100, Iterator, Buffer, [column])]))
+            .GetRow(Function, Instance, 1)!.Columns[0];
 
-        var column = log.Build().GetRow(Function, Instance, 1)!.Columns[0];
-
-        Assert.Equal(new RowBufferPage(new PageAddress(1, 336), 416, new LogSequenceNumber(42, 16, 3)), column.Page);
+        Assert.Equal(page, column.Page);
         Assert.Empty(column.Data);
         Assert.Equal("Page (1:336) Offset 416", column.ToString());
     }
@@ -185,27 +161,24 @@ public class RowBufferIndexTests
     [Fact]
     public void A_Value_Read_In_Part_Is_Unreadable_Not_Truncated()
     {
-        var log = new RowBufferIndex.Log();
+        var flags = RowBufferColumnFlags.ByReference | RowBufferColumnFlags.HasLength | RowBufferColumnFlags.Unreadable;
 
-        var flags = (byte)(RowBufferColumnFlags.ByReference | RowBufferColumnFlags.HasLength | RowBufferColumnFlags.Unreadable);
+        var column = new RowBufferColumn(0, Variable, 0, flags, 5, [0x46, 0x69]);
 
-        log.Add([new RawRow(Function, Instance, Iterator, Buffer, 100, 1, 0, 1)],
-                [new RawColumn(0, 5, 2, -1, VariableBinding, 8000, 0, flags)],
-                [0x46, 0x69]);
-
-        Assert.Equal("0x4669 (Unreadable After 2 Bytes)", log.Build().GetRow(Function, Instance, 1)!.Columns[0].ToString());
+        Assert.Equal("0x4669 (Unreadable After 2 Bytes)", column.ToString());
     }
 
     [Fact]
-    public void A_Row_Outside_Its_Chunk_Is_Skipped()
+    public void Rows_Sharing_Columns_Still_Share_Them_After_Export_And_Import()
     {
-        var log = new RowBufferIndex.Log();
+        var first = CreateRow(Function, call: 1, id: 100, number: 1, "First");
 
-        log.Add([new RawRow(Function, Instance, Iterator, Buffer, 100, 1, 1, 1)],
-                [new RawColumn(0, 4, 4, 4, FixedBinding, 4, 0, 0)],
-                [1, 0, 0, 0]);
+        var imported = Export(new RowBufferIndex([first, first with { Call = 2, Id = 200 }]));
 
-        Assert.Equal(0, log.Build().Count);
+        var (left, right) = (imported.GetRow(Function, Instance, 1)!, imported.GetRow(Function, Instance, 2)!);
+
+        Assert.Same(left.Columns, right.Columns);
+        Assert.Same(left.Columns[0].Binding, right.Columns[0].Binding);
     }
 
     [Fact]
@@ -219,18 +192,7 @@ public class RowBufferIndexTests
     [Fact]
     public void Rows_Survive_Export_And_Import()
     {
-        using var stream = new MemoryStream();
-
-        using (var writer = new BinaryWriter(stream, Encoding.UTF8, leaveOpen: true))
-        {
-            Build().Write(writer);
-        }
-
-        stream.Position = 0;
-
-        using var reader = new BinaryReader(stream);
-
-        var imported = RowBufferIndex.Read(reader);
+        var imported = Export(Build());
 
         var row = imported.GetRow(Function, Instance, 2)!;
 
@@ -242,29 +204,36 @@ public class RowBufferIndexTests
         Assert.Equal(2, imported.GetRowAt(Iterator, 201)?.Call);
     }
 
-    private static (int, int, uint, bool) Describe(RowBufferColumn column)
-        => (column.RecordOffset, column.FixedLength, column.BindingFlags, column.IsByReference);
-
     private static RowBufferIndex Build()
+        => new([CreateRow(Function, call: 2, id: 200, number: 2, "Second"), CreateRow(Function, call: 1, id: 100, number: 1, "First")]);
+
+    private static RowBuffer CreateRow(ulong function, int call, ulong id, byte number, string text)
     {
-        var log = new RowBufferIndex.Log();
+        var flags = RowBufferColumnFlags.ByReference | RowBufferColumnFlags.HasLength;
 
-        Add(log, Function, call: 2, id: 200, number: 2, "Second");
-
-        Add(log, Function, call: 1, id: 100, number: 1, "First");
-
-        return log.Build();
+        return new RowBuffer(function,
+                             Instance,
+                             call,
+                             id,
+                             Iterator,
+                             Buffer,
+                             [new RowBufferColumn(0, Fixed, 0, RowBufferColumnFlags.None, 4, [number, 0, 0, 0]),
+                              new RowBufferColumn(1, Variable, 0, flags, text.Length, Encoding.ASCII.GetBytes(text))]);
     }
 
-    private static void Add(RowBufferIndex.Log log, ulong function, uint call, ulong id, byte number, string text)
+    private static RowBufferIndex Export(RowBufferIndex index)
     {
-        var flags = (byte)(RowBufferColumnFlags.ByReference | RowBufferColumnFlags.HasLength);
+        using var stream = new MemoryStream();
 
-        byte[] data = [number, 0, 0, 0, .. Encoding.ASCII.GetBytes(text)];
+        using (var writer = new BinaryWriter(stream, Encoding.UTF8, leaveOpen: true))
+        {
+            index.Write(writer);
+        }
 
-        log.Add([new RawRow(function, Instance, Iterator, Buffer, id, call, 0, 2)],
-                [new RawColumn(0, 4, 4, 4, FixedBinding, 4, 0, 0),
-                 new RawColumn(4, (uint)text.Length, (uint)text.Length, -1, VariableBinding, 8000, 0, flags)],
-                data);
+        stream.Position = 0;
+
+        using var reader = new BinaryReader(stream);
+
+        return RowBufferIndex.Read(reader);
     }
 }

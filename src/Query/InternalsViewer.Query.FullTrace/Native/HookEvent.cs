@@ -1,4 +1,5 @@
 using System.Runtime.InteropServices;
+using InternalsViewer.Query.FullTrace.Native.Enums;
 
 namespace InternalsViewer.Query.FullTrace.Native;
 

@@ -4,6 +4,7 @@ using System.Linq;
 using InternalsViewer.Query.CallStack;
 using InternalsViewer.Query.CallStack.Arguments;
 using InternalsViewer.Query.FullTrace.Calls;
+using InternalsViewer.Query.FullTrace.Calls.Enums;
 
 namespace InternalsViewer.UI.App.Models.Query.CallStack;
 

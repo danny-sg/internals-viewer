@@ -1,6 +1,7 @@
 using System.Text;
 using InternalsViewer.Query.FullTrace.Batches;
 using InternalsViewer.Query.FullTrace.Hooks;
+using InternalsViewer.Query.FullTrace.Batches.Enums;
 
 namespace InternalsViewer.Query.FullTrace.Tests;
 
@@ -110,9 +111,7 @@ public class BatchHookTests
 
     private static BatchCapture? Replay(FakeTraceReplay memory)
     {
-        var log = new BatchIndex.Log();
-
-        var hook = new BatchHook(new BatchFunctions([Function]), log);
+        var hook = new BatchHook(new BatchFunctions([Function]));
 
         memory.Frames = [new TraceHookFrame(1, 0x55_47EF_B400, Iterator, 5), new TraceHookFrame(2, 0x55_47EF_B800, Consumer, 4)];
 
@@ -120,7 +119,7 @@ public class BatchHookTests
 
         hook.OnReturn(Call(), memory);
 
-        return log.Build().GetBatch(Function, Iterator, 4);
+        return hook.Build().GetBatch(Function, Iterator, 4);
     }
 
     private static TraceHookCall Call()
