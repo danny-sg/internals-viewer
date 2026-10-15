@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ContentDialog
+    x:Class="InternalsViewer.UI.App.Controls.Dialogs.CustomHookDialog"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    Title="Custom Hook"
+    PrimaryButtonText="Add"
+    CloseButtonText="Cancel"
+    DefaultButton="Primary"
+    PrimaryButtonClick="OnAddClick">
+
+    <StackPanel Spacing="12" MinWidth="360">
+        <TextBlock Text="{x:Bind Description}"
+                   TextWrapping="Wrap"
+                   FontFamily="{StaticResource MonospaceFontFamily}"
+                   Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
+
+        <TextBox x:Name="NameBox" Header="Name" Text="{x:Bind HookName, Mode=TwoWay}"/>
+
+        <NumberBox x:Name="LengthBox"
+                   Header="Length"
+                   Minimum="1"
+                   Maximum="65536"
+                   SpinButtonPlacementMode="Hidden"
+                   Value="{x:Bind Length, Mode=TwoWay}"/>
+
+        <TextBox x:Name="OffsetBox"
+                 Header="Offset"
+                 PlaceholderText="0x0"
+                 Text="{x:Bind OffsetText, Mode=TwoWay}"/>
+
+        <RadioButtons x:Name="ReadAtButtons"
+                      Header="Read At"
+                      SelectedIndex="{x:Bind ReadAtIndex, Mode=TwoWay}">
+            <x:String>Call</x:String>
+            <x:String>Return</x:String>
+        </RadioButtons>
+
+        <TextBlock x:Name="ErrorText"
+                   Visibility="Collapsed"
+                   TextWrapping="Wrap"
+                   Foreground="{ThemeResource SystemFillColorCriticalBrush}"/>
+    </StackPanel>
+</ContentDialog>

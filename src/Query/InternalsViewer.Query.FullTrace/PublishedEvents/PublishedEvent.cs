@@ -1,8 +1,5 @@
-using System.Runtime.InteropServices;
+namespace InternalsViewer.Query.FullTrace.PublishedEvents;
 
-namespace InternalsViewer.Query.FullTrace.Native;
-
-[StructLayout(LayoutKind.Sequential)]
 internal readonly record struct PublishedEvent(ulong Publisher,
                                                ulong SessionBuffer,
                                                ulong Sequence,

@@ -1,4 +1,4 @@
-namespace InternalsViewer.Query.FullTrace.Recording;
+namespace InternalsViewer.Query.FullTrace.Interfaces.Recording;
 
 public interface IWinDbgSettings
 {

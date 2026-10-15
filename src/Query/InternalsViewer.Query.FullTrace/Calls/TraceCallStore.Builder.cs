@@ -3,7 +3,6 @@ using System.IO.Compression;
 using System.Runtime.InteropServices;
 using InternalsViewer.Query.CallStack.Locators;
 using InternalsViewer.Query.FullTrace.Locators;
-using InternalsViewer.Query.FullTrace.Native;
 
 namespace InternalsViewer.Query.FullTrace.Calls;
 
@@ -59,24 +58,6 @@ public sealed partial class TraceCallStore
 
         public void Add(ulong address, ulong instance, ReadOnlySpan<ulong> columns, int calls)
             => ChunksOf(address, instance).Add(Task.FromResult(Compress(columns, calls)));
-
-        public void AddLocators(IntPtr values, int count)
-        {
-            var size = count * Marshal.SizeOf<PointerValue>();
-
-            var buffer = ArrayPool<byte>.Shared.Rent(size);
-
-            try
-            {
-                Marshal.Copy(values, buffer, 0, size);
-
-                AddLocators(MemoryMarshal.Cast<byte, PointerValue>(buffer.AsSpan(0, size)));
-            }
-            finally
-            {
-                ArrayPool<byte>.Shared.Return(buffer);
-            }
-        }
 
         public void AddLocators(ReadOnlySpan<PointerValue> values)
         {
@@ -245,7 +226,7 @@ public sealed partial class TraceCallStore
         }
 
         private static (ulong Function, int Register, int Offset, bool IsReadAtReturn, uint Mode) KeyOf(LocatorRead read)
-            => (read.Function, read.Register, read.Offset, read.IsReadAtReturn, PointerRead.ModeOf(read.ValueType));
+            => (read.Function, read.Register, read.Offset, read.IsReadAtReturn, read.Mode);
 
         private static Chunk Compress(ReadOnlySpan<ulong> columns, int calls)
         {

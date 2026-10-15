@@ -1,0 +1,6 @@
+using System.Runtime.InteropServices;
+
+namespace InternalsViewer.Query.FullTrace.Hooks;
+
+[StructLayout(LayoutKind.Sequential)]
+internal readonly record struct TraceHookFrame(ulong Id, ulong StackPointer, ulong Instance, int Node, uint Reserved = 0);

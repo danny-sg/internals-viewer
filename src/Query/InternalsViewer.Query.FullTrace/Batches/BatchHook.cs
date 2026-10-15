@@ -1,6 +1,7 @@
 using System.Buffers;
 using System.Runtime.InteropServices;
 using InternalsViewer.Query.FullTrace.Hooks;
+using InternalsViewer.Query.FullTrace.Interfaces.Hooks;
 
 namespace InternalsViewer.Query.FullTrace.Batches;
 
@@ -38,7 +39,8 @@ internal sealed class BatchHook(BatchFunctions functions, BatchIndex.Log log) : 
 
     private const ulong MaximumValueBytes = 8000;
 
-    public IEnumerable<ulong> Functions => functions.Functions;
+    public IEnumerable<TraceHookFunction> Functions
+        => functions.Functions.Select(f => new TraceHookFunction(f, TraceHookEvents.Entry | TraceHookEvents.Return));
 
     private Dictionary<ulong, BatchStart> Starts { get; } = [];
 
@@ -52,7 +54,7 @@ internal sealed class BatchHook(BatchFunctions functions, BatchIndex.Log log) : 
 
     private ArrayBufferWriter<byte> Data { get; } = new();
 
-    public void OnEntry(in TraceHookCall call, ITraceMemory memory)
+    public void OnEntry(in TraceHookCall call, ITraceReplay replay)
     {
         var data = call.Arguments[DataArgument];
 
@@ -63,21 +65,21 @@ internal sealed class BatchHook(BatchFunctions functions, BatchIndex.Log log) : 
 
         var iterator = call.Arguments[IteratorArgument];
 
-        Starts[call.Id] = new BatchStart(iterator, data, GetConsumer(call.Callers, iterator));
+        Starts[call.Id] = new BatchStart(iterator, data, GetConsumer(replay.GetFrames(call.Thread), iterator));
     }
 
-    public void OnReturn(in TraceHookCall call, ITraceMemory memory)
+    public void OnReturn(in TraceHookCall call, ITraceReplay replay)
     {
         if (!Starts.Remove(call.Id, out var start))
         {
             return;
         }
 
-        if (!memory.TryRead(start.Data, out ulong batch)
-            || !memory.TryRead(start.Data + BatchIdsOffset, out ulong ids)
+        if (!replay.TryRead(start.Data, out ulong batch)
+            || !replay.TryRead(start.Data + BatchIdsOffset, out ulong ids)
             || batch < SmallestAddress
             || ids < SmallestAddress
-            || !memory.TryRead(ids, out ushort idCount)
+            || !replay.TryRead(ids, out ushort idCount)
             || idCount > MaximumBatchVectors)
         {
             return;
@@ -85,12 +87,12 @@ internal sealed class BatchHook(BatchFunctions functions, BatchIndex.Log log) : 
 
         Span<ushort> vectorIds = stackalloc ushort[idCount];
 
-        if (idCount > 0 && memory.Read(ids + sizeof(ushort), MemoryMarshal.AsBytes(vectorIds)) != idCount * sizeof(ushort))
+        if (idCount > 0 && replay.Read(ids + sizeof(ushort), MemoryMarshal.AsBytes(vectorIds)) != idCount * sizeof(ushort))
         {
             return;
         }
 
-        var capacity = memory.TryRead(batch + BatchCapacityOffset, out int value) && value is > 0 and <= MaximumBatchSelection
+        var capacity = replay.TryRead(batch + BatchCapacityOffset, out int value) && value is > 0 and <= MaximumBatchSelection
             ? (uint)value
             : 0;
 
@@ -108,11 +110,11 @@ internal sealed class BatchHook(BatchFunctions functions, BatchIndex.Log log) : 
                                          0,
                                          capacity);
 
-        if (!memory.TryRead(batch + BatchVectorsOffset, out ulong vectors)
-            || !memory.TryRead(batch + BatchPureOffset, out ulong pure)
-            || !memory.TryRead(batch + BatchVectorCountOffset, out int vectorCount)
-            || !memory.TryRead(batch + BatchRowCountOffset, out int rowCount)
-            || !memory.TryRead(batch + BatchSelectionOffset, out ulong selection)
+        if (!replay.TryRead(batch + BatchVectorsOffset, out ulong vectors)
+            || !replay.TryRead(batch + BatchPureOffset, out ulong pure)
+            || !replay.TryRead(batch + BatchVectorCountOffset, out int vectorCount)
+            || !replay.TryRead(batch + BatchRowCountOffset, out int rowCount)
+            || !replay.TryRead(batch + BatchSelectionOffset, out ulong selection)
             || rowCount < 0
             || rowCount > MaximumBatchSelection
             || vectorCount < 0
@@ -123,11 +125,11 @@ internal sealed class BatchHook(BatchFunctions functions, BatchIndex.Log log) : 
             return;
         }
 
-        raw = ReadSelection(memory, selection, rowCount, raw);
+        raw = ReadSelection(replay, selection, rowCount, raw);
 
         foreach (var vectorId in vectorIds)
         {
-            Vectors.Add(ReadVector(memory, vectorId, vectors, pure, vectorCount));
+            Vectors.Add(ReadVector(replay, vectorId, vectors, pure, vectorCount));
         }
 
         Add(raw with { VectorCount = idCount });
@@ -135,20 +137,20 @@ internal sealed class BatchHook(BatchFunctions functions, BatchIndex.Log log) : 
 
     public void OnAbandoned(in TraceHookCall call) => Starts.Remove(call.Id);
 
-    private static ulong GetConsumer(ReadOnlySpan<ulong> callers, ulong iterator)
+    private static ulong GetConsumer(ReadOnlySpan<TraceHookFrame> frames, ulong iterator)
     {
-        foreach (var caller in callers)
+        foreach (var frame in frames)
         {
-            if (caller != iterator)
+            if (frame.Node >= 0 && frame.Instance != 0 && frame.Instance != iterator)
             {
-                return caller;
+                return frame.Instance;
             }
         }
 
         return 0;
     }
 
-    private RawBatch ReadSelection(ITraceMemory memory, ulong selection, int rowCount, RawBatch raw)
+    private RawBatch ReadSelection(ITraceReplay replay, ulong selection, int rowCount, RawBatch raw)
     {
         if (selection < SmallestAddress)
         {
@@ -164,7 +166,7 @@ internal sealed class BatchHook(BatchFunctions functions, BatchIndex.Log log) : 
         {
             CollectionsMarshal.SetCount(Selection, rowCount);
 
-            if (memory.Read(selection, MemoryMarshal.AsBytes(CollectionsMarshal.AsSpan(Selection))) != rowCount * sizeof(ushort))
+            if (replay.Read(selection, MemoryMarshal.AsBytes(CollectionsMarshal.AsSpan(Selection))) != rowCount * sizeof(ushort))
             {
                 Selection.Clear();
 
@@ -175,7 +177,7 @@ internal sealed class BatchHook(BatchFunctions functions, BatchIndex.Log log) : 
         return raw with { SelectedCount = (uint)rowCount };
     }
 
-    private RawVector ReadVector(ITraceMemory memory, ushort vectorId, ulong vectors, ulong pure, int vectorCount)
+    private RawVector ReadVector(ITraceReplay replay, ushort vectorId, ulong vectors, ulong pure, int vectorCount)
     {
         var firstSlot = Slots.Count;
 
@@ -188,18 +190,18 @@ internal sealed class BatchHook(BatchFunctions functions, BatchIndex.Log log) : 
 
         var index = (ulong)vectorId - 1;
 
-        if (!memory.TryRead(vectors + index * BatchVectorEntrySize, out ulong buffer) || buffer < SmallestAddress)
+        if (!replay.TryRead(vectors + index * BatchVectorEntrySize, out ulong buffer) || buffer < SmallestAddress)
         {
             return new RawVector((uint)firstSlot, 0, (uint)firstDeepValue, 0, vectorId, (ushort)BatchVectorFlags.Unreadable);
         }
 
         var flags = BatchVectorFlags.None;
 
-        if (pure >= SmallestAddress && memory.TryRead(pure + index / 8, out byte pureBits) && ((pureBits >> (int)(index % 8)) & 1) != 0)
+        if (pure >= SmallestAddress && replay.TryRead(pure + index / 8, out byte pureBits) && ((pureBits >> (int)(index % 8)) & 1) != 0)
         {
             flags |= BatchVectorFlags.Pure;
 
-            if (!memory.TryRead(buffer, out ulong slot))
+            if (!replay.TryRead(buffer, out ulong slot))
             {
                 flags |= BatchVectorFlags.Unreadable;
 
@@ -210,14 +212,14 @@ internal sealed class BatchHook(BatchFunctions functions, BatchIndex.Log log) : 
         }
         else
         {
-            flags |= ReadSlots(memory, buffer);
+            flags |= ReadSlots(replay, buffer);
         }
 
         var slotCount = Slots.Count - firstSlot;
 
         for (var slot = 0; slot < slotCount; slot++)
         {
-            ReadDeepValue(memory, (uint)slot, Slots[firstSlot + slot]);
+            ReadDeepValue(replay, (uint)slot, Slots[firstSlot + slot]);
         }
 
         return new RawVector((uint)firstSlot,
@@ -228,7 +230,7 @@ internal sealed class BatchHook(BatchFunctions functions, BatchIndex.Log log) : 
                                   (ushort)flags);
     }
 
-    private BatchVectorFlags ReadSlots(ITraceMemory memory, ulong buffer)
+    private BatchVectorFlags ReadSlots(ITraceReplay replay, ulong buffer)
     {
         if (Selection.Count == 0)
         {
@@ -248,13 +250,13 @@ internal sealed class BatchHook(BatchFunctions functions, BatchIndex.Log log) : 
 
         var block = CollectionsMarshal.AsSpan(Slots)[first..];
 
-        var read = memory.Read(buffer, MemoryMarshal.AsBytes(block)) / sizeof(ulong);
+        var read = replay.Read(buffer, MemoryMarshal.AsBytes(block)) / sizeof(ulong);
 
         var flags = BatchVectorFlags.None;
 
         for (var row = read; row < rowCount; row++)
         {
-            if (!memory.TryRead(buffer + (ulong)row * sizeof(ulong), out ulong slot))
+            if (!replay.TryRead(buffer + (ulong)row * sizeof(ulong), out ulong slot))
             {
                 flags |= BatchVectorFlags.UnreadableSlots;
             }
@@ -265,7 +267,7 @@ internal sealed class BatchHook(BatchFunctions functions, BatchIndex.Log log) : 
         return flags;
     }
 
-    private void ReadDeepValue(ITraceMemory memory, uint slot, ulong value)
+    private void ReadDeepValue(ITraceReplay replay, uint slot, ulong value)
     {
         if ((value & 1) == 0 || value <= LargestInlineTag)
         {
@@ -276,11 +278,11 @@ internal sealed class BatchHook(BatchFunctions functions, BatchIndex.Log log) : 
 
         var deepValue = new RawDeepValue(slot, (uint)Data.WrittenCount, 0, 0);
 
-        if (pointer >= SmallestAddress && memory.TryRead(pointer - DeepLengthOffset, out ushort length))
+        if (pointer >= SmallestAddress && replay.TryRead(pointer - DeepLengthOffset, out ushort length))
         {
             var wanted = (int)Math.Min(length, MaximumValueBytes);
 
-            var captured = wanted == 0 ? 0 : memory.Read(pointer, Data.GetSpan(wanted)[..wanted]);
+            var captured = wanted == 0 ? 0 : replay.Read(pointer, Data.GetSpan(wanted)[..wanted]);
 
             Data.Advance(captured);
 

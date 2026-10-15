@@ -27,90 +27,50 @@ extern "C"
         uint32_t Flags;
     };
 
-    constexpr uint32_t MaximumHops = 3;
-
-    struct PointerRead
-    {
-        uint64_t Function;
-        int32_t  Register;
-        uint32_t IsReadAtReturn;
-        uint32_t Offset;
-        uint32_t Hops;
-        uint32_t Path[MaximumHops];
-        uint32_t Mode;
-    };
-
-    struct PointerValue
-    {
-        uint64_t Function;
-        uint64_t Instance;
-        uint64_t Value;
-        uint32_t Call;
-        int32_t  Register;
-        uint32_t Offset;
-        uint32_t IsReadAtReturn;
-        uint32_t Mode;
-        uint32_t Part;
-    };
-
     typedef void(__stdcall* ProgressCallback)(uint32_t thread, int32_t percent);
 
     typedef void(__stdcall* CallChunkCallback)(uint64_t address, uint64_t instance, const uint64_t* columns, int32_t calls);
 
     typedef void(__stdcall* CallSpanCallback)(const CallSpan* spans, int32_t count);
 
-    struct PublishedEvent
-    {
-        uint64_t Publisher;
-        uint64_t SessionBuffer;
-        uint64_t Sequence;
-        uint64_t Steps;
-        uint64_t Instructions;
-        int32_t  Node;
-        uint32_t Thread;
-    };
-
-    struct MemoryMapFunction
+    struct HookFunction
     {
         uint64_t Address;
-        uint32_t Operation;
-        uint32_t Reserved;
+        uint32_t Events;
+        uint32_t Hook;
     };
 
-    struct MemoryMapEntry
+    struct HookFrame
     {
-        uint64_t Address;
-        uint64_t Call;
-        uint64_t Owner;
-        uint64_t Until;
+        uint64_t Id;
+        uint64_t StackPointer;
+        uint64_t Instance;
         int32_t  Node;
-        uint32_t Thread;
-        uint32_t Operation;
         uint32_t Reserved;
     };
 
     struct HookEvent
     {
-        uint64_t        Function;
-        uint64_t        Instance;
-        uint64_t        Id;
-        uint64_t        CallCount;
-        uint64_t        Arguments[4];
-        uint64_t        ReturnValue;
-        const uint64_t* Callers;
-        uint32_t        CallerCount;
-        uint32_t        Call;
-        uint32_t        Thread;
-        uint32_t        Type;
+        uint64_t         Function;
+        uint64_t         Instance;
+        uint64_t         Id;
+        uint64_t         CallCount;
+        uint64_t         Arguments[4];
+        uint64_t         ReturnValue;
+        uint64_t         StackPointer;
+        uint64_t         ReturnAddress;
+        uint64_t         Sequence;
+        uint64_t         Steps;
+        uint64_t         Instructions;
+        int32_t          Node;
+        uint32_t         Call;
+        uint32_t         Thread;
+        uint32_t         Type;
+        uint32_t         Hook;
+        uint32_t         Reserved;
     };
 
-    typedef void(__stdcall* PointerValueCallback)(const PointerValue* values, int32_t count);
-
-    typedef void(__stdcall* MemoryMapCallback)(const MemoryMapEntry* entries, int32_t count);
-
-    typedef void(__stdcall* HookCallback)(const HookEvent* hookEvent, const void* view);
-
-    typedef void(__stdcall* PublishedEventCallback)(const PublishedEvent* publishedEvents, int32_t count);
+    typedef void(__stdcall* HookCallback)(const HookEvent* hookEvent, const void* view, void* session);
 
     __declspec(dllexport) int32_t OpenTrace(const wchar_t* replayLibraryPath, const wchar_t* tracePath, void** trace);
 
@@ -130,27 +90,22 @@ extern "C"
                                                int32_t                instanceMethodCount,
                                                const uint64_t*        excludedFunctions,
                                                int32_t                excludedFunctionCount,
-                                               const PointerRead*     pointerReads,
-                                               int32_t                pointerReadCount,
-                                               const uint64_t*        eventPublisherFunctions,
-                                               int32_t                eventPublisherFunctionCount,
-                                               const uint64_t*        eventWriterFunctions,
-                                               int32_t                eventWriterFunctionCount,
-                                               const MemoryMapFunction* memoryMapFunctions,
-                                               int32_t                memoryMapFunctionCount,
-                                               const uint64_t*        hookFunctions,
+                                               const HookFunction*    hookFunctions,
                                                int32_t                hookFunctionCount,
                                                CallChunkCallback      logCalls,
                                                CallSpanCallback       logSpans,
-                                               PointerValueCallback   logPointerValues,
-                                               PublishedEventCallback logPublishedEvents,
-                                               MemoryMapCallback      logMemoryMap,
                                                HookCallback           onHook,
                                                ProgressCallback       progress,
                                                volatile int32_t*      cancel,
                                                void**                 tree);
 
     __declspec(dllexport) uint64_t ReadTraceMemory(const void* view, uint64_t address, void* destination, uint64_t size);
+
+    __declspec(dllexport) bool WatchFrame(void* session, uint32_t thread, uint64_t frame);
+
+    __declspec(dllexport) void WatchStack(void* session, uint32_t thread, uint64_t stackPointer);
+
+    __declspec(dllexport) uint32_t GetHookFrames(void* session, uint32_t thread, HookFrame* frames, uint32_t capacity);
 
     __declspec(dllexport) int32_t GetCallNodeCount(void* tree);
 

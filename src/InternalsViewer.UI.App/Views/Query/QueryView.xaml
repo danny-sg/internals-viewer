@@ -153,6 +153,8 @@
                                 <MenuFlyoutSeparator/>
                                 <MenuFlyoutItem Text="Search symbols"
                                                 Command="{x:Bind ViewModel.SearchSymbolsCommand}"/>
+                                <MenuFlyoutItem Text="Custom Hooks"
+                                                Command="{x:Bind ViewModel.ShowCustomHooksCommand}"/>
                             </MenuBarItem>
 
                         </MenuBar>

@@ -64,7 +64,7 @@ public class RowBufferHookTests
     [Fact]
     public void A_Bound_Row_Reads_Each_Column_At_Its_Binding()
     {
-        var memory = new FakeTraceMemory().Write(Iterator, BindingTable)
+        var memory = new FakeTraceReplay().Write(Iterator, BindingTable)
                                           .Write(Iterator + 0x80, Buffer)
                                           .Write(Iterator + 0x88, Bindings)
                                           .Write(Bindings + 0x62, (ushort)1)
@@ -90,7 +90,7 @@ public class RowBufferHookTests
     [Fact]
     public void An_Unknown_Class_Has_No_Row()
     {
-        var memory = new FakeTraceMemory().Write(Iterator, 0x7FF8_0042_0000ul);
+        var memory = new FakeTraceReplay().Write(Iterator, 0x7FF8_0042_0000ul);
 
         Assert.Null(Replay(memory));
     }
@@ -113,15 +113,15 @@ public class RowBufferHookTests
         Assert.Equal(0, log.Build().Count);
     }
 
-    private static FakeTraceMemory ValueRow()
-        => new FakeTraceMemory().Write(Iterator, ValueTable)
+    private static FakeTraceReplay ValueRow()
+        => new FakeTraceReplay().Write(Iterator, ValueTable)
                                 .Write(Iterator + 0x78, Row)
                                 .Write(Iterator + 0x50, 2u)
                                 .Write(Row, (byte)0)
                                 .Write(Row + 0x08, 3156000ul)
                                 .Write(Row + 0x10, 0ul);
 
-    private static RowBuffer? Replay(FakeTraceMemory memory, uint count = 1)
+    private static RowBuffer? Replay(FakeTraceReplay memory, uint count = 1)
     {
         var log = new RowBufferIndex.Log();
 

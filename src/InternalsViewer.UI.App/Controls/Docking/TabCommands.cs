@@ -2,6 +2,7 @@ using System;
 using InternalsViewer.UI.App.Helpers;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Controls.Primitives;
+using Microsoft.UI.Xaml.Media;
 
 namespace InternalsViewer.UI.App.Controls.Docking;
 
@@ -130,6 +131,14 @@ public static class TabCommands
     }
 
     public static TextBlock Label(string text) => new() { Text = text, VerticalAlignment = VerticalAlignment.Center };
+
+    public static Border Separator() => new()
+    {
+        Width = 1,
+        Margin = new Thickness(0, 4, 0, 4),
+        VerticalAlignment = VerticalAlignment.Stretch,
+        Background = AppResources.Get<Brush>("DividerStrokeColorDefaultBrush")
+    };
 
     public static FontIcon Glyph(string glyph) => new() { Glyph = glyph, FontSize = 12 };
 

@@ -2,6 +2,7 @@ using InternalsViewer.Query.CallStack;
 using InternalsViewer.Query.Export;
 using InternalsViewer.Query.FullTrace.Arguments;
 using InternalsViewer.Query.FullTrace.Calls;
+using InternalsViewer.Query.FullTrace.CustomHooks;
 using InternalsViewer.Query.FullTrace.Iterators;
 using InternalsViewer.Query.FullTrace.Memory;
 using InternalsViewer.Query.FullTrace.Batches;
@@ -21,6 +22,8 @@ public sealed record TraceResult(CallStackTree CallStack, TraceCallStore CallSto
     public RowBufferIndex RowBuffers { get; init; } = RowBufferIndex.Empty;
 
     public BatchIndex Batches { get; init; } = BatchIndex.Empty;
+
+    public CustomHookIndex CustomHooks { get; init; } = CustomHookIndex.Empty;
 
     public TraceRowBufferMarks RowBufferMarks { get; init; } = TraceRowBufferMarks.Empty;
 

@@ -104,6 +104,7 @@ public sealed partial class QueryFlameChartTabView : UserControl, IDocumentComma
                                  _memoryToggle,
                                  _callStackToggle,
                                  _playButton,
+                                 TabCommands.Separator(),
                                  TabCommands.ToggleSplitButton("Choose what Previous Frame and Next Frame step to",
                                                                "Step",
                                                                (int)_stepMode,
@@ -114,6 +115,7 @@ public sealed partial class QueryFlameChartTabView : UserControl, IDocumentComma
                                                                "Row"),
                                  TabCommands.Button(TabCommands.Glyph(StepBackGlyph), "Previous Frame", (_, _) => Step(forward: false)),
                                  TabCommands.Button(TabCommands.Glyph(StepForwardGlyph), "Next Frame", (_, _) => Step(forward: true)),
+                                 TabCommands.Separator(),
                                  _searchToggle);
     }
 

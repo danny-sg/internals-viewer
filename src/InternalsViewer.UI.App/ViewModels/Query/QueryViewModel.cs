@@ -1,4 +1,5 @@
-﻿using InternalsViewer.UI.App.Services.Query.Simulation;
+﻿using InternalsViewer.Query.FullTrace.CustomHooks;
+using InternalsViewer.UI.App.Services.Query.Simulation;
 using CommunityToolkit.Mvvm.ComponentModel;
 using InternalsViewer.Query.Events.BatchMode;
 using InternalsViewer.Query.Events.Memory;
@@ -39,6 +40,7 @@ using InternalsViewer.Query.XEvents;
 using InternalsViewer.UI.App.ViewModels.Allocation;
 using InternalsViewer.UI.App.ViewModels.Docking;
 using InternalsViewer.UI.App.ViewModels.Query.CallStack;
+using InternalsViewer.UI.App.ViewModels.Query.CustomHooks;
 using InternalsViewer.UI.App.ViewModels.Query.Simulation;
 using InternalsViewer.UI.App.ViewModels.Columnstore;
 using InternalsViewer.UI.App.Controls.Timeline.Definition;
@@ -352,6 +354,8 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
         Arguments = new ArgumentsViewModel(logger, Symbols, GetHoBtName);
 
+        CustomHooks = new CustomHooksViewModel(settingsViewModel, OpenCallTree);
+
         Logger = logger;
         QueryRunner = queryRunner;
         TraceLoader = traceLoader;
@@ -447,6 +451,8 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
     public SymbolsViewModel Symbols { get; }
 
     public ArgumentsViewModel Arguments { get; }
+
+    public CustomHooksViewModel CustomHooks { get; }
 
     public CallTreeTabViewModel CallTreeTab => CreatedCallTreeTab ??= new CallTreeTabViewModel(this, _settingsViewModel, Logger);
 
@@ -614,7 +620,16 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
     private CancellationTokenSource? TraceLoad { get; set; }
 
-    private TraceResult? Trace { get; set; }
+    private TraceResult? Trace
+    {
+        get;
+        set
+        {
+            field = value;
+
+            CustomHooks.SetTrace(value);
+        }
+    }
 
     private QueryExportContent? LastRun
     {
@@ -806,6 +821,16 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
         CallTreeTab.ShowSymbols();
     }
+
+    public void AddCustomHook(CustomHookDefinition definition)
+    {
+        _settingsViewModel.AddCustomHook(definition);
+
+        Layout.ShowCustomHooks();
+    }
+
+    [RelayCommand]
+    private void ShowCustomHooks() => Layout.ShowCustomHooks();
 
     partial void OnSelectedEventChanged(EngineEvent? value)
     {
@@ -1055,6 +1080,8 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
         Symbols.Dispose();
 
         Arguments.Dispose();
+
+        CustomHooks.Dispose();
 
         Layout.Dispose();
 
@@ -2018,7 +2045,9 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
         try
         {
-            var result = await Task.Run(() => TraceLoader.LoadAsync(request, progress, load.Token), load.Token);
+            var customHooks = _settingsViewModel.CustomHooks;
+
+            var result = await Task.Run(() => TraceLoader.LoadAsync(request, customHooks, progress, load.Token), load.Token);
 
             if (load.IsCancellationRequested || result is null)
             {

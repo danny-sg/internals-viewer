@@ -19,13 +19,25 @@ internal unsafe struct HookEvent
 
     public ulong ReturnValue;
 
-    public ulong* Callers;
+    public ulong StackPointer;
 
-    public uint CallerCount;
+    public ulong ReturnAddress;
+
+    public ulong Sequence;
+
+    public ulong Steps;
+
+    public ulong Instructions;
+
+    public int Node;
 
     public uint Call;
 
     public uint Thread;
 
     public HookEventType Type;
+
+    public uint Hook;
+
+    public uint Reserved;
 }

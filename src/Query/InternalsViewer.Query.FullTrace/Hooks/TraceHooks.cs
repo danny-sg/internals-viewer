@@ -1,34 +1,43 @@
+using InternalsViewer.Query.FullTrace.Interfaces.Hooks;
 using InternalsViewer.Query.FullTrace.Native;
 
 namespace InternalsViewer.Query.FullTrace.Hooks;
 
 internal sealed class TraceHooks
 {
-    public TraceHooks(IEnumerable<ITraceHook> hooks)
+    public TraceHooks(IReadOnlyList<ITraceHook> hooks)
     {
-        Hooks = hooks.SelectMany(h => h.Functions.Select(f => (Function: f, Hook: h)))
-                     .GroupBy(h => h.Function)
-                     .ToDictionary(g => g.Key, g => g.Select(h => h.Hook).Distinct().ToArray());
+        All = [.. hooks];
 
-        Functions = [.. Hooks.Keys];
+        var groups = hooks.SelectMany(h => h.Functions.Select(f => (Function: f, Hook: h)))
+                          .GroupBy(r => r.Function.Address)
+                          .ToArray();
+
+        Hooks = [.. groups.Select(g => g.Select(r => r.Hook).Distinct().ToArray())];
+
+        Functions = [.. groups.Select((g, index) => new HookFunction(g.Key, (uint)GetEvents(g), (uint)index))];
     }
 
-    public ulong[] Functions { get; }
+    public HookFunction[] Functions { get; }
 
     public Exception? Failure { get; private set; }
 
-    private Dictionary<ulong, ITraceHook[]> Hooks { get; }
+    private ITraceHook[] All { get; }
 
-    private ReplayMemory Memory { get; } = new();
+    private ITraceHook[][] Hooks { get; }
 
-    public unsafe void OnHook(IntPtr hookEvent, IntPtr view)
+    private ReplayView Replay { get; } = new();
+
+    public unsafe void OnHook(IntPtr hookEvent, IntPtr view, IntPtr session)
     {
         var source = (HookEvent*)hookEvent;
 
-        if (Failure is not null || !Hooks.TryGetValue(source->Function, out var hooks))
+        if (Failure is not null)
         {
             return;
         }
+
+        var hooks = source->Hook < Hooks.Length ? Hooks[source->Hook] : All;
 
         var call = new TraceHookCall
         {
@@ -38,12 +47,19 @@ internal sealed class TraceHooks
             CallCount = source->CallCount,
             Call = source->Call,
             Thread = source->Thread,
+            Node = source->Node,
             Arguments = new ReadOnlySpan<ulong>(source->Arguments, HookEvent.ArgumentCount),
             ReturnValue = source->ReturnValue,
-            Callers = new ReadOnlySpan<ulong>(source->Callers, (int)source->CallerCount)
+            StackPointer = source->StackPointer,
+            ReturnAddress = source->ReturnAddress,
+            Sequence = source->Sequence,
+            Steps = source->Steps,
+            Instructions = source->Instructions
         };
 
-        Memory.View = view;
+        Replay.View = view;
+
+        Replay.Session = session;
 
         try
         {
@@ -58,24 +74,41 @@ internal sealed class TraceHooks
         }
         finally
         {
-            Memory.View = IntPtr.Zero;
+            Replay.View = IntPtr.Zero;
+
+            Replay.Session = IntPtr.Zero;
         }
     }
+
+    private static TraceHookEvents GetEvents(IEnumerable<(TraceHookFunction Function, ITraceHook Hook)> registrations)
+        => registrations.Aggregate(TraceHookEvents.None, (events, r) => events | r.Function.Events);
 
     private void Dispatch(ITraceHook hook, HookEventType type, in TraceHookCall call)
     {
         switch (type)
         {
+            case HookEventType.Call:
+                hook.OnCall(call, Replay);
+                break;
+
             case HookEventType.Entry:
-                hook.OnEntry(call, Memory);
+                hook.OnEntry(call, Replay);
                 break;
 
             case HookEventType.Return:
-                hook.OnReturn(call, Memory);
+                hook.OnReturn(call, Replay);
                 break;
 
             case HookEventType.Abandoned:
                 hook.OnAbandoned(call);
+                break;
+
+            case HookEventType.FrameEnded:
+                hook.OnFrameEnded(call);
+                break;
+
+            case HookEventType.StackUnwound:
+                hook.OnStackUnwound(call);
                 break;
         }
     }

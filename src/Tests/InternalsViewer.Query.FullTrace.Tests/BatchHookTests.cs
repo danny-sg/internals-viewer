@@ -62,7 +62,7 @@ public class BatchHookTests
     [Fact]
     public void A_Batch_Without_A_Header_Is_Unreadable()
     {
-        var memory = new FakeTraceMemory().Write(Data, Batch)
+        var memory = new FakeTraceReplay().Write(Data, Batch)
                                           .Write(Data + 8, Ids)
                                           .Write(Ids, (ushort)0);
 
@@ -80,11 +80,11 @@ public class BatchHookTests
         Assert.True(batch.Flags.HasFlag(BatchCaptureFlags.ImplicitSelection));
     }
 
-    private static FakeTraceMemory BatchMemory()
+    private static FakeTraceReplay BatchMemory()
     {
         var text = "REF-0003146000"u8;
 
-        return new FakeTraceMemory().Write(Data, Batch)
+        return new FakeTraceReplay().Write(Data, Batch)
                                     .Write(Data + 8, Ids)
                                     .Write(Ids, (ushort)2)
                                     .Write(Ids + 2, (ushort)1)
@@ -108,11 +108,13 @@ public class BatchHookTests
                                     .Write(SecondBuffer, 0xE60100ul);
     }
 
-    private static BatchCapture? Replay(FakeTraceMemory memory)
+    private static BatchCapture? Replay(FakeTraceReplay memory)
     {
         var log = new BatchIndex.Log();
 
         var hook = new BatchHook(new BatchFunctions([Function]), log);
+
+        memory.Frames = [new TraceHookFrame(1, 0x55_47EF_B400, Iterator, 5), new TraceHookFrame(2, 0x55_47EF_B800, Consumer, 4)];
 
         hook.OnEntry(Call(), memory);
 
@@ -129,7 +131,6 @@ public class BatchHookTests
             Id = 200,
             CallCount = 260,
             Call = 4,
-            Arguments = new[] { Iterator, Data, 0ul, 0ul },
-            Callers = new[] { Iterator, Consumer }
+            Arguments = new[] { Iterator, Data, 0ul, 0ul }
         };
 }

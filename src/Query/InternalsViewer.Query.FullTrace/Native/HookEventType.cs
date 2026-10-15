@@ -2,7 +2,10 @@ namespace InternalsViewer.Query.FullTrace.Native;
 
 internal enum HookEventType : uint
 {
-    Entry = 0,
-    Return = 1,
-    Abandoned = 2
+    Call = 0,
+    Entry = 1,
+    Return = 2,
+    Abandoned = 3,
+    FrameEnded = 4,
+    StackUnwound = 5
 }

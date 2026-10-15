@@ -204,6 +204,9 @@ public sealed partial class ArgumentsViewModel(ILogger logger, SymbolsViewModel 
 
     public CallStackNode? GetNode(int index) => GetCall(index) is { } call ? Lookup?.Store.GetNode(call) : null;
 
+    public (string Name, int Register)? GetHookArgument(int ordinal)
+        => Layout is { } layout ? ArgumentRowBuilder.GetHookArgument(layout, ordinal) : null;
+
     public IteratorTarget? GetIterator(ulong value) => Lookup?.GetIterator(value);
 
     public ulong? GetHoBtId(int index, int ordinal)

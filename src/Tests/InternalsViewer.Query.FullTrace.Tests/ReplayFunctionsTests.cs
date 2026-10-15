@@ -3,7 +3,6 @@ using InternalsViewer.Query.FullTrace.Batches;
 using InternalsViewer.Query.FullTrace.Iterators;
 using InternalsViewer.Query.FullTrace.Locators;
 using InternalsViewer.Query.FullTrace.Memory;
-using InternalsViewer.Query.FullTrace.Native;
 using InternalsViewer.Query.FullTrace.PublishedEvents;
 using InternalsViewer.Query.FullTrace.RowBuffers;
 using InternalsViewer.Query.CallStack.Locators;

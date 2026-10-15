@@ -107,6 +107,7 @@ Right-click a cell for what can be done with its call and value:
 - **Row Buffers** - for a function that handed back rows, opens its **Row Buffers** tab, the same as the red square beside it in the call tree
 - **Batches** - for a batch mode operator that handed back batches, opens its **Batches** tab, the same as the blue square beside it in the call tree
 - **Scope** - scopes the Flame Chart to the call's function
+- **Custom Hook** - for an argument, or the value the call returned, saves a hook that reads the bytes it points to on later runs - see [Custom Hooks](/docs/user-guide/query/FullTrace#custom-hooks)
 - **Go To Origin** - for an object in the trace's map, goes to the call that created it, the same as clicking the link
 - **Open In The Columnstore Viewer** - for a columnstore object
 - **Search Call Tree** - for a page, a row or a columnstore object, searches the call tree for the frames that touched it

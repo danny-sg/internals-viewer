@@ -1,7 +1,6 @@
 using System.Text;
 using InternalsViewer.Query.CallStack;
 using InternalsViewer.Query.FullTrace.Memory;
-using InternalsViewer.Query.FullTrace.Native;
 
 namespace InternalsViewer.Query.FullTrace.Tests;
 
