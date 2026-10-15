@@ -124,6 +124,18 @@ namespace
 
     constexpr uint16_t MaximumBindings = 1024;
 
+    constexpr uint32_t BindingRowFormat = 0;
+
+    constexpr uint32_t ValueRowFormat = 1;
+
+    constexpr uint64_t RowValueSize = 0x20;
+
+    constexpr uint64_t RowValueStatusOffset = 0x00;
+
+    constexpr uint64_t RowValueDataOffset = 0x08;
+
+    constexpr uint64_t RowValueLengthOffset = 0x10;
+
     constexpr uint64_t MaximumRowBufferBytes = 0x10000;
 
     constexpr uint64_t MaximumValueBytes = 8000;
@@ -173,6 +185,8 @@ namespace
     constexpr uint64_t BatchPureOffset = 0x10;
 
     constexpr uint64_t BatchVectorCountOffset = 0x1C;
+
+    constexpr uint64_t BatchCapacityOffset = 0x24;
 
     constexpr uint64_t BatchRowCountOffset = 0x28;
 
@@ -389,6 +403,7 @@ namespace
         RowBufferLayout const* Layout = nullptr;
         uint64_t               Buffer = 0;
         uint64_t               Bindings = 0;
+        uint32_t               Count = 0;
     };
 
     struct BatchStart
@@ -559,7 +574,16 @@ namespace
                 start.Buffer = pointer;
             }
 
-            if (ReadValue(thread, start.Iterator + start.Layout->BindingsOffset, pointer))
+            if (start.Layout->Format == ValueRowFormat)
+            {
+                uint32_t count = 0;
+
+                if (ReadValue(thread, start.Iterator + start.Layout->CountOffset, count))
+                {
+                    start.Count = count;
+                }
+            }
+            else if (ReadValue(thread, start.Iterator + start.Layout->BindingsOffset, pointer))
             {
                 start.Bindings = pointer;
             }
@@ -593,9 +617,18 @@ namespace
                 return;
             }
 
-            if (start.Buffer == 0 || start.Bindings == 0)
+            auto const isValueRow = start.Layout->Format == ValueRowFormat;
+
+            if (start.Buffer == 0 || (isValueRow ? start.Count == 0 : start.Bindings == 0))
             {
                 ReadLayout(thread, start);
+            }
+
+            if (isValueRow)
+            {
+                ReadValueRow(thread, function, call, start);
+
+                return;
             }
 
             auto const iterator = start.Iterator;
@@ -631,8 +664,87 @@ namespace
                                                   call,
                                                   first,
                                                   static_cast<uint32_t>(set->Columns.size()),
-                                                  0 });
+                                                  BindingRowFormat });
 
+            FlushRowBuffersWhenFull();
+        }
+
+        void ReadValueRow(IThreadView const& thread, LoggedFunction const& function, uint32_t call, RowBufferStart const& start)
+        {
+            if (start.Buffer < SmallestAddress || start.Count == 0 || start.Count > MaximumBindings)
+            {
+                return;
+            }
+
+            auto const first = static_cast<uint32_t>(RowBufferColumns.size());
+
+            for (uint32_t index = 0; index < start.Count; index++)
+            {
+                RowBufferColumns.push_back(ReadValueColumn(thread, start.Buffer + index * RowValueSize));
+            }
+
+            RowBufferRows.push_back(RowBufferRow{ function.Address,
+                                                  function.Instance,
+                                                  start.Iterator,
+                                                  start.Buffer,
+                                                  CallCount,
+                                                  call,
+                                                  first,
+                                                  start.Count,
+                                                  ValueRowFormat });
+
+            FlushRowBuffersWhenFull();
+        }
+
+        RowBufferColumn ReadValueColumn(IThreadView const& thread, uint64_t address)
+        {
+            RowBufferColumn column{ static_cast<uint32_t>(RowBufferData.size()), 0, 0, -1, 0, 0, 0, 0 };
+
+            if (!ReadValue(thread, address + RowValueStatusOffset, column.Status))
+            {
+                column.Flags = UnreadableColumn | UnreadableSlotColumn;
+
+                return column;
+            }
+
+            if (column.Status != 0)
+            {
+                return column;
+            }
+
+            uint64_t value = 0;
+
+            uint64_t length = 0;
+
+            if (!ReadValue(thread, address + RowValueDataOffset, value) || !ReadValue(thread, address + RowValueLengthOffset, length))
+            {
+                column.Flags = UnreadableColumn | UnreadableSlotColumn;
+
+                return column;
+            }
+
+            if (length == 0)
+            {
+                auto const* bytes = reinterpret_cast<uint8_t const*>(&value);
+
+                RowBufferData.insert(RowBufferData.end(), bytes, bytes + sizeof(value));
+
+                column.Length = sizeof(value);
+
+                column.Captured = sizeof(value);
+
+                return column;
+            }
+
+            column.Flags = ByReferenceColumn | LengthColumn;
+
+            column.Length = static_cast<uint32_t>((std::min)(length, uint64_t{ UINT32_MAX }));
+
+            return ReadValueBytes(thread, value, length, column);
+        }
+
+        void FlushRowBuffersWhenFull()
+        {
             if (RowBufferRows.size() >= RowBufferChunkRows || RowBufferData.size() >= RowBufferChunkBytes)
             {
                 FlushRowBuffers();
@@ -953,7 +1065,16 @@ namespace
                                     0,
                                     static_cast<uint32_t>(BatchVectors.size()),
                                     0,
+                                    0,
+                                    0,
                                     0 };
+
+            int32_t capacity = 0;
+
+            if (ReadValue(thread, batch + BatchCapacityOffset, capacity) && capacity > 0 && capacity <= MaximumBatchSelection)
+            {
+                captured.Capacity = static_cast<uint32_t>(capacity);
+            }
 
             uint64_t vectors = 0;
 

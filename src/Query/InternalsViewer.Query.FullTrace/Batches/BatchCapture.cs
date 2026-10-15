@@ -9,7 +9,8 @@ public sealed record BatchCapture(ulong Function,
                                   ulong Consumer,
                                   BatchCaptureFlags Flags,
                                   ushort[] Selection,
-                                  IReadOnlyList<BatchCaptureVector> Vectors)
+                                  IReadOnlyList<BatchCaptureVector> Vectors,
+                                  int Capacity = 0)
 {
     public int SelectedCount => Selection.Length;
 

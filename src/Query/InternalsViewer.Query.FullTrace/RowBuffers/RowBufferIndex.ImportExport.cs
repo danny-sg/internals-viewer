@@ -2,8 +2,12 @@ namespace InternalsViewer.Query.FullTrace.RowBuffers;
 
 public sealed partial class RowBufferIndex
 {
+    internal const int FormatVersion = 2;
+
     internal void Write(BinaryWriter writer)
     {
+        writer.Write(-FormatVersion);
+
         writer.Write(Tables.Count);
 
         foreach (var ((address, instance), table) in Tables)
@@ -18,7 +22,11 @@ public sealed partial class RowBufferIndex
 
     internal static RowBufferIndex Read(BinaryReader reader)
     {
-        var count = reader.ReadInt32();
+        var first = reader.ReadInt32();
+
+        var version = first < 0 ? -first : 1;
+
+        var count = first < 0 ? reader.ReadInt32() : first;
 
         var tables = new Dictionary<(ulong Address, ulong Instance), RowBufferTable>(count);
 
@@ -28,7 +36,7 @@ public sealed partial class RowBufferIndex
 
             var instance = reader.ReadUInt64();
 
-            tables[(address, instance)] = RowBufferTable.Read(reader, address, instance);
+            tables[(address, instance)] = RowBufferTable.Read(reader, address, instance, version);
         }
 
         return new RowBufferIndex(tables);

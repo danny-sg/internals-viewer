@@ -1,4 +1,5 @@
 using System.Runtime.InteropServices;
+using InternalsViewer.Query.FullTrace.RowBuffers;
 
 namespace InternalsViewer.Query.FullTrace.Native;
 
@@ -11,4 +12,4 @@ internal readonly record struct BufferRow(ulong Function,
                                           uint Call,
                                           uint FirstColumn,
                                           uint ColumnCount,
-                                          uint Reserved = 0);
+                                          RowBufferFormat Format = RowBufferFormat.Bindings);

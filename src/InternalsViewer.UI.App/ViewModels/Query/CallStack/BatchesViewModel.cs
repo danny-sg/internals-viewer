@@ -28,6 +28,8 @@ public sealed partial class BatchesViewModel(CallStackNode node, CallStoreLookup
 
     private const int SelectedWidth = 110;
 
+    private const int SizeWidth = 90;
+
     [ObservableProperty]
     private string? _message;
 
@@ -39,6 +41,9 @@ public sealed partial class BatchesViewModel(CallStackNode node, CallStoreLookup
 
     [ObservableProperty]
     private ResultRow<long>? _selectedRow;
+
+    [ObservableProperty]
+    private int? _selectedCall;
 
     [ObservableProperty]
     private int _tableVersion;
@@ -186,9 +191,13 @@ public sealed partial class BatchesViewModel(CallStackNode node, CallStoreLookup
 
     partial void OnSelectedRowChanged(ResultRow<long>? value)
     {
-        if (value is { Id: var call } && GetCallNode((int)call) is { } callNode)
+        ClearSlot();
+
+        SelectedCall = value is { Id: var call } ? (int)call : null;
+
+        if (SelectedCall is { } selected && GetCallNode(selected) is { } callNode)
         {
-            Owner.Tree.ShowCall(callNode, (int)call);
+            Owner.Tree.ShowCall(callNode, selected);
         }
     }
 
@@ -204,8 +213,9 @@ public sealed partial class BatchesViewModel(CallStackNode node, CallStoreLookup
         {
             new(0, "Call", typeof(long), false) { Width = CallWidth, Alignment = ResultAlignment.Right },
             new(1, "Thread", typeof(uint), false) { Width = ThreadWidth, Alignment = ResultAlignment.Right },
-            new(2, "Vectors", typeof(int), false) { Width = CountWidth, Alignment = ResultAlignment.Right },
-            new(3, "Selected", typeof(string), false) { Width = SelectedWidth, Alignment = ResultAlignment.Right }
+            new(2, "Batch Size", typeof(int), false) { Width = SizeWidth, Alignment = ResultAlignment.Right },
+            new(3, "Vectors", typeof(int), false) { Width = CountWidth, Alignment = ResultAlignment.Right },
+            new(4, "Selected", typeof(string), false) { Width = SelectedWidth, Alignment = ResultAlignment.Right }
         };
 
         var rows = new ResultRow<long>[summaries.Count];
@@ -224,7 +234,9 @@ public sealed partial class BatchesViewModel(CallStackNode node, CallStoreLookup
                 ? $"{summary.SelectedCount:N0}/{input:N0}"
                 : summary.SelectedCount.ToString("N0", CultureInfo.InvariantCulture);
 
-            rows[index] = new ResultRow<long>([callValue, call?.ThreadId, summary.VectorCount, selected])
+            int? capacity = summary.Capacity > 0 ? summary.Capacity : null;
+
+            rows[index] = new ResultRow<long>([callValue, call?.ThreadId, capacity, summary.VectorCount, selected])
             {
                 Id = summary.Call
             };

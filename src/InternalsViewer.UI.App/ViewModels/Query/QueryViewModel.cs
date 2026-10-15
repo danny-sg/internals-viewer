@@ -2226,6 +2226,8 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
         var iterators = IteratorTarget.Build(result.CallStack, Events, result.PlanLink);
 
+        var batchDecoder = new BatchDecoder(Database, i => GetOutputColumns(iterators.GetValueOrDefault(i)));
+
         Arguments.SetSource(result.CallStore,
                             result.CallStack,
                             iterators,
@@ -2233,9 +2235,11 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
                             result.MemoryMap,
                             result.RowBuffers,
                             _rowBufferPageResolverFactory.Create(Database),
-                            new RowBufferDecoder(Database, i => iterators.GetValueOrDefault(i)?.Operator),
+                            new RowBufferDecoder(Database,
+                                                 i => iterators.GetValueOrDefault(i)?.Operator,
+                                                 (i, o) => batchDecoder.GetColumn(result.Batches.GetProducer(i) ?? i, o)),
                             result.Batches,
-                            new BatchDecoder(Database, i => GetOutputColumns(iterators.GetValueOrDefault(i))));
+                            batchDecoder);
 
         FullFlameChart = result.Timeline;
 

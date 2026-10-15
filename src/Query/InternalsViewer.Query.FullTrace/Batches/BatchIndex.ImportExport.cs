@@ -2,8 +2,12 @@ namespace InternalsViewer.Query.FullTrace.Batches;
 
 public sealed partial class BatchIndex
 {
+    internal const int FormatVersion = 2;
+
     internal void Write(BinaryWriter writer)
     {
+        writer.Write(-FormatVersion);
+
         writer.Write(Tables.Count);
 
         foreach (var ((address, instance), table) in Tables)
@@ -18,7 +22,11 @@ public sealed partial class BatchIndex
 
     internal static BatchIndex Read(BinaryReader reader)
     {
-        var count = reader.ReadInt32();
+        var first = reader.ReadInt32();
+
+        var version = first < 0 ? -first : 1;
+
+        var count = first < 0 ? reader.ReadInt32() : first;
 
         var tables = new Dictionary<(ulong Address, ulong Instance), BatchTable>(count);
 
@@ -28,7 +36,7 @@ public sealed partial class BatchIndex
 
             var instance = reader.ReadUInt64();
 
-            tables[(address, instance)] = BatchTable.Read(reader, address, instance);
+            tables[(address, instance)] = BatchTable.Read(reader, address, instance, version);
         }
 
         return new BatchIndex(tables);

@@ -40,6 +40,8 @@ public sealed partial class CallTreePanelView : UserControl, IDocumentCommands, 
 
         SearchBar.SearchTextChanged += OnSearchTextChanged;
 
+        SearchBar.DataFilterChanged += OnDataFilterChanged;
+
         NodeTemplates.IsRevealed = node => RowsByNode.TryGetValue(node, out var row) && row.IsRevealed;
 
         Loaded += OnLoaded;
@@ -123,6 +125,8 @@ public sealed partial class CallTreePanelView : UserControl, IDocumentCommands, 
     public void Dispose()
     {
         SearchBar.SearchTextChanged -= OnSearchTextChanged;
+
+        SearchBar.DataFilterChanged -= OnDataFilterChanged;
 
         Detach();
     }
@@ -402,6 +406,8 @@ public sealed partial class CallTreePanelView : UserControl, IDocumentCommands, 
     private void OnSearchRequested(string text) => SearchBar.Text = text;
 
     private void OnSearchTextChanged(string text) => CallTree?.SetSearch(text);
+
+    private void OnDataFilterChanged(CallTreeDataFilter filter) => CallTree?.SetDataFilter(filter);
 
     private void OnTreeExpanding(TreeView sender, TreeViewExpandingEventArgs args)
     {

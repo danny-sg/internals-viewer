@@ -7,4 +7,5 @@ public sealed record BatchSummary(int Call,
                                   int RowCount,
                                   int VectorCount,
                                   int PureCount,
+                                  int Capacity,
                                   int? InputSelectedCount = null);

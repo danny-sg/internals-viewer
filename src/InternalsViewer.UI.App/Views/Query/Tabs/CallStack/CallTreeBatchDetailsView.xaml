@@ -29,7 +29,7 @@
         </DataTemplate>
     </UserControl.Resources>
 
-    <Grid x:Name="RootGrid" Height="320" Background="{ThemeResource LayerOnMicaBaseAltFillColorDefault}">
+    <Grid Background="{ThemeResource LayerOnMicaBaseAltFillColorDefault}">
         <TextBlock x:Name="MessageText"
                    Margin="12,8,12,8"
                    FontSize="12"

@@ -56,7 +56,7 @@ internal sealed partial class BatchTable
 
     public IReadOnlyList<int> GetCalls() => Calls;
 
-    public IReadOnlyList<BatchSummary> GetSummaries() => [.. Captures.Select(GetSummary)];
+    public BatchSummary GetSummary(int index) => GetSummary(Captures[index]);
 
     public (ulong Batch, ulong Consumer, ulong Id) GetHandoff(int index)
         => (Captures[index].Batch, Captures[index].Consumer, Captures[index].Id);
@@ -92,7 +92,8 @@ internal sealed partial class BatchTable
                                 capture.Consumer,
                                 capture.Flags,
                                 Selection.AsSpan(capture.FirstSelected, capture.SelectedCount).ToArray(),
-                                vectors);
+                                vectors,
+                                capture.Capacity);
     }
 
     private BatchSummary GetSummary(Capture capture)
@@ -120,7 +121,8 @@ internal sealed partial class BatchTable
                                 capture.SelectedCount,
                                 rowCount,
                                 capture.VectorCount,
-                                pureCount);
+                                pureCount,
+                                capture.Capacity);
     }
 
     private BatchCaptureVector CreateVector(Vector vector)
@@ -149,7 +151,8 @@ internal sealed partial class BatchTable
                                             int FirstSelected,
                                             int SelectedCount,
                                             int FirstVector,
-                                            int VectorCount);
+                                            int VectorCount,
+                                            int Capacity);
 
     internal readonly record struct Vector(int VectorId,
                                            BatchVectorFlags Flags,
@@ -190,7 +193,8 @@ internal sealed partial class BatchTable
                                      Selection.Count,
                                      (int)batch.SelectedCount,
                                      Vectors.Count,
-                                     (int)batch.VectorCount));
+                                     (int)batch.VectorCount,
+                                     (int)batch.Capacity));
 
             Selection.AddRange(selection.Slice((int)batch.FirstSelected, (int)batch.SelectedCount));
 

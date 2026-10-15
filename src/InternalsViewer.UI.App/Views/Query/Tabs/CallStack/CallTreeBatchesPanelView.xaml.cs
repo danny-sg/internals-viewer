@@ -1,6 +1,5 @@
 using System;
 using System.ComponentModel;
-using InternalsViewer.Query.Results;
 using InternalsViewer.UI.App.Controls.CallStack;
 using InternalsViewer.UI.App.Controls.Docking;
 using InternalsViewer.UI.App.Controls.Results;
@@ -16,8 +15,6 @@ public sealed partial class CallTreeBatchesPanelView : UserControl, IDocumentCom
     public CallTreeBatchesPanelView()
     {
         InitializeComponent();
-
-        BatchGrid.RowDetailsContent = CreateBatchDetails;
 
         DataContextChanged += (_, _) => Reattach();
     }
@@ -50,6 +47,8 @@ public sealed partial class CallTreeBatchesPanelView : UserControl, IDocumentCom
         Bindings.Update();
 
         UpdateDetail();
+
+        UpdateBatch();
     }
 
     private void Detach()
@@ -61,14 +60,54 @@ public sealed partial class CallTreeBatchesPanelView : UserControl, IDocumentCom
 
     private void OnViewModelPropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
-        if (e.PropertyName == nameof(BatchesViewModel.HasDetail))
+        switch (e.PropertyName)
         {
-            UpdateDetail();
+            case nameof(BatchesViewModel.HasDetail):
+                UpdateDetail();
+                break;
+
+            case nameof(BatchesViewModel.SelectedCall):
+                UpdateBatch();
+                break;
+
+            case nameof(BatchesViewModel.TableVersion):
+                BatchView.Refresh();
+                break;
         }
     }
 
-    private FrameworkElement? CreateBatchDetails(ResultRow<long> row)
-        => Attached is { } batches ? new CallTreeBatchDetailsView { Batches = batches, Call = (int)row.Id } : null;
+    private void UpdateBatch()
+    {
+        if (Attached is { SelectedCall: { } call } batches)
+        {
+            BatchSplitter.Visibility = Visibility.Visible;
+
+            BatchView.Visibility = Visibility.Visible;
+
+            BatchSplitterRow.Height = GridLength.Auto;
+
+            BatchRow.Height = BatchHeight;
+
+            BatchView.Show(batches, call);
+
+            return;
+        }
+
+        if (BatchRow.Height.Value > 0)
+        {
+            BatchHeight = BatchRow.Height;
+        }
+
+        BatchView.Clear();
+
+        BatchSplitter.Visibility = Visibility.Collapsed;
+
+        BatchView.Visibility = Visibility.Collapsed;
+
+        BatchSplitterRow.Height = new GridLength(0);
+
+        BatchRow.Height = new GridLength(0);
+    }
 
     private void OnCallClicked(object? sender, CallValue value) => Attached?.Owner.Tree.ShowCall(value.Node, value.Call);
 
@@ -94,8 +133,6 @@ public sealed partial class CallTreeBatchesPanelView : UserControl, IDocumentCom
         {
             SplitterRow.Height = GridLength.Auto;
 
-            BatchRow.Height = BatchHeight;
-
             DetailRow.Height = DetailHeight;
 
             return;
@@ -104,15 +141,11 @@ public sealed partial class CallTreeBatchesPanelView : UserControl, IDocumentCom
         if (DetailRow.Height.Value > 0)
         {
             DetailHeight = DetailRow.Height;
-
-            BatchHeight = BatchRow.Height;
         }
 
         SplitterRow.Height = new GridLength(0);
 
         DetailRow.Height = new GridLength(0);
-
-        BatchRow.Height = new GridLength(1, GridUnitType.Star);
     }
 
     private void OnCloseDetailClick(object sender, RoutedEventArgs e) => Attached?.ClearSlot();

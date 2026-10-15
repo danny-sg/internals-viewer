@@ -123,7 +123,9 @@ public sealed class TraceRowBufferMarks
 
         var values = axis == TraceTimelineAxis.Position ? marks.Positions : marks.Instructions;
 
-        for (var index = SortedSearch.FirstAtOrAfter(values, value - distance); index < values.Length && values[index] <= value + distance; index++)
+        var end = value + distance;
+
+        for (var index = SortedSearch.FirstAtOrAfter(values, value - distance); index < values.Length && values[index] <= end; index++)
         {
             var gap = Math.Abs(values[index] - value);
 

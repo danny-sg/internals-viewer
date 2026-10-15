@@ -154,7 +154,7 @@ public sealed class TraceCallList : IReadOnlyList<TraceArgumentCall>
         return (int)columns[TraceArgumentCall.NodeIndex * calls + call];
     }
 
-    private ulong GetEndId(int index)
+    internal ulong GetEndId(int index)
     {
         var (columns, calls, call) = GetLocation(index);
 

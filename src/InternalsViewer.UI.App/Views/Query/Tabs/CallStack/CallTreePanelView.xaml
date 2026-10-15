@@ -503,6 +503,7 @@
 
         <callStack:CallSearchBar x:Name="SearchBar"
                                  Grid.Row="0"
+                                 IsDataFilterVisible="True"
                                  CallStack="{x:Bind ViewModel.Query.CallStack, Mode=OneWay}"/>
 
         <Grid x:Name="FilterHeader"

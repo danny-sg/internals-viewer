@@ -2,6 +2,7 @@
 using InternalsViewer.UI.App.Models;
 using Microsoft.UI.Dispatching;
 using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Controls.Primitives;
 using Microsoft.UI.Xaml.Documents;
 using Microsoft.UI.Xaml.Media;
 using System;
@@ -17,6 +18,10 @@ public sealed partial class ResultsGridControl : UserControl
     private const double CellMargin = 12;
 
     private const double MaximumFitWidth = 640;
+
+    private const string DetailsToggleName = "DetailsToggleButton";
+
+    private const string DetailsToggleStyleKey = "DetailsToggleStyle";
 
 
     public static readonly DependencyProperty ResultSetProperty =
@@ -69,19 +74,6 @@ public sealed partial class ResultsGridControl : UserControl
     {
         get => (Func<ResultRow<long>, ResultDetails>?)GetValue(RowDetailsProperty);
         set => SetValue(RowDetailsProperty, value);
-    }
-
-    public static readonly DependencyProperty RowDetailsContentProperty =
-        DependencyProperty.Register(
-            nameof(RowDetailsContent),
-            typeof(Func<ResultRow<long>, FrameworkElement?>),
-            typeof(ResultsGridControl),
-            new PropertyMetadata(null, OnRowDetailsChanged));
-
-    public Func<ResultRow<long>, FrameworkElement?>? RowDetailsContent
-    {
-        get => (Func<ResultRow<long>, FrameworkElement?>?)GetValue(RowDetailsContentProperty);
-        set => SetValue(RowDetailsContentProperty, value);
     }
 
     public static readonly DependencyProperty IsStatusBarVisibleProperty =
@@ -139,6 +131,8 @@ public sealed partial class ResultsGridControl : UserControl
 
     private HashSet<Panel> DetailHosts { get; } = [];
 
+    private bool IsRefreshing { get; set; }
+
     private void Rebuild()
     {
         ReleaseTable();
@@ -175,13 +169,15 @@ public sealed partial class ResultsGridControl : UserControl
             table.Columns.Add(resultCellColumn);
         }
 
-        if (RowDetails is not null || RowDetailsContent is not null)
+        if (RowDetails is not null)
         {
             table.RowDetailsTemplate = (DataTemplate)Resources["RowDetailsTemplate"];
 
             table.RowDetailsVisibilityMode = TableViewRowDetailsVisibilityMode.VisibleWhenExpanded;
 
             table.HeadersVisibility = TableViewHeadersVisibility.All;
+
+            table.ContainerContentChanging += OnContainerContentChanging;
         }
 
         table.ItemsSource = rows;
@@ -224,7 +220,26 @@ public sealed partial class ResultsGridControl : UserControl
 
     private void Refresh()
     {
-        ResultsTable?.RefreshView();
+        if (ResultsTable is { } table)
+        {
+            var selected = SelectedRow;
+
+            IsRefreshing = true;
+
+            try
+            {
+                table.RefreshView();
+            }
+            finally
+            {
+                IsRefreshing = false;
+            }
+
+            if (selected is not null && !ReferenceEquals(table.SelectedItem, selected))
+            {
+                table.SelectedItem = selected;
+            }
+        }
 
         foreach (var host in DetailHosts)
         {
@@ -244,6 +259,8 @@ public sealed partial class ResultsGridControl : UserControl
         table.SelectionChanged -= OnSelectionChanged;
 
         table.CellContextFlyoutOpening -= OnCellContextFlyoutOpening;
+
+        table.ContainerContentChanging -= OnContainerContentChanging;
 
         TableHost.Child = null;
 
@@ -282,7 +299,7 @@ public sealed partial class ResultsGridControl : UserControl
 
     private void OnSelectionChanged(object sender, SelectionChangedEventArgs e)
     {
-        if (ReferenceEquals(sender, ResultsTable))
+        if (!IsRefreshing && ReferenceEquals(sender, ResultsTable))
         {
             SelectedRow = ResultsTable.SelectedItem as ResultRow<long>;
         }
@@ -397,6 +414,65 @@ public sealed partial class ResultsGridControl : UserControl
 
     private void OnPagePointerClicked(RowBufferPage pointer) => PagePointerClicked?.Invoke(this, pointer);
 
+    private void OnContainerContentChanging(ListViewBase sender, ContainerContentChangingEventArgs args)
+    {
+        if (args.InRecycleQueue || args.ItemContainer is not { } row || StyleDetailsToggle(row))
+        {
+            return;
+        }
+
+        row.Loaded -= OnRowLoaded;
+
+        row.Loaded += OnRowLoaded;
+    }
+
+    private void OnRowLoaded(object sender, RoutedEventArgs e)
+    {
+        if (sender is FrameworkElement row)
+        {
+            row.Loaded -= OnRowLoaded;
+
+            StyleDetailsToggle(row);
+        }
+    }
+
+    private bool StyleDetailsToggle(DependencyObject row)
+    {
+        if (FindDetailsToggle(row) is not { } toggle)
+        {
+            return false;
+        }
+
+        var style = (Style)Resources[DetailsToggleStyleKey];
+
+        if (!ReferenceEquals(toggle.Style, style))
+        {
+            toggle.Style = style;
+        }
+
+        return true;
+    }
+
+    private static ToggleButton? FindDetailsToggle(DependencyObject parent)
+    {
+        for (var index = 0; index < VisualTreeHelper.GetChildrenCount(parent); index++)
+        {
+            var child = VisualTreeHelper.GetChild(parent, index);
+
+            if (child is ToggleButton { Name: DetailsToggleName } toggle)
+            {
+                return toggle;
+            }
+
+            if (child is not TableView && FindDetailsToggle(child) is { } found)
+            {
+                return found;
+            }
+        }
+
+        return null;
+    }
+
     private void OnRowDetailsDataContextChanged(FrameworkElement sender, DataContextChangedEventArgs args)
     {
         if (sender is not Panel host)
@@ -419,18 +495,6 @@ public sealed partial class ResultsGridControl : UserControl
 
     private void FillDetails(Panel host)
     {
-        if (host.DataContext is ResultRow<long> contentRow && RowDetailsContent is { } content)
-        {
-            host.Children.Clear();
-
-            if (content(contentRow) is { } element)
-            {
-                host.Children.Add(element);
-            }
-
-            return;
-        }
-
         if (host.DataContext is not ResultRow<long> row || RowDetails is not { } details)
         {
             host.Children.Clear();

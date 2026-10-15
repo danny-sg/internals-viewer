@@ -8,7 +8,9 @@ internal static class TraceCallRows
                               ulong flags = 0,
                               ulong rcx = 0,
                               ulong returnValue = 0,
-                              int node = 0)
+                              int node = 0,
+                              ulong id = 0,
+                              ulong endId = 0)
     {
         var row = new ulong[TraceArgumentCall.ValueCount];
 
@@ -17,6 +19,8 @@ internal static class TraceCallRows
         row[2] = rcx;
         row[6] = returnValue;
         row[7] = (ulong)node;
+        row[8] = id;
+        row[9] = endId;
 
         return row;
     }

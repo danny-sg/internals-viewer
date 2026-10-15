@@ -27,6 +27,8 @@ internal sealed partial class BatchTable
             writer.Write(capture.FirstVector);
 
             writer.Write(capture.VectorCount);
+
+            writer.Write(capture.Capacity);
         }
 
         writer.Write(Vectors.Length);
@@ -78,7 +80,7 @@ internal sealed partial class BatchTable
         writer.Write(Data);
     }
 
-    internal static BatchTable Read(BinaryReader reader, ulong function, ulong instance)
+    internal static BatchTable Read(BinaryReader reader, ulong function, ulong instance, int version)
     {
         var captures = new Capture[reader.ReadInt32()];
 
@@ -93,7 +95,8 @@ internal sealed partial class BatchTable
                                           reader.ReadInt32(),
                                           reader.ReadInt32(),
                                           reader.ReadInt32(),
-                                          reader.ReadInt32());
+                                          reader.ReadInt32(),
+                                          version >= BatchIndex.FormatVersion ? reader.ReadInt32() : 0);
         }
 
         var vectors = new Vector[reader.ReadInt32()];

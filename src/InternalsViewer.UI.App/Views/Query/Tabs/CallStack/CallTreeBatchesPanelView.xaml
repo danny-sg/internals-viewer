@@ -6,11 +6,14 @@
     xmlns:toolkit="using:CommunityToolkit.WinUI.Controls"
     xmlns:controls="using:InternalsViewer.UI.App.Controls"
     xmlns:results="using:InternalsViewer.UI.App.Controls.Results"
+    xmlns:callStack="using:InternalsViewer.UI.App.Views.Query.Tabs.CallStack"
     xmlns:batch="using:InternalsViewer.UI.App.Models.Query.Simulation.Batch">
 
     <Grid>
         <Grid.RowDefinitions>
-            <RowDefinition x:Name="BatchRow" Height="2*" MinHeight="60" />
+            <RowDefinition Height="*" MinHeight="60" />
+            <RowDefinition x:Name="BatchSplitterRow" Height="0" />
+            <RowDefinition x:Name="BatchRow" Height="0" />
             <RowDefinition x:Name="SplitterRow" Height="0" />
             <RowDefinition x:Name="DetailRow" Height="0" />
         </Grid.RowDefinitions>
@@ -38,7 +41,7 @@
                       HorizontalAlignment="Center"
                       VerticalAlignment="Center"/>
 
-        <toolkit:GridSplitter x:Name="DetailSplitter"
+        <toolkit:GridSplitter x:Name="BatchSplitter"
                               Grid.Row="1"
                               Height="6"
                               Visibility="Collapsed"
@@ -46,7 +49,17 @@
                               ResizeBehavior="PreviousAndNext"
                               ResizeDirection="Rows" />
 
-        <Grid x:Name="DetailPane" Grid.Row="2" Visibility="Collapsed">
+        <callStack:CallTreeBatchDetailsView x:Name="BatchView" Grid.Row="2" Visibility="Collapsed" />
+
+        <toolkit:GridSplitter x:Name="DetailSplitter"
+                              Grid.Row="3"
+                              Height="6"
+                              Visibility="Collapsed"
+                              HorizontalAlignment="Stretch"
+                              ResizeBehavior="PreviousAndNext"
+                              ResizeDirection="Rows" />
+
+        <Grid x:Name="DetailPane" Grid.Row="4" Visibility="Collapsed">
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto" />
                 <RowDefinition Height="*" />

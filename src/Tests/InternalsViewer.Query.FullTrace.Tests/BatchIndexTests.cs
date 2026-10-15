@@ -23,6 +23,8 @@ public class BatchIndexTests
 
     private const ulong Helper = 0x20F_0CA2_E000;
 
+    private const ulong FilterNextBatch = 0x7FF8_0020_2000;
+
     private const ulong DictionarySlot = 0xE60100;
 
     private const ulong DeepSlot = 0x20E_F6E5_005D;
@@ -95,7 +97,7 @@ public class BatchIndexTests
     {
         var summary = Assert.Single(Build().GetSummaries(Function, 0));
 
-        Assert.Equal(new BatchSummary(1, Iterator, BatchCaptureFlags.None, 3, 6, 3, 1), summary);
+        Assert.Equal(new BatchSummary(1, Iterator, BatchCaptureFlags.None, 3, 6, 3, 1, 900), summary);
     }
 
     [Fact]
@@ -122,6 +124,33 @@ public class BatchIndexTests
         log.Build().AnnotateNodes(store);
 
         Assert.Equal((true, false), (filter.HasBatches, other.HasBatches));
+    }
+
+    [Fact]
+    public void A_Next_Batch_Call_Shows_The_Batch_It_Handed_Over()
+    {
+        var (index, node) = BuildProducer();
+
+        var batch = Assert.IsType<BatchCapture>(index.GetBatch(FilterNextBatch, Consumer, 0));
+
+        Assert.Equal((200ul, FilterNextBatch, 0), (batch.Id, batch.Function, batch.Call));
+        Assert.Equal(0, Assert.Single(index.GetSummaries(FilterNextBatch, Consumer)).Call);
+        Assert.Equal([0], index.GetCalls(FilterNextBatch, Consumer));
+        Assert.True(node.HasBatches);
+    }
+
+    [Fact]
+    public void A_Next_Batch_Call_Without_A_Handoff_Has_No_Batch()
+    {
+        var (index, _) = BuildProducer();
+
+        Assert.False(index.HasBatch(FilterNextBatch, Consumer, 1));
+    }
+
+    [Fact]
+    public void A_Consumer_Finds_The_Iterator_That_Handed_It_Batches()
+    {
+        Assert.Equal(Consumer, BuildFiltered().GetProducer(Helper));
     }
 
     [Fact]
@@ -189,8 +218,37 @@ public class BatchIndexTests
         var batch = BatchIndex.Read(reader).GetBatch(Function, 0, 1)!;
 
         Assert.Equal([0, 2, 5], batch.Selection);
+        Assert.Equal(900, batch.Capacity);
         Assert.Equal(BatchVectorFlags.Pure, batch.Vectors[1].Flags);
         Assert.Equal("REF-0003148000", Encoding.ASCII.GetString(batch.Vectors[2].GetDeepValue(2)!.Data));
+    }
+
+    private static (BatchIndex Index, CallStackNode Node) BuildProducer()
+    {
+        var tree = new CallStackTree();
+
+        var frame = new CallstackFrame
+        {
+            Module = "sqlmin",
+            Rva = 0x30,
+            Resolved = new ResolvedCallstackFrame { ClassName = "CBpQScanFilter", MethodName = "BpGetNextBatch" }
+        };
+
+        var node = tree.AddCall(tree.Root, frame, 1);
+
+        var calls = new TraceCallStore.Builder();
+
+        calls.Add(FilterNextBatch, Consumer, Chunk(Row(1, id: 150, endId: 190), Row(2, id: 210, endId: 250)), 2);
+
+        var store = calls.Build();
+
+        store.MapNodes([node]);
+
+        var index = BuildFiltered();
+
+        index.AnnotateNodes(store);
+
+        return (index, node);
     }
 
     private static BatchIndex BuildFiltered()
@@ -222,7 +280,7 @@ public class BatchIndexTests
     {
         var text = Encoding.ASCII.GetBytes("REF-0003148000");
 
-        log.Add([new CapturedBatch(Function, 0, Iterator, Address, Consumer, id, call, 0, 3, 0, 3, 0)],
+        log.Add([new CapturedBatch(Function, 0, Iterator, Address, Consumer, id, call, 0, 3, 0, 3, 0, 900)],
                 [new CapturedVector(0, 6, 0, 0, 1, 0),
                  new CapturedVector(6, 1, 0, 0, 3, PureFlag),
                  new CapturedVector(7, 6, 0, 1, 7, 0)],

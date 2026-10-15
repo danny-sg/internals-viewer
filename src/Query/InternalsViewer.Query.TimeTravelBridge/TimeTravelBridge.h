@@ -101,6 +101,8 @@ extern "C"
         uint64_t VTable;
         uint32_t BufferOffset;
         uint32_t BindingsOffset;
+        uint32_t CountOffset;
+        uint32_t Format;
     };
 
     struct RowBufferRow
@@ -113,7 +115,7 @@ extern "C"
         uint32_t Call;
         uint32_t FirstColumn;
         uint32_t ColumnCount;
-        uint32_t Reserved;
+        uint32_t Format;
     };
 
     struct RowBufferColumn
@@ -142,6 +144,8 @@ extern "C"
         uint32_t FirstVector;
         uint32_t VectorCount;
         uint32_t Flags;
+        uint32_t Capacity;
+        uint32_t Reserved;
     };
 
     struct CapturedVector

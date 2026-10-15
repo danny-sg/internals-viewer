@@ -138,6 +138,32 @@ public class RowBufferIndexTests
     }
 
     [Fact]
+    public void A_Value_Row_Keeps_Its_Format_Through_Export()
+    {
+        var log = new RowBufferIndex.Log();
+
+        log.Add([new BufferRow(Function, Instance, Iterator, Buffer, 100, 1, 0, 1, RowBufferFormat.Values)],
+                [new BufferColumn(0, 8, 8, -1, 0, 0, 0, 0)],
+                [0x20, 0x28, 0x30, 0, 0, 0, 0, 0]);
+
+        using var stream = new MemoryStream();
+
+        using (var writer = new BinaryWriter(stream, Encoding.UTF8, leaveOpen: true))
+        {
+            log.Build().Write(writer);
+        }
+
+        stream.Position = 0;
+
+        using var reader = new BinaryReader(stream);
+
+        var row = RowBufferIndex.Read(reader).GetRow(Function, Instance, 1)!;
+
+        Assert.Equal(RowBufferFormat.Values, row.Format);
+        Assert.Equal([0x20, 0x28, 0x30, 0, 0, 0, 0, 0], row.Columns[0].Data);
+    }
+
+    [Fact]
     public void A_Value_On_A_Page_Is_Kept_As_A_Page_Reference()
     {
         var log = new RowBufferIndex.Log();

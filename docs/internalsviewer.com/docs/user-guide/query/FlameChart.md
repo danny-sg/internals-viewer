@@ -113,7 +113,7 @@ This shows something the lanes cannot. An operator is only on a thread's stack w
 
 ## Row buffers
 
-**View > Row Buffers** adds a strip under each thread header with a mark for every row a scan, seek, sort or spool handed back, at the point its `GetRow` call returned it. When one `GetRow` calls another for the same row, only the innermost call is marked, so each row is marked once. The values in each row are on the Call Tree's **Row Buffers** tab, opened from the red square beside a call that captured rows - see [Call Tree](/docs/user-guide/query/CallStack).
+**View > Row Buffers** adds a strip under each thread header with a mark for every row a scan, seek, sort or spool handed back, at the point its `GetRow` call returned it. Rows a batch mode operator hands to a row mode operator above it are marked too, from the `GetRow` call that turns each one from the batch into a row. When one `GetRow` calls another for the same row, only the innermost call is marked, so each row is marked once. The values in each row are on the Call Tree's **Row Buffers** tab, opened from the red square beside a call that captured rows - see [Call Tree](/docs/user-guide/query/CallStack). Click a mark to open its call in the Call Tree.
 
 Batch mode operators are marked on the same strip in blue, one mark for each batch handed to the operator above, at the point its `BpGetBatchData` call returned it. The batches are on the Call Tree's [Batches](/docs/user-guide/query/CallStack#batches) tab.
 

@@ -19,6 +19,8 @@ internal sealed partial class RowBufferTable
             writer.Write(row.Layout);
 
             writer.Write(row.FirstColumn);
+
+            writer.Write((byte)row.Format);
         }
 
         writer.Write(Values.Length);
@@ -55,7 +57,7 @@ internal sealed partial class RowBufferTable
         writer.Write(Data);
     }
 
-    internal static RowBufferTable Read(BinaryReader reader, ulong function, ulong instance)
+    internal static RowBufferTable Read(BinaryReader reader, ulong function, ulong instance, int version)
     {
         var rows = new Row[reader.ReadInt32()];
 
@@ -66,7 +68,8 @@ internal sealed partial class RowBufferTable
                                   reader.ReadUInt64(),
                                   reader.ReadUInt64(),
                                   reader.ReadInt32(),
-                                  reader.ReadInt32());
+                                  reader.ReadInt32(),
+                                  version >= RowBufferIndex.FormatVersion ? (RowBufferFormat)reader.ReadByte() : RowBufferFormat.Bindings);
         }
 
         var values = new Value[reader.ReadInt32()];

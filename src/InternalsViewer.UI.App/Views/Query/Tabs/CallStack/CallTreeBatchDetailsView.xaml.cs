@@ -2,7 +2,6 @@ using System;
 using System.Linq;
 using InternalsViewer.Query.FullTrace.Batches;
 using InternalsViewer.UI.App.Controls.CallStack;
-using InternalsViewer.UI.App.Controls.Results;
 using InternalsViewer.UI.App.Helpers;
 using InternalsViewer.UI.App.ViewModels.Query.CallStack;
 using Microsoft.UI.Xaml.Controls;
@@ -20,24 +19,10 @@ public sealed partial class CallTreeBatchDetailsView : UserControl
 
     private const double HeaderFontSize = 11;
 
-    private const double ReservedHeight = 96;
-
-    private const double MinimumHeight = 200;
-
     public CallTreeBatchDetailsView()
     {
         InitializeComponent();
-
-        SizeChanged += OnSizeChanged;
-
-        Loaded += OnLoaded;
-
-        Unloaded += OnUnloaded;
     }
-
-    public BatchesViewModel? Batches { get; set; }
-
-    public int Call { get; set; }
 
     private static SolidColorBrush PureBadgeBrush { get; } = new(Windows.UI.Color.FromArgb(255, 29, 158, 117));
 
@@ -45,9 +30,63 @@ public sealed partial class CallTreeBatchDetailsView : UserControl
 
     private static Style HeaderStyle => field ??= CreateHeaderStyle();
 
-    private bool IsFilled { get; set; }
+    private TableView? VectorTable { get; set; }
 
-    private ResultsGridControl? Host { get; set; }
+    public void Show(BatchesViewModel batches, int call)
+    {
+        if (batches.LoadBatch(call) is not { } lineage)
+        {
+            ShowMessage("No Batch");
+
+            return;
+        }
+
+        VectorTable = CreateVectorTable(batches, lineage);
+
+        VectorTableHost.Child = VectorTable;
+
+        SelectionTable.ItemsSource = BatchesViewModel.GetSelectionRows(lineage.Capture);
+
+        var deepData = BatchesViewModel.GetDeepDataRows(lineage.Capture);
+
+        DeepDataTable.ItemsSource = deepData;
+
+        DeepDataSummary.Text = deepData.Count == 0
+            ? "No Entries"
+            : $"{deepData.Count:N0} {(deepData.Count == 1 ? "Entry" : "Entries")}, {SizeFormat.Format(deepData.Sum(d => (long)d.Length))}";
+
+        MessageText.Visibility = Visibility.Collapsed;
+
+        BatchTabs.Visibility = Visibility.Visible;
+    }
+
+    public void Clear()
+    {
+        VectorTable = null;
+
+        VectorTableHost.Child = null;
+
+        SelectionTable.ItemsSource = null;
+
+        DeepDataTable.ItemsSource = null;
+    }
+
+    public void Refresh()
+    {
+        if (VectorTable is not { } table)
+        {
+            return;
+        }
+
+        var selected = table.SelectedItem;
+
+        table.RefreshView();
+
+        if (selected is not null && !ReferenceEquals(table.SelectedItem, selected))
+        {
+            table.SelectedItem = selected;
+        }
+    }
 
     private static Style CreateHeaderStyle()
     {
@@ -101,70 +140,15 @@ public sealed partial class CallTreeBatchDetailsView : UserControl
         return label;
     }
 
-    private void OnLoaded(object sender, RoutedEventArgs e)
+    private void ShowMessage(string message)
     {
-        Host = LayoutHelpers.FindParent<ResultsGridControl>(this);
+        Clear();
 
-        Host?.SizeChanged += OnHostSizeChanged;
+        MessageText.Text = message;
 
-        UpdateHeight();
-    }
+        MessageText.Visibility = Visibility.Visible;
 
-    private void OnUnloaded(object sender, RoutedEventArgs e)
-    {
-        Host?.SizeChanged -= OnHostSizeChanged;
-
-        Host = null;
-    }
-
-    private void OnHostSizeChanged(object sender, SizeChangedEventArgs e) => UpdateHeight();
-
-    private void UpdateHeight()
-    {
-        if (Host is { ActualHeight: > 0 } host)
-        {
-            RootGrid.Height = Math.Max(MinimumHeight, host.ActualHeight - ReservedHeight);
-        }
-    }
-
-    private void OnSizeChanged(object sender, SizeChangedEventArgs e)
-    {
-        if (IsFilled || e.NewSize.Height <= 0 || Batches is not { } batches)
-        {
-            return;
-        }
-
-        IsFilled = true;
-
-        SizeChanged -= OnSizeChanged;
-
-        Fill(batches);
-    }
-
-    private void Fill(BatchesViewModel batches)
-    {
-        if (batches.LoadBatch(Call) is not { } lineage)
-        {
-            MessageText.Text = "No Batch";
-
-            MessageText.Visibility = Visibility.Visible;
-
-            BatchTabs.Visibility = Visibility.Collapsed;
-
-            return;
-        }
-
-        VectorTableHost.Child = CreateVectorTable(batches, lineage);
-
-        SelectionTable.ItemsSource = BatchesViewModel.GetSelectionRows(lineage.Capture);
-
-        var deepData = BatchesViewModel.GetDeepDataRows(lineage.Capture);
-
-        DeepDataTable.ItemsSource = deepData;
-
-        DeepDataSummary.Text = deepData.Count == 0
-            ? "No Entries"
-            : $"{deepData.Count:N0} {(deepData.Count == 1 ? "Entry" : "Entries")}, {SizeFormat.Format(deepData.Sum(d => (long)d.Length))}";
+        BatchTabs.Visibility = Visibility.Collapsed;
     }
 
     private TableView CreateVectorTable(BatchesViewModel batches, BatchLineage lineage)

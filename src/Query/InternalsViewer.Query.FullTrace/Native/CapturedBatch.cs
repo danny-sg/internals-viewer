@@ -14,4 +14,6 @@ internal readonly record struct CapturedBatch(ulong Function,
                                               uint SelectedCount,
                                               uint FirstVector,
                                               uint VectorCount,
-                                              uint Flags);
+                                              uint Flags,
+                                              uint Capacity = 0,
+                                              uint Reserved = 0);
