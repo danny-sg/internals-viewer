@@ -6,7 +6,8 @@ public sealed record RowBuffer(ulong Function,
                                ulong Id,
                                ulong Iterator,
                                ulong Address,
-                               IReadOnlyList<RowBufferColumn> Columns)
+                               IReadOnlyList<RowBufferColumn> Columns,
+                               RowBufferFormat Format = RowBufferFormat.Bindings)
 {
     public override string ToString() => string.Join(Environment.NewLine, Columns.Select(c => $"Column {c.Ordinal}  {c}"));
 }

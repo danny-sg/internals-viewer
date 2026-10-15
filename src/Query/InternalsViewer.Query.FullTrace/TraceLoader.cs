@@ -4,6 +4,7 @@ using InternalsViewer.Internals.Engine.Loading;
 using InternalsViewer.Query.CallStack;
 using InternalsViewer.Query.CallStack.Arguments;
 using InternalsViewer.Query.CallStack.Symbols;
+using InternalsViewer.Query.FullTrace.CustomHooks;
 using InternalsViewer.Query.FullTrace.Arguments;
 using InternalsViewer.Query.Events;
 using InternalsViewer.Query.Events.Operators;
@@ -62,6 +63,7 @@ public sealed class TraceLoader(ILogger<TraceLoader> logger, ITimeTravelRecorder
     }
 
     public async Task<TraceResult?> LoadAsync(TraceRequest request,
+                                              IReadOnlyList<CustomHookDefinition> customHooks,
                                               IProgress<ProgressDetail>? progress,
                                               CancellationToken cancellationToken)
     {
@@ -108,7 +110,7 @@ public sealed class TraceLoader(ILogger<TraceLoader> logger, ITimeTravelRecorder
 
             Logger.LogInformation("Replaying Full Trace for {Threads} thread(s)", request.ThreadIds.Count);
 
-            replay = await session.ReplayAsync(request.ThreadIds, functions, steps, cancellationToken);
+            replay = await session.ReplayAsync(request.ThreadIds, functions, customHooks, steps, cancellationToken);
 
             steps.Complete();
         }
@@ -159,6 +161,8 @@ public sealed class TraceLoader(ILogger<TraceLoader> logger, ITimeTravelRecorder
         replay.CallStore.AnnotateNodes();
 
         replay.RowBuffers.AnnotateNodes(replay.CallStore);
+
+        replay.Batches.AnnotateNodes(replay.CallStore);
 
         replay.Timeline.MapNodes(mapped);
 
@@ -237,13 +241,19 @@ public sealed class TraceLoader(ILogger<TraceLoader> logger, ITimeTravelRecorder
 
         Logger.LogInformation("{Rows} row buffer(s) read from iterator GetRow calls", replay.RowBuffers.Count);
 
+        Logger.LogInformation("{Batches} batch(es) read from iterator BpGetBatchData calls", replay.Batches.Count);
+
+        Logger.LogInformation("{Captures} custom hook capture(s) read from {Hooks} hook(s)", replay.CustomHooks.Count, customHooks.Count);
+
         return new TraceResult(callStack, replay.CallStore, timeline)
         {
             PlanLink = planLink,
             HoBtAccess = hobtAccess,
             MemoryMap = memoryMap,
             RowBuffers = replay.RowBuffers,
-            RowBufferMarks = TraceRowBufferMarks.Build(timeline, replay.RowBuffers)
+            Batches = replay.Batches,
+            CustomHooks = replay.CustomHooks,
+            RowBufferMarks = TraceRowBufferMarks.Build(timeline, replay.RowBuffers, replay.Batches)
         };
     }
 

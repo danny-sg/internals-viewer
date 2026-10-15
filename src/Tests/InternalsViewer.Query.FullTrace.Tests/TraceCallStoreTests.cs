@@ -6,7 +6,6 @@ using InternalsViewer.Query.CallStack;
 using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Query.FullTrace.Calls;
 using InternalsViewer.Query.FullTrace.Locators;
-using InternalsViewer.Query.FullTrace.Native;
 using InternalsViewer.Query.CallStack.Locators;
 
 using static InternalsViewer.Query.FullTrace.Tests.TraceCallRows;

@@ -1,7 +1,6 @@
 using InternalsViewer.Query.CallStack.Arguments;
 using InternalsViewer.Query.CallStack.Dia;
 using InternalsViewer.Query.FullTrace.Memory;
-using InternalsViewer.Query.FullTrace.Native;
 
 namespace InternalsViewer.Query.FullTrace.Functions;
 

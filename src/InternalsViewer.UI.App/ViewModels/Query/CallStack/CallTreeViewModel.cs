@@ -115,6 +115,13 @@ public sealed partial class CallTreeViewModel : ObservableObject, IDisposable
         Refresh();
     }
 
+    public void SetDataFilter(CallTreeDataFilter filter)
+    {
+        DataFilter = filter;
+
+        Refresh();
+    }
+
     public void RequestSearch(string text) => SearchRequested?.Invoke(text);
 
     public void GoBack() => GoTo(HistoryIndex - 1);
@@ -132,6 +139,8 @@ public sealed partial class CallTreeViewModel : ObservableObject, IDisposable
         SelectedPath = null;
 
         ApplySearch(string.Empty);
+
+        DataFilter = CallTreeDataFilter.None;
 
         SelectQuietly(null);
 

@@ -1,7 +1,7 @@
-﻿using InternalsViewer.Query.FullTrace.Iterators;
+﻿using InternalsViewer.Query.FullTrace.Batches;
+using InternalsViewer.Query.FullTrace.Iterators;
 using InternalsViewer.Query.FullTrace.Locators;
 using InternalsViewer.Query.FullTrace.Memory;
-using InternalsViewer.Query.FullTrace.Native;
 using InternalsViewer.Query.FullTrace.PublishedEvents;
 using InternalsViewer.Query.FullTrace.RowBuffers;
 
@@ -13,9 +13,17 @@ internal sealed record ReplayFunctions(ulong[] ExcludedFunctions,
                                        PublishedEventFunctions PublishedEvents,
                                        MemoryFunction[] MemoryFunctions,
                                        MemoryMapFunction[] MemoryMapFunctions,
-                                       RowBufferFunctions RowBuffers)
+                                       RowBufferFunctions RowBuffers,
+                                       BatchFunctions Batches)
 {
-    public static ReplayFunctions Empty { get; } = new([], [], [], PublishedEventFunctions.Empty, [], [], RowBufferFunctions.Empty);
+    public static ReplayFunctions Empty { get; } = new([],
+                                                       [],
+                                                       [],
+                                                       PublishedEventFunctions.Empty,
+                                                       [],
+                                                       [],
+                                                       RowBufferFunctions.Empty,
+                                                       BatchFunctions.Empty);
 
     public static ReplayFunctions Merge(IReadOnlyList<ReplayFunctions> functions)
         => new([.. functions.SelectMany(f => f.ExcludedFunctions)],
@@ -24,7 +32,8 @@ internal sealed record ReplayFunctions(ulong[] ExcludedFunctions,
                PublishedEventFunctions.Merge(functions.Select(f => f.PublishedEvents)),
                [.. functions.SelectMany(f => f.MemoryFunctions)],
                [.. functions.SelectMany(f => f.MemoryMapFunctions)],
-               RowBufferFunctions.Merge(functions.Select(f => f.RowBuffers)));
+               RowBufferFunctions.Merge(functions.Select(f => f.RowBuffers)),
+               BatchFunctions.Merge(functions.Select(f => f.Batches)));
 
     public ReplayFunctions Rebase(ulong address)
         => new([.. ExcludedFunctions.Select(f => f + address)],
@@ -33,5 +42,6 @@ internal sealed record ReplayFunctions(ulong[] ExcludedFunctions,
                PublishedEvents.Rebase(address),
                [.. MemoryFunctions.Select(f => f with { Address = f.Address + address })],
                [.. MemoryMapFunctions.Select(f => f with { Address = f.Address + address })],
-               RowBuffers.Rebase(address));
+               RowBuffers.Rebase(address),
+               Batches.Rebase(address));
 }

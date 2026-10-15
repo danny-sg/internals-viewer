@@ -1,0 +1,175 @@
+<?xml version="1.0" encoding="utf-8"?>
+<UserControl
+    x:Class="InternalsViewer.UI.App.Views.Query.Tabs.CallStack.CallTreeBatchDetailsView"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:batch="using:InternalsViewer.UI.App.Models.Query.Simulation.Batch"
+    xmlns:model="using:InternalsViewer.UI.App.Models.Query.CallStack"
+    xmlns:tableView="using:WinUI.TableView">
+
+    <UserControl.Resources>
+        <DataTemplate x:Key="VectorTableTemplate">
+            <tableView:TableView CanSortColumns="False"
+                                 CanFilterColumns="False"
+                                 SelectionMode="Single"
+                                 RowHeight="28"
+                                 HeaderRowHeight="48"
+                                 GridLinesVisibility="All"
+                                 HorizontalGridLinesStroke="{ThemeResource ControlStrokeColorDefaultBrush}"
+                                 HorizontalGridLinesStrokeThickness="1"
+                                 VerticalGridLinesStroke="{ThemeResource ControlStrokeColorDefaultBrush}"
+                                 VerticalGridLinesStrokeThickness="1"
+                                 MinColumnWidth="20"
+                                 BorderThickness="0"
+                                 Background="{ThemeResource LayerFillColorDefaultBrush}">
+                <tableView:TableView.Resources>
+                    <x:Double x:Key="ListViewItemMinHeight">0</x:Double>
+                </tableView:TableView.Resources>
+            </tableView:TableView>
+        </DataTemplate>
+    </UserControl.Resources>
+
+    <Grid Background="{ThemeResource LayerOnMicaBaseAltFillColorDefault}">
+        <TextBlock x:Name="MessageText"
+                   Margin="12,8,12,8"
+                   FontSize="12"
+                   Visibility="Collapsed"
+                   Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
+
+        <TabView x:Name="BatchTabs"
+                 VerticalAlignment="Stretch"
+                 IsAddTabButtonVisible="False"
+                 CanDragTabs="False"
+                 CanReorderTabs="False"
+                 TabWidthMode="SizeToContent">
+
+            <TabViewItem Header="Data Vectors" IsClosable="False">
+                <Border x:Name="VectorTableHost" Background="{ThemeResource LayerFillColorDefaultBrush}" />
+            </TabViewItem>
+
+            <TabViewItem Header="Selection Vector" IsClosable="False">
+                <tableView:TableView x:Name="SelectionTable"
+                                     CanSortColumns="False"
+                                     CanFilterColumns="False"
+                                     SelectionMode="Single"
+                                     RowHeight="28"
+                                     GridLinesVisibility="All"
+                                     HorizontalGridLinesStroke="{ThemeResource ControlStrokeColorDefaultBrush}"
+                                     HorizontalGridLinesStrokeThickness="1"
+                                     VerticalGridLinesStroke="{ThemeResource ControlStrokeColorDefaultBrush}"
+                                     VerticalGridLinesStrokeThickness="1"
+                                     MinColumnWidth="20"
+                                     BorderThickness="0"
+                                     Background="{ThemeResource LayerFillColorDefaultBrush}">
+                    <tableView:TableView.Resources>
+                        <x:Double x:Key="ListViewItemMinHeight">0</x:Double>
+                    </tableView:TableView.Resources>
+                    <tableView:TableView.Columns>
+                        <tableView:TableViewTemplateColumn Header="Index" Width="120">
+                            <tableView:TableViewTemplateColumn.CellTemplate>
+                                <DataTemplate x:DataType="batch:BatchSelectionRow">
+                                    <TextBlock Text="{x:Bind Index}"
+                                               Padding="8,0,4,0"
+                                               VerticalAlignment="Center"
+                                               FontFamily="{StaticResource MonospaceFontFamily}" />
+                                </DataTemplate>
+                            </tableView:TableViewTemplateColumn.CellTemplate>
+                        </tableView:TableViewTemplateColumn>
+                    </tableView:TableView.Columns>
+                </tableView:TableView>
+            </TabViewItem>
+
+            <TabViewItem Header="Deep Data" IsClosable="False">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="*" />
+                    </Grid.RowDefinitions>
+
+                    <Border Grid.Row="0"
+                            Padding="10,5"
+                            BorderThickness="0,0,0,1"
+                            BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}">
+                        <TextBlock x:Name="DeepDataSummary"
+                                   FontSize="12"
+                                   Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                    </Border>
+
+                    <tableView:TableView x:Name="DeepDataTable"
+                                         Grid.Row="1"
+                                         CanSortColumns="False"
+                                         CanFilterColumns="False"
+                                         SelectionMode="Single"
+                                         RowHeight="28"
+                                         GridLinesVisibility="All"
+                                         HorizontalGridLinesStroke="{ThemeResource ControlStrokeColorDefaultBrush}"
+                                         HorizontalGridLinesStrokeThickness="1"
+                                         VerticalGridLinesStroke="{ThemeResource ControlStrokeColorDefaultBrush}"
+                                         VerticalGridLinesStrokeThickness="1"
+                                         MinColumnWidth="20"
+                                         BorderThickness="0"
+                                         Background="{ThemeResource LayerFillColorDefaultBrush}">
+                        <tableView:TableView.Resources>
+                            <x:Double x:Key="ListViewItemMinHeight">0</x:Double>
+                        </tableView:TableView.Resources>
+                        <tableView:TableView.Columns>
+                            <tableView:TableViewTemplateColumn Header="Vector" Width="80">
+                                <tableView:TableViewTemplateColumn.CellTemplate>
+                                    <DataTemplate x:DataType="model:BatchDeepDataEntry">
+                                        <TextBlock Text="{x:Bind VectorId}" Padding="8,0,4,0" VerticalAlignment="Center" />
+                                    </DataTemplate>
+                                </tableView:TableViewTemplateColumn.CellTemplate>
+                            </tableView:TableViewTemplateColumn>
+                            <tableView:TableViewTemplateColumn Header="Index" Width="70">
+                                <tableView:TableViewTemplateColumn.CellTemplate>
+                                    <DataTemplate x:DataType="model:BatchDeepDataEntry">
+                                        <TextBlock Text="{x:Bind RowIndex}" Padding="8,0,4,0" VerticalAlignment="Center" />
+                                    </DataTemplate>
+                                </tableView:TableViewTemplateColumn.CellTemplate>
+                            </tableView:TableViewTemplateColumn>
+                            <tableView:TableViewTemplateColumn Header="Address" Width="180">
+                                <tableView:TableViewTemplateColumn.CellTemplate>
+                                    <DataTemplate x:DataType="model:BatchDeepDataEntry">
+                                        <TextBlock Text="{x:Bind AddressText}"
+                                                   Padding="8,0,4,0"
+                                                   VerticalAlignment="Center"
+                                                   FontFamily="{StaticResource MonospaceFontFamily}" />
+                                    </DataTemplate>
+                                </tableView:TableViewTemplateColumn.CellTemplate>
+                            </tableView:TableViewTemplateColumn>
+                            <tableView:TableViewTemplateColumn Header="Length" Width="80">
+                                <tableView:TableViewTemplateColumn.CellTemplate>
+                                    <DataTemplate x:DataType="model:BatchDeepDataEntry">
+                                        <TextBlock Text="{x:Bind Length}" Padding="8,0,4,0" VerticalAlignment="Center" />
+                                    </DataTemplate>
+                                </tableView:TableViewTemplateColumn.CellTemplate>
+                            </tableView:TableViewTemplateColumn>
+                            <tableView:TableViewTemplateColumn Header="Data" Width="400">
+                                <tableView:TableViewTemplateColumn.CellTemplate>
+                                    <DataTemplate x:DataType="model:BatchDeepDataEntry">
+                                        <TextBlock Text="{x:Bind Data}"
+                                                   Padding="8,0,4,0"
+                                                   VerticalAlignment="Center"
+                                                   TextTrimming="CharacterEllipsis"
+                                                   FontFamily="{StaticResource MonospaceFontFamily}" />
+                                    </DataTemplate>
+                                </tableView:TableViewTemplateColumn.CellTemplate>
+                            </tableView:TableViewTemplateColumn>
+                            <tableView:TableViewTemplateColumn Header="Text" Width="240">
+                                <tableView:TableViewTemplateColumn.CellTemplate>
+                                    <DataTemplate x:DataType="model:BatchDeepDataEntry">
+                                        <TextBlock Text="{x:Bind Text}"
+                                                   Padding="8,0,4,0"
+                                                   VerticalAlignment="Center"
+                                                   TextTrimming="CharacterEllipsis"
+                                                   FontFamily="{StaticResource MonospaceFontFamily}" />
+                                    </DataTemplate>
+                                </tableView:TableViewTemplateColumn.CellTemplate>
+                            </tableView:TableViewTemplateColumn>
+                        </tableView:TableView.Columns>
+                    </tableView:TableView>
+                </Grid>
+            </TabViewItem>
+        </TabView>
+    </Grid>
+</UserControl>

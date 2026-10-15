@@ -58,14 +58,6 @@ public sealed partial class FlameChartControl
         PlacePlayhead(start);
     }
 
-    public void OpenCallStack(CallStackNode node, int call)
-    {
-        if (RevealCall(node, call) is { } start)
-        {
-            OpenCallStackAt(start);
-        }
-    }
-
     public void ZoomToCall(CallStackNode node, int call)
     {
         if (RevealSpan(node, call) is { } span)

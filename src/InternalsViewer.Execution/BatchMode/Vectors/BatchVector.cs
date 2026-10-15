@@ -1,4 +1,4 @@
-﻿using InternalsViewer.Execution.BatchMode.Normalization;
+﻿using InternalsViewer.Internals.BatchMode.Normalization;
 using InternalsViewer.Internals.Columnstore.Decoding;
 
 namespace InternalsViewer.Execution.BatchMode.Vectors;

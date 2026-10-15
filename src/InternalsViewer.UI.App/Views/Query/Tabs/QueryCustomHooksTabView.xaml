@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="utf-8"?>
+<UserControl
+    x:Class="InternalsViewer.UI.App.Views.Query.Tabs.QueryCustomHooksTabView"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:toolkit="using:CommunityToolkit.WinUI.Controls"
+    xmlns:results="using:InternalsViewer.UI.App.Controls.Results"
+    xmlns:hexView="using:InternalsViewer.UI.App.Controls.HexView">
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="*" MinHeight="60"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="2*" MinHeight="60"/>
+        </Grid.RowDefinitions>
+
+        <results:ResultsGridControl x:Name="HooksGrid"
+                                    Grid.Row="0"
+                                    ResultSet="{x:Bind ViewModel.CustomHooks.HooksTable, Mode=OneWay}"
+                                    SelectedRow="{x:Bind ViewModel.CustomHooks.SelectedHookRow, Mode=TwoWay}"
+                                    RowName="hook"/>
+
+        <toolkit:GridSplitter Grid.Row="1"
+                              Height="6"
+                              HorizontalAlignment="Stretch"
+                              ResizeBehavior="PreviousAndNext"
+                              ResizeDirection="Rows"/>
+
+        <Grid Grid.Row="2">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
+
+            <results:ResultsGridControl Grid.Column="1"
+                                        ResultSet="{x:Bind ViewModel.CustomHooks.CapturesTable, Mode=OneWay}"
+                                        SelectedRow="{x:Bind ViewModel.CustomHooks.SelectedCaptureRow, Mode=TwoWay}"
+                                        CallClicked="OnCallClicked"
+                                        RowName="capture"/>
+
+            <hexView:HexViewControl Grid.Column="0"
+                                    Width="455"
+                                    Margin="0,0,8,0"
+                                    VerticalAlignment="Stretch"
+                                    Background="{ThemeResource LayerOnMicaBaseAltFillColorDefault}"
+                                    Data="{x:Bind ViewModel.CustomHooks.Data, Mode=OneWay}"
+                                    BaseAddress="{x:Bind ViewModel.CustomHooks.BaseAddress, Mode=OneWay}"/>
+        </Grid>
+    </Grid>
+</UserControl>

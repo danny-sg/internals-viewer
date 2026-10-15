@@ -2,7 +2,7 @@ using InternalsViewer.Execution.AccessPaths.Definitions;
 using InternalsViewer.Execution.AccessPaths.Elimination;
 using InternalsViewer.Execution.AccessPaths.Predicates;
 using InternalsViewer.Execution.AccessPaths.Results.Steps;
-using InternalsViewer.Execution.BatchMode.Normalization;
+using InternalsViewer.Internals.BatchMode.Normalization;
 using InternalsViewer.Execution.BatchMode.Vectors;
 using InternalsViewer.Internals.Columnstore.Decoding;
 using InternalsViewer.Internals.Columnstore.Metadata;

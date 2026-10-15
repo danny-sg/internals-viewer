@@ -176,6 +176,39 @@ public sealed partial class DockLayoutViewModel : ObservableObject
             return;
         }
 
+        Remove(group, document);
+
+        CollapseIfEmpty(group);
+        OnLayoutChanged();
+    }
+
+    public void CloseAll(TabGroupNode group, DocumentViewModel? except = null)
+    {
+        var closing = group.Documents.Where(d => d.CanClose && !ReferenceEquals(d, except)).ToList();
+
+        if (closing.Count == 0)
+        {
+            return;
+        }
+
+        if (group.SelectedDocument is null || closing.Contains(group.SelectedDocument))
+        {
+            group.SelectedDocument = except ?? group.Documents.FirstOrDefault(d => !closing.Contains(d));
+        }
+
+        foreach (var document in closing)
+        {
+            Remove(group, document);
+        }
+
+        CollapseIfEmpty(group);
+        OnLayoutChanged();
+    }
+
+    private void OnLayoutChanged() => LayoutChanged?.Invoke(this, EventArgs.Empty);
+
+    private void Remove(TabGroupNode group, DocumentViewModel document)
+    {
         group.Documents.Remove(document);
 
         if (ReferenceEquals(group.SelectedDocument, document))
@@ -189,12 +222,7 @@ public sealed partial class DockLayoutViewModel : ObservableObject
         }
 
         DocumentClosed?.Invoke(this, document);
-
-        CollapseIfEmpty(group);
-        OnLayoutChanged();
     }
-
-    private void OnLayoutChanged() => LayoutChanged?.Invoke(this, EventArgs.Empty);
 
     private static IEnumerable<TabGroupNode> Groups(LayoutNode node)
     {

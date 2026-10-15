@@ -79,9 +79,11 @@ Pages and indexes opened from the trace - by double-clicking a timeline event, c
 
 **Search symbols** is covered in [Searching Symbols](/docs/user-guide/query/CallStack#searching-symbols).
 
+**Custom Hooks** opens the Custom Hooks tab - see [Custom Hooks](/docs/user-guide/query/FullTrace#custom-hooks).
+
 ## Layout
 
-Panes are tabs that can be dragged into any layout - drop a tab beside or below another pane to split the space, or onto a pane to stack them. While dragging, the drop zones highlight to show where the tab will land. The default layout is the SQL Editor above the Timeline.
+Panes are tabs that can be dragged into any layout - drop a tab beside or below another pane to split the space, or onto a pane to stack them. While dragging, the drop zones highlight to show where the tab will land. Right-click a tab for **Close All**, which closes every tab in its group, and **Close Others**, which closes every tab in the group except that one. Tabs that cannot be closed are left open. The default layout is the SQL Editor above the Timeline.
 
 The layout is remembered - the pane arrangement, timeline visibility, and the Events menu options, **Crop to query** and **Include system objects** are all restored the next time a Query tab is opened. **Track query** and **Record Full Trace** are not, and neither are the Index, Page, Columnstore and Simulation panes opened from a query. **Reset Layout** on the View menu puts everything back to the default.
 

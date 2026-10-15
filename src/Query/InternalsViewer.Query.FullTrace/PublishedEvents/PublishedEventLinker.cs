@@ -1,4 +1,3 @@
-using InternalsViewer.Query.FullTrace.Native;
 using InternalsViewer.Query.FullTrace.Timeline;
 using InternalsViewer.Query.Events;
 

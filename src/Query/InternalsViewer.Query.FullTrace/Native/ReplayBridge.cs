@@ -1,5 +1,6 @@
 using System.Runtime.InteropServices;
 using System.Text;
+using InternalsViewer.Query.FullTrace.Hooks;
 using InternalsViewer.Query.FullTrace.Iterators;
 
 namespace InternalsViewer.Query.FullTrace.Native;
@@ -152,16 +153,7 @@ internal static class ReplayBridge
     public delegate void CallSpanCallback(IntPtr spans, int count);
 
     [UnmanagedFunctionPointer(CallingConvention.StdCall)]
-    public delegate void PointerValueCallback(IntPtr values, int count);
-
-    [UnmanagedFunctionPointer(CallingConvention.StdCall)]
-    public delegate void PublishedEventCallback(IntPtr publishedEvents, int count);
-
-    [UnmanagedFunctionPointer(CallingConvention.StdCall)]
-    public delegate void MemoryMapCallback(IntPtr entries, int count);
-
-    [UnmanagedFunctionPointer(CallingConvention.StdCall)]
-    public delegate void RowBufferCallback(IntPtr rows, int rowCount, IntPtr columns, int columnCount, IntPtr data, int dataLength);
+    public delegate void HookCallback(IntPtr hookEvent, IntPtr view, IntPtr session);
 
     [DllImport(Library, CharSet = CharSet.Unicode)]
     public static extern int OpenTrace(string replayLibraryPath, string tracePath, out TraceHandle trace);
@@ -186,27 +178,27 @@ internal static class ReplayBridge
                                           int instanceMethodCount,
                                           ulong[] excludedFunctions,
                                           int excludedFunctionCount,
-                                          PointerRead[] pointerReads,
-                                          int pointerReadCount,
-                                          ulong[] eventPublisherFunctions,
-                                          int eventPublisherFunctionCount,
-                                          ulong[] eventWriterFunctions,
-                                          int eventWriterFunctionCount,
-                                          MemoryMapFunction[] memoryMapFunctions,
-                                          int memoryMapFunctionCount,
-                                          RowBufferRead[] rowBufferReads,
-                                          int rowBufferReadCount,
-                                          RowBufferLayout[] rowBufferLayouts,
-                                          int rowBufferLayoutCount,
+                                          HookFunction[] hookFunctions,
+                                          int hookFunctionCount,
                                           CallChunkCallback? logCalls,
                                           CallSpanCallback? logSpans,
-                                          PointerValueCallback? logPointerValues,
-                                          PublishedEventCallback? logPublishedEvents,
-                                          MemoryMapCallback? logMemoryMap,
-                                          RowBufferCallback? logRowBuffers,
+                                          HookCallback? onHook,
                                           ProgressCallback? progress,
                                           IntPtr cancel,
                                           out IntPtr tree);
+
+    [DllImport(Library)]
+    public static extern unsafe ulong ReadTraceMemory(IntPtr view, ulong address, byte* destination, ulong size);
+
+    [DllImport(Library)]
+    [return: MarshalAs(UnmanagedType.U1)]
+    public static extern bool WatchFrame(IntPtr session, uint thread, ulong frame);
+
+    [DllImport(Library)]
+    public static extern void WatchStack(IntPtr session, uint thread, ulong stackPointer);
+
+    [DllImport(Library)]
+    public static extern unsafe uint GetHookFrames(IntPtr session, uint thread, TraceHookFrame* frames, uint capacity);
 
     [DllImport(Library)]
     public static extern int GetCallNodeCount(IntPtr tree);

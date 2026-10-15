@@ -9,6 +9,7 @@ using InternalsViewer.Query.FullTrace.Iterators;
 using InternalsViewer.Query.FullTrace.Locators;
 using InternalsViewer.Query.FullTrace.PublishedEvents;
 using InternalsViewer.Query.FullTrace.Memory;
+using InternalsViewer.Query.FullTrace.Batches;
 using InternalsViewer.Query.FullTrace.RowBuffers;
 using Microsoft.Extensions.Logging;
 using InternalsViewer.Query.FullTrace.Helpers;
@@ -190,7 +191,8 @@ internal static class ReplayFunctionResolver
 
         logger?.LogInformation("Replay functions for {Module} resolved from {Pdb} in {Elapsed}: {Excluded} excluded, "
                                + "{Iterators} iterator methods, {Locators} locator reads, {Publishers} event publishers, "
-                               + "{Memory} memory functions, {Members} member functions, {RowBuffers} row buffer reads",
+                               + "{Memory} memory functions, {Members} member functions, {RowBuffers} row buffer reads, "
+                               + "{Batches} batch reads",
                                module.Name,
                                module.Pdb,
                                Stopwatch.GetElapsedTime(start),
@@ -200,7 +202,8 @@ internal static class ReplayFunctionResolver
                                relative.PublishedEvents.Publishers.Length,
                                relative.MemoryFunctions.Length,
                                relative.MemoryMapFunctions.Length,
-                               relative.RowBuffers.Reads.Length);
+                               relative.RowBuffers.Reads.Length,
+                               relative.Batches.Functions.Length);
     }
 
     private static ReplayFunctions? GetFunctions(TraceModule module, string symbolsPath)
@@ -220,10 +223,14 @@ internal static class ReplayFunctionResolver
 
         var rowBuffers = new RowBufferFunctions.Collector();
 
+        var batches = new BatchFunctions.Collector();
+
         var functions = ModuleSymbols.Load(resolver,
                                            (rva, name) =>
                                            {
                                                rowBuffers.VisitFunction(rva, name);
+
+                                               batches.VisitFunction(rva, name);
 
                                                return ClassifyFunction(mappings, moduleName, rva, name);
                                            },
@@ -241,13 +248,16 @@ internal static class ReplayFunctionResolver
 
         ulong[] excluded = [.. functions.Where(f => f.Value.IsExcluded).Select(f => (ulong)f.Key)];
 
+        var bases = ClassHierarchyReader.Read(module.Path, rowBuffers.Hierarchies);
+
         return new ReplayFunctions(excluded,
                                    instanceMethods,
                                    locators,
                                    PublishedEventFunctions.From(functions),
                                    [.. functions.Values.Select(f => f.MemoryFunction).OfType<MemoryFunction>()],
                                    [.. MemoryMapFunctionResolver.Find(resolver, kept)],
-                                   rowBuffers.Build(ClassHierarchyReader.Read(module.Path, rowBuffers.Hierarchies)));
+                                   rowBuffers.Build(bases),
+                                   batches.Build(bases));
     }
 
     private static FunctionClassification ClassifyFunction(CategoryMappings mappings, string module, uint rva, ReadOnlySpan<char> symbol)

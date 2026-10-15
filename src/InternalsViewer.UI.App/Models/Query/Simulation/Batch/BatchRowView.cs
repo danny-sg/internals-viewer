@@ -1,4 +1,4 @@
-﻿using InternalsViewer.Execution.BatchMode.Normalization;
+﻿using InternalsViewer.Internals.BatchMode.Normalization;
 
 namespace InternalsViewer.UI.App.Models.Query.Simulation.Batch;
 

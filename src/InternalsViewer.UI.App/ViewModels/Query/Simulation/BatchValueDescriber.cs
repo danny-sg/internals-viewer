@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Globalization;
-using InternalsViewer.Execution.BatchMode.Normalization;
+using InternalsViewer.Internals.BatchMode.Normalization;
 using InternalsViewer.UI.App.Models.Query.Simulation.Batch;
 
 namespace InternalsViewer.UI.App.ViewModels.Query.Simulation;
@@ -18,7 +18,7 @@ public static class BatchValueDescriber
     {
         var slot = row.Values[column.Ordinal];
 
-        var valueType = BatchValueDenormalizer.GetValueType(slot, column.Column);
+        var valueType = BatchValueDenormalizer.GetValueType(slot, column.Column.Domain);
 
         var items = new List<BatchDetailItem>
         {
@@ -178,10 +178,10 @@ public static class BatchValueDescriber
         {
             return column.Domain switch
             {
-                BatchValueDomain.Temporal => Format(BatchValueDenormalizer.GetTemporalValue(slot, column.Column)),
-                BatchValueDomain.Real => BitConverter.Int64BitsToDouble(BatchValueDenormalizer.GetStorageValue(slot, column.Column))
+                BatchValueDomain.Temporal => Format(BatchValueDenormalizer.GetTemporalValue(slot, column.Column.DataType)),
+                BatchValueDomain.Real => BitConverter.Int64BitsToDouble(BatchValueDenormalizer.GetStorageValue(slot, column.Column.Domain))
                                                     .ToString(CultureInfo.InvariantCulture),
-                _ => BatchValueDenormalizer.GetStorageValue(slot, column.Column).ToString(CultureInfo.InvariantCulture)
+                _ => BatchValueDenormalizer.GetStorageValue(slot, column.Column.Domain).ToString(CultureInfo.InvariantCulture)
             };
         }
         catch (Exception exception)

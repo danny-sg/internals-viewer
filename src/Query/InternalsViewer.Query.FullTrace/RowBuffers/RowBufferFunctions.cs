@@ -1,4 +1,3 @@
-using InternalsViewer.Query.FullTrace.Native;
 using InternalsViewer.Query.Helpers;
 
 namespace InternalsViewer.Query.FullTrace.RowBuffers;
@@ -26,7 +25,13 @@ internal sealed record RowBufferFunctions(RowBufferRead[] Reads, RowBufferLayout
 
         private const uint BindingsOffset = 0x88;
 
+        private const uint ValueRowOffset = 0x78;
+
+        private const uint ValueCountOffset = 0x50;
+
         private const string RowsetClass = "CQScanRowsetNew";
+
+        private const string ValueRowClass = "CQScanBatchHelper";
 
         private const string VTableName = "`vftable'";
 
@@ -85,15 +90,25 @@ internal sealed record RowBufferFunctions(RowBufferRead[] Reads, RowBufferLayout
         {
             HashSet<string> rowsets = [.. bases.Where(b => b.Value.Contains(RowsetClass)).Select(b => b.Key)];
 
-            RowBufferLayout[] layouts = [.. rowsets.Where(VTables.ContainsKey)
-                                                   .Select(c => new RowBufferLayout(VTables[c], BufferOffset, BindingsOffset))];
+            HashSet<string> valueRows = [.. bases.Where(b => b.Value.Contains(ValueRowClass)).Select(b => b.Key)];
+
+            RowBufferLayout[] layouts =
+            [
+                .. rowsets.Where(VTables.ContainsKey).Select(c => new RowBufferLayout(VTables[c], BufferOffset, BindingsOffset)),
+                .. valueRows.Where(VTables.ContainsKey)
+                            .Select(c => new RowBufferLayout(VTables[c], ValueRowOffset, 0, ValueCountOffset, RowBufferFormat.Values))
+            ];
 
             if (layouts.Length == 0)
             {
                 return Empty;
             }
 
-            HashSet<uint> functions = [.. Methods.Where(m => rowsets.Contains(m.ClassName)).Select(m => m.Rva), .. Helpers];
+            HashSet<uint> functions =
+            [
+                .. Methods.Where(m => rowsets.Contains(m.ClassName) || valueRows.Contains(m.ClassName)).Select(m => m.Rva),
+                .. Helpers
+            ];
 
             return functions.Count == 0 ? Empty : new([.. functions.Select(f => new RowBufferRead(f, InstanceRegister))], layouts);
         }

@@ -1,0 +1,10 @@
+namespace InternalsViewer.Query.FullTrace.Batches;
+
+[Flags]
+public enum BatchCaptureFlags : byte
+{
+    None = 0,
+    Unreadable = 1,
+    UnreadableSelection = 2,
+    ImplicitSelection = 4
+}

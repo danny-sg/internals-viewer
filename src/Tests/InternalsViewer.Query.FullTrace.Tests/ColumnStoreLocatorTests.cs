@@ -1,7 +1,5 @@
-using System.Runtime.InteropServices;
 using InternalsViewer.Query.FullTrace.Calls;
 using InternalsViewer.Query.FullTrace.Locators;
-using InternalsViewer.Query.FullTrace.Native;
 using InternalsViewer.Query.Events.BatchMode.Enums;
 using InternalsViewer.Query.CallStack.Locators;
 
@@ -108,13 +106,6 @@ public class ColumnStoreLocatorTests
 
         Assert.Equal("Segment (Rowgroup 3, Column 2)", calls[0].GetLocator(1)?.ToString());
         Assert.Empty(calls[1].Locators);
-    }
-
-    [Fact]
-    public void The_Native_Structures_Match_The_Bridge()
-    {
-        Assert.Equal(40, Marshal.SizeOf<PointerRead>());
-        Assert.Equal(48, Marshal.SizeOf<PointerValue>());
     }
 
     private static CallStack.Arguments.FunctionSignature Fix()

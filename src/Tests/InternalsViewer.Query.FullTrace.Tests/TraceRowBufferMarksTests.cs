@@ -1,4 +1,5 @@
 using InternalsViewer.Query.CallStack;
+using InternalsViewer.Query.FullTrace.Batches;
 using InternalsViewer.Query.FullTrace.Native;
 using InternalsViewer.Query.FullTrace.RowBuffers;
 using InternalsViewer.Query.FullTrace.Timeline;
@@ -55,6 +56,23 @@ public class TraceRowBufferMarksTests
     }
 
     [Fact]
+    public void Batches_Are_Marked_Apart_From_Row_Buffers()
+    {
+        var timeline = Build(Span(node: 0, start: 0, end: 100),
+                             Span(node: 1, start: 10, end: 90));
+
+        var batches = new BatchIndex.Log();
+
+        batches.Add([new RawBatch(GetRow, Iterator, Iterator, 0x20F_0CA6_ECA0, 0, 100, 0, 0, 0, 0, 0, 0)], [], [], [], [], []);
+
+        var marks = TraceRowBufferMarks.Build(timeline, RowBufferIndex.Empty, batches.Build());
+
+        Assert.Equal([GetEnd(timeline, depth: 1, index: 0)], marks.GetBatchMarks(Thread, TraceTimelineAxis.Position).ToArray());
+        Assert.True(marks.GetMarks(Thread, TraceTimelineAxis.Position).IsEmpty);
+        Assert.Equal(1, marks.Count);
+    }
+
+    [Fact]
     public void A_Thread_Without_Captures_Has_No_Marks()
     {
         var timeline = Build(Span(node: 0, start: 0, end: 100));
@@ -93,8 +111,8 @@ public class TraceRowBufferMarksTests
 
         foreach (var (function, instance, call) in calls)
         {
-            log.Add([new BufferRow(function, instance, Iterator, 0x1F4_EEAE_2000, 100 + call, call, 0, 1)],
-                    [new BufferColumn(0, 4, 4, 4, 2, 4, 0, 0)],
+            log.Add([new RawRow(function, instance, Iterator, 0x1F4_EEAE_2000, 100 + call, call, 0, 1)],
+                    [new RawColumn(0, 4, 4, 4, 2, 4, 0, 0)],
                     [1, 0, 0, 0]);
         }
 

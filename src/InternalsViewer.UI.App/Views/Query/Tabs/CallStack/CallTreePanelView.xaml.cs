@@ -40,6 +40,8 @@ public sealed partial class CallTreePanelView : UserControl, IDocumentCommands, 
 
         SearchBar.SearchTextChanged += OnSearchTextChanged;
 
+        SearchBar.DataFilterChanged += OnDataFilterChanged;
+
         NodeTemplates.IsRevealed = node => RowsByNode.TryGetValue(node, out var row) && row.IsRevealed;
 
         Loaded += OnLoaded;
@@ -123,6 +125,8 @@ public sealed partial class CallTreePanelView : UserControl, IDocumentCommands, 
     public void Dispose()
     {
         SearchBar.SearchTextChanged -= OnSearchTextChanged;
+
+        SearchBar.DataFilterChanged -= OnDataFilterChanged;
 
         Detach();
     }
@@ -403,6 +407,8 @@ public sealed partial class CallTreePanelView : UserControl, IDocumentCommands, 
 
     private void OnSearchTextChanged(string text) => CallTree?.SetSearch(text);
 
+    private void OnDataFilterChanged(CallTreeDataFilter filter) => CallTree?.SetDataFilter(filter);
+
     private void OnTreeExpanding(TreeView sender, TreeViewExpandingEventArgs args)
     {
         if (RowsByNode.TryGetValue(args.Node, out var row))
@@ -479,6 +485,14 @@ public sealed partial class CallTreePanelView : UserControl, IDocumentCommands, 
 
                     break;
                 }
+                case "ShowBatches":
+                {
+                    item.Visibility = ContextNode?.Content is CallStackNode { HasBatches: true }
+                        ? Visibility.Visible
+                        : Visibility.Collapsed;
+
+                    break;
+                }
             }
         }
     }
@@ -542,6 +556,24 @@ public sealed partial class CallTreePanelView : UserControl, IDocumentCommands, 
             e.Handled = true;
 
             ViewModel?.ShowRowBuffers(node);
+        }
+    }
+
+    private void OnShowBatchesClick(object sender, RoutedEventArgs e)
+    {
+        if (ContextNode?.Content is CallStackNode node)
+        {
+            ViewModel?.ShowBatches(node);
+        }
+    }
+
+    private void OnNodeBatchesTapped(object sender, TappedRoutedEventArgs e)
+    {
+        if (sender is FrameworkElement { DataContext: TreeViewNode { Content: CallStackNode node } })
+        {
+            e.Handled = true;
+
+            ViewModel?.ShowBatches(node);
         }
     }
 

@@ -1,5 +1,5 @@
 ﻿using System;
-using InternalsViewer.Execution.BatchMode.Normalization;
+using InternalsViewer.Internals.BatchMode.Normalization;
 using InternalsViewer.UI.App.Models.Query.Simulation.Batch;
 using Microsoft.UI;
 using Microsoft.UI.Xaml.Controls;
@@ -85,7 +85,7 @@ internal sealed class BatchValueColumn(BatchColumnView column) : TableViewColumn
 
         var dim = !column.IsInScope || (column.IsPure && row.RowIndex != 0);
 
-        if (BatchValueDenormalizer.GetValueType(slot, column.Column) == BatchValueType.DeepDataReference)
+        if (BatchValueDenormalizer.GetValueType(slot, column.Column.Domain) == BatchValueType.DeepDataReference)
         {
             ApplyLink(host, text, (int)(slot.Value >> 1) - 1);
 

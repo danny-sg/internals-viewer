@@ -8,6 +8,9 @@ using InternalsViewer.Query.FullTrace.Timeline;
 using InternalsViewer.Query.Recording;
 using InternalsViewer.Query.FullTrace.Functions;
 using InternalsViewer.Query.FullTrace.Memory;
+using InternalsViewer.Query.FullTrace.Batches;
+using InternalsViewer.Query.FullTrace.CustomHooks;
+using InternalsViewer.Query.FullTrace.Hooks;
 using InternalsViewer.Query.FullTrace.RowBuffers;
 
 namespace InternalsViewer.Query.FullTrace;
@@ -68,6 +71,7 @@ internal sealed class ReplaySession : IDisposable
 
     public async Task<ReplayResult> ReplayAsync(IReadOnlyCollection<uint> threadIds,
                                                 ReplayFunctions functions,
+                                                IReadOnlyList<CustomHookDefinition> customHooks,
                                                 IProgress<double>? progress,
                                                 CancellationToken cancellationToken)
     {
@@ -75,7 +79,7 @@ internal sealed class ReplaySession : IDisposable
 
         try
         {
-            return await Task.Run(() => Replay([.. threadIds], functions, progress, cancellationToken), cancellationToken);
+            return await Task.Run(() => Replay([.. threadIds], functions, customHooks, progress, cancellationToken), cancellationToken);
         }
         finally
         {
@@ -107,6 +111,7 @@ internal sealed class ReplaySession : IDisposable
 
     private ReplayResult Replay(uint[] threads,
                                 ReplayFunctions functions,
+                                IReadOnlyList<CustomHookDefinition> customHooks,
                                 IProgress<double>? progress,
                                 CancellationToken cancellationToken)
     {
@@ -133,21 +138,7 @@ internal sealed class ReplaySession : IDisposable
 
         ReplayBridge.CallSpanCallback onSpans = timeline.Add;
 
-        ReplayBridge.PointerValueCallback onPointerValues = store.AddLocators;
-
-        var publishedEvents = new PublishedEventLog();
-
-        ReplayBridge.PublishedEventCallback onPublishedEvents = publishedEvents.Add;
-
-        ulong[] publishers = [.. functions.PublishedEvents.Publishers.Select(p => p.Address)];
-
-        PointerRead[] reads = [.. functions.LocatorReads.Select(PointerRead.From)];
-
         ulong[] instanceMethods = [.. functions.InstanceMethods.Select(ReplayBridge.PackInstanceMethod)];
-
-        var memoryMap = new MemoryMap.Log();
-
-        ReplayBridge.MemoryMapCallback onMemoryMap = memoryMap.Add;
 
         MemoryMapFunction[] memoryMapFunctions = [.. functions.MemoryMapFunctions,
                                                   .. functions.MemoryFunctions
@@ -155,9 +146,24 @@ internal sealed class ReplaySession : IDisposable
                                                               .Select(f => new MemoryMapFunction(f.Address,
                                                                                                  (uint)MemoryMapOperation.Allocated))];
 
+        var memoryMap = new MemoryMapHook(memoryMapFunctions);
+
+        var publishedEvents = new PublishedEventHook(functions.PublishedEvents);
+
         var rowBuffers = new RowBufferIndex.Log();
 
-        ReplayBridge.RowBufferCallback onRowBuffers = rowBuffers.Add;
+        var batches = new BatchIndex.Log();
+
+        var customHook = new CustomHook(Resolve(customHooks));
+
+        var hooks = new TraceHooks([new LocatorHook(functions.LocatorReads, store),
+                                    memoryMap,
+                                    publishedEvents,
+                                    new RowBufferHook(functions.RowBuffers, rowBuffers),
+                                    new BatchHook(functions.Batches, batches),
+                                    customHook]);
+
+        ReplayBridge.HookCallback onHook = hooks.OnHook;
 
         try
         {
@@ -168,24 +174,11 @@ internal sealed class ReplaySession : IDisposable
                                                    instanceMethods.Length,
                                                    functions.ExcludedFunctions,
                                                    functions.ExcludedFunctions.Length,
-                                                   reads,
-                                                   reads.Length,
-                                                   publishers,
-                                                   publishers.Length,
-                                                   functions.PublishedEvents.Writers,
-                                                   functions.PublishedEvents.Writers.Length,
-                                                   memoryMapFunctions,
-                                                   memoryMapFunctions.Length,
-                                                   functions.RowBuffers.Reads,
-                                                   functions.RowBuffers.Reads.Length,
-                                                   functions.RowBuffers.Layouts,
-                                                   functions.RowBuffers.Layouts.Length,
+                                                   hooks.Functions,
+                                                   hooks.Functions.Length,
                                                    onChunk,
                                                    onSpans,
-                                                   onPointerValues,
-                                                   onPublishedEvents,
-                                                   onMemoryMap,
-                                                   onRowBuffers,
+                                                   onHook,
                                                    onProgress,
                                                    cancel,
                                                    out var tree);
@@ -195,13 +188,7 @@ internal sealed class ReplaySession : IDisposable
 
             GC.KeepAlive(onSpans);
 
-            GC.KeepAlive(onPointerValues);
-
-            GC.KeepAlive(onPublishedEvents);
-
-            GC.KeepAlive(onMemoryMap);
-
-            GC.KeepAlive(onRowBuffers);
+            GC.KeepAlive(onHook);
 
             GC.KeepAlive(onProgress);
 
@@ -218,6 +205,11 @@ internal sealed class ReplaySession : IDisposable
 
                 cancellationToken.ThrowIfCancellationRequested();
 
+                if (hooks.Failure is { } failure)
+                {
+                    throw new InvalidOperationException("A trace hook failed while the trace was replayed", failure);
+                }
+
                 using var images = new ImageText(Modules);
 
                 return new ReplayResult(nodes,
@@ -226,7 +218,9 @@ internal sealed class ReplaySession : IDisposable
                                         timeline.Build(nodes),
                                         publishedEvents.Build(),
                                         memoryMap.Build(),
-                                        rowBuffers.Build());
+                                        rowBuffers.Build(),
+                                        batches.Build(),
+                                        customHook.Build());
             }
             finally
             {
@@ -240,6 +234,12 @@ internal sealed class ReplaySession : IDisposable
             Marshal.FreeHGlobal(cancel);
         }
     }
+
+    private IEnumerable<(ulong Address, CustomHookDefinition Definition)> Resolve(IReadOnlyList<CustomHookDefinition> customHooks)
+        => customHooks.SelectMany(h => Modules.Where(m => m.Name.Equals(h.Module, StringComparison.OrdinalIgnoreCase)
+                                                          && m.Guid.Equals(h.Guid, StringComparison.OrdinalIgnoreCase)
+                                                          && m.Age == h.Age)
+                                              .Select(m => (m.StartAddress + h.Rva, h)));
 
     private static TraceModule[] ReadModules(TraceHandle handle)
     {

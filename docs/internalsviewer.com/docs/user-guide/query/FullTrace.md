@@ -72,6 +72,14 @@ Each event is also found in the recording - the replay sees SQL Server publish i
 
 An event the replay could not place leaves the playhead where it is. The [Diagnostic log](/docs/user-guide/settings#diagnostic-log) records how many events were published, how many were written to the session and how many were linked.
 
+## Custom Hooks
+
+A custom hook reads the structure an argument points to, so memory the views do not decode can still be looked at. In [Arguments](/docs/user-guide/query/CallStack#arguments), right-click an argument, or the value a call returned, and choose **Custom Hook**. Give it a **Name**, the **Length** in bytes to read and an **Offset** from the pointer, such as `0x24`, and choose whether to **Read At** the call or its return. Reading at the return suits an out parameter, which the call fills in.
+
+The hook is kept in settings and applies to every Full Trace run from then on. It does not change a run already recorded, since the bytes are read while the recording is replayed. A hook belongs to the build of SQL Server it was made on, so it does nothing after SQL Server is updated.
+
+**Custom Hooks** on the Trace menu opens the **Custom Hooks** tab. The top lists the hooks, with the **Capture Count** of calls each one captured in the current run. **Pause** stops a hook capturing on later runs until **Resume** is clicked, and **Delete** removes it. Below it are the calls the selected hook captured: the call, as a link to the Call Tree, its thread, the address read and how many bytes were found. Beside them, the selected call's bytes are shown in a hex view, counted from the hook's offset. Select bytes in the hex view to decode them as numbers, dates or text. A call whose pointer was null is not listed, and bytes the recording has no value for are left off the end.
+
 ## Limits
 
 - **Two modules** - only the storage engine and query processor are recorded. SQLOS, the layer that handles scheduling, memory and synchronisation on every thread, is not. Calls into it from the recorded modules are still seen, which is how memory allocations are counted.

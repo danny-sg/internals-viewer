@@ -33,9 +33,11 @@
             <MenuFlyoutItem Text="Zoom" Click="OnZoomClick"/>
             <MenuFlyoutItem Text="Scope" Click="OnScopeClick"/>
             <MenuFlyoutSeparator/>
-            <MenuFlyoutItem Text="Copy Signature" Click="OnCopySignatureClick"/>
-            <MenuFlyoutItem Text="Copy Symbol" Click="OnCopySymbolClick"/>
-            <MenuFlyoutItem Text="Copy Address" Click="OnCopyAddressClick"/>
+            <MenuFlyoutSubItem Text="Copy">
+                <MenuFlyoutItem Text="Copy Signature" Click="OnCopySignatureClick"/>
+                <MenuFlyoutItem Text="Copy Symbol" Click="OnCopySymbolClick"/>
+                <MenuFlyoutItem Text="Copy Address" Click="OnCopyAddressClick"/>
+            </MenuFlyoutSubItem>
         </MenuFlyout>
 
         <DataTemplate x:Key="ThreadTemplate" x:DataType="muxc:TreeViewNode">
@@ -394,11 +396,11 @@
                 </Button>
             </Grid>
 
-            <ScrollViewer x:Name="DetailsScroller" Grid.Row="1" VerticalScrollBarVisibility="Auto">
+            <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
                 <StackPanel Padding="12,8,12,8" Spacing="4" VerticalAlignment="Top">
                     <Grid ColumnSpacing="12"
                           RowSpacing="4"
-                          Visibility="{x:Bind IsFunctionVisible(ViewModel.SelectedCall, ViewModel.SelectedValue), Mode=OneWay}">
+                          Visibility="{x:Bind IsFunctionVisible(ViewModel.SelectedCall, ViewModel.SelectedValue, ViewModel.RowBufferCall), Mode=OneWay}">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="Auto"/>
                             <ColumnDefinition Width="*"/>
@@ -580,6 +582,21 @@
                                              Click="OnCopyValueClick"/>
                     </Grid>
 
+                    <StackPanel x:Name="RowBufferPanel"
+                                Spacing="4"
+                                Visibility="Collapsed">
+                        <TextBlock Text="Row Buffer" Style="{StaticResource DetailLabelStyle}"/>
+                        <Grid x:Name="RowBufferGrid"
+                              ColumnSpacing="12"
+                              RowSpacing="4">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                        </Grid>
+                    </StackPanel>
+
                     <TextBlock Text="Source"
                                Style="{StaticResource DetailLabelStyle}"
                                Margin="0,8,0,0"
@@ -588,10 +605,6 @@
                                   ItemTemplate="{StaticResource SourceStepTemplate}"/>
                 </StackPanel>
             </ScrollViewer>
-
-            <StackPanel x:Name="RowBufferHost"
-                        Grid.Row="1"
-                        Visibility="Collapsed"/>
         </Grid>
     </Grid>
 </UserControl>

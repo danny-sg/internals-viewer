@@ -1,5 +1,5 @@
 using System.Data.SqlTypes;
-using InternalsViewer.Execution.BatchMode.Normalization;
+using InternalsViewer.Internals.BatchMode.Normalization;
 using InternalsViewer.Execution.BatchMode.Vectors;
 using InternalsViewer.Execution.Interfaces.BatchMode;
 using InternalsViewer.Internals.Columnstore.Decoding;

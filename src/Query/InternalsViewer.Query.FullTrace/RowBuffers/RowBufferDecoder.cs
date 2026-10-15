@@ -1,4 +1,5 @@
 using System.Collections.Concurrent;
+using System.Data;
 using InternalsViewer.Internals.Converters;
 using InternalsViewer.Internals.Engine.Database;
 using InternalsViewer.Internals.Metadata.Structures;
@@ -7,7 +8,9 @@ using InternalsViewer.Query.Events.Operators;
 
 namespace InternalsViewer.Query.FullTrace.RowBuffers;
 
-public sealed class RowBufferDecoder(DatabaseSource database, Func<ulong, ExecutionOperatorEvent?> getOperator)
+public sealed class RowBufferDecoder(DatabaseSource database,
+                                     Func<ulong, ExecutionOperatorEvent?> getOperator,
+                                     Func<ulong, int, ColumnStructure?>? getOutputColumn = null)
 {
     private const byte NullStatus = 3;
 
@@ -16,7 +19,9 @@ public sealed class RowBufferDecoder(DatabaseSource database, Func<ulong, Execut
     private ConcurrentDictionary<ulong, IReadOnlyDictionary<int, ColumnStructure>?> Columns { get; } = new();
 
     public ColumnStructure? GetColumn(RowBuffer row, RowBufferColumn column)
-        => GetColumns(row.Iterator)?.GetValueOrDefault(column.RecordOffset);
+        => row.Format == RowBufferFormat.Values
+            ? getOutputColumn?.Invoke(row.Iterator, column.Ordinal)
+            : GetColumns(row.Iterator)?.GetValueOrDefault(column.RecordOffset);
 
     public string? Decode(RowBuffer row, RowBufferColumn column)
     {
@@ -35,7 +40,37 @@ public sealed class RowBufferDecoder(DatabaseSource database, Func<ulong, Execut
             return null;
         }
 
-        return DataConverter.BinaryToString(column.Data, structure.DataType, structure.Precision, structure.Scale, structure.BitPosition);
+        return row.Format == RowBufferFormat.Values
+            ? DecodeValue(column, structure)
+            : DataConverter.BinaryToString(column.Data, structure.DataType, structure.Precision, structure.Scale, structure.BitPosition);
+    }
+
+    internal static string? DecodeValue(RowBufferColumn column, ColumnStructure structure)
+    {
+        if (column.IsByReference)
+        {
+            return DataConverter.BinaryToString(column.Data, structure.DataType, structure.Precision, structure.Scale);
+        }
+
+        if (structure.DataType is SqlDbType.Char
+                                  or SqlDbType.VarChar
+                                  or SqlDbType.NChar
+                                  or SqlDbType.NVarChar
+                                  or SqlDbType.Binary
+                                  or SqlDbType.VarBinary)
+        {
+            return string.Empty;
+        }
+
+        if (structure.DataLength <= 0 || structure.DataLength > column.Data.Length)
+        {
+            return null;
+        }
+
+        return DataConverter.BinaryToString(column.Data.AsSpan(0, structure.DataLength),
+                                            structure.DataType,
+                                            structure.Precision,
+                                            structure.Scale);
     }
 
     internal static IReadOnlyDictionary<int, ColumnStructure> GetColumns(TableStructure structure)

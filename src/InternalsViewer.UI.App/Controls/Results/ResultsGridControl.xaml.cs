@@ -2,6 +2,7 @@
 using InternalsViewer.UI.App.Models;
 using Microsoft.UI.Dispatching;
 using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Controls.Primitives;
 using Microsoft.UI.Xaml.Documents;
 using Microsoft.UI.Xaml.Media;
 using System;
@@ -17,6 +18,10 @@ public sealed partial class ResultsGridControl : UserControl
     private const double CellMargin = 12;
 
     private const double MaximumFitWidth = 640;
+
+    private const string DetailsToggleName = "DetailsToggleButton";
+
+    private const string DetailsToggleStyleKey = "DetailsToggleStyle";
 
 
     public static readonly DependencyProperty ResultSetProperty =
@@ -56,19 +61,6 @@ public sealed partial class ResultsGridControl : UserControl
     {
         get => (string)GetValue(RowNameProperty);
         set => SetValue(RowNameProperty, value);
-    }
-
-    public static readonly DependencyProperty FitColumnsToFirstRowProperty =
-        DependencyProperty.Register(
-            nameof(FitColumnsToFirstRow),
-            typeof(bool),
-            typeof(ResultsGridControl),
-            new PropertyMetadata(false));
-
-    public bool FitColumnsToFirstRow
-    {
-        get => (bool)GetValue(FitColumnsToFirstRowProperty);
-        set => SetValue(FitColumnsToFirstRowProperty, value);
     }
 
     public static readonly DependencyProperty RowDetailsProperty =
@@ -139,6 +131,8 @@ public sealed partial class ResultsGridControl : UserControl
 
     private HashSet<Panel> DetailHosts { get; } = [];
 
+    private bool IsRefreshing { get; set; }
+
     private void Rebuild()
     {
         ReleaseTable();
@@ -151,7 +145,7 @@ public sealed partial class ResultsGridControl : UserControl
 
         var table = (TableView)((DataTemplate)Resources["ResultsTableTemplate"]).LoadContent();
 
-        var first = FitColumnsToFirstRow && rows.Count > 0 ? rows[0] : null;
+        var first = rows.Count > 0 ? rows[0] : null;
 
         foreach (var column in columns)
         {
@@ -182,6 +176,8 @@ public sealed partial class ResultsGridControl : UserControl
             table.RowDetailsVisibilityMode = TableViewRowDetailsVisibilityMode.VisibleWhenExpanded;
 
             table.HeadersVisibility = TableViewHeadersVisibility.All;
+
+            table.ContainerContentChanging += OnContainerContentChanging;
         }
 
         table.ItemsSource = rows;
@@ -224,7 +220,26 @@ public sealed partial class ResultsGridControl : UserControl
 
     private void Refresh()
     {
-        ResultsTable?.RefreshView();
+        if (ResultsTable is { } table)
+        {
+            var selected = SelectedRow;
+
+            IsRefreshing = true;
+
+            try
+            {
+                table.RefreshView();
+            }
+            finally
+            {
+                IsRefreshing = false;
+            }
+
+            if (selected is not null && !ReferenceEquals(table.SelectedItem, selected))
+            {
+                table.SelectedItem = selected;
+            }
+        }
 
         foreach (var host in DetailHosts)
         {
@@ -244,6 +259,8 @@ public sealed partial class ResultsGridControl : UserControl
         table.SelectionChanged -= OnSelectionChanged;
 
         table.CellContextFlyoutOpening -= OnCellContextFlyoutOpening;
+
+        table.ContainerContentChanging -= OnContainerContentChanging;
 
         TableHost.Child = null;
 
@@ -282,7 +299,7 @@ public sealed partial class ResultsGridControl : UserControl
 
     private void OnSelectionChanged(object sender, SelectionChangedEventArgs e)
     {
-        if (ReferenceEquals(sender, ResultsTable))
+        if (!IsRefreshing && ReferenceEquals(sender, ResultsTable))
         {
             SelectedRow = ResultsTable.SelectedItem as ResultRow<long>;
         }
@@ -396,6 +413,65 @@ public sealed partial class ResultsGridControl : UserControl
     private void OnCallClicked(CallValue value) => CallClicked?.Invoke(this, value);
 
     private void OnPagePointerClicked(RowBufferPage pointer) => PagePointerClicked?.Invoke(this, pointer);
+
+    private void OnContainerContentChanging(ListViewBase sender, ContainerContentChangingEventArgs args)
+    {
+        if (args.InRecycleQueue || args.ItemContainer is not { } row || StyleDetailsToggle(row))
+        {
+            return;
+        }
+
+        row.Loaded -= OnRowLoaded;
+
+        row.Loaded += OnRowLoaded;
+    }
+
+    private void OnRowLoaded(object sender, RoutedEventArgs e)
+    {
+        if (sender is FrameworkElement row)
+        {
+            row.Loaded -= OnRowLoaded;
+
+            StyleDetailsToggle(row);
+        }
+    }
+
+    private bool StyleDetailsToggle(DependencyObject row)
+    {
+        if (FindDetailsToggle(row) is not { } toggle)
+        {
+            return false;
+        }
+
+        var style = (Style)Resources[DetailsToggleStyleKey];
+
+        if (!ReferenceEquals(toggle.Style, style))
+        {
+            toggle.Style = style;
+        }
+
+        return true;
+    }
+
+    private static ToggleButton? FindDetailsToggle(DependencyObject parent)
+    {
+        for (var index = 0; index < VisualTreeHelper.GetChildrenCount(parent); index++)
+        {
+            var child = VisualTreeHelper.GetChild(parent, index);
+
+            if (child is ToggleButton { Name: DetailsToggleName } toggle)
+            {
+                return toggle;
+            }
+
+            if (child is not TableView && FindDetailsToggle(child) is { } found)
+            {
+                return found;
+            }
+        }
+
+        return null;
+    }
 
     private void OnRowDetailsDataContextChanged(FrameworkElement sender, DataContextChangedEventArgs args)
     {

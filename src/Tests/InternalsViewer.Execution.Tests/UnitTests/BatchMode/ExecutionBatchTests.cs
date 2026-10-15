@@ -1,6 +1,6 @@
 ﻿using System.Data;
 using InternalsViewer.Execution.BatchMode;
-using InternalsViewer.Execution.BatchMode.Normalization;
+using InternalsViewer.Internals.BatchMode.Normalization;
 using InternalsViewer.Execution.BatchMode.Vectors;
 
 namespace InternalsViewer.Execution.Tests.UnitTests.BatchMode;

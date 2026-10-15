@@ -1,16 +1,10 @@
 using System.Buffers;
-using InternalsViewer.Query.FullTrace.Native;
 
 namespace InternalsViewer.Query.FullTrace.RowBuffers;
 
 internal sealed partial class RowBufferTable
 {
-    private RowBufferTable(ulong function,
-                           ulong instance,
-                           Row[] rows,
-                           Value[] values,
-                           Binding[][] bindings,
-                           byte[] data)
+    private RowBufferTable(ulong function, ulong instance, Row[] rows, Value[] values, Binding[][] bindings, byte[] data)
     {
         Function = function;
         Instance = instance;
@@ -94,18 +88,24 @@ internal sealed partial class RowBufferTable
                                                    binding.RecordOffset,
                                                    binding.Flags,
                                                    binding.FixedLength,
-                                                   page is null ? data.ToArray() : [])
+                                                   page is null ? [.. data] : [])
             {
                 Page = page
             };
         }
 
-        return new RowBuffer(Function, Instance, row.Call, row.Id, row.Iterator, row.Buffer, columns);
+        return new RowBuffer(Function, Instance, row.Call, row.Id, row.Iterator, row.Buffer, columns, row.Format);
     }
 
     private int GetEnd(int value) => value + 1 < Values.Length ? Values[value + 1].Offset : Data.Length;
 
-    internal readonly record struct Row(int Call, ulong Id, ulong Iterator, ulong Buffer, int Layout, int FirstColumn);
+    internal readonly record struct Row(int Call,
+                                        ulong Id,
+                                        ulong Iterator,
+                                        ulong Buffer,
+                                        int Layout,
+                                        int FirstColumn,
+                                        RowBufferFormat Format);
 
     internal readonly record struct Value(int Offset, int Length, byte Status, RowBufferColumnFlags Flags);
 
@@ -121,9 +121,9 @@ internal sealed partial class RowBufferTable
 
         private ArrayBufferWriter<byte> Data { get; } = new();
 
-        public void Add(BufferRow row, ReadOnlySpan<BufferColumn> columns, ReadOnlySpan<byte> data)
+        public void Add(RawRow row, ReadOnlySpan<RawColumn> columns, ReadOnlySpan<byte> data)
         {
-            Rows.Add(new Row((int)row.Call, row.Id, row.Iterator, row.Buffer, GetLayout(columns), Values.Count));
+            Rows.Add(new Row((int)row.Call, row.Id, row.Iterator, row.Buffer, GetLayout(columns), Values.Count, row.Format));
 
             foreach (var column in columns)
             {
@@ -134,9 +134,9 @@ internal sealed partial class RowBufferTable
         }
 
         public RowBufferTable Build()
-            => new(function, instance, [.. Rows.OrderBy(r => r.Call)], [.. Values], [.. Bindings], Data.WrittenSpan.ToArray());
+            => new(function, instance, [.. Rows.OrderBy(r => r.Call)], [.. Values], [.. Bindings], [.. Data.WrittenSpan]);
 
-        private int GetLayout(ReadOnlySpan<BufferColumn> columns)
+        private int GetLayout(ReadOnlySpan<RawColumn> columns)
         {
             for (var index = Bindings.Count - 1; index >= 0; index--)
             {
@@ -158,7 +158,7 @@ internal sealed partial class RowBufferTable
             return Bindings.Count - 1;
         }
 
-        private static bool IsLayout(Binding[] bindings, ReadOnlySpan<BufferColumn> columns)
+        private static bool IsLayout(Binding[] bindings, ReadOnlySpan<RawColumn> columns)
         {
             if (bindings.Length != columns.Length)
             {
@@ -176,6 +176,6 @@ internal sealed partial class RowBufferTable
             return true;
         }
 
-        private static Binding GetBinding(BufferColumn column) => new(column.RecordOffset, column.BindingFlags, column.FixedLength);
+        private static Binding GetBinding(RawColumn column) => new(column.RecordOffset, column.BindingFlags, column.FixedLength);
     }
 }

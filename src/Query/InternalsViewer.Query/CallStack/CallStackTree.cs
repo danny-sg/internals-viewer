@@ -130,6 +130,8 @@ public sealed class CallStackTree
 
             leaf.HasRowBuffers |= node.HasRowBuffers;
 
+            leaf.HasBatches |= node.HasBatches;
+
             AddCallActivity(leaf, node.CallActivity);
 
             foreach (var engineEvent in events)
@@ -241,6 +243,8 @@ public sealed class CallStackTree
             node.Locators = null;
 
             node.HasRowBuffers = false;
+
+            node.HasBatches = false;
         }
 
         var keep = node.Events.Count > 0 || node.Calls > 0;
@@ -429,6 +433,10 @@ public sealed class CallStackTree
         target.HasRowBuffers |= source.HasRowBuffers;
 
         source.HasRowBuffers = false;
+
+        target.HasBatches |= source.HasBatches;
+
+        source.HasBatches = false;
 
         AddCallActivity(target, source.CallActivity);
 

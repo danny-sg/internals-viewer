@@ -33,6 +33,8 @@ Turning Focus off shows the full call tree for the whole query, from the top-lev
 
 The search box filters the tree to matching frames and the calls that lead to them. A match keeps everything beneath it, collapsed, so its callees are still there to open. The tree opens down to each match, and further only where there is a deeper match. Clearing the search keeps the selected frame, with the tree open down to it.
 
+For a [Full Trace](/docs/user-guide/query/FullTrace) run, **Batches** and **Rows** beside the search box filter the tree to the frames that handed back [batches](#batches) or rows, and the calls that lead to them. With both on the tree keeps either, and with both off it is whole again. They work alongside the search, keeping only the frames that pass both.
+
 Going to a call - from **Arguments**, a **Find** tab or the [Flame Chart](/docs/user-guide/query/FlameChart) - turns Focus off, selects the frame and opens the tree down to it. Nothing else is hidden, so the rest of the tree stays where it was. A frame the tree does not normally show because its category is hidden is shown dimmed along with the calls that lead to it. The dimmed frames go again when you select something outside them. With **Crop To Query** on, the tree stays cropped. A call that ran outside the query, such as one found by **Find** during compilation, opens in **Arguments** but is not added to the tree.
 
 Right-clicking a node gives:
@@ -101,15 +103,33 @@ Right-click the signature above the table and choose **Copy Signature** to copy 
 Right-click a cell for what can be done with its call and value:
 
 - **Go To Call** - shows the call in the call tree and the Flame Chart
-- **Open In Call Stack** - opens the Flame Chart's call stack at the start of the call, without moving the playhead
-- **Call Stack** - opens a tab beside **Arguments** listing the calls in progress at the start of the call, on every thread, as the Flame Chart's [Call Stack](/docs/user-guide/query/FlameChart#call-stack) does. The tab stays at that point, so several can be open side by side
+- **Call Stack** - opens a tab beside **Arguments** listing the calls in progress at the start of the call, on every thread, as the Flame Chart's [Call Stack](/docs/user-guide/query/FlameChart#call-stack) does. The tab stays at that point, so several can be open side by side. Clicking a call in it selects the call in the Flame Chart without leaving the tab
+- **Row Buffers** - for a function that handed back rows, opens its **Row Buffers** tab, the same as the red square beside it in the call tree
+- **Batches** - for a batch mode operator that handed back batches, opens its **Batches** tab, the same as the blue square beside it in the call tree
 - **Scope** - scopes the Flame Chart to the call's function
+- **Custom Hook** - for an argument, or the value the call returned, saves a hook that reads the bytes it points to on later runs - see [Custom Hooks](/docs/user-guide/query/FullTrace#custom-hooks)
 - **Go To Origin** - for an object in the trace's map, goes to the call that created it, the same as clicking the link
 - **Open In The Columnstore Viewer** - for a columnstore object
 - **Search Call Tree** - for a page, a row or a columnstore object, searches the call tree for the frames that touched it
 - **Open The Index** - for a HoBt id or a `HoBtAccess`, opens the index it belongs to
 - **Show The** iterator - for an iterator's address, names the operator it was matched to, such as **Show The Clustered Index Seek (Node 3) Iterator**, or the iterator's class when it was not matched, and selects it in the call tree and the plan. So the `this` of a `GetRow` call says which operator it belongs to
 - **Find** - for a pointer, a `this` or a large value, searches the whole log for it
+
+## Batches
+
+A batch mode operator hands each batch to the operator above it through `BpGetBatchData`. Full Trace reads the batch at that point, so the same batch is read again by each operator it passes through, and each read shows what that operator handed on. A Filter's read has the narrower selection, and a Compute Scalar's read has the vector it added. An operator fills a batch in its `BpGetNextBatch` call and hands it over in the `BpGetBatchData` call that follows, so the `BpGetNextBatch` frame shows the same batch.
+
+A blue square beside a call tree frame means the operator handed back batches. Click it, or choose **Batches** from the frame's or a call's right-click menu, to open the operator's **Batches** tab. It lists one row per batch: the **Call** that handed it back, the **Thread**, the **Batch Size** - the most rows the batch can hold - and how many **Vectors** and **Selected** rows it held. A batch is one object for its whole journey up the plan, so each operator's read is linked to the read of the operator below it, and **Selected** shows the rows it kept out of the rows it was given, such as **10/525** for a Filter that kept 10. Selecting a row selects its call, the same as an **Arguments** row, and right-clicking it gives **Call Stack**.
+
+Selecting a row also shows its batch beneath the list, laid out like the batch view in a simulation. Drag the splitter between them to change their heights. A batch is only read when its row is selected:
+
+- **Data Vectors** - a column per vector, in the order the operator above asked for them, with a row for every row the operator was given. Each column header shows the vector's number, and below it the operator's output column it holds, or **Column** and its number when it could not be found. Rows the operator removed from the selection are tinted red, and rows that were not selected when it was given the batch are shaded. A row past the last one the operator kept is read from the read of the operator below it, which the cell's details say
+- **Selection Vector** - the row numbers the batch has selected, in order. A Filter narrows a batch by shortening this list rather than moving any data, so its read of a batch has fewer entries than the read from the operator below it
+- **Deep Data** - every value too large to fit its slot, with the vector and row it belongs to, its address, length and bytes
+
+A vector holding one value for every row has a green **Pure** badge in its header and its cells are tinted. Only the first row holds the value, so the others are dimmed.
+
+Each cell shows the normalized slot as it was read, or with **Decode** on, the value it stands for. A NULL shows as `NULL`, a value read from deep data shows as that value, and a dictionary reference shows as its dictionary and entry, such as **Dictionary 128 Entry 230**. Dictionary 0 is the query's own dictionary, and from 128 up they are the column store's dictionaries. Click a cell for its details beneath the table: the slot in hex and as a number, its type, the column's data type and normalization domain, and the decoded value, plus the dictionary and entry, or the deep data bytes.
 
 ## Finding a value
 

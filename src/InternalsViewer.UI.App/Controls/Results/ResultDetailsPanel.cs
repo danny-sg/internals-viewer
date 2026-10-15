@@ -45,7 +45,6 @@ internal static class ResultDetailsPanel
         var grid = new ResultsGridControl
         {
             ResultSet = CreateResultSet(details),
-            FitColumnsToFirstRow = true,
             IsStatusBarVisible = false
         };
 

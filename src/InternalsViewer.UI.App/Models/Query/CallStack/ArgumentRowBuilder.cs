@@ -97,6 +97,24 @@ public static class ArgumentRowBuilder
         return position >= 0 && position < slots.Count ? slots[position] : null;
     }
 
+    public static (string Name, int Register)? GetHookArgument(ArgumentLayout layout, int ordinal)
+    {
+        var slots = CapturedSlots(layout);
+
+        var position = ordinal - FixedColumns;
+
+        if (position >= 0 && position < slots.Count)
+        {
+            return slots[position] is { Location: ArgumentLocation.Register or ArgumentLocation.Stack } slot
+                ? (slot.Name, slot.Index)
+                : null;
+        }
+
+        return position == slots.Count && layout.ReturnType is { } returnType && HasReturn(returnType)
+            ? (ReturnName, LocatorReadResolver.ReturnRegister)
+            : null;
+    }
+
     public static ArgumentCell GetCellAt(ArgumentLayout layout, TraceArgumentCall call, int ordinal)
     {
         var slots = CapturedSlots(layout);

@@ -24,6 +24,7 @@ public sealed partial class QueryLayoutViewModel : ObservableObject, IDisposable
     private const string InstructionsKey = "Instructions";
     private const string TimelineKey = "Timeline";
     private const string FlameChartKey = "FlameChart";
+    private const string CustomHooksKey = "CustomHooks";
 
     private readonly Dictionary<string, DocumentViewModel> _documentsByKey;
 
@@ -65,6 +66,9 @@ public sealed partial class QueryLayoutViewModel : ObservableObject, IDisposable
 
     [ObservableProperty]
     private bool _isFlameChartVisible;
+
+    [ObservableProperty]
+    private bool _isCustomHooksVisible;
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(CanShowEventViews))]
@@ -120,7 +124,12 @@ public sealed partial class QueryLayoutViewModel : ObservableObject, IDisposable
             [FlameChartKey] = DocumentViewModel.Create<QueryFlameChartTabView>("Flame Chart",
                                                                                content,
                                                                                keepAlive: true,
-                                                                               key: FlameChartKey)
+                                                                               key: FlameChartKey),
+
+            [CustomHooksKey] = DocumentViewModel.Create<QueryCustomHooksTabView>("Custom Hooks",
+                                                                                 content,
+                                                                                 keepAlive: true,
+                                                                                 key: CustomHooksKey)
         };
 
         Dock = new DockLayoutViewModel(DefaultRoot(TimelineKey));
@@ -229,6 +238,13 @@ public sealed partial class QueryLayoutViewModel : ObservableObject, IDisposable
         Show(_documentsByKey[FlameChartKey]);
     }
 
+    public void ShowCustomHooks()
+    {
+        IsCustomHooksVisible = true;
+
+        Show(_documentsByKey[CustomHooksKey]);
+    }
+
     public bool IsVisible(string key) 
         => _documentsByKey.TryGetValue(key, out var document) && Dock.Contains(document);
 
@@ -280,6 +296,9 @@ public sealed partial class QueryLayoutViewModel : ObservableObject, IDisposable
 
     partial void OnIsFlameChartVisibleChanged(bool value)
         => SetDocumentVisible(_documentsByKey[FlameChartKey], value);
+
+    partial void OnIsCustomHooksVisibleChanged(bool value)
+        => SetDocumentVisible(_documentsByKey[CustomHooksKey], value);
 
     partial void OnIsTraceChanged(bool value)
     {
@@ -421,6 +440,7 @@ public sealed partial class QueryLayoutViewModel : ObservableObject, IDisposable
         IsInstructionsVisible = Dock.Contains(_documentsByKey[InstructionsKey]);
         IsTimelineVisible = Dock.Contains(_documentsByKey[TimelineKey]);
         IsFlameChartVisible = Dock.Contains(_documentsByKey[FlameChartKey]);
+        IsCustomHooksVisible = Dock.Contains(_documentsByKey[CustomHooksKey]);
 
         _suppressVisibilitySync = false;
     }

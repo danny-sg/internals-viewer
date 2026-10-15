@@ -1,4 +1,3 @@
-using InternalsViewer.Query.FullTrace.Native;
 using InternalsViewer.Query.FullTrace.RowBuffers;
 
 namespace InternalsViewer.Query.FullTrace.Tests;
@@ -41,6 +40,21 @@ public class RowBufferFunctionsTests
         var layout = Collect().Build(Bases).Layouts.Single(l => l.VTable == 0x1000);
 
         Assert.Equal(new RowBufferLayout(0x1000, 0x80, 0x88), layout);
+    }
+
+    [Fact]
+    public void The_Batch_Helper_Reads_Its_Value_Row()
+    {
+        var collector = new RowBufferFunctions.Collector();
+
+        collector.VisitFunction(0xA0, "CQScanBatchHelper::GetRow");
+
+        collector.VisitData(0x7000, "CQScanBatchHelper::`vftable'");
+
+        var functions = collector.Build(new Dictionary<string, string[]> { ["CQScanBatchHelper"] = ["CQScanBatchHelper", "CQScanNew"] });
+
+        Assert.Equal(0xA0ul, Assert.Single(functions.Reads).Function);
+        Assert.Equal(new RowBufferLayout(0x7000, 0x78, 0, 0x50, RowBufferFormat.Values), Assert.Single(functions.Layouts));
     }
 
     [Fact]

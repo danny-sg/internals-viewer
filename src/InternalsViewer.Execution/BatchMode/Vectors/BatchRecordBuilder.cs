@@ -3,7 +3,7 @@ using System.Data.SqlTypes;
 using System.Text;
 using InternalsViewer.Execution.AccessPaths.Search;
 using InternalsViewer.Execution.AccessPaths.Values;
-using InternalsViewer.Execution.BatchMode.Normalization;
+using InternalsViewer.Internals.BatchMode.Normalization;
 using InternalsViewer.Execution.Records;
 using InternalsViewer.Internals.Engine.Records;
 
@@ -52,7 +52,7 @@ public static class BatchRecordBuilder
 
         var slot = vector[row];
 
-        return BatchValueDenormalizer.GetValueType(slot, vector.Column) == BatchValueType.DictionaryReference
+        return BatchValueDenormalizer.GetValueType(slot, vector.Column.Domain) == BatchValueType.DictionaryReference
                ? AccessValue.FromInteger(SqlDbType.BigInt, BatchValueDenormalizer.GetDictionaryDataId(slot))
                : ToValue(batch, vector, row);
     }
@@ -63,7 +63,7 @@ public static class BatchRecordBuilder
 
         var slot = vector[row];
 
-        return BatchValueDenormalizer.GetValueType(slot, column) switch
+        return BatchValueDenormalizer.GetValueType(slot, column.Domain) switch
         {
             BatchValueType.Null
                 => AccessValue.FromNull(column.DataType),
@@ -96,17 +96,17 @@ public static class BatchRecordBuilder
     {
         BatchValueDomain.Real
             => AccessValue.FromReal(column.DataType,
-                                    BitConverter.Int64BitsToDouble(BatchValueDenormalizer.GetStorageValue(slot, column))),
+                                    BitConverter.Int64BitsToDouble(BatchValueDenormalizer.GetStorageValue(slot, column.Domain))),
         BatchValueDomain.Numeric
             => AccessValue.FromDecimal(column.DataType, ToNumeric(column, slot)),
         BatchValueDomain.Temporal
             => AccessValue.FromInteger(column.DataType, ToTicks(column, slot)),
-        _ => AccessValue.FromInteger(column.DataType, BatchValueDenormalizer.GetStorageValue(slot, column))
+        _ => AccessValue.FromInteger(column.DataType, BatchValueDenormalizer.GetStorageValue(slot, column.Domain))
     };
 
     private static decimal ToNumeric(BatchColumn column, BatchValue slot)
     {
-        var storage = BatchValueDenormalizer.GetStorageValue(slot, column);
+        var storage = BatchValueDenormalizer.GetStorageValue(slot, column.Domain);
 
         var magnitude = storage < 0 ? (ulong)-storage : (ulong)storage;
 
@@ -122,7 +122,7 @@ public static class BatchRecordBuilder
     }
 
     private static long ToTicks(BatchColumn column, BatchValue slot)
-        => BatchValueDenormalizer.GetTemporalValue(slot, column) switch
+        => BatchValueDenormalizer.GetTemporalValue(slot, column.DataType) switch
     {
         DateOnly date => date.ToDateTime(TimeOnly.MinValue).Ticks,
         DateTime moment => moment.Ticks,

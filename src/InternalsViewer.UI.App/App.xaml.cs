@@ -27,7 +27,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using LaunchActivatedEventArgs = Microsoft.UI.Xaml.LaunchActivatedEventArgs;
-using InternalsViewer.Query.FullTrace.Recording;
+using InternalsViewer.Query.FullTrace.Interfaces.Recording;
 
 namespace InternalsViewer.UI.App;
 

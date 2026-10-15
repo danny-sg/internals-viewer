@@ -1,12 +1,14 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using InternalsViewer.Query.XEvents;
 using InternalsViewer.UI.App.Controls.FlameChart;
 using InternalsViewer.UI.App.Services;
-using InternalsViewer.Query.FullTrace.Recording;
+using InternalsViewer.Query.FullTrace.CustomHooks;
+using InternalsViewer.Query.FullTrace.Interfaces.Recording;
 
 namespace InternalsViewer.UI.App.ViewModels;
 
@@ -37,6 +39,7 @@ public partial class SettingsViewModel(SettingsService settingsService, TraceDir
     private const string FlameChartShowCallStackKey = "FlameChartShowCallStack";
     private const string FlameChartMemoryModeKey = "FlameChartMemoryMode";
     private const string DecodeValuesKey = "DecodeValues";
+    private const string CustomHooksKey = "CustomHooks";
 
     private const string DefaultCallTreeHiddenCategories =
         "Compilation;Execution Tree;Expression Evaluation;Metadata;Networking;Query Binding;Query Store;Security;Tracing;" +
@@ -101,6 +104,9 @@ public partial class SettingsViewModel(SettingsService settingsService, TraceDir
     private bool _decodeValues = true;
 
     [ObservableProperty]
+    private IReadOnlyList<CustomHookDefinition> _customHooks = [];
+
+    [ObservableProperty]
     private string _memoryUsage = string.Empty;
 
     public string? ActiveTraceDirectory =>
@@ -113,6 +119,14 @@ public partial class SettingsViewModel(SettingsService settingsService, TraceDir
     private SettingsService SettingsService { get; } = settingsService;
 
     private TraceDirectoryService TraceDirectoryService { get; } = traceDirectoryService;
+
+    public void AddCustomHook(CustomHookDefinition definition)
+        => CustomHooks = [.. CustomHooks.Where(h => h.Name != definition.Name), definition];
+
+    public void RemoveCustomHook(CustomHookDefinition definition) => CustomHooks = [.. CustomHooks.Where(h => h != definition)];
+
+    public void SetCustomHookPaused(CustomHookDefinition definition, bool isPaused)
+        => CustomHooks = [.. CustomHooks.Select(h => h == definition ? h with { IsPaused = isPaused } : h)];
 
     public void ResetCallTreeCategories()
     {
@@ -185,6 +199,8 @@ public partial class SettingsViewModel(SettingsService settingsService, TraceDir
                                ?? FlameChartMemoryMode.Allocated;
 
         DecodeValues = await SettingsService.ReadSettingAsync<bool?>(DecodeValuesKey) ?? true;
+
+        CustomHooks = await SettingsService.ReadSettingAsync<List<CustomHookDefinition>>(CustomHooksKey) ?? [];
     }
 
     /// <summary>
@@ -254,6 +270,11 @@ public partial class SettingsViewModel(SettingsService settingsService, TraceDir
     partial void OnDecodeValuesChanged(bool value)
     {
         _ = SettingsService.SaveSettingAsync(DecodeValuesKey, value);
+    }
+
+    partial void OnCustomHooksChanged(IReadOnlyList<CustomHookDefinition> value)
+    {
+        _ = SettingsService.SaveSettingAsync(CustomHooksKey, value);
     }
 
     partial void OnUseCustomTraceDirectoryChanged(bool value)

@@ -1,4 +1,5 @@
-﻿using InternalsViewer.UI.App.Services.Query.Simulation;
+﻿using InternalsViewer.Query.FullTrace.CustomHooks;
+using InternalsViewer.UI.App.Services.Query.Simulation;
 using CommunityToolkit.Mvvm.ComponentModel;
 using InternalsViewer.Query.Events.BatchMode;
 using InternalsViewer.Query.Events.Memory;
@@ -19,6 +20,7 @@ using InternalsViewer.Query.CallStack;
 using InternalsViewer.Query.FullTrace;
 using InternalsViewer.Query.FullTrace.RowBuffers;
 using InternalsViewer.Query.FullTrace.Arguments;
+using InternalsViewer.Query.FullTrace.Batches;
 using InternalsViewer.Query.FullTrace.Iterators;
 using InternalsViewer.Query.FullTrace.Timeline;
 using InternalsViewer.Query.Events.Latches;
@@ -38,6 +40,7 @@ using InternalsViewer.Query.XEvents;
 using InternalsViewer.UI.App.ViewModels.Allocation;
 using InternalsViewer.UI.App.ViewModels.Docking;
 using InternalsViewer.UI.App.ViewModels.Query.CallStack;
+using InternalsViewer.UI.App.ViewModels.Query.CustomHooks;
 using InternalsViewer.UI.App.ViewModels.Query.Simulation;
 using InternalsViewer.UI.App.ViewModels.Columnstore;
 using InternalsViewer.UI.App.Controls.Timeline.Definition;
@@ -351,6 +354,8 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
         Arguments = new ArgumentsViewModel(logger, Symbols, GetHoBtName);
 
+        CustomHooks = new CustomHooksViewModel(settingsViewModel, OpenCallTree);
+
         Logger = logger;
         QueryRunner = queryRunner;
         TraceLoader = traceLoader;
@@ -446,6 +451,8 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
     public SymbolsViewModel Symbols { get; }
 
     public ArgumentsViewModel Arguments { get; }
+
+    public CustomHooksViewModel CustomHooks { get; }
 
     public CallTreeTabViewModel CallTreeTab => CreatedCallTreeTab ??= new CallTreeTabViewModel(this, _settingsViewModel, Logger);
 
@@ -613,7 +620,16 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
     private CancellationTokenSource? TraceLoad { get; set; }
 
-    private TraceResult? Trace { get; set; }
+    private TraceResult? Trace
+    {
+        get;
+        set
+        {
+            field = value;
+
+            CustomHooks.SetTrace(value);
+        }
+    }
 
     private QueryExportContent? LastRun
     {
@@ -806,6 +822,16 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
         CallTreeTab.ShowSymbols();
     }
 
+    public void AddCustomHook(CustomHookDefinition definition)
+    {
+        _settingsViewModel.AddCustomHook(definition);
+
+        Layout.ShowCustomHooks();
+    }
+
+    [RelayCommand]
+    private void ShowCustomHooks() => Layout.ShowCustomHooks();
+
     partial void OnSelectedEventChanged(EngineEvent? value)
     {
         SelectedEventProperties = value?.GetProperties() ?? [];
@@ -967,7 +993,14 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
         {
             if (!ExecuteQueryCommand.IsRunning)
             {
+                var hadResults = LastRun is not null;
+
                 ClearResults();
+
+                if (hadResults && QueryOptions.RecordTimeTravel)
+                {
+                    AddMessage("Execute the query for a full trace");
+                }
             }
 
             Layout.IsTrace = QueryOptions.RecordTimeTravel;
@@ -1047,6 +1080,8 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
         Symbols.Dispose();
 
         Arguments.Dispose();
+
+        CustomHooks.Dispose();
 
         Layout.Dispose();
 
@@ -1331,6 +1366,9 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
         return min == long.MaxValue ? 0 : min;
     }
+
+    private IReadOnlyList<ColumnReference>? GetOutputColumns(IteratorTarget? iterator)
+        => iterator?.Operator?.PlanNodeIdentifier is { } identifier ? ResolvePlanNode(identifier)?.OutputColumns : null;
 
     private PlanNode? ResolvePlanNode(PlanNodeIdentifier identifier)
     {
@@ -2007,7 +2045,9 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
         try
         {
-            var result = await Task.Run(() => TraceLoader.LoadAsync(request, progress, load.Token), load.Token);
+            var customHooks = _settingsViewModel.CustomHooks.Where(h => !h.IsPaused).ToList();
+
+            var result = await Task.Run(() => TraceLoader.LoadAsync(request, customHooks, progress, load.Token), load.Token);
 
             if (load.IsCancellationRequested || result is null)
             {
@@ -2215,6 +2255,8 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
         var iterators = IteratorTarget.Build(result.CallStack, Events, result.PlanLink);
 
+        var batchDecoder = new BatchDecoder(Database, i => GetOutputColumns(iterators.GetValueOrDefault(i)));
+
         Arguments.SetSource(result.CallStore,
                             result.CallStack,
                             iterators,
@@ -2222,7 +2264,11 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
                             result.MemoryMap,
                             result.RowBuffers,
                             _rowBufferPageResolverFactory.Create(Database),
-                            new RowBufferDecoder(Database, i => iterators.GetValueOrDefault(i)?.Operator));
+                            new RowBufferDecoder(Database,
+                                                 i => iterators.GetValueOrDefault(i)?.Operator,
+                                                 (i, o) => batchDecoder.GetColumn(result.Batches.GetProducer(i) ?? i, o)),
+                            result.Batches,
+                            batchDecoder);
 
         FullFlameChart = result.Timeline;
 

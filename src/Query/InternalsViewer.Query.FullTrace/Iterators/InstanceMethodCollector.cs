@@ -21,6 +21,7 @@ internal static class InstanceMethodCollector
         "Close",
         "BpOpen",
         "BpGetNextBatch",
+        "BpGetBatchData",
         "BpClose"
     };
 
