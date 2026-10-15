@@ -1,5 +1,4 @@
 using System;
-using InternalsViewer.Query.CallStack;
 using InternalsViewer.UI.App.Models.Query.CallStack;
 
 namespace InternalsViewer.UI.App.ViewModels.Query.CallStack;
@@ -28,8 +27,6 @@ public sealed class PlayheadCallStackViewModel(QueryViewModel query) : CallStack
 
     private Action<IPlayheadChart>? ChartRequest { get; set; }
 
-    public void Open(CallStackNode node, int call) => RequestChart(c => c.OpenCallStack(node, call));
-
     public void Step(bool forward)
     {
         ClearSelection();
@@ -52,6 +49,8 @@ public sealed class PlayheadCallStackViewModel(QueryViewModel query) : CallStack
     }
 
     public override void Zoom(PlayheadCallRow row) => Chart?.ZoomTo(row.Start, row.End);
+
+    protected override void ShowCall(PlayheadCallRow row) => Query.NavigateToCall(row.Node, row.Call);
 
     protected override void UseChart(Action<IPlayheadChart> action)
     {

@@ -15,6 +15,4 @@ public interface IPlayheadChart
     void MarkCall(CallStackNode? node, int call);
 
     void MovePlayheadTo(CallStackNode node, int call);
-
-    void OpenCallStack(CallStackNode node, int call);
 }

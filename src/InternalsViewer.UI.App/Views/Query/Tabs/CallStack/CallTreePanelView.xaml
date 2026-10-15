@@ -183,9 +183,6 @@
             </Setter>
         </Style>
 
-        <!-- A call frame row: the Category | Operator badge, the resolved symbol, and (on the selected node) the
-             activity histogram. Used for every node in the merged tree, and for the call frames under each operator
-             when scoped. -->
         <MenuFlyout x:Key="CallFrameMenu">
             <MenuFlyoutItem Text="Expand All" Click="OnExpandAllClick"/>
             <MenuFlyoutItem Text="Collapse All" Click="OnCollapseAllClick"/>
@@ -200,8 +197,8 @@
             <MenuFlyoutSeparator/>
             <MenuFlyoutItem Text="List Members" Click="OnListMembersClick"/>
             <MenuFlyoutSeparator/>
-            <MenuFlyoutItem Text="Show Arguments" Tag="ShowArguments" Click="OnShowArgumentsClick"/>
-            <MenuFlyoutItem Text="Show Row Buffers" Tag="ShowRowBuffers" Click="OnShowRowBuffersClick"/>
+            <MenuFlyoutItem Text="Arguments" Tag="ShowArguments" Click="OnShowArgumentsClick"/>
+            <MenuFlyoutItem Text="Row Buffers" Tag="ShowRowBuffers" Click="OnShowRowBuffersClick"/>
         </MenuFlyout>
 
         <MenuFlyout x:Key="TreeBackgroundMenu">
@@ -222,8 +219,6 @@
                         Tapped="OnNodeRowBuffersTapped"
                         Visibility="{x:Bind ((model:CallStackNode)Content).HasRowBuffers, Converter={StaticResource BoolToVisibilityConverter}}"/>
 
-                <!-- Category | Operator badge: a single pill; when the frame is a plan operator a second
-                     tone (the operator name) is appended, otherwise the category badge stands alone. -->
                 <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
                     <Border Background="#61B0E3"
                             CornerRadius="{x:Bind ((model:CallStackNode)Content).HasOperator, Converter={StaticResource CategoryBadgeCornerConverter}}"
@@ -305,8 +300,6 @@
                         Tapped="OnNodeRowBuffersTapped"
                         Visibility="{x:Bind ((model:CallStackNode)Content).HasRowBuffers, Converter={StaticResource BoolToVisibilityConverter}}"/>
 
-                <!-- Category | Operator badge: a single pill; when the frame is a plan operator a second
-                     tone (the operator name) is appended, otherwise the category badge stands alone. -->
                 <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
                     <Border Background="#61B0E3"
                             CornerRadius="{x:Bind ((model:CallStackNode)Content).HasOperator, Converter={StaticResource CategoryBadgeCornerConverter}}"

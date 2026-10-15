@@ -33,7 +33,7 @@ public partial class CallStackViewModel(QueryViewModel query) : ObservableObject
 
     public virtual string EmptyText => "No Calls At This Position";
 
-    public string Title => Opened is { } opened ? $"Call Stack At {opened.Node.Symbol} Call {opened.Call + 1:N0}" : "Call Stack";
+    public string Title => Opened is { } opened ? $"Call Stack {opened.Node.Symbol} [{opened.Call + 1:N0}]" : "Call Stack";
 
     protected QueryViewModel Query { get; } = query;
 
@@ -93,7 +93,7 @@ public partial class CallStackViewModel(QueryViewModel query) : ObservableObject
 
         if (row.Call >= 0)
         {
-            Query.NavigateToCall(row.Node, row.Call);
+            ShowCall(row);
         }
     }
 
@@ -108,11 +108,11 @@ public partial class CallStackViewModel(QueryViewModel query) : ObservableObject
 
     public void ShowRowBuffer(PlayheadCallRow row)
     {
+        RowBufferCall = row;
+
         SelectedValue = null;
 
         SelectedCall = row;
-
-        RowBufferCall = row;
     }
 
     public ResultDetails GetRowBufferDetails(PlayheadCallRow row, bool decode)
@@ -152,6 +152,8 @@ public partial class CallStackViewModel(QueryViewModel query) : ObservableObject
     }
 
     protected virtual void UseChart(Action<IPlayheadChart> action) => Query.PlayheadStack.RequestChart(action);
+
+    protected virtual void ShowCall(PlayheadCallRow row) => _ = Query.Arguments.ShowAsync(row.Node, row.Call);
 
     partial void OnSelectedValueChanged(CallSignaturePart? value)
     {

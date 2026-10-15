@@ -3,9 +3,10 @@ using System.Collections.Generic;
 using System.ComponentModel;
 using System.Linq;
 using CommunityToolkit.WinUI;
-using InternalsViewer.UI.App.Controls.Results;
+using InternalsViewer.Query.FullTrace.RowBuffers;
 using InternalsViewer.UI.App.Helpers;
 using InternalsViewer.UI.App.Helpers.Converters.Page;
+using InternalsViewer.UI.App.Models;
 using InternalsViewer.UI.App.Models.Query.CallStack;
 using InternalsViewer.UI.App.ViewModels;
 using InternalsViewer.UI.App.ViewModels.Query.CallStack;
@@ -64,6 +65,8 @@ public sealed partial class CallStackControl : UserControl, IReferenceFinder, ID
 
     private bool IsBuilding { get; set; }
 
+    private (PlayheadCallRow Row, bool IsDecoded)? DisplayedRowBuffer { get; set; }
+
     public static Brush? RowBackground(bool isCurrent)
         => isCurrent ? AppResources.Get<Brush>("SolidBackgroundFillColorQuarternaryBrush") : null;
 
@@ -86,8 +89,8 @@ public sealed partial class CallStackControl : UserControl, IReferenceFinder, ID
 
     private Visibility IsEmpty(IReadOnlyList<PlayheadThreadRow>? threads) => GetVisibility(threads is not { Count: > 0 });
 
-    private Visibility IsFunctionVisible(PlayheadCallRow? row, CallSignaturePart? selected)
-        => GetVisibility(row is not null && selected is null);
+    private Visibility IsFunctionVisible(PlayheadCallRow? row, CallSignaturePart? selected, PlayheadCallRow? rowBuffer)
+        => GetVisibility(row is not null && selected is null && rowBuffer is null);
 
     private Visibility AreArgumentsVisible(PlayheadCallRow? row) => GetVisibility(row is { Arguments.Count: > 0 });
 
@@ -195,7 +198,7 @@ public sealed partial class CallStackControl : UserControl, IReferenceFinder, ID
 
     private void ShowDetails()
     {
-        var isVisible = Attached is { SelectedValue: not null } or { SelectedCall: not null };
+        var isVisible = Attached is { SelectedValue: not null } or { SelectedCall: not null } or { RowBufferCall: not null };
 
         if (isVisible != (DetailsPane.Visibility == Visibility.Visible))
         {
@@ -292,21 +295,103 @@ public sealed partial class CallStackControl : UserControl, IReferenceFinder, ID
     {
         var row = Attached?.RowBufferCall;
 
-        DetailsScroller.Visibility = GetVisibility(row is null);
-
-        RowBufferHost.Visibility = GetVisibility(row is not null);
+        RowBufferPanel.Visibility = GetVisibility(row is not null);
 
         if (row is null || Attached is not { } viewModel)
         {
-            RowBufferHost.Children.Clear();
+            DisplayedRowBuffer = null;
+
+            ClearRowBuffer();
 
             return;
         }
 
-        ResultDetailsPanel.Fill(RowBufferHost,
-                                viewModel.GetRowBufferDetails(row, Settings.DecodeValues),
-                                p => _ = viewModel.OpenPagePointerAsync(p, KeyboardState.IsShiftDown()));
+        var isDecoded = Settings.DecodeValues;
+
+        if (DisplayedRowBuffer is { } current && ReferenceEquals(current.Row, row) && current.IsDecoded == isDecoded)
+        {
+            return;
+        }
+
+        DisplayedRowBuffer = (row, isDecoded);
+
+        ClearRowBuffer();
+
+        var details = viewModel.GetRowBufferDetails(row, isDecoded);
+
+        if (details.Message is { } message)
+        {
+            var text = new TextBlock { Text = message, Style = GetStyle("DetailValueStyle") };
+
+            Grid.SetColumnSpan(text, 3);
+
+            RowBufferGrid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+
+            RowBufferGrid.Children.Add(text);
+
+            return;
+        }
+
+        for (var index = 0; index < details.Columns.Count; index++)
+        {
+            AddRowBufferColumn(index, details.Columns[index], viewModel);
+        }
     }
+
+    private void ClearRowBuffer()
+    {
+        RowBufferGrid.Children.Clear();
+
+        RowBufferGrid.RowDefinitions.Clear();
+    }
+
+    private void AddRowBufferColumn(int index, ResultDetail column, CallStackViewModel viewModel)
+    {
+        var text = column.Value?.ToString() ?? string.Empty;
+
+        var label = new TextBlock { Text = column.Label, Style = GetStyle("DetailLabelStyle") };
+
+        var value = new TextBlock { Style = GetStyle("DetailValueStyle") };
+
+        if (column.Value is RowBufferPage page)
+        {
+            var link = new Hyperlink();
+
+            link.Inlines.Add(new Run { Text = text });
+
+            link.Click += (_, _) => _ = viewModel.OpenPagePointerAsync(page, KeyboardState.IsShiftDown());
+
+            value.Inlines.Add(link);
+        }
+        else
+        {
+            HexText.Apply(value, text);
+        }
+
+        var copy = new CopyButton { Style = GetStyle("ValueCopyButtonStyle"), Tag = text };
+
+        copy.Click += OnCopyValueClick;
+
+        Grid.SetRow(label, index);
+
+        Grid.SetRow(value, index);
+
+        Grid.SetColumn(value, 1);
+
+        Grid.SetRow(copy, index);
+
+        Grid.SetColumn(copy, 2);
+
+        RowBufferGrid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+
+        RowBufferGrid.Children.Add(label);
+
+        RowBufferGrid.Children.Add(value);
+
+        RowBufferGrid.Children.Add(copy);
+    }
+
+    private Style GetStyle(string key) => (Style)Resources[key];
 
     private static string GetText(TextBlock textBlock) => string.Concat(textBlock.Inlines.OfType<Run>().Select(r => r.Text));
 

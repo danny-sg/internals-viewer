@@ -255,6 +255,8 @@ public sealed class CallTreeTabViewModel : IDisposable
 
         foreach (var document in AddedDocuments)
         {
+            document.DisposeView();
+
             (document.Content as IDisposable)?.Dispose();
         }
 
@@ -348,6 +350,8 @@ public sealed class CallTreeTabViewModel : IDisposable
     {
         if (AddedDocuments.Remove(document))
         {
+            document.DisposeView();
+
             (document.Content as IDisposable)?.Dispose();
         }
     }

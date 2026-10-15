@@ -5,12 +5,7 @@ namespace InternalsViewer.Query.FullTrace.RowBuffers;
 
 internal sealed partial class RowBufferTable
 {
-    private RowBufferTable(ulong function,
-                           ulong instance,
-                           Row[] rows,
-                           Value[] values,
-                           Binding[][] bindings,
-                           byte[] data)
+    private RowBufferTable(ulong function, ulong instance, Row[] rows, Value[] values, Binding[][] bindings, byte[] data)
     {
         Function = function;
         Instance = instance;
@@ -94,7 +89,7 @@ internal sealed partial class RowBufferTable
                                                    binding.RecordOffset,
                                                    binding.Flags,
                                                    binding.FixedLength,
-                                                   page is null ? data.ToArray() : [])
+                                                   page is null ? [.. data] : [])
             {
                 Page = page
             };
@@ -134,7 +129,7 @@ internal sealed partial class RowBufferTable
         }
 
         public RowBufferTable Build()
-            => new(function, instance, [.. Rows.OrderBy(r => r.Call)], [.. Values], [.. Bindings], Data.WrittenSpan.ToArray());
+            => new(function, instance, [.. Rows.OrderBy(r => r.Call)], [.. Values], [.. Bindings], [.. Data.WrittenSpan]);
 
         private int GetLayout(ReadOnlySpan<BufferColumn> columns)
         {

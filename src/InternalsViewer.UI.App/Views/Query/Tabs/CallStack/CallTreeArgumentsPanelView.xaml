@@ -48,7 +48,6 @@
                                     ObjectClicked="OnArgumentObjectClicked"
                                     PagePointerClicked="OnPagePointerClicked"
                                     CellMenuOpening="OnArgumentCellMenuOpening"
-                                    FitColumnsToFirstRow="True"
                                     RowName="call"
                                     Visibility="{x:Bind ViewModel.Arguments.HasCalls, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}"/>
 

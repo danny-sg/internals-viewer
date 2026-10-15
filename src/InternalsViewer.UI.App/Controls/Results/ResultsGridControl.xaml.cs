@@ -58,19 +58,6 @@ public sealed partial class ResultsGridControl : UserControl
         set => SetValue(RowNameProperty, value);
     }
 
-    public static readonly DependencyProperty FitColumnsToFirstRowProperty =
-        DependencyProperty.Register(
-            nameof(FitColumnsToFirstRow),
-            typeof(bool),
-            typeof(ResultsGridControl),
-            new PropertyMetadata(false));
-
-    public bool FitColumnsToFirstRow
-    {
-        get => (bool)GetValue(FitColumnsToFirstRowProperty);
-        set => SetValue(FitColumnsToFirstRowProperty, value);
-    }
-
     public static readonly DependencyProperty RowDetailsProperty =
         DependencyProperty.Register(
             nameof(RowDetails),
@@ -151,7 +138,7 @@ public sealed partial class ResultsGridControl : UserControl
 
         var table = (TableView)((DataTemplate)Resources["ResultsTableTemplate"]).LoadContent();
 
-        var first = FitColumnsToFirstRow && rows.Count > 0 ? rows[0] : null;
+        var first = rows.Count > 0 ? rows[0] : null;
 
         foreach (var column in columns)
         {

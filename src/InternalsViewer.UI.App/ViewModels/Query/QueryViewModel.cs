@@ -967,7 +967,14 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
         {
             if (!ExecuteQueryCommand.IsRunning)
             {
+                var hadResults = LastRun is not null;
+
                 ClearResults();
+
+                if (hadResults && QueryOptions.RecordTimeTravel)
+                {
+                    AddMessage("Execute the query for a full trace");
+                }
             }
 
             Layout.IsTrace = QueryOptions.RecordTimeTravel;

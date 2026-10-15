@@ -1,4 +1,5 @@
 using System;
+using Windows.Foundation;
 using InternalsViewer.Query.FullTrace.Timeline;
 using InternalsViewer.Query.Helpers;
 using SkiaSharp;
@@ -71,6 +72,28 @@ public sealed partial class FlameChartControl
 
             index = SortedSearch.FirstAtOrAfter(values, _viewStart + (Math.Floor(x) + RowBufferMarkWidth) / scale, index + 1);
         }
+    }
+
+    private bool IsOnRowBufferBar(Point position)
+    {
+        if (!ShowsRowBuffers || _visible is not { } timeline || position.Y < ContentTop)
+        {
+            return false;
+        }
+
+        var contentY = position.Y - ContentTop + _scrollY;
+
+        for (var lane = 0; lane < timeline.Threads.Count && lane < _laneTops.Length; lane++)
+        {
+            var top = _laneTops[lane] + LaneHeaderHeight;
+
+            if (_laneTops[lane] + RowsOffset >= _scrollY && contentY >= top && contentY < top + RowBufferBarHeight)
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private static void OnRowBuffersChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)

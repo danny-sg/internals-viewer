@@ -5,6 +5,7 @@ using System.ComponentModel;
 using System.Linq;
 using Windows.ApplicationModel.DataTransfer;
 using Windows.Foundation;
+using InternalsViewer.UI.App.Helpers;
 using InternalsViewer.UI.App.ViewModels.Docking;
 using Microsoft.UI.Text;
 using Microsoft.UI.Xaml.Controls;
@@ -244,9 +245,43 @@ public sealed partial class TabGroupView : UserControl
 
         item.Content = new Grid();
 
+        item.ContextFlyout = CreateTabMenu(document);
+
         item.Tapped += (_, _) => Dock?.NotifyActivated(document);
 
         return item;
+    }
+
+    private MenuFlyout CreateTabMenu(DocumentViewModel document)
+    {
+        var closeAll = MenuItems.Create("Close All", () => CloseAll(except: null));
+
+        var closeOthers = MenuItems.Create("Close Others", () => CloseAll(except: document));
+
+        var menu = new MenuFlyout();
+
+        menu.Items.Add(closeAll);
+
+        menu.Items.Add(closeOthers);
+
+        menu.Opening += (_, _) =>
+        {
+            var documents = Group?.Documents ?? [];
+
+            closeAll.IsEnabled = documents.Any(d => d.CanClose);
+
+            closeOthers.IsEnabled = documents.Any(d => d.CanClose && !ReferenceEquals(d, document));
+        };
+
+        return menu;
+    }
+
+    private void CloseAll(DocumentViewModel? except)
+    {
+        if (Group is { } group)
+        {
+            DispatcherQueue.TryEnqueue(() => Dock?.CloseAll(group, except));
+        }
     }
 
     private static Windows.UI.Text.FontWeight HeaderWeight(DocumentViewModel document)

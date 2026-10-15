@@ -334,6 +334,14 @@ public sealed partial class FlameChartControl
         {
             ShowOperatorToolTip(operatorHit, position);
         }
+        else if (IsInOperators(position))
+        {
+            OpenToolTip("Operators", position);
+        }
+        else if (IsOnRowBufferBar(position))
+        {
+            OpenToolTip("Row Buffer", position);
+        }
         else
         {
             HideToolTip();

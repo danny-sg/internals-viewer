@@ -78,9 +78,12 @@ public sealed partial class CallTreeArgumentsPanelView : UserControl, IDocumentC
         {
             e.Menu.Items.Add(MenuItems.Create("Go To Call", () => viewModel.Tree.GoToCall(node)));
 
-            e.Menu.Items.Add(MenuItems.Create("Open In Call Stack", () => viewModel.Query.PlayheadStack.Open(node, index)));
-
             e.Menu.Items.Add(MenuItems.Create("Call Stack", () => viewModel.ShowCallStack(node, index)));
+
+            if (node.Frame is { } frame && arguments.Lookup?.RowBuffers.HasRows(frame.Address, frame.Instance) == true)
+            {
+                e.Menu.Items.Add(MenuItems.Create("Row Buffers", () => viewModel.ShowRowBuffers(node)));
+            }
 
             e.Menu.Items.Add(MenuItems.Create("Scope", () => viewModel.Query.PlayheadStack.Scope(node)));
         }
@@ -89,7 +92,7 @@ public sealed partial class CallTreeArgumentsPanelView : UserControl, IDocumentC
 
         if (cell.Locator is { ValueType: LocatorValueType.ColumnStoreObject } columnStoreObject)
         {
-            e.Menu.Items.Add(MenuItems.Create("Open In The Columnstore Viewer",
+            e.Menu.Items.Add(MenuItems.Create("Open In Columnstore Viewer",
                                               () => viewModel.OpenLocator(columnStoreObject, KeyboardState.IsShiftDown())));
         }
 
@@ -112,12 +115,12 @@ public sealed partial class CallTreeArgumentsPanelView : UserControl, IDocumentC
 
         if (arguments.GetHoBtId(index, e.Ordinal) is { } hobtId)
         {
-            e.Menu.Items.Add(MenuItems.Create("Open The Index", () => viewModel.Query.OpenHoBt(hobtId)));
+            e.Menu.Items.Add(MenuItems.Create("Open Index", () => viewModel.Query.OpenHoBt(hobtId)));
         }
 
         if (arguments.GetIterator(value) is { } iterator)
         {
-            e.Menu.Items.Add(MenuItems.Create($"Show The {iterator.Label} Iterator", () => viewModel.Tree.NavigateToIterator(iterator)));
+            e.Menu.Items.Add(MenuItems.Create($"Show {iterator.Label} Iterator", () => viewModel.Tree.NavigateToIterator(iterator)));
         }
 
         if (cell.Type is { } type && ArgumentRowBuilder.CanFind(type, value))
