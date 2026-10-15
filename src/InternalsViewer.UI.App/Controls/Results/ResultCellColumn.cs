@@ -14,6 +14,8 @@ namespace InternalsViewer.UI.App.Controls.Results;
 
 internal sealed class ResultCellColumn(int ordinal) : TableViewColumn
 {
+    private const double ActionSpacing = 12;
+
     private static readonly Thickness CellPadding = new(8, 0, 4, 0);
 
     private static readonly Thickness ClassMargin = new(0, 0, 4, 0);
@@ -43,7 +45,7 @@ internal sealed class ResultCellColumn(int ordinal) : TableViewColumn
     {
         var block = new TextBlock { Padding = CellPadding, FontSize = fontSize };
 
-        var text = value is PageAddress or RowIdentifier or ObjectValue or StringValue or CallValue or RowBufferPage
+        var text = value is PageAddress or RowIdentifier or ObjectValue or StringValue or CallValue or RowBufferPage or ActionLinks
             ? value.ToString()
             : ResultRowConverter.FormatValue(value);
 
@@ -128,6 +130,10 @@ internal sealed class ResultCellColumn(int ordinal) : TableViewColumn
 
             case RowBufferPage pointer when PagePointerClicked is not null:
                 ApplyPagePointerLink(host, pointer);
+                break;
+
+            case ActionLinks actions:
+                ApplyActions(host, actions);
                 break;
 
             default:
@@ -323,6 +329,45 @@ internal sealed class ResultCellColumn(int ordinal) : TableViewColumn
         button.Click += OnPagePointerClick;
 
         host.Content = button;
+    }
+
+    private static void ApplyActions(ContentControl host, ActionLinks actions)
+    {
+        if (host.Content is not StackPanel { Tag: ActionLinks } panel || panel.Children.Count != actions.Links.Count)
+        {
+            panel = new StackPanel { Orientation = Orientation.Horizontal, Spacing = ActionSpacing };
+
+            foreach (var _ in actions.Links)
+            {
+                var button = new HyperlinkButton { Style = (Style)Application.Current.Resources["ResultPointerStyle"] };
+
+                button.Click += OnActionClick;
+
+                panel.Children.Add(button);
+            }
+
+            host.Content = panel;
+        }
+
+        panel.Tag = actions;
+
+        for (var index = 0; index < actions.Links.Count; index++)
+        {
+            if (panel.Children[index] is HyperlinkButton button)
+            {
+                button.Content = actions.Links[index].Text;
+
+                button.Tag = actions.Links[index];
+            }
+        }
+    }
+
+    private static void OnActionClick(object sender, RoutedEventArgs e)
+    {
+        if (sender is HyperlinkButton { Tag: ActionLink action })
+        {
+            action.Invoke();
+        }
     }
 
     private void OnPagePointerClick(object sender, RoutedEventArgs e)

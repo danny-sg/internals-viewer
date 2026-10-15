@@ -10,4 +10,5 @@ public sealed record CustomHookDefinition(string Name,
                                           int Register,
                                           bool IsReadAtReturn,
                                           int Offset,
-                                          int Length);
+                                          int Length,
+                                          bool IsPaused = false);

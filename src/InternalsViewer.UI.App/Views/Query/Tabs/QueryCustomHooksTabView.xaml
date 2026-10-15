@@ -18,17 +18,7 @@
                                     Grid.Row="0"
                                     ResultSet="{x:Bind ViewModel.CustomHooks.HooksTable, Mode=OneWay}"
                                     SelectedRow="{x:Bind ViewModel.CustomHooks.SelectedHookRow, Mode=TwoWay}"
-                                    CellMenuOpening="OnHookMenuOpening"
                                     RowName="hook"/>
-
-        <TextBlock Grid.Row="0"
-                   Margin="12,40,12,8"
-                   FontSize="12"
-                   TextWrapping="Wrap"
-                   VerticalAlignment="Top"
-                   Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                   Text="{x:Bind ViewModel.CustomHooks.Message, Mode=OneWay}"
-                   Visibility="{x:Bind ViewModel.CustomHooks.Message, Mode=OneWay, Converter={StaticResource NullToVisibilityConverter}}"/>
 
         <toolkit:GridSplitter Grid.Row="1"
                               Height="6"

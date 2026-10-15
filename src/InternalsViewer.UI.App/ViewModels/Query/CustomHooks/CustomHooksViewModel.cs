@@ -28,9 +28,9 @@ public sealed partial class CustomHooksViewModel : ObservableObject, IDisposable
 
     private const int AddressWidth = 170;
 
-    private const string NoHooksMessage = "No custom hooks. Right-click an argument in Arguments and choose Custom Hook";
+    private const int CountWidth = 110;
 
-    private const string NoTraceMessage = "Run the query with Full Trace on to capture the hooks";
+    private const int ActionsWidth = 130;
 
     [ObservableProperty]
     private QueryResultSet? _hooksTable;
@@ -49,9 +49,6 @@ public sealed partial class CustomHooksViewModel : ObservableObject, IDisposable
 
     [ObservableProperty]
     private int _baseAddress;
-
-    [ObservableProperty]
-    private string? _message;
 
     public CustomHooksViewModel(SettingsViewModel settings, Action<CallStackNode, int> openCall)
     {
@@ -81,14 +78,6 @@ public sealed partial class CustomHooksViewModel : ObservableObject, IDisposable
         Trace = trace;
 
         Refresh();
-    }
-
-    public void Remove(int index)
-    {
-        if (index >= 0 && index < Definitions.Count)
-        {
-            Settings.RemoveCustomHook(Definitions[index]);
-        }
     }
 
     public void ShowCall(CallValue value) => OpenCall(value.Node, value.Call);
@@ -125,8 +114,6 @@ public sealed partial class CustomHooksViewModel : ObservableObject, IDisposable
 
         Definitions = Settings.CustomHooks;
 
-        Message = Definitions.Count == 0 ? NoHooksMessage : Trace is null ? NoTraceMessage : null;
-
         HooksTable = BuildHooksTable();
 
         SelectedHookRow = HooksTable.Rows.FirstOrDefault(r => Definitions[(int)r.Id].Name == selected) ?? HooksTable.Rows.FirstOrDefault();
@@ -149,7 +136,8 @@ public sealed partial class CustomHooksViewModel : ObservableObject, IDisposable
             new(3, "Read At", typeof(string), false) { Width = ReadAtWidth },
             new(4, "Offset", typeof(string), false) { Width = NumberWidth, Alignment = ResultAlignment.Right },
             new(5, "Length", typeof(int), false) { Width = NumberWidth, Alignment = ResultAlignment.Right },
-            new(6, "Captures", typeof(int), false) { Width = NumberWidth, Alignment = ResultAlignment.Right }
+            new(6, "Capture Count", typeof(int), false) { Width = CountWidth, Alignment = ResultAlignment.Right },
+            new(7, string.Empty, typeof(string), false) { Width = ActionsWidth }
         };
 
         var rows = Definitions.Select((d, index) => new ResultRow<long>([d.Name,
@@ -158,7 +146,8 @@ public sealed partial class CustomHooksViewModel : ObservableObject, IDisposable
                                                                         d.IsReadAtReturn ? "Return" : "Call",
                                                                         FormatOffset(d.Offset),
                                                                         d.Length,
-                                                                        Trace?.CustomHooks.GetCaptures(d.Name).Count])
+                                                                        Trace?.CustomHooks.GetCaptures(d.Name).Count,
+                                                                        GetActions(d)])
                                                        {
                                                            Id = index
                                                        })
@@ -195,6 +184,11 @@ public sealed partial class CustomHooksViewModel : ObservableObject, IDisposable
 
         SelectedCaptureRow = rows.FirstOrDefault();
     }
+
+    private ActionLinks GetActions(CustomHookDefinition definition)
+        => new([new ActionLink(definition.IsPaused ? "Resume" : "Pause",
+                               () => Settings.SetCustomHookPaused(definition, !definition.IsPaused)),
+                new ActionLink("Delete", () => Settings.RemoveCustomHook(definition))]);
 
     private object GetCallValue(CustomHookCapture capture)
     {

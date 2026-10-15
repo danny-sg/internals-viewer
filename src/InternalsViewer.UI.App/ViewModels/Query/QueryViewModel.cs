@@ -2045,7 +2045,7 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
         try
         {
-            var customHooks = _settingsViewModel.CustomHooks;
+            var customHooks = _settingsViewModel.CustomHooks.Where(h => !h.IsPaused).ToList();
 
             var result = await Task.Run(() => TraceLoader.LoadAsync(request, customHooks, progress, load.Token), load.Token);
 

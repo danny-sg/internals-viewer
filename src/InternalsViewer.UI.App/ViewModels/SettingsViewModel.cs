@@ -125,6 +125,9 @@ public partial class SettingsViewModel(SettingsService settingsService, TraceDir
 
     public void RemoveCustomHook(CustomHookDefinition definition) => CustomHooks = [.. CustomHooks.Where(h => h != definition)];
 
+    public void SetCustomHookPaused(CustomHookDefinition definition, bool isPaused)
+        => CustomHooks = [.. CustomHooks.Select(h => h == definition ? h with { IsPaused = isPaused } : h)];
+
     public void ResetCallTreeCategories()
     {
         CallTreeHiddenCategories = DefaultCallTreeHiddenCategories;
