@@ -1,5 +1,3 @@
-using System.Buffers.Binary;
-using InternalsViewer.Internals.Engine.Parsers;
 using InternalsViewer.Query.FullTrace.Hooks;
 using InternalsViewer.Query.FullTrace.Interfaces.Hooks;
 using InternalsViewer.Query.FullTrace.Hooks.Enums;
@@ -62,22 +60,6 @@ internal sealed class RowBufferHook(RowBufferFunctions functions) : ITraceHook
     private const ulong MaximumRowBufferBytes = 0x10000;
 
     private const ulong MaximumValueBytes = 8000;
-
-    private const ulong DataPageSize = 0x2000;
-
-    private const ulong PageHeaderSize = 96;
-
-    private const ulong PageIdOffset = 0x20;
-
-    private const int PageIdSize = 6;
-
-    private const int PageIdFileOffset = 4;
-
-    private const ulong LsnOffset = 0x28;
-
-    private const int LsnSize = 10;
-
-    private const byte PageHeaderVersion = 1;
 
     private const RowBufferColumnFlags SlotUnreadable = RowBufferColumnFlags.Unreadable | RowBufferColumnFlags.SlotUnreadable;
 
@@ -165,7 +147,6 @@ internal sealed class RowBufferHook(RowBufferFunctions functions) : ITraceHook
                 || first.Status != second.Status
                 || first.Flags != second.Flags
                 || first.Length != second.Length
-                || first.Page != second.Page
                 || !first.Data.AsSpan().SequenceEqual(second.Data))
             {
                 return false;
@@ -249,8 +230,8 @@ internal sealed class RowBufferHook(RowBufferFunctions functions) : ITraceHook
                          && replay.TryRead(address + BindingStatusOffset, out statusOffset)
                          && replay.TryRead(address + BindingInfoOffset, out ulong info)
                          && info >= SmallestAddress
-                         && replay.TryRead(info + BindingInfoLengthOffset, out lengthOffset)
-                         && replay.TryRead(info + BindingInfoFlagsOffset, out infoFlags);
+                         && replay.TryRead(info + BindingInfoFlagsOffset, out infoFlags)
+                         && ((flags & LengthBinding) == 0 || replay.TryRead(info + BindingInfoLengthOffset, out lengthOffset));
 
         var unreadable = !isReadable ? RowBufferColumnFlags.BindingUnreadable
                          : (infoFlags & AlternateBufferBinding) != 0 ? RowBufferColumnFlags.AlternateBuffer
@@ -314,9 +295,7 @@ internal sealed class RowBufferHook(RowBufferFunctions functions) : ITraceHook
             return column with { Flags = column.Flags | SlotUnreadable };
         }
 
-        return ReadPage(replay, pointer, length) is { } page
-            ? column with { Flags = column.Flags | RowBufferColumnFlags.PageReference, Page = page }
-            : ReadValueBytes(replay, pointer, length, column);
+        return ReadValueBytes(replay, pointer, length, column);
     }
 
     private static RowBufferColumn ReadValueBytes(ITraceReplay replay, ulong address, ulong length, RowBufferColumn column)
@@ -337,32 +316,6 @@ internal sealed class RowBufferHook(RowBufferFunctions functions) : ITraceHook
         }
 
         return column with { Data = found == data.Length ? data : data[..found], Flags = flags };
-    }
-
-    private static RowBufferPage? ReadPage(ITraceReplay replay, ulong pointer, ulong length)
-    {
-        var offset = pointer & (DataPageSize - 1);
-
-        if (pointer < SmallestAddress || offset < PageHeaderSize || length > DataPageSize - offset)
-        {
-            return null;
-        }
-
-        var page = pointer - offset;
-
-        Span<byte> pageId = stackalloc byte[PageIdSize];
-
-        Span<byte> lsn = stackalloc byte[LsnSize];
-
-        if (replay.Read(page + PageIdOffset, pageId) != PageIdSize
-            || replay.Read(page + LsnOffset, lsn) != LsnSize
-            || BinaryPrimitives.ReadUInt16LittleEndian(pageId[PageIdFileOffset..]) == 0
-            || (replay.TryRead(page, out byte version) && version != PageHeaderVersion))
-        {
-            return null;
-        }
-
-        return new RowBufferPage(PageAddressParser.Parse(pageId), (int)offset, LogSequenceNumberParser.Parse(lsn));
     }
 
     private RowBufferColumn[] GetShared(ulong iterator, RowBufferColumn[] columns)
@@ -460,7 +413,10 @@ internal sealed class RowBufferHook(RowBufferFunctions functions) : ITraceHook
                              firstFlags,
                              [.. Enumerable.Range(0, count).Select(i => ReadBinding(replay, array + (ulong)i * BindingSize))]);
 
-        BindingSets[array] = set;
+        if (set.Columns.All(c => c.Unreadable != RowBufferColumnFlags.BindingUnreadable))
+        {
+            BindingSets[array] = set;
+        }
 
         return set;
     }

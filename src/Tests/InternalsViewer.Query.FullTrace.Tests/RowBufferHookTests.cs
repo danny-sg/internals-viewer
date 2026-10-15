@@ -1,5 +1,4 @@
 using System.Text;
-using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Query.FullTrace.Hooks;
 using InternalsViewer.Query.FullTrace.RowBuffers;
 using InternalsViewer.Query.FullTrace.RowBuffers.Enums;
@@ -66,23 +65,7 @@ public class RowBufferHookTests
     [Fact]
     public void A_Bound_Row_Reads_Each_Column_At_Its_Binding()
     {
-        var memory = new FakeTraceReplay().Write(Iterator, BindingTable)
-                                          .Write(Iterator + 0x80, Buffer)
-                                          .Write(Iterator + 0x88, Bindings)
-                                          .Write(Bindings + 0x62, (ushort)1)
-                                          .Write(Bindings + 0x70, BindingArray)
-                                          .Write(BindingArray, 4)
-                                          .Write(BindingArray + 0x28, 0x10ul)
-                                          .Write(BindingArray + 0x30, 0x08ul)
-                                          .Write(BindingArray + 0x3C, (ushort)4)
-                                          .Write(BindingArray + 0x40, 2u)
-                                          .Write(BindingArray + 0x48, BindingInfo)
-                                          .Write(BindingInfo + 0x18, 0ul)
-                                          .Write(BindingInfo + 0x2A, (byte)0)
-                                          .Write(Buffer + 0x08, (byte)0)
-                                          .Write(Buffer + 0x10, 3156000);
-
-        var row = Replay(memory)!;
+        var row = Replay(BoundRow())!;
 
         Assert.Equal(RowBufferFormat.Bindings, row.Format);
         Assert.Equal(new RowBufferBinding(4, 2, 4), row.Columns[0].Binding);
@@ -90,9 +73,38 @@ public class RowBufferHookTests
     }
 
     [Fact]
-    public void A_Value_On_A_Data_Page_Is_Kept_As_A_Page_Reference()
+    public void A_Fixed_Column_Is_Read_Without_A_Length_Offset_In_The_Trace()
     {
-        const ulong page = 0x21C_0BB9_0000;
+        Assert.False(Replay(BoundRow())!.Columns[0].IsUnreadable);
+    }
+
+    [Fact]
+    public void A_Binding_Missing_From_The_Trace_Is_Read_Again_For_The_Next_Row()
+    {
+        var hook = CreateHook();
+
+        var memory = BoundRow(hasInfoFlags: false);
+
+        hook.OnEntry(Call(), memory);
+
+        hook.OnReturn(Call(), memory);
+
+        memory.Write(BindingInfo + 0x2A, (byte)0);
+
+        hook.OnEntry(Call(id: 101, index: 4), memory);
+
+        hook.OnReturn(Call(id: 101, index: 4), memory);
+
+        var rows = hook.Build();
+
+        Assert.True(rows.GetRow(Function, Iterator, 3)!.Columns[0].IsUnreadable);
+        Assert.Equal([0x20, 0x28, 0x30, 0], rows.GetRow(Function, Iterator, 4)!.Columns[0].Data);
+    }
+
+    [Fact]
+    public void A_Bound_Value_Read_By_Reference_Follows_Its_Pointer()
+    {
+        const ulong value = 0x21C_0BB9_01A0;
 
         var memory = new FakeTraceReplay().Write(Iterator, BindingTable)
                                           .Write(Iterator + 0x80, Buffer)
@@ -108,17 +120,13 @@ public class RowBufferHookTests
                                           .Write(BindingInfo + 0x18, 0x18ul)
                                           .Write(BindingInfo + 0x2A, (byte)0)
                                           .Write(Buffer + 0x08, (byte)0)
-                                          .Write(Buffer + 0x10, page + 416)
+                                          .Write(Buffer + 0x10, value)
                                           .Write(Buffer + 0x18, 5ul)
-                                          .Write(page, (byte)1)
-                                          .Write(page + 0x20, (byte[])[0x50, 0x01, 0, 0, 1, 0])
-                                          .Write(page + 0x28, (byte[])[0x2A, 0, 0, 0, 0x10, 0, 0, 0, 0x03, 0]);
+                                          .Write(value, "Fifth"u8);
 
         var column = Replay(memory)!.Columns[0];
 
-        Assert.Equal(new RowBufferPage(new PageAddress(1, 336), 416, new LogSequenceNumber(42, 16, 3)), column.Page);
-        Assert.Empty(column.Data);
-        Assert.Equal("Page (1:336) Offset 416", column.ToString());
+        Assert.Equal(("Fifth", 5, true), (Encoding.ASCII.GetString(column.Data), column.Length, column.IsByReference));
     }
 
     [Fact]
@@ -163,6 +171,25 @@ public class RowBufferHookTests
         hook.OnReturn(Call(), memory);
 
         Assert.Equal(0, hook.Build().Count);
+    }
+
+    private static FakeTraceReplay BoundRow(bool hasInfoFlags = true)
+    {
+        var memory = new FakeTraceReplay().Write(Iterator, BindingTable)
+                                          .Write(Iterator + 0x80, Buffer)
+                                          .Write(Iterator + 0x88, Bindings)
+                                          .Write(Bindings + 0x62, (ushort)1)
+                                          .Write(Bindings + 0x70, BindingArray)
+                                          .Write(BindingArray, 4)
+                                          .Write(BindingArray + 0x28, 0x10ul)
+                                          .Write(BindingArray + 0x30, 0x08ul)
+                                          .Write(BindingArray + 0x3C, (ushort)4)
+                                          .Write(BindingArray + 0x40, 2u)
+                                          .Write(BindingArray + 0x48, BindingInfo)
+                                          .Write(Buffer + 0x08, (byte)0)
+                                          .Write(Buffer + 0x10, 3156000);
+
+        return hasInfoFlags ? memory.Write(BindingInfo + 0x2A, (byte)0) : memory;
     }
 
     private static FakeTraceReplay ValueRow()

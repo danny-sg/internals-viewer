@@ -1,5 +1,4 @@
 using System.Text;
-using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Query.CallStack;
 using InternalsViewer.Query.FullTrace.Calls;
 using InternalsViewer.Query.FullTrace.RowBuffers;
@@ -142,20 +141,16 @@ public class RowBufferIndexTests
     }
 
     [Fact]
-    public void A_Page_Reference_Survives_Export_And_Import()
+    public void A_Value_Read_By_Reference_Survives_Export_And_Import()
     {
-        var flags = RowBufferColumnFlags.ByReference | RowBufferColumnFlags.HasLength | RowBufferColumnFlags.PageReference;
+        var flags = RowBufferColumnFlags.ByReference | RowBufferColumnFlags.HasLength;
 
-        var page = new RowBufferPage(new PageAddress(1, 336), 416, new LogSequenceNumber(42, 16, 3));
-
-        var column = new RowBufferColumn(0, Variable, 0, flags, 5, []) { Page = page };
+        var column = new RowBufferColumn(0, Variable, 0, flags, 5, "Fifth"u8.ToArray());
 
         column = Export(new RowBufferIndex([new RowBuffer(Function, Instance, 1, 100, Iterator, Buffer, [column])]))
             .GetRow(Function, Instance, 1)!.Columns[0];
 
-        Assert.Equal(page, column.Page);
-        Assert.Empty(column.Data);
-        Assert.Equal("Page (1:336) Offset 416", column.ToString());
+        Assert.Equal(("Fifth", flags), (Encoding.ASCII.GetString(column.Data), column.Flags));
     }
 
     [Fact]

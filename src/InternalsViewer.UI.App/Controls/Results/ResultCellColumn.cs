@@ -1,7 +1,6 @@
 using System;
 using System.Drawing;
 using InternalsViewer.Internals.Engine.Address;
-using InternalsViewer.Query.FullTrace.RowBuffers;
 using InternalsViewer.Query.Results;
 using InternalsViewer.UI.App.Helpers.Converters.Results;
 using InternalsViewer.UI.App.Models;
@@ -33,8 +32,6 @@ internal sealed class ResultCellColumn(int ordinal) : TableViewColumn
 
     public Action<CallValue>? CallClicked { get; init; }
 
-    public Action<RowBufferPage>? PagePointerClicked { get; init; }
-
     private SolidColorBrush? BackgroundBrushField { get; set; }
 
     private SolidColorBrush? BackgroundBrush => BackgroundColour.HasValue
@@ -45,7 +42,7 @@ internal sealed class ResultCellColumn(int ordinal) : TableViewColumn
     {
         var block = new TextBlock { Padding = CellPadding, FontSize = fontSize };
 
-        var text = value is PageAddress or RowIdentifier or ObjectValue or StringValue or CallValue or RowBufferPage or ActionLinks
+        var text = value is PageAddress or RowIdentifier or ObjectValue or StringValue or CallValue or ActionLinks
             ? value.ToString()
             : ResultRowConverter.FormatValue(value);
 
@@ -126,10 +123,6 @@ internal sealed class ResultCellColumn(int ordinal) : TableViewColumn
 
             case CallValue callValue:
                 ApplyCallLink(host, callValue);
-                break;
-
-            case RowBufferPage pointer when PagePointerClicked is not null:
-                ApplyPagePointerLink(host, pointer);
                 break;
 
             case ActionLinks actions:
@@ -307,30 +300,6 @@ internal sealed class ResultCellColumn(int ordinal) : TableViewColumn
         host.Content = button;
     }
 
-    private void ApplyPagePointerLink(ContentControl host, RowBufferPage pointer)
-    {
-        if (host.Content is HyperlinkButton { Tag: RowBufferPage } existing)
-        {
-            existing.Content = pointer.ToString();
-            existing.Tag = pointer;
-
-            return;
-        }
-
-        var button = new HyperlinkButton
-        {
-            Content = pointer.ToString(),
-            Tag = pointer,
-            Style = (Style)Application.Current.Resources["ResultPointerStyle"]
-        };
-
-        ToolTipService.SetToolTip(button, "Open Page");
-
-        button.Click += OnPagePointerClick;
-
-        host.Content = button;
-    }
-
     private static void ApplyActions(ContentControl host, ActionLinks actions)
     {
         if (host.Content is not StackPanel { Tag: ActionLinks } panel || panel.Children.Count != actions.Links.Count)
@@ -367,14 +336,6 @@ internal sealed class ResultCellColumn(int ordinal) : TableViewColumn
         if (sender is HyperlinkButton { Tag: ActionLink action })
         {
             action.Invoke();
-        }
-    }
-
-    private void OnPagePointerClick(object sender, RoutedEventArgs e)
-    {
-        if (sender is HyperlinkButton { Tag: RowBufferPage pointer })
-        {
-            PagePointerClicked?.Invoke(pointer);
         }
     }
 

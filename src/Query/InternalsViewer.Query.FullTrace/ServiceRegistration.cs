@@ -18,7 +18,5 @@ public static class ServiceRegistration
         services.AddSingleton<IQueryExportSection, TraceExportSection>();
 
         services.AddSingleton<ITimeTravelRecorder, TimeTravelRecorder>();
-
-        services.AddTransient<RowBufferPageResolverFactory>();
     }
 }

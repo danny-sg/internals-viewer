@@ -4,7 +4,6 @@ using System.Linq;
 using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
 using InternalsViewer.Query.CallStack;
-using InternalsViewer.Query.FullTrace.RowBuffers;
 using InternalsViewer.Query.FullTrace.Timeline;
 using InternalsViewer.Query.FullTrace.Timeline.Enums;
 using InternalsViewer.UI.App.Models;
@@ -126,7 +125,6 @@ public partial class CallStackViewModel(QueryViewModel query) : ObservableObject
         return RowBufferDisplay.GetDetails(RowBufferTitle, rowBuffer, lookup?.RowBufferDecoder, decode);
     }
 
-    public Task OpenPagePointerAsync(RowBufferPage pointer, bool detached) => Query.CallTreeTab.OpenPagePointerAsync(pointer, detached);
 
     public void OpenInCallTree(PlayheadCallRow row) => Query.OpenCallTree(row.Node, row.Call);
 

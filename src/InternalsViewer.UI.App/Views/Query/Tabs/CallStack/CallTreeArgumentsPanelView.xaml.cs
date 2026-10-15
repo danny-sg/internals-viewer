@@ -4,7 +4,6 @@ using InternalsViewer.Query.CallStack.Locators;
 using InternalsViewer.Query.CallStack;
 using InternalsViewer.Query.FullTrace.CustomHooks;
 using InternalsViewer.Query.FullTrace.Locators;
-using InternalsViewer.Query.FullTrace.RowBuffers;
 using InternalsViewer.UI.App.Controls.Dialogs;
 using InternalsViewer.UI.App.Controls;
 using InternalsViewer.UI.App.Controls.CallStack;
@@ -56,9 +55,6 @@ public sealed partial class CallTreeArgumentsPanelView : UserControl, IDocumentC
             ViewModel?.Tree.ShowOrigin(origin);
         }
     }
-
-    private void OnPagePointerClicked(object? sender, RowBufferPage pointer)
-        => _ = ViewModel?.OpenPagePointerAsync(pointer, KeyboardState.IsShiftDown());
 
     private void OnCopySignatureClick(object sender, RoutedEventArgs e)
     {

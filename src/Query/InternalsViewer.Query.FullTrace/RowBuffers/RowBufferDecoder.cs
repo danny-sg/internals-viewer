@@ -36,7 +36,7 @@ public sealed class RowBufferDecoder(DatabaseSource database,
             return NullText;
         }
 
-        if (column is not { Status: 0, IsUnreadable: false, IsTruncated: false, Page: null })
+        if (column is not { Status: 0, IsUnreadable: false, IsTruncated: false })
         {
             return null;
         }

@@ -1,4 +1,3 @@
-using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Query.FullTrace.RowBuffers.Enums;
 
 namespace InternalsViewer.Query.FullTrace.RowBuffers;
@@ -130,45 +129,13 @@ public sealed partial class RowBufferIndex
         writer.Write(column.Data.Length);
 
         writer.Write(column.Data);
-
-        writer.Write(column.Page is not null);
-
-        if (column.Page is { } page)
-        {
-            writer.Write(page.Page.FileId);
-
-            writer.Write(page.Page.PageId);
-
-            writer.Write(page.Offset);
-
-            writer.Write(page.Lsn.VirtualLogFile);
-
-            writer.Write(page.Lsn.FileOffset);
-
-            writer.Write(page.Lsn.RecordSequence);
-        }
     }
 
     private static RowBufferColumn ReadColumn(BinaryReader reader, int ordinal, RowBufferBinding[] bindings)
-    {
-        var column = new RowBufferColumn(ordinal,
-                                         bindings[reader.ReadInt32()],
-                                         reader.ReadByte(),
-                                         (RowBufferColumnFlags)reader.ReadByte(),
-                                         reader.ReadInt32(),
-                                         reader.ReadBytes(reader.ReadInt32()));
-
-        if (!reader.ReadBoolean())
-        {
-            return column;
-        }
-
-        var page = new PageAddress(reader.ReadInt16(), reader.ReadInt32());
-
-        var offset = reader.ReadInt32();
-
-        var lsn = new LogSequenceNumber(reader.ReadInt32(), reader.ReadInt32(), reader.ReadInt16());
-
-        return column with { Page = new RowBufferPage(page, offset, lsn) };
-    }
+        => new(ordinal,
+               bindings[reader.ReadInt32()],
+               reader.ReadByte(),
+               (RowBufferColumnFlags)reader.ReadByte(),
+               reader.ReadInt32(),
+               reader.ReadBytes(reader.ReadInt32()));
 }

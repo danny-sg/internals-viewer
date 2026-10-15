@@ -9,8 +9,6 @@ public sealed record RowBufferColumn(int Ordinal,
                                      int Length,
                                      byte[] Data)
 {
-    public RowBufferPage? Page { get; init; }
-
     public bool IsByReference => Flags.HasFlag(RowBufferColumnFlags.ByReference);
 
     public bool IsTruncated => Flags.HasFlag(RowBufferColumnFlags.Truncated);
@@ -22,11 +20,6 @@ public sealed record RowBufferColumn(int Ordinal,
         if (Status != 0)
         {
             return $"Status {Status}";
-        }
-
-        if (Page is { } page)
-        {
-            return page.ToString();
         }
 
         if (IsUnreadable)

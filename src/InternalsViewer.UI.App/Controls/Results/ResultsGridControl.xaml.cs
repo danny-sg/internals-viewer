@@ -7,7 +7,6 @@ using Microsoft.UI.Xaml.Documents;
 using Microsoft.UI.Xaml.Media;
 using System;
 using System.Collections.Generic;
-using InternalsViewer.Query.FullTrace.RowBuffers;
 using Windows.Foundation;
 using WinUI.TableView;
 
@@ -123,8 +122,6 @@ public sealed partial class ResultsGridControl : UserControl
 
     public event EventHandler<CallValue>? CallClicked;
 
-    public event EventHandler<RowBufferPage>? PagePointerClicked;
-
     public event EventHandler<ResultCellMenuEventArgs>? CellMenuOpening;
 
     private TableView? ResultsTable { get; set; }
@@ -158,7 +155,6 @@ public sealed partial class ResultsGridControl : UserControl
                 PageClicked = OnPageClicked,
                 ObjectClicked = ObjectClicked is null ? null : OnObjectClicked,
                 CallClicked = CallClicked is null ? null : OnCallClicked,
-                PagePointerClicked = PagePointerClicked is null ? null : OnPagePointerClicked,
             };
 
             if (CreateHeaderStyle(column) is { } headerStyle)
@@ -412,8 +408,6 @@ public sealed partial class ResultsGridControl : UserControl
 
     private void OnCallClicked(CallValue value) => CallClicked?.Invoke(this, value);
 
-    private void OnPagePointerClicked(RowBufferPage pointer) => PagePointerClicked?.Invoke(this, pointer);
-
     private void OnContainerContentChanging(ListViewBase sender, ContainerContentChangingEventArgs args)
     {
         if (args.InRecycleQueue || args.ItemContainer is not { } row || StyleDetailsToggle(row))
@@ -502,7 +496,7 @@ public sealed partial class ResultsGridControl : UserControl
             return;
         }
 
-        ResultDetailsPanel.Fill(host, details(row), PagePointerClicked is null ? null : OnPagePointerClicked);
+        ResultDetailsPanel.Fill(host, details(row));
     }
 
     private static void OnRowNameChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)

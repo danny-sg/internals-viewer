@@ -93,8 +93,7 @@ public sealed class QueryViewModelFactory(ILogger<QueryViewModel> logger,
                                           PageTabViewModelFactory pageTabViewModelFactory,
                                           TraceDirectoryService traceDirectoryService,
                                           IBufferPoolInfoProvider bufferPoolInfoProvider,
-                                          SimulationTabViewModelFactory simulationTabViewModelFactory,
-                                          RowBufferPageResolverFactory rowBufferPageResolverFactory)
+                                          SimulationTabViewModelFactory simulationTabViewModelFactory)
 {
     public QueryViewModel Create(DatabaseSource database) => new(logger,
                                                                  queryRunner,
@@ -108,7 +107,6 @@ public sealed class QueryViewModelFactory(ILogger<QueryViewModel> logger,
                                                                  traceDirectoryService,
                                                                  bufferPoolInfoProvider,
                                                                  simulationTabViewModelFactory,
-                                                                 rowBufferPageResolverFactory,
                                                                  database);
 }
 
@@ -151,8 +149,6 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
     private readonly PageTabViewModelFactory _pageTabViewModelFactory;
 
     private readonly TraceDirectoryService _traceDirectoryService;
-
-    private readonly RowBufferPageResolverFactory _rowBufferPageResolverFactory;
 
     private bool _isRestoringLayout;
     private bool _layoutRestored;
@@ -343,12 +339,9 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
                           TraceDirectoryService traceDirectoryService,
                           IBufferPoolInfoProvider bufferPoolInfoProvider,
                           SimulationTabViewModelFactory simulationTabViewModelFactory,
-                          RowBufferPageResolverFactory rowBufferPageResolverFactory,
                           DatabaseSource database)
     {
         _simulationTabViewModelFactory = simulationTabViewModelFactory;
-
-        _rowBufferPageResolverFactory = rowBufferPageResolverFactory;
 
         Symbols = new SymbolsViewModel(logger, settingsViewModel);
 
@@ -2263,7 +2256,6 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
                             result.HoBtAccess,
                             result.MemoryMap,
                             result.RowBuffers,
-                            _rowBufferPageResolverFactory.Create(Database),
                             new RowBufferDecoder(Database,
                                                  i => iterators.GetValueOrDefault(i)?.Operator,
                                                  (i, o) => batchDecoder.GetColumn(result.Batches.GetProducer(i) ?? i, o)),

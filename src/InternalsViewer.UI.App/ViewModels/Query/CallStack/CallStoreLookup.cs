@@ -23,7 +23,6 @@ public sealed class CallStoreLookup(TraceCallStore store,
                                   HoBtAccessMap hobtAccess,
                                   MemoryMap memoryMap,
                                   RowBufferIndex rowBuffers,
-                                  RowBufferPageResolver? rowBufferPages,
                                   RowBufferDecoder? rowBufferDecoder,
                                   BatchIndex batches,
                                   BatchDecoder? batchDecoder,
@@ -37,8 +36,6 @@ public sealed class CallStoreLookup(TraceCallStore store,
     public TraceCallStore Store { get; } = store;
 
     public RowBufferIndex RowBuffers { get; } = rowBuffers;
-
-    public RowBufferPageResolver? RowBufferPages { get; } = rowBufferPages;
 
     public RowBufferDecoder? RowBufferDecoder { get; } = rowBufferDecoder;
 
