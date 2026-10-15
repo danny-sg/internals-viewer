@@ -161,21 +161,7 @@ internal static class ReplayBridge
     public delegate void MemoryMapCallback(IntPtr entries, int count);
 
     [UnmanagedFunctionPointer(CallingConvention.StdCall)]
-    public delegate void RowBufferCallback(IntPtr rows, int rowCount, IntPtr columns, int columnCount, IntPtr data, int dataLength);
-
-    [UnmanagedFunctionPointer(CallingConvention.StdCall)]
-    public delegate void BatchCallback(IntPtr batches,
-                                       int batchCount,
-                                       IntPtr vectors,
-                                       int vectorCount,
-                                       IntPtr selection,
-                                       int selectionCount,
-                                       IntPtr slots,
-                                       int slotCount,
-                                       IntPtr deepValues,
-                                       int deepValueCount,
-                                       IntPtr data,
-                                       int dataLength);
+    public delegate void HookCallback(IntPtr hookEvent, IntPtr view);
 
     [DllImport(Library, CharSet = CharSet.Unicode)]
     public static extern int OpenTrace(string replayLibraryPath, string tracePath, out TraceHandle trace);
@@ -208,22 +194,20 @@ internal static class ReplayBridge
                                           int eventWriterFunctionCount,
                                           MemoryMapFunction[] memoryMapFunctions,
                                           int memoryMapFunctionCount,
-                                          RowBufferRead[] rowBufferReads,
-                                          int rowBufferReadCount,
-                                          RowBufferLayout[] rowBufferLayouts,
-                                          int rowBufferLayoutCount,
-                                          ulong[] batchFunctions,
-                                          int batchFunctionCount,
+                                          ulong[] hookFunctions,
+                                          int hookFunctionCount,
                                           CallChunkCallback? logCalls,
                                           CallSpanCallback? logSpans,
                                           PointerValueCallback? logPointerValues,
                                           PublishedEventCallback? logPublishedEvents,
                                           MemoryMapCallback? logMemoryMap,
-                                          RowBufferCallback? logRowBuffers,
-                                          BatchCallback? logBatches,
+                                          HookCallback? onHook,
                                           ProgressCallback? progress,
                                           IntPtr cancel,
                                           out IntPtr tree);
+
+    [DllImport(Library)]
+    public static extern unsafe ulong ReadTraceMemory(IntPtr view, ulong address, byte* destination, ulong size);
 
     [DllImport(Library)]
     public static extern int GetCallNodeCount(IntPtr tree);

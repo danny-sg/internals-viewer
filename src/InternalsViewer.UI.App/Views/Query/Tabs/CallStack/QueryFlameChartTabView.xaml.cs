@@ -4,6 +4,7 @@ using InternalsViewer.Query.CallStack;
 using InternalsViewer.Query.FullTrace.Timeline.Enums;
 using InternalsViewer.Query.Plans.Model;
 using InternalsViewer.UI.App.Controls.Docking;
+using InternalsViewer.UI.App.Controls.FlameChart;
 using InternalsViewer.UI.App.ViewModels;
 using InternalsViewer.UI.App.ViewModels.Query;
 using InternalsViewer.UI.App.ViewModels.Query.CallStack;
@@ -41,6 +42,8 @@ public sealed partial class QueryFlameChartTabView : UserControl, IDocumentComma
     private GridLength _stackHeight = new(StackStar, GridUnitType.Star);
 
     private Button? _playButton;
+
+    private PlayheadStepMode _stepMode = PlayheadStepMode.Call;
 
     public QueryFlameChartTabView()
     {
@@ -101,6 +104,14 @@ public sealed partial class QueryFlameChartTabView : UserControl, IDocumentComma
                                  _memoryToggle,
                                  _callStackToggle,
                                  _playButton,
+                                 TabCommands.ToggleSplitButton("Choose what Previous Frame and Next Frame step to",
+                                                               "Step",
+                                                               (int)_stepMode,
+                                                               index => _stepMode = (PlayheadStepMode)index,
+                                                               "Call",
+                                                               "Same Call",
+                                                               "Batch",
+                                                               "Row"),
                                  TabCommands.Button(TabCommands.Glyph(StepBackGlyph), "Previous Frame", (_, _) => Step(forward: false)),
                                  TabCommands.Button(TabCommands.Glyph(StepForwardGlyph), "Next Frame", (_, _) => Step(forward: true)),
                                  _searchToggle);
@@ -265,7 +276,7 @@ public sealed partial class QueryFlameChartTabView : UserControl, IDocumentComma
     {
         Stack?.ClearSelection();
 
-        FlameChart.StepPlayhead(forward);
+        FlameChart.StepPlayhead(forward, _stepMode);
     }
 
     private void OnPreviousMatchClick(object sender, RoutedEventArgs e) => FlameChart.StepSearch(forward: false);

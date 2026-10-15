@@ -1,5 +1,4 @@
 using System.Buffers;
-using InternalsViewer.Query.FullTrace.Native;
 
 namespace InternalsViewer.Query.FullTrace.RowBuffers;
 
@@ -122,7 +121,7 @@ internal sealed partial class RowBufferTable
 
         private ArrayBufferWriter<byte> Data { get; } = new();
 
-        public void Add(BufferRow row, ReadOnlySpan<BufferColumn> columns, ReadOnlySpan<byte> data)
+        public void Add(RawRow row, ReadOnlySpan<RawColumn> columns, ReadOnlySpan<byte> data)
         {
             Rows.Add(new Row((int)row.Call, row.Id, row.Iterator, row.Buffer, GetLayout(columns), Values.Count, row.Format));
 
@@ -137,7 +136,7 @@ internal sealed partial class RowBufferTable
         public RowBufferTable Build()
             => new(function, instance, [.. Rows.OrderBy(r => r.Call)], [.. Values], [.. Bindings], [.. Data.WrittenSpan]);
 
-        private int GetLayout(ReadOnlySpan<BufferColumn> columns)
+        private int GetLayout(ReadOnlySpan<RawColumn> columns)
         {
             for (var index = Bindings.Count - 1; index >= 0; index--)
             {
@@ -159,7 +158,7 @@ internal sealed partial class RowBufferTable
             return Bindings.Count - 1;
         }
 
-        private static bool IsLayout(Binding[] bindings, ReadOnlySpan<BufferColumn> columns)
+        private static bool IsLayout(Binding[] bindings, ReadOnlySpan<RawColumn> columns)
         {
             if (bindings.Length != columns.Length)
             {
@@ -177,6 +176,6 @@ internal sealed partial class RowBufferTable
             return true;
         }
 
-        private static Binding GetBinding(BufferColumn column) => new(column.RecordOffset, column.BindingFlags, column.FixedLength);
+        private static Binding GetBinding(RawColumn column) => new(column.RecordOffset, column.BindingFlags, column.FixedLength);
     }
 }

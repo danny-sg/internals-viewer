@@ -89,107 +89,26 @@ extern "C"
         uint32_t Reserved;
     };
 
-    struct RowBufferRead
+    struct HookEvent
     {
-        uint64_t Function;
-        int32_t  Register;
-        uint32_t Reserved;
-    };
-
-    struct RowBufferLayout
-    {
-        uint64_t VTable;
-        uint32_t BufferOffset;
-        uint32_t BindingsOffset;
-        uint32_t CountOffset;
-        uint32_t Format;
-    };
-
-    struct RowBufferRow
-    {
-        uint64_t Function;
-        uint64_t Instance;
-        uint64_t Iterator;
-        uint64_t Buffer;
-        uint64_t Id;
-        uint32_t Call;
-        uint32_t FirstColumn;
-        uint32_t ColumnCount;
-        uint32_t Format;
-    };
-
-    struct RowBufferColumn
-    {
-        uint32_t Data;
-        uint32_t Length;
-        uint32_t Captured;
-        int32_t  RecordOffset;
-        uint32_t BindingFlags;
-        uint16_t FixedLength;
-        uint8_t  Status;
-        uint8_t  Flags;
-    };
-
-    struct CapturedBatch
-    {
-        uint64_t Function;
-        uint64_t Instance;
-        uint64_t Iterator;
-        uint64_t Batch;
-        uint64_t Consumer;
-        uint64_t Id;
-        uint32_t Call;
-        uint32_t FirstSelected;
-        uint32_t SelectedCount;
-        uint32_t FirstVector;
-        uint32_t VectorCount;
-        uint32_t Flags;
-        uint32_t Capacity;
-        uint32_t Reserved;
-    };
-
-    struct CapturedVector
-    {
-        uint32_t FirstSlot;
-        uint32_t SlotCount;
-        uint32_t FirstDeepValue;
-        uint32_t DeepValueCount;
-        uint16_t VectorId;
-        uint16_t Flags;
-        uint32_t Reserved;
-    };
-
-    struct CapturedDeepValue
-    {
-        uint32_t Slot;
-        uint32_t Data;
-        uint32_t Length;
-        uint32_t Captured;
+        uint64_t        Function;
+        uint64_t        Instance;
+        uint64_t        Id;
+        uint64_t        CallCount;
+        uint64_t        Arguments[4];
+        uint64_t        ReturnValue;
+        const uint64_t* Callers;
+        uint32_t        CallerCount;
+        uint32_t        Call;
+        uint32_t        Thread;
+        uint32_t        Type;
     };
 
     typedef void(__stdcall* PointerValueCallback)(const PointerValue* values, int32_t count);
 
     typedef void(__stdcall* MemoryMapCallback)(const MemoryMapEntry* entries, int32_t count);
 
-    typedef void(__stdcall* RowBufferCallback)(const RowBufferRow*    rows,
-                                               int32_t                rowCount,
-                                               const RowBufferColumn* columns,
-                                               int32_t                columnCount,
-                                               const uint8_t*         data,
-                                               int32_t                dataLength);
-
-    typedef void(__stdcall* BatchCallback)(const CapturedBatch*     batches,
-                                           int32_t                  batchCount,
-                                           const CapturedVector*    vectors,
-                                           int32_t                  vectorCount,
-                                           const uint16_t*          selection,
-                                           int32_t                  selectionCount,
-                                           const uint64_t*          slots,
-                                           int32_t                  slotCount,
-                                           const CapturedDeepValue* deepValues,
-                                           int32_t                  deepValueCount,
-                                           const uint8_t*           data,
-                                           int32_t                  dataLength);
+    typedef void(__stdcall* HookCallback)(const HookEvent* hookEvent, const void* view);
 
     typedef void(__stdcall* PublishedEventCallback)(const PublishedEvent* publishedEvents, int32_t count);
 
@@ -219,22 +138,19 @@ extern "C"
                                                int32_t                eventWriterFunctionCount,
                                                const MemoryMapFunction* memoryMapFunctions,
                                                int32_t                memoryMapFunctionCount,
-                                               const RowBufferRead*   rowBufferReads,
-                                               int32_t                rowBufferReadCount,
-                                               const RowBufferLayout* rowBufferLayouts,
-                                               int32_t                rowBufferLayoutCount,
-                                               const uint64_t*        batchFunctions,
-                                               int32_t                batchFunctionCount,
+                                               const uint64_t*        hookFunctions,
+                                               int32_t                hookFunctionCount,
                                                CallChunkCallback      logCalls,
                                                CallSpanCallback       logSpans,
                                                PointerValueCallback   logPointerValues,
                                                PublishedEventCallback logPublishedEvents,
                                                MemoryMapCallback      logMemoryMap,
-                                               RowBufferCallback      logRowBuffers,
-                                               BatchCallback          logBatches,
+                                               HookCallback           onHook,
                                                ProgressCallback       progress,
                                                volatile int32_t*      cancel,
                                                void**                 tree);
+
+    __declspec(dllexport) uint64_t ReadTraceMemory(const void* view, uint64_t address, void* destination, uint64_t size);
 
     __declspec(dllexport) int32_t GetCallNodeCount(void* tree);
 

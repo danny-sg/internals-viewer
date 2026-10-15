@@ -1,6 +1,5 @@
 using System.Runtime.InteropServices;
 using InternalsViewer.Query.FullTrace.Calls;
-using InternalsViewer.Query.FullTrace.Native;
 using InternalsViewer.Query.Helpers;
 
 namespace InternalsViewer.Query.FullTrace.RowBuffers;
@@ -99,12 +98,7 @@ public sealed partial class RowBufferIndex
     {
         private Dictionary<(ulong Address, ulong Instance), RowBufferTable.Builder> Builders { get; } = [];
 
-        public unsafe void Add(IntPtr rows, int rowCount, IntPtr columns, int columnCount, IntPtr data, int dataLength)
-            => Add(new ReadOnlySpan<BufferRow>((void*)rows, rowCount),
-                   new ReadOnlySpan<BufferColumn>((void*)columns, columnCount),
-                   new ReadOnlySpan<byte>((void*)data, dataLength));
-
-        public void Add(ReadOnlySpan<BufferRow> rows, ReadOnlySpan<BufferColumn> columns, ReadOnlySpan<byte> data)
+        public void Add(ReadOnlySpan<RawRow> rows, ReadOnlySpan<RawColumn> columns, ReadOnlySpan<byte> data)
         {
             foreach (var row in rows)
             {
@@ -123,7 +117,7 @@ public sealed partial class RowBufferIndex
 
         public RowBufferIndex Build() => new(Builders.ToDictionary(b => b.Key, b => b.Value.Build()));
 
-        private static bool IsValid(BufferRow row, ReadOnlySpan<BufferColumn> columns, int dataLength)
+        private static bool IsValid(RawRow row, ReadOnlySpan<RawColumn> columns, int dataLength)
         {
             if ((ulong)row.FirstColumn + row.ColumnCount > (ulong)columns.Length)
             {

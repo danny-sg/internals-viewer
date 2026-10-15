@@ -63,7 +63,7 @@ public class TraceRowBufferMarksTests
 
         var batches = new BatchIndex.Log();
 
-        batches.Add([new CapturedBatch(GetRow, Iterator, Iterator, 0x20F_0CA6_ECA0, 0, 100, 0, 0, 0, 0, 0, 0)], [], [], [], [], []);
+        batches.Add([new RawBatch(GetRow, Iterator, Iterator, 0x20F_0CA6_ECA0, 0, 100, 0, 0, 0, 0, 0, 0)], [], [], [], [], []);
 
         var marks = TraceRowBufferMarks.Build(timeline, RowBufferIndex.Empty, batches.Build());
 
@@ -111,8 +111,8 @@ public class TraceRowBufferMarksTests
 
         foreach (var (function, instance, call) in calls)
         {
-            log.Add([new BufferRow(function, instance, Iterator, 0x1F4_EEAE_2000, 100 + call, call, 0, 1)],
-                    [new BufferColumn(0, 4, 4, 4, 2, 4, 0, 0)],
+            log.Add([new RawRow(function, instance, Iterator, 0x1F4_EEAE_2000, 100 + call, call, 0, 1)],
+                    [new RawColumn(0, 4, 4, 4, 2, 4, 0, 0)],
                     [1, 0, 0, 0]);
         }
 

@@ -1,5 +1,4 @@
 using System.Buffers;
-using InternalsViewer.Query.FullTrace.Native;
 
 namespace InternalsViewer.Query.FullTrace.Batches;
 
@@ -177,11 +176,11 @@ internal sealed partial class BatchTable
 
         private ArrayBufferWriter<byte> Data { get; } = new();
 
-        public void Add(CapturedBatch batch,
-                        ReadOnlySpan<CapturedVector> vectors,
+        public void Add(RawBatch batch,
+                        ReadOnlySpan<RawVector> vectors,
                         ReadOnlySpan<ushort> selection,
                         ReadOnlySpan<ulong> slots,
-                        ReadOnlySpan<CapturedDeepValue> deepValues,
+                        ReadOnlySpan<RawDeepValue> deepValues,
                         ReadOnlySpan<byte> data)
         {
             Captures.Add(new Capture((int)batch.Call,

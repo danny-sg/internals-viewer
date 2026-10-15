@@ -94,133 +94,11 @@ namespace
 
     constexpr uint64_t PageSize = 0x1000;
 
-    constexpr uint64_t BindingCountOffset = 0x62;
+    constexpr uint32_t EntryHook = 0;
 
-    constexpr uint64_t BindingArrayOffset = 0x70;
+    constexpr uint32_t ReturnHook = 1;
 
-    constexpr size_t BindingSize = 0x50;
-
-    constexpr size_t BindingRecordOffset = 0x00;
-
-    constexpr size_t BindingValueOffset = 0x28;
-
-    constexpr size_t BindingStatusOffset = 0x30;
-
-    constexpr size_t BindingFixedLengthOffset = 0x3C;
-
-    constexpr size_t BindingFlagsOffset = 0x40;
-
-    constexpr size_t BindingInfoOffset = 0x48;
-
-    constexpr uint64_t BindingInfoLengthOffset = 0x18;
-
-    constexpr uint64_t BindingInfoFlagsOffset = 0x2A;
-
-    constexpr uint32_t ByReferenceBinding = 0x800;
-
-    constexpr uint32_t LengthBinding = 0x100;
-
-    constexpr uint8_t AlternateBufferBinding = 0x10;
-
-    constexpr uint16_t MaximumBindings = 1024;
-
-    constexpr uint32_t BindingRowFormat = 0;
-
-    constexpr uint32_t ValueRowFormat = 1;
-
-    constexpr uint64_t RowValueSize = 0x20;
-
-    constexpr uint64_t RowValueStatusOffset = 0x00;
-
-    constexpr uint64_t RowValueDataOffset = 0x08;
-
-    constexpr uint64_t RowValueLengthOffset = 0x10;
-
-    constexpr uint64_t MaximumRowBufferBytes = 0x10000;
-
-    constexpr uint64_t MaximumValueBytes = 8000;
-
-    constexpr uint8_t ByReferenceColumn = 1;
-
-    constexpr uint8_t LengthColumn = 2;
-
-    constexpr uint8_t TruncatedColumn = 4;
-
-    constexpr uint8_t UnreadableColumn = 8;
-
-    constexpr uint8_t PageReferenceColumn = 16;
-
-    constexpr uint8_t UnreadableBindingColumn = 32;
-
-    constexpr uint8_t AlternateBufferColumn = 64;
-
-    constexpr uint8_t UnreadableSlotColumn = 128;
-
-    constexpr uint64_t DataPageSize = 0x2000;
-
-    constexpr uint64_t PageHeaderSize = 96;
-
-    constexpr uint64_t PageIdOffset = 0x20;
-
-    constexpr size_t PageIdSize = 6;
-
-    constexpr size_t PageIdFileOffset = 4;
-
-    constexpr uint64_t LsnOffset = 0x28;
-
-    constexpr size_t LsnSize = 10;
-
-    constexpr uint8_t PageHeaderVersion = 1;
-
-    constexpr size_t PageReferenceSize = sizeof(uint16_t) + PageIdSize + LsnSize;
-
-    constexpr size_t RowBufferChunkRows = 4096;
-
-    constexpr size_t RowBufferChunkBytes = 1 << 22;
-
-    constexpr uint64_t BatchIdsOffset = 0x08;
-
-    constexpr uint64_t BatchVectorsOffset = 0x08;
-
-    constexpr uint64_t BatchPureOffset = 0x10;
-
-    constexpr uint64_t BatchVectorCountOffset = 0x1C;
-
-    constexpr uint64_t BatchCapacityOffset = 0x24;
-
-    constexpr uint64_t BatchRowCountOffset = 0x28;
-
-    constexpr uint64_t BatchSelectionOffset = 0x38;
-
-    constexpr uint64_t BatchVectorEntrySize = 0x58;
-
-    constexpr uint16_t MaximumBatchVectors = 1024;
-
-    constexpr int32_t MaximumBatchSelection = 0x10000;
-
-    constexpr uint64_t LargestInlineTag = 0xF;
-
-    constexpr uint64_t DeepLengthOffset = 2;
-
-    constexpr uint32_t UnreadableBatch = 1;
-
-    constexpr uint32_t UnreadableSelection = 2;
-
-    constexpr uint32_t ImplicitSelection = 4;
-
-    constexpr uint16_t PureVector = 1;
-
-    constexpr uint16_t UnreadableVector = 2;
-
-    constexpr uint16_t MissingVector = 4;
-
-    constexpr uint16_t UnreadableSlots = 8;
-
-    constexpr size_t BatchChunkBatches = 1024;
-
-    constexpr size_t BatchChunkSlots = 1 << 20;
-
-    constexpr size_t BatchChunkBytes = 1 << 22;
+    constexpr uint32_t AbandonedHook = 2;
 
     constexpr size_t PublishedEventChunk = 65536;
 
@@ -317,6 +195,7 @@ namespace
         uint32_t        Flags;
         std::array<uint64_t, StackArgumentCount> StackArguments;
         uint64_t        Id;
+        bool            IsHooked;
     };
 
     uint64_t OwnerOf(std::vector<StackFrame> const& stack, uint64_t address, uint64_t stackPointer)
@@ -386,41 +265,6 @@ namespace
         std::vector<ModuleEntry>                               Modules;
     };
 
-    struct ColumnBinding
-    {
-        int32_t  RecordOffset;
-        uint32_t Flags;
-        uint16_t FixedLength;
-        uint8_t  Unreadable;
-        uint64_t ValueOffset;
-        uint64_t StatusOffset;
-        uint64_t LengthOffset;
-    };
-
-    struct RowBufferStart
-    {
-        uint64_t               Iterator = 0;
-        RowBufferLayout const* Layout = nullptr;
-        uint64_t               Buffer = 0;
-        uint64_t               Bindings = 0;
-        uint32_t               Count = 0;
-    };
-
-    struct BatchStart
-    {
-        uint64_t Iterator = 0;
-        uint64_t Data = 0;
-        uint64_t Consumer = 0;
-    };
-
-    struct BindingSet
-    {
-        uint16_t                   Count = 0;
-        uint64_t                   FirstValueOffset = 0;
-        uint32_t                   FirstFlags = 0;
-        std::vector<ColumnBinding> Columns;
-    };
-
     size_t ReadMemory(IThreadView const& thread, uint64_t address, void* destination, size_t size)
     {
         auto* bytes = static_cast<uint8_t*>(destination);
@@ -449,21 +293,6 @@ namespace
     bool ReadValue(IThreadView const& thread, uint64_t address, T& value)
     {
         return ReadMemory(thread, address, &value, sizeof(T)) == sizeof(T);
-    }
-
-    template <typename T>
-    T ReadField(uint8_t const* source, size_t offset)
-    {
-        T value{};
-
-        std::memcpy(&value, source + offset, sizeof(T));
-
-        return value;
-    }
-
-    bool IsInBuffer(uint64_t offset, uint64_t size)
-    {
-        return offset < MaximumRowBufferBytes && size <= MaximumRowBufferBytes - offset;
     }
 
     struct CallTree
@@ -495,838 +324,77 @@ namespace
         std::vector<MemoryMapEntry>                         MemoryMap;
         std::unordered_map<uint64_t, uint32_t>              LatestEntries;
         std::unordered_map<uint64_t, std::vector<uint32_t>> OwnedEntries;
-        std::unordered_map<uint64_t, int32_t>               RowBufferReads;
-        std::unordered_map<uint64_t, RowBufferLayout>       RowBufferLayouts;
-        RowBufferCallback                                   LogRowBuffers = nullptr;
-        std::vector<RowBufferRow>                           RowBufferRows;
-        std::vector<RowBufferColumn>                        RowBufferColumns;
-        std::vector<uint8_t>                                RowBufferData;
-        std::unordered_map<uint64_t, BindingSet>            BindingSets;
-        std::unordered_map<uint64_t, RowBufferStart>        RowBufferStarts;
-        std::unordered_set<uint64_t>                        BatchFunctions;
-        BatchCallback                                       LogBatches = nullptr;
-        std::unordered_map<uint64_t, BatchStart>            BatchStarts;
-        std::vector<CapturedBatch>                          Batches;
-        std::vector<CapturedVector>                         BatchVectors;
-        std::vector<uint16_t>                               BatchSelection;
-        std::vector<uint64_t>                               BatchSlots;
-        std::vector<CapturedDeepValue>                      BatchDeepValues;
-        std::vector<uint8_t>                                BatchData;
-        std::vector<uint16_t>                               BatchVectorIds;
-        std::vector<uint64_t>                               BatchBlock;
+        std::unordered_set<uint64_t>                        HookFunctions;
+        HookCallback                                        OnHook = nullptr;
+        std::vector<uint64_t>                               HookCallers;
 
         uint64_t NextCall()
         {
             return ++CallCount;
         }
 
-        int32_t RowBufferRegisterOf(uint64_t function) const
+        bool IsHooked(uint64_t function) const
         {
-            if (LogRowBuffers == nullptr || RowBufferReads.empty())
-            {
-                return -1;
-            }
-
-            auto const found = RowBufferReads.find(function);
-
-            return found == RowBufferReads.end() ? -1 : found->second;
+            return OnHook != nullptr && !HookFunctions.empty() && HookFunctions.contains(function);
         }
 
-        void BeginRowBuffer(IThreadView const& thread, uint64_t id, uint64_t iterator)
+        void HookEntry(IThreadView const&             thread,
+                       AMD64_CONTEXT const&           registers,
+                       LoggedFunction const&          function,
+                       uint64_t                       id,
+                       uint32_t                       call,
+                       uint32_t                       threadId,
+                       std::vector<StackFrame> const& stack)
         {
-            if (iterator < SmallestAddress)
-            {
-                return;
-            }
+            HookCallers.clear();
 
-            RowBufferStart start{ iterator };
-
-            if (!ReadLayout(thread, start))
-            {
-                return;
-            }
-
-            RowBufferStarts[id] = start;
-        }
-
-        bool ReadLayout(IThreadView const& thread, RowBufferStart& start) const
-        {
-            uint64_t vtable = 0;
-
-            if (!ReadValue(thread, start.Iterator, vtable))
-            {
-                return true;
-            }
-
-            auto const layout = RowBufferLayouts.find(vtable);
-
-            if (layout == RowBufferLayouts.end())
-            {
-                return false;
-            }
-
-            start.Layout = &layout->second;
-
-            uint64_t pointer = 0;
-
-            if (ReadValue(thread, start.Iterator + start.Layout->BufferOffset, pointer))
-            {
-                start.Buffer = pointer;
-            }
-
-            if (start.Layout->Format == ValueRowFormat)
-            {
-                uint32_t count = 0;
-
-                if (ReadValue(thread, start.Iterator + start.Layout->CountOffset, count))
-                {
-                    start.Count = count;
-                }
-            }
-            else if (ReadValue(thread, start.Iterator + start.Layout->BindingsOffset, pointer))
-            {
-                start.Bindings = pointer;
-            }
-
-            return true;
-        }
-
-        void EndRowBuffer(uint64_t id)
-        {
-            if (!RowBufferStarts.empty())
-            {
-                RowBufferStarts.erase(id);
-            }
-        }
-
-        void ReadRowBuffer(IThreadView const& thread, LoggedFunction const& function, uint32_t call, uint64_t id)
-        {
-            auto const found = RowBufferStarts.find(id);
-
-            if (found == RowBufferStarts.end())
-            {
-                return;
-            }
-
-            auto start = found->second;
-
-            RowBufferStarts.erase(found);
-
-            if (start.Layout == nullptr && (!ReadLayout(thread, start) || start.Layout == nullptr))
-            {
-                return;
-            }
-
-            auto const isValueRow = start.Layout->Format == ValueRowFormat;
-
-            if (start.Buffer == 0 || (isValueRow ? start.Count == 0 : start.Bindings == 0))
-            {
-                ReadLayout(thread, start);
-            }
-
-            if (isValueRow)
-            {
-                ReadValueRow(thread, function, call, start);
-
-                return;
-            }
-
-            auto const iterator = start.Iterator;
-
-            auto const buffer = start.Buffer;
-
-            auto const bindings = start.Bindings;
-
-            if (buffer < SmallestAddress || bindings < SmallestAddress)
-            {
-                return;
-            }
-
-            auto const* set = ReadBindings(thread, bindings);
-
-            if (set == nullptr)
-            {
-                return;
-            }
-
-            auto const first = static_cast<uint32_t>(RowBufferColumns.size());
-
-            for (auto const& binding : set->Columns)
-            {
-                RowBufferColumns.push_back(ReadColumn(thread, binding, buffer));
-            }
-
-            RowBufferRows.push_back(RowBufferRow{ function.Address,
-                                                  function.Instance,
-                                                  iterator,
-                                                  buffer,
-                                                  CallCount,
-                                                  call,
-                                                  first,
-                                                  static_cast<uint32_t>(set->Columns.size()),
-                                                  BindingRowFormat });
-
-            FlushRowBuffersWhenFull();
-        }
-
-        void ReadValueRow(IThreadView const& thread, LoggedFunction const& function, uint32_t call, RowBufferStart const& start)
-        {
-            if (start.Buffer < SmallestAddress || start.Count == 0 || start.Count > MaximumBindings)
-            {
-                return;
-            }
-
-            auto const first = static_cast<uint32_t>(RowBufferColumns.size());
-
-            for (uint32_t index = 0; index < start.Count; index++)
-            {
-                RowBufferColumns.push_back(ReadValueColumn(thread, start.Buffer + index * RowValueSize));
-            }
-
-            RowBufferRows.push_back(RowBufferRow{ function.Address,
-                                                  function.Instance,
-                                                  start.Iterator,
-                                                  start.Buffer,
-                                                  CallCount,
-                                                  call,
-                                                  first,
-                                                  start.Count,
-                                                  ValueRowFormat });
-
-            FlushRowBuffersWhenFull();
-        }
-
-        RowBufferColumn ReadValueColumn(IThreadView const& thread, uint64_t address)
-        {
-            RowBufferColumn column{ static_cast<uint32_t>(RowBufferData.size()), 0, 0, -1, 0, 0, 0, 0 };
-
-            if (!ReadValue(thread, address + RowValueStatusOffset, column.Status))
-            {
-                column.Flags = UnreadableColumn | UnreadableSlotColumn;
-
-                return column;
-            }
-
-            if (column.Status != 0)
-            {
-                return column;
-            }
-
-            uint64_t value = 0;
-
-            uint64_t length = 0;
-
-            if (!ReadValue(thread, address + RowValueDataOffset, value) || !ReadValue(thread, address + RowValueLengthOffset, length))
-            {
-                column.Flags = UnreadableColumn | UnreadableSlotColumn;
-
-                return column;
-            }
-
-            if (length == 0)
-            {
-                auto const* bytes = reinterpret_cast<uint8_t const*>(&value);
-
-                RowBufferData.insert(RowBufferData.end(), bytes, bytes + sizeof(value));
-
-                column.Length = sizeof(value);
-
-                column.Captured = sizeof(value);
-
-                return column;
-            }
-
-            column.Flags = ByReferenceColumn | LengthColumn;
-
-            column.Length = static_cast<uint32_t>((std::min)(length, uint64_t{ UINT32_MAX }));
-
-            return ReadValueBytes(thread, value, length, column);
-        }
-
-        void FlushRowBuffersWhenFull()
-        {
-            if (RowBufferRows.size() >= RowBufferChunkRows || RowBufferData.size() >= RowBufferChunkBytes)
-            {
-                FlushRowBuffers();
-            }
-        }
-
-        BindingSet const* ReadBindings(IThreadView const& thread, uint64_t bindings)
-        {
-            uint16_t count = 0;
-
-            uint64_t array = 0;
-
-            if (!ReadValue(thread, bindings + BindingCountOffset, count)
-                || !ReadValue(thread, bindings + BindingArrayOffset, array)
-                || count == 0
-                || count > MaximumBindings
-                || array < SmallestAddress)
-            {
-                return nullptr;
-            }
-
-            uint64_t firstValueOffset = 0;
-
-            uint32_t firstFlags = 0;
-
-            if (!ReadValue(thread, array + BindingValueOffset, firstValueOffset)
-                || !ReadValue(thread, array + BindingFlagsOffset, firstFlags))
-            {
-                return nullptr;
-            }
-
-            auto& set = BindingSets[array];
-
-            if (set.Count == count && set.FirstValueOffset == firstValueOffset && set.FirstFlags == firstFlags)
-            {
-                return &set;
-            }
-
-            set.Count = count;
-
-            set.FirstValueOffset = firstValueOffset;
-
-            set.FirstFlags = firstFlags;
-
-            set.Columns.clear();
-
-            for (size_t index = 0; index < count; index++)
-            {
-                set.Columns.push_back(ReadBinding(thread, array + index * BindingSize));
-            }
-
-            return &set;
-        }
-
-        static ColumnBinding ReadBinding(IThreadView const& thread, uint64_t address)
-        {
-            ColumnBinding binding{ -1, 0, 0, 0, 0, 0, 0 };
-
-            uint64_t info = 0;
-
-            uint8_t infoFlags = 0;
-
-            if (!ReadValue(thread, address + BindingRecordOffset, binding.RecordOffset))
-            {
-                binding.RecordOffset = -1;
-            }
-
-            if (!ReadValue(thread, address + BindingFlagsOffset, binding.Flags)
-                || !ReadValue(thread, address + BindingFixedLengthOffset, binding.FixedLength)
-                || !ReadValue(thread, address + BindingValueOffset, binding.ValueOffset)
-                || !ReadValue(thread, address + BindingStatusOffset, binding.StatusOffset)
-                || !ReadValue(thread, address + BindingInfoOffset, info)
-                || info < SmallestAddress
-                || !ReadValue(thread, info + BindingInfoLengthOffset, binding.LengthOffset)
-                || !ReadValue(thread, info + BindingInfoFlagsOffset, infoFlags))
-            {
-                binding.Unreadable = UnreadableBindingColumn;
-            }
-            else if ((infoFlags & AlternateBufferBinding) != 0)
-            {
-                binding.Unreadable = AlternateBufferColumn;
-            }
-
-            return binding;
-        }
-
-        RowBufferColumn ReadColumn(IThreadView const& thread, ColumnBinding const& binding, uint64_t buffer)
-        {
-            RowBufferColumn column{ static_cast<uint32_t>(RowBufferData.size()),
-                                    0,
-                                    0,
-                                    binding.RecordOffset,
-                                    binding.Flags,
-                                    binding.FixedLength,
-                                    0,
-                                    0 };
-
-            if (binding.Unreadable != 0)
-            {
-                column.Flags = UnreadableColumn | binding.Unreadable;
-
-                return column;
-            }
-
-            if (!IsInBuffer(binding.StatusOffset, sizeof(column.Status))
-                || !IsInBuffer(binding.ValueOffset, sizeof(uint64_t))
-                || !ReadValue(thread, buffer + binding.StatusOffset, column.Status))
-            {
-                column.Flags = UnreadableColumn | UnreadableSlotColumn;
-
-                return column;
-            }
-
-            if (column.Status != 0)
-            {
-                return column;
-            }
-
-            uint64_t length = binding.FixedLength;
-
-            if ((binding.Flags & LengthBinding) != 0)
-            {
-                if (!IsInBuffer(binding.LengthOffset, sizeof(length)) || !ReadValue(thread, buffer + binding.LengthOffset, length))
-                {
-                    column.Flags = UnreadableColumn | UnreadableSlotColumn;
-
-                    return column;
-                }
-
-                column.Flags |= LengthColumn;
-            }
-
-            column.Length = static_cast<uint32_t>((std::min)(length, uint64_t{ UINT32_MAX }));
-
-            if ((binding.Flags & ByReferenceBinding) == 0)
-            {
-                auto const stored = binding.FixedLength > 0 ? (std::min)(length, uint64_t{ binding.FixedLength }) : length;
-
-                return ReadValueBytes(thread, buffer + binding.ValueOffset, stored, column);
-            }
-
-            column.Flags |= ByReferenceColumn;
-
-            uint64_t pointer = 0;
-
-            if (!ReadValue(thread, buffer + binding.ValueOffset, pointer))
-            {
-                column.Flags |= UnreadableColumn | UnreadableSlotColumn;
-
-                return column;
-            }
-
-            if (ReadPageReference(thread, pointer, length, column))
-            {
-                return column;
-            }
-
-            return ReadValueBytes(thread, pointer, length, column);
-        }
-
-        RowBufferColumn ReadValueBytes(IThreadView const& thread, uint64_t address, uint64_t length, RowBufferColumn column)
-        {
-            auto const wanted = static_cast<size_t>((std::min)(length, MaximumValueBytes));
-
-            auto const offset = RowBufferData.size();
-
-            RowBufferData.resize(offset + wanted);
-
-            auto const found = address < SmallestAddress ? 0 : ReadMemory(thread, address, RowBufferData.data() + offset, wanted);
-
-            RowBufferData.resize(offset + found);
-
-            column.Captured = static_cast<uint32_t>(found);
-
-            if (found < wanted)
-            {
-                column.Flags |= UnreadableColumn;
-            }
-            else if (column.Captured < column.Length)
-            {
-                column.Flags |= TruncatedColumn;
-            }
-
-            return column;
-        }
-
-        bool ReadPageReference(IThreadView const& thread, uint64_t pointer, uint64_t length, RowBufferColumn& column)
-        {
-            auto const offset = pointer & (DataPageSize - 1);
-
-            if (pointer < SmallestAddress || offset < PageHeaderSize || length > DataPageSize - offset)
-            {
-                return false;
-            }
-
-            auto const page = pointer - offset;
-
-            std::array<uint8_t, PageIdSize> pageId{};
-
-            std::array<uint8_t, LsnSize> lsn{};
-
-            uint8_t version = 0;
-
-            if (!ReadValue(thread, page + PageIdOffset, pageId)
-                || !ReadValue(thread, page + LsnOffset, lsn)
-                || ReadField<uint16_t>(pageId.data(), PageIdFileOffset) == 0
-                || (ReadValue(thread, page, version) && version != PageHeaderVersion))
-            {
-                return false;
-            }
-
-            auto const reference = static_cast<uint16_t>(offset);
-
-            auto const* referenceBytes = reinterpret_cast<uint8_t const*>(&reference);
-
-            RowBufferData.insert(RowBufferData.end(), referenceBytes, referenceBytes + sizeof(reference));
-
-            RowBufferData.insert(RowBufferData.end(), pageId.begin(), pageId.end());
-
-            RowBufferData.insert(RowBufferData.end(), lsn.begin(), lsn.end());
-
-            column.Captured = static_cast<uint32_t>(PageReferenceSize);
-
-            column.Flags |= PageReferenceColumn;
-
-            return true;
-        }
-
-        bool IsBatchFunction(uint64_t function) const
-        {
-            return LogBatches != nullptr && !BatchFunctions.empty() && BatchFunctions.contains(function);
-        }
-
-        void BeginBatch(std::vector<StackFrame> const& stack, uint64_t id, uint64_t iterator, uint64_t data)
-        {
-            if (data < SmallestAddress)
-            {
-                return;
-            }
-
-            BatchStarts[id] = BatchStart{ iterator, data, ConsumerOf(stack, iterator) };
-        }
-
-        uint64_t ConsumerOf(std::vector<StackFrame> const& stack, uint64_t iterator) const
-        {
             for (auto frame = stack.rbegin(); frame != stack.rend(); ++frame)
             {
-                if (frame->Node < 0 || static_cast<size_t>(frame->Node) >= Nodes.size())
+                if (frame->Node >= 0 && static_cast<size_t>(frame->Node) < Nodes.size() && Nodes[frame->Node].Instance != 0)
                 {
-                    continue;
-                }
-
-                auto const instance = Nodes[frame->Node].Instance;
-
-                if (instance != 0 && instance != iterator)
-                {
-                    return instance;
+                    HookCallers.push_back(Nodes[frame->Node].Instance);
                 }
             }
 
-            return 0;
+            HookEvent const hookEvent{ function.Address,
+                                       function.Instance,
+                                       id,
+                                       CallCount,
+                                       { registers.Rcx, registers.Rdx, registers.R8, registers.R9 },
+                                       0,
+                                       HookCallers.data(),
+                                       static_cast<uint32_t>(HookCallers.size()),
+                                       call,
+                                       threadId,
+                                       EntryHook };
+
+            OnHook(&hookEvent, &thread);
         }
 
-        void EndBatch(uint64_t id)
+        void HookExit(StackFrame const& frame, IThreadView const* thread, uint32_t threadId)
         {
-            if (!BatchStarts.empty())
-            {
-                BatchStarts.erase(id);
-            }
-        }
+            uint64_t returnValue = 0;
 
-        void ReadBatch(IThreadView const& thread, LoggedFunction const& function, uint32_t call, uint64_t id)
-        {
-            auto const found = BatchStarts.find(id);
-
-            if (found == BatchStarts.end())
+            if (thread != nullptr)
             {
-                return;
+                CROSS_PLATFORM_CONTEXT const context = thread->GetCrossPlatformContext();
+
+                returnValue = context.Amd64Context.Rax;
             }
 
-            auto const start = found->second;
-
-            BatchStarts.erase(found);
-
-            uint64_t batch = 0;
-
-            uint64_t ids = 0;
-
-            uint16_t idCount = 0;
-
-            if (!ReadValue(thread, start.Data, batch)
-                || !ReadValue(thread, start.Data + BatchIdsOffset, ids)
-                || batch < SmallestAddress
-                || ids < SmallestAddress
-                || !ReadValue(thread, ids, idCount)
-                || idCount > MaximumBatchVectors)
-            {
-                return;
-            }
-
-            BatchVectorIds.resize(idCount);
-
-            auto const idBytes = idCount * sizeof(uint16_t);
-
-            if (idCount > 0 && ReadMemory(thread, ids + sizeof(uint16_t), BatchVectorIds.data(), idBytes) != idBytes)
-            {
-                return;
-            }
-
-            CapturedBatch captured{ function.Address,
-                                    function.Instance,
-                                    start.Iterator,
-                                    batch,
-                                    start.Consumer,
-                                    CallCount,
-                                    call,
-                                    static_cast<uint32_t>(BatchSelection.size()),
-                                    0,
-                                    static_cast<uint32_t>(BatchVectors.size()),
-                                    0,
-                                    0,
-                                    0,
-                                    0 };
-
-            int32_t capacity = 0;
-
-            if (ReadValue(thread, batch + BatchCapacityOffset, capacity) && capacity > 0 && capacity <= MaximumBatchSelection)
-            {
-                captured.Capacity = static_cast<uint32_t>(capacity);
-            }
-
-            uint64_t vectors = 0;
-
-            uint64_t pure = 0;
-
-            int32_t vectorCount = 0;
-
-            int32_t rowCount = 0;
-
-            uint64_t selection = 0;
-
-            if (!ReadValue(thread, batch + BatchVectorsOffset, vectors)
-                || !ReadValue(thread, batch + BatchPureOffset, pure)
-                || !ReadValue(thread, batch + BatchVectorCountOffset, vectorCount)
-                || !ReadValue(thread, batch + BatchRowCountOffset, rowCount)
-                || !ReadValue(thread, batch + BatchSelectionOffset, selection)
-                || rowCount < 0
-                || rowCount > MaximumBatchSelection
-                || vectorCount < 0
-                || vectors < SmallestAddress)
-            {
-                captured.Flags |= UnreadableBatch;
-
-                AddBatch(captured);
-
-                return;
-            }
-
-            ReadSelection(thread, selection, rowCount, captured);
-
-            for (auto const vectorId : BatchVectorIds)
-            {
-                BatchVectors.push_back(ReadVector(thread, vectorId, vectors, pure, vectorCount, captured));
-            }
-
-            captured.VectorCount = idCount;
-
-            AddBatch(captured);
-        }
-
-        void ReadSelection(IThreadView const& thread, uint64_t selection, int32_t rowCount, CapturedBatch& captured)
-        {
-            auto const count = static_cast<size_t>(rowCount);
-
-            BatchSelection.resize(captured.FirstSelected + count);
-
-            auto* rows = BatchSelection.data() + captured.FirstSelected;
-
-            if (selection < SmallestAddress)
-            {
-                for (size_t index = 0; index < count; index++)
-                {
-                    rows[index] = static_cast<uint16_t>(index);
-                }
-
-                captured.Flags |= ImplicitSelection;
-            }
-            else if (count > 0 && ReadMemory(thread, selection, rows, count * sizeof(uint16_t)) != count * sizeof(uint16_t))
-            {
-                BatchSelection.resize(captured.FirstSelected);
-
-                captured.Flags |= UnreadableSelection;
-
-                return;
-            }
-
-            captured.SelectedCount = static_cast<uint32_t>(count);
-        }
-
-        CapturedVector ReadVector(IThreadView const& thread,
-                                  uint16_t vectorId,
-                                  uint64_t vectors,
-                                  uint64_t pure,
-                                  int32_t vectorCount,
-                                  CapturedBatch const& captured)
-        {
-            CapturedVector vector{ static_cast<uint32_t>(BatchSlots.size()),
-                                   0,
-                                   static_cast<uint32_t>(BatchDeepValues.size()),
-                                   0,
-                                   vectorId,
-                                   0,
-                                   0 };
-
-            if (vectorId == 0 || vectorId > vectorCount)
-            {
-                vector.Flags |= MissingVector;
-
-                return vector;
-            }
-
-            auto const index = static_cast<uint64_t>(vectorId) - 1;
-
-            uint64_t buffer = 0;
-
-            if (!ReadValue(thread, vectors + index * BatchVectorEntrySize, buffer) || buffer < SmallestAddress)
-            {
-                vector.Flags |= UnreadableVector;
-
-                return vector;
-            }
-
-            uint8_t pureBits = 0;
-
-            if (pure >= SmallestAddress && ReadValue(thread, pure + index / 8, pureBits) && ((pureBits >> (index % 8)) & 1) != 0)
-            {
-                vector.Flags |= PureVector;
-
-                uint64_t slot = 0;
-
-                if (!ReadValue(thread, buffer, slot))
-                {
-                    vector.Flags |= UnreadableVector;
-
-                    return vector;
-                }
-
-                BatchSlots.push_back(slot);
-            }
-            else
-            {
-                ReadSlots(thread, buffer, captured, vector);
-            }
-
-            vector.SlotCount = static_cast<uint32_t>(BatchSlots.size()) - vector.FirstSlot;
-
-            for (uint32_t slot = 0; slot < vector.SlotCount; slot++)
-            {
-                ReadDeepValue(thread, slot, BatchSlots[vector.FirstSlot + slot]);
-            }
-
-            vector.DeepValueCount = static_cast<uint32_t>(BatchDeepValues.size()) - vector.FirstDeepValue;
-
-            return vector;
-        }
-
-        void ReadSlots(IThreadView const& thread, uint64_t buffer, CapturedBatch const& captured, CapturedVector& vector)
-        {
-            if (captured.SelectedCount == 0)
-            {
-                return;
-            }
-
-            auto const* selection = BatchSelection.data() + captured.FirstSelected;
-
-            auto const rowCount = static_cast<size_t>(*std::max_element(selection, selection + captured.SelectedCount)) + 1;
-
-            BatchBlock.resize(rowCount);
-
-            auto const readSlots = ReadMemory(thread, buffer, BatchBlock.data(), rowCount * sizeof(uint64_t)) / sizeof(uint64_t);
-
-            for (size_t row = 0; row < rowCount; row++)
-            {
-                uint64_t slot = 0;
-
-                if (row < readSlots)
-                {
-                    slot = BatchBlock[row];
-                }
-                else if (!ReadValue(thread, buffer + row * sizeof(uint64_t), slot))
-                {
-                    vector.Flags |= UnreadableSlots;
-                }
-
-                BatchSlots.push_back(slot);
-            }
-        }
-
-        void ReadDeepValue(IThreadView const& thread, uint32_t slot, uint64_t value)
-        {
-            if ((value & 1) == 0 || value <= LargestInlineTag)
-            {
-                return;
-            }
-
-            auto const pointer = value & ~1ull;
-
-            CapturedDeepValue deep{ slot, static_cast<uint32_t>(BatchData.size()), 0, 0 };
-
-            uint16_t length = 0;
-
-            if (pointer >= SmallestAddress && ReadValue(thread, pointer - DeepLengthOffset, length))
-            {
-                deep.Length = length;
-
-                auto const wanted = static_cast<size_t>((std::min)(uint64_t{ length }, MaximumValueBytes));
-
-                BatchData.resize(deep.Data + wanted);
-
-                deep.Captured = static_cast<uint32_t>(ReadMemory(thread, pointer, BatchData.data() + deep.Data, wanted));
-
-                BatchData.resize(deep.Data + deep.Captured);
-            }
-
-            BatchDeepValues.push_back(deep);
-        }
-
-        void AddBatch(CapturedBatch const& captured)
-        {
-            Batches.push_back(captured);
-
-            if (Batches.size() >= BatchChunkBatches || BatchSlots.size() >= BatchChunkSlots || BatchData.size() >= BatchChunkBytes)
-            {
-                FlushBatches();
-            }
-        }
-
-        void FlushBatches()
-        {
-            if (LogBatches == nullptr || Batches.empty())
-            {
-                return;
-            }
-
-            LogBatches(Batches.data(),
-                       static_cast<int32_t>(Batches.size()),
-                       BatchVectors.data(),
-                       static_cast<int32_t>(BatchVectors.size()),
-                       BatchSelection.data(),
-                       static_cast<int32_t>(BatchSelection.size()),
-                       BatchSlots.data(),
-                       static_cast<int32_t>(BatchSlots.size()),
-                       BatchDeepValues.data(),
-                       static_cast<int32_t>(BatchDeepValues.size()),
-                       BatchData.data(),
-                       static_cast<int32_t>(BatchData.size()));
-
-            Batches.clear();
-            BatchVectors.clear();
-            BatchSelection.clear();
-            BatchSlots.clear();
-            BatchDeepValues.clear();
-            BatchData.clear();
-        }
-
-        void FlushRowBuffers()
-        {
-            if (LogRowBuffers == nullptr || RowBufferRows.empty())
-            {
-                return;
-            }
-
-            LogRowBuffers(RowBufferRows.data(),
-                          static_cast<int32_t>(RowBufferRows.size()),
-                          RowBufferColumns.data(),
-                          static_cast<int32_t>(RowBufferColumns.size()),
-                          RowBufferData.data(),
-                          static_cast<int32_t>(RowBufferData.size()));
-
-            RowBufferRows.clear();
-            RowBufferColumns.clear();
-            RowBufferData.clear();
+            HookEvent const hookEvent{ frame.Function->Address,
+                                       frame.Function->Instance,
+                                       frame.Id,
+                                       CallCount,
+                                       {},
+                                       returnValue,
+                                       nullptr,
+                                       0,
+                                       frame.LoggedCall,
+                                       threadId,
+                                       thread != nullptr ? ReturnHook : AbandonedHook };
+
+            OnHook(&hookEvent, thread);
         }
 
         uint32_t OperationOf(uint64_t function) const
@@ -1855,16 +923,6 @@ namespace
 
         values[ThreadValue] |= ReturnedFlag;
 
-        if (!tree.RowBufferStarts.empty())
-        {
-            tree.ReadRowBuffer(thread, *frame.Function, frame.LoggedCall, frame.Id);
-        }
-
-        if (!tree.BatchStarts.empty())
-        {
-            tree.ReadBatch(thread, *frame.Function, frame.LoggedCall, frame.Id);
-        }
-
         auto const* reads = tree.ReadsOf(frame.Function->Address);
 
         if (reads == nullptr)
@@ -2008,9 +1066,10 @@ namespace
 
             Release(tree, frame, thread, returnTarget);
 
-            tree.EndRowBuffer(frame.Id);
-
-            tree.EndBatch(frame.Id);
+            if (frame.IsHooked)
+            {
+                tree.HookExit(frame, returned ? thread : nullptr, threadId);
+            }
 
             tree.EndScope(frame.Id);
         }
@@ -2138,15 +1197,11 @@ namespace
 
             ReadArguments(tree, *thread, registers, returnAddress, logged, stackArguments);
 
-            if (auto const instanceRegister = tree.RowBufferRegisterOf(target);
-                instanceRegister >= 0 && logged.Function != nullptr)
-            {
-                tree.BeginRowBuffer(*thread, id, arguments[instanceRegister]);
-            }
+            auto const isHooked = logged.Function != nullptr && tree.IsHooked(target);
 
-            if (logged.Function != nullptr && tree.IsBatchFunction(target))
+            if (isHooked)
             {
-                tree.BeginBatch(stack, id, registers.Rcx, registers.Rdx);
+                tree.HookEntry(*thread, registers, *logged.Function, id, logged.Index, threadId, stack);
             }
 
             stack.push_back(StackFrame{ stackPointer,
@@ -2160,7 +1215,8 @@ namespace
                                         logged.Index,
                                         0,
                                         stackArguments,
-                                        id });
+                                        id,
+                                        isHooked });
 
             if (tree.LoggedSinceFlush >= IdleFlushInterval)
             {
@@ -2495,19 +1551,14 @@ extern "C"
                          int32_t                eventWriterFunctionCount,
                          const MemoryMapFunction* memoryMapFunctions,
                          int32_t                memoryMapFunctionCount,
-                         const RowBufferRead*   rowBufferReads,
-                         int32_t                rowBufferReadCount,
-                         const RowBufferLayout* rowBufferLayouts,
-                         int32_t                rowBufferLayoutCount,
-                         const uint64_t*        batchFunctions,
-                         int32_t                batchFunctionCount,
+                         const uint64_t*        hookFunctions,
+                         int32_t                hookFunctionCount,
                          CallChunkCallback      logCalls,
                          CallSpanCallback       logSpans,
                          PointerValueCallback   logPointerValues,
                          PublishedEventCallback logPublishedEvents,
                          MemoryMapCallback      logMemoryMap,
-                         RowBufferCallback      logRowBuffers,
-                         BatchCallback          logBatches,
+                         HookCallback           onHook,
                          ProgressCallback       progress,
                          volatile int32_t*      cancel,
                          void**                 tree)
@@ -2554,28 +1605,11 @@ extern "C"
             result->MemoryMapFunctions[memoryMapFunctions[index].Address] = memoryMapFunctions[index].Operation;
         }
 
-        result->LogRowBuffers = logRowBuffers;
+        result->OnHook = onHook;
 
-        for (int32_t index = 0; index < rowBufferReadCount && logRowBuffers != nullptr; index++)
+        for (int32_t index = 0; index < hookFunctionCount && onHook != nullptr; index++)
         {
-            auto const& read = rowBufferReads[index];
-
-            if (read.Register >= 0 && read.Register < ArgumentRegisters)
-            {
-                result->RowBufferReads[read.Function] = read.Register;
-            }
-        }
-
-        for (int32_t index = 0; index < rowBufferLayoutCount && logRowBuffers != nullptr; index++)
-        {
-            result->RowBufferLayouts[rowBufferLayouts[index].VTable] = rowBufferLayouts[index];
-        }
-
-        result->LogBatches = logBatches;
-
-        for (int32_t index = 0; index < batchFunctionCount && logBatches != nullptr; index++)
-        {
-            result->BatchFunctions.insert(batchFunctions[index]);
+            result->HookFunctions.insert(hookFunctions[index]);
         }
 
         for (int32_t index = 0; index < eventPublisherFunctionCount && logPublishedEvents != nullptr; index++)
@@ -2624,29 +1658,11 @@ extern "C"
 
         result->FlushMemoryMap();
 
-        result->FlushRowBuffers();
-
-        result->FlushBatches();
-
         result->MemoryMap = {};
         result->LatestEntries.clear();
         result->OwnedEntries.clear();
 
-        result->RowBufferRows = {};
-        result->RowBufferColumns = {};
-        result->RowBufferData = {};
-        result->BindingSets.clear();
-        result->RowBufferStarts.clear();
-
-        result->Batches = {};
-        result->BatchVectors = {};
-        result->BatchSelection = {};
-        result->BatchSlots = {};
-        result->BatchDeepValues = {};
-        result->BatchData = {};
-        result->BatchVectorIds = {};
-        result->BatchBlock = {};
-        result->BatchStarts.clear();
+        result->HookCallers = {};
 
         result->Spans = {};
         result->PointerValues = {};
@@ -2671,6 +1687,16 @@ extern "C"
         *tree = result.release();
 
         return Success;
+    }
+
+    uint64_t ReadTraceMemory(const void* view, uint64_t address, void* destination, uint64_t size)
+    {
+        if (view == nullptr || destination == nullptr || size == 0)
+        {
+            return 0;
+        }
+
+        return ReadMemory(*static_cast<IThreadView const*>(view), address, destination, static_cast<size_t>(size));
     }
 
     int32_t GetCallNodeCount(void* tree)

@@ -9,6 +9,7 @@ using InternalsViewer.Query.Recording;
 using InternalsViewer.Query.FullTrace.Functions;
 using InternalsViewer.Query.FullTrace.Memory;
 using InternalsViewer.Query.FullTrace.Batches;
+using InternalsViewer.Query.FullTrace.Hooks;
 using InternalsViewer.Query.FullTrace.RowBuffers;
 
 namespace InternalsViewer.Query.FullTrace;
@@ -158,11 +159,11 @@ internal sealed class ReplaySession : IDisposable
 
         var rowBuffers = new RowBufferIndex.Log();
 
-        ReplayBridge.RowBufferCallback onRowBuffers = rowBuffers.Add;
-
         var batches = new BatchIndex.Log();
 
-        ReplayBridge.BatchCallback onBatches = batches.Add;
+        var hooks = new TraceHooks([new RowBufferHook(functions.RowBuffers, rowBuffers), new BatchHook(functions.Batches, batches)]);
+
+        ReplayBridge.HookCallback onHook = hooks.OnHook;
 
         try
         {
@@ -181,19 +182,14 @@ internal sealed class ReplaySession : IDisposable
                                                    functions.PublishedEvents.Writers.Length,
                                                    memoryMapFunctions,
                                                    memoryMapFunctions.Length,
-                                                   functions.RowBuffers.Reads,
-                                                   functions.RowBuffers.Reads.Length,
-                                                   functions.RowBuffers.Layouts,
-                                                   functions.RowBuffers.Layouts.Length,
-                                                   functions.Batches.Functions,
-                                                   functions.Batches.Functions.Length,
+                                                   hooks.Functions,
+                                                   hooks.Functions.Length,
                                                    onChunk,
                                                    onSpans,
                                                    onPointerValues,
                                                    onPublishedEvents,
                                                    onMemoryMap,
-                                                   onRowBuffers,
-                                                   onBatches,
+                                                   onHook,
                                                    onProgress,
                                                    cancel,
                                                    out var tree);
@@ -209,9 +205,7 @@ internal sealed class ReplaySession : IDisposable
 
             GC.KeepAlive(onMemoryMap);
 
-            GC.KeepAlive(onRowBuffers);
-
-            GC.KeepAlive(onBatches);
+            GC.KeepAlive(onHook);
 
             GC.KeepAlive(onProgress);
 
@@ -227,6 +221,11 @@ internal sealed class ReplaySession : IDisposable
                 ReplayBridge.GetCallNodes(tree, nodes, nodes.Length);
 
                 cancellationToken.ThrowIfCancellationRequested();
+
+                if (hooks.Failure is { } failure)
+                {
+                    throw new InvalidOperationException("A trace hook failed while the trace was replayed", failure);
+                }
 
                 using var images = new ImageText(Modules);
 

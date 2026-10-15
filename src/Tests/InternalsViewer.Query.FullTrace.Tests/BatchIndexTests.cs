@@ -2,7 +2,6 @@ using System.Text;
 using InternalsViewer.Query.CallStack;
 using InternalsViewer.Query.FullTrace.Batches;
 using InternalsViewer.Query.FullTrace.Calls;
-using InternalsViewer.Query.FullTrace.Native;
 
 using static InternalsViewer.Query.FullTrace.Tests.TraceCallRows;
 
@@ -196,7 +195,7 @@ public class BatchIndexTests
     {
         var log = new BatchIndex.Log();
 
-        log.Add([new CapturedBatch(Function, 0, Iterator, Address, Consumer, 100, 1, 0, 4, 0, 0, 0)], [], [0, 1, 2], [], [], []);
+        log.Add([new RawBatch(Function, 0, Iterator, Address, Consumer, 100, 1, 0, 4, 0, 0, 0)], [], [0, 1, 2], [], [], []);
 
         Assert.Equal(0, log.Build().Count);
     }
@@ -257,8 +256,8 @@ public class BatchIndexTests
 
         Add(log, call: 1, id: 100);
 
-        log.Add([new CapturedBatch(Filter, Consumer, Consumer, Address, Helper, 200, 1, 0, 1, 0, 1, 0)],
-                [new CapturedVector(0, 4, 0, 0, 1, 0)],
+        log.Add([new RawBatch(Filter, Consumer, Consumer, Address, Helper, 200, 1, 0, 1, 0, 1, 0)],
+                [new RawVector(0, 4, 0, 0, 1, 0)],
                 [3],
                 [0x600220, 0x6011C0, 0x602160, 0x603100],
                 [],
@@ -280,13 +279,13 @@ public class BatchIndexTests
     {
         var text = Encoding.ASCII.GetBytes("REF-0003148000");
 
-        log.Add([new CapturedBatch(Function, 0, Iterator, Address, Consumer, id, call, 0, 3, 0, 3, 0, 900)],
-                [new CapturedVector(0, 6, 0, 0, 1, 0),
-                 new CapturedVector(6, 1, 0, 0, 3, PureFlag),
-                 new CapturedVector(7, 6, 0, 1, 7, 0)],
+        log.Add([new RawBatch(Function, 0, Iterator, Address, Consumer, id, call, 0, 3, 0, 3, 0, 900)],
+                [new RawVector(0, 6, 0, 0, 1, 0),
+                 new RawVector(6, 1, 0, 0, 3, PureFlag),
+                 new RawVector(7, 6, 0, 1, 7, 0)],
                 [0, 2, 5],
                 [0x600220, 0x6011C0, 0x602160, 0x603100, 0x6040A0, 0x605040, DictionarySlot, 1, 1, DeepSlot, 1, 1, 1],
-                [new CapturedDeepValue(2, 0, (uint)text.Length, (uint)text.Length)],
+                [new RawDeepValue(2, 0, (uint)text.Length, (uint)text.Length)],
                 text);
     }
 }

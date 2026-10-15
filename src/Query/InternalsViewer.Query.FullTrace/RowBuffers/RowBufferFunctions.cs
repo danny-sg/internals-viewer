@@ -1,4 +1,3 @@
-using InternalsViewer.Query.FullTrace.Native;
 using InternalsViewer.Query.Helpers;
 
 namespace InternalsViewer.Query.FullTrace.RowBuffers;

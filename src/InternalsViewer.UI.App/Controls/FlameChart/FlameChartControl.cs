@@ -5,6 +5,7 @@ using InternalsViewer.Query.CallStack;
 using InternalsViewer.Query.FullTrace.Memory;
 using InternalsViewer.Query.FullTrace.Timeline;
 using InternalsViewer.Query.FullTrace.Timeline.Enums;
+using InternalsViewer.Query.Helpers;
 using InternalsViewer.UI.App.Models.Query.CallStack;
 using InternalsViewer.UI.App.ViewModels.Query.CallStack;
 using Microsoft.UI;
@@ -457,7 +458,29 @@ public sealed partial class FlameChartControl : Grid, IPlayheadChart, IDisposabl
     public IReadOnlyList<TraceThreadStack> GetCallStack()
         => CallStackPosition is { } position && _visible is { } timeline ? timeline.StackAt(_axis, position) : [];
 
-    public void StepPlayhead(bool forward) => StepTo(forward, matches: null, allRows: false);
+    public void StepPlayhead(bool forward) => StepPlayhead(forward, PlayheadStepMode.Call);
+
+    public void StepPlayhead(bool forward, PlayheadStepMode mode)
+    {
+        switch (mode)
+        {
+            case PlayheadStepMode.SameCall when _nodeMatches is { } matches:
+                StepTo(forward, matches, allRows: true);
+                break;
+
+            case PlayheadStepMode.Batch:
+                StepToMark(forward, isBatch: true);
+                break;
+
+            case PlayheadStepMode.Row:
+                StepToMark(forward, isBatch: false);
+                break;
+
+            default:
+                StepTo(forward, matches: null, allRows: false);
+                break;
+        }
+    }
 
     public void Dispose()
     {
@@ -558,6 +581,56 @@ public sealed partial class FlameChartControl : Grid, IPlayheadChart, IDisposabl
         {
             PlacePlayhead(target);
         }
+    }
+
+    private void StepToMark(bool forward, bool isBatch)
+    {
+        if (_visible is not { } timeline || RowBufferMarks is not { } marks)
+        {
+            return;
+        }
+
+        StopTransition();
+
+        var from = CallStackPosition ?? _viewStart;
+
+        double? next = null;
+
+        foreach (var thread in timeline.Threads)
+        {
+            var values = isBatch ? marks.GetBatchMarks(thread.ThreadId, _axis) : marks.GetMarks(thread.ThreadId, _axis);
+
+            next = forward ? FindMarkAfter(values, from, next) : FindMarkBefore(values, from, next);
+        }
+
+        if (next is { } target)
+        {
+            PlacePlayhead(target);
+        }
+    }
+
+    private static double? FindMarkAfter(ReadOnlySpan<double> values, double from, double? best)
+    {
+        var index = SortedSearch.FirstAfter(values, from);
+
+        if (index >= values.Length)
+        {
+            return best;
+        }
+
+        return best is { } limit && values[index] >= limit ? best : values[index];
+    }
+
+    private static double? FindMarkBefore(ReadOnlySpan<double> values, double from, double? best)
+    {
+        var index = SortedSearch.FirstAtOrAfter(values, from) - 1;
+
+        if (index < 0)
+        {
+            return best;
+        }
+
+        return best is { } limit && values[index] <= limit ? best : values[index];
     }
 
     private double? FindStartAfter(TraceTimelineRow row, bool[]? matches, double from, double? best)

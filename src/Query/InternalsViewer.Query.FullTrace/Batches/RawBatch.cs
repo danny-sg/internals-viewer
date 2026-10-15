@@ -1,9 +1,6 @@
-using System.Runtime.InteropServices;
+namespace InternalsViewer.Query.FullTrace.Batches;
 
-namespace InternalsViewer.Query.FullTrace.Native;
-
-[StructLayout(LayoutKind.Sequential)]
-internal readonly record struct CapturedBatch(ulong Function,
+internal readonly record struct RawBatch(ulong Function,
                                               ulong Instance,
                                               ulong Iterator,
                                               ulong Batch,
@@ -15,5 +12,4 @@ internal readonly record struct CapturedBatch(ulong Function,
                                               uint FirstVector,
                                               uint VectorCount,
                                               uint Flags,
-                                              uint Capacity = 0,
-                                              uint Reserved = 0);
+                                              uint Capacity = 0);

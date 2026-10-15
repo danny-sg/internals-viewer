@@ -1,6 +1,5 @@
 using System.Runtime.InteropServices;
 using InternalsViewer.Query.FullTrace.Calls;
-using InternalsViewer.Query.FullTrace.Native;
 
 namespace InternalsViewer.Query.FullTrace.Batches;
 
@@ -337,30 +336,11 @@ public sealed partial class BatchIndex
     {
         private Dictionary<(ulong Address, ulong Instance), BatchTable.Builder> Builders { get; } = [];
 
-        public unsafe void Add(IntPtr batches,
-                               int batchCount,
-                               IntPtr vectors,
-                               int vectorCount,
-                               IntPtr selection,
-                               int selectionCount,
-                               IntPtr slots,
-                               int slotCount,
-                               IntPtr deepValues,
-                               int deepValueCount,
-                               IntPtr data,
-                               int dataLength)
-            => Add(new ReadOnlySpan<CapturedBatch>((void*)batches, batchCount),
-                   new ReadOnlySpan<CapturedVector>((void*)vectors, vectorCount),
-                   new ReadOnlySpan<ushort>((void*)selection, selectionCount),
-                   new ReadOnlySpan<ulong>((void*)slots, slotCount),
-                   new ReadOnlySpan<CapturedDeepValue>((void*)deepValues, deepValueCount),
-                   new ReadOnlySpan<byte>((void*)data, dataLength));
-
-        public void Add(ReadOnlySpan<CapturedBatch> batches,
-                        ReadOnlySpan<CapturedVector> vectors,
+        public void Add(ReadOnlySpan<RawBatch> batches,
+                        ReadOnlySpan<RawVector> vectors,
                         ReadOnlySpan<ushort> selection,
                         ReadOnlySpan<ulong> slots,
-                        ReadOnlySpan<CapturedDeepValue> deepValues,
+                        ReadOnlySpan<RawDeepValue> deepValues,
                         ReadOnlySpan<byte> data)
         {
             foreach (var batch in batches)
@@ -380,11 +360,11 @@ public sealed partial class BatchIndex
 
         public BatchIndex Build() => new(Builders.ToDictionary(b => b.Key, b => b.Value.Build()));
 
-        private static bool IsValid(CapturedBatch batch,
-                                    ReadOnlySpan<CapturedVector> vectors,
+        private static bool IsValid(RawBatch batch,
+                                    ReadOnlySpan<RawVector> vectors,
                                     int selectionCount,
                                     int slotCount,
-                                    ReadOnlySpan<CapturedDeepValue> deepValues,
+                                    ReadOnlySpan<RawDeepValue> deepValues,
                                     int dataLength)
         {
             if ((ulong)batch.FirstSelected + batch.SelectedCount > (ulong)selectionCount
