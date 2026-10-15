@@ -163,6 +163,20 @@ internal static class ReplayBridge
     [UnmanagedFunctionPointer(CallingConvention.StdCall)]
     public delegate void RowBufferCallback(IntPtr rows, int rowCount, IntPtr columns, int columnCount, IntPtr data, int dataLength);
 
+    [UnmanagedFunctionPointer(CallingConvention.StdCall)]
+    public delegate void BatchCallback(IntPtr batches,
+                                       int batchCount,
+                                       IntPtr vectors,
+                                       int vectorCount,
+                                       IntPtr selection,
+                                       int selectionCount,
+                                       IntPtr slots,
+                                       int slotCount,
+                                       IntPtr deepValues,
+                                       int deepValueCount,
+                                       IntPtr data,
+                                       int dataLength);
+
     [DllImport(Library, CharSet = CharSet.Unicode)]
     public static extern int OpenTrace(string replayLibraryPath, string tracePath, out TraceHandle trace);
 
@@ -198,12 +212,15 @@ internal static class ReplayBridge
                                           int rowBufferReadCount,
                                           RowBufferLayout[] rowBufferLayouts,
                                           int rowBufferLayoutCount,
+                                          ulong[] batchFunctions,
+                                          int batchFunctionCount,
                                           CallChunkCallback? logCalls,
                                           CallSpanCallback? logSpans,
                                           PointerValueCallback? logPointerValues,
                                           PublishedEventCallback? logPublishedEvents,
                                           MemoryMapCallback? logMemoryMap,
                                           RowBufferCallback? logRowBuffers,
+                                          BatchCallback? logBatches,
                                           ProgressCallback? progress,
                                           IntPtr cancel,
                                           out IntPtr tree);

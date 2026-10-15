@@ -85,6 +85,11 @@ public sealed partial class CallTreeArgumentsPanelView : UserControl, IDocumentC
                 e.Menu.Items.Add(MenuItems.Create("Row Buffers", () => viewModel.ShowRowBuffers(node)));
             }
 
+            if (node.Frame is { } batchFrame && arguments.Lookup?.Batches.HasBatches(batchFrame.Address, batchFrame.Instance) == true)
+            {
+                e.Menu.Items.Add(MenuItems.Create("Batches", () => viewModel.ShowBatches(node)));
+            }
+
             e.Menu.Items.Add(MenuItems.Create("Scope", () => viewModel.Query.PlayheadStack.Scope(node)));
         }
 

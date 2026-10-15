@@ -1,5 +1,5 @@
 ﻿using System.Data;
-using InternalsViewer.Execution.BatchMode.Normalization;
+using InternalsViewer.Internals.BatchMode.Normalization;
 
 namespace InternalsViewer.Execution.BatchMode.Vectors;
 
@@ -17,23 +17,7 @@ public sealed record BatchColumn
 
     public DataIdSpace? IdSpace { get; set; }
 
-    public BatchValueDomain Domain => DataType switch
-    {
-        SqlDbType.BigInt or SqlDbType.Int or SqlDbType.SmallInt or SqlDbType.TinyInt or SqlDbType.Bit
-            or SqlDbType.Money or SqlDbType.SmallMoney
-            or SqlDbType.DateTime or SqlDbType.SmallDateTime => BatchValueDomain.Integer,
-
-        SqlDbType.Float or SqlDbType.Real => BatchValueDomain.Real,
-
-        SqlDbType.Decimal => BatchValueDomain.Numeric,
-
-        SqlDbType.Date or SqlDbType.DateTime2 or SqlDbType.Time or SqlDbType.DateTimeOffset => BatchValueDomain.Temporal,
-
-        SqlDbType.Char or SqlDbType.VarChar or SqlDbType.NChar or SqlDbType.NVarChar
-            => BatchValueDomain.Dictionary,
-
-        _ => BatchValueDomain.Deep
-    };
+    public BatchValueDomain Domain => BatchValueNormalizer.GetDomain(DataType);
 
     /// <summary>
     /// Whether this column's data ids can be compared with another's without reading either value

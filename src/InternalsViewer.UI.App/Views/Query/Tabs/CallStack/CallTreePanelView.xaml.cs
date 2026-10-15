@@ -479,6 +479,14 @@ public sealed partial class CallTreePanelView : UserControl, IDocumentCommands, 
 
                     break;
                 }
+                case "ShowBatches":
+                {
+                    item.Visibility = ContextNode?.Content is CallStackNode { HasBatches: true }
+                        ? Visibility.Visible
+                        : Visibility.Collapsed;
+
+                    break;
+                }
             }
         }
     }
@@ -542,6 +550,24 @@ public sealed partial class CallTreePanelView : UserControl, IDocumentCommands, 
             e.Handled = true;
 
             ViewModel?.ShowRowBuffers(node);
+        }
+    }
+
+    private void OnShowBatchesClick(object sender, RoutedEventArgs e)
+    {
+        if (ContextNode?.Content is CallStackNode node)
+        {
+            ViewModel?.ShowBatches(node);
+        }
+    }
+
+    private void OnNodeBatchesTapped(object sender, TappedRoutedEventArgs e)
+    {
+        if (sender is FrameworkElement { DataContext: TreeViewNode { Content: CallStackNode node } })
+        {
+            e.Handled = true;
+
+            ViewModel?.ShowBatches(node);
         }
     }
 

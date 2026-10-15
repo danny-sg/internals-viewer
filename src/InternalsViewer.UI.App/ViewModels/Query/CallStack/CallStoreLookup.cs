@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 using InternalsViewer.Query.CallStack;
 using InternalsViewer.Query.CallStack.Arguments;
 using InternalsViewer.Query.FullTrace.Arguments;
+using InternalsViewer.Query.FullTrace.Batches;
 using InternalsViewer.Query.FullTrace.Calls;
 using InternalsViewer.Query.FullTrace.Iterators;
 using InternalsViewer.Query.FullTrace.Locators;
@@ -23,6 +24,8 @@ public sealed class CallStoreLookup(TraceCallStore store,
                                   RowBufferIndex rowBuffers,
                                   RowBufferPageResolver? rowBufferPages,
                                   RowBufferDecoder? rowBufferDecoder,
+                                  BatchIndex batches,
+                                  BatchDecoder? batchDecoder,
                                   SymbolsViewModel symbols,
                                   Func<ulong, string?> getHoBtName)
 {
@@ -37,6 +40,10 @@ public sealed class CallStoreLookup(TraceCallStore store,
     public RowBufferPageResolver? RowBufferPages { get; } = rowBufferPages;
 
     public RowBufferDecoder? RowBufferDecoder { get; } = rowBufferDecoder;
+
+    public BatchIndex Batches { get; } = batches;
+
+    public BatchDecoder? BatchDecoder { get; } = batchDecoder;
 
     private TraceValueSearch Search { get; } = new(store);
 

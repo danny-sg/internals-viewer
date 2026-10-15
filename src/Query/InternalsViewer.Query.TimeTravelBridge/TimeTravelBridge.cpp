@@ -166,6 +166,48 @@ namespace
 
     constexpr size_t RowBufferChunkBytes = 1 << 22;
 
+    constexpr uint64_t BatchIdsOffset = 0x08;
+
+    constexpr uint64_t BatchVectorsOffset = 0x08;
+
+    constexpr uint64_t BatchPureOffset = 0x10;
+
+    constexpr uint64_t BatchVectorCountOffset = 0x1C;
+
+    constexpr uint64_t BatchRowCountOffset = 0x28;
+
+    constexpr uint64_t BatchSelectionOffset = 0x38;
+
+    constexpr uint64_t BatchVectorEntrySize = 0x58;
+
+    constexpr uint16_t MaximumBatchVectors = 1024;
+
+    constexpr int32_t MaximumBatchSelection = 0x10000;
+
+    constexpr uint64_t LargestInlineTag = 0xF;
+
+    constexpr uint64_t DeepLengthOffset = 2;
+
+    constexpr uint32_t UnreadableBatch = 1;
+
+    constexpr uint32_t UnreadableSelection = 2;
+
+    constexpr uint32_t ImplicitSelection = 4;
+
+    constexpr uint16_t PureVector = 1;
+
+    constexpr uint16_t UnreadableVector = 2;
+
+    constexpr uint16_t MissingVector = 4;
+
+    constexpr uint16_t UnreadableSlots = 8;
+
+    constexpr size_t BatchChunkBatches = 1024;
+
+    constexpr size_t BatchChunkSlots = 1 << 20;
+
+    constexpr size_t BatchChunkBytes = 1 << 22;
+
     constexpr size_t PublishedEventChunk = 65536;
 
     constexpr uint8_t EventPublisherFunction = 1;
@@ -349,6 +391,13 @@ namespace
         uint64_t               Bindings = 0;
     };
 
+    struct BatchStart
+    {
+        uint64_t Iterator = 0;
+        uint64_t Data = 0;
+        uint64_t Consumer = 0;
+    };
+
     struct BindingSet
     {
         uint16_t                   Count = 0;
@@ -439,6 +488,17 @@ namespace
         std::vector<uint8_t>                                RowBufferData;
         std::unordered_map<uint64_t, BindingSet>            BindingSets;
         std::unordered_map<uint64_t, RowBufferStart>        RowBufferStarts;
+        std::unordered_set<uint64_t>                        BatchFunctions;
+        BatchCallback                                       LogBatches = nullptr;
+        std::unordered_map<uint64_t, BatchStart>            BatchStarts;
+        std::vector<CapturedBatch>                          Batches;
+        std::vector<CapturedVector>                         BatchVectors;
+        std::vector<uint16_t>                               BatchSelection;
+        std::vector<uint64_t>                               BatchSlots;
+        std::vector<CapturedDeepValue>                      BatchDeepValues;
+        std::vector<uint8_t>                                BatchData;
+        std::vector<uint16_t>                               BatchVectorIds;
+        std::vector<uint64_t>                               BatchBlock;
 
         uint64_t NextCall()
         {
@@ -799,6 +859,334 @@ namespace
             column.Flags |= PageReferenceColumn;
 
             return true;
+        }
+
+        bool IsBatchFunction(uint64_t function) const
+        {
+            return LogBatches != nullptr && !BatchFunctions.empty() && BatchFunctions.contains(function);
+        }
+
+        void BeginBatch(std::vector<StackFrame> const& stack, uint64_t id, uint64_t iterator, uint64_t data)
+        {
+            if (data < SmallestAddress)
+            {
+                return;
+            }
+
+            BatchStarts[id] = BatchStart{ iterator, data, ConsumerOf(stack, iterator) };
+        }
+
+        uint64_t ConsumerOf(std::vector<StackFrame> const& stack, uint64_t iterator) const
+        {
+            for (auto frame = stack.rbegin(); frame != stack.rend(); ++frame)
+            {
+                if (frame->Node < 0 || static_cast<size_t>(frame->Node) >= Nodes.size())
+                {
+                    continue;
+                }
+
+                auto const instance = Nodes[frame->Node].Instance;
+
+                if (instance != 0 && instance != iterator)
+                {
+                    return instance;
+                }
+            }
+
+            return 0;
+        }
+
+        void EndBatch(uint64_t id)
+        {
+            if (!BatchStarts.empty())
+            {
+                BatchStarts.erase(id);
+            }
+        }
+
+        void ReadBatch(IThreadView const& thread, LoggedFunction const& function, uint32_t call, uint64_t id)
+        {
+            auto const found = BatchStarts.find(id);
+
+            if (found == BatchStarts.end())
+            {
+                return;
+            }
+
+            auto const start = found->second;
+
+            BatchStarts.erase(found);
+
+            uint64_t batch = 0;
+
+            uint64_t ids = 0;
+
+            uint16_t idCount = 0;
+
+            if (!ReadValue(thread, start.Data, batch)
+                || !ReadValue(thread, start.Data + BatchIdsOffset, ids)
+                || batch < SmallestAddress
+                || ids < SmallestAddress
+                || !ReadValue(thread, ids, idCount)
+                || idCount > MaximumBatchVectors)
+            {
+                return;
+            }
+
+            BatchVectorIds.resize(idCount);
+
+            auto const idBytes = idCount * sizeof(uint16_t);
+
+            if (idCount > 0 && ReadMemory(thread, ids + sizeof(uint16_t), BatchVectorIds.data(), idBytes) != idBytes)
+            {
+                return;
+            }
+
+            CapturedBatch captured{ function.Address,
+                                    function.Instance,
+                                    start.Iterator,
+                                    batch,
+                                    start.Consumer,
+                                    CallCount,
+                                    call,
+                                    static_cast<uint32_t>(BatchSelection.size()),
+                                    0,
+                                    static_cast<uint32_t>(BatchVectors.size()),
+                                    0,
+                                    0 };
+
+            uint64_t vectors = 0;
+
+            uint64_t pure = 0;
+
+            int32_t vectorCount = 0;
+
+            int32_t rowCount = 0;
+
+            uint64_t selection = 0;
+
+            if (!ReadValue(thread, batch + BatchVectorsOffset, vectors)
+                || !ReadValue(thread, batch + BatchPureOffset, pure)
+                || !ReadValue(thread, batch + BatchVectorCountOffset, vectorCount)
+                || !ReadValue(thread, batch + BatchRowCountOffset, rowCount)
+                || !ReadValue(thread, batch + BatchSelectionOffset, selection)
+                || rowCount < 0
+                || rowCount > MaximumBatchSelection
+                || vectorCount < 0
+                || vectors < SmallestAddress)
+            {
+                captured.Flags |= UnreadableBatch;
+
+                AddBatch(captured);
+
+                return;
+            }
+
+            ReadSelection(thread, selection, rowCount, captured);
+
+            for (auto const vectorId : BatchVectorIds)
+            {
+                BatchVectors.push_back(ReadVector(thread, vectorId, vectors, pure, vectorCount, captured));
+            }
+
+            captured.VectorCount = idCount;
+
+            AddBatch(captured);
+        }
+
+        void ReadSelection(IThreadView const& thread, uint64_t selection, int32_t rowCount, CapturedBatch& captured)
+        {
+            auto const count = static_cast<size_t>(rowCount);
+
+            BatchSelection.resize(captured.FirstSelected + count);
+
+            auto* rows = BatchSelection.data() + captured.FirstSelected;
+
+            if (selection < SmallestAddress)
+            {
+                for (size_t index = 0; index < count; index++)
+                {
+                    rows[index] = static_cast<uint16_t>(index);
+                }
+
+                captured.Flags |= ImplicitSelection;
+            }
+            else if (count > 0 && ReadMemory(thread, selection, rows, count * sizeof(uint16_t)) != count * sizeof(uint16_t))
+            {
+                BatchSelection.resize(captured.FirstSelected);
+
+                captured.Flags |= UnreadableSelection;
+
+                return;
+            }
+
+            captured.SelectedCount = static_cast<uint32_t>(count);
+        }
+
+        CapturedVector ReadVector(IThreadView const& thread,
+                                  uint16_t vectorId,
+                                  uint64_t vectors,
+                                  uint64_t pure,
+                                  int32_t vectorCount,
+                                  CapturedBatch const& captured)
+        {
+            CapturedVector vector{ static_cast<uint32_t>(BatchSlots.size()),
+                                   0,
+                                   static_cast<uint32_t>(BatchDeepValues.size()),
+                                   0,
+                                   vectorId,
+                                   0,
+                                   0 };
+
+            if (vectorId == 0 || vectorId > vectorCount)
+            {
+                vector.Flags |= MissingVector;
+
+                return vector;
+            }
+
+            auto const index = static_cast<uint64_t>(vectorId) - 1;
+
+            uint64_t buffer = 0;
+
+            if (!ReadValue(thread, vectors + index * BatchVectorEntrySize, buffer) || buffer < SmallestAddress)
+            {
+                vector.Flags |= UnreadableVector;
+
+                return vector;
+            }
+
+            uint8_t pureBits = 0;
+
+            if (pure >= SmallestAddress && ReadValue(thread, pure + index / 8, pureBits) && ((pureBits >> (index % 8)) & 1) != 0)
+            {
+                vector.Flags |= PureVector;
+
+                uint64_t slot = 0;
+
+                if (!ReadValue(thread, buffer, slot))
+                {
+                    vector.Flags |= UnreadableVector;
+
+                    return vector;
+                }
+
+                BatchSlots.push_back(slot);
+            }
+            else
+            {
+                ReadSlots(thread, buffer, captured, vector);
+            }
+
+            vector.SlotCount = static_cast<uint32_t>(BatchSlots.size()) - vector.FirstSlot;
+
+            for (uint32_t slot = 0; slot < vector.SlotCount; slot++)
+            {
+                ReadDeepValue(thread, slot, BatchSlots[vector.FirstSlot + slot]);
+            }
+
+            vector.DeepValueCount = static_cast<uint32_t>(BatchDeepValues.size()) - vector.FirstDeepValue;
+
+            return vector;
+        }
+
+        void ReadSlots(IThreadView const& thread, uint64_t buffer, CapturedBatch const& captured, CapturedVector& vector)
+        {
+            if (captured.SelectedCount == 0)
+            {
+                return;
+            }
+
+            auto const* selection = BatchSelection.data() + captured.FirstSelected;
+
+            auto const rowCount = static_cast<size_t>(*std::max_element(selection, selection + captured.SelectedCount)) + 1;
+
+            BatchBlock.resize(rowCount);
+
+            auto const readSlots = ReadMemory(thread, buffer, BatchBlock.data(), rowCount * sizeof(uint64_t)) / sizeof(uint64_t);
+
+            for (size_t row = 0; row < rowCount; row++)
+            {
+                uint64_t slot = 0;
+
+                if (row < readSlots)
+                {
+                    slot = BatchBlock[row];
+                }
+                else if (!ReadValue(thread, buffer + row * sizeof(uint64_t), slot))
+                {
+                    vector.Flags |= UnreadableSlots;
+                }
+
+                BatchSlots.push_back(slot);
+            }
+        }
+
+        void ReadDeepValue(IThreadView const& thread, uint32_t slot, uint64_t value)
+        {
+            if ((value & 1) == 0 || value <= LargestInlineTag)
+            {
+                return;
+            }
+
+            auto const pointer = value & ~1ull;
+
+            CapturedDeepValue deep{ slot, static_cast<uint32_t>(BatchData.size()), 0, 0 };
+
+            uint16_t length = 0;
+
+            if (pointer >= SmallestAddress && ReadValue(thread, pointer - DeepLengthOffset, length))
+            {
+                deep.Length = length;
+
+                auto const wanted = static_cast<size_t>((std::min)(uint64_t{ length }, MaximumValueBytes));
+
+                BatchData.resize(deep.Data + wanted);
+
+                deep.Captured = static_cast<uint32_t>(ReadMemory(thread, pointer, BatchData.data() + deep.Data, wanted));
+
+                BatchData.resize(deep.Data + deep.Captured);
+            }
+
+            BatchDeepValues.push_back(deep);
+        }
+
+        void AddBatch(CapturedBatch const& captured)
+        {
+            Batches.push_back(captured);
+
+            if (Batches.size() >= BatchChunkBatches || BatchSlots.size() >= BatchChunkSlots || BatchData.size() >= BatchChunkBytes)
+            {
+                FlushBatches();
+            }
+        }
+
+        void FlushBatches()
+        {
+            if (LogBatches == nullptr || Batches.empty())
+            {
+                return;
+            }
+
+            LogBatches(Batches.data(),
+                       static_cast<int32_t>(Batches.size()),
+                       BatchVectors.data(),
+                       static_cast<int32_t>(BatchVectors.size()),
+                       BatchSelection.data(),
+                       static_cast<int32_t>(BatchSelection.size()),
+                       BatchSlots.data(),
+                       static_cast<int32_t>(BatchSlots.size()),
+                       BatchDeepValues.data(),
+                       static_cast<int32_t>(BatchDeepValues.size()),
+                       BatchData.data(),
+                       static_cast<int32_t>(BatchData.size()));
+
+            Batches.clear();
+            BatchVectors.clear();
+            BatchSelection.clear();
+            BatchSlots.clear();
+            BatchDeepValues.clear();
+            BatchData.clear();
         }
 
         void FlushRowBuffers()
@@ -1351,6 +1739,11 @@ namespace
             tree.ReadRowBuffer(thread, *frame.Function, frame.LoggedCall, frame.Id);
         }
 
+        if (!tree.BatchStarts.empty())
+        {
+            tree.ReadBatch(thread, *frame.Function, frame.LoggedCall, frame.Id);
+        }
+
         auto const* reads = tree.ReadsOf(frame.Function->Address);
 
         if (reads == nullptr)
@@ -1496,6 +1889,8 @@ namespace
 
             tree.EndRowBuffer(frame.Id);
 
+            tree.EndBatch(frame.Id);
+
             tree.EndScope(frame.Id);
         }
     }
@@ -1626,6 +2021,11 @@ namespace
                 instanceRegister >= 0 && logged.Function != nullptr)
             {
                 tree.BeginRowBuffer(*thread, id, arguments[instanceRegister]);
+            }
+
+            if (logged.Function != nullptr && tree.IsBatchFunction(target))
+            {
+                tree.BeginBatch(stack, id, registers.Rcx, registers.Rdx);
             }
 
             stack.push_back(StackFrame{ stackPointer,
@@ -1978,12 +2378,15 @@ extern "C"
                          int32_t                rowBufferReadCount,
                          const RowBufferLayout* rowBufferLayouts,
                          int32_t                rowBufferLayoutCount,
+                         const uint64_t*        batchFunctions,
+                         int32_t                batchFunctionCount,
                          CallChunkCallback      logCalls,
                          CallSpanCallback       logSpans,
                          PointerValueCallback   logPointerValues,
                          PublishedEventCallback logPublishedEvents,
                          MemoryMapCallback      logMemoryMap,
                          RowBufferCallback      logRowBuffers,
+                         BatchCallback          logBatches,
                          ProgressCallback       progress,
                          volatile int32_t*      cancel,
                          void**                 tree)
@@ -2047,6 +2450,13 @@ extern "C"
             result->RowBufferLayouts[rowBufferLayouts[index].VTable] = rowBufferLayouts[index];
         }
 
+        result->LogBatches = logBatches;
+
+        for (int32_t index = 0; index < batchFunctionCount && logBatches != nullptr; index++)
+        {
+            result->BatchFunctions.insert(batchFunctions[index]);
+        }
+
         for (int32_t index = 0; index < eventPublisherFunctionCount && logPublishedEvents != nullptr; index++)
         {
             result->PublishedEventFunctions[eventPublisherFunctions[index]] = EventPublisherFunction;
@@ -2095,6 +2505,8 @@ extern "C"
 
         result->FlushRowBuffers();
 
+        result->FlushBatches();
+
         result->MemoryMap = {};
         result->LatestEntries.clear();
         result->OwnedEntries.clear();
@@ -2104,6 +2516,16 @@ extern "C"
         result->RowBufferData = {};
         result->BindingSets.clear();
         result->RowBufferStarts.clear();
+
+        result->Batches = {};
+        result->BatchVectors = {};
+        result->BatchSelection = {};
+        result->BatchSlots = {};
+        result->BatchDeepValues = {};
+        result->BatchData = {};
+        result->BatchVectorIds = {};
+        result->BatchBlock = {};
+        result->BatchStarts.clear();
 
         result->Spans = {};
         result->PointerValues = {};

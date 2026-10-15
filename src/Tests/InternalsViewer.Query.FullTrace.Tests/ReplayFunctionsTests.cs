@@ -1,4 +1,5 @@
 using InternalsViewer.Query.FullTrace;
+using InternalsViewer.Query.FullTrace.Batches;
 using InternalsViewer.Query.FullTrace.Iterators;
 using InternalsViewer.Query.FullTrace.Locators;
 using InternalsViewer.Query.FullTrace.Memory;
@@ -24,7 +25,8 @@ public class ReplayFunctionsTests
                                            new PublishedEventFunctions([new EventPublisher(0x70, "latch_acquired")], [0x80]),
                                            [new MemoryFunction(0x90, AllocationOperation.Allocate, 1, -1, 1)],
                                            [new MemoryMapFunction(0xA0, (uint)MemoryMapOperation.Visited)],
-                                           new RowBufferFunctions([new RowBufferRead(0xB0, 0)], [new RowBufferLayout(0xC0, 0x80, 0x88)]));
+                                           new RowBufferFunctions([new RowBufferRead(0xB0, 0)], [new RowBufferLayout(0xC0, 0x80, 0x88)]),
+                                           new BatchFunctions([0xD0]));
 
         var rebased = relative.Rebase(Base);
 
@@ -37,5 +39,6 @@ public class ReplayFunctionsTests
         Assert.Equal(Base + 0xA0, Assert.Single(rebased.MemoryMapFunctions).Address);
         Assert.Equal(Base + 0xB0, Assert.Single(rebased.RowBuffers.Reads).Function);
         Assert.Equal(new RowBufferLayout(Base + 0xC0, 0x80, 0x88), Assert.Single(rebased.RowBuffers.Layouts));
+        Assert.Equal([Base + 0xD0], rebased.Batches.Functions);
     }
 }

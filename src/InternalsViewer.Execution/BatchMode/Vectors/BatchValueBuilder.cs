@@ -1,7 +1,7 @@
 ﻿using System.Data;
 using System.Data.SqlTypes;
 using InternalsViewer.Execution.AccessPaths.Values;
-using InternalsViewer.Execution.BatchMode.Normalization;
+using InternalsViewer.Internals.BatchMode.Normalization;
 using InternalsViewer.Execution.Interfaces.BatchMode;
 using InternalsViewer.Internals.Engine.Records;
 
@@ -74,7 +74,7 @@ public static class BatchValueBuilder
         => column.DataType switch
         {
             SqlDbType.Date
-                => BatchValueNormalizer.TryNormalize(field.GetValue<DateTime>(), out slot),
+                => BatchValueNormalizer.TryNormalize(DateOnly.FromDateTime(field.GetValue<DateTime>()), out slot),
             SqlDbType.DateTime2
                 => BatchValueNormalizer.TryNormalize(field.GetValue<DateTime>(), out slot),
             SqlDbType.Time
@@ -88,7 +88,7 @@ public static class BatchValueBuilder
         => column.DataType switch
         {
             SqlDbType.Date
-                => BatchValueNormalizer.TryNormalize(new DateTime(ticks), out slot),
+                => BatchValueNormalizer.TryNormalize(DateOnly.FromDateTime(new DateTime(ticks)), out slot),
             SqlDbType.DateTime2
                 => BatchValueNormalizer.TryNormalize(new DateTime(ticks), out slot),
             SqlDbType.Time

@@ -90,6 +90,22 @@ public static class AllocationUnitProvider
             .FirstOrDefault(a => a.AllocationUnitType == AllocationUnitType.InRowData);
     }
 
+    public static AllocationUnit? FindTableAllocationUnit(DatabaseSource database, string? schemaName, string? tableName)
+    {
+        if (string.IsNullOrEmpty(tableName))
+        {
+            return null;
+        }
+
+        return database.AllocationUnits
+                       .Values
+                       .Where(a => a is { IndexId: <= 1, AllocationUnitType: AllocationUnitType.InRowData }
+                                   && IsName(a.TableName, tableName)
+                                   && (string.IsNullOrEmpty(schemaName) || IsName(a.SchemaName, schemaName)))
+                       .OrderBy(a => a.IndexId)
+                       .FirstOrDefault();
+    }
+
     private static bool IsName(string? name, string? other)
         => string.Equals(name?.Trim('[', ']') ?? string.Empty, other?.Trim('[', ']') ?? string.Empty, StringComparison.OrdinalIgnoreCase);
 }

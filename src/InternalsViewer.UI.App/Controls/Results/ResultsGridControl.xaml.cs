@@ -71,6 +71,19 @@ public sealed partial class ResultsGridControl : UserControl
         set => SetValue(RowDetailsProperty, value);
     }
 
+    public static readonly DependencyProperty RowDetailsContentProperty =
+        DependencyProperty.Register(
+            nameof(RowDetailsContent),
+            typeof(Func<ResultRow<long>, FrameworkElement?>),
+            typeof(ResultsGridControl),
+            new PropertyMetadata(null, OnRowDetailsChanged));
+
+    public Func<ResultRow<long>, FrameworkElement?>? RowDetailsContent
+    {
+        get => (Func<ResultRow<long>, FrameworkElement?>?)GetValue(RowDetailsContentProperty);
+        set => SetValue(RowDetailsContentProperty, value);
+    }
+
     public static readonly DependencyProperty IsStatusBarVisibleProperty =
         DependencyProperty.Register(
             nameof(IsStatusBarVisible),
@@ -162,7 +175,7 @@ public sealed partial class ResultsGridControl : UserControl
             table.Columns.Add(resultCellColumn);
         }
 
-        if (RowDetails is not null)
+        if (RowDetails is not null || RowDetailsContent is not null)
         {
             table.RowDetailsTemplate = (DataTemplate)Resources["RowDetailsTemplate"];
 
@@ -406,6 +419,18 @@ public sealed partial class ResultsGridControl : UserControl
 
     private void FillDetails(Panel host)
     {
+        if (host.DataContext is ResultRow<long> contentRow && RowDetailsContent is { } content)
+        {
+            host.Children.Clear();
+
+            if (content(contentRow) is { } element)
+            {
+                host.Children.Add(element);
+            }
+
+            return;
+        }
+
         if (host.DataContext is not ResultRow<long> row || RowDetails is not { } details)
         {
             host.Children.Clear();

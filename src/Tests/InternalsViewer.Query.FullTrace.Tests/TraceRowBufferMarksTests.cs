@@ -1,4 +1,5 @@
 using InternalsViewer.Query.CallStack;
+using InternalsViewer.Query.FullTrace.Batches;
 using InternalsViewer.Query.FullTrace.Native;
 using InternalsViewer.Query.FullTrace.RowBuffers;
 using InternalsViewer.Query.FullTrace.Timeline;
@@ -52,6 +53,23 @@ public class TraceRowBufferMarksTests
 
         Assert.Equal([GetEnd(timeline, depth: 1, index: 0), GetEnd(timeline, depth: 1, index: 1)],
                      marks.GetMarks(Thread, TraceTimelineAxis.Position).ToArray());
+    }
+
+    [Fact]
+    public void Batches_Are_Marked_Apart_From_Row_Buffers()
+    {
+        var timeline = Build(Span(node: 0, start: 0, end: 100),
+                             Span(node: 1, start: 10, end: 90));
+
+        var batches = new BatchIndex.Log();
+
+        batches.Add([new CapturedBatch(GetRow, Iterator, Iterator, 0x20F_0CA6_ECA0, 0, 100, 0, 0, 0, 0, 0, 0)], [], [], [], [], []);
+
+        var marks = TraceRowBufferMarks.Build(timeline, RowBufferIndex.Empty, batches.Build());
+
+        Assert.Equal([GetEnd(timeline, depth: 1, index: 0)], marks.GetBatchMarks(Thread, TraceTimelineAxis.Position).ToArray());
+        Assert.True(marks.GetMarks(Thread, TraceTimelineAxis.Position).IsEmpty);
+        Assert.Equal(1, marks.Count);
     }
 
     [Fact]

@@ -160,6 +160,8 @@ public sealed class TraceLoader(ILogger<TraceLoader> logger, ITimeTravelRecorder
 
         replay.RowBuffers.AnnotateNodes(replay.CallStore);
 
+        replay.Batches.AnnotateNodes(replay.CallStore);
+
         replay.Timeline.MapNodes(mapped);
 
         callStack.RemoveCallsUnder(IsInstrumentation);
@@ -237,13 +239,16 @@ public sealed class TraceLoader(ILogger<TraceLoader> logger, ITimeTravelRecorder
 
         Logger.LogInformation("{Rows} row buffer(s) read from iterator GetRow calls", replay.RowBuffers.Count);
 
+        Logger.LogInformation("{Batches} batch(es) read from iterator BpGetBatchData calls", replay.Batches.Count);
+
         return new TraceResult(callStack, replay.CallStore, timeline)
         {
             PlanLink = planLink,
             HoBtAccess = hobtAccess,
             MemoryMap = memoryMap,
             RowBuffers = replay.RowBuffers,
-            RowBufferMarks = TraceRowBufferMarks.Build(timeline, replay.RowBuffers)
+            Batches = replay.Batches,
+            RowBufferMarks = TraceRowBufferMarks.Build(timeline, replay.RowBuffers, replay.Batches)
         };
     }
 

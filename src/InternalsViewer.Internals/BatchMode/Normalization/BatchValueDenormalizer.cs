@@ -1,7 +1,6 @@
 ﻿using System.Data;
-using InternalsViewer.Execution.BatchMode.Vectors;
 
-namespace InternalsViewer.Execution.BatchMode.Normalization;
+namespace InternalsViewer.Internals.BatchMode.Normalization;
 
 /// <summary>
 /// Decodes normalized batch vector values
@@ -18,7 +17,17 @@ public static class BatchValueDenormalizer
 
     private const long OffsetMask = (1 << OffsetBits) - 1;
 
-    public static BatchValueType GetValueType(BatchValue slot, BatchColumn column)
+    private const long DictionaryLowMask = 0x7FFF;
+
+    private const int DictionaryHighShift = 33;
+
+    private const long DictionaryHighMask = 0x7FFF8000;
+
+    private const int DictionaryEntryShift = 16;
+
+    private const long DictionaryEntryMask = 0xFFFFFFFF;
+
+    public static BatchValueType GetValueType(BatchValue slot, BatchValueDomain domain)
     {
         if (slot.IsNull)
         {
@@ -30,7 +39,7 @@ public static class BatchValueDenormalizer
             return BatchValueType.DeepDataReference;
         }
 
-        return column.Domain == BatchValueDomain.Dictionary
+        return domain == BatchValueDomain.Dictionary
                ? BatchValueType.DictionaryReference
                : BatchValueType.Inline;
     }
@@ -40,10 +49,15 @@ public static class BatchValueDenormalizer
     /// </summary>
     public static long GetDictionaryDataId(BatchValue slot) => slot.Value >> 16;
 
+    public static int GetDictionaryNumber(BatchValue slot)
+        => (int)(((slot.Value >> 1) & DictionaryLowMask) | ((slot.Value >>> DictionaryHighShift) & DictionaryHighMask));
+
+    public static long GetDictionaryEntry(BatchValue slot) => (slot.Value >>> DictionaryEntryShift) & DictionaryEntryMask;
+
     /// <summary>
     /// Gets the storage value an inline slot holds
     /// </summary>
-    public static long GetStorageValue(BatchValue slot, BatchColumn column) => column.Domain switch
+    public static long GetStorageValue(BatchValue slot, BatchValueDomain domain) => domain switch
     {
         BatchValueDomain.Integer or BatchValueDomain.Numeric 
             => slot.Value >> 1,
@@ -51,22 +65,22 @@ public static class BatchValueDenormalizer
             => GetRealStorageValue(slot),
         BatchValueDomain.Temporal 
             => throw new NotSupportedException("Temporal slots decode through GetTemporalValue"),
-        _ => throw new NotSupportedException($"{column.Domain} slots hold no storage value")
+        _ => throw new NotSupportedException($"{domain} slots hold no storage value")
     };
 
-    public static object GetTemporalValue(BatchValue slot, BatchColumn column)
+    public static object GetTemporalValue(BatchValue slot, SqlDbType dataType)
     {
-        return column.DataType switch
+        return dataType switch
         {
             SqlDbType.Date
-                => DateOnly.FromDateTime(new DateTime(slot.Value >> 1)),
+                => DateOnly.FromDayNumber((int)(slot.Value >> 1)),
             SqlDbType.DateTime2
                 => new DateTime(slot.Value >> 1),
             SqlDbType.Time
                 => new TimeSpan(slot.Value >> 1),
             SqlDbType.DateTimeOffset
                 => ToDateTimeOffset(slot.Value >> 1),
-            _ => throw new NotSupportedException($"{column.DataType} slots are not decoded yet")
+            _ => throw new NotSupportedException($"{dataType} slots are not decoded yet")
         };
     }
 

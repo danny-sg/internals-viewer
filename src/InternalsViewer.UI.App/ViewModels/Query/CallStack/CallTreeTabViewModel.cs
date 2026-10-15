@@ -176,6 +176,32 @@ public sealed class CallTreeTabViewModel : IDisposable
         _ = rowBuffers.LoadAsync();
     }
 
+    public void ShowBatches(CallStackNode node)
+    {
+        if (Arguments.Lookup is not { } lookup || node.Frame is not { } frame)
+        {
+            return;
+        }
+
+        if (AddedDocuments.FirstOrDefault(f => f.Content is BatchesViewModel shown && shown.IsShowing(node)) is { } existing)
+        {
+            Dock.Activate(existing);
+
+            return;
+        }
+
+        var batches = new BatchesViewModel(node, lookup, this, Settings.DecodeValues);
+
+        AddDocument(new DocumentViewModel(batches.Title,
+                                          batches,
+                                          static () => new CallTreeBatchesPanelView(),
+                                          keepAlive: true,
+                                          key: $"Batches{frame.Address:X}{frame.Instance:X}",
+                                          persist: false));
+
+        _ = batches.LoadAsync();
+    }
+
     public void ShowCallStack(CallStackNode node, int call)
     {
         if (AddedDocuments.FirstOrDefault(d => d.Content is CallStackViewModel shown && shown.IsShowing(node, call)) is { } existing)
@@ -374,6 +400,11 @@ public sealed class CallTreeTabViewModel : IDisposable
                 foreach (var rowBuffers in AddedDocuments.Select(d => d.Content).OfType<RowBuffersViewModel>())
                 {
                     rowBuffers.SetDecoded(Settings.DecodeValues);
+                }
+
+                foreach (var batches in AddedDocuments.Select(d => d.Content).OfType<BatchesViewModel>())
+                {
+                    batches.SetDecoded(Settings.DecodeValues);
                 }
 
                 break;

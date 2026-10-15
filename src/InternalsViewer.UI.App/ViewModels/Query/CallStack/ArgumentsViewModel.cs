@@ -12,6 +12,7 @@ using InternalsViewer.Query.Results;
 using InternalsViewer.UI.App.Models.Query.CallStack;
 using Microsoft.Extensions.Logging;
 using InternalsViewer.Query.FullTrace.Arguments;
+using InternalsViewer.Query.FullTrace.Batches;
 using InternalsViewer.Query.FullTrace.Memory;
 using InternalsViewer.Query.FullTrace.RowBuffers;
 using System.Linq;
@@ -91,7 +92,9 @@ public sealed partial class ArgumentsViewModel(ILogger logger, SymbolsViewModel 
                           MemoryMap? memoryMap = null,
                           RowBufferIndex? rowBuffers = null,
                           RowBufferPageResolver? rowBufferPages = null,
-                          RowBufferDecoder? rowBufferDecoder = null)
+                          RowBufferDecoder? rowBufferDecoder = null,
+                          BatchIndex? batches = null,
+                          BatchDecoder? batchDecoder = null)
     {
         Cancel();
 
@@ -105,6 +108,8 @@ public sealed partial class ArgumentsViewModel(ILogger logger, SymbolsViewModel 
                                 rowBuffers ?? RowBufferIndex.Empty,
                                 rowBufferPages,
                                 rowBufferDecoder,
+                                batches ?? BatchIndex.Empty,
+                                batchDecoder,
                                 symbols,
                                 getHoBtName);
 

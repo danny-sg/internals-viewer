@@ -340,7 +340,7 @@ public sealed partial class FlameChartControl
         }
         else if (IsOnRowBufferBar(position))
         {
-            OpenToolTip("Row Buffer", position);
+            OpenToolTip("Row Buffer/Batches", position);
         }
         else
         {
@@ -365,6 +365,10 @@ public sealed partial class FlameChartControl
         else if (_isPressed && !_isDragging && _isShiftPressed)
         {
             RootAt(HitTest(position));
+        }
+        else if (_isPressed && !_isDragging && GetRowBufferMarkAt(position) is { } mark)
+        {
+            CallTreeOpenRequested?.Invoke(mark.Node, mark.Call);
         }
         else if (_isPressed && !_isDragging)
         {

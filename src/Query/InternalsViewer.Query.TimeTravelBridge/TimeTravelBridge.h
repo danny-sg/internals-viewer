@@ -128,6 +128,41 @@ extern "C"
         uint8_t  Flags;
     };
 
+    struct CapturedBatch
+    {
+        uint64_t Function;
+        uint64_t Instance;
+        uint64_t Iterator;
+        uint64_t Batch;
+        uint64_t Consumer;
+        uint64_t Id;
+        uint32_t Call;
+        uint32_t FirstSelected;
+        uint32_t SelectedCount;
+        uint32_t FirstVector;
+        uint32_t VectorCount;
+        uint32_t Flags;
+    };
+
+    struct CapturedVector
+    {
+        uint32_t FirstSlot;
+        uint32_t SlotCount;
+        uint32_t FirstDeepValue;
+        uint32_t DeepValueCount;
+        uint16_t VectorId;
+        uint16_t Flags;
+        uint32_t Reserved;
+    };
+
+    struct CapturedDeepValue
+    {
+        uint32_t Slot;
+        uint32_t Data;
+        uint32_t Length;
+        uint32_t Captured;
+    };
+
     typedef void(__stdcall* PointerValueCallback)(const PointerValue* values, int32_t count);
 
     typedef void(__stdcall* MemoryMapCallback)(const MemoryMapEntry* entries, int32_t count);
@@ -138,6 +173,19 @@ extern "C"
                                                int32_t                columnCount,
                                                const uint8_t*         data,
                                                int32_t                dataLength);
+
+    typedef void(__stdcall* BatchCallback)(const CapturedBatch*     batches,
+                                           int32_t                  batchCount,
+                                           const CapturedVector*    vectors,
+                                           int32_t                  vectorCount,
+                                           const uint16_t*          selection,
+                                           int32_t                  selectionCount,
+                                           const uint64_t*          slots,
+                                           int32_t                  slotCount,
+                                           const CapturedDeepValue* deepValues,
+                                           int32_t                  deepValueCount,
+                                           const uint8_t*           data,
+                                           int32_t                  dataLength);
 
     typedef void(__stdcall* PublishedEventCallback)(const PublishedEvent* publishedEvents, int32_t count);
 
@@ -171,12 +219,15 @@ extern "C"
                                                int32_t                rowBufferReadCount,
                                                const RowBufferLayout* rowBufferLayouts,
                                                int32_t                rowBufferLayoutCount,
+                                               const uint64_t*        batchFunctions,
+                                               int32_t                batchFunctionCount,
                                                CallChunkCallback      logCalls,
                                                CallSpanCallback       logSpans,
                                                PointerValueCallback   logPointerValues,
                                                PublishedEventCallback logPublishedEvents,
                                                MemoryMapCallback      logMemoryMap,
                                                RowBufferCallback      logRowBuffers,
+                                               BatchCallback          logBatches,
                                                ProgressCallback       progress,
                                                volatile int32_t*      cancel,
                                                void**                 tree);

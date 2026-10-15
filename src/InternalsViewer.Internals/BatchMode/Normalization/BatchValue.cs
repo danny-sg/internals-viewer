@@ -1,4 +1,4 @@
-﻿namespace InternalsViewer.Execution.BatchMode.Normalization;
+﻿namespace InternalsViewer.Internals.BatchMode.Normalization;
 
 /// <summary>
 /// A single normalized 64 bit value in a batch mode vector

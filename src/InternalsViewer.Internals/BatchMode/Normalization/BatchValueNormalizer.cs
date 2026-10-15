@@ -1,6 +1,7 @@
-﻿using System.Data.SqlTypes;
+﻿using System.Data;
+using System.Data.SqlTypes;
 
-namespace InternalsViewer.Execution.BatchMode.Normalization;
+namespace InternalsViewer.Internals.BatchMode.Normalization;
 
 /// <summary>
 /// Normalizes a value into a Vector Batch Slot value
@@ -31,6 +32,24 @@ public static class BatchValueNormalizer
     private const int OffsetBias = 1024;
 
     public static BatchValue Null { get; } = new(1);
+
+    public static BatchValueDomain GetDomain(SqlDbType dataType) => dataType switch
+    {
+        SqlDbType.BigInt or SqlDbType.Int or SqlDbType.SmallInt or SqlDbType.TinyInt or SqlDbType.Bit
+            or SqlDbType.Money or SqlDbType.SmallMoney
+            or SqlDbType.DateTime or SqlDbType.SmallDateTime => BatchValueDomain.Integer,
+
+        SqlDbType.Float or SqlDbType.Real => BatchValueDomain.Real,
+
+        SqlDbType.Decimal => BatchValueDomain.Numeric,
+
+        SqlDbType.Date or SqlDbType.DateTime2 or SqlDbType.Time or SqlDbType.DateTimeOffset => BatchValueDomain.Temporal,
+
+        SqlDbType.Char or SqlDbType.VarChar or SqlDbType.NChar or SqlDbType.NVarChar
+            => BatchValueDomain.Dictionary,
+
+        _ => BatchValueDomain.Deep
+    };
 
     /// <summary>
     /// Normalize integer
@@ -144,7 +163,7 @@ public static class BatchValueNormalizer
     /// and a row mode DATE share one encoding and compare against each other and against a literal.
     /// </remarks>
     public static bool TryNormalize(DateOnly value, out BatchValue slot)
-        => TryNormalize(value.ToDateTime(TimeOnly.MinValue).Ticks, out slot);
+        => TryNormalize(value.DayNumber, out slot);
 
     /// <summary>
     /// Normalizes a TimeSpan value

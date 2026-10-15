@@ -1,4 +1,4 @@
-﻿namespace InternalsViewer.Execution.BatchMode.Normalization;
+﻿namespace InternalsViewer.Internals.BatchMode.Normalization;
 
 public enum BatchValueType
 {

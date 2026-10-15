@@ -19,6 +19,7 @@ using InternalsViewer.Query.CallStack;
 using InternalsViewer.Query.FullTrace;
 using InternalsViewer.Query.FullTrace.RowBuffers;
 using InternalsViewer.Query.FullTrace.Arguments;
+using InternalsViewer.Query.FullTrace.Batches;
 using InternalsViewer.Query.FullTrace.Iterators;
 using InternalsViewer.Query.FullTrace.Timeline;
 using InternalsViewer.Query.Events.Latches;
@@ -1339,6 +1340,9 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
         return min == long.MaxValue ? 0 : min;
     }
 
+    private IReadOnlyList<ColumnReference>? GetOutputColumns(IteratorTarget? iterator)
+        => iterator?.Operator?.PlanNodeIdentifier is { } identifier ? ResolvePlanNode(identifier)?.OutputColumns : null;
+
     private PlanNode? ResolvePlanNode(PlanNodeIdentifier identifier)
     {
         var plan = ExecutionPlans.FirstOrDefault(p => p.PlanHandleId == identifier.PlanHandleId)
@@ -2229,7 +2233,9 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
                             result.MemoryMap,
                             result.RowBuffers,
                             _rowBufferPageResolverFactory.Create(Database),
-                            new RowBufferDecoder(Database, i => iterators.GetValueOrDefault(i)?.Operator));
+                            new RowBufferDecoder(Database, i => iterators.GetValueOrDefault(i)?.Operator),
+                            result.Batches,
+                            new BatchDecoder(Database, i => GetOutputColumns(iterators.GetValueOrDefault(i))));
 
         FullFlameChart = result.Timeline;
 

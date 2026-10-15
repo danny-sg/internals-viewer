@@ -199,6 +199,7 @@
             <MenuFlyoutSeparator/>
             <MenuFlyoutItem Text="Arguments" Tag="ShowArguments" Click="OnShowArgumentsClick"/>
             <MenuFlyoutItem Text="Row Buffers" Tag="ShowRowBuffers" Click="OnShowRowBuffersClick"/>
+            <MenuFlyoutItem Text="Batches" Tag="ShowBatches" Click="OnShowBatchesClick"/>
         </MenuFlyout>
 
         <MenuFlyout x:Key="TreeBackgroundMenu">
@@ -218,6 +219,14 @@
                         ToolTipService.ToolTip="Row Buffers"
                         Tapped="OnNodeRowBuffersTapped"
                         Visibility="{x:Bind ((model:CallStackNode)Content).HasRowBuffers, Converter={StaticResource BoolToVisibilityConverter}}"/>
+
+                <Border Width="8"
+                        Height="8"
+                        VerticalAlignment="Center"
+                        Background="{ThemeResource SystemFillColorAttentionBrush}"
+                        ToolTipService.ToolTip="Batches"
+                        Tapped="OnNodeBatchesTapped"
+                        Visibility="{x:Bind ((model:CallStackNode)Content).HasBatches, Converter={StaticResource BoolToVisibilityConverter}}"/>
 
                 <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
                     <Border Background="#61B0E3"
@@ -299,6 +308,14 @@
                         ToolTipService.ToolTip="Row Buffers"
                         Tapped="OnNodeRowBuffersTapped"
                         Visibility="{x:Bind ((model:CallStackNode)Content).HasRowBuffers, Converter={StaticResource BoolToVisibilityConverter}}"/>
+
+                <Border Width="8"
+                        Height="8"
+                        VerticalAlignment="Center"
+                        Background="{ThemeResource SystemFillColorAttentionBrush}"
+                        ToolTipService.ToolTip="Batches"
+                        Tapped="OnNodeBatchesTapped"
+                        Visibility="{x:Bind ((model:CallStackNode)Content).HasBatches, Converter={StaticResource BoolToVisibilityConverter}}"/>
 
                 <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
                     <Border Background="#61B0E3"

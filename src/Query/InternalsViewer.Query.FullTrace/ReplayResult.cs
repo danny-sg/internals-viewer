@@ -1,3 +1,4 @@
+using InternalsViewer.Query.FullTrace.Batches;
 using InternalsViewer.Query.FullTrace.Calls;
 using InternalsViewer.Query.FullTrace.Native;
 using InternalsViewer.Query.FullTrace.RowBuffers;
@@ -26,4 +27,5 @@ internal sealed record ReplayResult(CallNode[] Nodes,
                                     TraceTimeline Timeline,
                                     PublishedEvent[] PublishedEvents,
                                     AddressEntry[] MemoryMap,
-                                    RowBufferIndex RowBuffers);
+                                    RowBufferIndex RowBuffers,
+                                    BatchIndex Batches);

@@ -1,7 +1,7 @@
 ﻿using System.Data;
 using System.Data.SqlTypes;
 using InternalsViewer.Execution.BatchMode;
-using InternalsViewer.Execution.BatchMode.Normalization;
+using InternalsViewer.Internals.BatchMode.Normalization;
 using InternalsViewer.Execution.BatchMode.Vectors;
 
 namespace InternalsViewer.Execution.Tests.UnitTests.BatchMode;
@@ -22,7 +22,7 @@ public class BatchValueRoundTripTests
     {
         Assert.True(BatchValueNormalizer.TryNormalize(value, out var slot));
 
-        Assert.Equal(value, BatchValueDenormalizer.GetStorageValue(slot, Column(SqlDbType.BigInt)));
+        Assert.Equal(value, BatchValueDenormalizer.GetStorageValue(slot, Column(SqlDbType.BigInt).Domain));
     }
 
     [Theory]
@@ -43,7 +43,7 @@ public class BatchValueRoundTripTests
 
         Assert.False(slot.IsNull);
 
-        Assert.Equal(BatchValueType.Inline, BatchValueDenormalizer.GetValueType(slot, Column(SqlDbType.BigInt)));
+        Assert.Equal(BatchValueType.Inline, BatchValueDenormalizer.GetValueType(slot, Column(SqlDbType.BigInt).Domain));
     }
 
     [Theory]
@@ -61,7 +61,7 @@ public class BatchValueRoundTripTests
     {
         Assert.True(BatchValueNormalizer.TryNormalize(value, out var slot));
 
-        var storage = BatchValueDenormalizer.GetStorageValue(slot, Column(SqlDbType.Float));
+        var storage = BatchValueDenormalizer.GetStorageValue(slot, Column(SqlDbType.Float).Domain);
 
         Assert.Equal(value, BitConverter.Int64BitsToDouble(storage));
     }
@@ -93,7 +93,7 @@ public class BatchValueRoundTripTests
 
         Assert.True(BatchValueNormalizer.TryNormalize(value, out var slot));
 
-        Assert.Equal(scaled, BatchValueDenormalizer.GetStorageValue(slot, Column(SqlDbType.Decimal, precision, scale)));
+        Assert.Equal(scaled, BatchValueDenormalizer.GetStorageValue(slot, Column(SqlDbType.Decimal, precision, scale).Domain));
     }
 
     [Theory]
@@ -106,7 +106,7 @@ public class BatchValueRoundTripTests
 
         Assert.True(BatchValueNormalizer.TryNormalize(value, out var slot));
 
-        Assert.Equal(value, BatchValueDenormalizer.GetTemporalValue(slot, Column(SqlDbType.DateTime2)));
+        Assert.Equal(value, BatchValueDenormalizer.GetTemporalValue(slot, SqlDbType.DateTime2));
     }
 
     [Theory]
@@ -119,7 +119,15 @@ public class BatchValueRoundTripTests
 
         Assert.True(BatchValueNormalizer.TryNormalize(value, out var slot));
 
-        Assert.Equal(value, BatchValueDenormalizer.GetTemporalValue(slot, Column(SqlDbType.Date)));
+        Assert.Equal(value, BatchValueDenormalizer.GetTemporalValue(slot, SqlDbType.Date));
+    }
+
+    [Fact]
+    public void A_Date_Normalizes_As_Its_Day_Number()
+    {
+        Assert.True(BatchValueNormalizer.TryNormalize(new DateOnly(2022, 2, 7), out var slot));
+
+        Assert.Equal(0x168720, slot.Value);
     }
 
     [Fact]
@@ -133,7 +141,7 @@ public class BatchValueRoundTripTests
 
         Assert.False(slot.IsNull);
 
-        Assert.Equal(value, (DateOnly)BatchValueDenormalizer.GetTemporalValue(slot, Column(SqlDbType.Date)));
+        Assert.Equal(value, (DateOnly)BatchValueDenormalizer.GetTemporalValue(slot, SqlDbType.Date));
     }
 
     [Fact]
@@ -143,7 +151,7 @@ public class BatchValueRoundTripTests
 
         Assert.True(BatchValueNormalizer.TryNormalize(value, out var slot));
 
-        Assert.Equal(value, BatchValueDenormalizer.GetTemporalValue(slot, Column(SqlDbType.Time)));
+        Assert.Equal(value, BatchValueDenormalizer.GetTemporalValue(slot, SqlDbType.Time));
     }
 
     [Theory]
@@ -160,7 +168,7 @@ public class BatchValueRoundTripTests
 
         Assert.True(BatchValueNormalizer.TryNormalize(value, out var slot));
 
-        var read = (DateTimeOffset)BatchValueDenormalizer.GetTemporalValue(slot, Column(SqlDbType.DateTimeOffset));
+        var read = (DateTimeOffset)BatchValueDenormalizer.GetTemporalValue(slot, SqlDbType.DateTimeOffset);
 
         Assert.Equal(value.UtcTicks, read.UtcTicks);
 
@@ -200,7 +208,7 @@ public class BatchValueRoundTripTests
         Assert.Equal(dataId, BatchValueDenormalizer.GetDictionaryDataId(slot));
 
         Assert.Equal(BatchValueType.DictionaryReference,
-                     BatchValueDenormalizer.GetValueType(slot, Column(SqlDbType.VarChar)));
+                     BatchValueDenormalizer.GetValueType(slot, Column(SqlDbType.VarChar).Domain));
     }
 
     [Fact]
@@ -212,7 +220,7 @@ public class BatchValueRoundTripTests
 
         Assert.False(slot.IsDeepDataReference);
 
-        Assert.Equal(BatchValueType.Null, BatchValueDenormalizer.GetValueType(slot, Column(SqlDbType.BigInt)));
+        Assert.Equal(BatchValueType.Null, BatchValueDenormalizer.GetValueType(slot, Column(SqlDbType.BigInt).Domain));
     }
 
     [Theory]
