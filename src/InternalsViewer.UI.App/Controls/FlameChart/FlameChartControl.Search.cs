@@ -24,6 +24,15 @@ public sealed partial class FlameChartControl
         set => SetValue(SearchTextProperty, value);
     }
 
+    public static readonly DependencyProperty HasSearchMatchesProperty =
+        DependencyProperty.Register(nameof(HasSearchMatches), typeof(bool), typeof(FlameChartControl), new PropertyMetadata(false));
+
+    public bool HasSearchMatches
+    {
+        get => (bool)GetValue(HasSearchMatchesProperty);
+        private set => SetValue(HasSearchMatchesProperty, value);
+    }
+
     private bool[]? _searchMatches;
 
     private bool[]? _nodeMatches;
@@ -42,6 +51,8 @@ public sealed partial class FlameChartControl
 
         _searchMatches = null;
 
+        HasSearchMatches = false;
+
         var terms = SearchText?.Split(' ', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries) ?? [];
 
         if (terms.Length == 0 || _timeline is not { } timeline)
@@ -59,6 +70,8 @@ public sealed partial class FlameChartControl
         }
 
         _searchMatches = matches;
+
+        HasSearchMatches = Array.IndexOf(matches, true) >= 0;
     }
 
     private void FindNodeMatches(CallStackNode? selected)
