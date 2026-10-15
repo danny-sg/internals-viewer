@@ -9,7 +9,7 @@ internal static class RowBufferDisplay
         => decoder?.GetColumn(row, column) is { } structure ? structure.ColumnName : $"Column {column.Ordinal}";
 
     public static object GetValue(RowBuffer row, RowBufferColumn column, RowBufferDecoder? decoder, bool decode)
-        => decode && decoder?.Decode(row, column) is { } text ? text : column.Page ?? (object)column.ToString();
+        => decode && decoder?.Decode(row, column) is { } text ? text : column.ToString();
 
     public static ResultDetails GetDetails(string title, RowBuffer? row, RowBufferDecoder? decoder, bool decode)
     {

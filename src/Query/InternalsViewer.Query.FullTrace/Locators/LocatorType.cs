@@ -21,7 +21,7 @@ internal readonly record struct LocatorType(LocatorValueType ValueType, bool IsI
 
     public bool IsInOut => IsOutput && (ValueType == LocatorValueType.Referenced || Path is not null);
 
-    public static LocatorType? LocatorTypeOf(string type)
+    public static LocatorType? GetLocatorType(string type)
     {
         var indirection = type.IndexOfAny(Indirections);
 

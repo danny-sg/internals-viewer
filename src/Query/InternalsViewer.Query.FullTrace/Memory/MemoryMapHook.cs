@@ -1,5 +1,7 @@
 using InternalsViewer.Query.FullTrace.Hooks;
 using InternalsViewer.Query.FullTrace.Interfaces.Hooks;
+using InternalsViewer.Query.FullTrace.Hooks.Enums;
+using InternalsViewer.Query.FullTrace.Memory.Enums;
 
 namespace InternalsViewer.Query.FullTrace.Memory;
 
@@ -14,7 +16,8 @@ internal sealed class MemoryMapHook(IEnumerable<MemoryMapFunction> functions) : 
                                                                    ? TraceHookEvents.Return
                                                                    : TraceHookEvents.Entry));
 
-    private Dictionary<ulong, MemoryMapOperation> Operations { get; } = GetOperations(functions);
+    private Dictionary<ulong, MemoryMapOperation> Operations { get; }
+        = functions.GroupBy(f => f.Address).ToDictionary(g => g.Key, g => g.Last().Operation);
 
     private List<AddressEntry> Entries { get; } = [];
 
@@ -54,18 +57,6 @@ internal sealed class MemoryMapHook(IEnumerable<MemoryMapFunction> functions) : 
         }
     }
 
-    private static Dictionary<ulong, MemoryMapOperation> GetOperations(IEnumerable<MemoryMapFunction> functions)
-    {
-        var operations = new Dictionary<ulong, MemoryMapOperation>();
-
-        foreach (var function in functions)
-        {
-            operations[function.Address] = (MemoryMapOperation)function.Operation;
-        }
-
-        return operations;
-    }
-
     private static ulong GetOwner(ReadOnlySpan<TraceHookFrame> frames, ulong address)
     {
         foreach (var frame in frames)
@@ -103,7 +94,7 @@ internal sealed class MemoryMapHook(IEnumerable<MemoryMapFunction> functions) : 
         {
             var entry = Entries[latest];
 
-            var existing = (MemoryMapOperation)entry.Operation;
+            var existing = entry.Operation;
 
             if (operation == MemoryMapOperation.Visited && existing != MemoryMapOperation.Allocated)
             {
@@ -143,6 +134,6 @@ internal sealed class MemoryMapHook(IEnumerable<MemoryMapFunction> functions) : 
             owned.Add(Entries.Count);
         }
 
-        Entries.Add(new AddressEntry(address, call.Id, owner, 0, call.Node, call.Thread, (uint)operation));
+        Entries.Add(new AddressEntry(address, call.Id, owner, 0, call.Node, call.Thread, operation));
     }
 }

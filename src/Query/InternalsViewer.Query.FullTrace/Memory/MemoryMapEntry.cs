@@ -1,3 +1,5 @@
+using InternalsViewer.Query.FullTrace.Memory.Enums;
+
 namespace InternalsViewer.Query.FullTrace.Memory;
 
 public sealed record MemoryMapEntry(ulong Address,

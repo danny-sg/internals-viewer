@@ -19,6 +19,29 @@ public static class SortedSearch
     public static int FirstAtOrAfter(ReadOnlySpan<ulong> values, ulong value, int from = 0)
         => LowerBound(values, value, from, strict: false);
 
+    public static int FirstAtOrAfter<T, TKey>(IReadOnlyList<T> values, TKey value, Func<T, TKey> getKey) where TKey : INumber<TKey>
+    {
+        var low = 0;
+
+        var high = values.Count;
+
+        while (low < high)
+        {
+            var middle = low + (high - low) / 2;
+
+            if (getKey(values[middle]) < value)
+            {
+                low = middle + 1;
+            }
+            else
+            {
+                high = middle;
+            }
+        }
+
+        return low;
+    }
+
     private static int LowerBound<T>(ReadOnlySpan<T> values, T value, int from, bool strict) where T : INumber<T>
     {
         var low = from;

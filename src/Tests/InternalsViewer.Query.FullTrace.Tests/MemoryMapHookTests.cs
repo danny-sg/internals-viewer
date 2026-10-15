@@ -1,5 +1,6 @@
 using InternalsViewer.Query.FullTrace.Hooks;
 using InternalsViewer.Query.FullTrace.Memory;
+using InternalsViewer.Query.FullTrace.Memory.Enums;
 
 namespace InternalsViewer.Query.FullTrace.Tests;
 
@@ -31,7 +32,7 @@ public class MemoryMapHookTests
 
         var entry = Assert.Single(hook.Build());
 
-        Assert.Equal((StackObject, 10ul, 5ul, (uint)MemoryMapOperation.Constructed),
+        Assert.Equal((StackObject, 10ul, 5ul, MemoryMapOperation.Constructed),
                      (entry.Address, entry.Call, entry.Owner, entry.Operation));
         Assert.Equal([(Thread, 5ul)], replay.WatchedFrames);
     }
@@ -57,7 +58,7 @@ public class MemoryMapHookTests
 
         var entry = Assert.Single(hook.Build());
 
-        Assert.Equal((HeapObject, 20ul, 0ul, (uint)MemoryMapOperation.Allocated),
+        Assert.Equal((HeapObject, 20ul, 0ul, MemoryMapOperation.Allocated),
                      (entry.Address, entry.Call, entry.Owner, entry.Operation));
         Assert.Empty(replay.WatchedFrames);
     }
@@ -87,9 +88,9 @@ public class MemoryMapHookTests
     }
 
     private static (MemoryMapHook Hook, FakeTraceReplay Replay) Create()
-        => (new MemoryMapHook([new MemoryMapFunction(Constructor, (uint)MemoryMapOperation.Constructed),
-                               new MemoryMapFunction(Method, (uint)MemoryMapOperation.Visited),
-                               new MemoryMapFunction(OperatorNew, (uint)MemoryMapOperation.Allocated)]),
+        => (new MemoryMapHook([new MemoryMapFunction(Constructor, MemoryMapOperation.Constructed),
+                               new MemoryMapFunction(Method, MemoryMapOperation.Visited),
+                               new MemoryMapFunction(OperatorNew, MemoryMapOperation.Allocated)]),
             new FakeTraceReplay { Frames = Frames });
 
     private static TraceHookCall Call(ulong function, ulong id, ulong[]? arguments = null, ulong returnValue = 0)

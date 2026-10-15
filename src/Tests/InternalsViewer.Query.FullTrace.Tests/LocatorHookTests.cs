@@ -1,3 +1,6 @@
+using System.Reflection.PortableExecutable;
+using System.Text;
+using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Query.CallStack.Locators;
 using InternalsViewer.Query.FullTrace.Calls;
 using InternalsViewer.Query.FullTrace.Hooks;
@@ -29,7 +32,7 @@ public class LocatorHookTests
     {
         var replay = new FakeTraceReplay().Write(Pointer, Page336);
 
-        var locator = Replay(new LocatorRead(Function, 1, false, LocatorValueType.Page), replay, [0, Pointer, 0, 0]).GetLocator(1);
+        var locator = Replay(new LocatorRead(Function, 1, false, LocatorValueType.Page), replay).GetLocator(1);
 
         Assert.Equal((LocatorValueType.Page, Page336), (locator?.ValueType, locator?.Value));
     }
@@ -49,7 +52,7 @@ public class LocatorHookTests
     {
         var replay = new FakeTraceReplay().Write(StackPointer, ReturnAddress).Write(StackPointer + 8 + 32, 0x77ul);
 
-        var call = Replay(new LocatorRead(Function, 4, false, LocatorValueType.Argument), replay, [0, 0, 0, 0]);
+        var call = Replay(new LocatorRead(Function, 4, false, LocatorValueType.Argument), replay);
 
         Assert.Equal(0x77ul, call.GetStackValue(4));
     }
@@ -59,7 +62,7 @@ public class LocatorHookTests
     {
         var replay = new FakeTraceReplay().Write(StackPointer, 0ul).Write(StackPointer + 32, 0x66ul);
 
-        var call = Replay(new LocatorRead(Function, 4, false, LocatorValueType.Argument), replay, [0, 0, 0, 0]);
+        var call = Replay(new LocatorRead(Function, 4, false, LocatorValueType.Argument), replay);
 
         Assert.Equal(0x66ul, call.GetStackValue(4));
     }
@@ -71,13 +74,11 @@ public class LocatorHookTests
 
         var replay = new FakeTraceReplay().Write(Pointer, Page336);
 
-        var read = new LocatorRead(Function, register, true, LocatorValueType.Page);
-
-        var store = new TraceCallStore.Builder([read]);
+        var store = new TraceCallStore.Builder();
 
         store.Add(Function, 0, Chunk(Row(1, flags: ReturnedFlag)), 1);
 
-        var hook = new LocatorHook([read], store);
+        var hook = new LocatorHook([new LocatorRead(Function, register, true, LocatorValueType.Page)], store);
 
         hook.OnEntry(Call([0, 0, 0, 0]), replay);
 
@@ -91,13 +92,11 @@ public class LocatorHookTests
     {
         var register = LocatorReadResolver.ReturnRegister;
 
-        var read = new LocatorRead(Function, register, true, LocatorValueType.Page);
-
-        var store = new TraceCallStore.Builder([read]);
+        var store = new TraceCallStore.Builder();
 
         store.Add(Function, 0, Chunk(Row(1)), 1);
 
-        var hook = new LocatorHook([read], store);
+        var hook = new LocatorHook([new LocatorRead(Function, register, true, LocatorValueType.Page)], store);
 
         var replay = new FakeTraceReplay().Write(Pointer, Page336);
 
@@ -110,13 +109,92 @@ public class LocatorHookTests
         Assert.Null(store.Build().GetCallList(Function, 0)![0].GetLocator(register));
     }
 
-    private static TraceArgumentCall Replay(LocatorRead read, FakeTraceReplay replay, ulong[] arguments)
+    [Fact]
+    public void A_Narrow_String_Ends_At_Its_Terminator()
     {
-        var store = new TraceCallStore.Builder([read]);
+        var replay = new FakeTraceReplay().Write(Pointer, Encoding.Latin1.GetBytes("dbo.Orders\0garbage"));
+
+        var locator = Replay(new LocatorRead(Function, 1, false, LocatorValueType.Text), replay).GetLocator(1);
+
+        Assert.Equal(("dbo.Orders", 0ul), (locator?.Text, locator?.Detail));
+    }
+
+    [Fact]
+    public void A_Wide_String_Ends_At_A_Two_Byte_Terminator()
+    {
+        var replay = new FakeTraceReplay().Write(Pointer, Encoding.Unicode.GetBytes("Orders\0x"));
+
+        var locator = Replay(new LocatorRead(Function, 1, false, LocatorValueType.WideText), replay).GetLocator(1);
+
+        Assert.Equal(("Orders", 0ul), (locator?.Text, locator?.Detail));
+    }
+
+    [Fact]
+    public void A_String_Cut_Short_By_The_Trace_Is_Truncated()
+    {
+        var replay = new FakeTraceReplay().Write(Pointer, Encoding.Latin1.GetBytes("abcdefgh"));
+
+        var locator = Replay(new LocatorRead(Function, 1, false, LocatorValueType.Text), replay).GetLocator(1);
+
+        Assert.Equal("abcdefgh (Truncated)", locator?.ToString());
+    }
+
+    [Fact]
+    public void A_String_The_Trace_Never_Read_Is_Read_From_The_Module_File()
+    {
+        const ulong imageBase = 0x7FF0_0000_0000;
+
+        var path = Path.Combine(Environment.SystemDirectory, "kernel32.dll");
+
+        using var images = new ImageText([TraceModule.Read(path, imageBase, 0x1000_0000)]);
+
+        var pointer = imageBase + GetRva(path, "CreateFileW\0"u8);
+
+        var call = Replay(new LocatorRead(Function, 0, false, LocatorValueType.Text), new FakeTraceReplay(), [pointer, 0, 0, 0], images);
+
+        Assert.Equal("CreateFileW", call.GetLocator(0)?.ToString());
+    }
+
+    [Fact]
+    public void A_Type_Info_Is_Read_From_Its_Type_And_Its_Length()
+    {
+        var replay = new FakeTraceReplay().Write(Pointer, 0x0000_00E7_0000_00E7ul).Write(Pointer + 16, 0xFFFF_FFFF_0000_0100ul);
+
+        var locator = Replay(new LocatorRead(Function, 1, false, LocatorValueType.TypeInfo), replay).GetLocator(1);
+
+        Assert.Equal("nvarchar(128)", locator?.ToString());
+    }
+
+    [Fact]
+    public void A_Type_Info_Whose_Length_Is_Not_In_The_Trace_Shows_Its_Type()
+    {
+        var replay = new FakeTraceReplay().Write(Pointer, (ushort)0x0138);
+
+        var locator = Replay(new LocatorRead(Function, 1, false, LocatorValueType.TypeInfo), replay).GetLocator(1);
+
+        Assert.Equal("int NOT NULL", locator?.ToString());
+    }
+
+    [Fact]
+    public void A_Log_Sequence_Number_Is_Read_From_Its_Two_Words()
+    {
+        var replay = new FakeTraceReplay().Write(Pointer, 37 | (152ul << 32)).Write(Pointer + 8, 0xFFFF_0000_0002ul);
+
+        var locator = Replay(new LocatorRead(Function, 1, false, LocatorValueType.LogSequenceNumber), replay).GetLocator(1);
+
+        Assert.Equal((new LogSequenceNumber(37, 152, 2), "(37:152:2)"), (locator?.Lsn, locator?.ToString()));
+    }
+
+    private static TraceArgumentCall Replay(LocatorRead read,
+                                            FakeTraceReplay replay,
+                                            ulong[]? arguments = null,
+                                            ImageText? images = null)
+    {
+        var store = new TraceCallStore.Builder();
 
         store.Add(Function, 0, Chunk(Row(1)), 1);
 
-        new LocatorHook([read], store).OnEntry(Call(arguments), replay);
+        new LocatorHook([read], store, images).OnEntry(Call(arguments ?? [0, Pointer, 0, 0]), replay);
 
         return store.Build().GetCallList(Function, 0)![0];
     }
@@ -132,4 +210,16 @@ public class LocatorHookTests
             StackPointer = StackPointer,
             ReturnAddress = ReturnAddress
         };
+
+    private static uint GetRva(string path, ReadOnlySpan<byte> text)
+    {
+        var offset = File.ReadAllBytes(path).AsSpan().IndexOf(text);
+
+        using var stream = File.OpenRead(path);
+
+        var section = new PEHeaders(stream).SectionHeaders.First(s => offset >= s.PointerToRawData
+                                                                      && offset < s.PointerToRawData + s.SizeOfRawData);
+
+        return (uint)(section.VirtualAddress + offset - section.PointerToRawData);
+    }
 }

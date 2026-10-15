@@ -1,5 +1,6 @@
 using InternalsViewer.Query.CallStack.Arguments;
 using InternalsViewer.Query.FullTrace.Arguments;
+using InternalsViewer.Query.FullTrace.Arguments.Enums;
 
 namespace InternalsViewer.Query.FullTrace.Tests;
 

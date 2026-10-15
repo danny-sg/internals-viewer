@@ -12,6 +12,7 @@ using InternalsViewer.Query.FullTrace.Batches;
 using InternalsViewer.Query.FullTrace.CustomHooks;
 using InternalsViewer.Query.FullTrace.Hooks;
 using InternalsViewer.Query.FullTrace.RowBuffers;
+using InternalsViewer.Query.FullTrace.Memory.Enums;
 
 namespace InternalsViewer.Query.FullTrace;
 
@@ -130,7 +131,9 @@ internal sealed class ReplaySession : IDisposable
             progress?.Report(percentages.Values.Average());
         };
 
-        var store = new TraceCallStore.Builder(functions.LocatorReads);
+        using var images = new ImageText(Modules);
+
+        var store = new TraceCallStore.Builder();
 
         var timeline = new TraceTimeline.Builder();
 
@@ -143,24 +146,23 @@ internal sealed class ReplaySession : IDisposable
         MemoryMapFunction[] memoryMapFunctions = [.. functions.MemoryMapFunctions,
                                                   .. functions.MemoryFunctions
                                                               .Where(f => f is { IsAllocation: true, IsVirtual: false })
-                                                              .Select(f => new MemoryMapFunction(f.Address,
-                                                                                                 (uint)MemoryMapOperation.Allocated))];
+                                                              .Select(f => new MemoryMapFunction(f.Address, MemoryMapOperation.Allocated))];
 
         var memoryMap = new MemoryMapHook(memoryMapFunctions);
 
         var publishedEvents = new PublishedEventHook(functions.PublishedEvents);
 
-        var rowBuffers = new RowBufferIndex.Log();
+        var rowBuffers = new RowBufferHook(functions.RowBuffers);
 
-        var batches = new BatchIndex.Log();
+        var batches = new BatchHook(functions.Batches);
 
         var customHook = new CustomHook(Resolve(customHooks));
 
-        var hooks = new TraceHooks([new LocatorHook(functions.LocatorReads, store),
+        var hooks = new TraceHooks([new LocatorHook(functions.LocatorReads, store, images),
                                     memoryMap,
                                     publishedEvents,
-                                    new RowBufferHook(functions.RowBuffers, rowBuffers),
-                                    new BatchHook(functions.Batches, batches),
+                                    rowBuffers,
+                                    batches,
                                     customHook]);
 
         ReplayBridge.HookCallback onHook = hooks.OnHook;
@@ -210,11 +212,9 @@ internal sealed class ReplaySession : IDisposable
                     throw new InvalidOperationException("A trace hook failed while the trace was replayed", failure);
                 }
 
-                using var images = new ImageText(Modules);
-
                 return new ReplayResult(nodes,
                                         Modules,
-                                        store.Build(images),
+                                        store.Build(),
                                         timeline.Build(nodes),
                                         publishedEvents.Build(),
                                         memoryMap.Build(),

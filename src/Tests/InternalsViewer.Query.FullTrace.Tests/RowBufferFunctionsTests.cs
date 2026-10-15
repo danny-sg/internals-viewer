@@ -1,4 +1,5 @@
 using InternalsViewer.Query.FullTrace.RowBuffers;
+using InternalsViewer.Query.FullTrace.RowBuffers.Enums;
 
 namespace InternalsViewer.Query.FullTrace.Tests;
 
@@ -19,27 +20,24 @@ public class RowBufferFunctionsTests
     {
         var collector = Collect();
 
-        ulong[] functions = [.. collector.Build(Bases).Reads.Select(r => r.Function).Order()];
+        ulong[] functions = [.. collector.Build(Bases).Functions.Order()];
 
         Assert.Equal([0x10ul, 0x20, 0x30, 0x40, 0x50], functions);
     }
 
     [Fact]
-    public void Every_Rowset_Iterator_Has_A_Layout()
+    public void Every_Rowset_Iterator_Reads_Its_Bindings()
     {
-        var collector = Collect();
+        var formats = Collect().Build(Bases).Formats.OrderBy(f => f.VTable);
 
-        ulong[] vtables = [.. collector.Build(Bases).Layouts.Select(l => l.VTable).Order()];
+        (ulong, RowBufferFormat)[] expected =
+        [
+            (0x1000, RowBufferFormat.Bindings),
+            (0x2000, RowBufferFormat.Bindings),
+            (0x3000, RowBufferFormat.Bindings)
+        ];
 
-        Assert.Equal([0x1000ul, 0x2000, 0x3000], vtables);
-    }
-
-    [Fact]
-    public void Layouts_Hold_The_Rowset_Buffer_And_Bindings()
-    {
-        var layout = Collect().Build(Bases).Layouts.Single(l => l.VTable == 0x1000);
-
-        Assert.Equal(new RowBufferLayout(0x1000, 0x80, 0x88), layout);
+        Assert.Equal(expected, formats);
     }
 
     [Fact]
@@ -53,8 +51,8 @@ public class RowBufferFunctionsTests
 
         var functions = collector.Build(new Dictionary<string, string[]> { ["CQScanBatchHelper"] = ["CQScanBatchHelper", "CQScanNew"] });
 
-        Assert.Equal(0xA0ul, Assert.Single(functions.Reads).Function);
-        Assert.Equal(new RowBufferLayout(0x7000, 0x78, 0, 0x50, RowBufferFormat.Values), Assert.Single(functions.Layouts));
+        Assert.Equal(0xA0ul, Assert.Single(functions.Functions));
+        Assert.Equal((0x7000ul, RowBufferFormat.Values), Assert.Single(functions.Formats));
     }
 
     [Fact]

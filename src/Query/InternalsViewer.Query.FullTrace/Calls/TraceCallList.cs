@@ -59,7 +59,7 @@ public sealed class TraceCallList : IReadOnlyList<TraceArgumentCall>
                 row[column] = columns[column * calls + call];
             }
 
-            return TraceArgumentCall.Decode(row, Locators?.LocatorsOf(index));
+            return TraceArgumentCall.Decode(row, Locators?.GetLocators(index));
         }
     }
 

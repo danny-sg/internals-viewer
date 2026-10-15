@@ -46,7 +46,6 @@
                                     Version="{x:Bind ViewModel.Arguments.CallTableVersion, Mode=OneWay}"
                                     PageClicked="OnArgumentPageClicked"
                                     ObjectClicked="OnArgumentObjectClicked"
-                                    PagePointerClicked="OnPagePointerClicked"
                                     CellMenuOpening="OnArgumentCellMenuOpening"
                                     RowName="call"
                                     Visibility="{x:Bind ViewModel.Arguments.HasCalls, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}"/>

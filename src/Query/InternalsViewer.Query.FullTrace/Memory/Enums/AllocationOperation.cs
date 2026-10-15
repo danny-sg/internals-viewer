@@ -1,4 +1,4 @@
-﻿namespace InternalsViewer.Query.FullTrace.Memory;
+﻿namespace InternalsViewer.Query.FullTrace.Memory.Enums;
 
 public enum AllocationOperation
 {

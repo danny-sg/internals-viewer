@@ -1,6 +1,5 @@
 using System;
 using System.Linq;
-using InternalsViewer.Query.FullTrace.RowBuffers;
 using InternalsViewer.Query.Results;
 using InternalsViewer.UI.App.Helpers;
 using InternalsViewer.UI.App.Models;
@@ -17,7 +16,7 @@ internal static class ResultDetailsPanel
 
     private static readonly Thickness HeaderBorder = new(0, 0, 0, 1);
 
-    public static void Fill(Panel host, ResultDetails details, Action<RowBufferPage>? pagePointerClicked)
+    public static void Fill(Panel host, ResultDetails details)
     {
         host.Children.Clear();
 
@@ -42,18 +41,11 @@ internal static class ResultDetailsPanel
             return;
         }
 
-        var grid = new ResultsGridControl
+        host.Children.Add(new ResultsGridControl
         {
             ResultSet = CreateResultSet(details),
             IsStatusBarVisible = false
-        };
-
-        if (pagePointerClicked is not null)
-        {
-            grid.PagePointerClicked += (_, pointer) => pagePointerClicked(pointer);
-        }
-
-        host.Children.Add(grid);
+        });
     }
 
     private static QueryResultSet CreateResultSet(ResultDetails details)

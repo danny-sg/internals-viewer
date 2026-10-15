@@ -1,4 +1,3 @@
-using InternalsViewer.Query.FullTrace.RowBuffers;
 using InternalsViewer.UI.App.Controls.CallStack;
 using InternalsViewer.UI.App.Controls.Docking;
 using InternalsViewer.UI.App.Controls.Results;
@@ -23,9 +22,6 @@ public sealed partial class CallTreeRowBuffersPanelView : UserControl, IDocument
     public FrameworkElement CreateCommands() => TabCommands.Panel(0, new DecodeToggle());
 
     private void OnCallClicked(object? sender, CallValue value) => ViewModel?.Owner.Tree.ShowCall(value.Node, value.Call);
-
-    private void OnPagePointerClicked(object? sender, RowBufferPage pointer)
-        => _ = ViewModel?.Owner.OpenPagePointerAsync(pointer, KeyboardState.IsShiftDown());
 
     private void OnCellMenuOpening(object? sender, ResultCellMenuEventArgs e)
     {

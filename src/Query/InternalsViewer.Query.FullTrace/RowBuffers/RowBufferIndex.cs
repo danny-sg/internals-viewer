@@ -1,4 +1,3 @@
-using System.Runtime.InteropServices;
 using InternalsViewer.Query.FullTrace.Calls;
 using InternalsViewer.Query.Helpers;
 
@@ -6,143 +5,71 @@ namespace InternalsViewer.Query.FullTrace.RowBuffers;
 
 public sealed partial class RowBufferIndex
 {
-    private RowBufferIndex(Dictionary<(ulong Address, ulong Instance), RowBufferTable> tables)
+    internal RowBufferIndex(IEnumerable<RowBuffer> rows)
     {
-        Tables = tables;
+        Rows = rows.GroupBy(r => (r.Function, r.Instance)).ToDictionary(g => g.Key, g => g.OrderBy(r => r.Call).ToArray());
 
-        Count = tables.Values.Sum(t => t.Count);
+        Count = Rows.Values.Sum(r => r.Length);
     }
 
     public static RowBufferIndex Empty { get; } = new([]);
 
     public int Count { get; }
 
-    private Dictionary<(ulong Address, ulong Instance), RowBufferTable> Tables { get; }
+    private Dictionary<(ulong Function, ulong Instance), RowBuffer[]> Rows { get; }
 
-    private Dictionary<ulong, IteratorTimeline> Timelines => field ??= BuildTimelines();
+    private Dictionary<ulong, RowBuffer[]> Iterators
+        => field ??= Rows.Values
+                         .SelectMany(r => r)
+                         .GroupBy(r => r.Iterator)
+                         .ToDictionary(g => g.Key, g => g.OrderBy(r => r.Id).ToArray());
 
-    public bool HasRows(ulong address, ulong instance) => Tables.ContainsKey((address, instance));
+    public bool HasRows(ulong address, ulong instance) => Rows.ContainsKey((address, instance));
 
-    public bool HasRow(ulong address, ulong instance, int call) => TryGetIterator(address, instance, call, out _);
+    public bool HasRow(ulong address, ulong instance, int call) => GetRow(address, instance, call) is not null;
+
+    public IReadOnlyList<RowBuffer> GetRows(ulong address, ulong instance) => Rows.GetValueOrDefault((address, instance)) ?? [];
 
     public RowBuffer? GetRow(ulong address, ulong instance, int call)
-        => Tables.TryGetValue((address, instance), out var table) ? table.GetRow(call) : null;
-
-    public bool TryGetIterator(ulong address, ulong instance, int call, out ulong iterator)
     {
-        iterator = 0;
+        var rows = GetRows(address, instance);
 
-        return Tables.TryGetValue((address, instance), out var table) && table.TryGetIterator(call, out iterator);
+        var index = SortedSearch.FirstAtOrAfter(rows, call, r => r.Call);
+
+        return index < rows.Count && rows[index].Call == call ? rows[index] : null;
     }
 
-    public IReadOnlyList<int> GetCalls(ulong address, ulong instance)
-        => Tables.TryGetValue((address, instance), out var table) ? table.GetCalls() : [];
-
     public int GetColumnCount(ulong address, ulong instance)
-        => Tables.TryGetValue((address, instance), out var table) ? table.ColumnCount : 0;
-
-    public IReadOnlyList<RowBuffer> GetRows(ulong address, ulong instance)
-        => Tables.TryGetValue((address, instance), out var table) ? [.. table.GetRows()] : [];
+        => GetRows(address, instance).Select(r => r.Columns.Count).DefaultIfEmpty().Max();
 
     public RowBuffer? GetRowAt(ulong iterator, ulong callId)
     {
-        if (!Timelines.TryGetValue(iterator, out var timeline))
+        if (!Iterators.TryGetValue(iterator, out var rows))
         {
             return null;
         }
 
-        var index = SortedSearch.FirstAtOrAfter(timeline.Ids, callId) - 1;
+        var index = SortedSearch.FirstAtOrAfter(rows, callId, r => r.Id) - 1;
 
-        return index < 0 ? null : timeline.Rows[index].Table.CreateRow(timeline.Rows[index].Index);
+        return index < 0 ? null : rows[index];
     }
 
     internal void AnnotateNodes(TraceCallStore store)
     {
-        foreach (var table in Tables.Values)
+        foreach (var ((address, instance), rows) in Rows)
         {
-            if (store.GetCallList(table.Function, table.Instance) is not { } calls)
+            if (store.GetCallList(address, instance) is not { } calls)
             {
                 continue;
             }
 
-            foreach (var call in table.GetCalls())
+            foreach (var row in rows)
             {
-                if (call < calls.Count && store.GetNode(calls.GetNodeIndex(call)) is { } node)
+                if (row.Call < calls.Count && store.GetNode(calls.GetNodeIndex(row.Call)) is { } node)
                 {
                     node.HasRowBuffers = true;
                 }
             }
-        }
-    }
-
-    private Dictionary<ulong, IteratorTimeline> BuildTimelines()
-    {
-        var captures = new Dictionary<ulong, List<(ulong Id, RowBufferTable Table, int Index)>>();
-
-        foreach (var table in Tables.Values)
-        {
-            for (var index = 0; index < table.Count; index++)
-            {
-                var (iterator, id) = table.GetCapture(index);
-
-                ref var list = ref CollectionsMarshal.GetValueRefOrAddDefault(captures, iterator, out _);
-
-                (list ??= []).Add((id, table, index));
-            }
-        }
-
-        return captures.ToDictionary(c => c.Key, c => IteratorTimeline.Build(c.Value));
-    }
-
-    internal sealed class Log
-    {
-        private Dictionary<(ulong Address, ulong Instance), RowBufferTable.Builder> Builders { get; } = [];
-
-        public void Add(ReadOnlySpan<RawRow> rows, ReadOnlySpan<RawColumn> columns, ReadOnlySpan<byte> data)
-        {
-            foreach (var row in rows)
-            {
-                if (!IsValid(row, columns, data.Length))
-                {
-                    continue;
-                }
-
-                ref var builder = ref CollectionsMarshal.GetValueRefOrAddDefault(Builders, (row.Function, row.Instance), out _);
-
-                builder ??= new RowBufferTable.Builder(row.Function, row.Instance);
-
-                builder.Add(row, columns.Slice((int)row.FirstColumn, (int)row.ColumnCount), data);
-            }
-        }
-
-        public RowBufferIndex Build() => new(Builders.ToDictionary(b => b.Key, b => b.Value.Build()));
-
-        private static bool IsValid(RawRow row, ReadOnlySpan<RawColumn> columns, int dataLength)
-        {
-            if ((ulong)row.FirstColumn + row.ColumnCount > (ulong)columns.Length)
-            {
-                return false;
-            }
-
-            foreach (var column in columns.Slice((int)row.FirstColumn, (int)row.ColumnCount))
-            {
-                if ((ulong)column.Data + column.Captured > (ulong)dataLength)
-                {
-                    return false;
-                }
-            }
-
-            return true;
-        }
-    }
-
-    private sealed record IteratorTimeline(ulong[] Ids, (RowBufferTable Table, int Index)[] Rows)
-    {
-        public static IteratorTimeline Build(List<(ulong Id, RowBufferTable Table, int Index)> captures)
-        {
-            captures.Sort((left, right) => left.Id.CompareTo(right.Id));
-
-            return new IteratorTimeline([.. captures.Select(c => c.Id)], [.. captures.Select(c => (c.Table, c.Index))]);
         }
     }
 }

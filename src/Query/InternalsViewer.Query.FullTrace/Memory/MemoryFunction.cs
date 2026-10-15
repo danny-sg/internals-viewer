@@ -1,6 +1,7 @@
 ﻿using InternalsViewer.Query.CallStack;
 using InternalsViewer.Query.FullTrace.Calls;
 using InternalsViewer.Query.Helpers;
+using InternalsViewer.Query.FullTrace.Memory.Enums;
 
 namespace InternalsViewer.Query.FullTrace.Memory;
 

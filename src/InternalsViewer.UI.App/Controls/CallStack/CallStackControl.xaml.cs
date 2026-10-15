@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.ComponentModel;
 using System.Linq;
 using CommunityToolkit.WinUI;
-using InternalsViewer.Query.FullTrace.RowBuffers;
 using InternalsViewer.UI.App.Helpers;
 using InternalsViewer.UI.App.Helpers.Converters.Page;
 using InternalsViewer.UI.App.Models;
@@ -334,7 +333,7 @@ public sealed partial class CallStackControl : UserControl, IReferenceFinder, ID
 
         for (var index = 0; index < details.Columns.Count; index++)
         {
-            AddRowBufferColumn(index, details.Columns[index], viewModel);
+            AddRowBufferColumn(index, details.Columns[index]);
         }
     }
 
@@ -345,7 +344,7 @@ public sealed partial class CallStackControl : UserControl, IReferenceFinder, ID
         RowBufferGrid.RowDefinitions.Clear();
     }
 
-    private void AddRowBufferColumn(int index, ResultDetail column, CallStackViewModel viewModel)
+    private void AddRowBufferColumn(int index, ResultDetail column)
     {
         var text = column.Value?.ToString() ?? string.Empty;
 
@@ -353,20 +352,7 @@ public sealed partial class CallStackControl : UserControl, IReferenceFinder, ID
 
         var value = new TextBlock { Style = GetStyle("DetailValueStyle") };
 
-        if (column.Value is RowBufferPage page)
-        {
-            var link = new Hyperlink();
-
-            link.Inlines.Add(new Run { Text = text });
-
-            link.Click += (_, _) => _ = viewModel.OpenPagePointerAsync(page, KeyboardState.IsShiftDown());
-
-            value.Inlines.Add(link);
-        }
-        else
-        {
-            HexText.Apply(value, text);
-        }
+        HexText.Apply(value, text);
 
         var copy = new CopyButton { Style = GetStyle("ValueCopyButtonStyle"), Tag = text };
 

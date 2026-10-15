@@ -1,4 +1,5 @@
 using InternalsViewer.Query.CallStack;
+using InternalsViewer.Query.FullTrace.Memory.Enums;
 
 namespace InternalsViewer.Query.FullTrace.Memory;
 
@@ -41,7 +42,7 @@ public sealed partial class MemoryMap
 
     private static MemoryMapEntry GetEntry(AddressEntry entry, Func<int, CallStackNode?> nodeOf)
     {
-        var operation = (MemoryMapOperation)entry.Operation;
+        var operation = entry.Operation;
 
         var node = nodeOf(entry.Node);
 

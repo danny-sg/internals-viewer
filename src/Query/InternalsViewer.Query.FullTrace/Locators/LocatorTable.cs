@@ -26,7 +26,7 @@ internal sealed partial class LocatorTable
         return new LocatorTable([.. found.Select(f => f.Call)], [.. found.Select(f => f.Locator)]);
     }
 
-    public IReadOnlyList<Locator> LocatorsOf(int call)
+    public IReadOnlyList<Locator> GetLocators(int call)
     {
         var first = SortedSearch.FirstAtOrAfter(Calls, call);
 

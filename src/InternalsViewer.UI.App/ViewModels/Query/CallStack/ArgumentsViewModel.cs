@@ -91,7 +91,6 @@ public sealed partial class ArgumentsViewModel(ILogger logger, SymbolsViewModel 
                           HoBtAccessMap? hobtAccess = null,
                           MemoryMap? memoryMap = null,
                           RowBufferIndex? rowBuffers = null,
-                          RowBufferPageResolver? rowBufferPages = null,
                           RowBufferDecoder? rowBufferDecoder = null,
                           BatchIndex? batches = null,
                           BatchDecoder? batchDecoder = null)
@@ -106,7 +105,6 @@ public sealed partial class ArgumentsViewModel(ILogger logger, SymbolsViewModel 
                                 hobtAccess ?? HoBtAccessMap.Empty,
                                 memoryMap ?? MemoryMap.Empty,
                                 rowBuffers ?? RowBufferIndex.Empty,
-                                rowBufferPages,
                                 rowBufferDecoder,
                                 batches ?? BatchIndex.Empty,
                                 batchDecoder,

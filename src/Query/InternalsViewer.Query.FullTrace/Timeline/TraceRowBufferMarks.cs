@@ -76,12 +76,12 @@ public sealed class TraceRowBufferMarks
                 (batchList ??= []).Add(capture);
             }
 
-            if (!rowBuffers.TryGetIterator(frame.Address, frame.Instance, location.Call, out var iterator))
+            if (rowBuffers.GetRow(frame.Address, frame.Instance, location.Call) is not { } row)
             {
                 continue;
             }
 
-            ref var list = ref CollectionsMarshal.GetValueRefOrAddDefault(captures, (location.Thread.ThreadId, iterator), out _);
+            ref var list = ref CollectionsMarshal.GetValueRefOrAddDefault(captures, (location.Thread.ThreadId, row.Iterator), out _);
 
             (list ??= []).Add(capture);
         }

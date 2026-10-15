@@ -17,7 +17,6 @@ using Microsoft.Extensions.Logging;
 using Microsoft.UI.Xaml.Controls;
 using System.Threading;
 using System.Threading.Tasks;
-using InternalsViewer.Query.FullTrace.RowBuffers;
 
 namespace InternalsViewer.UI.App.ViewModels.Query.CallStack;
 
@@ -236,13 +235,6 @@ public sealed class CallTreeTabViewModel : IDisposable
         }
 
         OpenPage(locator.Page, locator.ValueType == LocatorValueType.Row ? locator.Slot : null, detached);
-    }
-
-    public async Task OpenPagePointerAsync(RowBufferPage pointer, bool detached)
-    {
-        var slot = Arguments.Lookup?.RowBufferPages is { } pages ? await pages.GetSlotAsync(pointer, CancellationToken.None) : null;
-
-        OpenPage(pointer.Page, slot is { } found ? (ushort)found : null, detached);
     }
 
     public void OpenPage(PageAddress pageAddress, ushort? slot, bool detached)

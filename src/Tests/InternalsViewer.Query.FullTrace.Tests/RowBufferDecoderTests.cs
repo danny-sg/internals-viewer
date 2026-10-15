@@ -1,6 +1,7 @@
 using System.Data;
 using InternalsViewer.Internals.Metadata.Structures;
 using InternalsViewer.Query.FullTrace.RowBuffers;
+using InternalsViewer.Query.FullTrace.RowBuffers.Enums;
 
 namespace InternalsViewer.Query.FullTrace.Tests;
 
@@ -68,7 +69,7 @@ public class RowBufferDecoderTests
     }
 
     private static RowBufferColumn Value(RowBufferColumnFlags flags, byte[] data)
-        => new(0, 0, flags, data.Length, -1, 0, 0, data);
+        => new(0, RowBufferBinding.None, 0, flags, data.Length, data);
 
     private static TableStructure Table(params ColumnStructure[] columns) => new(1) { Columns = [.. columns] };
 

@@ -1,3 +1,5 @@
+using InternalsViewer.Query.FullTrace.RowBuffers.Enums;
+
 namespace InternalsViewer.Query.FullTrace.RowBuffers;
 
 public sealed record RowBuffer(ulong Function,

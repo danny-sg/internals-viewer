@@ -13,6 +13,7 @@ using InternalsViewer.Query.FullTrace.Locators;
 using InternalsViewer.Query.FullTrace.Memory;
 using InternalsViewer.Query.FullTrace.RowBuffers;
 using InternalsViewer.UI.App.Models.Query.CallStack;
+using InternalsViewer.Query.FullTrace.Calls.Enums;
 
 namespace InternalsViewer.UI.App.ViewModels.Query.CallStack;
 
@@ -22,7 +23,6 @@ public sealed class CallStoreLookup(TraceCallStore store,
                                   HoBtAccessMap hobtAccess,
                                   MemoryMap memoryMap,
                                   RowBufferIndex rowBuffers,
-                                  RowBufferPageResolver? rowBufferPages,
                                   RowBufferDecoder? rowBufferDecoder,
                                   BatchIndex batches,
                                   BatchDecoder? batchDecoder,
@@ -36,8 +36,6 @@ public sealed class CallStoreLookup(TraceCallStore store,
     public TraceCallStore Store { get; } = store;
 
     public RowBufferIndex RowBuffers { get; } = rowBuffers;
-
-    public RowBufferPageResolver? RowBufferPages { get; } = rowBufferPages;
 
     public RowBufferDecoder? RowBufferDecoder { get; } = rowBufferDecoder;
 

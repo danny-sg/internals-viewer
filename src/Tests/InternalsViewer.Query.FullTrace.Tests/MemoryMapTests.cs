@@ -1,6 +1,7 @@
 using System.Text;
 using InternalsViewer.Query.CallStack;
 using InternalsViewer.Query.FullTrace.Memory;
+using InternalsViewer.Query.FullTrace.Memory.Enums;
 
 namespace InternalsViewer.Query.FullTrace.Tests;
 
@@ -109,7 +110,7 @@ public class MemoryMapTests
     private static MemoryMap Build(params AddressEntry[] entries) => MemoryMap.Build(entries, NodeOf);
 
     private static AddressEntry Entry(MemoryMapOperation operation, ulong call, int node, ulong owner = 0, ulong until = 0)
-        => new(Address, call, owner, until, node, 7, (uint)operation);
+        => new(Address, call, owner, until, node, 7, operation);
 
     private static CallStackNode? NodeOf(int node) => node >= 0 && node < Nodes.Length ? Nodes[node] : null;
 

@@ -1,6 +1,7 @@
 using InternalsViewer.Query.CallStack.Arguments;
 using InternalsViewer.Query.CallStack.Dia;
 using InternalsViewer.Query.FullTrace.Memory;
+using InternalsViewer.Query.FullTrace.Memory.Enums;
 
 namespace InternalsViewer.Query.FullTrace.Functions;
 
@@ -26,7 +27,7 @@ internal static class MemoryMapFunctionResolver
                 ? MemoryMapOperation.Constructed
                 : MemoryMapOperation.Visited;
 
-            found.Add(new MemoryMapFunction(rva, (uint)operation));
+            found.Add(new MemoryMapFunction(rva, operation));
         }
 
         return found;

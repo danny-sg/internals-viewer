@@ -125,17 +125,14 @@ public class LocatorReadResolverTests
     }
 
     [Fact]
-    public void A_Columnstore_Object_Key_Is_Read_As_Three_Words()
+    public void A_Columnstore_Object_Key_Is_Read_Through_Its_Reference()
     {
         var reads = Reads("ColumnStoreObjectRef::Fix(ColumnStoreObjectKey const &,bool,HoBtAccess *,XDES *,"
                           + "DeserializeFromDiskConstructor *)",
                           "?Fix@ColumnStoreObjectRef@@QEAAPEAVColumnStoreObject@@AEBVColumnStoreObjectKey@@_NPEAVHoBtAccess@@PEAVXDES@@"
                           + "PEAUDeserializeFromDiskConstructor@@@Z");
 
-        Assert.Equal([new LocatorRead(Function, 1, false, LocatorValueType.ColumnStoreObject, 0),
-                      new LocatorRead(Function, 1, false, LocatorValueType.ColumnStoreObject, 8),
-                      new LocatorRead(Function, 1, false, LocatorValueType.ColumnStoreObject, 16)],
-                     reads);
+        Assert.Equal([new LocatorRead(Function, 1, false, LocatorValueType.ColumnStoreObject)], reads);
     }
 
     [Fact]
@@ -152,34 +149,30 @@ public class LocatorReadResolverTests
     }
 
     [Fact]
-    public void A_Log_Sequence_Number_Is_Read_As_Two_Words_When_Passed_And_On_Return_When_Filled_In()
+    public void A_Log_Sequence_Number_Is_Read_When_Passed_And_On_Return_When_Filled_In()
     {
         var reads = Reads("WritePageRecorder2::HaveStaleLsnInternal(PageId const &,LSN const &,bool,bool,LSN &)",
                           "?HaveStaleLsnInternal@WritePageRecorder2@@AEAAHAEBVPageId@@AEBVLSN@@_N2AEAV3@@Z");
 
-        Assert.Equal([new LocatorRead(Function, 2, false, LocatorValueType.LogSequenceNumber, 0),
-                      new LocatorRead(Function, 2, false, LocatorValueType.LogSequenceNumber, 8),
-                      new LocatorRead(Function, 5, true, LocatorValueType.LogSequenceNumber, 0),
-                      new LocatorRead(Function, 5, true, LocatorValueType.LogSequenceNumber, 8)],
+        Assert.Equal([new LocatorRead(Function, 2, false, LocatorValueType.LogSequenceNumber),
+                      new LocatorRead(Function, 5, true, LocatorValueType.LogSequenceNumber)],
                      reads.Where(r => r.ValueType == LocatorValueType.LogSequenceNumber));
     }
 
     [Fact]
-    public void A_Type_Info_Is_Read_At_Its_Type_And_At_Its_Length()
+    public void A_Type_Info_Is_Read_Through_Its_Reference()
     {
         var reads = Reads("ComputeConvertFlags(CTypeInfo const &,CTypeInfo const &)", "?ComputeConvertFlags@@YAKAEBVCTypeInfo@@0@Z");
 
-        Assert.Equal([new LocatorRead(Function, 0, false, LocatorValueType.TypeInfo, 0),
-                      new LocatorRead(Function, 0, false, LocatorValueType.TypeInfo, 16),
-                      new LocatorRead(Function, 1, false, LocatorValueType.TypeInfo, 0),
-                      new LocatorRead(Function, 1, false, LocatorValueType.TypeInfo, 16)],
+        Assert.Equal([new LocatorRead(Function, 0, false, LocatorValueType.TypeInfo),
+                      new LocatorRead(Function, 1, false, LocatorValueType.TypeInfo)],
                      reads);
     }
 
     [Fact]
     public void A_Character_Pointer_That_Can_Be_Written_To_Is_Not_Read_As_Text()
     {
-        Assert.Null(LocatorType.LocatorTypeOf("char *"));
+        Assert.Null(LocatorType.GetLocatorType("char *"));
     }
 
     [Fact]
@@ -210,7 +203,7 @@ public class LocatorReadResolverTests
     {
         var signature = new FunctionSignature([.. Enumerable.Repeat("int", 15), "PageId const &"], FunctionType.Member, "void");
 
-        Assert.Empty(LocatorReadResolver.ReadsOf(Function, signature));
+        Assert.Empty(LocatorReadResolver.GetReads(Function, signature));
     }
 
     [Fact]
@@ -218,7 +211,7 @@ public class LocatorReadResolverTests
     {
         var signature = new FunctionSignature([.. Enumerable.Repeat("int", 14), "PageId const &"], FunctionType.Member, "void");
 
-        Assert.Equal([new LocatorRead(Function, 15, false, LocatorValueType.Page)], LocatorReadResolver.ReadsOf(Function, signature));
+        Assert.Equal([new LocatorRead(Function, 15, false, LocatorValueType.Page)], LocatorReadResolver.GetReads(Function, signature));
     }
 
     [Theory]
@@ -233,7 +226,7 @@ public class LocatorReadResolverTests
     [InlineData("CTypeInfo const *", LocatorValueType.TypeInfo, true, true)]
     [InlineData("class CTypeInfo const &", LocatorValueType.TypeInfo, true, true)]
     public void A_Page_Or_Row_Type_Is_Recognised(string type, LocatorValueType valueType, bool indirect, bool isConst, int offset = 0)
-        => Assert.Equal(new LocatorType(valueType, indirect, isConst, offset), LocatorType.LocatorTypeOf(type));
+        => Assert.Equal(new LocatorType(valueType, indirect, isConst, offset), LocatorType.GetLocatorType(type));
 
     [Theory]
     [InlineData("PageRef &")]
@@ -247,7 +240,7 @@ public class LocatorReadResolverTests
     [InlineData("PFSPageRef *")]
     [InlineData("PSPageRef &")]
     public void A_Page_Reference_Is_Read_Through_Its_Buffer(string type)
-        => Assert.True(LocatorType.LocatorTypeOf(type) is { ValueType: LocatorValueType.Page, Offset: 0x70, IsIndirect: true, IsConst: false } found
+        => Assert.True(LocatorType.GetLocatorType(type) is { ValueType: LocatorValueType.Page, Offset: 0x70, IsIndirect: true, IsConst: false } found
                        && ReferenceEquals(found.Path, LocatorType.PageRefPath));
 
     [Theory]
@@ -257,7 +250,7 @@ public class LocatorReadResolverTests
     [InlineData("enum BPool::StealOption *", true, false)]
     [InlineData("HoBtId const &", true, true)]
     public void A_Value_Behind_A_Reference_Is_Recognised(string type, bool indirect, bool isConst)
-        => Assert.Equal(new LocatorType(LocatorValueType.Referenced, indirect, isConst), LocatorType.LocatorTypeOf(type));
+        => Assert.Equal(new LocatorType(LocatorValueType.Referenced, indirect, isConst), LocatorType.GetLocatorType(type));
 
     [Theory]
     [InlineData("AlignedPageId *")]
@@ -270,8 +263,8 @@ public class LocatorReadResolverTests
     [InlineData("unsigned char *")]
     [InlineData("enum UnknownOption &")]
     [InlineData("int * *")]
-    public void Other_Types_Are_Not_Read(string type) => Assert.Null(LocatorType.LocatorTypeOf(type));
+    public void Other_Types_Are_Not_Read(string type) => Assert.Null(LocatorType.GetLocatorType(type));
 
     private static List<LocatorRead> Reads(string signature, string decoratedName)
-        => [.. LocatorReadResolver.ReadsOf(Function, FunctionSignature.Parse(signature, decoratedName)!)];
+        => [.. LocatorReadResolver.GetReads(Function, FunctionSignature.Parse(signature, decoratedName)!)];
 }

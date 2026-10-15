@@ -1,16 +1,23 @@
-using System.Buffers;
-using System.Buffers.Binary;
-using System.Runtime.InteropServices;
 using InternalsViewer.Query.FullTrace.Hooks;
 using InternalsViewer.Query.FullTrace.Interfaces.Hooks;
+using InternalsViewer.Query.FullTrace.Hooks.Enums;
+using InternalsViewer.Query.FullTrace.RowBuffers.Enums;
 
 namespace InternalsViewer.Query.FullTrace.RowBuffers;
 
-internal sealed class RowBufferHook(RowBufferFunctions functions, RowBufferIndex.Log log) : ITraceHook
+internal sealed class RowBufferHook(RowBufferFunctions functions) : ITraceHook
 {
     private const ulong SmallestAddress = 0x10000;
 
-    private const int ArgumentRegisters = 4;
+    private const int IteratorArgument = 0;
+
+    private const ulong RowsetBufferOffset = 0x80;
+
+    private const ulong RowsetBindingsOffset = 0x88;
+
+    private const ulong ValueRowBufferOffset = 0x78;
+
+    private const ulong ValueRowCountOffset = 0x50;
 
     private const ulong BindingCountOffset = 0x62;
 
@@ -54,52 +61,29 @@ internal sealed class RowBufferHook(RowBufferFunctions functions, RowBufferIndex
 
     private const ulong MaximumValueBytes = 8000;
 
-    private const ulong DataPageSize = 0x2000;
-
-    private const ulong PageHeaderSize = 96;
-
-    private const ulong PageIdOffset = 0x20;
-
-    private const int PageIdSize = 6;
-
-    private const int PageIdFileOffset = 4;
-
-    private const ulong LsnOffset = 0x28;
-
-    private const int LsnSize = 10;
-
-    private const byte PageHeaderVersion = 1;
+    private const RowBufferColumnFlags SlotUnreadable = RowBufferColumnFlags.Unreadable | RowBufferColumnFlags.SlotUnreadable;
 
     public IEnumerable<TraceHookFunction> Functions
-        => Registers.Keys.Select(f => new TraceHookFunction(f, TraceHookEvents.Entry | TraceHookEvents.Return));
+        => functions.Functions.Distinct().Select(f => new TraceHookFunction(f, TraceHookEvents.Entry | TraceHookEvents.Return));
 
-    private Dictionary<ulong, int> Registers { get; } = functions.Reads
-                                                                 .Where(r => r.Register is >= 0 and < ArgumentRegisters)
-                                                                 .GroupBy(r => r.Function)
-                                                                 .ToDictionary(g => g.Key, g => g.Last().Register);
-
-    private Dictionary<ulong, RowBufferLayout> Layouts { get; } = functions.Layouts
-                                                                           .GroupBy(l => l.VTable)
-                                                                           .ToDictionary(g => g.Key, g => g.Last());
+    private Dictionary<ulong, RowBufferFormat> Formats { get; }
+        = functions.Formats.GroupBy(f => f.VTable).ToDictionary(g => g.Key, g => g.Last().Format);
 
     private Dictionary<ulong, RowBufferStart> Starts { get; } = [];
 
     private Dictionary<ulong, BindingSet> BindingSets { get; } = [];
 
-    private List<RawColumn> Columns { get; } = [];
+    private Dictionary<ulong, RowBufferColumn[]> LastColumns { get; } = [];
 
-    private ArrayBufferWriter<byte> Data { get; } = new();
+    private List<RowBuffer> Rows { get; } = [];
+
+    public RowBufferIndex Build() => new(Rows);
 
     public void OnEntry(in TraceHookCall call, ITraceReplay replay)
     {
-        if (!Registers.TryGetValue(call.Function, out var register))
-        {
-            return;
-        }
+        var start = new RowBufferStart(call.Arguments[IteratorArgument]);
 
-        var start = new RowBufferStart(call.Arguments[register]);
-
-        if (start.Iterator >= SmallestAddress && TryReadLayout(replay, ref start))
+        if (start.Iterator >= SmallestAddress && TryReadIterator(replay, ref start))
         {
             Starts[call.Id] = start;
         }
@@ -112,41 +96,116 @@ internal sealed class RowBufferHook(RowBufferFunctions functions, RowBufferIndex
             return;
         }
 
-        if (start.Layout is null && (!TryReadLayout(replay, ref start) || start.Layout is null))
+        if ((start.Format is null && !TryReadIterator(replay, ref start)) || start.Format is not { } format)
         {
             return;
         }
 
-        var isValueRow = start.Layout.Value.Format == RowBufferFormat.Values;
+        var isValueRow = format == RowBufferFormat.Values;
 
         if (start.Buffer == 0 || (isValueRow ? start.Count == 0 : start.Bindings == 0))
         {
-            TryReadLayout(replay, ref start);
+            TryReadIterator(replay, ref start);
         }
 
-        if (isValueRow)
-        {
-            ReadValueRow(call, replay, start);
-
-            return;
-        }
-
-        if (start.Buffer < SmallestAddress || start.Bindings < SmallestAddress || ReadBindings(replay, start.Bindings) is not { } set)
+        if ((isValueRow ? ReadValueRow(replay, start) : ReadBindingRow(replay, start)) is not { } columns)
         {
             return;
         }
 
-        foreach (var binding in set.Columns)
-        {
-            Columns.Add(ReadColumn(replay, binding, start.Buffer));
-        }
-
-        AddRow(call, start, RowBufferFormat.Bindings);
+        Rows.Add(new RowBuffer(call.Function,
+                               call.Instance,
+                               (int)call.Call,
+                               call.CallCount,
+                               start.Iterator,
+                               start.Buffer,
+                               GetShared(start.Iterator, columns),
+                               format));
     }
 
     public void OnAbandoned(in TraceHookCall call) => Starts.Remove(call.Id);
 
     private static bool IsInBuffer(ulong offset, ulong size) => offset < MaximumRowBufferBytes && size <= MaximumRowBufferBytes - offset;
+
+    private static int GetLength(ulong length) => (int)(uint)Math.Min(length, uint.MaxValue);
+
+    private static RowBufferColumn CreateColumn(int ordinal, RowBufferBinding binding)
+        => new(ordinal, binding, 0, RowBufferColumnFlags.None, 0, []);
+
+    private static bool IsSame(RowBufferColumn[] left, RowBufferColumn[] right)
+    {
+        if (left.Length != right.Length)
+        {
+            return false;
+        }
+
+        for (var ordinal = 0; ordinal < left.Length; ordinal++)
+        {
+            var (first, second) = (left[ordinal], right[ordinal]);
+
+            if (first.Binding != second.Binding
+                || first.Status != second.Status
+                || first.Flags != second.Flags
+                || first.Length != second.Length
+                || !first.Data.AsSpan().SequenceEqual(second.Data))
+            {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    private static RowBufferColumn[]? ReadValueRow(ITraceReplay replay, RowBufferStart start)
+    {
+        if (start.Buffer < SmallestAddress || start.Count == 0 || start.Count > MaximumBindings)
+        {
+            return null;
+        }
+
+        var columns = new RowBufferColumn[start.Count];
+
+        for (var index = 0; index < columns.Length; index++)
+        {
+            columns[index] = ReadValueColumn(replay, index, start.Buffer + (ulong)index * RowValueSize);
+        }
+
+        return columns;
+    }
+
+    private static RowBufferColumn ReadValueColumn(ITraceReplay replay, int ordinal, ulong address)
+    {
+        var column = CreateColumn(ordinal, RowBufferBinding.None);
+
+        if (!replay.TryRead(address + RowValueStatusOffset, out byte status))
+        {
+            return column with { Flags = SlotUnreadable };
+        }
+
+        if (status != 0)
+        {
+            return column with { Status = status };
+        }
+
+        if (!replay.TryRead(address + RowValueDataOffset, out ulong value)
+            || !replay.TryRead(address + RowValueLengthOffset, out ulong length))
+        {
+            return column with { Flags = SlotUnreadable };
+        }
+
+        if (length == 0)
+        {
+            return column with { Length = sizeof(ulong), Data = BitConverter.GetBytes(value) };
+        }
+
+        column = column with
+        {
+            Flags = RowBufferColumnFlags.ByReference | RowBufferColumnFlags.HasLength,
+            Length = GetLength(length)
+        };
+
+        return ReadValueBytes(replay, value, length, column);
+    }
 
     private static ColumnBinding ReadBinding(ITraceReplay replay, ulong address)
     {
@@ -171,72 +230,34 @@ internal sealed class RowBufferHook(RowBufferFunctions functions, RowBufferIndex
                          && replay.TryRead(address + BindingStatusOffset, out statusOffset)
                          && replay.TryRead(address + BindingInfoOffset, out ulong info)
                          && info >= SmallestAddress
-                         && replay.TryRead(info + BindingInfoLengthOffset, out lengthOffset)
-                         && replay.TryRead(info + BindingInfoFlagsOffset, out infoFlags);
+                         && replay.TryRead(info + BindingInfoFlagsOffset, out infoFlags)
+                         && ((flags & LengthBinding) == 0 || replay.TryRead(info + BindingInfoLengthOffset, out lengthOffset));
 
         var unreadable = !isReadable ? RowBufferColumnFlags.BindingUnreadable
                          : (infoFlags & AlternateBufferBinding) != 0 ? RowBufferColumnFlags.AlternateBuffer
                          : RowBufferColumnFlags.None;
 
-        return new ColumnBinding(recordOffset, flags, fixedLength, unreadable, valueOffset, statusOffset, lengthOffset);
+        return new ColumnBinding(new RowBufferBinding(recordOffset, flags, fixedLength),
+                                 unreadable,
+                                 valueOffset,
+                                 statusOffset,
+                                 lengthOffset);
     }
 
-    private bool TryReadLayout(ITraceReplay replay, ref RowBufferStart start)
+    private static RowBufferColumn ReadColumn(ITraceReplay replay, int ordinal, ColumnBinding binding, ulong buffer)
     {
-        if (!replay.TryRead(start.Iterator, out ulong vtable))
+        var column = CreateColumn(ordinal, binding.Binding);
+
+        if (binding.Unreadable != RowBufferColumnFlags.None)
         {
-            return true;
+            return column with { Flags = RowBufferColumnFlags.Unreadable | binding.Unreadable };
         }
 
-        if (!Layouts.TryGetValue(vtable, out var layout))
+        if (!IsInBuffer(binding.StatusOffset, sizeof(byte))
+            || !IsInBuffer(binding.ValueOffset, sizeof(ulong))
+            || !replay.TryRead(buffer + binding.StatusOffset, out byte status))
         {
-            return false;
-        }
-
-        start.Layout = layout;
-
-        if (replay.TryRead(start.Iterator + layout.BufferOffset, out ulong buffer))
-        {
-            start.Buffer = buffer;
-        }
-
-        if (layout.Format == RowBufferFormat.Values)
-        {
-            if (replay.TryRead(start.Iterator + layout.CountOffset, out uint count))
-            {
-                start.Count = count;
-            }
-        }
-        else if (replay.TryRead(start.Iterator + layout.BindingsOffset, out ulong bindings))
-        {
-            start.Bindings = bindings;
-        }
-
-        return true;
-    }
-
-    private void ReadValueRow(in TraceHookCall call, ITraceReplay replay, RowBufferStart start)
-    {
-        if (start.Buffer < SmallestAddress || start.Count == 0 || start.Count > MaximumBindings)
-        {
-            return;
-        }
-
-        for (uint index = 0; index < start.Count; index++)
-        {
-            Columns.Add(ReadValueColumn(replay, start.Buffer + index * RowValueSize));
-        }
-
-        AddRow(call, start, RowBufferFormat.Values);
-    }
-
-    private RawColumn ReadValueColumn(ITraceReplay replay, ulong address)
-    {
-        var column = CreateColumn(-1, 0, 0);
-
-        if (!replay.TryRead(address + RowValueStatusOffset, out byte status))
-        {
-            return column with { Flags = (byte)(RowBufferColumnFlags.Unreadable | RowBufferColumnFlags.SlotUnreadable) };
+            return column with { Flags = SlotUnreadable };
         }
 
         if (status != 0)
@@ -244,28 +265,122 @@ internal sealed class RowBufferHook(RowBufferFunctions functions, RowBufferIndex
             return column with { Status = status };
         }
 
-        if (!replay.TryRead(address + RowValueDataOffset, out ulong value)
-            || !replay.TryRead(address + RowValueLengthOffset, out ulong length))
+        var length = (ulong)binding.Binding.FixedLength;
+
+        var flags = RowBufferColumnFlags.None;
+
+        if ((binding.Binding.Flags & LengthBinding) != 0)
         {
-            return column with { Flags = (byte)(RowBufferColumnFlags.Unreadable | RowBufferColumnFlags.SlotUnreadable) };
+            if (!IsInBuffer(binding.LengthOffset, sizeof(ulong)) || !replay.TryRead(buffer + binding.LengthOffset, out length))
+            {
+                return column with { Flags = SlotUnreadable };
+            }
+
+            flags |= RowBufferColumnFlags.HasLength;
         }
 
-        if (length == 0)
+        column = column with { Length = GetLength(length), Flags = flags };
+
+        if ((binding.Binding.Flags & ByReferenceBinding) == 0)
         {
-            BinaryPrimitives.WriteUInt64LittleEndian(Data.GetSpan(sizeof(ulong)), value);
+            var stored = binding.Binding.FixedLength > 0 ? Math.Min(length, (ulong)binding.Binding.FixedLength) : length;
 
-            Data.Advance(sizeof(ulong));
-
-            return column with { Length = sizeof(ulong), Captured = sizeof(ulong) };
+            return ReadValueBytes(replay, buffer + binding.ValueOffset, stored, column);
         }
 
-        column = column with
-        {
-            Flags = (byte)(RowBufferColumnFlags.ByReference | RowBufferColumnFlags.HasLength),
-            Length = (uint)Math.Min(length, uint.MaxValue)
-        };
+        column = column with { Flags = flags | RowBufferColumnFlags.ByReference };
 
-        return ReadValueBytes(replay, value, length, column);
+        if (!replay.TryRead(buffer + binding.ValueOffset, out ulong pointer))
+        {
+            return column with { Flags = column.Flags | SlotUnreadable };
+        }
+
+        return ReadValueBytes(replay, pointer, length, column);
+    }
+
+    private static RowBufferColumn ReadValueBytes(ITraceReplay replay, ulong address, ulong length, RowBufferColumn column)
+    {
+        var data = new byte[(int)Math.Min(length, MaximumValueBytes)];
+
+        var found = address < SmallestAddress || data.Length == 0 ? 0 : replay.Read(address, data);
+
+        var flags = column.Flags;
+
+        if (found < data.Length)
+        {
+            flags |= RowBufferColumnFlags.Unreadable;
+        }
+        else if ((uint)found < (uint)column.Length)
+        {
+            flags |= RowBufferColumnFlags.Truncated;
+        }
+
+        return column with { Data = found == data.Length ? data : data[..found], Flags = flags };
+    }
+
+    private RowBufferColumn[] GetShared(ulong iterator, RowBufferColumn[] columns)
+    {
+        if (LastColumns.TryGetValue(iterator, out var last) && IsSame(last, columns))
+        {
+            return last;
+        }
+
+        LastColumns[iterator] = columns;
+
+        return columns;
+    }
+
+    private bool TryReadIterator(ITraceReplay replay, ref RowBufferStart start)
+    {
+        if (!replay.TryRead(start.Iterator, out ulong vtable))
+        {
+            return true;
+        }
+
+        if (!Formats.TryGetValue(vtable, out var format))
+        {
+            return false;
+        }
+
+        start.Format = format;
+
+        var isValueRow = format == RowBufferFormat.Values;
+
+        if (replay.TryRead(start.Iterator + (isValueRow ? ValueRowBufferOffset : RowsetBufferOffset), out ulong buffer))
+        {
+            start.Buffer = buffer;
+        }
+
+        if (isValueRow)
+        {
+            if (replay.TryRead(start.Iterator + ValueRowCountOffset, out uint count))
+            {
+                start.Count = count;
+            }
+        }
+        else if (replay.TryRead(start.Iterator + RowsetBindingsOffset, out ulong bindings))
+        {
+            start.Bindings = bindings;
+        }
+
+        return true;
+    }
+
+    private RowBufferColumn[]? ReadBindingRow(ITraceReplay replay, RowBufferStart start)
+    {
+        if (start.Buffer < SmallestAddress || start.Bindings < SmallestAddress || ReadBindings(replay, start.Bindings) is not { } set)
+        {
+            return null;
+        }
+
+        var columns = new RowBufferColumn[set.Columns.Length];
+
+        for (var ordinal = 0; ordinal < columns.Length; ordinal++)
+        {
+            columns[ordinal] = ReadColumn(replay, ordinal, set.Columns[ordinal], start.Buffer);
+        }
+
+        return columns;
     }
 
     private BindingSet? ReadBindings(ITraceReplay replay, ulong bindings)
@@ -298,156 +413,17 @@ internal sealed class RowBufferHook(RowBufferFunctions functions, RowBufferIndex
                              firstFlags,
                              [.. Enumerable.Range(0, count).Select(i => ReadBinding(replay, array + (ulong)i * BindingSize))]);
 
-        BindingSets[array] = set;
+        if (set.Columns.All(c => c.Unreadable != RowBufferColumnFlags.BindingUnreadable))
+        {
+            BindingSets[array] = set;
+        }
 
         return set;
     }
 
-    private RawColumn ReadColumn(ITraceReplay replay, ColumnBinding binding, ulong buffer)
-    {
-        var column = CreateColumn(binding.RecordOffset, binding.Flags, binding.FixedLength);
-
-        if (binding.Unreadable != RowBufferColumnFlags.None)
-        {
-            return column with { Flags = (byte)(RowBufferColumnFlags.Unreadable | binding.Unreadable) };
-        }
-
-        if (!IsInBuffer(binding.StatusOffset, sizeof(byte))
-            || !IsInBuffer(binding.ValueOffset, sizeof(ulong))
-            || !replay.TryRead(buffer + binding.StatusOffset, out byte status))
-        {
-            return column with { Flags = (byte)(RowBufferColumnFlags.Unreadable | RowBufferColumnFlags.SlotUnreadable) };
-        }
-
-        if (status != 0)
-        {
-            return column with { Status = status };
-        }
-
-        ulong length = binding.FixedLength;
-
-        var flags = RowBufferColumnFlags.None;
-
-        if ((binding.Flags & LengthBinding) != 0)
-        {
-            if (!IsInBuffer(binding.LengthOffset, sizeof(ulong)) || !replay.TryRead(buffer + binding.LengthOffset, out length))
-            {
-                return column with { Flags = (byte)(RowBufferColumnFlags.Unreadable | RowBufferColumnFlags.SlotUnreadable) };
-            }
-
-            flags |= RowBufferColumnFlags.HasLength;
-        }
-
-        column = column with { Length = (uint)Math.Min(length, uint.MaxValue), Flags = (byte)flags };
-
-        if ((binding.Flags & ByReferenceBinding) == 0)
-        {
-            var stored = binding.FixedLength > 0 ? Math.Min(length, binding.FixedLength) : length;
-
-            return ReadValueBytes(replay, buffer + binding.ValueOffset, stored, column);
-        }
-
-        flags |= RowBufferColumnFlags.ByReference;
-
-        column = column with { Flags = (byte)flags };
-
-        if (!replay.TryRead(buffer + binding.ValueOffset, out ulong pointer))
-        {
-            return column with { Flags = (byte)(flags | RowBufferColumnFlags.Unreadable | RowBufferColumnFlags.SlotUnreadable) };
-        }
-
-        return TryReadPageReference(replay, pointer, length, ref column) ? column : ReadValueBytes(replay, pointer, length, column);
-    }
-
-    private RawColumn ReadValueBytes(ITraceReplay replay, ulong address, ulong length, RawColumn column)
-    {
-        var wanted = (int)Math.Min(length, MaximumValueBytes);
-
-        var found = address < SmallestAddress || wanted == 0 ? 0 : replay.Read(address, Data.GetSpan(wanted)[..wanted]);
-
-        Data.Advance(found);
-
-        var flags = (RowBufferColumnFlags)column.Flags;
-
-        if (found < wanted)
-        {
-            flags |= RowBufferColumnFlags.Unreadable;
-        }
-        else if ((uint)found < column.Length)
-        {
-            flags |= RowBufferColumnFlags.Truncated;
-        }
-
-        return column with { Captured = (uint)found, Flags = (byte)flags };
-    }
-
-    private bool TryReadPageReference(ITraceReplay replay, ulong pointer, ulong length, ref RawColumn column)
-    {
-        var offset = pointer & (DataPageSize - 1);
-
-        if (pointer < SmallestAddress || offset < PageHeaderSize || length > DataPageSize - offset)
-        {
-            return false;
-        }
-
-        var page = pointer - offset;
-
-        Span<byte> pageId = stackalloc byte[PageIdSize];
-
-        Span<byte> lsn = stackalloc byte[LsnSize];
-
-        if (replay.Read(page + PageIdOffset, pageId) != PageIdSize
-            || replay.Read(page + LsnOffset, lsn) != LsnSize
-            || BinaryPrimitives.ReadUInt16LittleEndian(pageId[PageIdFileOffset..]) == 0
-            || (replay.TryRead(page, out byte version) && version != PageHeaderVersion))
-        {
-            return false;
-        }
-
-        var reference = Data.GetSpan(RowBufferPage.Size);
-
-        BinaryPrimitives.WriteUInt16LittleEndian(reference, (ushort)offset);
-
-        pageId.CopyTo(reference[sizeof(ushort)..]);
-
-        lsn.CopyTo(reference[(sizeof(ushort) + PageIdSize)..]);
-
-        Data.Advance(RowBufferPage.Size);
-
-        column = column with
-        {
-            Captured = RowBufferPage.Size,
-            Flags = (byte)((RowBufferColumnFlags)column.Flags | RowBufferColumnFlags.PageReference)
-        };
-
-        return true;
-    }
-
-    private RawColumn CreateColumn(int recordOffset, uint bindingFlags, ushort fixedLength)
-        => new((uint)Data.WrittenCount, 0, 0, recordOffset, bindingFlags, fixedLength, 0, 0);
-
-    private void AddRow(in TraceHookCall call, RowBufferStart start, RowBufferFormat format)
-    {
-        var row = new RawRow(call.Function,
-                             call.Instance,
-                             start.Iterator,
-                             start.Buffer,
-                             call.CallCount,
-                             call.Call,
-                             0,
-                             (uint)Columns.Count,
-                             format);
-
-        log.Add([row], CollectionsMarshal.AsSpan(Columns), Data.WrittenSpan);
-
-        Columns.Clear();
-
-        Data.ResetWrittenCount();
-    }
-
     private record struct RowBufferStart(ulong Iterator)
     {
-        public RowBufferLayout? Layout { get; set; }
+        public RowBufferFormat? Format { get; set; }
 
         public ulong Buffer { get; set; }
 
@@ -456,9 +432,7 @@ internal sealed class RowBufferHook(RowBufferFunctions functions, RowBufferIndex
         public uint Count { get; set; }
     }
 
-    private readonly record struct ColumnBinding(int RecordOffset,
-                                                 uint Flags,
-                                                 ushort FixedLength,
+    private readonly record struct ColumnBinding(RowBufferBinding Binding,
                                                  RowBufferColumnFlags Unreadable,
                                                  ulong ValueOffset,
                                                  ulong StatusOffset,

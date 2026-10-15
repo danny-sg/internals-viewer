@@ -2,6 +2,7 @@ using System.Text;
 using InternalsViewer.Query.CallStack;
 using InternalsViewer.Query.FullTrace.Batches;
 using InternalsViewer.Query.FullTrace.Calls;
+using InternalsViewer.Query.FullTrace.Batches.Enums;
 
 using static InternalsViewer.Query.FullTrace.Tests.TraceCallRows;
 
@@ -27,8 +28,6 @@ public class BatchIndexTests
     private const ulong DictionarySlot = 0xE60100;
 
     private const ulong DeepSlot = 0x20E_F6E5_005D;
-
-    private const ushort PureFlag = 1;
 
     [Fact]
     public void A_Call_Reads_Back_Its_Batch()
@@ -77,26 +76,12 @@ public class BatchIndexTests
     [Fact]
     public void Batches_Are_Found_By_Call_Whatever_Order_They_Arrive_In()
     {
-        var log = new BatchIndex.Log();
+        var index = new BatchIndex([CreateBatch(call: 2, id: 200), CreateBatch(call: 1, id: 100)]);
 
-        Add(log, call: 2, id: 200);
-
-        Add(log, call: 1, id: 100);
-
-        var index = log.Build();
-
-        Assert.Equal([1, 2], index.GetCalls(Function, 0));
+        Assert.Equal([1, 2], index.GetBatches(Function, 0).Select(b => b.Call));
         Assert.Equal(200ul, index.GetBatch(Function, 0, 2)?.Id);
         Assert.True(index.HasBatch(Function, 0, 1));
         Assert.False(index.HasBatch(Function, 0, 3));
-    }
-
-    [Fact]
-    public void A_Summary_Is_Read_Without_The_Slots()
-    {
-        var summary = Assert.Single(Build().GetSummaries(Function, 0));
-
-        Assert.Equal(new BatchSummary(1, Iterator, BatchCaptureFlags.None, 3, 6, 3, 1, 900), summary);
     }
 
     [Fact]
@@ -116,11 +101,7 @@ public class BatchIndexTests
 
         store.MapNodes([other, filter]);
 
-        var log = new BatchIndex.Log();
-
-        Add(log, call: 2, id: 100);
-
-        log.Build().AnnotateNodes(store);
+        new BatchIndex([CreateBatch(call: 2, id: 100)]).AnnotateNodes(store);
 
         Assert.Equal((true, false), (filter.HasBatches, other.HasBatches));
     }
@@ -133,8 +114,7 @@ public class BatchIndexTests
         var batch = Assert.IsType<BatchCapture>(index.GetBatch(FilterNextBatch, Consumer, 0));
 
         Assert.Equal((200ul, FilterNextBatch, 0), (batch.Id, batch.Function, batch.Call));
-        Assert.Equal(0, Assert.Single(index.GetSummaries(FilterNextBatch, Consumer)).Call);
-        Assert.Equal([0], index.GetCalls(FilterNextBatch, Consumer));
+        Assert.Equal([0], index.GetBatches(FilterNextBatch, Consumer).Select(b => b.Call));
         Assert.True(node.HasBatches);
     }
 
@@ -183,21 +163,13 @@ public class BatchIndexTests
     }
 
     [Fact]
-    public void A_Summary_Counts_The_Rows_Its_Input_Selected()
+    public void A_Batch_Finds_The_Rows_Its_Input_Selected()
     {
-        var summary = Assert.Single(BuildFiltered().GetSummaries(Filter, Consumer));
+        var index = BuildFiltered();
 
-        Assert.Equal((1, 3), (summary.SelectedCount, summary.InputSelectedCount));
-    }
+        var batch = index.GetBatch(Filter, Consumer, 1)!;
 
-    [Fact]
-    public void A_Batch_Outside_Its_Chunk_Is_Skipped()
-    {
-        var log = new BatchIndex.Log();
-
-        log.Add([new RawBatch(Function, 0, Iterator, Address, Consumer, 100, 1, 0, 4, 0, 0, 0)], [], [0, 1, 2], [], [], []);
-
-        Assert.Equal(0, log.Build().Count);
+        Assert.Equal((1, 3), (batch.SelectedCount, index.GetInput(batch)?.SelectedCount));
     }
 
     [Fact]
@@ -252,40 +224,44 @@ public class BatchIndexTests
 
     private static BatchIndex BuildFiltered()
     {
-        var log = new BatchIndex.Log();
+        var filtered = new BatchCapture(Filter,
+                                        Consumer,
+                                        1,
+                                        200,
+                                        Consumer,
+                                        Address,
+                                        Helper,
+                                        BatchCaptureFlags.None,
+                                        [3],
+                                        [Vector(1, BatchVectorFlags.None, [0x600220, 0x6011C0, 0x602160, 0x603100])]);
 
-        Add(log, call: 1, id: 100);
-
-        log.Add([new RawBatch(Filter, Consumer, Consumer, Address, Helper, 200, 1, 0, 1, 0, 1, 0)],
-                [new RawVector(0, 4, 0, 0, 1, 0)],
-                [3],
-                [0x600220, 0x6011C0, 0x602160, 0x603100],
-                [],
-                []);
-
-        return log.Build();
+        return new BatchIndex([CreateBatch(call: 1, id: 100), filtered]);
     }
 
-    private static BatchIndex Build()
+    private static BatchIndex Build() => new([CreateBatch(call: 1, id: 100)]);
+
+    private static BatchCapture CreateBatch(int call, ulong id)
     {
-        var log = new BatchIndex.Log();
+        var deep = new BatchDeepValue(14, Encoding.ASCII.GetBytes("REF-0003148000"));
 
-        Add(log, call: 1, id: 100);
-
-        return log.Build();
+        return new BatchCapture(Function,
+                                0,
+                                call,
+                                id,
+                                Iterator,
+                                Address,
+                                Consumer,
+                                BatchCaptureFlags.None,
+                                [0, 2, 5],
+                                [Vector(1, BatchVectorFlags.None, [0x600220, 0x6011C0, 0x602160, 0x603100, 0x6040A0, 0x605040]),
+                                 Vector(3, BatchVectorFlags.Pure, [DictionarySlot]),
+                                 Vector(7, BatchVectorFlags.None, [1, 1, DeepSlot, 1, 1, 1], new() { [2] = deep })],
+                                900);
     }
 
-    private static void Add(BatchIndex.Log log, uint call, ulong id)
-    {
-        var text = Encoding.ASCII.GetBytes("REF-0003148000");
-
-        log.Add([new RawBatch(Function, 0, Iterator, Address, Consumer, id, call, 0, 3, 0, 3, 0, 900)],
-                [new RawVector(0, 6, 0, 0, 1, 0),
-                 new RawVector(6, 1, 0, 0, 3, PureFlag),
-                 new RawVector(7, 6, 0, 1, 7, 0)],
-                [0, 2, 5],
-                [0x600220, 0x6011C0, 0x602160, 0x603100, 0x6040A0, 0x605040, DictionarySlot, 1, 1, DeepSlot, 1, 1, 1],
-                [new RawDeepValue(2, 0, (uint)text.Length, (uint)text.Length)],
-                text);
-    }
+    private static BatchCaptureVector Vector(int vectorId,
+                                             BatchVectorFlags flags,
+                                             ulong[] slots,
+                                             Dictionary<int, BatchDeepValue>? deepValues = null)
+        => new(vectorId, flags, slots, deepValues ?? []);
 }

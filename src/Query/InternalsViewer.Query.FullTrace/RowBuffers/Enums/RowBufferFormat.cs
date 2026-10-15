@@ -1,4 +1,4 @@
-namespace InternalsViewer.Query.FullTrace.RowBuffers;
+namespace InternalsViewer.Query.FullTrace.RowBuffers.Enums;
 
 public enum RowBufferFormat : uint
 {

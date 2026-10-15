@@ -1,6 +1,7 @@
 using InternalsViewer.Query.CallStack.Arguments;
 using InternalsViewer.Query.FullTrace.Calls;
 using InternalsViewer.UI.App.Models.Query.CallStack;
+using InternalsViewer.Query.FullTrace.Calls.Enums;
 
 namespace InternalsViewer.UI.App.Tests.Models.Query.CallStack;
 

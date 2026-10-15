@@ -1,3 +1,5 @@
+using InternalsViewer.Query.FullTrace.Batches.Enums;
+
 namespace InternalsViewer.Query.FullTrace.Batches;
 
 public sealed record BatchCapture(ulong Function,
