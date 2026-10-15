@@ -18,6 +18,8 @@ public sealed partial class FlameChartControl
 
     private static readonly Color CurrentColour = Color.FromArgb(255, 230, 60, 60);
 
+    private static readonly Color MarkedColour = Color.FromArgb(255, 0, 0, 0);
+
     private readonly FlameChartMinimap _minimap = new()
     {
         Width = MinimapWidth,
@@ -31,7 +33,7 @@ public sealed partial class FlameChartControl
 
     private (CallStackNode Node, int Call)? _marked;
 
-    private (double Current, MarkedCall Marked, SKColor Colour)? _minimapMarkers;
+    private (double Current, MarkedCall Marked)? _minimapMarkers;
 
     private TraceTimeline? Overview => FullTimeline ?? _timeline;
 
@@ -166,11 +168,9 @@ public sealed partial class FlameChartControl
         _minimap.Scope = _rooted ?? _minimap.Crop;
         _minimap.Margin = new Thickness(0, 0, MinimapMargin, MinimapMargin + BandHeight);
 
-        var current = CallStackPosition ?? double.NaN;
+        var current = _playhead ?? double.NaN;
 
-        var colour = _paints.Mark.Color;
-
-        if (_minimapMarkers is not { } shown || !shown.Current.Equals(current) || shown.Marked != call || shown.Colour != colour)
+        if (_minimapMarkers is not { } shown || !shown.Current.Equals(current) || shown.Marked != call)
         {
             var markers = new List<MinimapMarker>();
 
@@ -179,14 +179,11 @@ public sealed partial class FlameChartControl
                 markers.Add(new MinimapMarker(current, CurrentColour));
             }
 
-            markers.Add(new MinimapMarker(call.Span.Start,
-                                          Color.FromArgb(colour.Alpha, colour.Red, colour.Green, colour.Blue),
-                                          call.Lane,
-                                          call.Depth));
+            markers.Add(new MinimapMarker(call.Span.Start, MarkedColour, call.Lane, call.Depth));
 
             _minimap.Markers = markers;
 
-            _minimapMarkers = (current, call, colour);
+            _minimapMarkers = (current, call);
         }
 
         _minimap.Visibility = Visibility.Visible;

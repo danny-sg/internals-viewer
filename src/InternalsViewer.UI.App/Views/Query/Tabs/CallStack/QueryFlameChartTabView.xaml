@@ -21,32 +21,26 @@
         <Grid x:Name="SearchRow"
               Grid.Row="0"
               Visibility="Collapsed">
-            <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="*"/>
-                <ColumnDefinition Width="Auto"/>
-            </Grid.ColumnDefinitions>
-
             <callStack:CallSearchBar x:Name="SearchBar"
-                                     Grid.Column="0"
                                      CallStack="{x:Bind ViewModel.CallStack, Mode=OneWay}"
-                                     KeyDown="OnSearchKeyDown"/>
-
-            <StackPanel Grid.Column="1"
-                        Orientation="Horizontal"
-                        VerticalAlignment="Top"
-                        Margin="0,2,8,0"
-                        Spacing="2">
-                <Button Style="{StaticResource TabCommandButtonStyle}"
-                        ToolTipService.ToolTip="Previous Match"
-                        Click="OnPreviousMatchClick">
-                    <FontIcon Glyph="&#xE892;" FontSize="12"/>
-                </Button>
-                <Button Style="{StaticResource TabCommandButtonStyle}"
-                        ToolTipService.ToolTip="Next Match"
-                        Click="OnNextMatchClick">
-                    <FontIcon Glyph="&#xE893;" FontSize="12"/>
-                </Button>
-            </StackPanel>
+                                     KeyDown="OnSearchKeyDown">
+                <callStack:CallSearchBar.Commands>
+                    <StackPanel Orientation="Horizontal" Spacing="2">
+                        <Button Style="{StaticResource TabCommandButtonStyle}"
+                                ToolTipService.ToolTip="Previous Match"
+                                IsEnabled="{x:Bind FlameChart.HasSearchMatches, Mode=OneWay}"
+                                Click="OnPreviousMatchClick">
+                            <FontIcon Glyph="&#xE892;" FontSize="12"/>
+                        </Button>
+                        <Button Style="{StaticResource TabCommandButtonStyle}"
+                                ToolTipService.ToolTip="Next Match"
+                                IsEnabled="{x:Bind FlameChart.HasSearchMatches, Mode=OneWay}"
+                                Click="OnNextMatchClick">
+                            <FontIcon Glyph="&#xE893;" FontSize="12"/>
+                        </Button>
+                    </StackPanel>
+                </callStack:CallSearchBar.Commands>
+            </callStack:CallSearchBar>
         </Grid>
 
         <flameChart:FlameChartControl x:Name="FlameChart"

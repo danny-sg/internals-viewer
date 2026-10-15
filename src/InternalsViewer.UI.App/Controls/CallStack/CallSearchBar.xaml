@@ -13,9 +13,10 @@
             <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
 
-        <Grid Grid.Row="0" Margin="0,0,0,4">
+        <Grid Grid.Row="0" Margin="0,0,8,4">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="Auto"/>
                 <ColumnDefinition Width="Auto"/>
             </Grid.ColumnDefinitions>
 
@@ -33,11 +34,17 @@
             <ToggleButton x:Name="CategoryFilterButton"
                           Grid.Column="1"
                           Style="{StaticResource TabCommandToggleStyle}"
-                          Margin="2,2,8,0"
+                          Margin="2,2,0,0"
                           Click="OnCategoryFilterClick"
                           ToolTipService.ToolTip="Filter by Category">
                 <FontIcon Glyph="&#xE71C;" FontSize="12"/>
             </ToggleButton>
+
+            <ContentPresenter Grid.Column="2"
+                              Margin="2,2,0,0"
+                              VerticalAlignment="Center"
+                              Content="{x:Bind Commands, Mode=OneWay}"
+                              Visibility="{x:Bind GetCommandsVisibility(Commands), Mode=OneWay}"/>
         </Grid>
 
         <Grid x:Name="CategoryPanel"

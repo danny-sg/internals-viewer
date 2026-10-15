@@ -108,10 +108,11 @@ public sealed partial class PlayheadCallStackViewModel(QueryViewModel query) : O
 
     public void Mark(SourceStep? step) => Chart?.MarkCall(step?.Node, step?.Call ?? -1);
 
-    public void MarkFrame(SourceFrame frame)
-        => Chart?.MarkCall(frame.Node, query.Arguments.Lookup?.GetEnclosingCall(frame.Node, frame.Moment) ?? -1);
+    public void MarkFrame(SourceFrame frame) => Chart?.MarkCall(frame.Node, GetEnclosingCall(frame));
 
     public void GoTo(SourceStep step) => Chart?.MovePlayheadTo(step.Node, step.Call);
+
+    public void GoTo(SourceFrame frame) => Chart?.MovePlayheadTo(frame.Node, GetEnclosingCall(frame));
 
     public void FindReferences(ulong value)
     {
@@ -151,6 +152,8 @@ public sealed partial class PlayheadCallStackViewModel(QueryViewModel query) : O
             ? row.Signature[index]
             : row.Signature.FirstOrDefault(p => p.Kind == CallSignaturePartKind.Function);
     }
+
+    private int GetEnclosingCall(SourceFrame frame) => query.Arguments.Lookup?.GetEnclosingCall(frame.Node, frame.Moment) ?? -1;
 
     private void RequestChart(Action<IPlayheadChart> request)
     {

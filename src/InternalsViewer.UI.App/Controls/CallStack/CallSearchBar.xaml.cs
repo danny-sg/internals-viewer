@@ -32,6 +32,15 @@ public sealed partial class CallSearchBar : UserControl
         set => SetValue(CallStackProperty, value);
     }
 
+    public static readonly DependencyProperty CommandsProperty =
+        DependencyProperty.Register(nameof(Commands), typeof(object), typeof(CallSearchBar), new PropertyMetadata(null));
+
+    public object? Commands
+    {
+        get => GetValue(CommandsProperty);
+        set => SetValue(CommandsProperty, value);
+    }
+
     public CallSearchBar()
     {
         InitializeComponent();
@@ -69,6 +78,8 @@ public sealed partial class CallSearchBar : UserControl
 
         SearchBox.Text = string.Empty;
     }
+
+    private Visibility GetCommandsVisibility(object? commands) => commands is null ? Visibility.Collapsed : Visibility.Visible;
 
     private void OnLoaded(object sender, RoutedEventArgs e)
     {

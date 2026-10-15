@@ -19,7 +19,9 @@ namespace InternalsViewer.UI.App.Views.Query.Tabs.CallStack;
 
 public sealed partial class FlameChartCallStackView : UserControl, IReferenceFinder, IDisposable
 {
-    private const double DetailsWidth = 420;
+    private const double StackShare = 2;
+
+    private const double DetailsShare = 1;
 
     public FlameChartCallStackView()
     {
@@ -46,6 +48,8 @@ public sealed partial class FlameChartCallStackView : UserControl, IReferenceFin
 
     private SourceStep? ContextStep { get; set; }
 
+    private SourceFrame? ContextFrame { get; set; }
+
     private bool IsBuilding { get; set; }
 
     public static Brush? RowBackground(bool isCurrent)
@@ -70,7 +74,8 @@ public sealed partial class FlameChartCallStackView : UserControl, IReferenceFin
 
     private Visibility IsEmpty(IReadOnlyList<PlayheadThreadRow>? threads) => GetVisibility(threads is not { Count: > 0 });
 
-    private Visibility IsFunctionVisible(PlayheadCallRow? row, CallSignaturePart? selected) => GetVisibility(row is not null && selected is null);
+    private Visibility IsFunctionVisible(PlayheadCallRow? row, CallSignaturePart? selected)
+        => GetVisibility(row is not null && selected is null);
 
     private Visibility AreArgumentsVisible(PlayheadCallRow? row) => GetVisibility(row is { Arguments.Count: > 0 });
 
@@ -179,13 +184,18 @@ public sealed partial class FlameChartCallStackView : UserControl, IReferenceFin
     {
         var isVisible = Attached is { SelectedValue: not null } or { SelectedCall: not null };
 
-        DetailsPane.Visibility = isVisible ? Visibility.Visible : Visibility.Collapsed;
+        if (isVisible != (DetailsPane.Visibility == Visibility.Visible))
+        {
+            DetailsPane.Visibility = isVisible ? Visibility.Visible : Visibility.Collapsed;
 
-        DetailsSplitter.Visibility = DetailsPane.Visibility;
+            DetailsSplitter.Visibility = DetailsPane.Visibility;
 
-        SplitterColumn.Width = isVisible ? GridLength.Auto : new GridLength(0);
+            SplitterColumn.Width = isVisible ? GridLength.Auto : new GridLength(0);
 
-        DetailsColumn.Width = new GridLength(isVisible ? DetailsWidth : 0);
+            StackColumn.Width = new GridLength(isVisible ? StackShare : 1, GridUnitType.Star);
+
+            DetailsColumn.Width = isVisible ? new GridLength(DetailsShare, GridUnitType.Star) : new GridLength(0);
+        }
 
         ShowDetailsTitle();
 
@@ -226,6 +236,12 @@ public sealed partial class FlameChartCallStackView : UserControl, IReferenceFin
 
         ValueDecodedText.Inlines.Clear();
 
+        ValueTypeCopyButton.Tag = null;
+
+        ValueDecodedCopyButton.Tag = null;
+
+        ValueDecodedCopyButton.Visibility = Visibility.Collapsed;
+
         if (Attached?.SelectedValue is not { } value)
         {
             return;
@@ -249,7 +265,15 @@ public sealed partial class FlameChartCallStackView : UserControl, IReferenceFin
         {
             SignatureRuns.AddValue(ValueDecodedText.Inlines, value, decode: true);
         }
+
+        ValueTypeCopyButton.Tag = GetText(ValueTypeText);
+
+        ValueDecodedCopyButton.Tag = GetText(ValueDecodedText);
+
+        ValueDecodedCopyButton.Visibility = GetVisibility(ValueDecodedText.Inlines.Count > 0);
     }
+
+    private static string GetText(TextBlock textBlock) => string.Concat(textBlock.Inlines.OfType<Run>().Select(r => r.Text));
 
     private void OnStackTreeExpanding(TreeView sender, TreeViewExpandingEventArgs args)
     {
@@ -343,6 +367,17 @@ public sealed partial class FlameChartCallStackView : UserControl, IReferenceFin
         }
     }
 
+    private void OnSourceFrameRightTapped(object sender, RightTappedRoutedEventArgs e)
+        => ContextFrame = (sender as FrameworkElement)?.DataContext as SourceFrame;
+
+    private void OnSourceFrameGoToClick(object sender, RoutedEventArgs e)
+    {
+        if (ContextFrame is { } frame)
+        {
+            Attached?.GoTo(frame);
+        }
+    }
+
     private void OnCloseClick(object sender, RoutedEventArgs e) => Settings.FlameChartShowCallStack = false;
 
     private void OnStepBackClick(object sender, RoutedEventArgs e) => Attached?.Step(forward: false);
@@ -359,6 +394,37 @@ public sealed partial class FlameChartCallStackView : UserControl, IReferenceFin
     private void OnScopeClick(object sender, RoutedEventArgs e) => WithContextRow((stack, row) => stack.Scope(row));
 
     private void OnCopySignatureClick(object sender, RoutedEventArgs e) => WithContextRow((_, row) => ClipboardText.Copy(DisplayText(row)));
+
+    private void OnCopySymbolClick(object sender, RoutedEventArgs e) => WithContextRow((_, row) => ClipboardText.Copy(row.Node.Symbol));
+
+    private void OnCopyAddressClick(object sender, RoutedEventArgs e)
+        => WithContextRow((_, row) => ClipboardText.Copy(row.Node.Frame is { } frame ? $"0x{frame.Address:X}" : string.Empty));
+
+    private void OnCopyRowSignatureClick(object sender, RoutedEventArgs e)
+    {
+        if ((sender as FrameworkElement)?.DataContext is TreeViewNode { Content: PlayheadCallRow row })
+        {
+            ClipboardText.Copy(DisplayText(row));
+        }
+    }
+
+    private void OnCopyArgumentClick(object sender, RoutedEventArgs e)
+    {
+        if ((sender as FrameworkElement)?.DataContext is CallSignaturePart part)
+        {
+            ClipboardText.Copy(part.GetText(Settings.DecodeValues));
+        }
+    }
+
+    private void OnCopyValueClick(object sender, RoutedEventArgs e)
+    {
+        if ((sender as FrameworkElement)?.Tag is string { Length: > 0 } text)
+        {
+            ClipboardText.Copy(text);
+        }
+    }
+
+    private void OnCopyTapped(object sender, TappedRoutedEventArgs e) => e.Handled = true;
 
     private string DisplayText(PlayheadCallRow row) => string.Concat(row.Signature.Select(p => p.GetDisplayText(Settings.DecodeValues)));
 
