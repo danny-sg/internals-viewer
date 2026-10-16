@@ -63,7 +63,7 @@ public sealed class TraceRowBufferMarks
             return Empty;
         }
 
-        var owners = GetOwners(timeline);
+        var owners = timeline.GetOperatorsByInstance();
 
         var captures = new Dictionary<(uint Thread, ulong Iterator), List<Capture>>();
 
@@ -129,21 +129,6 @@ public sealed class TraceRowBufferMarks
                location.EndOf(TraceTimelineAxis.Instructions),
                location.Node,
                location.Call);
-
-    private static Dictionary<ulong, ExecutionOperatorEvent> GetOwners(TraceTimeline timeline)
-    {
-        var owners = new Dictionary<ulong, ExecutionOperatorEvent>();
-
-        foreach (var lifetime in timeline.Lifetimes)
-        {
-            foreach (var instance in lifetime.Operator.Instances)
-            {
-                owners.TryAdd(instance, lifetime.Operator);
-            }
-        }
-
-        return owners;
-    }
 
     private static ExecutionOperatorEvent? GetOwner(Dictionary<ulong, ExecutionOperatorEvent> owners, BatchStore batches, ulong iterator)
     {

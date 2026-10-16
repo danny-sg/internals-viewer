@@ -254,7 +254,8 @@ public sealed class TraceLoader(ILogger<TraceLoader> logger, ITimeTravelRecorder
             RowBuffers = replay.RowBuffers,
             Batches = replay.Batches,
             CustomHooks = replay.CustomHooks,
-            RowBufferMarks = TraceRowBufferMarks.Build(timeline, replay.RowBuffers, replay.Batches)
+            RowBufferMarks = TraceRowBufferMarks.Build(timeline, replay.RowBuffers, replay.Batches),
+            RowReturnMarks = TraceRowReturnMarks.Build(timeline, replay.CallStore)
         };
     }
 

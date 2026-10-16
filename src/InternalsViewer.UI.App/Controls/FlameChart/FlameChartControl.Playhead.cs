@@ -38,7 +38,7 @@ public sealed partial class FlameChartControl
 
         _popoutX = x;
 
-        canvas.DrawLine(x, ContentTop, x, height, _paints.Playhead);
+        canvas.DrawLine(x, OperatorsTop, x, height, _paints.Playhead);
 
         DrawBandMarker(canvas, timeline, x, width, height, scale);
 

@@ -984,6 +984,8 @@ public sealed partial class FlameChartControl : Grid, IPlayheadChart, IDisposabl
 
         _hoverMarkBand = null;
 
+        _hoverReturnStrip = null;
+
         if (_selectedOperator is { } selected && !_operatorRows.Any(r => ReferenceEquals(r.Operator, selected)))
         {
             _selectedOperator = null;

@@ -10,8 +10,10 @@
 
 #include <algorithm>
 #include <array>
+#include <cstddef>
 #include <cstring>
 #include <memory>
+#include <optional>
 #include <string>
 #include <unordered_map>
 #include <unordered_set>
@@ -103,6 +105,14 @@ namespace
     constexpr uint32_t NoCall = UINT32_MAX;
 
     constexpr int32_t ExcludedNode = -2;
+
+    constexpr int32_t NotStub = 0;
+
+    constexpr int32_t StubResolved = 1;
+
+    constexpr size_t MaximumStubDepth = 4;
+
+    static_assert(offsetof(AMD64_CONTEXT, R15) - offsetof(AMD64_CONTEXT, Rax) == 15 * sizeof(uint64_t));
 
     constexpr int InstanceRegisterShift = 60;
 
@@ -258,12 +268,52 @@ namespace
         uint64_t                                            CallCount = 0;
         std::unordered_map<uint64_t, HookTarget>            HookFunctions;
         HookCallback                                        OnHook = nullptr;
+        StubCallback                                        ResolveStub = nullptr;
+        std::unordered_set<uint64_t>                        NotStubs;
         std::unordered_map<uint32_t, std::vector<uint64_t>> WatchedStacks;
         size_t                                              WatchedStackCount = 0;
 
         uint64_t NextCall()
         {
             return ++CallCount;
+        }
+
+        static AMD64_CONTEXT const& GetRegisters(IThreadView const& thread, std::optional<AMD64_CONTEXT>& registers)
+        {
+            if (!registers.has_value())
+            {
+                CROSS_PLATFORM_CONTEXT const context = thread.GetCrossPlatformContext();
+
+                registers = context.Amd64Context;
+            }
+
+            return *registers;
+        }
+
+        uint64_t ResolveCall(IThreadView const& thread, uint64_t target, std::optional<AMD64_CONTEXT>& registers)
+        {
+            for (size_t depth = 0; ResolveStub != nullptr && depth < MaximumStubDepth && !NotStubs.contains(target); depth++)
+            {
+                GetRegisters(thread, registers);
+
+                uint64_t resolved = 0;
+
+                auto const result = ResolveStub(&thread, target, &registers->Rax, &resolved);
+
+                if (result == NotStub)
+                {
+                    NotStubs.insert(target);
+                }
+
+                if (result != StubResolved)
+                {
+                    break;
+                }
+
+                target = resolved;
+            }
+
+            return target;
         }
 
         HookTarget HookTargetOf(uint64_t function) const
@@ -319,6 +369,7 @@ namespace
         }
 
         void HookCall(IThreadView const&             thread,
+                      AMD64_CONTEXT const&           registers,
                       uint64_t                       target,
                       uint64_t                       stackPointer,
                       uint64_t                       returnAddress,
@@ -327,10 +378,6 @@ namespace
                       int32_t                        node,
                       uint32_t                       hook)
         {
-            CROSS_PLATFORM_CONTEXT const context = thread.GetCrossPlatformContext();
-
-            auto const& registers = context.Amd64Context;
-
             HookEvent hookEvent{};
 
             hookEvent.Function = target;
@@ -830,11 +877,23 @@ namespace
 
             auto const returnAddress = static_cast<uint64_t>(fallThroughAddress);
 
-            auto const hooked = tree.HookTargetOf(target);
+            std::optional<AMD64_CONTEXT> callRegisters;
+
+            auto const callee = tree.ResolveCall(*thread, target, callRegisters);
+
+            auto const hooked = tree.HookTargetOf(callee);
 
             if ((hooked.Events & CallEvents) != 0)
             {
-                tree.HookCall(*thread, target, stackPointer, returnAddress, clock, threadId, NearestNode(stack), hooked.Hook);
+                tree.HookCall(*thread,
+                              CallTree::GetRegisters(*thread, callRegisters),
+                              callee,
+                              stackPointer,
+                              returnAddress,
+                              clock,
+                              threadId,
+                              NearestNode(stack),
+                              hooked.Hook);
             }
 
             if (!stack.empty() && stack.back().Node == ExcludedNode)
@@ -842,7 +901,7 @@ namespace
                 return;
             }
 
-            if (tree.Excluded.contains(target))
+            if (tree.Excluded.contains(callee))
             {
                 stack.push_back(StackFrame{ stackPointer,
                                             ExcludedNode,
@@ -861,17 +920,15 @@ namespace
 
             auto const parent = NearestNode(stack);
 
-            CROSS_PLATFORM_CONTEXT const context = thread->GetCrossPlatformContext();
+            auto const& registers = CallTree::GetRegisters(*thread, callRegisters);
 
-            auto const& registers = context.Amd64Context;
-
-            auto const method = tree.InstanceMethods.find(target);
+            auto const method = tree.InstanceMethods.find(callee);
 
             uint64_t const arguments[ArgumentRegisters] = { registers.Rcx, registers.Rdx, registers.R8, registers.R9 };
 
             auto const instance = method == tree.InstanceMethods.end() ? 0 : arguments[method->second % ArgumentRegisters];
 
-            auto const node = tree.Child(parent, target, instance);
+            auto const node = tree.Child(parent, callee, instance);
 
             tree.Nodes[node].Calls++;
 
@@ -881,7 +938,7 @@ namespace
                                         registers,
                                         position,
                                         threadId,
-                                        target,
+                                        callee,
                                         instance,
                                         node);
 
@@ -1243,6 +1300,7 @@ extern "C"
                          CallEndCallback        logCallEnds,
                          CallSpanCallback       logSpans,
                          HookCallback           onHook,
+                         StubCallback           resolveStub,
                          ProgressCallback       progress,
                          volatile int32_t*      cancel,
                          void**                 tree)
@@ -1276,6 +1334,8 @@ extern "C"
         result->LogSpans = logSpans;
 
         result->OnHook = onHook;
+
+        result->ResolveStub = resolveStub;
 
         for (int32_t index = 0; index < hookFunctionCount && onHook != nullptr; index++)
         {

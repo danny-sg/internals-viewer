@@ -19,6 +19,17 @@ public class RowBufferDecoderTests
     }
 
     [Fact]
+    public void Nonclustered_Index_Columns_Are_Found_By_Their_Leaf_Offset()
+    {
+        var index = new IndexStructure(1)
+        {
+            Columns = [new IndexColumnStructure { ColumnName = "Id", LeafOffset = 1, DataType = SqlDbType.Int, DataLength = 4 }]
+        };
+
+        Assert.Equal("Id", RowBufferDecoder.GetColumns(index)[1].ColumnName);
+    }
+
+    [Fact]
     public void Columns_Sharing_A_Leaf_Offset_Are_Left_Undecoded()
     {
         var columns = RowBufferDecoder.GetColumns(Table(Column("Id", 4, SqlDbType.Int),

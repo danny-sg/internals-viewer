@@ -7,5 +7,6 @@ public enum RowBufferSourceType
     Lob,
     RowBuffer,
     Batch,
+    HashTable,
     Memory
 }

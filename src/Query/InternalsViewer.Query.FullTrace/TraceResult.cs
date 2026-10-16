@@ -30,6 +30,8 @@ public sealed record TraceResult(CallStackTree CallStack, TraceCallStore CallSto
 
     public TraceRowBufferMarks RowBufferMarks { get; init; } = TraceRowBufferMarks.Empty;
 
+    public TraceRowReturnMarks RowReturnMarks { get; init; } = TraceRowReturnMarks.Empty;
+
     public IReadOnlyList<CallStackNode> QueryRoots => Roots ??= QueryExecutionCropper.GetRoots(CallStack);
 
     public TraceTimeline QueryTimeline => CroppedTimeline ??= GetQueryTimeline();

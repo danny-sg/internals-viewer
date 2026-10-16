@@ -106,7 +106,8 @@ internal sealed class TraceExportSection : IQueryExportSection
                 : ObjectPoolSnapshot.Empty,
             RowBuffers = rowBuffers,
             Batches = batches,
-            RowBufferMarks = TraceRowBufferMarks.Build(timeline, rowBuffers, batches)
+            RowBufferMarks = TraceRowBufferMarks.Build(timeline, rowBuffers, batches),
+            RowReturnMarks = TraceRowReturnMarks.Build(timeline, callStore)
         };
     }
 }

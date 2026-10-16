@@ -12,6 +12,8 @@ using InternalsViewer.Query.FullTrace.Batches;
 using InternalsViewer.Query.FullTrace.CustomHooks;
 using InternalsViewer.Query.FullTrace.Hooks;
 using InternalsViewer.Query.FullTrace.RowBuffers;
+using InternalsViewer.Query.FullTrace.RowBuffers.HashRows;
+using InternalsViewer.Query.FullTrace.Stubs;
 using InternalsViewer.Query.FullTrace.Memory.Enums;
 
 namespace InternalsViewer.Query.FullTrace;
@@ -156,6 +158,8 @@ internal sealed class ReplaySession : IDisposable
 
         var rowBuffers = new RowBufferHook(functions.RowBuffers);
 
+        var hashRows = new HashRowHook(functions.HashRows);
+
         var batches = new BatchHook(functions.Batches);
 
         var customHook = new CustomHook(Resolve(customHooks));
@@ -164,10 +168,15 @@ internal sealed class ReplaySession : IDisposable
                                     memoryMap,
                                     publishedEvents,
                                     rowBuffers,
+                                    hashRows,
                                     batches,
                                     customHook]);
 
         ReplayBridge.HookCallback onHook = hooks.OnHook;
+
+        var stubs = new StubResolver(images, Modules);
+
+        ReplayBridge.StubCallback onStub = stubs.Resolve;
 
         try
         {
@@ -184,6 +193,7 @@ internal sealed class ReplaySession : IDisposable
                                                    onEnd,
                                                    onSpans,
                                                    onHook,
+                                                   onStub,
                                                    onProgress,
                                                    cancel,
                                                    out var tree);
@@ -196,6 +206,8 @@ internal sealed class ReplaySession : IDisposable
             GC.KeepAlive(onSpans);
 
             GC.KeepAlive(onHook);
+
+            GC.KeepAlive(onStub);
 
             GC.KeepAlive(onProgress);
 
@@ -217,13 +229,18 @@ internal sealed class ReplaySession : IDisposable
                     throw new InvalidOperationException("A trace hook failed while the trace was replayed", failure);
                 }
 
+                if (stubs.Failure is { } stubFailure)
+                {
+                    throw new InvalidOperationException("A call stub failed to resolve while the trace was replayed", stubFailure);
+                }
+
                 return new ReplayResult(nodes,
                                         Modules,
                                         store.Build(),
                                         timeline.Build(nodes),
                                         publishedEvents.Build(),
                                         memoryMap.Build(),
-                                        rowBuffers.Build(),
+                                        rowBuffers.Build(hashRows.Rows),
                                         batches.Build(),
                                         customHook.Build());
             }

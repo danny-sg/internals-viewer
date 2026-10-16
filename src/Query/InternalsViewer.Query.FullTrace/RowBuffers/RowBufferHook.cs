@@ -37,7 +37,7 @@ internal sealed class RowBufferHook(RowBufferFunctions functions) : ITraceHook
 
     private List<RowBuffer> Rows { get; } = [];
 
-    public RowBufferStore Build() => new(Rows);
+    public RowBufferStore Build(IEnumerable<RowBuffer>? others = null) => new([.. Rows, .. others ?? []]);
 
     public void OnEntry(in TraceHookCall call, ITraceReplay replay)
     {

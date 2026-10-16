@@ -79,6 +79,8 @@ extern "C"
 
     typedef void(__stdcall* HookCallback)(const HookEvent* hookEvent, const void* view, void* session);
 
+    typedef int32_t(__stdcall* StubCallback)(const void* view, uint64_t address, uint64_t* registers, uint64_t* target);
+
     __declspec(dllexport) int32_t OpenTrace(const wchar_t* replayLibraryPath, const wchar_t* tracePath, void** trace);
 
     __declspec(dllexport) int32_t GetModuleCount(void* trace);
@@ -103,6 +105,7 @@ extern "C"
                                                CallEndCallback        logCallEnds,
                                                CallSpanCallback       logSpans,
                                                HookCallback           onHook,
+                                               StubCallback           resolveStub,
                                                ProgressCallback       progress,
                                                volatile int32_t*      cancel,
                                                void**                 tree);

@@ -24,15 +24,13 @@ public sealed partial class FlameChartControl
 
     private const float SplitterHitMargin = 2f;
 
-    private const float CompactOperatorRowHeight = 28f;
-
-    private const float CompactOperatorsShare = 0.4f;
+    private const float OperatorsShare = 1f / 3;
 
     private const float MinimumOperatorsHeight = 20f;
 
     private const float OperatorsPadding = 4f;
 
-    private const float OperatorRowGap = 2f;
+    private const float OperatorRowGap = 6f;
 
     private const float MinimumLanesHeight = 60f;
 
@@ -43,8 +41,6 @@ public sealed partial class FlameChartControl
     private const float OperatorCornerRadius = 3f;
 
     private const float OperatorGradientLift = 0.04f;
-
-    private const float OperatorIdleShade = 0.7f;
 
     private const float OperatorMaximumFont = 12f;
 
@@ -122,9 +118,9 @@ public sealed partial class FlameChartControl
 
     private float OperatorsArea => ShowsOperators ? OperatorsHeight + SplitterHeight : 0;
 
-    private float OperatorsRoom
-        => Math.Max(MinimumOperatorsHeight,
-                    (float)_overlay.ActualHeight - OperatorsTop - BandHeight - SplitterHeight - MinimumLanesHeight);
+    private float ChartHeight => (float)_overlay.ActualHeight - OperatorsTop - BandHeight - SplitterHeight;
+
+    private float OperatorsRoom => Math.Max(MinimumOperatorsHeight, ChartHeight - MinimumLanesHeight);
 
     private float OperatorsHeight
     {
@@ -135,15 +131,9 @@ public sealed partial class FlameChartControl
                 return 0;
             }
 
-            var room = OperatorsRoom;
+            var wanted = _operatorsHeight ?? ChartHeight * OperatorsShare;
 
-            var compact = _operatorRows.Length * CompactOperatorRowHeight
-                          + (_operatorRows.Length - 1) * OperatorRowGap
-                          + OperatorsPadding * 2;
-
-            var wanted = _operatorsHeight ?? Math.Min(compact, room * CompactOperatorsShare);
-
-            return Math.Clamp(wanted, MinimumOperatorsHeight, room);
+            return Math.Clamp(wanted, MinimumOperatorsHeight, OperatorsRoom);
         }
     }
 
@@ -245,14 +235,6 @@ public sealed partial class FlameChartControl
 
         _operatorShape.SetRect(rect, radius, radius);
 
-        _paints.Fill.IsAntialias = true;
-
-        _paints.Fill.Color = TimelineColours.Scale(colour, OperatorIdleShade);
-
-        canvas.DrawRoundRect(_operatorShape, _paints.Fill);
-
-        _paints.Fill.IsAntialias = false;
-
         canvas.Save();
 
         canvas.ClipRoundRect(_operatorShape, antialias: true);
@@ -265,11 +247,13 @@ public sealed partial class FlameChartControl
 
         _paints.Fill.Shader = OperatorGradientOf(colour);
 
-        DrawActivity(canvas, lifetime, scale);
+        canvas.DrawRect(rect.Left, 0, rect.Width, 1, _paints.Fill);
 
         _paints.Fill.Shader = null;
 
         canvas.Restore();
+
+        DrawReturnStrip(canvas, row, lifetime, rect, colour, scale);
 
         if (labelled)
         {
@@ -297,47 +281,6 @@ public sealed partial class FlameChartControl
         }
 
         return gradient;
-    }
-
-    private void DrawActivity(SKCanvas canvas, TraceOperatorLifetime lifetime, double scale)
-    {
-        var calls = lifetime.Calls(_axis);
-
-        var runStart = -1f;
-
-        var runEnd = -1f;
-
-        var index = lifetime.FirstEndingAfter(_axis, _viewStart);
-
-        while (index < calls.Count && calls[index].Start <= _viewEnd)
-        {
-            var left = (float)((calls[index].Start - _viewStart) * scale);
-
-            var right = Math.Max((float)((calls[index].End - _viewStart) * scale), left + NarrowSpan);
-
-            if (runStart >= 0 && left <= runEnd + NarrowSpan)
-            {
-                runEnd = Math.Max(runEnd, right);
-            }
-            else
-            {
-                if (runStart >= 0)
-                {
-                    canvas.DrawRect(runStart, 0, runEnd - runStart, 1, _paints.Fill);
-                }
-
-                runStart = left;
-
-                runEnd = right;
-            }
-
-            index = lifetime.FirstEndingAfter(_axis, _viewStart + (MathF.Floor(right) + 1f) / scale, index + 1);
-        }
-
-        if (runStart >= 0)
-        {
-            canvas.DrawRect(runStart, 0, runEnd - runStart, 1, _paints.Fill);
-        }
     }
 
     private void DrawOperatorLabel(SKCanvas canvas, OperatorRow row, SKRect rect)

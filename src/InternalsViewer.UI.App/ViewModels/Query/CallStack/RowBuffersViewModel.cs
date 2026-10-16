@@ -291,13 +291,13 @@ public sealed partial class RowBuffersViewModel(CallStackNode node,
     }
 
     private static bool IsVariableLength(RowBuffer row, RowBufferColumn column)
-        => row.Format == RowBufferFormat.Bindings && column.Binding.RecordOffset < 0;
+        => row.Format is RowBufferFormat.Bindings or RowBufferFormat.HashTable && column.Binding.RecordOffset < 0;
 
     private static string? GetDetail(RowBuffer row, RowBufferColumn column)
     {
         string? length = column.HasLength ? $"Length {column.Length.ToString(CultureInfo.InvariantCulture)}" : null;
 
-        if (row.Format != RowBufferFormat.Bindings || IsVariableLength(row, column))
+        if (row.Format is not (RowBufferFormat.Bindings or RowBufferFormat.HashTable) || IsVariableLength(row, column))
         {
             return length;
         }
@@ -351,6 +351,7 @@ public sealed partial class RowBuffersViewModel(CallStackNode node,
         RowBufferSourceType.Lob => "LOB",
         RowBufferSourceType.RowBuffer => $"{GetIteratorLabel(source.Iterator)} +0x{source.Offset:X}",
         RowBufferSourceType.Batch => GetBatchLabel(source),
+        RowBufferSourceType.HashTable => $"{GetIteratorLabel(source.Iterator)} Hash Table",
         _ => "Memory"
     };
 

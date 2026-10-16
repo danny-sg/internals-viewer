@@ -279,11 +279,13 @@ public sealed partial class FlameChartControl
 
         var hoverBand = found is null ? MarkBandAt(position) : null;
 
+        var hoverReturns = found is null && hoverBand is null ? ReturnStripAt(position) : null;
+
         UpdateCursor(IsOnSplitter(position)
                          ? InputSystemCursorShape.SizeNorthSouth
                          : found is not null
                              ? InputSystemCursorShape.SizeAll
-                             : hoverBand is not null
+                             : hoverBand is not null || hoverReturns is not null
                                  ? InputSystemCursorShape.Hand
                                  : InputSystemCursorShape.Arrow);
 
@@ -307,7 +309,7 @@ public sealed partial class FlameChartControl
         {
             hit = HitTest(position);
 
-            hoverOperator = OperatorAt(position);
+            hoverOperator = hoverReturns is null ? OperatorAt(position) : null;
         }
 
         var onPopout = found?.IsPopout == true;
@@ -318,7 +320,8 @@ public sealed partial class FlameChartControl
             || onPopout != _hoverOnPopout
             || !Nullable.Equals(hoverBlock, _hoverBlock)
             || !Nullable.Equals(hoverOperator, _hoverOperator)
-            || hoverBand != _hoverMarkBand)
+            || hoverBand != _hoverMarkBand
+            || hoverReturns != _hoverReturnStrip)
         {
             _hover = hit;
 
@@ -329,6 +332,8 @@ public sealed partial class FlameChartControl
             _hoverOperator = hoverOperator;
 
             _hoverMarkBand = hoverBand;
+
+            _hoverReturnStrip = hoverReturns;
 
             _canvas.Invalidate();
         }
@@ -344,6 +349,10 @@ public sealed partial class FlameChartControl
         else if (hoverBand is not null)
         {
             OpenToolTip(MarkBandToolTip, position);
+        }
+        else if (hoverReturns is { } strip)
+        {
+            OpenToolTip(ReturnStripToolTipOf(strip), position);
         }
         else if (IsInOperators(position))
         {
@@ -368,6 +377,10 @@ public sealed partial class FlameChartControl
         else if (_isPressed && !_isDragging && _pressedOperators && MarkBandAt(position) is { } band)
         {
             OpenNearestMark(band, position);
+        }
+        else if (_isPressed && !_isDragging && _pressedOperators && ReturnStripAt(position) is { } strip)
+        {
+            OpenNearestReturn(strip, position);
         }
         else if (_isPressed && !_isDragging && _pressedOperators)
         {
@@ -411,13 +424,19 @@ public sealed partial class FlameChartControl
 
         UpdateCursor(InputSystemCursorShape.Arrow);
 
-        if (_hover is not null || _hoverOperator is not null || _hoverBlock is not null || _hoverMarkBand is not null)
+        if (_hover is not null
+            || _hoverOperator is not null
+            || _hoverBlock is not null
+            || _hoverMarkBand is not null
+            || _hoverReturnStrip is not null)
         {
             _hover = null;
 
             _hoverOperator = null;
 
             _hoverMarkBand = null;
+
+            _hoverReturnStrip = null;
 
             _hoverBlock = null;
 

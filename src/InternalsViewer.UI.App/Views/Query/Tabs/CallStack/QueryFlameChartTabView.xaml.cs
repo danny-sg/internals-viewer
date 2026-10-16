@@ -194,6 +194,8 @@ public sealed partial class QueryFlameChartTabView : UserControl, IDocumentComma
 
         menu.Items.Add(ToggleItem("Operators", FlameChart.ShowOperators, isChecked => FlameChart.ShowOperators = isChecked));
 
+        menu.Items.Add(ToggleItem("Iterator Calls", FlameChart.ShowIteratorCalls, isChecked => FlameChart.ShowIteratorCalls = isChecked));
+
         menu.Items.Add(ToggleItem("Row Buffers", FlameChart.ShowRowBuffers, isChecked => FlameChart.ShowRowBuffers = isChecked));
 
         menu.Items.Add(new MenuFlyoutSeparator());

@@ -272,6 +272,9 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
     private TraceRowBufferMarks? _rowBufferMarks;
 
     [ObservableProperty]
+    private TraceRowReturnMarks? _rowReturnMarks;
+
+    [ObservableProperty]
     private TraceEventLink? _currentEventLink;
 
     [ObservableProperty]
@@ -1082,6 +1085,8 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
         RowBufferMarks = null;
 
+        RowReturnMarks = null;
+
         CreatedCallTreeTab?.Dispose();
 
         Symbols.Dispose();
@@ -1376,6 +1381,11 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
     private IReadOnlyList<ColumnReference>? GetOutputColumns(IteratorTarget? iterator)
         => iterator?.Operator?.PlanNodeIdentifier is { } identifier ? ResolvePlanNode(identifier)?.OutputColumns : null;
+
+    private IReadOnlyList<ColumnReference>? GetBuildColumns(IteratorTarget? iterator)
+        => iterator?.Operator?.PlanNodeIdentifier is { } identifier
+            ? ResolvePlanNode(identifier)?.Children.FirstOrDefault()?.OutputColumns
+            : null;
 
     private PlanNode? ResolvePlanNode(PlanNodeIdentifier identifier)
     {
@@ -2264,6 +2274,10 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
         var batchDecoder = new BatchDecoder(Database, i => GetOutputColumns(iterators.GetValueOrDefault(i)));
 
+        var buildDecoder = new BatchDecoder(Database, i => GetBuildColumns(iterators.GetValueOrDefault(i)));
+
+        result.RowBuffers.ApplyRecordLayouts(buildDecoder.GetColumn);
+
         Arguments.SetSource(result.CallStore,
                             result.CallStack,
                             iterators,
@@ -2279,6 +2293,8 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
         FullFlameChart = result.Timeline;
 
         RowBufferMarks = result.RowBufferMarks;
+
+        RowReturnMarks = result.RowReturnMarks;
 
         FlameChart = flameChart;
 
@@ -2405,6 +2421,8 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
         FullFlameChart = null;
 
         RowBufferMarks = null;
+
+        RowReturnMarks = null;
 
         SelectedCallNode = null;
 

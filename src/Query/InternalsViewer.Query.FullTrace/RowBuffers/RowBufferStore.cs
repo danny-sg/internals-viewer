@@ -1,8 +1,10 @@
+using InternalsViewer.Internals.Metadata.Structures;
 using InternalsViewer.Query.FullTrace.Batches;
 using InternalsViewer.Query.FullTrace.Calls;
 using InternalsViewer.Query.FullTrace.RowBuffers.DeferredValues;
 using InternalsViewer.Query.FullTrace.RowBuffers.Enums;
 using InternalsViewer.Query.FullTrace.RowBuffers.Parsers;
+using InternalsViewer.Query.FullTrace.RowBuffers.Records;
 using InternalsViewer.Query.Helpers;
 
 namespace InternalsViewer.Query.FullTrace.RowBuffers;
@@ -51,11 +53,43 @@ public sealed partial class RowBufferStore
         return index < rows.Count && rows[index].Call == call ? rows[index] : null;
     }
 
+    public void ApplyRecordLayouts(Func<ulong, int, ColumnStructure?> getColumn)
+    {
+        var layouts = new Dictionary<(ulong Iterator, int Count), RowRecordLayout?>();
+
+        foreach (var rows in Rows.Values)
+        {
+            for (var index = 0; index < rows.Length; index++)
+            {
+                if (rows[index] is not { Format: RowBufferFormat.HashTable, Record: { } record } row)
+                {
+                    continue;
+                }
+
+                var key = (row.Iterator, RecordRowParser.GetColumnCount(record));
+
+                if (!layouts.TryGetValue(key, out var layout))
+                {
+                    layout = RowRecordLayout.Create(key.Item2, o => getColumn(row.Iterator, o));
+
+                    layouts[key] = layout;
+                }
+
+                if (layout is not null && RecordRowParser.Fits(record, layout))
+                {
+                    rows[index] = row with { Columns = RecordRowParser.Split(record, layout), RecordLayout = layout };
+                }
+            }
+        }
+    }
+
     public int GetColumnCount(ulong address, ulong instance)
         => GetRows(address, instance).Select(r => r.Columns.Count).DefaultIfEmpty().Max();
 
     public RowBufferSource GetSource(RowBuffer row, RowBufferColumn column, BatchStore? batches = null) => column.Deferred switch
     {
+        _ when row.Format == RowBufferFormat.HashTable
+            => new RowBufferSource(RowBufferSourceType.HashTable, row.Address, row.Iterator, column.Binding.ValueOffset, column.Ordinal),
         DeferredPageValue 
             => new RowBufferSource(RowBufferSourceType.BufferPool, column.Pointer),
         DeferredLobValue 
@@ -86,10 +120,14 @@ public sealed partial class RowBufferStore
         }
     }
 
-    private static ulong GetExtent(RowBuffer row)
-        => row.Format == RowBufferFormat.Batch
-            ? (ulong)row.Columns.Count * BatchRowParser.LayoutValueSize
-            : row.Columns.Select(c => c.Binding.ValueOffset + Math.Max((ulong)c.Binding.FixedLength, SmallestSlot)).DefaultIfEmpty().Max();
+    private static ulong GetExtent(RowBuffer row) => row.Format switch
+    {
+        RowBufferFormat.Batch
+            => (ulong)row.Columns.Count * BatchRowParser.LayoutValueSize,
+        RowBufferFormat.HashTable
+            => (ulong)(row.Record?.Length ?? 0),
+        _ => row.Columns.Select(c => c.Binding.ValueOffset + Math.Max((ulong)c.Binding.FixedLength, SmallestSlot)).DefaultIfEmpty().Max()
+    };
 
     private static int GetColumn(RowBuffer row, ulong offset)
     {

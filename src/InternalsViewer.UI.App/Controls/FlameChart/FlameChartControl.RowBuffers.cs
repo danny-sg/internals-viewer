@@ -80,7 +80,12 @@ public sealed partial class FlameChartControl
         DrawMarks(canvas, marks.GetBatchMarks(operatorEvent, _axis), top, height, scale, BatchMarkColour);
     }
 
-    private void DrawMarks(SKCanvas canvas, ReadOnlySpan<double> values, float top, float height, double scale, SKColor colour)
+    private void DrawMarks(SKCanvas canvas,
+                           ReadOnlySpan<double> values,
+                           float top,
+                           float height,
+                           double scale,
+                           SKColor colour)
     {
         if (values.IsEmpty)
         {

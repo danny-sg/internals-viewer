@@ -10,7 +10,21 @@ internal sealed class ImageText(IReadOnlyList<TraceModule> modules) : IDisposabl
 
     private Dictionary<string, ModuleImage?> Images { get; } = new(StringComparer.OrdinalIgnoreCase);
 
-    public string? Read(ulong address, bool isWide)
+    public string? Read(ulong address, bool isWide) => GetImage(address, out var rva)?.ReadText(rva, isWide);
+
+    public int Read(ulong address, Span<byte> destination) => GetImage(address, out var rva)?.Read(rva, destination) ?? 0;
+
+    public void Dispose()
+    {
+        foreach (var image in Images.Values)
+        {
+            image?.Dispose();
+        }
+
+        Images.Clear();
+    }
+
+    private ModuleImage? GetImage(ulong address, out uint rva)
     {
         foreach (var module in modules)
         {
@@ -26,20 +40,14 @@ internal sealed class ImageText(IReadOnlyList<TraceModule> modules) : IDisposabl
                 Images[module.Path] = image;
             }
 
-            return image?.ReadText((uint)(address - module.StartAddress), isWide);
+            rva = (uint)(address - module.StartAddress);
+
+            return image;
         }
+
+        rva = 0;
 
         return null;
-    }
-
-    public void Dispose()
-    {
-        foreach (var image in Images.Values)
-        {
-            image?.Dispose();
-        }
-
-        Images.Clear();
     }
 
     private sealed class ModuleImage(FileStream stream, ImmutableArray<SectionHeader> sections) : IDisposable
@@ -104,6 +112,27 @@ internal sealed class ImageText(IReadOnlyList<TraceModule> modules) : IDisposabl
             }
 
             return null;
+        }
+
+        public int Read(uint rva, Span<byte> destination)
+        {
+            foreach (var section in Sections)
+            {
+                var offset = (long)rva - section.VirtualAddress;
+
+                if (offset < 0 || offset >= section.SizeOfRawData)
+                {
+                    continue;
+                }
+
+                Stream.Position = section.PointerToRawData + offset;
+
+                return Stream.ReadAtLeast(destination[..(int)Math.Min(destination.Length, section.SizeOfRawData - offset)],
+                                          1,
+                                          throwOnEndOfStream: false);
+            }
+
+            return 0;
         }
 
         public void Dispose() => Stream.Dispose();

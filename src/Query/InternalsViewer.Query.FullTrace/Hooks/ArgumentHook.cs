@@ -9,13 +9,12 @@ internal abstract class ArgumentHook<TRead>(IEnumerable<(ulong Function, TRead R
     where TRead : IArgumentRead
 {
     private const int RegisterCount = 4;
-
     private const int SlotCount = 16;
 
     public IEnumerable<TraceHookFunction> Functions
         => Reads.Select(r => new TraceHookFunction(r.Key, r.Value.Any(f => f.IsReadAtReturn)
-                                                              ? TraceHookEvents.Entry | TraceHookEvents.Return
-                                                              : TraceHookEvents.Entry));
+                                                          ? TraceHookEvents.Entry | TraceHookEvents.Return
+                                                          : TraceHookEvents.Entry));
 
     private Dictionary<ulong, TRead[]> Reads { get; }
         = reads.GroupBy(r => r.Function).ToDictionary(g => g.Key, g => g.Select(r => r.Read).ToArray());
@@ -54,7 +53,7 @@ internal abstract class ArgumentHook<TRead>(IEnumerable<(ulong Function, TRead R
 
         if (isReadAtReturn)
         {
-            Starts[call.Id] = arguments.ToArray();
+            Starts[call.Id] = [.. arguments];
         }
     }
 
@@ -92,18 +91,21 @@ internal abstract class ArgumentHook<TRead>(IEnumerable<(ulong Function, TRead R
         }
 
         var homeSpace = replay.TryRead(call.StackPointer, out ulong top) && top == call.ReturnAddress
-            ? call.StackPointer + sizeof(ulong)
-            : call.StackPointer;
+                        ? call.StackPointer + sizeof(ulong)
+                        : call.StackPointer;
 
         var read = replay.Read(homeSpace + RegisterCount * sizeof(ulong), MemoryMarshal.AsBytes(stack)) / sizeof(ulong);
 
         stack[read..].Clear();
     }
 
-    private static ulong GetArgument(ReadOnlySpan<ulong> arguments, in TraceHookCall call, int register) => register switch
-    {
-        LocatorReadResolver.ReturnRegister => call.ReturnValue,
-        >= 0 and < SlotCount => arguments[register],
-        _ => 0
-    };
+    private static ulong GetArgument(ReadOnlySpan<ulong> arguments, in TraceHookCall call, int register)
+        => register switch
+        {
+            LocatorReadResolver.ReturnRegister
+                => call.ReturnValue,
+            >= 0 and < SlotCount
+                => arguments[register],
+            _ => 0
+        };
 }

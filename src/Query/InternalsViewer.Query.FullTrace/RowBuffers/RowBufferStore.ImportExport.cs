@@ -1,12 +1,15 @@
 using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Query.FullTrace.RowBuffers.Enums;
 using InternalsViewer.Query.FullTrace.RowBuffers.DeferredValues;
+using InternalsViewer.Query.FullTrace.RowBuffers.Parsers;
 
 namespace InternalsViewer.Query.FullTrace.RowBuffers;
 
 public sealed partial class RowBufferStore
 {
-    private const int FormatVersion = 3;
+    private const int FormatVersion = 4;
+
+    private const int NoIndex = -1;
 
     private const byte NoDeferredType = 0;
 
@@ -18,7 +21,8 @@ public sealed partial class RowBufferStore
     {
         var rows = Rows.Values.SelectMany(r => r).ToArray();
 
-        var columnSets = GetIndexes(rows.Select(r => r.Columns));
+        var columnSets = GetIndexes(rows.Where(r => r.Record is null).Select(r => r.Columns));
+
 
         var bindings = GetIndexes(columnSets.Keys.SelectMany(c => c).Select(c => c.Binding));
 
@@ -69,11 +73,18 @@ public sealed partial class RowBufferStore
 
             writer.Write((byte)row.Format);
 
-            writer.Write(columnSets[row.Columns]);
+            writer.Write(row.Record is null ? columnSets[row.Columns] : NoIndex);
 
             writer.Write(row.Batch);
 
             writer.Write(row.BatchSelectionIndex);
+
+            writer.Write(row.Record?.Length ?? NoIndex);
+
+            if (row.Record is { } record)
+            {
+                writer.Write(record);
+            }
         }
     }
 
@@ -123,12 +134,23 @@ public sealed partial class RowBufferStore
 
             var format = (RowBufferFormat)reader.ReadByte();
 
-            var columns = columnSets[reader.ReadInt32()];
+            var columnSet = reader.ReadInt32();
+
+            var batch = reader.ReadUInt64();
+
+            var selectionIndex = reader.ReadInt32();
+
+            var recordLength = reader.ReadInt32();
+
+            var record = recordLength >= 0 ? reader.ReadBytes(recordLength) : null;
+
+            var columns = record is null ? columnSets[columnSet] : RecordRowParser.Split(record, null);
 
             rows[index] = new RowBuffer(function, instance, call, position, iterator, address, columns, format)
             {
-                Batch = reader.ReadUInt64(),
-                BatchSelectionIndex = reader.ReadInt32()
+                Batch = batch,
+                BatchSelectionIndex = selectionIndex,
+                Record = record
             };
         }
 

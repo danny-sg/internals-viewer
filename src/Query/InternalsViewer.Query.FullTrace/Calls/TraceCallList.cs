@@ -98,6 +98,13 @@ public sealed class TraceCallList : IReadOnlyList<TraceArgumentCall>
         return columns.GetThread(call);
     }
 
+    public ulong? GetReturnValue(int index)
+    {
+        var (columns, call) = GetLocation(index);
+
+        return columns.IsReturned(call) ? columns.GetReturnValue(call) : null;
+    }
+
     internal int GetNodeIndex(int index)
     {
         var (columns, call) = GetLocation(index);

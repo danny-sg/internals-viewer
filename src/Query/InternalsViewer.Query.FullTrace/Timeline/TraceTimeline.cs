@@ -7,6 +7,7 @@ using InternalsViewer.Query.FullTrace.Native;
 using InternalsViewer.Query.Helpers;
 using InternalsViewer.Query.FullTrace.Timeline.Enums;
 using InternalsViewer.Query.Events;
+using InternalsViewer.Query.Events.Operators;
 
 namespace InternalsViewer.Query.FullTrace.Timeline;
 
@@ -396,6 +397,21 @@ public sealed partial class TraceTimeline
     internal void SetLifetimes(IReadOnlyList<TraceOperatorLifetime> lifetimes) => Lifetimes = lifetimes;
 
     internal void SetCalls(TraceCallStore calls) => Calls = calls;
+
+    internal Dictionary<ulong, ExecutionOperatorEvent> GetOperatorsByInstance()
+    {
+        var owners = new Dictionary<ulong, ExecutionOperatorEvent>();
+
+        foreach (var lifetime in Lifetimes)
+        {
+            foreach (var instance in lifetime.Operator.Instances)
+            {
+                owners.TryAdd(instance, lifetime.Operator);
+            }
+        }
+
+        return owners;
+    }
 
     private static int IndexOf(TraceTimelineRow row, double start, int node, int call)
     {

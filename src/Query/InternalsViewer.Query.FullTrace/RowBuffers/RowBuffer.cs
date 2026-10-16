@@ -1,4 +1,5 @@
 using InternalsViewer.Query.FullTrace.RowBuffers.Enums;
+using InternalsViewer.Query.FullTrace.RowBuffers.Records;
 
 namespace InternalsViewer.Query.FullTrace.RowBuffers;
 
@@ -14,6 +15,10 @@ public sealed record RowBuffer(ulong Function,
     public ulong Batch { get; init; }
 
     public int BatchSelectionIndex { get; init; } = -1;
+
+    public byte[]? Record { get; init; }
+
+    public RowRecordLayout? RecordLayout { get; init; }
 
     public override string ToString() => string.Join(Environment.NewLine, Columns.Select(c => $"Column {c.Ordinal}  {c}"));
 }
