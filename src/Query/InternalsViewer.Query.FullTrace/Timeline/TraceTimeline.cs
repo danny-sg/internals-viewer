@@ -564,7 +564,7 @@ public sealed partial class TraceTimeline
     private static TraceTimelineThread Regroup(TraceTimelineThread thread,
                                                Func<int, TraceTimelineRow, int, int> depthOf)
     {
-        var counts = new List<int>();
+        var sources = new List<RowSource>();
 
         for (var source = 0; source < thread.Rows.Count; source++)
         {
@@ -579,17 +579,29 @@ public sealed partial class TraceTimeline
                     continue;
                 }
 
-                while (counts.Count <= depth)
+                while (sources.Count <= depth)
                 {
-                    counts.Add(0);
+                    sources.Add(new RowSource());
                 }
 
-                counts[depth]++;
+                sources[depth].Add(source, index);
             }
         }
 
-        var rows = counts.Select(c => new RowArrays(c)).ToArray();
+        var copies = sources.Select(s => s is { Count: > 0, IsSlice: true } ? null : new RowArrays(s.Count)).ToArray();
 
+        if (sources.Any(s => s is { Count: > 0, IsSlice: false }))
+        {
+            Copy(thread, depthOf, copies);
+        }
+
+        TraceTimelineRow[] rows = [.. sources.Select((s, depth) => copies[depth]?.Build() ?? thread.Rows[s.Row].Slice(s.First, s.Count))];
+
+        return new TraceTimelineThread(thread.ThreadId, rows, sources.Sum(s => s.Count));
+    }
+
+    private static void Copy(TraceTimelineThread thread, Func<int, TraceTimelineRow, int, int> depthOf, RowArrays?[] copies)
+    {
         for (var source = 0; source < thread.Rows.Count; source++)
         {
             var row = thread.Rows[source];
@@ -606,24 +618,22 @@ public sealed partial class TraceTimeline
             {
                 var depth = depthOf(source, row, index);
 
-                if (depth < 0)
+                if (depth < 0 || copies[depth] is not { } copy)
                 {
                     continue;
                 }
 
                 var call = row.CallAt(index);
 
-                rows[depth].Add(positionStarts[index],
-                                positionEnds[index],
-                                instructionStarts[index],
-                                instructionEnds[index],
-                                row.NodeAt(index),
-                                call < 0 ? uint.MaxValue : (uint)call,
-                                (byte)row.FlagsAt(index));
+                copy.Add(positionStarts[index],
+                         positionEnds[index],
+                         instructionStarts[index],
+                         instructionEnds[index],
+                         row.NodeAt(index),
+                         call < 0 ? uint.MaxValue : (uint)call,
+                         (byte)row.FlagsAt(index));
             }
         }
-
-        return new TraceTimelineThread(thread.ThreadId, [.. rows.Select(r => r.Build())], counts.Sum());
     }
 
     internal sealed class Builder
@@ -859,6 +869,33 @@ public sealed partial class TraceTimeline
             {
                 values[index] = copy[order[index]];
             }
+        }
+    }
+
+    private sealed class RowSource
+    {
+        public int Count { get; private set; }
+
+        public int Row { get; private set; } = -1;
+
+        public int First { get; private set; }
+
+        public bool IsSlice { get; private set; } = true;
+
+        public void Add(int row, int index)
+        {
+            if (Count == 0)
+            {
+                Row = row;
+
+                First = index;
+            }
+            else if (row != Row || index != First + Count)
+            {
+                IsSlice = false;
+            }
+
+            Count++;
         }
     }
 }

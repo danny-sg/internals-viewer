@@ -12,6 +12,19 @@ public sealed partial class TraceTimelineRow
                               int[] nodes,
                               uint[] calls,
                               byte[] flags)
+        : this(positionStarts, positionEnds, instructionStarts, instructionEnds, nodes, calls, flags, 0, nodes.Length)
+    {
+    }
+
+    private TraceTimelineRow(double[] positionStarts,
+                             double[] positionEnds,
+                             double[] instructionStarts,
+                             double[] instructionEnds,
+                             int[] nodes,
+                             uint[] calls,
+                             byte[] flags,
+                             int offset,
+                             int count)
     {
         PositionStarts = positionStarts;
         PositionEnds = positionEnds;
@@ -20,9 +33,13 @@ public sealed partial class TraceTimelineRow
         Nodes = nodes;
         Calls = calls;
         Flags = flags;
+        Offset = offset;
+        Count = count;
     }
 
-    public int Count => Nodes.Length;
+    public int Count { get; }
+
+    private int Offset { get; }
 
     private double[] PositionStarts { get; }
 
@@ -39,19 +56,19 @@ public sealed partial class TraceTimelineRow
     private byte[] Flags { get; }
 
     public ReadOnlySpan<double> Starts(TraceTimelineAxis axis)
-        => axis == TraceTimelineAxis.Position ? PositionStarts : InstructionStarts;
+        => (axis == TraceTimelineAxis.Position ? PositionStarts : InstructionStarts).AsSpan(Offset, Count);
 
     public ReadOnlySpan<double> Ends(TraceTimelineAxis axis)
-        => axis == TraceTimelineAxis.Position ? PositionEnds : InstructionEnds;
+        => (axis == TraceTimelineAxis.Position ? PositionEnds : InstructionEnds).AsSpan(Offset, Count);
 
-    public int NodeAt(int index) => Nodes[index];
+    public int NodeAt(int index) => Nodes[Offset + index];
 
-    public int CallAt(int index) => Calls[index] == uint.MaxValue ? -1 : (int)Calls[index];
+    public int CallAt(int index) => Calls[Offset + index] is var call && call == uint.MaxValue ? -1 : (int)call;
 
-    public TraceSpanFlags FlagsAt(int index) => (TraceSpanFlags)Flags[index];
+    public TraceSpanFlags FlagsAt(int index) => (TraceSpanFlags)Flags[Offset + index];
 
     public TraceSpan Span(TraceTimelineAxis axis, int index)
-        => new(Starts(axis)[index], Ends(axis)[index], Nodes[index], CallAt(index), FlagsAt(index));
+        => new(Starts(axis)[index], Ends(axis)[index], NodeAt(index), CallAt(index), FlagsAt(index));
 
     public TraceTimelineRow Where(Func<int, bool> include)
     {
@@ -59,7 +76,7 @@ public sealed partial class TraceTimelineRow
 
         for (var index = 0; index < Count; index++)
         {
-            if (include(Nodes[index]))
+            if (include(NodeAt(index)))
             {
                 kept.Add(index);
             }
@@ -70,13 +87,13 @@ public sealed partial class TraceTimelineRow
             return this;
         }
 
-        return new TraceTimelineRow([.. kept.Select(i => PositionStarts[i])],
-                                    [.. kept.Select(i => PositionEnds[i])],
-                                    [.. kept.Select(i => InstructionStarts[i])],
-                                    [.. kept.Select(i => InstructionEnds[i])],
-                                    [.. kept.Select(i => Nodes[i])],
-                                    [.. kept.Select(i => Calls[i])],
-                                    [.. kept.Select(i => Flags[i])]);
+        return new TraceTimelineRow([.. kept.Select(i => PositionStarts[Offset + i])],
+                                    [.. kept.Select(i => PositionEnds[Offset + i])],
+                                    [.. kept.Select(i => InstructionStarts[Offset + i])],
+                                    [.. kept.Select(i => InstructionEnds[Offset + i])],
+                                    [.. kept.Select(i => Nodes[Offset + i])],
+                                    [.. kept.Select(i => Calls[Offset + i])],
+                                    [.. kept.Select(i => Flags[Offset + i])]);
     }
 
     public int FirstEndingAfter(TraceTimelineAxis axis, double x, int from = 0) => SortedSearch.FirstAfter(Ends(axis), x, from);
@@ -91,4 +108,17 @@ public sealed partial class TraceTimelineRow
 
         return index < Count && Starts(axis)[index] <= x + tolerance ? index : -1;
     }
+
+    internal TraceTimelineRow Slice(int start, int count)
+        => start == 0 && count == Count
+            ? this
+            : new TraceTimelineRow(PositionStarts,
+                                   PositionEnds,
+                                   InstructionStarts,
+                                   InstructionEnds,
+                                   Nodes,
+                                   Calls,
+                                   Flags,
+                                   Offset + start,
+                                   count);
 }

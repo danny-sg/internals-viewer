@@ -190,6 +190,49 @@ public class TraceTimelineTests
     }
 
     [Fact]
+    public void A_Cropped_Row_Shares_The_Calls_It_Keeps_With_Its_Source_Row()
+    {
+        var (timeline, execute) = BuildAroundExecute();
+
+        var cropped = timeline.CroppedTo(new HashSet<CallStackNode>(ReferenceEqualityComparer.Instance) { execute });
+
+        Assert.NotNull(cropped);
+
+        var source = Assert.Single(timeline.Threads).Rows;
+
+        var rows = Assert.Single(cropped.Threads).Rows;
+
+        Assert.Equal([[20d], [25d, 35d]], rows.Select(r => r.Starts(Instructions).ToArray()));
+        Assert.Equal([2, 3, 3], rows.SelectMany(r => Enumerable.Range(0, r.Count).Select(r.NodeAt)));
+        Assert.True(rows[0].Starts(Instructions).Overlaps(source[0].Starts(Instructions)));
+        Assert.True(rows[1].Starts(Instructions).Overlaps(source[1].Starts(Instructions)));
+    }
+
+    [Fact]
+    public void A_Shared_Row_Writes_Only_The_Calls_It_Keeps()
+    {
+        var (timeline, execute) = BuildAroundExecute();
+
+        var cropped = timeline.CroppedTo(new HashSet<CallStackNode>(ReferenceEqualityComparer.Instance) { execute });
+
+        using var stream = new MemoryStream();
+
+        using (var writer = new BinaryWriter(stream, System.Text.Encoding.UTF8, leaveOpen: true))
+        {
+            Assert.Single(cropped!.Threads).Rows[1].Write(writer);
+        }
+
+        stream.Position = 0;
+
+        using var reader = new BinaryReader(stream);
+
+        var read = TraceTimelineRow.Read(reader);
+
+        Assert.Equal([25d, 35d], read.Starts(Instructions).ToArray());
+        Assert.Equal([3, 3], Enumerable.Range(0, read.Count).Select(read.NodeAt));
+    }
+
+    [Fact]
     public void A_Cropped_Timeline_Drops_Threads_Outside_The_Cropped_Tree()
     {
         var timeline = Build(Span(node: 1, start: 5, end: 30),
@@ -508,6 +551,40 @@ public class TraceTimelineTests
         timeline.MapNodes(nodes);
 
         return nodes;
+    }
+
+    private static (TraceTimeline Timeline, CallStackNode Execute) BuildAroundExecute()
+    {
+        CallNode[] nodes =
+        [
+            new(-1, 0, 0x1000, 0, 1),
+            new(0, 0, 0x2000, 0, 1),
+            new(-1, 0, 0x3000, 0, 1),
+            new(2, 0, 0x4000, 0, 1)
+        ];
+
+        var builder = new TraceTimeline.Builder();
+
+        builder.Add([Span(node: 0, start: 0, end: 10),
+                     Span(node: 1, start: 2, end: 8),
+                     Span(node: 2, start: 20, end: 60),
+                     Span(node: 3, start: 25, end: 30),
+                     Span(node: 3, start: 35, end: 40),
+                     Span(node: 0, start: 70, end: 80),
+                     Span(node: 1, start: 72, end: 78)]);
+
+        var timeline = builder.Build(nodes);
+
+        var tree = new CallStackTree();
+
+        var outside = tree.AddCall(tree.Root, new CallstackFrame { Module = "sqllang", Rva = 0x10 }, 1);
+        var setup = tree.AddCall(outside, new CallstackFrame { Module = "sqllang", Rva = 0x18 }, 1);
+        var execute = tree.AddCall(tree.Root, new CallstackFrame { Module = "sqllang", Rva = 0x20 }, 1);
+        var scan = tree.AddCall(execute, new CallstackFrame { Module = "sqlmin", Rva = 0x30 }, 1);
+
+        timeline.MapNodes([outside, setup, execute, scan]);
+
+        return (timeline, execute);
     }
 
     private static TraceTimeline Build(params CallSpan[] spans)
