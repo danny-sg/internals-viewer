@@ -7,9 +7,11 @@ public sealed class RowRecordLayout
 {
     private const int LayoutHeaderSize = 4;
 
-    public RowRecordLayout(IReadOnlyList<ColumnStructure> columns)
+    public RowRecordLayout(IReadOnlyList<ColumnStructure> columns, int keyCount = 0)
     {
         Columns = columns;
+
+        KeyCount = Math.Clamp(keyCount, 0, columns.Count);
 
         FixedLength = columns.Where(c => !IsVariableLength(c)).Sum(c => (int)c.DataLength);
 
@@ -18,11 +20,13 @@ public sealed class RowRecordLayout
 
     public IReadOnlyList<ColumnStructure> Columns { get; }
 
+    public int KeyCount { get; }
+
     public int FixedLength { get; }
 
     public TableStructure Structure { get; }
 
-    public static RowRecordLayout? Create(int count, Func<int, ColumnStructure?> getColumn)
+    public static RowRecordLayout? Create(int count, int keyCount, Func<int, ColumnStructure?> getColumn)
     {
         var columns = new ColumnStructure[count];
 
@@ -36,7 +40,7 @@ public sealed class RowRecordLayout
             columns[ordinal] = column;
         }
 
-        return new RowRecordLayout(columns);
+        return new RowRecordLayout(columns, keyCount);
     }
 
     public static bool IsVariableLength(ColumnStructure column)
@@ -50,6 +54,8 @@ public sealed class RowRecordLayout
                                  or SqlDbType.Xml
                                  or SqlDbType.Variant
                                  or SqlDbType.Udt;
+
+    public bool IsKey(int ordinal) => ordinal >= Columns.Count - KeyCount && ordinal < Columns.Count;
 
     private static TableStructure BuildStructure(IReadOnlyList<ColumnStructure> columns)
     {

@@ -6,6 +6,7 @@ using InternalsViewer.Query.FullTrace.Memory;
 using InternalsViewer.Query.FullTrace.Timeline;
 using InternalsViewer.Query.FullTrace.Timeline.Enums;
 using InternalsViewer.Query.Helpers;
+using InternalsViewer.UI.App.Helpers;
 using InternalsViewer.UI.App.Models.Query.CallStack;
 using InternalsViewer.UI.App.ViewModels.Query.CallStack;
 using Microsoft.UI;
@@ -25,6 +26,8 @@ public sealed partial class FlameChartControl : Grid, IPlayheadChart, IDisposabl
     private const double FitPadding = 30;
 
     private const string MemoryModeGroup = "MemoryMode";
+
+    private const string MemoryMenuGroup = "FlameChartMemoryMenu";
 
     public static readonly DependencyProperty TimelineProperty =
         DependencyProperty.Register(nameof(Timeline),
@@ -1024,6 +1027,36 @@ public sealed partial class FlameChartControl : Grid, IPlayheadChart, IDisposabl
         {
             MemoryMode = mode;
         }
+    }
+
+    private MenuFlyoutSubItem CreateMemoryMenu()
+        => MenuItems.SubMenu("Memory",
+                             MemoryItem("Allocated", FlameChartMemoryMode.Allocated),
+                             MemoryItem("In Use", FlameChartMemoryMode.InUse),
+                             MemoryItem("None", null));
+
+    private RadioMenuFlyoutItem MemoryItem(string text, FlameChartMemoryMode? mode)
+    {
+        var item = new RadioMenuFlyoutItem
+        {
+            Text = text,
+            GroupName = MemoryMenuGroup,
+            IsChecked = mode is { } shown ? ShowMemory && MemoryMode == shown : !ShowMemory
+        };
+
+        item.Click += (_, _) => SetMemory(mode);
+
+        return item;
+    }
+
+    private void SetMemory(FlameChartMemoryMode? mode)
+    {
+        if (mode is { } shown)
+        {
+            MemoryMode = shown;
+        }
+
+        ShowMemory = mode is not null;
     }
 
     private static string MemoryModeLabel(FlameChartMemoryMode mode)

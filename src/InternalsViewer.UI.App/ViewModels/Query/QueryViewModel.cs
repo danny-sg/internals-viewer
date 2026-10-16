@@ -19,6 +19,7 @@ using InternalsViewer.Query;
 using InternalsViewer.Query.CallStack;
 using InternalsViewer.Query.FullTrace;
 using InternalsViewer.Query.FullTrace.RowBuffers;
+using InternalsViewer.Query.FullTrace.RowBuffers.HashRows;
 using InternalsViewer.Query.FullTrace.Arguments;
 using InternalsViewer.Query.FullTrace.Batches;
 using InternalsViewer.Query.FullTrace.Iterators;
@@ -1383,9 +1384,14 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
         => iterator?.Operator?.PlanNodeIdentifier is { } identifier ? ResolvePlanNode(identifier)?.OutputColumns : null;
 
     private IReadOnlyList<ColumnReference>? GetBuildColumns(IteratorTarget? iterator)
-        => iterator?.Operator?.PlanNodeIdentifier is { } identifier
-            ? ResolvePlanNode(identifier)?.Children.FirstOrDefault()?.OutputColumns
+        => iterator?.Operator?.PlanNodeIdentifier is { } identifier && ResolvePlanNode(identifier) is { } node
+            ? HashTableColumns.Get(node)
             : null;
+
+    private int GetBuildKeyCount(IteratorTarget? iterator)
+        => iterator?.Operator?.PlanNodeIdentifier is { } identifier && ResolvePlanNode(identifier) is { } node
+            ? HashTableColumns.GetKeyCount(node)
+            : 0;
 
     private PlanNode? ResolvePlanNode(PlanNodeIdentifier identifier)
     {
@@ -2276,7 +2282,7 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
         var buildDecoder = new BatchDecoder(Database, i => GetBuildColumns(iterators.GetValueOrDefault(i)));
 
-        result.RowBuffers.ApplyRecordLayouts(buildDecoder.GetColumn);
+        result.RowBuffers.ApplyRecordLayouts(buildDecoder.GetColumn, i => GetBuildKeyCount(iterators.GetValueOrDefault(i)));
 
         Arguments.SetSource(result.CallStore,
                             result.CallStack,

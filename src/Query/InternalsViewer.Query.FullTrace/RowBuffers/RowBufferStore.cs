@@ -53,7 +53,7 @@ public sealed partial class RowBufferStore
         return index < rows.Count && rows[index].Call == call ? rows[index] : null;
     }
 
-    public void ApplyRecordLayouts(Func<ulong, int, ColumnStructure?> getColumn)
+    public void ApplyRecordLayouts(Func<ulong, int, ColumnStructure?> getColumn, Func<ulong, int>? getKeyCount = null)
     {
         var layouts = new Dictionary<(ulong Iterator, int Count), RowRecordLayout?>();
 
@@ -70,7 +70,7 @@ public sealed partial class RowBufferStore
 
                 if (!layouts.TryGetValue(key, out var layout))
                 {
-                    layout = RowRecordLayout.Create(key.Item2, o => getColumn(row.Iterator, o));
+                    layout = RowRecordLayout.Create(key.Item2, getKeyCount?.Invoke(row.Iterator) ?? 0, o => getColumn(row.Iterator, o));
 
                     layouts[key] = layout;
                 }

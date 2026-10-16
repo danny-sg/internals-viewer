@@ -372,6 +372,10 @@ qds|*|Clone|QueryStore
 *|*CHashWorkfile*|*|PhysicalOperator
 *|*CHashWorktable*|*|PhysicalOperator
 *|CHashBitmap*|*|PhysicalOperator
+sqlmin|CHashWorkfilePartitionInstance|PhiGetNewHashItem|Memory
+sqlmin|CHashWorkfilePartitionInstance|PhiGetItemWithAlloc|Memory
+sqlmin|CHashWorkfilePartitionInstance|PvAllocateHashBucketPage|Memory
+sqlmin|CHashWorkfilePartitionInstance|FreeHashBucketPage|Memory
 
 *|AllocationCache*|*|Allocations
 *|AutoAllocationCaches*|*|Allocations
@@ -1240,6 +1244,7 @@ sqlmin|*|GetCSIScanColumnBindingTypeInfo|ColumnStore
 *|CDefaultTSProvider_IDbAndSetOptsProvider*|*|QueryExecution
 *|CFeatureSwitches*|*|QueryExecution
 *|CFeatureSwitchesQds*|*|QueryStore
+sqldk|CFeatureSwitchesDk*|*|SqlOs
 *|SqlEngineConfiguration*|*|QueryExecution
 *|AutoOpenDB*|*|QueryExecution
 *|AutoImbiSqlContext*|*|QueryExecution
@@ -1829,7 +1834,7 @@ sqllang|*|InitXVarWithBH|ExpressionEvaluation
 *|*|SEDefaultMaxInRowLen|RowAccess
 *|*|RemapAndTrimKeys|RowAccess
 *|*|PkgRemapAndTrimKeys|RowAccess
-*|*|GetDataWithBuffer|RowAccess
+*|*|GetDataWithBuffer|ExpressionEvaluation
 *|*|GetBitSetForSparseColumnCheck|RowAccess
 *|*|PXteAccessor|RowAccess
 *|*|ChooseQDSIttAccessorBindings|QueryStore
@@ -2129,6 +2134,7 @@ sqldk|ResourceMonitor*|*|SqlOs
 sqldk|SOS_LargeCacheStore*|*|SqlOs
 *|TAutoSpinEventLock*|*|Scheduling
 sqlmin|WORKFILE|*|Storage
+sqlmin|BufferGroup|*|Storage
 sqlmin|WFRSRCMGR*|*|Storage
 sqlmin|*|CreateWFResourceMgr|Storage
 sqlmin|*|WFMerror|Storage

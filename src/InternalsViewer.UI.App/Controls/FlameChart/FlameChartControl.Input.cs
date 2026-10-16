@@ -617,8 +617,24 @@ public sealed partial class FlameChartControl
 
         var hasPosition = e.TryGetPosition(_overlay, out var position);
 
-        var hit = hasPosition ? HitTest(position) : _selected;
+        var flyout = hasPosition && IsInOperators(position)
+            ? CreateOperatorsMenu(OperatorUnder(position))
+            : CreateChartMenu(hasPosition ? HitTest(position) : _selected);
 
+        if (hasPosition)
+        {
+            flyout.ShowAt(_overlay, new FlyoutShowOptions { Position = position });
+        }
+        else
+        {
+            flyout.ShowAt(_overlay);
+        }
+
+        e.Handled = true;
+    }
+
+    private MenuFlyout CreateChartMenu(FlameHit? hit)
+    {
         CallStackNode? node = null;
 
         var call = -1;
@@ -638,6 +654,13 @@ public sealed partial class FlameChartControl
             flyout.Items.Add(MenuItems.Create("Zoom to Selection", ZoomToSelectedCall));
         }
 
+        flyout.Items.Add(MenuItems.Create("Zoom to Fit", ZoomToFit));
+
+        if (_selected is not null)
+        {
+            flyout.Items.Add(MenuItems.Create("Clear Selection", Deselect));
+        }
+
         if (node is not null)
         {
             flyout.Items.Add(MenuItems.Create("Scope", () => SetRoot(node)));
@@ -648,10 +671,7 @@ public sealed partial class FlameChartControl
             flyout.Items.Add(MenuItems.Create("Clear Scope", () => SetRoot(null)));
         }
 
-        if (flyout.Items.Count > 0)
-        {
-            flyout.Items.Add(new MenuFlyoutSeparator());
-        }
+        flyout.Items.Add(new MenuFlyoutSeparator());
 
         flyout.Items.Add(MenuItems.Create("Open Call Tree", () => CallTreeOpenRequested?.Invoke(node, call)));
 
@@ -660,16 +680,13 @@ public sealed partial class FlameChartControl
             flyout.Items.Add(MenuItems.Create("Open Call Stack", () => OpenCallStackAt(opened.Start)));
         }
 
-        if (hasPosition)
-        {
-            flyout.ShowAt(_overlay, new FlyoutShowOptions { Position = position });
-        }
-        else
-        {
-            flyout.ShowAt(_overlay);
-        }
+        flyout.Items.Add(new MenuFlyoutSeparator());
 
-        e.Handled = true;
+        flyout.Items.Add(MenuItems.SubMenu("View", MenuItems.Toggle("Operators", ShowOperators, isChecked => ShowOperators = isChecked)));
+
+        flyout.Items.Add(CreateMemoryMenu());
+
+        return flyout;
     }
 
     private void OpenCallStackAt(double position)
@@ -840,7 +857,13 @@ public sealed partial class FlameChartControl
 
     private void Click(FlameHit? hit)
     {
-        if (hit is null || hit == _selected)
+        if (hit is null)
+        {
+            ClearSelectedOperator();
+
+            Deselect();
+        }
+        else if (hit == _selected)
         {
             Deselect();
         }

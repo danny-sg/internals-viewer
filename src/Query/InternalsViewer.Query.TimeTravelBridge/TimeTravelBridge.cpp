@@ -901,7 +901,7 @@ namespace
                 return;
             }
 
-            if (tree.Excluded.contains(callee))
+            if (tree.Excluded.contains(callee) || tree.Excluded.contains(target))
             {
                 stack.push_back(StackFrame{ stackPointer,
                                             ExcludedNode,

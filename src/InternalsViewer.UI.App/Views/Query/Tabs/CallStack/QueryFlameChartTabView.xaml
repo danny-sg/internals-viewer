@@ -55,7 +55,7 @@
                                       HiddenCategories="{x:Bind Settings.CallTreeHiddenCategorySet, Mode=OneWay}"
                                       PrunedCategories="{x:Bind Settings.CallTreePrunedCategorySet, Mode=OneWay}"
                                       GrantedMemory="{x:Bind ViewModel.GrantedMemory, Mode=OneWay}"
-                                      ShowMemory="{x:Bind Settings.FlameChartShowMemory, Mode=OneWay}"
+                                      ShowMemory="{x:Bind Settings.FlameChartShowMemory, Mode=TwoWay}"
                                       ShowCallStack="{x:Bind Settings.FlameChartShowCallStack, Mode=OneWay}"
                                       MemoryMode="{x:Bind Settings.FlameChartMemoryMode, Mode=TwoWay}"
                                       ColourProvider="{x:Bind ViewModel.EventColours, Mode=OneWay}"

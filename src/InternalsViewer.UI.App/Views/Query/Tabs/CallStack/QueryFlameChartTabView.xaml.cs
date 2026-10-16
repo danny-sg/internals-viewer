@@ -5,6 +5,7 @@ using InternalsViewer.Query.FullTrace.Timeline.Enums;
 using InternalsViewer.Query.Plans.Model;
 using InternalsViewer.UI.App.Controls.Docking;
 using InternalsViewer.UI.App.Controls.FlameChart;
+using InternalsViewer.UI.App.Helpers;
 using InternalsViewer.UI.App.ViewModels;
 using InternalsViewer.UI.App.ViewModels.Query;
 using InternalsViewer.UI.App.ViewModels.Query.CallStack;
@@ -62,6 +63,8 @@ public sealed partial class QueryFlameChartTabView : UserControl, IDocumentComma
         FlameChart.CallStackOpenRequested += OnCallStackOpenRequested;
 
         FlameChart.PlanNodeSelected += OnPlanNodeSelected;
+
+        FlameChart.ExecutionPlanRequested += OnExecutionPlanRequested;
 
         FlameChart.PlayStateChanged += OnPlayStateChanged;
 
@@ -137,6 +140,8 @@ public sealed partial class QueryFlameChartTabView : UserControl, IDocumentComma
 
         FlameChart.PlanNodeSelected -= OnPlanNodeSelected;
 
+        FlameChart.ExecutionPlanRequested -= OnExecutionPlanRequested;
+
         FlameChart.PlayStateChanged -= OnPlayStateChanged;
 
         FlameChart.PlayheadChanged -= OnPlayheadChanged;
@@ -188,19 +193,36 @@ public sealed partial class QueryFlameChartTabView : UserControl, IDocumentComma
                                   TraceTimelineAxis.Instructions,
                                   "Width is the instructions each call executed, so it shows how long each call took"));
 
+        var operators = MenuItems.Toggle("Operators", FlameChart.ShowOperators, isChecked => FlameChart.ShowOperators = isChecked);
+
+        var iteratorCalls = MenuItems.Toggle("Iterator Calls",
+                                             FlameChart.ShowIteratorCalls,
+                                             isChecked => FlameChart.ShowIteratorCalls = isChecked);
+
+        var rowBuffers = MenuItems.Toggle("Row Buffers", FlameChart.ShowRowBuffers, isChecked => FlameChart.ShowRowBuffers = isChecked);
+
         var menu = new MenuFlyout();
 
         menu.Items.Add(scale);
 
-        menu.Items.Add(ToggleItem("Operators", FlameChart.ShowOperators, isChecked => FlameChart.ShowOperators = isChecked));
+        menu.Items.Add(operators);
 
-        menu.Items.Add(ToggleItem("Iterator Calls", FlameChart.ShowIteratorCalls, isChecked => FlameChart.ShowIteratorCalls = isChecked));
+        menu.Items.Add(iteratorCalls);
 
-        menu.Items.Add(ToggleItem("Row Buffers", FlameChart.ShowRowBuffers, isChecked => FlameChart.ShowRowBuffers = isChecked));
+        menu.Items.Add(rowBuffers);
 
         menu.Items.Add(new MenuFlyoutSeparator());
 
-        menu.Items.Add(ToggleItem("Auto-Zoom", FlameChart.AutoZoom, isChecked => FlameChart.AutoZoom = isChecked));
+        menu.Items.Add(MenuItems.Toggle("Auto-Zoom", FlameChart.AutoZoom, isChecked => FlameChart.AutoZoom = isChecked));
+
+        menu.Opening += (_, _) =>
+        {
+            operators.IsChecked = FlameChart.ShowOperators;
+
+            iteratorCalls.IsChecked = FlameChart.ShowIteratorCalls;
+
+            rowBuffers.IsChecked = FlameChart.ShowRowBuffers;
+        };
 
         return menu;
     }
@@ -212,15 +234,6 @@ public sealed partial class QueryFlameChartTabView : UserControl, IDocumentComma
         ToolTipService.SetToolTip(item, toolTip);
 
         item.Click += OnScaleClick;
-
-        return item;
-    }
-
-    private static ToggleMenuFlyoutItem ToggleItem(string text, bool isChecked, Action<bool> setChecked)
-    {
-        var item = new ToggleMenuFlyoutItem { Text = text, IsChecked = isChecked };
-
-        item.Click += (sender, _) => setChecked(sender is ToggleMenuFlyoutItem { IsChecked: true });
 
         return item;
     }
@@ -345,6 +358,18 @@ public sealed partial class QueryFlameChartTabView : UserControl, IDocumentComma
     }
 
     private void OnPlanNodeSelected(PlanNodeIdentifier identifier) => ViewModel?.SelectPlanNode(identifier);
+
+    private void OnExecutionPlanRequested(PlanNodeIdentifier? identifier)
+    {
+        if (identifier is not null)
+        {
+            ViewModel?.OpenExecutionPlan(identifier);
+        }
+        else
+        {
+            ViewModel?.Layout.ShowExecutionPlan();
+        }
+    }
 
     private void OnSettingsPropertyChanged(object? sender, PropertyChangedEventArgs e)
     {

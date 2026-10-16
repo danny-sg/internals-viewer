@@ -95,6 +95,18 @@ public class HashRowHookTests
     }
 
     [Fact]
+    public void A_Build_Key_Stored_After_The_Columns_Is_Marked_As_A_Key()
+    {
+        var store = new RowBufferStore(Capture(nullBitmap: 0, status: 0));
+
+        store.ApplyRecordLayouts(GetColumn, _ => 1);
+
+        var layout = Assert.Single(store.All).RecordLayout;
+
+        Assert.Equal([false, false, true], Enumerable.Range(0, 3).Select(o => layout?.IsKey(o) == true));
+    }
+
+    [Fact]
     public void A_Null_Column_Is_Read_From_The_Null_Bitmap()
     {
         var store = new RowBufferStore(Capture(nullBitmap: 0b010, status: 0));

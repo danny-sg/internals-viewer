@@ -11,6 +11,7 @@ using InternalsViewer.UI.App.Controls.Timeline;
 using InternalsViewer.UI.App.Helpers;
 using InternalsViewer.UI.App.ViewModels.Query;
 using Microsoft.UI.Xaml;
+using Microsoft.UI.Xaml.Controls;
 using SkiaSharp;
 using Windows.Foundation;
 
@@ -111,6 +112,8 @@ public sealed partial class FlameChartControl
     private OperatorHit? _hoverOperator;
 
     public event Action<PlanNodeIdentifier>? PlanNodeSelected;
+
+    public event Action<PlanNodeIdentifier?>? ExecutionPlanRequested;
 
     private bool ShowsOperators => ShowOperators && _operatorRows.Length > 0;
 
@@ -741,6 +744,42 @@ public sealed partial class FlameChartControl
         {
             PlanNodeSelected?.Invoke(identifier);
         }
+    }
+
+    private void ClearSelectedOperator()
+    {
+        if (_selectedOperator is null)
+        {
+            return;
+        }
+
+        _selectedOperator = null;
+
+        FindSelectedRegions();
+
+        _canvas.Invalidate();
+    }
+
+    private OperatorHit? OperatorUnder(Point position)
+        => BlockAt(position) is { Block.Source.Operator: { } surface } ? surface : OperatorAt(position);
+
+    private MenuFlyout CreateOperatorsMenu(OperatorHit? hit)
+    {
+        var identifier = hit is { } found ? _operatorRows[found.Row].Operator.PlanNodeIdentifier : null;
+
+        var flyout = new MenuFlyout();
+
+        flyout.Items.Add(MenuItems.Create("Execution Plan", () => ExecutionPlanRequested?.Invoke(identifier)));
+
+        flyout.Items.Add(new MenuFlyoutSeparator());
+
+        var iteratorCalls = MenuItems.Toggle("Iterator Calls", ShowIteratorCalls, isChecked => ShowIteratorCalls = isChecked);
+
+        var rowBuffers = MenuItems.Toggle("Row Buffers", ShowRowBuffers, isChecked => ShowRowBuffers = isChecked);
+
+        flyout.Items.Add(MenuItems.SubMenu("View", iteratorCalls, rowBuffers));
+
+        return flyout;
     }
 
     private void ZoomToOperator(OperatorHit hit)
