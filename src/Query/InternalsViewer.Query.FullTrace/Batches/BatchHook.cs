@@ -8,7 +8,15 @@ namespace InternalsViewer.Query.FullTrace.Batches;
 
 internal sealed class BatchHook(BatchFunctions functions) : ITraceHook
 {
-    private const ulong SmallestAddress = 0x10000;
+    internal const ulong SmallestAddress = 0x10000;
+
+    internal const ulong BatchVectorsOffset = 0x08;
+
+    internal const ulong BatchVectorCountOffset = 0x1C;
+
+    internal const ulong BatchVectorEntrySize = 0x58;
+
+    internal const int MaximumBatchVectors = 1024;
 
     private const int IteratorArgument = 0;
 
@@ -16,21 +24,13 @@ internal sealed class BatchHook(BatchFunctions functions) : ITraceHook
 
     private const ulong BatchIdsOffset = 0x08;
 
-    private const ulong BatchVectorsOffset = 0x08;
-
     private const ulong BatchPureOffset = 0x10;
-
-    private const ulong BatchVectorCountOffset = 0x1C;
 
     private const ulong BatchCapacityOffset = 0x24;
 
     private const ulong BatchRowCountOffset = 0x28;
 
     private const ulong BatchSelectionOffset = 0x38;
-
-    private const ulong BatchVectorEntrySize = 0x58;
-
-    private const int MaximumBatchVectors = 1024;
 
     private const int MaximumBatchSelection = 0x10000;
 

@@ -11,6 +11,8 @@ public sealed partial class RowBufferStore
 {
     private const ulong SmallestSlot = sizeof(ulong);
 
+    private const ulong DeepValueTag = 1;
+
     internal RowBufferStore(IEnumerable<RowBuffer> rows)
     {
         Rows = rows.GroupBy(r => (r.Function, r.Instance)).ToDictionary(g => g.Key, g => g.OrderBy(r => r.Call).ToArray());
@@ -70,17 +72,18 @@ public sealed partial class RowBufferStore
 
     public RowBufferSource GetSource(RowBuffer row, RowBufferColumn column, BatchStore? batches = null) => column.Deferred switch
     {
-        DeferredPageValue => new RowBufferSource(RowBufferSourceType.BufferPool, column.Pointer),
-        DeferredLobValue => new RowBufferSource(RowBufferSourceType.Lob),
-        _ when column.Pointer == 0 => new RowBufferSource(row.Format == RowBufferFormat.Values
-                                                              ? RowBufferSourceType.ValueRow
-                                                              : RowBufferSourceType.Binding),
+        DeferredPageValue 
+            => new RowBufferSource(RowBufferSourceType.BufferPool, column.Pointer),
+        DeferredLobValue 
+            => new RowBufferSource(RowBufferSourceType.Lob),
+        _ when column.Pointer == 0 => new RowBufferSource(RowBufferSourceType.Inline),
+        _ when column.DeepDataVectorId > 0 => GetVectorSource(row, column, batches),
         _ => GetRowBufferSource(column.Pointer)
              ?? GetBatchSource(column.Pointer, batches)
              ?? new RowBufferSource(RowBufferSourceType.Memory, column.Pointer)
     };
 
-    internal void AnnotateNodes(TraceCallStore store)
+    internal void AnnotateCallStackNodes(TraceCallStore store)
     {
         foreach (var ((address, instance), rows) in Rows)
         {
@@ -100,15 +103,15 @@ public sealed partial class RowBufferStore
     }
 
     private static ulong GetExtent(RowBuffer row)
-        => row.Format == RowBufferFormat.Values
-            ? (ulong)row.Columns.Count * ValueRowParser.LayoutValueSize
+        => row.Format == RowBufferFormat.Batch
+            ? (ulong)row.Columns.Count * BatchRowParser.LayoutValueSize
             : row.Columns.Select(c => c.Binding.ValueOffset + Math.Max((ulong)c.Binding.FixedLength, SmallestSlot)).DefaultIfEmpty().Max();
 
     private static int GetColumn(RowBuffer row, ulong offset)
     {
-        if (row.Format == RowBufferFormat.Values)
+        if (row.Format == RowBufferFormat.Batch)
         {
-            return (int)(offset / ValueRowParser.LayoutValueSize);
+            return (int)(offset / BatchRowParser.LayoutValueSize);
         }
 
         foreach (var column in row.Columns)
@@ -127,6 +130,27 @@ public sealed partial class RowBufferStore
         => batches?.GetDeepValue(pointer) is { } deepValue
             ? new RowBufferSource(RowBufferSourceType.Batch, pointer, deepValue.Capture.Iterator, 0, deepValue.VectorId, deepValue.Row)
             : null;
+
+    private static RowBufferSource GetVectorSource(RowBuffer row, RowBufferColumn column, BatchStore? batches)
+    {
+        var handoff = batches?.GetHandoff(row.Batch, row.Iterator, row.Id);
+
+        var index = row.BatchSelectionIndex;
+
+        var batchRow = handoff is not null && index >= 0 && index < handoff.Selection.Length ? handoff.Selection[index] : -1;
+
+        var slot = handoff is null || batchRow < 0 ? null : batches!.GetVectorSlot(handoff, column.DeepDataVectorId, batchRow);
+
+        return new RowBufferSource(RowBufferSourceType.Batch,
+                                   column.Pointer,
+                                   handoff?.Iterator ?? 0,
+                                   0,
+                                   column.DeepDataVectorId,
+                                   batchRow)
+        {
+            IsFromDictionary = slot is { } value && (value & DeepValueTag) == 0
+        };
+    }
 
     private RowBufferSource? GetRowBufferSource(ulong pointer)
     {

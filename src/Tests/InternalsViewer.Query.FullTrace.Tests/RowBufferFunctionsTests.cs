@@ -41,7 +41,7 @@ public class RowBufferFunctionsTests
     }
 
     [Fact]
-    public void The_Batch_Helper_Reads_Its_Value_Row()
+    public void The_Batch_Helper_Reads_Its_Batch_Row()
     {
         var collector = new RowBufferFunctions.Collector();
 
@@ -52,7 +52,7 @@ public class RowBufferFunctionsTests
         var functions = collector.Build(new Dictionary<string, string[]> { ["CQScanBatchHelper"] = ["CQScanBatchHelper", "CQScanNew"] });
 
         Assert.Equal(0xA0ul, Assert.Single(functions.Functions));
-        Assert.Equal((0x7000ul, RowBufferFormat.Values), Assert.Single(functions.Formats));
+        Assert.Equal((0x7000ul, RowBufferFormat.Batch), Assert.Single(functions.Formats));
     }
 
     [Fact]

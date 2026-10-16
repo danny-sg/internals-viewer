@@ -4,7 +4,7 @@ using InternalsViewer.Query.FullTrace.RowBuffers.Enums;
 
 namespace InternalsViewer.Query.FullTrace.RowBuffers.Parsers;
 
-internal static class ValueRowParser
+internal static class BatchRowParser
 {
     private const int MaximumValues = 1024;
 

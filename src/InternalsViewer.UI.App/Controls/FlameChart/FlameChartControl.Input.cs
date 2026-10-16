@@ -277,11 +277,15 @@ public sealed partial class FlameChartControl
     {
         var found = BlockAt(position);
 
+        var hoverBand = found is null ? MarkBandAt(position) : null;
+
         UpdateCursor(IsOnSplitter(position)
                          ? InputSystemCursorShape.SizeNorthSouth
                          : found is not null
                              ? InputSystemCursorShape.SizeAll
-                             : InputSystemCursorShape.Arrow);
+                             : hoverBand is not null
+                                 ? InputSystemCursorShape.Hand
+                                 : InputSystemCursorShape.Arrow);
 
         FlameHit? hit;
 
@@ -313,7 +317,8 @@ public sealed partial class FlameChartControl
         if (hit != _hover
             || onPopout != _hoverOnPopout
             || !Nullable.Equals(hoverBlock, _hoverBlock)
-            || !Nullable.Equals(hoverOperator, _hoverOperator))
+            || !Nullable.Equals(hoverOperator, _hoverOperator)
+            || hoverBand != _hoverMarkBand)
         {
             _hover = hit;
 
@@ -322,6 +327,8 @@ public sealed partial class FlameChartControl
             _hoverBlock = hoverBlock;
 
             _hoverOperator = hoverOperator;
+
+            _hoverMarkBand = hoverBand;
 
             _canvas.Invalidate();
         }
@@ -334,13 +341,13 @@ public sealed partial class FlameChartControl
         {
             ShowOperatorToolTip(operatorHit, position);
         }
+        else if (hoverBand is not null)
+        {
+            OpenToolTip(MarkBandToolTip, position);
+        }
         else if (IsInOperators(position))
         {
             OpenToolTip("Operators", position);
-        }
-        else if (IsOnRowBufferBar(position))
-        {
-            OpenToolTip("Row Buffer/Batches", position);
         }
         else
         {
@@ -358,6 +365,10 @@ public sealed partial class FlameChartControl
 
             ZoomToSelection();
         }
+        else if (_isPressed && !_isDragging && _pressedOperators && MarkBandAt(position) is { } band)
+        {
+            OpenNearestMark(band, position);
+        }
         else if (_isPressed && !_isDragging && _pressedOperators)
         {
             ClickOperator(OperatorAt(position));
@@ -365,10 +376,6 @@ public sealed partial class FlameChartControl
         else if (_isPressed && !_isDragging && _isShiftPressed)
         {
             RootAt(HitTest(position));
-        }
-        else if (_isPressed && !_isDragging && GetRowBufferMarkAt(position) is { } mark)
-        {
-            CallTreeOpenRequested?.Invoke(mark.Node, mark.Call);
         }
         else if (_isPressed && !_isDragging)
         {
@@ -404,11 +411,13 @@ public sealed partial class FlameChartControl
 
         UpdateCursor(InputSystemCursorShape.Arrow);
 
-        if (_hover is not null || _hoverOperator is not null || _hoverBlock is not null)
+        if (_hover is not null || _hoverOperator is not null || _hoverBlock is not null || _hoverMarkBand is not null)
         {
             _hover = null;
 
             _hoverOperator = null;
+
+            _hoverMarkBand = null;
 
             _hoverBlock = null;
 
@@ -912,7 +921,7 @@ public sealed partial class FlameChartControl
         {
             var thread = timeline.Threads[lane];
 
-            var inLane = contentY - _laneTops[lane] - RowsOffset;
+            var inLane = contentY - _laneTops[lane] - LaneHeaderHeight;
 
             if (contentY < _laneTops[lane] || contentY >= _laneTops[lane] + LaneHeight(thread))
             {

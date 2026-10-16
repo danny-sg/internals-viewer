@@ -804,6 +804,20 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
         NavigateToCall(node, call);
     }
 
+    public void OpenRowBuffers(CallStackNode node, int call, bool isBatch)
+    {
+        Layout.ShowCallTree();
+
+        if (isBatch)
+        {
+            CallTreeTab.ShowBatches(node, call);
+        }
+        else
+        {
+            CallTreeTab.ShowRowBuffers(node, call);
+        }
+    }
+
     /// <summary>
     /// Opens the Call Tree document's detail pane on the symbol search
     /// </summary>

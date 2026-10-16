@@ -20,7 +20,7 @@ public sealed class RowBufferDecoder(DatabaseSource database,
     private ConcurrentDictionary<ulong, IReadOnlyDictionary<int, ColumnStructure>?> Columns { get; } = new();
 
     public ColumnStructure? GetColumn(RowBuffer row, RowBufferColumn column)
-        => row.Format == RowBufferFormat.Values
+        => row.Format == RowBufferFormat.Batch
             ? getOutputColumn?.Invoke(row.Iterator, column.Ordinal)
             : GetColumns(row.Iterator)?.GetValueOrDefault(column.Binding.RecordOffset);
 
@@ -41,7 +41,7 @@ public sealed class RowBufferDecoder(DatabaseSource database,
             return null;
         }
 
-        return row.Format == RowBufferFormat.Values
+        return row.Format == RowBufferFormat.Batch
             ? DecodeValue(column, structure)
             : DataConverter.BinaryToString(column.Data, structure.DataType, structure.Precision, structure.Scale, structure.BitPosition);
     }

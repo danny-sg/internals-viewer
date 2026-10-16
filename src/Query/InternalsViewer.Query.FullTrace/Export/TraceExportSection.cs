@@ -8,6 +8,7 @@ using InternalsViewer.Query.FullTrace.Timeline;
 using InternalsViewer.Query.FullTrace.Memory;
 using InternalsViewer.Query.FullTrace.Batches;
 using InternalsViewer.Query.FullTrace.RowBuffers;
+using InternalsViewer.Query.Memory;
 
 namespace InternalsViewer.Query.FullTrace.Export;
 
@@ -26,6 +27,8 @@ internal sealed class TraceExportSection : IQueryExportSection
     internal const string RowBuffersEntry = "fulltrace/rowbuffers.bin";
 
     internal const string BatchesEntry = "fulltrace/batches.bin";
+
+    internal const string ObjectPoolSnapshotEntry = "fulltrace/objectpool.bin";
 
     public bool CanExport(QueryExportContent content) => content.ExtraOf<TraceResult>() is not null;
 
@@ -53,6 +56,8 @@ internal sealed class TraceExportSection : IQueryExportSection
         writer.WriteBinary(RowBuffersEntry, CompressionLevel.Fastest, fullTrace.RowBuffers.Write);
 
         writer.WriteBinary(BatchesEntry, CompressionLevel.Fastest, fullTrace.Batches.Write);
+
+        writer.WriteBinary(ObjectPoolSnapshotEntry, CompressionLevel.Fastest, fullTrace.ObjectPool.Write);
     }
 
     public IRunExtra? Read(QueryExportReader reader)
@@ -76,7 +81,7 @@ internal sealed class TraceExportSection : IQueryExportSection
 
         var batches = reader.HasEntry(BatchesEntry) ? reader.ReadBinary(BatchesEntry, BatchStore.Read) : BatchStore.Empty;
 
-        rowBuffers.AnnotateNodes(callStore);
+        rowBuffers.AnnotateCallStackNodes(callStore);
 
         batches.AnnotateNodes(callStore);
 
@@ -94,6 +99,9 @@ internal sealed class TraceExportSection : IQueryExportSection
             MemoryMap = reader.HasEntry(MemoryMapEntry)
                 ? reader.ReadBinary(MemoryMapEntry, r => MemoryMap.Read(r, timeline.NodeOf))
                 : MemoryMap.Empty,
+            ObjectPool = reader.HasEntry(ObjectPoolSnapshotEntry)
+                ? reader.ReadBinary(ObjectPoolSnapshotEntry, ObjectPoolSnapshot.Read)
+                : ObjectPoolSnapshot.Empty,
             RowBuffers = rowBuffers,
             Batches = batches,
             RowBufferMarks = TraceRowBufferMarks.Build(timeline, rowBuffers, batches)

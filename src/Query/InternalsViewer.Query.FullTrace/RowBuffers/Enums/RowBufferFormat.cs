@@ -3,5 +3,5 @@ namespace InternalsViewer.Query.FullTrace.RowBuffers.Enums;
 public enum RowBufferFormat : uint
 {
     Bindings = 0,
-    Values = 1
+    Batch = 1
 }

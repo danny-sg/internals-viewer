@@ -160,7 +160,7 @@ public sealed class TraceLoader(ILogger<TraceLoader> logger, ITimeTravelRecorder
 
         replay.CallStore.AnnotateNodes();
 
-        replay.RowBuffers.AnnotateNodes(replay.CallStore);
+        replay.RowBuffers.AnnotateCallStackNodes(replay.CallStore);
 
         replay.Batches.AnnotateNodes(replay.CallStore);
 
@@ -250,6 +250,7 @@ public sealed class TraceLoader(ILogger<TraceLoader> logger, ITimeTravelRecorder
             PlanLink = planLink,
             HoBtAccess = hobtAccess,
             MemoryMap = memoryMap,
+            ObjectPool = request.ObjectPool,
             RowBuffers = replay.RowBuffers,
             Batches = replay.Batches,
             CustomHooks = replay.CustomHooks,

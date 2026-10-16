@@ -1,4 +1,5 @@
 ﻿using InternalsViewer.Query.Results;
+using CommunityToolkit.WinUI;
 using InternalsViewer.UI.App.Models;
 using Microsoft.UI.Dispatching;
 using Microsoft.UI.Xaml.Controls;
@@ -21,6 +22,10 @@ public sealed partial class ResultsGridControl : UserControl
     private const string DetailsToggleName = "DetailsToggleButton";
 
     private const string DetailsToggleStyleKey = "DetailsToggleStyle";
+
+    private static readonly Thickness GroupPadding = new(8, 0, 8, 0);
+
+    private static readonly Thickness GroupBorder = new(0, 0, 1, 1);
 
 
     public static readonly DependencyProperty ResultSetProperty =
@@ -130,6 +135,10 @@ public sealed partial class ResultsGridControl : UserControl
 
     private bool IsRefreshing { get; set; }
 
+    private List<ColumnGroup> Groups { get; } = [];
+
+    private ScrollViewer? TableScroller { get; set; }
+
     private void Rebuild()
     {
         ReleaseTable();
@@ -164,6 +173,8 @@ public sealed partial class ResultsGridControl : UserControl
 
             table.Columns.Add(resultCellColumn);
         }
+
+        BuildGroups(table, columns);
 
         if (RowDetails is not null)
         {
@@ -258,12 +269,123 @@ public sealed partial class ResultsGridControl : UserControl
 
         table.ContainerContentChanging -= OnContainerContentChanging;
 
+        table.LayoutUpdated -= OnTableLayoutUpdated;
+
+        table.Loaded -= OnTableLoaded;
+
+        if (TableScroller is { } scroller)
+        {
+            scroller.ViewChanging -= OnTableScrollChanging;
+
+            TableScroller = null;
+        }
+
+        Groups.Clear();
+
+        GroupBand.Children.Clear();
+
+        GroupBand.Visibility = Visibility.Collapsed;
+
         TableHost.Child = null;
 
         table.ItemsSource = null;
 
         ResultsTable = null;
     }
+
+    private void BuildGroups(TableView table, IReadOnlyList<ResultColumn> columns)
+    {
+        for (var index = 0; index < columns.Count; index++)
+        {
+            if (columns[index].Group is not { } name)
+            {
+                continue;
+            }
+
+            var last = index;
+
+            while (last + 1 < columns.Count && columns[last + 1].Group == name)
+            {
+                last++;
+            }
+
+            var label = new Border
+            {
+                Height = GroupBand.Height,
+                Padding = GroupPadding,
+                BorderThickness = GroupBorder,
+                BorderBrush = Resource<Brush>("ControlStrokeColorDefaultBrush"),
+                Child = new TextBlock
+                {
+                    Text = name,
+                    VerticalAlignment = VerticalAlignment.Center,
+                    TextTrimming = TextTrimming.CharacterEllipsis
+                }
+            };
+
+            GroupBand.Children.Add(label);
+
+            Groups.Add(new ColumnGroup(table.Columns[index], table.Columns[last], label));
+
+            index = last;
+        }
+
+        if (Groups.Count == 0)
+        {
+            return;
+        }
+
+        GroupBand.Visibility = Visibility.Visible;
+
+        table.LayoutUpdated += OnTableLayoutUpdated;
+
+        table.Loaded += OnTableLoaded;
+    }
+
+    private void PositionGroups()
+    {
+        foreach (var group in Groups)
+        {
+            if (group.First.HeaderControl is not { XamlRoot: not null, ActualWidth: > 0 } first
+                || group.Last.HeaderControl is not { XamlRoot: not null } last)
+            {
+                continue;
+            }
+
+            var left = first.TransformToVisual(GroupBand).TransformPoint(default).X;
+
+            var width = Math.Max(0, last.TransformToVisual(GroupBand).TransformPoint(default).X + last.ActualWidth - left);
+
+            if (Canvas.GetLeft(group.Label) != left)
+            {
+                Canvas.SetLeft(group.Label, left);
+            }
+
+            if (group.Label.Width != width)
+            {
+                group.Label.Width = width;
+            }
+        }
+    }
+
+    private void OnTableLayoutUpdated(object? sender, object e) => PositionGroups();
+
+    private void OnTableScrollChanging(object? sender, ScrollViewerViewChangingEventArgs e) => PositionGroups();
+
+    private void OnTableLoaded(object sender, RoutedEventArgs e)
+    {
+        if (TableScroller is null && ((TableView)sender).FindDescendant<ScrollViewer>() is { } scroller)
+        {
+            TableScroller = scroller;
+
+            scroller.ViewChanging += OnTableScrollChanging;
+        }
+
+        PositionGroups();
+    }
+
+    private void OnGroupBandSizeChanged(object sender, SizeChangedEventArgs e)
+        => GroupBand.Clip = new RectangleGeometry { Rect = new Rect(0, 0, e.NewSize.Width, e.NewSize.Height) };
 
     private void UpdateStatus()
     {
@@ -545,4 +667,6 @@ public sealed partial class ResultsGridControl : UserControl
             });
         }
     }
+
+    private sealed record ColumnGroup(TableViewColumn First, TableViewColumn Last, Border Label);
 }

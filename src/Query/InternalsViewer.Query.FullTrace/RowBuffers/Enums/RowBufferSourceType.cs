@@ -2,8 +2,7 @@ namespace InternalsViewer.Query.FullTrace.RowBuffers.Enums;
 
 public enum RowBufferSourceType
 {
-    Binding,
-    ValueRow,
+    Inline,
     BufferPool,
     Lob,
     RowBuffer,

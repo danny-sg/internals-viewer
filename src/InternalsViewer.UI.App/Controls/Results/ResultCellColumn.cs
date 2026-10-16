@@ -2,8 +2,10 @@ using System;
 using System.Drawing;
 using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Query.Results;
+using InternalsViewer.UI.App.Helpers;
 using InternalsViewer.UI.App.Helpers.Converters.Results;
 using InternalsViewer.UI.App.Models;
+using Microsoft.UI.Text;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Documents;
 using Microsoft.UI.Xaml.Media;
@@ -15,9 +17,23 @@ internal sealed class ResultCellColumn(int ordinal) : TableViewColumn
 {
     private const double ActionSpacing = 12;
 
+    private const double BadgeSpacing = 4;
+
+    private const double BadgeFontSize = 9;
+
     private static readonly Thickness CellPadding = new(8, 0, 4, 0);
 
     private static readonly Thickness ClassMargin = new(0, 0, 4, 0);
+
+    private static readonly Thickness BadgePadding = new(5, 1, 5, 2);
+
+    private static readonly Thickness BadgeBorder = new(1);
+
+    private static readonly CornerRadius BadgeCorner = new(3);
+
+    private static readonly SolidColorBrush BadgeBackground = new(Microsoft.UI.Colors.White);
+
+    private static readonly SolidColorBrush BadgeForeground = new(Microsoft.UI.Colors.Black);
 
     public Color? BackgroundColour { get; init; }
 
@@ -42,7 +58,7 @@ internal sealed class ResultCellColumn(int ordinal) : TableViewColumn
     {
         var block = new TextBlock { Padding = CellPadding, FontSize = fontSize };
 
-        var text = value is PageAddress or RowIdentifier or ObjectValue or StringValue or CallValue or ActionLinks
+        var text = value is PageAddress or RowIdentifier or ObjectValue or StringValue or CallValue or ActionLinks or BadgeText
             ? value.ToString()
             : ResultRowConverter.FormatValue(value);
 
@@ -127,6 +143,10 @@ internal sealed class ResultCellColumn(int ordinal) : TableViewColumn
 
             case ActionLinks actions:
                 ApplyActions(host, actions);
+                break;
+
+            case BadgeText badgeText:
+                ApplyBadges(host, badgeText);
                 break;
 
             default:
@@ -330,6 +350,65 @@ internal sealed class ResultCellColumn(int ordinal) : TableViewColumn
             }
         }
     }
+
+    private static void ApplyBadges(ContentControl host, BadgeText value)
+    {
+        if (host.Content is StackPanel { Tag: BadgeText current } && current == value)
+        {
+            return;
+        }
+
+        var panel = new StackPanel
+        {
+            Orientation = Orientation.Horizontal,
+            Spacing = BadgeSpacing,
+            Padding = CellPadding,
+            VerticalAlignment = VerticalAlignment.Center,
+            Tag = value
+        };
+
+        foreach (var badge in value.LeadingBadges)
+        {
+            panel.Children.Add(CreateBadge(badge));
+        }
+
+        panel.Children.Add(new TextBlock { Text = value.Text, VerticalAlignment = VerticalAlignment.Center });
+
+        foreach (var badge in value.Badges)
+        {
+            panel.Children.Add(CreateBadge(badge));
+        }
+
+        if (value.Detail is { } detail)
+        {
+            panel.Children.Add(new TextBlock
+            {
+                Text = detail,
+                VerticalAlignment = VerticalAlignment.Center,
+                Foreground = AppResources.Get<Brush>("TextFillColorTertiaryBrush")
+            });
+        }
+
+        host.Content = panel;
+    }
+
+    private static Border CreateBadge(string text)
+        => new()
+        {
+            CornerRadius = BadgeCorner,
+            Padding = BadgePadding,
+            BorderThickness = BadgeBorder,
+            BorderBrush = BadgeBackground,
+            Background = BadgeBackground,
+            VerticalAlignment = VerticalAlignment.Center,
+            Child = new TextBlock
+            {
+                Text = text,
+                FontSize = BadgeFontSize,
+                FontWeight = FontWeights.SemiBold,
+                Foreground = BadgeForeground
+            }
+        };
 
     private static void OnActionClick(object sender, RoutedEventArgs e)
     {

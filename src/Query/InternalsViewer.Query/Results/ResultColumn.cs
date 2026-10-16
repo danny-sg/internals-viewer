@@ -10,6 +10,8 @@ public sealed record ResultColumn(int Ordinal, string Name, Type ClrType, bool I
 
     public string? Detail { get; set; }
 
+    public string? Group { get; set; }
+
     public int? Width { get; set; }
 
     public ResultAlignment Alignment { get; set; } = ResultAlignment.Left;

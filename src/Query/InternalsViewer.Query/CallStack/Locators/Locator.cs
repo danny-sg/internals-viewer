@@ -1,4 +1,5 @@
 using InternalsViewer.Internals.Engine.Address;
+using InternalsViewer.Query.Events.BatchMode;
 using InternalsViewer.Query.Events.BatchMode.Enums;
 
 namespace InternalsViewer.Query.CallStack.Locators;
@@ -73,18 +74,5 @@ public readonly record struct Locator(int Register, LocatorValueType ValueType, 
         _ => Page.ToString()
     };
 
-    private string ObjectLabel() => ObjectType switch
-    {
-        ColumnStoreObjectType.ColumnSegment 
-            => $"Segment (Rowgroup {ObjectId}, Column {ColumnId})",
-        ColumnStoreObjectType.PrimaryDictionary 
-            => $"Primary Dictionary (Column {ColumnId})",
-        ColumnStoreObjectType.SecondaryDictionary 
-            => $"Secondary Dictionary {ObjectId} (Column {ColumnId})",
-        ColumnStoreObjectType.BulkInsertDictionary 
-            => $"Bulk Insert Dictionary (Column {ColumnId})",
-        ColumnStoreObjectType.DeleteBitmap 
-            => $"Delete Bitmap (Rowgroup {ObjectId})",
-        _ => $"{ObjectType} (Column {ColumnId}, Object {ObjectId})"
-    };
+    private string ObjectLabel() => ColumnStoreObjectLabel.Get(ObjectType, ColumnId, ObjectId);
 }

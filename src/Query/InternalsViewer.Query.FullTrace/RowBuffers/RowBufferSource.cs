@@ -7,4 +7,7 @@ public sealed record RowBufferSource(RowBufferSourceType Type,
                                      ulong Iterator = 0,
                                      ulong Offset = 0,
                                      int Column = -1,
-                                     int Row = -1);
+                                     int Row = -1)
+{
+    public bool IsFromDictionary { get; init; }
+}

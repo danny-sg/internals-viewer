@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Drawing;
+using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Threading;
@@ -10,6 +11,7 @@ using InternalsViewer.Query.CallStack;
 using InternalsViewer.Query.FullTrace.Calls;
 using InternalsViewer.Query.FullTrace.RowBuffers;
 using InternalsViewer.Query.FullTrace.RowBuffers.Enums;
+using InternalsViewer.Query.Helpers;
 using InternalsViewer.Query.Results;
 using InternalsViewer.UI.App.Models;
 using InternalsViewer.UI.App.Models.Query.CallStack;
@@ -31,7 +33,18 @@ public sealed partial class RowBuffersViewModel(CallStackNode node,
 
     private const string SourceHeader = "Source";
 
+    private const string ValueHeader = "Value";
+
+    private const string ReferenceBadge = "Reference";
+
+    private const string VariableLengthBadge = "Variable Length";
+
+    private const string DictionaryBadge = "Dictionary";
+
+    private const string TruncatedBadge = "Truncated";
+
     private static readonly Color SourceTint = Color.FromArgb(28, Color.LightGreen);
+
 
     [ObservableProperty]
     private string? _message;
@@ -60,6 +73,8 @@ public sealed partial class RowBuffersViewModel(CallStackNode node,
 
     private bool IsDecoded { get; set; } = isDecoded;
 
+    private int? RequestedCall { get; set; }
+
     public bool IsShowing(CallStackNode other)
         => Node.Frame is { } frame
            && other.Frame is { } otherFrame
@@ -82,6 +97,8 @@ public sealed partial class RowBuffersViewModel(CallStackNode node,
             var table = await Task.Run(() => BuildTable(frame.Address, frame.Instance, token), token);
 
             Table = table;
+
+            ApplyRequestedCall();
         }
         catch (OperationCanceledException) when (token.IsCancellationRequested)
         {
@@ -129,6 +146,13 @@ public sealed partial class RowBuffersViewModel(CallStackNode node,
         _ = LoadAsync();
     }
 
+    public void SelectCall(int call)
+    {
+        RequestedCall = call;
+
+        ApplyRequestedCall();
+    }
+
     public CallStackNode? GetCallNode(int call)
         => Node.Frame is { } frame
            && lookup.Store.GetCallList(frame.Address, frame.Instance) is { } calls
@@ -150,6 +174,23 @@ public sealed partial class RowBuffersViewModel(CallStackNode node,
         Cancellation.Cancel();
 
         Cancellation.Dispose();
+    }
+
+    private void ApplyRequestedCall()
+    {
+        if (RequestedCall is not { } call || Table is not { Rows: var rows })
+        {
+            return;
+        }
+
+        RequestedCall = null;
+
+        var index = SortedSearch.FirstAtOrAfter(rows, (long)call, r => r.Id);
+
+        if (index < rows.Count && rows[index].Id == call)
+        {
+            SelectedRow = rows[index];
+        }
     }
 
     private QueryResultSet BuildTable(ulong address, ulong instance, CancellationToken cancellationToken)
@@ -180,12 +221,20 @@ public sealed partial class RowBuffersViewModel(CallStackNode node,
                 ? RowBufferDisplay.GetLabel(first, first.Columns[ordinal], decoder)
                 : $"Column {ordinal}";
 
-            columns.Add(new ResultColumn(columns.Count, name, typeof(string), true));
-
-            if (isSourceVisible)
+            if (!isSourceVisible)
             {
-                columns.Add(new ResultColumn(columns.Count, SourceHeader, typeof(string), false) { BackgroundColour = SourceTint });
+                columns.Add(new ResultColumn(columns.Count, name, typeof(string), true));
+
+                continue;
             }
+
+            columns.Add(new ResultColumn(columns.Count, ValueHeader, typeof(string), true) { Group = name });
+
+            columns.Add(new ResultColumn(columns.Count, SourceHeader, typeof(string), false)
+            {
+                BackgroundColour = SourceTint,
+                Group = name
+            });
         }
 
         var source = new CachedRowSource<RowBuffer>(rowBuffers,
@@ -234,27 +283,82 @@ public sealed partial class RowBuffersViewModel(CallStackNode node,
 
             if (isSourceVisible && index + 1 < fieldCount)
             {
-                values[index + 1] = GetSourceLabel(row, row.Columns[ordinal]);
+                values[index + 1] = GetSource(row, row.Columns[ordinal]);
             }
         }
 
         return values;
     }
 
-    private string GetSourceLabel(RowBuffer row, RowBufferColumn column)
+    private static bool IsVariableLength(RowBuffer row, RowBufferColumn column)
+        => row.Format == RowBufferFormat.Bindings && column.Binding.RecordOffset < 0;
+
+    private static string? GetDetail(RowBuffer row, RowBufferColumn column)
+    {
+        string? length = column.HasLength ? $"Length {column.Length.ToString(CultureInfo.InvariantCulture)}" : null;
+
+        if (row.Format != RowBufferFormat.Bindings || IsVariableLength(row, column))
+        {
+            return length;
+        }
+
+        var offset = $"Offset {column.Binding.RecordOffset.ToString(CultureInfo.InvariantCulture)}";
+
+        return length is null ? offset : $"{offset}  {length}";
+    }
+
+    private static IReadOnlyList<string> GetBadges(RowBuffer row, RowBufferColumn column, RowBufferSource source)
+    {
+        var badges = new List<string>();
+
+        if (source.IsFromDictionary)
+        {
+            badges.Add(DictionaryBadge);
+        }
+
+        if (IsVariableLength(row, column))
+        {
+            badges.Add(VariableLengthBadge);
+        }
+
+        if (column.IsTruncated)
+        {
+            badges.Add(TruncatedBadge);
+        }
+
+        if (column.UnreadableReason is { } reason)
+        {
+            badges.Add(reason);
+        }
+
+        return badges;
+    }
+
+    private BadgeText GetSource(RowBuffer row, RowBufferColumn column)
     {
         var source = lookup.RowBuffers.GetSource(row, column, lookup.Batches);
 
-        return source.Type switch
-        {
-            RowBufferSourceType.Binding => "Binding",
-            RowBufferSourceType.ValueRow => "Value Row",
-            RowBufferSourceType.BufferPool => "Buffer Pool",
-            RowBufferSourceType.Lob => "LOB",
-            RowBufferSourceType.RowBuffer => $"{GetIteratorLabel(source.Iterator)} +0x{source.Offset:X}",
-            RowBufferSourceType.Batch => $"{GetIteratorLabel(source.Iterator)} Vector {source.Column} Row {source.Row}",
-            _ => "Memory"
-        };
+        return new BadgeText(column.IsByReference ? [ReferenceBadge] : [],
+                             GetSourceLabel(source),
+                             GetBadges(row, column, source),
+                             GetDetail(row, column));
+    }
+
+    private string GetSourceLabel(RowBufferSource source) => source.Type switch
+    {
+        RowBufferSourceType.Inline => "Inline",
+        RowBufferSourceType.BufferPool => "Buffer Pool",
+        RowBufferSourceType.Lob => "LOB",
+        RowBufferSourceType.RowBuffer => $"{GetIteratorLabel(source.Iterator)} +0x{source.Offset:X}",
+        RowBufferSourceType.Batch => GetBatchLabel(source),
+        _ => "Memory"
+    };
+
+    private string GetBatchLabel(RowBufferSource source)
+    {
+        var vector = source.Row < 0 ? $"Vector {source.Column}" : $"Vector {source.Column} Row {source.Row}";
+
+        return source.Iterator == 0 ? vector : $"{GetIteratorLabel(source.Iterator)} {vector}";
     }
 
     private string GetIteratorLabel(ulong iterator) => lookup.GetIterator(iterator)?.Label ?? $"Iterator 0x{iterator:X}";

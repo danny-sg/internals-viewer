@@ -12,7 +12,7 @@ public sealed partial class CallTreeRowBuffersPanelView : UserControl, IDocument
 {
     private const double CommandSpacing = 4;
 
-    private const string SourceToolTip = "Add a column after each field showing where its value came from: the binding, a value row, "
+    private const string SourceToolTip = "Add a column after each field showing where its value came from: inline in the row buffer, "
                                          + "the buffer pool, a LOB, another operator's row buffer or batch, or other memory";
 
     public CallTreeRowBuffersPanelView()

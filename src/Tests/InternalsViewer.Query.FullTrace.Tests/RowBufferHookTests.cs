@@ -30,26 +30,49 @@ public class RowBufferHookTests
 
     private const ulong BindingInfo = 0x21C_0BB8_0000;
 
+    private const ulong Batch = 0x21C_0BB9_0000;
+
+    private const ulong Vectors = 0x21C_0BBA_0000;
+
+    private const ulong DeepPage = 0x21C_0BBC_0040;
+
     [Fact]
-    public void A_Value_Row_Holds_Inline_Values_And_The_Bytes_Behind_Pointers()
+    public void A_Batch_Row_Holds_Inline_Values_And_The_Bytes_Behind_Pointers()
     {
-        var memory = ValueRow().Write(Row + 0x20, (byte)0)
+        var memory = BatchRow().Write(Row + 0x20, (byte)0)
                                .Write(Row + 0x28, Text)
                                .Write(Row + 0x30, 6ul)
                                .Write(Text, "SYM000"u8);
 
         var row = Replay(memory, count: 2)!;
 
-        Assert.Equal(RowBufferFormat.Values, row.Format);
+        Assert.Equal(RowBufferFormat.Batch, row.Format);
         Assert.Equal([0x20, 0x28, 0x30, 0, 0, 0, 0, 0], row.Columns[0].Data);
         Assert.Equal("SYM000", Encoding.ASCII.GetString(row.Columns[1].Data));
         Assert.True(row.Columns[1].IsByReference);
     }
 
     [Fact]
+    public void A_Batch_Row_Names_The_Vector_Whose_Deep_Data_Holds_A_Value()
+    {
+        var row = Replay(DeepDataRow(), count: 2)!;
+
+        Assert.Equal((Batch, 2, 5), (row.Batch, row.BatchSelectionIndex, row.Columns[1].DeepDataVectorId));
+        Assert.Equal(0, row.Columns[0].DeepDataVectorId);
+    }
+
+    [Fact]
+    public void A_Page_Without_Its_Magic_Is_Not_Deep_Data()
+    {
+        var row = Replay(DeepDataRow().Write(DeepPage + 0x10, 0u), count: 2)!;
+
+        Assert.Equal(0, row.Columns[1].DeepDataVectorId);
+    }
+
+    [Fact]
     public void A_Null_Value_Keeps_Its_Status()
     {
-        var memory = ValueRow().Write(Row + 0x20, (byte)3);
+        var memory = BatchRow().Write(Row + 0x20, (byte)3);
 
         var column = Replay(memory, count: 2)!.Columns[1];
 
@@ -59,7 +82,7 @@ public class RowBufferHookTests
     [Fact]
     public void A_Value_Missing_From_The_Trace_Is_Unreadable()
     {
-        var memory = ValueRow().Write(Row + 0x20, (byte)0);
+        var memory = BatchRow().Write(Row + 0x20, (byte)0);
 
         Assert.True(Replay(memory, count: 2)!.Columns[1].IsUnreadable);
     }
@@ -165,11 +188,11 @@ public class RowBufferHookTests
     }
 
     [Fact]
-    public void A_Value_Row_Reference_Into_A_Data_Page_Is_Deferred()
+    public void A_Batch_Row_Reference_Into_A_Data_Page_Is_Deferred()
     {
         const ulong page = 0x21C_0BB9_0000;
 
-        var memory = ValueRow().Write(Row + 0x20, (byte)0)
+        var memory = BatchRow().Write(Row + 0x20, (byte)0)
                                .Write(Row + 0x28, page + 416)
                                .Write(Row + 0x30, 5ul)
                                .Write(page, (byte)1)
@@ -206,7 +229,7 @@ public class RowBufferHookTests
     {
         var hook = CreateHook();
 
-        var memory = ValueRow();
+        var memory = BatchRow();
 
         hook.OnEntry(Call(), memory);
 
@@ -234,7 +257,7 @@ public class RowBufferHookTests
     {
         var hook = CreateHook();
 
-        var memory = ValueRow();
+        var memory = BatchRow();
 
         hook.OnEntry(Call(), memory);
 
@@ -282,7 +305,21 @@ public class RowBufferHookTests
                                 .Write(Buffer + 0x18, length)
                                 .Write(Buffer + 0x40, value);
 
-    private static FakeTraceReplay ValueRow()
+    private static FakeTraceReplay DeepDataRow()
+        => BatchRow().Write(Row + 0x20, (byte)0)
+                     .Write(Row + 0x28, DeepPage + 0x1C)
+                     .Write(Row + 0x30, 6ul)
+                     .Write(DeepPage + 0x1C, "SYM000"u8)
+                     .Write(Iterator + 0x88, 3)
+                     .Write(Iterator + 0x90, Batch)
+                     .Write(Batch + 0x08, Vectors)
+                     .Write(Batch + 0x1C, 6)
+                     .Write(Vectors + 4 * 0x58 + 0x18, DeepPage)
+                     .Write(DeepPage + 0x08, 0ul)
+                     .Write(DeepPage + 0x10, 0x53445042u)
+                     .Write(DeepPage + 0x14, (ushort)0x1F8C);
+
+    private static FakeTraceReplay BatchRow()
         => new FakeTraceReplay().Write(Iterator, ValueTable)
                                 .Write(Iterator + 0x78, Row)
                                 .Write(Iterator + 0x50, 2u)
@@ -304,7 +341,7 @@ public class RowBufferHookTests
     }
 
     private static RowBufferHook CreateHook()
-        => new(new RowBufferFunctions([Function], [(ValueTable, RowBufferFormat.Values), (BindingTable, RowBufferFormat.Bindings)]));
+        => new(new RowBufferFunctions([Function], [(ValueTable, RowBufferFormat.Batch), (BindingTable, RowBufferFormat.Bindings)]));
 
     private static TraceHookCall Call(ulong id = 100, uint index = 3)
         => new()

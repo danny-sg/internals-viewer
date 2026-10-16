@@ -186,6 +186,8 @@ public sealed class QueryRunner(ILogger<QueryRunner> logger,
 
         var memoryClerks = MemoryClerkSnapshot.Empty;
 
+        var objectPool = ObjectPoolSnapshot.Empty;
+
         var recordable = eventOptions.RecordTimeTravel && TimeTravelRecorder is not null;
 
         var messages = new StepLoggerProgress(progress, Logger);
@@ -230,6 +232,8 @@ public sealed class QueryRunner(ILogger<QueryRunner> logger,
             if (fullTrace is not null)
             {
                 memoryClerks = clerksBefore.Merge(await ReadMemoryClerks(connectionString, details, cancellationToken));
+
+                objectPool = await ReadObjectPool(connectionString, details, cancellationToken);
             }
 
             steps.Begin(ReadingEventsStep);
@@ -386,7 +390,7 @@ public sealed class QueryRunner(ILogger<QueryRunner> logger,
             CropEndUs = cropEnd,
             TraceRequest = fullTrace is null
                 ? null
-                : new TraceRequest(fullTrace, events, symbolsPath, memoryClerks, rawEvents)
+                : new TraceRequest(fullTrace, events, symbolsPath, memoryClerks, objectPool, rawEvents)
         };
     }
 
@@ -522,6 +526,24 @@ public sealed class QueryRunner(ILogger<QueryRunner> logger,
             progress?.Report($"Memory clerks could not be read: {exception.Message}");
 
             return MemoryClerkSnapshot.Empty;
+        }
+    }
+
+    private async Task<ObjectPoolSnapshot> ReadObjectPool(string connectionString,
+                                                          IProgress<ProgressDetail>? progress,
+                                                          CancellationToken cancellationToken)
+    {
+        try
+        {
+            return await ObjectPoolReader.ReadAsync(connectionString, cancellationToken);
+        }
+        catch (SqlException exception)
+        {
+            Logger.LogWarning(exception, "Columnstore object pool could not be read");
+
+            progress?.Report($"Columnstore object pool could not be read: {exception.Message}");
+
+            return ObjectPoolSnapshot.Empty;
         }
     }
 

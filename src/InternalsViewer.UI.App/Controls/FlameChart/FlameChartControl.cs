@@ -585,7 +585,7 @@ public sealed partial class FlameChartControl : Grid, IPlayheadChart, IDisposabl
 
     private void StepToMark(bool forward, bool isBatch)
     {
-        if (_visible is not { } timeline || RowBufferMarks is not { } marks)
+        if (RowBufferMarks is not { } marks)
         {
             return;
         }
@@ -596,9 +596,9 @@ public sealed partial class FlameChartControl : Grid, IPlayheadChart, IDisposabl
 
         double? next = null;
 
-        foreach (var thread in timeline.Threads)
+        foreach (var row in _operatorRows)
         {
-            var values = isBatch ? marks.GetBatchMarks(thread.ThreadId, _axis) : marks.GetMarks(thread.ThreadId, _axis);
+            var values = isBatch ? marks.GetBatchMarks(row.Operator, _axis) : marks.GetMarks(row.Operator, _axis);
 
             next = forward ? FindMarkAfter(values, from, next) : FindMarkBefore(values, from, next);
         }
@@ -851,7 +851,7 @@ public sealed partial class FlameChartControl : Grid, IPlayheadChart, IDisposabl
 
         var rows = threads.Sum(DepthOf);
 
-        var available = (float)ViewportHeight - threads.Count * (RowsOffset + LaneGap);
+        var available = (float)ViewportHeight - threads.Count * (LaneHeaderHeight + LaneGap);
 
         var maximum = _expandedThread is null ? MaximumRowHeight : FocusedMaximumRowHeight;
 
@@ -874,7 +874,7 @@ public sealed partial class FlameChartControl : Grid, IPlayheadChart, IDisposabl
     }
 
     private float LaneHeight(TraceTimelineThread thread)
-        => RowsOffset + DepthOf(thread) * _rowHeight + (thread.ThreadId == _expandedThread ? _focusPadding : 0) + LaneGap;
+        => LaneHeaderHeight + DepthOf(thread) * _rowHeight + (thread.ThreadId == _expandedThread ? _focusPadding : 0) + LaneGap;
 
     private int DepthOf(TraceTimelineThread thread) => IsExpanded(thread) ? thread.Depth : 0;
 
@@ -979,6 +979,8 @@ public sealed partial class FlameChartControl : Grid, IPlayheadChart, IDisposabl
         _operatorDetails.Clear();
 
         _hoverOperator = null;
+
+        _hoverMarkBand = null;
 
         if (_selectedOperator is { } selected && !_operatorRows.Any(r => ReferenceEquals(r.Operator, selected)))
         {
@@ -1166,7 +1168,7 @@ public sealed partial class FlameChartControl : Grid, IPlayheadChart, IDisposabl
             _version++;
         }
 
-        var top = _laneTops[hit.Lane] + RowsOffset + hit.Depth * _rowHeight;
+        var top = _laneTops[hit.Lane] + LaneHeaderHeight + hit.Depth * _rowHeight;
 
         if (top < _scrollY || top + _rowHeight > _scrollY + ViewportHeight)
         {

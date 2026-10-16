@@ -86,13 +86,9 @@ internal sealed class BindingParser
         }
 
         ushort fixedLength = 0;
-
         ulong valueOffset = 0;
-
         ulong statusOffset = 0;
-
         ulong lengthOffset = 0;
-
         byte infoFlags = 0;
 
         var isReadable = replay.TryRead(address + LayoutFlagsOffset, out uint flags)

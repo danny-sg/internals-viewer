@@ -149,7 +149,7 @@ public sealed class CallTreeTabViewModel : IDisposable
         _ = references.LoadAsync();
     }
 
-    public void ShowRowBuffers(CallStackNode node)
+    public void ShowRowBuffers(CallStackNode node, int? call = null)
     {
         if (Arguments.Lookup is not { } lookup || node.Frame is not { } frame)
         {
@@ -160,10 +160,20 @@ public sealed class CallTreeTabViewModel : IDisposable
         {
             Dock.Activate(existing);
 
+            if (call is { } selected && existing.Content is RowBuffersViewModel shown)
+            {
+                shown.SelectCall(selected);
+            }
+
             return;
         }
 
         var rowBuffers = new RowBuffersViewModel(node, lookup, this, Logger, Settings.DecodeValues);
+
+        if (call is { } requested)
+        {
+            rowBuffers.SelectCall(requested);
+        }
 
         AddDocument(new DocumentViewModel(rowBuffers.Title,
                                           rowBuffers,
@@ -175,7 +185,7 @@ public sealed class CallTreeTabViewModel : IDisposable
         _ = rowBuffers.LoadAsync();
     }
 
-    public void ShowBatches(CallStackNode node)
+    public void ShowBatches(CallStackNode node, int? call = null)
     {
         if (Arguments.Lookup is not { } lookup || node.Frame is not { } frame)
         {
@@ -186,10 +196,20 @@ public sealed class CallTreeTabViewModel : IDisposable
         {
             Dock.Activate(existing);
 
+            if (call is { } selected && existing.Content is BatchesViewModel shown)
+            {
+                shown.SelectCall(selected);
+            }
+
             return;
         }
 
         var batches = new BatchesViewModel(node, lookup, this, Settings.DecodeValues);
+
+        if (call is { } requested)
+        {
+            batches.SelectCall(requested);
+        }
 
         AddDocument(new DocumentViewModel(batches.Title,
                                           batches,

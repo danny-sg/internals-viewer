@@ -57,6 +57,8 @@ public sealed partial class QueryFlameChartTabView : UserControl, IDocumentComma
 
         FlameChart.CallTreeOpenRequested += OnCallTreeOpenRequested;
 
+        FlameChart.RowBufferOpenRequested += OnRowBufferOpenRequested;
+
         FlameChart.CallStackOpenRequested += OnCallStackOpenRequested;
 
         FlameChart.PlanNodeSelected += OnPlanNodeSelected;
@@ -128,6 +130,8 @@ public sealed partial class QueryFlameChartTabView : UserControl, IDocumentComma
         FlameChart.SelectionCleared -= OnSelectionCleared;
 
         FlameChart.CallTreeOpenRequested -= OnCallTreeOpenRequested;
+
+        FlameChart.RowBufferOpenRequested -= OnRowBufferOpenRequested;
 
         FlameChart.CallStackOpenRequested -= OnCallStackOpenRequested;
 
@@ -316,6 +320,8 @@ public sealed partial class QueryFlameChartTabView : UserControl, IDocumentComma
     private void OnCallSelected(CallStackNode node, int call) => ViewModel?.NavigateToCall(node, call);
 
     private void OnCallTreeOpenRequested(CallStackNode? node, int call) => ViewModel?.OpenCallTree(node, call);
+
+    private void OnRowBufferOpenRequested(CallStackNode node, int call, bool isBatch) => ViewModel?.OpenRowBuffers(node, call, isBatch);
 
     private void OnCallStackOpenRequested()
     {

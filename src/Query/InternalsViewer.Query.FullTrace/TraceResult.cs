@@ -8,6 +8,7 @@ using InternalsViewer.Query.FullTrace.Memory;
 using InternalsViewer.Query.FullTrace.Batches;
 using InternalsViewer.Query.FullTrace.RowBuffers;
 using InternalsViewer.Query.FullTrace.Timeline;
+using InternalsViewer.Query.Memory;
 
 namespace InternalsViewer.Query.FullTrace;
 
@@ -18,6 +19,8 @@ public sealed record TraceResult(CallStackTree CallStack, TraceCallStore CallSto
     public HoBtAccessMap HoBtAccess { get; init; } = HoBtAccessMap.Empty;
 
     public MemoryMap MemoryMap { get; init; } = MemoryMap.Empty;
+
+    public ObjectPoolSnapshot ObjectPool { get; init; } = ObjectPoolSnapshot.Empty;
 
     public RowBufferStore RowBuffers { get; init; } = RowBufferStore.Empty;
 

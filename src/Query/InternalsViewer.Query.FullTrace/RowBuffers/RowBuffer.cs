@@ -11,5 +11,9 @@ public sealed record RowBuffer(ulong Function,
                                IReadOnlyList<RowBufferColumn> Columns,
                                RowBufferFormat Format = RowBufferFormat.Bindings)
 {
+    public ulong Batch { get; init; }
+
+    public int BatchSelectionIndex { get; init; } = -1;
+
     public override string ToString() => string.Join(Environment.NewLine, Columns.Select(c => $"Column {c.Ordinal}  {c}"));
 }

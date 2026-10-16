@@ -25,6 +25,12 @@ public class RowBufferStoreTests
 
     private const ulong Buffer = 0x1F4_EEAE_2000;
 
+    private const ulong HandoffBatch = 0x1F4_EEB0_0000;
+
+    private const ulong HandoffProducer = 0x1F4_EEB1_0000;
+
+    private const ulong HandoffPointer = 0x1F4_EEB2_005C;
+
     private const uint FixedBinding = 0x2;
 
     private const uint VariableBinding = 0x902;
@@ -32,6 +38,8 @@ public class RowBufferStoreTests
     private static readonly RowBufferBinding Fixed = new(4, FixedBinding, 4, 0x00);
 
     private static readonly RowBufferBinding Variable = new(-1, VariableBinding, 8000, 0x08);
+
+    private static readonly Dictionary<int, BatchDeepValue> NoDeepValues = [];
 
     [Fact]
     public void A_Call_Reads_Back_Its_Row()
@@ -118,7 +126,7 @@ public class RowBufferStoreTests
 
         store.MapNodes([other, scan]);
 
-        new RowBufferStore([CreateRow(Function, call: 2, id: 100, number: 1, "First")]).AnnotateNodes(store);
+        new RowBufferStore([CreateRow(Function, call: 2, id: 100, number: 1, "First")]).AnnotateCallStackNodes(store);
 
         Assert.Equal((true, false), (scan.HasRowBuffers, other.HasRowBuffers));
     }
@@ -132,15 +140,15 @@ public class RowBufferStoreTests
     }
 
     [Fact]
-    public void A_Value_Row_Keeps_Its_Format_Through_Export()
+    public void A_Batch_Row_Keeps_Its_Format_Through_Export()
     {
         var column = new RowBufferColumn(0, RowBufferBinding.None, 0, RowBufferColumnFlags.None, 8, [0x20, 0x28, 0x30, 0, 0, 0, 0, 0]);
 
-        var index = new RowBufferStore([new RowBuffer(Function, Instance, 1, 100, Iterator, Buffer, [column], RowBufferFormat.Values)]);
+        var index = new RowBufferStore([new RowBuffer(Function, Instance, 1, 100, Iterator, Buffer, [column], RowBufferFormat.Batch)]);
 
         var row = Export(index).GetRow(Function, Instance, 1)!;
 
-        Assert.Equal(RowBufferFormat.Values, row.Format);
+        Assert.Equal(RowBufferFormat.Batch, row.Format);
         Assert.Equal([0x20, 0x28, 0x30, 0, 0, 0, 0, 0], row.Columns[0].Data);
     }
 
@@ -217,7 +225,7 @@ public class RowBufferStoreTests
 
         var memory = row.Columns[1] with { Pointer = 0x3_0000_0000 };
 
-        Assert.Equal([RowBufferSourceType.Binding, RowBufferSourceType.BufferPool, RowBufferSourceType.Memory],
+        Assert.Equal([RowBufferSourceType.Inline, RowBufferSourceType.BufferPool, RowBufferSourceType.Memory],
                      [index.GetSource(row, row.Columns[0]).Type, index.GetSource(row, page).Type, index.GetSource(row, memory).Type]);
     }
 
@@ -262,6 +270,83 @@ public class RowBufferStoreTests
     }
 
     [Fact]
+    public void A_Value_In_A_Vectors_Deep_Data_Names_The_Producer_Vector_And_Row()
+    {
+        var (row, batches) = CreateHandoff(slot: 0xE60100, selectionIndex: 2);
+
+        var source = new RowBufferStore([row]).GetSource(row, row.Columns[1], batches);
+
+        Assert.Equal(new RowBufferSource(RowBufferSourceType.Batch, HandoffPointer, HandoffProducer, 0, 5, 6) { IsFromDictionary = true },
+                     source);
+    }
+
+    [Fact]
+    public void A_Deep_Value_Already_In_The_Batch_Is_Not_From_A_Dictionary()
+    {
+        var (row, batches) = CreateHandoff(slot: HandoffPointer | 1, selectionIndex: 0);
+
+        Assert.False(new RowBufferStore([row]).GetSource(row, row.Columns[1], batches).IsFromDictionary);
+    }
+
+    [Fact]
+    public void A_Vector_Without_Its_Handoff_Is_Named_Without_Its_Row()
+    {
+        var (row, _) = CreateHandoff(slot: 0xE60100, selectionIndex: 2);
+
+        Assert.Equal(new RowBufferSource(RowBufferSourceType.Batch, HandoffPointer, 0, 0, 5, -1),
+                     new RowBufferStore([row]).GetSource(row, row.Columns[1], BatchStore.Empty));
+    }
+
+    [Fact]
+    public void A_Dictionary_Reference_Is_Found_Through_The_Batch_Inputs()
+    {
+        const ulong filter = 0x1F4_EEB3_0000;
+
+        var (row, _) = CreateHandoff(slot: 0xE60100, selectionIndex: 1);
+
+        var scan = CreateCapture(HandoffProducer, filter, 80, new BatchCaptureVector(5, BatchVectorFlags.Pure, [0xE60100], NoDeepValues));
+
+        var unreadable = new BatchCaptureVector(5, BatchVectorFlags.Unreadable, [], NoDeepValues);
+
+        var batches = new BatchStore([scan, CreateCapture(filter, Iterator, 90, unreadable)]);
+
+        var source = new RowBufferStore([row]).GetSource(row, row.Columns[1], batches);
+
+        Assert.Equal((filter, 3, true), (source.Iterator, source.Row, source.IsFromDictionary));
+    }
+
+    [Fact]
+    public void A_Batch_Row_Keeps_Its_Batch_Position_Through_Export()
+    {
+        var (row, _) = CreateHandoff(slot: 0xE60100, selectionIndex: 2);
+
+        var imported = Export(new RowBufferStore([row])).GetRow(Function, Instance, 1)!;
+
+        Assert.Equal((HandoffBatch, 2, 5), (imported.Batch, imported.BatchSelectionIndex, imported.Columns[1].DeepDataVectorId));
+    }
+
+    [Fact]
+    public void A_First_Version_Export_Is_Still_Read()
+    {
+        using var stream = new MemoryStream();
+
+        using (var writer = new BinaryWriter(stream, Encoding.UTF8, leaveOpen: true))
+        {
+            writer.Write(0);
+
+            writer.Write(0);
+
+            writer.Write(0);
+        }
+
+        stream.Position = 0;
+
+        using var reader = new BinaryReader(stream);
+
+        Assert.Equal(0, RowBufferStore.Read(reader).Count);
+    }
+
+    [Fact]
     public void A_Row_Prints_Its_Columns_In_Hex()
     {
         var row = Build().GetRow(Function, Instance, 1)!;
@@ -283,6 +368,24 @@ public class RowBufferStoreTests
         Assert.Equal(RowBufferColumnFlags.ByReference | RowBufferColumnFlags.HasLength, row.Columns[1].Flags);
         Assert.Equal(2, imported.GetRowAt(Iterator, 201)?.Call);
     }
+
+    private static (RowBuffer Row, BatchStore Batches) CreateHandoff(ulong slot, int selectionIndex)
+    {
+        var vector = new BatchCaptureVector(5, BatchVectorFlags.Pure, [slot], NoDeepValues);
+
+        var row = CreateRow(Function, call: 1, id: 100, number: 1, "First") with
+        {
+            Batch = HandoffBatch,
+            BatchSelectionIndex = selectionIndex
+        };
+
+        row = row with { Columns = [row.Columns[0], row.Columns[1] with { Pointer = HandoffPointer, DeepDataVectorId = 5 }] };
+
+        return (row, new BatchStore([CreateCapture(HandoffProducer, Iterator, 90, vector)]));
+    }
+
+    private static BatchCapture CreateCapture(ulong producer, ulong consumer, ulong id, BatchCaptureVector vector)
+        => new(Function, producer, 0, id, producer, HandoffBatch, consumer, BatchCaptureFlags.None, [0, 3, 6], [vector]);
 
     private static RowBufferStore Build()
         => new([CreateRow(Function, call: 2, id: 200, number: 2, "Second"), CreateRow(Function, call: 1, id: 100, number: 1, "First")]);

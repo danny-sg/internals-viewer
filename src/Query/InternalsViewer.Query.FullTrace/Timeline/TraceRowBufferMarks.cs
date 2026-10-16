@@ -1,5 +1,6 @@
 using System.Runtime.InteropServices;
 using InternalsViewer.Query.CallStack;
+using InternalsViewer.Query.Events.Operators;
 using InternalsViewer.Query.FullTrace.Batches;
 using InternalsViewer.Query.FullTrace.RowBuffers;
 using InternalsViewer.Query.FullTrace.Timeline.Enums;
@@ -9,38 +10,48 @@ namespace InternalsViewer.Query.FullTrace.Timeline;
 
 public sealed class TraceRowBufferMarks
 {
-    private TraceRowBufferMarks(Dictionary<uint, ThreadMarks> threads, Dictionary<uint, ThreadMarks> batchThreads)
+    private TraceRowBufferMarks(Dictionary<ExecutionOperatorEvent, OperatorMarks> rowBuffers,
+                                Dictionary<ExecutionOperatorEvent, OperatorMarks> batches)
     {
-        Threads = threads;
+        RowBuffers = rowBuffers;
 
-        BatchThreads = batchThreads;
+        Batches = batches;
 
-        Count = threads.Values.Sum(t => t.Positions.Length) + batchThreads.Values.Sum(t => t.Positions.Length);
+        Count = rowBuffers.Values.Sum(t => t.Count) + batches.Values.Sum(t => t.Count);
     }
 
-    public static TraceRowBufferMarks Empty { get; } = new([], []);
+    public static TraceRowBufferMarks Empty { get; }
+        = new(new(ReferenceEqualityComparer.Instance), new(ReferenceEqualityComparer.Instance));
 
     public int Count { get; }
 
-    private Dictionary<uint, ThreadMarks> Threads { get; }
+    private Dictionary<ExecutionOperatorEvent, OperatorMarks> RowBuffers { get; }
 
-    private Dictionary<uint, ThreadMarks> BatchThreads { get; }
+    private Dictionary<ExecutionOperatorEvent, OperatorMarks> Batches { get; }
 
-    public ReadOnlySpan<double> GetMarks(uint threadId, TraceTimelineAxis axis) => GetMarks(Threads, threadId, axis);
+    public bool HasMarks(ExecutionOperatorEvent operatorEvent)
+        => RowBuffers.ContainsKey(operatorEvent) || Batches.ContainsKey(operatorEvent);
 
-    public ReadOnlySpan<double> GetBatchMarks(uint threadId, TraceTimelineAxis axis) => GetMarks(BatchThreads, threadId, axis);
+    public ReadOnlySpan<double> GetMarks(ExecutionOperatorEvent operatorEvent, TraceTimelineAxis axis)
+        => GetMarks(RowBuffers, operatorEvent, axis);
 
-    public (CallStackNode Node, int Call)? GetMarkAt(uint threadId, TraceTimelineAxis axis, double value, double tolerance)
+    public ReadOnlySpan<double> GetBatchMarks(ExecutionOperatorEvent operatorEvent, TraceTimelineAxis axis)
+        => GetMarks(Batches, operatorEvent, axis);
+
+    public (CallStackNode Node, int Call, bool IsBatch)? GetNearestMark(ExecutionOperatorEvent operatorEvent,
+                                                                       TraceTimelineAxis axis,
+                                                                       double value)
     {
-        (CallStackNode Node, int Call)? nearest = null;
+        var rowBuffer = GetNearest(RowBuffers, operatorEvent, axis, value);
 
-        var distance = tolerance;
+        var batch = GetNearest(Batches, operatorEvent, axis, value);
 
-        FindNearest(Threads, threadId, axis, value, ref nearest, ref distance);
+        if (batch is { } nearestBatch && (rowBuffer is not { } nearestRow || nearestBatch.Distance < nearestRow.Distance))
+        {
+            return (nearestBatch.Node, nearestBatch.Call, true);
+        }
 
-        FindNearest(BatchThreads, threadId, axis, value, ref nearest, ref distance);
-
-        return nearest;
+        return rowBuffer is { } found ? (found.Node, found.Call, false) : null;
     }
 
     internal static TraceRowBufferMarks Build(TraceTimeline timeline, RowBufferStore rowBuffers, BatchStore? batches = null)
@@ -52,9 +63,11 @@ public sealed class TraceRowBufferMarks
             return Empty;
         }
 
+        var owners = GetOwners(timeline);
+
         var captures = new Dictionary<(uint Thread, ulong Iterator), List<Capture>>();
 
-        var batchCaptures = new Dictionary<uint, List<Capture>>();
+        var batchCaptures = new Dictionary<ExecutionOperatorEvent, List<Capture>>(ReferenceEqualityComparer.Instance);
 
         foreach (var location in timeline.GetSpanLocations())
         {
@@ -69,9 +82,10 @@ public sealed class TraceRowBufferMarks
                                       location.Node,
                                       location.Call);
 
-            if (batches.HasBatch(frame.Address, frame.Instance, location.Call))
+            if (batches.HasBatch(frame.Address, frame.Instance, location.Call)
+                && owners.GetValueOrDefault(frame.Instance) is { } producer)
             {
-                ref var batchList = ref CollectionsMarshal.GetValueRefOrAddDefault(batchCaptures, location.Thread.ThreadId, out _);
+                ref var batchList = ref CollectionsMarshal.GetValueRefOrAddDefault(batchCaptures, producer, out _);
 
                 (batchList ??= []).Add(capture);
             }
@@ -86,56 +100,87 @@ public sealed class TraceRowBufferMarks
             (list ??= []).Add(capture);
         }
 
-        var threads = new Dictionary<uint, List<Capture>>();
+        var operators = new Dictionary<ExecutionOperatorEvent, List<Capture>>(ReferenceEqualityComparer.Instance);
 
-        foreach (var ((thread, _), list) in captures)
+        foreach (var ((_, iterator), list) in captures)
         {
-            ref var marks = ref CollectionsMarshal.GetValueRefOrAddDefault(threads, thread, out _);
+            if (GetOwner(owners, batches, iterator) is not { } owner)
+            {
+                continue;
+            }
+
+            ref var marks = ref CollectionsMarshal.GetValueRefOrAddDefault(operators, owner, out _);
 
             (marks ??= []).AddRange(GetInnermost(list));
         }
 
-        return new TraceRowBufferMarks(threads.ToDictionary(t => t.Key, t => ThreadMarks.Build(t.Value)),
-                                       batchCaptures.ToDictionary(t => t.Key, t => ThreadMarks.Build(t.Value)));
+        return new TraceRowBufferMarks(Build(operators), Build(batchCaptures));
     }
 
-    private static ReadOnlySpan<double> GetMarks(Dictionary<uint, ThreadMarks> threads, uint threadId, TraceTimelineAxis axis)
+    private static Dictionary<ExecutionOperatorEvent, OperatorMarks> Build(Dictionary<ExecutionOperatorEvent, List<Capture>> captures)
     {
-        if (!threads.TryGetValue(threadId, out var marks))
+        var marks = new Dictionary<ExecutionOperatorEvent, OperatorMarks>(captures.Count, ReferenceEqualityComparer.Instance);
+
+        foreach (var (operatorEvent, list) in captures)
         {
-            return [];
+            marks[operatorEvent] = OperatorMarks.Build(list);
         }
 
-        return axis == TraceTimelineAxis.Position ? marks.Positions : marks.Instructions;
+        return marks;
     }
 
-    private static void FindNearest(Dictionary<uint, ThreadMarks> threads,
-                                    uint threadId,
-                                    TraceTimelineAxis axis,
-                                    double value,
-                                    ref (CallStackNode Node, int Call)? nearest,
-                                    ref double distance)
+    private static Dictionary<ulong, ExecutionOperatorEvent> GetOwners(TraceTimeline timeline)
     {
-        if (!threads.TryGetValue(threadId, out var marks))
+        var owners = new Dictionary<ulong, ExecutionOperatorEvent>();
+
+        foreach (var lifetime in timeline.Lifetimes)
         {
-            return;
-        }
-
-        var values = axis == TraceTimelineAxis.Position ? marks.Positions : marks.Instructions;
-
-        var end = value + distance;
-
-        for (var index = SortedSearch.FirstAtOrAfter(values, value - distance); index < values.Length && values[index] <= end; index++)
-        {
-            var gap = Math.Abs(values[index] - value);
-
-            if (gap <= distance)
+            foreach (var instance in lifetime.Operator.Instances)
             {
-                distance = gap;
-
-                nearest = (marks.Nodes[index], marks.Calls[index]);
+                owners.TryAdd(instance, lifetime.Operator);
             }
         }
+
+        return owners;
+    }
+
+    private static ExecutionOperatorEvent? GetOwner(Dictionary<ulong, ExecutionOperatorEvent> owners, BatchStore batches, ulong iterator)
+    {
+        if (owners.TryGetValue(iterator, out var owner))
+        {
+            return owner;
+        }
+
+        return batches.GetProducer(iterator) is { } producer ? owners.GetValueOrDefault(producer) : null;
+    }
+
+    private static ReadOnlySpan<double> GetMarks(Dictionary<ExecutionOperatorEvent, OperatorMarks> operators,
+                                                 ExecutionOperatorEvent operatorEvent,
+                                                 TraceTimelineAxis axis)
+    {
+        return operators.TryGetValue(operatorEvent, out var marks) ? marks.Of(axis).Values : [];
+    }
+
+    private static (CallStackNode Node, int Call, double Distance)? GetNearest(Dictionary<ExecutionOperatorEvent, OperatorMarks> operators,
+                                                                               ExecutionOperatorEvent operatorEvent,
+                                                                               TraceTimelineAxis axis,
+                                                                               double value)
+    {
+        if (!operators.TryGetValue(operatorEvent, out var marks))
+        {
+            return null;
+        }
+
+        var (values, nodes, calls) = marks.Of(axis);
+
+        var index = SortedSearch.FirstAtOrAfter(values, value);
+
+        if (index > 0 && (index == values.Length || value - values[index - 1] <= values[index] - value))
+        {
+            index--;
+        }
+
+        return index < values.Length ? (nodes[index], calls[index], Math.Abs(values[index] - value)) : null;
     }
 
     private static List<Capture> GetInnermost(List<Capture> captures)
@@ -159,16 +204,23 @@ public sealed class TraceRowBufferMarks
 
     private readonly record struct Capture(double Start, double End, double InstructionEnd, CallStackNode Node, int Call);
 
-    private sealed record ThreadMarks(double[] Positions, double[] Instructions, CallStackNode[] Nodes, int[] Calls)
+    private sealed record AxisMarks(double[] Values, CallStackNode[] Nodes, int[] Calls)
     {
-        public static ThreadMarks Build(List<Capture> captures)
+        public static AxisMarks Build(List<Capture> captures, Func<Capture, double> getValue)
         {
-            captures.Sort((left, right) => left.End.CompareTo(right.End));
+            Capture[] ordered = [.. captures.OrderBy(getValue)];
 
-            return new ThreadMarks([.. captures.Select(c => c.End)],
-                                   [.. captures.Select(c => c.InstructionEnd)],
-                                   [.. captures.Select(c => c.Node)],
-                                   [.. captures.Select(c => c.Call)]);
+            return new AxisMarks([.. ordered.Select(getValue)], [.. ordered.Select(c => c.Node)], [.. ordered.Select(c => c.Call)]);
         }
+    }
+
+    private sealed record OperatorMarks(AxisMarks Positions, AxisMarks Instructions)
+    {
+        public int Count => Positions.Values.Length;
+
+        public AxisMarks Of(TraceTimelineAxis axis) => axis == TraceTimelineAxis.Position ? Positions : Instructions;
+
+        public static OperatorMarks Build(List<Capture> captures)
+            => new(AxisMarks.Build(captures, c => c.End), AxisMarks.Build(captures, c => c.InstructionEnd));
     }
 }

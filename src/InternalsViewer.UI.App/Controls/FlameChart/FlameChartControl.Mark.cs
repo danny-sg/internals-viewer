@@ -142,7 +142,7 @@ public sealed partial class FlameChartControl
                     continue;
                 }
 
-                return ContentTop + _laneTops[lane] - (float)_scrollY + RowsOffset + Math.Min(depth, DepthOf(thread)) * _rowHeight;
+                return ContentTop + _laneTops[lane] - (float)_scrollY + LaneHeaderHeight + Math.Min(depth, DepthOf(thread)) * _rowHeight;
             }
 
             return null;

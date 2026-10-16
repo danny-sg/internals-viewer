@@ -68,6 +68,35 @@ public sealed partial class BatchStore
         return index < 0 ? null : handoffs[index];
     }
 
+    public BatchCapture? GetHandoff(ulong batch, ulong consumer, ulong id)
+    {
+        if (!Handoffs.TryGetValue((batch, consumer), out var handoffs))
+        {
+            return null;
+        }
+
+        var index = SortedSearch.FirstAtOrAfter(handoffs, id + 1, h => h.Id) - 1;
+
+        return index < 0 ? null : handoffs[index];
+    }
+
+    public ulong? GetVectorSlot(BatchCapture capture, int vectorId, int row)
+    {
+        var current = capture;
+
+        for (var depth = 0; depth <= MaximumLineage && current is not null; depth++)
+        {
+            if (current.Vectors.FirstOrDefault(v => v.VectorId == vectorId)?.GetSlot(row) is { } slot)
+            {
+                return slot;
+            }
+
+            current = GetInput(current);
+        }
+
+        return null;
+    }
+
     public ulong? GetProducer(ulong consumer) => Producers.TryGetValue(consumer, out var producer) ? producer : null;
 
     public (BatchCapture Capture, int VectorId, int Row)? GetDeepValue(ulong pointer)
